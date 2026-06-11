@@ -50,6 +50,10 @@ PINGÜINO is **not** just a gelato calculator. It is:
 
 **Hard rule:** the calculation engine is deterministic, formula-based, and reproducible. AI may explain, analyze, and suggest — **AI never replaces the core math engine.** Every number shown to the user comes from the engine.
 
+### 1.1 Beyond the app — the PINGÜINO commercial ecosystem
+
+PINGÜINO Intelligence is one pillar of a larger commercial ecosystem: **PINGÜINO Machines** (all-in-one production/display/mobile hardware offer), **PINGÜINO Ready Mixtures** (ready-to-use mixtures and flavour packs), **PINGÜINO Ingredients** (professional powders, bases and ingredient packs), and the **PINGÜINO Partner Network** (the public "Find PINGÜINO Gelato Near You" map with verified partner badges), plus **Hello PI**, the conversational recipe assistant. The business layer — four commercial offers, partner map, customer dashboard, Hello PI, and future ecosystem tables — is specified canonically in [PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md](PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md). It extends this masterplan; it never overrides the engine plan or the app build order.
+
 ---
 
 ## 2. Core philosophy
@@ -644,6 +648,8 @@ OpenAI is used for: recipe explanation · product-label OCR analysis · ingredie
 
 Functions verify the Supabase JWT and read `profiles.plan` for per-plan rate limits. Demo users get no AI calls — Phase 1 demo "AI guidance" is honest rule-based template messaging generated from the correction engine's reason codes.
 
+**Hello PI (planned):** the conversational entry point into PINGÜINO Intelligence — text chat first (extends `ai-assistant`, Phase 3), real-time voice later. Full specification in [PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md §6A](PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md#6a-hello-pi--conversational-recipe-creation-assistant). It obeys this section's AI boundary unchanged: PI collects intent and emits structured recipe requests; the deterministic engine computes all values, indicators and corrections.
+
 ---
 
 ## 19. Security rules
@@ -693,6 +699,10 @@ Actual Batch Mode UI (§8) · Pro subscription gating via Stripe Checkout + webh
 ### Phase 5 — Advanced
 
 Camera/OCR (Supabase Storage + vision) · barcode / external public database lookup · advanced product database · self-learning feedback · **`solve-corrections` server-side hardening (§10)**.
+
+### Beyond the app — ecosystem rollout
+
+The commercial ecosystem (machine catalog, ready-mixtures and ingredient-pack commerce, partner map, public flavour pages, Hello PI voice mode) is staged separately as E1–E4 in [PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md §9](PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md#9-relation-to-the-current-mvp) and does not alter app Phases 1–5 above.
 
 ### Build order within Phase 0/1 (approved)
 
