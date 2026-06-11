@@ -1,4 +1,8 @@
-# src/components/ui — themed primitives
+# src/components/ui — themed base primitives
 
-Base primitives (Button, Input, Select, Card, …) themed to the Design Lock (Masterplan §3).
-Built as needed from the design-system step onward.
+Generic primitives themed to the Design Lock (Masterplan §3):
+
+- `Button` — variants `primary` (ink), `ghost` (hairline), `ivory` (for charcoal panels);
+  exports `buttonClasses()` so router `<Link>`s share the exact same look
+- `Card` — white workspace card, hairline border, minimal shadow
+- `CharcoalPanel` — inset deep-charcoal contrast panel (counterpart of the landing band)

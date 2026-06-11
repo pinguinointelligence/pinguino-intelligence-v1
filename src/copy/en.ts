@@ -8,6 +8,35 @@ export const copy = {
     sub: 'INTELLIGENCE',
     full: 'PINGÜINO Intelligence',
   },
+  /** PI status vocabulary (design-system subset of Masterplan §12.7). */
+  status: {
+    ideal: 'Ideal',
+    good: 'Good',
+    risky: 'Risky',
+    tooSoft: 'Too soft',
+    tooHard: 'Too hard',
+    locked: 'Locked',
+    pro: 'Pro',
+    demo: 'Demo',
+  },
+  /** Ingredient confidence levels (Masterplan §16). */
+  confidence: {
+    verified: 'Verified',
+    veryHigh: 'Very high confidence',
+    high: 'High confidence',
+    estimated: 'Estimated',
+    needsVerification: 'Needs verification',
+  },
+  /** Gating + upgrade teaser catalog (Masterplan §6, §10). */
+  gate: {
+    proLabel: 'PINGÜINO Pro',
+    unlockCta: 'Unlock Pro',
+    prompts: {
+      exactGrams: 'Unlock Pro to see exact correction grams.',
+      exactAmount: 'PINGÜINO Pro calculates the exact amount to add.',
+      labelExport: 'Label export is available in Pro.',
+    },
+  },
   landing: {
     eyebrow: 'Gelato Intelligence Platform',
     headline: 'From idea to production-ready gelato.',
@@ -52,9 +81,35 @@ export const copy = {
   },
   studio: {
     eyebrow: 'PI Studio',
-    headline: 'The demo studio is on its way.',
-    body: 'This is where the deterministic engine, the ingredient builder and the PI Profile Indicators Panel will live. The scaffold is complete — the engine arrives in the next build step.',
+    headline: 'The instruments are in place.',
+    body: 'A static preview of the PINGÜINO design system — indicators, corrections and gating, exactly as they will behave once the deterministic engine arrives in the next build step.',
     back: 'Back to landing',
+    preview: {
+      panelTitle: 'PI Profile Indicators',
+      panelNote: 'Static design preview — live values arrive with the engine.',
+      indicators: {
+        pod: 'Sweetness · POD',
+        npac: 'Freezing stability · NPAC',
+        solids: 'Total solids',
+        fat: 'Fat',
+      },
+      corrections: {
+        title: 'Active corrections',
+        rows: ['Add sucrose', 'Add milk 3.5 %'],
+      },
+      confidence: {
+        title: 'Ingredient confidence',
+        samples: ['Sucrose', 'Skimmed milk powder', 'Pistachio paste', 'Producer label scan'],
+      },
+      empty: {
+        title: 'No saved recipes yet.',
+        body: 'Your recipe library will live here once saving is unlocked.',
+      },
+      next: {
+        label: 'Next build step',
+        body: 'The deterministic calculation engine — composition, POD, PAC/NPAC, ice fraction, scoring and exact corrections.',
+      },
+    },
   },
   notFound: {
     code: '404',
