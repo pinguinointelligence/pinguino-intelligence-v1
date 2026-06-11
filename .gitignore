@@ -21,6 +21,9 @@ pnpm-debug.log*
 # Test coverage
 coverage/
 
+# Local agent tooling (machine-specific paths)
+.claude/
+
 # Editor / OS
 .DS_Store
 Thumbs.db

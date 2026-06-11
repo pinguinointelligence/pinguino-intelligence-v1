@@ -1,0 +1,28 @@
+/* PINGÜINO design tokens — Masterplan §3 Design Lock (binding).
+   White workspaces, deep charcoal contrast, brand ivory #EFE8DC.
+   No candy colors, no rainbow status palettes. */
+
+@theme {
+  /* Surfaces */
+  --color-paper: #ffffff;
+  --color-ink: #101113;
+  --color-ink-soft: #1a1c20;
+
+  /* Brand */
+  --color-ivory: #efe8dc;
+  --color-ivory-soft: #efe8dca3;
+
+  /* Status — desaturated, laboratory-grade (never bright) */
+  --color-status-ideal: #6f7d63;
+  --color-status-risky: #9c8a55;
+  --color-status-error: #a06352;
+
+  /* Typography */
+  --font-sans:
+    'Hanken Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', monospace;
+
+  /* Wide tracking for uppercase section labels (echoes the wordmark) */
+  --tracking-label: 0.18em;
+  --tracking-wordmark: 0.32em;
+}
