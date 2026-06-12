@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ALLOWED_ENGINE_FUNCTIONS } from './__fixtures__/allowedEngineFunctions';
 import { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C, type IceAnchorRow } from './config/iceAnchors';
 import { estimateIceFraction, type IceFractionInput } from './iceFraction';
 import * as engine from './index';
@@ -178,37 +179,10 @@ describe('safety', () => {
 });
 
 describe('scope guard (no scoring/corrections yet)', () => {
-  const ALLOWED_FUNCTIONS = new Set([
-    // composition (4C)
-    'computeComponentGrams',
-    'computeComponentTotals',
-    'computeComposition',
-    'computePercentages',
-    'computeSugarBreakdown',
-    'computeTotalBatchGrams',
-    'resolveEffectiveItems',
-    // POD (4D)
-    'computeRecipePod',
-    'ingredientPodContribution',
-    // PAC/NPAC (4E)
-    'computeRecipeNpac',
-    'computeRecipePac',
-    'ingredientNpacContribution',
-    'ingredientPacContribution',
-    'interpolateSyrupDeAnchors',
-    // ice fraction (4F)
-    'estimateIceFraction',
-    // statuses (4G)
-    'classifyIndicator',
-    'classifyRecipeIndicators',
-    'classifyValue',
-    'computeLactoseSandinessRisk',
-    'selectTargetBand',
-  ]);
-
   it('creates no scoring/correction functions', () => {
+    const allowed = new Set(ALLOWED_ENGINE_FUNCTIONS);
     const extraFunctions = Object.entries(engine)
-      .filter(([name, value]) => typeof value === 'function' && !ALLOWED_FUNCTIONS.has(name))
+      .filter(([name, value]) => typeof value === 'function' && !allowed.has(name))
       .map(([name]) => name);
     expect(extraFunctions).toEqual([]);
   });

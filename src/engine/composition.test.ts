@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ALLOWED_ENGINE_FUNCTIONS } from './__fixtures__/allowedEngineFunctions';
 import { APPENDIX_A_EXPECTED_TOTALS, APPENDIX_A_ITEMS } from './__fixtures__/golden/composition';
 import {
   computeComponentGrams,
@@ -288,33 +289,7 @@ describe('safety', () => {
 
 describe('scope guard', () => {
   it('creates no scoring/correction functions', () => {
-    const IMPLEMENTED_FUNCTIONS = new Set([
-      // composition (4C)
-      'computeComponentGrams',
-      'computeComponentTotals',
-      'computeComposition',
-      'computePercentages',
-      'computeSugarBreakdown',
-      'computeTotalBatchGrams',
-      'resolveEffectiveItems',
-      // POD (4D)
-      'computeRecipePod',
-      'ingredientPodContribution',
-      // PAC/NPAC (4E)
-      'computeRecipeNpac',
-      'computeRecipePac',
-      'ingredientNpacContribution',
-      'ingredientPacContribution',
-      'interpolateSyrupDeAnchors',
-      // ice fraction (4F)
-      'estimateIceFraction',
-      // statuses (4G)
-      'classifyIndicator',
-      'classifyRecipeIndicators',
-      'classifyValue',
-      'computeLactoseSandinessRisk',
-      'selectTargetBand',
-    ]);
+    const IMPLEMENTED_FUNCTIONS = new Set(ALLOWED_ENGINE_FUNCTIONS);
     const extraFunctions = Object.entries(engine)
       .filter(([name, value]) => typeof value === 'function' && !IMPLEMENTED_FUNCTIONS.has(name))
       .map(([name]) => name);

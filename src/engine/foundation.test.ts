@@ -13,6 +13,7 @@ import {
   SYRUP_DE_ANCHORS,
   TARGET_BANDS,
 } from './index';
+import { ALLOWED_ENGINE_FUNCTIONS } from './__fixtures__/allowedEngineFunctions';
 import { CONFIG_VERSION, ENGINE_VERSION } from './config/version';
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
@@ -196,39 +197,12 @@ describe('density defaults', () => {
   });
 });
 
-describe('export allowlist (composition + POD + PAC/NPAC + ice fraction + statuses — no scoring/corrections yet)', () => {
+describe('export allowlist (implemented stages only — no scoring/corrections yet)', () => {
   it('exports exactly the implemented stage functions and nothing else', () => {
-    const ALLOWED_FUNCTIONS = [
-      // composition (4C)
-      'computeComponentGrams',
-      'computeComponentTotals',
-      'computeComposition',
-      'computePercentages',
-      'computeSugarBreakdown',
-      'computeTotalBatchGrams',
-      'resolveEffectiveItems',
-      // POD (4D)
-      'computeRecipePod',
-      'ingredientPodContribution',
-      // PAC/NPAC (4E)
-      'computeRecipeNpac',
-      'computeRecipePac',
-      'ingredientNpacContribution',
-      'ingredientPacContribution',
-      'interpolateSyrupDeAnchors',
-      // ice fraction (4F)
-      'estimateIceFraction',
-      // statuses (4G)
-      'classifyIndicator',
-      'classifyRecipeIndicators',
-      'classifyValue',
-      'computeLactoseSandinessRisk',
-      'selectTargetBand',
-    ];
     const functionNames = Object.entries(engine)
       .filter(([, value]) => typeof value === 'function')
       .map(([name]) => name);
-    expect(functionNames.sort()).toEqual([...ALLOWED_FUNCTIONS].sort());
+    expect(functionNames.sort()).toEqual([...ALLOWED_ENGINE_FUNCTIONS].sort());
   });
 });
 

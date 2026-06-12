@@ -7,10 +7,13 @@
  * PAC/NPAC (4E — freezing power with alcohol, salt and syrup DE handling;
  * per_total_mass stays the canonical normalization default), ice fraction
  * (4F — category-aware anchor estimation from NPAC + target temperature) and
- * statuses (4G — target-band classification into PI indicator statuses).
+ * statuses (4G — target-band classification into PI indicator statuses), all
+ * assembled by calculateRecipe (4H — the spec §12/§18 entry point producing a
+ * complete version-stamped RecipeResult).
  * Still to come per docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md §18: scoring,
- * corrections. The export-allowlist test in foundation.test.ts mechanically
- * enforces that no scoring/correction functions exist before their step.
+ * nutrition/cost, corrections. The export-allowlist (shared via
+ * __fixtures__/allowedEngineFunctions.ts) mechanically enforces that no
+ * scoring/correction functions exist before their step.
  */
 import { COEFFICIENTS } from './config/coefficients';
 import { DENSITY_DEFAULTS } from './config/density';
@@ -79,6 +82,8 @@ export {
   computeLactoseSandinessRisk,
   selectTargetBand,
 } from './statuses';
+
+export { calculateRecipe } from './calculateRecipe';
 
 /** The assembled default configuration (spec §7–§11, §17) — pure data aggregation. */
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {

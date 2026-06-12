@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ALLOWED_ENGINE_FUNCTIONS } from './__fixtures__/allowedEngineFunctions';
 import { APPENDIX_A_ITEMS } from './__fixtures__/golden/composition';
 import { computeComposition } from './composition';
 import { IDEAL_ZONE_FRACTION, TARGET_BANDS } from './config/targets';
@@ -243,38 +244,11 @@ describe('classifyRecipeIndicators — end-to-end (Appendix A arithmetic)', () =
   });
 });
 
-describe('scope guard (Step 4G: no scoring/corrections yet)', () => {
-  const ALLOWED_FUNCTIONS = new Set([
-    // composition (4C)
-    'computeComponentGrams',
-    'computeComponentTotals',
-    'computeComposition',
-    'computePercentages',
-    'computeSugarBreakdown',
-    'computeTotalBatchGrams',
-    'resolveEffectiveItems',
-    // POD (4D)
-    'computeRecipePod',
-    'ingredientPodContribution',
-    // PAC/NPAC (4E)
-    'computeRecipeNpac',
-    'computeRecipePac',
-    'ingredientNpacContribution',
-    'ingredientPacContribution',
-    'interpolateSyrupDeAnchors',
-    // ice fraction (4F)
-    'estimateIceFraction',
-    // statuses (4G)
-    'classifyIndicator',
-    'classifyRecipeIndicators',
-    'classifyValue',
-    'computeLactoseSandinessRisk',
-    'selectTargetBand',
-  ]);
-
+describe('scope guard (no scoring/corrections yet)', () => {
   it('creates no scoring or correction functions', () => {
+    const allowed = new Set(ALLOWED_ENGINE_FUNCTIONS);
     const extraFunctions = Object.entries(engine)
-      .filter(([name, value]) => typeof value === 'function' && !ALLOWED_FUNCTIONS.has(name))
+      .filter(([name, value]) => typeof value === 'function' && !allowed.has(name))
       .map(([name]) => name);
     expect(extraFunctions).toEqual([]);
   });

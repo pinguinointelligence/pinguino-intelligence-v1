@@ -257,7 +257,13 @@ export interface Indicator {
   key: IndicatorKey;
   value: number | null;
   status: IndicatorStatus;
-  band?: TargetRange;
+  band?: TargetRange | null;
+  /** Band provenance (spec §9/§16) — preserved from the classification stage. */
+  band_status?: 'seeded' | 'estimated' | null;
+  /** True when milk_gelato bands served an unseeded category (calibration-pending fallback). */
+  category_fallback?: boolean;
+  /** True when no exact temperature band existed and the nearest one was used. */
+  temperature_fallback?: boolean;
 }
 
 export interface RecipeScores {
