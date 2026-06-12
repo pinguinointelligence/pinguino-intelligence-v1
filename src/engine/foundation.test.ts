@@ -196,9 +196,10 @@ describe('density defaults', () => {
   });
 });
 
-describe('export allowlist (composition only — no metric/correction logic yet)', () => {
-  it('exports exactly the composition functions and nothing else', () => {
+describe('export allowlist (composition + POD only — no PAC/ice/status/scoring/corrections yet)', () => {
+  it('exports exactly the composition and POD functions and nothing else', () => {
     const ALLOWED_FUNCTIONS = [
+      // composition (4C)
       'computeComponentGrams',
       'computeComponentTotals',
       'computeComposition',
@@ -206,6 +207,9 @@ describe('export allowlist (composition only — no metric/correction logic yet)
       'computeSugarBreakdown',
       'computeTotalBatchGrams',
       'resolveEffectiveItems',
+      // POD (4D)
+      'computeRecipePod',
+      'ingredientPodContribution',
     ];
     const functionNames = Object.entries(engine)
       .filter(([, value]) => typeof value === 'function')
