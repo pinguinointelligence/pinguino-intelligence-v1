@@ -25,7 +25,7 @@
  *
  * Upgrade path (spec §9): per-category anchor rows and/or a freezing-curve
  * model can replace these internals later with the same signature.
- * Only active MyGelato fixtures may calibrate anchors or slope (spec §16).
+ * Only active external reference fixtures may calibrate anchors or slope (spec §16).
  * Pure and deterministic; inputs are never mutated.
  */
 import { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C, type IceAnchorRow } from './config/iceAnchors';

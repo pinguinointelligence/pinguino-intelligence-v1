@@ -83,7 +83,7 @@ describe('PAC / NPAC coefficients (spec §8)', () => {
       expect(curr.pod).toBeGreaterThanOrEqual(prev.pod);
       expect(curr.pac).toBeGreaterThanOrEqual(prev.pac);
     }
-    expect(SYRUP_DE_ANCHORS.some((a) => a.de === 39)).toBe(true); // mygelato fixture anchor
+    expect(SYRUP_DE_ANCHORS.some((a) => a.de === 39)).toBe(true); // externalReference fixture anchor
   });
 });
 

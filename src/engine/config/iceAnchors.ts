@@ -3,7 +3,7 @@
  *
  * The anchor-matrix MVP model estimates ice fraction from (category, target
  * temperature, NPAC). ALL values here are calibration data: only active
- * MyGelato fixtures may change them (config-only change + CONFIG_VERSION bump,
+ * external reference fixtures may change them (config-only change + CONFIG_VERSION bump,
  * spec §16–§17). Documented upgrade path: more per-category rows and/or a
  * freezing-curve model replace the internals later without an API change.
  */
@@ -25,7 +25,7 @@ export interface IceAnchorRow {
 /**
  * Exactly ONE seeded row — milk gelato @ −11 °C, verbatim from the LOCKED spec
  * (NPAC 33 → ≈ 54.5 % ice; NPAC 42 → ≈ 45 % ice). No anchors are invented for
- * other categories or temperatures; they arrive only via MyGelato calibration.
+ * other categories or temperatures; they arrive only via external calibration.
  * Unseeded categories fall back to the milk_gelato rows — explicitly a
  * CALIBRATION-PENDING fallback (see estimateIceFraction).
  */

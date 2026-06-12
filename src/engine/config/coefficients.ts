@@ -1,7 +1,7 @@
 /**
  * Coefficient tables (spec §7–§8). ALL coefficients live here — never inline in
  * calculation code. Any change bumps CONFIG_VERSION (spec §17) and must keep all
- * golden + active MyGelato calibration fixtures passing together (spec §16).
+ * golden + active external calibration fixtures passing together (spec §16).
  */
 import type {
   CoefficientConfig,
@@ -51,7 +51,7 @@ export const NPAC_COEFFICIENTS: NpacCoefficients = {
 };
 
 /** Spec §8 calibration assumptions box: `per_total_mass` is and remains the
- * canonical default until MyGelato fixtures are entered and verified;
+ * canonical default until external reference fixtures are entered and verified;
  * `per_water_mass` is documented strictly as a candidate calibration mode. */
 export const NPAC_NORMALIZATION: NpacNormalization = 'per_total_mass';
 
@@ -59,7 +59,7 @@ export const NPAC_NORMALIZATION: NpacNormalization = 'per_total_mass';
  * DE → (pod, pac) anchors for glucose syrups known only by DE value (spec §8).
  * Data only — interpolation logic arrives with pac.ts (4C).
  * CALIBRATION-PENDING estimates: the 39 DE anchor in particular will be
- * validated/corrected by the `dry-glucose-syrup-39de` MyGelato fixture.
+ * validated/corrected by the `dry-glucose-syrup-39de` external reference fixture.
  * Stored ingredient pod/pac/npac values always win over these anchors.
  */
 export const SYRUP_DE_ANCHORS: readonly SyrupDeAnchor[] = [

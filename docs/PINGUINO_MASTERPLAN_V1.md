@@ -22,7 +22,7 @@
 12. [Deterministic calculation engine](#12-deterministic-calculation-engine)
 13. [Golden Middle priority order](#13-golden-middle-priority-order)
 14. [Flavor-priority logic](#14-flavor-priority-logic)
-15. [MyGelato calibration system](#15-mygelato-calibration-system)
+15. [External calibration system](#15-external-calibration-system)
 16. [Ingredient intelligence](#16-ingredient-intelligence)
 17. [Database plan (Supabase)](#17-database-plan-supabase)
 18. [OpenAI backend plan](#18-openai-backend-plan)
@@ -322,7 +322,7 @@ Save recipe · add to favorites · duplicate · create variants · **create ECO/
 | Engine | `src/engine/` — pure TypeScript, **zero dependencies, no React, no IO**, fully deterministic |
 | Backend | Supabase: Postgres + RLS, Auth, Storage (Phase 5 scans), **Edge Functions (Deno)** — the only place the OpenAI key lives |
 | Payments | Stripe Checkout + webhooks (Phase 4) |
-| Tests | Vitest: unit + golden fixtures + MyGelato calibration fixtures |
+| Tests | Vitest: unit + golden fixtures + external calibration fixtures |
 | CI | GitHub Actions: typecheck + test + build |
 
 **AI boundary (hard rule):** the engine computes all numbers; AI only explains, words, extracts, and suggests. Edge functions receive *engine-computed snapshots* and never compute nutrition/POD/PAC themselves.
@@ -366,7 +366,7 @@ pinguino-intelligence-v1/            # repo root
 │  │  ├─ corrections/                # solver.ts, candidates.ts, verify.ts, redact.ts
 │  │  └─ __fixtures__/
 │  │     ├─ golden/                  # synthetic reference recipes (Phase 1)
-│  │     └─ mygelato/                # REAL calibration fixtures (§15)
+│  │     └─ externalReference/                # REAL calibration fixtures (§15)
 │  ├─ data/                          # baseIngredients.ts (~30 seed), demoLimits.ts
 │  ├─ stores/                        # recipeStore.ts, sessionStore.ts
 │  ├─ services/                      # supabase.ts, recipes.ts, ingredients.ts, ai.ts (Phase 2+)
@@ -449,7 +449,7 @@ Same stored-value-first rule, with **separate configurable coefficient tables** 
 npac_points = Σ(component_g × npac_coefficient) / total_batch_g × 100
 ```
 
-If an ingredient has verified `pac_value` / `npac_value`, use it; otherwise estimate from the sugar breakdown and alcohol. The **normalization basis is configurable** (`per_total_mass`, default per the canonical formula, vs `per_water_mass`) and will be settled against MyGelato calibration fixtures (§15).
+If an ingredient has verified `pac_value` / `npac_value`, use it; otherwise estimate from the sugar breakdown and alcohol. The **normalization basis is configurable** (`per_total_mass`, default per the canonical formula, vs `per_water_mass`) and will be settled against external calibration fixtures (§15).
 
 ### 12.5 Ice fraction (MVP scoring model)
 
@@ -535,11 +535,11 @@ A proposal that improves a higher-priority dimension wins over one that perfects
 
 ---
 
-## 15. MyGelato calibration system
+## 15. External calibration system
 
 > **Required.** The engine is calibrated against **real test recipes**, not only synthetic goldens.
 
-- **Location:** `src/engine/__fixtures__/mygelato/` — created in Phase 1 with a typed schema and placeholder files; **real data filled in later from the product owner's screenshots and manual records.**
+- **Location:** `src/engine/__fixtures__/externalReference/` — created in Phase 1 with a typed schema and placeholder files; **real data filled in later from the product owner's screenshots and manual records.**
 - **Two fixture kinds** (one `CalibrationFixture` discriminated union):
   - **Ingredient fixtures** — assert per-ingredient POD/PAC/NPAC derivation matches known values: `honey`, `dry-glucose-syrup-39de`, `liquid-glucose-syrup`, `inulin`, `alcohol-jim-beam`, `mascarpone`, `pistachio-paste`.
   - **Recipe fixtures** — full mixes asserting indicator outcomes within tolerance: `chocolate`, `raspberry`, `apple`, `banana`, plus any of the above used in complete recipes.
@@ -684,7 +684,7 @@ Functions verify the Supabase JWT and read `profiles.plan` for per-plan rate lim
 ### Phase 1 — Deterministic core + demo (no backend)
 
 Landing page · demo flow · Recipe Goal Setup · Ingredient Builder · deterministic calculation engine (full pipeline + corrections + redaction + fixtures) · PI Panel · basic correction suggestions · demo/pro gating UI.
-*Engine notes:* Actual-Batch semantics (effective grams, `already_added` locks) and MyGelato fixture schema are built **now**, even though their UI/data arrive later.
+*Engine notes:* Actual-Batch semantics (effective grams, `already_added` locks) and external reference fixture schema are built **now**, even though their UI/data arrive later.
 
 ### Phase 2 — Supabase
 
@@ -724,7 +724,7 @@ The commercial ecosystem (machine catalog, ready-mixtures and ingredient-pack co
 **Engine (Vitest, `npm test`):**
 
 - Golden fixtures: reference recipes (e.g. fior di latte) must land inside the §12.6 bands (POD 12–17, NPAC 33–42, ice 45–54.5, …).
-- MyGelato calibration runner: schema validated, `pending` fixtures skipped, `active` fixtures enforced (§15).
+- external calibration runner: schema validated, `pending` fixtures skipped, `active` fixtures enforced (§15).
 - Invariants: component sums ≤ batch mass · mass conservation in corrections · locked / `already_added` lines never reduced · main-ingredient floor held in PREMIUM/SIGNATURE · **no accepted proposal worsens a higher-priority band** (property test on §13) · determinism snapshots (same input → identical output).
 
 **Gating:**
@@ -753,7 +753,7 @@ Landing → Start PI Demo → Goal Setup (modes, temperature, batch g/kg/L + den
 ## 22. Risks & open questions
 
 1. **Client-side solver exposure (MVP)** — demo never *sees* grams (redact-at-source), but the solver code ships in the bundle until the Phase 5 `solve-corrections` move. Accepted, binding hardening item.
-2. **NPAC definition needs calibration** — the canonical formula (per total batch mass) and the 33–42 band must be validated against MyGelato fixtures; normalization basis kept configurable. **Product owner to supply fixture data (screenshots / manual values) for the 11 named references early in Phase 1.**
+2. **NPAC definition needs calibration** — the canonical formula (per total batch mass) and the 33–42 band must be validated against external reference fixtures; normalization basis kept configurable. **Product owner to supply fixture data (screenshots / manual values) for the 11 named references early in Phase 1.**
 3. **Ice fraction is an approximation** (anchor interpolation); freezing-curve upgrade path documented.
 4. **Seed ingredient data** is literature-based (confidence < 100) pending product-owner verification; calibration fixtures are the correction mechanism.
 5. **Salt / polyol PAC coefficients** vary by source — flagged defaults, admin-tunable.
@@ -781,5 +781,5 @@ Landing → Start PI Demo → Goal Setup (modes, temperature, batch g/kg/L + den
 | **PI Panel** | Profile Indicators Panel (Page 3) |
 | **PlanGate** | The single UI gating primitive (blur/lock + contextual upgrade prompt) |
 | **Redact-at-source** | Demo gram-stripping inside the engine call (§10) |
-| **MyGelato fixtures** | Real test-recipe calibration data (§15) |
+| **External reference fixtures** | Real test-recipe calibration data (§15) |
 | **Design Lock** | The binding brand/design constraints (§3) |

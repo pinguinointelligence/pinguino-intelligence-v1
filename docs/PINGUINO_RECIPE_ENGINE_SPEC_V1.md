@@ -26,7 +26,7 @@ For engine mathematics, **this document supersedes** the summaries in [PINGUINO_
 13. [Correction engine](#13-correction-engine)
 14. [Demo redaction](#14-demo-redaction)
 15. [Actual Batch Mode](#15-actual-batch-mode)
-16. [MyGelato calibration fixtures](#16-mygelato-calibration-fixtures)
+16. [External calibration fixtures](#16-external-calibration-fixtures)
 17. [Versioning](#17-versioning)
 18. [Files to implement later](#18-files-to-implement-later)
 19. [API connection rule](#19-api-connection-rule)
@@ -241,9 +241,9 @@ Formula (canonical default):
 npac_points = Σ(component_g × npac_coefficient) / total_batch_g × 100
 ```
 
-> **Calibration assumptions (settled by MyGelato fixtures, §16 — until then these are working definitions, not verified facts):**
+> **Calibration assumptions (settled by external reference fixtures, §16 — until then these are working definitions, not verified facts):**
 > 1. **PAC vs NPAC:** working definition — PAC = anti-freezing power of the sugar spectrum; NPAC = net total freezing depression including alcohol and salt. Both keep separate coefficient tables so the definitions can diverge or merge after calibration.
-> 2. **Normalization basis:** `per_total_mass` (the canonical formula above) **is and remains the canonical default** until MyGelato calibration fixtures are entered and verified. `per_water_mass` is documented strictly as a **candidate calibration mode to be tested** — nothing more. Appendix A records both values for one illustrative mix **without drawing any conclusion**; the worked example must not decide the normalization basis. The only authority for changing NPAC/PAC normalization is **active MyGelato fixtures (§16), especially known-good recipes with expected MyGelato NPAC values**.
+> 2. **Normalization basis:** `per_total_mass` (the canonical formula above) **is and remains the canonical default** until external calibration fixtures are entered and verified. `per_water_mass` is documented strictly as a **candidate calibration mode to be tested** — nothing more. Appendix A records both values for one illustrative mix **without drawing any conclusion**; the worked example must not decide the normalization basis. The only authority for changing NPAC/PAC normalization is **active external reference fixtures (§16), especially known-good recipes with expected external reference NPAC values**.
 
 ## 9. Ice fraction and target temperature
 
@@ -365,9 +365,9 @@ Rules:
 - **Already-added ingredients cannot be reduced** — `already_added` lines are immutable downward; the solver may only add.
 - If the user adds too much of something (e.g. planned sucrose 34.7 g, actual 50.0 g, difference +15.3 g), the engine **calculates rescue corrections around the mistake**: recompute on the actual state, lock the mistake, solve the violations with additions to other ingredients (e.g. *"add 178.0 g milk 3.5 % to absorb the excess sucrose"*).
 
-## 16. MyGelato calibration fixtures
+## 16. External calibration fixtures
 
-Calibration concept for `src/engine/__fixtures__/mygelato/` — real test data is the engine's ground truth.
+Calibration concept for `src/engine/__fixtures__/externalReference/` — real test data is the engine's ground truth.
 
 Supported fixtures (data filled in later from product-owner screenshots and manual records):
 
@@ -419,7 +419,7 @@ src/engine/statuses.ts
 src/engine/scoring.ts
 src/engine/corrections/solver.ts
 src/engine/corrections/redact.ts
-src/engine/__fixtures__/mygelato/
+src/engine/__fixtures__/externalReference/
 ```
 
 Supporting modules already in the masterplan blueprint complete the same engine: `src/engine/nutrition.ts`, `src/engine/cost.ts`, `src/engine/corrections/candidates.ts`, `src/engine/corrections/verify.ts`, `src/engine/config/density.ts`, and `src/engine/__fixtures__/golden/`.
@@ -482,7 +482,7 @@ Implementation of `src/engine/` is complete only when every box is checked:
 - [ ] actual batch implemented (effective grams, rescue corrections — §15)
 - [ ] locked ingredients implemented (all six lock types respected — §13, §15)
 - [ ] main ingredient protection implemented (PREMIUM/SIGNATURE floor + trade-off messages — §12)
-- [ ] MyGelato fixtures ready (schema + runner + pending placeholders — §16)
+- [ ] external reference fixtures ready (schema + runner + pending placeholders — §16)
 - [ ] AI cannot bypass engine (structured schemas only, engine validation before save — §2, §19)
 - [ ] demo cannot see exact grams (redact-at-source verified by test — §14)
 - [ ] engine/config version saved on every result (§17)
@@ -491,7 +491,7 @@ Implementation of `src/engine/` is complete only when every box is checked:
 
 ## Appendix A — worked example (illustrative / calibration-pending)
 
-> **Status: illustrative / calibration-pending.** This example exists so the formulas in §6–§9 can be checked by hand and later reused as a golden test fixture. The ingredient values are typical literature figures and the coefficients are the §7/§8 defaults. **It is not a verified production recipe** and must not be treated as one until the MyGelato calibration fixtures (§16) are added and confirmed.
+> **Status: illustrative / calibration-pending.** This example exists so the formulas in §6–§9 can be checked by hand and later reused as a golden test fixture. The ingredient values are typical literature figures and the coefficients are the §7/§8 defaults. **It is not a verified production recipe** and must not be treated as one until the external calibration fixtures (§16) are added and confirmed.
 
 **Mix (milk gelato base, target −11 °C, batch 1000.0 g):**
 
@@ -538,7 +538,7 @@ canonical default (per_total_mass):           250.29 / 1000.0  × 100 = 25.0
 candidate calibration mode (per_water_mass):  250.29 / 667.045 × 100 = 37.5
 ```
 
-**Normalization note — no conclusion is drawn here.** This worked example is illustrative / calibration-pending only and **must not decide the NPAC normalization basis**. `per_total_mass` remains the canonical default per the §8 formula until MyGelato calibration fixtures are entered and verified. `per_water_mass` stays documented strictly as a **candidate calibration mode to be tested** — nothing more. The only authority for changing NPAC/PAC normalization (or any coefficient) is **active MyGelato fixtures (§16), especially known-good recipes with expected MyGelato NPAC values**. Both numbers are recorded above purely so the future calibration run can compare them against fixture data.
+**Normalization note — no conclusion is drawn here.** This worked example is illustrative / calibration-pending only and **must not decide the NPAC normalization basis**. `per_total_mass` remains the canonical default per the §8 formula until external calibration fixtures are entered and verified. `per_water_mass` stays documented strictly as a **candidate calibration mode to be tested** — nothing more. The only authority for changing NPAC/PAC normalization (or any coefficient) is **active external reference fixtures (§16), especially known-good recipes with expected external reference NPAC values**. Both numbers are recorded above purely so the future calibration run can compare them against fixture data.
 
 **Ice fraction (§9 anchor model, −11 °C — interpolation illustration only, using an in-band NPAC value of 37.5):**
 

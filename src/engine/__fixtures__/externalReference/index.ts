@@ -1,5 +1,5 @@
 /**
- * MyGelato calibration fixtures (spec §16) — the engine's real-data ground truth.
+ * external calibration fixtures (spec §16) — the engine's real-data ground truth.
  * All fixtures start 'pending' (skipped by the calibration runner) until the
  * product owner's data is entered and verified. Activating fixtures is the only
  * authority for changing coefficients, target ranges, or the NPAC normalization
@@ -18,7 +18,7 @@ import { mascarpone } from './mascarpone';
 import { pistachioPaste } from './pistachio-paste';
 import { raspberry } from './raspberry';
 
-export const MYGELATO_FIXTURES: readonly CalibrationFixture[] = [
+export const EXTERNAL_REFERENCE_FIXTURES: readonly CalibrationFixture[] = [
   chocolate,
   raspberry,
   apple,

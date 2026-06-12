@@ -1,4 +1,4 @@
-# MyGelato calibration fixtures (Masterplan §15)
+# external calibration fixtures (Masterplan §15)
 
 Real test-recipe data — the engine's calibration ground truth. Schema lands with the engine;
 values are filled in from the product owner's screenshots and manual records.

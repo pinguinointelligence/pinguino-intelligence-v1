@@ -15,7 +15,7 @@
  *   2. Syrup DE path: non-null `de_value` → the anchor-interpolated coefficient
  *      applied to the ingredient's SOLIDS grams. This replaces the typed
  *      sugar-breakdown part for that ingredient (validated by the
- *      `dry-glucose-syrup-39de` MyGelato fixture at calibration).
+ *      `dry-glucose-syrup-39de` external reference fixture at calibration).
  *   3. Fallback: typed sugar breakdown (sucrose/dextrose/glucose/fructose/
  *      lactose). Unnamed polyols/special ingredients contribute 0 here —
  *      their path is a stored value (consistent with POD).
@@ -26,7 +26,7 @@
  * (11.7, flagged CALIBRATION-SENSITIVE in config).
  *
  * Normalization (spec §8 box): `per_total_mass` is and remains the canonical
- * default until active MyGelato fixtures are entered and verified;
+ * default until active external reference fixtures are entered and verified;
  * `per_water_mass` exists strictly as an explicitly-requested candidate
  * calibration mode. This module takes no position on which is correct.
  *
@@ -184,7 +184,7 @@ export interface NpacOptions {
  * Denominator follows the normalization basis: the canonical default
  * `per_total_mass` divides by `totalBatchG` and never reads `water_g`;
  * the `per_water_mass` CANDIDATE calibration mode must be requested
- * explicitly and divides by `options.water_g`. Only active MyGelato fixtures
+ * explicitly and divides by `options.water_g`. Only active external reference fixtures
  * may decide the basis (spec §8) — nothing here pre-judges it.
  * Zero/empty/missing denominator → 0, never NaN or Infinity.
  */

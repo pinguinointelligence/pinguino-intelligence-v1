@@ -11,7 +11,7 @@
  * scale with sucrose = 100 (pure sucrose stores 100), so an ingredient
  * contribution is `effective_grams × pod_value / 100` — the same point-gram
  * unit as the coefficient path. This convention is validated/corrected by the
- * honey and glucose-syrup MyGelato fixtures at calibration (spec §16).
+ * honey and glucose-syrup external reference fixtures at calibration (spec §16).
  *
  * Polyols and untyped "other" sugar are ingredient-specific per the spec §7
  * table: the breakdown fallback contributes 0 for them — their correct path is

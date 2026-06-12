@@ -3,7 +3,7 @@
  *
  * ALL values here are CALIBRATION-PENDING estimates and affect SCORES ONLY —
  * never indicator/band truth, never composition/POD/PAC/ice math. Changes bump
- * CONFIG_VERSION (spec §17) and are tuned against MyGelato fixtures and real
+ * CONFIG_VERSION (spec §17) and are tuned against external reference fixtures and real
  * usage. Overall-score mode weights live in config/modes.ts (score_weights).
  */
 import type { IndicatorStatus, ProductMode, TargetMetric } from '../types';

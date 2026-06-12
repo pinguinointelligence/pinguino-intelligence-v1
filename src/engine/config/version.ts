@@ -24,7 +24,7 @@
  *   scores, flavor slopes, cost anchors, stability headroom — all
  *   calibration-pending).
  *
- * The first calibration bump is expected when MyGelato calibration fixtures
+ * The first calibration bump is expected when external calibration fixtures
  * (spec §16) are entered, verified and activated.
  */
 export const ENGINE_VERSION = '0.4.0' as const;

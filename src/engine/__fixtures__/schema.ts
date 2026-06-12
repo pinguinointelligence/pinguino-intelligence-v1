@@ -1,5 +1,5 @@
 /**
- * Calibration fixture schema (spec §16) — shared by MyGelato and golden fixtures.
+ * Calibration fixture schema (spec §16) — shared by external reference and golden fixtures.
  *
  * Pending fixtures carry no data by design: real values arrive from the product
  * owner's screenshots and manual records. The test runner skips 'pending' and
@@ -16,7 +16,7 @@ interface FixtureBase {
   name: string;
 }
 
-/** Placeholder awaiting real MyGelato data. */
+/** Placeholder awaiting real external reference data. */
 export interface PendingFixture extends FixtureBase {
   status: 'pending';
   notes?: string;

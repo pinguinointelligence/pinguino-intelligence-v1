@@ -206,7 +206,7 @@ export function classifyRecipeIndicators(
  * existing composition values: lactose concentration relative to the water
  * phase (`lactose_g / water_g × 100`).
  * CALIBRATION-PENDING: the exact scoring formula is finalized against the
- * MyGelato calibration fixtures (spec §9/§16); until then this is the
+ * external calibration fixtures (spec §9/§16); until then this is the
  * documented working definition, not verified truth.
  * Null-safe: invalid or non-positive water returns null, never NaN/Infinity.
  */
