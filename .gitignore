@@ -21,8 +21,9 @@ pnpm-debug.log*
 # Test coverage
 coverage/
 
-# Local agent tooling (machine-specific paths)
-.claude/
+# Local agent tooling (machine-specific paths) — but project skills are shared
+.claude/*
+!.claude/skills
 
 # Editor / OS
 .DS_Store
