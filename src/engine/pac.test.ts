@@ -347,9 +347,15 @@ describe('scope guard', () => {
     'interpolateSyrupDeAnchors',
     // ice fraction (4F)
     'estimateIceFraction',
+    // statuses (4G)
+    'classifyIndicator',
+    'classifyRecipeIndicators',
+    'classifyValue',
+    'computeLactoseSandinessRisk',
+    'selectTargetBand',
   ]);
 
-  it('creates no status/scoring/correction functions', () => {
+  it('creates no scoring/correction functions', () => {
     const extraFunctions = Object.entries(engine)
       .filter(([name, value]) => typeof value === 'function' && !ALLOWED_FUNCTIONS.has(name))
       .map(([name]) => name);

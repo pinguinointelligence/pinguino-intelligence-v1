@@ -196,7 +196,7 @@ describe('density defaults', () => {
   });
 });
 
-describe('export allowlist (composition + POD + PAC/NPAC + ice fraction — no status/scoring/corrections yet)', () => {
+describe('export allowlist (composition + POD + PAC/NPAC + ice fraction + statuses — no scoring/corrections yet)', () => {
   it('exports exactly the implemented stage functions and nothing else', () => {
     const ALLOWED_FUNCTIONS = [
       // composition (4C)
@@ -218,6 +218,12 @@ describe('export allowlist (composition + POD + PAC/NPAC + ice fraction — no s
       'interpolateSyrupDeAnchors',
       // ice fraction (4F)
       'estimateIceFraction',
+      // statuses (4G)
+      'classifyIndicator',
+      'classifyRecipeIndicators',
+      'classifyValue',
+      'computeLactoseSandinessRisk',
+      'selectTargetBand',
     ];
     const functionNames = Object.entries(engine)
       .filter(([, value]) => typeof value === 'function')

@@ -8,6 +8,14 @@
  */
 import type { TargetBand } from '../types';
 
+/**
+ * Status classification threshold (spec §9/§12.7): the centered fraction of a
+ * target band classified as 'ideal' — values inside the band but outside this
+ * inner zone classify as 'good'. CALIBRATION-PENDING estimate, tunable; affects
+ * only the ideal/good split, never in-band vs out-of-band truth.
+ */
+export const IDEAL_ZONE_FRACTION = 0.6;
+
 export const TARGET_BANDS: readonly TargetBand[] = [
   {
     category: 'milk_gelato',

@@ -5,12 +5,12 @@
  * (4C — effective grams, component totals, percentages, sugar breakdown),
  * POD (4D — sugar-type sweetness with the stored-value-first rule) and
  * PAC/NPAC (4E — freezing power with alcohol, salt and syrup DE handling;
- * per_total_mass stays the canonical normalization default) and ice fraction
- * (4F — category-aware anchor estimation from NPAC + target temperature).
- * Still to come per docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md §18: statuses,
- * scoring, corrections. The export-allowlist test in foundation.test.ts
- * mechanically enforces that no metric/correction functions exist before
- * their step.
+ * per_total_mass stays the canonical normalization default), ice fraction
+ * (4F — category-aware anchor estimation from NPAC + target temperature) and
+ * statuses (4G — target-band classification into PI indicator statuses).
+ * Still to come per docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md §18: scoring,
+ * corrections. The export-allowlist test in foundation.test.ts mechanically
+ * enforces that no scoring/correction functions exist before their step.
  */
 import { COEFFICIENTS } from './config/coefficients';
 import { DENSITY_DEFAULTS } from './config/density';
@@ -63,6 +63,22 @@ export type { IceAnchorRow } from './config/iceAnchors';
 export { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C } from './config/iceAnchors';
 export type { IceFractionInput, IceFractionOptions } from './iceFraction';
 export { estimateIceFraction } from './iceFraction';
+
+export { IDEAL_ZONE_FRACTION } from './config/targets';
+export type {
+  ClassifiedIndicator,
+  ClassifyOptions,
+  StatusInputs,
+  StatusOptions,
+  TargetBandSelection,
+} from './statuses';
+export {
+  classifyIndicator,
+  classifyRecipeIndicators,
+  classifyValue,
+  computeLactoseSandinessRisk,
+  selectTargetBand,
+} from './statuses';
 
 /** The assembled default configuration (spec §7–§11, §17) — pure data aggregation. */
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {

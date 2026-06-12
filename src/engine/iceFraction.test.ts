@@ -177,7 +177,7 @@ describe('safety', () => {
   });
 });
 
-describe('scope guard (Step 4F: composition + POD + PAC/NPAC + ice fraction only)', () => {
+describe('scope guard (no scoring/corrections yet)', () => {
   const ALLOWED_FUNCTIONS = new Set([
     // composition (4C)
     'computeComponentGrams',
@@ -198,9 +198,15 @@ describe('scope guard (Step 4F: composition + POD + PAC/NPAC + ice fraction only
     'interpolateSyrupDeAnchors',
     // ice fraction (4F)
     'estimateIceFraction',
+    // statuses (4G)
+    'classifyIndicator',
+    'classifyRecipeIndicators',
+    'classifyValue',
+    'computeLactoseSandinessRisk',
+    'selectTargetBand',
   ]);
 
-  it('creates no status/scoring/correction functions', () => {
+  it('creates no scoring/correction functions', () => {
     const extraFunctions = Object.entries(engine)
       .filter(([name, value]) => typeof value === 'function' && !ALLOWED_FUNCTIONS.has(name))
       .map(([name]) => name);
