@@ -228,14 +228,13 @@ describe('scope guard', () => {
     // POD (4D)
     'computeRecipePod',
     'ingredientPodContribution',
+    // PAC/NPAC (4E)
+    'computeRecipeNpac',
+    'computeRecipePac',
+    'ingredientNpacContribution',
+    'ingredientPacContribution',
+    'interpolateSyrupDeAnchors',
   ]);
-
-  it('creates no PAC/NPAC functions', () => {
-    const pacShaped = Object.entries(engine)
-      .filter(([name, value]) => typeof value === 'function' && name.toLowerCase().includes('pac'))
-      .map(([name]) => name);
-    expect(pacShaped).toEqual([]);
-  });
 
   it('creates no ice fraction/status/scoring/correction functions', () => {
     const extraFunctions = Object.entries(engine)

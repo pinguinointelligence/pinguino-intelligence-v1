@@ -287,7 +287,7 @@ describe('safety', () => {
 /* ── scope guard (Step 4C: composition only) ─────────────────────────────── */
 
 describe('scope guard', () => {
-  it('creates no PAC/NPAC/ice/status/scoring/correction functions', () => {
+  it('creates no ice/status/scoring/correction functions', () => {
     const IMPLEMENTED_FUNCTIONS = new Set([
       // composition (4C)
       'computeComponentGrams',
@@ -300,12 +300,18 @@ describe('scope guard', () => {
       // POD (4D)
       'computeRecipePod',
       'ingredientPodContribution',
+      // PAC/NPAC (4E)
+      'computeRecipeNpac',
+      'computeRecipePac',
+      'ingredientNpacContribution',
+      'ingredientPacContribution',
+      'interpolateSyrupDeAnchors',
     ]);
     const extraFunctions = Object.entries(engine)
       .filter(([name, value]) => typeof value === 'function' && !IMPLEMENTED_FUNCTIONS.has(name))
       .map(([name]) => name);
     // beyond the implemented stages, the engine must export nothing executable —
-    // in particular nothing PAC/NPAC/ice/status/scoring/correction shaped
+    // in particular nothing ice/status/scoring/correction shaped
     expect(extraFunctions).toEqual([]);
   });
 });

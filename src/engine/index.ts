@@ -2,10 +2,12 @@
  * PINGÜINO deterministic engine — public API.
  *
  * Implemented so far: foundation types + config (4B), the composition stage
- * (4C — effective grams, component totals, percentages, sugar breakdown) and
- * POD (4D — sugar-type sweetness with the stored-value-first rule).
- * Still to come per docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md §18: pac,
- * iceFraction, statuses, scoring, corrections. The export-allowlist test in
+ * (4C — effective grams, component totals, percentages, sugar breakdown),
+ * POD (4D — sugar-type sweetness with the stored-value-first rule) and
+ * PAC/NPAC (4E — freezing power with alcohol, salt and syrup DE handling;
+ * per_total_mass stays the canonical normalization default).
+ * Still to come per docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md §18: iceFraction,
+ * statuses, scoring, corrections. The export-allowlist test in
  * foundation.test.ts mechanically enforces that no metric/correction functions
  * exist before their step.
  */
@@ -46,6 +48,15 @@ export {
 } from './composition';
 
 export { computeRecipePod, ingredientPodContribution } from './pod';
+
+export type { NpacOptions } from './pac';
+export {
+  computeRecipeNpac,
+  computeRecipePac,
+  ingredientNpacContribution,
+  ingredientPacContribution,
+  interpolateSyrupDeAnchors,
+} from './pac';
 
 /** The assembled default configuration (spec §7–§11, §17) — pure data aggregation. */
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {

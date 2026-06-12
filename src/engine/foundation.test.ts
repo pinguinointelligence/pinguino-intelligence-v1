@@ -196,8 +196,8 @@ describe('density defaults', () => {
   });
 });
 
-describe('export allowlist (composition + POD only — no PAC/ice/status/scoring/corrections yet)', () => {
-  it('exports exactly the composition and POD functions and nothing else', () => {
+describe('export allowlist (composition + POD + PAC/NPAC — no ice/status/scoring/corrections yet)', () => {
+  it('exports exactly the composition, POD and PAC/NPAC functions and nothing else', () => {
     const ALLOWED_FUNCTIONS = [
       // composition (4C)
       'computeComponentGrams',
@@ -210,6 +210,12 @@ describe('export allowlist (composition + POD only — no PAC/ice/status/scoring
       // POD (4D)
       'computeRecipePod',
       'ingredientPodContribution',
+      // PAC/NPAC (4E)
+      'computeRecipeNpac',
+      'computeRecipePac',
+      'ingredientNpacContribution',
+      'ingredientPacContribution',
+      'interpolateSyrupDeAnchors',
     ];
     const functionNames = Object.entries(engine)
       .filter(([, value]) => typeof value === 'function')
