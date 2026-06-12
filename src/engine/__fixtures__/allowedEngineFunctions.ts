@@ -40,4 +40,12 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   'computeFlavorScore',
   'computeCostScore',
   'computeScores',
+  // correction solver (4J)
+  'proposeCorrections',
+  'detectViolations',
+  'selectCandidates',
+  'applyCorrectionActions',
+  'verifyCorrectionProposal',
+  'isReductionAllowed',
+  'redactProposal',
 ];

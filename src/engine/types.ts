@@ -494,8 +494,11 @@ export interface IngredientExtraction {
   is_verified: false;
 }
 
-/** AI/user asks the engine to correct — the engine computes the grams (spec §13–§14). */
-export interface CorrectionRequest {
+/** AI/user asks the engine to correct — the engine computes the grams (spec §13–§14).
+ * Named `CorrectionRequest` in spec §19; renamed here because the solver's own
+ * `CorrectionRequest` (src/engine/corrections/types.ts) owns that name — the
+ * Edge-Function layer maps this AI-boundary shape onto the solver request. */
+export interface AiCorrectionRequest {
   recipe_snapshot: RecipeResultSummary;
   focus?: IndicatorKey[];
   constraints: {

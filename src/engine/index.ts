@@ -11,10 +11,12 @@
  * assembled by calculateRecipe (4H — the spec §12/§18 entry point) and
  * completed by nutrition, cost and scoring (4I — per-100 g label values,
  * honest cost states, mode-weighted stability-gated scores).
- * Still to come per docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md §18: corrections
- * (solver + redaction). The export-allowlist (shared via
- * __fixtures__/allowedEngineFunctions.ts) mechanically enforces that no
- * correction functions exist before their step.
+ * The correction solver (4J) completes the spec §18 pipeline: exact gram
+ * suggestions with Golden Middle verification, planning/actual-batch contexts,
+ * main-ingredient protection and strict demo redaction at source. The module
+ * stays IO-free and portable for the planned Phase 5 solve-corrections Edge
+ * Function move (masterplan §10). The export-allowlist (shared via
+ * __fixtures__/allowedEngineFunctions.ts) pins the public API.
  */
 import { COEFFICIENTS } from './config/coefficients';
 import { DENSITY_DEFAULTS } from './config/density';
@@ -103,6 +105,17 @@ export {
   STATUS_SCORES,
   TECHNICAL_INDICATOR_WEIGHTS,
 } from './config/scoring';
+
+export type * from './corrections/types';
+export { DEFAULT_CORRECTION_CANDIDATES, selectCandidates } from './corrections/candidates';
+export { detectViolations, proposeCorrections } from './corrections/solver';
+export type { CorrectionConstraints, VerifyArgs, VerifyOutcome } from './corrections/verify';
+export {
+  applyCorrectionActions,
+  isReductionAllowed,
+  verifyCorrectionProposal,
+} from './corrections/verify';
+export { redactProposal } from './corrections/redact';
 
 /** The assembled default configuration (spec §7–§11, §17) — pure data aggregation. */
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
