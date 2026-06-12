@@ -1,10 +1,12 @@
 /**
  * PINGÜINO deterministic engine — public API.
  *
- * Step 4B foundation: types and config data ONLY. The engine exports NO functions
- * yet (mechanically enforced by the export-purity test). Calculation modules
- * (composition, pod, pac, iceFraction, statuses, scoring, corrections) arrive
- * with 4C+ per docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md.
+ * Implemented so far: foundation types + config (4B) and the composition stage
+ * (4C — effective grams, component totals, percentages, sugar breakdown).
+ * Still to come per docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md §18: pod, pac,
+ * iceFraction, statuses, scoring, corrections. The export-allowlist test in
+ * foundation.test.ts mechanically enforces that no metric/correction functions
+ * exist before their step.
  */
 import { COEFFICIENTS } from './config/coefficients';
 import { DENSITY_DEFAULTS } from './config/density';
@@ -30,6 +32,17 @@ export { TARGET_BANDS } from './config/targets';
 export { MODES } from './config/modes';
 export { GOLDEN_MIDDLE_PRIORITY } from './config/priorities';
 export { DENSITY_DEFAULTS } from './config/density';
+
+export type { CompositionResult } from './composition';
+export {
+  computeComponentGrams,
+  computeComponentTotals,
+  computeComposition,
+  computePercentages,
+  computeSugarBreakdown,
+  computeTotalBatchGrams,
+  resolveEffectiveItems,
+} from './composition';
 
 /** The assembled default configuration (spec §7–§11, §17) — pure data aggregation. */
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {

@@ -196,11 +196,21 @@ describe('density defaults', () => {
   });
 });
 
-describe('export purity (Step 4B: no calculation logic)', () => {
-  it('the engine exports no functions — types and config data only', () => {
-    for (const [name, value] of Object.entries(engine)) {
-      expect(typeof value, `export "${name}" must not be a function`).not.toBe('function');
-    }
+describe('export allowlist (composition only — no metric/correction logic yet)', () => {
+  it('exports exactly the composition functions and nothing else', () => {
+    const ALLOWED_FUNCTIONS = [
+      'computeComponentGrams',
+      'computeComponentTotals',
+      'computeComposition',
+      'computePercentages',
+      'computeSugarBreakdown',
+      'computeTotalBatchGrams',
+      'resolveEffectiveItems',
+    ];
+    const functionNames = Object.entries(engine)
+      .filter(([, value]) => typeof value === 'function')
+      .map(([name]) => name);
+    expect(functionNames.sort()).toEqual([...ALLOWED_FUNCTIONS].sort());
   });
 });
 
