@@ -306,12 +306,14 @@ describe('scope guard', () => {
       'ingredientNpacContribution',
       'ingredientPacContribution',
       'interpolateSyrupDeAnchors',
+      // ice fraction (4F)
+      'estimateIceFraction',
     ]);
     const extraFunctions = Object.entries(engine)
       .filter(([name, value]) => typeof value === 'function' && !IMPLEMENTED_FUNCTIONS.has(name))
       .map(([name]) => name);
     // beyond the implemented stages, the engine must export nothing executable —
-    // in particular nothing ice/status/scoring/correction shaped
+    // in particular nothing status/scoring/correction shaped
     expect(extraFunctions).toEqual([]);
   });
 });

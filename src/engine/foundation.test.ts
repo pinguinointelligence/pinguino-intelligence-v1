@@ -196,8 +196,8 @@ describe('density defaults', () => {
   });
 });
 
-describe('export allowlist (composition + POD + PAC/NPAC — no ice/status/scoring/corrections yet)', () => {
-  it('exports exactly the composition, POD and PAC/NPAC functions and nothing else', () => {
+describe('export allowlist (composition + POD + PAC/NPAC + ice fraction — no status/scoring/corrections yet)', () => {
+  it('exports exactly the implemented stage functions and nothing else', () => {
     const ALLOWED_FUNCTIONS = [
       // composition (4C)
       'computeComponentGrams',
@@ -216,6 +216,8 @@ describe('export allowlist (composition + POD + PAC/NPAC — no ice/status/scori
       'ingredientNpacContribution',
       'ingredientPacContribution',
       'interpolateSyrupDeAnchors',
+      // ice fraction (4F)
+      'estimateIceFraction',
     ];
     const functionNames = Object.entries(engine)
       .filter(([, value]) => typeof value === 'function')

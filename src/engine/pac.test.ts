@@ -345,14 +345,9 @@ describe('scope guard', () => {
     'ingredientNpacContribution',
     'ingredientPacContribution',
     'interpolateSyrupDeAnchors',
+    // ice fraction (4F)
+    'estimateIceFraction',
   ]);
-
-  it('creates no ice fraction functions', () => {
-    const iceShaped = Object.entries(engine)
-      .filter(([name, value]) => typeof value === 'function' && /ice/i.test(name))
-      .map(([name]) => name);
-    expect(iceShaped).toEqual([]);
-  });
 
   it('creates no status/scoring/correction functions', () => {
     const extraFunctions = Object.entries(engine)
