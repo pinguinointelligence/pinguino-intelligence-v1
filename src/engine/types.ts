@@ -85,6 +85,8 @@ export interface IngredientComponentProfile {
   water_percent: number;
   solids_percent: number;
   fat_percent: number;
+  /** Optional — saturated fat per 100 g when the label provides it (nutrition stage). */
+  saturated_fat_percent?: number;
   protein_percent: number;
   carbohydrate_percent: number;
   sugar_percent: number;
@@ -120,7 +122,9 @@ export interface EngineIngredient {
   npac_value: number | null;
   /** Dextrose-equivalent for glucose syrups (spec §8). */
   de_value: number | null;
-  cost_per_kg: number;
+  /** Cost per kg — null = UNKNOWN (creates the incomplete cost state);
+   * 0 = explicitly free (e.g. water). Never silently treated as 0. */
+  cost_per_kg: number | null;
   /** 0–100 (masterplan §16). */
   confidence_score: number;
   source_type: SourceType;
@@ -269,8 +273,38 @@ export interface Indicator {
 export interface RecipeScores {
   technical: number;
   flavor: number;
-  cost: number;
+  /** Null when recipe cost is unknown — unknown never becomes a fake score. */
+  cost: number | null;
   overall: number;
+}
+
+/** Per-100 g nutrition of the mix (masterplan §12.10; nutrition stage). */
+export interface NutritionPer100g {
+  kcal: number;
+  fat_g: number;
+  /** Null unless every fat-bearing ingredient provides saturated_fat_percent. */
+  saturated_fat_g: number | null;
+  carbohydrate_g: number;
+  sugars_g: number;
+  protein_g: number;
+  salt_g: number;
+  fiber_g: number;
+  alcohol_g: number;
+}
+
+/** Recipe cost state (cost stage). Unknown ingredient costs ⇒ incomplete: money
+ * fields are null and the missing ingredient ids are listed — never a silently
+ * false cost. */
+export interface RecipeCosts {
+  total_cost: number | null;
+  cost_per_kg: number | null;
+  cost_per_serving_60g: number | null;
+  cost_per_serving_70g: number | null;
+  cost_per_serving_80g: number | null;
+  custom_serving_g?: number;
+  cost_per_custom_serving?: number | null;
+  complete: boolean;
+  missing_cost_ingredient_ids: string[];
 }
 
 /** Engine warnings are code-based — no English inside the engine; copy maps codes. */
@@ -279,7 +313,8 @@ export type WarningCode =
   | 'machine_capacity_exceeded'
   | 'batch_mass_mismatch'
   | 'composition_invalid'
-  | 'low_confidence_ingredient';
+  | 'low_confidence_ingredient'
+  | 'cost_incomplete';
 
 export interface EngineWarning {
   code: WarningCode;
@@ -308,6 +343,8 @@ export interface RecipeResult {
   ice_fraction_percent: number | null;
   indicators: Indicator[];
   scores: RecipeScores | null;
+  nutrition_per_100g: NutritionPer100g | null;
+  costs: RecipeCosts | null;
   warnings: EngineWarning[];
 }
 

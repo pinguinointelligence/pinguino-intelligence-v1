@@ -5,16 +5,18 @@ Pure TypeScript, **zero dependencies, no React, no IO**. Same input → same out
 Mathematical source of truth: [PINGUINO_RECIPE_ENGINE_SPEC_V1.md](../../docs/PINGUINO_RECIPE_ENGINE_SPEC_V1.md)
 (LOCKED — overrides the masterplan on any engine/math difference).
 
-**Status: Step 4H pipeline assembled** — `calculateRecipe(input): RecipeResult`
-(spec §12/§18) now chains all five tested stages: composition (§6) → POD (§7) →
-PAC/NPAC (§8, canonical per_total_mass) → ice fraction (§9 anchor model) → status
-classification (§9/§12.7), returning a complete result stamped with
-ENGINE_VERSION 0.2.0 + CONFIG_VERSION 0.3.0, classified provenance-flagged
-indicators, deterministic warnings (alcohol/capacity/mass-mismatch/low-confidence)
-and `scores: null` (scoring not yet implemented). Zero-mass recipes yield null
-metrics, never NaN. Still to come: `scoring → nutrition/cost → corrections`
-(spec §18) — the shared export allowlist (`__fixtures__/allowedEngineFunctions.ts`)
-enforces that none exist early.
+**Status: Step 4I nutrition/cost/scoring landed** — `calculateRecipe(input)`
+now returns the complete pre-correction RecipeResult: all five metric stages
+(composition §6 → POD §7 → PAC/NPAC §8 → ice fraction §9 → statuses §9/§12.7)
+plus per-100 g nutrition (stored-kcal-first with masterplan §12.10 Atwater
+fallback), honest costs (kg + 60/70/80 g servings; unknown ingredient cost ⇒
+incomplete state + `cost_incomplete` warning, never a silent 0) and
+mode-weighted scores (ECO cost-heavy ↔ SIGNATURE flavor-heavy, stability-gated:
+overall ≤ technical + headroom). Stamped ENGINE_VERSION 0.3.0 + CONFIG_VERSION
+0.4.0; all scoring constants live in `config/scoring.ts`, calibration-pending.
+Still to come: `corrections` (solver + redact, spec §18) — the shared export
+allowlist (`__fixtures__/allowedEngineFunctions.ts`) enforces it doesn't exist
+early.
 
 Rules: all coefficients live in `config/` (never inline); every result is stamped with
 `ENGINE_VERSION` + `CONFIG_VERSION`; the corrections module stays IO-free and portable for

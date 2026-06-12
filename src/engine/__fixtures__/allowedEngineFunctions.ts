@@ -32,4 +32,12 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   'selectTargetBand',
   // pipeline assembly (4H)
   'calculateRecipe',
+  // nutrition / cost / scoring (4I)
+  'ingredientKcalContribution',
+  'computeNutritionPer100g',
+  'computeRecipeCosts',
+  'computeTechnicalScore',
+  'computeFlavorScore',
+  'computeCostScore',
+  'computeScores',
 ];

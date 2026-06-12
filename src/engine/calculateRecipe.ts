@@ -15,8 +15,9 @@
  *   Infinity appears in the output.
  * - Inputs are never mutated; same input ⇒ same output.
  * - Every result is stamped with ENGINE_VERSION + CONFIG_VERSION (§17).
- * - `scores` stays null — scoring is a later stage, as are nutrition/cost and
- *   corrections.
+ * - Nutrition (per 100 g), costs (kg + servings, honest incomplete state) and
+ *   scores (mode-weighted, stability-gated) ride on top of the metric stages;
+ *   corrections remain a later stage.
  *
  * Warnings (deterministic, code-based, emitted in fixed order):
  * - alcohol_above_safe_range (warning) — alcohol % above the selected band's
@@ -26,14 +27,18 @@
  *   display precision).
  * - low_confidence_ingredient (info, per ingredient, item order) — confidence
  *   below 80 (the masterplan §16 "needs verification" boundary).
+ * - cost_incomplete (info) — at least one ingredient cost is unknown.
  * A per-ingredient composition_invalid sanity warning is deferred until its
  * tolerance is decided — not invented here.
  */
 import { computeComposition } from './composition';
 import { CONFIG_VERSION, ENGINE_VERSION } from './config/version';
+import { computeRecipeCosts } from './cost';
 import { estimateIceFraction } from './iceFraction';
+import { computeNutritionPer100g } from './nutrition';
 import { computeRecipeNpac, computeRecipePac } from './pac';
 import { computeRecipePod } from './pod';
+import { computeScores } from './scoring';
 import {
   classifyRecipeIndicators,
   computeLactoseSandinessRisk,
@@ -149,6 +154,29 @@ export function calculateRecipe(input: RecipeInput): RecipeResult {
     input.target_temperature_c,
   );
 
+  // nutrition / cost / scores ride on top — no metric stage changes
+  const nutrition_per_100g = hasMass ? computeNutritionPer100g(items, total_batch_g) : null;
+  const costs = hasMass ? computeRecipeCosts(items, total_batch_g) : null;
+  const scores = hasMass
+    ? computeScores({
+        indicators,
+        items,
+        total_batch_g,
+        mode: input.mode,
+        goals: input.goals,
+        costs,
+      })
+    : null;
+
+  const warnings = collectWarnings(input, total_batch_g, statusInputs.alcohol, items);
+  if (costs && !costs.complete) {
+    warnings.push({
+      code: 'cost_incomplete',
+      severity: 'info',
+      context: { missing_count: costs.missing_cost_ingredient_ids.length },
+    });
+  }
+
   // 12: assemble the complete, version-stamped result
   return {
     engine_version: ENGINE_VERSION,
@@ -163,7 +191,9 @@ export function calculateRecipe(input: RecipeInput): RecipeResult {
     npac_points,
     ice_fraction_percent,
     indicators,
-    scores: null, // scoring is a later stage
-    warnings: collectWarnings(input, total_batch_g, statusInputs.alcohol, items),
+    scores,
+    nutrition_per_100g,
+    costs,
+    warnings,
   };
 }

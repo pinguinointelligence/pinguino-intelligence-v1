@@ -112,7 +112,43 @@ describe('calculateRecipe — end-to-end (spec §12/§18)', () => {
     // honest extrapolated value under the CURRENT uncalibrated config
     expect(result.ice_fraction_percent).toBeCloseTo(62.91, 2);
     expect(result.indicators).toHaveLength(11);
-    expect(result.scores).toBeNull();
+  });
+
+  it('includes nutrition per 100 g (kcal from the fixture ingredient values)', () => {
+    const nutrition = calculateRecipe(appendixInput()).nutrition_per_100g!;
+    // (670×0.64 + 130×3.37 + 35×3.6 + 130×4 + 30×3.68 + 5×2) / 1000 × 100
+    expect(nutrition.kcal).toBeCloseTo(163.33, 2);
+    expect(nutrition.fat_g).toBeCloseTo(6.923, 6);
+    expect(nutrition.sugars_g).toBeCloseTo(21.199, 6);
+    expect(nutrition.saturated_fat_g).toBeNull(); // fixture provides no saturated data
+  });
+
+  it('includes costs (fixture costs are explicitly 0 — free and complete)', () => {
+    const costs = calculateRecipe(appendixInput()).costs!;
+    expect(costs.complete).toBe(true);
+    expect(costs.total_cost).toBe(0);
+    expect(costs.cost_per_kg).toBe(0);
+  });
+
+  it('includes non-null scores for a valid recipe', () => {
+    const scores = calculateRecipe(appendixInput()).scores!;
+    expect(scores.technical).toBeGreaterThan(0);
+    expect(scores.technical).toBeLessThanOrEqual(100);
+    expect(scores.flavor).toBe(70); // no main-locked line in the fixture → neutral
+    expect(scores.cost).toBe(100); // free recipe
+    expect(scores.overall).toBeGreaterThan(0);
+    expect(scores.overall).toBeLessThanOrEqual(scores.technical + 30); // stability gate
+  });
+
+  it('emits cost_incomplete when an ingredient cost is unknown', () => {
+    const input = appendixInput();
+    const unknownCost = makeItem('mystery', { water_percent: 100 }, 50);
+    unknownCost.ingredient.cost_per_kg = null;
+    input.items = [...input.items, unknownCost];
+    const result = calculateRecipe(input);
+    expect(result.costs!.complete).toBe(false);
+    expect(result.warnings.map((w) => w.code)).toContain('cost_incomplete');
+    expect(result.scores!.cost).toBeNull(); // unknown cost never becomes a score
   });
 
   it('returns the engine and config versions on every result', () => {
@@ -233,6 +269,9 @@ describe('safety', () => {
     for (const indicator of result.indicators) {
       expect(indicator.status).toBe('needs_correction');
     }
+    expect(result.nutrition_per_100g).toBeNull();
+    expect(result.costs).toBeNull();
+    expect(result.scores).toBeNull();
     expectAllNumbersFinite(result);
   });
 
