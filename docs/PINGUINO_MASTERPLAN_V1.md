@@ -389,6 +389,8 @@ pinguino-intelligence-v1/            # repo root
 
 ## 12. Deterministic calculation engine
 
+> **Engine mathematics is locked elsewhere:** the canonical mathematical source of truth for the recipe engine is [PINGUINO_RECIPE_ENGINE_SPEC_V1.md](PINGUINO_RECIPE_ENGINE_SPEC_V1.md) (status: LOCKED). Sections 12–15 here remain the product/app context summary; on any difference, the engine spec prevails.
+
 Pure-function pipeline. Entry point: `calculateRecipe(input: RecipeInput): RecipeResult`. Same input → same output, always. Full float precision internally; rounding only at display (0.1 g / 0.1 %). Every result is stamped with `ENGINE_VERSION` + `CONFIG_VERSION`.
 
 ### 12.1 Ingredient data model (per 100 g)
