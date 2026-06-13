@@ -1,10 +1,11 @@
+import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { IngredientPicker } from './IngredientPicker';
-import { IngredientRow, type IngredientRowActions } from './IngredientRow';
+import { IngredientRow, ROW_GRID, type IngredientRowActions } from './IngredientRow';
 
 const b = copy.studio.builder;
 const headCell = 'text-[0.6rem] font-medium tracking-label text-stone-400 uppercase';
@@ -14,9 +15,11 @@ const headCell = 'text-[0.6rem] font-medium tracking-label text-stone-400 upperc
 export function IngredientBuilder({
   items,
   totalBatchG,
+  targetBatchG,
 }: {
   items: EffectiveRecipeItem[];
   totalBatchG: number;
+  targetBatchG: number;
 }) {
   const addIngredient = useRecipeStore((state) => state.addIngredient);
   const actions: IngredientRowActions = {
@@ -27,6 +30,8 @@ export function IngredientBuilder({
     removeItem: useRecipeStore((state) => state.removeItem),
   };
 
+  const offTarget = Math.abs(totalBatchG - targetBatchG) > 0.1;
+
   return (
     <Card padding="lg">
       <SectionLabel>{b.title}</SectionLabel>
@@ -34,19 +39,33 @@ export function IngredientBuilder({
       {items.length === 0 ? (
         <p className="mt-6 text-sm leading-relaxed text-stone-500">{b.empty}</p>
       ) : (
-        <div className="mt-5 divide-y divide-ink/5">
-          <div className="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr_1.1fr_auto] gap-2 pb-2">
-            <span className={headCell}>&nbsp;</span>
-            <span className={`${headCell} text-right`}>{b.planned}</span>
-            <span className={`${headCell} text-right`}>{b.actual}</span>
-            <span className={`${headCell} text-right`}>{b.share}</span>
-            <span className={headCell}>{b.lock}</span>
-            <span className={headCell}>&nbsp;</span>
+        <>
+          <div className="mt-5 divide-y divide-ink/5">
+            <div className={`${ROW_GRID} pb-2`}>
+              <span className={headCell}>&nbsp;</span>
+              <span className={`${headCell} text-right`}>{b.planned}</span>
+              <span className={`${headCell} text-right`}>{b.actual}</span>
+              <span className={`${headCell} text-right`}>{b.share}</span>
+              <span className={headCell}>{b.lock}</span>
+              <span className={headCell}>&nbsp;</span>
+            </div>
+            {items.map((item) => (
+              <IngredientRow key={item.id} item={item} totalBatchG={totalBatchG} actions={actions} />
+            ))}
           </div>
-          {items.map((item) => (
-            <IngredientRow key={item.id} item={item} totalBatchG={totalBatchG} actions={actions} />
-          ))}
-        </div>
+
+          <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-4">
+            <span className="text-xs tracking-label text-stone-500 uppercase">{b.batchTotal}</span>
+            <span className="flex items-baseline gap-3">
+              {offTarget ? (
+                <span className="font-mono text-xs text-stone-400 tabular-nums">
+                  {b.target} {targetBatchG.toLocaleString('en-US')} {b.unit}
+                </span>
+              ) : null}
+              <MetricValue value={totalBatchG} unit={b.unit} size="sm" />
+            </span>
+          </div>
+        </>
       )}
 
       <div className="mt-5">

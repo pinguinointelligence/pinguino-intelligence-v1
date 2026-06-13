@@ -1,7 +1,9 @@
+import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
-import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
+import { buttonClasses } from '@/components/ui/buttonStyles';
 import { Card } from '@/components/ui/Card';
+import { cn } from '@/lib/cn';
 import { copy } from '@/copy/en';
 import type { CorrectionResult } from '@/engine';
 import { buildCorrectionView } from './correctionView';
@@ -52,21 +54,35 @@ export function CorrectionPanel({
               </p>
             </div>
           ))}
-          <UpgradePrompt
-            className="mt-4 max-w-none"
-            message={copy.gate.prompts.exactAmount}
-            onAction={onUpgrade}
-          />
+
+          {/* Slim, premium Pro affordance — not a blocky lock. */}
+          <div className="mt-4 flex items-center gap-3 rounded-md border border-ink/10 bg-ivory/40 px-4 py-3">
+            <IvoryLogoMark size={22} tone="ink" className="shrink-0" />
+            <p className="flex-1 text-sm leading-snug text-stone-600">
+              {copy.gate.prompts.exactAmount}
+            </p>
+            <button type="button" className={buttonClasses('primary', 'sm')} onClick={onUpgrade}>
+              {copy.gate.unlockCta}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="mt-5 space-y-4">
           {view.proposals.map((proposal) => {
             const title = proposalTitle(proposal.kind);
+            const isTradeoff = proposal.kind !== 'correction';
             return (
-              <div key={proposal.id} className="rounded-md border border-ink/10 px-4 py-3.5">
+              <div
+                key={proposal.id}
+                className={cn(
+                  'rounded-md border px-4 py-3.5',
+                  isTradeoff ? 'border-status-risky/30 bg-status-risky/[0.04]' : 'border-ink/10',
+                )}
+              >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-medium text-ink">
-                    {title ?? proposal.actions.map((action) => `${action.verb} ${action.name}`).join(' · ')}
+                    {title ??
+                      proposal.actions.map((action) => `${action.verb} ${action.name}`).join(' · ')}
                   </span>
                   <span className={chip}>
                     {c.confidenceLabel}: {proposal.confidenceLabel}
@@ -76,11 +92,11 @@ export function CorrectionPanel({
                 {proposal.actions.length > 0 ? (
                   <div className="mt-3 space-y-1.5">
                     {proposal.actions.map((action, index) => (
-                      <div key={index} className="flex items-center justify-between gap-3">
+                      <div key={index} className="flex items-baseline justify-between gap-3">
                         <span className="text-sm text-stone-600">
                           {action.verb} {action.name}
                         </span>
-                        <MetricValue value={action.grams} unit="g" size="sm" />
+                        <MetricValue value={action.grams} unit="g" />
                       </div>
                     ))}
                   </div>
@@ -96,12 +112,16 @@ export function CorrectionPanel({
                         <span>{prediction.label}</span>
                         <span className="flex items-center gap-2 font-mono tabular-nums">
                           <span>
-                            {c.before} {prediction.before === null ? '—' : prediction.before.toFixed(1)}
+                            {c.before}{' '}
+                            {prediction.before === null ? '—' : prediction.before.toFixed(1)}
                             {prediction.unit}
                           </span>
-                          <span aria-hidden>→</span>
+                          <span aria-hidden className="text-stone-400">
+                            →
+                          </span>
                           <span className="text-ink">
-                            {c.after} {prediction.after === null ? '—' : prediction.after.toFixed(1)}
+                            {c.after}{' '}
+                            {prediction.after === null ? '—' : prediction.after.toFixed(1)}
                             {prediction.unit}
                           </span>
                         </span>

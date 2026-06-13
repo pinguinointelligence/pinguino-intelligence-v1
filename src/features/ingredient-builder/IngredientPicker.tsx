@@ -6,6 +6,17 @@ import type { EngineIngredient } from '@/engine';
 
 const b = copy.studio.builder;
 
+/** Demo ingredients grouped by category, preserving first-appearance order. */
+const GROUPED = DEMO_INGREDIENTS.reduce<Array<{ category: EngineIngredient['category']; items: EngineIngredient[] }>>(
+  (groups, ingredient) => {
+    const existing = groups.find((group) => group.category === ingredient.category);
+    if (existing) existing.items.push(ingredient);
+    else groups.push({ category: ingredient.category, items: [ingredient] });
+    return groups;
+  },
+  [],
+);
+
 export function IngredientPicker({ onAdd }: { onAdd: (ingredient: EngineIngredient) => void }) {
   const [selectedId, setSelectedId] = useState<string>(DEMO_INGREDIENTS[0]!.id);
 
@@ -17,10 +28,14 @@ export function IngredientPicker({ onAdd }: { onAdd: (ingredient: EngineIngredie
         value={selectedId}
         onChange={(event) => setSelectedId(event.currentTarget.value)}
       >
-        {DEMO_INGREDIENTS.map((ingredient) => (
-          <option key={ingredient.id} value={ingredient.id}>
-            {ingredient.name}
-          </option>
+        {GROUPED.map((group) => (
+          <optgroup key={group.category} label={b.ingredientGroups[group.category]}>
+            {group.items.map((ingredient) => (
+              <option key={ingredient.id} value={ingredient.id}>
+                {ingredient.name}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
       <button
@@ -31,6 +46,9 @@ export function IngredientPicker({ onAdd }: { onAdd: (ingredient: EngineIngredie
           if (ingredient) onAdd(ingredient);
         }}
       >
+        <span aria-hidden className="mr-1.5">
+          ＋
+        </span>
         {b.addLabel}
       </button>
     </div>

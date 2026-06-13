@@ -74,15 +74,24 @@ export function GoalSetup() {
               <button
                 key={mode}
                 type="button"
+                aria-pressed={active}
                 onClick={() => store.setMode(mode)}
                 className={cn(
-                  'rounded-md border p-3 text-left transition-colors',
-                  active ? 'border-ink bg-ink/[0.03]' : 'border-ink/15 hover:border-ink/40',
+                  'relative overflow-hidden rounded-md border p-3 pl-4 text-left transition-colors',
+                  active ? 'border-ink bg-ivory/40' : 'border-ink/15 hover:border-ink/40',
                 )}
               >
-                <span className="text-sm font-medium tracking-label uppercase">
-                  {g.modes[mode].name}
-                </span>
+                {active ? (
+                  <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-ink" />
+                ) : null}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium tracking-label uppercase">
+                    {g.modes[mode].name}
+                  </span>
+                  <span className="text-[0.6rem] tracking-label text-stone-400 uppercase">
+                    {g.modeFocus[mode]}
+                  </span>
+                </div>
                 <span className="mt-1 block text-xs leading-relaxed text-stone-500">
                   {g.modes[mode].body}
                 </span>
@@ -118,6 +127,7 @@ export function GoalSetup() {
             onChange={store.setTargetTemperature}
             labelOf={(temperature) => `−${Math.abs(temperature)} °C`}
           />
+          <p className="text-xs text-stone-400">{g.temperatureHelp}</p>
         </div>
 
         {/* Batch size with unit */}
@@ -145,6 +155,11 @@ export function GoalSetup() {
               ))}
             </select>
           </div>
+          {unit !== 'g' ? (
+            <p className="font-mono text-xs text-stone-400 tabular-nums">
+              = {Math.round(store.target_batch_grams).toLocaleString('en-US')} g
+            </p>
+          ) : null}
         </div>
 
         {/* Machine capacity */}
@@ -161,6 +176,7 @@ export function GoalSetup() {
               store.setMachineCapacity(raw === '' ? null : Math.max(0, Number(raw)));
             }}
           />
+          <p className="text-xs text-stone-400">{g.machineHelp}</p>
         </label>
 
         {/* Flavor intensity */}

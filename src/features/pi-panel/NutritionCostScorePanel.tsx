@@ -34,7 +34,7 @@ function Row({
 }
 
 export function NutritionCostScorePanel({ result }: { result: RecipeResult }) {
-  const { nutrition_per_100g: nutrition, costs, scores } = result;
+  const { nutrition_per_100g: nutrition, costs } = result;
 
   return (
     <Card padding="lg">
@@ -81,21 +81,6 @@ export function NutritionCostScorePanel({ result }: { result: RecipeResult }) {
               <p className="mt-3 text-xs leading-relaxed text-stone-500">{m.costIncomplete}</p>
             ) : null}
           </>
-        )}
-      </div>
-
-      {/* Scores */}
-      <div className="mt-6 border-t border-ink/5 pt-4">
-        <p className="text-xs font-medium tracking-label text-stone-500 uppercase">{m.scoreTitle}</p>
-        {scores === null ? (
-          <p className="mt-3 text-sm text-stone-500">{m.unavailable}</p>
-        ) : (
-          <div className="mt-2 divide-y divide-ink/5">
-            <Row label={m.technical} value={scores.technical} precision={0} />
-            <Row label={m.flavor} value={scores.flavor} precision={0} />
-            <Row label={m.cost} value={scores.cost} precision={0} />
-            <Row label={m.overall} value={scores.overall} precision={0} />
-          </div>
         )}
       </div>
     </Card>

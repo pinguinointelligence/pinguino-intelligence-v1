@@ -35,6 +35,16 @@ describe('buildIndicatorRows', () => {
       expect(row.label.length).toBeGreaterThan(0);
     }
   });
+
+  it('assigns every indicator to a valid scan group', () => {
+    for (const row of rows) {
+      expect(['freezing', 'balance', 'risk']).toContain(row.group);
+    }
+    // every group is represented (grouped PI panel has no empty section)
+    expect(new Set(rows.map((row) => row.group))).toEqual(
+      new Set(['freezing', 'balance', 'risk']),
+    );
+  });
 });
 
 describe('calibration honesty', () => {

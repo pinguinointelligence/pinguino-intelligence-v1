@@ -6,17 +6,13 @@ import type { EffectiveRecipeItem, LockType } from '@/engine';
 
 const b = copy.studio.builder;
 
-const LOCK_TYPES: LockType[] = [
-  'unlocked',
-  'grams',
-  'percent',
-  'main',
-  'already_added',
-  'required',
-];
+/** Lock types selectable in the dropdown — `main` is handled by its own toggle. */
+const SELECTABLE_LOCKS: LockType[] = ['unlocked', 'grams', 'percent', 'already_added', 'required'];
+
+export const ROW_GRID = 'grid grid-cols-[1.5fr_0.85fr_0.85fr_0.6fr_1.4fr_auto] items-center gap-2';
 
 const cellInput =
-  'w-full rounded-md border border-ink/15 bg-paper px-2 py-1.5 text-right font-mono text-sm tabular-nums transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none';
+  'w-full rounded-md border border-ink/15 bg-paper py-1.5 pr-5 pl-2 text-right font-mono text-sm tabular-nums transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none';
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -24,6 +20,35 @@ export interface IngredientRowActions {
   setLockType: (lineId: string, lockType: LockType) => void;
   setMainIngredient: (lineId: string) => void;
   removeItem: (lineId: string) => void;
+}
+
+function GramsField({
+  label,
+  value,
+  emphasised,
+  onChange,
+}: {
+  label: string;
+  value: number | '';
+  emphasised?: boolean;
+  onChange: (raw: string) => void;
+}) {
+  return (
+    <div className="relative">
+      <input
+        aria-label={label}
+        type="number"
+        min={0}
+        placeholder={value === '' ? '—' : undefined}
+        className={cn(cellInput, emphasised && 'border-ink/30')}
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      />
+      <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[0.65rem] text-stone-400">
+        {b.unit}
+      </span>
+    </div>
+  );
 }
 
 export function IngredientRow({
@@ -39,85 +64,93 @@ export function IngredientRow({
   const isMain = item.lock_type === 'main';
 
   return (
-    <div className="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr_1.1fr_auto] items-center gap-2 py-2.5">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
+    <div
+      className={cn(
+        '-mx-2 rounded-sm px-2 transition-colors hover:bg-ink/[0.02]',
+        isMain && 'bg-ivory/30',
+      )}
+    >
+      <div className={cn(ROW_GRID, 'py-2.5')}>
+        <div className="min-w-0">
           <span className="truncate text-sm text-ink">{item.ingredient.name}</span>
-          {isMain ? (
-            <span className="rounded border border-ink/15 bg-ivory px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.08em] text-ink uppercase">
-              {b.lockTypes.main}
+          <ConfidenceBadge score={item.ingredient.confidence_score} className="mt-0.5" />
+        </div>
+
+        <GramsField
+          label={`${item.ingredient.name} ${b.planned}`}
+          value={item.planned_grams}
+          onChange={(raw) => actions.setPlannedGrams(item.id, Number(raw) || 0)}
+        />
+
+        <GramsField
+          label={`${item.ingredient.name} ${b.actual}`}
+          value={item.actual_grams ?? ''}
+          emphasised={item.is_actual}
+          onChange={(raw) => actions.setActualGrams(item.id, raw === '' ? null : Math.max(0, Number(raw)))}
+        />
+
+        <div className="text-right">
+          {share === null ? (
+            <span className="text-sm text-stone-400">—</span>
+          ) : (
+            <MetricValue value={share} unit="%" size="sm" />
+          )}
+          {item.is_actual && item.difference !== 0 ? (
+            <span
+              className={cn(
+                'block font-mono text-[0.7rem] tabular-nums',
+                item.difference > 0 ? 'text-status-error' : 'text-stone-500',
+              )}
+            >
+              {item.difference > 0 ? '↑' : '↓'} {Math.abs(item.difference).toFixed(1)} {b.unit}
             </span>
           ) : null}
         </div>
-        <ConfidenceBadge score={item.ingredient.confidence_score} className="mt-0.5" />
-      </div>
 
-      <input
-        aria-label={`${item.ingredient.name} ${b.planned}`}
-        type="number"
-        min={0}
-        className={cellInput}
-        value={item.planned_grams}
-        onChange={(event) => actions.setPlannedGrams(item.id, event.currentTarget.valueAsNumber || 0)}
-      />
-
-      <input
-        aria-label={`${item.ingredient.name} ${b.actual}`}
-        type="number"
-        min={0}
-        placeholder="—"
-        className={cn(cellInput, item.is_actual && 'border-ink/30')}
-        value={item.actual_grams ?? ''}
-        onChange={(event) => {
-          const raw = event.currentTarget.value;
-          actions.setActualGrams(item.id, raw === '' ? null : Math.max(0, Number(raw)));
-        }}
-      />
-
-      <div className="text-right">
-        {share === null ? (
-          <span className="text-sm text-stone-400">—</span>
-        ) : (
-          <MetricValue value={share} unit="%" size="sm" />
-        )}
-        {item.is_actual && item.difference !== 0 ? (
-          <span
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            aria-pressed={isMain}
+            onClick={() => (isMain ? actions.setLockType(item.id, 'unlocked') : actions.setMainIngredient(item.id))}
+            title={b.mark_main}
             className={cn(
-              'block font-mono text-[0.7rem] tabular-nums',
-              item.difference > 0 ? 'text-status-error' : 'text-stone-500',
+              'rounded border px-2 py-1 text-[0.6rem] font-medium tracking-[0.08em] uppercase transition-colors',
+              isMain
+                ? 'border-ink bg-ivory text-ink'
+                : 'border-ink/15 text-stone-400 hover:border-ink/40 hover:text-stone-600',
             )}
           >
-            {item.difference > 0 ? '+' : ''}
-            {item.difference.toFixed(1)} g
-          </span>
-        ) : null}
+            {b.main_short}
+          </button>
+          <select
+            aria-label={`${item.ingredient.name} ${b.lock}`}
+            disabled={isMain}
+            className="min-w-0 flex-1 rounded-md border border-ink/15 bg-paper px-2 py-1.5 text-xs transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none disabled:opacity-40"
+            value={item.lock_type}
+            onChange={(event) => actions.setLockType(item.id, event.currentTarget.value as LockType)}
+          >
+            {isMain ? (
+              <option value="main" disabled>
+                {b.lockTypes.main}
+              </option>
+            ) : null}
+            {SELECTABLE_LOCKS.map((lock) => (
+              <option key={lock} value={lock}>
+                {b.lockTypes[lock]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          type="button"
+          aria-label={`${b.remove} ${item.ingredient.name}`}
+          onClick={() => actions.removeItem(item.id)}
+          className="rounded-md border border-ink/10 px-2 py-1.5 text-xs text-stone-400 transition-colors hover:border-status-error/40 hover:text-status-error"
+        >
+          ✕
+        </button>
       </div>
-
-      <select
-        aria-label={`${item.ingredient.name} ${b.lock}`}
-        className="rounded-md border border-ink/15 bg-paper px-2 py-1.5 text-xs transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none"
-        value={item.lock_type}
-        onChange={(event) => {
-          const next = event.currentTarget.value as LockType;
-          if (next === 'main') actions.setMainIngredient(item.id);
-          else actions.setLockType(item.id, next);
-        }}
-      >
-        {LOCK_TYPES.map((lock) => (
-          <option key={lock} value={lock}>
-            {b.lockTypes[lock]}
-          </option>
-        ))}
-      </select>
-
-      <button
-        type="button"
-        aria-label={`${b.remove} ${item.ingredient.name}`}
-        onClick={() => actions.removeItem(item.id)}
-        className="rounded-md border border-ink/10 px-2 py-1.5 text-xs text-stone-400 transition-colors hover:border-status-error/40 hover:text-status-error"
-      >
-        ✕
-      </button>
     </div>
   );
 }

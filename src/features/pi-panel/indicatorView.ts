@@ -35,6 +35,23 @@ const PERCENT_METRICS: ReadonlySet<TargetMetric> = new Set([
   'alcohol',
 ]);
 
+/** PI scan groups (presentation only — no math, no engine call). */
+export type IndicatorGroup = 'freezing' | 'balance' | 'risk';
+
+const METRIC_GROUP: Record<TargetMetric, IndicatorGroup> = {
+  pod: 'freezing',
+  npac: 'freezing',
+  ice_fraction: 'freezing',
+  total_solids: 'balance',
+  water: 'balance',
+  fat: 'balance',
+  aerating_protein: 'balance',
+  protein_in_solids: 'balance',
+  lactose: 'risk',
+  lactose_sandiness_risk: 'risk',
+  alcohol: 'risk',
+};
+
 /** Friendly label / display unit for a target metric — shared with the
  * correction view so both panels speak the same vocabulary. */
 export const metricLabel = (key: TargetMetric): string => pi.indicators[key];
@@ -50,6 +67,7 @@ export interface IndicatorRowView {
   targetMin: number | null;
   targetMax: number | null;
   status: IndicatorStatus;
+  group: IndicatorGroup;
 }
 
 export interface WarningView {
@@ -95,6 +113,7 @@ export function buildIndicatorRows(result: RecipeResult): IndicatorRowView[] {
       value: indicator.value,
       unit: PERCENT_METRICS.has(key) ? '%' : '',
       status: indicator.status, // engine statuses are a subset of the chip vocabulary
+      group: METRIC_GROUP[key],
       ...bounds,
     });
   }

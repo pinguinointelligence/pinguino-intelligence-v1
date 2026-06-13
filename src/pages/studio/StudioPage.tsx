@@ -6,12 +6,15 @@ import { StatusChip } from '@/components/shared/StatusChip';
 import { copy } from '@/copy/en';
 import { useAccess } from '@/access/useAccess';
 import { useSessionStore } from '@/stores/sessionStore';
+import { useRecipeStore } from '@/stores/recipeStore';
 import { CorrectionPanel } from '@/features/corrections/CorrectionPanel';
 import { GoalSetup } from '@/features/recipe-goal/GoalSetup';
 import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuilder';
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
+import { OverallScoreCard } from '@/features/pi-panel/OverallScoreCard';
 import { PIPanel } from '@/features/pi-panel/PIPanel';
 import { StudioModeToggle } from '@/features/studio/StudioModeToggle';
+import { StudioSummary } from '@/features/studio/StudioSummary';
 import { useStudioResult } from '@/features/studio/useStudioResult';
 
 const { studio } = copy;
@@ -20,6 +23,11 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const { plan } = useAccess();
   const { result, corrections } = useStudioResult();
+
+  const mode = useRecipeStore((state) => state.mode);
+  const category = useRecipeStore((state) => state.category);
+  const temperatureC = useRecipeStore((state) => state.target_temperature_c);
+  const batchGrams = useRecipeStore((state) => state.target_batch_grams);
 
   // The public /demo entry is always a demo session.
   useEffect(() => {
@@ -49,17 +57,30 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 pt-6 pb-24">
-        <SectionLabel>{studio.eyebrow}</SectionLabel>
+        <div className="flex flex-col gap-2 border-b border-ink/5 pb-5">
+          <SectionLabel>{studio.eyebrow}</SectionLabel>
+          <StudioSummary
+            mode={mode}
+            category={category}
+            temperatureC={temperatureC}
+            batchGrams={batchGrams}
+          />
+        </div>
 
-        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_minmax(360px,400px)]">
+        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_minmax(380px,420px)]">
           {/* Left: goal + ingredient builder */}
           <div className="space-y-6">
             <GoalSetup />
-            <IngredientBuilder items={result.items} totalBatchG={result.total_batch_g} />
+            <IngredientBuilder
+              items={result.items}
+              totalBatchG={result.total_batch_g}
+              targetBatchG={batchGrams}
+            />
           </div>
 
-          {/* Right: live engine output (sticky lab rail) */}
-          <div className="space-y-6 lg:sticky lg:top-6">
+          {/* Right: live engine output (sticky, self-scrolling lab rail) */}
+          <div className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
+            <OverallScoreCard result={result} mode={mode} />
             <PIPanel result={result} />
             <NutritionCostScorePanel result={result} />
             <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
