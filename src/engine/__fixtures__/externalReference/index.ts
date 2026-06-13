@@ -4,6 +4,11 @@
  * product owner's data is entered and verified. Activating fixtures is the only
  * authority for changing coefficients, target ranges, or the NPAC normalization
  * basis — via config changes + CONFIG_VERSION bump only.
+ *
+ * EXCEPTION: the first verified reference recipe is ACTIVE and exported
+ * separately as `externalReferenceMilkBase` (see ./milk-base). It is kept OUT of
+ * `EXTERNAL_REFERENCE_FIXTURES` so that list stays the 11 not-yet-supplied
+ * placeholders; it powers the report-only calibration comparison.
  */
 import type { CalibrationFixture } from '../schema';
 import { alcoholJimBeam } from './alcohol-jim-beam';
@@ -31,3 +36,5 @@ export const EXTERNAL_REFERENCE_FIXTURES: readonly CalibrationFixture[] = [
   mascarpone,
   pistachioPaste,
 ];
+
+export { externalReferenceMilkBase } from './milk-base';

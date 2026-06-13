@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PendingFixture } from './schema';
 import { GOLDEN_FIXTURES } from './golden';
-import { EXTERNAL_REFERENCE_FIXTURES } from './externalReference';
+import { EXTERNAL_REFERENCE_FIXTURES, externalReferenceMilkBase } from './externalReference';
 
 const REQUIRED_NAMES = [
   'chocolate',
@@ -43,6 +43,29 @@ describe('external calibration fixtures (spec §16)', () => {
       notes: 'schema contract check',
     } satisfies PendingFixture;
     expect(sample.status).toBe('pending');
+  });
+});
+
+describe('first active external reference fixture (Step 5D.2)', () => {
+  it('milk base is a valid ACTIVE recipe fixture, separate from the 11 placeholders', () => {
+    expect(externalReferenceMilkBase.status).toBe('active');
+    expect(externalReferenceMilkBase.kind).toBe('recipe');
+    expect(externalReferenceMilkBase.category).toBe('milk_gelato');
+    expect(externalReferenceMilkBase.temperature_c).toBe(-11);
+    // it is NOT part of the placeholder list (that list must stay 11 pending)
+    expect(EXTERNAL_REFERENCE_FIXTURES.map((f) => f.name)).not.toContain(
+      externalReferenceMilkBase.name,
+    );
+  });
+
+  it('carries the 7 verified ingredient lines with grams summing to ~1000 g', () => {
+    expect(externalReferenceMilkBase.input).toHaveLength(7);
+    const total = externalReferenceMilkBase.input.reduce((sum, line) => sum + line.grams, 0);
+    expect(total).toBeCloseTo(1000, 0);
+    for (const line of externalReferenceMilkBase.input) {
+      expect(line.grams).toBeGreaterThan(0);
+      expect(line.composition).toBeDefined();
+    }
   });
 });
 
