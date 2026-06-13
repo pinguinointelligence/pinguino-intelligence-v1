@@ -7,7 +7,10 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/demo" element={<StudioPage />} />
+      {/* Public demo entry — always a demo session (redacted corrections). */}
+      <Route path="/demo" element={<StudioPage forceDemo />} />
+      {/* Studio keeps the current session level (internal pro/test preview). */}
+      <Route path="/studio" element={<StudioPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
