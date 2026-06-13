@@ -13,14 +13,17 @@ import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuild
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
 import { OverallScoreCard } from '@/features/pi-panel/OverallScoreCard';
 import { PIPanel } from '@/features/pi-panel/PIPanel';
+import { PresetSelector } from '@/features/studio/PresetSelector';
 import { StudioModeToggle } from '@/features/studio/StudioModeToggle';
 import { StudioSummary } from '@/features/studio/StudioSummary';
 import { useStudioResult } from '@/features/studio/useStudioResult';
+import { DEFAULT_PRESET } from '@/data/demoPresets';
 
 const { studio } = copy;
 
 export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
   const setPlan = useSessionStore((state) => state.setPlan);
+  const loadPreset = useRecipeStore((state) => state.loadPreset);
   const { plan } = useAccess();
   const { result, corrections } = useStudioResult();
 
@@ -29,10 +32,14 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
 
-  // The public /demo entry is always a demo session.
+  // The public /demo entry is always a demo session that cold-opens the curated
+  // default scenario; /studio (forceDemo=false) preserves persisted edits.
   useEffect(() => {
-    if (forceDemo) setPlan('demo');
-  }, [forceDemo, setPlan]);
+    if (forceDemo) {
+      setPlan('demo');
+      loadPreset(DEFAULT_PRESET);
+    }
+  }, [forceDemo, setPlan, loadPreset]);
 
   // Internal preview only (DEV); never a subscription/payment path.
   const onUpgrade = import.meta.env.DEV ? () => setPlan('pro') : undefined;
@@ -57,14 +64,17 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 pt-6 pb-24">
-        <div className="flex flex-col gap-2 border-b border-ink/5 pb-5">
-          <SectionLabel>{studio.eyebrow}</SectionLabel>
-          <StudioSummary
-            mode={mode}
-            category={category}
-            temperatureC={temperatureC}
-            batchGrams={batchGrams}
-          />
+        <div className="flex flex-col gap-5 border-b border-ink/5 pb-6">
+          <div className="flex flex-col gap-2">
+            <SectionLabel>{studio.eyebrow}</SectionLabel>
+            <StudioSummary
+              mode={mode}
+              category={category}
+              temperatureC={temperatureC}
+              batchGrams={batchGrams}
+            />
+          </div>
+          <PresetSelector />
         </div>
 
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_minmax(380px,420px)]">

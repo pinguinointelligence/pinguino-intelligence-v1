@@ -43,6 +43,7 @@ export function CorrectionPanel({
 
       {view.mode === 'demo' ? (
         <div className="mt-5 space-y-3">
+          <p className="text-xs leading-relaxed text-stone-400">{c.demoPreviewNote}</p>
           {view.proposals.map((proposal) => (
             <div key={proposal.id} className="rounded-md border border-ink/10 px-4 py-3">
               <div className="flex items-center justify-between gap-3">

@@ -4,18 +4,14 @@
  * This store holds INPUT only. It never stores computed numbers: the engine
  * result is derived on demand via buildRecipeInput + calculateRecipe
  * (useStudioResult). Persisted to localStorage so a demo survives reload.
+ *
+ * Curated demo scenarios load atomically via loadPreset (Step 5C); the store
+ * seeds the default Milk Base preset.
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEMO_INGREDIENTS } from '@/data/demoIngredients';
-import type {
-  EngineIngredient,
-  LockType,
-  ProductCategory,
-  ProductMode,
-  RecipeGoals,
-  RecipeItem,
-} from '@/engine';
+import { DEFAULT_PRESET, type DemoPreset, type PresetId } from '@/data/demoPresets';
+import type { EngineIngredient, LockType, ProductCategory, ProductMode, RecipeGoals, RecipeItem } from '@/engine';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
@@ -29,6 +25,8 @@ export interface RecipeState {
   flavor_intensity: FlavorIntensity;
   cost_priority: CostPriority;
   items: RecipeItem[];
+  /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
+  activePresetId: PresetId | null;
 
   setMode: (mode: ProductMode) => void;
   setCategory: (category: ProductCategory) => void;
@@ -45,6 +43,8 @@ export interface RecipeState {
   setLockType: (lineId: string, lockType: LockType) => void;
   /** Marks one line as the main ingredient; clears any previous main line. */
   setMainIngredient: (lineId: string) => void;
+  /** Atomically replace goal + ingredients with a curated demo scenario. */
+  loadPreset: (preset: DemoPreset) => void;
   resetToDemo: () => void;
 }
 
@@ -63,35 +63,23 @@ const makeLine = (
   lock_type,
 });
 
-/** A live fior-di-latte-style starter so the Studio opens with real numbers. */
-const seedItems = (): RecipeItem[] => {
-  const byId = (id: string): EngineIngredient =>
-    DEMO_INGREDIENTS.find((ingredient) => ingredient.id === id)!;
-  return [
-    makeLine(byId('milk_3_5'), 670),
-    makeLine(byId('cream_30'), 130),
-    makeLine(byId('smp'), 35),
-    makeLine(byId('sucrose'), 130),
-    makeLine(byId('dextrose'), 30),
-    makeLine(byId('tara_gum'), 5),
-  ];
-};
-
-const DEFAULTS = {
-  mode: 'classic' as ProductMode,
-  category: 'milk_gelato' as ProductCategory,
-  target_temperature_c: -11,
-  target_batch_grams: 1000,
-  machine_capacity_grams: null,
-  flavor_intensity: 'balanced' as FlavorIntensity,
-  cost_priority: 'balanced' as CostPriority,
-};
+/** Snapshot of a preset as fresh store state (items cloned so edits never touch preset data). */
+const fromPreset = (preset: DemoPreset) => ({
+  mode: preset.mode,
+  category: preset.category,
+  target_temperature_c: preset.target_temperature_c,
+  target_batch_grams: preset.target_batch_grams,
+  machine_capacity_grams: preset.machine_capacity_grams,
+  flavor_intensity: preset.flavor_intensity,
+  cost_priority: preset.cost_priority,
+  items: preset.items.map((item) => ({ ...item })),
+  activePresetId: preset.id,
+});
 
 export const useRecipeStore = create<RecipeState>()(
   persist(
     (set) => ({
-      ...DEFAULTS,
-      items: seedItems(),
+      ...fromPreset(DEFAULT_PRESET),
 
       setMode: (mode) => set({ mode }),
       setCategory: (category) => set({ category }),
@@ -139,7 +127,8 @@ export const useRecipeStore = create<RecipeState>()(
           }),
         })),
 
-      resetToDemo: () => set({ ...DEFAULTS, items: seedItems() }),
+      loadPreset: (preset) => set(fromPreset(preset)),
+      resetToDemo: () => set(fromPreset(DEFAULT_PRESET)),
     }),
     { name: 'pinguino-recipe' },
   ),

@@ -87,6 +87,31 @@ export const copy = {
   studio: {
     eyebrow: 'PI Studio',
     back: 'Back to landing',
+    presets: {
+      label: 'Demo scenarios',
+      items: {
+        'milk-base': {
+          label: 'Milk Base',
+          blurb: 'A clean classic base — read the live profile at a glance.',
+        },
+        'raspberry-premium': {
+          label: 'Raspberry Premium',
+          blurb: 'We rebalance around the fruit — never against it.',
+        },
+        'actual-batch-rescue': {
+          label: 'Actual Batch Rescue',
+          blurb: 'Over-poured mid-production? Rescue the batch by adding, never removing.',
+        },
+        'jim-beam': {
+          label: 'Jim Beam',
+          blurb: 'Alcohol shifts freezing — we flag what cannot always be fixed.',
+        },
+        'pistachio-high-fat': {
+          label: 'Pistachio High Fat',
+          blurb: 'Rich nut paste protected while the rest rebalances.',
+        },
+      },
+    },
     internalToggle: {
       label: 'Internal preview',
       note: 'Internal preview — not a subscription.',
@@ -230,6 +255,7 @@ export const copy = {
     corrections: {
       title: 'Corrections',
       none: 'Balanced — no corrections needed.',
+      demoPreviewNote: 'Demo preview — exact grams hidden.',
       demoDirections: {
         add: 'Add a balancing ingredient',
         reduce: 'Reduce an ingredient',
