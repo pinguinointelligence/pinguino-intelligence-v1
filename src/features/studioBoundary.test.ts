@@ -2,8 +2,10 @@
 /**
  * Studio boundary guard (pinguino-studio-design skill, hard rules).
  *
- * Scans the Step 5A UI source (non-test) and fails if it:
- *  (a) references Supabase / OpenAI / Stripe,
+ * Scans the UI source (non-test) and fails if it:
+ *  (a) references OpenAI / Stripe ANYWHERE, or references Supabase outside the
+ *      sanctioned client layer (`src/lib/supabase/**`; `src/services/**` is not
+ *      scanned). Stores/UI reach Supabase only through `@/services/**`,
  *  (b) reaches into engine internals via a deep `@/engine/<module>` import
  *      (the public `@/engine` barrel is the only allowed entry),
  *  (c) calls engine stage functions / coefficient tables directly — i.e.
@@ -70,10 +72,16 @@ describe('studio boundary guard', () => {
     expect(FILES.length).toBeGreaterThan(0);
   });
 
-  it('contains no Supabase / OpenAI / Stripe references', () => {
+  it('contains no OpenAI / Stripe anywhere, and no Supabase outside the client layer', () => {
     for (const file of FILES) {
       const text = readFileSync(file, 'utf8');
-      expect(/\b(supabase|openai|stripe)\b/i.test(text), file).toBe(false);
+      // OpenAI / Stripe are forbidden everywhere (incl. the supabase client layer).
+      expect(/\b(openai|stripe)\b/i.test(text), `openai/stripe in ${file}`).toBe(false);
+      // Supabase is allowed ONLY under src/lib/supabase/** (services/** is not scanned).
+      const supabaseAllowedHere = /[\\/]lib[\\/]supabase[\\/]/.test(file);
+      if (!supabaseAllowedHere) {
+        expect(/\bsupabase\b/i.test(text), `supabase outside lib/supabase in ${file}`).toBe(false);
+      }
     }
   });
 

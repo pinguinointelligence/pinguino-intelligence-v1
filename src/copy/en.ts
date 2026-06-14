@@ -105,6 +105,26 @@ export const copy = {
       saved: 'Saved',
     },
     activeEngine: 'Active engine',
+    account: 'Account',
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    signedInAs: 'Signed in',
+    authUnavailable: 'Sign-in unavailable in this build',
+  },
+  /** Auth modal (Phase 2A). */
+  auth: {
+    titleSignIn: 'Sign in to PINGÜINO',
+    titleSignUp: 'Create your PINGÜINO account',
+    email: 'Email',
+    password: 'Password',
+    submitSignIn: 'Sign in',
+    submitSignUp: 'Create account',
+    busy: 'Working…',
+    toSignUp: 'New here? Create an account',
+    toSignIn: 'Have an account? Sign in',
+    checkEmail: 'Almost there — check your email to confirm your account.',
+    unavailable: 'Sign-in is not available in this build yet.',
+    close: 'Close',
   },
   /** Guided conversation copy. */
   chat: {

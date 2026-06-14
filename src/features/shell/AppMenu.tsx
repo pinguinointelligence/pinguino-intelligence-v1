@@ -3,7 +3,9 @@ import { Link } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { copy } from '@/copy/en';
 import { ACTIVE_ENGINE } from '@/data/engines';
+import { AuthModal } from '@/features/auth/AuthModal';
 import { cn } from '@/lib/cn';
+import { useAuthStore } from '@/stores/authStore';
 
 const m = copy.menu;
 
@@ -15,6 +17,12 @@ const soonChip =
 /** Top-left hamburger — New, Advanced Studio, and future subscriber items (Step 6A). */
 export function AppMenu({ onNew }: { onNew?: () => void }) {
   const [open, setOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  const authAvailable = useAuthStore((state) => state.available);
+  const authStatus = useAuthStore((state) => state.status);
+  const user = useAuthStore((state) => state.user);
+  const signOut = useAuthStore((state) => state.signOut);
 
   return (
     <>
@@ -29,6 +37,8 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
           <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
         </svg>
       </button>
+
+      {authOpen ? <AuthModal onClose={() => setAuthOpen(false)} /> : null}
 
       {open ? (
         <div className="fixed inset-0 z-50">
@@ -70,7 +80,39 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
               ))}
             </div>
 
-            <div className="mt-auto flex items-center justify-between border-t border-ink/5 pt-3 text-xs text-stone-500">
+            <div className="mt-auto border-t border-ink/5 pt-3">
+              {!authAvailable ? (
+                <p className="px-3 py-2 text-xs leading-relaxed text-stone-400">{m.authUnavailable}</p>
+              ) : authStatus === 'authed' && user ? (
+                <div className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="min-w-0 truncate text-sm text-ink" title={user.email ?? undefined}>
+                    {user.email ?? m.signedInAs}
+                  </span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
+                    onClick={() => {
+                      void signOut();
+                    }}
+                  >
+                    {m.signOut}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={cn(itemClass, 'w-full text-left')}
+                  onClick={() => {
+                    setOpen(false);
+                    setAuthOpen(true);
+                  }}
+                >
+                  {m.signIn}
+                </button>
+              )}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-ink/5 pt-3 text-xs text-stone-500">
               <span>{m.activeEngine}</span>
               <span className={cn('font-mono text-ink')}>{ACTIVE_ENGINE.label}</span>
             </div>
