@@ -11,7 +11,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_PRESET, type DemoPreset, type PresetId } from '@/data/demoPresets';
-import type { EngineIngredient, LockType, ProductCategory, ProductMode, RecipeGoals, RecipeItem } from '@/engine';
+import type { EngineIngredient, LockType, ProductCategory, ProductMode, RecipeGoals, RecipeInput, RecipeItem } from '@/engine';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
@@ -27,6 +27,10 @@ export interface RecipeState {
   items: RecipeItem[];
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
   activePresetId: PresetId | null;
+  /** Id of the saved recipe currently loaded (drives Save vs Save As); null = unsaved/new. */
+  savedRecipeId: string | null;
+  /** Name of the loaded saved recipe (prefills the Save dialog on overwrite). */
+  savedRecipeName: string | null;
 
   setMode: (mode: ProductMode) => void;
   setCategory: (category: ProductCategory) => void;
@@ -45,6 +49,11 @@ export interface RecipeState {
   setMainIngredient: (lineId: string) => void;
   /** Atomically replace goal + ingredients with a curated demo scenario. */
   loadPreset: (preset: DemoPreset) => void;
+  /** Atomically load a saved recipe's RecipeInput (the stored source of truth);
+   * `savedId`/`savedName` track it so a later Save overwrites instead of copying. */
+  loadRecipeInput: (input: RecipeInput, savedId?: string | null, savedName?: string | null) => void;
+  /** Mark the current recipe as persisted (after a save) so the next Save overwrites. */
+  markSaved: (id: string, name: string) => void;
   resetToDemo: () => void;
 }
 
@@ -74,6 +83,8 @@ const fromPreset = (preset: DemoPreset) => ({
   cost_priority: preset.cost_priority,
   items: preset.items.map((item) => ({ ...item })),
   activePresetId: preset.id,
+  savedRecipeId: null,
+  savedRecipeName: null,
 });
 
 export const useRecipeStore = create<RecipeState>()(
@@ -128,6 +139,21 @@ export const useRecipeStore = create<RecipeState>()(
         })),
 
       loadPreset: (preset) => set(fromPreset(preset)),
+      loadRecipeInput: (input, savedId = null, savedName = null) =>
+        set({
+          mode: input.mode,
+          category: input.category,
+          target_temperature_c: input.target_temperature_c,
+          target_batch_grams: input.target_batch_grams,
+          machine_capacity_grams: input.machine_capacity_grams,
+          flavor_intensity: input.goals?.flavor_intensity ?? 'balanced',
+          cost_priority: input.goals?.cost_priority ?? 'balanced',
+          items: input.items.map((item) => ({ ...item })),
+          activePresetId: null,
+          savedRecipeId: savedId,
+          savedRecipeName: savedName,
+        }),
+      markSaved: (id, name) => set({ savedRecipeId: id, savedRecipeName: name }),
       resetToDemo: () => set(fromPreset(DEFAULT_PRESET)),
     }),
     { name: 'pinguino-recipe' },

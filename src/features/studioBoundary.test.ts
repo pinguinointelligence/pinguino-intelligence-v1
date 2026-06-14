@@ -17,7 +17,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = resolve(import.meta.dirname, '..');
-const SCAN_DIRS = ['features', 'pages/studio', 'pages/home', 'stores', 'access', 'data', 'lib'];
+const SCAN_DIRS = ['features', 'pages/studio', 'pages/home', 'pages/recipes', 'stores', 'access', 'data', 'lib'];
 
 function scanFiles(): string[] {
   const files: string[] = [];

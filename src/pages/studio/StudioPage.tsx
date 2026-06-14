@@ -1,12 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { StatusChip } from '@/components/shared/StatusChip';
+import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { useAccess } from '@/access/useAccess';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { SaveRecipeDialog } from '@/features/recipes/SaveRecipeDialog';
 import { CorrectionPanel } from '@/features/corrections/CorrectionPanel';
 import { GoalSetup } from '@/features/recipe-goal/GoalSetup';
 import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuilder';
@@ -32,6 +36,16 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
 
+  const authStatus = useAuthStore((state) => state.status);
+  const openAuthModal = useAuthModalStore((state) => state.open);
+  const [saveOpen, setSaveOpen] = useState(false);
+
+  // Anonymous users are prompted to sign in; signed-in users get the save dialog.
+  const onSaveClick = () => {
+    if (authStatus === 'authed') setSaveOpen(true);
+    else openAuthModal();
+  };
+
   // The public /demo entry is always a demo session that cold-opens the curated
   // default scenario; /studio (forceDemo=false) preserves persisted edits.
   useEffect(() => {
@@ -54,6 +68,9 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
         <div className="flex items-center gap-4">
           <StatusChip status={plan} />
           <StudioModeToggle />
+          <button type="button" className={buttonClasses('ghost', 'sm')} onClick={onSaveClick}>
+            {copy.recipes.save}
+          </button>
           <Link
             to="/"
             className="text-sm text-stone-600 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
@@ -62,6 +79,8 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
           </Link>
         </div>
       </header>
+
+      {saveOpen ? <SaveRecipeDialog onClose={() => setSaveOpen(false)} /> : null}
 
       <main className="mx-auto max-w-6xl px-6 pt-6 pb-24">
         <div className="flex flex-col gap-5 border-b border-ink/5 pb-6">

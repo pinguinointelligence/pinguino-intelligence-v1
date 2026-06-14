@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { copy } from '@/copy/en';
 import { ACTIVE_ENGINE } from '@/data/engines';
-import { AuthModal } from '@/features/auth/AuthModal';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -17,12 +17,12 @@ const soonChip =
 /** Top-left hamburger — New, Advanced Studio, and future subscriber items (Step 6A). */
 export function AppMenu({ onNew }: { onNew?: () => void }) {
   const [open, setOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
 
   const authAvailable = useAuthStore((state) => state.available);
   const authStatus = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const signOut = useAuthStore((state) => state.signOut);
+  const openAuthModal = useAuthModalStore((state) => state.open);
 
   return (
     <>
@@ -37,8 +37,6 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
           <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
         </svg>
       </button>
-
-      {authOpen ? <AuthModal onClose={() => setAuthOpen(false)} /> : null}
 
       {open ? (
         <div className="fixed inset-0 z-50">
@@ -69,7 +67,10 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
             </Link>
 
             <div className="mt-3 border-t border-ink/5 pt-3">
-              {[m.items.myRecipes, m.items.production, m.items.saved].map((label) => (
+              <Link to="/recipes" className={itemClass} onClick={() => setOpen(false)}>
+                {m.items.myRecipes}
+              </Link>
+              {[m.items.production, m.items.saved].map((label) => (
                 <div
                   key={label}
                   className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-stone-400"
@@ -104,7 +105,7 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
                   className={cn(itemClass, 'w-full text-left')}
                   onClick={() => {
                     setOpen(false);
-                    setAuthOpen(true);
+                    openAuthModal();
                   }}
                 >
                   {m.signIn}
