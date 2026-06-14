@@ -4,8 +4,12 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import { Card } from '@/components/ui/Card';
 import { copy } from '@/copy/en';
 import type { DemoSummaryView } from './conversation';
+import type { DemoHintsView } from './demoHints';
 
 const c = copy.chat;
+
+const chip =
+  'rounded border border-ink/15 bg-paper px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-stone-500 uppercase';
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -20,11 +24,20 @@ function Note({ text }: { text: string }) {
   return <p className="mt-3 text-xs leading-relaxed text-stone-500">{text}</p>;
 }
 
-/** Redacted demo preview — qualitative approach + PI Pro unlock. Shows NO recipe
- * grams; the only number is the user's own chosen batch size (Step 6A). */
-export function DemoSummary({ view, onUnlock }: { view: DemoSummaryView; onUnlock: () => void }) {
+/** Redacted demo preview — directional engine hints (no numbers, no names) +
+ * PI Pro unlock. The only number is the user's own chosen batch size (Step 6A). */
+export function DemoSummary({
+  view,
+  hints,
+  onUnlock,
+}: {
+  view: DemoSummaryView;
+  hints: DemoHintsView;
+  onUnlock: () => void;
+}) {
   const product = view.productProfileId ? copy.productTypes[view.productProfileId] : null;
   const serving = view.servingProfileId ? copy.servingProfiles[view.servingProfileId] : null;
+  const productHints = hints.productProfileId ? c.productHints[hints.productProfileId] : [];
 
   return (
     <Card padding="lg" className="w-full max-w-xl">
@@ -39,6 +52,36 @@ export function DemoSummary({ view, onUnlock }: { view: DemoSummaryView; onUnloc
 
       {!view.servingConnected && serving ? <Note text={c.servingPreviewNote} /> : null}
       {view.productPendingNote ? <Note text={view.productPendingNote} /> : null}
+
+      <div className="mt-5 border-t border-ink/5 pt-4">
+        <SectionLabel>{c.hintsLabel}</SectionLabel>
+        {hints.balanced ? (
+          <p className="mt-3 text-sm leading-relaxed text-stone-600">{c.balanced}</p>
+        ) : (
+          <div className="mt-3 space-y-1.5">
+            {hints.hints.map((hint) => (
+              <div
+                key={`${hint.area}-${hint.direction}`}
+                className="flex items-center justify-between gap-3"
+              >
+                <span className="text-sm text-stone-600">
+                  {c.directions[hint.direction]} · {c.areas[hint.area]}
+                </span>
+                <span className={chip}>{c.confidence[hint.confidence]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {productHints.length > 0 ? (
+          <ul className="mt-3 space-y-1">
+            {productHints.map((line) => (
+              <li key={line} className="text-xs leading-relaxed text-stone-500">
+                {line}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
 
       <div className="mt-5 border-t border-ink/5 pt-4">
         <SectionLabel>{c.processLabel}</SectionLabel>

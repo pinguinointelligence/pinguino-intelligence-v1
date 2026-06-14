@@ -15,6 +15,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { ChatPrompt } from './ChatPrompt';
 import { ChoiceChips, type ChipOption } from './ChoiceChips';
 import { DemoSummary } from './DemoSummary';
+import { buildDemoHints } from './demoHints';
 import { demoSummaryView, type IntakeState } from './conversation';
 import { intakeToRecipe } from './intakeToRecipe';
 
@@ -121,7 +122,9 @@ export function PIChat() {
   }
 
   if (step === 'demo_summary') {
-    return <DemoSummary view={demoSummaryView(intake)} onUnlock={handleUnlock} />;
+    return (
+      <DemoSummary view={demoSummaryView(intake)} hints={buildDemoHints(intake)} onUnlock={handleUnlock} />
+    );
   }
 
   // 'flavor' (and any terminal/stale step) — the opening prompt.

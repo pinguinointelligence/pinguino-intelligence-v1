@@ -6,8 +6,8 @@
  * Honesty rule: the temperature is ALWAYS the active −11°C Engine temperature,
  * regardless of the selected serving profile. No future-engine behavior is faked.
  */
-import type { ProductCategory, ProductMode } from '@/engine';
-import type { PresetId } from '@/data/demoPresets';
+import type { ProductCategory, ProductMode, RecipeInput } from '@/engine';
+import { findPreset, type PresetId } from '@/data/demoPresets';
 import { ACTIVE_ENGINE } from '@/data/engines';
 import { findProductProfile, type ProductProfileId } from '@/data/productProfiles';
 import type { IntakeState } from './conversation';
@@ -52,4 +52,37 @@ export function intakeToRecipe(state: IntakeState): RecipeSeed | null {
     batchGrams: state.batchGrams,
     removeLineIds: profile.vegan ? VEGAN_DROP_LINE_IDS : [],
   };
+}
+
+/**
+ * Resolve a seed into the engine's `RecipeInput` (pure) — the SAME recipe the
+ * Pro handoff loads into the store, so demo hints describe what the user would
+ * actually unlock. Items come from the curated preset (minus vegan-dropped
+ * lines); goals mirror buildRecipeInput. Temperature stays on the −11°C Engine.
+ */
+export function seedToRecipeInput(seed: RecipeSeed): RecipeInput | null {
+  const preset = findPreset(seed.presetId);
+  if (!preset) return null;
+  const items = preset.items
+    .filter((item) => !seed.removeLineIds.includes(item.id))
+    .map((item) => ({ ...item }));
+  return {
+    items,
+    mode: seed.mode,
+    category: seed.category,
+    target_temperature_c: seed.temperatureC,
+    target_batch_grams: seed.batchGrams,
+    machine_capacity_grams: null,
+    goals: {
+      flavor_intensity: preset.flavor_intensity,
+      cost_priority: preset.cost_priority,
+    },
+  };
+}
+
+/** Convenience: a completed intake → the engine `RecipeInput` (or null if no
+ * product type chosen yet). Used by the redacted demo hints (6A.2). */
+export function intakeToRecipeInput(state: IntakeState): RecipeInput | null {
+  const seed = intakeToRecipe(state);
+  return seed ? seedToRecipeInput(seed) : null;
 }

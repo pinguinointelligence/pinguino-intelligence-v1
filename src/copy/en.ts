@@ -129,6 +129,30 @@ export const copy = {
     ],
     demoNote: 'This is the approach. Exact grams, scaling and corrections are part of PI Pro.',
     unlockCta: 'Unlock PI Pro for the exact recipe',
+    hintsLabel: 'What the −11°C Engine sees',
+    balanced: 'Already balanced on the −11°C Engine — the hero leads.',
+    areas: {
+      sweetness: 'Sweetness',
+      freezing_stability: 'Freezing stability',
+      texture: 'Texture & body',
+      alcohol: 'Alcohol',
+      main_ingredient: 'Main ingredient',
+      profile_fit: 'Profile fit',
+    },
+    directions: {
+      improve: 'Improve',
+      rebalance: 'Rebalance',
+      protect: 'Protect',
+      reduce_risk: 'Reduce risk',
+    },
+    confidence: { high: 'High', medium: 'Medium', low: 'Low', tradeoff: 'Trade-off' },
+    productHints: {
+      gelato: ['Dairy base — we balance fat, lactose and protein for a creamy body.'],
+      sorbet: ['The fruit stays the hero.', 'We balance water and sugar for clean scoopability.'],
+      granita: ['Kept intentionally icy and crystalline — not creamy.'],
+      vegan: ['No animal-derived ingredients — plant-based body and balance.'],
+      protein: ['Higher protein lifted while we protect the texture.'],
+    },
   },
   /** Product directions (recipe profiles, not engines). */
   productTypes: {
