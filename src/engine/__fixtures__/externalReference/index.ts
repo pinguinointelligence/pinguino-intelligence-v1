@@ -5,10 +5,10 @@
  * authority for changing coefficients, target ranges, or the NPAC normalization
  * basis — via config changes + CONFIG_VERSION bump only.
  *
- * EXCEPTION: the first verified reference recipe is ACTIVE and exported
- * separately as `externalReferenceMilkBase` (see ./milk-base). It is kept OUT of
+ * EXCEPTION: the verified reference recipes that are ACTIVE are exported
+ * separately (see ./milk-base and ./raspberry-premium). They are kept OUT of
  * `EXTERNAL_REFERENCE_FIXTURES` so that list stays the 11 not-yet-supplied
- * placeholders; it powers the report-only calibration comparison.
+ * placeholders; they power the report-only calibration comparisons.
  */
 import type { CalibrationFixture } from '../schema';
 import { alcoholJimBeam } from './alcohol-jim-beam';
@@ -38,3 +38,4 @@ export const EXTERNAL_REFERENCE_FIXTURES: readonly CalibrationFixture[] = [
 ];
 
 export { externalReferenceMilkBase } from './milk-base';
+export { externalReferenceRaspberryPremium } from './raspberry-premium';
