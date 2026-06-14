@@ -84,8 +84,71 @@ export const copy = {
       },
     ],
   },
+  /** AI-first Home (Step 6A) — the clean white first screen. */
+  home: {
+    eyebrow: 'PINGÜINO Intelligence',
+    prompt: 'What are we making today?',
+    placeholder: 'Describe a flavor idea…',
+    voiceHint: 'Voice coming soon',
+    submit: 'Continue',
+    restart: 'Start over',
+  },
+  /** Top-left hamburger menu. */
+  menu: {
+    title: 'PINGÜINO',
+    newRecipe: 'New',
+    advancedStudio: 'Advanced Studio',
+    soon: 'Soon',
+    items: {
+      myRecipes: 'My Recipes',
+      production: 'Production',
+      saved: 'Saved',
+    },
+    activeEngine: 'Active engine',
+  },
+  /** Guided conversation copy. */
+  chat: {
+    productQuestion: 'What kind of product is this?',
+    servingQuestion: 'Where will it be served?',
+    servingPreviewNote: 'Preview — calculations currently use the −11°C Engine.',
+    batchQuestion: 'What batch size?',
+    batchDefault: 'Keep 1000 g',
+    batchScale: 'Scale it',
+    batchUnit: 'g',
+    summaryEyebrow: 'Demo preview',
+    heroLabel: 'Hero flavor',
+    heroFallback: 'your idea',
+    productLabel: 'Product',
+    servingLabel: 'Serving',
+    batchLabel: 'Batch',
+    processLabel: 'How PINGÜINO builds it',
+    process: [
+      'Choose the base for this product direction.',
+      'Balance sweetness and freezing stability on the −11°C Engine.',
+      'Protect the hero flavor — rebalance everything around it.',
+    ],
+    demoNote: 'This is the approach. Exact grams, scaling and corrections are part of PI Pro.',
+    unlockCta: 'Unlock PI Pro for the exact recipe',
+  },
+  /** Product directions (recipe profiles, not engines). */
+  productTypes: {
+    gelato: { label: 'Gelato', tagline: 'Dairy base — classic and creamy.' },
+    sorbet: { label: 'Sorbet', tagline: 'Non-dairy — the fruit is the hero.' },
+    granita: { label: 'Granita', tagline: 'Intentionally icy and crystalline.' },
+    vegan: { label: 'Vegan', tagline: 'No animal-derived ingredients.' },
+    protein: { label: 'Protein', tagline: 'Higher protein, texture preserved.' },
+  },
+  /** Serving / production profiles (preferences, not engines). */
+  servingProfiles: {
+    fresh: { label: 'Fresh' },
+    'display-minus-11': { label: 'Display −11°C' },
+    'display-minus-12': { label: 'Display −12°C' },
+    'display-minus-13': { label: 'Display −13°C' },
+    'storage-minus-18': { label: 'Storage / Retail −18°C' },
+  },
   studio: {
-    eyebrow: 'PI Studio',
+    eyebrow: 'Advanced Studio',
+    engineTag: '−11°C Engine',
     back: 'Back to landing',
     presets: {
       label: 'Demo scenarios',

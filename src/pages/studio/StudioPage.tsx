@@ -66,7 +66,9 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
       <main className="mx-auto max-w-6xl px-6 pt-6 pb-24">
         <div className="flex flex-col gap-5 border-b border-ink/5 pb-6">
           <div className="flex flex-col gap-2">
-            <SectionLabel>{studio.eyebrow}</SectionLabel>
+            <SectionLabel>
+              {studio.eyebrow} · {studio.engineTag}
+            </SectionLabel>
             <StudioSummary
               mode={mode}
               category={category}

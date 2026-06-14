@@ -15,7 +15,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = resolve(import.meta.dirname, '..');
-const SCAN_DIRS = ['features', 'pages/studio', 'stores', 'access', 'data', 'lib'];
+const SCAN_DIRS = ['features', 'pages/studio', 'pages/home', 'stores', 'access', 'data', 'lib'];
 
 function scanFiles(): string[] {
   const files: string[] = [];
@@ -74,6 +74,14 @@ describe('studio boundary guard', () => {
     for (const file of FILES) {
       const text = readFileSync(file, 'utf8');
       expect(/\b(supabase|openai|stripe)\b/i.test(text), file).toBe(false);
+    }
+  });
+
+  it('never uses the banned term "Mini Engine" (UI source + copy)', () => {
+    const copyFile = join(SRC, 'copy', 'en.ts');
+    for (const file of [...FILES, copyFile]) {
+      const text = readFileSync(file, 'utf8');
+      expect(/mini\s*engine/i.test(text), file).toBe(false);
     }
   });
 
