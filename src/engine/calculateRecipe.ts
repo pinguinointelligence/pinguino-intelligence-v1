@@ -114,10 +114,14 @@ export function calculateRecipe(input: RecipeInput): RecipeResult {
   const { items, total_batch_g, totals, percentages, sugar } = computeComposition(input.items);
   const hasMass = total_batch_g > 0;
 
-  // 6–8: POD, PAC, NPAC (canonical per_total_mass normalization)
+  // 6–8: POD, PAC, NPAC. NPAC uses the canonical config basis (per_water_mass);
+  // we pass the already-computed water_g that the per_water branch divides by
+  // (per_total_mass ignores it, so this is safe under either basis).
   const pod_points = hasMass ? computeRecipePod(items, total_batch_g) : null;
   const pac_points = hasMass ? computeRecipePac(items, total_batch_g) : null;
-  const npac_points = hasMass ? computeRecipeNpac(items, total_batch_g) : null;
+  const npac_points = hasMass
+    ? computeRecipeNpac(items, total_batch_g, { water_g: totals.water_g })
+    : null;
 
   // 9: ice fraction (category- and temperature-aware)
   const ice_fraction_percent = hasMass

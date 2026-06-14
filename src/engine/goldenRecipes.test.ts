@@ -273,7 +273,10 @@ describe('external calibration protocol', () => {
     }));
     const { items: effective, total_batch_g, totals } = computeComposition(items);
     const enginePod = computeRecipePod(effective, total_batch_g);
-    const engineNpacTotal = computeRecipeNpac(effective, total_batch_g);
+    // name both bases explicitly — the config default is now per_water_mass
+    const engineNpacTotal = computeRecipeNpac(effective, total_batch_g, {
+      normalization: 'per_total_mass',
+    });
     const engineNpacWater = computeRecipeNpac(effective, total_batch_g, {
       normalization: 'per_water_mass',
       water_g: totals.water_g,

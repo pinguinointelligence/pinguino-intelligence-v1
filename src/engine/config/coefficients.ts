@@ -50,10 +50,13 @@ export const NPAC_COEFFICIENTS: NpacCoefficients = {
   salt: 11.7,
 };
 
-/** Spec §8 calibration assumptions box: `per_total_mass` is and remains the
- * canonical default until external reference fixtures are entered and verified;
- * `per_water_mass` is documented strictly as a candidate calibration mode. */
-export const NPAC_NORMALIZATION: NpacNormalization = 'per_total_mass';
+/** Spec §8 normalization basis — EXTERNALLY CONFIRMED (CONFIG_VERSION 0.5.0).
+ * `per_water_mass` is the canonical basis: two verified external reference
+ * fixtures (milk base −11C and raspberry premium −11C) each reproduce the
+ * reference NPAC exactly per water mass (40.74 and 41.15) while per_total_mass
+ * is far off on both. `per_total_mass` remains available as the explicit
+ * alternative (passed via NpacOptions.normalization). */
+export const NPAC_NORMALIZATION: NpacNormalization = 'per_water_mass';
 
 /**
  * DE → (pod, pac) anchors for glucose syrups known only by DE value (spec §8).

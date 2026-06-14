@@ -5,7 +5,7 @@
  * (4C — effective grams, component totals, percentages, sugar breakdown),
  * POD (4D — sugar-type sweetness with the stored-value-first rule) and
  * PAC/NPAC (4E — freezing power with alcohol, salt and syrup DE handling;
- * per_total_mass stays the canonical normalization default), ice fraction
+ * per_water_mass is the externally-confirmed canonical basis, CONFIG 0.5.0), ice fraction
  * (4F — category-aware anchor estimation from NPAC + target temperature) and
  * statuses (4G — target-band classification into PI indicator statuses),
  * assembled by calculateRecipe (4H — the spec §12/§18 entry point) and

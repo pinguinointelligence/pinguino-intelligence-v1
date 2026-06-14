@@ -141,7 +141,12 @@ export function runCalibrationComparison(
   const { items: effectiveItems, total_batch_g, totals, percentages } = computeComposition(items);
   const hasMass = total_batch_g > 0;
   const pod = hasMass ? computeRecipePod(effectiveItems, total_batch_g) : null;
-  const npacTotal = hasMass ? computeRecipeNpac(effectiveItems, total_batch_g) : null;
+  // Report BOTH bases EXPLICITLY so the comparison is independent of the config
+  // default (which is now per_water_mass): per_total_mass must be named outright,
+  // otherwise it would inherit the default + no water_g → 0 and misreport.
+  const npacTotal = hasMass
+    ? computeRecipeNpac(effectiveItems, total_batch_g, { normalization: 'per_total_mass' })
+    : null;
   const npacWater = hasMass
     ? computeRecipeNpac(effectiveItems, total_batch_g, {
         normalization: 'per_water_mass',

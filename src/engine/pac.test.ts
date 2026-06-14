@@ -247,24 +247,27 @@ describe('recipe PAC/NPAC and normalization basis', () => {
     expect(computeRecipePac(items, total_batch_g)).toBeCloseTo(23.683, 6);
   });
 
-  it('per_total_mass is the default normalization (config canonical)', () => {
-    expect(NPAC_NORMALIZATION).toBe('per_total_mass');
-    const { items, total_batch_g } = computeComposition(APPENDIX_A_ITEMS);
-    // (130×1.0 + 27.6×1.9 + 54.39×1.0 + 1.15×11.7) / 1000 × 100 = 25.0285
-    expect(computeRecipeNpac(items, total_batch_g)).toBeCloseTo(25.0285, 6);
+  it('per_water_mass is the canonical default (externally confirmed, CONFIG 0.5.0)', () => {
+    expect(NPAC_NORMALIZATION).toBe('per_water_mass');
+    const { items, total_batch_g, totals } = computeComposition(APPENDIX_A_ITEMS);
+    // canonical default now divides by water mass — the pipeline supplies water_g.
+    // 25.0285 (point-grams/total) × (total / water) = per-water basis ≈ 37.52
+    expect(
+      computeRecipeNpac(items, total_batch_g, { water_g: totals.water_g }),
+    ).toBeCloseTo(37.52, 2);
   });
 
-  it('per_water_mass exists only as an explicitly-requested candidate mode', () => {
+  it('per_total_mass remains available as the explicit alternative basis', () => {
     const { items, total_batch_g, totals } = computeComposition(APPENDIX_A_ITEMS);
-    const canonical = computeRecipeNpac(items, total_batch_g);
-    const candidate = computeRecipeNpac(items, total_batch_g, {
-      normalization: 'per_water_mass',
-      water_g: totals.water_g,
+    const canonicalWater = computeRecipeNpac(items, total_batch_g, { water_g: totals.water_g });
+    const alternativeTotal = computeRecipeNpac(items, total_batch_g, {
+      normalization: 'per_total_mass',
     });
-    // arithmetic record only — no conclusion on which basis is correct (spec §8)
-    expect(candidate).toBeCloseTo(canonical * (total_batch_g / totals.water_g), 9);
-    expect(candidate).toBeGreaterThan(canonical);
-    expect(candidate).toBeCloseTo(37.52, 2);
+    // (130×1.0 + 27.6×1.9 + 54.39×1.0 + 1.15×11.7) / 1000 × 100 = 25.0285 (per total mass)
+    expect(alternativeTotal).toBeCloseTo(25.0285, 6);
+    // the two bases relate by the total/water ratio; water basis reads higher
+    expect(canonicalWater).toBeCloseTo(alternativeTotal * (total_batch_g / totals.water_g), 9);
+    expect(canonicalWater).toBeGreaterThan(alternativeTotal);
   });
 });
 
@@ -310,7 +313,10 @@ describe('safety', () => {
   it('is deterministic — same input gives same output', () => {
     const { items, total_batch_g, totals } = computeComposition(APPENDIX_A_ITEMS);
     expect(computeRecipePac(items, total_batch_g)).toBe(computeRecipePac(items, total_batch_g));
-    expect(computeRecipeNpac(items, total_batch_g)).toBe(computeRecipeNpac(items, total_batch_g));
+    // canonical default basis (per_water) — supply water_g for a non-trivial value
+    expect(computeRecipeNpac(items, total_batch_g, { water_g: totals.water_g })).toBe(
+      computeRecipeNpac(items, total_batch_g, { water_g: totals.water_g }),
+    );
     expect(
       computeRecipeNpac(items, total_batch_g, {
         normalization: 'per_water_mass',

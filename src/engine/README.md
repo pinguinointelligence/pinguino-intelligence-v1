@@ -14,14 +14,21 @@ math, Golden Middle verification by re-running calculateRecipe, planning vs
 actual-batch contexts (physically added is never reduced), mode-dependent
 main-ingredient protection, machine-capacity limits, tradeoff/impossible
 diagnosis, and STRICT demo redaction at source (no grams, names or numbers in
-redacted objects). ENGINE_VERSION 0.4.0 + CONFIG_VERSION 0.4.0. The corrections
+redacted objects). ENGINE_VERSION 0.4.0 + CONFIG_VERSION 0.5.0. The corrections
 module is IO-free and portable for the Phase 5 `solve-corrections` Edge Function
 move (masterplan §10). A QA layer pins the behavior before UI wiring: 8 golden
 demo recipes with snapshot regression + solver QA (`__fixtures__/goldenRecipes.ts`,
 QA-only — never calibration truth) and the external reference activation protocol + runner
 (`__fixtures__/externalCalibrationFixtures.ts`) that answers the §8 normalization
-questions the day real data arrives. Remaining for the engine: real external reference
-calibration data (spec §16 — all 11 fixtures still `pending`); the spec §20
+questions the day real data arrives.
+
+**Calibration status (CONFIG 0.5.0):** the spec §8 NPAC normalization basis is
+now externally confirmed as **`per_water_mass`** — two active verified external
+reference fixtures (milk base −11C, raspberry premium −11C) each reproduce the
+reference NPAC per water mass, while `per_total_mass` is far off on both. The
+canonical config was switched accordingly (formulas unchanged). Still deferred:
+the `aerating_protein`/`protein_in_solids` fruit-protein refinement and ice-anchor
+calibration. The other 11 external reference fixtures remain `pending`; the spec §20
 checklist is otherwise complete.
 
 Rules: all coefficients live in `config/` (never inline); every result is stamped with

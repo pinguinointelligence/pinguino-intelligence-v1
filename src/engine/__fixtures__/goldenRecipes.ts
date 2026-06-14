@@ -1,12 +1,13 @@
 /**
  * GOLDEN QA RECIPES — engine stability / regression fixtures.
  *
- * QA fixtures pinned to CONFIG_VERSION 0.4.0 arithmetic — NOT verified
+ * QA fixtures pinned to CONFIG_VERSION 0.5.0 arithmetic — NOT verified
  * production recipes, NOT calibration data. Compositions are literature values
- * (confidence 85); expected behaviors record what the CURRENT uncalibrated
- * config computes (e.g. the chronic npac_low/ice_high of conventional milk
- * mixes). When external calibration changes the config, these expectations and
- * the snapshots are deliberately re-recorded under the new CONFIG_VERSION.
+ * (confidence 85); expected behaviors record what the CURRENT config computes.
+ * Under the per_water NPAC basis (0.5.0) conventional milk mixes now land in-band
+ * (the old per_total config showed chronic npac_low/ice_high). When external
+ * calibration changes the config, these expectations and the snapshots are
+ * deliberately re-recorded under the new CONFIG_VERSION.
  *
  * Calibration truth lives ONLY in __fixtures__/externalReference/ (all pending).
  */
@@ -165,8 +166,9 @@ export const GOLDEN_RECIPES: readonly GoldenRecipe[] = [
     description: 'Appendix-A milk base — the canonical arithmetic reference.',
     input: input(milkBaseItems()),
     expected: {
-      violation_reasons: ['ice_fraction_high', 'npac_low'], // known uncalibrated outcome
-      statuses: { pod: 'ideal', npac: 'too_hard', ice_fraction: 'too_hard', water: 'ideal' },
+      // under the per_water NPAC basis (CONFIG 0.5.0) this canonical base is fully in-band
+      violation_reasons: [],
+      statuses: { pod: 'ideal', npac: 'ideal', ice_fraction: 'ideal', water: 'ideal' },
       warning_codes: [],
       category_fallback: false,
     },

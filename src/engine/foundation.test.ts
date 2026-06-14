@@ -70,8 +70,8 @@ describe('PAC / NPAC coefficients (spec §8)', () => {
     expect(NPAC_COEFFICIENTS.salt).toBeGreaterThan(0);
   });
 
-  it('defaults to per_total_mass normalization (spec §8 canonical default)', () => {
-    expect(NPAC_NORMALIZATION).toBe('per_total_mass');
+  it('defaults to per_water_mass normalization (externally confirmed, CONFIG 0.5.0)', () => {
+    expect(NPAC_NORMALIZATION).toBe('per_water_mass');
   });
 
   it('provides syrup DE anchors in ascending, monotonic order', () => {

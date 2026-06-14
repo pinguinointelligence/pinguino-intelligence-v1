@@ -186,7 +186,8 @@ describe('classifyRecipeIndicators — end-to-end (Appendix A arithmetic)', () =
   // statements, not quality claims (same caveat as the pac tests)
   it('classifies all 11 metrics in stable order from real pipeline values', () => {
     const { items, total_batch_g, totals, percentages } = computeComposition(APPENDIX_A_ITEMS);
-    const npac = computeRecipeNpac(items, total_batch_g);
+    // canonical per_water basis — mirror the pipeline (supply water_g)
+    const npac = computeRecipeNpac(items, total_batch_g, { water_g: totals.water_g });
     const inputs: StatusInputs = {
       pod: computeRecipePod(items, total_batch_g),
       npac,
@@ -222,8 +223,8 @@ describe('classifyRecipeIndicators — end-to-end (Appendix A arithmetic)', () =
 
     const byKey = Object.fromEntries(indicators.map((i) => [i.key, i]));
     expect(byKey['pod']!.status).toBe('ideal'); // 15.91 in 12–17
-    expect(byKey['npac']!.status).toBe('too_hard'); // 25.03 below 33 under current config
-    expect(byKey['ice_fraction']!.status).toBe('too_hard'); // consistent with low NPAC
+    expect(byKey['npac']!.status).toBe('ideal'); // 37.52 in 33–42 (per_water, CONFIG 0.5.0)
+    expect(byKey['ice_fraction']!.status).toBe('ideal'); // 49.73 in 45–54.5, consistent with in-band NPAC
     expect(byKey['lactose']!.status).toBe('ideal'); // 5.44 in 4–6
     expect(byKey['water']!.status).toBe('ideal'); // 66.70 in 57–70
     expect(byKey['alcohol']!.status).toBe('good'); // 0 at the band edge

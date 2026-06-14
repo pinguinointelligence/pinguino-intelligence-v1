@@ -6,11 +6,11 @@
  * PRINTS the full comparison, and asserts only:
  *   - every reported delta is null-or-finite (never NaN/Infinity), and
  *   - the VALIDATED facts hold: the engine reproduces the reference's component
- *     split (composition gate), POD, and — under the per_water_mass candidate —
+ *     split (composition gate), POD, and — under per_water_mass (now canonical) —
  *     the reference NPAC of 40.74.
  *
  * It deliberately does NOT assert within-tolerance for the intentionally
- * uncalibrated parts (canonical per_total_mass NPAC and the −11 °C ice anchors),
+ * uncalibrated parts (the per_total_mass alternative NPAC and the −11 °C ice anchors),
  * so the suite never turns red while those config decisions remain deferred to a
  * separate, approved step. The printed numbers are the deliverable.
  */

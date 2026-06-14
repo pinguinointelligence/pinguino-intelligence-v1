@@ -366,8 +366,8 @@ export interface NpacCoefficients extends SugarCoefficients {
   salt: number;
 }
 
-/** Spec §8 calibration assumptions box: per_total_mass is and remains the canonical
- * default; per_water_mass is a candidate calibration mode to be tested only. */
+/** Spec §8: per_water_mass is the externally-confirmed canonical basis (CONFIG
+ * 0.5.0); per_total_mass remains available as the explicit alternative. */
 export type NpacNormalization = 'per_total_mass' | 'per_water_mass';
 
 /** DE → (pod, pac) anchor for syrups known only by DE value (spec §8). Data only;

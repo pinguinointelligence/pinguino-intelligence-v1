@@ -11,14 +11,15 @@ const line = (id: string, planned: number, lock: LockType = 'unlocked'): RecipeI
   lock_type: lock,
 });
 
-// A conventional milk base — under the current config its NPAC lands too low,
-// so the solver always has something to propose (same as the golden milk base).
+// A deliberately over-sugared milk base — POD lands far too high (well above the
+// 12–17 band), so the solver always has a reduction to propose. (A balanced milk
+// base is now in-band under the per_water NPAC basis, CONFIG 0.5.0.)
 const milkBase: RecipeInput = {
   items: [
-    line('milk_3_5', 670),
+    line('milk_3_5', 600),
     line('cream_30', 130),
     line('smp', 35),
-    line('sucrose', 130),
+    line('sucrose', 250),
     line('dextrose', 30),
     line('tara_gum', 5),
   ],

@@ -108,9 +108,10 @@ describe('calculateRecipe — end-to-end (spec §12/§18)', () => {
     expect(result.percentages.water_percent).toBeCloseTo(66.7045, 6);
     expect(result.pod_points).toBeCloseTo(15.91264, 6);
     expect(result.pac_points).toBeCloseTo(23.683, 6);
-    expect(result.npac_points).toBeCloseTo(25.0285, 6);
-    // honest extrapolated value under the CURRENT uncalibrated config
-    expect(result.ice_fraction_percent).toBeCloseTo(62.91, 2);
+    // NPAC on the canonical per_water_mass basis (CONFIG 0.5.0)
+    expect(result.npac_points).toBeCloseTo(37.5215, 4);
+    // ice from the per_water NPAC; the −11 °C anchor itself is still calibration-pending
+    expect(result.ice_fraction_percent).toBeCloseTo(49.73, 2);
     expect(result.indicators).toHaveLength(11);
   });
 
@@ -160,10 +161,13 @@ describe('calculateRecipe — end-to-end (spec §12/§18)', () => {
   it('matches the individually-tested stage functions exactly (pure assembly)', () => {
     const input = appendixInput();
     const result = calculateRecipe(input);
-    const { items, total_batch_g } = computeComposition(input.items);
+    const { items, total_batch_g, totals } = computeComposition(input.items);
     expect(result.pod_points).toBe(computeRecipePod(items, total_batch_g));
     expect(result.pac_points).toBe(computeRecipePac(items, total_batch_g));
-    expect(result.npac_points).toBe(computeRecipeNpac(items, total_batch_g));
+    // NPAC uses the canonical per_water basis — mirror the pipeline's water_g call
+    expect(result.npac_points).toBe(
+      computeRecipeNpac(items, total_batch_g, { water_g: totals.water_g }),
+    );
     expect(result.ice_fraction_percent).toBe(
       estimateIceFraction({
         npac: result.npac_points,
@@ -227,8 +231,8 @@ describe('separation guarantees', () => {
     expect(result.percentages.alcohol_percent).toBeCloseTo(4, 9);
     expect(result.totals.water_g).toBeCloseTo(960, 9); // 60 + 900 — alcohol not included
     expect(result.totals.solids_g).toBe(0);
-    // NPAC includes the alcohol term (40 g × 7.4)
-    expect(result.npac_points).toBeCloseTo((40 * 7.4) / 1000 * 100, 6);
+    // NPAC includes the alcohol term (40 g × 7.4), normalized per water mass (canonical)
+    expect(result.npac_points).toBeCloseTo((40 * 7.4) / result.totals.water_g * 100, 6);
     expect(result.pac_points).toBe(0); // alcohol is not part of the PAC sugar spectrum
   });
 });
@@ -240,7 +244,7 @@ describe('classified indicators', () => {
     const result = calculateRecipe(appendixInput());
     const byKey = Object.fromEntries(result.indicators.map((i) => [i.key, i]));
     expect(byKey['pod']!.status).toBe('ideal'); // 15.91 in 12–17
-    expect(byKey['npac']!.status).toBe('too_hard'); // 25.03 under current config
+    expect(byKey['npac']!.status).toBe('ideal'); // 37.52 in 33–42 (per_water, CONFIG 0.5.0)
     expect(byKey['lactose']!.status).toBe('ideal');
     expect(byKey['water']!.status).toBe('ideal');
     expect(byKey['pod']!.band_status).toBe('seeded');

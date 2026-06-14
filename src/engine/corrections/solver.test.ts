@@ -182,12 +182,13 @@ describe('violation-specific suggestions', () => {
   });
 
   it('NPAC too low suggests a dextrose/glucose-type correction', () => {
+    // low-sugar milk base — under the per_water basis (CONFIG 0.5.0) its NPAC
+    // lands below the 33–42 band, so focusing on npac proposes a high-PAC add.
     const base = mkInput([
       item('milk', MILK, 670),
       item('cream', CREAM35, 130),
-      item('smp', SMP, 35),
-      item('sucrose', SUCROSE, 130),
-      item('dextrose', DEXTROSE, 30),
+      item('smp', SMP, 45),
+      item('sucrose', SUCROSE, 120),
       item('tara', TARA, 5),
     ]);
     const proposals = pro(
@@ -216,14 +217,16 @@ describe('violation-specific suggestions', () => {
     }
   });
 
-  it('fat too low suggests a cream-type correction (high confidence here)', () => {
+  it('fat too low suggests a cream-type correction', () => {
     const proposals = pro(
       proposeCorrections({ input: fatLowInput(), context: 'planning', redact: false, focus: ['fat'] }),
     );
     const first = proposals[0]!;
     expect(first.kind).toBe('correction');
     expect(first.actions[0]!.ingredient_id).toBe('cream_30');
-    expect(first.confidence).toBe('high'); // every violation resolved by this fix
+    // medium, not high: under the per_water basis (CONFIG 0.5.0) this recipe also
+    // runs npac/pod high, which the cream fix does not resolve on its own.
+    expect(first.confidence).toBe('medium');
   });
 
   it('solids too low suggests skimmed milk powder or inulin', () => {

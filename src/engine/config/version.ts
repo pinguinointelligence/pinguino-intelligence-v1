@@ -23,9 +23,12 @@
  * - 0.4.0 — scoring domain added (config/scoring.ts: indicator weights, status
  *   scores, flavor slopes, cost anchors, stability headroom — all
  *   calibration-pending).
- *
- * The first calibration bump is expected when external calibration fixtures
- * (spec §16) are entered, verified and activated.
+ * - 0.5.0 — FIRST calibration bump: NPAC_NORMALIZATION switched from
+ *   per_total_mass to per_water_mass, externally confirmed by two active
+ *   reference fixtures (milk base −11C, raspberry premium −11C). The NPAC
+ *   formula is unchanged; the canonical basis (config value) changed.
+ *   ENGINE_VERSION stays 0.4.0 — no pipeline logic changed, the canonical
+ *   call now supplies the already-computed water_g the per_water branch needs.
  */
 export const ENGINE_VERSION = '0.4.0' as const;
-export const CONFIG_VERSION = '0.4.0' as const;
+export const CONFIG_VERSION = '0.5.0' as const;

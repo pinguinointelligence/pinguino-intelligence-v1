@@ -25,10 +25,11 @@
  * (coefficient 7.4 > every sugar). Salt uses the configured coefficient
  * (11.7, flagged CALIBRATION-SENSITIVE in config).
  *
- * Normalization (spec §8 box): `per_total_mass` is and remains the canonical
- * default until active external reference fixtures are entered and verified;
- * `per_water_mass` exists strictly as an explicitly-requested candidate
- * calibration mode. This module takes no position on which is correct.
+ * Normalization (spec §8): `per_water_mass` is the EXTERNALLY-CONFIRMED canonical
+ * basis (CONFIG_VERSION 0.5.0) — two verified external reference fixtures reproduce
+ * the reference NPAC per water mass. `per_total_mass` remains available as the
+ * explicit alternative. This module computes whichever basis is selected; it adds
+ * no policy — callers under per_water must supply `water_g`.
  *
  * All functions are pure, deterministic and never mutate their inputs.
  * No ice fraction here — that is a separate later stage (spec §9).
@@ -172,9 +173,9 @@ export function computeRecipePac(
 export interface NpacOptions {
   coefficients?: NpacCoefficients;
   anchors?: readonly SyrupDeAnchor[];
-  /** Defaults to the config canonical basis (`per_total_mass`). */
+  /** Defaults to the config canonical basis (`per_water_mass`, CONFIG 0.5.0). */
   normalization?: NpacNormalization;
-  /** Required only for the `per_water_mass` candidate mode. */
+  /** Required for the `per_water_mass` basis (the canonical default). */
   water_g?: number;
 }
 
@@ -182,11 +183,11 @@ export interface NpacOptions {
  * Recipe NPAC: `Σ ingredientNpacContribution / denominator × 100`.
  *
  * Denominator follows the normalization basis: the canonical default
- * `per_total_mass` divides by `totalBatchG` and never reads `water_g`;
- * the `per_water_mass` CANDIDATE calibration mode must be requested
- * explicitly and divides by `options.water_g`. Only active external reference fixtures
- * may decide the basis (spec §8) — nothing here pre-judges it.
- * Zero/empty/missing denominator → 0, never NaN or Infinity.
+ * `per_water_mass` (CONFIG 0.5.0) divides by `options.water_g`; the
+ * `per_total_mass` alternative divides by `totalBatchG` and never reads `water_g`.
+ * The basis was decided by two active external reference fixtures (spec §8).
+ * Zero/empty/missing denominator → 0, never NaN or Infinity (so a per_water call
+ * with no water_g safely yields 0 — callers must supply water_g).
  */
 export function computeRecipeNpac(
   items: readonly EffectiveRecipeItem[],

@@ -2,10 +2,10 @@
 
 exports[`golden recipes — snapshot regression > banana-classic: result snapshot is stable 1`] = `
 {
-  "config_version": "0.4.0",
+  "config_version": "0.5.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
-  "ice_fraction": 61.675,
+  "ice_fraction": 48.0646,
   "indicators": [
     {
       "band_status": "seeded",
@@ -18,14 +18,14 @@ exports[`golden recipes — snapshot regression > banana-classic: result snapsho
       "band_status": "seeded",
       "category_fallback": true,
       "key": "npac",
-      "status": "too_hard",
+      "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
       "category_fallback": true,
       "key": "ice_fraction",
-      "status": "too_hard",
+      "status": "ideal",
       "temperature_fallback": false,
     },
     {
@@ -85,7 +85,7 @@ exports[`golden recipes — snapshot regression > banana-classic: result snapsho
       "temperature_fallback": false,
     },
   ],
-  "npac": 26.2026,
+  "npac": 39.0967,
   "nutrition": {
     "alcohol_g": 0,
     "carbohydrate_g": 23.53,
@@ -117,8 +117,8 @@ exports[`golden recipes — snapshot regression > banana-classic: result snapsho
   "scores": {
     "cost": 100,
     "flavor": 70,
-    "overall": 75.31,
-    "technical": 64.53,
+    "overall": 86.33,
+    "technical": 92.08,
   },
   "total_batch_g": 1000,
   "warnings": [],
@@ -127,10 +127,10 @@ exports[`golden recipes — snapshot regression > banana-classic: result snapsho
 
 exports[`golden recipes — snapshot regression > chocolate-classic: result snapshot is stable 1`] = `
 {
-  "config_version": "0.4.0",
+  "config_version": "0.5.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
-  "ice_fraction": 59.1028,
+  "ice_fraction": 37.6492,
   "indicators": [
     {
       "band_status": "seeded",
@@ -143,14 +143,14 @@ exports[`golden recipes — snapshot regression > chocolate-classic: result snap
       "band_status": "seeded",
       "category_fallback": true,
       "key": "npac",
-      "status": "too_hard",
+      "status": "too_soft",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
       "category_fallback": true,
       "key": "ice_fraction",
-      "status": "too_hard",
+      "status": "too_soft",
       "temperature_fallback": false,
     },
     {
@@ -210,7 +210,7 @@ exports[`golden recipes — snapshot regression > chocolate-classic: result snap
       "temperature_fallback": false,
     },
   ],
-  "npac": 28.6395,
+  "npac": 48.9639,
   "nutrition": {
     "alcohol_g": 0,
     "carbohydrate_g": 25.47,
@@ -242,8 +242,8 @@ exports[`golden recipes — snapshot regression > chocolate-classic: result snap
   "scores": {
     "cost": 100,
     "flavor": 70,
-    "overall": 75.15,
-    "technical": 64.12,
+    "overall": 73.99,
+    "technical": 61.23,
   },
   "total_batch_g": 1000,
   "warnings": [],
@@ -252,10 +252,10 @@ exports[`golden recipes — snapshot regression > chocolate-classic: result snap
 
 exports[`golden recipes — snapshot regression > high-fruit-water: result snapshot is stable 1`] = `
 {
-  "config_version": "0.4.0",
+  "config_version": "0.5.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
-  "ice_fraction": 63.3688,
+  "ice_fraction": 53.9978,
   "indicators": [
     {
       "band_status": "seeded",
@@ -268,14 +268,14 @@ exports[`golden recipes — snapshot regression > high-fruit-water: result snaps
       "band_status": "seeded",
       "category_fallback": true,
       "key": "npac",
-      "status": "too_hard",
+      "status": "good",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
       "category_fallback": true,
       "key": "ice_fraction",
-      "status": "too_hard",
+      "status": "good",
       "temperature_fallback": false,
     },
     {
@@ -335,7 +335,7 @@ exports[`golden recipes — snapshot regression > high-fruit-water: result snaps
       "temperature_fallback": false,
     },
   ],
-  "npac": 24.598,
+  "npac": 33.4758,
   "nutrition": {
     "alcohol_g": 0,
     "carbohydrate_g": 23.93,
@@ -367,8 +367,8 @@ exports[`golden recipes — snapshot regression > high-fruit-water: result snaps
   "scores": {
     "cost": 100,
     "flavor": 70,
-    "overall": 58.65,
-    "technical": 28.65,
+    "overall": 70.7,
+    "technical": 52.99,
   },
   "total_batch_g": 1000,
   "warnings": [],
@@ -377,10 +377,10 @@ exports[`golden recipes — snapshot regression > high-fruit-water: result snaps
 
 exports[`golden recipes — snapshot regression > jim-beam-alcohol: result snapshot is stable 1`] = `
 {
-  "config_version": "0.4.0",
+  "config_version": "0.5.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
-  "ice_fraction": 41.4844,
+  "ice_fraction": 15.469,
   "indicators": [
     {
       "band_status": "seeded",
@@ -460,7 +460,7 @@ exports[`golden recipes — snapshot regression > jim-beam-alcohol: result snaps
       "temperature_fallback": false,
     },
   ],
-  "npac": 45.3306,
+  "npac": 69.9768,
   "nutrition": {
     "alcohol_g": 2.8,
     "carbohydrate_g": 21.26,
@@ -492,8 +492,8 @@ exports[`golden recipes — snapshot regression > jim-beam-alcohol: result snaps
   "scores": {
     "cost": 100,
     "flavor": 70,
-    "overall": 72.59,
-    "technical": 68.82,
+    "overall": 69.21,
+    "technical": 59.18,
   },
   "total_batch_g": 1000,
   "warnings": [
@@ -504,10 +504,10 @@ exports[`golden recipes — snapshot regression > jim-beam-alcohol: result snaps
 
 exports[`golden recipes — snapshot regression > milk-base-classic: result snapshot is stable 1`] = `
 {
-  "config_version": "0.4.0",
+  "config_version": "0.5.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
-  "ice_fraction": 62.9144,
+  "ice_fraction": 49.7274,
   "indicators": [
     {
       "band_status": "seeded",
@@ -520,14 +520,14 @@ exports[`golden recipes — snapshot regression > milk-base-classic: result snap
       "band_status": "seeded",
       "category_fallback": false,
       "key": "npac",
-      "status": "too_hard",
+      "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
       "category_fallback": false,
       "key": "ice_fraction",
-      "status": "too_hard",
+      "status": "ideal",
       "temperature_fallback": false,
     },
     {
@@ -587,7 +587,7 @@ exports[`golden recipes — snapshot regression > milk-base-classic: result snap
       "temperature_fallback": false,
     },
   ],
-  "npac": 25.0285,
+  "npac": 37.5215,
   "nutrition": {
     "alcohol_g": 0,
     "carbohydrate_g": 21.6,
@@ -619,8 +619,8 @@ exports[`golden recipes — snapshot regression > milk-base-classic: result snap
   "scores": {
     "cost": 100,
     "flavor": 70,
-    "overall": 76.79,
-    "technical": 68.23,
+    "overall": 88.33,
+    "technical": 97.08,
   },
   "total_batch_g": 1000,
   "warnings": [],
@@ -629,10 +629,10 @@ exports[`golden recipes — snapshot regression > milk-base-classic: result snap
 
 exports[`golden recipes — snapshot regression > over-sugared-rescue: result snapshot is stable 1`] = `
 {
-  "config_version": "0.4.0",
+  "config_version": "0.5.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
-  "ice_fraction": 35.1722,
+  "ice_fraction": 0,
   "indicators": [
     {
       "band_status": "seeded",
@@ -712,7 +712,7 @@ exports[`golden recipes — snapshot regression > over-sugared-rescue: result sn
       "temperature_fallback": false,
     },
   ],
-  "npac": 51.3106,
+  "npac": 95.9445,
   "nutrition": {
     "alcohol_g": 0,
     "carbohydrate_g": 37.21,
@@ -744,8 +744,8 @@ exports[`golden recipes — snapshot regression > over-sugared-rescue: result sn
   "scores": {
     "cost": 100,
     "flavor": 70,
-    "overall": 62.97,
-    "technical": 33.68,
+    "overall": 60.69,
+    "technical": 30.69,
   },
   "total_batch_g": 1240,
   "warnings": [
@@ -756,10 +756,10 @@ exports[`golden recipes — snapshot regression > over-sugared-rescue: result sn
 
 exports[`golden recipes — snapshot regression > pistachio-high-fat: result snapshot is stable 1`] = `
 {
-  "config_version": "0.4.0",
+  "config_version": "0.5.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
-  "ice_fraction": 61.5376,
+  "ice_fraction": 37.0838,
   "indicators": [
     {
       "band_status": "seeded",
@@ -772,14 +772,14 @@ exports[`golden recipes — snapshot regression > pistachio-high-fat: result sna
       "band_status": "seeded",
       "category_fallback": true,
       "key": "npac",
-      "status": "too_hard",
+      "status": "too_soft",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
       "category_fallback": true,
       "key": "ice_fraction",
-      "status": "too_hard",
+      "status": "too_soft",
       "temperature_fallback": false,
     },
     {
@@ -839,7 +839,7 @@ exports[`golden recipes — snapshot regression > pistachio-high-fat: result sna
       "temperature_fallback": false,
     },
   ],
-  "npac": 26.3328,
+  "npac": 49.4996,
   "nutrition": {
     "alcohol_g": 0,
     "carbohydrate_g": 25.62,
@@ -871,8 +871,8 @@ exports[`golden recipes — snapshot regression > pistachio-high-fat: result sna
   "scores": {
     "cost": 100,
     "flavor": 97.5,
-    "overall": 66.38,
-    "technical": 36.38,
+    "overall": 65.45,
+    "technical": 35.45,
   },
   "total_batch_g": 1000,
   "warnings": [],
@@ -881,10 +881,10 @@ exports[`golden recipes — snapshot regression > pistachio-high-fat: result sna
 
 exports[`golden recipes — snapshot regression > raspberry-premium: result snapshot is stable 1`] = `
 {
-  "config_version": "0.4.0",
+  "config_version": "0.5.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
-  "ice_fraction": 62.731,
+  "ice_fraction": 50.5216,
   "indicators": [
     {
       "band_status": "seeded",
@@ -897,14 +897,14 @@ exports[`golden recipes — snapshot regression > raspberry-premium: result snap
       "band_status": "seeded",
       "category_fallback": true,
       "key": "npac",
-      "status": "too_hard",
+      "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
       "category_fallback": true,
       "key": "ice_fraction",
-      "status": "too_hard",
+      "status": "ideal",
       "temperature_fallback": false,
     },
     {
@@ -964,7 +964,7 @@ exports[`golden recipes — snapshot regression > raspberry-premium: result snap
       "temperature_fallback": false,
     },
   ],
-  "npac": 25.2022,
+  "npac": 36.769,
   "nutrition": {
     "alcohol_g": 0,
     "carbohydrate_g": 22.62,
@@ -996,8 +996,8 @@ exports[`golden recipes — snapshot regression > raspberry-premium: result snap
   "scores": {
     "cost": 100,
     "flavor": 100,
-    "overall": 83.91,
-    "technical": 59.77,
+    "overall": 95.37,
+    "technical": 88.44,
   },
   "total_batch_g": 1000,
   "warnings": [],

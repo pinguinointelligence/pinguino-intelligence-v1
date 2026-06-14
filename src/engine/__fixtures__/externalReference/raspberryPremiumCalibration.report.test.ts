@@ -6,7 +6,7 @@
  * fixture, PRINTS the full comparison, and asserts:
  *   - every reported delta is null-or-finite (never NaN/Infinity);
  *   - the VALIDATED facts hold: water/total_solids/fat/lactose/sandiness, POD, and
- *     — under the per_water_mass candidate — the reference NPAC of 41.15, which
+ *     — under per_water_mass (now canonical) — the reference NPAC of 41.15, which
  *     CONFIRMS the milk-base finding on a structurally different fruit recipe;
  *   - the DOCUMENTED GAP: the engine's aerating_protein / protein_in_solids
  *     OVERSTATE vs the reference because the reference counts dairy/aerating
@@ -14,7 +14,7 @@
  *     refinement — surfaced here, not fixed.
  *
  * It does NOT assert within-tolerance for the intentionally uncalibrated parts
- * (canonical per_total_mass NPAC; the −11 °C ice anchors, which here also use the
+ * (the per_total_mass alternative NPAC; the −11 °C ice anchors, which here also use the
  * documented fruit_gelato→milk_gelato fallback), so the suite never turns red
  * while those config decisions remain deferred. The printed numbers are the deliverable.
  */
