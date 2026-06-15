@@ -154,6 +154,12 @@ export const copy = {
       updated: 'Updated',
     },
   },
+  /** PI Pro subscription / billing (Phase 2B.1 — checkout wired in a later slice). */
+  billing: {
+    proActive: 'PI Pro active',
+    upgrade: 'Upgrade to PI Pro',
+    comingSoon: 'Coming soon',
+  },
   /** Guided conversation copy. */
   chat: {
     productQuestion: 'What kind of product is this?',

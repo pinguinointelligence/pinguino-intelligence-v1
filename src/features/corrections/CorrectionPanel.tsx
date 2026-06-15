@@ -62,9 +62,13 @@ export function CorrectionPanel({
             <p className="flex-1 text-sm leading-snug text-stone-600">
               {copy.gate.prompts.exactAmount}
             </p>
-            <button type="button" className={buttonClasses('primary', 'sm')} onClick={onUpgrade}>
-              {copy.gate.unlockCta}
-            </button>
+            {onUpgrade ? (
+              <button type="button" className={buttonClasses('primary', 'sm')} onClick={onUpgrade}>
+                {copy.gate.unlockCta}
+              </button>
+            ) : (
+              <span className={chip}>{copy.billing.comingSoon}</span>
+            )}
           </div>
         </div>
       ) : (

@@ -6,6 +6,7 @@ import { ACTIVE_ENGINE } from '@/data/engines';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 
 const m = copy.menu;
 
@@ -23,6 +24,7 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
   const user = useAuthStore((state) => state.user);
   const signOut = useAuthStore((state) => state.signOut);
   const openAuthModal = useAuthModalStore((state) => state.open);
+  const subscriptionPlan = useSubscriptionStore((state) => state.plan);
 
   return (
     <>
@@ -85,20 +87,30 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
               {!authAvailable ? (
                 <p className="px-3 py-2 text-xs leading-relaxed text-stone-400">{m.authUnavailable}</p>
               ) : authStatus === 'authed' && user ? (
-                <div className="flex items-center justify-between gap-3 px-3 py-2">
-                  <span className="min-w-0 truncate text-sm text-ink" title={user.email ?? undefined}>
-                    {user.email ?? m.signedInAs}
-                  </span>
-                  <button
-                    type="button"
-                    className="shrink-0 text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
-                    onClick={() => {
-                      void signOut();
-                    }}
-                  >
-                    {m.signOut}
-                  </button>
-                </div>
+                <>
+                  <div className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="min-w-0 truncate text-sm text-ink" title={user.email ?? undefined}>
+                      {user.email ?? m.signedInAs}
+                    </span>
+                    <button
+                      type="button"
+                      className="shrink-0 text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
+                      onClick={() => {
+                        void signOut();
+                      }}
+                    >
+                      {m.signOut}
+                    </button>
+                  </div>
+                  {subscriptionPlan === 'pro' ? (
+                    <p className="px-3 pb-1 text-xs text-stone-500">{copy.billing.proActive}</p>
+                  ) : (
+                    <div className="flex items-center justify-between px-3 pb-1 text-sm text-stone-400">
+                      <span>{copy.billing.upgrade}</span>
+                      <span className={soonChip}>{copy.billing.comingSoon}</span>
+                    </div>
+                  )}
+                </>
               ) : (
                 <button
                   type="button"

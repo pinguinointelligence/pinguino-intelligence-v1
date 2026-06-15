@@ -1,37 +1,66 @@
 /**
- * Capability matrix — the single source of plan gating truth (masterplan §5).
+ * Capability matrix — the single source of gating truth (masterplan §5).
  *
- * Step 5A scope: `demo` is the default public session; `pro` is an INTERNAL
- * test/preview level only (no payment provider, no auth — those are Phase 4).
- * `exactCorrectionGrams` drives BOTH the correction-panel branch and the
- * solver `redact` flag, so they can never disagree.
+ * Phase 2B.1: access is driven by REAL subscription state (see useAccess):
+ *  - `demo` — anonymous public session (redacted; no save).
+ *  - `free` — signed in, no active subscription (redacted exact values, but may
+ *     save / use My Recipes).
+ *  - `pro`  — signed in with an active/grace subscription (exact values).
+ *
+ * `exactCorrectionGrams` drives BOTH the correction-panel branch and the solver
+ * `redact` flag, so they can never disagree.
  */
+
+/** Chip-level plan kept for the StatusChip + the DEV override (sessionStore). */
 export type Plan = 'demo' | 'pro';
 
-export interface StudioCapabilities {
-  /** Pro sees exact correction grams; demo gets redacted teasers only. */
+/** Real access tier derived from auth + subscription. */
+export type AccessTier = 'demo' | 'free' | 'pro';
+
+export interface Capabilities {
+  /** Pro: exact correction grams (redaction off). */
   exactCorrectionGrams: boolean;
-  /** Full ingredient database (Phase 2) — never in 5A. */
-  fullIngredientDatabase: boolean;
-  /** Recipe saving (Phase 2) — never in 5A. */
+  /** Pro: full scaled formula / exact recipe values. */
+  fullFormula: boolean;
+  /** Pro: full technical engine view (numeric PI / nutrition / scores). */
+  technicalView: boolean;
+  /** Signed-in (free + pro): save recipes. */
   saveRecipes: boolean;
-  /** Label / PDF export (Phase 4) — never in 5A. */
-  exportLabels: boolean;
+  /** Signed-in (free + pro): My Recipes. */
+  myRecipes: boolean;
+  /** Reserved — later phases (not implemented). */
+  productionMode: boolean;
+  rescueMode: boolean;
 }
 
-export const PLAN_CAPABILITIES: Record<Plan, StudioCapabilities> = {
+export const CAPABILITIES: Record<AccessTier, Capabilities> = {
   demo: {
     exactCorrectionGrams: false,
-    fullIngredientDatabase: false,
+    fullFormula: false,
+    technicalView: false,
     saveRecipes: false,
-    exportLabels: false,
+    myRecipes: false,
+    productionMode: false,
+    rescueMode: false,
+  },
+  free: {
+    exactCorrectionGrams: false,
+    fullFormula: false,
+    technicalView: false,
+    saveRecipes: true,
+    myRecipes: true,
+    productionMode: false,
+    rescueMode: false,
   },
   pro: {
     exactCorrectionGrams: true,
-    fullIngredientDatabase: false, // still not wired in 5A
-    saveRecipes: false,
-    exportLabels: false,
+    fullFormula: true,
+    technicalView: true,
+    saveRecipes: true,
+    myRecipes: true,
+    productionMode: false, // later phase
+    rescueMode: false, // later phase
   },
 };
 
-export const capabilitiesFor = (plan: Plan): StudioCapabilities => PLAN_CAPABILITIES[plan];
+export const capabilitiesFor = (tier: AccessTier): Capabilities => CAPABILITIES[tier];
