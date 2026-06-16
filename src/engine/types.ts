@@ -116,10 +116,17 @@ export interface EngineIngredient {
   category: IngredientCategory;
   composition: IngredientComponentProfile;
   /** Stored, verified-first values (spec §7–§8): when present, the engine uses
-   * these instead of deriving from the sugar breakdown. */
+   * these instead of deriving from the sugar breakdown. `pac_value` is the net
+   * freezing-power source of truth for both PAC and NPAC. */
   pod_value: number | null;
   pac_value: number | null;
-  npac_value: number | null;
+  /**
+   * @deprecated Ingredient-level NPAC is removed (v0.95 no-NPAC hotfix). The
+   * engine IGNORES this field — recipe-level NPAC is derived from `pac_value`.
+   * Kept optional only so legacy saved recipes / fixtures still type-check; do
+   * not add it back to new data.
+   */
+  npac_value?: number | null;
   /** Dextrose-equivalent for glucose syrups (spec §8). */
   de_value: number | null;
   /** Cost per kg — null = UNKNOWN (creates the incomplete cost state);

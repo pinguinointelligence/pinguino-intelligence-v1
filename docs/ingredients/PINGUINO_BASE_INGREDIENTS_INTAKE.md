@@ -40,10 +40,13 @@ Hermes must use the frozen schema exactly. Do not add, rename, reorder, or drop 
 - **`verified` ingredients may later be used by the engine.**
 - **`pending` / `draft` / `internet_data` / `needs_review`** (and `rejected`) ingredients are **NOT
   safe for automatic recipe generation** and must not be used by the engine.
-- **POD / PAC / NPAC from an external source may be stored** if available, but **must** carry a
+- **POD / PAC from an external source may be stored** if available, but **must** carry a
   `verification_source` and a `data_confidence_percent` (and ideally `source_url`).
+- **No ingredient-level NPAC (v0.95).** `pac_value` is the ingredient freezing-power source of
+  truth; recipe-level NPAC is calculated by the engine and is never stored on an ingredient. The
+  `npac_value` column has been removed — do not add it back, and never fill missing data with zero.
 - Set `approved_for_minus_11_engine = true` **only** when the engine-approval gate in the schema
-  is fully met (verified, confidence ≥ 90, core composition + sugar split present, POD/PAC/NPAC
+  is fully met (verified, confidence ≥ 90, core composition + sugar split present, POD/PAC
   present or derivable, source documented). When in doubt: leave it `false`.
 
 ## Scope

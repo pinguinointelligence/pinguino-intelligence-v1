@@ -1,7 +1,9 @@
 /// <reference types="node" />
 /**
- * The internally-confirmed PI Base Ingredients v0.94 dataset is the source of
- * truth for the import. It must stay schema-faithful and engine-mappable.
+ * The internally-confirmed PI Base Ingredients v0.95 (no-NPAC) dataset is the
+ * ACTIVE source of truth for the import. It must stay schema-faithful and
+ * engine-mappable, and must NOT carry an ingredient-level npac_value column.
+ * (The v0.94 CSV remains on disk for rollback but is no longer the active set.)
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -10,7 +12,13 @@ import { INGREDIENT_INTAKE_HEADERS } from './ingredientIntakeColumns';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const CSV = readFileSync(
-  join(REPO, 'docs', 'ingredients', 'validation', 'pinguino_base_ingredients_cleaned_v0_94.csv'),
+  join(
+    REPO,
+    'docs',
+    'ingredients',
+    'validation',
+    'pinguino_base_ingredients_cleaned_v0_95_no_npac.csv',
+  ),
   'utf8',
 );
 
@@ -44,15 +52,20 @@ const dataRows = parsed
   .filter((r) => !(r.length === 1 && r[0] === '') && r.some((c) => c !== ''));
 const col = (name: string) => headers.indexOf(name);
 
-describe('PI Base cleaned dataset v0.94', () => {
-  it('has exactly 542 rows and 63 columns', () => {
+describe('PI Base cleaned dataset v0.95 (no-NPAC)', () => {
+  it('has exactly 542 rows and 62 columns', () => {
     expect(dataRows.length).toBe(542);
-    expect(headers.length).toBe(63);
-    for (const row of dataRows) expect(row.length).toBe(63);
+    expect(headers.length).toBe(62);
+    for (const row of dataRows) expect(row.length).toBe(62);
   });
 
   it('headers still match the frozen Hermes schema', () => {
     expect(headers).toEqual([...INGREDIENT_INTAKE_HEADERS]);
+  });
+
+  it('has no ingredient-level npac_value column (v0.95 no-NPAC)', () => {
+    expect(headers).not.toContain('npac_value');
+    expect(col('pac_value')).toBeGreaterThanOrEqual(0); // pac_value is the freezing source of truth
   });
 
   it('every ingredient_id is unique', () => {

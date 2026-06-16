@@ -8,10 +8,12 @@
  * no inline coefficients.
  *
  * Per-ingredient precedence (documented, no double counting):
- *   1. Stored value first (spec §8): non-null `pac_value`/`npac_value` wins.
- *      Convention: per-100 g points, sucrose = 100 (mirrors `pod_value`).
- *      A stored `npac_value` is NET — it already covers alcohol/salt for that
- *      ingredient, so nothing is added on top. Data entry must store net values.
+ *   1. Stored value first (spec §8): a non-null `pac_value` wins for BOTH PAC and
+ *      NPAC. Convention: per-100 g points, sucrose = 100 (mirrors `pod_value`).
+ *      `pac_value` is the NET freezing-power source of truth — it already covers
+ *      alcohol/salt for that ingredient, so nothing is added on top. Ingredient-
+ *      level `npac_value` is NOT used (v0.95 no-NPAC hotfix); recipe-level NPAC is
+ *      derived by the engine, never stored on an ingredient.
  *   2. Syrup DE path: non-null `de_value` → the anchor-interpolated coefficient
  *      applied to the ingredient's SOLIDS grams. This replaces the typed
  *      sugar-breakdown part for that ingredient (validated by the
@@ -126,10 +128,15 @@ export function ingredientPacContribution(
 }
 
 /**
- * One ingredient's NPAC term in point-grams. Stored `npac_value` is net and
- * wins outright (no alcohol/salt added on top). Otherwise: the sugar-or-DE
- * part plus the net-depression terms — `alcohol_g × alcohol` (from
- * `alcohol_percent` only, spec §5) and `salt_g × salt` (calibration-sensitive).
+ * One ingredient's NPAC term in point-grams.
+ *
+ * The stored freezing-power source of truth is `pac_value` (net, sucrose = 100):
+ * a non-null `pac_value` wins outright (no alcohol/salt added on top — a stored
+ * value already accounts for them). Ingredient-level `npac_value` is NOT read
+ * (v0.95 no-NPAC hotfix): it was a false placeholder that, when 0, collapsed
+ * recipe NPAC. Otherwise: the sugar-or-DE part plus the net-depression terms —
+ * `alcohol_g × alcohol` (from `alcohol_percent` only, spec §5) and
+ * `salt_g × salt` (calibration-sensitive).
  */
 export function ingredientNpacContribution(
   item: EffectiveRecipeItem,
@@ -137,8 +144,8 @@ export function ingredientNpacContribution(
   anchors: readonly SyrupDeAnchor[] = SYRUP_DE_ANCHORS,
 ): number {
   const { ingredient, effective_grams } = item;
-  if (ingredient.npac_value !== null) {
-    return (effective_grams * ingredient.npac_value) / 100;
+  if (ingredient.pac_value !== null) {
+    return (effective_grams * ingredient.pac_value) / 100;
   }
   const c = ingredient.composition;
   const sugarOrDe =

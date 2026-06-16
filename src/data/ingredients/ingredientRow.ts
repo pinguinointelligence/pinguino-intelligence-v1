@@ -67,10 +67,11 @@ export interface IngredientRow {
   acidity_percent: number | null;
   brix: number | null;
   dry_matter_percent: number | null;
-  // engine values
+  // engine values — `pac_value` is the freezing-power source of truth.
+  // Ingredient-level `npac_value` is intentionally absent (v0.95 no-NPAC model):
+  // recipe-level NPAC is derived by the engine, never stored on an ingredient.
   pod_value: number | null;
   pac_value: number | null;
-  npac_value: number | null;
   de_value: number | null;
   sweetness_factor: number | null;
   freezing_factor: number | null;

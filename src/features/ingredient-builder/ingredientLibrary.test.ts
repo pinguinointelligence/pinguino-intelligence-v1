@@ -53,7 +53,6 @@ const sampleRow: IngredientRow = {
   dry_matter_percent: 12.5,
   pod_value: 4.8,
   pac_value: 4.8,
-  npac_value: 4.8,
   de_value: null,
   sweetness_factor: null,
   freezing_factor: null,

@@ -11,7 +11,7 @@
 import { supabase } from '@/lib/supabase/client';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 
-const TABLE = 'ingredients';
+const TABLE = 'ingredients_final_v0_95_no_npac';
 
 /** Active ingredients (RLS still scopes visibility to PI Pro members). */
 export async function listActiveIngredients(): Promise<IngredientRow[]> {

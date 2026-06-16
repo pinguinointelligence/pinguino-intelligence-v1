@@ -173,22 +173,33 @@ describe('stored values win over fallback', () => {
     );
   });
 
-  it('stored npac_value wins and alcohol/salt are NOT added again on top', () => {
+  it('stored pac_value wins for NPAC, and alcohol/salt are NOT added again on top', () => {
     const spirit = one(
       makeItem('spirit', { water_percent: 59, alcohol_percent: 40, salt_percent: 1 }, 100, {
-        npac_value: 250,
+        pac_value: 250,
       }),
     );
     // exactly the stored net value: 100 g × 250 / 100 — not 250 + 296 + 11.7
     expect(ingredientNpacContribution(spirit)).toBeCloseTo(250, 9);
   });
 
-  it('pac_value and npac_value apply independently', () => {
+  it('ignores a legacy ingredient-level npac_value (v0.95 no-NPAC)', () => {
+    // npac_value = 0 must NOT collapse the contribution; pac_value drives NPAC.
+    const legacy = one(
+      makeItem('legacy', { sugar_percent: 100, sucrose_percent: 100 }, 100, {
+        pac_value: 80,
+        npac_value: 0,
+      }),
+    );
+    expect(ingredientNpacContribution(legacy)).toBeCloseTo(80, 9); // pac_value used; npac_value=0 ignored
+  });
+
+  it('a stored pac_value drives both PAC and NPAC (single freezing source of truth)', () => {
     const mixed = one(
       makeItem('mixed', { sugar_percent: 100, sucrose_percent: 100 }, 100, { pac_value: 50 }),
     );
     expect(ingredientPacContribution(mixed)).toBeCloseTo(50, 9); // stored path
-    expect(ingredientNpacContribution(mixed)).toBeCloseTo(100, 9); // fallback path (npac null)
+    expect(ingredientNpacContribution(mixed)).toBeCloseTo(50, 9); // pac_value now drives NPAC too
   });
 });
 

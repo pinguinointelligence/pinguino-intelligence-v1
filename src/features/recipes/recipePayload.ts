@@ -98,7 +98,9 @@ const ingredient = z.looseObject({
   composition,
   pod_value: z.number().nullable(),
   pac_value: z.number().nullable(),
-  npac_value: z.number().nullable(),
+  // deprecated (v0.95 no-NPAC): optional so legacy saves with npac_value still
+  // load; the engine ignores ingredient-level NPAC.
+  npac_value: z.number().nullable().optional(),
   de_value: z.number().nullable(),
   cost_per_kg: z.number().nullable(),
   confidence_score: z.number(),

@@ -24,8 +24,11 @@ any import.
 7. **Trust is explicit.** Only `verification_status = verified` ingredients may later be used by
    the engine. `draft`, `internet_data`, `needs_review`, `rejected` (and any non-verified state)
    are **NOT** safe for automatic recipe generation.
-8. **External POD / PAC / NPAC may be stored** if available, but must carry a
+8. **External POD / PAC may be stored** if available, but must carry a
    `verification_source` and a `data_confidence_percent` (and ideally `source_url`).
+9. **No ingredient-level NPAC (v0.95).** `pac_value` is the ingredient freezing-power source of
+   truth; recipe-level NPAC is calculated by the engine, never stored on an ingredient. There is
+   no `npac_value` column — do not add it back, and never fill missing data with zero.
 
 ### How "missing" is stored, by type
 
@@ -59,7 +62,7 @@ any import.
 
 ---
 
-## Columns (63) — identity, approval & verification
+## Columns (62) — identity, approval & verification
 
 | key | type | required | default | allowed / notes |
 |---|---|---|---|---|
@@ -94,8 +97,7 @@ Blank = unknown; `0` = verified zero.
 | key | bound | notes |
 |---|---|---|
 | `pod_value` | ≥ 0 (**required**) | relative sweetening, sucrose = 100; may exceed 100 |
-| `pac_value` | ≥ 0 | relative anti-freezing, sucrose = 100; may exceed 100 |
-| `npac_value` | ≥ 0 | net anti-freezing |
+| `pac_value` | ≥ 0 | **freezing-power source of truth** — net anti-freezing, sucrose = 100; may exceed 100 |
 | `de_value` | 0–100 | dextrose equivalent (syrups) |
 | `sweetness_factor` | ≥ 0 | optional |
 | `freezing_factor` | ≥ 0 | optional |
@@ -103,7 +105,8 @@ Blank = unknown; `0` = verified zero.
 | `recommended_dosage_percent_min` | 0–100 | of total mix |
 | `recommended_dosage_percent_max` | 0–100 | of total mix |
 
-External POD/PAC/NPAC must include `verification_source` + `data_confidence_percent`.
+External POD/PAC must include `verification_source` + `data_confidence_percent`. There is no
+ingredient-level NPAC (v0.95) — recipe-level NPAC is derived by the engine from `pac_value`.
 
 ## Columns — nutrition / cost
 
@@ -141,7 +144,7 @@ External POD/PAC/NPAC must include `verification_source` + `data_confidence_perc
   (`water_percent`, `pod_value`, `approved_for_minus_11_engine`) must exist in every row, but their
   **value** may be blank/`null`/`false` while the ingredient is still draft/pending — they become
   mandatory **values** only at engine approval (below).
-- Numbers must respect their bounds (percent columns `0`–`100`; POD/PAC/NPAC `≥ 0`; `de_value` `0`–`100`).
+- Numbers must respect their bounds (percent columns `0`–`100`; POD/PAC `≥ 0`; `de_value` `0`–`100`).
 - Booleans are exactly `true`/`false`; `boolean_or_unknown` is `true`/`false`/`unknown`.
 - Enums must be a listed member.
 - Dates are `YYYY-MM-DD` or `null`.
@@ -158,7 +161,7 @@ and `verification_status` are present, **and** unknown numeric values are blank/
   `protein_percent`, `carbohydrate_percent`, `total_sugars_percent`, `salt_percent`, **and**
 - sugar breakdown present when relevant: `sucrose_percent`, `dextrose_percent`, `glucose_percent`,
   `fructose_percent`, `lactose_percent`, **and**
-- `pod_value` / `pac_value` / `npac_value` present or clearly derivable by the engine, **and**
+- `pod_value` / `pac_value` present or clearly derivable by the engine, **and**
 - source/proof documented (`verification_source` and/or `source_url` / `screenshot_reference`).
 
 ### Hermes must NOT approve for the −11°C Engine when

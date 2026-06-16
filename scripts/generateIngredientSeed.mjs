@@ -20,14 +20,17 @@ import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(SCRIPT_DIR, '..');
-const DATASET_VERSION = 'v0.94';
-const TABLE = 'public.ingredients';
+// Defaults reproduce the v0.94 seed; override via env for the v0.95 no-NPAC table.
+// Column emission is driven by the CSV headers, so a CSV without `npac_value`
+// simply never emits that column.
+const DATASET_VERSION = process.env.SEED_DATASET_VERSION ?? 'v0.94';
+const TABLE = process.env.SEED_TABLE ?? 'public.ingredients';
 
 const INPUT =
   process.argv[2] ??
   join(REPO, 'docs', 'ingredients', 'validation', `pinguino_base_ingredients_cleaned_v0_94.csv`);
 const OUT_DIR = join(REPO, 'supabase', 'seed');
-const OUT = join(OUT_DIR, `ingredients_${DATASET_VERSION.replace('.', '_')}.sql`);
+const OUT = join(OUT_DIR, process.env.SEED_OUT ?? `ingredients_${DATASET_VERSION.replace('.', '_')}.sql`);
 
 // ----------------------------------------------------- column type groups ----
 // Booleans, integer, dates; everything else numeric or text (lists below).

@@ -44,7 +44,6 @@ const baseRow: IngredientRow = {
   dry_matter_percent: null,
   pod_value: null,
   pac_value: null,
-  npac_value: null,
   de_value: null,
   sweetness_factor: null,
   freezing_factor: null,
@@ -95,7 +94,6 @@ describe('ingredientRowToEngineIngredient', () => {
         alcohol_percent: 11,
         pod_value: 22,
         pac_value: 104.161,
-        npac_value: 0,
         de_value: null,
         cost_per_kg: 14,
         vegan: 'false',
@@ -114,7 +112,7 @@ describe('ingredientRowToEngineIngredient', () => {
     // stored engine values preserved (verified zero stays 0; blank stays null)
     expect(eng.pod_value).toBe(22);
     expect(eng.pac_value).toBe(104.161);
-    expect(eng.npac_value).toBe(0);
+    expect(eng.npac_value).toBeUndefined(); // mapper does NOT emit npac_value (v0.95 no-NPAC)
     expect(eng.de_value).toBeNull();
     expect(eng.cost_per_kg).toBe(14);
     // provenance
@@ -137,7 +135,7 @@ describe('ingredientRowToEngineIngredient', () => {
     // nullable engine/cost values preserved as null
     expect(eng.pod_value).toBeNull();
     expect(eng.pac_value).toBeNull();
-    expect(eng.npac_value).toBeNull();
+    expect(eng.npac_value).toBeUndefined(); // never emitted (v0.95 no-NPAC)
     expect(eng.cost_per_kg).toBeNull();
     // null confidence → 0; non-verified status → false
     expect(eng.confidence_score).toBe(0);

@@ -10,8 +10,10 @@
  *    blank). The engine already treats an absent component as a 0 contribution.
  *  - `saturated_fat_percent` is OPTIONAL in the engine, so an unknown stays
  *    absent (never invented as 0).
- *  - `pod/pac/npac/de_value` and `cost_per_kg` are nullable in `EngineIngredient`
+ *  - `pod/pac/de_value` and `cost_per_kg` are nullable in `EngineIngredient`
  *    and are preserved verbatim (a stored 0 stays 0; unknown stays null).
+ *  - `npac_value` is NOT emitted (v0.95 no-NPAC): the engine derives recipe-level
+ *    NPAC from `pac_value`; an ingredient never carries its own NPAC.
  */
 import type { EngineIngredient, EngineIngredientFlags, IngredientComponentProfile } from '@/engine';
 import { mapDatasetCategory } from './categoryMapping';
@@ -60,7 +62,8 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
     composition,
     pod_value: row.pod_value,
     pac_value: row.pac_value,
-    npac_value: row.npac_value,
+    // npac_value intentionally NOT emitted (v0.95 no-NPAC): the engine derives
+    // recipe-level NPAC from pac_value; ingredient-level NPAC does not exist.
     de_value: row.de_value,
     cost_per_kg: row.cost_per_kg,
     confidence_score: row.data_confidence_percent ?? 0,

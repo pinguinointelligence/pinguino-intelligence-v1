@@ -22,6 +22,12 @@ describe('ingredient intake schema', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
+  it('has no ingredient-level npac_value column (v0.95 no-NPAC)', () => {
+    expect(findIntakeColumn('npac_value')).toBeUndefined();
+    expect(INGREDIENT_INTAKE_HEADERS).not.toContain('npac_value');
+    expect(INGREDIENT_INTAKE_HEADERS).toHaveLength(62);
+  });
+
   it('CSV template headers exactly match the TypeScript schema', () => {
     expect(firstLine('pinguino_base_ingredients_template.csv')).toEqual([
       ...INGREDIENT_INTAKE_HEADERS,

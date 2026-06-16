@@ -13,6 +13,11 @@
  *  - An ingredient profile is reusable data, NOT a recipe.
  *  - Only `verified` ingredients may later be used by the engine; draft /
  *    internet_data / needs_review / rejected are NOT safe for auto recipes.
+ *
+ * No-NPAC model (v0.95): ingredient-level `npac_value` was REMOVED. `pac_value`
+ * is the ingredient freezing-power source of truth; recipe-level NPAC is
+ * calculated by the engine and never stored on an ingredient. Do not add an
+ * `npac_value` column back, and never fill missing data with zero.
  */
 
 export type IntakeColumnType =
@@ -89,7 +94,7 @@ export const INGREDIENT_INTAKE_COLUMNS: readonly IngredientIntakeColumn[] = [
   { key: 'ingredient_category', label: 'Category', type: 'string', required: true, defaultValue: '', description: 'Primary category, e.g. sugar, dairy, fat, fruit, nut_paste, chocolate_cocoa, stabilizer, flavor, alcohol, water, egg, other.' },
   { key: 'ingredient_subcategory', label: 'Subcategory', type: 'string', required: false, defaultValue: '', description: 'Optional finer grouping. Blank if unknown.' },
   { key: 'approved_for_pinguino_base', label: 'Approved for PINGÜINO Base', type: 'boolean', required: false, defaultValue: false, allowedValues: BOOL, description: 'True only when reviewed and accepted into the PINGÜINO Base set.' },
-  { key: 'approved_for_minus_11_engine', label: 'Approved for −11°C Engine', type: 'boolean', required: true, defaultValue: false, allowedValues: BOOL, description: 'True only when verified, ≥90% confidence, core composition + sugar split present, POD/PAC/NPAC present or derivable, and source documented.' },
+  { key: 'approved_for_minus_11_engine', label: 'Approved for −11°C Engine', type: 'boolean', required: true, defaultValue: false, allowedValues: BOOL, description: 'True only when verified, ≥90% confidence, core composition + sugar split present, POD/PAC present or derivable, and source documented.' },
   { key: 'verification_status', label: 'Verification status', type: 'enum', required: true, defaultValue: 'draft', allowedValues: VERIFICATION_STATUSES, description: 'Trust level of the row. Only `verified` is engine-safe.' },
   { key: 'verification_source', label: 'Verification source', type: 'string', required: false, defaultValue: '', description: 'Where the data came from (label, supplier sheet, external reference, etc.). Blank if unknown.' },
   { key: 'verification_date', label: 'Verification date', type: 'iso_date_or_null', required: false, defaultValue: null, description: 'YYYY-MM-DD when last verified. Null if never verified.' },
@@ -122,8 +127,7 @@ export const INGREDIENT_INTAKE_COLUMNS: readonly IngredientIntakeColumn[] = [
 
   /* ── engine values ──────────────────────────────────────────────────────── */
   { key: 'pod_value', label: 'POD', type: 'number_or_null', required: true, defaultValue: null, min: 0, unit: 'relative, sucrose = 100', description: 'Relative sweetening power (sucrose = 100; may exceed 100). Store source + confidence when external. Blank = unknown.' },
-  { key: 'pac_value', label: 'PAC', type: 'number_or_null', required: false, defaultValue: null, min: 0, unit: 'relative, sucrose = 100', description: 'Anti-freezing power (sucrose = 100; may exceed 100). Blank = unknown.' },
-  { key: 'npac_value', label: 'NPAC', type: 'number_or_null', required: false, defaultValue: null, min: 0, unit: 'relative, sucrose = 100', description: 'Net anti-freezing power. Blank = unknown.' },
+  { key: 'pac_value', label: 'PAC', type: 'number_or_null', required: false, defaultValue: null, min: 0, unit: 'relative, sucrose = 100', description: 'Freezing-power source of truth (net anti-freezing, sucrose = 100; may exceed 100). Blank = unknown. Ingredient-level NPAC was REMOVED (v0.95) — recipe-level NPAC is derived by the engine; do not add npac_value back.' },
   { key: 'de_value', label: 'DE', type: 'number_or_null', required: false, defaultValue: null, min: 0, max: 100, description: 'Dextrose equivalent for syrups (0–100). Blank = unknown.' },
   { key: 'sweetness_factor', label: 'Sweetness factor', type: 'number_or_null', required: false, defaultValue: null, min: 0, description: 'Optional sweetness coefficient. Blank = unknown.' },
   { key: 'freezing_factor', label: 'Freezing factor', type: 'number_or_null', required: false, defaultValue: null, min: 0, description: 'Optional freezing coefficient. Blank = unknown.' },
