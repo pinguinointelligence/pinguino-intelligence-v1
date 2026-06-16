@@ -12,9 +12,10 @@ const b = copy.studio.builder;
 
 /**
  * The picker consumes a resolved ingredient library (PI Base for Pro, else the
- * demo catalog). It keeps the existing grouped-select + add flow and adds a
- * lightweight text filter; the add flow is unchanged: an EngineIngredient goes
- * to the recipe store, which the engine recomputes from.
+ * demo catalog). A premium search bar filters across name, internal name, id,
+ * brand, category and subcategory; results stay grouped by category. The add
+ * flow is unchanged: an EngineIngredient goes to the recipe store, which the
+ * engine recomputes from.
  */
 export function IngredientPicker({
   library,
@@ -27,8 +28,8 @@ export function IngredientPicker({
   const [selectedId, setSelectedId] = useState('');
 
   const filtered = useMemo(
-    () => filterIngredients(library.ingredients, query),
-    [library.ingredients, query],
+    () => filterIngredients(library.ingredients, query, library.searchIndex),
+    [library.ingredients, library.searchIndex, query],
   );
   const grouped = useMemo(() => groupIngredientsByCategory(filtered), [filtered]);
 
@@ -44,17 +45,38 @@ export function IngredientPicker({
   const effectiveId = filtered.some((i) => i.id === selectedId)
     ? selectedId
     : (filtered[0]?.id ?? '');
+  const count = filtered.length;
 
   return (
-    <div className="flex flex-col gap-2">
-      <input
-        type="search"
-        aria-label={b.searchLabel}
-        placeholder={b.searchPlaceholder}
-        className="rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none"
-        value={query}
-        onChange={(event) => setQuery(event.currentTarget.value)}
-      />
+    <div className="flex flex-col gap-2.5">
+      {/* Premium search bar */}
+      <div className="relative">
+        <svg
+          aria-hidden
+          viewBox="0 0 20 20"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+        >
+          <circle cx="9" cy="9" r="5.5" />
+          <line x1="13.2" y1="13.2" x2="17" y2="17" strokeLinecap="round" />
+        </svg>
+        <input
+          type="search"
+          aria-label={b.searchLabel}
+          placeholder={b.searchPlaceholder}
+          className="w-full rounded-md border border-ink/15 bg-paper py-2.5 pl-9 pr-3 text-sm transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none"
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+        />
+      </div>
+
+      {/* Result count — always visible */}
+      <p className="text-xs text-stone-500" aria-live="polite">
+        <span className="font-mono tabular-nums text-ink/70">{count.toLocaleString('en-US')}</span>{' '}
+        {count === 1 ? b.resultUnitOne : b.resultUnitMany} {b.resultFoundSuffix}
+      </p>
 
       {grouped.length === 0 ? (
         <p className="text-sm text-stone-500">{b.noMatches}</p>

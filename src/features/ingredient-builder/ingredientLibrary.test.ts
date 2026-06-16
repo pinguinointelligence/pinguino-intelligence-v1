@@ -16,12 +16,12 @@ const sampleRow: IngredientRow = {
   ingredient_id: 'PI-ING-000010',
   ingredient_name_internal: 'whole_milk_3_5',
   ingredient_name_display: 'Whole Milk 3.5%',
-  brand: '',
+  brand: 'Granarolo',
   supplier: '',
   country: '',
   ean_code: '',
   ingredient_category: 'dairy',
-  ingredient_subcategory: '',
+  ingredient_subcategory: 'fresh milk',
   approved_for_pinguino_base: true,
   approved_for_minus_11_engine: true,
   verification_status: 'verified',
@@ -82,6 +82,18 @@ const sampleRow: IngredientRow = {
   updated_at: '2026-06-16T00:00:00Z',
 };
 
+/** A second row whose RAW category ("chocolate") differs from its ENGINE
+ * category ("chocolate_cocoa"), to test both. */
+const chocolateRow: IngredientRow = {
+  ...sampleRow,
+  ingredient_id: 'PI-ING-000020',
+  ingredient_name_internal: 'dark_chocolate_70',
+  ingredient_name_display: 'Dark Chocolate 70%',
+  brand: 'Domori',
+  ingredient_category: 'chocolate',
+  ingredient_subcategory: 'dark 70',
+};
+
 describe('shouldFetchLibrary', () => {
   it('only enables the query for Pro users off the demo route', () => {
     expect(shouldFetchLibrary({ isPro: true, demo: false })).toBe(true);
@@ -92,14 +104,15 @@ describe('shouldFetchLibrary', () => {
 });
 
 describe('selectIngredientLibrary', () => {
-  it('uses DEMO_INGREDIENTS on the demo route even when Pro rows exist', () => {
+  it('uses the demo catalog on the demo route even when Pro rows exist', () => {
     const lib = selectIngredientLibrary({ demo: true, isPro: true, rows: [sampleRow], isError: false });
     expect(lib.source).toBe('demo');
     expect(lib.status).toBe('demo');
     expect(lib.ingredients).toBe(DEMO_INGREDIENTS);
+    expect(lib.searchIndex.size).toBe(DEMO_INGREDIENTS.length);
   });
 
-  it('uses DEMO_INGREDIENTS for free / anon (not Pro)', () => {
+  it('uses the demo catalog for free / anon (not Pro)', () => {
     const lib = selectIngredientLibrary({ demo: false, isPro: false, rows: undefined, isError: false });
     expect(lib.source).toBe('demo');
     expect(lib.ingredients).toBe(DEMO_INGREDIENTS);
@@ -109,7 +122,7 @@ describe('selectIngredientLibrary', () => {
     const lib = selectIngredientLibrary({ demo: false, isPro: true, rows: undefined, isError: false });
     expect(lib.status).toBe('loading');
     expect(lib.source).toBe('pi_base');
-    expect(lib.ingredients).toHaveLength(0); // not the demo list
+    expect(lib.ingredients).toHaveLength(0);
   });
 
   it('falls back to demo on fetch error', () => {
@@ -136,21 +149,57 @@ describe('selectIngredientLibrary', () => {
   });
 });
 
+describe('search index', () => {
+  const lib = selectIngredientLibrary({
+    demo: false,
+    isPro: true,
+    rows: [sampleRow, chocolateRow],
+    isError: false,
+  });
+
+  it('builds a rich haystack for PI Base rows (name/internal/id/brand/category/subcategory)', () => {
+    const hay = lib.searchIndex.get('PI-ING-000020')!;
+    expect(hay).toContain('dark chocolate 70%'); // display name
+    expect(hay).toContain('dark_chocolate_70'); // internal name
+    expect(hay).toContain('pi-ing-000020'); // id (lowercased)
+    expect(hay).toContain('domori'); // brand
+    expect(hay).toContain('chocolate'); // raw category
+    expect(hay).toContain('chocolate_cocoa'); // engine category
+    expect(hay).toContain('dark 70'); // subcategory
+  });
+
+  it('builds a demo index from name, id and category', () => {
+    const demoLib = selectIngredientLibrary({ demo: false, isPro: false, rows: undefined, isError: false });
+    expect(demoLib.searchIndex.size).toBe(DEMO_INGREDIENTS.length);
+    const milk = DEMO_INGREDIENTS.find((i) => i.id === 'milk_3_5')!;
+    expect(demoLib.searchIndex.get('milk_3_5')).toContain(milk.name.toLowerCase());
+    expect(filterIngredients(demoLib.ingredients, 'milk', demoLib.searchIndex).length).toBeGreaterThan(0);
+  });
+});
+
 describe('filterIngredients', () => {
-  const eng = ingredientRowToEngineIngredient(sampleRow);
+  const lib = selectIngredientLibrary({
+    demo: false,
+    isPro: true,
+    rows: [sampleRow, chocolateRow],
+    isError: false,
+  });
+  const run = (q: string) => filterIngredients(lib.ingredients, q, lib.searchIndex).map((i) => i.id);
 
   it('returns all ingredients for an empty query', () => {
-    expect(filterIngredients([eng], '')).toHaveLength(1);
+    expect(run('')).toEqual(['PI-ING-000010', 'PI-ING-000020']);
   });
 
-  it('matches on display name, id and category', () => {
-    expect(filterIngredients([eng], 'whole milk')).toHaveLength(1); // name
-    expect(filterIngredients([eng], 'PI-ING-000010')).toHaveLength(1); // id
-    expect(filterIngredients([eng], 'dairy')).toHaveLength(1); // category
-  });
+  it('matches by display name', () => expect(run('whole milk')).toEqual(['PI-ING-000010']));
+  it('matches by internal name', () => expect(run('dark_chocolate_70')).toEqual(['PI-ING-000020']));
+  it('matches by ingredient id', () => expect(run('PI-ING-000010')).toEqual(['PI-ING-000010']));
+  it('matches by brand', () => expect(run('domori')).toEqual(['PI-ING-000020']));
+  it('matches by raw category', () => expect(run('chocolate')).toEqual(['PI-ING-000020']));
+  it('matches by engine category', () => expect(run('chocolate_cocoa')).toEqual(['PI-ING-000020']));
+  it('matches by subcategory', () => expect(run('dark 70')).toEqual(['PI-ING-000020']));
 
-  it('returns nothing when there is no match', () => {
-    expect(filterIngredients([eng], 'pistachio')).toHaveLength(0);
+  it('returns an empty list when nothing matches', () => {
+    expect(run('zzzznomatch')).toEqual([]);
   });
 });
 

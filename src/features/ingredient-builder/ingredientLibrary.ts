@@ -16,8 +16,13 @@ import type { EngineIngredient } from '@/engine';
 export type LibrarySource = 'demo' | 'pi_base';
 export type LibraryStatus = 'demo' | 'loading' | 'ready' | 'fallback';
 
+/** id → lowercased search haystack for that ingredient. */
+export type SearchIndex = ReadonlyMap<string, string>;
+
 export interface IngredientLibrary {
   ingredients: readonly EngineIngredient[];
+  /** Per-ingredient search text (richer than EngineIngredient for PI Base rows). */
+  searchIndex: SearchIndex;
   source: LibrarySource;
   status: LibraryStatus;
 }
@@ -25,6 +30,33 @@ export interface IngredientLibrary {
 /** Whether the PI Base query should run. Pro + not the demo route. */
 export function shouldFetchLibrary({ isPro, demo }: { isPro: boolean; demo: boolean }): boolean {
   return isPro && !demo;
+}
+
+/** Demo ingredients can only be searched by what they carry: name, id, category. */
+function demoSearchText(ingredient: EngineIngredient): string {
+  return `${ingredient.name} ${ingredient.id} ${ingredient.category}`.toLowerCase();
+}
+
+/** PI Base rows carry richer fields: name, internal name, id, brand, raw +
+ * engine category, and subcategory. */
+function rowSearchText(row: IngredientRow, engineCategory: string): string {
+  return [
+    row.ingredient_name_display,
+    row.ingredient_name_internal,
+    row.ingredient_id,
+    row.brand,
+    row.ingredient_category, // raw dataset category (e.g. "chocolate")
+    engineCategory, // mapped engine category (e.g. "chocolate_cocoa")
+    row.ingredient_subcategory,
+  ]
+    .filter((part) => part && part.trim() !== '')
+    .join(' ')
+    .toLowerCase();
+}
+
+function demoLibrary(status: LibraryStatus): IngredientLibrary {
+  const searchIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, demoSearchText(i)]));
+  return { ingredients: DEMO_INGREDIENTS, searchIndex, source: 'demo', status };
 }
 
 export interface SelectLibraryArgs {
@@ -46,34 +78,43 @@ export function selectIngredientLibrary({
   rows,
   isError,
 }: SelectLibraryArgs): IngredientLibrary {
-  if (demo || !isPro) {
-    return { ingredients: DEMO_INGREDIENTS, source: 'demo', status: 'demo' };
-  }
-  if (isError) {
-    return { ingredients: DEMO_INGREDIENTS, source: 'demo', status: 'fallback' };
-  }
+  if (demo || !isPro) return demoLibrary('demo');
+  if (isError) return demoLibrary('fallback');
   if (rows === undefined) {
     // Pro, fetching — show a loading state, never a demo flash.
-    return { ingredients: [], source: 'pi_base', status: 'loading' };
+    return { ingredients: [], searchIndex: new Map(), source: 'pi_base', status: 'loading' };
   }
-  const mapped = rows.map(ingredientRowToEngineIngredient);
-  if (mapped.length === 0) {
+  if (rows.length === 0) {
     // RLS returned nothing / not seeded / backend unavailable.
-    return { ingredients: DEMO_INGREDIENTS, source: 'demo', status: 'fallback' };
+    return demoLibrary('fallback');
   }
-  return { ingredients: mapped, source: 'pi_base', status: 'ready' };
+
+  const ingredients: EngineIngredient[] = [];
+  const searchIndex = new Map<string, string>();
+  for (const row of rows) {
+    const ingredient = ingredientRowToEngineIngredient(row);
+    ingredients.push(ingredient);
+    searchIndex.set(ingredient.id, rowSearchText(row, ingredient.category));
+  }
+  return { ingredients, searchIndex, source: 'pi_base', status: 'ready' };
 }
 
-/** Case-insensitive filter over display name, id and category. */
+/**
+ * Case-insensitive filter over the ingredient's search text (display name,
+ * internal name, id, brand, raw + engine category, subcategory for PI Base;
+ * name/id/category for demo).
+ */
 export function filterIngredients(
   ingredients: readonly EngineIngredient[],
   rawQuery: string,
+  searchIndex: SearchIndex,
 ): readonly EngineIngredient[] {
   const q = rawQuery.trim().toLowerCase();
   if (q === '') return ingredients;
-  return ingredients.filter((i) =>
-    `${i.name} ${i.id} ${i.category}`.toLowerCase().includes(q),
-  );
+  return ingredients.filter((i) => {
+    const haystack = searchIndex.get(i.id) ?? demoSearchText(i);
+    return haystack.includes(q);
+  });
 }
 
 export interface IngredientGroup {
