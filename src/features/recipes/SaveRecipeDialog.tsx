@@ -6,7 +6,7 @@ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { cn } from '@/lib/cn';
 import { useIntakeStore } from '@/stores/intakeStore';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { buildSavePayload } from './recipePayload';
+import { buildSavePayload, resolveSaveMode } from './recipePayload';
 import { useCreateRecipe, useUpdateRecipe } from './useSavedRecipes';
 
 const r = copy.recipes;
@@ -53,7 +53,7 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
     });
     try {
       const row =
-        !asNew && savedRecipeId
+        resolveSaveMode(savedRecipeId, asNew) === 'update' && savedRecipeId
           ? await updateRecipe.mutateAsync({ id: savedRecipeId, payload })
           : await createRecipe.mutateAsync(payload);
       markSaved(row.id, row.name);

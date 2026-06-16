@@ -65,6 +65,14 @@ export function deriveServingProfile(intakeServingId: ServingProfileId | null): 
   return intakeServingId ?? DEFAULT_SERVING_PROFILE_ID;
 }
 
+/** Which save action the primary/secondary button performs.
+ * A new recipe (no in-session link) or an explicit "Save as new" always
+ * CREATEs; a loaded/just-saved recipe OVERWRITES via update. */
+export type SaveMode = 'create' | 'update';
+export function resolveSaveMode(savedRecipeId: string | null, asNew: boolean): SaveMode {
+  return !asNew && savedRecipeId ? 'update' : 'create';
+}
+
 /** Build the save payload from a RecipeInput + the AI-intake selections (if any).
  * Stamps the active engine label and engine/config versions; stores no results. */
 export function buildSavePayload(args: {

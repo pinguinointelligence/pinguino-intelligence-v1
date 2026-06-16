@@ -6,6 +6,7 @@ import {
   buildSavePayload,
   deriveProductType,
   deriveServingProfile,
+  resolveSaveMode,
   savedToRecipeInput,
 } from './recipePayload';
 
@@ -60,6 +61,21 @@ describe('buildSavePayload', () => {
     expect(deriveProductType(null, 'chocolate_gelato')).toBeNull();
     expect(deriveServingProfile('storage-minus-18')).toBe('storage-minus-18');
     expect(deriveServingProfile(null)).toBe('display-minus-11');
+  });
+});
+
+describe('resolveSaveMode (new vs overwrite vs save-as-new)', () => {
+  it('creates a new recipe when there is no in-session saved id', () => {
+    expect(resolveSaveMode(null, false)).toBe('create');
+  });
+
+  it('overwrites the loaded/just-saved recipe', () => {
+    expect(resolveSaveMode('rec-1', false)).toBe('update');
+  });
+
+  it('"Save as new" always creates a separate record, even for a loaded recipe', () => {
+    expect(resolveSaveMode('rec-1', true)).toBe('create');
+    expect(resolveSaveMode(null, true)).toBe('create');
   });
 });
 

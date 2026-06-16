@@ -87,6 +87,27 @@ const fromPreset = (preset: DemoPreset) => ({
   savedRecipeName: null,
 });
 
+/**
+ * Persisted slice — recipe content + the preset highlight, but NOT the
+ * saved-recipe link (`savedRecipeId`/`savedRecipeName`). Keeping the link out of
+ * localStorage means a reloaded session starts "unlinked": Save creates a new
+ * recipe instead of trying to overwrite a row that may be gone (stale-id save
+ * error). The link is set in-session by `loadRecipeInput` / `markSaved`.
+ */
+export function recipePersistPartialize(state: RecipeState) {
+  return {
+    mode: state.mode,
+    category: state.category,
+    target_temperature_c: state.target_temperature_c,
+    target_batch_grams: state.target_batch_grams,
+    machine_capacity_grams: state.machine_capacity_grams,
+    flavor_intensity: state.flavor_intensity,
+    cost_priority: state.cost_priority,
+    items: state.items,
+    activePresetId: state.activePresetId,
+  };
+}
+
 export const useRecipeStore = create<RecipeState>()(
   persist(
     (set) => ({
@@ -156,6 +177,6 @@ export const useRecipeStore = create<RecipeState>()(
       markSaved: (id, name) => set({ savedRecipeId: id, savedRecipeName: name }),
       resetToDemo: () => set(fromPreset(DEFAULT_PRESET)),
     }),
-    { name: 'pinguino-recipe' },
+    { name: 'pinguino-recipe', partialize: recipePersistPartialize },
   ),
 );

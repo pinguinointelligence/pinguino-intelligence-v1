@@ -50,8 +50,11 @@ export async function update(id: string, payload: SaveRecipeInput): Promise<Save
     .update(payload)
     .eq('id', id)
     .select()
-    .single();
+    .maybeSingle();
   if (error) throw new Error(error.message);
+  // No row updated → the id is stale / deleted / not owned (e.g. a reloaded
+  // session). Create a fresh recipe instead of failing the save.
+  if (!data) return create(payload);
   return data as SavedRecipe;
 }
 
