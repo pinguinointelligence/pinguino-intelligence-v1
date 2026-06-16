@@ -6,6 +6,7 @@ import type { EffectiveRecipeItem } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { IngredientPicker } from './IngredientPicker';
 import { IngredientRow, ROW_GRID, type IngredientRowActions } from './IngredientRow';
+import { useIngredientLibrary } from './useIngredientLibrary';
 
 const b = copy.studio.builder;
 const headCell = 'text-[0.6rem] font-medium tracking-label text-stone-400 uppercase';
@@ -16,12 +17,16 @@ export function IngredientBuilder({
   items,
   totalBatchG,
   targetBatchG,
+  demo,
 }: {
   items: EffectiveRecipeItem[];
   totalBatchG: number;
   targetBatchG: number;
+  /** /demo route — keep the local catalog and never fetch the PI Base library. */
+  demo: boolean;
 }) {
   const addIngredient = useRecipeStore((state) => state.addIngredient);
+  const library = useIngredientLibrary({ demo });
   const actions: IngredientRowActions = {
     setPlannedGrams: useRecipeStore((state) => state.setPlannedGrams),
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
@@ -69,7 +74,7 @@ export function IngredientBuilder({
       )}
 
       <div className="mt-5">
-        <IngredientPicker onAdd={addIngredient} />
+        <IngredientPicker library={library} onAdd={addIngredient} />
       </div>
     </Card>
   );

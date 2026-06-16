@@ -106,6 +106,7 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
               items={result.items}
               totalBatchG={result.total_batch_g}
               targetBatchG={batchGrams}
+              demo={forceDemo}
             />
           </div>
 

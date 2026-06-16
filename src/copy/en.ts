@@ -299,6 +299,11 @@ export const copy = {
     builder: {
       title: 'Ingredients',
       addLabel: 'Add ingredient',
+      searchLabel: 'Filter ingredients',
+      searchPlaceholder: 'Filter by name, id or category…',
+      noMatches: 'No ingredients match your filter.',
+      loadingLibrary: 'Loading PI Base library…',
+      fallbackNote: 'PI Base library unavailable — showing demo ingredients.',
       planned: 'Planned',
       actual: 'Actual',
       share: 'Share',
