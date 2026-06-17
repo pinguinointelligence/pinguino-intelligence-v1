@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import type { EngineIngredient } from '@/engine';
 import {
@@ -35,7 +34,7 @@ export function IngredientPicker({
 
   if (library.status === 'loading') {
     return (
-      <p className="text-sm text-stone-500" role="status" aria-live="polite">
+      <p className="text-sm text-ivory/50" role="status" aria-live="polite">
         {b.loadingLibrary}
       </p>
     );
@@ -54,7 +53,7 @@ export function IngredientPicker({
         <svg
           aria-hidden
           viewBox="0 0 20 20"
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/40"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -66,25 +65,25 @@ export function IngredientPicker({
           type="search"
           aria-label={b.searchLabel}
           placeholder={b.searchPlaceholder}
-          className="w-full rounded-md border border-ink/15 bg-paper py-2.5 pl-9 pr-3 text-sm transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none"
+          className="w-full rounded-md border border-ivory/15 bg-shell py-2.5 pl-9 pr-3 text-sm transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none"
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}
         />
       </div>
 
       {/* Result count — always visible */}
-      <p className="text-xs text-stone-500" aria-live="polite">
-        <span className="font-mono tabular-nums text-ink/70">{count.toLocaleString('en-US')}</span>{' '}
+      <p className="text-xs text-ivory/50" aria-live="polite">
+        <span className="font-mono tabular-nums text-ivory/70">{count.toLocaleString('en-US')}</span>{' '}
         {count === 1 ? b.resultUnitOne : b.resultUnitMany} {b.resultFoundSuffix}
       </p>
 
       {grouped.length === 0 ? (
-        <p className="text-sm text-stone-500">{b.noMatches}</p>
+        <p className="text-sm text-ivory/50">{b.noMatches}</p>
       ) : (
         <div className="flex gap-2">
           <select
             aria-label={b.addLabel}
-            className="flex-1 rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none"
+            className="flex-1 rounded-md border border-ivory/15 bg-shell px-3 py-2 text-sm transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none"
             value={effectiveId}
             onChange={(event) => setSelectedId(event.currentTarget.value)}
           >
@@ -100,7 +99,7 @@ export function IngredientPicker({
           </select>
           <button
             type="button"
-            className={buttonClasses('ghost', 'sm')}
+            className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
             onClick={() => {
               const ingredient = library.ingredients.find((item) => item.id === effectiveId);
               if (ingredient) onAdd(ingredient);
@@ -115,7 +114,7 @@ export function IngredientPicker({
       )}
 
       {library.status === 'fallback' ? (
-        <p className="text-xs text-stone-400">{b.fallbackNote}</p>
+        <p className="text-xs text-ivory/40">{b.fallbackNote}</p>
       ) : null}
     </div>
   );

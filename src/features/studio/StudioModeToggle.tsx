@@ -23,7 +23,7 @@ export function StudioModeToggle() {
   return (
     <div className="flex flex-col items-end gap-1">
       <div
-        className="inline-flex overflow-hidden rounded-md border border-ink/15"
+        className="inline-flex overflow-hidden rounded-md border border-ivory/15"
         role="group"
         aria-label={t.label}
       >
@@ -34,14 +34,16 @@ export function StudioModeToggle() {
             onClick={() => setPlan(option.value)}
             className={cn(
               'px-3 py-1.5 text-xs font-medium transition-colors',
-              plan === option.value ? 'bg-ink text-paper' : 'bg-paper text-stone-600 hover:text-ink',
+              plan === option.value
+                ? 'bg-ivory text-shell'
+                : 'bg-shell text-ivory/60 hover:text-ivory',
             )}
           >
             {option.label}
           </button>
         ))}
       </div>
-      <span className="text-[0.625rem] text-stone-400">{t.note}</span>
+      <span className="text-[0.625rem] text-ivory/40">{t.note}</span>
     </div>
   );
 }

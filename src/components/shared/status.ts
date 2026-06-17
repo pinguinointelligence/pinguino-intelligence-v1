@@ -66,7 +66,7 @@ const M_RISKY = 'bg-status-risky';
 const M_ERROR = 'bg-status-error';
 const M_INK = 'bg-ink';
 
-/** Marker color per status for IndicatorBar ticks. */
+/** Marker color per status for IndicatorBar ticks (white workspaces). */
 export const STATUS_MARKER_CLASSES: Record<IndicatorStatus, string> = {
   ideal: M_IDEAL,
   good: M_INK,
@@ -81,4 +81,43 @@ export const STATUS_MARKER_CLASSES: Record<IndicatorStatus, string> = {
   locked: 'bg-stone-400',
   pro: M_INK,
   demo: M_INK,
+};
+
+/** Marker color per status on the dark shell — neutral ticks become ivory (Phase 6C). */
+export const STATUS_MARKER_CLASSES_SHELL: Record<IndicatorStatus, string> = {
+  ideal: M_IDEAL,
+  good: 'bg-ivory',
+  risky: M_RISKY,
+  too_soft: M_ERROR,
+  too_hard: M_ERROR,
+  too_sweet: M_ERROR,
+  too_weak: M_ERROR,
+  too_expensive: M_RISKY,
+  premium: M_IDEAL,
+  needs_correction: M_ERROR,
+  locked: 'bg-ivory/40',
+  pro: 'bg-ivory',
+  demo: 'bg-ivory',
+};
+
+const IDEAL_D = 'border-status-ideal/40 bg-status-ideal/15 text-status-ideal';
+const NEUTRAL_D = 'border-ivory/20 bg-transparent text-ivory/70';
+const RISKY_D = 'border-status-risky/40 bg-status-risky/15 text-status-risky';
+const ERROR_D = 'border-status-error/40 bg-status-error/15 text-status-error';
+
+/** Chip surface treatment per status on the dark shell (Phase 6C). */
+export const STATUS_CHIP_CLASSES_SHELL: Record<IndicatorStatus, string> = {
+  ideal: IDEAL_D,
+  good: NEUTRAL_D,
+  risky: RISKY_D,
+  too_soft: ERROR_D,
+  too_hard: ERROR_D,
+  too_sweet: ERROR_D,
+  too_weak: ERROR_D,
+  too_expensive: RISKY_D,
+  premium: 'border-ivory/30 bg-ivory text-ink',
+  needs_correction: ERROR_D,
+  locked: 'border-ivory/10 bg-ivory/5 text-ivory/50',
+  pro: 'border-ivory/60 bg-ivory/10 text-ivory',
+  demo: 'border-ivory/40 bg-ivory/15 text-ivory',
 };

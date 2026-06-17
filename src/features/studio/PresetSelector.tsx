@@ -28,8 +28,8 @@ export function PresetSelector() {
               className={cn(
                 'rounded-md border px-3 py-1.5 text-sm transition-colors',
                 active
-                  ? 'border-ink bg-ink text-paper'
-                  : 'border-ink/15 text-stone-600 hover:border-ink/40',
+                  ? 'border-ivory bg-ivory text-shell'
+                  : 'border-ivory/15 text-ivory/70 hover:border-ivory/40',
               )}
             >
               {p.items[preset.id].label}
@@ -37,7 +37,7 @@ export function PresetSelector() {
           );
         })}
       </div>
-      {activeBlurb ? <p className="mt-2.5 text-xs leading-relaxed text-stone-500">{activeBlurb}</p> : null}
+      {activeBlurb ? <p className="mt-2.5 text-xs leading-relaxed text-ivory/50">{activeBlurb}</p> : null}
     </div>
   );
 }

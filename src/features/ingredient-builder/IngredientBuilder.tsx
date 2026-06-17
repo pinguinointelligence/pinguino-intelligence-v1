@@ -9,7 +9,7 @@ import { IngredientRow, ROW_GRID, type IngredientRowActions } from './Ingredient
 import { useIngredientLibrary } from './useIngredientLibrary';
 
 const b = copy.studio.builder;
-const headCell = 'text-[0.6rem] font-medium tracking-label text-stone-400 uppercase';
+const headCell = 'text-[0.6rem] font-medium tracking-label text-ivory/40 uppercase';
 
 /** Items come from the engine result (effective grams, difference, share);
  * edits go back to the store. The engine remains the source of truth. */
@@ -42,10 +42,10 @@ export function IngredientBuilder({
       <SectionLabel>{b.title}</SectionLabel>
 
       {items.length === 0 ? (
-        <p className="mt-6 text-sm leading-relaxed text-stone-500">{b.empty}</p>
+        <p className="mt-6 text-sm leading-relaxed text-ivory/60">{b.empty}</p>
       ) : (
         <>
-          <div className="mt-5 divide-y divide-ink/5">
+          <div className="mt-5 divide-y divide-ivory/10">
             <div className={`${ROW_GRID} pb-2`}>
               <span className={headCell}>&nbsp;</span>
               <span className={`${headCell} text-right`}>{b.planned}</span>
@@ -59,11 +59,11 @@ export function IngredientBuilder({
             ))}
           </div>
 
-          <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-4">
-            <span className="text-xs tracking-label text-stone-500 uppercase">{b.batchTotal}</span>
+          <div className="mt-4 flex items-center justify-between border-t border-ivory/10 pt-4">
+            <span className="text-xs tracking-label text-ivory/50 uppercase">{b.batchTotal}</span>
             <span className="flex items-baseline gap-3">
               {offTarget ? (
-                <span className="font-mono text-xs text-stone-400 tabular-nums">
+                <span className="font-mono text-xs text-ivory/40 tabular-nums">
                   {b.target} {targetBatchG.toLocaleString('en-US')} {b.unit}
                 </span>
               ) : null}

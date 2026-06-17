@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
+import { useSurfaceTone } from '@/components/ui/surface';
 
 type MetricSize = 'sm' | 'md' | 'lg';
 
@@ -26,14 +27,29 @@ export function MetricValue({
   className,
   ...rest
 }: MetricValueProps) {
+  const tone = useSurfaceTone();
   const formatted = typeof value === 'number' ? value.toFixed(precision) : value;
   return (
     <span
-      className={cn('font-mono font-medium tabular-nums text-ink', SIZES[size], className)}
+      className={cn(
+        'font-mono font-medium tabular-nums',
+        tone === 'shell' ? 'text-ivory' : 'text-ink',
+        SIZES[size],
+        className,
+      )}
       {...rest}
     >
       {formatted}
-      {unit ? <span className="ml-1 text-[0.8em] font-normal text-stone-500">{unit}</span> : null}
+      {unit ? (
+        <span
+          className={cn(
+            'ml-1 text-[0.8em] font-normal',
+            tone === 'shell' ? 'text-ivory-soft' : 'text-stone-500',
+          )}
+        >
+          {unit}
+        </span>
+      ) : null}
     </span>
   );
 }

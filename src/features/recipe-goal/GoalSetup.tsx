@@ -15,9 +15,9 @@ const TEMPERATURES = [-11, -12, -14, -18];
 const FLAVORS = ['light', 'balanced', 'strong', 'maximum'] as const;
 const COSTS = ['low', 'balanced', 'premium'] as const;
 
-const fieldLabel = 'text-xs font-medium tracking-label text-stone-500 uppercase';
+const fieldLabel = 'text-xs font-medium tracking-label text-ivory/50 uppercase';
 const select =
-  'rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none';
+  'rounded-md border border-ivory/15 bg-shell px-3 py-2 text-sm transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none';
 
 function Segmented<T extends string | number>({
   options,
@@ -42,8 +42,8 @@ function Segmented<T extends string | number>({
             className={cn(
               'rounded-md border px-3 py-1.5 text-sm transition-colors',
               active
-                ? 'border-ink bg-ink text-paper'
-                : 'border-ink/15 text-stone-600 hover:border-ink/40',
+                ? 'border-ivory bg-ivory text-shell'
+                : 'border-ivory/15 text-ivory/70 hover:border-ivory/40',
             )}
           >
             {labelOf(option)}
@@ -78,21 +78,21 @@ export function GoalSetup() {
                 onClick={() => store.setMode(mode)}
                 className={cn(
                   'relative overflow-hidden rounded-md border p-3 pl-4 text-left transition-colors',
-                  active ? 'border-ink bg-ivory/40' : 'border-ink/15 hover:border-ink/40',
+                  active ? 'border-ivory bg-ivory/10' : 'border-ivory/15 hover:border-ivory/40',
                 )}
               >
                 {active ? (
-                  <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-ink" />
+                  <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-ivory" />
                 ) : null}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium tracking-label uppercase">
                     {g.modes[mode].name}
                   </span>
-                  <span className="text-[0.6rem] tracking-label text-stone-400 uppercase">
+                  <span className="text-[0.6rem] tracking-label text-ivory/40 uppercase">
                     {g.modeFocus[mode]}
                   </span>
                 </div>
-                <span className="mt-1 block text-xs leading-relaxed text-stone-500">
+                <span className="mt-1 block text-xs leading-relaxed text-ivory/60">
                   {g.modes[mode].body}
                 </span>
               </button>
@@ -127,7 +127,7 @@ export function GoalSetup() {
             onChange={store.setTargetTemperature}
             labelOf={(temperature) => `−${Math.abs(temperature)} °C`}
           />
-          <p className="text-xs text-stone-400">{g.temperatureHelp}</p>
+          <p className="text-xs text-ivory/40">{g.temperatureHelp}</p>
         </div>
 
         {/* Batch size with unit */}
@@ -156,7 +156,7 @@ export function GoalSetup() {
             </select>
           </div>
           {unit !== 'g' ? (
-            <p className="font-mono text-xs text-stone-400 tabular-nums">
+            <p className="font-mono text-xs text-ivory/40 tabular-nums">
               = {Math.round(store.target_batch_grams).toLocaleString('en-US')} g
             </p>
           ) : null}
@@ -176,7 +176,7 @@ export function GoalSetup() {
               store.setMachineCapacity(raw === '' ? null : Math.max(0, Number(raw)));
             }}
           />
-          <p className="text-xs text-stone-400">{g.machineHelp}</p>
+          <p className="text-xs text-ivory/40">{g.machineHelp}</p>
         </label>
 
         {/* Flavor intensity */}

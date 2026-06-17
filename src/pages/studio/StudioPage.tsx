@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { StatusChip } from '@/components/shared/StatusChip';
-import { buttonClasses } from '@/components/ui/buttonStyles';
+import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
 import { useAccess } from '@/access/useAccess';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
@@ -59,66 +59,77 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
   const onUpgrade = import.meta.env.DEV ? () => setPlan('pro') : undefined;
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-6">
-        <Link to="/" className="flex items-center gap-3">
-          <IvoryLogoMark size={24} tone="ink" />
-          <span className="text-sm font-light tracking-wordmark">{copy.brand.name}</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <StatusChip status={plan} />
-          <StudioModeToggle />
-          <button type="button" className={buttonClasses('ghost', 'sm')} onClick={onSaveClick}>
-            {copy.recipes.save}
-          </button>
-          <Link
-            to="/"
-            className="text-sm text-stone-600 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
-          >
-            {studio.back}
+    <SurfaceToneContext.Provider value="shell">
+      <div className="min-h-screen bg-shell text-ivory [color-scheme:dark]">
+        <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-6">
+          <Link to="/" className="flex items-center gap-3">
+            <IvoryLogoMark size={24} tone="ivory" />
+            <span className="text-sm font-light tracking-wordmark">{copy.brand.name}</span>
           </Link>
-        </div>
-      </header>
-
-      {saveOpen ? <SaveRecipeDialog onClose={() => setSaveOpen(false)} /> : null}
-
-      <main className="mx-auto max-w-6xl px-6 pt-6 pb-24">
-        <div className="flex flex-col gap-5 border-b border-ink/5 pb-6">
-          <div className="flex flex-col gap-2">
-            <SectionLabel>
-              {studio.eyebrow} · {studio.engineTag}
-            </SectionLabel>
-            <StudioSummary
-              mode={mode}
-              category={category}
-              temperatureC={temperatureC}
-              batchGrams={batchGrams}
-            />
+          <div className="flex items-center gap-4">
+            <StatusChip status={plan} />
+            <StudioModeToggle />
+            <button
+              type="button"
+              onClick={onSaveClick}
+              className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            >
+              {copy.recipes.save}
+            </button>
+            <Link
+              to="/"
+              className="text-sm text-ivory/60 underline decoration-ivory/25 underline-offset-4 transition-colors hover:text-ivory"
+            >
+              {studio.back}
+            </Link>
           </div>
-          <PresetSelector />
-        </div>
+        </header>
 
-        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_minmax(380px,420px)]">
-          {/* Left: goal + ingredient builder */}
-          <div className="space-y-6">
-            <GoalSetup />
-            <IngredientBuilder
-              items={result.items}
-              totalBatchG={result.total_batch_g}
-              targetBatchG={batchGrams}
-              demo={forceDemo}
-            />
+        {/* The save dialog is a white modal — keep it on the paper tone. */}
+        {saveOpen ? (
+          <SurfaceToneContext.Provider value="paper">
+            <SaveRecipeDialog onClose={() => setSaveOpen(false)} />
+          </SurfaceToneContext.Provider>
+        ) : null}
+
+        <main className="mx-auto max-w-6xl px-6 pt-6 pb-24">
+          <div className="flex flex-col gap-5 border-b border-ivory/10 pb-6">
+            <div className="flex flex-col gap-2">
+              <SectionLabel>
+                {studio.eyebrow} · {studio.engineTag}
+              </SectionLabel>
+              <StudioSummary
+                mode={mode}
+                category={category}
+                temperatureC={temperatureC}
+                batchGrams={batchGrams}
+              />
+            </div>
+            <PresetSelector />
           </div>
 
-          {/* Right: live engine output (sticky, self-scrolling lab rail) */}
-          <div className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
-            <OverallScoreCard result={result} mode={mode} />
-            <PIPanel result={result} />
-            <NutritionCostScorePanel result={result} />
-            <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
+          <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_minmax(380px,420px)]">
+            {/* Left: goal + ingredient builder */}
+            <div className="space-y-6">
+              <GoalSetup />
+              <IngredientBuilder
+                items={result.items}
+                totalBatchG={result.total_batch_g}
+                targetBatchG={batchGrams}
+                demo={forceDemo}
+              />
+            </div>
+
+            {/* Right: live engine output (sticky, self-scrolling lab rail) */}
+            <div className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
+              <OverallScoreCard result={result} mode={mode} />
+              <PIPanel result={result} />
+              <NutritionCostScorePanel result={result} />
+              <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </SurfaceToneContext.Provider>
   );
 }

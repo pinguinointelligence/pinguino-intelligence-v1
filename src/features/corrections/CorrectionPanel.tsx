@@ -11,7 +11,7 @@ import { buildCorrectionView } from './correctionView';
 const c = copy.studio.corrections;
 
 const chip =
-  'rounded border border-ink/15 bg-paper px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-stone-500 uppercase';
+  'rounded border border-ivory/15 bg-transparent px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/50 uppercase';
 
 function proposalTitle(kind: 'correction' | 'tradeoff' | 'impossible'): string | null {
   if (kind === 'tradeoff') return c.tradeoffTitle;
@@ -32,7 +32,7 @@ export function CorrectionPanel({
     return (
       <Card padding="lg">
         <SectionLabel>{c.title}</SectionLabel>
-        <p className="mt-4 text-sm leading-relaxed text-stone-500">{c.none}</p>
+        <p className="mt-4 text-sm leading-relaxed text-ivory/50">{c.none}</p>
       </Card>
     );
   }
@@ -43,27 +43,27 @@ export function CorrectionPanel({
 
       {view.mode === 'demo' ? (
         <div className="mt-5 space-y-3">
-          <p className="text-xs leading-relaxed text-stone-400">{c.demoPreviewNote}</p>
+          <p className="text-xs leading-relaxed text-ivory/40">{c.demoPreviewNote}</p>
           {view.proposals.map((proposal) => (
-            <div key={proposal.id} className="rounded-md border border-ink/10 px-4 py-3">
+            <div key={proposal.id} className="rounded-md border border-ivory/10 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-ink">{proposal.directionText}</span>
+                <span className="text-sm text-ivory">{proposal.directionText}</span>
                 <span className={chip}>{proposal.confidenceLabel}</span>
               </div>
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-1 text-xs text-ivory/50">
                 {c.demoArea}: {proposal.areaLabels.join(' · ')}
               </p>
             </div>
           ))}
 
           {/* Slim, premium Pro affordance — not a blocky lock. */}
-          <div className="mt-4 flex items-center gap-3 rounded-md border border-ink/10 bg-ivory/40 px-4 py-3">
-            <IvoryLogoMark size={22} tone="ink" className="shrink-0" />
-            <p className="flex-1 text-sm leading-snug text-stone-600">
+          <div className="mt-4 flex items-center gap-3 rounded-md border border-ivory/15 bg-ivory/[0.06] px-4 py-3">
+            <IvoryLogoMark size={22} tone="ivory" className="shrink-0" />
+            <p className="flex-1 text-sm leading-snug text-ivory/70">
               {copy.gate.prompts.exactAmount}
             </p>
             {onUpgrade ? (
-              <button type="button" className={buttonClasses('primary', 'sm')} onClick={onUpgrade}>
+              <button type="button" className={buttonClasses('ivory', 'sm')} onClick={onUpgrade}>
                 {copy.gate.unlockCta}
               </button>
             ) : (
@@ -81,11 +81,11 @@ export function CorrectionPanel({
                 key={proposal.id}
                 className={cn(
                   'rounded-md border px-4 py-3.5',
-                  isTradeoff ? 'border-status-risky/30 bg-status-risky/[0.04]' : 'border-ink/10',
+                  isTradeoff ? 'border-status-risky/30 bg-status-risky/[0.04]' : 'border-ivory/10',
                 )}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-ink">
+                  <span className="text-sm font-medium text-ivory">
                     {title ??
                       proposal.actions.map((action) => `${action.verb} ${action.name}`).join(' · ')}
                   </span>
@@ -98,7 +98,7 @@ export function CorrectionPanel({
                   <div className="mt-3 space-y-1.5">
                     {proposal.actions.map((action, index) => (
                       <div key={index} className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm text-stone-600">
+                        <span className="text-sm text-ivory/70">
                           {action.verb} {action.name}
                         </span>
                         <MetricValue value={action.grams} unit="g" />
@@ -108,11 +108,11 @@ export function CorrectionPanel({
                 ) : null}
 
                 {proposal.predicted.length > 0 ? (
-                  <div className="mt-3 space-y-1 border-t border-ink/5 pt-3">
+                  <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3">
                     {proposal.predicted.map((prediction) => (
                       <div
                         key={prediction.label}
-                        className="flex items-center justify-between gap-3 text-xs text-stone-500"
+                        className="flex items-center justify-between gap-3 text-xs text-ivory/50"
                       >
                         <span>{prediction.label}</span>
                         <span className="flex items-center gap-2 font-mono tabular-nums">
@@ -121,10 +121,10 @@ export function CorrectionPanel({
                             {prediction.before === null ? '—' : prediction.before.toFixed(1)}
                             {prediction.unit}
                           </span>
-                          <span aria-hidden className="text-stone-400">
+                          <span aria-hidden className="text-ivory/40">
                             →
                           </span>
-                          <span className="text-ink">
+                          <span className="text-ivory">
                             {c.after}{' '}
                             {prediction.after === null ? '—' : prediction.after.toFixed(1)}
                             {prediction.unit}
@@ -136,7 +136,7 @@ export function CorrectionPanel({
                 ) : null}
 
                 {proposal.blockingMessage ? (
-                  <p className="mt-3 text-xs leading-relaxed text-stone-500">
+                  <p className="mt-3 text-xs leading-relaxed text-ivory/60">
                     {proposal.blockingMessage}
                   </p>
                 ) : null}

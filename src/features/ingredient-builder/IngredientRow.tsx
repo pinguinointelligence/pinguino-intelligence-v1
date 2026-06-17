@@ -12,7 +12,7 @@ const SELECTABLE_LOCKS: LockType[] = ['unlocked', 'grams', 'percent', 'already_a
 export const ROW_GRID = 'grid grid-cols-[1.5fr_0.85fr_0.85fr_0.6fr_1.4fr_auto] items-center gap-2';
 
 const cellInput =
-  'w-full rounded-md border border-ink/15 bg-paper py-1.5 pr-5 pl-2 text-right font-mono text-sm tabular-nums transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none';
+  'w-full rounded-md border border-ivory/15 bg-shell py-1.5 pr-5 pl-2 text-right font-mono text-sm tabular-nums transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none';
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -40,11 +40,11 @@ function GramsField({
         type="number"
         min={0}
         placeholder={value === '' ? '—' : undefined}
-        className={cn(cellInput, emphasised && 'border-ink/30')}
+        className={cn(cellInput, emphasised && 'border-ivory/30')}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
-      <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[0.65rem] text-stone-400">
+      <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[0.65rem] text-ivory/40">
         {b.unit}
       </span>
     </div>
@@ -66,13 +66,13 @@ export function IngredientRow({
   return (
     <div
       className={cn(
-        '-mx-2 rounded-sm px-2 transition-colors hover:bg-ink/[0.02]',
-        isMain && 'bg-ivory/30',
+        '-mx-2 rounded-sm px-2 transition-colors hover:bg-ivory/[0.04]',
+        isMain && 'bg-ivory/[0.07]',
       )}
     >
       <div className={cn(ROW_GRID, 'py-2.5')}>
         <div className="min-w-0">
-          <span className="truncate text-sm text-ink">{item.ingredient.name}</span>
+          <span className="truncate text-sm text-ivory">{item.ingredient.name}</span>
           <ConfidenceBadge score={item.ingredient.confidence_score} className="mt-0.5" />
         </div>
 
@@ -91,7 +91,7 @@ export function IngredientRow({
 
         <div className="text-right">
           {share === null ? (
-            <span className="text-sm text-stone-400">—</span>
+            <span className="text-sm text-ivory/40">—</span>
           ) : (
             <MetricValue value={share} unit="%" size="sm" />
           )}
@@ -99,7 +99,7 @@ export function IngredientRow({
             <span
               className={cn(
                 'block font-mono text-[0.7rem] tabular-nums',
-                item.difference > 0 ? 'text-status-error' : 'text-stone-500',
+                item.difference > 0 ? 'text-status-error' : 'text-ivory/50',
               )}
             >
               {item.difference > 0 ? '↑' : '↓'} {Math.abs(item.difference).toFixed(1)} {b.unit}
@@ -116,8 +116,8 @@ export function IngredientRow({
             className={cn(
               'rounded border px-2 py-1 text-[0.6rem] font-medium tracking-[0.08em] uppercase transition-colors',
               isMain
-                ? 'border-ink bg-ivory text-ink'
-                : 'border-ink/15 text-stone-400 hover:border-ink/40 hover:text-stone-600',
+                ? 'border-ivory bg-ivory text-shell'
+                : 'border-ivory/15 text-ivory/40 hover:border-ivory/40 hover:text-ivory/70',
             )}
           >
             {b.main_short}
@@ -125,7 +125,7 @@ export function IngredientRow({
           <select
             aria-label={`${item.ingredient.name} ${b.lock}`}
             disabled={isMain}
-            className="min-w-0 flex-1 rounded-md border border-ink/15 bg-paper px-2 py-1.5 text-xs transition-colors hover:border-ink/30 focus:border-ink/40 focus:outline-none disabled:opacity-40"
+            className="min-w-0 flex-1 rounded-md border border-ivory/15 bg-shell px-2 py-1.5 text-xs transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none disabled:opacity-40"
             value={item.lock_type}
             onChange={(event) => actions.setLockType(item.id, event.currentTarget.value as LockType)}
           >
@@ -146,7 +146,7 @@ export function IngredientRow({
           type="button"
           aria-label={`${b.remove} ${item.ingredient.name}`}
           onClick={() => actions.removeItem(item.id)}
-          className="rounded-md border border-ink/10 px-2 py-1.5 text-xs text-stone-400 transition-colors hover:border-status-error/40 hover:text-status-error"
+          className="rounded-md border border-ivory/10 px-2 py-1.5 text-xs text-ivory/40 transition-colors hover:border-status-error/40 hover:text-status-error"
         >
           ✕
         </button>

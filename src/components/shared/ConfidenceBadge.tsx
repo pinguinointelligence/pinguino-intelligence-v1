@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { useSurfaceTone } from '@/components/ui/surface';
 import { CONFIDENCE_DOT_CLASSES, CONFIDENCE_LABELS, confidenceLevel } from './confidence';
 
 interface ConfidenceBadgeProps {
@@ -10,13 +11,27 @@ interface ConfidenceBadgeProps {
 
 /** Ingredient data confidence — verified vs estimated must always be distinguishable. */
 export function ConfidenceBadge({ score, showScore = false, className }: ConfidenceBadgeProps) {
+  const shell = useSurfaceTone() === 'shell';
   const level = confidenceLevel(score);
   return (
-    <span className={cn('inline-flex items-center gap-2 text-xs text-stone-600', className)}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-2 text-xs',
+        shell ? 'text-ivory/70' : 'text-stone-600',
+        className,
+      )}
+    >
       <span className={cn('size-1.5 rounded-full', CONFIDENCE_DOT_CLASSES[level])} />
       {CONFIDENCE_LABELS[level]}
       {showScore ? (
-        <span className="font-mono text-[0.7rem] text-stone-400 tabular-nums">{score}%</span>
+        <span
+          className={cn(
+            'font-mono text-[0.7rem] tabular-nums',
+            shell ? 'text-ivory/40' : 'text-stone-400',
+          )}
+        >
+          {score}%
+        </span>
       ) : null}
     </span>
   );
