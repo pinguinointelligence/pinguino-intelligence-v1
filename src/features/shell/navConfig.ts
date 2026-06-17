@@ -72,7 +72,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   {
     id: 'calculator',
     label: nav.items.calculator,
-    to: '/calculator',
+    to: '/studio',
     size: 'large',
     layout: 'product',
     blurb: nav.calculator.blurb,
@@ -80,7 +80,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     groups: [
       {
         links: [
-          { label: nav.calculator.manual, to: '/calculator' },
+          { label: nav.calculator.manual, to: '/studio' },
           { label: nav.calculator.studio, to: '/studio' },
           { label: nav.calculator.builder, to: '/studio' },
           { label: nav.calculator.panel, to: '/studio' },
@@ -101,7 +101,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
         title: nav.recipes.browse,
         image: true,
         links: [
-          { label: nav.recipes.mine, to: '/recipes' },
+          { label: nav.recipes.mine, to: '/my-recipes' },
           { label: nav.recipes.pinguino, to: '/recipes' },
           { label: nav.recipes.featured, to: '/recipes' },
           { label: nav.recipes.recent, to: '/recipes' },

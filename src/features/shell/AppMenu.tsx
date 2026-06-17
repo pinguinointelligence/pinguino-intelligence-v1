@@ -7,6 +7,7 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { NAV_ITEMS } from './navConfig';
 
 const m = copy.menu;
 
@@ -62,22 +63,23 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
               <span className="text-sm font-light tracking-wordmark">{m.title}</span>
             </div>
 
-            <Link
-              to="/"
-              className={itemClass}
-              onClick={() => {
-                onNew?.();
-                setOpen(false);
-              }}
-            >
-              {m.newRecipe}
-            </Link>
-            <Link to="/studio" className={itemClass} onClick={() => setOpen(false)}>
-              {m.advancedStudio}
-            </Link>
+            {/* Mirror the centered desktop nav — all eight destinations (Phase 6C Slice 3). */}
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.id}
+                to={item.to}
+                className={itemClass}
+                onClick={() => {
+                  if (item.id === 'start') onNew?.();
+                  setOpen(false);
+                }}
+              >
+                {item.label}
+              </Link>
+            ))}
 
             <div className="mt-3 border-t border-ink/5 pt-3">
-              <Link to="/recipes" className={itemClass} onClick={() => setOpen(false)}>
+              <Link to="/my-recipes" className={itemClass} onClick={() => setOpen(false)}>
                 {m.items.myRecipes}
               </Link>
               {[m.items.production, m.items.saved].map((label) => (

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { SurfaceToneContext } from '@/components/ui/surface';
 import { TopNav } from './TopNav';
 
 /**
@@ -14,9 +15,11 @@ export function ShellLayout({
   onNewRecipe?: () => void;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-shell text-ivory">
-      <TopNav onNewRecipe={onNewRecipe} />
-      <main className="flex flex-1 flex-col">{children}</main>
-    </div>
+    <SurfaceToneContext.Provider value="shell">
+      <div className="flex min-h-screen flex-col bg-shell text-ivory [color-scheme:dark]">
+        <TopNav onNewRecipe={onNewRecipe} />
+        <main className="flex flex-1 flex-col">{children}</main>
+      </div>
+    </SurfaceToneContext.Provider>
   );
 }

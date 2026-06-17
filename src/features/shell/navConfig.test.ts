@@ -50,6 +50,22 @@ describe('navConfig (top navigation, Phase 6C)', () => {
     expect(copy.nav.engineLabel).toBe(copy.studio.engineTag);
   });
 
+  it('routes PI Calculator straight to Advanced Studio (Slice 3)', () => {
+    const calc = NAV_ITEMS.find((item) => item.id === 'calculator');
+    expect(calc?.to).toBe('/studio');
+    // every functional Calculator submenu link lands on /studio (none on /calculator)
+    for (const link of calc?.groups?.[0]?.links ?? []) {
+      if (link.to) expect(link.to).toBe('/studio');
+    }
+  });
+
+  it('points the Recipes "My Recipes" link at the saved-recipes page (Slice 3)', () => {
+    const recipes = NAV_ITEMS.find((item) => item.id === 'recipes');
+    const mine = recipes?.groups?.[0]?.links.find((l) => l.label === copy.nav.recipes.mine);
+    expect(mine?.to).toBe('/my-recipes');
+    expect(recipes?.to).toBe('/recipes'); // top-level Recipes → the dark hub
+  });
+
   it('uses distinct menu sizes across the items (variable mega-menu footprint)', () => {
     const sizes = new Set(NAV_ITEMS.map((item) => item.size));
     expect(sizes.size).toBeGreaterThan(1);

@@ -1,10 +1,16 @@
 import { Navigate, Route, Routes } from 'react-router';
-import { copy } from '@/copy/en';
-import { ComingSoonSurface } from '@/pages/ComingSoonSurface';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
+import {
+  APIPage,
+  CreateIngredientPage,
+  CreateLabelPage,
+  RecipesHubPage,
+  SubscriptionPage,
+  WorkWithUsPage,
+} from '@/pages/destinations';
 
 export function AppRoutes() {
   return (
@@ -13,21 +19,21 @@ export function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       {/* Legacy /demo entry → Home (kept so old links/bookmarks still land). */}
       <Route path="/demo" element={<Navigate to="/" replace />} />
-      {/* Advanced Studio · −11°C Engine — internal pro/test view (white chrome in Slice 1). */}
+      {/* Advanced Studio · −11°C Engine. */}
       <Route path="/studio" element={<StudioPage />} />
-      {/* My Recipes (Phase 2A.2) — the page self-guards anonymous visitors. */}
-      <Route path="/recipes" element={<MyRecipesPage />} />
+      {/* PI Calculator → Advanced Studio (no intermediate surface). */}
+      <Route path="/calculator" element={<Navigate to="/studio" replace />} />
 
-      {/* Phase 6C nav placeholder destinations — framework only; content in Slice 3. */}
-      <Route path="/calculator" element={<ComingSoonSurface title={copy.nav.calculator.title} />} />
-      <Route path="/label" element={<ComingSoonSurface title={copy.nav.label.title} />} />
-      <Route path="/api" element={<ComingSoonSurface title={copy.nav.api.title} />} />
-      <Route path="/work-with-us" element={<ComingSoonSurface title={copy.nav.work.title} />} />
-      <Route path="/subscription" element={<ComingSoonSurface title={copy.nav.subscription.title} />} />
-      <Route
-        path="/create-ingredient"
-        element={<ComingSoonSurface title={copy.nav.ingredient.title} />}
-      />
+      {/* Recipes hub (browse) + the saved-recipes list (self-guards anonymous visitors). */}
+      <Route path="/recipes" element={<RecipesHubPage />} />
+      <Route path="/my-recipes" element={<MyRecipesPage />} />
+
+      {/* Phase 6C Slice 3 nav destinations. */}
+      <Route path="/label" element={<CreateLabelPage />} />
+      <Route path="/api" element={<APIPage />} />
+      <Route path="/work-with-us" element={<WorkWithUsPage />} />
+      <Route path="/subscription" element={<SubscriptionPage />} />
+      <Route path="/create-ingredient" element={<CreateIngredientPage />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

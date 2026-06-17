@@ -17,7 +17,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = resolve(import.meta.dirname, '..');
-const SCAN_DIRS = ['features', 'pages/studio', 'pages/home', 'pages/recipes', 'stores', 'access', 'data', 'lib'];
+const SCAN_DIRS = ['features', 'pages', 'stores', 'access', 'data', 'lib'];
 
 function scanFiles(): string[] {
   const files: string[] = [];
@@ -107,6 +107,29 @@ describe('studio boundary guard', () => {
       const text = readFileSync(file, 'utf8');
       for (const identifier of FORBIDDEN_ENGINE_IDENTIFIERS) {
         expect(text.includes(identifier), `${identifier} used in ${file}`).toBe(false);
+      }
+    }
+  });
+
+  // Phase 6C Slice 3 — destination pages are static surfaces: no OCR/camera/PDF/upload.
+  it('Slice 3 destination pages pull in no camera / OCR / PDF / upload libraries', () => {
+    const destFiles = FILES.filter((f) => /[\\/]pages[\\/]destinations[\\/]/.test(f));
+    expect(destFiles.length, 'destination pages should be scanned').toBeGreaterThan(0);
+    const forbidden = [
+      /tesseract/i,
+      /opencv/i,
+      /react-webcam/i,
+      /getUserMedia/i,
+      /mediaDevices/i,
+      /@react-pdf/i,
+      /\bjspdf\b/i,
+      /pdfkit/i,
+      /from\s+['"]@\/engine['"]/, // destination pages never touch the engine barrel
+    ];
+    for (const file of destFiles) {
+      const text = readFileSync(file, 'utf8');
+      for (const re of forbidden) {
+        expect(re.test(text), `${re} found in ${file}`).toBe(false);
       }
     }
   });
