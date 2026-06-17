@@ -1,5 +1,6 @@
 /* PINGÜINO design tokens — Masterplan §3 Design Lock (binding).
-   White workspaces, deep charcoal contrast, brand ivory #EFE8DC.
+   White workspaces (Advanced Studio / lab panels) + a premium black brand shell
+   (Phase 6C). Deep charcoal contrast, brand ivory #EFE9DC (final brand value).
    No candy colors, no rainbow status palettes. */
 
 @theme {
@@ -8,9 +9,15 @@
   --color-ink: #101113;
   --color-ink-soft: #1a1c20;
 
+  /* Brand shell (Phase 6C) — global black AI-first surface + mega-menu layers */
+  --color-shell: #1a1a1a;
+  --color-shell-raised: #232323;
+  /* Translucent ivory used for nav hover/active pills + hairlines on the shell */
+  --color-shell-line: #efe9dc1f;
+
   /* Brand */
-  --color-ivory: #efe8dc;
-  --color-ivory-soft: #efe8dca3;
+  --color-ivory: #efe9dc;
+  --color-ivory-soft: #efe9dca3;
 
   /* Status — desaturated, laboratory-grade (never bright) */
   --color-status-ideal: #6f7d63;

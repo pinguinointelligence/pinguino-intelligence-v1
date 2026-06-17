@@ -22,7 +22,8 @@ export const copy = {
     needsCorrection: 'Needs correction',
     locked: 'Locked',
     pro: 'Pro',
-    demo: 'Demo',
+    // Customer-facing tier chip — never "Demo" (Phase 6C rebrand).
+    demo: 'Free Preview',
   },
   /** Ingredient confidence levels (Masterplan §16). */
   confidence: {
@@ -34,8 +35,8 @@ export const copy = {
   },
   /** Gating + upgrade teaser catalog (Masterplan §6, §10). */
   gate: {
-    proLabel: 'PINGÜINO Pro',
-    unlockCta: 'Unlock Pro',
+    proLabel: 'PI Pro',
+    unlockCta: 'Unlock PI Pro',
     prompts: {
       exactGrams: 'Unlock Pro to see exact correction grams.',
       exactAmount: 'PINGÜINO Pro calculates the exact amount to add.',
@@ -47,7 +48,7 @@ export const copy = {
     headline: 'From idea to production-ready gelato.',
     subline:
       'PINGÜINO Intelligence pairs a deterministic recipe engine with AI guidance — taste, structure, serving temperature, cost and production reality, balanced in one workspace.',
-    ctaPrimary: 'Start PI Demo',
+    ctaPrimary: 'Start Free Preview',
     ctaSecondary: 'Explore the four modes',
     pillars: [
       {
@@ -111,6 +112,134 @@ export const copy = {
     signedInAs: 'Signed in',
     authUnavailable: 'Sign-in unavailable in this build',
   },
+  /**
+   * Top navigation — the premium black shell + Tesla-style mega menus (Phase 6C).
+   * Eight centered top-level items; each menu has its own size/layout (see navConfig).
+   * Customer-facing — never "Demo": use "Free Preview" / "PI Preview" / "Unlock PI Pro".
+   */
+  nav: {
+    skipToContent: 'Skip to content',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
+    account: 'Account',
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    previewTier: 'Free Preview',
+    previewExperience: 'PI Preview',
+    unlockPro: 'Unlock PI Pro',
+    comingSoon: 'Coming soon',
+    learnMore: 'Learn more',
+    engineLabel: '−11°C Engine',
+    /** Top-level labels — order is the source of truth in navConfig. */
+    items: {
+      start: 'Start',
+      calculator: 'PI Calculator',
+      recipes: 'Recipes',
+      label: 'Create Label',
+      api: 'API',
+      work: 'Work With Us',
+      subscription: 'Subscription',
+      ingredient: 'Create Ingredient',
+    },
+    start: {
+      blurb: 'Back to the AI talking space.',
+      talk: 'Return to PI',
+      new: 'Start a new recipe',
+      continue: 'Continue last recipe',
+      how: 'How PI Preview works',
+    },
+    calculator: {
+      title: 'PI Calculator',
+      blurb: 'Build and balance on the deterministic engine.',
+      manual: 'Manual PI Calculator',
+      studio: 'Advanced Studio',
+      builder: 'Ingredient builder',
+      panel: 'PI indicator panel',
+      rescue: 'Production rescue',
+      engineNote: 'Active engine',
+    },
+    recipes: {
+      title: 'Recipes',
+      blurb: 'Start from a balanced base.',
+      mine: 'My Recipes',
+      pinguino: 'PINGÜINO Recipes',
+      featured: 'Featured Recipes',
+      recent: 'Recently Added',
+      gelato: 'Gelato',
+      sorbet: 'Sorbet',
+      vegan: 'Vegan',
+      protein: 'Protein',
+      startFrom: 'Start from a recipe',
+      browse: 'Browse',
+      categories: 'Categories',
+    },
+    label: {
+      title: 'Create Label',
+      blurb: 'Compliant labels from your recipe.',
+      nutrition: 'Nutrition label',
+      production: 'Production label',
+      statement: 'Ingredient statement',
+      allergen: 'Allergen information',
+      export: 'Export / print',
+    },
+    api: {
+      title: 'API',
+      blurb: 'Bring PINGÜINO intelligence into your stack.',
+      overview: 'API overview',
+      shops: 'API for gelato shops',
+      machines: 'API for machines',
+      partner: 'Partner access',
+      docs: 'Documentation',
+      status: 'Integration status',
+    },
+    work: {
+      title: 'Work With Us',
+      blurb: 'Four ways to bring PINGÜINO into your shop.',
+      offers: {
+        app: {
+          title: 'App only',
+          body: 'PINGÜINO Intelligence for your team — recipes, balance and corrections.',
+        },
+        machinesApp: {
+          title: 'Machines + App',
+          body: 'Production machines paired with the app for end-to-end control.',
+        },
+        machineMixtures: {
+          title: 'Machine + ready mixtures',
+          body: 'A machine plus ready-to-run mixtures formulated by PINGÜINO.',
+        },
+        ingredients: {
+          title: 'Ingredients / powder packs',
+          body: 'Calibrated ingredient and powder packs for consistent results.',
+        },
+      },
+    },
+    subscription: {
+      title: 'Subscription',
+      blurb: 'Preview free — unlock the full engine with PI Pro.',
+      free: 'Free Preview',
+      pro: 'PI Pro',
+      team: 'Shop / Team plan',
+      manage: 'Manage billing',
+      change: 'Change / cancel billing',
+    },
+    ingredient: {
+      title: 'Create Ingredient',
+      blurb: 'Add your own ingredient from a description or a label photo.',
+      describe: 'Describe product',
+      photo: 'Add food label photo',
+      camera: 'Take picture',
+      review: 'Review extracted data',
+      add: 'Add to ingredients',
+    },
+  },
+  /** Reusable placeholder surface for not-yet-built nav destinations (Phase 6C, Slice 1). */
+  comingSoon: {
+    eyebrow: 'Coming soon',
+    headline: 'In the works.',
+    body: 'This space is part of the PINGÜINO roadmap. The navigation is live — the destination lands in a later release.',
+    back: 'Back to home',
+  },
   /** Auth modal (Phase 2A). */
   auth: {
     titleSignIn: 'Sign in to PINGÜINO',
@@ -169,7 +298,7 @@ export const copy = {
     batchDefault: 'Keep 1000 g',
     batchScale: 'Scale it',
     batchUnit: 'g',
-    summaryEyebrow: 'Demo preview',
+    summaryEyebrow: 'PI Preview',
     heroLabel: 'Hero flavor',
     heroFallback: 'your idea',
     productLabel: 'Product',
@@ -306,7 +435,7 @@ export const copy = {
       resultUnitMany: 'ingredients',
       resultFoundSuffix: 'found',
       loadingLibrary: 'Loading PI Base library…',
-      fallbackNote: 'PI Base library unavailable — showing demo ingredients.',
+      fallbackNote: 'PI Base library unavailable — showing preview ingredients.',
       planned: 'Planned',
       actual: 'Actual',
       share: 'Share',
@@ -404,7 +533,7 @@ export const copy = {
     corrections: {
       title: 'Corrections',
       none: 'Balanced — no corrections needed.',
-      demoPreviewNote: 'Demo preview — exact grams hidden.',
+      demoPreviewNote: 'PI Preview — exact grams hidden.',
       demoDirections: {
         add: 'Add a balancing ingredient',
         reduce: 'Reduce an ingredient',

@@ -28,12 +28,14 @@ export function ChoiceChips({
             onClick={() => onChoose(option.id)}
             className={cn(
               'rounded-lg border px-4 py-2.5 text-left transition-colors',
-              active ? 'border-ink bg-ink text-paper' : 'border-ink/15 text-ink hover:border-ink/40',
+              active
+                ? 'border-ivory bg-ivory text-ink'
+                : 'border-ivory/20 text-ivory hover:border-ivory/50',
             )}
           >
             <span className="block text-sm">{option.label}</span>
             {option.desc ? (
-              <span className={cn('mt-0.5 block text-xs', active ? 'text-paper/70' : 'text-stone-500')}>
+              <span className={cn('mt-0.5 block text-xs', active ? 'text-ink/65' : 'text-ivory/50')}>
                 {option.desc}
               </span>
             ) : null}

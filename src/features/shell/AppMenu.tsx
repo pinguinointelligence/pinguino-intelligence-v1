@@ -15,8 +15,13 @@ const itemClass =
 const soonChip =
   'rounded border border-ink/10 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.08em] text-stone-400 uppercase';
 
-/** Top-left hamburger — New, Advanced Studio, and future subscriber items (Step 6A). */
-export function AppMenu({ onNew }: { onNew?: () => void }) {
+/**
+ * Hamburger menu — New, Advanced Studio, and future subscriber items (Step 6A).
+ * In Phase 6C this is the mobile drawer behind the centered TopNav; `tone` only
+ * colors the trigger glyph (ivory on the black shell, ink on white pages). The
+ * drawer surface stays white so it also works on MyRecipesPage.
+ */
+export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'ivory' | 'ink' }) {
   const [open, setOpen] = useState(false);
 
   const authAvailable = useAuthStore((state) => state.available);
@@ -33,7 +38,10 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
         aria-label={m.title}
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="flex h-10 w-10 items-center justify-center rounded-md text-ink transition-colors hover:bg-ink/5"
+        className={cn(
+          'flex h-10 w-10 items-center justify-center rounded-md transition-colors',
+          tone === 'ivory' ? 'text-ivory hover:bg-ivory/10' : 'text-ink hover:bg-ink/5',
+        )}
       >
         <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden fill="none" stroke="currentColor" strokeWidth={1.5}>
           <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
@@ -55,7 +63,7 @@ export function AppMenu({ onNew }: { onNew?: () => void }) {
             </div>
 
             <Link
-              to="/demo"
+              to="/"
               className={itemClass}
               onClick={() => {
                 onNew?.();

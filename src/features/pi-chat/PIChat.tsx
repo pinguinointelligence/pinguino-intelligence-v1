@@ -40,7 +40,7 @@ const batchChips: ChipOption[] = [
 ];
 
 function Question({ children }: { children: string }) {
-  return <h2 className="text-center text-xl font-light tracking-tight text-ink">{children}</h2>;
+  return <h2 className="text-center text-xl font-light tracking-tight text-ivory">{children}</h2>;
 }
 
 /** Guided intake orchestrator — renders the current conversation step and runs
@@ -130,7 +130,9 @@ export function PIChat() {
   // 'flavor' (and any terminal/stale step) — the opening prompt.
   return (
     <div className="w-full max-w-xl space-y-4">
-      <SectionLabel className="text-center">{copy.home.eyebrow}</SectionLabel>
+      <SectionLabel tone="ivory" className="text-center">
+        {copy.home.eyebrow}
+      </SectionLabel>
       <ChatPrompt onSubmit={(text) => dispatch({ type: 'submitFlavor', text })} />
     </div>
   );
