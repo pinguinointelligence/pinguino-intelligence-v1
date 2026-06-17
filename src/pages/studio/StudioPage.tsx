@@ -21,6 +21,10 @@ import { PresetSelector } from '@/features/studio/PresetSelector';
 import { StudioModeToggle } from '@/features/studio/StudioModeToggle';
 import { StudioSummary } from '@/features/studio/StudioSummary';
 import { useStudioResult } from '@/features/studio/useStudioResult';
+import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculatorPreview';
+import { LockedNutritionPreview } from '@/features/studio/locked/LockedNutritionPreview';
+import { LockedPIPreview } from '@/features/studio/locked/LockedPIPreview';
+import { LockedScorePreview } from '@/features/studio/locked/LockedScorePreview';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 
 const { studio } = copy;
@@ -28,7 +32,8 @@ const { studio } = copy;
 export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
-  const { plan } = useAccess();
+  // Free Preview (demo/free) locks exact values; Pro unlocks the full calculator + panels.
+  const { plan, fullFormula, technicalView } = useAccess();
   const { result, corrections } = useStudioResult();
 
   const mode = useRecipeStore((state) => state.mode);
@@ -109,22 +114,28 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
           </div>
 
           <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_minmax(380px,420px)]">
-            {/* Left: goal + ingredient builder */}
+            {/* Left: goal (always interactive) + the calculator (Pro-gated, do-not-mount) */}
             <div className="space-y-6">
               <GoalSetup />
-              <IngredientBuilder
-                items={result.items}
-                totalBatchG={result.total_batch_g}
-                targetBatchG={batchGrams}
-                demo={forceDemo}
-              />
+              {fullFormula ? (
+                <IngredientBuilder
+                  items={result.items}
+                  totalBatchG={result.total_batch_g}
+                  targetBatchG={batchGrams}
+                  demo={forceDemo}
+                />
+              ) : (
+                <LockedCalculatorPreview />
+              )}
             </div>
 
-            {/* Right: live engine output (sticky, self-scrolling lab rail) */}
+            {/* Right: live engine output (sticky lab rail). technicalView gates the
+                exact panels — Free Preview gets decorative locked previews instead
+                (real panels + RecipeResult are never mounted). */}
             <div className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
-              <OverallScoreCard result={result} mode={mode} />
-              <PIPanel result={result} />
-              <NutritionCostScorePanel result={result} />
+              {technicalView ? <OverallScoreCard result={result} mode={mode} /> : <LockedScorePreview />}
+              {technicalView ? <PIPanel result={result} /> : <LockedPIPreview />}
+              {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
               <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
             </div>
           </div>

@@ -357,6 +357,12 @@ export const copy = {
     eyebrow: 'Advanced Studio',
     engineTag: '−11°C Engine',
     back: 'Back to landing',
+    /** Locked Free Preview panels (Phase 6C Slice 2B) — decorative, no exact values. */
+    locked: {
+      chip: 'PI Preview',
+      note: 'Exact values are part of PI Pro.',
+      cta: 'Unlock PI Pro for exact grams, full calculator and production rescue.',
+    },
     presets: {
       label: 'Demo scenarios',
       items: {
