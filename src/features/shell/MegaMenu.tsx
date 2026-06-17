@@ -1,7 +1,6 @@
 import { Link } from 'react-router';
 import { copy } from '@/copy/en';
-import { cn } from '@/lib/cn';
-import type { NavItem, NavMenuSize } from './navConfig';
+import type { NavItem } from './navConfig';
 import {
   ImagePlaceholder,
   MegaMenuItem,
@@ -10,18 +9,12 @@ import {
 } from './MegaMenuItem';
 
 /**
- * The mega-menu surface (Phase 6C). ONE smooth translucent panel — not boxed
- * tiles — centered under the header. Each nav item picks its own `size` and
- * `layout`, so the panel footprint and arrangement differ per category, exactly
- * like the Tesla reference. Item groups inside stay transparent (MegaMenuItem).
+ * The mega-menu surface (Phase 6C) — a Tesla-style FULL-WIDTH sheet, not a small
+ * floating box. One continuous dark shell surface flush under the header, spanning
+ * the viewport; the content sits in a centered max-width band. Each nav item keeps
+ * its own `layout`, so the arrangement (and height) varies per category, while item
+ * groups stay transparent (MegaMenuItem) — no boxed cards, no heavy shadow.
  */
-
-const SIZE_WIDTH: Record<NavMenuSize, string> = {
-  compact: 'w-64',
-  medium: 'w-80',
-  large: 'w-[44rem]',
-  panel: 'w-[64rem] max-w-[calc(100vw-3rem)]',
-};
 
 function PanelBody({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
   const groups = item.groups ?? [];
@@ -129,7 +122,12 @@ interface MegaMenuProps {
   onMouseLeave: () => void;
 }
 
-/** The centered dropdown panel for the currently open nav item. */
+/**
+ * The currently open mega menu — a full-width sheet flush under the 64px header
+ * (top-16), one continuous dark surface across the viewport, with content centered
+ * in a max-width band. No floating box, no rounded panel, no heavy card shadow —
+ * just a hairline at the sheet's bottom edge to separate it from the dimmed page.
+ */
 export function MegaMenu({ item, onNavigate, onMouseEnter, onMouseLeave }: MegaMenuProps) {
   return (
     <div
@@ -138,14 +136,11 @@ export function MegaMenu({ item, onNavigate, onMouseEnter, onMouseLeave }: MegaM
       aria-label={item.label}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={cn(
-        'absolute left-1/2 top-full z-50 mt-3 -translate-x-1/2',
-        'rounded-2xl bg-shell/95 ring-1 ring-ivory/10 shadow-2xl shadow-black/50 backdrop-blur-xl',
-        item.size === 'compact' ? 'p-5' : 'p-8',
-        SIZE_WIDTH[item.size],
-      )}
+      className="fixed inset-x-0 top-16 z-50 border-b border-ivory/10 bg-shell"
     >
-      <PanelBody item={item} onNavigate={onNavigate} />
+      <div className="mx-auto w-full max-w-6xl px-6 py-9">
+        <PanelBody item={item} onNavigate={onNavigate} />
+      </div>
     </div>
   );
 }
