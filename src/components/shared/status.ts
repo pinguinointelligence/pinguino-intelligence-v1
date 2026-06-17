@@ -118,6 +118,7 @@ export const STATUS_CHIP_CLASSES_SHELL: Record<IndicatorStatus, string> = {
   premium: 'border-ivory/30 bg-ivory text-ink',
   needs_correction: ERROR_D,
   locked: 'border-ivory/10 bg-ivory/5 text-ivory/50',
-  pro: 'border-ivory/60 bg-ivory/10 text-ivory',
-  demo: 'border-ivory/40 bg-ivory/15 text-ivory',
+  // Slice 2C polish — calmer, more premium on the dark shell.
+  pro: 'border-ivory/40 bg-ivory/5 text-ivory/80',
+  demo: 'border-ivory/30 bg-ivory/10 text-ivory/75',
 };

@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { copy } from '@/copy/en';
-import { barPosition } from '@/lib/math';
+import { barPosition, idealCoreRange } from '@/lib/math';
+import { SurfaceToneContext } from '@/components/ui/surface';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { confidenceLevel } from './confidence';
 import { EmptyState } from './EmptyState';
@@ -103,5 +104,59 @@ describe('EmptyState', () => {
     const html = renderToStaticMarkup(<EmptyState title="Nothing here" body="Quiet." />);
     expect(html).toContain('Nothing here');
     expect(html).toContain('Quiet.');
+  });
+});
+
+describe('idealCoreRange — display-only ideal core (Slice 2C)', () => {
+  it('returns the central half of the target band', () => {
+    expect(idealCoreRange(12, 20)).toEqual({ coreMin: 14, coreMax: 18 });
+  });
+
+  it('is symmetric around the band centre', () => {
+    const { coreMin, coreMax } = idealCoreRange(6, 24);
+    expect((coreMin + coreMax) / 2).toBe(15);
+  });
+
+  it('respects a custom fraction (still narrower, still centred)', () => {
+    expect(idealCoreRange(0, 10, 0.4)).toEqual({ coreMin: 3, coreMax: 7 });
+  });
+});
+
+describe('IndicatorBar — premium ideal-core window (Slice 2C)', () => {
+  const renderShell = () =>
+    renderToStaticMarkup(
+      <SurfaceToneContext.Provider value="shell">
+        <IndicatorBar min={6} max={24} value={14.5} targetMin={12} targetMax={17} status="ideal" label="POD" />
+      </SurfaceToneContext.Provider>,
+    );
+  const renderPaper = () =>
+    renderToStaticMarkup(
+      <SurfaceToneContext.Provider value="paper">
+        <IndicatorBar min={6} max={24} value={14.5} targetMin={12} targetMax={17} status="ideal" label="POD" />
+      </SurfaceToneContext.Provider>,
+    );
+
+  it('preserves meter semantics with the ideal core present', () => {
+    const html = renderShell();
+    expect(html).toContain('role="meter"');
+    expect(html).toContain('aria-valuemin="6"');
+    expect(html).toContain('aria-valuemax="24"');
+    expect(html).toContain('aria-valuenow="14.5"');
+  });
+
+  it('still renders the true target band', () => {
+    expect(renderShell()).toContain('bg-status-ideal/30');
+  });
+
+  it('renders the glowing ivory ideal core on the dark shell', () => {
+    const html = renderShell();
+    expect(html).toContain('ring-ivory/35');
+    expect(html).toMatch(/shadow-\[/); // soft glow
+  });
+
+  it('keeps the paper variant clean — no ivory ring or glow', () => {
+    const html = renderPaper();
+    expect(html).not.toContain('ring-ivory/35');
+    expect(html).not.toMatch(/shadow-\[/);
   });
 });
