@@ -94,8 +94,13 @@ const lc = (v) => String(v ?? '').trim().toLowerCase();
 // ----------------------------------------------------- schema / mappings ----
 const CANONICAL_HEADERS = parseCsv(readFileSync(TEMPLATE, 'utf8'))[0];
 
-// raw -> canonical column renames
-const RENAME = { approved_for_base: 'approved_for_pinguino_base' };
+// raw -> canonical column renames. Recognizes the new mapper_basement input
+// names; the canonical OUTPUT names stay v0.95 in this slice (the canonical flip
+// to approved_for_base / approved_for_engines happens with the table/type rename).
+const RENAME = {
+  approved_for_base: 'approved_for_pinguino_base',
+  approved_for_engines: 'approved_for_minus_11_engine',
+};
 // canonical -> raw lookup
 const CANON_TO_RAW = Object.fromEntries(
   CANONICAL_HEADERS.map((h) => {
@@ -220,8 +225,10 @@ const cleaned = records.map((row) => {
   const baseApproved = lc(row.approved_for_base) === 'true';
   if (baseApproved) approvedBaseTrue++;
 
-  // −11°C engine approval: keep true only with full critical data, else exception
-  const rawEngineTrue = lc(row.approved_for_minus_11_engine) === 'true';
+  // engine approval: keep true only with full critical data, else exception.
+  // Reads the new mapper_basement column (approved_for_engines) with a fallback
+  // to the legacy approved_for_minus_11_engine so both raw formats are accepted.
+  const rawEngineTrue = lc(row.approved_for_engines ?? row.approved_for_minus_11_engine) === 'true';
   let engineApproved = rawEngineTrue;
   if (rawEngineTrue) {
     const missing = ENGINE_CRITICAL.filter((f) => isBlank(row[f]));

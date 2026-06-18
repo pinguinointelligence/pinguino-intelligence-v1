@@ -34,7 +34,15 @@ const OUT = join(OUT_DIR, process.env.SEED_OUT ?? `ingredients_${DATASET_VERSION
 
 // ----------------------------------------------------- column type groups ----
 // Booleans, integer, dates; everything else numeric or text (lists below).
-const BOOL_COLS = new Set(['approved_for_pinguino_base', 'approved_for_minus_11_engine']);
+// Recognize BOTH the legacy names and the new mapper_basement names
+// (approved_for_base / approved_for_engines). Emission is header-driven, so a
+// CSV only ever emits the columns it actually contains.
+const BOOL_COLS = new Set([
+  'approved_for_pinguino_base',
+  'approved_for_minus_11_engine',
+  'approved_for_base',
+  'approved_for_engines',
+]);
 const INT_COLS = new Set(['data_confidence_percent']);
 const DATE_COLS = new Set(['verification_date', 'last_reviewed_at']);
 const NUMERIC_COLS = new Set([
