@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn';
 import { useSurfaceTone } from '@/components/ui/surface';
-import { barPosition, idealCoreRange } from '@/lib/math';
+import { barPosition } from '@/lib/math';
 import {
   STATUS_MARKER_CLASSES,
   STATUS_MARKER_CLASSES_SHELL,
@@ -36,12 +36,6 @@ export function IndicatorBar({
   const targetWidth = hasTarget ? barPosition(min, max, targetMax) - targetLeft : 0;
   const markerClasses = shell ? STATUS_MARKER_CLASSES_SHELL : STATUS_MARKER_CLASSES;
 
-  // Display-only "ideal core" — the central half of the true band, derived from the
-  // passed targets (never the engine). Decorative; does not affect classification.
-  const core = hasTarget ? idealCoreRange(targetMin, targetMax) : null;
-  const coreLeft = core ? barPosition(min, max, core.coreMin) : 0;
-  const coreWidth = core ? barPosition(min, max, core.coreMax) - coreLeft : 0;
-
   return (
     <div
       role="meter"
@@ -55,26 +49,19 @@ export function IndicatorBar({
         className,
       )}
     >
-      {/* True target band — the full acceptable range (faint, wide). */}
+      {/* The single target zone — a slim, softly glowing ivory band on the dark
+          shell (narrower than a full-height fill). Decorative; spans the real
+          [targetMin, targetMax] only — one zone, no nested zone, no engine change. */}
       {hasTarget ? (
         <div
           aria-hidden
-          className={cn('absolute inset-y-0 rounded-full', shell ? 'bg-status-ideal/30' : 'bg-status-ideal/25')}
-          style={{ left: `${targetLeft}%`, width: `${targetWidth}%` }}
-        />
-      ) : null}
-      {/* Ideal-core window — narrower, centered; glowing ivory hairline on the dark
-          shell, faint and glow-free on paper. Purely decorative. */}
-      {core ? (
-        <div
-          aria-hidden
           className={cn(
-            'absolute inset-y-0 rounded-full',
+            'absolute top-1/2 -translate-y-1/2 rounded-full',
             shell
-              ? 'bg-ivory/[0.10] ring-1 ring-inset ring-ivory/35 shadow-[0_0_6px_rgba(239,233,220,0.22)]'
-              : 'bg-ink/[0.06]',
+              ? 'h-[3px] bg-ivory/55 shadow-[0_0_5px_rgba(239,233,220,0.4)]'
+              : 'inset-y-0 bg-status-ideal/25',
           )}
-          style={{ left: `${coreLeft}%`, width: `${coreWidth}%` }}
+          style={{ left: `${targetLeft}%`, width: `${targetWidth}%` }}
         />
       ) : null}
       <div

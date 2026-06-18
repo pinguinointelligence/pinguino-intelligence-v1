@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { copy } from '@/copy/en';
-import { barPosition, idealCoreRange } from '@/lib/math';
+import { barPosition } from '@/lib/math';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { confidenceLevel } from './confidence';
@@ -107,36 +107,15 @@ describe('EmptyState', () => {
   });
 });
 
-describe('idealCoreRange — display-only ideal core (Slice 2C)', () => {
-  it('returns the central half of the target band', () => {
-    expect(idealCoreRange(12, 20)).toEqual({ coreMin: 14, coreMax: 18 });
-  });
-
-  it('is symmetric around the band centre', () => {
-    const { coreMin, coreMax } = idealCoreRange(6, 24);
-    expect((coreMin + coreMax) / 2).toBe(15);
-  });
-
-  it('respects a custom fraction (still narrower, still centred)', () => {
-    expect(idealCoreRange(0, 10, 0.4)).toEqual({ coreMin: 3, coreMax: 7 });
-  });
-});
-
-describe('IndicatorBar — premium ideal-core window (Slice 2C)', () => {
+describe('IndicatorBar — single glowing target zone (Phase 6C)', () => {
   const renderShell = () =>
     renderToStaticMarkup(
       <SurfaceToneContext.Provider value="shell">
         <IndicatorBar min={6} max={24} value={14.5} targetMin={12} targetMax={17} status="ideal" label="POD" />
       </SurfaceToneContext.Provider>,
     );
-  const renderPaper = () =>
-    renderToStaticMarkup(
-      <SurfaceToneContext.Provider value="paper">
-        <IndicatorBar min={6} max={24} value={14.5} targetMin={12} targetMax={17} status="ideal" label="POD" />
-      </SurfaceToneContext.Provider>,
-    );
 
-  it('preserves meter semantics with the ideal core present', () => {
+  it('preserves meter semantics', () => {
     const html = renderShell();
     expect(html).toContain('role="meter"');
     expect(html).toContain('aria-valuemin="6"');
@@ -144,19 +123,17 @@ describe('IndicatorBar — premium ideal-core window (Slice 2C)', () => {
     expect(html).toContain('aria-valuenow="14.5"');
   });
 
-  it('still renders the true target band', () => {
-    expect(renderShell()).toContain('bg-status-ideal/30');
-  });
-
-  it('renders the glowing ivory ideal core on the dark shell', () => {
+  it('renders exactly one target zone — no nested / inner zone', () => {
     const html = renderShell();
-    expect(html).toContain('ring-ivory/35');
-    expect(html).toMatch(/shadow-\[/); // soft glow
+    // the old inner "ideal core" overlay is gone entirely
+    expect(html).not.toContain('ring-ivory/35');
+    // one decorative target band + one marker = two aria-hidden children only
+    expect((html.match(/aria-hidden/g) ?? []).length).toBe(2);
   });
 
-  it('keeps the paper variant clean — no ivory ring or glow', () => {
-    const html = renderPaper();
-    expect(html).not.toContain('ring-ivory/35');
-    expect(html).not.toMatch(/shadow-\[/);
+  it('renders the single zone as a slim, softly glowing ivory band', () => {
+    const html = renderShell();
+    expect(html).toContain('h-[3px]'); // narrower than the full-height track
+    expect(html).toMatch(/shadow-\[/); // soft ivory glow
   });
 });
