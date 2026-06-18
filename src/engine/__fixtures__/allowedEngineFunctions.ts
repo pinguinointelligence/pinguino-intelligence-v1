@@ -48,4 +48,7 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   'verifyCorrectionProposal',
   'isReductionAllowed',
   'redactProposal',
+  // Auto Fix apply/idempotence core (Slice 1A) — pure wrappers, no new math
+  'proposeAutoFix',
+  'applyAutoFix',
 ];

@@ -39,3 +39,7 @@ export const EXTERNAL_REFERENCE_FIXTURES: readonly CalibrationFixture[] = [
 
 export { externalReferenceMilkBase } from './milk-base';
 export { externalReferenceRaspberryPremium } from './raspberry-premium';
+// Auto Fix Slice 1A diagnostic reference recipes (also kept OUT of the 11
+// placeholders) — clean engine-vs-reference probes from the planning history.
+export { externalReferenceChocolate123 } from './chocolate-123';
+export { externalReferenceRaspberry428 } from './raspberry-428';
