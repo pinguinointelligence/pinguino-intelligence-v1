@@ -57,11 +57,14 @@ describe('v0.95 no-NPAC seed', () => {
 });
 
 describe('v0.95 service + dataset', () => {
-  it('the service queries the v0.95 no-NPAC table', () => {
-    expect(SERVICE.includes('ingredients_final_v0_95_no_npac')).toBe(true);
+  it('the runtime service no longer queries the v0.95 table (now rollback-only)', () => {
+    // Slice B2 moved the runtime onto public.mapper_basement; the v0.95 table +
+    // its migration/seed remain on disk for rollback only.
+    expect(SERVICE.includes('ingredients_final_v0_95_no_npac')).toBe(false);
+    expect(SERVICE.includes('mapper_basement')).toBe(true);
   });
 
-  it('the active cleaned CSV has no npac_value column', () => {
+  it('the v0.95 rollback CSV has no npac_value column', () => {
     expect(/(^|,)npac_value(,|$)/m.test(CSV.split(/\r?\n/)[0]!)).toBe(false);
   });
 });

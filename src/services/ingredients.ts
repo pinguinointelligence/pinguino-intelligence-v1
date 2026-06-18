@@ -11,7 +11,7 @@
 import { supabase } from '@/lib/supabase/client';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 
-const TABLE = 'ingredients_final_v0_95_no_npac';
+const TABLE = 'mapper_basement';
 
 /** Active ingredients (RLS still scopes visibility to PI Pro members). */
 export async function listActiveIngredients(): Promise<IngredientRow[]> {
@@ -25,14 +25,14 @@ export async function listActiveIngredients(): Promise<IngredientRow[]> {
   return (data ?? []) as IngredientRow[];
 }
 
-/** Active ingredients approved for the −11°C Engine. */
-export async function listApprovedMinus11Ingredients(): Promise<IngredientRow[]> {
+/** Active ingredients approved for the PI recipe engines. */
+export async function listEngineApprovedIngredients(): Promise<IngredientRow[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
     .eq('is_active', true)
-    .eq('approved_for_minus_11_engine', true)
+    .eq('approved_for_engines', true)
     .order('ingredient_name_display', { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as IngredientRow[];

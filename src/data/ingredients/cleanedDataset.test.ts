@@ -1,9 +1,9 @@
 /// <reference types="node" />
 /**
- * The internally-confirmed PI Base Ingredients v0.95 (no-NPAC) dataset is the
- * ACTIVE source of truth for the import. It must stay schema-faithful and
- * engine-mappable, and must NOT carry an ingredient-level npac_value column.
- * (The v0.94 CSV remains on disk for rollback but is no longer the active set.)
+ * The locked Mapper Basement dataset (mapper_basement.csv) is the ACTIVE source
+ * of truth for the import. It must stay schema-faithful and engine-mappable, and
+ * must NOT carry an ingredient-level npac_value column. (The older v0.94 / v0.95
+ * cleaned CSVs remain on disk for rollback but are no longer the active set.)
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -17,7 +17,7 @@ const CSV = readFileSync(
     'docs',
     'ingredients',
     'validation',
-    'pinguino_base_ingredients_cleaned_v0_95_no_npac.csv',
+    'mapper_basement.csv',
   ),
   'utf8',
 );
@@ -52,7 +52,7 @@ const dataRows = parsed
   .filter((r) => !(r.length === 1 && r[0] === '') && r.some((c) => c !== ''));
 const col = (name: string) => headers.indexOf(name);
 
-describe('PI Base cleaned dataset v0.95 (no-NPAC)', () => {
+describe('Mapper Basement dataset (mapper_basement.csv)', () => {
   it('has exactly 542 rows and 62 columns', () => {
     expect(dataRows.length).toBe(542);
     expect(headers.length).toBe(62);
@@ -86,9 +86,9 @@ describe('PI Base cleaned dataset v0.95 (no-NPAC)', () => {
     }
   });
 
-  it('every row is approved for PINGÜINO Base and the −11°C Engine, and verified', () => {
-    const base = col('approved_for_pinguino_base');
-    const eng = col('approved_for_minus_11_engine');
+  it('every row is approved for base and engines, and verified', () => {
+    const base = col('approved_for_base');
+    const eng = col('approved_for_engines');
     const status = col('verification_status');
     for (const row of dataRows) {
       expect(row[base]).toBe('true');

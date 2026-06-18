@@ -7,7 +7,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useAccess } from '@/access/useAccess';
-import { listApprovedMinus11Ingredients } from '@/services/ingredients';
+import { listEngineApprovedIngredients } from '@/services/ingredients';
 import {
   selectIngredientLibrary,
   shouldFetchLibrary,
@@ -22,7 +22,7 @@ export function useIngredientLibrary({ demo }: { demo: boolean }): IngredientLib
 
   const query = useQuery({
     queryKey: KEY,
-    queryFn: listApprovedMinus11Ingredients,
+    queryFn: listEngineApprovedIngredients,
     enabled,
     staleTime: 5 * 60 * 1000,
   });

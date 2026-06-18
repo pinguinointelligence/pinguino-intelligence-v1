@@ -53,10 +53,10 @@ describe('ingredient intake schema', () => {
     }
   });
 
-  it('also marks water_percent, pod_value and approved_for_minus_11_engine required', () => {
+  it('also marks water_percent, pod_value and approved_for_engines required', () => {
     expect(required('water_percent')).toBe(true);
     expect(required('pod_value')).toBe(true);
-    expect(required('approved_for_minus_11_engine')).toBe(true);
+    expect(required('approved_for_engines')).toBe(true);
   });
 
   it('verification_status enum includes the trust levels', () => {
@@ -67,8 +67,8 @@ describe('ingredient intake schema', () => {
   });
 
   it('approval flags default to false', () => {
-    expect(findIntakeColumn('approved_for_minus_11_engine')?.defaultValue).toBe(false);
-    expect(findIntakeColumn('approved_for_pinguino_base')?.defaultValue).toBe(false);
+    expect(findIntakeColumn('approved_for_engines')?.defaultValue).toBe(false);
+    expect(findIntakeColumn('approved_for_base')?.defaultValue).toBe(false);
   });
 
   it('numeric unknown defaults to null — missing data is NEVER 0', () => {
@@ -110,7 +110,7 @@ describe('ingredient intake schema', () => {
     // identity + flags
     expect(row.ingredient_id).toBe('sucrose_reference_example');
     expect(row.verification_status).toBe('draft');
-    expect(row.approved_for_minus_11_engine).toBe('false');
+    expect(row.approved_for_engines).toBe('false');
     expect(row.data_confidence_percent).toBe('0');
     // verified true zeros
     expect(row.fat_percent).toBe('0');

@@ -83,9 +83,14 @@ describe('Mapper Basement seed (mapper_basement_v0_95.sql)', () => {
   });
 });
 
-describe('Mapper Basement — runtime NOT switched yet (Slice B1)', () => {
-  it('the app service still queries the legacy v0.95 table, not mapper_basement', () => {
-    expect(SERVICE.includes('ingredients_final_v0_95_no_npac')).toBe(true);
-    expect(SERVICE.includes('mapper_basement')).toBe(false);
+describe('Mapper Basement — runtime switched (Slice B2)', () => {
+  it('the app service now queries mapper_basement, not the legacy v0.95 table', () => {
+    expect(SERVICE.includes('mapper_basement')).toBe(true);
+    expect(SERVICE.includes('ingredients_final_v0_95_no_npac')).toBe(false);
+  });
+
+  it('the app service filters by approved_for_engines, not the legacy approval column', () => {
+    expect(SERVICE.includes('approved_for_engines')).toBe(true);
+    expect(/approved_for_minus_11_engine/.test(SERVICE)).toBe(false);
   });
 });

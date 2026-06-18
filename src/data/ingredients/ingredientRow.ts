@@ -37,8 +37,8 @@ export interface IngredientRow {
   ingredient_category: string;
   ingredient_subcategory: string;
   // approval & verification
-  approved_for_pinguino_base: boolean;
-  approved_for_minus_11_engine: boolean;
+  approved_for_base: boolean;
+  approved_for_engines: boolean;
   verification_status: VerificationStatus;
   verification_source: string;
   verification_date: string | null;
