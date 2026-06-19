@@ -14,6 +14,8 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import { getCurrentUser } from '@/services/auth';
+import { productMatchResultToPatch } from '@/data/products/productMatchResultToPatch';
+import type { ProductMatchResult } from '@/data/products/productMatcher';
 import type { ProductInsert, ProductRow, ProductUpdate } from '@/data/products/productRow';
 
 const TABLE = 'products';
@@ -71,4 +73,19 @@ export async function removeProduct(id: string): Promise<void> {
   if (!supabase) throw new Error(UNAVAILABLE);
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+/**
+ * D3 Mapper write-back — persist one in-memory ProductMatchResult onto the owned
+ * product row. Writes ONLY the 11 Mapper-result columns (via the narrow
+ * ProductMapperResultUpdate patch) through the existing RLS-gated updateProduct; it
+ * never touches products.status, never reads or writes the locked mapper_basement,
+ * never calls the engine, and uses no privileged key. Call it EXPLICITLY (e.g. after
+ * running the pure matcher) — there is no automatic matching here.
+ */
+export async function saveProductMatchResult(
+  productId: string,
+  result: ProductMatchResult,
+): Promise<ProductRow> {
+  return updateProduct(productId, productMatchResultToPatch(result));
 }

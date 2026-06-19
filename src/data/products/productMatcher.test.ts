@@ -152,6 +152,18 @@ function productRow(over: Partial<ProductRow>): ProductRow {
     is_active: true,
     created_at: '2026-06-19',
     updated_at: '2026-06-19',
+    // Mapper-result columns (0008) — NULL on an unmapped fixture row (D3 fills them).
+    matched_basement_id: null,
+    match_confidence: null,
+    match_method: null,
+    mapper_status: null,
+    mapper_notes: null,
+    normalized_name: null,
+    normalized_category: null,
+    needs_review_reason: null,
+    missing_fields_json: null,
+    candidate_ids: null,
+    candidate_count: null,
     ...over,
   };
 }

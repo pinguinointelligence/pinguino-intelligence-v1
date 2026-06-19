@@ -126,7 +126,7 @@ describe('Mapper result columns migration (0008)', () => {
   });
 });
 
-describe('Slice E / 0008 leaves runtime, matcher, and the TS layer untouched', () => {
+describe('Slice E / 0008 — runtime + pure matcher stay locked; D3 has landed the TS layer', () => {
   it('the runtime ingredient service still reads the locked base (mapper_basement)', () => {
     expect(INGREDIENTS.includes("const TABLE = 'mapper_basement'")).toBe(true);
   });
@@ -141,17 +141,21 @@ describe('Slice E / 0008 leaves runtime, matcher, and the TS layer untouched', (
     }
   });
 
-  it('the products service does not import productMatcher (no D3 write-back)', () => {
-    expect(/productMatcher/.test(PRODUCTS_SERVICE)).toBe(false);
+  it('the products service now exposes the D3 write-back targeting these 0008 columns', () => {
+    expect(/export async function saveProductMatchResult\(/.test(PRODUCTS_SERVICE)).toBe(true);
+    expect(PRODUCTS_SERVICE.includes('productMatchResultToPatch')).toBe(true);
+    // the write-back never reaches the locked base in executable code
+    expect(/mapper_basement/i.test(stripTs(PRODUCTS_SERVICE))).toBe(false);
   });
 
-  it('ProductRow does NOT yet carry mapper-result fields (deferred to D3)', () => {
+  it('ProductRow now carries all 11 mapper-result fields these columns back (D3)', () => {
     const code = stripTs(PRODUCT_ROW);
     for (const f of [
-      'matched_basement_id', 'match_confidence', 'match_method', 'mapper_status',
-      'normalized_name', 'needs_review_reason', 'missing_fields_json', 'candidate_ids', 'candidate_count',
+      'matched_basement_id', 'match_confidence', 'match_method', 'mapper_status', 'mapper_notes',
+      'normalized_name', 'normalized_category', 'needs_review_reason', 'missing_fields_json',
+      'candidate_ids', 'candidate_count',
     ]) {
-      expect(code.includes(f), f).toBe(false);
+      expect(code.includes(f), f).toBe(true);
     }
   });
 });

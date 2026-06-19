@@ -16,7 +16,9 @@
  *     and recipe-level NPAC is derived by the engine, never stored on a product.
  *
  * Mapper-result fields (matched_basement_id, match_confidence, mapper_status, …)
- * are intentionally ABSENT here — they arrive with a future 0008 migration, not D1.
+ * are the 11 columns added by migration 0008 and written ONLY by the D3 write-back
+ * (saveProductMatchResult). The engine/profile JSON (calculated_profile_json /
+ * source_values_json) is deliberately still ABSENT — deferred to a later slice.
  */
 
 /** Product lifecycle (0007 `status` CHECK). */
@@ -43,6 +45,39 @@ export type ProductSourceType =
 export type ProductBooleanOrUnknown = 'true' | 'false' | 'unknown';
 
 export type ProductStorageType = 'ambient' | 'chilled' | 'frozen' | 'dry' | 'unknown';
+
+/**
+ * Mapper-result enum domains — mirror the 0008 `products` CHECK constraints
+ * EXACTLY. Defined HERE (not imported from the matcher) so the data layer owns its
+ * own column domains and stays import-free. These are a SUPERSET of what the pure
+ * D2 matcher emits: `match_method` adds `manual_mapping`, and the confidence/status
+ * domains reserve `rejected` — both are human / D3-review values the deterministic
+ * matcher never produces. Every D2 result value is assignable into the wider field.
+ */
+export type ProductMatchConfidence =
+  | 'exact'
+  | 'high'
+  | 'medium'
+  | 'low'
+  | 'needs_review'
+  | 'rejected';
+
+export type ProductMatchMethod =
+  | 'exact_ean'
+  | 'exact_normalized_name'
+  | 'brand_name'
+  | 'category_composition_similarity'
+  | 'ingredient_type'
+  | 'fuzzy_name'
+  | 'no_confident_match'
+  | 'manual_mapping';
+
+export type ProductMapperStatus =
+  | 'unmatched'
+  | 'matched'
+  | 'ambiguous'
+  | 'needs_review'
+  | 'rejected';
 
 export interface ProductRow {
   // identity / ownership
@@ -126,16 +161,52 @@ export interface ProductRow {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Mapper result (0008) — written ONLY by the D3 write-back (saveProductMatchResult);
+  // NULL until a product is matched. matched_basement_id is a PLAIN value reference to
+  // a mapper_basement ingredient_id (never a FK). missing_fields_json + candidate_ids
+  // are jsonb string arrays. The engine/profile JSON is deliberately NOT here.
+  matched_basement_id: string | null;
+  match_confidence: ProductMatchConfidence | null;
+  match_method: ProductMatchMethod | null;
+  mapper_status: ProductMapperStatus | null;
+  mapper_notes: string | null;
+  normalized_name: string | null;
+  normalized_category: string | null;
+  needs_review_reason: string | null;
+  missing_fields_json: string[] | null;
+  candidate_ids: string[] | null;
+  candidate_count: number | null;
 }
 
 /** DB-managed columns a client never sets directly. */
 type ServerManaged = 'id' | 'owner_user_id' | 'created_at' | 'updated_at';
 
+/** The 11 Mapper-result columns (0008). Written ONLY by the D3 write-back; never
+ * set on create. */
+export type MapperResultField =
+  | 'matched_basement_id'
+  | 'match_confidence'
+  | 'match_method'
+  | 'mapper_status'
+  | 'mapper_notes'
+  | 'normalized_name'
+  | 'normalized_category'
+  | 'needs_review_reason'
+  | 'missing_fields_json'
+  | 'candidate_ids'
+  | 'candidate_count';
+
 /** Fields a client may set when creating a product. The service injects
  * owner_user_id; status defaults to 'draft' and source_type to 'manual' in the DB,
- * so both are optional. Omitting a numeric leaves it NULL (never 0). */
-export type ProductInsert = Partial<Omit<ProductRow, ServerManaged>>;
+ * so both are optional. Omitting a numeric leaves it NULL (never 0). Mapper-result
+ * fields are excluded — a new product has no match yet (write them via D3). */
+export type ProductInsert = Partial<Omit<ProductRow, ServerManaged | MapperResultField>>;
 
 /** Fields a client may change. Ownership and identity (id/owner_user_id) and the
  * DB timestamps are never reassigned here. */
 export type ProductUpdate = Partial<Omit<ProductRow, ServerManaged>>;
+
+/** The NARROW patch the D3 write-back uses: ONLY the 11 Mapper-result columns, each
+ * optional + nullable. saveProductMatchResult builds exactly this (never a broad
+ * ProductUpdate), so a write-back can never touch a non-mapper column. */
+export type ProductMapperResultUpdate = Partial<Pick<ProductRow, MapperResultField>>;

@@ -1,12 +1,15 @@
 /// <reference types="node" />
 /**
- * Mapper Slice D1 — products data-layer security/scope guards.
+ * Mapper Slices D1 + D3 — products data-layer security/scope guards.
  *
- * The products service MAY write public.products (own-row CRUD), but it must
- * NEVER read or write the locked reference base (mapper_basement), must pull in
- * no privileged role / AI / billing vendor, must not call the recipe engine, and
- * must not carry an ingredient-level npac_value. The runtime ingredient service
- * must still read mapper_basement, read-only. Static source-text guards.
+ * The products service MAY write public.products (own-row CRUD + the D3 Mapper
+ * write-back), but it must NEVER read or write the locked reference base
+ * (mapper_basement), must pull in no privileged role / AI / billing vendor, must
+ * not call the recipe engine, and must not carry an ingredient-level npac_value.
+ * The D3 write-back (saveProductMatchResult) persists ONLY the 11 Mapper-result
+ * columns via the pure productMatchResultToPatch mapper and never touches
+ * products.status. The runtime ingredient service must still read mapper_basement,
+ * read-only. Static source-text guards.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -61,6 +64,17 @@ describe('products service — scope & security (Slice D1)', () => {
       }
     }
   });
+
+  it('exposes a D3 write-back (saveProductMatchResult) that delegates via the pure patch mapper', () => {
+    expect(/export async function saveProductMatchResult\(/.test(SERVICE)).toBe(true);
+    expect(SERVICE_CODE.includes('productMatchResultToPatch(')).toBe(true);
+    // it reuses updateProduct -> .from(TABLE); it adds no raw table name + no basement write
+    expect(/mapper_basement/i.test(SERVICE_CODE)).toBe(false);
+  });
+
+  it('imports no sibling ingredient service (no basement read path leaks in)', () => {
+    expect(/@\/services\/ingredients/.test(SERVICE_CODE)).toBe(false);
+  });
 });
 
 describe('product types (Slice D1)', () => {
@@ -74,13 +88,25 @@ describe('product types (Slice D1)', () => {
     expect(/@\/engine/.test(ROW_CODE)).toBe(false);
   });
 
-  it('do NOT include the future Mapper-result columns (those arrive with 0008)', () => {
+  it('now DEFINE the 11 Mapper-result fields (added in D3 write-back)', () => {
     for (const f of [
-      'matched_basement_id', 'match_confidence', 'match_method', 'mapper_status',
-      'normalized_name', 'calculated_profile_json', 'source_values_json',
+      'matched_basement_id', 'match_confidence', 'match_method', 'mapper_status', 'mapper_notes',
+      'normalized_name', 'normalized_category', 'needs_review_reason', 'missing_fields_json',
+      'candidate_ids', 'candidate_count',
     ]) {
-      expect(ROW_CODE.includes(f), `D1 must not define ${f}`).toBe(false);
+      expect(ROW_CODE.includes(f), `D3 ProductRow must define ${f}`).toBe(true);
     }
+  });
+
+  it('still DEFER the engine/profile JSON columns (no calculated_profile_json / source_values_json)', () => {
+    expect(ROW_CODE.includes('calculated_profile_json')).toBe(false);
+    expect(ROW_CODE.includes('source_values_json')).toBe(false);
+  });
+
+  it('exclude the 11 Mapper-result fields from ProductInsert (a new product carries no match yet)', () => {
+    expect(
+      /ProductInsert\s*=\s*Partial<Omit<ProductRow,\s*ServerManaged\s*\|\s*MapperResultField>>/.test(ROW),
+    ).toBe(true);
   });
 
   it('expose the full status and source_type vocabularies', () => {
