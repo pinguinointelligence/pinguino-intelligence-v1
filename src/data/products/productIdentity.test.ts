@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeEan, productIdentityKey } from './productIdentity';
+import { normalizeEan, productIdentityKey, productInsertToIdentityInput } from './productIdentity';
 import type { ProductIdentityInput } from './productIdentity';
 
 const base: ProductIdentityInput = {
@@ -70,6 +70,43 @@ describe('productIdentityKey', () => {
     };
     expect(() => productIdentityKey(empty)).not.toThrow();
     expect(productIdentityKey(empty)).toBe('|||||||'); // 8 empty segments -> 7 separators
+  });
+});
+
+describe('productInsertToIdentityInput — ProductInsert -> identity mapping', () => {
+  it('product_name = product_name_display ?? product_name_internal', () => {
+    expect(productInsertToIdentityInput({ product_name_display: 'Disp', product_name_internal: 'Int' }).product_name).toBe('Disp');
+    expect(productInsertToIdentityInput({ product_name_display: null, product_name_internal: 'Int' }).product_name).toBe('Int');
+    expect(productInsertToIdentityInput({}).product_name).toBeUndefined();
+  });
+
+  it('source = source_url ?? catalog_source ?? source_type (in that order)', () => {
+    expect(productInsertToIdentityInput({ source_url: 'u', catalog_source: 'c', source_type: 'mercadona' }).source).toBe('u');
+    expect(productInsertToIdentityInput({ source_url: null, catalog_source: 'c', source_type: 'mercadona' }).source).toBe('c');
+    expect(productInsertToIdentityInput({ source_type: 'mercadona' }).source).toBe('mercadona');
+  });
+
+  it('passes brand, package_size, and nutrition through verbatim', () => {
+    const out = productInsertToIdentityInput({
+      brand: 'Babbi',
+      package_size: '1 kg',
+      fat_percent: 30,
+      total_sugars_percent: 50,
+      protein_percent: 5,
+      total_solids_percent: 90,
+    });
+    expect(out.brand).toBe('Babbi');
+    expect(out.package_size).toBe('1 kg');
+    expect(out.fat_percent).toBe(30);
+    expect(out.total_sugars_percent).toBe(50);
+  });
+
+  it('keeps a real numeric 0 distinct from a missing value (no fake zero)', () => {
+    expect(productInsertToIdentityInput({ fat_percent: 0 }).fat_percent).toBe(0);
+    expect(productInsertToIdentityInput({}).fat_percent).toBeUndefined();
+    const zeroKey = productIdentityKey(productInsertToIdentityInput({ brand: 'B', fat_percent: 0 }));
+    const missingKey = productIdentityKey(productInsertToIdentityInput({ brand: 'B' }));
+    expect(zeroKey).not.toBe(missingKey);
   });
 });
 

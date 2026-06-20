@@ -164,6 +164,15 @@ function productRow(over: Partial<ProductRow>): ProductRow {
     missing_fields_json: null,
     candidate_ids: null,
     candidate_count: null,
+    // Product identity (0009) — DB-managed code + normalized cols default to a fixture
+    // placeholder / empty string; the writable identity columns default to null.
+    product_code: 'PR-ING-000000',
+    ean_code_normalized: '',
+    barcode_normalized: '',
+    product_url: null,
+    source_url: null,
+    package_size: null,
+    product_identity_hash: null,
     ...over,
   };
 }

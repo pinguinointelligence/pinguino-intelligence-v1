@@ -176,10 +176,27 @@ export interface ProductRow {
   missing_fields_json: string[] | null;
   candidate_ids: string[] | null;
   candidate_count: number | null;
+  // Product identity (0009) — product_code (DB sequence DEFAULT) and the normalized
+  // EAN/barcode (GENERATED ALWAYS STORED) are NEVER client-written (see DatabaseComputed);
+  // product_url / source_url / package_size and the service-computed product_identity_hash
+  // are writable. ean/barcode_normalized are non-null in the DB (coalesce to ''), typed
+  // string | null to stay aligned with the nullable-schema style.
+  product_code: string;
+  ean_code_normalized: string | null;
+  barcode_normalized: string | null;
+  product_url: string | null;
+  source_url: string | null;
+  package_size: string | null;
+  product_identity_hash: string | null;
 }
 
 /** DB-managed columns a client never sets directly. */
 type ServerManaged = 'id' | 'owner_user_id' | 'created_at' | 'updated_at';
+
+/** The 0009 columns the DATABASE generates/defaults — a client must NEVER set them:
+ * product_code (sequence DEFAULT), ean_code_normalized + barcode_normalized (GENERATED
+ * ALWAYS STORED). They are read back on ProductRow but excluded from insert AND update. */
+export type DatabaseComputed = 'product_code' | 'ean_code_normalized' | 'barcode_normalized';
 
 /** The 11 Mapper-result columns (0008). Written ONLY by the D3 write-back; never
  * set on create. */
@@ -199,12 +216,15 @@ export type MapperResultField =
 /** Fields a client may set when creating a product. The service injects
  * owner_user_id; status defaults to 'draft' and source_type to 'manual' in the DB,
  * so both are optional. Omitting a numeric leaves it NULL (never 0). Mapper-result
- * fields are excluded — a new product has no match yet (write them via D3). */
-export type ProductInsert = Partial<Omit<ProductRow, ServerManaged | MapperResultField>>;
+ * fields are excluded (write them via D3), and the DB-computed identity columns
+ * (product_code + normalized EAN/barcode) are excluded — the DB owns them. A client
+ * MAY set product_url / source_url / package_size / product_identity_hash. */
+export type ProductInsert = Partial<Omit<ProductRow, ServerManaged | MapperResultField | DatabaseComputed>>;
 
-/** Fields a client may change. Ownership and identity (id/owner_user_id) and the
- * DB timestamps are never reassigned here. */
-export type ProductUpdate = Partial<Omit<ProductRow, ServerManaged>>;
+/** Fields a client may change. Ownership/identity, the DB timestamps, and the
+ * DB-computed identity columns (product_code + normalized EAN/barcode) are never
+ * reassigned here. */
+export type ProductUpdate = Partial<Omit<ProductRow, ServerManaged | DatabaseComputed>>;
 
 /** The NARROW patch the D3 write-back uses: ONLY the 11 Mapper-result columns, each
  * optional + nullable. saveProductMatchResult builds exactly this (never a broad

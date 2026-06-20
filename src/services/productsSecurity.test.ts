@@ -1,15 +1,16 @@
 /// <reference types="node" />
 /**
- * Mapper Slices D1 + D3 — products data-layer security/scope guards.
+ * Mapper Slices D1 + D3 + D5B — products data-layer security/scope guards.
  *
  * The products service MAY write public.products (own-row CRUD + the D3 Mapper
- * write-back), but it must NEVER read or write the locked reference base
- * (mapper_basement), must pull in no privileged role / AI / billing vendor, must
- * not call the recipe engine, and must not carry an ingredient-level npac_value.
- * The D3 write-back (saveProductMatchResult) persists ONLY the 11 Mapper-result
- * columns via the pure productMatchResultToPatch mapper and never touches
- * products.status. The runtime ingredient service must still read mapper_basement,
- * read-only. Static source-text guards.
+ * write-back + the D5B identity-aware creation), but it must NEVER read or write the
+ * locked reference base (mapper_basement), must pull in no privileged role / AI /
+ * billing vendor, must not call the recipe engine, and must not carry an
+ * ingredient-level npac_value. The D3 write-back (saveProductMatchResult) persists
+ * ONLY the 11 Mapper-result columns; the D5B createProductWithIdentity dedupes via the
+ * pure identity helpers and NEVER generates a product code app-side (the DB owns it).
+ * The runtime ingredient service must still read mapper_basement, read-only. Static
+ * source-text guards.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -75,6 +76,20 @@ describe('products service — scope & security (Slice D1)', () => {
   it('imports no sibling ingredient service (no basement read path leaks in)', () => {
     expect(/@\/services\/ingredients/.test(SERVICE_CODE)).toBe(false);
   });
+
+  it('exposes the D5B identity-aware creation + duplicate lookup, reusing the pure helpers', () => {
+    expect(/export async function createProductWithIdentity\(/.test(SERVICE)).toBe(true);
+    expect(/export async function findExistingProductForIdentity\(/.test(SERVICE)).toBe(true);
+    expect(SERVICE_CODE.includes('productIdentityKey(')).toBe(true);
+    expect(SERVICE_CODE.includes('normalizeEan(')).toBe(true);
+  });
+
+  it('never generates a product code app-side (no product_code literal, no MAX, no nextval, no .or())', () => {
+    expect(SERVICE_CODE.includes('product_code')).toBe(false);
+    expect(/\bmax\s*\(/i.test(SERVICE_CODE)).toBe(false);
+    expect(/nextval/i.test(SERVICE_CODE)).toBe(false);
+    expect(SERVICE_CODE.includes('.or(')).toBe(false);
+  });
 });
 
 describe('product types (Slice D1)', () => {
@@ -103,9 +118,23 @@ describe('product types (Slice D1)', () => {
     expect(ROW_CODE.includes('source_values_json')).toBe(false);
   });
 
-  it('exclude the 11 Mapper-result fields from ProductInsert (a new product carries no match yet)', () => {
+  it('now DEFINE the 7 product-identity fields (migration 0009 / Slice D5B)', () => {
+    for (const f of [
+      'product_code', 'ean_code_normalized', 'barcode_normalized', 'product_url',
+      'source_url', 'package_size', 'product_identity_hash',
+    ]) {
+      expect(ROW_CODE.includes(f), `D5B ProductRow must define ${f}`).toBe(true);
+    }
+  });
+
+  it('exclude the 11 Mapper-result fields AND the DB-computed identity columns from ProductInsert', () => {
+    expect(/\bDatabaseComputed\s*=/.test(ROW)).toBe(true);
     expect(
-      /ProductInsert\s*=\s*Partial<Omit<ProductRow,\s*ServerManaged\s*\|\s*MapperResultField>>/.test(ROW),
+      /ProductInsert\s*=\s*Partial<Omit<ProductRow,\s*ServerManaged\s*\|\s*MapperResultField\s*\|\s*DatabaseComputed>>/.test(ROW),
+    ).toBe(true);
+    // ProductUpdate also excludes the DB-computed columns (never patch product_code)
+    expect(
+      /ProductUpdate\s*=\s*Partial<Omit<ProductRow,\s*ServerManaged\s*\|\s*DatabaseComputed>>/.test(ROW),
     ).toBe(true);
   });
 

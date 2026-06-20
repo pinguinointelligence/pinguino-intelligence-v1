@@ -13,6 +13,7 @@
  *     "1kg" and "1000g" are NOT considered equal — that is future work).
  */
 import { canonicalEan, normalizeName } from '@/data/products/productMatcher';
+import type { ProductInsert } from '@/data/products/productRow';
 
 /** Canonical EAN/barcode for lookup keys — identical to the DB `normalize_to_digits`
  * generated column (strip non-digits, preserve leading zeros). Reuses canonicalEan. */
@@ -75,4 +76,24 @@ export function productIdentityKey(input: ProductIdentityInput): string {
     source: normalizeName(input.source),
   };
   return IDENTITY_FIELD_ORDER.map((k) => segments[k]).join('|');
+}
+
+/**
+ * Map a ProductInsert payload to the pure ProductIdentityInput, resolving the
+ * dual / enum ProductRow columns: product_name from product_name_display then
+ * product_name_internal; source from source_url then catalog_source then source_type.
+ * brand, package_size, and the nutrition fields pass through verbatim — a real numeric
+ * 0 stays 0, and null/undefined stays missing (no fake zero). No IO, no DB, no engine.
+ */
+export function productInsertToIdentityInput(payload: ProductInsert): ProductIdentityInput {
+  return {
+    brand: payload.brand,
+    product_name: payload.product_name_display ?? payload.product_name_internal,
+    package_size: payload.package_size,
+    fat_percent: payload.fat_percent,
+    total_sugars_percent: payload.total_sugars_percent,
+    protein_percent: payload.protein_percent,
+    total_solids_percent: payload.total_solids_percent,
+    source: payload.source_url ?? payload.catalog_source ?? payload.source_type,
+  };
 }

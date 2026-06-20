@@ -15,6 +15,11 @@
 import { supabase } from '@/lib/supabase/client';
 import { getCurrentUser } from '@/services/auth';
 import { productMatchResultToPatch } from '@/data/products/productMatchResultToPatch';
+import {
+  normalizeEan,
+  productIdentityKey,
+  productInsertToIdentityInput,
+} from '@/data/products/productIdentity';
 import type { ProductMatchResult } from '@/data/products/productMatcher';
 import type { ProductInsert, ProductRow, ProductUpdate } from '@/data/products/productRow';
 
@@ -88,4 +93,89 @@ export async function saveProductMatchResult(
   result: ProductMatchResult,
 ): Promise<ProductRow> {
   return updateProduct(productId, productMatchResultToPatch(result));
+}
+
+/* ── D5B: identity-aware duplicate prevention ──────────────────────────────────
+ * Owner-scoped (RLS auto-filters every query to auth.uid() = owner_user_id — no
+ * explicit owner filter, no cross-user query, no privileged server key). Reuses the pure D5A
+ * identity helpers; never reads/writes the locked reference base; never computes a
+ * product code (the DB owns it). */
+
+/** A single owned row where `column` equals `value` (RLS scopes it to the caller).
+ * `.limit(1)` guards the non-unique source_url / identity-hash lookups. */
+async function findOwnedProductBy(column: string, value: string): Promise<ProductRow | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('*')
+    .eq(column, value)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as ProductRow | null) ?? null;
+}
+
+/** An identity key is strong enough to dedupe on only if it carries a brand or a name;
+ * a key with neither (e.g. nutrition-only) is too weak and must not match. */
+function identityKeyIsMeaningful(key: string): boolean {
+  const parts = key.split('|');
+  return (parts[0] ?? '') !== '' || (parts[1] ?? '') !== '';
+}
+
+/**
+ * Find the caller's existing product that duplicates `input`, in priority order:
+ * normalized EAN → normalized barcode → source_url → product_identity_hash. Blank
+ * normalized EAN/barcode, a blank source_url, and a non-meaningful identity key are
+ * SKIPPED (never matched). Returns the first match or null. Reads only public.products.
+ */
+export async function findExistingProductForIdentity(
+  input: ProductInsert,
+): Promise<ProductRow | null> {
+  if (!supabase) return null;
+
+  const normEan = normalizeEan(input.ean_code);
+  if (normEan !== '') {
+    const hit = await findOwnedProductBy('ean_code_normalized', normEan);
+    if (hit) return hit;
+  }
+
+  const normBarcode = normalizeEan(input.barcode);
+  if (normBarcode !== '') {
+    const hit = await findOwnedProductBy('barcode_normalized', normBarcode);
+    if (hit) return hit;
+  }
+
+  if (input.source_url) {
+    const hit = await findOwnedProductBy('source_url', input.source_url);
+    if (hit) return hit;
+  }
+
+  const identityHash = productIdentityKey(productInsertToIdentityInput(input));
+  if (identityKeyIsMeaningful(identityHash)) {
+    const hit = await findOwnedProductBy('product_identity_hash', identityHash);
+    if (hit) return hit;
+  }
+
+  return null;
+}
+
+/**
+ * Create a product, deduped by identity. Returns an existing owned product if one
+ * already matches `input`; otherwise inserts a new row (the DB assigns the product
+ * code + normalized columns) with the computed product_identity_hash. Race-safe: if the
+ * insert fails (e.g. the per-owner unique index rejects a concurrent insert), it re-runs
+ * the lookup and returns the now-existing row, else rethrows. Creates only in products.
+ */
+export async function createProductWithIdentity(input: ProductInsert): Promise<ProductRow> {
+  const existing = await findExistingProductForIdentity(input);
+  if (existing) return existing;
+
+  const product_identity_hash = productIdentityKey(productInsertToIdentityInput(input));
+  try {
+    return await createProduct({ ...input, product_identity_hash });
+  } catch (error) {
+    const raced = await findExistingProductForIdentity(input);
+    if (raced) return raced;
+    throw error;
+  }
 }
