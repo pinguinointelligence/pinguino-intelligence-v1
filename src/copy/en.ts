@@ -603,6 +603,58 @@ export const copy = {
       confidence: { high: 'High', medium: 'Medium', low: 'Low', tradeoff: 'Trade-off' },
     },
   },
+  /**
+   * Product catalog intake — the unified CSV upload UI (Mapper Slice D5C4). ONE flow
+   * for every source (generic / Mercadona / Colin); the selector only stamps
+   * source_type, there is no separate Colin system. Customer-facing — never "Demo".
+   */
+  productsImport: {
+    eyebrow: 'Product Intake',
+    title: 'Import product catalog',
+    blurb:
+      'Upload or paste a CSV catalog and turn rows into product records in the shared products layer.',
+    sourceLabel: 'Catalog source',
+    sources: {
+      generic: 'Generic catalog',
+      mercadona: 'Mercadona catalog',
+      colin: 'Colin / internal catalog',
+    },
+    inputLabel: 'Paste or upload CSV',
+    pastePlaceholder: 'Paste CSV rows here — the first line is the header…',
+    fileLabel: 'Choose a .csv file',
+    parse: 'Parse CSV',
+    import: 'Import products',
+    signIn: 'Sign in to import',
+    signInNote: 'Parsing is open — sign in to import rows into the products layer.',
+    unavailable: 'Importing is not available in this build.',
+    previewLabel: 'Parse preview',
+    warningsLabel: 'Warnings',
+    skippedLabel: 'Skipped rows',
+    resultLabel: 'Import result',
+    rowResultsLabel: 'Row results',
+    emptyPreview: 'Paste or upload a CSV, then Parse to preview the rows.',
+    noWarnings: 'No warnings.',
+    noSkipped: 'No skipped rows.',
+    codesCreated: 'Product codes assigned',
+    importError: 'Import could not complete.',
+    counts: {
+      total: 'Total rows',
+      valid: 'Valid',
+      warnings: 'Warnings',
+      skipped: 'Skipped',
+      created: 'Created',
+      existing: 'Existing duplicates',
+      inBatch: 'In-batch duplicates',
+      failed: 'Failed',
+    },
+    outcomes: {
+      created: 'Created',
+      existing: 'Existing',
+      in_batch_duplicate: 'In-batch duplicate',
+      skipped: 'Skipped',
+      failed: 'Failed',
+    },
+  },
   notFound: {
     code: '404',
     headline: 'This page does not exist.',

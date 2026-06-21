@@ -7,6 +7,7 @@ import {
   APIPage,
   CreateIngredientPage,
   CreateLabelPage,
+  ProductImportPage,
   RecipesHubPage,
   SubscriptionPage,
   WorkWithUsPage,
@@ -34,6 +35,9 @@ export function AppRoutes() {
       <Route path="/work-with-us" element={<WorkWithUsPage />} />
       <Route path="/subscription" element={<SubscriptionPage />} />
       <Route path="/create-ingredient" element={<CreateIngredientPage />} />
+
+      {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
+      <Route path="/products/import" element={<ProductImportPage />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
