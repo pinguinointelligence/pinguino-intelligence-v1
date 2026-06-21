@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  HEADER_ALIASES,
   mapRowToProductInsert,
   normalizeHeader,
   parseNumeric,
@@ -182,5 +183,103 @@ describe('productTableParser + csv — purity / boundary (static source scan)', 
     for (const code of [PARSER, CSV]) {
       expect(/from\s+['"](papaparse|xlsx|exceljs|csv-parse|d3-dsv|sheetjs)['"]/.test(code)).toBe(false);
     }
+  });
+});
+
+describe('Mercadona header mapping (D5C4B aliases)', () => {
+  const mercadonaRow: Record<string, string> = {
+    Group: 'A. Nabiał',
+    Subcategory: 'Milk',
+    'Product Name': 'Leche entera Hacendado brick 1L',
+    Brand: 'Hacendado',
+    'Price (€)': '0.95',
+    Package: 'Brick 1 L',
+    'Price per kg/L (€)': '0.95',
+    'Mercadona Category': 'Lácteos > Leche entera',
+    'Mercadona URL': 'https://tienda.mercadona.es/product/10380/x',
+    'Ingredients (key)': 'Leche entera UHT de vaca',
+    Allergens: 'Leche',
+    'Kcal/100g': '63.0',
+    'Fat/100g': '3.6',
+    'Sat.Fat/100g': '2.4',
+    'Carbs/100g': '4.7',
+    'Sugars/100g': '4.7',
+    'Protein/100g': '3.1',
+    'Salt/100g': '0.13',
+    Storage: 'ambient',
+    Notes: 'note',
+    EAN: '8402001002083',
+  };
+
+  it('maps the nutrition /100g headers to the engine percent fields', () => {
+    const { insert } = mapRowToProductInsert(mercadonaRow, 'mercadona');
+    expect(insert.fat_percent).toBe(3.6);
+    expect(insert.saturated_fat_percent).toBe(2.4);
+    expect(insert.carbohydrate_percent).toBe(4.7);
+    expect(insert.total_sugars_percent).toBe(4.7);
+    expect(insert.protein_percent).toBe(3.1);
+    expect(insert.salt_percent).toBe(0.13);
+    expect(insert.kcal_per_100g).toBe(63);
+  });
+
+  it('maps Package to package_size', () => {
+    expect(mapRowToProductInsert(mercadonaRow, 'mercadona').insert.package_size).toBe('Brick 1 L');
+  });
+
+  it('uses Price per kg/L (€) for cost_per_kg and NEVER the pack Price (€)', () => {
+    const pack = mapRowToProductInsert({ Brand: 'B', 'Product Name': 'N', 'Price (€)': '0.95' }, 'mercadona');
+    expect('cost_per_kg' in pack.insert).toBe(false); // pack/shelf price must not become cost
+    expect(pack.warnings.some((w) => /unknown column "Price \(€\)"/.test(w))).toBe(true);
+
+    const perKg = mapRowToProductInsert({ Brand: 'B', 'Product Name': 'N', 'Price per kg/L (€)': '1.30' }, 'mercadona');
+    expect(perKg.insert.cost_per_kg).toBe(1.3);
+  });
+
+  it('has no cost race when both price columns exist — per-kg wins, no duplicate-mapping warning', () => {
+    const { insert, warnings } = mapRowToProductInsert(
+      { Brand: 'B', 'Product Name': 'N', 'Price (€)': '0.95', 'Price per kg/L (€)': '1.30' },
+      'mercadona',
+    );
+    expect(insert.cost_per_kg).toBe(1.3);
+    expect(warnings.some((w) => /duplicate column mapping to "cost_per_kg"/.test(w))).toBe(false);
+  });
+
+  it('removed the ambiguous bare "price" alias; price_per_kg_l now feeds cost_per_kg', () => {
+    expect(HEADER_ALIASES['price']).toBeUndefined();
+    expect(HEADER_ALIASES['price_per_kg_l']?.field).toBe('cost_per_kg');
+  });
+
+  it('maps Mercadona URL → product_url and Ingredients (key) → detected_text', () => {
+    const { insert } = mapRowToProductInsert(mercadonaRow, 'mercadona');
+    expect(insert.product_url).toBe('https://tienda.mercadona.es/product/10380/x');
+    expect(insert.detected_text).toBe('Leche entera UHT de vaca');
+  });
+
+  it('keeps Group, Mercadona Category, Storage, Notes unmapped (warned, never a field)', () => {
+    const { insert, warnings } = mapRowToProductInsert(mercadonaRow, 'mercadona');
+    expect('product_category' in insert).toBe(false); // Mercadona Category did NOT map to category
+    for (const h of ['Group', 'Mercadona Category', 'Storage', 'Notes']) {
+      expect(warnings.some((w) => w.includes(`unknown column "${h}"`)), h).toBe(true);
+    }
+  });
+
+  it('keeps EAN a string and leading-zero safe', () => {
+    const { insert } = mapRowToProductInsert({ Brand: 'B', 'Product Name': 'N', EAN: '0049000028911' }, 'mercadona');
+    expect(insert.ean_code).toBe('0049000028911');
+    expect(typeof insert.ean_code).toBe('string');
+  });
+
+  it('preserves a real 0 vs a missing /100g value (never a fake 0)', () => {
+    expect(mapRowToProductInsert({ Brand: 'B', 'Product Name': 'N', 'Fat/100g': '0' }, 'mercadona').insert.fat_percent).toBe(0);
+    expect('fat_percent' in mapRowToProductInsert({ Brand: 'B', 'Product Name': 'N', 'Fat/100g': '' }, 'mercadona').insert).toBe(false);
+  });
+
+  it('parses dot decimals for nutrition and the per-kg cost', () => {
+    const { insert } = mapRowToProductInsert(
+      { Brand: 'B', 'Product Name': 'N', 'Fat/100g': '3.6', 'Price per kg/L (€)': '0.95' },
+      'mercadona',
+    );
+    expect(insert.fat_percent).toBe(3.6);
+    expect(insert.cost_per_kg).toBe(0.95);
   });
 });

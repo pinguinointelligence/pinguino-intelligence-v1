@@ -93,6 +93,7 @@ export const HEADER_ALIASES: Record<string, FieldSpec> = {
   upc: { field: 'barcode', kind: 'ean' },
   // urls / size
   package_size: { field: 'package_size', kind: 'string' },
+  package: { field: 'package_size', kind: 'string' },
   pack_size: { field: 'package_size', kind: 'string' },
   size: { field: 'package_size', kind: 'string' },
   net_weight: { field: 'package_size', kind: 'string' },
@@ -101,10 +102,13 @@ export const HEADER_ALIASES: Record<string, FieldSpec> = {
   product_url: { field: 'product_url', kind: 'string' },
   url: { field: 'product_url', kind: 'string' },
   link: { field: 'product_url', kind: 'string' },
-  // cost
+  mercadona_url: { field: 'product_url', kind: 'string' },
+  // cost — a BARE "price" header is intentionally NOT mapped (D5C4B): it is ambiguous
+  // (pack / shelf price vs per-unit) and must never feed cost_per_kg. Map an explicit
+  // per-unit header instead: price_per_kg / price_per_kg_l (€/kg or €/L) / cost_per_kg / cost.
   cost_per_kg: { field: 'cost_per_kg', kind: 'numeric' },
   price_per_kg: { field: 'cost_per_kg', kind: 'numeric' },
-  price: { field: 'cost_per_kg', kind: 'numeric' },
+  price_per_kg_l: { field: 'cost_per_kg', kind: 'numeric' },
   cost: { field: 'cost_per_kg', kind: 'numeric' },
   currency: { field: 'currency', kind: 'string' },
   // nutrition (per 100 g)
@@ -118,19 +122,24 @@ export const HEADER_ALIASES: Record<string, FieldSpec> = {
   fat: { field: 'fat_percent', kind: 'numeric' },
   total_fat: { field: 'fat_percent', kind: 'numeric' },
   fat_percent: { field: 'fat_percent', kind: 'numeric' },
+  fat_100g: { field: 'fat_percent', kind: 'numeric' },
   saturated_fat: { field: 'saturated_fat_percent', kind: 'numeric' },
   saturates: { field: 'saturated_fat_percent', kind: 'numeric' },
   saturated_fat_percent: { field: 'saturated_fat_percent', kind: 'numeric' },
+  sat_fat_100g: { field: 'saturated_fat_percent', kind: 'numeric' },
   protein: { field: 'protein_percent', kind: 'numeric' },
   protein_percent: { field: 'protein_percent', kind: 'numeric' },
+  protein_100g: { field: 'protein_percent', kind: 'numeric' },
   carbohydrate: { field: 'carbohydrate_percent', kind: 'numeric' },
   carbohydrates: { field: 'carbohydrate_percent', kind: 'numeric' },
   carbs: { field: 'carbohydrate_percent', kind: 'numeric' },
   carbohydrate_percent: { field: 'carbohydrate_percent', kind: 'numeric' },
+  carbs_100g: { field: 'carbohydrate_percent', kind: 'numeric' },
   sugars: { field: 'total_sugars_percent', kind: 'numeric' },
   sugar: { field: 'total_sugars_percent', kind: 'numeric' },
   total_sugars: { field: 'total_sugars_percent', kind: 'numeric' },
   total_sugars_percent: { field: 'total_sugars_percent', kind: 'numeric' },
+  sugars_100g: { field: 'total_sugars_percent', kind: 'numeric' },
   solids: { field: 'total_solids_percent', kind: 'numeric' },
   total_solids: { field: 'total_solids_percent', kind: 'numeric' },
   total_solids_percent: { field: 'total_solids_percent', kind: 'numeric' },
@@ -139,6 +148,7 @@ export const HEADER_ALIASES: Record<string, FieldSpec> = {
   fiber_percent: { field: 'fiber_percent', kind: 'numeric' },
   salt: { field: 'salt_percent', kind: 'numeric' },
   salt_percent: { field: 'salt_percent', kind: 'numeric' },
+  salt_100g: { field: 'salt_percent', kind: 'numeric' },
   alcohol: { field: 'alcohol_percent', kind: 'numeric' },
   alcohol_percent: { field: 'alcohol_percent', kind: 'numeric' },
   // text
@@ -147,6 +157,7 @@ export const HEADER_ALIASES: Record<string, FieldSpec> = {
   ingredients: { field: 'detected_text', kind: 'string' },
   ingredients_text: { field: 'detected_text', kind: 'string' },
   ingredient_list: { field: 'detected_text', kind: 'string' },
+  ingredients_key: { field: 'detected_text', kind: 'string' },
   catalog_source: { field: 'catalog_source', kind: 'string' },
   catalog: { field: 'catalog_source', kind: 'string' },
   // tri-state booleans ('true' | 'false' | 'unknown')
