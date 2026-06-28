@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { MapperSmokePage } from '@/pages/dev/MapperSmokePage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
@@ -38,6 +39,11 @@ export function AppRoutes() {
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />
+
+      {/* DEV-ONLY internal tools — registered only in a dev build, never linked in nav.
+          In production import.meta.env.DEV is false, so the route is never created and
+          MapperSmokePage is dead-code-eliminated from the bundle. */}
+      {import.meta.env.DEV && <Route path="/dev/mapper-smoke" element={<MapperSmokePage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
