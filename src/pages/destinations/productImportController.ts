@@ -27,6 +27,15 @@ export const SOURCE_OPTIONS: readonly SourceOption[] = [
 
 export const DEFAULT_SOURCE: ProductIntakeSource = 'generic';
 
+/**
+ * Parse is allowed whenever the CSV box holds any non-whitespace text — from paste OR a
+ * loaded file. It depends ONLY on the text (never on the file input, import, or auth state),
+ * so signed-out users can still parse/preview.
+ */
+export function canParse(csvText: string): boolean {
+  return csvText.trim() !== '';
+}
+
 /** Parse CSV text into intake candidates for one source. Pure — never imports/writes. */
 export function parseIntake(csvText: string, source: ProductIntakeSource): ProductIntakeResult {
   return parseProductTable(csvText, source);

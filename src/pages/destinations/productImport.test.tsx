@@ -12,6 +12,7 @@ vi.mock('@/services/productCatalogImport', () => ({ importProductCatalog: h.impo
 
 import {
   canImport,
+  canParse,
   importableCount,
   parseIntake,
   readCsvFile,
@@ -184,5 +185,48 @@ describe('ProductImportPage — render smoke', () => {
     expect(text).toContain(c.parse);
     expect(text).toContain(c.emptyPreview);
     expect(/\bdemo\b/i.test(text)).toBe(false);
+  });
+});
+
+describe('Parse CSV enablement + visibility (bugfix)', () => {
+  it('canParse is true for any non-whitespace CSV text (paste path enables Parse)', () => {
+    expect(canParse('Group,Subcategory\nA,B')).toBe(true);
+    expect(canParse(CSV_ONE)).toBe(true);
+  });
+
+  it('canParse is false for empty or whitespace-only text (Parse stays disabled)', () => {
+    expect(canParse('')).toBe(false);
+    expect(canParse('   \n\t  ')).toBe(false);
+  });
+
+  it('file-loaded CSV text also enables Parse (file path → same predicate)', async () => {
+    const text = await readCsvFile(new File(['Brand,Product Name\nB,N'], 'x.csv', { type: 'text/csv' }));
+    expect(canParse(text)).toBe(true);
+  });
+
+  it('parse enablement does not depend on auth — signed-out users can still parse/preview', () => {
+    // canParse is a pure function of the text only; the page renders the textarea + Parse
+    // button regardless of auth (smoke render below is the signed-out, auth-unavailable case).
+    const html = shellRender(<ProductImportPage />);
+    expect(html).toContain('Parse CSV');
+    expect(html).toContain('<textarea');
+  });
+
+  it('the Parse button is shell-visible (ivory variant), not the dark ghost-on-shell look', () => {
+    const html = shellRender(<ProductImportPage />);
+    const m = html.match(/<button[^>]*>Parse CSV<\/button>/);
+    expect(m, 'Parse CSV button present').not.toBeNull();
+    const btn = m![0];
+    expect(btn.includes('bg-ivory'), 'uses the shell-visible ivory variant').toBe(true);
+    expect(btn.includes('border-ink/15'), 'must NOT use the paper-tone ghost border on the shell').toBe(false);
+    // initial state: the box is empty, so Parse is correctly disabled
+    expect(/\bdisabled\b/.test(btn)).toBe(true);
+  });
+
+  it('Import stays disabled until BOTH a parse exists AND the user is signed in', () => {
+    const result = parseIntake(CSV_ONE, 'generic');
+    expect(canImport({ isSignedIn: true, result: null })).toBe(false); // parsed not yet → disabled
+    expect(canImport({ isSignedIn: false, result })).toBe(false); // signed out → disabled
+    expect(canImport({ isSignedIn: true, result })).toBe(true); // both satisfied → enabled
   });
 });

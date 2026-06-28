@@ -17,7 +17,7 @@ import { cn } from '@/lib/cn';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { ProductIntakeResult, ProductIntakeSource } from '@/data/products/productTableParser';
-import { canImport, DEFAULT_SOURCE, parseIntake, readCsvFile } from './productImportController';
+import { canImport, canParse, DEFAULT_SOURCE, parseIntake, readCsvFile } from './productImportController';
 import { runProductImport, type RunImportResult } from './runProductImport';
 import { ImportActionBar, ImportSummaryView, ParsePreview, SourceSelect } from './productImportView';
 
@@ -97,11 +97,11 @@ export function ProductImportPage() {
               {c.fileLabel}
             </label>
             <Button
-              variant="ghost"
+              variant="ivory"
               size="sm"
               onClick={onParse}
-              disabled={csvText.trim() === ''}
-              className={cn(csvText.trim() === '' && 'opacity-50')}
+              disabled={!canParse(csvText)}
+              className={cn(!canParse(csvText) && 'opacity-50')}
             >
               {c.parse}
             </Button>
