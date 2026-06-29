@@ -1,7 +1,7 @@
 # Mapper — Implementation Status
 
 _Living status tracker for the PINGÜINO product-intake "Mapper". Evidence-based; nothing
-here is assumed complete. Last updated 2026-06-29 at repo HEAD `17d1a36`._
+here is assumed complete. Last updated 2026-06-29 at repo HEAD `f002a8c`._
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
@@ -40,15 +40,15 @@ here is assumed complete. Last updated 2026-06-29 at repo HEAD `17d1a36`._
 | 8 | table/catalog import | **Done** | `data/products/productTableParser.ts`, `services/productCatalogImport.ts`, `pages/destinations/ProductImportPage.tsx` (`/products/import`); **NEW** subcategory→category fallback (`02c58db`) | — |
 | 9 | OCR / image intake | **Missing** | placeholder columns only (`product_image_url`, `detected_text`, `extracted_json`) | no OCR/image pipeline — see enrichment plan |
 | 10 | barcode/EAN intake | **Partial** | EAN/barcode normalization (`0009` generated cols) + dedupe done | external barcode **lookup** + scan UI missing |
-| 11 | online enrichment | **Partial (scaffolding)** | **NEW** pure `productSourceRanking.ts` (source priority + conflict detection + confidence; keyless) | no live network adapter/UI (deferred; keyless only) |
+| 11 | online enrichment | **Partial (adapter + live proof)** | `productSourceRanking.ts` + **NEW** `openFoodFactsAdapter.ts` (pure OFF v2 parse → `public_composition_db` source; **verified live, read-only**, EAN 3017620422003) | the network fetch + picker wiring remain (keyless; Hacendado private-label not in OFF) |
 | 12 | simple PI Calculated logic | **Deferred** | status value exists | gated on pac/pod provenance (see handoff plan) |
 | 13 | complex PI Generated logic | **Deferred** | — | profile-JSON columns deliberately absent (`0008`) |
 | 14 | similarity search | **Partial** | `category_composition_similarity` (5 measured fields, ≤2pp mean) in `productMatcher.ts` | no vector/embedding/fuzzy-distance search |
 | 15 | ratio-based profile generation | **Missing** | none | — |
 | 16 | snapshots / versioning | **Live** | migration 0011 **applied** (table live, RLS append-only); **NEW** `productSnapshots.ts` service (snapshotNewProduct / snapshotSourceChange) + pure `productSnapshotDiff.ts`, wired best-effort into import | snapshot-history UI deferred |
 | 17 | manual adjustment | **Done** | `services/productReview.ts` (`confirmProductMatch` / `confirmProductMatchTo` / `rejectProductMatch`); `/dev/mapper-review` | — |
-| 18 | PI Verified flow | **Deferred** | status value exists | no flow; gated on engine-readiness + red-flag gate |
-| 19 | engine handoff | **Adapter built + integration point pinned** | `productEngineResolver.ts` + `productEngineHandoff.ts` (pure); **exact TODO documented** (`ingredientLibrary.selectIngredientLibrary` — see handoff plan) | Studio picker UI wiring + provenance badge remain (browser-only) |
+| 18 | PI Verified flow | **DEV control (reviewer-gated)** | **NEW** `/dev/mapper-status` Verify action: re-decides with `reviewerApproval` → `pi_verified` only with a written reason AND no red flags (red-flagged blocked); + Manual adjust → `manual_adjusted` | no real product PI-verified yet; needs status-rule sign-off + a customer surface |
+| 19 | engine handoff | **Adapter + library data layer built** | `productEngineResolver.ts` + `productEngineHandoff.ts` + **NEW** `buildProductEngineLibrary.ts` ("My Products" engine group from confirmed products, with provenance) | only the Studio picker render + provenance badge remain (browser-only; seam = `ingredientLibrary.selectIngredientLibrary`) |
 | 20 | product intake UI | **Partial (expanded)** | CSV `ProductImportPage` (+ internal red-flag preview); DEV pages `/dev/mapper-smoke`, `/dev/mapper-batch-6`, **`/dev/mapper-review` (workstation: filters + indicators)**, **`/dev/mapper-status`** | OCR/barcode/enrichment intake surfaces missing |
 
 ## Requires approval before proceeding
@@ -77,7 +77,7 @@ zero-composition. No new safe confirm/reject this block — the clear ones are d
 the basement references above or a name/subcategory signal.
 
 ## Recent commits
-`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking · `96b20ac` DEV status control page · `17008e9` import-preview red flags · `17d1a36` review workstation. **Live DB ops:** migration 0011 applied; lifecycle status set (11 `pi_generated` / 3 `rejected` / 55 `draft`); 69 baseline `product_snapshots` rows.
+`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking · `96b20ac` DEV status control · `17008e9` import-preview red flags · `17d1a36` review workstation · `a07abd0` My-Products engine library · `0b3e34a` PI Verified / Manual Adjusted controls · `f002a8c` OpenFoodFacts adapter. **Live DB ops:** migration 0011 applied; lifecycle status set (11 `pi_generated` / 3 `rejected` / 55 `draft`); 69 baseline `product_snapshots` rows. DEV tools: `/dev/mapper-smoke`, `/dev/mapper-batch-6`, `/dev/mapper-review` (workstation), `/dev/mapper-status` (status + verify).
 
 See also: [BASEMENT_REFERENCE_GAP_PROPOSALS.md](BASEMENT_REFERENCE_GAP_PROPOSALS.md), [BASEMENT_REFERENCE_INSERT_CANDIDATES.md](BASEMENT_REFERENCE_INSERT_CANDIDATES.md), [MERCADONA_CATALOG_IMPORT_CONTRACT.md](MERCADONA_CATALOG_IMPORT_CONTRACT.md), [LEGACY_INGREDIENTS_CLEANUP_PLAN.md](LEGACY_INGREDIENTS_CLEANUP_PLAN.md).
 

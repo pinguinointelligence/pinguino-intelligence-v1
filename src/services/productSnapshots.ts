@@ -35,6 +35,18 @@ export interface ProductSnapshotRow extends SnapshotFields {
   created_at: string;
 }
 
+/** Full snapshot history for a product, newest first (RLS scopes to the owner). Read-only. */
+export async function listProductSnapshots(productId: string): Promise<ProductSnapshotRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('*')
+    .eq('product_id', productId)
+    .order('snapshot_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ProductSnapshotRow[];
+}
+
 /** The most recent snapshot for a product (RLS scopes it to the owner), or null. */
 export async function getLatestSnapshot(productId: string): Promise<ProductSnapshotRow | null> {
   if (!supabase) return null;
