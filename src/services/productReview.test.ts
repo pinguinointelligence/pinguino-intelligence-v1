@@ -10,7 +10,7 @@ vi.mock('@/services/products', () => ({
   saveProductMapperReview: h.saveProductMapperReview,
 }));
 
-import { confirmProductMatch, rejectProductMatch } from './productReview';
+import { confirmProductMatch, confirmProductMatchTo, rejectProductMatch } from './productReview';
 
 /** Minimal needs_review row — only the fields the actions read. */
 const row = (over: Partial<ProductRow> = {}): ProductRow =>
@@ -56,6 +56,35 @@ describe('confirmProductMatch', () => {
 
     h.getProduct.mockResolvedValue(row({ matched_basement_id: null }));
     await expect(confirmProductMatch('p1')).rejects.toThrow(/no matched candidate/i);
+    expect(h.saveProductMapperReview).not.toHaveBeenCalled();
+  });
+});
+
+describe('confirmProductMatchTo (multi-candidate chosen pick)', () => {
+  it('sets matched / manual_mapping / high with the CHOSEN basement id, never pac/pod', async () => {
+    h.getProduct.mockResolvedValue(row({ matched_basement_id: null })); // never persisted / ambiguous
+    h.saveProductMapperReview.mockResolvedValue(row({ mapper_status: 'matched', matched_basement_id: 'PI-ING-000099' }));
+
+    await confirmProductMatchTo('p1', 'PI-ING-000099');
+
+    const [id, patch] = h.saveProductMapperReview.mock.calls[0] ?? [];
+    expect(id).toBe('p1');
+    expect(patch.mapper_status).toBe('matched');
+    expect(patch.match_method).toBe('manual_mapping');
+    expect(patch.match_confidence).toBe('high');
+    expect(patch.matched_basement_id).toBe('PI-ING-000099'); // the reviewer's pick
+    expect(patch.needs_review_reason).toBeNull();
+    expect(patch).not.toHaveProperty('pac_value');
+    expect(patch).not.toHaveProperty('pod_value');
+    expect(patch).not.toHaveProperty('status');
+  });
+
+  it('throws (no write) on a missing product or a blank candidate id', async () => {
+    h.getProduct.mockResolvedValue(null);
+    await expect(confirmProductMatchTo('p1', 'PI-ING-000099')).rejects.toThrow(/not found/i);
+
+    h.getProduct.mockResolvedValue(row());
+    await expect(confirmProductMatchTo('p1', '   ')).rejects.toThrow(/no candidate id/i);
     expect(h.saveProductMapperReview).not.toHaveBeenCalled();
   });
 });

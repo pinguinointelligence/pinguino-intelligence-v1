@@ -20,9 +20,14 @@ const SOURCE = readFileSync(join(SRC, 'services', 'productReview.ts'), 'utf8');
 const CODE = stripComments(SOURCE);
 
 describe('productReview — explicit confirm/reject actions', () => {
-  it('exports exactly the two explicit review actions', () => {
+  it('exports the explicit review actions (confirm / confirm-to-chosen / reject)', () => {
     expect(/export async function confirmProductMatch\(\s*productId: string\s*\)/.test(SOURCE)).toBe(true);
+    expect(/export async function confirmProductMatchTo\(\s*productId: string,\s*basementId: string\s*\)/.test(SOURCE)).toBe(true);
     expect(/export async function rejectProductMatch\(\s*productId: string\s*\)/.test(SOURCE)).toBe(true);
+  });
+
+  it('confirmProductMatchTo sets matched + the CHOSEN basement id (multi-candidate pick)', () => {
+    expect(/matched_basement_id:\s*chosen/.test(CODE)).toBe(true); // the reviewer-picked id, never a guess
   });
 
   it('writes the product ONLY through the narrow saveProductMapperReview', () => {

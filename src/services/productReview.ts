@@ -43,6 +43,31 @@ export async function confirmProductMatch(productId: string): Promise<ProductRow
 }
 
 /**
+ * Confirm a CHOSEN candidate for a multi-candidate (ambiguous / not-yet-persisted) product.
+ * Same human-decision semantics as confirmProductMatch, but the reviewer supplies the
+ * basement id they picked from the shortlist — so it sets matched_basement_id explicitly.
+ * It writes ONLY the decision columns via the narrow saveProductMapperReview; it never
+ * touches pac_value/pod_value (a confirmed mapping is NOT engine-ready) and never reads or
+ * writes the locked reference base.
+ */
+export async function confirmProductMatchTo(productId: string, basementId: string): Promise<ProductRow> {
+  const product = await getProduct(productId);
+  if (!product) throw new Error('Product not found or not owned.');
+  const chosen = basementId.trim();
+  if (chosen === '') throw new Error('Cannot confirm: no candidate id provided.');
+  const autoMethod = product.match_method ?? 'category_composition_similarity';
+  const patch: ProductMapperResultUpdate = {
+    mapper_status: 'matched',
+    match_method: 'manual_mapping',
+    match_confidence: 'high',
+    matched_basement_id: chosen,
+    needs_review_reason: null,
+    mapper_notes: `Manually confirmed by reviewer — chose ${chosen} from the candidate shortlist (auto-method was ${autoMethod}). Not engine-ready: pac/pod still unsourced.`,
+  };
+  return saveProductMapperReview(productId, patch);
+}
+
+/**
  * Reject the single candidate as a false match. Records: status → rejected, method →
  * manual_mapping, confidence → rejected, and CLEARS matched_basement_id (the wrong choice
  * is removed). candidate_ids / candidate_count are kept (not in the patch) as an audit

@@ -32,15 +32,16 @@ describe('MapperReviewPage — DEV-only', () => {
   });
 });
 
-describe('MapperReviewPage — only confirm/reject write; no matching / batch / import', () => {
-  it('its product write actions are exactly confirmProductMatch / rejectProductMatch', () => {
+describe('MapperReviewPage — confirm/reject only; pure matchProduct for display; no persist-match', () => {
+  it('its persisted write actions are exactly confirmProductMatchTo / rejectProductMatch', () => {
     expect(PAGE.includes("from '@/services/productReview'")).toBe(true);
-    expect(PAGE.includes('confirmProductMatch')).toBe(true);
+    expect(PAGE.includes('confirmProductMatchTo')).toBe(true);
     expect(PAGE.includes('rejectProductMatch')).toBe(true);
   });
-  it('runs NO matching / batch / import / create / raw write-back', () => {
+  it('uses the PURE matchProduct only to compute candidates — never a persist / match-and-save path', () => {
+    expect(PAGE.includes("from '@/data/products/productMatcher'")).toBe(true);
     expect(
-      /matchAndSaveProduct|matchProduct\(|importProductCatalog|createProduct|updateProduct|saveProductMatchResult|saveProductMapperReview|runMatch/.test(
+      /matchAndSaveProduct|importProductCatalog|createProduct|updateProduct|saveProductMatchResult|saveProductMapperReview|runMatch/.test(
         ALL,
       ),
     ).toBe(false);
