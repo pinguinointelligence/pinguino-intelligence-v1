@@ -11,6 +11,7 @@
 import { DEMO_INGREDIENTS } from '@/data/demoIngredients';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import type { ProductLibraryProvenance } from '@/data/products/productEngineLibrary';
 import type { EngineIngredient } from '@/engine';
 
 export type LibrarySource = 'demo' | 'pi_base';
@@ -25,7 +26,18 @@ export interface IngredientLibrary {
   searchIndex: SearchIndex;
   source: LibrarySource;
   status: LibraryStatus;
+  /** The owner's confirmed products as engine ingredients ("My Products" group). The base
+   * selector leaves this empty; the hook fills it from buildProductEngineLibrary. */
+  products: readonly EngineIngredient[];
+  /** product EngineIngredient.id → provenance (reference-linked / red-flag) for the badge. */
+  productProvenance: ReadonlyMap<string, ProductLibraryProvenance>;
 }
+
+/** Default empty "My Products" group — the basement selector never builds products itself. */
+const NO_PRODUCTS = {
+  products: [] as readonly EngineIngredient[],
+  productProvenance: new Map() as ReadonlyMap<string, ProductLibraryProvenance>,
+};
 
 /** Whether the PI Base query should run. Pro + not the demo route. */
 export function shouldFetchLibrary({ isPro, demo }: { isPro: boolean; demo: boolean }): boolean {
@@ -56,7 +68,7 @@ function rowSearchText(row: IngredientRow, engineCategory: string): string {
 
 function demoLibrary(status: LibraryStatus): IngredientLibrary {
   const searchIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, demoSearchText(i)]));
-  return { ingredients: DEMO_INGREDIENTS, searchIndex, source: 'demo', status };
+  return { ingredients: DEMO_INGREDIENTS, searchIndex, source: 'demo', status, ...NO_PRODUCTS };
 }
 
 export interface SelectLibraryArgs {
@@ -82,7 +94,7 @@ export function selectIngredientLibrary({
   if (isError) return demoLibrary('fallback');
   if (rows === undefined) {
     // Pro, fetching — show a loading state, never a demo flash.
-    return { ingredients: [], searchIndex: new Map(), source: 'pi_base', status: 'loading' };
+    return { ingredients: [], searchIndex: new Map(), source: 'pi_base', status: 'loading', ...NO_PRODUCTS };
   }
   if (rows.length === 0) {
     // RLS returned nothing / not seeded / backend unavailable.
@@ -96,7 +108,7 @@ export function selectIngredientLibrary({
     ingredients.push(ingredient);
     searchIndex.set(ingredient.id, rowSearchText(row, ingredient.category));
   }
-  return { ingredients, searchIndex, source: 'pi_base', status: 'ready' };
+  return { ingredients, searchIndex, source: 'pi_base', status: 'ready', ...NO_PRODUCTS };
 }
 
 /**

@@ -31,6 +31,12 @@ export function IngredientPicker({
     [library.ingredients, library.searchIndex, query],
   );
   const grouped = useMemo(() => groupIngredientsByCategory(filtered), [filtered]);
+  // The owner's confirmed products ("My Products"), filtered by a simple name/id match.
+  const filteredProducts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q === '') return library.products;
+    return library.products.filter((p) => `${p.name} ${p.id}`.toLowerCase().includes(q));
+  }, [library.products, query]);
 
   if (library.status === 'loading') {
     return (
@@ -40,11 +46,13 @@ export function IngredientPicker({
     );
   }
 
-  // Selection stays valid even when the filter changes the visible set.
-  const effectiveId = filtered.some((i) => i.id === selectedId)
+  // Selection stays valid even when the filter changes the visible set (basement + products).
+  const selectable = [...filtered, ...filteredProducts];
+  const effectiveId = selectable.some((i) => i.id === selectedId)
     ? selectedId
-    : (filtered[0]?.id ?? '');
-  const count = filtered.length;
+    : (selectable[0]?.id ?? '');
+  const count = selectable.length;
+  const selectedProvenance = library.productProvenance.get(effectiveId);
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -77,40 +85,60 @@ export function IngredientPicker({
         {count === 1 ? b.resultUnitOne : b.resultUnitMany} {b.resultFoundSuffix}
       </p>
 
-      {grouped.length === 0 ? (
+      {grouped.length === 0 && filteredProducts.length === 0 ? (
         <p className="text-sm text-ivory/50">{b.noMatches}</p>
       ) : (
-        <div className="flex gap-2">
-          <select
-            aria-label={b.addLabel}
-            className="flex-1 rounded-md border border-ivory/15 bg-shell px-3 py-2 text-sm transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none"
-            value={effectiveId}
-            onChange={(event) => setSelectedId(event.currentTarget.value)}
-          >
-            {grouped.map((group) => (
-              <optgroup key={group.category} label={b.ingredientGroups[group.category]}>
-                {group.items.map((ingredient) => (
-                  <option key={ingredient.id} value={ingredient.id}>
-                    {ingredient.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
-            onClick={() => {
-              const ingredient = library.ingredients.find((item) => item.id === effectiveId);
-              if (ingredient) onAdd(ingredient);
-            }}
-          >
-            <span aria-hidden className="mr-1.5">
-              ＋
-            </span>
-            {b.addLabel}
-          </button>
-        </div>
+        <>
+          <div className="flex gap-2">
+            <select
+              aria-label={b.addLabel}
+              className="flex-1 rounded-md border border-ivory/15 bg-shell px-3 py-2 text-sm transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none"
+              value={effectiveId}
+              onChange={(event) => setSelectedId(event.currentTarget.value)}
+            >
+              {grouped.map((group) => (
+                <optgroup key={group.category} label={b.ingredientGroups[group.category]}>
+                  {group.items.map((ingredient) => (
+                    <option key={ingredient.id} value={ingredient.id}>
+                      {ingredient.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              {filteredProducts.length > 0 ? (
+                <optgroup label="My Products">
+                  {filteredProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} ({product.id})
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+            </select>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={() => {
+                const ingredient = [...library.ingredients, ...library.products].find((item) => item.id === effectiveId);
+                if (ingredient) onAdd(ingredient);
+              }}
+            >
+              <span aria-hidden className="mr-1.5">
+                ＋
+              </span>
+              {b.addLabel}
+            </button>
+          </div>
+
+          {selectedProvenance ? (
+            <p className="text-xs leading-relaxed text-ivory/50">
+              <span className="text-ivory/70">Reference-linked profile</span> · PAC/POD from approved reference · not independently measured
+              {selectedProvenance.blocked_by_red_flags ? (
+                <span className="text-amber-300"> · contains flagged ingredients — pending verification</span>
+              ) : null}
+            </p>
+          ) : null}
+        </>
       )}
 
       {library.status === 'fallback' ? (
