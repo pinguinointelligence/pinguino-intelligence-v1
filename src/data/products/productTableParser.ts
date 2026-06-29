@@ -19,6 +19,7 @@
  */
 import { parseCsv } from '@/lib/csv';
 import { mapDatasetCategory } from '@/data/ingredients/categoryMapping';
+import { mapProductSubcategory } from '@/data/products/productSubcategoryMapping';
 import type { ProductBooleanOrUnknown, ProductInsert, ProductSourceType } from '@/data/products/productRow';
 
 /** Which intake channel a table arrived through. Selects source_type (and, later,
@@ -285,6 +286,23 @@ export function mapRowToProductInsert(
         }
         break;
       }
+    }
+  }
+
+  // Category fallback (import enrichment): when NO explicit product_category was mapped
+  // (no category column, or it was blank), derive it from the richer product_subcategory
+  // via the pure mapProductSubcategory. An explicit category ALWAYS wins; an unknown or
+  // ambiguous subcategory leaves product_category NULL — never guessed. No DB, no Mapper
+  // matching, no reference-base read here: this only fills the product's own category.
+  if (insert.product_category === undefined && typeof insert.product_subcategory === 'string') {
+    const sub = mapProductSubcategory(insert.product_subcategory);
+    if (sub.category !== null) {
+      assign(insert, 'product_category', sub.category);
+      warnings.push(
+        `product_category derived from subcategory "${insert.product_subcategory}" → ${sub.category} (${sub.confidence})`,
+      );
+    } else {
+      warnings.push(`product_category left null (${sub.reason})`);
     }
   }
 

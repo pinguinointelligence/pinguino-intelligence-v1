@@ -256,11 +256,18 @@ describe('Mercadona header mapping (D5C4B aliases)', () => {
   });
 
   it('keeps Group, Mercadona Category, Storage, Notes unmapped (warned, never a field)', () => {
-    const { insert, warnings } = mapRowToProductInsert(mercadonaRow, 'mercadona');
-    expect('product_category' in insert).toBe(false); // Mercadona Category did NOT map to category
+    const { warnings } = mapRowToProductInsert(mercadonaRow, 'mercadona');
+    // The free-text "Mercadona Category" column still does not map to a field directly.
     for (const h of ['Group', 'Mercadona Category', 'Storage', 'Notes']) {
       expect(warnings.some((w) => w.includes(`unknown column "${h}"`)), h).toBe(true);
     }
+  });
+
+  it('derives product_category from the Subcategory column when no explicit category is given', () => {
+    const { insert, warnings } = mapRowToProductInsert(mercadonaRow, 'mercadona');
+    expect(insert.product_subcategory).toBe('Milk'); // raw subcategory preserved
+    expect(insert.product_category).toBe('dairy'); // Subcategory "Milk" → dairy (subcategory fallback)
+    expect(warnings.some((w) => /derived from subcategory/.test(w))).toBe(true);
   });
 
   it('keeps EAN a string and leading-zero safe', () => {
@@ -281,5 +288,59 @@ describe('Mercadona header mapping (D5C4B aliases)', () => {
     );
     expect(insert.fat_percent).toBe(3.6);
     expect(insert.cost_per_kg).toBe(0.95);
+  });
+});
+
+describe('mapRowToProductInsert — product_category subcategory fallback (import enrichment)', () => {
+  it('explicit category column WINS over the subcategory fallback', () => {
+    const c = mapRowToProductInsert({ brand: 'B', name: 'N', category: 'fruit', subcategory: 'Milk' });
+    expect(c.insert.product_category).toBe('fruit'); // explicit 'fruit' wins, not 'dairy' from 'Milk'
+    expect(c.warnings.some((w) => /derived from subcategory/.test(w))).toBe(false);
+  });
+
+  it('derives product_category from subcategory when no category column is present', () => {
+    const c = mapRowToProductInsert({ brand: 'B', name: 'N', subcategory: 'Dark Chocolate 85%+' });
+    expect(c.insert.product_category).toBe('chocolate_cocoa');
+    expect(c.warnings.some((w) => /derived from subcategory/.test(w))).toBe(true);
+  });
+
+  it('derives the fallback when the category column is present but BLANK', () => {
+    const c = mapRowToProductInsert({ brand: 'B', name: 'N', category: '   ', subcategory: 'Mascarpone' });
+    expect(c.insert.product_category).toBe('dairy');
+  });
+
+  it('an unknown / ambiguous subcategory leaves product_category null (never guessed)', () => {
+    const c = mapRowToProductInsert({ brand: 'B', name: 'N', subcategory: 'Mystery Powder XYZ' });
+    expect('product_category' in c.insert).toBe(false);
+    expect(c.warnings.some((w) => /left null/.test(w))).toBe(true);
+  });
+
+  it('no subcategory at all → product_category stays unset (no fallback, no crash)', () => {
+    const c = mapRowToProductInsert({ brand: 'B', name: 'N' });
+    expect('product_category' in c.insert).toBe(false);
+  });
+});
+
+describe('productTableParser — import stays pure (no matching, no DB, no reference base)', () => {
+  const SRC = resolve(import.meta.dirname, '..', '..');
+  const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const PARSER = stripComments(readFileSync(join(SRC, 'data', 'products', 'productTableParser.ts'), 'utf8'));
+
+  it('runs no Mapper matching and reads no reference base during import', () => {
+    expect(/matchProduct|matchAndSaveProduct|listEngineApprovedIngredients/.test(PARSER)).toBe(false);
+    expect(/mapper_basement/i.test(PARSER)).toBe(false);
+  });
+
+  it('touches no Supabase / service / DB write path (pure parser)', () => {
+    expect(/supabase/i.test(PARSER)).toBe(false);
+    expect(/@\/services\//.test(PARSER)).toBe(false);
+    for (const verb of ['.insert(', '.update(', '.upsert(', '.delete(', '.from(']) {
+      expect(PARSER.includes(verb), verb).toBe(false);
+    }
+  });
+
+  it('its only enrichment helpers are the pure category mappers', () => {
+    expect(PARSER.includes("from '@/data/products/productSubcategoryMapping'")).toBe(true);
+    expect(PARSER.includes("from '@/data/ingredients/categoryMapping'")).toBe(true);
   });
 });
