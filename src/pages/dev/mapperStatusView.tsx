@@ -1,9 +1,11 @@
 /**
  * Presentational view for the DEV-only Mapper STATUS control page. Pure + side-effect-free:
  * it shows each product's mapper_status, current lifecycle status, the recommended status,
- * red flags, blockers, and engine-readiness, and offers "Apply recommended". No service / DB
- * import — SSR-testable. A red-flagged product requires a reason before Apply is enabled
- * (red-flag override audit); PI Verified is never offered here.
+ * red flags, blockers, and engine-readiness, and offers three reviewer actions:
+ *   • Apply recommended (safe; never PI Verified)
+ *   • Manual adjust → manual_adjusted (needs a reviewer reason)
+ *   • Verify → PI Verified (needs a reviewer reason; DISABLED for red-flagged products)
+ * No service / DB import — SSR-testable; PI Verified is never offered for a red-flagged row.
  */
 import { Button } from '@/components/ui/Button';
 
@@ -31,6 +33,8 @@ export interface MapperStatusViewProps {
   onLoad: () => void;
   onReasonChange: (id: string, reason: string) => void;
   onApply: (id: string) => void;
+  onManualAdjust: (id: string) => void;
+  onVerify: (id: string) => void;
 }
 
 const READINESS_LABEL: Record<StatusRow['engine_readiness'], string> = {
@@ -50,6 +54,8 @@ export function MapperStatusView({
   onLoad,
   onReasonChange,
   onApply,
+  onManualAdjust,
+  onVerify,
 }: MapperStatusViewProps) {
   return (
     <div className="mx-auto min-h-screen max-w-3xl bg-paper px-6 py-16 text-ink">
@@ -57,10 +63,11 @@ export function MapperStatusView({
       <h1 className="mt-3 text-2xl font-light tracking-tight">Mapper status control</h1>
 
       <div className="mt-6 rounded-md border border-amber-400/50 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
-        <strong>Warning.</strong> "Apply recommended" writes <strong>only</strong> the product lifecycle
-        <code> status</code> (never pac/pod, identity, or the locked reference base). It applies the
-        <strong> safe recommended</strong> status only — <strong>PI Verified is never set here</strong>, and a
-        red-flagged product needs a written reason before Apply is enabled. You must be signed in as the owner.
+        <strong>Warning.</strong> These write <strong>only</strong> the product lifecycle <code>status</code>
+        (+ review audit) — never pac/pod, identity, or the locked reference base. <strong>Apply</strong> sets the
+        safe recommended status. <strong>Verify</strong> sets <code>pi_verified</code> and needs a written reviewer
+        reason — it is <strong>blocked for any red-flagged product</strong> and never runs automatically.
+        <strong> Manual adjust</strong> sets <code>manual_adjusted</code> with a reason.
       </div>
 
       <div className="mt-6">
@@ -94,22 +101,20 @@ export function MapperStatusView({
                 {r.customer_label ? ` (${r.customer_label})` : ''} · {READINESS_LABEL[r.engine_readiness]}
               </p>
               {redFlagged ? (
-                <p className="mt-1 font-mono text-xs text-status-risky">red flags: {r.red_flag_codes.join(', ')}</p>
+                <p className="mt-1 font-mono text-xs text-status-risky">red flags: {r.red_flag_codes.join(', ')} · PI Verified blocked</p>
               ) : null}
               {r.blockers.length > 0 ? (
                 <p className="mt-1 text-xs text-stone-500">blockers: {r.blockers.join(' · ')}</p>
               ) : null}
 
-              {redFlagged && !upToDate ? (
-                <input
-                  className="mt-2 w-full rounded border border-stone-200 px-2 py-1 font-mono text-xs"
-                  placeholder="reason required to apply a status to a red-flagged product"
-                  value={reasons[r.id] ?? ''}
-                  onChange={(e) => onReasonChange(r.id, e.target.value)}
-                />
-              ) : null}
+              <input
+                className="mt-2 w-full rounded border border-stone-200 px-2 py-1 font-mono text-xs"
+                placeholder="reviewer reason — required to verify, manual-adjust, or apply to a red-flagged product"
+                value={reasons[r.id] ?? ''}
+                onChange={(e) => onReasonChange(r.id, e.target.value)}
+              />
 
-              <div className="mt-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {upToDate ? (
                   <span className="text-xs text-stone-400">status up to date</span>
                 ) : (
@@ -117,6 +122,12 @@ export function MapperStatusView({
                     {busy ? 'Applying…' : `Apply ${r.recommended_status}`}
                   </Button>
                 )}
+                <Button size="sm" variant="ghost" onClick={() => onManualAdjust(r.id)} disabled={busy || reason === ''}>
+                  Manual adjust
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => onVerify(r.id)} disabled={busy || redFlagged || reason === ''}>
+                  Verify (PI Verified)
+                </Button>
               </div>
             </div>
           );

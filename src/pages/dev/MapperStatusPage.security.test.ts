@@ -43,8 +43,12 @@ describe('MapperStatusPage — write scope', () => {
     expect(PAGE.includes('listEngineApprovedIngredients(')).toBe(true);
     expect(PAGE.includes("from '@/data/products/productStatusDecision'")).toBe(true);
   });
-  it('never sets PI Verified automatically and never writes pac/pod', () => {
-    expect(/pi_verified/.test(ALL)).toBe(false); // not referenced as an apply target
+  it('PI Verified is reviewer-gated (re-decided with reviewerApproval), never auto-applied', () => {
+    expect(PAGE.includes('reviewerApproval')).toBe(true); // the verify path re-decides with approval
+    expect(/recommended_status === 'pi_verified'/.test(PAGE)).toBe(true); // only persisted when the policy yields it
+    expect(/red.?flag/i.test(VIEW)).toBe(true); // the view shows red flags block PI Verified
+  });
+  it('never writes pac/pod or npac', () => {
     expect(/pac_value|pod_value|npac_value/.test(ALL)).toBe(false);
   });
 });

@@ -17,6 +17,8 @@ import { MapperStatusPage } from './MapperStatusPage';
 
 const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
 const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
+const btnDisabled = (html: string, label: string) =>
+  new RegExp(`<button[^>]*\\sdisabled[^>]*>[^<]*${label}`).test(html);
 
 const row = (over: Partial<StatusRow> = {}): StatusRow => ({
   code: 'PR-ING-000010', id: 'p1', product_name: 'Nata', mapper_status: 'matched',
@@ -27,40 +29,47 @@ const row = (over: Partial<StatusRow> = {}): StatusRow => ({
 const base = {
   rows: [] as StatusRow[], loading: false, loaded: false, busyId: null as string | null,
   message: null as string | null, errorMessage: null as string | null, reasons: {} as Record<string, string>,
-  onLoad: () => {}, onReasonChange: () => {}, onApply: () => {},
+  onLoad: () => {}, onReasonChange: () => {}, onApply: () => {}, onManualAdjust: () => {}, onVerify: () => {},
 };
 
 afterEach(() => vi.clearAllMocks());
 
 describe('MapperStatusView', () => {
-  it('shows current→recommended, engine readiness, and an Apply button', () => {
-    const t = text(render(<MapperStatusView {...base} rows={[row()]} loaded />));
-    expect(t).toContain('PR-ING-000010');
+  it('shows current→recommended, readiness, and Apply + Manual + Verify actions', () => {
+    const html = render(<MapperStatusView {...base} rows={[row()]} loaded />);
+    const t = text(html);
     expect(t).toMatch(/status\s+draft\s+→\s+recommended\s+pi_generated/);
     expect(t).toMatch(/reference-linked/i);
     expect(t).toContain('Apply pi_generated');
+    expect(t).toContain('Manual adjust');
+    expect(t).toContain('Verify (PI Verified)');
   });
 
-  // true when the rendered Apply button carries the disabled attribute
-  const applyDisabled = (html: string) => /<button[^>]*\sdisabled[^>]*>[^<]*Apply/.test(html);
-
-  it('a red-flagged row disables Apply until a reason is entered', () => {
+  it('a red-flagged row blocks Verify and disables Apply until a reason is entered', () => {
     const flagged = row({ red_flag_codes: ['sweetener_or_polyol'] });
     const noReason = render(<MapperStatusView {...base} rows={[flagged]} loaded />);
-    expect(noReason).toMatch(/reason required/i); // placeholder attribute in raw HTML
-    expect(applyDisabled(noReason)).toBe(true);
+    expect(text(noReason)).toMatch(/PI Verified blocked/i);
+    expect(btnDisabled(noReason, 'Apply')).toBe(true);
+    expect(btnDisabled(noReason, 'Verify')).toBe(true);
+    // a reason enables Apply, but Verify stays blocked because of the red flag
     const withReason = render(<MapperStatusView {...base} rows={[flagged]} reasons={{ p1: 'owner override' }} loaded />);
-    expect(applyDisabled(withReason)).toBe(false);
+    expect(btnDisabled(withReason, 'Apply')).toBe(false);
+    expect(btnDisabled(withReason, 'Verify')).toBe(true);
   });
 
-  it('an up-to-date product shows no Apply button', () => {
+  it('a clean row with a reason enables Verify', () => {
+    const html = render(<MapperStatusView {...base} rows={[row()]} reasons={{ p1: 'producer technical sheet' }} loaded />);
+    expect(btnDisabled(html, 'Verify')).toBe(false);
+  });
+
+  it('an up-to-date product shows no Apply button (Manual/Verify remain)', () => {
     const t = text(render(<MapperStatusView {...base} rows={[row({ current_status: 'pi_generated' })]} loaded />));
     expect(t).toContain('status up to date');
-    expect(t).not.toMatch(/Apply pi_generated/); // the per-row Apply button is absent (warning copy aside)
+    expect(t).not.toMatch(/Apply pi_generated/);
   });
 
-  it('the warning states PI Verified is never set here', () => {
-    expect(text(render(<MapperStatusView {...base} />))).toMatch(/PI Verified is never set here/i);
+  it('the warning states Verify is blocked for red-flagged products', () => {
+    expect(text(render(<MapperStatusView {...base} />))).toMatch(/blocked for any red-flagged product/i);
   });
 });
 
