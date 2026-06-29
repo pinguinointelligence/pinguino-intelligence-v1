@@ -26,7 +26,7 @@ describe('IngredientPicker — My Products', () => {
       <IngredientPicker
         library={lib({
           products: [prod('PR-ING-000010', 'Nata para montar')],
-          productProvenance: provenance('PR-ING-000010', { reference_linked: true, blocked_by_red_flags: false, warnings: [] }),
+          productProvenance: provenance('PR-ING-000010', { reference_linked: true, blocked_by_red_flags: false, warnings: [], status_label: 'PI Generated' }),
         })}
         onAdd={() => {}}
       />,
@@ -34,9 +34,11 @@ describe('IngredientPicker — My Products', () => {
     expect(html).toMatch(/My Products/);
     expect(text(html)).toContain('Nata para montar');
     expect(text(html)).toContain('PR-ING-000010');
+    expect(text(html)).toMatch(/PI Generated/);
     expect(text(html)).toMatch(/Reference-linked profile/);
     expect(text(html)).toMatch(/not independently measured/);
     expect(html).not.toMatch(/%/); // no internal confidence percentage shown
+    expect(html).not.toMatch(/Mapper/i); // never the internal "Mapper" word
   });
 
   it('shows a pending-verification note for a red-flagged product', () => {
@@ -44,7 +46,7 @@ describe('IngredientPicker — My Products', () => {
       <IngredientPicker
         library={lib({
           products: [prod('PR-ING-000031', 'Chocolate 0% azúcares')],
-          productProvenance: provenance('PR-ING-000031', { reference_linked: true, blocked_by_red_flags: true, warnings: ['sweetener'] }),
+          productProvenance: provenance('PR-ING-000031', { reference_linked: true, blocked_by_red_flags: true, warnings: ['sweetener'], status_label: 'PI Generated' }),
         })}
         onAdd={() => {}}
       />,

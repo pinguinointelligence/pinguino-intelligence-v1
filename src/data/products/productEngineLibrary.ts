@@ -12,6 +12,7 @@
  *     any red-flag warnings — for the picker badge. No raw OCR/catalog text reaches the engine.
  */
 import { prepareProductEngineIngredient } from './productEngineHandoff';
+import { formatProductStatusLabel, type CustomerStatusLabel } from './productStatusDecision';
 import type { EngineIngredient } from '@/engine';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductRow } from './productRow';
@@ -29,6 +30,8 @@ export interface ProductLibraryProvenance {
   reference_linked: boolean;
   blocked_by_red_flags: boolean;
   warnings: string[];
+  /** customer-safe status label (PI Generated / Manual Adjusted / …); never "Mapper", never a %. */
+  status_label: CustomerStatusLabel | null;
 }
 
 export interface ProductEngineLibrary {
@@ -63,6 +66,7 @@ export function buildProductEngineLibrary(args: {
       reference_linked: handoff.not_independently_measured,
       blocked_by_red_flags: handoff.blocked_by_red_flags,
       warnings: handoff.warnings,
+      status_label: formatProductStatusLabel(p.status),
     });
   }
 

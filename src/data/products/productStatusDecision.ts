@@ -32,6 +32,15 @@ const CUSTOMER_LABEL: Record<ProductStatus, CustomerStatusLabel | null> = {
   rejected: null,
 };
 
+/**
+ * The clean, customer-safe label for a product status — the single source of truth used by
+ * any product-facing surface. Never the word "Mapper", never an internal confidence percentage;
+ * draft/rejected (internal-only) return null so they are not shown to customers.
+ */
+export function formatProductStatusLabel(status: ProductStatus): CustomerStatusLabel | null {
+  return CUSTOMER_LABEL[status] ?? null;
+}
+
 export interface StatusDecisionInput extends RedFlagInput, ProductEngineInput {
   /** the matched basement reference (looked up by the caller), for engine-value resolution. */
   reference?: ReferenceEngineValues | null;

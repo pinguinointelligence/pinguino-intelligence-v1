@@ -132,6 +132,9 @@ export function IngredientPicker({
 
           {selectedProvenance ? (
             <p className="text-xs leading-relaxed text-ivory/50">
+              {selectedProvenance.status_label ? (
+                <span className="text-ivory/70">{selectedProvenance.status_label} · </span>
+              ) : null}
               <span className="text-ivory/70">Reference-linked profile</span> · PAC/POD from approved reference · not independently measured
               {selectedProvenance.blocked_by_red_flags ? (
                 <span className="text-amber-300"> · contains flagged ingredients — pending verification</span>

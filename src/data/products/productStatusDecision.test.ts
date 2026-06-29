@@ -2,9 +2,22 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { decideProductStatus } from './productStatusDecision';
+import { decideProductStatus, formatProductStatusLabel } from './productStatusDecision';
 
 const cream = { ingredient_id: 'PI-ING-000180', ingredient_name_display: 'Cream 30% UHT', pac_value: 3.668, pod_value: 0.512 };
+
+describe('formatProductStatusLabel', () => {
+  it('maps lifecycle statuses to clean customer labels (no "Mapper", no percentages)', () => {
+    expect(formatProductStatusLabel('pi_generated')).toBe('PI Generated');
+    expect(formatProductStatusLabel('pi_calculated')).toBe('PI Calculated');
+    expect(formatProductStatusLabel('manual_adjusted')).toBe('Manual Adjusted');
+    expect(formatProductStatusLabel('pi_verified')).toBe('PI Verified');
+  });
+  it('keeps internal-only statuses hidden from customers (null)', () => {
+    expect(formatProductStatusLabel('draft')).toBeNull();
+    expect(formatProductStatusLabel('rejected')).toBeNull();
+  });
+});
 
 describe('decideProductStatus — matched, reference-linked, no red flags', () => {
   it('a clean matched product with reference-linked pac/pod → PI Generated, not PI Verified', () => {
