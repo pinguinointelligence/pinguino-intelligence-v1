@@ -49,18 +49,35 @@ export interface ProductMatchResult {
 
 /* ── tuning constants (deterministic; named so tests pin them) ─────────────── */
 
-/** Composition fields shared by products + basement, compared as percentage points. */
+/**
+ * Composition fields compared as percentage points — the MEASURED nutrition fields
+ * populated on BOTH a (Mercadona) product and the reference base. Slice 1 moved this from
+ * 3 effective dimensions to 5 by adding carbohydrate + salt.
+ *
+ * Deliberately EXCLUDED:
+ *   • water_percent / total_solids_percent — products carry no measured value (not on EU
+ *     nutrition labels), so comparing them would always be a non-shared no-op;
+ *   • saturated_fat_percent — the reference base stores it as 0 for EVERY row (an
+ *     unpopulated placeholder), so comparing a product's real saturated fat against 0 would
+ *     add a large spurious distance and wrongly reject true matches.
+ */
 export const COMPOSITION_FIELDS = [
-  'water_percent',
   'fat_percent',
-  'protein_percent',
+  'carbohydrate_percent',
   'total_sugars_percent',
-  'total_solids_percent',
+  'protein_percent',
+  'salt_percent',
 ] as const;
 
-/** Need at least this many fields present in BOTH rows to trust a composition match. */
-export const MIN_SHARED_COMPOSITION_FIELDS = 3;
-/** Mean absolute per-field difference (pp) at/under which composition is "similar". */
+/** Need at least this many fields present in BOTH rows to trust a composition match.
+ * Real products and reference rows both carry all 5 measured fields, so a genuine
+ * in-category comparison always shares 5; requiring 4 stops a thin overlap from matching. */
+export const MIN_SHARED_COMPOSITION_FIELDS = 4;
+/** Mean absolute per-field difference (pp) at/under which composition is "similar".
+ * Kept at 2: real good-match mean distances span ~0.3–1.3 pp, and the two known
+ * same-category macro-twins (stracciatella-yogurt≈condensed-milk, protein-drink≈yogurt)
+ * fall in that SAME band — so lowering this would drop legitimate matches too. Twins are
+ * handled by the missing-pac/pod → needs_review routing + human review, never by this number. */
 export const COMPOSITION_AVG_DISTANCE_THRESHOLD = 2;
 /** A normalized product name must be at least this long to fuzzy/substring match. */
 export const MIN_FUZZY_NAME_LENGTH = 3;

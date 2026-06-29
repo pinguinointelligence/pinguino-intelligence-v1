@@ -235,13 +235,13 @@ describe('matchProduct — composition is robust to numeric DB strings (regressi
   it('category_composition_similarity fires when composition arrives as numeric strings', () => {
     const cream = basementRow({
       ingredient_id: 'B-CREAM-STR', ingredient_category: 'dairy', ingredient_name_display: 'Cream 30%',
-      water_percent: s('64'), fat_percent: s('30'), protein_percent: s('2.3'),
-      total_sugars_percent: s('3.2'), total_solids_percent: s('36'), pac_value: s('1'), pod_value: s('1'),
+      fat_percent: s('30'), carbohydrate_percent: s('3.2'), total_sugars_percent: s('3.2'),
+      protein_percent: s('2.3'), salt_percent: s('0.08'), pac_value: s('1'), pod_value: s('1'),
     });
     const product = productRow({
       product_category: 'dairy', product_name_display: 'Generic Cream',
-      water_percent: s('64.5'), fat_percent: s('30.2'), protein_percent: s('2.4'),
-      total_sugars_percent: s('3'), total_solids_percent: s('36.1'), pac_value: s('5'), pod_value: s('5'),
+      fat_percent: s('30.2'), carbohydrate_percent: s('3'), total_sugars_percent: s('3'),
+      protein_percent: s('2.4'), salt_percent: s('0.1'), pac_value: s('5'), pod_value: s('5'),
     });
     const r = matchProduct(product, [cream]);
     expect(r.match_method).toBe('category_composition_similarity');
@@ -294,9 +294,9 @@ describe('matchProduct — levels', () => {
   });
 
   it('category + composition similarity → medium', () => {
-    const cream = basementRow({ ingredient_id: 'B-CREAM', ingredient_category: 'dairy', ingredient_name_display: 'Cream 30%', water_percent: 64, fat_percent: 30, protein_percent: 2.3, total_sugars_percent: 3.2, total_solids_percent: 36, pac_value: 1, pod_value: 1 });
+    const cream = basementRow({ ingredient_id: 'B-CREAM', ingredient_category: 'dairy', ingredient_name_display: 'Cream 30%', fat_percent: 30, carbohydrate_percent: 3.2, total_sugars_percent: 3.2, protein_percent: 2.3, salt_percent: 0.08, pac_value: 1, pod_value: 1 });
     const r = matchProduct(
-      productRow({ product_category: 'dairy', product_name_display: 'Generic Cream', water_percent: 64.5, fat_percent: 30.2, protein_percent: 2.4, total_sugars_percent: 3, total_solids_percent: 36.1, ...engineReady }),
+      productRow({ product_category: 'dairy', product_name_display: 'Generic Cream', fat_percent: 30.2, carbohydrate_percent: 3, total_sugars_percent: 3, protein_percent: 2.4, salt_percent: 0.1, ...engineReady }),
       [cream],
     );
     expect(r.match_method).toBe('category_composition_similarity');
@@ -305,11 +305,11 @@ describe('matchProduct — levels', () => {
   });
 
   it('ingredient-type fallback when composition is too far → low', () => {
-    const smp = basementRow({ ingredient_id: 'B-SMP', ingredient_category: 'dairy', ingredient_name_display: 'Skimmed Milk Powder', water_percent: 3, fat_percent: 1, protein_percent: 35, total_sugars_percent: 52, total_solids_percent: 96, pac_value: 1, pod_value: 1 });
+    const smp = basementRow({ ingredient_id: 'B-SMP', ingredient_category: 'dairy', ingredient_name_display: 'Skimmed Milk Powder', fat_percent: 1, carbohydrate_percent: 52, total_sugars_percent: 52, protein_percent: 35, salt_percent: 1, pac_value: 1, pod_value: 1 });
     const r = matchProduct(
-      productRow({ product_category: 'dairy', product_name_display: 'Mystery Dairy Item', water_percent: 80, fat_percent: 5, protein_percent: 3, total_sugars_percent: 5, total_solids_percent: 20, ...engineReady }),
+      productRow({ product_category: 'dairy', product_name_display: 'Mystery Dairy Item', fat_percent: 5, carbohydrate_percent: 5, total_sugars_percent: 5, protein_percent: 3, salt_percent: 0.1, ...engineReady }),
       [smp],
-    );
+    ); // 5 shared, mean distance ≈ 25 pp → far past threshold
     expect(r.match_method).toBe('ingredient_type');
     expect(r.match_confidence).toBe('low');
   });
@@ -390,43 +390,122 @@ describe('matchProduct — composition threshold + shared-field boundaries', () 
   const dairy = (over: Partial<IngredientRow>) =>
     basementRow({ ingredient_id: 'B-DAIRY', ingredient_category: 'dairy', pac_value: 1, pod_value: 1, ...over });
 
-  it('3 shared fields at avg distance exactly 2 → composition match (pins THRESHOLD low side)', () => {
-    const b = dairy({ water_percent: 10, fat_percent: 20, protein_percent: 30 }); // diffs 2,2,2 → avg 2.0
+  it('5 shared fields at avg distance exactly 2 → composition match (pins THRESHOLD low side)', () => {
+    const b = dairy({ fat_percent: 20, carbohydrate_percent: 20, total_sugars_percent: 20, protein_percent: 20, salt_percent: 20 });
     const r = matchProduct(
-      productRow({ product_category: 'dairy', product_name_display: 'C', water_percent: 12, fat_percent: 22, protein_percent: 32, ...engineReady }),
+      productRow({ product_category: 'dairy', product_name_display: 'C', fat_percent: 22, carbohydrate_percent: 22, total_sugars_percent: 22, protein_percent: 22, salt_percent: 22, ...engineReady }),
       [b],
-    );
+    ); // diffs 2,2,2,2,2 → avg 2.0
     expect(r.match_method).toBe('category_composition_similarity');
     expect(r.match_confidence).toBe('medium');
   });
 
-  it('3 shared fields at avg distance just over 2 → falls through (pins THRESHOLD high side)', () => {
-    const b = dairy({ water_percent: 10, fat_percent: 20, protein_percent: 30 }); // diffs 2,2,3 → avg 2.33
+  it('5 shared fields at avg distance just over 2 → falls through (pins THRESHOLD high side)', () => {
+    const b = dairy({ fat_percent: 20, carbohydrate_percent: 20, total_sugars_percent: 20, protein_percent: 20, salt_percent: 20 });
     const r = matchProduct(
-      productRow({ product_category: 'dairy', product_name_display: 'C', water_percent: 12, fat_percent: 22, protein_percent: 33, ...engineReady }),
+      productRow({ product_category: 'dairy', product_name_display: 'C', fat_percent: 22, carbohydrate_percent: 22, total_sugars_percent: 22, protein_percent: 22, salt_percent: 23, ...engineReady }),
+      [b],
+    ); // diffs 2,2,2,2,3 → avg 2.2
+    expect(r.match_method).toBe('ingredient_type');
+  });
+
+  it('only 3 shared fields, even a perfect match, is rejected (pins MIN_SHARED=4)', () => {
+    const b = dairy({ fat_percent: 20, carbohydrate_percent: 20, total_sugars_percent: 20 }); // protein/salt null
+    const r = matchProduct(
+      productRow({ product_category: 'dairy', product_name_display: 'C', fat_percent: 20, carbohydrate_percent: 20, total_sugars_percent: 20, ...engineReady }),
       [b],
     );
     expect(r.match_method).toBe('ingredient_type');
   });
 
-  it('only 2 shared fields, even a perfect match, is rejected (pins MIN_SHARED=3)', () => {
-    const b = dairy({ water_percent: 10, fat_percent: 20 }); // protein/sugars/solids null
+  it('4 shared fields within threshold → composition match (MIN_SHARED=4 is enough)', () => {
+    const b = dairy({ fat_percent: 20, carbohydrate_percent: 20, total_sugars_percent: 20, protein_percent: 20 }); // salt null
     const r = matchProduct(
-      productRow({ product_category: 'dairy', product_name_display: 'C', water_percent: 10, fat_percent: 20, ...engineReady }),
+      productRow({ product_category: 'dairy', product_name_display: 'C', fat_percent: 21, carbohydrate_percent: 21, total_sugars_percent: 21, protein_percent: 21, ...engineReady }),
       [b],
-    );
-    expect(r.match_method).toBe('ingredient_type');
+    ); // 4 shared, diffs 1,1,1,1 → avg 1.0
+    expect(r.match_method).toBe('category_composition_similarity');
   });
 
-  it('only fields present in BOTH rows count — non-shared fields never contribute as 0', () => {
-    // shared water/fat/protein (diffs 1,1,1 → avg 1). product sugars=999 (basement null) and
-    // basement solids=999 (product null) must be IGNORED; if coerced to 0 the avg would blow up.
-    const b = dairy({ water_percent: 11, fat_percent: 21, protein_percent: 31, total_solids_percent: 999 });
+  it('only fields present in BOTH rows count — a lone-sided field never contributes as 0', () => {
+    // shared fat/carb/sugars/protein (diffs 1,1,1,1 → avg 1). product salt=999 (basement null)
+    // must be IGNORED; if it were coerced to 0 and counted, the avg would blow far past 2.
+    const b = dairy({ fat_percent: 21, carbohydrate_percent: 21, total_sugars_percent: 21, protein_percent: 21 });
     const r = matchProduct(
-      productRow({ product_category: 'dairy', product_name_display: 'C', water_percent: 10, fat_percent: 20, protein_percent: 30, total_sugars_percent: 999, ...engineReady }),
+      productRow({ product_category: 'dairy', product_name_display: 'C', fat_percent: 20, carbohydrate_percent: 20, total_sugars_percent: 20, protein_percent: 20, salt_percent: 999, ...engineReady }),
       [b],
     );
     expect(r.match_method).toBe('category_composition_similarity');
+  });
+});
+
+/* ── Slice 1: measured-field composition (carbohydrate + salt) ──────────────── */
+
+describe('matchProduct — Slice 1 measured-field composition (carbohydrate + salt)', () => {
+  const dairy = (id: string, over: Partial<IngredientRow>) =>
+    basementRow({ ingredient_id: id, ingredient_category: 'dairy', pac_value: 1, pod_value: 1, ...over });
+
+  it('carbohydrate separates two same-category rows that tie on fat/protein/sugars', () => {
+    // A and B are identical on fat/protein/total_sugars; only carbohydrate differs. On the old
+    // 3-field metric both tied (→ ambiguous); carbohydrate now singles out the true candidate.
+    const a = dairy('B-A', { fat_percent: 10, total_sugars_percent: 5, protein_percent: 4, salt_percent: 0.1, carbohydrate_percent: 6 });
+    const b = dairy('B-B', { fat_percent: 10, total_sugars_percent: 5, protein_percent: 4, salt_percent: 0.1, carbohydrate_percent: 40 });
+    const product = productRow({ product_category: 'dairy', product_name_display: 'P', fat_percent: 10, total_sugars_percent: 5, protein_percent: 4, salt_percent: 0.1, carbohydrate_percent: 7, ...engineReady });
+    const r = matchProduct(product, [a, b]);
+    expect(r.match_method).toBe('category_composition_similarity');
+    expect(r.matched_basement_id).toBe('B-A'); // only A is within threshold; B's carb gap (33) excludes it
+    expect(r.candidate_count).toBe(1);
+  });
+
+  it('salt contributes to the distance (a large salt gap pushes a row out of range)', () => {
+    const b = dairy('B-SALT', { fat_percent: 10, carbohydrate_percent: 5, total_sugars_percent: 5, protein_percent: 4, salt_percent: 0.1 });
+    const near = productRow({ product_category: 'dairy', product_name_display: 'P', fat_percent: 10, carbohydrate_percent: 5, total_sugars_percent: 5, protein_percent: 4, salt_percent: 0.3, ...engineReady });
+    const far = productRow({ product_category: 'dairy', product_name_display: 'P', fat_percent: 10, carbohydrate_percent: 5, total_sugars_percent: 5, protein_percent: 4, salt_percent: 11, ...engineReady });
+    expect(matchProduct(near, [b]).match_method).toBe('category_composition_similarity'); // tiny salt gap → matches
+    expect(matchProduct(far, [b]).match_method).toBe('ingredient_type'); // salt gap 10.9 → avg >2 → out
+  });
+});
+
+describe('matchProduct — same-category macro-twins surface for review, never auto-matched', () => {
+  // Composition alone cannot reject a genuine macro-twin inside the same category — the two
+  // real false positives sit in the same distance band as true matches. The safety net is:
+  // a single composition candidate + a product missing pac/pod → needs_review (never matched).
+  // Both were correctly human-rejected from that review queue.
+  it('protein chocolate drink vs natural yogurt → needs_review, not matched', () => {
+    const yogurt = basementRow({ ingredient_id: 'PI-YOG', ingredient_category: 'dairy', ingredient_name_display: 'Natural Yogurt', fat_percent: 2, carbohydrate_percent: 5.4, total_sugars_percent: 3.6, protein_percent: 4.7, salt_percent: 0.13, pac_value: 1, pod_value: 1 });
+    const drink = productRow({ product_category: 'dairy', product_name_display: 'Batido proteinas chocolate', fat_percent: 1, carbohydrate_percent: 6, total_sugars_percent: 4, protein_percent: 9, salt_percent: 0.2 }); // no pac/pod
+    const r = matchProduct(drink, [yogurt]);
+    expect(r.match_method).toBe('category_composition_similarity');
+    expect(r.mapper_status).toBe('needs_review');
+    expect(r.mapper_status).not.toBe('matched');
+  });
+
+  it('stracciatella yogurt vs condensed milk → needs_review, not matched', () => {
+    const condensed = basementRow({ ingredient_id: 'PI-CM', ingredient_category: 'dairy', ingredient_name_display: 'Condensed Milk', fat_percent: 7.5, carbohydrate_percent: 11, total_sugars_percent: 11, protein_percent: 5.5, salt_percent: 0.18, pac_value: 1, pod_value: 1 });
+    const yog = productRow({ product_category: 'dairy', product_name_display: 'Yogur griego stracciatella', fat_percent: 9, carbohydrate_percent: 12, total_sugars_percent: 11, protein_percent: 4, salt_percent: 0.1 }); // no pac/pod
+    const r = matchProduct(yog, [condensed]);
+    expect(r.match_method).toBe('category_composition_similarity');
+    expect(r.mapper_status).toBe('needs_review');
+    expect(r.mapper_status).not.toBe('matched');
+  });
+});
+
+describe('matchProduct — confirmed-good cases still produce composition candidates', () => {
+  it('cream 35% still finds the cream 30% reference (real values, 5 fields)', () => {
+    const cream = basementRow({ ingredient_id: 'PI-CREAM30', ingredient_category: 'dairy', ingredient_name_display: 'Cream 30%', fat_percent: 30, carbohydrate_percent: 3.2, total_sugars_percent: 3.2, protein_percent: 2.3, salt_percent: 0.08, pac_value: 1, pod_value: 1 });
+    const product = productRow({ product_category: 'dairy', product_name_display: 'Nata para montar', fat_percent: 35, carbohydrate_percent: 3.1, total_sugars_percent: 3.1, protein_percent: 2, salt_percent: 0.1, ...engineReady });
+    const r = matchProduct(product, [cream]); // mean ≈ 1.10 pp
+    expect(r.match_method).toBe('category_composition_similarity');
+    expect(r.matched_basement_id).toBe('PI-CREAM30');
+    expect(r.mapper_status).toBe('matched'); // product engineReady → not downgraded
+  });
+
+  it('maltitol chocolate still finds the maltitol chocolate reference (real values, 5 fields)', () => {
+    const choc = basementRow({ ingredient_id: 'PI-CHOC', ingredient_category: 'chocolate', ingredient_name_display: 'Chocolate Malchoc', fat_percent: 36.6, carbohydrate_percent: 50.4, total_sugars_percent: 0, protein_percent: 6.8, salt_percent: 0.2, pac_value: 1, pod_value: 1 });
+    const product = productRow({ product_category: 'chocolate_cocoa', product_name_display: 'Chocolate 0% azucar', fat_percent: 35, carbohydrate_percent: 48, total_sugars_percent: 1, protein_percent: 8, salt_percent: 0.2, ...engineReady });
+    const r = matchProduct(product, [choc]); // mean ≈ 1.24 pp
+    expect(r.match_method).toBe('category_composition_similarity');
+    expect(r.matched_basement_id).toBe('PI-CHOC');
   });
 });
 
@@ -512,8 +591,8 @@ describe('matchProduct — missing-values review keys on confidence, not on a sp
   });
 
   it('a composition (medium) match with missing product values → needs_review', () => {
-    const b = basementRow({ ingredient_id: 'B-C', ingredient_category: 'dairy', water_percent: 10, fat_percent: 20, protein_percent: 30, pac_value: 1, pod_value: 1 });
-    const r = matchProduct(productRow({ product_category: 'dairy', product_name_display: 'X', water_percent: 10, fat_percent: 20, protein_percent: 30 }), [b]);
+    const b = basementRow({ ingredient_id: 'B-C', ingredient_category: 'dairy', fat_percent: 20, carbohydrate_percent: 5, total_sugars_percent: 5, protein_percent: 3, salt_percent: 0.1, pac_value: 1, pod_value: 1 });
+    const r = matchProduct(productRow({ product_category: 'dairy', product_name_display: 'X', fat_percent: 20, carbohydrate_percent: 5, total_sugars_percent: 5, protein_percent: 3, salt_percent: 0.1 }), [b]);
     expect(r.match_method).toBe('category_composition_similarity');
     expect(r.mapper_status).toBe('needs_review');
     expect(r.match_confidence).toBe('needs_review');
