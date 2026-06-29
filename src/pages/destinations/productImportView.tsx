@@ -15,7 +15,7 @@ import type {
   ProductIntakeSource,
 } from '@/data/products/productTableParser';
 import type { ImportRowResult, ProductImportSummary } from '@/services/productCatalogImport';
-import { SOURCE_OPTIONS } from './productImportController';
+import { importPreviewRedFlags, SOURCE_OPTIONS, type IntakeRedFlagRow } from './productImportController';
 
 const c = copy.productsImport;
 
@@ -84,7 +84,31 @@ function WarningList({ label, items, empty }: { label: string; items: string[]; 
   );
 }
 
-/** Parse preview — counts + every warning + every skipped row. Nothing hidden. */
+/** INTERNAL red-flag preview — per-row sweetener/polyol/protein/claim/incomplete-OCR signals.
+ * Admin-only signals (no percentages, no customer copy); products with these never auto-verify. */
+export function RedFlagPreview({ rows }: { rows: IntakeRedFlagRow[] }) {
+  return (
+    <div>
+      <SectionLabel tone="ivory">Red flags · internal review signals</SectionLabel>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-ivory/40">No red flags — nothing blocks auto-verify.</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-ivory/10">
+          {rows.map((row) => (
+            <li key={row.rowIndex} className="py-2 text-sm leading-relaxed text-ivory/70">
+              <span className="font-mono text-ivory/40">#{row.rowIndex}</span>{' '}
+              <span className="text-status-risky">{row.codes.join(', ')}</span>
+              {row.blocksAutoVerify ? <span className="text-ivory/40"> · will not auto-verify</span> : null}
+              <span className="block text-ivory/50">{row.reasons.join(' ')}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Parse preview — counts + every warning + every skipped row + internal red flags. Nothing hidden. */
 export function ParsePreview({ result }: { result: ProductIntakeResult }) {
   // Warning rows only (a skip row shows its reason in the Skipped list, not here) — so the
   // list count matches the WARNINGS metric. status === 'warning' iff non-skip with warnings.
@@ -105,6 +129,7 @@ export function ParsePreview({ result }: { result: ProductIntakeResult }) {
       </div>
       <WarningList label={c.warningsLabel} items={warningLines} empty={c.noWarnings} />
       <WarningList label={c.skippedLabel} items={skippedLines} empty={c.noSkipped} />
+      <RedFlagPreview rows={importPreviewRedFlags(result)} />
     </div>
   );
 }

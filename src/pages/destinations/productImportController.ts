@@ -5,6 +5,7 @@
  * normalizes errors. Kept dependency-light so it is unit-testable without a DOM.
  */
 import { copy } from '@/copy/en';
+import { blocksAutoVerify, detectRedFlags } from '@/data/products/productRedFlags';
 import {
   parseProductTable,
   type ProductIntakeResult,
@@ -44,6 +45,36 @@ export function parseIntake(csvText: string, source: ProductIntakeSource): Produ
 /** Rows the importer will actually try to create (skip rows are not importable). */
 export function importableCount(result: ProductIntakeResult): number {
   return result.candidates.filter((candidate) => candidate.status !== 'skip').length;
+}
+
+/** Internal-only red-flag annotation for one importable candidate (admin preview). */
+export interface IntakeRedFlagRow {
+  rowIndex: number;
+  codes: string[];
+  reasons: string[];
+  /** true → this product will NOT auto-verify after import (sweetener/polyol/protein/etc.). */
+  blocksAutoVerify: boolean;
+}
+
+/**
+ * Per-candidate red flags for the import preview (INTERNAL/admin only — no percentages, no
+ * customer copy). PURE: runs the red-flag detector on each importable candidate's parsed
+ * fields; never matches, never writes, never touches the reference base. Skip rows and
+ * flag-free rows are omitted.
+ */
+export function importPreviewRedFlags(result: ProductIntakeResult): IntakeRedFlagRow[] {
+  return result.candidates
+    .filter((candidate) => candidate.status !== 'skip')
+    .map((candidate) => {
+      const flags = detectRedFlags(candidate.insert);
+      return {
+        rowIndex: candidate.rowIndex,
+        codes: flags.map((f) => f.code),
+        reasons: flags.map((f) => f.reason),
+        blocksAutoVerify: blocksAutoVerify(flags),
+      };
+    })
+    .filter((row) => row.codes.length > 0);
 }
 
 /** Import is allowed only when signed in AND there is at least one importable row. */
