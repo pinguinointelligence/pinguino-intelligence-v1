@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
 import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
+import { MapperStatusPage } from '@/pages/dev/MapperStatusPage';
 import { MapperSmokePage } from '@/pages/dev/MapperSmokePage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
@@ -48,6 +49,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/mapper-smoke" element={<MapperSmokePage />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-batch-6" element={<MapperBatch6Page />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-review" element={<MapperReviewPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/mapper-status" element={<MapperStatusPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
