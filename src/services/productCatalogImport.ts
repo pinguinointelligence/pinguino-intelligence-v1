@@ -20,6 +20,7 @@
  */
 import { createProductWithIdentity, findExistingProductForIdentity } from '@/services/products';
 import { matchAndSaveProduct } from '@/services/productMapper';
+import { snapshotNewProduct, snapshotSourceChange } from '@/services/productSnapshots';
 import { productIdentityKey, productInsertToIdentityInput } from '@/data/products/productIdentity';
 import type { ProductIntakeCandidate } from '@/data/products/productTableParser';
 
@@ -29,6 +30,9 @@ export interface ImportProductCatalogOptions {
   /** Keep importing past a row failure (default true). When false, the first failing row is
    * recorded and then the error is rethrown immediately. */
   continueOnError?: boolean;
+  /** Record a product_snapshots history row on create, and on a CHANGED existing source
+   * (default true). Best-effort: a snapshot failure is a per-row warning, never a row failure. */
+  snapshot?: boolean;
 }
 
 export type ImportRowOutcome = 'created' | 'existing' | 'in_batch_duplicate' | 'skipped' | 'failed';
@@ -81,6 +85,7 @@ export async function importProductCatalog(
 ): Promise<ProductImportSummary> {
   const runMatch = options.runMatch === true;
   const continueOnError = options.continueOnError !== false;
+  const snapshot = options.snapshot !== false;
 
   const summary: ProductImportSummary = {
     total: candidates.length,
@@ -136,6 +141,14 @@ export async function importProductCatalog(
         summary.existingDuplicates += 1;
         summary.productIds.push(existing.id);
         summary.productCodes.push(existing.product_code);
+        // best-effort: record a history snapshot only if the source data changed
+        if (snapshot) {
+          try {
+            await snapshotSourceChange(existing.id, candidate.insert);
+          } catch (snapError) {
+            row.warnings.push(`snapshot skipped: ${errorMessage(snapError)}`);
+          }
+        }
         summary.rowResults.push(row);
         continue;
       }
@@ -148,6 +161,15 @@ export async function importProductCatalog(
       summary.created += 1;
       summary.productIds.push(product.id);
       summary.productCodes.push(product.product_code);
+
+      // 6b. best-effort: record the first history snapshot for the new product
+      if (snapshot) {
+        try {
+          await snapshotNewProduct(product);
+        } catch (snapError) {
+          row.warnings.push(`snapshot skipped: ${errorMessage(snapError)}`);
+        }
+      }
 
       // 7. optional, best-effort matching of the CREATED product only
       if (matchingAvailable) {
