@@ -40,16 +40,15 @@ Rules it enforces:
 3. **PI Calculated / PI Verified status transitions** — only after (1)+(2) and the red-flag gate (`productRedFlags.blocksAutoVerify`) pass; red-flagged products (sweeteners/polyols/protein/conflicts/incomplete OCR) never auto-verify. **Requires status-rule sign-off.**
 4. **Future technical-sheet / lab path** — when a real measured pac/pod for a product exists, store it on the product with provenance; the resolver already prefers it (`product_measured`).
 
-## EXACT integration point (TODO for slice 1)
-Inspected 2026-06-29. The Studio picker builds `EngineIngredient[]` in **`src/features/ingredient-builder/ingredientLibrary.ts` → `selectIngredientLibrary()`**, which maps `mapper_basement` rows (`IngredientRow`) via `ingredientRowToEngineIngredient`. Recipe items reference those `EngineIngredient`s; `buildRecipeInput` (`src/features/studio/buildRecipeInput.ts`) passes them to the engine. **Products (`PR-ING`) are never offered there.**
+## Integration point — DONE (2026-06-30)
+The Studio picker builds `EngineIngredient[]` in `src/features/ingredient-builder/ingredientLibrary.ts` → `selectIngredientLibrary()` (reference rows). Products are now wired in alongside, exactly as planned below:
 
-To wire products in (narrow, read-only):
-1. In the Studio data layer, also fetch the user's **matched** products (`listMyProducts().filter(mapper_status==='matched')`) alongside the reference rows already loaded.
-2. For each, call **`prepareProductEngineIngredient(product, byId.get(product.matched_basement_id))`** (`src/data/products/productEngineHandoff.ts`). When `ready`, push the returned `EngineIngredient` (id = `PR-ING-…`, reference-linked composition + pac/pod, `is_verified:false`) into the picker as a separate **"My products"** group/source.
-3. Render the handoff's `not_independently_measured` + `blocked_by_red_flags` signals as a **provenance badge** ("reference-linked — not independently measured") on those picker entries (provenance UI = slice 2).
-4. `rejected` / `null` / unresolved products never enter the picker (the adapter returns `ready:false`); red-flagged products show the warning. No product pac/pod is copied; no raw OCR/catalog text reaches the engine (the adapter only emits the reference profile).
+1. ✅ `useIngredientLibrary` (`src/features/ingredient-builder/useIngredientLibrary.ts`) fetches `listMyProducts` (Pro-only, off `/demo`) and builds the group via **`buildProductEngineLibrary`** (`src/data/products/productEngineLibrary.ts`), linking each product to its reference row.
+2. ✅ Each confirmed product → `prepareProductEngineIngredient(product, reference)` → an `EngineIngredient` (id = `PR-ING-…`, reference-linked composition + pac/pod, `is_verified:false`), exposed on `IngredientLibrary.products` + `productProvenance`.
+3. ✅ `IngredientPicker` renders a separate **"My Products"** optgroup + a provenance note: status label · "Reference-linked profile · PAC/POD from approved reference · not independently measured"; red-flagged → "pending verification". No internal confidence %, never the word "Mapper".
+4. ✅ `rejected` / `null` / `draft` / unresolved products never enter the group (gated in `buildProductEngineLibrary` + the adapter's `ready:false`). No product pac/pod is copied; no raw OCR/catalog text reaches the engine.
 
-The adapter + these guarantees are already covered by `productEngineHandoff.test.ts` (matched resolves; rejected/null blocked; red flags warn; no `npac_value`; no `detected_text`/`extracted_json` leak). **Remaining work is purely the Studio picker UI wiring** above (kept out of scope here as a broad, browser-only change).
+**Proven by tests:** `productEngineLibrary.test.ts` (gate), `IngredientPicker.test.tsx` (group + provenance, no %/Mapper), `productEngineLibrary.recipe.test.ts` (a product calculates **identically** to its reference; product pac/pod stay null; no raw text in the engine ingredient or result). Remaining: a Pro signed-in session is required to render the group (the data path + UI are SSR-tested).
 
 ## Hard rules (unchanged)
 Do not copy PAC/POD to products. Do not compute from `total_sugars`. Matched = mapping confirmed only. Keep product PAC/POD NULL until a scientific source/provenance is implemented.
