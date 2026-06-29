@@ -85,10 +85,38 @@ export function canonicalEan(raw: string | null | undefined): string {
   return raw.replace(/\D+/g, '');
 }
 
-/** A finite number, or null. Never invents 0 for unknown/blank/NaN. */
+/**
+ * Coerce a value to a finite number, or null. Accepts a finite `number` and a CLEARLY
+ * numeric string ("3.5", "0", or a single EU decimal comma "3,5"); rejects blank,
+ * null/undefined, NaN/Infinity, ambiguous values ("1,234" thousands, "1.2.3", mixed
+ * "1.234,5"), and any non-numeric text. A real 0 is preserved.
+ *
+ * This makes the matcher robust to numeric DB columns: PostgREST returns Postgres
+ * `numeric` as JSON STRINGS, so without coercion every composition + pac/pod read
+ * would be treated as missing and `category_composition_similarity` would be inert.
+ */
+export function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  const s = value.trim();
+  if (s === '') return null;
+  const hasComma = s.includes(',');
+  const hasDot = s.includes('.');
+  if (hasComma && hasDot) return null; // ambiguous mixed separators
+  if (hasComma) {
+    if (!/^[+-]?\d+,\d{1,2}$/.test(s)) return null; // only a single, clear EU decimal comma
+    const n = Number(s.replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+  if (!/^[+-]?\d+(\.\d+)?$/.test(s)) return null; // integer or dot-decimal only
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A finite number, or null. Never invents 0 for unknown/blank/NaN. Coerces numeric
+ * strings (DB `numeric` columns deserialize as strings) so composition isn't inert. */
 function numField(row: object, field: string): number | null {
-  const v = (row as Record<string, unknown>)[field];
-  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+  return toFiniteNumber((row as Record<string, unknown>)[field]);
 }
 
 /** Both basement names (internal + display), normalized + non-empty. */

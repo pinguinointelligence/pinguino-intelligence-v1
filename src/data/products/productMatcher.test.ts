@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductRow } from '@/data/products/productRow';
-import { canonicalEan, matchProduct, normalizeName } from './productMatcher';
+import { canonicalEan, matchProduct, normalizeName, toFiniteNumber } from './productMatcher';
 
 /* ── fixture builders (all-null by default; honest "unknown") ───────────────── */
 
@@ -204,6 +204,56 @@ describe('canonicalEan', () => {
   it('is null/blank-safe', () => {
     expect(canonicalEan(null)).toBe('');
     expect(canonicalEan('--')).toBe('');
+  });
+});
+
+describe('toFiniteNumber — coercion (numbers + DB numeric strings)', () => {
+  it('accepts finite numbers and preserves zero', () => {
+    expect(toFiniteNumber(3.5)).toBe(3.5);
+    expect(toFiniteNumber(0)).toBe(0);
+    expect(toFiniteNumber(-2)).toBe(-2);
+  });
+  it('accepts clearly-numeric dot strings (how PostgREST serializes numeric), preserving zero', () => {
+    expect(toFiniteNumber('3.5')).toBe(3.5);
+    expect(toFiniteNumber('104.161')).toBe(104.161);
+    expect(toFiniteNumber('0')).toBe(0);
+    expect(toFiniteNumber(' 12 ')).toBe(12);
+  });
+  it('accepts a single EU decimal comma', () => {
+    expect(toFiniteNumber('3,5')).toBe(3.5);
+  });
+  it('rejects blank / null / undefined / NaN / Infinity and non-numeric or ambiguous strings', () => {
+    for (const v of ['', '   ', null, undefined, NaN, Infinity, -Infinity, 'abc', '1,234', '1.2.3', '1.234,5']) {
+      expect(toFiniteNumber(v as unknown), String(v)).toBeNull();
+    }
+  });
+});
+
+describe('matchProduct — composition is robust to numeric DB strings (regression)', () => {
+  const s = (v: string) => v as unknown as number; // a numeric column serialized as a string
+
+  it('category_composition_similarity fires when composition arrives as numeric strings', () => {
+    const cream = basementRow({
+      ingredient_id: 'B-CREAM-STR', ingredient_category: 'dairy', ingredient_name_display: 'Cream 30%',
+      water_percent: s('64'), fat_percent: s('30'), protein_percent: s('2.3'),
+      total_sugars_percent: s('3.2'), total_solids_percent: s('36'), pac_value: s('1'), pod_value: s('1'),
+    });
+    const product = productRow({
+      product_category: 'dairy', product_name_display: 'Generic Cream',
+      water_percent: s('64.5'), fat_percent: s('30.2'), protein_percent: s('2.4'),
+      total_sugars_percent: s('3'), total_solids_percent: s('36.1'), pac_value: s('5'), pod_value: s('5'),
+    });
+    const r = matchProduct(product, [cream]);
+    expect(r.match_method).toBe('category_composition_similarity');
+    expect(r.matched_basement_id).toBe('B-CREAM-STR');
+  });
+
+  it('an exact match supplies pac/pod even when the reference values are numeric strings', () => {
+    const b = basementRow({ ingredient_id: 'B-EAN-STR', ean_code: '99999999', pac_value: s('1'), pod_value: s('1') });
+    const r = matchProduct(productRow({ ean_code: '99999999' }), [b]); // product missing pac/pod
+    expect(r.mapper_status).toBe('matched');
+    expect(r.match_confidence).toBe('exact');
+    expect(r.matched_basement_id).toBe('B-EAN-STR');
   });
 });
 
