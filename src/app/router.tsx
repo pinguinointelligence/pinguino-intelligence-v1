@@ -4,6 +4,7 @@ import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
 import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
 import { MapperStatusPage } from '@/pages/dev/MapperStatusPage';
 import { MapperSmokePage } from '@/pages/dev/MapperSmokePage';
+import { EnrichmentPreviewPage } from '@/pages/dev/EnrichmentPreviewPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
@@ -50,6 +51,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/mapper-batch-6" element={<MapperBatch6Page />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-review" element={<MapperReviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-status" element={<MapperStatusPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/enrichment-preview" element={<EnrichmentPreviewPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
