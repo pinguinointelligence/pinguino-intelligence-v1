@@ -32,13 +32,11 @@ const HIGH: Array<[string, string]> = [
 const MEDIUM: Array<[string, string]> = [
   ['Vanilla Aroma', 'flavor'], ['Sugar Free Jam', 'fruit'],
   ['Protein Pudding', 'dairy'], ['Protein Yogurt w/Fruit', 'dairy'],
-];
-
-const MANUAL_NULL = [
-  'Hazelnut+Cocoa Cream', 'Hazelnut Cream w/Milk', 'Peanut Protein Powder',
-  'Protein Drink', 'Protein Drink Choco', 'Protein Drink Mixed Fruit',
-  'Coffee Beans Natural', 'Coffee Beans Strong',
-  'Ground Coffee Espresso', 'Ground Coffee Mix', 'Ground Coffee Natural',
+  ['Protein Drink', 'dairy'], ['Protein Drink Choco', 'dairy'], ['Protein Drink Mixed Fruit', 'dairy'],
+  ['Peanut Protein Powder', 'nut_paste'], ['Hazelnut Cream w/Milk', 'nut_paste'],
+  ['Hazelnut+Cocoa Cream', 'chocolate_cocoa'],
+  ['Coffee Beans Natural', 'flavor'], ['Coffee Beans Strong', 'flavor'],
+  ['Ground Coffee Natural', 'flavor'], ['Ground Coffee Espresso', 'flavor'], ['Ground Coffee Mix', 'flavor'],
 ];
 
 describe('mapProductSubcategory — high confidence', () => {
@@ -58,12 +56,6 @@ describe('mapProductSubcategory — medium confidence', () => {
 });
 
 describe('mapProductSubcategory — manual / null (never guessed)', () => {
-  it.each(MANUAL_NULL)('leaves "%s" null for manual review', (sub) => {
-    const r = mapProductSubcategory(sub);
-    expect(r.category).toBeNull();
-    expect(r.confidence).toBe('manual');
-  });
-
   it('blank / whitespace / null / undefined -> null', () => {
     for (const v of ['', '   ', '\t', null, undefined]) {
       const r = mapProductSubcategory(v);

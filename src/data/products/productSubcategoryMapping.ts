@@ -91,24 +91,27 @@ const RULES: Record<string, ProductSubcategoryMatch> = {
   'sweetener stevia granular': { category: 'sugar', confidence: 'high', reason: S },
   'vanilla sugar': { category: 'sugar', confidence: 'high', reason: S },
 
-  // ── medium confidence ───────────────────────────────────────────────────────
+  // ── medium confidence (deterministic; resolved by owner category decisions) ──
+  // flavor: aroma + coffee act as flavoring agents
   'vanilla aroma': { category: 'flavor', confidence: 'medium', reason: 'aroma / flavoring -> flavor' },
+  'coffee beans natural': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
+  'coffee beans strong': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
+  'ground coffee natural': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
+  'ground coffee espresso': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
+  'ground coffee mix': { category: 'flavor', confidence: 'medium', reason: 'coffee is a flavoring agent -> flavor' },
+  // fruit: fruit jam base
   'sugar free jam': { category: 'fruit', confidence: 'medium', reason: 'fruit jam -> fruit (also pectin/sweetener)' },
+  // dairy: protein-fortified dairy products
   'protein pudding': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified dairy dessert -> dairy' },
   'protein yogurt w fruit': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified dairy yogurt -> dairy' },
-
-  // ── known but deliberately unmapped (manual review) ─────────────────────────
-  'hazelnut cocoa cream': { category: null, confidence: 'manual', reason: 'ambiguous nut+cocoa spread — manual review' },
-  'hazelnut cream w milk': { category: null, confidence: 'manual', reason: 'ambiguous nut+cocoa spread — manual review' },
-  'peanut protein powder': { category: null, confidence: 'manual', reason: 'protein has no exact engine bucket — manual review' },
-  'protein drink': { category: null, confidence: 'manual', reason: 'protein has no exact engine bucket — manual review' },
-  'protein drink choco': { category: null, confidence: 'manual', reason: 'protein has no exact engine bucket — manual review' },
-  'protein drink mixed fruit': { category: null, confidence: 'manual', reason: 'protein has no exact engine bucket — manual review' },
-  'coffee beans natural': { category: null, confidence: 'manual', reason: 'coffee maps only to an approximate bucket — manual review' },
-  'coffee beans strong': { category: null, confidence: 'manual', reason: 'coffee maps only to an approximate bucket — manual review' },
-  'ground coffee espresso': { category: null, confidence: 'manual', reason: 'coffee maps only to an approximate bucket — manual review' },
-  'ground coffee mix': { category: null, confidence: 'manual', reason: 'coffee maps only to an approximate bucket — manual review' },
-  'ground coffee natural': { category: null, confidence: 'manual', reason: 'coffee maps only to an approximate bucket — manual review' },
+  'protein drink': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified milk drink -> dairy' },
+  'protein drink choco': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified milk drink -> dairy' },
+  'protein drink mixed fruit': { category: 'dairy', confidence: 'medium', reason: 'protein-fortified milk drink -> dairy' },
+  // nut_paste: hazelnut / peanut spreads & nut-derived protein powder
+  'hazelnut cream w milk': { category: 'nut_paste', confidence: 'medium', reason: 'hazelnut milk spread -> nut_paste' },
+  'peanut protein powder': { category: 'nut_paste', confidence: 'medium', reason: 'peanut-derived -> nut_paste' },
+  // chocolate_cocoa: cocoa-forward hazelnut spread (Nutella-style)
+  'hazelnut cocoa cream': { category: 'chocolate_cocoa', confidence: 'medium', reason: 'cocoa-forward hazelnut spread -> chocolate_cocoa' },
 };
 
 /**
