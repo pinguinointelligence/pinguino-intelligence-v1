@@ -21,7 +21,12 @@ import {
   productInsertToIdentityInput,
 } from '@/data/products/productIdentity';
 import type { ProductMatchResult } from '@/data/products/productMatcher';
-import type { ProductInsert, ProductRow, ProductUpdate } from '@/data/products/productRow';
+import type {
+  ProductInsert,
+  ProductMapperResultUpdate,
+  ProductRow,
+  ProductUpdate,
+} from '@/data/products/productRow';
 
 const TABLE = 'products';
 const UNAVAILABLE = 'Products are not available in this build.';
@@ -93,6 +98,21 @@ export async function saveProductMatchResult(
   result: ProductMatchResult,
 ): Promise<ProductRow> {
   return updateProduct(productId, productMatchResultToPatch(result));
+}
+
+/**
+ * Manual Mapper REVIEW write-back — persist a human confirm/reject decision onto an
+ * owned product row. Like saveProductMatchResult it accepts ONLY the narrow
+ * ProductMapperResultUpdate patch (the Mapper-result columns) and writes it through the
+ * same RLS-gated updateProduct; the patch type makes it impossible to set products.status,
+ * pac_value/pod_value, identity, or any non-Mapper column. It never reads or writes the
+ * locked mapper_basement, never calls the engine, and uses no privileged key.
+ */
+export async function saveProductMapperReview(
+  productId: string,
+  patch: ProductMapperResultUpdate,
+): Promise<ProductRow> {
+  return updateProduct(productId, patch);
 }
 
 /* ── D5B: identity-aware duplicate prevention ──────────────────────────────────

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
+import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
 import { MapperSmokePage } from '@/pages/dev/MapperSmokePage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
@@ -46,6 +47,7 @@ export function AppRoutes() {
           MapperSmokePage is dead-code-eliminated from the bundle. */}
       {import.meta.env.DEV && <Route path="/dev/mapper-smoke" element={<MapperSmokePage />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-batch-6" element={<MapperBatch6Page />} />}
+      {import.meta.env.DEV && <Route path="/dev/mapper-review" element={<MapperReviewPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
