@@ -1,7 +1,7 @@
 # Mapper — Implementation Status
 
 _Living status tracker for the PINGÜINO product-intake "Mapper". Evidence-based; nothing
-here is assumed complete. Last updated 2026-06-29 at repo HEAD `1d8b930`._
+here is assumed complete. Last updated 2026-06-29 at repo HEAD `0822844`._
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
@@ -32,9 +32,9 @@ here is assumed complete. Last updated 2026-06-29 at repo HEAD `1d8b930`._
 | 2 | products table + `PR-ING` sequence | **Done** | `0007_products.sql`, `0009_products_identity.sql` (`products_code_seq`, `next_product_code()`), `0010` grants; `data/products/productRow.ts` | — |
 | 3 | duplicate prevention | **Done** | `0009` per-owner unique indexes on normalized EAN/barcode; `data/products/productIdentity.ts`; `services/products.ts` `createProductWithIdentity`/`findExistingProductForIdentity` | — |
 | 4 | no `npac_value` | **Done / enforced** | absent in live code; `engine/noNpacRegression.test.ts`; `studioBoundary` + `productsSecurity` guards | keep guarding |
-| 5 | statuses (lifecycle) | **Partial** | `ProductStatus` vocabulary + `0007` CHECK (`draft/pi_calculated/pi_generated/manual_adjusted/pi_verified/rejected`) | **no code sets `products.status`** — only `mapper_status` is written. Transition rules + customer-facing label mapping not built |
-| 6 | confidence scoring | **Partial** | `match_confidence` set by `productMatcher.ts`; internal-only | no product-level data-confidence aggregation; `mapper_basement.data_confidence_percent` is inert |
-| 7 | red flags | **Done (detection)** | **NEW** `data/products/productRedFlags.ts` (+ test) — pure detector; `blocksAutoVerify()` | not yet wired to a status gate (intentional — no auto-verify exists yet) |
+| 5 | statuses (lifecycle) | **Partial (policy built)** | **NEW** pure `productStatusDecision.ts` maps Mapper signals → customer status (red flags block PI Verified/Calculated; reference-linked → at most PI Generated; PI Verified only via own-measured or explicit reviewer approval) | no code WRITES `products.status` yet — the status-write service + DEV control is the remaining slice (needs rule sign-off) |
+| 6 | confidence scoring | **Done (pure, internal)** | **NEW** `productConfidence.ts` — 9 component scores + risk penalty + overall + `blocks_auto_verify`, marked `internal_only` | not persisted (internal-only by design; never a customer percentage) |
+| 7 | red flags | **Done + integrated** | `productRedFlags.ts`; now consumed by `productStatusDecision` + `productConfidence` + `productEngineHandoff` | import-preview wiring is a ready next slice |
 | 8 | table/catalog import | **Done** | `data/products/productTableParser.ts`, `services/productCatalogImport.ts`, `pages/destinations/ProductImportPage.tsx` (`/products/import`); **NEW** subcategory→category fallback (`02c58db`) | — |
 | 9 | OCR / image intake | **Missing** | placeholder columns only (`product_image_url`, `detected_text`, `extracted_json`) | no OCR/image pipeline — see enrichment plan |
 | 10 | barcode/EAN intake | **Partial** | EAN/barcode normalization (`0009` generated cols) + dedupe done | external barcode **lookup** + scan UI missing |
@@ -43,10 +43,10 @@ here is assumed complete. Last updated 2026-06-29 at repo HEAD `1d8b930`._
 | 13 | complex PI Generated logic | **Deferred** | — | profile-JSON columns deliberately absent (`0008`) |
 | 14 | similarity search | **Partial** | `category_composition_similarity` (5 measured fields, ≤2pp mean) in `productMatcher.ts` | no vector/embedding/fuzzy-distance search |
 | 15 | ratio-based profile generation | **Missing** | none | — |
-| 16 | snapshots / versioning | **Missing** | `dataset_version` inert; no history table | — |
+| 16 | snapshots / versioning | **Migration ready (file)** | **NEW** `0011_product_snapshots.sql` (additive, append-only, owner-scoped) + guard test | file not applied; no snapshot-write service yet |
 | 17 | manual adjustment | **Done** | `services/productReview.ts` (`confirmProductMatch` / `confirmProductMatchTo` / `rejectProductMatch`); `/dev/mapper-review` | — |
 | 18 | PI Verified flow | **Deferred** | status value exists | no flow; gated on engine-readiness + red-flag gate |
-| 19 | engine handoff | **Partial** | **NEW** pure `data/products/productEngineResolver.ts` (read-only reference-link resolver, explicit provenance) | not yet wired into a recipe→product path or provenance UI |
+| 19 | engine handoff | **Adapter built** | `productEngineResolver.ts` + **NEW** `productEngineHandoff.ts` (pure: borrows the reference profile, resolves pac/pod, no copy, no OCR leak, `blocked_by_red_flags`) | not yet wired into the live recipe flow / provenance UI |
 | 20 | product intake UI | **Partial** | CSV `ProductImportPage` + DEV pages (`/dev/mapper-smoke`, `/dev/mapper-batch-6`, `/dev/mapper-review`) done | OCR/barcode/enrichment intake surfaces missing |
 
 ## Requires approval before proceeding
@@ -60,7 +60,23 @@ here is assumed complete. Last updated 2026-06-29 at repo HEAD `1d8b930`._
 - **55 unmapped** (`null`): 7 reviewed-but-parked (000035 pick-which-pistachio; 000040/041/042 no almond ref; 000056 composite dessert; 000060/062 no erythritol/stevia ref) + ~48 unreviewed (zero-composition + broad-ambiguous).
 - **Basement reference gaps to add later (approval required):** almond, erythritol, stevia.
 
+## Manual Adjusted / PI Verified workflow (plan — schema supports it; not yet wired)
+`products` already has `reviewed_by` / `reviewed_at` / `review_notes` (0007). The pure policy
+core exists (`productStatusDecision` with `reviewerApproval` + `manuallyAdjusted` inputs). Remaining
+to build (own slice, gated): a status-write service `setProductLifecycleStatus(productId, decision)`
+that persists `status` + `reviewed_by/at` + a note; a DEV-only control on `/dev/mapper-review`;
+and the rule that **a red-flag override requires an explicit reason** and never reaches PI Verified.
+**No real product is marked PI Verified yet.**
+
+## Review queue (recomputed 2026-06-29, post-changes)
+Of the 55 `null` products: **0 single-candidate** (all resolved), 7 with a 2–5 shortlist (the
+already-parked set — no good reference / genuinely ambiguous), 31 broad-ambiguous (6+), 17
+zero-composition. No new safe confirm/reject this block — the clear ones are done; the rest need
+the basement references above or a name/subcategory signal.
+
 ## Recent commits
-`1cf0e7c` numeric coercion · `47efccd` 5-measured-field matcher · `02c58db` import subcategory fallback · `48efe9a` multi-candidate review · `1d8b930` red-flag detector + engine resolver.
+`47efccd` 5-field matcher · `02c58db` import subcategory fallback · `48efe9a` multi-candidate review · `1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs.
+
+See also: [BASEMENT_REFERENCE_GAP_PROPOSALS.md](BASEMENT_REFERENCE_GAP_PROPOSALS.md), [MERCADONA_CATALOG_IMPORT_CONTRACT.md](MERCADONA_CATALOG_IMPORT_CONTRACT.md).
 
 See also: [PACPOD_ENGINE_HANDOFF_PLAN.md](PACPOD_ENGINE_HANDOFF_PLAN.md), [INTAKE_ENRICHMENT_PLAN.md](INTAKE_ENRICHMENT_PLAN.md).
