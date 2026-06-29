@@ -35,6 +35,16 @@
 - **REQUIRED, team-only**: engine-calibrated `pac_value`/`pod_value` + correct handling as a high-intensity (non-bulk) sweetener.
 - **Confidence**: composition trivial; pac/pod + handling **team-only**.
 
+### E. Maltitol & other polyols (maltitol / sorbitol / xylitol / isomalt) — `sugar` / polyol
+- **Why**: the already-matched maltitol chocolate (PR-ING-000031) and future sugar-free products map to a polyol the base lacks as a standalone reference. Same engine treatment as erythritol (stored-value-first; sugar-breakdown fallback is 0 for polyols).
+- **Sourced**: composition trivial (~100% polyol; water/sugars 0). **REQUIRED, team-only**: engine-calibrated `pac_value`/`pod_value` per polyol (maltitol ≈ 90% sweetness + moderate PAC; sorbitol/xylitol differ) — **must** be team-supplied, not estimated.
+
+## Possible composition source URLs (composition ONLY — never PAC/POD)
+- USDA FoodData Central (almond, whole foods) — free, keyless.
+- OpenFoodFacts (label nutrition, the same source the catalog used) — free, keyless.
+- Producer technical sheets (when available) — highest trust (see source-ranking module).
+- **PAC/POD appear in NONE of these** — they are PINGÜINO-engine-specific and come only from the team's calibration.
+
 ## Why no migration/seed file is provided to apply
 Phase rule: apply only when every required value is sourced + provable. **PAC/POD for all four are not sourceable** (engine-specific) → an applyable seed cannot be produced honestly. A proposal-only template (with `NULL -- SOURCE REQUIRED` pac/pod) is in [BASEMENT_REFERENCE_GAP_PROPOSALS.md](BASEMENT_REFERENCE_GAP_PROPOSALS.md).
 
