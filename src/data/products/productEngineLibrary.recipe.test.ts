@@ -50,8 +50,8 @@ describe('My Products recipe-calculation safety', () => {
     const fromReference = calculateRecipe(recipeWith(referenceIng));
 
     expect(Number.isFinite(fromProduct.pac_points)).toBe(true);
-    expect(fromProduct.pac_points).toBeCloseTo(fromReference.pac_points, 9);
-    expect(fromProduct.pod_points).toBeCloseTo(fromReference.pod_points, 9);
+    expect(fromProduct.pac_points ?? NaN).toBeCloseTo(fromReference.pac_points ?? NaN, 9);
+    expect(fromProduct.pod_points ?? NaN).toBeCloseTo(fromReference.pod_points ?? NaN, 9);
     expect(fromProduct.percentages.water_percent).toBeCloseTo(fromReference.percentages.water_percent, 9);
     expect(fromProduct.totals.solids_g).toBeCloseTo(fromReference.totals.solids_g, 9);
   });
