@@ -7,7 +7,9 @@
  *   • Verify → PI Verified (needs a reviewer reason; DISABLED for red-flagged products)
  * No service / DB import — SSR-testable; PI Verified is never offered for a red-flagged row.
  */
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { STATUS_FILTERS, filterStatusRows, type StatusFilter } from './mapperStatusFilters';
 
 export interface StatusRow {
   code: string;
@@ -20,6 +22,8 @@ export interface StatusRow {
   engine_readiness: 'product_measured' | 'reference_linked' | 'unresolved';
   red_flag_codes: string[];
   blockers: string[];
+  /** matches the picker's "My Products" gate — selectable in a Studio recipe. */
+  studio_eligible: boolean;
 }
 
 export interface MapperStatusViewProps {
@@ -57,6 +61,8 @@ export function MapperStatusView({
   onManualAdjust,
   onVerify,
 }: MapperStatusViewProps) {
+  const [filter, setFilter] = useState<StatusFilter>('all');
+  const visible = filterStatusRows(rows, filter);
   return (
     <div className="mx-auto min-h-screen max-w-3xl bg-paper px-6 py-16 text-ink">
       <p className="font-mono text-xs uppercase tracking-wide text-stone-400">DEV · internal</p>
@@ -70,18 +76,39 @@ export function MapperStatusView({
         <strong> Manual adjust</strong> sets <code>manual_adjusted</code> with a reason.
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button variant="primary" onClick={onLoad} disabled={loading}>
           {loading ? 'Loading…' : 'Load products'}
         </Button>
+        {loaded ? (
+          <label className="font-mono text-xs text-stone-500">
+            filter{' '}
+            <select
+              className="rounded border border-stone-200 px-2 py-1 text-xs"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as StatusFilter)}
+            >
+              {STATUS_FILTERS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </div>
 
       {message !== null ? <p className="mt-4 text-sm text-stone-600">{message}</p> : null}
       {errorMessage !== null ? <p className="mt-4 text-sm text-status-risky">Error: {errorMessage}</p> : null}
       {loaded && rows.length === 0 ? <p className="mt-4 text-sm text-stone-600">No products loaded.</p> : null}
+      {loaded && rows.length > 0 ? (
+        <p className="mt-4 font-mono text-xs text-stone-500">
+          {rows.filter((r) => r.studio_eligible).length} / {rows.length} Studio-eligible · showing {visible.length}
+        </p>
+      ) : null}
 
       <div className="mt-6 space-y-4">
-        {rows.map((r) => {
+        {visible.map((r) => {
           const upToDate = r.current_status === r.recommended_status;
           const redFlagged = r.red_flag_codes.length > 0;
           const reason = (reasons[r.id] ?? '').trim();
@@ -94,7 +121,18 @@ export function MapperStatusView({
                   <span className="font-mono text-xs text-stone-500">{r.code}</span>{' '}
                   <span className="font-medium">{r.product_name ?? '—'}</span>
                 </div>
-                <span className="font-mono text-xs text-stone-500">mapper: {r.mapper_status ?? 'null'}</span>
+                <span className="flex items-center gap-2 font-mono text-xs text-stone-500">
+                  <span
+                    className={
+                      r.studio_eligible
+                        ? 'rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-700'
+                        : 'rounded bg-stone-100 px-1.5 py-0.5 text-stone-400'
+                    }
+                  >
+                    {r.studio_eligible ? 'Studio ✓' : 'Studio ✗'}
+                  </span>
+                  mapper: {r.mapper_status ?? 'null'}
+                </span>
               </div>
               <p className="mt-1 font-mono text-xs">
                 status <strong>{r.current_status}</strong> → recommended <strong>{r.recommended_status}</strong>

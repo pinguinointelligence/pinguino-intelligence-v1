@@ -19,6 +19,7 @@ import { listMyProducts } from '@/services/products';
 import { listEngineApprovedIngredients } from '@/services/ingredients';
 import { setProductLifecycleStatus } from '@/services/productStatusWrite';
 import { decideProductStatus } from '@/data/products/productStatusDecision';
+import { buildProductEngineLibrary } from '@/data/products/productEngineLibrary';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductRow, ProductStatus } from '@/data/products/productRow';
 import { MapperStatusView, type StatusRow } from './mapperStatusView';
@@ -51,6 +52,10 @@ export function MapperStatusPage() {
       const [products, ingredients] = await Promise.all([listMyProducts(), listEngineApprovedIngredients()]);
       const refs = new Map(ingredients.map((i) => [i.ingredient_id, i]));
       const prods = new Map(products.map((p) => [p.id, p]));
+      // Studio-eligible = exactly what the picker's "My Products" group accepts (same gate).
+      const eligibleCodes = new Set(
+        buildProductEngineLibrary({ products, referenceById: refs }).ingredients.map((i) => i.id),
+      );
       const recMap: Record<string, ProductStatus> = {};
       const statusRows: StatusRow[] = products
         .slice()
@@ -73,6 +78,7 @@ export function MapperStatusPage() {
             engine_readiness,
             red_flag_codes: decision.red_flags.map((f) => f.code),
             blockers: decision.blockers,
+            studio_eligible: eligibleCodes.has(p.product_code),
           };
         });
       setRows(statusRows);

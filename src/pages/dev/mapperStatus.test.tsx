@@ -14,6 +14,7 @@ vi.mock('@/services/productStatusWrite', () => ({ setProductLifecycleStatus: h.s
 
 import { MapperStatusView, type StatusRow } from './mapperStatusView';
 import { MapperStatusPage } from './MapperStatusPage';
+import { filterStatusRows } from './mapperStatusFilters';
 
 const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
 const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
@@ -24,6 +25,7 @@ const row = (over: Partial<StatusRow> = {}): StatusRow => ({
   code: 'PR-ING-000010', id: 'p1', product_name: 'Nata', mapper_status: 'matched',
   current_status: 'draft', recommended_status: 'pi_generated', customer_label: 'PI Generated',
   engine_readiness: 'reference_linked', red_flag_codes: [], blockers: ['PI Verified needs independent data'],
+  studio_eligible: true,
   ...over,
 });
 const base = {
@@ -70,6 +72,30 @@ describe('MapperStatusView', () => {
 
   it('the warning states Verify is blocked for red-flagged products', () => {
     expect(text(render(<MapperStatusView {...base} />))).toMatch(/blocked for any red-flagged product/i);
+  });
+
+  it('shows a Studio-eligibility badge per row and an eligible count', () => {
+    const t = text(render(
+      <MapperStatusView {...base} rows={[row(), row({ id: 'p2', code: 'PR-ING-000011', studio_eligible: false })]} loaded />,
+    ));
+    expect(t).toMatch(/Studio ✓/);
+    expect(t).toMatch(/Studio ✗/);
+    expect(t).toMatch(/1 \/ 2 Studio-eligible/);
+  });
+});
+
+describe('filterStatusRows', () => {
+  const rows = [
+    row({ id: 'a', studio_eligible: true, red_flag_codes: [] }),
+    row({ id: 'b', studio_eligible: false, engine_readiness: 'unresolved' }),
+    row({ id: 'c', studio_eligible: false, red_flag_codes: ['sweetener_or_polyol'] }),
+  ];
+  it('filters by Studio eligibility, red flags, and missing reference', () => {
+    expect(filterStatusRows(rows, 'all')).toHaveLength(3);
+    expect(filterStatusRows(rows, 'studio_eligible').map((r) => r.id)).toEqual(['a']);
+    expect(filterStatusRows(rows, 'not_eligible').map((r) => r.id)).toEqual(['b', 'c']);
+    expect(filterStatusRows(rows, 'red_flagged').map((r) => r.id)).toEqual(['c']);
+    expect(filterStatusRows(rows, 'missing_reference').map((r) => r.id)).toEqual(['b']);
   });
 });
 
