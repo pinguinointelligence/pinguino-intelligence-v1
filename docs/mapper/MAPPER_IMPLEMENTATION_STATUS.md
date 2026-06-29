@@ -1,7 +1,7 @@
 # Mapper — Implementation Status
 
 _Living status tracker for the PINGÜINO product-intake "Mapper". Evidence-based; nothing
-here is assumed complete. Last updated 2026-06-29 at repo HEAD `0822844`._
+here is assumed complete. Last updated 2026-06-29 at repo HEAD `67e978e`._
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
@@ -23,6 +23,8 @@ here is assumed complete. Last updated 2026-06-29 at repo HEAD `0822844`._
 | mapper_status null | 55 |
 | mapper_basement | 542 (untouched) |
 | matched products with pac/pod NULL | 11 / 11 (none engine-ready — by design) |
+| **lifecycle `status`** (set this block) | **draft 55 · pi_generated 11 · rejected 3 · pi_calculated 0 · pi_verified 0** |
+| `product_snapshots` table | **live** (migration 0011 applied; 0 rows; RLS append-only) |
 
 ## Requirement status
 
@@ -32,18 +34,18 @@ here is assumed complete. Last updated 2026-06-29 at repo HEAD `0822844`._
 | 2 | products table + `PR-ING` sequence | **Done** | `0007_products.sql`, `0009_products_identity.sql` (`products_code_seq`, `next_product_code()`), `0010` grants; `data/products/productRow.ts` | — |
 | 3 | duplicate prevention | **Done** | `0009` per-owner unique indexes on normalized EAN/barcode; `data/products/productIdentity.ts`; `services/products.ts` `createProductWithIdentity`/`findExistingProductForIdentity` | — |
 | 4 | no `npac_value` | **Done / enforced** | absent in live code; `engine/noNpacRegression.test.ts`; `studioBoundary` + `productsSecurity` guards | keep guarding |
-| 5 | statuses (lifecycle) | **Partial (policy built)** | **NEW** pure `productStatusDecision.ts` maps Mapper signals → customer status (red flags block PI Verified/Calculated; reference-linked → at most PI Generated; PI Verified only via own-measured or explicit reviewer approval) | no code WRITES `products.status` yet — the status-write service + DEV control is the remaining slice (needs rule sign-off) |
+| 5 | statuses (lifecycle) | **Applied (policy + write + live data)** | pure `productStatusDecision.ts` + **NEW** `productStatusWrite.ts` (narrow status-only write); **applied live**: 11 matched→`pi_generated`, 3 rejected→`rejected`, 55 null→`draft`, 0 `pi_calculated`/`pi_verified` | a DEV re-derive control + the PI Verified review flow remain (needs rule sign-off) |
 | 6 | confidence scoring | **Done (pure, internal)** | **NEW** `productConfidence.ts` — 9 component scores + risk penalty + overall + `blocks_auto_verify`, marked `internal_only` | not persisted (internal-only by design; never a customer percentage) |
 | 7 | red flags | **Done + integrated** | `productRedFlags.ts`; now consumed by `productStatusDecision` + `productConfidence` + `productEngineHandoff` | import-preview wiring is a ready next slice |
 | 8 | table/catalog import | **Done** | `data/products/productTableParser.ts`, `services/productCatalogImport.ts`, `pages/destinations/ProductImportPage.tsx` (`/products/import`); **NEW** subcategory→category fallback (`02c58db`) | — |
 | 9 | OCR / image intake | **Missing** | placeholder columns only (`product_image_url`, `detected_text`, `extracted_json`) | no OCR/image pipeline — see enrichment plan |
 | 10 | barcode/EAN intake | **Partial** | EAN/barcode normalization (`0009` generated cols) + dedupe done | external barcode **lookup** + scan UI missing |
-| 11 | online enrichment | **Missing** | none | no external fetch — see enrichment plan |
+| 11 | online enrichment | **Partial (scaffolding)** | **NEW** pure `productSourceRanking.ts` (source priority + conflict detection + confidence; keyless) | no live network adapter/UI (deferred; keyless only) |
 | 12 | simple PI Calculated logic | **Deferred** | status value exists | gated on pac/pod provenance (see handoff plan) |
 | 13 | complex PI Generated logic | **Deferred** | — | profile-JSON columns deliberately absent (`0008`) |
 | 14 | similarity search | **Partial** | `category_composition_similarity` (5 measured fields, ≤2pp mean) in `productMatcher.ts` | no vector/embedding/fuzzy-distance search |
 | 15 | ratio-based profile generation | **Missing** | none | — |
-| 16 | snapshots / versioning | **Migration ready (file)** | **NEW** `0011_product_snapshots.sql` (additive, append-only, owner-scoped) + guard test | file not applied; no snapshot-write service yet |
+| 16 | snapshots / versioning | **Live** | migration 0011 **applied** (table live, RLS append-only); **NEW** `productSnapshots.ts` service (snapshotNewProduct / snapshotSourceChange) + pure `productSnapshotDiff.ts`, wired best-effort into import | snapshot-history UI deferred |
 | 17 | manual adjustment | **Done** | `services/productReview.ts` (`confirmProductMatch` / `confirmProductMatchTo` / `rejectProductMatch`); `/dev/mapper-review` | — |
 | 18 | PI Verified flow | **Deferred** | status value exists | no flow; gated on engine-readiness + red-flag gate |
 | 19 | engine handoff | **Adapter built** | `productEngineResolver.ts` + **NEW** `productEngineHandoff.ts` (pure: borrows the reference profile, resolves pac/pod, no copy, no OCR leak, `blocked_by_red_flags`) | not yet wired into the live recipe flow / provenance UI |
@@ -75,8 +77,8 @@ zero-composition. No new safe confirm/reject this block — the clear ones are d
 the basement references above or a name/subcategory signal.
 
 ## Recent commits
-`47efccd` 5-field matcher · `02c58db` import subcategory fallback · `48efe9a` multi-candidate review · `1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs.
+`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking. **Live DB ops this block:** migration 0011 applied; lifecycle status set (11 pi_generated / 3 rejected / 55 draft).
 
-See also: [BASEMENT_REFERENCE_GAP_PROPOSALS.md](BASEMENT_REFERENCE_GAP_PROPOSALS.md), [MERCADONA_CATALOG_IMPORT_CONTRACT.md](MERCADONA_CATALOG_IMPORT_CONTRACT.md).
+See also: [BASEMENT_REFERENCE_GAP_PROPOSALS.md](BASEMENT_REFERENCE_GAP_PROPOSALS.md), [BASEMENT_REFERENCE_INSERT_CANDIDATES.md](BASEMENT_REFERENCE_INSERT_CANDIDATES.md), [MERCADONA_CATALOG_IMPORT_CONTRACT.md](MERCADONA_CATALOG_IMPORT_CONTRACT.md), [LEGACY_INGREDIENTS_CLEANUP_PLAN.md](LEGACY_INGREDIENTS_CLEANUP_PLAN.md).
 
 See also: [PACPOD_ENGINE_HANDOFF_PLAN.md](PACPOD_ENGINE_HANDOFF_PLAN.md), [INTAKE_ENRICHMENT_PLAN.md](INTAKE_ENRICHMENT_PLAN.md).
