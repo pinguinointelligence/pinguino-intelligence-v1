@@ -6,7 +6,7 @@
  * store / DB import — SSR-testable; the boundary scan never sees a write path here.
  */
 import { Button } from '@/components/ui/Button';
-import { filterReviewRows } from './mapperReviewFilters';
+import { filterReviewRows, reviewRowTiebreak } from './mapperReviewFilters';
 
 export interface CandidateView {
   basement_id: string;
@@ -48,6 +48,7 @@ export interface ReviewFilters {
   category: string; // 'all' | <category>
   redFlaggedOnly: boolean;
   candidateBucket: string; // 'all' | '0' | '1' | '2-5' | '6+'
+  tiebreakFilter: string; // 'all' | 'hit' | 'no_hit'
 }
 
 export interface MapperReviewViewProps {
@@ -67,6 +68,11 @@ export interface MapperReviewViewProps {
 const cell = (v: number | string | null) => (v === null || v === '' ? '—' : String(v));
 const MAPPER_STATES = ['all', 'null', 'matched', 'rejected', 'needs_review', 'ambiguous'];
 const BUCKETS = ['all', '0', '1', '2-5', '6+'];
+const TIEBREAK_FILTERS: { value: string; label: string }[] = [
+  { value: 'all', label: 'any tiebreak' },
+  { value: 'hit', label: 'has tiebreak hit' },
+  { value: 'no_hit', label: 'no tiebreak hit' },
+];
 
 export function MapperReviewView({
   rows,
@@ -111,6 +117,9 @@ export function MapperReviewView({
         <select aria-label="candidate count filter" className="rounded border border-stone-300 px-2 py-1 text-xs" value={filters.candidateBucket} onChange={(e) => set({ candidateBucket: e.target.value })}>
           {BUCKETS.map((b) => <option key={b} value={b}>{b === 'all' ? 'any candidates' : `${b} cand`}</option>)}
         </select>
+        <select aria-label="tiebreak filter" className="rounded border border-stone-300 px-2 py-1 text-xs" value={filters.tiebreakFilter} onChange={(e) => set({ tiebreakFilter: e.target.value })}>
+          {TIEBREAK_FILTERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
         <label className="flex items-center gap-1 text-xs text-stone-600">
           <input type="checkbox" checked={filters.redFlaggedOnly} onChange={(e) => set({ redFlaggedOnly: e.target.checked })} /> red-flagged only
         </label>
@@ -127,6 +136,8 @@ export function MapperReviewView({
           const resolved = r.mapper_status === 'matched' || r.mapper_status === 'rejected';
           const busy = busyId === r.id;
           const noCandidate = r.candidate_count === 0;
+          const tb = reviewRowTiebreak(r);
+          const scoreOf = new Map(tb.ranked.map((x) => [x.id, x.score]));
           return (
             <div key={r.id} className="rounded-md border border-stone-200 bg-white px-4 py-4">
               <div className="flex items-baseline justify-between gap-3">
@@ -152,6 +163,19 @@ export function MapperReviewView({
                 {cell(r.product_sugars)} · prot {cell(r.product_protein)} · salt {cell(r.product_salt)} · pac — · pod —
               </p>
 
+              {!noCandidate ? (
+                <p className="mt-1 font-mono text-xs text-stone-500">
+                  tiebreak:{' '}
+                  {tb.status === 'narrowed' ? (
+                    <span className="text-emerald-700">narrows to {tb.narrowedId} (unique concept score {tb.topScore})</span>
+                  ) : tb.status === 'ranked' ? (
+                    <span className="text-amber-700">ranked top (score {tb.topScore}, not unique — shortlist stays ambiguous)</span>
+                  ) : (
+                    <span className="text-stone-400">no name evidence — composition only</span>
+                  )}
+                </p>
+              ) : null}
+
               {noCandidate ? (
                 <p className="mt-2 text-xs text-stone-500">No composition candidate — may need a new reference-base ingredient.</p>
               ) : (
@@ -162,6 +186,11 @@ export function MapperReviewView({
                         <div>
                           <span className="font-mono text-stone-500">{c.basement_id}</span>{' '}
                           <span className="font-medium">{c.name ?? '—'}</span>{' '}
+                          {(scoreOf.get(c.basement_id) ?? 0) > 0 ? (
+                            <span className={c.basement_id === tb.narrowedId ? 'font-mono text-emerald-700' : 'font-mono text-amber-700'}>
+                              · name {scoreOf.get(c.basement_id)}{c.basement_id === tb.narrowedId ? ' ◀ narrows' : ''}
+                            </span>
+                          ) : null}{' '}
                           <span className="text-stone-400">{c.category ?? '—'}/{c.subcategory ?? '—'} · Δ {cell(c.mean_pp)} pp</span>
                           <p className="mt-1 font-mono text-stone-500">
                             fat {cell(c.fat)} · carb {cell(c.carbohydrate)} · sugar {cell(c.sugars)} · prot{' '}

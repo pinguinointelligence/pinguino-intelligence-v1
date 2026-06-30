@@ -17,7 +17,7 @@ vi.mock('@/services/productReview', () => ({
 }));
 
 import { MapperReviewView, type ReviewRow } from './mapperReviewView';
-import { DEFAULT_REVIEW_FILTERS, filterReviewRows } from './mapperReviewFilters';
+import { DEFAULT_REVIEW_FILTERS, filterReviewRows, reviewRowTiebreak } from './mapperReviewFilters';
 import { MapperReviewPage } from './MapperReviewPage';
 
 const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
@@ -55,6 +55,44 @@ describe('filterReviewRows', () => {
     expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, candidateBucket: '1' }).map((r) => r.id)).toEqual(['a']);
     expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, candidateBucket: '6+' }).map((r) => r.id)).toEqual(['b']);
     expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, redFlaggedOnly: true }).map((r) => r.id)).toEqual(['b']);
+  });
+});
+
+describe('reviewRowTiebreak + tiebreak filter', () => {
+  const whiteChoc = sampleRow({
+    id: 'choc', product_name: 'Chocolate blanco Hacendado', product_category: 'chocolate_cocoa',
+    candidates: [
+      { basement_id: 'B-WHITE', name: 'White Chocolate 30%', category: 'chocolate', subcategory: 'white', fat: 35, carbohydrate: 55, sugars: 55, protein: 6, salt: 0.2, pac: 1, pod: 1, mean_pp: 0.4 },
+      { basement_id: 'B-MILK', name: 'Milk Chocolate 33%', category: 'chocolate', subcategory: 'milk', fat: 33, carbohydrate: 56, sugars: 54, protein: 7, salt: 0.2, pac: 1, pod: 1, mean_pp: 1.1 },
+    ],
+  });
+  const noEvidence = sampleRow({
+    id: 'none', product_name: 'Mystery Item', product_category: 'dairy',
+    candidates: [{ basement_id: 'B-X', name: 'Buttermilk', category: 'dairy', subcategory: '', fat: 1, carbohydrate: 4, sugars: 4, protein: 3, salt: 0.1, pac: 1, pod: 1, mean_pp: 1 }],
+  });
+
+  it('narrows to a unique concept winner (white chocolate)', () => {
+    const ev = reviewRowTiebreak(whiteChoc);
+    expect(ev.status).toBe('narrowed');
+    expect(ev.narrowedId).toBe('B-WHITE');
+    expect(ev.topScore).toBeGreaterThan(0);
+  });
+
+  it('reports a tie as ranked (pistachio shortlist) and no-evidence as none', () => {
+    expect(reviewRowTiebreak(sampleRow()).status).toBe('ranked'); // two pistachio candidates tie
+    expect(reviewRowTiebreak(noEvidence).status).toBe('none');
+  });
+
+  it('filters by tiebreak hit / no hit', () => {
+    const rows = [whiteChoc, noEvidence];
+    expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'hit' }).map((r) => r.id)).toEqual(['choc']);
+    expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'no_hit' }).map((r) => r.id)).toEqual(['none']);
+  });
+
+  it('shows the tiebreak evidence line in the view', () => {
+    const t = visibleText(render(<MapperReviewView {...baseProps} rows={[whiteChoc]} loaded />));
+    expect(t).toMatch(/tiebreak:/);
+    expect(t).toMatch(/narrows to B-WHITE/);
   });
 });
 
