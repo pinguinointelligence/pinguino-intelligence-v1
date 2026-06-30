@@ -15,6 +15,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 import { listMyProducts } from '@/services/products';
 import { listProductSnapshots, type ProductSnapshotRow } from '@/services/productSnapshots';
 import { parseDetectedChanges } from '@/data/products/productSnapshotDiff';
+import { filterSnapshotsByType, snapshotChangeTypes, summarizeSnapshots } from './snapshotAuditFilters';
 import type { ProductRow } from '@/data/products/productRow';
 
 const CHANGE_STYLE: Record<string, string> = {
@@ -31,12 +32,38 @@ const CHANGE_STYLE: Record<string, string> = {
 const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
 
 export function SnapshotAuditView({ snapshots }: { snapshots: ProductSnapshotRow[] }) {
+  const [typeFilter, setTypeFilter] = useState('all');
   if (snapshots.length === 0) {
     return <p className="mt-6 text-sm text-stone-600">No snapshots for this product.</p>;
   }
+  const summary = summarizeSnapshots(snapshots);
+  const types = snapshotChangeTypes(snapshots);
+  const visible = filterSnapshotsByType(snapshots, typeFilter);
   return (
-    <div className="mt-6 space-y-3">
-      {snapshots.map((s) => {
+    <div className="mt-6">
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <span className="font-mono text-stone-500">
+          {snapshots.length} snapshot{snapshots.length === 1 ? '' : 's'} ·{' '}
+          {summary.map((x) => `${x.count} ${x.change_type}`).join(' · ')}
+        </span>
+        <label className="font-mono text-stone-500">
+          type{' '}
+          <select
+            className="rounded border border-stone-200 px-2 py-1 text-xs"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option value="all">All</option>
+            {types.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="mt-3 space-y-3">
+      {visible.map((s) => {
         const changes = parseDetectedChanges(s.detected_changes);
         return (
           <div key={s.id} className="rounded-md border border-stone-200 bg-white px-4 py-3 text-sm">
@@ -66,6 +93,7 @@ export function SnapshotAuditView({ snapshots }: { snapshots: ProductSnapshotRow
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

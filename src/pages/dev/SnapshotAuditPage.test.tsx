@@ -8,6 +8,7 @@ vi.mock('@/services/products', () => ({ listMyProducts: h.listMyProducts }));
 vi.mock('@/services/productSnapshots', () => ({ listProductSnapshots: h.listProductSnapshots }));
 
 import { SnapshotAuditView, SnapshotAuditPage } from './SnapshotAuditPage';
+import { filterSnapshotsByType, summarizeSnapshots } from './snapshotAuditFilters';
 import type { ProductSnapshotRow } from '@/services/productSnapshots';
 
 const snap = (over: Partial<ProductSnapshotRow> = {}): ProductSnapshotRow =>
@@ -39,6 +40,25 @@ describe('SnapshotAuditView', () => {
 
   it('shows an empty state when there are no snapshots', () => {
     expect(text(render(<SnapshotAuditView snapshots={[]} />))).toMatch(/No snapshots/);
+  });
+
+  it('renders a change_type summary + a type filter dropdown', () => {
+    const t = text(render(<SnapshotAuditView snapshots={[snap(), snap({ id: 's2', change_type: 'created', detected_changes: {} })]} />));
+    expect(t).toMatch(/2 snapshots/);
+    expect(t).toMatch(/1 nutrition/);
+    expect(t).toMatch(/1 created/);
+  });
+});
+
+describe('snapshotAuditFilters', () => {
+  const rows = [snap({ id: 'a', change_type: 'nutrition' }), snap({ id: 'b', change_type: 'created' }), snap({ id: 'c', change_type: 'nutrition' })];
+  it('summarizes counts by change_type', () => {
+    expect(summarizeSnapshots(rows)).toEqual([{ change_type: 'nutrition', count: 2 }, { change_type: 'created', count: 1 }]);
+  });
+  it('filters by change_type, all passes everything', () => {
+    expect(filterSnapshotsByType(rows, 'all')).toHaveLength(3);
+    expect(filterSnapshotsByType(rows, 'nutrition').map((s) => s.id)).toEqual(['a', 'c']);
+    expect(filterSnapshotsByType(rows, 'created').map((s) => s.id)).toEqual(['b']);
   });
 });
 
