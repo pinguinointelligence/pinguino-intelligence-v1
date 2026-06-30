@@ -32,7 +32,20 @@ revoke insert, update, delete, truncate on public.ingredients from anon, authent
 -- -- create policy ingredients_readonly on public.ingredients for select using (true);
 
 -- ============================================================================
--- DO NOT add a DROP TABLE / DROP COLUMN / ALTER ... DROP here. Those are
--- destructive and require an explicit, separately-approved migration with a
--- verified export/backup of the 542 rows first.
+-- ALTERNATIVE (also non-destructive, reversible): ARCHIVE-RENAME
+-- Instead of (or after) the read-only lock, rename the table to make its
+-- deprecation unmistakable. No data loss; reversible (rename back). Only safe
+-- because ZERO code references public.ingredients (guard test enforces this).
+--   alter table public.ingredients rename to ingredients_legacy_pre_v095;
+-- After a rename, re-point this comment + the read-only grants at the new name.
+-- ============================================================================
+
+-- ============================================================================
+-- DESTRUCTIVE FINAL STEP — NOT PROVIDED AS RUNNABLE SQL (hard stop).
+-- Dropping the npac_value column or the whole table is irreversible and must be
+-- a separately-approved migration AFTER a verified export/backup of the 542 rows
+-- and confirmation that no Edge Function / external job reads the table:
+--   -- alter table public.ingredients drop column npac_value;   -- destructive
+--   -- drop table public.ingredients;                            -- destructive
+-- DO NOT include these as live SQL here.
 -- ============================================================================

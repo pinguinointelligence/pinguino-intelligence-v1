@@ -1,7 +1,7 @@
 # Mapper — Implementation Status
 
 _Living status tracker for the PINGÜINO product-intake "Mapper". Evidence-based; nothing
-here is assumed complete. Last updated 2026-06-30 at repo HEAD `27bd30e`._
+here is assumed complete. Last updated 2026-06-30 at repo HEAD `9bff593`._
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
@@ -12,19 +12,20 @@ here is assumed complete. Last updated 2026-06-30 at repo HEAD `27bd30e`._
 - Customer-facing statuses: **Verified, PI Calculated, PI Generated, Manual Adjusted, PI Verified** — never the word "Mapper"; internal confidence % is never shown to customers.
 - Products with sweeteners/polyols/protein desserts/hidden formulas/incomplete OCR/conflicts must **not** auto-verify.
 
-## Live DB state (read-only, 2026-06-29)
+## Live DB state (read-only, 2026-06-30)
 | metric | value |
 |---|---|
 | products total | 69 |
 | product_category set / null | 69 / 0 |
-| mapper_status matched | 11 (all `manual_mapping` / `high`) |
+| mapper_status matched | **13** (all `manual_mapping` / `high`; +2 fruit confirmations this block) |
 | mapper_status rejected | 3 |
 | mapper_status needs_review | 0 |
-| mapper_status null | 55 |
+| mapper_status null | **53** |
 | mapper_basement | 542 (untouched) |
-| matched products with pac/pod NULL | 11 / 11 (none engine-ready — by design) |
-| **lifecycle `status`** (set this block) | **draft 55 · pi_generated 11 · rejected 3 · pi_calculated 0 · pi_verified 0** |
-| `product_snapshots` table | **live** (migration 0011 applied; **69 baseline rows**; RLS append-only) |
+| matched products with pac/pod NULL | **13 / 13** (none engine-ready — by design) |
+| **lifecycle `status`** | **draft 53 · pi_generated 13 · rejected 3 · pi_calculated 0 · pi_verified 0** |
+| Studio-eligible | **13** |
+| `product_snapshots` table | **live** (migration 0011 applied; 69 rows; RLS append-only) |
 
 ## Requirement status
 
@@ -43,7 +44,7 @@ here is assumed complete. Last updated 2026-06-30 at repo HEAD `27bd30e`._
 | 11 | online enrichment | **Reviewed conflict-merge (keyless)** | `services/openFoodFacts.ts` (keyless read-only fetch) + **NEW** pure `productEnrichment.ts` (compare → fill/agree/conflict/skip; narrow patch) + **NEW** `services/productEnrichment.ts` (`applyProductEnrichment`: writes ONLY the label-nutrition allowlist via RLS `updateProduct`, snapshots the change, blocks PI Verified without override) + **NEW** `/dev/enrichment-preview` merge UI (product picker + per-field table + EAN-mismatch/conflict warnings) | Hacendado private-label not in OFF (404) — no real product enriched; barcode-scan UI remains |
 | 12 | simple PI Calculated logic | **Deferred** | status value exists | gated on pac/pod provenance (see handoff plan) |
 | 13 | complex PI Generated logic | **Deferred** | — | profile-JSON columns deliberately absent (`0008`) |
-| 14 | similarity search | **Partial + name tiebreaker (prototype)** | `category_composition_similarity` (5 measured fields, ≤2pp mean) in `productMatcher.ts`; **NEW** pure `productNameTiebreak.ts` (deterministic ES/EN concept synonyms, tie-break only, strong false-positive guards) | tiebreaker not yet wired into the matcher's candidate ranking |
+| 14 | similarity search | **Composition + name tiebreaker WIRED** | `category_composition_similarity` (5 fields, ≤2pp) + `productNameTiebreak` now wired into `matchProduct`: a >1-candidate pool is ranked by ES/EN concept overlap and NARROWED only on a unique-max score (>0), else reordered + stays ambiguous; surfaced on `/dev/mapper-review` (per-candidate score + narrow marker + hit filter) | no vector/fuzzy-distance search; narrowed singles for pac/pod-less products are needs_review suggestions, not auto-matches |
 | 15 | ratio-based profile generation | **Missing** | none | — |
 | 16 | snapshots / versioning | **Live + audit UI** | migration 0011 applied (RLS append-only); `productSnapshots.ts` (snapshotNewProduct / snapshotSourceChange / listProductSnapshots) + pure `productSnapshotDiff.ts` (+ **NEW** `parseDetectedChanges`); **NEW** DEV `/dev/snapshot-audit` (read-only history: change_type, source, per-field from→to) | — |
 | 17 | manual adjustment | **Done** | `services/productReview.ts` (`confirmProductMatch` / `confirmProductMatchTo` / `rejectProductMatch`); `/dev/mapper-review` | — |
@@ -57,7 +58,7 @@ here is assumed complete. Last updated 2026-06-30 at repo HEAD `27bd30e`._
 - **products.status transitions** — need the customer-facing status rules signed off before any code sets `pi_calculated`/`pi_verified`.
 
 ## Product review progress (mapping decisions, not engine-readiness)
-- **11 matched** (manual review): 000006, 000010, 000011, 000012, 000013, 000029, 000031, 000036, 000043, 000044, 000070.
+- **13 matched** (manual review): 000006, 000010, 000011, 000012, 000013, 000029, 000031, 000036, 000043, 000044, 000070, **000046 (→ Wild Strawberry), 000047 (→ Blueberry)** — the last two confirmed via the name-tiebreaker re-audit (only strawberry / only blueberry ref in basement).
 - **3 rejected** (false matches): 000015, 000020, 000054.
 - **55 unmapped** (`null`): 7 reviewed-but-parked (000035 pick-which-pistachio; 000040/041/042 no almond ref; 000056 composite dessert; 000060/062 no erythritol/stevia ref) + ~48 unreviewed (zero-composition + broad-ambiguous).
 - **Basement reference gaps to add later (approval required):** almond, erythritol, stevia.
@@ -87,7 +88,7 @@ none newly decidable — all 55 stay parked. The decidable blockers are the **ba
 Full grouping + next-action per group: [REVIEW_QUEUE_ANALYSIS.md](REVIEW_QUEUE_ANALYSIS.md).
 
 ## Recent commits
-`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking · `a07abd0` My-Products engine library · `0b3e34a` PI Verified / Manual Adjusted controls · `f002a8c` OpenFoodFacts adapter · `43c12c0` reviewed enrichment conflict-merge · `54dd084` snapshot audit view · `b01d657` PI Verified eligibility explainer · `cadac1f` **Studio My-Products browser proof** · `2c6d0d3` enrichment write-payload/snapshot preview · `312eb7a` snapshot type filter · `8bebb58` **reference-linked provenance attestation** · `c9c7aae` handoff test hardening · `c662e32` **name-concept tiebreaker** · `70b534a` intake hub · `27bd30e` Drive re-verify + legacy lock proposal. **Live DB ops:** migration 0011 applied; lifecycle status set (11 `pi_generated` / 3 `rejected` / 55 `draft`); 69 baseline `product_snapshots` rows. **No DB writes the last four blocks** (state already aligned; enrichment write path tested but unused — Hacendado not in OFF). DEV tools: `/dev/mapper-review`, `/dev/mapper-status`, `/dev/enrichment-preview` (merge), `/dev/snapshot-audit`, `/dev/studio-picker-proof`, `/dev/intake-hub`.
+`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking · `a07abd0` My-Products engine library · `0b3e34a` PI Verified / Manual Adjusted controls · `f002a8c` OpenFoodFacts adapter · `43c12c0` reviewed enrichment conflict-merge · `54dd084` snapshot audit view · `b01d657` PI Verified eligibility explainer · `cadac1f` **Studio My-Products browser proof** · `2c6d0d3` enrichment write-payload/snapshot preview · `312eb7a` snapshot type filter · `8bebb58` **reference-linked provenance attestation** · `c9c7aae` handoff test hardening · `c662e32` **name-concept tiebreaker** · `70b534a` intake hub · `27bd30e` Drive re-verify + legacy lock proposal · `3425182` **tiebreaker WIRED into matcher** · `b0540f9` greek/bitter/fondente concepts · `9bff593` **tiebreak evidence on /dev/mapper-review**. **Live DB ops:** migration 0011 applied; lifecycle status set; 69 `product_snapshots` rows; **2 fruit mapping confirmations this block** (000046 → Wild Strawberry, 000047 → Blueberry — reference-linked, pac/pod null). DEV tools: `/dev/mapper-review` (+ tiebreak evidence), `/dev/mapper-status`, `/dev/enrichment-preview` (merge), `/dev/snapshot-audit`, `/dev/studio-picker-proof`, `/dev/intake-hub`.
 
 ## Studio product selection (this block)
 Confirmed products are now **selectable in Studio recipes** via the picker's **"My Products"** group

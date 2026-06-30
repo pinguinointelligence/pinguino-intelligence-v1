@@ -1,8 +1,30 @@
-# Review Queue Analysis — the 55 unmapped products
+# Review Queue Analysis — the unmapped products
 
-_Recomputed 2026-06-30. Read-only analysis; **no mapping decisions were forced.** All 55 `null`
-products are composition-complete (≥4 measured fields + an EAN) — the blocker is candidate
-ambiguity / red flags / missing references, never missing data._
+_Recomputed 2026-06-30. All originally-55 `null` products are composition-complete (≥4 measured
+fields + an EAN) — the blocker is candidate ambiguity / red flags / missing references, never
+missing data._
+
+## Post-tiebreaker re-audit (2026-06-30) — simulated on LIVE composition data
+After wiring `productNameTiebreak` into the matcher, the live composition pools were re-simulated
+(SQL replicating `byComposition` + the deterministic concept scorer). Effect on the broad-ambiguous set:
+- **Unique narrow (concept_hits = 1 → matcher narrows the pool to one suggestion):** Chocolate blanco
+  ×2 (→ the lone white-chocolate ref), Fresas (strawberry, **pool 38 → 1**), Arándanos (blueberry, **41 → 1**).
+- **Shortlist ranked (concept_hits > 1 → the right sub-class floats to the top, stays ambiguous for a
+  human pick):** Yogur griego ×4 (greek refs), Chocolate con leche ×2 (milk-choc refs), Chocolate negro
+  72% (7 dark refs ranked above the rest), Pistacho (2 pistachio refs over 2 peanut).
+- **Correctly NOT narrowed (concept_hits = 0 → no name evidence):** almonds ×3 (no almond ref → never
+  false-narrow to peanut ✓), plain milks (composition-dominant; "entera/semi" is fat level, not a concept),
+  sweeteners (no erythritol/stevia/saccharin ref), protein drinks, composites.
+
+### Decisions executed this block (2 confirmations — DB write)
+Both are genuinely unambiguous (the basement holds exactly ONE strawberry ref and ONE blueberry ref;
+composition + name agree; nothing else of that fruit exists):
+- **PR-ING-000046 Fresas enteras → PI-ING-000406 (Wild Strawberry)** — `matched` / `manual_mapping` / `high` / `pi_generated`.
+- **PR-ING-000047 Arándanos → PI-ING-000347 (Blueberry)** — same. Reference-linked; **product pac/pod stay null**.
+The Chocolate-blanco narrows were LEFT for human review (4 plausible white-choc refs exist; only the
+composition-closest is in-pool). Now: **53 null · 13 matched · 13 Studio-eligible.**
+
+## Buckets (with next action)
 
 ## Buckets (with next action)
 
