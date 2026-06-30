@@ -1,7 +1,7 @@
 # Mapper — Implementation Status
 
 _Living status tracker for the PINGÜINO product-intake "Mapper". Evidence-based; nothing
-here is assumed complete. Last updated 2026-06-30 at repo HEAD `b01d657`._
+here is assumed complete. Last updated 2026-06-30 at repo HEAD `27bd30e`._
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
@@ -43,13 +43,13 @@ here is assumed complete. Last updated 2026-06-30 at repo HEAD `b01d657`._
 | 11 | online enrichment | **Reviewed conflict-merge (keyless)** | `services/openFoodFacts.ts` (keyless read-only fetch) + **NEW** pure `productEnrichment.ts` (compare → fill/agree/conflict/skip; narrow patch) + **NEW** `services/productEnrichment.ts` (`applyProductEnrichment`: writes ONLY the label-nutrition allowlist via RLS `updateProduct`, snapshots the change, blocks PI Verified without override) + **NEW** `/dev/enrichment-preview` merge UI (product picker + per-field table + EAN-mismatch/conflict warnings) | Hacendado private-label not in OFF (404) — no real product enriched; barcode-scan UI remains |
 | 12 | simple PI Calculated logic | **Deferred** | status value exists | gated on pac/pod provenance (see handoff plan) |
 | 13 | complex PI Generated logic | **Deferred** | — | profile-JSON columns deliberately absent (`0008`) |
-| 14 | similarity search | **Partial** | `category_composition_similarity` (5 measured fields, ≤2pp mean) in `productMatcher.ts` | no vector/embedding/fuzzy-distance search |
+| 14 | similarity search | **Partial + name tiebreaker (prototype)** | `category_composition_similarity` (5 measured fields, ≤2pp mean) in `productMatcher.ts`; **NEW** pure `productNameTiebreak.ts` (deterministic ES/EN concept synonyms, tie-break only, strong false-positive guards) | tiebreaker not yet wired into the matcher's candidate ranking |
 | 15 | ratio-based profile generation | **Missing** | none | — |
 | 16 | snapshots / versioning | **Live + audit UI** | migration 0011 applied (RLS append-only); `productSnapshots.ts` (snapshotNewProduct / snapshotSourceChange / listProductSnapshots) + pure `productSnapshotDiff.ts` (+ **NEW** `parseDetectedChanges`); **NEW** DEV `/dev/snapshot-audit` (read-only history: change_type, source, per-field from→to) | — |
 | 17 | manual adjustment | **Done** | `services/productReview.ts` (`confirmProductMatch` / `confirmProductMatchTo` / `rejectProductMatch`); `/dev/mapper-review` | — |
-| 18 | PI Verified flow | **DEV control + eligibility explainer** | `/dev/mapper-status` Verify (reviewer reason + no red flags); **NEW** pure `explainPiVerified(row)` shows provenance + why-not (red flags & unresolved HARD-block; reference-linked needs explicit sign-off); Verify disabled when hard-blocked or already verified | no real product PI-verified (none has lab/technical-sheet provenance); needs a customer surface |
+| 18 | PI Verified flow | **DEV control + eligibility + provenance attestation** | `/dev/mapper-status` Verify; `explainPiVerified(row)` (red flags & unresolved HARD-block); **NEW** a reference-linked product needs an explicit `independent_provenance` attestation (checkbox, recorded in the note) to reach PI Verified — a bare reason can't elevate borrowed values; product-measured still verifies on a reason | no real product PI-verified (none has independent provenance); needs a customer surface |
 | 19 | engine handoff | **Wired into the Studio picker** | `productEngineHandoff.ts` + `buildProductEngineLibrary.ts` → **NEW** `useIngredientLibrary` fetches `listMyProducts` (Pro-only) + renders a **"My Products"** optgroup in `IngredientPicker` with a status label + "Reference-linked · PAC/POD from approved reference · not independently measured" note (red-flag → "pending verification"); **recipe-calc safety proven** (product calculates identically to its reference; no raw text reaches the engine; product pac/pod stay null) | customer-facing surface is Pro-gated + needs a signed-in session to render (SSR-tested) |
-| 20 | product intake UI | **Partial (expanded)** | CSV `ProductImportPage` (+ red-flag preview); DEV pages `/dev/mapper-smoke`, `/dev/mapper-batch-6`, `/dev/mapper-review`, `/dev/mapper-status` (status + verify + Studio filter + **PI Verified eligibility**), `/dev/enrichment-preview` (**reviewed merge**), **`/dev/snapshot-audit`** (history) | OCR/barcode scan surfaces missing |
+| 20 | product intake UI | **Partial (expanded)** | CSV `ProductImportPage`; DEV `/dev/mapper-review`, `/dev/mapper-status` (verify + Studio filter + PI Verified eligibility/attestation), `/dev/enrichment-preview` (reviewed merge + write-payload/snapshot preview), `/dev/snapshot-audit` (history + type filter), **`/dev/studio-picker-proof`** (auth-free My-Products browser proof), **`/dev/intake-hub`** (unified intake shell) | OCR/barcode scan surfaces still PLANNED (named in the hub) |
 
 ## Requires approval before proceeding
 - **Writing to `mapper_basement`** — e.g. adding the missing **almond / erythritol / stevia** references (blocking several products). Locked base; needs explicit go-ahead.
@@ -84,9 +84,10 @@ By `product_category`:
 **No new confirm/reject this block.** OFF returns 404 for Hacendado private-label, so enrichment makes
 none newly decidable — all 55 stay parked. The decidable blockers are the **basement reference gaps**
 (almond · erythritol · maltitol/polyols · stevia · sucralose · saccharin) — see the gap-proposal doc.
+Full grouping + next-action per group: [REVIEW_QUEUE_ANALYSIS.md](REVIEW_QUEUE_ANALYSIS.md).
 
 ## Recent commits
-`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking · `a07abd0` My-Products engine library · `0b3e34a` PI Verified / Manual Adjusted controls · `f002a8c` OpenFoodFacts adapter · `a5c0ce0` My Products in the Studio picker · `2ba7f1c` keyless enrichment preview · `43c12c0` **reviewed enrichment conflict-merge** · `54dd084` snapshot audit view · `b01d657` PI Verified eligibility explainer. **Live DB ops:** migration 0011 applied; lifecycle status set (11 `pi_generated` / 3 `rejected` / 55 `draft`); 69 baseline `product_snapshots` rows. **No DB writes the last three blocks** (state already aligned; enrichment write path tested but unused — Hacendado not in OFF). DEV tools: `/dev/mapper-smoke`, `/dev/mapper-batch-6`, `/dev/mapper-review`, `/dev/mapper-status`, `/dev/enrichment-preview` (merge), `/dev/snapshot-audit`.
+`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking · `a07abd0` My-Products engine library · `0b3e34a` PI Verified / Manual Adjusted controls · `f002a8c` OpenFoodFacts adapter · `43c12c0` reviewed enrichment conflict-merge · `54dd084` snapshot audit view · `b01d657` PI Verified eligibility explainer · `cadac1f` **Studio My-Products browser proof** · `2c6d0d3` enrichment write-payload/snapshot preview · `312eb7a` snapshot type filter · `8bebb58` **reference-linked provenance attestation** · `c9c7aae` handoff test hardening · `c662e32` **name-concept tiebreaker** · `70b534a` intake hub · `27bd30e` Drive re-verify + legacy lock proposal. **Live DB ops:** migration 0011 applied; lifecycle status set (11 `pi_generated` / 3 `rejected` / 55 `draft`); 69 baseline `product_snapshots` rows. **No DB writes the last four blocks** (state already aligned; enrichment write path tested but unused — Hacendado not in OFF). DEV tools: `/dev/mapper-review`, `/dev/mapper-status`, `/dev/enrichment-preview` (merge), `/dev/snapshot-audit`, `/dev/studio-picker-proof`, `/dev/intake-hub`.
 
 ## Studio product selection (this block)
 Confirmed products are now **selectable in Studio recipes** via the picker's **"My Products"** group
@@ -94,8 +95,11 @@ Confirmed products are now **selectable in Studio recipes** via the picker's **"
 status label + a reference-linked provenance note; red-flagged products show "pending verification".
 Engine values are resolved from the linked reference **at calculation time** — product `pac_value`/`pod_value`
 columns stay NULL (0/69 carry any), and no raw OCR/catalog text reaches the engine (proven by
-`productEngineLibrary.recipe.test.ts`). The group is Pro-gated + needs a signed-in session to render.
+`productEngineLibrary.recipe.test.ts`). The production group is Pro-gated + needs a signed-in session,
+but it is now **browser-verifiable without auth** via the DEV fixture route `/dev/studio-picker-proof`
+(real picker + real `buildProductEngineLibrary`, sample rows) — verified live (added PR-ING-000010 with
+pac 3.3 / pod 0.46). Production Studio still uses real RLS data (guarded by a test).
 
-See also: [BASEMENT_REFERENCE_GAP_PROPOSALS.md](BASEMENT_REFERENCE_GAP_PROPOSALS.md), [BASEMENT_REFERENCE_INSERT_CANDIDATES.md](BASEMENT_REFERENCE_INSERT_CANDIDATES.md), [MERCADONA_CATALOG_IMPORT_CONTRACT.md](MERCADONA_CATALOG_IMPORT_CONTRACT.md), [LEGACY_INGREDIENTS_CLEANUP_PLAN.md](LEGACY_INGREDIENTS_CLEANUP_PLAN.md).
+See also: [REVIEW_QUEUE_ANALYSIS.md](REVIEW_QUEUE_ANALYSIS.md), [BASEMENT_REFERENCE_GAP_PROPOSALS.md](BASEMENT_REFERENCE_GAP_PROPOSALS.md), [BASEMENT_REFERENCE_INSERT_CANDIDATES.md](BASEMENT_REFERENCE_INSERT_CANDIDATES.md), [MERCADONA_CATALOG_IMPORT_CONTRACT.md](MERCADONA_CATALOG_IMPORT_CONTRACT.md), [LEGACY_INGREDIENTS_CLEANUP_PLAN.md](LEGACY_INGREDIENTS_CLEANUP_PLAN.md).
 
 See also: [PACPOD_ENGINE_HANDOFF_PLAN.md](PACPOD_ENGINE_HANDOFF_PLAN.md), [INTAKE_ENRICHMENT_PLAN.md](INTAKE_ENRICHMENT_PLAN.md).
