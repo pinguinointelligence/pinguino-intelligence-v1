@@ -34,8 +34,11 @@ export interface MapperStatusViewProps {
   message: string | null;
   errorMessage: string | null;
   reasons: Record<string, string>;
+  /** per-row attestation that independent (lab/technical-sheet/producer) provenance exists. */
+  attestations: Record<string, boolean>;
   onLoad: () => void;
   onReasonChange: (id: string, reason: string) => void;
+  onAttestChange: (id: string, on: boolean) => void;
   onApply: (id: string) => void;
   onManualAdjust: (id: string) => void;
   onVerify: (id: string) => void;
@@ -55,8 +58,10 @@ export function MapperStatusView({
   message,
   errorMessage,
   reasons,
+  attestations,
   onLoad,
   onReasonChange,
+  onAttestChange,
   onApply,
   onManualAdjust,
   onVerify,
@@ -116,7 +121,9 @@ export function MapperStatusView({
           const applyDisabled = busy || upToDate || (redFlagged && reason === '');
           const verify = explainPiVerified(r);
           const isPiVerified = r.current_status === 'pi_verified';
-          const verifyDisabled = busy || verify.blocked || isPiVerified || reason === '';
+          const needsAttestation = r.engine_readiness === 'reference_linked';
+          const attested = attestations[r.id] === true;
+          const verifyDisabled = busy || verify.blocked || isPiVerified || reason === '' || (needsAttestation && !attested);
           return (
             <div key={r.id} className="rounded-md border border-stone-200 bg-white px-4 py-3 text-sm">
               <div className="flex items-baseline justify-between gap-3">
@@ -166,6 +173,16 @@ export function MapperStatusView({
                       <li key={why}>{why}</li>
                     ))}
                   </ul>
+                ) : null}
+                {needsAttestation && !isPiVerified && !verify.blocked ? (
+                  <label className="mt-1 flex items-center gap-2 text-stone-600">
+                    <input
+                      type="checkbox"
+                      checked={attested}
+                      onChange={(e) => onAttestChange(r.id, e.target.checked)}
+                    />
+                    I attest independent (lab / technical-sheet / producer) provenance for these values
+                  </label>
                 ) : null}
               </div>
 

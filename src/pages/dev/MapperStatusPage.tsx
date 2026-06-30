@@ -33,6 +33,7 @@ export function MapperStatusPage() {
   const [productsById, setProductsById] = useState<Map<string, ProductRow>>(new Map());
   const [referenceById, setReferenceById] = useState<Map<string, IngredientRow>>(new Map());
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [attestations, setAttestations] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -124,15 +125,18 @@ export function MapperStatusPage() {
     const reason = (reasons[id] ?? '').trim();
     const product = productsById.get(id);
     if (reason === '' || !product) return;
+    const independent_provenance = attestations[id] === true;
     // Re-decide WITH the reviewer approval; only persist pi_verified if the policy allows it
-    // (it never does for a red-flagged product → blocked here).
+    // (never for a red-flagged product, and not for a reference-linked product unless independent
+    // provenance is attested → blocked here).
     const decision = decideProductStatus({
       ...product,
       reference: referenceFor(product, referenceById),
-      reviewerApproval: { verified_by: REVIEWER, basis: reason },
+      reviewerApproval: { verified_by: REVIEWER, basis: reason, independent_provenance },
     });
     if (decision.recommended_status === 'pi_verified') {
-      void persist(id, 'pi_verified', reason);
+      const note = independent_provenance ? `${reason} [independent provenance attested]` : reason;
+      void persist(id, 'pi_verified', note);
     } else {
       const code = rows.find((r) => r.id === id)?.code ?? id;
       setMessage(`${code}: PI Verified blocked — ${decision.blockers.join('; ') || 'not eligible (red flags / unresolved)'}`);
@@ -148,8 +152,10 @@ export function MapperStatusPage() {
       message={message}
       errorMessage={errorMessage}
       reasons={reasons}
+      attestations={attestations}
       onLoad={() => void load()}
       onReasonChange={(id, reason) => setReasons((prev) => ({ ...prev, [id]: reason }))}
+      onAttestChange={(id, on) => setAttestations((prev) => ({ ...prev, [id]: on }))}
       onApply={onApply}
       onManualAdjust={onManualAdjust}
       onVerify={onVerify}

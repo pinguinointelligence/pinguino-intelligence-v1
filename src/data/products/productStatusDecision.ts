@@ -46,8 +46,10 @@ export interface StatusDecisionInput extends RedFlagInput, ProductEngineInput {
   reference?: ReferenceEngineValues | null;
   /** an admin manually corrected this product's profile. */
   manuallyAdjusted?: boolean;
-  /** an explicit reviewer sign-off for PI Verified (manual-approval path). */
-  reviewerApproval?: { verified_by: string; basis: string } | null;
+  /** an explicit reviewer sign-off for PI Verified (manual-approval path). `independent_provenance`
+   * attests reliable lab/technical-sheet/producer data — REQUIRED to PI Verify a reference-linked
+   * product (a bare reason cannot elevate borrowed values). */
+  reviewerApproval?: { verified_by: string; basis: string; independent_provenance?: boolean } | null;
 }
 
 export interface StatusDecision {
@@ -140,9 +142,25 @@ export function decideProductStatus(input: StatusDecisionInput): StatusDecision 
   }
 
   // Explicit reviewer sign-off (manual-approval path) → PI Verified, never for red-flag products.
+  // A reference-linked product additionally requires an independent-provenance attestation: a
+  // reviewer reason alone cannot elevate borrowed values to PI Verified.
   if (input.reviewerApproval) {
-    return decide('pi_verified', {
-      reasons: [`Reviewer approved (${input.reviewerApproval.verified_by}): ${input.reviewerApproval.basis}.`],
+    const independentlyProvenanced = ownMeasured || input.reviewerApproval.independent_provenance === true;
+    if (independentlyProvenanced) {
+      return decide('pi_verified', {
+        reasons: [
+          `Reviewer approved (${input.reviewerApproval.verified_by}): ${input.reviewerApproval.basis}.` +
+            (input.reviewerApproval.independent_provenance ? ' Independent provenance attested.' : ''),
+        ],
+        customer_warning_flags: customerWarnings,
+        internal_flags,
+        red_flags: redFlags,
+      });
+    }
+    // reviewer reason given, but values are reference-linked and no independent provenance attested.
+    return decide(input.manuallyAdjusted ? 'manual_adjusted' : 'pi_generated', {
+      reasons: ['Reviewer reason recorded, but the profile is reference-linked only.'],
+      blockers: ['PI Verified needs independent (lab / technical-sheet / producer) provenance — reference-linked values cannot be PI Verified on a reason alone.'],
       customer_warning_flags: customerWarnings,
       internal_flags,
       red_flags: redFlags,

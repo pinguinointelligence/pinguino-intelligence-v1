@@ -31,7 +31,8 @@ const row = (over: Partial<StatusRow> = {}): StatusRow => ({
 const base = {
   rows: [] as StatusRow[], loading: false, loaded: false, busyId: null as string | null,
   message: null as string | null, errorMessage: null as string | null, reasons: {} as Record<string, string>,
-  onLoad: () => {}, onReasonChange: () => {}, onApply: () => {}, onManualAdjust: () => {}, onVerify: () => {},
+  attestations: {} as Record<string, boolean>,
+  onLoad: () => {}, onReasonChange: () => {}, onAttestChange: () => {}, onApply: () => {}, onManualAdjust: () => {}, onVerify: () => {},
 };
 
 afterEach(() => vi.clearAllMocks());
@@ -59,8 +60,18 @@ describe('MapperStatusView', () => {
     expect(btnDisabled(withReason, 'Verify')).toBe(true);
   });
 
-  it('a clean row with a reason enables Verify', () => {
-    const html = render(<MapperStatusView {...base} rows={[row()]} reasons={{ p1: 'producer technical sheet' }} loaded />);
+  it('a reference-linked row needs the independent-provenance attestation to enable Verify', () => {
+    // reason alone is NOT enough for a reference-linked product
+    const reasonOnly = render(<MapperStatusView {...base} rows={[row()]} reasons={{ p1: 'producer technical sheet' }} loaded />);
+    expect(btnDisabled(reasonOnly, 'Verify')).toBe(true);
+    expect(text(reasonOnly)).toMatch(/attest independent/i);
+    // reason + attestation enables it
+    const attested = render(<MapperStatusView {...base} rows={[row()]} reasons={{ p1: 'producer technical sheet' }} attestations={{ p1: true }} loaded />);
+    expect(btnDisabled(attested, 'Verify')).toBe(false);
+  });
+
+  it('a product-measured row enables Verify with a reason (no attestation needed)', () => {
+    const html = render(<MapperStatusView {...base} rows={[row({ engine_readiness: 'product_measured' })]} reasons={{ p1: 'own lab measurement' }} loaded />);
     expect(btnDisabled(html, 'Verify')).toBe(false);
   });
 

@@ -65,16 +65,29 @@ describe('decideProductStatus — red flags block PI Verified / PI Calculated', 
 });
 
 describe('decideProductStatus — PI Verified only with strong data / explicit approval', () => {
-  it('reviewer approval + no red flags → PI Verified (manual-approval path)', () => {
+  it('reference-linked + reviewer reason but NO independent provenance → stays PI Generated (blocked)', () => {
     const d = decideProductStatus({
       mapper_status: 'matched',
       matched_basement_id: 'PI-ING-000180',
       product_name_display: 'Nata para montar Hacendado',
       reference: cream,
-      reviewerApproval: { verified_by: 'colin', basis: 'producer technical sheet' },
+      reviewerApproval: { verified_by: 'colin', basis: 'looks right' },
+    });
+    expect(d.recommended_status).toBe('pi_generated');
+    expect(d.blockers.join(' ')).toMatch(/independent .*provenance/i);
+  });
+
+  it('reference-linked + reviewer approval WITH independent provenance attested → PI Verified', () => {
+    const d = decideProductStatus({
+      mapper_status: 'matched',
+      matched_basement_id: 'PI-ING-000180',
+      product_name_display: 'Nata para montar Hacendado',
+      reference: cream,
+      reviewerApproval: { verified_by: 'colin', basis: 'producer technical sheet', independent_provenance: true },
     });
     expect(d.recommended_status).toBe('pi_verified');
     expect(d.customer_label).toBe('PI Verified');
+    expect(d.reasons.join(' ')).toMatch(/Independent provenance attested/i);
   });
 
   it("a product with its OWN measured pac/pod and no red flags → PI Calculated", () => {
