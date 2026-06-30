@@ -6,6 +6,7 @@ import { MapperStatusPage } from '@/pages/dev/MapperStatusPage';
 import { MapperSmokePage } from '@/pages/dev/MapperSmokePage';
 import { EnrichmentPreviewPage } from '@/pages/dev/EnrichmentPreviewPage';
 import { SnapshotAuditPage } from '@/pages/dev/SnapshotAuditPage';
+import { StudioPickerProofPage } from '@/pages/dev/StudioPickerProofPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
@@ -54,6 +55,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/mapper-status" element={<MapperStatusPage />} />}
       {import.meta.env.DEV && <Route path="/dev/enrichment-preview" element={<EnrichmentPreviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/snapshot-audit" element={<SnapshotAuditPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/studio-picker-proof" element={<StudioPickerProofPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
