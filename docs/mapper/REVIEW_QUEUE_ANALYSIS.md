@@ -21,8 +21,11 @@ Both are genuinely unambiguous (the basement holds exactly ONE strawberry ref an
 composition + name agree; nothing else of that fruit exists):
 - **PR-ING-000046 Fresas enteras → PI-ING-000406 (Wild Strawberry)** — `matched` / `manual_mapping` / `high` / `pi_generated`.
 - **PR-ING-000047 Arándanos → PI-ING-000347 (Blueberry)** — same. Reference-linked; **product pac/pod stay null**.
-The Chocolate-blanco narrows were LEFT for human review (4 plausible white-choc refs exist; only the
-composition-closest is in-pool). Now: **53 null · 13 matched · 13 Studio-eligible.**
+### Decisions executed (2026-06-30, ranked-shortlist pass) — 2 more confirmations
+- **PR-ING-000024 & 000025 Chocolate blanco → PI-ING-000142 (White Chocolate 30%)** — `matched`/`manual_mapping`/`high`/`pi_generated`. The unique white-chocolate within the 7-candidate composition pool; product 35/55/55/6.5/0.2 vs ref 36.1/55/54.6/6/0.21 (Δ0.4-0.6). Reference-linked; **pac/pod null**.
+- **Parked with reasons:** Greek yogurts 000016/017 → the only greek ref ("Greek Yogurt — Standard") is **7.5% fat vs the product's 10.8%**; since the engine handoff borrows the *reference's* composition, that would understate fat by 3.3pp → wait for a full-fat greek ref (a new reference gap). 000018/019 (light greek 2%) — no close greek ref either. Milk choc 000026/027 (4-6 equivalent refs), dark choc 000028 (7 dark refs, % matters), pistachio 000035 (raw nut vs 2 paste refs) — all left for human review (the workstation surfaces the ranked sub-class).
+
+Now: **51 null · 15 matched · 15 Studio-eligible.** New reference gap noted: **full-fat (≈10%) greek yogurt**.
 
 ## Buckets (with next action)
 
