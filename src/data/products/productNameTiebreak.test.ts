@@ -40,6 +40,21 @@ describe('nameTiebreakScore — false-positive avoidance', () => {
     expect(nameTiebreakScore('Almendra natural', 'Avellana tostada')).toBe(0);
     expect(nameTiebreakScore('Crema de cacahuete', 'Pasta de pistacho')).toBe(0);
   });
+
+  it('new concepts match their own synonyms only (no false positives)', () => {
+    // mascarpone / condensed / mango / pineapple / lemon / coconut each map to their own concept
+    expect(nameTiebreakScore('Queso Mascarpone', 'Mascarpone — Standard')).toBeGreaterThan(0);
+    expect(nameTiebreakScore('Leche condensada', 'Condensed Milk')).toBeGreaterThan(0); // shares 'milk' + 'condensed'
+    expect(nameTiebreakScore('Mango pulp', 'Mango — General')).toBeGreaterThan(0);
+    expect(nameTiebreakScore('Piña natural', 'Pineapple — General')).toBeGreaterThan(0); // piña→pina
+    expect(nameTiebreakScore('Limón', 'Lemon Sauce')).toBeGreaterThan(0);
+    expect(nameTiebreakScore('Coco rallado', 'Coconut — Standard')).toBeGreaterThan(0);
+    // and they do NOT cross-match
+    expect(nameTiebreakScore('Mango pulp', 'Pineapple — General')).toBe(0);
+    expect(nameTiebreakScore('Queso Mascarpone', 'Cream 35%')).toBe(0); // mascarpone ≠ cream
+    expect(nameTiebreakScore('Coco rallado', 'Cacao puro')).toBe(0); // coco ≠ cacao/cocoa
+    expect(nameTiebreakScore('Limón', 'Whole Milk')).toBe(0);
+  });
 });
 
 describe('rankCandidatesByName', () => {
