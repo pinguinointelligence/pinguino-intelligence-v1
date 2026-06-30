@@ -35,6 +35,12 @@ Every intake — CSV today, OCR/barcode/enrichment later — must converge on th
 6. **Online enrichment** — ✅ done (reviewed): `applyProductEnrichment` writes ONLY the label-nutrition allowlist, never overwrites a stronger source silently (OFF conflicts default to keep-stored), snapshots every change, and refuses a PI Verified product without an explicit override. User-triggered on `/dev/enrichment-preview`. **Note:** Hacendado private-label EANs aren't in OFF (404), so no real product has been enriched — the write path is tested, not yet exercised on a real product.
 7. **Snapshots / versioning** — ✅ done: `product_snapshots` (0011, append-only) + service + `/dev/snapshot-audit` read-only history.
 
+### Enrichment real-product readiness (re-checked 2026-06-30)
+No current product is enrichable from OFF, so the reviewed-write path remains **tested but unexercised by design**:
+- **All 69 products are already nutrition-complete** (fat/sat-fat/carb/sugars/protein/salt/kcal) — the catalog sourced nutrition from OpenFoodFacts originally (README), so an OFF re-lookup would only **agree** → empty patch → no write.
+- **Private-label (Hacendado) EANs 404 in OFF**, and the **branded ones too** (verified live: Asturiana milk EAN `8410297112010` → 404).
+- The path is therefore valuable for FUTURE non-catalog products (producer/retailer source with a real gap), not the current set. To exercise it, intake a product with a genuine missing label field whose EAN resolves in OFF.
+
 ## Safety rules (apply to every slice)
 - No paid external APIs; no secrets/keys committed; no `.env` writes.
 - No automatic network calls — enrichment/lookup is explicit + user-triggered.

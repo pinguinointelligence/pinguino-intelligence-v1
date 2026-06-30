@@ -25,4 +25,11 @@ describe('legacy public.ingredients — orphaned (safe to lock/archive)', () => 
     expect(src.includes('mapper_basement')).toBe(true);
     expect(/\.from\(\s*['"]ingredients['"]\s*\)/.test(src)).toBe(false);
   });
+
+  it('the active products + ingredients services carry no npac_value (the legacy column stays orphaned)', () => {
+    for (const f of ['products.ts', 'ingredients.ts']) {
+      const src = readFileSync(join(dir, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      expect(/npac_value/i.test(src), f).toBe(false);
+    }
+  });
 });

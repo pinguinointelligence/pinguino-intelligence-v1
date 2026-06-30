@@ -37,6 +37,7 @@ describe('StudioPickerProofPage', () => {
     expect(t).toMatch(/My Products proof/);
     expect(t).toMatch(/Nata para montar/);
     expect(t).toMatch(/DEV fixture/);
+    expect(t).toMatch(/3 sample My Products/);
   });
 });
 

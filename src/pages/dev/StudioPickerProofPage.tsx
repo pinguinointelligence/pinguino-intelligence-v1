@@ -28,6 +28,9 @@ export function StudioPickerProofPage() {
         <p className="font-mono text-xs uppercase tracking-wide text-ivory/40">DEV · internal</p>
         <h1 className="mt-3 text-2xl font-light tracking-tight">Studio picker — My Products proof</h1>
         <p className="mt-2 text-xs leading-relaxed text-ivory/50">{STUDIO_PICKER_PROOF_NOTE}</p>
+        <p className="mt-1 font-mono text-xs text-ivory/40">
+          {library.products.length} sample My Products in the picker · live Studio-eligible count is DB-verified separately
+        </p>
 
         <div className="mt-6">
           <IngredientPicker library={library} onAdd={(i) => setAdded((prev) => [...prev, i])} />
