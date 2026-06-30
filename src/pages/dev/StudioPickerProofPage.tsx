@@ -7,7 +7,7 @@
  * reads no DB; production Studio keeps using `useIngredientLibrary` (real RLS data). The page is
  * clearly labelled as fixture data.
  *
- * Boundaries (StudioPickerProofPage.security.test.ts): DEV-only; no supabase / service / write.
+ * Boundaries (StudioPickerProofPage.security.test.ts): DEV-only; no DB client / service / write.
  */
 import { useState } from 'react';
 import { NotFoundPage } from '@/pages/NotFoundPage';
