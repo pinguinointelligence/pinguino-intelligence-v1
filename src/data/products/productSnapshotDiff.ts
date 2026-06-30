@@ -86,6 +86,29 @@ export function normalizeSnapshotFields(row: Record<string, unknown>): SnapshotF
   };
 }
 
+export interface DetectedChange {
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+
+/**
+ * Parse a stored `detected_changes` jsonb value (the per-field {from,to} map) back into a flat,
+ * display-ready list. Pure + defensive: a null / non-object / malformed value → []. Read-only —
+ * this never reconstructs or writes anything.
+ */
+export function parseDetectedChanges(value: unknown): DetectedChange[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  const out: DetectedChange[] = [];
+  for (const [field, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (entry && typeof entry === 'object' && ('from' in entry || 'to' in entry)) {
+      const e = entry as { from?: unknown; to?: unknown };
+      out.push({ field, from: e.from ?? null, to: e.to ?? null });
+    }
+  }
+  return out;
+}
+
 const NUTRITION: ReadonlyArray<keyof SnapshotFields> = [
   'fat_percent', 'saturated_fat_percent', 'carbohydrate_percent', 'total_sugars_percent',
   'protein_percent', 'salt_percent', 'kcal_per_100g',

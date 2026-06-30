@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { diffSnapshot, extractSnapshotFields, type SnapshotFields } from './productSnapshotDiff';
+import { diffSnapshot, extractSnapshotFields, parseDetectedChanges, type SnapshotFields } from './productSnapshotDiff';
+
+describe('parseDetectedChanges', () => {
+  it('flattens a stored {field:{from,to}} map into a list', () => {
+    const list = parseDetectedChanges({ fat_percent: { from: null, to: 30.9 }, salt_percent: { from: 0.1, to: 0.2 } });
+    expect(list).toHaveLength(2);
+    expect(list.find((c) => c.field === 'fat_percent')).toEqual({ field: 'fat_percent', from: null, to: 30.9 });
+  });
+  it('returns [] for null / non-object / malformed values', () => {
+    expect(parseDetectedChanges(null)).toEqual([]);
+    expect(parseDetectedChanges('nope')).toEqual([]);
+    expect(parseDetectedChanges([1, 2])).toEqual([]);
+    expect(parseDetectedChanges({ x: 5 })).toEqual([]); // not a {from,to} entry
+  });
+});
 
 describe('extractSnapshotFields', () => {
   it('maps product/insert fields to the snapshot set and coerces DB numeric strings', () => {
