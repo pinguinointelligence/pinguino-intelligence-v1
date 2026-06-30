@@ -70,7 +70,8 @@ const MAPPER_STATES = ['all', 'null', 'matched', 'rejected', 'needs_review', 'am
 const BUCKETS = ['all', '0', '1', '2-5', '6+'];
 const TIEBREAK_FILTERS: { value: string; label: string }[] = [
   { value: 'all', label: 'any tiebreak' },
-  { value: 'hit', label: 'has tiebreak hit' },
+  { value: 'narrowed', label: 'unique narrowed' },
+  { value: 'ranked', label: 'ranked shortlist' },
   { value: 'no_hit', label: 'no tiebreak hit' },
 ];
 
@@ -173,6 +174,9 @@ export function MapperReviewView({
                   ) : (
                     <span className="text-stone-400">no name evidence — composition only</span>
                   )}
+                  {!resolved ? (
+                    <span className="text-stone-400"> · confirm a candidate → matched · becomes {r.recommended_status}</span>
+                  ) : null}
                 </p>
               ) : null}
 

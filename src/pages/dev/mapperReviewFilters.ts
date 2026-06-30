@@ -58,9 +58,11 @@ export function filterReviewRows(rows: ReviewRow[], f: ReviewFilters): ReviewRow
       if (!ok) return false;
     }
     if (f.tiebreakFilter && f.tiebreakFilter !== 'all') {
-      const hasHit = reviewRowTiebreak(r).status !== 'none';
-      if (f.tiebreakFilter === 'hit' && !hasHit) return false;
-      if (f.tiebreakFilter === 'no_hit' && hasHit) return false;
+      const status = reviewRowTiebreak(r).status; // 'narrowed' | 'ranked' | 'none'
+      if (f.tiebreakFilter === 'narrowed' && status !== 'narrowed') return false;
+      if (f.tiebreakFilter === 'ranked' && status !== 'ranked') return false;
+      if (f.tiebreakFilter === 'hit' && status === 'none') return false; // back-compat: any hit
+      if (f.tiebreakFilter === 'no_hit' && status !== 'none') return false;
     }
     return true;
   });

@@ -83,16 +83,18 @@ describe('reviewRowTiebreak + tiebreak filter', () => {
     expect(reviewRowTiebreak(noEvidence).status).toBe('none');
   });
 
-  it('filters by tiebreak hit / no hit', () => {
-    const rows = [whiteChoc, noEvidence];
-    expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'hit' }).map((r) => r.id)).toEqual(['choc']);
+  it('filters by unique-narrowed vs ranked shortlist vs no-hit', () => {
+    const rows = [whiteChoc, sampleRow({ id: 'pist' }), noEvidence];
+    expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'narrowed' }).map((r) => r.id)).toEqual(['choc']);
+    expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'ranked' }).map((r) => r.id)).toEqual(['pist']);
     expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'no_hit' }).map((r) => r.id)).toEqual(['none']);
   });
 
-  it('shows the tiebreak evidence line in the view', () => {
+  it('shows the tiebreak evidence line + the becomes-status hint in the view', () => {
     const t = visibleText(render(<MapperReviewView {...baseProps} rows={[whiteChoc]} loaded />));
     expect(t).toMatch(/tiebreak:/);
     expect(t).toMatch(/narrows to B-WHITE/);
+    expect(t).toMatch(/becomes draft/); // whiteChoc.recommended_status is 'draft' by default
   });
 });
 
