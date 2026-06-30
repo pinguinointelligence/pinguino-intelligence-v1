@@ -9,7 +9,7 @@
  */
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { STATUS_FILTERS, filterStatusRows, type StatusFilter } from './mapperStatusFilters';
+import { STATUS_FILTERS, explainPiVerified, filterStatusRows, type StatusFilter } from './mapperStatusFilters';
 
 export interface StatusRow {
   code: string;
@@ -114,6 +114,9 @@ export function MapperStatusView({
           const reason = (reasons[r.id] ?? '').trim();
           const busy = busyId === r.id;
           const applyDisabled = busy || upToDate || (redFlagged && reason === '');
+          const verify = explainPiVerified(r);
+          const isPiVerified = r.current_status === 'pi_verified';
+          const verifyDisabled = busy || verify.blocked || isPiVerified || reason === '';
           return (
             <div key={r.id} className="rounded-md border border-stone-200 bg-white px-4 py-3 text-sm">
               <div className="flex items-baseline justify-between gap-3">
@@ -145,6 +148,27 @@ export function MapperStatusView({
                 <p className="mt-1 text-xs text-stone-500">blockers: {r.blockers.join(' · ')}</p>
               ) : null}
 
+              <div className="mt-2 rounded border border-stone-100 bg-stone-50 px-2 py-1.5 text-xs">
+                <p className="font-mono text-stone-600">
+                  PI Verified:{' '}
+                  {isPiVerified ? (
+                    <span className="text-emerald-700">already PI Verified</span>
+                  ) : verify.blocked ? (
+                    <span className="text-status-risky">cannot verify</span>
+                  ) : (
+                    <span className="text-stone-700">needs a written reviewer reason</span>
+                  )}{' '}
+                  · {verify.provenance}
+                </p>
+                {verify.reasons.length > 0 ? (
+                  <ul className="mt-0.5 list-disc pl-4 text-stone-500">
+                    {verify.reasons.map((why) => (
+                      <li key={why}>{why}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+
               <input
                 className="mt-2 w-full rounded border border-stone-200 px-2 py-1 font-mono text-xs"
                 placeholder="reviewer reason — required to verify, manual-adjust, or apply to a red-flagged product"
@@ -163,7 +187,7 @@ export function MapperStatusView({
                 <Button size="sm" variant="ghost" onClick={() => onManualAdjust(r.id)} disabled={busy || reason === ''}>
                   Manual adjust
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => onVerify(r.id)} disabled={busy || redFlagged || reason === ''}>
+                <Button size="sm" variant="ghost" onClick={() => onVerify(r.id)} disabled={verifyDisabled}>
                   Verify (PI Verified)
                 </Button>
               </div>

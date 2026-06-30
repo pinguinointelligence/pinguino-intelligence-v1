@@ -14,7 +14,7 @@ vi.mock('@/services/productStatusWrite', () => ({ setProductLifecycleStatus: h.s
 
 import { MapperStatusView, type StatusRow } from './mapperStatusView';
 import { MapperStatusPage } from './MapperStatusPage';
-import { filterStatusRows } from './mapperStatusFilters';
+import { explainPiVerified, filterStatusRows } from './mapperStatusFilters';
 
 const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
 const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
@@ -81,6 +81,41 @@ describe('MapperStatusView', () => {
     expect(t).toMatch(/Studio ✓/);
     expect(t).toMatch(/Studio ✗/);
     expect(t).toMatch(/1 \/ 2 Studio-eligible/);
+  });
+});
+
+describe('PI Verified eligibility', () => {
+  it('shows a per-row eligibility block with provenance + why-not reasons', () => {
+    const t = text(render(<MapperStatusView {...base} rows={[row()]} loaded />));
+    expect(t).toMatch(/PI Verified:/);
+    expect(t).toMatch(/Reference-linked only/);
+    expect(t).toMatch(/needs a written reviewer reason/);
+    expect(t).toMatch(/explicit reviewer sign-off/);
+  });
+
+  it('a reference-linked clean row is gated on a reason, not hard-blocked', () => {
+    const e = explainPiVerified(row());
+    expect(e.blocked).toBe(false);
+    expect(e.needs_reason).toBe(true);
+    expect(e.provenance).toMatch(/Reference-linked only/);
+  });
+
+  it('red flags hard-block PI Verified (a reason cannot override)', () => {
+    const e = explainPiVerified(row({ red_flag_codes: ['sweetener_or_polyol'] }));
+    expect(e.blocked).toBe(true);
+    expect(e.reasons.join(' ')).toMatch(/Red flags must be cleared/);
+  });
+
+  it('no resolvable engine values hard-block PI Verified', () => {
+    const e = explainPiVerified(row({ engine_readiness: 'unresolved' }));
+    expect(e.blocked).toBe(true);
+    expect(e.provenance).toMatch(/No engine values resolved/);
+  });
+
+  it('an already PI Verified row disables Verify and shows the verified state', () => {
+    const html = render(<MapperStatusView {...base} rows={[row({ current_status: 'pi_verified', recommended_status: 'pi_verified' })]} reasons={{ p1: 'x' }} loaded />);
+    expect(text(html)).toMatch(/already PI Verified/);
+    expect(btnDisabled(html, 'Verify')).toBe(true);
   });
 });
 
