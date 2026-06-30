@@ -23,6 +23,7 @@ import { applyProductEnrichment } from '@/services/productEnrichment';
 import {
   buildEnrichmentPatch,
   compareEnrichment,
+  previewEnrichmentWrite,
   safeFillFields,
   type EnrichableField,
   type EnrichmentComparison,
@@ -129,6 +130,7 @@ export function EnrichmentMergeView({
   const sel = new Set(selected);
   const conflictSelected = comparison.fields.some((f) => f.decision === 'conflict' && sel.has(f.field));
   const blockedByPiV = isPiVerified && (!override || reason.trim() === '');
+  const preview = previewEnrichmentWrite(comparison, selected);
   const canApply = selected.length > 0 && !applying && !blockedByPiV;
 
   return (
@@ -185,6 +187,27 @@ export function EnrichmentMergeView({
           A conflict field is selected — you are overriding a stored value with a weaker public-DB source.
         </p>
       ) : null}
+
+      <div className="mt-3 rounded border border-stone-100 bg-stone-50 px-3 py-2 text-xs">
+        <p className="font-mono text-stone-600">
+          proposed write payload ({Object.keys(preview.patch).length} field{Object.keys(preview.patch).length === 1 ? '' : 's'})
+        </p>
+        <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all font-mono text-stone-700">
+          {Object.keys(preview.patch).length === 0 ? '{}  (nothing selected)' : JSON.stringify(preview.patch)}
+        </pre>
+        <p className="mt-1 font-mono text-stone-600">
+          snapshot on apply: {preview.snapshot_change_type === 'none' ? 'none (no field changes)' : preview.snapshot_change_type}
+        </p>
+        {preview.snapshot_changes.length > 0 ? (
+          <ul className="mt-0.5 list-disc pl-4 text-stone-500">
+            {preview.snapshot_changes.map((c) => (
+              <li key={c.field}>
+                {c.field}: {c.from === null ? '—' : c.from} → {c.to}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
 
       {isPiVerified ? (
         <div className="mt-3 rounded border border-status-risky/40 bg-red-50 px-3 py-2 text-xs text-status-risky">
@@ -274,7 +297,15 @@ export function EnrichmentPreviewPage() {
 
   const loadProducts = async () => {
     try {
-      setProducts(await listMyProducts());
+      const rows = await listMyProducts();
+      setProducts(rows);
+      // Auto-select the product whose EAN matches the looked-up source (load by EAN).
+      const wantEan = result?.ean ? result.ean.replace(/\D+/g, '') : '';
+      const match = wantEan ? rows.find((p) => (p.ean_code ?? '').replace(/\D+/g, '') === wantEan) : undefined;
+      if (match) {
+        setSelectedProductId(match.id);
+        resetSelection(result?.found ? compareEnrichment(match, result) : null);
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     }

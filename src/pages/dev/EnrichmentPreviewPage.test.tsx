@@ -57,6 +57,13 @@ describe('EnrichmentMergeView', () => {
     expect(t).toMatch(/Apply selected enrichment \(1\)/);
   });
 
+  it('shows the exact proposed write payload + the snapshot that would be created', () => {
+    const t = text(render(<EnrichmentMergeView {...mergeProps({ selected: ['protein_percent'] as EnrichableField[] })} />));
+    expect(t).toMatch(/proposed write payload/);
+    expect(t).toMatch(/protein_percent/);
+    expect(t).toMatch(/snapshot on apply: nutrition/);
+  });
+
   it('blocks a PI Verified product behind an explicit override', () => {
     const t = text(render(<EnrichmentMergeView {...mergeProps({ productStatus: 'pi_verified' })} />));
     expect(t).toMatch(/PI Verified/);

@@ -109,6 +109,36 @@ export function safeFillFields(comparison: EnrichmentComparison): EnrichableFiel
 
 export type EnrichmentPatch = Partial<Record<EnrichableField, number>>;
 
+export interface EnrichmentWritePreview {
+  /** the EXACT patch that would be written (nutrition allowlist only). */
+  patch: EnrichmentPatch;
+  /** the change_type the resulting snapshot would carry ('nutrition', or 'none' if no real change). */
+  snapshot_change_type: 'nutrition' | 'none';
+  /** the per-field from→to the snapshot would record. */
+  snapshot_changes: { field: EnrichableField; from: number | null; to: number }[];
+}
+
+/**
+ * Preview EXACTLY what a reviewed write would do: the patch (nutrition allowlist only) and the
+ * snapshot that would be appended (change_type + per-field from→to). Pure; computes nothing the
+ * service would not. A selected field whose value already matches stored produces no snapshot row.
+ */
+export function previewEnrichmentWrite(
+  comparison: EnrichmentComparison,
+  selected: ReadonlyArray<EnrichableField>,
+): EnrichmentWritePreview {
+  const patch = buildEnrichmentPatch(comparison, selected);
+  const sel = new Set(selected);
+  const snapshot_changes = comparison.fields
+    .filter((f) => sel.has(f.field) && f.incoming !== null && f.stored !== f.incoming)
+    .map((f) => ({ field: f.field, from: f.stored, to: f.incoming as number }));
+  return {
+    patch,
+    snapshot_change_type: snapshot_changes.length > 0 ? 'nutrition' : 'none',
+    snapshot_changes,
+  };
+}
+
 /**
  * Build the narrow write patch from the reviewer's selected fields. Only selected fields whose
  * incoming value is a real number are included; the `Record<EnrichableField, number>` type makes

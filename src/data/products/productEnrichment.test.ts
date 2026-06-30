@@ -7,6 +7,7 @@ import {
   ENRICHABLE_FIELDS,
   buildEnrichmentPatch,
   compareEnrichment,
+  previewEnrichmentWrite,
   safeFillFields,
   type EnrichmentTarget,
 } from './productEnrichment';
@@ -77,6 +78,32 @@ describe('buildEnrichmentPatch / safeFillFields', () => {
     expect(Object.keys(patch).every((k) => (ENRICHABLE_FIELDS as readonly string[]).includes(k))).toBe(true);
     expect(patch).not.toHaveProperty('pac_value');
     expect(patch).not.toHaveProperty('pod_value');
+  });
+});
+
+describe('previewEnrichmentWrite', () => {
+  it('previews the exact patch + the snapshot that would be created', () => {
+    const c = compareEnrichment({ fat_percent: 12 }, off()); // fat conflicts (12 vs 30.9), rest fill
+    const preview = previewEnrichmentWrite(c, ['fat_percent', 'protein_percent']);
+    expect(preview.patch).toEqual({ fat_percent: 30.9, protein_percent: 6.3 });
+    expect(preview.snapshot_change_type).toBe('nutrition');
+    expect(preview.snapshot_changes).toContainEqual({ field: 'fat_percent', from: 12, to: 30.9 });
+    expect(preview.snapshot_changes).toContainEqual({ field: 'protein_percent', from: null, to: 6.3 });
+  });
+
+  it('a skip field (no incoming value) yields an empty patch + no snapshot', () => {
+    const c = compareEnrichment({}, off({ nutrition: { ...off().nutrition, fat_percent: null } })); // fat incoming null → skip
+    const preview = previewEnrichmentWrite(c, ['fat_percent']);
+    expect(preview.patch).toEqual({}); // skip: null incoming → excluded
+    expect(preview.snapshot_change_type).toBe('none');
+    expect(preview.snapshot_changes).toHaveLength(0);
+  });
+
+  it('an agree field is a no-op write (in the patch, but records no snapshot change)', () => {
+    const c = compareEnrichment({ fat_percent: 30.9 }, off()); // fat agrees (equal)
+    const preview = previewEnrichmentWrite(c, ['fat_percent']);
+    expect(preview.snapshot_change_type).toBe('none'); // stored === incoming → no snapshot row
+    expect(preview.snapshot_changes).toHaveLength(0);
   });
 });
 
