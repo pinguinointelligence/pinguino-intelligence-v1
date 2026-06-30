@@ -8,6 +8,14 @@
 > public keyless sources (USDA FoodData Central, EFSA, manufacturer specs) and adversarially
 > source-checked (research block 2026-06-30). 2026-06-30.
 
+## Variant gap found 2026-06-30 — full-fat Greek yogurt
+Greek yogurt EXISTS (`PI-ING-000204 Greek Yogurt — Standard`, **7.5% fat**) but `PR-ING-000016/000017`
+are **10.8% fat** — the reference-linked handoff borrows the reference's composition, so it would
+understate fat by ~3.3pp. **Proposed:** a full-fat (≈10%) Greek-yogurt reference (composition from the
+Hacendado label, a real product; PAC/POD team-only). Structured in `referenceProposals.ts`
+(`greek_yogurt_full_fat`) + visible at `/dev/reference-proposals`. The 2%-MG "ligero" variants
+(`000018/000019`) likely need a separate light-greek reference too.
+
 ## Confirmed gaps (read-only search of 542 rows)
 - **Almond** — `nut` category has brazil/cashew/chestnut/hazelnut/macadamia/peanut/pistachio/walnut/poppy, but **no almond / almendra** of any form.
 - **Erythritol (and any polyol)** — `sweetener`/`sugar` has cane sugar, dextrose, fructose, glucose syrups, maltodextrin, lactose, sucrose, vanillin sugar — **no erythritol/maltitol/sorbitol/xylitol/isomalt**.

@@ -42,6 +42,23 @@ const PACPOD_BLOCK = 'Engine pac_value/pod_value are team-calibrated and not pub
 
 export const REFERENCE_PROPOSALS: ReferenceProposal[] = [
   {
+    key: 'greek_yogurt_full_fat',
+    proposed_name: 'Greek Yogurt (full-fat, ≈10% MG)',
+    category: 'dairy',
+    subcategory: 'greek_yogurt',
+    unlocks: ['PR-ING-000016', 'PR-ING-000017'],
+    // The existing "Greek Yogurt — Standard" (PI-ING-000204) is 7.5% fat; PR-ING-000016/017 are
+    // 10.8% fat, so the reference-linked handoff would understate fat by ~3.3pp. This proposes a
+    // FATTIER greek variant. Composition is from the Hacendado label (a real product), not invented.
+    known_composition: { fat: 10, carbohydrate: 4, total_sugars: 4, protein: 4, salt: 0.1, water: 81, total_solids: 19 },
+    missing_fields: ['pac_value', 'pod_value', 'representative water/total_solids for ~10% greek', 'protein band (label 3.9 is low for "greek" — strained vs greek-style)'],
+    needs_pacpod_calibration: true,
+    source_confidence: 'medium',
+    sources: ['Hacendado "Yogur griego natural" label (per 100 g)', 'existing PI-ING-000204 Greek Yogurt — Standard (lean variant)'],
+    readiness: 'needs_pacpod',
+    do_not_insert_reason: `${PACPOD_BLOCK} Also confirm whether this is a new PI-ING reference or a parameterised fat variant of PI-ING-000204.`,
+  },
+  {
     key: 'almond',
     proposed_name: 'Almond 100% (whole / ground / paste)',
     category: 'nut',
@@ -130,4 +147,29 @@ export const REFERENCE_PROPOSALS: ReferenceProposal[] = [
 /** Distinct PR product codes that at least one proposed reference would unlock. */
 export function proposalUnlockedProducts(): string[] {
   return [...new Set(REFERENCE_PROPOSALS.flatMap((p) => p.unlocks))].sort();
+}
+
+/** The concrete next step for a proposal — pure, derived from its readiness/fields. */
+export function proposalNextAction(p: ReferenceProposal): string {
+  if (p.readiness === 'ready') return 'Stage a reviewed seed migration (human applies).';
+  if (p.readiness === 'needs_source') return 'Find a verified composition source, then re-assess.';
+  if (p.readiness === 'unsafe') return 'Do not pursue until the safety blocker is resolved.';
+  return 'Team supplies calibrated PAC/POD (+ the listed missing fields); then a human inserts via a reviewed seed migration. No auto-insert.';
+}
+
+export interface ProposalFilter {
+  readiness?: ProposalReadiness | 'all';
+  category?: string; // 'all' | <category>
+  unlocks?: string; // substring of a PR code, or ''
+}
+
+/** Pure client-side filter over the proposals (readiness / category / unlocked-product substring). */
+export function filterProposals(proposals: readonly ReferenceProposal[], f: ProposalFilter): ReferenceProposal[] {
+  const want = (f.unlocks ?? '').trim().toLowerCase();
+  return proposals.filter((p) => {
+    if (f.readiness && f.readiness !== 'all' && p.readiness !== f.readiness) return false;
+    if (f.category && f.category !== 'all' && p.category !== f.category) return false;
+    if (want !== '' && !p.unlocks.some((u) => u.toLowerCase().includes(want))) return false;
+    return true;
+  });
 }

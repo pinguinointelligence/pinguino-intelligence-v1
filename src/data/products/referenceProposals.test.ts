@@ -2,13 +2,20 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REFERENCE_PROPOSALS, proposalUnlockedProducts } from './referenceProposals';
+import { REFERENCE_PROPOSALS, filterProposals, proposalNextAction, proposalUnlockedProducts } from './referenceProposals';
 
 describe('referenceProposals', () => {
-  it('covers the six missing-reference families', () => {
+  it('covers the missing-reference families + the full-fat greek yogurt variant gap', () => {
     expect(REFERENCE_PROPOSALS.map((p) => p.key)).toEqual([
-      'almond', 'erythritol', 'maltitol_polyols', 'steviol_stevia', 'sucralose', 'saccharin',
+      'greek_yogurt_full_fat', 'almond', 'erythritol', 'maltitol_polyols', 'steviol_stevia', 'sucralose', 'saccharin',
     ]);
+  });
+
+  it('the greek yogurt proposal targets the dairy category and unlocks 000016/000017', () => {
+    const greek = REFERENCE_PROPOSALS.find((p) => p.key === 'greek_yogurt_full_fat')!;
+    expect(greek.category).toBe('dairy');
+    expect(greek.unlocks).toEqual(['PR-ING-000016', 'PR-ING-000017']);
+    expect(greek.known_composition.fat).toBeGreaterThan(9); // fattier than the 7.5% lean ref
   });
 
   it('every proposal needs team pac/pod calibration and is NOT insert-ready', () => {
@@ -27,6 +34,19 @@ describe('referenceProposals', () => {
   it('uses schema-valid basement categories (never the invalid nut_paste)', () => {
     const valid = new Set(['dairy', 'sugar', 'fat', 'stabilizer', 'emulsifier', 'fruit', 'chocolate', 'nut', 'alcohol', 'water', 'flavor', 'salt', 'other']);
     for (const p of REFERENCE_PROPOSALS) expect(valid.has(p.category), `${p.key}:${p.category}`).toBe(true);
+  });
+
+  it('filterProposals filters by readiness, category, and unlocked-product substring', () => {
+    expect(filterProposals(REFERENCE_PROPOSALS, { readiness: 'needs_pacpod' }).length).toBe(REFERENCE_PROPOSALS.length); // all are needs_pacpod
+    expect(filterProposals(REFERENCE_PROPOSALS, { readiness: 'ready' }).length).toBe(0);
+    expect(filterProposals(REFERENCE_PROPOSALS, { category: 'dairy' }).map((p) => p.key)).toEqual(['greek_yogurt_full_fat']);
+    expect(filterProposals(REFERENCE_PROPOSALS, { unlocks: '000040' }).map((p) => p.key)).toEqual(['almond']);
+  });
+
+  it('proposalNextAction always describes the team-calibration gate for needs_pacpod', () => {
+    for (const p of REFERENCE_PROPOSALS) {
+      expect(proposalNextAction(p)).toMatch(/PAC\/POD/);
+    }
   });
 
   it('unlocks real PR product codes', () => {

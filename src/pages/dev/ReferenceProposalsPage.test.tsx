@@ -12,13 +12,19 @@ const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]
 
 describe('ReferenceProposalsPage', () => {
   it('lists the proposals with target, unlocks, missing fields, and a needs_pacpod badge', () => {
-    const t = text(render(<ReferenceProposalsPage />));
+    const html = render(<ReferenceProposalsPage />);
+    const t = text(html);
     expect(t).toMatch(/Basement reference proposals/);
     expect(t).toMatch(/Almond/);
     expect(t).toMatch(/Erythritol/);
     expect(t).toMatch(/PR-ING-000040/); // almond unlock
     expect(t).toMatch(/needs_pacpod/);
     expect(t).toMatch(/do not insert/i);
+    expect(t).toMatch(/Greek Yogurt/); // the full-fat greek gap
+    expect(t).toMatch(/No basement write/i);
+    expect(t).toMatch(/next action/i);
+    expect(t).toMatch(/team PAC\/POD calibration needed/i);
+    expect(html).toMatch(/aria-label="readiness filter"/);
   });
 });
 
