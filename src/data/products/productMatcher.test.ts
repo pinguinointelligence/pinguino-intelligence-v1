@@ -713,3 +713,65 @@ describe('productMatcher — purity & boundaries', () => {
     expect(/mapper_basement/i.test(code)).toBe(false);
   });
 });
+
+/* ── name-concept tiebreaker integration (narrow an ambiguous pool by name) ──── */
+
+describe('matchProduct — name tiebreaker over an ambiguous pool', () => {
+  // shared composition so >1 candidate pools at category_composition_similarity
+  const comp = { fat_percent: 50, carbohydrate_percent: 7, total_sugars_percent: 4, protein_percent: 22, salt_percent: 0.01 };
+  const nutRef = (id: string, name: string) => basementRow({ ingredient_id: id, ingredient_category: 'nut', ingredient_name_display: name, pac_value: 1, pod_value: 1, ...comp });
+
+  it('peanut butter narrows to the peanut paste (not hazelnut)', () => {
+    const pool = [nutRef('B-PEANUT', 'Peanut Paste'), nutRef('B-HAZELNUT', 'Hazelnut Paste')];
+    const r = matchProduct(productRow({ product_category: 'nut', product_name_display: 'Crema de cacahuete Hacendado', ...comp, ...engineReady }), pool);
+    expect(r.matched_basement_id).toBe('B-PEANUT');
+    expect(r.candidate_count).toBe(2); // pool preserved for audit
+    expect(r.mapper_notes).toMatch(/name tiebreaker narrowed/);
+  });
+
+  it('pistachio cream narrows to the pistachio reference (not hazelnut)', () => {
+    const pool = [nutRef('B-PISTACHIO', 'Pistachio Paste'), nutRef('B-HAZELNUT', 'Hazelnut Paste')];
+    const r = matchProduct(productRow({ product_category: 'nut', product_name_display: 'Crema de pistacho', ...comp, ...engineReady }), pool);
+    expect(r.matched_basement_id).toBe('B-PISTACHIO');
+  });
+
+  it('dark chocolate narrows to the dark chocolate reference (not white)', () => {
+    const choc = (id: string, name: string) => basementRow({ ingredient_id: id, ingredient_category: 'chocolate', ingredient_name_display: name, pac_value: 1, pod_value: 1, ...comp });
+    const r = matchProduct(productRow({ product_category: 'chocolate', product_name_display: 'Chocolate negro 72% cacao Hacendado', ...comp, ...engineReady }), [choc('B-WHITE', 'White Chocolate'), choc('B-DARK', 'Dark Chocolate 70%')]);
+    expect(r.matched_basement_id).toBe('B-DARK');
+  });
+
+  it('vanilla sugar narrows to the vanillin sugar reference (not plain sugar)', () => {
+    const sug = (id: string, name: string) => basementRow({ ingredient_id: id, ingredient_category: 'sweetener', ingredient_name_display: name, pac_value: 1, pod_value: 1, ...comp });
+    const r = matchProduct(productRow({ product_category: 'sweetener', product_name_display: 'Azúcar vainillado Hacendado', ...comp, ...engineReady }), [sug('B-SUGAR', 'Plain Sugar'), sug('B-VANILLIN', 'Vanillin Sugar')]);
+    expect(r.matched_basement_id).toBe('B-VANILLIN');
+  });
+
+  it('almond product stays ambiguous when NO almond reference exists (no false narrow to hazelnut/peanut)', () => {
+    const pool = [nutRef('B-HAZELNUT', 'Hazelnut Paste'), nutRef('B-PEANUT', 'Peanut Paste')];
+    const r = matchProduct(productRow({ product_category: 'nut', product_name_display: 'Almendra molida Hacendado', ...comp, ...engineReady }), pool);
+    expect(r.mapper_status).toBe('ambiguous');
+    expect(r.matched_basement_id).toBeNull();
+  });
+
+  it('yogurt does NOT narrow to condensed milk (narrows to the yogurt reference)', () => {
+    const dairy = (id: string, name: string) => basementRow({ ingredient_id: id, ingredient_category: 'dairy', ingredient_name_display: name, pac_value: 1, pod_value: 1, ...comp });
+    const r = matchProduct(productRow({ product_category: 'dairy', product_name_display: 'Yogur griego natural Hacendado', ...comp, ...engineReady }), [dairy('B-CONDENSED', 'Condensed Milk'), dairy('B-YOGURT', 'Greek Yogurt')]);
+    expect(r.matched_basement_id).toBe('B-YOGURT');
+    expect(r.matched_basement_id).not.toBe('B-CONDENSED');
+  });
+
+  it('protein drink (no recognized concept) stays ambiguous — does not narrow to yogurt', () => {
+    const dairy = (id: string, name: string) => basementRow({ ingredient_id: id, ingredient_category: 'dairy', ingredient_name_display: name, pac_value: 1, pod_value: 1, ...comp });
+    const r = matchProduct(productRow({ product_category: 'dairy', product_name_display: 'Batido alto en proteínas Hacendado', ...comp, ...engineReady }), [dairy('B-YOGURT', 'Greek Yogurt'), dairy('B-MILK2', 'Skimmed Milk')]);
+    expect(r.mapper_status).toBe('ambiguous');
+    expect(r.matched_basement_id).toBeNull();
+  });
+
+  it('coffee does not false-match when no coffee reference exists in the flavor pool', () => {
+    const flavor = (id: string, name: string) => basementRow({ ingredient_id: id, ingredient_category: 'flavor', ingredient_name_display: name, pac_value: 1, pod_value: 1, ...comp });
+    const r = matchProduct(productRow({ product_category: 'flavor', product_name_display: 'Café molido natural Hacendado', ...comp, ...engineReady }), [flavor('B-VANILLA', 'Vanilla Paste'), flavor('B-HAZELNUT-F', 'Hazelnut Paste')]);
+    expect(r.mapper_status).toBe('ambiguous');
+    expect(r.matched_basement_id).toBeNull();
+  });
+});

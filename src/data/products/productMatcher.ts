@@ -16,6 +16,7 @@
  * 0008 migration). NONE of these result fields exist in the database yet.
  */
 import { mapDatasetCategory } from '@/data/ingredients/categoryMapping';
+import { rankCandidatesByName } from '@/data/products/productNameTiebreak';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductRow } from '@/data/products/productRow';
 
@@ -294,10 +295,45 @@ export function matchProduct(
   }
 
   const { method, candidates } = hit;
-  const candidate_ids = candidates.slice(0, MAX_CANDIDATE_IDS).map((c) => c.ingredient_id);
+  const poolCount = candidates.length;
 
-  // ── ambiguous (more than one candidate at the winning level) ───────────────
-  if (candidates.length > 1) {
+  // ── deterministic NAME-CONCEPT tiebreaker over the winning pool ────────────
+  // Rank the pool by Spanish/English concept overlap with the product name, then NARROW to a
+  // single candidate ONLY when exactly one candidate holds the unique-maximum score (> 0). This
+  // never creates a match from a vague term (it only reorders/narrows an existing composition/
+  // category pool) and never narrows when there is no distinguishing name evidence (all 0, or a
+  // tie). A narrowed single still routes through the same missing-pac/pod logic below — so for
+  // products without their own pac/pod it becomes a needs_review SUGGESTION, never an auto-match.
+  let effective = candidates;
+  let tiebreakNote: string | null = null;
+  let orderedIds = candidates.map((c) => c.ingredient_id);
+  if (poolCount > 1) {
+    const ranked = rankCandidatesByName(
+      product.product_name_display ?? '',
+      candidates.map((c) => ({
+        id: c.ingredient_id,
+        name: (c.ingredient_name_display?.trim() || c.ingredient_name_internal) ?? '',
+      })),
+    );
+    orderedIds = ranked.map((r) => r.id);
+    const top = ranked[0];
+    const topCount = top ? ranked.filter((r) => r.score === top.score).length : 0;
+    const nextScore = ranked.length > 1 ? ranked[1]!.score : 0;
+    if (top && top.score > 0 && topCount === 1) {
+      const winner = candidates.find((c) => c.ingredient_id === top.id);
+      if (winner) {
+        effective = [winner];
+        tiebreakNote = `name tiebreaker narrowed ${poolCount}→1 to ${top.id} (concept score ${top.score} > next ${nextScore})`;
+      }
+    } else if (top && top.score > 0) {
+      tiebreakNote = `name tiebreaker ranked shortlist (top score ${top.score}, ${topCount}-way tie)`;
+    }
+  }
+
+  const candidate_ids = orderedIds.slice(0, MAX_CANDIDATE_IDS);
+
+  // ── ambiguous (still more than one candidate; no unique name winner) ───────
+  if (effective.length > 1) {
     return {
       mapper_status: 'ambiguous',
       match_method: method,
@@ -305,16 +341,16 @@ export function matchProduct(
       matched_basement_id: null,
       normalized_name,
       normalized_category,
-      needs_review_reason: `${candidates.length} candidates tie at ${method}`,
-      mapper_notes: [categoryNote, `candidates: ${candidate_ids.join(', ')}`].filter(Boolean).join('; '),
+      needs_review_reason: `${effective.length} candidates tie at ${method}`,
+      mapper_notes: [categoryNote, tiebreakNote, `candidates: ${candidate_ids.join(', ')}`].filter(Boolean).join('; '),
       missing_fields,
-      candidate_count: candidates.length,
+      candidate_count: poolCount,
       candidate_ids,
     };
   }
 
-  // ── exactly one candidate ──────────────────────────────────────────────────
-  const matched = candidates[0]!;
+  // ── exactly one candidate (natural single, or name-narrowed from the pool) ─
+  const matched = effective[0]!;
   const levelConfidence = confidenceForLevel(method, matched);
 
   // A single candidate, but the product is missing engine source values (pac/pod).
@@ -336,9 +372,9 @@ export function matchProduct(
         normalized_name,
         normalized_category,
         needs_review_reason: reason,
-        mapper_notes: categoryNote,
+        mapper_notes: [categoryNote, tiebreakNote].filter(Boolean).join('; ') || null,
         missing_fields,
-        candidate_count: 1,
+        candidate_count: poolCount,
         candidate_ids,
       };
     }
@@ -352,9 +388,9 @@ export function matchProduct(
     normalized_name,
     normalized_category,
     needs_review_reason: null,
-    mapper_notes: categoryNote,
+    mapper_notes: [categoryNote, tiebreakNote].filter(Boolean).join('; ') || null,
     missing_fields,
-    candidate_count: 1,
+    candidate_count: poolCount,
     candidate_ids,
   };
 }

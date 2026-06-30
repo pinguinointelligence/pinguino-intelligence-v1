@@ -36,7 +36,7 @@ const CONCEPT_SYNONYMS: Record<string, string[]> = {
   apricot: ['apricot', 'albaricoque'],
   banana: ['banana', 'platano'],
   coffee: ['coffee', 'cafe'],
-  vanilla: ['vanilla', 'vainilla'],
+  vanilla: ['vanilla', 'vainilla', 'vanillin', 'vainillado', 'vainillada'],
   sweetener: ['sweetener', 'edulcorante', 'edulcorantes'],
   erythritol: ['erythritol', 'eritritol'],
   stevia: ['stevia', 'steviol'],
