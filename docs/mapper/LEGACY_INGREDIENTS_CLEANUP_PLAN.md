@@ -24,6 +24,10 @@
 ## Recommendation
 **Option 1 now** (leave inert; the active invariant holds), then **Option 4 (or 2) as a gated, approved migration** once the owner confirms nothing external depends on it. Before any drop: snapshot/export the 542 rows, confirm no Edge Function / external job reads `public.ingredients`, and stage it as its own reversible migration.
 
+## Re-verified 2026-06-30 + non-destructive proposal staged
+Live state re-confirmed: **542 rows · 67 columns incl. `npac_value` · 1 RLS policy · ZERO `src/` references**.
+A **safe, reversible read-only-lock** proposal is staged (no DROP/column removal): [legacy_ingredients_readonly_lock.proposal.sql](legacy_ingredients_readonly_lock.proposal.sql) — it lives under `docs/` (NOT `supabase/migrations/`) so it is never auto-applied; a human promotes it to a real migration after confirming no external dependency. A guard test (`src/services/legacyIngredients.guard.test.ts`) asserts no service reads the legacy `ingredients` table, keeping it safe to lock/archive. The destructive drop stays OUT of the proposal (hard-stop).
+
 ## Guardrails
 - Do **not** drop/alter autonomously (hard-stop list: destructive ALTER / DROP).
 - The active "no `npac_value`" rule is enforced for `products` + `mapper_basement` + live code regardless of this table's fate.

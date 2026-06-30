@@ -2,7 +2,16 @@
 
 _The contract between the Google Drive "Mercadona_catalog" sheet and the app's CSV importer.
 The existing app upload already works — this documents the seam; it does NOT add a second
-importer. 2026-06-29._
+importer. Re-verified against the live Drive sheet 2026-06-30._
+
+## Live re-verification (2026-06-30, read-only via Drive connector)
+Inspected the live sheet's README + Products header. The 21 columns **still match** the parser's
+`HEADER_ALIASES` mapping below (Group · Subcategory · Product Name · Brand · Price · Package ·
+Price/kg · Mercadona Category · Mercadona URL · Ingredients (key) · Allergens · Kcal · Fat ·
+Sat.Fat · Carbs · Sugars · Protein · Salt · Storage · Notes · EAN). No contract drift.
+- **README nutrition provenance (verbatim):** _"From product labels via OpenFoodFacts / finditapp.es / press."_ → the catalog's nutrition was ALREADY sourced from OpenFoodFacts, so a later OFF re-enrichment of these products is **largely redundant** (and Hacendado private-label is 404 in OFF anyway). Enrichment value is for NON-catalog / branded products, not these 69.
+- **README count note:** header says _"all 70 products across 7 groups"_ but Total products = 69 (DB = 69). Treat 69 as authoritative; the "70" is a stale README figure.
+- **No products created or modified** during this inspection (read-only).
 
 ## Source
 - Google Drive sheet **"Mercadona_catalog"** (`docs.google.com/spreadsheets/d/1Z1HgPMRMy3yy0PSnb-xtI0L4KmAF2MCuO0luRdjaABA`), owner pinguinointelligence@gmail.com. 69 products, 7 groups (A Dairy, B Chocolate, C Nuts, D Frozen, E Protein, F Sin Azúcar, G Coffee/Vanilla).
