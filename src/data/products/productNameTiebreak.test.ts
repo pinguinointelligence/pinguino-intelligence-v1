@@ -55,6 +55,18 @@ describe('rankCandidatesByName', () => {
     expect(ranked.find((r) => r.id === 'choc')!.score).toBe(0);
   });
 
+  it('greek yogurt outranks plain yogurt (greek concept), but never a non-yogurt', () => {
+    const candidates = [
+      { id: 'plain', name: 'Natural Yogurt' },
+      { id: 'greek', name: 'Greek Yogurt' },
+      { id: 'cream', name: 'Polish Cream 12%' },
+    ];
+    const ranked = rankCandidatesByName('Yogur griego natural Hacendado', candidates);
+    expect(ranked[0]!.id).toBe('greek');
+    expect(ranked[0]!.score).toBeGreaterThan(ranked[1]!.score); // greek (2) > plain yogurt (1)
+    expect(ranked.find((r) => r.id === 'cream')!.score).toBe(0);
+  });
+
   it('distinguishes dark vs white chocolate while both share the chocolate concept', () => {
     const candidates = [
       { id: 'white', name: 'Chocolate blanco' },
@@ -63,6 +75,13 @@ describe('rankCandidatesByName', () => {
     const ranked = rankCandidatesByName('Chocolate negro 72% cacao', candidates);
     expect(ranked[0]!.id).toBe('dark');
     expect(ranked[0]!.score).toBeGreaterThan(ranked[1]!.score);
+  });
+
+  it('treats bitter / fondente as dark chocolate (domain synonyms)', () => {
+    expect(nameTiebreakScore('Chocolate negro 72%', 'Bitter Chocolate Power 80%')).toBeGreaterThan(0);
+    expect(nameTiebreakScore('Chocolate negro 72%', 'Dark Chocolate Irca Reno Fondente')).toBeGreaterThan(0);
+    // but a white chocolate shares only the generic chocolate concept, not dark
+    expect(nameTiebreakScore('Chocolate negro 72%', 'White Chocolate')).toBe(1);
   });
 
   it('is stable on ties (original order preserved)', () => {
