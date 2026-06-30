@@ -10,11 +10,11 @@ extend it. No fake OCR/internet systems; no paid APIs or secrets. 2026-06-29._
 | Subcategory→category fallback at import | **Built** | `mapRowToProductInsert` (`02c58db`) |
 | Duplicate prevention | **Built** | identity hash + per-owner normalized EAN/barcode unique indexes |
 | EAN/barcode normalization | **Built** | `0009` generated columns + `canonicalEan` |
-| Barcode **lookup** (external) | **Missing** | no lookup, no scan UI |
+| Barcode **lookup** (external) | **Partial** | keyless OFF fetch built (`services/openFoodFacts.ts`); no scan UI |
 | OCR / image intake | **Missing** | placeholder columns only (`product_image_url`, `detected_text`, `extracted_json`) |
-| Online enrichment | **Missing** | no network fetch anywhere |
-| Source confidence / conflict flags | **Partial** | red-flag detector built (`productRedFlags.ts`); no cross-source confidence/conflict yet |
-| Snapshots / versioning | **Missing** | `dataset_version` inert; no history table |
+| Online enrichment | **Built (reviewed merge)** | keyless OFF fetch → `productEnrichment.compareEnrichment` (fill/agree/conflict/skip) → `applyProductEnrichment` (nutrition-allowlist write + snapshot; PI Verified guarded) on `/dev/enrichment-preview` |
+| Source confidence / conflict flags | **Built** | `productRedFlags.ts` + `productSourceRanking.ts` (priority + conflict) + per-field enrichment conflict in `productEnrichment.ts` |
+| Snapshots / versioning | **Built** | `product_snapshots` (0011) + `productSnapshots.ts` + `/dev/snapshot-audit` history |
 
 ### Source of the current 69 products (Google Drive)
 The Mercadona catalog lives in the team Drive as the spreadsheet **"Mercadona_catalog"** (`docs.google.com/spreadsheets/d/1Z1HgPMRMy3yy0PSnb-xtI0L4KmAF2MCuO0luRdjaABA`, owner pinguinointelligence@gmail.com). Its README states, verbatim intent: _"Empty fields (deliberate, per spec): PAC/POD computed later by PINGÜINO engine; Milk solids / Cocoa solids / Fruit solids computed later; Approved for −11°C engine set by human reviewer"_ and _"Yellow rows: products flagged needs_review (sweeteners, polyols)"_. This confirms: the catalog carries **no water, no total_solids, no sugar-type breakdown, no PAC/POD** — exactly the DB state — so Drive cannot supply engine values; they are downstream (reference-linked) by design.
@@ -28,12 +28,12 @@ Every intake — CSV today, OCR/barcode/enrichment later — must converge on th
 
 ## Concrete slices (each its own gated PR; safety rules below)
 1. **Table upload** — ✅ done.
-2. **Source-confidence + provenance model** — add a per-field provenance tag (`label` / `catalog` / `ocr` / `enrichment` / `manual`) + an internal confidence. Pure model first; storage later (likely a JSON column → migration, **requires approval**). Feeds requirement #6.
-3. **Conflict flags** — extend the pure detector: cross-source mismatch (e.g. catalog sugars vs enrichment sugars) + the existing `productRedFlags` signals. Pure, no DB.
-4. **Barcode lookup** — a keyless, free source only (e.g. OpenFoodFacts, no API key). Read-only fetch → `ProductInsert` candidate + source confidence + conflict flags vs any existing row. **Network slice — build behind an explicit, tested adapter; no secrets; user-triggered, never automatic.**
-5. **OCR / image intake** — uploaded label image → text → `detected_text` → parse → candidate. OCR engine TBD but must be **keyless/local** (e.g. browser Tesseract.js) — no paid vision API. `incomplete_text` red flag already guards partial OCR.
-6. **Online enrichment** — generalize (4): keyless sources, source confidence, conflict flags, never overwrite a higher-confidence value silently. User-triggered.
-7. **Snapshots / versioning** — a `product_profile_snapshots` table capturing each profile state + provenance for the PI Verified audit trail (**migration → requires approval**).
+2. **Source-confidence + provenance model** — ⚠️ partial: `productSourceRanking` (priority + conflict + internal confidence) is built (pure). A persisted per-field provenance tag (`label`/`catalog`/`ocr`/`enrichment`/`manual`) still needs a JSON column → migration (**requires approval**).
+3. **Conflict flags** — ✅ done: `productEnrichment.compareEnrichment` classifies each field fill/agree/conflict/skip vs stored; `productSourceRanking` ranks sources; `productRedFlags` unchanged. Pure, no DB.
+4. **Barcode lookup** — ⚠️ partial: keyless OFF read-only fetch (`services/openFoodFacts.ts`) built + a reviewed merge UI. A barcode-**scan** UI is still missing. No secrets; user-triggered.
+5. **OCR / image intake** — ❌ still missing. Keyless/local only (e.g. browser Tesseract.js); `incomplete_text` red flag already guards partial OCR.
+6. **Online enrichment** — ✅ done (reviewed): `applyProductEnrichment` writes ONLY the label-nutrition allowlist, never overwrites a stronger source silently (OFF conflicts default to keep-stored), snapshots every change, and refuses a PI Verified product without an explicit override. User-triggered on `/dev/enrichment-preview`. **Note:** Hacendado private-label EANs aren't in OFF (404), so no real product has been enriched — the write path is tested, not yet exercised on a real product.
+7. **Snapshots / versioning** — ✅ done: `product_snapshots` (0011, append-only) + service + `/dev/snapshot-audit` read-only history.
 
 ## Safety rules (apply to every slice)
 - No paid external APIs; no secrets/keys committed; no `.env` writes.

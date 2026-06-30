@@ -3,7 +3,11 @@
 > **PROPOSAL — NOT APPLIED.** No write to `mapper_basement`. Per the rule "do not write unless
 > EVERY required value is sourced and provable", these are **not** applyable today: the engine
 > `pac_value`/`pod_value` are PINGÜINO-specific and **not publicly sourceable** — only the team's
-> calibration can produce them. Composition is partly public/label-sourced. 2026-06-29.
+> calibration can produce them. Composition is partly public/label-sourced. 2026-06-30.
+>
+> **Schema vocab**: `ingredient_category` is one of dairy, sugar, fat, stabilizer, emulsifier,
+> fruit, chocolate, nut, alcohol, water, flavor, salt, other (`docs/ingredient-database/ingredient.schema.json`).
+> `nut_paste` is NOT valid — almond is `nut` + a subcategory; polyols/high-intensity sweeteners are `sugar`.
 >
 > Builds on [BASEMENT_REFERENCE_GAP_PROPOSALS.md](BASEMENT_REFERENCE_GAP_PROPOSALS.md) (label data).
 
@@ -16,9 +20,9 @@
 
 ## Candidates
 
-### A. Almond paste / ground — `nut_paste` (proposed `PI-ING-000545`)
+### A. Almond — `nut` + subcategory `almond_whole`/`almond_ground`/`almond_paste` (proposed `PI-ING-000545`)
 - **Unlocks**: PR-ING-000040, 000041, 000042 (Almendra sin piel / natural / molida).
-- **Sourced (label + public, high confidence)**: fat ≈ 53, saturated_fat ≈ 4, protein ≈ 22, carbohydrate ≈ 7 (available), salt ≈ 0.01, water ≈ 4, total_solids ≈ 96, fiber ≈ 12 (public). Sugar is low (~4.5) and mostly sucrose (public).
+- **Sourced (USDA FDC 170567 + label, high confidence)**: fat 49.9 (label 53), saturated_fat 3.80 (label 4), protein 21.15 (label 22), carbohydrate 21.55 by-difference / **≈7–9 EU available** (label 7), total_sugars 4.35 (label 4.5; sucrose 3.95 / glucose 0.17 / fructose 0.11), salt ≈ 0.003–0.01 (reconcile), water 4.41, total_solids ≈ 95.6, fiber 12.5, kcal 579 USDA / 620 EU-label. The carb gap is an EU-available-carb vs USDA-by-difference artifact (fiber), not a conflict.
 - **REQUIRED, team-only (not sourceable)**: `pac_value`, `pod_value` — must follow the SAME verified process as the existing peanut/hazelnut/pistachio pastes (low values, sugar-driven). Sugar-type split: assume sucrose-dominant per public data, but confirm.
 - **Confidence**: composition **high**; pac/pod **pending team calibration**. **Lowest-risk** once pac/pod produced.
 
@@ -36,8 +40,13 @@
 - **Confidence**: composition trivial; pac/pod + handling **team-only**.
 
 ### E. Maltitol & other polyols (maltitol / sorbitol / xylitol / isomalt) — `sugar` / polyol
-- **Why**: the already-matched maltitol chocolate (PR-ING-000031) and future sugar-free products map to a polyol the base lacks as a standalone reference. Same engine treatment as erythritol (stored-value-first; sugar-breakdown fallback is 0 for polyols).
-- **Sourced**: composition trivial (~100% polyol; water/sugars 0). **REQUIRED, team-only**: engine-calibrated `pac_value`/`pod_value` per polyol (maltitol ≈ 90% sweetness + moderate PAC; sorbitol/xylitol differ) — **must** be team-supplied, not estimated.
+- **Why**: the already-matched maltitol chocolate (PR-ING-000031), PR-ING-000032 (choc 85% 0% azúcares), and future sugar-free products map to a polyol the base lacks as a standalone reference. Same engine treatment as erythritol (stored-value-first; sugar-breakdown fallback is 0 for polyols).
+- **Sourced**: composition trivial (~100% polyol; water/sugars 0). Relative sweetness ≈ maltitol 0.9× · sorbitol 0.6× · xylitol 1.0× · isomalt 0.5× (re-confirm table citation). **REQUIRED, team-only**: engine-calibrated `pac_value`/`pod_value` per polyol — maltitol MW 344 → moderate PAC (unlike erythritol's strong PAC) — **must** be team-supplied, not estimated.
+
+### F. Saccharin — `sugar` / high-intensity (proposed `PI-ING-000549`)
+- **Unlocks**: PR-ING-000063 (sacarina en sobres).
+- **Nature**: high-intensity, ~300× sucrose (up to ~500× low-dose). **Two profiles** — team decides: (A) pure additive (C₇H₅NO₃S, ~0 kcal, negligible PAC) or (B) bulked sachet (USDA FDC 169072: ~360 kcal, ~90 carb, ~85 sugars, 428 mg Na — PAC driven by the dextrose bulking agent). "Sobres" usually = B.
+- **REQUIRED, team-only**: engine `pac_value`/`pod_value`; resolve A-vs-B; confirm sachet net weight + bulking agent.
 
 ## Possible composition source URLs (composition ONLY — never PAC/POD)
 - USDA FoodData Central (almond, whole foods) — free, keyless.
