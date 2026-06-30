@@ -73,4 +73,27 @@ describe('My Products recipe-calculation safety', () => {
     const result = calculateRecipe(recipeWith(ing));
     expect(JSON.stringify(result)).not.toMatch(/E-407|estabilizante|INGREDIENTES/);
   });
+
+  it('a red-flagged product still calculates correctly but is flagged in provenance (warning, not corrupted math)', () => {
+    const flagged = product({ id: 'f', product_code: 'PR-ING-000032', product_name_display: 'Chocolate 0% azúcares edulcorante maltitol' });
+    const lib = buildProductEngineLibrary({ products: [flagged], referenceById: refById });
+    const ing = lib.ingredients[0]!;
+    // red flag is metadata — the recipe math is identical to the clean reference
+    const fromFlagged = calculateRecipe(recipeWith(ing));
+    const fromReference = calculateRecipe(recipeWith(ingredientRowToEngineIngredient(refRow())));
+    expect(fromFlagged.pac_points ?? NaN).toBeCloseTo(fromReference.pac_points ?? NaN, 9);
+    // ...but provenance warns the caller to gate it
+    const prov = lib.provenance.get('PR-ING-000032')!;
+    expect(prov.blocked_by_red_flags).toBe(true);
+    expect(prov.warnings.length).toBeGreaterThan(0);
+  });
+
+  it('rejected / null / draft products never enter the Studio library', () => {
+    const products = [
+      product({ id: 'r', product_code: 'PR-R', mapper_status: 'rejected', matched_basement_id: null }),
+      product({ id: 'n', product_code: 'PR-N', mapper_status: null, status: 'draft' }),
+      product({ id: 'd', product_code: 'PR-D', mapper_status: 'matched', status: 'draft' }),
+    ];
+    expect(buildProductEngineLibrary({ products, referenceById: refById }).ingredients).toHaveLength(0);
+  });
 });

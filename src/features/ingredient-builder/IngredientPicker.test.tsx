@@ -36,6 +36,7 @@ describe('IngredientPicker — My Products', () => {
     expect(text(html)).toContain('PR-ING-000010');
     expect(text(html)).toMatch(/PI Generated/);
     expect(text(html)).toMatch(/Reference-linked profile/);
+    expect(text(html)).toMatch(/PAC\/POD from approved reference/);
     expect(text(html)).toMatch(/not independently measured/);
     expect(html).not.toMatch(/%/); // no internal confidence percentage shown
     expect(html).not.toMatch(/Mapper/i); // never the internal "Mapper" word
