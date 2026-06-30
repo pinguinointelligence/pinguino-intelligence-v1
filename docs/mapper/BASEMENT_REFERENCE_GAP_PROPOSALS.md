@@ -84,6 +84,25 @@ maltitol chocolate already matched) are **red-flagged** (`sweetener_or_polyol`) 
 `productStatusDecision.ts`). Adding the references fixes the *mapping* (so they stop being
 false/no-match), not engine-readiness. Almond is the one non-red-flag unlock (a plain whole food).
 
+## Required-fields checklist (per reference, before any insert)
+Legend: ✅ sourced · 🟡 partial / reconcile · ⛔ team-calibration only (not publicly sourceable).
+
+| field | almond | erythritol | maltitol/polyols | stevia | sucralose | saccharin |
+|---|---|---|---|---|---|---|
+| category (`nut`/`sugar`) | ✅ nut | ✅ sugar | ✅ sugar | ✅ sugar | ✅ sugar | ✅ sugar |
+| subcategory | ✅ almond_* | ✅ polyol | ✅ polyol | ✅ high_intensity | ✅ high_intensity | ✅ high_intensity |
+| nutrition composition | ✅ USDA | ✅ | ✅ | ✅ (trace) | ✅ (trace) | 🟡 A vs B |
+| water / total_solids | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 A vs B |
+| sugar split / polyol split | ✅ | ✅ polyol 100 | ✅ polyol 100 | ✅ n/a | ✅ n/a | 🟡 A vs B |
+| relative sweetness (POD basis) | n/a | ✅ ~0.65× | ✅ 0.5–1.0× | ✅ 200–300× | ✅ ~600× | ✅ ~300× |
+| **engine `pac_value`/`pod_value`** | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+| source / provenance | ✅ | ✅ | 🟡 re-cite table | 🟡 drop 430× | 🟡 cite ranges | ✅ |
+| team calibration needed | yes (pac/pod) | yes (pac/pod) | yes (pac/pod) | yes (pac/pod + profile) | yes (pac/pod) | yes (pac/pod + A/B) |
+
+**Every reference is blocked on the same gate: engine `pac_value`/`pod_value` are team-calibration
+only.** Composition is sourced (almond fully; sweeteners trivially); the remaining 🟡 are citation
+clean-ups, not blockers. No reference is insert-ready until the team supplies pac/pod.
+
 ## Research provenance (this block)
 A 6-family research workflow (one keyless-source researcher + one adversarial source-verifier each,
 12 agents) gathered the figures above. **Every agent correctly deferred `pac_value`/`pod_value` to
