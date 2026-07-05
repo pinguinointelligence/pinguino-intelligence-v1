@@ -43,6 +43,12 @@ const CONCEPT_SYNONYMS: Record<string, string[]> = {
   lemon: ['lemon', 'limon'],
   coconut: ['coconut', 'coco'],
   coffee: ['coffee', 'cafe'],
+  // FORM signal for coffee only (see the gate in conceptsFromName): molido/ground distinguishes
+  // ground roasted coffee from bean/instant/substitute refs. Deliberately NO 'grano'/'grain'
+  // concept: Spanish "grano" (bean) and the English ref name "Grain Coffee" (a roasted-CEREAL
+  // coffee substitute, carb ~79) are FALSE FRIENDS — conflating them would narrow real coffee
+  // beans onto the cereal substitute.
+  ground_form: ['ground', 'molido', 'molida'],
   vanilla: ['vanilla', 'vainilla', 'vanillin', 'vainillado', 'vainillada'],
   sweetener: ['sweetener', 'edulcorante', 'edulcorantes'],
   erythritol: ['erythritol', 'eritritol'],
@@ -83,8 +89,9 @@ export function conceptsFromName(name: string): Set<string> {
     const hits = TOKEN_TO_CONCEPTS.get(token);
     if (hits) for (const c of hits) concepts.add(c);
   }
-  // `milk_choc` only counts when chocolate is also present (avoid plain milk → milk_choc noise)
-  if (concepts.has('milk_choc') && !concepts.has('chocolate')) concepts.delete('milk_choc');
+  // `ground_form` is a FORM signal that only means something alongside `coffee` — a form token
+  // alone must never rank/narrow (e.g. "Almendra molida" vs a "Ground …" reference).
+  if (concepts.has('ground_form') && !concepts.has('coffee')) concepts.delete('ground_form');
   return concepts;
 }
 

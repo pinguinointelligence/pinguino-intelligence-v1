@@ -16,7 +16,7 @@
  * 0008 migration). NONE of these result fields exist in the database yet.
  */
 import { mapDatasetCategory } from '@/data/ingredients/categoryMapping';
-import { rankCandidatesByName } from '@/data/products/productNameTiebreak';
+import { conceptsFromName, rankCandidatesByName } from '@/data/products/productNameTiebreak';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductRow } from '@/data/products/productRow';
 
@@ -221,12 +221,34 @@ export function matchProduct(
   // (e.g. emulsifier/fiber -> stabilizer, or the heterogeneous "other" bucket) would be
   // pooled with structurally unrelated products. Approximate-category products therefore
   // never match via composition/ingredient_type — only via EAN/exact-name/brand/fuzzy.
+  //
+  // ── narrow special-case: COFFEE ─────────────────────────────────────────────
+  // Coffee references live in the dataset category `coffee_tea`, which maps to the engine
+  // `flavor` bucket only APPROXIMATELY (exact:false) — so the exact-category pool can never
+  // surface them and a coffee product could not reach the coffee references at all. When the
+  // PRODUCT is an exact-`flavor` item whose NAME carries the coffee concept (deterministic
+  // "café"/"coffee" synonym), we ADDITIONALLY pool `coffee_tea` references whose NAME also
+  // carries the coffee concept. BOTH sides need explicit coffee name evidence, so tea
+  // references and generic flavor products stay excluded; no other approximate category is
+  // affected. (Ranking within the pool is still the name tiebreaker below — note the
+  // "Grain Coffee" cereal-substitute false friend documented in productNameTiebreak.)
+  const productConcepts = conceptsFromName(product.product_name_display ?? '');
+  const coffeeRefs: IngredientRow[] =
+    normalized_category === 'flavor' && categoryMatch?.exact && productConcepts.has('coffee')
+      ? basement.filter((b) => {
+          if ((b.ingredient_category ?? '').trim().toLowerCase() !== 'coffee_tea') return false;
+          const name = (b.ingredient_name_display ?? '').trim() || (b.ingredient_name_internal ?? '');
+          return conceptsFromName(name).has('coffee');
+        })
+      : [];
+
   const sameCategory = (): IngredientRow[] => {
     if (!normalized_category || !categoryMatch?.exact) return [];
-    return basement.filter((b) => {
+    const pool = basement.filter((b) => {
       const bcat = mapDatasetCategory(b.ingredient_category);
       return bcat.exact && bcat.category === normalized_category;
     });
+    return coffeeRefs.length > 0 ? [...pool, ...coffeeRefs] : pool;
   };
 
   const byComposition = (): IngredientRow[] => {
@@ -274,6 +296,10 @@ export function matchProduct(
 
   const categoryNote =
     categoryMatch && !categoryMatch.exact ? `category mapping approximate: ${categoryMatch.reason}` : null;
+  const specialPoolNote =
+    coffeeRefs.length > 0
+      ? `coffee special-case pool: +${coffeeRefs.length} coffee_tea reference(s) (coffee name evidence on both sides)`
+      : null;
 
   // ── no confident match ────────────────────────────────────────────────────
   if (!hit) {
@@ -342,7 +368,7 @@ export function matchProduct(
       normalized_name,
       normalized_category,
       needs_review_reason: `${effective.length} candidates tie at ${method}`,
-      mapper_notes: [categoryNote, tiebreakNote, `candidates: ${candidate_ids.join(', ')}`].filter(Boolean).join('; '),
+      mapper_notes: [categoryNote, specialPoolNote, tiebreakNote, `candidates: ${candidate_ids.join(', ')}`].filter(Boolean).join('; '),
       missing_fields,
       candidate_count: poolCount,
       candidate_ids,
@@ -372,7 +398,7 @@ export function matchProduct(
         normalized_name,
         normalized_category,
         needs_review_reason: reason,
-        mapper_notes: [categoryNote, tiebreakNote].filter(Boolean).join('; ') || null,
+        mapper_notes: [categoryNote, specialPoolNote, tiebreakNote].filter(Boolean).join('; ') || null,
         missing_fields,
         candidate_count: poolCount,
         candidate_ids,
@@ -388,7 +414,7 @@ export function matchProduct(
     normalized_name,
     normalized_category,
     needs_review_reason: null,
-    mapper_notes: [categoryNote, tiebreakNote].filter(Boolean).join('; ') || null,
+    mapper_notes: [categoryNote, specialPoolNote, tiebreakNote].filter(Boolean).join('; ') || null,
     missing_fields,
     candidate_count: poolCount,
     candidate_ids,

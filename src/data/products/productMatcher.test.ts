@@ -775,3 +775,60 @@ describe('matchProduct — name tiebreaker over an ambiguous pool', () => {
     expect(r.matched_basement_id).toBeNull();
   });
 });
+
+/* ── coffee special-case pool (coffee_tea refs, name-gated on BOTH sides) ────── */
+
+describe('matchProduct — coffee special-case pool', () => {
+  const coffeeTea = (id: string, name: string, comp: Partial<IngredientRow> = {}) =>
+    basementRow({ ingredient_id: id, ingredient_category: 'coffee_tea', ingredient_name_display: name, pac_value: 1, pod_value: 1, fat_percent: 15.4, carbohydrate_percent: 42.9, total_sugars_percent: 0, protein_percent: 12.4, salt_percent: 0.2, ...comp });
+  // mirrors the live basement: real roasted-ground coffee, instant coffee, the cereal "Grain
+  // Coffee" SUBSTITUTE (carb 79!), and two teas that must never pool with coffee products.
+  const ground = coffeeTea('B-GROUND', 'Coffee Bean Roasted Ground — Standard');
+  const instant = coffeeTea('B-INSTANT', 'Coffee Instant Powder — Standard', { fat_percent: 1.7, carbohydrate_percent: 45.5, total_sugars_percent: 6.5, protein_percent: 16.5, salt_percent: 0.102 });
+  const grainSub = coffeeTea('B-GRAIN-SUB', 'Grain Coffee — Standard', { fat_percent: 0.2, carbohydrate_percent: 79, total_sugars_percent: 12, protein_percent: 4.8, salt_percent: 0.19 });
+  const tea = coffeeTea('B-TEA', 'Matcha Tea — Standard');
+  const vanilla = basementRow({ ingredient_id: 'B-VANILLA-P', ingredient_category: 'flavor_paste', ingredient_name_display: 'Vanilla Paste Pi-Nuts', pac_value: 1, pod_value: 1 });
+  const pool = [vanilla, grainSub, ground, instant, tea];
+  const flavorProduct = (name: string) => productRow({ product_category: 'flavor', product_name_display: name, ...engineReady });
+
+  it('ground coffee (molido/espresso/mezcla) reaches the coffee refs and narrows to roasted-ground', () => {
+    for (const name of ['Café molido natural Hacendado', 'Café molido natural Hacendado Espresso', 'Café molido mezcla Hacendado Espresso']) {
+      const r = matchProduct(flavorProduct(name), pool);
+      expect(r.matched_basement_id, name).toBe('B-GROUND');
+      expect(r.mapper_notes, name).toMatch(/coffee special-case pool/);
+      expect(r.candidate_ids, name).not.toContain('B-TEA');
+    }
+  });
+
+  it('bean coffee (grano) REACHES the coffee refs but does NOT narrow — never onto the grain substitute', () => {
+    for (const name of ['Café en grano natural Hacendado', 'Café en grano extra fuerte Hacendado']) {
+      const r = matchProduct(flavorProduct(name), pool);
+      expect(r.mapper_status, name).toBe('ambiguous');
+      expect(r.matched_basement_id, name).toBeNull();
+      expect(r.candidate_ids, name).toEqual(expect.arrayContaining(['B-GRAIN-SUB', 'B-GROUND', 'B-INSTANT']));
+      expect(r.candidate_ids, name).not.toContain('B-TEA');
+      // the coffee refs rank above the non-coffee flavor paste
+      expect(r.candidate_ids!.indexOf('B-VANILLA-P'), name).toBeGreaterThan(r.candidate_ids!.indexOf('B-GROUND'));
+    }
+  });
+
+  it('vanilla aroma and generic flavor products never reach the coffee refs', () => {
+    for (const name of ['Aroma de vainilla Hacendado bote', 'Pasta saborizante genérica']) {
+      const r = matchProduct(flavorProduct(name), pool);
+      for (const id of ['B-GROUND', 'B-INSTANT', 'B-GRAIN-SUB', 'B-TEA']) {
+        expect(r.candidate_ids ?? [], `${name} → ${id}`).not.toContain(id);
+      }
+    }
+  });
+
+  it('a real coffee product (zeros composition, no pac/pod) becomes a needs_review SUGGESTION, never an auto-match', () => {
+    const real = productRow({
+      product_category: 'flavor', product_name_display: 'Café molido natural Hacendado',
+      fat_percent: 0, carbohydrate_percent: 0, total_sugars_percent: 0, protein_percent: 0, salt_percent: 0,
+    });
+    const r = matchProduct(real, pool);
+    expect(r.mapper_status).toBe('needs_review');
+    expect(r.matched_basement_id).toBe('B-GROUND');
+    expect(r.missing_fields).toEqual(['pac_value', 'pod_value']);
+  });
+});

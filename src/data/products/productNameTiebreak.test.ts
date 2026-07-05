@@ -99,6 +99,23 @@ describe('rankCandidatesByName', () => {
     expect(nameTiebreakScore('Chocolate negro 72%', 'White Chocolate')).toBe(1);
   });
 
+  it('coffee ground-form concept: molido/ground distinguishes the roasted-ground ref', () => {
+    expect(nameTiebreakScore('Café molido natural Hacendado', 'Coffee Bean Roasted Ground — Standard')).toBe(2);
+    expect(nameTiebreakScore('Café molido natural Hacendado', 'Grain Coffee — Standard')).toBe(1);
+    expect(nameTiebreakScore('Café molido natural Hacendado', 'Coffee Instant Powder — Standard')).toBe(1);
+  });
+
+  it('"grano" is NEVER conflated with the "Grain Coffee" cereal substitute (false friend)', () => {
+    // bean coffee shares ONLY the coffee concept with every coffee ref — no grano→grain link
+    expect(nameTiebreakScore('Café en grano natural', 'Grain Coffee — Standard')).toBe(1);
+    expect(nameTiebreakScore('Café en grano natural', 'Coffee Bean Roasted Ground — Standard')).toBe(1);
+  });
+
+  it('a ground/molido form token alone never matches (gated to coffee)', () => {
+    expect(nameTiebreakScore('Almendra molida', 'Coffee Bean Roasted Ground — Standard')).toBe(0);
+    expect(nameTiebreakScore('Almendra molida', 'Ground Hazelnut Paste')).toBe(0);
+  });
+
   it('is stable on ties (original order preserved)', () => {
     const candidates = [
       { id: 'a', name: 'Plain Sugar' },
