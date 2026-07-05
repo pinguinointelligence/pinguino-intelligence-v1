@@ -27,6 +27,7 @@ const sampleRow = (over: Partial<ReviewRow> = {}): ReviewRow => ({
   code: 'PR-ING-000035', id: 'pid-35', product_name: 'Pistacho natural', product_category: 'nut_paste',
   mapper_status: 'needs_review', product_status: 'draft', recommended_status: 'draft',
   red_flag_codes: [], candidate_count: 2,
+  match_method: 'category_composition_similarity', match_notes: null,
   product_fat: 45, product_carbohydrate: 28, product_sugars: 8, product_protein: 20, product_salt: 0.05,
   candidates: [
     { basement_id: 'PI-ING-000413', name: 'Delipaste Pure Pistachio', category: 'nut', subcategory: 'pistachio', fat: 44, carbohydrate: 30, sugars: 10, protein: 18, salt: 0.1, pac: 12, pod: 9, mean_pp: 1.2 },
@@ -88,6 +89,18 @@ describe('reviewRowTiebreak + tiebreak filter', () => {
     expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'narrowed' }).map((r) => r.id)).toEqual(['choc']);
     expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'ranked' }).map((r) => r.id)).toEqual(['pist']);
     expect(filterReviewRows(rows, { ...DEFAULT_REVIEW_FILTERS, tiebreakFilter: 'no_hit' }).map((r) => r.id)).toEqual(['none']);
+  });
+
+  it('shows the pool method + the matcher audit notes (coffee special-case evidence)', () => {
+    const coffee = sampleRow({
+      id: 'cof', product_name: 'Café molido natural', product_category: 'flavor',
+      match_method: 'ingredient_type',
+      match_notes: 'coffee special-case pool: +3 coffee_tea reference(s) (coffee name evidence on both sides); name tiebreaker narrowed 35→1 to PI-ING-000166',
+    });
+    const t = visibleText(render(<MapperReviewView {...baseProps} rows={[coffee]} loaded />));
+    expect(t).toMatch(/pool: ingredient_type/);
+    expect(t).toMatch(/coffee special-case pool/);
+    expect(t).toMatch(/name tiebreaker narrowed/);
   });
 
   it('shows the tiebreak evidence line + the becomes-status hint in the view', () => {

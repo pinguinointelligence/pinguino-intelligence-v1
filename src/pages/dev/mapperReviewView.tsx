@@ -35,6 +35,10 @@ export interface ReviewRow {
   red_flag_codes: string[];
   /** total composition candidates (may exceed the displayed shortlist). */
   candidate_count: number;
+  /** the matcher level that produced the shortlist (composition / ingredient_type / …). */
+  match_method: string;
+  /** the matcher's own audit notes (category-pool reason, coffee special-case, tiebreak). */
+  match_notes: string | null;
   product_fat: number | string | null;
   product_carbohydrate: number | string | null;
   product_sugars: number | string | null;
@@ -154,10 +158,14 @@ export function MapperReviewView({
 
               <p className="mt-1 text-xs text-stone-500">
                 recommended status: <strong>{r.recommended_status}</strong> · candidates: {r.candidate_count}
+                {r.candidate_count > 0 ? <span> · pool: {r.match_method}</span> : null}
                 {r.red_flag_codes.length > 0 ? (
                   <span className="text-status-risky"> · red flags: {r.red_flag_codes.join(', ')}</span>
                 ) : null}
               </p>
+              {r.match_notes ? (
+                <p className="mt-1 font-mono text-xs text-stone-400">notes: {r.match_notes}</p>
+              ) : null}
 
               <p className="mt-2 font-mono text-xs text-stone-600">
                 product · fat {cell(r.product_fat)} · carb {cell(r.product_carbohydrate)} · sugar{' '}

@@ -64,7 +64,10 @@ export function MapperReviewPage() {
       const reviewRows: ReviewRow[] = products.map((p) => {
         const reference = p.matched_basement_id ? (byId.get(p.matched_basement_id) ?? null) : null;
         const result = matchProduct(p, ingredients); // PURE compute — no write
-        const compIds = result.match_method === 'category_composition_similarity' ? (result.candidate_ids ?? []) : [];
+        // Composition AND ingredient_type shortlists are reviewable (the coffee special-case pool
+        // surfaces at ingredient_type — without this, its shortlist would be invisible here).
+        const poolMethods = ['category_composition_similarity', 'ingredient_type'];
+        const compIds = poolMethods.includes(result.match_method) ? (result.candidate_ids ?? []) : [];
         const candidates: CandidateView[] = compIds
           .slice(0, MAX_DISPLAY)
           .map((bid) => byId.get(bid))
@@ -82,8 +85,12 @@ export function MapperReviewPage() {
             pac: c.pac_value,
             pod: c.pod_value,
             mean_pp: meanPp(p, c),
-          }))
-          .sort((a, b) => Number(a.mean_pp ?? 99) - Number(b.mean_pp ?? 99));
+          }));
+        // Composition rows read best by distance; ingredient_type rows keep the matcher's
+        // name-tiebreak ranking (candidate_ids are already ranked best-first).
+        if (result.match_method === 'category_composition_similarity') {
+          candidates.sort((a, b) => Number(a.mean_pp ?? 99) - Number(b.mean_pp ?? 99));
+        }
         const decision = decideProductStatus({ ...p, reference });
         return {
           code: p.product_code,
@@ -95,6 +102,8 @@ export function MapperReviewPage() {
           recommended_status: decision.recommended_status,
           red_flag_codes: detectRedFlags(p).map((f) => f.code),
           candidate_count: compIds.length,
+          match_method: result.match_method,
+          match_notes: result.mapper_notes,
           product_fat: p.fat_percent,
           product_carbohydrate: p.carbohydrate_percent,
           product_sugars: p.total_sugars_percent,
