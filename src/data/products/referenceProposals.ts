@@ -59,6 +59,41 @@ export const REFERENCE_PROPOSALS: ReferenceProposal[] = [
     do_not_insert_reason: `${PACPOD_BLOCK} Also confirm whether this is a new PI-ING reference or a parameterised fat variant of PI-ING-000204.`,
   },
   {
+    key: 'skim_milk',
+    proposed_name: 'Skimmed Milk (liquid, ≈0.1–0.3% fat)',
+    category: 'dairy',
+    subcategory: 'milk_skimmed',
+    unlocks: ['PR-ING-000004'],
+    // The basement has NO liquid skimmed milk (nothing between the 1.6-fat Milk 1.5% and the
+    // powders) — the fat-band audit found zero in-band refs for "desnatada". Label composition
+    // from the real product (Hacendado leche desnatada).
+    known_composition: { fat: 0.3, carbohydrate: 4.8, total_sugars: 4.8, protein: 3.2, salt: 0.13, water: 91, total_solids: 9 },
+    missing_fields: ['pac_value', 'pod_value', 'representative water/total_solids for skim milk'],
+    needs_pacpod_calibration: true,
+    source_confidence: 'medium',
+    sources: ['Hacendado "Leche desnatada" label (per 100 g)', 'fat-band audit: no milk ref inside skim band 0–0.5'],
+    readiness: 'needs_pacpod',
+    do_not_insert_reason: PACPOD_BLOCK,
+  },
+  {
+    key: 'lactose_free_milk',
+    proposed_name: 'Lactose-free Milk (semi / whole, hydrolysed lactose)',
+    category: 'dairy',
+    subcategory: 'milk_lactose_free',
+    unlocks: ['PR-ING-000007', 'PR-ING-000008'],
+    // Lactose-free milk hydrolyses lactose into glucose+galactose: the same total sugars but
+    // monosaccharides — HIGHER freezing-point depression and sweetness than regular milk. A
+    // regular-milk reference must not represent it (the fat-band helper deliberately excludes
+    // "sin lactosa" names), so a dedicated reference with team-calibrated pac/pod is needed.
+    known_composition: { fat: 1.55, carbohydrate: 4.7, total_sugars: 4.7, protein: 3.2, salt: 0.13 },
+    missing_fields: ['pac_value', 'pod_value (hydrolysed glucose+galactose — NOT regular-milk values)', 'whole vs semi variant split', 'water/total_solids'],
+    needs_pacpod_calibration: true,
+    source_confidence: 'medium',
+    sources: ['Hacendado "sin lactosa" labels (per 100 g)', 'lactase hydrolysis: lactose → glucose + galactose (standard dairy science)'],
+    readiness: 'needs_pacpod',
+    do_not_insert_reason: `${PACPOD_BLOCK} Hydrolysed sugars need their own calibration — never copy regular-milk pac/pod.`,
+  },
+  {
     key: 'almond',
     proposed_name: 'Almond 100% (whole / ground / paste)',
     category: 'nut',

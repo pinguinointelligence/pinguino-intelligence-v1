@@ -13,10 +13,19 @@ import {
 } from './referenceProposals';
 
 describe('referenceProposals', () => {
-  it('covers the missing-reference families + the full-fat greek yogurt variant gap', () => {
+  it('covers the missing-reference families + the dairy variant gaps', () => {
     expect(REFERENCE_PROPOSALS.map((p) => p.key)).toEqual([
-      'greek_yogurt_full_fat', 'almond', 'erythritol', 'maltitol_polyols', 'steviol_stevia', 'sucralose', 'saccharin',
+      'greek_yogurt_full_fat', 'skim_milk', 'lactose_free_milk',
+      'almond', 'erythritol', 'maltitol_polyols', 'steviol_stevia', 'sucralose', 'saccharin',
     ]);
+  });
+
+  it('the milk variant gaps target dairy and unlock the parked milk products', () => {
+    const skim = REFERENCE_PROPOSALS.find((p) => p.key === 'skim_milk')!;
+    expect(skim.unlocks).toEqual(['PR-ING-000004']);
+    const lf = REFERENCE_PROPOSALS.find((p) => p.key === 'lactose_free_milk')!;
+    expect(lf.unlocks).toEqual(['PR-ING-000007', 'PR-ING-000008']);
+    expect(lf.do_not_insert_reason).toMatch(/never copy regular-milk pac\/pod/i);
   });
 
   it('the greek yogurt proposal targets the dairy category and unlocks 000016/000017', () => {
@@ -47,7 +56,7 @@ describe('referenceProposals', () => {
   it('filterProposals filters by readiness, category, and unlocked-product substring', () => {
     expect(filterProposals(REFERENCE_PROPOSALS, { readiness: 'needs_pacpod' }).length).toBe(REFERENCE_PROPOSALS.length); // all are needs_pacpod
     expect(filterProposals(REFERENCE_PROPOSALS, { readiness: 'ready' }).length).toBe(0);
-    expect(filterProposals(REFERENCE_PROPOSALS, { category: 'dairy' }).map((p) => p.key)).toEqual(['greek_yogurt_full_fat']);
+    expect(filterProposals(REFERENCE_PROPOSALS, { category: 'dairy' }).map((p) => p.key)).toEqual(['greek_yogurt_full_fat', 'skim_milk', 'lactose_free_milk']);
     expect(filterProposals(REFERENCE_PROPOSALS, { unlocks: '000040' }).map((p) => p.key)).toEqual(['almond']);
   });
 

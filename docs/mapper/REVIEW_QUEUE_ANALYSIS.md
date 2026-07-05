@@ -49,6 +49,37 @@ Vanilla 000069 stays parked separately: a zero-composition **aroma** vs vanilla 
 
 → After this block: **46 null · 20 matched · 20 Studio-eligible.**
 
+### Milk fat-band — RESOLVED for 3 products (2026-07-05)
+A deterministic **fat-band** helper (`productMilkFatBand`, wired into `matchProduct`) maps a declared
+milk type to a band (whole 3.0–3.8 · semi 1.0–1.8 · skim 0–0.5) checked against the refs' STORED fat;
+narrowing happens only when exactly one milk-named ref is in-band; lactose-free/fortified never band.
+- **Confirmed (3):** 000003 semidesnatada (1.55) → **PI-ING-000234 Milk 1.5%** (the ONLY semi-band ref;
+  the 2% ref is out of band); 000002 + 000005 entera (3.6) → **PI-ING-000236 Milk 3,5%** (fat-closest
+  whole ref, Δ0.046 vs 0.106; all three whole-band refs carry **identical engine values** pac 5.285 /
+  pod 0.752, so the pick cannot alter recipe math). Reference-linked; pac/pod null.
+- **Parked with reference gaps:** 000004 desnatada — **no liquid skimmed-milk ref exists** (everything
+  under 1.6 fat is powder/concentrate) → proposal `skim_milk`; 000007/000008 sin lactosa — hydrolysed
+  lactose (glucose+galactose) has different freezing/sweetness behaviour, so a regular-milk ref must
+  not represent them → proposal `lactose_free_milk`; 000009 +Proteínas — red-flag (fortified).
+
+→ After this block: **43 null · 23 matched · 23 Studio-eligible.**
+
+## Remaining 43-null grouping (recomputed 2026-07-05)
+| group | products | state |
+|---|---|---|
+| milk variant gaps | 000004 (skim), 000007/000008 (lactose-free) | blocked on `skim_milk` / `lactose_free_milk` proposals |
+| greek yogurt gap | 000016/000017 (full-fat), 000018/000019 (2% ligero) | blocked on `greek_yogurt_full_fat` (+ a light variant) |
+| cultured dairy | 000014 yogur natural, 000021 sin-lactosa yogurt, 000022/000023 kéfir | human pick / no kefir ref; ranked shortlists in the workstation |
+| protein red-flags | 000009, 000045, 000051/052/053/055/056 | never auto-verify; parked |
+| chocolate percent/tie | 000026 (3-way milk-choc tie), 000028 (7 dark refs 70.5–74%) | human pick |
+| cocoa powders + creams | 000033/000034, 000037/038/039 | composite / sub-class review |
+| pistachio | 000035 | raw nut vs 2 paste refs — human pick |
+| almonds | 000040/041/042 | blocked on `almond` proposal |
+| fruit blends + 0% jams | 000048/049/050, 000057/058/059 | composite / red-flagged |
+| sweeteners | 000060/061/062/063 | blocked on polyol/high-intensity proposals + red-flagged |
+| coffee remainder | 000068 torrefacto | compositional variant — parked |
+| vanilla | 000069 | aroma vs paste form mismatch |
+
 ## Buckets (with next action)
 
 ## Buckets (with next action)

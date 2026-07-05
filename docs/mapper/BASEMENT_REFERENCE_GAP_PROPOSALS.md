@@ -16,6 +16,16 @@ Hacendado label, a real product; PAC/POD team-only). Structured in `referencePro
 (`greek_yogurt_full_fat`) + visible at `/dev/reference-proposals`. The 2%-MG "ligero" variants
 (`000018/000019`) likely need a separate light-greek reference too.
 
+## Milk variant gaps found 2026-07-05 (fat-band audit)
+- **Skimmed liquid milk** — the base has NO liquid milk under 1.6% fat (only powders/concentrates), so
+  `PR-ING-000004 Leche desnatada` (0.3% fat) has zero in-band candidates. Proposal `skim_milk`
+  (unlocks 000004); composition from the real label; PAC/POD team-only.
+- **Lactose-free milk** — "sin lactosa" hydrolyses lactose to glucose+galactose (same total sugars,
+  different freezing/sweetness behaviour), so a regular-milk reference must not represent
+  `PR-ING-000007/000008`; the fat-band helper deliberately refuses to band them. Proposal
+  `lactose_free_milk`; **never copy regular-milk pac/pod** — hydrolysed sugars need their own calibration.
+Both are staged in `referenceProposals.ts` + `/dev/reference-proposals` (checklist + LOCAL calibration drafts).
+
 ## Confirmed gaps (read-only search of 542 rows)
 - **Almond** — `nut` category has brazil/cashew/chestnut/hazelnut/macadamia/peanut/pistachio/walnut/poppy, but **no almond / almendra** of any form.
 - **Erythritol (and any polyol)** — `sweetener`/`sugar` has cane sugar, dextrose, fructose, glucose syrups, maltodextrin, lactose, sucrose, vanillin sugar — **no erythritol/maltitol/sorbitol/xylitol/isomalt**.
