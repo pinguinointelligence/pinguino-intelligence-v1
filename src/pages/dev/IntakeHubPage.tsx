@@ -7,7 +7,7 @@
  *   • CSV / table upload  → working (/products/import)
  *   • Barcode / EAN lookup → working, keyless OFF (/dev/enrichment-preview)
  *   • Online enrichment    → working, reviewed merge (/dev/enrichment-preview)
- *   • Image / label OCR    → PLANNED (keyless/local only, e.g. browser Tesseract.js) — not available
+ *   • Image / label OCR    → PLANNED (keyless/local only, an in-browser engine) — not available
  *   • Drive / catalog      → contract doc (no live Drive import here)
  *
  * Boundaries (IntakeHubPage.security.test.ts): DEV-only; no service/DB write; no OCR engine; no
@@ -17,6 +17,18 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { classifyIntakeInput } from '@/data/products/intakeClassifier';
+import {
+  ACCEPTED_LABEL_IMAGE_TYPES,
+  isAcceptedLabelImage,
+  parseNutritionLabelImage,
+  type LabelImageMeta,
+} from '@/data/products/nutritionLabelOcr';
+
+/** The planned extraction fields shown with each queued label image (schema preview only). */
+const PLANNED_OCR_FIELDS =
+  'product name · brand · EAN · nutrition per 100g (fat, sat. fat, carbs, sugars, protein, salt, kcal) · ingredients text · allergens · image metadata';
+
+const kb = (bytes: number | null) => (bytes === null ? '—' : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 type IntakeState = 'working' | 'planned';
 
@@ -53,7 +65,7 @@ const SECTIONS: IntakeSection[] = [
   {
     title: 'Image / label OCR',
     state: 'planned',
-    body: 'NOT AVAILABLE. Planned as keyless/local only (e.g. browser Tesseract.js) — no paid vision API, no fabricated text. The incomplete_text red flag already guards partial OCR. detected_text/extracted_json columns exist as placeholders.',
+    body: 'NOT AVAILABLE. Planned as keyless/local only (a local in-browser engine) — no paid vision API, no fabricated text. The incomplete_text red flag already guards partial OCR. detected_text/extracted_json columns exist as placeholders.',
   },
   {
     title: 'Drive / catalog import',
@@ -78,6 +90,8 @@ function StateBadge({ state }: { state: IntakeState }) {
 
 export function IntakeHubPage() {
   const [probe, setProbe] = useState('');
+  // Image intake queue — file METADATA only (name/size/mime). Contents are never read.
+  const [labelQueue, setLabelQueue] = useState<LabelImageMeta[]>([]);
 
   if (!import.meta.env.DEV) return <NotFoundPage />;
 
@@ -104,18 +118,50 @@ export function IntakeHubPage() {
           onChange={(e) => setProbe(e.target.value)}
         />
         <label className="mt-2 block text-xs text-stone-500">
-          …or pick a file (classified by NAME only — the file is never read or uploaded):
+          …or pick files (classified by NAME only — contents are never read or uploaded; a mixed
+          batch routes each file, and accepted label images join the OCR queue):
           <input
             type="file"
+            multiple
             aria-label="classify a file"
             accept=".csv,.tsv,.xlsx,.xls,image/*"
             className="mt-1 block w-full text-xs"
             onChange={(e) => {
-              const f = e.target.files && e.target.files[0];
-              if (f) setProbe(f.name);
+              const files = [...(e.target.files ?? [])];
+              if (files.length === 0) return;
+              const images = files.filter((f) => isAcceptedLabelImage(f.type || null, f.name));
+              if (images.length > 0) {
+                setLabelQueue((prev) => [
+                  ...prev,
+                  ...images
+                    .filter((f) => !prev.some((q) => q.filename === f.name))
+                    .map((f) => ({ filename: f.name, size_bytes: f.size, mime: f.type || null })),
+                ]);
+              }
+              const readout = files.find((f) => !isAcceptedLabelImage(f.type || null, f.name)) ?? files[0]!;
+              setProbe(readout.name);
             }}
           />
         </label>
+
+        {labelQueue.length > 0 ? (
+          <div className="mt-3 rounded border border-stone-100 bg-stone-50 px-2 py-1.5 text-xs">
+            <p className="font-mono text-stone-600">
+              label-image OCR queue ({labelQueue.length}) · accepted: {ACCEPTED_LABEL_IMAGE_TYPES.join(', ')}
+            </p>
+            <ul className="mt-1 space-y-0.5">
+              {labelQueue.map((img) => (
+                <li key={img.filename} className="font-mono text-stone-500">
+                  {img.filename} · {kb(img.size_bytes)} · {img.mime ?? '—'} ·{' '}
+                  <span className="text-amber-700">OCR {parseNutritionLabelImage(img).status.replace('_', ' ')} — pending, not connected</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-stone-500">
+              planned output schema: {PLANNED_OCR_FIELDS}. No text is extracted today — keyless/local OCR only when built.
+            </p>
+          </div>
+        ) : null}
         {classified ? (
           <div className="mt-2 text-xs">
             <p className="font-mono text-stone-600">

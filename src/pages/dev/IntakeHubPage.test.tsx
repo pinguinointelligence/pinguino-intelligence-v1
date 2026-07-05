@@ -38,14 +38,21 @@ describe('IntakeHubPage', () => {
     expect(html).toMatch(/placeholder="catalog\.csv/);
   });
 
-  it('offers a file picker that classifies by NAME only (never reads the file)', () => {
+  it('offers a multi-file picker that classifies by NAME only (never reads contents)', () => {
     const html = render(<IntakeHubPage />);
     expect(html).toMatch(/type="file"/);
+    expect(html).toMatch(/multiple/);
     expect(html).toMatch(/accept="\.csv,\.tsv,\.xlsx,\.xls,image\/\*"/);
     expect(text(html)).toMatch(/never read or uploaded/);
     // the page never reads file CONTENTS — no FileReader / arrayBuffer / .text() call
     const src = readFileSync(join(resolve(import.meta.dirname), 'IntakeHubPage.tsx'), 'utf8');
     expect(/FileReader|arrayBuffer|\.text\(\)|readAsText/.test(src)).toBe(false);
+  });
+
+  it('the OCR queue never fakes text — the page uses the not_implemented adapter only', () => {
+    const src = readFileSync(join(resolve(import.meta.dirname), 'IntakeHubPage.tsx'), 'utf8');
+    expect(src.includes('parseNutritionLabelImage')).toBe(true); // the honest adapter seam
+    expect(/tesseract|createWorker|vision\.googleapis/i.test(src)).toBe(false);
   });
 });
 
