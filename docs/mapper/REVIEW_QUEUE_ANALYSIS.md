@@ -31,15 +31,23 @@ Now: **51 null · 15 matched · 15 Studio-eligible.** New reference gap noted: *
 - **PR-ING-000027 Chocolate con leche fundir → PI-ING-000122 (Milk Chocolate Couverture)** — the clearest milk-chocolate in the pool (Δ0.69; next milk-choc Δ1.70, a 2.5× gap) and semantically apt ("fundir"=for-melting=couverture). Reference-linked; **pac/pod null**.
 - **Parked:** 000026 milk choc (3-way tie at Δ1.28); 000028 dark choc (**percent-level ambiguous** — 7 dark refs at 70.5/72/74%); 000035 pistachio (2 close paste/pulp refs vs a raw nut). → **50 null · 16 matched · 16 Studio-eligible.**
 
-### Category-mapping limitation found (2026-06-30) — coffee
-The 5 coffee products (000064-068, `product_category` = `flavor`) cannot reach the **coffee references
-that DO exist** ("Coffee Bean Roasted Ground", "Coffee Instant Powder", "Grain Coffee") because those
-refs sit in `coffee_tea`, which `mapDatasetCategory` maps to engine `flavor` via an **approximation**
-(`exact: false`); the matcher's composition/ingredient_type pooling requires an EXACT category on both
-sides, so approx-category refs are excluded. This is a **matcher category-mapping constraint, not a
-tiebreaker gap** — no name concept can fix it. A safe fix (letting flavor products pool with coffee_tea
-refs) would be a scoped matcher change to weigh against mis-pooling tea/other flavors; deferred, not done.
-Vanilla 000069 is a separate case: a zero-composition **aroma** vs vanilla **paste** refs (form mismatch).
+### Coffee — RESOLVED (2026-07-05): scoped special-case pool + 4 confirmations
+The category-mapping limitation (coffee refs in `coffee_tea` → approx→`flavor` → excluded from exact
+pooling) is **fixed** by a narrow matcher special-case: an exact-`flavor` product whose NAME carries the
+coffee concept ALSO pools `coffee_tea` references whose name carries the coffee concept — tea refs and
+generic flavor products stay excluded; no other approximate category is affected (`3fcc432`).
+- **False friend discovered:** `PI-ING-000168 "Grain Coffee — Standard"` (fat 0.2 / carb **79** / sugars 12)
+  is a roasted-CEREAL coffee **substitute**, not coffee beans — so "café en grano" (beans) must never map
+  to it. The tiebreaker deliberately has **no grano/grain concept**; a coffee-gated `ground_form`
+  (molido→ground) distinguishes the real ground-roast ref.
+- **Confirmed (4):** 000064 & 000065 (grano) + 000066 & 000067 (molido) → **PI-ING-000166 Coffee Bean
+  Roasted Ground** — the only REAL roasted-coffee reference (whole-vs-ground form doesn't change the
+  per-100g profile; instant + cereal substitute excluded by class). Reference-linked; pac/pod null.
+- **Parked:** 000068 "Café molido mezcla Espresso" — *mezcla* = natural+**torrefacto** blend (sugar-glazed
+  roast); its real composition differs from the pure-roast ref and can't be quantified from the label.
+Vanilla 000069 stays parked separately: a zero-composition **aroma** vs vanilla **paste** refs (form mismatch).
+
+→ After this block: **46 null · 20 matched · 20 Studio-eligible.**
 
 ## Buckets (with next action)
 

@@ -48,6 +48,18 @@
 - **Nature**: high-intensity, ~300× sucrose (up to ~500× low-dose). **Two profiles** — team decides: (A) pure additive (C₇H₅NO₃S, ~0 kcal, negligible PAC) or (B) bulked sachet (USDA FDC 169072: ~360 kcal, ~90 carb, ~85 sugars, 428 mg Na — PAC driven by the dextrose bulking agent). "Sobres" usually = B.
 - **REQUIRED, team-only**: engine `pac_value`/`pod_value`; resolve A-vs-B; confirm sachet net weight + bulking agent.
 
+### G. Full-fat Greek yogurt (≈10% MG) — `dairy` / `greek_yogurt` (proposed `PI-ING-000550`)
+- **Unlocks**: PR-ING-000016 / 000017 (Yogur griego natural, **10.8% fat**). The existing `PI-ING-000204 Greek Yogurt — Standard` is **7.5% fat**; the reference-linked handoff borrows the reference's composition, so mapping to it would understate fat by ~3.3pp — a fattier VARIANT is needed (team to decide: new `PI-ING` vs a parameterised fat variant of 000204).
+- **Sourced (Hacendado label, real product)**: fat ≈10, carbohydrate ≈4, total_sugars ≈4, protein ≈4, salt ≈0.1; water/total_solids ≈81/19 (representative figure to confirm).
+- **REQUIRED, team-only**: `pac_value`/`pod_value` (dairy-standard process, like 000204); confirm the protein band (label 3.9 is low for strained greek — greek-style vs strained).
+- The 2%-MG "ligero" variants (PR-ING-000018/000019) likely need a separate light-greek reference too.
+
+## Staging surface (code)
+These candidates are structured in the pure `src/data/products/referenceProposals.ts` and rendered
+read-only at **`/dev/reference-proposals`** (filters, required-fields checklist, per-proposal
+next-action, and an **always-blocked insert readiness** — the staging surface can never authorise
+an insert; pac/pod stay team-only).
+
 ## Possible composition source URLs (composition ONLY — never PAC/POD)
 - USDA FoodData Central (almond, whole foods) — free, keyless.
 - OpenFoodFacts (label nutrition, the same source the catalog used) — free, keyless.
