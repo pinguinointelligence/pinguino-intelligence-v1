@@ -50,20 +50,20 @@ Read in this order:
 
 | # | Document | Role |
 |---|---|---|
-| 1 | [Calculation Source of Truth](pinguino-spine/Calculation%20Source%20of%20Truth/Calculation_Source_of_Truth.md) | Master calculation contract (CONTRACT_VERSION 1.0.0) |
-| 2 | [Core Backbone](pinguino-spine/Core%20Backbone/Core_Backbone.md) | Architecture spine + module ownership (supersedes the old v0.1 backbone — which is **not** present in this repo; nothing to archive) |
-| 3 | [Product Profile](pinguino-spine/Product%20Profile/Product_Profile.md) | Profile registry: gates, routing, correction families |
-| 4 | [Recipe Intent](pinguino-spine/Recipe%20Intent/Recipe_Intent.md) | `NormalizedRecipeIntent` contract v1.0.0 |
-| 5 | [Designer](pinguino-spine/Designer/Designer.md) | Strategy layer → `RecipeDesignPlan` + optimizer constraints |
-| 6 | [User Flow](pinguino-spine/User%20Flow/User_Flow.md) | Customer conversation ("Jakie lody dziś robimy?" first) |
-| 7 | [Account Access](pinguino-spine/Account%20Access/Account_Access.md) | `AccessContext` + capabilities; demo redaction rules |
-| 8 | [Temperature Regulator GELATO](pinguino-spine/Temperature%20Regulator/Temperature_Regulator_GELATO.md) | Standard Gelato bands −11/−12/−13 |
-| 9 | [Temperature Regulator SORBET](pinguino-spine/Temperature%20Regulator/Temperature_Regulator_SORBET.md) | Sorbet bands −11/−12/−13 |
-| 10 | [Temperature Regulator VEGAN](pinguino-spine/Temperature%20Regulator/Temperature_Regulator_VEGAN.md) | Vegan bands −11/−12/−13 |
-| 11 | [Temperature Regulator CHOCOLATE](pinguino-spine/Temperature%20Regulator/Temperature_Regulator_CHOCOLATE.md) | Chocolate bands −11/−12/−13 |
-| 12 | [Optimizer](pinguino-spine/Optimizer/Optimizer.md) | Deterministic correction + batch/rescue/shortage policy |
-| 13 | [Integration Flow](pinguino-spine/Integration%20Flow/Integration_Flow.md) | End-to-end execution order |
-| 14 | [Acceptance Tests](pinguino-spine/Acceptance%20Tests/Acceptance_Tests.md) | Pass/fail matrix (release gate) |
+| 1 | [Calculation Source of Truth](pinguino-spine/Calculation_Source_of_Truth.md) | Master calculation contract (CONTRACT_VERSION 1.0.0) |
+| 2 | [Core Backbone](pinguino-spine/Core_Backbone.md) | Architecture spine + module ownership (supersedes the old v0.1 backbone — which is **not** present in this repo; nothing to archive) |
+| 3 | [Product Profile](pinguino-spine/Product_Profile.md) | Profile registry: gates, routing, correction families |
+| 4 | [Recipe Intent](pinguino-spine/Recipe_Intent.md) | `NormalizedRecipeIntent` contract v1.0.0 |
+| 5 | [Designer](pinguino-spine/Designer.md) | Strategy layer → `RecipeDesignPlan` + optimizer constraints |
+| 6 | [User Flow](pinguino-spine/User_Flow.md) | Customer conversation ("Jakie lody dziś robimy?" first) |
+| 7 | [Account Access](pinguino-spine/Account_Access.md) | `AccessContext` + capabilities; demo redaction rules |
+| 8 | [Temperature Regulator GELATO](pinguino-spine/Temperature_Regulator_GELATO.md) | Standard Gelato bands −11/−12/−13 |
+| 9 | [Temperature Regulator SORBET](pinguino-spine/Temperature_Regulator_SORBET.md) | Sorbet bands −11/−12/−13 |
+| 10 | [Temperature Regulator VEGAN](pinguino-spine/Temperature_Regulator_VEGAN.md) | Vegan bands −11/−12/−13 |
+| 11 | [Temperature Regulator CHOCOLATE](pinguino-spine/Temperature_Regulator_CHOCOLATE.md) | Chocolate bands −11/−12/−13 |
+| 12 | [Optimizer](pinguino-spine/Optimizer.md) | Deterministic correction + batch/rescue/shortage policy |
+| 13 | [Integration Flow](pinguino-spine/Integration_Flow.md) | End-to-end execution order |
+| 14 | [Acceptance Tests](pinguino-spine/Acceptance_Tests.md) | Pass/fail matrix (release gate) |
 
 **Active product profiles v1.0:** `standard_gelato`, `sorbet`, `vegan_gelato`, `chocolate_gelato`.
 **Unsupported unless docs are explicitly updated:** granita, protein_gelato, fresh, storage −18 °C,

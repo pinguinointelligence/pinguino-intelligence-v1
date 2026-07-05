@@ -9,7 +9,7 @@ This document follows:
 
 ```text
 PINGUINO_Calculation_Source_of_Truth_v1_0_FINAL.md
-PINGUINO_Core_Backbone_v0_1_FINAL.md
+Core_Backbone.md
 PINGUINO_Product_Profile_Registry_v1_0_FINAL.md
 ```
 

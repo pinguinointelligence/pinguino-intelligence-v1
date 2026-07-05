@@ -289,6 +289,7 @@ type StockShortageDecision =
   | "reduce_batch_to_available_stock"
   | "replace_ingredient"
   | "keep_batch_and_mark_missing"
+  | "best_possible_lower_intensity"
   | "stop_and_buy_missing_product";
 ```
 
@@ -312,6 +313,10 @@ System may use a replacement only if Mapper/ingredient database has verified dat
 ### keep_batch_and_mark_missing
 
 System keeps target batch and warns that the recipe cannot be produced until missing ingredient is supplied.
+
+### best_possible_lower_intensity
+
+System continues as best possible with a clear lower-flavor-intensity warning. Hero ingredient is not silently reduced beyond what the user accepted; the warning stays visible.
 
 ### stop_and_buy_missing_product
 
@@ -567,9 +572,10 @@ You planned 600 g strawberry, but only 420 g is available.
 
 Options:
 1. Reduce final batch size to match available strawberry.
-2. Keep target batch and buy/add missing strawberry.
+2. Keep target batch and mark missing strawberry.
 3. Replace part of strawberry with verified puree/concentrate if allowed.
 4. Continue as best possible with lower flavor intensity warning.
+5. Stop and buy/add missing strawberry.
 ```
 
 Designer owns whether replacement is allowed.  
