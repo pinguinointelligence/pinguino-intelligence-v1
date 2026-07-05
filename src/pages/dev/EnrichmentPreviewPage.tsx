@@ -16,6 +16,7 @@
  * + listMyProducts; the ONLY write is applyProductEnrichment; no secret/API key; no npac.
  */
 import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { fetchOpenFoodFactsProduct } from '@/services/openFoodFacts';
 import { listMyProducts } from '@/services/products';
@@ -244,7 +245,9 @@ export function EnrichmentMergeView({
 }
 
 export function EnrichmentPreviewPage() {
-  const [ean, setEan] = useState('');
+  // Prefill from ?ean= (e.g. the intake-hub barcode route) — the LOOKUP stays user-triggered.
+  const [params] = useSearchParams();
+  const [ean, setEan] = useState(() => params.get('ean') ?? '');
   const [result, setResult] = useState<OffProduct | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

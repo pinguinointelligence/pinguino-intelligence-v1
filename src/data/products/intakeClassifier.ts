@@ -55,7 +55,16 @@ export function classifyIntakeInput(input: { filename?: string | null; text?: st
   }
 
   if (text !== '' && looksLikeBarcode(text)) {
-    return { kind: 'barcode', route: '/dev/enrichment-preview', available: true, label: 'barcode / EAN', note: 'Keyless read-only OpenFoodFacts lookup by EAN.' };
+    const digits = text.replace(/[\s-]+/g, '');
+    return {
+      kind: 'barcode',
+      // carries the EAN so the enrichment page can PREFILL it — the lookup itself stays
+      // user-triggered (no automatic network call).
+      route: `/dev/enrichment-preview?ean=${digits}`,
+      available: true,
+      label: 'barcode / EAN',
+      note: 'Keyless read-only OpenFoodFacts lookup by EAN (prefilled — press Look up).',
+    };
   }
 
   return { kind: 'unknown', route: null, available: false, label: 'unknown', note: 'Enter an EAN, or choose a CSV/XLSX or a label image.' };

@@ -89,4 +89,14 @@ describe('EnrichmentPreviewPage — container', () => {
     expect(h.listMyProducts).not.toHaveBeenCalled();
     expect(h.applyEnrichment).not.toHaveBeenCalled();
   });
+
+  it('prefills the EAN from ?ean= but never auto-fetches (lookup stays user-triggered)', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={['/dev/enrichment-preview?ean=8480000610928']}>
+        <EnrichmentPreviewPage />
+      </MemoryRouter>,
+    );
+    expect(html).toMatch(/value="8480000610928"/);
+    expect(h.fetchOff).not.toHaveBeenCalled();
+  });
 });

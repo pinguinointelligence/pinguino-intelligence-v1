@@ -33,11 +33,13 @@ describe('classifyIntakeInput', () => {
     }
   });
 
-  it('routes a barcode-shaped text input to the keyless enrichment lookup', () => {
+  it('routes a barcode-shaped text input to the keyless enrichment lookup WITH the EAN prefilled', () => {
     const c = classifyIntakeInput({ text: '8480000610928' });
     expect(c.kind).toBe('barcode');
-    expect(c.route).toBe('/dev/enrichment-preview');
+    expect(c.route).toBe('/dev/enrichment-preview?ean=8480000610928');
     expect(c.available).toBe(true);
+    // spaces/dashes are normalized into the routed EAN
+    expect(classifyIntakeInput({ text: '8480-0006-10928' }).route).toBe('/dev/enrichment-preview?ean=8480000610928');
   });
 
   it('a filename wins over text; unknown ext + non-barcode text → unknown', () => {
