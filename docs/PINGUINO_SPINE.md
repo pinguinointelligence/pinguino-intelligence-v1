@@ -32,12 +32,14 @@ Where the repo stands today, in one line each:
 - **LIVE:** Base Engine core (−11 °C calibrated, ENGINE 0.4.0 / CONFIG 0.5.0), correction solver
   with demo redaction at source, Mapper Basement (542 locked refs), Product Mapper (69 products,
   23 matched — paused for human calibration), Studio "My Products" (reference-linked handoff),
-  reference-proposal staging + team calibration pack, snapshots/audit, 10 DEV tools.
+  reference-proposal staging + team calibration pack, snapshots/audit, 10 DEV tools, and the
+  Spine's pure foundation layer (`src/spine/`: locked contracts + Product Profile Registry +
+  profile normalization — Phase C Slice 1, not yet wired into the app flow).
 - **PARTIAL:** access gating (demo/Pro exists; the `AccessContext`/capabilities contract does not),
   intake (classifier + OCR queue + honest `not_implemented` OCR seam; no OCR engine), enrichment
   (reviewed-merge path tested, currently no enrichable product), conversational intake precursors.
-- **NOT STARTED (the Spine's Recipe-Intelligence layer):** Product Profile Registry, Recipe Intent
-  normalization, Designer, Temperature Regulator configs (−12/−13 bands), Integration Flow router,
+- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** Recipe Intent normalization,
+  Designer, Temperature Regulator configs (−12/−13 bands), Integration Flow router,
   batch-size/actual-batch-rescue user flow, stock-shortage flow, User Flow conversational script.
 - **BLOCKED (on humans, correctly):** Mapper calibration (PAC/POD for 12 staged reference
   proposals + 4 owner picks — see
@@ -285,11 +287,11 @@ Designer must not calculate POD/PAC/NPAC (strategy only; the Base Engine calcula
 | Reference proposals / calibration pack | **Blocked (human)** | 12 proposals unlocking ~17 products, JSON/CSV pack export, always-blocked insert readiness; `referenceProposals.ts`, `/dev/reference-proposals`, [handoff doc](mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md) | Low | **HUMAN: fill PAC/POD + 4 owner picks** |
 | Studio "My Products" | **Done** | reference-linked handoff, recipe-math-equivalence browser-proven; `productEngineHandoff.ts`, `productLibrary.ts`, `/dev/studio-picker-proof` | Low | grows automatically as products are confirmed |
 | Recipe Engine (Base Engine) | **Partial** (core Done at −11 °C) | deterministic pure core, ENGINE 0.4.0 / CONFIG 0.5.0 (`src/engine/config/version.ts:33`), golden recipes, no-NPAC regression; `src/engine/**` | Low while frozen | keep frozen until Spine layers exist; then regulator configs — never duplicate engines |
-| Product Profile Registry | **Not started** | grep 2026-07-06: zero implementation matches in `src`; spec locked in [Product_Profile.md](pinguino-spine/Product_Profile.md); engine categories exist as the mapping target | Medium (ordering) | implement per Core Backbone order step 2 |
-| Recipe Intent | **Not started** | zero matches; `RecipeGoals` precursor in engine types; locked mapping table in [Recipe_Intent.md](pinguino-spine/Recipe_Intent.md) §21 | Medium (ordering) | implement pure `normalizeRecipeIntent()` |
+| Product Profile Registry | **Partial** (pure layer done, unwired) | `src/spine/productProfiles.ts` (4-profile registry, gate levels, correction families) + `normalizeProductProfile.ts` (locked aliases; granita/protein/fresh/storage/frozen-drinks return structured unsupported, never silently mapped) + tests; deliberately not wired into UI/engine | Low | consume from Recipe Intent normalization (Slice 2), then the Integration Flow router |
+| Recipe Intent | **Not started** (contract types landed) | `NormalizedRecipeIntent` + `DesignerWarning` contract types live in `src/spine/types.ts` (contractVersion 1.0.0); normalization behavior not built; `RecipeGoals` precursor in engine types; locked mapping table in [Recipe_Intent.md](pinguino-spine/Recipe_Intent.md) §21 | Medium (ordering) | implement pure `normalizeRecipeIntent()` (Slice 2) |
 | Designer | **Not started** | zero matches; `src/data/demoPresets.ts` is a weak precursor; spec [Designer.md](pinguino-spine/Designer.md) | Medium (ordering) | implement after Recipe Intent (slices D1–D8) |
 | User Flow | **Not started** as spec'd | `src/features/pi-chat/` deterministic intake exists (English, different script); locked Polish-first script in [User_Flow.md](pinguino-spine/User_Flow.md) | Medium | wire after Designer; flavor-first, never price-first |
-| Account Access | **Partial** | demo/Pro hook `src/access/plans.ts` + subscription mapping; solver redacts at source since engine 0.4.0; no `AccessContext`/capabilities contract in code; NEW: uncommitted 52-file `docs/account-access/` pack awaiting owner review | Medium (Rule 1: server-side enforcement pending) | implement the capabilities contract; keep login/billing external |
+| Account Access | **Partial** | demo/Pro hook `src/access/plans.ts` + subscription mapping; solver redacts at source since engine 0.4.0; `AccessContext`/`AccessCapabilities` contract + DEMO/PAID defaults now live in `src/spine/access.ts` (pure, unwired); NEW: uncommitted 52-file `docs/account-access/` pack awaiting owner review | Medium (Rule 1: server-side enforcement pending) | wire capabilities through User Flow/output shaping (Slice C6); keep login/billing external |
 | Temperature Regulator | **Not started** | only `milk_gelato@−11` anchor seeded in engine config; all 4×3 bands + 8 golden reference formulas locked in the four regulator docs | Medium | config registry per product × temperature; CONFIG_VERSION bump |
 | Optimizer | **Partial** | deterministic solver `src/engine/corrections/`: violations → Golden Middle → exact-gram candidates → verify by full recalc → tradeoff/impossible; planning/actual-batch; redaction | Medium if extended before profiles (forbidden order) | profile-aware families + batch-volume decision + stock-shortage consumption |
 | Integration Flow router | **Not started** | zero matches; 16-step order + decision router locked in [Integration_Flow.md](pinguino-spine/Integration_Flow.md) | Medium (ordering) | implement after profiles/intent/designer/regulator |
