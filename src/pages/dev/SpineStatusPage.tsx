@@ -13,7 +13,7 @@ import { Link } from 'react-router';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 /** Snapshot date — bump when the status list is re-audited against the repo. */
-const SNAPSHOT_DATE = '2026-07-05';
+const SNAPSHOT_DATE = '2026-07-06';
 
 type SpineStatus = 'done' | 'partial' | 'blocked' | 'not_started';
 

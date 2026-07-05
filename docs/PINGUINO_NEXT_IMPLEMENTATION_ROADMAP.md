@@ -1,117 +1,152 @@
 # PINGUINO — Next Implementation Roadmap
 
-_Created 2026-07-05 alongside [PINGUINO_SPINE.md](PINGUINO_SPINE.md). Sequencing map from the
-current repo state to the locked Spine v1.0 architecture. The locked documents in
-[`docs/pinguino-spine/`](pinguino-spine/) define **what** each module must do; this file only
-orders the work. The owner's official planning document remains
+_Created 2026-07-05, realigned 2026-07-06 alongside [PINGUINO_SPINE.md](PINGUINO_SPINE.md).
+Sequencing map from the current repo state to the locked Spine v1.0 architecture. The locked
+documents in [`docs/pinguino-spine/`](pinguino-spine/) define **what** each module must do; this
+file only orders the work. The owner's official planning document remains
 [PINGUINO_MASTERPLAN_V1.md](PINGUINO_MASTERPLAN_V1.md)._
 
 Two independent critical paths exist today:
 
-- **Human path (A → B):** Mapper calibration. Blocked on the team/owner; no code work unlocks it.
-- **Code path (C → D → E):** the Spine's Recipe-Intelligence layer. Pure contracts + config on top
-  of the frozen Base Engine; it does **not** wait for Mapper calibration and can start immediately.
+- **Human path (A → B):** Mapper calibration, then Mapper completion. Blocked on the team/owner;
+  no code work unlocks it.
+- **Code path (C → D):** the Spine's Recipe-Intelligence layer. Pure contracts + config on top of
+  the frozen Base Engine; it does **not** wait for Mapper calibration and can start immediately.
 
 They merge at Phase E (Studio uses both matched products and the new Spine flow).
 
 ---
 
-## Phase A — Team calibration (HUMAN — the current gate)
+## Phase A — Nicolas/team calibration (HUMAN — the current gate)
 
-**Goal:** turn the 12 staged reference proposals into approved locked references, and resolve the
-4 owner picks.
+**Goal:** turn the 12 staged reference proposals into approved locked references, resolve the
+4 owner picks, and confirm the products they unlock.
 
 - Work from [mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md](mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md)
   (proposal table, owner-pick options with engine consequences, after-fill workflow, do-not list).
 - Team fills PAC/POD per proposal (calibration pack export exists at `/dev/reference-proposals`).
 - Owner decides the 4 parked picks (incl. the POD-spread and pac-variant ties).
-- Output: values + picks handed back → seed-migration PREVIEW built → owner approval → **human**
-  applies the insert (the only approved `mapper_basement` write path).
+- Seed-migration PREVIEW built from the filled values → owner approval → **human** applies the
+  `mapper_basement` insert (the only approved write path).
+- Rerun the matcher over the 43 null products (band/tiebreak pre-narrowing already implemented).
+- Batch-confirm the newly unlocked products (~17 expected) via the review flow.
 
-**Done when:** new PI-ING references exist in the locked basement and the 4 picks are recorded.
+**Done when:** new PI-ING references are locked, the 4 picks are recorded, and every unlocked
+product is confirmed or explicitly parked.
 **Safety:** no app write path is ever added for this; product PAC/POD stays NULL regardless.
 
 ## Phase B — Mapper completion (after A)
 
-**Goal:** finish product matching using the new references.
+**Goal:** close the remaining intake capabilities so any future product can be brought in.
 
-- Rerun the matcher over the 43 null products (band/tiebreak pre-narrowing already implemented).
-- Confirm newly unlocked products (~17 expected from the staged proposals) via the review flow.
-- Re-verify invariants: PR/PI code split, PAC/POD 0/N on products, snapshots appended, basement
-  count matches the approved insert exactly.
-- Revisit the remaining nulls: new gap proposals if real coverage gaps remain.
+- Revisit remaining nulls after A: new gap proposals if real coverage gaps remain.
+- **Real OCR engine** behind the existing honest seam (`parseNutritionLabelImage` currently
+  returns `not_implemented`) — keyless/LOCAL only, no paid vision API, no fabricated text; the
+  `incomplete_text` red flag already guards partial OCR.
+- **Barcode intake** hardening: EAN lookup → enrichment prefill is live; wire it into the standard
+  intake path as products arrive.
+- **Enrichment writes** in production use: reviewed merge is built and guarded (nutrition
+  allowlist, never PAC/POD/identity/status, never overwrites PI Verified).
+- **PI Verified flow** in practice: service-level guard already refuses `pi_verified` without
+  reviewer + reason + independent-provenance + red-flags-clear attestations; first real
+  verifications happen here.
 
-**Done when:** every product is matched, rejected, or covered by a documented open proposal.
+**Done when:** every product is matched, rejected, or covered by a documented open proposal, and
+label-image intake works end-to-end without faking data.
 
-## Phase C — Spine implementation (CODE — start any time)
+## Phase C — Recipe Intelligence Spine implementation (CODE — start any time)
 
-**Goal:** build the Recipe-Intelligence layer as pure, tested modules, in the locked order. No
-engine math changes; no UI dependency yet.
+**Goal:** build the Spine layer as pure, tested modules, in the locked order. No engine math
+changes; no UI dependency yet.
 
 1. **Contracts first:** `NormalizedRecipeIntent` (contractVersion 1.0.0), `RecipeDesignPlan`,
-   `AccessContext`/`AccessCapabilities`, gate/warning code types — exactly as written in the docs.
+   `AccessContext`/`AccessCapabilities`, gate/warning code types — exactly as written.
 2. **Product Profile Registry:** the 4 active profiles, alias normalization (unsupported inputs
    warn — never silently mapped), gate tables, profile→engine-category mapping.
-3. **`normalizeRecipeIntent()`:** pure; explicit input → saved defaults → system defaults;
-   `RecipeGoals` vocabulary mapped via the locked table (e.g. `normal` → `balanced`), not renamed.
-4. **Designer:** intent → strategy + optimizer constraints; flavor-driven routing (chocolate/
-   sorbet/vegan detection); hero-ingredient policy by quality tier; slices D1–D8 per the doc.
-5. **Temperature Regulator:** per-product × per-temperature **config registry** (−11/−12/−13 from
-   the four regulator docs; −11 = zero-delta base). One shared Base Engine — never per-temp engines.
-6. **Integration Flow router:** the 16-step execution order incl. decision routing
-   (final/warning/tradeoff/impossible) and the rerun-verification loop.
-7. **Optimizer extensions:** profile-aware correction families, batch-volume decision consumption,
-   stock-shortage options — extending the existing solver, never bypassing its verify-by-recalc.
-8. **Acceptance tests** (groups A–M from the Acceptance Tests doc) implemented alongside each step,
-   not at the end.
+3. **Recipe Intent normalization:** pure `normalizeRecipeIntent()`; explicit input → saved
+   defaults → system defaults; `RecipeGoals` vocabulary mapped via the locked table, not renamed.
+4. **Designer output:** intent → `RecipeDesignPlan` (strategy + optimizer constraints);
+   flavor-driven routing; hero-ingredient policy by tier; slices D1–D8 per the doc.
+5. **User Flow wiring:** the locked Polish-first conversational script (recognition → confirm →
+   batch size → temperature → texture → sweetness → style → boosters → save defaults) driving
+   Recipe Intent — product language only, never technical questions.
+6. **Account Access capabilities:** resolve and consume `AccessContext`; capability gates shape
+   output visibility; redaction stays at source (already in the solver). Login/billing stay
+   external (see the pending `docs/account-access/` pack — owner review required).
+7. **Integration Flow router:** the 16-step execution order incl. decision routing
+   (final / warning / tradeoff / impossible) and the rerun-verification loop.
 
-**Done when:** the full chain runs headless (intent → plan → profile → engine → regulator →
-router → optimizer → verified result) with acceptance tests green.
-**Safety:** ENGINE math frozen; CONFIG_VERSION bumps only for additive config registries.
+Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
+are implemented alongside each step, not at the end.
 
-## Phase D — Engine expansion (with C5, after C1–C4)
+**Done when:** the full chain runs headless (intent → plan → profile → engine → regulator stub →
+router) with acceptance tests green.
+**Safety:** ENGINE math frozen; no UI rewiring yet.
 
-**Goal:** make −12/−13 first-class calibrated outputs.
+## Phase D — Engine expansion (after C1–C4)
 
-- Ice-curve anchors beyond `milk_gelato@−11` (currently the only seeded domain) as calibration
-  data arrives; regulator bands stay interpretation-only on top.
-- Golden recipes per product × temperature; regression suite extended (no-NPAC rule preserved).
-- Version stamping: CONFIG_VERSION history entries per registry addition.
+**Goal:** make product × temperature evaluation and correction first-class.
 
-**Done when:** all four profiles evaluate at all three temperatures with locked bands and goldens.
+- **Temperature Regulator config registry:** per-product × per-temperature settings for
+  Standard Gelato / Sorbet / Vegan / Chocolate at −11/−12/−13 °C, exactly from the four regulator
+  docs (−11 = zero-delta base). One shared Base Engine — never per-temperature engines.
+- **Golden references as tests:** G12/G17/G18 (+G15/G11), S01/S02/S03, V02 fixed, C01 — the
+  formulas and expected outputs are fully specified in the regulator docs.
+- **Optimizer profile-aware policy:** allowed/forbidden correction families per profile, chocolate
+  protein-share soft/advisory handling, stabilizer hard policy — extending the existing solver,
+  never bypassing its verify-by-recalc.
+- **Batch rescue / actual batch:** the 5 explicit rescue decisions consumed as policy input
+  (`BatchRescuePolicy`/`BatchRescueResult`); add-only for actual-added lines; machine capacity
+  hard; volume increase only with user confirmation.
+- **Stock shortage flow:** the 5 shortage decisions; no invented stock, no silent hero reduction,
+  replacements only from verified data.
+- Ice-curve anchors beyond `milk_gelato@−11` as calibration data arrives; CONFIG_VERSION bumps per
+  registry addition.
+
+**Done when:** all four profiles evaluate and correct at all three temperatures with locked bands
+and golden tests green.
 
 ## Phase E — Studio / UI on the Spine
 
-**Goal:** replace the current single-form Studio flow with the locked User Flow.
+**Goal:** deliver the new flow to users.
 
-- Conversational intake: first question `Jakie lody dziś robimy?`; product recognition +
-  confirmation copy; question order product → batch size → temperature → texture → sweetness →
-  style → boosters; saved-defaults offer.
-- Batch-size step (1/5/10/25/50 kg/custom → `target_batch_grams`) before final generation.
-- Actual-batch rescue UI (the 5 explicit options) and stock-shortage UI (5 options).
-- Output shaping by capabilities: demo shows direction/warnings, never exact grams/Auto Fix;
-  paid shows the full recipe. Redaction stays at source (already in the solver).
+- Improved recipe flow: the conversational User Flow replaces the single-form entry.
+- My Products UX: picker growth, provenance labels, post-calibration product availability.
 - Labels / print / export from the final verified recipe.
+- Saved recipes (full for paid, redacted drafts for demo) and saved defaults.
+- Batch scaling UX (1–50 kg / custom / machine capacity) + actual-batch rescue UI (5 options) +
+  stock-shortage UI (5 options).
+- Demo vs paid redaction shaped by capabilities end-to-end; upgrade-reason codes surfaced,
+  price-neutral copy.
 
-**Done when:** the User Flow acceptance list (39 items) and Account Access list (43 items) pass.
+**Done when:** the User Flow acceptance list (39 items) and Account Access acceptance list
+(43 items) pass in the UI.
 
-## Phase F — Commercial wiring
+## Phase F — Commercial layer
 
-**Goal:** connect live auth/plans/billing as the **external capability provider**.
+**Goal:** connect live commercial infrastructure as the **external capability provider**.
 
-- Auth + subscription state → resolved `AccessContext` (Recipe Intelligence never implements
-  login/billing itself — locked boundary).
+- Auth integration: login state → resolved `AccessContext` (Recipe Intelligence never implements
+  login itself — locked boundary).
+- Pricing/admin: plan and pricing administration (admin panel scope is drafted in the pending
+  `docs/account-access/` pack — requires owner review before it becomes truth).
+- Billing portal: subscription lifecycle, cancellation/expiry → capability downgrades (data is
+  never deleted on downgrade; visibility follows current capability).
+- Home / Pro / Franchise access tiers mapped to capabilities; Free Preview → demo capabilities.
+- Customer onboarding: first-use flow, saved defaults, upgrade paths.
 - Server/API-side capability enforcement (client-side hiding is not sufficient — locked Rule 1).
-- Free Preview → demo capabilities mapping; upgrade-reason codes surfaced, price-neutral copy.
 
-**Done when:** demo/paid boundary holds end-to-end against the Account Access acceptance list.
+**Done when:** the demo/paid boundary holds end-to-end against the Account Access acceptance list
+with live plans.
 
 ## Phase G — Franchise / SOP / future
 
-- Franchise + SOP layer per [PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md](PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md).
+- Standardized recipes for franchise consistency.
+- SOP PDFs / downloads layer.
+- Shop visibility per [PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md](PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md).
+- PU/Umami extension — requires its own future locked documents; not active.
 - Future profiles (granita, protein, fresh, −18 °C storage, frozen drinks) — each requires its own
   locked document set (profile + regulator + designer sections) before any code.
-- PU/Umami extension — future documents required; not active.
 - Multi-language beyond PL/EN copy as markets demand.
 
 ---

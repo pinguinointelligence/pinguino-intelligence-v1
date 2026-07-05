@@ -1,6 +1,7 @@
 # PINGUINO SPINE — Repo-Level Architecture Map
 
-_Created 2026-07-05 at repo HEAD `9bffb0c`. This is the repo-level companion to the **locked Spine
+_Created 2026-07-05 at repo HEAD `9bffb0c`; audit refreshed 2026-07-06 at HEAD `4c7dea9` (flat doc
+paths, consistency fixes verified). This is the repo-level companion to the **locked Spine
 documents** in [`docs/pinguino-spine/`](pinguino-spine/) — it maps what the Spine specifies against
 what this repository actually contains. The locked documents are the source of truth for the target
 architecture; this file is the evidence-based status map. The owner's planning document remains
@@ -176,7 +177,28 @@ flowchart LR
   D -- no --> A
 ```
 
-### 4.3 Demo / Paid boundary (Account Access)
+### 4.3 User conversation flow (locked Polish-first script)
+
+```mermaid
+flowchart TB
+  Q(["Jakie lody dziś robimy?"]) --> R["automatic product recognition<br/>chocolate → Chocolate Gelato · sorbet · vegan · protein · standard"]
+  R --> C{"OK, robimy {X}. Zgadza się?"}
+  C -- "Nie" --> E["short product-type explanation<br/>user picks Gelato / Sorbet / Vegan / Proteinowe"] --> B
+  C -- "Tak" --> B["batch size: 1 / 5 / 10 / 25 / 50 kg / custom<br/>→ target_batch_grams"]
+  B --> T["serving temperature −11 / −12 / −13<br/>(explicit default −12)"]
+  T --> TX["texture: twarde / średnie / miękkie → firm / medium / soft"]
+  TX --> SW["sweetness: mało słodkie / słodkie / bardzo słodkie → low / balanced / high"]
+  SW --> ST["recipe style: Eco / Classic / Premium / Signature"]
+  ST --> BO["boosters / pastes / concentrates — availability, not abstract permission"]
+  BO --> SD["Zapisać te ustawienia jako domyślne?"]
+  SD --> CALC["calculate → redacted demo output OR exact paid output"]
+  R -. protein .-> P["recognized as INTENT only —<br/>full protein profile needs its own locked docs"]
+```
+
+Never price-first, never technical-metric-first. Protein is never silently calculated as a
+supported profile. Returning users with saved defaults skip straight to flavor.
+
+### 4.4 Demo / Paid boundary (Account Access)
 
 ```mermaid
 flowchart TB
@@ -186,7 +208,7 @@ flowchart TB
   D & P --> S[same User Flow, different visibility<br/>redaction enforced server/API-side, at source]
 ```
 
-### 4.4 Actual-batch rescue (locked decision flow)
+### 4.5 Actual-batch rescue (locked decision flow)
 
 ```mermaid
 flowchart TB
@@ -247,36 +269,38 @@ OCR must not fake extracted text (the adapter returns not_implemented with a nul
 AI must not invent exact grams, POD/PAC/NPAC, costs or ingredient data
 Demo must not reveal exact grams / exact Auto Fix / exact before-after values (redaction at source)
 Optimizer must not silently change batch size; already-added material is never reduced
+Temperature Regulator must not change recipe chemistry (interpretation only)
+Designer must not calculate POD/PAC/NPAC (strategy only; the Base Engine calculates)
 ```
 
 ---
 
-## 6. Current status table (evidence-based, 2026-07-05)
+## 6. Current status table (evidence-based, refreshed 2026-07-06)
 
-| Module | Status | Next action |
-|---|---|---|
-| Mapper Basement | **Done** (542 locked refs; read-only service; RLS SELECT-only) | none — inserts only via approved seed migration |
-| Product Mapper | **Done, paused** (69 products: 23 matched / 3 rejected / 43 null; integrity 0 violations) | wait for human calibration; then rerun matcher |
-| Matching / tiebreakers / fat-band / coffee fix | **Done** (composition matcher + name-concept tiebreak + milk fat-band + coffee special-case; false-positive tested) | extend concepts only as new intake demands |
-| Reference proposals / calibration pack | **Done** (12 proposals unlocking 17 products; local PAC/POD drafts; JSON/CSV export; always-blocked insert readiness) | **HUMAN: fill PAC/POD + owner picks** |
-| Studio "My Products" | **Done** (reference-linked handoff; recipe-math-equivalence proven; provenance labels; auth-free browser proof) | grows automatically as products are confirmed |
-| Recipe Engine (Base Engine) | **Partial** — core **Done** for −11 °C (deterministic, ENGINE 0.4.0 / CONFIG 0.5.0, versions stamped, no-NPAC enforced, golden recipes); −12/−13 exist only as intent values, not calibrated configs | keep frozen until Spine layers exist; then add regulator configs (never duplicate engines) |
-| Product Profile Registry | **Not started** (no code; engine has lower-level categories `milk_gelato`… which the Spine maps to profiles) | implement per Spine order step 2 |
-| Recipe Intent | **Not started** (`RecipeGoals` is a precursor; explicit mapping table exists in the Spine) | implement `normalizeRecipeIntent` (pure) per Spine |
-| Designer | **Not started** (demo scenarios/presets are a weak precursor) | implement after Recipe Intent (D1–D8 slices) |
-| User Flow | **Not started** as spec'd (pi-chat intake flows exist as a precursor; the locked Polish-first script is not implemented) | wire after Designer; flavor-first, never price-first |
-| Account Access | **Partial** (demo/Pro access hook; **solver redacts at source** since engine 0.4.0; no `AccessContext`/capabilities contract) | implement the capabilities contract; keep login/billing external |
-| Temperature Regulator | **Not started** (only the −11 °C anchor domain is seeded in config; all product/temp bands are locked in the four regulator docs) | config registry per product × temperature; bump CONFIG_VERSION |
-| Optimizer | **Partial** (deterministic solver: violations → Golden Middle priority → exact-gram candidates → full recalc verification → tradeoff/impossible; planning/actual-batch contexts; redaction) | make profile-aware; add batch-volume decision + stock-shortage consumption per Spine |
-| Integration Flow router | **Not started** | implement after profiles/intent/designer/regulator |
-| OCR / barcode / intake | **Partial** (pure classifier; multi-file picker; label-image queue; `parseNutritionLabelImage` = `not_implemented`, no fake text; EAN→enrichment prefill) | first keyless/LOCAL OCR engine behind the existing seam |
-| Enrichment (external public data) | **Done, idle** (compare fill/agree/conflict/skip; nutrition-allowlist write + snapshot; PI-Verified write-time guard; keyless lookup) | becomes useful with first non-catalog product |
-| Snapshots / audit trail | **Done** (append-only `product_snapshots`, 69 rows; diff service; `/dev/snapshot-audit`) | — |
-| Admin / DEV tools | **Done** (10 DEV-gated pages incl. mapper review/status, reference proposals, intake hub, enrichment, snapshot audit, picker proof, and `/dev/spine` — the static status board for this map) | — |
-| Auth / plans / subscriptions | **Partial, external by design** (auth + billing feature layers with security guards; Free Preview mode; no service_role in frontend) | connect as the external capability provider feeding AccessContext |
-| Labels / print / export | **Not started** (destination page placeholder only) | Phase E work |
-| Franchise / SOP / docs | **Not started** (commercial ecosystem doc only) | future phase |
-| Future PU / Umami extension | **Not in active Spine docs** (mentioned only in commercial planning) | requires explicit future documents |
+| Module | Status | Evidence & key files | Risk | Next action |
+|---|---|---|---|---|
+| Mapper Basement | **Done** | 542 locked refs, RLS SELECT-only (DB verified 2026-07-05); read-only service `src/services/ingredients.ts` | Low | none — inserts only via approved human seed migration |
+| Product Mapper | **Blocked (human)** | 69 products: 23 matched / 3 rejected / 43 null, 0 integrity violations (DB verified 2026-07-05); `src/data/products/`, `/dev/mapper-review`, `/dev/mapper-status` | Low | wait for calibration; then rerun matcher over the 43 |
+| Matching / tiebreakers / fat-band / coffee fix | **Done** | composition matcher + name-concept tiebreak + milk fat-band + coffee special-case, false-positive-tested in the green suite; `productMatcher.ts`, `productNameTiebreak.ts`, `productMilkFatBand.ts` | Low | extend concepts only as new intake demands |
+| Reference proposals / calibration pack | **Blocked (human)** | 12 proposals unlocking ~17 products, JSON/CSV pack export, always-blocked insert readiness; `referenceProposals.ts`, `/dev/reference-proposals`, [handoff doc](mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md) | Low | **HUMAN: fill PAC/POD + 4 owner picks** |
+| Studio "My Products" | **Done** | reference-linked handoff, recipe-math-equivalence browser-proven; `productEngineHandoff.ts`, `productLibrary.ts`, `/dev/studio-picker-proof` | Low | grows automatically as products are confirmed |
+| Recipe Engine (Base Engine) | **Partial** (core Done at −11 °C) | deterministic pure core, ENGINE 0.4.0 / CONFIG 0.5.0 (`src/engine/config/version.ts:33`), golden recipes, no-NPAC regression; `src/engine/**` | Low while frozen | keep frozen until Spine layers exist; then regulator configs — never duplicate engines |
+| Product Profile Registry | **Not started** | grep 2026-07-06: zero implementation matches in `src`; spec locked in [Product_Profile.md](pinguino-spine/Product_Profile.md); engine categories exist as the mapping target | Medium (ordering) | implement per Core Backbone order step 2 |
+| Recipe Intent | **Not started** | zero matches; `RecipeGoals` precursor in engine types; locked mapping table in [Recipe_Intent.md](pinguino-spine/Recipe_Intent.md) §21 | Medium (ordering) | implement pure `normalizeRecipeIntent()` |
+| Designer | **Not started** | zero matches; `src/data/demoPresets.ts` is a weak precursor; spec [Designer.md](pinguino-spine/Designer.md) | Medium (ordering) | implement after Recipe Intent (slices D1–D8) |
+| User Flow | **Not started** as spec'd | `src/features/pi-chat/` deterministic intake exists (English, different script); locked Polish-first script in [User_Flow.md](pinguino-spine/User_Flow.md) | Medium | wire after Designer; flavor-first, never price-first |
+| Account Access | **Partial** | demo/Pro hook `src/access/plans.ts` + subscription mapping; solver redacts at source since engine 0.4.0; no `AccessContext`/capabilities contract in code; NEW: uncommitted 52-file `docs/account-access/` pack awaiting owner review | Medium (Rule 1: server-side enforcement pending) | implement the capabilities contract; keep login/billing external |
+| Temperature Regulator | **Not started** | only `milk_gelato@−11` anchor seeded in engine config; all 4×3 bands + 8 golden reference formulas locked in the four regulator docs | Medium | config registry per product × temperature; CONFIG_VERSION bump |
+| Optimizer | **Partial** | deterministic solver `src/engine/corrections/`: violations → Golden Middle → exact-gram candidates → verify by full recalc → tradeoff/impossible; planning/actual-batch; redaction | Medium if extended before profiles (forbidden order) | profile-aware families + batch-volume decision + stock-shortage consumption |
+| Integration Flow router | **Not started** | zero matches; 16-step order + decision router locked in [Integration_Flow.md](pinguino-spine/Integration_Flow.md) | Medium (ordering) | implement after profiles/intent/designer/regulator |
+| OCR / barcode / intake | **Partial** | pure classifier + multi-file picker + label queue; `parseNutritionLabelImage` honestly returns `not_implemented`; EAN→enrichment prefill; `intakeClassifier.ts`, `nutritionLabelOcr.ts`, `/dev/intake-hub` | Low | first keyless/LOCAL OCR engine behind the existing seam (Phase B) |
+| Enrichment (external public data) | **Done, idle** | reviewed merge fill/agree/conflict/skip, nutrition allowlist, PI-Verified write-time guard (TOCTOU-tested); `productEnrichment.ts`, `/dev/enrichment-preview` | Low | becomes useful with first non-catalog product |
+| Snapshots / audit trail | **Done** | append-only `product_snapshots` (69 rows verified 2026-07-05), diff service; `productSnapshots.ts`, `/dev/snapshot-audit` | Low | — |
+| Admin / DEV tools | **Done** | 10 DEV-gated routes in `src/app/router.tsx` incl. `/dev/spine` (static board for this map); prod builds route to NotFound + dead-code-eliminate | Low | keep `/dev/spine` snapshot date fresh |
+| Auth / plans / subscriptions | **Partial, external by design** | `src/features/auth`, `src/features/billing` with security tests (no service_role, no provider names in engine); Free Preview live | Medium for production wiring | connect as the external capability provider feeding AccessContext (Phase F) |
+| Labels / print / export | **Not started** | `CreateLabelPage` destination placeholder only | Low | Phase E work |
+| Franchise / SOP / docs | **Not started** | [commercial ecosystem doc](PINGUINO_COMMERCIAL_ECOSYSTEM_V1.md) only | Low | Phase G |
+| Future PU / Umami extension | **Not in active Spine docs** | commercial planning mention only; no locked document activates it | Low | requires explicit future locked docs |
 
 Mapper DB state at time of writing: 69 products · 23 matched · 3 rejected · 43 null ·
 Studio-eligible 23 · basement 542 · product PAC/POD 0/69 · PI Verified 0 · snapshots 69.
@@ -343,12 +367,27 @@ Studio-eligible 23 · basement 542 · product PAC/POD 0/69 · PI Verified 0 · s
 4. **Old Core Backbone v0.1** — not present in this repo; nothing to archive. The superseding rule
    is recorded here so it is never re-imported as truth.
 5. **Mapper docs** (implementation status, queue analysis, calibration handoff, gap proposals,
-   insert candidates, PACPOD handoff plan, intake/enrichment plans) — audited 2026-07-05, all
-   current with live DB/code; no contradictions with the Spine (the Spine's Mapper boundary §19
-   matches the implemented reality).
+   insert candidates, PACPOD handoff plan, intake/enrichment plans) — audited 2026-07-05,
+   re-verified unchanged 2026-07-06; all current with live DB/code; no contradictions with the
+   Spine (the Spine's Mapper boundary §19 matches the implemented reality).
 6. **Masterplan vs Spine** — complementary, not conflicting: the masterplan is the owner's phase
    plan; the Spine documents are the locked architecture contracts; this file is the map between
    the Spine and the repo.
+7. **RESOLVED (`4c7dea9`):** Recipe_Intent.md's follows-list cited the superseded
+   `PINGUINO_Core_Backbone_v0_1_FINAL.md` — now points at the active `Core_Backbone.md`. The only
+   remaining v0.1 mentions are Core_Backbone.md's own supersession rule, which is correct.
+8. **RESOLVED (`4c7dea9`):** `StockShortageDecision` was 4-option in Optimizer.md §7A.1 vs
+   5-option in Integration Flow / Core Backbone / Optimizer prose — normalized to the 5-option
+   union (adds `best_possible_lower_intensity`) everywhere.
+9. **OBSERVATION (pending owner review, uncommitted):** a new 52-file documentation pack exists at
+   `docs/account-access/` (account types incl. Home/Pro/Franchise, login security, one-device
+   rule, subscriptions/billing + payment-provider contract, customer data, admin panel, access
+   contracts incl. a Mapper/products contract, data-model drafts, acceptance tests, implementation
+   prompts). It is **not** a duplicate of the Spine's
+   [Account_Access.md](pinguino-spine/Account_Access.md) — it documents the **external
+   login/billing module** that the Spine deliberately keeps outside Recipe Intelligence. It is not
+   committed and not treated as locked truth until the owner confirms it; on approval it should
+   land in its own block and be reconciled with the Spine's `AccessContext`/capabilities interface.
 
 ---
 
