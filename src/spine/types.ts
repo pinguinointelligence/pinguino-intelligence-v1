@@ -116,3 +116,67 @@ export interface NormalizedRecipeIntent {
 
   contractVersion: SpineContractVersion;
 }
+
+/**
+ * Raw intent input (Recipe_Intent.md §6). May be incomplete, legacy,
+ * user-facing or messy — it is NOT trusted and must be normalized via
+ * `normalizeRecipeIntent()` before any downstream module sees it.
+ */
+export interface RawRecipeIntentInput {
+  productProfile?: string;
+  productType?: string;
+  category?: string;
+
+  qualityTier?: string;
+  mode?: string;
+
+  servingTemperatureC?: number;
+  targetTemperatureC?: number;
+
+  texturePreference?: string;
+  sweetnessPreference?: string;
+  costPriority?: string;
+
+  flavorText?: string;
+  flavor?: string;
+
+  naturalOnly?: boolean;
+  allowBoosters?: boolean;
+
+  dietary?: Partial<NormalizedRecipeIntent['dietary']>;
+
+  excludedIngredientIds?: string[];
+  lockedIngredientIds?: string[];
+  heroIngredientIds?: string[];
+
+  batchSizeG?: number | null;
+  machineCapacityG?: number | null;
+}
+
+/**
+ * Saved user defaults (Recipe_Intent.md §7). Optional; used only when
+ * explicit current input is missing. Saved defaults never prevent per-recipe
+ * override and never suppress warnings from explicit invalid input.
+ */
+export interface SavedRecipePreferences {
+  userId: string;
+
+  defaultProductProfile: ProductProfile;
+  defaultQualityTier: QualityTier;
+  defaultServingTemperatureC: ServingTemperatureC;
+
+  defaultTexturePreference: TexturePreference;
+  defaultSweetnessPreference: SweetnessPreference;
+  defaultCostPriority: CostPriority;
+
+  naturalOnly: boolean;
+  allowBoosters: boolean;
+
+  dietary?: Partial<NormalizedRecipeIntent['dietary']>;
+
+  excludedIngredientIds?: string[];
+  allergenRestrictions?: string[];
+
+  createdAt: string;
+  updatedAt: string;
+}

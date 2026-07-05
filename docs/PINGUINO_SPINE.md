@@ -38,9 +38,10 @@ Where the repo stands today, in one line each:
 - **PARTIAL:** access gating (demo/Pro exists; the `AccessContext`/capabilities contract does not),
   intake (classifier + OCR queue + honest `not_implemented` OCR seam; no OCR engine), enrichment
   (reviewed-merge path tested, currently no enrichable product), conversational intake precursors.
-- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** Recipe Intent normalization,
-  Designer, Temperature Regulator configs (−12/−13 bands), Integration Flow router,
-  batch-size/actual-batch-rescue user flow, stock-shortage flow, User Flow conversational script.
+- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** Designer, Temperature Regulator
+  configs (−12/−13 bands), Integration Flow router, batch-size/actual-batch-rescue user flow,
+  stock-shortage flow, User Flow conversational script. (Recipe Intent normalization landed as
+  pure code in Slice 2 — unwired.)
 - **BLOCKED (on humans, correctly):** Mapper calibration (PAC/POD for 12 staged reference
   proposals + 4 owner picks — see
   [mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md](mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md)).
@@ -288,7 +289,7 @@ Designer must not calculate POD/PAC/NPAC (strategy only; the Base Engine calcula
 | Studio "My Products" | **Done** | reference-linked handoff, recipe-math-equivalence browser-proven; `productEngineHandoff.ts`, `productLibrary.ts`, `/dev/studio-picker-proof` | Low | grows automatically as products are confirmed |
 | Recipe Engine (Base Engine) | **Partial** (core Done at −11 °C) | deterministic pure core, ENGINE 0.4.0 / CONFIG 0.5.0 (`src/engine/config/version.ts:33`), golden recipes, no-NPAC regression; `src/engine/**` | Low while frozen | keep frozen until Spine layers exist; then regulator configs — never duplicate engines |
 | Product Profile Registry | **Partial** (pure layer done, unwired) | `src/spine/productProfiles.ts` (4-profile registry, gate levels, correction families) + `normalizeProductProfile.ts` (locked aliases; granita/protein/fresh/storage/frozen-drinks return structured unsupported, never silently mapped) + tests; deliberately not wired into UI/engine | Low | consume from Recipe Intent normalization (Slice 2), then the Integration Flow router |
-| Recipe Intent | **Not started** (contract types landed) | `NormalizedRecipeIntent` + `DesignerWarning` contract types live in `src/spine/types.ts` (contractVersion 1.0.0); normalization behavior not built; `RecipeGoals` precursor in engine types; locked mapping table in [Recipe_Intent.md](pinguino-spine/Recipe_Intent.md) §21 | Medium (ordering) | implement pure `normalizeRecipeIntent()` (Slice 2) |
+| Recipe Intent | **Partial** (pure `normalizeRecipeIntent()` landed, unwired) | `src/spine/normalizeRecipeIntent.ts`: locked precedence (explicit → saved → system defaults), PL/EN preference aliases, deterministic flavor parser (word-boundary, chocolate/fruit/nut/coffee/vanilla/alcohol), safe routing (chocolate forcing, vegan/sorbet protection, protein/granita = warned intent), structured warnings; +45 tests. `RecipeInput`/`RecipeGoals` mapping (§21) still pending | Low | Designer output (Slice 3); §21 mapping when wiring to the engine |
 | Designer | **Not started** | zero matches; `src/data/demoPresets.ts` is a weak precursor; spec [Designer.md](pinguino-spine/Designer.md) | Medium (ordering) | implement after Recipe Intent (slices D1–D8) |
 | User Flow | **Not started** as spec'd | `src/features/pi-chat/` deterministic intake exists (English, different script); locked Polish-first script in [User_Flow.md](pinguino-spine/User_Flow.md) | Medium | wire after Designer; flavor-first, never price-first |
 | Account Access | **Partial** | demo/Pro hook `src/access/plans.ts` + subscription mapping; solver redacts at source since engine 0.4.0; `AccessContext`/`AccessCapabilities` contract + DEMO/PAID defaults now live in `src/spine/access.ts` (pure, unwired); NEW: uncommitted 52-file `docs/account-access/` pack awaiting owner review | Medium (Rule 1: server-side enforcement pending) | wire capabilities through User Flow/output shaping (Slice C6); keep login/billing external |

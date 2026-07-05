@@ -48,7 +48,7 @@ const MODULES: SpineModule[] = [
   { module: 'Base Engine', status: 'partial', note: '−11 °C calibrated, deterministic, ENGINE 0.4.0 / CONFIG 0.5.0 — frozen; −12/−13 arrive as regulator configs, never as duplicate engines.' },
   { module: 'Optimizer (correction solver core)', status: 'partial', note: 'Deterministic candidates → exact grams → verify by full recalc; planning/actual-batch contexts; demo redaction at source. Profile-awareness pending.' },
   { module: 'Product Profile Registry', status: 'partial', note: 'Pure layer DONE (src/spine): 4-profile registry + gate levels + correction families + locked alias normalization; unsupported types return structured warnings. Not wired into the app flow yet — by design.' },
-  { module: 'Recipe Intent', status: 'not_started', note: 'NormalizedRecipeIntent contract 1.0.0 types landed (src/spine); normalization behavior pending — explicit input → saved defaults → system defaults.' },
+  { module: 'Recipe Intent', status: 'partial', note: 'Pure normalizeRecipeIntent() landed (src/spine): explicit input → saved defaults → system defaults, PL/EN aliases, flavor parser + safe routing (vegan/sorbet protected, protein/granita warned). Not wired into the app flow yet.' },
   { module: 'Designer', status: 'not_started', note: 'Intent → RecipeDesignPlan (strategy + optimizer constraints); flavor-driven routing; hero-ingredient policy by tier.' },
   { module: 'Temperature Regulator', status: 'not_started', note: 'Bands locked for 4 products × −11/−12/−13 °C in four regulator docs; −11 is the zero-delta base.' },
   { module: 'Integration Flow router', status: 'not_started', note: '16-step execution order locked; routes final / warning / tradeoff / impossible.' },
