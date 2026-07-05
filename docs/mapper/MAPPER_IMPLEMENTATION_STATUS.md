@@ -53,6 +53,12 @@ here is assumed complete. Last updated 2026-07-05 at repo HEAD `eec4d38`._
 | 19 | engine handoff | **Wired into the Studio picker** | `productEngineHandoff.ts` + `buildProductEngineLibrary.ts` → **NEW** `useIngredientLibrary` fetches `listMyProducts` (Pro-only) + renders a **"My Products"** optgroup in `IngredientPicker` with a status label + "Reference-linked · PAC/POD from approved reference · not independently measured" note (red-flag → "pending verification"); **recipe-calc safety proven** (product calculates identically to its reference; no raw text reaches the engine; product pac/pod stay null) | customer-facing surface is Pro-gated + needs a signed-in session to render (SSR-tested) |
 | 20 | product intake UI | **Partial (expanded)** | CSV `ProductImportPage`; DEV `/dev/mapper-review`, `/dev/mapper-status` (verify + Studio filter + PI Verified eligibility/attestation), `/dev/enrichment-preview` (reviewed merge + write-payload/snapshot preview), `/dev/snapshot-audit` (history + type filter), **`/dev/studio-picker-proof`** (auth-free My-Products browser proof), **`/dev/intake-hub`** (unified intake shell) | OCR/barcode scan surfaces still PLANNED (named in the hub) |
 
+## ▶ Owner/team handoff
+Everything Claude-solvable in the current queue is done. The consolidated human to-do —
+**12 reference proposals to calibrate (PAC/POD) + 4 owner-pick mapping decisions** — lives in
+[OWNER_TEAM_CALIBRATION_HANDOFF.md](OWNER_TEAM_CALIBRATION_HANDOFF.md), with the fill-in workflow
+at `/dev/reference-proposals` (local drafts + JSON/CSV pack export).
+
 ## Requires approval before proceeding
 - **Writing to `mapper_basement`** — e.g. adding the missing **almond / erythritol / stevia** references (blocking several products). Locked base; needs explicit go-ahead.
 - **Any pac/pod write onto products** — forbidden until a provenance path is approved (the resolver links read-only instead).
