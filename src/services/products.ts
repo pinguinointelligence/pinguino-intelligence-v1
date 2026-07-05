@@ -25,6 +25,7 @@ import type {
   ProductInsert,
   ProductMapperResultUpdate,
   ProductRow,
+  ProductStatus,
   ProductUpdate,
 } from '@/data/products/productRow';
 
@@ -64,17 +65,57 @@ export async function createProduct(payload: ProductInsert): Promise<ProductRow>
   return data as ProductRow;
 }
 
-/** Update an owned product (RLS rejects rows the user does not own). */
-export async function updateProduct(id: string, patch: ProductUpdate): Promise<ProductRow> {
+/** STRUCTURAL GUARD: product ENGINE values are never written through the generic update paths —
+ * they stay NULL unless a dedicated, provenance-gated flow (none exists yet) sets them. Stripped
+ * at runtime as defense-in-depth on top of the callers' already-narrowed patches. */
+const STRIPPED_ENGINE_FIELDS = ['pac_value', 'pod_value'] as const;
+
+function stripEngineValues(patch: object): Record<string, unknown> {
+  const safe: Record<string, unknown> = { ...patch };
+  for (const field of STRIPPED_ENGINE_FIELDS) delete safe[field];
+  return safe;
+}
+
+/** A generic-update patch: engine values are excluded at the TYPE level too (see the strip). */
+export type ProductUpdatePatch = Omit<ProductUpdate, (typeof STRIPPED_ENGINE_FIELDS)[number]>;
+
+/** Update an owned product (RLS rejects rows the user does not own). Engine values
+ * (see STRIPPED_ENGINE_FIELDS) are type-excluded AND runtime-stripped — this path can
+ * never write them. */
+export async function updateProduct(id: string, patch: ProductUpdatePatch): Promise<ProductRow> {
   if (!supabase) throw new Error(UNAVAILABLE);
   const { data, error } = await supabase
     .from(TABLE)
-    .update(patch)
+    .update(stripEngineValues(patch))
     .eq('id', id)
     .select()
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Product not found or not owned.');
+  return data as ProductRow;
+}
+
+/**
+ * `updateProduct` variant that REFUSES the write when the row's status equals `unlessStatus`
+ * AT WRITE TIME — the condition travels inside the UPDATE itself, closing the check-then-write
+ * race (e.g. enrichment must never overwrite a product that became PI Verified between its read
+ * and its write). Same engine-value strip as updateProduct.
+ */
+export async function updateProductUnlessStatus(
+  id: string,
+  patch: ProductUpdatePatch,
+  unlessStatus: ProductStatus,
+): Promise<ProductRow> {
+  if (!supabase) throw new Error(UNAVAILABLE);
+  const { data, error } = await supabase
+    .from(TABLE)
+    .update(stripEngineValues(patch))
+    .eq('id', id)
+    .neq('status', unlessStatus)
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`Product not found, not owned, or its status is '${unlessStatus}' (write refused).`);
   return data as ProductRow;
 }
 

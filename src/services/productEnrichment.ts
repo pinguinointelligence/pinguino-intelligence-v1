@@ -11,7 +11,7 @@
  *   • every applied change is captured as an append-only product_snapshots row;
  *   • no privileged key; no engine; no npac_value; PAC/POD is never computed.
  */
-import { getProduct, updateProduct } from '@/services/products';
+import { getProduct, updateProduct, updateProductUnlessStatus } from '@/services/products';
 import { snapshotSourceChange, type ProductSnapshotRow } from '@/services/productSnapshots';
 import { ENRICHABLE_FIELDS, type EnrichableField, type EnrichmentPatch } from '@/data/products/productEnrichment';
 import type { ProductRow } from '@/data/products/productRow';
@@ -62,7 +62,12 @@ export async function applyProductEnrichment(
     throw new Error('This product is PI Verified — enrichment is blocked unless a reviewer explicitly overrides it.');
   }
 
-  const product = await updateProduct(productId, safe);
+  // WRITE-TIME guard (closes the check-then-write race): without an explicit override the update
+  // itself refuses a row that became PI Verified after the read above. The snapshot is recorded
+  // only AFTER an allowed write.
+  const product = options.allowPiVerifiedOverride
+    ? await updateProduct(productId, safe)
+    : await updateProductUnlessStatus(productId, safe, 'pi_verified');
   const snapshot = await snapshotSourceChange(productId, product);
   return { product, snapshot, appliedFields };
 }

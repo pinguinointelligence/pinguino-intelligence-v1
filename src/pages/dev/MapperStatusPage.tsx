@@ -94,12 +94,20 @@ export function MapperStatusPage() {
     }
   };
 
-  const persist = async (id: string, status: ProductStatus, reason?: string) => {
+  const persist = async (
+    id: string,
+    status: ProductStatus,
+    reason?: string,
+    attest?: { independent_provenance: true; red_flags_clear: true },
+  ) => {
     setBusyId(id);
     setMessage(null);
     setErrorMessage(null);
     try {
-      const review = reason && reason.trim() !== '' ? { reviewed_by: REVIEWER, review_notes: reason.trim() } : undefined;
+      const review =
+        reason && reason.trim() !== ''
+          ? { reviewed_by: REVIEWER, review_notes: reason.trim(), ...(attest ?? {}) }
+          : undefined;
       const updated = await setProductLifecycleStatus(id, status, review);
       setRows((prev) => prev.map((r) => (r.id === id ? { ...r, current_status: updated.status } : r)));
       const code = rows.find((r) => r.id === id)?.code ?? id;
@@ -135,8 +143,10 @@ export function MapperStatusPage() {
       reviewerApproval: { verified_by: REVIEWER, basis: reason, independent_provenance },
     });
     if (decision.recommended_status === 'pi_verified') {
+      // The pure decision grants pi_verified ONLY with no red flags AND the provenance attestation,
+      // so both service-level attestations are proven true here.
       const note = independent_provenance ? `${reason} [independent provenance attested]` : reason;
-      void persist(id, 'pi_verified', note);
+      void persist(id, 'pi_verified', note, { independent_provenance: true, red_flags_clear: true });
     } else {
       const code = rows.find((r) => r.id === id)?.code ?? id;
       setMessage(`${code}: PI Verified blocked — ${decision.blockers.join('; ') || 'not eligible (red flags / unresolved)'}`);
