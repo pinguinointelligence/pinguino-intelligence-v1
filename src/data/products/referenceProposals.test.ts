@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  CALIBRATION_PACK_WARNING,
   REFERENCE_PROPOSALS,
+  buildCalibrationPack,
+  calibrationPackCsv,
+  calibrationPackJson,
   draftReadiness,
   filterProposals,
   proposalChecklist,
@@ -13,11 +17,19 @@ import {
 } from './referenceProposals';
 
 describe('referenceProposals', () => {
-  it('covers the missing-reference families + the dairy variant gaps', () => {
+  it('covers the missing-reference families + the dairy/cocoa variant gaps', () => {
     expect(REFERENCE_PROPOSALS.map((p) => p.key)).toEqual([
       'greek_yogurt_full_fat', 'skim_milk', 'lactose_free_milk',
+      'plain_yogurt_whole', 'kefir', 'cocoa_powder',
       'almond', 'erythritol', 'maltitol_polyols', 'steviol_stevia', 'sucralose', 'saccharin',
     ]);
+  });
+
+  it('the cultured-dairy + cocoa gaps unlock the parked products', () => {
+    const byKey = new Map(REFERENCE_PROPOSALS.map((p) => [p.key, p]));
+    expect(byKey.get('plain_yogurt_whole')!.unlocks).toEqual(['PR-ING-000014']);
+    expect(byKey.get('kefir')!.unlocks).toEqual(['PR-ING-000022', 'PR-ING-000023']);
+    expect(byKey.get('cocoa_powder')!.unlocks).toEqual(['PR-ING-000033']);
   });
 
   it('the milk variant gaps target dairy and unlock the parked milk products', () => {
@@ -56,7 +68,9 @@ describe('referenceProposals', () => {
   it('filterProposals filters by readiness, category, and unlocked-product substring', () => {
     expect(filterProposals(REFERENCE_PROPOSALS, { readiness: 'needs_pacpod' }).length).toBe(REFERENCE_PROPOSALS.length); // all are needs_pacpod
     expect(filterProposals(REFERENCE_PROPOSALS, { readiness: 'ready' }).length).toBe(0);
-    expect(filterProposals(REFERENCE_PROPOSALS, { category: 'dairy' }).map((p) => p.key)).toEqual(['greek_yogurt_full_fat', 'skim_milk', 'lactose_free_milk']);
+    expect(filterProposals(REFERENCE_PROPOSALS, { category: 'dairy' }).map((p) => p.key)).toEqual([
+      'greek_yogurt_full_fat', 'skim_milk', 'lactose_free_milk', 'plain_yogurt_whole', 'kefir',
+    ]);
     expect(filterProposals(REFERENCE_PROPOSALS, { unlocks: '000040' }).map((p) => p.key)).toEqual(['almond']);
   });
 
@@ -104,6 +118,34 @@ describe('referenceProposals', () => {
     expect(steviaDraft.blocking.join(' ')).toMatch(/water \/ total_solids/);
     // non-finite values never count
     expect(draftReadiness(almond, { pac_value: Number.NaN, pod_value: 1 }).ready).toBe(false);
+  });
+
+  it('calibration pack: REQUIRED pac/pod markers without drafts; team drafts flow through verbatim', () => {
+    const bare = buildCalibrationPack();
+    expect(bare.warning).toBe(CALIBRATION_PACK_WARNING);
+    expect(bare.entries).toHaveLength(REFERENCE_PROPOSALS.length);
+    for (const e of bare.entries) {
+      expect(e.pac_value, e.key).toBe('REQUIRED — team calibration');
+      expect(e.pod_value, e.key).toBe('REQUIRED — team calibration');
+      expect(e.readiness, e.key).toBe('blocked');
+    }
+    // a team-typed almond draft flows through and flips ONLY that entry's readiness
+    const withDraft = buildCalibrationPack({ almond: { pac_value: 2.1, pod_value: 1.4, team_notes: 'calibrated 2026-07' } });
+    const almond = withDraft.entries.find((e) => e.key === 'almond')!;
+    expect(almond.pac_value).toBe(2.1);
+    expect(almond.pod_value).toBe(1.4);
+    expect(almond.team_notes).toBe('calibrated 2026-07');
+    expect(almond.readiness).toBe('ready_local_draft');
+    expect(withDraft.entries.filter((e) => e.readiness === 'blocked')).toHaveLength(REFERENCE_PROPOSALS.length - 1);
+  });
+
+  it('calibration pack JSON parses and CSV has one row per proposal + a header', () => {
+    const parsed = JSON.parse(calibrationPackJson()) as { warning: string; entries: unknown[] };
+    expect(parsed.warning).toMatch(/PREVIEW ONLY/);
+    expect(parsed.entries).toHaveLength(REFERENCE_PROPOSALS.length);
+    const csv = calibrationPackCsv();
+    expect(csv.split('\n')).toHaveLength(REFERENCE_PROPOSALS.length + 1);
+    expect(csv.split('\n')[0]).toMatch(/"key","proposed_name"/);
   });
 
   it('unlocks real PR product codes', () => {

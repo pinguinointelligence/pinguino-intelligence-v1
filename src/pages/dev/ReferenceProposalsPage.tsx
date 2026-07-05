@@ -13,13 +13,17 @@
 import { useState } from 'react';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import {
+  CALIBRATION_PACK_WARNING,
   REFERENCE_PROPOSALS,
+  calibrationPackCsv,
+  calibrationPackJson,
   draftReadiness,
   filterProposals,
   proposalChecklist,
   proposalInsertReadiness,
   proposalNextAction,
   proposalUnlockedProducts,
+  type ProposalDraft,
   type ProposalReadiness,
   type ReferenceProposal,
 } from '@/data/products/referenceProposals';
@@ -106,6 +110,27 @@ export function ReferenceProposalsPage() {
         <strong>No basement write.</strong> This page is read-only — nothing here inserts into the locked
         reference base. A human applies a reviewed seed migration once the team supplies calibrated PAC/POD.
       </div>
+
+      {(() => {
+        // The TEAM CALIBRATION PACK — a copyable preview built from the pure builder + the current
+        // local drafts. Preview only; nothing is persisted or written.
+        const packDrafts: Record<string, ProposalDraft> = Object.fromEntries(
+          Object.entries(drafts).map(([key, d]) => [
+            key,
+            { pac_value: draftNumber(d.pac), pod_value: draftNumber(d.pod), team_notes: d.notes },
+          ]),
+        );
+        return (
+          <details className="mt-4 rounded-md border border-stone-200 bg-white px-4 py-2 text-xs">
+            <summary className="cursor-pointer font-medium">Team calibration pack export (JSON + CSV preview)</summary>
+            <p className="mt-2 rounded bg-amber-50 px-2 py-1 font-mono text-amber-800">{CALIBRATION_PACK_WARNING}</p>
+            <p className="mt-2 font-mono text-stone-500">JSON</p>
+            <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded bg-stone-50 p-2 font-mono text-stone-700">{calibrationPackJson(packDrafts)}</pre>
+            <p className="mt-2 font-mono text-stone-500">CSV</p>
+            <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-stone-50 p-2 font-mono text-stone-700">{calibrationPackCsv(packDrafts)}</pre>
+          </details>
+        );
+      })()}
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
         <span className="font-mono text-stone-500">{visible.length}/{REFERENCE_PROPOSALS.length} · unlock {unlocked.length} products</span>

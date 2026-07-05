@@ -27,6 +27,15 @@ describe('ReferenceProposalsPage', () => {
     expect(html).toMatch(/aria-label="readiness filter"/);
   });
 
+  it('renders the calibration-pack export preview with the PREVIEW ONLY warning', () => {
+    const html = render(<ReferenceProposalsPage />);
+    const t = text(html);
+    expect(t).toMatch(/Team calibration pack export/);
+    expect(t).toMatch(/PREVIEW ONLY — this pack never writes/);
+    expect(t).toMatch(/REQUIRED — team calibration/); // pac/pod slots stay required without drafts
+    expect(html).toMatch(/&quot;key&quot;,&quot;proposed_name&quot;/); // the CSV header renders
+  });
+
   it('renders the LOCAL-ONLY team-calibration draft inputs, blocked by default', () => {
     const html = render(<ReferenceProposalsPage />);
     const t = text(html);

@@ -94,6 +94,56 @@ export const REFERENCE_PROPOSALS: ReferenceProposal[] = [
     do_not_insert_reason: `${PACPOD_BLOCK} Hydrolysed sugars need their own calibration — never copy regular-milk pac/pod.`,
   },
   {
+    key: 'plain_yogurt_whole',
+    proposed_name: 'Plain Yogurt (whole-milk, ≈3% fat, unstrained)',
+    category: 'dairy',
+    subcategory: 'yogurt_plain',
+    unlocks: ['PR-ING-000014'],
+    // The class-correct "Natural Yogurt — Standard" (2/5.4/3.6/4.7 f/c/s/p) mismatches the Spanish
+    // standard yogur natural (3/4.5/4.5/3.5) by fat −1pp / protein +1.2pp / sugars −0.9pp; the
+    // Greek-type ref is a strained profile (sugars 2.7). Label composition from the real product.
+    known_composition: { fat: 3, carbohydrate: 4.5, total_sugars: 4.5, protein: 3.5, salt: 0.1 },
+    missing_fields: ['pac_value', 'pod_value', 'water/total_solids', 'lactose split'],
+    needs_pacpod_calibration: true,
+    source_confidence: 'medium',
+    sources: ['Hacendado "Yogur natural" label (per 100 g)', 'review audit: no unstrained ~3%-fat plain-yogurt ref fits'],
+    readiness: 'needs_pacpod',
+    do_not_insert_reason: PACPOD_BLOCK,
+  },
+  {
+    key: 'kefir',
+    proposed_name: 'Kefir (natural, ≈4% fat)',
+    category: 'dairy',
+    subcategory: 'kefir',
+    unlocks: ['PR-ING-000022', 'PR-ING-000023'],
+    // No kefir reference exists; the closest composition is a YOGURT (different fermented class,
+    // different cultures) — not a safe class-proxy. Label composition from the real product; note
+    // the LOW residual sugars (2.3) from fermentation.
+    known_composition: { fat: 4.2, carbohydrate: 5.1, total_sugars: 2.3, protein: 3.9, salt: 0.08 },
+    missing_fields: ['pac_value', 'pod_value', 'water/total_solids', 'fermentation sugar split (low residual lactose)'],
+    needs_pacpod_calibration: true,
+    source_confidence: 'medium',
+    sources: ['Hacendado "Kéfir natural" label (per 100 g)', 'review audit: no kefir ref; closest is a yogurt (wrong class)'],
+    readiness: 'needs_pacpod',
+    do_not_insert_reason: PACPOD_BLOCK,
+  },
+  {
+    key: 'cocoa_powder',
+    proposed_name: 'Cocoa Powder (pure, 10–14% fat)',
+    category: 'chocolate',
+    subcategory: 'cocoa_powder',
+    unlocks: ['PR-ING-000033'],
+    // The basement has NO pure cocoa-powder reference (only couvertures / cocoa-containing
+    // compounds / cocoa butter) — the composition audit found zero candidates within tolerance.
+    known_composition: { fat: 14, carbohydrate: 16, total_sugars: 2, protein: 21, salt: 0.1 },
+    missing_fields: ['pac_value', 'pod_value', 'water/total_solids', 'fiber', 'available vs by-difference carbohydrate'],
+    needs_pacpod_calibration: true,
+    source_confidence: 'medium',
+    sources: ['La Chocolatera "Cacao puro 0% azúcares añadidos" label (per 100 g)', 'basement audit: no pure cocoa-powder ref'],
+    readiness: 'needs_pacpod',
+    do_not_insert_reason: `${PACPOD_BLOCK} Product is also name-flagged (0% azúcares) — never auto-verifies after mapping.`,
+  },
+  {
     key: 'almond',
     proposed_name: 'Almond 100% (whole / ground / paste)',
     category: 'nut',
@@ -258,6 +308,87 @@ export function draftReadiness(
   if (!pacOk) blocking.push('pac_value (team calibration — not entered)');
   if (!podOk) blocking.push('pod_value (team calibration — not entered)');
   return { ready: blocking.length === 0, blocking };
+}
+
+export const CALIBRATION_PACK_WARNING =
+  'PREVIEW ONLY — this pack never writes to the locked reference base. The TEAM supplies the calibrated PAC/POD values; a human then applies a reviewed seed migration out-of-band.';
+
+const PACPOD_REQUIRED = 'REQUIRED — team calibration';
+
+export interface CalibrationPackEntry {
+  key: string;
+  proposed_name: string;
+  category: string;
+  subcategory: string;
+  known_composition: ReferenceProposal['known_composition'];
+  missing_fields: string[];
+  /** the team's typed value, or the REQUIRED marker — this module never invents a number. */
+  pac_value: number | string;
+  pod_value: number | string;
+  unlocks: string[];
+  sources: string[];
+  team_notes: string | null;
+  readiness: 'ready_local_draft' | 'blocked';
+}
+
+/**
+ * The TEAM CALIBRATION PACK: every proposal with its known/missing fields and the pac/pod slots
+ * the team must fill. Drafts (typed locally in the staging UI) flow in verbatim; without them the
+ * engine slots carry the REQUIRED marker. Pure preview — persists nothing, writes nowhere.
+ */
+export function buildCalibrationPack(
+  drafts: Record<string, ProposalDraft> = {},
+): { warning: string; entries: CalibrationPackEntry[] } {
+  const entries = REFERENCE_PROPOSALS.map<CalibrationPackEntry>((p) => {
+    const draft = drafts[p.key] ?? {};
+    const pacOk = typeof draft.pac_value === 'number' && Number.isFinite(draft.pac_value);
+    const podOk = typeof draft.pod_value === 'number' && Number.isFinite(draft.pod_value);
+    return {
+      key: p.key,
+      proposed_name: p.proposed_name,
+      category: p.category,
+      subcategory: p.subcategory,
+      known_composition: p.known_composition,
+      missing_fields: p.missing_fields,
+      pac_value: pacOk ? (draft.pac_value as number) : PACPOD_REQUIRED,
+      pod_value: podOk ? (draft.pod_value as number) : PACPOD_REQUIRED,
+      unlocks: p.unlocks,
+      sources: p.sources,
+      team_notes: draft.team_notes?.trim() || null,
+      readiness: draftReadiness(p, draft).ready ? 'ready_local_draft' : 'blocked',
+    };
+  });
+  return { warning: CALIBRATION_PACK_WARNING, entries };
+}
+
+/** The pack as pretty JSON (for copy/hand-off). */
+export function calibrationPackJson(drafts: Record<string, ProposalDraft> = {}): string {
+  return JSON.stringify(buildCalibrationPack(drafts), null, 2);
+}
+
+const csvCell = (v: unknown): string => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+/** The pack as CSV (one row per proposal; list fields joined with |, composition as k=v pairs). */
+export function calibrationPackCsv(drafts: Record<string, ProposalDraft> = {}): string {
+  const { entries } = buildCalibrationPack(drafts);
+  const header = ['key', 'proposed_name', 'category', 'subcategory', 'known_composition', 'missing_fields', 'pac_value', 'pod_value', 'unlocks', 'sources', 'team_notes', 'readiness'];
+  const rows = entries.map((e) =>
+    [
+      e.key,
+      e.proposed_name,
+      e.category,
+      e.subcategory,
+      Object.entries(e.known_composition).map(([k, v]) => `${k}=${v}`).join(' '),
+      e.missing_fields.join(' | '),
+      e.pac_value,
+      e.pod_value,
+      e.unlocks.join(' | '),
+      e.sources.join(' | '),
+      e.team_notes ?? '',
+      e.readiness,
+    ].map(csvCell).join(','),
+  );
+  return [header.map(csvCell).join(','), ...rows].join('\n');
 }
 
 export interface ProposalFilter {
