@@ -2,7 +2,14 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REFERENCE_PROPOSALS, filterProposals, proposalNextAction, proposalUnlockedProducts } from './referenceProposals';
+import {
+  REFERENCE_PROPOSALS,
+  filterProposals,
+  proposalChecklist,
+  proposalInsertReadiness,
+  proposalNextAction,
+  proposalUnlockedProducts,
+} from './referenceProposals';
 
 describe('referenceProposals', () => {
   it('covers the missing-reference families + the full-fat greek yogurt variant gap', () => {
@@ -46,6 +53,28 @@ describe('referenceProposals', () => {
   it('proposalNextAction always describes the team-calibration gate for needs_pacpod', () => {
     for (const p of REFERENCE_PROPOSALS) {
       expect(proposalNextAction(p)).toMatch(/PAC\/POD/);
+    }
+  });
+
+  it('proposalChecklist: pac/pod are ALWAYS team_only; sourced fields show present', () => {
+    const almond = REFERENCE_PROPOSALS.find((p) => p.key === 'almond')!;
+    const items = new Map(proposalChecklist(almond).map((i) => [i.field, i.status]));
+    expect(items.get('pac_value')).toBe('team_only');
+    expect(items.get('pod_value')).toBe('team_only');
+    expect(items.get('label composition')).toBe('present');
+    expect(items.get('water / total_solids')).toBe('present');
+    expect(items.get('sources / provenance')).toBe('present');
+    // stevia has no water/solids figure → honestly missing
+    const stevia = REFERENCE_PROPOSALS.find((p) => p.key === 'steviol_stevia')!;
+    expect(new Map(proposalChecklist(stevia).map((i) => [i.field, i.status])).get('water / total_solids')).toBe('missing');
+  });
+
+  it('proposalInsertReadiness: NEVER ready from this module (pac/pod team-only always blocks)', () => {
+    for (const p of REFERENCE_PROPOSALS) {
+      const r = proposalInsertReadiness(p);
+      expect(r.ready, p.key).toBe(false);
+      expect(r.blocking.join(' '), p.key).toMatch(/pac_value \(team calibration\)/);
+      expect(r.blocking.join(' '), p.key).toMatch(/pod_value \(team calibration\)/);
     }
   });
 

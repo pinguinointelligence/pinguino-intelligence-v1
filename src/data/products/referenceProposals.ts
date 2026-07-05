@@ -157,6 +157,47 @@ export function proposalNextAction(p: ReferenceProposal): string {
   return 'Team supplies calibrated PAC/POD (+ the listed missing fields); then a human inserts via a reviewed seed migration. No auto-insert.';
 }
 
+export interface ChecklistItem {
+  field: string;
+  /** present = a sourced value exists; missing = needs a verified source; team_only = only the
+   * team's calibration can supply it (engine pac/pod — NEVER filled by this module). */
+  status: 'present' | 'missing' | 'team_only';
+}
+
+/**
+ * Per-proposal required-fields checklist for the staging surface. Pure + derived — it never
+ * invents a value; pac/pod are ALWAYS team_only.
+ */
+export function proposalChecklist(p: ReferenceProposal): ChecklistItem[] {
+  const has = (k: keyof ReferenceProposal['known_composition']) => p.known_composition[k] !== undefined;
+  return [
+    { field: 'category', status: p.category.trim() !== '' ? 'present' : 'missing' },
+    { field: 'subcategory', status: p.subcategory.trim() !== '' ? 'present' : 'missing' },
+    { field: 'label composition', status: has('fat') || has('carbohydrate') || has('total_sugars') || has('protein') ? 'present' : 'missing' },
+    { field: 'water / total_solids', status: has('water') || has('total_solids') ? 'present' : 'missing' },
+    { field: 'sugar / polyol split', status: has('total_sugars') || has('polyol') ? 'present' : 'missing' },
+    { field: 'pac_value', status: 'team_only' },
+    { field: 'pod_value', status: 'team_only' },
+    { field: 'sources / provenance', status: p.sources.length > 0 ? 'present' : 'missing' },
+  ];
+}
+
+export interface InsertReadiness {
+  /** ALWAYS false from this module — pac/pod are team_only, so staging can never flip to ready. */
+  ready: false;
+  blocking: string[];
+}
+
+/** Insert readiness: ready ONLY when every checklist field is present — which cannot happen here
+ * (pac/pod stay team_only), so this module can never authorise an insert. A human applies a
+ * reviewed seed migration once the team supplies the calibrated values out-of-band. */
+export function proposalInsertReadiness(p: ReferenceProposal): InsertReadiness {
+  const blocking = proposalChecklist(p)
+    .filter((i) => i.status !== 'present')
+    .map((i) => (i.status === 'team_only' ? `${i.field} (team calibration)` : i.field));
+  return { ready: false, blocking };
+}
+
 export interface ProposalFilter {
   readiness?: ProposalReadiness | 'all';
   category?: string; // 'all' | <category>

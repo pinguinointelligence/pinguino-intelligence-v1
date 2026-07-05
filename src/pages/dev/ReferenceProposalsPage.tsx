@@ -15,10 +15,23 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 import {
   REFERENCE_PROPOSALS,
   filterProposals,
+  proposalChecklist,
+  proposalInsertReadiness,
   proposalNextAction,
   proposalUnlockedProducts,
   type ProposalReadiness,
 } from '@/data/products/referenceProposals';
+
+const CHECK_MARK: Record<'present' | 'missing' | 'team_only', string> = {
+  present: '✓',
+  missing: '✗',
+  team_only: '⛔',
+};
+const CHECK_STYLE: Record<'present' | 'missing' | 'team_only', string> = {
+  present: 'text-emerald-700',
+  missing: 'text-status-risky',
+  team_only: 'text-amber-700',
+};
 
 const READINESS_STYLE: Record<ProposalReadiness, string> = {
   ready: 'bg-emerald-100 text-emerald-700',
@@ -91,6 +104,19 @@ export function ReferenceProposalsPage() {
                 <span className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-amber-700">team PAC/POD calibration needed</span>
               </p>
             ) : null}
+            <div className="mt-2 rounded border border-stone-100 bg-stone-50 px-2 py-1.5 text-xs">
+              <p className="font-mono text-stone-600">required-fields checklist</p>
+              <ul className="mt-0.5 grid grid-cols-2 gap-x-3 font-mono text-stone-500">
+                {proposalChecklist(p).map((item) => (
+                  <li key={item.field}>
+                    <span className={CHECK_STYLE[item.status]}>{CHECK_MARK[item.status]}</span> {item.field}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 font-mono text-stone-600">
+                insert readiness: <span className="text-status-risky">blocked</span> — {proposalInsertReadiness(p).blocking.join(' · ')}
+              </p>
+            </div>
             <p className="mt-1 text-xs text-sky-800">
               <span className="text-stone-400">next action:</span> {proposalNextAction(p)}
             </p>

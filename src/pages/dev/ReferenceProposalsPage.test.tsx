@@ -26,6 +26,15 @@ describe('ReferenceProposalsPage', () => {
     expect(t).toMatch(/team PAC\/POD calibration needed/i);
     expect(html).toMatch(/aria-label="readiness filter"/);
   });
+
+  it('renders the required-fields checklist + an always-blocked insert readiness', () => {
+    const t = text(render(<ReferenceProposalsPage />));
+    expect(t).toMatch(/required-fields checklist/);
+    expect(t).toMatch(/pac_value/);
+    expect(t).toMatch(/insert readiness:\s*blocked/);
+    expect(t).toMatch(/team calibration/);
+    expect(t).not.toMatch(/insert readiness:\s*ready/i); // never ready from staging
+  });
 });
 
 describe('ReferenceProposalsPage — boundaries (static)', () => {
