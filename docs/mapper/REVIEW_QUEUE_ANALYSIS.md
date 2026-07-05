@@ -27,6 +27,20 @@ composition + name agree; nothing else of that fruit exists):
 
 Now: **51 null · 15 matched · 15 Studio-eligible.** New reference gap noted: **full-fat (≈10%) greek yogurt**.
 
+### Decisions executed (2026-06-30, milk/dark/pistachio pass) — 1 more confirmation
+- **PR-ING-000027 Chocolate con leche fundir → PI-ING-000122 (Milk Chocolate Couverture)** — the clearest milk-chocolate in the pool (Δ0.69; next milk-choc Δ1.70, a 2.5× gap) and semantically apt ("fundir"=for-melting=couverture). Reference-linked; **pac/pod null**.
+- **Parked:** 000026 milk choc (3-way tie at Δ1.28); 000028 dark choc (**percent-level ambiguous** — 7 dark refs at 70.5/72/74%); 000035 pistachio (2 close paste/pulp refs vs a raw nut). → **50 null · 16 matched · 16 Studio-eligible.**
+
+### Category-mapping limitation found (2026-06-30) — coffee
+The 5 coffee products (000064-068, `product_category` = `flavor`) cannot reach the **coffee references
+that DO exist** ("Coffee Bean Roasted Ground", "Coffee Instant Powder", "Grain Coffee") because those
+refs sit in `coffee_tea`, which `mapDatasetCategory` maps to engine `flavor` via an **approximation**
+(`exact: false`); the matcher's composition/ingredient_type pooling requires an EXACT category on both
+sides, so approx-category refs are excluded. This is a **matcher category-mapping constraint, not a
+tiebreaker gap** — no name concept can fix it. A safe fix (letting flavor products pool with coffee_tea
+refs) would be a scoped matcher change to weigh against mis-pooling tea/other flavors; deferred, not done.
+Vanilla 000069 is a separate case: a zero-composition **aroma** vs vanilla **paste** refs (form mismatch).
+
 ## Buckets (with next action)
 
 ## Buckets (with next action)

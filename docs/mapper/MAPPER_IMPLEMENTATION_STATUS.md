@@ -1,7 +1,7 @@
 # Mapper — Implementation Status
 
 _Living status tracker for the PINGÜINO product-intake "Mapper". Evidence-based; nothing
-here is assumed complete. Last updated 2026-06-30 at repo HEAD `048e800`._
+here is assumed complete. Last updated 2026-06-30 at repo HEAD `fb7ba71`._
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
@@ -17,14 +17,14 @@ here is assumed complete. Last updated 2026-06-30 at repo HEAD `048e800`._
 |---|---|
 | products total | 69 |
 | product_category set / null | 69 / 0 |
-| mapper_status matched | **15** (all `manual_mapping` / `high`; +2 white-chocolate confirmations this block) |
+| mapper_status matched | **16** (all `manual_mapping` / `high`; +1 milk-chocolate confirmation this block) |
 | mapper_status rejected | 3 |
 | mapper_status needs_review | 0 |
-| mapper_status null | **51** |
+| mapper_status null | **50** |
 | mapper_basement | 542 (untouched) |
-| matched products with pac/pod NULL | **15 / 15** (none engine-ready — by design) |
-| **lifecycle `status`** | **draft 51 · pi_generated 15 · rejected 3 · pi_calculated 0 · pi_verified 0** |
-| Studio-eligible | **15** |
+| matched products with pac/pod NULL | **16 / 16** (none engine-ready — by design) |
+| **lifecycle `status`** | **draft 50 · pi_generated 16 · rejected 3 · pi_calculated 0 · pi_verified 0** |
+| Studio-eligible | **16** |
 | `product_snapshots` table | **live** (migration 0011 applied; 69 rows; RLS append-only) |
 
 ## Requirement status
@@ -58,7 +58,7 @@ here is assumed complete. Last updated 2026-06-30 at repo HEAD `048e800`._
 - **products.status transitions** — need the customer-facing status rules signed off before any code sets `pi_calculated`/`pi_verified`.
 
 ## Product review progress (mapping decisions, not engine-readiness)
-- **15 matched** (manual review): 000006, 000010, 000011, 000012, 000013, 000029, 000031, 000036, 000043, 000044, 000070, 000046 (→ Wild Strawberry), 000047 (→ Blueberry), **000024 & 000025 (→ White Chocolate PI-ING-000142)** — the last four confirmed via the name-tiebreaker re-audit (unique fruit / unique in-pool white-chocolate). Parked with reasons: greek yogurts (only greek ref is too lean — 10.8 vs 7.5% fat), milk/dark chocolate (many equivalent refs), pistachio (raw nut vs 2 paste refs).
+- **16 matched** (manual review): 000006, 000010, 000011, 000012, 000013, 000029, 000031, 000036, 000043, 000044, 000070, 000046 (→ Wild Strawberry), 000047 (→ Blueberry), 000024 & 000025 (→ White Chocolate PI-ING-000142), **000027 (→ Milk Chocolate Couverture PI-ING-000122)** — confirmed via the name-tiebreaker re-audit (unique/clearest in-pool + semantic "fundir"=couverture). Parked: greek yogurts (only greek ref is too lean 10.8 vs 7.5% fat — see proposal), 000026 milk choc (3-way tie), 000028 dark choc (percent-level ambiguous), pistachio (raw nut vs 2 paste refs), coffee (refs exist but in `coffee_tea` → blocked by the approx-category guard), vanilla (aroma vs paste form mismatch).
 - **3 rejected** (false matches): 000015, 000020, 000054.
 - **55 unmapped** (`null`): 7 reviewed-but-parked (000035 pick-which-pistachio; 000040/041/042 no almond ref; 000056 composite dessert; 000060/062 no erythritol/stevia ref) + ~48 unreviewed (zero-composition + broad-ambiguous).
 - **Basement reference gaps to add later (approval required):** almond, erythritol, stevia.
@@ -88,7 +88,7 @@ none newly decidable — all 55 stay parked. The decidable blockers are the **ba
 Full grouping + next-action per group: [REVIEW_QUEUE_ANALYSIS.md](REVIEW_QUEUE_ANALYSIS.md).
 
 ## Recent commits
-`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking · `a07abd0` My-Products engine library · `0b3e34a` PI Verified / Manual Adjusted controls · `f002a8c` OpenFoodFacts adapter · `43c12c0` reviewed enrichment conflict-merge · `54dd084` snapshot audit view · `b01d657` PI Verified eligibility explainer · `cadac1f` **Studio My-Products browser proof** · `2c6d0d3` enrichment write-payload/snapshot preview · `312eb7a` snapshot type filter · `8bebb58` **reference-linked provenance attestation** · `c9c7aae` handoff test hardening · `c662e32` **name-concept tiebreaker** · `70b534a` intake hub · `27bd30e` Drive re-verify + legacy lock proposal · `3425182` tiebreaker WIRED into matcher · `9bff593` tiebreak evidence on /dev/mapper-review · `801c82d` **narrowed/ranked filter + becomes-hint** · `e5e6374` **reference-proposal staging** · `d15d998` more tiebreaker concepts · `048e800` proof count + enrichment finding + legacy npac guard. **Live DB ops:** migration 0011 applied; **4 mapping confirmations across two blocks** (000046 → Wild Strawberry, 000047 → Blueberry, **000024 & 000025 → White Chocolate** — all reference-linked, pac/pod null). DEV tools: `/dev/mapper-review` (+ tiebreak evidence + narrowed/ranked filter), `/dev/mapper-status`, `/dev/enrichment-preview`, `/dev/snapshot-audit`, `/dev/studio-picker-proof`, `/dev/intake-hub`, **`/dev/reference-proposals`**.
+`1d8b930` red-flag + engine resolver · `700aa6b` status-decision + confidence · `baf5d6b` engine-handoff adapter · `0822844` snapshots migration + gap/catalog docs · `61cb32a` snapshot + status-write services · `67e978e` enrichment source-ranking · `a07abd0` My-Products engine library · `0b3e34a` PI Verified / Manual Adjusted controls · `f002a8c` OpenFoodFacts adapter · `43c12c0` reviewed enrichment conflict-merge · `54dd084` snapshot audit view · `b01d657` PI Verified eligibility explainer · `cadac1f` **Studio My-Products browser proof** · `2c6d0d3` enrichment write-payload/snapshot preview · `312eb7a` snapshot type filter · `8bebb58` **reference-linked provenance attestation** · `c9c7aae` handoff test hardening · `c662e32` **name-concept tiebreaker** · `70b534a` intake hub · `27bd30e` Drive re-verify + legacy lock proposal · `3425182` tiebreaker WIRED into matcher · `9bff593` tiebreak evidence on /dev/mapper-review · `801c82d` narrowed/ranked filter + becomes-hint · `e5e6374` reference-proposal staging · `d15d998` more tiebreaker concepts · `6eec184` **full-fat greek proposal + reference-proposals filters** · `fb7ba71` **intake input classifier**. **Live DB ops:** migration 0011 applied; **5 mapping confirmations across three blocks** (000046 → Wild Strawberry, 000047 → Blueberry, 000024 & 000025 → White Chocolate, **000027 → Milk Chocolate Couverture** — all reference-linked, pac/pod null). DEV tools: `/dev/mapper-review`, `/dev/mapper-status`, `/dev/enrichment-preview`, `/dev/snapshot-audit`, `/dev/studio-picker-proof`, `/dev/intake-hub` (+ input classifier), `/dev/reference-proposals` (+ filters).
 
 ## Studio product selection (this block)
 Confirmed products are now **selectable in Studio recipes** via the picker's **"My Products"** group
