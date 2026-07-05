@@ -13,8 +13,10 @@
  * Boundaries (IntakeHubPage.security.test.ts): DEV-only; no service/DB write; no OCR engine; no
  * paid API; no secret.
  */
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { classifyIntakeInput } from '@/data/products/intakeClassifier';
 
 type IntakeState = 'working' | 'planned';
 
@@ -75,7 +77,13 @@ function StateBadge({ state }: { state: IntakeState }) {
 }
 
 export function IntakeHubPage() {
+  const [probe, setProbe] = useState('');
+
   if (!import.meta.env.DEV) return <NotFoundPage />;
+
+  // Classify a typed input (a filename like "catalog.csv" / "label.jpg", or an EAN) → its intake path.
+  const isFilename = probe.includes('.');
+  const classified = probe.trim() === '' ? null : classifyIntakeInput(isFilename ? { filename: probe } : { text: probe });
 
   return (
     <div className="mx-auto min-h-screen max-w-2xl bg-paper px-6 py-16 text-ink">
@@ -85,6 +93,30 @@ export function IntakeHubPage() {
         Every intake path and its honest state. Nothing here fakes OCR or online data, and no path
         writes PAC/POD or the locked reference base.
       </p>
+
+      <div className="mt-6 rounded-md border border-stone-200 bg-white px-4 py-3 text-sm">
+        <h2 className="font-medium">Classify an intake input</h2>
+        <p className="mt-1 text-xs text-stone-500">Type a filename (e.g. <code>catalog.csv</code>, <code>label.jpg</code>) or an EAN — the classifier routes it (no OCR, no fetch).</p>
+        <input
+          className="mt-2 w-full rounded border border-stone-200 px-3 py-2 font-mono text-sm"
+          placeholder="catalog.csv · label.jpg · 8480000610928"
+          value={probe}
+          onChange={(e) => setProbe(e.target.value)}
+        />
+        {classified ? (
+          <div className="mt-2 text-xs">
+            <p className="font-mono text-stone-600">
+              → <strong>{classified.kind}</strong> · {classified.label} · {classified.available ? 'available' : 'not available'}
+            </p>
+            <p className="mt-0.5 text-stone-500">{classified.note}</p>
+            {classified.route ? (
+              <Link to={classified.route} className="mt-1 inline-block font-mono text-xs text-sky-700 underline">
+                open {classified.route} →
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       <div className="mt-6 space-y-4">
         {SECTIONS.map((s) => (

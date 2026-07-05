@@ -31,6 +31,12 @@ describe('IntakeHubPage', () => {
     expect(t).toMatch(/keyless\/local/);
     expect(t).toMatch(/no paid vision API/);
   });
+
+  it('renders the intake-input classifier panel', () => {
+    const html = render(<IntakeHubPage />);
+    expect(text(html)).toMatch(/Classify an intake input/);
+    expect(html).toMatch(/placeholder="catalog\.csv/);
+  });
 });
 
 describe('IntakeHubPage — boundaries (static)', () => {
