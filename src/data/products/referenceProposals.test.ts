@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   REFERENCE_PROPOSALS,
+  draftReadiness,
   filterProposals,
   proposalChecklist,
   proposalInsertReadiness,
@@ -76,6 +77,24 @@ describe('referenceProposals', () => {
       expect(r.blocking.join(' '), p.key).toMatch(/pac_value \(team calibration\)/);
       expect(r.blocking.join(' '), p.key).toMatch(/pod_value \(team calibration\)/);
     }
+  });
+
+  it('draftReadiness: blocked without team pac/pod; ready ONLY with team-typed values + complete non-engine fields', () => {
+    const almond = REFERENCE_PROPOSALS.find((p) => p.key === 'almond')!;
+    // no draft values → blocked on both engine fields
+    const blocked = draftReadiness(almond, {});
+    expect(blocked.ready).toBe(false);
+    expect(blocked.blocking.join(' ')).toMatch(/pac_value .*not entered/);
+    // team typed finite values → almond (all non-engine fields present) becomes a READY local draft
+    const ready = draftReadiness(almond, { pac_value: 2.1, pod_value: 1.4 });
+    expect(ready.ready).toBe(true);
+    // stevia is missing water/solids → still blocked even with pac/pod typed
+    const stevia = REFERENCE_PROPOSALS.find((p) => p.key === 'steviol_stevia')!;
+    const steviaDraft = draftReadiness(stevia, { pac_value: 0, pod_value: 300 });
+    expect(steviaDraft.ready).toBe(false);
+    expect(steviaDraft.blocking.join(' ')).toMatch(/water \/ total_solids/);
+    // non-finite values never count
+    expect(draftReadiness(almond, { pac_value: Number.NaN, pod_value: 1 }).ready).toBe(false);
   });
 
   it('unlocks real PR product codes', () => {

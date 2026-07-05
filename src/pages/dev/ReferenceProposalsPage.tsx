@@ -14,13 +14,47 @@ import { useState } from 'react';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import {
   REFERENCE_PROPOSALS,
+  draftReadiness,
   filterProposals,
   proposalChecklist,
   proposalInsertReadiness,
   proposalNextAction,
   proposalUnlockedProducts,
   type ProposalReadiness,
+  type ReferenceProposal,
 } from '@/data/products/referenceProposals';
+
+interface DraftFields {
+  pac: string;
+  pod: string;
+  notes: string;
+}
+const EMPTY_DRAFT: DraftFields = { pac: '', pod: '', notes: '' };
+
+/** A typed value → finite number, or null (blank / non-numeric never becomes a value). */
+const draftNumber = (s: string): number | null => {
+  const t = s.trim();
+  if (t === '') return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** The would-be seed row for a READY local draft — handed to a human migration, never persisted. */
+const seedRowPreview = (p: ReferenceProposal, d: DraftFields) =>
+  JSON.stringify(
+    {
+      proposed_name: p.proposed_name,
+      category: p.category,
+      subcategory: p.subcategory,
+      ...p.known_composition,
+      pac_value: draftNumber(d.pac),
+      pod_value: draftNumber(d.pod),
+      team_notes: d.notes.trim() || undefined,
+      sources: p.sources,
+    },
+    null,
+    1,
+  );
 
 const CHECK_MARK: Record<'present' | 'missing' | 'team_only', string> = {
   present: '✓',
@@ -48,6 +82,10 @@ export function ReferenceProposalsPage() {
   const [readiness, setReadiness] = useState<ProposalReadiness | 'all'>('all');
   const [category, setCategory] = useState('all');
   const [unlocks, setUnlocks] = useState('');
+  // Team-calibration drafts — LOCAL component state only. Never persisted, never written anywhere.
+  const [drafts, setDrafts] = useState<Record<string, DraftFields>>({});
+  const setDraft = (key: string, patch: Partial<DraftFields>) =>
+    setDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] ?? EMPTY_DRAFT), ...patch } }));
 
   if (!import.meta.env.DEV) return <NotFoundPage />;
 
@@ -117,6 +155,35 @@ export function ReferenceProposalsPage() {
                 insert readiness: <span className="text-status-risky">blocked</span> — {proposalInsertReadiness(p).blocking.join(' · ')}
               </p>
             </div>
+
+            {(() => {
+              const d = drafts[p.key] ?? EMPTY_DRAFT;
+              const dr = draftReadiness(p, { pac_value: draftNumber(d.pac), pod_value: draftNumber(d.pod), team_notes: d.notes });
+              return (
+                <div className="mt-2 rounded border border-sky-100 bg-sky-50/50 px-2 py-1.5 text-xs">
+                  <p className="font-mono text-stone-600">team calibration draft — LOCAL ONLY, never persisted</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <label className="font-mono text-stone-500">
+                      PAC{' '}
+                      <input aria-label={`${p.key} draft pac`} className="w-20 rounded border border-stone-200 px-1.5 py-0.5" value={d.pac} onChange={(e) => setDraft(p.key, { pac: e.target.value })} />
+                    </label>
+                    <label className="font-mono text-stone-500">
+                      POD{' '}
+                      <input aria-label={`${p.key} draft pod`} className="w-20 rounded border border-stone-200 px-1.5 py-0.5" value={d.pod} onChange={(e) => setDraft(p.key, { pod: e.target.value })} />
+                    </label>
+                    <input aria-label={`${p.key} draft notes`} className="min-w-40 flex-1 rounded border border-stone-200 px-1.5 py-0.5 font-mono" placeholder="team notes / calibration source" value={d.notes} onChange={(e) => setDraft(p.key, { notes: e.target.value })} />
+                  </div>
+                  {dr.ready ? (
+                    <div className="mt-1">
+                      <p className="font-mono text-emerald-700">draft ready — hand this row to a human seed migration (nothing is written here)</p>
+                      <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all font-mono text-stone-600">{seedRowPreview(p, d)}</pre>
+                    </div>
+                  ) : (
+                    <p className="mt-1 font-mono text-stone-500">draft blocked — {dr.blocking.join(' · ')}</p>
+                  )}
+                </div>
+              );
+            })()}
             <p className="mt-1 text-xs text-sky-800">
               <span className="text-stone-400">next action:</span> {proposalNextAction(p)}
             </p>

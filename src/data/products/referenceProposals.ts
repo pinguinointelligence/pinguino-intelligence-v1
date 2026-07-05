@@ -198,6 +198,33 @@ export function proposalInsertReadiness(p: ReferenceProposal): InsertReadiness {
   return { ready: false, blocking };
 }
 
+export interface ProposalDraft {
+  /** typed by the TEAM in the staging UI — local component state only, never persisted here. */
+  pac_value?: number | null;
+  pod_value?: number | null;
+  team_notes?: string;
+}
+
+/**
+ * LOCAL-DRAFT readiness for the staging UI: ready ONLY when every non-engine checklist field is
+ * present AND the team has typed finite pac/pod values. The values come from the TEAM's input —
+ * this module never invents them, persists nothing, and the base `proposalInsertReadiness`
+ * stays permanently blocked. A ready draft is handed to a human seed migration out-of-band.
+ */
+export function draftReadiness(
+  p: ReferenceProposal,
+  draft: ProposalDraft,
+): { ready: boolean; blocking: string[] } {
+  const blocking = proposalChecklist(p)
+    .filter((i) => i.status === 'missing')
+    .map((i) => i.field);
+  const pacOk = typeof draft.pac_value === 'number' && Number.isFinite(draft.pac_value);
+  const podOk = typeof draft.pod_value === 'number' && Number.isFinite(draft.pod_value);
+  if (!pacOk) blocking.push('pac_value (team calibration — not entered)');
+  if (!podOk) blocking.push('pod_value (team calibration — not entered)');
+  return { ready: blocking.length === 0, blocking };
+}
+
 export interface ProposalFilter {
   readiness?: ProposalReadiness | 'all';
   category?: string; // 'all' | <category>

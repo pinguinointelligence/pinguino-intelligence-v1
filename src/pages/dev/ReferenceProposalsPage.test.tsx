@@ -27,6 +27,16 @@ describe('ReferenceProposalsPage', () => {
     expect(html).toMatch(/aria-label="readiness filter"/);
   });
 
+  it('renders the LOCAL-ONLY team-calibration draft inputs, blocked by default', () => {
+    const html = render(<ReferenceProposalsPage />);
+    const t = text(html);
+    expect(t).toMatch(/team calibration draft — LOCAL ONLY, never persisted/);
+    expect(html).toMatch(/aria-label="almond draft pac"/);
+    expect(html).toMatch(/aria-label="almond draft pod"/);
+    expect(t).toMatch(/draft blocked/);
+    expect(t).not.toMatch(/draft ready/); // no values typed in SSR → never ready by default
+  });
+
   it('renders the required-fields checklist + an always-blocked insert readiness', () => {
     const t = text(render(<ReferenceProposalsPage />));
     expect(t).toMatch(/required-fields checklist/);
