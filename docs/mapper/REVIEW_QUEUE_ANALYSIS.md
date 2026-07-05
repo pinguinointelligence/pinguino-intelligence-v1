@@ -64,15 +64,31 @@ narrowing happens only when exactly one milk-named ref is in-band; lactose-free/
 
 → After this block: **43 null · 23 matched · 23 Studio-eligible.**
 
+### Human-pick review pass (2026-07-05) — ZERO safe confirms; 3 new gaps staged
+Full side-by-side review of every remaining shortlist found **no candidate meeting the clear-evidence
+bar** — each has a hard blocker, three of them newly-confirmed missing references (now staged):
+- **000014 Yogur natural** — the class-correct "Natural Yogurt — Standard" (2/5.4/3.6/4.7) mismatches
+  the product (3/4.5/4.5/3.5) on fat/protein/sugars (Δ0.81); the closer Greek-Type (Δ0.58) is a
+  strained profile (sugars 2.7 vs 4.5 — PAC/POD-relevant) → **gap `plain_yogurt_whole`**.
+- **000022/000023 Kéfir** — closest ref is a *yogurt* (Δ0.34) — wrong fermented class; no kefir ref →
+  **gap `kefir`**.
+- **000033 Cacao puro** — **no pure cocoa-powder reference exists** (only couvertures/compounds/cocoa
+  butter; zero candidates within tolerance) → **gap `cocoa_powder`**; 000034 a-la-taza is a sweetened
+  drinking mix (composite) → parked.
+- **Percent helper deliberately SKIPPED**: its only use-case (000028, "72%") has TWO exact-72% refs
+  (Barima + Vanini) → the helper cannot uniquely narrow its only target; documented instead of coded.
+- 000026 (3-way tie), 000035 (raw vs roasted paste, two near-equidistant refs), 000021 (lactose-free)
+  → parked unchanged.
+
 ## Remaining 43-null grouping (recomputed 2026-07-05)
 | group | products | state |
 |---|---|---|
 | milk variant gaps | 000004 (skim), 000007/000008 (lactose-free) | blocked on `skim_milk` / `lactose_free_milk` proposals |
 | greek yogurt gap | 000016/000017 (full-fat), 000018/000019 (2% ligero) | blocked on `greek_yogurt_full_fat` (+ a light variant) |
-| cultured dairy | 000014 yogur natural, 000021 sin-lactosa yogurt, 000022/000023 kéfir | human pick / no kefir ref; ranked shortlists in the workstation |
+| cultured dairy | 000014 yogur natural (gap `plain_yogurt_whole`), 000021 sin-lactosa yogurt (lactose-free), 000022/000023 kéfir (gap `kefir`) | blocked on staged proposals — team pac/pod |
 | protein red-flags | 000009, 000045, 000051/052/053/055/056 | never auto-verify; parked |
 | chocolate percent/tie | 000026 (3-way milk-choc tie), 000028 (7 dark refs 70.5–74%) | human pick |
-| cocoa powders + creams | 000033/000034, 000037/038/039 | composite / sub-class review |
+| cocoa powders + creams | 000033 (gap `cocoa_powder`), 000034 sweetened mix, 000037/038/039 creams | gap staged / composite |
 | pistachio | 000035 | raw nut vs 2 paste refs — human pick |
 | almonds | 000040/041/042 | blocked on `almond` proposal |
 | fruit blends + 0% jams | 000048/049/050, 000057/058/059 | composite / red-flagged |

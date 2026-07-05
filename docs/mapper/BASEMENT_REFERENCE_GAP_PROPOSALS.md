@@ -26,6 +26,17 @@ Hacendado label, a real product; PAC/POD team-only). Structured in `referencePro
   `lactose_free_milk`; **never copy regular-milk pac/pod** — hydrolysed sugars need their own calibration.
 Both are staged in `referenceProposals.ts` + `/dev/reference-proposals` (checklist + LOCAL calibration drafts).
 
+## Cultured-dairy + cocoa gaps found 2026-07-05 (human-pick review)
+- **Plain yogurt (whole-milk ≈3%, unstrained)** — "Natural Yogurt — Standard" mismatches the Spanish
+  standard on fat/protein/sugars; the Greek-Type ref is strained (sugars 2.7 vs 4.5). Proposal
+  `plain_yogurt_whole` (unlocks 000014).
+- **Kefir** — no kefir reference; the closest composition is a yogurt (wrong fermented class).
+  Proposal `kefir` (unlocks 000022/000023).
+- **Pure cocoa powder** — no pure cocoa-powder reference exists (only couvertures/compounds/cocoa
+  butter). Proposal `cocoa_powder` (unlocks 000033).
+All staged in `referenceProposals.ts` + `/dev/reference-proposals`, and included in the exportable
+**team calibration pack** (JSON/CSV with REQUIRED pac/pod markers).
+
 ## Confirmed gaps (read-only search of 542 rows)
 - **Almond** — `nut` category has brazil/cashew/chestnut/hazelnut/macadamia/peanut/pistachio/walnut/poppy, but **no almond / almendra** of any form.
 - **Erythritol (and any polyol)** — `sweetener`/`sugar` has cane sugar, dextrose, fructose, glucose syrups, maltodextrin, lactose, sucrose, vanillin sugar — **no erythritol/maltitol/sorbitol/xylitol/isomalt**.
