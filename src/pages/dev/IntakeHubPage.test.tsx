@@ -37,6 +37,16 @@ describe('IntakeHubPage', () => {
     expect(text(html)).toMatch(/Classify an intake input/);
     expect(html).toMatch(/placeholder="catalog\.csv/);
   });
+
+  it('offers a file picker that classifies by NAME only (never reads the file)', () => {
+    const html = render(<IntakeHubPage />);
+    expect(html).toMatch(/type="file"/);
+    expect(html).toMatch(/accept="\.csv,\.tsv,\.xlsx,\.xls,image\/\*"/);
+    expect(text(html)).toMatch(/never read or uploaded/);
+    // the page never reads file CONTENTS — no FileReader / arrayBuffer / .text() call
+    const src = readFileSync(join(resolve(import.meta.dirname), 'IntakeHubPage.tsx'), 'utf8');
+    expect(/FileReader|arrayBuffer|\.text\(\)|readAsText/.test(src)).toBe(false);
+  });
 });
 
 describe('IntakeHubPage — boundaries (static)', () => {

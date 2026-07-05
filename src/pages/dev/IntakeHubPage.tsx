@@ -103,6 +103,19 @@ export function IntakeHubPage() {
           value={probe}
           onChange={(e) => setProbe(e.target.value)}
         />
+        <label className="mt-2 block text-xs text-stone-500">
+          …or pick a file (classified by NAME only — the file is never read or uploaded):
+          <input
+            type="file"
+            aria-label="classify a file"
+            accept=".csv,.tsv,.xlsx,.xls,image/*"
+            className="mt-1 block w-full text-xs"
+            onChange={(e) => {
+              const f = e.target.files && e.target.files[0];
+              if (f) setProbe(f.name);
+            }}
+          />
+        </label>
         {classified ? (
           <div className="mt-2 text-xs">
             <p className="font-mono text-stone-600">
