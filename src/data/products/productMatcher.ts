@@ -17,6 +17,7 @@
  */
 import { mapDatasetCategory } from '@/data/ingredients/categoryMapping';
 import { conceptsFromName, rankCandidatesByName } from '@/data/products/productNameTiebreak';
+import { milkBandCandidateIds } from '@/data/products/productMilkFatBand';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductRow } from '@/data/products/productRow';
 
@@ -332,8 +333,35 @@ export function matchProduct(
   // products without their own pac/pod it becomes a needs_review SUGGESTION, never an auto-match.
   let effective = candidates;
   let tiebreakNote: string | null = null;
+  let bandNote: string | null = null;
   let orderedIds = candidates.map((c) => c.ingredient_id);
+
+  // ── deterministic MILK FAT-BAND narrowing (before the name tiebreak) ───────
+  // A milk product whose name declares its fat level (entera/semidesnatada/desnatada) narrows to
+  // the milk-named reference whose STORED fat sits inside that band — ONLY when exactly one fits.
+  // Lactose-free and protein-fortified milks never band (see productMilkFatBand); zero in-band
+  // refs means a reference gap, never a narrow onto an out-of-band ref.
   if (poolCount > 1) {
+    const bandIds = milkBandCandidateIds(
+      product.product_name_display ?? '',
+      candidates.map((c) => ({
+        id: c.ingredient_id,
+        name: (c.ingredient_name_display?.trim() || c.ingredient_name_internal) ?? '',
+        fat: numField(c, 'fat_percent'),
+      })),
+    );
+    if (bandIds !== null && bandIds.length === 1) {
+      const winner = candidates.find((c) => c.ingredient_id === bandIds[0]);
+      if (winner) {
+        effective = [winner];
+        bandNote = `milk fat-band narrowed ${poolCount}→1 to ${bandIds[0]} (declared fat level matches the reference's stored fat)`;
+      }
+    } else if (bandIds !== null && bandIds.length === 0) {
+      bandNote = 'milk fat-band: no milk reference inside the declared fat band (reference gap — not narrowed)';
+    }
+  }
+
+  if (effective.length > 1) {
     const ranked = rankCandidatesByName(
       product.product_name_display ?? '',
       candidates.map((c) => ({
@@ -368,7 +396,7 @@ export function matchProduct(
       normalized_name,
       normalized_category,
       needs_review_reason: `${effective.length} candidates tie at ${method}`,
-      mapper_notes: [categoryNote, specialPoolNote, tiebreakNote, `candidates: ${candidate_ids.join(', ')}`].filter(Boolean).join('; '),
+      mapper_notes: [categoryNote, specialPoolNote, bandNote, tiebreakNote, `candidates: ${candidate_ids.join(', ')}`].filter(Boolean).join('; '),
       missing_fields,
       candidate_count: poolCount,
       candidate_ids,
@@ -398,7 +426,7 @@ export function matchProduct(
         normalized_name,
         normalized_category,
         needs_review_reason: reason,
-        mapper_notes: [categoryNote, specialPoolNote, tiebreakNote].filter(Boolean).join('; ') || null,
+        mapper_notes: [categoryNote, specialPoolNote, bandNote, tiebreakNote].filter(Boolean).join('; ') || null,
         missing_fields,
         candidate_count: poolCount,
         candidate_ids,
@@ -414,7 +442,7 @@ export function matchProduct(
     normalized_name,
     normalized_category,
     needs_review_reason: null,
-    mapper_notes: [categoryNote, specialPoolNote, tiebreakNote].filter(Boolean).join('; ') || null,
+    mapper_notes: [categoryNote, specialPoolNote, bandNote, tiebreakNote].filter(Boolean).join('; ') || null,
     missing_fields,
     candidate_count: poolCount,
     candidate_ids,

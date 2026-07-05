@@ -832,3 +832,52 @@ describe('matchProduct — coffee special-case pool', () => {
     expect(r.missing_fields).toEqual(['pac_value', 'pod_value']);
   });
 });
+
+/* ── milk fat-band narrowing (declared fat level vs the ref's STORED fat) ────── */
+
+describe('matchProduct — milk fat-band narrowing', () => {
+  const milkRef = (id: string, name: string, fat: number, protein = 3) =>
+    basementRow({ ingredient_id: id, ingredient_category: 'dairy', ingredient_name_display: name, pac_value: 1, pod_value: 1, fat_percent: fat, carbohydrate_percent: 4.7, total_sugars_percent: 4.7, protein_percent: protein, salt_percent: 0.1 });
+  const m35 = milkRef('B-M35', 'Milk 3,5% — Standard', 3.5);
+  const m15 = milkRef('B-M15', 'Milk 1.5 % — Standard', 1.6, 3.5);
+  const f20 = milkRef('B-F20', 'Fresh Pasteurized Milk 2% — Standard', 2);
+  const yog = milkRef('B-YOG', 'Natural Yogurt — Standard', 3);
+  const pool = [m35, m15, f20, yog];
+  const milkProduct = (name: string, extra: Partial<ProductRow> = {}) =>
+    productRow({ product_category: 'dairy', product_name_display: name, ...extra });
+
+  it('semidesnatada narrows to the ONLY semi-band milk ref (2% ref is not semi)', () => {
+    const r = matchProduct(milkProduct('Leche semidesnatada Hacendado brick 1L', engineReady), pool);
+    expect(r.matched_basement_id).toBe('B-M15');
+    expect(r.mapper_notes).toMatch(/milk fat-band narrowed/);
+  });
+
+  it('entera does NOT narrow when several whole-band refs exist (human picks)', () => {
+    const withM32 = [...pool, milkRef('B-M32', 'Milk 3,2% — Standard', 3.2)];
+    const r = matchProduct(milkProduct('Leche entera Hacendado brick 1L', engineReady), withM32);
+    expect(r.mapper_status).toBe('ambiguous');
+    expect(r.matched_basement_id).toBeNull();
+  });
+
+  it('desnatada with NO in-band milk ref stays ambiguous and notes the reference gap', () => {
+    const r = matchProduct(milkProduct('Leche desnatada Hacendado brick 1L', engineReady), pool);
+    expect(r.matched_basement_id).toBeNull();
+    expect(r.mapper_notes).toMatch(/reference gap — not narrowed/);
+  });
+
+  it('lactose-free milk never bands (sugar composition differs) — stays ambiguous', () => {
+    const r = matchProduct(milkProduct('Leche semidesnatada sin lactosa Hacendado brick', engineReady), pool);
+    expect(r.mapper_status).toBe('ambiguous');
+    expect(r.matched_basement_id).toBeNull();
+    expect(r.mapper_notes ?? '').not.toMatch(/milk fat-band narrowed/);
+  });
+
+  it('a real milk product without pac/pod becomes a needs_review SUGGESTION via the band', () => {
+    const r = matchProduct(
+      milkProduct('Leche semidesnatada Hacendado brick 1L', { fat_percent: 1.55, carbohydrate_percent: 4.8, total_sugars_percent: 4.8, protein_percent: 3.1, salt_percent: 0.13 }),
+      pool,
+    );
+    expect(r.mapper_status).toBe('needs_review');
+    expect(r.matched_basement_id).toBe('B-M15');
+  });
+});
