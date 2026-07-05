@@ -54,6 +54,12 @@ engine consequences** — composition cannot decide it, and the options differ i
 | **PR-ING-000035** Pistacho natural pelado (50/18/7/22/0.01) | PI-ING-000413 Delipaste Pure Pistachio (Δ1.20, pac 7.02/pod 7.0) · PI-ING-000444 Roasted Pistachio Pulp 100% (Δ1.36, pac 7.86/pod 7.8) | ≈0.8 pac/pod spread | product is a **raw natural kernel**; both refs are roasted/paste forms — a process difference Claude can't wave away | Accept a roasted/paste proxy (pick one) — or request a raw-pistachio reference |
 | **PR-ING-000034** Cacao en polvo a la taza (8/70/65/7/0.1) | none within tolerance (it is ≈65% sugar + cocoa + thickener) | n/a | it's a **multi-ingredient composite**, not a single reference ingredient | Decide: exclude/reject as not-an-ingredient, or commission a dedicated composite reference |
 
+> **Consistency review (add to the 000028 discussion):** the already-confirmed
+> **PR-ING-000029 Chocolate negro 85% → Bitter Chocolate Power 80% Callebaut** predates the
+> stricter percent standard that parked 000028 — a 5-point cocoa-% gap was accepted there. It is
+> not unsafe (reference-linked, product PAC/POD null), but please re-confirm or re-map it while
+> deciding 000028 so one dark-chocolate percent rule applies to both.
+
 ---
 
 ## 3. What happens after the team fills this

@@ -14,6 +14,12 @@
 ## Code procedure
 `mapper_basement.ingredient_id` is manually-assigned `PI-ING-NNNNNN` (no DB sequence). Current count 542, max `PI-ING-000544`. **Next free codes: `PI-ING-000545`+** — final codes assigned by the team at insert time (do not hardcode in a data migration).
 
+**Coverage note (synced 2026-07-05):** candidates A–L below mirror the **12 proposal families** in
+`src/data/products/referenceProposals.ts` (staged at `/dev/reference-proposals`, exported in the
+team calibration pack, and consolidated for humans in
+[OWNER_TEAM_CALIBRATION_HANDOFF.md](OWNER_TEAM_CALIBRATION_HANDOFF.md)). Nothing here is an applied
+migration; PAC/POD come only from team calibration; no values are guessed.
+
 ## Source search
 - **Google Drive**: the only catalog source ("Mercadona_catalog") carries the *product* labels, not reference-ingredient profiles — no PAC/POD, no water/solids/sugar-split (confirmed). No reference dataset for almond/erythritol/stevia is in Drive.
 - **Public sources (composition only, free, no API/secret)**: almond is a stable whole food (USDA-type proximate data); erythritol/sucralose/steviol-glycoside composition is well-documented. **PAC/POD are NOT public** for any of them.
@@ -53,6 +59,31 @@
 - **Sourced (Hacendado label, real product)**: fat ≈10, carbohydrate ≈4, total_sugars ≈4, protein ≈4, salt ≈0.1; water/total_solids ≈81/19 (representative figure to confirm).
 - **REQUIRED, team-only**: `pac_value`/`pod_value` (dairy-standard process, like 000204); confirm the protein band (label 3.9 is low for strained greek — greek-style vs strained).
 - The 2%-MG "ligero" variants (PR-ING-000018/000019) likely need a separate light-greek reference too.
+
+### H. Skimmed liquid milk — `dairy` / `milk_skimmed` (proposed `PI-ING-000551`)
+- **Unlocks**: PR-ING-000004 (Leche desnatada, 0.3% fat). The base has NO liquid milk under 1.6% fat (only powders/concentrates) — the fat-band audit found zero in-band candidates.
+- **Sourced (label)**: fat 0.3 · carb 4.8 · sugars 4.8 · protein 3.2 · salt 0.13 · water≈91/solids≈9 (representative figure to confirm).
+- **REQUIRED, team-only**: `pac_value`/`pod_value` (standard dairy process).
+
+### I. Lactose-free milk (semi / whole) — `dairy` / `milk_lactose_free` (proposed `PI-ING-000552`)
+- **Unlocks**: PR-ING-000007 / 000008. Lactase hydrolyses lactose → glucose+galactose: same total sugars, **different freezing-point depression + sweetness** — a regular-milk reference must never represent these (the fat-band helper deliberately refuses to band them).
+- **Sourced (labels)**: fat 1.55 (semi) · carb 4.7 · sugars 4.7 · protein 3.2 · salt 0.13; whole variant fat 3.6.
+- **REQUIRED, team-only**: `pac_value`/`pod_value` for HYDROLYSED sugars (**never copy regular-milk values**); decide 1 or 2 variants (whole + semi).
+
+### J. Plain yogurt (whole-milk ≈3%, unstrained) — `dairy` / `yogurt_plain` (proposed `PI-ING-000553`)
+- **Unlocks**: PR-ING-000014. The existing "Natural Yogurt — Standard" (2/5.4/3.6/4.7 f/c/s/p) mismatches the Spanish standard (3/4.5/4.5/3.5); the Greek-Type ref is strained (sugars 2.7).
+- **Sourced (label)**: fat 3 · carb 4.5 · sugars 4.5 · protein 3.5 · salt 0.1.
+- **REQUIRED, team-only**: `pac_value`/`pod_value`; water/solids; lactose split.
+
+### K. Kefir (natural ≈4% fat) — `dairy` / `kefir` (proposed `PI-ING-000554`)
+- **Unlocks**: PR-ING-000022 / 000023. No kefir reference exists; the closest composition is a *yogurt* (wrong fermented class).
+- **Sourced (label)**: fat 4.2 · carb 5.1 · sugars **2.3** (low residual — fermentation) · protein 3.9 · salt 0.08.
+- **REQUIRED, team-only**: `pac_value`/`pod_value`; water/solids; fermentation sugar split.
+
+### L. Pure cocoa powder (10–14% fat) — `chocolate` / `cocoa_powder` (proposed `PI-ING-000555`)
+- **Unlocks**: PR-ING-000033. **No pure cocoa-powder reference exists** (only couvertures / cocoa compounds / cocoa butter); the composition audit found zero candidates within tolerance.
+- **Sourced (label)**: fat 14 · carb 16 · sugars 2 · protein 21 · salt 0.1.
+- **REQUIRED, team-only**: `pac_value`/`pod_value`; water/solids; fiber; available-vs-by-difference carbs. The product stays name-flagged (0% azúcares) → never auto-verifies after mapping.
 
 ## Staging surface (code)
 These candidates are structured in the pure `src/data/products/referenceProposals.ts` and rendered

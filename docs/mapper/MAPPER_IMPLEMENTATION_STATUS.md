@@ -1,7 +1,14 @@
 # Mapper — Implementation Status
 
 _Living status tracker for the PINGÜINO product-intake "Mapper". Evidence-based; nothing
-here is assumed complete. Last updated 2026-07-05 at repo HEAD `eec4d38`._
+here is assumed complete. Last updated 2026-07-05 at repo HEAD `2f45a86` (+ hardening PR)._
+
+> **Audit + queue status (2026-07-05):** a full read-only audit (Fable 5) found **no critical
+> blockers** — the system is safe to continue; its recommended defense-in-depth hardening is
+> implemented (service-level PI Verified guard · structural pac/pod strip in the generic product
+> update · write-time PI Verified guard in enrichment). **Autonomous matching is exhausted**: every
+> remaining null product is blocked on owner/team input — see
+> [OWNER_TEAM_CALIBRATION_HANDOFF.md](OWNER_TEAM_CALIBRATION_HANDOFF.md).
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
@@ -12,7 +19,7 @@ here is assumed complete. Last updated 2026-07-05 at repo HEAD `eec4d38`._
 - Customer-facing statuses: **Verified, PI Calculated, PI Generated, Manual Adjusted, PI Verified** — never the word "Mapper"; internal confidence % is never shown to customers.
 - Products with sweeteners/polyols/protein desserts/hidden formulas/incomplete OCR/conflicts must **not** auto-verify.
 
-## Live DB state (read-only, 2026-06-30)
+## Live DB state (read-only, verified 2026-07-05)
 | metric | value |
 |---|---|
 | products total | 69 |

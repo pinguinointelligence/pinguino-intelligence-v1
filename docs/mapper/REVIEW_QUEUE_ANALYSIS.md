@@ -91,6 +91,14 @@ consequence-free pick) was tested against the two parked ties. It FAILS for both
   100%) — a real ≈0.8 engine spread PLUS the raw-natural vs roasted-paste form difference.
 Neither can be auto-picked or Claude-picked safely; both stay parked as **owner-taste decisions**.
 
+### Consistency-review flag (2026-07-05 audit) — PR-ING-000029
+**PR-ING-000029 "Chocolate negro 85% cacao" is CONFIRMED → PI-ING-000089 "Bitter Chocolate Power
+80% Callebaut"** — an early-session manual confirmation that predates the stricter dark-chocolate
+percent standard which later parked 000028 (72% with 70.5/72/74 options). A 5-point cocoa-% gap was
+accepted there that would likely be parked today. **Not unsafe** (reference-linked only; product
+pac/pod null; the mapping is auditable in `mapper_notes`) and **not changed** — but it should be
+re-examined WITH the owner alongside the 000028 pick so one percent standard applies to both.
+
 ## Remaining 43-null grouping (recomputed 2026-07-05)
 | group | products | state |
 |---|---|---|
