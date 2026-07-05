@@ -80,6 +80,17 @@ bar** — each has a hard blocker, three of them newly-confirmed missing referen
 - 000026 (3-way tie), 000035 (raw vs roasted paste, two near-equidistant refs), 000021 (lactose-free)
   → parked unchanged.
 
+### Tie re-check (2026-07-05, engine-value evidence) — the parked ties are CONSEQUENTIAL
+The whole-milk precedent (confirmed because all in-band refs carried IDENTICAL pac/pod — a
+consequence-free pick) was tested against the two parked ties. It FAILS for both:
+- **000026 milk-choc trio**: near-identical compositions but **POD 44.04 / 48.24 / 48.41**
+  (pac 56.9–57.3) — the pick shifts recipe sweetness by ≈4.4 POD points. → Owner decision:
+  which supplier couverture profile (Pi-Nuts 558 · Sicao 86A · Sicao 575) represents Hacendado
+  milk chocolate.
+- **000035 pistachio pair**: pac 7.02/pod 7.0 (Delipaste) vs pac 7.86/pod 7.8 (Roasted Pulp
+  100%) — a real ≈0.8 engine spread PLUS the raw-natural vs roasted-paste form difference.
+Neither can be auto-picked or Claude-picked safely; both stay parked as **owner-taste decisions**.
+
 ## Remaining 43-null grouping (recomputed 2026-07-05)
 | group | products | state |
 |---|---|---|
