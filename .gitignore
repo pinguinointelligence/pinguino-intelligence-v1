@@ -25,6 +25,9 @@ coverage/
 .claude/*
 !.claude/skills
 
+# Source archives that shadow the extracted locked docs — never commit the zip
+docs/pinguino-spine/SPINE.zip
+
 # Editor / OS
 .DS_Store
 Thumbs.db
