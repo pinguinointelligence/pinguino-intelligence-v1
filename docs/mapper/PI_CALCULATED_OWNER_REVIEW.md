@@ -87,6 +87,57 @@ Everything else (reference_linked, blocked) behaves exactly as today.
 
 ---
 
+## 4a. Live-wiring preview — the gated activation mechanism (built, not executed)
+
+The activation mechanism is now staged as **pure, gated code** so you can see the exact artifacts
+before approving. It executes nothing.
+
+- **Planner:** `src/data/products/productActivationPlan.ts` (`planClassDerivedActivations`) builds,
+  per class-derived PI Calculated candidate: the `class_derived` EngineIngredient
+  (`buildClassDerivedEngineIngredient` — the exact branch that would slot into
+  `prepareProductEngineIngredient`: composition borrowed from the nearest-fat same-class anchor,
+  PAC/POD overridden with the class-derived values, `is_verified: false`, external source), the
+  Studio provenance label, the status-update **plan**, and the `review_notes` string.
+- **The approval gate:** `APPROVED_PI_CALCULATED_CODES` — an **empty allowlist by default**. A plan
+  is `approved` (i.e. would become live) ONLY if its `PR-ING` code is in that list. Empty ⇒
+  nothing activates. Populating it is part of the real activation slice, not this preview.
+- **DEV preview:** `/dev/product-intelligence-preview` (resolver outcomes) and
+  **`/dev/pi-calculated-activation-preview`** (the per-candidate activation plan + "APPROVED /
+  NOT APPROVED" badge). Both read-only; neither writes.
+- **Live `productEngineLibrary` / `prepareProductEngineIngredient` are UNCHANGED** — Studio behaves
+  exactly as today; the branch is designed + tested + previewed, ready to drop in on approval.
+
+### review_notes format (written to `products.review_notes` only, by the real slice)
+
+```
+PI Calculated (class-derived) · rule=<rule_id> · confidence=<low|medium> ·
+composition_basis=<PI-ING-…> · pacpod_basis=<PI-ING-…/…> ·
+pac=<n> pod=<n> (ephemeral — not written to product) · warnings: <…>
+```
+
+Worked example (000004 skim milk): `PI Calculated (class-derived) · rule=milk_fat_series_v1 ·
+confidence=low · composition_basis=PI-ING-000234 · pacpod_basis=PI-ING-000200/000201/000234/000235/000236
+· pac=5.19 pod=0.71 (ephemeral — not written to product) · warnings: Label fat 0.3 lies OUTSIDE the
+anchor fat range 1.6–3.5 …`
+
+### Verification plan — proof product PAC/POD stays NULL
+
+The activation slice must prove, at every layer, that no product engine value is ever persisted:
+1. **Before:** read-only DB check — `count(*) where pac_value is not null or pod_value is not null`
+   = **0/69** (recorded here 2026-07-06).
+2. **Plan layer:** every `ClassDerivedActivationPlan` carries `product_pac_after: null` /
+   `product_pod_after: null` **by construction** — asserted in `productActivationPlan.test.ts`.
+   The derived PAC/POD live ONLY on the ephemeral `EngineIngredient`, never on a product patch.
+3. **Write layer:** the ONLY write the slice performs is `setProductLifecycleStatus`, which updates
+   **only** `status` + `reviewed_by/at/review_notes` (proven by `productStatusWrite` + its tests) —
+   it cannot touch pac/pod. The generic `updateProduct` path additionally **type-excludes and
+   runtime-strips** `pac_value`/`pod_value` (`STRIPPED_ENGINE_FIELDS`), so no code path can set them.
+4. **After:** re-run the same read-only check → must still be **0/69**. If it is not, the activation
+   is rejected and rolled back.
+5. **`mapper_basement`:** untouched — no insert/update; count stays 542.
+
+---
+
 ## 5. Approval checklist
 
 Tick each to authorize the wiring slice. Any unticked item stays as-is (candidate remains
