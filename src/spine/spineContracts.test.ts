@@ -125,6 +125,7 @@ describe('Spine boundary — the foundation layer stays pure (static)', () => {
     expect(sourceFiles.sort()).toEqual([
       'access.ts',
       'designRecipe.ts',
+      'evaluateTemperatureRegulator.ts',
       'index.ts',
       'normalizeProductProfile.ts',
       'normalizeRecipeIntent.ts',

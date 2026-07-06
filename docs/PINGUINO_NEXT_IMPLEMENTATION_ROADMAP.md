@@ -79,19 +79,26 @@ changes; no UI dependency yet.
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
 
-**Done when:** the full chain runs headless (intent → plan → profile → engine → regulator stub →
-router) with acceptance tests green.
+**Done when:** the full chain runs headless (intent → plan → profile → engine → regulator
+evaluation → router) with acceptance tests green.
 **Safety:** ENGINE math frozen; no UI rewiring yet.
 
 ## Phase D — Engine expansion (after C1–C4)
 
 **Goal:** make product × temperature evaluation and correction first-class.
 
+**Landed (pure, unwired):** the Temperature Regulator config registry (Phase C Slice 4) and the
+Temperature Regulator **evaluation layer** (Phase C Slice 5, `src/spine/evaluateTemperatureRegulator.ts`)
+— a pure interpretation function that reads Base Engine metrics + locked settings and returns
+status / npacStatus / acceptable / hard-gate failures / advisory flags / correction goals / score,
+with a no-fallback block for unsupported profile or temperature. Base Engine untouched; still not
+wired into the Integration Flow router.
+
 - **Temperature Regulator config registry:** per-product × per-temperature settings for
   Standard Gelato / Sorbet / Vegan / Chocolate at −11/−12/−13 °C, exactly from the four regulator
-  docs (−11 = zero-delta base). One shared Base Engine — never per-temperature engines.
+  docs (−11 = zero-delta base). One shared Base Engine — never per-temperature engines. **[done — Slice 4]**
 - **Golden references as tests:** G12/G17/G18 (+G15/G11), S01/S02/S03, V02 fixed, C01 — the
-  formulas and expected outputs are fully specified in the regulator docs.
+  formulas and expected outputs are fully specified in the regulator docs. **[done — Slice 4; reused as evaluation fixtures in Slice 5]**
 - **Optimizer profile-aware policy:** allowed/forbidden correction families per profile, chocolate
   protein-share soft/advisory handling, stabilizer hard policy — extending the existing solver,
   never bypassing its verify-by-recalc.
