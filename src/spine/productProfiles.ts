@@ -9,7 +9,7 @@
  *
  * Calculation does not equal evaluation.
  */
-import type { GateLevel, ProductProfile, ServingTemperatureC } from './types';
+import type { DesignerProfileId, GateLevel, ProductProfile, ServingTemperatureC } from './types';
 
 /**
  * Gate identifiers used by the v1.0 profiles. Active-side gates and the
@@ -85,7 +85,7 @@ export interface ProductProfileDefinition {
   id: ProductProfile;
   label: string;
 
-  designer: string;
+  designer: DesignerProfileId;
   optimizer: string;
   temperatureRegulator: string;
 

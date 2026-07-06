@@ -46,6 +46,16 @@ export type IntentSource = 'user_input' | 'saved_defaults' | 'preset' | 'fallbac
  */
 export type GateLevel = 'hard' | 'soft' | 'advisory' | 'disabled';
 
+/**
+ * The four Designer profiles (Designer.md §7) — selected via the Product
+ * Profile Registry, never chosen independently by the Optimizer.
+ */
+export type DesignerProfileId =
+  | 'gelato_designer'
+  | 'sorbet_designer'
+  | 'vegan_designer'
+  | 'chocolate_designer';
+
 export type DesignerWarningCode =
   | 'unsupported_product_profile'
   | 'legacy_profile_normalized'

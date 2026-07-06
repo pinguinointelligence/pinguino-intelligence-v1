@@ -38,10 +38,10 @@ Where the repo stands today, in one line each:
 - **PARTIAL:** access gating (demo/Pro exists; the `AccessContext`/capabilities contract does not),
   intake (classifier + OCR queue + honest `not_implemented` OCR seam; no OCR engine), enrichment
   (reviewed-merge path tested, currently no enrichable product), conversational intake precursors.
-- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** Designer, Temperature Regulator
-  configs (−12/−13 bands), Integration Flow router, batch-size/actual-batch-rescue user flow,
-  stock-shortage flow, User Flow conversational script. (Recipe Intent normalization landed as
-  pure code in Slice 2 — unwired.)
+- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** Temperature Regulator configs
+  (−12/−13 bands), Integration Flow router, batch-size/actual-batch-rescue user flow,
+  stock-shortage flow, User Flow conversational script. (Recipe Intent normalization and the
+  Designer's `RecipeDesignPlan` landed as pure code in Slices 2–3 — unwired.)
 - **BLOCKED (on humans, correctly):** Mapper calibration (PAC/POD for 12 staged reference
   proposals + 4 owner picks — see
   [mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md](mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md)).
@@ -290,7 +290,7 @@ Designer must not calculate POD/PAC/NPAC (strategy only; the Base Engine calcula
 | Recipe Engine (Base Engine) | **Partial** (core Done at −11 °C) | deterministic pure core, ENGINE 0.4.0 / CONFIG 0.5.0 (`src/engine/config/version.ts:33`), golden recipes, no-NPAC regression; `src/engine/**` | Low while frozen | keep frozen until Spine layers exist; then regulator configs — never duplicate engines |
 | Product Profile Registry | **Partial** (pure layer done, unwired) | `src/spine/productProfiles.ts` (4-profile registry, gate levels, correction families) + `normalizeProductProfile.ts` (locked aliases; granita/protein/fresh/storage/frozen-drinks return structured unsupported, never silently mapped) + tests; deliberately not wired into UI/engine | Low | consume from Recipe Intent normalization (Slice 2), then the Integration Flow router |
 | Recipe Intent | **Partial** (pure `normalizeRecipeIntent()` landed, unwired) | `src/spine/normalizeRecipeIntent.ts`: locked precedence (explicit → saved → system defaults), PL/EN preference aliases, deterministic flavor parser (word-boundary, chocolate/fruit/nut/coffee/vanilla/alcohol), safe routing (chocolate forcing, vegan/sorbet protection, protein/granita = warned intent), structured warnings; +45 tests. `RecipeInput`/`RecipeGoals` mapping (§21) still pending | Low | Designer output (Slice 3); §21 mapping when wiring to the engine |
-| Designer | **Not started** | zero matches; `src/data/demoPresets.ts` is a weak precursor; spec [Designer.md](pinguino-spine/Designer.md) | Medium (ordering) | implement after Recipe Intent (slices D1–D8) |
+| Designer | **Partial** (pure `RecipeDesignPlan` landed, unwired) | `src/spine/designRecipe.ts`: intent → designer profile (registry-owned), flavor/quality strategy, tier-based hero policy (premium/signature reduction forbidden), texture/sweetness intent labels, `DesignerOptimizerConstraints` (families + disabled/advisory gates from the registry, stabilizer always required); +38 tests. No chemistry, no grams — strategy only | Low | User Flow wiring (Slice C5) and Optimizer consumption later; product-specific preset generation stays future |
 | User Flow | **Not started** as spec'd | `src/features/pi-chat/` deterministic intake exists (English, different script); locked Polish-first script in [User_Flow.md](pinguino-spine/User_Flow.md) | Medium | wire after Designer; flavor-first, never price-first |
 | Account Access | **Partial** | demo/Pro hook `src/access/plans.ts` + subscription mapping; solver redacts at source since engine 0.4.0; `AccessContext`/`AccessCapabilities` contract + DEMO/PAID defaults now live in `src/spine/access.ts` (pure, unwired); NEW: uncommitted 52-file `docs/account-access/` pack awaiting owner review | Medium (Rule 1: server-side enforcement pending) | wire capabilities through User Flow/output shaping (Slice C6); keep login/billing external |
 | Temperature Regulator | **Not started** | only `milk_gelato@−11` anchor seeded in engine config; all 4×3 bands + 8 golden reference formulas locked in the four regulator docs | Medium | config registry per product × temperature; CONFIG_VERSION bump |
