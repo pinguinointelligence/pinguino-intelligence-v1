@@ -43,6 +43,9 @@ here is assumed complete. Last updated 2026-07-06 (Product-Intelligence slice 1)
 > **required** (label staged, pac/pod still owner-only). `greek_yogurt_full_fat` stays **required**
 > (the only greek anchor is 7.5 % fat vs a 10.8 % product → 1.06 pp > the 1.0 pp gate, so the
 > resolver blocks). The 6 sweetener/lactose-free/cocoa proposals stay **required** (hard-blocked).
+> **Owner-review pack for activating the 4 PI Calculated candidates:**
+> [PI_CALCULATED_OWNER_REVIEW.md](PI_CALCULATED_OWNER_REVIEW.md) — per-candidate ephemeral values,
+> "do not activate automatically" rules, what the wiring slice would do, and an approval checklist.
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
