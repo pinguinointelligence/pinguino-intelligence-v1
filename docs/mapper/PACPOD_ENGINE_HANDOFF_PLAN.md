@@ -96,6 +96,22 @@ Hard-blocked classes (unchanged, tested): hydrolysed-lactose / lactose-free dair
 high-intensity sweeteners · polyols · protein-fortified · composites/jams/blends ("a la taza") ·
 torrefacto coffee · red-flagged products.
 
+## Preview findings (2026-07-06) — handoff answers, still nothing wired
+The pure batch simulation (`productIntelligenceSimulation.ts`, DEV `/dev/product-intelligence-preview`)
+answers the handoff-consumption questions concretely, without touching Studio:
+- **Where ephemeral class-derived PAC/POD lives:** on the resolver result's `derived` field
+  (in-memory), surfaced per row as `derived_pac` / `derived_pod`. It is consumed at handoff time
+  only — never persisted, no new table, `calculated_profile_json` still not needed.
+- **How provenance is carried:** `value_basis` (`reference_linked` / `product_measured` /
+  `class_derived` / `label_derived`) + `rule_id` + `basis_reference_ids` + `warnings`, all on the
+  resolution/simulation row.
+- **Does product PAC/POD stay NULL:** yes — the simulation reads only; a live run over the 69
+  products confirmed product pac/pod remained 0/69.
+- **Distinct Studio provenance labels the outcome supports:** Reference-linked (matched) ·
+  **PI Calculated** (`class_derived`, engine-ready, confidence badge) · **PI Generated**
+  (`label_derived`, NOT engine-ready — owner calibration) · Blocked (never enters the library).
+  The future `productEngineLibrary` branch reads `outcome` + `value_basis` to pick the label.
+
 ## Hard rules (updated 2026-07-06 by the amendment above)
 Do not copy PAC/POD to products. Do not compute PAC/POD from `total_sugars` (or any single label
 field) — unchanged. Matched = mapping confirmed only. Keep product PAC/POD NULL — class-derived

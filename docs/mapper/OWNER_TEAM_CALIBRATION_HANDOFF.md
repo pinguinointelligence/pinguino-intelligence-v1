@@ -13,6 +13,22 @@ sending values back.
 **Current DB state:** 69 products · 23 matched (Studio-eligible) · 3 rejected · 43 unmapped ·
 `mapper_basement` 542 (untouched) · product PAC/POD 0/69 · PI Verified 0.
 
+> **Update 2026-07-06 — ProductIntelligenceResolver preview reduces (does not remove) this ask.**
+> A new class-anchored resolver (pure, preview-only at `/dev/product-intelligence-preview`; writes
+> nothing) can now derive *ephemeral, low/medium-confidence* engine values for a few same-class
+> dairy products without waiting for calibration. **A calibrated reference is still the
+> higher-quality, production path** — the resolver only unblocks preview/optional use. Effect on
+> the 12 proposals below:
+> - **Optional now (resolver PI-Calculates at low/medium confidence):** `skim_milk` (000004),
+>   `plain_yogurt_whole` (000014), `kefir` (000022/000023). Calibrating these still upgrades them
+>   from a class-derived estimate to a measured reference.
+> - **Still REQUIRED (resolver cannot help):** `almond` (label staged but pac/pod still owner-only) ·
+>   `greek_yogurt_full_fat` (resolver blocks — the 7.5 % greek anchor is 1.06 pp from the 10.8 %
+>   product) · `lactose_free_milk` · `cocoa_powder` · `erythritol` · `maltitol_polyols` ·
+>   `steviol_stevia` · `sucralose` · `saccharin` (all hard-blocked chemistry classes).
+> Net: the 4 owner-pick decisions are unchanged; the calibration priority shifts toward the
+> **almond + greek + sweetener/lactose-free/cocoa** families, which no rule can safely derive.
+
 ---
 
 ## 1. Reference proposals — the team fills PAC/POD (12 proposals → unlock 17 products)

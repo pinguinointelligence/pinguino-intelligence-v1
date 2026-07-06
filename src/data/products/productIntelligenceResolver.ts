@@ -162,6 +162,7 @@ const refName = (r: ResolverReferenceInput): string =>
 
 const hasAnyToken = (tokens: string[], set: ReadonlySet<string>): boolean => tokens.some((t) => set.has(t));
 
+const MILK_NAME_TOKENS = new Set(['milk', 'leche']);
 const YOGURT_TOKENS = new Set(['yogur', 'yogurt', 'yoghurt', 'yogures']);
 const GREEK_TOKENS = new Set(['griego', 'griega', 'greek']);
 const KEFIR_TOKENS = new Set(['kefir']);
@@ -340,31 +341,23 @@ function milkFatSeriesRule(
     return blocked('no_safe_class_rule', 'Milk fat-series rule needs the label fat_percent — it is missing.', product);
   }
 
+  // Anchors are milk-NAMED liquid refs (powder/lactose already excluded) that ALSO sit within
+  // the same-class composition distance of THIS product — so a far milk-named ref (condensed /
+  // evaporated / a drink blend) can never pollute the interpolation set, no matter how the
+  // caller pooled candidates. Fat differs across the series, so proximity is measured over the
+  // 5 fields where a fat gap alone (1 of 5) stays well under the 1.0 pp mean threshold.
   const anchors = calibratedAnchors(candidates)
     .map((a) => ({ ...a, fat: toFiniteNumber(a.reference.fat_percent), distance: compositionDistance(product, a.reference) }))
     .filter((a): a is AnchorPick & { fat: number } => {
       if (a.fat === null) return false;
-      // liquid milk anchors only: milk-named (forbidden variants already excluded)
-      return hasAnyToken(normalizeTokens(refName(a.reference)), new Set(['milk', 'leche']));
+      if (!hasAnyToken(normalizeTokens(refName(a.reference)), MILK_NAME_TOKENS)) return false;
+      return a.distance.shared >= MIN_SHARED_COMPOSITION_FIELDS && (a.distance.mean ?? Infinity) <= SAME_CLASS_ANCHOR_MAX_MEAN_PP;
     });
   const distinctFats = new Set(anchors.map((a) => a.fat));
   if (anchors.length < MILK_SERIES_MIN_ANCHORS || distinctFats.size < MILK_SERIES_MIN_ANCHORS) {
     return blocked(
       'no_safe_class_rule',
-      `Milk fat-series rule needs at least ${MILK_SERIES_MIN_ANCHORS} calibrated liquid-milk anchors with distinct fat — found ${distinctFats.size}.`,
-      product,
-    );
-  }
-
-  // Same-class composition proximity: the product must actually sit near the milk family
-  // (keeps powders/evaporated/drink blends out even when their names look clean).
-  const nearest = Math.min(
-    ...anchors.map((a) => (a.distance.shared >= MIN_SHARED_COMPOSITION_FIELDS ? (a.distance.mean ?? Infinity) : Infinity)),
-  );
-  if (!Number.isFinite(nearest) || nearest > SAME_CLASS_ANCHOR_MAX_MEAN_PP) {
-    return blocked(
-      'no_safe_class_rule',
-      `Milk fat-series rule refused: the label composition is ${Number.isFinite(nearest) ? `${round2(nearest)} pp` : 'not comparable'} from the nearest liquid-milk anchor (max ${SAME_CLASS_ANCHOR_MAX_MEAN_PP} pp on ≥${MIN_SHARED_COMPOSITION_FIELDS} shared fields) — not the liquid-milk class.`,
+      `Milk fat-series rule refused: fewer than ${MILK_SERIES_MIN_ANCHORS} calibrated liquid-milk anchors within ${SAME_CLASS_ANCHOR_MAX_MEAN_PP} pp on ≥${MIN_SHARED_COMPOSITION_FIELDS} shared fields (found ${distinctFats.size} with distinct fat) — not the liquid-milk class, owner calibration required.`,
       product,
     );
   }

@@ -181,7 +181,7 @@ describe('resolveProductIntelligence — milk fat-series rule (R1)', () => {
     const result = run(skimMilkProduct, [liquidMilk16]);
     expect(result.outcome).toBe('blocked');
     expect(result.blocked_class).toBe('no_safe_class_rule');
-    expect(result.blocked_reason).toMatch(/at least 2 calibrated liquid-milk anchors/);
+    expect(result.blocked_reason).toMatch(/fewer than 2 calibrated liquid-milk anchors/);
     expect(result.derived).toBeNull();
   });
 

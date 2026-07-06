@@ -10,6 +10,7 @@ import { StudioPickerProofPage } from '@/pages/dev/StudioPickerProofPage';
 import { IntakeHubPage } from '@/pages/dev/IntakeHubPage';
 import { ReferenceProposalsPage } from '@/pages/dev/ReferenceProposalsPage';
 import { SpineStatusPage } from '@/pages/dev/SpineStatusPage';
+import { ProductIntelligencePreviewPage } from '@/pages/dev/ProductIntelligencePreviewPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
@@ -62,6 +63,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/intake-hub" element={<IntakeHubPage />} />}
       {import.meta.env.DEV && <Route path="/dev/reference-proposals" element={<ReferenceProposalsPage />} />}
       {import.meta.env.DEV && <Route path="/dev/spine" element={<SpineStatusPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/product-intelligence-preview" element={<ProductIntelligencePreviewPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
