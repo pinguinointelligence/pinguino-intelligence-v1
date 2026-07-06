@@ -2,7 +2,8 @@
 
 _Created 2026-07-05 at repo HEAD `9bffb0c`; audit refreshed 2026-07-06 at HEAD `4c7dea9` (flat doc
 paths, consistency fixes verified); Temperature Regulator **evaluation layer** (Phase C Slice 5)
-added 2026-07-07. This is the repo-level companion to the **locked Spine
+and the **Integration Flow decision router** (Phase C Slice 6) added 2026-07-07. This is the
+repo-level companion to the **locked Spine
 documents** in [`docs/pinguino-spine/`](pinguino-spine/) — it maps what the Spine specifies against
 what this repository actually contains. The locked documents are the source of truth for the target
 architecture; this file is the evidence-based status map. The owner's planning document remains
@@ -39,10 +40,11 @@ Where the repo stands today, in one line each:
 - **PARTIAL:** access gating (demo/Pro exists; the `AccessContext`/capabilities contract does not),
   intake (classifier + OCR queue + honest `not_implemented` OCR seam; no OCR engine), enrichment
   (reviewed-merge path tested, currently no enrichable product), conversational intake precursors.
-- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** Integration Flow router,
+- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** the Optimizer wiring into the flow,
   batch-size/actual-batch-rescue user flow, stock-shortage flow, User Flow conversational script.
   (Recipe Intent normalization, the Designer's `RecipeDesignPlan`, the Temperature Regulator
-  *config registry* and its *evaluation layer* landed as pure code in Slices 2–5 — unwired.)
+  *config registry* + *evaluation layer*, and the *Integration Flow decision router* landed as pure
+  code in Slices 2–6 — unwired.)
 - **BLOCKED (on humans, correctly):** Mapper calibration (PAC/POD for 12 staged reference
   proposals + 4 owner picks — see
   [mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md](mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md)).
@@ -296,7 +298,7 @@ Designer must not calculate POD/PAC/NPAC (strategy only; the Base Engine calcula
 | Account Access | **Partial** | demo/Pro hook `src/access/plans.ts` + subscription mapping; solver redacts at source since engine 0.4.0; `AccessContext`/`AccessCapabilities` contract + DEMO/PAID defaults now live in `src/spine/access.ts` (pure, unwired); NEW: uncommitted 52-file `docs/account-access/` pack awaiting owner review | Medium (Rule 1: server-side enforcement pending) | wire capabilities through User Flow/output shaping (Slice C6); keep login/billing external |
 | Temperature Regulator | **Partial** (pure config registry + evaluation layer landed, unwired) | `src/spine/temperatureRegulator.ts`: all 12 product×temperature settings + 14 golden fixtures (G12/G17/G15/G18/G11, S01–S04, V02 fixed/AUTO/V01, C01 fixed/optimized), no-fallback lookup (+34 tests). `src/spine/evaluateTemperatureRegulator.ts` (Slice 5): pure evaluation — Base Engine metrics + locked settings → status / npacStatus / acceptable / hard-gate failures / advisory flags / per-profile §13 correction goals / score + trace; encodes §14 hard rules (NPAC in-band still fails on a broken hard gate); no-fallback **block** for unsupported profile/temperature; dairy gates disabled for sorbet/vegan; chocolate protein-share advisory (hard-min 7); gate strictness read from the Product Profile Registry; +53 tests. No engine import, input never mutated; engine `milk_gelato@−11` ice anchor untouched | Low | wire into the Integration Flow router (later slice); engine CONFIG_VERSION bump only when wiring |
 | Optimizer | **Partial** | deterministic solver `src/engine/corrections/`: violations → Golden Middle → exact-gram candidates → verify by full recalc → tradeoff/impossible; planning/actual-batch; redaction | Medium if extended before profiles (forbidden order) | profile-aware families + batch-volume decision + stock-shortage consumption |
-| Integration Flow router | **Not started** | zero matches; 16-step order + decision router locked in [Integration_Flow.md](pinguino-spine/Integration_Flow.md) | Medium (ordering) | implement after profiles/intent/designer/regulator |
+| Integration Flow router | **Partial** (pure decision router landed, unwired) | `src/spine/integrationFlowRouter.ts`: pure `routeRecipeIntegrationFlow` connecting intent → designer-profile check → product profile → Base Engine metrics → Temperature Regulator evaluation → one decision (`ready` / `warning` / `tradeoff` / `impossible` / `blocked`) + next action + surfaced correction goals + hard blockers + trace. `src/spine/baseEngineMetricsAdapter.ts` maps a real `RecipeResult` onto `BaseEngineMetrics` (structural input, no engine import; a null core metric → missing/blocked, never a silent zero; `lactose_sandiness_risk` band {5,9} = the regulator's lactoseSanding band). An unconfirmed hard gate (a metric the engine did not report) is `blocked`/missing-data, never `impossible`. +21 tests. No Supabase/Mapper/engine import; input never mutated; never recalculates. Optimizer (IF8) + batch-rescue/stock-shortage branches (IF9/IF10) still to build | Low | wire the Optimizer into the `tradeoff` branch; then UI/User Flow (Phase E) |
 | OCR / barcode / intake | **Partial** | pure classifier + multi-file picker + label queue; `parseNutritionLabelImage` honestly returns `not_implemented`; EAN→enrichment prefill; `intakeClassifier.ts`, `nutritionLabelOcr.ts`, `/dev/intake-hub` | Low | first keyless/LOCAL OCR engine behind the existing seam (Phase B) |
 | Enrichment (external public data) | **Done, idle** | reviewed merge fill/agree/conflict/skip, nutrition allowlist, PI-Verified write-time guard (TOCTOU-tested); `productEnrichment.ts`, `/dev/enrichment-preview` | Low | becomes useful with first non-catalog product |
 | Snapshots / audit trail | **Done** | append-only `product_snapshots` (69 rows verified 2026-07-05), diff service; `productSnapshots.ts`, `/dev/snapshot-audit` | Low | — |

@@ -13,3 +13,5 @@ export * from './normalizeRecipeIntent';
 export * from './designRecipe';
 export * from './temperatureRegulator';
 export * from './evaluateTemperatureRegulator';
+export * from './baseEngineMetricsAdapter';
+export * from './integrationFlowRouter';

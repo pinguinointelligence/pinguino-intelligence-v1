@@ -75,6 +75,11 @@ changes; no UI dependency yet.
    external (see the pending `docs/account-access/` pack — owner review required).
 7. **Integration Flow router:** the 16-step execution order incl. decision routing
    (final / warning / tradeoff / impossible) and the rerun-verification loop.
+   **[landed — Phase C Slice 6]** The pure decision router `src/spine/integrationFlowRouter.ts`
+   (+ `baseEngineMetricsAdapter.ts`) connects intent → designer check → product profile → Base
+   Engine metrics → Temperature Regulator evaluation → one decision
+   (`ready`/`warning`/`tradeoff`/`impossible`/`blocked`) + next action + surfaced correction goals.
+   Still unwired; the Optimizer call (IF8) and the rerun-verification loop are the next steps.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
