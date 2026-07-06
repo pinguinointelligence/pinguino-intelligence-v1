@@ -41,11 +41,17 @@ export function buildStudioPickerProofLibrary(): IngredientLibrary {
     ref({ ingredient_id: 'PI-ING-000010', ingredient_name_display: 'Whole Milk', ingredient_category: 'dairy', water_percent: 87.5, total_solids_percent: 12.5, fat_percent: 3.6, protein_percent: 3.2, carbohydrate_percent: 4.8, total_sugars_percent: 4.8, lactose_percent: 4.8, pac_value: 4.8, pod_value: 4.8 }),
     ref({ ingredient_id: 'PI-ING-000180', ingredient_name_display: 'Cream 35%', ingredient_category: 'dairy', water_percent: 58, total_solids_percent: 42, fat_percent: 35, protein_percent: 2.1, carbohydrate_percent: 2.9, total_sugars_percent: 2.9, lactose_percent: 2.9, pac_value: 3.3, pod_value: 0.46 }),
     ref({ ingredient_id: 'PI-ING-000300', ingredient_name_display: 'Dark Chocolate 70%', ingredient_category: 'chocolate', water_percent: 1, total_solids_percent: 99, fat_percent: 42, protein_percent: 8, carbohydrate_percent: 46, total_sugars_percent: 29, sucrose_percent: 29, pac_value: 29, pod_value: 29 }),
+    // Yogurt anchor — enables the class-derived (PI Calculated) example below.
+    ref({ ingredient_id: 'PI-ING-000297', ingredient_name_display: 'Yogurt 5% — Standard', ingredient_category: 'dairy', water_percent: 87, total_solids_percent: 13, fat_percent: 5, protein_percent: 3.6, carbohydrate_percent: 5, total_sugars_percent: 5, lactose_percent: 5, salt_percent: 0.2, pac_value: 6.17, pod_value: 0.8 }),
   ];
   const products: ProductRow[] = [
     prod({ id: 'a', product_code: 'PR-ING-000010', product_name_display: 'Nata para montar 35% Hacendado', matched_basement_id: 'PI-ING-000180', status: 'pi_generated' }),
     prod({ id: 'b', product_code: 'PR-ING-000028', product_name_display: 'Chocolate negro 72% Hacendado', matched_basement_id: 'PI-ING-000300', status: 'pi_generated' }),
     prod({ id: 'c', product_code: 'PR-ING-000032', product_name_display: 'Chocolate 85% 0% azúcares edulcorante maltitol', matched_basement_id: 'PI-ING-000300', status: 'pi_generated' }),
+    // The LIVE-ACTIVATED class-derived PI Calculated product (owner-approved 000014, status
+    // pi_calculated, NOT matched): it enters via the class_derived branch with EPHEMERAL pac/pod
+    // adopted from the Yogurt 5% anchor. The product row carries NO pac/pod (stays null).
+    prod({ id: 'd', product_code: 'PR-ING-000014', product_name_display: 'Yogur natural Hacendado pack 6', product_category: 'dairy', mapper_status: null, matched_basement_id: null, status: 'pi_calculated', fat_percent: 3, carbohydrate_percent: 4.5, total_sugars_percent: 4.5, protein_percent: 3.5, salt_percent: 0.1 } as Partial<ProductRow>),
   ];
   const referenceById = new Map(references.map((r) => [r.ingredient_id, r]));
   const productLib = buildProductEngineLibrary({ products, referenceById });

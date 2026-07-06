@@ -14,14 +14,25 @@ const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]
 describe('buildStudioPickerProofLibrary', () => {
   it('produces a My Products group via the real builder, with reference-linked provenance', () => {
     const lib = buildStudioPickerProofLibrary();
-    expect(lib.products.length).toBe(3);
-    expect(lib.ingredients.length).toBe(3); // basement references too
+    expect(lib.products.length).toBe(4); // 3 reference-linked + 1 class-derived
+    expect(lib.ingredients.length).toBe(4); // basement references too
     const nata = lib.products.find((p) => p.id === 'PR-ING-000010')!;
     expect(nata.pac_value).toBe(3.3); // resolved from the linked Cream 35% reference
     expect(nata.is_verified).toBe(false);
     expect(lib.productProvenance.get('PR-ING-000010')?.reference_linked).toBe(true);
     // the maltitol product is red-flagged
     expect(lib.productProvenance.get('PR-ING-000032')?.blocked_by_red_flags).toBe(true);
+  });
+
+  it('includes the live-activated PR-ING-000014 as a class-derived PI Calculated My Product', () => {
+    const lib = buildStudioPickerProofLibrary();
+    const yog = lib.products.find((p) => p.id === 'PR-ING-000014')!;
+    expect(yog.pac_value).toBe(6.17); // ephemeral class-derived value (from the Yogurt 5% anchor)
+    expect(yog.pod_value).toBe(0.8);
+    const prov = lib.productProvenance.get('PR-ING-000014');
+    expect(prov?.class_derived).toBe(true);
+    expect(prov?.provenance_note).toBe('PI Calculated · class-derived · not independently measured');
+    expect(prov?.status_label).toBe('PI Calculated');
   });
 
   it('never copies pac/pod onto product rows in the fixture inputs (engine values are resolved)', () => {
@@ -37,7 +48,7 @@ describe('StudioPickerProofPage', () => {
     expect(t).toMatch(/My Products proof/);
     expect(t).toMatch(/Nata para montar/);
     expect(t).toMatch(/DEV fixture/);
-    expect(t).toMatch(/3 sample My Products/);
+    expect(t).toMatch(/4 sample My Products/);
   });
 });
 
