@@ -32,14 +32,16 @@ import {
   type ResolverReferenceInput,
   type ResolverRuleId,
 } from './productIntelligenceResolver';
+import type { ProductStatus } from './productRow';
 
 /**
  * OWNER-APPROVED PI Calculated product codes — the explicit activation gate.
- * EMPTY by default: no product is approved until the owner ticks the checklist in
- * docs/mapper/PI_CALCULATED_OWNER_REVIEW.md and the real activation slice populates this list.
- * Populating it here alone still does NOTHING live — it only flips `approved` in the preview.
+ * Owner approval 2026-07-06: `PR-ING-000014` (plain yogurt) ONLY.
+ * Deliberately NOT approved (stay preview-only): `PR-ING-000004` (skim milk),
+ * `PR-ING-000022` / `PR-ING-000023` (kefir). Almonds are label-staged / calibration proposal.
+ * A code here is activatable ONLY once its status is persisted to `pi_calculated` (guarded write).
  */
-export const APPROVED_PI_CALCULATED_CODES: readonly string[] = [];
+export const APPROVED_PI_CALCULATED_CODES: readonly string[] = ['PR-ING-000014'];
 
 /** The single Studio provenance label for a class-derived PI Calculated product. */
 export const CLASS_DERIVED_PROVENANCE_LABEL =
@@ -61,6 +63,8 @@ export interface ClassDerivedStatusUpdatePlan {
 export interface ClassDerivedActivationPlan {
   product_code: string;
   product_name: string | null;
+  /** the product's CURRENT lifecycle status (unchanged by the plan). */
+  current_status: ProductStatus;
   /** true ONLY when the code is in APPROVED_PI_CALCULATED_CODES (empty by default). */
   approved: boolean;
   rule_id: ResolverRuleId | null;
@@ -192,6 +196,7 @@ export function planClassDerivedActivation(args: {
     plan: {
       product_code: product.product_code,
       product_name: product.product_name_display,
+      current_status: product.status,
       approved: approvedCodes.has(product.product_code),
       rule_id: resolution.rule_id,
       confidence: resolution.confidence,

@@ -27,22 +27,27 @@ describe('PiCalculatedActivationPreviewPage — DEV-only', () => {
   });
 });
 
-describe('PiCalculatedActivationPreviewPage — plans only, executes nothing', () => {
+describe('PiCalculatedActivationPreviewPage — reads + the ONE guarded status write', () => {
   it('reads via the two read services and runs the pure planner', () => {
     expect(PAGE.includes('listMyProducts(')).toBe(true);
     expect(PAGE.includes('listEngineApprovedIngredients(')).toBe(true);
     expect(PAGE.includes('planClassDerivedActivations(')).toBe(true);
   });
-  it('never calls any write/persist service (incl. the status write it PLANS)', () => {
+  it('its ONLY write is the narrow guarded setProductLifecycleStatus (persists pi_calculated)', () => {
+    expect(PAGE.includes("from '@/services/productStatusWrite'")).toBe(true);
+    expect(PAGE.includes('setProductLifecycleStatus(')).toBe(true);
+    // no broad update / match-save / enrichment / create writes
     expect(
-      /setProductLifecycleStatus\(|matchAndSaveProduct|saveProductMatchResult|updateProduct\(|createProduct|applyProductEnrichment/.test(PAGE),
+      /matchAndSaveProduct|saveProductMatchResult|saveProductMapperReview|updateProduct\(|createProduct|importProductCatalog|applyProductEnrichment/.test(PAGE),
     ).toBe(false);
-    // it must not IMPORT the status-write service either — it only renders the plan string
-    expect(/from '@\/services\/productStatusWrite'/.test(PAGE)).toBe(false);
   });
-  it('never writes pac/pod, status, or npac', () => {
+  it('activates only pi_calculated — never PI Verified, never a red-flag override', () => {
+    expect(/'pi_calculated'/.test(PAGE)).toBe(true);
+    expect(/'pi_verified'/.test(PAGE)).toBe(false);
+    expect(/independent_provenance|red_flags_clear/.test(PAGE)).toBe(false);
+  });
+  it('never writes pac/pod or npac', () => {
     expect(/pac_value\s*[:=]|pod_value\s*[:=]|npac_value/.test(PAGE)).toBe(false);
-    expect(/\.status\s*=/.test(PAGE)).toBe(false);
   });
 });
 

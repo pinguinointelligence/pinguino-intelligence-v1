@@ -79,9 +79,12 @@ const SKIM = product({ id: 'id-skim', product_code: 'PR-SKIM', product_name_disp
 const skimResolution = () =>
   resolveProductIntelligence({ product: SKIM, candidateReferences: [MILK_15, MILK_35], matchedReference: null });
 
-describe('APPROVED_PI_CALCULATED_CODES — empty gate by default', () => {
-  it('is empty — nothing is approved until an owner populates it', () => {
-    expect([...APPROVED_PI_CALCULATED_CODES]).toEqual([]);
+describe('APPROVED_PI_CALCULATED_CODES — owner approval gate', () => {
+  it('holds exactly the owner-approved code (000014 only; skim milk/kefir excluded)', () => {
+    expect([...APPROVED_PI_CALCULATED_CODES]).toEqual(['PR-ING-000014']);
+    expect([...APPROVED_PI_CALCULATED_CODES]).not.toContain('PR-ING-000004');
+    expect([...APPROVED_PI_CALCULATED_CODES]).not.toContain('PR-ING-000022');
+    expect([...APPROVED_PI_CALCULATED_CODES]).not.toContain('PR-ING-000023');
   });
 });
 
@@ -169,11 +172,13 @@ describe('planClassDerivedActivations — batch', () => {
   const YOGURT_PRODUCT = product({ id: 'id-yog', product_code: 'PR-YOG', product_name_display: 'Yogur natural', fat_percent: 3, carbohydrate_percent: 4.5, total_sugars_percent: 4.5, protein_percent: 3.5, salt_percent: 0.1 });
   const SWEETENER = product({ id: 'id-sw', product_code: 'PR-SW', product_name_display: 'Edulcorante eritritol', product_category: 'sugar', fat_percent: 0, carbohydrate_percent: 100, total_sugars_percent: 0, protein_percent: 0, salt_percent: 0 });
 
-  it('plans every class-derived candidate; approvedPlans is EMPTY under the default gate', () => {
+  it('plans every class-derived candidate; approvedPlans excludes codes not in the allowlist', () => {
+    // these test products (PR-SKIM / PR-YOG / PR-SW) are NOT the approved PR-ING-000014, so none
+    // is activatable even though the default allowlist now holds PR-ING-000014.
     const batch = planClassDerivedActivations({ products: [SKIM, YOGURT_PRODUCT, SWEETENER], basement: BASEMENT });
     expect(batch.plans.map((p) => p.product_code).sort()).toEqual(['PR-SKIM', 'PR-YOG']); // sweetener blocked
-    expect(batch.approvedPlans).toEqual([]); // nothing approved by default
-    expect(batch.approvedCodes).toEqual([]);
+    expect(batch.approvedPlans).toEqual([]); // no PR-ING-000014 among these products
+    expect(batch.approvedCodes).toEqual(['PR-ING-000014']); // the applied allowlist
     for (const p of batch.plans) {
       expect(p.approved).toBe(false);
       expect(p.product_pac_after).toBeNull();
