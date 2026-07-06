@@ -50,5 +50,54 @@ The Studio picker builds `EngineIngredient[]` in `src/features/ingredient-builde
 
 **Proven by tests:** `productEngineLibrary.test.ts` (gate), `IngredientPicker.test.tsx` (group + provenance, no %/Mapper), `productEngineLibrary.recipe.test.ts` (a product calculates **identically** to its reference; product pac/pod stay null; no raw text in the engine ingredient or result). Remaining: a Pro signed-in session is required to render the group (the data path + UI are SSR-tested).
 
-## Hard rules (unchanged)
-Do not copy PAC/POD to products. Do not compute from `total_sugars`. Matched = mapping confirmed only. Keep product PAC/POD NULL until a scientific source/provenance is implemented.
+## Amendment (2026-07-06) — class-anchored derivation (owner-approved, pure slice landed)
+The PI audit confirmed that reference-linking alone leaves every no-reference product parked even
+when a chemically sound same-class derivation exists (skim milk along the calibrated milk fat
+series; plain/greek yogurt and kefir from same-class anchors). The owner approved a bounded rule
+amendment, now implemented as the pure, UNWIRED `data/products/productIntelligenceResolver.ts`:
+
+```
+resolveProductIntelligence({ product, candidateReferences, matchedReference }) -> {
+  outcome: 'reference_linked' | 'pi_calculated' | 'pi_generated' | 'blocked',
+  value_basis: 'reference_linked' | 'class_derived' | 'label_derived' | 'none',
+  recommended_status, engine_ready, confidence, rule_id, basis_reference_ids,
+  derived (EPHEMERAL pac/pod) | null, provenance_inputs, warnings,
+  blocked_reason, blocked_class
+}
+```
+
+Class-anchored DERIVATION is allowed ONLY when every condition holds: same chemistry class ·
+explicit tested rule (derivation rule ids `milk_fat_series_v1` / `plain_yogurt_class_anchor_v1` /
+`greek_yogurt_fat_variant_v1` / `kefir_fermented_dairy_v1`) · label composition complete enough ·
+provenance + confidence carried on the result · **derived values stay EPHEMERAL** (consumed at
+handoff time only — never written to products, never to `mapper_basement`). The separate
+`nut_species_label_v1` rule derives NO values at all — it only stages a species-exact label
+composition (`pi_generated`, `derived: null`, never engine-ready).
+
+**Where class-derived PAC/POD lives:** nowhere persistent — it is resolution output, exactly like
+today's reference-linked values. No new table is needed; the deferred `calculated_profile_json` /
+`source_values_json` columns (0008) are **still not required** and stay absent — they would only
+matter if derived values ever need to be visible outside recipe-time (a future owner decision).
+If/when a status write is driven by a resolver outcome, the provenance audit goes through
+`products.review_notes` via `setProductLifecycleStatus` — the future caller MUST write the rule id
++ basis reference ids into that note (a convention the next slice must implement; nothing records
+it automatically today). The `product_snapshots` trail covers source-data changes only (price/
+package/text/nutrition) and has no status/note fields — it is NOT the provenance mechanism here.
+Either way: no schema change.
+
+**Proposed handoff consumption (NOT implemented — next gated slice):** `productEngineLibrary`
+gains a branch for `outcome === 'pi_calculated'` products → `EngineIngredient` built from the
+basis reference's composition with the class-derived pac/pod and a distinct provenance label
+("Class-derived · interpolated from calibrated references · not independently measured");
+`pi_generated` (label-staged) and `blocked` never enter the library. `reference_linked` behavior
+is byte-identical to today.
+
+Hard-blocked classes (unchanged, tested): hydrolysed-lactose / lactose-free dairy ·
+high-intensity sweeteners · polyols · protein-fortified · composites/jams/blends ("a la taza") ·
+torrefacto coffee · red-flagged products.
+
+## Hard rules (updated 2026-07-06 by the amendment above)
+Do not copy PAC/POD to products. Do not compute PAC/POD from `total_sugars` (or any single label
+field) — unchanged. Matched = mapping confirmed only. Keep product PAC/POD NULL — class-derived
+values are ephemeral resolution output, never a product write. Class-anchored derivation is
+permitted ONLY through the explicit tested rules above, never improvised.

@@ -173,3 +173,27 @@ they already sit in buckets 2/4 and enrichment wouldn't change their mapping.
 3. **Manual fat-level review** (bucket 4) → the milks/yogurts, one quick human pass each.
 4. **Leave parked** (buckets 2, 5) → red-flag/composite items with no clean reference.
 **No product decisions were executed this block** — none is cleanly + safely decidable yet.
+
+## Product-Intelligence resolver note (2026-07-06 — pure layer landed, UNWIRED)
+The PI audit + owner rule amendment produced `data/products/productIntelligenceResolver.ts`
+(class-anchored derivation, ephemeral values, never persisted). **If the owner later activates it
+in live flows**, the KEY parked rows re-classify as follows — rows not listed fall to
+`no_safe_class_rule` / composite blocks (ties 000026/000028/000035, creams/blends 000037–039,
+fruit blends 000048–050, jams 000057–059; the light greeks 000018/000019 likely block on anchor
+distance) — nothing auto-resolves, and no product decision is changed by the resolver's existence
+alone:
+- **000004 desnatada** → `pi_calculated` candidate via `milk_fat_series_v1` (extrapolated below
+  the 1.6–3.5 anchor range → low confidence, explicit warning; refused beyond a 1.5 pp margin) —
+  the `skim_milk` reference proposal remains the higher-quality path.
+- **000014 yogur natural** → `pi_calculated` candidate via `plain_yogurt_class_anchor_v1`
+  (same-class anchor ≤1.0 pp; milks/condensed milk are never yogurt anchors).
+- **000016/000017 greek** → `pi_calculated` candidate via `greek_yogurt_fat_variant_v1`
+  (fat-variant warning; owner may still add the dedicated 10% basement variant).
+- **000022/000023 kéfir** → `pi_calculated` candidate via `kefir_fermented_dairy_v1`
+  (≤0.75 pp anchor + mandatory fermentation warning), else stays parked.
+- **000040/041/042 almond** → `pi_generated` label staging (composition only, NOT engine-ready —
+  pac/pod still owner-calibrated via the `almond` proposal).
+- **STILL HARD-BLOCKED (tested):** 000007/000008 sin lactosa + 000021 sin-lactosa yogurt ·
+  000060–000063 sweeteners/polyols · 000009/045/051/052/053/055/056 protein products ·
+  000033 cocoa (red-flag name claim — proposal path) · 000034 a la taza (composite) ·
+  000068 torrefacto · 000069 vanilla aroma. (000054 is a rejected mapping, not a parked row.)

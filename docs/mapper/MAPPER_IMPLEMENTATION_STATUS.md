@@ -1,7 +1,7 @@
 # Mapper — Implementation Status
 
 _Living status tracker for the PINGÜINO product-intake "Mapper". Evidence-based; nothing
-here is assumed complete. Last updated 2026-07-05 at repo HEAD `2f45a86` (+ hardening PR)._
+here is assumed complete. Last updated 2026-07-06 (Product-Intelligence slice 1)._
 
 > **Audit + queue status (2026-07-05):** a full read-only audit (Fable 5) found **no critical
 > blockers** — the system is safe to continue; its recommended defense-in-depth hardening is
@@ -9,6 +9,20 @@ here is assumed complete. Last updated 2026-07-05 at repo HEAD `2f45a86` (+ hard
 > update · write-time PI Verified guard in enrichment). **Autonomous matching is exhausted**: every
 > remaining null product is blocked on owner/team input — see
 > [OWNER_TEAM_CALIBRATION_HANDOFF.md](OWNER_TEAM_CALIBRATION_HANDOFF.md).
+
+> **Product-Intelligence audit finding (2026-07-06):** a second read-only audit confirmed the
+> Mapper was **reference matching + human review + proposals only** — the PI Calculated /
+> PI Generated *generation* layer existed as status vocabulary and a decision policy but had no
+> value-producer (tracker rows 12/13/15 below), and the matcher's missing-pac/pod routing means
+> composition hits can never auto-resolve. **Correction (this slice):** the owner approved a rule
+> amendment — *class-anchored derivation* is now allowed (same chemistry class, explicit tested
+> rule, provenance + confidence carried, values EPHEMERAL — never written to products) — and the
+> pure `productIntelligenceResolver.ts` implements it, UNWIRED. Still forbidden, unchanged:
+> deriving PAC/POD from `total_sugars` (or any single label field), copying reference values onto
+> products, any `mapper_basement` write, auto-verify for red-flagged classes.
+> **Reference matcher ≠ Product Intelligence:** the matcher finds *which reference a product IS*;
+> the resolver decides *how a product becomes engine-usable* (link / class-derive / stage label /
+> block) — two different questions, now two explicit layers.
 
 ## Architecture invariants (must always hold)
 - `mapper_basement` is the **locked reference brain** (`PI-ING-…`); never auto-written by intake.
@@ -50,10 +64,10 @@ here is assumed complete. Last updated 2026-07-05 at repo HEAD `2f45a86` (+ hard
 | 9 | OCR / image intake | **Queue + adapter seam (no OCR engine)** | **NEW** `nutritionLabelOcr.ts`: accepted image types + planned extraction schema + `parseNutritionLabelImage` (always `not_implemented`, extraction null — never fabricated text); intake-hub multi-file picker queues label images (metadata only, contents never read) with a pending state | the actual keyless/LOCAL OCR engine is still unbuilt — the seam + queue are ready for it |
 | 10 | barcode/EAN intake | **Partial** | EAN/barcode normalization (`0009` generated cols) + dedupe done | external barcode **lookup** + scan UI missing |
 | 11 | online enrichment | **Reviewed conflict-merge (keyless)** | `services/openFoodFacts.ts` (keyless read-only fetch) + **NEW** pure `productEnrichment.ts` (compare → fill/agree/conflict/skip; narrow patch) + **NEW** `services/productEnrichment.ts` (`applyProductEnrichment`: writes ONLY the label-nutrition allowlist via RLS `updateProduct`, snapshots the change, blocks PI Verified without override) + **NEW** `/dev/enrichment-preview` merge UI (product picker + per-field table + EAN-mismatch/conflict warnings) | Hacendado private-label not in OFF (404) — no real product enriched; barcode-scan UI remains |
-| 12 | simple PI Calculated logic | **Deferred** | status value exists | gated on pac/pod provenance (see handoff plan) |
-| 13 | complex PI Generated logic | **Deferred** | — | profile-JSON columns deliberately absent (`0008`) |
+| 12 | simple PI Calculated logic | **Pure resolver landed (UNWIRED)** | **NEW** `productIntelligenceResolver.ts`: class-anchored rules derive EPHEMERAL pac/pod from calibrated same-class anchors — milk fat-series interpolation (`milk_fat_series_v1`), plain-yogurt / greek fat-variant / kefir anchor adoption; outcome `pi_calculated` with rule id + basis refs + confidence + warnings; values never persisted | activation in live matching/status flows needs owner sign-off (see "Requires approval") |
+| 13 | complex PI Generated logic | **Label staging landed (UNWIRED); columns still deferred** | resolver outcome `pi_generated` stages a complete label composition (`label_derived`) with pac/pod UNRESOLVED → never engine-ready, owner calibration required. NOTE: the resolver outcome ≠ the `pi_generated` *status* (customer label for a confirmed reference-linked mapping) — disambiguated via `value_basis` | profile-JSON columns (`calculated_profile_json`) remain deliberately absent (`0008`) — not needed while derivation is ephemeral |
 | 14 | similarity search | **Composition + name tiebreaker + coffee special-case + milk fat-band** | `category_composition_similarity` (5 fields, ≤2pp) + `productNameTiebreak` (narrow only on unique-max concept score) + the scoped coffee special-case pool (name-gated both sides; no grano/grain — "Grain Coffee" is a cereal-substitute false friend); **NEW** `productMilkFatBand`: entera/semidesnatada/desnatada declare a fat band checked against refs' STORED fat — narrow only when exactly ONE milk-named ref is in-band; lactose-free/fortified never band; zero in-band = a noted reference gap | no vector/fuzzy search; narrowed singles for pac/pod-less products are needs_review suggestions |
-| 15 | ratio-based profile generation | **Missing** | none | — |
+| 15 | ratio-based profile generation | **Slice 1 landed (pure, UNWIRED)** | class-anchored derivation per the owner rule amendment: linear pac/pod interpolation over the calibrated milk fat series + same-class anchor adoption (yogurt/greek/kefir); hard-blocked classes stay blocked (hydrolysed lactose, sweeteners/polyols, protein-fortified, composites, torrefacto, red-flagged) | live use + status persistence are separate gated steps |
 | 16 | snapshots / versioning | **Live + audit UI** | migration 0011 applied (RLS append-only); `productSnapshots.ts` (snapshotNewProduct / snapshotSourceChange / listProductSnapshots) + pure `productSnapshotDiff.ts` (+ **NEW** `parseDetectedChanges`); **NEW** DEV `/dev/snapshot-audit` (read-only history: change_type, source, per-field from→to) | — |
 | 17 | manual adjustment | **Done** | `services/productReview.ts` (`confirmProductMatch` / `confirmProductMatchTo` / `rejectProductMatch`); `/dev/mapper-review` | — |
 | 18 | PI Verified flow | **DEV control + eligibility + provenance attestation** | `/dev/mapper-status` Verify; `explainPiVerified(row)` (red flags & unresolved HARD-block); **NEW** a reference-linked product needs an explicit `independent_provenance` attestation (checkbox, recorded in the note) to reach PI Verified — a bare reason can't elevate borrowed values; product-measured still verifies on a reason | no real product PI-verified (none has independent provenance); needs a customer surface |
@@ -68,8 +82,9 @@ at `/dev/reference-proposals` (local drafts + JSON/CSV pack export).
 
 ## Requires approval before proceeding
 - **Writing to `mapper_basement`** — e.g. adding the missing **almond / erythritol / stevia** references (blocking several products). Locked base; needs explicit go-ahead.
-- **Any pac/pod write onto products** — forbidden until a provenance path is approved (the resolver links read-only instead).
+- **Any pac/pod write onto products** — forbidden until a provenance path is approved (the resolver links read-only instead; class-derived values are EPHEMERAL and equally never written).
 - **products.status transitions** — need the customer-facing status rules signed off before any code sets `pi_calculated`/`pi_verified`.
+- **Activating `productIntelligenceResolver` in live matching / status flows / Studio handoff** — the pure layer exists and is tested; wiring it (a `class_derived` provenance branch in the engine handoff + `pi_calculated` status persistence via the gated status service) is its own owner-approved slice.
 
 ## Product review progress (mapping decisions, not engine-readiness)
 - **23 matched** (manual review): 000006, 000010, 000011, 000012, 000013, 000029, 000031, 000036, 000043, 000044, 000070, 000046 (→ Wild Strawberry), 000047 (→ Blueberry), 000024 & 000025 (→ White Chocolate PI-ING-000142), 000027 (→ Milk Chocolate Couverture PI-ING-000122), 000064–000067 (→ Coffee Bean Roasted Ground PI-ING-000166), **000002 & 000005 (→ Milk 3,5% PI-ING-000236), 000003 (→ Milk 1.5% PI-ING-000234)** — milks confirmed via the fat-band review (semi = the only in-band ref; whole = fat-closest, and all whole-band refs carry identical engine values). Parked: 000004 desnatada (**no liquid skim ref — proposal `skim_milk`**), 000007/000008 sin lactosa (**hydrolysed sugars — proposal `lactose_free_milk`**), 000009 +Proteínas (red-flag), 000068 torrefacto, greek yogurts (proposal G), 000026 milk choc (3-way tie), 000028 dark choc (percent-level), 000035 pistachio (raw vs paste), vanilla 000069 (aroma vs paste). Full grouping: [REVIEW_QUEUE_ANALYSIS.md](REVIEW_QUEUE_ANALYSIS.md).
