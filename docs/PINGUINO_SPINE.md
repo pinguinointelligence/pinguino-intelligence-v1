@@ -38,10 +38,10 @@ Where the repo stands today, in one line each:
 - **PARTIAL:** access gating (demo/Pro exists; the `AccessContext`/capabilities contract does not),
   intake (classifier + OCR queue + honest `not_implemented` OCR seam; no OCR engine), enrichment
   (reviewed-merge path tested, currently no enrichable product), conversational intake precursors.
-- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** Temperature Regulator configs
-  (−12/−13 bands), Integration Flow router, batch-size/actual-batch-rescue user flow,
-  stock-shortage flow, User Flow conversational script. (Recipe Intent normalization and the
-  Designer's `RecipeDesignPlan` landed as pure code in Slices 2–3 — unwired.)
+- **NOT STARTED (the Spine's Recipe-Intelligence behavior):** Temperature Regulator *evaluation*,
+  Integration Flow router, batch-size/actual-batch-rescue user flow, stock-shortage flow, User
+  Flow conversational script. (Recipe Intent normalization, the Designer's `RecipeDesignPlan` and
+  the full Temperature Regulator *config registry* landed as pure code in Slices 2–4 — unwired.)
 - **BLOCKED (on humans, correctly):** Mapper calibration (PAC/POD for 12 staged reference
   proposals + 4 owner picks — see
   [mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md](mapper/OWNER_TEAM_CALIBRATION_HANDOFF.md)).
@@ -293,7 +293,7 @@ Designer must not calculate POD/PAC/NPAC (strategy only; the Base Engine calcula
 | Designer | **Partial** (pure `RecipeDesignPlan` landed, unwired) | `src/spine/designRecipe.ts`: intent → designer profile (registry-owned), flavor/quality strategy, tier-based hero policy (premium/signature reduction forbidden), texture/sweetness intent labels, `DesignerOptimizerConstraints` (families + disabled/advisory gates from the registry, stabilizer always required); +38 tests. No chemistry, no grams — strategy only | Low | User Flow wiring (Slice C5) and Optimizer consumption later; product-specific preset generation stays future |
 | User Flow | **Not started** as spec'd | `src/features/pi-chat/` deterministic intake exists (English, different script); locked Polish-first script in [User_Flow.md](pinguino-spine/User_Flow.md) | Medium | wire after Designer; flavor-first, never price-first |
 | Account Access | **Partial** | demo/Pro hook `src/access/plans.ts` + subscription mapping; solver redacts at source since engine 0.4.0; `AccessContext`/`AccessCapabilities` contract + DEMO/PAID defaults now live in `src/spine/access.ts` (pure, unwired); NEW: uncommitted 52-file `docs/account-access/` pack awaiting owner review | Medium (Rule 1: server-side enforcement pending) | wire capabilities through User Flow/output shaping (Slice C6); keep login/billing external |
-| Temperature Regulator | **Not started** | only `milk_gelato@−11` anchor seeded in engine config; all 4×3 bands + 8 golden reference formulas locked in the four regulator docs | Medium | config registry per product × temperature; CONFIG_VERSION bump |
+| Temperature Regulator | **Partial** (pure config registry landed, unwired) | `src/spine/temperatureRegulator.ts`: all 12 product×temperature settings (bands, clean centers, locked references, disabled/advisory gates, exact doc statuses) + 14 golden fixtures (G12/G17/G15/G18/G11, S01–S04, V02 fixed/AUTO/V01 rejected, C01 fixed/optimized) transcribed verbatim; no-fallback lookup; +34 tests. Evaluation (status/severity/correction goals vs engine results) NOT built; engine `milk_gelato@−11` ice anchor untouched | Low | evaluation layer + Integration Flow router (later slices); engine CONFIG_VERSION bump only when wiring |
 | Optimizer | **Partial** | deterministic solver `src/engine/corrections/`: violations → Golden Middle → exact-gram candidates → verify by full recalc → tradeoff/impossible; planning/actual-batch; redaction | Medium if extended before profiles (forbidden order) | profile-aware families + batch-volume decision + stock-shortage consumption |
 | Integration Flow router | **Not started** | zero matches; 16-step order + decision router locked in [Integration_Flow.md](pinguino-spine/Integration_Flow.md) | Medium (ordering) | implement after profiles/intent/designer/regulator |
 | OCR / barcode / intake | **Partial** | pure classifier + multi-file picker + label queue; `parseNutritionLabelImage` honestly returns `not_implemented`; EAN→enrichment prefill; `intakeClassifier.ts`, `nutritionLabelOcr.ts`, `/dev/intake-hub` | Low | first keyless/LOCAL OCR engine behind the existing seam (Phase B) |

@@ -11,3 +11,4 @@ export * from './productProfiles';
 export * from './normalizeProductProfile';
 export * from './normalizeRecipeIntent';
 export * from './designRecipe';
+export * from './temperatureRegulator';
