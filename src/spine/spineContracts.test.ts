@@ -131,6 +131,7 @@ describe('Spine boundary — the foundation layer stays pure (static)', () => {
       'integrationFlowRouter.ts',
       'normalizeProductProfile.ts',
       'normalizeRecipeIntent.ts',
+      'optimizationFlowRouter.ts',
       'productProfiles.ts',
       'temperatureRegulator.ts',
       'types.ts',

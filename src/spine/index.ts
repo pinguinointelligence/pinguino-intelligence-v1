@@ -15,3 +15,4 @@ export * from './temperatureRegulator';
 export * from './evaluateTemperatureRegulator';
 export * from './baseEngineMetricsAdapter';
 export * from './integrationFlowRouter';
+export * from './optimizationFlowRouter';

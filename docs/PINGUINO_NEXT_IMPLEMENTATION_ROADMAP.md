@@ -79,7 +79,13 @@ changes; no UI dependency yet.
    (+ `baseEngineMetricsAdapter.ts`) connects intent → designer check → product profile → Base
    Engine metrics → Temperature Regulator evaluation → one decision
    (`ready`/`warning`/`tradeoff`/`impossible`/`blocked`) + next action + surfaced correction goals.
-   Still unwired; the Optimizer call (IF8) and the rerun-verification loop are the next steps.
+   **[landed — Phase C Slice 7]** `src/spine/optimizationFlowRouter.ts` adds the pure Optimizer
+   routing over the `tradeoff` branch: router decision + surfaced correction goals → profile-gated
+   `CorrectionPlan`s (target metric, direction, allowed ingredient classes, Golden Middle rank,
+   feasibility) with advisory-goal + no-lever rejection, plus a `verifyOptimizationRerun` seam that
+   re-evaluates before/after metrics through the Temperature Regulator → optimized/tradeoff/impossible.
+   Still unwired; wiring the real `src/engine/corrections` solver's exact grams + Base Engine re-run
+   into the routing layer (and the rerun-verification loop) is the next step.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
