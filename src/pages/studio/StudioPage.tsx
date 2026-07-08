@@ -42,7 +42,7 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
   // Free Preview (demo/free) locks exact values; Pro unlocks the full calculator + panels.
   const { plan, fullFormula, technicalView, exactCorrectionGrams } = useAccess();
   const { result, corrections, input } = useStudioResult();
-  // DEV-only optimization preview — computed on explicit click, never persisted.
+  // Production optimization preview (Slice 15) — computed on explicit click, never persisted.
   const [optimizationView, setOptimizationView] = useState<OptimizationPreviewView | null>(null);
 
   const mode = useRecipeStore((state) => state.mode);
@@ -147,29 +147,36 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
               {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
               <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
 
-              {/* DEV-only optimization preview seam: runs the real solver + Base Engine rerun on
-                  the LIVE recipe when clicked. Pure preview — nothing is saved or mutated. Gated by
-                  import.meta.env.DEV so production dead-code-eliminates it. Redaction follows the
-                  viewer's plan (demo/free redacted, Pro full); the DEV trace is additive. */}
-              {import.meta.env.DEV ? (
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOptimizationView(previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }))
-                    }
-                    className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
-                  >
-                    Optimize preview (DEV)
-                  </button>
-                  {optimizationView ? (
-                    <OptimizationPreviewPanel
-                      view={optimizationView}
-                      policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: true })}
-                    />
-                  ) : null}
+              {/* Production optimization preview (Slice 15): runs the real solver + Base Engine rerun
+                  on the LIVE recipe when the user clicks. Capability-gated (demo/free redacted, Pro full
+                  grams + before/after); the DEV debug trace stays gated to dev builds via
+                  `{ dev: import.meta.env.DEV }`. Pure preview — it NEVER saves, applies, persists, or
+                  mutates the recipe, and the global engine target bands are unchanged. */}
+              <div className="space-y-3 border-t border-ivory/10 pt-6">
+                <div className="flex flex-col gap-1">
+                  <SectionLabel>Optimization preview</SectionLabel>
+                  <p className="text-xs leading-relaxed text-ivory/40">
+                    Preview only — nothing is saved and corrections are not applied automatically. Uses the
+                    regulator-shadow target preview; global engine target bands unchanged.
+                    {!exactCorrectionGrams ? ' Exact grams available on Pro.' : ''}
+                  </p>
                 </div>
-              ) : null}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOptimizationView(previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }))
+                  }
+                  className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                >
+                  Preview optimization
+                </button>
+                {optimizationView ? (
+                  <OptimizationPreviewPanel
+                    view={optimizationView}
+                    policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: import.meta.env.DEV })}
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
         </main>

@@ -260,10 +260,51 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
     }
   });
 
-  it('the Studio integration is DEV-gated (import.meta.env.DEV around the panel)', () => {
-    const studio = readFileSync(resolve(HERE, '..', '..', 'pages', 'studio', 'StudioPage.tsx'), 'utf8');
-    expect(/import\.meta\.env\.DEV\s*\?[\s\S]*?OptimizationPreviewPanel/.test(studio)).toBe(true);
-    // and the preview button never saves/persists
+  const studioSrc = readFileSync(resolve(HERE, '..', '..', 'pages', 'studio', 'StudioPage.tsx'), 'utf8');
+  const studio = strip(studioSrc);
+
+  it('renders the preview in PRODUCTION Studio, not behind a DEV-only gate (Slice 15)', () => {
+    expect(studio.includes('OptimizationPreviewPanel')).toBe(true);
+    expect(studio.includes('Preview optimization')).toBe(true);
+    expect(studio.includes('Optimize preview (DEV)')).toBe(false); // the old DEV-only label is gone
+    // the panel is gated on the CLICKED state, not on import.meta.env.DEV
+    const beforePanel = studio.slice(0, studio.indexOf('<OptimizationPreviewPanel')).slice(-180);
+    expect(beforePanel).toMatch(/optimizationView\s*\?/);
+    expect(beforePanel).not.toMatch(/import\.meta\.env\.DEV/);
+  });
+
+  it('is capability-gated by the display policy (demo/free redacted, Pro full)', () => {
+    expect(/optimizationDisplayPolicy\(\s*\{\s*exactCorrectionGrams,\s*technicalView\s*\}/.test(studio)).toBe(true);
+  });
+
+  it('keeps the DEV debug trace gated to dev builds only (never forced on in production)', () => {
+    expect(/\{\s*dev:\s*import\.meta\.env\.DEV\s*\}/.test(studio)).toBe(true);
+    expect(/\{\s*dev:\s*true\s*\}/.test(studio)).toBe(false);
+  });
+
+  it('requires an explicit click and never auto-optimizes', () => {
+    expect(/onClick=\{[\s\S]*?setOptimizationView\(previewOptimization/.test(studio)).toBe(true);
+  });
+
+  it('shows the production safety disclaimers', () => {
+    expect(studio.includes('Preview only')).toBe(true);
+    expect(/not applied automatically/.test(studio)).toBe(true);
+    expect(/regulator-shadow target preview/.test(studio)).toBe(true);
+    expect(/global engine target bands unchanged/.test(studio)).toBe(true);
+    expect(/Exact grams available on Pro/.test(studio)).toBe(true);
+  });
+
+  it('never saves / persists / applies a correction from the Studio preview', () => {
     expect(/saveRecipe\(|persistRecipe\(/.test(studio)).toBe(false);
+    expect(studio.includes('applyAutoFix')).toBe(false);
+    expect(studio.includes('applyCorrectionActions')).toBe(false);
+  });
+
+  it('the Studio source touches no DB / Supabase / Mapper / pac-pod / product status', () => {
+    expect(/supabase|service_role|mapper_basement/i.test(studio)).toBe(false);
+    expect(/pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(studio)).toBe(false);
+    for (const v of ['.insert(', '.update(', '.upsert(', '.delete(']) {
+      expect(studio.includes(v), v).toBe(false);
+    }
   });
 });

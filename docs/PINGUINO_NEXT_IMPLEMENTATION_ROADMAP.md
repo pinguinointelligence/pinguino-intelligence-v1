@@ -125,11 +125,19 @@ changes; no UI dependency yet.
    global config changes. `optimizationPreviewRunner` now runs BOTH the engine-seeded and the
    regulator-shadow gram solves (`regulatorTargetOverride` map; advisory gates excluded, unsupported blocked)
    with a `solveComparison` (correctionDiffers / regulatorShadowImproved), surfaced in the DEV page + Studio
-   panel (Demo hides grams, Pro shows the comparison). Global `TARGET_BANDS` UNCHANGED, no CONFIG_VERSION
-   bump. The remaining **owner decision** is whether to (a) promote the regulator-shadow gram solve to
-   production preview / Studio behind capabilities, or (b) still bake the −12/−13 bands into the engine
-   `TARGET_BANDS` later (CONFIG_VERSION bump + golden re-baseline) so the DEFAULT solver is temperature-aware.
-   Then production Studio (capability-gated) + persistence, then actual-batch-rescue / stock-shortage (IF9/IF10).
+   panel (Demo hides grams, Pro shows the comparison). Global `TARGET_BANDS` UNCHANGED, no CONFIG_VERSION bump.
+   **[landed — Phase C Slice 15]** the optimization preview is PROMOTED into production Studio: the
+   `import.meta.env.DEV` gate around the Studio panel is removed, so it renders in the normal Studio flow for
+   every tier — capability-gated (demo/free redacted + "Exact grams available on Pro"; Pro full), click-triggered
+   (never auto), with visible disclaimers ("Preview only — nothing is saved", "corrections are not applied
+   automatically", "regulator-shadow target preview", "global engine target bands unchanged"). NOTHING is
+   saved/applied/persisted; the DEV debug trace stays gated to dev builds (`{ dev: import.meta.env.DEV }`), and
+   `/dev/optimization-preview` remains a separate DEV tool. The prod bundle now INCLUDES the Studio preview but
+   still excludes the DEV page. Global `TARGET_BANDS`, `calculateRecipe` and default solver behavior UNCHANGED.
+   The remaining **owner decision / next slices**: (a) accepted-correction PERSISTENCE (save an applied
+   correction — the first real write path), or (b) bake −12/−13 into the engine `TARGET_BANDS` (CONFIG_VERSION
+   bump + golden re-baseline) so the DEFAULT solver is temperature-aware. Then actual-batch-rescue /
+   stock-shortage (IF9/IF10).
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
