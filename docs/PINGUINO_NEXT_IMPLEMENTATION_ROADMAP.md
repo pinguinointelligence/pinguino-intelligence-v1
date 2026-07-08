@@ -108,11 +108,20 @@ changes; no UI dependency yet.
    source (from the locked regulator settings) and a read-only comparison against the engine's selected
    band (`selectTargetBand`) per profile×temperature, with the full gap audited in
    [engine/TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md](engine/TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md). Live
-   `TARGET_BANDS` and solver behavior are UNCHANGED. The next step is an **owner decision** between the two
-   documented migration paths — (1) extend the engine `TARGET_BANDS` with seeded −12/−13 (and per-category)
-   bands (CONFIG_VERSION bump + golden re-baseline), or (2) a solver-injected target override (no global
-   config change) — after which the shadow comparison becomes the acceptance oracle. Then production Studio
-   (capability-gated) + persistence, then actual-batch-rescue / stock-shortage (IF9/IF10).
+   `TARGET_BANDS` and solver behavior are UNCHANGED.
+   **[landed — Phase C Slice 13]** `solverTargetInjection` prototypes migration path (2) in PREVIEW ONLY:
+   `analyzeSolverTargetInjection` clones the real `calculateRecipe` result, replaces only the HARD-gate
+   indicator bands with the regulator bands (advisory gates untouched; unsupported profile/temperature
+   blocked, never remapped), and re-runs the engine's own exported `detectViolations` to compare what the
+   solver targets today (engine-seeded) vs under the regulator bands — surfaced in the DEV page + Studio
+   panel with a "global engine target bands unchanged" warning, Demo redaction intact. It re-targets the
+   solver's DETECTION only; the exact-gram solve is not yet re-run against injected bands, and the global
+   `TARGET_BANDS`/`calculateRecipe`/solver are UNCHANGED. The next step is an **owner decision** between the
+   two documented migration paths — (1) extend the engine `TARGET_BANDS` with seeded −12/−13 (and
+   per-category) bands (CONFIG_VERSION bump + golden re-baseline), or (2) promote the solver-injected target
+   to a real gram solve (a solver-API target override, no global config change) — after which the shadow
+   comparison becomes the acceptance oracle. Then production Studio (capability-gated) + persistence, then
+   actual-batch-rescue / stock-shortage (IF9/IF10).
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

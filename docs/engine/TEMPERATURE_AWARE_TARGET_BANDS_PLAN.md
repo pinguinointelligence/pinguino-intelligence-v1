@@ -62,6 +62,35 @@ is invented — all values are transcribed from the locked regulator settings.
 **Only `standard_gelato @ −11` is (near-)aligned; the other 11 cells are divergent** (the solver is on
 the −11/category fallback).
 
+## 3b. Solver-injected target — PREVIEW prototype (Slice 13, not live)
+
+`src/features/optimization/solverTargetInjection.ts` prototypes migration path (2) below **in preview
+only**, proving it end-to-end without touching the engine. It exploits the fact that the correction
+solver reads its target bands ONLY from a `RecipeResult`'s `indicators[].band` (via the engine's own
+exported, pure `detectViolations`):
+
+- `buildInjectedSolverTarget(profile, temp)` — the regulator bands split into the HARD-gate bands that
+  get injected and the ADVISORY-gate bands that are deliberately left on the engine band (so an advisory
+  gate — e.g. chocolate protein-share — is never turned hard). Unsupported profile/temperature →
+  `active: false` (blocked, never remapped).
+- `injectRegulatorBands(result, target)` — an IMMUTABLE COPY of the result whose HARD-gate indicator
+  bands are replaced by the regulator bands (values, keys and engine fallback flags preserved). The
+  original result and the global config are never mutated.
+- `analyzeSolverTargetInjection({recipe, profile, temp})` — runs the real `calculateRecipe`, then
+  `detectViolations` on the engine-seeded result vs the band-injected copy, and reports: the two
+  violation sets, a per-metric engine-vs-regulator comparison (value, bands, target centers), which
+  metrics newly violate / resolve under the regulator band, and whether the correction changes. A
+  band-center move below a small tolerance (e.g. −11: engine npac center 37.5 vs regulator 38 = 0.5)
+  is reported as **same** so near-aligned cells are not overstated; genuine divergences (−12/−13, Δ ≥ 8)
+  and any violation-SET change flag as **changed**.
+
+**Honest scope:** this re-targets the solver's VIOLATION DETECTION only. It does NOT re-run the
+exact-gram solve against the injected bands — `proposeCorrections` recomputes `calculateRecipe`
+internally and would need either the global-config change (path 1) or a solver-API target override
+(path 2) to consume an injected band. No fabricated gram correction is produced. Live `TARGET_BANDS`,
+`calculateRecipe` and the solver are UNCHANGED; visibility only, in `/dev/optimization-preview` + the
+Studio DEV panel (with the "global engine target bands unchanged" warning, Demo redaction intact).
+
 ## 4. What a future LIVE update would need (requires explicit approval)
 
 Two candidate paths, both out of scope for this slice:
@@ -93,6 +122,12 @@ Either way the shadow comparison here becomes the acceptance oracle: after the c
 
 ## 6. Status
 
-- **Slice 12 (this):** shadow comparison + audit only. Live engine `TARGET_BANDS` **unchanged**; solver
+- **Slice 12:** shadow comparison + audit only. Live engine `TARGET_BANDS` **unchanged**; solver
   behavior **unchanged**. Visibility in `/dev/optimization-preview` + the Studio DEV panel.
-- **Next:** owner decision between path (1) and (2) above.
+- **Slice 13 (this):** solver-injected regulator target in **preview only** (§3b) — re-targets the
+  solver's violation detection at the regulator bands via a cloned, band-injected `RecipeResult` +
+  `detectViolations`. Live `TARGET_BANDS`, `calculateRecipe` and the gram solver **unchanged**; advisory
+  gates stay advisory; unsupported profile/temperature blocked. Visibility in `/dev/optimization-preview`
+  + the Studio DEV panel (Demo redaction intact).
+- **Next:** owner decision between path (1) and (2) above. Path (2) is now prototyped in preview; the
+  remaining live work is a solver-API target override so the exact-gram solve consumes the injected band.

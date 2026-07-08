@@ -89,6 +89,28 @@ function FixtureCard({ view }: { view: OptimizationPreviewView }) {
             .map((c) => ` · ${c.metric} eng ${c.engineBand ? c.engineBand.join('–') : '—'}→reg ${c.shadowBand!.join('–')}`)
             .join('')}
         </div>
+        <div className={view.solverTargetInjection.correctionChanged ? 'text-amber-300/80' : 'text-ivory/40'}>
+          solver target injection ({view.solverTargetMode}, preview only):{' '}
+          {view.solverTargetInjection.active
+            ? `engine ${view.solverTargetInjection.trace.engineSeededCount} viol → regulator-shadow ${view.solverTargetInjection.trace.regulatorShadowCount} viol · ${
+                view.solverTargetInjection.correctionChanged ? 'CHANGED' : 'same'
+              }`
+            : `blocked (${view.solverTargetInjection.blockedReason})`}
+          {view.solverTargetInjection.newViolationsUnderRegulator.length
+            ? ` · new: ${view.solverTargetInjection.newViolationsUnderRegulator.join(', ')}`
+            : ''}
+        </div>
+        {view.solverTargetInjection.comparisons.filter((c) => c.changed).length ? (
+          <div className="text-ivory/40">
+            {view.solverTargetInjection.comparisons
+              .filter((c) => c.changed)
+              .map(
+                (c) =>
+                  `${c.metric} ${fmt(c.value)}: eng ${c.engineBand ? c.engineBand.join('–') : '—'}→reg ${c.regulatorBand.join('–')}`,
+              )
+              .join(' · ')}
+          </div>
+        ) : null}
         <div>correction goals: {view.correctionGoals.length ? view.correctionGoals.join(', ') : '—'}</div>
         <div className="text-emerald-300/80">
           proposed: {view.proposedCorrections.length

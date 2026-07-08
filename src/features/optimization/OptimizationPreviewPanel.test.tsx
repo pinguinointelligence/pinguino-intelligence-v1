@@ -79,6 +79,29 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
     wouldTargetNpacCenter: 45.6,
     warnings: ['engine_uses_temperature_fallback_band', 'target_bands_divergent', 'solver_not_targeting_regulator_band'],
   },
+  solverTargetMode: 'engine_seeded',
+  solverTargetInjection: {
+    source: 'temperature_regulator_shadow',
+    productProfile: 'standard_gelato',
+    servingTemperatureC: -12,
+    mode: 'engine_seeded',
+    active: true,
+    blockedReason: null,
+    regulatorProfile: 'standard_gelato_temperature_regulator',
+    injectedMetrics: ['npac'],
+    engineSeededViolations: [],
+    regulatorShadowViolations: [
+      { metric: 'npac', direction: 'low', value: 40, band: [42, 50], targetCenter: 46 },
+    ],
+    comparisons: [
+      { metric: 'npac', value: 40, engineBand: [33, 42], regulatorBand: [42, 50], engineViolation: false, shadowViolation: true, engineTargetCenter: 37.5, shadowTargetCenter: 46, targetCenterDelta: 8.5, changed: true },
+    ],
+    newViolationsUnderRegulator: ['npac'],
+    resolvedViolationsUnderRegulator: [],
+    correctionChanged: true,
+    warnings: ['regulator_shadow_target_changes_correction', 'regulator_reveals_new_violations'],
+    trace: { engineSeededCount: 0, regulatorShadowCount: 1, regulatorProfile: 'standard_gelato_temperature_regulator' },
+  },
   warnings: [],
   hardBlockers: [],
   ...over,
@@ -133,6 +156,25 @@ describe('OptimizationPreviewPanel — redaction', () => {
     expect(t).toMatch(/temperature_regulator_shadow/);
     expect(t).toMatch(/engine npac 33–42 vs regulator 42–50/);
     expect(t).toMatch(/divergent/);
+  });
+
+  it('shows the injected regulator-shadow solver target in every tier with the preview-only warning', () => {
+    for (const policy of [demoPolicy, proPolicy, devPolicy]) {
+      const t = visibleText(render(view(), policy));
+      expect(t).toMatch(/regulator-shadow solver target/);
+      expect(t).toMatch(/would change the correction/);
+      expect(t).toMatch(/Preview only — global engine target bands unchanged/);
+    }
+  });
+
+  it('Pro shows the numeric engine→regulator solver-target comparison; Demo hides it', () => {
+    const proText = visibleText(render(view(), proPolicy));
+    expect(proText).toMatch(/engine-seeded → regulator-shadow/);
+    expect(proText).toMatch(/33–42/); // engine band
+    expect(proText).toMatch(/42–50/); // regulator band
+    // Demo: no numeric band comparison block (technical view gated)
+    const demoText = visibleText(render(view(), demoPolicy));
+    expect(demoText).not.toMatch(/engine-seeded → regulator-shadow/);
   });
 });
 

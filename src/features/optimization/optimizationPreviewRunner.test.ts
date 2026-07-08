@@ -137,6 +137,38 @@ describe('runOptimizationPreview — temperature-aware target guidance', () => {
   });
 });
 
+describe('runOptimizationPreview — solver-injected regulator targets (Slice 13)', () => {
+  it('exposes BOTH the engine-seeded and the regulator-shadow solver results in the preview', () => {
+    const v = byId('gelato-tradeoff');
+    expect(v.solverTargetMode).toBe('engine_seeded');
+    expect(v.solverTargetInjection.active).toBe(true);
+    expect(v.solverTargetInjection.injectedMetrics).toContain('npac');
+    expect(Array.isArray(v.solverTargetInjection.engineSeededViolations)).toBe(true);
+    expect(Array.isArray(v.solverTargetInjection.regulatorShadowViolations)).toBe(true);
+    expect(v.solverTargetInjection.source).toBe('temperature_regulator_shadow');
+  });
+
+  it('Standard Gelato −11 is near-same (no NEW violations, no correction change)', () => {
+    const v = byId('gelato-tradeoff'); // milk_gelato @ −11 → engine band ≈ regulator band
+    expect(v.solverTargetInjection.newViolationsUnderRegulator).toEqual([]);
+    expect(v.solverTargetInjection.correctionChanged).toBe(false);
+  });
+
+  it('chocolate at −13 keeps protein-share advisory, yet the regulator target changes the correction', () => {
+    const v = byId('chocolate-advisory');
+    expect(v.solverTargetInjection.active).toBe(true);
+    expect(v.solverTargetInjection.injectedMetrics).not.toContain('protein_in_solids');
+    expect(v.solverTargetInjection.comparisons.map((c) => c.metric)).not.toContain('protein_in_solids');
+    expect(v.solverTargetInjection.correctionChanged).toBe(true); // −13 regulator bands diverge from the −11 fallback
+  });
+
+  it('an unsupported profile blocks the injection (never remapped)', () => {
+    const v = byId('granita-blocked');
+    expect(v.solverTargetInjection.active).toBe(false);
+    expect(v.solverTargetInjection.blockedReason).toBe('unsupported_product_profile');
+  });
+});
+
 describe('studioIntentFromRecipe + previewOptimization — live recipe path', () => {
   const baseRecipe = findOptimizationPreviewFixture('gelato-tradeoff')!.recipe;
 

@@ -50,6 +50,11 @@ import {
   compareEngineVsShadowBands,
   type EngineVsShadowComparison,
 } from './temperatureAwareTargetBands';
+import {
+  analyzeSolverTargetInjection,
+  type SolverTargetInjectionAnalysis,
+  type SolverTargetMode,
+} from './solverTargetInjection';
 
 /** Fixture-intended decision, plus a `live` marker for the Studio recipe. */
 export type OptimizationIntendedDecision = OptimizationPreviewFixture['intendedDecision'] | 'live';
@@ -96,6 +101,10 @@ export interface OptimizationPreviewView {
   targetGuidance: TemperatureAwareTargetGuidance;
   /** Shadow (non-live) engine-band-vs-regulator-band comparison (Slice 12 visibility). */
   bandComparison: EngineVsShadowComparison;
+  /** Which solver target the preview emphasises (both results are always computed). */
+  solverTargetMode: SolverTargetMode;
+  /** Engine-seeded vs regulator-shadow solver-target comparison (Slice 13, preview-only injection). */
+  solverTargetInjection: SolverTargetInjectionAnalysis;
 
   warnings: readonly string[];
   hardBlockers: readonly string[];
@@ -110,6 +119,8 @@ export interface OptimizationPreviewInput {
   id?: string;
   label?: string;
   intendedDecision?: OptimizationIntendedDecision;
+  /** Which solver target to emphasise in the preview (default engine_seeded — the live behavior). */
+  solverTargetMode?: SolverTargetMode;
 }
 
 /**
@@ -150,6 +161,13 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
   const targetGuidance = deriveTemperatureAwareTarget(intent, beforeResult);
   // Shadow (non-live) comparison of the engine's selected band vs the regulator band.
   const bandComparison = compareEngineVsShadowBands(intent.productProfile, intent.servingTemperatureC);
+  // Preview-only: what the solver targets today (engine-seeded) vs under injected regulator bands.
+  const solverTargetInjection = analyzeSolverTargetInjection({
+    recipe,
+    productProfile: intent.productProfile,
+    servingTemperatureC: intent.servingTemperatureC,
+    mode: args.solverTargetMode ?? 'engine_seeded',
+  });
 
   return {
     id: args.id ?? 'live',
@@ -170,6 +188,8 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
     rerun: preview.rerun,
     targetGuidance,
     bandComparison,
+    solverTargetMode: args.solverTargetMode ?? 'engine_seeded',
+    solverTargetInjection,
     warnings: preview.warnings,
     hardBlockers: preview.hardBlockers,
   };

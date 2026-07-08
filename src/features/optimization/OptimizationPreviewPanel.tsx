@@ -87,6 +87,19 @@ export function OptimizationPreviewPanel({
         );
       })()}
 
+      {/* Slice 13: solver-injected regulator target (preview only). Safe in every tier —
+          no grams, no ingredient names; the global engine target bands are unchanged. */}
+      {view.solverTargetInjection.active ? (
+        <p className="mt-1 font-mono text-[11px] text-ivory/40">
+          regulator-shadow solver target:{' '}
+          {view.solverTargetInjection.correctionChanged ? 'would change the correction' : 'same correction'}
+          {view.solverTargetInjection.newViolationsUnderRegulator.length > 0
+            ? ` · would target: ${view.solverTargetInjection.newViolationsUnderRegulator.map(humanize).join(', ')}`
+            : ''}
+          <span className="text-ivory/30"> · Preview only — global engine target bands unchanged</span>
+        </p>
+      ) : null}
+
       {/* Directional recommendation — safe in every tier (no grams, no ingredient names). */}
       {view.correctionGoals.length > 0 ? (
         <p className="mt-3 text-xs leading-relaxed text-ivory/50">
@@ -124,6 +137,29 @@ export function OptimizationPreviewPanel({
         </div>
       ) : null}
 
+      {/* Pro (technical view): the engine-seeded → regulator-shadow solver target comparison. */}
+      {policy.showBeforeAfterMetrics && view.solverTargetInjection.comparisons.length > 0 ? (
+        <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3">
+          <p className="font-mono text-[11px] text-ivory/40">
+            solver target: engine-seeded → regulator-shadow (preview only)
+          </p>
+          {view.solverTargetInjection.comparisons.map((c) => (
+            <div key={c.metric} className="flex justify-between gap-3 font-mono text-[11px] text-ivory/70">
+              <span className="text-ivory/40">
+                {humanize(c.metric)} = {fmt(c.value)}
+              </span>
+              <span>
+                {c.engineBand ? `${c.engineBand[0]}–${c.engineBand[1]}` : '—'}
+                <span className="text-ivory/30"> → {c.regulatorBand[0]}–{c.regulatorBand[1]}</span>
+                {c.shadowViolation && !c.engineViolation ? (
+                  <span className="text-amber-300/80"> · now out of band</span>
+                ) : null}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {/* Free / Demo: the redaction affordance. */}
       {!policy.showExactGrams ? (
         <p className="mt-3 text-[11px] leading-relaxed text-ivory/30">
@@ -155,6 +191,16 @@ export function OptimizationPreviewPanel({
                 .join(', ')}
             </div>
           ) : null}
+          {view.solverTargetInjection.active ? (
+            <div>
+              solver target injection ({view.solverTargetMode}) · engine{' '}
+              {view.solverTargetInjection.trace.engineSeededCount} viol → regulator-shadow{' '}
+              {view.solverTargetInjection.trace.regulatorShadowCount} viol
+              {view.solverTargetInjection.correctionChanged ? ' · CHANGED' : ' · same'}
+            </div>
+          ) : (
+            <div>solver target injection: blocked ({view.solverTargetInjection.blockedReason})</div>
+          )}
           {view.rerun ? (
             <div>
               regulator {view.rerun.before.status} (score {view.rerun.before.score}) → {view.rerun.after.status} (score{' '}
