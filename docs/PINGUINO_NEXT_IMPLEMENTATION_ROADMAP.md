@@ -90,8 +90,12 @@ changes; no UI dependency yet.
    adapts the real corrected Base Engine result and re-verifies via the Temperature Regulator, with
    honest `rerun_not_connected` / `solver_no_correction` / `rerun_incomplete` states and never a faked
    `optimized`. Its test injects the real `proposeAutoFix`/`applyAutoFix`/`calculateRecipe` to prove
-   the true pipeline end-to-end. Still unwired into the app — app-wiring the preview into Studio (and
-   the actual-batch-rescue / stock-shortage branches, IF9/IF10) is the next step.
+   the true pipeline end-to-end.
+   **[landed — Phase C Slice 9]** `src/features/optimization/*` (a NON-spine orchestrator, allowed to
+   import the `@/engine` barrel) wires the seam to the REAL solver + `calculateRecipe` and renders the
+   five decision states over deterministic sample recipes on a DEV-gated page, `/dev/optimization-preview`
+   — no DB / save / Mapper / auth. Production Studio wiring, and the actual-batch-rescue / stock-shortage
+   branches (IF9/IF10), are the next steps.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
