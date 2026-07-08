@@ -84,8 +84,14 @@ changes; no UI dependency yet.
    `CorrectionPlan`s (target metric, direction, allowed ingredient classes, Golden Middle rank,
    feasibility) with advisory-goal + no-lever rejection, plus a `verifyOptimizationRerun` seam that
    re-evaluates before/after metrics through the Temperature Regulator → optimized/tradeoff/impossible.
-   Still unwired; wiring the real `src/engine/corrections` solver's exact grams + Base Engine re-run
-   into the routing layer (and the rerun-verification loop) is the next step.
+   **[landed — Phase C Slice 8]** `src/spine/optimizationRerunPreview.ts` connects the Optimizer
+   routing to the REAL `src/engine/corrections` solver + `calculateRecipe` rerun through a pure
+   dependency-injection seam (`runOptimizationRerunPreview` + an injected `rerunCorrection`): it
+   adapts the real corrected Base Engine result and re-verifies via the Temperature Regulator, with
+   honest `rerun_not_connected` / `solver_no_correction` / `rerun_incomplete` states and never a faked
+   `optimized`. Its test injects the real `proposeAutoFix`/`applyAutoFix`/`calculateRecipe` to prove
+   the true pipeline end-to-end. Still unwired into the app — app-wiring the preview into Studio (and
+   the actual-batch-rescue / stock-shortage branches, IF9/IF10) is the next step.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
