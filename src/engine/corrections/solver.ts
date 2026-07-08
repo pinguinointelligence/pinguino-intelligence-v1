@@ -77,6 +77,26 @@ const METRIC_PRIORITY_KEY: Record<TargetMetric, PriorityKey> = {
 const priorityRank = (metric: TargetMetric): number =>
   GOLDEN_MIDDLE_PRIORITY.indexOf(METRIC_PRIORITY_KEY[metric]);
 
+/**
+ * Preview-only target override: return a COPY of `result` whose indicator bands are
+ * replaced per `override` (metric → band). IMMUTABLE — the input result and its band
+ * objects are never mutated; metrics absent from the map keep their engine band, and
+ * metric VALUES / keys / fallback flags are preserved. Lets a caller solve/detect
+ * against injected targets (e.g. Temperature Regulator bands) WITHOUT changing the
+ * global `TARGET_BANDS`. Not re-exported from the engine barrel; when no override is
+ * supplied the solver never calls this and its behavior is unchanged.
+ */
+export function applyTargetBandOverride(
+  result: RecipeResult,
+  override: Partial<Record<TargetMetric, TargetRange>>,
+): RecipeResult {
+  const indicators = result.indicators.map((indicator) => {
+    const band = override[indicator.key as TargetMetric];
+    return band ? { ...indicator, band: { ...band } } : indicator;
+  });
+  return { ...result, indicators };
+}
+
 /** Out-of-range indicators → violations sorted by (priority rank, severity). */
 export function detectViolations(result: RecipeResult): CorrectionViolation[] {
   const violations: CorrectionViolation[] = [];
@@ -273,6 +293,7 @@ export function proposeCorrections(request: CorrectionRequest): CorrectionResult
     candidates = DEFAULT_CORRECTION_CANDIDATES,
     max_proposals = DEFAULT_MAX_PROPOSALS,
     focus,
+    targetBandOverride,
   } = request;
 
   const constraints: CorrectionConstraints = {
@@ -282,7 +303,16 @@ export function proposeCorrections(request: CorrectionRequest): CorrectionResult
     machine_capacity_grams: input.machine_capacity_grams,
   };
 
-  const before = calculateRecipe(input);
+  // Optional preview-only target override: solve/detect against injected bands (e.g. the
+  // Temperature Regulator target) without touching the global config. Absent → identical
+  // to the default engine behavior (`before` is the raw result; `detect` is detectViolations).
+  const before = targetBandOverride
+    ? applyTargetBandOverride(calculateRecipe(input), targetBandOverride)
+    : calculateRecipe(input);
+  const detect = targetBandOverride
+    ? (result: RecipeResult): CorrectionViolation[] =>
+        detectViolations(applyTargetBandOverride(result, targetBandOverride))
+    : detectViolations;
   const allViolations = detectViolations(before);
   const violations = focus?.length
     ? allViolations.filter((violation) => focus.includes(violation.metric))
@@ -309,7 +339,7 @@ export function proposeCorrections(request: CorrectionRequest): CorrectionResult
       targets,
       hypothetical,
       constraints,
-      detect: detectViolations,
+      detect,
       priorityCount: GOLDEN_MIDDLE_PRIORITY.length,
     });
     if (!outcome.valid) {

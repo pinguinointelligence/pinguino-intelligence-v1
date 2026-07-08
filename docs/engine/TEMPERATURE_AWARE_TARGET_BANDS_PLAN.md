@@ -84,25 +84,45 @@ exported, pure `detectViolations`):
   is reported as **same** so near-aligned cells are not overstated; genuine divergences (−12/−13, Δ ≥ 8)
   and any violation-SET change flag as **changed**.
 
-**Honest scope:** this re-targets the solver's VIOLATION DETECTION only. It does NOT re-run the
-exact-gram solve against the injected bands — `proposeCorrections` recomputes `calculateRecipe`
-internally and would need either the global-config change (path 1) or a solver-API target override
-(path 2) to consume an injected band. No fabricated gram correction is produced. Live `TARGET_BANDS`,
-`calculateRecipe` and the solver are UNCHANGED; visibility only, in `/dev/optimization-preview` + the
-Studio DEV panel (with the "global engine target bands unchanged" warning, Demo redaction intact).
+**Scope (Slice 13):** re-targets the solver's VIOLATION DETECTION only. Slice 14 (§3c) removes that
+limitation for the preview by adding a solver target override so the REAL gram solve consumes the
+injected band. Live `TARGET_BANDS`, `calculateRecipe` and the solver DEFAULT are UNCHANGED; visibility
+only, in `/dev/optimization-preview` + the Studio DEV panel.
 
-## 4. What a future LIVE update would need (requires explicit approval)
+## 3c. Solver target override — REAL gram solve in preview (Slice 14, path 2 implemented)
 
-Two candidate paths, both out of scope for this slice:
+The engine correction solver reads its target centers from a `RecipeResult`'s `indicators[].band`, both
+in `detectViolations` and in the internal `modelFor` solve. Slice 14 adds an ADDITIVE optional
+`targetBandOverride?: Partial<Record<TargetMetric, TargetRange>>` to `CorrectionRequest` /
+`proposeAutoFix`. When present, `proposeCorrections` applies it (via an internal, immutable
+`applyTargetBandOverride`) to the `before` result AND to each verification `after`, so the exact-gram
+solve detects, targets and verifies against the injected bands. When absent, the solver is byte-identical
+to before (all engine tests pass unchanged; the helper is not re-exported from the barrel, so the export
+allowlist is untouched). The APPLIED corrected recipe is still the real, un-overridden `calculateRecipe`,
+and the rerun verdict comes from the Temperature Regulator evaluation — so no `optimized` is fabricated.
+
+`optimizationPreviewRunner` builds the regulator override map with `regulatorTargetOverride` (HARD-gate
+bands only — advisory gates excluded; unsupported profile/temperature blocked) and runs the solve TWICE:
+`engineSeededSolve` (live target) and `regulatorShadowSolve` (injected target), plus a `solveComparison`
+(`correctionDiffers`, `regulatorShadowImproved`). Global `TARGET_BANDS` UNCHANGED, no CONFIG_VERSION bump.
+Example (DEV fixtures): chocolate −13 engine-seeded adds ~Cream 570 g (aiming at the −11 fallback) while
+the regulator-shadow solve adds ~Milk 71 g (aiming at the −13 band) and is rerun-verified as an
+improvement — a materially different, temperature-appropriate correction.
+
+## 4. What a future LIVE (default-solver) update would need (requires explicit approval)
+
+Two candidate paths. Path (2) is now implemented for PREVIEW (§3c); making the DEFAULT solver
+temperature-aware for ALL callers still needs one of:
 
 1. **Extend the engine `TARGET_BANDS`** with seeded `milk_gelato @ −12/−13` (and, later,
    sorbet/vegan/chocolate categories × −11/−12/−13) from the regulator references. This changes what
    `calculateRecipe` classifies and what the solver targets → **CONFIG_VERSION must bump** (per the
    masterplan §10 / engine `config/version.ts`), golden-recipe fixtures must be re-baselined, and the
    `temperature_fallback`/`category_fallback` flags stop firing for the added cells.
-2. **Solver-injected targets** — let `proposeCorrections` accept a target-band override so the solver
-   consumes the regulator band without changing the global engine config. Smaller blast radius, no
-   CONFIG_VERSION bump, but a solver API change + verification.
+2. **Wire the override into production callers** — the `targetBandOverride` seam exists (§3c); promoting
+   it beyond the preview means production Studio / persistence pass the regulator override to
+   `proposeAutoFix`. Smaller blast radius, no CONFIG_VERSION bump, but each caller must opt in (the global
+   default stays engine-seeded until path 1).
 
 Either way the shadow comparison here becomes the acceptance oracle: after the change,
 `compareEngineVsShadowBands` should report `aligned` for the migrated cells, and the DEV preview's
@@ -129,5 +149,13 @@ Either way the shadow comparison here becomes the acceptance oracle: after the c
   `detectViolations`. Live `TARGET_BANDS`, `calculateRecipe` and the gram solver **unchanged**; advisory
   gates stay advisory; unsupported profile/temperature blocked. Visibility in `/dev/optimization-preview`
   + the Studio DEV panel (Demo redaction intact).
-- **Next:** owner decision between path (1) and (2) above. Path (2) is now prototyped in preview; the
-  remaining live work is a solver-API target override so the exact-gram solve consumes the injected band.
+- **Slice 14 (this):** solver target override for a REAL gram solve in preview (§3c) — the engine solver
+  gains an additive optional `targetBandOverride`; the preview runs engine-seeded vs regulator-shadow gram
+  solves and compares them. Default solver behavior **byte-identical** (all engine tests pass unchanged;
+  export allowlist untouched); global `TARGET_BANDS` **unchanged**, no CONFIG_VERSION bump; advisory gates
+  stay advisory; unsupported profile/temperature blocked. Visibility in `/dev/optimization-preview` + the
+  Studio DEV panel (Demo hides grams, Pro shows the gram comparison).
+- **Next:** owner decision — (a) promote the regulator-shadow gram solve to production preview / Studio
+  behind capabilities (the `targetBandOverride` seam is ready), or (b) bake −12/−13 into the engine
+  `TARGET_BANDS` (path 1: CONFIG_VERSION bump + golden re-baseline) to make the DEFAULT solver
+  temperature-aware for every caller.

@@ -8,8 +8,9 @@ import type {
   RecipeInput,
   RecipeItem,
 } from '../types';
+import { selectTargetBand } from '../statuses';
 import { DEFAULT_CORRECTION_CANDIDATES } from './candidates';
-import { proposeCorrections } from './solver';
+import { applyTargetBandOverride, detectViolations, proposeCorrections } from './solver';
 import type { CorrectionCandidate, CorrectionProposal, CorrectionResult } from './types';
 import { applyCorrectionActions } from './verify';
 
@@ -553,6 +554,62 @@ describe('determinism and purity', () => {
     const snapshot = JSON.parse(JSON.stringify(input)) as unknown;
     proposeCorrections({ input, context: 'planning', redact: false });
     expect(input).toEqual(snapshot);
+  });
+});
+
+describe('targetBandOverride — preview-only solver target injection', () => {
+  const req = (over: Partial<Parameters<typeof proposeCorrections>[0]> = {}) => ({
+    input: podLowInput(),
+    context: 'planning' as const,
+    redact: false,
+    ...over,
+  });
+
+  it('default behavior is unchanged: the engine\'s own band as an override equals the default result', () => {
+    const engineNpac = selectTargetBand('milk_gelato', -11)!.band.metrics.npac;
+    const base = pro(proposeCorrections(req()));
+    const identity = pro(proposeCorrections(req({ targetBandOverride: { npac: engineNpac } })));
+    expect(JSON.stringify(identity)).toBe(JSON.stringify(base));
+  });
+
+  it('an override band re-targets detection (forces an npac violation at the injected band)', () => {
+    const result = calculateRecipe(podLowInput());
+    const npacValue = result.indicators.find((i) => i.key === 'npac')!.value!;
+    const band = { min: npacValue + 6, max: npacValue + 10 };
+    const v = detectViolations(applyTargetBandOverride(result, { npac: band })).find((x) => x.metric === 'npac');
+    expect(v).toBeDefined();
+    expect(v!.direction).toBe('low'); // recipe npac sits below the injected band
+    expect(v!.band).toEqual(band);
+  });
+
+  it('the override changes the real gram-solve output and targets npac', () => {
+    const base = pro(proposeCorrections(req()));
+    const result = calculateRecipe(podLowInput());
+    const npacValue = result.indicators.find((i) => i.key === 'npac')!.value!;
+    const overridden = pro(
+      proposeCorrections(req({ targetBandOverride: { npac: { min: npacValue + 6, max: npacValue + 10 } } })),
+    );
+    expect(JSON.stringify(overridden)).not.toBe(JSON.stringify(base));
+    expect(overridden.some((p) => p.affected_metrics.includes('npac'))).toBe(true);
+  });
+
+  it('applyTargetBandOverride is immutable and touches only mapped metrics', () => {
+    const result = calculateRecipe(podLowInput());
+    const npacBefore = JSON.stringify(result.indicators.find((i) => i.key === 'npac')!.band);
+    const podBefore = result.indicators.find((i) => i.key === 'pod')!;
+    const injected = applyTargetBandOverride(result, { npac: { min: 90, max: 95 } });
+    expect(injected).not.toBe(result);
+    expect(injected.indicators).not.toBe(result.indicators);
+    expect(injected.indicators.find((i) => i.key === 'npac')!.band).toEqual({ min: 90, max: 95 });
+    // original result untouched; a non-overridden indicator is kept by reference
+    expect(JSON.stringify(result.indicators.find((i) => i.key === 'npac')!.band)).toBe(npacBefore);
+    expect(injected.indicators.find((i) => i.key === 'pod')).toBe(podBefore);
+  });
+
+  it('never mutates the global TARGET_BANDS', () => {
+    const before = JSON.stringify(engine.TARGET_BANDS);
+    proposeCorrections(req({ targetBandOverride: { npac: { min: 90, max: 95 } } }));
+    expect(JSON.stringify(engine.TARGET_BANDS)).toBe(before);
   });
 });
 

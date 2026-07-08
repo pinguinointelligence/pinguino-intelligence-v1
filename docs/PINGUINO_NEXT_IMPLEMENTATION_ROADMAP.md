@@ -116,12 +116,20 @@ changes; no UI dependency yet.
    solver targets today (engine-seeded) vs under the regulator bands — surfaced in the DEV page + Studio
    panel with a "global engine target bands unchanged" warning, Demo redaction intact. It re-targets the
    solver's DETECTION only; the exact-gram solve is not yet re-run against injected bands, and the global
-   `TARGET_BANDS`/`calculateRecipe`/solver are UNCHANGED. The next step is an **owner decision** between the
-   two documented migration paths — (1) extend the engine `TARGET_BANDS` with seeded −12/−13 (and
-   per-category) bands (CONFIG_VERSION bump + golden re-baseline), or (2) promote the solver-injected target
-   to a real gram solve (a solver-API target override, no global config change) — after which the shadow
-   comparison becomes the acceptance oracle. Then production Studio (capability-gated) + persistence, then
-   actual-batch-rescue / stock-shortage (IF9/IF10).
+   `TARGET_BANDS`/`calculateRecipe`/solver are UNCHANGED.
+   **[landed — Phase C Slice 14]** migration path (2) is now implemented for PREVIEW: the engine solver
+   gains an ADDITIVE optional `targetBandOverride` (on `CorrectionRequest`/`proposeAutoFix`, applied via an
+   internal immutable `applyTargetBandOverride`) so the real exact-gram solve can aim at injected bands while
+   the APPLIED result stays the real `calculateRecipe` and the rerun verdict stays honest. Default (no
+   override) is byte-identical — all engine tests pass unchanged, the export allowlist is untouched, and no
+   global config changes. `optimizationPreviewRunner` now runs BOTH the engine-seeded and the
+   regulator-shadow gram solves (`regulatorTargetOverride` map; advisory gates excluded, unsupported blocked)
+   with a `solveComparison` (correctionDiffers / regulatorShadowImproved), surfaced in the DEV page + Studio
+   panel (Demo hides grams, Pro shows the comparison). Global `TARGET_BANDS` UNCHANGED, no CONFIG_VERSION
+   bump. The remaining **owner decision** is whether to (a) promote the regulator-shadow gram solve to
+   production preview / Studio behind capabilities, or (b) still bake the −12/−13 bands into the engine
+   `TARGET_BANDS` later (CONFIG_VERSION bump + golden re-baseline) so the DEFAULT solver is temperature-aware.
+   Then production Studio (capability-gated) + persistence, then actual-batch-rescue / stock-shortage (IF9/IF10).
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

@@ -45,6 +45,29 @@ export const INJECTED_TARGET_SOURCE = 'temperature_regulator_shadow' as const;
 /** Which target the preview emphasises: today's engine-seeded band, or the injected regulator band. */
 export type SolverTargetMode = 'engine_seeded' | 'regulator_shadow';
 
+/**
+ * The provenance of a solver target-band override:
+ * - `engine_seeded`: no override — the solver uses its own bands (default, live);
+ * - `regulator_shadow`: the locked Temperature Regulator bands, preview-only;
+ * - `future_live_engine`: reserved — a future live `TARGET_BANDS` update (never emitted here).
+ */
+export type TargetOverrideSource = 'engine_seeded' | 'regulator_shadow' | 'future_live_engine';
+
+/**
+ * A pure contract for a correction-solver target-band override. `bands` is the
+ * per-metric override map handed to `proposeAutoFix({ targetBandOverride })` — empty
+ * for `engine_seeded` (no override). Only HARD-gate regulator bands are ever included,
+ * so advisory gates never become hard; an unsupported profile/temperature is blocked.
+ */
+export interface SolverTargetOverride {
+  source: TargetOverrideSource;
+  active: boolean;
+  blockedReason: string | null;
+  bands: Partial<Record<TargetMetric, TargetRange>>;
+  injectedMetrics: TargetMetric[];
+  regulatorProfile: string | null;
+}
+
 /** Regulator gate id → engine `TargetMetric` (names differ for two metrics). */
 const GATE_TO_ENGINE_METRIC: Readonly<Record<string, TargetMetric>> = {
   npac: 'npac',
@@ -153,6 +176,51 @@ export function buildInjectedSolverTarget(
     hardTargetBands,
     advisoryTargetBands,
     injectedMetrics: hardTargetBands.map((b) => b.metric),
+  };
+}
+
+/** The engine-seeded (no-op) override — the solver keeps its own bands (default, live). */
+export function engineSeededTargetOverride(): SolverTargetOverride {
+  return {
+    source: 'engine_seeded',
+    active: true,
+    blockedReason: null,
+    bands: {},
+    injectedMetrics: [],
+    regulatorProfile: null,
+  };
+}
+
+/**
+ * Build the regulator-shadow solver target override for one product × serving
+ * temperature — the HARD-gate regulator bands as a `targetBandOverride` map for
+ * `proposeAutoFix`. Advisory gates are excluded (never turned hard); an unsupported
+ * profile/temperature is blocked (`active: false`, empty map), never remapped.
+ */
+export function regulatorTargetOverride(
+  productProfile: string,
+  servingTemperatureC: number,
+): SolverTargetOverride {
+  const target = buildInjectedSolverTarget(productProfile, servingTemperatureC);
+  if (!target.active) {
+    return {
+      source: 'regulator_shadow',
+      active: false,
+      blockedReason: target.fallbackReason,
+      bands: {},
+      injectedMetrics: [],
+      regulatorProfile: null,
+    };
+  }
+  const bands: Partial<Record<TargetMetric, TargetRange>> = {};
+  for (const b of target.hardTargetBands) bands[b.metric] = { min: b.band[0], max: b.band[1] };
+  return {
+    source: 'regulator_shadow',
+    active: true,
+    blockedReason: null,
+    bands,
+    injectedMetrics: target.injectedMetrics,
+    regulatorProfile: target.regulatorProfile,
   };
 }
 

@@ -17,6 +17,8 @@ import {
   type ProductCategory,
   type ProductMode,
   type RecipeInput,
+  type TargetMetric,
+  type TargetRange,
 } from '@/engine';
 import {
   ACTIVE_PRODUCT_PROFILES,
@@ -52,29 +54,65 @@ import {
 } from './temperatureAwareTargetBands';
 import {
   analyzeSolverTargetInjection,
+  regulatorTargetOverride,
   type SolverTargetInjectionAnalysis,
   type SolverTargetMode,
+  type TargetOverrideSource,
 } from './solverTargetInjection';
 
 /** Fixture-intended decision, plus a `live` marker for the Studio recipe. */
 export type OptimizationIntendedDecision = OptimizationPreviewFixture['intendedDecision'] | 'live';
 
-/** The injected REAL solver + Base Engine rerun (proposed → applied → recalculated). */
-export const realRerunCorrection: RerunCorrectionFn = (ctx) => {
-  const draft = ctx.recipeDraft as RecipeInput;
-  const proposed = proposeAutoFix({ input: draft, context: 'planning', exactCorrectionGrams: true });
-  if (proposed.redacted) return { applied: false, reason: 'redacted' };
-  const proposal = proposed.proposals.find((p) => 'actions' in p && p.actions.length > 0);
-  if (!proposal) return { applied: false, reason: 'no_correction_proposal' };
-  const applied = applyAutoFix({ input: draft, proposal, context: 'planning' });
-  if (!applied.success) return { applied: false, reason: applied.reason };
-  return {
-    applied: true,
-    correctedRecipe: applied.newInput,
-    correctedResult: calculateRecipe(applied.newInput),
-    appliedAdjustments: applied.actions.map((a) => ({ type: a.type, ingredient: a.ingredient_name, grams: a.grams })),
+/**
+ * The injected REAL solver + Base Engine rerun (proposed → applied → recalculated).
+ * With an optional `targetBandOverride`, the solver aims at the injected bands (e.g. the
+ * Temperature Regulator target) while the APPLIED result is still the real, un-overridden
+ * `calculateRecipe` — so the rerun verification judges the genuine outcome.
+ */
+export const makeRealRerunCorrection =
+  (targetBandOverride?: Partial<Record<TargetMetric, TargetRange>>): RerunCorrectionFn =>
+  (ctx) => {
+    const draft = ctx.recipeDraft as RecipeInput;
+    const proposed = proposeAutoFix({ input: draft, context: 'planning', exactCorrectionGrams: true, targetBandOverride });
+    if (proposed.redacted) return { applied: false, reason: 'redacted' };
+    const proposal = proposed.proposals.find((p) => 'actions' in p && p.actions.length > 0);
+    if (!proposal) return { applied: false, reason: 'no_correction_proposal' };
+    const applied = applyAutoFix({ input: draft, proposal, context: 'planning' });
+    if (!applied.success) return { applied: false, reason: applied.reason };
+    return {
+      applied: true,
+      correctedRecipe: applied.newInput,
+      correctedResult: calculateRecipe(applied.newInput),
+      appliedAdjustments: applied.actions.map((a) => ({ type: a.type, ingredient: a.ingredient_name, grams: a.grams })),
+    };
   };
-};
+
+/** Default engine-seeded rerun (no override) — the live solver behavior, unchanged. */
+export const realRerunCorrection: RerunCorrectionFn = makeRealRerunCorrection();
+
+/** One correction solve (engine-seeded or regulator-shadow) — real solver + Base Engine rerun. */
+export interface SolveResultView {
+  active: boolean;
+  blockedReason: string | null;
+  targetSource: TargetOverrideSource;
+  injectedMetrics: TargetMetric[];
+  decision: OptimizationDecision;
+  rerunState: OptimizationRerunState;
+  proposedAdjustments: readonly AppliedAdjustment[];
+  afterMetrics: BaseEngineMetrics | null;
+  rerun: RerunVerification | null;
+  warnings: readonly string[];
+}
+
+/** Engine-seeded vs regulator-shadow solve comparison. */
+export interface SolveComparison {
+  engineSeededDecision: OptimizationDecision;
+  regulatorShadowDecision: OptimizationDecision | null;
+  /** The proposed grams and/or the final decision differ between the two solves. */
+  correctionDiffers: boolean;
+  /** The regulator-shadow solve produced a genuine, rerun-verified improvement. */
+  regulatorShadowImproved: boolean;
+}
 
 export interface OptimizationPreviewView {
   id: string;
@@ -105,6 +143,12 @@ export interface OptimizationPreviewView {
   solverTargetMode: SolverTargetMode;
   /** Engine-seeded vs regulator-shadow solver-target comparison (Slice 13, preview-only injection). */
   solverTargetInjection: SolverTargetInjectionAnalysis;
+  /** The real gram solve targeting the engine-seeded bands (the live behavior). */
+  engineSeededSolve: SolveResultView;
+  /** The real gram solve targeting the injected regulator bands (Slice 14, preview-only). */
+  regulatorShadowSolve: SolveResultView;
+  /** Engine-seeded vs regulator-shadow gram-solve comparison. */
+  solveComparison: SolveComparison;
 
   warnings: readonly string[];
   hardBlockers: readonly string[];
@@ -169,6 +213,65 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
     mode: args.solverTargetMode ?? 'engine_seeded',
   });
 
+  // Slice 14: run the REAL gram solve twice — engine-seeded (live) vs regulator-shadow (injected
+  // target). Both apply the real solver + Base Engine rerun; the regulator-shadow solve aims at the
+  // injected bands but the APPLIED result is the real recalc, so the rerun verdict is honest.
+  const toSolveView = (
+    p: typeof preview,
+    source: TargetOverrideSource,
+    injectedMetrics: TargetMetric[],
+  ): SolveResultView => ({
+    active: true,
+    blockedReason: null,
+    targetSource: source,
+    injectedMetrics,
+    decision: p.decision,
+    rerunState: p.rerunState,
+    proposedAdjustments: p.proposedAdjustments,
+    afterMetrics: p.correctedBaseEngineResult ? adaptBaseEngineResult(p.correctedBaseEngineResult).metrics : null,
+    rerun: p.rerun,
+    warnings: p.warnings,
+  });
+
+  const engineSeededSolve = toSolveView(preview, 'engine_seeded', []);
+  const override = regulatorTargetOverride(intent.productProfile, intent.servingTemperatureC);
+  const regulatorShadowSolve: SolveResultView = override.active
+    ? toSolveView(
+        runOptimizationRerunPreview({
+          intent,
+          beforeMetrics,
+          recipeDraft: recipe,
+          optimization,
+          optimizerConstraints,
+          rerunCorrection: makeRealRerunCorrection(override.bands),
+        }),
+        'regulator_shadow',
+        override.injectedMetrics,
+      )
+    : {
+        active: false,
+        blockedReason: override.blockedReason,
+        targetSource: 'regulator_shadow',
+        injectedMetrics: [],
+        decision: preview.decision,
+        rerunState: 'blocked',
+        proposedAdjustments: [],
+        afterMetrics: null,
+        rerun: null,
+        warnings: [`regulator_shadow_solve_blocked:${override.blockedReason}`],
+      };
+
+  const solveComparison: SolveComparison = {
+    engineSeededDecision: engineSeededSolve.decision,
+    regulatorShadowDecision: regulatorShadowSolve.active ? regulatorShadowSolve.decision : null,
+    correctionDiffers:
+      regulatorShadowSolve.active &&
+      (engineSeededSolve.decision !== regulatorShadowSolve.decision ||
+        JSON.stringify(engineSeededSolve.proposedAdjustments) !==
+          JSON.stringify(regulatorShadowSolve.proposedAdjustments)),
+    regulatorShadowImproved: regulatorShadowSolve.rerun?.improvementDetected === true,
+  };
+
   return {
     id: args.id ?? 'live',
     label: args.label ?? 'Live Studio recipe',
@@ -190,6 +293,9 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
     bandComparison,
     solverTargetMode: args.solverTargetMode ?? 'engine_seeded',
     solverTargetInjection,
+    engineSeededSolve,
+    regulatorShadowSolve,
+    solveComparison,
     warnings: preview.warnings,
     hardBlockers: preview.hardBlockers,
   };

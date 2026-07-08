@@ -120,8 +120,17 @@ function FixtureCard({ view }: { view: OptimizationPreviewView }) {
         {view.rejectedCorrections.length ? (
           <div className="text-rose-300/80">rejected: {view.rejectedCorrections.map((r) => `${r.goal}:${r.reason}`).join(', ')}</div>
         ) : null}
-        {view.proposedAdjustments.length ? (
-          <div className="text-sky-300/80">solver added: {view.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}</div>
+        {view.engineSeededSolve.proposedAdjustments.length ? (
+          <div className="text-sky-300/80">engine-seeded solver added: {view.engineSeededSolve.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}</div>
+        ) : null}
+        <div className={view.solveComparison.correctionDiffers ? 'text-amber-300/80' : 'text-ivory/40'}>
+          regulator-shadow gram solve (preview only):{' '}
+          {view.regulatorShadowSolve.active
+            ? `${view.regulatorShadowSolve.decision}${view.solveComparison.correctionDiffers ? ' · DIFFERS from engine-seeded' : ' · same as engine-seeded'}${view.solveComparison.regulatorShadowImproved ? ' · improves (rerun-verified)' : ''}`
+            : `blocked (${view.regulatorShadowSolve.blockedReason})`}
+        </div>
+        {view.regulatorShadowSolve.active && view.regulatorShadowSolve.proposedAdjustments.length ? (
+          <div className="text-sky-300/80">regulator-shadow solver added: {view.regulatorShadowSolve.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}</div>
         ) : null}
         {view.rerun ? (
           <div>

@@ -20,7 +20,7 @@
  * derives them internally, so propose and apply stay symmetric and a caller
  * cannot build a mismatched constraint set.
  */
-import type { RecipeInput, TargetMetric } from '../types';
+import type { RecipeInput, TargetMetric, TargetRange } from '../types';
 import { DEFAULT_CORRECTION_CANDIDATES } from './candidates';
 import { proposeCorrections } from './solver';
 import type {
@@ -43,6 +43,12 @@ export interface ProposeAutoFixArgs {
   focus?: TargetMetric[];
   candidates?: readonly CorrectionCandidate[];
   maxProposals?: number;
+  /**
+   * Preview-only: solve/detect against an injected per-metric target band override
+   * (e.g. Temperature Regulator bands) without changing the global `TARGET_BANDS`.
+   * Absent → default engine behavior.
+   */
+  targetBandOverride?: Partial<Record<TargetMetric, TargetRange>>;
 }
 
 /** Propose corrections through the existing solver. Pure passthrough — no re-ranking. */
@@ -55,6 +61,7 @@ export function proposeAutoFix(args: ProposeAutoFixArgs): CorrectionResult {
     focus: args.focus,
     candidates: args.candidates,
     max_proposals: args.maxProposals,
+    targetBandOverride: args.targetBandOverride,
   });
 }
 

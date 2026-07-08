@@ -169,6 +169,53 @@ describe('runOptimizationPreview — solver-injected regulator targets (Slice 13
   });
 });
 
+describe('runOptimizationPreview — real gram-solve target override (Slice 14)', () => {
+  it('exposes BOTH the engine-seeded and regulator-shadow gram solves', () => {
+    const v = byId('gelato-tradeoff');
+    expect(v.engineSeededSolve.active).toBe(true);
+    expect(v.engineSeededSolve.targetSource).toBe('engine_seeded');
+    expect(v.regulatorShadowSolve.active).toBe(true);
+    expect(v.regulatorShadowSolve.targetSource).toBe('regulator_shadow');
+    expect(v.regulatorShadowSolve.injectedMetrics).toContain('npac');
+    expect(v.solveComparison.engineSeededDecision).toBe(v.finalDecision);
+  });
+
+  it('Standard Gelato −11 keeps the same final decision under both solves (near-same)', () => {
+    const v = byId('gelato-tradeoff');
+    expect(v.solveComparison.regulatorShadowDecision).toBe(v.solveComparison.engineSeededDecision);
+  });
+
+  it('Standard Gelato −12 runs a differing regulator-shadow gram solve (aims at the −12 target)', () => {
+    const base = findOptimizationPreviewFixture('gelato-tradeoff')!;
+    const v = previewOptimization({
+      recipe: { ...base.recipe, target_temperature_c: -12 },
+      intent: { ...base.intent, servingTemperatureC: -12 },
+    });
+    expect(v.regulatorShadowSolve.active).toBe(true);
+    expect(v.regulatorShadowSolve.injectedMetrics).toContain('npac');
+    expect(v.solveComparison.correctionDiffers).toBe(true);
+  });
+
+  it('never fabricates an optimized result without rerun verification', () => {
+    for (const v of views) {
+      if (v.regulatorShadowSolve.decision === 'optimized') {
+        expect(v.regulatorShadowSolve.rerun?.after.acceptable).toBe(true);
+      }
+    }
+  });
+
+  it('chocolate keeps protein-share advisory in the shadow solve (not injected)', () => {
+    const v = byId('chocolate-advisory');
+    expect(v.regulatorShadowSolve.injectedMetrics).not.toContain('protein_in_solids');
+  });
+
+  it('an unsupported profile blocks the regulator-shadow solve (never remapped)', () => {
+    const v = byId('granita-blocked');
+    expect(v.regulatorShadowSolve.active).toBe(false);
+    expect(v.regulatorShadowSolve.blockedReason).toBe('unsupported_product_profile');
+  });
+});
+
 describe('studioIntentFromRecipe + previewOptimization — live recipe path', () => {
   const baseRecipe = findOptimizationPreviewFixture('gelato-tradeoff')!.recipe;
 

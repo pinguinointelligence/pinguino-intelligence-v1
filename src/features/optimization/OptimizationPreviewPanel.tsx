@@ -100,6 +100,16 @@ export function OptimizationPreviewPanel({
         </p>
       ) : null}
 
+      {/* Slice 14: regulator-shadow REAL gram solve (preview only). Safe summary in every tier —
+          decision + whether it differs from / improves on the engine-seeded solve; no grams here. */}
+      {view.regulatorShadowSolve.active ? (
+        <p className="mt-1 font-mono text-[11px] text-ivory/40">
+          regulator-shadow gram solve: {humanize(view.regulatorShadowSolve.decision)}
+          {view.solveComparison.correctionDiffers ? ' · differs from engine-seeded' : ' · same as engine-seeded'}
+          {view.solveComparison.regulatorShadowImproved ? ' · improves (rerun-verified)' : ''}
+        </p>
+      ) : null}
+
       {/* Directional recommendation — safe in every tier (no grams, no ingredient names). */}
       {view.correctionGoals.length > 0 ? (
         <p className="mt-3 text-xs leading-relaxed text-ivory/50">
@@ -121,10 +131,17 @@ export function OptimizationPreviewPanel({
         </div>
       ) : null}
 
-      {/* Pro: the solver's exact added grams. */}
+      {/* Pro: the solver's exact added grams — engine-seeded (live target) then regulator-shadow. */}
       {policy.showExactGrams && view.proposedAdjustments.length > 0 ? (
         <p className="mt-3 font-mono text-[11px] text-sky-300/80">
-          solver added: {view.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}
+          engine-seeded solver added: {view.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}
+        </p>
+      ) : null}
+      {policy.showExactGrams && view.regulatorShadowSolve.active && view.regulatorShadowSolve.proposedAdjustments.length > 0 ? (
+        <p className="mt-1 font-mono text-[11px] text-sky-300/80">
+          regulator-shadow solver added:{' '}
+          {view.regulatorShadowSolve.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}
+          <span className="text-ivory/30"> · preview only</span>
         </p>
       ) : null}
 
@@ -201,6 +218,12 @@ export function OptimizationPreviewPanel({
           ) : (
             <div>solver target injection: blocked ({view.solverTargetInjection.blockedReason})</div>
           )}
+          <div>
+            gram solve · engine-seeded {view.engineSeededSolve.decision} ({view.engineSeededSolve.proposedAdjustments.length}g-actions)
+            {view.regulatorShadowSolve.active
+              ? ` → regulator-shadow ${view.regulatorShadowSolve.decision} (${view.regulatorShadowSolve.proposedAdjustments.length}g-actions)${view.solveComparison.correctionDiffers ? ' · DIFFERS' : ' · same'}${view.solveComparison.regulatorShadowImproved ? ' · improves' : ''}`
+              : ` · regulator-shadow blocked (${view.regulatorShadowSolve.blockedReason})`}
+          </div>
           {view.rerun ? (
             <div>
               regulator {view.rerun.before.status} (score {view.rerun.before.score}) → {view.rerun.after.status} (score{' '}

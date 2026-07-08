@@ -102,6 +102,36 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
     warnings: ['regulator_shadow_target_changes_correction', 'regulator_reveals_new_violations'],
     trace: { engineSeededCount: 0, regulatorShadowCount: 1, regulatorProfile: 'standard_gelato_temperature_regulator' },
   },
+  engineSeededSolve: {
+    active: true,
+    blockedReason: null,
+    targetSource: 'engine_seeded',
+    injectedMetrics: [],
+    decision: 'tradeoff',
+    rerunState: 'rerun_complete',
+    proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 88.7 }],
+    afterMetrics: { npac: 46, pod: 15.5, iceFraction: 51, water: 62, solids: 38, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
+    rerun: null,
+    warnings: [],
+  },
+  regulatorShadowSolve: {
+    active: true,
+    blockedReason: null,
+    targetSource: 'regulator_shadow',
+    injectedMetrics: ['npac'],
+    decision: 'tradeoff',
+    rerunState: 'rerun_complete',
+    proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 142.3 }],
+    afterMetrics: { npac: 49, pod: 15.6, iceFraction: 52, water: 61, solids: 39, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
+    rerun: null,
+    warnings: [],
+  },
+  solveComparison: {
+    engineSeededDecision: 'tradeoff',
+    regulatorShadowDecision: 'tradeoff',
+    correctionDiffers: true,
+    regulatorShadowImproved: true,
+  },
   warnings: [],
   hardBlockers: [],
   ...over,
@@ -175,6 +205,26 @@ describe('OptimizationPreviewPanel — redaction', () => {
     // Demo: no numeric band comparison block (technical view gated)
     const demoText = visibleText(render(view(), demoPolicy));
     expect(demoText).not.toMatch(/engine-seeded → regulator-shadow/);
+  });
+
+  it('shows the regulator-shadow gram-solve summary in every tier (no grams in the summary)', () => {
+    for (const policy of [demoPolicy, proPolicy, devPolicy]) {
+      const t = visibleText(render(view(), policy));
+      expect(t).toMatch(/regulator-shadow gram solve: tradeoff/);
+      expect(t).toMatch(/differs from engine-seeded/);
+    }
+  });
+
+  it('Demo hides both solves\' exact grams; Pro shows the engine-seeded + regulator-shadow gram comparison', () => {
+    const demo = render(view(), demoPolicy);
+    expect(demo).not.toContain('88.7'); // engine-seeded grams hidden
+    expect(demo).not.toContain('142.3'); // regulator-shadow grams hidden
+    expect(/dextrose/i.test(demo)).toBe(false);
+    const pro = render(view(), proPolicy);
+    expect(pro).toContain('engine-seeded solver added');
+    expect(pro).toContain('88.7');
+    expect(pro).toContain('regulator-shadow solver added');
+    expect(pro).toContain('142.3');
   });
 });
 

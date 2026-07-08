@@ -154,6 +154,14 @@ export interface CorrectionRequest {
   candidates?: readonly CorrectionCandidate[];
   /** Max ranked proposals returned (default 3). */
   max_proposals?: number;
+  /**
+   * Preview-only: override the target band the solver detects/solves against, per
+   * metric (metric → band). Absent → the engine's own bands are used (default,
+   * unchanged). The original result and the global `TARGET_BANDS` are never mutated;
+   * metrics absent from the map keep their engine band. Intended for injected targets
+   * (e.g. Temperature Regulator bands) in the optimization preview only.
+   */
+  targetBandOverride?: Partial<Record<TargetMetric, TargetRange>>;
 }
 
 /** Discriminated union: the redacted branch is structurally incapable of

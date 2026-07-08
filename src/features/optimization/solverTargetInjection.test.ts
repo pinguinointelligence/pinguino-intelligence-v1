@@ -8,8 +8,10 @@ import { findOptimizationPreviewFixture } from './optimizationPreviewFixtures';
 import {
   analyzeSolverTargetInjection,
   buildInjectedSolverTarget,
+  engineSeededTargetOverride,
   injectRegulatorBands,
   INJECTED_TARGET_SOURCE,
+  regulatorTargetOverride,
 } from './solverTargetInjection';
 
 /** A real Standard Gelato (milk) recipe, re-servable at any temperature. */
@@ -160,6 +162,54 @@ describe('analyzeSolverTargetInjection — engine-seeded vs regulator-shadow', (
   it('is deterministic', () => {
     const run = () => analyzeSolverTargetInjection({ recipe: gelato(-12), productProfile: 'standard_gelato', servingTemperatureC: -12 });
     expect(JSON.stringify(run())).toBe(JSON.stringify(run()));
+  });
+});
+
+describe('regulatorTargetOverride — solver target-band override map (Slice 14)', () => {
+  it('engineSeededTargetOverride is a no-op override (empty band map, active)', () => {
+    const o = engineSeededTargetOverride();
+    expect(o.source).toBe('engine_seeded');
+    expect(o.active).toBe(true);
+    expect(o.bands).toEqual({});
+    expect(o.injectedMetrics).toEqual([]);
+  });
+
+  it('builds the regulator npac band as a solver override for standard_gelato −12', () => {
+    const o = regulatorTargetOverride('standard_gelato', -12);
+    expect(o.source).toBe('regulator_shadow');
+    expect(o.active).toBe(true);
+    expect(o.bands.npac).toEqual({ min: 42, max: 50 });
+    expect(o.injectedMetrics).toContain('npac');
+  });
+
+  it('excludes chocolate advisory protein-share from the override map (never hard)', () => {
+    const o = regulatorTargetOverride('chocolate_gelato', -13);
+    expect(o.active).toBe(true);
+    expect(o.bands.protein_in_solids).toBeUndefined();
+    expect(o.injectedMetrics).not.toContain('protein_in_solids');
+  });
+
+  it('includes NO dairy metrics for sorbet or vegan (dairy gates disabled)', () => {
+    for (const profile of ['sorbet', 'vegan_gelato'] as const) {
+      const o = regulatorTargetOverride(profile, -12);
+      expect(o.active).toBe(true);
+      expect(o.bands.lactose).toBeUndefined();
+      expect(o.bands.lactose_sandiness_risk).toBeUndefined();
+      expect(o.bands.aerating_protein).toBeUndefined();
+      expect(o.bands.npac).toBeDefined(); // structure gate still injected
+    }
+  });
+
+  it('blocks an unsupported profile / temperature with an empty map (never remapped)', () => {
+    expect(regulatorTargetOverride('granita', -12)).toMatchObject({
+      active: false,
+      blockedReason: 'unsupported_product_profile',
+      bands: {},
+    });
+    expect(regulatorTargetOverride('standard_gelato', -18)).toMatchObject({
+      active: false,
+      blockedReason: 'unsupported_serving_temperature',
+    });
   });
 });
 
