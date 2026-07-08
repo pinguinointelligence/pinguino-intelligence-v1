@@ -74,6 +74,19 @@ export function OptimizationPreviewPanel({
           : ' · not connected (still the −11 seeded band)'}
       </p>
 
+      {/* Shadow (non-live) engine-band-vs-regulator-band comparison — visibility only. */}
+      {(() => {
+        const npac = view.bandComparison.comparisons.find((c) => c.metric === 'npac');
+        if (!npac || !npac.engineBand || !npac.shadowBand) return null;
+        return (
+          <p className="mt-1 font-mono text-[11px] text-ivory/40">
+            shadow bands (not live · {view.bandComparison.shadowSource}): engine npac {npac.engineBand[0]}–
+            {npac.engineBand[1]} vs regulator {npac.shadowBand[0]}–{npac.shadowBand[1]}
+            {npac.aligned ? ' · aligned' : ` · divergent (Δ${npac.centerDelta?.toFixed(1)})`}
+          </p>
+        );
+      })()}
+
       {/* Directional recommendation — safe in every tier (no grams, no ingredient names). */}
       {view.correctionGoals.length > 0 ? (
         <p className="mt-3 text-xs leading-relaxed text-ivory/50">
@@ -131,6 +144,15 @@ export function OptimizationPreviewPanel({
               {view.targetGuidance.npacTargetDivergence != null
                 ? ` · Δcenter ${view.targetGuidance.npacTargetDivergence.toFixed(1)}`
                 : ''}
+            </div>
+          ) : null}
+          {view.bandComparison.comparisons.some((c) => !c.aligned && c.shadowBand) ? (
+            <div>
+              divergent shadow bands:{' '}
+              {view.bandComparison.comparisons
+                .filter((c) => !c.aligned && c.shadowBand)
+                .map((c) => `${c.metric}(eng ${c.engineBand ? c.engineBand.join('–') : '—'}→reg ${c.shadowBand!.join('–')})`)
+                .join(', ')}
             </div>
           ) : null}
           {view.rerun ? (

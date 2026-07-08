@@ -82,6 +82,13 @@ function FixtureCard({ view }: { view: OptimizationPreviewView }) {
             ? ` · Δcenter ${view.targetGuidance.npacTargetDivergence.toFixed(1)}`
             : ''}
         </div>
+        <div className="text-ivory/40">
+          shadow bands (not live · {view.bandComparison.shadowSource}): {view.bandComparison.status}
+          {view.bandComparison.comparisons
+            .filter((c) => !c.aligned && c.shadowBand)
+            .map((c) => ` · ${c.metric} eng ${c.engineBand ? c.engineBand.join('–') : '—'}→reg ${c.shadowBand!.join('–')}`)
+            .join('')}
+        </div>
         <div>correction goals: {view.correctionGoals.length ? view.correctionGoals.join(', ') : '—'}</div>
         <div className="text-emerald-300/80">
           proposed: {view.proposedCorrections.length

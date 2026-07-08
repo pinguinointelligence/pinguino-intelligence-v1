@@ -103,11 +103,16 @@ changes; no UI dependency yet.
    profile×temperature and detects whether the solver aims at it (`base_engine_seeded` when aligned —
    only milk_gelato −11 — vs `not_connected` on the −11/category fallback, warned
    `temperature_target_not_connected`), shown in the DEV page + Studio panel. The solver/engine are
-   unchanged: this is target-aware INSTRUMENTATION, not a truly temperature-aware solver. The next step is
-   to make the solver truly temperature-aware — add engine −12/−13 seeded `TARGET_BANDS` (a config
-   extension, CONFIG_VERSION bump) or let the solver consume the regulator band directly — then surface in
-   PRODUCTION Studio (capability-gated) + persistence, then the actual-batch-rescue / stock-shortage
-   branches (IF9/IF10).
+   unchanged: this is target-aware INSTRUMENTATION, not a truly temperature-aware solver.
+   **[landed — Phase C Slice 12]** `temperatureAwareTargetBands` adds a NON-live shadow target-band
+   source (from the locked regulator settings) and a read-only comparison against the engine's selected
+   band (`selectTargetBand`) per profile×temperature, with the full gap audited in
+   [engine/TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md](engine/TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md). Live
+   `TARGET_BANDS` and solver behavior are UNCHANGED. The next step is an **owner decision** between the two
+   documented migration paths — (1) extend the engine `TARGET_BANDS` with seeded −12/−13 (and per-category)
+   bands (CONFIG_VERSION bump + golden re-baseline), or (2) a solver-injected target override (no global
+   config change) — after which the shadow comparison becomes the acceptance oracle. Then production Studio
+   (capability-gated) + persistence, then actual-batch-rescue / stock-shortage (IF9/IF10).
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

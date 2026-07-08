@@ -46,6 +46,10 @@ import {
   deriveTemperatureAwareTarget,
   type TemperatureAwareTargetGuidance,
 } from './temperatureAwareCorrectionTargets';
+import {
+  compareEngineVsShadowBands,
+  type EngineVsShadowComparison,
+} from './temperatureAwareTargetBands';
 
 /** Fixture-intended decision, plus a `live` marker for the Studio recipe. */
 export type OptimizationIntendedDecision = OptimizationPreviewFixture['intendedDecision'] | 'live';
@@ -90,6 +94,8 @@ export interface OptimizationPreviewView {
 
   /** Temperature-aware target guidance: the regulator target + whether the solver aims at it. */
   targetGuidance: TemperatureAwareTargetGuidance;
+  /** Shadow (non-live) engine-band-vs-regulator-band comparison (Slice 12 visibility). */
+  bandComparison: EngineVsShadowComparison;
 
   warnings: readonly string[];
   hardBlockers: readonly string[];
@@ -142,6 +148,8 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
   // Temperature-aware target guidance from the Base Engine's band-selection flags (honest:
   // reports when the solver is still on the −11 seeded fallback rather than the regulator target).
   const targetGuidance = deriveTemperatureAwareTarget(intent, beforeResult);
+  // Shadow (non-live) comparison of the engine's selected band vs the regulator band.
+  const bandComparison = compareEngineVsShadowBands(intent.productProfile, intent.servingTemperatureC);
 
   return {
     id: args.id ?? 'live',
@@ -161,6 +169,7 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
     rerunState: preview.rerunState,
     rerun: preview.rerun,
     targetGuidance,
+    bandComparison,
     warnings: preview.warnings,
     hardBlockers: preview.hardBlockers,
   };

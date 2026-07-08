@@ -124,6 +124,17 @@ describe('runOptimizationPreview — temperature-aware target guidance', () => {
     expect(v.targetGuidance.blocked).toBe(true);
     expect(v.targetGuidance.target).toBeNull();
   });
+
+  it('carries the shadow engine-vs-regulator band comparison per fixture', () => {
+    // milk_gelato @ −11 → engine band aligned with the recipe's profile×temperature
+    expect(byId('gelato-tradeoff').bandComparison.status).toBe('aligned');
+    // chocolate @ −13 → engine falls back to milk_gelato, divergent from the regulator band
+    const choc = byId('chocolate-advisory').bandComparison;
+    expect(choc.status).toBe('divergent');
+    expect(choc.engineCategoryFallback).toBe(true);
+    // granita → unsupported, never remapped
+    expect(byId('granita-blocked').bandComparison.status).toBe('unsupported_profile');
+  });
 });
 
 describe('studioIntentFromRecipe + previewOptimization — live recipe path', () => {

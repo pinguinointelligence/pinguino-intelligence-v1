@@ -64,6 +64,21 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
     blocked: false,
     blockedReason: null,
   },
+  bandComparison: {
+    productProfile: 'standard_gelato',
+    servingTemperatureC: -12,
+    status: 'divergent',
+    shadowSource: 'temperature_regulator_shadow',
+    engineCategory: 'milk_gelato',
+    engineTemperatureFallback: true,
+    engineCategoryFallback: false,
+    comparisons: [
+      { metric: 'npac', engineMetric: 'npac', engineBand: [33, 42], shadowBand: [42, 50], centerDelta: 8, aligned: false },
+    ],
+    solverTargetsCorrectBand: false,
+    wouldTargetNpacCenter: 45.6,
+    warnings: ['engine_uses_temperature_fallback_band', 'target_bands_divergent', 'solver_not_targeting_regulator_band'],
+  },
   warnings: [],
   hardBlockers: [],
   ...over,
@@ -110,6 +125,14 @@ describe('OptimizationPreviewPanel — redaction', () => {
       expect(t).toMatch(/solver target:/);
       expect(t).toMatch(/not connected/); // the base view is a −12 not-connected fallback
     }
+  });
+
+  it('shows the shadow engine-vs-regulator band comparison, labelled not-live', () => {
+    const t = visibleText(render(view(), demoPolicy));
+    expect(t).toMatch(/shadow bands \(not live/);
+    expect(t).toMatch(/temperature_regulator_shadow/);
+    expect(t).toMatch(/engine npac 33–42 vs regulator 42–50/);
+    expect(t).toMatch(/divergent/);
   });
 });
 
