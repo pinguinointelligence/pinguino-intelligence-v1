@@ -9,6 +9,7 @@ import {
   calculateRecipe,
   proposeCorrections,
   type CorrectionResult,
+  type RecipeInput,
   type RecipeResult,
 } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -17,6 +18,8 @@ import { buildRecipeInput, recipeContext } from './buildRecipeInput';
 export interface StudioResult {
   result: RecipeResult;
   corrections: CorrectionResult;
+  /** The live engine input — consumed read-only by the DEV optimization preview. */
+  input: RecipeInput;
 }
 
 export function useStudioResult(): StudioResult {
@@ -66,5 +69,5 @@ export function useStudioResult(): StudioResult {
     [input, exactCorrectionGrams],
   );
 
-  return { result, corrections };
+  return { result, corrections, input };
 }

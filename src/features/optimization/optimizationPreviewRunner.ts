@@ -14,6 +14,8 @@ import {
   applyAutoFix,
   calculateRecipe,
   proposeAutoFix,
+  type ProductCategory,
+  type ProductMode,
   type RecipeInput,
 } from '@/engine';
 import {
@@ -23,6 +25,7 @@ import {
   routeOptimizationFlow,
   routeRecipeIntegrationFlow,
   runOptimizationRerunPreview,
+  SPINE_CONTRACT_VERSION,
   type AppliedAdjustment,
   type BaseEngineMetrics,
   type CorrectionGoal,
@@ -31,11 +34,17 @@ import {
   type NormalizedRecipeIntent,
   type OptimizationDecision,
   type OptimizationRerunState,
+  type ProductProfile,
+  type QualityTier,
   type RejectedCorrection,
   type RerunCorrectionFn,
   type RerunVerification,
+  type ServingTemperatureC,
 } from '@/spine';
 import type { OptimizationPreviewFixture } from './optimizationPreviewFixtures';
+
+/** Fixture-intended decision, plus a `live` marker for the Studio recipe. */
+export type OptimizationIntendedDecision = OptimizationPreviewFixture['intendedDecision'] | 'live';
 
 /** The injected REAL solver + Base Engine rerun (proposed → applied → recalculated). */
 export const realRerunCorrection: RerunCorrectionFn = (ctx) => {
@@ -57,7 +66,7 @@ export const realRerunCorrection: RerunCorrectionFn = (ctx) => {
 export interface OptimizationPreviewView {
   id: string;
   label: string;
-  intendedDecision: OptimizationPreviewFixture['intendedDecision'];
+  intendedDecision: OptimizationIntendedDecision;
   productProfile: string;
   servingTemperatureC: number;
 
@@ -82,28 +91,38 @@ export interface OptimizationPreviewView {
 const isSupportedProfile = (profile: string): boolean =>
   (ACTIVE_PRODUCT_PROFILES as readonly string[]).includes(profile);
 
+export interface OptimizationPreviewInput {
+  recipe: RecipeInput;
+  intent: NormalizedRecipeIntent;
+  id?: string;
+  label?: string;
+  intendedDecision?: OptimizationIntendedDecision;
+}
+
 /**
- * Run one fixture end-to-end: real Base Engine → Spine adapter → Integration Flow
+ * Run one recipe end-to-end: real Base Engine → Spine adapter → Integration Flow
  * → Optimizer routing → rerun preview (with the real solver injected). Pure and
- * deterministic; never mutates the fixture and never persists anything.
+ * deterministic; never mutates the recipe and never persists anything. Used for
+ * both the DEV fixtures and the live Studio recipe.
  */
-export function runOptimizationPreview(fixture: OptimizationPreviewFixture): OptimizationPreviewView {
-  const beforeResult = calculateRecipe(fixture.recipe);
+export function previewOptimization(args: OptimizationPreviewInput): OptimizationPreviewView {
+  const { recipe, intent } = args;
+  const beforeResult = calculateRecipe(recipe);
   const beforeMetrics = adaptBaseEngineResult(beforeResult).metrics;
 
   // The Designer only handles supported profiles; for an unsupported profile (blocked path) the
   // constraints are never consumed, so derive them from a supported stand-in to avoid a lookup throw.
-  const constraintsIntent: NormalizedRecipeIntent = isSupportedProfile(fixture.intent.productProfile)
-    ? fixture.intent
-    : { ...fixture.intent, productProfile: 'standard_gelato' };
+  const constraintsIntent: NormalizedRecipeIntent = isSupportedProfile(intent.productProfile)
+    ? intent
+    : { ...intent, productProfile: 'standard_gelato' };
   const optimizerConstraints = designRecipe(constraintsIntent).optimizerConstraints;
 
-  const flow = routeRecipeIntegrationFlow({ intent: fixture.intent, baseEngineMetrics: beforeMetrics });
-  const optimization = routeOptimizationFlow({ flow, intent: fixture.intent, optimizerConstraints });
+  const flow = routeRecipeIntegrationFlow({ intent, baseEngineMetrics: beforeMetrics });
+  const optimization = routeOptimizationFlow({ flow, intent, optimizerConstraints });
   const preview = runOptimizationRerunPreview({
-    intent: fixture.intent,
+    intent,
     beforeMetrics,
-    recipeDraft: fixture.recipe,
+    recipeDraft: recipe,
     optimization,
     optimizerConstraints,
     rerunCorrection: realRerunCorrection,
@@ -114,11 +133,11 @@ export function runOptimizationPreview(fixture: OptimizationPreviewFixture): Opt
     : null;
 
   return {
-    id: fixture.id,
-    label: fixture.label,
-    intendedDecision: fixture.intendedDecision,
-    productProfile: fixture.intent.productProfile,
-    servingTemperatureC: fixture.intent.servingTemperatureC,
+    id: args.id ?? 'live',
+    label: args.label ?? 'Live Studio recipe',
+    intendedDecision: args.intendedDecision ?? 'live',
+    productProfile: intent.productProfile,
+    servingTemperatureC: intent.servingTemperatureC,
     beforeMetrics,
     afterMetrics,
     flowDecision: flow.decision,
@@ -132,6 +151,79 @@ export function runOptimizationPreview(fixture: OptimizationPreviewFixture): Opt
     rerun: preview.rerun,
     warnings: preview.warnings,
     hardBlockers: preview.hardBlockers,
+  };
+}
+
+/** Run one DEV fixture (delegates to previewOptimization). */
+export function runOptimizationPreview(fixture: OptimizationPreviewFixture): OptimizationPreviewView {
+  return previewOptimization({
+    recipe: fixture.recipe,
+    intent: fixture.intent,
+    id: fixture.id,
+    label: fixture.label,
+    intendedDecision: fixture.intendedDecision,
+  });
+}
+
+/* ------------------------------------------------------------------------ *
+ * Live Studio recipe → normalized intent (Slice 10)                          *
+ * ------------------------------------------------------------------------ */
+
+/** Engine product category → Spine product profile (Product_Profile.md §5). */
+const CATEGORY_TO_PROFILE: Readonly<Record<ProductCategory, ProductProfile>> = {
+  milk_gelato: 'standard_gelato',
+  fruit_gelato: 'standard_gelato',
+  nut_gelato: 'standard_gelato',
+  chocolate_gelato: 'chocolate_gelato',
+  alcohol_gelato: 'standard_gelato',
+  sorbet: 'sorbet',
+  vegan_gelato: 'vegan_gelato',
+  custom: 'standard_gelato',
+};
+
+const MODE_TO_TIER: Readonly<Record<ProductMode, QualityTier>> = {
+  eco: 'eco',
+  classic: 'classic',
+  premium: 'premium',
+  signature: 'signature',
+};
+
+/**
+ * Map a live Studio `RecipeInput` to a normalized intent for the preview. The
+ * serving temperature is passed through as-is — the Integration Flow router blocks
+ * an unsupported temperature (−11/−12/−13 only); it is never remapped.
+ */
+export function studioIntentFromRecipe(recipe: RecipeInput): NormalizedRecipeIntent {
+  return {
+    productProfile: CATEGORY_TO_PROFILE[recipe.category] ?? 'standard_gelato',
+    qualityTier: MODE_TO_TIER[recipe.mode] ?? 'classic',
+    servingTemperatureC: recipe.target_temperature_c as ServingTemperatureC,
+    texturePreference: 'medium',
+    sweetnessPreference: 'balanced',
+    costPriority: 'balanced',
+    flavorGroup: 'unknown',
+    flavorTags: [],
+    naturalOnly: false,
+    allowBoosters: true,
+    dietary: {
+      vegan: recipe.category === 'vegan_gelato',
+      lactoseFree: false,
+      glutenFree: false,
+      allergenAware: false,
+      noAddedSugar: false,
+      lowSugar: false,
+      alcohol: recipe.category === 'alcohol_gelato',
+    },
+    constraints: {
+      excludedIngredientIds: [],
+      lockedIngredientIds: [],
+      heroIngredientIds: [],
+      batchSizeG: recipe.target_batch_grams,
+      machineCapacityG: recipe.machine_capacity_grams,
+    },
+    source: 'user_input',
+    warnings: [],
+    contractVersion: SPINE_CONTRACT_VERSION,
   };
 }
 

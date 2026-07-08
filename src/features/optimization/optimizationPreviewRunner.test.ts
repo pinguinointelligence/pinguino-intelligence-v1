@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  previewOptimization,
   runAllOptimizationPreviews,
   runOptimizationPreview,
+  studioIntentFromRecipe,
   type OptimizationPreviewView,
 } from './optimizationPreviewRunner';
 import {
@@ -91,6 +93,36 @@ describe('runOptimizationPreview — decision paths through the REAL engine + so
     const a = runAllOptimizationPreviews(OPTIMIZATION_PREVIEW_FIXTURES);
     const b = runAllOptimizationPreviews(OPTIMIZATION_PREVIEW_FIXTURES);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+});
+
+describe('studioIntentFromRecipe + previewOptimization — live recipe path', () => {
+  const baseRecipe = findOptimizationPreviewFixture('gelato-tradeoff')!.recipe;
+
+  it('maps engine category to the spine product profile', () => {
+    expect(studioIntentFromRecipe({ ...baseRecipe, category: 'milk_gelato' }).productProfile).toBe('standard_gelato');
+    expect(studioIntentFromRecipe({ ...baseRecipe, category: 'chocolate_gelato' }).productProfile).toBe('chocolate_gelato');
+    expect(studioIntentFromRecipe({ ...baseRecipe, category: 'sorbet' }).productProfile).toBe('sorbet');
+    expect(studioIntentFromRecipe({ ...baseRecipe, category: 'vegan_gelato' }).productProfile).toBe('vegan_gelato');
+    expect(studioIntentFromRecipe({ ...baseRecipe, category: 'fruit_gelato' }).productProfile).toBe('standard_gelato');
+  });
+
+  it('passes the serving temperature through (router blocks unsupported) and maps mode to tier', () => {
+    expect(studioIntentFromRecipe({ ...baseRecipe, target_temperature_c: -13 }).servingTemperatureC).toBe(-13);
+    expect(studioIntentFromRecipe({ ...baseRecipe, mode: 'premium' }).qualityTier).toBe('premium');
+  });
+
+  it('previewOptimization runs on a recipe via the derived intent (id defaults to live)', () => {
+    const v = previewOptimization({ recipe: baseRecipe, intent: studioIntentFromRecipe(baseRecipe) });
+    expect(v.id).toBe('live');
+    expect(v.productProfile).toBe('standard_gelato'); // milk_gelato → standard_gelato
+    expect(v.finalDecision).toBe('tradeoff'); // same off-recipe as the gelato-tradeoff fixture
+  });
+
+  it('never mutates the recipe passed to previewOptimization', () => {
+    const snapshot = JSON.stringify(baseRecipe);
+    previewOptimization({ recipe: baseRecipe, intent: studioIntentFromRecipe(baseRecipe) });
+    expect(JSON.stringify(baseRecipe)).toBe(snapshot);
   });
 });
 

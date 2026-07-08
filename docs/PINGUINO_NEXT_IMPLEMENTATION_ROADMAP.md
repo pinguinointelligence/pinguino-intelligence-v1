@@ -94,7 +94,12 @@ changes; no UI dependency yet.
    **[landed — Phase C Slice 9]** `src/features/optimization/*` (a NON-spine orchestrator, allowed to
    import the `@/engine` barrel) wires the seam to the REAL solver + `calculateRecipe` and renders the
    five decision states over deterministic sample recipes on a DEV-gated page, `/dev/optimization-preview`
-   — no DB / save / Mapper / auth. Production Studio wiring, and the actual-batch-rescue / stock-shortage
+   — no DB / save / Mapper / auth.
+   **[landed — Phase C Slice 10]** a reusable `OptimizationPreviewPanel` + a pure capability/redaction
+   policy (`optimizationDisplayPolicy`: demo/free redacted, Pro full grams + before/after, DEV trace
+   additive) plus `previewOptimization`/`studioIntentFromRecipe` (live-recipe entry) are wired **DEV-gated**
+   into `StudioPage` on the LIVE recipe (click-triggered, nothing saved/mutated). Surfacing it in
+   PRODUCTION Studio (non-DEV, capability-gated) + persistence, and the actual-batch-rescue / stock-shortage
    branches (IF9/IF10), are the next steps.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))

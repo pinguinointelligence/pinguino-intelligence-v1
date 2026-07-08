@@ -1,0 +1,125 @@
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+import { SurfaceToneContext } from '@/components/ui/surface';
+import { OptimizationPreviewPanel } from './OptimizationPreviewPanel';
+import { optimizationDisplayPolicy, type OptimizationDisplayPolicy } from './optimizationPreviewPolicy';
+import type { OptimizationPreviewView } from './optimizationPreviewRunner';
+import type { OptimizationDecision } from '@/spine';
+
+const render = (view: OptimizationPreviewView, policy: OptimizationDisplayPolicy) =>
+  renderToStaticMarkup(
+    <SurfaceToneContext.Provider value="shell">
+      <OptimizationPreviewPanel view={view} policy={policy} />
+    </SurfaceToneContext.Provider>,
+  );
+const visibleText = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
+
+const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewView => ({
+  id: 'x',
+  label: 'Live Studio recipe',
+  intendedDecision: 'live',
+  productProfile: 'standard_gelato',
+  servingTemperatureC: -12,
+  beforeMetrics: { npac: 40, pod: 15, iceFraction: 50, water: 63, solids: 37, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
+  afterMetrics: { npac: 46, pod: 15.5, iceFraction: 51, water: 62, solids: 38, fat: 6, lactose: 5, lactoseSanding: 8, aeratingProtein: 3.7, proteinShareInSolids: 10, stabilizerGrams: 5 },
+  flowDecision: 'tradeoff',
+  correctionGoals: ['increase_npac', 'increase_solids'],
+  optimizerDecision: 'tradeoff',
+  proposedCorrections: [
+    { goal: 'increase_npac', targetMetric: 'npac', direction: 'increase', affectedIngredientClasses: ['dextrose', 'sucrose'], goldenMiddleRank: 2, feasibility: 'feasible', constraintReason: 'levers within allowed families', warnings: [] },
+  ],
+  rejectedCorrections: [],
+  proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 88.7 }],
+  finalDecision: 'tradeoff',
+  rerunState: 'rerun_complete',
+  rerun: {
+    before: { acceptable: false, status: 'too_hard', hardGateFailures: ['npac'], score: 30 },
+    after: { acceptable: false, status: 'firm_side_acceptable', hardGateFailures: [], score: 70 },
+    improvementDetected: true,
+    newFailures: [],
+    worsenedFailures: [],
+    decision: 'tradeoff',
+  },
+  warnings: [],
+  hardBlockers: [],
+  ...over,
+});
+
+const demoPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: false, technicalView: false });
+const proPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: true, technicalView: true });
+const devPolicy = optimizationDisplayPolicy({ exactCorrectionGrams: false, technicalView: false }, { dev: true });
+
+describe('OptimizationPreviewPanel — redaction', () => {
+  it('Free/Demo hides exact grams, lever ingredient classes and before/after numbers', () => {
+    const html = render(view(), demoPolicy);
+    const text = visibleText(html);
+    expect(html).not.toContain('88.7'); // no exact solver grams
+    expect(/dextrose/i.test(html)).toBe(false); // no lever ingredient names
+    expect(html).not.toContain('46.00'); // no numeric before/after
+    // shows the safe, high-level view instead
+    expect(text).toMatch(/tradeoff/);
+    expect(text).toMatch(/increase npac/); // directional goal (no numbers, no ingredient)
+    expect(text).toMatch(/available on Pro/);
+  });
+
+  it('Pro shows the exact correction grams, the correction plan and before/after metrics', () => {
+    const html = render(view(), proPolicy);
+    expect(html).toContain('88.7'); // exact solver grams
+    expect(/dextrose/i.test(html)).toBe(true); // lever ingredient classes
+    expect(html).toContain('40.00'); // before metric
+    expect(html).toContain('46.00'); // after metric
+    expect(html).not.toContain('available on Pro');
+  });
+
+  it('DEV shows the debug trace but still respects a demo viewer’s redaction', () => {
+    const html = render(view(), devPolicy);
+    expect(html).toContain('DEV trace');
+    expect(html).toContain('rerun_complete');
+    // still redacted (the dev flag is additive, not an upgrade)
+    expect(html).not.toContain('88.7');
+    expect(/dextrose/i.test(html)).toBe(false);
+  });
+});
+
+describe('OptimizationPreviewPanel — decision states', () => {
+  it.each(['optimized', 'tradeoff', 'impossible', 'blocked', 'no_action_needed'] as OptimizationDecision[])(
+    'renders the %s decision with its recommendation',
+    (decision) => {
+      const html = render(view({ finalDecision: decision }), demoPolicy);
+      const text = visibleText(html);
+      expect(text).toMatch(new RegExp(decision.replace(/_/g, ' ')));
+      expect(text.length).toBeGreaterThan(20);
+    },
+  );
+});
+
+describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
+  const HERE = import.meta.dirname;
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const sources = ['OptimizationPreviewPanel.tsx', 'optimizationPreviewPolicy.ts'].map((f) =>
+    strip(readFileSync(join(HERE, f), 'utf8')),
+  );
+
+  it('the panel + policy are pure display: no engine/DB/Mapper import, no save/pac-pod/status write', () => {
+    for (const src of sources) {
+      expect(/supabase|service_role/i.test(src)).toBe(false);
+      expect(/@\/engine|mapper_basement|@\/services\/|@\/data\/products/.test(src)).toBe(false);
+      expect(/calculateRecipe\s*\(|proposeAutoFix|applyAutoFix/.test(src)).toBe(false); // no engine call
+      expect(/saveRecipe|persistRecipe|\.save\(/i.test(src)).toBe(false);
+      expect(/pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(src)).toBe(false);
+      for (const verb of ['.insert(', '.update(', '.upsert(', '.delete(', '.from(']) {
+        expect(src.includes(verb), verb).toBe(false);
+      }
+    }
+  });
+
+  it('the Studio integration is DEV-gated (import.meta.env.DEV around the panel)', () => {
+    const studio = readFileSync(resolve(HERE, '..', '..', 'pages', 'studio', 'StudioPage.tsx'), 'utf8');
+    expect(/import\.meta\.env\.DEV\s*\?[\s\S]*?OptimizationPreviewPanel/.test(studio)).toBe(true);
+    // and the preview button never saves/persists
+    expect(/saveRecipe\(|persistRecipe\(/.test(studio)).toBe(false);
+  });
+});

@@ -12,6 +12,13 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { SaveRecipeDialog } from '@/features/recipes/SaveRecipeDialog';
 import { CorrectionPanel } from '@/features/corrections/CorrectionPanel';
+import { OptimizationPreviewPanel } from '@/features/optimization/OptimizationPreviewPanel';
+import { optimizationDisplayPolicy } from '@/features/optimization/optimizationPreviewPolicy';
+import {
+  previewOptimization,
+  studioIntentFromRecipe,
+  type OptimizationPreviewView,
+} from '@/features/optimization/optimizationPreviewRunner';
 import { GoalSetup } from '@/features/recipe-goal/GoalSetup';
 import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuilder';
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
@@ -33,8 +40,10 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
   // Free Preview (demo/free) locks exact values; Pro unlocks the full calculator + panels.
-  const { plan, fullFormula, technicalView } = useAccess();
-  const { result, corrections } = useStudioResult();
+  const { plan, fullFormula, technicalView, exactCorrectionGrams } = useAccess();
+  const { result, corrections, input } = useStudioResult();
+  // DEV-only optimization preview — computed on explicit click, never persisted.
+  const [optimizationView, setOptimizationView] = useState<OptimizationPreviewView | null>(null);
 
   const mode = useRecipeStore((state) => state.mode);
   const category = useRecipeStore((state) => state.category);
@@ -137,6 +146,30 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
               {technicalView ? <PIPanel result={result} /> : <LockedPIPreview />}
               {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
               <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
+
+              {/* DEV-only optimization preview seam: runs the real solver + Base Engine rerun on
+                  the LIVE recipe when clicked. Pure preview — nothing is saved or mutated. Gated by
+                  import.meta.env.DEV so production dead-code-eliminates it. Redaction follows the
+                  viewer's plan (demo/free redacted, Pro full); the DEV trace is additive. */}
+              {import.meta.env.DEV ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOptimizationView(previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }))
+                    }
+                    className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                  >
+                    Optimize preview (DEV)
+                  </button>
+                  {optimizationView ? (
+                    <OptimizationPreviewPanel
+                      view={optimizationView}
+                      policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: true })}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </main>
