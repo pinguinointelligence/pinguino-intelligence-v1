@@ -96,6 +96,36 @@ describe('runOptimizationPreview — decision paths through the REAL engine + so
   });
 });
 
+describe('runOptimizationPreview — temperature-aware target guidance', () => {
+  it('Standard Gelato at −11 (milk_gelato) is aligned with the regulator (base_engine_seeded)', () => {
+    const v = byId('gelato-tradeoff'); // milk_gelato @ −11 → exact seeded band, no fallback
+    expect(v.targetGuidance.solverTargetAligned).toBe(true);
+    expect(v.targetGuidance.solverTargetSource).toBe('base_engine_seeded');
+    expect(v.targetGuidance.target?.npacBand).toEqual([33, 43]);
+  });
+
+  it('Chocolate at −13 is NOT connected — the solver still targets the −11 seeded band', () => {
+    const v = byId('chocolate-advisory'); // chocolate_gelato @ −13
+    expect(v.targetGuidance.solverTargetAligned).toBe(false);
+    expect(v.targetGuidance.solverTargetSource).toBe('not_connected');
+    expect(v.targetGuidance.warnings).toContain('temperature_target_not_connected');
+    expect(v.targetGuidance.target?.regulatorProfile).toBe('chocolate_gelato_temperature_regulator');
+    expect(v.targetGuidance.target?.advisoryGates).toContain('protein_share_in_solids');
+  });
+
+  it('Sorbet is NOT connected — the engine falls back to the milk_gelato category band', () => {
+    const v = byId('sorbet-ready');
+    expect(v.targetGuidance.solverTargetAligned).toBe(false);
+    expect(v.targetGuidance.warnings).toContain('solver_uses_category_fallback_band');
+  });
+
+  it('an unsupported profile blocks the target guidance (never remapped)', () => {
+    const v = byId('granita-blocked');
+    expect(v.targetGuidance.blocked).toBe(true);
+    expect(v.targetGuidance.target).toBeNull();
+  });
+});
+
 describe('studioIntentFromRecipe + previewOptimization — live recipe path', () => {
   const baseRecipe = findOptimizationPreviewFixture('gelato-tradeoff')!.recipe;
 

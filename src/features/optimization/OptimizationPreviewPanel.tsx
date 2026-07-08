@@ -66,6 +66,14 @@ export function OptimizationPreviewPanel({
       </div>
       <p className="mt-2 text-sm leading-relaxed text-ivory/60">{recommendationFor(view.finalDecision)}</p>
 
+      {/* Temperature-aware target instrumentation — label only, safe in every tier. */}
+      <p className="mt-2 font-mono text-[11px] text-ivory/40">
+        solver target: {view.targetGuidance.solverTargetSource}
+        {view.targetGuidance.solverTargetAligned
+          ? ' · aligned with the regulator'
+          : ' · not connected (still the −11 seeded band)'}
+      </p>
+
       {/* Directional recommendation — safe in every tier (no grams, no ingredient names). */}
       {view.correctionGoals.length > 0 ? (
         <p className="mt-3 text-xs leading-relaxed text-ivory/50">
@@ -116,6 +124,15 @@ export function OptimizationPreviewPanel({
           <div>
             DEV trace · rerun {view.rerunState} · optimizer {view.optimizerDecision} · flow {view.flowDecision}
           </div>
+          {view.targetGuidance.target ? (
+            <div>
+              regulator target · {view.targetGuidance.target.regulatorProfile} · npac{' '}
+              {view.targetGuidance.target.npacBand[0]}–{view.targetGuidance.target.npacBand[1]}
+              {view.targetGuidance.npacTargetDivergence != null
+                ? ` · Δcenter ${view.targetGuidance.npacTargetDivergence.toFixed(1)}`
+                : ''}
+            </div>
+          ) : null}
           {view.rerun ? (
             <div>
               regulator {view.rerun.before.status} (score {view.rerun.before.score}) → {view.rerun.after.status} (score{' '}

@@ -43,6 +43,27 @@ const view = (over: Partial<OptimizationPreviewView> = {}): OptimizationPreviewV
     worsenedFailures: [],
     decision: 'tradeoff',
   },
+  targetGuidance: {
+    target: {
+      productProfile: 'standard_gelato',
+      servingTemperatureC: -12,
+      regulatorProfile: 'standard_gelato_temperature_regulator',
+      regulatorStatus: 'locked_v0_1',
+      npacBand: [42, 50],
+      npacCleanCenter: [45, 46.2],
+      metricBands: {},
+      hardGates: [],
+      advisoryGates: [],
+      safeAdjustmentFamilies: [],
+      forbiddenAdjustmentFamilies: [],
+    },
+    solverTargetAligned: false,
+    solverTargetSource: 'not_connected',
+    npacTargetDivergence: 8,
+    warnings: ['temperature_target_not_connected'],
+    blocked: false,
+    blockedReason: null,
+  },
   warnings: [],
   hardBlockers: [],
   ...over,
@@ -81,6 +102,14 @@ describe('OptimizationPreviewPanel — redaction', () => {
     // still redacted (the dev flag is additive, not an upgrade)
     expect(html).not.toContain('88.7');
     expect(/dextrose/i.test(html)).toBe(false);
+  });
+
+  it('shows the temperature-aware target source in every tier (instrumentation, not a correction secret)', () => {
+    for (const policy of [demoPolicy, proPolicy, devPolicy]) {
+      const t = visibleText(render(view(), policy));
+      expect(t).toMatch(/solver target:/);
+      expect(t).toMatch(/not connected/); // the base view is a −12 not-connected fallback
+    }
   });
 });
 

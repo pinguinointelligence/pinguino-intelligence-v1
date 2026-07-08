@@ -98,9 +98,16 @@ changes; no UI dependency yet.
    **[landed — Phase C Slice 10]** a reusable `OptimizationPreviewPanel` + a pure capability/redaction
    policy (`optimizationDisplayPolicy`: demo/free redacted, Pro full grams + before/after, DEV trace
    additive) plus `previewOptimization`/`studioIntentFromRecipe` (live-recipe entry) are wired **DEV-gated**
-   into `StudioPage` on the LIVE recipe (click-triggered, nothing saved/mutated). Surfacing it in
-   PRODUCTION Studio (non-DEV, capability-gated) + persistence, and the actual-batch-rescue / stock-shortage
-   branches (IF9/IF10), are the next steps.
+   into `StudioPage` on the LIVE recipe (click-triggered, nothing saved/mutated).
+   **[landed — Phase C Slice 11]** `temperatureAwareCorrectionTargets` derives the regulator target per
+   profile×temperature and detects whether the solver aims at it (`base_engine_seeded` when aligned —
+   only milk_gelato −11 — vs `not_connected` on the −11/category fallback, warned
+   `temperature_target_not_connected`), shown in the DEV page + Studio panel. The solver/engine are
+   unchanged: this is target-aware INSTRUMENTATION, not a truly temperature-aware solver. The next step is
+   to make the solver truly temperature-aware — add engine −12/−13 seeded `TARGET_BANDS` (a config
+   extension, CONFIG_VERSION bump) or let the solver consume the regulator band directly — then surface in
+   PRODUCTION Studio (capability-gated) + persistence, then the actual-batch-rescue / stock-shortage
+   branches (IF9/IF10).
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

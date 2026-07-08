@@ -42,6 +42,10 @@ import {
   type ServingTemperatureC,
 } from '@/spine';
 import type { OptimizationPreviewFixture } from './optimizationPreviewFixtures';
+import {
+  deriveTemperatureAwareTarget,
+  type TemperatureAwareTargetGuidance,
+} from './temperatureAwareCorrectionTargets';
 
 /** Fixture-intended decision, plus a `live` marker for the Studio recipe. */
 export type OptimizationIntendedDecision = OptimizationPreviewFixture['intendedDecision'] | 'live';
@@ -83,6 +87,9 @@ export interface OptimizationPreviewView {
   finalDecision: OptimizationDecision;
   rerunState: OptimizationRerunState;
   rerun: RerunVerification | null;
+
+  /** Temperature-aware target guidance: the regulator target + whether the solver aims at it. */
+  targetGuidance: TemperatureAwareTargetGuidance;
 
   warnings: readonly string[];
   hardBlockers: readonly string[];
@@ -132,6 +139,10 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
     ? adaptBaseEngineResult(preview.correctedBaseEngineResult).metrics
     : null;
 
+  // Temperature-aware target guidance from the Base Engine's band-selection flags (honest:
+  // reports when the solver is still on the −11 seeded fallback rather than the regulator target).
+  const targetGuidance = deriveTemperatureAwareTarget(intent, beforeResult);
+
   return {
     id: args.id ?? 'live',
     label: args.label ?? 'Live Studio recipe',
@@ -149,6 +160,7 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
     finalDecision: preview.decision,
     rerunState: preview.rerunState,
     rerun: preview.rerun,
+    targetGuidance,
     warnings: preview.warnings,
     hardBlockers: preview.hardBlockers,
   };

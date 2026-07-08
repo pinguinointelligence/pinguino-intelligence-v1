@@ -72,6 +72,16 @@ function FixtureCard({ view }: { view: OptimizationPreviewView }) {
 
       <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3 font-mono text-[11px] text-ivory/60">
         <div>flow: <Pill text={view.flowDecision} /> · optimizer: <Pill text={view.optimizerDecision} /></div>
+        <div className={view.targetGuidance.solverTargetAligned ? 'text-ivory/60' : 'text-amber-300/80'}>
+          solver target: {view.targetGuidance.solverTargetSource}
+          {view.targetGuidance.solverTargetAligned ? ' · aligned' : ' · NOT connected (−11 seeded fallback)'}
+          {view.targetGuidance.target
+            ? ` · regulator npac ${view.targetGuidance.target.npacBand[0]}–${view.targetGuidance.target.npacBand[1]}`
+            : ''}
+          {view.targetGuidance.npacTargetDivergence != null
+            ? ` · Δcenter ${view.targetGuidance.npacTargetDivergence.toFixed(1)}`
+            : ''}
+        </div>
         <div>correction goals: {view.correctionGoals.length ? view.correctionGoals.join(', ') : '—'}</div>
         <div className="text-emerald-300/80">
           proposed: {view.proposedCorrections.length
