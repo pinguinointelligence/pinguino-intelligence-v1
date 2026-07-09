@@ -170,6 +170,31 @@ changes; no UI dependency yet.
    **Next after this:** exact add-only gram solve + Integration Flow wiring (`actual_grams !== null` →
    IF9) + Pro-gated Studio UI (`canUseActualBatchRescue`), or the stock-shortage branch IF10, or the
    approved accepted-correction live write.
+   **[landed — Phase C Slice 18]** the Stock Shortage DECISION branch (IF10) as a pure, unwired spine
+   module: `src/spine/stockShortageRouter.ts` (`routeStockShortage`) — per-line shortage observation +
+   constraints → one of substitution_possible / scale_down_possible / purchase_required /
+   reformulation_required / production_blocked / blocked_missing_data / not_supported, with a FIXED
+   strategy precedence (substitution → scale-down → purchase/wait → reformulation → blocked).
+   Locked-doc grounding: Integration_Flow.md §18 + Optimizer.md §7A.1 — missing stock is never invented;
+   the hero ingredient is never silently reduced; substitution is NEVER silent (verified ingredient data
+   required per acceptance 28; dairy into sorbet/vegan is a hard block that no approval flag overrides;
+   allergen / alcohol / sweetener-polyol-HIS substitutes each require an explicit approval flag; unknown
+   substitute families are blocked, never remapped); the quality tier is echoed untouched. Output is
+   STRUCTURALLY gram-free — batch scaling is a dimensionless limiting-line ratio (uniform scaling keeps all
+   composition percentages, hence all bands, unchanged) plus required next calculations; nothing fakes a
+   recalculated recipe. Every feasible decision offers the LOCKED five-option `StockShortageUserDecision`
+   menu verbatim; production_blocked honestly limits it (keep_batch_and_mark_missing /
+   stop_and_buy_missing_product) with the reason. `canUseStockShortageWorkflow` (demo false / paid true) is
+   surfaced as the UI capability gate. No DB, no inventory read/write, no Mapper, no persistence, no recipe
+   mutation. 31 tests in `stockShortageRouter.test.ts` (+2 spine-contract file checks); docs in
+   [spine/STOCK_SHORTAGE_FLOW.md](spine/STOCK_SHORTAGE_FLOW.md). The DEV
+   preview page was deliberately skipped (same rationale as IF9). An adversarial review (4 lenses) found
+   and fixed pre-commit: a duplicate-lineId pairing bypass (lines now paired by index AND duplicate ids
+   blocked), an unverifiable scale-bounds honesty gap (now always flagged `scaled_batch_bounds_unverified`),
+   and a locked-name collision (the router union is `StockShortageRouteDecision`; the locked doc name
+   `StockShortageDecision` maps to `StockShortageUserDecision`).
+   **Next after this:** IF9/IF10 exact recalculation + Integration Flow wiring + paid-gated Studio UI, or
+   the accepted-correction live write once the owner walks the Slice 16 approval checklist.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
