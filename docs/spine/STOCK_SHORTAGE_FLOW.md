@@ -96,11 +96,14 @@ optimization display policy pattern applies to it.
 
 ## 8. What remains before production use
 
-1. Exact recalculation per user decision (substitute composition / scaled recipe / reformulation)
-   through the real engine + rerun verification.
-2. Integration Flow wiring (`stock_shortage` warning → IF10 branch; today the router is standalone).
+1. ~~Exact recalculation for scale-down~~ — **Slice 19**: the deterministic limiting-ratio scale is
+   previewed exactly and engine-verified (`scaleVerified`); substitution recalculation still needs a
+   verified-composition substitute contract (honestly `not_attempted` until then); reformulation
+   stays with the Designer (see [BRANCH_RECALCULATION_PREVIEW.md](BRANCH_RECALCULATION_PREVIEW.md)).
+2. ~~Integration Flow wiring~~ — **Slice 19** adds `dispatchIntegrationFlow` (`stock_shortage`
+   context → IF10); the engine `stock_shortage` warning → context auto-detection is UI wiring,
+   still pending.
 3. Inventory/stock data source (deliberately absent — v0.1 takes caller-supplied observations; no
    inventory is ever read or written by the spine).
 4. Studio UI (paid-gated via `canUseStockShortageWorkflow`) with the §18 menu.
-5. DEV preview page — deliberately skipped in this slice (pure module + tests carry it), same
-   rationale as IF9.
+5. DEV fixtures page — landed in Slice 19 as `/dev/branch-recalculation-preview` (shared with IF9).

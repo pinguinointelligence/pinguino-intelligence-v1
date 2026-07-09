@@ -195,6 +195,26 @@ changes; no UI dependency yet.
    `StockShortageDecision` maps to `StockShortageUserDecision`).
    **Next after this:** IF9/IF10 exact recalculation + Integration Flow wiring + paid-gated Studio UI, or
    the accepted-correction live write once the owner walks the Slice 16 approval checklist.
+   **[landed — Phase C Slice 19]** IF9/IF10 are WIRED into the Integration Flow and gain a
+   verification-gated exact-recalculation PREVIEW — still pure, still no writes. `src/spine/integrationFlowDispatch.ts`
+   dispatches the three locked contexts (`recipe_design` → the EXISTING `routeRecipeIntegrationFlow`
+   verbatim — that module is untouched by the slice, test-guarded; `actual_batch_rescue` → IF9;
+   `stock_shortage` → IF10); missing branch payloads are `blocked_missing_data` (actual-batch/stock data
+   NEVER inferred), unknown contexts `not_supported`. `src/features/optimization/branchRecalculationPreview.ts`
+   attempts exact numbers ONLY where they verify: IF9 add-only rescues run the REAL solver in its
+   `actual_batch` (add-only) context, focused on the rescue metric, aiming at the regulator band via the
+   Slice-14 `targetBandOverride`, then verify through the Temperature Regulator rerun — a failed
+   verification exposes NO grams (honest engine finding: large-gap NPAC rescues are rejected by the
+   solver's own Golden-Middle verification because the per-batch solve model amplifies on the per-water
+   NPAC basis; these stay `not_attempted (solver_found_no_safe_add_only_correction)` — the engine refuses
+   to fake a safe rescue). IF10 scale-down is the proven `calculated` path: the deterministic limiting
+   ratio scales the recipe, the real engine re-runs it, and the regulator verdict must be preserved
+   (`scaleVerified`); substitution stays `not_attempted` until a verified-composition contract lands;
+   safety-blocked cases are `unsafe` and never reach a solver. DEV page
+   `/dev/branch-recalculation-preview` (8 fixtures, render-only, zero click handlers), security-tested,
+   excluded from the prod bundle. Docs: [spine/BRANCH_RECALCULATION_PREVIEW.md](spine/BRANCH_RECALCULATION_PREVIEW.md).
+   **Next:** accepted-correction live write (after owner approval), production branch UI for IF9/IF10
+   (paid-gated), or exact-solver expansion (multi-step add-only rescue; verified-composition substitutes).
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

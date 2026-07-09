@@ -13,6 +13,7 @@ import { SpineStatusPage } from '@/pages/dev/SpineStatusPage';
 import { ProductIntelligencePreviewPage } from '@/pages/dev/ProductIntelligencePreviewPage';
 import { PiCalculatedActivationPreviewPage } from '@/pages/dev/PiCalculatedActivationPreviewPage';
 import { OptimizationPreviewPage } from '@/pages/dev/OptimizationPreviewPage';
+import { BranchRecalculationPreviewPage } from '@/pages/dev/BranchRecalculationPreviewPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
@@ -68,6 +69,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/product-intelligence-preview" element={<ProductIntelligencePreviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/pi-calculated-activation-preview" element={<PiCalculatedActivationPreviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/optimization-preview" element={<OptimizationPreviewPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/branch-recalculation-preview" element={<BranchRecalculationPreviewPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

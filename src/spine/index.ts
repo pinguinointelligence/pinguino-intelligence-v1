@@ -19,3 +19,4 @@ export * from './optimizationFlowRouter';
 export * from './optimizationRerunPreview';
 export * from './batchRescueRouter';
 export * from './stockShortageRouter';
+export * from './integrationFlowDispatch';

@@ -90,11 +90,15 @@ applies to it.
 
 ## 6. What remains before production UI
 
-1. Exact add-only gram solve for the chosen lever (engine solver + rerun verification, honoring
-   machine capacity and the §17 user decision).
-2. Integration Flow wiring: `actual_grams !== null` → `context = actual_batch` → IF9 branch
-   (today the router is standalone).
+1. ~~Exact add-only gram solve~~ — **Slice 19** attempts it through the real solver
+   (`actual_batch` add-only context + regulator-band override) with rerun verification; grams appear
+   only when verified. Large-gap NPAC rescues are honestly rejected by the solver's Golden-Middle
+   verification (see [BRANCH_RECALCULATION_PREVIEW.md](BRANCH_RECALCULATION_PREVIEW.md)); multi-step
+   solving remains future work.
+2. ~~Integration Flow wiring~~ — **Slice 19** adds `dispatchIntegrationFlow`
+   (`actual_batch_rescue` context → IF9); the `actual_grams !== null` auto-detection into that
+   context is UI wiring, still pending.
 3. Studio UI (Pro-gated via `canUseActualBatchRescue`), including the §17 five-option
    confirmation flow for volume increases.
-4. Optional `/dev/batch-rescue-preview` fixtures page (skipped in this slice deliberately).
-5. Stock-shortage branch IF10 (separate slice).
+4. DEV fixtures page — landed in Slice 19 as `/dev/branch-recalculation-preview` (shared with IF10).
+5. ~~Stock-shortage branch IF10~~ — landed (Slice 18).
