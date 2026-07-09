@@ -35,10 +35,12 @@ describe('BranchRecalculationPreviewPage — pure preview, no persistence', () =
     expect(/from\s+['"]@\/engine/.test(PAGE)).toBe(false); // page never touches the engine itself
   });
 
-  it('shows the Slice 20 single-shot vs multi-step fields', () => {
+  it('shows the Slice 20/23 single-shot vs multi-step vs multi-lever fields', () => {
     expect(PAGE.includes('singleShotReason')).toBe(true);
     expect(PAGE.includes('multiStep')).toBe(true);
     expect(/multi-step:/.test(PAGE)).toBe(true);
+    expect(PAGE.includes('multiLever')).toBe(true);
+    expect(/multi-lever:/.test(PAGE)).toBe(true);
   });
 
   it('no DB client / service / Mapper / inventory / raw write verbs', () => {

@@ -70,6 +70,19 @@ export const BRANCH_RECALCULATION_SCENARIOS: readonly BranchRecalculationScenari
     actualRecipe: rescueRecipeAtMinus12(),
   },
   {
+    id: 'rescue-too-hard-11',
+    label: 'IF9 · Standard Gelato −11 · too hard → single-shot lands but OVERSHOOTS band → honest partial + lever attempt',
+    kind: 'batch_rescue',
+    rescueIntent: {
+      productProfile: 'standard_gelato',
+      intendedServingTemperatureC: -11,
+      batchSizeG: 1000,
+      observation: { problem: 'too_hard' },
+      constraints: { ...baseConstraints },
+    },
+    actualRecipe: gelatoRecipe(),
+  },
+  {
     id: 'rescue-frozen-no-reprocess',
     label: 'IF9 · frozen batch, reprocessing unavailable → no fake grams',
     kind: 'batch_rescue',

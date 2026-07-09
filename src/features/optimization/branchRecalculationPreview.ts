@@ -51,6 +51,7 @@ import {
   type StockShortageIntent,
   type StockShortageResult,
 } from '@/spine';
+import { solveBatchRescueMultiLever, type MultiLeverRescueResult } from './batchRescueMultiLeverSolver';
 import { solveBatchRescueSteps, type MultiStepRescueResult } from './batchRescueStepSolver';
 import { studioIntentFromRecipe } from './optimizationPreviewRunner';
 import { regulatorTargetOverride } from './solverTargetInjection';
@@ -101,6 +102,8 @@ export interface BranchRecalculationPreview {
   singleShotReason: string | null;
   /** IF9: the multi-step add-only walk (Slice 20) — null when not attempted. */
   multiStep: MultiStepRescueResult | null;
+  /** IF9: the multi-lever residual-gate walk (Slice 23) — null when not attempted. */
+  multiLever: MultiLeverRescueResult | null;
   /** IF10: the verified-substitute split (Slice 22) — null when not attempted. */
   substitution: {
     lineId: string;
@@ -193,6 +196,7 @@ export function previewBatchRescueRecalculation(
     scaleVerified: null,
     singleShotReason: null,
     multiStep: null,
+    multiLever: null,
     substitution: null,
     warnings,
     trace: emptyTrace(),
@@ -316,6 +320,50 @@ export function previewBatchRescueRecalculation(
         rerun: multi.finalRerun,
       });
     }
+    // Slice 23: a PARTIAL single-lever walk hands its best snapshot to the
+    // multi-lever residual-gate search — every candidate engine+regulator
+    // verified; the single-lever outcome stands if nothing further verifies.
+    if (multi.status === 'partial_improvement' && multi.finalRecipe) {
+      const lever = solveBatchRescueMultiLever({
+        recipe: multi.finalRecipe,
+        overallBeforeMetrics: multi.beforeMetrics,
+        intent,
+        overrideBands: override.bands,
+      });
+      warnings.push(...lever.warnings);
+      if (lever.steps.length > 0 && (lever.status === 'calculated' || lever.status === 'partial_improvement')) {
+        return done(
+          lever.status,
+          lever.status === 'calculated'
+            ? 'multi_lever_verified_all_gates'
+            : 'multi_lever_partial_residual_gates_remain',
+          {
+            trace,
+            singleShotReason,
+            multiStep: multi,
+            multiLever: lever,
+            exactActions: [...multi.cumulativeActions, ...lever.cumulativeActions],
+            proposedRecipeSnapshot: lever.finalRecipe,
+            beforeMetrics: multi.beforeMetrics,
+            afterMetrics: lever.afterMetrics,
+            rerun: lever.finalRerun,
+          },
+        );
+      }
+      // Nothing further verified — the single-lever partial result stands;
+      // the lever attempt stays attached for honest inspection.
+      return done('partial_improvement', 'multi_step_partial_residual_gates_remain', {
+        trace,
+        singleShotReason,
+        multiStep: multi,
+        multiLever: lever,
+        exactActions: multi.cumulativeActions,
+        proposedRecipeSnapshot: multi.finalRecipe,
+        beforeMetrics: multi.beforeMetrics,
+        afterMetrics: multi.afterMetrics,
+        rerun: multi.finalRerun,
+      });
+    }
     return done(
       multi.status,
       multi.status === 'calculated' ? 'multi_step_verified' : 'multi_step_partial_residual_gates_remain',
@@ -355,8 +403,60 @@ export function previewBatchRescueRecalculation(
     });
   }
 
+  const singleShotActions = applied.actions.map((a) => ({ type: a.type, ingredient: a.ingredient_name, grams: a.grams }));
+
+  // Unified `calculated` semantics (Slice 23): the targeted metric must end
+  // INSIDE its true regulator band. A verified-but-out-of-band single shot
+  // (e.g. the per-water NPAC overshoot) is honest PARTIAL improvement and
+  // cascades into the multi-lever residual search.
+  const singleShotTrueBand = override.active ? override.bands[engineMetric] : undefined;
+  const singleShotKey = ENGINE_METRIC_TO_METRICS_KEY[engineMetric];
+  const afterValue = singleShotTrueBand && singleShotKey ? afterMetrics[singleShotKey] : undefined;
+  const targetInBand =
+    !singleShotTrueBand ||
+    (typeof afterValue === 'number' &&
+      afterValue >= singleShotTrueBand.min &&
+      afterValue <= singleShotTrueBand.max);
+
+  if (!targetInBand) {
+    const lever = solveBatchRescueMultiLever({
+      recipe: applied.newInput,
+      overallBeforeMetrics: beforeMetrics,
+      intent,
+      overrideBands: override.bands,
+    });
+    warnings.push(...lever.warnings);
+    if (lever.steps.length > 0 && (lever.status === 'calculated' || lever.status === 'partial_improvement')) {
+      return done(
+        lever.status,
+        lever.status === 'calculated'
+          ? 'multi_lever_verified_all_gates'
+          : 'multi_lever_partial_residual_gates_remain',
+        {
+          trace,
+          multiLever: lever,
+          exactActions: [...singleShotActions, ...lever.cumulativeActions],
+          proposedRecipeSnapshot: lever.finalRecipe,
+          beforeMetrics,
+          afterMetrics: lever.afterMetrics,
+          rerun: lever.finalRerun,
+        },
+      );
+    }
+    warnings.push('not_fully_rescued_residual_gates_remain');
+    return done('partial_improvement', 'single_shot_partial_residual_gates_remain', {
+      trace,
+      multiLever: lever,
+      exactActions: singleShotActions,
+      proposedRecipeSnapshot: applied.newInput,
+      beforeMetrics,
+      afterMetrics,
+      rerun,
+    });
+  }
+
   return done('calculated', null, {
-    exactActions: applied.actions.map((a) => ({ type: a.type, ingredient: a.ingredient_name, grams: a.grams })),
+    exactActions: singleShotActions,
     proposedRecipeSnapshot: applied.newInput,
     beforeMetrics,
     afterMetrics,
@@ -399,6 +499,7 @@ export function previewStockShortageRecalculation(
     scaleVerified: null,
     singleShotReason: null,
     multiStep: null,
+    multiLever: null,
     substitution: null,
     warnings,
     trace: emptyTrace(),
@@ -547,6 +648,7 @@ export function previewVerifiedSubstituteRecalculation(
     scaleVerified: null,
     singleShotReason: null,
     multiStep: null,
+    multiLever: null,
     substitution: null,
     warnings,
     trace: emptyTrace(),

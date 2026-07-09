@@ -96,8 +96,12 @@ applies to it.
    single-shot cases: smallest-verified-fraction stepping toward the regulator band, every step
    regulator-verified, direction-guarded, bounded — `calculated` / `partial_improvement` /
    `verification_failed`, never forced (see
-   [BRANCH_RECALCULATION_PREVIEW.md](BRANCH_RECALCULATION_PREVIEW.md)). Multi-LEVER stepping remains
-   future work.
+   [BRANCH_RECALCULATION_PREVIEW.md](BRANCH_RECALCULATION_PREVIEW.md)). **Slice 23** adds the
+   MULTI-LEVER residual-gate walk on top: after a partial outcome, the remaining failing hard gates
+   are worked across lever families with best-verified-candidate selection — measured full two-lever
+   rescue on compatible gates (Dextrose then Inulin → all gates pass, regulator `optimized`), honest
+   stops where the NPAC per-batch↔per-water solve-model boundary bites. `calculated` now ALWAYS
+   means the regulator accepts.
 2. ~~Integration Flow wiring~~ — **Slice 19** adds `dispatchIntegrationFlow`
    (`actual_batch_rescue` context → IF9); the `actual_grams !== null` auto-detection into that
    context is UI wiring, still pending.

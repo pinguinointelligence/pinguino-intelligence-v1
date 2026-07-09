@@ -141,6 +141,13 @@ export function BranchWorkflowPreviewPanel({
               stop {preview.multiStep.stopReason}
             </div>
           ) : null}
+          {preview.multiLever ? (
+            <div>
+              multi-lever: {preview.multiLever.status} · steps {preview.multiLever.steps.length}/
+              {preview.multiLever.maxSteps} · stop {preview.multiLever.stopReason}
+              {preview.multiLever.residualGates.length ? ` · residual ${preview.multiLever.residualGates.join(',')}` : ''}
+            </div>
+          ) : null}
           {preview.rerun ? <div>rerun: {preview.rerun.before.status} → {preview.rerun.after.status} · {preview.rerun.decision}</div> : null}
           {preview.scaleVerified !== null ? <div>scaleVerified: {String(preview.scaleVerified)}</div> : null}
         </div>

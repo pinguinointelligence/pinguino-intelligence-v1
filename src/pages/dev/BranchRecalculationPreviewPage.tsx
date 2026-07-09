@@ -73,6 +73,28 @@ function ScenarioCard({ scenario }: { scenario: BranchRecalculationScenario }) {
             {st.regulatorDecision} · {st.actions.map((a) => `${a.type} ${a.ingredient} ${a.grams.toFixed(1)}g`).join(', ')}
           </div>
         ))}
+        {r.multiLever ? (
+          <div
+            className={
+              r.multiLever.status === 'calculated'
+                ? 'text-emerald-300/80'
+                : r.multiLever.status === 'partial_improvement'
+                  ? 'text-amber-300/80'
+                  : 'text-rose-300/80'
+            }
+          >
+            multi-lever: {r.multiLever.status} · steps {r.multiLever.steps.length}/{r.multiLever.maxSteps} · stop:{' '}
+            {r.multiLever.stopReason}
+            {r.multiLever.residualGates.length ? ` · residual: ${r.multiLever.residualGates.join(', ')}` : ''}
+          </div>
+        ) : null}
+        {r.multiLever?.steps.map((st) => (
+          <div key={`lever-${st.index}`} className="text-ivory/50">
+            lever {st.index + 1} [{st.targetGate}] (f={st.fraction}, {st.bandStyle}): {st.metricValueBefore.toFixed(1)} →{' '}
+            {st.metricValueAfter.toFixed(1)} · fails {st.hardFailuresBefore}→{st.hardFailuresAfter} ·{' '}
+            {st.actions.map((a) => `${a.type} ${a.ingredient} ${a.grams.toFixed(1)}g`).join(', ')}
+          </div>
+        ))}
         {r.exactActions.length > 0 ? (
           <div className="text-sky-300/80">
             verified add-only: {r.exactActions.map((a) => `${a.type} ${a.ingredient} ${a.grams.toFixed(1)}g`).join(', ')}

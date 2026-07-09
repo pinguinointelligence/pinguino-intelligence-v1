@@ -72,9 +72,40 @@ overall rerun failed — NO grams exposed). The single-shot reason stays visible
 
 **Measured outcome on the −12 too-hard fixture:** single-shot rejected → the walk verifies ONE
 25%-fraction step (`add Sucrose 74.4 g`, NPAC 25.33 → 35.54, per-step and overall regulator decision
-`tradeoff`), then stops honestly (`no_improving_step`) → `partial_improvement`. The remaining gap to
-[42,50] stays direction-only — real gelato batches this far out of band genuinely need more than one
-lever.
+`tradeoff`), then stops honestly (`no_improving_step`) → `partial_improvement`.
+
+### IF9 multi-lever residual-gate walk (Slice 23 — `batchRescueMultiLeverSolver.ts`)
+
+When the single-lever walk (or a verified single shot) ends PARTIAL, the multi-lever search takes the
+best snapshot and works the REMAINING failing hard gates across lever families: per iteration it
+reads the true regulator evaluation's residual gates (npac/pod/fat/total_solids/water/lactose/
+lactose_sanding — ice_fraction is deliberately excluded: the engine solves it via the NPAC proxy),
+generates add-only candidates per gate over fractions {0.125 → 1.0} in two band constructions
+(centered intermediate + the plain true-band aim retried from each new state), verifies EVERY
+candidate outside the solver against the true regulator (improvement, no new/worsened gate — the
+Golden-Middle stop), and takes the best verified candidate deterministically (fewer hard failures →
+larger target-distance gain → fewer grams). Stops: `target_reached` / `no_improving_candidate` /
+`diminishing_returns` / `max_steps` (6) / `max_additions_reached` (additive burden cap: 50% of the
+entry batch mass). **Unified `calculated` semantics** (applied to the single shot too): `calculated`
+now ALWAYS means the regulator ACCEPTS — a verified solve whose target overshoots its band (the −11
+per-water case) is honest `partial_improvement` and cascades into the multi-lever search.
+
+**Measured outcomes (all engine-decided, test-pinned):**
+- **Full two-lever rescue:** a sorbet diluted +180 g water fails npac + total_solids + water together
+  (compatible gates). The walk verifies `add Dextrose ~36 g` (npac, fails 3→2) then
+  `add Inulin ~80 g` (solids+water, fails 2→0) → **`calculated` · `target_reached` · overall rerun
+  `optimized`** — a genuine multi-lever, fully verified rescue.
+- **−12 too-hard:** the lever search finds `no_improving_candidate` (the per-batch↔per-water NPAC
+  model mismatch defeats every npac candidate — small aims produce no violation, larger aims
+  overshoot) — the single-lever partial stands, the attempt attached for inspection.
+- **−11 too-hard:** the single shot verifies `add Dextrose 92.6 g` but NPAC lands at 47.08, ABOVE
+  [33,43] — now honest `partial_improvement (single_shot_partial_residual_gates_remain)` instead of
+  the previous looser `calculated`; the lever search stops honestly (downward npac candidates
+  overshoot below band; ice is not solver-addressable).
+
+The npac dead zone is a characterized ENGINE boundary (the solver's per-batch NPAC model vs the
+per-water metric): closing it needs an engine-level solve-model change, deliberately out of scope
+for preview slices.
 
 ### IF10 (`previewStockShortageRecalculation`)
 - **`scale_down_possible` → `calculated`** (the proven exact path): uniform scaling by the limiting

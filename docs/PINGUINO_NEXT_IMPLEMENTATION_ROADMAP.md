@@ -276,6 +276,29 @@ changes; no UI dependency yet.
    redaction hides all substitute detail; Pro sees the split + provenance + verdict. No spine change.
    **Next:** multi-LEVER IF9 stepping, the accepted-correction live write after owner approval, or (later)
    inventory integration + the production reference substitute catalog.
+   **[landed — Phase C Slice 23]** the IF9 MULTI-LEVER rescue expansion
+   (`src/features/optimization/batchRescueMultiLeverSolver.ts`): after ANY partial outcome (the Slice-20
+   single-lever walk or a verified-but-overshooting single shot), the walk works the REMAINING failing hard
+   gates across lever families — per iteration it reads the true regulator evaluation's residual gates,
+   generates add-only candidates per gate over fractions {0.125 → 1.0} in two band constructions (centered
+   intermediate + the plain true-band aim retried from each new state), verifies EVERY candidate outside the
+   solver against the true regulator (improvement with no new/worsened hard gate — the Golden-Middle stop),
+   and takes the best verified candidate deterministically (fewer hard failures → larger target-distance
+   gain → fewer added grams). Hard stops surfaced: target_reached / no_improving_candidate /
+   diminishing_returns / max_steps (6) / max_additions_reached (50% of the entry batch mass). UNIFIED
+   `calculated` semantics across all rescue stages: `calculated` now ALWAYS means the Temperature Regulator
+   ACCEPTS — the −11 single shot (Dextrose 92.6 g, npac lands 47.08 ABOVE [33,43]) is reclassified from the
+   looser Slice-19 `calculated` to honest `partial_improvement (single_shot_partial_residual_gates_remain)`
+   and cascades into the lever search. Measured, engine-decided, test-pinned outcomes: a diluted sorbet with
+   three COMPATIBLE failing gates (npac+solids+water) FULLY RESCUES in two levers — add Dextrose ~36 g
+   (fails 3→2) then add Inulin ~80 g (fails 2→0) → `calculated`, overall rerun `optimized`; the −12
+   too-hard npac dead zone honestly yields no_improving_candidate (small aims produce no violation, larger
+   aims overshoot on the per-water basis — a characterized ENGINE solve-model boundary; closing it needs an
+   engine-level change, out of preview scope). DEV page + panel trace show the lever sequence; grams remain
+   Pro-gated; nothing applies or persists. +9 solver tests, fixtures +rescue-too-hard-11.
+   **Next:** the accepted-correction live write after owner approval, branch apply/save after the
+   persistence design is approved, or (later) inventory integration + the production reference substitute
+   catalog; the NPAC solve-model fix is an owner-approved ENGINE slice if ever prioritized.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
