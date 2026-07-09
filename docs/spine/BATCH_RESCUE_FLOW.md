@@ -92,9 +92,12 @@ applies to it.
 
 1. ~~Exact add-only gram solve~~ — **Slice 19** attempts it through the real solver
    (`actual_batch` add-only context + regulator-band override) with rerun verification; grams appear
-   only when verified. Large-gap NPAC rescues are honestly rejected by the solver's Golden-Middle
-   verification (see [BRANCH_RECALCULATION_PREVIEW.md](BRANCH_RECALCULATION_PREVIEW.md)); multi-step
-   solving remains future work.
+   only when verified. **Slice 20** adds the multi-step add-only walk for the honestly-rejected
+   single-shot cases: smallest-verified-fraction stepping toward the regulator band, every step
+   regulator-verified, direction-guarded, bounded — `calculated` / `partial_improvement` /
+   `verification_failed`, never forced (see
+   [BRANCH_RECALCULATION_PREVIEW.md](BRANCH_RECALCULATION_PREVIEW.md)). Multi-LEVER stepping remains
+   future work.
 2. ~~Integration Flow wiring~~ — **Slice 19** adds `dispatchIntegrationFlow`
    (`actual_batch_rescue` context → IF9); the `actual_grams !== null` auto-detection into that
    context is UI wiring, still pending.

@@ -215,6 +215,26 @@ changes; no UI dependency yet.
    excluded from the prod bundle. Docs: [spine/BRANCH_RECALCULATION_PREVIEW.md](spine/BRANCH_RECALCULATION_PREVIEW.md).
    **Next:** accepted-correction live write (after owner approval), production branch UI for IF9/IF10
    (paid-gated), or exact-solver expansion (multi-step add-only rescue; verified-composition substitutes).
+   **[landed — Phase C Slice 20]** the IF9 MULTI-STEP add-only rescue walk
+   (`src/features/optimization/batchRescueStepSolver.ts`), answering the Slice 19 finding without bypassing
+   the engine: when — and only when — the single-shot solve fails with
+   `solver_found_no_safe_add_only_correction`, intermediate target bands move a FRACTION of the remaining
+   gap toward the true regulator center (25% → 50% → 75% → 100%, the smallest verified fraction wins) and
+   are handed to the REAL solver via the Slice-14 `targetBandOverride`; every applied step is verified
+   against the TRUE regulator (`verifyOptimizationRerun`) and kept only on genuine improvement with no
+   new/worsened hard gate. Hard stops surfaced (`target_reached` / `no_improving_step` /
+   `diminishing_returns` / `max_steps` 4); add-only + positive grams structurally enforced; TWO direction
+   guards (a contradictory observation — e.g. "too soft" while NPAC measures below band — is refused BEFORE
+   any solve with `observation_contradicts_measured_direction` + a re-measure warning; the walk never moves
+   a metric opposite its declared direction). Final statuses: `calculated` only when the targeted metric
+   ENTERS its regulator band AND the overall before→after rerun proves improvement without regression;
+   `partial_improvement` exposes only regulator-verified steps (residual honestly warned);
+   `verification_failed` exposes NO grams. Measured on the −12 too-hard fixture: one verified step
+   (add Sucrose 74.4 g, npac 25.33 → 35.54, per-step + overall `tradeoff`), then an honest stop →
+   `partial_improvement`. The single-shot reason stays visible (`singleShotReason`); IF10 and the default
+   recipe flow are unchanged. DEV page shows single-shot vs multi-step per fixture.
+   **Next:** production IF9/IF10 branch UI (paid-gated), accepted-correction live write (after owner
+   approval), or multi-LEVER stepping + the IF10 verified-composition substitute contract.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

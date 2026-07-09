@@ -55,6 +55,21 @@ function ScenarioCard({ scenario }: { scenario: BranchRecalculationScenario }) {
           branch: {r.branch} · route decision: <span className="text-ivory/80">{r.routeDecision}</span>
         </div>
         {r.exactStatusReason ? <div className="text-ivory/40">reason: {r.exactStatusReason}</div> : null}
+        {r.singleShotReason ? (
+          <div className="text-ivory/40">single-shot: {r.singleShotReason}</div>
+        ) : null}
+        {r.multiStep ? (
+          <div className={r.multiStep.status === 'verification_failed' ? 'text-rose-300/80' : 'text-emerald-300/80'}>
+            multi-step: {r.multiStep.status} · steps {r.multiStep.steps.length}/{r.multiStep.maxSteps} · stop:{' '}
+            {r.multiStep.stopReason}
+          </div>
+        ) : null}
+        {r.multiStep?.steps.map((st) => (
+          <div key={st.index} className="text-ivory/50">
+            step {st.index + 1} (f={st.fraction}): {st.metricValueBefore.toFixed(1)} → {st.metricValueAfter.toFixed(1)} ·{' '}
+            {st.regulatorDecision} · {st.actions.map((a) => `${a.type} ${a.ingredient} ${a.grams.toFixed(1)}g`).join(', ')}
+          </div>
+        ))}
         {r.exactActions.length > 0 ? (
           <div className="text-sky-300/80">
             verified add-only: {r.exactActions.map((a) => `${a.type} ${a.ingredient} ${a.grams.toFixed(1)}g`).join(', ')}
@@ -100,9 +115,10 @@ export function BranchRecalculationPreviewPage() {
         <h1 className="mt-3 text-2xl font-light tracking-tight">IF9 / IF10 Branch Recalculation Preview</h1>
         <p className="mt-2 text-xs leading-relaxed text-ivory/50">
           Actual-batch rescue (IF9) and stock-shortage (IF10) decisions through the pure spine routers, with
-          the exact-recalculation preview on top: the REAL solver (add-only, regulator-target override) and
-          the REAL engine rerun decide what gets numbers — verification-gated, never forced. Preview only —
-          nothing is saved, no inventory or product DB is touched, no recipe is mutated.
+          the exact-recalculation preview on top: the REAL solver (add-only, regulator-target override,
+          multi-step walk when a single shot is rejected) and the REAL engine rerun decide what gets numbers
+          — verification-gated, never forced. Preview only — nothing is saved, nothing is applied, no
+          inventory or product DB is touched, no recipe is mutated.
         </p>
         <div className="mt-6 space-y-4">
           {BRANCH_RECALCULATION_SCENARIOS.map((s) => (

@@ -6,6 +6,9 @@ import {
   previewBatchRescueRecalculation,
   previewStockShortageRecalculation,
 } from './branchRecalculationPreview';
+import { solveBatchRescueSteps } from './batchRescueStepSolver';
+import { studioIntentFromRecipe } from './optimizationPreviewRunner';
+import { regulatorTargetOverride } from './solverTargetInjection';
 import {
   BRANCH_RECALCULATION_SCENARIOS,
   type BatchRescueScenario,
@@ -28,33 +31,47 @@ const shortage = (id: string) => {
 };
 
 describe('IF9 exact preview — add-only rescue solve, verified or nothing', () => {
-  it('feasible too-hard rescue ATTEMPTS the real solve and reports the engine verdict honestly', () => {
+  it('too-hard rescue: single-shot honestly rejected, multi-step walk produces a VERIFIED partial improvement', () => {
     const r = rescue('rescue-too-hard-12');
     expect(r.routeDecision).toBe('rescue_with_tradeoff');
-    // The REAL solver ran, aimed at the regulator −12 band (Slice 14 override)…
     expect(r.trace.solverInvoked).toBe(true);
     expect(r.trace.targetOverrideActive).toBe(true);
-    // …and its Golden-Middle verification REJECTED a single-shot addition for this
-    // large npac gap (the per-water NPAC moves further than the solver's per-batch
-    // model, overshooting the band). The honest outcome is no-grams — never a
-    // forced or fabricated correction.
-    expect(r.exactStatus).toBe('not_attempted');
-    expect(r.exactStatusReason).toBe('solver_found_no_safe_add_only_correction');
-    expect(r.exactActions).toEqual([]);
-    expect(r.proposedRecipeSnapshot).toBeNull();
+    // Slice 19 failure mode stays visible: the single-shot solve was rejected by
+    // the solver's own Golden-Middle verification (per-batch model overshoots on
+    // the per-water NPAC basis)…
+    expect(r.singleShotReason).toBe('solver_found_no_safe_add_only_correction');
+    // …and the Slice 20 multi-step walk found ONE verified add-only step, then
+    // honestly stopped when no further step verified — partial, never forced.
+    expect(r.exactStatus).toBe('partial_improvement');
+    expect(r.exactStatusReason).toBe('multi_step_partial_residual_gates_remain');
+    expect(r.multiStep).not.toBeNull();
+    const m = r.multiStep!;
+    expect(m.status).toBe('partial_improvement');
+    expect(m.stopReason).toBe('no_improving_step');
+    expect(m.steps).toHaveLength(1);
+    expect(m.steps[0]!.fraction).toBe(0.25); // the SMALLEST verified fraction
+    expect(m.steps[0]!.regulatorDecision).toBe('tradeoff');
+    expect(m.steps[0]!.actions).toEqual([
+      { type: 'add', ingredient: 'Sucrose', grams: expect.closeTo(74.4, 0) as unknown as number },
+    ]);
+    // the verified step moves npac toward the −12 regulator band [42,50]
+    expect(r.beforeMetrics!.npac).toBeCloseTo(25.33, 1);
+    expect(r.afterMetrics!.npac).toBeCloseTo(35.54, 1);
+    expect(r.rerun!.decision).toBe('tradeoff'); // overall verification, no regression
+    expect(r.warnings).toContain('not_fully_rescued_residual_gates_remain');
   });
 
-  it('exact grams appear ONLY on a calculated status, and are always add-only positives', () => {
+  it('exact grams appear ONLY on verified statuses (calculated / partial_improvement), always add-only positives', () => {
     for (const s of BRANCH_RECALCULATION_SCENARIOS.filter((x): x is BatchRescueScenario => x.kind === 'batch_rescue')) {
       const r = previewBatchRescueRecalculation({ rescueIntent: s.rescueIntent, actualRecipe: s.actualRecipe });
-      if (r.exactStatus !== 'calculated') {
+      if (r.exactStatus !== 'calculated' && r.exactStatus !== 'partial_improvement') {
         expect(r.exactActions).toEqual([]);
         expect(r.proposedRecipeSnapshot).toBeNull();
       } else {
         expect(r.exactActions.length).toBeGreaterThan(0);
         for (const a of r.exactActions) {
-          expect(a.type).toBe('add');
-          expect(a.grams).toBeGreaterThan(0);
+          expect(a.type).toBe('add'); // never reduce/remove
+          expect(a.grams).toBeGreaterThan(0); // never negative
         }
         expect(['optimized', 'tradeoff']).toContain(r.rerun!.decision);
       }
@@ -103,18 +120,83 @@ describe('IF9 exact preview — add-only rescue solve, verified or nothing', () 
     expect(r.exactActions).toEqual([]);
   });
 
-  it('a rescue whose rerun shows no genuine improvement exposes NO grams (verification_failed path)', () => {
-    // too_soft on a batch whose npac is BELOW the −12 band: the "decrease npac" solve
-    // has no npac_high violation → solver finds nothing → not_attempted (honest);
-    // this also proves no grams are fabricated when the observation contradicts the data.
+  it('an observation contradicting the measured direction is refused BEFORE any solve (no grams ever)', () => {
+    // too_soft reported, but the batch's npac is measured BELOW the −12 band
+    // (i.e. actually too hard): solving the metric would move it OPPOSITE to the
+    // declared rescue direction — nothing is solved, the operator re-measures.
     const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
     const r = previewBatchRescueRecalculation({
       rescueIntent: { ...s.rescueIntent, observation: { problem: 'too_soft' } },
       actualRecipe: s.actualRecipe,
     });
-    expect(['not_attempted', 'verification_failed']).toContain(r.exactStatus);
+    expect(r.exactStatus).toBe('not_attempted');
+    expect(r.exactStatusReason).toBe('observation_contradicts_measured_direction');
+    expect(r.trace.solverInvoked).toBe(false); // refused before the solver ran
+    expect(r.warnings).toContain('re_measure_batch_observation_vs_metrics_mismatch');
     expect(r.exactActions).toEqual([]);
     expect(r.proposedRecipeSnapshot).toBeNull();
+    expect(r.multiStep).toBeNull();
+  });
+
+  it('multi-step is attempted ONLY after an eligible single-shot failure (never on safety/physical blocks)', () => {
+    for (const id of ['rescue-food-safety', 'rescue-frozen-no-reprocess', 'rescue-icy', 'rescue-temp-mismatch']) {
+      const r = rescue(id);
+      expect(r.multiStep).toBeNull();
+      expect(r.singleShotReason).toBeNull();
+    }
+  });
+
+  it('multi-step honors an explicit step budget and reports partial honestly (maxSteps: 1)', () => {
+    const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
+    const override = regulatorTargetOverride('standard_gelato', -12);
+    const m = solveBatchRescueSteps({
+      recipe: s.actualRecipe,
+      intent: {
+        ...studioIntentFromRecipe(s.actualRecipe),
+        productProfile: 'standard_gelato',
+        servingTemperatureC: -12,
+      },
+      engineMetric: 'npac',
+      direction: 'increase',
+      metricsKey: 'npac',
+      trueBand: override.bands.npac!,
+      overrideBands: override.bands,
+      maxSteps: 1,
+    });
+    expect(m.steps.length).toBeLessThanOrEqual(1);
+    expect(m.status).toBe('partial_improvement');
+    expect(m.finalRerun!.decision).toBe('tradeoff');
+  });
+
+  it('the multi-step walk refuses a direction-mismatched request (defense in depth)', () => {
+    const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
+    const override = regulatorTargetOverride('standard_gelato', -12);
+    const m = solveBatchRescueSteps({
+      recipe: s.actualRecipe, // npac BELOW band — needs increase
+      intent: {
+        ...studioIntentFromRecipe(s.actualRecipe),
+        productProfile: 'standard_gelato',
+        servingTemperatureC: -12,
+      },
+      engineMetric: 'npac',
+      direction: 'decrease', // contradicts the data
+      metricsKey: 'npac',
+      trueBand: override.bands.npac!,
+      overrideBands: override.bands,
+    });
+    expect(m.status).toBe('verification_failed');
+    expect(m.steps).toEqual([]);
+    expect(m.cumulativeActions).toEqual([]);
+    expect(m.warnings).toContain('direction_mismatch_walk_refused');
+  });
+
+  it('cumulative additions equal the exact sum of the verified steps', () => {
+    const r = rescue('rescue-too-hard-12');
+    const m = r.multiStep!;
+    const stepSum = m.steps.reduce((sum, st) => sum + st.actions.reduce((x, a) => x + a.grams, 0), 0);
+    const cumulativeSum = m.cumulativeActions.reduce((x, a) => x + a.grams, 0);
+    expect(cumulativeSum).toBeCloseTo(stepSum, 9);
+    expect(r.exactActions.reduce((x, a) => x + a.grams, 0)).toBeCloseTo(stepSum, 9);
   });
 
   it('never mutates the actual recipe or the rescue intent', () => {
@@ -246,8 +328,8 @@ describe('IF10 exact preview — deterministic scale-down, verified or nothing',
 
 describe('branchRecalculationPreview — boundary (preview only, no writes anywhere)', () => {
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-  const sources = ['branchRecalculationPreview.ts', 'branchRecalculationFixtures.ts'].map((f) =>
-    strip(readFileSync(join(HERE, f), 'utf8')),
+  const sources = ['branchRecalculationPreview.ts', 'branchRecalculationFixtures.ts', 'batchRescueStepSolver.ts'].map(
+    (f) => strip(readFileSync(join(HERE, f), 'utf8')),
   );
 
   it('engine only via the public barrel; no DB / Mapper / services / inventory', () => {

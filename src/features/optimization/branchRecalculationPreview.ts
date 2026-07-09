@@ -50,12 +50,14 @@ import {
   type StockShortageIntent,
   type StockShortageResult,
 } from '@/spine';
+import { solveBatchRescueSteps, type MultiStepRescueResult } from './batchRescueStepSolver';
 import { studioIntentFromRecipe } from './optimizationPreviewRunner';
 import { regulatorTargetOverride } from './solverTargetInjection';
 
 export type ExactPreviewStatus =
   | 'not_attempted'
   | 'calculated'
+  | 'partial_improvement'
   | 'blocked_missing_data'
   | 'unsafe'
   | 'verification_failed'
@@ -89,6 +91,10 @@ export interface BranchRecalculationPreview {
   rerun: RerunVerification | null;
   /** IF10: scaled metrics matched and the regulator verdict was preserved. */
   scaleVerified: boolean | null;
+  /** IF9: the single-shot solver outcome, kept honest even when multi-step upgrades it. */
+  singleShotReason: string | null;
+  /** IF9: the multi-step add-only walk (Slice 20) — null when not attempted. */
+  multiStep: MultiStepRescueResult | null;
 
   warnings: string[];
   trace: {
@@ -114,6 +120,16 @@ const GATE_TO_ENGINE_METRIC: Readonly<Record<string, TargetMetric>> = {
 
 /** The one requiredMeasurement that IS this preview (the engine rerun). */
 const RERUN_MEASUREMENT = 'rerun_base_engine_with_planned_addition_before_adding';
+
+/** Engine metric → the adapted-metrics key carrying its value (multi-step walk). */
+const ENGINE_METRIC_TO_METRICS_KEY: Partial<Record<TargetMetric, keyof BaseEngineMetrics>> = {
+  npac: 'npac',
+  pod: 'pod',
+  fat: 'fat',
+  total_solids: 'solids',
+  water: 'water',
+  lactose_sandiness_risk: 'lactoseSanding',
+};
 
 /** IF10 substitution block reasons that make the shortage UNSAFE (vs merely infeasible). */
 const SAFETY_BLOCK_REASONS: ReadonlySet<string> = new Set([
@@ -156,6 +172,8 @@ export function previewBatchRescueRecalculation(
     afterMetrics: null,
     rerun: null,
     scaleVerified: null,
+    singleShotReason: null,
+    multiStep: null,
     warnings,
     trace: emptyTrace(),
   };
@@ -204,6 +222,34 @@ export function previewBatchRescueRecalculation(
     targetOverrideActive: override.active,
     injectedMetrics: override.injectedMetrics as readonly string[],
   };
+  // The verification intent (regulator profile × INTENDED serving temperature).
+  const intent = {
+    ...studioIntentFromRecipe(input.actualRecipe),
+    productProfile: input.rescueIntent.productProfile as ProductProfile,
+    servingTemperatureC: input.rescueIntent.intendedServingTemperatureC as ServingTemperatureC,
+  };
+
+  // Direction cross-check (Slice 20): the OBSERVED problem's correction direction
+  // must match what the measured value actually needs against the regulator band.
+  // A "too soft" report on a batch whose NPAC is measured BELOW band (i.e. too
+  // hard) is contradictory — solving the metric would move it OPPOSITE to the
+  // rescue action. Nothing is solved; the operator is told to re-measure.
+  const trueBand = override.active ? override.bands[engineMetric] : undefined;
+  const metricsKey = ENGINE_METRIC_TO_METRICS_KEY[engineMetric];
+  if (trueBand && metricsKey) {
+    const measured = adaptBaseEngineResult(calculateRecipe(input.actualRecipe)).metrics[metricsKey];
+    if (typeof measured === 'number' && Number.isFinite(measured)) {
+      const neededDirection =
+        measured < trueBand.min ? 'increase' : measured > trueBand.max ? 'decrease' : null;
+      if (neededDirection !== null && neededDirection !== action.direction) {
+        warnings.push('re_measure_batch_observation_vs_metrics_mismatch');
+        return done('not_attempted', 'observation_contradicts_measured_direction', {
+          trace: { ...trace, solverInvoked: false },
+        });
+      }
+    }
+  }
+
   const proposed = proposeAutoFix({
     input: input.actualRecipe,
     context: 'actual_batch',
@@ -219,7 +265,52 @@ export function previewBatchRescueRecalculation(
     (p): p is CorrectionProposal =>
       'actions' in p && p.actions.length > 0 && p.actions.every((a) => a.type === 'add'),
   );
-  if (!proposal) return done('not_attempted', 'solver_found_no_safe_add_only_correction', { trace });
+  if (!proposal) {
+    // Slice 20: the single-shot solve was honestly rejected (typically the
+    // per-batch NPAC model overshooting on the per-water basis) — attempt the
+    // multi-step add-only walk, keeping the single-shot reason visible.
+    const singleShotReason = 'solver_found_no_safe_add_only_correction';
+    const trueBand = override.active ? override.bands[engineMetric] : undefined;
+    const metricsKey = ENGINE_METRIC_TO_METRICS_KEY[engineMetric];
+    if (!trueBand || !metricsKey) {
+      return done('not_attempted', singleShotReason, { trace, singleShotReason });
+    }
+    const multi = solveBatchRescueSteps({
+      recipe: input.actualRecipe,
+      intent,
+      engineMetric,
+      direction: action.direction,
+      metricsKey,
+      trueBand,
+      overrideBands: override.bands,
+    });
+    warnings.push(...multi.warnings);
+    if (multi.status === 'verification_failed') {
+      // No grams are exposed — the honest single-shot reason stays alongside.
+      return done('verification_failed', multi.statusReason ?? 'no_step_candidate_verified', {
+        trace,
+        singleShotReason,
+        multiStep: multi,
+        beforeMetrics: multi.beforeMetrics,
+        afterMetrics: multi.afterMetrics,
+        rerun: multi.finalRerun,
+      });
+    }
+    return done(
+      multi.status,
+      multi.status === 'calculated' ? 'multi_step_verified' : 'multi_step_partial_residual_gates_remain',
+      {
+        trace,
+        singleShotReason,
+        multiStep: multi,
+        exactActions: multi.cumulativeActions,
+        proposedRecipeSnapshot: multi.finalRecipe,
+        beforeMetrics: multi.beforeMetrics,
+        afterMetrics: multi.afterMetrics,
+        rerun: multi.finalRerun,
+      },
+    );
+  }
 
   const applied = applyAutoFix({ input: input.actualRecipe, proposal, context: 'actual_batch' });
   if (!applied.success) return done('not_attempted', `apply_failed:${applied.reason}`, { trace });
@@ -230,11 +321,6 @@ export function previewBatchRescueRecalculation(
   const afterMetrics = adaptBaseEngineResult(after).metrics;
 
   // Verify through the Temperature Regulator at the INTENDED serving temperature.
-  const intent = {
-    ...studioIntentFromRecipe(input.actualRecipe),
-    productProfile: input.rescueIntent.productProfile as ProductProfile,
-    servingTemperatureC: input.rescueIntent.intendedServingTemperatureC as ServingTemperatureC,
-  };
   const rerun = verifyOptimizationRerun(intent, beforeMetrics, afterMetrics);
 
   if (rerun.decision === 'impossible') {
@@ -291,6 +377,8 @@ export function previewStockShortageRecalculation(
     afterMetrics: null,
     rerun: null,
     scaleVerified: null,
+    singleShotReason: null,
+    multiStep: null,
     warnings,
     trace: emptyTrace(),
   };
