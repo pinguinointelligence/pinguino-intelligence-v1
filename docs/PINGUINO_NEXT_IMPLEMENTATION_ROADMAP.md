@@ -153,6 +153,23 @@ changes; no UI dependency yet.
    `supabase/migrations/0012_accepted_corrections.sql`, apply, add `services/acceptedCorrections.ts` using the
    draft contract as its input gate, wire the Pro-only save button, verify RLS negatively). Alternatively (b)
    above, then actual-batch-rescue / stock-shortage (IF9/IF10).
+   **[landed — Phase C Slice 17]** the Actual Batch Rescue DECISION branch (IF9) as a pure, unwired spine
+   module: `src/spine/batchRescueRouter.ts` (`routeBatchRescue`) — observed batch problem + physical state →
+   one of rescue_possible / rescue_with_tradeoff / reprocess_required / discard_or_rebatch /
+   blocked_missing_data / not_supported. Locked-doc grounding: Integration_Flow.md §16 (actual-batch is
+   ADD-ONLY — every action is an addition, no reduce path exists) and §17 (the five-option user-decision
+   menu, offered on every feasible rescue). Food safety is checked FIRST and never overridden; a frozen
+   batch is never pretended correctable in place (reprocess_required, with the discard consequence warned
+   when reprocessing is unavailable); dilution problems (too_sweet/too_fatty) are liquid-only and never
+   "more sugar"; levers are profile-gated (sorbet/vegan never see dairy); unsupported profiles/problems are
+   reported, never remapped. Output is STRUCTURALLY gram-free (no gram field exists) — the exact add-only
+   gram solve is a later engine-verified step, surfaced as required next calculations. Optional
+   expected-metrics cross-check runs through the existing `evaluateTemperatureRegulator` (recipe-already-
+   out-of-band vs temperature-divergence warnings). +26 tests; docs in
+   [spine/BATCH_RESCUE_FLOW.md](spine/BATCH_RESCUE_FLOW.md). The DEV preview page was deliberately skipped.
+   **Next after this:** exact add-only gram solve + Integration Flow wiring (`actual_grams !== null` →
+   IF9) + Pro-gated Studio UI (`canUseActualBatchRescue`), or the stock-shortage branch IF10, or the
+   approved accepted-correction live write.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
