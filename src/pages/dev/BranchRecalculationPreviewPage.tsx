@@ -17,6 +17,7 @@ import {
 import {
   previewBatchRescueRecalculation,
   previewStockShortageRecalculation,
+  previewVerifiedSubstituteRecalculation,
   type BranchRecalculationPreview,
 } from '@/features/optimization/branchRecalculationPreview';
 
@@ -35,7 +36,9 @@ const fmt = (v: number | null | undefined): string =>
 const runScenario = (s: BranchRecalculationScenario): BranchRecalculationPreview =>
   s.kind === 'batch_rescue'
     ? previewBatchRescueRecalculation({ rescueIntent: s.rescueIntent, actualRecipe: s.actualRecipe })
-    : previewStockShortageRecalculation({ shortageIntent: s.shortageIntent, plannedRecipe: s.plannedRecipe });
+    : s.kind === 'verified_substitute'
+      ? previewVerifiedSubstituteRecalculation({ shortageIntent: s.shortageIntent, plannedRecipe: s.plannedRecipe, contract: s.contract() })
+      : previewStockShortageRecalculation({ shortageIntent: s.shortageIntent, plannedRecipe: s.plannedRecipe });
 
 function ScenarioCard({ scenario }: { scenario: BranchRecalculationScenario }) {
   const r = runScenario(scenario);
@@ -78,6 +81,13 @@ function ScenarioCard({ scenario }: { scenario: BranchRecalculationScenario }) {
         {r.scaleFactor !== null ? (
           <div className="text-sky-300/80">
             scale factor: ×{r.scaleFactor.toFixed(3)} · verified: {String(r.scaleVerified)}
+          </div>
+        ) : null}
+        {r.substitution ? (
+          <div className="text-sky-300/80">
+            substitute ({r.substitution.verification}): keep {r.substitution.originalIngredientName}{' '}
+            {r.substitution.availableOriginalG.toFixed(0)}g + {r.substitution.substituteName}{' '}
+            {r.substitution.substituteG.toFixed(0)}g · {r.substitution.verdict}
           </div>
         ) : null}
         {r.beforeMetrics && r.afterMetrics ? (

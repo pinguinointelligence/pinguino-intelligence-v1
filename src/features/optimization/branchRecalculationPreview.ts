@@ -32,6 +32,7 @@ import {
   calculateRecipe,
   proposeAutoFix,
   type CorrectionProposal,
+  type EngineIngredient,
   type RecipeInput,
   type TargetMetric,
 } from '@/engine';
@@ -53,6 +54,11 @@ import {
 import { solveBatchRescueSteps, type MultiStepRescueResult } from './batchRescueStepSolver';
 import { studioIntentFromRecipe } from './optimizationPreviewRunner';
 import { regulatorTargetOverride } from './solverTargetInjection';
+import {
+  substituteToShortageLine,
+  validateVerifiedSubstitute,
+  type VerifiedSubstituteContract,
+} from './verifiedSubstituteContract';
 
 export type ExactPreviewStatus =
   | 'not_attempted'
@@ -95,6 +101,19 @@ export interface BranchRecalculationPreview {
   singleShotReason: string | null;
   /** IF9: the multi-step add-only walk (Slice 20) — null when not attempted. */
   multiStep: MultiStepRescueResult | null;
+  /** IF10: the verified-substitute split (Slice 22) — null when not attempted. */
+  substitution: {
+    lineId: string;
+    originalIngredientName: string;
+    substituteName: string;
+    /** Grams of the ORIGINAL ingredient kept (its available stock). */
+    availableOriginalG: number;
+    /** Grams covered by the verified substitute (the shortfall). */
+    substituteG: number;
+    verification: string;
+    /** acceptable = regulator passes after the swap; tradeoff = no NEW failures but residuals remain. */
+    verdict: 'acceptable' | 'tradeoff';
+  } | null;
 
   warnings: string[];
   trace: {
@@ -174,6 +193,7 @@ export function previewBatchRescueRecalculation(
     scaleVerified: null,
     singleShotReason: null,
     multiStep: null,
+    substitution: null,
     warnings,
     trace: emptyTrace(),
   };
@@ -379,6 +399,7 @@ export function previewStockShortageRecalculation(
     scaleVerified: null,
     singleShotReason: null,
     multiStep: null,
+    substitution: null,
     warnings,
     trace: emptyTrace(),
   };
@@ -465,5 +486,219 @@ export function previewStockShortageRecalculation(
     beforeMetrics,
     afterMetrics,
     scaleVerified: true,
+  });
+}
+
+/* ------------------------------------------------------------------------ *
+ * IF10 — verified-substitute exact recalculation (Slice 22)                  *
+ * ------------------------------------------------------------------------ */
+
+export interface VerifiedSubstituteRecalculationInput {
+  shortageIntent: StockShortageIntent;
+  /** The PLANNED recipe (no actual grams) — never mutated. */
+  plannedRecipe: RecipeInput;
+  /** The verified-composition contract for the short line's substitute. */
+  contract: VerifiedSubstituteContract;
+  /** Cross-family substitution must be EXPLICITLY supported — default no. */
+  crossFamilyApproved?: boolean;
+}
+
+/** Contract block reasons that are SAFETY failures (headline: unsafe). */
+const CONTRACT_SAFETY_REASONS: ReadonlySet<string> = new Set([
+  'dairy_substitute_forbidden_for_profile',
+  'allergen_substitution_requires_explicit_approval',
+  'alcohol_substitution_requires_explicit_approval',
+  'sweetener_polyol_his_substitution_requires_supported_rule',
+]);
+/** Contract block reasons that are MISSING-DATA failures. */
+const CONTRACT_DATA_REASONS: ReadonlySet<string> = new Set([
+  'missing_or_invalid_composition',
+  'composition_water_solids_inconsistent',
+]);
+
+/**
+ * Recalculate a stock shortage with a VERIFIED substitute — the locked §18
+ * "replace part of the ingredient with a verified alternative" model: the
+ * available original grams stay, the substitute covers the shortfall, and the
+ * REAL engine + Temperature Regulator judge the swapped recipe. Numbers appear
+ * ONLY when the contract passes every gate AND the rerun shows no NEW hard-gate
+ * failure. Pure preview: the original recipe is never mutated, nothing is
+ * saved, no inventory exists here.
+ */
+export function previewVerifiedSubstituteRecalculation(
+  input: VerifiedSubstituteRecalculationInput,
+): BranchRecalculationPreview {
+  const { plannedRecipe, contract } = input;
+  const warnings: string[] = [];
+
+  const base: BranchRecalculationPreview = {
+    branch: 'stock_shortage',
+    routeDecision: 'unrouted',
+    batchRescue: null,
+    stockShortage: null,
+    exactStatus: 'not_attempted',
+    exactStatusReason: null,
+    exactActions: [],
+    scaleFactor: null,
+    proposedRecipeSnapshot: null,
+    beforeMetrics: null,
+    afterMetrics: null,
+    rerun: null,
+    scaleVerified: null,
+    singleShotReason: null,
+    multiStep: null,
+    substitution: null,
+    warnings,
+    trace: emptyTrace(),
+  };
+  const done = (status: ExactPreviewStatus, reason: string | null, extra: Partial<BranchRecalculationPreview> = {}) => ({
+    ...base,
+    ...extra,
+    exactStatus: status,
+    exactStatusReason: reason,
+  });
+
+  // 1. The contract must pass EVERY gate before anything is computed.
+  const validation = validateVerifiedSubstitute(contract, {
+    productProfile: input.shortageIntent.productProfile,
+    constraints: input.shortageIntent.constraints,
+    crossFamilyApproved: input.crossFamilyApproved,
+  });
+  warnings.push(...validation.warnings);
+  if (!validation.valid) {
+    warnings.push(...validation.blockedReasons.map((r) => `substitute_blocked:${r}`));
+    if (validation.blockedReasons.some((r) => CONTRACT_SAFETY_REASONS.has(r))) {
+      return done('unsafe', 'substitute_safety_gate_failed');
+    }
+    if (validation.blockedReasons.some((r) => CONTRACT_DATA_REASONS.has(r))) {
+      return done('blocked_missing_data', 'substitute_composition_missing_or_invalid');
+    }
+    return done('not_supported', 'substitute_not_verified_or_not_allowed');
+  }
+
+  // 2. Re-route IF10 with the substitute derived FROM the validated contract —
+  // the spine router and this preview judge the SAME facts.
+  const shortages = input.shortageIntent.observation.shortages.map((line) =>
+    line.lineId === contract.lineId
+      ? { ...line, substitute: substituteToShortageLine(contract, validation) }
+      : line,
+  );
+  if (!shortages.some((l) => l.lineId === contract.lineId)) {
+    return done('blocked_missing_data', 'shortage_line_not_found_for_contract');
+  }
+  const route = routeStockShortage({
+    ...input.shortageIntent,
+    observation: { shortages },
+  });
+  const routed = { ...base, routeDecision: route.decision, stockShortage: route };
+  const doneRouted = (status: ExactPreviewStatus, reason: string | null, extra: Partial<BranchRecalculationPreview> = {}) => ({
+    ...routed,
+    ...extra,
+    exactStatus: status,
+    exactStatusReason: reason,
+  });
+  if (route.decision === 'blocked_missing_data') return doneRouted('blocked_missing_data', route.blockedReason);
+  if (route.decision === 'not_supported') return doneRouted('not_supported', route.blockedReason);
+  if (route.decision !== 'substitution_possible') {
+    return doneRouted('not_attempted', `route_decision_${route.decision}`);
+  }
+
+  // 3. Build the swapped recipe in an IN-MEMORY CLONE only.
+  if (plannedRecipe.items.some((i) => i.actual_grams !== null)) {
+    return doneRouted('not_attempted', 'actual_batch_present_use_batch_rescue');
+  }
+  const targetItem = plannedRecipe.items.find((i) => i.id === contract.lineId);
+  if (!targetItem) return doneRouted('blocked_missing_data', 'recipe_line_not_found_for_contract');
+  const shortageLine = shortages.find((l) => l.lineId === contract.lineId)!;
+  const availableOriginalG = Math.max(shortageLine.availableG ?? 0, 0);
+  const shortfallG = targetItem.planned_grams - availableOriginalG;
+  if (shortageLine.requiredG !== null && Math.abs(shortageLine.requiredG - targetItem.planned_grams) > 0.5) {
+    warnings.push('shortage_required_differs_from_recipe_line_recipe_grams_used');
+  }
+  if (!(shortfallG > 0)) return doneRouted('not_attempted', 'line_not_short');
+
+  const substituteIngredient: EngineIngredient = {
+    id: contract.substituteId,
+    name: contract.substituteName,
+    category: contract.engineCategory,
+    composition: { ...contract.composition },
+    pod_value: contract.podValue ?? null,
+    pac_value: contract.pacValue ?? null,
+    npac_value: null,
+    de_value: contract.deValue ?? null,
+    cost_per_kg: null,
+    confidence_score: 90,
+    source_type: 'manual',
+    is_verified: true,
+  };
+  const swappedItems = plannedRecipe.items.flatMap((item) => {
+    if (item.id !== contract.lineId) return [item];
+    const kept = availableOriginalG > 0 ? [{ ...item, planned_grams: availableOriginalG }] : [];
+    return [
+      ...kept,
+      {
+        id: `${contract.lineId}-substitute`,
+        ingredient: substituteIngredient,
+        planned_grams: shortfallG,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+    ];
+  });
+  const swapped: RecipeInput = { ...plannedRecipe, items: swappedItems };
+
+  // 4. REAL engine + regulator verification of the swap.
+  const beforeMetrics = adaptBaseEngineResult(calculateRecipe(plannedRecipe)).metrics;
+  const afterMetrics = adaptBaseEngineResult(calculateRecipe(swapped)).metrics;
+  const evalAt = (metrics: BaseEngineMetrics) =>
+    evaluateTemperatureRegulator({
+      productProfile: input.shortageIntent.productProfile,
+      servingTemperatureC: plannedRecipe.target_temperature_c,
+      metrics,
+      texturePreference: 'medium',
+    });
+  const evalBefore = evalAt(beforeMetrics);
+  const evalAfter = evalAt(afterMetrics);
+  if (!evalAfter.evaluated) {
+    warnings.push('substitute_verification_failed_no_snapshot_exposed');
+    return doneRouted('verification_failed', 'regulator_cannot_evaluate_swapped_recipe', {
+      beforeMetrics,
+      afterMetrics,
+    });
+  }
+  const beforeFailures = new Set(evalBefore.hardGateFailures);
+  const newFailures = evalAfter.hardGateFailures.filter((g) => !beforeFailures.has(g));
+  if (newFailures.length > 0) {
+    // The swap breaks hard gates the original passed — NO numbers are exposed.
+    warnings.push('substitute_verification_failed_no_snapshot_exposed');
+    warnings.push(...newFailures.map((g) => `substitution_breaks_hard_gate:${g}`));
+    return doneRouted('verification_failed', 'substitution_breaks_hard_gates', {
+      beforeMetrics,
+      afterMetrics,
+    });
+  }
+
+  const verdict: 'acceptable' | 'tradeoff' = evalAfter.acceptable ? 'acceptable' : 'tradeoff';
+  if (verdict === 'tradeoff') warnings.push('substitution_keeps_residual_gates_tradeoff');
+
+  return doneRouted('calculated', null, {
+    exactActions: [
+      ...(availableOriginalG > 0
+        ? [{ type: 'keep', ingredient: contract.originalIngredientName, grams: availableOriginalG }]
+        : []),
+      { type: 'substitute', ingredient: contract.substituteName, grams: shortfallG },
+    ],
+    proposedRecipeSnapshot: swapped,
+    beforeMetrics,
+    afterMetrics,
+    substitution: {
+      lineId: contract.lineId,
+      originalIngredientName: contract.originalIngredientName,
+      substituteName: contract.substituteName,
+      availableOriginalG,
+      substituteG: shortfallG,
+      verification: contract.provenance.verification,
+      verdict,
+    },
   });
 }

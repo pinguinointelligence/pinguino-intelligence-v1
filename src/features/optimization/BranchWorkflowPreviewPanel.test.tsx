@@ -7,12 +7,14 @@ import { SurfaceToneContext } from '@/components/ui/surface';
 import {
   previewBatchRescueRecalculation,
   previewStockShortageRecalculation,
+  previewVerifiedSubstituteRecalculation,
   type BranchRecalculationPreview,
 } from './branchRecalculationPreview';
 import {
   BRANCH_RECALCULATION_SCENARIOS,
   type BatchRescueScenario,
   type StockShortageScenario,
+  type VerifiedSubstituteScenario,
 } from './branchRecalculationFixtures';
 import { BranchWorkflowPreviewPanel } from './BranchWorkflowPreviewPanel';
 import { BranchWorkflowPreviews } from './BranchWorkflowPreviews';
@@ -31,6 +33,16 @@ const rescuePartial = (): BranchRecalculationPreview => {
 const shortageCalculated = (): BranchRecalculationPreview => {
   const s = scenario<StockShortageScenario>('shortage-scale-down');
   return previewStockShortageRecalculation({ shortageIntent: s.shortageIntent, plannedRecipe: s.plannedRecipe });
+};
+const substituteCalculated = (): BranchRecalculationPreview => {
+  const s = BRANCH_RECALCULATION_SCENARIOS.find(
+    (x) => x.id === 'shortage-verified-substitute',
+  )! as VerifiedSubstituteScenario;
+  return previewVerifiedSubstituteRecalculation({
+    shortageIntent: s.shortageIntent,
+    plannedRecipe: s.plannedRecipe,
+    contract: s.contract(),
+  });
 };
 const rescueBlocked = (): BranchRecalculationPreview => {
   const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
@@ -77,6 +89,22 @@ describe('BranchWorkflowPreviewPanel — redaction (Demo/Free vs Pro vs DEV)', (
     const t = visibleText(renderPanel(shortageCalculated(), pro));
     expect(t).toMatch(/verified scale-down: ×0\.720/);
     expect(t).toMatch(/composition percentages preserved/);
+  });
+
+  it('Demo/Free never see verified substitute detail (names, grams, verdict numbers)', () => {
+    const html = renderPanel(substituteCalculated(), demo);
+    expect(/raspberry/i.test(html)).toBe(false);
+    expect(html).not.toContain('360');
+    expect(html).not.toContain('240');
+    expect(visibleText(html)).toMatch(/available on Pro/);
+  });
+
+  it('Pro sees the verified substitute split with provenance and verdict', () => {
+    const t = visibleText(renderPanel(substituteCalculated(), pro));
+    expect(t).toMatch(/verified substitute \(verified reference\)/);
+    expect(t).toMatch(/keep Strawberry 240\.0g/);
+    expect(t).toMatch(/Raspberry puree 360\.0g/);
+    expect(t).toMatch(/hero ingredient substitution changes product identity/);
   });
 
   it('DEV shows the debug trace but STILL respects demo redaction', () => {
@@ -212,6 +240,16 @@ describe('BranchWorkflow UI — boundary + Studio wiring', () => {
       }
       expect(/saveRecipe|persistRecipe|applyAutoFix|writeInventory|updateStock/i.test(src)).toBe(false);
     }
+  });
+
+  it('Studio never allows ANY substitute input — the calibrated-catalog hint shows in every build', () => {
+    // No substitute select or composition entry exists in the Studio section at
+    // all (keeping the fixture module fully out of the production bundle); the
+    // verified-substitute exact preview is proven on the DEV fixtures page.
+    expect(sectionSrc.includes('substitutes can never be typed in by hand')).toBe(true);
+    expect(/composition\s*[:=]/.test(sectionSrc)).toBe(false); // no composition entry in the UI
+    expect(sectionSrc.includes('verifiedSubstituteFixtures')).toBe(false); // fixtures never imported here
+    expect(sectionSrc.includes('previewVerifiedSubstituteRecalculation')).toBe(false); // Studio never substitutes
   });
 
   it('the section computes ONLY through the preview modules — never the engine/solver directly', () => {

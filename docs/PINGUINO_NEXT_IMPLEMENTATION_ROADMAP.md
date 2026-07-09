@@ -254,6 +254,28 @@ changes; no UI dependency yet.
    +19 UI tests. **Next:** IF10 verified-composition substitute contract (+ multi-LEVER stepping),
    accepted-correction live write after owner approval, or branch apply/save after the persistence
    design is approved.
+   **[landed — Phase C Slice 22]** the IF10 VERIFIED-COMPOSITION substitute contract — substitution now
+   earns exact numbers, but only through the strictest gate in the codebase:
+   `src/features/optimization/verifiedSubstituteContract.ts` (`validateVerifiedSubstitute`) requires
+   allowlisted provenance (`internal_reference_catalog` / `owner_verified_entry`; **Mapper product rows
+   and PI Calculated products are explicitly denied** — match candidates and calculated values are never
+   calibrated references), a recognized verification status, a COMPLETE finite engine composition
+   (water+solids consistency checked), the dairy hard block (sorbet/vegan — no approval flag overrides),
+   explicit allergen / alcohol / sweetener-polyol-HIS approvals, and family rules (same functional family
+   unless cross-family is EXPLICITLY approved; unknown or profile-forbidden families block, never guessed).
+   `previewVerifiedSubstituteRecalculation` re-routes IF10 with flags DERIVED from the validation (one
+   source of truth), builds the locked §18 split-swap in an in-memory clone (available original grams kept,
+   the substitute covers the shortfall), and verifies through the REAL engine + Temperature Regulator: any
+   NEW hard-gate failure ⇒ `verification_failed` with no numbers exposed; otherwise `calculated` with an
+   `acceptable` or honestly-`tradeoff` verdict; a hero-line substitution always warns
+   `hero_ingredient_substitution_changes_product_identity`. Measured on the sorbet fixture: strawberry short
+   240/600 + the verified raspberry reference → keep 240 g + substitute 360 g → `calculated`. Studio offers
+   NO substitute input in ANY build ("substitutes can never be typed in by hand" — the calibrated-catalog
+   hint shows instead; the fixture module never enters the Studio graph, keeping it out of the production
+   bundle); the `/dev/branch-recalculation-preview` scenario proves the path end-to-end; Demo/Free
+   redaction hides all substitute detail; Pro sees the split + provenance + verdict. No spine change.
+   **Next:** multi-LEVER IF9 stepping, the accepted-correction live write after owner approval, or (later)
+   inventory integration + the production reference substitute catalog.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

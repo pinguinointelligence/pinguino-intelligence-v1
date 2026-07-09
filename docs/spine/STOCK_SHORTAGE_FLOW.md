@@ -97,9 +97,12 @@ optimization display policy pattern applies to it.
 ## 8. What remains before production use
 
 1. ~~Exact recalculation for scale-down~~ — **Slice 19**: the deterministic limiting-ratio scale is
-   previewed exactly and engine-verified (`scaleVerified`); substitution recalculation still needs a
-   verified-composition substitute contract (honestly `not_attempted` until then); reformulation
-   stays with the Designer (see [BRANCH_RECALCULATION_PREVIEW.md](BRANCH_RECALCULATION_PREVIEW.md)).
+   previewed exactly and engine-verified (`scaleVerified`). ~~Substitution recalculation~~ —
+   **Slice 22**: a `VerifiedSubstituteContract` (allowlisted provenance — Mapper rows and PI
+   Calculated products explicitly denied; complete engine composition; every safety gate) unlocks the
+   exact §18 split-swap preview, engine + regulator verified, hero identity-change always warned;
+   flag-level substitutes remain numbers-free. Reformulation stays with the Designer (see
+   [BRANCH_RECALCULATION_PREVIEW.md](BRANCH_RECALCULATION_PREVIEW.md)).
 2. ~~Integration Flow wiring~~ — **Slice 19** adds `dispatchIntegrationFlow` (`stock_shortage`
    context → IF10); the engine `stock_shortage` warning → context auto-detection is UI wiring,
    still pending.

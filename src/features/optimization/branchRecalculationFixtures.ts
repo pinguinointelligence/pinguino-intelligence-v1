@@ -6,6 +6,8 @@
 import type { RecipeInput } from '@/engine';
 import type { BatchRescueIntent, StockShortageIntent } from '@/spine';
 import { findOptimizationPreviewFixture } from './optimizationPreviewFixtures';
+import { raspberrySubstituteContract } from './verifiedSubstituteFixtures';
+import type { VerifiedSubstituteContract } from './verifiedSubstituteContract';
 
 const gelatoRecipe = (): RecipeInput => findOptimizationPreviewFixture('gelato-tradeoff')!.recipe;
 const sorbetRecipe = (): RecipeInput => findOptimizationPreviewFixture('sorbet-ready')!.recipe;
@@ -33,7 +35,21 @@ export interface StockShortageScenario {
   plannedRecipe: RecipeInput;
 }
 
-export type BranchRecalculationScenario = BatchRescueScenario | StockShortageScenario;
+export interface VerifiedSubstituteScenario {
+  id: string;
+  label: string;
+  kind: 'verified_substitute';
+  shortageIntent: StockShortageIntent;
+  plannedRecipe: RecipeInput;
+  /** LAZY on purpose: a top-level call here would drag the fixture module into
+   * the production bundle (rolldown cannot prove cross-module calls pure). */
+  contract: () => VerifiedSubstituteContract;
+}
+
+export type BranchRecalculationScenario =
+  | BatchRescueScenario
+  | StockShortageScenario
+  | VerifiedSubstituteScenario;
 
 /** Standard Gelato batch served at −12: npac 40 sits below the regulator −12 band
  * [42,50], so the too_hard rescue has a REAL solvable violation (via Slice 14). */
@@ -143,6 +159,23 @@ export const BRANCH_RECALCULATION_SCENARIOS: readonly BranchRecalculationScenari
       constraints: { canScaleBatchDown: false, canReformulate: false, purchaseOrWaitPossible: false },
     },
     plannedRecipe: sorbetRecipe(),
+  },
+  {
+    id: 'shortage-verified-substitute',
+    label: 'IF10 · strawberry short (240/600) + VERIFIED raspberry substitute → exact swap preview',
+    kind: 'verified_substitute',
+    shortageIntent: {
+      productProfile: 'sorbet',
+      batchSizeG: 1000,
+      observation: {
+        shortages: [
+          { lineId: 'strawberry', ingredientName: 'Strawberry', correctionFamily: 'fruit', requiredG: 600, availableG: 240 },
+        ],
+      },
+      constraints: { canScaleBatchDown: false, canReformulate: false, purchaseOrWaitPossible: false },
+    },
+    plannedRecipe: sorbetRecipe(),
+    contract: raspberrySubstituteContract, // reference, not a call — see the type note
   },
   {
     id: 'shortage-missing-quantities',

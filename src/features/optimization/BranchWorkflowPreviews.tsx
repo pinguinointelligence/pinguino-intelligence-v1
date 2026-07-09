@@ -117,32 +117,32 @@ export function BranchWorkflowPreviews({
   const runShortagePreview = () => {
     const intent = studioIntentFromRecipe(recipe);
     const line = recipe.items.find((i) => i.id === shortLineId) ?? recipe.items[0];
-    setPreview(
-      previewStockShortageRecalculation({
-        shortageIntent: {
-          productProfile: intent.productProfile,
-          batchSizeG: recipe.target_batch_grams,
-          observation: {
-            shortages: line
-              ? [
-                  {
-                    lineId: line.id,
-                    ingredientName: line.ingredient.name,
-                    requiredG: line.planned_grams,
-                    availableG: parseMeasured(availableG),
-                  },
-                ]
-              : [],
-          },
-          constraints: {
-            canScaleBatchDown: canScaleDown,
-            canReformulate,
-            purchaseOrWaitPossible: purchasePossible,
-          },
-        },
-        plannedRecipe: recipe,
-      }),
-    );
+    const shortageIntent = {
+      productProfile: intent.productProfile,
+      batchSizeG: recipe.target_batch_grams,
+      observation: {
+        shortages: line
+          ? [
+              {
+                lineId: line.id,
+                ingredientName: line.ingredient.name,
+                requiredG: line.planned_grams,
+                availableG: parseMeasured(availableG),
+              },
+            ]
+          : [],
+      },
+      constraints: {
+        canScaleBatchDown: canScaleDown,
+        canReformulate,
+        purchaseOrWaitPossible: purchasePossible,
+      },
+    };
+    // Studio offers NO substitute input in ANY build — verified composition can
+    // never be typed in by hand. The verified-substitute exact preview
+    // (previewVerifiedSubstituteRecalculation) is proven on the DEV fixtures
+    // page until the reference substitute catalog exists.
+    setPreview(previewStockShortageRecalculation({ shortageIntent, plannedRecipe: recipe }));
   };
 
   return (
@@ -213,6 +213,10 @@ export function BranchWorkflowPreviews({
               <Check label="may reformulate" checked={canReformulate} onChange={setCanReformulate} />
               <Check label="can buy / wait" checked={purchasePossible} onChange={setPurchasePossible} />
             </div>
+            <p className="text-[10px] leading-relaxed text-ivory/30">
+              Verified substitute preview requires a calibrated substitute from the reference catalog —
+              substitutes can never be typed in by hand.
+            </p>
             <button type="button" onClick={runShortagePreview} className={buttonCls}>
               Preview stock shortage
             </button>

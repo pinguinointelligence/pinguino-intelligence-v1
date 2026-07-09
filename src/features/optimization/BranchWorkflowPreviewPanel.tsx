@@ -75,10 +75,18 @@ export function BranchWorkflowPreviewPanel({
       ) : null}
 
       {/* Pro: VERIFIED exact numbers only. */}
-      {policy.showExactGrams && verified && preview.exactActions.length > 0 ? (
+      {policy.showExactGrams && verified && preview.exactActions.length > 0 && !preview.substitution ? (
         <p className="mt-3 font-mono text-[11px] text-sky-300/80">
           verified add-only:{' '}
           {preview.exactActions.map((a) => `${a.type} ${a.ingredient} ${a.grams.toFixed(1)}g`).join(', ')}
+        </p>
+      ) : null}
+      {policy.showExactGrams && verified && preview.substitution ? (
+        <p className="mt-3 font-mono text-[11px] text-sky-300/80">
+          verified substitute ({humanize(preview.substitution.verification)}): keep{' '}
+          {preview.substitution.originalIngredientName} {preview.substitution.availableOriginalG.toFixed(1)}g +{' '}
+          {preview.substitution.substituteName} {preview.substitution.substituteG.toFixed(1)}g ·{' '}
+          {preview.substitution.verdict}
         </p>
       ) : null}
       {policy.showScaleFactor && verified && preview.scaleFactor !== null ? (

@@ -340,13 +340,17 @@ describe('branchRecalculationPreview — boundary (preview only, no writes anywh
     }
   });
 
-  it('no write verbs, no save path, no product PAC/POD or status writes', () => {
+  it('no write verbs, no save path, no product status writes', () => {
     for (const src of sources) {
       for (const verb of ['.insert(', '.update(', '.upsert(', '.delete(', '.from(', 'fetch(']) {
         expect(src.includes(verb), verb).toBe(false);
       }
       expect(/saveRecipe|persistRecipe|\.save\(/.test(src)).toBe(false);
-      expect(/pac_value\s*[:=]|pod_value\s*[:=]|setProductLifecycleStatus|pi_calculated/.test(src)).toBe(false);
+      // The in-memory substitute ingredient carries pod_value/pac_value as pure
+      // engine INPUT (same distinction as the Slice 9 fixtures) — never a
+      // product-table write; the absence of any service/DB access above is the
+      // guarantee. Status activation stays forbidden:
+      expect(/setProductLifecycleStatus|pi_calculated/.test(src)).toBe(false);
     }
   });
 

@@ -81,9 +81,25 @@ lever.
   ratio is safe linear math — every composition percentage, hence every band verdict, is unchanged.
   The scaled snapshot is STILL verified: the real engine re-runs and the regulator evaluation of
   before/after must match (`scaleVerified`), else `verification_failed` with no snapshot.
-- `substitution_possible` → `not_attempted (substitute_composition_not_in_contract_v01)` — the v0.1
-  shortage contract carries safety flags, not a verified composition; an exact substitute solve
-  without it would be fake.
+- `substitution_possible` WITHOUT a verified contract → `not_attempted
+  (substitute_composition_not_in_contract_v01)` — flag-level substitutes never get numbers.
+- **`substitution_possible` WITH a verified contract → `calculated` (Slice 22,
+  `previewVerifiedSubstituteRecalculation`)**: the locked §18 "replace part of the ingredient with a
+  verified alternative" model. The `VerifiedSubstituteContract` must pass EVERY gate first
+  (`validateVerifiedSubstitute`): allowlisted provenance (`internal_reference_catalog` /
+  `owner_verified_entry` only — **Mapper product rows and PI Calculated products are explicitly
+  denied**; they are match candidates / calculated values, not calibrated references), verification
+  status (`verified_reference` / `calibrated_reference` / `owner_approved_reference`), a COMPLETE
+  finite engine composition (water+solids consistency checked), the dairy hard block (no flag
+  overrides sorbet/vegan), explicit allergen/alcohol/sweetener approvals, and family rules (same
+  family unless cross-family is explicitly approved; unknown or profile-forbidden families block).
+  The spine router then re-routes with flags DERIVED from the validation (one source of truth), the
+  swap is built in an in-memory clone — available original grams kept, the substitute covers the
+  shortfall — and the REAL engine + Temperature Regulator judge it: any NEW hard-gate failure ⇒
+  `verification_failed` with no numbers; otherwise `calculated` with verdict `acceptable` or an
+  honest `tradeoff` (residuals warned). A hero-line substitution always carries
+  `hero_ingredient_substitution_changes_product_identity`. Measured on the sorbet fixture: strawberry
+  short 240/600 + verified raspberry reference → keep 240 g + substitute 360 g, `calculated`.
 - purchase / reformulation → `not_attempted` (nothing to calculate); safety-blocked substitution
   (dairy/allergen/alcohol/sweetener/unverified) → `unsafe`; a recipe carrying `actual_grams` is
   refused (`actual_batch_present_use_batch_rescue` — that is IF9's territory).
@@ -130,6 +146,10 @@ grams / the exact scale ratio / numeric metrics are Pro detail; the DEV trace is
 1. Accepted-correction LIVE write (after the owner walks the Slice 16 approval checklist).
 2. Branch UI for IF9/IF10 in Studio (paid-gated, redacted, with the locked user-decision menus).
 3. ~~Multi-step add-only rescue solving~~ — landed in **Slice 20** (verified stepping; the −12
-   fixture is now an honest `partial_improvement`). Remaining solver expansion: multi-LEVER steps
-   (e.g. sugar + solids together, so residual gaps after single-lever walks can close) and a
-   verified-composition substitute contract for IF10 substitution solves.
+   fixture is now an honest `partial_improvement`). ~~Verified-composition substitute contract~~ —
+   landed in **Slice 22** (`verifiedSubstituteContract.ts` + `previewVerifiedSubstituteRecalculation`).
+   Remaining solver expansion: multi-LEVER steps (e.g. sugar + solids together, so residual gaps
+   after single-lever walks can close). Production substitutes await the reference catalog —
+   the Studio UI deliberately offers NO substitute input in ANY build (verified composition can
+   never be typed in by hand; the fixture module never enters the Studio graph); the substitute
+   exact preview is proven by the `/dev/branch-recalculation-preview` scenario.
