@@ -100,6 +100,8 @@ export interface SolveResultView {
   rerunState: OptimizationRerunState;
   proposedAdjustments: readonly AppliedAdjustment[];
   afterMetrics: BaseEngineMetrics | null;
+  /** The hypothetical corrected recipe draft (opaque, never saved) — the future persistence input. */
+  correctedRecipeSnapshot: unknown | null;
   rerun: RerunVerification | null;
   warnings: readonly string[];
 }
@@ -229,6 +231,7 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
     rerunState: p.rerunState,
     proposedAdjustments: p.proposedAdjustments,
     afterMetrics: p.correctedBaseEngineResult ? adaptBaseEngineResult(p.correctedBaseEngineResult).metrics : null,
+    correctedRecipeSnapshot: p.hypotheticalCorrectedRecipe ?? null,
     rerun: p.rerun,
     warnings: p.warnings,
   });
@@ -257,6 +260,7 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
         rerunState: 'blocked',
         proposedAdjustments: [],
         afterMetrics: null,
+        correctedRecipeSnapshot: null,
         rerun: null,
         warnings: [`regulator_shadow_solve_blocked:${override.blockedReason}`],
       };

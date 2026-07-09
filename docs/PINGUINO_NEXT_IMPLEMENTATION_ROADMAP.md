@@ -138,6 +138,21 @@ changes; no UI dependency yet.
    correction — the first real write path), or (b) bake −12/−13 into the engine `TARGET_BANDS` (CONFIG_VERSION
    bump + golden re-baseline) so the DEFAULT solver is temperature-aware. Then actual-batch-rescue /
    stock-shortage (IF9/IF10).
+   **[landed — Phase C Slice 16]** accepted-correction persistence is DESIGNED, not opened: a pure,
+   non-writing draft contract (`src/features/optimization/acceptedCorrectionDraft.ts` —
+   `buildAcceptedCorrectionDraft` / `validateAcceptedCorrectionDraft`; Pro-only via `exactCorrectionGrams`,
+   only rerun-verified `optimized`/`tradeoff` solves, closed top-level key set so no PAC/POD/Mapper field can
+   ride along, deterministic source-recipe hash for drift detection, snapshots — never a mutation of a
+   persisted recipe), a NON-applied migration proposal at `docs/spine/proposals/accepted_corrections_table.proposal.sql`
+   (owner-scoped RLS `auth.uid() = user_id`, write-once audit — no update policy or grant, delete-own,
+   rollback plan; test-guarded to stay OUTSIDE `supabase/migrations`), and
+   [docs/spine/ACCEPTED_CORRECTION_PERSISTENCE_PLAN.md](spine/ACCEPTED_CORRECTION_PERSISTENCE_PLAN.md)
+   (architecture audit + approval checklist). The Studio "Save correction" UI was deliberately SKIPPED —
+   no dead controls in production; it lands with the live write. NO migration applied, NO DB write.
+   **Next:** owner walks the approval checklist → the live write slice (copy the proposal to
+   `supabase/migrations/0012_accepted_corrections.sql`, apply, add `services/acceptedCorrections.ts` using the
+   draft contract as its input gate, wire the Pro-only save button, verify RLS negatively). Alternatively (b)
+   above, then actual-batch-rescue / stock-shortage (IF9/IF10).
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
