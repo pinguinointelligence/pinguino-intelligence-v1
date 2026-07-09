@@ -12,6 +12,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { SaveRecipeDialog } from '@/features/recipes/SaveRecipeDialog';
 import { CorrectionPanel } from '@/features/corrections/CorrectionPanel';
+import { BranchWorkflowPreviews } from '@/features/optimization/BranchWorkflowPreviews';
 import { OptimizationPreviewPanel } from '@/features/optimization/OptimizationPreviewPanel';
 import { optimizationDisplayPolicy } from '@/features/optimization/optimizationPreviewPolicy';
 import {
@@ -177,6 +178,14 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
                   />
                 ) : null}
               </div>
+
+              {/* IF9/IF10 branch previews (Slice 21): paid-gated, explicit-click, local
+                  non-persisted inputs, redacted by plan. Preview only — nothing is
+                  applied, no inventory is changed, no recipe is saved. */}
+              <BranchWorkflowPreviews
+                recipe={input}
+                capabilities={{ exactCorrectionGrams, technicalView }}
+              />
             </div>
           </div>
         </main>

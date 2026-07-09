@@ -108,10 +108,22 @@ design-only (migration NOT applied).
 ## 5. Surface
 
 `/dev/branch-recalculation-preview` (DEV-only route + NotFound guard, dead-code-eliminated from the
-production bundle; security-tested like the optimization preview page). Production Studio is
-deliberately untouched this slice — branch UI is a future slice behind `canUseActualBatchRescue` /
-`canUseStockShortageWorkflow` (both demo-false/paid-true), with the same redaction pattern as the
-optimization preview.
+production bundle; security-tested like the optimization preview page).
+
+**Production Studio (Slice 21):** the `Batch rescue & stock shortage` section in the Studio right
+rail (`BranchWorkflowPreviews` + display-only `BranchWorkflowPreviewPanel` +
+`branchWorkflowDisplayPolicy`). Paid-gated mirroring the spine contract (`canUseActualBatchRescue` /
+`canUseStockShortageWorkflow`: demo false, paid true — the UI derives the gate from the existing
+`useAccess` pro capability): Demo/Free see that the workflows exist plus the upgrade affordance —
+no runnable buttons; Pro gets two EXPLICIT-CLICK preview buttons over MINIMAL, LOCAL, NON-PERSISTED
+measurement forms (IF9: observed problem, measured batch g, observed °C, physical-state flags,
+food-safety flag; IF10: short line picked from the live recipe, available stock g, strategy flags —
+no substitute can be declared at all, so no unsafe substitute can appear). Empty measurements flow
+into the routers' honest `blocked_missing_data` states — nothing is invented. Display hard rules
+(test-pinned): "Preview only — nothing is applied", "No inventory is changed", "No recipe is saved";
+the panel carries ZERO buttons (no Apply/Save/Update-inventory); `partial_improvement` is always
+labelled "partial improvement — not fully rescued"; "verified" is reserved for `calculated`; exact
+grams / the exact scale ratio / numeric metrics are Pro detail; the DEV trace is additive-only.
 
 ## 6. Next slice options
 

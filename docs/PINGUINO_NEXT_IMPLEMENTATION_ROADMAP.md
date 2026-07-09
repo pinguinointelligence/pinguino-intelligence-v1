@@ -235,6 +235,25 @@ changes; no UI dependency yet.
    recipe flow are unchanged. DEV page shows single-shot vs multi-step per fixture.
    **Next:** production IF9/IF10 branch UI (paid-gated), accepted-correction live write (after owner
    approval), or multi-LEVER stepping + the IF10 verified-composition substitute contract.
+   **[landed — Phase C Slice 21]** the PRODUCTION IF9/IF10 branch UI — paid-gated preview, no
+   persistence: `BranchWorkflowPreviews` mounts in the Studio right rail (below the optimization
+   preview) with two EXPLICIT-CLICK buttons ("Preview actual batch rescue" / "Preview stock shortage")
+   over MINIMAL, LOCAL, NON-PERSISTED measurement forms — IF9: observed problem, measured batch g,
+   observed serving °C, physical-state + food-safety flags; IF10: the short line picked from the LIVE
+   recipe (required g = the line's real planned grams), available stock g, strategy flags; NO substitute
+   is declarable, so no unsafe substitute can appear; empty measurements flow to the routers' honest
+   `blocked_missing_data` — nothing invented. Demo/Free see the section + "available on Pro" affordance
+   and no runnable buttons (mirrors the spine `canUseActualBatchRescue`/`canUseStockShortageWorkflow`
+   demo-false/paid-true contract via the existing `useAccess` pro capability). Rendering goes through the
+   display-only `BranchWorkflowPreviewPanel` + pure `branchWorkflowDisplayPolicy`: exact grams, the exact
+   scale ratio and numeric metrics are Pro detail; the DEV trace is additive-only; hard display rules
+   test-pinned — "Preview only — nothing is applied", "No inventory is changed", "No recipe is saved",
+   ZERO Apply/Save/Update-inventory controls, `partial_improvement` always labelled "partial improvement
+   — not fully rescued", "verified" reserved for `calculated`. Exact previews visible in production:
+   IF10 scale-down (verified ×ratio) and IF9 multi-step partial improvement (verified add-only grams).
+   +19 UI tests. **Next:** IF10 verified-composition substitute contract (+ multi-LEVER stepping),
+   accepted-correction live write after owner approval, or branch apply/save after the persistence
+   design is approved.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
