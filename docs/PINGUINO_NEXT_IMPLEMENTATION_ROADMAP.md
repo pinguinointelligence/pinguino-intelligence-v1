@@ -425,6 +425,30 @@ changes; no UI dependency yet.
    one-commit revert (data-only).
    **Next:** ice anchors / external recompute fixtures for −12/−13 when calibration data arrives;
    the Stripe webhook deploy checklist remains open; IF9/IF10 branch apply/save stays future.
+   **[landed — PL-first Studio User-Flow guidance layer, 2026-07-10]** the first production slice
+   of the User-Flow layer on the locked User_Flow.md (v1.0 FINAL) tone rules — pure
+   UX/content/state-flow, ZERO persistence: `src/features/studioFlow/studioFlowCopy.ts` (locked
+   PL registry, language-keyed with an `en` slot: 10 situations — new recipe / in range /
+   optimized / tradeoff / impossible / blocked / IF9 rescue / IF10 shortage / verified substitute
+   / missing data — plus tier notes, save notes and the standing disclaimers),
+   `studioFlowGuidance.ts` (pure state→copy mapper: decision × tier × auth × saveable-solve →
+   title/body/next-action/context/notes; the save note appears ONLY for a genuinely
+   rerun-verified saveable solve and only for tiers that can act) and the read-only
+   `StudioFlowGuidePanel` mounted in the Studio right rail (no buttons that save/apply, the only
+   interaction is a native disclosure with the IF9/IF10/substitute explanations). Honesty rules
+   test-pinned (20 new tests): never "zapisano"/"zastosowano"/"nałożono"; "uratowane" only with
+   "nie w pełni"; Demo wording upgrade-safe ("Pełna gramatura i Auto Fix są dostępne w Pro" —
+   the locked §8 line); Pro names exact grams; stock guidance states inventory is neither read
+   nor written; save-vs-apply explicit ("Zapis korekty to NIE zmiana receptury"); missing data
+   asks for a measurement. Browser-proven in PL (pre-run → in-range transition with context line,
+   Demo↔Pro note swap, trio disclosure, zero console errors, zero write requests). NO
+   conversational assistant yet — the locked question script (Jakie lody dziś robimy? → batch →
+   temperatura → tekstura → słodycz → styl → boostery → defaults) is the NEXT User-Flow slice and
+   will consume this registry; preference persistence stays a future owner-approved DB slice.
+   Docs: [STUDIO_USER_FLOW_PL.md](studio/STUDIO_USER_FLOW_PL.md).
+   **Next:** conversational assistant shell (locked §3–§7 script over this registry +
+   `normalizeRecipeIntent`), OR apply/save branch workflow design, OR the Stripe webhook deploy
+   checklist, OR ice-anchor calibration when data arrives.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

@@ -15,6 +15,7 @@ import { CorrectionPanel } from '@/features/corrections/CorrectionPanel';
 import { BranchWorkflowPreviews } from '@/features/optimization/BranchWorkflowPreviews';
 import { OptimizationPreviewPanel } from '@/features/optimization/OptimizationPreviewPanel';
 import { SaveCorrectionControl } from '@/features/optimization/SaveCorrectionControl';
+import { StudioFlowGuidePanel } from '@/features/studioFlow/StudioFlowGuidePanel';
 import { optimizationDisplayPolicy } from '@/features/optimization/optimizationPreviewPolicy';
 import {
   previewOptimization,
@@ -148,6 +149,10 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
               {technicalView ? <PIPanel result={result} /> : <LockedPIPreview />}
               {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
               <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
+
+              {/* User-Flow guidance layer (PL-first, read-only): explains the current
+                  situation from existing state — no saves, no applies, no auto-actions. */}
+              <StudioFlowGuidePanel view={optimizationView} />
 
               {/* Production optimization preview (Slice 15): runs the real solver + Base Engine rerun
                   on the LIVE recipe when the user clicks. Capability-gated (demo/free redacted, Pro full
