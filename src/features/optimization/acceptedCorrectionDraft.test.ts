@@ -207,10 +207,11 @@ describe('accepted_corrections migration — LIVE (Slice 24, migration 0012)', (
       .filter((l) => l.length > 0 && !l.startsWith('--'))
       .join('\n');
 
-  it('exists in the live migration path — exactly one file (the Slice-16 guard, flipped by Slice 24)', () => {
+  it('exists in the live migration path — 0012 (table+RLS) and 0013 (tier policy)', () => {
     const migrations = readdirSync(join(ROOT, 'supabase', 'migrations'));
     expect(migrations.filter((f) => /accepted_correction/i.test(f))).toEqual([
       '0012_accepted_corrections.sql',
+      '0013_accepted_corrections_tier_policy.sql',
     ]);
   });
 

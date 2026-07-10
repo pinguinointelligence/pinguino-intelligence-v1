@@ -356,6 +356,27 @@ changes; no UI dependency yet.
    **Next:** owner picks from the plan §9 menu — approve Option-A migration 0013 (recommended now)
    or the Option-B atomic cutover; 2B.3 Stripe webhook writer remains the freshness prerequisite at
    scale.
+   **[landed — Option A applied, 2026-07-10]** owner approved Option A; the proposal's executable
+   SQL was promoted VERBATIM to `supabase/migrations/0013_accepted_corrections_tier_policy.sql`
+   (test-pinned equivalence) and applied (version `20260710133335`). Accepted-correction INSERT is
+   now **subscription-tier enforced at the DB/RLS level**: the policy requires ownership
+   (`user_id` = `created_by` = `auth.uid()`), an optional recipe link to the CALLER'S OWN saved
+   recipe, and a server-written `active`/`trialing`/`past_due`-within-grace subscription — the
+   direct authenticated INSERT grant no longer bypasses Pro tier. Proven by a 14-case
+   transaction-scoped RLS matrix (all rolled back; synthetic in-txn users/subscriptions only; real
+   owner subscription untouched): anon denied (grant), no-subscription denied (policy), canceled
+   denied, expired past_due denied, foreign/nonexistent recipe link denied (policy fires BEFORE
+   the FK — no uuid probing), creator≠owner denied, update denied; active owner allowed, trialing
+   allowed, past_due-in-grace allowed, own-recipe link allowed; owner select/delete and
+   stranger-sees-0 unchanged. Signed-in owner UI proof under the new policy: save succeeded
+   (record `69f053ea…`), verified, deleted through the service, table back to 0; baseline
+   identical (542 / 69 / 0-of-69 / 1 / subscriptions 1 / auth users 1). Edge Function still NOT
+   deployed (re-verified `[]`). Guard tests flipped (0013 exists + proposal equivalence + policy
+   pins + docs no-overclaim). Rollback = two commented statements in the migration (restore the
+   ownership-only policy).
+   **Next:** the 2B.3 Stripe webhook writer (subscription freshness at scale — enforcement reads
+   the server-written cache, so keeping it fresh is still a manual owner action); the Option-B
+   cutover only if/when Edge Functions arrive; branch apply/save for IF9/IF10 stays future work.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

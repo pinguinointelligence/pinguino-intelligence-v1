@@ -227,7 +227,7 @@ server-side tier enforcement before wider production scale.
 
 ---
 
-## 9. Server-side tier enforcement — hardening slice (2026-07-10, PROPOSAL-STAGE)
+## 9. Server-side tier enforcement — hardening slice (2026-07-10; **Option A APPLIED the same day, §9.1**)
 
 **Phase-1 audit verdict: `server_tier_source_ready`.** The server-side source of truth for Pro
 entitlement is `public.subscriptions` (migration `0003`): select-own RLS only, and — live-verified
@@ -239,15 +239,17 @@ Function does NOT exist yet (live project has zero Edge Functions), so freshness
 that lands. The pure mapping `planFromSubscription` (active | trialing | past_due-in-grace) is the
 locked tier semantic; every artifact below mirrors it and tests pin the literals in lockstep.
 
-**Deliverables (both approval-gated; NOTHING went live in this slice):**
+**Deliverables (both approval-gated at authoring time; Option A was approved and applied the
+same day — §9.1; Option B remains approval-gated and NOT deployed):**
 
 1. **Option A — RECOMMENDED: tier-checking INSERT policy.**
    [`proposals/accepted_corrections_tier_policy.proposal.sql`](proposals/accepted_corrections_tier_policy.proposal.sql)
    replaces `accepted_corrections_insert_own` with ownership **and** an EXISTS check against the
    caller's own `subscriptions` row (runs under the caller's own select-own privileges — no
    security-definer helper, no privileged role, no deploy, no secrets, no new runtime). Client
-   code is unchanged; a Free user's raw-REST insert fails at the DB with an RLS violation. One
-   migration (`0013`) when approved; rollback included. **NOT applied.**
+   code is unchanged; a Free user's raw-REST insert fails at the DB with an RLS violation.
+   **Option A APPLIED as migration `0013`** on 2026-07-10 (owner-approved; verification record in
+   §9.1); rollback kept as comments in the migration.
    *Adversarial-review addition (both options):* an optional `recipe_id` must now point at the
    **caller's own** saved recipe — the bare FK from 0012 would have allowed a crafted raw insert
    to link another user's recipe id (and probe uuid existence). Option A pins it in the policy;
@@ -264,11 +266,11 @@ locked tier semantic; every artifact below mirrors it and tests pin the literals
    atomic cutover: deploy + rewire `createAcceptedCorrection()` + revoke the direct authenticated
    INSERT grant (SQL in the proposal) — revoking alone would break the proven Pro save path.
 
-**Current enforcement state (unchanged, no overclaim): tier is still enforced client/service-side
-only** — the DB enforces ownership (Slice 24 §8) and the direct authenticated INSERT grant
-remains, so a hostile signed-in Free user can still insert their own row via raw REST until
-Option A is applied (or the Option B cutover ships). That residual risk is exactly the accepted
-decision-F v1 risk; this slice made closing it a one-migration action.
+**Current enforcement state: accepted-correction INSERT is tier-enforced at the DB/RLS level**
+(Option A applied as migration `0013`, §9.1). A signed-in Free / no-subscription / expired user's
+raw-REST insert now fails at the database with an RLS violation — the direct authenticated INSERT
+grant no longer bypasses the Pro tier. Ownership (select/delete-own) and write-once (no update
+policy or grant) are unchanged from Slice 24.
 
 **Why A over B for now:** this codebase deliberately has *no privileged server role anywhere*;
 Option A keeps that property (enforcement lives in Postgres next to the ownership RLS it
@@ -279,12 +281,53 @@ introduces Edge Functions anyway. Trade-offs recorded: A's policy runs a per-ins
 (as today), while B centralizes validation server-side but adds service-role usage + deploy
 surface + drift risk between duplicated validators (mitigated by the lockstep tests).
 
-**Owner decision menu (exact next steps):**
-1. Approve Option A → copy the proposal's Option-A block verbatim to
-   `supabase/migrations/0013_accepted_corrections_tier_policy.sql`, apply, negative-test
-   (Free insert denied / Pro insert allowed via transaction-scoped role simulation), flip the
-   guard tests, update this section. Recommended now.
-2. OR approve the Option B atomic cutover (deploy function + rewire client create + revoke
-   grant + browser re-proof). Natural at 2B.3 / wider scale.
-3. Either way, the Stripe webhook writer (2B.3) remains the standing prerequisite for
-   subscription freshness at scale.
+**Owner decision menu — resolved:**
+1. ~~Approve Option A~~ → **DONE 2026-07-10** (§9.1): migration `0013` applied, negative/positive
+   RLS matrix green, guard tests flipped.
+2. The Option B atomic cutover (deploy function + rewire client create + revoke grant + browser
+   re-proof) stays available for the 2B.3 / wider-scale era. The function source remains
+   **NOT deployed** (live project has zero Edge Functions, re-verified after 0013).
+3. The Stripe webhook writer (2B.3) remains the standing prerequisite for subscription freshness
+   at scale — enforcement reads the server-written cache; keeping that cache fresh is still a
+   manual owner action until webhooks exist.
+
+### 9.1 Option A applied — migration 0013 verification record (2026-07-10)
+
+Migration `0013_accepted_corrections_tier_policy` applied via the write-capable migration tool →
+`{"success": true}`, registered as version `20260710133335`. The executable SQL is the approved
+proposal's Option-A block verbatim (test-pinned equivalence).
+
+**Post-apply catalog:** RLS enabled; exactly 3 policies (select_own / insert_own / delete_own —
+still NO update policy); the live INSERT `with_check` contains ownership (`user_id` +
+`created_by`), the own-recipe link clause and the tier EXISTS with `active`/`trialing` +
+`past_due … current_period_end > now()`; grants unchanged (authenticated select/insert/delete,
+update **false**; anon nothing); Edge Functions still `[]`.
+
+**RLS matrix (transaction-scoped, ALL rolled back; synthetic users/subscriptions created in-txn
+only; post-test counts: accepted_corrections 0, subscriptions 1, auth users 1, baseline
+542 / 69 / 0-of-69 / 1):**
+
+| # | Case | Result |
+|---|---|---|
+| 1 | anon insert | denied — `42501 permission denied` (grant level) |
+| 2 | signed-in, NO subscription row | denied — `new row violates row-level security policy` |
+| 3 | signed-in, `canceled` subscription (even with future period end) | denied — policy |
+| 4 | signed-in owner, `active` subscription | **allowed** (rolled back) |
+| 5 | signed-in, `trialing` | **allowed** |
+| 6 | signed-in, `past_due` with `current_period_end` in the future | **allowed** (grace) |
+| 7 | signed-in, `past_due` EXPIRED | denied — policy |
+| 8 | owner select | sees exactly own rows |
+| 9 | stranger select | 0 rows |
+| 10 | owner delete | works (2 rows) |
+| 11 | stranger delete | 0 rows affected |
+| 12 | update (owner) | denied — no grant (write-once intact) |
+| 13 | `recipe_id` not the caller's own (foreign ids are indistinguishable from nonexistent under select-own RLS — same policy path; policy fires BEFORE the FK, so no uuid probing) | denied — policy; own-recipe link **allowed** |
+| 14 | `user_id != created_by` | denied — policy |
+
+**Service/UI proof (signed-in owner session):** with 0013 live, Preview optimization → `tradeoff`
+→ Save correction succeeded (record `69f053ea-5cc9-4b05-a163-50d662301c54`), row verified via the
+service list, then deleted through `deleteAcceptedCorrection` — table back to 0. The Pro save
+path is unaffected by the policy change; unsigned/Free UI gating is unchanged (Slice 24 §8.3).
+
+**Rollback plan** (kept as comments in the migration): drop the tier policy and recreate the
+Slice-24 ownership-only insert policy — two statements, no data touched.

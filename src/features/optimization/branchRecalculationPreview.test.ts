@@ -354,11 +354,13 @@ describe('branchRecalculationPreview — boundary (preview only, no writes anywh
     }
   });
 
-  it('accepted-correction migration IS applied (Slice 24) — exactly 0012, proposal record kept', () => {
+  it('accepted-correction migrations applied — 0012 table+RLS, 0013 tier policy; proposal records kept', () => {
     const migrations = readdirSync(join(ROOT, 'supabase', 'migrations'));
     expect(migrations.filter((f) => /accepted_correction/i.test(f))).toEqual([
       '0012_accepted_corrections.sql',
+      '0013_accepted_corrections_tier_policy.sql',
     ]);
     expect(existsSync(join(ROOT, 'docs', 'spine', 'proposals', 'accepted_corrections_table.proposal.sql'))).toBe(true);
+    expect(existsSync(join(ROOT, 'docs', 'spine', 'proposals', 'accepted_corrections_tier_policy.proposal.sql'))).toBe(true);
   });
 });

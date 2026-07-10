@@ -43,21 +43,60 @@ const planDoc = readFileSync(
   'utf8',
 );
 
-describe('tier-policy proposal — exists, NOT applied, exact semantics', () => {
-  it('lives OUTSIDE the live migration path and no tier migration is applied', () => {
+describe('tier policy — Option A LIVE as migration 0013, exact semantics', () => {
+  const migrationPath = join(
+    ROOT,
+    'supabase',
+    'migrations',
+    '0013_accepted_corrections_tier_policy.sql',
+  );
+  const migration = readFileSync(migrationPath, 'utf8');
+
+  /** Executable SQL only — full-line comments and blank lines stripped. */
+  const executableSql = (sql: string) =>
+    sql
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('--'))
+      .join('\n');
+
+  it('migration 0013 EXISTS in the live path (the hardening-slice guard, flipped on approval)', () => {
     expect(proposalPath.includes('supabase')).toBe(false);
     const migrations = readdirSync(join(ROOT, 'supabase', 'migrations'));
-    // 0003_billing_subscriptions legitimately exists; no TIER-policy migration does
-    expect(migrations.some((f) => /tier/i.test(f))).toBe(false);
-    // the ONLY accepted_corrections migration is still 0012 (ownership RLS)
     expect(migrations.filter((f) => /accepted_correction/i.test(f))).toEqual([
       '0012_accepted_corrections.sql',
+      '0013_accepted_corrections_tier_policy.sql',
     ]);
   });
 
-  it('is explicitly labelled a non-applied proposal', () => {
+  it('is the approved Option-A proposal VERBATIM apart from comments', () => {
+    // the proposal's ONLY executable SQL is the Option-A block (Option B is
+    // commented out) — the applied migration must match it exactly
+    expect(executableSql(migration)).toBe(executableSql(proposal));
+  });
+
+  it('the proposal file remains, labelled, as the design record it was approved from', () => {
     expect(/PROPOSAL — NOT APPLIED/.test(proposal)).toBe(true);
     expect(/MUST NOT be applied/.test(proposal)).toBe(true);
+  });
+
+  it('migration 0013 changes exactly ONE insert policy — no update/grant/anon changes', () => {
+    const executable = executableSql(migration);
+    expect(/drop policy if exists accepted_corrections_insert_own/.test(executable)).toBe(true);
+    expect(/create policy accepted_corrections_insert_own/.test(executable)).toBe(true);
+    expect(/for update/.test(executable)).toBe(false);
+    expect(/grant/.test(executable)).toBe(false);
+    expect(/revoke/.test(executable)).toBe(false);
+    expect(/to anon/.test(executable)).toBe(false);
+    expect(/for select|for delete/.test(executable)).toBe(false);
+    // rollback kept as comments
+    expect(/ROLLBACK PLAN/.test(migration)).toBe(true);
+  });
+
+  it('migration 0013 pins the recipe-link ownership protection', () => {
+    expect(/recipe_id is null/.test(migration)).toBe(true);
+    expect(/from public\.saved_recipes r/.test(migration)).toBe(true);
+    expect(/r\.user_id = auth\.uid\(\)/.test(migration)).toBe(true);
   });
 
   it('option A checks the server-written subscriptions cache with planFromSubscription semantics', () => {
@@ -194,9 +233,13 @@ describe('live create path — unchanged until deploy approval (no fake enforcem
     expect(control.includes('functions.invoke')).toBe(false);
   });
 
-  it('docs state the residual risk while the proposal is unapplied — no overclaim', () => {
-    expect(/tier is still enforced client\/service-side/.test(planDoc)).toBe(true);
+  it('docs state Option A is LIVE and Option B stays NOT deployed — no overclaim either way', () => {
+    expect(/Option A .*APPLIED as migration `?0013`?/.test(planDoc)).toBe(true);
+    expect(/tier[- ]enforced at the DB/i.test(planDoc)).toBe(true);
+    // Option B remains source-only; freshness stays honestly caveated
     expect(/NOT deployed/.test(planDoc)).toBe(true);
-    expect(/not applied/i.test(planDoc)).toBe(true);
+    expect(/Stripe webhook/i.test(planDoc)).toBe(true);
+    // the superseded residual-risk claim is gone
+    expect(/tier is still enforced client\/service-side/.test(planDoc)).toBe(false);
   });
 });
