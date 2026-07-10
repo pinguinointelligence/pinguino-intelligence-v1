@@ -16,6 +16,7 @@ import { BranchWorkflowPreviews } from '@/features/optimization/BranchWorkflowPr
 import { OptimizationPreviewPanel } from '@/features/optimization/OptimizationPreviewPanel';
 import { SaveCorrectionControl } from '@/features/optimization/SaveCorrectionControl';
 import { StudioFlowGuidePanel } from '@/features/studioFlow/StudioFlowGuidePanel';
+import { StudioAssistantShell } from '@/features/studioFlow/StudioAssistantShell';
 import { optimizationDisplayPolicy } from '@/features/optimization/optimizationPreviewPolicy';
 import {
   previewOptimization,
@@ -149,6 +150,11 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
               {technicalView ? <PIPanel result={result} /> : <LockedPIPreview />}
               {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
               <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
+
+              {/* Conversational Assistant Shell (PL-first, deterministic): collects
+                  recipe intent through the locked question script and builds a read-only
+                  intent draft. No LLM, no persistence, no recipe mutation. */}
+              <StudioAssistantShell />
 
               {/* User-Flow guidance layer (PL-first, read-only): explains the current
                   situation from existing state — no saves, no applies, no auto-actions. */}

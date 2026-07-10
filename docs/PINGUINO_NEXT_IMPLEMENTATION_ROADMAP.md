@@ -449,6 +449,26 @@ changes; no UI dependency yet.
    **Next:** conversational assistant shell (locked §3–§7 script over this registry +
    `normalizeRecipeIntent`), OR apply/save branch workflow design, OR the Stripe webhook deploy
    checklist, OR ice-anchor calibration when data arrives.
+   **[landed — PL-first Conversational Assistant Shell (deterministic), 2026-07-10]** the locked
+   question script now ships as a deterministic state machine — NO LLM, NO persistence, NO recipe
+   mutation, NO grams generation. `conversationalAssistantFlow.ts`: a fixed 10-question PL flow
+   (Jakie lody dziś robimy? → typ → temperatura → batch → smak → tekstura → słodycz → ograniczenia
+   → boostery → cel) with pure validation/navigation (`answerCurrentQuestion` returns new state;
+   inputs never mutated) that feeds a `RawRecipeIntentInput` into the LOCKED spine parser
+   `normalizeRecipeIntent` (no duplicated flavor/profile logic) and builds a read-only
+   `AssistantIntentDraft` (normalized intent + branch context recipe_design/actual_batch_rescue/
+   stock_shortage + batch/restrictions/completeness). `StudioAssistantShell.tsx` mounts in the
+   Studio right rail above the guidance panel: Zacznij / Wstecz / Dalej / Reset / Przygotuj szkic —
+   deliberately NO save/apply/"use as recipe" button (the draft is a read-only summary). Honest
+   "szkic" copy, test-pinned: never "zapisano"/"zastosowano", never a recipe-created claim ("To
+   tylko szkic — nie tworzy i nie zmienia receptury"), Demo grams → Pro, "bez modelu językowego".
+   31 new tests (flow model 1–16, copy honesty 17–21, boundary 22–29 incl. no-LLM/no-DB/no-Mapper/
+   no-CONFIG scans, shell render). Browser-proven end to end: full PL flow Gelato/−12/5 kg/pistacja/
+   soft/balanced/bez laktozy/recipe_design → correct draft summary; zero console errors; zero write
+   requests. Docs: [STUDIO_ASSISTANT_FLOW_PL.md](studio/STUDIO_ASSISTANT_FLOW_PL.md).
+   **Next:** intent→recipe deterministic draft generation (turn the szkic into a starting recipe),
+   OR user-defaults persistence (owner-approved DB slice), OR the assistant apply-to-local-draft
+   workflow, OR the Stripe webhook deploy checklist.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

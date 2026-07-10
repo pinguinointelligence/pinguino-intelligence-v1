@@ -68,6 +68,9 @@ what is already true.
   batch → temperature → texture → sweetness → style → boosters → defaults) is NOT implemented —
   this slice ships the guidance/copy layer only. The conversational shell is a future slice and
   will consume this same registry.
+  **Update (2026-07-10):** the deterministic Conversational Assistant Shell now ships the question
+  script — see [STUDIO_ASSISTANT_FLOW_PL.md](STUDIO_ASSISTANT_FLOW_PL.md). It is still NOT an LLM
+  and still saves/mutates nothing; it collects intent into a read-only draft.
 - **No apply/save workflows.** IF9/IF10 apply and apply-correction-to-recipe stay future work; the
   copy explicitly names them as separate, future functions.
 - **No persistence of any kind** — no preferences, no defaults, no DB, no localStorage.

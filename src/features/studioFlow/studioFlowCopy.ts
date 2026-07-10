@@ -70,6 +70,23 @@ export interface StudioFlowCopy {
     noInventoryWrite: string;
     noRecipeMutation: string;
   };
+  /** Conversational Assistant Shell — deterministic, no LLM, no persistence. */
+  assistant: {
+    introTitle: string;
+    introBody: string;
+    startCta: string;
+    /** Shown when the intent draft is prepared — a SKETCH, never a created recipe. */
+    draftReadyTitle: string;
+    draftReadyBody: string;
+    /** Shown while required answers are missing. */
+    incomplete: string;
+    /** Demo/Free: exact grams stay Pro (the draft only collects intent). */
+    demoGramsNote: string;
+    /** Standing honesty notes. */
+    noSaveNote: string;
+    noRecipeChangeNote: string;
+    deterministicNote: string;
+  };
 }
 
 const PL: StudioFlowCopy = {
@@ -151,6 +168,21 @@ const PL: StudioFlowCopy = {
     previewOnly: 'Podgląd — nic nie zapisuje się i nic nie jest nakładane automatycznie.',
     noInventoryWrite: 'Stany magazynowe nie są ani odczytywane, ani zapisywane — podajesz je ręcznie.',
     noRecipeMutation: 'Receptura nie jest modyfikowana ani przez podgląd, ani przez zapis korekty.',
+  },
+  assistant: {
+    introTitle: 'Asystent receptury (szkic intencji)',
+    introBody:
+      'Zadam kilka krótkich pytań po polsku i przygotuję szkic intencji. To nie tworzy i nie zmienia receptury — nic nie jest zapisywane.',
+    startCta: 'Zacznij',
+    draftReadyTitle: 'Przygotowano szkic intencji',
+    draftReadyBody:
+      'To tylko szkic — nie tworzy i nie zmienia receptury, nic nie zapisuje. Możesz teraz na jego podstawie przejść do projektu w Studio.',
+    incomplete: 'Uzupełnij wymagane odpowiedzi, aby przygotować szkic intencji.',
+    demoGramsNote:
+      'Szkic zbiera tylko intencję. Dokładne gramatury i Auto Fix są dostępne w Pro.',
+    noSaveNote: 'Nic nie jest zapisywane.',
+    noRecipeChangeNote: 'Receptura nie jest zmieniana.',
+    deterministicNote: 'Asystent działa deterministycznie — bez modelu językowego.',
   },
 };
 
