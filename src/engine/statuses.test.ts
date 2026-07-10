@@ -140,9 +140,65 @@ describe('target band selection — category- and temperature-aware', () => {
   });
 
   it('non-anchored temperature uses the nearest band, flagged as fallback', () => {
+    // CONFIG 0.6.0: −12/−13 are seeded, so the nearest band to −14 is now −13
+    // (was −11 when only one temperature existed).
     const selection = selectTargetBand('milk_gelato', -14);
-    expect(selection!.band.temperature_c).toBe(-11);
+    expect(selection!.band.temperature_c).toBe(-13);
     expect(selection!.temperature_fallback).toBe(true);
+  });
+
+  it('CONFIG 0.6.0: milk_gelato −12 and −13 select their own seeded bands, no fallback', () => {
+    for (const [temperature, npac] of [
+      [-12, { min: 42, max: 50 }],
+      [-13, { min: 48, max: 55 }],
+    ] as const) {
+      const selection = selectTargetBand('milk_gelato', temperature);
+      expect(selection!.band.temperature_c).toBe(temperature);
+      expect(selection!.temperature_fallback).toBe(false);
+      expect(selection!.category_fallback).toBe(false);
+      expect(selection!.band.status).toBe('seeded');
+      expect(selection!.band.metrics.npac).toMatchObject(npac);
+    }
+  });
+
+  it('CONFIG 0.6.0: chocolate / sorbet / vegan select their own bands — no milk fallback', () => {
+    for (const [category, temperature, npac] of [
+      ['chocolate_gelato', -11, { min: 34, max: 45 }],
+      ['chocolate_gelato', -13, { min: 49, max: 57 }],
+      ['sorbet', -11, { min: 35, max: 40 }],
+      ['sorbet', -12, { min: 42, max: 49 }],
+      ['vegan_gelato', -11, { min: 35, max: 52 }],
+      ['vegan_gelato', -13, { min: 50, max: 64 }],
+    ] as const) {
+      const selection = selectTargetBand(category, temperature);
+      expect(selection!.band.category, `${category}@${temperature}`).toBe(category);
+      expect(selection!.category_fallback).toBe(false);
+      expect(selection!.temperature_fallback).toBe(false);
+      expect(selection!.band.metrics.npac).toMatchObject(npac);
+    }
+  });
+
+  it('CONFIG 0.6.0: sorbet/vegan bands omit the regulator-DISABLED dairy gates', () => {
+    const sorbet = selectTargetBand('sorbet', -11)!.band.metrics;
+    for (const gate of ['lactose', 'lactose_sandiness_risk', 'aerating_protein', 'protein_in_solids', 'fat'] as const) {
+      expect(sorbet[gate], `sorbet ${gate}`).toBeUndefined();
+    }
+    const vegan = selectTargetBand('vegan_gelato', -12)!.band.metrics;
+    for (const gate of ['lactose', 'lactose_sandiness_risk', 'aerating_protein', 'protein_in_solids'] as const) {
+      expect(vegan[gate], `vegan ${gate}`).toBeUndefined();
+    }
+    expect(vegan.fat).toMatchObject({ min: 0, max: 12 }); // plant fat stays gated
+    // an omitted metric classifies needs_correction — never a foreign band
+    expect(classifyIndicator('lactose', 0, selectTargetBand('sorbet', -11)).status).toBe('needs_correction');
+    expect(classifyIndicator('lactose', 0, selectTargetBand('sorbet', -11)).band).toBeNull();
+  });
+
+  it('CONFIG 0.6.0: chocolate protein_in_solids min is the LOCKED hard minimum 7 (advisory zone not hard-flagged)', () => {
+    const band = selectTargetBand('chocolate_gelato', -13)!.band.metrics.protein_in_solids;
+    expect(band).toMatchObject({ min: 7, max: 13 });
+    // 7–8 (the regulator's advisory-low zone) is in-band → never a violation
+    expect(classifyValue(7.5, band, 'protein_in_solids')).not.toBe('needs_correction');
+    expect(classifyValue(6.5, band, 'protein_in_solids')).toBe('needs_correction'); // below hard-min 7
   });
 
   it('temperature ties resolve to the colder band (deterministic)', () => {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * −11°C Engine Contract — drift guards (Slice 1A.5).
  *
  * Pins the read-only contract to its canonical sources so it can never silently
@@ -29,8 +29,8 @@ describe('−11°C Engine Contract — drift guards', () => {
     expect(CONTRACT.version.config_version).toBe(CONFIG_VERSION);
   });
 
-  it('contract revision is 1A.5', () => {
-    expect(CONTRACT.contract_revision).toBe('1A.5');
+  it('contract revision is 1A.6', () => {
+    expect(CONTRACT.contract_revision).toBe('1A.6');
   });
 
   it('active engine label is exactly "−11°C Engine" (U+2212 minus, not ASCII hyphen)', () => {

@@ -158,8 +158,8 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
                 <div className="flex flex-col gap-1">
                   <SectionLabel>Optimization preview</SectionLabel>
                   <p className="text-xs leading-relaxed text-ivory/40">
-                    Preview only — nothing is saved and corrections are not applied automatically. Uses the
-                    regulator-shadow target preview; global engine target bands unchanged.
+                    Preview only — nothing is saved and corrections are not applied automatically. Engine
+                    target bands are temperature-aware; the regulator-shadow comparison remains available.
                     {!exactCorrectionGrams ? ' Exact grams available on Pro.' : ''}
                   </p>
                 </div>

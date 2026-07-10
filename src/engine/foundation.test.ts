@@ -27,6 +27,11 @@ describe('versioning (spec §17)', () => {
       config_version: CONFIG_VERSION,
     });
   });
+
+  it('CONFIG 0.6.0 — the temperature-aware TARGET_BANDS bump (engine pipeline unchanged at 0.4.0)', () => {
+    expect(CONFIG_VERSION).toBe('0.6.0');
+    expect(ENGINE_VERSION).toBe('0.4.0');
+  });
 });
 
 describe('POD coefficients (spec §7)', () => {
@@ -122,12 +127,57 @@ describe('target ranges (spec §9)', () => {
     expect(m.alcohol).toMatchObject({ min: 0, max: 2.5, warn_above: 2.5 });
   });
 
-  it('every band defines all 11 metrics with min ≤ max', () => {
+  it('every declared metric range has min ≤ max; every band is seeded with pod/npac/solids/water', () => {
     for (const band of TARGET_BANDS) {
+      expect(band.status).toBe('seeded');
       for (const metric of ALL_METRICS) {
         const range = band.metrics[metric];
-        expect(range, `${band.category}@${band.temperature_c} ${metric}`).toBeDefined();
-        expect(range.min).toBeLessThanOrEqual(range.max);
+        if (range) expect(range.min, `${band.category}@${band.temperature_c} ${metric}`).toBeLessThanOrEqual(range.max);
+      }
+      // the core structural metrics are present in every seeded cell
+      for (const metric of ['pod', 'npac', 'ice_fraction', 'total_solids', 'water', 'alcohol'] as const) {
+        expect(band.metrics[metric], `${band.category}@${band.temperature_c} ${metric}`).toBeDefined();
+      }
+    }
+  });
+
+  it('CONFIG 0.6.0 seeds all 12 locked profile×temperature cells (milk/chocolate/sorbet/vegan × −11/−12/−13)', () => {
+    const cells = TARGET_BANDS.map((b) => `${b.category}@${b.temperature_c}`).sort();
+    expect(cells).toEqual(
+      [
+        'milk_gelato@-11',
+        'milk_gelato@-12',
+        'milk_gelato@-13',
+        'chocolate_gelato@-11',
+        'chocolate_gelato@-12',
+        'chocolate_gelato@-13',
+        'sorbet@-11',
+        'sorbet@-12',
+        'sorbet@-13',
+        'vegan_gelato@-11',
+        'vegan_gelato@-12',
+        'vegan_gelato@-13',
+      ].sort(),
+    );
+  });
+
+  it('milk/chocolate bands declare all 11 metrics; sorbet/vegan OMIT the regulator-DISABLED dairy gates', () => {
+    const DAIRY = ['lactose', 'lactose_sandiness_risk', 'aerating_protein', 'protein_in_solids'] as const;
+    for (const band of TARGET_BANDS) {
+      const name = `${band.category}@${band.temperature_c}`;
+      if (band.category === 'milk_gelato' || band.category === 'chocolate_gelato') {
+        for (const metric of ALL_METRICS) expect(band.metrics[metric], `${name} ${metric}`).toBeDefined();
+      }
+      if (band.category === 'sorbet') {
+        for (const gate of [...DAIRY, 'fat'] as const) expect(band.metrics[gate], `${name} ${gate}`).toBeUndefined();
+      }
+      if (band.category === 'vegan_gelato') {
+        for (const gate of DAIRY) expect(band.metrics[gate], `${name} ${gate}`).toBeUndefined();
+        expect(band.metrics.fat, `${name} fat`).toBeDefined();
+      }
+      if (band.category === 'chocolate_gelato') {
+        // the LOCKED advisory hard-minimum, never the milk band's 9
+        expect(band.metrics.protein_in_solids).toMatchObject({ min: 7, max: 13 });
       }
     }
   });

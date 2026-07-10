@@ -116,21 +116,23 @@ describe('analyzeSolverTargetInjection — engine-seeded vs regulator-shadow', (
     expect(a.correctionChanged).toBe(false);
   });
 
-  it('Standard Gelato −12 uses the regulator-shadow target (npac [42,50]) and changes the correction', () => {
+  it('Standard Gelato −12: the injection is now a NO-OP — the engine band already IS [42,50] (CONFIG 0.6.0)', () => {
     const a = analyzeSolverTargetInjection({ recipe: gelato(-12), productProfile: 'standard_gelato', servingTemperatureC: -12 });
     expect(a.active).toBe(true);
     expect(npacCmp(a).regulatorBand).toEqual([42, 50]);
-    expect(npacCmp(a).engineBand).toEqual([33, 42]); // engine still on the −11 fallback band
-    expect(npacCmp(a).targetCenterDelta!).toBeGreaterThan(5);
-    expect(a.correctionChanged).toBe(true);
-    expect(a.warnings).toContain('regulator_shadow_target_changes_correction');
+    // CONFIG 0.6.0: the engine's own seeded −12 band replaced the −11 fallback
+    expect(npacCmp(a).engineBand).toEqual([42, 50]);
+    expect(npacCmp(a).targetCenterDelta).toBe(0);
+    expect(a.correctionChanged).toBe(false);
+    expect(a.warnings).not.toContain('regulator_shadow_target_changes_correction');
   });
 
-  it('Standard Gelato −13 uses the regulator-shadow target (npac [48,55]) with a larger divergence', () => {
+  it('Standard Gelato −13: engine and regulator targets coincide (npac [48,55], CONFIG 0.6.0)', () => {
     const a = analyzeSolverTargetInjection({ recipe: gelato(-13), productProfile: 'standard_gelato', servingTemperatureC: -13 });
     expect(npacCmp(a).regulatorBand).toEqual([48, 55]);
-    expect(npacCmp(a).targetCenterDelta!).toBeGreaterThan(10);
-    expect(a.correctionChanged).toBe(true);
+    expect(npacCmp(a).engineBand).toEqual([48, 55]);
+    expect(npacCmp(a).targetCenterDelta).toBe(0);
+    expect(a.correctionChanged).toBe(false);
   });
 
   it('an in-band-at-−11 recipe is revealed as a NEW violation at −12 by the regulator target', () => {

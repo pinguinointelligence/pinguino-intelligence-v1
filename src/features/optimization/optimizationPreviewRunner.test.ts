@@ -104,19 +104,19 @@ describe('runOptimizationPreview — temperature-aware target guidance', () => {
     expect(v.targetGuidance.target?.npacBand).toEqual([33, 43]);
   });
 
-  it('Chocolate at −13 is NOT connected — the solver still targets the −11 seeded band', () => {
+  it('Chocolate at −13 is CONNECTED (CONFIG 0.6.0) — the solver targets its own chocolate −13 band', () => {
     const v = byId('chocolate-advisory'); // chocolate_gelato @ −13
-    expect(v.targetGuidance.solverTargetAligned).toBe(false);
-    expect(v.targetGuidance.solverTargetSource).toBe('not_connected');
-    expect(v.targetGuidance.warnings).toContain('temperature_target_not_connected');
+    expect(v.targetGuidance.solverTargetAligned).toBe(true);
+    expect(v.targetGuidance.solverTargetSource).toBe('base_engine_seeded');
+    expect(v.targetGuidance.warnings).not.toContain('temperature_target_not_connected');
     expect(v.targetGuidance.target?.regulatorProfile).toBe('chocolate_gelato_temperature_regulator');
     expect(v.targetGuidance.target?.advisoryGates).toContain('protein_share_in_solids');
   });
 
-  it('Sorbet is NOT connected — the engine falls back to the milk_gelato category band', () => {
+  it('Sorbet is CONNECTED (CONFIG 0.6.0) — its own seeded band, no milk category fallback', () => {
     const v = byId('sorbet-ready');
-    expect(v.targetGuidance.solverTargetAligned).toBe(false);
-    expect(v.targetGuidance.warnings).toContain('solver_uses_category_fallback_band');
+    expect(v.targetGuidance.solverTargetAligned).toBe(true);
+    expect(v.targetGuidance.warnings).not.toContain('solver_uses_category_fallback_band');
   });
 
   it('an unsupported profile blocks the target guidance (never remapped)', () => {
@@ -128,10 +128,10 @@ describe('runOptimizationPreview — temperature-aware target guidance', () => {
   it('carries the shadow engine-vs-regulator band comparison per fixture', () => {
     // milk_gelato @ −11 → engine band aligned with the recipe's profile×temperature
     expect(byId('gelato-tradeoff').bandComparison.status).toBe('aligned');
-    // chocolate @ −13 → engine falls back to milk_gelato, divergent from the regulator band
+    // CONFIG 0.6.0: chocolate @ −13 selects its own seeded band — aligned, no fallback
     const choc = byId('chocolate-advisory').bandComparison;
-    expect(choc.status).toBe('divergent');
-    expect(choc.engineCategoryFallback).toBe(true);
+    expect(choc.status).toBe('aligned');
+    expect(choc.engineCategoryFallback).toBe(false);
     // granita → unsupported, never remapped
     expect(byId('granita-blocked').bandComparison.status).toBe('unsupported_profile');
   });
@@ -154,12 +154,13 @@ describe('runOptimizationPreview — solver-injected regulator targets (Slice 13
     expect(v.solverTargetInjection.correctionChanged).toBe(false);
   });
 
-  it('chocolate at −13 keeps protein-share advisory, yet the regulator target changes the correction', () => {
+  it('chocolate at −13 keeps protein-share advisory; the injection is now a NO-OP (CONFIG 0.6.0)', () => {
     const v = byId('chocolate-advisory');
     expect(v.solverTargetInjection.active).toBe(true);
     expect(v.solverTargetInjection.injectedMetrics).not.toContain('protein_in_solids');
     expect(v.solverTargetInjection.comparisons.map((c) => c.metric)).not.toContain('protein_in_solids');
-    expect(v.solverTargetInjection.correctionChanged).toBe(true); // −13 regulator bands diverge from the −11 fallback
+    // the engine's own chocolate −13 band IS the regulator band now
+    expect(v.solverTargetInjection.correctionChanged).toBe(false);
   });
 
   it('an unsupported profile blocks the injection (never remapped)', () => {
@@ -185,7 +186,7 @@ describe('runOptimizationPreview — real gram-solve target override (Slice 14)'
     expect(v.solveComparison.regulatorShadowDecision).toBe(v.solveComparison.engineSeededDecision);
   });
 
-  it('Standard Gelato −12 runs a differing regulator-shadow gram solve (aims at the −12 target)', () => {
+  it('Standard Gelato −12: the DEFAULT solve now aims at the −12 target — the shadow solve matches it (CONFIG 0.6.0)', () => {
     const base = findOptimizationPreviewFixture('gelato-tradeoff')!;
     const v = previewOptimization({
       recipe: { ...base.recipe, target_temperature_c: -12 },
@@ -193,7 +194,10 @@ describe('runOptimizationPreview — real gram-solve target override (Slice 14)'
     });
     expect(v.regulatorShadowSolve.active).toBe(true);
     expect(v.regulatorShadowSolve.injectedMetrics).toContain('npac');
-    expect(v.solveComparison.correctionDiffers).toBe(true);
+    // the engine's seeded −12 band equals the injected regulator band, so the
+    // two gram solves coincide — the override seam remains a no-op safety net
+    expect(v.solveComparison.correctionDiffers).toBe(false);
+    expect(v.solveComparison.regulatorShadowDecision).toBe(v.solveComparison.engineSeededDecision);
   });
 
   it('never fabricates an optimized result without rerun verification', () => {

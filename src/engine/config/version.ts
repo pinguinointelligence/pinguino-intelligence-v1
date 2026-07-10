@@ -29,6 +29,17 @@
  *   formula is unchanged; the canonical basis (config value) changed.
  *   ENGINE_VERSION stays 0.4.0 — no pipeline logic changed, the canonical
  *   call now supplies the already-computed water_g the per_water branch needs.
+ * - 0.6.0 — temperature-aware TARGET_BANDS (owner-approved engine slice):
+ *   11 new seeded cells transcribed VERBATIM from the locked Temperature
+ *   Regulator docs — milk_gelato −12/−13, chocolate_gelato −11/−12/−13,
+ *   sorbet −11/−12/−13, vegan_gelato −11/−12/−13. milk_gelato @ −11 is
+ *   untouched. Sorbet/vegan bands omit the regulator-DISABLED dairy gates
+ *   (TargetBand.metrics became Partial); chocolate protein_in_solids uses the
+ *   locked hard minimum 7. The default solver/classifier now targets the
+ *   recipe's real profile×temperature band for these cells (fallback flags
+ *   stop firing); fruit/nut/alcohol_gelato keep the documented milk fallback.
+ *   ENGINE_VERSION stays 0.4.0 — one null-safe accessor for the now-optional
+ *   alcohol range; no formula or pipeline change.
  */
 export const ENGINE_VERSION = '0.4.0' as const;
-export const CONFIG_VERSION = '0.5.0' as const;
+export const CONFIG_VERSION = '0.6.0' as const;

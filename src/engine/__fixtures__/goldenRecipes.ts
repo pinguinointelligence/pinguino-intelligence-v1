@@ -194,7 +194,8 @@ export const GOLDEN_RECIPES: readonly GoldenRecipe[] = [
   },
   {
     id: 'chocolate-classic',
-    description: 'Cocoa + dark chocolate solids/fat profile; milk-band fallback flagged.',
+    description:
+      'Cocoa + dark chocolate solids/fat profile; real chocolate −11 band (CONFIG 0.6.0).',
     input: input(
       [
         line('milk', QA_COMPOSITIONS.milk, 600),
@@ -211,7 +212,9 @@ export const GOLDEN_RECIPES: readonly GoldenRecipe[] = [
     expected: {
       violation_reasons: null, // snapshot-only
       warning_codes: [],
-      category_fallback: true, // no chocolate band exists — honest fallback
+      // CONFIG 0.6.0: the chocolate_gelato −11 band is seeded from the locked
+      // regulator doc — the milk-band category fallback no longer fires.
+      category_fallback: false,
     },
     broken: [
       {

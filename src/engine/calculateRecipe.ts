@@ -62,7 +62,7 @@ function collectWarnings(
   const warnings: EngineWarning[] = [];
 
   const warnAbove = selectTargetBand(input.category, input.target_temperature_c)?.band.metrics
-    .alcohol.warn_above;
+    .alcohol?.warn_above;
   if (alcoholPercent !== null && warnAbove !== undefined && alcoholPercent > warnAbove) {
     warnings.push({
       code: 'alcohol_above_safe_range',

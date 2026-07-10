@@ -2,7 +2,7 @@
 
 exports[`golden recipes — snapshot regression > banana-classic: result snapshot is stable 1`] = `
 {
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
   "ice_fraction": 48.0646,
@@ -127,84 +127,84 @@ exports[`golden recipes — snapshot regression > banana-classic: result snapsho
 
 exports[`golden recipes — snapshot regression > chocolate-classic: result snapshot is stable 1`] = `
 {
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
   "ice_fraction": 37.6492,
   "indicators": [
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "pod",
-      "status": "too_sweet",
+      "status": "good",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "npac",
       "status": "too_soft",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "ice_fraction",
       "status": "too_soft",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "lactose",
       "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "lactose_sandiness_risk",
       "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "fat",
       "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "aerating_protein",
       "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "protein_in_solids",
       "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "total_solids",
       "status": "ideal",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "water",
       "status": "good",
       "temperature_fallback": false,
     },
     {
       "band_status": "seeded",
-      "category_fallback": true,
+      "category_fallback": false,
       "key": "alcohol",
       "status": "good",
       "temperature_fallback": false,
@@ -242,8 +242,8 @@ exports[`golden recipes — snapshot regression > chocolate-classic: result snap
   "scores": {
     "cost": 100,
     "flavor": 70,
-    "overall": 73.99,
-    "technical": 61.23,
+    "overall": 77.4,
+    "technical": 69.75,
   },
   "total_batch_g": 1000,
   "warnings": [],
@@ -252,7 +252,7 @@ exports[`golden recipes — snapshot regression > chocolate-classic: result snap
 
 exports[`golden recipes — snapshot regression > high-fruit-water: result snapshot is stable 1`] = `
 {
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
   "ice_fraction": 53.9978,
@@ -377,7 +377,7 @@ exports[`golden recipes — snapshot regression > high-fruit-water: result snaps
 
 exports[`golden recipes — snapshot regression > jim-beam-alcohol: result snapshot is stable 1`] = `
 {
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
   "ice_fraction": 15.469,
@@ -504,7 +504,7 @@ exports[`golden recipes — snapshot regression > jim-beam-alcohol: result snaps
 
 exports[`golden recipes — snapshot regression > milk-base-classic: result snapshot is stable 1`] = `
 {
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
   "ice_fraction": 49.7274,
@@ -629,7 +629,7 @@ exports[`golden recipes — snapshot regression > milk-base-classic: result snap
 
 exports[`golden recipes — snapshot regression > over-sugared-rescue: result snapshot is stable 1`] = `
 {
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
   "ice_fraction": 0,
@@ -756,7 +756,7 @@ exports[`golden recipes — snapshot regression > over-sugared-rescue: result sn
 
 exports[`golden recipes — snapshot regression > pistachio-high-fat: result snapshot is stable 1`] = `
 {
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
   "ice_fraction": 37.0838,
@@ -881,7 +881,7 @@ exports[`golden recipes — snapshot regression > pistachio-high-fat: result sna
 
 exports[`golden recipes — snapshot regression > raspberry-premium: result snapshot is stable 1`] = `
 {
-  "config_version": "0.5.0",
+  "config_version": "0.6.0",
   "cost_complete": true,
   "engine_version": "0.4.0",
   "ice_fraction": 50.5216,

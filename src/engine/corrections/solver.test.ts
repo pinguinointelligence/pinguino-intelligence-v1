@@ -621,3 +621,72 @@ describe('scope guard', () => {
     expect(functionNames.sort()).toEqual([...ALLOWED_ENGINE_FUNCTIONS].sort());
   });
 });
+
+describe('CONFIG 0.6.0 - the DEFAULT solver is temperature-aware (no override anywhere)', () => {
+  // the same milk recipe, judged purely by the DEFAULT pipeline at each
+  // serving temperature - no targetBandOverride, no injection, no seam.
+  // podLowInput's npac (≈24) is below every band, so the violation's BAND
+  // reveals exactly which seeded cell the default pipeline judged against.
+  const npacViolationAt = (temperatureC: number) =>
+    detectViolations(
+      calculateRecipe(mkInput(podLowInput().items, { target_temperature_c: temperatureC })),
+    ).find((violation) => violation.metric === 'npac');
+
+  it('detects against the seeded -12 band [42,50] by default', () => {
+    const violation = npacViolationAt(-12);
+    expect(violation).toBeDefined();
+    expect(violation!.direction).toBe('low');
+    expect(violation!.band).toMatchObject({ min: 42, max: 50 });
+  });
+
+  it('detects against the seeded -13 band [48,55] by default', () => {
+    const violation = npacViolationAt(-13);
+    expect(violation).toBeDefined();
+    expect(violation!.band).toMatchObject({ min: 48, max: 55 });
+  });
+
+  it('the same recipe at -11 is judged against the untouched [33,42] band', () => {
+    const violation = npacViolationAt(-11);
+    if (violation) expect(violation.band).toMatchObject({ min: 33, max: 42 });
+    expect(selectTargetBand('milk_gelato', -11)!.band.metrics.npac).toMatchObject({ min: 33, max: 42 });
+  });
+
+  it('the SAME recipe solves to DIFFERENT temperature targets by default (no override)', () => {
+    // fatLowInput's npac (≈65.5) is too high everywhere — the default solve
+    // reduces it INTO whichever band the serving temperature seeds.
+    const solveAt = (temperatureC: number) => {
+      const result = proposeCorrections({
+        input: mkInput(fatLowInput().items, { target_temperature_c: temperatureC }),
+        context: 'planning',
+        redact: false,
+        focus: ['npac'],
+      });
+      const proposals = pro(result).filter((proposal) => proposal.kind === 'correction');
+      expect(proposals.length, `corrections at ${temperatureC}`).toBeGreaterThan(0);
+      return proposals[0]!.predicted.find((p) => p.metric === 'npac')!;
+    };
+
+    const at13 = solveAt(-13);
+    expect(at13.after!).toBeLessThan(at13.before!); // reduces toward the target
+    expect(at13.after!).toBeGreaterThanOrEqual(48); // lands INSIDE the −13 band [48,55]
+    expect(at13.after!).toBeLessThanOrEqual(55);
+
+    const at11 = solveAt(-11);
+    expect(at11.after!).toBeLessThanOrEqual(42); // the SAME recipe at −11 aims at [33,42]
+    expect(at11.after!).toBeGreaterThanOrEqual(33);
+    expect(at13.after!).toBeGreaterThan(at11.after!); // colder serving ⇒ higher npac target
+  });
+
+  it('the Slice-14 override seam still works and equals the default when given the same band', () => {
+    const input = mkInput(fatLowInput().items, { target_temperature_c: -13 });
+    const plain = proposeCorrections({ input, context: 'planning', redact: false, focus: ['npac'] });
+    const overridden = proposeCorrections({
+      input,
+      context: 'planning',
+      redact: false,
+      focus: ['npac'],
+      targetBandOverride: { npac: { min: 48, max: 55 } }, // the seeded -13 band itself
+    });
+    expect(JSON.stringify(pro(overridden))).toBe(JSON.stringify(pro(plain)));
+  });
+});

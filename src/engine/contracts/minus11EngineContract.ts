@@ -1,4 +1,4 @@
-/**
+﻿/**
  * −11°C Engine Contract (Slice 1A.5) — a read-only, drift-proof Knowledge Pack.
  *
  * This is the machine-readable companion to docs/engine/MINUS_11_ENGINE_CONTRACT.md.
@@ -42,7 +42,8 @@ export interface Minus11EngineContract {
   /** Composed from the engine identity (never an independent number). */
   readonly version: { readonly engine_version: string; readonly config_version: string };
   readonly ideal_zone_fraction: number;
-  /** The seeded milk_gelato @ −11°C band (the only seeded band today). */
+  /** The seeded milk_gelato @ −11°C band — the untouched base reference (it
+   * declares all 11 metrics; other cells are seeded too since CONFIG 0.6.0). */
   readonly milk_gelato_minus_11_band: Readonly<Record<TargetMetric, TargetRange>>;
   /** Golden Middle priority order (hero/taste → … → cost). */
   readonly priority_order: readonly PriorityKey[];
@@ -52,13 +53,15 @@ export interface Minus11EngineContract {
   readonly reference_recipes: readonly ContractReferenceRecipe[];
 }
 
-/** The seeded milk_gelato @ −11°C band — the single canonical source for the ranges. */
+/** The seeded milk_gelato @ −11°C band — the single canonical source for the
+ * ranges. The base-reference band declares all 11 metrics (partial bands exist
+ * only for sorbet/vegan since CONFIG 0.6.0), so the total-record view is safe. */
 const MILK_GELATO_MINUS_11_BAND = TARGET_BANDS.find(
   (band) => band.category === 'milk_gelato' && band.temperature_c === -11,
-)!.metrics;
+)!.metrics as Readonly<Record<TargetMetric, TargetRange>>;
 
 export const MINUS_11_ENGINE_CONTRACT: Minus11EngineContract = {
-  contract_revision: '1A.5',
+  contract_revision: '1A.6',
   engine_label: '−11°C Engine',
   scope: 'minus_11c_only',
   temperature_c: -11,

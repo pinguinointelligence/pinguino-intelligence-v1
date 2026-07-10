@@ -402,6 +402,29 @@ changes; no UI dependency yet.
    **Next:** owner runs the webhook deploy checklist (test-mode endpoint first) → freshness
    becomes automatic and the last tier-chain caveat closes; then back to the Spine main line
    (engine `TARGET_BANDS` −12/−13) or the Option-B cutover if ever wanted.
+   **[landed — temperature-aware engine TARGET_BANDS, 2026-07-10, CONFIG 0.6.0]** the
+   owner-approved ENGINE slice: all 12 locked profile × temperature cells seeded VERBATIM from the
+   regulator docs (milk −12/−13; chocolate/sorbet/vegan × −11/−12/−13; milk @ −11 untouched;
+   nothing invented — see the full band table in
+   [TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md §7](engine/TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md)).
+   The DEFAULT classifier + correction solver are now temperature-aware for every caller — proven
+   by test: the SAME npac-high recipe solves INTO [48,55] at −13 and INTO [33,42] at −11 with no
+   override anywhere. `TargetBand.metrics` became Partial so sorbet/vegan DECLARE the
+   regulator-disabled dairy-gate omissions (an omitted metric is solver-skipped — sorbet lactose
+   is never "corrected" against a milk band again); chocolate protein-share uses the locked
+   hard-min 7 (advisory zone 7–8 no longer hard-flags); every new band carries the spec-§9
+   alcohol warn row. ENGINE_VERSION stays 0.4.0 (one null-safe accessor, no formula change).
+   Golden re-baseline: 7 of 8 recipes changed ONLY in the config_version stamp; chocolate-classic
+   flipped as intended (fallback flags cleared, pod too_sweet→good under the cocoa tolerance,
+   scores up). The Slice 12–14 acceptance oracle flipped: shadow comparison reports ALIGNED with
+   exact band equality for the migrated cells; injection/override seams are no-ops for seeded
+   cells (pinned) and remain as comparison + safety seams. UI copy updated ("Engine target bands
+   are temperature-aware" — the old "global engine target bands unchanged" claim is retired and
+   test-forbidden). −11°C Engine Contract rev 1A.6 records: bands live, but ice anchors +
+   external validation at −12/−13 still pending — NOT separate working engines. Rollback =
+   one-commit revert (data-only).
+   **Next:** ice anchors / external recompute fixtures for −12/−13 when calibration data arrives;
+   the Stripe webhook deploy checklist remains open; IF9/IF10 branch apply/save stays future.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

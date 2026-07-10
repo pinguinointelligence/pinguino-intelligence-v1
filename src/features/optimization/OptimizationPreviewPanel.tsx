@@ -87,8 +87,9 @@ export function OptimizationPreviewPanel({
         );
       })()}
 
-      {/* Slice 13: solver-injected regulator target (preview only). Safe in every tier —
-          no grams, no ingredient names; the global engine target bands are unchanged. */}
+      {/* Slice 13 comparison line. Safe in every tier — no grams, no ingredient
+          names. Since CONFIG 0.6.0 the engine bands ARE temperature-aware, so for
+          seeded cells this comparison is expected to read "same correction". */}
       {view.solverTargetInjection.active ? (
         <p className="mt-1 font-mono text-[11px] text-ivory/40">
           regulator-shadow solver target:{' '}
@@ -96,7 +97,7 @@ export function OptimizationPreviewPanel({
           {view.solverTargetInjection.newViolationsUnderRegulator.length > 0
             ? ` · would target: ${view.solverTargetInjection.newViolationsUnderRegulator.map(humanize).join(', ')}`
             : ''}
-          <span className="text-ivory/30"> · Preview only — global engine target bands unchanged</span>
+          <span className="text-ivory/30"> · Comparison only — engine target bands are temperature-aware</span>
         </p>
       ) : null}
 

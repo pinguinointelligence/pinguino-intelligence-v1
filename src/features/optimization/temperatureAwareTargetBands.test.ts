@@ -49,42 +49,64 @@ describe('compareEngineVsShadowBands', () => {
     expect(npac.centerDelta!).toBeLessThanOrEqual(1);
   });
 
-  it('Standard Gelato −12 is divergent — engine on the −11 temperature fallback', () => {
+  // CONFIG 0.6.0 flipped the acceptance oracle: the 11 previously-divergent
+  // cells now select their own seeded engine bands (transcribed from the same
+  // locked regulator docs), so the comparison reports ALIGNED with exact
+  // band equality — precisely the migration success criterion from
+  // docs/engine/TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md §4.
+
+  it('Standard Gelato −12 is ALIGNED — the engine band IS the regulator band (CONFIG 0.6.0)', () => {
     const c = cmp('standard_gelato', -12);
-    expect(c.status).toBe('divergent');
-    expect(c.engineTemperatureFallback).toBe(true);
-    expect(c.warnings).toContain('engine_uses_temperature_fallback_band');
-    expect(c.warnings).toContain('solver_not_targeting_regulator_band');
-    expect(npacOf('standard_gelato', -12).shadowBand).toEqual([42, 50]);
-    expect(npacOf('standard_gelato', -12).centerDelta!).toBeGreaterThan(5); // 37.5 vs 46
+    expect(c.status).toBe('aligned');
+    expect(c.solverTargetsCorrectBand).toBe(true);
+    expect(c.engineTemperatureFallback).toBe(false);
+    expect(c.warnings).not.toContain('engine_uses_temperature_fallback_band');
+    expect(c.warnings).not.toContain('solver_not_targeting_regulator_band');
+    const npac = npacOf('standard_gelato', -12);
+    expect(npac.engineBand).toEqual([42, 50]);
+    expect(npac.shadowBand).toEqual([42, 50]);
+    expect(npac.centerDelta).toBe(0);
+    expect(npac.aligned).toBe(true);
   });
 
-  it('Standard Gelato −13 is divergent with a large NPAC divergence', () => {
+  it('Standard Gelato −13 is ALIGNED with exact NPAC band equality (CONFIG 0.6.0)', () => {
     const c = cmp('standard_gelato', -13);
-    expect(c.status).toBe('divergent');
-    expect(npacOf('standard_gelato', -13).shadowBand).toEqual([48, 55]);
-    expect(npacOf('standard_gelato', -13).centerDelta!).toBeGreaterThan(10); // 37.5 vs 51.5 = 14
+    expect(c.status).toBe('aligned');
+    const npac = npacOf('standard_gelato', -13);
+    expect(npac.engineBand).toEqual([48, 55]);
+    expect(npac.shadowBand).toEqual([48, 55]);
+    expect(npac.centerDelta).toBe(0);
   });
 
-  it('Chocolate is divergent and uses the chocolate regulator shadow band (category fallback)', () => {
+  it('Chocolate −13 is ALIGNED on its own chocolate band — no category fallback (CONFIG 0.6.0)', () => {
     const c = cmp('chocolate_gelato', -13);
-    expect(c.status).toBe('divergent');
-    expect(c.engineCategoryFallback).toBe(true);
-    expect(c.warnings).toContain('engine_uses_category_fallback_band');
-    expect(npacOf('chocolate_gelato', -13).shadowBand).toEqual([49, 57]);
+    expect(c.status).toBe('aligned');
+    expect(c.engineCategoryFallback).toBe(false);
+    expect(c.warnings).not.toContain('engine_uses_category_fallback_band');
+    const npac = npacOf('chocolate_gelato', -13);
+    expect(npac.engineBand).toEqual([49, 57]);
+    expect(npac.shadowBand).toEqual([49, 57]);
+    // the ONE deliberate residual: protein-share stays advisory — the engine
+    // band uses the locked hard-minimum 7 (regulator advisory band is [8,13])
+    const protein = c.comparisons.find((x) => x.metric === 'protein_share_in_solids')!;
+    expect(protein.engineBand).toEqual([7, 13]);
+    expect(protein.shadowBand).toEqual([8, 13]);
+    expect(protein.aligned).toBe(false);
   });
 
-  it('Sorbet is divergent (category fallback) and its shadow bands carry no dairy hard gate', () => {
+  it('Sorbet −12 is ALIGNED on its own band; shadow carries no dairy hard gate (CONFIG 0.6.0)', () => {
     const c = cmp('sorbet', -12);
-    expect(c.status).toBe('divergent');
-    expect(c.engineCategoryFallback).toBe(true);
+    expect(c.status).toBe('aligned');
+    expect(c.engineCategoryFallback).toBe(false);
+    expect(npacOf('sorbet', -12).engineBand).toEqual([42, 49]);
     expect(shadowTargetBands('sorbet', -12)!.hardGates).not.toContain('lactose_sanding');
   });
 
-  it('Vegan is divergent (category fallback) with no dairy hard gate', () => {
+  it('Vegan −13 is ALIGNED on its own band with no dairy hard gate (CONFIG 0.6.0)', () => {
     const c = cmp('vegan_gelato', -13);
-    expect(c.status).toBe('divergent');
-    expect(c.engineCategoryFallback).toBe(true);
+    expect(c.status).toBe('aligned');
+    expect(c.engineCategoryFallback).toBe(false);
+    expect(npacOf('vegan_gelato', -13).engineBand).toEqual([50, 64]);
     expect(shadowTargetBands('vegan_gelato', -13)!.hardGates).not.toContain('lactose');
   });
 

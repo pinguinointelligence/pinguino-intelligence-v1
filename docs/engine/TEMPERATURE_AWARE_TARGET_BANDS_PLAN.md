@@ -3,8 +3,9 @@
 _Created 2026-07-08 (Spine Slice 12). Companion to [PINGUINO_SPINE.md](../PINGUINO_SPINE.md).
 This documents the **gap** between the engine's live `TARGET_BANDS` (what the correction solver
 targets today) and the locked **Temperature Regulator** bands (what it should target per product ×
-serving temperature), plus a safe migration path. **Nothing here is live**: Slice 12 ships a
-non-live SHADOW comparison only (`src/features/optimization/temperatureAwareTargetBands.ts`)._
+serving temperature), plus a safe migration path. Sections 1–6 are the Slice 12–14 record, kept
+verbatim. **STATUS UPDATE: the gap is CLOSED — path 1 went LIVE as CONFIG 0.6.0 on 2026-07-10
+(owner-approved engine slice, §7).**_
 
 Neutral-wording rule: never name external benchmark tools in code/docs — say **calibration data** /
 **reference dataset**.
@@ -159,3 +160,61 @@ Either way the shadow comparison here becomes the acceptance oracle: after the c
   behind capabilities (the `targetBandOverride` seam is ready), or (b) bake −12/−13 into the engine
   `TARGET_BANDS` (path 1: CONFIG_VERSION bump + golden re-baseline) to make the DEFAULT solver
   temperature-aware for every caller.
+
+---
+
+## 7. LIVE — path 1 executed (CONFIG 0.6.0, 2026-07-10, owner-approved engine slice)
+
+The owner approved path 1. `TARGET_BANDS` now seeds **all 12 locked profile × temperature cells**;
+the DEFAULT classifier and solver are temperature-aware for every caller.
+
+**What was added (all transcribed VERBATIM from `src/spine/temperatureRegulator.ts` — no value
+invented; `milk_gelato @ −11` untouched):**
+
+| Engine cell | NPAC | POD | Ice fraction | Solids | Water | Dairy gates |
+|---|---|---|---|---|---|---|
+| milk −12 | [42,50] | [12,17] | [46,54] | [31,44] | [56,70] | full set (lactose [4,6], sanding [5,9], fat [5,12], aer. protein [3,6], protein share [9,13]) |
+| milk −13 | [48,55] | [12,17] | [46,52] | [35,45] | [55,65] | full set (as −12) |
+| chocolate −11 | [34,45] | [12,20] | [45,54.5] | [31,45] | [57,70] | full set; **protein share [7,13]** (locked hard-min 7; advisory zone 7–8 no longer hard-flags) |
+| chocolate −12 | [43,52] | [12,20] | [46,54] | [31,45] | [56,70] | as chocolate −11 |
+| chocolate −13 | [49,57] | [12,20] | [46,52] | [35,45] | [55,65] | as chocolate −11 |
+| sorbet −11 | [35,40] | [15,25] | [51,59] | [25,33] | [67,75] | **OMITTED** (regulator-disabled, incl. fat) |
+| sorbet −12 | [42,49] | [15,25] | [51,59] | [25,33] | [67,73] | omitted |
+| sorbet −13 | [48,55] | [15,25] | [50,58] | [25,33] | [67,73] | omitted |
+| vegan −11 | [35,52] | [13,25] | [45,61] | [30,43] | [54,72] | dairy omitted; fat [0,12] |
+| vegan −12 | [44,59] | [13,25] | [46,60] | [30,43] | [52,70] | dairy omitted; fat [0,12] |
+| vegan −13 | [50,64] | [13,25] | [46,58] | [30,43] | [50,67] | dairy omitted; fat [0,12] |
+
+Every band also carries the spec-§9 alcohol row ([0,2.5] warn above 2.5 — temperature/category-
+independent, exactly what every cell already received via the old fallback). `TargetBand.metrics`
+became `Partial<…>` so sorbet/vegan can DECLARE their omissions: an omitted metric classifies
+`needs_correction` (cannot assess) and is **skipped by the solver's violation detection** — sorbet
+lactose is never "corrected" against a milk band again. One null-safe accessor in
+`calculateRecipe` (optional alcohol range); ENGINE_VERSION stays 0.4.0.
+
+**Golden re-baseline result (all diffs inspected, none blind):** 7 of 8 golden recipes changed
+ONLY in the `config_version` stamp (0.5.0 → 0.6.0) — behavior byte-identical (they are milk@−11 or
+still-fallback fruit/nut/alcohol categories). `chocolate-classic` changed as intended: all 11
+indicators dropped `category_fallback`, `pod: too_sweet → good` (17.x inside chocolate's locked
+[12,20] cocoa-bitterness tolerance), technical score 61.23 → 69.75 / overall 73.99 → 77.4.
+Solver default proven temperature-aware by test: the same npac-high recipe solves INTO [48,55] at
+−13 and INTO [33,42] at −11 with no override anywhere; `selectTargetBand('milk_gelato', −14)` now
+nearest-falls-back to −13 (was −11).
+
+**Acceptance oracle flipped (§4):** `compareEngineVsShadowBands` reports **aligned with exact band
+equality** for the 11 migrated cells; the Slice 13/14 injection seams are now no-ops for seeded
+cells (pinned by tests) and remain as comparison instruments + the safety seam.
+
+**Remaining, stated honestly:**
+- the −11 residuals stay: engine milk npac [33,42] vs regulator [33,43] (the untouched base) and
+  chocolate protein-share [7,13] vs the regulator's advisory [8,13] (deliberate — hard-min 7);
+- fruit_gelato / nut_gelato / alcohol_gelato / other remain UNSEEDED → documented milk fallback
+  (the regulator has no locked profiles for them);
+- ice-fraction VALUES still come from the −11-anchored estimate + calibration-pending slope
+  (config/iceAnchors.ts) — bands are live, anchors are the next calibration frontier;
+- full engine validation at −12/−13 (external recompute fixtures) is still pending — see the
+  −11°C Engine Contract §2 update.
+
+**Rollback:** data-only — remove the 11 added rows, restore `metrics` to the total record type +
+the one `?.` accessor, set CONFIG_VERSION back to 0.5.0, restore the flipped test expectations
+(one commit revert); no DB/schema impact.

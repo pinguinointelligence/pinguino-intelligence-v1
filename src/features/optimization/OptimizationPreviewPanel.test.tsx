@@ -190,12 +190,15 @@ describe('OptimizationPreviewPanel — redaction', () => {
     expect(t).toMatch(/divergent/);
   });
 
-  it('shows the injected regulator-shadow solver target in every tier with the preview-only warning', () => {
+  it('shows the injected regulator-shadow solver target in every tier with the comparison caveat', () => {
     for (const policy of [demoPolicy, proPolicy, devPolicy]) {
       const t = visibleText(render(view(), policy));
       expect(t).toMatch(/regulator-shadow solver target/);
       expect(t).toMatch(/would change the correction/);
-      expect(t).toMatch(/Preview only — global engine target bands unchanged/);
+      // CONFIG 0.6.0: the old "global engine target bands unchanged" claim is
+      // retired — the live bands ARE temperature-aware now.
+      expect(t).toMatch(/Comparison only — engine target bands are temperature-aware/);
+      expect(t).not.toMatch(/global engine target bands unchanged/);
     }
   });
 
@@ -288,11 +291,13 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
     expect(/onClick=\{[\s\S]*?setOptimizationView\(previewOptimization/.test(studio)).toBe(true);
   });
 
-  it('shows the production safety disclaimers', () => {
+  it('shows the production safety disclaimers (CONFIG 0.6.0 wording)', () => {
     expect(studio.includes('Preview only')).toBe(true);
     expect(/not applied automatically/.test(studio)).toBe(true);
-    expect(/regulator-shadow target preview/.test(studio)).toBe(true);
-    expect(/global engine target bands unchanged/.test(studio)).toBe(true);
+    // the live bands ARE temperature-aware now — the old claim must be gone
+    expect(/target bands are temperature-aware/.test(studio)).toBe(true);
+    expect(/regulator-shadow comparison remains available/.test(studio)).toBe(true);
+    expect(/global engine target bands unchanged/.test(studio)).toBe(false);
     expect(/Exact grams available on Pro/.test(studio)).toBe(true);
   });
 

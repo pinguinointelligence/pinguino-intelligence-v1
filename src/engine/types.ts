@@ -406,7 +406,16 @@ export interface TargetBand {
   temperature_c: number;
   /** 'seeded' = from the locked spec; 'estimated' = default pending tuning. */
   status: 'seeded' | 'estimated';
-  metrics: Record<TargetMetric, TargetRange>;
+  /**
+   * Partial ON PURPOSE (CONFIG 0.6.0): a band declares ONLY the metrics its
+   * locked source defines. The regulator docs DISABLE dairy gates for
+   * sorbet/vegan, so those bands deliberately omit lactose /
+   * lactose_sandiness_risk / aerating_protein / protein_in_solids (and fat for
+   * sorbet) — an omitted metric classifies `needs_correction` (cannot assess)
+   * and is SKIPPED by the correction solver's violation detection, never gated
+   * against a foreign category's band.
+   */
+  metrics: Partial<Record<TargetMetric, TargetRange>>;
 }
 
 export interface ModeScoreWeights {

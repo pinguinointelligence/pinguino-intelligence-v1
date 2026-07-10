@@ -3,14 +3,13 @@
  * the Temperature Regulator's target for the selected product × serving temperature
  * and reports whether the REAL correction solver actually aims at it.
  *
- * Honest scope: the engine's correction solver targets the Base Engine seeded band
- * (`TARGET_BANDS` has only `milk_gelato @ −11`; every other category/temperature
- * falls back to it, flagged `temperature_fallback` / `category_fallback`). The
- * regulator, by contrast, has distinct bands per profile × temperature. This module
- * does NOT change the solver or the engine — it exposes the regulator target and
- * DETECTS the divergence, surfacing `temperature_target_not_connected` when the
- * solver is still on the −11 fallback. So the pipeline is TARGET-AWARE / instrumented,
- * not yet truly temperature-aware. Never remaps an unsupported profile/temperature.
+ * Honest scope: the engine's correction solver targets the Base Engine seeded band.
+ * Since CONFIG 0.6.0 `TARGET_BANDS` seeds all 12 locked profile × temperature cells
+ * (transcribed from the regulator docs), so supported recipes select their own band
+ * and this seam reports `base_engine_seeded` / aligned. It still DETECTS any
+ * fallback (`temperature_fallback` / `category_fallback` — e.g. the unseeded
+ * fruit/nut/alcohol categories) and surfaces `temperature_target_not_connected`
+ * for those. Never remaps an unsupported profile/temperature.
  *
  * No engine import (reads the engine result's fallback flags structurally), no DB,
  * no Mapper, no persistence.
@@ -44,7 +43,7 @@ export interface TemperatureAwareCorrectionTarget {
 /**
  * Where the solver's ACTUAL target comes from:
  * - `base_engine_seeded`: the engine band matches the recipe's profile×temperature
- *   (only `milk_gelato @ −11`, which coincides with the regulator −11 band);
+ *   (since CONFIG 0.6.0: all 12 locked cells, transcribed from the regulator docs);
  * - `not_connected`: the engine fell back to the seeded band (a different temperature
  *   and/or category), so the solver is NOT aiming at the regulator target;
  * - `temperature_regulator`: reserved — emitted only once the solver consumes the

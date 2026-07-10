@@ -1,6 +1,6 @@
 # −11°C Engine Contract
 
-**Contract revision:** `1A.5` · **Engine version:** `0.4.0` · **Config version:** `0.5.0`
+**Contract revision:** `1A.6` · **Engine version:** `0.4.0` · **Config version:** `0.6.0`
 
 This is the versioned, company-owned knowledge pack for the active **−11°C Engine**. It exists so a future AI/API layer has a single, stable set of guardrails to reason against. It is a companion to the locked math specification and the product masterplan:
 
@@ -20,19 +20,31 @@ There is exactly **one** active engine today: the **−11°C Engine**. It is the
 
 This contract is **validated at −11°C only**. All confirmed numbers recovered from the planning history were measured on the −11°C serving setting, so every claim here is **−11°C only**.
 
-**No validated −10°C, −12°C, or −13°C tests exist yet.** There are likewise no validated Fresh or storage/−18°C results. Future temperature profiles (for example −12°C, −13°C, Fresh, −18°C) are **labels only** — not implemented, not calibrated, and **not separate working engines yet**. Selecting one still computes on the −11°C Engine. A future temperature engine becomes real only when it has its own target temperature, ice anchors, and external-reference calibration fixtures, and is explicitly activated; until then it must not be presented as a working engine.
+**No validated −10°C, −12°C, or −13°C tests exist yet.** There are likewise no validated Fresh or storage/−18°C results. Future temperature profiles (for example −12°C, −13°C, Fresh, −18°C) are **not separate working engines yet**. Selecting one still computes on the −11°C Engine. A future temperature engine becomes real only when it has its own target temperature, ice anchors, and external-reference calibration fixtures, and is explicitly activated; until then it must not be presented as a working engine.
+
+> **Update (CONFIG `0.6.0`, 2026-07-10 — temperature-aware target bands).** The engine's
+> `TARGET_BANDS` now seed all 12 locked profile × temperature cells (milk/chocolate/sorbet/vegan ×
+> −11/−12/−13), transcribed verbatim from the locked Temperature Regulator documents — so status
+> classification and the correction solver **target** the recipe's real profile×temperature band
+> instead of the old milk-@−11 fallback. This changes *what the engine aims at*, not what it is:
+> the calculation pipeline, ice anchors and external-reference calibration remain validated at
+> −11°C only, and −12/−13 remain **not separate working engines yet** — they are target bands on
+> the same −11°C Engine, pending their own ice anchors and calibration fixtures.
 
 ## 3. Versioning
 
 The contract composes the engine identity rather than inventing an independent number:
 
 - `engine_version` (`0.4.0`) — moves on any engine formula/pipeline change.
-- `config_version` (`0.5.0`) — moves on any coefficient/target/normalization-basis change.
-- `contract_revision` (`1A.5`) — moves on a change to what this contract promises or exposes (prose or shape), independent of engine math.
+- `config_version` (`0.6.0`) — moves on any coefficient/target/normalization-basis change
+  (0.6.0 = the temperature-aware `TARGET_BANDS` seeding).
+- `contract_revision` (`1A.6`) — moves on a change to what this contract promises or exposes (prose or shape), independent of engine math.
 
 ## 4. Working model — milk gelato, −11°C (seeded bands)
 
-These are the **seeded** target ranges for milk gelato at −11°C (the only seeded band today). They are shown for reference; the authoritative values live in `src/engine/config/targets.ts`.
+These are the **seeded** target ranges for milk gelato at −11°C — the untouched base reference.
+Since CONFIG `0.6.0` the other 11 locked profile × temperature cells are seeded too; the
+authoritative values for every cell live in `src/engine/config/targets.ts`.
 
 | Metric | Target range |
 |---|---|
