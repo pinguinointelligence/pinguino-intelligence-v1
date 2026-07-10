@@ -86,6 +86,19 @@ export interface StudioFlowCopy {
     noSaveNote: string;
     noRecipeChangeNote: string;
     deterministicNote: string;
+    /** Intent → deterministic starter recipe draft (local preview only). */
+    starter: {
+      previewCta: string;
+      readyTitle: string;
+      readyBody: string;
+      needsInfo: string;
+      notSupported: string;
+      flavorManual: string;
+      optimizationRecommended: string;
+      inBand: string;
+      /** Repeats the no-save / no-apply promise on the recipe preview. */
+      notSavedNote: string;
+    };
   };
 }
 
@@ -183,6 +196,20 @@ const PL: StudioFlowCopy = {
     noSaveNote: 'Nic nie jest zapisywane.',
     noRecipeChangeNote: 'Receptura nie jest zmieniana.',
     deterministicNote: 'Asystent działa deterministycznie — bez modelu językowego.',
+    starter: {
+      previewCta: 'Pokaż szkic receptury',
+      readyTitle: 'Szkic receptury (podgląd)',
+      readyBody:
+        'To lokalny, deterministyczny szkic bazy z gotowego szablonu — nie jest zapisywany ani nakładany na recepturę. Smak i dostrojenie dodasz w Studio.',
+      needsInfo: 'Podaj wielkość batcha, aby przygotować szkic bazy.',
+      notSupported:
+        'Dla tego profilu nie mam jeszcze bezpiecznego szablonu bazy. Zacznij recepturę ręcznie w Studio — nie zgadujemy składu.',
+      flavorManual: 'Dodaj składnik smakowy ręcznie — nie zgadujemy jego składu.',
+      optimizationRecommended:
+        'Baza jest poza zakresem w części wskaźników — możesz uruchomić podgląd optymalizacji.',
+      inBand: 'Baza mieści się w zakresach dla wybranego profilu i temperatury.',
+      notSavedNote: 'Podgląd bazy — nic nie jest zapisywane ani nakładane na recepturę.',
+    },
   },
 };
 

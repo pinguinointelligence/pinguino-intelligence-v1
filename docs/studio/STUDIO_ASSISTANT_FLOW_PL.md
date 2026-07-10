@@ -74,8 +74,12 @@ persistence, no recipe mutation.
 
 ## 7. What remains before a true conversational assistant
 
-1. **Intent → recipe generation** — turning the draft into a starting recipe (deterministic
-   Designer output first; owner-approved).
+1. ~~**Intent → recipe generation**~~ — **DONE (deterministic starter draft, 2026-07-10)**: the
+   assistant now offers "Pokaż szkic receptury" → a local, read-only starter recipe preview from
+   locked base templates (standard/chocolate gelato; sorbet/vegan honestly not_supported). Still
+   no LLM, no persistence, no recipe mutation. See
+   [INTENT_TO_RECIPE_DRAFT.md](INTENT_TO_RECIPE_DRAFT.md). The remaining step is a local
+   apply-to-Studio-draft action (deferred).
 2. **User defaults** — saving preferences (User_Flow.md §11) — a future DB slice.
 3. **LLM or richer rules assistant** — free-text understanding beyond the fixed script (the flavor
    parser in `normalizeRecipeIntent` already handles keyword routing).

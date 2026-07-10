@@ -469,6 +469,32 @@ changes; no UI dependency yet.
    **Next:** intent→recipe deterministic draft generation (turn the szkic into a starting recipe),
    OR user-defaults persistence (owner-approved DB slice), OR the assistant apply-to-local-draft
    workflow, OR the Stripe webhook deploy checklist.
+   **[landed — intent → deterministic starter recipe draft (local preview), 2026-07-10]** the
+   assistant now turns its `AssistantIntentDraft` into a LOCAL, read-only starter recipe preview —
+   NO LLM, NO DB, NO persistence, NO recipe mutation, NO faked recipe.
+   `intentRecipeDraft.ts` (`buildStarterRecipeDraft`): pure map to LOCKED base templates built ONLY
+   from the production demo/reference catalog (`@/data/demoIngredients`; is_verified false,
+   pod/pac null — never Mapper rows or PI-Calculated products). v0.1 support: standard_gelato
+   (`milk_base_v1`) and chocolate_gelato (`chocolate_base_v1`) → `ready`; sorbet + vegan_gelato →
+   `not_supported` (no safe water/plant-milk template — start manually, never invented); custom/
+   missing batch → `needs_more_information`; incomplete intent → `blocked`. Templates total 1000 g
+   and scale by an exact ratio, so the recipe totals the requested batch precisely; serving
+   temperature preserved. Runs the REAL `calculateRecipe` for a read-only preview (CONFIG 0.6.0
+   stamp, npac/pod/ice) with honest `inBand` vs `optimizationRecommended` — mutually exclusive
+   booleans, NEVER an "optimized" claim (e.g. the milk base at −12 is honestly out of the seeded
+   band → optimizer recommended). A specific flavor on a neutral base warns
+   `flavor_manual_mapping_required` ("nie zgadujemy jego składu") and keeps the flavor as text —
+   composition never fabricated. Exact grams + numeric metrics are Pro-gated in the shell
+   (`exactCorrectionGrams`); Demo/Free sees ingredient structure + "…dostępne w Pro" only. The
+   preview is READ-ONLY — deliberately no apply/save/"use as recipe" button (local apply deferred).
+   21 new tests (contract, engine preview, safe-source, purity/boundary, copy honesty, redaction
+   gate). Browser-proven: full PL flow → Demo (structure, grams hidden) → Pro toggle (grams
+   3350 g = 670×5, engine line CONFIG 0.6.0) → Sorbet not_supported honest block; zero console
+   errors; zero write requests. Docs: [INTENT_TO_RECIPE_DRAFT.md](studio/INTENT_TO_RECIPE_DRAFT.md).
+   **Next:** local apply-to-Studio-draft workflow (seed the builder form from the snapshot,
+   local-only, "nic nie zostanie zapisane"), OR user-defaults persistence, OR richer Designer
+   rules (sorbet/vegan templates + flavor→ingredient mapping), OR the Stripe webhook deploy
+   checklist.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

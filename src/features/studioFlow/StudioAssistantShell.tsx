@@ -26,6 +26,7 @@ import {
   type AssistantIntentDraft,
   type AssistantQuestion,
 } from './conversationalAssistantFlow';
+import { buildStarterRecipeDraft, type IntentRecipeDraft } from './intentRecipeDraft';
 
 const A = STUDIO_FLOW_COPY.pl.assistant;
 const questionById = (id: string) => ASSISTANT_QUESTIONS.find((q) => q.id === id)!;
@@ -49,6 +50,7 @@ export function StudioAssistantShell() {
   const [pending, setPending] = useState<AssistantAnswerValue>('');
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<AssistantIntentDraft | null>(null);
+  const [starter, setStarter] = useState<IntentRecipeDraft | null>(null);
 
   const question = currentQuestion(flow);
   const complete = isIntentComplete(flow);
@@ -59,6 +61,7 @@ export function StudioAssistantShell() {
     setPending(pendingFor(next, ASSISTANT_QUESTIONS[0]!));
     setError(null);
     setDraft(null);
+    setStarter(null);
   };
 
   const reset = () => {
@@ -66,6 +69,7 @@ export function StudioAssistantShell() {
     setPending('');
     setError(null);
     setDraft(null);
+    setStarter(null);
   };
 
   const next = () => {
@@ -95,7 +99,16 @@ export function StudioAssistantShell() {
     });
   };
 
-  const prepare = () => setDraft(buildIntentDraft(flow));
+  const prepare = () => {
+    setDraft(buildIntentDraft(flow));
+    setStarter(null);
+  };
+
+  const previewStarter = () => {
+    if (draft) setStarter(buildStarterRecipeDraft(draft));
+  };
+
+  const round1 = (grams: number) => Math.round(grams * 10) / 10;
 
   return (
     <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
@@ -230,6 +243,74 @@ export function StudioAssistantShell() {
                 <p className="text-[10px] leading-relaxed text-ivory/30">{A.noRecipeChangeNote}</p>
                 <p className="text-[10px] leading-relaxed text-ivory/30">{A.deterministicNote}</p>
               </div>
+
+              {/* Intent → deterministic starter recipe draft (local preview only). */}
+              <button type="button" onClick={previewStarter} className={buttonCls}>
+                {A.starter.previewCta}
+              </button>
+
+              {starter ? (
+                <div className="space-y-1.5 rounded border border-ivory/10 bg-black/20 p-2.5">
+                  {starter.status === 'ready' ? (
+                    <>
+                      <p className="text-sm font-medium text-ivory/90">{A.starter.readyTitle}</p>
+                      <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.readyBody}</p>
+                      {/* Exact grams + numeric metrics are Pro; Demo/Free sees the
+                          ingredient STRUCTURE only (never exact grams). */}
+                      {exactCorrectionGrams ? (
+                        <>
+                          <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 font-mono text-[11px] text-ivory/60">
+                            {starter.ingredients.map((line) => (
+                              <div key={line.id} className="contents">
+                                <dt className="text-ivory/50">{line.name}</dt>
+                                <dd className="text-right">{round1(line.grams)} g</dd>
+                              </div>
+                            ))}
+                          </dl>
+                          {starter.enginePreview ? (
+                            <p className="font-mono text-[10px] leading-relaxed text-ivory/40">
+                              {`silnik CONFIG ${starter.enginePreview.configVersion} · npac ${
+                                starter.enginePreview.npacPoints?.toFixed(1) ?? '—'
+                              } · pod ${starter.enginePreview.podPoints?.toFixed(1) ?? '—'} · lód ${
+                                starter.enginePreview.iceFractionPercent?.toFixed(1) ?? '—'
+                              }%`}
+                            </p>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          <ul className="font-mono text-[11px] text-ivory/50">
+                            {starter.ingredients.map((line) => (
+                              <li key={line.id}>· {line.name}</li>
+                            ))}
+                          </ul>
+                          <p className="text-[11px] leading-relaxed text-ivory/40">{A.demoGramsNote}</p>
+                        </>
+                      )}
+                      {/* Qualitative direction is safe in every tier. */}
+                      {starter.enginePreview?.inBand ? (
+                        <p className="text-[11px] leading-relaxed text-emerald-300/70">{A.starter.inBand}</p>
+                      ) : null}
+                      {starter.warnings.some((w) => w.code === 'optimization_recommended') ? (
+                        <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.optimizationRecommended}</p>
+                      ) : null}
+                      {starter.warnings.some((w) => w.code === 'flavor_manual_mapping_required') ? (
+                        <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.flavorManual}</p>
+                      ) : null}
+                      <p className="text-[10px] leading-relaxed text-ivory/30">{A.starter.notSavedNote}</p>
+                    </>
+                  ) : null}
+                  {starter.status === 'needs_more_information' ? (
+                    <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.needsInfo}</p>
+                  ) : null}
+                  {starter.status === 'not_supported' ? (
+                    <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.notSupported}</p>
+                  ) : null}
+                  {starter.status === 'blocked' ? (
+                    <p className="text-[11px] leading-relaxed text-ivory/50">{A.incomplete}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </>
