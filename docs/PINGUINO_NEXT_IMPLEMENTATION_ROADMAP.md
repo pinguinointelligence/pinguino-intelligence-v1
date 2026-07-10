@@ -320,8 +320,20 @@ changes; no UI dependency yet.
    re-verified untouched (mapper_basement 542, products 69, PAC/POD 0/69, pi_calculated 1). The ONLY
    blocked proof: the end-to-end signed-in save click (owner browser session unavailable — documented in
    plan §8.3, not faked; a 5-minute owner action).
-   **Next:** the owner performs the first real signed-in save (plan §8.3) and re-runs the §8 baseline
-   query; Edge-Function tier hardening before scale; branch apply/save for IF9/IF10 stays future work.
+   **[landed — Slice 24B, 2026-07-10]** the blocked proof COMPLETED end to end (plan §8.3). A first
+   manual attempt without a real sign-in was honestly caught by the logs (stale `last_sign_in_at`,
+   empty auth log, zero insert attempts — the "Pro · test" toggle changes capability, never auth).
+   With the owner's real signed-in session: low-sugar Milk Base (local edit, never saved) →
+   optimization preview decision `tradeoff` → ONE Save-correction click → UI showed the real stored
+   record id `168157b9-6011-4fc6-9367-3da78f5ede37`; the ONLY write on the wire was
+   `POST /rest/v1/accepted_corrections` → 201; the row verified field-by-field (owner = creator,
+   snapshots 6→7 items, `add Dextrose 113.42 g`, npac 20.20→49.07, rerun_complete, engine 0.4.0 /
+   config 0.5.0); then the proof row was DELETED through the real `deleteAcceptedCorrection` service
+   in the same session — `accepted_corrections` back to 0, every baseline number identical
+   (542 / 69 / 0-of-69 / 1 / saved_recipes 1, `updated_at` stamps untouched). Gates re-run green
+   (typecheck, lint, 1986 tests, build). Docs-only change; no code touched.
+   **Next:** Edge-Function tier hardening before scale (decision F, standing); branch apply/save for
+   IF9/IF10 stays future work.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

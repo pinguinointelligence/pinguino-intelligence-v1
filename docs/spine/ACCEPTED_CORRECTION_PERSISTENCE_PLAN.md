@@ -120,8 +120,9 @@ first, verify the checklist, then write.
       `listMyAcceptedCorrections` / `deleteAcceptedCorrection`; NO update function).
 - [x] Studio `SaveCorrectionControl` wired Pro-only + signed-in, honest failure states, no fake success.
 - [x] Redaction re-verified: demo/free see no save affordance (tests + preview browser, §8.3).
-- [x] Full gates + adversarial review; browser proof of every unauthenticated state (§8.3) —
-      the end-to-end signed-in save is documented as BLOCKED, not faked (§8.3, owner action).
+- [x] Full gates + adversarial review; browser proof of every unauthenticated state (§8.3).
+- [x] End-to-end signed-in save proof COMPLETED in Slice 24B (§8.3): one real save (201 on the
+      wire), row field-verified, proof row deleted through the service, baseline unchanged.
 
 ## 6. Exact next live-write slice (after approval)
 
@@ -188,9 +189,9 @@ persisted. Baseline re-checked in the Slice 24 report: mapper_basement 542, prod
 role/claims mechanism but not the full HTTP stack (JWT signature verification, `apikey` header
 handling).
 
-### 8.3 Browser proof (Slice 24) — what was proven and what is blocked
+### 8.3 Browser proof (Slice 24 + 24B) — COMPLETE, end to end
 
-Proven in the local preview browser (anon session, `/studio`):
+Proven in the local preview browser (anon session, `/studio`, Slice 24):
 - signed-out + optimization preview computed → the control area shows only
   **"Sign in to save corrections"** — zero save buttons, zero solve radios;
 - `/demo` now redirects to `/` (retired route) — the anon `/studio` session IS the free-preview
@@ -198,11 +199,28 @@ Proven in the local preview browser (anon session, `/studio`):
 - DEV Pro override WITHOUT sign-in (exact grams visible in the optimization panel) → **still**
   only the sign-in note: capability alone never unlocks the write control, auth is checked first.
 
-**BLOCKED (not faked):** the end-to-end signed-in Pro save (click → one `accepted_corrections`
-insert on the wire → stored record id shown → row visible via read-only verification). It needs
-the owner's signed-in browser session; the Chrome connector was not reachable during Slice 24 and
-no credentials exist in the local preview browser (nor would password entry be acceptable). The
-insert path itself is proven at the DB layer (§8.2 test 3, owner-claims insert) and the service +
-UI layers are fully covered by tests; the first real save remains a 5-minute owner action:
-sign in at `/studio` → Preview optimization → Save correction → the §8.2 baseline query must show
-`accepted_corrections = 1` and everything else unchanged.
+**Signed-in end-to-end save — COMPLETED 2026-07-10 (Slice 24B).** The proof was blocked in
+Slice 24 (no signed-in session available; nothing was faked) and completed the next session after
+the owner signed in at `/studio` (real password sign-in, `POST /auth/v1/token` → 200; a first
+manual attempt without a real sign-in produced — correctly — no button and no request, which the
+logs proved: `last_sign_in_at` four days stale, auth log empty, zero insert attempts). With the
+owner's session:
+- Milk Base preset with sugars reduced (Sucrose 130→50 g, Dextrose 30→10 g — a local, unsaved
+  edit) → Preview optimization → decision **tradeoff**, both solves saveable, control rendered;
+- **Save correction** click → UI showed `Saved — record 168157b9-6011-4fc6-9367-3da78f5ede37`,
+  button flipped to disabled "Saved" (write-once UX);
+- **wire proof:** the ONLY write on the network was `POST /rest/v1/accepted_corrections` → **201**
+  (everything else: the auth token POST and GETs of subscriptions/products/mapper_basement);
+- **row verified field-by-field** via read-only SQL: id matched the UI exactly; `user_id` =
+  `created_by` = the signed-in owner; `schema_version` 1; decision `tradeoff`; mode
+  `engine_seeded`; hash `058a035a`; original snapshot 6 items → corrected snapshot 7 items;
+  action `add Dextrose 113.42 g`; npac 20.20 → 49.07; `rerun_complete` + improvement true;
+  engine 0.4.0 / config 0.5.0; `recipe_id` null (unsaved recipe carries its snapshot);
+- **no other table changed:** mapper_basement 542, products 69 (PAC/POD 0/69, `updated_at`
+  untouched since 2026-07-06), `pi_calculated` 1, saved_recipes 1 (untouched since 2026-06-17);
+- **cleanup:** the proof row was deleted through the REAL service (`deleteAcceptedCorrection`
+  called in the signed-in session — the owner-scoped RLS delete path);
+  `accepted_corrections` returned to **0** and every baseline number re-verified identical.
+
+Standing hardening requirement (decision F, unchanged): an Edge-Function-mediated insert /
+server-side tier enforcement before wider production scale.
