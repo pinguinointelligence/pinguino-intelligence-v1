@@ -354,9 +354,11 @@ describe('branchRecalculationPreview — boundary (preview only, no writes anywh
     }
   });
 
-  it('accepted-correction migration is STILL not applied (no such file under supabase/migrations)', () => {
+  it('accepted-correction migration IS applied (Slice 24) — exactly 0012, proposal record kept', () => {
     const migrations = readdirSync(join(ROOT, 'supabase', 'migrations'));
-    expect(migrations.some((f) => /accepted_correction/i.test(f))).toBe(false);
+    expect(migrations.filter((f) => /accepted_correction/i.test(f))).toEqual([
+      '0012_accepted_corrections.sql',
+    ]);
     expect(existsSync(join(ROOT, 'docs', 'spine', 'proposals', 'accepted_corrections_table.proposal.sql'))).toBe(true);
   });
 });

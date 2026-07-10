@@ -193,50 +193,78 @@ describe('acceptedCorrectionDraft — boundary (pure, NON-writing)', () => {
   });
 });
 
-describe('accepted_corrections migration proposal — NOT applied', () => {
+describe('accepted_corrections migration — LIVE (Slice 24, migration 0012)', () => {
   const proposalPath = join(ROOT, 'docs', 'spine', 'proposals', 'accepted_corrections_table.proposal.sql');
   const proposal = readFileSync(proposalPath, 'utf8');
+  const migrationPath = join(ROOT, 'supabase', 'migrations', '0012_accepted_corrections.sql');
+  const migration = readFileSync(migrationPath, 'utf8');
 
-  it('lives OUTSIDE the active migration path (docs/spine/proposals), and no live migration exists', () => {
-    expect(proposalPath.includes('supabase')).toBe(false);
+  /** Executable SQL only — full-line comments and blank lines stripped. */
+  const executableSql = (sql: string) =>
+    sql
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && !l.startsWith('--'))
+      .join('\n');
+
+  it('exists in the live migration path — exactly one file (the Slice-16 guard, flipped by Slice 24)', () => {
     const migrations = readdirSync(join(ROOT, 'supabase', 'migrations'));
-    expect(migrations.some((f) => /accepted_correction/i.test(f))).toBe(false);
+    expect(migrations.filter((f) => /accepted_correction/i.test(f))).toEqual([
+      '0012_accepted_corrections.sql',
+    ]);
   });
 
-  it('is explicitly labelled as a non-applied proposal', () => {
+  it('is the approved proposal VERBATIM apart from comments (header swap only)', () => {
+    expect(executableSql(migration)).toBe(executableSql(proposal));
+  });
+
+  it('the Slice-16 proposal file remains, unchanged, as the design record it was approved from', () => {
+    expect(proposalPath.includes('supabase')).toBe(false);
     expect(/PROPOSAL — NOT APPLIED/.test(proposal)).toBe(true);
-    expect(/MUST NOT be applied/.test(proposal)).toBe(true);
   });
 
-  it('includes RLS with owner-scoped policies and no update policy (immutable audit)', () => {
-    expect(/enable row level security/.test(proposal)).toBe(true);
-    expect(/auth\.uid\(\)\s*=\s*user_id/.test(proposal)).toBe(true);
-    expect(/for insert with check/.test(proposal)).toBe(true);
-    expect(/for select using/.test(proposal)).toBe(true);
-    expect(/create policy [a-z_]* on public\.accepted_corrections\s*for update/.test(proposal)).toBe(false);
-    expect(/NO update grant/.test(proposal)).toBe(true);
+  it('live migration: RLS owner policies, NO update policy (immutable audit)', () => {
+    expect(/enable row level security/.test(migration)).toBe(true);
+    expect(/auth\.uid\(\)\s*=\s*user_id/.test(migration)).toBe(true);
+    expect(/for insert with check/.test(migration)).toBe(true);
+    expect(/for select using/.test(migration)).toBe(true);
+    expect(/for delete using/.test(migration)).toBe(true);
+    expect(/create policy [a-z_]* on public\.accepted_corrections\s*for update/.test(migration)).toBe(false);
+    expect(/NO update grant/.test(migration)).toBe(true);
   });
 
-  it('includes ownership, provenance and a rollback plan', () => {
-    expect(/user_id uuid not null references auth\.users/.test(proposal)).toBe(true);
-    expect(/engine_version/.test(proposal)).toBe(true);
-    expect(/config_version/.test(proposal)).toBe(true);
-    expect(/source_recipe_hash/.test(proposal)).toBe(true);
-    expect(/ROLLBACK PLAN/.test(proposal)).toBe(true);
-    expect(/drop table if exists public\.accepted_corrections/.test(proposal)).toBe(true);
+  it('live migration: the ONLY grant is select+insert+delete to authenticated — no update, nothing to anon', () => {
+    const grantStatements = migration
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('grant '));
+    expect(grantStatements).toEqual([
+      'grant select, insert, delete on table public.accepted_corrections to authenticated;',
+    ]);
+    expect(migration.includes('to anon')).toBe(false);
+  });
+
+  it('live migration: ownership, provenance and a rollback plan', () => {
+    expect(/user_id uuid not null references auth\.users/.test(migration)).toBe(true);
+    expect(/engine_version/.test(migration)).toBe(true);
+    expect(/config_version/.test(migration)).toBe(true);
+    expect(/source_recipe_hash/.test(migration)).toBe(true);
+    expect(/ROLLBACK PLAN/.test(migration)).toBe(true);
+    expect(/drop table if exists public\.accepted_corrections/.test(migration)).toBe(true);
   });
 
   it('never touches Mapper tables or product PAC/POD columns', () => {
+    expect(/mapper_basement|update public\.products|alter table public\.products/i.test(migration)).toBe(false);
     expect(/mapper_basement|update public\.products|alter table public\.products/i.test(proposal)).toBe(false);
   });
 });
 
-describe('Studio — no save-correction UI wired in this slice (design-only)', () => {
-  it('StudioPage has no accepted-correction import, save-correction button, or fake success', () => {
+describe('Studio — save-correction control wired (Slice 24)', () => {
+  it('StudioPage mounts SaveCorrectionControl and delegates — no direct draft building or service calls', () => {
     const studio = readFileSync(join(ROOT, 'src', 'pages', 'studio', 'StudioPage.tsx'), 'utf8');
-    expect(studio.includes('acceptedCorrectionDraft')).toBe(false);
-    expect(/Save correction/i.test(studio)).toBe(false);
+    expect(studio.includes('SaveCorrectionControl')).toBe(true);
     expect(/buildAcceptedCorrectionDraft/.test(studio)).toBe(false);
+    expect(studio.includes('acceptedCorrections')).toBe(false);
   });
 
   it('the runner exposes the corrected snapshot for the future write path (view-only data)', () => {

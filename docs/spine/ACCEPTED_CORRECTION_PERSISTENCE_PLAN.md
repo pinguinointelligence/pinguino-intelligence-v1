@@ -1,11 +1,33 @@
-# Accepted Correction Persistence — design & non-applied migration preview
+# Accepted Correction Persistence — design & LIVE write path
 
-_Created 2026-07-09 (Spine Slice 16). Companion to [PINGUINO_SPINE.md](../PINGUINO_SPINE.md) and
+_Created 2026-07-09 (Spine Slice 16); owner decisions locked and the write path opened 2026-07-10
+(Spine Slice 24). Companion to [PINGUINO_SPINE.md](../PINGUINO_SPINE.md) and
 [TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md](../engine/TEMPERATURE_AWARE_TARGET_BANDS_PLAN.md)._
 
-**Status: DESIGN ONLY. No migration applied, no DB write, no live correction record, no recipe
-mutated.** This slice prepares the FIRST real write path (saving an accepted optimizer correction)
-without opening it. The write itself is a later, explicitly-approved slice.
+**Status: LIVE (Slice 24).** Migration `0012_accepted_corrections` is applied; the service
+(`src/services/acceptedCorrections.ts`) and the Pro-only Studio save control exist. Everything
+below §0 is the original Slice 16 design, kept verbatim as the record it was approved from.
+
+## 0. Owner decisions — LOCKED (2026-07-10)
+
+| # | Decision | Locked |
+|---|---|---|
+| A | `accepted_corrections` as a separate immutable audit table | **YES** |
+| B | Save accepted correction only for Pro users | **YES** |
+| C | Owner-scoped RLS | **YES** |
+| D | No update policy | **YES** |
+| E | Owner delete allowed; no update | **YES** |
+| F | v1 tier enforcement: service/client gate + owner-scoped RLS now; **an Edge-Function-mediated insert remains REQUIRED hardening before wider production scale** | **YES** |
+| G | Store original and corrected recipe JSON snapshots | **YES** |
+| H | Target modes `engine_seeded` and `regulator_shadow` | **YES** |
+| I | Save must never touch Mapper, PAC/POD, mapper_basement, product statuses, or PI Calculated activations | **YES** |
+
+**Decision F — recorded consequences (v1 only):** RLS protects OWNERSHIP, not subscription tier.
+A hostile signed-in Free user could bypass the client gate via raw REST and insert THEIR OWN row
+(no cross-user access is possible; no data leak) — this risk is **accepted for v1 only** and the
+Edge-Function insert path is the standing hardening requirement before wider production scale.
+Accepted-correction records are immutable (write-once + owner delete) and fully separate from
+`saved_recipes`, which is never mutated by a correction.
 
 ---
 
@@ -81,23 +103,25 @@ non-applied, include RLS + rollback, and touch no Mapper/product table.
 changes the DB surface, the RLS story and the billing boundary (Pro-only detail at rest). Design
 first, verify the checklist, then write.
 
-## 5. Approval checklist before live persistence
+## 5. Approval checklist before live persistence — COMPLETED in Slice 24
 
-- [ ] Owner approves the data model in §2 (field-by-field) and the Pro-only capability rule.
-- [ ] Owner approves the RLS + no-update immutability policy and the delete-own rule (§3).
-- [ ] Owner decides DB-side TIER enforcement (§3 known limitation): subscription-aware insert policy,
-      Edge-Function-mediated insert, or explicitly accept client/service-side gating for v1.
-- [ ] Proposal SQL reviewed and copied to `supabase/migrations/0012_accepted_corrections.sql`
-      **unchanged except the header**, then applied (SQL editor / `db push`).
-- [ ] Post-apply verification via the read-only MCP: table exists, RLS enabled, policies present,
-      `anon` has no grants, `authenticated` has select/insert/delete only (no update).
-- [ ] Negative tests against the live table: anon insert fails; user A cannot select user B's rows;
-      update fails for everyone.
-- [ ] Service layer added under `src/services/` (the sanctioned DB layer) mirroring
-      `recipes.ts` (`create` / `listMine` / `remove`; no update function).
-- [ ] Studio "Save correction" button wired Pro-only, with honest failure states — no fake success.
-- [ ] Redaction re-verified: demo/free never see a save affordance beyond the upgrade hint.
-- [ ] Full gates + browser proof + adversarial review, as every slice.
+- [x] Owner approves the data model in §2 (field-by-field) and the Pro-only capability rule (A/B/G/H).
+- [x] Owner approves the RLS + no-update immutability policy and the delete-own rule (C/D/E).
+- [x] Owner decides DB-side TIER enforcement: **decision F** — service/client gating for v1 with
+      owner-scoped RLS; Edge-Function-mediated insert REQUIRED before wider production scale.
+- [x] Proposal SQL copied to `supabase/migrations/0012_accepted_corrections.sql` unchanged except the
+      header, and applied via the migration tool (Slice 24).
+- [x] Post-apply verification: table exists, RLS enabled, exactly select/insert/delete owner policies
+      (no update policy), `anon` has no table privileges, `authenticated` has select/insert/delete only;
+      indexes + creator-is-owner / target-mode / optimizer-decision constraints present (§8 results).
+- [x] Negative tests against the live table (transaction-scoped role simulation, §8): anon insert and
+      select denied; owner insert allowed; a different uid sees 0 rows and cannot delete; update denied.
+- [x] Service layer `src/services/acceptedCorrections.ts` (`createAcceptedCorrection` /
+      `listMyAcceptedCorrections` / `deleteAcceptedCorrection`; NO update function).
+- [x] Studio `SaveCorrectionControl` wired Pro-only + signed-in, honest failure states, no fake success.
+- [x] Redaction re-verified: demo/free see no save affordance (tests + preview browser, §8.3).
+- [x] Full gates + adversarial review; browser proof of every unauthenticated state (§8.3) —
+      the end-to-end signed-in save is documented as BLOCKED, not faked (§8.3, owner action).
 
 ## 6. Exact next live-write slice (after approval)
 
@@ -116,3 +140,69 @@ input contract of that service, so the write slice adds IO only — no new busin
   control in production Studio invites confusion, and the panel already says "Preview only —
   nothing is saved". The UI lands with the real write path.
 - No Mapper/product/status/PAC-POD touch anywhere.
+
+---
+
+## 8. Slice 24 verification results (2026-07-10) — migration applied + RLS proven
+
+Migration `0012_accepted_corrections` applied via the write-capable Supabase migration tool
+(`apply_migration`, project `riwipywgqobrulyzrzad`) → `{"success": true}`. The SQL is the approved
+proposal verbatim except the header comment (diff-checked).
+
+### 8.1 Post-apply schema verification (live catalog queries)
+
+| Check | Result |
+|---|---|
+| Table exists, RLS enabled | `pg_class.relrowsecurity = true` for `public.accepted_corrections` |
+| Policies | exactly 3: `accepted_corrections_select_own` (`auth.uid() = user_id`), `accepted_corrections_insert_own` (`auth.uid() = user_id AND auth.uid() = created_by`), `accepted_corrections_delete_own` (`auth.uid() = user_id`) — **no update policy** |
+| Grants (`has_table_privilege`, authoritative) | `authenticated`: select ✓ insert ✓ delete ✓ **update ✗** · `anon`: select ✗ insert ✗ update ✗ delete ✗ |
+| Check constraints | `accepted_corrections_creator_is_owner` (`created_by = user_id`), `optimizer_decision` ∈ {optimized, tradeoff}, `target_mode` ∈ {engine_seeded, regulator_shadow} |
+| Indexes | pkey + `user_id`, `recipe_id`, `created_at desc` |
+
+Note: `information_schema.role_table_grants` returned empty on this connection (viewer-privilege
+filtering); `has_table_privilege()` was used as the authoritative source instead.
+
+### 8.2 Negative RLS tests (transaction-scoped role simulation, ALL rolled back)
+
+Method: on the write connection, `begin; set local role anon|authenticated;
+select set_config('request.jwt.claims', '{"sub":"<uuid>","role":"authenticated"}', true); …;
+rollback;` — the same role + JWT-claims mechanism PostgREST uses, so `auth.uid()` resolves the
+claims `sub`. Owner uid = the project's sole real user `8bb05419-…-213dff23e7ee`; "stranger" =
+random uuid `00000000-0000-4000-8000-000000000001`.
+
+| # | Test | Result |
+|---|---|---|
+| 1 | anon insert | **denied** — `42501 permission denied for table accepted_corrections` |
+| 2 | anon select | **denied** — `42501 permission denied` |
+| 3 | owner insert (valid row, `created_by = user_id`) | **allowed**; owner select then sees exactly 1 row |
+| 4 | stranger select of owner's row | **0 rows** (RLS filters silently) |
+| 5 | stranger delete of owner's row | **0 rows affected** |
+| 6 | owner delete of own row | **allowed** — 1 row affected |
+| 7 | update as authenticated owner | **denied** — `42501 permission denied` (no update grant; policy layer never reached) — write-once proven |
+
+Every test ran inside `begin … rollback`; post-test `select count(*)` = **0 rows** — no test data
+persisted. Baseline re-checked in the Slice 24 report: mapper_basement 542, products 69, PAC/POD
+0/69, `pi_calculated` activations 1 — untouched.
+
+**Not verifiable on this connection (stated honestly):** simulation covers the PostgREST
+role/claims mechanism but not the full HTTP stack (JWT signature verification, `apikey` header
+handling).
+
+### 8.3 Browser proof (Slice 24) — what was proven and what is blocked
+
+Proven in the local preview browser (anon session, `/studio`):
+- signed-out + optimization preview computed → the control area shows only
+  **"Sign in to save corrections"** — zero save buttons, zero solve radios;
+- `/demo` now redirects to `/` (retired route) — the anon `/studio` session IS the free-preview
+  state, covered above;
+- DEV Pro override WITHOUT sign-in (exact grams visible in the optimization panel) → **still**
+  only the sign-in note: capability alone never unlocks the write control, auth is checked first.
+
+**BLOCKED (not faked):** the end-to-end signed-in Pro save (click → one `accepted_corrections`
+insert on the wire → stored record id shown → row visible via read-only verification). It needs
+the owner's signed-in browser session; the Chrome connector was not reachable during Slice 24 and
+no credentials exist in the local preview browser (nor would password entry be acceptable). The
+insert path itself is proven at the DB layer (§8.2 test 3, owner-claims insert) and the service +
+UI layers are fully covered by tests; the first real save remains a 5-minute owner action:
+sign in at `/studio` → Preview optimization → Save correction → the §8.2 baseline query must show
+`accepted_corrections = 1` and everything else unchanged.

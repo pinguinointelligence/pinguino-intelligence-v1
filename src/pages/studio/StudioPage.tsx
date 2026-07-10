@@ -14,6 +14,7 @@ import { SaveRecipeDialog } from '@/features/recipes/SaveRecipeDialog';
 import { CorrectionPanel } from '@/features/corrections/CorrectionPanel';
 import { BranchWorkflowPreviews } from '@/features/optimization/BranchWorkflowPreviews';
 import { OptimizationPreviewPanel } from '@/features/optimization/OptimizationPreviewPanel';
+import { SaveCorrectionControl } from '@/features/optimization/SaveCorrectionControl';
 import { optimizationDisplayPolicy } from '@/features/optimization/optimizationPreviewPolicy';
 import {
   previewOptimization,
@@ -172,10 +173,17 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
                   Preview optimization
                 </button>
                 {optimizationView ? (
-                  <OptimizationPreviewPanel
-                    view={optimizationView}
-                    policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: import.meta.env.DEV })}
-                  />
+                  <>
+                    <OptimizationPreviewPanel
+                      view={optimizationView}
+                      policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: import.meta.env.DEV })}
+                    />
+                    {/* Slice 24 — the FIRST write control: signed-in Pro may persist an
+                        accepted correction as ONE immutable audit record (unsigned users
+                        see a sign-in note; signed-in Free sees nothing). Explicit click
+                        only; the recipe itself is never changed. */}
+                    <SaveCorrectionControl view={optimizationView} recipe={input} />
+                  </>
                 ) : null}
               </div>
 

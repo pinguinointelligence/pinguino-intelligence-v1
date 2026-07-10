@@ -299,6 +299,29 @@ changes; no UI dependency yet.
    **Next:** the accepted-correction live write after owner approval, branch apply/save after the
    persistence design is approved, or (later) inventory integration + the production reference substitute
    catalog; the NPAC solve-model fix is an owner-approved ENGINE slice if ever prioritized.
+   **[landed — Phase C Slice 24]** the accepted-correction LIVE WRITE PATH — the first real write —
+   opened under the locked owner decisions A–I
+   ([persistence plan §0](spine/ACCEPTED_CORRECTION_PERSISTENCE_PLAN.md)): migration
+   `supabase/migrations/0012_accepted_corrections.sql` (the approved proposal verbatim except the header —
+   test-pinned equivalence) APPLIED to the live project; post-apply verification + transaction-scoped
+   negative RLS tests all green (plan §8: anon insert/select denied; owner insert/select/delete work;
+   a different uid sees 0 rows and deletes 0 rows; UPDATE denied even for the owner — no policy AND no
+   grant; every test rolled back, table left empty). `src/services/acceptedCorrections.ts` =
+   createAcceptedCorrection / listMyAcceptedCorrections / deleteAcceptedCorrection, NO update on purpose;
+   signed-in + owner-match + full draft re-validation as the input gate; explicit CLOSED camelCase→
+   snake_case mapping (unknown draft keys can never reach the insert — test-pinned). Studio gains
+   `SaveCorrectionControl` (below the optimization preview): signed-in Pro only; unsigned sessions see
+   "Sign in to save corrections" (proven in the preview browser, including with the DEV Pro override
+   active — capability alone never unlocks it); signed-in Free renders nothing; default engine_seeded
+   solve, regulator_shadow selectable only when itself verified-saveable; explicit click; honest stored
+   record id on success, honest error text on failure; the recipe is NEVER changed. Decision F recorded:
+   v1 tier enforcement is service/client-side (owner-scoped RLS protects ownership, not tier) — an
+   Edge-Function-mediated insert is REQUIRED hardening before wider production scale. Baseline
+   re-verified untouched (mapper_basement 542, products 69, PAC/POD 0/69, pi_calculated 1). The ONLY
+   blocked proof: the end-to-end signed-in save click (owner browser session unavailable — documented in
+   plan §8.3, not faked; a 5-minute owner action).
+   **Next:** the owner performs the first real signed-in save (plan §8.3) and re-runs the §8 baseline
+   query; Edge-Function tier hardening before scale; branch apply/save for IF9/IF10 stays future work.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
