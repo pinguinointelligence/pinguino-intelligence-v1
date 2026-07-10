@@ -40,7 +40,7 @@ interface SpineModule {
 
 /** Condensed from the full evidence table in docs/PINGUINO_SPINE.md §6. */
 const MODULES: SpineModule[] = [
-  { module: 'Mapper Basement', status: 'done', note: '542 locked references; read-only from the app; inserts only via approved human seed migration.' },
+  { module: 'Mapper Basement', status: 'done', note: '2,083 locked references (v1.0); read-only from the app; inserts only via approved human seed migration.' },
   { module: 'Product Mapper', status: 'blocked', note: '69 products · 23 matched · 3 rejected · 43 awaiting team calibration (PAC/POD + owner picks).', to: '/dev/mapper-status' },
   { module: 'Matching stack', status: 'done', note: 'Composition matcher + name-concept tiebreak + milk fat-band + coffee special-case; false-positive tested.', to: '/dev/mapper-review' },
   { module: 'Reference proposals / calibration pack', status: 'blocked', note: '12 staged proposals unlock ~17 products; team fills PAC/POD, owner approves the insert.', to: '/dev/reference-proposals' },
