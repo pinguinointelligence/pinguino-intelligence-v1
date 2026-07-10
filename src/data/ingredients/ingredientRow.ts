@@ -11,16 +11,25 @@
  */
 
 export type VerificationStatus =
-  | 'draft'
-  | 'internet_data'
-  | 'label_data'
-  | 'supplier_data'
-  | 'external_reference_data'
-  | 'needs_review'
-  | 'verified'
-  | 'rejected';
+  | 'Blocked'
+  | 'Estimated'
+  | 'Estimated / Needs Label Review'
+  | 'PI Calculated / Needs Label Review'
+  | 'Superseded Duplicate'
+  | 'Verified'
+  | 'Verified / Basis Check Needed'
+  | 'Verified / PI Calculated'
+  | 'Verified / Public Label';
 
-export type StorageType = 'ambient' | 'chilled' | 'frozen' | 'dry' | 'unknown';
+export type StorageType =
+  | 'ambient'
+  | 'ambient_dry'
+  | 'chilled'
+  | 'fresh'
+  | 'fresh_chilled'
+  | 'frozen'
+  | 'frozen_or_refrigerated'
+  | 'refrigerated';
 
 /** Tri-state stored as text so "unknown" stays honest (never coerced to false). */
 export type BooleanOrUnknown = 'true' | 'false' | 'unknown';

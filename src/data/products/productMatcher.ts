@@ -153,7 +153,8 @@ const confidenceForLevel = (method: MatchMethod, matched: IngredientRow | null):
     case 'exact_ean':
       return 'exact';
     case 'exact_normalized_name':
-      return matched?.verification_status === 'verified' ? 'exact' : 'high';
+      // v1.0 vocabulary: the whole 'Verified*' status family counts as verified
+      return matched?.verification_status.startsWith('Verified') ? 'exact' : 'high';
     case 'brand_name':
       return 'high';
     case 'category_composition_similarity':

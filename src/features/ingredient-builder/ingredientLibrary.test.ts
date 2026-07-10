@@ -24,7 +24,7 @@ const sampleRow: IngredientRow = {
   ingredient_subcategory: 'fresh milk',
   approved_for_base: true,
   approved_for_engines: true,
-  verification_status: 'verified',
+  verification_status: 'Verified',
   verification_source: 'pinguino_internal_confirmed_dataset_v0_94',
   verification_date: '2026-06-16',
   data_confidence_percent: 95,

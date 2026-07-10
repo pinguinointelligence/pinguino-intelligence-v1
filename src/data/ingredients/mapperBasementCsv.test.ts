@@ -1,11 +1,12 @@
 /**
- * Mapper Basement source-file guards (Slice A).
+ * Mapper Basement source-file guards (v1.0).
  *
- * Proves that docs/ingredients/validation/mapper_basement.csv is the v0.95
- * (no-NPAC) dataset with ONLY the two column headers renamed — values unchanged
- * from v0.95 except the column names. Pure file read (vitest node env); does NOT
- * touch the runtime service, IngredientRow, or the Studio picker (those stay on
- * the old table/columns until Slice B).
+ * Proves that docs/ingredients/validation/mapper_basement.csv is the canonical
+ * v1.0 dataset (2,083 rows, 62 columns) delivered as
+ * PINGUINO_MAPPER_BASEMENT_FINAL_CLEAN.csv — IDs are never renumbered
+ * (PI-ING-000001 … PI-ING-002108 with intentional gaps), and PAC/POD stay
+ * populated. Pure file read (vitest node env); does NOT touch the runtime
+ * service, IngredientRow, or the Studio picker.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -50,16 +51,15 @@ function parseCsv(text: string): string[][] {
 const read = (rel: string) => parseCsv(readFileSync(resolve(process.cwd(), rel), 'utf8'));
 
 const MAPPER_BASEMENT = 'docs/ingredients/validation/mapper_basement.csv';
-const MAPPER_BASEMENT_SNAPSHOT = 'docs/ingredients/validation/mapper_basement_v0_95.csv';
-const V095 = 'docs/ingredients/validation/pinguino_base_ingredients_cleaned_v0_95_no_npac.csv';
 
 const mb = read(MAPPER_BASEMENT);
 const mbHeader = mb[0]!;
 const mbData = mb.slice(1).filter((r) => !(r.length === 1 && r[0] === ''));
+const col = (name: string) => mbHeader.indexOf(name);
 
-describe('mapper_basement.csv — locked source dataset', () => {
-  it('has exactly 542 data rows', () => {
-    expect(mbData).toHaveLength(542);
+describe('mapper_basement.csv — canonical v1.0 dataset', () => {
+  it('has exactly 2083 data rows', () => {
+    expect(mbData).toHaveLength(2083);
   });
 
   it('has exactly 62 columns (header + every row)', () => {
@@ -69,46 +69,39 @@ describe('mapper_basement.csv — locked source dataset', () => {
 
   it('does NOT contain npac_value (no-NPAC model)', () => {
     expect(mbHeader).not.toContain('npac_value');
+    expect(col('pac_value')).toBeGreaterThanOrEqual(0);
+    expect(col('pod_value')).toBeGreaterThanOrEqual(0);
   });
 
-  it('has approved_for_base and approved_for_engines', () => {
+  it('has approved_for_base and approved_for_engines, never the legacy names', () => {
     expect(mbHeader).toContain('approved_for_base');
     expect(mbHeader).toContain('approved_for_engines');
-  });
-
-  it('does NOT have the legacy approval column names', () => {
     expect(mbHeader).not.toContain('approved_for_pinguino_base');
     expect(mbHeader).not.toContain('approved_for_minus_11_engine');
   });
 
-  it('values are unchanged from v0.95 except the two renamed column headers', () => {
-    const old = read(V095);
-    const oldHeader = old[0]!;
-    const oldData = old.slice(1).filter((r) => !(r.length === 1 && r[0] === ''));
-
-    // exactly the two header positions differ — the documented renames
-    const headerDiffs = oldHeader
-      .map((h, i) => (h === mbHeader[i] ? null : `${i}:${h}->${mbHeader[i]}`))
-      .filter(Boolean);
-    expect(headerDiffs).toEqual([
-      '9:approved_for_pinguino_base->approved_for_base',
-      '10:approved_for_minus_11_engine->approved_for_engines',
-    ]);
-
-    // every data cell is byte-identical (no numeric or any value changed)
-    expect(mbData.length).toBe(oldData.length);
-    let cellDiffs = 0;
-    for (let r = 0; r < oldData.length; r++) {
-      for (let c = 0; c < oldHeader.length; c++) {
-        if ((oldData[r]![c] ?? '') !== (mbData[r]![c] ?? '')) cellDiffs++;
-      }
-    }
-    expect(cellDiffs).toBe(0);
+  it('every ingredient_id is unique, PI-ING-prefixed, and never renumbered', () => {
+    const ids = mbData.map((r) => r[col('ingredient_id')]!);
+    expect(new Set(ids).size).toBe(2083);
+    expect(ids.every((id) => id.startsWith('PI-ING-'))).toBe(true);
+    expect(ids.some((id) => id.startsWith('PR-ING-'))).toBe(false);
+    const sorted = [...ids].sort();
+    expect(sorted[0]).toBe('PI-ING-000001');
+    expect(sorted[sorted.length - 1]).toBe('PI-ING-002108'); // gaps are intentional
   });
 
-  it('the versioned snapshot is byte-identical to the active file (provenance copy)', () => {
-    expect(readFileSync(resolve(process.cwd(), MAPPER_BASEMENT_SNAPSHOT), 'utf8')).toBe(
-      readFileSync(resolve(process.cwd(), MAPPER_BASEMENT), 'utf8'),
-    );
+  it('every ingredient_name_internal is unique and non-blank', () => {
+    const names = mbData.map((r) => r[col('ingredient_name_internal')]!);
+    expect(new Set(names).size).toBe(2083);
+    expect(names.every((n) => n.trim() !== '')).toBe(true);
+  });
+
+  it('PAC and POD are populated on every row (engine sources of truth)', () => {
+    const pac = col('pac_value');
+    const pod = col('pod_value');
+    for (const row of mbData) {
+      expect((row[pac] ?? '').trim() !== '').toBe(true);
+      expect((row[pod] ?? '').trim() !== '').toBe(true);
+    }
   });
 });

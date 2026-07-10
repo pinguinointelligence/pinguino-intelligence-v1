@@ -21,7 +21,7 @@ function basementRow(over: Partial<IngredientRow>): IngredientRow {
     ingredient_subcategory: '',
     approved_for_base: true,
     approved_for_engines: true,
-    verification_status: 'verified',
+    verification_status: 'Verified',
     verification_source: '',
     verification_date: null,
     data_confidence_percent: null,
@@ -64,7 +64,7 @@ function basementRow(over: Partial<IngredientRow>): IngredientRow {
     dairy_free: 'unknown',
     gluten_free: 'unknown',
     contains_alcohol: 'unknown',
-    storage_type: 'unknown',
+    storage_type: 'ambient',
     shelf_life_days: null,
     usage_notes: '',
     engine_notes: '',
@@ -271,7 +271,7 @@ describe('matchProduct — levels', () => {
   });
 
   it('exact normalized name match → exact when the reference row is verified', () => {
-    const milk = basementRow({ ingredient_id: 'B-MILK', ingredient_name_display: 'Whole Milk 3.5%', verification_status: 'verified', pac_value: 1, pod_value: 1 });
+    const milk = basementRow({ ingredient_id: 'B-MILK', ingredient_name_display: 'Whole Milk 3.5%', verification_status: 'Verified', pac_value: 1, pod_value: 1 });
     const r = matchProduct(productRow({ product_name_display: 'whole   milk 3.5 %', ...engineReady }), [milk]);
     expect(r.match_method).toBe('exact_normalized_name');
     expect(r.match_confidence).toBe('exact');
@@ -279,7 +279,7 @@ describe('matchProduct — levels', () => {
   });
 
   it('exact normalized name match → high when the reference row is not verified', () => {
-    const milk = basementRow({ ingredient_id: 'B-MILK', ingredient_name_display: 'Whole Milk', verification_status: 'label_data', pac_value: 1, pod_value: 1 });
+    const milk = basementRow({ ingredient_id: 'B-MILK', ingredient_name_display: 'Whole Milk', verification_status: 'Estimated', pac_value: 1, pod_value: 1 });
     const r = matchProduct(productRow({ product_name_display: 'whole milk', ...engineReady }), [milk]);
     expect(r.match_method).toBe('exact_normalized_name');
     expect(r.match_confidence).toBe('high');
@@ -540,7 +540,7 @@ describe('matchProduct — the pure core never emits the human-only "rejected" v
     const basement = [
       basementRow({ ingredient_id: 'B-EAN', ean_code: '12345678', pac_value: 1, pod_value: 1 }),
       basementRow({ ingredient_id: 'B-EAN2', ean_code: '12345678', pac_value: 1, pod_value: 1 }),
-      basementRow({ ingredient_id: 'B-NAME', ingredient_name_display: 'Whole Milk', verification_status: 'verified', pac_value: 1, pod_value: 1 }),
+      basementRow({ ingredient_id: 'B-NAME', ingredient_name_display: 'Whole Milk', verification_status: 'Verified', pac_value: 1, pod_value: 1 }),
       basementRow({ ingredient_id: 'B-DAIRY', ingredient_category: 'dairy', pac_value: 1, pod_value: 1 }),
     ];
     const products = [
@@ -583,7 +583,7 @@ describe('matchProduct — ambiguity beyond EAN + candidate cap', () => {
 describe('matchProduct — missing-values review keys on confidence, not on a specific method', () => {
   it('verified exact-name match stays matched/exact when the reference supplies the values', () => {
     // discriminates a mutant gating on match_method==='exact_ean' (would wrongly downgrade this)
-    const b = basementRow({ ingredient_id: 'B-V', ingredient_name_display: 'Whole Milk', verification_status: 'verified', pac_value: 1, pod_value: 1 });
+    const b = basementRow({ ingredient_id: 'B-V', ingredient_name_display: 'Whole Milk', verification_status: 'Verified', pac_value: 1, pod_value: 1 });
     const r = matchProduct(productRow({ product_name_display: 'Whole Milk' }), [b]); // product missing pac/pod
     expect(r.mapper_status).toBe('matched');
     expect(r.match_confidence).toBe('exact');
@@ -610,7 +610,7 @@ describe('matchProduct — missing-values review keys on confidence, not on a sp
 
 describe('matchProduct — blank-field handling', () => {
   it('falls back to product_name_internal when product_name_display is blank/whitespace', () => {
-    const b = basementRow({ ingredient_id: 'B-WM', ingredient_name_display: 'Whole Milk', verification_status: 'verified', pac_value: 1, pod_value: 1 });
+    const b = basementRow({ ingredient_id: 'B-WM', ingredient_name_display: 'Whole Milk', verification_status: 'Verified', pac_value: 1, pod_value: 1 });
     const r = matchProduct(productRow({ product_name_display: '   ', product_name_internal: 'Whole Milk', ...engineReady }), [b]);
     expect(r.match_method).toBe('exact_normalized_name');
     expect(r.normalized_name).toBe('whole milk');

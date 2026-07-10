@@ -53,8 +53,8 @@ const dataRows = parsed
 const col = (name: string) => headers.indexOf(name);
 
 describe('Mapper Basement dataset (mapper_basement.csv)', () => {
-  it('has exactly 542 rows and 62 columns', () => {
-    expect(dataRows.length).toBe(542);
+  it('has exactly 2083 rows and 62 columns', () => {
+    expect(dataRows.length).toBe(2083);
     expect(headers.length).toBe(62);
     for (const row of dataRows) expect(row.length).toBe(62);
   });
@@ -86,14 +86,25 @@ describe('Mapper Basement dataset (mapper_basement.csv)', () => {
     }
   });
 
-  it('every row is approved for base and engines, and verified', () => {
+  it('approval flags are booleans and every status is in the canonical v1.0 vocabulary', () => {
     const base = col('approved_for_base');
     const eng = col('approved_for_engines');
     const status = col('verification_status');
+    const VOCAB = new Set([
+      'Blocked',
+      'Estimated',
+      'Estimated / Needs Label Review',
+      'PI Calculated / Needs Label Review',
+      'Superseded Duplicate',
+      'Verified',
+      'Verified / Basis Check Needed',
+      'Verified / PI Calculated',
+      'Verified / Public Label',
+    ]);
     for (const row of dataRows) {
-      expect(row[base]).toBe('true');
-      expect(row[eng]).toBe('true');
-      expect(row[status]).toBe('verified');
+      expect(['true', 'false']).toContain((row[base] ?? '').toLowerCase());
+      expect(['true', 'false']).toContain((row[eng] ?? '').toLowerCase());
+      expect(VOCAB.has(row[status] ?? ''), `status "${row[status]}" in ${row[col('ingredient_id')]}`).toBe(true);
     }
   });
 });

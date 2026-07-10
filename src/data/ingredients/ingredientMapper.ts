@@ -68,7 +68,10 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
     cost_per_kg: row.cost_per_kg,
     confidence_score: row.data_confidence_percent ?? 0,
     source_type: 'verified_db',
-    is_verified: row.verification_status === 'verified',
+    // v1.0 vocabulary: every 'Verified*' status family counts as verified
+    // ('Verified', 'Verified / Basis Check Needed', 'Verified / PI Calculated',
+    // 'Verified / Public Label').
+    is_verified: row.verification_status.startsWith('Verified'),
     ...(Object.keys(flags).length > 0 ? { flags } : {}),
   };
 }

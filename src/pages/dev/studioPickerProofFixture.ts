@@ -24,7 +24,7 @@ const ref = (over: Partial<IngredientRow>): IngredientRow =>
     carbohydrate_percent: 0, total_sugars_percent: 0, sucrose_percent: 0, glucose_percent: 0, dextrose_percent: 0,
     fructose_percent: 0, lactose_percent: 0, polyol_percent: 0, fiber_percent: 0, salt_percent: 0, alcohol_percent: 0,
     saturated_fat_percent: null, kcal_per_100g: 0, pac_value: null, pod_value: null, de_value: null, cost_per_kg: null,
-    data_confidence_percent: 90, verification_status: 'verified', vegan: 'false',
+    data_confidence_percent: 90, verification_status: 'Verified', vegan: 'false',
     ...over,
   }) as IngredientRow;
 

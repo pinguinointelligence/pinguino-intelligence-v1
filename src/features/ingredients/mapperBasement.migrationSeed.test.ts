@@ -1,16 +1,13 @@
 /// <reference types="node" />
 /**
- * Mapper Basement migration + seed guards (Slice B1).
+ * Mapper Basement migration + seed guards.
  *
- * Locks the NEW locked reference table (`public.mapper_basement`, migration 0006)
- * and its generated seed: no ingredient-level `npac_value`, the renamed approval
- * columns (`approved_for_base` / `approved_for_engines`, never the legacy names),
- * PI Pro-only read RLS, and 542 idempotent rows. Detailed CSV row/column/value
- * equality stays in mapperBasementCsv.test.ts (not duplicated here).
- *
- * RUNTIME GUARD: the app service must STILL query the legacy v0.95 table this
- * slice — no cutover until 0006 + seed are applied + verified live (Slice B2).
- * The legacy v095NoNpac.test.ts is kept intact as a rollback guard.
+ * Locks the locked reference table (`public.mapper_basement`, migration 0006)
+ * and its v1.0 replacement seed: no ingredient-level `npac_value`, the renamed
+ * approval columns (`approved_for_base` / `approved_for_engines`, never the
+ * legacy names), PI Pro-only read RLS, and 2,083 rows replaced in one
+ * transaction. Detailed CSV row/column/value pins stay in
+ * mapperBasementCsv.test.ts (not duplicated here).
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -20,7 +17,7 @@ const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const read = (...p: string[]) => readFileSync(join(REPO, ...p), 'utf8');
 
 const MIGRATION = read('supabase', 'migrations', '0006_mapper_basement.sql');
-const SEED = read('supabase', 'seed', 'mapper_basement_v0_95.sql');
+const SEED = read('supabase', 'seed', 'mapper_basement_v1_0.sql');
 const SERVICE = read('src', 'services', 'ingredients.ts');
 
 describe('Mapper Basement migration (0006)', () => {
@@ -57,17 +54,21 @@ describe('Mapper Basement migration (0006)', () => {
   });
 });
 
-describe('Mapper Basement seed (mapper_basement_v0_95.sql)', () => {
+describe('Mapper Basement seed (mapper_basement_v1_0.sql)', () => {
   const tuples = SEED.split('\n').filter((l) => l.startsWith('('));
 
-  it('has 542 idempotent rows targeting public.mapper_basement, v0.95, no npac_value', () => {
-    expect(tuples.length).toBe(542);
+  it('replaces all rows with 2083 v1.0 tuples in one transaction, no npac_value', () => {
+    expect(tuples.length).toBe(2083);
     expect(/npac_value/i.test(SEED)).toBe(false);
-    expect((SEED.match(/'v0\.95'/g) ?? []).length).toBe(542);
+    // 2083 tuple values + the dataset_version column default
+    expect((SEED.match(/'v1\.0'/g) ?? []).length).toBe(2084);
+    expect(SEED.includes('begin;')).toBe(true);
+    expect(SEED.includes('delete from public.mapper_basement;')).toBe(true);
     expect(SEED.includes('insert into public.mapper_basement')).toBe(true);
-    expect(SEED.includes('on conflict (ingredient_id) do update set')).toBe(true);
+    expect(SEED.includes("alter column dataset_version set default 'v1.0';")).toBe(true);
+    expect(SEED.includes('commit;')).toBe(true);
     const ids = tuples.map((t) => t.match(/^\('([^']+)'/)?.[1]);
-    expect(new Set(ids).size).toBe(542);
+    expect(new Set(ids).size).toBe(2083);
   });
 
   it('uses the renamed approval columns and NO legacy approval names', () => {

@@ -15,7 +15,7 @@ const baseRow: IngredientRow = {
   ingredient_subcategory: '',
   approved_for_base: true,
   approved_for_engines: true,
-  verification_status: 'verified',
+  verification_status: 'Verified',
   verification_source: 'pinguino_internal_confirmed_dataset_v0_94',
   verification_date: '2026-06-16',
   data_confidence_percent: null,
@@ -58,7 +58,7 @@ const baseRow: IngredientRow = {
   dairy_free: 'unknown',
   gluten_free: 'unknown',
   contains_alcohol: 'unknown',
-  storage_type: 'unknown',
+  storage_type: 'ambient',
   shelf_life_days: null,
   usage_notes: '',
   engine_notes: '',
@@ -124,7 +124,7 @@ describe('ingredientRowToEngineIngredient', () => {
 
   it('handles unknowns honestly', () => {
     const eng = ingredientRowToEngineIngredient(
-      makeRow({ ingredient_category: 'base_mix', verification_status: 'needs_review' }),
+      makeRow({ ingredient_category: 'base_mix', verification_status: 'Estimated' }),
     );
     // required composition numbers coerced to 0 at the engine seam
     expect(eng.composition.water_percent).toBe(0);
