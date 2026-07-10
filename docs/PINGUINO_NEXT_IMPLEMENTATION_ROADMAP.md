@@ -334,6 +334,28 @@ changes; no UI dependency yet.
    (typecheck, lint, 1986 tests, build). Docs-only change; no code touched.
    **Next:** Edge-Function tier hardening before scale (decision F, standing); branch apply/save for
    IF9/IF10 stays future work.
+   **[landed — tier-enforcement hardening slice, 2026-07-10, PROPOSAL-STAGE]** the decision-F gap
+   is now a one-approval action. Audit verdict: **`server_tier_source_ready`** — `public.subscriptions`
+   (migration 0003) is a server-maintained cache with select-own RLS and, live-verified via
+   `has_table_privilege`, ZERO client write grants (nobody can self-promote to Pro); currently
+   owner-seeded (1 active row) because the 2B.3 Stripe-webhook writer does not exist yet (live
+   project has zero Edge Functions). Deliverables, BOTH approval-gated, NOTHING deployed/applied:
+   (a) **Option A (recommended)** — a tier-checking `accepted_corrections` INSERT policy mirroring
+   `planFromSubscription` (active | trialing | past_due-in-grace), as the NON-applied proposal
+   `docs/spine/proposals/accepted_corrections_tier_policy.proposal.sql` (becomes migration 0013
+   verbatim on approval; rollback included; no deploy, no secrets, no client change);
+   (b) **Option B** — Edge Function source `supabase/functions/create-accepted-correction/index.ts`
+   (NOT deployed): JWT-only identity, tier read from the user-scoped subscriptions row (client can
+   never supply a tier), the SAME closed draft contract (key set + FNV-1a hash + rejection
+   vocabulary test-pinned equal to the app's), service-role insert with identity forced from the
+   JWT, write-once, touches exactly subscriptions+accepted_corrections — only meaningful as one
+   atomic cutover (deploy + client rewire + INSERT-grant revocation, SQL included). 17 new guard
+   tests pin: proposal not applied, function not deployed, no client-provided tier trusted, key-set
+   and status-literal lockstep, live create path UNCHANGED, docs state the residual risk (tier is
+   still enforced client/service-side until approval). Full suite green.
+   **Next:** owner picks from the plan §9 menu — approve Option-A migration 0013 (recommended now)
+   or the Option-B atomic cutover; 2B.3 Stripe webhook writer remains the freshness prerequisite at
+   scale.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.

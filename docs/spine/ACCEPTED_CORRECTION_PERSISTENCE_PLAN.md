@@ -224,3 +224,67 @@ owner's session:
 
 Standing hardening requirement (decision F, unchanged): an Edge-Function-mediated insert /
 server-side tier enforcement before wider production scale.
+
+---
+
+## 9. Server-side tier enforcement — hardening slice (2026-07-10, PROPOSAL-STAGE)
+
+**Phase-1 audit verdict: `server_tier_source_ready`.** The server-side source of truth for Pro
+entitlement is `public.subscriptions` (migration `0003`): select-own RLS only, and — live-verified
+via `has_table_privilege` — `authenticated` has **no insert/update/delete** grant and `anon` has
+nothing. Every row is therefore server-written by construction, so DB-side enforcement that reads
+it never trusts the client. Current shape (stated honestly): 1 row (`active`, period end
+2026-07-16), **owner-seeded at service level** — the Phase 2B.3 Stripe-webhook writer Edge
+Function does NOT exist yet (live project has zero Edge Functions), so freshness is manual until
+that lands. The pure mapping `planFromSubscription` (active | trialing | past_due-in-grace) is the
+locked tier semantic; every artifact below mirrors it and tests pin the literals in lockstep.
+
+**Deliverables (both approval-gated; NOTHING went live in this slice):**
+
+1. **Option A — RECOMMENDED: tier-checking INSERT policy.**
+   [`proposals/accepted_corrections_tier_policy.proposal.sql`](proposals/accepted_corrections_tier_policy.proposal.sql)
+   replaces `accepted_corrections_insert_own` with ownership **and** an EXISTS check against the
+   caller's own `subscriptions` row (runs under the caller's own select-own privileges — no
+   security-definer helper, no privileged role, no deploy, no secrets, no new runtime). Client
+   code is unchanged; a Free user's raw-REST insert fails at the DB with an RLS violation. One
+   migration (`0013`) when approved; rollback included. **NOT applied.**
+   *Adversarial-review addition (both options):* an optional `recipe_id` must now point at the
+   **caller's own** saved recipe — the bare FK from 0012 would have allowed a crafted raw insert
+   to link another user's recipe id (and probe uuid existence). Option A pins it in the policy;
+   the Edge Function pins it with a read-as-the-user check (`recipe_not_owned`). The production
+   Studio path is unaffected (it only ever links the user's own `savedRecipeId`).
+2. **Option B — Edge Function `create-accepted-correction`** at
+   `supabase/functions/create-accepted-correction/index.ts`. **NOT deployed** (the live project
+   still has zero Edge Functions). Identity ONLY from the verified JWT (anon → 401); tier ONLY
+   from the user-scoped `subscriptions` read (a body-supplied plan/tier flag does not exist and is
+   test-pinned absent); the SAME closed draft contract (key set test-pinned equal to
+   `ACCEPTED_CORRECTION_DRAFT_KEYS`, FNV-1a hash recomputed); insert via service role with
+   `user_id`/`created_by` FORCED from the JWT; write-once (no update path); touches exactly
+   `subscriptions` (read) + `accepted_corrections` (insert). Option B is only meaningful as ONE
+   atomic cutover: deploy + rewire `createAcceptedCorrection()` + revoke the direct authenticated
+   INSERT grant (SQL in the proposal) — revoking alone would break the proven Pro save path.
+
+**Current enforcement state (unchanged, no overclaim): tier is still enforced client/service-side
+only** — the DB enforces ownership (Slice 24 §8) and the direct authenticated INSERT grant
+remains, so a hostile signed-in Free user can still insert their own row via raw REST until
+Option A is applied (or the Option B cutover ships). That residual risk is exactly the accepted
+decision-F v1 risk; this slice made closing it a one-migration action.
+
+**Why A over B for now:** this codebase deliberately has *no privileged server role anywhere*;
+Option A keeps that property (enforcement lives in Postgres next to the ownership RLS it
+strengthens) and requires no deploy pipeline, no service-role secret handling and no duplicated
+validation runtime. Option B becomes the natural vehicle when the Stripe webhook writer (2B.3)
+introduces Edge Functions anyway. Trade-offs recorded: A's policy runs a per-insert subquery
+(trivial at this volume) and A leaves grams-in-flight validation entirely to the client contract
+(as today), while B centralizes validation server-side but adds service-role usage + deploy
+surface + drift risk between duplicated validators (mitigated by the lockstep tests).
+
+**Owner decision menu (exact next steps):**
+1. Approve Option A → copy the proposal's Option-A block verbatim to
+   `supabase/migrations/0013_accepted_corrections_tier_policy.sql`, apply, negative-test
+   (Free insert denied / Pro insert allowed via transaction-scoped role simulation), flip the
+   guard tests, update this section. Recommended now.
+2. OR approve the Option B atomic cutover (deploy function + rewire client create + revoke
+   grant + browser re-proof). Natural at 2B.3 / wider scale.
+3. Either way, the Stripe webhook writer (2B.3) remains the standing prerequisite for
+   subscription freshness at scale.
