@@ -289,7 +289,12 @@ surface + drift risk between duplicated validators (mitigated by the lockstep te
    **NOT deployed** (live project has zero Edge Functions, re-verified after 0013).
 3. The Stripe webhook writer (2B.3) remains the standing prerequisite for subscription freshness
    at scale — enforcement reads the server-written cache; keeping that cache fresh is still a
-   manual owner action until webhooks exist.
+   manual owner action until webhooks exist. **Update 2026-07-10:** the webhook writer SOURCE is
+   now ready (`supabase/functions/stripe-subscription-webhook/` + unit-tested pure mapping,
+   lockstepped with `planFromSubscription`) but **NOT deployed** — see
+   [STRIPE_SUBSCRIPTION_WEBHOOK_PLAN.md](STRIPE_SUBSCRIPTION_WEBHOOK_PLAN.md) for the event
+   contract, required env names and the owner deployment checklist. Freshness stays manual until
+   that checklist is executed.
 
 ### 9.1 Option A applied — migration 0013 verification record (2026-07-10)
 

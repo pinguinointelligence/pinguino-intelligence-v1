@@ -377,6 +377,31 @@ changes; no UI dependency yet.
    **Next:** the 2B.3 Stripe webhook writer (subscription freshness at scale — enforcement reads
    the server-written cache, so keeping it fresh is still a manual owner action); the Option-B
    cutover only if/when Edge Functions arrive; branch apply/save for IF9/IF10 stays future work.
+   **[landed — 2B.3 webhook writer SOURCE, 2026-07-10, NOT deployed]** the subscription-freshness
+   writer is implemented and verification-planned without deploying anything:
+   `supabase/functions/stripe-subscription-webhook/index.ts` (Deno; Stripe signature verified over
+   the RAW body BEFORE any DB access; unsigned/invalid → 400) + pure `mapping.ts` (unit-tested in
+   vitest, no Deno needed). Event contract: checkout.session.completed → billing_customers mapping
+   from client_reference_id; customer.subscription.created/updated/deleted → CLOSED-field upsert
+   keyed on the unique stripe_subscription_id (idempotent; deleted forces `canceled`);
+   invoice.payment_succeeded/failed observed as no-ops (subscription.updated is the single source
+   of truth); unknown events acknowledged safely. Tier can never be client-supplied: the
+   STRIPE_PRO_PRICE_IDS allowlist gates every upsert (empty config → NO writes; foreign price →
+   ignored; unmapped customer → 409 so Stripe redelivers until the checkout race resolves).
+   Status mapping is LOCKSTEPPED with `planFromSubscription` — tests prove webhook-built rows
+   derive pro/free exactly as the 0013 RLS policy expects (active/trialing → pro; past_due only
+   until current_period_end; deleted → canceled → free; unknown statuses fail-safe to free).
+   Schema audit: 0003 already has every needed field — NO migration proposal required
+   (billing_customers is currently 0 rows; the owner's subscription was seeded directly). 26 new
+   tests incl. no-secret scans (env NAMES only), closed-payload-vs-0003-columns pins, and
+   writes-touch-exactly-two-tables pins. Docs:
+   [STRIPE_SUBSCRIPTION_WEBHOOK_PLAN.md](spine/STRIPE_SUBSCRIPTION_WEBHOOK_PLAN.md) (event
+   contract, env names, deploy checklist incl. --no-verify-jwt rationale, stripe-CLI local test
+   plan, rollback). NOTHING deployed (zero functions live, re-verified); freshness stays MANUAL
+   until the owner executes the checklist.
+   **Next:** owner runs the webhook deploy checklist (test-mode endpoint first) → freshness
+   becomes automatic and the last tier-chain caveat closes; then back to the Spine main line
+   (engine `TARGET_BANDS` −12/−13) or the Option-B cutover if ever wanted.
 
 Acceptance tests (groups A–M from [Acceptance_Tests.md](pinguino-spine/Acceptance_Tests.md))
 are implemented alongside each step, not at the end.
