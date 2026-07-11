@@ -2,8 +2,19 @@
  * OCR label-intake copy (English — matches the existing intake / dev-tool surfaces).
  *
  * ALL user-facing strings for the OCR intake feature live here (never in src/copy/en.ts,
- * which is owned by another slice). Pure data, no logic.
+ * which is owned by another slice). Pure data, no logic — the `satisfies` clauses below
+ * are compile-time locks against the shared contract unions (intakeContracts.ts): a
+ * vocabulary member added or removed there breaks this file loudly, never silently.
  */
+import type {
+  BatchItemOutcome,
+  DuplicateVerdict,
+  EvidenceProvenance,
+  FieldReviewStatus,
+  IntakeFieldKey,
+  IntakeImageRole,
+  IntakeImageState,
+} from './intakeContracts';
 
 export const ocrCopy = {
   page: {
@@ -77,5 +88,184 @@ export const ocrCopy = {
     draftTitle: 'Local product intake draft (NOT saved)',
     draftNote:
       'This is the existing local product-intake draft object (same contract as the table import). It is shown here only — no database write, no automatic save. Saving goes through the existing reviewed import path.',
+  },
+
+  /* ── full multi-image session experience (contract-typed panels) ────────── */
+  session: {
+    title: 'Full intake session (multi-image)',
+    intro:
+      'The complete session flow over the shared intake contract: multiple package photos with roles, manual barcode, per-field evidence review with provenance, duplicate check, batch queue.',
+    demoNote:
+      'SAMPLE session data — wiring preview only. Nothing below was extracted from a real image: the extraction engine and session logic attach at integration. No OCR runs in this section, nothing is uploaded, nothing is saved.',
+    stateLabel: 'Session state',
+    engineWired: 'extraction engine: wired',
+    engineNotWired: 'extraction engine: not wired (sample mode)',
+    recheckDuplicate: 'Re-run duplicate check',
+    recheckDuplicatePending: 'duplicate check attaches at integration',
+    batchLink: 'Open the batch intake queue',
+  },
+  images: {
+    title: 'Package photos',
+    addImages: 'Add package photos',
+    dropZone: 'Drag and drop package photos here (or use the picker)',
+    camera: 'Take a photo with the camera',
+    cameraNote:
+      'On a phone this opens the rear camera; on desktop it falls back to the regular file picker.',
+    acceptedNote: 'Accepted: PNG, JPEG, WebP — up to 10 MB per image.',
+    heicRejected:
+      'HEIC/HEIF photos cannot be decoded by this browser — export the photo as JPEG or PNG and add it again.',
+    unsupportedType: 'Not a supported image format — use PNG, JPEG or WebP.',
+    empty: 'No package photos yet.',
+    roleLabel: 'Image role',
+    moveUp: 'Move earlier',
+    moveDown: 'Move later',
+    replace: 'Replace image',
+    remove: 'Remove image',
+    retry: 'Retry OCR',
+    checksumPending: 'sha256: pending',
+    states: {
+      uploaded: 'uploaded',
+      analysing: 'analysing',
+      needs_review: 'needs review',
+      ready: 'ready',
+      failed: 'failed',
+    } satisfies Record<IntakeImageState, string>,
+    roles: {
+      front: 'Front of pack',
+      back: 'Back of pack',
+      nutrition_table: 'Nutrition table',
+      ingredients: 'Ingredients list',
+      barcode: 'Barcode',
+      claims_allergens: 'Claims / allergens',
+      other: 'Other',
+    } satisfies Record<IntakeImageRole, string>,
+  },
+  barcode: {
+    title: 'Manual EAN / barcode',
+    label: 'Manual EAN / barcode',
+    help: 'Type or scan the barcode digits — letters and spaces are ignored.',
+    normalized: 'Normalized',
+    incomplete: 'An EAN/GTIN has 8, 12, 13 or 14 digits.',
+    checksumInvalid:
+      'Checksum failed — this does not look like a valid EAN/GTIN. Double-check the digits.',
+  },
+  evidence: {
+    title: 'Evidence review',
+    intro:
+      'Every field shows WHERE its value came from (provenance + source text) and HOW sure the read and the normalization were. Absent fields stay empty — a value that was not detected is never shown as 0.',
+    groups: {
+      identity: 'Product identity',
+      nutrition: 'Nutrition (per declared basis)',
+      ingredients: 'Ingredients & allergens',
+      claims: 'Claims',
+    },
+    missing: 'not found — needs manual entry (never assumed 0)',
+    markedUnknown: 'marked unknown',
+    provenance: {
+      explicit: 'explicit',
+      calculated: 'calculated',
+      inferred: 'inferred',
+      absent: 'absent',
+    } satisfies Record<EvidenceProvenance, string>,
+    status: {
+      auto_accepted: 'auto-accepted',
+      needs_confirmation: 'needs confirmation',
+      confirmed: 'confirmed',
+      edited: 'edited',
+      marked_unknown: 'marked unknown',
+      conflict_unresolved: 'conflict — choose a value',
+    } satisfies Record<FieldReviewStatus, string>,
+    readConfidence: 'read',
+    normalizationConfidence: 'norm',
+    noConfidence: 'n/a',
+    source: 'Source',
+    line: 'line',
+    conflictTitle: 'Conflicting candidates — choose one:',
+    useCandidate: 'Use this value',
+    chosen: 'chosen',
+    editAction: 'Edit',
+    confirmAction: 'Confirm',
+    markUnknownAction: 'Mark unknown',
+    warningsTitle: 'Warnings',
+    fields: {
+      product_name: 'Product name',
+      brand: 'Brand',
+      package_size: 'Package size',
+      package_unit: 'Package unit',
+      ean_code: 'EAN / barcode',
+      country: 'Country',
+      supplier: 'Supplier',
+      category: 'Category',
+      subcategory: 'Subcategory',
+      nutrition_basis: 'Nutrition basis',
+      energy_kcal: 'Energy (kcal)',
+      energy_kj: 'Energy (kJ)',
+      fat: 'Fat (g)',
+      saturated_fat: 'of which saturates (g)',
+      carbohydrate: 'Carbohydrates (g)',
+      sugars: 'of which sugars (g)',
+      protein: 'Protein (g)',
+      salt: 'Salt (g)',
+      sodium: 'Sodium (g) — evidence only, never auto-converted to salt',
+      fibre: 'Fibre (g)',
+      ingredients_text: 'Ingredients',
+      allergens_text: 'Allergens / contains',
+      may_contain_text: 'May contain',
+      claim_vegan: 'Vegan claim',
+      claim_vegetarian: 'Vegetarian claim',
+      claim_gluten_free: 'Gluten-free claim',
+      claim_lactose_free: 'Lactose-free claim',
+      claims_other: 'Other claims',
+    } satisfies Record<IntakeFieldKey, string>,
+  },
+  duplicate: {
+    title: 'Duplicate check',
+    verdicts: {
+      exact_duplicate: 'Exact duplicate',
+      likely_duplicate: 'Likely duplicate',
+      new_product: 'New product',
+    } satisfies Record<DuplicateVerdict, string>,
+    verdictNotes: {
+      exact_duplicate: 'This product already exists in the catalog — saving a copy is blocked.',
+      likely_duplicate: 'A very similar product exists — review it before deciding.',
+      new_product: 'No matching product was found — it can be created as new.',
+    } satisfies Record<DuplicateVerdict, string>,
+    reasons: {
+      ean_match: 'EAN matches existing product',
+      identity_hash_match: 'Identity hash matches existing product',
+      normalized_identity_match: 'Normalized identity matches existing product',
+    },
+    score: 'score',
+    existingProduct: 'existing product',
+    actions: {
+      open_existing: 'Open existing product',
+      update_existing_with_review: 'Update existing (reviewed merge)',
+      create_new: 'Create as new product',
+    },
+  },
+  batch: {
+    title: 'Batch intake queue',
+    intro:
+      'Sessions keep their queue position forever; each shows its honest outcome. The summary is derived from the outcomes — never a stored counter.',
+    empty: 'No sessions in this batch yet.',
+    itemLabel: 'session',
+    outcomes: {
+      saved: 'saved',
+      duplicate: 'duplicate',
+      needs_review: 'needs review',
+      failed: 'failed',
+      pending: 'pending',
+    } satisfies Record<BatchItemOutcome, string>,
+    summaryLabels: {
+      processed: 'processed',
+      saved: 'saved',
+      duplicate: 'duplicate',
+      needsReview: 'needs review',
+      failed: 'failed',
+      pending: 'pending',
+    },
+    retryFailed: 'Retry failed sessions',
+    exportCsv: 'Export CSV',
+    exportCsvPending: 'CSV export attaches at integration',
   },
 } as const;
