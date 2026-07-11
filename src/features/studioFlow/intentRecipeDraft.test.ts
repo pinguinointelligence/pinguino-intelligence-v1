@@ -188,6 +188,9 @@ describe('starter draft — purity boundary', () => {
   const shellSrc = readFileSync(join(HERE, 'StudioAssistantShell.tsx'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/.*$/gm, '');
+  const previewSrc = readFileSync(join(HERE, 'StarterDraftPreview.tsx'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
 
   it('24–26. no OpenAI/LLM, no Supabase, no Mapper-product imports', () => {
     for (const src of [moduleSrc, shellSrc]) {
@@ -208,20 +211,28 @@ describe('starter draft — purity boundary', () => {
     }
   });
 
-  it('19–20. the shell has NO recipe save / apply / mutate path (read-only preview)', () => {
-    // no store write, no preset load, no apply/save handler wiring
-    expect(/loadPreset|setItems|useRecipeStore|markSaved|createRecipe/.test(shellSrc)).toBe(false);
-    expect(/Zapisz|Zastosuj|Użyj jako/i.test(shellSrc)).toBe(false);
-    // the recipe input snapshot is never handed to a persistence/apply call
-    expect(/\.recipeInput\b[\s\S]{0,40}(save|apply|persist|store)/i.test(shellSrc)).toBe(false);
+  it('19–20. the shell has NO recipe-SAVE path; local apply goes only through the gated helper', () => {
+    // no save / persistence wiring anywhere in the shell (apply ≠ save)
+    expect(/markSaved|createRecipe|saveRecipe\(|persistRecipe|loadPreset|setItems/.test(shellSrc)).toBe(false);
+    expect(/Zapisz|Użyj jako/i.test(shellSrc)).toBe(false);
+    // the shell never touches the recipe store directly — only the audited
+    // local-apply helper module (slice: assistant-local-apply)
+    expect(/useRecipeStore/.test(shellSrc)).toBe(false);
+    expect(shellSrc.includes('applyStarterRecipeInputToStudio(')).toBe(true);
+    // the raw starter draft is never rendered — only the tier-safe display object
+    expect(shellSrc.includes('redactStarterDraftForDisplay(')).toBe(true);
   });
 
-  it('22–23. exact starter grams are gated behind the Pro capability (Demo redaction-safe)', () => {
-    // grams render only under exactCorrectionGrams; the else branch shows the Pro note
-    expect(shellSrc.includes('exactCorrectionGrams ? (')).toBe(true);
-    expect(/A\.demoGramsNote/.test(shellSrc)).toBe(true);
-    // the raw gram value is only emitted inside a gram-gated expression
-    expect(shellSrc.includes('round1(line.grams)')).toBe(true);
+  it('22–23. exact starter grams are gated behind canViewExactGrams (Demo physically redacted)', () => {
+    // the shell consumes the EXPLICIT capability names — never isPro / a price id
+    expect(shellSrc.includes('canViewExactGrams')).toBe(true);
+    expect(shellSrc.includes('canApplyStarterToStudio')).toBe(true);
+    expect(/\bisPro\b|stripe_price_id/.test(shellSrc + previewSrc)).toBe(false);
+    // grams render only in the exact display variant of the preview component;
+    // the redacted variant shows the paid-plans note instead
+    expect(previewSrc.includes("display.variant === 'exact'")).toBe(true);
+    expect(previewSrc.includes('round1(line.grams)')).toBe(true);
+    expect(/A\.demoGramsNote/.test(previewSrc)).toBe(true);
   });
 });
 
