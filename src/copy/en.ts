@@ -182,7 +182,18 @@ export const copy = {
       statement: 'Ingredient statement',
       allergen: 'Allergen information',
       export: 'Export / print',
-      note: 'Compliant nutrition, production and allergen labels generated from your recipe — export and print arrive in a later release.',
+      note: 'An EU nutrition declaration, ingredient statement and cost breakdown, generated from your recipe. Export the recipe as CSV or print the label — all in your browser.',
+      /** Standalone label page (Labels & Exports) — reads a fixed sample recipe. */
+      sampleHeading: 'Sample recipe',
+      sampleNote: 'The values below come straight from the −11°C Engine for a balanced sample recipe. Build your own in the calculator to label it.',
+      declarationTitle: 'Nutrition declaration',
+      statementNote: 'Ingredients in descending order of weight (EU QUID).',
+      notAvailable: 'Not available',
+      downloadCsv: 'Download CSV',
+      print: 'Print label',
+      csvFilename: 'pinguino-sample-label.csv',
+      allergenNote:
+        'Allergen information is not generated automatically — the engine holds no allergen data. Check allergens against your ingredient labels before publishing.',
     },
     api: {
       title: 'API',

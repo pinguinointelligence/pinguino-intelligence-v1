@@ -33,11 +33,14 @@ describe('Slice 3 destination pages', () => {
     expect(/stripe/i.test(html)).toBe(false); // no payment provider wired
   });
 
-  it('Create Label is informational with Coming soon items', () => {
+  it('Create Label renders a real EU nutrition declaration from the sample recipe', () => {
     const html = render(<CreateLabelPage />);
     expect(html).toContain(copy.nav.label.title);
-    expect(html).toContain(copy.nav.label.nutrition);
-    expect(html).toContain(copy.nav.comingSoon);
+    expect(html).toContain(copy.nav.label.sampleHeading); // 'Sample recipe'
+    expect(html).toContain(copy.studio.metrics.kcal); // 'Energy'
+    expect(html).toContain(copy.studio.metrics.saturated); // 'of which saturated'
+    expect(html).toContain(copy.nav.label.downloadCsv); // 'Download CSV'
+    expect(html).toContain('kcal'); // energy declared in kJ + kcal
   });
 
   it('API page lists the informational links', () => {
