@@ -121,3 +121,44 @@ describe('no-live-write boundary (static scan)', () => {
     }
   });
 });
+
+describe('no-live-write boundary — session/dedup/save/batch modules (static scan)', () => {
+  const SESSION_DIR = join(resolve(import.meta.dirname), 'session');
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const sessionFiles = () => readdirSync(SESSION_DIR).filter((f) => /\.ts$/.test(f) && !/\.test\./.test(f));
+
+  it('ONLY saveFlow.ts imports a service — and EXACTLY the sanctioned import path', () => {
+    for (const file of sessionFiles()) {
+      const src = strip(readFileSync(join(SESSION_DIR, file), 'utf8'));
+      const serviceImports = [...src.matchAll(/from\s+['"](@\/services\/[^'"]+)['"]/g)].map((m) => m[1]);
+      if (file === 'saveFlow.ts') {
+        // the one sanctioned save path (mocked in every test) — nothing else service-y
+        expect(serviceImports).toEqual(['@/services/productCatalogImport']);
+      } else {
+        expect(serviceImports, `service import in session/${file}`).toEqual([]);
+      }
+    }
+  });
+
+  it('NO session module touches a DB client, fetch, or a write verb; basement is never named', () => {
+    for (const file of sessionFiles()) {
+      const src = strip(readFileSync(join(SESSION_DIR, file), 'utf8'));
+      expect(/supabase/i.test(src), `db client in session/${file}`).toBe(false);
+      expect(/fetch\(/.test(src), `fetch in session/${file}`).toBe(false);
+      expect(/mapper_basement/i.test(src), `basement named in session/${file}`).toBe(false);
+      for (const verb of ['.insert(', '.update(', '.upsert(', '.delete(']) {
+        expect(src.includes(verb), `${verb} in session/${file}`).toBe(false);
+      }
+    }
+  });
+
+  it("NO session module imports the OCR engine or Track G's evidence extractor (injected seam only)", () => {
+    for (const file of sessionFiles()) {
+      const src = strip(readFileSync(join(SESSION_DIR, file), 'utf8'));
+      expect(/from\s+['"]tesseract/.test(src), `engine import in session/${file}`).toBe(false);
+      expect(/ocrEngine/.test(src), `ocrEngine import in session/${file}`).toBe(false);
+      // the seam is a local fn TYPE (EvidenceExtractorFn) — importing G's module is forbidden
+      expect(/from\s+['"][^'"]*evidenceExtractor/i.test(src), `extractor import in session/${file}`).toBe(false);
+    }
+  });
+});

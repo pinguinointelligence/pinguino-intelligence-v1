@@ -17,6 +17,7 @@
 
 import { mapRowToProductInsert, type ProductIntakeCandidate } from '@/data/products/productTableParser';
 import type { ConfidenceBand, LabelExtraction, NutritionBasis } from './labelTextParser';
+import type { FieldEvidence, IntakeFieldKey, ReviewedField } from './intakeContracts';
 
 /** Mirrors the exact pinned engine version in package.json (asserted by test). */
 export const OCR_ENGINE_INFO = { name: 'tesseract.js', version: '7.0.0', langs: ['eng', 'spa'] } as const;
@@ -245,4 +246,134 @@ export function buildDraftCandidate(state: OcrReviewState): DraftBuildResult {
   }
 
   return { ok: true, candidate };
+}
+
+/* ── bridge into the shared intake contract (multi-image session world) ──────
+ * The single-image review state above predates intakeContracts.ts. The bridge below
+ * converts it LOSSLESSLY (except where documented) into the LOCKED ReviewedField
+ * shape so a legacy single-image review can enter the session/dedup/save pipeline.
+ * The v1 behavior and audit stay exactly as they are — this is additive only. */
+
+/**
+ * ReviewFieldKey → contract IntakeFieldKey. `storageInstructions` has NO contract
+ * field (deliberate: storage vocabulary is a Mapper concern) — it maps to null and
+ * stays available in the v1 extracted_json audit; it is never silently dropped from
+ * that audit, only absent from the contract field list.
+ */
+export const REVIEW_TO_INTAKE_FIELD_KEY: Record<ReviewFieldKey, IntakeFieldKey | null> = {
+  productName: 'product_name',
+  brand: 'brand',
+  eanCode: 'ean_code',
+  netQuantity: 'package_size',
+  energyKj: 'energy_kj',
+  energyKcal: 'energy_kcal',
+  fat: 'fat',
+  saturatedFat: 'saturated_fat',
+  carbohydrates: 'carbohydrate',
+  sugars: 'sugars',
+  protein: 'protein',
+  salt: 'salt',
+  ingredientsText: 'ingredients_text',
+  allergens: 'allergens_text',
+  mayContain: 'may_contain_text',
+  storageInstructions: null,
+};
+
+const toEvidence = (field: ReviewField, imageId: string): FieldEvidence => ({
+  extractedRaw: field.extractedValue,
+  normalized: field.extractedValue,
+  evidence: {
+    imageId,
+    lineIndex: null, // the v1 parser tracked source lines as text, not indexes
+    sourceText: field.sourceLines.length > 0 ? field.sourceLines.join(' | ') : null,
+  },
+  extractionConfidence: field.ocrConfidence,
+  normalizationConfidence: null,
+  provenance: 'explicit',
+  warnings: field.warnings,
+});
+
+/** One v1 field → the contract ReviewedField (same review resolution semantics). */
+function toReviewedField(field: ReviewField, fieldKey: IntakeFieldKey, imageId: string): ReviewedField {
+  const hasExtraction = field.extractedValue !== '';
+  const candidates = hasExtraction ? [toEvidence(field, imageId)] : [];
+  if (field.edited) {
+    const edited = field.editedValue.trim();
+    // an edit that cleared the value is the human saying "no value" → marked_unknown
+    if (edited === '') {
+      return { fieldKey, candidates, chosenCandidate: null, editedValue: null, reviewStatus: 'marked_unknown' };
+    }
+    return { fieldKey, candidates, chosenCandidate: null, editedValue: edited, reviewStatus: 'edited' };
+  }
+  if (field.confirmed) {
+    return {
+      fieldKey,
+      candidates,
+      chosenCandidate: hasExtraction ? 0 : null,
+      editedValue: null,
+      reviewStatus: 'confirmed',
+    };
+  }
+  if (field.requiresConfirmation) {
+    return { fieldKey, candidates, chosenCandidate: null, editedValue: null, reviewStatus: 'needs_confirmation' };
+  }
+  return {
+    fieldKey,
+    candidates,
+    chosenCandidate: hasExtraction ? 0 : null,
+    editedValue: null,
+    reviewStatus: 'auto_accepted',
+  };
+}
+
+/** The session-world `nutrition_basis` field derived from the v1 basis + override. */
+function basisReviewedField(state: OcrReviewState): ReviewedField {
+  const detected = state.detectedBasis;
+  const candidates: FieldEvidence[] =
+    detected === 'unknown'
+      ? []
+      : [
+          {
+            extractedRaw: detected,
+            normalized: detected,
+            evidence: null, // the v1 parser derives the basis from headings, not one line
+            extractionConfidence: null,
+            normalizationConfidence: null,
+            provenance: 'explicit',
+            warnings: [],
+          },
+        ];
+  if (state.basisOverride !== null) {
+    return {
+      fieldKey: 'nutrition_basis',
+      candidates,
+      chosenCandidate: null,
+      editedValue: state.basisOverride,
+      reviewStatus: 'edited',
+    };
+  }
+  return {
+    fieldKey: 'nutrition_basis',
+    candidates,
+    chosenCandidate: candidates.length === 1 ? 0 : null,
+    editedValue: null,
+    reviewStatus: 'auto_accepted',
+  };
+}
+
+/**
+ * Convert a v1 single-image review state into the LOCKED contract ReviewedField list
+ * (plus the derived `nutrition_basis` field), attributing every candidate's evidence
+ * to the given imageId. Pure; the v1 state is not modified and its own draft path
+ * (buildDraftCandidate) keeps working unchanged.
+ */
+export function toReviewedFields(state: OcrReviewState, imageId: string): ReviewedField[] {
+  const fields: ReviewedField[] = [];
+  for (const field of state.fields) {
+    const fieldKey = REVIEW_TO_INTAKE_FIELD_KEY[field.key];
+    if (fieldKey === null) continue; // storageInstructions — documented above
+    fields.push(toReviewedField(field, fieldKey, imageId));
+  }
+  fields.push(basisReviewedField(state));
+  return fields;
 }
