@@ -1,0 +1,20 @@
+# Netlify deploy config for the PINGÜINO client-only Vite SPA.
+# INERT until a Netlify site is connected — reading this file has no effect on local
+# dev, CI, tests, or the build. Pick ONE host (this or vercel.json), then set the two
+# public env vars (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) in the host dashboard.
+# See docs/deploy/DEPLOYMENT.md.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Client-side routing (react-router BrowserRouter): every non-asset path must serve
+# the SPA shell so deep links like /studio or /my-recipes resolve. Real static assets
+# under /assets are served directly and never hit this catch-all.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
