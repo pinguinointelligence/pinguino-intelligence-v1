@@ -7,11 +7,11 @@
  *   • CSV / table upload  → working (/products/import)
  *   • Barcode / EAN lookup → working, keyless OFF (/dev/enrichment-preview)
  *   • Online enrichment    → working, reviewed merge (/dev/enrichment-preview)
- *   • Image / label OCR    → PLANNED (keyless/local only, an in-browser engine) — not available
+ *   • Image / label OCR    → working, keyless LOCAL engine (/dev/ocr-intake)
  *   • Drive / catalog      → contract doc (no live Drive import here)
  *
- * Boundaries (IntakeHubPage.security.test.ts): DEV-only; no service/DB write; no OCR engine; no
- * paid API; no secret.
+ * Boundaries (IntakeHubPage.test.tsx): DEV-only; no service/DB write; THIS page never runs the
+ * OCR engine itself (it only routes to /dev/ocr-intake); no paid API; no secret.
  */
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -20,13 +20,12 @@ import { classifyIntakeInput } from '@/data/products/intakeClassifier';
 import {
   ACCEPTED_LABEL_IMAGE_TYPES,
   isAcceptedLabelImage,
-  parseNutritionLabelImage,
   type LabelImageMeta,
 } from '@/data/products/nutritionLabelOcr';
 
-/** The planned extraction fields shown with each queued label image (schema preview only). */
-const PLANNED_OCR_FIELDS =
-  'product name · brand · EAN · nutrition per 100g (fat, sat. fat, carbs, sugars, protein, salt, kcal) · ingredients text · allergens · image metadata';
+/** The fields the LOCAL OCR path extracts (see features/ocr-intake — reviewed, never invented). */
+const OCR_FIELDS =
+  'product name · brand · EAN · net quantity · nutrition basis · energy kJ+kcal · fat, sat. fat, carbs, sugars, protein, salt · ingredients text · allergens · may contain · storage';
 
 const kb = (bytes: number | null) => (bytes === null ? '—' : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
@@ -64,8 +63,10 @@ const SECTIONS: IntakeSection[] = [
   },
   {
     title: 'Image / label OCR',
-    state: 'planned',
-    body: 'NOT AVAILABLE. Planned as keyless/local only (a local in-browser engine) — no paid vision API, no fabricated text. The incomplete_text red flag already guards partial OCR. detected_text/extracted_json columns exist as placeholders.',
+    state: 'working',
+    body: 'Keyless LOCAL OCR (in-browser WASM engine — the label image never leaves the machine, no paid vision API, no fabricated text). Extracted fields carry per-field confidence and require explicit review before a local draft is built; nothing is auto-saved.',
+    to: '/dev/ocr-intake',
+    toLabel: 'Open label OCR intake',
   },
   {
     title: 'Drive / catalog import',
@@ -147,18 +148,21 @@ export function IntakeHubPage() {
         {labelQueue.length > 0 ? (
           <div className="mt-3 rounded border border-stone-100 bg-stone-50 px-2 py-1.5 text-xs">
             <p className="font-mono text-stone-600">
-              label-image OCR queue ({labelQueue.length}) · accepted: {ACCEPTED_LABEL_IMAGE_TYPES.join(', ')}
+              label images ({labelQueue.length}) · accepted: {ACCEPTED_LABEL_IMAGE_TYPES.join(', ')}
             </p>
             <ul className="mt-1 space-y-0.5">
               {labelQueue.map((img) => (
                 <li key={img.filename} className="font-mono text-stone-500">
                   {img.filename} · {kb(img.size_bytes)} · {img.mime ?? '—'} ·{' '}
-                  <span className="text-amber-700">OCR {parseNutritionLabelImage(img).status.replace('_', ' ')} — pending, not connected</span>
+                  <Link to="/dev/ocr-intake" className="text-sky-700 underline">
+                    run local OCR →
+                  </Link>
                 </li>
               ))}
             </ul>
             <p className="mt-1 text-stone-500">
-              planned output schema: {PLANNED_OCR_FIELDS}. No text is extracted today — keyless/local OCR only when built.
+              extracted fields: {OCR_FIELDS}. This hub never reads file contents — open the OCR page and
+              choose the image there (keyless LOCAL engine, reviewed before any draft).
             </p>
           </div>
         ) : null}

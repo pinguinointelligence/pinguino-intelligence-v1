@@ -8,6 +8,7 @@ import { EnrichmentPreviewPage } from '@/pages/dev/EnrichmentPreviewPage';
 import { SnapshotAuditPage } from '@/pages/dev/SnapshotAuditPage';
 import { StudioPickerProofPage } from '@/pages/dev/StudioPickerProofPage';
 import { IntakeHubPage } from '@/pages/dev/IntakeHubPage';
+import { OcrIntakePage } from '@/pages/dev/OcrIntakePage';
 import { ReferenceProposalsPage } from '@/pages/dev/ReferenceProposalsPage';
 import { SpineStatusPage } from '@/pages/dev/SpineStatusPage';
 import { ProductIntelligencePreviewPage } from '@/pages/dev/ProductIntelligencePreviewPage';
@@ -64,6 +65,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/snapshot-audit" element={<SnapshotAuditPage />} />}
       {import.meta.env.DEV && <Route path="/dev/studio-picker-proof" element={<StudioPickerProofPage />} />}
       {import.meta.env.DEV && <Route path="/dev/intake-hub" element={<IntakeHubPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/ocr-intake" element={<OcrIntakePage />} />}
       {import.meta.env.DEV && <Route path="/dev/reference-proposals" element={<ReferenceProposalsPage />} />}
       {import.meta.env.DEV && <Route path="/dev/spine" element={<SpineStatusPage />} />}
       {import.meta.env.DEV && <Route path="/dev/product-intelligence-preview" element={<ProductIntelligencePreviewPage />} />}

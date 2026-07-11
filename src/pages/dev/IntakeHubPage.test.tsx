@@ -25,11 +25,14 @@ describe('IntakeHubPage', () => {
     expect(html).toMatch(/href="\/dev\/enrichment-preview"/);
   });
 
-  it('does not fake OCR or imply a paid vision API', () => {
-    const t = text(render(<IntakeHubPage />));
-    expect(t).toMatch(/NOT AVAILABLE/);
-    expect(t).toMatch(/keyless\/local/);
+  it('describes the OCR path honestly — keyless LOCAL engine, no paid vision API, no auto-save', () => {
+    const html = render(<IntakeHubPage />);
+    const t = text(html);
+    expect(t).toMatch(/Keyless LOCAL OCR/i);
     expect(t).toMatch(/no paid vision API/);
+    expect(t).toMatch(/never leaves the machine/);
+    expect(t).toMatch(/nothing is auto-saved/i);
+    expect(html).toMatch(/href="\/dev\/ocr-intake"/);
   });
 
   it('renders the intake-input classifier panel', () => {
@@ -49,10 +52,11 @@ describe('IntakeHubPage', () => {
     expect(/FileReader|arrayBuffer|\.text\(\)|readAsText/.test(src)).toBe(false);
   });
 
-  it('the OCR queue never fakes text — the page uses the not_implemented adapter only', () => {
+  it('the hub itself never runs OCR — it only routes label images to /dev/ocr-intake', () => {
     const src = readFileSync(join(resolve(import.meta.dirname), 'IntakeHubPage.tsx'), 'utf8');
-    expect(src.includes('parseNutritionLabelImage')).toBe(true); // the honest adapter seam
-    expect(/tesseract|createWorker|vision\.googleapis/i.test(src)).toBe(false);
+    expect(src.includes('/dev/ocr-intake')).toBe(true); // routes to the real OCR page
+    // the ENGINE never runs on this page (no engine import, no fabricated text)
+    expect(/tesseract|createWorker|vision\.googleapis|@\/features\/ocr-intake\/ocrEngine/i.test(src)).toBe(false);
   });
 });
 
