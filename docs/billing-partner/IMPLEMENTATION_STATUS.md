@@ -137,7 +137,30 @@ test. First unblockers: Sandbox Product/Price IDs for the 11 lookup keys + chose
   (see final report for exact count) · production build clean. SQL statically guard-tested;
   never executed against Postgres in this slice (owner applies).
 
+## 6a. Stripe Sandbox provisioning (2026-07-11, via Stripe MCP)
+
+Account `acct_1Ts0jzADcB1viept`, **Test Mode proven** (`GET /v1/balance` livemode:false, twice).
+- Products: Home `prod_UrkypjhWTSAAmx` (txcd_10103000), Pro `prod_Urky1DtpTTDI41` (txcd_10103001).
+- 11 Prices created idempotently (empty-sandbox baseline, exact lookup keys, EUR, inclusive,
+  licensed, 15m=month×15 non-publishable). Full id table in NICOLAS_STRIPE_HANDOFF.md §2–3.
+- **Real `validateBillingConfig` → ok:true, 11/11 PASS**, crossChecks all true (tax uniform,
+  livemode uniform, product consistency). No Live objects created.
+
+## 6b. Phase 2 blocker (Supabase non-prod target)
+
+No non-production Supabase database could be provisioned via MCP:
+- Local Docker/Supabase CLI: **unavailable** (no local apply path).
+- Branch on `riwipywgqobrulyzrzad`: **blocked — branching requires the Supabase Pro plan** (org is Free).
+- New free project: **blocked — org at the 2-active-free-project limit** (production + "MOOTOORS").
+- Production (`riwipywgqobrulyzrzad`): migrations forbidden by safety rules; never touched.
+
+→ **Human/billing action required** (one of): (a) pause the unrelated "MOOTOORS" project to free a
+free-project slot, then Claude creates `pinguino-billing-sandbox` at $0; or (b) upgrade the Supabase
+org to Pro (~$25/mo) to enable the authorized `billing-partner-sandbox` branch. Migrations 0014–0021
+remain committed + guard-tested (82 tests), awaiting the first real apply.
+
 ## 7. Blocked / external
 
-- Sandbox keys, Product/Price IDs, Connect activation, tax decision, email provider choice,
+- Sandbox keys, Connect activation, tax decision (Live), email provider choice,
   deployment platform for Edge Functions + pg_cron enablement, Live replication — all external.
+- Supabase non-prod capacity (see §6b) — the current gate for Phase 2 onward.

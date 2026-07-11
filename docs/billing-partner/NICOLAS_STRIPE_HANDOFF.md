@@ -15,28 +15,33 @@ this file, the chat, or the repo.
 - [ ] Tax code for SaaS/digital subscription: ________
 - [ ] Automatic Tax ON/OFF: ________  (all mutually-replaceable prices must share tax behavior)
 
-## 2. Products (Sandbox)
-- [ ] Product "Pinguino Intelligence Home" → `STRIPE_PRODUCT_HOME_ID` = ________
-- [ ] Product "Pinguino Intelligence Pro"  → `STRIPE_PRODUCT_PRO_ID` = ________
+## 2. Products (Sandbox) — ✅ PROVISIONED by Claude via MCP (2026-07-11)
+Account `acct_1Ts0jzADcB1viept` (livemode:false, proven twice). These IDs are non-secret.
+- [x] Product "Pinguino Intelligence Home" → `STRIPE_PRODUCT_HOME_ID` = `prod_UrkypjhWTSAAmx` (tax_code `txcd_10103000` SaaS personal use, metadata internal_product_code=PI_HOME)
+- [x] Product "Pinguino Intelligence Pro"  → `STRIPE_PRODUCT_PRO_ID` = `prod_Urky1DtpTTDI41` (tax_code `txcd_10103001` SaaS business use, metadata internal_product_code=PI_PRO)
 
-## 3. The 11 Prices (exact lookup keys — the app validates them verbatim)
+## 3. The 11 Prices — ✅ PROVISIONED + validated (real configValidator: ok=true, 11/11 PASS)
 
-| # | Lookup key | Amount | Interval | Price ID (paste) |
-|---|---|---:|---|---|
-| 1 | `pi_home_monthly_standard_eur` | EUR 9.99 | 1 month | ________ |
-| 2 | `pi_home_yearly_standard_eur` | EUR 49.00 | 1 year | ________ |
-| 3 | `pi_home_yearly_launch_eur` | EUR 39.00 | 1 year | ________ |
-| 4 | `pi_home_15m_standard_partner_eur` | EUR 49.00 | month × 15 | ________ |
-| 5 | `pi_home_15m_launch_partner_eur` | EUR 39.00 | month × 15 | ________ |
-| 6 | `pi_pro_monthly_standard_eur` | EUR 24.99 | 1 month | ________ |
-| 7 | `pi_pro_monthly_founding_eur` | EUR 19.99 | 1 month | ________ |
-| 8 | `pi_pro_yearly_standard_eur` | EUR 199.00 | 1 year | ________ |
-| 9 | `pi_pro_yearly_founding_eur` | EUR 149.00 | 1 year | ________ |
-| 10 | `pi_pro_15m_standard_partner_eur` | EUR 199.00 | month × 15 | ________ |
-| 11 | `pi_pro_15m_founding_partner_eur` | EUR 149.00 | month × 15 | ________ |
+All EUR · recurring · `tax_behavior: inclusive` · `usage_type: licensed` · active · livemode:false.
+15-month prices = interval `month`, `interval_count` 15, metadata publishable=false (never on the
+public pricing screen — app-gated). Env var → Sandbox price id:
 
-All EUR, recurring, same tax behavior, active, Sandbox. 15-month prices = interval `month`,
-`interval_count` 15.
+| # | Env var (→ id) | Lookup key | Amount | Interval | Sandbox Price ID |
+|---|---|---|---:|---|---|
+| 1 | `STRIPE_PRICE_HOME_MONTHLY_STANDARD` | `pi_home_monthly_standard_eur` | EUR 9.99 | 1 month | `price_1Ts1TXADcB1viept0tQmOm3k` |
+| 2 | `STRIPE_PRICE_HOME_YEARLY_STANDARD` | `pi_home_yearly_standard_eur` | EUR 49.00 | 1 year | `price_1Ts1TaADcB1vieptBz3lbxnT` |
+| 3 | `STRIPE_PRICE_HOME_YEARLY_LAUNCH` | `pi_home_yearly_launch_eur` | EUR 39.00 | 1 year | `price_1Ts1TdADcB1vieptxQpPw162` |
+| 4 | `STRIPE_PRICE_HOME_15M_STANDARD_PARTNER` | `pi_home_15m_standard_partner_eur` | EUR 49.00 | month × 15 | `price_1Ts1TrADcB1vieptsSirQ4o4` |
+| 5 | `STRIPE_PRICE_HOME_15M_LAUNCH_PARTNER` | `pi_home_15m_launch_partner_eur` | EUR 39.00 | month × 15 | `price_1Ts1U2ADcB1vieptlvNJJQLT` |
+| 6 | `STRIPE_PRICE_PRO_MONTHLY_STANDARD` | `pi_pro_monthly_standard_eur` | EUR 24.99 | 1 month | `price_1Ts1UJADcB1viept8HKEOsnX` |
+| 7 | `STRIPE_PRICE_PRO_MONTHLY_FOUNDING` | `pi_pro_monthly_founding_eur` | EUR 19.99 | 1 month | `price_1Ts1UPADcB1vieptHpQkDYlZ` |
+| 8 | `STRIPE_PRICE_PRO_YEARLY_STANDARD` | `pi_pro_yearly_standard_eur` | EUR 199.00 | 1 year | `price_1Ts1UMADcB1vieptd4VnYTeL` |
+| 9 | `STRIPE_PRICE_PRO_YEARLY_FOUNDING` | `pi_pro_yearly_founding_eur` | EUR 149.00 | 1 year | `price_1Ts1UdADcB1viept524yAh97` |
+| 10 | `STRIPE_PRICE_PRO_15M_STANDARD_PARTNER` | `pi_pro_15m_standard_partner_eur` | EUR 199.00 | month × 15 | `price_1Ts1UgADcB1vieptlupXRbTb` |
+| 11 | `STRIPE_PRICE_PRO_15M_FOUNDING_PARTNER` | `pi_pro_15m_founding_partner_eur` | EUR 149.00 | month × 15 | `price_1Ts1UjADcB1vieptqwntAnSO` |
+
+These IDs load into the non-prod Supabase Edge Function config in Phase 3 (they are NOT hardcoded
+in app business logic; the app resolves prices by env var → catalog). Live Mode uses different IDs.
 
 ## 4. Payment methods (EUR recurring)
 - [ ] Cards  - [ ] Apple Pay  - [ ] Google Pay  - [ ] Link  - [ ] SEPA Direct Debit
