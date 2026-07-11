@@ -24,6 +24,17 @@ export interface Capabilities {
   fullFormula: boolean;
   /** Pro: full technical engine view (numeric PI / nutrition / scores). */
   technicalView: boolean;
+  /**
+   * Paid tier (= ANY active subscription — Home AND Pro both resolve here):
+   * exact gram amounts in the assistant starter preview. Explicit name so the
+   * starter UI never gates on `isPro` or a price id.
+   */
+  canViewExactGrams: boolean;
+  /**
+   * Paid tier (Home AND Pro): apply a `ready` starter draft into the LOCAL
+   * Studio draft state (never a save, never a DB write).
+   */
+  canApplyStarterToStudio: boolean;
   /** Signed-in (free + pro): save recipes. */
   saveRecipes: boolean;
   /** Signed-in (free + pro): My Recipes. */
@@ -38,6 +49,8 @@ export const CAPABILITIES: Record<AccessTier, Capabilities> = {
     exactCorrectionGrams: false,
     fullFormula: false,
     technicalView: false,
+    canViewExactGrams: false,
+    canApplyStarterToStudio: false,
     saveRecipes: false,
     myRecipes: false,
     productionMode: false,
@@ -47,6 +60,11 @@ export const CAPABILITIES: Record<AccessTier, Capabilities> = {
     exactCorrectionGrams: false,
     fullFormula: false,
     technicalView: false,
+    // `free` (signed in, no subscription) follows the existing redaction model
+    // (`fullFormula: false` → no exact grams, no starter apply). The locked
+    // plan matrix only names Demo/Home/Pro; free is the signed-in-unpaid state.
+    canViewExactGrams: false,
+    canApplyStarterToStudio: false,
     saveRecipes: true,
     myRecipes: true,
     productionMode: false,
@@ -56,6 +74,10 @@ export const CAPABILITIES: Record<AccessTier, Capabilities> = {
     exactCorrectionGrams: true,
     fullFormula: true,
     technicalView: true,
+    // the paid tier: Home- AND Pro-priced subscriptions both resolve to 'pro'
+    // (planFromSubscription is price-id-agnostic in v0.1).
+    canViewExactGrams: true,
+    canApplyStarterToStudio: true,
     saveRecipes: true,
     myRecipes: true,
     productionMode: false, // later phase

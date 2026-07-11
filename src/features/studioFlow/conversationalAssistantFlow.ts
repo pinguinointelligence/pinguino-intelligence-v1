@@ -276,6 +276,42 @@ export function goBack(state: AssistantFlowState): AssistantFlowState {
   return { ...state, currentStepIndex: Math.max(0, state.currentStepIndex - 1) };
 }
 
+/**
+ * Commit a VALID pending (visibly selected but not yet "Dalej"-confirmed)
+ * answer for the current question; an invalid/rejected pending value leaves
+ * the state unchanged. Pure — returns a NEW state on commit.
+ */
+export function commitPendingAnswer(
+  state: AssistantFlowState,
+  pending: AssistantAnswerValue,
+): AssistantFlowState {
+  if (!currentQuestion(state)) return state;
+  const result = answerCurrentQuestion(state, pending);
+  return result.ok ? result.state : state;
+}
+
+export type IntentSubmission =
+  | { ok: true; state: AssistantFlowState; draft: AssistantIntentDraft }
+  | { ok: false; state: AssistantFlowState; missingRequired: AssistantStepId[] };
+
+/**
+ * Submit the flow for an intent draft. A visibly selected answer on the
+ * current question counts: a valid pending value is committed FIRST (the
+ * submit-blocked-by-uncommitted-final-answer fix), then required completeness
+ * is checked honestly. An invalid/empty pending on a required question is
+ * never guessed — it stays missing and submission is rejected.
+ */
+export function submitIntentDraft(
+  state: AssistantFlowState,
+  pending: AssistantAnswerValue,
+): IntentSubmission {
+  const committed = commitPendingAnswer(state, pending);
+  if (!isIntentComplete(committed)) {
+    return { ok: false, state: committed, missingRequired: missingRequiredSteps(committed) };
+  }
+  return { ok: true, state: committed, draft: buildIntentDraft(committed) };
+}
+
 /** Required steps that still have no valid answer. */
 export function missingRequiredSteps(state: AssistantFlowState): AssistantStepId[] {
   return REQUIRED_STEPS.filter((id) => {

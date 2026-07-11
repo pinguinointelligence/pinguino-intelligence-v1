@@ -8,7 +8,14 @@ import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/access/useAccess', () => ({ useAccess: () => ({ exactCorrectionGrams: false, saveRecipes: false }) }));
+vi.mock('@/access/useAccess', () => ({
+  useAccess: () => ({
+    exactCorrectionGrams: false,
+    saveRecipes: false,
+    canViewExactGrams: false,
+    canApplyStarterToStudio: false,
+  }),
+}));
 
 import {
   answerCurrentQuestion,
@@ -199,8 +206,12 @@ describe('assistant PL copy — honesty rules', () => {
     expect(A.draftReadyBody).toMatch(/nie tworzy i nie zmienia receptury/i);
   });
 
-  it('20. Demo/Free copy points exact grams to Pro and never promises visible grams', () => {
-    expect(A.demoGramsNote).toMatch(/dostępne w Pro/);
+  it('20. Demo/Free copy points exact grams to the PAID plans (Home i Pro) — never Pro-only', () => {
+    // Any active subscription (Home- or Pro-priced) unlocks grams, so the
+    // upgrade note must name the paid plans, not claim grams need "Pro".
+    expect(A.demoGramsNote).toMatch(/planach płatnych/);
+    expect(A.demoGramsNote).toMatch(/Home i Pro/);
+    expect(/dostępne w Pro/.test(A.demoGramsNote)).toBe(false);
     expect(/widzisz dokładne/i.test(A.demoGramsNote)).toBe(false);
   });
 

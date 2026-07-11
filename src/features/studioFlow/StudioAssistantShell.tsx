@@ -2,10 +2,16 @@
  * StudioAssistantShell — the PL-first Conversational Assistant Shell UI.
  *
  * DETERMINISTIC, LOCAL-ONLY: drives the pure `conversationalAssistantFlow`
- * state machine in component state. No LLM, no DB, no persistence, and NO
- * recipe mutation — there is deliberately no "apply" / "save" / "use as
- * recipe" button. It collects intent and shows a read-only draft summary;
- * turning the draft into a recipe is a future slice.
+ * state machine in component state. No LLM, no DB, no persistence, and no
+ * recipe SAVE. Submit commits a visibly selected (pending) answer first via
+ * the pure `submitIntentDraft`, so a selected final answer is never ignored.
+ *
+ * The starter preview renders ONLY the tier-safe display object from
+ * `redactStarterDraftForDisplay` — Demo/Free receives an object that
+ * physically lacks gram amounts and any apply payload. The paid tier
+ * (capability `canApplyStarterToStudio`, Home i Pro) may apply a `ready`
+ * starter into the LOCAL Studio draft (`applyStarterRecipeInputToStudio`):
+ * explicit click, replacement confirm, ONE undo snapshot, nothing saved.
  */
 import { useState } from 'react';
 import { useAccess } from '@/access/useAccess';
@@ -14,19 +20,32 @@ import {
   answerCurrentQuestion,
   answerLabel,
   ASSISTANT_QUESTIONS,
-  buildIntentDraft,
+  commitPendingAnswer,
   currentQuestion,
   goBack,
   initialAssistantState,
   isIntentComplete,
   resetAssistantFlow,
   startAssistantFlow,
+  submitIntentDraft,
   type AssistantAnswerValue,
   type AssistantFlowState,
   type AssistantIntentDraft,
   type AssistantQuestion,
 } from './conversationalAssistantFlow';
 import { buildStarterRecipeDraft, type IntentRecipeDraft } from './intentRecipeDraft';
+import { redactStarterDraftForDisplay } from './starterDraftDisplay';
+import {
+  applyStarterRecipeInputToStudio,
+  studioHoldsUserDraft,
+  undoStarterApplyToStudio,
+  type StudioDraftSnapshot,
+} from './applyStarterToStudio';
+import {
+  StarterDraftPreview,
+  type StarterAppliedTrace,
+  type StarterApplyStage,
+} from './StarterDraftPreview';
 
 const A = STUDIO_FLOW_COPY.pl.assistant;
 const questionById = (id: string) => ASSISTANT_QUESTIONS.find((q) => q.id === id)!;
@@ -44,16 +63,38 @@ const chipCls = (active: boolean) =>
 const buttonCls =
   'inline-flex items-center justify-center rounded-md border border-ivory/20 px-3 py-1.5 text-[11px] font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:opacity-40';
 
-export function StudioAssistantShell() {
-  const { exactCorrectionGrams } = useAccess();
-  const [flow, setFlow] = useState<AssistantFlowState>(initialAssistantState);
-  const [pending, setPending] = useState<AssistantAnswerValue>('');
+export interface StudioAssistantShellProps {
+  /** Deterministic initial UI state — preview/testing seam only; no runtime
+   * caller sets it (the Studio mounts the shell bare). */
+  initialUi?: { flow: AssistantFlowState; pending: AssistantAnswerValue };
+}
+
+export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = {}) {
+  const { canViewExactGrams, canApplyStarterToStudio } = useAccess();
+  const [flow, setFlow] = useState<AssistantFlowState>(initialUi?.flow ?? initialAssistantState);
+  const [pending, setPending] = useState<AssistantAnswerValue>(initialUi?.pending ?? '');
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<AssistantIntentDraft | null>(null);
   const [starter, setStarter] = useState<IntentRecipeDraft | null>(null);
+  const [applyStage, setApplyStage] = useState<StarterApplyStage>('idle');
+  const [undoSnapshot, setUndoSnapshot] = useState<StudioDraftSnapshot | null>(null);
+  const [appliedTrace, setAppliedTrace] = useState<StarterAppliedTrace | null>(null);
 
   const question = currentQuestion(flow);
-  const complete = isIntentComplete(flow);
+  // A visibly selected (pending) answer counts toward submit — the same pure
+  // commit the submit handler performs (regression: uncommitted final answer).
+  const submittable = isIntentComplete(commitPendingAnswer(flow, pending));
+
+  // The preview consumes ONLY the tier-safe display object (physical redaction).
+  const display = starter
+    ? redactStarterDraftForDisplay(starter, { canViewExactGrams, canApplyStarterToStudio })
+    : null;
+
+  const resetApplyUi = () => {
+    setApplyStage('idle');
+    setUndoSnapshot(null);
+    setAppliedTrace(null);
+  };
 
   const start = () => {
     const next = startAssistantFlow();
@@ -62,6 +103,7 @@ export function StudioAssistantShell() {
     setError(null);
     setDraft(null);
     setStarter(null);
+    resetApplyUi();
   };
 
   const reset = () => {
@@ -70,6 +112,7 @@ export function StudioAssistantShell() {
     setError(null);
     setDraft(null);
     setStarter(null);
+    resetApplyUi();
   };
 
   const next = () => {
@@ -100,15 +143,54 @@ export function StudioAssistantShell() {
   };
 
   const prepare = () => {
-    setDraft(buildIntentDraft(flow));
+    // Commits a valid pending answer first (pure), then builds the draft only
+    // when every required answer is honestly present.
+    const submission = submitIntentDraft(flow, pending);
+    if (!submission.ok) return; // guarded by disabled; the incomplete note stays honest
+    setFlow(submission.state);
+    const q = currentQuestion(submission.state);
+    setPending(q ? pendingFor(submission.state, q) : '');
+    setError(null);
+    setDraft(submission.draft);
     setStarter(null);
+    resetApplyUi();
   };
 
   const previewStarter = () => {
-    if (draft) setStarter(buildStarterRecipeDraft(draft));
+    if (!draft) return;
+    setStarter(buildStarterRecipeDraft(draft));
+    resetApplyUi();
   };
 
-  const round1 = (grams: number) => Math.round(grams * 10) / 10;
+  const doApply = () => {
+    if (!display || display.applyPayload === null) return;
+    // Keep ONE snapshot of the prior local draft (a second apply replaces it).
+    setUndoSnapshot(applyStarterRecipeInputToStudio(display.applyPayload));
+    setAppliedTrace({ source: 'locked_starter_template', templateId: display.templateId });
+    setApplyStage('applied');
+  };
+
+  const requestApply = () => {
+    if (!display || display.applyPayload === null) return;
+    if (studioHoldsUserDraft()) {
+      setApplyStage('confirming');
+      return;
+    }
+    doApply();
+  };
+
+  const cancelApply = () => {
+    // Cancel is a pure UI step-back — the Studio draft is untouched.
+    setApplyStage(undoSnapshot ? 'applied' : 'idle');
+  };
+
+  const undoApply = () => {
+    if (!undoSnapshot) return;
+    undoStarterApplyToStudio(undoSnapshot);
+    setUndoSnapshot(null);
+    setAppliedTrace(null);
+    setApplyStage('idle');
+  };
 
   return (
     <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
@@ -201,11 +283,11 @@ export function StudioAssistantShell() {
             </div>
           )}
 
-          {!complete ? (
+          {!submittable ? (
             <p className="text-[11px] leading-relaxed text-ivory/40">{A.incomplete}</p>
           ) : null}
 
-          <button type="button" onClick={prepare} className={buttonCls} disabled={!complete}>
+          <button type="button" onClick={prepare} className={buttonCls} disabled={!submittable}>
             Przygotuj szkic intencji
           </button>
 
@@ -235,7 +317,7 @@ export function StudioAssistantShell() {
                 <dt className="text-ivory/35">Cel</dt>
                 <dd>{answerLabel(questionById('goal'), flow.answers.goal)}</dd>
               </dl>
-              {!exactCorrectionGrams ? (
+              {!canViewExactGrams ? (
                 <p className="text-[11px] leading-relaxed text-ivory/40">{A.demoGramsNote}</p>
               ) : null}
               <div className="border-t border-ivory/10 pt-1.5">
@@ -249,67 +331,17 @@ export function StudioAssistantShell() {
                 {A.starter.previewCta}
               </button>
 
-              {starter ? (
-                <div className="space-y-1.5 rounded border border-ivory/10 bg-black/20 p-2.5">
-                  {starter.status === 'ready' ? (
-                    <>
-                      <p className="text-sm font-medium text-ivory/90">{A.starter.readyTitle}</p>
-                      <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.readyBody}</p>
-                      {/* Exact grams + numeric metrics are Pro; Demo/Free sees the
-                          ingredient STRUCTURE only (never exact grams). */}
-                      {exactCorrectionGrams ? (
-                        <>
-                          <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 font-mono text-[11px] text-ivory/60">
-                            {starter.ingredients.map((line) => (
-                              <div key={line.id} className="contents">
-                                <dt className="text-ivory/50">{line.name}</dt>
-                                <dd className="text-right">{round1(line.grams)} g</dd>
-                              </div>
-                            ))}
-                          </dl>
-                          {starter.enginePreview ? (
-                            <p className="font-mono text-[10px] leading-relaxed text-ivory/40">
-                              {`silnik CONFIG ${starter.enginePreview.configVersion} · npac ${
-                                starter.enginePreview.npacPoints?.toFixed(1) ?? '—'
-                              } · pod ${starter.enginePreview.podPoints?.toFixed(1) ?? '—'} · lód ${
-                                starter.enginePreview.iceFractionPercent?.toFixed(1) ?? '—'
-                              }%`}
-                            </p>
-                          ) : null}
-                        </>
-                      ) : (
-                        <>
-                          <ul className="font-mono text-[11px] text-ivory/50">
-                            {starter.ingredients.map((line) => (
-                              <li key={line.id}>· {line.name}</li>
-                            ))}
-                          </ul>
-                          <p className="text-[11px] leading-relaxed text-ivory/40">{A.demoGramsNote}</p>
-                        </>
-                      )}
-                      {/* Qualitative direction is safe in every tier. */}
-                      {starter.enginePreview?.inBand ? (
-                        <p className="text-[11px] leading-relaxed text-emerald-300/70">{A.starter.inBand}</p>
-                      ) : null}
-                      {starter.warnings.some((w) => w.code === 'optimization_recommended') ? (
-                        <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.optimizationRecommended}</p>
-                      ) : null}
-                      {starter.warnings.some((w) => w.code === 'flavor_manual_mapping_required') ? (
-                        <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.flavorManual}</p>
-                      ) : null}
-                      <p className="text-[10px] leading-relaxed text-ivory/30">{A.starter.notSavedNote}</p>
-                    </>
-                  ) : null}
-                  {starter.status === 'needs_more_information' ? (
-                    <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.needsInfo}</p>
-                  ) : null}
-                  {starter.status === 'not_supported' ? (
-                    <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.notSupported}</p>
-                  ) : null}
-                  {starter.status === 'blocked' ? (
-                    <p className="text-[11px] leading-relaxed text-ivory/50">{A.incomplete}</p>
-                  ) : null}
-                </div>
+              {display ? (
+                <StarterDraftPreview
+                  display={display}
+                  applyStage={applyStage}
+                  appliedTrace={appliedTrace}
+                  canUndo={undoSnapshot !== null}
+                  onApplyRequest={requestApply}
+                  onApplyConfirm={doApply}
+                  onApplyCancel={cancelApply}
+                  onUndoApply={undoApply}
+                />
               ) : null}
             </div>
           ) : null}

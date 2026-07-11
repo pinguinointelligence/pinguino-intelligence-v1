@@ -80,7 +80,8 @@ export interface StudioFlowCopy {
     draftReadyBody: string;
     /** Shown while required answers are missing. */
     incomplete: string;
-    /** Demo/Free: exact grams stay Pro (the draft only collects intent). */
+    /** Demo/Free: exact grams stay behind the PAID plans (Home i Pro) — never
+     * claimed as Pro-only, because any active subscription unlocks them. */
     demoGramsNote: string;
     /** Standing honesty notes. */
     noSaveNote: string;
@@ -98,6 +99,22 @@ export interface StudioFlowCopy {
       inBand: string;
       /** Repeats the no-save / no-apply promise on the recipe preview. */
       notSavedNote: string;
+      /** Local "Apply to Studio" (paid tier only) — LOCAL draft replacement,
+       * never a save, never an optimization run. */
+      apply: {
+        cta: string;
+        /** Shown next to the action: apply sets ingredients + profile + temperature. */
+        setsNote: string;
+        replaceWarningTitle: string;
+        replaceWarningBody: string;
+        confirmCta: string;
+        cancelCta: string;
+        /** Honest post-apply feedback — moved locally, nothing saved. */
+        appliedNote: string;
+        /** Trace label for the honest source note (locked starter template). */
+        appliedSourceLabel: string;
+        undoCta: string;
+      };
     };
   };
 }
@@ -192,7 +209,7 @@ const PL: StudioFlowCopy = {
       'To tylko szkic — nie tworzy i nie zmienia receptury, nic nie zapisuje. Możesz teraz na jego podstawie przejść do projektu w Studio.',
     incomplete: 'Uzupełnij wymagane odpowiedzi, aby przygotować szkic intencji.',
     demoGramsNote:
-      'Szkic zbiera tylko intencję. Dokładne gramatury i Auto Fix są dostępne w Pro.',
+      'Szkic zbiera tylko intencję. Dokładne gramatury są dostępne w planach płatnych (Home i Pro).',
     noSaveNote: 'Nic nie jest zapisywane.',
     noRecipeChangeNote: 'Receptura nie jest zmieniana.',
     deterministicNote: 'Asystent działa deterministycznie — bez modelu językowego.',
@@ -209,6 +226,19 @@ const PL: StudioFlowCopy = {
         'Baza jest poza zakresem w części wskaźników — możesz uruchomić podgląd optymalizacji.',
       inBand: 'Baza mieści się w zakresach dla wybranego profilu i temperatury.',
       notSavedNote: 'Podgląd bazy — nic nie jest zapisywane ani nakładane na recepturę.',
+      apply: {
+        cta: 'Zastosuj w Studio',
+        setsNote:
+          'Zastosowanie ustawia w Studio składniki, profil produktu i temperaturę serwowania ze szkicu — lokalnie, bez zapisu.',
+        replaceWarningTitle: 'W Studio jest już szkic receptury',
+        replaceWarningBody:
+          'Zastosowanie zastąpi obecny szkic w Studio. Poprzedni stan zachowamy do jednego cofnięcia — nic nie jest zapisywane.',
+        confirmCta: 'Zastąp szkic w Studio',
+        cancelCta: 'Anuluj',
+        appliedNote: 'Szkic przeniesiony do Studio — nic nie zostało zapisane.',
+        appliedSourceLabel: 'Źródło szkicu',
+        undoCta: 'Cofnij zastosowanie',
+      },
     },
   },
 };
