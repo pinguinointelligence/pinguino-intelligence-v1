@@ -18,7 +18,7 @@ export const FIXTURES_DIR = HERE;
 
 /** Local (vendored, best_int) language models — matches the engine's LSTM-only default. */
 const LANG_VARIANT = '4.0.0_best_int';
-const LANGS = ['eng', 'spa', 'deu', 'pol'] as const;
+const LANGS = ['eng', 'spa', 'deu', 'pol', 'ita'] as const;
 
 export interface NodeOcrAssets {
   langPath: string;

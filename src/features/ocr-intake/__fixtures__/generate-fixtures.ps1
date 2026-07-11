@@ -171,3 +171,27 @@ New-LabelImage -FileName 'label_multipack_pl.png' -Lines @(
   'Produkt bezglutenowy.',
   '5 901234 123457'
 )
+
+# 8. Italian nutrition label: comma decimals, native headings (Valori nutrizionali/
+#    Valore energetico/Grassi/di cui acidi grassi saturi/Carboidrati/di cui zuccheri/
+#    Proteine/Sale/Ingredienti/Allergeni/Puo contenere), checksum-VALID EAN-13
+#    (8001234567897, Italian GS1 prefix 80).
+New-LabelImage -FileName 'label_nutrition_it.png' -Lines @(
+  'Gelato al Pistacchio',
+  'Marca: Dolce Sicilia',
+  'Peso netto: 500 g',
+  'VALORI NUTRIZIONALI per 100 g',
+  'Valore energetico 1042 kJ / 249 kcal',
+  'Grassi 14,2 g',
+  'di cui acidi grassi saturi 8,1 g',
+  'Carboidrati 26,3 g',
+  'di cui zuccheri 24,7 g',
+  'Proteine 4,1 g',
+  'Sale 0,12 g',
+  'Ingredienti: latte, zucchero, pasta di pistacchio (8%),',
+  'panna, sciroppo di glucosio, emulsionante (lecitina di soia).',
+  'Allergeni: latte, soia, frutta a guscio.',
+  'Puo contenere tracce di arachidi.',
+  'Conservare a -18 gradi.',
+  '8 001234 567897'
+)

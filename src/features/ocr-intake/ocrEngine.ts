@@ -28,7 +28,7 @@ import type { ParsedOcrLine } from './labelTextParser';
 export const OCR_LANGS = ['eng', 'spa'] as const;
 
 /** Languages with a vendored @tesseract.js-data package (offline Node tests). */
-export const VENDORED_OCR_LANGS = ['eng', 'spa', 'deu', 'pol'] as const;
+export const VENDORED_OCR_LANGS = ['eng', 'spa', 'deu', 'pol', 'ita'] as const;
 
 // 10 MiB — aligned with the storage-enforced hard cap (migration 0022
 // ocr_intake_images.byte_size and the 0024 bucket file_size_limit). Never allow
