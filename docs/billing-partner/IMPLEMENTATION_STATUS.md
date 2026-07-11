@@ -159,8 +159,20 @@ free-project slot, then Claude creates `pinguino-billing-sandbox` at $0; or (b) 
 org to Pro (~$25/mo) to enable the authorized `billing-partner-sandbox` branch. Migrations 0014–0021
 remain committed + guard-tested (82 tests), awaiting the first real apply.
 
+## 6c. BILLING LAUNCH GATE (locked decision, 2026-07-11)
+
+Paid non-production Supabase staging is a **formal launch gate**, deferred until the module is ready
+to launch (no Pro upgrade / no new project now). MOOTOORS (`tjntmljkrxbpwjmkautu`) is **active — never
+paused** (read-only audit: live app, real users/data/traffic). Production `riwipywgqobrulyzrzad`
+stays untouched. The safe-pause state, Stripe IDs, human Dashboard actions, and the paste-ready
+resume prompt live in `BILLING_PAUSE_CHECKPOINT.md` and `RESUME_AT_BILLING_LAUNCH_PROMPT.md`.
+Also confirmed this session: Stripe API version pinned to `2025-06-30.basil` (stripe@18
+LatestApiVersion; the connector's `2026-07-29.preview` is deliberately NOT used). The Stripe MCP
+connector reaches only core commerce objects — Customer Portal, payment methods, billing recovery,
+branding, webhooks, and Connect are Dashboard-only.
+
 ## 7. Blocked / external
 
 - Sandbox keys, Connect activation, tax decision (Live), email provider choice,
   deployment platform for Edge Functions + pg_cron enablement, Live replication — all external.
-- Supabase non-prod capacity (see §6b) — the current gate for Phase 2 onward.
+- Supabase non-prod capacity (see §6b) — the current gate for Phase 2 onward (LAUNCH GATE §6c).

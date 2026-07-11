@@ -5,6 +5,27 @@ fields below (or send them in the `STRIPE SETUP UPDATE` format from your instruc
 (secret key, webhook signing secret) go ONLY into the deployment secret manager — never into
 this file, the chat, or the repo.
 
+> ## STATUS (2026-07-11 — SAFE PAUSE CHECKPOINT)
+> Per-section status. See `BILLING_PAUSE_CHECKPOINT.md` for the full picture.
+> | § | Item | Status |
+> |---|---|---|
+> | 0 | Account & business profile | HUMAN DASHBOARD ACTION (legal/KYC — owner only) |
+> | 1 | Tax decision (Live) | HUMAN / accountant — DEFERRED for Live (Sandbox uses `inclusive`) |
+> | 2 | Products | ✅ DONE (Claude via MCP) |
+> | 3 | 11 Prices | ✅ DONE + validated (ok=true, 11/11) |
+> | 4 | Payment methods | HUMAN DASHBOARD ACTION (MCP cannot set) |
+> | 5 | Billing / recovery + API version | API version ✅ pinned in code; recovery = HUMAN DASHBOARD ACTION |
+> | 6 | Customer Portal | HUMAN DASHBOARD ACTION (MCP cannot set) |
+> | 7 | Stripe Connect | HUMAN DASHBOARD ACTION + legal/KYC; return/refresh URLs DEFERRED — LAUNCH GATE |
+> | 8 | Env vars (secret manager) | DEFERRED — LAUNCH GATE (needs staging) |
+> | 9 | Webhook endpoint | DEFERRED — LAUNCH GATE (needs deployed URL) |
+> | 10 | Sandbox test matrix | DEFERRED — LAUNCH GATE (needs staging backend) |
+> | 11 | Live replication | DEFERRED — after Sandbox PASS |
+>
+> The Stripe **MCP connector is scoped to core commerce objects** (products/prices/customers/
+> subscriptions/payments/refunds/balance); §4–7, §9 are **Dashboard-only** and cannot be done by
+> Claude through the connector.
+
 ## 0. Account & business profile
 - [ ] Business details verified (PINGÜINO GLOBAL S.L., NIF/VAT, address, representative, bank)
 - [ ] Branding + statement descriptor set
