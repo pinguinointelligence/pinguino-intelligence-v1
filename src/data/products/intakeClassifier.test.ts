@@ -23,13 +23,14 @@ describe('classifyIntakeInput', () => {
     }
   });
 
-  it('routes images to the OCR-pending path (NOT available, no route)', () => {
+  it('routes images to the label-OCR intake page (keyless LOCAL engine)', () => {
     for (const f of ['label.jpg', 'photo.PNG', 'scan.heic', 'x.webp']) {
       const c = classifyIntakeInput({ filename: f });
-      expect(c.kind, f).toBe('image_ocr_pending');
-      expect(c.available, f).toBe(false);
-      expect(c.route, f).toBeNull();
-      expect(c.note, f).toMatch(/OCR NOT available/);
+      expect(c.kind, f).toBe('image_label_ocr');
+      expect(c.available, f).toBe(true);
+      expect(c.route, f).toBe('/dev/ocr-intake');
+      expect(c.note, f).toMatch(/LOCAL OCR/);
+      expect(c.note, f).toMatch(/never leaves this machine/);
     }
   });
 

@@ -54,7 +54,7 @@ const MODULES: SpineModule[] = [
   { module: 'Integration Flow router', status: 'not_started', note: '16-step execution order locked; routes final / warning / tradeoff / impossible.' },
   { module: 'User Flow (conversation)', status: 'not_started', note: 'Polish-first script locked — first question “Jakie lody dziś robimy?”; batch size before final generation.' },
   { module: 'Account Access', status: 'partial', note: 'Demo/Pro hook + at-source redaction exist; AccessContext/capabilities contract types + demo/paid defaults landed (src/spine, unwired). Login/billing stay external.' },
-  { module: 'Intake / OCR', status: 'partial', note: 'Classifier + label-image queue live; OCR engine not built — the adapter honestly returns not-implemented.', to: '/dev/intake-hub' },
+  { module: 'Intake / OCR', status: 'partial', note: 'Classifier + label OCR live: keyless LOCAL in-browser engine with per-field confidence + reviewed local draft at /dev/ocr-intake (never auto-saved). Drive/catalog import still planned.', to: '/dev/intake-hub' },
   { module: 'Enrichment (reviewed merge)', status: 'done', note: 'Fill/agree/conflict/skip compare; nutrition-allowlist writes; never overwrites a PI-Verified product. Idle until a non-catalog product arrives.', to: '/dev/enrichment-preview' },
   { module: 'Snapshots / audit trail', status: 'done', note: 'Append-only product snapshots with diff view.', to: '/dev/snapshot-audit' },
   { module: 'Auth / plans / billing', status: 'partial', note: 'External by design — will feed the resolved AccessContext; Free Preview mode live.' },
