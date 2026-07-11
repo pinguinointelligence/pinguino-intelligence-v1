@@ -15,7 +15,7 @@
  *     anything else is acknowledged (200) without a write so a mistaken
  *     dashboard subscription can never grow unbounded state.
  *  3. INSERT-FIRST DURABILITY — the event is inserted into
- *     stripe_webhook_events (unique stripe_event_id, state 'received')
+ *     stripe_webhook_events (unique event key, state 'received')
  *     BEFORE any handling. A unique-violation means a redelivery of an
  *     already-recorded event → 200 immediately (idempotent receipt).
  *  4. 2xx AFTER DURABLE RECEIPT — once the row exists, this function returns
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
 
   // 2. Deliberate matrix only — anything else is acknowledged, never stored.
   const handlerIntent = routeWebhookEvent(event.type);
-  console.log(`stripe-webhook: ${event.type} → ${handlerIntent?.kind ?? 'unsupported'}`);
+  console.log(`stripe-webhook: ${event.type} -> ${handlerIntent?.kind ?? 'unsupported'}`);
   if (!handlerIntent) return json(200, { received: true, route: 'acknowledge_unsupported' });
 
   const admin = createClient(
@@ -83,24 +83,24 @@ Deno.serve(async (req) => {
   );
 
   // 3. Insert-first durability: the raw event lands in stripe_webhook_events
-  //    (unique stripe_event_id) BEFORE any handling. `ignoreDuplicates`
-  //    makes redelivery a clean no-op (unique key wins the race).
-  const objectId = (event.data.object as { id?: string }).id ?? null;
+  //    (0021: unique (account_scope, livemode, event_id)) BEFORE any handling.
+  //    `ignoreDuplicates` makes redelivery a clean no-op (unique key wins the
+  //    race). event.created / the object id / the routed intent live inside
+  //    the verified payload — 0021 deliberately stores the raw event only.
   const { data: inserted, error: insertError } = await admin
     .from('stripe_webhook_events')
     .upsert(
       {
-        stripe_event_id: event.id,
+        account_scope: 'platform',
+        livemode: event.livemode,
+        event_id: event.id,
         event_type: event.type,
-        event_created: new Date(event.created * 1000).toISOString(),
-        object_id: objectId,
-        handler_kind: handlerIntent.kind,
         payload: JSON.parse(rawBody) as Record<string, unknown>,
         state: 'received',
       },
-      { onConflict: 'stripe_event_id', ignoreDuplicates: true },
+      { onConflict: 'account_scope,livemode,event_id', ignoreDuplicates: true },
     )
-    .select('stripe_event_id');
+    .select('event_id');
   if (insertError) {
     // Not durable yet — non-2xx so Stripe redelivers.
     console.log(`stripe-webhook: durable insert failed for ${event.id}`);
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     return json(200, { received: true, duplicate: true });
   }
 
-  // 4. Durable receipt achieved → the response is 200 from here on, no
+  // 4. Durable receipt achieved — the response is 200 from here on, no
   //    matter what the dispatcher does; retries are the state machine's job
   //    (received → processing → processed | failed → retryable, guarded
   //    state-conditional updates so a concurrent worker can never regress a
@@ -122,13 +122,13 @@ Deno.serve(async (req) => {
   const { error: claimError } = await admin
     .from('stripe_webhook_events')
     .update({ state: 'processing' })
-    .eq('stripe_event_id', event.id)
+    .eq('event_id', event.id)
     .eq('state', 'received');
   if (!claimError) {
     const { error: doneError } = await admin
       .from('stripe_webhook_events')
       .update({ state: 'processed', processed_at: new Date().toISOString() })
-      .eq('stripe_event_id', event.id)
+      .eq('event_id', event.id)
       .eq('state', 'processing');
     if (doneError) {
       console.log(`stripe-webhook: ${event.id} left in processing (retry worker owns it)`);

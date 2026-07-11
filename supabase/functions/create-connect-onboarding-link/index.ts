@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
   );
   const { data: partner, error: partnerError } = await admin
     .from('partners')
-    .select('status, active, stripe_account_id')
+    .select('status, stripe_connect_account_id')
     .eq('user_id', userData.user.id)
     .maybeSingle();
   if (partnerError) return json(500, { error: 'partner_lookup_failed' });
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   if (!eligibility.ok) return json(403, { error: eligibility.reason });
 
   // 4. Mint the hosted onboarding link for the partner's connected account.
-  const accountId: string | null = partner?.stripe_account_id ?? null;
+  const accountId: string | null = partner?.stripe_connect_account_id ?? null;
   if (!accountId) return json(409, { error: 'partner_account_not_provisioned' });
 
   const apiVersion = Deno.env.get('STRIPE_API_VERSION') ?? '2025-06-30.basil';

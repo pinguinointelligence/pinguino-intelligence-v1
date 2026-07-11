@@ -347,9 +347,12 @@ describe('Deno entrypoint — signature-first, insert-first, 2xx after durable r
     expect(ackIndex).toBeLessThan(adminIndex);
   });
 
-  it('inserts into stripe_webhook_events FIRST, keyed on the unique stripe_event_id', () => {
+  it('inserts into stripe_webhook_events FIRST, keyed on the 0021 composite unique key', () => {
     expect(/\.from\('stripe_webhook_events'\)/.test(indexSource)).toBe(true);
-    expect(/onConflict: 'stripe_event_id'/.test(indexSource)).toBe(true);
+    // orchestrator sync: 0021's unique key is (account_scope, livemode, event_id)
+    expect(/onConflict: 'account_scope,livemode,event_id'/.test(indexSource)).toBe(true);
+    expect(/livemode: event\.livemode/.test(indexSource)).toBe(true);
+    expect(/event_id: event\.id/.test(indexSource)).toBe(true);
     expect(/ignoreDuplicates: true/.test(indexSource)).toBe(true);
     // durability failure → non-2xx so Stripe redelivers
     expect(/durable_receipt_failed/.test(indexSource)).toBe(true);

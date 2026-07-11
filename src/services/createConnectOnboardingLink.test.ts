@@ -1,7 +1,12 @@
 /// <reference types="node" />
 /**
  * create-connect-onboarding-link — pure logic tests + Deno source scans
- * (approved+active partners only, allowlisted return/refresh URLs).
+ * (ACTIVE partner records only, allowlisted return/refresh URLs).
+ *
+ * Integration note (orchestrator sync): the 0016 schema creates a `partners`
+ * row AT approval — there is no pre-approval row and no separate `active`
+ * boolean. Eligibility is therefore: row exists AND status === 'active'
+ * ('suspended' / 'terminated' refuse).
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -13,30 +18,23 @@ const fnDir = join(ROOT, 'supabase', 'functions', 'create-connect-onboarding-lin
 const indexSource = readFileSync(join(fnDir, 'index.ts'), 'utf8');
 const logicSource = readFileSync(join(fnDir, 'logic.ts'), 'utf8');
 
-describe('onboarding eligibility — approved AND active partners only', () => {
-  it('approved + active → ok', () => {
-    expect(decideOnboardingEligibility({ status: 'approved', active: true })).toEqual({ ok: true });
+describe('onboarding eligibility — ACTIVE partner records only (0016 vocabulary)', () => {
+  it('active partner row → ok', () => {
+    expect(decideOnboardingEligibility({ status: 'active' })).toEqual({ ok: true });
   });
 
-  it('missing partner → no_partner', () => {
+  it('missing partner row (never approved) → no_partner', () => {
     expect(decideOnboardingEligibility(null)).toEqual({ ok: false, reason: 'no_partner' });
     expect(decideOnboardingEligibility(undefined)).toEqual({ ok: false, reason: 'no_partner' });
   });
 
-  it('every non-approved status refuses (pending, rejected, suspended, garbage)', () => {
-    for (const status of ['pending', 'rejected', 'suspended', 'APPROVED', '', 'nonsense']) {
-      expect(decideOnboardingEligibility({ status, active: true }), status).toEqual({
+  it('every non-active status refuses (suspended, terminated, casing, garbage)', () => {
+    for (const status of ['suspended', 'terminated', 'ACTIVE', '', 'nonsense']) {
+      expect(decideOnboardingEligibility({ status }), status).toEqual({
         ok: false,
-        reason: 'partner_not_approved',
+        reason: 'partner_inactive',
       });
     }
-  });
-
-  it('approved but inactive → partner_inactive (kill-switch wins)', () => {
-    expect(decideOnboardingEligibility({ status: 'approved', active: false })).toEqual({
-      ok: false,
-      reason: 'partner_inactive',
-    });
   });
 });
 

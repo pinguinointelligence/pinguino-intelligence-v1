@@ -86,14 +86,14 @@ Base commit: `0a01827` (main). Business timezone: `Europe/Madrid`.
 
 | Phase | Scope | Status |
 |---|---|---|
-| A | Audit, architecture, docs, Nicolas handoff | **DONE** (this doc + handoff) |
-| B | Schema migrations (file-first) + entitlement resolver + catalog & env validator + webhook durability design | IN PROGRESS (tracks D/E/F) |
-| C | Checkout/portal Edge Function sources + pricing eligibility logic | IN PROGRESS (track F, source-level) |
-| D | 15-month benefit + conversion state machine (pure) | IN PROGRESS (tracks E/F) |
-| E | Partner platform UI/admin | NOT STARTED (blocked on B foundations) |
-| F | Commission engine + tiers + hold | IN PROGRESS (track E) |
-| G | Connect onboarding + payout batch | LOGIC IN PROGRESS (track E); Stripe I/O source-level (track F) |
-| H | Invite codes | LOGIC IN PROGRESS (track E); admin UI NOT STARTED |
+| A | Audit, architecture, docs, Nicolas handoff | **DONE** |
+| B | Schema migrations (file-first) + entitlement resolver + catalog & env validator + webhook durability design | **DONE (file-first)** — 0014–0021 committed + guard-tested; owner application pending |
+| C | Checkout/portal Edge Function sources + pricing eligibility logic | **DONE (source-level)** — deploy + wiring pending Sandbox |
+| D | 15-month benefit + conversion state machine (pure) | **DONE (pure logic)** — schedule orchestration invariants + conversion machine tested; Stripe execution pending Sandbox |
+| E | Partner platform UI/admin | NOT STARTED (next slice; foundations ready) |
+| F | Commission engine + tiers + hold | **DONE (pure logic)** — v1 rates/tiers/hold/netting fully tested; wiring to webhook dispatch pending |
+| G | Connect onboarding + payout batch | Logic DONE; onboarding-link source DONE; batch worker + transfers pending Sandbox |
+| H | Invite codes | Logic DONE (codes/slots/redemption guard); admin UI + email delivery NOT STARTED |
 | I | Hardening, sandbox E2E, acceptance | BLOCKED EXTERNALLY (needs Sandbox IDs/keys from Nicolas) |
 
 ## 4. Parallel implementation tracks (worktrees)
@@ -123,7 +123,19 @@ test. First unblockers: Sandbox Product/Price IDs for the 11 lookup keys + chose
 
 ## 6. Evidence log
 
-- (appended per phase/integration)
+- 2026-07-11 — Phase A committed (`07a78ca`).
+- 2026-07-11 — Track D merged: migrations 0014–0021 (21 tables, RLS, 11-offer + 12-rate seeds),
+  82 guard tests + 17 resolver tests. Track E merged: 9 pure domain modules, 324 tests (all 12
+  rates, Madrid hold calendar incl. DST/leap, 39-edge lifecycle, tier boundaries 99/100/101,
+  thresholds 2499/2500/2501). Track F merged: 11-offer catalog + validator (secrecy pinned),
+  catalog-aware `productFromSubscription` (zero existing pins changed), 40-event webhook matrix
+  (doc-lockstep-tested), 4 Edge Function sources, conversion state machine (56-pair sweep),
+  194 tests. Orchestrator sync: webhook/Connect sources reconciled to the 0021/0016 column
+  vocabulary (`event_id` composite key + `livemode`; partners `status`-only eligibility,
+  `stripe_connect_account_id`).
+- Combined gates at integration: `tsc -b --force` clean · lint clean · full vitest suite green
+  (see final report for exact count) · production build clean. SQL statically guard-tested;
+  never executed against Postgres in this slice (owner applies).
 
 ## 7. Blocked / external
 
