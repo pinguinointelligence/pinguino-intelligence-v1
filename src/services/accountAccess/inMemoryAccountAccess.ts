@@ -91,6 +91,10 @@ export class InMemoryAccountAccess {
     if (!this.events.has(userId)) this.events.set(userId, []);
   }
 
+  hasAccount(userId: string): boolean {
+    return this.accounts.has(userId);
+  }
+
   private require(userId: string): AccountRecord {
     const rec = this.accounts.get(userId);
     if (!rec) throw new Error(`unknown account ${userId}`);
