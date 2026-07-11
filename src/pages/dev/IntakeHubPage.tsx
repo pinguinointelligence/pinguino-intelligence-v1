@@ -64,9 +64,16 @@ const SECTIONS: IntakeSection[] = [
   {
     title: 'Image / label OCR',
     state: 'working',
-    body: 'Keyless LOCAL OCR (in-browser WASM engine — the label image never leaves the machine, no paid vision API, no fabricated text). Extracted fields carry per-field confidence and require explicit review before a local draft is built; nothing is auto-saved.',
+    body: 'Keyless LOCAL OCR (in-browser WASM engine — the label image never leaves the machine, no paid vision API, no fabricated text). Extracted fields carry per-field confidence and require explicit review before a local draft is built; nothing is auto-saved. The page also carries the full multi-image session surface (roles, drag & drop, camera, manual EAN, evidence review with provenance, duplicate check) on sample data until the extraction engine wires in.',
     to: '/dev/ocr-intake',
     toLabel: 'Open label OCR intake',
+  },
+  {
+    title: 'Batch OCR queue',
+    state: 'working',
+    body: 'Contract-typed batch intake queue: stable session ordering, honest per-item outcome chips, derived summary (never a stored counter), retry-failed and a CSV-export slot. Sample data until the real batch runner wires in — it processes and saves nothing yet.',
+    to: '/dev/ocr-batch',
+    toLabel: 'Open batch OCR queue',
   },
   {
     title: 'Drive / catalog import',
