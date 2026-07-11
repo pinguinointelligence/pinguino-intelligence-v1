@@ -3,7 +3,7 @@
 Scope: the §14 domain model as shipped in migrations `0014`–`0021` plus the pure
 entitlement resolver (`src/billing/entitlements/`). Aligned with the locked
 decisions in `IMPLEMENTATION_STATUS.md` §2. Migrations are FILE-FIRST: committed
-and guard-tested (`src/features/billing/billingPlatform.migration.test.ts`);
+and guard-tested (`src/billing/migrations/billingPlatform.migration.test.ts`);
 the OWNER applies them.
 
 ## 1. Principles (from the locked decisions)
