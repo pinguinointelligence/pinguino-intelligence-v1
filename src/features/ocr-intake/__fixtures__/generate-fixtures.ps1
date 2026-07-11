@@ -4,9 +4,10 @@
 # identical bytes on every machine. No network, no real product data — invented labels.
 # NOTE: this file MUST stay UTF-8 WITH BOM (PowerShell 5.1 misreads BOM-less UTF-8 —
 # the German/Polish diacritics below would be mangled into the rendered PNGs).
-# Usage: generate all fixtures, or only some:
+# Usage: generate all fixtures, or only some. NOTE: -Only needs a real array, so call
+# it from a PowerShell session with & (with -File, "a,b" binds as ONE string):
 #   powershell -File generate-fixtures.ps1
-#   powershell -File generate-fixtures.ps1 -Only label_nutrition_de.png,label_multipack_pl.png
+#   & .\generate-fixtures.ps1 -Only @('label_nutrition_de.png','label_multipack_pl.png')
 param([string[]]$Only)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
