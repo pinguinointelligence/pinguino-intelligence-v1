@@ -9,7 +9,7 @@ import type {
   RecipeItem,
 } from '../types';
 import { selectTargetBand } from '../statuses';
-import { DEFAULT_CORRECTION_CANDIDATES } from './candidates';
+import { DEFAULT_CORRECTION_CANDIDATES, selectCandidates } from './candidates';
 import { applyTargetBandOverride, detectViolations, proposeCorrections } from './solver';
 import type { CorrectionCandidate, CorrectionProposal, CorrectionResult } from './types';
 import { applyCorrectionActions } from './verify';
@@ -688,5 +688,77 @@ describe('CONFIG 0.6.0 - the DEFAULT solver is temperature-aware (no override an
       targetBandOverride: { npac: { min: 48, max: 55 } }, // the seeded -13 band itself
     });
     expect(JSON.stringify(pro(overridden))).toBe(JSON.stringify(pro(plain)));
+  });
+});
+
+/* ── dairy-free category gate (sorbet / vegan) ────────────────────────────── */
+
+describe('selectCandidates — dairy candidates never reach sorbet / vegan (locked profile rule)', () => {
+  const ALL_METRICS = [
+    'pod',
+    'npac',
+    'ice_fraction',
+    'lactose',
+    'lactose_sandiness_risk',
+    'fat',
+    'aerating_protein',
+    'protein_in_solids',
+    'total_solids',
+    'water',
+    'alcohol',
+  ] as const;
+  const DIRECTIONS = ['low', 'high'] as const;
+  const RANKINGS = ['balanced', 'cheapest_first', 'mouthfeel_first', 'flavor_first'] as const;
+
+  it('NO dairy candidate for sorbet or vegan_gelato — any metric, direction or ranking', () => {
+    for (const category of ['sorbet', 'vegan_gelato'] as const) {
+      for (const metric of ALL_METRICS) {
+        for (const direction of DIRECTIONS) {
+          for (const ranking of RANKINGS) {
+            const offered = selectCandidates(metric, direction, category, ranking);
+            const dairy = offered.filter((c) => c.ingredient.category === 'dairy');
+            expect(
+              dairy.map((c) => c.id),
+              `${category} ${metric}_${direction} (${ranking}) offered dairy`,
+            ).toEqual([]);
+          }
+        }
+      }
+    }
+  });
+
+  it('sorbet / vegan keep a NON-dairy dilution lever for too-soft (npac_high / ice_fraction_low)', () => {
+    for (const category of ['sorbet', 'vegan_gelato'] as const) {
+      for (const key of [
+        ['npac', 'high'],
+        ['ice_fraction', 'low'],
+      ] as const) {
+        const offered = selectCandidates(key[0], key[1], category, 'balanced');
+        expect(
+          offered.map((c) => c.id),
+          `${category} ${key[0]}_${key[1]} must keep the water dilution lever`,
+        ).toEqual(['water']);
+      }
+    }
+  });
+
+  it('dairy categories are UNCHANGED: milk npac_high keeps its exact dairy set; fruit slice is identical', () => {
+    // milk_gelato: water is category-gated OUT (spec §13), dairy candidates stay.
+    expect(selectCandidates('npac', 'high', 'milk_gelato', 'balanced').map((c) => c.id)).toEqual([
+      'smp',
+      'cream_30',
+      'milk_3_5',
+    ]);
+    expect(selectCandidates('ice_fraction', 'low', 'chocolate_gelato', 'balanced').map((c) => c.id)).toEqual([
+      'smp',
+      'cream_30',
+      'milk_3_5',
+    ]);
+    // fruit_gelato allows water, but the solver consumes at most the first THREE
+    // candidates per violation — the first three must stay the dairy set, so the
+    // live fruit solve is byte-identical to before the gate.
+    expect(
+      selectCandidates('npac', 'high', 'fruit_gelato', 'balanced').map((c) => c.id).slice(0, 3),
+    ).toEqual(['smp', 'cream_30', 'milk_3_5']);
   });
 });

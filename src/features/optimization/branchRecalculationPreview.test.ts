@@ -213,6 +213,65 @@ describe('IF9 exact preview — add-only rescue solve, verified or nothing', () 
   });
 });
 
+describe('IF9 exact preview — profile safety (dairy never reaches sorbet / vegan)', () => {
+  /** Every place grams can surface in a rescue preview. */
+  const allExposedActions = (r: ReturnType<typeof rescue>) => [
+    ...r.exactActions,
+    ...(r.multiStep?.cumulativeActions ?? []),
+    ...(r.multiStep?.steps.flatMap((s) => s.actions) ?? []),
+    ...(r.multiLever?.cumulativeActions ?? []),
+    ...(r.multiLever?.steps.flatMap((s) => s.actions) ?? []),
+  ];
+  const DAIRY_NAMES = /milk|cream|skimmed/i;
+
+  it('sorbet too_soft: a REAL out-of-band sorbet is rescued with NON-dairy additions only', () => {
+    const r = rescue('rescue-sorbet-too-soft');
+    expect(r.routeDecision).toBe('rescue_with_tradeoff');
+    // the route-level lever families already exclude dairy for sorbet…
+    for (const action of r.batchRescue!.recommendedActions) {
+      expect(action.leverFamilies).not.toContain('skimmed_milk_powder');
+      expect(action.leverFamilies).not.toContain('milk');
+      expect(action.leverFamilies).not.toContain('cream');
+    }
+    // …and the EXACT solve obeys the same law: no dairy ingredient anywhere.
+    expect(['calculated', 'partial_improvement']).toContain(r.exactStatus);
+    const actions = allExposedActions(r);
+    expect(actions.length).toBeGreaterThan(0);
+    for (const a of actions) {
+      expect(a.type).toBe('add');
+      expect(a.grams).toBeGreaterThan(0);
+      expect(DAIRY_NAMES.test(a.ingredient), `dairy leaked into sorbet: ${a.ingredient}`).toBe(false);
+    }
+    // the proposed snapshot carries no dairy line the original did not have
+    const snapshot = r.proposedRecipeSnapshot as { items: { ingredient: { name: string; category: string } }[] };
+    for (const item of snapshot.items) {
+      expect(item.ingredient.category, `dairy line in sorbet snapshot: ${item.ingredient.name}`).not.toBe('dairy');
+    }
+  });
+
+  it('vegan too_soft: a REAL out-of-band vegan batch gets the VERIFIED water rescue — never dairy', () => {
+    const r = rescue('rescue-vegan-too-soft');
+    expect(r.routeDecision).toBe('rescue_with_tradeoff');
+    expect(r.exactStatus).toBe('calculated'); // water addition verifies fully at −11
+    expect(r.exactActions.length).toBeGreaterThan(0);
+    for (const a of allExposedActions(r)) {
+      expect(a.type).toBe('add');
+      expect(a.grams).toBeGreaterThan(0);
+      expect(DAIRY_NAMES.test(a.ingredient), `dairy leaked into vegan: ${a.ingredient}`).toBe(false);
+    }
+    expect(['optimized', 'tradeoff']).toContain(r.rerun!.decision);
+    const snapshot = r.proposedRecipeSnapshot as { items: { ingredient: { name: string; category: string } }[] };
+    for (const item of snapshot.items) {
+      expect(item.ingredient.category, `dairy line in vegan snapshot: ${item.ingredient.name}`).not.toBe('dairy');
+    }
+  });
+
+  it('the dairy-free rescues are deterministic', () => {
+    expect(JSON.stringify(rescue('rescue-sorbet-too-soft'))).toBe(JSON.stringify(rescue('rescue-sorbet-too-soft')));
+    expect(JSON.stringify(rescue('rescue-vegan-too-soft'))).toBe(JSON.stringify(rescue('rescue-vegan-too-soft')));
+  });
+});
+
 describe('IF10 exact preview — deterministic scale-down, verified or nothing', () => {
   it('scale-down produces the verified scaled snapshot with the exact ratio', () => {
     const r = shortage('shortage-scale-down');

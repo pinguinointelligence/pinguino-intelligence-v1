@@ -51,6 +51,22 @@ const reference = (
   is_verified: false,
 });
 
+/**
+ * Categories that may receive DAIRY correction candidates. Sorbet and vegan are
+ * excluded by the locked profile rules (Temperature_Regulator_SORBET/VEGAN.md:
+ * dairy is forbidden — no approval flag can override), mirrored by the Spine
+ * profile registry's forbidden correction families. Every other category keeps
+ * dairy levers unchanged.
+ */
+const DAIRY_ALLOWED_CATEGORIES: ProductCategory[] = [
+  'milk_gelato',
+  'fruit_gelato',
+  'nut_gelato',
+  'chocolate_gelato',
+  'alcohol_gelato',
+  'custom',
+];
+
 export const DEFAULT_CORRECTION_CANDIDATES: readonly CorrectionCandidate[] = [
   {
     id: 'sucrose',
@@ -81,6 +97,7 @@ export const DEFAULT_CORRECTION_CANDIDATES: readonly CorrectionCandidate[] = [
     id: 'milk_3_5',
     name: 'Milk 3.5 %',
     roles: ['dilution'],
+    allowed_categories: DAIRY_ALLOWED_CATEGORIES, // dairy — never sorbet/vegan
     ingredient: reference('milk_3_5', 'Milk 3.5 %', 'dairy', {
       water_percent: 87.5,
       solids_percent: 12.5,
@@ -97,6 +114,7 @@ export const DEFAULT_CORRECTION_CANDIDATES: readonly CorrectionCandidate[] = [
     id: 'cream_30',
     name: 'Cream 30 %',
     roles: ['fat_up'],
+    allowed_categories: DAIRY_ALLOWED_CATEGORIES, // dairy — never sorbet/vegan
     ingredient: reference('cream_30', 'Cream 30 %', 'dairy', {
       water_percent: 63.4,
       solids_percent: 36.6,
@@ -113,6 +131,7 @@ export const DEFAULT_CORRECTION_CANDIDATES: readonly CorrectionCandidate[] = [
     id: 'smp',
     name: 'Skimmed milk powder',
     roles: ['solids_up', 'protein_up'],
+    allowed_categories: DAIRY_ALLOWED_CATEGORIES, // dairy — never sorbet/vegan
     ingredient: reference('smp', 'Skimmed milk powder', 'dairy', {
       water_percent: 3.5,
       solids_percent: 96.5,
@@ -166,9 +185,12 @@ const SELECTION_RULES: Partial<
   pod_low: ['sucrose', 'dextrose'],
   pod_high: ['milk_3_5', 'water'], // dilution — never more sugar
   npac_low: ['dextrose', 'sucrose'],
-  npac_high: ['smp', 'cream_30', 'milk_3_5'], // solids/dilution — never high-PAC sugars
+  // water is appended LAST: it is category-gated to sorbet/vegan/fruit, and the
+  // solver consumes at most the first three candidates per violation — so dairy
+  // categories are untouched while sorbet/vegan keep a non-dairy dilution lever.
+  npac_high: ['smp', 'cream_30', 'milk_3_5', 'water'], // solids/dilution — never high-PAC sugars
   ice_fraction_high: ['dextrose', 'sucrose'], // too hard → raise NPAC
-  ice_fraction_low: ['smp', 'cream_30', 'milk_3_5'], // too soft → dilute depression
+  ice_fraction_low: ['smp', 'cream_30', 'milk_3_5', 'water'], // too soft → dilute depression
   fat_low: ['cream_30'],
   fat_high: ['milk_3_5', 'water', 'smp'],
   total_solids_low: ['smp', 'inulin'],

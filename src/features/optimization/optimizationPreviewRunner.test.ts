@@ -13,6 +13,10 @@ import {
   OPTIMIZATION_PREVIEW_FIXTURES,
   findOptimizationPreviewFixture,
 } from './optimizationPreviewFixtures';
+import {
+  BRANCH_RECALCULATION_SCENARIOS,
+  type BatchRescueScenario,
+} from './branchRecalculationFixtures';
 
 const views = runAllOptimizationPreviews(OPTIMIZATION_PREVIEW_FIXTURES);
 const byId = (id: string): OptimizationPreviewView => views.find((v) => v.id === id)!;
@@ -288,5 +292,53 @@ describe('optimization preview runner — SRC boundary', () => {
   it('lives under src/features (a non-spine module allowed to import the engine)', () => {
     const path = resolve(import.meta.dirname);
     expect(/[\\/]features[\\/]optimization$/.test(path)).toBe(true);
+  });
+});
+
+describe('previewOptimization — profile safety (dairy never proposed for sorbet / vegan)', () => {
+  const DAIRY_NAMES = /milk|cream|skimmed/i;
+  const DAIRY_FAMILIES = ['milk', 'cream', 'skimmed_milk_powder'];
+
+  // Reuse the shared out-of-band dairy-free fixtures (Slice 25).
+  const rescueScenario = (id: string) =>
+    (BRANCH_RECALCULATION_SCENARIOS.find((x) => x.id === id)! as BatchRescueScenario).actualRecipe;
+
+  it('a too-soft SORBET planning solve proposes only non-dairy adjustments and non-dairy lever classes', () => {
+    const recipe = rescueScenario('rescue-sorbet-too-soft');
+    const intent = { ...findOptimizationPreviewFixture('sorbet-ready')!.intent };
+    const view = previewOptimization({ recipe, intent });
+    for (const plan of view.proposedCorrections) {
+      for (const family of plan.affectedIngredientClasses) {
+        expect(DAIRY_FAMILIES, `dairy lever class for sorbet: ${family}`).not.toContain(family);
+      }
+    }
+    for (const solve of [view.engineSeededSolve, view.regulatorShadowSolve]) {
+      for (const a of solve.proposedAdjustments) {
+        expect(DAIRY_NAMES.test(a.ingredient), `dairy proposed for sorbet: ${a.ingredient}`).toBe(false);
+      }
+    }
+    for (const a of view.proposedAdjustments) {
+      expect(DAIRY_NAMES.test(a.ingredient), `dairy proposed for sorbet: ${a.ingredient}`).toBe(false);
+    }
+  });
+
+  it('a too-soft VEGAN planning solve proposes only non-dairy adjustments (live studio intent mapping)', () => {
+    const recipe = rescueScenario('rescue-vegan-too-soft');
+    const intent = studioIntentFromRecipe(recipe); // vegan_gelato → vegan profile
+    expect(intent.productProfile).toBe('vegan_gelato');
+    const view = previewOptimization({ recipe, intent });
+    for (const plan of view.proposedCorrections) {
+      for (const family of plan.affectedIngredientClasses) {
+        expect(DAIRY_FAMILIES, `dairy lever class for vegan: ${family}`).not.toContain(family);
+      }
+    }
+    for (const solve of [view.engineSeededSolve, view.regulatorShadowSolve]) {
+      for (const a of solve.proposedAdjustments) {
+        expect(DAIRY_NAMES.test(a.ingredient), `dairy proposed for vegan: ${a.ingredient}`).toBe(false);
+      }
+    }
+    for (const a of view.proposedAdjustments) {
+      expect(DAIRY_NAMES.test(a.ingredient), `dairy proposed for vegan: ${a.ingredient}`).toBe(false);
+    }
   });
 });
