@@ -21,10 +21,14 @@
 
 import * as Tesseract from 'tesseract.js';
 import { isAcceptedLabelImage } from '@/data/products/nutritionLabelOcr';
+import type { OcrLine } from './intakeContracts';
 import type { ParsedOcrLine } from './labelTextParser';
 
-/** Languages loaded for EU labels — English + Spanish (kept deliberately small). */
+/** Default languages loaded for EU labels (override per run via `langs`). */
 export const OCR_LANGS = ['eng', 'spa'] as const;
+
+/** Languages with a vendored @tesseract.js-data package (offline Node tests). */
+export const VENDORED_OCR_LANGS = ['eng', 'spa', 'deu', 'pol'] as const;
 
 export const MAX_LABEL_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB
 
@@ -44,6 +48,8 @@ export interface OcrSuccess {
   text: string;
   /** recognized lines with per-line confidence (0–100), for per-field confidence. */
   lines: ParsedOcrLine[];
+  /** same lines with per-word confidence + bounding boxes (provider seam shape). */
+  richLines: OcrLine[];
   /** page-level confidence (0–100). */
   overallConfidence: number;
   durationMs: number;
@@ -65,11 +71,14 @@ export interface OcrEngineOptions {
   langPath?: string;
   /** Where the engine may cache loaded language models (Node: a local dir). */
   cachePath?: string;
+  /** Language models to load for this run (default OCR_LANGS = eng + spa). */
+  langs?: readonly string[];
   onProgress?: (progress: OcrProgress) => void;
 }
 
-/** What the engine accepts as input: a browser File/Blob, or (Node) a local file path. */
-export type OcrImageInput = File | Blob | string;
+/** What the engine accepts as input: a browser File/Blob, (Node) a local file path,
+ * or raw image bytes (both tesseract.js loadImage paths copy a TypedArray as-is). */
+export type OcrImageInput = File | Blob | string | Uint8Array;
 
 export interface LabelImageValidation {
   ok: boolean;
@@ -125,14 +134,25 @@ export async function downscaleImageIfNeeded(image: Blob, maxDimension = 2200): 
 
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-/** Extract per-line text + confidence from a recognized page. */
-function linesFromPage(page: Tesseract.Page): ParsedOcrLine[] {
-  const lines: ParsedOcrLine[] = [];
+/** Extract per-line text + confidence + per-word bboxes from a recognized page. */
+function richLinesFromPage(page: Tesseract.Page): OcrLine[] {
+  const lines: OcrLine[] = [];
   for (const block of page.blocks ?? []) {
     for (const paragraph of block.paragraphs) {
       for (const line of paragraph.lines) {
         const text = line.text.replace(/\s+/g, ' ').trim();
-        if (text !== '') lines.push({ text, confidence: Math.round(line.confidence) });
+        if (text === '') continue;
+        lines.push({
+          text,
+          confidence: Math.round(line.confidence),
+          words: (line.words ?? [])
+            .filter((w) => w.text.trim() !== '')
+            .map((w) => ({
+              text: w.text,
+              confidence: Math.round(w.confidence),
+              bbox: w.bbox ? { x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1 } : null,
+            })),
+        });
       }
     }
   }
@@ -140,7 +160,7 @@ function linesFromPage(page: Tesseract.Page): ParsedOcrLine[] {
     // blocks unavailable — fall back to plain text lines with the page confidence
     for (const raw of page.text.split(/\r?\n/)) {
       const text = raw.trim();
-      if (text !== '') lines.push({ text, confidence: Math.round(page.confidence) });
+      if (text !== '') lines.push({ text, confidence: Math.round(page.confidence), words: [] });
     }
   }
   return lines;
@@ -160,10 +180,18 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
   let cancelled = false;
   let activeWorker: Tesseract.Worker | null = null;
 
+  // Mid-recognition cancellation: terminating the worker can leave the pending
+  // recognize() promise unsettled, so `done` races it against this cancel promise.
+  let signalCancelled: (() => void) | undefined;
+  const cancelledResult: OcrFailure = { status: 'failed', reason: 'cancelled', message: 'OCR cancelled.' };
+  const cancelPromise = new Promise<OcrFailure>((resolve) => {
+    signalCancelled = () => resolve(cancelledResult);
+  });
+
   const runOnce = async (): Promise<OcrRunResult> => {
     const startedAt = Date.now();
     const worker = await Tesseract.createWorker(
-      [...OCR_LANGS],
+      [...(options.langs ?? OCR_LANGS)],
       undefined, // default OEM (LSTM only — matches the vendored *_best_int models)
       {
         ...(options.langPath !== undefined ? { langPath: options.langPath } : {}),
@@ -179,7 +207,13 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
     activeWorker = worker;
     try {
       if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR cancelled before recognition started.' };
-      const { data } = await worker.recognize(image, {}, { text: true, blocks: true });
+      // Uint8Array is handled by both tesseract.js loadImage paths (copied verbatim)
+      // but is missing from its ImageLike type — hence the cast.
+      const recognizePromise = worker.recognize(image as Tesseract.ImageLike, {}, { text: true, blocks: true });
+      recognizePromise.catch(() => undefined); // post-cancel rejection is expected noise
+      const settled = await Promise.race([recognizePromise, cancelPromise]);
+      if ('status' in settled) return settled; // cancelled mid-recognition
+      const { data } = settled;
       const text = data.text.trim();
       const alphanumeric = (text.match(/[\p{L}\p{N}]/gu) ?? []).length;
       if (alphanumeric < MIN_READABLE_CHARS) {
@@ -189,10 +223,12 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
           message: 'No readable label text found in this image (too blurry, dark, or not a text label).',
         };
       }
+      const richLines = richLinesFromPage(data);
       return {
         status: 'ok',
         text: data.text,
-        lines: linesFromPage(data),
+        lines: richLines.map(({ text: t, confidence }) => ({ text: t, confidence })),
+        richLines,
         overallConfidence: Math.round(data.confidence),
         durationMs: Date.now() - startedAt,
       };
@@ -225,6 +261,7 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
     done,
     cancel: () => {
       cancelled = true;
+      signalCancelled?.();
       if (activeWorker) void activeWorker.terminate().catch(() => undefined);
     },
   };

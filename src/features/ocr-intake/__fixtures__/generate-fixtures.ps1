@@ -2,6 +2,12 @@
 # Renders the committed label PNGs under src/features/ocr-intake/__fixtures__/.
 # Re-run only when the fixture TEXT changes; the PNGs are committed so tests replay
 # identical bytes on every machine. No network, no real product data — invented labels.
+# NOTE: this file MUST stay UTF-8 WITH BOM (PowerShell 5.1 misreads BOM-less UTF-8 —
+# the German/Polish diacritics below would be mangled into the rendered PNGs).
+# Usage: generate all fixtures, or only some:
+#   powershell -File generate-fixtures.ps1
+#   powershell -File generate-fixtures.ps1 -Only label_nutrition_de.png,label_multipack_pl.png
+param([string[]]$Only)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
@@ -14,8 +20,10 @@ function New-LabelImage {
     [int]$Width = 860,
     [single]$FontSize = 22,
     [int]$LineHeight = 34,
-    [int]$Margin = 28
+    [int]$Margin = 28,
+    [switch]$Force
   )
+  if (-not $Force -and $script:Only -and $script:Only -notcontains $FileName) { return }
   $height = $Margin * 2 + $LineHeight * $Lines.Count
   $bmp = New-Object System.Drawing.Bitmap($Width, $height)
   $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -92,20 +100,22 @@ New-LabelImage -FileName 'label_multiline_ingredients_en.png' -Lines @(
 
 # 4. Low-quality label: rendered readable, then destroyed by down/up-scaling (blur).
 #    The engine must FAIL HONESTLY (unreadable) or return junk that parses to nulls.
-$tmp = Join-Path $outDir 'label_lowquality_tmp.png'
-New-LabelImage -FileName 'label_lowquality_tmp.png' -Lines @(
-  'Mystery Product 77',
-  'NUTRITION per 100 g',
-  'Fat 12.3 g  Salt 0.4 g',
-  'Ingredients: unknown blend.'
-) -FontSize 16 -LineHeight 22 -Width 520
-$src = [System.Drawing.Image]::FromFile($tmp)
-$small = New-Object System.Drawing.Bitmap($src, 52, [int]($src.Height * 52 / $src.Width))
-$blur = New-Object System.Drawing.Bitmap($small, $src.Width, $src.Height)
-$blur.Save((Join-Path $outDir 'label_lowquality.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-$blur.Dispose(); $small.Dispose(); $src.Dispose()
-Remove-Item $tmp -Force
-Write-Output "wrote $(Join-Path $outDir 'label_lowquality.png')"
+if (-not $Only -or $Only -contains 'label_lowquality.png') {
+  $tmp = Join-Path $outDir 'label_lowquality_tmp.png'
+  New-LabelImage -FileName 'label_lowquality_tmp.png' -Lines @(
+    'Mystery Product 77',
+    'NUTRITION per 100 g',
+    'Fat 12.3 g  Salt 0.4 g',
+    'Ingredients: unknown blend.'
+  ) -FontSize 16 -LineHeight 22 -Width 520 -Force
+  $src = [System.Drawing.Image]::FromFile($tmp)
+  $small = New-Object System.Drawing.Bitmap($src, 52, [int]($src.Height * 52 / $src.Width))
+  $blur = New-Object System.Drawing.Bitmap($small, $src.Width, $src.Height)
+  $blur.Save((Join-Path $outDir 'label_lowquality.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+  $blur.Dispose(); $small.Dispose(); $src.Dispose()
+  Remove-Item $tmp -Force
+  Write-Output "wrote $(Join-Path $outDir 'label_lowquality.png')"
+}
 
 # 5. Readable image where OCR succeeds but label parsing stays INCOMPLETE
 New-LabelImage -FileName 'label_partial_en.png' -Lines @(
@@ -114,4 +124,49 @@ New-LabelImage -FileName 'label_partial_en.png' -Lines @(
   'Best before: see base of pack',
   'Made in the EU for Alpine Trading Co.',
   'www.example-alpine-drops.eu'
+)
+
+# 6. German nutrition label: comma decimals, native headings (Nährwerte/Brennwert/
+#    Zutaten/Kann Spuren), claims, a checksum-VALID invented EAN-13 (4012345678901)
+New-LabelImage -FileName 'label_nutrition_de.png' -Lines @(
+  'Alpenmilch Schokolade',
+  'Marke: Gletscherhaus',
+  'Nettogewicht: 90 g',
+  'NÄHRWERTE pro 100 g',
+  'Brennwert 2287 kJ / 549 kcal',
+  'Fett 30,5 g',
+  'davon gesättigte Fettsäuren 18,7 g',
+  'Kohlenhydrate 52,4 g',
+  'davon Zucker 51,2 g',
+  'Eiweiß 7,3 g',
+  'Salz 0,25 g',
+  'Zutaten: Zucker, Kakaobutter, Vollmilchpulver,',
+  'Kakaomasse, Emulgator (Sojalecithin), Vanilleextrakt.',
+  'Kann Spuren von Haselnüssen enthalten.',
+  'Vegetarisch. Glutenfrei.',
+  'Kühl und trocken lagern.',
+  '4 012345 678901'
+)
+
+# 7. Polish nutrition label: multipack size, per-100 ml, trace row ("<0,1 g"),
+#    explicit ZERO row (Sól 0 g), fibre row, checksum-VALID EAN-13 (5901234123457)
+New-LabelImage -FileName 'label_multipack_pl.png' -Lines @(
+  'Sok Jabłkowy Klarowny',
+  'Marka: Dolina Sadów',
+  '6 x 330 ml',
+  'WARTOŚĆ ODŻYWCZA w 100 ml',
+  'Wartość energetyczna 190 kJ / 45 kcal',
+  'Tłuszcz 0,1 g',
+  'w tym kwasy tłuszczowe nasycone <0,1 g',
+  'Węglowodany 10,6 g',
+  'w tym cukry 10,2 g',
+  'Błonnik 0,5 g',
+  'Białko 0,1 g',
+  'Sól 0,0 g',
+  'Składniki: sok jabłkowy z zagęszczonego',
+  'soku jabłkowego, przeciwutleniacz (kwas askorbinowy).',
+  'Może zawierać śladowe ilości selera.',
+  'Przechowywać w suchym i chłodnym miejscu.',
+  'Produkt bezglutenowy.',
+  '5 901234 123457'
 )
