@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { capabilitiesFor } from './plans';
-import { planFromSubscription, type Subscription } from './subscription';
+import {
+  planFromSubscription,
+  productFromSubscription,
+  resolveSubscriptionAccess,
+  type ConfiguredPriceIds,
+  type Subscription,
+} from './subscription';
 
 const sub = (over: Partial<Subscription>): Subscription => ({
   stripe_subscription_id: 'sub_1',
@@ -79,5 +85,85 @@ describe('capabilities by tier', () => {
       expect(capabilitiesFor(tier).productionMode).toBe(false);
       expect(capabilitiesFor(tier).rescueMode).toBe(false);
     }
+  });
+});
+
+// ── Catalog-aware evolution (billing platform) ──────────────────────────────
+// planFromSubscription above is UNCHANGED — these pins cover the additive
+// layer that finally distinguishes Home vs Pro via the price catalog.
+
+const configured: ConfiguredPriceIds = {
+  STRIPE_PRICE_HOME_MONTHLY_STANDARD: 'price_fake_home_m',
+  STRIPE_PRICE_HOME_YEARLY_STANDARD: 'price_fake_home_y',
+  STRIPE_PRICE_PRO_MONTHLY_STANDARD: 'price_fake_pro_m',
+  STRIPE_PRICE_PRO_15M_FOUNDING_PARTNER: 'price_fake_pro_15f',
+};
+
+describe('productFromSubscription — price id → home|pro via the catalog env mapping', () => {
+  it('maps configured Home and Pro price ids (including 15-month prices)', () => {
+    expect(productFromSubscription(sub({ stripe_price_id: 'price_fake_home_m' }), configured)).toBe('home');
+    expect(productFromSubscription(sub({ stripe_price_id: 'price_fake_home_y' }), configured)).toBe('home');
+    expect(productFromSubscription(sub({ stripe_price_id: 'price_fake_pro_m' }), configured)).toBe('pro');
+    expect(productFromSubscription(sub({ stripe_price_id: 'price_fake_pro_15f' }), configured)).toBe('pro');
+  });
+
+  it('unknown price, missing price, missing row or empty config → null (never a guessed product)', () => {
+    expect(productFromSubscription(sub({ stripe_price_id: 'price_fake_foreign' }), configured)).toBeNull();
+    expect(productFromSubscription(sub({ stripe_price_id: null }), configured)).toBeNull();
+    expect(productFromSubscription(null, configured)).toBeNull();
+    expect(productFromSubscription(sub({}), {})).toBeNull();
+  });
+});
+
+describe('resolveSubscriptionAccess — {paid, product} without breaking any consumer', () => {
+  it('paid stays in exact lockstep with planFromSubscription across all statuses', () => {
+    const rows = [
+      sub({ subscription_status: 'active' }),
+      sub({ subscription_status: 'trialing' }),
+      sub({ subscription_status: 'past_due', current_period_end: future }),
+      sub({ subscription_status: 'past_due', current_period_end: past }),
+      sub({ subscription_status: 'canceled' }),
+      sub({ subscription_status: 'some_new_status' }),
+      null,
+    ];
+    for (const row of rows) {
+      const access = resolveSubscriptionAccess(row, configured);
+      expect(access.paid, row?.subscription_status ?? 'null').toBe(
+        planFromSubscription(row) === 'pro',
+      );
+    }
+  });
+
+  it('paid + mapped price → the mapped product', () => {
+    expect(
+      resolveSubscriptionAccess(sub({ stripe_price_id: 'price_fake_home_m' }), configured),
+    ).toEqual({ paid: true, product: 'home' });
+    expect(
+      resolveSubscriptionAccess(sub({ stripe_price_id: 'price_fake_pro_m' }), configured),
+    ).toEqual({ paid: true, product: 'pro' });
+  });
+
+  it('FAIL-SAFE: paid status + unknown price → paid with product null (access never revoked by a mapping gap)', () => {
+    expect(
+      resolveSubscriptionAccess(sub({ stripe_price_id: 'price_fake_foreign' }), configured),
+    ).toEqual({ paid: true, product: null });
+    expect(resolveSubscriptionAccess(sub({}), {})).toEqual({ paid: true, product: null });
+  });
+
+  it('unpaid rows never report a product, even when the price would map', () => {
+    expect(
+      resolveSubscriptionAccess(
+        sub({ subscription_status: 'canceled', stripe_price_id: 'price_fake_home_m' }),
+        configured,
+      ),
+    ).toEqual({ paid: false, product: null });
+    expect(resolveSubscriptionAccess(null, configured)).toEqual({ paid: false, product: null });
+  });
+
+  it('past_due grace resolves product while the grace lasts, nothing after', () => {
+    const row = sub({ subscription_status: 'past_due', current_period_end: future, stripe_price_id: 'price_fake_home_y' });
+    expect(resolveSubscriptionAccess(row, configured)).toEqual({ paid: true, product: 'home' });
+    const lapsed = sub({ subscription_status: 'past_due', current_period_end: past, stripe_price_id: 'price_fake_home_y' });
+    expect(resolveSubscriptionAccess(lapsed, configured)).toEqual({ paid: false, product: null });
   });
 });
