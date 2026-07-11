@@ -30,7 +30,10 @@ export const OCR_LANGS = ['eng', 'spa'] as const;
 /** Languages with a vendored @tesseract.js-data package (offline Node tests). */
 export const VENDORED_OCR_LANGS = ['eng', 'spa', 'deu', 'pol'] as const;
 
-export const MAX_LABEL_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB
+// 10 MiB — aligned with the storage-enforced hard cap (migration 0022
+// ocr_intake_images.byte_size and the 0024 bucket file_size_limit). Never allow
+// an upload the storage layer will reject. The session cap mirrors this value.
+export const MAX_LABEL_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MiB
 
 /** Minimum alphanumeric characters for a recognition to count as readable. */
 const MIN_READABLE_CHARS = 8;

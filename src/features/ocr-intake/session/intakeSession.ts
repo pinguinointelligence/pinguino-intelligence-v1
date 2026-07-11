@@ -38,8 +38,9 @@ import { blockingFieldKeys } from './reviewedFields';
 export const MAX_IMAGES_PER_SESSION = 8;
 
 /** Maximum bytes per image — mirrors the OCR engine's cap (MAX_LABEL_IMAGE_BYTES,
- * 15 MB; asserted equal by test so the two caps can never drift apart). */
-export const MAX_INTAKE_IMAGE_BYTES = 15 * 1024 * 1024;
+ * 10 MiB, itself aligned to the storage-enforced bucket limit; asserted equal by
+ * test so the two caps can never drift apart). */
+export const MAX_INTAKE_IMAGE_BYTES = 10 * 1024 * 1024;
 
 const IMAGE_ROLES: readonly IntakeImageRole[] = [
   'front',

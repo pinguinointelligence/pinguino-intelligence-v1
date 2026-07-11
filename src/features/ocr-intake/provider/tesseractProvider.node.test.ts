@@ -49,7 +49,7 @@ describe('TesseractOcrProvider — contract failures (no engine start)', () => {
     if (!r.ok) expect(r.failure.kind).toBe('unreadable_image');
   });
 
-  it('over the 15 MB cap → engine_error with the honest limit message', async () => {
+  it('over the 10 MB cap → engine_error with the honest limit message', async () => {
     const r = await provider.recognize({
       imageId: 'img-huge',
       bytes: new Uint8Array(MAX_LABEL_IMAGE_BYTES + 1),
@@ -58,7 +58,7 @@ describe('TesseractOcrProvider — contract failures (no engine start)', () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok && r.failure.kind === 'engine_error') {
-      expect(r.failure.message).toMatch(/limit is 15 MB/);
+      expect(r.failure.message).toMatch(/limit is 10 MB/);
     } else {
       throw new Error('expected engine_error');
     }
