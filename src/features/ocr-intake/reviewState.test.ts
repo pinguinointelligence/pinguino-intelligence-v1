@@ -11,10 +11,13 @@ import {
   editField,
   effectiveBasis,
   OCR_ENGINE_INFO,
+  REVIEW_TO_INTAKE_FIELD_KEY,
   setBasisOverride,
+  toReviewedFields,
   unconfirmedRequiredFields,
   type OcrReviewState,
 } from './reviewState';
+import { resolvedFieldValue } from './session/reviewedFields';
 
 const RAW = [
   'Vanilla Dessert Base',
@@ -176,6 +179,100 @@ describe('buildDraftCandidate — the EXISTING intake draft contract', () => {
     if (!result.ok) return;
     expect(result.candidate.insert.fat_percent).toBe(15.3);
     expect(result.candidate.warnings.join(' ')).toMatch(/density NOT applied/);
+  });
+});
+
+describe('toReviewedFields — bridge into the shared intake contract (additive evolution)', () => {
+  const IMAGE = 'img-legacy-1';
+
+  it('maps every v1 key except storageInstructions (documented null mapping)', () => {
+    const fields = toReviewedFields(freshState(), IMAGE);
+    const keys = fields.map((f) => f.fieldKey);
+    expect(keys).toContain('product_name');
+    expect(keys).toContain('package_size'); // netQuantity
+    expect(keys).toContain('carbohydrate'); // carbohydrates
+    expect(keys).toContain('allergens_text'); // allergens
+    expect(keys).toContain('nutrition_basis'); // derived extra field
+    expect(REVIEW_TO_INTAKE_FIELD_KEY.storageInstructions).toBeNull();
+    expect(keys).toHaveLength(16); // 15 mapped v1 fields + nutrition_basis
+  });
+
+  it('an extracted value becomes ONE explicit-provenance candidate with evidence', () => {
+    const fields = toReviewedFields(freshState(), IMAGE);
+    const name = fields.find((f) => f.fieldKey === 'product_name');
+    expect(name?.candidates).toHaveLength(1);
+    const candidate = name?.candidates[0];
+    expect(candidate?.extractedRaw).toBe('Vanilla Dessert Base');
+    expect(candidate?.provenance).toBe('explicit');
+    expect(candidate?.evidence?.imageId).toBe(IMAGE);
+    expect(candidate?.evidence?.sourceText).toContain('Vanilla Dessert Base');
+  });
+
+  it('a not-found value bridges to zero candidates (absent — never invented)', () => {
+    const fields = toReviewedFields(freshState(), IMAGE);
+    const mayContain = fields.find((f) => f.fieldKey === 'may_contain_text');
+    expect(mayContain?.candidates).toEqual([]);
+    expect(resolvedFieldValue(mayContain!)).toBeNull();
+  });
+
+  it('review resolution carries over: unconfirmed-required → needs_confirmation; confirmed → confirmed', () => {
+    const raw = freshState();
+    const confirmed = confirmField(raw, 'brand');
+    const before = toReviewedFields(raw, IMAGE).find((f) => f.fieldKey === 'brand');
+    const after = toReviewedFields(confirmed, IMAGE).find((f) => f.fieldKey === 'brand');
+    expect(before?.reviewStatus).toBe('needs_confirmation');
+    expect(after?.reviewStatus).toBe('confirmed');
+    expect(after?.chosenCandidate).toBe(0);
+  });
+
+  it('an unflagged clean field bridges to auto_accepted', () => {
+    const sugars = toReviewedFields(freshState(), IMAGE).find((f) => f.fieldKey === 'sugars');
+    expect(sugars?.reviewStatus).toBe('auto_accepted');
+    expect(resolvedFieldValue(sugars!)).toBe('48.2');
+  });
+
+  it('an edit carries over as edited (and resolves to the human value)', () => {
+    const state = editField(freshState(), 'productName', 'Vanilla Base 500');
+    const name = toReviewedFields(state, IMAGE).find((f) => f.fieldKey === 'product_name');
+    expect(name?.reviewStatus).toBe('edited');
+    expect(name?.editedValue).toBe('Vanilla Base 500');
+    expect(resolvedFieldValue(name!)).toBe('Vanilla Base 500');
+    // the extracted candidate is preserved for the audit trail
+    expect(name?.candidates[0]?.extractedRaw).toBe('Vanilla Dessert Base');
+  });
+
+  it('an edit that CLEARS the value bridges to marked_unknown (an honest "no value")', () => {
+    const state = editField(freshState(), 'brand', '   ');
+    const brand = toReviewedFields(state, IMAGE).find((f) => f.fieldKey === 'brand');
+    expect(brand?.reviewStatus).toBe('marked_unknown');
+    expect(resolvedFieldValue(brand!)).toBeNull();
+  });
+
+  it('the detected basis bridges as an auto-accepted explicit candidate', () => {
+    const basis = toReviewedFields(freshState(), IMAGE).find((f) => f.fieldKey === 'nutrition_basis');
+    expect(basis?.reviewStatus).toBe('auto_accepted');
+    expect(basis?.candidates[0]?.normalized).toBe('per_100g');
+    expect(resolvedFieldValue(basis!)).toBe('per_100g');
+  });
+
+  it('a human basis override bridges as an EDIT (explicit human input)', () => {
+    const state = setBasisOverride(freshState(), 'serving_only');
+    const basis = toReviewedFields(state, IMAGE).find((f) => f.fieldKey === 'nutrition_basis');
+    expect(basis?.reviewStatus).toBe('edited');
+    expect(basis?.editedValue).toBe('serving_only');
+    expect(resolvedFieldValue(basis!)).toBe('serving_only');
+  });
+
+  it('the bridge NEVER mutates the v1 state (old single-image behavior stays valid)', () => {
+    const state = freshState();
+    const snapshot = JSON.parse(JSON.stringify(state)) as unknown;
+    toReviewedFields(state, IMAGE);
+    expect(state).toEqual(snapshot);
+    // and the v1 draft path still works on the same state
+    const draft = buildDraftCandidate(
+      unconfirmedRequiredFields(state).reduce((s, key) => confirmField(s, key), state),
+    );
+    expect(draft.ok).toBe(true);
   });
 });
 
