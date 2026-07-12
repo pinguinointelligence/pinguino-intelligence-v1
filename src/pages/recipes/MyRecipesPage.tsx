@@ -8,6 +8,7 @@ import { useDeleteRecipe, useSavedRecipes } from '@/features/recipes/useSavedRec
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 
 const r = copy.recipes;
 
@@ -108,6 +109,9 @@ export function MyRecipesPage() {
             ))}
           </ul>
         )}
+
+        {/* PRO CORE — immutable recipe versions (self-gated by persona + backend availability). */}
+        <RecipeVersionsSection />
       </main>
     </div>
   );

@@ -332,6 +332,27 @@ export const copy = {
       updated: 'Updated',
     },
   },
+  /** PRO CORE — real recipe-version / production / cost surfaces (orchestrator integration). */
+  proCore: {
+    title: 'Recipe versions',
+    blurb:
+      'Save the current Studio draft as a Pro recipe, keep an immutable version history, compare versions and restore an older one as a new latest version.',
+    devPersona: 'Persona (dev):',
+    backendUnavailable: 'Recipe versions need a configured backend. Not available in this build.',
+    localMode:
+      'Local dev mode — versions are kept in memory only and are not durable (a reload clears them).',
+    demoCannotSave: 'This plan cannot save recipe versions.',
+    saveDraftAsRecipe: 'Save current draft as recipe',
+    saveNewVersion: 'Save new version',
+    restoreV1: 'Restore v1 → new version',
+    recipesHeading: 'Recipes',
+    historyHeading: 'Version history',
+    noRecipes: 'No Pro recipes yet — save the current Studio draft to start a version history.',
+    selectRecipe: 'Select a recipe to see its versions.',
+    archived: 'archived',
+    fromVersion: 'from',
+    draftTitlePrefix: 'Studio draft',
+  },
   /** PI Pro subscription / billing (Phase 2B.1 — checkout wired in a later slice). */
   billing: {
     proActive: 'PI Pro active',
