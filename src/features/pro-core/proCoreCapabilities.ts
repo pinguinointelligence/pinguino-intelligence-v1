@@ -17,6 +17,7 @@
  */
 import type { RecipeCapabilities } from './recipeContracts';
 import type { ProductionCapabilities } from './productionContracts';
+import type { ExportCapabilities } from './costContracts';
 
 /** The canonical Home saved-recipe limit (versions of the one recipe never count). */
 export const HOME_MAX_SAVED_RECIPES = 1;
@@ -37,6 +38,9 @@ export interface ProCoreCapabilities {
   canViewExactGrams: boolean;
   /** Production Mode — Pro-only (canonical). */
   canUseProductionMode: boolean;
+  /** May produce recipe / cost exports at all (Demo cannot). Exact grams stay gated on
+   * canViewExactGrams, so an export can never leak exact grams without that capability. */
+  canExport: boolean;
 }
 
 /** The canonical persona → capability matrix. Frozen so it can never be mutated at runtime. */
@@ -48,6 +52,7 @@ export const PRO_CORE_CAPABILITIES: Readonly<Record<ProCorePersona, ProCoreCapab
     maxSavedRecipes: 0,
     canViewExactGrams: false,
     canUseProductionMode: false,
+    canExport: false,
   }),
   home: Object.freeze({
     canSaveRecipe: true,
@@ -56,6 +61,7 @@ export const PRO_CORE_CAPABILITIES: Readonly<Record<ProCorePersona, ProCoreCapab
     maxSavedRecipes: HOME_MAX_SAVED_RECIPES,
     canViewExactGrams: true,
     canUseProductionMode: false,
+    canExport: true,
   }),
   pro: Object.freeze({
     canSaveRecipe: true,
@@ -64,6 +70,7 @@ export const PRO_CORE_CAPABILITIES: Readonly<Record<ProCorePersona, ProCoreCapab
     maxSavedRecipes: PRO_MAX_SAVED_RECIPES,
     canViewExactGrams: true,
     canUseProductionMode: true,
+    canExport: true,
   }),
 });
 
@@ -89,6 +96,15 @@ export function productionCapabilitiesFor(persona: ProCorePersona): ProductionCa
   const c = PRO_CORE_CAPABILITIES[persona];
   return {
     canUseProductionMode: c.canUseProductionMode,
+    canViewExactGrams: c.canViewExactGrams,
+  };
+}
+
+/** Project the PRO CORE capabilities onto the Track C export capability shape. */
+export function exportCapabilitiesFor(persona: ProCorePersona): ExportCapabilities {
+  const c = PRO_CORE_CAPABILITIES[persona];
+  return {
+    canExport: c.canExport,
     canViewExactGrams: c.canViewExactGrams,
   };
 }

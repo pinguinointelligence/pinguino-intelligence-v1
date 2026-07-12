@@ -14,6 +14,7 @@ import { AccountAccessDevPage } from '@/pages/dev/AccountAccessDevPage';
 import { ProductVerificationDevPage } from '@/pages/dev/ProductVerificationDevPage';
 import { ProCoreRecipesDevPage } from '@/pages/dev/ProCoreRecipesDevPage';
 import { ProCoreProductionDevPage } from '@/pages/dev/ProCoreProductionDevPage';
+import { ProCoreCostsDevPage } from '@/pages/dev/ProCoreCostsDevPage';
 import { buildRealIntakeWiring } from '@/features/ocr-intake/ui/intakeWiring';
 import { ReferenceProposalsPage } from '@/pages/dev/ReferenceProposalsPage';
 import { SpineStatusPage } from '@/pages/dev/SpineStatusPage';
@@ -85,6 +86,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/product-verification" element={<ProductVerificationDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/pro-recipes" element={<ProCoreRecipesDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/pro-production" element={<ProCoreProductionDevPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/pro-costs" element={<ProCoreCostsDevPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

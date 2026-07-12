@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   HOME_MAX_SAVED_RECIPES,
   PRO_CORE_CAPABILITIES,
+  exportCapabilitiesFor,
   proCoreCapabilitiesFor,
   productionCapabilitiesFor,
   recipeCapabilitiesFor,
@@ -33,12 +34,19 @@ describe('canonical PRO CORE capability rule', () => {
     expect(productionCapabilitiesFor('pro').canUseProductionMode).toBe(true);
   });
 
-  it('Demo cannot save recipes, view exact grams, or use Production Mode', () => {
+  it('Demo cannot save recipes, view exact grams, use Production Mode, or export', () => {
     const demo = proCoreCapabilitiesFor('demo');
     expect(demo.canSaveRecipe).toBe(false);
     expect(demo.canViewExactGrams).toBe(false);
     expect(demo.canUseProductionMode).toBe(false);
+    expect(demo.canExport).toBe(false);
     expect(demo.maxSavedRecipes).toBe(0);
+  });
+
+  it('exports: Demo cannot export; Home and Pro can', () => {
+    expect(exportCapabilitiesFor('demo')).toEqual({ canExport: false, canViewExactGrams: false });
+    expect(exportCapabilitiesFor('home')).toEqual({ canExport: true, canViewExactGrams: true });
+    expect(exportCapabilitiesFor('pro')).toEqual({ canExport: true, canViewExactGrams: true });
   });
 
   it('Pro has the full saved-recipe capability (unlimited aggregates)', () => {
