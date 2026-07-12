@@ -11,6 +11,7 @@ import { IntakeHubPage } from '@/pages/dev/IntakeHubPage';
 import { OcrIntakePage } from '@/pages/dev/OcrIntakePage';
 import { OcrBatchPage } from '@/pages/dev/OcrBatchPage';
 import { AccountAccessDevPage } from '@/pages/dev/AccountAccessDevPage';
+import { ProductVerificationDevPage } from '@/pages/dev/ProductVerificationDevPage';
 import { buildRealIntakeWiring } from '@/features/ocr-intake/ui/intakeWiring';
 import { ReferenceProposalsPage } from '@/pages/dev/ReferenceProposalsPage';
 import { SpineStatusPage } from '@/pages/dev/SpineStatusPage';
@@ -79,6 +80,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/optimization-preview" element={<OptimizationPreviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/branch-recalculation-preview" element={<BranchRecalculationPreviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/account-access" element={<AccountAccessDevPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/product-verification" element={<ProductVerificationDevPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
