@@ -145,9 +145,9 @@ export interface RecipeCapabilityInput {
   canViewRecipeVersions: boolean;
   canViewExactGrams: boolean;
   /**
-   * The saved-recipe cap. OWNER DECISION: the canonical code contract does not yet pin
-   * Home=1 (it lives only in the account-access draft pack), so this is passed IN by the
-   * capability layer — never hardcoded from a price id here. null = unlimited.
+   * The saved-recipe cap, supplied by the capability layer — never hardcoded from a price id
+   * here. null = unlimited. The canonical rule now lives in `proCoreCapabilities` (owner
+   * decision 2026-07-12): Home = 1 recipe aggregate (versions never count), Pro = unlimited.
    */
   maxSavedRecipes: number | null;
 }
