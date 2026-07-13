@@ -27,7 +27,7 @@ import {
   type RecipeItem,
 } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
-import type { FlavorGroup, ProductProfile } from '@/spine';
+import type { FlavorGroup, NormalizedRecipeIntent, ProductProfile } from '@/spine';
 import type { AssistantIntentDraft } from './conversationalAssistantFlow';
 
 export type IntentRecipeDraftStatus =
@@ -183,8 +183,16 @@ const baseTrace = (
  * Pure — never mutates the input, never saves, never applies. Returns
  * `not_supported` (never a fake recipe) when no safe template exists.
  */
-export function buildStarterRecipeDraft(intentDraft: AssistantIntentDraft): IntentRecipeDraft {
-  const { intent } = intentDraft;
+/**
+ * Core: build the starter recipe draft directly from a normalized intent + batch —
+ * the reusable engine bridge shared by the studio assistant AND the customer flow.
+ * Same locked templates, same demo/reference catalog, same real `calculateRecipe`.
+ */
+export function buildStarterRecipeFromIntent(
+  intent: NormalizedRecipeIntent,
+  batchSizeG: number | null,
+  opts: { complete: boolean; missingRequired: readonly string[] },
+): IntentRecipeDraft {
   const profile = intent.productProfile;
   const flavorText = intent.flavorText ?? null;
   const flavorGroup = intent.flavorGroup;
@@ -193,7 +201,7 @@ export function buildStarterRecipeDraft(intentDraft: AssistantIntentDraft): Inte
     productProfile: profile,
     category: PROFILE_TO_CATEGORY[profile] ?? null,
     servingTemperatureC: intent.servingTemperatureC,
-    batchSizeG: intentDraft.batchSizeG,
+    batchSizeG,
     templateId: null,
     flavorText,
     flavorGroup,
@@ -205,11 +213,11 @@ export function buildStarterRecipeDraft(intentDraft: AssistantIntentDraft): Inte
   };
 
   // 1. the intent itself must be complete before a recipe can start.
-  if (!intentDraft.complete) {
+  if (!opts.complete) {
     return {
       ...shell,
       status: 'blocked',
-      missingFields: intentDraft.missingRequired,
+      missingFields: [...opts.missingRequired],
       warnings: [{ code: 'intent_incomplete', messageKey: 'assistant.starter.intent_incomplete' }],
       trace: baseTrace(null, null, null),
     };
@@ -232,7 +240,6 @@ export function buildStarterRecipeDraft(intentDraft: AssistantIntentDraft): Inte
   }
 
   // 3. a concrete batch size is required to scale the base.
-  const batchSizeG = intentDraft.batchSizeG;
   if (batchSizeG === null || !Number.isFinite(batchSizeG) || batchSizeG <= 0) {
     return {
       ...shell,
@@ -331,4 +338,15 @@ export function buildStarterRecipeDraft(intentDraft: AssistantIntentDraft): Inte
     warnings,
     trace: baseTrace(template.id, template.baseBatchG, scaleFactor),
   };
+}
+
+/**
+ * Build a deterministic starter recipe draft from an assistant intent draft.
+ * Thin wrapper over `buildStarterRecipeFromIntent` (the shared engine bridge).
+ */
+export function buildStarterRecipeDraft(intentDraft: AssistantIntentDraft): IntentRecipeDraft {
+  return buildStarterRecipeFromIntent(intentDraft.intent, intentDraft.batchSizeG, {
+    complete: intentDraft.complete,
+    missingRequired: intentDraft.missingRequired,
+  });
 }
