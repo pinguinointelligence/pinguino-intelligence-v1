@@ -163,8 +163,10 @@ export function useIngredientResolution(
   const results = useMemo(() => {
     if (view !== 'picker' || !activeLine) return [];
     const trimmed = query.trim();
+    // Blank query BROWSES the seeded category (Czekolada → the chocolate rows). Once the
+    // customer types, it becomes a free text search (name / brand / EAN) across categories.
     return searchPickerCatalogue(
-      { text: trimmed === '' ? activeLine.line.ingredientName : trimmed, category: trimmed === '' ? seedCategory : null },
+      { text: trimmed, category: trimmed === '' ? seedCategory : null },
       entries,
     );
   }, [view, activeLine, query, seedCategory, entries]);
