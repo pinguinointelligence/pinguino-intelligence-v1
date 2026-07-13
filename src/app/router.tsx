@@ -25,6 +25,7 @@ import { BranchRecalculationPreviewPage } from '@/pages/dev/BranchRecalculationP
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
+import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import {
   APIPage,
   CreateIngredientPage,
@@ -60,6 +61,9 @@ export function AppRoutes() {
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />
+
+      {/* Customer shell preview — public, mobile-first customer-v1 surface. */}
+      <Route path="/customer-v1" element={<CustomerShellV1 />} />
 
       {/* DEV-ONLY internal tools — registered only in a dev build, never linked in nav.
           In production import.meta.env.DEV is false, so the route is never created and
