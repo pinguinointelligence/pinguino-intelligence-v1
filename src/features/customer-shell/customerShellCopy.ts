@@ -36,7 +36,7 @@ export const customerShellCopy = {
 
   /* ---------------------------------------------------------------- Home -- */
   home: {
-    headline: 'Co dzisiaj robimy?',
+    headline: 'Jakie lody dziś robimy?',
     subhead: 'Opisz swoje lody własnymi słowami — resztą zajmiemy się razem.',
     placeholder: 'Powiedz lub napisz, jakie lody chcesz przygotować…',
     inputLabel: 'Twój pomysł na lody',

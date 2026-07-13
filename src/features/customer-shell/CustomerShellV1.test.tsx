@@ -19,7 +19,7 @@ describe('CustomerShellV1', () => {
   it('renders the home headline', () => {
     const html = render();
     expect(html).toContain(copy.home.headline);
-    expect(html).toContain('Co dzisiaj robimy?');
+    expect(html).toContain('Jakie lody dziś robimy?');
   });
 
   it('shows the example affordance and the voice/text entry', () => {
