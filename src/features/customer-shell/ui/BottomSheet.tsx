@@ -39,7 +39,7 @@ export function BottomSheet({ open, onClose, title, children, footer, className 
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-ink/40 motion-safe:animate-[fadeIn_150ms_ease-out]"
+        className="absolute inset-0 bg-black/60 motion-safe:animate-[fadeIn_150ms_ease-out]"
       />
       <div
         role="dialog"

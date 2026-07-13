@@ -18,7 +18,7 @@
  * Presentation only: no engine math, no IO beyond the browser's own optional
  * speech-recognition, no persistence.
  */
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   createCustomerFlow,
   setProductType,
@@ -40,6 +40,11 @@ import {
   buildCustomerRecipeStructure,
   buildRecipeStructure,
   gramVisibilityForPersona,
+  FLAVOR_INTENSITY_OPTIONS,
+  setFlavorIntensity,
+  getFlavorIntensity,
+  type FlavorIntensity,
+  type FlavorIntensityPreferences,
   type CustomerFlowState,
   type CustomerPersona,
   type CustomerProductType,
@@ -57,6 +62,7 @@ import { CATALOGUE_FIXTURES } from '@/features/customer-flow/__fixtures__/catalo
 import {
   CustomerSurface,
   CustomerSection,
+  CustomerMenu,
   TouchButton,
   TextField,
   MicrophoneButton,
@@ -66,9 +72,12 @@ import {
   BatchSelector,
   ReadyRecipeCard,
   IngredientRow,
+  BottomSheet,
   TechnicalDetails,
   StickyCta,
   EmptyStateView,
+  customerDarkVars,
+  customerDarkPageBg,
   type MicState,
 } from '@/features/customer-shell/ui';
 import { customerShellCopy as copy } from './customerShellCopy';
@@ -213,9 +222,12 @@ function pluralSkladnik(n: number): string {
   return copy.result.needsRefinementNoun.many;
 }
 
-/** Honest "recipe needs refinement (N ingredients)" line — never a fake total. */
+/**
+ * Honest "recipe is almost ready — refine the intensity of N ingredients" line.
+ * Never a fake total, and never a "fully calculated" claim while any dose is open.
+ */
 function needsRefinementText(n: number): string {
-  return `${copy.result.needsRefinementPrefix} (${n} ${pluralSkladnik(n)})`;
+  return `${copy.result.needsRefinementPrefix} ${n} ${pluralSkladnik(n)}.`;
 }
 
 const noteText = (code: string): string => copy.tech.notes[code] ?? code;
@@ -241,13 +253,20 @@ function Notice({ children }: { children: ReactNode }) {
   );
 }
 
-/** Small, honest, non-alarming preview framing pinned to the top of the surface. */
-function PreviewNote() {
+/**
+ * The DARK shell wrapper. Carries the scoped dark palette as inline CSS custom
+ * properties + a deep near-black page backdrop, so EVERY descendant — including
+ * fixed-position children (sticky CTA, bottom sheets, the nav drawer) — inherits
+ * the dark theme. It never touches global CSS, so the rest of the app is untouched.
+ * `min-h-[100dvh]` keeps the backdrop filling the viewport (no white gaps).
+ */
+function DarkShell({ children }: { children: ReactNode }) {
   return (
-    <div className="pt-1">
-      <span className="inline-flex items-center rounded-full border border-ink/10 bg-stone-50 px-3 py-1 text-[12px] leading-none tracking-wide text-stone-500">
-        {copy.preview.note}
-      </span>
+    <div
+      className="min-h-[100dvh] w-full"
+      style={{ ...customerDarkVars, backgroundColor: customerDarkPageBg } as CSSProperties}
+    >
+      {children}
     </div>
   );
 }
@@ -271,6 +290,16 @@ export function CustomerShellV1() {
   const [forceBatchEdit, setForceBatchEdit] = useState(false);
   const [servingId, setServingId] = useState<ServingId | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<ReadyRecipeWorkingDraft | null>(null);
+
+  // Friendly unresolved-dose UX: intensity is a PREFERENCE ONLY (never grams).
+  const [intensityPrefs, setIntensityPrefs] = useState<FlavorIntensityPreferences>({});
+  const [intensityTag, setIntensityTag] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [manualDoseDraft, setManualDoseDraft] = useState('');
+  const [manualDoseByTag, setManualDoseByTag] = useState<Record<string, number>>({});
+  // Per-row actions sheet (substitute / remove / why …).
+  const [moreLine, setMoreLine] = useState<{ id: string; name: string } | null>(null);
+  const [whyOpen, setWhyOpen] = useState(false);
 
   // Speech (browser-only, optional).
   const [listening, setListening] = useState(false);
@@ -298,6 +327,26 @@ export function CustomerShellV1() {
     setForceBatchEdit(false);
     setServingId(null);
     setSelectedDraft(null);
+    setIntensityPrefs({});
+    setIntensityTag(null);
+    setAdvancedOpen(false);
+    setManualDoseDraft('');
+    setManualDoseByTag({});
+    setMoreLine(null);
+    setWhyOpen(false);
+  };
+
+  /** Open the intensity sheet for a flavor tag with a clean advanced sub-state. */
+  const openIntensity = (tag: string) => {
+    setAdvancedOpen(false);
+    setManualDoseDraft('');
+    setIntensityTag(tag);
+  };
+
+  /** Open the per-row actions sheet for a line. */
+  const openMore = (id: string, name: string) => {
+    setWhyOpen(false);
+    setMoreLine({ id, name });
   };
 
   const handleMic = () => {
@@ -331,43 +380,50 @@ export function CustomerShellV1() {
   /* -------------------------------------------------------------- Home -- */
   if (flow === null) {
     return (
-      <CustomerSurface>
-        <DevPersonaSelect persona={persona} onChange={setPersona} />
-        <PreviewNote />
-        <header className="pt-2">
-          <h1 className="text-[28px] font-light leading-[1.15] tracking-tight text-ink sm:text-[34px]">
-            {copy.home.headline}
-          </h1>
-          <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-stone-600">
-            {copy.home.subhead}
-          </p>
-        </header>
+      <DarkShell>
+        <CustomerSurface>
+          <CustomerMenu />
+          {/* Responsive hero offset: push the opening interaction ~20-25% down the
+              first viewport using small-viewport height (svh, browser-chrome-aware),
+              clamped so it never grows awkward on very tall or very short screens. */}
+          <div style={{ paddingTop: 'clamp(2rem, 14svh, 9rem)' }}>
+            <DevPersonaSelect persona={persona} onChange={setPersona} />
+            <header className="pt-2">
+              <h1 className="text-[28px] font-light leading-[1.15] tracking-tight text-ink sm:text-[34px]">
+                {copy.home.headline}
+              </h1>
+              <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-stone-600">
+                {copy.home.subhead}
+              </p>
+            </header>
 
-        <div className="mt-8">
-          <TextField
-            label={copy.home.inputLabel}
-            placeholder={copy.home.placeholder}
-            value={draftText}
-            onChange={(e) => setDraftText(e.target.value)}
-            trailing={<MicrophoneButton state={micState} label={copy.mic[micLabelKey(micState)]} onClick={handleMic} />}
-          />
-          <div className="mt-3">
-            <TouchButton variant="quiet" size="md" onClick={() => setDraftText(copy.home.example)}>
-              {copy.home.tryExample}
-            </TouchButton>
+            <div className="mt-8">
+              <TextField
+                label={copy.home.inputLabel}
+                placeholder={copy.home.placeholder}
+                value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+                trailing={<MicrophoneButton state={micState} label={copy.mic[micLabelKey(micState)]} onClick={handleMic} />}
+              />
+              <div className="mt-3">
+                <TouchButton variant="quiet" size="md" onClick={() => setDraftText(copy.home.example)}>
+                  {copy.home.tryExample}
+                </TouchButton>
+              </div>
+              <div className="mt-6">
+                <TouchButton
+                  block
+                  size="lg"
+                  disabled={draftText.trim() === ''}
+                  onClick={() => setFlow(createCustomerFlow({ text: draftText.trim() }))}
+                >
+                  {copy.home.next}
+                </TouchButton>
+              </div>
+            </div>
           </div>
-          <div className="mt-6">
-            <TouchButton
-              block
-              size="lg"
-              disabled={draftText.trim() === ''}
-              onClick={() => setFlow(createCustomerFlow({ text: draftText.trim() }))}
-            >
-              {copy.home.next}
-            </TouchButton>
-          </div>
-        </div>
-      </CustomerSurface>
+        </CustomerSurface>
+      </DarkShell>
     );
   }
 
@@ -628,11 +684,11 @@ export function CustomerShellV1() {
 
   /* ----------------------------------------------------------- Render -- */
   return (
-    <>
+    <DarkShell>
       <CustomerSurface hasStickyCta={showStickyUpgrade}>
+        <CustomerMenu />
         <DevPersonaSelect persona={persona} onChange={setPersona} />
-        <PreviewNote />
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-4">
           <h1 className="text-[22px] font-medium tracking-tight text-ink">{copy.home.headline}</h1>
           <TouchButton variant="quiet" size="md" onClick={resetAll}>
             {copy.home.restart}
@@ -910,13 +966,36 @@ export function CustomerShellV1() {
               <div className="mt-1 divide-y divide-ink/10">
                 {view.lines.map((line) => {
                   const unresolved = line.resolution !== 'resolved';
+                  const isFlavor = line.ingredientId.startsWith('flavor:');
+                  const tag = isFlavor ? line.ingredientId.slice('flavor:'.length) : null;
+                  // A recognized flavor with no safe dose gets the friendly, tappable
+                  // intensity affordance; other unresolved lines keep an honest label.
+                  const showsIntensity = unresolved && isFlavor && line.resolution === 'needs_dose' && tag !== null;
+                  const chosen = tag !== null ? getFlavorIntensity(intensityPrefs, tag) : null;
                   return (
                     <IngredientRow
                       key={line.ingredientId}
                       name={line.ingredientName}
                       locked={!unresolved && line.grams === undefined}
+                      lockedLabel={copy.result.lockedInPlans}
                       amount={line.grams !== undefined ? `${line.grams} ${copy.device.unitGrams}` : undefined}
-                      requirement={unresolved ? copy.result.resolutionLabels[line.resolution] : undefined}
+                      requirement={
+                        unresolved && !showsIntensity
+                          ? (copy.result.resolutionCta[line.resolution] ?? copy.result.resolutionLabels[line.resolution])
+                          : undefined
+                      }
+                      intensity={
+                        showsIntensity && tag !== null
+                          ? {
+                              label: chosen
+                                ? `${copy.intensity.rowChosenPrefix}: ${copy.intensity.options[chosen]}`
+                                : copy.intensity.rowCta,
+                              onClick: () => openIntensity(tag),
+                            }
+                          : undefined
+                      }
+                      onMore={() => openMore(line.ingredientId, line.ingredientName)}
+                      moreLabel={`${copy.rowActions.moreForPrefix}: ${line.ingredientName}`}
                     />
                   );
                 })}
@@ -945,7 +1024,126 @@ export function CustomerShellV1() {
           </div>
         </StickyCta>
       ) : null}
-    </>
+
+      {/* Friendly intensity picker — captures a PREFERENCE only, never grams. */}
+      {intensityTag !== null
+        ? (() => {
+            const tag = intensityTag;
+            const chosen = getFlavorIntensity(intensityPrefs, tag);
+            const manual = manualDoseByTag[tag];
+            return (
+              <BottomSheet
+                open
+                onClose={() => setIntensityTag(null)}
+                title={copy.intensity.sheetTitle}
+                footer={
+                  <TouchButton block onClick={() => setIntensityTag(null)}>
+                    {copy.intensity.close}
+                  </TouchButton>
+                }
+              >
+                <p className="text-[13px] text-stone-500">
+                  {copy.intensity.sheetFlavorPrefix}: {flavorLabel(tag)}
+                </p>
+                <div className="mt-4 grid grid-cols-1 gap-3">
+                  {FLAVOR_INTENSITY_OPTIONS.map((opt: FlavorIntensity) => (
+                    <SelectableCard
+                      key={opt}
+                      title={copy.intensity.options[opt]}
+                      selected={chosen === opt}
+                      onSelect={() => setIntensityPrefs((p) => setFlavorIntensity(p, tag, opt))}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-4">
+                  <TouchButton variant="quiet" size="md" onClick={() => setAdvancedOpen((v) => !v)}>
+                    {copy.intensity.advanced}
+                  </TouchButton>
+                </div>
+                {advancedOpen ? (
+                  <div className="mt-3 space-y-3">
+                    <Notice>{copy.intensity.advancedNote}</Notice>
+                    {/* Manual gram entry ONLY where grams are visible (Home/Pro) —
+                        never in the Demo payload, so no number can leak. */}
+                    {view.gramsVisible ? (
+                      <>
+                        <div className="flex items-end gap-2">
+                          <TextField
+                            className="flex-1"
+                            label={copy.intensity.manualLabel}
+                            inputMode="numeric"
+                            placeholder={copy.intensity.manualPlaceholder}
+                            value={manualDoseDraft}
+                            onChange={(e) => setManualDoseDraft(e.target.value)}
+                          />
+                          <TouchButton
+                            disabled={manualDoseDraft.trim() === ''}
+                            onClick={() => {
+                              const g = Number(manualDoseDraft.replace(',', '.'));
+                              if (!Number.isFinite(g) || g <= 0) return;
+                              setManualDoseByTag((m) => ({ ...m, [tag]: Math.round(g) }));
+                            }}
+                          >
+                            {copy.intensity.manualConfirm}
+                          </TouchButton>
+                        </div>
+                        {manual !== undefined ? (
+                          <p className="text-[13px] text-stone-500">
+                            {copy.intensity.manualSetPrefix}: {manual} {copy.device.unitGrams}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+              </BottomSheet>
+            );
+          })()
+        : null}
+
+      {/* Per-row ingredient actions — labels/affordances present (engine wiring
+          is out of scope); "Po co…" shows an honest explanation. */}
+      {moreLine !== null ? (
+        <BottomSheet
+          open
+          onClose={() => setMoreLine(null)}
+          title={`${copy.rowActions.sheetTitlePrefix}: ${moreLine.name}`}
+          footer={
+            <TouchButton block variant="secondary" onClick={() => setMoreLine(null)}>
+              {copy.rowActions.close}
+            </TouchButton>
+          }
+        >
+          <div className="flex flex-col gap-2">
+            {[
+              { key: 'substitute', label: copy.rowActions.substitute },
+              { key: 'dontHave', label: copy.rowActions.dontHave },
+              { key: 'change', label: copy.rowActions.change },
+              { key: 'remove', label: copy.rowActions.remove },
+              { key: 'why', label: copy.rowActions.why },
+            ].map((a) => (
+              <TouchButton
+                key={a.key}
+                block
+                variant="secondary"
+                size="lg"
+                onClick={() => {
+                  if (a.key === 'why') {
+                    setWhyOpen((v) => !v);
+                    return;
+                  }
+                  setMoreLine(null);
+                }}
+              >
+                {a.label}
+              </TouchButton>
+            ))}
+            {whyOpen ? <Notice>{copy.rowActions.whyBody}</Notice> : null}
+          </div>
+        </BottomSheet>
+      ) : null}
+    </DarkShell>
   );
 }
 

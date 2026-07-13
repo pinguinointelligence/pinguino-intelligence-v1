@@ -37,18 +37,26 @@ interface FlavorSynonymRule {
    * counts as a hit — this covers Polish inflection by prefix (malina / maliną /
    * malinowy / maliny all start with "malin") while avoiding mid-word matches.
    */
-  stems: readonly string[];
+  stems?: readonly string[];
+  /**
+   * Exact whole-token matches (ASCII, diacritics-stripped) for short words where a
+   * bare prefix would over-match an unrelated word — e.g. "rum" must map to rum
+   * WITHOUT swallowing "rumianek" (chamomile). A token that EQUALS one of these
+   * counts as a hit.
+   */
+  tokens?: readonly string[];
 }
 
 /**
- * Stem → flavor tag. Stems are long enough to be distinctive and to cover Polish
- * inflection by prefix. Tags are EXACTLY the spine's existing flavor tags.
+ * Stem / token → flavor tag. Stems are long enough to be distinctive and to cover
+ * Polish inflection by prefix; tokens pin short words to their exact inflected
+ * forms. Tags are EXACTLY the spine's existing flavor tags.
  */
 const FLAVOR_SYNONYM_RULES: readonly FlavorSynonymRule[] = [
   { tag: 'chocolate', stems: ['czekolad'] }, // czekolada / czekoladą / czekoladowe
   { tag: 'raspberry', stems: ['malin'] }, // malina / maliną / malinowy / maliny
   { tag: 'strawberry', stems: ['truskawk'] }, // truskawka / truskawką / truskawkowy
-  { tag: 'vanilla', stems: ['wanili'] }, // wanilia / wanilią / waniliowy
+  { tag: 'vanilla', stems: ['wanili'] }, // wanilia / waniliowe / waniliowy / wanilią / wanilii
   { tag: 'pistachio', stems: ['pistacj'] }, // pistacja / pistacją / pistacjowy
   { tag: 'hazelnut', stems: ['laskow'] }, // orzech laskowy / laskową
   { tag: 'mint', stems: ['miet'] }, // mięta / miętą / miętowy (mieta after strip)
@@ -57,6 +65,9 @@ const FLAVOR_SYNONYM_RULES: readonly FlavorSynonymRule[] = [
   { tag: 'orange', stems: ['pomarancz'] }, // pomarańcza / pomarańczą / pomarańczowy
   { tag: 'mango', stems: ['mango'] }, // mango
   { tag: 'whisky', stems: ['whisk'] }, // whisky / whiskey
+  // Rum: exact noun forms + the "rumow-" adjective stem, so "rumianek" (chamomile)
+  // and "rumsztyk" (rump steak) are NOT mistaken for rum.
+  { tag: 'rum', tokens: ['rum', 'rumu', 'rumem', 'rumie', 'rumy', 'rumow'], stems: ['rumow'] },
 ];
 
 /**
@@ -74,7 +85,11 @@ export function detectPolishFlavorTags(rawText: string | null | undefined): stri
   const tokens = normalized.split(' ');
   const out: string[] = [];
   for (const rule of FLAVOR_SYNONYM_RULES) {
-    const hit = tokens.some((tok) => rule.stems.some((stem) => tok.startsWith(stem)));
+    const hit = tokens.some(
+      (tok) =>
+        (rule.stems?.some((stem) => tok.startsWith(stem)) ?? false) ||
+        (rule.tokens?.includes(tok) ?? false),
+    );
     if (hit && !out.includes(rule.tag)) out.push(rule.tag);
   }
   return out;

@@ -11,6 +11,7 @@ export * from './tokens';
 
 // Frame
 export { CustomerSurface, CustomerSection } from './CustomerSurface';
+export { CustomerMenu } from './CustomerMenu';
 
 // Controls
 export { TouchButton } from './TouchButton';

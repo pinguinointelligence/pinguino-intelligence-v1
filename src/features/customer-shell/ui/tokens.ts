@@ -1,19 +1,26 @@
 /**
  * Customer-shell design tokens (SCOPED — presentational only).
  *
- * A mobile-first, Apple-flavoured customer surface: white/light premium, large
- * type, generous whitespace, big touch targets, clear selected states, restrained
- * motion. This module does NOT edit the global Tailwind theme or index.css — it
- * COMPOSES the already-defined brand utilities (ink / paper / stone / ivory /
- * status-*) into named, reusable class strings scoped to `customer-shell`.
+ * A mobile-first, Apple-flavoured customer surface: a DARK premium look (deep
+ * near-black backdrop, near-white primary text, lifted dark card surfaces, subtle
+ * hairline borders), large type, generous whitespace, big touch targets, clear
+ * selected states, restrained motion. This module does NOT edit the global
+ * Tailwind theme or index.css — it COMPOSES the already-defined brand utilities
+ * (ink / paper / stone / status-*) into named, reusable class strings, and the
+ * DARK palette is applied purely by re-mapping the underlying CSS variables on the
+ * shell root (see `customerDarkVars` / `customerDarkPageBg`).
  *
- * Reused global tokens (from src/styles/tokens.css): `ink` (#101113),
- * `paper` (#ffffff), `ivory` (#efe9dc), `status-ideal|risky|error`, `--font-mono`,
- * plus Tailwind's built-in `stone-*` grey ramp. No new colours are introduced.
+ * How the dark theme works WITHOUT rewriting every class: in Tailwind v4 each
+ * colour utility resolves through a CSS variable (`bg-paper` → `var(--color-paper)`,
+ * `text-stone-600` → `var(--color-stone-600)`, `border-ink/10` mixes `var(--color-ink)`).
+ * Applying `customerDarkVars` as inline custom properties on the shell root re-themes
+ * the whole subtree — structure preserved, only the colours flip. It is scoped: it
+ * never touches `:root`, so the rest of the app (white lab surfaces) is unaffected.
  *
- * Contrast policy: primary text uses `ink` on `paper` (~19:1). Secondary text
- * never goes lighter than `stone-500` (~4.6:1 on white — AA for body). `stone-400`
- * is reserved for placeholders / decorative glyphs only.
+ * Contrast policy (on the ~#0c0d0f backdrop / ~#161719 cards): primary text is
+ * near-white `ink` (~15:1). Secondary text never goes darker than the remapped
+ * `stone-600` (~9:1). `stone-500` (~6:1) is for muted labels; `stone-400` (~5:1)
+ * is reserved for placeholders / decorative glyphs — all comfortably AA on black.
  */
 
 /* ------------------------------------------------------------------ *
@@ -151,3 +158,42 @@ export const cardShell = `${color.surface} border ${color.borderHairline} ${radi
 
 /** An interactive surface (selectable / tappable) — base state. */
 export const interactiveSurface = `${cardShell} ${motion.base} ${focusRing} active:scale-[0.99]`;
+
+/* ------------------------------------------------------------------ *
+ * DARK premium palette (scoped CSS-variable overrides)               *
+ * ------------------------------------------------------------------ */
+
+/**
+ * The deep near-black page backdrop. Sits BELOW the lifted card surface
+ * (`--color-paper`) so cards read as raised, not flat.
+ */
+export const customerDarkPageBg = '#0c0d0f';
+
+/**
+ * CSS custom-property overrides that flip the whole customer surface to the dark
+ * palette. Apply as an inline `style` on the shell root; every scoped colour
+ * utility resolves through these variables, so the flip is automatic and the
+ * component class strings stay unchanged.
+ *
+ * Role split (so `ink` works both as foreground AND as the inverted primary
+ * button, and the `stone` ramp serves surfaces at the low end / text at the high
+ * end):
+ *  - ink        → near-white: text, hairlines, focus ring, selected outline, and
+ *                 the primary-button fill (a light button with dark `paper` text);
+ *  - paper      → lifted dark card / control / drawer surface;
+ *  - stone 50…200 → progressively lighter dark SURFACES (insets, blocks, shimmer);
+ *  - stone 300  → decorative glyphs; 400 placeholders; 500 muted labels;
+ *  - stone 600  → secondary body text (highest contrast of the ramp).
+ */
+export const customerDarkVars: Record<string, string> = {
+  '--color-ink': '#f4f4f2',
+  '--color-ink-soft': '#e6e5e1',
+  '--color-paper': '#161719',
+  '--color-stone-50': '#1e2023',
+  '--color-stone-100': '#24262a',
+  '--color-stone-200': '#2b2d32',
+  '--color-stone-300': '#6b6d74',
+  '--color-stone-400': '#9a9ca3',
+  '--color-stone-500': '#b6b8be',
+  '--color-stone-600': '#d2d4da',
+};

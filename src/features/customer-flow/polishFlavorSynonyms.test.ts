@@ -46,4 +46,37 @@ describe('Polish flavor synonyms — inflected words map to the right flavor tag
     expect(detectPolishFlavorTags('')).toEqual([]);
     expect(detectPolishFlavorTags(null)).toEqual([]);
   });
+
+  it('covers every required vanilla inflection', () => {
+    for (const w of ['wanilia', 'waniliowe', 'waniliowy', 'waniliowa', 'wanilią', 'wanilii']) {
+      expect(detectPolishFlavorTags(w)).toContain('vanilla');
+    }
+  });
+
+  it('maps rum and its inflected forms to the rum tag', () => {
+    for (const w of ['rum', 'rumem', 'rumu', 'rumie', 'rumy', 'rumowy', 'rumowe', 'rumową']) {
+      expect(detectPolishFlavorTags(w)).toContain('rum');
+    }
+  });
+
+  it('does not mistake chamomile ("rumianek") or rump steak ("rumsztyk") for rum', () => {
+    expect(detectPolishFlavorTags('rumianek')).not.toContain('rum');
+    expect(detectPolishFlavorTags('napar z rumianku')).not.toContain('rum');
+    expect(detectPolishFlavorTags('rumsztyk')).not.toContain('rum');
+  });
+
+  it('keeps every recognized flavor in the PART 5 regression sentences', () => {
+    expect(detectPolishFlavorTags('lody waniliowe z rumem i whisky')).toEqual(
+      expect.arrayContaining(['vanilla', 'rum', 'whisky']),
+    );
+    expect(detectPolishFlavorTags('wanilia, rum i whisky')).toEqual(
+      expect.arrayContaining(['vanilla', 'rum', 'whisky']),
+    );
+    expect(detectPolishFlavorTags('waniliowe z dodatkiem bazylii')).toEqual(
+      expect.arrayContaining(['vanilla', 'basil']),
+    );
+    expect(detectPolishFlavorTags('czekoladowe z wanilią i maliną')).toEqual(
+      expect.arrayContaining(['chocolate', 'vanilla', 'raspberry']),
+    );
+  });
 });

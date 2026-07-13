@@ -10,10 +10,28 @@
  */
 
 export const customerShellCopy = {
-  /* ------------------------------------------------------------- Preview -- */
-  preview: {
-    /** Small, honest, non-alarming framing shown at the top of the surface. */
-    note: 'Wersja poglądowa — przykłady mają charakter poglądowy.',
+  /* ------------------------------------------------------------------ Menu -- */
+  menu: {
+    brand: 'PINGÜINO',
+    open: 'Otwórz menu',
+    close: 'Zamknij menu',
+    title: 'Menu',
+    sectionMain: 'Nawigacja',
+    sectionAccount: 'Konto',
+    signIn: 'Zaloguj się',
+    signOut: 'Wyloguj się',
+    signedInAs: 'Zalogowano',
+    authUnavailable: 'Logowanie jest chwilowo niedostępne.',
+    classic: 'Wersja klasyczna',
+    /** Keyed by CUSTOMER_MENU_ITEMS[].key — labels for the real routes only. */
+    primary: {
+      home: 'Strona główna',
+      studio: 'Studio',
+      recipes: 'Gotowe receptury',
+      myRecipes: 'Moje receptury',
+      label: 'Etykiety',
+      subscription: 'Subskrypcja / Plany',
+    },
   },
 
   /* ---------------------------------------------------------------- Home -- */
@@ -241,19 +259,62 @@ export const customerShellCopy = {
     ingredientsTitle: 'Składniki',
     deviceNone: 'nie wybrano',
     servingNone: 'nie wybrano',
+    /** Compact locked stand-in label for Demo base lines (no gram number). */
+    lockedInPlans: 'Ilość w Home i Pro',
     /** Honest right-side requirement labels for lines with no safe dose yet. */
     resolutionLabels: {
       needs_ingredient: 'wymaga wyboru składnika',
       needs_dose: 'wymaga potwierdzenia dawki',
     } as Record<string, string>,
-    /** Shown when at least one flavor line is still an open requirement. */
-    needsRefinementPrefix: 'Receptura wymaga doprecyzowania',
+    /** Friendly, TAPPABLE call-to-action per unresolved line kind. */
+    resolutionCta: {
+      needs_ingredient: 'Wybierz składnik',
+      needs_dose: 'Ustal intensywność smaku',
+    } as Record<string, string>,
+    /** Friendly "almost ready" status — never claims a fully calculated recipe. */
+    needsRefinementPrefix: 'Receptura jest prawie gotowa — doprecyzuj intensywność',
     needsRefinementNoun: {
-      one: 'składnik',
-      few: 'składniki',
+      one: 'składnika',
+      few: 'składników',
       many: 'składników',
     },
     fullyResolvedNote: 'Wszystkie składniki są wstępnie rozpisane.',
+  },
+
+  /* -------------------------------------------------------- Flavor intensity -- */
+  intensity: {
+    rowCta: 'Ustal intensywność smaku',
+    rowChosenPrefix: 'Intensywność',
+    sheetTitle: 'Jak intensywny ma być ten smak?',
+    sheetFlavorPrefix: 'Smak',
+    options: {
+      delicate: 'Delikatny',
+      pronounced: 'Wyraźny',
+      strong: 'Mocny',
+    },
+    advanced: 'Ustawienia zaawansowane',
+    advancedNote:
+      'Twój wybór zapisujemy jako preferencję smaku — nie zamieniamy go po cichu na gramy. Dokładną ilość wyliczymy dopiero, gdy pojawi się zweryfikowana reguła dla tego smaku, albo gdy podasz ilość ręcznie w planie Home lub Pro.',
+    manualLabel: 'Ręczna ilość (g)',
+    manualPlaceholder: 'np. 20',
+    manualConfirm: 'Ustaw ręcznie',
+    manualSetPrefix: 'Ustawiono ręcznie',
+    close: 'Gotowe',
+  },
+
+  /* ---------------------------------------------------- Ingredient row actions -- */
+  rowActions: {
+    more: 'Więcej opcji',
+    moreForPrefix: 'Opcje składnika',
+    sheetTitlePrefix: 'Składnik',
+    substitute: 'Zastąp składnik',
+    dontHave: 'Nie mam tego składnika',
+    change: 'Zmień',
+    remove: 'Usuń',
+    why: 'Po co jest ten składnik?',
+    whyBody:
+      'Ten składnik należy do bazowej struktury tej receptury. Dokładne proporcje wylicza silnik po odblokowaniu — tutaj pokazujemy tylko, z czego składa się przepis.',
+    close: 'Zamknij',
   },
 
   /* ---------------------------------------------------------------- Upgrade -- */

@@ -10,6 +10,7 @@ export * from './naturalLanguageBatch';
 export * from './polishFlavorSynonyms';
 export * from './devicePresets';
 export * from './customerFlow';
+export * from './flavorIntensity';
 export * from './recipeStructure';
 export * from './readyRecipeMatching';
 export * from './recipeView';

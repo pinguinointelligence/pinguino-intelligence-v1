@@ -13,18 +13,18 @@ interface CustomerSurfaceProps {
 }
 
 /**
- * Root frame for the customer shell. Provides the scoped light surface WITHOUT
- * touching global CSS: white paper background, ink text, a single readable column
- * on mobile that widens (but never sprawls into a dense dashboard) on desktop,
- * and horizontal safe-area insets. One column always — max content width is
- * `customerSpec.contentMaxWidthPx`.
+ * Root frame for the customer shell. Provides the scoped surface WITHOUT touching
+ * global CSS: ink text, a single readable column on mobile that widens (but never
+ * sprawls into a dense dashboard) on desktop, and horizontal safe-area insets. The
+ * background is intentionally transparent so the dark page backdrop supplied by the
+ * shell wrapper shows through — cards (`bg-paper`) then read as lifted above it.
+ * One column always — max content width is `customerSpec.contentMaxWidthPx`.
  */
 export function CustomerSurface({ children, hasStickyCta = false, className }: CustomerSurfaceProps) {
   return (
     <div
       className={cn(
         'customer-shell min-h-full w-full overflow-x-hidden',
-        color.surface,
         color.textPrimary,
         type.body,
         safeArea.x,
