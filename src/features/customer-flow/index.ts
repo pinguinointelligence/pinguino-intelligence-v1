@@ -9,6 +9,7 @@ export * from './types';
 export * from './naturalLanguageBatch';
 export * from './polishFlavorSynonyms';
 export * from './devicePresets';
+export * from './servingMode';
 export * from './customerFlow';
 export * from './flavorIntensity';
 export * from './recipeStructure';

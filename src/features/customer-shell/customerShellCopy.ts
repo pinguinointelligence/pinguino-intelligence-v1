@@ -157,6 +157,22 @@ export const customerShellCopy = {
     },
   },
 
+  /* ---------------------------------------------- Serving / machine modes (six) -- */
+  modes: {
+    label: 'Tryb',
+    title: 'Jak przygotujesz lody?',
+    lead: 'Wybierz temperaturę podania albo tryb maszyny. Tryby Ninja mają zatwierdzoną masę wsadu.',
+    /** Keyed by ServingModeId. Direct temperatures + our fresh machine + two Ninja profiles. */
+    options: {
+      temp_minus_11: { label: '−11°C', secondary: 'Bardziej miękkie' },
+      temp_minus_12: { label: '−12°C', secondary: 'Klasyczne do gałek' },
+      temp_minus_13: { label: '−13°C', secondary: 'Bardziej zwarte' },
+      fresh: { label: 'Świeże', secondary: 'Nasza maszyna · świeża produkcja' },
+      ninja_gelato: { label: 'Ninja Gelato', secondary: 'Profil Ninja · bardziej zwarte' },
+      ninja_swirl: { label: 'Ninja Swirl', secondary: 'Profil Ninja · bardziej miękkie' },
+    },
+  },
+
   /* --------------------------------------------------- Device capacity confirm -- */
   capacity: {
     label: 'Pojemność',
@@ -190,9 +206,7 @@ export const customerShellCopy = {
     source: {
       user: 'wybrana przez Ciebie',
       text: 'rozpoznana z Twojego zdania',
-      device_verified: 'ustawiona dla wybranego urządzenia',
-      device_confirmed: 'potwierdzona pojemność urządzenia',
-      device_unverified: 'oczekuje na potwierdzenie',
+      mode_ninja: 'zatwierdzona masa trybu Ninja',
       none: 'jeszcze nieustalona',
     },
   },
@@ -255,6 +269,8 @@ export const customerShellCopy = {
     typeLabel: 'Rodzaj',
     deviceLabel: 'Urządzenie',
     servingLabel: 'Podanie',
+    modeLabel: 'Tryb',
+    modeNone: 'nie wybrano',
     batchLabel: 'Ilość',
     ingredientsTitle: 'Składniki',
     deviceNone: 'nie wybrano',
@@ -407,6 +423,8 @@ export const customerShellCopy = {
     batchSource: 'Źródło ilości',
     batchGrams: 'Ilość (g)',
     servingProfile: 'Profil podania',
+    mode: 'Tryb',
+    calcTemperature: 'Profil obliczeniowy',
     recipeStatus: 'Status receptury',
     sourceRecipe: 'Receptura źródłowa',
     advancedTitle: 'Zaawansowane (dev)',
@@ -432,6 +450,7 @@ export const customerShellCopy = {
       'customer_flow.chocolate_routed_internally': 'Czekolada prowadzona wewnętrznie (widoczne: Gelato).',
       'customer_flow.chocolate_sorbet_kept_as_sorbet': 'Czekolada przy sorbecie — pozostaje sorbetem.',
       'customer_flow.batch_recognized_from_text': 'Ilość rozpoznana z Twojego zdania.',
+      'customer_flow.batch_from_ninja_mode': 'Ilość ustawiona z zatwierdzonej masy receptury dla trybu Ninja (nie przeliczamy ml na gramy).',
       'customer_flow.batch_volume_needs_density': 'Podano objętość — bez gęstości nie przeliczamy jej na gramy.',
       'customer_flow.batch_from_verified_device': 'Ilość ustawiona z zatwierdzonej masy receptury dla wybranego urządzenia (nie przeliczamy ml na gramy).',
       'customer_flow.device_capacity_confirmed': 'Pojemność urządzenia potwierdzona przez Ciebie.',

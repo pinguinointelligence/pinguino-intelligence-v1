@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   activeFlavorChips,
   addFlavorChip,
-  confirmDeviceCapacity,
   createCustomerFlow,
   detectedFlavorTags,
   flowStatus,
@@ -12,7 +11,8 @@ import {
   removeFlavorChip,
   resolveBatch,
   resolveProductType,
-  selectDevicePreset,
+  resolveServingRoute,
+  selectServingMode,
   setBatchGrams,
   setProductType,
 } from './customerFlow';
@@ -20,13 +20,6 @@ import { buildCustomerRecipeStructure } from './recipeStructure';
 import { buildCustomerRecipeView, gramVisibilityForPersona, type CustomerRecipeInput } from './recipeView';
 import { parseBatchFromText } from './naturalLanguageBatch';
 import { CUSTOMER_PRODUCT_TYPE_CHOICES } from './types';
-import { classifyDeviceCapacity, type DevicePreset } from './devicePresets';
-import {
-  NINJA_CREAMI,
-  NINJA_CREAMI_SCOOP_SWIRL,
-  NINJA_CREAMI_DELUXE,
-  PROFESSIONAL_MACHINE,
-} from './__fixtures__/deviceFixtures';
 
 describe('customer flow — product type never exposes chocolate', () => {
   it('the visible product-type question offers exactly gelato/sorbet/vegan/protein', () => {
@@ -80,49 +73,33 @@ describe('(2) "Gelato czekoladowe z pomarańczą" — internal chocolate routing
 });
 
 /* Acceptance test (3) */
-describe('(3) a VERIFIED device recipe mass auto-sets the batch and skips the question', () => {
-  // A standalone verified preset constructed HERE in the test — independent of
-  // the shipped catalogue — to pin the GENERIC verified-mass behavior (the shipped
-  // Ninja models are covered separately below).
-  const VERIFIED_TEST_DEVICE: DevicePreset = {
-    id: 'test-verified-appliance',
-    label: 'Test appliance (verified mass)',
-    kind: 'appliance',
-    containerCapacityMl: 473,
-    targetRecipeMassG: 700,
-    targetRecipeMassStatus: 'verified',
-  };
+describe('(3) a Ninja machine mode auto-sets its approved mass and skips the question', () => {
   let state = createCustomerFlow({ text: 'wanilia' });
   state = setProductType(state, 'gelato');
-  state = selectDevicePreset(state, VERIFIED_TEST_DEVICE);
+  state = selectServingMode(state, 'ninja_gelato');
 
-  it('classifies the device as a verified recipe mass', () => {
-    expect(classifyDeviceCapacity(VERIFIED_TEST_DEVICE)).toBe('verified_mass');
-  });
-
-  it('auto-sets the batch from the verified recipe mass', () => {
+  it('auto-sets the batch from the approved Ninja preset (700 g), never asked', () => {
     const b = resolveBatch(state);
-    expect(b.source).toBe('device_verified');
+    expect(b.source).toBe('mode_ninja');
     expect(b.satisfied).toBe(true);
     expect(b.askBatch).toBe(false);
-    expect(b.batchGrams).toBe(VERIFIED_TEST_DEVICE.targetRecipeMassG);
+    expect(b.batchGrams).toBe(700);
   });
 
-  it('does not list batch or device confirmation as pending', () => {
+  it('routes to the existing −13 Engine cell and lists no batch question', () => {
+    expect(resolveServingRoute(state).temperatureC).toBe(-13);
     expect(pendingQuestions(state)).not.toContain('batch');
-    expect(pendingQuestions(state)).not.toContain('device_capacity');
   });
 });
 
 /* Acceptance test (4) */
-describe('(4) Professional machine, batch not supplied → asks batch', () => {
+describe('(4) a Direct temperature mode, batch not supplied → asks batch', () => {
   let state = createCustomerFlow({ text: 'wanilia' });
   state = setProductType(state, 'gelato');
-  state = selectDevicePreset(state, PROFESSIONAL_MACHINE);
+  state = selectServingMode(state, 'temp_minus_12');
 
-  it('is a professional device with no auto batch and asks the batch question', () => {
-    expect(PROFESSIONAL_MACHINE.kind).toBe('professional');
-    expect(classifyDeviceCapacity(PROFESSIONAL_MACHINE)).toBe('unspecified');
+  it('routes to the actual −12 Engine cell and asks the batch question', () => {
+    expect(resolveServingRoute(state).temperatureC).toBe(-12);
     const b = resolveBatch(state);
     expect(b.source).toBe('none');
     expect(b.askBatch).toBe(true);
@@ -175,168 +152,107 @@ describe('(10) Protein has no supported engine profile → honest gap, no silent
   });
 });
 
-describe('Ninja device catalogue — owner-approved verified recipe masses', () => {
-  it('carries the official container volumes and the owner-approved recipe masses', () => {
-    expect(NINJA_CREAMI.containerCapacityMl).toBe(473);
-    expect(NINJA_CREAMI_SCOOP_SWIRL.containerCapacityMl).toBe(473);
-    expect(NINJA_CREAMI_DELUXE.containerCapacityMl).toBe(709);
-
-    expect(NINJA_CREAMI.targetRecipeMassG).toBe(480);
-    expect(NINJA_CREAMI_SCOOP_SWIRL.targetRecipeMassG).toBe(480);
-    expect(NINJA_CREAMI_DELUXE.targetRecipeMassG).toBe(700);
-
-    for (const d of [NINJA_CREAMI, NINJA_CREAMI_SCOOP_SWIRL, NINJA_CREAMI_DELUXE]) {
-      expect(d.kind).toBe('appliance');
-      // Each Ninja is owner-verified now — a verified recipe mass, never 'missing'.
-      expect(d.targetRecipeMassStatus).toBe('verified');
-      expect(classifyDeviceCapacity(d)).toBe('verified_mass');
-    }
-  });
-
-  it('the verified mass is an approved preset, NEVER an ml→g conversion', () => {
-    // 480 g is the approved fill mass, not the 473 ml volume; 700 g is not 709 ml.
-    expect(NINJA_CREAMI.targetRecipeMassG).not.toBe(NINJA_CREAMI.containerCapacityMl);
-    expect(NINJA_CREAMI_DELUXE.targetRecipeMassG).not.toBe(NINJA_CREAMI_DELUXE.containerCapacityMl);
-  });
-});
-
-describe('Ninja verified masses auto-set the batch and skip the batch/temperature steps', () => {
-  const applianceFlow = (device: DevicePreset) => {
+describe('Ninja machine modes auto-set the approved mass and skip the batch step', () => {
+  const modeFlow = (mode: 'ninja_gelato' | 'ninja_swirl') => {
     let s = createCustomerFlow({ text: 'wanilia' });
     s = setProductType(s, 'gelato');
-    s = selectDevicePreset(s, device);
+    s = selectServingMode(s, mode);
     return s;
   };
 
-  it('standard CREAMi auto-sets 480 g and skips the batch + device-capacity questions', () => {
-    const state = applianceFlow(NINJA_CREAMI);
-    const b = resolveBatch(state);
-    expect(b.source).toBe('device_verified');
-    expect(b.batchGrams).toBe(480);
-    expect(b.satisfied).toBe(true);
-    expect(b.askBatch).toBe(false);
-    expect(b.needsConfirmation).toBe(false);
-    // 480 g is the approved preset, never the 473 ml volume.
-    expect(b.batchGrams).not.toBe(NINJA_CREAMI.containerCapacityMl);
-    expect(pendingQuestions(state)).not.toContain('batch');
-    expect(pendingQuestions(state)).not.toContain('device_capacity');
-  });
-
-  it('Scoop & Swirl auto-sets 480 g (verified) and skips the batch question', () => {
-    const b = resolveBatch(applianceFlow(NINJA_CREAMI_SCOOP_SWIRL));
-    expect(b.source).toBe('device_verified');
-    expect(b.batchGrams).toBe(480);
-    expect(b.satisfied).toBe(true);
-    expect(b.askBatch).toBe(false);
-  });
-
-  it('Deluxe auto-sets 700 g (verified) and never equates it with 709 ml', () => {
-    const state = applianceFlow(NINJA_CREAMI_DELUXE);
-    const b = resolveBatch(state);
-    expect(b.source).toBe('device_verified');
+  it('Ninja Gelato auto-sets 700 g, routes to −13, and skips the batch question', () => {
+    const s = modeFlow('ninja_gelato');
+    const b = resolveBatch(s);
+    expect(b.source).toBe('mode_ninja');
     expect(b.batchGrams).toBe(700);
-    expect(b.batchGrams).not.toBe(NINJA_CREAMI_DELUXE.containerCapacityMl);
-    expect(pendingQuestions(state)).not.toContain('batch');
-    expect(pendingQuestions(state)).not.toContain('device_capacity');
+    expect(b.satisfied).toBe(true);
+    expect(b.askBatch).toBe(false);
+    expect(pendingQuestions(s)).not.toContain('batch');
+    expect(resolveServingRoute(s).temperatureC).toBe(-13);
   });
 
-  it('never introduces a serving-temperature question on a Ninja (appliance) path', () => {
-    const state = applianceFlow(NINJA_CREAMI_DELUXE);
-    // The only questions the flow can ask are the four known ids — none is a
-    // temperature/serving question (temperature is a professional-only UI step).
-    for (const q of pendingQuestions(state)) {
-      expect(['product_type', 'device_capacity', 'batch', 'recipe_path']).toContain(q);
+  it('Ninja Swirl auto-sets 480 g and routes to −11', () => {
+    const s = modeFlow('ninja_swirl');
+    const b = resolveBatch(s);
+    expect(b.source).toBe('mode_ninja');
+    expect(b.batchGrams).toBe(480);
+    expect(b.askBatch).toBe(false);
+    expect(resolveServingRoute(s).temperatureC).toBe(-11);
+  });
+
+  it('changing Ninja Gelato → Ninja Swirl updates BOTH the mass and the temperature route', () => {
+    let s = modeFlow('ninja_gelato');
+    expect(resolveBatch(s).batchGrams).toBe(700);
+    expect(resolveServingRoute(s).temperatureC).toBe(-13);
+    s = selectServingMode(s, 'ninja_swirl');
+    expect(resolveBatch(s).batchGrams).toBe(480);
+    expect(resolveServingRoute(s).temperatureC).toBe(-11);
+  });
+
+  it('never introduces a serving-temperature question on a Ninja mode', () => {
+    const s = modeFlow('ninja_gelato');
+    expect(nextQuestion(s)).not.toBe('batch');
+    for (const q of pendingQuestions(s)) {
+      expect(['product_type', 'serving_mode', 'batch', 'recipe_path']).toContain(q);
     }
   });
 
-  it('changing the selected Ninja model updates the auto-set mass (480 ↔ 700)', () => {
-    let state = applianceFlow(NINJA_CREAMI);
-    expect(resolveBatch(state).batchGrams).toBe(480);
-    state = selectDevicePreset(state, NINJA_CREAMI_DELUXE);
-    expect(resolveBatch(state).batchGrams).toBe(700);
-    state = selectDevicePreset(state, NINJA_CREAMI_SCOOP_SWIRL);
-    expect(resolveBatch(state).batchGrams).toBe(480);
-  });
-
-  it('starting over clears the device and the auto-set mass', () => {
-    const withDevice = applianceFlow(NINJA_CREAMI);
-    expect(resolveBatch(withDevice).batchGrams).toBe(480);
-    // A fresh flow (the "start over" reset) has no device and no batch.
-    const fresh = createCustomerFlow();
-    expect(fresh.device).toBeNull();
-    const b = resolveBatch(fresh);
-    expect(b.source).toBe('none');
-    expect(b.batchGrams).toBeNull();
-  });
-
-  it('an explicit customer mass overrides the verified device mass ("Zmień ilość")', () => {
-    let state = applianceFlow(NINJA_CREAMI);
-    expect(resolveBatch(state).source).toBe('device_verified');
-    // The optional override calls setBatchGrams — an explicit batch wins priority.
-    state = setBatchGrams(state, 1200);
-    const b = resolveBatch(state);
+  it('an explicit "Zmień ilość" mass overrides the Ninja preset', () => {
+    let s = modeFlow('ninja_gelato');
+    s = setBatchGrams(s, 1200);
+    const b = resolveBatch(s);
     expect(b.source).toBe('user');
     expect(b.batchGrams).toBe(1200);
     expect(b.askBatch).toBe(false);
   });
-});
 
-describe('an unverified-volume device still asks once for the recipe mass (never ml→g)', () => {
-  // No shipped device is unverified-volume anymore, so a synthetic one pins the
-  // ask-once confirmation path that still lives in resolveBatch.
-  const UNVERIFIED_VOLUME_DEVICE: DevicePreset = {
-    id: 'test-unverified-volume',
-    label: 'Test appliance (volume only)',
-    kind: 'appliance',
-    containerCapacityMl: 500,
-    targetRecipeMassG: null,
-    targetRecipeMassStatus: 'missing',
-  };
-
-  it('asks once, never converts the volume, and never repeats after confirmation', () => {
-    let state = createCustomerFlow({ text: 'wanilia' });
-    state = setProductType(state, 'gelato');
-    state = selectDevicePreset(state, UNVERIFIED_VOLUME_DEVICE);
-
-    const before = resolveBatch(state);
-    expect(before.needsConfirmation).toBe(true);
-    expect(before.source).toBe('device_unverified');
-    expect(before.batchGrams).toBeNull();
-    // 500 ml is never quietly turned into 500 g.
-    expect(before.batchGrams).not.toBe(500);
-    expect(nextQuestion(state)).toBe('device_capacity');
-
-    state = confirmDeviceCapacity(state, 900);
-    const after = resolveBatch(state);
-    expect(after.satisfied).toBe(true);
-    expect(after.source).toBe('device_confirmed');
-    expect(after.batchGrams).toBe(900);
-    // The mass question is asked exactly once — not repeated after it is answered.
-    expect(pendingQuestions(state)).not.toContain('device_capacity');
+  it('switching between Ninja modes drops a stale hand-set mass so the new preset applies', () => {
+    let s = modeFlow('ninja_gelato');
+    s = setBatchGrams(s, 1200);
+    expect(resolveBatch(s).batchGrams).toBe(1200);
+    s = selectServingMode(s, 'ninja_swirl');
+    expect(resolveBatch(s).batchGrams).toBe(480);
   });
-});
 
-describe('professional machine still asks the batch (and gets the temperature UI step)', () => {
-  it('asks the batch question and never auto-sets a mass', () => {
-    let state = createCustomerFlow({ text: 'wanilia' });
-    state = setProductType(state, 'gelato');
-    state = selectDevicePreset(state, PROFESSIONAL_MACHINE);
-    const b = resolveBatch(state);
+  it('starting over clears the mode and the auto-set mass', () => {
+    const fresh = createCustomerFlow();
+    expect(fresh.mode).toBeNull();
+    const b = resolveBatch(fresh);
     expect(b.source).toBe('none');
-    expect(b.satisfied).toBe(false);
-    expect(b.askBatch).toBe(true);
-    expect(nextQuestion(state)).toBe('batch');
-    // Professional is the ONLY path that carries the display-temperature/serving
-    // step (rendered by the shell); a Ninja appliance never does.
-    expect(PROFESSIONAL_MACHINE.kind).toBe('professional');
+    expect(b.batchGrams).toBeNull();
   });
 });
 
-describe('Ninja batch mass vs ingredient grams — persona boundaries', () => {
+describe('Direct / Fresh modes ask the batch only when it is unknown', () => {
+  it('a direct temperature mode asks the batch when none was supplied', () => {
+    let s = createCustomerFlow({ text: 'wanilia' });
+    s = setProductType(s, 'gelato');
+    s = selectServingMode(s, 'temp_minus_12');
+    const b = resolveBatch(s);
+    expect(b.source).toBe('none');
+    expect(b.askBatch).toBe(true);
+    expect(nextQuestion(s)).toBe('batch');
+    expect(resolveServingRoute(s).temperatureC).toBe(-12);
+  });
+
+  it('a natural-language batch is preserved across Świeże (−11) and never asked twice', () => {
+    let s = createCustomerFlow({ text: 'waniliowe gelato, 5 kg' });
+    s = setProductType(s, 'gelato');
+    s = selectServingMode(s, 'fresh');
+    const b = resolveBatch(s);
+    expect(b.source).toBe('text');
+    expect(b.batchGrams).toBe(5000);
+    expect(b.askBatch).toBe(false);
+    expect(pendingQuestions(s)).not.toContain('batch');
+    expect(resolveServingRoute(s).temperatureC).toBe(-11);
+  });
+});
+
+describe('Serving mode: Demo sees the batch mass but no ingredient grams', () => {
   const ninjaFlow = () => {
     let s = createCustomerFlow({ text: 'wanilia' });
     s = setProductType(s, 'gelato');
-    s = selectDevicePreset(s, NINJA_CREAMI);
+    s = selectServingMode(s, 'ninja_swirl');
     return s;
   };
 
@@ -357,7 +273,6 @@ describe('Ninja batch mass vs ingredient grams — persona boundaries', () => {
 
   it('Demo sees the overall selected batch size (480 g) but NO ingredient grams', () => {
     const state = ninjaFlow();
-    // The overall batch mass is persona-independent — Demo may see 480 g.
     expect(resolveBatch(state).batchGrams).toBe(480);
     const demoView = buildCustomerRecipeView(viewInput(state), gramVisibilityForPersona('demo'));
     expect(demoView.gramsVisible).toBe(false);

@@ -24,13 +24,13 @@ import {
   setProductType,
   removeFlavorChip,
   addFlavorChip,
-  selectDevicePreset,
-  confirmDeviceCapacity,
+  selectServingMode,
   setBatchGrams,
   chooseRecipePath,
   activeFlavorChips,
   resolveProductType,
   resolveBatch,
+  resolveServingRoute,
   nextQuestion,
   flowStatus,
   productTypeQuestion,
@@ -40,6 +40,8 @@ import {
   buildCustomerRecipeStructure,
   buildRecipeStructure,
   gramVisibilityForPersona,
+  SERVING_MODES,
+  isNinjaMode,
   type CustomerFlowState,
   type CustomerPersona,
   type CustomerProductType,
@@ -50,9 +52,8 @@ import {
   type ReadyRecipeMatch,
   type ReadyRecipeQuery,
   type ReadyRecipeWorkingDraft,
-  type DevicePreset,
+  type ServingMode,
 } from '@/features/customer-flow';
-import { DEVICE_FIXTURES } from '@/features/customer-flow/__fixtures__/deviceFixtures';
 import { CATALOGUE_FIXTURES } from '@/features/customer-flow/__fixtures__/catalogueFixtures';
 import {
   CustomerSurface,
@@ -63,7 +64,6 @@ import {
   MicrophoneButton,
   SelectableCard,
   FlavorChip,
-  DeviceCard,
   BatchSelector,
   ReadyRecipeCard,
   IngredientRow,
@@ -111,33 +111,8 @@ function getSpeechCtor(): RecognitionCtor | null {
  * Presentation helpers (pure)                                        *
  * ------------------------------------------------------------------ */
 
-const SERVING_OPTIONS = [
-  { id: 'soft11', servingProfile: 'display-minus-11' },
-  { id: 'scoop12', servingProfile: 'display-minus-12' },
-  { id: 'firm13', servingProfile: 'display-minus-13' },
-  { id: 'deep18', servingProfile: 'freezer-minus-18' },
-  { id: 'displayFresh', servingProfile: 'display-fresh' },
-  { id: 'custom', servingProfile: null },
-] as const;
-
-type ServingId = (typeof SERVING_OPTIONS)[number]['id'];
-
-const servingProfileFor = (id: ServingId | null): string | null =>
-  SERVING_OPTIONS.find((o) => o.id === id)?.servingProfile ?? null;
-
-const servingCopyFor = (id: ServingId) =>
-  copy.serving.options[id as keyof typeof copy.serving.options];
-
 function flavorLabel(tag: string): string {
   return copy.flavors[tag] ?? tag.charAt(0).toUpperCase() + tag.slice(1);
-}
-
-/**
- * Neutral, honest customer-facing device name mapped by fixture preset id.
- * Never surfaces the engineering fixture label carried on the preset object.
- */
-function deviceLabel(preset: DevicePreset): string {
-  return copy.deviceLabels[preset.id] ?? copy.device.label;
 }
 
 /**
@@ -148,20 +123,8 @@ function catalogueTitle(id: string, fallback: string): string {
   return copy.catalogueTitles[id] ?? fallback;
 }
 
-function deviceMeta(preset: DevicePreset): string {
-  if (
-    preset.targetRecipeMassStatus === 'verified' &&
-    typeof preset.targetRecipeMassG === 'number' &&
-    preset.targetRecipeMassG > 0
-  ) {
-    return `${copy.device.massVerified}: ${preset.targetRecipeMassG} ${copy.device.unitGrams}`;
-  }
-  if (typeof preset.containerCapacityMl === 'number' && preset.containerCapacityMl > 0) {
-    // Official volume only — shown honestly, never converted to grams.
-    return `${copy.device.capacityNominal}: ${preset.containerCapacityMl} ${copy.device.unitMl} · ${copy.device.volumeNotMass}`;
-  }
-  return copy.device.capacityUserDefined;
-}
+/** Customer copy (label + secondary) for one of the six serving / machine modes. */
+const modeCopyFor = (id: ServingMode['id']) => copy.modes.options[id];
 
 function formatBatch(grams: number | null): string {
   if (grams === null) return '—';
@@ -281,11 +244,9 @@ export function CustomerShellV1() {
 
   // In-flow local input drafts.
   const [chipDraft, setChipDraft] = useState('');
-  const [capacityDraft, setCapacityDraft] = useState('');
   const [customBatchDraft, setCustomBatchDraft] = useState('');
   const [customBatchOpen, setCustomBatchOpen] = useState(false);
   const [forceBatchEdit, setForceBatchEdit] = useState(false);
-  const [servingId, setServingId] = useState<ServingId | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<ReadyRecipeWorkingDraft | null>(null);
 
   // Ingredient Resolution controller. Called unconditionally (before any early return);
@@ -325,11 +286,9 @@ export function CustomerShellV1() {
     setFlow(null);
     setDraftText('');
     setChipDraft('');
-    setCapacityDraft('');
     setCustomBatchDraft('');
     setCustomBatchOpen(false);
     setForceBatchEdit(false);
-    setServingId(null);
     setSelectedDraft(null);
     resolution.reset();
   };
@@ -420,10 +379,11 @@ export function CustomerShellV1() {
   const chips = activeFlavorChips(flow);
   const recipePath = flow.recipePath;
 
-  // A serving/temperature choice only exists on the PROFESSIONAL path. A Ninja is
-  // a home appliance — it never carries a display-temperature serving profile.
-  const servingIdEff: ServingId | null = flow.device?.kind === 'professional' ? servingId : null;
-  const isAppliance = flow.device?.kind === 'appliance';
+  // The selected serving / machine mode (one of the six) → its supported internal
+  // temperature cell. Ninja modes carry an approved preset mass + skip the batch step.
+  const route = resolveServingRoute(flow);
+  const selectedMode = route.mode;
+  const isNinja = isNinjaMode(flow.mode);
 
   const isResultPhase =
     recipePath === 'new_recipe' || (recipePath === 'ready_recipe' && selectedDraft !== null);
@@ -460,9 +420,7 @@ export function CustomerShellV1() {
     ...(chips[0] !== undefined ? { mainFlavorTag: chips[0] } : {}),
     ...(chips[1] !== undefined ? { secondaryFlavorTag: chips[1] } : {}),
     ...(typeRes.userFacingType !== null ? { productType: typeRes.userFacingType } : {}),
-    ...(flow.device !== null ? { deviceId: flow.device.id } : {}),
     ...(typeRes.userFacingType === 'vegan' ? { requireVegan: true } : {}),
-    ...(servingProfileFor(servingIdEff) !== null ? { servingProfile: servingProfileFor(servingIdEff)! } : {}),
   };
   const matches: ReadyRecipeMatch[] = isReadyListPhase
     ? matchReadyRecipes(readyQuery, CATALOGUE_FIXTURES)
@@ -491,13 +449,6 @@ export function CustomerShellV1() {
     const g = Number(customBatchDraft.replace(',', '.'));
     if (!Number.isFinite(g) || g <= 0) return;
     update((s) => setBatchGrams(s, g));
-  };
-
-  const confirmCapacity = () => {
-    const g = Number(capacityDraft.replace(',', '.'));
-    if (!Number.isFinite(g) || g <= 0) return;
-    update((s) => confirmDeviceCapacity(s, g));
-    setCapacityDraft('');
   };
 
   const renderBatchSelector = () => (
@@ -549,11 +500,11 @@ export function CustomerShellV1() {
     </div>
   );
 
-  // How the batch step renders: verified device auto-selects the mass with no
-  // manual input, offering only a secondary "Zmień ilość" override.
+  // How the batch step renders: a Ninja preset auto-selects the mass with no manual
+  // input, offering only a secondary "Zmień ilość" override.
   const batchSection = resolveBatchSectionView({
     batch: batchRes,
-    deviceKind: flow.device?.kind ?? null,
+    isNinja,
     overrideOpen: forceBatchEdit,
   });
 
@@ -584,12 +535,8 @@ export function CustomerShellV1() {
   );
 
   /* -------------------------------------------------- Technical details -- */
-  const servingProfileEnum = servingProfileFor(servingIdEff);
-  const servingProfileReadable = isAppliance
-    ? copy.devicePrep.short
-    : servingProfileEnum
-      ? (copy.tech.servingProfileLabels[servingProfileEnum] ?? servingProfileEnum)
-      : '—';
+  const modeReadable = selectedMode ? modeCopyFor(selectedMode.id).label : '—';
+  const calcTempReadable = route.temperatureC !== null ? `${route.temperatureC}°C` : '—';
   const technical = (
     <TechnicalDetails summary={copy.tech.summary}>
       <div className="pt-1">
@@ -605,11 +552,12 @@ export function CustomerShellV1() {
         {typeRes.chocolateRoutedInternally ? (
           <SummaryRow label={copy.tech.previewInternalRouting} value={copy.tech.chocolateRouting} />
         ) : null}
+        {selectedMode ? <SummaryRow label={copy.tech.mode} value={modeReadable} /> : null}
+        <SummaryRow label={copy.tech.calcTemperature} value={calcTempReadable} />
         <SummaryRow label={copy.tech.batchSource} value={copy.batch.source[batchRes.source]} />
         {batchRes.batchGrams !== null ? (
           <SummaryRow label={copy.tech.batchGrams} value={String(batchRes.batchGrams)} />
         ) : null}
-        <SummaryRow label={copy.tech.servingProfile} value={servingProfileReadable} />
         {isResultPhase ? (
           <SummaryRow
             label={copy.tech.recipeStatus}
@@ -652,8 +600,8 @@ export function CustomerShellV1() {
             {typeRes.internalProfile ? (
               <SummaryRow label={copy.tech.internalProfile} value={typeRes.internalProfile} />
             ) : null}
-            {servingProfileEnum ? (
-              <SummaryRow label={copy.tech.servingProfile} value={servingProfileEnum} />
+            {selectedMode ? (
+              <SummaryRow label={copy.tech.mode} value={`${selectedMode.id} · ${selectedMode.temperatureC}°C`} />
             ) : null}
             {selectedDraft ? (
               <SummaryRow
@@ -754,72 +702,29 @@ export function CustomerShellV1() {
         {/* Configure: device + serving, capacity/batch, recipe-path fork. */}
         {isConfigurePhase ? (
           <>
-            <CustomerSection label={copy.device.label} title={copy.device.title} lead={copy.device.lead}>
-              <div className="grid grid-cols-1 gap-3">
-                {DEVICE_FIXTURES.map((preset) => (
-                  <DeviceCard
-                    key={preset.id}
-                    label={deviceLabel(preset)}
-                    meta={deviceMeta(preset)}
-                    selected={flow.device?.id === preset.id}
-                    onSelect={() => update((s) => selectDevicePreset(s, preset))}
-                  />
-                ))}
+            {/* Serving / machine mode — EXACTLY six customer-facing choices. Each is a
+                customer-facing alias to an existing temperature-aware Engine cell. */}
+            <CustomerSection label={copy.modes.label} title={copy.modes.title} lead={copy.modes.lead}>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {SERVING_MODES.map((m) => {
+                  const c = modeCopyFor(m.id);
+                  return (
+                    <SelectableCard
+                      key={m.id}
+                      title={c.label}
+                      description={c.secondary}
+                      selected={flow.mode === m.id}
+                      onSelect={() => update((s) => selectServingMode(s, m.id))}
+                    />
+                  );
+                })}
               </div>
             </CustomerSection>
 
-            {/* Temperature / serving is a PROFESSIONAL-only step. A Ninja is a home
-                appliance — no display-temperature choice; show an honest prep note. */}
-            {flow.device?.kind === 'professional' ? (
-              <CustomerSection label={copy.serving.label} title={copy.serving.title} lead={copy.serving.lead}>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {SERVING_OPTIONS.map((opt) => {
-                    const c = servingCopyFor(opt.id);
-                    return (
-                      <SelectableCard
-                        key={opt.id}
-                        title={c.label}
-                        description={c.secondary}
-                        selected={servingId === opt.id}
-                        onSelect={() => setServingId(opt.id)}
-                      />
-                    );
-                  })}
-                </div>
-              </CustomerSection>
-            ) : isAppliance ? (
-              <CustomerSection label={copy.devicePrep.label} title={copy.devicePrep.title}>
-                <Notice>{copy.devicePrep.ninja}</Notice>
-              </CustomerSection>
-            ) : null}
-
-            {/* Ask-once device-capacity confirmation (never ml → g silently). */}
-            {batchRes.needsConfirmation ? (
-              <CustomerSection label={copy.capacity.label} title={copy.capacity.title} lead={copy.capacity.lead}>
-                {flow.device?.containerCapacityMl != null ? (
-                  <div className="mb-3">
-                    <Notice>
-                      {copy.capacity.officialCapacityLabel}: {flow.device.containerCapacityMl} {copy.device.unitMl} ·{' '}
-                      {copy.device.volumeNotMass}
-                    </Notice>
-                  </div>
-                ) : null}
-                <div className="flex items-end gap-2">
-                  <TextField
-                    className="flex-1"
-                    label={copy.capacity.inputLabel}
-                    hint={copy.capacity.hint}
-                    inputMode="numeric"
-                    placeholder={copy.capacity.inputPlaceholder}
-                    value={capacityDraft}
-                    onChange={(e) => setCapacityDraft(e.target.value)}
-                  />
-                  <TouchButton onClick={confirmCapacity} disabled={capacityDraft.trim() === ''}>
-                    {copy.capacity.confirm}
-                  </TouchButton>
-                </div>
-              </CustomerSection>
-            ) : (
+            {/* Batch — only once a mode is chosen. A Ninja mode auto-sets its approved
+                mass (resolved; override hidden behind "Zmień ilość"); Direct / Fresh
+                modes ask only when the quantity is not already known. */}
+            {flow.mode !== null ? (
               <CustomerSection label={copy.batch.label} title={copy.batch.title} lead={copy.batch.lead}>
                 {batchSection.mode === 'choose' ? (
                   renderBatchSelector()
@@ -852,7 +757,7 @@ export function CustomerShellV1() {
                   </div>
                 )}
               </CustomerSection>
-            )}
+            ) : null}
 
             {/* Two equal paths — neither is a default. */}
             {nq === 'recipe_path' ? (
@@ -915,18 +820,8 @@ export function CustomerShellV1() {
             <div className="rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
               <SummaryRow label={copy.result.typeLabel} value={copy.productType.short[resultType]} />
               <SummaryRow
-                label={copy.result.deviceLabel}
-                value={flow.device ? deviceLabel(flow.device) : copy.result.deviceNone}
-              />
-              <SummaryRow
-                label={copy.result.servingLabel}
-                value={
-                  isAppliance
-                    ? copy.devicePrep.short
-                    : servingIdEff
-                      ? servingCopyFor(servingIdEff).label
-                      : copy.result.servingNone
-                }
+                label={copy.result.modeLabel}
+                value={selectedMode ? modeCopyFor(selectedMode.id).label : copy.result.modeNone}
               />
               <SummaryRow label={copy.result.batchLabel} value={formatBatch(batchRes.batchGrams)} />
             </div>

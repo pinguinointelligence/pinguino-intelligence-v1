@@ -91,6 +91,6 @@ export const SPINE_PROFILE_TO_CUSTOMER_TYPE: Readonly<Record<ProductProfile, Cus
 /** The questions the customer flow can ask (deterministic, ordered by priority). */
 export type CustomerFlowQuestionId =
   | 'product_type'
-  | 'device_capacity'
+  | 'serving_mode'
   | 'batch'
   | 'recipe_path';

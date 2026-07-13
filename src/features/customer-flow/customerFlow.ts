@@ -25,7 +25,15 @@ import {
 } from './types';
 import { parseBatchFromText } from './naturalLanguageBatch';
 import { detectPolishFlavorTags } from './polishFlavorSynonyms';
-import type { DevicePreset } from './devicePresets';
+import {
+  approvedMassForMode,
+  isNinjaMode,
+  servingModeById,
+  temperatureForMode,
+  type ServingMode,
+  type ServingModeId,
+  type SupportedTemperatureC,
+} from './servingMode';
 
 /** De-duplicate a tag list while preserving first-seen order. */
 const dedupe = (tags: readonly string[]): string[] => {
@@ -53,10 +61,8 @@ export interface CustomerFlowState {
   addedFlavorTags: readonly string[];
   /** The visible product type the customer explicitly chose, or null. */
   explicitType: CustomerProductType | null;
-  /** The selected device preset, or null. */
-  device: DevicePreset | null;
-  /** A confirmed grams capacity for an unverified-volume device (ask-once answer). */
-  confirmedDeviceGrams: number | null;
+  /** The selected serving / machine mode (one of the six), or null. */
+  mode: ServingModeId | null;
   /** A batch size the customer set directly, in grams, or null. */
   explicitBatchGrams: number | null;
   /** The chosen recipe path (new vs ready), or null. */
@@ -74,8 +80,7 @@ export function createCustomerFlow(input: CreateCustomerFlowInput = {}): Custome
     removedFlavorTags: [],
     addedFlavorTags: [],
     explicitType: null,
-    device: null,
-    confirmedDeviceGrams: null,
+    mode: null,
     explicitBatchGrams: null,
     recipePath: null,
   };
@@ -114,15 +119,16 @@ export function addFlavorChip(state: CustomerFlowState, tag: string): CustomerFl
   return next;
 }
 
-export function selectDevicePreset(state: CustomerFlowState, device: DevicePreset): CustomerFlowState {
-  // Switching devices clears a stale confirmation for the previous device.
-  return { ...state, device, confirmedDeviceGrams: null };
-}
-
-/** Answer the ask-once device-capacity confirmation with a real grams value. */
-export function confirmDeviceCapacity(state: CustomerFlowState, grams: number): CustomerFlowState {
-  if (!Number.isFinite(grams) || grams <= 0) return state;
-  return { ...state, confirmedDeviceGrams: Math.round(grams) };
+/**
+ * Select one of the six serving / machine modes. When a Ninja mode is involved
+ * (either the old or the new one), any hand-set batch is cleared so the owner-
+ * approved preset mass applies — so Ninja Gelato → Ninja Swirl re-derives 700 → 480.
+ * For direct/fresh ↔ direct/fresh switches a hand-typed batch is kept.
+ */
+export function selectServingMode(state: CustomerFlowState, mode: ServingModeId): CustomerFlowState {
+  if (mode === state.mode) return state;
+  const ninjaInvolved = isNinjaMode(mode) || isNinjaMode(state.mode);
+  return { ...state, mode, ...(ninjaInvolved ? { explicitBatchGrams: null } : {}) };
 }
 
 export function setBatchGrams(state: CustomerFlowState, grams: number): CustomerFlowState {
@@ -309,79 +315,78 @@ export function resolveProductType(state: CustomerFlowState): ProductTypeResolut
 export type BatchSource =
   | 'user' // set directly by the customer
   | 'text' // recognized in the natural-language intent
-  | 'device_verified' // auto-set from a verified device capacity
-  | 'device_confirmed' // confirmed once for an unverified-volume device
-  | 'device_unverified' // ml only — awaiting the ask-once confirmation
+  | 'mode_ninja' // owner-approved Ninja preset mass (auto-set, skip the question)
   | 'none'; // nothing supplied yet
 
 export interface BatchResolution {
   batchGrams: number | null;
   /** True when the batch question can be SKIPPED (already known reliably). */
   satisfied: boolean;
-  /** True when an unverified device capacity needs a single confirmation. */
-  needsConfirmation: boolean;
   source: BatchSource;
-  /** True when the batch question (or its confirmation) should still be asked. */
+  /** True when the batch question should still be asked. */
   askBatch: boolean;
   notes: string[];
 }
 
 /**
- * Resolve the batch. Priority: an explicit customer batch, then a batch stated
- * in the text, then a VERIFIED device capacity (auto-set, skip the question),
- * then an unverified-volume device (confirm once), else nothing (ask).
+ * Resolve the batch. Priority: an explicit customer batch, then a batch stated in
+ * the text, then a Ninja machine mode's OWNER-APPROVED preset mass (auto-set, skip
+ * the question — never derived from ml), else nothing (ask).
  *
- * "Never ask twice": a batch already recognized reliably (user / text / verified
- * device / confirmed device) sets `askBatch = false`.
+ * "Never ask twice": a batch already known reliably (user / text / Ninja preset)
+ * sets `askBatch = false`. Direct / Fresh modes carry no preset mass, so they ask
+ * the batch question only when it is not already known.
  */
 export function resolveBatch(state: CustomerFlowState): BatchResolution {
   const notes: string[] = [];
 
   if (state.explicitBatchGrams !== null) {
-    return { batchGrams: state.explicitBatchGrams, satisfied: true, needsConfirmation: false, source: 'user', askBatch: false, notes };
+    return { batchGrams: state.explicitBatchGrams, satisfied: true, source: 'user', askBatch: false, notes };
   }
 
   const textBatch = parseBatchFromText(state.rawText);
   if (textBatch.grams !== null) {
     notes.push('customer_flow.batch_recognized_from_text');
-    return { batchGrams: textBatch.grams, satisfied: true, needsConfirmation: false, source: 'text', askBatch: false, notes };
+    return { batchGrams: textBatch.grams, satisfied: true, source: 'text', askBatch: false, notes };
   }
   if (textBatch.volumeStatedMl !== null) {
     // A volume was stated but we never equate ml with grams — capture, don't guess.
     notes.push('customer_flow.batch_volume_needs_density');
   }
 
-  const device = state.device;
-  if (device !== null) {
-    // Only an owner-approved (verified) recipe mass may auto-set the batch.
-    if (
-      device.targetRecipeMassStatus === 'verified' &&
-      device.targetRecipeMassG !== null &&
-      device.targetRecipeMassG > 0
-    ) {
-      notes.push('customer_flow.batch_from_verified_device');
-      return {
-        batchGrams: device.targetRecipeMassG,
-        satisfied: true,
-        needsConfirmation: false,
-        source: 'device_verified',
-        askBatch: false,
-        notes,
-      };
-    }
-    // A container VOLUME with no verified mass: ask once for the recipe mass —
-    // never equate ml with grams.
-    if (device.containerCapacityMl !== null && device.containerCapacityMl > 0) {
-      if (state.confirmedDeviceGrams !== null) {
-        notes.push('customer_flow.device_capacity_confirmed');
-        return { batchGrams: state.confirmedDeviceGrams, satisfied: true, needsConfirmation: false, source: 'device_confirmed', askBatch: false, notes };
-      }
-      notes.push('customer_flow.device_capacity_awaiting_confirmation');
-      return { batchGrams: null, satisfied: false, needsConfirmation: true, source: 'device_unverified', askBatch: true, notes };
-    }
+  // A Ninja machine mode carries an owner-approved recipe mass → auto-set, skip the
+  // batch question. These grams are approved presets, NEVER derived from container ml.
+  const ninjaMass = approvedMassForMode(state.mode);
+  if (ninjaMass !== null && ninjaMass > 0) {
+    notes.push('customer_flow.batch_from_ninja_mode');
+    return { batchGrams: ninjaMass, satisfied: true, source: 'mode_ninja', askBatch: false, notes };
   }
 
-  return { batchGrams: null, satisfied: false, needsConfirmation: false, source: 'none', askBatch: true, notes };
+  return { batchGrams: null, satisfied: false, source: 'none', askBatch: true, notes };
+}
+
+/* ------------------------------------------------------------------------ *
+ * Serving / machine mode routing (visible mode → supported Engine cell)     *
+ * ------------------------------------------------------------------------ */
+
+export interface ServingRouteResolution {
+  /** The selected mode, or null when none is chosen yet. */
+  mode: ServingMode | null;
+  /** The existing temperature-aware Engine cell this mode routes to, or null. */
+  temperatureC: SupportedTemperatureC | null;
+}
+
+/**
+ * Resolve the internal temperature route for the selected mode. `Świeże`,
+ * `Ninja Gelato` and `Ninja Swirl` are customer-facing ALIASES to existing Engine
+ * cells (−11 / −13 / −11) — no new Engine is created here. The product PROFILE is
+ * resolved separately by `resolveProductType` (chocolate stays internal).
+ */
+export function resolveServingRoute(state: CustomerFlowState): ServingRouteResolution {
+  return {
+    mode: servingModeById(state.mode),
+    temperatureC: temperatureForMode(state.mode),
+  };
 }
 
 /* ------------------------------------------------------------------------ *
@@ -406,10 +411,11 @@ export function pendingQuestions(state: CustomerFlowState): CustomerFlowQuestion
   const questions: CustomerFlowQuestionId[] = [];
   if (type.status === 'unknown') questions.push('product_type');
 
-  const batch = resolveBatch(state);
-  if (batch.needsConfirmation) {
-    questions.push('device_capacity');
-  } else if (batch.askBatch) {
+  // The serving / machine mode comes before the batch. A Ninja mode auto-sets its
+  // approved mass (batch never asked); Direct / Fresh modes ask batch only if unknown.
+  if (state.mode === null) {
+    questions.push('serving_mode');
+  } else if (resolveBatch(state).askBatch) {
     questions.push('batch');
   }
 
