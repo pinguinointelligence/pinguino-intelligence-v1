@@ -122,9 +122,27 @@ function flavorLabel(tag: string): string {
   return copy.flavors[tag] ?? tag.charAt(0).toUpperCase() + tag.slice(1);
 }
 
+/**
+ * Neutral, honest customer-facing device name mapped by fixture preset id.
+ * Never surfaces the engineering fixture label carried on the preset object.
+ */
+function deviceLabel(preset: DevicePreset): string {
+  return copy.deviceLabels[preset.id] ?? copy.device.label;
+}
+
+/**
+ * Neutral, honest customer-facing catalogue title mapped by fixture card id.
+ * Never surfaces the engineering fixture title carried on the card object.
+ */
+function catalogueTitle(id: string, fallback: string): string {
+  return copy.catalogueTitles[id] ?? fallback;
+}
+
 function deviceMeta(preset: DevicePreset): string {
   if (typeof preset.verifiedCapacityGrams === 'number' && preset.verifiedCapacityGrams > 0) {
-    return `${copy.device.capacityVerified}: ${preset.verifiedCapacityGrams} ${copy.device.unitGrams}`;
+    // Fixture capacities are illustrative, NOT a real verified device capacity —
+    // present them honestly as poglądowo, never as "Zweryfikowana".
+    return `${copy.device.capacityIllustrative}: ${preset.verifiedCapacityGrams} ${copy.device.unitGrams} ${copy.device.capacityIllustrativeSuffix}`;
   }
   if (typeof preset.nominalCapacityMl === 'number' && preset.nominalCapacityMl > 0) {
     return `${copy.device.capacityNominal}: ${preset.nominalCapacityMl} ${copy.device.unitMl}`;
@@ -199,6 +217,17 @@ function Notice({ children }: { children: ReactNode }) {
     <p className="rounded-xl border border-ink/10 bg-stone-50 px-4 py-3 text-[13px] leading-relaxed text-stone-600">
       {children}
     </p>
+  );
+}
+
+/** Small, honest, non-alarming preview framing pinned to the top of the surface. */
+function PreviewNote() {
+  return (
+    <div className="pt-1">
+      <span className="inline-flex items-center rounded-full border border-ink/10 bg-stone-50 px-3 py-1 text-[12px] leading-none tracking-wide text-stone-500">
+        {copy.preview.note}
+      </span>
+    </div>
   );
 }
 
@@ -283,6 +312,7 @@ export function CustomerShellV1() {
     return (
       <CustomerSurface>
         <DevPersonaSelect persona={persona} onChange={setPersona} />
+        <PreviewNote />
         <header className="pt-2">
           <h1 className="text-[28px] font-light leading-[1.15] tracking-tight text-ink sm:text-[34px]">
             {copy.home.headline}
@@ -342,7 +372,7 @@ export function CustomerShellV1() {
     ? selectedDraft.productType
     : (typeRes.userFacingType ?? 'gelato');
   const resultTitle = selectedDraft
-    ? selectedDraft.title
+    ? catalogueTitle(selectedDraft.sourceRecipeId, selectedDraft.title)
     : resultMainFlavor
       ? `${flavorLabel(resultMainFlavor)} · ${copy.productType.short[resultType]}`
       : `${copy.result.title} · ${copy.productType.short[resultType]}`;
@@ -512,6 +542,7 @@ export function CustomerShellV1() {
     <>
       <CustomerSurface hasStickyCta={showStickyUpgrade}>
         <DevPersonaSelect persona={persona} onChange={setPersona} />
+        <PreviewNote />
         <div className="flex items-center justify-between pt-2">
           <h1 className="text-[22px] font-medium tracking-tight text-ink">{copy.home.headline}</h1>
           <TouchButton variant="quiet" size="md" onClick={resetAll}>
@@ -598,7 +629,7 @@ export function CustomerShellV1() {
                 {DEVICE_FIXTURES.map((preset) => (
                   <DeviceCard
                     key={preset.id}
-                    label={preset.label}
+                    label={deviceLabel(preset)}
                     meta={deviceMeta(preset)}
                     selected={flow.device?.id === preset.id}
                     onSelect={() => update((s) => selectDevicePreset(s, preset))}
@@ -691,15 +722,16 @@ export function CustomerShellV1() {
               <div className="grid grid-cols-1 gap-4">
                 {matches.map((match) => {
                   const card: CatalogueRecipeCard = match.card;
+                  const title = catalogueTitle(card.id, card.title);
                   const select = () => setSelectedDraft(selectReadyRecipe(card));
                   return (
                     <div key={card.id} className="space-y-2">
                       <ReadyRecipeCard
-                        title={card.title}
+                        title={title}
                         subtitle={`${copy.productType.short[card.productType]} · ${copy.ready.matchLabels[match.label]}`}
-                        imageSrc={card.imagePath}
-                        imageAlt={card.title}
-                        meta={card.description}
+                        imageSrc={null}
+                        imageAlt={title}
+                        meta={copy.ready.cardMeta}
                         onOpen={select}
                       />
                       <div className="flex gap-2">
@@ -724,7 +756,10 @@ export function CustomerShellV1() {
             {pathToggle}
             <div className="rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
               <SummaryRow label={copy.result.typeLabel} value={copy.productType.short[resultType]} />
-              <SummaryRow label={copy.result.deviceLabel} value={flow.device?.label ?? copy.result.deviceNone} />
+              <SummaryRow
+                label={copy.result.deviceLabel}
+                value={flow.device ? deviceLabel(flow.device) : copy.result.deviceNone}
+              />
               <SummaryRow
                 label={copy.result.servingLabel}
                 value={servingId ? servingCopyFor(servingId).label : copy.result.servingNone}

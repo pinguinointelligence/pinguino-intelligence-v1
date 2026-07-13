@@ -10,6 +10,12 @@
  */
 
 export const customerShellCopy = {
+  /* ------------------------------------------------------------- Preview -- */
+  preview: {
+    /** Small, honest, non-alarming framing shown at the top of the surface. */
+    note: 'Wersja poglądowa — przykłady mają charakter poglądowy.',
+  },
+
   /* ---------------------------------------------------------------- Home -- */
   home: {
     headline: 'Co dzisiaj robimy?',
@@ -86,12 +92,26 @@ export const customerShellCopy = {
     label: 'Urządzenie',
     title: 'Na czym przygotujesz lody?',
     lead: 'Wybór urządzenia pomaga ustalić wielkość porcji. Pojemności podane w ml nie przeliczamy po cichu na gramy.',
-    capacityVerified: 'Zweryfikowana pojemność',
+    capacityIllustrative: 'Przykładowa pojemność',
+    capacityIllustrativeSuffix: '(poglądowo)',
     capacityNominal: 'Pojemność nominalna',
     capacityUserDefined: 'Ilość ustalasz samodzielnie',
     unitGrams: 'g',
     unitMl: 'ml',
   },
+
+  /* ------------------------------------------- Device names (id → label) -- */
+  /**
+   * Neutral, honest customer-facing device names keyed by the fixture preset id.
+   * The underlying fixtures carry engineering labels (e.g. "… — fixture") that
+   * must never reach the customer; we map by id at the shell layer and never
+   * mutate the fixture objects.
+   */
+  deviceLabels: {
+    'ninja-verified-fixture': 'Ninja',
+    'ninja-unverified-fixture': 'Ninja (pojemność nominalna)',
+    'professional-fixture': 'Maszyna profesjonalna',
+  } as Record<string, string>,
 
   serving: {
     label: 'Konsystencja',
@@ -138,7 +158,7 @@ export const customerShellCopy = {
     source: {
       user: 'wybrana przez Ciebie',
       text: 'rozpoznana z Twojego zdania',
-      device_verified: 'z pojemności urządzenia',
+      device_verified: 'przykładowo z urządzenia (poglądowo)',
       device_confirmed: 'potwierdzona pojemność urządzenia',
       device_unverified: 'oczekuje na potwierdzenie',
       none: 'jeszcze nieustalona',
@@ -163,6 +183,8 @@ export const customerShellCopy = {
     view: 'Zobacz recepturę',
     useAsStart: 'Użyj jako punkt wyjścia',
     changeSelection: 'Zmień recepturę',
+    /** Honest, generic descriptor for a catalogue card — invents no specifics. */
+    cardMeta: 'Receptura poglądowa',
     matchLabels: {
       closest_idea: 'Najbliższy pomysł',
       similar_flavor_profile: 'Podobny profil smakowy',
@@ -170,8 +192,26 @@ export const customerShellCopy = {
       vegan_version: 'Wersja wegańska',
       similar_base: 'Podobna baza',
     },
-    photoMissingAlt: 'Brak zdjęcia receptury',
+    photoMissingAlt: 'Zdjęcie wkrótce',
   },
+
+  /* ------------------------------------- Catalogue names (id → title) -- */
+  /**
+   * Neutral, honest customer-facing titles for the illustrative example recipes,
+   * keyed by the fixture catalogue-card id. The fixtures carry engineering titles
+   * (e.g. "Vanilla (classic) — fixture") that must never reach the customer; we
+   * map by id at the shell layer and never mutate the fixture objects.
+   */
+  catalogueTitles: {
+    'cat-vanilla-classic': 'Wanilia (klasyczna)',
+    'cat-chocolate-orange': 'Czekolada i pomarańcza',
+    'cat-pistachio': 'Pistacja',
+    'cat-raspberry-sorbet': 'Sorbet malinowy',
+    'cat-mango-sorbet': 'Sorbet mango',
+    'cat-lemon-sorbet': 'Sorbet cytrynowy',
+    'cat-vegan-chocolate': 'Wegańska czekolada',
+    'cat-hazelnut-comingsoon': 'Orzech laskowy (wkrótce)',
+  } as Record<string, string>,
 
   /* ------------------------------------------------------------------ Result -- */
   result: {
@@ -219,7 +259,7 @@ export const customerShellCopy = {
       'customer_flow.chocolate_sorbet_kept_as_sorbet': 'Czekolada przy sorbecie — pozostaje sorbetem.',
       'customer_flow.batch_recognized_from_text': 'Ilość rozpoznana z Twojego zdania.',
       'customer_flow.batch_volume_needs_density': 'Podano objętość — bez gęstości nie przeliczamy jej na gramy.',
-      'customer_flow.batch_from_verified_device': 'Ilość ustawiona z zweryfikowanej pojemności urządzenia.',
+      'customer_flow.batch_from_verified_device': 'Ilość ustawiona z przykładowej pojemności urządzenia (poglądowo).',
       'customer_flow.device_capacity_confirmed': 'Pojemność urządzenia potwierdzona przez Ciebie.',
       'customer_flow.device_capacity_awaiting_confirmation': 'Pojemność urządzenia czeka na potwierdzenie.',
       'customer_flow.ready_recipe_working_draft_created': 'Utworzono edytowalny szkic roboczy.',

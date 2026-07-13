@@ -37,7 +37,7 @@ export function IngredientRow({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {locked ? (
-          <LockedGram hint="Exact grams available on a paid plan" />
+          <LockedGram hint="Dokładne ilości dostępne w płatnym planie" />
         ) : (
           <span className={cn(type.numeric, color.textPrimary)}>{amount ?? '—'}</span>
         )}

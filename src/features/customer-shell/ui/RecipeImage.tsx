@@ -68,7 +68,7 @@ export function RecipeImage({
                 className="text-stone-300"
               />
             </svg>
-            <span className={cn(type.caption, color.textMuted)}>No photo</span>
+            <span className={cn(type.caption, color.textMuted)}>Zdjęcie wkrótce</span>
           </div>
         </div>
       )}
