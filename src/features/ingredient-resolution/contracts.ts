@@ -59,19 +59,21 @@ export const ACTION_TO_SUBSTITUTION_REASON: Partial<Record<ResolutionActionId, S
  * Fresh / herb form selection (no dose ever invented)                       *
  * ------------------------------------------------------------------------ */
 
-/** Fresh/herb ingredient forms — the customer picks one FIRST. ASCII ids, Polish labels. */
-export type IngredientForm = 'swieza' | 'suszona' | 'pasta' | 'ekstrakt' | 'napar';
+/** Fresh/culinary ingredient forms — the customer picks one FIRST. ASCII ids, Polish labels. */
+export type IngredientForm = 'swieza' | 'mrozona' | 'puree' | 'pasta' | 'suszona' | 'ekstrakt' | 'napar';
 
 export interface IngredientFormDef {
   id: IngredientForm;
   label: string;
 }
 
-/** The five offered forms, in stable display order. NONE carries a dose. */
+/** The offered forms, in stable display order. NONE carries a dose. */
 export const INGREDIENT_FORMS: readonly IngredientFormDef[] = [
   { id: 'swieza', label: 'świeża' },
-  { id: 'suszona', label: 'suszona' },
+  { id: 'mrozona', label: 'mrożona' },
+  { id: 'puree', label: 'puree' },
   { id: 'pasta', label: 'pasta' },
+  { id: 'suszona', label: 'suszona' },
   { id: 'ekstrakt', label: 'ekstrakt' },
   { id: 'napar', label: 'napar' },
 ];
@@ -84,25 +86,27 @@ export function isIngredientForm(value: string): value is IngredientForm {
 }
 
 /**
- * Fresh/herb concepts that must offer a FORM step first (bazylia/mięta and similar).
- * Accent- and case-insensitive matching is done in `requiresFormSelection`. Deliberately
+ * Fresh/culinary concepts that must offer a FORM step first — herbs (bazylia/mięta) AND
+ * fruit (malina/truskawka…), which a customer buys as świeża / mrożona / puree / etc.
+ * Accent- and case-insensitive stem matching is done in `requiresFormSelection`. Deliberately
  * conservative: it only asks a form question, it never fabricates a dose or a product.
  */
-const HERB_CONCEPTS: readonly string[] = [
-  'bazylia',
+const FORM_CONCEPTS: readonly string[] = [
+  // herbs
+  'bazyli', // bazylia
   'mieta', // mięta
-  'melisa',
+  'melis',
   'rozmaryn',
   'tymianek',
   'szalwia', // szałwia
   'oregano',
-  'kolendra',
+  'kolendr',
   'natka',
-  'pietruszka',
-  'lawenda',
+  'pietruszk',
+  'lawend',
   'estragon',
   'majeranek',
-  'werbena',
+  'werben',
   'trawa cytrynowa',
   'lemongrass',
   'basil',
@@ -115,6 +119,23 @@ const HERB_CONCEPTS: readonly string[] = [
   'parsley',
   'lavender',
   'tarragon',
+  // fruit (bought as fresh / frozen / purée / …)
+  'malin', // malina / maliny / malinowe
+  'truskaw', // truskawka
+  'jagod', // jagoda / jagody
+  'borowk', // borówka
+  'porzeczk', // porzeczka
+  'wisni', // wiśnia
+  'czeresn', // czereśnia
+  'mango',
+  'brzoskwin', // brzoskwinia
+  'morel', // morela
+  'raspberry',
+  'strawberry',
+  'blueberry',
+  'cherry',
+  'peach',
+  'apricot',
 ];
 
 /** lowercase + strip diacritics (so "mięta"/"szałwia" match the accent-free concept). */
@@ -127,13 +148,14 @@ function normHerb(s: string): string {
 }
 
 /**
- * True when this ingredient name is a fresh/herb ingredient that must pick a FORM
- * (świeża / suszona / pasta / ekstrakt / napar) before a product is chosen. Pure.
+ * True when this ingredient name is a fresh/culinary ingredient (herb or fruit) that must
+ * pick a FORM (świeża / mrożona / puree / pasta / suszona / ekstrakt / napar) before a
+ * product is chosen. Pure.
  */
 export function requiresFormSelection(ingredientName: string): boolean {
   const n = normHerb(ingredientName);
   if (n === '') return false;
-  return HERB_CONCEPTS.some((h) => n === h || n.includes(h));
+  return FORM_CONCEPTS.some((h) => n === h || n.includes(h));
 }
 
 /* ------------------------------------------------------------------------ *

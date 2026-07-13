@@ -317,6 +317,75 @@ export const customerShellCopy = {
     close: 'Zamknij',
   },
 
+  /* ------------------------------------------- Ingredient resolution + picker -- */
+  resolution: {
+    sheetTitlePrefix: 'Składnik',
+    close: 'Zamknij',
+    back: 'Wróć',
+    /** Right-side chip on a recipe row, by resolution state. */
+    chipChoose: 'Wybierz produkt',
+    chipNeedsData: 'Wymaga danych',
+    chipResolvedPrefix: 'Wybrano',
+    /** Bottom-sheet actions (exact wording). */
+    actions: {
+      choose_candidate: 'Wybierz konkretny produkt',
+      search_catalogue: 'Wyszukaj w katalogu',
+      scan_label: 'Skanuj etykietę',
+      add_manually: 'Dodaj produkt ręcznie',
+      dont_have: 'Nie mam tego składnika',
+      substitute: 'Zastąp składnik',
+      why: 'Po co jest ten składnik?',
+    } as Record<string, string>,
+    /** Fresh/culinary form step. */
+    formTitle: 'W jakiej postaci masz ten składnik?',
+    formLead: 'Wybierz postać — to preferencja technologiczna, nie ustalamy tu gramów.',
+    /** Product picker. */
+    pickerTitle: 'Wybierz konkretny produkt',
+    searchLabel: 'Szukaj produktu',
+    searchPlaceholder: 'Nazwa, marka lub kod EAN…',
+    noResults: 'Brak pasujących produktów. Możesz dodać produkt ręcznie albo zeskanować etykietę.',
+    badgeReady: 'Gotowy do przeliczenia',
+    badgeNeedsData: 'Wymaga danych',
+    packagePrefix: 'Opakowanie',
+    eanPrefix: 'EAN',
+    /** Honest note about the catalogue source (sample vs live). */
+    sampleSourcePrefix: 'Katalog',
+    /** Outcome after picking. */
+    resolvedReady: 'Ten produkt ma wystarczające dane do dokładnego przeliczenia.',
+    needsDataScan: 'Skanuj etykietę',
+    needsDataManual: 'Uzupełnij dane ręcznie',
+    needsDataOther: 'Wybierz inny produkt',
+    /** Substitution / not-having. */
+    substituteTitle: 'Zastąp składnik',
+    substituteLabel: 'Czym zastąpić?',
+    substitutePlaceholder: 'np. rum zamiast whisky',
+    substituteConfirm: 'Zastąp',
+    substituteRecorded: 'Zapisaliśmy propozycję zamiany. Silnik uwzględni ją przy przeliczeniu.',
+    dontHaveRecorded: 'Zanotowaliśmy, że nie masz tego składnika — możesz go zastąpić albo pominąć.',
+    /** Scan / manual add delegation (no live persistence in this environment). */
+    intakeScanTitle: 'Skanowanie etykiety',
+    intakeManualTitle: 'Ręczne dodanie produktu',
+    intakeBackendNote:
+      'Zapisywanie nowych produktów wymaga podłączonego, zatwierdzonego środowiska. Twoja receptura pozostaje bez zmian — nic nie zostało zapisane.',
+    intakeDevLink: 'Otwórz dodawanie produktu (dev)',
+    /** Explanation for "Po co jest ten składnik?". */
+    whyBody:
+      'Ten składnik realizuje smak, o który poprosiłeś. Wybór konkretnego produktu pozwala silnikowi policzyć recepturę dokładnie — bez zgadywania składu.',
+  },
+
+  /* ------------------------------------------------------------- Monitor PI -- */
+  monitor: {
+    label: 'Monitor PI',
+    title: 'Dostrój recepturę',
+    lead: 'Wskaż kierunek — PI dopasuje recepturę w bezpiecznym, złotym zakresie. Używamy gotowych, sprawdzonych kroków, nie zgadujemy wartości.',
+    recalc: 'Przelicz z PI',
+    /** Shown when recalculation is allowed (all products resolved). */
+    readyNote:
+      'Kierunek zapisany. Dokładne przeliczenie z gramami uruchomisz w planie Home lub Pro — na recepturze wyliczonej przez silnik.',
+    /** Shown in the Demo preview (qualitative only, no grams). */
+    demoNote: 'W podglądzie pokazujemy kierunek zmian jakościowo, bez gramów.',
+  },
+
   /* ---------------------------------------------------------------- Upgrade -- */
   upgrade: {
     caption: 'Odblokuj dokładne ilości',

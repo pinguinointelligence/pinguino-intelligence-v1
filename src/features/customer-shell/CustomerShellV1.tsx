@@ -18,7 +18,7 @@
  * Presentation only: no engine math, no IO beyond the browser's own optional
  * speech-recognition, no persistence.
  */
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   createCustomerFlow,
   setProductType,
@@ -40,11 +40,6 @@ import {
   buildCustomerRecipeStructure,
   buildRecipeStructure,
   gramVisibilityForPersona,
-  FLAVOR_INTENSITY_OPTIONS,
-  setFlavorIntensity,
-  getFlavorIntensity,
-  type FlavorIntensity,
-  type FlavorIntensityPreferences,
   type CustomerFlowState,
   type CustomerPersona,
   type CustomerProductType,
@@ -72,7 +67,6 @@ import {
   BatchSelector,
   ReadyRecipeCard,
   IngredientRow,
-  BottomSheet,
   TechnicalDetails,
   StickyCta,
   EmptyStateView,
@@ -82,6 +76,9 @@ import {
 } from '@/features/customer-shell/ui';
 import { customerShellCopy as copy } from './customerShellCopy';
 import { resolveBatchSectionView } from './batchPresentation';
+import { useIngredientResolution, type ResolvableLine } from './useIngredientResolution';
+import { ResolutionSheet } from './ResolutionSheet';
+import { PiMonitorSection } from './PiMonitorSection';
 
 /* ------------------------------------------------------------------ *
  * Browser speech recognition (optional, never an external service)   *
@@ -291,15 +288,22 @@ export function CustomerShellV1() {
   const [servingId, setServingId] = useState<ServingId | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<ReadyRecipeWorkingDraft | null>(null);
 
-  // Friendly unresolved-dose UX: intensity is a PREFERENCE ONLY (never grams).
-  const [intensityPrefs, setIntensityPrefs] = useState<FlavorIntensityPreferences>({});
-  const [intensityTag, setIntensityTag] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [manualDoseDraft, setManualDoseDraft] = useState('');
-  const [manualDoseByTag, setManualDoseByTag] = useState<Record<string, number>>({});
-  // Per-row actions sheet (substitute / remove / why …).
-  const [moreLine, setMoreLine] = useState<{ id: string; name: string } | null>(null);
-  const [whyOpen, setWhyOpen] = useState(false);
+  // Ingredient Resolution controller. Called unconditionally (before any early return);
+  // its resolvable-line set is derived from the SAME structure the result view renders,
+  // so tapping a generic line opens the picker without losing any recipe choice.
+  const workingRecipeId = selectedDraft ? selectedDraft.sourceRecipeId : 'preview';
+  const resolvableLines = useMemo<ResolvableLine[]>(() => {
+    if (flow === null) return [];
+    const struct = selectedDraft
+      ? buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags })
+      : buildCustomerRecipeStructure(flow);
+    return struct.lines.map((l) => ({
+      ingredientId: l.id,
+      ingredientName: structureLineName(l),
+      resolution: l.resolution,
+    }));
+  }, [flow, selectedDraft]);
+  const resolution = useIngredientResolution(workingRecipeId, resolvableLines);
 
   // Speech (browser-only, optional).
   const [listening, setListening] = useState(false);
@@ -327,26 +331,7 @@ export function CustomerShellV1() {
     setForceBatchEdit(false);
     setServingId(null);
     setSelectedDraft(null);
-    setIntensityPrefs({});
-    setIntensityTag(null);
-    setAdvancedOpen(false);
-    setManualDoseDraft('');
-    setManualDoseByTag({});
-    setMoreLine(null);
-    setWhyOpen(false);
-  };
-
-  /** Open the intensity sheet for a flavor tag with a clean advanced sub-state. */
-  const openIntensity = (tag: string) => {
-    setAdvancedOpen(false);
-    setManualDoseDraft('');
-    setIntensityTag(tag);
-  };
-
-  /** Open the per-row actions sheet for a line. */
-  const openMore = (id: string, name: string) => {
-    setWhyOpen(false);
-    setMoreLine({ id, name });
+    resolution.reset();
   };
 
   const handleMic = () => {
@@ -965,13 +950,18 @@ export function CustomerShellV1() {
               <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">{copy.result.ingredientsTitle}</p>
               <div className="mt-1 divide-y divide-ink/10">
                 {view.lines.map((line) => {
+                  // A line that STARTED unresolved (generic requirement) is tappable — it
+                  // opens the Ingredient Resolution sheet (pick a concrete product). The
+                  // chip reflects the controller's live per-line progress.
                   const unresolved = line.resolution !== 'resolved';
-                  const isFlavor = line.ingredientId.startsWith('flavor:');
-                  const tag = isFlavor ? line.ingredientId.slice('flavor:'.length) : null;
-                  // A recognized flavor with no safe dose gets the friendly, tappable
-                  // intensity affordance; other unresolved lines keep an honest label.
-                  const showsIntensity = unresolved && isFlavor && line.resolution === 'needs_dose' && tag !== null;
-                  const chosen = tag !== null ? getFlavorIntensity(intensityPrefs, tag) : null;
+                  const res = unresolved ? resolution.lineFor(line.ingredientId) : undefined;
+                  const picked = unresolved ? resolution.pickedName(line.ingredientId) : null;
+                  const chipLabel =
+                    res?.state === 'resolved'
+                      ? `${copy.resolution.chipResolvedPrefix}: ${picked ?? ''}`.trim()
+                      : res?.state === 'needs_data'
+                        ? copy.resolution.chipNeedsData
+                        : copy.resolution.chipChoose;
                   return (
                     <IngredientRow
                       key={line.ingredientId}
@@ -979,28 +969,18 @@ export function CustomerShellV1() {
                       locked={!unresolved && line.grams === undefined}
                       lockedLabel={copy.result.lockedInPlans}
                       amount={line.grams !== undefined ? `${line.grams} ${copy.device.unitGrams}` : undefined}
-                      requirement={
-                        unresolved && !showsIntensity
-                          ? (copy.result.resolutionCta[line.resolution] ?? copy.result.resolutionLabels[line.resolution])
-                          : undefined
-                      }
                       intensity={
-                        showsIntensity && tag !== null
-                          ? {
-                              label: chosen
-                                ? `${copy.intensity.rowChosenPrefix}: ${copy.intensity.options[chosen]}`
-                                : copy.intensity.rowCta,
-                              onClick: () => openIntensity(tag),
-                            }
-                          : undefined
+                        unresolved ? { label: chipLabel, onClick: () => resolution.open(line.ingredientId) } : undefined
                       }
-                      onMore={() => openMore(line.ingredientId, line.ingredientName)}
+                      onMore={unresolved ? () => resolution.open(line.ingredientId) : undefined}
                       moreLabel={`${copy.rowActions.moreForPrefix}: ${line.ingredientName}`}
                     />
                   );
                 })}
               </div>
             </div>
+
+            <PiMonitorSection summary={resolution.summary} gramsVisible={view.gramsVisible} />
 
             <div className="mt-4">{technical}</div>
           </CustomerSection>
@@ -1025,124 +1005,7 @@ export function CustomerShellV1() {
         </StickyCta>
       ) : null}
 
-      {/* Friendly intensity picker — captures a PREFERENCE only, never grams. */}
-      {intensityTag !== null
-        ? (() => {
-            const tag = intensityTag;
-            const chosen = getFlavorIntensity(intensityPrefs, tag);
-            const manual = manualDoseByTag[tag];
-            return (
-              <BottomSheet
-                open
-                onClose={() => setIntensityTag(null)}
-                title={copy.intensity.sheetTitle}
-                footer={
-                  <TouchButton block onClick={() => setIntensityTag(null)}>
-                    {copy.intensity.close}
-                  </TouchButton>
-                }
-              >
-                <p className="text-[13px] text-stone-500">
-                  {copy.intensity.sheetFlavorPrefix}: {flavorLabel(tag)}
-                </p>
-                <div className="mt-4 grid grid-cols-1 gap-3">
-                  {FLAVOR_INTENSITY_OPTIONS.map((opt: FlavorIntensity) => (
-                    <SelectableCard
-                      key={opt}
-                      title={copy.intensity.options[opt]}
-                      selected={chosen === opt}
-                      onSelect={() => setIntensityPrefs((p) => setFlavorIntensity(p, tag, opt))}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-4">
-                  <TouchButton variant="quiet" size="md" onClick={() => setAdvancedOpen((v) => !v)}>
-                    {copy.intensity.advanced}
-                  </TouchButton>
-                </div>
-                {advancedOpen ? (
-                  <div className="mt-3 space-y-3">
-                    <Notice>{copy.intensity.advancedNote}</Notice>
-                    {/* Manual gram entry ONLY where grams are visible (Home/Pro) —
-                        never in the Demo payload, so no number can leak. */}
-                    {view.gramsVisible ? (
-                      <>
-                        <div className="flex items-end gap-2">
-                          <TextField
-                            className="flex-1"
-                            label={copy.intensity.manualLabel}
-                            inputMode="numeric"
-                            placeholder={copy.intensity.manualPlaceholder}
-                            value={manualDoseDraft}
-                            onChange={(e) => setManualDoseDraft(e.target.value)}
-                          />
-                          <TouchButton
-                            disabled={manualDoseDraft.trim() === ''}
-                            onClick={() => {
-                              const g = Number(manualDoseDraft.replace(',', '.'));
-                              if (!Number.isFinite(g) || g <= 0) return;
-                              setManualDoseByTag((m) => ({ ...m, [tag]: Math.round(g) }));
-                            }}
-                          >
-                            {copy.intensity.manualConfirm}
-                          </TouchButton>
-                        </div>
-                        {manual !== undefined ? (
-                          <p className="text-[13px] text-stone-500">
-                            {copy.intensity.manualSetPrefix}: {manual} {copy.device.unitGrams}
-                          </p>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
-              </BottomSheet>
-            );
-          })()
-        : null}
-
-      {/* Per-row ingredient actions — labels/affordances present (engine wiring
-          is out of scope); "Po co…" shows an honest explanation. */}
-      {moreLine !== null ? (
-        <BottomSheet
-          open
-          onClose={() => setMoreLine(null)}
-          title={`${copy.rowActions.sheetTitlePrefix}: ${moreLine.name}`}
-          footer={
-            <TouchButton block variant="secondary" onClick={() => setMoreLine(null)}>
-              {copy.rowActions.close}
-            </TouchButton>
-          }
-        >
-          <div className="flex flex-col gap-2">
-            {[
-              { key: 'substitute', label: copy.rowActions.substitute },
-              { key: 'dontHave', label: copy.rowActions.dontHave },
-              { key: 'change', label: copy.rowActions.change },
-              { key: 'remove', label: copy.rowActions.remove },
-              { key: 'why', label: copy.rowActions.why },
-            ].map((a) => (
-              <TouchButton
-                key={a.key}
-                block
-                variant="secondary"
-                size="lg"
-                onClick={() => {
-                  if (a.key === 'why') {
-                    setWhyOpen((v) => !v);
-                    return;
-                  }
-                  setMoreLine(null);
-                }}
-              >
-                {a.label}
-              </TouchButton>
-            ))}
-            {whyOpen ? <Notice>{copy.rowActions.whyBody}</Notice> : null}
-          </div>
-        </BottomSheet>
-      ) : null}
+      <ResolutionSheet controller={resolution} />
     </DarkShell>
   );
 }
