@@ -295,6 +295,31 @@ export const customerShellCopy = {
       many: 'składników',
     },
     fullyResolvedNote: 'Wszystkie składniki są wstępnie rozpisane.',
+    /** Readable Polish names for base recipe lines, keyed by engine + structure id. */
+    baseIngredientNames: {
+      // real engine (demo/reference catalog) ids
+      milk_3_5: 'Mleko 3,5%',
+      cream_30: 'Śmietana 30%',
+      smp: 'Mleko odtłuszczone w proszku',
+      sucrose: 'Cukier (sacharoza)',
+      dextrose: 'Dekstroza',
+      tara_gum: 'Stabilizator (guma tara)',
+      cocoa_2224: 'Kakao 22/24',
+      dark_chocolate_70: 'Czekolada gorzka 70%',
+      // structure-only (not-yet-calculated) ids
+      milk: 'Mleko',
+      cream: 'Śmietana',
+      sugar: 'Cukier',
+      stabilizer: 'Stabilizator',
+      water: 'Woda',
+      'plant-milk': 'Napój roślinny',
+      'coconut-oil': 'Olej kokosowy',
+    } as Record<string, string>,
+    /** Result-state banners — honest about whether the engine calculated the card. */
+    stateCalculated: 'Receptura wyliczona przez silnik PINGÜINO.',
+    stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Uruchom Monitor PI, aby dopasować.',
+    stateStructureOnly:
+      'To podglądowa struktura składników, a nie wyliczona receptura. Dokładne ilości wyliczy silnik, gdy uzupełnisz wymagane dane.',
   },
 
   /* -------------------------------------------------------- Flavor intensity -- */

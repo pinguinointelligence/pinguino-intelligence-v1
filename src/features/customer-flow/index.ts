@@ -12,6 +12,7 @@ export * from './devicePresets';
 export * from './servingMode';
 export * from './customerFlow';
 export * from './customerEngineRecipe';
+export * from './customerResult';
 export * from './flavorIntensity';
 export * from './recipeStructure';
 export * from './readyRecipeMatching';

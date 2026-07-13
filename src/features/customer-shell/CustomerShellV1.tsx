@@ -37,16 +37,16 @@ import {
   matchReadyRecipes,
   selectReadyRecipe,
   buildCustomerRecipeView,
-  buildCustomerRecipeStructure,
   buildRecipeStructure,
+  buildCustomerResult,
   gramVisibilityForPersona,
   SERVING_MODES,
   isNinjaMode,
+  type CustomerRecipeLineInput,
+  type CustomerResult,
   type CustomerFlowState,
   type CustomerPersona,
   type CustomerProductType,
-  type CustomerRecipeInput,
-  type CustomerRecipeStructure,
   type CustomerRecipeStructureLine,
   type CatalogueRecipeCard,
   type ReadyRecipeMatch,
@@ -126,6 +126,14 @@ function catalogueTitle(id: string, fallback: string): string {
 /** Customer copy (label + secondary) for one of the six serving / machine modes. */
 const modeCopyFor = (id: ServingMode['id']) => copy.modes.options[id];
 
+/** Readable name for a real-result line: flavor chip → flavor label; base id → Polish copy. */
+function resultLineName(id: string, role: 'base' | 'flavor'): string {
+  if (role === 'flavor' || id.startsWith('flavor:')) {
+    return flavorLabel(id.startsWith('flavor:') ? id.slice('flavor:'.length) : id);
+  }
+  return copy.result.baseIngredientNames[id] ?? id;
+}
+
 function formatBatch(grams: number | null): string {
   if (grams === null) return '—';
   if (grams % 1000 === 0) return `${grams / 1000} kg`;
@@ -151,25 +159,6 @@ function structureLineName(line: CustomerRecipeStructureLine): string {
   }
   const key = BASE_INGREDIENT_COPY_KEY[line.id];
   return key !== undefined ? copy.ingredients[key] : line.id;
-}
-
-/** Map the pure recipe STRUCTURE onto the view input (names from copy). */
-function structureToRecipeInput(
-  recipeId: string,
-  title: string,
-  structure: CustomerRecipeStructure,
-): CustomerRecipeInput {
-  return {
-    recipeId,
-    title,
-    productType: structure.productType,
-    lines: structure.lines.map((l) => ({
-      ingredientId: l.id,
-      ingredientName: structureLineName(l),
-      grams: l.grams,
-      resolution: l.resolution,
-    })),
-  };
 }
 
 /** Polish plural of "składnik" (1 / 2–4 / 5+). */
@@ -253,17 +242,25 @@ export function CustomerShellV1() {
   // its resolvable-line set is derived from the SAME structure the result view renders,
   // so tapping a generic line opens the picker without losing any recipe choice.
   const workingRecipeId = selectedDraft ? selectedDraft.sourceRecipeId : 'preview';
+  // The REAL engine result for a NEW recipe (null for a ready-recipe draft — a separate
+  // catalogue source). `buildCustomerResult` drives the canonical `calculateRecipe`.
+  const engineResult = useMemo<CustomerResult | null>(
+    () => (flow !== null && selectedDraft === null ? buildCustomerResult(flow) : null),
+    [flow, selectedDraft],
+  );
   const resolvableLines = useMemo<ResolvableLine[]>(() => {
     if (flow === null) return [];
-    const struct = selectedDraft
-      ? buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags })
-      : buildCustomerRecipeStructure(flow);
-    return struct.lines.map((l) => ({
+    if (selectedDraft) {
+      const struct = buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags });
+      return struct.lines.map((l) => ({ ingredientId: l.id, ingredientName: structureLineName(l), resolution: l.resolution }));
+    }
+    const result = engineResult ?? buildCustomerResult(flow);
+    return result.lines.map((l) => ({
       ingredientId: l.id,
-      ingredientName: structureLineName(l),
+      ingredientName: resultLineName(l.id, l.role),
       resolution: l.resolution,
     }));
-  }, [flow, selectedDraft]);
+  }, [flow, selectedDraft, engineResult]);
   const resolution = useIngredientResolution(workingRecipeId, resolvableLines);
 
   // Speech (browser-only, optional).
@@ -404,13 +401,25 @@ export function CustomerShellV1() {
       ? `${flavorLabel(resultMainFlavor)} · ${copy.productType.short[resultType]}`
       : `${copy.result.title} · ${copy.productType.short[resultType]}`;
   const resultRecipeId = selectedDraft ? selectedDraft.sourceRecipeId : `preview-${resultType}`;
-  // Build the recipe SKELETON from EVERY active flavor (no chip is dropped). A
-  // ready-recipe draft uses its own preserved flavor list.
-  const structure: CustomerRecipeStructure = selectedDraft
-    ? buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags })
-    : buildCustomerRecipeStructure(flow);
+  // The result lines: REAL engine base + flavor requirements for a new recipe; the
+  // preserved structure for a ready-recipe draft. Grams (base) come from the real
+  // calculateRecipe; Demo redaction happens in buildCustomerRecipeView.
+  const currentResult: CustomerResult | null = selectedDraft ? null : (engineResult ?? buildCustomerResult(flow));
+  const resultLineInputs: CustomerRecipeLineInput[] = selectedDraft
+    ? buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags }).lines.map((l) => ({
+        ingredientId: l.id,
+        ingredientName: structureLineName(l),
+        grams: l.grams,
+        resolution: l.resolution,
+      }))
+    : (currentResult as CustomerResult).lines.map((l) => ({
+        ingredientId: l.id,
+        ingredientName: resultLineName(l.id, l.role),
+        grams: l.grams,
+        resolution: l.resolution,
+      }));
   const view = buildCustomerRecipeView(
-    structureToRecipeInput(resultRecipeId, resultTitle, structure),
+    { recipeId: resultRecipeId, title: resultTitle, productType: resultType, lines: resultLineInputs },
     capability,
   );
   const showStickyUpgrade = isResultPhase && !view.gramsVisible;
@@ -836,7 +845,13 @@ export function CustomerShellV1() {
 
             <div className="mt-4">
               <Notice>
-                {copy.result.fixtureNotice}
+                {currentResult
+                  ? currentResult.state === 'calculated'
+                    ? copy.result.stateCalculated
+                    : currentResult.state === 'calculated_out_of_band'
+                      ? copy.result.stateOutOfBand
+                      : copy.result.stateStructureOnly
+                  : copy.result.fixtureNotice}
                 {selectedDraft ? ` ${copy.result.draftNotice}` : ''}
               </Notice>
             </div>
@@ -860,7 +875,7 @@ export function CustomerShellV1() {
                   return (
                     <IngredientRow
                       key={line.ingredientId}
-                      name={line.ingredientName}
+                      name={res?.state === 'resolved' && picked ? picked : line.ingredientName}
                       locked={!unresolved && line.grams === undefined}
                       lockedLabel={copy.result.lockedInPlans}
                       amount={line.grams !== undefined ? `${line.grams} ${copy.device.unitGrams}` : undefined}
