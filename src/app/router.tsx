@@ -23,6 +23,7 @@ import { ProductIntelligencePreviewPage } from '@/pages/dev/ProductIntelligenceP
 import { PiCalculatedActivationPreviewPage } from '@/pages/dev/PiCalculatedActivationPreviewPage';
 import { OptimizationPreviewPage } from '@/pages/dev/OptimizationPreviewPage';
 import { BranchRecalculationPreviewPage } from '@/pages/dev/BranchRecalculationPreviewPage';
+import { PiMonitorDevPage } from '@/pages/dev/PiMonitorDevPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
@@ -89,6 +90,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/pi-calculated-activation-preview" element={<PiCalculatedActivationPreviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/optimization-preview" element={<OptimizationPreviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/branch-recalculation-preview" element={<BranchRecalculationPreviewPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/pi-monitor" element={<PiMonitorDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/account-access" element={<AccountAccessDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/product-verification" element={<ProductVerificationDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/ingredient-resolution" element={<IngredientResolutionDevPage />} />}
