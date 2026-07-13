@@ -1,0 +1,14 @@
+/**
+ * PINGÜINO Product Picker — public surface.
+ *
+ * A READ-only picker that resolves a generic requirement line to a concrete product
+ * from the CANONICAL products layer (backend catalogue adapter, or the honest in-memory
+ * sample). Pure contracts + search + a `ProductRow` mapper; no engine imports, no
+ * invented pac/pod, no product writes. Readiness is delegated to the reused
+ * Ingredient-Resolution gate.
+ */
+export * from './productPickerContracts';
+export * from './productSearch';
+export * from './productRowMapper';
+export * from './inMemoryCatalog';
+export { SAMPLE_CATALOGUE, sampleCategoryForIngredient } from './sampleCatalogue';
