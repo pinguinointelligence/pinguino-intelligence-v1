@@ -72,6 +72,7 @@ import {
   type MicState,
 } from '@/features/customer-shell/ui';
 import { customerShellCopy as copy } from './customerShellCopy';
+import { resolveBatchSectionView } from './batchPresentation';
 
 /* ------------------------------------------------------------------ *
  * Browser speech recognition (optional, never an external service)   *
@@ -489,6 +490,32 @@ export function CustomerShellV1() {
     </div>
   );
 
+  // The "Zmień ilość" override editor for a home appliance (Ninja): a single
+  // grams field only — never shown by default, only after the customer opens it.
+  const renderCustomMassField = () => (
+    <div className="flex items-end gap-2">
+      <TextField
+        className="flex-1"
+        label={copy.batch.customLabel}
+        inputMode="numeric"
+        placeholder={copy.batch.customPlaceholder}
+        value={customBatchDraft}
+        onChange={(e) => setCustomBatchDraft(e.target.value)}
+      />
+      <TouchButton onClick={confirmCustomBatch} disabled={customBatchDraft.trim() === ''}>
+        {copy.batch.customConfirm}
+      </TouchButton>
+    </div>
+  );
+
+  // How the batch step renders: verified device auto-selects the mass with no
+  // manual input, offering only a secondary "Zmień ilość" override.
+  const batchSection = resolveBatchSectionView({
+    batch: batchRes,
+    deviceKind: flow.device?.kind ?? null,
+    overrideOpen: forceBatchEdit,
+  });
+
   /* ------------------------------------------------------- Path toggle -- */
   const pathToggle = (
     <div className="mb-2 flex gap-2">
@@ -753,22 +780,34 @@ export function CustomerShellV1() {
               </CustomerSection>
             ) : (
               <CustomerSection label={copy.batch.label} title={copy.batch.title} lead={copy.batch.lead}>
-                {!batchRes.satisfied ? (
+                {batchSection.mode === 'choose' ? (
                   renderBatchSelector()
                 ) : (
                   <div className="space-y-3">
                     <div className="rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
                       <SummaryRow
-                        label={copy.batch.resolvedLabel}
-                        value={`${formatBatch(batchRes.batchGrams)} — ${copy.batch.source[batchRes.source]}`}
+                        label={
+                          batchSection.labelKind === 'selected'
+                            ? copy.batch.selectedLabel
+                            : copy.batch.resolvedLabel
+                        }
+                        value={
+                          batchSection.labelKind === 'selected'
+                            ? formatBatch(batchRes.batchGrams)
+                            : `${formatBatch(batchRes.batchGrams)} — ${copy.batch.source[batchRes.source]}`
+                        }
                       />
                     </div>
-                    {batchRes.source === 'user' ? (
+                    {batchSection.showChangeAction ? (
                       <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>
                         {copy.batch.change}
                       </TouchButton>
                     ) : null}
-                    {forceBatchEdit ? renderBatchSelector() : null}
+                    {batchSection.editorOpen
+                      ? batchSection.editor === 'custom_mass'
+                        ? renderCustomMassField()
+                        : renderBatchSelector()
+                      : null}
                   </div>
                 )}
               </CustomerSection>

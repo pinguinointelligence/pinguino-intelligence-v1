@@ -2,45 +2,56 @@
  * Device catalogue (Agent B) — explicit real device models.
  *
  * These are the concrete devices offered to the customer. Container VOLUMES are
- * the vendors' official European-market figures in millilitres. NO owner-approved
- * recipe MASS exists yet for any of them, so `targetRecipeMassG` is null and
- * `targetRecipeMassStatus` is 'missing' on every model — a volume is never turned
- * into a gram target on its own. An owner must approve a verified mass before the
- * batch can be auto-set; until then the customer is asked once for the recipe mass
- * (appliances with a container) or defines the batch directly (professional).
+ * the vendors' official European-market figures in millilitres. The three Ninja
+ * CREAMi models now carry an OWNER-APPROVED, verified recipe MASS in grams
+ * (`targetRecipeMassStatus: 'verified'`): an owner has explicitly approved the
+ * fill mass for each container, so those masses auto-set the batch and skip the
+ * batch question. The gram value is the approved recipe-fill preset — it is NOT
+ * derived from the ml volume (473 ml → 480 g and 709 ml → 700 g are approved
+ * numbers, never an ml→g conversion). The professional machine has no fixed
+ * container, so it keeps no mass and the operator defines the batch.
  *
- * Do NOT invent gram targets here.
+ * Do NOT invent gram targets here — only owner-approved values belong.
  */
 import type { DevicePreset } from '../devicePresets';
 
-/** Ninja CREAMi (standard / original) — 473 ml container, no verified mass yet. */
+/**
+ * Ninja CREAMi (standard / original) — 473 ml container. Owner-approved recipe
+ * fill mass: 480 g (verified). The 480 g is the approved preset, not the ml.
+ */
 export const NINJA_CREAMI: DevicePreset = {
   id: 'ninja-creami',
   label: 'Ninja CREAMi',
   kind: 'appliance',
   containerCapacityMl: 473,
-  targetRecipeMassG: null,
-  targetRecipeMassStatus: 'missing',
+  targetRecipeMassG: 480,
+  targetRecipeMassStatus: 'verified',
 };
 
-/** Ninja CREAMi Scoop & Swirl — 473 ml container, no verified mass yet. */
+/**
+ * Ninja CREAMi Scoop & Swirl — 473 ml container. Owner-approved recipe fill
+ * mass: 480 g (verified). Same approved preset as the standard CREAMi.
+ */
 export const NINJA_CREAMI_SCOOP_SWIRL: DevicePreset = {
   id: 'ninja-creami-scoop-swirl',
   label: 'Ninja CREAMi Scoop & Swirl',
   kind: 'appliance',
   containerCapacityMl: 473,
-  targetRecipeMassG: null,
-  targetRecipeMassStatus: 'missing',
+  targetRecipeMassG: 480,
+  targetRecipeMassStatus: 'verified',
 };
 
-/** Ninja CREAMi Deluxe — 709 ml container, no verified mass yet. */
+/**
+ * Ninja CREAMi Deluxe — 709 ml container. Owner-approved recipe fill mass:
+ * 700 g (verified). The 700 g is the approved preset, not the ml.
+ */
 export const NINJA_CREAMI_DELUXE: DevicePreset = {
   id: 'ninja-creami-deluxe',
   label: 'Ninja CREAMi Deluxe',
   kind: 'appliance',
   containerCapacityMl: 709,
-  targetRecipeMassG: null,
-  targetRecipeMassStatus: 'missing',
+  targetRecipeMassG: 700,
+  targetRecipeMassStatus: 'verified',
 };
 
 /** Professional machine — operator defines the batch (no fixed container). */
