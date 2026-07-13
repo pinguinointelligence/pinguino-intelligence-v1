@@ -425,6 +425,14 @@ export const customerShellCopy = {
       'Kierunek zapisany. Dokładne przeliczenie z gramami uruchomisz w planie Home lub Pro — na recepturze wyliczonej przez silnik.',
     /** Shown in the Demo preview (qualitative only, no grams). */
     demoNote: 'W podglądzie pokazujemy kierunek zmian jakościowo, bez gramów.',
+    /** Shown when there is no calculated recipe yet (structure_only). */
+    needsCalculatedNote:
+      'Monitor PI dokładnie przeliczy recepturę, gdy karta będzie wyliczona przez silnik (uzupełnij wymagane dane).',
+    przed: 'Przed',
+    po: 'Po zmianie',
+    apply: 'Zastosuj zmiany',
+    undo: 'Cofnij',
+    adjustmentsTitle: 'Proponowane zmiany ilości',
   },
 
   /* ---------------------------------------------------------------- Upgrade -- */

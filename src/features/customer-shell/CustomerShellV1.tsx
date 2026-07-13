@@ -890,7 +890,12 @@ export function CustomerShellV1() {
               </div>
             </div>
 
-            <PiMonitorSection summary={resolution.summary} gramsVisible={view.gramsVisible} />
+            <PiMonitorSection
+              summary={resolution.summary}
+              gramsVisible={view.gramsVisible}
+              recipeInput={currentResult?.recipeInput ?? null}
+              persona={persona}
+            />
 
             <div className="mt-4">{technical}</div>
           </CustomerSection>
