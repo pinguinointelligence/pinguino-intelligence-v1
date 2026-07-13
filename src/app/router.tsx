@@ -39,9 +39,11 @@ import {
 export function AppRoutes() {
   return (
     <Routes>
-      {/* AI-first Home on the premium black shell (Phase 6C) — always Free Preview. */}
-      <Route path="/" element={<HomePage />} />
-      {/* Legacy /demo entry → Home (kept so old links/bookmarks still land). */}
+      {/* Public root is now the mobile-first Customer UX (customer-v1). */}
+      <Route path="/" element={<CustomerShellV1 />} />
+      {/* Previous AI-first premium black-shell Home preserved (not removed). */}
+      <Route path="/classic" element={<HomePage />} />
+      {/* Legacy /demo entry → root (kept so old links/bookmarks still land). */}
       <Route path="/demo" element={<Navigate to="/" replace />} />
       {/* Advanced Studio · −11°C Engine. */}
       <Route path="/studio" element={<StudioPage />} />
