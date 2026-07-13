@@ -12,6 +12,7 @@ import { OcrIntakePage } from '@/pages/dev/OcrIntakePage';
 import { OcrBatchPage } from '@/pages/dev/OcrBatchPage';
 import { AccountAccessDevPage } from '@/pages/dev/AccountAccessDevPage';
 import { ProductVerificationDevPage } from '@/pages/dev/ProductVerificationDevPage';
+import { IngredientResolutionDevPage } from '@/pages/dev/IngredientResolutionDevPage';
 import { ProCoreRecipesDevPage } from '@/pages/dev/ProCoreRecipesDevPage';
 import { ProCoreProductionDevPage } from '@/pages/dev/ProCoreProductionDevPage';
 import { ProCoreCostsDevPage } from '@/pages/dev/ProCoreCostsDevPage';
@@ -90,6 +91,7 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/branch-recalculation-preview" element={<BranchRecalculationPreviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/account-access" element={<AccountAccessDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/product-verification" element={<ProductVerificationDevPage />} />}
+      {import.meta.env.DEV && <Route path="/dev/ingredient-resolution" element={<IngredientResolutionDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/pro-recipes" element={<ProCoreRecipesDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/pro-production" element={<ProCoreProductionDevPage />} />}
       {import.meta.env.DEV && <Route path="/dev/pro-costs" element={<ProCoreCostsDevPage />} />}
