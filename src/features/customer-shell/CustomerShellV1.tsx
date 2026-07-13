@@ -37,12 +37,15 @@ import {
   matchReadyRecipes,
   selectReadyRecipe,
   buildCustomerRecipeView,
+  buildCustomerRecipeStructure,
+  buildRecipeStructure,
   gramVisibilityForPersona,
   type CustomerFlowState,
   type CustomerPersona,
   type CustomerProductType,
   type CustomerRecipeInput,
-  type CustomerRecipeLineInput,
+  type CustomerRecipeStructure,
+  type CustomerRecipeStructureLine,
   type CatalogueRecipeCard,
   type ReadyRecipeMatch,
   type ReadyRecipeQuery,
@@ -139,13 +142,16 @@ function catalogueTitle(id: string, fallback: string): string {
 }
 
 function deviceMeta(preset: DevicePreset): string {
-  if (typeof preset.verifiedCapacityGrams === 'number' && preset.verifiedCapacityGrams > 0) {
-    // Fixture capacities are illustrative, NOT a real verified device capacity —
-    // present them honestly as poglądowo, never as "Zweryfikowana".
-    return `${copy.device.capacityIllustrative}: ${preset.verifiedCapacityGrams} ${copy.device.unitGrams} ${copy.device.capacityIllustrativeSuffix}`;
+  if (
+    preset.targetRecipeMassStatus === 'verified' &&
+    typeof preset.targetRecipeMassG === 'number' &&
+    preset.targetRecipeMassG > 0
+  ) {
+    return `${copy.device.massVerified}: ${preset.targetRecipeMassG} ${copy.device.unitGrams}`;
   }
-  if (typeof preset.nominalCapacityMl === 'number' && preset.nominalCapacityMl > 0) {
-    return `${copy.device.capacityNominal}: ${preset.nominalCapacityMl} ${copy.device.unitMl}`;
+  if (typeof preset.containerCapacityMl === 'number' && preset.containerCapacityMl > 0) {
+    // Official volume only — shown honestly, never converted to grams.
+    return `${copy.device.capacityNominal}: ${preset.containerCapacityMl} ${copy.device.unitMl} · ${copy.device.volumeNotMass}`;
   }
   return copy.device.capacityUserDefined;
 }
@@ -156,45 +162,59 @@ function formatBatch(grams: number | null): string {
   return `${grams} ${copy.device.unitGrams}`;
 }
 
-function buildFixtureInput(
+/** Base-line id → the Polish ingredient-name copy key. */
+const BASE_INGREDIENT_COPY_KEY: Record<string, keyof typeof copy.ingredients> = {
+  milk: 'milk',
+  cream: 'cream',
+  'plant-milk': 'plantMilk',
+  'coconut-oil': 'coconutOil',
+  water: 'water',
+  sugar: 'sugar',
+  dextrose: 'dextrose',
+  stabilizer: 'stabilizer',
+};
+
+/** Human name for a structure line: flavor chips keep their own flavor label. */
+function structureLineName(line: CustomerRecipeStructureLine): string {
+  if (line.role === 'flavor' && line.flavorTag !== undefined) {
+    return `${flavorLabel(line.flavorTag)} ${copy.ingredients.flavorSuffix}`;
+  }
+  const key = BASE_INGREDIENT_COPY_KEY[line.id];
+  return key !== undefined ? copy.ingredients[key] : line.id;
+}
+
+/** Map the pure recipe STRUCTURE onto the view input (names from copy). */
+function structureToRecipeInput(
   recipeId: string,
   title: string,
-  productType: CustomerProductType,
-  mainFlavorTag: string | null,
+  structure: CustomerRecipeStructure,
 ): CustomerRecipeInput {
-  const ing = copy.ingredients;
-  const flavorName = `${mainFlavorTag ? flavorLabel(mainFlavorTag) : 'Baza smakowa'} ${ing.flavorSuffix}`;
-
-  const base: CustomerRecipeLineInput[] =
-    productType === 'sorbet'
-      ? [
-          { ingredientId: 'water', ingredientName: ing.water, grams: 560 },
-          { ingredientId: 'sugar', ingredientName: ing.sugar, grams: 170 },
-          { ingredientId: 'dextrose', ingredientName: ing.dextrose, grams: 45 },
-          { ingredientId: 'stabilizer', ingredientName: ing.stabilizer, grams: 6 },
-        ]
-      : productType === 'vegan'
-        ? [
-            { ingredientId: 'plant-milk', ingredientName: ing.plantMilk, grams: 640 },
-            { ingredientId: 'coconut-oil', ingredientName: ing.coconutOil, grams: 60 },
-            { ingredientId: 'sugar', ingredientName: ing.sugar, grams: 150 },
-            { ingredientId: 'dextrose', ingredientName: ing.dextrose, grams: 35 },
-            { ingredientId: 'stabilizer', ingredientName: ing.stabilizer, grams: 5 },
-          ]
-        : [
-            { ingredientId: 'milk', ingredientName: ing.milk, grams: 620 },
-            { ingredientId: 'cream', ingredientName: ing.cream, grams: 110 },
-            { ingredientId: 'sugar', ingredientName: ing.sugar, grams: 150 },
-            { ingredientId: 'dextrose', ingredientName: ing.dextrose, grams: 35 },
-            { ingredientId: 'stabilizer', ingredientName: ing.stabilizer, grams: 5 },
-          ];
-
   return {
     recipeId,
     title,
-    productType,
-    lines: [...base, { ingredientId: 'flavor', ingredientName: flavorName, grams: 80 }],
+    productType: structure.productType,
+    lines: structure.lines.map((l) => ({
+      ingredientId: l.id,
+      ingredientName: structureLineName(l),
+      grams: l.grams,
+      resolution: l.resolution,
+    })),
   };
+}
+
+/** Polish plural of "składnik" (1 / 2–4 / 5+). */
+function pluralSkladnik(n: number): string {
+  const abs = Math.abs(n);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (abs === 1) return copy.result.needsRefinementNoun.one;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return copy.result.needsRefinementNoun.few;
+  return copy.result.needsRefinementNoun.many;
+}
+
+/** Honest "recipe needs refinement (N ingredients)" line — never a fake total. */
+function needsRefinementText(n: number): string {
+  return `${copy.result.needsRefinementPrefix} (${n} ${pluralSkladnik(n)})`;
 }
 
 const noteText = (code: string): string => copy.tech.notes[code] ?? code;
@@ -358,6 +378,11 @@ export function CustomerShellV1() {
   const chips = activeFlavorChips(flow);
   const recipePath = flow.recipePath;
 
+  // A serving/temperature choice only exists on the PROFESSIONAL path. A Ninja is
+  // a home appliance — it never carries a display-temperature serving profile.
+  const servingIdEff: ServingId | null = flow.device?.kind === 'professional' ? servingId : null;
+  const isAppliance = flow.device?.kind === 'appliance';
+
   const isResultPhase =
     recipePath === 'new_recipe' || (recipePath === 'ready_recipe' && selectedDraft !== null);
   const isReadyListPhase = recipePath === 'ready_recipe' && selectedDraft === null;
@@ -377,8 +402,13 @@ export function CustomerShellV1() {
       ? `${flavorLabel(resultMainFlavor)} · ${copy.productType.short[resultType]}`
       : `${copy.result.title} · ${copy.productType.short[resultType]}`;
   const resultRecipeId = selectedDraft ? selectedDraft.sourceRecipeId : `preview-${resultType}`;
+  // Build the recipe SKELETON from EVERY active flavor (no chip is dropped). A
+  // ready-recipe draft uses its own preserved flavor list.
+  const structure: CustomerRecipeStructure = selectedDraft
+    ? buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags })
+    : buildCustomerRecipeStructure(flow);
   const view = buildCustomerRecipeView(
-    buildFixtureInput(resultRecipeId, resultTitle, resultType, resultMainFlavor),
+    structureToRecipeInput(resultRecipeId, resultTitle, structure),
     capability,
   );
   const showStickyUpgrade = isResultPhase && !view.gramsVisible;
@@ -390,7 +420,7 @@ export function CustomerShellV1() {
     ...(typeRes.userFacingType !== null ? { productType: typeRes.userFacingType } : {}),
     ...(flow.device !== null ? { deviceId: flow.device.id } : {}),
     ...(typeRes.userFacingType === 'vegan' ? { requireVegan: true } : {}),
-    ...(servingProfileFor(servingId) !== null ? { servingProfile: servingProfileFor(servingId)! } : {}),
+    ...(servingProfileFor(servingIdEff) !== null ? { servingProfile: servingProfileFor(servingIdEff)! } : {}),
   };
   const matches: ReadyRecipeMatch[] = isReadyListPhase
     ? matchReadyRecipes(readyQuery, CATALOGUE_FIXTURES)
@@ -486,6 +516,12 @@ export function CustomerShellV1() {
   );
 
   /* -------------------------------------------------- Technical details -- */
+  const servingProfileEnum = servingProfileFor(servingIdEff);
+  const servingProfileReadable = isAppliance
+    ? copy.devicePrep.short
+    : servingProfileEnum
+      ? (copy.tech.servingProfileLabels[servingProfileEnum] ?? servingProfileEnum)
+      : '—';
   const technical = (
     <TechnicalDetails summary={copy.tech.summary}>
       <div className="pt-1">
@@ -493,10 +529,10 @@ export function CustomerShellV1() {
           <SummaryRow label={copy.tech.userFacingType} value={copy.productType.short[typeRes.userFacingType]} />
         ) : null}
         {typeRes.internalProfile ? (
-          <SummaryRow label={copy.tech.internalProfile} value={typeRes.internalProfile} />
-        ) : null}
-        {typeRes.engineCategory ? (
-          <SummaryRow label={copy.tech.engineCategory} value={typeRes.engineCategory} />
+          <SummaryRow
+            label={copy.tech.internalProfile}
+            value={copy.tech.internalProfileLabels[typeRes.internalProfile] ?? typeRes.internalProfile}
+          />
         ) : null}
         {typeRes.chocolateRoutedInternally ? (
           <SummaryRow label={copy.tech.previewInternalRouting} value={copy.tech.chocolateRouting} />
@@ -505,11 +541,15 @@ export function CustomerShellV1() {
         {batchRes.batchGrams !== null ? (
           <SummaryRow label={copy.tech.batchGrams} value={String(batchRes.batchGrams)} />
         ) : null}
-        <SummaryRow label={copy.tech.servingProfile} value={servingProfileFor(servingId) ?? '—'} />
-        {selectedDraft ? (
+        <SummaryRow label={copy.tech.servingProfile} value={servingProfileReadable} />
+        {isResultPhase ? (
           <SummaryRow
-            label={copy.tech.sourceRecipe}
-            value={`${selectedDraft.sourceRecipeId} · ${selectedDraft.sourceVersion}`}
+            label={copy.tech.recipeStatus}
+            value={
+              view.unresolvedCount > 0
+                ? needsRefinementText(view.unresolvedCount)
+                : copy.result.fullyResolvedNote
+            }
           />
         ) : null}
 
@@ -533,6 +573,28 @@ export function CustomerShellV1() {
             </div>
           );
         })()}
+
+        {/* Raw trace strings live ONLY in a dev-gated advanced sub-section. */}
+        {import.meta.env.DEV ? (
+          <div className="mt-3 border-t border-ink/10 pt-3">
+            <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">{copy.tech.advancedTitle}</p>
+            {typeRes.engineCategory ? (
+              <SummaryRow label={copy.tech.engineCategory} value={typeRes.engineCategory} />
+            ) : null}
+            {typeRes.internalProfile ? (
+              <SummaryRow label={copy.tech.internalProfile} value={typeRes.internalProfile} />
+            ) : null}
+            {servingProfileEnum ? (
+              <SummaryRow label={copy.tech.servingProfile} value={servingProfileEnum} />
+            ) : null}
+            {selectedDraft ? (
+              <SummaryRow
+                label={copy.tech.sourceRecipe}
+                value={`${selectedDraft.sourceRecipeId} · ${selectedDraft.sourceVersion}`}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </TechnicalDetails>
   );
@@ -638,26 +700,42 @@ export function CustomerShellV1() {
               </div>
             </CustomerSection>
 
-            <CustomerSection label={copy.serving.label} title={copy.serving.title} lead={copy.serving.lead}>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {SERVING_OPTIONS.map((opt) => {
-                  const c = servingCopyFor(opt.id);
-                  return (
-                    <SelectableCard
-                      key={opt.id}
-                      title={c.label}
-                      description={c.secondary}
-                      selected={servingId === opt.id}
-                      onSelect={() => setServingId(opt.id)}
-                    />
-                  );
-                })}
-              </div>
-            </CustomerSection>
+            {/* Temperature / serving is a PROFESSIONAL-only step. A Ninja is a home
+                appliance — no display-temperature choice; show an honest prep note. */}
+            {flow.device?.kind === 'professional' ? (
+              <CustomerSection label={copy.serving.label} title={copy.serving.title} lead={copy.serving.lead}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {SERVING_OPTIONS.map((opt) => {
+                    const c = servingCopyFor(opt.id);
+                    return (
+                      <SelectableCard
+                        key={opt.id}
+                        title={c.label}
+                        description={c.secondary}
+                        selected={servingId === opt.id}
+                        onSelect={() => setServingId(opt.id)}
+                      />
+                    );
+                  })}
+                </div>
+              </CustomerSection>
+            ) : isAppliance ? (
+              <CustomerSection label={copy.devicePrep.label} title={copy.devicePrep.title}>
+                <Notice>{copy.devicePrep.ninja}</Notice>
+              </CustomerSection>
+            ) : null}
 
             {/* Ask-once device-capacity confirmation (never ml → g silently). */}
             {batchRes.needsConfirmation ? (
               <CustomerSection label={copy.capacity.label} title={copy.capacity.title} lead={copy.capacity.lead}>
+                {flow.device?.containerCapacityMl != null ? (
+                  <div className="mb-3">
+                    <Notice>
+                      {copy.capacity.officialCapacityLabel}: {flow.device.containerCapacityMl} {copy.device.unitMl} ·{' '}
+                      {copy.device.volumeNotMass}
+                    </Notice>
+                  </div>
+                ) : null}
                 <div className="flex items-end gap-2">
                   <TextField
                     className="flex-1"
@@ -762,10 +840,24 @@ export function CustomerShellV1() {
               />
               <SummaryRow
                 label={copy.result.servingLabel}
-                value={servingId ? servingCopyFor(servingId).label : copy.result.servingNone}
+                value={
+                  isAppliance
+                    ? copy.devicePrep.short
+                    : servingIdEff
+                      ? servingCopyFor(servingIdEff).label
+                      : copy.result.servingNone
+                }
               />
               <SummaryRow label={copy.result.batchLabel} value={formatBatch(batchRes.batchGrams)} />
             </div>
+
+            {/* When any flavor line is still an open requirement, say so honestly —
+                the preview is NOT a fully calculated recipe. */}
+            {view.unresolvedCount > 0 ? (
+              <div className="mt-4">
+                <Notice>{needsRefinementText(view.unresolvedCount)}</Notice>
+              </div>
+            ) : null}
 
             <div className="mt-4">
               <Notice>
@@ -777,14 +869,18 @@ export function CustomerShellV1() {
             <div className="mt-5">
               <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">{copy.result.ingredientsTitle}</p>
               <div className="mt-1 divide-y divide-ink/10">
-                {view.lines.map((line) => (
-                  <IngredientRow
-                    key={line.ingredientId}
-                    name={line.ingredientName}
-                    locked={line.grams === undefined}
-                    amount={line.grams !== undefined ? `${line.grams} ${copy.device.unitGrams}` : undefined}
-                  />
-                ))}
+                {view.lines.map((line) => {
+                  const unresolved = line.resolution !== 'resolved';
+                  return (
+                    <IngredientRow
+                      key={line.ingredientId}
+                      name={line.ingredientName}
+                      locked={!unresolved && line.grams === undefined}
+                      amount={line.grams !== undefined ? `${line.grams} ${copy.device.unitGrams}` : undefined}
+                      requirement={unresolved ? copy.result.resolutionLabels[line.resolution] : undefined}
+                    />
+                  );
+                })}
               </div>
             </div>
 

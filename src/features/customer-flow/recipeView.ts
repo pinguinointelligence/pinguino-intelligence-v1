@@ -12,6 +12,7 @@
  * entitlement onto this shape.
  */
 import type { CustomerProductType } from './types';
+import type { LineResolution } from './recipeStructure';
 
 /**
  * The single gram-visibility capability the view depends on. Mirrors the
@@ -43,8 +44,10 @@ export function gramVisibilityForPersona(persona: CustomerPersona): GramVisibili
 export interface CustomerRecipeLineInput {
   ingredientId: string;
   ingredientName: string;
-  /** Exact grams from the source recipe. */
-  grams: number;
+  /** Exact grams from the source recipe, or null when no safe dose exists yet. */
+  grams: number | null;
+  /** Defaults to 'resolved' when omitted. Unresolved lines never carry grams. */
+  resolution?: LineResolution;
 }
 
 export interface CustomerRecipeInput {
@@ -58,16 +61,25 @@ export interface CustomerRecipeInput {
 export interface CustomerRecipeViewLine {
   ingredientId: string;
   ingredientName: string;
-  /** Present ONLY when the capability grants exact grams; OMITTED otherwise. */
+  /**
+   * Present ONLY when the capability grants exact grams AND the line is resolved
+   * with a real dose; OMITTED otherwise (Demo, or any unresolved line).
+   */
   grams?: number;
+  /** How resolved this line is — an unresolved line never carries grams. */
+  resolution: LineResolution;
 }
 
 export interface CustomerRecipeView {
   recipeId: string;
   title: string;
   productType: CustomerProductType;
-  /** True only when exact grams are present in the returned data. */
+  /** True only when the capability grants exact grams (persona gate). */
   gramsVisible: boolean;
+  /** True only when every line resolved to a safe dose (no pending requirement). */
+  fullyResolved: boolean;
+  /** Count of lines that still need an ingredient choice or a dose. */
+  unresolvedCount: number;
   lines: CustomerRecipeViewLine[];
   servingProfile?: string;
 }
@@ -84,19 +96,28 @@ export function buildCustomerRecipeView(
   const gramsVisible = capability.canViewExactGrams === true;
 
   const lines: CustomerRecipeViewLine[] = recipe.lines.map((line) => {
+    const resolution: LineResolution = line.resolution ?? 'resolved';
     const base: CustomerRecipeViewLine = {
       ingredientId: line.ingredientId,
       ingredientName: line.ingredientName,
+      resolution,
     };
-    // Only attach grams when allowed — Demo lines carry no grams key at all.
-    return gramsVisible ? { ...base, grams: line.grams } : base;
+    // Grams appear only when the persona allows them AND the line is a resolved
+    // line with a real dose. Demo lines — and every unresolved line — carry no
+    // grams key at all: the number never enters the payload.
+    const hasDose = resolution === 'resolved' && typeof line.grams === 'number';
+    return gramsVisible && hasDose ? { ...base, grams: line.grams as number } : base;
   });
+
+  const unresolvedCount = lines.filter((l) => l.resolution !== 'resolved').length;
 
   return {
     recipeId: recipe.recipeId,
     title: recipe.title,
     productType: recipe.productType,
     gramsVisible,
+    fullyResolved: unresolvedCount === 0,
+    unresolvedCount,
     lines,
     ...(recipe.servingProfile !== undefined ? { servingProfile: recipe.servingProfile } : {}),
   };

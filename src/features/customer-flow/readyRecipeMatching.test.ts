@@ -53,7 +53,7 @@ describe('(6) ready-recipe route returns 5–6 deterministic cards with honest l
   });
 
   it('labels a device-only match as matches_device and a vegan match as vegan_version', () => {
-    const byDevice = matchReadyRecipes({ deviceId: 'ninja-verified-fixture' }, CATALOGUE_FIXTURES);
+    const byDevice = matchReadyRecipes({ deviceId: 'ninja-creami' }, CATALOGUE_FIXTURES);
     expect(byDevice.some((m) => m.label === 'matches_device')).toBe(true);
 
     const byVegan = matchReadyRecipes({ requireVegan: true }, CATALOGUE_FIXTURES);

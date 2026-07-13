@@ -57,3 +57,37 @@ describe('(9) Home/Pro → exact grams present via the capability (never a raw i
     expect('grams' in redacted.lines[0]!).toBe(false);
   });
 });
+
+/* Unresolved flavor lines never carry grams — even for a grams-visible persona. */
+describe('unresolved lines are honest requirements, never a fabricated gram', () => {
+  const MIXED: CustomerRecipeInput = {
+    recipeId: 'r-2',
+    title: 'Chocolate + whisky',
+    productType: 'gelato',
+    lines: [
+      { ingredientId: 'milk', ingredientName: 'Milk', grams: 620, resolution: 'resolved' },
+      { ingredientId: 'flavor:chocolate', ingredientName: 'Chocolate', grams: null, resolution: 'needs_dose' },
+      { ingredientId: 'flavor:whisky', ingredientName: 'Whisky', grams: null, resolution: 'needs_ingredient' },
+    ],
+  };
+
+  it('Pro sees grams on the resolved base line only, never on the unresolved flavors', () => {
+    const view = buildCustomerRecipeView(MIXED, gramVisibilityForPersona('pro'));
+    expect(view.lines[0]!.grams).toBe(620);
+    expect('grams' in view.lines[1]!).toBe(false);
+    expect('grams' in view.lines[2]!).toBe(false);
+  });
+
+  it('reports the recipe as not fully resolved and counts the open requirements', () => {
+    const view = buildCustomerRecipeView(MIXED, gramVisibilityForPersona('pro'));
+    expect(view.fullyResolved).toBe(false);
+    expect(view.unresolvedCount).toBe(2);
+    // Every output line carries an explicit resolution status.
+    expect(view.lines.map((l) => l.resolution)).toEqual(['resolved', 'needs_dose', 'needs_ingredient']);
+  });
+
+  it('Demo still carries no grams anywhere', () => {
+    const view = buildCustomerRecipeView(MIXED, gramVisibilityForPersona('demo'));
+    for (const line of view.lines) expect('grams' in line).toBe(false);
+  });
+});

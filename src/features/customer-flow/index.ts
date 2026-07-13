@@ -7,8 +7,10 @@
  */
 export * from './types';
 export * from './naturalLanguageBatch';
+export * from './polishFlavorSynonyms';
 export * from './devicePresets';
 export * from './customerFlow';
+export * from './recipeStructure';
 export * from './readyRecipeMatching';
 export * from './recipeView';
 export * from './substitutionIntent';

@@ -24,7 +24,8 @@ import {
   type RecipePath,
 } from './types';
 import { parseBatchFromText } from './naturalLanguageBatch';
-import { classifyDeviceCapacity, type DevicePreset } from './devicePresets';
+import { detectPolishFlavorTags } from './polishFlavorSynonyms';
+import type { DevicePreset } from './devicePresets';
 
 /** De-duplicate a tag list while preserving first-seen order. */
 const dedupe = (tags: readonly string[]): string[] => {
@@ -148,19 +149,41 @@ function spineIntent(state: CustomerFlowState): NormalizedRecipeIntent {
   return normalizeRecipeIntent({ input });
 }
 
-/** The flavor tags the spine detected from the raw text (parse only). */
+/**
+ * The flavor tags detected from the raw text (parse only): the locked spine
+ * parse PLUS the customer-flow Polish synonym pass, so inflected Polish words
+ * (e.g. "maliną", "czekoladą") are not silently dropped before retention runs.
+ * Spine tags keep their detection order; synonym-only tags are appended.
+ */
 export function detectedFlavorTags(state: CustomerFlowState): string[] {
-  return [...spineIntent(state).flavorTags];
+  return dedupe([...spineIntent(state).flavorTags, ...detectPolishFlavorTags(state.rawText)]);
 }
 
 /**
- * The customer-editable flavor chips: spine-detected tags minus the ones the
- * customer removed, plus the ones the customer added. Deterministic order:
- * surviving detected tags first (in detection order), then added tags.
+ * The customer-editable flavor chips: detected tags (spine + Polish synonyms)
+ * minus the ones the customer removed, plus the ones the customer added.
+ * Deterministic order: surviving detected tags first (in detection order),
+ * then added tags.
  */
 export function activeFlavorChips(state: CustomerFlowState): string[] {
-  const detected = spineIntent(state).flavorTags.filter((t) => !state.removedFlavorTags.includes(t));
+  const detectedRaw = dedupe([
+    ...spineIntent(state).flavorTags,
+    ...detectPolishFlavorTags(state.rawText),
+  ]);
+  const detected = detectedRaw.filter((t) => !state.removedFlavorTags.includes(t));
   return dedupe([...detected, ...state.addedFlavorTags]);
+}
+
+/**
+ * True when the locked spine flavor parser RECOGNIZES this tag as a known flavor
+ * (e.g. 'chocolate', 'raspberry', 'whisky'). A hand-typed tag the parser does not
+ * know (e.g. 'basil', 'mint') is NOT recognized. Pure — same tag, same answer.
+ * Used only to pick an honest unresolved status; it never fabricates a dose.
+ */
+export function isRecognizedFlavorTag(tag: string): boolean {
+  const clean = tag.trim().toLowerCase();
+  if (clean === '') return false;
+  return normalizeRecipeIntent({ input: { flavorText: clean } }).flavorTags.includes(clean);
 }
 
 /* ------------------------------------------------------------------------ *
@@ -328,12 +351,17 @@ export function resolveBatch(state: CustomerFlowState): BatchResolution {
     notes.push('customer_flow.batch_volume_needs_density');
   }
 
-  if (state.device !== null) {
-    const kind = classifyDeviceCapacity(state.device);
-    if (kind === 'verified_grams') {
+  const device = state.device;
+  if (device !== null) {
+    // Only an owner-approved (verified) recipe mass may auto-set the batch.
+    if (
+      device.targetRecipeMassStatus === 'verified' &&
+      device.targetRecipeMassG !== null &&
+      device.targetRecipeMassG > 0
+    ) {
       notes.push('customer_flow.batch_from_verified_device');
       return {
-        batchGrams: state.device.verifiedCapacityGrams,
+        batchGrams: device.targetRecipeMassG,
         satisfied: true,
         needsConfirmation: false,
         source: 'device_verified',
@@ -341,7 +369,9 @@ export function resolveBatch(state: CustomerFlowState): BatchResolution {
         notes,
       };
     }
-    if (kind === 'unverified_volume') {
+    // A container VOLUME with no verified mass: ask once for the recipe mass —
+    // never equate ml with grams.
+    if (device.containerCapacityMl !== null && device.containerCapacityMl > 0) {
       if (state.confirmedDeviceGrams !== null) {
         notes.push('customer_flow.device_capacity_confirmed');
         return { batchGrams: state.confirmedDeviceGrams, satisfied: true, needsConfirmation: false, source: 'device_confirmed', askBatch: false, notes };

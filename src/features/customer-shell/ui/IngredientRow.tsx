@@ -11,6 +11,12 @@ interface IngredientRowProps {
   note?: string;
   /** When true, the amount is replaced by the locked 🔒 stand-in. */
   locked?: boolean;
+  /**
+   * An honest open-requirement label (e.g. "wymaga potwierdzenia dawki") shown in
+   * place of an amount when a line has no safe dose yet. Takes precedence over
+   * `locked`/`amount` — the line carries NO gram number at all.
+   */
+  requirement?: string;
   /** Optional trailing action (e.g. a "Substitute" button). */
   action?: ReactNode;
   className?: string;
@@ -26,6 +32,7 @@ export function IngredientRow({
   amount,
   note,
   locked = false,
+  requirement,
   action,
   className,
 }: IngredientRowProps) {
@@ -36,7 +43,17 @@ export function IngredientRow({
         {note ? <p className={cn('truncate', type.caption, color.textMuted)}>{note}</p> : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {locked ? (
+        {requirement ? (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full border border-ink/15 bg-stone-50 px-2.5 py-1',
+              type.caption,
+              color.textMuted,
+            )}
+          >
+            {requirement}
+          </span>
+        ) : locked ? (
           <LockedGram hint="Dokładne ilości dostępne w płatnym planie" />
         ) : (
           <span className={cn(type.numeric, color.textPrimary)}>{amount ?? '—'}</span>

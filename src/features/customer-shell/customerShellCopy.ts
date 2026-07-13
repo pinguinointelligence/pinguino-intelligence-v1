@@ -92,9 +92,9 @@ export const customerShellCopy = {
     label: 'Urządzenie',
     title: 'Na czym przygotujesz lody?',
     lead: 'Wybór urządzenia pomaga ustalić wielkość porcji. Pojemności podane w ml nie przeliczamy po cichu na gramy.',
-    capacityIllustrative: 'Przykładowa pojemność',
-    capacityIllustrativeSuffix: '(poglądowo)',
-    capacityNominal: 'Pojemność nominalna',
+    massVerified: 'Zatwierdzona masa receptury',
+    capacityNominal: 'Pojemność pojemnika',
+    volumeNotMass: 'objętości nie przeliczamy na gramy',
     capacityUserDefined: 'Ilość ustalasz samodzielnie',
     unitGrams: 'g',
     unitMl: 'ml',
@@ -102,16 +102,28 @@ export const customerShellCopy = {
 
   /* ------------------------------------------- Device names (id → label) -- */
   /**
-   * Neutral, honest customer-facing device names keyed by the fixture preset id.
-   * The underlying fixtures carry engineering labels (e.g. "… — fixture") that
-   * must never reach the customer; we map by id at the shell layer and never
-   * mutate the fixture objects.
+   * Neutral, honest customer-facing device names keyed by the device preset id.
+   * Mapped by id at the shell layer; the preset objects are never mutated.
    */
   deviceLabels: {
-    'ninja-verified-fixture': 'Ninja',
-    'ninja-unverified-fixture': 'Ninja (pojemność nominalna)',
-    'professional-fixture': 'Maszyna profesjonalna',
+    'ninja-creami': 'Ninja CREAMi',
+    'ninja-creami-scoop-swirl': 'Ninja CREAMi Scoop & Swirl',
+    'ninja-creami-deluxe': 'Ninja CREAMi Deluxe',
+    'professional-machine': 'Maszyna profesjonalna',
   } as Record<string, string>,
+
+  /* -------------------------------------------- Ninja appliance preparation -- */
+  /**
+   * A Ninja is a home appliance: it freezes a fixed container and runs a fixed
+   * program, so there is NO serving-temperature choice — we show an honest
+   * preparation note instead of a fake temperature step.
+   */
+  devicePrep: {
+    label: 'Przygotowanie',
+    title: 'Jak powstaną lody?',
+    ninja: 'Przygotowanie w urządzeniu Ninja — mrożenie w pojemniku i program urządzenia.',
+    short: 'Program urządzenia Ninja',
+  },
 
   serving: {
     label: 'Konsystencja',
@@ -132,6 +144,7 @@ export const customerShellCopy = {
     label: 'Pojemność',
     title: 'Ile mieści to urządzenie?',
     lead: 'Podano tylko objętość w ml, a jej nie zamieniamy po cichu na gramy. Podaj wagę wsadu w gramach — zapytamy tylko raz.',
+    officialCapacityLabel: 'Pojemność pojemnika',
     inputLabel: 'Waga wsadu (g)',
     inputPlaceholder: 'np. 700',
     confirm: 'Zatwierdź',
@@ -227,6 +240,19 @@ export const customerShellCopy = {
     ingredientsTitle: 'Składniki',
     deviceNone: 'nie wybrano',
     servingNone: 'nie wybrano',
+    /** Honest right-side requirement labels for lines with no safe dose yet. */
+    resolutionLabels: {
+      needs_ingredient: 'wymaga wyboru składnika',
+      needs_dose: 'wymaga potwierdzenia dawki',
+    } as Record<string, string>,
+    /** Shown when at least one flavor line is still an open requirement. */
+    needsRefinementPrefix: 'Receptura wymaga doprecyzowania',
+    needsRefinementNoun: {
+      one: 'składnik',
+      few: 'składniki',
+      many: 'składników',
+    },
+    fullyResolvedNote: 'Wszystkie składniki są wstępnie rozpisane.',
   },
 
   /* ---------------------------------------------------------------- Upgrade -- */
@@ -244,14 +270,31 @@ export const customerShellCopy = {
     userFacingType: 'Widoczny rodzaj',
     internalProfile: 'Profil wewnętrzny',
     engineCategory: 'Kategoria silnika',
-    chocolateRouting: 'Wewnętrzny profil: chocolate_gelato',
+    chocolateRouting: 'Czekolada (wewnętrzny profil)',
     chocolateRoutingNote:
       'Wykryto czekoladę — widoczny rodzaj pozostaje Gelato, a profil prowadzimy wewnętrznie.',
     batchSource: 'Źródło ilości',
     batchGrams: 'Ilość (g)',
     servingProfile: 'Profil podania',
+    recipeStatus: 'Status receptury',
     sourceRecipe: 'Receptura źródłowa',
+    advancedTitle: 'Zaawansowane (dev)',
     notesTitle: 'Uwagi przepływu',
+    /** Readable Polish for the internal engine profile enums. */
+    internalProfileLabels: {
+      standard_gelato: 'Baza mleczna',
+      chocolate_gelato: 'Czekolada (wewnętrzny profil)',
+      sorbet: 'Sorbet',
+      vegan_gelato: 'Wegańska',
+    } as Record<string, string>,
+    /** Readable Polish for the serving-profile enums (professional path only). */
+    servingProfileLabels: {
+      'display-minus-11': 'Miękkie (witryna)',
+      'display-minus-12': 'Do gałek',
+      'display-minus-13': 'Twardsze',
+      'freezer-minus-18': 'Zamrażarka (−18°C)',
+      'display-fresh': 'Witryna / świeże',
+    } as Record<string, string>,
     /** Structured note codes → friendly Polish (never fabricated user text). */
     notes: {
       'customer_flow.protein_unsupported': 'Baza proteinowa nie jest jeszcze wspierana.',
@@ -284,6 +327,12 @@ export const customerShellCopy = {
     mint: 'Mięta',
     caramel: 'Karmel',
     coconut: 'Kokos',
+    whisky: 'Whisky',
+    whiskey: 'Whisky',
+    rum: 'Rum',
+    brandy: 'Brandy',
+    liqueur: 'Likier',
+    alcohol: 'Alkohol',
   } as Record<string, string>,
 
   /* ---------------------------------------------------- Ingredient name lists -- */

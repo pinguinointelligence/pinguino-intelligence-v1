@@ -17,10 +17,12 @@ import {
 } from './customerFlow';
 import { parseBatchFromText } from './naturalLanguageBatch';
 import { CUSTOMER_PRODUCT_TYPE_CHOICES } from './types';
+import { classifyDeviceCapacity, type DevicePreset } from './devicePresets';
 import {
-  NINJA_UNVERIFIED_FIXTURE,
-  NINJA_VERIFIED_FIXTURE,
-  PROFESSIONAL_MACHINE_FIXTURE,
+  NINJA_CREAMI,
+  NINJA_CREAMI_SCOOP_SWIRL,
+  NINJA_CREAMI_DELUXE,
+  PROFESSIONAL_MACHINE,
 } from './__fixtures__/deviceFixtures';
 
 describe('customer flow — product type never exposes chocolate', () => {
@@ -75,17 +77,32 @@ describe('(2) "Gelato czekoladowe z pomarańczą" — internal chocolate routing
 });
 
 /* Acceptance test (3) */
-describe('(3) Ninja preset with a verified capacity skips the batch question', () => {
+describe('(3) a VERIFIED device recipe mass auto-sets the batch and skips the question', () => {
+  // No shipped device carries an owner-approved mass yet (all are 'missing'), so
+  // a verified preset is constructed HERE in the test only — never invented into
+  // the real device catalogue.
+  const VERIFIED_TEST_DEVICE: DevicePreset = {
+    id: 'test-verified-appliance',
+    label: 'Test appliance (verified mass)',
+    kind: 'appliance',
+    containerCapacityMl: 473,
+    targetRecipeMassG: 700,
+    targetRecipeMassStatus: 'verified',
+  };
   let state = createCustomerFlow({ text: 'wanilia' });
   state = setProductType(state, 'gelato');
-  state = selectDevicePreset(state, NINJA_VERIFIED_FIXTURE);
+  state = selectDevicePreset(state, VERIFIED_TEST_DEVICE);
 
-  it('auto-sets the batch from the verified device capacity', () => {
+  it('classifies the device as a verified recipe mass', () => {
+    expect(classifyDeviceCapacity(VERIFIED_TEST_DEVICE)).toBe('verified_mass');
+  });
+
+  it('auto-sets the batch from the verified recipe mass', () => {
     const b = resolveBatch(state);
     expect(b.source).toBe('device_verified');
     expect(b.satisfied).toBe(true);
     expect(b.askBatch).toBe(false);
-    expect(b.batchGrams).toBe(NINJA_VERIFIED_FIXTURE.verifiedCapacityGrams);
+    expect(b.batchGrams).toBe(VERIFIED_TEST_DEVICE.targetRecipeMassG);
   });
 
   it('does not list batch or device confirmation as pending', () => {
@@ -98,9 +115,11 @@ describe('(3) Ninja preset with a verified capacity skips the batch question', (
 describe('(4) Professional machine, batch not supplied → asks batch', () => {
   let state = createCustomerFlow({ text: 'wanilia' });
   state = setProductType(state, 'gelato');
-  state = selectDevicePreset(state, PROFESSIONAL_MACHINE_FIXTURE);
+  state = selectDevicePreset(state, PROFESSIONAL_MACHINE);
 
-  it('has no auto batch and asks the batch question', () => {
+  it('is a professional device with no auto batch and asks the batch question', () => {
+    expect(PROFESSIONAL_MACHINE.kind).toBe('professional');
+    expect(classifyDeviceCapacity(PROFESSIONAL_MACHINE)).toBe('unspecified');
     const b = resolveBatch(state);
     expect(b.source).toBe('none');
     expect(b.askBatch).toBe(true);
@@ -153,16 +172,34 @@ describe('(10) Protein has no supported engine profile → honest gap, no silent
   });
 });
 
-describe('device with a nominal volume only → confirm once, never guess', () => {
-  it('awaits a single confirmation instead of equating ml with grams', () => {
+describe('Ninja device catalogue — explicit European models, honest capacities', () => {
+  it('carries the official container volumes and no invented recipe mass', () => {
+    expect(NINJA_CREAMI.containerCapacityMl).toBe(473);
+    expect(NINJA_CREAMI_SCOOP_SWIRL.containerCapacityMl).toBe(473);
+    expect(NINJA_CREAMI_DELUXE.containerCapacityMl).toBe(709);
+
+    for (const d of [NINJA_CREAMI, NINJA_CREAMI_SCOOP_SWIRL, NINJA_CREAMI_DELUXE]) {
+      expect(d.kind).toBe('appliance');
+      // No owner-approved mass exists yet — every model is 'missing', never verified.
+      expect(d.targetRecipeMassG).toBeNull();
+      expect(d.targetRecipeMassStatus).toBe('missing');
+      expect(classifyDeviceCapacity(d)).toBe('volume_needs_mass');
+    }
+  });
+});
+
+describe('a Ninja container volume is NEVER auto-treated as grams', () => {
+  it('the volume alone never sets a batch — it asks for the recipe mass once', () => {
     let state = createCustomerFlow({ text: 'wanilia' });
     state = setProductType(state, 'gelato');
-    state = selectDevicePreset(state, NINJA_UNVERIFIED_FIXTURE);
+    state = selectDevicePreset(state, NINJA_CREAMI);
 
     const before = resolveBatch(state);
     expect(before.needsConfirmation).toBe(true);
     expect(before.source).toBe('device_unverified');
     expect(before.batchGrams).toBeNull();
+    // 473 ml is never quietly turned into 473 g.
+    expect(before.batchGrams).not.toBe(473);
     expect(nextQuestion(state)).toBe('device_capacity');
 
     state = confirmDeviceCapacity(state, 900);
@@ -170,7 +207,21 @@ describe('device with a nominal volume only → confirm once, never guess', () =
     expect(after.satisfied).toBe(true);
     expect(after.source).toBe('device_confirmed');
     expect(after.batchGrams).toBe(900);
+    // The mass question is asked exactly once — not repeated after it is answered.
     expect(pendingQuestions(state)).not.toContain('device_capacity');
+    expect(pendingQuestions(state).filter((q) => q === 'device_capacity')).toHaveLength(0);
+  });
+
+  it('a Ninja flow never introduces a serving-temperature question', () => {
+    let state = createCustomerFlow({ text: 'wanilia' });
+    state = setProductType(state, 'gelato');
+    state = selectDevicePreset(state, NINJA_CREAMI_DELUXE);
+    state = confirmDeviceCapacity(state, 800);
+    // The only questions the flow can ask are the four known ids — none is a
+    // temperature/serving question.
+    for (const q of pendingQuestions(state)) {
+      expect(['product_type', 'device_capacity', 'batch', 'recipe_path']).toContain(q);
+    }
   });
 });
 
