@@ -295,6 +295,31 @@ export const customerShellCopy = {
       many: 'składników',
     },
     fullyResolvedNote: 'Wszystkie składniki są wstępnie rozpisane.',
+    /** Readable Polish names for base recipe lines, keyed by engine + structure id. */
+    baseIngredientNames: {
+      // real engine (demo/reference catalog) ids
+      milk_3_5: 'Mleko 3,5%',
+      cream_30: 'Śmietana 30%',
+      smp: 'Mleko odtłuszczone w proszku',
+      sucrose: 'Cukier (sacharoza)',
+      dextrose: 'Dekstroza',
+      tara_gum: 'Stabilizator (guma tara)',
+      cocoa_2224: 'Kakao 22/24',
+      dark_chocolate_70: 'Czekolada gorzka 70%',
+      // structure-only (not-yet-calculated) ids
+      milk: 'Mleko',
+      cream: 'Śmietana',
+      sugar: 'Cukier',
+      stabilizer: 'Stabilizator',
+      water: 'Woda',
+      'plant-milk': 'Napój roślinny',
+      'coconut-oil': 'Olej kokosowy',
+    } as Record<string, string>,
+    /** Result-state banners — honest about whether the engine calculated the card. */
+    stateCalculated: 'Receptura wyliczona przez silnik PINGÜINO.',
+    stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Uruchom Monitor PI, aby dopasować.',
+    stateStructureOnly:
+      'To podglądowa struktura składników, a nie wyliczona receptura. Dokładne ilości wyliczy silnik, gdy uzupełnisz wymagane dane.',
   },
 
   /* -------------------------------------------------------- Flavor intensity -- */
@@ -400,6 +425,14 @@ export const customerShellCopy = {
       'Kierunek zapisany. Dokładne przeliczenie z gramami uruchomisz w planie Home lub Pro — na recepturze wyliczonej przez silnik.',
     /** Shown in the Demo preview (qualitative only, no grams). */
     demoNote: 'W podglądzie pokazujemy kierunek zmian jakościowo, bez gramów.',
+    /** Shown when there is no calculated recipe yet (structure_only). */
+    needsCalculatedNote:
+      'Monitor PI dokładnie przeliczy recepturę, gdy karta będzie wyliczona przez silnik (uzupełnij wymagane dane).',
+    przed: 'Przed',
+    po: 'Po zmianie',
+    apply: 'Zastosuj zmiany',
+    undo: 'Cofnij',
+    adjustmentsTitle: 'Proponowane zmiany ilości',
   },
 
   /* ---------------------------------------------------------------- Upgrade -- */

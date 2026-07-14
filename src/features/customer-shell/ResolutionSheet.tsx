@@ -115,21 +115,27 @@ export function ResolutionSheet({ controller }: { controller: IngredientResoluti
           </div>
         </div>
       ) : c.view === 'picker' ? (
-        <div>
-          <TextField
-            label={R.searchLabel}
-            placeholder={R.searchPlaceholder}
-            value={c.query}
-            onChange={(e) => c.setQuery(e.target.value)}
-          />
-          <div className="mt-3 flex flex-col gap-2">
-            {c.results.length === 0 ? (
-              <p className="py-6 text-center text-[13px] text-stone-500">{R.noResults}</p>
-            ) : (
-              c.results.map((r) => <CandidateRow key={r.entry.productId} result={r} onPick={() => c.pick(r)} />)
-            )}
+        !c.catalogueAvailable ? (
+          <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-6 text-center text-[13px] leading-relaxed text-amber-200">
+            {c.source.note}
+          </p>
+        ) : (
+          <div>
+            <TextField
+              label={R.searchLabel}
+              placeholder={R.searchPlaceholder}
+              value={c.query}
+              onChange={(e) => c.setQuery(e.target.value)}
+            />
+            <div className="mt-3 flex flex-col gap-2">
+              {c.results.length === 0 ? (
+                <p className="py-6 text-center text-[13px] text-stone-500">{R.noResults}</p>
+              ) : (
+                c.results.map((r) => <CandidateRow key={r.entry.productId} result={r} onPick={() => c.pick(r)} />)
+              )}
+            </div>
           </div>
-        </div>
+        )
       ) : c.view === 'substitute' ? (
         <div>
           <p className="text-[15px] font-medium text-ink">{R.substituteTitle}</p>

@@ -11,7 +11,7 @@
  * The picker search is delegated to the reused `searchPickerCatalogue`; readiness is
  * delegated to the reused gate through `pickProduct`. This hook adds no engine math.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   createResolutionState,
   openSheet,
@@ -33,8 +33,7 @@ import {
   type ResolutionActionId,
 } from '@/features/ingredient-resolution';
 import {
-  createInMemoryProductCatalog,
-  SAMPLE_SOURCE,
+  CATALOGUE_UNAVAILABLE,
   searchPickerCatalogue,
   sampleCategoryForIngredient,
   type CatalogueSource,
@@ -52,9 +51,13 @@ export interface ResolvableLine {
 /** Which panel of the open sheet is showing. */
 export type ResolutionView = 'menu' | 'picker' | 'substitute' | 'intake';
 
+const EMPTY_ENTRIES: readonly PickerCatalogueEntry[] = [];
+
 export interface IngredientResolutionController {
   summary: IngredientResolutionSummary;
   source: CatalogueSource;
+  /** False when no approved catalogue backend is connected (honest unavailable). */
+  catalogueAvailable: boolean;
   /** The line whose sheet is open, else null. */
   activeLineId: string | null;
   activeLine: LineResolution | null;
@@ -124,8 +127,6 @@ export function useIngredientResolution(
   workingRecipeId: string,
   lines: readonly ResolvableLine[],
 ): IngredientResolutionController {
-  const port = useMemo(() => createInMemoryProductCatalog(), []);
-  const [entries, setEntries] = useState<readonly PickerCatalogueEntry[]>([]);
   const [state, setState] = useState<IngredientResolutionState>(() =>
     createResolutionState({ workingRecipeId, lines: seedsFrom(lines) }),
   );
@@ -135,16 +136,12 @@ export function useIngredientResolution(
   const [whyOpen, setWhyOpen] = useState(false);
   const [pickedNames, setPickedNames] = useState<Record<string, string>>({});
 
-  // Load the catalogue once (honest sample; a live approved adapter swaps in here).
-  useEffect(() => {
-    let live = true;
-    void port.fetch({ text: '' }).then((e) => {
-      if (live) setEntries(e);
-    });
-    return () => {
-      live = false;
-    };
-  }, [port]);
+  // No approved products/ingredients backend is connected in this environment, so the
+  // catalogue is honestly UNAVAILABLE (no sample fallback — never fake products). The real
+  // backend catalogue adapters (product + Mapper-Basement ingredient) swap in once an
+  // approved environment is connected; then `entries` is populated and real results show.
+  const entries: readonly PickerCatalogueEntry[] = EMPTY_ENTRIES;
+  const catalogueAvailable = false;
 
   // Keep the resolvable line SET in sync with the recipe, preserving progress.
   // Adjusted DURING render (the recommended pattern) rather than in an effect, so a
@@ -252,7 +249,8 @@ export function useIngredientResolution(
 
   return {
     summary: ingredientResolutionSummary(state),
-    source: SAMPLE_SOURCE,
+    source: CATALOGUE_UNAVAILABLE,
+    catalogueAvailable,
     activeLineId,
     activeLine,
     view,

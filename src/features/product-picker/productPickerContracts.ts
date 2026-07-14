@@ -94,9 +94,10 @@ export interface ProductCatalogPort {
 
 /** How the currently-connected catalogue should be described to the customer. */
 export interface CatalogueSource {
-  /** `sample` = honest built-in reference set (NOT the production catalogue);
-   *  `live` = an approved, connected products environment. */
-  kind: 'sample' | 'live';
+  /** `live` = an approved, connected products/ingredients environment;
+   *  `unavailable` = no approved backend connected (honest empty state, no sample);
+   *  `sample` = built-in reference set (DEV/tests only, never the public build). */
+  kind: 'sample' | 'live' | 'unavailable';
   /** Honest Polish note shown above the picker results. */
   note: string;
 }
