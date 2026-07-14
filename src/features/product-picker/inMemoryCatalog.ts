@@ -22,7 +22,7 @@ export const SAMPLE_SOURCE: CatalogueSource = {
  */
 export const CATALOGUE_UNAVAILABLE: CatalogueSource = {
   kind: 'unavailable',
-  note: 'Katalog jest chwilowo niedostępny. Pełny katalog — Składniki PI (Mapper Basement) i Produkty — zostanie podłączony po konfiguracji zatwierdzonego środowiska.',
+  note: 'Katalog składników i produktów jest chwilowo niedostępny. Zostanie aktywowany po zakończeniu konfiguracji bezpiecznego środowiska.',
 };
 
 /** Build an in-memory catalogue port over the sample (or a supplied) entry set. */
