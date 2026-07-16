@@ -7,6 +7,7 @@
  */
 import type { Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
+import { allowedOAuthRedirectOrigin } from './authRedirect';
 
 export interface AuthUser {
   id: string;
@@ -43,6 +44,26 @@ export async function signUp(email: string, password: string): Promise<AuthResul
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   if (!supabase) return { ok: false, message: UNAVAILABLE };
   const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, needsConfirmation: false };
+}
+
+/**
+ * Google sign-in via the hosted OAuth flow. Navigates the browser away to
+ * Google; the session is picked up on return by `detectSessionInUrl` +
+ * `onAuthStateChange` on whatever route the user lands on. `redirectTo` is
+ * ONLY ever the app's own current origin (validated against a closed
+ * allowlist); when the origin is not recognised we omit it and the backend
+ * falls back to its dashboard-configured Site URL.
+ */
+export async function signInWithGoogle(): Promise<AuthResult> {
+  if (!supabase) return { ok: false, message: UNAVAILABLE };
+  const origin = typeof window !== 'undefined' ? window.location.origin : undefined;
+  const redirectTo = allowedOAuthRedirectOrigin(origin);
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: redirectTo ? { redirectTo } : undefined,
+  });
   if (error) return { ok: false, message: error.message };
   return { ok: true, needsConfirmation: false };
 }

@@ -303,6 +303,10 @@ export const copy = {
     checkEmail: 'Almost there — check your email to confirm your account.',
     unavailable: 'Sign-in is not available in this build yet.',
     close: 'Close',
+    orDivider: 'or',
+    continueWithGoogle: 'Continue with Google',
+    googleCancelled: 'Google sign-in was cancelled — nothing was changed. You can try again any time.',
+    googleFailed: 'Google sign-in didn’t complete. Please try again.',
   },
   /** Saved recipes + My Recipes (Phase 2A.2). */
   recipes: {
