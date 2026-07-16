@@ -20,6 +20,7 @@
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "^5.2.8",
     "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@sentry/react": "^10.66.0",
     "@supabase/supabase-js": "^2.108.1",
     "@tanstack/react-query": "^5.101.0",
     "react": "^19.2.7",

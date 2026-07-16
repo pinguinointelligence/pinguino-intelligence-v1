@@ -23,7 +23,9 @@ function allSourceFiles(): string[] {
 }
 
 const FILES = allSourceFiles();
-const ALLOWED_ENV = new Set(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']);
+// The COMPLETE frontend env allowlist. VITE_SENTRY_DSN is a Sentry DSN — public
+// by design (ingest-only; it cannot read events). Anything else is disallowed.
+const ALLOWED_ENV = new Set(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SENTRY_DSN']);
 
 describe('Phase 2A security guards', () => {
   it('never references a service_role key anywhere in the frontend', () => {
@@ -33,14 +35,18 @@ describe('Phase 2A security guards', () => {
     }
   });
 
-  it('references only the two public Supabase env vars (URL + ANON_KEY)', () => {
+  it('references only allowlisted public frontend env vars (ANY VITE_* is policed)', () => {
     const referenced = new Set<string>();
     for (const file of FILES) {
       const text = readFileSync(file, 'utf8');
-      for (const match of text.matchAll(/VITE_SUPABASE_[A-Z_]+/g)) {
+      // Widened from VITE_SUPABASE_* to ALL VITE_* vars so a new env var can never
+      // slip into the shipped bundle without an explicit allowlist decision here.
+      // Lookbehind excludes identifiers merely CONTAINING the substring (INVITE_…).
+      for (const match of text.matchAll(/(?<![A-Z0-9_])VITE_[A-Z_]+/g)) {
         referenced.add(match[0]);
       }
     }
+    expect(referenced.size).toBeGreaterThan(0);
     for (const name of referenced) {
       expect(ALLOWED_ENV.has(name), `disallowed frontend env var: ${name}`).toBe(true);
     }

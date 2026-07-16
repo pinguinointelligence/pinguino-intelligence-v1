@@ -9,4 +9,6 @@ declare module '@fontsource-variable/hanken-grotesk';
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** Sentry DSN (public by design — ingest-only). Absent → monitoring disabled. */
+  readonly VITE_SENTRY_DSN?: string;
 }
