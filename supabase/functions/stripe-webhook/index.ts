@@ -23,11 +23,13 @@
  *     (received → processing → processed | failed → retryable, see
  *     handlers.ts) drives retries via the background worker, NOT via Stripe
  *     redelivery storms.
- *  5. Local effects are applied by the dispatch worker using the pure
- *     decisions (decideEventApplication + per-intent idempotency keys). In
- *     this source revision the dispatcher records the routed intent and
- *     marks the row processed; the concrete table writers land with the
- *     track D/E integration.
+ *  5. Local effects are applied inline by ./dispatch.ts using the pure
+ *     decisions (./effects.ts mappers + per-intent idempotency keys backed
+ *     by the 0014–0021 unique constraints). A dispatch failure transitions
+ *     the row processing → failed → retryable (decideFailureFollowup) for
+ *     the retry worker — it never breaks the 2xx contract. Intents whose
+ *     target tables do not exist in the migrations are explicit
+ *     `skipped_no_contract` no-ops recorded on the processed row.
  *
  * Required env (names only, never values): STRIPE_WEBHOOK_SECRET,
  * STRIPE_SECRET_KEY, STRIPE_API_VERSION, plus the auto-injected
@@ -35,7 +37,8 @@
  */
 import Stripe from 'npm:stripe@18';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { routeWebhookEvent } from './handlers.ts';
+import { decideFailureFollowup, routeWebhookEvent } from './handlers.ts';
+import { applyEventEffects, type DbClient, type StripeResource } from './dispatch.ts';
 
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -116,22 +119,90 @@ Deno.serve(async (req) => {
   //    matter what the dispatcher does; retries are the state machine's job
   //    (received → processing → processed | failed → retryable, guarded
   //    state-conditional updates so a concurrent worker can never regress a
-  //    row). The concrete per-intent table writers plug in here with the
-  //    track D/E integration; their failures transition the row to
-  //    failed/retryable instead of breaking the 2xx contract.
+  //    row). The per-intent table writers live in ./dispatch.ts; their
+  //    failures transition the row to failed/retryable instead of breaking
+  //    the 2xx contract.
   const { error: claimError } = await admin
     .from('stripe_webhook_events')
     .update({ state: 'processing' })
     .eq('event_id', event.id)
     .eq('state', 'received');
   if (!claimError) {
-    const { error: doneError } = await admin
-      .from('stripe_webhook_events')
-      .update({ state: 'processed', processed_at: new Date().toISOString() })
-      .eq('event_id', event.id)
-      .eq('state', 'processing');
-    if (doneError) {
-      console.log(`stripe-webhook: ${event.id} left in processing (retry worker owns it)`);
+    // Refetch-current for requiresRefetch intents: payload snapshots may be
+    // out of order; the refetched object is always the current truth.
+    const refetch = async (resource: StripeResource, id: string): Promise<Record<string, unknown>> => {
+      switch (resource) {
+        case 'subscription':
+          return (await stripe.subscriptions.retrieve(id)) as unknown as Record<string, unknown>;
+        case 'invoice':
+          return (await stripe.invoices.retrieve(id)) as unknown as Record<string, unknown>;
+        case 'charge':
+          return (await stripe.charges.retrieve(id)) as unknown as Record<string, unknown>;
+        case 'refund':
+          return (await stripe.refunds.retrieve(id)) as unknown as Record<string, unknown>;
+        case 'dispute':
+          return (await stripe.disputes.retrieve(id)) as unknown as Record<string, unknown>;
+        case 'account':
+          return (await stripe.accounts.retrieve(id)) as unknown as Record<string, unknown>;
+      }
+    };
+
+    let note: string | null = null;
+    let failureMessage: string | null = null;
+    try {
+      const result = await applyEventEffects(
+        { db: admin as unknown as DbClient, refetch },
+        {
+          id: event.id,
+          type: event.type,
+          created: event.created,
+          livemode: event.livemode,
+          object: event.data.object as unknown as Record<string, unknown>,
+        },
+      );
+      note = result.note;
+    } catch (dispatchError) {
+      failureMessage =
+        dispatchError instanceof Error ? dispatchError.message : 'dispatch_failed';
+    }
+
+    if (failureMessage === null) {
+      const { error: doneError } = await admin
+        .from('stripe_webhook_events')
+        .update({
+          state: 'processed',
+          processed_at: new Date().toISOString(),
+          // The processing note (e.g. skipped_no_contract:<reason>) rides in
+          // last_error — 0021's only free-text column; null on a clean apply.
+          last_error: note,
+        })
+        .eq('event_id', event.id)
+        .eq('state', 'processing');
+      if (doneError) {
+        console.log(`stripe-webhook: ${event.id} left in processing (retry worker owns it)`);
+      }
+    } else {
+      // Guarded processing → failed (+ attempt accounting), then
+      // failed → retryable while the attempt budget lasts.
+      console.log(`stripe-webhook: ${event.id} dispatch failed (state machine owns the retry)`);
+      const { data: attemptRow } = await admin
+        .from('stripe_webhook_events')
+        .select('attempts')
+        .eq('event_id', event.id)
+        .maybeSingle();
+      const attempts = (attemptRow?.attempts ?? 0) + 1;
+      const { error: failError } = await admin
+        .from('stripe_webhook_events')
+        .update({ state: 'failed', attempts, last_error: failureMessage })
+        .eq('event_id', event.id)
+        .eq('state', 'processing');
+      if (!failError && decideFailureFollowup(attempts) === 'retryable') {
+        await admin
+          .from('stripe_webhook_events')
+          .update({ state: 'retryable' })
+          .eq('event_id', event.id)
+          .eq('state', 'failed');
+      }
     }
   } else {
     console.log(`stripe-webhook: ${event.id} stays received (retry worker owns it)`);
