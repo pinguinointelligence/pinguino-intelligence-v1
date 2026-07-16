@@ -305,6 +305,7 @@ export const copy = {
     close: 'Close',
     orDivider: 'or',
     continueWithGoogle: 'Continue with Google',
+    googleRedirecting: 'Connecting to Google…',
     googleCancelled: 'Google sign-in was cancelled — nothing was changed. You can try again any time.',
     googleFailed: 'Google sign-in didn’t complete. Please try again.',
   },

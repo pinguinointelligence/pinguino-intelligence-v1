@@ -86,3 +86,28 @@ describe('AuthModal — post-OAuth-redirect notices', () => {
     expect(html).not.toContain(a.googleFailed);
   });
 });
+
+describe('AuthModal — Google button UX (icon, accessibility, idle state)', () => {
+  it('carries the Google icon (inline svg) and an explicit accessible label', () => {
+    h.auth.available = true;
+    const html = render();
+    expect(html).toContain(`aria-label="${a.continueWithGoogle}"`);
+    expect(html).toContain('viewBox="0 0 48 48"'); // the inline multi-colour G mark
+    expect(html).toContain('#4285F4'); // Google blue — proves the real mark, not a placeholder
+  });
+
+  it('shows the idle label (not the redirecting label) before any click', () => {
+    h.auth.available = true;
+    const html = render();
+    expect(html).toContain(a.continueWithGoogle);
+    expect(html).not.toContain(a.googleRedirecting);
+  });
+
+  it('renders the divider between the email form and the Google button', () => {
+    h.auth.available = true;
+    const html = render();
+    const divider = `>${a.orDivider}<`;
+    expect(html.indexOf(divider)).toBeGreaterThan(html.indexOf(a.submitSignIn));
+    expect(html.indexOf(a.continueWithGoogle)).toBeGreaterThan(html.indexOf(divider));
+  });
+});
