@@ -12,6 +12,7 @@ import {
   isAuthAvailable,
   onAuthChange,
   signIn as serviceSignIn,
+  signInWithGoogle as serviceSignInWithGoogle,
   signOut as serviceSignOut,
   signUp as serviceSignUp,
   type AuthResult,
@@ -28,6 +29,9 @@ interface AuthState {
   init: () => void;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signUp: (email: string, password: string) => Promise<AuthResult>;
+  /** Hosted Google OAuth — on success the browser navigates away; the session
+   * is restored by the auth-change subscription when the user returns. */
+  signInWithGoogle: () => Promise<AuthResult>;
   signOut: () => Promise<void>;
 }
 
@@ -51,6 +55,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signIn: (email, password) => serviceSignIn(email, password),
   signUp: (email, password) => serviceSignUp(email, password),
+  signInWithGoogle: () => serviceSignInWithGoogle(),
   signOut: async () => {
     await serviceSignOut();
     set({ user: null, status: 'anon' });

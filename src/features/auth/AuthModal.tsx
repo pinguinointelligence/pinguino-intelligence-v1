@@ -4,6 +4,7 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuthModalStore } from './authModalStore';
 
 const a = copy.auth;
 
@@ -18,6 +19,9 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
   const available = useAuthStore((state) => state.available);
   const signIn = useAuthStore((state) => state.signIn);
   const signUp = useAuthStore((state) => state.signUp);
+  const signInWithGoogle = useAuthStore((state) => state.signInWithGoogle);
+  const notice = useAuthModalStore((state) => state.notice);
+  const clearNotice = useAuthModalStore((state) => state.clearNotice);
 
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -31,12 +35,27 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError(null);
     setInfo(null);
+    clearNotice();
     const result = mode === 'signin' ? await signIn(email, password) : await signUp(email, password);
     setBusy(false);
     if (result.ok) {
       if (mode === 'signup' && result.needsConfirmation) setInfo(a.checkEmail);
       else onClose();
     } else {
+      setError(result.message);
+    }
+  };
+
+  const continueWithGoogle = async () => {
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    clearNotice();
+    const result = await signInWithGoogle();
+    // On success the browser is navigating away to Google — leave the modal in
+    // its busy state; only a failure hands control back to the user here.
+    if (!result.ok) {
+      setBusy(false);
       setError(result.message);
     }
   };
@@ -64,6 +83,17 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
           </>
         ) : (
           <>
+            {notice ? (
+              <p
+                className={cn(
+                  'mt-4 text-xs leading-relaxed',
+                  notice.kind === 'oauth-cancelled' ? 'text-stone-600' : 'text-status-risky',
+                )}
+              >
+                {notice.kind === 'oauth-cancelled' ? a.googleCancelled : a.googleFailed}
+                {notice.kind === 'oauth-failed' && notice.detail ? ` (${notice.detail})` : null}
+              </p>
+            ) : null}
             <form className="mt-5 space-y-4" onSubmit={submit}>
               <label className="block">
                 <span className="text-xs tracking-label text-stone-500 uppercase">{a.email}</span>
@@ -99,6 +129,20 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
                 {busy ? a.busy : mode === 'signin' ? a.submitSignIn : a.submitSignUp}
               </button>
             </form>
+
+            <div className="mt-5 flex items-center gap-3" aria-hidden="true">
+              <span className="h-px flex-1 bg-ink/10" />
+              <span className="text-xs tracking-label text-stone-400 uppercase">{a.orDivider}</span>
+              <span className="h-px flex-1 bg-ink/10" />
+            </div>
+            <button
+              type="button"
+              disabled={busy}
+              className={cn(buttonClasses('ghost', 'sm'), 'mt-4 w-full', busy && 'opacity-50')}
+              onClick={continueWithGoogle}
+            >
+              {a.continueWithGoogle}
+            </button>
 
             <div className="mt-4 flex items-center justify-between">
               <button
