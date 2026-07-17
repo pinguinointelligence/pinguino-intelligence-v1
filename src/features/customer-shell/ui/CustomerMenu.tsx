@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { customerShellCopy as copy } from '../customerShellCopy';
-import { CUSTOMER_MENU_DIAGNOSTIC_ROUTE, CUSTOMER_MENU_ITEMS } from '../customerMenu';
+import { CUSTOMER_MENU_ITEMS } from '../customerMenu';
 import { color, focusRing, motion, touch, type } from './tokens';
 
 const FOCUSABLE =
@@ -227,20 +227,6 @@ export function CustomerMenu({ showBrand = true }: CustomerMenuProps = {}) {
                   {copy.menu.signIn}
                 </button>
               )}
-              <Link
-                to={CUSTOMER_MENU_DIAGNOSTIC_ROUTE}
-                onClick={close}
-                className={cn(
-                  'mt-1 block rounded-xl px-4 py-2',
-                  type.caption,
-                  color.textMuted,
-                  'hover:bg-ink/10',
-                  focusRing,
-                  motion.base,
-                )}
-              >
-                {copy.menu.classic}
-              </Link>
             </div>
           </div>
 

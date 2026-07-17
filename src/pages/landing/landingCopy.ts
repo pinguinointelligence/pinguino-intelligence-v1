@@ -123,6 +123,32 @@ export const landingCopy = {
     note: 'Szczegóły planów znajdziesz na stronie subskrypcji.',
   },
 
+  /* --------------------------------------------------- Subscription page ----- */
+  /**
+   * The `/subscription` conversion page reuses the `plans` tiers above so the
+   * paywall's destination matches the landing exactly. Only the page chrome +
+   * the honest pre-checkout state live here (Polish, light-first — Track C).
+   */
+  subscription: {
+    eyebrow: 'Plany',
+    title: 'Home czy Pro?',
+    lead: 'Ta sama wiedza technologiczna — wybierz głębokość, której potrzebujesz.',
+    whatUnlocks:
+      'Home jest darmowy i wystarcza do domowych receptur. Pro odblokowuje dokładne gramatury, pełniejsze dane techniczne i zaawansowane Studio.',
+    freeBadge: 'Za darmo',
+    proBadge: 'Pełny dostęp',
+    freeCta: 'Zacznij za darmo',
+    proCta: 'Przejdź na Pro',
+    billingNote: 'Płatności są w trakcie uruchamiania — zaloguj się, aby otrzymać dostęp jako pierwszy.',
+    billingUnavailable: 'Logowanie jest chwilowo niedostępne. Zajrzyj wkrótce.',
+    futureLabel: 'Wkrótce',
+    future: [
+      'Plan dla zespołów i pracowni',
+      'Zarządzanie subskrypcją i fakturami',
+      'Zmiana planu w dowolnym momencie',
+    ],
+  },
+
   /* ---------------------------------------------------------------- FAQ -- */
   faq: {
     label: 'FAQ',

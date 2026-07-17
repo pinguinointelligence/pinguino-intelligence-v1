@@ -24,7 +24,6 @@ import { PiCalculatedActivationPreviewPage } from '@/pages/dev/PiCalculatedActiv
 import { OptimizationPreviewPage } from '@/pages/dev/OptimizationPreviewPage';
 import { BranchRecalculationPreviewPage } from '@/pages/dev/BranchRecalculationPreviewPage';
 import { PiMonitorDevPage } from '@/pages/dev/PiMonitorDevPage';
-import { HomePage } from '@/pages/home/HomePage';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
@@ -47,8 +46,10 @@ export function AppRoutes() {
           the customer flow lives at /start behind the primary CTA. */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/start" element={<CustomerShellV1 />} />
-      {/* Previous AI-first premium black-shell Home preserved (not removed). */}
-      <Route path="/classic" element={<HomePage />} />
+      {/* Owner decision (2026-07-17): retire the legacy dark AI-chat Home — „no page
+          may look legacy”. /classic now redirects into the light flow, like /demo.
+          The HomePage component is kept in the tree, just unrouted. */}
+      <Route path="/classic" element={<Navigate to="/start" replace />} />
       {/* Legacy /demo entry pointed at the flow → keep old links/bookmarks landing
           in the flow, not on the marketing page. */}
       <Route path="/demo" element={<Navigate to="/start" replace />} />

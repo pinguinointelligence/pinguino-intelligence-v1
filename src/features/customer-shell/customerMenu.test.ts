@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CUSTOMER_MENU_DIAGNOSTIC_ROUTE,
-  CUSTOMER_MENU_ITEMS,
-} from './customerMenu';
+import { CUSTOMER_MENU_ITEMS } from './customerMenu';
 
 /**
  * Routes that exist in `src/app/router.tsx` and may be linked from the customer
@@ -45,8 +42,7 @@ describe('customer menu — links only real routes', () => {
     }
   });
 
-  it('keeps /classic as the diagnostic link, not a primary item', () => {
-    expect(CUSTOMER_MENU_DIAGNOSTIC_ROUTE).toBe('/classic');
+  it('no longer links the retired /classic surface at all (owner 2026-07-17)', () => {
     expect(CUSTOMER_MENU_ITEMS.map((i) => i.to)).not.toContain('/classic');
   });
 

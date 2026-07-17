@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { copy } from '@/copy/en';
+import { landingCopy } from '@/pages/landing/landingCopy';
 import { APIPage } from './APIPage';
 import { CreateIngredientPage } from './CreateIngredientPage';
 import { CreateLabelPage } from './CreateLabelPage';
@@ -23,13 +24,16 @@ describe('Slice 3 destination pages', () => {
     expect(html).toContain('href="mailto:');
   });
 
-  it('Subscription shows Free Preview + PI Pro and the unlock CTA, with no checkout', () => {
+  it('Subscription (light-first, Polish) shows Home + Pro tiers and an honest Pro CTA, no checkout', () => {
     const html = render(<SubscriptionPage />);
-    expect(html).toContain(copy.nav.subscription.free); // 'Free Preview'
-    expect(html).toContain(copy.nav.subscription.pro); // 'PI Pro'
-    expect(html).toContain(copy.gate.unlockCta); // 'Unlock PI Pro'
-    expect(html).toContain(copy.nav.subscription.proFeatures[0]);
-    expect(html).toContain(copy.nav.subscription.comingSoonNote);
+    // Reuses the landing plan tiers so the paywall's target matches the landing.
+    expect(html).toContain(landingCopy.plans.home.name); // 'Home'
+    expect(html).toContain(landingCopy.plans.pro.name); // 'Pro'
+    expect(html).toContain(landingCopy.plans.pro.bullets[0]); // a real Pro feature
+    expect(html).toContain(landingCopy.subscription.proCta); // 'Przejdź na Pro'
+    expect(html).toContain(landingCopy.subscription.title); // 'Home czy Pro?'
+    // Light-first: renders on the paper surface, not the dark legacy shell.
+    expect(html).toContain('bg-paper');
     expect(/stripe/i.test(html)).toBe(false); // no payment provider wired
   });
 
