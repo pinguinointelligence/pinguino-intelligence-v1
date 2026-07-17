@@ -1,86 +1,151 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ComingSoonRow, DestinationSurface } from '@/components/shared/DestinationSurface';
-import { copy } from '@/copy/en';
+import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { cn } from '@/lib/cn';
+import { color, focusRing, motion, radius, touchButtonClasses, type } from '@/features/customer-shell/ui';
+import { CustomerMenu } from '@/features/customer-shell/ui/CustomerMenu';
+import { useAuthStore } from '@/stores/authStore';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
+import { landingCopy } from '@/pages/landing/landingCopy';
 
-const s = copy.nav.subscription;
+/**
+ * `/subscription` — the plans / conversion page.
+ *
+ * Track C (design-system unification, owner 2026-07-17): REBUILT on the
+ * light-first customer system so the paywall's own destination stops looking
+ * like a different, darker application. It reuses the SAME `landingCopy.plans`
+ * tiers the landing shows and the SAME `CustomerMenu` + token system (one
+ * button/radius/shadow language). Presentation only — the real checkout arrives
+ * with the monetization track; until then the Pro action is honest (sign in to
+ * be first), never a dead button.
+ */
+const s = landingCopy.subscription;
+const plans = landingCopy.plans;
 
-function Tier({
-  name,
-  tagline,
-  features,
-  cta,
+function CheckGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="mt-1 shrink-0 text-ink">
+      <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckList({ items }: { items: readonly string[] }) {
+  return (
+    <ul className="space-y-3">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-3">
+          <CheckGlyph />
+          <span className={cn(type.secondary, color.textSecondary)}>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PlanCard({
+  plan,
+  badge,
   emphasized,
+  children,
 }: {
-  name: string;
-  tagline: string;
-  features: readonly string[];
-  cta: ReactNode;
+  plan: { name: string; tagline: string; bullets: readonly string[] };
+  badge: string;
   emphasized?: boolean;
+  children: ReactNode;
 }) {
   return (
-    <div className={cn('rounded-lg p-6', emphasized && 'bg-ivory/[0.03] ring-1 ring-inset ring-ivory/15')}>
-      <h2 className="text-xl font-light text-ivory">{name}</h2>
-      <p className="mt-1 text-sm text-ivory/55">{tagline}</p>
-      <ul className="mt-6 space-y-2.5">
-        {features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2.5 text-sm text-ivory/75">
-            <span aria-hidden className="mt-[0.4rem] size-1 shrink-0 rounded-full bg-ivory/40" />
-            {feature}
-          </li>
-        ))}
-      </ul>
-      <div className="mt-7">{cta}</div>
+    <div
+      className={cn(
+        'flex flex-col border bg-paper p-6 sm:p-7',
+        radius.card,
+        emphasized ? 'border-ink/20 bg-stone-50 shadow-[0_10px_40px_rgba(16,17,19,0.07)]' : 'border-ink/10 shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h2 className={cn(type.heading, color.textPrimary)}>{plan.name}</h2>
+        <span className={cn('rounded-full border border-ink/10 bg-paper px-2.5 py-1 text-[11px] font-medium', color.textSecondary)}>
+          {badge}
+        </span>
+      </div>
+      <p className={cn('mt-1', type.secondary, color.textSecondary)}>{plan.tagline}</p>
+      <div className="mt-6 flex-1">
+        <CheckList items={plan.bullets} />
+      </div>
+      <div className="mt-7">{children}</div>
     </div>
   );
 }
 
-const ctaBase =
-  'inline-flex items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-colors';
-
-/** Subscription — public plans info (Phase 6C Slice 3). No payment provider, no checkout flow. */
 export function SubscriptionPage() {
-  return (
-    <DestinationSurface title={s.title} blurb={s.blurb}>
-      <p className="max-w-xl text-sm leading-relaxed text-ivory/55">{s.whatUnlocks}</p>
+  const authAvailable = useAuthStore((st) => st.available);
+  const openAuthModal = useAuthModalStore((st) => st.open);
 
-      <div className="mt-10 grid gap-8 md:grid-cols-2">
-        <Tier
-          name={s.free}
-          tagline={s.freeTagline}
-          features={s.freeFeatures}
-          cta={
-            <Link to="/" className={cn(ctaBase, 'border border-ivory/25 text-ivory hover:border-ivory/50')}>
+  return (
+    <div className="min-h-[100dvh] w-full bg-paper text-ink">
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-6 sm:px-8">
+        <Link to="/" className={cn('flex items-center gap-3 rounded', focusRing)}>
+          <IvoryLogoMark size={24} tone="ink" />
+          <span className="text-base font-light tracking-wordmark">{landingCopy.brand.name}</span>
+        </Link>
+        <CustomerMenu showBrand={false} />
+      </header>
+
+      <main className="mx-auto w-full max-w-5xl px-5 pb-24 pt-6 sm:px-8 sm:pt-10">
+        <p className={cn(type.label, color.textMuted)}>{s.eyebrow}</p>
+        <h1 className="mt-3 max-w-2xl text-balance text-[30px] font-light leading-[1.14] tracking-tight text-ink sm:text-[38px]">
+          {s.title}
+        </h1>
+        <p className={cn('mt-4 max-w-prose text-[16px] leading-relaxed', color.textSecondary)}>{s.lead}</p>
+        <p className={cn('mt-3 max-w-prose', type.secondary, color.textMuted)}>{s.whatUnlocks}</p>
+
+        <div className="mt-10 grid gap-6 md:grid-cols-2">
+          <PlanCard plan={plans.home} badge={s.freeBadge}>
+            <Link to="/start" className={cn(touchButtonClasses('secondary', 'lg'), 'w-full')}>
               {s.freeCta}
             </Link>
-          }
-        />
-        <Tier
-          name={s.pro}
-          tagline={s.proTagline}
-          features={s.proFeatures}
-          emphasized
-          cta={
-            <div>
-              {/* Placeholder upgrade — billing is a later release (no payment provider here). */}
-              <button type="button" className={cn(ctaBase, 'bg-ivory text-shell hover:bg-ivory/90')}>
-                {copy.gate.unlockCta}
-              </button>
-              <p className="mt-2 text-xs text-ivory/45">{s.comingSoonNote}</p>
-            </div>
-          }
-        />
-      </div>
+          </PlanCard>
 
-      <div className="mt-14 max-w-md">
-        <p className="text-[0.625rem] tracking-label text-ivory/40 uppercase">{s.futureLabel}</p>
-        <div className="mt-3 divide-y divide-ivory/10">
-          <ComingSoonRow label={s.team} />
-          <ComingSoonRow label={s.manage} />
-          <ComingSoonRow label={s.change} />
+          <PlanCard plan={plans.pro} badge={s.proBadge} emphasized>
+            <button
+              type="button"
+              onClick={authAvailable ? () => openAuthModal() : undefined}
+              disabled={!authAvailable}
+              className={cn(touchButtonClasses('primary', 'lg'), 'w-full')}
+            >
+              {s.proCta}
+            </button>
+            <p className={cn('mt-3', type.caption, color.textMuted)}>
+              {authAvailable ? s.billingNote : s.billingUnavailable}
+            </p>
+          </PlanCard>
         </div>
-      </div>
-    </DestinationSurface>
+
+        <section className="mt-16 max-w-md">
+          <p className={cn(type.label, color.textMuted)}>{s.futureLabel}</p>
+          <ul className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+            {s.future.map((item) => (
+              <li key={item} className={cn('flex items-center justify-between gap-3 py-3', type.secondary, color.textSecondary)}>
+                {item}
+                <span
+                  className={cn('shrink-0 rounded-full border border-ink/10 bg-stone-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]', color.textMuted)}
+                >
+                  {s.futureLabel}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <div className="mt-14 border-t border-ink/10 pt-8">
+          <Link
+            to="/start"
+            className={cn('inline-flex items-center gap-2 rounded underline-offset-4 hover:underline', type.secondary, color.textSecondary, focusRing, motion.base)}
+          >
+            ← {landingCopy.nav.cta}
+          </Link>
+        </div>
+      </main>
+    </div>
   );
 }
