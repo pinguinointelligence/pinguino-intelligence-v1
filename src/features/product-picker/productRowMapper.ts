@@ -12,14 +12,42 @@ import type { ProductRow } from '@/data/products/productRow';
 import type { ReferenceEngineValues } from '@/data/products/productEngineResolver';
 import type { PickerCatalogueEntry } from './productPickerContracts';
 
+/**
+ * The exact subset of `ProductRow` this mapper reads. A full `ProductRow` (from a
+ * backend catalogue adapter) satisfies it, and so does the bundled catalogue snapshot —
+ * so both real sources flow through the one canonical mapper without a cast.
+ */
+export type PickerSourceRow = Pick<
+  ProductRow,
+  | 'id'
+  | 'product_code'
+  | 'product_name_display'
+  | 'product_name_internal'
+  | 'brand'
+  | 'ean_code'
+  | 'product_category'
+  | 'package_size'
+  | 'product_image_url'
+  | 'status'
+  | 'pac_value'
+  | 'pod_value'
+  | 'mapper_status'
+  | 'matched_basement_id'
+  | 'detected_text'
+  | 'allergens'
+  | 'polyol_percent'
+  | 'total_sugars_percent'
+  | 'source_type'
+>;
+
 /** Best human-readable name for a row, falling back through internal name → code. */
-function displayNameOf(row: ProductRow): string {
+function displayNameOf(row: PickerSourceRow): string {
   return row.product_name_display ?? row.product_name_internal ?? row.product_code ?? '(produkt bez nazwy)';
 }
 
 /** Map one canonical product row to a picker entry. Pure; the reference is injected. */
 export function productRowToPickerEntry(
-  row: ProductRow,
+  row: PickerSourceRow,
   reference: ReferenceEngineValues | null = null,
 ): PickerCatalogueEntry {
   return {
