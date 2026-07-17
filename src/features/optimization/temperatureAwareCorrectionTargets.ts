@@ -168,8 +168,10 @@ export function deriveTemperatureAwareTarget(
   return {
     target,
     solverTargetAligned: aligned,
-    // The solver never consumes the regulator band yet, so it is always the seeded band
-    // (aligned only at milk_gelato −11) or a fallback (not connected).
+    // Since CONFIG 0.6.0 seeds all 12 locked profile × temperature cells, the solver's
+    // seeded band matches the recipe's own profile × temperature for every SUPPORTED
+    // cell (aligned = base_engine_seeded). `not_connected` now means only that the
+    // engine fell back — an unseeded category (fruit/nut/alcohol) or an unsupported cell.
     solverTargetSource: aligned ? 'base_engine_seeded' : 'not_connected',
     npacTargetDivergence,
     warnings,

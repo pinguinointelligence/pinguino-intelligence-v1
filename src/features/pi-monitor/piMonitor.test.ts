@@ -37,6 +37,7 @@ const result = (over: Partial<PiRecalculationRunnerResult> = {}): PiRecalculatio
   beforeMetrics: { pod: 15, iceFraction: 60, fat: 8, solids: 38 },
   afterMetrics: { pod: 15, iceFraction: 50, fat: 8, solids: 38 },
   decision: 'optimized',
+  rerunState: 'rerun_complete',
   rerunNewFailures: [],
   rerunWorsenedFailures: [],
   proposedAdjustments: [{ type: 'add', ingredient: 'Dextrose', grams: 41.2 }],

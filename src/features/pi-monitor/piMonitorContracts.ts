@@ -12,7 +12,7 @@
  * `piMonitorAxes.ts`); no target number is ever re-hardcoded here.
  */
 import type { ProductCategory } from '@/engine';
-import type { NormalizedRecipeIntent, OptimizationDecision } from '@/spine';
+import type { NormalizedRecipeIntent, OptimizationDecision, OptimizationRerunState } from '@/spine';
 import { proCoreCapabilitiesFor, type ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 
 /** The four customer-facing axes (never the raw engine metric names). */
@@ -157,6 +157,13 @@ export interface PiRecalculationRunnerResult {
   afterMetrics: PiAxisMetricValues | null;
   /** The final, rerun-verified decision from `verifyOptimizationRerun`. */
   decision: OptimizationDecision;
+  /**
+   * The sanctioned rerun STATE behind the decision. Lets the Monitor present an
+   * HONEST structured failure reason and enforce the rule that only a VERIFIED
+   * optimizer no-solution (`solver_no_correction` / `no_feasible_plan`) may be
+   * shown as mathematical infeasibility — a data/service problem never is.
+   */
+  rerunState: OptimizationRerunState;
   /** Hard gates that FAILED after but not before (a regression) — from the rerun. */
   rerunNewFailures: readonly string[];
   /** Hard gates already failing that are now further out of band — from the rerun. */

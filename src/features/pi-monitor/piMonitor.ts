@@ -13,7 +13,7 @@
  * Pure and deterministic: no React, no IO, no mutation, no persistence.
  */
 import type { ProductCategory } from '@/engine';
-import type { NormalizedRecipeIntent } from '@/spine';
+import type { NormalizedRecipeIntent, OptimizationRerunState } from '@/spine';
 import { mapRecipeToAxes } from './piMonitorAxes';
 import { applyAxisIntentsToIntent } from './piMonitorIntent';
 import {
@@ -83,13 +83,29 @@ export function monitorRecipe(input: MonitorRecipeInput): PiAxisReading[] {
  * Recalculation (delegated to the injected sanctioned pipeline)            *
  * ------------------------------------------------------------------------ */
 
+/**
+ * Customer-facing outcome headlines. The two FAILURE outcomes never use a
+ * generic "impossible" verdict — they carry an honest headline and the detail
+ * always states, verbatim, that nothing was changed (Track G).
+ */
 const OUTCOME_LABEL: Record<PiRecalcOutcome, string> = {
   poprawione: 'Poprawione',
   kompromis: 'Kompromis',
   juz_w_zakresie: 'Już w zakresie',
-  niemozliwe: 'Nie da się bezpiecznie przeliczyć',
-  zablokowane: 'Zablokowane',
+  niemozliwe: 'PI nie zmieniło receptury',
+  zablokowane: 'PI nie mogło przeliczyć',
 };
+
+/**
+ * The rerun states that constitute a VERIFIED optimizer no-solution — the only
+ * states allowed to be presented to the customer as mathematical infeasibility
+ * (`niemozliwe`). Anything else that somehow reaches an `impossible` decision is
+ * a data/service problem and is honestly downgraded to `zablokowane`.
+ */
+const VERIFIED_INFEASIBLE_STATES: ReadonlySet<OptimizationRerunState> = new Set([
+  'solver_no_correction',
+  'no_feasible_plan',
+]);
 
 export interface PiRecalculationView {
   gate: PiRecalcGate;
@@ -183,7 +199,14 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
     ? mapRecipeToAxes({ metrics: result.afterMetrics, category, servingTemperatureC, capability })
     : null;
 
-  const outcome = outcomeFromDecision(result.decision);
+  // Honest structured outcome. A `niemozliwe` verdict is only allowed to stand
+  // when the optimizer/solver ACTUALLY proved no safe correction exists; if an
+  // `impossible` decision ever arrives from a data/service failure instead, it is
+  // downgraded to an honest block rather than a false "infeasible" claim (Track G).
+  let outcome = outcomeFromDecision(result.decision);
+  if (outcome === 'niemozliwe' && !VERIFIED_INFEASIBLE_STATES.has(result.rerunState)) {
+    outcome = 'zablokowane';
+  }
 
   // Per-axis Przed/Po movement — computed internally at full precision (independent
   // of the persona redaction) so the improved/traded-off story is always honest.
@@ -207,8 +230,8 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
   const outcomeDetail = buildOutcomeDetail(outcome, {
     tradedOffAxes,
     changedAxes,
-    warnings: result.warnings,
     hardBlockers: result.hardBlockers,
+    servingTemperatureC: result.servingTemperatureC,
   });
 
   const view: PiRecalculationView = {
@@ -224,7 +247,9 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
     tradedOffAxes,
     mappedAxes,
     advisoryWishAxes,
-    correctedRecipeSnapshot: result.correctedRecipeSnapshot,
+    // The corrected recipe carries exact grams — expose it ONLY to a persona that
+    // may view exact grams (Demo never receives it, even in local state). §22.
+    correctedRecipeSnapshot: gramsVisible ? result.correctedRecipeSnapshot : null,
     warnings: [...result.warnings],
   };
   // Exact gram adjustments are exposed ONLY to a persona that may view exact grams.
@@ -242,10 +267,34 @@ function axisNames(ids: PiAxisId[]): string {
   return ids.map((id) => LABELS[id]).join(', ');
 }
 
+/** The verbatim sentence every FAILED recalculation must state (Track G). */
+const RECIPE_NOT_CHANGED = 'Receptura nie została zmieniona.';
+
+/**
+ * Turn the internal hard-blocker codes into ONE honest, customer-safe phrase —
+ * never raw engine codes. Distinguishes an unsupported mode from missing data.
+ */
+function describeBlockers(codes: readonly string[]): string {
+  if (codes.some((c) => c === 'optimizer_blocked')) {
+    return 'wybrany tryb lub temperatura podawania nie są jeszcze w pełni obsługiwane';
+  }
+  if (codes.some((c) => c === 'missing_base_engine_metrics' || c.startsWith('missing:'))) {
+    return 'brakuje pełnych danych receptury, aby przeliczyć ją bezpiecznie';
+  }
+  return 'wystąpił warunek, którego PI nie mogło bezpiecznie rozwiązać';
+}
+
 function buildOutcomeDetail(
   outcome: PiRecalcOutcome,
-  ctx: { tradedOffAxes: PiAxisId[]; changedAxes: PiAxisId[]; warnings: readonly string[]; hardBlockers: readonly string[] },
+  ctx: {
+    tradedOffAxes: PiAxisId[];
+    changedAxes: PiAxisId[];
+    hardBlockers: readonly string[];
+    servingTemperatureC: number | null;
+  },
 ): string {
+  const tempPhrase =
+    ctx.servingTemperatureC != null ? ` przy podawaniu w temperaturze ${ctx.servingTemperatureC}°C` : '';
   switch (outcome) {
     case 'poprawione':
       return ctx.changedAxes.length
@@ -258,10 +307,11 @@ function buildOutcomeDetail(
     case 'juz_w_zakresie':
       return 'Receptura jest już w zakresie — nie ma nic do zmiany.';
     case 'niemozliwe':
-      return 'PI nie znalazło bezpiecznego sposobu, by przeliczyć tę recepturę bez pogorszenia innej cechy.';
+      // VERIFIED optimizer no-solution: the solver actually ran and found no safe
+      // change. Honest + specific (names the serving temperature) — never a generic
+      // "impossible" — and always states that nothing was changed.
+      return `PI nie znalazło bezpiecznej zmiany, która dopasowałaby tę recepturę${tempPhrase} bez pogorszenia innych cech. ${RECIPE_NOT_CHANGED}`;
     case 'zablokowane':
-      return ctx.hardBlockers.length
-        ? `PI nie może przeliczyć tej receptury: ${ctx.hardBlockers.join(', ')}.`
-        : 'PI nie może teraz przeliczyć tej receptury.';
+      return `PI nie może teraz przeliczyć tej receptury — ${describeBlockers(ctx.hardBlockers)}. ${RECIPE_NOT_CHANGED}`;
   }
 }
