@@ -25,7 +25,7 @@ import {
   type MachineOnboardingTile,
 } from '@/features/machine-catalog';
 import { machineOnboardingCopy as copy } from './machineOnboardingCopy';
-import type { MachinePreferenceRecord, SavedDefaultBatch } from './preferenceContracts';
+import { recommendedBatchGramsOf, type MachinePreferenceRecord } from './preferenceContracts';
 
 /* ------------------------------------------------------------------ */
 /* Display name                                                        */
@@ -255,15 +255,11 @@ export function resolvePreferenceProfile(
   return catalog.find((p) => p.id === id) ?? null;
 }
 
-function gramsFromSavedBatch(batch: SavedDefaultBatch): { recommendedBatchGrams: number | null } {
-  return { recommendedBatchGrams: batch.kind === 'grams' ? batch.grams : null };
-}
-
 /**
- * Build the §7.3 context-bar view for a saved preference. Capacity comes ONLY
- * from the resolved catalog record (custom machines show their own declared
- * vessel); a stale catalog id (record removed) yields null → the orchestrator
- * re-runs onboarding instead of showing invented data.
+ * Build the §7.3 context-bar view for a saved preference. Capacity comes from
+ * the resolved catalog record — or from the user's OWN container once they
+ * declared one (owner hotfix §8); a stale catalog id (record removed) yields
+ * null → the orchestrator re-runs onboarding instead of showing invented data.
  */
 export function buildMachineContextView(
   record: MachinePreferenceRecord,
@@ -273,43 +269,14 @@ export function buildMachineContextView(
   if (profile === null) return null;
   return {
     name: machineDisplayName(profile),
-    vesselMl: profile.capacity.vesselCapacityMl,
-    ...gramsFromSavedBatch(record.defaultBatch),
+    vesselMl: record.customContainer?.capacityMl ?? profile.capacity.vesselCapacityMl,
+    recommendedBatchGrams: recommendedBatchGramsOf(record),
   };
 }
 
-export interface MachineProfileSectionView {
-  readonly name: string;
-  readonly vesselMl: number | null;
-  readonly isCustom: boolean;
-  /** §8.4 conservative fallback stays visibly flagged (editable). */
-  readonly vesselOnlyFallback: boolean;
-  readonly setAt: string;
-  readonly batch: BatchPresentation | null;
-}
-
-/** Build the §8.6 "Moja maszyna" section view, or null when unresolvable. */
-export function buildMachineProfileSectionView(
-  record: MachinePreferenceRecord,
-  catalog: readonly HomeMachineProfile[] = MACHINE_CATALOG,
-): MachineProfileSectionView | null {
-  const profile = resolvePreferenceProfile(record, catalog);
-  if (profile === null) return null;
-  const batch: BatchPresentation | null =
-    record.defaultBatch.kind === 'grams'
-      ? {
-          kind: 'pinguino_grams',
-          label: copy.batch.recommendedLabel,
-          text: `${formatGrams(record.defaultBatch.grams)} ${copy.batch.recommendedUnit}`,
-          note: record.defaultBatch.estimated ? copy.batch.estimatedNote : null,
-        }
-      : null;
-  return {
-    name: machineDisplayName(profile),
-    vesselMl: profile.capacity.vesselCapacityMl,
-    isCustom: record.selection.kind === 'custom',
-    vesselOnlyFallback: (profile.capacityFallback ?? null) === 'vessel_capacity_only',
-    setAt: record.setAt,
-    batch,
-  };
-}
+/*
+ * The §8.6 profile SECTION view moved to `machineSettingsView.ts` with the
+ * owner hotfix (2026-07-17): „Moja maszyna” is a settings surface (own default
+ * batch + own container), not a read-only card, and one view model must not
+ * compete with another.
+ */

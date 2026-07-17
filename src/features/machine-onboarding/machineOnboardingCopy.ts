@@ -167,6 +167,60 @@ export const machineOnboardingCopy = {
     /** The §8.4 vessel-only fallback stays visibly flagged and editable. */
     vesselOnlyFlag: 'Ustawienie ostrożne — znamy tylko pojemność całkowitą. Możesz je edytować.',
   },
+
+  /* ------------------------------- settings card (owner hotfix 2026-07-17) ---- */
+  /**
+   * „Moja maszyna” as a real SETTINGS surface: manufacturer data (read-only)
+   * is separated from the user's own setting (editable), every screen ends in
+   * an explicit save with an unambiguous status, and the next action is always
+   * offered — never an empty card.
+   */
+  settings: {
+    /** Manufacturer data — informational, read-only on the main screen (§8). */
+    manufacturerCapacityLabel: 'Pojemnik producenta',
+    /** The user's own container replaces the label once declared (§8). */
+    customCapacityLabel: 'Twój pojemnik',
+    unitMl: 'ml',
+    /** The user's OWN editable default (§1). */
+    userDefaultLabel: 'Mój domyślny wsad',
+    userDefaultHint: 'Zalecany wsad to propozycja startowa — możesz wpisać własną ilość.',
+    /** Honest state when no recommendation exists for this machine. */
+    noRecommendation: 'Dla tej maszyny nie proponujemy wsadu — ustaw własną ilość.',
+    invalidBatch: 'Podaj dodatnią liczbę gramów.',
+    /* Actions (§2). */
+    save: 'Zapisz ustawienia',
+    saveAndContinue: 'Zapisz i przejdź dalej',
+    saveAndGoToRecipe: 'Zapisz i przejdź do receptury',
+    restoreRecommended: 'Przywróć zalecany wsad',
+    goToRecipe: 'Przejdź do receptury',
+    /** Owner hotfix §2: never force the browser's back arrow. */
+    backToRecipe: 'Wróć do receptury',
+    /** Unambiguous post-save status (§2). */
+    saved: 'Ustawienia zapisane',
+    saveFailed: 'Nie udało się zapisać ustawień na tym urządzeniu. Spróbuj ponownie.',
+    /* The user's own container (§8) — never an edit of the model's figure. */
+    useCustomContainer: 'Używam innego pojemnika',
+    customContainerTitle: 'Twój pojemnik',
+    customContainerLead:
+      'Pojemność podana przez producenta dotyczy modelu, dlatego jej nie zmieniamy. Jeśli używasz ' +
+      'innego pojemnika, podaj jego dane — oznaczymy profil jako Twoją własną konfigurację.',
+    customCapacityFieldLabel: 'Pojemność Twojego pojemnika',
+    customRecommendedFieldLabel: 'Zalecany wsad dla Twojego pojemnika',
+    customRecommendedHint: 'Proponujemy 95% podanej pojemności — możesz zmienić.',
+    customContainerBadge: 'Konfiguracja własna użytkownika',
+    customContainerRemove: 'Wróć do pojemnika producenta',
+    invalidCapacity: 'Podaj dodatnią pojemność w ml.',
+    /** §4 first-run adjust step. */
+    adjustTitle: 'Dopasuj ilość',
+    adjustLead: 'Możesz od razu ustawić własną ilość — zawsze zmienisz ją później.',
+  },
+
+  /* --------------------- per-recipe amount vs profile (owner hotfix §6) ------- */
+  recipeAmount: {
+    /** Offered ONLY as an explicit action — a recipe never rewrites the profile. */
+    saveAsDefault: (gramsText: string): string => `Zapisz ${gramsText} g jako mój domyślny wsad`,
+    savedAsDefault: 'Zapisano jako domyślny wsad',
+  },
 } as const;
 
 /**

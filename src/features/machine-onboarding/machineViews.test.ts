@@ -21,7 +21,6 @@ import { machineOnboardingCopy as copy, pluralPojemniki } from './machineOnboard
 import {
   autoConfigLines,
   buildMachineContextView,
-  buildMachineProfileSectionView,
   buildMachineTileViews,
   containerSplitNotice,
   formatGrams,
@@ -322,35 +321,5 @@ describe('§7.3 context view — catalog capacity only, grams carried not displa
   });
 });
 
-describe('§8.6 profile section view', () => {
-  it('flags the §8.4 vessel-only fallback and keeps it editable (custom bowl)', () => {
-    const result = buildCustomMachineProfile({
-      behaviorAnswerId: 'freeze_bowl_first',
-      market: 'ES',
-      vesselCapacity: { value: 2, unit: 'l' },
-    });
-    if (result.outcome !== 'profile') throw new Error('expected profile');
-    const record = buildMachinePreferenceRecord({
-      profile: result.profile,
-      isCustom: true,
-      setAt: NOW,
-      catalogVersion: MACHINE_CATALOG_VERSION,
-    });
-    if (record === null) throw new Error('expected record');
-    const view = buildMachineProfileSectionView(record);
-    expect(view?.isCustom).toBe(true);
-    expect(view?.vesselOnlyFallback).toBe(true);
-    expect(view?.vesselMl).toBe(2000);
-    expect(view?.batch).toBeNull(); // honest: a bowl volume never becomes a batch
-  });
-
-  it('shows the derived grams line for NC7 (official — no estimated note)', () => {
-    const view = buildMachineProfileSectionView(recordFor(NINJA_CREAMI_SCOOP_SWIRL_NC7.id));
-    expect(view?.batch).toEqual({
-      kind: 'pinguino_grams',
-      label: 'Zalecany wsad PINGÜINO',
-      text: '460 g',
-      note: null,
-    });
-  });
-});
+// The §8.6 profile SECTION view moved to machineSettingsView.ts with the owner
+// hotfix (2026-07-17) — its pins live in machineSettings.test.ts.

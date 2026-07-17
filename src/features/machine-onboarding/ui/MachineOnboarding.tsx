@@ -40,12 +40,15 @@ import {
 } from '../machineViews';
 import {
   buildMachinePreferenceRecord,
+  recommendedBatchGramsOf,
+  withUserDefaultBatch,
   type MachinePreferenceRecord,
 } from '../preferenceContracts';
 import { MachineTileGrid } from './MachineTileGrid';
 import { MachineBehaviorQuestion } from './MachineBehaviorQuestion';
 import { CustomMachineForm, type CustomMachineFormValues } from './CustomMachineForm';
 import { AutoConfigTransition } from './AutoConfigTransition';
+import { MachineAdjustBatchStep } from './MachineAdjustBatchStep';
 
 export interface MachineOnboardingCompletion {
   readonly record: MachinePreferenceRecord;
@@ -59,7 +62,14 @@ type Screen =
   | { kind: 'behavior' }
   | { kind: 'custom'; answer: MachineBehaviorAnswer; initialValues: CustomMachineFormValues | null }
   | { kind: 'unsupported' }
-  | { kind: 'configuring'; profile: HomeMachineProfile; isCustom: boolean };
+  | { kind: 'configuring'; profile: HomeMachineProfile; isCustom: boolean }
+  | {
+      /** §4 „Dopasuj ilość” — the user sets their own default before the save. */
+      kind: 'adjust';
+      profile: HomeMachineProfile;
+      isCustom: boolean;
+      record: MachinePreferenceRecord;
+    };
 
 interface MachineOnboardingProps {
   /** Market token recorded on CUSTOM machines (catalog records carry their own). */
@@ -70,6 +80,12 @@ interface MachineOnboardingProps {
   /** Optional §8.6 entry: edit an existing custom machine (prefilled form). */
   editCustomProfile?: HomeMachineProfile | null;
   catalog?: readonly HomeMachineProfile[];
+  /**
+   * Label of the §4 adjust step's primary action. First-run onboarding inside
+   * the recipe flow says „Zapisz i przejdź do receptury”; the profile page
+   * keeps the neutral „Zapisz i przejdź dalej” (owner hotfix §3/§4).
+   */
+  submitLabel?: string;
 }
 
 /** Reverse of the §8.3 mapping — only for the three custom-supported technologies. */
@@ -100,6 +116,7 @@ export function MachineOnboarding({
   now = () => new Date().toISOString(),
   editCustomProfile = null,
   catalog = MACHINE_CATALOG,
+  submitLabel = copy.settings.saveAndContinue,
 }: MachineOnboardingProps) {
   const [screen, setScreen] = useState<Screen>(() => {
     if (editCustomProfile !== null) {
@@ -177,10 +194,41 @@ export function MachineOnboarding({
       setScreen({ kind: 'unsupported' });
       return;
     }
-    onComplete({ record, profile, derivation: deriveMachineSetup(profile) });
+    // §4: never finalize without asking — the user adjusts the amount first.
+    setScreen({ kind: 'adjust', profile, isCustom, record });
+  };
+
+  /** §4 save: the user's own default (or null = follow the recommendation). */
+  const finishAdjust = (
+    profile: HomeMachineProfile,
+    record: MachinePreferenceRecord,
+    userDefaultGrams: number | null,
+  ) => {
+    const stamped = now();
+    const recommended = recommendedBatchGramsOf(record);
+    // Typing the proposal back is not "an own setting" — it stays null so the
+    // record keeps following the recommendation (honest, and restorable).
+    const own = userDefaultGrams !== null && userDefaultGrams !== recommended ? userDefaultGrams : null;
+    const next = withUserDefaultBatch(record, own, stamped) ?? record;
+    onComplete({ record: next, profile, derivation: deriveMachineSetup(profile) });
   };
 
   /* ----------------------------------------------------------- screens -- */
+
+  if (screen.kind === 'adjust') {
+    const derivation = deriveMachineSetup(screen.profile);
+    const batch = presentBatchSuggestion(derivation);
+    return (
+      <MachineAdjustBatchStep
+        machineName={machineDisplayName(screen.profile)}
+        containerMl={screen.profile.capacity.vesselCapacityMl}
+        recommendedGrams={recommendedBatchGramsOf(screen.record)}
+        estimatedNote={batch.kind === 'pinguino_grams' ? batch.note : null}
+        submitLabel={submitLabel}
+        onSubmit={(grams) => finishAdjust(screen.profile, screen.record, grams)}
+      />
+    );
+  }
 
   if (screen.kind === 'configuring') {
     const derivation = deriveMachineSetup(screen.profile);

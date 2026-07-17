@@ -23,7 +23,16 @@ const FOCUSABLE =
  * Navigation uses react-router `Link`; auth uses the existing stores. The drawer
  * renders the light-native `paper` surface directly.
  */
-export function CustomerMenu() {
+interface CustomerMenuProps {
+  /**
+   * Render the small wordmark next to the trigger. Surfaces that already show
+   * their own brand lockup (the public landing) pass false so the page does
+   * not carry two wordmarks (owner hotfix §2).
+   */
+  showBrand?: boolean;
+}
+
+export function CustomerMenu({ showBrand = true }: CustomerMenuProps = {}) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -92,7 +101,11 @@ export function CustomerMenu() {
       className="flex items-center justify-between"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <span className={cn(type.label, color.textSecondary)}>{copy.menu.brand}</span>
+      {showBrand ? (
+        <span className={cn(type.label, color.textSecondary)}>{copy.menu.brand}</span>
+      ) : (
+        <span aria-hidden />
+      )}
       <button
         ref={triggerRef}
         type="button"

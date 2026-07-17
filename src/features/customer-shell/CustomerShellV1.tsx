@@ -77,15 +77,18 @@ import {
   MachineOnboarding,
   MachineContextBar,
   buildMachineContextView,
+  deriveBatchGuidance,
   formatGrams,
   localStorageMachinePreferenceStore,
   machineOnboardingCopy,
+  recommendedBatchGramsOf,
   useMachinePreference,
+  withUserDefaultBatch,
+  type AboveRecommendationChoice,
   type MachineOnboardingCompletion,
 } from '@/features/machine-onboarding';
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
-import { deriveBatchGuidance, type AboveRecommendationChoice } from './batchGuidance';
 import { customerShellCopy as copy } from './customerShellCopy';
 import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
@@ -259,8 +262,19 @@ export function CustomerShellV1() {
   // onboarding instead of rendering a broken context bar (INTEGRATION §3).
   const machineView =
     machinePreference.record !== null ? buildMachineContextView(machinePreference.record) : null;
+  /**
+   * Machine-first gate (owner hotfix 2026-07-17 §7/§8 — P0 regression).
+   *
+   * It keys off the FLOW, not off an account: the public customer flow IS Home
+   * (production serves every visitor as `demo` — there is no persona selector
+   * there), so gating on `persona === 'home'` made machine-first unreachable in
+   * production and put the six engine modes back in front of everyone. Only
+   * `pro` opts out (§9: a professional picks a serving temperature, never a
+   * device). An anonymous visitor whose machine lives in localStorage is
+   * respected exactly like a signed-in one.
+   */
   const machineGate: 'off' | 'loading' | 'onboarding' | 'saved' =
-    persona !== 'home'
+    persona === 'pro'
       ? 'off'
       : machinePreference.status === 'loading'
         ? 'loading'
@@ -281,6 +295,9 @@ export function CustomerShellV1() {
   // („Dopasuj ilość do nowej maszyny" → preview → Zastosuj).
   const [machineBatchProposal, setMachineBatchProposal] = useState<number | null>(null);
   const [proposalPreviewOpen, setProposalPreviewOpen] = useState(false);
+  // §6: a per-recipe amount NEVER rewrites the profile — saving it as the
+  // default is an explicit, separate action with its own confirmation.
+  const [savedAsDefaultGrams, setSavedAsDefaultGrams] = useState<number | null>(null);
 
   // §5.2 safety net, event-driven (no state-set effects): every path that can
   // put a Home user with a saved machine in front of a mode-less flow applies
@@ -291,7 +308,7 @@ export function CustomerShellV1() {
   // wired, revisit this reconciliation (noted in INTEGRATION.md §2).
   const switchPersona = (next: CustomerPersona) => {
     setPersona(next);
-    if (next !== 'home') return;
+    if (next === 'pro') return;
     const record = machinePreference.record;
     if (record === null || buildMachineContextView(record) === null) return;
     // Owner test 11: an in-progress flow is never silently rewritten.
@@ -366,6 +383,40 @@ export function CustomerShellV1() {
         ? 'listening'
         : 'idle';
 
+  /**
+   * Start the flow from the home field (owner hotfix §4 — P0). Enter must do
+   * exactly what „Dalej” does: the text is never silently dropped.
+   */
+  const startFlowFromDraft = () => {
+    const text = draftText.trim();
+    if (text === '') return;
+    const created = createCustomerFlow({ text });
+    // §5.2: a returning Home user's saved machine answers the six-mode question
+    // (and the amount when derivable) up front.
+    setFlow(
+      machineGate === 'saved' && machineRecord !== null
+        ? applyMachineRecordToFlow(created, machineRecord)
+        : created,
+    );
+  };
+
+  /**
+   * Commit whatever is typed in the flavour field (owner hotfix §4B): text the
+   * user entered but did not confirm is folded in BEFORE the next step instead
+   * of being silently dropped. `addFlavorChip` trims + de-duplicates, so an
+   * empty or repeated value is a no-op.
+   */
+  const withPendingChip = (state: CustomerFlowState): CustomerFlowState => {
+    const pending = chipDraft.trim();
+    return pending === '' ? state : addFlavorChip(state, pending);
+  };
+
+  const commitChipDraft = () => {
+    if (chipDraft.trim() === '') return;
+    update(withPendingChip);
+    setChipDraft('');
+  };
+
   const update = (fn: (s: CustomerFlowState) => CustomerFlowState) =>
     setFlow((prev) => (prev ? fn(prev) : prev));
 
@@ -434,6 +485,16 @@ export function CustomerShellV1() {
                 placeholder={copy.home.placeholder}
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
+                // §4: Enter (incl. NumpadEnter — both report key 'Enter') and the
+                // mobile Go/Done key start the flow, exactly like „Dalej”. The IME
+                // guard keeps composition (e.g. a mid-word suggestion) from
+                // submitting a half-typed idea.
+                enterKeyHint="go"
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+                  e.preventDefault();
+                  startFlowFromDraft();
+                }}
                 trailing={<MicrophoneButton state={micState} label={copy.mic[micLabelKey(micState)]} onClick={handleMic} />}
               />
               <div className="mt-3">
@@ -442,21 +503,7 @@ export function CustomerShellV1() {
                 </TouchButton>
               </div>
               <div className="mt-6">
-                <TouchButton
-                  block
-                  size="lg"
-                  disabled={draftText.trim() === ''}
-                  onClick={() => {
-                    const created = createCustomerFlow({ text: draftText.trim() });
-                    // §5.2: a returning Home user's saved machine answers the
-                    // six-mode question (and the amount when derivable) up front.
-                    setFlow(
-                      machineGate === 'saved' && machineRecord !== null
-                        ? applyMachineRecordToFlow(created, machineRecord)
-                        : created,
-                    );
-                  }}
-                >
+                <TouchButton block size="lg" disabled={draftText.trim() === ''} onClick={startFlowFromDraft}>
                   {copy.home.next}
                 </TouchButton>
               </div>
@@ -485,7 +532,12 @@ export function CustomerShellV1() {
   // starting proposal — the guidance below marks divergence, warns above the
   // recommendation and offers the OPTIONAL even split; it never blocks.
   const machineRecommendedGrams =
-    machineGate === 'saved' && machineView !== null ? machineView.recommendedBatchGrams : null;
+    machineGate === 'saved' && machineRecord !== null ? recommendedBatchGramsOf(machineRecord) : null;
+  /** The profile's effective default — what a NEW recipe starts from (§5). */
+  const machineProfileDefaultGrams =
+    machineGate === 'saved' && machineRecord !== null
+      ? (machineRecord.userDefaultBatchGrams ?? machineRecommendedGrams)
+      : null;
   const currentBatchGrams = batchRes.satisfied ? batchRes.batchGrams : null;
   const batchGuidance = deriveBatchGuidance({
     recommendedGrams: machineRecommendedGrams,
@@ -495,6 +547,14 @@ export function CustomerShellV1() {
         ? aboveChoiceFor.choice
         : 'undecided',
   });
+
+  /**
+   * The serving step reaches this render ONLY for `pro` (machineGate 'off') —
+   * every other persona is machine-first. Owner hotfix §9: a professional picks
+   * a SERVING TEMPERATURE (−11/−12/−13) and never a home device, so the Ninja /
+   * Świeże machine aliases are not offered in the same group.
+   */
+  const proServingModes = SERVING_MODES.filter((m) => m.id.startsWith('temp_minus_'));
 
   const isResultPhase =
     recipePath === 'new_recipe' || (recipePath === 'ready_recipe' && selectedDraft !== null);
@@ -772,7 +832,13 @@ export function CustomerShellV1() {
         </div>
 
         {/* Flavor chips — always editable while collecting. */}
-        <CustomerSection label={copy.chips.label} title={copy.chips.title} lead={copy.chips.lead}>
+        {/* §5: once a flavour is confirmed the step asks about ANOTHER one — it
+            must never read like a fresh request for the flavour just given. */}
+        <CustomerSection
+          label={copy.chips.label}
+          title={copy.chips.title}
+          lead={chips.length > 0 ? copy.chips.leadMore : copy.chips.lead}
+        >
           {chips.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {chips.map((tag) => (
@@ -789,27 +855,17 @@ export function CustomerShellV1() {
               placeholder={copy.chips.addPlaceholder}
               value={chipDraft}
               onChange={(e) => setChipDraft(e.target.value)}
+              // §4C: Enter / NumpadEnter (both report 'Enter') and the mobile
+              // Go/Done key confirm the flavour; the IME guard prevents a
+              // composition Enter from adding a half-composed word.
+              enterKeyHint="done"
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const t = chipDraft.trim();
-                  if (t) {
-                    update((s) => addFlavorChip(s, t));
-                    setChipDraft('');
-                  }
-                }
+                if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                commitChipDraft();
               }}
             />
-            <TouchButton
-              variant="secondary"
-              disabled={chipDraft.trim() === ''}
-              onClick={() => {
-                const t = chipDraft.trim();
-                if (!t) return;
-                update((s) => addFlavorChip(s, t));
-                setChipDraft('');
-              }}
-            >
+            <TouchButton variant="secondary" disabled={chipDraft.trim() === ''} onClick={commitChipDraft}>
               {copy.chips.addButton}
             </TouchButton>
           </div>
@@ -834,7 +890,11 @@ export function CustomerShellV1() {
                     title={meta?.label ?? choice.value}
                     description={meta?.desc}
                     selected={flow.explicitType === choice.value}
-                    onSelect={() => update((s) => setProductType(s, choice.value))}
+                    // §4B: an unconfirmed flavour is folded in before advancing.
+                    onSelect={() => {
+                      update((s) => setProductType(withPendingChip(s), choice.value));
+                      setChipDraft('');
+                    }}
                   />
                 );
               })}
@@ -854,7 +914,10 @@ export function CustomerShellV1() {
             {machineGate === 'onboarding' && !machineChangeOpen ? (
               /* Self-contained §8 flow (own headings/copy) — no section wrapper. */
               <div className="pt-10">
-                <MachineOnboarding onComplete={handleMachineChosen} />
+                <MachineOnboarding
+                  onComplete={handleMachineChosen}
+                  submitLabel={machineOnboardingCopy.settings.saveAndGoToRecipe}
+                />
               </div>
             ) : null}
             {machineGate === 'off' ? (
@@ -862,7 +925,7 @@ export function CustomerShellV1() {
                  customer-facing alias to an existing temperature-aware Engine cell. */
               <CustomerSection label={copy.modes.label} title={copy.modes.title} lead={copy.modes.lead}>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {SERVING_MODES.map((m) => {
+                  {proServingModes.map((m) => {
                     const c = modeCopyFor(m.id);
                     return (
                       <SelectableCard
@@ -1031,6 +1094,37 @@ export function CustomerShellV1() {
                           </div>
                         )}
                       </div>
+                    ) : null}
+                    {/* §6: this recipe's amount differs from the saved profile
+                        default — offer to make it the default, EXPLICITLY. The
+                        confirmation outlives the offer (once saved, the amount
+                        EQUALS the default, so the offer's own condition stops
+                        holding — the user must still see that it worked). */}
+                    {machineGate === 'saved' && machineRecord !== null && currentBatchGrams !== null ? (
+                      savedAsDefaultGrams === currentBatchGrams ? (
+                        <p role="status" className="text-[13px] text-status-ideal">
+                          ✓ {machineOnboardingCopy.recipeAmount.savedAsDefault}
+                        </p>
+                      ) : machineProfileDefaultGrams !== null &&
+                        currentBatchGrams !== machineProfileDefaultGrams ? (
+                        <button
+                          type="button"
+                          className="text-left text-[13px] text-stone-600 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
+                          onClick={() => {
+                            const next = withUserDefaultBatch(
+                              machineRecord,
+                              currentBatchGrams,
+                              new Date().toISOString(),
+                            );
+                            if (next === null) return;
+                            void machinePreference.save(next).then((ok) => {
+                              if (ok) setSavedAsDefaultGrams(currentBatchGrams);
+                            });
+                          }}
+                        >
+                          {machineOnboardingCopy.recipeAmount.saveAsDefault(formatGrams(currentBatchGrams))}
+                        </button>
+                      ) : null
                     ) : null}
                     {batchSection.showChangeAction ? (
                       <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>

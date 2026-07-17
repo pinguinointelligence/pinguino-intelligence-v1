@@ -30,6 +30,7 @@ import {
   touchButtonClasses,
   type,
 } from '@/features/customer-shell/ui';
+import { CustomerMenu } from '@/features/customer-shell/ui/CustomerMenu';
 import { MonitorHomeReadout } from '@/features/customer-shell/PiMonitorSection';
 import { landingCopy as copy } from './landingCopy';
 import { buildLandingMonitorDemo } from './landingMonitorDemo';
@@ -168,12 +169,14 @@ function LandingMonitorPreview() {
 export function LandingPage() {
   return (
     <div className="min-h-[100dvh] w-full scroll-smooth bg-paper text-ink motion-reduce:scroll-auto">
-      {/* Top bar — wordmark + one quiet CTA (§7.2: only what the context needs). */}
+      {/* Top bar (owner hotfix §2/§3): the SAME global menu the rest of the app
+          uses — the landing had no hamburger, so a visitor could not reach the
+          machine profile, plans or sign-in from here at all. The header's own
+          „Stwórz recepturę” is gone: it duplicated the hero's primary CTA in
+          the same viewport (§3) — the hamburger carries navigation instead. */}
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-6 sm:px-8">
         <Wordmark />
-        <LinkCta to="/start" variant="quiet" size="md">
-          {copy.nav.cta}
-        </LinkCta>
+        <CustomerMenu showBrand={false} />
       </header>
 
       {/* Hero (§6.1) — headline left, Monitor preview right / below on mobile. */}
