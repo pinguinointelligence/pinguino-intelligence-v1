@@ -105,6 +105,17 @@ export const customerShellCopy = {
       vegan: 'Wegańskie',
       protein: 'Proteinowe',
     },
+    /**
+     * Fuller, customer-facing label for the COMPACT recipe context line
+     * (owner UX correction §4/§5 — „Gelato mleczne · 1330 g”). Never an engine
+     * or „base” term — a kind of ice cream in plain Polish.
+     */
+    compact: {
+      gelato: 'Gelato mleczne',
+      sorbet: 'Sorbet',
+      vegan: 'Lody wegańskie',
+      protein: 'Lody proteinowe',
+    },
   },
 
   /* ----------------------------------------------------- Protein honest gap -- */
@@ -332,6 +343,20 @@ export const customerShellCopy = {
     stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Dopasuj ją w Monitorze receptury poniżej.',
     stateStructureOnly:
       'To podglądowa struktura składników, a nie wyliczona receptura. Dokładne ilości wyliczy silnik, gdy uzupełnisz wymagane dane.',
+    /**
+     * Owner UX correction §11 — ONE unambiguous recipe status, never the old
+     * double message („prawie gotowa” + „wyliczona przez silnik” at once).
+     */
+    status: {
+      readyPreview: 'Receptura gotowa do podglądu',
+      readyRecalc: 'Gotowa do przeliczenia',
+      needsProductsPrefix: 'Wymaga wyboru',
+      /** Plural of „produkt” (1 / 2–4 / 5+). */
+      productNoun: { one: 'produktu', few: 'produktów', many: 'produktów' },
+      /** Required-products guidance: „Wybierz konkretne produkty dla N składników, aby …”. */
+      needsProductsGuidancePrefix: 'Wybierz konkretne produkty dla',
+      needsProductsGuidanceSuffix: ', aby dokładnie przeliczyć recepturę.',
+    },
   },
 
   /* -------------------------------------------------------- Flavor intensity -- */

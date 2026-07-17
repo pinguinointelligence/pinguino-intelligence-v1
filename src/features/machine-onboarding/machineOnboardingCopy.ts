@@ -186,8 +186,15 @@ export const machineOnboardingCopy = {
     defaultLabel: 'Domyślna maszyna',
     noMachine: 'Nie masz jeszcze zapisanej maszyny.',
     setUp: 'Wybierz maszynę',
-    /** Renamed from „Zmień maszynę”: this is the PROFILE default, unambiguously. */
-    change: 'Zmień domyślną maszynę',
+    /**
+     * Owner UX correction (2026-07-17, „PROFIL MASZYNY I UPROSZCZENIE PODGLĄDU
+     * HOME” §2/§7/§13): the profile change action is „Zmień maszynę” — always
+     * present for a saved machine, so a user who sells/replaces/mistook their
+     * device can change it. (Superseded the earlier „Zmień domyślną maszynę”; the
+     * recipe-scope action stays „Zmień dla tej receptury”, so scope is still
+     * unambiguous.)
+     */
+    change: 'Zmień maszynę',
     editCustom: 'Edytuj dane maszyny',
     savedAt: 'Zapisano',
     customName: 'Twoja maszyna',

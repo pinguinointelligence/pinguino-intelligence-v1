@@ -18,7 +18,7 @@
  * Presentation only: no engine math, no IO beyond the browser's own optional
  * speech-recognition, no persistence.
  */
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   createCustomerFlow,
   setProductType,
@@ -91,6 +91,7 @@ import {
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
 import { customerShellCopy as copy } from './customerShellCopy';
+import { compactRecipeContext, resultStatus, showTechnicalDetails } from './resultPresentation';
 import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
 import { useIngredientResolution, type ResolvableLine } from './useIngredientResolution';
@@ -178,24 +179,6 @@ function structureLineName(line: CustomerRecipeStructureLine): string {
   return key !== undefined ? copy.ingredients[key] : line.id;
 }
 
-/** Polish plural of "składnik" (1 / 2–4 / 5+). */
-function pluralSkladnik(n: number): string {
-  const abs = Math.abs(n);
-  const mod10 = abs % 10;
-  const mod100 = abs % 100;
-  if (abs === 1) return copy.result.needsRefinementNoun.one;
-  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return copy.result.needsRefinementNoun.few;
-  return copy.result.needsRefinementNoun.many;
-}
-
-/**
- * Honest "recipe is almost ready — refine the intensity of N ingredients" line.
- * Never a fake total, and never a "fully calculated" claim while any dose is open.
- */
-function needsRefinementText(n: number): string {
-  return `${copy.result.needsRefinementPrefix} ${n} ${pluralSkladnik(n)}.`;
-}
-
 const noteText = (code: string): string => copy.tech.notes[code] ?? code;
 
 /* ------------------------------------------------------------------ *
@@ -249,6 +232,29 @@ export function CustomerShellV1() {
   const [customBatchOpen, setCustomBatchOpen] = useState(false);
   const [forceBatchEdit, setForceBatchEdit] = useState(false);
   const [selectedDraft, setSelectedDraft] = useState<ReadyRecipeWorkingDraft | null>(null);
+
+  // Owner UX correction §9: the fixed paywall must never overlap content. Its
+  // real height varies with caption wrapping (desktop vs mobile), so we MEASURE
+  // the bar and reserve exactly that much clearance. A callback ref keeps these
+  // hooks unconditional — the shell early-returns before the result render, so a
+  // useRef/useEffect placed near that render would break the Rules of Hooks.
+  const [stickyReservePx, setStickyReservePx] = useState<number | null>(null);
+  const stickyObserverRef = useRef<ResizeObserver | null>(null);
+  const measureStickyCta = useCallback((el: HTMLDivElement | null) => {
+    stickyObserverRef.current?.disconnect();
+    stickyObserverRef.current = null;
+    if (el === null) {
+      setStickyReservePx(null);
+      return;
+    }
+    const measure = () => setStickyReservePx(el.getBoundingClientRect().height);
+    measure();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      stickyObserverRef.current = ro;
+    }
+  }, []);
 
   // Machine-first Home gate (Slice B INTEGRATION §2). The backend factory is
   // deliberately NOT wired — that is the launch gate (migration 0030 unapplied);
@@ -661,6 +667,20 @@ export function CustomerShellV1() {
     capability,
   );
   const showStickyUpgrade = isResultPhase && !view.gramsVisible;
+  // Owner UX correction §3/§10: the Home/Demo customer never sees the internal
+  // serving mode („Świeże”) or the „Dane techniczne” disclosure — those belong
+  // to the professional (and Expert Mode) view only.
+  const showTechnical = showTechnicalDetails(persona);
+  // Owner UX correction §11: ONE unambiguous recipe status (never „prawie gotowa”
+  // and „wyliczona przez silnik” side by side).
+  const statusView = resultStatus({
+    unresolvedCount: view.unresolvedCount,
+    gramsVisible: view.gramsVisible,
+    outOfBand: currentResult?.state === 'calculated_out_of_band',
+    // A structure-only card (unsupported profile) or a catalogue draft has no
+    // engine numbers — it is a preview, never „ready to recalculate”.
+    calculated: currentResult !== null && currentResult.state !== 'structure_only',
+  });
 
   /* ----------------------------------------------------- Ready matches -- */
   const readyQuery: ReadyRecipeQuery = {
@@ -806,14 +826,9 @@ export function CustomerShellV1() {
           <SummaryRow label={copy.tech.batchGrams} value={String(batchRes.batchGrams)} />
         ) : null}
         {isResultPhase ? (
-          <SummaryRow
-            label={copy.tech.recipeStatus}
-            value={
-              view.unresolvedCount > 0
-                ? needsRefinementText(view.unresolvedCount)
-                : copy.result.fullyResolvedNote
-            }
-          />
+          // Owner §11: the Pro diagnostic mirrors the SAME single status shown
+          // above — never the old „prawie gotowa” phrasing beside it.
+          <SummaryRow label={copy.tech.recipeStatus} value={statusView.label} />
         ) : null}
 
         {(() => {
@@ -868,7 +883,7 @@ export function CustomerShellV1() {
   /* ----------------------------------------------------------- Render -- */
   return (
     <ShellRoot>
-      <CustomerSurface hasStickyCta={showStickyUpgrade}>
+      <CustomerSurface hasStickyCta={showStickyUpgrade} stickyReservePx={stickyReservePx}>
         <CustomerMenu />
         {/* §7.3 machine context bar. Shows the machine the CURRENT recipe uses;
             an override adds the „Domyślna maszyna: X” line + revert / promote
@@ -1268,35 +1283,30 @@ export function CustomerShellV1() {
         {/* Result — fixture structure, redacted at source for Demo. */}
         {isResultPhase ? (
           <CustomerSection label={copy.result.label} title={resultTitle}>
-            {pathToggle}
-            <div className="rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
-              <SummaryRow label={copy.result.typeLabel} value={copy.productType.short[resultType]} />
-              <SummaryRow
-                label={copy.result.modeLabel}
-                value={selectedMode ? modeCopyFor(selectedMode.id).label : copy.result.modeNone}
-              />
-              <SummaryRow label={copy.result.batchLabel} value={formatBatch(batchRes.batchGrams)} />
+            {/* Owner UX correction §4/§5: ONE compact context line — kind of ice
+                cream + amount. The machine is already shown in the bar above, and
+                the internal serving mode („Świeże”) is never shown to the customer.
+                „Zmień ilość” re-opens the amount editor inline. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
+              <span className="text-[15px] text-ink">{compactRecipeContext(resultType, batchRes.batchGrams)}</span>
+              <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>
+                {copy.batch.change}
+              </TouchButton>
             </div>
-
-            {/* When any flavor line is still an open requirement, say so honestly —
-                the preview is NOT a fully calculated recipe. */}
-            {view.unresolvedCount > 0 ? (
-              <div className="mt-4">
-                <Notice>{needsRefinementText(view.unresolvedCount)}</Notice>
-              </div>
+            {forceBatchEdit ? (
+              <div className="mt-3">{isNinja ? renderCustomMassField() : renderBatchSelector()}</div>
             ) : null}
 
+            {/* Owner UX correction §11: exactly ONE status, with optional one-line
+                guidance (required-products, or the out-of-band Monitor hint). */}
             <div className="mt-4">
-              <Notice>
-                {currentResult
-                  ? currentResult.state === 'calculated'
-                    ? copy.result.stateCalculated
-                    : currentResult.state === 'calculated_out_of_band'
-                      ? copy.result.stateOutOfBand
-                      : copy.result.stateStructureOnly
-                  : copy.result.fixtureNotice}
-                {selectedDraft ? ` ${copy.result.draftNotice}` : ''}
-              </Notice>
+              <Notice>{statusView.label}</Notice>
+              {statusView.guidance ? (
+                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{statusView.guidance}</p>
+              ) : null}
+              {selectedDraft ? (
+                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{copy.result.draftNotice}</p>
+              ) : null}
             </div>
 
             <div className="mt-5">
@@ -1345,18 +1355,20 @@ export function CustomerShellV1() {
               }
             />
 
-            <div className="mt-4">{technical}</div>
+            {/* Owner §10: „Dane techniczne” is a professional / Expert-Mode
+                surface — never part of the simplified Home view. */}
+            {showTechnical ? <div className="mt-4">{technical}</div> : null}
           </CustomerSection>
         ) : null}
 
-        {/* Technical details are also available during collection. */}
-        {status !== 'complete' && !isResultPhase && typeRes.status === 'resolved' ? (
+        {/* Technical details are also available during collection — Pro only. */}
+        {showTechnical && status !== 'complete' && !isResultPhase && typeRes.status === 'resolved' ? (
           <div className="mt-2">{technical}</div>
         ) : null}
       </CustomerSurface>
 
       {showStickyUpgrade ? (
-        <StickyCta caption={copy.upgrade.body}>
+        <StickyCta caption={copy.upgrade.body} innerRef={measureStickyCta}>
           <div className="flex gap-2">
             <TouchButton block size="lg" onClick={() => goToSubscription()}>
               {copy.upgrade.chooseHome}

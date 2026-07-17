@@ -9,6 +9,14 @@ interface CustomerSurfaceProps {
    * of the content (spacer is sized to a large control + safe-area inset).
    */
   hasStickyCta?: boolean;
+  /**
+   * The measured height (px) of the fixed CTA bar, when known. The reserved
+   * spacer is sized to this + a small gap so the paywall never overlaps the last
+   * interactive control — the bar's real height varies with caption wrapping,
+   * so a fixed constant is unsafe. Falls back to a generous default until the
+   * first measurement lands.
+   */
+  stickyReservePx?: number | null;
   className?: string;
 }
 
@@ -21,7 +29,12 @@ interface CustomerSurfaceProps {
  * owner decision (UIUX Slice A, spec §21.1); cards keep hairline borders + quiet
  * shadows for lift. One column always — max width is `customerSpec.contentMaxWidthPx`.
  */
-export function CustomerSurface({ children, hasStickyCta = false, className }: CustomerSurfaceProps) {
+export function CustomerSurface({
+  children,
+  hasStickyCta = false,
+  stickyReservePx = null,
+  className,
+}: CustomerSurfaceProps) {
   return (
     <div
       className={cn(
@@ -37,9 +50,15 @@ export function CustomerSurface({ children, hasStickyCta = false, className }: C
         style={{ maxWidth: customerSpec.contentMaxWidthPx }}
       >
         {children}
-        {/* Spacer so the sticky CTA (fixed) never overlaps the final content. */}
+        {/* Spacer so the sticky CTA (fixed) never overlaps the final content. The
+            measured bar height already includes its own safe-area padding, so the
+            reserve is (measured + gap); until the first measurement we reserve a
+            generous default that clears a captioned two-button bar. */}
         {hasStickyCta ? (
-          <div aria-hidden className="h-[calc(72px+env(safe-area-inset-bottom))]" />
+          <div
+            aria-hidden
+            style={{ height: `${(stickyReservePx ?? 148) + 16}px` }}
+          />
         ) : (
           <div aria-hidden className={cn('h-8', safeArea.bottomRaw)} />
         )}

@@ -55,8 +55,8 @@ describe('owner tests 12–13 — the change actions are named by scope', () => 
     expect(copy.contextBar.changeForRecipe).toBe('Zmień dla tej receptury');
   });
 
-  it('the profile says „Zmień domyślną maszynę”', () => {
-    expect(copy.profile.change).toBe('Zmień domyślną maszynę');
+  it('the profile says „Zmień maszynę” (owner UX correction 2026-07-17)', () => {
+    expect(copy.profile.change).toBe('Zmień maszynę');
   });
 
   it('the conscious promotion is „Ustaw … jako domyślną”', () => {
@@ -128,8 +128,9 @@ describe('owner tests 1–2 — the profile page shows the default machine and c
     expect(html).toContain('KitchenAid Ice Cream Maker');
   });
 
-  it('always offers „Zmień domyślną maszynę” and „Przejdź do receptury”', () => {
+  it('always offers „Zmień maszynę” and „Przejdź do receptury”', () => {
     expect(html).toContain(copy.profile.change);
+    expect(html).toContain('Zmień maszynę');
     expect(html).toContain(copy.settings.goToRecipe);
   });
 });

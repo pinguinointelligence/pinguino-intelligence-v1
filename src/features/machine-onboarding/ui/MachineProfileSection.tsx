@@ -365,7 +365,9 @@ export function MachineProfileSection({
           <TouchButton variant="secondary" onClick={restore} disabled={view.recommendedGrams === null}>
             {copy.settings.restoreRecommended}
           </TouchButton>
-          <TouchButton variant="quiet" onClick={onChange}>
+          {/* Owner §2/§7: „Zmień maszynę” is a SECONDARY action (not buried as a
+              quiet link) and is always present for a saved machine. */}
+          <TouchButton variant="secondary" onClick={onChange}>
             {copy.profile.change}
           </TouchButton>
           {view.isCustomMachine && onEditCustom ? (
