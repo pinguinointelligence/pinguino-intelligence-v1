@@ -25,6 +25,7 @@ import { OptimizationPreviewPage } from '@/pages/dev/OptimizationPreviewPage';
 import { BranchRecalculationPreviewPage } from '@/pages/dev/BranchRecalculationPreviewPage';
 import { PiMonitorDevPage } from '@/pages/dev/PiMonitorDevPage';
 import { HomePage } from '@/pages/home/HomePage';
+import { LandingPage } from '@/pages/landing/LandingPage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
 import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
@@ -41,12 +42,15 @@ import {
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Public root is now the mobile-first Customer UX (customer-v1). */}
-      <Route path="/" element={<CustomerShellV1 />} />
+      {/* Slice A (owner-approved): public root is the LIGHT landing page (spec §6);
+          the customer flow lives at /start behind the primary CTA. */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/start" element={<CustomerShellV1 />} />
       {/* Previous AI-first premium black-shell Home preserved (not removed). */}
       <Route path="/classic" element={<HomePage />} />
-      {/* Legacy /demo entry → root (kept so old links/bookmarks still land). */}
-      <Route path="/demo" element={<Navigate to="/" replace />} />
+      {/* Legacy /demo entry pointed at the flow → keep old links/bookmarks landing
+          in the flow, not on the marketing page. */}
+      <Route path="/demo" element={<Navigate to="/start" replace />} />
       {/* Advanced Studio · −11°C Engine. */}
       <Route path="/studio" element={<StudioPage />} />
       {/* PI Calculator → Advanced Studio (no intermediate surface). */}
@@ -66,8 +70,8 @@ export function AppRoutes() {
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />
 
-      {/* Customer shell preview — public, mobile-first customer-v1 surface. */}
-      <Route path="/customer-v1" element={<CustomerShellV1 />} />
+      {/* Legacy customer-shell preview path → the flow's new canonical /start. */}
+      <Route path="/customer-v1" element={<Navigate to="/start" replace />} />
 
       {/* DEV-ONLY internal tools — registered only in a dev build, never linked in nav.
           In production import.meta.env.DEV is false, so the route is never created and
