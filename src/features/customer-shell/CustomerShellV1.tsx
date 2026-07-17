@@ -674,7 +674,11 @@ export function CustomerShellV1() {
   // Owner UX correction §11: ONE unambiguous recipe status (never „prawie gotowa”
   // and „wyliczona przez silnik” side by side).
   const statusView = resultStatus({
-    unresolvedCount: view.unresolvedCount,
+    // The LIVE remaining count from the resolution controller — so once the
+    // customer picks a real product for every open line, the status flips from
+    // „Wymaga wyboru N produktów” to ready (Track A: the recipe reflects the pick),
+    // matching the Monitor's recalc gate which already keys off the same state.
+    unresolvedCount: resolution.summary.unresolvedCount,
     gramsVisible: view.gramsVisible,
     outOfBand: currentResult?.state === 'calculated_out_of_band',
     // A structure-only card (unsupported profile) or a catalogue draft has no

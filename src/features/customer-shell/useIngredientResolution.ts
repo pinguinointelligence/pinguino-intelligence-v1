@@ -33,11 +33,11 @@ import {
   type ResolutionActionId,
 } from '@/features/ingredient-resolution';
 import {
-  CATALOGUE_UNAVAILABLE,
+  BUNDLED_CATALOGUE_ENTRIES,
+  BUNDLED_CATALOGUE_SOURCE,
+  bundledCategoryForIngredient,
   searchPickerCatalogue,
-  sampleCategoryForIngredient,
   type CatalogueSource,
-  type PickerCatalogueEntry,
   type ProductPickResult,
 } from '@/features/product-picker';
 
@@ -50,8 +50,6 @@ export interface ResolvableLine {
 
 /** Which panel of the open sheet is showing. */
 export type ResolutionView = 'menu' | 'picker' | 'substitute' | 'intake';
-
-const EMPTY_ENTRIES: readonly PickerCatalogueEntry[] = [];
 
 export interface IngredientResolutionController {
   summary: IngredientResolutionSummary;
@@ -136,12 +134,13 @@ export function useIngredientResolution(
   const [whyOpen, setWhyOpen] = useState(false);
   const [pickedNames, setPickedNames] = useState<Record<string, string>>({});
 
-  // No approved products/ingredients backend is connected in this environment, so the
-  // catalogue is honestly UNAVAILABLE (no sample fallback — never fake products). The real
-  // backend catalogue adapters (product + Mapper-Basement ingredient) swap in once an
-  // approved environment is connected; then `entries` is populated and real results show.
-  const entries: readonly PickerCatalogueEntry[] = EMPTY_ENTRIES;
-  const catalogueAvailable = false;
+  // Owner decision (2026-07-17, „wire the 69 staging products now"): the picker reads a
+  // REAL, verified SAMPLE of the products catalogue, bundled from staging so it works in
+  // every build (including the public one, which has no live database). Matched products carry
+  // their mapper_basement reference → an exact „Gotowy do przeliczenia" verdict; the rest
+  // stay honestly „Wymaga danych". The source note labels it a sample, never „live".
+  const entries = BUNDLED_CATALOGUE_ENTRIES;
+  const catalogueAvailable = true;
 
   // Keep the resolvable line SET in sync with the recipe, preserving progress.
   // Adjusted DURING render (the recommended pattern) rather than in an effect, so a
@@ -156,7 +155,7 @@ export function useIngredientResolution(
   const activeLineId = state.activeLineId;
   const activeLine = activeLineId ? (resolutionForLine(state, activeLineId) ?? null) : null;
 
-  const seedCategory = activeLine ? sampleCategoryForIngredient(activeLine.line.ingredientName) : null;
+  const seedCategory = activeLine ? bundledCategoryForIngredient(activeLine.line.ingredientName) : null;
   const results = useMemo(() => {
     if (view !== 'picker' || !activeLine) return [];
     const trimmed = query.trim();
@@ -249,7 +248,7 @@ export function useIngredientResolution(
 
   return {
     summary: ingredientResolutionSummary(state),
-    source: CATALOGUE_UNAVAILABLE,
+    source: BUNDLED_CATALOGUE_SOURCE,
     catalogueAvailable,
     activeLineId,
     activeLine,
