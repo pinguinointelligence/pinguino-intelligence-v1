@@ -96,9 +96,13 @@ export function MachineProfileSection({
    * Seed the drafts from the SAVED record during render (React's documented
    * "adjust state when props change" pattern) — an effect would leave the
    * first paint with an empty field, so the user would see it flash blank.
-   * A plain re-render never overwrites what the user is typing; the saved
-   * status is deliberately NOT reset here (it must survive the record update
-   * a successful save triggers) — editing a field clears it instead.
+   * A plain re-render never overwrites what the user is typing. Two pieces of
+   * state deliberately survive the re-seed a successful save triggers: the
+   * saved `status` (the "✓ Ustawienia zapisane" confirmation) and the user's
+   * `aboveChoice` — a save must not silently revert the split/keep-mine
+   * decision the user just made (adversarial review #5). Editing a field
+   * (onChange) is the only thing that re-opens the above-recommendation
+   * question, via `setAboveChoice('undecided')` there.
    */
   const seedKey = [
     savedBatch ?? '',
@@ -115,7 +119,6 @@ export function MachineProfileSection({
     setContainerBatchText(savedContainerBatch !== null ? formatGrams(savedContainerBatch) : '');
     setBatchError(null);
     setCapacityError(null);
-    setAboveChoice('undecided');
   }
 
   if (view === null) {
@@ -254,10 +257,12 @@ export function MachineProfileSection({
           />
         </div>
 
-        {/* Above the recommendation: warn + offer choices, never block (§7). */}
+        {/* Above the recommendation: warn + offer choices, never block (§7).
+            role="status" so a screen reader announces the as-you-type warning
+            (WCAG 4.1.3 — adversarial review #10). */}
         {guidance.kind === 'custom_above' && guidance.choice === 'undecided' ? (
           <div className={cn('mt-3 px-4 py-3', radius.card, notice.risky, notice.text, type.secondary)}>
-            <p className={cn('font-medium', color.textPrimary)}>{copy.batch.aboveWarning}</p>
+            <p role="status" className={cn('font-medium', color.textPrimary)}>{copy.batch.aboveWarning}</p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <TouchButton variant="secondary" onClick={() => setAboveChoice('split')}>
                 {copy.batch.splitAction}
@@ -272,7 +277,10 @@ export function MachineProfileSection({
           </div>
         ) : null}
         {split !== null ? (
-          <div className={cn('mt-3 px-4 py-3', radius.card, notice.neutral, notice.text, type.secondary)}>
+          <div
+            role="status"
+            className={cn('mt-3 px-4 py-3', radius.card, notice.neutral, notice.text, type.secondary)}
+          >
             <p className={cn('font-medium', color.textPrimary)}>{split.message}</p>
             <p className="mt-0.5">{split.detail}</p>
           </div>

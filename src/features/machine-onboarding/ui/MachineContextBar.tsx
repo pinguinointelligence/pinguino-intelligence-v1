@@ -4,10 +4,12 @@
  *   Twoja maszyna: Ninja CREAMi Deluxe · pojemnik 706 ml   [Zmień]
  *
  * Hard rules (spec-pinned): NO engine name, NO technology code, NO
- * auto-chosen temperature. The capacity figure comes ONLY from the catalog
- * record (`buildMachineContextView`); when the saved machine has no
- * displayable vessel figure the bar shows the name alone. `defaultBatchGrams`
- * travels in the VIEW MODEL for the batch surfaces — the bar never renders it.
+ * auto-chosen temperature. The capacity figure comes from the resolved
+ * catalog record OR, once the user declared their own container (§8 „Używam
+ * innego pojemnika”), from that own container — both via
+ * `buildMachineContextView`; when the saved machine has no displayable vessel
+ * figure the bar shows the name alone. `defaultBatchGrams` travels in the VIEW
+ * MODEL for the batch surfaces — the bar never renders it.
  */
 import { cn } from '@/lib/cn';
 import { color, focusRing, motion, radius, type } from '@/features/customer-shell/ui/tokens';

@@ -92,7 +92,7 @@ block:
   exceeding it shows ONLY the warning „Ta ilość przekracza zalecany wsad
   PINGÜINO dla jednego pojemnika." with three non-blocking actions (optional
   EVEN split / keep mine exactly / restore) — `deriveBatchGuidance` in
-  `customer-shell/batchGuidance.ts`;
+  `machine-onboarding/batchGuidance.ts`;
 - a machine CHANGE never rewrites an in-progress amount: the new grams arrive
   as a PROPOSAL („Dopasuj ilość do nowej maszyny" → preview → Zastosuj), and
   `applyMachineRecordIfUnanswered` guarantees an answered flow passes through
@@ -144,7 +144,7 @@ const notice = containerSplitNotice(requestedGrams, view.recommendedBatchGrams);
 |---|---|
 | Flow component | `MachineOnboarding`, `MachineOnboardingCompletion` |
 | Context bar | `MachineContextBar`, `buildMachineContextView`, `MachineContextView` |
-| Profile | `MachineProfileSection`, `buildMachineProfileSectionView` (+ page `@/pages/profile/MachineProfilePage`) |
+| Profile | `MachineProfileSection`, `MachineSettingsSubmit`, `buildMachineSettingsView`, `MachineAdjustBatchStep`, `parseGramsInput`, `suggestRecommendedGramsForContainer` (+ page `@/pages/profile/MachineProfilePage`) |
 | Store | `MachinePreferenceStore`, `MachinePreferenceRecord`, `SavedDefaultBatch`, `buildMachinePreferenceRecord`, `parseMachinePreferenceRecord`, `localStorageMachinePreferenceStore`, `useMachinePreference` |
 | Views/copy | `machineOnboardingCopy`, `buildMachineTileViews`, `searchMachineTiles`, `presentBatchSuggestion`, `containerSplitNotice`, `autoConfigLines`, `machineDisplayName`, `formatGrams` |
 | Selector (services) | `selectMachinePreferenceStore`, `chooseMachinePreferenceStoreMode` from `@/services/machinePreference/machinePreferenceSelector` |

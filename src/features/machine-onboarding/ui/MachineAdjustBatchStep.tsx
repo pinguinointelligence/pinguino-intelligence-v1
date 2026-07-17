@@ -109,7 +109,8 @@ export function MachineAdjustBatchStep({
 
       {guidance.kind === 'custom_above' && guidance.choice === 'undecided' ? (
         <div className={cn('mt-3 px-4 py-3', radius.card, notice.risky, notice.text, type.secondary)}>
-          <p className={cn('font-medium', color.textPrimary)}>{copy.batch.aboveWarning}</p>
+          {/* role="status" — announce the as-you-type warning (WCAG 4.1.3). */}
+          <p role="status" className={cn('font-medium', color.textPrimary)}>{copy.batch.aboveWarning}</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <TouchButton variant="secondary" onClick={() => setAboveChoice('split')}>
               {copy.batch.splitAction}
@@ -130,7 +131,10 @@ export function MachineAdjustBatchStep({
         </div>
       ) : null}
       {split !== null ? (
-        <div className={cn('mt-3 px-4 py-3', radius.card, notice.neutral, notice.text, type.secondary)}>
+        <div
+          role="status"
+          className={cn('mt-3 px-4 py-3', radius.card, notice.neutral, notice.text, type.secondary)}
+        >
           <p className={cn('font-medium', color.textPrimary)}>{split.message}</p>
           <p className="mt-0.5">{split.detail}</p>
         </div>

@@ -137,6 +137,22 @@ describe('owner tests 3–5 — the user sets 600 g, it saves and survives a rel
     expect(usesCustomDefaultBatch(next!)).toBe(true);
   });
 
+  it('the machine-change proposal follows §5 — effective default, NOT the raw recommendation (M1)', () => {
+    // handleMachineChosen computes its proposal via effectiveDefaultBatchGrams
+    // (the same contract machineFlowBridge uses). A record carrying the own
+    // default the adjust step captured must propose THAT value, never the
+    // recommendation the user just overrode.
+    const changed = withUserDefaultBatch(deluxeRecord(), 600, LATER);
+    if (changed === null) throw new Error('expected record');
+    expect(effectiveDefaultBatchGrams(changed)).toBe(600);
+    // The regression the reviewer found was a raw `defaultBatch.grams` read —
+    // which would give 670. Guard that they genuinely differ here.
+    expect(changed.defaultBatch.kind === 'grams' && changed.defaultBatch.grams).toBe(670);
+    expect(effectiveDefaultBatchGrams(changed)).not.toBe(
+      changed.defaultBatch.kind === 'grams' ? changed.defaultBatch.grams : null,
+    );
+  });
+
   it('a real save→reload round-trip through the device store returns 600 g', async () => {
     const storage = memoryStorage();
     const store = localStorageMachinePreferenceStore(storage);
@@ -267,23 +283,41 @@ describe('owner tests 10–11 — above 670 g: warning + choices, never a block'
     expect(guidance.split).toBeNull();
   });
 
-  it('the settings card renders the exact warning + the three actions', () => {
+  it('at the saved (recommended) value there is NO warning — it is not noise', () => {
     const view = buildMachineSettingsView(deluxeRecord());
     if (view === null) throw new Error('expected view');
-    // Render at the saved state, then assert the warning copy is the owner's.
     const html = render(
       <MachineProfileSection view={view} onSetUp={noop} onChange={noop} onSave={okSave} onGoToRecipe={noop} />,
     );
-    // The card only warns once the value diverges — the copy itself is pinned
-    // here so the wording can never drift from the owner's sentence.
-    expect(copy.batch.aboveWarning).toBe(
-      'Ta ilość przekracza zalecany wsad PINGÜINO dla jednego pojemnika.',
-    );
-    expect(copy.batch.splitAction).toBe('Podziel na pojemniki');
-    expect(copy.batch.keepMine).toBe('Pozostaw moją ilość');
-    expect(copy.batch.restoreShort).toBe('Przywróć zalecany wsad');
-    // At the saved (recommended) value there is no warning — it is not noise.
     expect(html).not.toContain(copy.batch.aboveWarning);
+  });
+
+  it('RENDERS the exact warning + the three actions when the saved default is above the recommendation', () => {
+    // The card seeds its field from the SAVED userDefaultGrams, so a record
+    // whose own default (800) exceeds the recommendation (670) reaches the
+    // above-recommendation warning at first paint — the static-markup harness
+    // then proves the JSX actually emits it (adversarial review #1: the old
+    // test asserted the warning was ABSENT and never covered the block).
+    const view = buildMachineSettingsView(withUserDefaultBatch(deluxeRecord(), 800, LATER)!);
+    if (view === null) throw new Error('expected view');
+    expect(view.userDefaultGrams).toBe(800);
+    expect(view.recommendedGrams).toBe(670);
+    const html = render(
+      <MachineProfileSection view={view} onSetUp={noop} onChange={noop} onSave={okSave} onGoToRecipe={noop} />,
+    );
+    expect(html).toContain(copy.batch.aboveWarning);
+    expect(html).toContain(copy.batch.splitAction);
+    expect(html).toContain(copy.batch.keepMine);
+    expect(html).toContain(copy.batch.restoreShort);
+    // …and the warning carries role="status" so a screen reader announces it.
+    expect(html).toMatch(/role="status"[^>]*>Ta ilość przekracza/);
+    // The save button is present and NOT disabled — a value above the
+    // recommendation warns but never blocks the save (§7). React renders a
+    // boolean `disabled` as `disabled=""`; check the save button's own opening
+    // tag (Tailwind `disabled:` utility classes must not be mistaken for it).
+    expect(html).toContain(copy.settings.save);
+    const saveTag = html.match(new RegExp(`<button[^>]*>${copy.settings.save}<`))?.[0] ?? '';
+    expect(saveTag).not.toContain('disabled=""');
   });
 
   it('„Pozostaw moją ilość” keeps the exact amount and still saves it', async () => {

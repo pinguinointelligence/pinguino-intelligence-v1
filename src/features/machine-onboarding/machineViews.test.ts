@@ -28,7 +28,7 @@ import {
   presentBatchSuggestion,
   searchMachineTiles,
 } from './machineViews';
-import { buildMachinePreferenceRecord } from './preferenceContracts';
+import { buildMachinePreferenceRecord, withCustomContainer } from './preferenceContracts';
 
 const NOW = '2026-07-17T12:00:00.000Z';
 
@@ -289,7 +289,7 @@ describe('§8.5 auto-config lines — honest amount variant', () => {
 /* §7.3 context view + §8.6 profile view                               */
 /* ------------------------------------------------------------------ */
 
-describe('§7.3 context view — catalog capacity only, grams carried not displayed', () => {
+describe('§7.3 context view — vessel from the catalog record OR the user’s own container', () => {
   it('NC7: name + catalog vessel + carried derived grams', () => {
     const view = buildMachineContextView(recordFor(NINJA_CREAMI_SCOOP_SWIRL_NC7.id));
     expect(view).toEqual({
@@ -297,6 +297,18 @@ describe('§7.3 context view — catalog capacity only, grams carried not displa
       vesselMl: 480,
       recommendedBatchGrams: 460,
     });
+  });
+
+  it('a declared own container overrides the catalog vessel + its recommendation (§8)', () => {
+    const own = withCustomContainer(
+      recordFor(NINJA_CREAMI_DELUXE_NC502EU.id),
+      { capacityMl: 500, recommendedBatchGrams: 470 },
+      '2026-07-17T13:00:00.000Z',
+    );
+    if (own === null) throw new Error('expected record');
+    const view = buildMachineContextView(own);
+    expect(view?.vesselMl).toBe(500); // the user's own container, not the 706 catalog figure
+    expect(view?.recommendedBatchGrams).toBe(470);
   });
 
   it('a machine without a vessel figure yields name-only (null vessel)', () => {

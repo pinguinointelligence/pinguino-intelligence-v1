@@ -129,6 +129,12 @@ export const machineOnboardingCopy = {
     fitToNewMachine: 'Dopasuj ilość do nowej maszyny',
     /** Header of the new-machine batch proposal (shown after a machine change). */
     newRecommendedLabel: 'Zalecany wsad nowej maszyny',
+    /**
+     * When the user set their OWN default during the machine-change adjust
+     * step, the proposal is that value — labelling it a „recommendation” would
+     * be untrue (adversarial review M1).
+     */
+    newUserDefaultLabel: 'Twój domyślny wsad dla nowej maszyny',
     /** Preview confirmation actions — applying is always the user's call. */
     applyPreview: 'Zastosuj',
     cancelPreview: 'Anuluj',

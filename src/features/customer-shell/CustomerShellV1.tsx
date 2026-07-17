@@ -78,6 +78,7 @@ import {
   MachineContextBar,
   buildMachineContextView,
   deriveBatchGuidance,
+  effectiveDefaultBatchGrams,
   formatGrams,
   localStorageMachinePreferenceStore,
   machineOnboardingCopy,
@@ -295,6 +296,9 @@ export function CustomerShellV1() {
   // („Dopasuj ilość do nowej maszyny" → preview → Zastosuj).
   const [machineBatchProposal, setMachineBatchProposal] = useState<number | null>(null);
   const [proposalPreviewOpen, setProposalPreviewOpen] = useState(false);
+  // Honest save-failure surface (owner §2/§3): a blocked/quota-full device
+  // store must tell the user, not silently swallow the machine.
+  const [machineSaveFailed, setMachineSaveFailed] = useState(false);
   // §6: a per-recipe amount NEVER rewrites the profile — saving it as the
   // default is an explicit, separate action with its own confirmation.
   const [savedAsDefaultGrams, setSavedAsDefaultGrams] = useState<number | null>(null);
@@ -317,9 +321,17 @@ export function CustomerShellV1() {
 
   const handleMachineChosen = (completion: MachineOnboardingCompletion) => {
     const isChange = machinePreference.record !== null;
-    void machinePreference.save(completion.record);
+    void machinePreference.save(completion.record).then((ok) => {
+      // Honest failure (owner §2/§3): a blocked/quota-full store must not leave
+      // the user on an empty card pretending the machine was saved.
+      if (!ok) setMachineSaveFailed(true);
+    });
     setMachineChangeOpen(false);
     setAboveChoiceFor(null);
+    // A machine change is a fresh answer to the amount question — a stale
+    // "✓ Zapisano" confirmation from the previous machine must not carry over
+    // (adversarial review M2).
+    setSavedAsDefaultGrams(null);
     if (!isChange) {
       // First setup (§8.5): the chosen machine answers the mode and, when
       // derivable, the amount for an already-created flow.
@@ -327,10 +339,11 @@ export function CustomerShellV1() {
       setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, completion.record) : prev));
       return;
     }
-    // Machine CHANGE (owner final decision): switch the mode routing, but only
-    // PROPOSE the new recommended amount — never rewrite the recipe silently.
-    const proposed =
-      completion.record.defaultBatch.kind === 'grams' ? completion.record.defaultBatch.grams : null;
+    // Machine CHANGE: switch the mode routing, but only PROPOSE the new amount
+    // — never rewrite the recipe silently. The proposal follows the §5 source
+    // order (the user's own default the adjust step just captured wins over the
+    // recommendation), matching applyMachineRecordToFlow (adversarial review M1).
+    const proposed = effectiveDefaultBatchGrams(completion.record);
     setMachineBatchProposal(proposed);
     setProposalPreviewOpen(false);
     setFlow((prev) => {
@@ -808,7 +821,19 @@ export function CustomerShellV1() {
         <CustomerMenu />
         {/* §7.3 machine context bar — Home persona with a saved machine only. */}
         {machineGate === 'saved' && machineView !== null ? (
-          <MachineContextBar view={machineView} onChange={() => setMachineChangeOpen(true)} />
+          <MachineContextBar
+            view={machineView}
+            onChange={() => {
+              setMachineSaveFailed(false);
+              setMachineChangeOpen(true);
+            }}
+          />
+        ) : null}
+        {/* Honest save-failure surface (owner §2/§3) — never a silent swallow. */}
+        {machineSaveFailed ? (
+          <p role="alert" className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.error} ${notice.text}`}>
+            {machineOnboardingCopy.settings.saveFailed}
+          </p>
         ) : null}
         <DevPersonaSelect persona={persona} onChange={switchPersona} />
         {/* §4.1 conscious machine change — renders above the flow; completing (or
@@ -1056,7 +1081,14 @@ export function CustomerShellV1() {
                     machineBatchProposal !== currentBatchGrams ? (
                       <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
                         <p>
-                          {machineOnboardingCopy.batch.newRecommendedLabel}:{' '}
+                          {/* M1: the label tells the truth about WHAT is proposed —
+                              the new machine's recommendation, or the own default
+                              the user just typed in the adjust step. */}
+                          {machineRecord?.userDefaultBatchGrams !== null &&
+                          machineRecord?.userDefaultBatchGrams === machineBatchProposal
+                            ? machineOnboardingCopy.batch.newUserDefaultLabel
+                            : machineOnboardingCopy.batch.newRecommendedLabel}
+                          :{' '}
                           <span className="font-medium text-ink">
                             {formatGrams(machineBatchProposal)} {machineOnboardingCopy.batch.recommendedUnit}
                           </span>
