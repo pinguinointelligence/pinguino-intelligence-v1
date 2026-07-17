@@ -19,10 +19,16 @@ export const SAMPLE_SOURCE: CatalogueSource = {
  * The honest source when NO approved products/ingredients backend is connected.
  * The public build uses this (never the sample) until an approved environment
  * (the real Mapper Basement + Products) is verified and connected.
+ *
+ * AUDIT #2 (P0) + SPEC §18.5/§3.2, owner decision (Slice C): the old note leaked
+ * internal wording („konfiguracja bezpiecznego środowiska”) and left the picker a
+ * dead end. The note is customer Polish and names the honest ways forward — the
+ * sheet actions „Skanuj etykietę” / „Dodaj produkt ręcznie” really exist, and
+ * closing the sheet loses nothing. No availability promise is invented.
  */
 export const CATALOGUE_UNAVAILABLE: CatalogueSource = {
   kind: 'unavailable',
-  note: 'Katalog składników i produktów jest chwilowo niedostępny. Zostanie aktywowany po zakończeniu konfiguracji bezpiecznego środowiska.',
+  note: 'Wyszukiwarka produktów nie jest jeszcze dostępna w tej wersji. Produkt dodasz przez „Skanuj etykietę” albo „Dodaj produkt ręcznie” — Twoja receptura zostanie zachowana.',
 };
 
 /** Build an in-memory catalogue port over the sample (or a supplied) entry set. */

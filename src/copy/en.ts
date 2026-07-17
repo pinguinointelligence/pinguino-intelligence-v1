@@ -420,13 +420,20 @@ export const copy = {
     vegan: { label: 'Vegan', tagline: 'No animal-derived ingredients.' },
     protein: { label: 'Protein', tagline: 'Higher protein, texture preserved.' },
   },
-  /** Serving / production profiles (preferences, not engines). */
+  /** Serving / production profiles (preferences, not engines).
+   * AUDIT #19 + SPEC §11.2 (owner decision, Slice C): −18°C is a STORAGE
+   * temperature — it moved to `storageProfiles` below and is never offered
+   * in a serving picker. */
   servingProfiles: {
     fresh: { label: 'Fresh' },
     'display-minus-11': { label: 'Display −11°C' },
     'display-minus-12': { label: 'Display −12°C' },
     'display-minus-13': { label: 'Display −13°C' },
-    'storage-minus-18': { label: 'Storage / Retail −18°C' },
+  },
+  /** Storage temperatures (SPEC §11.2 „Przechowywanie”) — a separate concept:
+   * informational labels only (legacy saved rows may still reference the id). */
+  storageProfiles: {
+    'storage-minus-18': { label: 'Przechowywanie −18°C (zamrażarka)' },
   },
   studio: {
     eyebrow: 'Advanced Studio',
@@ -490,8 +497,10 @@ export const copy = {
         vegan_gelato: 'Vegan gelato',
         custom: 'Custom',
       },
-      temperatureLabel: 'Serving temperature',
-      temperatureHelp: 'Colder serves firmer at the cabinet.',
+      /** SPEC §11.2 exact label — serving is a separate concept from
+       * production/extraction and storage (AUDIT #5, owner decision Slice C). */
+      temperatureLabel: 'Temperatura serwowania',
+      temperatureHelp: 'Niższa temperatura serwowania = twardsza konsystencja w witrynie.',
       batchLabel: 'Batch size',
       machineLabel: 'Machine capacity',
       machineNone: 'No limit',
@@ -512,6 +521,9 @@ export const copy = {
       searchLabel: 'Search ingredients',
       searchPlaceholder: 'Search ingredients, category, brand or ID…',
       noMatches: 'No ingredient found. Try another name or category.',
+      /** Honest empty-state exit (AUDIT #2 dead-end rule): a no-results search
+       * always offers a way back to the full list. */
+      clearSearch: 'Clear search',
       resultUnitOne: 'ingredient',
       resultUnitMany: 'ingredients',
       resultFoundSuffix: 'found',

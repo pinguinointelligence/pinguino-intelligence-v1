@@ -119,9 +119,12 @@ describe('buildDemoHints (redacted demo, real solver)', () => {
   });
 
   it('future serving profiles stay a preview on the −11°C Engine', () => {
-    const view = buildDemoHints(intakeFor('gelato', 'storage-minus-18'));
+    // Owner decision (Slice C, AUDIT #19 / SPEC §11.2): 'storage-minus-18' is no longer
+    // a serving profile; 'display-minus-13' is a real future serving cell — same
+    // preview semantics (unconnected → still computed on the −11°C Engine).
+    const view = buildDemoHints(intakeFor('gelato', 'display-minus-13'));
     expect(view.servingConnected).toBe(false);
-    const input = intakeToRecipeInput(intakeFor('gelato', 'storage-minus-18'))!;
+    const input = intakeToRecipeInput(intakeFor('gelato', 'display-minus-13'))!;
     expect(input.target_temperature_c).toBe(-11);
     // the connected default is connected
     expect(buildDemoHints(intakeFor('gelato', 'display-minus-11')).servingConnected).toBe(true);

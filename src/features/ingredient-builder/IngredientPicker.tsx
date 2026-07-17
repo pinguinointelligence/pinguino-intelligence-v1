@@ -10,6 +10,32 @@ import {
 const b = copy.studio.builder;
 
 /**
+ * Honest empty state for a no-results search (AUDIT #2 dead-end rule + owner
+ * decision, Slice C): every picker state keeps an exit. When a QUERY produced
+ * the empty set, a "Clear search" action restores the full list; a genuinely
+ * empty library shows only the honest text (nothing to restore — no invented
+ * exit, and no link to unfinished surfaces).
+ */
+export function PickerEmptyState({ query, onClear }: { query: string; onClear: () => void }) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <p className="text-sm text-ivory/50" role="status">
+        {b.noMatches}
+      </p>
+      {query.trim() !== '' ? (
+        <button
+          type="button"
+          className="rounded-md border border-ivory/20 px-3 py-1.5 text-sm text-ivory transition-colors hover:border-ivory/40"
+          onClick={onClear}
+        >
+          {b.clearSearch}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * The picker consumes a resolved ingredient library (PI Base for Pro, else the
  * demo catalog). A premium search bar filters across name, internal name, id,
  * brand, category and subcategory; results stay grouped by category. The add
@@ -86,7 +112,7 @@ export function IngredientPicker({
       </p>
 
       {grouped.length === 0 && filteredProducts.length === 0 ? (
-        <p className="text-sm text-ivory/50">{b.noMatches}</p>
+        <PickerEmptyState query={query} onClear={() => setQuery('')} />
       ) : (
         <>
           <div className="flex gap-2">

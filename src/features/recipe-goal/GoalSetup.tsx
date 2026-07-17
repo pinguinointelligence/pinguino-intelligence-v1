@@ -6,12 +6,14 @@ import { copy } from '@/copy/en';
 import type { ProductCategory, ProductMode } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
+// Serving choice = EXACTLY the engine's real cells (AUDIT #5 / SPEC §11.1) —
+// see servingTemperatures.ts for the owner decision (no −14, no −18, +−13).
+import { SERVING_TEMPERATURES_C } from './servingTemperatures';
 
 const g = copy.studio.goal;
 
 const MODES: ProductMode[] = ['eco', 'classic', 'premium', 'signature'];
 const CATEGORIES = Object.keys(g.categories) as ProductCategory[];
-const TEMPERATURES = [-11, -12, -14, -18];
 const FLAVORS = ['light', 'balanced', 'strong', 'maximum'] as const;
 const COSTS = ['low', 'balanced', 'premium'] as const;
 
@@ -122,7 +124,7 @@ export function GoalSetup() {
         <div className="flex flex-col gap-2">
           <span className={fieldLabel}>{g.temperatureLabel}</span>
           <Segmented
-            options={TEMPERATURES}
+            options={SERVING_TEMPERATURES_C}
             value={store.target_temperature_c}
             onChange={store.setTargetTemperature}
             labelOf={(temperature) => `−${Math.abs(temperature)} °C`}
