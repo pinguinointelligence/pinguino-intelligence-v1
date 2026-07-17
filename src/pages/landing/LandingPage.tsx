@@ -30,7 +30,9 @@ import {
   touchButtonClasses,
   type,
 } from '@/features/customer-shell/ui';
+import { MonitorHomeReadout } from '@/features/customer-shell/PiMonitorSection';
 import { landingCopy as copy } from './landingCopy';
+import { buildLandingMonitorDemo } from './landingMonitorDemo';
 
 /** Anchor target of the secondary hero CTA ("Zobacz, jak działa"). */
 const HOW_IT_WORKS_ID = 'jak-to-dziala';
@@ -130,22 +132,16 @@ function CheckList({ items }: { items: readonly string[] }) {
 }
 
 /* ------------------------------------------------------------------ *
- * Monitor preview (§6.2) — static example; Slice F replaces this      *
+ * Monitor demo (§6.2, Slice F) — the REAL Monitor, safe demo payload  *
  * ------------------------------------------------------------------ */
 
 /**
- * Honest golden-range micro-bar: neutral track, golden OPTIMUM segment with a
- * marker inside it (spec §15.3 — never red-green-red). Decorative; the row text
- * carries the meaning.
+ * Owner binding decision (Slice F): this is the SAME `MonitorHomeReadout` the
+ * customer flow renders — driven by the real engine through the real customer
+ * pipeline on a fixed vanilla payload (see `landingMonitorDemo.ts`). Honestly
+ * tagged as an example; no separate imitation exists.
  */
-function GoldenRangeBar() {
-  return (
-    <span aria-hidden className="relative mt-2 block h-1 w-full rounded-full bg-stone-200">
-      <span className="absolute inset-y-0 left-[34%] right-[34%] rounded-full bg-gold/50" />
-      <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold" />
-    </span>
-  );
-}
+const DEMO_MONITOR_VIEW = buildLandingMonitorDemo();
 
 function LandingMonitorPreview() {
   const m = copy.monitor;
@@ -158,27 +154,7 @@ function LandingMonitorPreview() {
         </span>
       </div>
 
-      <div className="mt-5 flex items-baseline gap-3" aria-label={`${m.score} — ${m.verdict}`}>
-        <span className="font-mono text-[40px] font-medium leading-none tracking-tight tabular-nums text-ink">
-          {m.score}
-        </span>
-        <span className={cn(type.secondary, 'font-medium text-ink')}>{m.verdict}</span>
-      </div>
-
-      <dl className="mt-6 space-y-4">
-        {m.rows.map((row) => (
-          <div key={row.name} className="border-t border-ink/10 pt-3 first:border-t-0 first:pt-0">
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className={cn(type.caption, color.textMuted)}>{row.name}</dt>
-              {/* Gold marks OPTIMUM only (owner decision) — every other state stays neutral ink. */}
-              <dd className={cn(type.secondary, 'text-right font-medium', row.golden ? 'text-gold' : 'text-ink')}>
-                {row.value}
-              </dd>
-            </div>
-            {row.golden ? <GoldenRangeBar /> : null}
-          </div>
-        ))}
-      </dl>
+      <MonitorHomeReadout home={DEMO_MONITOR_VIEW} />
 
       <p className={cn('mt-6 border-t border-ink/10 pt-4', type.caption, color.textSecondary)}>{m.plansNote}</p>
     </div>

@@ -131,6 +131,58 @@ function CheckRow({ check }: { check: MonitorHomeCheckRow }) {
  * Section                                                             *
  * ------------------------------------------------------------------ */
 
+/**
+ * The read-only §13 Monitor readout — the SAME component renders the customer
+ * result's monitor AND the public landing demo (owner Slice F decision: the
+ * landing uses the REAL Monitor with a safe demo payload, never an imitation).
+ * View-model in, presentation out; every number is stripped at the view-model
+ * source (§22) except the sanctioned 1–10 score.
+ */
+export function MonitorHomeReadout({
+  home,
+}: {
+  home: ReturnType<typeof buildMonitorHomeView>;
+}) {
+  return (
+    <>
+      {/* §15.1 „Dopasowanie receptury" — integer 1–10 + verdict; never /100,
+          never a percent, never decimals. Tooltip: 10/10 ≠ laboratory claim. */}
+      <div
+        className="mt-2 flex items-baseline gap-3"
+        aria-label={home.score.ariaText}
+        title={MATCH_SCORE_TOOLTIPS[home.score.tooltipKey]}
+      >
+        <span className="font-mono text-[34px] font-medium leading-none tracking-tight tabular-nums text-ink">
+          {home.score.display}
+        </span>
+        <span className="text-[15px] font-medium text-ink">{home.score.label}</span>
+      </div>
+
+      {/* §13 traits + Stabilność — Złoty Zakres 5-state TEXT rows (no numbers). */}
+      <div className="mt-5 flex flex-col gap-3">
+        {home.traits.map((trait) => (
+          <TraitReadingRow key={trait.id} label={trait.label} reading={trait.reading} />
+        ))}
+        <div className="flex items-baseline justify-between gap-4 border-t border-ink/10 pt-3">
+          <span className="text-[14px] font-medium text-ink">{home.stability.label}</span>
+          <span className={`text-right text-[13px] ${READING_TEXT_TONE[home.stability.reading.state]}`}>
+            {home.stability.reading.text}
+          </span>
+        </div>
+      </div>
+
+      {/* §13.3 machine / amount / structure checklist. */}
+      {home.checks.length > 0 ? (
+        <ul className="mt-4 space-y-1.5 rounded-xl border border-ink/10 bg-paper px-4 py-3">
+          {home.checks.map((check) => (
+            <CheckRow key={check.id} check={check} />
+          ))}
+        </ul>
+      ) : null}
+    </>
+  );
+}
+
 export function PiMonitorSection({
   summary,
   gramsVisible,
@@ -180,40 +232,8 @@ export function PiMonitorSection({
     <section className="mt-6 rounded-2xl border border-ink/10 bg-ink/[0.02] p-4">
       <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">{copy.monitor.label}</p>
 
-      {/* §15.1 „Dopasowanie receptury" — integer 1–10 + verdict; never /100,
-          never a percent, never decimals. Tooltip: 10/10 ≠ laboratory claim. */}
-      <div
-        className="mt-2 flex items-baseline gap-3"
-        aria-label={home.score.ariaText}
-        title={MATCH_SCORE_TOOLTIPS[home.score.tooltipKey]}
-      >
-        <span className="font-mono text-[34px] font-medium leading-none tracking-tight tabular-nums text-ink">
-          {home.score.display}
-        </span>
-        <span className="text-[15px] font-medium text-ink">{home.score.label}</span>
-      </div>
-
-      {/* §13 traits + Stabilność — Złoty Zakres 5-state TEXT rows (no numbers). */}
-      <div className="mt-5 flex flex-col gap-3">
-        {home.traits.map((trait) => (
-          <TraitReadingRow key={trait.id} label={trait.label} reading={trait.reading} />
-        ))}
-        <div className="flex items-baseline justify-between gap-4 border-t border-ink/10 pt-3">
-          <span className="text-[14px] font-medium text-ink">{home.stability.label}</span>
-          <span className={`text-right text-[13px] ${READING_TEXT_TONE[home.stability.reading.state]}`}>
-            {home.stability.reading.text}
-          </span>
-        </div>
-      </div>
-
-      {/* §13.3 machine / amount / structure checklist. */}
-      {home.checks.length > 0 ? (
-        <ul className="mt-4 space-y-1.5 rounded-xl border border-ink/10 bg-paper px-4 py-3">
-          {home.checks.map((check) => (
-            <CheckRow key={check.id} check={check} />
-          ))}
-        </ul>
-      ) : null}
+      {/* The shared §13 readout (also mounted by the landing demo — Slice F). */}
+      <MonitorHomeReadout home={home} />
 
       {/* §16 preference steering — stepped choices (never a numeric slider). */}
       <div className="mt-6">

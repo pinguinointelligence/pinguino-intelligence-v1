@@ -29,23 +29,16 @@ export const landingCopy = {
     ctaSecondary: 'Zobacz, jak działa',
   },
 
-  /* ------------------------------------------------- Monitor preview (§6.2) -- */
+  /* ------------------------------------------------- Monitor demo (§6.2) ----- */
   /**
-   * Static, honest preview of the Recipe Monitor — the spec's own example values
-   * (vanilla, 9/10). The interactive demo is a LATER slice (F); this block is a
-   * styled preview labelled as an example, never a fake app.
+   * Slice F (owner binding decision): the landing mounts the REAL
+   * `MonitorHomeReadout` on a safe demo payload (`landingMonitorDemo.ts`) —
+   * score/verdict/rows come from the real engine, never from static copy.
+   * Only the frame copy lives here.
    */
   monitor: {
     label: 'Monitor receptury',
     exampleTag: 'Przykład · Wanilia',
-    score: '9/10',
-    verdict: 'Świetnie dopasowana',
-    rows: [
-      { name: 'Struktura', value: 'w optymalnym zakresie', golden: true },
-      { name: 'Słodycz', value: 'zbalansowana', golden: false },
-      { name: 'Kremowość', value: 'bardzo dobra', golden: false },
-      { name: 'Dopasowanie do urządzenia', value: 'gotowe', golden: false },
-    ],
     plansNote: 'Uproszczony Monitor znajdziesz w planie Home, pełny — w Pro.',
   },
 
