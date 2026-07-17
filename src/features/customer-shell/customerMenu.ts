@@ -10,12 +10,18 @@
 
 /** Copy key → real route. `key` indexes `customerShellCopy.menu.primary`. */
 export interface CustomerMenuItem {
-  key: 'home' | 'studio' | 'recipes' | 'myRecipes' | 'label' | 'subscription';
+  key: 'home' | 'start' | 'studio' | 'recipes' | 'myRecipes' | 'label' | 'subscription';
   to: string;
 }
 
+/**
+ * Slice A routing (owner-approved): `/` is the public LANDING page and the
+ * customer flow lives at `/start` — so the menu carries both: "Strona główna"
+ * (landing) and "Stwórz recepturę" (the flow).
+ */
 export const CUSTOMER_MENU_ITEMS: readonly CustomerMenuItem[] = [
   { key: 'home', to: '/' },
+  { key: 'start', to: '/start' },
   { key: 'studio', to: '/studio' },
   { key: 'recipes', to: '/recipes' },
   { key: 'myRecipes', to: '/my-recipes' },

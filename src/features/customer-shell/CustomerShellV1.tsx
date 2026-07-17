@@ -1,5 +1,5 @@
 /**
- * PINGÜINO Customer Shell — CustomerShellV1 (`/customer-v1`).
+ * PINGÜINO Customer Shell — CustomerShellV1 (`/start`).
  *
  * A mobile-first, white/light premium, single-column customer surface. It drives
  * the pure conversational core (Agent B, `@/features/customer-flow`) and renders
@@ -18,7 +18,7 @@
  * Presentation only: no engine math, no IO beyond the browser's own optional
  * speech-recognition, no persistence.
  */
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   createCustomerFlow,
   setProductType,
@@ -70,11 +70,10 @@ import {
   TechnicalDetails,
   StickyCta,
   EmptyStateView,
-  customerDarkVars,
-  customerDarkPageBg,
   type MicState,
 } from '@/features/customer-shell/ui';
 import { customerShellCopy as copy } from './customerShellCopy';
+import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
 import { useIngredientResolution, type ResolvableLine } from './useIngredientResolution';
 import { ResolutionSheet } from './ResolutionSheet';
@@ -203,21 +202,16 @@ function Notice({ children }: { children: ReactNode }) {
 }
 
 /**
- * The DARK shell wrapper. Carries the scoped dark palette as inline CSS custom
- * properties + a deep near-black page backdrop, so EVERY descendant — including
- * fixed-position children (sticky CTA, bottom sheets, the nav drawer) — inherits
- * the dark theme. It never touches global CSS, so the rest of the app is untouched.
- * `min-h-[100dvh]` keeps the backdrop filling the viewport (no white gaps).
+ * The LIGHT shell root (binding owner decision — light-first, UIUX Slice A,
+ * spec §21.1 / audit #4 + #30). The former scoped DARK CSS-variable remap
+ * (`DarkShell` + `customerDarkVars`) is retired: the shell renders its
+ * light-native classes directly against the global light theme, and the page
+ * backdrop matches the `body` (`bg-paper`), so overscroll / keyboard-open never
+ * flashes a mismatched colour. `min-h-[100dvh]` keeps the backdrop filling the
+ * viewport.
  */
-function DarkShell({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="min-h-[100dvh] w-full"
-      style={{ ...customerDarkVars, backgroundColor: customerDarkPageBg } as CSSProperties}
-    >
-      {children}
-    </div>
-  );
+function ShellRoot({ children }: { children: ReactNode }) {
+  return <div className="min-h-[100dvh] w-full bg-paper">{children}</div>;
 }
 
 /* ------------------------------------------------------------------ *
@@ -321,7 +315,7 @@ export function CustomerShellV1() {
   /* -------------------------------------------------------------- Home -- */
   if (flow === null) {
     return (
-      <DarkShell>
+      <ShellRoot>
         <CustomerSurface>
           <CustomerMenu />
           {/* Responsive hero offset: push the opening interaction ~20-25% down the
@@ -364,7 +358,7 @@ export function CustomerShellV1() {
             </div>
           </div>
         </CustomerSurface>
-      </DarkShell>
+      </ShellRoot>
     );
   }
 
@@ -545,7 +539,7 @@ export function CustomerShellV1() {
 
   /* -------------------------------------------------- Technical details -- */
   const modeReadable = selectedMode ? modeCopyFor(selectedMode.id).label : '—';
-  const calcTempReadable = route.temperatureC !== null ? `${route.temperatureC}°C` : '—';
+  const calcTempReadable = route.temperatureC !== null ? formatTemperatureC(route.temperatureC) : '—';
   const technical = (
     <TechnicalDetails summary={copy.tech.summary}>
       <div className="pt-1">
@@ -610,7 +604,10 @@ export function CustomerShellV1() {
               <SummaryRow label={copy.tech.internalProfile} value={typeRes.internalProfile} />
             ) : null}
             {selectedMode ? (
-              <SummaryRow label={copy.tech.mode} value={`${selectedMode.id} · ${selectedMode.temperatureC}°C`} />
+              <SummaryRow
+                label={copy.tech.mode}
+                value={`${selectedMode.id} · ${formatTemperatureC(selectedMode.temperatureC)}`}
+              />
             ) : null}
             {selectedDraft ? (
               <SummaryRow
@@ -626,7 +623,7 @@ export function CustomerShellV1() {
 
   /* ----------------------------------------------------------- Render -- */
   return (
-    <DarkShell>
+    <ShellRoot>
       <CustomerSurface hasStickyCta={showStickyUpgrade}>
         <CustomerMenu />
         <DevPersonaSelect persona={persona} onChange={setPersona} />
@@ -921,7 +918,7 @@ export function CustomerShellV1() {
       ) : null}
 
       <ResolutionSheet controller={resolution} />
-    </DarkShell>
+    </ShellRoot>
   );
 }
 

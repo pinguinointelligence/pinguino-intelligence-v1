@@ -1,7 +1,7 @@
 /**
  * PINGÜINO Customer Shell — Polish copy (CustomerShellV1).
  *
- * The single source of every VISIBLE string for the `/customer-v1` surface.
+ * The single source of every VISIBLE string for the `/start` customer surface.
  * The pure customer-flow core (Agent B) speaks in copy KEYS such as
  * `customer_flow.product_type.gelato`; those keys are mapped to Polish text here
  * so the presentation layer never hardcodes user-facing prose inline.
@@ -26,6 +26,7 @@ export const customerShellCopy = {
     /** Keyed by CUSTOMER_MENU_ITEMS[].key — labels for the real routes only. */
     primary: {
       home: 'Strona główna',
+      start: 'Stwórz recepturę',
       studio: 'Studio',
       recipes: 'Gotowe receptury',
       myRecipes: 'Moje receptury',
@@ -161,7 +162,10 @@ export const customerShellCopy = {
   modes: {
     label: 'Tryb',
     title: 'Jak przygotujesz lody?',
-    lead: 'Wybierz temperaturę podania albo tryb maszyny. Tryby Ninja mają zatwierdzoną masę wsadu.',
+    // Consumer wording (audit #27): no "zatwierdzona masa wsadu" jargon in the
+    // Home-facing lead — the honest fact (Ninja quantity is set automatically
+    // from a tested recipe) stays, phrased in plain language.
+    lead: 'Wybierz temperaturę podania albo tryb maszyny. W trybach Ninja właściwą ilość ustawiamy za Ciebie.',
     /** Keyed by ServingModeId. Direct temperatures + our fresh machine + two Ninja profiles. */
     options: {
       temp_minus_11: { label: '−11°C', secondary: 'Bardziej miękkie' },

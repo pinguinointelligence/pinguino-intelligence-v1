@@ -9,20 +9,23 @@
  */
 import { RESOLUTION_ACTIONS, type IngredientForm } from '@/features/ingredient-resolution';
 import type { ProductPickResult } from '@/features/product-picker';
-import { BottomSheet, TouchButton, TextField, SelectableCard } from './ui';
+import { BottomSheet, TouchButton, TextField, SelectableCard, notice } from './ui';
 import { customerShellCopy as copy } from './customerShellCopy';
 import type { IngredientResolutionController } from './useIngredientResolution';
 
 const R = copy.resolution;
 
+/**
+ * Readiness badge — desaturated status tokens on the light surface (audit #26:
+ * no raw Tailwind emeralds/ambers). The label text carries the state; the hue
+ * only supports it, and the text tier stays readable on white.
+ */
 function ReadinessBadge({ ready }: { ready: boolean }) {
   return (
     <span
       className={
-        'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ' +
-        (ready
-          ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
-          : 'border-amber-400/40 bg-amber-400/10 text-amber-300')
+        `inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${notice.text} ` +
+        (ready ? notice.ideal : notice.risky)
       }
     >
       {ready ? R.badgeReady : R.badgeNeedsData}
@@ -78,17 +81,17 @@ export function ResolutionSheet({ controller }: { controller: IngredientResoluti
         {R.sampleSourcePrefix}: {c.source.note}
       </p>
 
-      {/* Outcome banner after a product was picked. */}
+      {/* Outcome banner after a product was picked — status tokens on light (audit #26). */}
       {outcome === 'resolved' ? (
-        <div className="mb-4 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-[13px] text-emerald-200">
-          {picked ? <span className="font-medium">{picked}. </span> : null}
+        <div className={`mb-4 rounded-2xl px-4 py-3 text-[13px] ${notice.ideal} ${notice.text}`}>
+          {picked ? <span className="font-medium text-ink">{picked}. </span> : null}
           {R.resolvedReady}
         </div>
       ) : null}
       {outcome === 'needs_data' ? (
-        <div className="mb-4 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-3">
-          {picked ? <p className="text-[13px] font-medium text-amber-100">{picked}</p> : null}
-          <p className="mt-0.5 text-[13px] text-amber-200/90">{line.message}</p>
+        <div className={`mb-4 rounded-2xl px-4 py-3 ${notice.risky}`}>
+          {picked ? <p className="text-[13px] font-medium text-ink">{picked}</p> : null}
+          <p className={`mt-0.5 text-[13px] ${notice.text}`}>{line.message}</p>
           <div className="mt-3 flex flex-col gap-2">
             <TouchButton block variant="secondary" onClick={() => c.runAction('scan_label')}>
               {R.needsDataScan}
@@ -116,7 +119,7 @@ export function ResolutionSheet({ controller }: { controller: IngredientResoluti
         </div>
       ) : c.view === 'picker' ? (
         !c.catalogueAvailable ? (
-          <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-6 text-center text-[13px] leading-relaxed text-amber-200">
+          <p className={`rounded-2xl px-4 py-6 text-center text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
             {c.source.note}
           </p>
         ) : (
@@ -157,13 +160,13 @@ export function ResolutionSheet({ controller }: { controller: IngredientResoluti
           <p className="text-[15px] font-medium text-ink">
             {line.intakeHandoff?.mode === 'scan' ? R.intakeScanTitle : R.intakeManualTitle}
           </p>
-          <p className="mt-2 rounded-2xl border border-ink/15 bg-ink/[0.03] px-4 py-3 text-[13px] text-stone-400">
+          <p className="mt-2 rounded-2xl border border-ink/15 bg-ink/[0.03] px-4 py-3 text-[13px] text-stone-600">
             {R.intakeBackendNote}
           </p>
           {import.meta.env.DEV ? (
             <a
               href="/dev/ocr-intake"
-              className="mt-3 inline-block text-[13px] text-stone-400 underline underline-offset-2"
+              className="mt-3 inline-block text-[13px] text-stone-600 underline underline-offset-2"
             >
               {R.intakeDevLink}
             </a>
@@ -173,7 +176,7 @@ export function ResolutionSheet({ controller }: { controller: IngredientResoluti
         /* Action menu. */
         <div className="flex flex-col gap-2">
           {line.substitutionIntent && line.state === 'unresolved' ? (
-            <p className="rounded-2xl border border-ink/15 bg-ink/[0.03] px-4 py-3 text-[13px] text-stone-400">
+            <p className="rounded-2xl border border-ink/15 bg-ink/[0.03] px-4 py-3 text-[13px] text-stone-600">
               {line.substitutionIntent.reason === 'i_dont_have_this' ? R.dontHaveRecorded : R.substituteRecorded}
             </p>
           ) : null}
@@ -183,7 +186,7 @@ export function ResolutionSheet({ controller }: { controller: IngredientResoluti
             </TouchButton>
           ))}
           {c.whyOpen ? (
-            <p className="rounded-2xl border border-ink/15 bg-ink/[0.03] px-4 py-3 text-[13px] text-stone-400">
+            <p className="rounded-2xl border border-ink/15 bg-ink/[0.03] px-4 py-3 text-[13px] text-stone-600">
               {R.whyBody}
             </p>
           ) : null}
