@@ -322,7 +322,7 @@ export const customerShellCopy = {
     } as Record<string, string>,
     /** Result-state banners — honest about whether the engine calculated the card. */
     stateCalculated: 'Receptura wyliczona przez silnik PINGÜINO.',
-    stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Uruchom Monitor PI, aby dopasować.',
+    stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Dopasuj ją w Monitorze receptury poniżej.',
     stateStructureOnly:
       'To podglądowa struktura składników, a nie wyliczona receptura. Dokładne ilości wyliczy silnik, gdy uzupełnisz wymagane dane.',
   },
@@ -421,7 +421,8 @@ export const customerShellCopy = {
 
   /* ------------------------------------------------------------- Monitor PI -- */
   monitor: {
-    label: 'Monitor PI',
+    /** §13.3 header — the customer-facing Monitor name (never an internal code). */
+    label: 'Monitor receptury',
     title: 'Dostrój recepturę',
     lead: 'Wskaż kierunek — PI dopasuje recepturę w bezpiecznym, złotym zakresie. Używamy gotowych, sprawdzonych kroków, nie zgadujemy wartości.',
     recalc: 'Przelicz z PI',
@@ -432,7 +433,7 @@ export const customerShellCopy = {
     demoNote: 'W podglądzie pokazujemy kierunek zmian jakościowo, bez gramów.',
     /** Shown when there is no calculated recipe yet (structure_only). */
     needsCalculatedNote:
-      'Monitor PI dokładnie przeliczy recepturę, gdy karta będzie wyliczona przez silnik (uzupełnij wymagane dane).',
+      'Monitor receptury dokładnie przeliczy recepturę, gdy karta będzie wyliczona przez silnik (uzupełnij wymagane dane).',
     przed: 'Przed',
     po: 'Po zmianie',
     apply: 'Zastosuj zmiany',
