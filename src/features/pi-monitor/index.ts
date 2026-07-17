@@ -11,6 +11,7 @@ export * from './piMonitorContracts';
 export * from './piMonitorAxes';
 export * from './piMonitorIntent';
 export * from './piMonitor';
+export * from './piMonitorHomeView';
 export { PiMonitorPanel, type PiMonitorPanelProps } from './PiMonitorPanel';
 export { realPiRecalculationRunner, piBaseIntentFromRecipe } from './piMonitorRunner';
 export { PI_MONITOR_FIXTURES, type PiMonitorFixture } from './piMonitorFixtures';

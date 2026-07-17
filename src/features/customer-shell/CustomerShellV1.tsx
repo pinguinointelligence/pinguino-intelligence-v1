@@ -1174,6 +1174,11 @@ export function CustomerShellV1() {
               gramsVisible={view.gramsVisible}
               recipeInput={currentResult?.recipeInput ?? null}
               persona={persona}
+              machineContext={
+                machineGate === 'saved' && machineView !== null
+                  ? { name: machineView.name, batchFit: batchGuidance.kind }
+                  : null
+              }
             />
 
             <div className="mt-4">{technical}</div>

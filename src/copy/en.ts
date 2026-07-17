@@ -511,7 +511,8 @@ export const copy = {
       costOptions: { low: 'Low cost', balanced: 'Balanced', premium: 'Premium' },
     },
     overall: {
-      eyebrow: 'Overall score',
+      /** §15.1 binding public name — the score is „Dopasowanie receptury" 1–10. */
+      eyebrow: 'Dopasowanie receptury',
       modeSuffix: 'mode',
       empty: 'Add ingredients to score the recipe.',
     },
