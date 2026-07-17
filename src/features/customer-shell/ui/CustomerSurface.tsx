@@ -16,9 +16,10 @@ interface CustomerSurfaceProps {
  * Root frame for the customer shell. Provides the scoped surface WITHOUT touching
  * global CSS: ink text, a single readable column on mobile that widens (but never
  * sprawls into a dense dashboard) on desktop, and horizontal safe-area insets. The
- * background is intentionally transparent so the dark page backdrop supplied by the
- * shell wrapper shows through — cards (`bg-paper`) then read as lifted above it.
- * One column always — max content width is `customerSpec.contentMaxWidthPx`.
+ * background is intentionally transparent so the LIGHT page backdrop supplied by
+ * the shell root (`bg-paper`, matching `body`) shows through — light-first per the
+ * owner decision (UIUX Slice A, spec §21.1); cards keep hairline borders + quiet
+ * shadows for lift. One column always — max width is `customerSpec.contentMaxWidthPx`.
  */
 export function CustomerSurface({ children, hasStickyCta = false, className }: CustomerSurfaceProps) {
   return (

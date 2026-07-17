@@ -7,10 +7,12 @@ import {
 /**
  * Routes that exist in `src/app/router.tsx` and may be linked from the customer
  * navigation. Kept in sync with the router by hand — the test fails loudly if the
- * menu ever points somewhere outside this set.
+ * menu ever points somewhere outside this set. Slice A (owner-approved): `/` is
+ * the public landing and the customer flow moved to `/start`.
  */
 const REAL_ROUTES = new Set([
   '/',
+  '/start',
   '/studio',
   '/recipes',
   '/my-recipes',
@@ -47,9 +49,12 @@ describe('customer menu — links only real routes', () => {
     expect(CUSTOMER_MENU_ITEMS.map((i) => i.to)).not.toContain('/classic');
   });
 
-  it('covers exactly the six expected destinations in order', () => {
+  // Slice A: the landing took over `/` and the flow moved to `/start`, so the
+  // menu now carries seven destinations — landing first, then the flow entry.
+  it('covers exactly the seven expected destinations in order', () => {
     expect(CUSTOMER_MENU_ITEMS.map((i) => i.to)).toEqual([
       '/',
+      '/start',
       '/studio',
       '/recipes',
       '/my-recipes',

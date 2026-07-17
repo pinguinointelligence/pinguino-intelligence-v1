@@ -25,7 +25,7 @@ import {
   type PiMonitorPersona,
   type PiRecalculationView,
 } from '@/features/pi-monitor';
-import { SelectableCard, TouchButton } from './ui';
+import { SelectableCard, TouchButton, notice } from './ui';
 import { customerShellCopy as copy } from './customerShellCopy';
 
 const STEPS: readonly AxisIntentStep[] = ['decrease', 'keep', 'increase'];
@@ -98,30 +98,35 @@ export function PiMonitorSection({
         </TouchButton>
       </div>
 
-      {/* Blocked by unresolved ingredients. */}
+      {/* Blocked by unresolved ingredients — status-risky tokens, readable text
+          on the light surface (audit #26; never raw Tailwind ambers). */}
       {!gate.canRecalculate ? (
-        <p className="mt-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-[13px] leading-relaxed text-amber-200">
+        <p className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
           {gate.blockCopy}
         </p>
       ) : recipeInput === null ? (
-        <p className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3 text-[13px] leading-relaxed text-stone-400">
+        <p className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3 text-[13px] leading-relaxed text-stone-600">
           {copy.monitor.needsCalculatedNote}
         </p>
       ) : result && result.ran ? (
         <div className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3">
           <p className="text-[14px] font-medium text-ink">{result.outcomeLabel}</p>
           {result.outcomeDetail ? (
-            <p className="mt-1 text-[13px] leading-relaxed text-stone-400">{result.outcomeDetail}</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-stone-600">{result.outcomeDetail}</p>
           ) : null}
-          {/* Exact gram adjustments — Home/Pro only (Demo payload carries none). */}
+          {/* Exact gram adjustments — Home/Pro only (Demo payload carries none).
+              Data readout, not decoration: primary ink + mono numerals. */}
           {gramsVisible && result.proposedAdjustments && result.proposedAdjustments.length > 0 ? (
             <div className="mt-3">
               <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">{copy.monitor.adjustmentsTitle}</p>
               <ul className="mt-1 space-y-1">
                 {result.proposedAdjustments.map((a, i) => (
-                  <li key={`${a.ingredient}-${i}`} className="text-[13px] text-stone-300">
-                    {a.ingredient}: {a.grams > 0 ? '+' : ''}
-                    {Math.round(a.grams)} {copy.device.unitGrams}
+                  <li key={`${a.ingredient}-${i}`} className="text-[13px] text-ink">
+                    {a.ingredient}:{' '}
+                    <span className="font-mono tabular-nums">
+                      {a.grams > 0 ? '+' : ''}
+                      {Math.round(a.grams)} {copy.device.unitGrams}
+                    </span>
                   </li>
                 ))}
               </ul>
