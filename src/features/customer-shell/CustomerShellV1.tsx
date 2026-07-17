@@ -78,7 +78,6 @@ import {
   MachineContextBar,
   buildMachineContextView,
   deriveBatchGuidance,
-  effectiveDefaultBatchGrams,
   formatGrams,
   localStorageMachinePreferenceStore,
   machineOnboardingCopy,
@@ -87,6 +86,7 @@ import {
   withUserDefaultBatch,
   type AboveRecommendationChoice,
   type MachineOnboardingCompletion,
+  type MachinePreferenceRecord,
 } from '@/features/machine-onboarding';
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
@@ -259,9 +259,23 @@ export function CustomerShellV1() {
   );
   const machinePreference = useMachinePreference(machineStore);
   const [machineChangeOpen, setMachineChangeOpen] = useState(false);
+
+  /**
+   * TWO SEPARATE machine levels (owner correction 2026-07-17):
+   *  - the PROFILE default machine — `machinePreference.record`, persisted;
+   *  - the RECIPE-only override — `recipeMachineRecord`, session state, never
+   *    written to the profile unless the user explicitly promotes it.
+   * The recipe surface uses the EFFECTIVE machine = override ?? profile default.
+   */
+  const [recipeMachineRecord, setRecipeMachineRecord] = useState<MachinePreferenceRecord | null>(null);
+  // One-time notice right after a recipe-scope machine change.
+  const [recipeMachineNotice, setRecipeMachineNotice] = useState(false);
+  // „Domyślna maszyna została zmieniona na …” confirmation (profile promotion).
+  const [defaultChangedName, setDefaultChangedName] = useState<string | null>(null);
+
   // A saved record whose catalog id no longer resolves (stale catalog) re-runs
   // onboarding instead of rendering a broken context bar (INTEGRATION §3).
-  const machineView =
+  const profileContextView =
     machinePreference.record !== null ? buildMachineContextView(machinePreference.record) : null;
   /**
    * Machine-first gate (owner hotfix 2026-07-17 §7/§8 — P0 regression).
@@ -272,17 +286,27 @@ export function CustomerShellV1() {
    * production and put the six engine modes back in front of everyone. Only
    * `pro` opts out (§9: a professional picks a serving temperature, never a
    * device). An anonymous visitor whose machine lives in localStorage is
-   * respected exactly like a signed-in one.
+   * respected exactly like a signed-in one. The gate keys off the PROFILE
+   * record — a recipe override never sends a machine-owning user back to
+   * onboarding.
    */
   const machineGate: 'off' | 'loading' | 'onboarding' | 'saved' =
     persona === 'pro'
       ? 'off'
       : machinePreference.status === 'loading'
         ? 'loading'
-        : machinePreference.record === null || machineView === null || machineChangeOpen
+        : machinePreference.record === null || profileContextView === null || machineChangeOpen
           ? 'onboarding'
           : 'saved';
-  const machineRecord = machineGate === 'saved' ? machinePreference.record : null;
+  const profileMachineRecord = machineGate === 'saved' ? machinePreference.record : null;
+  // The machine the CURRENT recipe uses (override wins over the profile default).
+  const machineRecord =
+    machineGate === 'saved' ? (recipeMachineRecord ?? profileMachineRecord) : null;
+  const usingRecipeOverride = machineGate === 'saved' && recipeMachineRecord !== null;
+  const profileMachineView =
+    profileMachineRecord !== null ? buildMachineContextView(profileMachineRecord) : null;
+  // The context view of the machine the CURRENT recipe uses (override or default).
+  const machineView = machineRecord !== null ? buildMachineContextView(machineRecord) : null;
 
   // OWNER FINAL DECISION (2026-07-17): the recommendation is a SOFT proposal.
   // `aboveChoiceFor` remembers the user's pick for the above-recommendation
@@ -291,11 +315,6 @@ export function CustomerShellV1() {
     grams: number;
     choice: AboveRecommendationChoice;
   } | null>(null);
-  // After a machine CHANGE the new recommendation is only PROPOSED — the
-  // existing recipe amount is never rewritten without the user's confirmation
-  // („Dopasuj ilość do nowej maszyny" → preview → Zastosuj).
-  const [machineBatchProposal, setMachineBatchProposal] = useState<number | null>(null);
-  const [proposalPreviewOpen, setProposalPreviewOpen] = useState(false);
   // Honest save-failure surface (owner §2/§3): a blocked/quota-full device
   // store must tell the user, not silently swallow the machine.
   const [machineSaveFailed, setMachineSaveFailed] = useState(false);
@@ -305,56 +324,80 @@ export function CustomerShellV1() {
 
   // §5.2 safety net, event-driven (no state-set effects): every path that can
   // put a Home user with a saved machine in front of a mode-less flow applies
-  // the saved answer in its own handler — flow creation ("Dalej"), machine
-  // save (handleMachineChosen) and the persona switch below. The device-local
-  // store loads in a mount microtask, so a load finishing AFTER flow creation
-  // is unreachable today; when the launch-gated backend adapter (network) is
-  // wired, revisit this reconciliation (noted in INTEGRATION.md §2).
+  // the EFFECTIVE machine (override or default) in its own handler. The
+  // device-local store loads in a mount microtask, so a load finishing AFTER
+  // flow creation is unreachable today; revisit when the launch-gated backend
+  // adapter (network) is wired (noted in INTEGRATION.md §2).
   const switchPersona = (next: CustomerPersona) => {
     setPersona(next);
     if (next === 'pro') return;
-    const record = machinePreference.record;
+    const record = recipeMachineRecord ?? machinePreference.record;
     if (record === null || buildMachineContextView(record) === null) return;
-    // Owner test 11: an in-progress flow is never silently rewritten.
+    // An in-progress flow is never silently rewritten.
     setFlow((prev) => (prev !== null ? applyMachineRecordIfUnanswered(prev, record) : prev));
   };
 
-  const handleMachineChosen = (completion: MachineOnboardingCompletion) => {
-    const isChange = machinePreference.record !== null;
+  /**
+   * FIRST-TIME machine setup (no profile default yet): this DOES set the
+   * profile default and applies it to the flow. Called from the onboarding
+   * gate — never from the recipe-scope „Zmień dla tej receptury”.
+   */
+  const handleMachineFirstSetup = (completion: MachineOnboardingCompletion) => {
     void machinePreference.save(completion.record).then((ok) => {
-      // Honest failure (owner §2/§3): a blocked/quota-full store must not leave
-      // the user on an empty card pretending the machine was saved.
       if (!ok) setMachineSaveFailed(true);
     });
     setMachineChangeOpen(false);
+    setRecipeMachineRecord(null);
+    setRecipeMachineNotice(false);
     setAboveChoiceFor(null);
-    // A machine change is a fresh answer to the amount question — a stale
-    // "✓ Zapisano" confirmation from the previous machine must not carry over
-    // (adversarial review M2).
     setSavedAsDefaultGrams(null);
-    if (!isChange) {
-      // First setup (§8.5): the chosen machine answers the mode and, when
-      // derivable, the amount for an already-created flow.
-      setMachineBatchProposal(null);
-      setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, completion.record) : prev));
-      return;
+    setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, completion.record) : prev));
+  };
+
+  /**
+   * RECIPE-SCOPE machine change („Zmień dla tej receptury”): sets a SESSION
+   * override, applies it to THIS recipe (mode + effective default grams), and
+   * NEVER writes the profile (owner correction §2). A one-time notice explains
+   * the scope; the profile default is unchanged.
+   */
+  const handleRecipeMachineChange = (completion: MachineOnboardingCompletion) => {
+    setMachineChangeOpen(false);
+    setRecipeMachineRecord(completion.record);
+    setRecipeMachineNotice(true);
+    setAboveChoiceFor(null);
+    setSavedAsDefaultGrams(null);
+    setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, completion.record) : prev));
+  };
+
+  /** „Wróć do domyślnej”: drop the override, return the recipe to the profile default. */
+  const revertToDefaultMachine = () => {
+    setRecipeMachineRecord(null);
+    setRecipeMachineNotice(false);
+    setAboveChoiceFor(null);
+    setSavedAsDefaultGrams(null);
+    if (profileMachineRecord !== null) {
+      const record = profileMachineRecord;
+      setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, record) : prev));
     }
-    // Machine CHANGE: switch the mode routing, but only PROPOSE the new amount
-    // — never rewrite the recipe silently. The proposal follows the §5 source
-    // order (the user's own default the adjust step just captured wins over the
-    // recommendation), matching applyMachineRecordToFlow (adversarial review M1).
-    const proposed = effectiveDefaultBatchGrams(completion.record);
-    setMachineBatchProposal(proposed);
-    setProposalPreviewOpen(false);
-    setFlow((prev) => {
-      if (prev === null) return prev;
-      if (prev.mode === null) return applyMachineRecordToFlow(prev, completion.record);
-      const keptGrams = prev.explicitBatchGrams;
-      let next = selectServingMode(prev, completion.record.resolvedVisibleMode);
-      // selectServingMode clears a hand-set batch on Ninja modes — restore the
-      // user's amount; the new machine's grams arrive only via the proposal.
-      if (keptGrams !== null) next = setBatchGrams(next, keptGrams);
-      return next;
+  };
+
+  /**
+   * „Ustaw również jako domyślną”: the CONSCIOUS promotion — persist the recipe
+   * override to the profile, then clear the override (it now IS the default)
+   * and confirm the change (owner correction §2/§7).
+   */
+  const promoteRecipeMachineToDefault = () => {
+    const record = recipeMachineRecord;
+    if (record === null) return;
+    const view = buildMachineContextView(record);
+    void machinePreference.save(record).then((ok) => {
+      if (!ok) {
+        setMachineSaveFailed(true);
+        return;
+      }
+      setRecipeMachineRecord(null);
+      setRecipeMachineNotice(false);
+      setDefaultChangedName(view?.name ?? null);
     });
   };
 
@@ -404,11 +447,14 @@ export function CustomerShellV1() {
     const text = draftText.trim();
     if (text === '') return;
     const created = createCustomerFlow({ text });
-    // §5.2: a returning Home user's saved machine answers the six-mode question
-    // (and the amount when derivable) up front.
+    // A NEW recipe always starts from the PROFILE default (owner correction §5):
+    // any recipe-scope override from a previous recipe is dropped here.
+    setRecipeMachineRecord(null);
+    setRecipeMachineNotice(false);
+    setDefaultChangedName(null);
     setFlow(
-      machineGate === 'saved' && machineRecord !== null
-        ? applyMachineRecordToFlow(created, machineRecord)
+      machineGate === 'saved' && profileMachineRecord !== null
+        ? applyMachineRecordToFlow(created, profileMachineRecord)
         : created,
     );
   };
@@ -441,6 +487,11 @@ export function CustomerShellV1() {
     setCustomBatchOpen(false);
     setForceBatchEdit(false);
     setSelectedDraft(null);
+    // Starting over drops any recipe-scope machine override (the profile
+    // default is untouched — it lives in machinePreference).
+    setRecipeMachineRecord(null);
+    setRecipeMachineNotice(false);
+    setDefaultChangedName(null);
     resolution.reset();
   };
 
@@ -819,7 +870,9 @@ export function CustomerShellV1() {
     <ShellRoot>
       <CustomerSurface hasStickyCta={showStickyUpgrade}>
         <CustomerMenu />
-        {/* §7.3 machine context bar — Home persona with a saved machine only. */}
+        {/* §7.3 machine context bar. Shows the machine the CURRENT recipe uses;
+            an override adds the „Domyślna maszyna: X” line + revert / promote
+            actions. „Zmień dla tej receptury” is recipe-scope only. */}
         {machineGate === 'saved' && machineView !== null ? (
           <MachineContextBar
             view={machineView}
@@ -827,7 +880,41 @@ export function CustomerShellV1() {
               setMachineSaveFailed(false);
               setMachineChangeOpen(true);
             }}
+            override={
+              usingRecipeOverride && profileMachineView !== null
+                ? {
+                    defaultName: profileMachineView.name,
+                    onRevert: revertToDefaultMachine,
+                    onSetAsDefault: promoteRecipeMachineToDefault,
+                  }
+                : null
+            }
           />
+        ) : null}
+        {/* One-time notice right after a recipe-scope machine change (§2). */}
+        {recipeMachineNotice && usingRecipeOverride && machineView !== null && profileMachineView !== null ? (
+          <div className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
+            <p className="text-ink">
+              {machineOnboardingCopy.recipeMachine.onlyThisRecipe(machineView.name, profileMachineView.name)}
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <TouchButton variant="secondary" size="md" onClick={() => setRecipeMachineNotice(false)}>
+                {machineOnboardingCopy.recipeMachine.continueForRecipe}
+              </TouchButton>
+              <TouchButton variant="quiet" size="md" onClick={promoteRecipeMachineToDefault}>
+                {machineOnboardingCopy.recipeMachine.alsoSetAsDefault}
+              </TouchButton>
+              <TouchButton variant="quiet" size="md" onClick={revertToDefaultMachine}>
+                {machineOnboardingCopy.recipeMachine.backToDefault}
+              </TouchButton>
+            </div>
+          </div>
+        ) : null}
+        {/* „Domyślna maszyna została zmieniona na …” confirmation (profile promoted). */}
+        {defaultChangedName !== null ? (
+          <p role="status" className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.ideal} ${notice.text}`}>
+            ✓ {machineOnboardingCopy.recipeMachine.defaultChanged(defaultChangedName)}
+          </p>
         ) : null}
         {/* Honest save-failure surface (owner §2/§3) — never a silent swallow. */}
         {machineSaveFailed ? (
@@ -836,12 +923,12 @@ export function CustomerShellV1() {
           </p>
         ) : null}
         <DevPersonaSelect persona={persona} onChange={switchPersona} />
-        {/* §4.1 conscious machine change — renders above the flow; completing (or
-            closing) it returns to the flow, and the new machine re-answers
-            mode + amount via handleMachineChosen. */}
+        {/* Recipe-scope machine change („Zmień dla tej receptury”) — renders above
+            the flow; completing it sets a SESSION override (the profile default
+            is untouched), closing it returns to the flow unchanged. */}
         {machineChangeOpen && flow !== null ? (
           <div className="pt-6">
-            <MachineOnboarding onComplete={handleMachineChosen} />
+            <MachineOnboarding onComplete={handleRecipeMachineChange} />
             <div className="mt-4">
               <TouchButton variant="quiet" size="md" onClick={() => setMachineChangeOpen(false)}>
                 {copy.resolution.close}
@@ -940,7 +1027,7 @@ export function CustomerShellV1() {
               /* Self-contained §8 flow (own headings/copy) — no section wrapper. */
               <div className="pt-10">
                 <MachineOnboarding
-                  onComplete={handleMachineChosen}
+                  onComplete={handleMachineFirstSetup}
                   submitLabel={machineOnboardingCopy.settings.saveAndGoToRecipe}
                 />
               </div>
@@ -1073,60 +1160,11 @@ export function CustomerShellV1() {
                       </div>
                     ) : null}
 
-                    {/* Machine change: the NEW machine's amount is only a PROPOSAL —
-                        „Dopasuj ilość do nowej maszyny" previews before applying. */}
-                    {machineGate === 'saved' &&
-                    machineBatchProposal !== null &&
-                    currentBatchGrams !== null &&
-                    machineBatchProposal !== currentBatchGrams ? (
-                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
-                        <p>
-                          {/* M1: the label tells the truth about WHAT is proposed —
-                              the new machine's recommendation, or the own default
-                              the user just typed in the adjust step. */}
-                          {machineRecord?.userDefaultBatchGrams !== null &&
-                          machineRecord?.userDefaultBatchGrams === machineBatchProposal
-                            ? machineOnboardingCopy.batch.newUserDefaultLabel
-                            : machineOnboardingCopy.batch.newRecommendedLabel}
-                          :{' '}
-                          <span className="font-medium text-ink">
-                            {formatGrams(machineBatchProposal)} {machineOnboardingCopy.batch.recommendedUnit}
-                          </span>
-                        </p>
-                        {!proposalPreviewOpen ? (
-                          <div className="mt-2">
-                            <TouchButton variant="secondary" size="md" onClick={() => setProposalPreviewOpen(true)}>
-                              {machineOnboardingCopy.batch.fitToNewMachine}
-                            </TouchButton>
-                          </div>
-                        ) : (
-                          <div className="mt-2 space-y-2">
-                            <p className="font-mono tabular-nums text-ink">
-                              {formatBatch(currentBatchGrams)} → {formatGrams(machineBatchProposal)}{' '}
-                              {machineOnboardingCopy.batch.recommendedUnit}
-                            </p>
-                            <div className="flex gap-2">
-                              <TouchButton
-                                variant="primary"
-                                size="md"
-                                onClick={() => {
-                                  const grams = machineBatchProposal;
-                                  setMachineBatchProposal(null);
-                                  setProposalPreviewOpen(false);
-                                  setAboveChoiceFor(null);
-                                  update((s) => setBatchGrams(s, grams));
-                                }}
-                              >
-                                {machineOnboardingCopy.batch.applyPreview}
-                              </TouchButton>
-                              <TouchButton variant="quiet" size="md" onClick={() => setProposalPreviewOpen(false)}>
-                                {machineOnboardingCopy.batch.cancelPreview}
-                              </TouchButton>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
+                    {/* (The old „Dopasuj ilość do nowej maszyny" preview flow was
+                        removed with the owner correction 2026-07-17: a recipe
+                        machine change now applies the new machine's effective
+                        default directly, and the context bar carries the
+                        revert / promote-to-default actions.) */}
                     {/* §6: this recipe's amount differs from the saved profile
                         default — offer to make it the default, EXPLICITLY. The
                         confirmation outlives the offer (once saved, the amount

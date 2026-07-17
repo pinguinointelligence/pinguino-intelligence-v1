@@ -19,6 +19,7 @@ import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import {
   MachineOnboarding,
   MachineProfileSection,
+  buildMachineContextView,
   buildMachineSettingsView,
   localStorageMachinePreferenceStore,
   machineOnboardingCopy,
@@ -41,6 +42,8 @@ export function MachineProfilePage() {
   );
   const preference = useMachinePreference(store);
   const [mode, setMode] = useState<PageMode>('view');
+  // „Domyślna maszyna została zmieniona na …” after a profile default change.
+  const [defaultChangedName, setDefaultChangedName] = useState<string | null>(null);
 
   const settingsView = useMemo(
     () => (preference.record !== null ? buildMachineSettingsView(preference.record) : null),
@@ -53,7 +56,13 @@ export function MachineProfilePage() {
   }, [preference.record]);
 
   const handleComplete = async (completion: MachineOnboardingCompletion) => {
-    await preference.save(completion.record);
+    const hadDefault = preference.record !== null;
+    const ok = await preference.save(completion.record);
+    // §7: „Zmień domyślną maszynę” explicitly changes the PROFILE default — an
+    // unambiguous confirmation, but only when it was a CHANGE (not first setup).
+    if (ok && hadDefault) {
+      setDefaultChangedName(buildMachineContextView(completion.record)?.name ?? null);
+    }
     setMode('view');
   };
 
@@ -105,10 +114,18 @@ export function MachineProfilePage() {
     <CustomerSurface>
       <CustomerMenu />
       <div className="py-8">
+        {defaultChangedName !== null ? (
+          <p role="status" className="mb-4 rounded-xl border border-status-ideal/40 bg-status-ideal/10 px-4 py-3 text-[13px] text-stone-700">
+            ✓ {machineOnboardingCopy.recipeMachine.defaultChanged(defaultChangedName)}
+          </p>
+        ) : null}
         <MachineProfileSection
           view={settingsView}
           onSetUp={() => setMode('onboarding')}
-          onChange={() => setMode('onboarding')}
+          onChange={() => {
+            setDefaultChangedName(null);
+            setMode('onboarding');
+          }}
           onSave={handleSave}
           onGoToRecipe={() => void navigate('/start')}
           {...(editableCustomProfile !== null ? { onEditCustom: () => setMode('edit_custom') } : {})}

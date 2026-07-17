@@ -125,19 +125,9 @@ export const machineOnboardingCopy = {
     splitAction: 'Podziel na pojemniki',
     keepMine: 'Pozostaw moją ilość',
     restoreShort: 'Przywróć zalecany wsad',
-    /** Machine change with an existing recipe: propose, never auto-apply. */
-    fitToNewMachine: 'Dopasuj ilość do nowej maszyny',
-    /** Header of the new-machine batch proposal (shown after a machine change). */
-    newRecommendedLabel: 'Zalecany wsad nowej maszyny',
-    /**
-     * When the user set their OWN default during the machine-change adjust
-     * step, the proposal is that value — labelling it a „recommendation” would
-     * be untrue (adversarial review M1).
-     */
-    newUserDefaultLabel: 'Twój domyślny wsad dla nowej maszyny',
-    /** Preview confirmation actions — applying is always the user's call. */
-    applyPreview: 'Zastosuj',
-    cancelPreview: 'Anuluj',
+    /* The old „Dopasuj ilość do nowej maszyny" preview flow was removed with the
+       owner correction 2026-07-17 (recipe machine change now applies directly;
+       the context bar carries the revert / promote-to-default actions). */
   },
 
   /* --------------------------------------------------- container split -------- */
@@ -154,19 +144,50 @@ export const machineOnboardingCopy = {
   },
 
   /* ------------------------------------------------------ §7.3 context bar ---- */
+  /**
+   * Two clearly-separated levels of machine choice (owner correction
+   * 2026-07-17): the PROFILE default machine vs the machine used only for the
+   * CURRENT recipe. The recipe surface never edits the profile without the
+   * explicit „Ustaw również jako domyślną”.
+   */
   contextBar: {
+    /** Recipe uses the profile default: „Twoja maszyna: X · [Zmień dla tej receptury]”. */
     prefix: 'Twoja maszyna:',
+    /** Recipe uses a temporary override machine: „Maszyna dla tej receptury: Y”. */
+    overridePrefix: 'Maszyna dla tej receptury:',
+    /** Small line under an override: „Domyślna maszyna: X”. */
+    defaultPrefix: 'Domyślna maszyna:',
     vessel: (ml: number): string => `pojemnik ${ml} ml`,
-    change: 'Zmień',
-    changeAria: 'Zmień maszynę',
+    /** The recipe-scope change — never touches the profile. */
+    changeForRecipe: 'Zmień dla tej receptury',
+    changeForRecipeAria: 'Zmień maszynę tylko dla tej receptury',
+    /** Drop the recipe override and return to the profile default. */
+    revertToDefault: 'Wróć do domyślnej',
+    /** Consciously promote the recipe machine to the profile default. */
+    setAsDefault: (name: string): string => `Ustaw ${name} jako domyślną`,
+  },
+
+  /* ---------------------------- recipe machine change notice (owner 2026-07-17) */
+  recipeMachine: {
+    /** One-time banner right after a recipe-scope machine change. */
+    onlyThisRecipe: (chosen: string, defaultName: string): string =>
+      `${chosen} została wybrana tylko dla tej receptury. Twoja domyślna maszyna nadal to ${defaultName}.`,
+    continueForRecipe: 'Kontynuuj tylko dla tej receptury',
+    alsoSetAsDefault: 'Ustaw również jako moją domyślną maszynę',
+    backToDefault: 'Wróć do domyślnej maszyny',
+    /** Confirmation after „Ustaw również jako domyślną”. */
+    defaultChanged: (name: string): string => `Domyślna maszyna została zmieniona na ${name}.`,
   },
 
   /* ------------------------------------------------- §8.6 profile section ----- */
   profile: {
     title: 'Moja maszyna',
+    /** The profile stores the DEFAULT machine (owner correction 2026-07-17). */
+    defaultLabel: 'Domyślna maszyna',
     noMachine: 'Nie masz jeszcze zapisanej maszyny.',
     setUp: 'Wybierz maszynę',
-    change: 'Zmień maszynę',
+    /** Renamed from „Zmień maszynę”: this is the PROFILE default, unambiguously. */
+    change: 'Zmień domyślną maszynę',
     editCustom: 'Edytuj dane maszyny',
     savedAt: 'Zapisano',
     customName: 'Twoja maszyna',

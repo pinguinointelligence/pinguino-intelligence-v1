@@ -145,12 +145,15 @@ describe('§7.3 context bar — hard rules', () => {
   if (view === null) throw new Error('expected view');
   const html = render(<MachineContextBar view={view} onChange={noop} />);
 
-  it('shows exactly name + vessel + Zmień', () => {
+  it('shows exactly name + vessel + the recipe-scope change action (owner correction)', () => {
     expect(html).toContain('Twoja maszyna:');
     expect(html).toContain('Ninja CREAMi Deluxe');
     expect(html).toContain('pojemnik 706 ml');
-    expect(html).toContain('>Zmień<');
-    expect(html).toContain('aria-label="Zmień maszynę"');
+    // The default-machine bar uses the recipe-scope wording, unambiguously.
+    expect(html).toContain('Zmień dla tej receptury');
+    expect(html).toContain('aria-label="Zmień maszynę tylko dla tej receptury"');
+    // Without an override there is no „Domyślna maszyna:” line.
+    expect(html).not.toContain('Domyślna maszyna:');
   });
 
   it('NEVER shows an engine name, technology code, temperature or grams', () => {
