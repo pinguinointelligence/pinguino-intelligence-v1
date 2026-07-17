@@ -24,6 +24,7 @@ import {
   type OptimizationPreviewView,
 } from '@/features/optimization/optimizationPreviewRunner';
 import { GoalSetup } from '@/features/recipe-goal/GoalSetup';
+import { ConstraintStudioSection } from '@/features/constraint-studio';
 import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuilder';
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
 import { OverallScoreCard } from '@/features/pi-panel/OverallScoreCard';
@@ -131,12 +132,19 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
             <div className="space-y-6">
               <GoalSetup />
               {fullFormula ? (
-                <IngredientBuilder
-                  items={result.items}
-                  totalBatchG={result.total_batch_g}
-                  targetBatchG={batchGrams}
-                  demo={forceDemo}
-                />
+                <>
+                  <IngredientBuilder
+                    items={result.items}
+                    totalBatchG={result.total_batch_g}
+                    targetBatchG={batchGrams}
+                    demo={forceDemo}
+                  />
+                  {/* UIUX Slice E (§17–§20): locks, Preview→verify-gated Apply,
+                      §18 feasibility honesty, history/Undo/Explain. Exact-gram
+                      surface — mounted only with fullFormula (§22.1: Demo never
+                      receives full grams). */}
+                  <ConstraintStudioSection />
+                </>
               ) : (
                 <LockedCalculatorPreview />
               )}
