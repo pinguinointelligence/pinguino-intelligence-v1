@@ -59,7 +59,11 @@ describe('buildSavePayload', () => {
     expect(deriveProductType('sorbet', 'milk_gelato')).toBe('sorbet');
     expect(deriveProductType(null, 'sorbet')).toBe('sorbet');
     expect(deriveProductType(null, 'chocolate_gelato')).toBeNull();
-    expect(deriveServingProfile('storage-minus-18')).toBe('storage-minus-18');
+    // Owner decision (Slice C, AUDIT #19 / SPEC §11.2): 'storage-minus-18' left the
+    // serving vocabulary, so an intake can no longer produce it — a serving preview
+    // id passes through unchanged instead. Legacy saved rows still display via the
+    // storage label set (see MyRecipesPage).
+    expect(deriveServingProfile('display-minus-12')).toBe('display-minus-12');
     expect(deriveServingProfile(null)).toBe('display-minus-11');
   });
 });

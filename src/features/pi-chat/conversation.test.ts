@@ -68,10 +68,12 @@ describe('conversation state machine', () => {
   });
 
   it('demo summary carries NO engine numbers — only the chosen batch size', () => {
+    // Owner decision (Slice C, AUDIT #19 / SPEC §11.2): 'storage-minus-18' left the
+    // serving vocabulary — 'display-minus-12' is the unconnected-preview example now.
     const summary = runTo(
       { type: 'submitFlavor', text: 'Strawberry' },
       { type: 'chooseProductType', id: 'sorbet' },
-      { type: 'chooseServingProfile', id: 'storage-minus-18' },
+      { type: 'chooseServingProfile', id: 'display-minus-12' },
       { type: 'setBatch', keep: true },
     );
     const view = demoSummaryView(summary);

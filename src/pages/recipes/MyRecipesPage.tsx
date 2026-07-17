@@ -16,7 +16,13 @@ const labelFor = (table: Record<string, { readonly label: string }>, key: string
   (key ? table[key]?.label : undefined) ?? key ?? '—';
 
 const PRODUCT_LABELS = copy.productTypes as Record<string, { readonly label: string }>;
-const SERVING_LABELS = copy.servingProfiles as Record<string, { readonly label: string }>;
+/** Serving labels + legacy storage ids (AUDIT #19 / SPEC §11.2): rows saved before
+ * the vocabulary split may carry 'storage-minus-18' in `serving_profile` — they
+ * must keep displaying honestly, labeled as STORAGE, never as a serving choice. */
+const SERVING_LABELS = { ...copy.storageProfiles, ...copy.servingProfiles } as Record<
+  string,
+  { readonly label: string }
+>;
 
 function Cell({ label, value }: { label: string; value: string }) {
   return (

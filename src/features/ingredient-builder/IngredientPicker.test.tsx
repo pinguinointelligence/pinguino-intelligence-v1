@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { EngineIngredient } from '@/engine';
-import { IngredientPicker } from './IngredientPicker';
+import { copy } from '@/copy/en';
+import { IngredientPicker, PickerEmptyState } from './IngredientPicker';
 import type { IngredientLibrary } from './ingredientLibrary';
 import type { ProductLibraryProvenance } from '@/data/products/productEngineLibrary';
 
@@ -62,5 +63,30 @@ describe('IngredientPicker — My Products', () => {
     );
     expect(text(html)).toContain('Whole Milk');
     expect(html).not.toMatch(/My Products/);
+  });
+});
+
+/**
+ * Honest picker exits — AUDIT #2 dead-end rule (owner decision, Slice C):
+ * a no-results search must keep a way back. Repo pattern: no DOM env, so the
+ * empty state renders via renderToStaticMarkup and the clear behavior is the
+ * wired `onClear` handler (setQuery('') in IngredientPicker).
+ */
+describe('IngredientPicker — no-results state is not a dead end', () => {
+  it('an active query with zero matches offers the honest text AND a Clear search exit', () => {
+    const html = renderToStaticMarkup(<PickerEmptyState query="zzz" onClear={() => {}} />);
+    expect(text(html)).toContain(copy.studio.builder.noMatches);
+    expect(text(html)).toContain(copy.studio.builder.clearSearch);
+  });
+
+  it('a genuinely empty library shows the honest text without inventing an exit', () => {
+    const html = renderToStaticMarkup(<PickerEmptyState query="" onClear={() => {}} />);
+    expect(text(html)).toContain(copy.studio.builder.noMatches);
+    expect(text(html)).not.toContain(copy.studio.builder.clearSearch);
+  });
+
+  it('the picker mounts the empty state when nothing matches (empty ready library)', () => {
+    const html = renderToStaticMarkup(<IngredientPicker library={lib()} onAdd={() => {}} />);
+    expect(text(html)).toContain(copy.studio.builder.noMatches);
   });
 });
