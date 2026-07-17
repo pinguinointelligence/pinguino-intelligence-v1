@@ -206,7 +206,9 @@ export function MachineProfileSection({
       <h2 className={cn(type.title, color.textPrimary)}>{copy.profile.title}</h2>
 
       <div className={cn('mt-4 p-5', cardShell)}>
-        <p className={cn(type.bodyStrong, color.textPrimary)}>{view.name}</p>
+        {/* This surface stores the PROFILE DEFAULT machine (owner correction). */}
+        <p className={cn(type.caption, color.textMuted)}>{copy.profile.defaultLabel}</p>
+        <p className={cn('mt-0.5', type.bodyStrong, color.textPrimary)}>{view.name}</p>
         {view.usesOwnContainer || view.isCustomMachine ? (
           <p className={cn('mt-1', type.caption, color.textMuted)}>{copy.settings.customContainerBadge}</p>
         ) : null}
