@@ -32,8 +32,16 @@ import {
   visibleModeForTechnology,
 } from '@/features/machine-catalog';
 
-/** Bump on breaking record-shape changes; the parser accepts only this version. */
-export const MACHINE_PREFERENCE_SCHEMA_VERSION = 1 as const;
+/**
+ * Current record shape. v2 (owner hotfix 2026-07-17) adds the user's OWN
+ * default batch, the „Używam innego pojemnika” override and `updatedAt`.
+ * The parser accepts v2 AND losslessly upgrades v1 (adding explicit nulls —
+ * never an invented value), so a saved machine is never silently dropped.
+ */
+export const MACHINE_PREFERENCE_SCHEMA_VERSION = 2 as const;
+
+/** Every record shape the parser can read (older ones are upgraded on read). */
+const READABLE_SCHEMA_VERSIONS: ReadonlySet<number> = new Set([1, 2]);
 
 /** What the user picked: a catalog record (by id) or their own custom machine. */
 export type MachinePreferenceSelection =
@@ -69,6 +77,19 @@ export type SavedDefaultBatch =
     }
   | { readonly kind: 'none' };
 
+/**
+ * The user's own container (owner hotfix 2026-07-17, §8): only after the
+ * explicit „Używam innego pojemnika” action. The manufacturer figure of a
+ * known model is a MODEL parameter and is never edited in its place — this
+ * override lives beside it and marks the profile as a user configuration.
+ */
+export interface SavedCustomContainer {
+  /** The user's declared container capacity in ml (their own vessel). */
+  readonly capacityMl: number;
+  /** The recommendation FOR THAT container (0.95 rule proposal, editable). */
+  readonly recommendedBatchGrams: number;
+}
+
 /** The persisted machine preference (§8.6 + §23.1 UserMachinePreference). */
 export interface MachinePreferenceRecord {
   readonly schemaVersion: typeof MACHINE_PREFERENCE_SCHEMA_VERSION;
@@ -78,9 +99,24 @@ export interface MachinePreferenceRecord {
   readonly resolvedTechnology: MachineTechnology;
   readonly resolvedVisibleMode: HomeVisibleModeId;
   readonly capacity: SavedMachineCapacitySnapshot;
+  /**
+   * The DERIVED „Zalecany wsad PINGÜINO” with provenance — PINGÜINO's own
+   * recommendation for the machine's manufacturer container. Never the user's
+   * setting (see `userDefaultBatchGrams`).
+   */
   readonly defaultBatch: SavedDefaultBatch;
+  /**
+   * The USER's own default batch in grams, or null = follow the
+   * recommendation. Owner hotfix: a saved value is authoritative for every new
+   * recipe and is NEVER silently reset back to the recommendation.
+   */
+  readonly userDefaultBatchGrams: number | null;
+  /** The user's own container (§8 „Używam innego pojemnika”), or null. */
+  readonly customContainer: SavedCustomContainer | null;
   /** ISO datetime the preference was set. */
   readonly setAt: string;
+  /** ISO datetime of the last settings change (owner hotfix §9). */
+  readonly updatedAt: string;
   /** Exact machine-catalog data version the selection was made against. */
   readonly catalogVersion: string;
 }
@@ -152,9 +188,78 @@ export function buildMachinePreferenceRecord(
       maxFillDefinedByManufacturer: profile.capacity.maxFillDefinedByManufacturer,
     },
     defaultBatch: savedDefaultBatchFromDerivation(derivation),
+    // A fresh record follows the recommendation until the user sets their own.
+    userDefaultBatchGrams: null,
+    customContainer: null,
     setAt: input.setAt,
+    updatedAt: input.setAt,
     catalogVersion: input.catalogVersion,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Batch resolution + settings updates (owner hotfix 2026-07-17)       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * PINGÜINO's recommendation for the container actually in use: the user's own
+ * container recommendation when they declared one, otherwise the derived
+ * manufacturer-container recommendation. Null = no rule fired (honest).
+ */
+export function recommendedBatchGramsOf(record: MachinePreferenceRecord): number | null {
+  if (record.customContainer !== null) return record.customContainer.recommendedBatchGrams;
+  return record.defaultBatch.kind === 'grams' ? record.defaultBatch.grams : null;
+}
+
+/**
+ * The batch a NEW recipe starts from (owner hotfix §5 source order):
+ *  1. `userDefaultBatchGrams` — the user's saved own default;
+ *  2. `recommendedBatchGramsOf` — PINGÜINO's recommendation;
+ *  3. null → the caller keeps the legacy serving-mode fallback (old flow only).
+ */
+export function effectiveDefaultBatchGrams(record: MachinePreferenceRecord): number | null {
+  return record.userDefaultBatchGrams ?? recommendedBatchGramsOf(record);
+}
+
+/** True when the user's saved default diverges from the recommendation. */
+export function usesCustomDefaultBatch(record: MachinePreferenceRecord): boolean {
+  return (
+    record.userDefaultBatchGrams !== null &&
+    record.userDefaultBatchGrams !== recommendedBatchGramsOf(record)
+  );
+}
+
+/**
+ * Set (or clear with null) the user's own default batch. Clearing restores the
+ * recommendation — the ONLY way back, never automatic. Non-finite/non-positive
+ * values are rejected honestly (record returned unchanged is not an option:
+ * callers validate first; this guards the contract).
+ */
+export function withUserDefaultBatch(
+  record: MachinePreferenceRecord,
+  grams: number | null,
+  updatedAt: string,
+): MachinePreferenceRecord | null {
+  if (grams !== null && (!Number.isFinite(grams) || grams <= 0)) return null;
+  return { ...record, userDefaultBatchGrams: grams, updatedAt };
+}
+
+/**
+ * Set (or clear with null) the user's own container. Clearing returns the
+ * profile to the manufacturer figure of its model. The user's own default
+ * batch is left untouched — their explicit setting outlives a container swap.
+ */
+export function withCustomContainer(
+  record: MachinePreferenceRecord,
+  container: SavedCustomContainer | null,
+  updatedAt: string,
+): MachinePreferenceRecord | null {
+  if (container !== null) {
+    const { capacityMl, recommendedBatchGrams } = container;
+    if (!Number.isFinite(capacityMl) || capacityMl <= 0) return null;
+    if (!Number.isFinite(recommendedBatchGrams) || recommendedBatchGrams <= 0) return null;
+  }
+  return { ...record, customContainer: container, updatedAt };
 }
 
 /* ------------------------------------------------------------------ */
@@ -256,14 +361,40 @@ function parseSelection(value: unknown): MachinePreferenceSelection | null {
   return null;
 }
 
+/** A positive gram/ml figure, or null. Anything else is corrupt (never coerced). */
+function parseOptionalPositive(value: unknown): number | null | 'corrupt' {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 'corrupt';
+  return value;
+}
+
+/** The user's own container: BOTH figures present and positive, or absent. */
+function parseCustomContainer(value: unknown): SavedCustomContainer | null | 'corrupt' {
+  if (value === undefined || value === null) return null;
+  if (!isRecord(value)) return 'corrupt';
+  const capacityMl = parseOptionalPositive(value.capacityMl);
+  const recommended = parseOptionalPositive(value.recommendedBatchGrams);
+  if (capacityMl === 'corrupt' || recommended === 'corrupt') return 'corrupt';
+  // A half-declared container is corrupt — never completed with a guess.
+  if (capacityMl === null || recommended === null) return 'corrupt';
+  return { capacityMl, recommendedBatchGrams: recommended };
+}
+
 /**
  * Parse an untrusted value (storage / backend row) into a preference record.
  * Strict: unknown versions, missing fields, wrong types, ml→g-shaped nonsense
  * and mode/technology mismatches all yield `null` — never a repaired guess.
+ *
+ * v1 records (pre-hotfix) are UPGRADED, not dropped: the fields the owner
+ * hotfix added are simply absent, which reads as "no own default, no own
+ * container" — explicit nulls, never invented values. The user keeps their
+ * machine and their next visit shows the recommendation as the starting point.
  */
 export function parseMachinePreferenceRecord(raw: unknown): MachinePreferenceRecord | null {
   if (!isRecord(raw)) return null;
-  if (raw.schemaVersion !== MACHINE_PREFERENCE_SCHEMA_VERSION) return null;
+  if (typeof raw.schemaVersion !== 'number' || !READABLE_SCHEMA_VERSIONS.has(raw.schemaVersion)) {
+    return null;
+  }
 
   const selection = parseSelection(raw.selection);
   if (selection === null) return null;
@@ -284,6 +415,17 @@ export function parseMachinePreferenceRecord(raw: unknown): MachinePreferenceRec
   if (typeof setAt !== 'string' || Number.isNaN(Date.parse(setAt))) return null;
   if (typeof catalogVersion !== 'string' || catalogVersion.trim().length === 0) return null;
 
+  // v2 additions — absent on v1 records (upgrade), corrupt if present-but-wrong.
+  const userDefaultBatchGrams = parseOptionalPositive(raw.userDefaultBatchGrams);
+  if (userDefaultBatchGrams === 'corrupt') return null;
+  const customContainer = parseCustomContainer(raw.customContainer);
+  if (customContainer === 'corrupt') return null;
+  const rawUpdatedAt = raw.updatedAt;
+  if (rawUpdatedAt !== undefined && rawUpdatedAt !== null) {
+    if (typeof rawUpdatedAt !== 'string' || Number.isNaN(Date.parse(rawUpdatedAt))) return null;
+  }
+  const updatedAt = typeof rawUpdatedAt === 'string' ? rawUpdatedAt : setAt;
+
   return {
     schemaVersion: MACHINE_PREFERENCE_SCHEMA_VERSION,
     selection,
@@ -292,7 +434,10 @@ export function parseMachinePreferenceRecord(raw: unknown): MachinePreferenceRec
     resolvedVisibleMode: expectedMode,
     capacity,
     defaultBatch,
+    userDefaultBatchGrams,
+    customContainer,
     setAt,
+    updatedAt,
     catalogVersion,
   };
 }

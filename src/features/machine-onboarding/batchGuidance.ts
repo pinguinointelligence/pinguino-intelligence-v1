@@ -2,6 +2,10 @@
  * Soft recommended-batch guidance (OWNER FINAL DECISION, 2026-07-17 —
  * „KOŃCOWA WIĄŻĄCA DECYZJA — POJEMNOŚCI, EDYCJA WSADU I WDROŻENIE").
  *
+ * Lives in machine-onboarding so the recipe flow AND the „Moja maszyna”
+ * settings card share ONE guidance rule (the dependency already flows
+ * customer-shell → machine-onboarding).
+ *
  * The machine's „Zalecany wsad PINGÜINO" is ONLY an automatic, safe starting
  * proposal:
  *  - the gram field is never locked, the recommendation is never a hard

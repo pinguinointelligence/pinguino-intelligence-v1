@@ -23,17 +23,20 @@ import {
   setBatchGrams,
   type CustomerFlowState,
 } from '@/features/customer-flow';
-import type { MachinePreferenceRecord } from '@/features/machine-onboarding';
+import { effectiveDefaultBatchGrams, type MachinePreferenceRecord } from '@/features/machine-onboarding';
 
-/** Apply a saved machine to the flow: mode first, then the derived grams. */
+/**
+ * Apply a saved machine to the flow: mode first, then the EFFECTIVE default
+ * batch (owner hotfix §5 source order — the user's own saved default wins over
+ * PINGÜINO's recommendation; neither present → the legacy mode preset).
+ */
 export function applyMachineRecordToFlow(
   state: CustomerFlowState,
   record: MachinePreferenceRecord,
 ): CustomerFlowState {
   let next = selectServingMode(state, record.resolvedVisibleMode);
-  if (record.defaultBatch.kind === 'grams') {
-    next = setBatchGrams(next, record.defaultBatch.grams);
-  }
+  const grams = effectiveDefaultBatchGrams(record);
+  if (grams !== null) next = setBatchGrams(next, grams);
   return next;
 }
 

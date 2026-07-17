@@ -17,11 +17,8 @@ import {
   deriveMachineSetup,
 } from '@/features/machine-catalog';
 import { machineOnboardingCopy as copy } from './machineOnboardingCopy';
-import {
-  autoConfigLines,
-  buildMachineContextView,
-  buildMachineProfileSectionView,
-} from './machineViews';
+import { autoConfigLines, buildMachineContextView } from './machineViews';
+import { buildMachineSettingsView } from './machineSettingsView';
 import { buildMachinePreferenceRecord } from './preferenceContracts';
 import { MachineOnboarding } from './ui/MachineOnboarding';
 import { MachineBehaviorQuestion } from './ui/MachineBehaviorQuestion';
@@ -171,22 +168,48 @@ describe('§7.3 context bar — hard rules', () => {
   });
 });
 
-describe('§8.6 profile section', () => {
-  it('renders the saved machine with the „Zalecany wsad PINGÜINO” framing (never manufacturer)', () => {
-    const view = buildMachineProfileSectionView(recordFor('nc7'));
+describe('§8.6 profile section (settings card — owner hotfix)', () => {
+  const asyncNoop = async () => true;
+
+  it('separates the manufacturer figure from the user-editable default + saves + next step', () => {
+    const view = buildMachineSettingsView(recordFor('nc7'));
     if (view === null) throw new Error('expected view');
-    const html = render(<MachineProfileSection view={view} onSetUp={noop} onChange={noop} />);
+    const html = render(
+      <MachineProfileSection
+        view={view}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={asyncNoop}
+        onGoToRecipe={noop}
+      />,
+    );
     expect(html).toContain(copy.profile.title);
     expect(html).toContain('Ninja CREAMi Scoop &amp; Swirl');
+    // Manufacturer data — labelled as the model's, read-only.
+    expect(html).toContain(copy.settings.manufacturerCapacityLabel);
+    expect(html).toContain('480 ml');
+    // PINGÜINO's proposal — never framed as the manufacturer's gram figure.
     expect(html).toContain('Zalecany wsad PINGÜINO');
     expect(html).toContain('460 g');
+    // The user's own editable default, the actions and the next step.
+    expect(html).toContain(copy.settings.userDefaultLabel);
+    expect(html).toContain(copy.settings.save);
+    expect(html).toContain(copy.settings.restoreRecommended);
     expect(html).toContain(copy.profile.change);
-    // The derived grams are never framed as an official manufacturer capacity.
-    expect(html).not.toMatch(/producent|oficjaln/i);
+    expect(html).toContain(copy.settings.goToRecipe);
+    expect(html).toContain(copy.settings.useCustomContainer);
   });
 
   it('without a saved machine it offers the set-up entry', () => {
-    const html = render(<MachineProfileSection view={null} onSetUp={noop} onChange={noop} />);
+    const html = render(
+      <MachineProfileSection
+        view={null}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={asyncNoop}
+        onGoToRecipe={noop}
+      />,
+    );
     expect(html).toContain(copy.profile.noMachine);
     expect(html).toContain(copy.profile.setUp);
   });

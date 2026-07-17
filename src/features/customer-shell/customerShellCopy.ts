@@ -61,6 +61,11 @@ export const customerShellCopy = {
     label: 'Wykryte smaki',
     title: 'Twoje smaki',
     lead: 'Usuń to, czego nie chcesz, albo dodaj własny smak.',
+    /**
+     * Owner hotfix §5: once a flavour is confirmed the step must NOT read like
+     * a fresh request for one — it asks whether to add ANOTHER.
+     */
+    leadMore: 'Chcesz dodać jeszcze jeden smak?',
     addLabel: 'Dodaj smak',
     addPlaceholder: 'np. bazylia',
     addButton: 'Dodaj',
@@ -70,8 +75,10 @@ export const customerShellCopy = {
   /* ------------------------------------------------------------- Product type -- */
   productType: {
     label: 'Rodzaj',
-    title: 'Jaki to rodzaj?',
-    lead: 'Wybierz bazę. Czekolada nie jest osobnym wyborem — prowadzimy ją wewnętrznie.',
+    // Owner hotfix §6: the customer picks a KIND OF ICE CREAM, not a "base" —
+    // „Jaki to rodzaj?” / „Wybierz bazę” was engineer language.
+    title: 'Jaki rodzaj lodów chcesz przygotować?',
+    lead: 'Wybierz rodzaj receptury.',
     /** Keyed by the copy KEYS emitted by productTypeQuestion(). */
     byKey: {
       'customer_flow.product_type.gelato': {

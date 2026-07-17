@@ -10,6 +10,8 @@
  */
 export * from './machineOnboardingCopy';
 export * from './preferenceContracts';
+export * from './batchGuidance';
+export * from './machineSettingsView';
 export * from './localStorageMachinePreferenceStore';
 export * from './machineViews';
 export * from './useMachinePreference';
@@ -19,4 +21,5 @@ export { MachineBehaviorQuestion } from './ui/MachineBehaviorQuestion';
 export { CustomMachineForm, type CustomMachineFormValues } from './ui/CustomMachineForm';
 export { AutoConfigTransition } from './ui/AutoConfigTransition';
 export { MachineContextBar } from './ui/MachineContextBar';
-export { MachineProfileSection } from './ui/MachineProfileSection';
+export { MachineProfileSection, type MachineSettingsSubmit } from './ui/MachineProfileSection';
+export { MachineAdjustBatchStep } from './ui/MachineAdjustBatchStep';

@@ -85,3 +85,61 @@ describe('0030 user_machine_preference migration', () => {
     expect(RAW).toContain('riwipywgqobrulyzrzad'); // never production
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* 0031 — the user's own default batch + own container (owner hotfix)  */
+/* ------------------------------------------------------------------ */
+
+const RAW_0031 = readFileSync(
+  join(REPO, 'supabase', 'migrations', '0031_user_machine_preference_user_default.sql'),
+  'utf8',
+);
+const CODE_0031 = RAW_0031.replace(/--.*$/gm, '');
+
+describe('0031 user_machine_preference user default (owner hotfix 2026-07-17)', () => {
+  it('is ADDITIVE: only adds nullable columns — no drop, no data touched', () => {
+    expect(/alter table public\.user_machine_preference/.test(CODE_0031)).toBe(true);
+    for (const column of [
+      'user_default_batch_grams',
+      'custom_container_capacity_ml',
+      'custom_container_recommended_grams',
+    ]) {
+      expect(CODE_0031.includes(`add column if not exists ${column}`), column).toBe(true);
+    }
+    expect(/\bdrop\s+(table|column|policy|constraint)/i.test(CODE_0031)).toBe(false);
+    expect(/\b(delete|truncate|update)\s+/i.test(CODE_0031)).toBe(false);
+    // Nothing is backfilled: an existing row keeps meaning "no own default".
+    expect(/\binsert\s+into/i.test(CODE_0031)).toBe(false);
+    expect(/\bset\s+default\b/i.test(CODE_0031)).toBe(false);
+  });
+
+  it('keeps every stored figure positive (no zero/negative grams or ml)', () => {
+    for (const column of [
+      'user_default_batch_grams',
+      'custom_container_capacity_ml',
+      'custom_container_recommended_grams',
+    ]) {
+      expect(CODE_0031.includes(`${column} is null or ${column} > 0`), column).toBe(true);
+    }
+  });
+
+  it('never lets a HALF-declared own container exist (both figures or neither)', () => {
+    expect(CODE_0031.includes('user_machine_preference_custom_container_complete')).toBe(true);
+    expect(
+      /custom_container_capacity_ml is null and custom_container_recommended_grams is null/.test(
+        CODE_0031,
+      ),
+    ).toBe(true);
+    expect(
+      /custom_container_capacity_ml is not null and custom_container_recommended_grams is not null/.test(
+        CODE_0031,
+      ),
+    ).toBe(true);
+  });
+
+  it('touches no grants and no RLS — 0030 owner-scoping stands, anon stays out', () => {
+    expect(/\bgrant\b/i.test(CODE_0031)).toBe(false);
+    expect(/\banon\b/i.test(CODE_0031)).toBe(false);
+    expect(/\bcreate policy\b|\bdisable row level security\b/i.test(CODE_0031)).toBe(false);
+  });
+});

@@ -17,7 +17,13 @@ import {
   type MachinePreferenceStore,
 } from './preferenceContracts';
 
-/** Versioned storage key — bump only together with the record schema version. */
+/**
+ * The store's namespace key. It is NOT the record schema version: the record
+ * carries its own `schemaVersion` and `parseMachinePreferenceRecord` upgrades
+ * older shapes on read (owner hotfix v1→v2), so a schema change must NOT bump
+ * this key — bumping it would orphan every saved machine and force a pointless
+ * re-onboarding. Bump only for a genuinely incompatible STORE change.
+ */
 export const MACHINE_PREFERENCE_STORAGE_KEY = 'pinguino.machine_preference.v1';
 
 /** The minimal Storage surface used (injectable for node tests). */
