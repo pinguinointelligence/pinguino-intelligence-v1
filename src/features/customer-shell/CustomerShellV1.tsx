@@ -70,8 +70,22 @@ import {
   TechnicalDetails,
   StickyCta,
   EmptyStateView,
+  notice,
   type MicState,
 } from '@/features/customer-shell/ui';
+import {
+  MachineOnboarding,
+  MachineContextBar,
+  buildMachineContextView,
+  containerSplitNotice,
+  formatGrams,
+  localStorageMachinePreferenceStore,
+  machineOnboardingCopy,
+  useMachinePreference,
+  type MachineOnboardingCompletion,
+} from '@/features/machine-onboarding';
+import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
+import { applyMachineRecordToFlow, machineBatchMustAsk } from './machineFlowBridge';
 import { customerShellCopy as copy } from './customerShellCopy';
 import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
@@ -232,6 +246,54 @@ export function CustomerShellV1() {
   const [forceBatchEdit, setForceBatchEdit] = useState(false);
   const [selectedDraft, setSelectedDraft] = useState<ReadyRecipeWorkingDraft | null>(null);
 
+  // Machine-first Home gate (Slice B INTEGRATION §2). The backend factory is
+  // deliberately NOT wired — that is the launch gate (migration 0030 unapplied);
+  // anonymous/demo sessions persist the machine on this device only.
+  const machineStore = useMemo(
+    () => selectMachinePreferenceStore({ localDevice: () => localStorageMachinePreferenceStore() }).store,
+    [],
+  );
+  const machinePreference = useMachinePreference(machineStore);
+  const [machineChangeOpen, setMachineChangeOpen] = useState(false);
+  // A saved record whose catalog id no longer resolves (stale catalog) re-runs
+  // onboarding instead of rendering a broken context bar (INTEGRATION §3).
+  const machineView =
+    machinePreference.record !== null ? buildMachineContextView(machinePreference.record) : null;
+  const machineGate: 'off' | 'loading' | 'onboarding' | 'saved' =
+    persona !== 'home'
+      ? 'off'
+      : machinePreference.status === 'loading'
+        ? 'loading'
+        : machinePreference.record === null || machineView === null || machineChangeOpen
+          ? 'onboarding'
+          : 'saved';
+  const machineRecord = machineGate === 'saved' ? machinePreference.record : null;
+
+  // §5.2 safety net, event-driven (no state-set effects): every path that can
+  // put a Home user with a saved machine in front of a mode-less flow applies
+  // the saved answer in its own handler — flow creation ("Dalej"), machine
+  // save (handleMachineChosen) and the persona switch below. The device-local
+  // store loads in a mount microtask, so a load finishing AFTER flow creation
+  // is unreachable today; when the launch-gated backend adapter (network) is
+  // wired, revisit this reconciliation (noted in INTEGRATION.md §2).
+  const switchPersona = (next: CustomerPersona) => {
+    setPersona(next);
+    if (next !== 'home') return;
+    const record = machinePreference.record;
+    if (record === null || buildMachineContextView(record) === null) return;
+    setFlow((prev) =>
+      prev !== null && prev.mode === null ? applyMachineRecordToFlow(prev, record) : prev,
+    );
+  };
+
+  const handleMachineChosen = (completion: MachineOnboardingCompletion) => {
+    void machinePreference.save(completion.record);
+    setMachineChangeOpen(false);
+    // §8.5: the chosen machine answers the mode (and, when derivable, the amount)
+    // for an already-created flow; the effect above covers later flows.
+    setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, completion.record) : prev));
+  };
+
   // Ingredient Resolution controller. Called unconditionally (before any early return);
   // its resolvable-line set is derived from the SAME structure the result view renders,
   // so tapping a generic line opens the picker without losing any recipe choice.
@@ -322,7 +384,7 @@ export function CustomerShellV1() {
               first viewport using small-viewport height (svh, browser-chrome-aware),
               clamped so it never grows awkward on very tall or very short screens. */}
           <div style={{ paddingTop: 'clamp(2rem, 14svh, 9rem)' }}>
-            <DevPersonaSelect persona={persona} onChange={setPersona} />
+            <DevPersonaSelect persona={persona} onChange={switchPersona} />
             <header className="pt-2">
               <h1 className="text-[28px] font-light leading-[1.15] tracking-tight text-ink sm:text-[34px]">
                 {copy.home.headline}
@@ -350,7 +412,16 @@ export function CustomerShellV1() {
                   block
                   size="lg"
                   disabled={draftText.trim() === ''}
-                  onClick={() => setFlow(createCustomerFlow({ text: draftText.trim() }))}
+                  onClick={() => {
+                    const created = createCustomerFlow({ text: draftText.trim() });
+                    // §5.2: a returning Home user's saved machine answers the
+                    // six-mode question (and the amount when derivable) up front.
+                    setFlow(
+                      machineGate === 'saved' && machineRecord !== null
+                        ? applyMachineRecordToFlow(created, machineRecord)
+                        : created,
+                    );
+                  }}
                 >
                   {copy.home.next}
                 </TouchButton>
@@ -375,6 +446,21 @@ export function CustomerShellV1() {
   const route = resolveServingRoute(flow);
   const selectedMode = route.mode;
   const isNinja = isNinjaMode(flow.mode);
+
+  // Machine-path batch honesty (INTEGRATION §2): a saved machine with NO derived
+  // grams on a Ninja mode must ASK the amount — the mode-level preset is never a
+  // machine answer. Presentation-level only; customerFlow stays untouched.
+  const mustAskMachineBatch = machineGate === 'saved' && machineBatchMustAsk(machineRecord, flow);
+  // Container split (owner correction): a request above „Zalecany wsad PINGÜINO"
+  // never overfills one container — it splits evenly across ceil(total/limit).
+  const machineSplitNotice =
+    machineGate === 'saved' &&
+    machineView !== null &&
+    machineView.recommendedBatchGrams !== null &&
+    batchRes.satisfied &&
+    batchRes.batchGrams !== null
+      ? containerSplitNotice(batchRes.batchGrams, machineView.recommendedBatchGrams)
+      : null;
 
   const isResultPhase =
     recipePath === 'new_recipe' || (recipePath === 'ready_recipe' && selectedDraft !== null);
@@ -506,7 +592,9 @@ export function CustomerShellV1() {
   // How the batch step renders: a Ninja preset auto-selects the mass with no manual
   // input, offering only a secondary "Zmień ilość" override.
   const batchSection = resolveBatchSectionView({
-    batch: batchRes,
+    // Machine-path honesty: a none-grams machine on a Ninja mode presents the
+    // batch as UNANSWERED (the mode preset never speaks for an unknown container).
+    batch: mustAskMachineBatch ? { source: batchRes.source, satisfied: false } : batchRes,
     isNinja,
     overrideOpen: forceBatchEdit,
   });
@@ -626,7 +714,24 @@ export function CustomerShellV1() {
     <ShellRoot>
       <CustomerSurface hasStickyCta={showStickyUpgrade}>
         <CustomerMenu />
-        <DevPersonaSelect persona={persona} onChange={setPersona} />
+        {/* §7.3 machine context bar — Home persona with a saved machine only. */}
+        {machineGate === 'saved' && machineView !== null ? (
+          <MachineContextBar view={machineView} onChange={() => setMachineChangeOpen(true)} />
+        ) : null}
+        <DevPersonaSelect persona={persona} onChange={switchPersona} />
+        {/* §4.1 conscious machine change — renders above the flow; completing (or
+            closing) it returns to the flow, and the new machine re-answers
+            mode + amount via handleMachineChosen. */}
+        {machineChangeOpen && flow !== null ? (
+          <div className="pt-6">
+            <MachineOnboarding onComplete={handleMachineChosen} />
+            <div className="mt-4">
+              <TouchButton variant="quiet" size="md" onClick={() => setMachineChangeOpen(false)}>
+                {copy.resolution.close}
+              </TouchButton>
+            </div>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between pt-4">
           <h1 className="text-[22px] font-medium tracking-tight text-ink">{copy.home.headline}</h1>
           <TouchButton variant="quiet" size="md" onClick={resetAll}>
@@ -708,24 +813,38 @@ export function CustomerShellV1() {
         {/* Configure: device + serving, capacity/batch, recipe-path fork. */}
         {isConfigurePhase ? (
           <>
-            {/* Serving / machine mode — EXACTLY six customer-facing choices. Each is a
-                customer-facing alias to an existing temperature-aware Engine cell. */}
-            <CustomerSection label={copy.modes.label} title={copy.modes.title} lead={copy.modes.lead}>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {SERVING_MODES.map((m) => {
-                  const c = modeCopyFor(m.id);
-                  return (
-                    <SelectableCard
-                      key={m.id}
-                      title={c.label}
-                      description={c.secondary}
-                      selected={flow.mode === m.id}
-                      onSelect={() => update((s) => selectServingMode(s, m.id))}
-                    />
-                  );
-                })}
+            {/* Serving / machine step. Machine-first Home gate (Slice B, spec §8):
+                - demo/pro personas keep the six-mode selector as-is;
+                - a Home user WITHOUT a saved machine chooses the machine ONCE here
+                  (the machine answers the mode question — the six modes never show);
+                - a Home user WITH a saved machine skips this step entirely (the
+                  §7.3 context bar + „Zmień" handle changes). */}
+            {machineGate === 'onboarding' && !machineChangeOpen ? (
+              /* Self-contained §8 flow (own headings/copy) — no section wrapper. */
+              <div className="pt-10">
+                <MachineOnboarding onComplete={handleMachineChosen} />
               </div>
-            </CustomerSection>
+            ) : null}
+            {machineGate === 'off' ? (
+              /* Serving / machine mode — EXACTLY six customer-facing choices. Each is a
+                 customer-facing alias to an existing temperature-aware Engine cell. */
+              <CustomerSection label={copy.modes.label} title={copy.modes.title} lead={copy.modes.lead}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {SERVING_MODES.map((m) => {
+                    const c = modeCopyFor(m.id);
+                    return (
+                      <SelectableCard
+                        key={m.id}
+                        title={c.label}
+                        description={c.secondary}
+                        selected={flow.mode === m.id}
+                        onSelect={() => update((s) => selectServingMode(s, m.id))}
+                      />
+                    );
+                  })}
+                </div>
+              </CustomerSection>
+            ) : null}
 
             {/* Batch — only once a mode is chosen. A Ninja mode auto-sets its approved
                 mass (resolved; override hidden behind "Zmień ilość"); Direct / Fresh
@@ -733,7 +852,13 @@ export function CustomerShellV1() {
             {flow.mode !== null ? (
               <CustomerSection label={copy.batch.label} title={copy.batch.title} lead={copy.batch.lead}>
                 {batchSection.mode === 'choose' ? (
-                  renderBatchSelector()
+                  // Machine-path honesty: a Ninja-mode machine without derived grams
+                  // ASKS with the gram field (never the kg selector, never a preset).
+                  mustAskMachineBatch && isNinja ? (
+                    renderCustomMassField()
+                  ) : (
+                    renderBatchSelector()
+                  )
                 ) : (
                   <div className="space-y-3">
                     <div className="rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
@@ -749,7 +874,24 @@ export function CustomerShellV1() {
                             : `${formatBatch(batchRes.batchGrams)} — ${copy.batch.source[batchRes.source]}`
                         }
                       />
+                      {/* „Zalecany wsad PINGÜINO" — the machine-derived recommendation
+                          (never framed as a manufacturer figure). */}
+                      {machineGate === 'saved' && machineRecord?.defaultBatch.kind === 'grams' ? (
+                        <p className="mt-1 text-[12px] text-stone-500">
+                          {machineOnboardingCopy.batch.recommendedLabel}:{' '}
+                          {formatGrams(machineRecord.defaultBatch.grams)}{' '}
+                          {machineOnboardingCopy.batch.recommendedUnit}
+                        </p>
+                      ) : null}
                     </div>
+                    {/* Owner split rule: above the recommended batch the production is
+                        split evenly across containers — one container is never overfilled. */}
+                    {machineSplitNotice !== null ? (
+                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
+                        <p className="font-medium text-ink">{machineSplitNotice.message}</p>
+                        <p className="mt-0.5">{machineSplitNotice.detail}</p>
+                      </div>
+                    ) : null}
                     {batchSection.showChangeAction ? (
                       <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>
                         {copy.batch.change}
@@ -765,8 +907,12 @@ export function CustomerShellV1() {
               </CustomerSection>
             ) : null}
 
+            {/* Machine-path honesty gate: while the amount is still a QUESTION the
+                recipe fork stays hidden (the flow would otherwise proceed on the
+                mode preset the owner rule does not endorse). */}
+
             {/* Two equal paths — neither is a default. */}
-            {nq === 'recipe_path' ? (
+            {nq === 'recipe_path' && !mustAskMachineBatch ? (
               <CustomerSection label={copy.path.label} title={copy.path.title} lead={copy.path.lead}>
                 <div className="grid grid-cols-1 gap-3">
                   <TouchButton block variant="secondary" size="lg" onClick={() => update((s) => chooseRecipePath(s, 'new_recipe'))}>

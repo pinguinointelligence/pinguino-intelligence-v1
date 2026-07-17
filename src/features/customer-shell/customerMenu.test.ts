@@ -13,6 +13,7 @@ import {
 const REAL_ROUTES = new Set([
   '/',
   '/start',
+  '/profile/machine',
   '/studio',
   '/recipes',
   '/my-recipes',
@@ -49,15 +50,16 @@ describe('customer menu — links only real routes', () => {
     expect(CUSTOMER_MENU_ITEMS.map((i) => i.to)).not.toContain('/classic');
   });
 
-  // Slice A: the landing took over `/` and the flow moved to `/start`, so the
-  // menu now carries seven destinations — landing first, then the flow entry.
-  it('covers exactly the seven expected destinations in order', () => {
+  // Slice A: the landing took over `/` and the flow moved to `/start`. Slice B
+  // adds „Profil → Moja maszyna" — eight destinations, landing first.
+  it('covers exactly the eight expected destinations in order', () => {
     expect(CUSTOMER_MENU_ITEMS.map((i) => i.to)).toEqual([
       '/',
       '/start',
       '/studio',
       '/recipes',
       '/my-recipes',
+      '/profile/machine',
       '/label',
       '/subscription',
     ]);

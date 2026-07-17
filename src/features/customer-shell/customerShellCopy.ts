@@ -30,6 +30,7 @@ export const customerShellCopy = {
       studio: 'Studio',
       recipes: 'Gotowe receptury',
       myRecipes: 'Moje receptury',
+      machine: 'Moja maszyna',
       label: 'Etykiety',
       subscription: 'Subskrypcja / Plany',
     },

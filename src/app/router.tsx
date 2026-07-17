@@ -26,6 +26,7 @@ import { BranchRecalculationPreviewPage } from '@/pages/dev/BranchRecalculationP
 import { PiMonitorDevPage } from '@/pages/dev/PiMonitorDevPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { LandingPage } from '@/pages/landing/LandingPage';
+import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
 import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
@@ -66,6 +67,9 @@ export function AppRoutes() {
       <Route path="/work-with-us" element={<WorkWithUsPage />} />
       <Route path="/subscription" element={<SubscriptionPage />} />
       <Route path="/create-ingredient" element={<CreateIngredientPage />} />
+
+      {/* Profil → Moja maszyna (UIUX Slice B §8.6) — view/change the saved Home machine. */}
+      <Route path="/profile/machine" element={<MachineProfilePage />} />
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />

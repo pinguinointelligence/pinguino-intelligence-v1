@@ -89,6 +89,10 @@ describe('Slice A routing contract', () => {
     expect(redirectTarget('/calculator')).toBe('/studio');
   });
 
+  it('registers the Slice B machine profile page at /profile/machine', () => {
+    expect(byPath.has('/profile/machine')).toBe(true);
+  });
+
   it('keeps every pre-existing public route registered (zero 404 regressions)', () => {
     for (const path of [
       '/classic',

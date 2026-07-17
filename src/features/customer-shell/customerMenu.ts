@@ -10,7 +10,7 @@
 
 /** Copy key → real route. `key` indexes `customerShellCopy.menu.primary`. */
 export interface CustomerMenuItem {
-  key: 'home' | 'start' | 'studio' | 'recipes' | 'myRecipes' | 'label' | 'subscription';
+  key: 'home' | 'start' | 'studio' | 'recipes' | 'myRecipes' | 'machine' | 'label' | 'subscription';
   to: string;
 }
 
@@ -25,6 +25,8 @@ export const CUSTOMER_MENU_ITEMS: readonly CustomerMenuItem[] = [
   { key: 'studio', to: '/studio' },
   { key: 'recipes', to: '/recipes' },
   { key: 'myRecipes', to: '/my-recipes' },
+  // UIUX Slice B (§8.6): the saved Home machine profile („Profil → Moja maszyna").
+  { key: 'machine', to: '/profile/machine' },
   { key: 'label', to: '/label' },
   { key: 'subscription', to: '/subscription' },
 ];
