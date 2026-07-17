@@ -43,7 +43,18 @@ import type { HomeMachineProfile } from './types';
  *     Scoop & Swirl NC7 (480 ml, official catalog, UNCONFLICTED) derives
  *     460 g via the rule. Sage stays inactive (`needs_review`).
  */
-export const MACHINE_CATALOG_VERSION = '2026-07-17.2';
+/*
+ * 2026-07-17.3 — OWNER FINAL DECISION („KOŃCOWA WIĄŻĄCA DECYZJA — POJEMNOŚCI,
+ * EDYCJA WSADU I WDROŻENIE"): the capacity investigation is CLOSED — no new
+ * statuses, exceptions or blocks. Manufacturer ml figures are pinned per
+ * model (standard 473, Deluxe 706, Swirl 480, KitchenAid 1400) and the
+ * universal ×0.95 rule derives the recommended batch (450 / 670 / 460 /
+ * 1330 g) as a SOFT starting proposal — always editable, never a hard limit.
+ * NC302EU and NC502EU become ACTIVE with status `provisional`; their
+ * historical retail-page figure disputes remain in doc comments as
+ * provenance only (never user-facing, never blocking).
+ */
+export const MACHINE_CATALOG_VERSION = '2026-07-17.3';
 
 /** Provenance meta for the whole seed (report + future persistence track). */
 export const MACHINE_CATALOG_META = {
@@ -61,18 +72,16 @@ export const MACHINE_CATALOG_META = {
 /**
  * Ninja CREAMi NC302EU (EU/ES) — respin → existing Ninja Gelato mode.
  *
- * ml-conflict investigation (2026-07-17, live official ES pages; the Annex-B
- * URL ninjakitchen.es/productos/ninja-creami-nc302eu-zidNC302EU now
- * 301-redirects to www.sharkninja.es): product page and accessories pages
- * STILL disagree (473 vs 450 ml per tub) and neither page qualifies its
- * figure as a different concept — see the conflict note for verbatim quotes.
- * §9.3 forbids picking a number, so the vessel figure stays conflicting.
- *
- * Owner correction (2026-07-17): the recommended Home batch is DERIVED from a
- * CONFIRMED usable capacity via the 0.95 rule — a conflicted figure never
- * produces a number, so this record stays `conflicting_sources` and INACTIVE
- * until the owner resolves 473-vs-450 per the exact model+market. The two
- * candidate derivations (473→450 g vs 450→430 g) are in the slice report.
+ * OWNER FINAL DECISION (2026-07-17, „KOŃCOWA WIĄŻĄCA DECYZJA — POJEMNOŚCI"):
+ * the capacity investigation is CLOSED. The manufacturer figure is pinned to
+ * the product-page 473 ml and the universal 0.95 rule yields the recommended
+ * batch (473 × 0.95 = 449.35 → 450 g) — a soft starting proposal, never a
+ * hard limit. The record is ACTIVE with status `provisional`; the historical
+ * 473-vs-450 retail-page dispute (product page „tarrinas de 473 ml" vs
+ * accessory pages XSK2PNT300EUK/XSK4PINTEUUK „Capacidad: 450 ml por tarrina",
+ * both live-read 2026-07-17 after the ninjakitchen.es → sharkninja.es 301) is
+ * kept HERE as provenance only — it is never shown to users and never blocks
+ * selection.
  */
 export const NINJA_CREAMI_NC302EU: HomeMachineProfile = {
   id: 'ninja-creami-nc302eu-eu-es',
@@ -83,7 +92,7 @@ export const NINJA_CREAMI_NC302EU: HomeMachineProfile = {
   technology: 'respin',
   resolvedVisibleMode: 'ninja_gelato',
   capacity: {
-    vesselCapacityMl: 473, // product-page figure; disputed — see sourceConflicts
+    vesselCapacityMl: 473, // owner-pinned figure (final decision 2026-07-17) → 450 g via ×0.95
     maximumLiquidMixMl: null,
     workingCapacityMl: null,
     minimumBatchMl: null,
@@ -101,39 +110,24 @@ export const NINJA_CREAMI_NC302EU: HomeMachineProfile = {
   // Live destination of the Annex-B URL (301 from ninjakitchen.es, 2026-07-17).
   specificationSourceUrl:
     'https://www.sharkninja.es/ninja-creami-6-funciones-2-tarrinas-grisnegro/NC302EU.html',
-  specificationStatus: 'conflicting_sources',
-  sourceConflicts: [
-    {
-      field: 'vesselCapacityMl',
-      candidatesMl: [473, 450],
-      note:
-        'Oficjalne źródła ES nadal się różnią (sprawdzone na żywo 2026-07-17; ninjakitchen.es → ' +
-        '301 → www.sharkninja.es). Strona produktu NC302EU: „Incluye 2 tarrinas (sin BPA) con ' +
-        'tapa, de 473 ml cada una (capacidad total 950 ml)” — a w dłuższym opisie „capacidad ' +
-        'total 1 L aprox.” (https://www.sharkninja.es/ninja-creami-6-funciones-2-tarrinas-grisnegro/NC302EU.html). ' +
-        'Strona katalogowa: „CREAMi clásica … Tarrinas de 473 ml.” Oficjalne strony akcesoriów: ' +
-        '„Capacidad: 450 ml por tarrina. Compatible con la Heladera Ninja CREAMi (modelos ' +
-        'NC300EU/NC302EU)” (XSK2PNT300EUK i XSK4PINTEUUK). ŻADNA z tych stron nie rozróżnia ' +
-        'pojęć (brak słów MAX FILL, brak „pojemność użytkowa vs po brzegi”), więc nie ma dowodu, ' +
-        'że 473 i 450 to różne koncepty — rozstrzygnąć instrukcją dokładnego modelu (§9.3). ' +
-        'Reguła 0.95 daje 473→450 g albo 450→430 g — decyzja właściciela po rozstrzygnięciu.',
-    },
-  ],
-  active: false,
+  // Owner final decision (2026-07-17): provisional + ACTIVE; the retail-page
+  // figure dispute lives in the doc comment above as provenance — no blocking
+  // sourceConflicts entry, nothing user-facing.
+  specificationStatus: 'provisional',
+  active: true,
 };
 
 /**
  * Ninja CREAMi Deluxe NC502EU (EU/ES) — respin → existing Ninja Gelato mode.
  *
- * ml-conflict investigation (2026-07-17, live official ES pages): product
- * page and the Deluxe accessory-tub page STILL disagree (706 vs 680 ml per
- * tub) and neither qualifies its figure as a different concept — verbatim
- * quotes in the conflict note. The vessel figure stays conflicting (§9.3).
- *
- * Owner correction (2026-07-17): a conflicted figure never produces a
- * recommended batch, so the record stays `conflicting_sources` and INACTIVE
- * until the owner resolves 706-vs-680 per the exact model+market. Candidate
- * derivations (706→670 g vs 680→650 g) are in the slice report.
+ * OWNER FINAL DECISION (2026-07-17, „KOŃCOWA WIĄŻĄCA DECYZJA — POJEMNOŚCI"):
+ * investigation CLOSED; the manufacturer figure is pinned to the product-page
+ * 706 ml and the 0.95 rule yields the recommended batch (706 × 0.95 = 670.70
+ * → 670 g) — a soft starting proposal, never a hard limit. ACTIVE +
+ * `provisional`. The historical 706-vs-680 dispute (product page „tarrinas de
+ * 706 ml" vs accessory page XSKPNTLD2EUUK „Capacidad: 680 ml por tarrina",
+ * live-read 2026-07-17) stays HERE as provenance only — never user-facing,
+ * never blocking.
  */
 export const NINJA_CREAMI_DELUXE_NC502EU: HomeMachineProfile = {
   id: 'ninja-creami-deluxe-nc502eu-eu-es',
@@ -144,7 +138,7 @@ export const NINJA_CREAMI_DELUXE_NC502EU: HomeMachineProfile = {
   technology: 'respin',
   resolvedVisibleMode: 'ninja_gelato',
   capacity: {
-    vesselCapacityMl: 706, // catalog/product-page figure; disputed — see sourceConflicts
+    vesselCapacityMl: 706, // owner-pinned figure (final decision 2026-07-17) → 670 g via ×0.95
     maximumLiquidMixMl: null,
     workingCapacityMl: null,
     minimumBatchMl: null,
@@ -163,26 +157,11 @@ export const NINJA_CREAMI_DELUXE_NC502EU: HomeMachineProfile = {
   // which now 301-redirects to the sharkninja.es catalog; re-read 2026-07-17).
   specificationSourceUrl:
     'https://www.sharkninja.es/ninja-creami-deluxe-10-funciones-2-tarrinas-grisnegro/NC502EU.html',
-  specificationStatus: 'conflicting_sources',
-  sourceConflicts: [
-    {
-      field: 'vesselCapacityMl',
-      candidatesMl: [706, 680],
-      note:
-        'Oficjalne źródła ES nadal się różnią (sprawdzone na żywo 2026-07-17; ninjakitchen.es → ' +
-        '301 → www.sharkninja.es). Strona produktu NC502EU: „Incluye 2 tarrinas (sin BPA) de ' +
-        '706 ml cada una (1,4 L en total)” oraz „Con las tarrinas grandes CREAMi Deluxe de 706 ml…” ' +
-        '(https://www.sharkninja.es/ninja-creami-deluxe-10-funciones-2-tarrinas-grisnegro/NC502EU.html). ' +
-        'Strona katalogowa: „CREAMi Deluxe … Tarrinas de 706 ml.” Oficjalna strona akcesoriów ' +
-        '(dawniej ninjakitchen.es/productos/tarrinas-con-tapa-2-unidades-para-creami-deluxe-nc5-zidXSKPNTLD2EUUK, ' +
-        'teraz https://www.sharkninja.es/2-tarrinas-con-tapa-creami-deluxe-nc5/XSKPNTLD2EUUK.html): ' +
-        '„Capacidad: 680 ml por tarrina. Compatible con la Heladera Ninja CREAMi Deluxe, modelos ' +
-        'NC501EU / NC502EU.” ŻADNA strona nie rozróżnia pojęć (brak MAX FILL, brak „użytkowa vs ' +
-        'po brzegi”) — brak dowodu, że 706 i 680 to różne koncepty; rozstrzygnąć instrukcją modelu (§9.3). ' +
-        'Reguła 0.95 daje 706→670 g albo 680→650 g — decyzja właściciela po rozstrzygnięciu.',
-    },
-  ],
-  active: false,
+  // Owner final decision (2026-07-17): provisional + ACTIVE; dispute history
+  // lives in the doc comment above as provenance — never user-facing, never
+  // blocking.
+  specificationStatus: 'provisional',
+  active: true,
 };
 
 /**

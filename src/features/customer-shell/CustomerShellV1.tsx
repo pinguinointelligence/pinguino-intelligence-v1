@@ -77,7 +77,6 @@ import {
   MachineOnboarding,
   MachineContextBar,
   buildMachineContextView,
-  containerSplitNotice,
   formatGrams,
   localStorageMachinePreferenceStore,
   machineOnboardingCopy,
@@ -85,7 +84,8 @@ import {
   type MachineOnboardingCompletion,
 } from '@/features/machine-onboarding';
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
-import { applyMachineRecordToFlow, machineBatchMustAsk } from './machineFlowBridge';
+import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
+import { deriveBatchGuidance, type AboveRecommendationChoice } from './batchGuidance';
 import { customerShellCopy as copy } from './customerShellCopy';
 import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
@@ -269,6 +269,19 @@ export function CustomerShellV1() {
           : 'saved';
   const machineRecord = machineGate === 'saved' ? machinePreference.record : null;
 
+  // OWNER FINAL DECISION (2026-07-17): the recommendation is a SOFT proposal.
+  // `aboveChoiceFor` remembers the user's pick for the above-recommendation
+  // warning FOR ONE amount — editing the grams re-opens the question.
+  const [aboveChoiceFor, setAboveChoiceFor] = useState<{
+    grams: number;
+    choice: AboveRecommendationChoice;
+  } | null>(null);
+  // After a machine CHANGE the new recommendation is only PROPOSED — the
+  // existing recipe amount is never rewritten without the user's confirmation
+  // („Dopasuj ilość do nowej maszyny" → preview → Zastosuj).
+  const [machineBatchProposal, setMachineBatchProposal] = useState<number | null>(null);
+  const [proposalPreviewOpen, setProposalPreviewOpen] = useState(false);
+
   // §5.2 safety net, event-driven (no state-set effects): every path that can
   // put a Home user with a saved machine in front of a mode-less flow applies
   // the saved answer in its own handler — flow creation ("Dalej"), machine
@@ -281,17 +294,38 @@ export function CustomerShellV1() {
     if (next !== 'home') return;
     const record = machinePreference.record;
     if (record === null || buildMachineContextView(record) === null) return;
-    setFlow((prev) =>
-      prev !== null && prev.mode === null ? applyMachineRecordToFlow(prev, record) : prev,
-    );
+    // Owner test 11: an in-progress flow is never silently rewritten.
+    setFlow((prev) => (prev !== null ? applyMachineRecordIfUnanswered(prev, record) : prev));
   };
 
   const handleMachineChosen = (completion: MachineOnboardingCompletion) => {
+    const isChange = machinePreference.record !== null;
     void machinePreference.save(completion.record);
     setMachineChangeOpen(false);
-    // §8.5: the chosen machine answers the mode (and, when derivable, the amount)
-    // for an already-created flow; the effect above covers later flows.
-    setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, completion.record) : prev));
+    setAboveChoiceFor(null);
+    if (!isChange) {
+      // First setup (§8.5): the chosen machine answers the mode and, when
+      // derivable, the amount for an already-created flow.
+      setMachineBatchProposal(null);
+      setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, completion.record) : prev));
+      return;
+    }
+    // Machine CHANGE (owner final decision): switch the mode routing, but only
+    // PROPOSE the new recommended amount — never rewrite the recipe silently.
+    const proposed =
+      completion.record.defaultBatch.kind === 'grams' ? completion.record.defaultBatch.grams : null;
+    setMachineBatchProposal(proposed);
+    setProposalPreviewOpen(false);
+    setFlow((prev) => {
+      if (prev === null) return prev;
+      if (prev.mode === null) return applyMachineRecordToFlow(prev, completion.record);
+      const keptGrams = prev.explicitBatchGrams;
+      let next = selectServingMode(prev, completion.record.resolvedVisibleMode);
+      // selectServingMode clears a hand-set batch on Ninja modes — restore the
+      // user's amount; the new machine's grams arrive only via the proposal.
+      if (keptGrams !== null) next = setBatchGrams(next, keptGrams);
+      return next;
+    });
   };
 
   // Ingredient Resolution controller. Called unconditionally (before any early return);
@@ -447,20 +481,20 @@ export function CustomerShellV1() {
   const selectedMode = route.mode;
   const isNinja = isNinjaMode(flow.mode);
 
-  // Machine-path batch honesty (INTEGRATION §2): a saved machine with NO derived
-  // grams on a Ninja mode must ASK the amount — the mode-level preset is never a
-  // machine answer. Presentation-level only; customerFlow stays untouched.
-  const mustAskMachineBatch = machineGate === 'saved' && machineBatchMustAsk(machineRecord, flow);
-  // Container split (owner correction): a request above „Zalecany wsad PINGÜINO"
-  // never overfills one container — it splits evenly across ceil(total/limit).
-  const machineSplitNotice =
-    machineGate === 'saved' &&
-    machineView !== null &&
-    machineView.recommendedBatchGrams !== null &&
-    batchRes.satisfied &&
-    batchRes.batchGrams !== null
-      ? containerSplitNotice(batchRes.batchGrams, machineView.recommendedBatchGrams)
-      : null;
+  // OWNER FINAL DECISION (2026-07-17): the machine recommendation is a SOFT
+  // starting proposal — the guidance below marks divergence, warns above the
+  // recommendation and offers the OPTIONAL even split; it never blocks.
+  const machineRecommendedGrams =
+    machineGate === 'saved' && machineView !== null ? machineView.recommendedBatchGrams : null;
+  const currentBatchGrams = batchRes.satisfied ? batchRes.batchGrams : null;
+  const batchGuidance = deriveBatchGuidance({
+    recommendedGrams: machineRecommendedGrams,
+    currentGrams: currentBatchGrams,
+    choice:
+      aboveChoiceFor !== null && aboveChoiceFor.grams === currentBatchGrams
+        ? aboveChoiceFor.choice
+        : 'undecided',
+  });
 
   const isResultPhase =
     recipePath === 'new_recipe' || (recipePath === 'ready_recipe' && selectedDraft !== null);
@@ -592,9 +626,7 @@ export function CustomerShellV1() {
   // How the batch step renders: a Ninja preset auto-selects the mass with no manual
   // input, offering only a secondary "Zmień ilość" override.
   const batchSection = resolveBatchSectionView({
-    // Machine-path honesty: a none-grams machine on a Ninja mode presents the
-    // batch as UNANSWERED (the mode preset never speaks for an unknown container).
-    batch: mustAskMachineBatch ? { source: batchRes.source, satisfied: false } : batchRes,
+    batch: batchRes,
     isNinja,
     overrideOpen: forceBatchEdit,
   });
@@ -852,13 +884,7 @@ export function CustomerShellV1() {
             {flow.mode !== null ? (
               <CustomerSection label={copy.batch.label} title={copy.batch.title} lead={copy.batch.lead}>
                 {batchSection.mode === 'choose' ? (
-                  // Machine-path honesty: a Ninja-mode machine without derived grams
-                  // ASKS with the gram field (never the kg selector, never a preset).
-                  mustAskMachineBatch && isNinja ? (
-                    renderCustomMassField()
-                  ) : (
-                    renderBatchSelector()
-                  )
+                  renderBatchSelector()
                 ) : (
                   <div className="space-y-3">
                     <div className="rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
@@ -876,20 +902,134 @@ export function CustomerShellV1() {
                       />
                       {/* „Zalecany wsad PINGÜINO" — the machine-derived recommendation
                           (never framed as a manufacturer figure). */}
-                      {machineGate === 'saved' && machineRecord?.defaultBatch.kind === 'grams' ? (
+                      {machineRecommendedGrams !== null ? (
                         <p className="mt-1 text-[12px] text-stone-500">
                           {machineOnboardingCopy.batch.recommendedLabel}:{' '}
-                          {formatGrams(machineRecord.defaultBatch.grams)}{' '}
+                          {formatGrams(machineRecommendedGrams)}{' '}
                           {machineOnboardingCopy.batch.recommendedUnit}
                         </p>
                       ) : null}
                     </div>
-                    {/* Owner split rule: above the recommended batch the production is
-                        split evenly across containers — one container is never overfilled. */}
-                    {machineSplitNotice !== null ? (
+
+                    {/* OWNER FINAL DECISION — soft-proposal guidance (never a block). */}
+                    {batchGuidance.kind === 'custom' ||
+                    (batchGuidance.kind === 'custom_above' && batchGuidance.choice !== 'undecided') ? (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[13px] text-stone-600">
+                          {machineOnboardingCopy.batch.customInUse}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-[13px] text-stone-600 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
+                          onClick={() => {
+                            if (machineRecommendedGrams !== null) {
+                              setAboveChoiceFor(null);
+                              update((s) => setBatchGrams(s, machineRecommendedGrams));
+                            }
+                          }}
+                        >
+                          {machineOnboardingCopy.batch.restoreRecommended}
+                        </button>
+                      </div>
+                    ) : null}
+                    {batchGuidance.kind === 'custom_above' && batchGuidance.choice === 'undecided' ? (
+                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
+                        <p className="font-medium text-ink">{machineOnboardingCopy.batch.aboveWarning}</p>
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                          <TouchButton
+                            variant="secondary"
+                            size="md"
+                            onClick={() =>
+                              currentBatchGrams !== null &&
+                              setAboveChoiceFor({ grams: currentBatchGrams, choice: 'split' })
+                            }
+                          >
+                            {machineOnboardingCopy.batch.splitAction}
+                          </TouchButton>
+                          <TouchButton
+                            variant="quiet"
+                            size="md"
+                            onClick={() =>
+                              currentBatchGrams !== null &&
+                              setAboveChoiceFor({ grams: currentBatchGrams, choice: 'keep_mine' })
+                            }
+                          >
+                            {machineOnboardingCopy.batch.keepMine}
+                          </TouchButton>
+                          <TouchButton
+                            variant="quiet"
+                            size="md"
+                            onClick={() => {
+                              if (machineRecommendedGrams !== null) {
+                                setAboveChoiceFor(null);
+                                update((s) => setBatchGrams(s, machineRecommendedGrams));
+                              }
+                            }}
+                          >
+                            {machineOnboardingCopy.batch.restoreShort}
+                          </TouchButton>
+                        </div>
+                      </div>
+                    ) : null}
+                    {batchGuidance.kind === 'custom_above' && batchGuidance.split !== null ? (
                       <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
-                        <p className="font-medium text-ink">{machineSplitNotice.message}</p>
-                        <p className="mt-0.5">{machineSplitNotice.detail}</p>
+                        <p className="font-medium text-ink">
+                          {machineOnboardingCopy.split.message(batchGuidance.split.containers)}
+                        </p>
+                        <p className="mt-0.5">
+                          {machineOnboardingCopy.split.detail(
+                            batchGuidance.split.containers,
+                            formatGrams(batchGuidance.split.gramsPerContainer),
+                          )}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {/* Machine change: the NEW machine's amount is only a PROPOSAL —
+                        „Dopasuj ilość do nowej maszyny" previews before applying. */}
+                    {machineGate === 'saved' &&
+                    machineBatchProposal !== null &&
+                    currentBatchGrams !== null &&
+                    machineBatchProposal !== currentBatchGrams ? (
+                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
+                        <p>
+                          {machineOnboardingCopy.batch.newRecommendedLabel}:{' '}
+                          <span className="font-medium text-ink">
+                            {formatGrams(machineBatchProposal)} {machineOnboardingCopy.batch.recommendedUnit}
+                          </span>
+                        </p>
+                        {!proposalPreviewOpen ? (
+                          <div className="mt-2">
+                            <TouchButton variant="secondary" size="md" onClick={() => setProposalPreviewOpen(true)}>
+                              {machineOnboardingCopy.batch.fitToNewMachine}
+                            </TouchButton>
+                          </div>
+                        ) : (
+                          <div className="mt-2 space-y-2">
+                            <p className="font-mono tabular-nums text-ink">
+                              {formatBatch(currentBatchGrams)} → {formatGrams(machineBatchProposal)}{' '}
+                              {machineOnboardingCopy.batch.recommendedUnit}
+                            </p>
+                            <div className="flex gap-2">
+                              <TouchButton
+                                variant="primary"
+                                size="md"
+                                onClick={() => {
+                                  const grams = machineBatchProposal;
+                                  setMachineBatchProposal(null);
+                                  setProposalPreviewOpen(false);
+                                  setAboveChoiceFor(null);
+                                  update((s) => setBatchGrams(s, grams));
+                                }}
+                              >
+                                {machineOnboardingCopy.batch.applyPreview}
+                              </TouchButton>
+                              <TouchButton variant="quiet" size="md" onClick={() => setProposalPreviewOpen(false)}>
+                                {machineOnboardingCopy.batch.cancelPreview}
+                              </TouchButton>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : null}
                     {batchSection.showChangeAction ? (
@@ -907,12 +1047,8 @@ export function CustomerShellV1() {
               </CustomerSection>
             ) : null}
 
-            {/* Machine-path honesty gate: while the amount is still a QUESTION the
-                recipe fork stays hidden (the flow would otherwise proceed on the
-                mode preset the owner rule does not endorse). */}
-
             {/* Two equal paths — neither is a default. */}
-            {nq === 'recipe_path' && !mustAskMachineBatch ? (
+            {nq === 'recipe_path' ? (
               <CustomerSection label={copy.path.label} title={copy.path.title} lead={copy.path.lead}>
                 <div className="grid grid-cols-1 gap-3">
                   <TouchButton block variant="secondary" size="lg" onClick={() => update((s) => chooseRecipePath(s, 'new_recipe'))}>

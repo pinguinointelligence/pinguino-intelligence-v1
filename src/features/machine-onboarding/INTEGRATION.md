@@ -78,20 +78,25 @@ handles requests above the limit.
 **Change machine:** the §7.3 context bar's `Zmień` (and Profile → `Zmień maszynę`)
 re-renders `MachineOnboarding`; on completion save the new record and re-apply (a) + (b).
 
-### ⚠️ Batch honesty for `defaultBatch.kind === 'none'` (owner-visible tension)
+### Batch semantics (OWNER FINAL DECISION, 2026-07-17 — supersedes the earlier
+### "must ASK" tension note)
 
-`resolveBatch` (customer-flow, untouched production behavior) auto-fills Ninja modes
-from the MODE-level presets (`ninja_gelato` → 700 g, `ninja_swirl` → 480 g) whenever no
-explicit batch is set. The owner's correction derives machine grams from the machine's
-own capacity (NC7 → **460 g**, which the integration sets explicitly, overriding the
-480 g preset). But for a machine-path user whose record carries **no** grams (custom
-re-spin without a declared vessel), skipping the batch question would silently fall
-back to the mode preset — a value the owner rule deliberately does not endorse for an
-unknown container. **Wiring rule:** when
-`preference.record.defaultBatch.kind === 'none'` and the resolved mode is a Ninja mode,
-the orchestrator must ASK the amount (render the batch step with no preset applied)
-instead of letting the mode preset fill it. Surface this tension to the owner: the
-six-mode path keeps its live 700/480 presets; the machine path uses derived grams only.
+The recommendation is a SOFT starting proposal — never a hard limit, never a
+block:
+
+- a record WITH derived grams sets them explicitly (source `'user'`), taking
+  PRECEDENCE over the mode-level 700/480 presets;
+- a record WITHOUT grams falls back to the EDITABLE mode preset (no forced
+  question, no hidden fork);
+- diverging from the recommendation shows „Używasz własnej ilości" + restore;
+  exceeding it shows ONLY the warning „Ta ilość przekracza zalecany wsad
+  PINGÜINO dla jednego pojemnika." with three non-blocking actions (optional
+  EVEN split / keep mine exactly / restore) — `deriveBatchGuidance` in
+  `customer-shell/batchGuidance.ts`;
+- a machine CHANGE never rewrites an in-progress amount: the new grams arrive
+  as a PROPOSAL („Dopasuj ilość do nowej maszyny" → preview → Zastosuj), and
+  `applyMachineRecordIfUnanswered` guarantees an answered flow passes through
+  untouched (owner test 11).
 
 ## 3. Context bar (§7.3) + split notice
 

@@ -99,7 +99,20 @@ describe('buildMachinePreferenceRecord — §8.6 fields, honest batch', () => {
   });
 
   it('a conflicted machine saves NO grams (never an invented number)', () => {
-    expect(buildFor(NINJA_CREAMI_NC302EU).defaultBatch).toEqual({ kind: 'none' });
+    // Owner final decision closed the REAL Ninja disputes (they now derive
+    // grams) — the rule is probed with a synthetic conflicted record.
+    const probe = {
+      ...NINJA_CREAMI_NC302EU,
+      id: 'probe-conflicted',
+      specificationStatus: 'conflicting_sources' as const,
+      sourceConflicts: [
+        { field: 'vesselCapacityMl' as const, candidatesMl: [473, 450], note: 'probe' },
+      ],
+      active: false,
+    };
+    expect(buildFor(probe).defaultBatch).toEqual({ kind: 'none' });
+    // And the real record now saves the owner-pinned derivation.
+    expect(buildFor(NINJA_CREAMI_NC302EU).defaultBatch).toMatchObject({ kind: 'grams', grams: 450 });
   });
 
   it('a custom machine embeds the user_declared profile and the ESTIMATED derived grams', () => {

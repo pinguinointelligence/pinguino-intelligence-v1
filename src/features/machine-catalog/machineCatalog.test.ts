@@ -98,24 +98,26 @@ interface ExpectedRow {
 }
 
 const EXPECTED_ROWS: readonly ExpectedRow[] = [
-  // Owner correction (2026-07-17): a conflicted usable-capacity figure never
-  // produces a recommended batch, so both conflicted Ninja records stay
-  // conflicting_sources + INACTIVE pending the owner's per-model resolution.
+  // OWNER FINAL DECISION (2026-07-17, „KOŃCOWA WIĄŻĄCA DECYZJA — POJEMNOŚCI"):
+  // the capacity investigation is CLOSED. Manufacturer figures are pinned
+  // (standard 473, Deluxe 706) and both records are ACTIVE + provisional; the
+  // historical retail-page disputes stay in doc comments only — never
+  // user-facing, never blocking.
   {
     profile: NINJA_CREAMI_NC302EU,
     market: 'EU/ES',
     technology: 'respin',
     mode: 'ninja_gelato',
-    status: 'conflicting_sources',
-    active: false,
+    status: 'provisional',
+    active: true,
   },
   {
     profile: NINJA_CREAMI_DELUXE_NC502EU,
     market: 'EU/ES',
     technology: 'respin',
     mode: 'ninja_gelato',
-    status: 'conflicting_sources',
-    active: false,
+    status: 'provisional',
+    active: true,
   },
   {
     profile: NINJA_CREAMI_SCOOP_SWIRL_NC7,
@@ -224,46 +226,30 @@ describe('Annex A seed catalog — model → technology → mode → status', ()
 });
 
 describe('Annex A capacities — exact numbers, per §9.1 field, never guessed', () => {
-  it('Ninja NC302EU: 473 ml × 2 (product page) with the 450 ml accessories conflict RETAINED', () => {
+  // OWNER FINAL DECISION (2026-07-17): the 473-vs-450 / 706-vs-680 disputes are
+  // CLOSED — figures pinned to the product pages, no blocking sourceConflicts
+  // entries, disputes never user-facing. The former conflict-evidence tests are
+  // replaced by these activation pins (owner tests 1–2).
+  it('Ninja NC302EU: owner-pinned 473 ml × 2 → ACTIVE provisional, no blocking conflict', () => {
     const c = NINJA_CREAMI_NC302EU.capacity;
     expect(c.vesselCapacityMl).toBe(473);
     expect(c.vesselCount).toBe(2);
     expect(c.maxFillDefinedByManufacturer).toBe(true); // Annex A: "Używaj MAX FILL"
-    expect(NINJA_CREAMI_NC302EU.sourceConflicts).toEqual([
-      expect.objectContaining({ field: 'vesselCapacityMl', candidatesMl: [473, 450] }),
-    ]);
+    expect(NINJA_CREAMI_NC302EU.sourceConflicts ?? []).toEqual([]);
+    expect(vesselFigureConflicted(NINJA_CREAMI_NC302EU)).toBe(false);
+    expect(NINJA_CREAMI_NC302EU.specificationStatus).toBe('provisional');
+    expect(NINJA_CREAMI_NC302EU.active).toBe(true);
     expect(NINJA_CREAMI_NC302EU.preFreezeTarget).toBe('mixture');
   });
 
-  it('NC302EU conflict note quotes the 2026-07-17 official-page evidence (both sides + verdict)', () => {
-    const conflict = NINJA_CREAMI_NC302EU.sourceConflicts?.[0];
-    expect(conflict).toBeDefined();
-    const note = conflict?.note ?? '';
-    // Product-page quote (473) and accessories quote (450), verbatim fragments.
-    expect(note).toContain('de 473 ml cada una');
-    expect(note).toContain('Capacidad: 450 ml por tarrina');
-    // The honest verdict: the pages do NOT distinguish the concepts, and the
-    // two candidate rule derivations await the owner's resolution.
-    expect(note).toContain('nie rozróżnia');
-    expect(note).toContain('2026-07-17');
-    expect(note).toContain('sharkninja.es');
-    expect(note).toContain('473→450 g');
-    expect(note).toContain('450→430 g');
-  });
-
-  it('Ninja Deluxe NC502EU: 706 ml × 2 vs 680 ml accessories — conflict RETAINED on the field', () => {
+  it('Ninja Deluxe NC502EU: owner-pinned 706 ml × 2 → ACTIVE provisional, no blocking conflict', () => {
     const c = NINJA_CREAMI_DELUXE_NC502EU.capacity;
     expect(c.vesselCapacityMl).toBe(706);
     expect(c.vesselCount).toBe(2);
-    expect(NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts).toEqual([
-      expect.objectContaining({ field: 'vesselCapacityMl', candidatesMl: [706, 680] }),
-    ]);
-    const note = NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts?.[0]?.note ?? '';
-    expect(note).toContain('de 706 ml cada una');
-    expect(note).toContain('Capacidad: 680 ml por tarrina');
-    expect(note).toContain('2026-07-17');
-    expect(note).toContain('706→670 g');
-    expect(note).toContain('680→650 g');
+    expect(NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts ?? []).toEqual([]);
+    expect(vesselFigureConflicted(NINJA_CREAMI_DELUXE_NC502EU)).toBe(false);
+    expect(NINJA_CREAMI_DELUXE_NC502EU.specificationStatus).toBe('provisional');
+    expect(NINJA_CREAMI_DELUXE_NC502EU.active).toBe(true);
   });
 
   it('Ninja Scoop & Swirl NC7: 480 ml (unconflicted), pre-freeze the mixture', () => {
@@ -382,34 +368,53 @@ describe('region-aware lookup (§9.3 — records are per model AND market)', () 
 /* Activation — conflicting_sources BLOCKS active (§9.3)               */
 /* ------------------------------------------------------------------ */
 
-describe('activation (§9.3)', () => {
-  it('conflicting_sources records are inactive in the data AND not activatable', () => {
+describe('activation (§9.3 rule intact; owner final decision activates the Ninjas)', () => {
+  /** A synthetic conflicted profile — the §9.3 RULE outlives the closed dispute. */
+  const conflicted = (): HomeMachineProfile => ({
+    ...NINJA_CREAMI_NC302EU,
+    id: 'probe-conflicted',
+    specificationStatus: 'conflicting_sources',
+    sourceConflicts: [
+      { field: 'vesselCapacityMl', candidatesMl: [473, 450], note: 'probe' },
+    ],
+    active: false,
+  });
+
+  it('a conflicting_sources record is still never activatable (rule preserved)', () => {
+    expect(isMachineActivatable(conflicted())).toBe(false);
     for (const profile of MACHINE_CATALOG) {
       if (profile.specificationStatus === 'conflicting_sources') {
         expect(profile.active).toBe(false);
         expect(isMachineActivatable(profile)).toBe(false);
       }
     }
-    expect(isMachineActivatable(NINJA_CREAMI_NC302EU)).toBe(false);
-    expect(isMachineActivatable(NINJA_CREAMI_DELUXE_NC502EU)).toBe(false);
+  });
+
+  it('OWNER TEST — NC302EU and NC502EU are activatable and ACTIVE (final decision)', () => {
+    expect(isMachineActivatable(NINJA_CREAMI_NC302EU)).toBe(true);
+    expect(isMachineActivatable(NINJA_CREAMI_DELUXE_NC502EU)).toBe(true);
+    expect(NINJA_CREAMI_NC302EU.active).toBe(true);
+    expect(NINJA_CREAMI_DELUXE_NC502EU.active).toBe(true);
   });
 
   it('a conflicting record force-flagged active still fails validation and the active list', () => {
-    const tampered: HomeMachineProfile = { ...NINJA_CREAMI_NC302EU, active: true };
+    const tampered: HomeMachineProfile = { ...conflicted(), active: true };
     expect(validateHomeMachineProfile(tampered)).not.toEqual([]);
     expect(listActiveHomeMachines([tampered])).toEqual([]);
   });
 
-  it('downgrading a conflicted record status without resolving the conflict is invalid', () => {
+  it('a record with an UNRESOLVED conflict entry cannot masquerade as provisional', () => {
     const mislabelled: HomeMachineProfile = {
-      ...NINJA_CREAMI_NC302EU,
+      ...conflicted(),
       specificationStatus: 'provisional',
     };
     expect(validateHomeMachineProfile(mislabelled)).not.toEqual([]);
   });
 
-  it('the active Home list is exactly the seven resolvable Annex A machines', () => {
+  it('the active Home list is exactly the nine machines of the final decision', () => {
     expect(listActiveHomeMachines(MACHINE_CATALOG).map((p) => p.id)).toEqual([
+      'ninja-creami-nc302eu-eu-es',
+      'ninja-creami-deluxe-nc502eu-eu-es',
       'ninja-creami-scoop-swirl-nc7-eu-es',
       'moulinex-freezi-mj803af0-es',
       'magimix-gelato-expert-eu',
@@ -508,14 +513,46 @@ describe('owner Home batch rule — 0.95 factor over CONFIRMED usable capacity',
     expect(recommendMachineBatch(CUISINART_ICE30BCE)).toBeNull();
   });
 
-  it('a CONFLICTED tub figure never produces a number (NC302EU, NC502EU)', () => {
-    expect(vesselFigureConflicted(NINJA_CREAMI_NC302EU)).toBe(true);
-    expect(recommendMachineBatch(NINJA_CREAMI_NC302EU)).toBeNull();
-    expect(recommendMachineBatch(NINJA_CREAMI_DELUXE_NC502EU)).toBeNull();
-    expect(deriveMachineSetup(NINJA_CREAMI_NC302EU).batchSuggestion).toEqual({
+  it('a CONFLICTED tub figure never produces a number (rule preserved on a probe)', () => {
+    // The owner's final decision CLOSED the real Ninja disputes, but the rule
+    // itself stands — probed with a synthetic conflicted record.
+    const probe: HomeMachineProfile = {
+      ...NINJA_CREAMI_NC302EU,
+      id: 'probe-conflicted-tub',
+      specificationStatus: 'conflicting_sources',
+      sourceConflicts: [{ field: 'vesselCapacityMl', candidatesMl: [473, 450], note: 'probe' }],
+      active: false,
+    };
+    expect(vesselFigureConflicted(probe)).toBe(true);
+    expect(recommendMachineBatch(probe)).toBeNull();
+    expect(deriveMachineSetup(probe).batchSuggestion).toEqual({
       kind: 'none',
       reason: 'capacity_conflict_unresolved',
     });
+  });
+
+  it('OWNER TESTS 1–2 (final decision) — NC302EU proposes 450 g, NC502EU proposes 670 g', () => {
+    expect(recommendMachineBatch(NINJA_CREAMI_NC302EU)).toEqual({
+      grams: 450,
+      source: 'respin_vessel_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: false,
+    });
+    expect(recommendMachineBatch(NINJA_CREAMI_DELUXE_NC502EU)).toEqual({
+      grams: 670,
+      source: 'respin_vessel_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: false,
+    });
+    expect(deriveMachineSetup(NINJA_CREAMI_NC302EU).recommendedBatchGrams).toBe(450);
+    expect(deriveMachineSetup(NINJA_CREAMI_DELUXE_NC502EU).recommendedBatchGrams).toBe(670);
+  });
+
+  it('OWNER TESTS 3–4 (final decision) — NC7 proposes 460 g, KitchenAid proposes 1330 g', () => {
+    expect(deriveMachineSetup(NINJA_CREAMI_SCOOP_SWIRL_NC7).recommendedBatchGrams).toBe(460);
+    expect(deriveMachineSetup(KITCHENAID_5KSMICM).recommendedBatchGrams).toBe(1330);
   });
 
   it('official max liquid mix in ml (KitchenAid 1.4 l) → rule 2: 1400 × 0.95 = 1330 g', () => {

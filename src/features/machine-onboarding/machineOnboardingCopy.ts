@@ -112,6 +112,26 @@ export const machineOnboardingCopy = {
     /** The machine's capacity figure is under an open source conflict (§9.3). */
     conflictNote:
       'Pojemność tej maszyny jest w trakcie weryfikacji źródeł — ilość ustalisz samodzielnie.',
+
+    /* OWNER FINAL DECISION (2026-07-17) — the recommendation is a SOFT starting
+       proposal: the field is always editable, never a hard limit, never a block. */
+    /** Subtle marker once the user diverges from the recommendation. */
+    customInUse: 'Używasz własnej ilości',
+    /** Restore action (full form, shown with the custom-in-use marker). */
+    restoreRecommended: 'Przywróć zalecany wsad PINGÜINO',
+    /** Warning shown when the amount exceeds the recommendation — never a block. */
+    aboveWarning: 'Ta ilość przekracza zalecany wsad PINGÜINO dla jednego pojemnika.',
+    /** The three non-blocking actions under the warning (owner verbatim). */
+    splitAction: 'Podziel na pojemniki',
+    keepMine: 'Pozostaw moją ilość',
+    restoreShort: 'Przywróć zalecany wsad',
+    /** Machine change with an existing recipe: propose, never auto-apply. */
+    fitToNewMachine: 'Dopasuj ilość do nowej maszyny',
+    /** Header of the new-machine batch proposal (shown after a machine change). */
+    newRecommendedLabel: 'Zalecany wsad nowej maszyny',
+    /** Preview confirmation actions — applying is always the user's call. */
+    applyPreview: 'Zastosuj',
+    cancelPreview: 'Anuluj',
   },
 
   /* --------------------------------------------------- container split -------- */

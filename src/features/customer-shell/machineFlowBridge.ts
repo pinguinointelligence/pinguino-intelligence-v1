@@ -1,23 +1,24 @@
 /**
- * Customer-shell ↔ machine-preference bridge (Slice B INTEGRATION §2).
+ * Customer-shell ↔ machine-preference bridge (Slice B INTEGRATION §2 +
+ * OWNER FINAL DECISION 2026-07-17).
  *
  * Pure: applies a saved Home machine preference to the conversational flow.
  * The saved machine ANSWERS the six-mode question — `resolvedVisibleMode` is a
  * strict subset of the EXISTING `ServingModeId` union, so it feeds
  * `selectServingMode` directly (no new mode system). Its DERIVED
- * „Zalecany wsad PINGÜINO" pre-answers the amount. ORDER MATTERS:
- * `selectServingMode` clears a hand-set batch when a Ninja mode is involved,
- * so the batch is set AFTER the mode (test-pinned).
+ * „Zalecany wsad PINGÜINO" pre-answers the amount as a SOFT starting proposal.
+ * ORDER MATTERS: `selectServingMode` clears a hand-set batch when a Ninja mode
+ * is involved, so the grams are set AFTER the mode (test-pinned) — this is
+ * also how Machine Profile data takes PRECEDENCE over the mode-level 700/480
+ * presets in `servingMode.ts` (owner final decision): the explicit grams win
+ * in `resolveBatch` (source 'user'), while a record with NO derived grams
+ * falls back to the editable mode preset — never a block, never a lock.
  *
- * Batch honesty (owner-visible tension, INTEGRATION §2): a machine record
- * whose `defaultBatch` is 'none' resolved to a Ninja mode must ASK the amount
- * — the mode-level 700/480 presets are six-mode-path behavior the owner batch
- * rule deliberately does not endorse for an unknown container. The shell uses
- * `machineBatchMustAsk` to keep the batch step a QUESTION in that case
- * (presentation-level; `customerFlow.ts` production behavior is untouched).
+ * Owner test 11 (no silent overwrites): `applyMachineRecordIfUnanswered` only
+ * touches a flow whose mode question is still OPEN — a flow with a chosen
+ * mode (and any hand-entered grams) passes through IDENTICALLY.
  */
 import {
-  isNinjaMode,
   selectServingMode,
   setBatchGrams,
   type CustomerFlowState,
@@ -37,17 +38,13 @@ export function applyMachineRecordToFlow(
 }
 
 /**
- * True when the machine-path batch step must be rendered as a QUESTION:
- * the saved machine carries no derived grams, the resolved mode is a Ninja
- * mode (whose mode-level preset the owner rule does not endorse for an
- * unknown container), and the customer has not answered yet.
+ * Apply the saved machine ONLY when the mode question is still unanswered —
+ * an in-progress flow (mode chosen, grams possibly hand-set) is returned
+ * UNCHANGED (same reference), never silently rewritten (owner final decision).
  */
-export function machineBatchMustAsk(
-  record: MachinePreferenceRecord | null,
+export function applyMachineRecordIfUnanswered(
   state: CustomerFlowState,
-): boolean {
-  if (record === null) return false;
-  if (record.defaultBatch.kind !== 'none') return false;
-  if (!isNinjaMode(state.mode)) return false;
-  return state.explicitBatchGrams === null;
+  record: MachinePreferenceRecord,
+): CustomerFlowState {
+  return state.mode === null ? applyMachineRecordToFlow(state, record) : state;
 }

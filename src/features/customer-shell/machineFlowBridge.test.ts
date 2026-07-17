@@ -1,22 +1,24 @@
 /**
- * Machine-preference → customer-flow bridge (Slice B INTEGRATION §2).
+ * Machine-preference → customer-flow bridge (Slice B INTEGRATION §2 +
+ * OWNER FINAL DECISION 2026-07-17).
  *
  * Pins with the REAL catalog machinery (no hand-invented records):
  *  1. a saved NC7 Scoop & Swirl answers the six-mode question with
  *     'ninja_swirl' and pre-answers the amount with the DERIVED 460 g —
- *     overriding the mode-level 480 g preset (owner tension, documented);
+ *     Machine Profile data takes PRECEDENCE over the mode-level 480 g preset
+ *     (owner final decision);
  *  2. order: the derived grams are set AFTER the mode (selectServingMode
- *     clears a hand-set batch on Ninja modes — a pre-existing 999 g must not
- *     survive as the final answer);
- *  3. a record with defaultBatch 'none' applies the mode ONLY — and
- *     `machineBatchMustAsk` demands the batch QUESTION for Ninja modes until
- *     the customer answers (never the mode preset).
+ *     clears a hand-set batch on Ninja modes);
+ *  3. a record with defaultBatch 'none' applies the mode ONLY — the amount
+ *     falls back to the editable mode preset (soft default, never a block);
+ *  4. owner test 11: an in-progress flow (mode already chosen) is NEVER
+ *     silently rewritten by `applyMachineRecordIfUnanswered`.
  */
 import { describe, expect, it } from 'vitest';
 import { createCustomerFlow, resolveBatch, setBatchGrams } from '@/features/customer-flow';
 import { MACHINE_CATALOG_VERSION, NINJA_CREAMI_SCOOP_SWIRL_NC7 } from '@/features/machine-catalog';
 import { buildMachinePreferenceRecord, type MachinePreferenceRecord } from '@/features/machine-onboarding';
-import { applyMachineRecordToFlow, machineBatchMustAsk } from './machineFlowBridge';
+import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
 
 const nc7Record = (): MachinePreferenceRecord => {
   const record = buildMachinePreferenceRecord({
@@ -30,7 +32,7 @@ const nc7Record = (): MachinePreferenceRecord => {
 };
 
 describe('applyMachineRecordToFlow — saved machine answers mode + amount', () => {
-  it('applies NC7: ninja_swirl mode + the DERIVED 460 g (not the 480 g mode preset)', () => {
+  it('applies NC7: ninja_swirl mode + the DERIVED 460 g (precedence over the 480 g preset)', () => {
     const record = nc7Record();
     expect(record.defaultBatch).toMatchObject({ kind: 'grams', grams: 460 });
 
@@ -50,36 +52,33 @@ describe('applyMachineRecordToFlow — saved machine answers mode + amount', () 
     expect(flow.explicitBatchGrams).toBe(460);
   });
 
-  it("a 'none' record applies the mode only (no invented grams)", () => {
+  it("a 'none' record applies the mode only — the amount falls back to the EDITABLE preset", () => {
     const record: MachinePreferenceRecord = { ...nc7Record(), defaultBatch: { kind: 'none' } };
     const flow = applyMachineRecordToFlow(createCustomerFlow({ text: 'wanilia' }), record);
     expect(flow.mode).toBe('ninja_swirl');
     expect(flow.explicitBatchGrams).toBeNull();
+    // Soft default (owner final decision: no blocks): the mode preset answers
+    // until the user edits — source 'mode_ninja', not an invented machine value.
+    const batch = resolveBatch(flow);
+    expect(batch.satisfied).toBe(true);
+    expect(batch.source).toBe('mode_ninja');
   });
 });
 
-describe('machineBatchMustAsk — the Ninja mode preset is never a machine answer', () => {
-  const noneRecord = (): MachinePreferenceRecord => ({
-    ...nc7Record(),
-    defaultBatch: { kind: 'none' },
+describe('applyMachineRecordIfUnanswered — owner test 11 (no silent overwrites)', () => {
+  it('applies to a flow whose mode question is still open', () => {
+    const flow = applyMachineRecordIfUnanswered(createCustomerFlow({ text: 'wanilia' }), nc7Record());
+    expect(flow.mode).toBe('ninja_swirl');
+    expect(flow.explicitBatchGrams).toBe(460);
   });
 
-  it('demands the batch QUESTION for a none-record on a Ninja mode', () => {
-    const flow = applyMachineRecordToFlow(createCustomerFlow({ text: 'wanilia' }), noneRecord());
-    expect(machineBatchMustAsk(noneRecord(), flow)).toBe(true);
-  });
-
-  it('stops asking once the customer answers explicitly', () => {
-    const flow = setBatchGrams(
-      applyMachineRecordToFlow(createCustomerFlow({ text: 'wanilia' }), noneRecord()),
-      420,
+  it('returns an in-progress flow UNCHANGED (same reference), keeping hand-set grams', () => {
+    const inProgress = setBatchGrams(
+      applyMachineRecordToFlow(createCustomerFlow({ text: 'wanilia' }), nc7Record()),
+      520,
     );
-    expect(machineBatchMustAsk(noneRecord(), flow)).toBe(false);
-  });
-
-  it('never asks for derived-grams records or without a record', () => {
-    const flow = applyMachineRecordToFlow(createCustomerFlow({ text: 'wanilia' }), nc7Record());
-    expect(machineBatchMustAsk(nc7Record(), flow)).toBe(false);
-    expect(machineBatchMustAsk(null, flow)).toBe(false);
+    const after = applyMachineRecordIfUnanswered(inProgress, nc7Record());
+    expect(after).toBe(inProgress);
+    expect(after.explicitBatchGrams).toBe(520);
   });
 });

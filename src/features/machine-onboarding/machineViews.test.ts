@@ -69,17 +69,16 @@ describe('§8.2 tile views — honesty', () => {
     expect(views[views.length - 1]?.selectable).toBe(true);
   });
 
-  it('conflicted Ninja families stay VISIBLE but DISABLED with the honest note', () => {
+  it('OWNER FINAL DECISION — both Ninja families are SELECTABLE (no note, no block)', () => {
     for (const label of ['Ninja CREAMi', 'Ninja CREAMi Deluxe']) {
       const view = views.find((v) => v.label === label);
-      expect(view?.selectable, label).toBe(false);
-      expect(view?.note, label).toBe('w trakcie weryfikacji pojemności');
-      expect(view?.selectableProfiles).toEqual([]);
+      expect(view?.selectable, label).toBe(true);
+      expect(view?.note, label).toBeNull();
+      expect(view?.selectableProfiles.length, label).toBe(1);
     }
-    // The disabled state comes from the UNRESOLVED ml conflicts (never from
-    // an arbitrary number pick).
-    expect(NINJA_CREAMI_NC302EU.sourceConflicts?.length).toBeGreaterThan(0);
-    expect(NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts?.length).toBeGreaterThan(0);
+    // The closed retail-page disputes carry NO blocking conflict entries.
+    expect(NINJA_CREAMI_NC302EU.sourceConflicts ?? []).toEqual([]);
+    expect(NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts ?? []).toEqual([]);
   });
 
   it('Sage stays visible but DISABLED with the honest verification note', () => {
@@ -88,9 +87,11 @@ describe('§8.2 tile views — honesty', () => {
     expect(sage?.note).toBe(copy.tiles.unavailableNote);
   });
 
-  it('the offered tiles are exactly the seven activatable machines', () => {
+  it('the offered tiles are exactly the activatable machines of the final decision', () => {
     const selectable = views.filter((v) => v.selectable && v.kind === 'catalog_family');
     expect(selectable.map((v) => v.label)).toEqual([
+      'Ninja CREAMi',
+      'Ninja CREAMi Deluxe',
       'Ninja CREAMi Scoop & Swirl',
       'Moulinex Freezi',
       'Magimix Gelato Expert',
@@ -138,10 +139,10 @@ describe('§8.2 search', () => {
     const sage = searchMachineTiles(views, 'bci600');
     expect(sage.map((v) => v.label)).toContain('Sage / Breville Smart Scoop');
     expect(sage.find((v) => v.label.startsWith('Sage'))?.selectable).toBe(false);
+    expect(sage.find((v) => v.label.startsWith('Sage'))?.note).toBe(copy.tiles.unavailableNote);
+    // Owner final decision: the Deluxe is selectable — findable with NO note.
     const deluxe = searchMachineTiles(views, 'nc502');
-    expect(deluxe.find((v) => v.label === 'Ninja CREAMi Deluxe')?.note).toBe(
-      copy.tiles.unavailableNote,
-    );
+    expect(deluxe.find((v) => v.label === 'Ninja CREAMi Deluxe')?.note).toBeNull();
   });
 });
 
@@ -204,10 +205,22 @@ describe('batch presentation — owner framing, honest none', () => {
     });
   });
 
-  it('a conflicted machine presents the honest verification note (no invented number)', () => {
-    const p = presentBatchSuggestion(deriveMachineSetup(NINJA_CREAMI_NC302EU));
+  it('a conflicted machine presents the honest verification note (probe; real records derive)', () => {
+    const probe = {
+      ...NINJA_CREAMI_NC302EU,
+      id: 'probe-conflicted-presentation',
+      specificationStatus: 'conflicting_sources' as const,
+      sourceConflicts: [
+        { field: 'vesselCapacityMl' as const, candidatesMl: [473, 450], note: 'probe' },
+      ],
+      active: false,
+    };
+    const p = presentBatchSuggestion(deriveMachineSetup(probe));
     expect(p).toEqual({ kind: 'user_choice', text: copy.batch.conflictNote });
     expect(JSON.stringify(p)).not.toContain('450');
+    // Owner final decision: the REAL record presents the pinned 450 g proposal.
+    const real = presentBatchSuggestion(deriveMachineSetup(NINJA_CREAMI_NC302EU));
+    expect(real).toMatchObject({ kind: 'pinguino_grams', label: copy.batch.recommendedLabel });
   });
 
   it('a bowl-only machine presents the honest user-choice note', () => {
@@ -294,13 +307,12 @@ describe('§7.3 context view — catalog capacity only, grams carried not displa
     expect(view?.recommendedBatchGrams).toBe(1330); // carried for batch surfaces only
   });
 
-  it('a saved record of a (now) conflicted machine shows the vessel but carries NO grams', () => {
-    // A user could have saved this machine earlier; the view stays honest.
+  it('a saved Deluxe record shows the vessel and the owner-pinned 670 g (final decision)', () => {
     const view = buildMachineContextView(recordFor(NINJA_CREAMI_DELUXE_NC502EU.id));
     expect(view).toEqual({
       name: 'Ninja CREAMi Deluxe',
       vesselMl: 706,
-      recommendedBatchGrams: null,
+      recommendedBatchGrams: 670,
     });
   });
 
