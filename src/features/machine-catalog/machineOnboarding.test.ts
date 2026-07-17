@@ -5,8 +5,8 @@
  * (user_declared, ml-internal storage, conservative FLAGGED fallback).
  */
 import { describe, expect, it } from 'vitest';
-import { approvedMassForMode } from '@/features/customer-flow';
 import { MACHINE_CATALOG } from './machineCatalogData';
+import { HOME_BATCH_RULE_VERSION } from './homeBatchRule';
 import {
   MACHINE_BEHAVIOR_ANSWERS,
   MACHINE_ONBOARDING_TILES,
@@ -157,12 +157,16 @@ describe('§8.4 custom machine — ml-internal, user_declared, conservative fall
     expect(result.capacityFallback).toBeNull();
     expect(validateHomeMachineProfile(profile)).toEqual([]);
     expect(isMachineActivatable(profile)).toBe(true);
-    // Manufacturer max mix drives the ml suggestion — explicitly marked.
+    // The user-reported manual max mix (900 ml) drives the recommendation via
+    // the owner rule (× 0.95 → 860 g), marked ESTIMATED for user-declared data.
     expect(deriveMachineSetup(profile).batchSuggestion).toEqual({
-      kind: 'capacity_ml',
-      ml: 900,
-      unit: 'ml_not_grams',
-      basis: 'maximum_liquid_mix',
+      kind: 'recommended_grams',
+      grams: 860,
+      source: 'maximum_liquid_mix_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: true,
+      servingModeId: 'fresh',
     });
   });
 
@@ -181,14 +185,15 @@ describe('§8.4 custom machine — ml-internal, user_declared, conservative fall
     expect(result.profile.capacity.maxFillDefinedByManufacturer).toBe(false); // unknown ≠ documented
     expect(result.profile.requiresPreFreeze).toBe(true);
     expect(result.profile.preFreezeTarget).toBe('bowl');
-    // Honest: no invented batch — the user decides.
+    // Honest: a BOWL volume is never auto-treated as working capacity (owner
+    // rule 3) — no invented batch, the user decides.
     expect(deriveMachineSetup(result.profile).batchSuggestion).toEqual({
       kind: 'none',
-      reason: 'no_confirmed_mix_capacity',
+      reason: 'no_confirmed_usable_capacity',
     });
   });
 
-  it('a custom re-spin machine reuses the approved Ninja MASS preset (no ml→g from the vessel)', () => {
+  it('a custom re-spin machine derives an ESTIMATED batch from its declared tub (rule 4)', () => {
     const result = buildCustomMachineProfile({
       behaviorAnswerId: 'freeze_mixture_first',
       market: 'ES',
@@ -197,13 +202,17 @@ describe('§8.4 custom machine — ml-internal, user_declared, conservative fall
     if (result.outcome !== 'profile') throw new Error('expected a profile');
     expect(result.profile.technology).toBe('respin');
     expect(result.profile.preFreezeTarget).toBe('mixture');
-    const suggestion = deriveMachineSetup(result.profile).batchSuggestion;
-    // 700 g is the owner-approved ninja_gelato preset — not derivable from 473 ml.
-    expect(suggestion).toEqual({
-      kind: 'approved_mass_g',
-      massG: approvedMassForMode('ninja_gelato'),
+    // Owner correction (2026-07-17): the device-type rule applies to the
+    // user-declared tub figure (473 × 0.95 → 450 g) and is marked ESTIMATED —
+    // never presented as a manufacturer figure; mode presets never borrowed.
+    expect(deriveMachineSetup(result.profile).batchSuggestion).toEqual({
+      kind: 'recommended_grams',
+      grams: 450,
+      source: 'respin_vessel_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: true,
       servingModeId: 'ninja_gelato',
-      source: 'serving_mode_preset',
     });
   });
 

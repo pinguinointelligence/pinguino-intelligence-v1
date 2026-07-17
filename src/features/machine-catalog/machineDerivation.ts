@@ -1,27 +1,26 @@
 /**
  * PINGÜINO Machine Catalog — pure derivation helpers.
  *
- * machine → { resolvedVisibleMode, batch suggestion, working capacity,
- * pre-freeze facts } plus region-aware lookup and the §9.3 activation rule
- * (conflicting sources BLOCK activation).
+ * machine → { resolvedVisibleMode, recommended Home batch, working capacity,
+ * pre-freeze facts } plus region-aware lookup, the §9.3 activation rule and
+ * the owner container-split planner.
  *
- * Batch rules (test-pinned):
- *  - Ninja modes REUSE the owner-approved serving-mode MASS presets from
- *    `@/features/customer-flow` (`approvedMassForMode`) — grams come ONLY
- *    from those approved presets, NEVER from an ml→g conversion;
- *  - non-Ninja machines get a capacity-based suggestion ONLY as millilitres,
- *    carrying the explicit 'ml_not_grams' marker, and only from quantities
- *    that describe POURABLE MIX (maximum liquid mix / working capacity).
- *    Vessel volume and finished-product volume are never suggested as a
- *    batch: brim volume overfills and finished volume includes overrun;
- *  - no confirmed mix quantity → an honest 'none' (the user decides).
- *
- * Integration note: a per-device owner-approved recipe mass (see
- * `devicePresets.hasVerifiedRecipeMass` in customer-flow) takes precedence
- * over the mode-level preset at integration time; this layer only exposes the
- * mode-level approved mass and never invents a per-device number.
+ * Batch rules (test-pinned; OWNER CORRECTION 2026-07-17 — universal Home
+ * safety margin, see `homeBatchRule.ts`):
+ *  - the recommended batch is DERIVED (never stored per model) by the
+ *    configurable, versioned rule: manufacturer max-mix GRAMS used directly;
+ *    official max-fill / working-capacity ml × 0.95; unconflicted re-spin tub
+ *    figures × 0.95; physical bowl volumes NEVER auto-used; conflicted
+ *    figures NEVER produce a number; user-declared capacity → ESTIMATED;
+ *  - the rule is the ONLY permitted ml→g arithmetic in the product — no
+ *    other density guess exists anywhere;
+ *  - mode-level serving presets are never borrowed here: a mode preset says
+ *    nothing about a specific machine's container;
+ *  - no rule fires → an honest 'none' (the user decides);
+ *  - a request ABOVE `recommendedBatchGrams` never overfills one container:
+ *    `planContainerSplit` spreads it EVENLY across ceil(total/recommended)
+ *    containers (owner examples: 900→2×450; 1000→3×~333.3; 1350→3×450).
  */
-import { approvedMassForMode } from '@/features/customer-flow';
 import type {
   HomeMachineProfile,
   HomeVisibleModeId,
@@ -29,34 +28,42 @@ import type {
   PreFreezeTarget,
 } from './types';
 import { isHomeSupportedTechnology, visibleModeForTechnology } from './technologyMode';
+import {
+  recommendMachineBatch,
+  vesselFigureConflicted,
+  type RecommendedBatch,
+} from './homeBatchRule';
 
 /* ------------------------------------------------------------------ */
 /* Batch suggestion                                                    */
 /* ------------------------------------------------------------------ */
 
-/** Explicit unit marker: the value is millilitres of MIX, never grams. */
-export type MlNotGramsMarker = 'ml_not_grams';
-
 export type HomeBatchSuggestion =
   | {
-      /** Owner-approved serving-mode MASS preset (grams) — Ninja modes only. */
-      readonly kind: 'approved_mass_g';
-      readonly massG: number;
+      /**
+       * The DERIVED „Zalecany wsad PINGÜINO” (owner correction 2026-07-17):
+       * grams from the versioned Home batch rule, with full provenance
+       * (source-of-truth field, factor applied or null, rule version,
+       * estimated flag for user-declared capacity). Never presented as the
+       * manufacturer's official figure.
+       */
+      readonly kind: 'recommended_grams';
+      readonly grams: number;
+      readonly source: RecommendedBatch['source'];
+      readonly safetyFactorApplied: number | null;
+      readonly ruleVersion: string;
+      readonly estimated: boolean;
       readonly servingModeId: HomeVisibleModeId;
-      readonly source: 'serving_mode_preset';
-    }
-  | {
-      /** Capacity-based suggestion in MILLILITRES — explicitly not grams. */
-      readonly kind: 'capacity_ml';
-      readonly ml: number;
-      readonly unit: MlNotGramsMarker;
-      /** Which honest §9.1 quantity the ml comes from. */
-      readonly basis: 'maximum_liquid_mix' | 'working_capacity';
     }
   | {
       /** No trustworthy quantity — the user sets the batch (never guessed). */
       readonly kind: 'none';
-      readonly reason: 'no_confirmed_mix_capacity' | 'machine_not_home_supported';
+      readonly reason:
+        | 'machine_not_home_supported'
+        /** The usable-capacity figure is under an OPEN source conflict (§9.3). */
+        | 'capacity_conflict_unresolved'
+        /** Nothing rule-eligible (bowl-only, program/finished volumes, or unstated). */
+        | 'no_confirmed_usable_capacity';
     };
 
 /* ------------------------------------------------------------------ */
@@ -71,6 +78,13 @@ export interface MachineDerivation {
   /** The EXISTING visible mode (from technology); null when unsupported. */
   readonly resolvedVisibleMode: HomeVisibleModeId | null;
   readonly batchSuggestion: HomeBatchSuggestion;
+  /**
+   * The DERIVED „Zalecany wsad PINGÜINO” in grams, surfaced flat (owner
+   * correction 2026-07-17). Doubles as the per-container limit for
+   * `planContainerSplit`. Null = no source-of-truth rule fired — the batch is
+   * honestly user-set, never invented.
+   */
+  readonly recommendedBatchGrams: number | null;
   /** Recommended working capacity in ml, when the sources state one. */
   readonly workingCapacityMl: number | null;
   readonly requiresPreFreeze: boolean;
@@ -87,7 +101,9 @@ export interface MachineDerivation {
  */
 export function deriveMachineSetup(profile: HomeMachineProfile): MachineDerivation {
   const mode = visibleModeForTechnology(profile.technology);
+  const recommended = recommendMachineBatch(profile);
   const base = {
+    recommendedBatchGrams: recommended?.grams ?? null,
     workingCapacityMl: profile.capacity.workingCapacityMl,
     requiresPreFreeze: profile.requiresPreFreeze,
     preFreezeTarget: profile.preFreezeTarget,
@@ -97,50 +113,92 @@ export function deriveMachineSetup(profile: HomeMachineProfile): MachineDerivati
   if (mode === null) {
     return {
       ...base,
+      recommendedBatchGrams: null,
       homeSupport: 'unsupported_for_home',
       resolvedVisibleMode: null,
       batchSuggestion: { kind: 'none', reason: 'machine_not_home_supported' },
+    };
+  }
+  if (recommended === null) {
+    return {
+      ...base,
+      homeSupport: 'supported',
+      resolvedVisibleMode: mode,
+      batchSuggestion: {
+        kind: 'none',
+        reason: vesselFigureConflicted(profile)
+          ? 'capacity_conflict_unresolved'
+          : 'no_confirmed_usable_capacity',
+      },
     };
   }
   return {
     ...base,
     homeSupport: 'supported',
     resolvedVisibleMode: mode,
-    batchSuggestion: batchSuggestionForMode(mode, profile),
+    batchSuggestion: {
+      kind: 'recommended_grams',
+      grams: recommended.grams,
+      source: recommended.source,
+      safetyFactorApplied: recommended.safetyFactorApplied,
+      ruleVersion: recommended.ruleVersion,
+      estimated: recommended.estimated,
+      servingModeId: mode,
+    },
   };
 }
 
-function batchSuggestionForMode(
-  mode: HomeVisibleModeId,
-  profile: HomeMachineProfile,
-): HomeBatchSuggestion {
-  if (mode === 'ninja_gelato' || mode === 'ninja_swirl') {
-    const massG = approvedMassForMode(mode);
-    // The two Ninja modes always carry an approved mass; stay honest if the
-    // owner-approved matrix ever changes.
-    if (massG !== null) {
-      return { kind: 'approved_mass_g', massG, servingModeId: mode, source: 'serving_mode_preset' };
-    }
-    return { kind: 'none', reason: 'no_confirmed_mix_capacity' };
-  }
-  const { maximumLiquidMixMl, workingCapacityMl } = profile.capacity;
-  if (maximumLiquidMixMl !== null && maximumLiquidMixMl > 0) {
-    return {
-      kind: 'capacity_ml',
-      ml: maximumLiquidMixMl,
-      unit: 'ml_not_grams',
-      basis: 'maximum_liquid_mix',
-    };
-  }
-  if (workingCapacityMl !== null && workingCapacityMl > 0) {
-    return {
-      kind: 'capacity_ml',
-      ml: workingCapacityMl,
-      unit: 'ml_not_grams',
-      basis: 'working_capacity',
-    };
-  }
-  return { kind: 'none', reason: 'no_confirmed_mix_capacity' };
+/* ------------------------------------------------------------------ */
+/* Container split (owner correction, 2026-07-17)                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A plan spreading a requested batch across containers so NO single container
+ * ever exceeds the machine's `recommendedBatchGrams`.
+ */
+export interface ContainerSplitPlan {
+  /** ceil(totalBatchGrams / recommendedBatchGrams) — how many containers. */
+  readonly containers: number;
+  /**
+   * EVEN split per container (total / containers, rounded to 0.1 g for
+   * display), ALWAYS ≤ the per-container limit.
+   */
+  readonly gramsPerContainer: number;
+  /** The requested total — the even split preserves it. */
+  readonly totalGrams: number;
+  /** True when one container suffices (no split message needed). */
+  readonly withinSingleContainer: boolean;
+}
+
+/**
+ * Owner split rule (verbatim): containerCount = ceil(total / recommended);
+ * prefer the EVEN split gramsPerContainer = total / containerCount with
+ * gramsPerContainer ≤ recommendedBatchGrams. The user can always prepare
+ * LESS; wanting MORE never overfills a single container.
+ *
+ * Owner examples for a 450 g limit (test-pinned): 900 → 2 × 450;
+ * 1000 → 3 × ~333.3; 1350 → 3 × 450.
+ *
+ * Pure gram arithmetic — no ml, no density. Returns null for non-finite /
+ * non-positive inputs instead of guessing.
+ */
+export function planContainerSplit(
+  requestedGrams: number,
+  recommendedBatchGrams: number,
+): ContainerSplitPlan | null {
+  if (!Number.isFinite(requestedGrams) || requestedGrams <= 0) return null;
+  if (!Number.isFinite(recommendedBatchGrams) || recommendedBatchGrams <= 0) return null;
+  const containers = Math.ceil(requestedGrams / recommendedBatchGrams);
+  // total / containers ≤ limit holds because containers ≥ total / limit; the
+  // 0.1 g display rounding is clamped so it can never exceed the limit.
+  const even = requestedGrams / containers;
+  const gramsPerContainer = Math.min(recommendedBatchGrams, Math.round(even * 10) / 10);
+  return {
+    containers,
+    gramsPerContainer,
+    totalGrams: requestedGrams,
+    withinSingleContainer: containers === 1,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -233,6 +291,10 @@ export function validateHomeMachineProfile(profile: HomeMachineProfile): string[
   const conflicts = profile.sourceConflicts ?? [];
   if (conflicts.length > 0 && profile.specificationStatus !== 'conflicting_sources') {
     issues.push(`${profile.id}: documented source conflicts require conflicting_sources status`);
+  }
+  const maxMixGrams = profile.capacity.manufacturerMaxMixGrams ?? null;
+  if (maxMixGrams !== null && (!Number.isFinite(maxMixGrams) || maxMixGrams <= 0)) {
+    issues.push(`${profile.id}: manufacturerMaxMixGrams must be a positive number when stated`);
   }
   if (profile.specificationStatus === 'verified' && profile.specificationVerifiedAt === undefined) {
     issues.push(`${profile.id}: verified requires a specificationVerifiedAt date`);

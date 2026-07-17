@@ -9,4 +9,5 @@ export * from './types';
 export * from './technologyMode';
 export * from './machineCatalogData';
 export * from './machineOnboarding';
+export * from './homeBatchRule';
 export * from './machineDerivation';

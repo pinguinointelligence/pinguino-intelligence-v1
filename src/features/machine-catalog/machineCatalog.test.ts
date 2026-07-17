@@ -2,12 +2,15 @@
 /**
  * Machine Catalog — spec §25.1 rows + §9.3 activation rule + the owner's
  * default-neutrality guarantee (machines route to EXISTING modes and carry
- * capacity/UX facts ONLY — no recipe math, no modifiers, no ml→g conversion).
+ * capacity/UX facts ONLY — no recipe math, no modifiers) + the OWNER
+ * CORRECTION (2026-07-17): the universal, configurable, versioned Home batch
+ * rule (0.95 safety factor over CONFIRMED usable capacity; the ONLY permitted
+ * ml→g arithmetic), the source-of-truth order, and the even container split.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { approvedMassForMode, isServingModeId } from '@/features/customer-flow';
+import { isServingModeId } from '@/features/customer-flow';
 import {
   CUISINART_ICE21E,
   CUISINART_ICE30BCE,
@@ -29,12 +32,21 @@ import {
   visibleModeForTechnology,
 } from './technologyMode';
 import {
+  DEFAULT_HOME_BATCH_RULE,
+  HOME_BATCH_RULE_VERSION,
+  HOME_CONTAINER_SAFETY_FACTOR,
+  recommendMachineBatch,
+  roundToNearest10,
+  vesselFigureConflicted,
+} from './homeBatchRule';
+import {
   deriveMachineSetup,
   findMachineByModelCode,
   isMachineActivatable,
   listActiveHomeMachines,
   machinesForMarket,
   marketMatchesRegion,
+  planContainerSplit,
   validateHomeMachineProfile,
 } from './machineDerivation';
 import type { HomeMachineProfile } from './types';
@@ -86,6 +98,9 @@ interface ExpectedRow {
 }
 
 const EXPECTED_ROWS: readonly ExpectedRow[] = [
+  // Owner correction (2026-07-17): a conflicted usable-capacity figure never
+  // produces a recommended batch, so both conflicted Ninja records stay
+  // conflicting_sources + INACTIVE pending the owner's per-model resolution.
   {
     profile: NINJA_CREAMI_NC302EU,
     market: 'EU/ES',
@@ -209,7 +224,7 @@ describe('Annex A seed catalog — model → technology → mode → status', ()
 });
 
 describe('Annex A capacities — exact numbers, per §9.1 field, never guessed', () => {
-  it('Ninja NC302EU: 473 ml × 2 (product page) with the 450 ml accessories conflict', () => {
+  it('Ninja NC302EU: 473 ml × 2 (product page) with the 450 ml accessories conflict RETAINED', () => {
     const c = NINJA_CREAMI_NC302EU.capacity;
     expect(c.vesselCapacityMl).toBe(473);
     expect(c.vesselCount).toBe(2);
@@ -220,17 +235,41 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
     expect(NINJA_CREAMI_NC302EU.preFreezeTarget).toBe('mixture');
   });
 
-  it('Ninja Deluxe NC502EU: 706 ml × 2 vs 680 ml accessories → conflicting_sources', () => {
+  it('NC302EU conflict note quotes the 2026-07-17 official-page evidence (both sides + verdict)', () => {
+    const conflict = NINJA_CREAMI_NC302EU.sourceConflicts?.[0];
+    expect(conflict).toBeDefined();
+    const note = conflict?.note ?? '';
+    // Product-page quote (473) and accessories quote (450), verbatim fragments.
+    expect(note).toContain('de 473 ml cada una');
+    expect(note).toContain('Capacidad: 450 ml por tarrina');
+    // The honest verdict: the pages do NOT distinguish the concepts, and the
+    // two candidate rule derivations await the owner's resolution.
+    expect(note).toContain('nie rozróżnia');
+    expect(note).toContain('2026-07-17');
+    expect(note).toContain('sharkninja.es');
+    expect(note).toContain('473→450 g');
+    expect(note).toContain('450→430 g');
+  });
+
+  it('Ninja Deluxe NC502EU: 706 ml × 2 vs 680 ml accessories — conflict RETAINED on the field', () => {
     const c = NINJA_CREAMI_DELUXE_NC502EU.capacity;
     expect(c.vesselCapacityMl).toBe(706);
     expect(c.vesselCount).toBe(2);
     expect(NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts).toEqual([
       expect.objectContaining({ field: 'vesselCapacityMl', candidatesMl: [706, 680] }),
     ]);
+    const note = NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts?.[0]?.note ?? '';
+    expect(note).toContain('de 706 ml cada una');
+    expect(note).toContain('Capacidad: 680 ml por tarrina');
+    expect(note).toContain('2026-07-17');
+    expect(note).toContain('706→670 g');
+    expect(note).toContain('680→650 g');
   });
 
-  it('Ninja Scoop & Swirl NC7: 480 ml, pre-freeze the mixture', () => {
+  it('Ninja Scoop & Swirl NC7: 480 ml (unconflicted), pre-freeze the mixture', () => {
     expect(NINJA_CREAMI_SCOOP_SWIRL_NC7.capacity.vesselCapacityMl).toBe(480);
+    expect(NINJA_CREAMI_SCOOP_SWIRL_NC7.sourceConflicts ?? []).toEqual([]);
+    expect(vesselFigureConflicted(NINJA_CREAMI_SCOOP_SWIRL_NC7)).toBe(false);
     expect(NINJA_CREAMI_SCOOP_SWIRL_NC7.requiresPreFreeze).toBe(true);
     expect(NINJA_CREAMI_SCOOP_SWIRL_NC7.preFreezeTarget).toBe('mixture');
   });
@@ -291,11 +330,12 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
     expect(SAGE_SMART_SCOOP_BCI600.active).toBe(false);
   });
 
-  it('no record invents min/default/max batch — Annex A states none', () => {
+  it('no record invents min/default/max batch or manufacturer max-mix grams', () => {
     for (const profile of MACHINE_CATALOG) {
       expect(profile.capacity.minimumBatchMl).toBeNull();
       expect(profile.capacity.maximumBatchMl).toBeNull();
       expect(profile.capacity.defaultBatchMl).toBeNull();
+      expect(profile.capacity.manufacturerMaxMixGrams ?? null).toBeNull(); // no manual states one yet
     }
   });
 });
@@ -360,6 +400,14 @@ describe('activation (§9.3)', () => {
     expect(listActiveHomeMachines([tampered])).toEqual([]);
   });
 
+  it('downgrading a conflicted record status without resolving the conflict is invalid', () => {
+    const mislabelled: HomeMachineProfile = {
+      ...NINJA_CREAMI_NC302EU,
+      specificationStatus: 'provisional',
+    };
+    expect(validateHomeMachineProfile(mislabelled)).not.toEqual([]);
+  });
+
   it('the active Home list is exactly the seven resolvable Annex A machines', () => {
     expect(listActiveHomeMachines(MACHINE_CATALOG).map((p) => p.id)).toEqual([
       'ninja-creami-scoop-swirl-nc7-eu-es',
@@ -374,58 +422,219 @@ describe('activation (§9.3)', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Derivation — batch is NEVER an ml→g conversion                      */
+/* OWNER CORRECTION (2026-07-17) — the universal Home batch rule        */
 /* ------------------------------------------------------------------ */
 
-describe('deriveMachineSetup — mode routing + honest batch suggestion', () => {
-  it('Ninja machines REUSE the owner-approved serving-mode masses (never ml-derived)', () => {
-    const nc7 = deriveMachineSetup(NINJA_CREAMI_SCOOP_SWIRL_NC7);
-    expect(nc7.resolvedVisibleMode).toBe('ninja_swirl');
-    expect(nc7.batchSuggestion).toEqual({
-      kind: 'approved_mass_g',
-      massG: approvedMassForMode('ninja_swirl'),
-      servingModeId: 'ninja_swirl',
-      source: 'serving_mode_preset',
-    });
-
-    const nc302 = deriveMachineSetup(NINJA_CREAMI_NC302EU);
-    expect(nc302.resolvedVisibleMode).toBe('ninja_gelato');
-    // 700 g is the approved ninja_gelato preset — NOT derivable from 473 ml.
-    expect(nc302.batchSuggestion).toMatchObject({
-      kind: 'approved_mass_g',
-      massG: 700,
-      source: 'serving_mode_preset',
-    });
-    expect(approvedMassForMode('ninja_gelato')).toBe(700);
+describe('owner Home batch rule — 0.95 factor over CONFIRMED usable capacity', () => {
+  /** An unconflicted re-spin profile with a given tub figure (rule-2b probe). */
+  const respinWithVessel = (vesselCapacityMl: number): HomeMachineProfile => ({
+    ...NINJA_CREAMI_SCOOP_SWIRL_NC7,
+    id: `probe-respin-${vesselCapacityMl}`,
+    sourceConflicts: [],
+    capacity: { ...NINJA_CREAMI_SCOOP_SWIRL_NC7.capacity, vesselCapacityMl },
   });
 
-  it('KitchenAid suggests 1400 ml (max LIQUID mix) with the explicit ml_not_grams marker', () => {
-    const d = deriveMachineSetup(KITCHENAID_5KSMICM);
-    expect(d.resolvedVisibleMode).toBe('fresh');
-    expect(d.batchSuggestion).toEqual({
-      kind: 'capacity_ml',
-      ml: 1400,
-      unit: 'ml_not_grams',
-      basis: 'maximum_liquid_mix',
-    });
-    // NEVER the finished-product 1900 ml (overrun) and never grams.
+  it('OWNER TEST 1 — 473 ml → 450 g', () => {
+    expect(roundToNearest10(473 * HOME_CONTAINER_SAFETY_FACTOR)).toBe(450);
+    expect(recommendMachineBatch(respinWithVessel(473))?.grams).toBe(450);
   });
 
-  it('fresh-mode machines without a confirmed MIX quantity honestly suggest nothing', () => {
-    // Vessel volume (brim) and finished-product volume are never pour amounts.
-    for (const profile of [
-      MAGIMIX_GELATO_EXPERT,
-      CUISINART_ICE100E,
-      CUISINART_ICE21E,
-      CUISINART_ICE30BCE,
-      MOULINEX_FREEZI_MJ803AF0,
-      SAGE_SMART_SCOOP_BCI600,
-    ]) {
+  it('OWNER TEST 2 — 480 ml → 460 g (the real NC7 Scoop & Swirl record)', () => {
+    expect(roundToNearest10(480 * HOME_CONTAINER_SAFETY_FACTOR)).toBe(460);
+    const recommended = recommendMachineBatch(NINJA_CREAMI_SCOOP_SWIRL_NC7);
+    expect(recommended).toEqual({
+      grams: 460,
+      source: 'respin_vessel_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: false,
+    });
+  });
+
+  it('OWNER TEST 3 — 680 ml → 650 g', () => {
+    expect(roundToNearest10(680 * HOME_CONTAINER_SAFETY_FACTOR)).toBe(650);
+    expect(recommendMachineBatch(respinWithVessel(680))?.grams).toBe(650);
+  });
+
+  it('OWNER TEST 4 — 706 ml → 670 g (and 1000 ml → 950 g)', () => {
+    expect(roundToNearest10(706 * HOME_CONTAINER_SAFETY_FACTOR)).toBe(670);
+    expect(recommendMachineBatch(respinWithVessel(706))?.grams).toBe(670);
+    expect(roundToNearest10(1000 * HOME_CONTAINER_SAFETY_FACTOR)).toBe(950);
+  });
+
+  it('OWNER TEST 5 — the factor is configurable AND versioned (never a magic number)', () => {
+    expect(HOME_CONTAINER_SAFETY_FACTOR).toBe(0.95);
+    expect(HOME_BATCH_RULE_VERSION).toContain('0.95');
+    expect(DEFAULT_HOME_BATCH_RULE).toEqual({
+      safetyFactor: HOME_CONTAINER_SAFETY_FACTOR,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+    });
+    // Passing a different configured factor changes the output AND is recorded.
+    const custom = recommendMachineBatch(respinWithVessel(480), {
+      safetyFactor: 0.9,
+      ruleVersion: 'test.v9',
+    });
+    expect(custom).toEqual({
+      grams: 430, // 480 × 0.9 = 432 → 430
+      source: 'respin_vessel_ml',
+      safetyFactorApplied: 0.9,
+      ruleVersion: 'test.v9',
+      estimated: false,
+    });
+  });
+
+  it('OWNER TEST 6 — official max mix in GRAMS is used directly: no ml conversion, no factor', () => {
+    const withGrams: HomeMachineProfile = {
+      ...KITCHENAID_5KSMICM,
+      id: 'probe-max-mix-grams',
+      capacity: { ...KITCHENAID_5KSMICM.capacity, manufacturerMaxMixGrams: 1250 },
+    };
+    expect(recommendMachineBatch(withGrams)).toEqual({
+      grams: 1250, // NOT 1250 × 0.95 and NOT derived from the 1400 ml figure
+      source: 'manufacturer_max_mix_grams',
+      safetyFactorApplied: null,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: false,
+    });
+  });
+
+  it('OWNER TEST 7 — a physical bowl volume is NEVER auto-treated as working capacity', () => {
+    // Magimix: 2 l physical bowls, no official working/max-fill figure →
+    // no recommendation (and certainly not 2000 × 0.95 = 1900).
+    expect(recommendMachineBatch(MAGIMIX_GELATO_EXPERT)).toBeNull();
+    expect(deriveMachineSetup(MAGIMIX_GELATO_EXPERT).recommendedBatchGrams).toBeNull();
+    // Frozen bowls likewise: the bowl figure is not a mix quantity.
+    expect(recommendMachineBatch(CUISINART_ICE21E)).toBeNull();
+    expect(recommendMachineBatch(CUISINART_ICE30BCE)).toBeNull();
+  });
+
+  it('a CONFLICTED tub figure never produces a number (NC302EU, NC502EU)', () => {
+    expect(vesselFigureConflicted(NINJA_CREAMI_NC302EU)).toBe(true);
+    expect(recommendMachineBatch(NINJA_CREAMI_NC302EU)).toBeNull();
+    expect(recommendMachineBatch(NINJA_CREAMI_DELUXE_NC502EU)).toBeNull();
+    expect(deriveMachineSetup(NINJA_CREAMI_NC302EU).batchSuggestion).toEqual({
+      kind: 'none',
+      reason: 'capacity_conflict_unresolved',
+    });
+  });
+
+  it('official max liquid mix in ml (KitchenAid 1.4 l) → rule 2: 1400 × 0.95 = 1330 g', () => {
+    expect(recommendMachineBatch(KITCHENAID_5KSMICM)).toEqual({
+      grams: 1330,
+      source: 'maximum_liquid_mix_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: false,
+    });
+  });
+
+  it('program/finished volumes are never batch sources (Moulinex, ICE-100, Sage → none)', () => {
+    for (const profile of [MOULINEX_FREEZI_MJ803AF0, CUISINART_ICE100E, SAGE_SMART_SCOOP_BCI600]) {
+      expect(recommendMachineBatch(profile)).toBeNull();
       expect(deriveMachineSetup(profile).batchSuggestion).toEqual({
         kind: 'none',
-        reason: 'no_confirmed_mix_capacity',
+        reason: 'no_confirmed_usable_capacity',
       });
     }
+  });
+});
+
+describe('container split (owner correction) — even split, never overfill', () => {
+  it('OWNER EXAMPLES @ 450 g — 900 → 2 × 450; 1000 → 3 × ~333.3; 1350 → 3 × 450', () => {
+    expect(planContainerSplit(900, 450)).toEqual({
+      containers: 2,
+      gramsPerContainer: 450,
+      totalGrams: 900,
+      withinSingleContainer: false,
+    });
+    const thousand = planContainerSplit(1000, 450);
+    expect(thousand?.containers).toBe(3);
+    expect(thousand?.gramsPerContainer).toBe(333.3);
+    expect(planContainerSplit(1350, 450)).toEqual({
+      containers: 3,
+      gramsPerContainer: 450,
+      totalGrams: 1350,
+      withinSingleContainer: false,
+    });
+  });
+
+  it('OWNER TEST 8 — no single container ever exceeds recommendedBatchGrams (sweep)', () => {
+    for (const limit of [450, 460, 650, 670, 1330]) {
+      for (let requested = 1; requested <= 3000; requested += 7) {
+        const plan = planContainerSplit(requested, limit);
+        expect(plan).not.toBeNull();
+        expect(plan!.gramsPerContainer).toBeLessThanOrEqual(limit);
+        expect(plan!.containers).toBe(Math.ceil(requested / limit));
+      }
+    }
+  });
+
+  it('OWNER TEST 9 — a larger batch splits EVENLY across the required container count', () => {
+    for (const [requested, limit] of [
+      [900, 450],
+      [1000, 450],
+      [1350, 450],
+      [1200, 460],
+      [2000, 650],
+    ] as const) {
+      const plan = planContainerSplit(requested, limit);
+      expect(plan).not.toBeNull();
+      // Even split: per-container ≈ total / containers (0.1 g display rounding).
+      expect(Math.abs(plan!.gramsPerContainer - requested / plan!.containers)).toBeLessThanOrEqual(0.05);
+      expect(plan!.totalGrams).toBe(requested);
+    }
+  });
+
+  it('a request within the limit needs one container (the user may always prepare less)', () => {
+    expect(planContainerSplit(450, 450)).toEqual({
+      containers: 1,
+      gramsPerContainer: 450,
+      totalGrams: 450,
+      withinSingleContainer: true,
+    });
+    expect(planContainerSplit(200, 450)?.withinSingleContainer).toBe(true);
+  });
+
+  it('invalid inputs return null — never a guessed plan', () => {
+    expect(planContainerSplit(0, 450)).toBeNull();
+    expect(planContainerSplit(-5, 450)).toBeNull();
+    expect(planContainerSplit(Number.NaN, 450)).toBeNull();
+    expect(planContainerSplit(900, 0)).toBeNull();
+    expect(planContainerSplit(900, Number.POSITIVE_INFINITY)).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Derivation — mode routing + honest batch                            */
+/* ------------------------------------------------------------------ */
+
+describe('deriveMachineSetup — mode routing + honest recommended batch', () => {
+  it('NC7 Swirl derives 460 g via the rule (NOT the mode-level 480 g preset)', () => {
+    const nc7 = deriveMachineSetup(NINJA_CREAMI_SCOOP_SWIRL_NC7);
+    expect(nc7.resolvedVisibleMode).toBe('ninja_swirl');
+    expect(nc7.recommendedBatchGrams).toBe(460);
+    expect(nc7.batchSuggestion).toEqual({
+      kind: 'recommended_grams',
+      grams: 460,
+      source: 'respin_vessel_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: false,
+      servingModeId: 'ninja_swirl',
+    });
+  });
+
+  it('KitchenAid derives 1330 g from the official 1400 ml max liquid mix', () => {
+    const d = deriveMachineSetup(KITCHENAID_5KSMICM);
+    expect(d.resolvedVisibleMode).toBe('fresh');
+    expect(d.recommendedBatchGrams).toBe(1330);
+    expect(d.batchSuggestion).toMatchObject({
+      kind: 'recommended_grams',
+      grams: 1330,
+      source: 'maximum_liquid_mix_ml',
+      safetyFactorApplied: 0.95,
+    });
+    // NEVER the finished-product 1900 ml (overrun) and never the bowl volume.
   });
 
   it('carries the pre-freeze facts and the MAX FILL rule through', () => {
@@ -446,6 +655,7 @@ describe('deriveMachineSetup — mode routing + honest batch suggestion', () => 
     const d = deriveMachineSetup(soft);
     expect(d.homeSupport).toBe('unsupported_for_home');
     expect(d.resolvedVisibleMode).toBeNull();
+    expect(d.recommendedBatchGrams).toBeNull();
     expect(d.batchSuggestion).toEqual({ kind: 'none', reason: 'machine_not_home_supported' });
     expect(isMachineActivatable(soft)).toBe(false);
     expect(validateHomeMachineProfile(soft)).not.toEqual([]);
@@ -527,15 +737,41 @@ describe('owner rule — machine profiles are default-neutral (routing + capacit
       'maxFillDefinedByManufacturer',
       'preFreezeMinimumHours',
       'preFreezeTarget',
+      'recommendedBatchGrams',
       'requiresPreFreeze',
       'resolvedVisibleMode',
       'workingCapacityMl',
     ]);
   });
+
+  it('OWNER TEST 10 — the batch rule never touches Base Engine math (grams in, grams out)', () => {
+    // (a) The machine layer NEVER imports the engine (see source hygiene below,
+    //     which scans every file of this feature including homeBatchRule.ts).
+    // (b) The rule's whole output is a plain provenance-carrying number — its
+    //     shape is pinned so no engine-facing field can appear silently. A
+    //     recipe computed at the same final grams therefore cannot change when
+    //     the safety factor changes: the factor only chooses the DEFAULT grams.
+    const recommended = recommendMachineBatch(NINJA_CREAMI_SCOOP_SWIRL_NC7);
+    expect(recommended).not.toBeNull();
+    expect(Object.keys(recommended!).sort()).toEqual([
+      'estimated',
+      'grams',
+      'ruleVersion',
+      'safetyFactorApplied',
+      'source',
+    ]);
+    // Different factors → different DEFAULT grams, nothing else.
+    const alt = recommendMachineBatch(NINJA_CREAMI_SCOOP_SWIRL_NC7, {
+      safetyFactor: 0.9,
+      ruleVersion: 'probe',
+    });
+    expect(alt?.grams).not.toBe(recommended!.grams);
+    expect(Object.keys(alt!).sort()).toEqual(Object.keys(recommended!).sort());
+  });
 });
 
 /* ------------------------------------------------------------------ */
-/* Source hygiene — no 'Ninja 2', no engine imports, marker present    */
+/* Source hygiene — no 'Ninja 2', no engine imports, rule contract     */
 /* ------------------------------------------------------------------ */
 
 const FEATURE_DIR = import.meta.dirname;
@@ -564,8 +800,19 @@ describe('source hygiene', () => {
     }
   });
 
-  it("the explicit 'ml_not_grams' marker is the derivation module's unit contract", () => {
-    const text = readFileSync(join(FEATURE_DIR, 'machineDerivation.ts'), 'utf8');
-    expect(text.includes("'ml_not_grams'")).toBe(true);
+  it('the versioned safety-factor rule lives in ONE module (no stray factor constants)', () => {
+    const ruleText = readFileSync(join(FEATURE_DIR, 'homeBatchRule.ts'), 'utf8');
+    expect(ruleText.includes('HOME_CONTAINER_SAFETY_FACTOR')).toBe(true);
+    expect(ruleText.includes('HOME_BATCH_RULE_VERSION')).toBe(true);
+    // No other module of the feature defines a factor or multiplies by 0.95.
+    for (const file of featureSourceFiles()) {
+      if (file.endsWith('homeBatchRule.ts')) continue;
+      const text = readFileSync(file, 'utf8');
+      expect(text.includes('SAFETY_FACTOR ='), `stray factor constant in ${file}`).toBe(false);
+      // Same-line multiplication only (comments may mention the factor prose-style).
+      expect(/\*[ \t]*0\.95|0\.95[ \t]*\*/.test(text), `inline 0.95 multiplication in ${file}`).toBe(
+        false,
+      );
+    }
   });
 });

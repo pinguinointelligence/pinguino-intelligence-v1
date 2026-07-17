@@ -15,9 +15,11 @@
  *    per-technology recipe modifiers must arrive as a SEPARATE versioned,
  *    reversible, feature-flagged config — default neutral. This model has no
  *    modifier fields at all, which is the strongest neutrality guarantee.
- *  - volumes are stored in MILLILITRES and are NEVER converted to grams here
- *    (no density in this layer). Ninja batch masses come exclusively from the
- *    owner-approved serving-mode presets (`approvedMassForMode`).
+ *  - volumes are stored in MILLILITRES. The ONLY permitted ml→grams
+ *    arithmetic anywhere is the owner's explicit, versioned Home safety-factor
+ *    rule (`homeBatchRule.ts`, owner correction 2026-07-17), applied ONLY to a
+ *    confirmed usable capacity — never a blind density guess, never applied to
+ *    a physical bowl volume, and never to a conflicted figure.
  */
 import type { ServingModeId } from '@/features/customer-flow';
 
@@ -127,6 +129,13 @@ export interface MachineCapacity {
   readonly minimumBatchMl: number | null;
   readonly maximumBatchMl: number | null;
   readonly defaultBatchMl: number | null;
+  /**
+   * Manufacturer-stated maximum mix quantity in GRAMS, when a manual states
+   * one (owner correction 2026-07-17: field `manufacturerMaxMixGrams`; the
+   * TOP source-of-truth for the recommended batch — used directly, never
+   * converted from ml). Absent/null = not stated by the recorded sources.
+   */
+  readonly manufacturerMaxMixGrams?: number | null;
   readonly finishedProductCapacityMl?: number | null;
   /**
    * True when the RECORDED sources document a manufacturer MAX FILL rule for
