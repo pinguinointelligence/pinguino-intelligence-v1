@@ -3,6 +3,7 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem } from '@/engine';
+import { useLineLockControls } from '@/features/constraint-studio/useLineLockControls';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { IngredientPicker } from './IngredientPicker';
 import { IngredientRow, ROW_GRID, type IngredientRowActions } from './IngredientRow';
@@ -27,13 +28,16 @@ export function IngredientBuilder({
 }) {
   const addIngredient = useRecipeStore((state) => state.addIngredient);
   const library = useIngredientLibrary({ demo });
-  const actions: IngredientRowActions = {
+  // §17 padlock layer (constraint-studio): per-line lock views + action
+  // wrappers that reconcile the constraint set on dropdown/remove changes.
+  const { lockFor, wrapActions } = useLineLockControls();
+  const actions: IngredientRowActions = wrapActions({
     setPlannedGrams: useRecipeStore((state) => state.setPlannedGrams),
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
     setLockType: useRecipeStore((state) => state.setLockType),
     setMainIngredient: useRecipeStore((state) => state.setMainIngredient),
     removeItem: useRecipeStore((state) => state.removeItem),
-  };
+  });
 
   const offTarget = Math.abs(totalBatchG - targetBatchG) > 0.1;
 
@@ -55,7 +59,13 @@ export function IngredientBuilder({
               <span className={headCell}>&nbsp;</span>
             </div>
             {items.map((item) => (
-              <IngredientRow key={item.id} item={item} totalBatchG={totalBatchG} actions={actions} />
+              <IngredientRow
+                key={item.id}
+                item={item}
+                totalBatchG={totalBatchG}
+                actions={actions}
+                lock={lockFor(item)}
+              />
             ))}
           </div>
 

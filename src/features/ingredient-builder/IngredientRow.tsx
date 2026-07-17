@@ -22,15 +22,49 @@ export interface IngredientRowActions {
   removeItem: (lineId: string) => void;
 }
 
+/** §17 padlock view (UIUX spec §12.3 „[AI / kłódka]”) — supplied by the
+ * constraint-studio feature; the row only renders it. When absent the row
+ * behaves exactly as before. */
+export interface IngredientRowLockView {
+  state: 'ai' | 'locked' | 'range';
+  /** The protected exact grams (locked) or min–max window (range), preformatted. */
+  lockedGramsLabel: string | null;
+  ariaLabel: string;
+  title: string;
+  badge: string | null;
+  /** §17.2: while locked, the exact grams cannot be edited manually. */
+  plannedDisabled: boolean;
+  toggleDisabled: boolean;
+  onToggle: () => void;
+}
+
+/** Minimal one-family padlock glyph (§21.1 one icon system, no new deps). */
+function PadlockIcon({ closed }: { closed: boolean }) {
+  return (
+    <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <rect x="2" y="5.2" width="8" height="5.4" rx="1" fill="currentColor" />
+      {closed ? (
+        <path d="M3.8 5V3.6a2.2 2.2 0 1 1 4.4 0V5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      ) : (
+        <path d="M3.8 5V3.6a2.2 2.2 0 0 1 4.3-.7" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      )}
+    </svg>
+  );
+}
+
 function GramsField({
   label,
   value,
   emphasised,
+  disabled,
+  disabledTitle,
   onChange,
 }: {
   label: string;
   value: number | '';
   emphasised?: boolean;
+  disabled?: boolean;
+  disabledTitle?: string;
   onChange: (raw: string) => void;
 }) {
   return (
@@ -39,8 +73,14 @@ function GramsField({
         aria-label={label}
         type="number"
         min={0}
+        disabled={disabled}
+        title={disabled ? disabledTitle : undefined}
         placeholder={value === '' ? '—' : undefined}
-        className={cn(cellInput, emphasised && 'border-ivory/30')}
+        className={cn(
+          cellInput,
+          emphasised && 'border-ivory/30',
+          disabled && 'cursor-not-allowed border-ivory/25 bg-ivory/[0.06] text-ivory/80',
+        )}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
@@ -55,30 +95,49 @@ export function IngredientRow({
   item,
   totalBatchG,
   actions,
+  lock,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
   actions: IngredientRowActions;
+  /** Optional §17 padlock (constraint-studio). Absent → legacy row. */
+  lock?: IngredientRowLockView;
 }) {
   const share = totalBatchG > 0 ? (item.effective_grams / totalBatchG) * 100 : null;
   const isMain = item.lock_type === 'main';
+  const isConstraintLocked = lock?.state === 'locked';
 
   return (
     <div
       className={cn(
         '-mx-2 rounded-sm px-2 transition-colors hover:bg-ivory/[0.04]',
         isMain && 'bg-ivory/[0.07]',
+        isConstraintLocked && 'bg-ivory/[0.05]',
       )}
     >
       <div className={cn(ROW_GRID, 'py-2.5')}>
         <div className="min-w-0">
           <span className="truncate text-sm text-ivory">{item.ingredient.name}</span>
-          <ConfidenceBadge score={item.ingredient.confidence_score} className="mt-0.5" />
+          <span className="flex items-center gap-2">
+            <ConfidenceBadge score={item.ingredient.confidence_score} className="mt-0.5" />
+            {lock?.badge ? (
+              <span className="mt-0.5 rounded border border-status-risky/40 px-1 py-px text-[0.55rem] font-medium tracking-[0.08em] text-status-risky uppercase">
+                {lock.badge}
+                {lock.lockedGramsLabel ? (
+                  <span className="ml-1 font-mono tracking-normal normal-case tabular-nums">
+                    {lock.lockedGramsLabel}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+          </span>
         </div>
 
         <GramsField
           label={`${item.ingredient.name} ${b.planned}`}
           value={item.planned_grams}
+          disabled={lock?.plannedDisabled}
+          disabledTitle={lock?.title}
           onChange={(raw) => actions.setPlannedGrams(item.id, Number(raw) || 0)}
         />
 
@@ -108,6 +167,27 @@ export function IngredientRow({
         </div>
 
         <div className="flex items-center gap-1.5">
+          {lock ? (
+            <button
+              type="button"
+              aria-pressed={lock.state !== 'ai'}
+              aria-label={lock.ariaLabel}
+              title={lock.title}
+              disabled={lock.toggleDisabled}
+              onClick={lock.onToggle}
+              className={cn(
+                'rounded border p-1.5 transition-colors',
+                lock.state === 'locked'
+                  ? 'border-ivory bg-ivory text-shell'
+                  : lock.state === 'range'
+                    ? 'border-status-risky/50 text-status-risky'
+                    : 'border-ivory/15 text-ivory/40 hover:border-ivory/40 hover:text-ivory/70',
+                lock.toggleDisabled && 'cursor-not-allowed opacity-40 hover:border-ivory/15 hover:text-ivory/40',
+              )}
+            >
+              <PadlockIcon closed={lock.state !== 'ai'} />
+            </button>
+          ) : null}
           <button
             type="button"
             aria-pressed={isMain}

@@ -1,5 +1,5 @@
 /**
- * PINGÜINO Customer Shell — CustomerShellV1 (`/customer-v1`).
+ * PINGÜINO Customer Shell — CustomerShellV1 (`/start`).
  *
  * A mobile-first, white/light premium, single-column customer surface. It drives
  * the pure conversational core (Agent B, `@/features/customer-flow`) and renders
@@ -18,7 +18,7 @@
  * Presentation only: no engine math, no IO beyond the browser's own optional
  * speech-recognition, no persistence.
  */
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   createCustomerFlow,
   setProductType,
@@ -70,11 +70,24 @@ import {
   TechnicalDetails,
   StickyCta,
   EmptyStateView,
-  customerDarkVars,
-  customerDarkPageBg,
+  notice,
   type MicState,
 } from '@/features/customer-shell/ui';
+import {
+  MachineOnboarding,
+  MachineContextBar,
+  buildMachineContextView,
+  formatGrams,
+  localStorageMachinePreferenceStore,
+  machineOnboardingCopy,
+  useMachinePreference,
+  type MachineOnboardingCompletion,
+} from '@/features/machine-onboarding';
+import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
+import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
+import { deriveBatchGuidance, type AboveRecommendationChoice } from './batchGuidance';
 import { customerShellCopy as copy } from './customerShellCopy';
+import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
 import { useIngredientResolution, type ResolvableLine } from './useIngredientResolution';
 import { ResolutionSheet } from './ResolutionSheet';
@@ -203,21 +216,16 @@ function Notice({ children }: { children: ReactNode }) {
 }
 
 /**
- * The DARK shell wrapper. Carries the scoped dark palette as inline CSS custom
- * properties + a deep near-black page backdrop, so EVERY descendant — including
- * fixed-position children (sticky CTA, bottom sheets, the nav drawer) — inherits
- * the dark theme. It never touches global CSS, so the rest of the app is untouched.
- * `min-h-[100dvh]` keeps the backdrop filling the viewport (no white gaps).
+ * The LIGHT shell root (binding owner decision — light-first, UIUX Slice A,
+ * spec §21.1 / audit #4 + #30). The former scoped DARK CSS-variable remap
+ * (`DarkShell` + `customerDarkVars`) is retired: the shell renders its
+ * light-native classes directly against the global light theme, and the page
+ * backdrop matches the `body` (`bg-paper`), so overscroll / keyboard-open never
+ * flashes a mismatched colour. `min-h-[100dvh]` keeps the backdrop filling the
+ * viewport.
  */
-function DarkShell({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="min-h-[100dvh] w-full"
-      style={{ ...customerDarkVars, backgroundColor: customerDarkPageBg } as CSSProperties}
-    >
-      {children}
-    </div>
-  );
+function ShellRoot({ children }: { children: ReactNode }) {
+  return <div className="min-h-[100dvh] w-full bg-paper">{children}</div>;
 }
 
 /* ------------------------------------------------------------------ *
@@ -237,6 +245,88 @@ export function CustomerShellV1() {
   const [customBatchOpen, setCustomBatchOpen] = useState(false);
   const [forceBatchEdit, setForceBatchEdit] = useState(false);
   const [selectedDraft, setSelectedDraft] = useState<ReadyRecipeWorkingDraft | null>(null);
+
+  // Machine-first Home gate (Slice B INTEGRATION §2). The backend factory is
+  // deliberately NOT wired — that is the launch gate (migration 0030 unapplied);
+  // anonymous/demo sessions persist the machine on this device only.
+  const machineStore = useMemo(
+    () => selectMachinePreferenceStore({ localDevice: () => localStorageMachinePreferenceStore() }).store,
+    [],
+  );
+  const machinePreference = useMachinePreference(machineStore);
+  const [machineChangeOpen, setMachineChangeOpen] = useState(false);
+  // A saved record whose catalog id no longer resolves (stale catalog) re-runs
+  // onboarding instead of rendering a broken context bar (INTEGRATION §3).
+  const machineView =
+    machinePreference.record !== null ? buildMachineContextView(machinePreference.record) : null;
+  const machineGate: 'off' | 'loading' | 'onboarding' | 'saved' =
+    persona !== 'home'
+      ? 'off'
+      : machinePreference.status === 'loading'
+        ? 'loading'
+        : machinePreference.record === null || machineView === null || machineChangeOpen
+          ? 'onboarding'
+          : 'saved';
+  const machineRecord = machineGate === 'saved' ? machinePreference.record : null;
+
+  // OWNER FINAL DECISION (2026-07-17): the recommendation is a SOFT proposal.
+  // `aboveChoiceFor` remembers the user's pick for the above-recommendation
+  // warning FOR ONE amount — editing the grams re-opens the question.
+  const [aboveChoiceFor, setAboveChoiceFor] = useState<{
+    grams: number;
+    choice: AboveRecommendationChoice;
+  } | null>(null);
+  // After a machine CHANGE the new recommendation is only PROPOSED — the
+  // existing recipe amount is never rewritten without the user's confirmation
+  // („Dopasuj ilość do nowej maszyny" → preview → Zastosuj).
+  const [machineBatchProposal, setMachineBatchProposal] = useState<number | null>(null);
+  const [proposalPreviewOpen, setProposalPreviewOpen] = useState(false);
+
+  // §5.2 safety net, event-driven (no state-set effects): every path that can
+  // put a Home user with a saved machine in front of a mode-less flow applies
+  // the saved answer in its own handler — flow creation ("Dalej"), machine
+  // save (handleMachineChosen) and the persona switch below. The device-local
+  // store loads in a mount microtask, so a load finishing AFTER flow creation
+  // is unreachable today; when the launch-gated backend adapter (network) is
+  // wired, revisit this reconciliation (noted in INTEGRATION.md §2).
+  const switchPersona = (next: CustomerPersona) => {
+    setPersona(next);
+    if (next !== 'home') return;
+    const record = machinePreference.record;
+    if (record === null || buildMachineContextView(record) === null) return;
+    // Owner test 11: an in-progress flow is never silently rewritten.
+    setFlow((prev) => (prev !== null ? applyMachineRecordIfUnanswered(prev, record) : prev));
+  };
+
+  const handleMachineChosen = (completion: MachineOnboardingCompletion) => {
+    const isChange = machinePreference.record !== null;
+    void machinePreference.save(completion.record);
+    setMachineChangeOpen(false);
+    setAboveChoiceFor(null);
+    if (!isChange) {
+      // First setup (§8.5): the chosen machine answers the mode and, when
+      // derivable, the amount for an already-created flow.
+      setMachineBatchProposal(null);
+      setFlow((prev) => (prev !== null ? applyMachineRecordToFlow(prev, completion.record) : prev));
+      return;
+    }
+    // Machine CHANGE (owner final decision): switch the mode routing, but only
+    // PROPOSE the new recommended amount — never rewrite the recipe silently.
+    const proposed =
+      completion.record.defaultBatch.kind === 'grams' ? completion.record.defaultBatch.grams : null;
+    setMachineBatchProposal(proposed);
+    setProposalPreviewOpen(false);
+    setFlow((prev) => {
+      if (prev === null) return prev;
+      if (prev.mode === null) return applyMachineRecordToFlow(prev, completion.record);
+      const keptGrams = prev.explicitBatchGrams;
+      let next = selectServingMode(prev, completion.record.resolvedVisibleMode);
+      // selectServingMode clears a hand-set batch on Ninja modes — restore the
+      // user's amount; the new machine's grams arrive only via the proposal.
+      if (keptGrams !== null) next = setBatchGrams(next, keptGrams);
+      return next;
+    });
+  };
 
   // Ingredient Resolution controller. Called unconditionally (before any early return);
   // its resolvable-line set is derived from the SAME structure the result view renders,
@@ -321,14 +411,14 @@ export function CustomerShellV1() {
   /* -------------------------------------------------------------- Home -- */
   if (flow === null) {
     return (
-      <DarkShell>
+      <ShellRoot>
         <CustomerSurface>
           <CustomerMenu />
           {/* Responsive hero offset: push the opening interaction ~20-25% down the
               first viewport using small-viewport height (svh, browser-chrome-aware),
               clamped so it never grows awkward on very tall or very short screens. */}
           <div style={{ paddingTop: 'clamp(2rem, 14svh, 9rem)' }}>
-            <DevPersonaSelect persona={persona} onChange={setPersona} />
+            <DevPersonaSelect persona={persona} onChange={switchPersona} />
             <header className="pt-2">
               <h1 className="text-[28px] font-light leading-[1.15] tracking-tight text-ink sm:text-[34px]">
                 {copy.home.headline}
@@ -356,7 +446,16 @@ export function CustomerShellV1() {
                   block
                   size="lg"
                   disabled={draftText.trim() === ''}
-                  onClick={() => setFlow(createCustomerFlow({ text: draftText.trim() }))}
+                  onClick={() => {
+                    const created = createCustomerFlow({ text: draftText.trim() });
+                    // §5.2: a returning Home user's saved machine answers the
+                    // six-mode question (and the amount when derivable) up front.
+                    setFlow(
+                      machineGate === 'saved' && machineRecord !== null
+                        ? applyMachineRecordToFlow(created, machineRecord)
+                        : created,
+                    );
+                  }}
                 >
                   {copy.home.next}
                 </TouchButton>
@@ -364,7 +463,7 @@ export function CustomerShellV1() {
             </div>
           </div>
         </CustomerSurface>
-      </DarkShell>
+      </ShellRoot>
     );
   }
 
@@ -381,6 +480,21 @@ export function CustomerShellV1() {
   const route = resolveServingRoute(flow);
   const selectedMode = route.mode;
   const isNinja = isNinjaMode(flow.mode);
+
+  // OWNER FINAL DECISION (2026-07-17): the machine recommendation is a SOFT
+  // starting proposal — the guidance below marks divergence, warns above the
+  // recommendation and offers the OPTIONAL even split; it never blocks.
+  const machineRecommendedGrams =
+    machineGate === 'saved' && machineView !== null ? machineView.recommendedBatchGrams : null;
+  const currentBatchGrams = batchRes.satisfied ? batchRes.batchGrams : null;
+  const batchGuidance = deriveBatchGuidance({
+    recommendedGrams: machineRecommendedGrams,
+    currentGrams: currentBatchGrams,
+    choice:
+      aboveChoiceFor !== null && aboveChoiceFor.grams === currentBatchGrams
+        ? aboveChoiceFor.choice
+        : 'undecided',
+  });
 
   const isResultPhase =
     recipePath === 'new_recipe' || (recipePath === 'ready_recipe' && selectedDraft !== null);
@@ -545,7 +659,7 @@ export function CustomerShellV1() {
 
   /* -------------------------------------------------- Technical details -- */
   const modeReadable = selectedMode ? modeCopyFor(selectedMode.id).label : '—';
-  const calcTempReadable = route.temperatureC !== null ? `${route.temperatureC}°C` : '—';
+  const calcTempReadable = route.temperatureC !== null ? formatTemperatureC(route.temperatureC) : '—';
   const technical = (
     <TechnicalDetails summary={copy.tech.summary}>
       <div className="pt-1">
@@ -610,7 +724,10 @@ export function CustomerShellV1() {
               <SummaryRow label={copy.tech.internalProfile} value={typeRes.internalProfile} />
             ) : null}
             {selectedMode ? (
-              <SummaryRow label={copy.tech.mode} value={`${selectedMode.id} · ${selectedMode.temperatureC}°C`} />
+              <SummaryRow
+                label={copy.tech.mode}
+                value={`${selectedMode.id} · ${formatTemperatureC(selectedMode.temperatureC)}`}
+              />
             ) : null}
             {selectedDraft ? (
               <SummaryRow
@@ -626,10 +743,27 @@ export function CustomerShellV1() {
 
   /* ----------------------------------------------------------- Render -- */
   return (
-    <DarkShell>
+    <ShellRoot>
       <CustomerSurface hasStickyCta={showStickyUpgrade}>
         <CustomerMenu />
-        <DevPersonaSelect persona={persona} onChange={setPersona} />
+        {/* §7.3 machine context bar — Home persona with a saved machine only. */}
+        {machineGate === 'saved' && machineView !== null ? (
+          <MachineContextBar view={machineView} onChange={() => setMachineChangeOpen(true)} />
+        ) : null}
+        <DevPersonaSelect persona={persona} onChange={switchPersona} />
+        {/* §4.1 conscious machine change — renders above the flow; completing (or
+            closing) it returns to the flow, and the new machine re-answers
+            mode + amount via handleMachineChosen. */}
+        {machineChangeOpen && flow !== null ? (
+          <div className="pt-6">
+            <MachineOnboarding onComplete={handleMachineChosen} />
+            <div className="mt-4">
+              <TouchButton variant="quiet" size="md" onClick={() => setMachineChangeOpen(false)}>
+                {copy.resolution.close}
+              </TouchButton>
+            </div>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between pt-4">
           <h1 className="text-[22px] font-medium tracking-tight text-ink">{copy.home.headline}</h1>
           <TouchButton variant="quiet" size="md" onClick={resetAll}>
@@ -711,24 +845,38 @@ export function CustomerShellV1() {
         {/* Configure: device + serving, capacity/batch, recipe-path fork. */}
         {isConfigurePhase ? (
           <>
-            {/* Serving / machine mode — EXACTLY six customer-facing choices. Each is a
-                customer-facing alias to an existing temperature-aware Engine cell. */}
-            <CustomerSection label={copy.modes.label} title={copy.modes.title} lead={copy.modes.lead}>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {SERVING_MODES.map((m) => {
-                  const c = modeCopyFor(m.id);
-                  return (
-                    <SelectableCard
-                      key={m.id}
-                      title={c.label}
-                      description={c.secondary}
-                      selected={flow.mode === m.id}
-                      onSelect={() => update((s) => selectServingMode(s, m.id))}
-                    />
-                  );
-                })}
+            {/* Serving / machine step. Machine-first Home gate (Slice B, spec §8):
+                - demo/pro personas keep the six-mode selector as-is;
+                - a Home user WITHOUT a saved machine chooses the machine ONCE here
+                  (the machine answers the mode question — the six modes never show);
+                - a Home user WITH a saved machine skips this step entirely (the
+                  §7.3 context bar + „Zmień" handle changes). */}
+            {machineGate === 'onboarding' && !machineChangeOpen ? (
+              /* Self-contained §8 flow (own headings/copy) — no section wrapper. */
+              <div className="pt-10">
+                <MachineOnboarding onComplete={handleMachineChosen} />
               </div>
-            </CustomerSection>
+            ) : null}
+            {machineGate === 'off' ? (
+              /* Serving / machine mode — EXACTLY six customer-facing choices. Each is a
+                 customer-facing alias to an existing temperature-aware Engine cell. */
+              <CustomerSection label={copy.modes.label} title={copy.modes.title} lead={copy.modes.lead}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {SERVING_MODES.map((m) => {
+                    const c = modeCopyFor(m.id);
+                    return (
+                      <SelectableCard
+                        key={m.id}
+                        title={c.label}
+                        description={c.secondary}
+                        selected={flow.mode === m.id}
+                        onSelect={() => update((s) => selectServingMode(s, m.id))}
+                      />
+                    );
+                  })}
+                </div>
+              </CustomerSection>
+            ) : null}
 
             {/* Batch — only once a mode is chosen. A Ninja mode auto-sets its approved
                 mass (resolved; override hidden behind "Zmień ilość"); Direct / Fresh
@@ -752,7 +900,138 @@ export function CustomerShellV1() {
                             : `${formatBatch(batchRes.batchGrams)} — ${copy.batch.source[batchRes.source]}`
                         }
                       />
+                      {/* „Zalecany wsad PINGÜINO" — the machine-derived recommendation
+                          (never framed as a manufacturer figure). */}
+                      {machineRecommendedGrams !== null ? (
+                        <p className="mt-1 text-[12px] text-stone-500">
+                          {machineOnboardingCopy.batch.recommendedLabel}:{' '}
+                          {formatGrams(machineRecommendedGrams)}{' '}
+                          {machineOnboardingCopy.batch.recommendedUnit}
+                        </p>
+                      ) : null}
                     </div>
+
+                    {/* OWNER FINAL DECISION — soft-proposal guidance (never a block). */}
+                    {batchGuidance.kind === 'custom' ||
+                    (batchGuidance.kind === 'custom_above' && batchGuidance.choice !== 'undecided') ? (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[13px] text-stone-600">
+                          {machineOnboardingCopy.batch.customInUse}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-[13px] text-stone-600 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
+                          onClick={() => {
+                            if (machineRecommendedGrams !== null) {
+                              setAboveChoiceFor(null);
+                              update((s) => setBatchGrams(s, machineRecommendedGrams));
+                            }
+                          }}
+                        >
+                          {machineOnboardingCopy.batch.restoreRecommended}
+                        </button>
+                      </div>
+                    ) : null}
+                    {batchGuidance.kind === 'custom_above' && batchGuidance.choice === 'undecided' ? (
+                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
+                        <p className="font-medium text-ink">{machineOnboardingCopy.batch.aboveWarning}</p>
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                          <TouchButton
+                            variant="secondary"
+                            size="md"
+                            onClick={() =>
+                              currentBatchGrams !== null &&
+                              setAboveChoiceFor({ grams: currentBatchGrams, choice: 'split' })
+                            }
+                          >
+                            {machineOnboardingCopy.batch.splitAction}
+                          </TouchButton>
+                          <TouchButton
+                            variant="quiet"
+                            size="md"
+                            onClick={() =>
+                              currentBatchGrams !== null &&
+                              setAboveChoiceFor({ grams: currentBatchGrams, choice: 'keep_mine' })
+                            }
+                          >
+                            {machineOnboardingCopy.batch.keepMine}
+                          </TouchButton>
+                          <TouchButton
+                            variant="quiet"
+                            size="md"
+                            onClick={() => {
+                              if (machineRecommendedGrams !== null) {
+                                setAboveChoiceFor(null);
+                                update((s) => setBatchGrams(s, machineRecommendedGrams));
+                              }
+                            }}
+                          >
+                            {machineOnboardingCopy.batch.restoreShort}
+                          </TouchButton>
+                        </div>
+                      </div>
+                    ) : null}
+                    {batchGuidance.kind === 'custom_above' && batchGuidance.split !== null ? (
+                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
+                        <p className="font-medium text-ink">
+                          {machineOnboardingCopy.split.message(batchGuidance.split.containers)}
+                        </p>
+                        <p className="mt-0.5">
+                          {machineOnboardingCopy.split.detail(
+                            batchGuidance.split.containers,
+                            formatGrams(batchGuidance.split.gramsPerContainer),
+                          )}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {/* Machine change: the NEW machine's amount is only a PROPOSAL —
+                        „Dopasuj ilość do nowej maszyny" previews before applying. */}
+                    {machineGate === 'saved' &&
+                    machineBatchProposal !== null &&
+                    currentBatchGrams !== null &&
+                    machineBatchProposal !== currentBatchGrams ? (
+                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
+                        <p>
+                          {machineOnboardingCopy.batch.newRecommendedLabel}:{' '}
+                          <span className="font-medium text-ink">
+                            {formatGrams(machineBatchProposal)} {machineOnboardingCopy.batch.recommendedUnit}
+                          </span>
+                        </p>
+                        {!proposalPreviewOpen ? (
+                          <div className="mt-2">
+                            <TouchButton variant="secondary" size="md" onClick={() => setProposalPreviewOpen(true)}>
+                              {machineOnboardingCopy.batch.fitToNewMachine}
+                            </TouchButton>
+                          </div>
+                        ) : (
+                          <div className="mt-2 space-y-2">
+                            <p className="font-mono tabular-nums text-ink">
+                              {formatBatch(currentBatchGrams)} → {formatGrams(machineBatchProposal)}{' '}
+                              {machineOnboardingCopy.batch.recommendedUnit}
+                            </p>
+                            <div className="flex gap-2">
+                              <TouchButton
+                                variant="primary"
+                                size="md"
+                                onClick={() => {
+                                  const grams = machineBatchProposal;
+                                  setMachineBatchProposal(null);
+                                  setProposalPreviewOpen(false);
+                                  setAboveChoiceFor(null);
+                                  update((s) => setBatchGrams(s, grams));
+                                }}
+                              >
+                                {machineOnboardingCopy.batch.applyPreview}
+                              </TouchButton>
+                              <TouchButton variant="quiet" size="md" onClick={() => setProposalPreviewOpen(false)}>
+                                {machineOnboardingCopy.batch.cancelPreview}
+                              </TouchButton>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                     {batchSection.showChangeAction ? (
                       <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>
                         {copy.batch.change}
@@ -895,6 +1174,11 @@ export function CustomerShellV1() {
               gramsVisible={view.gramsVisible}
               recipeInput={currentResult?.recipeInput ?? null}
               persona={persona}
+              machineContext={
+                machineGate === 'saved' && machineView !== null
+                  ? { name: machineView.name, batchFit: batchGuidance.kind }
+                  : null
+              }
             />
 
             <div className="mt-4">{technical}</div>
@@ -921,7 +1205,7 @@ export function CustomerShellV1() {
       ) : null}
 
       <ResolutionSheet controller={resolution} />
-    </DarkShell>
+    </ShellRoot>
   );
 }
 

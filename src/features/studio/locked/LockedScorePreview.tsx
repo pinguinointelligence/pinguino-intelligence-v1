@@ -5,14 +5,13 @@ import { CharcoalPanel } from '@/components/ui/CharcoalPanel';
 import { copy } from '@/copy/en';
 
 const o = copy.studio.overall;
-const m = copy.studio.metrics;
-const SUBS = [m.technical, m.flavor, m.cost];
 
 /**
  * @security Decorative only — no engine imports, no result prop, no real values.
  * The focal locked panel: it carries the single prominent "Unlock PI Pro" CTA
  * (Slice 2B, Q1). The CTA links to /subscription (no payment here, Q2); the DEV
  * demo/pro toggle in the Studio header remains the internal upgrade path.
+ * Mirrors the real §15.1 score card (1–10 verdict layout) — no sub-score grid.
  */
 export function LockedScorePreview() {
   return (
@@ -26,17 +25,6 @@ export function LockedScorePreview() {
 
       <div className="mt-3">
         <span className="font-mono text-2xl font-medium text-ivory/40">—</span>
-      </div>
-
-      <div className="mt-5 grid grid-cols-3 gap-3 border-t border-ivory/15 pt-4">
-        {SUBS.map((label) => (
-          <div key={label}>
-            <span className="block text-[0.625rem] tracking-label text-ivory-soft uppercase">
-              {label}
-            </span>
-            <span className="mt-1 block font-mono text-sm text-ivory/40">—</span>
-          </div>
-        ))}
       </div>
 
       <div className="mt-5 flex items-start gap-3 rounded-md border border-ivory/15 bg-ivory/[0.06] p-4">

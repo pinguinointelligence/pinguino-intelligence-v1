@@ -24,10 +24,11 @@ import {
   type OptimizationPreviewView,
 } from '@/features/optimization/optimizationPreviewRunner';
 import { GoalSetup } from '@/features/recipe-goal/GoalSetup';
+import { ConstraintStudioSection } from '@/features/constraint-studio';
 import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuilder';
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
 import { OverallScoreCard } from '@/features/pi-panel/OverallScoreCard';
-import { PIPanel } from '@/features/pi-panel/PIPanel';
+import { UserMonitorPro } from '@/features/user-monitor';
 import { PresetSelector } from '@/features/studio/PresetSelector';
 import { StudioModeToggle } from '@/features/studio/StudioModeToggle';
 import { StudioSummary } from '@/features/studio/StudioSummary';
@@ -131,12 +132,19 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
             <div className="space-y-6">
               <GoalSetup />
               {fullFormula ? (
-                <IngredientBuilder
-                  items={result.items}
-                  totalBatchG={result.total_batch_g}
-                  targetBatchG={batchGrams}
-                  demo={forceDemo}
-                />
+                <>
+                  <IngredientBuilder
+                    items={result.items}
+                    totalBatchG={result.total_batch_g}
+                    targetBatchG={batchGrams}
+                    demo={forceDemo}
+                  />
+                  {/* UIUX Slice E (§17–§20): locks, Preview→verify-gated Apply,
+                      §18 feasibility honesty, history/Undo/Explain. Exact-gram
+                      surface — mounted only with fullFormula (§22.1: Demo never
+                      receives full grams). */}
+                  <ConstraintStudioSection />
+                </>
               ) : (
                 <LockedCalculatorPreview />
               )}
@@ -147,7 +155,15 @@ export function StudioPage({ forceDemo = false }: { forceDemo?: boolean }) {
                 (real panels + RecipeResult are never mounted). */}
             <div className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
               {technicalView ? <OverallScoreCard result={result} mode={mode} /> : <LockedScorePreview />}
-              {technicalView ? <PIPanel result={result} /> : <LockedPIPreview />}
+              {/* Monitor Pro (§14): modular UserMonitorLayout panel — summary cards,
+                  collapsible modules with §14.4 friendly names, pin/toggle/reset.
+                  Replaces the flat 11-bar PIPanel wall (audit #15); the original
+                  technical table vocabulary lives on in its Expert module. */}
+              {technicalView ? (
+                <UserMonitorPro result={result} servingTemperatureC={temperatureC} />
+              ) : (
+                <LockedPIPreview />
+              )}
               {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
               <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
 

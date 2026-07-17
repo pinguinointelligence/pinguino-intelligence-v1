@@ -13,7 +13,7 @@ export * from './tokens';
 export { CustomerSurface, CustomerSection } from './CustomerSurface';
 export { CustomerMenu } from './CustomerMenu';
 
-// Controls
+// Controls (the class recipe itself is exported from ./tokens above)
 export { TouchButton } from './TouchButton';
 export type { TouchButtonVariant, TouchButtonSize } from './TouchButton';
 export { TextField } from './TextField';

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { ACTIVE_ENGINE, ENGINES } from '@/data/engines';
 import { PRODUCT_PROFILES } from '@/data/productProfiles';
-import { isServingProfileConnected, SERVING_PROFILES } from '@/data/servingProfiles';
+import {
+  isServingProfileConnected,
+  SERVING_PROFILE_ORDER,
+  SERVING_PROFILES,
+  STORAGE_PROFILES,
+  TEMPERATURE_CONCEPT_LABELS,
+} from '@/data/servingProfiles';
 import { advance, INITIAL_INTAKE, type IntakeEvent } from '@/features/pi-chat/conversation';
 import { intakeToRecipe } from '@/features/pi-chat/intakeToRecipe';
 
@@ -53,8 +59,54 @@ describe('serving profiles — no faked future engines', () => {
   });
 });
 
+describe('temperature concept separation (AUDIT #19 / SPEC §11.2 — owner decision, Slice C)', () => {
+  it('the serving vocabulary is exactly Fresh + Display −11/−12/−13 — storage removed', () => {
+    expect(SERVING_PROFILE_ORDER).toEqual([
+      'fresh',
+      'display-minus-11',
+      'display-minus-12',
+      'display-minus-13',
+    ]);
+    expect(SERVING_PROFILES.map((p) => p.id)).toEqual([...SERVING_PROFILE_ORDER]);
+  });
+
+  it('storage is NEVER selectable as serving: no storage id and no −18 in the serving list', () => {
+    const servingIds = SERVING_PROFILES.map((p) => p.id) as string[];
+    expect(servingIds).not.toContain('storage-minus-18');
+    for (const profile of SERVING_PROFILES) {
+      expect(profile.displayTempC, profile.id).not.toBe(-18);
+    }
+  });
+
+  it('storage −18°C exists as a label-only concept: no engineId, nothing to hang logic off', () => {
+    expect(STORAGE_PROFILES.map((p) => p.id)).toEqual(['storage-minus-18']);
+    for (const profile of STORAGE_PROFILES) {
+      expect(profile.concept).toBe('storage');
+      expect(profile.displayTempC).toBe(-18);
+      // Deliberately NO engine hook — storage is informational only (SPEC §11.2).
+      expect('engineId' in profile).toBe(false);
+    }
+  });
+
+  it('fresh carries the production/extraction concept; displays carry serving', () => {
+    for (const profile of SERVING_PROFILES) {
+      expect(profile.concept, profile.id).toBe(profile.id === 'fresh' ? 'production' : 'serving');
+    }
+  });
+
+  it('the concept label set is the exact SPEC §11.2 wording', () => {
+    expect(TEMPERATURE_CONCEPT_LABELS).toEqual({
+      serving: 'Temperatura serwowania',
+      production: 'Produkcja / ekstrakcja',
+      storage: 'Przechowywanie',
+    });
+  });
+});
+
 describe('intakeToRecipe pins the active −11°C Engine (never fakes a future engine)', () => {
-  it('computes at −11 for EVERY serving profile, including −18', () => {
+  // Owner decision (Slice C): −18 is no longer a SERVING profile (see the
+  // concept-separation suite above) — the loop covers the whole serving vocabulary.
+  it('computes at −11 for EVERY serving profile, including unconnected previews', () => {
     for (const serving of SERVING_PROFILES) {
       const events: IntakeEvent[] = [
         { type: 'submitFlavor', text: 'vanilla' },

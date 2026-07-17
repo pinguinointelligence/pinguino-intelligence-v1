@@ -1,7 +1,7 @@
 /**
  * PINGÜINO Customer Shell — Polish copy (CustomerShellV1).
  *
- * The single source of every VISIBLE string for the `/customer-v1` surface.
+ * The single source of every VISIBLE string for the `/start` customer surface.
  * The pure customer-flow core (Agent B) speaks in copy KEYS such as
  * `customer_flow.product_type.gelato`; those keys are mapped to Polish text here
  * so the presentation layer never hardcodes user-facing prose inline.
@@ -26,9 +26,11 @@ export const customerShellCopy = {
     /** Keyed by CUSTOMER_MENU_ITEMS[].key — labels for the real routes only. */
     primary: {
       home: 'Strona główna',
+      start: 'Stwórz recepturę',
       studio: 'Studio',
       recipes: 'Gotowe receptury',
       myRecipes: 'Moje receptury',
+      machine: 'Moja maszyna',
       label: 'Etykiety',
       subscription: 'Subskrypcja / Plany',
     },
@@ -161,7 +163,10 @@ export const customerShellCopy = {
   modes: {
     label: 'Tryb',
     title: 'Jak przygotujesz lody?',
-    lead: 'Wybierz temperaturę podania albo tryb maszyny. Tryby Ninja mają zatwierdzoną masę wsadu.',
+    // Consumer wording (audit #27): no "zatwierdzona masa wsadu" jargon in the
+    // Home-facing lead — the honest fact (Ninja quantity is set automatically
+    // from a tested recipe) stays, phrased in plain language.
+    lead: 'Wybierz temperaturę podania albo tryb maszyny. W trybach Ninja właściwą ilość ustawiamy za Ciebie.',
     /** Keyed by ServingModeId. Direct temperatures + our fresh machine + two Ninja profiles. */
     options: {
       temp_minus_11: { label: '−11°C', secondary: 'Bardziej miękkie' },
@@ -317,7 +322,7 @@ export const customerShellCopy = {
     } as Record<string, string>,
     /** Result-state banners — honest about whether the engine calculated the card. */
     stateCalculated: 'Receptura wyliczona przez silnik PINGÜINO.',
-    stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Uruchom Monitor PI, aby dopasować.',
+    stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Dopasuj ją w Monitorze receptury poniżej.',
     stateStructureOnly:
       'To podglądowa struktura składników, a nie wyliczona receptura. Dokładne ilości wyliczy silnik, gdy uzupełnisz wymagane dane.',
   },
@@ -416,7 +421,8 @@ export const customerShellCopy = {
 
   /* ------------------------------------------------------------- Monitor PI -- */
   monitor: {
-    label: 'Monitor PI',
+    /** §13.3 header — the customer-facing Monitor name (never an internal code). */
+    label: 'Monitor receptury',
     title: 'Dostrój recepturę',
     lead: 'Wskaż kierunek — PI dopasuje recepturę w bezpiecznym, złotym zakresie. Używamy gotowych, sprawdzonych kroków, nie zgadujemy wartości.',
     recalc: 'Przelicz z PI',
@@ -427,7 +433,7 @@ export const customerShellCopy = {
     demoNote: 'W podglądzie pokazujemy kierunek zmian jakościowo, bez gramów.',
     /** Shown when there is no calculated recipe yet (structure_only). */
     needsCalculatedNote:
-      'Monitor PI dokładnie przeliczy recepturę, gdy karta będzie wyliczona przez silnik (uzupełnij wymagane dane).',
+      'Monitor receptury dokładnie przeliczy recepturę, gdy karta będzie wyliczona przez silnik (uzupełnij wymagane dane).',
     przed: 'Przed',
     po: 'Po zmianie',
     apply: 'Zastosuj zmiany',

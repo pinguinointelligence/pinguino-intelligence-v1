@@ -1,0 +1,257 @@
+/**
+ * Constraint Studio section (SPEC §17–§20) — the store-connected surface
+ * mounted in the Studio's main column, under the ingredient builder.
+ *
+ *  - „Dopasuj recepturę” creates a PREVIEW (never a silent change — §12.4);
+ *  - batch rescale goes through `rescaleBatchToTarget` (locked grams
+ *    preserved, §17.4) and previews first;
+ *  - Apply is explicit and passes the one pipeline door (verify-gated);
+ *  - the live locked-sum conflict banner is pure arithmetic (§17.4);
+ *  - feasibility analysis renders §18 honestly (verified bounds, groups,
+ *    verbatim §18.5 fallback);
+ *  - history/Undo/Explain per §20; Save reuses the pro-core version path.
+ */
+import { useEffect, useMemo, useState } from 'react';
+import { SectionLabel } from '@/components/shared/SectionLabel';
+import { Card } from '@/components/ui/Card';
+import {
+  BATCH_SUM_TOLERANCE_G,
+  constrainedMinimumGrams,
+} from '@/features/recipe-constraints';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { constraintStudioCopy as copy, formatGramsPl } from '../constraintStudioCopy';
+import { constraintStudioFlags } from '../constraintStudioFlags';
+import {
+  isUndoAvailable,
+  useConstraintStudioStore,
+  type PreviewIssue,
+} from '../constraintStudioStore';
+import { BlockedApplyNotice } from './BlockedApplyNotice';
+import { ConstraintHistoryPanel } from './ConstraintHistoryPanel';
+import { ConstraintPreviewCard } from './ConstraintPreviewCard';
+import { FeasibilityNotice } from './FeasibilityNotice';
+import { RangeConstraintEditor } from './RangeConstraintEditor';
+import { SaveVersionControl } from './SaveVersionControl';
+
+const primaryButton =
+  'inline-flex items-center justify-center rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell transition-colors hover:bg-ivory/90';
+const secondaryButton =
+  'inline-flex items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40';
+
+/** §17.4 live locked-sum conflict — PURE view (unit-testable without stores). */
+export function LockedSumConflictBanner({
+  lockedMinimumGrams,
+  targetBatchGrams,
+  onSetBatchToMinimum,
+}: {
+  lockedMinimumGrams: number;
+  targetBatchGrams: number;
+  onSetBatchToMinimum: (grams: number) => void;
+}) {
+  const minimum = Math.ceil(lockedMinimumGrams);
+  return (
+    <section
+      role="alert"
+      aria-label={copy.conflict.title}
+      className="rounded-md border border-status-risky/40 bg-status-risky/[0.06] px-4 py-3"
+    >
+      <p className="text-sm font-medium text-ivory">{copy.conflict.title}</p>
+      <p className="mt-1 text-sm leading-relaxed text-ivory/80">
+        {copy.conflict.lockedSumExceedsBatch(
+          formatGramsPl(lockedMinimumGrams),
+          formatGramsPl(targetBatchGrams),
+          formatGramsPl(minimum),
+        )}
+      </p>
+      <button
+        type="button"
+        className="mt-2 rounded-md border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
+        onClick={() => onSetBatchToMinimum(minimum)}
+      >
+        {copy.conflict.setBatchTo(formatGramsPl(minimum))}
+      </button>
+    </section>
+  );
+}
+
+function previewIssueMessage(issue: PreviewIssue): string {
+  switch (issue.code) {
+    case 'already_clean':
+      return copy.previewIssue.alreadyClean;
+    case 'no_proposal':
+      return copy.previewIssue.noProposal;
+    case 'apply_failed':
+      return copy.previewIssue.applyFailed;
+    case 'invalid_constraints':
+      return copy.previewIssue.invalidConstraints;
+    case 'line_missing':
+      return copy.previewIssue.lineMissing;
+    case 'rescale_invalid':
+      return copy.previewIssue.rescaleInvalid;
+    case 'rescale_actuals':
+      return copy.previewIssue.rescaleActuals;
+    case 'rescale_no_scalable':
+      return copy.previewIssue.rescaleNoScalable;
+    case 'rescale_locked_sum':
+      return copy.previewIssue.rescaleLockedSum(formatGramsPl(issue.minimumBatchGrams));
+  }
+}
+
+export function ConstraintStudioSection() {
+  const items = useRecipeStore((state) => state.items);
+  const targetBatchGrams = useRecipeStore((state) => state.target_batch_grams);
+  const mode = useRecipeStore((state) => state.mode);
+  const category = useRecipeStore((state) => state.category);
+  const temperatureC = useRecipeStore((state) => state.target_temperature_c);
+  const machineCapacityGrams = useRecipeStore((state) => state.machine_capacity_grams);
+  const flavorIntensity = useRecipeStore((state) => state.flavor_intensity);
+  const costPriority = useRecipeStore((state) => state.cost_priority);
+
+  const constraints = useConstraintStudioStore((state) => state.constraints);
+  const preview = useConstraintStudioStore((state) => state.preview);
+  const previewIssue = useConstraintStudioStore((state) => state.previewIssue);
+  const blocked = useConstraintStudioStore((state) => state.blocked);
+  const feasibility = useConstraintStudioStore((state) => state.feasibility);
+  const history = useConstraintStudioStore((state) => state.history);
+  // Actions are stable references — reading them once via getState is safe.
+  const store = useConstraintStudioStore.getState();
+
+  // Prune constraints for lines that vanished (preset loads, removals).
+  const reconcile = useConstraintStudioStore((state) => state.reconcile);
+  useEffect(() => {
+    reconcile();
+  }, [items, reconcile]);
+
+  const [batchText, setBatchText] = useState('');
+
+  const currentInput = useMemo(
+    () =>
+      buildRecipeInput({
+        mode,
+        category,
+        target_temperature_c: temperatureC,
+        target_batch_grams: targetBatchGrams,
+        machine_capacity_grams: machineCapacityGrams,
+        flavor_intensity: flavorIntensity,
+        cost_priority: costPriority,
+        items,
+      }),
+    [mode, category, temperatureC, targetBatchGrams, machineCapacityGrams, flavorIntensity, costPriority, items],
+  );
+
+  // §17.4 live locked-sum conflict — pure arithmetic, no engine evaluation.
+  const lockedMinimum = constrainedMinimumGrams(constraints);
+  const lockedSumConflict = lockedMinimum > targetBatchGrams + BATCH_SUM_TOLERANCE_G;
+
+  const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
+
+  return (
+    <Card padding="lg">
+      <SectionLabel>{copy.section.title}</SectionLabel>
+      <p className="mt-2 text-xs leading-relaxed text-ivory/50">{copy.section.lead}</p>
+
+      <div className="mt-4 space-y-4">
+        {lockedSumConflict ? (
+          <LockedSumConflictBanner
+            lockedMinimumGrams={lockedMinimum}
+            targetBatchGrams={targetBatchGrams}
+            onSetBatchToMinimum={store.createBatchRescalePreview}
+          />
+        ) : null}
+
+        {/* §12.4 the main action — always a preview first. */}
+        <div className="space-y-1.5">
+          <button type="button" className={`${primaryButton} w-full`} onClick={store.createOptimizePreview}>
+            {copy.actions.optimize}
+          </button>
+          <p className="text-xs leading-relaxed text-ivory/40">{copy.actions.optimizeHint}</p>
+        </div>
+
+        {/* §17.4 explicit batch change with locked lines preserved. */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <label className="sr-only" htmlFor="constraint-studio-batch">
+              {copy.actions.rescaleLabel}
+            </label>
+            <input
+              id="constraint-studio-batch"
+              type="number"
+              min={0}
+              placeholder={String(Math.round(targetBatchGrams))}
+              value={batchText}
+              onChange={(event) => setBatchText(event.currentTarget.value)}
+              className="w-32 rounded-md border border-ivory/15 bg-shell px-3 py-2 text-right font-mono text-sm text-ivory tabular-nums transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none"
+            />
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => {
+                const grams = Number(batchText);
+                store.createBatchRescalePreview(grams);
+              }}
+            >
+              {copy.actions.rescale}
+            </button>
+          </div>
+          <p className="text-xs leading-relaxed text-ivory/40">{copy.actions.rescaleHint}</p>
+        </div>
+
+        {/* §18 feasibility — explicit, analysis-only. */}
+        <div className="space-y-1.5">
+          <button type="button" className={`${secondaryButton} w-full`} onClick={store.runFeasibility}>
+            {copy.actions.feasibility}
+          </button>
+          <p className="text-xs leading-relaxed text-ivory/40">{copy.actions.feasibilityHint}</p>
+        </div>
+
+        {previewIssue ? (
+          <p className="text-sm leading-relaxed text-ivory/70">{previewIssueMessage(previewIssue)}</p>
+        ) : null}
+
+        {blocked ? <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} /> : null}
+
+        {preview ? (
+          <ConstraintPreviewCard
+            preview={preview}
+            onApply={store.applyPreview}
+            onCancel={store.cancelPreview}
+          />
+        ) : null}
+
+        {feasibility ? (
+          <FeasibilityNotice
+            input={currentInput}
+            analysis={feasibility}
+            handlers={{
+              onSuggestedFix: store.createSuggestedFixPreview,
+              onUnlock: store.clearConstraint,
+              onChangeBatch: (minimumBatchGrams) =>
+                store.createBatchRescalePreview(Math.ceil(minimumBatchGrams)),
+              onKeepAsIs: store.clearFeasibility,
+            }}
+          />
+        ) : null}
+
+        {constraintStudioFlags.rangeConstraintUi ? (
+          <RangeConstraintEditor
+            items={items}
+            constraints={constraints}
+            onSetRange={(lineId, minGrams, maxGrams) =>
+              store.setRangeConstraint(lineId, minGrams, maxGrams).ok
+            }
+            onClearRange={store.clearConstraint}
+          />
+        ) : null}
+
+        <ConstraintHistoryPanel
+          history={history}
+          undoAvailable={undoAvailable}
+          onUndo={store.undoLastApply}
+        />
+
+        <SaveVersionControl />
+      </div>
+    </Card>
+  );
+}

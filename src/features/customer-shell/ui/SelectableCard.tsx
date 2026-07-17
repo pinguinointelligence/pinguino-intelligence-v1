@@ -16,8 +16,10 @@ interface SelectableCardProps {
 }
 
 /**
- * A large tappable choice card with an unmistakable selected state (ink ring +
- * faint tint + check), not colour alone. Full-card hit area, keyboard focusable.
+ * A large tappable choice card with an unmistakable selected state on the LIGHT
+ * surface (spec §21.2 / audit #29): full-strength ink border doubled by a ring,
+ * a clearly visible fill tint, and a filled check — never colour alone. Full-card
+ * hit area, keyboard focusable.
  */
 export function SelectableCard({
   title,
@@ -39,12 +41,14 @@ export function SelectableCard({
       className={cn(
         'relative flex w-full items-start gap-3 border p-4 text-left',
         radius.card,
-        color.surface,
         motion.base,
         focusRing,
+        // Surface and tint are mutually exclusive: emitting `bg-paper` alongside
+        // the selected tint let the opaque paper background win in the stylesheet
+        // cascade, silently erasing the tint (root cause behind audit #29).
         selected
-          ? `border-ink ${color.surfaceTintSelected} ${elevation.card}`
-          : 'border-ink/12 hover:border-ink/30',
+          ? `border-ink ring-1 ring-ink ${color.surfaceTintSelected} ${elevation.card}`
+          : `${color.surface} border-ink/12 hover:border-ink/30`,
         disabled ? 'cursor-not-allowed opacity-50' : 'active:scale-[0.99]',
         className,
       )}

@@ -12,15 +12,16 @@ const FOCUSABLE =
 
 /**
  * The customer top bar + global navigation drawer (PART 4). A wordmark and an
- * always-visible hamburger sit in a slim in-flow bar; the hamburger opens a DARK,
- * right-side premium drawer that:
+ * always-visible hamburger sit in a slim in-flow bar; the hamburger opens a
+ * LIGHT, right-side premium drawer (light-first owner decision, UIUX Slice A)
+ * that:
  *  - locks body scroll while open;
  *  - traps focus and closes on Escape (desktop) or backdrop tap;
  *  - respects the safe-area insets;
  *  - links ONLY routes that exist, plus the real auth login/logout actions.
  *
  * Navigation uses react-router `Link`; auth uses the existing stores. The drawer
- * inherits the dark palette from the shell root (CSS-variable scope).
+ * renders the light-native `paper` surface directly.
  */
 export function CustomerMenu() {
   const [open, setOpen] = useState(false);

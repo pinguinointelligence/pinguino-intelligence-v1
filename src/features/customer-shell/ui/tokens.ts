@@ -1,26 +1,28 @@
 /**
  * Customer-shell design tokens (SCOPED — presentational only).
  *
- * A mobile-first, Apple-flavoured customer surface: a DARK premium look (deep
- * near-black backdrop, near-white primary text, lifted dark card surfaces, subtle
- * hairline borders), large type, generous whitespace, big touch targets, clear
- * selected states, restrained motion. This module does NOT edit the global
- * Tailwind theme or index.css — it COMPOSES the already-defined brand utilities
- * (ink / paper / stone / status-*) into named, reusable class strings, and the
- * DARK palette is applied purely by re-mapping the underlying CSS variables on the
- * shell root (see `customerDarkVars` / `customerDarkPageBg`).
+ * LIGHT-FIRST (binding owner decision, UIUX master Slice A, spec §21.1 +
+ * audit finding #4): the customer surface is a bright, premium, highly readable
+ * product — white paper surfaces, near-black ink text, hairline borders, large
+ * type, generous whitespace, big touch targets, clear selected states and
+ * restrained motion. The previous scoped DARK remap (`customerDarkVars` /
+ * `customerDarkPageBg` CSS-variable overrides + the `DarkShell` wrapper) has been
+ * REMOVED — every class below is light-native and renders against the global
+ * light theme (`src/styles/tokens.css`). Dark is no longer applied anywhere on
+ * the customer shell; a darker Monitor Pro focal panel INSIDE the light app is a
+ * later, separate slice and must not be rebuilt from here.
  *
- * How the dark theme works WITHOUT rewriting every class: in Tailwind v4 each
- * colour utility resolves through a CSS variable (`bg-paper` → `var(--color-paper)`,
- * `text-stone-600` → `var(--color-stone-600)`, `border-ink/10` mixes `var(--color-ink)`).
- * Applying `customerDarkVars` as inline custom properties on the shell root re-themes
- * the whole subtree — structure preserved, only the colours flip. It is scoped: it
- * never touches `:root`, so the rest of the app (white lab surfaces) is unaffected.
+ * This module does NOT edit the global Tailwind theme or index.css — it COMPOSES
+ * the already-defined brand utilities (ink / paper / stone / status-* / gold)
+ * into named, reusable class strings.
  *
- * Contrast policy (on the ~#0c0d0f backdrop / ~#161719 cards): primary text is
- * near-white `ink` (~15:1). Secondary text never goes darker than the remapped
- * `stone-600` (~9:1). `stone-500` (~6:1) is for muted labels; `stone-400` (~5:1)
- * is reserved for placeholders / decorative glyphs — all comfortably AA on black.
+ * Contrast policy (on white `paper` / near-white `stone-50` surfaces): primary
+ * text is near-black `ink` (~17:1). Secondary text is `stone-600` (~7:1).
+ * `stone-500` (~4.9:1) is the FLOOR for informative text (muted labels);
+ * `stone-400` is reserved for placeholders / decorative glyphs only — never for
+ * content the user must read. Status hues tint borders/backgrounds; the text on
+ * a tinted notice stays in the readable stone/ink tiers (spec §15.3 — every
+ * state carries text, never colour alone).
  */
 
 /* ------------------------------------------------------------------ *
@@ -80,7 +82,8 @@ export const color = {
 
   surface: 'bg-paper',
   surfaceSunken: 'bg-stone-50',
-  surfaceTintSelected: 'bg-ink/[0.035]',
+  /** Selected-card fill — clearly visible on white, never a 2% difference (§21.2). */
+  surfaceTintSelected: 'bg-ink/[0.06]',
 
   borderHairline: 'border-ink/10',
   borderStrong: 'border-ink/20',
@@ -90,6 +93,29 @@ export const color = {
   statusIdeal: 'text-status-ideal',
   statusRisky: 'text-status-risky',
   statusError: 'text-status-error',
+} as const;
+
+/* ------------------------------------------------------------------ *
+ * Status notice surfaces (light)                                     *
+ * ------------------------------------------------------------------ */
+
+/**
+ * Tinted status notices for the LIGHT surface (audit finding #26 — no raw
+ * Tailwind ambers/emeralds). The status hue carries the border + wash only;
+ * body text stays in the readable stone/ink tiers so contrast holds on white
+ * and the state is never colour-alone (§15.3, §21.5).
+ */
+export const notice = {
+  /** Positive / resolved (status-ideal wash). */
+  ideal: 'border border-status-ideal/40 bg-status-ideal/10',
+  /** Needs attention / blocked (status-risky wash — desaturated amber). */
+  risky: 'border border-status-risky/40 bg-status-risky/10',
+  /** Real problem (status-error wash). */
+  error: 'border border-status-error/40 bg-status-error/10',
+  /** Neutral informational inset. */
+  neutral: 'border border-ink/10 bg-stone-50',
+  /** Readable body-text tier for tinted notices. */
+  text: 'text-stone-700',
 } as const;
 
 /* ------------------------------------------------------------------ *
@@ -160,40 +186,56 @@ export const cardShell = `${color.surface} border ${color.borderHairline} ${radi
 export const interactiveSurface = `${cardShell} ${motion.base} ${focusRing} active:scale-[0.99]`;
 
 /* ------------------------------------------------------------------ *
- * DARK premium palette (scoped CSS-variable overrides)               *
+ * TouchButton recipe (shared with link-shaped CTAs)                   *
  * ------------------------------------------------------------------ */
 
-/**
- * The deep near-black page backdrop. Sits BELOW the lifted card surface
- * (`--color-paper`) so cards read as raised, not flat.
- */
-export const customerDarkPageBg = '#0c0d0f';
+export type TouchButtonVariant = 'primary' | 'secondary' | 'quiet';
+export type TouchButtonSize = 'md' | 'lg';
 
 /**
- * CSS custom-property overrides that flip the whole customer surface to the dark
- * palette. Apply as an inline `style` on the shell root; every scoped colour
- * utility resolves through these variables, so the flip is automatic and the
- * component class strings stay unchanged.
- *
- * Role split (so `ink` works both as foreground AND as the inverted primary
- * button, and the `stone` ramp serves surfaces at the low end / text at the high
- * end):
- *  - ink        → near-white: text, hairlines, focus ring, selected outline, and
- *                 the primary-button fill (a light button with dark `paper` text);
- *  - paper      → lifted dark card / control / drawer surface;
- *  - stone 50…200 → progressively lighter dark SURFACES (insets, blocks, shimmer);
- *  - stone 300  → decorative glyphs; 400 placeholders; 500 muted labels;
- *  - stone 600  → secondary body text (highest contrast of the ramp).
+ * Disabled states (spec §21.2 / audit #17): unmistakably inactive, but the label
+ * stays READABLE — solid quiet greys with ≥4.5:1 text contrast, never a washed
+ * 30%-alpha fill with invisible text. Hover styles are explicitly neutralised
+ * while disabled so the button cannot “light up” under the pointer.
  */
-export const customerDarkVars: Record<string, string> = {
-  '--color-ink': '#f4f4f2',
-  '--color-ink-soft': '#e6e5e1',
-  '--color-paper': '#161719',
-  '--color-stone-50': '#1e2023',
-  '--color-stone-100': '#24262a',
-  '--color-stone-200': '#2b2d32',
-  '--color-stone-300': '#6b6d74',
-  '--color-stone-400': '#9a9ca3',
-  '--color-stone-500': '#b6b8be',
-  '--color-stone-600': '#d2d4da',
+export const touchButtonVariants: Record<TouchButtonVariant, string> = {
+  // Ink on paper — the single high-emphasis action.
+  primary:
+    'bg-ink text-paper hover:bg-ink-soft active:bg-ink-soft disabled:bg-stone-200 disabled:text-stone-600 disabled:hover:bg-stone-200',
+  // Hairline outline — secondary action.
+  secondary:
+    'bg-paper text-ink border border-ink/15 hover:border-ink/40 active:bg-ink/[0.03] disabled:border-ink/10 disabled:text-stone-500 disabled:hover:border-ink/10',
+  // Text-only — tertiary / inline action.
+  quiet:
+    'bg-transparent text-ink hover:bg-ink/[0.04] active:bg-ink/[0.06] disabled:text-stone-500 disabled:hover:bg-transparent',
 };
+
+export const touchButtonSizes: Record<TouchButtonSize, string> = {
+  md: `${touch.control} px-6`,
+  lg: `${touch.controlLarge} px-7`,
+};
+
+/**
+ * The complete TouchButton class recipe — one button system (§21.1). Used by the
+ * `TouchButton` component AND by link-shaped CTAs (e.g. the public landing's
+ * router `Link`s) so navigation controls render EXACTLY like buttons.
+ */
+export function touchButtonClasses(
+  variant: TouchButtonVariant = 'primary',
+  size: TouchButtonSize = 'md',
+  block = false,
+): string {
+  return [
+    'inline-flex items-center justify-center gap-2 font-medium',
+    type.body,
+    radius.control,
+    touchButtonSizes[size],
+    touchButtonVariants[variant],
+    motion.base,
+    focusRing,
+    'active:scale-[0.99] disabled:cursor-not-allowed disabled:active:scale-100',
+    block ? 'w-full' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+}

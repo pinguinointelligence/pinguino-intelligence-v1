@@ -24,6 +24,15 @@
   --color-status-risky: #9c8a55;
   --color-status-error: #a06352;
 
+  /* Golden Range — the brand's signature OPTIMUM accent (UIUX spec §15.3, §21.1).
+     Owner decision (Slice A): gold marks the golden range / optimum ONLY — never
+     generic "premium" decoration and never the sole Pro plan marker. Deep muted
+     gold, AA-readable (≥4.5:1) as text on white paper. */
+  --color-gold: #8a6c2e;
+  /* The SAME optimum accent for dark contrast surfaces (Monitor Pro panel,
+     §14/§21.1) — lightened for ≥4.5:1 on charcoal; still optimum-only. */
+  --color-gold-soft: #c2a05e;
+
   /* Typography */
   --font-sans:
     'Hanken Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
