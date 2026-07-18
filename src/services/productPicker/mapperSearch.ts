@@ -181,7 +181,7 @@ export async function searchMapperIngredients(query: MapperSearchQuery): Promise
     return { kind: 'error', message: error.message ?? 'search failed' };
   }
 
-  const raw = (data ?? []) as Record<string, unknown>[];
+  const raw = (data ?? []) as unknown as Record<string, unknown>[];
   const hasMore = raw.length > limit;
   return {
     kind: 'results',
