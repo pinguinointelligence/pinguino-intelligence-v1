@@ -341,6 +341,10 @@ export const customerShellCopy = {
     /** Result-state banners — honest about whether the engine calculated the card. */
     stateCalculated: 'Receptura wyliczona przez silnik PINGÜINO.',
     stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Dopasuj ją w Monitorze receptury poniżej.',
+    // Track G: at a temperature where interactive tuning awaits approval, the
+    // status must not point at tuning controls that honestly cannot run.
+    stateOutOfBandNoTuning:
+      'Receptura wyliczona — część parametrów jest poza złotym zakresem dla tej temperatury podawania.',
     stateStructureOnly:
       'To podglądowa struktura składników, a nie wyliczona receptura. Dokładne ilości wyliczy silnik, gdy uzupełnisz wymagane dane.',
     /**

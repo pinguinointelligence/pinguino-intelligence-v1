@@ -83,6 +83,12 @@ export function resultStatus(input: {
   outOfBand: boolean;
   /** True only when the engine produced a real recipe (not a structure-only preview). */
   calculated: boolean;
+  /**
+   * False when interactive Monitor tuning is unavailable for this serving
+   * temperature (Track G) — the out-of-band guidance must then not point the
+   * customer at tuning controls that honestly cannot run. Default true.
+   */
+  tuningAvailable?: boolean;
 }): ResultStatusView {
   if (input.unresolvedCount > 0) {
     const n = input.unresolvedCount;
@@ -97,7 +103,11 @@ export function resultStatus(input: {
   if (!input.calculated) {
     return { kind: 'ready_preview', label: copy.result.status.readyPreview, guidance: copy.result.stateStructureOnly };
   }
-  const guidance = input.outOfBand ? copy.result.stateOutOfBand : null;
+  const guidance = input.outOfBand
+    ? input.tuningAvailable === false
+      ? copy.result.stateOutOfBandNoTuning
+      : copy.result.stateOutOfBand
+    : null;
   if (input.gramsVisible) {
     return { kind: 'ready_recalc', label: copy.result.status.readyRecalc, guidance };
   }

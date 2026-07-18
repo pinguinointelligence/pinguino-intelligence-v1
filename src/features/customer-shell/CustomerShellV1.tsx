@@ -91,6 +91,7 @@ import {
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
 import { customerShellCopy as copy } from './customerShellCopy';
+import { isMonitorTuningApproved } from '@/features/pi-monitor';
 import { compactRecipeContext, resultStatus, showTechnicalDetails } from './resultPresentation';
 import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
@@ -684,6 +685,11 @@ export function CustomerShellV1() {
     // A structure-only card (unsupported profile) or a catalogue draft has no
     // engine numbers — it is a preview, never „ready to recalculate”.
     calculated: currentResult !== null && currentResult.state !== 'structure_only',
+    // Track G: don't send the customer to Monitor tuning at a serving temperature
+    // where tuning is honestly unavailable (pending scientific approval).
+    tuningAvailable:
+      currentResult?.recipeInput == null ||
+      isMonitorTuningApproved(currentResult.recipeInput.target_temperature_c),
   });
 
   /* ----------------------------------------------------- Ready matches -- */

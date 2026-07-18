@@ -92,6 +92,22 @@ describe('resultStatus (§11 — exactly ONE status, never the double message)',
     expect(s.guidance).toContain('podglądowa struktura');
   });
 
+  it('out-of-band + tuning unavailable → guidance does NOT point at Monitor tuning (Track G)', () => {
+    const s = resultStatus({
+      unresolvedCount: 0, gramsVisible: true, outOfBand: true, calculated: true, tuningAvailable: false,
+    });
+    expect(s.kind).toBe('ready_recalc');
+    expect(s.guidance).not.toContain('Dopasuj ją w Monitorze');
+    expect(s.guidance).toContain('poza złotym zakresem');
+  });
+
+  it('out-of-band + tuning available keeps the Monitor guidance', () => {
+    const s = resultStatus({
+      unresolvedCount: 0, gramsVisible: true, outOfBand: true, calculated: true, tuningAvailable: true,
+    });
+    expect(s.guidance).toContain('Dopasuj ją w Monitorze');
+  });
+
   it('NEVER emits both „prawie gotowa” and „wyliczona przez silnik” at once', () => {
     for (const input of [
       { unresolvedCount: 3, gramsVisible: false, outOfBand: false, calculated: true },
