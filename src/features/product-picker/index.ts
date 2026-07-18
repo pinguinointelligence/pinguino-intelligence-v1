@@ -12,6 +12,7 @@ export * from './productSearch';
 export * from './productRowMapper';
 export * from './ingredientCatalogue';
 export * from './inMemoryCatalog';
+export * from './mapperLiveSearch';
 export { SAMPLE_CATALOGUE, sampleCategoryForIngredient } from './sampleCatalogue';
 export {
   BUNDLED_CATALOGUE_ENTRIES,
