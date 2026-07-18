@@ -426,6 +426,34 @@ export const customerShellCopy = {
     searchLabel: 'Szukaj produktu',
     searchPlaceholder: 'Nazwa, marka lub kod EAN…',
     noResults: 'Brak pasujących produktów. Możesz dodać produkt ręcznie albo zeskanować etykietę.',
+    /** Two catalogue sources (Track F): the Mapper library first, products second. */
+    sources: {
+      pi_ingredients: 'Składniki PI',
+      products: 'Produkty',
+    } as Record<string, string>,
+    /** Honest source note for the live Mapper tab (the Produkty tab reuses the
+     * bundled sample's own honest note with its real counts). */
+    ingredientsSourceNote: 'Katalog składników PI — wyszukiwanie na żywo w pełnej bibliotece.',
+    /** Live Mapper search (Składniki PI tab). */
+    ingredientsSearchLabel: 'Szukaj składnika',
+    ingredientsSearchPlaceholder: 'Nazwa składnika…',
+    liveLoading: 'Szukam w katalogu…',
+    liveLoadingMore: 'Wczytuję kolejne…',
+    liveLoadMore: 'Załaduj więcej',
+    liveEmptyPrefix: 'Brak wyników dla',
+    liveError: 'Nie udało się przeszukać katalogu. Spróbuj ponownie.',
+    liveRetry: 'Spróbuj ponownie',
+    liveUnavailable:
+      'Katalog składników na żywo nie jest jeszcze dostępny w tym środowisku. To nie jest pusty wynik — spróbuj później albo skorzystaj z zakładki Produkty.',
+    /** Honest readiness on a Mapper row (the exact check runs po wyborze). */
+    ingredientEngineApproved: 'Zatwierdzony dla silników PI',
+    ingredientNeedsVerification: 'Do weryfikacji po wyborze',
+    /** Post-selection engine-values fetch states (rich data, logged-in only). */
+    pickChecking: 'Sprawdzam dane silnika…',
+    pickLoginRequired:
+      'Dokładne wartości silnika wymagają zalogowania. Wyszukiwanie działa bez konta, ale dane do przeliczenia pobierzemy po zalogowaniu.',
+    pickUnavailable: 'Nie udało się pobrać danych silnika — środowisko na żywo nie jest jeszcze dostępne.',
+    pickError: 'Nie udało się pobrać danych silnika. Spróbuj ponownie.',
     badgeReady: 'Gotowy do przeliczenia',
     badgeNeedsData: 'Wymaga danych',
     packagePrefix: 'Opakowanie',
