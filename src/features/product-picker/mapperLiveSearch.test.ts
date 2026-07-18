@@ -54,9 +54,9 @@ const results = (rows: SafeMapperSearchRow[], hasMore = false): MapperSearchOutc
 
 /* ----------------------------------------------------------- two-source tabs */
 
-describe('two-source tab view-model', () => {
-  it('offers exactly the two sources, Mapper library first', () => {
-    expect(PICKER_SOURCE_ORDER).toEqual(['pi_ingredients', 'products']);
+describe('picker source view-model', () => {
+  it('canonical order is the Mapper library first, then private „Moje produkty"', () => {
+    expect(PICKER_SOURCE_ORDER).toEqual(['pi_ingredients', 'my_products']);
   });
 
   it('opens on Składniki PI (owner decision)', () => {

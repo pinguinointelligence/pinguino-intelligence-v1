@@ -28,15 +28,19 @@ import type {
 import type { ProductPickResult } from './productPickerContracts';
 
 /* ------------------------------------------------------------------------ *
- * Two-source tabs (owner spec: Składniki PI default, Produkty second)       *
+ * Picker sources (owner decision 2026-07-18): the canonical shared catalogue *
+ * is „Składniki PI" (live Mapper search) — the PRIMARY, always-present source. *
+ * „Moje produkty" (private, user-owned products) is an OPTIONAL secondary tab, *
+ * shown only for an authenticated user with private-product access; demo/anon  *
+ * never see it. The old public „Produkty" sample tab has been removed.         *
  * ------------------------------------------------------------------------ */
 
-export type PickerSourceId = 'pi_ingredients' | 'products';
+export type PickerSourceId = 'pi_ingredients' | 'my_products';
 
-/** Stable tab order — the Mapper library is the PRIMARY catalogue. */
-export const PICKER_SOURCE_ORDER: readonly PickerSourceId[] = ['pi_ingredients', 'products'];
+/** Canonical source order — the Mapper library is PRIMARY; „Moje produkty" is optional. */
+export const PICKER_SOURCE_ORDER: readonly PickerSourceId[] = ['pi_ingredients', 'my_products'];
 
-/** The tab the picker opens on (owner decision). */
+/** The tab the picker opens on (always the shared Mapper library). */
 export const DEFAULT_PICKER_SOURCE: PickerSourceId = 'pi_ingredients';
 
 /* ------------------------------------------------------------------------ *

@@ -14,9 +14,3 @@ export * from './ingredientCatalogue';
 export * from './inMemoryCatalog';
 export * from './mapperLiveSearch';
 export { SAMPLE_CATALOGUE, sampleCategoryForIngredient } from './sampleCatalogue';
-export {
-  BUNDLED_CATALOGUE_ENTRIES,
-  BUNDLED_CATALOGUE_READY_COUNT,
-  BUNDLED_CATALOGUE_SOURCE,
-  bundledCategoryForIngredient,
-} from './bundledCatalogue';

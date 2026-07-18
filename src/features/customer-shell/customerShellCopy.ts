@@ -426,14 +426,22 @@ export const customerShellCopy = {
     searchLabel: 'Szukaj produktu',
     searchPlaceholder: 'Nazwa, marka lub kod EAN…',
     noResults: 'Brak pasujących produktów. Możesz dodać produkt ręcznie albo zeskanować etykietę.',
-    /** Two catalogue sources (Track F): the Mapper library first, products second. */
+    /**
+     * Picker sources (owner 2026-07-18): the canonical shared catalogue „Składniki PI"
+     * (live Mapper search) is always present; „Moje produkty" (private, user-owned) is an
+     * OPTIONAL second tab shown only for a signed-in user with private products.
+     */
     sources: {
       pi_ingredients: 'Składniki PI',
-      products: 'Produkty',
+      my_products: 'Moje produkty',
     } as Record<string, string>,
-    /** Honest source note for the live Mapper tab (the Produkty tab reuses the
-     * bundled sample's own honest note with its real counts). */
+    /** Honest source note for the live Mapper tab. */
     ingredientsSourceNote: 'Katalog składników PI — wyszukiwanie na żywo w pełnej bibliotece.',
+    /** „Moje produkty" (private products) pane — honest states (no shared sample). */
+    myProductsSignInRequired:
+      'Moje produkty to Twoje prywatne produkty. Zaloguj się, aby je zobaczyć — nie pokazujemy tu produktów innych osób.',
+    myProductsEmpty:
+      'Nie masz jeszcze własnych produktów. Dodaj produkt ręcznie albo zeskanuj etykietę, aby zapisać go w „Moich produktach”.',
     /** Live Mapper search (Składniki PI tab). */
     ingredientsSearchLabel: 'Szukaj składnika',
     ingredientsSearchPlaceholder: 'Nazwa składnika…',
@@ -444,7 +452,7 @@ export const customerShellCopy = {
     liveError: 'Nie udało się przeszukać katalogu. Spróbuj ponownie.',
     liveRetry: 'Spróbuj ponownie',
     liveUnavailable:
-      'Katalog składników na żywo nie jest jeszcze dostępny w tym środowisku. To nie jest pusty wynik — spróbuj później albo skorzystaj z zakładki Produkty.',
+      'Katalog składników na żywo nie jest jeszcze dostępny w tym środowisku. To nie jest pusty wynik — spróbuj ponownie za chwilę.',
     /** Honest readiness on a Mapper row (the exact check runs po wyborze). */
     ingredientEngineApproved: 'Zatwierdzony dla silników PI',
     ingredientNeedsVerification: 'Do weryfikacji po wyborze',
