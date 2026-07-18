@@ -92,6 +92,8 @@ import { selectMachinePreferenceStore } from '@/services/machinePreference/machi
 import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
 import { customerShellCopy as copy } from './customerShellCopy';
 import { isMonitorTuningApproved } from '@/features/pi-monitor';
+import { fromPriceCompact } from '@/billing/catalog/offerDisplay';
+import { resolveActiveOfferFlags } from '@/billing/catalog/offerFlags';
 import { compactRecipeContext, resultStatus, showTechnicalDetails } from './resultPresentation';
 import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
@@ -668,6 +670,11 @@ export function CustomerShellV1() {
     capability,
   );
   const showStickyUpgrade = isResultPhase && !view.gramsVisible;
+  // Entry prices for the paywall CTAs, from the canonical offer catalogue (never
+  // hardcoded). Home is paid — a price always shows; Demo is the only free tier.
+  const offerFlags = resolveActiveOfferFlags();
+  const homeFromPrice = fromPriceCompact('home', offerFlags);
+  const proFromPrice = fromPriceCompact('pro', offerFlags);
   // Owner UX correction §3/§10: the Home/Demo customer never sees the internal
   // serving mode („Świeże”) or the „Dane techniczne” disclosure — those belong
   // to the professional (and Expert Mode) view only.
@@ -1383,11 +1390,23 @@ export function CustomerShellV1() {
       {showStickyUpgrade ? (
         <StickyCta caption={copy.upgrade.body} innerRef={measureStickyCta}>
           <div className="flex gap-2">
+            {/* Prices come from the canonical offer catalogue — a customer sees the
+                entry price on the button, not after another click (owner P0). */}
             <TouchButton block size="lg" onClick={() => goToSubscription()}>
-              {copy.upgrade.chooseHome}
+              <span className="flex flex-col leading-tight">
+                <span>{copy.upgrade.chooseHome}</span>
+                {homeFromPrice ? (
+                  <span className="text-[11px] font-normal opacity-80">{homeFromPrice}</span>
+                ) : null}
+              </span>
             </TouchButton>
             <TouchButton block size="lg" variant="secondary" onClick={() => goToSubscription()}>
-              {copy.upgrade.seePro}
+              <span className="flex flex-col leading-tight">
+                <span>{copy.upgrade.seePro}</span>
+                {proFromPrice ? (
+                  <span className="text-[11px] font-normal opacity-80">{proFromPrice}</span>
+                ) : null}
+              </span>
             </TouchButton>
           </div>
         </StickyCta>

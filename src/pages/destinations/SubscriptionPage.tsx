@@ -7,6 +7,8 @@ import { CustomerMenu } from '@/features/customer-shell/ui/CustomerMenu';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { landingCopy } from '@/pages/landing/landingCopy';
+import { publicOffersForProduct } from '@/billing/catalog/offerDisplay';
+import { resolveActiveOfferFlags } from '@/billing/catalog/offerFlags';
 
 /**
  * `/subscription` — the plans / conversion page.
@@ -43,14 +45,35 @@ function CheckList({ items }: { items: readonly string[] }) {
   );
 }
 
+/** Monthly + yearly price lines for a product, from the canonical offer catalogue. */
+function PriceBlock({ product }: { product: 'home' | 'pro' }) {
+  const { monthly, yearly } = publicOffersForProduct(product, resolveActiveOfferFlags());
+  return (
+    <div className="mt-4 flex items-baseline gap-2">
+      {monthly ? (
+        <span className={cn('text-[24px] font-medium leading-none tracking-tight tabular-nums', color.textPrimary)}>
+          {monthly.label}
+        </span>
+      ) : null}
+      {yearly ? (
+        <span className={cn(type.secondary, color.textMuted)}>
+          {landingCopy.subscription.orYearly} {yearly.label}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function PlanCard({
   plan,
   badge,
+  product,
   emphasized,
   children,
 }: {
   plan: { name: string; tagline: string; bullets: readonly string[] };
   badge: string;
+  product: 'home' | 'pro';
   emphasized?: boolean;
   children: ReactNode;
 }) {
@@ -69,6 +92,8 @@ function PlanCard({
         </span>
       </div>
       <p className={cn('mt-1', type.secondary, color.textSecondary)}>{plan.tagline}</p>
+      {/* Paid plan — price shown from the catalogue (never hardcoded, never "free"). */}
+      <PriceBlock product={product} />
       <div className="mt-6 flex-1">
         <CheckList items={plan.bullets} />
       </div>
@@ -100,13 +125,21 @@ export function SubscriptionPage() {
         <p className={cn('mt-3 max-w-prose', type.secondary, color.textMuted)}>{s.whatUnlocks}</p>
 
         <div className="mt-10 grid gap-6 md:grid-cols-2">
-          <PlanCard plan={plans.home} badge={s.freeBadge}>
-            <Link to="/start" className={cn(touchButtonClasses('secondary', 'lg'), 'w-full')}>
-              {s.freeCta}
-            </Link>
+          <PlanCard plan={plans.home} badge={s.homeBadge} product="home">
+            <button
+              type="button"
+              onClick={authAvailable ? () => openAuthModal() : undefined}
+              disabled={!authAvailable}
+              className={cn(touchButtonClasses('secondary', 'lg'), 'w-full')}
+            >
+              {s.homeCta}
+            </button>
+            <p className={cn('mt-3', type.caption, color.textMuted)}>
+              {authAvailable ? s.billingNote : s.billingUnavailable}
+            </p>
           </PlanCard>
 
-          <PlanCard plan={plans.pro} badge={s.proBadge} emphasized>
+          <PlanCard plan={plans.pro} badge={s.proBadge} product="pro" emphasized>
             <button
               type="button"
               onClick={authAvailable ? () => openAuthModal() : undefined}
@@ -119,6 +152,15 @@ export function SubscriptionPage() {
               {authAvailable ? s.billingNote : s.billingUnavailable}
             </p>
           </PlanCard>
+        </div>
+
+        {/* The only FREE customer experience is Demo — kept clearly separate from
+            the paid Home/Pro plans above (owner P0). */}
+        <div className={cn('mt-8 flex flex-col gap-3 rounded-2xl border border-ink/10 bg-stone-50 p-5 sm:flex-row sm:items-center sm:justify-between')}>
+          <p className={cn('max-w-prose', type.secondary, color.textSecondary)}>{s.demoNote}</p>
+          <Link to="/start" className={cn(touchButtonClasses('secondary', 'md'), 'shrink-0')}>
+            {s.demoCta}
+          </Link>
         </div>
 
         <section className="mt-16 max-w-md">

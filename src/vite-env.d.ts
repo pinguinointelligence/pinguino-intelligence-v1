@@ -11,4 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY?: string;
   /** Sentry DSN (public by design — ingest-only). Absent → monitoring disabled. */
   readonly VITE_SENTRY_DSN?: string;
+  /** Public promotion flags: which list price is offered to new customers. No secret. */
+  readonly VITE_OFFER_LAUNCH_ENABLED?: string;
+  readonly VITE_OFFER_FOUNDING_ENABLED?: string;
 }
