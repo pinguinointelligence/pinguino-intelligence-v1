@@ -43,6 +43,7 @@ export const realPiRecalculationRunner: PiRecalculationRunner = ({ intent, recip
     afterMetrics: view.afterMetrics ? toAxisMetrics(view.afterMetrics) : null,
     decision: view.finalDecision,
     rerunState: view.rerunState,
+    solverTargetAligned: view.targetGuidance.solverTargetAligned,
     rerunNewFailures: view.rerun?.newFailures ?? [],
     rerunWorsenedFailures: view.rerun?.worsenedFailures ?? [],
     proposedAdjustments: view.proposedAdjustments.map((a) => ({

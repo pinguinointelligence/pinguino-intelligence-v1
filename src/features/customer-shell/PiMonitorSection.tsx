@@ -28,10 +28,12 @@ import {
   MONITOR_HOME_TRAIT_ORDER,
   buildMonitorHomeView,
   evaluateRecalcGate,
+  isMonitorTuningApproved,
   NEUTRAL_AXIS_INTENTS,
   piBaseIntentFromRecipe,
   realPiRecalculationRunner,
   recalculateWithPi,
+  TUNING_NOT_APPROVED_COPY,
   type AxisIntentStep,
   type IngredientResolutionSummary,
   type MonitorHomeCheckRow,
@@ -212,7 +214,11 @@ export function PiMonitorSection({
   );
 
   const gate = evaluateRecalcGate(summary);
-  const canRun = recipeInput !== null && gate.canRecalculate;
+  // Interactive tuning is only offered where the canonical tuning path is
+  // approved for the recipe's serving temperature (Track G honest availability).
+  const tuningApproved =
+    recipeInput === null || isMonitorTuningApproved(recipeInput.target_temperature_c);
+  const canRun = recipeInput !== null && gate.canRecalculate && tuningApproved;
 
   const recalc = () => {
     if (recipeInput === null) return;
@@ -223,6 +229,7 @@ export function PiMonitorSection({
         axisIntents: intents,
         resolution: summary,
         persona,
+        tuningApproved,
         runner: realPiRecalculationRunner,
       }),
     );
@@ -280,6 +287,13 @@ export function PiMonitorSection({
       {!gate.canRecalculate ? (
         <p className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
           {gate.blockCopy}
+        </p>
+      ) : recipeInput !== null && !tuningApproved ? (
+        /* Honest per-temperature availability (Track G): the recipe itself IS
+           calculated — only the interactive tuning awaits approval. Calm note,
+           never an error tone; the exact owner copy. */
+        <p className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3 text-[13px] leading-relaxed text-stone-600">
+          {TUNING_NOT_APPROVED_COPY} Receptura nie została zmieniona.
         </p>
       ) : recipeInput === null ? (
         <p className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3 text-[13px] leading-relaxed text-stone-600">

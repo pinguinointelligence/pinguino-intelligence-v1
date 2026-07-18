@@ -8,6 +8,7 @@
  * `piMonitorRunner.ts`, which wraps the sanctioned optimization runner).
  */
 export * from './piMonitorContracts';
+export * from './monitorTuningApproval';
 export * from './piMonitorAxes';
 export * from './piMonitorIntent';
 export * from './piMonitor';

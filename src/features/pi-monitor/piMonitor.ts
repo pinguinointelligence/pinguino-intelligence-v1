@@ -27,9 +27,12 @@ import {
   type PiAxisIntents,
   type PiMonitorPersona,
   type PiProposedAdjustment,
+  type PiRecalcFailureReason,
   type PiRecalcOutcome,
   type PiRecalculationRunner,
+  type PiRecalculationRunnerResult,
 } from './piMonitorContracts';
+import { TUNING_NOT_APPROVED_COPY } from './monitorTuningApproval';
 
 /* ------------------------------------------------------------------------ *
  * Ingredient-resolution gate                                               *
@@ -107,6 +110,38 @@ const VERIFIED_INFEASIBLE_STATES: ReadonlySet<OptimizationRerunState> = new Set(
   'no_feasible_plan',
 ]);
 
+/**
+ * Map the sanctioned pipeline result onto the honest customer outcome + the
+ * structured failure reason (owner taxonomy). The infeasibility rule: only a
+ * VERIFIED optimizer no-solution, aimed at THIS recipe's own approved target
+ * band, is `optimizer_no_solution` / `niemozliwe`. A fallback-band solve or an
+ * unverified state is an integration/data problem — an honest block, never math.
+ */
+function classifyRunOutcome(result: PiRecalculationRunnerResult): {
+  outcome: PiRecalcOutcome;
+  failureReason: PiRecalcFailureReason | null;
+} {
+  const outcome = outcomeFromDecision(result.decision);
+  if (outcome === 'niemozliwe') {
+    if (!VERIFIED_INFEASIBLE_STATES.has(result.rerunState)) {
+      return { outcome: 'zablokowane', failureReason: 'constraint_verification_failed' };
+    }
+    if (!result.solverTargetAligned) {
+      return { outcome: 'zablokowane', failureReason: 'correction_targets_not_connected' };
+    }
+    return { outcome: 'niemozliwe', failureReason: 'optimizer_no_solution' };
+  }
+  if (outcome === 'zablokowane') {
+    return {
+      outcome,
+      failureReason: result.hardBlockers.includes('optimizer_blocked')
+        ? 'profile_not_supported'
+        : 'constraint_verification_failed',
+    };
+  }
+  return { outcome, failureReason: null };
+}
+
 export interface PiRecalculationView {
   gate: PiRecalcGate;
   /** True only when the resolution gate passed and the pipeline actually ran. */
@@ -116,10 +151,16 @@ export interface PiRecalculationView {
   before: PiAxisReading[];
   after: PiAxisReading[] | null;
 
-  /** The sanctioned outcome (null when the gate blocked the run). */
+  /** The sanctioned outcome (null when the run was blocked before the pipeline). */
   outcome: PiRecalcOutcome | null;
   outcomeLabel: string;
   outcomeDetail: string;
+  /**
+   * Structured reason when the recalculation failed or was blocked; null on
+   * success. Only `optimizer_no_solution` is ever presented as mathematical
+   * infeasibility (Track G owner taxonomy).
+   */
+  failureReason: PiRecalcFailureReason | null;
 
   /** Axes that moved toward the range (improved). */
   changedAxes: PiAxisId[];
@@ -144,6 +185,13 @@ export interface RecalculateWithPiInput {
   axisIntents: PiAxisIntents;
   resolution: IngredientResolutionSummary;
   persona: PiMonitorPersona;
+  /**
+   * Whether interactive tuning is approved for this recipe's serving temperature
+   * (see `monitorTuningApproval.ts`). Default true (Studio/dev callers). When
+   * false the pipeline is NEVER run — an unvalidated cell must not produce
+   * PI-endorsed gram changes — and the honest structured state is returned.
+   */
+  tuningApproved?: boolean;
   /** The injected sanctioned recalculation runner (real engine + solver). */
   runner: PiRecalculationRunner;
 }
@@ -171,24 +219,41 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
   const gate = evaluateRecalcGate(resolution);
   const { intent, mappedAxes, advisoryWishAxes } = applyAxisIntentsToIntent(baseIntent, axisIntents);
 
+  const blockedView = (
+    outcomeLabel: string,
+    outcomeDetail: string,
+    failureReason: PiRecalcFailureReason,
+  ): PiRecalculationView => ({
+    gate,
+    ran: false,
+    gramsVisible,
+    before: [],
+    after: null,
+    outcome: null,
+    outcomeLabel,
+    outcomeDetail,
+    failureReason,
+    changedAxes: [],
+    tradedOffAxes: [],
+    mappedAxes,
+    advisoryWishAxes,
+    correctedRecipeSnapshot: null,
+    warnings: [],
+  });
+
   // Gate blocked → do NOT run the pipeline; show only the current reading + block copy.
   if (!gate.canRecalculate) {
-    return {
-      gate,
-      ran: false,
-      gramsVisible,
-      before: [],
-      after: null,
-      outcome: null,
-      outcomeLabel: 'Wymaga wyboru produktów',
-      outcomeDetail: gate.blockCopy ?? '',
-      changedAxes: [],
-      tradedOffAxes: [],
-      mappedAxes,
-      advisoryWishAxes,
-      correctedRecipeSnapshot: null,
-      warnings: [],
-    };
+    return blockedView('Wymaga wyboru produktów', gate.blockCopy ?? '', 'ingredient_not_engine_ready');
+  }
+
+  // Tuning not approved for this serving temperature → NEVER run the pipeline:
+  // an unvalidated cell must not produce PI-endorsed gram changes (Track G).
+  if (input.tuningApproved === false) {
+    return blockedView(
+      'Dostrajanie Monitorem niedostępne',
+      `${TUNING_NOT_APPROVED_COPY} ${RECIPE_NOT_CHANGED}`,
+      'correction_targets_not_approved',
+    );
   }
 
   const result = runner({ intent, recipeDraft });
@@ -199,14 +264,8 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
     ? mapRecipeToAxes({ metrics: result.afterMetrics, category, servingTemperatureC, capability })
     : null;
 
-  // Honest structured outcome. A `niemozliwe` verdict is only allowed to stand
-  // when the optimizer/solver ACTUALLY proved no safe correction exists; if an
-  // `impossible` decision ever arrives from a data/service failure instead, it is
-  // downgraded to an honest block rather than a false "infeasible" claim (Track G).
-  let outcome = outcomeFromDecision(result.decision);
-  if (outcome === 'niemozliwe' && !VERIFIED_INFEASIBLE_STATES.has(result.rerunState)) {
-    outcome = 'zablokowane';
-  }
+  // Honest structured outcome + failure classification (Track G taxonomy).
+  const { outcome, failureReason } = classifyRunOutcome(result);
 
   // Per-axis Przed/Po movement — computed internally at full precision (independent
   // of the persona redaction) so the improved/traded-off story is always honest.
@@ -230,7 +289,7 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
   const outcomeDetail = buildOutcomeDetail(outcome, {
     tradedOffAxes,
     changedAxes,
-    hardBlockers: result.hardBlockers,
+    failureReason,
     servingTemperatureC: result.servingTemperatureC,
   });
 
@@ -243,6 +302,7 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
     outcome,
     outcomeLabel: OUTCOME_LABEL[outcome],
     outcomeDetail,
+    failureReason,
     changedAxes,
     tradedOffAxes,
     mappedAxes,
@@ -271,17 +331,26 @@ function axisNames(ids: PiAxisId[]): string {
 const RECIPE_NOT_CHANGED = 'Receptura nie została zmieniona.';
 
 /**
- * Turn the internal hard-blocker codes into ONE honest, customer-safe phrase —
- * never raw engine codes. Distinguishes an unsupported mode from missing data.
+ * Turn the structured failure reason into ONE honest, customer-safe phrase —
+ * never raw engine codes. An integration/approval gap is named as such; only
+ * `optimizer_no_solution` speaks the language of "no safe change exists".
  */
-function describeBlockers(codes: readonly string[]): string {
-  if (codes.some((c) => c === 'optimizer_blocked')) {
-    return 'wybrany tryb lub temperatura podawania nie są jeszcze w pełni obsługiwane';
+function describeFailure(reason: PiRecalcFailureReason | null): string {
+  switch (reason) {
+    case 'correction_targets_not_connected':
+    case 'correction_targets_not_approved':
+      return TUNING_NOT_APPROVED_COPY;
+    case 'profile_not_supported':
+      return 'PI nie może teraz przeliczyć tej receptury — wybrany tryb lub temperatura podawania nie są jeszcze w pełni obsługiwane.';
+    case 'constraint_verification_failed':
+      return 'PI nie może teraz przeliczyć tej receptury — brakuje pełnych danych, aby zweryfikować wynik bezpiecznie.';
+    case 'locked_constraints_conflict':
+      return 'PI nie może teraz przeliczyć tej receptury — zablokowane składniki nie zostawiają bezpiecznego pola zmian.';
+    case 'backend_failure':
+      return 'PI nie może teraz przeliczyć tej receptury — usługa jest chwilowo niedostępna.';
+    default:
+      return 'PI nie może teraz przeliczyć tej receptury.';
   }
-  if (codes.some((c) => c === 'missing_base_engine_metrics' || c.startsWith('missing:'))) {
-    return 'brakuje pełnych danych receptury, aby przeliczyć ją bezpiecznie';
-  }
-  return 'wystąpił warunek, którego PI nie mogło bezpiecznie rozwiązać';
 }
 
 function buildOutcomeDetail(
@@ -289,7 +358,7 @@ function buildOutcomeDetail(
   ctx: {
     tradedOffAxes: PiAxisId[];
     changedAxes: PiAxisId[];
-    hardBlockers: readonly string[];
+    failureReason: PiRecalcFailureReason | null;
     servingTemperatureC: number | null;
   },
 ): string {
@@ -307,11 +376,11 @@ function buildOutcomeDetail(
     case 'juz_w_zakresie':
       return 'Receptura jest już w zakresie — nie ma nic do zmiany.';
     case 'niemozliwe':
-      // VERIFIED optimizer no-solution: the solver actually ran and found no safe
-      // change. Honest + specific (names the serving temperature) — never a generic
-      // "impossible" — and always states that nothing was changed.
+      // VERIFIED optimizer no-solution: the solver actually ran on this cell's own
+      // approved targets and found no safe change. Honest + specific (names the
+      // serving temperature) — and always states that nothing was changed.
       return `PI nie znalazło bezpiecznej zmiany, która dopasowałaby tę recepturę${tempPhrase} bez pogorszenia innych cech. ${RECIPE_NOT_CHANGED}`;
     case 'zablokowane':
-      return `PI nie może teraz przeliczyć tej receptury — ${describeBlockers(ctx.hardBlockers)}. ${RECIPE_NOT_CHANGED}`;
+      return `${describeFailure(ctx.failureReason)} ${RECIPE_NOT_CHANGED}`;
   }
 }

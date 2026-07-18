@@ -102,6 +102,24 @@ export interface PiAxisReading {
   band?: readonly [number, number];
 }
 
+/**
+ * Structured failure classification (Track G, owner taxonomy). Every failed or
+ * blocked recalculation carries exactly one reason; ONLY `optimizer_no_solution`
+ * may ever be presented to the customer as mathematical infeasibility — an
+ * integration, data, or approval gap must never masquerade as solver failure.
+ */
+export type PiRecalcFailureReason =
+  | 'correction_targets_not_connected' // solver aims at a fallback band, not this cell's target
+  | 'correction_targets_not_approved' // tuning for this temperature awaits scientific approval
+  | 'recipe_input_incomplete' // no calculable RecipeInput yet
+  | 'ingredient_not_engine_ready' // unresolved generic requirement(s) block exact recalc
+  | 'catalogue_unavailable' // the ingredient catalogue cannot be read
+  | 'profile_not_supported' // the profile/temperature routing is unsupported
+  | 'locked_constraints_conflict' // locks leave the solver no admissible move
+  | 'optimizer_no_solution' // VERIFIED: the canonical optimizer ran on approved targets and proved no safe correction
+  | 'constraint_verification_failed' // the corrected result could not be verified (missing metrics)
+  | 'backend_failure'; // service/infrastructure failure
+
 /** The customer-facing recalculation outcome (honest labels). */
 export type PiRecalcOutcome =
   | 'poprawione' // moved into range, no regression (engine decision: optimized)
@@ -164,6 +182,13 @@ export interface PiRecalculationRunnerResult {
    * shown as mathematical infeasibility — a data/service problem never is.
    */
   rerunState: OptimizationRerunState;
+  /**
+   * True when the solver aimed at THIS recipe's own profile × temperature band
+   * (no category/temperature fallback). False means the correction target is not
+   * connected for this cell — a solver failure there is an integration gap, never
+   * mathematical infeasibility.
+   */
+  solverTargetAligned: boolean;
   /** Hard gates that FAILED after but not before (a regression) — from the rerun. */
   rerunNewFailures: readonly string[];
   /** Hard gates already failing that are now further out of band — from the rerun. */
