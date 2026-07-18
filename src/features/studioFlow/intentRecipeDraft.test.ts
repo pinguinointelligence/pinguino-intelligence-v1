@@ -160,11 +160,11 @@ describe('starter draft — contract', () => {
 });
 
 describe('starter draft — engine preview (real calculateRecipe)', () => {
-  it('12–13. runs through calculateRecipe and stamps CONFIG 0.6.0', () => {
+  it('12–13. runs through calculateRecipe and stamps CONFIG 0.7.0', () => {
     const draft = buildStarterRecipeDraft(intentFor());
     expect(draft.enginePreview).not.toBeNull();
     expect(draft.enginePreview!.configVersion).toBe(CONFIG_VERSION);
-    expect(draft.enginePreview!.configVersion).toBe('0.6.0');
+    expect(draft.enginePreview!.configVersion).toBe('0.7.0');
     expect(typeof draft.enginePreview!.npacPoints).toBe('number');
     expect(typeof draft.enginePreview!.podPoints).toBe('number');
   });

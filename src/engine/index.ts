@@ -66,7 +66,7 @@ export {
 } from './pac';
 
 export type { IceAnchorRow } from './config/iceAnchors';
-export { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C } from './config/iceAnchors';
+export { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C, hasSeededIceAnchorAtTemperature } from './config/iceAnchors';
 export type { IceFractionInput, IceFractionOptions } from './iceFraction';
 export { estimateIceFraction } from './iceFraction';
 

@@ -28,8 +28,8 @@ describe('versioning (spec §17)', () => {
     });
   });
 
-  it('CONFIG 0.6.0 — the temperature-aware TARGET_BANDS bump (engine pipeline unchanged at 0.4.0)', () => {
-    expect(CONFIG_VERSION).toBe('0.6.0');
+  it('CONFIG 0.7.0 — ice-anchor connection for −12/−13 (engine pipeline unchanged at 0.4.0)', () => {
+    expect(CONFIG_VERSION).toBe('0.7.0');
     expect(ENGINE_VERSION).toBe('0.4.0');
   });
 });

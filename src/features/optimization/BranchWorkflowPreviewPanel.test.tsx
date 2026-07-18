@@ -27,7 +27,7 @@ const scenario = <T extends { id: string }>(id: string): T =>
 
 // REAL computed previews (engine + regulator verified) — no handcrafted fiction.
 const rescuePartial = (): BranchRecalculationPreview => {
-  const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
+  const s = scenario<BatchRescueScenario>('rescue-too-hard-13');
   return previewBatchRescueRecalculation({ rescueIntent: s.rescueIntent, actualRecipe: s.actualRecipe });
 };
 const shortageCalculated = (): BranchRecalculationPreview => {
@@ -45,7 +45,7 @@ const substituteCalculated = (): BranchRecalculationPreview => {
   });
 };
 const rescueBlocked = (): BranchRecalculationPreview => {
-  const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
+  const s = scenario<BatchRescueScenario>('rescue-too-hard-13');
   return previewBatchRescueRecalculation({
     rescueIntent: { ...s.rescueIntent, batchSizeG: null },
     actualRecipe: s.actualRecipe,
@@ -67,8 +67,8 @@ const visibleText = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a
 describe('BranchWorkflowPreviewPanel — redaction (Demo/Free vs Pro vs DEV)', () => {
   it('Demo/Free never see the verified IF9 grams; the upgrade affordance shows instead', () => {
     const html = renderPanel(rescuePartial(), demo);
-    expect(html).not.toContain('74.4');
-    expect(/sucrose/i.test(html)).toBe(false);
+    expect(html).not.toContain('212');
+    expect(/dextrose/i.test(html)).toBe(false);
     expect(visibleText(html)).toMatch(/available on Pro/);
   });
 
@@ -81,7 +81,7 @@ describe('BranchWorkflowPreviewPanel — redaction (Demo/Free vs Pro vs DEV)', (
   it('Pro sees the VERIFIED IF9 add-only grams', () => {
     const t = visibleText(renderPanel(rescuePartial(), pro));
     expect(t).toMatch(/verified add-only/);
-    expect(t).toMatch(/add Sucrose 74\.4g/);
+    expect(t).toMatch(/add Dextrose 212\.3g/);
     expect(t).not.toMatch(/available on Pro/);
   });
 
@@ -110,10 +110,10 @@ describe('BranchWorkflowPreviewPanel — redaction (Demo/Free vs Pro vs DEV)', (
   it('DEV shows the debug trace but STILL respects demo redaction', () => {
     const html = renderPanel(rescuePartial(), devDemo);
     expect(html).toContain('DEV trace');
-    expect(html).toContain('single-shot');
-    expect(html).toContain('multi-step');
-    expect(html).not.toContain('74.4'); // additive trace, no redaction upgrade
-    expect(/sucrose/i.test(html)).toBe(false);
+    expect(html).toContain('multi-lever');
+    expect(html).toContain('verification_failed');
+    expect(html).not.toContain('212'); // additive trace, no redaction upgrade
+    expect(/dextrose/i.test(html)).toBe(false);
   });
 });
 
@@ -171,7 +171,7 @@ describe('BranchWorkflowPreviewPanel — honest labels and hard display rules', 
 });
 
 describe('BranchWorkflowPreviews — Studio section (paid gate + explicit click)', () => {
-  const recipe = scenario<BatchRescueScenario>('rescue-too-hard-12').actualRecipe;
+  const recipe = scenario<BatchRescueScenario>('rescue-too-hard-13').actualRecipe;
   const renderSection = (caps: { exactCorrectionGrams: boolean; technicalView: boolean }) =>
     renderToStaticMarkup(
       <SurfaceToneContext.Provider value="shell">

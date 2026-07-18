@@ -151,6 +151,71 @@ const STARTER_TEMPLATES: Partial<Record<ProductProfile, StarterTemplate>> = {
   },
 };
 
+/**
+ * Standard-gelato base is TEMPERATURE-AWARE (owner-authorized 2026-07-18): a −11
+ * recipe cannot be nudged into a −12/−13 spec by the bounded correction solver
+ * (the NPAC gap is a reformulation, not a correction), so each serving temperature
+ * starts from its OWN approved clean-reference recipe. The −12/−13 lines are the
+ * EXACT gram formulas of the locked golden fixtures G17 (−12) and G18 (−13) from
+ * `src/spine/temperatureRegulator.ts::TEMPERATURE_REGULATOR_GOLDEN_FIXTURES` — the
+ * same records whose (NPAC, ice) coordinates seed the ice anchors. Nothing is
+ * invented; these are approved formulas transcribed verbatim. −11 keeps the
+ * existing built-in milk base. Unlisted temperatures fall back to −11.
+ */
+const STANDARD_GELATO_TEMPLATE_G17: StarterTemplate = {
+  id: 'milk_base_g17_minus12_v1',
+  category: 'milk_gelato',
+  intrinsicFlavorGroup: null,
+  baseBatchG: 1000, // G17 lines sum to 1000.0 g
+  lines: [
+    { ingredientId: 'milk_3_5', grams: 600 },
+    { ingredientId: 'cream_30', grams: 135 },
+    { ingredientId: 'smp', grams: 43 },
+    { ingredientId: 'sucrose', grams: 86 },
+    { ingredientId: 'dextrose', grams: 80 },
+    { ingredientId: 'inulin', grams: 54.1 },
+    { ingredientId: 'tara_gum', grams: 1.9 },
+  ],
+};
+
+const STANDARD_GELATO_TEMPLATE_G18: StarterTemplate = {
+  id: 'milk_base_g18_minus13_v1',
+  category: 'milk_gelato',
+  intrinsicFlavorGroup: null,
+  baseBatchG: 1000.1, // G18 lines sum to 1000.1 g (scale factor normalizes to the batch)
+  lines: [
+    { ingredientId: 'milk_3_5', grams: 600 },
+    { ingredientId: 'cream_30', grams: 125 },
+    { ingredientId: 'smp', grams: 45 },
+    { ingredientId: 'sucrose', grams: 72 },
+    { ingredientId: 'dextrose', grams: 112 },
+    { ingredientId: 'inulin', grams: 44.1 },
+    { ingredientId: 'tara_gum', grams: 1.9 },
+  ],
+};
+
+/** Approved standard-gelato base recipe for a serving temperature (−11 fallback). */
+const STANDARD_GELATO_BY_TEMPERATURE: Readonly<Record<number, StarterTemplate>> = {
+  [-12]: STANDARD_GELATO_TEMPLATE_G17,
+  [-13]: STANDARD_GELATO_TEMPLATE_G18,
+};
+
+/**
+ * The approved starter template for a profile × serving temperature. Standard
+ * gelato picks the temperature-appropriate approved reference; every other profile
+ * keeps its single locked base (chocolate has no approved −12/−13 clean anchor —
+ * its −12/−13 cell stays honestly limited, not faked).
+ */
+function selectStarterTemplate(
+  profile: ProductProfile,
+  servingTemperatureC: number | null,
+): StarterTemplate | undefined {
+  if (profile === 'standard_gelato' && servingTemperatureC !== null) {
+    return STANDARD_GELATO_BY_TEMPERATURE[servingTemperatureC] ?? STARTER_TEMPLATES.standard_gelato;
+  }
+  return STARTER_TEMPLATES[profile];
+}
+
 const PROFILE_TO_CATEGORY: Readonly<Record<ProductProfile, ProductCategory>> = {
   standard_gelato: 'milk_gelato',
   chocolate_gelato: 'chocolate_gelato',
@@ -223,8 +288,8 @@ export function buildStarterRecipeFromIntent(
     };
   }
 
-  // 2. a safe locked template must exist for this profile.
-  const template = STARTER_TEMPLATES[profile];
+  // 2. a safe locked template must exist for this profile × serving temperature.
+  const template = selectStarterTemplate(profile, intent.servingTemperatureC);
   if (!template) {
     return {
       ...shell,

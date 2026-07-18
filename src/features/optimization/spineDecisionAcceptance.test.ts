@@ -145,7 +145,7 @@ const metricsOf = (recipe: RecipeInput) => adaptBaseEngineResult(calculateRecipe
 
 describe('acceptance — every exact preview equals a DIRECT calculateRecipe re-run (B4)', () => {
   it('IF9 add-only rescue (partial, −12): afterMetrics === engine metrics of the proposed snapshot', () => {
-    const r = rescue('rescue-too-hard-12');
+    const r = rescue('rescue-too-hard-13');
     expect(r.exactStatus).toBe('partial_improvement');
     const fresh = metricsOf(r.proposedRecipeSnapshot as RecipeInput);
     expect(r.afterMetrics).toEqual(fresh);
@@ -188,7 +188,7 @@ const itemSum = (recipe: RecipeInput): number =>
 
 describe('acceptance — batch totals stay coherent through recipe-changing branches (B3)', () => {
   it('IF9 add-only: snapshot item mass = original mass + EXACTLY the exposed added grams', () => {
-    for (const id of ['rescue-too-hard-12', 'rescue-vegan-too-soft', 'rescue-sorbet-too-soft']) {
+    for (const id of ['rescue-too-hard-13', 'rescue-vegan-too-soft', 'rescue-sorbet-too-soft']) {
       const s = scenario<BatchRescueScenario>(id);
       const r = rescue(id);
       expect(['calculated', 'partial_improvement'], `${id} status`).toContain(r.exactStatus);
@@ -255,8 +255,8 @@ describe('acceptance — the after-state is ALWAYS a fresh regulator evaluation 
     }).hardGateFailures;
 
   it('IF9 partial (−12): the reported residual failures equal a fresh evaluation of the snapshot', () => {
-    const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
-    const r = rescue('rescue-too-hard-12');
+    const s = scenario<BatchRescueScenario>('rescue-too-hard-13');
+    const r = rescue('rescue-too-hard-13');
     expect(r.rerun!.after.hardGateFailures).toEqual(
       freshFailures(r, s.rescueIntent.productProfile, s.rescueIntent.intendedServingTemperatureC),
     );

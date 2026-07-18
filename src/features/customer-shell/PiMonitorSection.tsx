@@ -217,7 +217,8 @@ export function PiMonitorSection({
   // Interactive tuning is only offered where the canonical tuning path is
   // approved for the recipe's serving temperature (Track G honest availability).
   const tuningApproved =
-    recipeInput === null || isMonitorTuningApproved(recipeInput.target_temperature_c);
+    recipeInput === null ||
+    isMonitorTuningApproved(recipeInput.category, recipeInput.target_temperature_c);
   const canRun = recipeInput !== null && gate.canRecalculate && tuningApproved;
 
   const recalc = () => {

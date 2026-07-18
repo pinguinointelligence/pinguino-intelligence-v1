@@ -40,6 +40,15 @@
  *   stop firing); fruit/nut/alcohol_gelato keep the documented milk fallback.
  *   ENGINE_VERSION stays 0.4.0 — one null-safe accessor for the now-optional
  *   alcohol range; no formula or pipeline change.
+ * - 0.7.0 — ice-anchor connection (owner-authorized 2026-07-18, implementation of
+ *   already-approved data): two new SEEDED milk_gelato ice-anchor rows for −12 °C
+ *   and −13 °C, transcribed VERBATIM as the exact (NPAC, ice) coordinates of the
+ *   locked clean-reference recipes G15/G17 (−12) and G11/G18 (−13) from
+ *   TEMPERATURE_REGULATOR_GOLDEN_FIXTURES. milk_gelato @ −11 is untouched; every
+ *   golden recipe is at −11 so no golden ice value changes. This removes the
+ *   −11-anchor temperature extrapolation that pushed −12/−13 recipes out of the
+ *   ice band and blocked Monitor recalculation. No value is invented; the
+ *   ice-fraction FORMULA is unchanged; ENGINE_VERSION stays 0.4.0.
  */
 export const ENGINE_VERSION = '0.4.0' as const;
-export const CONFIG_VERSION = '0.6.0' as const;
+export const CONFIG_VERSION = '0.7.0' as const;

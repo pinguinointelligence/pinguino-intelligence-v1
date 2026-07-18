@@ -86,7 +86,9 @@ const answeredUpToGoal = (
   let s = startAssistantFlow();
   s = dalej(s, (over.opening as string) ?? '');
   s = dalej(s, (over.product_type as string) ?? 'standard_gelato');
-  s = dalej(s, (over.serving_temperature as string) ?? '-12');
+  // Default −11 exercises the milk_base_v1 apply mechanics; −12/−13 template
+  // selection (G17/G18) is covered by the engine + Track G reproduction tests.
+  s = dalej(s, (over.serving_temperature as string) ?? '-11');
   s = dalej(s, (over.batch_size as string) ?? '5000');
   s = dalej(s, (over.main_flavor as string) ?? 'wanilia');
   s = dalej(s, (over.texture as string) ?? 'medium');
@@ -171,12 +173,12 @@ describe('A1 — submit with an uncommitted (pending-selected) final answer', ()
     expect(isIntentComplete(submission.state)).toBe(true);
   });
 
-  it('complete trusted-interaction submit — Standard Gelato (−12°C, 5 kg, wanilia, Zaprojektować)', () => {
+  it('complete trusted-interaction submit — Standard Gelato (−11°C, 5 kg, wanilia, Zaprojektować)', () => {
     const submission = submitIntentDraft(answeredUpToGoal(), 'recipe_design');
     expect(submission.ok).toBe(true);
     if (!submission.ok) return;
     expect(submission.draft.intent.productProfile).toBe('standard_gelato');
-    expect(submission.draft.intent.servingTemperatureC).toBe(-12);
+    expect(submission.draft.intent.servingTemperatureC).toBe(-11);
     expect(submission.draft.batchSizeG).toBe(5000);
     expect(submission.draft.intent.flavorText).toBe('wanilia');
     expect(submission.draft.branchContext).toBe('recipe_design');
@@ -338,7 +340,7 @@ describe('A3 — apply starter to the local Studio draft (real store, fully loca
 
     const state = useRecipeStore.getState();
     expect(state.category).toBe('milk_gelato');
-    expect(state.target_temperature_c).toBe(-12);
+    expect(state.target_temperature_c).toBe(-11);
     expect(state.target_batch_grams).toBe(5000);
     expect(state.items).toHaveLength(6);
     expect(state.items[0]!.ingredient.id).toBe('milk_3_5');

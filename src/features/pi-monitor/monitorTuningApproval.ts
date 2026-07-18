@@ -1,42 +1,39 @@
 /**
- * PINGÜINO PI Monitor — per-temperature interactive-tuning approval (Track G).
+ * PINGÜINO PI Monitor — data-driven interactive-tuning approval (Track G).
  *
- * WHY THIS EXISTS (evidence, 2026-07-18): the temperature-aware TARGET_BANDS seed
- * all 12 profile × temperature cells (CONFIG 0.6.0, commit 70fcbd7) and the
- * Monitor/solver correctly aims at the recipe's own cell — but the engine's
- * ice-fraction model (`src/engine/config/iceAnchors.ts`) has exactly ONE seeded
- * anchor row: milk_gelato @ −11 °C. At −12/−13 the model extrapolates from the
- * −11 anchors and CONTRADICTS the locked regulator references: the approved
- * clean anchors G17 (−12) and G18 (−13) run through the real engine land at
- * ice ≈ 41.2 / 35.6 % versus the doc-expected 50.34 / 49.69 % and the approved
- * bands [46,54] / [46,52]. Under the current model the −12/−13 band sets are not
- * jointly satisfiable, so interactive Monitor tuning at those temperatures would
- * either refuse honestly or endorse gram changes computed with an unvalidated
- * ice curve. Neither is acceptable — so tuning is HONESTLY UNAVAILABLE there
- * until the −12/−13 ice anchors arrive via external scientific calibration
- * (ice-anchor values are calibration data this codebase never invents).
+ * Interactive tuning is offered ONLY where the canonical ice-fraction model has a
+ * SEEDED anchor at the recipe's serving temperature (its own category row, or the
+ * milk_gelato fallback at that temperature) — i.e. the ice estimate needs no
+ * cross-temperature extrapolation. This delegates to the engine's
+ * `hasSeededIceAnchorAtTemperature`, so it is NOT a hand-maintained list: when new
+ * approved anchors are wired into `src/engine/config/iceAnchors.ts`, the cells they
+ * cover become tunable automatically, with no change here.
  *
- * This table is an AVAILABILITY flag only. It contains no scientific values and
- * changes no engine behavior; removing a cell's block requires only the
- * scientific calibration to land (see docs/engine/TRACK_G_SCIENCE_APPROVAL_PACKAGE.md).
+ * HISTORY: before CONFIG 0.7.0 only milk_gelato @ −11 had a seeded anchor, so
+ * −12/−13 (and Ninja Gelato → −13) fell back to the −11 anchor + a temperature
+ * slope, landing recipes out of the ice band and blocking recalculation. CONFIG
+ * 0.7.0 wired the already-approved G15/G17 (−12) and G11/G18 (−13) clean-anchor
+ * coordinates, so all of −11/−12/−13 now have same-temperature ice anchors and are
+ * tunable. A cell without a same-temperature seeded anchor stays honestly
+ * unavailable rather than endorsing gram changes from a temperature-extrapolated
+ * ice curve. See docs/engine/TRACK_G_ICE_ANCHOR_WIRING.md.
  */
+import { hasSeededIceAnchorAtTemperature, type RecipeInput } from '@/engine';
 
 /**
- * Serving temperatures with a VALIDATED interactive-tuning path. −11 °C is the
- * calibrated base (seeded ice anchors + the −11 engine contract); Świeże and
- * Ninja Swirl route to −11 and inherit it. −12/−13 (and Ninja Gelato → −13) are
- * pending the external ice-anchor calibration.
+ * True when interactive Monitor tuning is scientifically grounded for this recipe's
+ * category × serving temperature (a same-temperature seeded ice anchor exists).
  */
-const TUNING_APPROVED_TEMPERATURES: ReadonlySet<number> = new Set([-11]);
-
-/** True when interactive Monitor tuning is approved for this serving temperature. */
-export function isMonitorTuningApproved(servingTemperatureC: number): boolean {
-  return TUNING_APPROVED_TEMPERATURES.has(servingTemperatureC);
+export function isMonitorTuningApproved(
+  category: RecipeInput['category'],
+  servingTemperatureC: number,
+): boolean {
+  return hasSeededIceAnchorAtTemperature(category, servingTemperatureC);
 }
 
 /**
- * The owner-approved customer copy for a not-yet-approved tuning temperature.
- * The recipe itself still calculates; only the interactive tuning is unavailable.
+ * The owner-approved customer copy for a not-yet-approved tuning cell. The recipe
+ * itself still calculates; only the interactive tuning is unavailable.
  */
 export const TUNING_NOT_APPROVED_COPY =
   'PI może obliczyć recepturę dla tego trybu, ale interaktywne dostrajanie Monitorem nie zostało jeszcze zatwierdzone dla tej temperatury.';

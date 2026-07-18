@@ -689,7 +689,10 @@ export function CustomerShellV1() {
     // where tuning is honestly unavailable (pending scientific approval).
     tuningAvailable:
       currentResult?.recipeInput == null ||
-      isMonitorTuningApproved(currentResult.recipeInput.target_temperature_c),
+      isMonitorTuningApproved(
+        currentResult.recipeInput.category,
+        currentResult.recipeInput.target_temperature_c,
+      ),
   });
 
   /* ----------------------------------------------------- Ready matches -- */

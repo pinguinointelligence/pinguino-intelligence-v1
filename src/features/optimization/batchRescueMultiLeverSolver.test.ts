@@ -20,7 +20,7 @@ const rescue = (id: string) => {
   return previewBatchRescueRecalculation({ rescueIntent: s.rescueIntent, actualRecipe: s.actualRecipe });
 };
 
-const intentFor = (recipe: RecipeInput, profile: 'standard_gelato' | 'sorbet', temp: -11 | -12) => ({
+const intentFor = (recipe: RecipeInput, profile: 'standard_gelato' | 'sorbet', temp: -11 | -12 | -13) => ({
   ...studioIntentFromRecipe(recipe),
   productProfile: profile,
   servingTemperatureC: temp,
@@ -28,14 +28,14 @@ const intentFor = (recipe: RecipeInput, profile: 'standard_gelato' | 'sorbet', t
 
 /** The stuck −12 state: after the verified single-lever step, npac is the only
  * residual gate and every candidate dies in the per-water dead zone. */
-const stuckMinus12 = (): MultiLeverRescueInput => {
-  const r = rescue('rescue-too-hard-12');
+const stuckMinus13 = (): MultiLeverRescueInput => {
+  const r = rescue('rescue-too-hard-13');
   const recipe = r.proposedRecipeSnapshot as RecipeInput;
   return {
     recipe,
     overallBeforeMetrics: r.beforeMetrics!,
-    intent: intentFor(recipe, 'standard_gelato', -12),
-    overrideBands: regulatorTargetOverride('standard_gelato', -12).bands,
+    intent: intentFor(recipe, 'standard_gelato', -13),
+    overrideBands: regulatorTargetOverride('standard_gelato', -13).bands,
   };
 };
 
@@ -59,7 +59,7 @@ const dilutedSorbet = (extraWater = 180): MultiLeverRescueInput => {
 
 describe('solveBatchRescueMultiLever — direct walk semantics', () => {
   it('the stuck −12 npac state finds NO improving candidate — honest, no grams', () => {
-    const m = solveBatchRescueMultiLever(stuckMinus12());
+    const m = solveBatchRescueMultiLever(stuckMinus13());
     expect(m.status).toBe('verification_failed');
     expect(m.statusReason).toBe('no_improving_candidate_verified');
     expect(m.stopReason).toBe('no_improving_candidate');
@@ -133,17 +133,19 @@ describe('solveBatchRescueMultiLever — direct walk semantics', () => {
 });
 
 describe('IF9 preview — multi-lever wiring (Slice 23)', () => {
-  it('−12: the lever attempt is attached and honest; the single-lever partial STANDS unchanged', () => {
-    const r = rescue('rescue-too-hard-12');
+  it('−13: the lever attempt is attached and honest; the single-shot partial STANDS unchanged', () => {
+    const r = rescue('rescue-too-hard-13');
     expect(r.exactStatus).toBe('partial_improvement');
-    expect(r.exactStatusReason).toBe('multi_step_partial_residual_gates_remain');
+    expect(r.exactStatusReason).toBe('single_shot_partial_residual_gates_remain');
     expect(r.multiLever).not.toBeNull();
     expect(r.multiLever!.status).toBe('verification_failed');
     expect(r.multiLever!.stopReason).toBe('no_improving_candidate');
-    expect(r.multiLever!.residualGates).toEqual(['npac']);
-    // grams unchanged from Slice 20 — nothing fabricated on top
+    // the residual gates the add-only walk cannot safely close (protein share is
+    // not solver-addressable), reported honestly
+    expect(r.multiLever!.residualGates).toEqual(['npac', 'pod', 'protein_share_in_solids']);
+    // grams are the verified single-shot addition — nothing fabricated on top
     expect(r.exactActions).toEqual([
-      { type: 'add', ingredient: 'Sucrose', grams: expect.closeTo(74.4, 0) as unknown as number },
+      { type: 'add', ingredient: 'Dextrose', grams: expect.closeTo(212.3, 0) as unknown as number },
     ]);
   });
 

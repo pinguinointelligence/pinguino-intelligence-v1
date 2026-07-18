@@ -31,34 +31,28 @@ const shortage = (id: string) => {
 };
 
 describe('IF9 exact preview — add-only rescue solve, verified or nothing', () => {
-  it('too-hard rescue: single-shot honestly rejected, multi-step walk produces a VERIFIED partial improvement', () => {
-    const r = rescue('rescue-too-hard-12');
+  it('too-hard rescue at −13: single-shot lands a VERIFIED add-only improvement but overshoots → honest partial', () => {
+    const r = rescue('rescue-too-hard-13');
     expect(r.routeDecision).toBe('rescue_with_tradeoff');
     expect(r.trace.solverInvoked).toBe(true);
     expect(r.trace.targetOverrideActive).toBe(true);
-    // Slice 19 failure mode stays visible: the single-shot solve was rejected by
-    // the solver's own Golden-Middle verification (per-batch model overshoots on
-    // the per-water NPAC basis)…
-    expect(r.singleShotReason).toBe('solver_found_no_safe_add_only_correction');
-    // …and the Slice 20 multi-step walk found ONE verified add-only step, then
-    // honestly stopped when no further step verified — partial, never forced.
+    // Since CONFIG 0.7.0 the −13 ice band is real, so the single-shot add-only
+    // solve now VERIFIES (not rejected) — it adds real grams and improves npac…
+    expect(r.singleShotReason).toBeNull();
     expect(r.exactStatus).toBe('partial_improvement');
-    expect(r.exactStatusReason).toBe('multi_step_partial_residual_gates_remain');
-    expect(r.multiStep).not.toBeNull();
-    const m = r.multiStep!;
-    expect(m.status).toBe('partial_improvement');
-    expect(m.stopReason).toBe('no_improving_step');
-    expect(m.steps).toHaveLength(1);
-    expect(m.steps[0]!.fraction).toBe(0.25); // the SMALLEST verified fraction
-    expect(m.steps[0]!.regulatorDecision).toBe('tradeoff');
-    expect(m.steps[0]!.actions).toEqual([
-      { type: 'add', ingredient: 'Sucrose', grams: expect.closeTo(74.4, 0) as unknown as number },
+    expect(r.exactStatusReason).toBe('single_shot_partial_residual_gates_remain');
+    expect(r.exactActions).toEqual([
+      { type: 'add', ingredient: 'Dextrose', grams: expect.closeTo(212.3, 0) as unknown as number },
     ]);
-    // the verified step moves npac toward the −12 regulator band [42,50]
-    expect(r.beforeMetrics!.npac).toBeCloseTo(25.33, 1);
-    expect(r.afterMetrics!.npac).toBeCloseTo(35.54, 1);
+    // …but it OVERSHOOTS the −13 npac band [48,55], and the protein-share residual
+    // is not add-only-solver-addressable, so it is honestly PARTIAL, never rescued.
+    expect(r.afterMetrics!.npac).toBeGreaterThan(55);
     expect(r.rerun!.decision).toBe('tradeoff'); // overall verification, no regression
     expect(r.warnings).toContain('not_fully_rescued_residual_gates_remain');
+    expect(r.warnings).toContain('gate_not_solver_addressable:protein_share_in_solids');
+    // the residual multi-lever walk verifies nothing further and stops honestly
+    expect(r.multiLever!.status).toBe('verification_failed');
+    expect(r.multiLever!.stopReason).toBe('no_improving_candidate');
   });
 
   it('exact grams appear ONLY on verified statuses (calculated / partial_improvement), always add-only positives', () => {
@@ -111,7 +105,7 @@ describe('IF9 exact preview — add-only rescue solve, verified or nothing', () 
   });
 
   it('missing batch size blocks before anything is calculated', () => {
-    const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
+    const s = scenario<BatchRescueScenario>('rescue-too-hard-13');
     const r = previewBatchRescueRecalculation({
       rescueIntent: { ...s.rescueIntent, batchSizeG: null },
       actualRecipe: s.actualRecipe,
@@ -124,7 +118,7 @@ describe('IF9 exact preview — add-only rescue solve, verified or nothing', () 
     // too_soft reported, but the batch's npac is measured BELOW the −12 band
     // (i.e. actually too hard): solving the metric would move it OPPOSITE to the
     // declared rescue direction — nothing is solved, the operator re-measures.
-    const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
+    const s = scenario<BatchRescueScenario>('rescue-too-hard-13');
     const r = previewBatchRescueRecalculation({
       rescueIntent: { ...s.rescueIntent, observation: { problem: 'too_soft' } },
       actualRecipe: s.actualRecipe,
@@ -147,8 +141,8 @@ describe('IF9 exact preview — add-only rescue solve, verified or nothing', () 
   });
 
   it('multi-step honors an explicit step budget and reports partial honestly (maxSteps: 1)', () => {
-    const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
-    const override = regulatorTargetOverride('standard_gelato', -12);
+    const s = scenario<BatchRescueScenario>('rescue-too-hard-13');
+    const override = regulatorTargetOverride('standard_gelato', -13);
     const m = solveBatchRescueSteps({
       recipe: s.actualRecipe,
       intent: {
@@ -169,8 +163,8 @@ describe('IF9 exact preview — add-only rescue solve, verified or nothing', () 
   });
 
   it('the multi-step walk refuses a direction-mismatched request (defense in depth)', () => {
-    const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
-    const override = regulatorTargetOverride('standard_gelato', -12);
+    const s = scenario<BatchRescueScenario>('rescue-too-hard-13');
+    const override = regulatorTargetOverride('standard_gelato', -13);
     const m = solveBatchRescueSteps({
       recipe: s.actualRecipe, // npac BELOW band — needs increase
       intent: {
@@ -190,17 +184,21 @@ describe('IF9 exact preview — add-only rescue solve, verified or nothing', () 
     expect(m.warnings).toContain('direction_mismatch_walk_refused');
   });
 
-  it('cumulative additions equal the exact sum of the verified steps', () => {
-    const r = rescue('rescue-too-hard-12');
-    const m = r.multiStep!;
-    const stepSum = m.steps.reduce((sum, st) => sum + st.actions.reduce((x, a) => x + a.grams, 0), 0);
-    const cumulativeSum = m.cumulativeActions.reduce((x, a) => x + a.grams, 0);
-    expect(cumulativeSum).toBeCloseTo(stepSum, 9);
-    expect(r.exactActions.reduce((x, a) => x + a.grams, 0)).toBeCloseTo(stepSum, 9);
+  it('exact actions are exactly the verified single-shot additions — no fabricated grams', () => {
+    // At −13 the rescue verifies via the single shot (no multi-step walk), so the
+    // exposed exactActions ARE the verified additions and nothing is added on top.
+    const r = rescue('rescue-too-hard-13');
+    expect(r.multiStep).toBeNull();
+    expect(r.exactActions.length).toBeGreaterThan(0);
+    for (const a of r.exactActions) {
+      expect(a.type).toBe('add');
+      expect(a.grams).toBeGreaterThan(0);
+    }
+    // (multi-step cumulative-sum consistency is covered by the sorbet fixture below.)
   });
 
   it('never mutates the actual recipe or the rescue intent', () => {
-    const s = scenario<BatchRescueScenario>('rescue-too-hard-12');
+    const s = scenario<BatchRescueScenario>('rescue-too-hard-13');
     const recipeSnapshot = JSON.stringify(s.actualRecipe);
     const intentSnapshot = JSON.stringify(s.rescueIntent);
     previewBatchRescueRecalculation({ rescueIntent: s.rescueIntent, actualRecipe: s.actualRecipe });
@@ -209,7 +207,7 @@ describe('IF9 exact preview — add-only rescue solve, verified or nothing', () 
   });
 
   it('is deterministic', () => {
-    expect(JSON.stringify(rescue('rescue-too-hard-12'))).toBe(JSON.stringify(rescue('rescue-too-hard-12')));
+    expect(JSON.stringify(rescue('rescue-too-hard-13'))).toBe(JSON.stringify(rescue('rescue-too-hard-13')));
   });
 });
 

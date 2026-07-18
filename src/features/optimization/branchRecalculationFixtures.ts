@@ -114,23 +114,27 @@ export type BranchRecalculationScenario =
   | StockShortageScenario
   | VerifiedSubstituteScenario;
 
-/** Standard Gelato batch served at −12: npac 40 sits below the regulator −12 band
- * [42,50], so the too_hard rescue has a REAL solvable violation (via Slice 14). */
+/** Standard Gelato batch served at −12/−13: npac 40 sits below the regulator band,
+ * so the too_hard rescue has a REAL violation (via Slice 14). Since CONFIG 0.7.0
+ * wired the approved −12/−13 ice anchors, a −12 batch now fully rescues; a −13
+ * batch remains a genuine partial/no-improving case (the residual gate the bounded
+ * add-only solver cannot safely close), which is what the honesty tests exercise. */
 const rescueRecipeAtMinus12 = (): RecipeInput => ({ ...gelatoRecipe(), target_temperature_c: -12 });
+const rescueRecipeAtMinus13 = (): RecipeInput => ({ ...gelatoRecipe(), target_temperature_c: -13 });
 
 export const BRANCH_RECALCULATION_SCENARIOS: readonly BranchRecalculationScenario[] = [
   {
-    id: 'rescue-too-hard-12',
-    label: 'IF9 · Standard Gelato −12 · too hard (unfrozen) → real solver attempt, engine verdict honest',
+    id: 'rescue-too-hard-13',
+    label: 'IF9 · Standard Gelato −13 · too hard → real solver attempt, engine verdict honest',
     kind: 'batch_rescue',
     rescueIntent: {
       productProfile: 'standard_gelato',
-      intendedServingTemperatureC: -12,
+      intendedServingTemperatureC: -13,
       batchSizeG: 1000,
       observation: { problem: 'too_hard' },
       constraints: { ...baseConstraints },
     },
-    actualRecipe: rescueRecipeAtMinus12(),
+    actualRecipe: rescueRecipeAtMinus13(),
   },
   {
     id: 'rescue-too-hard-11',

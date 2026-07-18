@@ -24,6 +24,7 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   'interpolateSyrupDeAnchors',
   // ice fraction (4F)
   'estimateIceFraction',
+  'hasSeededIceAnchorAtTemperature',
   // statuses (4G)
   'classifyIndicator',
   'classifyRecipeIndicators',
