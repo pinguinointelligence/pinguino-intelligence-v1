@@ -10,10 +10,7 @@
 import { RESOLUTION_ACTIONS, type IngredientForm } from '@/features/ingredient-resolution';
 import {
   compactIngredientRow,
-  compactProductRow,
-  PICKER_SOURCE_ORDER,
   type PickerSourceId,
-  type ProductPickResult,
   type SafeIngredientHit,
 } from '@/features/product-picker';
 import { BottomSheet, TouchButton, TextField, SelectableCard, notice } from './ui';
@@ -82,22 +79,6 @@ function CompactPickRow({
   );
 }
 
-function CandidateRow({ result, onPick }: { result: ProductPickResult; onPick: () => void }) {
-  const vm = compactProductRow(result, R.eanPrefix);
-  return (
-    <CompactPickRow
-      title={vm.title}
-      subtitle={vm.subtitle}
-      metaLine={null}
-      idLabel={vm.idLabel}
-      statusLabel={vm.statusLabel}
-      readinessTone={vm.readinessTone}
-      readinessLabel={vm.readinessLabel}
-      onPick={onPick}
-    />
-  );
-}
-
 function IngredientHitRow({ hit, onPick }: { hit: SafeIngredientHit; onPick: () => void }) {
   const vm = compactIngredientRow(hit, {
     engineApproved: R.ingredientEngineApproved,
@@ -117,11 +98,20 @@ function IngredientHitRow({ hit, onPick }: { hit: SafeIngredientHit; onPick: () 
   );
 }
 
-/** The two-source switch — compact segmented tabs, ≥44px touch targets. */
-function SourceTabs({ active, onSelect }: { active: PickerSourceId; onSelect: (t: PickerSourceId) => void }) {
+/** The source switch — compact segmented tabs, ≥44px touch targets. Only rendered
+ * when there is more than one source (else the sheet shows a single-source view). */
+function SourceTabs({
+  sources,
+  active,
+  onSelect,
+}: {
+  sources: readonly PickerSourceId[];
+  active: PickerSourceId;
+  onSelect: (t: PickerSourceId) => void;
+}) {
   return (
     <div role="tablist" aria-label={R.searchLabel} className="mb-3 flex gap-1 rounded-xl border border-ink/10 bg-ink/[0.03] p-1">
-      {PICKER_SOURCE_ORDER.map((id) => (
+      {sources.map((id) => (
         <button
           key={id}
           type="button"
@@ -208,29 +198,24 @@ function IngredientsPane({ c }: { c: IngredientResolutionController }) {
   );
 }
 
-/** The Produkty pane — the existing bundled sample (honest stopgap, never „live"). */
-function ProductsPane({ c }: { c: IngredientResolutionController }) {
-  return !c.catalogueAvailable ? (
-    <p className={`rounded-2xl px-4 py-6 text-center text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
-      {c.source.note}
-    </p>
-  ) : (
+/**
+ * The „Moje produkty" pane — PRIVATE, user-owned products only. Never a shared sample:
+ * demo/anon never reach this pane (the tab is not offered to them). Until a private-product
+ * source is wired it renders an honest empty state with a „Dodaj produkt" workflow.
+ */
+function MyProductsPane({ c }: { c: IngredientResolutionController }) {
+  return (
     <div>
-      <p className="mb-2 text-[12px] leading-snug text-stone-500">
-        {R.sampleSourcePrefix}: {c.source.note}
+      <p className={`rounded-2xl px-4 py-4 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
+        {R.myProductsEmpty}
       </p>
-      <TextField
-        label={R.searchLabel}
-        placeholder={R.searchPlaceholder}
-        value={c.query}
-        onChange={(e) => c.setQuery(e.target.value)}
-      />
-      <div className="mt-3 flex flex-col gap-1.5">
-        {c.results.length === 0 ? (
-          <p className="py-6 text-center text-[13px] text-stone-500">{R.noResults}</p>
-        ) : (
-          c.results.map((r) => <CandidateRow key={r.entry.productId} result={r} onPick={() => c.pick(r)} />)
-        )}
+      <div className="mt-3 flex flex-col gap-2">
+        <TouchButton block variant="secondary" onClick={() => c.runAction('scan_label')}>
+          {R.needsDataScan}
+        </TouchButton>
+        <TouchButton block variant="secondary" onClick={() => c.runAction('add_manually')}>
+          {R.needsDataManual}
+        </TouchButton>
       </div>
     </div>
   );
@@ -295,11 +280,15 @@ export function ResolutionSheet({ controller }: { controller: IngredientResoluti
           </div>
         </div>
       ) : c.view === 'picker' ? (
-        /* Two catalogue sources (Track F): live Mapper library (default) + the
-           bundled products sample. The recipe stays visible behind the sheet. */
+        /* Primary source: the live Mapper library („Składniki PI", Track F). „Moje
+           produkty" (private) is an optional second tab — shown only when the controller
+           offers more than one source (authenticated + flag on); otherwise this is a
+           single-source view with no empty second tab. The recipe stays visible behind. */
         <div>
-          <SourceTabs active={c.sourceTab} onSelect={c.setSourceTab} />
-          {c.sourceTab === 'pi_ingredients' ? <IngredientsPane c={c} /> : <ProductsPane c={c} />}
+          {c.sources.length > 1 ? (
+            <SourceTabs sources={c.sources} active={c.sourceTab} onSelect={c.setSourceTab} />
+          ) : null}
+          {c.sourceTab === 'my_products' ? <MyProductsPane c={c} /> : <IngredientsPane c={c} />}
         </div>
       ) : c.view === 'substitute' ? (
         <div>

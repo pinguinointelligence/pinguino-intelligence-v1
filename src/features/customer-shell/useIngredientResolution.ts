@@ -8,11 +8,13 @@
  * batch, product type, selected draft, Monitor settings) live in CustomerShellV1 and
  * are never touched, so resolving a line never loses them.
  *
- * The picker search is delegated to the reused `searchPickerCatalogue` (Produkty tab)
- * and to the live Mapper catalogue backend adapter (Składniki PI tab, Track F);
- * readiness is delegated to the reused gate through `pickProduct`. No engine math here.
+ * The picker's primary (and, for demo/anon, ONLY) source is the live Mapper catalogue
+ * backend adapter (Składniki PI tab, Track F). „Moje produkty" (private, user-owned) is
+ * an OPTIONAL second tab, shown only for an authenticated user with private-product
+ * access — never backed by a shared sample. Readiness is delegated to the reused gate
+ * through `pickProduct`. No engine math here.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createResolutionState,
   openSheet,
@@ -34,9 +36,6 @@ import {
   type ResolutionActionId,
 } from '@/features/ingredient-resolution';
 import {
-  BUNDLED_CATALOGUE_ENTRIES,
-  BUNDLED_CATALOGUE_SOURCE,
-  bundledCategoryForIngredient,
   createDebouncer,
   DEFAULT_PICKER_SOURCE,
   INITIAL_LIVE_SEARCH,
@@ -45,12 +44,10 @@ import {
   liveSearchMoreStarted,
   liveSearchSettled,
   liveSearchStarted,
-  searchPickerCatalogue,
-  type CatalogueSource,
+  PICKER_SOURCE_ORDER,
   type IngredientPickPhase,
   type LiveSearchState,
   type PickerSourceId,
-  type ProductPickResult,
   type SafeIngredientHit,
 } from '@/features/product-picker';
 // The live-catalogue backend adapter (sanctioned service layer — the only IO here).
@@ -70,11 +67,22 @@ export interface ResolvableLine {
 /** Which panel of the open sheet is showing. */
 export type ResolutionView = 'menu' | 'picker' | 'substitute' | 'intake';
 
+/**
+ * Feature flag (owner 2026-07-18): private user-owned products („Moje produkty") are
+ * NOT wired to a real per-user backend yet, so the optional second picker tab stays
+ * hidden. When a private-product search source exists, flip this on and pass an
+ * authenticated `access` — demo/anon must NEVER see other users' products.
+ */
+export const PRIVATE_PRODUCTS_ENABLED = false;
+
+/** The picker's access context — decides whether the optional „Moje produkty" tab shows. */
+export interface PrivateProductsAccess {
+  /** True only for a signed-in user (demo/anon never see private products). */
+  authenticated: boolean;
+}
+
 export interface IngredientResolutionController {
   summary: IngredientResolutionSummary;
-  source: CatalogueSource;
-  /** False when no approved catalogue backend is connected (honest unavailable). */
-  catalogueAvailable: boolean;
   /** The line whose sheet is open, else null. */
   activeLineId: string | null;
   activeLine: LineResolution | null;
@@ -82,7 +90,10 @@ export interface IngredientResolutionController {
   actions: ResolutionActionId[];
   forms: typeof INGREDIENT_FORMS;
   query: string;
-  results: ProductPickResult[];
+  /** The picker source tabs to show. Always includes „Składniki PI"; „Moje produkty"
+   * only when authenticated + the private-products flag is on (else this is length 1
+   * and the sheet renders a single-source view with no empty second tab). */
+  sources: readonly PickerSourceId[];
   /** Which catalogue source tab the picker shows (Składniki PI is the default). */
   sourceTab: PickerSourceId;
   setSourceTab: (tab: PickerSourceId) => void;
@@ -103,7 +114,6 @@ export interface IngredientResolutionController {
   chooseForm: (form: IngredientForm) => void;
   runAction: (action: ResolutionActionId) => void;
   setQuery: (q: string) => void;
-  pick: (result: ProductPickResult) => void;
   setSubstituteName: (s: string) => void;
   confirmSubstitute: () => void;
   toggleWhy: () => void;
@@ -168,10 +178,14 @@ function reseed(
   };
 }
 
+/** The single-source tab list (shared Mapper library only) — the demo/anon default. */
+const PI_ONLY_SOURCES: readonly PickerSourceId[] = ['pi_ingredients'];
+
 export function useIngredientResolution(
   workingRecipeId: string,
   lines: readonly ResolvableLine[],
   liveDeps: LiveCatalogueDeps = DEFAULT_LIVE_DEPS,
+  access: PrivateProductsAccess = { authenticated: false },
 ): IngredientResolutionController {
   const [state, setState] = useState<IngredientResolutionState>(() =>
     createResolutionState({ workingRecipeId, lines: seedsFrom(lines) }),
@@ -190,13 +204,12 @@ export function useIngredientResolution(
   const pickAbortRef = useRef<AbortController | null>(null);
   const [debouncer] = useState(() => createDebouncer(liveDeps.debounceMs ?? LIVE_SEARCH_DEBOUNCE_MS));
 
-  // Owner decision (2026-07-17, „wire the 69 staging products now"): the picker reads a
-  // REAL, verified SAMPLE of the products catalogue, bundled from staging so it works in
-  // every build (including the public one, which has no live database). Matched products carry
-  // their mapper_basement reference → an exact „Gotowy do przeliczenia" verdict; the rest
-  // stay honestly „Wymaga danych". The source note labels it a sample, never „live".
-  const entries = BUNDLED_CATALOGUE_ENTRIES;
-  const catalogueAvailable = true;
+  // Owner decision (2026-07-18): the shared catalogue is the live Mapper library
+  // („Składniki PI") — the primary and, for demo/anon, ONLY source. The legacy bundled
+  // 66-product sample is gone; a private-products source is not wired yet, so the optional
+  // „Moje produkty" tab is only offered to an authenticated user when the flag is on.
+  const showMyProducts = PRIVATE_PRODUCTS_ENABLED && access.authenticated;
+  const sources: readonly PickerSourceId[] = showMyProducts ? PICKER_SOURCE_ORDER : PI_ONLY_SOURCES;
 
   // Keep the resolvable line SET in sync with the recipe, preserving progress.
   // Adjusted DURING render (the recommended pattern) rather than in an effect, so a
@@ -210,18 +223,6 @@ export function useIngredientResolution(
 
   const activeLineId = state.activeLineId;
   const activeLine = activeLineId ? (resolutionForLine(state, activeLineId) ?? null) : null;
-
-  const seedCategory = activeLine ? bundledCategoryForIngredient(activeLine.line.ingredientName) : null;
-  const results = useMemo(() => {
-    if (view !== 'picker' || !activeLine) return [];
-    const trimmed = query.trim();
-    // Blank query BROWSES the seeded category (Czekolada → the chocolate rows). Once the
-    // customer types, it becomes a free text search (name / brand / EAN) across categories.
-    return searchPickerCatalogue(
-      { text: trimmed, category: trimmed === '' ? seedCategory : null },
-      entries,
-    );
-  }, [view, activeLine, query, seedCategory, entries]);
 
   /* ---------------------------------------------------- live Mapper search -- */
 
@@ -340,18 +341,6 @@ export function useIngredientResolution(
         break;
     }
   };
-  const pick = (result: ProductPickResult) => {
-    if (!activeLineId) return;
-    setPickedNames((m) => ({ ...m, [activeLineId]: result.entry.displayName }));
-    setState((s) =>
-      pickProduct(s, activeLineId, {
-        productId: result.entry.productId,
-        product: result.entry.readiness,
-        reference: result.entry.reference,
-      }),
-    );
-    // Stay on the picker panel — the line now shows its resolved / needs-data outcome.
-  };
   const confirmSubstitute = () => {
     if (!activeLineId) return;
     const name = substituteName.trim();
@@ -390,15 +379,13 @@ export function useIngredientResolution(
 
   return {
     summary: ingredientResolutionSummary(state),
-    source: BUNDLED_CATALOGUE_SOURCE,
-    catalogueAvailable,
     activeLineId,
     activeLine,
     view,
     actions: activeLine ? availableActions(activeLine) : [],
     forms: INGREDIENT_FORMS,
     query,
-    results,
+    sources,
     sourceTab,
     setSourceTab,
     liveSearch,
@@ -413,7 +400,6 @@ export function useIngredientResolution(
     chooseForm,
     runAction,
     setQuery,
-    pick,
     setSubstituteName,
     confirmSubstitute,
     toggleWhy: () => setWhyOpen((v) => !v),

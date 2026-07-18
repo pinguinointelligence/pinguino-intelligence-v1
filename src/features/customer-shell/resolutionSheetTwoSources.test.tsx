@@ -1,9 +1,11 @@
 /**
- * Track F — the two-source picker sheet (static render, no DOM):
- *  • compact segmented tabs: Składniki PI (default) + Produkty;
+ * Ingredient-resolution picker sheet (static render, no DOM). Owner 2026-07-18:
+ *  • primary source is „Składniki PI" (live Mapper search) — for demo/anon the ONLY
+ *    source, rendered with NO empty second tab (no shared 66-product sample anymore);
+ *  • „Moje produkty" (private) is an OPTIONAL second tab, shown only when the controller
+ *    offers more than one source (authenticated + flag on) — never backed by a sample;
  *  • live pane: dense rows (name / internal / category / PI-ING id / readiness),
  *    „załaduj więcej", honest loading/empty/error/unavailable states;
- *  • products pane keeps the honest bundled-sample note (never „pełny katalog");
  *  • post-selection login-required note for anonymous sessions.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -15,11 +17,9 @@ import {
   resolutionForLine,
 } from '@/features/ingredient-resolution';
 import {
-  BUNDLED_CATALOGUE_SOURCE,
   INITIAL_LIVE_SEARCH,
-  searchPickerCatalogue,
-  BUNDLED_CATALOGUE_ENTRIES,
   type LiveSearchState,
+  type PickerSourceId,
   type SafeIngredientHit,
 } from '@/features/product-picker';
 import { ResolutionSheet } from './ResolutionSheet';
@@ -48,17 +48,16 @@ function controller(over: Partial<IngredientResolutionController>): IngredientRe
   );
   const line = resolutionForLine(state, 'l1')!;
   const noop = () => undefined;
+  const sources: readonly PickerSourceId[] = ['pi_ingredients'];
   return {
     summary: { allResolved: false, unresolvedCount: 1, unresolvedNames: ['Czekolada'] },
-    source: BUNDLED_CATALOGUE_SOURCE,
-    catalogueAvailable: true,
     activeLineId: 'l1',
     activeLine: line,
     view: 'picker',
     actions: [],
     forms: INGREDIENT_FORMS,
     query: '',
-    results: [],
+    sources,
     sourceTab: 'pi_ingredients',
     setSourceTab: noop,
     liveSearch: INITIAL_LIVE_SEARCH,
@@ -73,7 +72,6 @@ function controller(over: Partial<IngredientResolutionController>): IngredientRe
     chooseForm: noop,
     runAction: noop,
     setQuery: noop,
-    pick: noop,
     setSubstituteName: noop,
     confirmSubstitute: noop,
     toggleWhy: noop,
@@ -95,20 +93,33 @@ const ready = (hits: SafeIngredientHit[], hasMore = false): LiveSearchState => (
   hasMore,
 });
 
-describe('two-source tabs', () => {
-  it('renders both sources with Składniki PI selected by default', () => {
+describe('picker sources', () => {
+  it('renders a SINGLE „Składniki PI" source by default — no second tab, no shared sample', () => {
     const html = render({});
-    expect(html).toContain(R.sources.pi_ingredients);
-    expect(html).toContain(R.sources.products);
-    const ingredientsTab = html.slice(html.indexOf('role="tab"'), html.indexOf(R.sources.pi_ingredients!));
-    expect(ingredientsTab).toContain('aria-selected="true"');
+    // With ONE source there is no tab chrome at all (no tablist, no tab labels),
+    // and the removed public „Produkty" sample tab / „Moje produkty" tab are absent.
+    expect(html).not.toContain('role="tab"');
+    expect(html).not.toContain(R.sources.my_products);
+    expect(html).not.toContain('Produkty');
+    // The live Mapper search („Składniki PI") is the pane shown directly.
+    expect(html).toContain(R.ingredientsSearchLabel);
+    expect(html).toContain(R.ingredientsSourceNote);
   });
 
-  it('the Produkty tab keeps the honest SAMPLE note (never a full-catalogue claim)', () => {
-    const html = render({ sourceTab: 'products' });
-    expect(html).toContain(BUNDLED_CATALOGUE_SOURCE.note);
-    expect(BUNDLED_CATALOGUE_SOURCE.note).toContain('Próbka');
-    expect(html).toContain(R.searchLabel);
+  it('offers „Moje produkty" as an optional second tab when the controller exposes it', () => {
+    const html = render({ sources: ['pi_ingredients', 'my_products'] });
+    expect(html).toContain(R.sources.pi_ingredients);
+    expect(html).toContain(R.sources.my_products);
+    expect(html).toContain('role="tab"');
+    const piTab = html.slice(html.indexOf('role="tab"'), html.indexOf(R.sources.pi_ingredients!));
+    expect(piTab).toContain('aria-selected="true"');
+  });
+
+  it('the „Moje produkty" pane shows an honest empty state, never a shared sample', () => {
+    const html = render({ sources: ['pi_ingredients', 'my_products'], sourceTab: 'my_products' });
+    expect(html).toContain(R.myProductsEmpty);
+    // No live-search UI on the private pane.
+    expect(html).not.toContain(R.ingredientsSearchLabel);
   });
 });
 
@@ -154,15 +165,5 @@ describe('live pane — honest states', () => {
     const html = render({ liveSearch: ready([hit()]), ingredientPick: 'login_required' });
     expect(html).toContain(R.pickLoginRequired);
     expect(R.pickLoginRequired).toContain('zalogowania');
-  });
-});
-
-describe('products pane still resolves through the bundled sample', () => {
-  it('renders compact product rows from the real bundled catalogue', () => {
-    const results = searchPickerCatalogue({ text: 'pistacho', category: null }, BUNDLED_CATALOGUE_ENTRIES);
-    expect(results.length).toBeGreaterThan(0);
-    const html = render({ sourceTab: 'products', results });
-    expect(html).toContain(results[0]!.entry.displayName);
-    expect(html).toContain('min-h-[44px]');
   });
 });
