@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import { useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { cn } from '@/lib/cn';
 import { color, focusRing, motion, radius, touchButtonClasses, type } from '@/features/customer-shell/ui';
@@ -9,6 +9,12 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { landingCopy } from '@/pages/landing/landingCopy';
 import { publicOffersForProduct } from '@/billing/catalog/offerDisplay';
 import { resolveActiveOfferFlags } from '@/billing/catalog/offerFlags';
+import {
+  startCheckout,
+  checkoutOfferKey,
+  type BillingCycle,
+  type BillingProductId,
+} from '@/services/billingCheckout';
 
 /**
  * `/subscription` — the plans / conversion page.
@@ -103,8 +109,76 @@ function PlanCard({
 }
 
 export function SubscriptionPage() {
-  const authAvailable = useAuthStore((st) => st.available);
+  const available = useAuthStore((st) => st.available);
+  const status = useAuthStore((st) => st.status);
   const openAuthModal = useAuthModalStore((st) => st.open);
+  const [searchParams] = useSearchParams();
+  const [cycle, setCycle] = useState<BillingCycle>('monthly');
+  const [pending, setPending] = useState<BillingProductId | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const c = s.checkout;
+  const checkoutParam = searchParams.get('checkout');
+
+  // The paid CTA: a signed-out visitor is sent to sign in first (the checkout
+  // function authenticates from the JWT); a signed-in visitor is redirected to
+  // the hosted checkout for the selected plan + cycle. Failures are shown honestly.
+  const onBuy = async (product: BillingProductId) => {
+    setError(null);
+    if (!available) return;
+    if (status !== 'authed') {
+      openAuthModal();
+      return;
+    }
+    setPending(product);
+    const result = await startCheckout(checkoutOfferKey(product, cycle));
+    if (result.ok) {
+      window.location.assign(result.url);
+      return;
+    }
+    setPending(null);
+    if (result.reason === 'not_signed_in') {
+      openAuthModal();
+      return;
+    }
+    setError(
+      result.reason === 'already_subscribed'
+        ? c.errorAlready
+        : result.reason === 'unavailable'
+          ? c.errorUnavailable
+          : c.errorGeneric,
+    );
+  };
+
+  const cycleButton = (value: BillingCycle, label: string) => (
+    <button
+      type="button"
+      aria-pressed={cycle === value}
+      onClick={() => setCycle(value)}
+      className={cn(
+        'rounded-full px-4 py-1.5 text-[13px] font-medium transition',
+        focusRing,
+        cycle === value ? 'bg-ink text-paper' : color.textSecondary,
+      )}
+    >
+      {label}
+    </button>
+  );
+
+  const planButton = (product: BillingProductId, label: string, variant: 'primary' | 'secondary') => (
+    <>
+      <button
+        type="button"
+        onClick={() => void onBuy(product)}
+        disabled={!available || pending !== null}
+        className={cn(touchButtonClasses(variant, 'lg'), 'w-full', pending !== null && 'opacity-70')}
+      >
+        {pending === product ? c.pending : label}
+      </button>
+      <p className={cn('mt-3', type.caption, color.textMuted)}>
+        {available ? s.billingNote : s.billingUnavailable}
+      </p>
+    </>
+  );
 
   return (
     <div className="min-h-[100dvh] w-full bg-paper text-ink">
@@ -124,35 +198,38 @@ export function SubscriptionPage() {
         <p className={cn('mt-4 max-w-prose text-[16px] leading-relaxed', color.textSecondary)}>{s.lead}</p>
         <p className={cn('mt-3 max-w-prose', type.secondary, color.textMuted)}>{s.whatUnlocks}</p>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-2">
-          <PlanCard plan={plans.home} badge={s.homeBadge} product="home">
-            <button
-              type="button"
-              onClick={authAvailable ? () => openAuthModal() : undefined}
-              disabled={!authAvailable}
-              className={cn(touchButtonClasses('secondary', 'lg'), 'w-full')}
-            >
-              {s.homeCta}
-            </button>
-            <p className={cn('mt-3', type.caption, color.textMuted)}>
-              {authAvailable ? s.billingNote : s.billingUnavailable}
-            </p>
-          </PlanCard>
+        {checkoutParam === 'success' ? (
+          <p className={cn('mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3', type.secondary, color.textSecondary)}>
+            {c.successNote}
+          </p>
+        ) : checkoutParam === 'cancelled' ? (
+          <p className={cn('mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3', type.secondary, color.textMuted)}>
+            {c.cancelNote}
+          </p>
+        ) : null}
 
+        <div className="mt-8 flex items-center gap-2">
+          <span className={cn(type.caption, color.textMuted)}>{c.cycleLabel}:</span>
+          <div className="inline-flex items-center gap-1 rounded-full border border-ink/10 bg-paper p-1">
+            {cycleButton('monthly', c.monthly)}
+            {cycleButton('yearly', c.yearly)}
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <PlanCard plan={plans.home} badge={s.homeBadge} product="home">
+            {planButton('home', s.homeCta, 'secondary')}
+          </PlanCard>
           <PlanCard plan={plans.pro} badge={s.proBadge} product="pro" emphasized>
-            <button
-              type="button"
-              onClick={authAvailable ? () => openAuthModal() : undefined}
-              disabled={!authAvailable}
-              className={cn(touchButtonClasses('primary', 'lg'), 'w-full')}
-            >
-              {s.proCta}
-            </button>
-            <p className={cn('mt-3', type.caption, color.textMuted)}>
-              {authAvailable ? s.billingNote : s.billingUnavailable}
-            </p>
+            {planButton('pro', s.proCta, 'primary')}
           </PlanCard>
         </div>
+
+        {error ? (
+          <p role="alert" className={cn('mt-4 text-[#b4232a]', type.secondary)}>
+            {error}
+          </p>
+        ) : null}
 
         {/* The only FREE customer experience is Demo — kept clearly separate from
             the paid Home/Pro plans above (owner P0). */}

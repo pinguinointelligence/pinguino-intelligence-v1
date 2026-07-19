@@ -143,8 +143,19 @@ export const landingCopy = {
     demoNote:
       'Chcesz najpierw zobaczyć, jak to działa? Bezpłatny podgląd pokazuje prawdziwe obliczenia i Monitor PI — bez dokładnych gramatur.',
     demoCta: 'Wypróbuj bezpłatnie',
-    billingNote: 'Płatności są w trakcie uruchamiania — zaloguj się, aby otrzymać dostęp jako pierwszy.',
+    billingNote: 'Bezpieczna płatność online. Anulujesz w dowolnym momencie.',
     billingUnavailable: 'Logowanie jest chwilowo niedostępne. Zajrzyj wkrótce.',
+    checkout: {
+      cycleLabel: 'Rozliczenie',
+      monthly: 'Miesięcznie',
+      yearly: 'Rocznie',
+      pending: 'Przekierowuję do płatności…',
+      errorGeneric: 'Nie udało się rozpocząć płatności. Spróbuj ponownie za chwilę.',
+      errorAlready: 'Masz już aktywny plan.',
+      errorUnavailable: 'Płatności są chwilowo niedostępne.',
+      successNote: 'Dziękujemy! Twój plan jest właśnie aktywowany — odśwież stronę za chwilę.',
+      cancelNote: 'Płatność została anulowana. Możesz spróbować ponownie, kiedy zechcesz.',
+    },
     futureLabel: 'Wkrótce',
     future: [
       'Plan dla zespołów i pracowni',
