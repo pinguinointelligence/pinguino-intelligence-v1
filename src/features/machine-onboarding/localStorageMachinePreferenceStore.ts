@@ -26,6 +26,20 @@ import {
  */
 export const MACHINE_PREFERENCE_STORAGE_KEY = 'pinguino.machine_preference.v1';
 
+/**
+ * The device-local storage key, SCOPED to the authenticated user so one account's
+ * machine can never leak into another on the same browser (owner P0, 2026-07-18).
+ * An anonymous session keeps the legacy unscoped key (backward compatible — no
+ * re-onboarding); a signed-in user gets `…::<userId>`. Switching accounts switches
+ * the key, so `useMachinePreference` reloads the correct account's machine and
+ * never shows the previous one. This is the device fallback only — the SERVER
+ * user_machine_preference table (migration 0030) remains the intended source of
+ * truth once applied.
+ */
+export function userScopedMachineKey(userId: string | null | undefined): string {
+  return userId ? `${MACHINE_PREFERENCE_STORAGE_KEY}::${userId}` : MACHINE_PREFERENCE_STORAGE_KEY;
+}
+
 /** The minimal Storage surface used (injectable for node tests). */
 export interface StorageLike {
   getItem(key: string): string | null;

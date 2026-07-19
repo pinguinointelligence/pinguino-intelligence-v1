@@ -24,6 +24,7 @@ import {
   MACHINE_PREFERENCE_STORAGE_KEY,
   MachinePreferenceWriteError,
   localStorageMachinePreferenceStore,
+  userScopedMachineKey,
   type StorageLike,
 } from './localStorageMachinePreferenceStore';
 
@@ -280,5 +281,46 @@ describe('localStorage adapter — versioned key, round-trip, corruption safety'
     expect(await absent.load()).toBeNull();
     await expect(absent.save(record)).rejects.toBeInstanceOf(MachinePreferenceWriteError);
     await absent.clear(); // no-throw
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* User-scoped device key — one account's machine never leaks to       */
+/* another on the SAME browser (owner P0 2026-07-18).                  */
+/* ------------------------------------------------------------------ */
+
+describe('userScopedMachineKey — per-account device isolation', () => {
+  const machine = buildFor(NINJA_CREAMI_SCOOP_SWIRL_NC7);
+
+  it('anonymous sessions keep the legacy unscoped key (no forced re-onboarding)', () => {
+    expect(userScopedMachineKey(null)).toBe(MACHINE_PREFERENCE_STORAGE_KEY);
+    expect(userScopedMachineKey(undefined)).toBe(MACHINE_PREFERENCE_STORAGE_KEY);
+  });
+
+  it('a signed-in user gets a namespaced key distinct from other users and from anon', () => {
+    const keyA = userScopedMachineKey('user-a');
+    const keyB = userScopedMachineKey('user-b');
+    expect(keyA).toBe(`${MACHINE_PREFERENCE_STORAGE_KEY}::user-a`);
+    expect(keyA).not.toBe(keyB);
+    expect(keyA).not.toBe(MACHINE_PREFERENCE_STORAGE_KEY);
+  });
+
+  it("REGRESSION: Home's saved machine is invisible under Pro's key on the same browser", async () => {
+    // The owner-proven bug: log in as Home, pick Ninja CREAMi, log in as Pro on
+    // the same device → Pro inherited Home's machine because the key was global.
+    // With the scoped key, the same physical storage keeps the two accounts apart.
+    const storage = fakeStorage();
+    const homeStore = localStorageMachinePreferenceStore(storage, userScopedMachineKey('home-user'));
+    const proStore = localStorageMachinePreferenceStore(storage, userScopedMachineKey('pro-user'));
+
+    await homeStore.save(machine);
+    expect(await homeStore.load()).toEqual(machine); // Home still sees its own machine
+    expect(await proStore.load()).toBeNull(); // Pro does NOT inherit it
+
+    // The two records coexist under distinct keys; clearing one leaves the other.
+    await proStore.save(machine);
+    await homeStore.clear();
+    expect(await homeStore.load()).toBeNull();
+    expect(await proStore.load()).toEqual(machine);
   });
 });

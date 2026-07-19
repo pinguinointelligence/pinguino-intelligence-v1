@@ -80,6 +80,7 @@ import {
   deriveBatchGuidance,
   formatGrams,
   localStorageMachinePreferenceStore,
+  userScopedMachineKey,
   machineOnboardingCopy,
   recommendedBatchGramsOf,
   useMachinePreference,
@@ -92,6 +93,9 @@ import { selectMachinePreferenceStore } from '@/services/machinePreference/machi
 import { applyMachineRecordIfUnanswered, applyMachineRecordToFlow } from './machineFlowBridge';
 import { customerShellCopy as copy } from './customerShellCopy';
 import { isMonitorTuningApproved } from '@/features/pi-monitor';
+import { useAuthStore } from '@/stores/authStore';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { fromPriceCompact } from '@/billing/catalog/offerDisplay';
 import { resolveActiveOfferFlags } from '@/billing/catalog/offerFlags';
 import { compactRecipeContext, resultStatus, showTechnicalDetails } from './resultPresentation';
@@ -224,7 +228,16 @@ function ShellRoot({ children }: { children: ReactNode }) {
 
 export function CustomerShellV1() {
   const [flow, setFlow] = useState<CustomerFlowState | null>(null);
-  const [persona, setPersona] = useState<CustomerPersona>('demo');
+  // Persona comes from the REAL entitlement chain (resolveProCorePersona → the
+  // account-access EffectiveAccess, DEV override in development), never a hardcoded
+  // 'demo' (owner P0 2026-07-18). CustomerPersona and ProCorePersona are the same
+  // 'demo'|'home'|'pro' union. In production without a wired EffectiveAccess this
+  // resolves to 'demo' — honest, never an invented paid scope.
+  const persona = useProCorePersona() as CustomerPersona;
+  const setDevPersona = useProCoreAccessStore((s) => s.setDevPersona);
+  // The authenticated user id scopes device-local state so nothing leaks between
+  // accounts on the same browser (owner P0: Pro must not inherit Home's machine).
+  const authUserId = useAuthStore((s) => (s.status === 'authed' ? (s.user?.id ?? null) : null));
 
   // Home-screen draft (before the flow is created).
   const [draftText, setDraftText] = useState('');
@@ -263,8 +276,13 @@ export function CustomerShellV1() {
   // deliberately NOT wired — that is the launch gate (migration 0030 unapplied);
   // anonymous/demo sessions persist the machine on this device only.
   const machineStore = useMemo(
-    () => selectMachinePreferenceStore({ localDevice: () => localStorageMachinePreferenceStore() }).store,
-    [],
+    () =>
+      selectMachinePreferenceStore({
+        // Device fallback keyed by the signed-in user, so switching accounts on the
+        // same browser loads the correct account's machine (never the previous one).
+        localDevice: () => localStorageMachinePreferenceStore(undefined, userScopedMachineKey(authUserId)),
+      }).store,
+    [authUserId],
   );
   const machinePreference = useMachinePreference(machineStore);
   const [machineChangeOpen, setMachineChangeOpen] = useState(false);
@@ -338,7 +356,10 @@ export function CustomerShellV1() {
   // flow creation is unreachable today; revisit when the launch-gated backend
   // adapter (network) is wired (noted in INTEGRATION.md §2).
   const switchPersona = (next: CustomerPersona) => {
-    setPersona(next);
+    // DEV-only override (the selector renders only in development); production
+    // persona always comes from the real entitlement via useProCorePersona.
+    // CustomerPersona and ProCorePersona are the same literal union.
+    setDevPersona(next);
     if (next === 'pro') return;
     const record = recipeMachineRecord ?? machinePreference.record;
     if (record === null || buildMachineContextView(record) === null) return;
