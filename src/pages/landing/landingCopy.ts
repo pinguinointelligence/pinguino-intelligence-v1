@@ -157,6 +157,8 @@ export const landingCopy = {
       cancelNote: 'Płatność została anulowana. Możesz spróbować ponownie, kiedy zechcesz.',
       owned: 'Twój aktualny plan',
       ownedNote: 'Masz już aktywny dostęp do tego planu.',
+      included: 'Zawarte w Twoim planie',
+      includedNote: 'Ten plan jest już zawarty w Twoim wyższym planie.',
     },
     futureLabel: 'Wkrótce',
     future: [

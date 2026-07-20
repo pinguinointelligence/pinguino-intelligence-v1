@@ -166,28 +166,32 @@ export function SubscriptionPage() {
     </button>
   );
 
-  // Pro includes Home access, so a Pro user owns both cards; a Home user owns Home.
-  const ownsProduct = (product: BillingProductId): boolean =>
-    product === 'pro' ? persona === 'pro' : persona === 'home' || persona === 'pro';
+  // Tier ranking so each card reflects the user's plan honestly: the card that
+  // MATCHES the plan says "current plan", a LOWER card says "included in your
+  // plan", and a HIGHER card keeps its upgrade CTA (e.g. Home user → Pro card).
+  const tierRank = { demo: 0, home: 1, pro: 2 } as const;
+  const personaRank = tierRank[persona];
+
+  const statusPill = (glyph: boolean, label: string, note: string) => (
+    <>
+      <div
+        className={cn(
+          'flex w-full items-center justify-center gap-2 border border-ink/15 bg-stone-50 px-4 py-3 text-[15px] font-medium',
+          radius.card,
+          color.textSecondary,
+        )}
+      >
+        {glyph ? <CheckGlyph /> : null}
+        {label}
+      </div>
+      <p className={cn('mt-3', type.caption, color.textMuted)}>{note}</p>
+    </>
+  );
 
   const planButton = (product: BillingProductId, label: string, variant: 'primary' | 'secondary') => {
-    if (ownsProduct(product)) {
-      return (
-        <>
-          <div
-            className={cn(
-              'flex w-full items-center justify-center gap-2 border border-ink/15 bg-stone-50 px-4 py-3 text-[15px] font-medium',
-              radius.card,
-              color.textSecondary,
-            )}
-          >
-            <CheckGlyph />
-            {c.owned}
-          </div>
-          <p className={cn('mt-3', type.caption, color.textMuted)}>{c.ownedNote}</p>
-        </>
-      );
-    }
+    const productRank = tierRank[product];
+    if (personaRank === productRank) return statusPill(true, c.owned, c.ownedNote);
+    if (personaRank > productRank) return statusPill(false, c.included, c.includedNote);
     return (
       <>
         <button
