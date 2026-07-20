@@ -22,13 +22,22 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { isAllowedRedirectUrl, parseUrlAllowlist } from '../_shared/urlAllowlist.ts';
 import { decidePortalEligibility } from './logic.ts';
 
+// Browser-invoked → answer the cross-origin preflight (same CORS contract as
+// create-accepted-correction / create-checkout-session).
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
 
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');

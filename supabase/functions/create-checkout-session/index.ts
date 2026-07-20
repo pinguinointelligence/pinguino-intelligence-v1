@@ -35,13 +35,23 @@ import {
   resolvePurchasableOffer,
 } from './logic.ts';
 
+// Browser-invoked (supabase.functions.invoke from the SPA), so the cross-origin
+// preflight MUST be answered or the request never reaches this handler. Same
+// CORS contract as create-accepted-correction.
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
 
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
