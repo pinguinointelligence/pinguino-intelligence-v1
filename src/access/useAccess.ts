@@ -9,6 +9,7 @@ import { capabilitiesFor, type AccessTier, type Capabilities, type Plan } from '
 import { useAuthStore } from '@/stores/authStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 
 export interface Access extends Capabilities {
   /** Chip-level plan for the StatusChip ('pro' when Pro, else 'demo'). */
@@ -22,9 +23,14 @@ export function useAccess(): Access {
   const isSignedIn = useAuthStore((state) => state.status === 'authed');
   const subscriptionPlan = useSubscriptionStore((state) => state.plan);
   const devOverridePro = useSessionStore((state) => state.plan === 'pro');
+  // The CANONICAL paid signal is the account-access entitlement (public.entitlements,
+  // written by the billing webhook). The subscription-cache plan is the legacy
+  // fallback (a separate webhook that may not be wired). Either → paid. Additive:
+  // this only ever GRANTS Pro, never removes it.
+  const proFromEntitlement = useProCoreAccessStore((state) => state.effectiveAccess?.canPro ?? false);
 
-  // Pro from a real subscription, or the DEV-only internal override.
-  const isPro = subscriptionPlan === 'pro' || (import.meta.env.DEV && devOverridePro);
+  // Pro from a real entitlement (canonical) or subscription cache, or the DEV override.
+  const isPro = proFromEntitlement || subscriptionPlan === 'pro' || (import.meta.env.DEV && devOverridePro);
   const tier: AccessTier = isPro ? 'pro' : isSignedIn ? 'free' : 'demo';
 
   return {

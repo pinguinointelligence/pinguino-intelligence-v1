@@ -155,6 +155,8 @@ export const landingCopy = {
       errorUnavailable: 'Płatności są chwilowo niedostępne.',
       successNote: 'Dziękujemy! Twój plan jest właśnie aktywowany — odśwież stronę za chwilę.',
       cancelNote: 'Płatność została anulowana. Możesz spróbować ponownie, kiedy zechcesz.',
+      owned: 'Twój aktualny plan',
+      ownedNote: 'Masz już aktywny dostęp do tego planu.',
     },
     futureLabel: 'Wkrótce',
     future: [

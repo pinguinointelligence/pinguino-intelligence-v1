@@ -15,6 +15,7 @@ import {
   type BillingCycle,
   type BillingProductId,
 } from '@/services/billingCheckout';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 
 /**
  * `/subscription` — the plans / conversion page.
@@ -112,6 +113,7 @@ export function SubscriptionPage() {
   const available = useAuthStore((st) => st.available);
   const status = useAuthStore((st) => st.status);
   const openAuthModal = useAuthModalStore((st) => st.open);
+  const persona = useProCorePersona();
   const [searchParams] = useSearchParams();
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
   const [pending, setPending] = useState<BillingProductId | null>(null);
@@ -164,21 +166,44 @@ export function SubscriptionPage() {
     </button>
   );
 
-  const planButton = (product: BillingProductId, label: string, variant: 'primary' | 'secondary') => (
-    <>
-      <button
-        type="button"
-        onClick={() => void onBuy(product)}
-        disabled={!available || pending !== null}
-        className={cn(touchButtonClasses(variant, 'lg'), 'w-full', pending !== null && 'opacity-70')}
-      >
-        {pending === product ? c.pending : label}
-      </button>
-      <p className={cn('mt-3', type.caption, color.textMuted)}>
-        {available ? s.billingNote : s.billingUnavailable}
-      </p>
-    </>
-  );
+  // Pro includes Home access, so a Pro user owns both cards; a Home user owns Home.
+  const ownsProduct = (product: BillingProductId): boolean =>
+    product === 'pro' ? persona === 'pro' : persona === 'home' || persona === 'pro';
+
+  const planButton = (product: BillingProductId, label: string, variant: 'primary' | 'secondary') => {
+    if (ownsProduct(product)) {
+      return (
+        <>
+          <div
+            className={cn(
+              'flex w-full items-center justify-center gap-2 border border-ink/15 bg-stone-50 px-4 py-3 text-[15px] font-medium',
+              radius.card,
+              color.textSecondary,
+            )}
+          >
+            <CheckGlyph />
+            {c.owned}
+          </div>
+          <p className={cn('mt-3', type.caption, color.textMuted)}>{c.ownedNote}</p>
+        </>
+      );
+    }
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => void onBuy(product)}
+          disabled={!available || pending !== null}
+          className={cn(touchButtonClasses(variant, 'lg'), 'w-full', pending !== null && 'opacity-70')}
+        >
+          {pending === product ? c.pending : label}
+        </button>
+        <p className={cn('mt-3', type.caption, color.textMuted)}>
+          {available ? s.billingNote : s.billingUnavailable}
+        </p>
+      </>
+    );
+  };
 
   return (
     <div className="min-h-[100dvh] w-full bg-paper text-ink">
