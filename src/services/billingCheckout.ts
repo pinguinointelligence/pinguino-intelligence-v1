@@ -25,9 +25,11 @@ export function checkoutOfferKey(product: BillingProductId, cycle: BillingCycle)
   return `${product}_${cycle}_standard`;
 }
 
+export type CheckoutFailureReason = 'unavailable' | 'not_signed_in' | 'already_subscribed' | 'failed';
+
 export type StartCheckoutResult =
   | { ok: true; url: string }
-  | { ok: false; reason: 'unavailable' | 'not_signed_in' | 'already_subscribed' | 'failed' };
+  | { ok: false; reason: CheckoutFailureReason };
 
 /**
  * Ask the Edge Function for a Checkout Session URL. Returns `not_signed_in`
@@ -63,7 +65,7 @@ export async function startCheckout(offerKey: string): Promise<StartCheckoutResu
  * Map a Supabase FunctionsHttpError to a typed reason by reading the function's
  * structured `{ error }` body when available. Anything unrecognised → 'failed'.
  */
-async function classifyInvokeError(error: unknown): Promise<StartCheckoutResult['reason']> {
+async function classifyInvokeError(error: unknown): Promise<CheckoutFailureReason> {
   const context = (error as { context?: unknown }).context;
   if (context && typeof (context as Response).json === 'function') {
     try {

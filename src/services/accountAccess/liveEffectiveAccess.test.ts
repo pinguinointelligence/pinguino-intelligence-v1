@@ -142,7 +142,7 @@ describe('fetchActiveEntitlementRows — reads own rows, drops junk, throws on e
     expect(builder.eq).toHaveBeenCalledWith('user_id', 'user-42');
     expect(builder.eq).toHaveBeenCalledWith('status', 'active');
     expect(rows).toHaveLength(1);
-    expect(rows[0].scope).toBe('pro');
+    expect(rows[0]?.scope).toBe('pro');
   });
 
   it('silently drops malformed rows in the result set', async () => {
@@ -152,7 +152,7 @@ describe('fetchActiveEntitlementRows — reads own rows, drops junk, throws on e
     });
     const rows = await fetchActiveEntitlementRows(client, 'user-42');
     expect(rows).toHaveLength(1);
-    expect(rows[0].scope).toBe('home');
+    expect(rows[0]?.scope).toBe('home');
   });
 
   it('treats a null data set as no rows', async () => {
