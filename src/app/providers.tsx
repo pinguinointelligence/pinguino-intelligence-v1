@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { consumeOAuthRedirectError } from '@/services/authRedirect';
 import { syncEffectiveAccess } from '@/services/accountAccess/liveEffectiveAccess';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { clearAccountScopedClientState, isAccountBoundaryChange } from './accountSessionReset';
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,18 @@ export function AppProviders({ children }: { children: ReactNode }) {
     if (userId) void loadSubscription();
     else clearSubscription();
   }, [userId, loadSubscription, clearSubscription]);
+
+  // Cross-account isolation (owner P0): when a REAL signed-in user logs out or is
+  // switched on the same browser, wipe the previous account's private client
+  // state (query cache = another user's saved recipes/products, recipe draft,
+  // intake) so it can never render for the next account. Narrow by design — never
+  // fires on first mount or anon→login, so an anonymous draft is preserved.
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevUserIdRef.current;
+    prevUserIdRef.current = userId;
+    if (isAccountBoundaryChange(prev, userId)) clearAccountScopedClientState(queryClient);
+  }, [userId]);
 
   // Resolve the REAL Home/Pro entitlement into the persona store on every auth
   // change (owner P0 2026-07-18): this is what makes home@home.com and
