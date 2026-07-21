@@ -1,7 +1,12 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RecipeInput } from '@/engine';
 import type { RecipeCapabilities } from './recipeContracts';
 import { __resetDevRecipesRepository, resolveRecipesRepository } from './proCoreRecipeRepo';
+
+// This suite verifies the DEV IN-MEMORY fallback, so pin the backend as NOT configured
+// (a local .env.local would otherwise make resolveRecipesRepository return the real Supabase
+// adapter). The Supabase-backed path is covered by supabaseRecipes.test.ts + repositorySelector.test.ts.
+vi.mock('@/lib/supabase/client', () => ({ supabase: null, isSupabaseConfigured: false }));
 
 const PRO: RecipeCapabilities = { canSaveRecipe: true, canViewRecipeVersions: true, canRestoreRecipeVersion: true, maxSavedRecipes: null, canViewExactGrams: true };
 const item = (id: string, name: string, grams: number) => ({ id, ingredient: { name }, planned_grams: grams });

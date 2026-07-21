@@ -17,6 +17,7 @@ import {
 } from '@/services/proCore/repositorySelector';
 import { InMemoryRecipes } from '@/services/proCore/inMemoryRecipes';
 import { inMemoryRecipesRepository, type RecipesRepository } from '@/services/proCore/recipesRepository';
+import { supabaseRecipesBackendFactory } from '@/services/proCore/supabaseRecipes';
 
 let devSingleton: RecipesRepository | null = null;
 
@@ -52,7 +53,10 @@ export function resolveRecipesRepository(
 ): RecipesRepoState {
   try {
     const sel = selectProCoreRepository<RecipesRepository>({
-      backend: factories.backend,
+      // Default to the configured backend adapter when the client is configured (staging/prod);
+      // an explicit factory (tests) still wins. When no backend is configurable the selector uses
+      // in-memory in DEV or reports unavailable — never a silent fallback that fakes a save.
+      backend: factories.backend ?? supabaseRecipesBackendFactory(),
       inMemoryDev: devRecipesRepository,
     });
     return { repository: sel.repository, mode: sel.mode, isLocalDev: sel.isLocalDev, unavailable: false };
