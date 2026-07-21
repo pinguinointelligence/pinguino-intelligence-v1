@@ -1,125 +1,193 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { CONFIG_VERSION, ENGINE_VERSION } from '@/engine';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
-import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { cn } from '@/lib/cn';
-import { useIntakeStore } from '@/stores/intakeStore';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { recipeCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
+import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { buildSavePayload, resolveSaveMode } from './recipePayload';
-import { useCreateRecipe, useUpdateRecipe } from './useSavedRecipes';
 
 const r = copy.recipes;
+const d = copy.recipes.dialog;
+const TRACE = { engineVersion: ENGINE_VERSION, configVersion: CONFIG_VERSION, mapperDatasetVersion: null };
 
 const fieldClass =
   'mt-1 w-full rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink placeholder:text-stone-400 transition-colors focus:border-ink/40 focus:outline-none';
 
-/** Save / Save As dialog (Phase 2A.2). Builds the RecipeInput from the store and
- * persists it via the recipes service; results are never stored. */
+/**
+ * THE ONE canonical save (S2 repair). Backed by the pro-core RecipesRepository so every save
+ * is a real aggregate + immutable version — never the legacy `saved_recipes`-only path that
+ * produced orphan rows and an every-second-save alternation.
+ *
+ *   • no linked aggregate → "Zapisz recepturę": createRecipe (atomic aggregate + meta + v1);
+ *   • linked aggregate    → "Zapisz nową wersję": saveNewVersion (DB-derived, concurrency-safe);
+ *   • always available     → "Zapisz jako nową recepturę": create a NEW aggregate.
+ *
+ * Honest failure: a backend error is shown, the modal STAYS open, the button leaves the loading
+ * state and can be retried — never a false "saved". Double submit is disabled while busy.
+ */
 export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
-  const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
-  const savedRecipeName = useRecipeStore((state) => state.savedRecipeName);
-  const markSaved = useRecipeStore((state) => state.markSaved);
+  const persona = useProCorePersona();
+  const caps = recipeCapabilitiesFor(persona);
+  const queryClient = useQueryClient();
+  const repoState = useMemo(() => resolveRecipesRepository(), []);
+  const { repository, unavailable, isLocalDev } = repoState;
 
-  const createRecipe = useCreateRecipe();
-  const updateRecipe = useUpdateRecipe();
+  const authUserId = useAuthStore((s) => s.user?.id ?? null);
+  const authed = useAuthStore((s) => s.status) === 'authed';
+  const ownerId = authUserId ?? (isLocalDev ? 'local-dev-user' : '');
 
+  const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
+  const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
+  const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
+  const markSaved = useRecipeStore((s) => s.markSaved);
+
+  const linked = Boolean(savedRecipeId);
+  // Linked → default to appending a version; the user can switch to "save as new" (a fresh name).
+  const [asNew, setAsNew] = useState(!linked);
   const [name, setName] = useState(savedRecipeName ?? '');
-  const [description, setDescription] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const busy = createRecipe.isPending || updateRecipe.isPending;
+  const needsName = asNew;
+  const nextVersion = (currentVersionNumber ?? 0) + 1;
+  const blocked = !authed ? d.signIn : unavailable || repository === null ? d.unavailable : !caps.canSaveRecipe ? d.demoCannotSave : null;
+  const canSubmit = !busy && blocked === null && (!needsName || name.trim().length > 0);
 
-  const persist = async (asNew: boolean) => {
+  const persist = async () => {
+    if (!canSubmit || !repository) return;
+    setBusy(true);
     setError(null);
-    const store = useRecipeStore.getState();
-    const intake = useIntakeStore.getState();
-    const recipeInput = buildRecipeInput({
-      mode: store.mode,
-      category: store.category,
-      target_temperature_c: store.target_temperature_c,
-      target_batch_grams: store.target_batch_grams,
-      machine_capacity_grams: store.machine_capacity_grams,
-      flavor_intensity: store.flavor_intensity,
-      cost_priority: store.cost_priority,
-      items: store.items,
-    });
-    const payload = buildSavePayload({
-      name,
-      description,
-      recipeInput,
-      intakeProductId: intake.productProfileId,
-      intakeServingId: intake.servingProfileId,
-    });
     try {
-      const row =
-        resolveSaveMode(savedRecipeId, asNew) === 'update' && savedRecipeId
-          ? await updateRecipe.mutateAsync({ id: savedRecipeId, payload })
-          : await createRecipe.mutateAsync(payload);
-      markSaved(row.id, row.name);
+      const recipeInput = buildRecipeInput(useRecipeStore.getState());
+      if (asNew || !savedRecipeId) {
+        const { recipe, version } = await repository.createRecipe({
+          ownerUserId: ownerId,
+          title: name.trim(),
+          notes: note.trim() || null,
+          recipeInput,
+          trace: TRACE,
+          source: 'manual',
+          by: ownerId,
+          capabilities: caps,
+        });
+        markSaved(recipe.recipeId, recipe.title, version.versionNumber);
+      } else {
+        const version = await repository.saveNewVersion(savedRecipeId, recipeInput, TRACE, ownerId, {
+          note: note.trim() || undefined,
+        });
+        markSaved(savedRecipeId, savedRecipeName ?? name.trim(), version.versionNumber);
+      }
+      // Refresh the lists/history so the save appears WITHOUT a page reload (pro-core + legacy).
+      const savedId = useRecipeStore.getState().savedRecipeId;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['pro-core-recipes', ownerId] }),
+        queryClient.invalidateQueries({ queryKey: ['saved-recipes'] }),
+        savedId
+          ? queryClient.invalidateQueries({ queryKey: ['pro-core-recipe-versions', savedId] })
+          : Promise.resolve(),
+      ]);
       onClose();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not save.');
+      // HONEST failure — keep the modal open, surface the real cause, allow a first-try retry.
+      setError(caught instanceof Error ? caught.message : d.unavailable);
+    } finally {
+      setBusy(false);
     }
   };
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (name.trim()) void persist(false);
+    if (canSubmit) void persist();
   };
+
+  const primaryLabel = busy ? d.saving : asNew ? d.createButton : d.versionButton(nextVersion);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
       <button
         type="button"
-        aria-label={r.cancel}
+        aria-label={d.cancel}
         className="absolute inset-0 h-full w-full bg-ink/30"
         onClick={onClose}
       />
       <div className="relative w-full max-w-sm rounded-xl border border-ink/10 bg-paper p-7">
-        <SectionLabel>{r.saveTitle}</SectionLabel>
+        <SectionLabel>{asNew ? d.createTitle : d.versionTitle}</SectionLabel>
+
+        {linked && !asNew ? (
+          <p className="mt-3 text-xs leading-relaxed text-stone-500" data-testid="save-linked-line">
+            {d.linkedLine(savedRecipeName ?? '—', currentVersionNumber ?? 1)}
+          </p>
+        ) : null}
+
+        {isLocalDev ? (
+          <p className="mt-3 rounded border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            {copy.proCore.localMode}
+          </p>
+        ) : null}
 
         <form className="mt-5 space-y-4" onSubmit={onSubmit}>
+          {needsName ? (
+            <label className="block">
+              <span className="text-xs tracking-label text-stone-500 uppercase">{d.nameLabel}</span>
+              <input
+                required
+                autoFocus
+                value={name}
+                placeholder={d.namePlaceholder}
+                onChange={(event) => setName(event.target.value)}
+                className={fieldClass}
+                data-testid="save-name"
+              />
+            </label>
+          ) : null}
           <label className="block">
-            <span className="text-xs tracking-label text-stone-500 uppercase">{r.nameLabel}</span>
-            <input
-              required
-              value={name}
-              placeholder={r.namePlaceholder}
-              onChange={(event) => setName(event.target.value)}
-              className={fieldClass}
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs tracking-label text-stone-500 uppercase">{r.descriptionLabel}</span>
+            <span className="text-xs tracking-label text-stone-500 uppercase">
+              {asNew ? d.firstNoteLabel : d.changeNoteLabel}
+            </span>
             <textarea
               rows={2}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
               className={cn(fieldClass, 'resize-none')}
+              data-testid="save-note"
             />
           </label>
 
-          {error ? <p className="text-xs leading-relaxed text-status-risky">{error}</p> : null}
+          {blocked ? <p className="text-xs leading-relaxed text-stone-500">{blocked}</p> : null}
+          {error ? (
+            <p role="alert" className="text-xs leading-relaxed text-status-risky" data-testid="save-error">
+              {error}
+            </p>
+          ) : null}
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2">
             <button
               type="submit"
-              disabled={busy || !name.trim()}
-              className={cn(buttonClasses('primary', 'sm'), 'flex-1', (busy || !name.trim()) && 'opacity-50')}
+              disabled={!canSubmit}
+              className={cn(buttonClasses('primary', 'sm'), !canSubmit && 'opacity-50')}
+              data-testid="save-primary"
             >
-              {busy ? r.saving : r.save}
+              {primaryLabel}
             </button>
-            {savedRecipeId ? (
+            {linked && !asNew ? (
               <button
                 type="button"
-                disabled={busy || !name.trim()}
+                disabled={busy}
                 onClick={() => {
-                  if (name.trim()) void persist(true);
+                  setAsNew(true);
+                  setError(null);
                 }}
                 className={cn(buttonClasses('ghost', 'sm'), busy && 'opacity-50')}
+                data-testid="save-as-new"
               >
-                {r.saveAs}
+                {d.saveAsNew}
               </button>
             ) : null}
           </div>

@@ -32,7 +32,6 @@ import { ConstraintHistoryPanel } from './ConstraintHistoryPanel';
 import { ConstraintPreviewCard } from './ConstraintPreviewCard';
 import { FeasibilityNotice } from './FeasibilityNotice';
 import { RangeConstraintEditor } from './RangeConstraintEditor';
-import { SaveVersionControl } from './SaveVersionControl';
 
 const primaryButton =
   'inline-flex items-center justify-center rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell transition-colors hover:bg-ivory/90';
@@ -249,8 +248,10 @@ export function ConstraintStudioSection() {
           undoAvailable={undoAvailable}
           onUndo={store.undoLastApply}
         />
-
-        <SaveVersionControl />
+        {/* S2 repair: the lower "Studio v1" save was a SECOND independent persistence path that
+            entangled with the top-right save (orphan rows + per-session v1 reset). Removed — the
+            ONE canonical save lives in the top-right dialog; durable history/compare/restore live
+            in the Wersje tab (RecipeVersionsSection). */}
       </div>
     </Card>
   );

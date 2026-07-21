@@ -27,10 +27,19 @@ export interface RecipeState {
   items: RecipeItem[];
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
   activePresetId: PresetId | null;
-  /** Id of the saved recipe currently loaded (drives Save vs Save As); null = unsaved/new. */
+  /**
+   * The CANONICAL saved-recipe aggregate link (= `saved_recipes.id` = pro-core `recipeId`).
+   * Drives the ONE save flow: null → "Zapisz recepturę" (create); set → "Zapisz nową wersję".
+   * Persisted so version continuity survives reload/login; the adapter always re-reads the
+   * DB's authoritative `latest_version_number`, so a stale link can never fabricate a number.
+   */
   savedRecipeId: string | null;
-  /** Name of the loaded saved recipe (prefills the Save dialog on overwrite). */
+  /** Name of the linked aggregate (prefills the Save dialog + shows in the button state). */
   savedRecipeName: string | null;
+  /** The linked aggregate's latest persisted version number (display only; DB is authoritative). */
+  currentVersionNumber: number | null;
+  /** Unsaved-changes flag: true after any edit, false after a load or a successful save. */
+  dirty: boolean;
 
   setMode: (mode: ProductMode) => void;
   setCategory: (category: ProductCategory) => void;
@@ -49,11 +58,14 @@ export interface RecipeState {
   setMainIngredient: (lineId: string) => void;
   /** Atomically replace goal + ingredients with a curated demo scenario. */
   loadPreset: (preset: DemoPreset) => void;
-  /** Atomically load a saved recipe's RecipeInput (the stored source of truth);
-   * `savedId`/`savedName` track it so a later Save overwrites instead of copying. */
-  loadRecipeInput: (input: RecipeInput, savedId?: string | null, savedName?: string | null) => void;
-  /** Mark the current recipe as persisted (after a save) so the next Save overwrites. */
-  markSaved: (id: string, name: string) => void;
+  /** Atomically load a saved recipe's RecipeInput (the stored source of truth) and LINK it to
+   * its aggregate so the next save appends a new version (not a copy). Clears the dirty flag. */
+  loadRecipeInput: (
+    input: RecipeInput,
+    link?: { savedId?: string | null; savedName?: string | null; versionNumber?: number | null },
+  ) => void;
+  /** Link the draft to its persisted aggregate after a create/version/restore. Clears dirty. */
+  markSaved: (id: string, name: string, versionNumber: number) => void;
   resetToDemo: () => void;
 }
 
@@ -85,14 +97,17 @@ const fromPreset = (preset: DemoPreset) => ({
   activePresetId: preset.id,
   savedRecipeId: null,
   savedRecipeName: null,
+  currentVersionNumber: null,
+  dirty: false,
 });
 
 /**
- * Persisted slice — recipe content + the preset highlight, but NOT the
- * saved-recipe link (`savedRecipeId`/`savedRecipeName`). Keeping the link out of
- * localStorage means a reloaded session starts "unlinked": Save creates a new
- * recipe instead of trying to overwrite a row that may be gone (stale-id save
- * error). The link is set in-session by `loadRecipeInput` / `markSaved`.
+ * Persisted slice — recipe content + the preset highlight + the CANONICAL aggregate link
+ * (`savedRecipeId`/`savedRecipeName`/`currentVersionNumber`/`dirty`). Persisting the link is
+ * what makes version numbering survive reload/login (the S2-repair requirement): the next save
+ * appends v(n+1) to the SAME aggregate instead of starting a new one at v1. A stale link is safe
+ * because the adapter re-reads the DB's authoritative `latest_version_number` and fails honestly
+ * (offering "save as new") if the aggregate is gone.
  */
 export function recipePersistPartialize(state: RecipeState) {
   return {
@@ -105,6 +120,10 @@ export function recipePersistPartialize(state: RecipeState) {
     cost_priority: state.cost_priority,
     items: state.items,
     activePresetId: state.activePresetId,
+    savedRecipeId: state.savedRecipeId,
+    savedRecipeName: state.savedRecipeName,
+    currentVersionNumber: state.currentVersionNumber,
+    dirty: state.dirty,
   };
 }
 
@@ -113,25 +132,26 @@ export const useRecipeStore = create<RecipeState>()(
     (set) => ({
       ...fromPreset(DEFAULT_PRESET),
 
-      setMode: (mode) => set({ mode }),
-      setCategory: (category) => set({ category }),
-      setTargetTemperature: (target_temperature_c) => set({ target_temperature_c }),
-      setBatchGrams: (target_batch_grams) => set({ target_batch_grams }),
-      setMachineCapacity: (machine_capacity_grams) => set({ machine_capacity_grams }),
-      setFlavorIntensity: (flavor_intensity) => set({ flavor_intensity }),
-      setCostPriority: (cost_priority) => set({ cost_priority }),
+      setMode: (mode) => set({ mode, dirty: true }),
+      setCategory: (category) => set({ category, dirty: true }),
+      setTargetTemperature: (target_temperature_c) => set({ target_temperature_c, dirty: true }),
+      setBatchGrams: (target_batch_grams) => set({ target_batch_grams, dirty: true }),
+      setMachineCapacity: (machine_capacity_grams) => set({ machine_capacity_grams, dirty: true }),
+      setFlavorIntensity: (flavor_intensity) => set({ flavor_intensity, dirty: true }),
+      setCostPriority: (cost_priority) => set({ cost_priority, dirty: true }),
 
       addIngredient: (ingredient, grams = 100) =>
-        set((state) => ({ items: [...state.items, makeLine(ingredient, grams)] })),
+        set((state) => ({ items: [...state.items, makeLine(ingredient, grams)], dirty: true })),
 
       removeItem: (lineId) =>
-        set((state) => ({ items: state.items.filter((item) => item.id !== lineId) })),
+        set((state) => ({ items: state.items.filter((item) => item.id !== lineId), dirty: true })),
 
       setPlannedGrams: (lineId, grams) =>
         set((state) => ({
           items: state.items.map((item) =>
             item.id === lineId ? { ...item, planned_grams: Math.max(0, grams) } : item,
           ),
+          dirty: true,
         })),
 
       setActualGrams: (lineId, grams) =>
@@ -141,6 +161,7 @@ export const useRecipeStore = create<RecipeState>()(
               ? { ...item, actual_grams: grams === null ? null : Math.max(0, grams) }
               : item,
           ),
+          dirty: true,
         })),
 
       setLockType: (lineId, lockType) =>
@@ -148,6 +169,7 @@ export const useRecipeStore = create<RecipeState>()(
           items: state.items.map((item) =>
             item.id === lineId ? { ...item, lock_type: lockType } : item,
           ),
+          dirty: true,
         })),
 
       setMainIngredient: (lineId) =>
@@ -157,10 +179,11 @@ export const useRecipeStore = create<RecipeState>()(
             // demote any previous main line back to unlocked
             return item.lock_type === 'main' ? { ...item, lock_type: 'unlocked' } : item;
           }),
+          dirty: true,
         })),
 
       loadPreset: (preset) => set(fromPreset(preset)),
-      loadRecipeInput: (input, savedId = null, savedName = null) =>
+      loadRecipeInput: (input, link = {}) =>
         set({
           mode: input.mode,
           category: input.category,
@@ -171,10 +194,13 @@ export const useRecipeStore = create<RecipeState>()(
           cost_priority: input.goals?.cost_priority ?? 'balanced',
           items: input.items.map((item) => ({ ...item })),
           activePresetId: null,
-          savedRecipeId: savedId,
-          savedRecipeName: savedName,
+          savedRecipeId: link.savedId ?? null,
+          savedRecipeName: link.savedName ?? null,
+          currentVersionNumber: link.versionNumber ?? null,
+          dirty: false,
         }),
-      markSaved: (id, name) => set({ savedRecipeId: id, savedRecipeName: name }),
+      markSaved: (id, name, versionNumber) =>
+        set({ savedRecipeId: id, savedRecipeName: name, currentVersionNumber: versionNumber, dirty: false }),
       resetToDemo: () => set(fromPreset(DEFAULT_PRESET)),
     }),
     { name: 'pinguino-recipe', partialize: recipePersistPartialize },

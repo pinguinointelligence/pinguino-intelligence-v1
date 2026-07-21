@@ -336,6 +336,24 @@ export const copy = {
       batch: 'Batch',
       updated: 'Updated',
     },
+    /** Canonical save dialog (S2 repair) — ONE flow: create v1 / append next version / save as new. */
+    dialog: {
+      createTitle: 'Zapisz recepturę',
+      versionTitle: 'Zapisz nową wersję',
+      nameLabel: 'Nazwa receptury',
+      namePlaceholder: 'np. Baza mleczna',
+      firstNoteLabel: 'Notatka do pierwszej wersji (opcjonalnie)',
+      changeNoteLabel: 'Opis zmian (opcjonalnie)',
+      createButton: 'Zapisz recepturę',
+      versionButton: (v: number) => `Zapisz nową wersję (v${v})`,
+      saveAsNew: 'Zapisz jako nową recepturę',
+      saving: 'Zapisywanie…',
+      cancel: 'Anuluj',
+      linkedLine: (name: string, v: number) => `Receptura: ${name} · najnowsza wersja v${v}`,
+      unavailable: 'Zapis nie jest dostępny w tej wersji aplikacji.',
+      signIn: 'Zaloguj się, aby zapisać.',
+      demoCannotSave: 'Ten plan nie może zapisywać receptur.',
+    },
   },
   /** PRO CORE — real recipe-version / production / cost surfaces (orchestrator integration). */
   proCore: {
@@ -350,6 +368,7 @@ export const copy = {
     saveDraftAsRecipe: 'Save current draft as recipe',
     saveNewVersion: 'Save new version',
     restoreV1: 'Restore v1 → new version',
+    restoreLabel: 'Przywróć',
     recipesHeading: 'Recipes',
     historyHeading: 'Version history',
     noRecipes: 'No Pro recipes yet — save the current Studio draft to start a version history.',

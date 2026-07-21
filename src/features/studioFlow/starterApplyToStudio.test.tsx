@@ -381,7 +381,7 @@ describe('A3 — apply starter to the local Studio draft (real store, fully loca
     useRecipeStore.getState().loadPreset(raspberry);
     const firstLine = useRecipeStore.getState().items[0]!;
     useRecipeStore.getState().setPlannedGrams(firstLine.id, 333.3);
-    useRecipeStore.getState().markSaved('saved-42', 'Moja malina');
+    useRecipeStore.getState().markSaved('saved-42', 'Moja malina', 1);
     const before = captureStudioDraftSnapshot(useRecipeStore.getState());
 
     const display = redactStarterDraftForDisplay(readyStarter(), PRO);

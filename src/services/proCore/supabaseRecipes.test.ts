@@ -28,7 +28,7 @@ const input = (batch: number, items: ReturnType<typeof item>[]): RecipeInput =>
 
 type Row = Record<string, unknown>;
 type Filter = ['eq', string, unknown] | ['in', string, unknown[]];
-type Op = 'select' | 'insert' | 'update';
+type Op = 'select' | 'insert' | 'update' | 'delete';
 interface Result { data: unknown; error: { message: string } | null }
 
 class FakeDB {
@@ -39,6 +39,8 @@ class FakeDB {
   private tick = 0;
   /** injectable failure: return an error for the first matching (table, op). */
   failOn: { table: string; op: Op } | null = null;
+  /** injectable one-shot UNIQUE violation (models a concurrent writer taking the version number). */
+  failUniqueOnce: { table: string; op: Op } | null = null;
 
   now(): string {
     this.tick += 1;
@@ -70,6 +72,7 @@ class FakeBuilder implements PromiseLike<Result> {
   }
   insert(payload: Row | Row[]): this { this.op = 'insert'; this.payload = payload; return this; }
   update(payload: Row): this { this.op = 'update'; this.payload = payload; return this; }
+  delete(): this { this.op = 'delete'; return this; }
   eq(col: string, val: unknown): this { this.filters.push(['eq', col, val]); return this; }
   in(col: string, arr: unknown[]): this { this.filters.push(['in', col, arr]); return this; }
   order(col: string, opts?: { ascending?: boolean }): this { this.orderSpec = { col, asc: opts?.ascending !== false }; return this; }
@@ -112,7 +115,32 @@ class FakeBuilder implements PromiseLike<Result> {
       this.db.failOn = null;
       return { data: null, error: { message: `injected ${this.op} failure on ${this.tableName}` } };
     }
+    const uniq = this.db.failUniqueOnce;
+    if (uniq && uniq.table === this.tableName && uniq.op === this.op) {
+      this.db.failUniqueOnce = null;
+      return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } as { code: string; message: string } };
+    }
     const rows = this.db.table(this.tableName);
+
+    if (this.op === 'delete') {
+      const removed = rows.filter((r) => this.matches(r));
+      const keep = rows.filter((r) => !this.matches(r));
+      rows.length = 0;
+      rows.push(...keep);
+      // Model the FK ON DELETE CASCADE: deleting a saved_recipes row removes its meta + versions.
+      if (this.tableName === 'saved_recipes') {
+        for (const gone of removed) {
+          const rid = gone.id;
+          for (const child of ['saved_recipe_meta', 'recipe_versions']) {
+            const t = this.db.table(child);
+            const kept = t.filter((r) => r.recipe_id !== rid);
+            t.length = 0;
+            t.push(...kept);
+          }
+        }
+      }
+      return this.shaped(removed, shape);
+    }
 
     if (this.op === 'insert') {
       const items = Array.isArray(this.payload) ? this.payload : [this.payload];
@@ -339,5 +367,67 @@ describe('supabase RecipesRepository adapter (fake client)', () => {
     expect(change('a')).toBe('changed');
     expect(change('b')).toBe('removed');
     expect(change('c')).toBe('added');
+  });
+
+  /* ── S2 repair — atomic first save, retry-safe numbering, no orphans/alternation ── */
+
+  it('S2: atomic first save — a FAILED meta insert leaves NO orphan (aggregate compensated away)', async () => {
+    const { db, repo } = seed();
+    db.failOn = { table: 'saved_recipe_meta', op: 'insert' };
+    await expect(
+      repo.createRecipe({ ownerUserId: 'user-1', title: 'a1', recipeInput: input(1000, [item('a', 'Milk', 1000)]), trace: TRACE, by: 'user-1', capabilities: PRO }),
+    ).rejects.toThrow(/injected insert failure/);
+    // no partial recipe remains anywhere
+    expect(db.saved_recipes).toHaveLength(0);
+    expect(db.saved_recipe_meta).toHaveLength(0);
+    expect(db.recipe_versions).toHaveLength(0);
+  });
+
+  it('S2: atomic first save — a FAILED v1 insert leaves NO orphan (aggregate + meta compensated away)', async () => {
+    const { db, repo } = seed();
+    db.failOn = { table: 'recipe_versions', op: 'insert' };
+    await expect(
+      repo.createRecipe({ ownerUserId: 'user-1', title: 'a1', recipeInput: input(1000, [item('a', 'Milk', 1000)]), trace: TRACE, by: 'user-1', capabilities: PRO }),
+    ).rejects.toThrow(/injected insert failure/);
+    expect(db.saved_recipes).toHaveLength(0);
+    expect(db.saved_recipe_meta).toHaveLength(0);
+    expect(db.recipe_versions).toHaveLength(0);
+  });
+
+  it('S2: saveNewVersion retries on a concurrent UNIQUE violation → gap-free, duplicate-free numbering', async () => {
+    const { db, repo } = seed();
+    const { recipe } = await repo.createRecipe({ ownerUserId: 'user-1', title: 'r', recipeInput: input(1000, [item('a', 'Milk', 1000)]), trace: TRACE, by: 'user-1', capabilities: PRO });
+    // First version insert loses the race (23505); the adapter recomputes the number and retries.
+    db.failUniqueOnce = { table: 'recipe_versions', op: 'insert' };
+    const v2 = await repo.saveNewVersion(recipe.recipeId, input(1100, [item('a', 'Milk', 1100)]), TRACE, 'user-1');
+    expect(v2.versionNumber).toBe(2);
+    expect(db.recipe_versions).toHaveLength(2);
+    expect(db.saved_recipe_meta[0]!.latest_version_number).toBe(2);
+  });
+
+  it('S2: version numbering is DB-derived and survives a "reload" (a fresh adapter continues at v4, not v1)', async () => {
+    const db = new FakeDB();
+    const session1 = supabaseRecipesRepository(makeClient(db, 'user-1'));
+    const { recipe } = await session1.createRecipe({ ownerUserId: 'user-1', title: 'r', recipeInput: input(1000, [item('a', 'Milk', 1000)]), trace: TRACE, by: 'user-1', capabilities: PRO });
+    await session1.saveNewVersion(recipe.recipeId, input(1100, [item('a', 'Milk', 1100)]), TRACE, 'user-1'); // v2
+    await session1.saveNewVersion(recipe.recipeId, input(1200, [item('a', 'Milk', 1200)]), TRACE, 'user-1'); // v3
+
+    // A brand-new adapter instance (simulates reload / logout-login) over the SAME database.
+    const session2 = supabaseRecipesRepository(makeClient(db, 'user-1'));
+    const v4 = await session2.saveNewVersion(recipe.recipeId, input(1300, [item('a', 'Milk', 1300)]), TRACE, 'user-1');
+    expect(v4.versionNumber).toBe(4); // continues from the DB, never resets to v1
+    expect(db.recipe_versions).toHaveLength(4);
+  });
+
+  it('S2: repeated createRecipe never alternates — every save yields a NEW aggregate at v1', async () => {
+    const { db, repo } = seed();
+    for (const title of ['a1', 'a2', 'a3', 'a4']) {
+      const { version } = await repo.createRecipe({ ownerUserId: 'user-1', title, recipeInput: input(1000, [item('a', 'Milk', 1000)]), trace: TRACE, by: 'user-1', capabilities: PRO });
+      expect(version.versionNumber).toBe(1);
+    }
+    expect(db.saved_recipes.map((r) => r.name)).toEqual(['a1', 'a2', 'a3', 'a4']);
+    expect(db.saved_recipes).toHaveLength(4);
+    expect(db.saved_recipe_meta).toHaveLength(4);
+    expect(db.recipe_versions).toHaveLength(4);
   });
 });

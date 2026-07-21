@@ -115,6 +115,16 @@ function num(value: number | string): number {
   return typeof value === 'number' ? value : Number(value);
 }
 
+/** A Postgres unique-constraint violation (two concurrent version writers claimed the same
+ * (recipe_id, version_number)). Detected by SQLSTATE 23505 or the message, so the caller can
+ * safely recompute the next number and retry — numbering stays gap-free and duplicate-free. */
+function isUniqueViolation(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === '23505') return true;
+  const m = (error.message ?? '').toLowerCase();
+  return m.includes('duplicate key') || m.includes('unique constraint') || m.includes('already exists');
+}
+
 function tempFromInput(input: unknown): number | null {
   const t = (input as { target_temperature_c?: unknown } | null | undefined)?.target_temperature_c;
   return typeof t === 'number' ? t : null;
@@ -228,6 +238,41 @@ export class SupabaseRecipes {
     return rowToVersion(data as RecipeVersionRow);
   }
 
+  /** The DB-authoritative next version number for a recipe (max existing + 1; 1 when empty). */
+  private async nextVersionNumber(recipeId: string): Promise<number> {
+    const history = await this.getVersions(recipeId);
+    const max = history.reduce((m, v) => (v.versionNumber > m ? v.versionNumber : m), 0);
+    return max + 1;
+  }
+
+  /**
+   * Append a new immutable version with a DB-derived number, retrying if a concurrent writer
+   * claimed the number first (UNIQUE(recipe_id, version_number) → 23505). `build` receives the
+   * computed next number; on each retry the number is recomputed so numbering is gap-free and
+   * never duplicated — two rapid clicks yield vN and vN+1, not two vN.
+   */
+  private async appendVersionWithRetry(
+    recipeId: string,
+    build: (nextNumber: number) => RecipeVersion | Promise<RecipeVersion>,
+  ): Promise<RecipeVersion> {
+    const MAX_ATTEMPTS = 6;
+    let lastMessage = 'unknown error';
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      const next = await this.nextVersionNumber(recipeId);
+      const draft = await build(next);
+      const { data, error } = await this.client
+        .from(RECIPE_VERSIONS)
+        .insert(versionToInsert(draft))
+        .select()
+        .single();
+      if (!error) return rowToVersion(data as RecipeVersionRow);
+      lastMessage = error.message;
+      if (!isUniqueViolation(error)) throw new Error(error.message);
+      // A concurrent writer took this version_number — recompute and try the next one.
+    }
+    throw new Error(`could not append a new recipe version (last error: ${lastMessage})`);
+  }
+
   /** Advance the MUTABLE aggregate to a newly-appended latest version (never touches history). */
   private async advanceAggregate(recipeId: string, version: RecipeVersion): Promise<void> {
     const recipePatch: Record<string, unknown> = {
@@ -288,38 +333,48 @@ export class SupabaseRecipes {
     if (srErr) throw new Error(srErr.message);
     const srRow = srData as SavedRecipeRow;
 
-    // 2) the 1:1 aggregate meta (archive flag + latest pointer).
-    const { data: metaData, error: metaErr } = await this.client
-      .from(SAVED_RECIPE_META)
-      .insert({
-        recipe_id: srRow.id,
-        owner_user_id: uid,
-        workspace_id: null,
-        archived: false,
-        latest_version_number: 1,
-      })
-      .select()
-      .single();
-    if (metaErr) throw new Error(metaErr.message);
-    const metaRow = metaData as SavedRecipeMetaRow;
+    // ATOMIC first save: if the meta or the v1 insert fails, the aggregate row must NOT survive
+    // (no orphan). All three tables cascade on `saved_recipes` delete, so deleting the row we just
+    // created rolls the operation back. We then rethrow the ORIGINAL error — never a false "saved".
+    try {
+      // 2) the 1:1 aggregate meta (archive flag + latest pointer).
+      const { data: metaData, error: metaErr } = await this.client
+        .from(SAVED_RECIPE_META)
+        .insert({
+          recipe_id: srRow.id,
+          owner_user_id: uid,
+          workspace_id: null,
+          archived: false,
+          latest_version_number: 1,
+        })
+        .select()
+        .single();
+      if (metaErr) throw new Error(metaErr.message);
+      const metaRow = metaData as SavedRecipeMetaRow;
 
-    // 3) the first immutable version.
-    const draft = buildRecipeVersion(
-      {
-        recipeId: srRow.id,
-        ownerUserId: uid,
-        versionNumber: 1,
-        recipeInput: args.recipeInput,
-        trace: args.trace,
-        source: args.source ?? 'manual',
-        createdBy: args.by,
-        createdAt: new Date().toISOString(),
-      },
-      '',
-    );
-    const version = await this.insertVersion(draft);
+      // 3) the first immutable version.
+      const draft = buildRecipeVersion(
+        {
+          recipeId: srRow.id,
+          ownerUserId: uid,
+          versionNumber: 1,
+          recipeInput: args.recipeInput,
+          trace: args.trace,
+          source: args.source ?? 'manual',
+          createdBy: args.by,
+          createdAt: new Date().toISOString(),
+        },
+        '',
+      );
+      const version = await this.insertVersion(draft);
 
-    return { recipe: hydrateRecipe(srRow, metaRow), version };
+      return { recipe: hydrateRecipe(srRow, metaRow), version };
+    } catch (caught) {
+      // Compensate: remove the just-created aggregate (cascades meta + any version) so no partial
+      // recipe remains. Best-effort — the surfaced error is always the real cause of the failure.
+      await this.client.from(SAVED_RECIPES).delete().eq('id', srRow.id);
+      throw caught instanceof Error ? caught : new Error(String(caught));
+    }
   }
 
   async saveNewVersion(
@@ -333,21 +388,23 @@ export class SupabaseRecipes {
     const meta = await this.fetchMeta(recipeId);
     if (!meta) throw new Error(`unknown recipe ${recipeId}`);
 
-    const draft = buildRecipeVersion(
-      {
-        recipeId,
-        ownerUserId: meta.owner_user_id,
-        versionNumber: meta.latest_version_number + 1,
-        recipeInput,
-        trace,
-        source: opts.source ?? 'manual',
-        createdBy: by,
-        createdAt: new Date().toISOString(),
-        note: opts.note ?? null,
-      },
-      '',
+    // DB-derived, concurrency-safe version number (never local + 1). Two rapid clicks → vN, vN+1.
+    const version = await this.appendVersionWithRetry(recipeId, (nextNumber) =>
+      buildRecipeVersion(
+        {
+          recipeId,
+          ownerUserId: meta.owner_user_id,
+          versionNumber: nextNumber,
+          recipeInput,
+          trace,
+          source: opts.source ?? 'manual',
+          createdBy: by,
+          createdAt: new Date().toISOString(),
+          note: opts.note ?? null,
+        },
+        '',
+      ),
     );
-    const version = await this.insertVersion(draft);
     await this.advanceAggregate(recipeId, version);
     return version;
   }
@@ -396,9 +453,11 @@ export class SupabaseRecipes {
     if (!meta) throw new Error(`unknown recipe ${recipeId}`);
 
     // Restore = a NEW version derived from the target snapshot. History is read, never rewritten.
-    const history = await this.getVersions(recipeId);
-    const draft = restoreVersion(history, targetVersionNumber, by, new Date().toISOString(), '');
-    const version = await this.insertVersion(draft);
+    // Retry-safe: on each attempt the fresh history yields the correct next number (max + 1).
+    const version = await this.appendVersionWithRetry(recipeId, async () => {
+      const history = await this.getVersions(recipeId);
+      return restoreVersion(history, targetVersionNumber, by, new Date().toISOString(), '');
+    });
     await this.advanceAggregate(recipeId, version);
     return version;
   }

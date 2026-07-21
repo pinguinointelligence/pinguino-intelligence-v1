@@ -8,6 +8,7 @@ import { useDeleteRecipe, useSavedRecipes } from '@/features/recipes/useSavedRec
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 
 const r = copy.recipes;
@@ -44,10 +45,24 @@ export function MyRecipesPage() {
   const recipesQuery = useSavedRecipes(authed);
   const deleteRecipe = useDeleteRecipe();
 
-  const onOpen = (row: SavedRecipe) => {
+  const onOpen = async (row: SavedRecipe) => {
     try {
       const input = savedToRecipeInput(row.recipe_input);
-      loadRecipeInput(input, row.id, row.name);
+      // Link to the aggregate so the next save appends a NEW VERSION (not a copy). A legacy orphan
+      // row (no aggregate/meta) links only its name → the next save creates a fresh aggregate.
+      let aggregate = null;
+      try {
+        const repo = resolveRecipesRepository().repository;
+        aggregate = repo ? await repo.getRecipe(row.id) : null;
+      } catch {
+        aggregate = null;
+      }
+      loadRecipeInput(
+        input,
+        aggregate
+          ? { savedId: row.id, savedName: row.name, versionNumber: aggregate.latestVersionNumber }
+          : { savedId: null, savedName: row.name, versionNumber: null },
+      );
       navigate('/studio');
     } catch {
       // A malformed saved recipe cannot be loaded — leave the user on the list.
@@ -98,7 +113,7 @@ export function MyRecipesPage() {
                     label={r.columns.updated}
                     value={new Date(row.updated_at).toLocaleDateString()}
                   />
-                  <button type="button" className={buttonClasses('primary', 'sm')} onClick={() => onOpen(row)}>
+                  <button type="button" className={buttonClasses('primary', 'sm')} onClick={() => void onOpen(row)}>
                     {r.open}
                   </button>
                   <button
