@@ -88,3 +88,36 @@ owner decision. Two things are required and neither can be done from here.
 Verification after: the served production bundle contains `tunabqqrwabacxjcxxkz.supabase.co`
 and the catalogue search returns real `PI-ING-*` results on `pinguinoai.com`.
 Redeploy required: **YES**.
+
+---
+
+## PI-INFRA-002 — `mcp__supabase__` connector points at a non-staging project
+
+- **ID:** PI-INFRA-002
+- **Date:** 2026-07-21
+- **Priority:** P1 (latent safety hazard — no incident)
+- **Status:** `OPEN` (mitigation active)
+
+### Finding (PROVEN)
+There are two Supabase MCP connectors in this session:
+- `mcp__11ad34eb…` — `list_projects` returns **only** `tunabqqrwabacxjcxxkz` (pinguino-staging). Correctly scoped to staging.
+- `mcp__supabase__` — points at a project whose `public` schema has **10 tables**
+  (`accepted_corrections, billing_customers, ingredients, ingredients_final_v0_95_no_npac,
+  mapper_basement, product_snapshots, products, profiles, saved_recipes, subscriptions`) and
+  **none** of the pro-core / entitlements / account-access tables. This is the **old
+  production schema** (`riwipywgqobrulyzrzad`), i.e. the DB the prod app can't currently reach
+  (see PI-P0-001), **not** staging.
+
+### Risk
+If any tooling/agent assumes `mcp__supabase__` == staging and issues a write (`apply_migration`
+/ `execute_sql` INSERT/UPDATE), it hits **production**. The standing rule is NEVER write to
+`riwipywgqobrulyzrzad`.
+
+### Mitigation (in force)
+All staging DB work goes through `mcp__11ad34eb…` with explicit
+`project_id: tunabqqrwabacxjcxxkz`. `mcp__supabase__` is treated read-only until re-scoped.
+No writes were issued to it (S2 proofs used the staging connector).
+
+### Next action (owner/Nicolas, optional)
+Re-scope or disconnect the `mcp__supabase__` connector so it cannot reach prod, or relabel it
+so its target is unambiguous.
