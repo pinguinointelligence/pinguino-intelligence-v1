@@ -228,7 +228,8 @@ describe('BranchWorkflow UI — boundary + Studio wiring', () => {
   const panelSrc = strip(readFileSync(join(HERE, 'BranchWorkflowPreviewPanel.tsx'), 'utf8'));
   const policySrc = strip(readFileSync(join(HERE, 'branchWorkflowPolicy.ts'), 'utf8'));
   const sectionSrc = strip(readFileSync(join(HERE, 'BranchWorkflowPreviews.tsx'), 'utf8'));
-  const studioSrc = strip(readFileSync(resolve(HERE, '..', '..', 'pages', 'studio', 'StudioPage.tsx'), 'utf8'));
+  // S3: the production Studio body lives in StudioEngineSurface (rendered by /studio + /pro).
+  const studioSrc = strip(readFileSync(resolve(HERE, '..', 'studio', 'StudioEngineSurface.tsx'), 'utf8'));
 
   it('panel + policy are pure display: no engine import, no handlers, no writes', () => {
     for (const src of [panelSrc, policySrc]) {

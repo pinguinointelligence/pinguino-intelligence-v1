@@ -358,6 +358,57 @@ export const copy = {
     fromVersion: 'from',
     draftTitlePrefix: 'Studio draft',
   },
+  /** PINGÜINO Pro workspace (/pro) — S3 canonical Pro shell. PL chrome (owner vocabulary);
+   * the embedded engine lab stays in its own technical vocabulary. */
+  proWorkspace: {
+    eyebrow: 'PINGÜINO Pro',
+    title: 'Przestrzeń profesjonalna',
+    openWorkspace: 'Otwórz PINGÜINO Pro →',
+    back: 'Powrót',
+    tabs: {
+      recipe: 'Receptura',
+      monitor: 'Monitor',
+      versions: 'Wersje',
+      production: 'Produkcja',
+      history: 'Historia',
+      costs: 'Koszty',
+      exports: 'Eksporty',
+      settings: 'Ustawienia',
+      machine: 'Maszyna',
+    },
+    gate: {
+      title: 'PINGÜINO Pro',
+      message:
+        'Przestrzeń profesjonalna — edytowalne receptury, wersjonowanie, produkcja, koszty i eksporty — jest częścią PINGÜINO Pro.',
+      cta: 'Zobacz PINGÜINO Pro',
+    },
+    monitorNote:
+      'Aktywny panel Monitor Pro jest w zakładce Receptura (prawa kolumna). Osobna szuflada Monitora pojawi się w kolejnym etapie.',
+    soon: {
+      production:
+        'Przebiegi produkcyjne — plan, wykonanie i odchylenia — pojawią się w kolejnym etapie. Zaplecze danych jest już podłączone.',
+      history: 'Historia produkcji pojawi się w kolejnym etapie, na tym samym trwałym zapleczu.',
+      costs:
+        'Koszty składników i niezmienne migawki kosztów pojawią się w kolejnym etapie. Zaplecze danych jest już podłączone.',
+      exports:
+        'Eksporty receptur i kosztów (zależne od uprawnień) pojawią się w kolejnym etapie.',
+    },
+    backend: {
+      label: 'Zaplecze danych',
+      durable: 'Skonfigurowane · trwałe',
+      localDev: 'Tryb lokalny · nietrwałe',
+      unavailable: 'Nieskonfigurowane w tej wersji',
+    },
+    settings: {
+      access: 'Dostęp',
+      account: 'Konto',
+      signedOut: 'Niezalogowano',
+    },
+    machineNote:
+      'Profesjonalna klasa maszyn (Maszyna profesjonalna na pierwszym miejscu, dalej temperatury serwowania) pojawi się w kolejnym etapie. Na teraz zarządzaj zapisaną maszyną tutaj.',
+    openMachine: 'Otwórz ustawienia maszyny',
+    devPersona: 'Persona (dev):',
+  },
   /** PI Pro subscription / billing (Phase 2B.1 — checkout wired in a later slice). */
   billing: {
     proActive: 'PI Pro active',

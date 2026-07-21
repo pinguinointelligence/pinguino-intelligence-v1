@@ -261,11 +261,15 @@ describe('accepted_corrections migration — LIVE (Slice 24, migration 0012)', (
 });
 
 describe('Studio — save-correction control wired (Slice 24)', () => {
-  it('StudioPage mounts SaveCorrectionControl and delegates — no direct draft building or service calls', () => {
-    const studio = readFileSync(join(ROOT, 'src', 'pages', 'studio', 'StudioPage.tsx'), 'utf8');
+  it('the Studio surface mounts SaveCorrectionControl and delegates — no direct draft building or service calls', () => {
+    // S3: the Studio body was extracted to StudioEngineSurface (rendered by /studio + /pro).
+    const studio = readFileSync(join(ROOT, 'src', 'features', 'studio', 'StudioEngineSurface.tsx'), 'utf8');
     expect(studio.includes('SaveCorrectionControl')).toBe(true);
     expect(/buildAcceptedCorrectionDraft/.test(studio)).toBe(false);
     expect(studio.includes('acceptedCorrections')).toBe(false);
+    // StudioPage must actually render the extracted surface (the delegation is real).
+    const page = readFileSync(join(ROOT, 'src', 'pages', 'studio', 'StudioPage.tsx'), 'utf8');
+    expect(page.includes('StudioEngineSurface')).toBe(true);
   });
 
   it('the runner exposes the corrected snapshot for the future write path (view-only data)', () => {

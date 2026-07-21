@@ -28,6 +28,7 @@ import { LandingPage } from '@/pages/landing/LandingPage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { StudioPage } from '@/pages/studio/StudioPage';
+import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import {
   APIPage,
@@ -53,6 +54,10 @@ export function AppRoutes() {
       {/* Legacy /demo entry pointed at the flow → keep old links/bookmarks landing
           in the flow, not on the marketing page. */}
       <Route path="/demo" element={<Navigate to="/start" replace />} />
+      {/* PINGÜINO Pro — the canonical professional workspace (S3). /studio stays intact
+          (its demo/free locked previews are unchanged) and cross-links here; the
+          /studio→/pro redirect is deferred to a later slice. */}
+      <Route path="/pro" element={<ProWorkspacePage />} />
       {/* Advanced Studio · −11°C Engine. */}
       <Route path="/studio" element={<StudioPage />} />
       {/* PI Calculator → Advanced Studio (no intermediate surface). */}

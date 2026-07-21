@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import { customerShellCopy } from '@/features/customer-shell/customerShellCopy';
 import { LandingPage } from '@/pages/landing/LandingPage';
+import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { landingCopy } from '@/pages/landing/landingCopy';
 import { AppRoutes } from './router';
@@ -87,6 +88,10 @@ describe('Slice A routing contract', () => {
 
   it('keeps /calculator redirecting to /studio', () => {
     expect(redirectTarget('/calculator')).toBe('/studio');
+  });
+
+  it('registers the PINGÜINO Pro workspace at /pro (S3)', () => {
+    expect(elementType('/pro')).toBe(ProWorkspacePage);
   });
 
   it('registers the Slice B machine profile page at /profile/machine', () => {

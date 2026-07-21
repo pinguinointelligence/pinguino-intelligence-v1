@@ -265,7 +265,9 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
     }
   });
 
-  const studioSrc = readFileSync(resolve(HERE, '..', '..', 'pages', 'studio', 'StudioPage.tsx'), 'utf8');
+  // The production Studio surface body was extracted to StudioEngineSurface (S3) so BOTH
+  // /studio and the /pro workspace Receptura tab render the same real lab. Assert on it.
+  const studioSrc = readFileSync(resolve(HERE, '..', 'studio', 'StudioEngineSurface.tsx'), 'utf8');
   const studio = strip(studioSrc);
 
   it('renders the preview in PRODUCTION Studio, not behind a DEV-only gate (Slice 15)', () => {
