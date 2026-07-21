@@ -9,7 +9,6 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
-import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 
 const r = copy.recipes;
 
@@ -87,7 +86,7 @@ export function MyRecipesPage() {
           <div className="mt-6 flex items-center gap-4">
             <p className="text-sm leading-relaxed text-stone-600">{r.signInToView}</p>
             <button type="button" className={buttonClasses('primary', 'sm')} onClick={openAuthModal}>
-              {copy.menu.signIn}
+              {r.signInCta}
             </button>
           </div>
         ) : recipesQuery.isLoading ? (
@@ -111,7 +110,7 @@ export function MyRecipesPage() {
                   <Cell label={r.columns.batch} value={`${row.batch_grams} g`} />
                   <Cell
                     label={r.columns.updated}
-                    value={new Date(row.updated_at).toLocaleDateString()}
+                    value={new Date(row.updated_at).toLocaleDateString('pl-PL')}
                   />
                   <button type="button" className={buttonClasses('primary', 'sm')} onClick={() => void onOpen(row)}>
                     {r.open}
@@ -130,9 +129,9 @@ export function MyRecipesPage() {
             ))}
           </ul>
         )}
-
-        {/* PRO CORE — immutable recipe versions (self-gated by persona + backend availability). */}
-        <RecipeVersionsSection />
+        {/* S2 UX: version history is NOT duplicated here. Moje receptury shows ONE list of recipe
+            aggregates; a recipe's immutable version history lives in the PINGÜINO Pro „Wersje" tab,
+            scoped to the opened recipe. */}
       </main>
     </div>
   );
