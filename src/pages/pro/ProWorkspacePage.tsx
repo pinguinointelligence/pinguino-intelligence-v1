@@ -26,6 +26,7 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { StudioEngineSurface } from '@/features/studio/StudioEngineSurface';
 import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
+import { ProMachineSelector } from '@/features/pro-core/ProMachineSelector';
 import { MonitorDrawer } from '@/features/pro-core/MonitorDrawer';
 import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 import { ProSliceBackendState } from '@/features/pro-core/ProSliceBackendState';
@@ -152,9 +153,11 @@ function SettingsTab({ persona }: { persona: ProCorePersona }) {
 }
 
 function MachineTab() {
+  // S4: the professional-first machine + serving-mode selector, applied to the current recipe.
+  // The full Home machine profile page (default machine, container) stays reachable below.
   return (
-    <div className="space-y-4">
-      <NoteTab note={w.machineNote} />
+    <div className="space-y-8">
+      <ProMachineSelector />
       <Link
         to="/profile/machine"
         className="inline-block text-sm text-ink underline decoration-ink/25 underline-offset-4 transition-colors hover:text-stone-600"

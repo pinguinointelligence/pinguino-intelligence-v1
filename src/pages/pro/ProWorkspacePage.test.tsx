@@ -73,9 +73,11 @@ describe('ProWorkspacePage (S3)', () => {
     expect(costs).toContain('data-testid="pro-slice-backend"');
   });
 
-  it('links the Maszyna tab to the existing machine settings page', () => {
+  it('renders the professional machine selector on the Maszyna tab (S4) and keeps the settings link', () => {
     const html = renderAt('/pro?tab=machine', 'pro');
-    expect(html).toContain(w.machineNote);
+    expect(html).toContain('data-testid="pro-machine-selector"');
+    expect(html).toContain('data-testid="pro-machine-professional"');
+    expect(html).toContain(copy.proMachine.professional.title);
     expect(html).toContain('href="/profile/machine"');
   });
 });

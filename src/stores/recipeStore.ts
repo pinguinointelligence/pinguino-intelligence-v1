@@ -40,6 +40,19 @@ export interface RecipeState {
   currentVersionNumber: number | null;
   /** ISO date of the current version (drives the `DD.MM.YYYY · vN` label; persisted). */
   currentVersionDate: string | null;
+  /**
+   * Pro machine/serving selection context (S4). Drives the workbar context line + which visible
+   * serving mode routes the recipe. It NEVER changes Engine math — the temperature it carries is
+   * always an existing supported cell set on `target_temperature_c`. Reset to null on account
+   * switch via resetToDemo (cross-account isolation).
+   */
+  machineKind: 'professional' | 'home' | null;
+  /** The selected ServingModeId (fresh/temp_minus_11/12/13 for professional; the machine's mode for home). */
+  servingModeId: string | null;
+  /** The selected Home machine's catalog id (null for the professional machine). */
+  machineId: string | null;
+  /** Display label ("Maszyna profesjonalna" or the Home machine name). */
+  machineLabel: string | null;
   /** Unsaved-changes flag: true after any edit, false after a load or a successful save. */
   dirty: boolean;
 
@@ -73,6 +86,15 @@ export interface RecipeState {
   ) => void;
   /** Link the draft to its persisted aggregate after a create/version/restore. Clears dirty. */
   markSaved: (id: string, name: string, versionNumber: number, versionDate?: string | null) => void;
+  /** Select a Pro machine/serving mode (S4): sets the routing temperature + context + optional batch. */
+  setMachineSelection: (sel: {
+    kind: 'professional' | 'home';
+    servingModeId: string;
+    machineId: string | null;
+    label: string;
+    temperatureC: number;
+    batchGrams?: number | null;
+  }) => void;
   resetToDemo: () => void;
 }
 
@@ -106,6 +128,10 @@ const fromPreset = (preset: DemoPreset) => ({
   savedRecipeName: null,
   currentVersionNumber: null,
   currentVersionDate: null,
+  machineKind: null,
+  servingModeId: null,
+  machineId: null,
+  machineLabel: null,
   dirty: false,
 });
 
@@ -132,6 +158,10 @@ export function recipePersistPartialize(state: RecipeState) {
     savedRecipeName: state.savedRecipeName,
     currentVersionNumber: state.currentVersionNumber,
     currentVersionDate: state.currentVersionDate,
+    machineKind: state.machineKind,
+    servingModeId: state.servingModeId,
+    machineId: state.machineId,
+    machineLabel: state.machineLabel,
     dirty: state.dirty,
   };
 }
@@ -217,6 +247,17 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionDate: versionDate,
           dirty: false,
         }),
+      setMachineSelection: (sel) =>
+        set((state) => ({
+          machineKind: sel.kind,
+          servingModeId: sel.servingModeId,
+          machineId: sel.machineId,
+          machineLabel: sel.label,
+          // Route to the existing supported cell — no Engine change, just the temperature input.
+          target_temperature_c: sel.temperatureC,
+          target_batch_grams: sel.batchGrams != null ? sel.batchGrams : state.target_batch_grams,
+          dirty: true,
+        })),
       resetToDemo: () => set(fromPreset(DEFAULT_PRESET)),
     }),
     { name: 'pinguino-recipe', partialize: recipePersistPartialize },

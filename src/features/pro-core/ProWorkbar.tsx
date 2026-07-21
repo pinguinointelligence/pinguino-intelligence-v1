@@ -16,6 +16,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
 
 const w = copy.proWorkbar;
+const pm = copy.proMachine;
 
 const PRODUCT: Record<string, string> = {
   milk_gelato: 'Gelato', fruit_gelato: 'Sorbet owocowy', nut_gelato: 'Gelato orzechowe',
@@ -23,6 +24,16 @@ const PRODUCT: Record<string, string> = {
   vegan_gelato: 'Gelato wegańskie', custom: 'Custom',
 };
 const TIER: Record<string, string> = { eco: 'Eco', classic: 'Classic', premium: 'Premium', signature: 'Signature' };
+
+/** Serving-mode display labels (reuse the machine copy so there is ONE source of truth). */
+const SERVING_LABEL: Record<string, string> = {
+  fresh: pm.serving.fresh,
+  temp_minus_11: pm.serving.minus11,
+  temp_minus_12: pm.serving.minus12,
+  temp_minus_13: pm.serving.minus13,
+  ninja_gelato: pm.serving.minus13,
+  ninja_swirl: pm.serving.minus11,
+};
 
 /** Customer-facing version label: `DD.MM.YYYY · vN` from the stored ISO date (timezone-independent). */
 function versionLabel(versionNumber: number | null, iso: string | null): string | null {
@@ -42,6 +53,9 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
   const mode = useRecipeStore((s) => s.mode);
   const temperatureC = useRecipeStore((s) => s.target_temperature_c);
   const batchGrams = useRecipeStore((s) => s.target_batch_grams);
+  const machineKind = useRecipeStore((s) => s.machineKind);
+  const servingModeId = useRecipeStore((s) => s.servingModeId);
+  const machineLabel = useRecipeStore((s) => s.machineLabel);
 
   const save = useCanonicalRecipeSave();
   const linked = Boolean(savedRecipeId);
@@ -65,7 +79,18 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
     return () => document.removeEventListener('mousedown', onDoc);
   }, [menuOpen]);
 
-  const context = `${PRODUCT[category] ?? category} · ${TIER[mode] ?? mode} · ${temperatureC} °C · ${batchGrams} g`;
+  // Machine-aware context (S4): a professional selection shows the visible serving temperature;
+  // a Home routing shows machine + batch ONLY (never a false professional temperature); with no
+  // machine chosen we keep the recipe's product · tier · temperature · batch.
+  let context: string;
+  if (machineKind === 'professional' && machineLabel) {
+    const serving = servingModeId ? (SERVING_LABEL[servingModeId] ?? '') : '';
+    context = `${machineLabel} · ${serving} · ${batchGrams} g`;
+  } else if (machineKind === 'home' && machineLabel) {
+    context = `${machineLabel} · ${batchGrams} g`;
+  } else {
+    context = `${PRODUCT[category] ?? category} · ${TIER[mode] ?? mode} · ${temperatureC} °C · ${batchGrams} g`;
+  }
   const label = versionLabel(currentVersionNumber, currentVersionDate);
 
   const statusKey: keyof typeof w.status = save.error

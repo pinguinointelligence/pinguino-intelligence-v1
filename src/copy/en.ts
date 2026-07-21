@@ -507,6 +507,38 @@ export const copy = {
       plan: 'Ten plan nie zapisuje receptur',
     },
   },
+  /** PINGÜINO Pro — professional machine + serving-mode selector (S4). PL copy; connects EXISTING
+   * approved serving modes + Home machine registry to the Pro workflow (no Engine/math change). */
+  proMachine: {
+    heading: 'Maszyna i tryb serwowania',
+    intro: 'Wybór dotyczy bieżącej receptury.',
+    professional: {
+      title: 'Maszyna profesjonalna',
+      body: 'Pełna kontrola temperatury serwowania, partii i parametrów receptury.',
+      chooseServing: 'Wybierz temperaturę serwowania',
+    },
+    serving: {
+      fresh: 'Świeże',
+      minus11: '−11°C',
+      minus12: '−12°C',
+      minus13: '−13°C',
+    },
+    home: {
+      heading: 'Maszyny domowe',
+      setDefault: 'Ustaw również jako domyślną',
+      recommended: (g: number) => `Zalecany wsad: ${g} g`,
+      userSetsBatch: 'Wsad ustalasz samodzielnie.',
+      savedDefault: 'Zapisano jako domyślną maszynę.',
+    },
+    other: {
+      heading: 'Inne urządzenia',
+      needsReview: 'W trakcie weryfikacji pojemności — brak zalecanego wsadu.',
+    },
+    batch: { label: 'Wielkość partii', unit: 'g' },
+    professionalLabel: 'Maszyna profesjonalna',
+    selected: 'Wybrano',
+    change: 'Zmień',
+  },
   /** PI Pro subscription / billing (Phase 2B.1 — checkout wired in a later slice). */
   billing: {
     proActive: 'PI Pro active',
