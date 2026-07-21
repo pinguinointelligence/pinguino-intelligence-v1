@@ -38,6 +38,8 @@ export interface RecipeState {
   savedRecipeName: string | null;
   /** The linked aggregate's latest persisted version number (display only; DB is authoritative). */
   currentVersionNumber: number | null;
+  /** ISO date of the current version (drives the `DD.MM.YYYY · vN` label; persisted). */
+  currentVersionDate: string | null;
   /** Unsaved-changes flag: true after any edit, false after a load or a successful save. */
   dirty: boolean;
 
@@ -62,10 +64,15 @@ export interface RecipeState {
    * its aggregate so the next save appends a new version (not a copy). Clears the dirty flag. */
   loadRecipeInput: (
     input: RecipeInput,
-    link?: { savedId?: string | null; savedName?: string | null; versionNumber?: number | null },
+    link?: {
+      savedId?: string | null;
+      savedName?: string | null;
+      versionNumber?: number | null;
+      versionDate?: string | null;
+    },
   ) => void;
   /** Link the draft to its persisted aggregate after a create/version/restore. Clears dirty. */
-  markSaved: (id: string, name: string, versionNumber: number) => void;
+  markSaved: (id: string, name: string, versionNumber: number, versionDate?: string | null) => void;
   resetToDemo: () => void;
 }
 
@@ -98,6 +105,7 @@ const fromPreset = (preset: DemoPreset) => ({
   savedRecipeId: null,
   savedRecipeName: null,
   currentVersionNumber: null,
+  currentVersionDate: null,
   dirty: false,
 });
 
@@ -123,6 +131,7 @@ export function recipePersistPartialize(state: RecipeState) {
     savedRecipeId: state.savedRecipeId,
     savedRecipeName: state.savedRecipeName,
     currentVersionNumber: state.currentVersionNumber,
+    currentVersionDate: state.currentVersionDate,
     dirty: state.dirty,
   };
 }
@@ -197,10 +206,17 @@ export const useRecipeStore = create<RecipeState>()(
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
           currentVersionNumber: link.versionNumber ?? null,
+          currentVersionDate: link.versionDate ?? null,
           dirty: false,
         }),
-      markSaved: (id, name, versionNumber) =>
-        set({ savedRecipeId: id, savedRecipeName: name, currentVersionNumber: versionNumber, dirty: false }),
+      markSaved: (id, name, versionNumber, versionDate = null) =>
+        set({
+          savedRecipeId: id,
+          savedRecipeName: name,
+          currentVersionNumber: versionNumber,
+          currentVersionDate: versionDate,
+          dirty: false,
+        }),
       resetToDemo: () => set(fromPreset(DEFAULT_PRESET)),
     }),
     { name: 'pinguino-recipe', partialize: recipePersistPartialize },

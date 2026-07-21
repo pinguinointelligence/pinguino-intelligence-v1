@@ -59,8 +59,13 @@ export function MyRecipesPage() {
       loadRecipeInput(
         input,
         aggregate
-          ? { savedId: row.id, savedName: row.name, versionNumber: aggregate.latestVersionNumber }
-          : { savedId: null, savedName: row.name, versionNumber: null },
+          ? {
+              savedId: row.id,
+              savedName: row.name,
+              versionNumber: aggregate.latestVersionNumber,
+              versionDate: aggregate.updatedAt,
+            }
+          : { savedId: null, savedName: row.name, versionNumber: null, versionDate: null },
       );
       navigate('/studio');
     } catch {

@@ -474,6 +474,39 @@ export const copy = {
     openMachine: 'Otwórz ustawienia maszyny',
     devPersona: 'Persona (dev):',
   },
+  /** PINGÜINO Pro sticky top workbar — primary actions always visible (recipe name + save +
+   * Przelicz z PI + Monitor PI + version/status). PL copy. */
+  proWorkbar: {
+    nameLabel: 'Nazwa receptury',
+    namePlaceholder: 'np. Pistacja Premium',
+    saveNew: 'Zapisz recepturę',
+    saveVersion: (v: number) => `Zapisz nową wersję (v${v})`,
+    addNote: 'Dodaj notatkę',
+    noteLabel: 'Notatka do wersji (opcjonalnie)',
+    monitor: 'Monitor PI',
+    recalc: 'Przelicz z PI',
+    emptyNameError: 'Podaj nazwę receptury.',
+    more: 'Więcej opcji',
+    rename: 'Zmień nazwę',
+    saveAsNew: 'Zapisz jako nową recepturę',
+    archive: 'Archiwizuj recepturę',
+    confirm: 'Zapisz',
+    cancel: 'Anuluj',
+    restoredFrom: (v: number) => `przywrócono z v${v}`,
+    pendingRecalc: 'Zmiany oczekują na przeliczenie',
+    status: {
+      newUnsaved: 'Nowa, niezapisana receptura',
+      saving: 'Zapisywanie…',
+      clean: 'Wszystkie zmiany zapisane',
+      dirty: 'Niezapisane zmiany',
+      error: 'Błąd zapisu — spróbuj ponownie',
+    },
+    blocked: {
+      signin: 'Zaloguj się, aby zapisać',
+      unavailable: 'Zapis niedostępny w tej wersji',
+      plan: 'Ten plan nie zapisuje receptur',
+    },
+  },
   /** PI Pro subscription / billing (Phase 2B.1 — checkout wired in a later slice). */
   billing: {
     proActive: 'PI Pro active',

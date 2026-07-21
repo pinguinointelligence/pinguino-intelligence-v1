@@ -13,6 +13,7 @@
  * here; the eventual /studio→/pro redirect is deferred to a later slice to avoid regressing
  * the demo/free Studio preview.
  */
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
@@ -24,6 +25,8 @@ import { AppShell } from '@/features/shell/AppShell';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { StudioEngineSurface } from '@/features/studio/StudioEngineSurface';
+import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
+import { MonitorDrawer } from '@/features/pro-core/MonitorDrawer';
 import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 import { ProSliceBackendState } from '@/features/pro-core/ProSliceBackendState';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
@@ -85,14 +88,21 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
 }
 
 function RecipeTab() {
-  // The engine lab keeps its native dark "canvas" tone inside the light workspace
-  // (design lock: Monitor Pro / lab surface may be a dark panel).
+  // Sticky top workbar (name + canonical save + context + version/status + Monitor PI + Przelicz z PI)
+  // above the engine lab; Monitor PI / Przelicz z PI open the Monitor drawer on the LIVE result.
+  const [monitorOpen, setMonitorOpen] = useState(false);
   return (
-    <SurfaceToneContext.Provider value="shell">
-      <div className="rounded-lg bg-shell text-ivory [color-scheme:dark]">
-        <StudioEngineSurface />
-      </div>
-    </SurfaceToneContext.Provider>
+    <div>
+      <ProWorkbar onMonitor={() => setMonitorOpen(true)} onRecalc={() => setMonitorOpen(true)} />
+      {/* The engine lab keeps its native dark "canvas" tone inside the light workspace
+          (design lock: Monitor Pro / lab surface may be a dark panel). */}
+      <SurfaceToneContext.Provider value="shell">
+        <div className="mt-4 rounded-lg bg-shell text-ivory [color-scheme:dark]">
+          <StudioEngineSurface />
+        </div>
+      </SurfaceToneContext.Provider>
+      <MonitorDrawer open={monitorOpen} onClose={() => setMonitorOpen(false)} />
+    </div>
   );
 }
 
