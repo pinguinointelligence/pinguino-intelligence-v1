@@ -95,8 +95,21 @@ Redeploy required: **YES**.
 
 - **ID:** PI-INFRA-002
 - **Date:** 2026-07-21
-- **Priority:** P1 (latent safety hazard — no incident)
-- **Status:** `OPEN` (mitigation active)
+- **Priority:** **P0** (infrastructure safety — owner-mandated 2026-07-21; upgraded from P1)
+- **Status:** `OPEN` (binding write-safety rule enforced below)
+
+### Owner-mandated write-safety rule (BINDING — applies to ALL future DB work)
+1. **Every** database write (`apply_migration` / `execute_sql` INSERT/UPDATE/UPSERT/DELETE/DDL)
+   MUST explicitly target **Project Ref `tunabqqrwabacxjcxxkz`** (staging), verified in the call
+   itself (the `mcp__11ad34eb…` tools take an explicit `project_id` — it MUST read
+   `tunabqqrwabacxjcxxkz`).
+2. The generic `mcp__supabase__` connector points at the **old production schema**
+   (`riwipywgqobrulyzrzad`) and **MUST NOT be used for writes** — read-only at most, and even
+   reads are preferably routed through the staging-scoped connector to avoid ambiguity.
+3. Before any write, re-confirm the target ref (e.g. a `select current_database()` + a
+   ref-identifying check, or `list_projects` on the scoped connector) — never assume a connector's
+   target from its name.
+4. NEVER write to `riwipywgqobrulyzrzad` (prod) or `tjntmljkrxbpwjmkautu` (MOOTOORS).
 
 ### Finding (PROVEN)
 There are two Supabase MCP connectors in this session:
@@ -118,6 +131,7 @@ All staging DB work goes through `mcp__11ad34eb…` with explicit
 `project_id: tunabqqrwabacxjcxxkz`. `mcp__supabase__` is treated read-only until re-scoped.
 No writes were issued to it (S2 proofs used the staging connector).
 
-### Next action (owner/Nicolas, optional)
-Re-scope or disconnect the `mcp__supabase__` connector so it cannot reach prod, or relabel it
-so its target is unambiguous.
+### Next action (owner/Nicolas)
+Re-scope or disconnect the `mcp__supabase__` connector so it cannot reach prod
+(`riwipywgqobrulyzrzad`), or relabel it so its target is unambiguous. Until then the binding
+write-safety rule above is the control. No writes have been issued through this connector.
