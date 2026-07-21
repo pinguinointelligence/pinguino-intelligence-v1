@@ -41,6 +41,35 @@ export interface ProCoreCapabilities {
   /** May produce recipe / cost exports at all (Demo cannot). Exact grams stay gated on
    * canViewExactGrams, so an export can never leak exact grams without that capability. */
   canExport: boolean;
+
+  // ── S1 (owner "Pro first", 2026-07-21) — named capabilities the Pro product gates on.
+  //    Additive: existing fields above are unchanged, so Home/Demo behaviour is preserved.
+  //    `canSaveRecipe` above IS the spec's "canSaveRecipes". Every field is pure gating
+  //    data (boolean/number) — it never affects the canonical Engine result. ──
+  /** Compare two immutable versions (Home may compare its one recipe; Demo cannot). */
+  canCompareRecipeVersions: boolean;
+  /** The temperature-first professional recipe flow (vs Home's machine-first flow). Pro-only. */
+  canUseProfessionalFlow: boolean;
+  /** Choose a professional serving mode — Świeże / −11 / −12 / −13 °C. Pro-only. */
+  canChooseProfessionalServingMode: boolean;
+  /** The full modular Monitor Pro (vs the simplified Home Monitor). Pro-only. */
+  canUseProfessionalMonitor: boolean;
+  /** Edit exact ingredient grams through the Preview → verify → Apply chain. Pro-only. */
+  canEditIngredientGrams: boolean;
+  /** Lock an ingredient's exact grams (the optimizer may never move a locked value). Pro-only. */
+  canLockIngredientGrams: boolean;
+  /** Constrain an ingredient to a min–max range. Pro-only. */
+  canSetIngredientRange: boolean;
+  /** Repair a recipe (IF9 / IF10 / verified substitutes) around real-world constraints. Pro-only. */
+  canRepairRecipe: boolean;
+  /** Repair an in-progress PHYSICAL production batch (already-added ingredients are fixed). Pro-only. */
+  canRepairProductionBatch: boolean;
+  /** Scale an immutable recipe version to any batch size. Pro-only. */
+  canScaleRecipe: boolean;
+  /** View the production-run history. Pro-only. */
+  canViewProductionHistory: boolean;
+  /** Use the ingredient-costing surface. Pro-only. */
+  canUseCosts: boolean;
 }
 
 /** The canonical persona → capability matrix. Frozen so it can never be mutated at runtime. */
@@ -53,6 +82,18 @@ export const PRO_CORE_CAPABILITIES: Readonly<Record<ProCorePersona, ProCoreCapab
     canViewExactGrams: false,
     canUseProductionMode: false,
     canExport: false,
+    canCompareRecipeVersions: false,
+    canUseProfessionalFlow: false,
+    canChooseProfessionalServingMode: false,
+    canUseProfessionalMonitor: false,
+    canEditIngredientGrams: false,
+    canLockIngredientGrams: false,
+    canSetIngredientRange: false,
+    canRepairRecipe: false,
+    canRepairProductionBatch: false,
+    canScaleRecipe: false,
+    canViewProductionHistory: false,
+    canUseCosts: false,
   }),
   home: Object.freeze({
     canSaveRecipe: true,
@@ -62,6 +103,18 @@ export const PRO_CORE_CAPABILITIES: Readonly<Record<ProCorePersona, ProCoreCapab
     canViewExactGrams: true,
     canUseProductionMode: false,
     canExport: true,
+    canCompareRecipeVersions: true,
+    canUseProfessionalFlow: false,
+    canChooseProfessionalServingMode: false,
+    canUseProfessionalMonitor: false,
+    canEditIngredientGrams: false,
+    canLockIngredientGrams: false,
+    canSetIngredientRange: false,
+    canRepairRecipe: false,
+    canRepairProductionBatch: false,
+    canScaleRecipe: false,
+    canViewProductionHistory: false,
+    canUseCosts: false,
   }),
   pro: Object.freeze({
     canSaveRecipe: true,
@@ -71,6 +124,18 @@ export const PRO_CORE_CAPABILITIES: Readonly<Record<ProCorePersona, ProCoreCapab
     canViewExactGrams: true,
     canUseProductionMode: true,
     canExport: true,
+    canCompareRecipeVersions: true,
+    canUseProfessionalFlow: true,
+    canChooseProfessionalServingMode: true,
+    canUseProfessionalMonitor: true,
+    canEditIngredientGrams: true,
+    canLockIngredientGrams: true,
+    canSetIngredientRange: true,
+    canRepairRecipe: true,
+    canRepairProductionBatch: true,
+    canScaleRecipe: true,
+    canViewProductionHistory: true,
+    canUseCosts: true,
   }),
 });
 

@@ -64,3 +64,58 @@ describe('canonical PRO CORE capability rule', () => {
     }).toThrow();
   });
 });
+
+/**
+ * S1 (owner "Pro first", 2026-07-21): the complete named capability set. Pro receives
+ * everything; Home keeps its existing paid basics (unchanged) but no professional
+ * capability; Demo receives nothing paid.
+ */
+describe('S1 — full canonical Pro capability set', () => {
+  /** Every boolean capability the Pro product gates on (maxSavedRecipes is number|null). */
+  const ALL_BOOL_CAPS = [
+    'canSaveRecipe', 'canViewRecipeVersions', 'canRestoreRecipeVersion', 'canViewExactGrams',
+    'canUseProductionMode', 'canExport', 'canCompareRecipeVersions', 'canUseProfessionalFlow',
+    'canChooseProfessionalServingMode', 'canUseProfessionalMonitor', 'canEditIngredientGrams',
+    'canLockIngredientGrams', 'canSetIngredientRange', 'canRepairRecipe',
+    'canRepairProductionBatch', 'canScaleRecipe', 'canViewProductionHistory', 'canUseCosts',
+  ] as const;
+
+  /** Pro-ONLY capabilities — Home and Demo must never receive these. */
+  const PRO_ONLY = [
+    'canUseProfessionalFlow', 'canChooseProfessionalServingMode', 'canUseProfessionalMonitor',
+    'canEditIngredientGrams', 'canLockIngredientGrams', 'canSetIngredientRange', 'canRepairRecipe',
+    'canRepairProductionBatch', 'canScaleRecipe', 'canUseProductionMode', 'canViewProductionHistory',
+    'canUseCosts',
+  ] as const;
+
+  it('Pro receives the COMPLETE capability set (every flag true, unlimited saves)', () => {
+    const pro = proCoreCapabilitiesFor('pro');
+    for (const cap of ALL_BOOL_CAPS) expect(pro[cap], cap).toBe(true);
+    expect(pro.maxSavedRecipes).toBeNull();
+  });
+
+  it('Home receives NO Pro-only capability, but keeps its paid basics (unchanged this slice)', () => {
+    const home = proCoreCapabilitiesFor('home');
+    for (const cap of PRO_ONLY) expect(home[cap], cap).toBe(false);
+    expect(home.canViewExactGrams).toBe(true);
+    expect(home.canSaveRecipe).toBe(true);
+    expect(home.canExport).toBe(true);
+    expect(home.canCompareRecipeVersions).toBe(true); // Home may compare its one recipe
+  });
+
+  it('Demo receives NONE of the paid capabilities', () => {
+    const demo = proCoreCapabilitiesFor('demo');
+    for (const cap of ALL_BOOL_CAPS) expect(demo[cap], cap).toBe(false);
+    expect(demo.maxSavedRecipes).toBe(0);
+  });
+
+  it('capabilities are pure gating DATA — never engine-affecting', () => {
+    // The matrix holds only boolean/number values and imports no engine module, so no
+    // persona/capability can alter a canonical Engine result (calculateRecipe takes no persona).
+    for (const persona of ['demo', 'home', 'pro'] as const) {
+      for (const value of Object.values(proCoreCapabilitiesFor(persona))) {
+        expect(typeof value === 'boolean' || typeof value === 'number' || value === null).toBe(true);
+      }
+    }
+  });
+});
