@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
-import { AppMenu } from '@/features/shell/AppMenu';
+import { AppShell } from '@/features/shell/AppShell';
 import { savedToRecipeInput, type SavedRecipe } from '@/features/recipes/recipePayload';
 import { useDeleteRecipe, useSavedRecipes } from '@/features/recipes/useSavedRecipes';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
@@ -71,13 +71,8 @@ export function MyRecipesPage() {
   const rows = recipesQuery.data ?? [];
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
-        <AppMenu />
-        <span className="text-[0.7rem] font-light tracking-wordmark text-stone-400">{copy.brand.name}</span>
-      </header>
-
-      <main className="mx-auto max-w-4xl px-6 pb-24 pt-6">
+    <AppShell maxWidthClass="max-w-4xl">
+      <div className="mx-auto max-w-4xl px-6 pb-24 pt-2">
         <SectionLabel>{r.title}</SectionLabel>
 
         {!available ? (
@@ -132,7 +127,7 @@ export function MyRecipesPage() {
         {/* S2 UX: version history is NOT duplicated here. Moje receptury shows ONE list of recipe
             aggregates; a recipe's immutable version history lives in the PINGÜINO Pro „Wersje" tab,
             scoped to the opened recipe. */}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

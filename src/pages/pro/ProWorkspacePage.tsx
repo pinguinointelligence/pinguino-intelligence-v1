@@ -14,14 +14,13 @@
  * the demo/free Studio preview.
  */
 import { Link, useSearchParams } from 'react-router';
-import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
-import { AppMenu } from '@/features/shell/AppMenu';
+import { AppShell } from '@/features/shell/AppShell';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { StudioEngineSurface } from '@/features/studio/StudioEngineSurface';
@@ -211,34 +210,21 @@ export function ProWorkspacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-        <div className="flex items-center gap-3">
-          <AppMenu />
-          <Link to="/" className="flex items-center gap-3">
-            <IvoryLogoMark size={22} tone="ink" />
-            <span className="text-sm font-light tracking-wordmark">{copy.brand.name}</span>
-          </Link>
-        </div>
-        <div className="flex items-center gap-4">
+    <AppShell
+      actions={
+        <>
           <PersonaChip persona={persona} />
           <DevPersonaSwitch persona={persona} />
-          <Link
-            to="/"
-            className="text-sm text-stone-500 underline decoration-ink/25 underline-offset-4 transition-colors hover:text-ink"
-          >
-            {w.back}
-          </Link>
-        </div>
-      </header>
-
+        </>
+      }
+    >
       <div className="mx-auto max-w-6xl px-6">
         <SectionLabel>{w.eyebrow}</SectionLabel>
         <h1 className="mt-1 text-2xl font-light tracking-tight text-ink">{w.title}</h1>
       </div>
 
       {!isPro ? (
-        <main className="mx-auto flex max-w-6xl justify-center px-6 py-16">
+        <div className="mx-auto flex max-w-6xl justify-center px-6 py-16">
           <UpgradePrompt
             message={w.gate.message}
             cta={w.gate.cta}
@@ -246,7 +232,7 @@ export function ProWorkspacePage() {
               window.location.assign('/subscription');
             }}
           />
-        </main>
+        </div>
       ) : (
         <>
           <nav
@@ -276,15 +262,15 @@ export function ProWorkspacePage() {
             </div>
           </nav>
 
-          <main
+          <div
             className="mx-auto max-w-6xl px-6 pb-24 pt-8"
             role="tabpanel"
             data-testid={`pro-panel-${activeTab}`}
           >
             <TabPanel tab={activeTab} persona={persona} />
-          </main>
+          </div>
         </>
       )}
-    </div>
+    </AppShell>
   );
 }
