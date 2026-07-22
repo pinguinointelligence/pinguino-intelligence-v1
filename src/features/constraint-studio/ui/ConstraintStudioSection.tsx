@@ -30,8 +30,6 @@ import { ConstraintPreviewCard } from './ConstraintPreviewCard';
 import { FeasibilityNotice } from './FeasibilityNotice';
 import { RangeConstraintEditor } from './RangeConstraintEditor';
 
-const primaryButton =
-  'inline-flex items-center justify-center rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell transition-colors hover:bg-ivory/90';
 const secondaryButton =
   'inline-flex items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40';
 
@@ -133,14 +131,10 @@ export function ConstraintStudioSection() {
           />
         ) : null}
 
-        {/* §12.4 the main action — always a preview first. */}
-        <div className="space-y-1.5">
-          <button type="button" className={`${primaryButton} w-full`} onClick={store.createOptimizePreview}>
-            {copy.actions.optimize}
-          </button>
-          <p className="text-xs leading-relaxed text-ivory/40">{copy.actions.optimizeHint}</p>
-        </div>
-
+        {/* Owner P0 (canonical workbench): the PRIMARY recalculation („Przelicz z PI") lives ONLY
+            in the top workbar and drives THIS same store — there is no competing „Dopasuj
+            recepturę" trigger here. This section keeps the SECONDARY analysis tools (batch
+            rescale, feasibility) + the shared Preview/Apply/Cancel + history/Undo. */}
         {/* §17.4 explicit batch change with locked lines preserved. */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">

@@ -32,10 +32,16 @@ describe('Studio serving-temperature choice (AUDIT #5 / SPEC §11.1)', () => {
     expect(cellTemps.has(-18)).toBe(false);
   });
 
-  it('renders the three options with the U+2212 minus and no −14/−18 buttons', () => {
+  it('renders the canonical serving modes (Świeże + −11/−12/−13, U+2212) and no −14/−18', () => {
     const html = renderToStaticMarkup(<GoalSetup />);
+    // Owner P0 canonical workbench: the serving control is Świeże + −11°C/−12°C/−13°C, one shared
+    // state (data-testid serving-<id>), NOT the legacy bare temperature segmented control.
+    expect(html).toContain('data-testid="serving-fresh"');
+    for (const id of ['fresh', 'temp_minus_11', 'temp_minus_12', 'temp_minus_13']) {
+      expect(html).toContain(`data-testid="serving-${id}"`);
+    }
     for (const temperature of SERVING_TEMPERATURES_C) {
-      expect(html).toContain(`${MINUS}${Math.abs(temperature)} °C`);
+      expect(html).toContain(`${MINUS}${Math.abs(temperature)}°C`);
     }
     // No storage/unapproved temperatures in either glyph form.
     for (const forbidden of [`${MINUS}14`, `${MINUS}18`, '-14', '-18']) {

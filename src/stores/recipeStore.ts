@@ -11,6 +11,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_PRESET, type DemoPreset, type PresetId } from '@/data/demoPresets';
+import {
+  gelatoInternalCategory,
+  internalCategoryFor,
+  visibleTypeOf,
+  type VisibleProductType,
+} from '@/features/studio/productType';
 import type { EngineIngredient, LockType, ProductCategory, ProductMode, RecipeGoals, RecipeInput, RecipeItem } from '@/engine';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
@@ -19,6 +25,13 @@ type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
 export interface RecipeState {
   mode: ProductMode;
   category: ProductCategory;
+  /**
+   * The CUSTOMER-FACING product type (owner P0): exactly Gelato/Sorbet/Vegan/Protein. `category`
+   * is the INTERNAL Engine calculation policy, DERIVED from the visible type + real ingredients
+   * (chocolate/nut/fruit/alcohol route internally; never a visible type). 'protein' is honest-
+   * unsupported: it never silently re-profiles the recipe.
+   */
+  visibleProductType: VisibleProductType;
   target_temperature_c: number;
   target_batch_grams: number;
   machine_capacity_grams: number | null;
@@ -58,6 +71,10 @@ export interface RecipeState {
 
   setMode: (mode: ProductMode) => void;
   setCategory: (category: ProductCategory) => void;
+  /** Pick the visible product type; the internal category derives from it + the ingredients. */
+  setVisibleProductType: (visible: VisibleProductType) => void;
+  /** Pick a serving mode (Świeże/−11/−12/−13) — ONE state drives mode + Engine temperature. */
+  setServingMode: (servingModeId: string, temperatureC: number) => void;
   setTargetTemperature: (temperature_c: number) => void;
   setBatchGrams: (grams: number) => void;
   setMachineCapacity: (grams: number | null) => void;
@@ -117,6 +134,7 @@ const makeLine = (
 const fromPreset = (preset: DemoPreset) => ({
   mode: preset.mode,
   category: preset.category,
+  visibleProductType: visibleTypeOf(preset.category),
   target_temperature_c: preset.target_temperature_c,
   target_batch_grams: preset.target_batch_grams,
   machine_capacity_grams: preset.machine_capacity_grams,
@@ -147,6 +165,7 @@ export function recipePersistPartialize(state: RecipeState) {
   return {
     mode: state.mode,
     category: state.category,
+    visibleProductType: state.visibleProductType,
     target_temperature_c: state.target_temperature_c,
     target_batch_grams: state.target_batch_grams,
     machine_capacity_grams: state.machine_capacity_grams,
@@ -172,7 +191,27 @@ export const useRecipeStore = create<RecipeState>()(
       ...fromPreset(DEFAULT_PRESET),
 
       setMode: (mode) => set({ mode, dirty: true }),
-      setCategory: (category) => set({ category, dirty: true }),
+      // Direct internal-category writes (QA/diagnostic/tests) keep the visible projection coherent.
+      setCategory: (category) => set({ category, visibleProductType: visibleTypeOf(category), dirty: true }),
+      setVisibleProductType: (visible) =>
+        set((state) => ({
+          visibleProductType: visible,
+          // The internal Engine policy DERIVES from the visible type + real ingredients;
+          // 'protein' is honest-unsupported and keeps the previous category untouched.
+          category: internalCategoryFor(visible, state.items, state.category),
+          dirty: true,
+        })),
+      setServingMode: (servingModeId, temperatureC) =>
+        set((state) => ({
+          servingModeId,
+          target_temperature_c: temperatureC,
+          // A manual serving-mode choice keeps a professional machine route but clears a Home
+          // route (a Home machine's mode is fixed by the machine — owner P0 route integrity).
+          ...(state.machineKind === 'home'
+            ? { machineKind: null, machineId: null, machineLabel: null }
+            : {}),
+          dirty: true,
+        })),
       // A MANUAL temperature change overrides any machine/serving route (owner P0 temperature
       // contract): clearing the machine context keeps the visible selection, the Engine input
       // and every label in agreement — a route mismatch becomes unrepresentable.
@@ -191,10 +230,26 @@ export const useRecipeStore = create<RecipeState>()(
       setCostPriority: (cost_priority) => set({ cost_priority, dirty: true }),
 
       addIngredient: (ingredient, grams = 100) =>
-        set((state) => ({ items: [...state.items, makeLine(ingredient, grams)], dirty: true })),
+        set((state) => {
+          const items = [...state.items, makeLine(ingredient, grams)];
+          return {
+            items,
+            // Visible GELATO re-routes its INTERNAL category from the real ingredients
+            // (chocolate/nut/fruit/alcohol are classifications, never visible types).
+            ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
+            dirty: true,
+          };
+        }),
 
       removeItem: (lineId) =>
-        set((state) => ({ items: state.items.filter((item) => item.id !== lineId), dirty: true })),
+        set((state) => {
+          const items = state.items.filter((item) => item.id !== lineId);
+          return {
+            items,
+            ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
+            dirty: true,
+          };
+        }),
 
       setPlannedGrams: (lineId, grams) =>
         set((state) => ({
@@ -237,6 +292,7 @@ export const useRecipeStore = create<RecipeState>()(
         set({
           mode: input.mode,
           category: input.category,
+          visibleProductType: visibleTypeOf(input.category),
           target_temperature_c: input.target_temperature_c,
           target_batch_grams: input.target_batch_grams,
           machine_capacity_grams: input.machine_capacity_grams,

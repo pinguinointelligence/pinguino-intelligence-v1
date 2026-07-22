@@ -71,6 +71,8 @@ export function ProMachineSelector() {
     const temp = temperatureForMode(modeId);
     if (temp == null) return;
     setSavedDefault(false);
+    // ONE serving-mode source (owner P0): the machine card and the GoalSetup serving segmented
+    // control both write the same servingModeId + temperature via the recipe store.
     setMachineSelection({
       kind: 'professional',
       servingModeId: modeId,

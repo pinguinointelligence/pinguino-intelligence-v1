@@ -24,6 +24,7 @@ import { OverallScoreCard } from '@/features/pi-panel/OverallScoreCard';
 import { UserMonitorPro } from '@/features/user-monitor';
 import { PresetSelector } from '@/features/studio/PresetSelector';
 import { engineRouteLabel } from '@/features/studio/engineRouteLabel';
+import { OwnerDiagnosticPanel } from '@/features/studio/OwnerDiagnosticPanel';
 import { StudioSummary } from '@/features/studio/StudioSummary';
 import { useStudioResult } from '@/features/studio/useStudioResult';
 import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculatorPreview';
@@ -51,10 +52,10 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
   const [optimizationView, setOptimizationView] = useState<OptimizationPreviewView | null>(null);
 
   const mode = useRecipeStore((state) => state.mode);
-  const category = useRecipeStore((state) => state.category);
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
   const servingModeId = useRecipeStore((state) => state.servingModeId);
+  const visibleProductType = useRecipeStore((state) => state.visibleProductType);
 
   // The header derives from the CURRENT resolved Engine route (owner P0 temperature contract) —
   // never a hardcoded engine name. Same store values buildRecipeInput hands to calculateRecipe.
@@ -86,13 +87,16 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
           ) : null}
           <StudioSummary
             mode={mode}
-            category={category}
+            visibleProductType={visibleProductType}
+            servingModeId={servingModeId}
             temperatureC={temperatureC}
             batchGrams={batchGrams}
           />
         </div>
-        {/* QA/demo scenarios are an internal tool (owner P0, 2026-07-22): never the default
-            owner workspace — dev builds only, dead-code-eliminated from production. */}
+        {/* Owner/QA diagnostic — the real resolved state reaching the Engine (staging Pro only). */}
+        <OwnerDiagnosticPanel result={result} input={input} corrections={corrections} />
+        {/* QA/demo scenarios are an internal tool (owner P0): never the default owner workspace —
+            dev builds only, dead-code-eliminated from production. */}
         {import.meta.env.DEV ? <PresetSelector /> : null}
       </div>
 
@@ -136,59 +140,62 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
           {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
           <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
 
-          {/* Conversational Assistant Shell (PL-first, deterministic): collects
-              recipe intent through the locked question script and builds a read-only
-              intent draft. No LLM, no persistence, no recipe mutation. */}
-          <StudioAssistantShell />
+          {/* Owner P0 (canonical workbench): the assistant / flow-guide / optimization-preview /
+              IF9-IF10 branch tools are SECONDARY diagnostics — clearly separated in a collapsed
+              „Narzędzia zaawansowane" section so the normal workbench is the goal + ingredients +
+              Monitor + corrections + the TOP „Przelicz z PI". None of them mutates the recipe. */}
+          <details className="border-t border-ivory/10 pt-6" data-testid="pro-advanced-tools">
+            <summary className="cursor-pointer">
+              <SectionLabel>{studio.advancedTools.title}</SectionLabel>
+            </summary>
+            <p className="mt-1 text-xs leading-relaxed text-ivory/40">{studio.advancedTools.note}</p>
 
-          {/* User-Flow guidance layer (PL-first, read-only): explains the current
-              situation from existing state — no saves, no applies, no auto-actions. */}
-          <StudioFlowGuidePanel view={optimizationView} />
+            <div className="mt-4 space-y-6">
+              {/* Conversational Assistant Shell (PL-first, deterministic): read-only intent draft. */}
+              <StudioAssistantShell />
 
-          {/* Production optimization preview (Slice 15): runs the real solver + Base Engine rerun
-              on the LIVE recipe when the user clicks. Capability-gated (demo/free redacted, Pro full
-              grams + before/after); the DEV debug trace stays gated to dev builds via
-              `{ dev: import.meta.env.DEV }`. Pure preview — it NEVER saves, applies, persists, or
-              mutates the recipe, and the global engine target bands are unchanged. */}
-          <div className="space-y-3 border-t border-ivory/10 pt-6">
-            <div className="flex flex-col gap-1">
-              <SectionLabel>{studio.optimization.title}</SectionLabel>
-              <p className="text-xs leading-relaxed text-ivory/40">
-                {studio.optimization.note}
-                {!exactCorrectionGrams ? ` ${studio.optimization.proOnly}` : ''}
-              </p>
+              {/* User-Flow guidance layer (PL-first, read-only): explains the current situation. */}
+              <StudioFlowGuidePanel view={optimizationView} />
+
+              {/* Production optimization preview (Slice 15): real solver + Base Engine rerun on the
+                  LIVE recipe on explicit click. Pure preview — never saves/applies/persists/mutates. */}
+              <div className="space-y-3">
+                <div className="flex flex-col gap-1">
+                  <SectionLabel>{studio.optimization.title}</SectionLabel>
+                  <p className="text-xs leading-relaxed text-ivory/40">
+                    {studio.optimization.note}
+                    {!exactCorrectionGrams ? ` ${studio.optimization.proOnly}` : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOptimizationView(previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }))
+                  }
+                  className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                >
+                  {studio.optimization.run}
+                </button>
+                {optimizationView ? (
+                  <>
+                    <OptimizationPreviewPanel
+                      view={optimizationView}
+                      policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: import.meta.env.DEV })}
+                    />
+                    {/* Slice 24 — the FIRST write control: signed-in Pro may persist an accepted
+                        correction as ONE immutable audit record. Explicit click; recipe never changed. */}
+                    <SaveCorrectionControl view={optimizationView} recipe={input} />
+                  </>
+                ) : null}
+              </div>
+
+              {/* IF9/IF10 branch previews (Slice 21): paid-gated, explicit-click, non-persisted. */}
+              <BranchWorkflowPreviews
+                recipe={input}
+                capabilities={{ exactCorrectionGrams, technicalView }}
+              />
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setOptimizationView(previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }))
-              }
-              className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
-            >
-              {studio.optimization.run}
-            </button>
-            {optimizationView ? (
-              <>
-                <OptimizationPreviewPanel
-                  view={optimizationView}
-                  policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: import.meta.env.DEV })}
-                />
-                {/* Slice 24 — the FIRST write control: signed-in Pro may persist an
-                    accepted correction as ONE immutable audit record (unsigned users
-                    see a sign-in note; signed-in Free sees nothing). Explicit click
-                    only; the recipe itself is never changed. */}
-                <SaveCorrectionControl view={optimizationView} recipe={input} />
-              </>
-            ) : null}
-          </div>
-
-          {/* IF9/IF10 branch previews (Slice 21): paid-gated, explicit-click, local
-              non-persisted inputs, redacted by plan. Preview only — nothing is
-              applied, no inventory is changed, no recipe is saved. */}
-          <BranchWorkflowPreviews
-            recipe={input}
-            capabilities={{ exactCorrectionGrams, technicalView }}
-          />
+          </details>
         </div>
       </div>
     </main>

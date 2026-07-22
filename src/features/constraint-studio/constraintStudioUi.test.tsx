@@ -412,10 +412,11 @@ describe('ConstraintStudioSection (flag default OFF)', () => {
   });
   afterEach(() => setRangeConstraintUiFlag(false));
 
-  it('renders the Polish surface: main CTA, batch rescale, feasibility — NO range inputs', () => {
+  it('renders the Polish surface: SECONDARY tools (batch rescale, feasibility) — NO primary optimize trigger, NO range inputs', () => {
     const html = render(<ConstraintStudioSection />);
-    expect(html).toContain('Dopasuj recepturę');
-    expect(html).toContain(copy.actions.optimizeHint);
+    // Owner P0: the primary „Dopasuj recepturę"/„Przelicz z PI" trigger lives ONLY in the top
+    // workbar now — this lower section must NOT start a competing recalculation.
+    expect(html).not.toContain('Dopasuj recepturę');
     expect(html).toContain('Przeskaluj partię');
     expect(html).toContain(copy.actions.rescaleHint);
     expect(html).toContain('Sprawdź wykonalność blokad');

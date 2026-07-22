@@ -3,19 +3,41 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/cn';
 import { copy } from '@/copy/en';
-import type { ProductCategory, ProductMode } from '@/engine';
+import type { ProductMode } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
-// Serving choice = EXACTLY the engine's real cells (AUDIT #5 / SPEC §11.1) —
-// see servingTemperatures.ts for the owner decision (no −14, no −18, +−13).
-import { SERVING_TEMPERATURES_C } from './servingTemperatures';
+import { temperatureForMode } from '@/features/customer-flow/servingMode';
+import {
+  VISIBLE_PRODUCT_TYPES,
+  isSupportedVisibleType,
+  type VisibleProductType,
+} from '@/features/studio/productType';
 
 const g = copy.studio.goal;
+const servingCopy = copy.proMachine.serving;
 
+/**
+ * The canonical Pro workbench GOAL card (owner P0 contract):
+ *  - „Typ produktu": exactly Gelato/Sorbet/Wegańskie/Proteinowe — the INTERNAL Engine category
+ *    (milk/fruit/nut/chocolate/alcohol…) routes silently from the real ingredients and is shown
+ *    only in the owner QA diagnostic; Proteinowe is an HONEST unsupported state;
+ *  - „Poziom jakości": the ONE canonical quality tier (Eco/Classic/Premium/Signature);
+ *  - „Tryb serwowania": Świeże/−11/−12/−13 — ONE state (servingModeId + temperature) drives the
+ *    workbar, RecipeInput, target bands, Engine, Monitor and solver;
+ *  - „Ustawienia zaawansowane" (collapsed): machine capacity + flavour-intensity + cost-priority
+ *    goals — explicit tuning INSIDE the chosen tier, never a silent override of it.
+ */
 const MODES: ProductMode[] = ['eco', 'classic', 'premium', 'signature'];
-const CATEGORIES = Object.keys(g.categories) as ProductCategory[];
 const FLAVORS = ['light', 'balanced', 'strong', 'maximum'] as const;
 const COSTS = ['low', 'balanced', 'premium'] as const;
+
+/** The four professional serving modes, in display order (same source as the machine tab). */
+const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
+  { id: 'fresh', label: servingCopy.fresh },
+  { id: 'temp_minus_11', label: servingCopy.minus11 },
+  { id: 'temp_minus_12', label: servingCopy.minus12 },
+  { id: 'temp_minus_13', label: servingCopy.minus13 },
+];
 
 const fieldLabel = 'text-xs font-medium tracking-label text-ivory/50 uppercase';
 const select =
@@ -26,11 +48,13 @@ function Segmented<T extends string | number>({
   value,
   onChange,
   labelOf,
+  testidOf,
 }: {
   options: readonly T[];
   value: T;
   onChange: (next: T) => void;
   labelOf: (option: T) => string;
+  testidOf?: (option: T) => string;
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -40,6 +64,8 @@ function Segmented<T extends string | number>({
           <button
             key={String(option)}
             type="button"
+            aria-pressed={active}
+            data-testid={testidOf ? testidOf(option) : undefined}
             onClick={() => onChange(option)}
             className={cn(
               'rounded-md border px-3 py-1.5 text-sm transition-colors',
@@ -62,11 +88,45 @@ export function GoalSetup() {
 
   const batchDisplay = fromGrams(store.target_batch_grams, unit, store.category);
 
+  // Active serving mode: the explicit mode when set; otherwise projected from the temperature
+  // (legacy drafts without a stored mode still highlight their real Engine cell).
+  const activeServing =
+    store.servingModeId ??
+    SERVING_OPTIONS.find(
+      (option) => option.id !== 'fresh' && temperatureForMode(option.id) === store.target_temperature_c,
+    )?.id ??
+    null;
+
+  const pickServing = (id: string) => {
+    const temp = temperatureForMode(id);
+    if (temp == null) return;
+    store.setServingMode(id, temp);
+  };
+
   return (
     <Card padding="lg">
       <SectionLabel>{g.title}</SectionLabel>
 
-      {/* Product mode — calculation behavior, not styling */}
+      {/* Visible product type — exactly FOUR (owner P0); internal categories route silently. */}
+      <div className="mt-6">
+        <span className={fieldLabel}>{g.productTypeLabel}</span>
+        <div className="mt-3">
+          <Segmented
+            options={VISIBLE_PRODUCT_TYPES}
+            value={store.visibleProductType}
+            onChange={(next: VisibleProductType) => store.setVisibleProductType(next)}
+            labelOf={(option) => g.productTypes[option]}
+            testidOf={(option) => `product-type-${option}`}
+          />
+        </div>
+        {!isSupportedVisibleType(store.visibleProductType) ? (
+          <p className="mt-2 text-xs leading-relaxed text-amber-300/90" data-testid="protein-unsupported">
+            {g.proteinUnsupported}
+          </p>
+        ) : null}
+      </div>
+
+      {/* Quality tier — the ONE canonical strategy choice. */}
       <div className="mt-6">
         <span className={fieldLabel}>{g.modeLabel}</span>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -77,6 +137,7 @@ export function GoalSetup() {
                 key={mode}
                 type="button"
                 aria-pressed={active}
+                data-testid={`quality-${mode}`}
                 onClick={() => store.setMode(mode)}
                 className={cn(
                   'relative overflow-hidden rounded-md border p-3 pl-4 text-left transition-colors',
@@ -104,30 +165,15 @@ export function GoalSetup() {
       </div>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
-        {/* Category */}
-        <label className="flex flex-col gap-2">
-          <span className={fieldLabel}>{g.categoryLabel}</span>
-          <select
-            className={select}
-            value={store.category}
-            onChange={(event) => store.setCategory(event.currentTarget.value as ProductCategory)}
-          >
-            {CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {g.categories[category]}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* Serving temperature */}
+        {/* Serving mode — Świeże/−11/−12/−13, ONE shared state. */}
         <div className="flex flex-col gap-2">
-          <span className={fieldLabel}>{g.temperatureLabel}</span>
+          <span className={fieldLabel}>{g.servingLabel}</span>
           <Segmented
-            options={SERVING_TEMPERATURES_C}
-            value={store.target_temperature_c}
-            onChange={store.setTargetTemperature}
-            labelOf={(temperature) => `−${Math.abs(temperature)} °C`}
+            options={SERVING_OPTIONS.map((option) => option.id)}
+            value={activeServing ?? ''}
+            onChange={pickServing}
+            labelOf={(id) => SERVING_OPTIONS.find((option) => option.id === id)?.label ?? id}
+            testidOf={(id) => `serving-${id}`}
           />
           <p className="text-xs text-ivory/40">{g.temperatureHelp}</p>
         </div>
@@ -163,46 +209,55 @@ export function GoalSetup() {
             </p>
           ) : null}
         </div>
-
-        {/* Machine capacity */}
-        <label className="flex flex-col gap-2">
-          <span className={fieldLabel}>{g.machineLabel}</span>
-          <input
-            type="number"
-            min={0}
-            placeholder={g.machineNone}
-            className={cn(select, 'font-mono tabular-nums')}
-            value={store.machine_capacity_grams ?? ''}
-            onChange={(event) => {
-              const raw = event.currentTarget.value;
-              store.setMachineCapacity(raw === '' ? null : Math.max(0, Number(raw)));
-            }}
-          />
-          <p className="text-xs text-ivory/40">{g.machineHelp}</p>
-        </label>
-
-        {/* Flavor intensity */}
-        <div className="flex flex-col gap-2">
-          <span className={fieldLabel}>{g.flavorLabel}</span>
-          <Segmented
-            options={FLAVORS}
-            value={store.flavor_intensity}
-            onChange={store.setFlavorIntensity}
-            labelOf={(option) => g.flavorOptions[option]}
-          />
-        </div>
-
-        {/* Cost priority */}
-        <div className="flex flex-col gap-2">
-          <span className={fieldLabel}>{g.costLabel}</span>
-          <Segmented
-            options={COSTS}
-            value={store.cost_priority}
-            onChange={store.setCostPriority}
-            labelOf={(option) => g.costOptions[option]}
-          />
-        </div>
       </div>
+
+      {/* Advanced goal tuning — explicit, collapsed, NEVER a silent override of the tier. */}
+      <details className="mt-6 rounded-md border border-ivory/10 px-4 py-3" data-testid="goal-advanced">
+        <summary className="cursor-pointer text-xs font-medium tracking-label text-ivory/60 uppercase">
+          {g.advancedLabel}
+        </summary>
+        <p className="mt-2 text-xs leading-relaxed text-ivory/40">{g.advancedNote}</p>
+        <div className="mt-4 grid gap-5 sm:grid-cols-2">
+          {/* Machine capacity */}
+          <label className="flex flex-col gap-2">
+            <span className={fieldLabel}>{g.machineLabel}</span>
+            <input
+              type="number"
+              min={0}
+              placeholder={g.machineNone}
+              className={cn(select, 'font-mono tabular-nums')}
+              value={store.machine_capacity_grams ?? ''}
+              onChange={(event) => {
+                const raw = event.currentTarget.value;
+                store.setMachineCapacity(raw === '' ? null : Math.max(0, Number(raw)));
+              }}
+            />
+            <p className="text-xs text-ivory/40">{g.machineHelp}</p>
+          </label>
+
+          {/* Flavor intensity */}
+          <div className="flex flex-col gap-2">
+            <span className={fieldLabel}>{g.flavorLabel}</span>
+            <Segmented
+              options={FLAVORS}
+              value={store.flavor_intensity}
+              onChange={store.setFlavorIntensity}
+              labelOf={(option) => g.flavorOptions[option]}
+            />
+          </div>
+
+          {/* Cost priority */}
+          <div className="flex flex-col gap-2">
+            <span className={fieldLabel}>{g.costLabel}</span>
+            <Segmented
+              options={COSTS}
+              value={store.cost_priority}
+              onChange={store.setCostPriority}
+              labelOf={(option) => g.costOptions[option]}
+            />
+          </div>
+        </div>
+      </details>
     </Card>
   );
 }
