@@ -8,6 +8,7 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import {
   NAV_GROUP_ORDER,
   NAV_GROUP_TITLE,
+  isGroupActive,
   visibleNavItems,
   type NavGroupId,
 } from './appNav';
@@ -131,9 +132,17 @@ export function AppNavDrawer() {
               {NAV_GROUP_ORDER.map((group: NavGroupId) => {
                 const groupItems = items.filter((i) => i.group === group);
                 if (groupItems.length === 0) return null;
+                // Parent-group highlight: „PINGÜINO Pro" stays visibly active on every /pro/* route.
+                const groupActive = isGroupActive(group, loc, canPro);
                 return (
                   <div key={group} className="pb-2">
-                    <p className="px-3 pb-1 pt-3 text-[0.65rem] font-medium tracking-label text-stone-400 uppercase">
+                    <p
+                      data-active={groupActive || undefined}
+                      className={cn(
+                        'px-3 pb-1 pt-3 text-[0.65rem] font-medium tracking-label uppercase',
+                        groupActive ? 'text-ink' : 'text-stone-400',
+                      )}
+                    >
                       {NAV_GROUP_TITLE[group]}
                     </p>
                     {groupItems.map((item) => {
@@ -164,7 +173,7 @@ export function AppNavDrawer() {
               style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}
             >
               <p className="px-3 pb-1 text-[0.65rem] font-medium tracking-label text-stone-400 uppercase">
-                {s.groups.plan}
+                {s.groups.account}
               </p>
               {!authAvailable ? (
                 <p className="px-4 py-2 text-xs leading-relaxed text-stone-400">{s.account.unavailable}</p>

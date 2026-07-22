@@ -39,7 +39,9 @@ export function AppShell({
           <IvoryLogoMark size={22} tone="ink" />
           <span className="text-sm font-light tracking-wordmark">{copy.shell.brand}</span>
         </Link>
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
+            never force horizontal page overflow (owner P0 responsive rule). */}
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
           {actions}
           <AppNavDrawer />
         </div>

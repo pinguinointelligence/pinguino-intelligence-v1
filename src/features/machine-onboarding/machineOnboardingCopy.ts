@@ -92,7 +92,7 @@ export const machineOnboardingCopy = {
     /** Honest variant when no trustworthy amount exists (batch stays user-set). */
     amountUserChoice: 'Przygotowano wybór ilości',
     methodMatched: 'Dopasowano sposób przygotowania',
-    studioReady: 'Przygotowano Studio',
+    studioReady: 'Przygotowano PINGÜINO Pro',
     /** Screen-reader announcement label for the transition region. */
     ariaLabel: 'Automatyczna konfiguracja maszyny',
   },

@@ -274,7 +274,7 @@ describe('§8.5 auto-config lines — honest amount variant', () => {
       'Rozpoznano urządzenie',
       'Ustawiono właściwą ilość',
       'Dopasowano sposób przygotowania',
-      'Przygotowano Studio',
+      'Przygotowano PINGÜINO Pro',
     ]);
   });
 

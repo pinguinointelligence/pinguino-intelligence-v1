@@ -206,7 +206,7 @@ const PL: StudioFlowCopy = {
     startCta: 'Zacznij',
     draftReadyTitle: 'Przygotowano szkic intencji',
     draftReadyBody:
-      'To tylko szkic — nie tworzy i nie zmienia receptury, nic nie zapisuje. Możesz teraz na jego podstawie przejść do projektu w Studio.',
+      'To tylko szkic — nie tworzy i nie zmienia receptury, nic nie zapisuje. Możesz teraz na jego podstawie przejść do projektu w PINGÜINO Pro.',
     incomplete: 'Uzupełnij wymagane odpowiedzi, aby przygotować szkic intencji.',
     demoGramsNote:
       'Szkic zbiera tylko intencję. Dokładne gramatury są dostępne w planach płatnych (Home i Pro).',
@@ -217,25 +217,25 @@ const PL: StudioFlowCopy = {
       previewCta: 'Pokaż szkic receptury',
       readyTitle: 'Szkic receptury (podgląd)',
       readyBody:
-        'To lokalny, deterministyczny szkic bazy z gotowego szablonu — nie jest zapisywany ani nakładany na recepturę. Smak i dostrojenie dodasz w Studio.',
+        'To lokalny, deterministyczny szkic bazy z gotowego szablonu — nie jest zapisywany ani nakładany na recepturę. Smak i dostrojenie dodasz w PINGÜINO Pro.',
       needsInfo: 'Podaj wielkość batcha, aby przygotować szkic bazy.',
       notSupported:
-        'Dla tego profilu nie mam jeszcze bezpiecznego szablonu bazy. Zacznij recepturę ręcznie w Studio — nie zgadujemy składu.',
+        'Dla tego profilu nie mam jeszcze bezpiecznego szablonu bazy. Zacznij recepturę ręcznie w PINGÜINO Pro — nie zgadujemy składu.',
       flavorManual: 'Dodaj składnik smakowy ręcznie — nie zgadujemy jego składu.',
       optimizationRecommended:
         'Baza jest poza zakresem w części wskaźników — możesz uruchomić podgląd optymalizacji.',
       inBand: 'Baza mieści się w zakresach dla wybranego profilu i temperatury.',
       notSavedNote: 'Podgląd bazy — nic nie jest zapisywane ani nakładane na recepturę.',
       apply: {
-        cta: 'Zastosuj w Studio',
+        cta: 'Zastosuj w PINGÜINO Pro',
         setsNote:
-          'Zastosowanie ustawia w Studio składniki, profil produktu i temperaturę serwowania ze szkicu — lokalnie, bez zapisu.',
-        replaceWarningTitle: 'W Studio jest już szkic receptury',
+          'Zastosowanie ustawia w PINGÜINO Pro składniki, profil produktu i temperaturę serwowania ze szkicu — lokalnie, bez zapisu.',
+        replaceWarningTitle: 'W PINGÜINO Pro jest już szkic receptury',
         replaceWarningBody:
-          'Zastosowanie zastąpi obecny szkic w Studio. Poprzedni stan zachowamy do jednego cofnięcia — nic nie jest zapisywane.',
-        confirmCta: 'Zastąp szkic w Studio',
+          'Zastosowanie zastąpi obecny szkic w PINGÜINO Pro. Poprzedni stan zachowamy do jednego cofnięcia — nic nie jest zapisywane.',
+        confirmCta: 'Zastąp szkic w PINGÜINO Pro',
         cancelCta: 'Anuluj',
-        appliedNote: 'Szkic przeniesiony do Studio — nic nie zostało zapisane.',
+        appliedNote: 'Szkic przeniesiony do PINGÜINO Pro — nic nie zostało zapisane.',
         appliedSourceLabel: 'Źródło szkicu',
         undoCta: 'Cofnij zastosowanie',
       },

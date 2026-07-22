@@ -135,7 +135,7 @@ describe('§8.5 auto-config transition', () => {
     expect(html).toContain('Rozpoznano urządzenie');
     expect(html).toContain('Ustawiono właściwą ilość');
     expect(html).toContain('Dopasowano sposób przygotowania');
-    expect(html).toContain('Przygotowano Studio');
+    expect(html).toContain('Przygotowano PINGÜINO Pro');
     expect(html).toContain('Zalecany wsad PINGÜINO: 460 g');
   });
 });

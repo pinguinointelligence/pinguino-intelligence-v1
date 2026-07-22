@@ -129,7 +129,7 @@ export const copy = {
     unlockPro: 'Unlock PI Pro',
     comingSoon: 'Coming soon',
     learnMore: 'Learn more',
-    engineLabel: '−11°C Engine',
+    engineLabel: 'Silnik −11°C',
     /** Top-level labels — order is the source of truth in navConfig. */
     items: {
       start: 'Start',
@@ -161,7 +161,7 @@ export const copy = {
     recipes: {
       title: 'Recipes',
       blurb: 'Start from a balanced base.',
-      mine: 'My Recipes',
+      mine: 'Moje receptury',
       pinguino: 'PINGÜINO Recipes',
       featured: 'Featured Recipes',
       recent: 'Recently Added',
@@ -320,8 +320,7 @@ export const copy = {
     groups: {
       main: 'Nawigacja',
       pro: 'PINGÜINO Pro',
-      tools: 'Narzędzia',
-      plan: 'Plan i konto',
+      account: 'Konto',
     },
     items: {
       home: 'Strona główna',
@@ -363,7 +362,7 @@ export const copy = {
     signInToSave: 'Zaloguj się, aby zapisać',
     signInCta: 'Zaloguj się',
     title: 'Moje receptury',
-    empty: 'Nie masz jeszcze zapisanych receptur — stwórz je w Studio i zapisz.',
+    empty: 'Nie masz jeszcze zapisanych receptur — stwórz je w PINGÜINO Pro i zapisz.',
     signInToView: 'Zaloguj się, aby zobaczyć swoje receptury.',
     unavailable: 'Zapis nie jest dostępny w tej wersji aplikacji.',
     open: 'Otwórz',
@@ -421,7 +420,7 @@ export const copy = {
     recipesHeading: 'Receptury',
     noRecipes: 'Brak zapisanych receptur.',
     selectRecipe: 'Wybierz recepturę, aby zobaczyć jej wersje.',
-    draftTitlePrefix: 'Szkic ze Studia',
+    draftTitlePrefix: 'Szkic receptury',
   },
   /** PINGÜINO Pro workspace (/pro) — S3 canonical Pro shell. PL chrome (owner vocabulary);
    * the embedded engine lab stays in its own technical vocabulary. */
@@ -505,6 +504,13 @@ export const copy = {
       signin: 'Zaloguj się, aby zapisać',
       unavailable: 'Zapis niedostępny w tej wersji',
       plan: 'Ten plan nie zapisuje receptur',
+    },
+    /** The workbar-level recalculation panel: Przelicz z PI → Podgląd → Zastosuj/Anuluj → Cofnij. */
+    recalcPanel: {
+      title: 'Przeliczenie z PI',
+      close: 'Zamknij',
+      applied: 'Zastosowano zmiany do wersji roboczej. Zapisz nową wersję, aby je utrwalić.',
+      undo: 'Cofnij',
     },
   },
   /** PINGÜINO Pro — professional machine + serving-mode selector (S4). PL copy; connects EXISTING
@@ -617,9 +623,18 @@ export const copy = {
     'storage-minus-18': { label: 'Przechowywanie −18°C (zamrażarka)' },
   },
   studio: {
-    eyebrow: 'Advanced Studio',
-    engineTag: '−11°C Engine',
+    eyebrow: 'PINGÜINO Pro',
+    engineTag: 'Silnik −11°C',
     back: 'Back to landing',
+    /** The explicit optimization-preview block on the canonical Pro recipe surface (PL). */
+    optimization: {
+      title: 'Podgląd optymalizacji',
+      note:
+        'Tylko podgląd — nic nie jest zapisywane, a korekty nie są stosowane automatycznie. ' +
+        'Zakresy silnika uwzględniają temperaturę serwowania; porównanie z trybem regulatora pozostaje dostępne.',
+      proOnly: 'Dokładne gramatury dostępne w PINGÜINO Pro.',
+      run: 'Podgląd optymalizacji',
+    },
     /** Locked Free Preview panels (Phase 6C Slice 2B) — decorative, no exact values. */
     locked: {
       chip: 'PI Preview',
@@ -659,7 +674,7 @@ export const copy = {
     },
     goal: {
       title: 'Recipe goal',
-      modeLabel: 'Product mode',
+      modeLabel: 'Tryb produktu',
       modes: {
         eco: { name: 'ECO', body: 'Lowest cost, technically stable.' },
         classic: { name: 'CLASSIC', body: 'Balanced taste, cost and structure.' },
@@ -889,7 +904,7 @@ export const copy = {
   notFound: {
     code: '404',
     headline: 'This page does not exist.',
-    back: 'Back to landing',
+    back: 'Wróć na stronę główną',
   },
   footer: {
     line: 'PINGÜINO Intelligence — precision gelato intelligence.',

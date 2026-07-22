@@ -22,7 +22,7 @@ import { LandingPage } from '@/pages/landing/LandingPage';
 import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { landingCopy } from '@/pages/landing/landingCopy';
-import { AppRoutes } from './router';
+import { AppRoutes, LegacyStudioRedirect, PRO_RECIPE_PATH } from './router';
 
 /* ------------------------------------------------------------- helpers -- */
 
@@ -86,12 +86,23 @@ describe('Slice A routing contract', () => {
     expect(redirectTarget('/demo')).toBe('/start');
   });
 
-  it('keeps /calculator redirecting to /studio', () => {
-    expect(redirectTarget('/calculator')).toBe('/studio');
+  it('sends /studio and /calculator into the canonical PINGÜINO Pro recipe editor (owner P0)', () => {
+    // /studio is a query-preserving redirect component (NOT the legacy Studio editor)…
+    expect(elementType('/studio')).toBe(LegacyStudioRedirect);
+    // …and /calculator goes straight to the canonical editor path.
+    expect(redirectTarget('/calculator')).toBe(PRO_RECIPE_PATH);
+    expect(PRO_RECIPE_PATH).toBe('/pro/recipe');
+    // The legacy Studio page is gone from the route table entirely.
+    for (const [, element] of byPath) {
+      const type = isValidElement(element) ? (element as ReactElement).type : undefined;
+      const name = typeof type === 'function' ? type.name : String(type);
+      expect(name).not.toBe('StudioPage');
+    }
   });
 
-  it('registers the PINGÜINO Pro workspace at /pro (S3)', () => {
+  it('registers the PINGÜINO Pro workspace at /pro AND every stable /pro/<section> URL', () => {
     expect(elementType('/pro')).toBe(ProWorkspacePage);
+    expect(elementType('/pro/:section')).toBe(ProWorkspacePage);
   });
 
   it('registers the Slice B machine profile page at /profile/machine', () => {

@@ -18,8 +18,10 @@ const read = (...p: string[]) => readFileSync(join(SRC, ...p), 'utf8');
 
 const CANONICAL_PAGES = [
   ['pages', 'recipes', 'MyRecipesPage.tsx'],
-  ['pages', 'studio', 'StudioPage.tsx'],
   ['pages', 'pro', 'ProWorkspacePage.tsx'],
+  // Destinations (/label /api /recipes /work-with-us /create-ingredient /products/import)
+  // render under the SAME canonical shell — the legacy black TopNav shell is unrouted.
+  ['components', 'shared', 'DestinationSurface.tsx'],
 ] as const;
 
 describe('canonical application shell', () => {
@@ -57,11 +59,16 @@ describe('canonical application shell', () => {
     expect(drawer).toContain('aria-modal="true"');
   });
 
-  it('Studio keeps „Zapisz recepturę" as a contextual action; legacy links are gone', () => {
-    const studio = read('pages', 'studio', 'StudioPage.tsx');
-    expect(studio).toContain('copy.recipes.save'); // → „Zapisz recepturę"
-    expect(studio.includes('Back to landing')).toBe(false);
-    expect(studio.includes('studio.back')).toBe(false);
-    expect(studio.includes('openWorkspace')).toBe(false); // redundant „Otwórz PINGÜINO Pro" removed
+  it('there is NO separate legacy Studio page — /studio is a redirect into PINGÜINO Pro', () => {
+    const router = read('app', 'router.tsx');
+    expect(router.includes('StudioPage')).toBe(false); // the legacy page is not routed (or imported)
+    expect(router).toContain('LegacyStudioRedirect');
+    expect(router).toContain(`path="/studio" element={<LegacyStudioRedirect />}`);
+  });
+
+  it('the customer drawer is THE canonical drawer (no parallel item list, no „Studio" item)', () => {
+    const customerMenu = read('features', 'customer-shell', 'ui', 'CustomerMenu.tsx');
+    expect(customerMenu).toContain("from '@/features/shell/AppNavDrawer'");
+    expect(customerMenu.includes('CUSTOMER_MENU_ITEMS')).toBe(false);
   });
 });

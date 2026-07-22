@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router';
+import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
 import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
@@ -27,7 +27,6 @@ import { PiMonitorDevPage } from '@/pages/dev/PiMonitorDevPage';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
-import { StudioPage } from '@/pages/studio/StudioPage';
 import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import {
@@ -39,6 +38,25 @@ import {
   SubscriptionPage,
   WorkWithUsPage,
 } from '@/pages/destinations';
+
+/** The canonical PINGÜINO Pro recipe editor path — the ONE professional workspace (owner P0). */
+export const PRO_RECIPE_PATH = '/pro/recipe';
+
+/** Pure target of the /studio redirect: the canonical editor, query params preserved. */
+export const studioRedirectTo = (search: string): { pathname: string; search: string } => ({
+  pathname: PRO_RECIPE_PATH,
+  search,
+});
+
+/**
+ * `/studio` → the canonical PINGÜINO Pro recipe editor (owner P0, 2026-07-22): there is no
+ * separate customer-facing Studio product. Useful query parameters are preserved so deep links
+ * keep their meaning; `replace` keeps history clean.
+ */
+export function LegacyStudioRedirect() {
+  const location = useLocation();
+  return <Navigate to={studioRedirectTo(location.search)} replace />;
+}
 
 export function AppRoutes() {
   return (
@@ -54,14 +72,16 @@ export function AppRoutes() {
       {/* Legacy /demo entry pointed at the flow → keep old links/bookmarks landing
           in the flow, not on the marketing page. */}
       <Route path="/demo" element={<Navigate to="/start" replace />} />
-      {/* PINGÜINO Pro — the canonical professional workspace (S3). /studio stays intact
-          (its demo/free locked previews are unchanged) and cross-links here; the
-          /studio→/pro redirect is deferred to a later slice. */}
+      {/* PINGÜINO Pro — the ONE canonical professional workspace (owner P0, 2026-07-22).
+          /pro = workspace root (shows the recipe editor); /pro/<section> = stable section URLs
+          (recipe/monitor/versions/production/history/costs/exports/settings — direct link +
+          refresh restore the same section). */}
       <Route path="/pro" element={<ProWorkspacePage />} />
-      {/* Advanced Studio · −11°C Engine. */}
-      <Route path="/studio" element={<StudioPage />} />
-      {/* PI Calculator → Advanced Studio (no intermediate surface). */}
-      <Route path="/calculator" element={<Navigate to="/studio" replace />} />
+      <Route path="/pro/:section" element={<ProWorkspacePage />} />
+      {/* There is NO separate Studio product: /studio and /calculator land in the canonical
+          PINGÜINO Pro recipe editor (query params preserved for /studio deep links). */}
+      <Route path="/studio" element={<LegacyStudioRedirect />} />
+      <Route path="/calculator" element={<Navigate to={PRO_RECIPE_PATH} replace />} />
 
       {/* Recipes hub (browse) + the saved-recipes list (self-guards anonymous visitors). */}
       <Route path="/recipes" element={<RecipesHubPage />} />

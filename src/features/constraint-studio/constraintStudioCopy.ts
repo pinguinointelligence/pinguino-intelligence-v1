@@ -189,7 +189,7 @@ export const constraintStudioCopy = {
     saving: 'Zapisywanie…',
     savedVersion: (version: number) => `Zapisano wersję v${version}.`,
     error: 'Nie udało się zapisać wersji receptury.',
-    defaultTitle: 'Receptura ze Studia',
+    defaultTitle: 'Nowa receptura',
   },
 
   /* --------------------------------------------- §17.3 range (flagged) ---- */

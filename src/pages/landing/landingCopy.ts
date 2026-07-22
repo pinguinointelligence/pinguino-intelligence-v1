@@ -80,7 +80,7 @@ export const landingCopy = {
     bullets: [
       'Temperatury serwowania: −11°C, −12°C, −13°C oraz produkcja świeża.',
       'Pełniejsze dane receptury i propozycje korekt.',
-      'Zaawansowane Studio dla pracy nad recepturą.',
+      'PINGÜINO Pro dla pracy nad recepturą.',
     ],
   },
 
@@ -116,7 +116,7 @@ export const landingCopy = {
       bullets: [
         'Wybór temperatury serwowania',
         'Pełniejsze dane techniczne i korekty',
-        'Zaawansowane Studio',
+        'PINGÜINO Pro — pełna przestrzeń receptur',
       ],
     },
     cta: 'Zobacz szczegóły planów',
@@ -213,7 +213,7 @@ export const landingCopy = {
     links: [
       { label: 'Stwórz recepturę', to: '/start' },
       { label: 'Plany', to: '/subscription' },
-      { label: 'Studio', to: '/studio' },
+      { label: 'PINGÜINO Pro', to: '/pro' },
     ],
   },
 } as const;

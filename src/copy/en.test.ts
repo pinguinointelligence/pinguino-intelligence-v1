@@ -49,8 +49,8 @@ describe('copy module', () => {
     expect(all).toContain('Unlock PI Pro');
   });
 
-  it('keeps the active engine label as the −11°C Engine', () => {
+  it('keeps the active engine label as the −11°C engine (Polish, owner P0)', () => {
     expect(copy.studio.engineTag).toBe(copy.nav.engineLabel);
-    expect(copy.nav.engineLabel.endsWith('11°C Engine')).toBe(true);
+    expect(copy.studio.engineTag).toBe('Silnik −11°C');
   });
 });

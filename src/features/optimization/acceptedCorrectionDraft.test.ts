@@ -260,15 +260,16 @@ describe('accepted_corrections migration — LIVE (Slice 24, migration 0012)', (
   });
 });
 
-describe('Studio — save-correction control wired (Slice 24)', () => {
-  it('the Studio surface mounts SaveCorrectionControl and delegates — no direct draft building or service calls', () => {
-    // S3: the Studio body was extracted to StudioEngineSurface (rendered by /studio + /pro).
+describe('Pro recipe surface — save-correction control wired (Slice 24)', () => {
+  it('the engine surface mounts SaveCorrectionControl and delegates — no direct draft building or service calls', () => {
+    // Owner P0 (2026-07-22): the ONE canonical recipe workspace lives in the /pro
+    // ProWorkspacePage (/studio redirects there); the engine surface is StudioEngineSurface.
     const studio = readFileSync(join(ROOT, 'src', 'features', 'studio', 'StudioEngineSurface.tsx'), 'utf8');
     expect(studio.includes('SaveCorrectionControl')).toBe(true);
     expect(/buildAcceptedCorrectionDraft/.test(studio)).toBe(false);
     expect(studio.includes('acceptedCorrections')).toBe(false);
-    // StudioPage must actually render the extracted surface (the delegation is real).
-    const page = readFileSync(join(ROOT, 'src', 'pages', 'studio', 'StudioPage.tsx'), 'utf8');
+    // The canonical Pro workspace must actually render the extracted surface (the delegation is real).
+    const page = readFileSync(join(ROOT, 'src', 'pages', 'pro', 'ProWorkspacePage.tsx'), 'utf8');
     expect(page.includes('StudioEngineSurface')).toBe(true);
   });
 

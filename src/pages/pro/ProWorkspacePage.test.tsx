@@ -1,14 +1,15 @@
 /**
- * PINGÜINO Pro workspace (/pro) — S3 contract.
+ * PINGÜINO Pro workspace — the ONE canonical Pro product (owner P0 contract).
  *
  * Static-markup render (node env, no DOM). The runtime persona is mocked directly (rather
  * than poking the zustand store, whose alias/relative import identity is not stable under
  * vitest) so the gate is deterministic: non-Pro personas see the honest PINGÜINO Pro upsell
- * (no workspace); Pro sees the full 9-tab nav. Deep-linked tabs surface the REAL version
- * section and HONEST backend/"arrives later" states — never a fabricated screen.
+ * (no workspace); Pro sees the full 9-section nav on STABLE /pro/<section> paths (direct
+ * link + refresh restore the section). Sections surface the REAL version section and HONEST
+ * backend/"arrives later" states — never a fabricated screen.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { copy } from '@/copy/en';
@@ -31,7 +32,11 @@ const renderAt = (path: string, persona: ProCorePersona) => {
   return renderToStaticMarkup(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
-        <ProWorkspacePage />
+        {/* Mirror the real route table: /pro + the stable /pro/:section paths. */}
+        <Routes>
+          <Route path="/pro" element={<ProWorkspacePage />} />
+          <Route path="/pro/:section" element={<ProWorkspacePage />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -49,7 +54,7 @@ describe('ProWorkspacePage (S3)', () => {
   });
 
   it('renders the full 9-tab nav for the Pro persona', () => {
-    const html = renderAt('/pro?tab=settings', 'pro');
+    const html = renderAt('/pro/settings', 'pro');
     expect(html).toContain(w.title);
     for (const label of Object.values(w.tabs)) {
       expect(html).toContain(label);
@@ -59,22 +64,22 @@ describe('ProWorkspacePage (S3)', () => {
   });
 
   it('surfaces the REAL recipe-versions section on the Wersje tab', () => {
-    const html = renderAt('/pro?tab=versions', 'pro');
+    const html = renderAt('/pro/versions', 'pro');
     expect(html).toContain('data-testid="pro-core-versions"');
   });
 
   it('shows an honest backend indicator + "arrives later" note on Produkcja/Koszty', () => {
-    const production = renderAt('/pro?tab=production', 'pro');
+    const production = renderAt('/pro/production', 'pro');
     expect(production).toContain(w.soon.production);
     expect(production).toContain('data-testid="pro-slice-backend"');
 
-    const costs = renderAt('/pro?tab=costs', 'pro');
+    const costs = renderAt('/pro/costs', 'pro');
     expect(costs).toContain(w.soon.costs);
     expect(costs).toContain('data-testid="pro-slice-backend"');
   });
 
   it('renders the professional machine selector on the Maszyna tab (S4) and keeps the settings link', () => {
-    const html = renderAt('/pro?tab=machine', 'pro');
+    const html = renderAt('/pro/machine', 'pro');
     expect(html).toContain('data-testid="pro-machine-selector"');
     expect(html).toContain('data-testid="pro-machine-professional"');
     expect(html).toContain(copy.proMachine.professional.title);

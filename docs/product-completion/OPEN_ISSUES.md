@@ -135,3 +135,34 @@ No writes were issued to it (S2 proofs used the staging connector).
 Re-scope or disconnect the `mcp__supabase__` connector so it cannot reach prod
 (`riwipywgqobrulyzrzad`), or relabel it so its target is unambiguous. Until then the binding
 write-safety rule above is the control. No writes have been issued through this connector.
+
+
+---
+
+## PI-CONTENT-003 — remaining deep Studio/English content after the canonical-Pro consolidation (P2, content)
+
+**Recorded:** 2026-07-22, as required by the owner P0 „ONE CANONICAL PINGÜINO PRO" task
+(the task fully consolidated routes/menu/workbar/shell + the listed strings; the items below are
+the explicitly-allowed later content cleanup — none blocks the canonical workflow).
+
+1. **Deep lab-rail English** (inside the canonical /pro/recipe engine surface, below the fold):
+   SaveCorrectionControl ('Save accepted correction', 'Save correction', 'Sign in to save
+   corrections.'), parts of BranchWorkflowPreviews, deep IngredientBuilder/monitor vocabulary.
+2. **English service error messages** that can surface in error slots: services/proCore
+   supabaseRecipes ('You must be signed in to save recipes.', 'This plan cannot restore recipe
+   versions.') + inMemoryRecipes equivalents. Localize once, carefully (adapter conformance tests
+   pin some messages).
+3. **QA demo presets copy** (copy.studio.presets.*) — now DEV-only (PresetSelector is
+   dead-code-eliminated from production builds); localize or leave as internal QA copy.
+4. **Unrouted legacy components kept in-tree** (nothing renders them): ShellLayout, TopNav,
+   MegaMenu, AppMenu, navConfig.ts (+ its test), HomePage, ComingSoonSurface, SaveRecipeDialog,
+   StudioModeToggle, unused copy.menu.*/copy.nav.* English keys, customerShellCopy leftovers
+   (open/close/title/section*/sign* now unused after the drawer unification). Delete in a
+   dedicated cleanup pass.
+5. **Page chrome variance**: /, /start, /profile/machine, /subscription keep their own light page
+   chrome (CustomerMenu bar) — the MENU is the one canonical drawer everywhere (owner requirement
+   met); migrating their full chrome onto AppShell is optional polish.
+6. **Customer OCR intake**: the real OCR intake surface remains dev-gated (/dev/ocr-intake;
+   persistence launch-gated on migrations 0022–0024). „Etykiety i produkty" points at the real,
+   working /label surface; /products/import (CSV) stays direct-URL. A customer-facing OCR route is
+   a separate slice.

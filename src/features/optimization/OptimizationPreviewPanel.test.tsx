@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { copy } from '@/copy/en';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { OptimizationPreviewPanel } from './OptimizationPreviewPanel';
 import { optimizationDisplayPolicy, type OptimizationDisplayPolicy } from './optimizationPreviewPolicy';
@@ -270,9 +271,11 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
   const studioSrc = readFileSync(resolve(HERE, '..', 'studio', 'StudioEngineSurface.tsx'), 'utf8');
   const studio = strip(studioSrc);
 
-  it('renders the preview in PRODUCTION Studio, not behind a DEV-only gate (Slice 15)', () => {
+  it('renders the preview in the PRODUCTION Pro surface, not behind a DEV-only gate (Slice 15)', () => {
     expect(studio.includes('OptimizationPreviewPanel')).toBe(true);
-    expect(studio.includes('Preview optimization')).toBe(true);
+    // Owner P0 localization: the block renders the Polish copy (studio.optimization.*).
+    expect(studio.includes('studio.optimization.run')).toBe(true);
+    expect(studio.includes('Preview optimization')).toBe(false); // the English label is gone
     expect(studio.includes('Optimize preview (DEV)')).toBe(false); // the old DEV-only label is gone
     // the panel is gated on the CLICKED state, not on import.meta.env.DEV
     const beforePanel = studio.slice(0, studio.indexOf('<OptimizationPreviewPanel')).slice(-180);
@@ -293,14 +296,18 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
     expect(/onClick=\{[\s\S]*?setOptimizationView\(previewOptimization/.test(studio)).toBe(true);
   });
 
-  it('shows the production safety disclaimers (CONFIG 0.6.0 wording)', () => {
-    expect(studio.includes('Preview only')).toBe(true);
-    expect(/not applied automatically/.test(studio)).toBe(true);
-    // the live bands ARE temperature-aware now — the old claim must be gone
-    expect(/target bands are temperature-aware/.test(studio)).toBe(true);
-    expect(/regulator-shadow comparison remains available/.test(studio)).toBe(true);
+  it('shows the production safety disclaimers (CONFIG 0.6.0 wording, Polish copy)', () => {
+    // Owner P0: the disclaimer text lives in copy.studio.optimization (Polish) — assert the
+    // surface renders it and the COPY carries the safety claims verbatim.
+    expect(studio.includes('studio.optimization.note')).toBe(true);
+    const note = copy.studio.optimization.note;
+    expect(note).toContain('Tylko podgląd');
+    expect(note).toContain('korekty nie są stosowane automatycznie');
+    // the live bands ARE temperature-aware now — the claim stays present, the old one gone
+    expect(note).toContain('Zakresy silnika uwzględniają temperaturę serwowania');
+    expect(note).toContain('porównanie z trybem regulatora pozostaje dostępne');
     expect(/global engine target bands unchanged/.test(studio)).toBe(false);
-    expect(/Exact grams available on Pro/.test(studio)).toBe(true);
+    expect(copy.studio.optimization.proOnly).toContain('Dokładne gramatury dostępne');
   });
 
   it('never saves / persists / applies a correction from the Studio preview', () => {

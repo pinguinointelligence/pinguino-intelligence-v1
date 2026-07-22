@@ -1,20 +1,20 @@
 /**
- * PINGÜINO Pro workspace (/pro) — S3 canonical Pro shell.
+ * PINGÜINO Pro workspace — THE one canonical professional product (owner P0, 2026-07-22).
  *
- * ONE professional workspace with persona-gated nav. Reuses the working engine lab
- * (StudioEngineSurface — zero regression) for Receptura and the real, S2 durable-backend
- * RecipeVersionsSection for Wersje. The remaining tabs surface HONEST states: the live
- * durable-backend indicator (ProSliceBackendState, driven by the same resolver the real
- * surface will use) plus a plain "arrives in a later slice" note — never a fake screen.
+ * ONE professional workspace with persona-gated nav and STABLE section URLs:
+ * `/pro` (root → the recipe editor) and `/pro/<section>` for recipe/monitor/versions/production/
+ * history/costs/exports/settings — direct link + refresh restore the same section, and legacy
+ * `/pro?tab=<id>` deep-links redirect onto the stable paths. `/studio` redirects here (there is
+ * no separate Studio product).
  *
- * Gating: non-Pro personas see an honest PINGÜINO Pro gate (upsell → /subscription), not a
- * broken workspace. A DEV-only persona switch lets acceptance exercise pro/home/demo without
- * a login. `/studio` stays intact (its demo/free locked previews are unchanged) and cross-links
- * here; the eventual /studio→/pro redirect is deferred to a later slice to avoid regressing
- * the demo/free Studio preview.
+ * Receptura = the canonical recipe workspace: sticky ProWorkbar (name + canonical save +
+ * Przelicz z PI → real Preview→Zastosuj→Cofnij + Monitor PI) above the engine lab surface.
+ * The remaining sections surface HONEST states (ProSliceBackendState + honest notes) — never a
+ * fake screen. Non-Pro personas see an honest PINGÜINO Pro gate; a DEV-only persona switch lets
+ * acceptance exercise pro/home/demo without a login.
  */
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
 import { SurfaceToneContext } from '@/components/ui/surface';
@@ -26,8 +26,10 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { StudioEngineSurface } from '@/features/studio/StudioEngineSurface';
 import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
+import { ProRecalcPanel } from '@/features/pro-core/ProRecalcPanel';
 import { ProMachineSelector } from '@/features/pro-core/ProMachineSelector';
 import { MonitorDrawer } from '@/features/pro-core/MonitorDrawer';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 import { ProSliceBackendState } from '@/features/pro-core/ProSliceBackendState';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
@@ -73,7 +75,7 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
   if (!import.meta.env.DEV) return null;
   return (
     <label className="flex items-center gap-2 text-xs text-stone-500">
-      {w.devPersona}
+      <span className="hidden sm:inline">{w.devPersona}</span>
       <select
         className="rounded border border-ink/15 px-2 py-1"
         value={persona}
@@ -90,11 +92,20 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
 
 function RecipeTab() {
   // Sticky top workbar (name + canonical save + context + version/status + Monitor PI + Przelicz z PI)
-  // above the engine lab; Monitor PI / Przelicz z PI open the Monitor drawer on the LIVE result.
+  // above the engine lab. „Przelicz z PI" INITIATES the real canonical recalculation (owner P0):
+  // it stages an optimize preview in the ONE constraint-studio pipeline and opens the top-level
+  // Preview → Zastosuj/Anuluj → Cofnij panel right under the workbar. „Monitor PI" opens the
+  // Monitor drawer on the LIVE result.
   const [monitorOpen, setMonitorOpen] = useState(false);
+  const [recalcOpen, setRecalcOpen] = useState(false);
+  const startRecalc = () => {
+    useConstraintStudioStore.getState().createOptimizePreview();
+    setRecalcOpen(true);
+  };
   return (
     <div>
-      <ProWorkbar onMonitor={() => setMonitorOpen(true)} onRecalc={() => setMonitorOpen(true)} />
+      <ProWorkbar onMonitor={() => setMonitorOpen(true)} onRecalc={startRecalc} />
+      <ProRecalcPanel open={recalcOpen} onClose={() => setRecalcOpen(false)} />
       {/* The engine lab keeps its native dark "canvas" tone inside the light workspace
           (design lock: Monitor Pro / lab surface may be a dark panel). */}
       <SurfaceToneContext.Provider value="shell">
@@ -211,16 +222,24 @@ function TabPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona }) {
 
 export function ProWorkspacePage() {
   const persona = useProCorePersona();
-  const [params, setParams] = useSearchParams();
-  const requested = params.get('tab');
-  const activeTab: TabId = isTabId(requested) ? requested : 'recipe';
+  const { section } = useParams<{ section?: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const isPro = persona === 'pro';
 
-  const selectTab = (tab: TabId) => {
-    const next = new URLSearchParams(params);
-    next.set('tab', tab);
-    setParams(next, { replace: true });
-  };
+  // Legacy `/pro?tab=<id>` deep-links → the stable `/pro/<id>` path (replace keeps history clean).
+  const legacyTab = searchParams.get('tab');
+  if (section === undefined && legacyTab !== null && isTabId(legacyTab)) {
+    return <Navigate to={`/pro/${legacyTab}`} replace />;
+  }
+  // Unknown section → the canonical recipe editor (stable URLs, no fake pages).
+  if (section !== undefined && !isTabId(section)) {
+    return <Navigate to="/pro/recipe" replace />;
+  }
+
+  const activeTab: TabId = isTabId(section ?? null) ? (section as TabId) : 'recipe';
+
+  const selectTab = (tab: TabId) => navigate(`/pro/${tab}`);
 
   return (
     <AppShell

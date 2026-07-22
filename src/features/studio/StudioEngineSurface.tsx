@@ -80,7 +80,9 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
             batchGrams={batchGrams}
           />
         </div>
-        <PresetSelector />
+        {/* QA/demo scenarios are an internal tool (owner P0, 2026-07-22): never the default
+            owner workspace — dev builds only, dead-code-eliminated from production. */}
+        {import.meta.env.DEV ? <PresetSelector /> : null}
       </div>
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_minmax(380px,420px)]">
@@ -139,11 +141,10 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
               mutates the recipe, and the global engine target bands are unchanged. */}
           <div className="space-y-3 border-t border-ivory/10 pt-6">
             <div className="flex flex-col gap-1">
-              <SectionLabel>Optimization preview</SectionLabel>
+              <SectionLabel>{studio.optimization.title}</SectionLabel>
               <p className="text-xs leading-relaxed text-ivory/40">
-                Preview only — nothing is saved and corrections are not applied automatically. Engine
-                target bands are temperature-aware; the regulator-shadow comparison remains available.
-                {!exactCorrectionGrams ? ' Exact grams available on Pro.' : ''}
+                {studio.optimization.note}
+                {!exactCorrectionGrams ? ` ${studio.optimization.proOnly}` : ''}
               </p>
             </div>
             <button
@@ -153,7 +154,7 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
               }
               className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
             >
-              Preview optimization
+              {studio.optimization.run}
             </button>
             {optimizationView ? (
               <>

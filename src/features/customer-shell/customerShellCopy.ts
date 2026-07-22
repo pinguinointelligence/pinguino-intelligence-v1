@@ -23,17 +23,8 @@ export const customerShellCopy = {
     signedInAs: 'Zalogowano',
     authUnavailable: 'Logowanie jest chwilowo niedostępne.',
     classic: 'Wersja klasyczna',
-    /** Keyed by CUSTOMER_MENU_ITEMS[].key — labels for the real routes only. */
-    primary: {
-      home: 'Strona główna',
-      start: 'Stwórz recepturę',
-      studio: 'Studio',
-      recipes: 'Gotowe receptury',
-      myRecipes: 'Moje receptury',
-      machine: 'Moja maszyna',
-      label: 'Etykiety',
-      subscription: 'Subskrypcja / Plany',
-    },
+    /* The per-shell item list is GONE (owner P0, 2026-07-22): the drawer renders the ONE
+       canonical `appNav` config (copy.shell.items) — no separate „Studio" entry anywhere. */
   },
 
   /* ---------------------------------------------------------------- Home -- */
