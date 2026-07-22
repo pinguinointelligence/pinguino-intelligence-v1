@@ -156,22 +156,24 @@ describe('search index', () => {
     isError: false,
   });
 
-  it('builds a rich haystack for PI Base rows (name/internal/id/brand/category/subcategory)', () => {
+  it('builds a rich NORMALIZED haystack for PI Base rows (name/internal/id/brand/category/subcategory)', () => {
+    // Owner P0: the haystack is diacritic/punctuation-normalized (% and _ → spaces) so Polish
+    // queries match; the tokens are all present, just unified.
     const hay = lib.searchIndex.get('PI-ING-000020')!;
-    expect(hay).toContain('dark chocolate 70%'); // display name
-    expect(hay).toContain('dark_chocolate_70'); // internal name
-    expect(hay).toContain('pi-ing-000020'); // id (lowercased)
+    expect(hay).toContain('dark chocolate 70'); // display name (normalized: % dropped)
+    expect(hay).toContain('dark chocolate 70'); // internal name (normalized: _ → space)
+    expect(hay).toContain('pi ing 000020'); // id (normalized: - → space)
     expect(hay).toContain('domori'); // brand
     expect(hay).toContain('chocolate'); // raw category
-    expect(hay).toContain('chocolate_cocoa'); // engine category
+    expect(hay).toContain('chocolate cocoa'); // engine category (normalized)
     expect(hay).toContain('dark 70'); // subcategory
   });
 
   it('builds a demo index from name, id and category', () => {
     const demoLib = selectIngredientLibrary({ demo: false, isPro: false, rows: undefined, isError: false });
     expect(demoLib.searchIndex.size).toBe(DEMO_INGREDIENTS.length);
-    const milk = DEMO_INGREDIENTS.find((i) => i.id === 'milk_3_5')!;
-    expect(demoLib.searchIndex.get('milk_3_5')).toContain(milk.name.toLowerCase());
+    // Haystack is NORMALIZED (owner P0): "Milk 3.5 %" → "milk 3 5"; the words are all present.
+    expect(demoLib.searchIndex.get('milk_3_5')).toContain('milk 3 5');
     expect(filterIngredients(demoLib.ingredients, 'milk', demoLib.searchIndex).length).toBeGreaterThan(0);
   });
 });

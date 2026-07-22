@@ -13,6 +13,7 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ProductLibraryProvenance } from '@/data/products/productEngineLibrary';
 import type { EngineIngredient } from '@/engine';
+import { haystackMatchesQuery, normalizeSearchText } from './ingredientSearch';
 
 export type LibrarySource = 'demo' | 'pi_base';
 export type LibraryStatus = 'demo' | 'loading' | 'ready' | 'fallback';
@@ -44,26 +45,28 @@ export function shouldFetchLibrary({ isPro, demo }: { isPro: boolean; demo: bool
   return isPro && !demo;
 }
 
-/** Demo ingredients can only be searched by what they carry: name, id, category. */
+/** Demo ingredients can only be searched by what they carry: name, id, category.
+ * NORMALIZED (owner P0): diacritics stripped + punctuation unified so Polish queries match. */
 function demoSearchText(ingredient: EngineIngredient): string {
-  return `${ingredient.name} ${ingredient.id} ${ingredient.category}`.toLowerCase();
+  return normalizeSearchText(`${ingredient.name} ${ingredient.id} ${ingredient.category}`);
 }
 
-/** PI Base rows carry richer fields: name, internal name, id, brand, raw +
- * engine category, and subcategory. */
+/** PI Base rows carry richer fields: name, internal name (PL), id, brand, raw + engine
+ * category, and subcategory. NORMALIZED so „wanilia" (internal) / „truskawki" (plural) match. */
 function rowSearchText(row: IngredientRow, engineCategory: string): string {
-  return [
-    row.ingredient_name_display,
-    row.ingredient_name_internal,
-    row.ingredient_id,
-    row.brand,
-    row.ingredient_category, // raw dataset category (e.g. "chocolate")
-    engineCategory, // mapped engine category (e.g. "chocolate_cocoa")
-    row.ingredient_subcategory,
-  ]
-    .filter((part) => part && part.trim() !== '')
-    .join(' ')
-    .toLowerCase();
+  return normalizeSearchText(
+    [
+      row.ingredient_name_display,
+      row.ingredient_name_internal,
+      row.ingredient_id,
+      row.brand,
+      row.ingredient_category, // raw dataset category (e.g. "chocolate")
+      engineCategory, // mapped engine category (e.g. "chocolate_cocoa")
+      row.ingredient_subcategory,
+    ]
+      .filter((part) => part && part.trim() !== '')
+      .join(' '),
+  );
 }
 
 function demoLibrary(status: LibraryStatus): IngredientLibrary {
@@ -112,20 +115,20 @@ export function selectIngredientLibrary({
 }
 
 /**
- * Case-insensitive filter over the ingredient's search text (display name,
- * internal name, id, brand, raw + engine category, subcategory for PI Base;
- * name/id/category for demo).
+ * Filter over the ingredient's NORMALIZED search text (display + internal name + id + brand +
+ * raw + engine category + subcategory for PI Base; name/id/category for demo). Natural-Polish
+ * aware (owner P0): diacritics, plural/grammatical forms and PL↔EN↔IT↔ES aliases resolve via
+ * `haystackMatchesQuery` — the exact/id/substring path still wins first so nothing regresses.
  */
 export function filterIngredients(
   ingredients: readonly EngineIngredient[],
   rawQuery: string,
   searchIndex: SearchIndex,
 ): readonly EngineIngredient[] {
-  const q = rawQuery.trim().toLowerCase();
-  if (q === '') return ingredients;
+  if (rawQuery.trim() === '') return ingredients;
   return ingredients.filter((i) => {
     const haystack = searchIndex.get(i.id) ?? demoSearchText(i);
-    return haystack.includes(q);
+    return haystackMatchesQuery(haystack, rawQuery);
   });
 }
 
