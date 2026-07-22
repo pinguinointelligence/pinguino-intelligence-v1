@@ -49,8 +49,9 @@ describe('copy module', () => {
     expect(all).toContain('Unlock PI Pro');
   });
 
-  it('keeps the active engine label as the −11°C engine (Polish, owner P0)', () => {
-    expect(copy.studio.engineTag).toBe(copy.nav.engineLabel);
-    expect(copy.studio.engineTag).toBe('Silnik −11°C');
+  it('has NO hardcoded engine-label copy key — the header derives from the resolved route', () => {
+    // Owner P0 repair: `studio.engineTag` is deleted; engineRouteLabel(servingModeId, temperature)
+    // is the only source of the header, so it can never disagree with the Engine input.
+    expect('engineTag' in copy.studio).toBe(false);
   });
 });

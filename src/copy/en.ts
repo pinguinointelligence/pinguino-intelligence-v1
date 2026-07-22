@@ -624,7 +624,8 @@ export const copy = {
   },
   studio: {
     eyebrow: 'PINGÜINO Pro',
-    engineTag: 'Silnik −11°C',
+    // engineTag REMOVED (owner P0 repair): the engine label is DERIVED from the resolved route
+    // (engineRouteLabel over servingModeId + target_temperature_c) — never a hardcoded string.
     back: 'Back to landing',
     /** The explicit optimization-preview block on the canonical Pro recipe surface (PL). */
     optimization: {

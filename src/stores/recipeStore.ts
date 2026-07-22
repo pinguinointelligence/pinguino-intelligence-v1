@@ -173,7 +173,18 @@ export const useRecipeStore = create<RecipeState>()(
 
       setMode: (mode) => set({ mode, dirty: true }),
       setCategory: (category) => set({ category, dirty: true }),
-      setTargetTemperature: (target_temperature_c) => set({ target_temperature_c, dirty: true }),
+      // A MANUAL temperature change overrides any machine/serving route (owner P0 temperature
+      // contract): clearing the machine context keeps the visible selection, the Engine input
+      // and every label in agreement — a route mismatch becomes unrepresentable.
+      setTargetTemperature: (target_temperature_c) =>
+        set({
+          target_temperature_c,
+          machineKind: null,
+          servingModeId: null,
+          machineId: null,
+          machineLabel: null,
+          dirty: true,
+        }),
       setBatchGrams: (target_batch_grams) => set({ target_batch_grams, dirty: true }),
       setMachineCapacity: (machine_capacity_grams) => set({ machine_capacity_grams, dirty: true }),
       setFlavorIntensity: (flavor_intensity) => set({ flavor_intensity, dirty: true }),

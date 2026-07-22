@@ -23,6 +23,7 @@ import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScoreP
 import { OverallScoreCard } from '@/features/pi-panel/OverallScoreCard';
 import { UserMonitorPro } from '@/features/user-monitor';
 import { PresetSelector } from '@/features/studio/PresetSelector';
+import { engineRouteLabel } from '@/features/studio/engineRouteLabel';
 import { StudioSummary } from '@/features/studio/StudioSummary';
 import { useStudioResult } from '@/features/studio/useStudioResult';
 import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculatorPreview';
@@ -53,6 +54,11 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
   const category = useRecipeStore((state) => state.category);
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
+  const servingModeId = useRecipeStore((state) => state.servingModeId);
+
+  // The header derives from the CURRENT resolved Engine route (owner P0 temperature contract) —
+  // never a hardcoded engine name. Same store values buildRecipeInput hands to calculateRecipe.
+  const route = engineRouteLabel(servingModeId, temperatureC);
 
   // The public /demo entry is always a demo session that cold-opens the curated
   // default scenario; /studio (forceDemo=false) preserves persisted edits.
@@ -71,8 +77,13 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
       <div className="flex flex-col gap-5 border-b border-ivory/10 pb-6">
         <div className="flex flex-col gap-2">
           <SectionLabel>
-            {studio.eyebrow} · {studio.engineTag}
+            {studio.eyebrow} · {route.main}
           </SectionLabel>
+          {route.detail ? (
+            <p className="text-[11px] leading-none text-ivory/40" data-testid="engine-route-detail">
+              {route.detail}
+            </p>
+          ) : null}
           <StudioSummary
             mode={mode}
             category={category}

@@ -44,10 +44,12 @@ describe('navConfig (top navigation, Phase 6C)', () => {
     }
   });
 
-  it('PI Calculator surfaces the −11°C Engine label', () => {
+  it('PI Calculator surfaces the engine label (legacy unrouted config)', () => {
     const calc = NAV_ITEMS.find((item) => item.id === 'calculator');
     expect(calc?.engineLabel).toBe(copy.nav.engineLabel);
-    expect(copy.nav.engineLabel).toBe(copy.studio.engineTag);
+    // Owner P0 repair: `copy.studio.engineTag` no longer exists — the CANONICAL surface derives
+    // its engine label from the resolved route (engineRouteLabel). This legacy config is unrouted.
+    expect(typeof copy.nav.engineLabel).toBe('string');
   });
 
   it('routes PI Calculator straight to Advanced Studio (Slice 3)', () => {

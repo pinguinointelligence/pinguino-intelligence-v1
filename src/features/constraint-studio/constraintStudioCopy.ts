@@ -121,6 +121,59 @@ export const constraintStudioCopy = {
       `Minimalna partia dla obecnych blokad: ${minimum}.`,
   },
 
+  /* -------------------- structured recalc-failure diagnosis (owner P0) ---- */
+  diagnosis: {
+    /** Verified: zero active locks — the failure is NEVER blamed on locks. */
+    noActiveLocks:
+      'Solver nie znalazł możliwej korekty dla tej receptury. Żaden składnik nie jest ' +
+      'zablokowany — przyczyną nie są blokady.',
+    /** Verified: every ingredient is non-adjustable (locks / odważone gramatury). */
+    allLocked:
+      'Wszystkie składniki są zablokowane. Odblokuj przynajmniej jeden składnik, aby PI mogło ' +
+      'przeliczyć recepturę.',
+    /** Verified: N real active locks constrain the solver — the list is shown below. */
+    withLocks: (locked: number, total: number) =>
+      `Solver nie znalazł korekty możliwej przy obecnych blokadach — zablokowane składniki: ` +
+      `${locked} z ${total} (lista poniżej).`,
+    temperatureMismatch:
+      'Nie można przeliczyć receptury, ponieważ wybrana temperatura i aktywny profil Engine ' +
+      'są niespójne.',
+    incomplete: 'Receptura jest niekompletna — dodaj składniki i ustaw partię, aby przeliczyć.',
+    notEngineReady: (names: readonly string[]) =>
+      `Składniki bez pełnych danych silnika: ${listPl(names)}. Uzupełnij dane, aby przeliczyć.`,
+    verificationFailed:
+      'Kontrola bezpieczeństwa zatrzymała propozycję solvera.',
+    /** ALWAYS appended to every failure message (owner rule). */
+    unchanged: 'Receptura nie została zmieniona.',
+    /** Poured actuals put the solver in add-only rescue mode (§15) — say it. */
+    pouredNote: (count: number) =>
+      `${count} skł. ma już odważone rzeczywiste gramatury — obowiązuje tryb ratowania partii ` +
+      '(solver może tylko dodawać, nigdy zmniejszać).',
+    lockTable: {
+      heading: 'Zweryfikowany stan blokad',
+      colIngredient: 'Składnik',
+      colGrams: 'Gramatura',
+      colLock: 'Blokada',
+      colSource: 'Źródło',
+      state: {
+        unlocked: 'AI może zmieniać',
+        grams: 'Zablokowana gramatura',
+        range: 'Zakres (analiza)',
+        main: 'Składnik główny',
+        required: 'Wymagany',
+        already_added: 'Już dodany',
+        poured: 'Odważony (rzeczywisty)',
+      },
+      source: {
+        user_padlock: 'kłódka użytkownika (ta sesja)',
+        saved_recipe: 'z zapisanej receptury',
+        engine_lock: 'ustawienie receptury',
+        poured_actual: 'ratowanie partii / produkcja',
+        none: '—',
+      },
+    },
+  },
+
   /* ------------------------------------------------ §17.4 live conflict --- */
   conflict: {
     title: 'Konflikt blokad',
