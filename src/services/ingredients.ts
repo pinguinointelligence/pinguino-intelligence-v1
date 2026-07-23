@@ -67,6 +67,11 @@ export interface IngredientSearchRow {
 export const SEARCH_RESULT_COLUMNS =
   'ingredient_id,ingredient_name_display,ingredient_name_internal,brand,ingredient_category,ingredient_subcategory';
 
+/** Rows fetched per `.range` window — strictly below the PostgREST `max-rows`
+ * cap (1,000 on Supabase), so no single request can ever be silently truncated
+ * even when `Pokaż więcej wyników` grows the client window past 1,000 rows. */
+export const SEARCH_DB_PAGE_ROWS = 500;
+
 export async function searchEngineApprovedIngredients(
   rawQuery: string,
   options?: { limit?: number; signal?: AbortSignal },
@@ -74,27 +79,39 @@ export async function searchEngineApprovedIngredients(
   if (!supabase) return [];
   const groups = buildSearchTermGroups(rawQuery);
   if (groups.length === 0) return [];
+  const limit = options?.limit ?? 200;
 
-  let query = supabase
-    .from(TABLE)
-    .select(SEARCH_RESULT_COLUMNS)
-    .eq('is_active', true)
-    .eq('approved_for_engines', true);
-  // One AND-group per token; OR across (alias term × safe column) within it.
-  for (const terms of groups) {
-    query = query.or(
-      terms.flatMap((t) => SEARCHABLE_DB_FIELDS.map((f) => `${f}.ilike.*${t}*`)).join(','),
-    );
+  // Explicit `.range` paging (deterministic order: display name + stable id
+  // tiebreak) in windows below the PostgREST cap. A short window = end of the
+  // result set; otherwise keep paging until the requested client limit.
+  const rows: IngredientSearchRow[] = [];
+  for (let offset = 0; offset < limit; ) {
+    const to = Math.min(offset + SEARCH_DB_PAGE_ROWS, limit) - 1;
+    let query = supabase
+      .from(TABLE)
+      .select(SEARCH_RESULT_COLUMNS)
+      .eq('is_active', true)
+      .eq('approved_for_engines', true);
+    // One AND-group per token; OR across (alias term × safe column) within it.
+    for (const terms of groups) {
+      query = query.or(
+        terms.flatMap((t) => SEARCHABLE_DB_FIELDS.map((f) => `${f}.ilike.*${t}*`)).join(','),
+      );
+    }
+    query = query
+      .order('ingredient_name_display', { ascending: true })
+      .order('ingredient_id', { ascending: true })
+      .range(offset, to);
+    if (options?.signal) query = query.abortSignal(options.signal);
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as IngredientSearchRow[];
+    rows.push(...page);
+    if (page.length < to - offset + 1) break; // short page — no more rows exist
+    offset = to + 1;
   }
-  query = query
-    .order('ingredient_name_display', { ascending: true })
-    .order('ingredient_id', { ascending: true })
-    .limit(options?.limit ?? 200);
-  if (options?.signal) query = query.abortSignal(options.signal);
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return (data ?? []) as IngredientSearchRow[];
+  return rows;
 }
 
 /** Reference rows for a known id set (the "My Products" linkage — small, exact). */

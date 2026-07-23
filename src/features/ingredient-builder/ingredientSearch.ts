@@ -97,6 +97,11 @@ const ALIAS_FAMILIES: readonly AliasFamily[] = [
   { roots: ['glukoz', 'glucos'], categories: ['sweetener'] }, // glucose
   { roots: ['lask', 'pod', 'bean', 'strak'] }, // vanilla-bean concept („laska wanilii")
   { roots: ['ekstrakt', 'extract', 'estratt'] }, // extract forms
+  // powder-form concept: „mleko w proszku" must reach *_powder rows (staging proof: 0 rows
+  // contain „proszk" in any searchable column — the Polish form word only exists via alias)
+  { roots: ['proszk', 'proszek', 'powder'] },
+  // SMP = skimmed milk powder (trade abbreviation; staging proof: 0 rows contain „smp")
+  { roots: ['smp', 'skimmed'], categories: ['dairy'] },
   // rose — the ONE coverage gap: „Róża" is non-ASCII in display + absent from internal
   { roots: ['roza', 'rozy', 'rose', 'rosa'], categories: ['botanical'] },
 ];

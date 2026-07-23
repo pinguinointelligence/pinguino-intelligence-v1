@@ -44,11 +44,21 @@ export const FORM_GROUP_HEADING_PL: Record<FormGroup, string> = {
 };
 
 /** Natural chilled/raw forms — EXACT subcategory matches (never substrings, so
- * `milk_powdered_ice_cream_mix` or `coconut_milk` can never land here). */
+ * `milk_powdered_ice_cream_mix` or `coconut_milk` can never land here).
+ * Extended over the FULL live staging vocabulary census (428 subcategories):
+ * every chilled dairy form — creams, fresh cheeses, yogurts, butter — is
+ * „Świeże", exactly like plain milk (MILK must never read as fruit, and
+ * CREAM 18% must never read as „Inne"). */
 const FRESH_FORMS: ReadonlySet<string> = new Set([
   'fresh_fruit_profile', 'fruit_profile', 'tropical_fruit_profile', 'fruit_peel',
   'frozen_or_fresh', 'fresh_herb', 'milk', 'fresh_milk', 'cream', 'buttermilk',
-  'cream_33_percent', 'cream_36_percent_uht', 'mascarpone_cheese',
+  'cream_18_percent', 'cream_33_percent', 'cream_33_percent_uht', 'cream_36_percent_uht',
+  'clotted_cream', 'creme_fraiche', 'fresh_whipping_cream', 'unsalted_butter',
+  'cream_cheese', 'mascarpone_cheese', 'mascarpone_cream_cheese', 'cottage_cheese',
+  'fatty_cottage_cheese', 'fatty_cottage_cheese_8_percent', 'soft_cheese',
+  'blue_cheese', 'blue_cheese_roquefort', 'brie_cheese', 'gorgonzola_cheese',
+  'mozzarella_cheese', 'parmesan_cheese', 'ricotta_cheese',
+  'greek_yogurt', 'natural_yogurt', 'skyr_yoghurt', 'yoghurt_9_percent',
   'vegetable_profile', 'root_vegetable', 'leafy_green',
 ]);
 
@@ -61,9 +71,13 @@ const has = (f: string, ...needles: string[]): boolean => needles.some((n) => f.
  */
 export function formGroupOf(subcategory: string | null | undefined, category?: string): FormGroup {
   const f = (subcategory ?? '').toLowerCase().trim();
+  const cat = (category ?? '').toLowerCase();
   if (f === '') return 'other';
 
   if (FRESH_FORMS.has(f)) return 'fresh';
+  // Census-safe generic rule: every real `fresh_*` vocabulary value (herb, milk,
+  // flower, whipping cream, fruit profile) IS the natural chilled state.
+  if (has(f, 'fresh')) return 'fresh';
   if (has(f, 'frozen')) return 'frozen';
   if (has(f, 'puree')) return 'puree';
   if (has(f, 'concentrate', 'nectar')) return 'concentrate';
@@ -71,10 +85,17 @@ export function formGroupOf(subcategory: string | null | undefined, category?: s
     return 'inclusion';
   }
   if (has(f, 'paste', 'variegat', 'compound', 'spread')) return 'paste';
+  // Paste CATEGORIES whose subcategory omits the word (real rows: `whisky`,
+  // `prosecco`, `cream_liqueur`, `liquorice` under flavor_paste) stay pastes —
+  // a paste must never render under „Płynne i napoje" via a drink keyword.
+  if (cat === 'flavor_paste' || cat === 'nut_paste' || cat === 'variegate') return 'paste';
   if (has(f, 'aroma', 'essence', 'extract', 'flavoring_agent')) return 'aroma';
+  // Explicit `liquid_*` vocabulary (liquid_emulsifier, liquid_stabilizer_…_mix,
+  // glucose_syrup_liquid) is liquid — never „Proszki i suche" via mix/emulsifier.
+  if (has(f, 'liquid')) return 'liquid';
   if (
     has(f, 'powder', 'powdered', 'mix', 'dry', 'dried', 'icing', 'flour', 'maltodextrin', 'lactose') ||
-    has(f, 'sucrose', 'dextrose', 'fructose', 'invert_sugar', 'sugar', 'sweetener', 'stabilizer', 'emulsifier', 'gum', 'fiber', 'starch')
+    has(f, 'sucrose', 'dextrose', 'fructose', 'invert_sugar', 'sugar', 'sweetener', 'stabilizer', 'emulsifier', 'gum', 'fiber', 'starch', 'agar', 'pectin')
   ) {
     return 'powder';
   }
@@ -152,6 +173,8 @@ const CATEGORY_PL: Record<string, string> = {
   confectionery_inclusion: 'Słodycze',
   decorative_inclusion: 'Dekoracje',
   specialty: 'Specjalne',
+  seed: 'Nasiona',
+  confectionery_spread: 'Kremy do smarowania',
   fiber: 'Błonnik',
   egg: 'Jaja',
   egg_product: 'Jaja',
