@@ -6,6 +6,7 @@ import {
   groupIngredientsByCategory,
   type IngredientLibrary,
 } from './ingredientLibrary';
+import { formLabelPl, rankIngredients } from './ingredientSearch';
 
 const b = copy.studio.builder;
 
@@ -56,7 +57,15 @@ export function IngredientPicker({
     () => filterIngredients(library.ingredients, query, library.searchIndex),
     [library.ingredients, library.searchIndex, query],
   );
+  const hasQuery = query.trim() !== '';
+  // With a query: RANK so natural/fresh + exact-name matches come first, SKU/beverage last
+  // (owner P0). Empty query: browse, grouped by category.
+  const ranked = useMemo(
+    () => rankIngredients(filtered, query, { nameIndex: library.nameIndex, formIndex: library.formIndex }),
+    [filtered, query, library.nameIndex, library.formIndex],
+  );
   const grouped = useMemo(() => groupIngredientsByCategory(filtered), [filtered]);
+  const formLabelOf = (id: string) => formLabelPl(library.formIndex.get(id));
   // The owner's confirmed products ("My Products"), filtered by a simple name/id match.
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -73,12 +82,20 @@ export function IngredientPicker({
   }
 
   // Selection stays valid even when the filter changes the visible set (basement + products).
-  const selectable = [...filtered, ...filteredProducts];
+  // The default lands on the TOP-RANKED result (fresh/natural first), not the alphabetical first.
+  const selectable = [...ranked, ...filteredProducts];
   const effectiveId = selectable.some((i) => i.id === selectedId)
     ? selectedId
     : (selectable[0]?.id ?? '');
   const count = selectable.length;
   const selectedProvenance = library.productProvenance.get(effectiveId);
+  const selectedIngredient = selectable.find((i) => i.id === effectiveId);
+  // Phase 6: a selected-but-not-Engine-ready ingredient is kept + flagged, never hidden/substituted.
+  const selectedNeedsData =
+    selectedIngredient != null &&
+    library.ingredients.some((i) => i.id === effectiveId) &&
+    selectedIngredient.pac_value == null &&
+    selectedIngredient.pod_value == null;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -122,15 +139,31 @@ export function IngredientPicker({
               value={effectiveId}
               onChange={(event) => setSelectedId(event.currentTarget.value)}
             >
-              {grouped.map((group) => (
-                <optgroup key={group.category} label={b.ingredientGroups[group.category]}>
-                  {group.items.map((ingredient) => (
-                    <option key={ingredient.id} value={ingredient.id}>
-                      {ingredient.name}
-                    </option>
-                  ))}
+              {hasQuery ? (
+                // Searching: ONE ranked list (fresh/natural + exact-name first), form shown.
+                <optgroup label={b.resultsLabel}>
+                  {ranked.map((ingredient) => {
+                    const form = formLabelOf(ingredient.id);
+                    return (
+                      <option key={ingredient.id} value={ingredient.id}>
+                        {ingredient.name}
+                        {form ? ` · ${form}` : ''}
+                      </option>
+                    );
+                  })}
                 </optgroup>
-              ))}
+              ) : (
+                // Browsing: grouped by category.
+                grouped.map((group) => (
+                  <optgroup key={group.category} label={b.ingredientGroups[group.category]}>
+                    {group.items.map((ingredient) => (
+                      <option key={ingredient.id} value={ingredient.id}>
+                        {ingredient.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))
+              )}
               {filteredProducts.length > 0 ? (
                 <optgroup label="My Products">
                   {filteredProducts.map((product) => (
@@ -155,6 +188,12 @@ export function IngredientPicker({
               {b.addLabel}
             </button>
           </div>
+
+          {selectedNeedsData ? (
+            <p className="text-xs leading-relaxed text-amber-300/90" data-testid="picker-needs-data">
+              {b.needsData}
+            </p>
+          ) : null}
 
           {selectedProvenance ? (
             <p className="text-xs leading-relaxed text-ivory/50">

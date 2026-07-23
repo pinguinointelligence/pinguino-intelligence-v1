@@ -25,6 +25,10 @@ export interface IngredientLibrary {
   ingredients: readonly EngineIngredient[];
   /** Per-ingredient search text (richer than EngineIngredient for PI Base rows). */
   searchIndex: SearchIndex;
+  /** id → NORMALIZED name-only text (display + internal) — semantic-vs-SKU ranking (owner P0). */
+  nameIndex: SearchIndex;
+  /** id → Mapper subcategory (the „form": fresh_fruit_profile / *_paste / *_soda …). */
+  formIndex: SearchIndex;
   source: LibrarySource;
   status: LibraryStatus;
   /** The owner's confirmed products as engine ingredients ("My Products" group). The base
@@ -71,7 +75,9 @@ function rowSearchText(row: IngredientRow, engineCategory: string): string {
 
 function demoLibrary(status: LibraryStatus): IngredientLibrary {
   const searchIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, demoSearchText(i)]));
-  return { ingredients: DEMO_INGREDIENTS, searchIndex, source: 'demo', status, ...NO_PRODUCTS };
+  const nameIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, normalizeSearchText(i.name)]));
+  const formIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, i.category]));
+  return { ingredients: DEMO_INGREDIENTS, searchIndex, nameIndex, formIndex, source: 'demo', status, ...NO_PRODUCTS };
 }
 
 export interface SelectLibraryArgs {
@@ -97,7 +103,10 @@ export function selectIngredientLibrary({
   if (isError) return demoLibrary('fallback');
   if (rows === undefined) {
     // Pro, fetching — show a loading state, never a demo flash.
-    return { ingredients: [], searchIndex: new Map(), source: 'pi_base', status: 'loading', ...NO_PRODUCTS };
+    return {
+      ingredients: [], searchIndex: new Map(), nameIndex: new Map(), formIndex: new Map(),
+      source: 'pi_base', status: 'loading', ...NO_PRODUCTS,
+    };
   }
   if (rows.length === 0) {
     // RLS returned nothing / not seeded / backend unavailable.
@@ -106,12 +115,16 @@ export function selectIngredientLibrary({
 
   const ingredients: EngineIngredient[] = [];
   const searchIndex = new Map<string, string>();
+  const nameIndex = new Map<string, string>();
+  const formIndex = new Map<string, string>();
   for (const row of rows) {
     const ingredient = ingredientRowToEngineIngredient(row);
     ingredients.push(ingredient);
     searchIndex.set(ingredient.id, rowSearchText(row, ingredient.category));
+    nameIndex.set(ingredient.id, normalizeSearchText(`${row.ingredient_name_display} ${row.ingredient_name_internal}`));
+    formIndex.set(ingredient.id, row.ingredient_subcategory ?? '');
   }
-  return { ingredients, searchIndex, source: 'pi_base', status: 'ready', ...NO_PRODUCTS };
+  return { ingredients, searchIndex, nameIndex, formIndex, source: 'pi_base', status: 'ready', ...NO_PRODUCTS };
 }
 
 /**

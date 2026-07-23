@@ -57,9 +57,13 @@ export function buildStudioPickerProofLibrary(): IngredientLibrary {
   const productLib = buildProductEngineLibrary({ products, referenceById });
   const ingredients = references.map(ingredientRowToEngineIngredient);
   const searchIndex = new Map(ingredients.map((i) => [i.id, `${i.name} ${i.id} ${i.category}`.toLowerCase()]));
+  const nameIndex = new Map(ingredients.map((i) => [i.id, i.name.toLowerCase()]));
+  const formIndex = new Map(references.map((r) => [r.ingredient_id, r.ingredient_subcategory ?? '']));
   return {
     ingredients,
     searchIndex,
+    nameIndex,
+    formIndex,
     source: 'pi_base',
     status: 'ready',
     products: productLib.ingredients,

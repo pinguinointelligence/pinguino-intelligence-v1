@@ -108,3 +108,67 @@ export function haystackMatchesQuery(normalizedHaystack: string, rawQuery: strin
   if (tokenTerms.length === 0) return true;
   return tokenTerms.every((terms) => terms.some((t) => normalizedHaystack.includes(t)));
 }
+
+/* ------------------------------------------------------------------ ranking -- */
+
+/**
+ * Natural-form ranking (owner P0): fresh/raw forms first, industrial pastes/powders/beverages
+ * last. Keyed on the Mapper `ingredient_subcategory` (the „form"). Lower = ranked higher.
+ */
+export function formRank(form: string | null | undefined): number {
+  const f = (form ?? '').toLowerCase();
+  if (f === '') return 5;
+  if (f.includes('fresh') || f === 'fruit_profile' || f.includes('tropical_fruit') || f.includes('fruit_peel')) return 0;
+  if (f.includes('frozen')) return 1;
+  if (f.includes('puree')) return 2;
+  if (f.includes('concentrate') || f.includes('nectar')) return 3;
+  if (f.includes('dried')) return 4;
+  if (f.includes('paste') || f.includes('variegat')) return 6;
+  if (f.includes('powder') || f.includes('icing')) return 7;
+  if (f.includes('syrup') || f.includes('sweetened') || f.includes('sauce')) return 7;
+  if (f.includes('aroma') || f.includes('flavour') || f.includes('flavor')) return 8;
+  if (f.includes('soda') || f.includes('drink') || f.includes('beverage') || f.includes('energy')) return 9;
+  return 5;
+}
+
+/** Customer-facing Polish form label for a Mapper subcategory (owner P0 — show the form). */
+export function formLabelPl(form: string | null | undefined): string {
+  const rank = formRank(form);
+  return (
+    ['Świeży owoc', 'Mrożony', 'Przecier', 'Koncentrat', 'Suszony', '', 'Pasta', 'Proszek', 'Aromat', 'Napój'][rank] ??
+    ''
+  );
+}
+
+export interface RankMeta {
+  /** id → NORMALIZED name-only text (display + internal), for semantic-vs-SKU scoring. */
+  nameIndex: ReadonlyMap<string, string>;
+  /** id → Mapper subcategory (form). */
+  formIndex: ReadonlyMap<string, string>;
+}
+
+/**
+ * Rank filtered matches so the owner sees the NATURAL / exact form first:
+ *   1. semantic NAME matches before rows that matched only on id / EAN / SKU / brand
+ *      (a „banana" query must not surface white chocolate because its code contains „ban");
+ *   2. then by FORM (fresh → frozen → puree → concentrate → paste → powder → aroma → beverage);
+ *   3. then alphabetically; stable for equal keys.
+ * An empty query keeps the incoming order (browse mode).
+ */
+export function rankIngredients<T extends { id: string; name: string }>(
+  items: readonly T[],
+  rawQuery: string,
+  meta: RankMeta,
+): T[] {
+  if (rawQuery.trim() === '') return [...items];
+  return items
+    .map((item, i) => {
+      const nameHay = meta.nameIndex.get(item.id) ?? normalizeSearchText(item.name);
+      const nameHit = haystackMatchesQuery(nameHay, rawQuery) ? 0 : 1;
+      return { item, i, nameHit, form: formRank(meta.formIndex.get(item.id)), name: item.name.toLowerCase() };
+    })
+    .sort(
+      (a, b) => a.nameHit - b.nameHit || a.form - b.form || a.name.localeCompare(b.name) || a.i - b.i,
+    )
+    .map((x) => x.item);
+}

@@ -12,6 +12,8 @@ const provenance = (id: string, p: ProductLibraryProvenance) => new Map([[id, p]
 const lib = (over: Partial<IngredientLibrary> = {}): IngredientLibrary => ({
   ingredients: [],
   searchIndex: new Map(),
+  nameIndex: new Map(),
+  formIndex: new Map(),
   source: 'pi_base',
   status: 'ready',
   products: [],
