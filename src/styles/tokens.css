@@ -12,6 +12,12 @@
   /* Brand shell (Phase 6C) — global black AI-first surface + mega-menu layers */
   --color-shell: #1a1a1a;
   --color-shell-raised: #232323;
+
+  /* Dark professional workspace (Masterpiece Phase 4/5) — the canonical Pro identity.
+     Deep graphite BELOW the shell tone, so the engine lab (#1a1a1a) reads as a slightly
+     ELEVATED dark surface inside the workspace instead of a dark island on white. */
+  --color-graphite: #131417;
+  --color-graphite-raised: #1d1e22;
   /* Translucent ivory used for nav hover/active pills + hairlines on the shell */
   --color-shell-line: #efe9dc1f;
 
