@@ -104,6 +104,10 @@ export const constraintStudioCopy = {
       `${rounds > 0 ? ` (${rounds} ${rounds === 1 ? 'runda' : 'rundy'})` : ''}.`,
     referenceDerivedNote:
       'Wzorzec pochodny z receptur referencyjnych (staging) — nie jest zatwierdzony naukowo.',
+    /* Owner P0 NIGHTLY Phase 6 — the template-seeded fallback provenance note. */
+    localFallbackNote:
+      'Korekta lokalna nie znalazła bezpiecznej poprawy — PI ułożyło recepturę od zatwierdzonego ' +
+      'wzorca z tymi samymi składnikami, blokadami i partią.',
     addedLine: (name: string, grams: string) => `PI dodało: ${name} · ${grams}.`,
     residualWarning: (residual: string) =>
       `Suma składników odbiega od docelowej masy partii o ${residual}. Zastosowanie zostanie zablokowane.`,
@@ -171,6 +175,36 @@ export const constraintStudioCopy = {
     rescaleLockedSum: (minimum: string) =>
       `Zablokowane składniki ważą łącznie więcej niż nowa partia. ` +
       `Minimalna partia dla obecnych blokad: ${minimum}.`,
+    /* Owner P0 NIGHTLY Phase 7(b) — the BEST-SAFE FIXED POINT (explanatory,
+     * NOT a failure): local corrector + template fallback both verified. */
+    bestSafeResult:
+      'PI nie znalazło dalszej bezpiecznej poprawy. Obecna receptura jest najlepszym ' +
+      'zweryfikowanym wynikiem dla aktualnych składników i ograniczeń.',
+  },
+
+  /* ---------- Owner P0 NIGHTLY — best-safe result details (Phase 7/8) ------ */
+  bestSafe: {
+    scoreLine: (display: string, label: string) => `Dopasowanie receptury: ${display} — ${label}.`,
+    softDeviations: (labels: readonly string[]) =>
+      `Miękkie odchylenia (zakresy prowizoryczne): ${listPl(labels)}.`,
+    noSoftDeviations: 'Brak odchyleń w zakresach prowizorycznych.',
+    stopReason: {
+      local_no_proposal: (invocations: number) =>
+        `Powód zatrzymania: solver lokalny (uruchomiony ${invocations} ×) nie znalazł ` +
+        `bezpiecznej korekty, a wzorzec nie daje lepszego bezpiecznego wyniku.`,
+      template_fixed_point: (invocations: number) =>
+        `Powód zatrzymania: receptura odpowiada już wzorcowi referencyjnemu — solver lokalny ` +
+        `(uruchomiony ${invocations} ×) i reformulacja od wzorca nie dają dalszej bezpiecznej poprawy.`,
+    },
+    calibration: {
+      category_fallback:
+        'Status kalibracji: profil oceniany według zakresów zastępczych (fallback profilu) — ' +
+        'kalibracja naukowa tego profilu jest w toku; odchylenia w tych zakresach nie blokują receptury.',
+      temperature_fallback:
+        'Status kalibracji: temperatura oceniana według najbliższej skalibrowanej celi — ' +
+        'odchylenia w tych zakresach nie blokują receptury.',
+    },
+    templateLine: (templateId: string) => `Wzorzec odniesienia: ${templateId}.`,
   },
 
   /* -------------------- structured recalc-failure diagnosis (owner P0) ---- */

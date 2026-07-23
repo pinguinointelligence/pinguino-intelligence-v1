@@ -15,6 +15,7 @@ import { selectTargetBand, type CorrectionResult, type RecipeInput, type RecipeR
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { buildLockReport } from '@/features/constraint-studio/recalcDiagnosis';
+import { classifyViolationBands } from '@/features/formulation/violationBands';
 import { detectClassifications, type VisibleProductType } from './productType';
 
 const d = copy.studio.diagnostic;
@@ -66,10 +67,21 @@ export function OwnerDiagnosticPanel({
         detected.alcohol && d.class.alcohol,
       ].filter(Boolean) as string[]
     );
+    // Owner P0 NIGHTLY (A9) — hard vs soft remaining violations by band
+    // provenance + the profile's band source (read-only classification).
+    const bands = classifyViolationBands(input);
     return {
       detectedList: detectedList.length > 0 ? detectedList.join(', ') : d.none,
       cellLabel: `${input.category} @ −${Math.abs(input.target_temperature_c)}°C (${npac?.band_status ?? '—'})`,
       fallback: npac?.temperature_fallback || npac?.category_fallback ? d.yes : d.no,
+      bandSourceLabel:
+        bands.bandSource === 'category_fallback'
+          ? d.bandSourceCategoryFallback
+          : bands.temperatureFallback
+            ? d.bandSourceTemperatureFallback
+            : d.bandSourceNative,
+      hardViolations: bands.hardMetrics,
+      softViolations: bands.softMetrics,
       lockedCount: lockReport.filter((r) => !r.adjustable).length,
       unresolved,
       optimizerCode:
@@ -77,6 +89,45 @@ export function OwnerDiagnosticPanel({
       verification: blocked ? d.verify.blocked : preview ? d.verify.previewStaged : d.verify.idle,
     };
   }, [input, result, corrections, constraints, blocked, preview]);
+
+  // Owner P0 NIGHTLY (A9) — formulation QA truth: role trace with exact
+  // candidate ids, solver invocation proof, fallback provenance and the final
+  // classification. Reads ONLY already-computed store/preview state.
+  const qa = useMemo(() => {
+    const roleTrace =
+      preview?.formulation?.roleTrace ??
+      (previewIssue?.code === 'missing_required_role' ? (previewIssue.roleTrace ?? []) : []);
+    const roleTraceLabel =
+      roleTrace.length > 0
+        ? roleTrace
+            .map(
+              (row) =>
+                `${row.role}→${row.outcome}` +
+                (row.toolboxId ? `(${row.toolboxId}${row.mapperId ? `=${row.mapperId}` : ''})` : ''),
+            )
+            .join('; ')
+        : d.none;
+    const solverRuns =
+      previewIssue && 'solverInvocations' in previewIssue && previewIssue.solverInvocations !== undefined
+        ? String(previewIssue.solverInvocations)
+        : preview?.autoBalance
+          ? String(preview.autoBalance.solverRounds)
+          : d.none;
+    const fallbackInvoked =
+      preview?.formulation?.localFallback === true || previewIssue?.code === 'best_safe_result'
+        ? d.yes
+        : d.no;
+    const finalClassification = preview
+      ? d.classificationPreview
+      : previewIssue
+        ? previewIssue.code === 'best_safe_result'
+          ? d.classificationBestSafe
+          : previewIssue.code
+        : blocked
+          ? blocked.code
+          : d.classificationIdle;
+    return { roleTraceLabel, solverRuns, fallbackInvoked, finalClassification };
+  }, [preview, previewIssue, blocked]);
 
   if (!technicalView) return null;
 
@@ -130,6 +181,20 @@ export function OwnerDiagnosticPanel({
           label={d.rejectionCode}
           value={previewIssue ? previewIssue.code : blocked ? blocked.code : d.none}
         />
+        {/* Owner P0 NIGHTLY (Agent A, A9) — formulation QA truth rows. */}
+        <Row label={d.bandSource} value={info.bandSourceLabel} />
+        <Row
+          label={d.hardViolations}
+          value={info.hardViolations.length > 0 ? info.hardViolations.join(', ') : d.none}
+        />
+        <Row
+          label={d.softViolations}
+          value={info.softViolations.length > 0 ? info.softViolations.join(', ') : d.none}
+        />
+        <Row label={d.roleTrace} value={qa.roleTraceLabel} />
+        <Row label={d.solverRuns} value={qa.solverRuns} />
+        <Row label={d.fallbackInvoked} value={qa.fallbackInvoked} />
+        <Row label={d.finalClassification} value={qa.finalClassification} />
       </dl>
     </details>
   );

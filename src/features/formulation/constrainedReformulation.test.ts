@@ -222,7 +222,10 @@ describe('FIXTURE F — 20 constrained cycles (tests 22/23)', () => {
       if (useConstraintStudioStore.getState().preview) useConstraintStudioStore.getState().applyPreview();
       const items = useRecipeStore.getState().items;
       expect(useRecipeStore.getState().target_batch_grams).toBe(1000);
-      expect(items.reduce((a, i) => a + i.planned_grams, 0)).toBeLessThan(1100);
+      const total = items.reduce((a, i) => a + i.planned_grams, 0);
+      expect(total).toBeLessThan(1100);
+      // Owner A7 (NIGHTLY): no zero-total corruption across accepted cycles.
+      expect(total).toBeGreaterThan(0);
       expect(new Set(items.map((i) => i.ingredient.id)).size).toBe(items.length);
       const milk = items.find((i) => i.id === 'l-milk')!;
       expect(Object.is(milk.planned_grams, 500)).toBe(true); // the lock survives every cycle

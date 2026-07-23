@@ -160,6 +160,10 @@ const fromPreset = (preset: DemoPreset) => ({
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   items: preset.items.map((item) => ({ ...item })),
+  // Owner P0 NIGHTLY (exclusion lifecycle): exclusions are DRAFT-SCOPED — a
+  // fresh preset load / reset starts a fresh exclusion context. An ingredient
+  // never selected in the new draft is NOT excluded.
+  excludedIngredientIds: [] as string[],
   activePresetId: preset.id,
   savedRecipeId: null,
   savedRecipeName: null,
@@ -316,10 +320,17 @@ export const useRecipeStore = create<RecipeState>()(
             ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
             // Owner P0 (formulation): a REMOVED ingredient is excluded — PI must
             // never silently reintroduce it via the toolbox.
+            // Owner P0 NIGHTLY (exclusion lifecycle, live FAILURE B): exclusions
+            // are DRAFT-SCOPED. Removing the LAST line ends the draft — the now
+            // empty draft starts a fresh exclusion context, so ingredients the
+            // user cleared away while emptying the old draft are never treated
+            // as excluded in the next one (never-selected ≠ excluded).
             excludedIngredientIds:
-              removed && !state.excludedIngredientIds.includes(removed.ingredient.id)
-                ? [...state.excludedIngredientIds, removed.ingredient.id]
-                : state.excludedIngredientIds,
+              items.length === 0
+                ? []
+                : removed && !state.excludedIngredientIds.includes(removed.ingredient.id)
+                  ? [...state.excludedIngredientIds, removed.ingredient.id]
+                  : state.excludedIngredientIds,
             dirty: true,
           };
         }),

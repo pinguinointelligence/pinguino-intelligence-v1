@@ -126,6 +126,8 @@ export function ConstraintPreviewCard({
             batch rescale as formulation. */}
         {preview.formulation ? (
           <p className="text-[0.65rem] text-ivory/40" data-testid="preview-source">
+            {/* Owner P0 NIGHTLY Phase 6: name the template-seeded fallback honestly. */}
+            {preview.formulation.localFallback ? `${copy.preview.localFallbackNote} ` : ''}
             {copy.preview.sourceFormulation(
               preview.formulation.templateId,
               preview.autoBalance?.solverRounds ?? 0,

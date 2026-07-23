@@ -14,6 +14,9 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       return copy.previewIssue.noProposal;
     case 'unsafe_proposal':
       return copy.previewIssue.unsafeProposal;
+    case 'best_safe_result':
+      // Owner P0 NIGHTLY Phase 7(b): explanatory terminal state, not a failure.
+      return copy.previewIssue.bestSafeResult;
     case 'unsupported_profile':
       return copy.previewIssue.unsupportedProfile;
     case 'missing_required_role':

@@ -662,6 +662,20 @@ export const copy = {
       yes: 'tak',
       no: 'nie',
       none: '—',
+      /* Owner P0 NIGHTLY (Agent A, A9) — formulation QA rows. ADD-only keys. */
+      bandSource: 'Źródło zakresów',
+      bandSourceNative: 'natywne (zatwierdzone)',
+      bandSourceCategoryFallback: 'fallback profilu (prowizoryczne)',
+      bandSourceTemperatureFallback: 'fallback temperatury (prowizoryczne)',
+      roleTrace: 'Ślad ról (rola→wynik)',
+      solverRuns: 'Solver lokalny (uruchomienia)',
+      fallbackInvoked: 'Fallback wzorca użyty',
+      finalClassification: 'Klasyfikacja końcowa',
+      classificationPreview: 'podgląd przygotowany',
+      classificationBestSafe: 'najlepszy bezpieczny wynik (best-safe)',
+      classificationIdle: 'nie uruchomiono',
+      hardViolations: 'Twarde naruszenia (natywne zakresy)',
+      softViolations: 'Miękkie naruszenia (zakresy prowizoryczne)',
     },
     /** Collapsed „Narzędzia zaawansowane" section — the secondary QA/diagnostic tools. */
     advancedTools: {
