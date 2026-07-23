@@ -89,6 +89,8 @@ export interface PreviewLineDiff {
 export interface ConstraintPreview {
   kind: PreviewKind;
   titlePl: string;
+  /** Owner P0 (Przelicz z PI) — auto-balance proof: what the orchestration actually did. */
+  autoBalance?: { batchRescaled: boolean; solverRounds: number };
   /** Fingerprint of (input, constraints) the preview was built for. */
   baseFingerprint: string;
   /** The proposed working state — applied ONLY through `commitPreview`. */
@@ -294,7 +296,9 @@ export type BuildPreviewResult =
   | { ok: true; preview: ConstraintPreview }
   | { ok: false; code: 'invalid_constraints'; issues: ConstraintValidationIssue[] }
   | { ok: false; code: 'already_clean' }
-  | { ok: false; code: 'no_proposal' }
+  /** Owner P0 (Przelicz z PI): a no-proposal failure carries the PROOF — the solver
+   * really ran (invocation count) and these exact metrics stayed out of band. */
+  | { ok: false; code: 'no_proposal'; violatedMetrics?: string[]; solverInvocations?: number }
   | { ok: false; code: 'apply_failed' }
   | { ok: false; code: 'line_missing' }
   | { ok: false; code: 'rescale_invalid' }
@@ -330,11 +334,50 @@ const finishPreview = (
   };
 };
 
+/** One solver round: propose → filter (§17 add-intent) → apply. PURE helper. */
+function solveOneRound(
+  current: RecipeInput,
+  constrainedIngredientIds: ReadonlySet<string>,
+): { applied: RecipeInput; proposal: CorrectionProposal } | { applied: null; violated: string[] } {
+  const context = recipeContext(current);
+  const proposed = proposeAutoFix({ input: current, context, exactCorrectionGrams: true });
+  const violated = [...new Set(detectViolations(calculateRecipe(current)).map((v) => v.metric))];
+  if (proposed.redacted) return { applied: null, violated };
+  const proposal: CorrectionProposal | undefined = proposed.proposals.find(
+    (candidate) =>
+      candidate.actions.length > 0 &&
+      candidate.actions.every(
+        (action) => action.type !== 'add' || !constrainedIngredientIds.has(action.ingredient_id),
+      ),
+  );
+  if (!proposal) return { applied: null, violated };
+  const applied = applyAutoFix({ input: current, proposal, context });
+  if (!applied.success) return { applied: null, violated };
+  return { applied: applied.newInput, proposal };
+}
+
+/** Max solver rounds per recalculation — idempotence is a proven engine
+ * property (repeated propose→apply reaches a fixed point), the cap is a guard. */
+const MAX_SOLVER_ROUNDS = 4;
+
 /**
- * „Dopasuj recepturę” (§12.4): run the REAL solver on the constraint-mapped
- * input and stage the outcome as a preview. Never mutates, never persists.
- * The first proposal carrying actions is used (the solver's own ranking);
- * honest failure codes when there is nothing to propose.
+ * „Przelicz z PI” (owner P0 — REAL AUTO-BALANCE): recalculate and automatically
+ * balance the COMPLETE current recipe. Composes ONLY approved mechanisms — no
+ * new math, no science change:
+ *   1. batch reconciliation FIRST — a planned recipe off its target batch is
+ *      restored through the approved §17.4 `rescaleBatchToTarget` (locked grams
+ *      byte-exact; per-100 g concentrations preserved), so a 5 g draft against
+ *      a 1000 g target is a solvable recipe, not a dead end;
+ *   2. violations on the batch-true recipe → none? `already_clean` (or the
+ *      batch-restore preview when step 1 changed something);
+ *   3. otherwise ITERATE the canonical solver (`proposeAutoFix`/`applyAutoFix`,
+ *      each round Golden-Middle-verified by the engine itself) to a fixed point
+ *      (≤ MAX_SOLVER_ROUNDS), merging by canonical identity and restoring the
+ *      batch after every round;
+ *   4. something changed → verified Preview; NOTHING changed → a PROVEN
+ *      failure carrying the solver-invocation count and the exact violated
+ *      metrics — never one generic sentence for every input.
+ * Never mutates, never persists; §17 locks respected structurally throughout.
  */
 export function buildOptimizePreview(
   input: RecipeInput,
@@ -346,69 +389,78 @@ export function buildOptimizePreview(
     return { ok: false, code: 'invalid_constraints', issues: constrained.issues };
   }
 
+  const hasActuals = input.items.some((item) => item.actual_grams !== null);
+  const offBatch = (candidate: RecipeInput): boolean =>
+    !hasActuals && Math.abs(plannedSum(candidate) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G;
+  const restoreBatch = (candidate: RecipeInput): RecipeInput => {
+    if (!offBatch(candidate)) return candidate;
+    const restored = rescaleBatchToTarget(candidate, set, input.target_batch_grams);
+    return restored.ok ? restored.input : candidate;
+  };
+
+  // 1. Batch equality is part of the DEFAULT objective — reconcile it first.
+  let working = restoreBatch(constrained.input);
+  const batchRescaled = working !== constrained.input;
+
   const beforeResult = calculateRecipe(constrained.input);
   const violationsBefore = violationCount(beforeResult);
   const hasCritical = beforeResult.warnings.some((warning) => warning.severity === 'critical');
-  if (violationsBefore === 0 && !hasCritical) {
+  if (violationCount(calculateRecipe(working)) === 0 && !hasCritical && !batchRescaled) {
     return { ok: false, code: 'already_clean' };
   }
 
-  const context = recipeContext(constrained.input);
-  const proposed = proposeAutoFix({
-    input: constrained.input,
-    context,
-    exactCorrectionGrams: true,
-  });
-  if (proposed.redacted) return { ok: false, code: 'no_proposal' };
-  // §17 constraint INTENT at the ingredient level (same rule as the
-  // feasibility layer's findFullFixProposal): „mam dokładnie tyle tego
-  // składnika” — a proposal that ADDS a parallel line of a locked/range
-  // ingredient does not respect the lock, even though the locked LINE itself
-  // stays untouched. Such proposals are skipped, never silently applied.
+  // 2. Iterate the canonical solver on the batch-true recipe to a fixed point.
   const constrainedIngredientIds = new Set(
-    input.items
-      .filter((item) => isConstrained(set, item.id))
-      .map((item) => item.ingredient.id),
+    input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
   );
-  const proposal: CorrectionProposal | undefined = proposed.proposals.find(
-    (candidate) =>
-      candidate.actions.length > 0 &&
-      candidate.actions.every(
-        (action) => action.type !== 'add' || !constrainedIngredientIds.has(action.ingredient_id),
-      ),
-  );
-  if (!proposal) return { ok: false, code: 'no_proposal' };
-
-  const applied = applyAutoFix({ input: constrained.input, proposal, context });
-  if (!applied.success) return { ok: false, code: 'apply_failed' };
-
-  // Owner P0 (recalc duplication): fold solver adds into existing plannable
-  // lines of the same canonical ingredient, then restore the target batch.
-  let proposedInput = ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, applied.newInput));
-  const hasActuals = input.items.some((item) => item.actual_grams !== null);
-  if (!hasActuals && Math.abs(plannedSum(proposedInput) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G) {
-    // The APPROVED §17.4 batch mechanism: proportional on unlocked lines,
-    // locked grams preserved exactly. Per-100 g concentrations — and therefore
-    // the solver's fix — are preserved by proportional scaling. If it refuses
-    // (unreachable in practice: a solver change implies a scalable line), the
-    // un-scaled proposal continues and the Apply door blocks it honestly.
-    const restored = rescaleBatchToTarget(proposedInput, set, input.target_batch_grams);
-    if (restored.ok) proposedInput = restored.input;
+  let lastProposal: CorrectionProposal | null = null;
+  let solverRounds = 0;
+  let violated: string[] = [];
+  for (let round = 0; round < MAX_SOLVER_ROUNDS; round += 1) {
+    if (violationCount(calculateRecipe(working)) === 0) break;
+    const outcome = solveOneRound(working, constrainedIngredientIds);
+    solverRounds += 1;
+    if (outcome.applied === null) {
+      violated = outcome.violated;
+      break;
+    }
+    // Canonical-identity merge (owner P0 duplication) + batch restoration.
+    working = restoreBatch(ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, outcome.applied)));
+    lastProposal = outcome.proposal;
   }
-  return {
-    ok: true,
-    preview: finishPreview(
-      'optimize',
-      copy.preview.kindLabels.optimize,
-      input,
-      set,
-      proposedInput,
-      set,
-      violationsBefore,
-      buildProposalExplanation(constrained.input, set, proposal),
-      createdAt,
-    ),
-  };
+
+  const changed =
+    JSON.stringify(working.items.map((i) => [i.id, i.planned_grams])) !==
+    JSON.stringify(input.items.map((i) => [i.id, i.planned_grams]));
+  if (!changed) {
+    // The PROVEN failure: solver really ran `solverRounds` times and these
+    // exact metrics stayed out of band (empty = no violations detectable).
+    if (violated.length === 0) {
+      violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
+    }
+    return { ok: false, code: 'no_proposal', violatedMetrics: violated, solverInvocations: solverRounds };
+  }
+
+  const explanation = lastProposal
+    ? buildProposalExplanation(constrained.input, set, lastProposal)
+    : ((): ConstraintExplanationEntry[] => {
+        const lockedNames = lockedIngredientNames(input, set);
+        return lockedNames.length > 0 ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }] : [];
+      })();
+
+  const preview = finishPreview(
+    'optimize',
+    copy.preview.kindLabels.optimize,
+    input,
+    set,
+    working,
+    set,
+    violationsBefore,
+    explanation,
+    createdAt,
+  );
+  preview.autoBalance = { batchRescaled, solverRounds };
+  return { ok: true, preview };
 }
 
 /**

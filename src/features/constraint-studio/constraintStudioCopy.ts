@@ -118,7 +118,8 @@ export const constraintStudioCopy = {
 
   /* --------------------------------------- honest preview-failure notes --- */
   previewIssue: {
-    alreadyClean: 'Receptura jest już w optymalnym zakresie — nie ma nic do dopasowania.',
+    /* Owner P0 (Przelicz z PI) — the exact required already-balanced sentence. */
+    alreadyClean: 'Receptura znajduje się już w zatwierdzonym zakresie. PI nie proponuje zmian.',
     noProposal:
       'Solver nie znalazł korekty możliwej przy obecnych blokadach. Użyj „Sprawdź wykonalność ' +
       'blokad”, aby zobaczyć konkretną przyczynę.',
@@ -141,6 +142,28 @@ export const constraintStudioCopy = {
     noActiveLocks:
       'Solver nie znalazł możliwej korekty dla tej receptury. Żaden składnik nie jest ' +
       'zablokowany — przyczyną nie są blokady.',
+    /** Owner P0 (Przelicz z PI): a PROVEN no-solution failure — the solver really
+     * ran and these exact metrics stayed out of the approved bands. */
+    optimizerNoSolution: (metricLabels: readonly string[], solverInvocations: number) =>
+      `PI przeliczyło recepturę (solver uruchomiony ${solverInvocations} ×), ale nie znalazło ` +
+      `bezpiecznej korekty w zatwierdzonych zakresach.` +
+      (metricLabels.length > 0 ? ` Parametry poza zakresem: ${listPl(metricLabels)}.` : ''),
+    /** PL labels for the engine's target metrics (proof list rendering). */
+    metricLabels: {
+      pod: 'słodycz (POD)',
+      pac: 'PAC',
+      npac: 'NPAC',
+      fat: 'tłuszcz',
+      total_solids: 'sucha masa',
+      water: 'woda',
+      ice_fraction: 'udział lodu',
+      lactose: 'laktoza',
+      lactose_sandiness_risk: 'ryzyko piaszczystości (laktoza)',
+      aerating_protein: 'białko napowietrzające',
+      protein_in_solids: 'białko w suchej masie',
+      alcohol: 'alkohol',
+      sugars_in_solids: 'cukry w suchej masie',
+    } as Record<string, string>,
     /** Verified: every ingredient is non-adjustable (locks / odważone gramatury). */
     allLocked:
       'Wszystkie składniki są zablokowane. Odblokuj przynajmniej jeden składnik, aby PI mogło ' +

@@ -73,6 +73,10 @@ export interface RecalcDiagnosis {
   totalCount: number;
   /** Lines with poured actuals — the §15 add-only rescue context indicator. */
   pouredCount: number;
+  /** optimizer_no_solution proof: the exact engine metrics that stayed out of band. */
+  violatedMetrics?: string[];
+  /** optimizer_no_solution proof: how many times the solver was really invoked. */
+  solverInvocations?: number;
 }
 
 /* ------------------------------------------------------------------ rows -- */
@@ -188,8 +192,16 @@ export function diagnoseRecalcFailure(args: DiagnoseArgs): RecalcDiagnosis {
         // ≥1 verified active lock — a lock conflict may be claimed, WITH the proof list.
         return { code: 'locked_constraints_conflict', ...base };
       }
-      // ZERO locks: never blame locks.
-      return { code: 'no_active_locks', ...base };
+      // ZERO locks: never blame locks. Owner P0 (Przelicz z PI): the auto-balance
+      // pipeline now attaches PROOF (solver invocations + the exact violated
+      // metrics) — classify as the optimizer honestly finding no solution and
+      // carry the proof forward, never one generic sentence for every input.
+      return {
+        code: 'optimizer_no_solution',
+        ...base,
+        violatedMetrics: issue.violatedMetrics ?? [],
+        solverInvocations: issue.solverInvocations ?? 0,
+      };
     }
     default:
       // rescale_* codes cannot come from the optimize path; treat anything else honestly

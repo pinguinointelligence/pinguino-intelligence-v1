@@ -142,16 +142,23 @@ describe('Phase 5 — locks', () => {
 describe('failure classification (owner taxonomy)', () => {
   const noProposal = { ok: false as const, code: 'no_proposal' as const };
 
-  it('ZERO locks → never a lock conflict (no_active_locks; locks explicitly exonerated)', () => {
+  it('ZERO locks → never a lock conflict (PROVEN optimizer_no_solution with metrics + invocations)', () => {
     const diagnosis = diagnoseRecalcFailure({
       input: input(-12, cleanBase()),
       constraints: NO_CONSTRAINTS,
-      issue: noProposal,
+      issue: { ...noProposal, violatedMetrics: ['npac', 'lactose'], solverInvocations: 2 },
       servingModeId: null,
     });
-    expect(diagnosis.code).toBe('no_active_locks');
+    // Owner P0 (Przelicz z PI): the zero-lock failure is classified as the
+    // optimizer honestly finding no solution — WITH proof, never lock blame.
+    expect(diagnosis.code).toBe('optimizer_no_solution');
     expect(diagnosis.lockedCount).toBe(0);
-    expect(constraintStudioCopy.diagnosis.noActiveLocks).not.toContain('przy obecnych blokadach');
+    expect(diagnosis.violatedMetrics).toEqual(['npac', 'lactose']);
+    expect(diagnosis.solverInvocations).toBe(2);
+    const message = constraintStudioCopy.diagnosis.optimizerNoSolution(['NPAC', 'laktoza'], 2);
+    expect(message).not.toContain('blokad'); // locks explicitly exonerated
+    expect(message).toContain('solver uruchomiony 2 ×');
+    expect(message).toContain('NPAC');
   });
 
   it('≥1 verified lock → locked_constraints_conflict WITH the complete proven lock list', () => {
