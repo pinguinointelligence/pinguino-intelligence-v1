@@ -134,6 +134,19 @@ export const constraintStudioCopy = {
     dismiss: 'Rozumiem',
   },
 
+  /* --------- Owner P0 (Apply data integrity) — guarded-write failures ------ */
+  applyGuard: {
+    invalidLine: (name: string) =>
+      `Nie można zastosować podglądu, ponieważ brakuje prawidłowej gramatury dla składnika: ` +
+      `${name}. Receptura nie została zmieniona.`,
+    batchMismatch: (sum: number, target: number) =>
+      `Nie można zastosować podglądu: suma składników (${formatGramsPl(sum)}) nie zgadza się ` +
+      `z docelową masą partii (${formatGramsPl(target)}). Receptura nie została zmieniona.`,
+    writeFailed:
+      'Zapis receptury nie powiódł się i został wycofany. Receptura nie została zmieniona. ' +
+      'Spróbuj ponownie.',
+  },
+
   /* --------------------------------------- honest preview-failure notes --- */
   previewIssue: {
     /* Owner P0 (Przelicz z PI) — the exact required already-balanced sentence. */

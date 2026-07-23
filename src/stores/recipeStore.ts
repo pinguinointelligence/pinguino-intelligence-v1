@@ -84,6 +84,20 @@ export interface RecipeState {
   setFlavorIntensity: (value: FlavorIntensity) => void;
   setCostPriority: (value: CostPriority) => void;
 
+  /**
+   * Owner P0 (Apply data integrity) — the ONLY sanctioned write for a verified
+   * complete next RecipeInput. Validates EVERY line (stable id present, grams
+   * finite, not NaN, not negative), independently recomputes the total and
+   * requires it to equal `input.target_batch_grams` within the batch tolerance
+   * (planned recipes), writes items + batch in ONE atomic setState, then reads
+   * back and VERIFIES the write — any mismatch rolls back to the exact prior
+   * draft. Never coerces a missing amount to zero.
+   */
+  applyVerifiedRecipeInput: (input: RecipeInput) =>
+    | { ok: true }
+    | { ok: false; code: 'invalid_line'; lineName: string }
+    | { ok: false; code: 'batch_mismatch'; sum: number; target: number }
+    | { ok: false; code: 'write_verification_failed' };
   addIngredient: (ingredient: EngineIngredient, grams?: number) => void;
   removeItem: (lineId: string) => void;
   /** Owner P0 repair: fold plannable duplicate-ingredient lines into one (explicit action). */
@@ -234,6 +248,49 @@ export const useRecipeStore = create<RecipeState>()(
       setMachineCapacity: (machine_capacity_grams) => set({ machine_capacity_grams, dirty: true }),
       setFlavorIntensity: (flavor_intensity) => set({ flavor_intensity, dirty: true }),
       setCostPriority: (cost_priority) => set({ cost_priority, dirty: true }),
+
+      applyVerifiedRecipeInput: (input) => {
+        // Phase 5 — reject missing/invalid amounts (never coerce to zero).
+        for (const item of input.items) {
+          const grams = item.planned_grams;
+          if (
+            !item.ingredient?.id ||
+            typeof grams !== 'number' ||
+            Number.isNaN(grams) ||
+            !Number.isFinite(grams) ||
+            grams < 0
+          ) {
+            return { ok: false, code: 'invalid_line', lineName: item.ingredient?.name ?? item.id };
+          }
+        }
+        // Phase 6 — the door of last resort recomputes the total ITSELF.
+        const hasActuals = input.items.some((item) => item.actual_grams !== null);
+        const sum = input.items.reduce((total, item) => total + item.planned_grams, 0);
+        if (!hasActuals && Math.abs(sum - input.target_batch_grams) > 0.1) {
+          return { ok: false, code: 'batch_mismatch', sum, target: input.target_batch_grams };
+        }
+        // Phase 7 — atomic write + read-back verification with rollback.
+        const prior = useRecipeStore.getState();
+        const priorItems = prior.items;
+        const priorBatch = prior.target_batch_grams;
+        const nextItems = input.items.map((item) => ({ ...item }));
+        set({ items: nextItems, target_batch_grams: input.target_batch_grams, dirty: true });
+        const written = useRecipeStore.getState();
+        const writtenSum = written.items.reduce((total, item) => total + item.planned_grams, 0);
+        const intact =
+          written.items.length === nextItems.length &&
+          written.items.every(
+            (item, index) =>
+              item.id === nextItems[index]!.id &&
+              Object.is(item.planned_grams, nextItems[index]!.planned_grams),
+          ) &&
+          (hasActuals || Math.abs(writtenSum - input.target_batch_grams) <= 0.1);
+        if (!intact) {
+          set({ items: priorItems, target_batch_grams: priorBatch });
+          return { ok: false, code: 'write_verification_failed' };
+        }
+        return { ok: true };
+      },
 
       addIngredient: (ingredient, grams = 100) =>
         set((state) => {

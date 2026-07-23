@@ -43,16 +43,18 @@ describe('constraint-studio boundary guard', () => {
     expect(FILES.length).toBeGreaterThan(5);
   });
 
-  it('only the studio store writes the recipe store — exactly the two sanctioned writes', () => {
+  it('only the studio store writes the recipe store — the GUARDED apply + the snapshot undo', () => {
     for (const file of FILES) {
       const source = readSource(file);
       const writes = source.match(/useRecipeStore\.setState\(/g) ?? [];
       if (baseName(file) === 'constraintStudioStore.ts') {
-        expect(writes.length, 'apply + undo are the only recipe writes').toBe(2);
-        // the apply write consumes ONLY the pipeline-verified outcome…
-        expect(source).toContain('outcome.verified.input.items');
-        // …and the undo write consumes ONLY the pipeline-captured snapshot
-        expect(source).toContain('last.before.input.items');
+        // Owner P0 (Apply data integrity): the APPLY write goes through the
+        // recipe store's guarded atomic API (per-line validation + independent
+        // batch recompute + read-back rollback); undo restores the exact
+        // pipeline-captured snapshot via one direct setState.
+        expect(writes.length, 'undo is the only direct recipe write').toBe(1);
+        expect(source).toContain('applyVerifiedRecipeInput(outcome.verified.input)');
+        expect(source).toContain('snapshot.items.map((item) => ({ ...item }))');
       } else {
         expect(writes.length, `unexpected recipe write in ${file}`).toBe(0);
       }

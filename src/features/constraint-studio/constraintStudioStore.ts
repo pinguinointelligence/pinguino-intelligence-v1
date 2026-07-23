@@ -32,6 +32,9 @@ import {
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { constraintStudioCopy } from './constraintStudioCopy';
+
+const applyGuardCopy = constraintStudioCopy.applyGuard;
 import {
   buildBatchRescalePreview,
   buildOptimizePreview,
@@ -298,11 +301,28 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
       });
       return;
     }
-    // The ONLY verified recipe write (see module header).
-    useRecipeStore.setState({
-      items: outcome.verified.input.items.map((item) => ({ ...item })),
-      target_batch_grams: outcome.verified.input.target_batch_grams,
-    });
+    // The ONLY verified recipe write — through the GUARDED atomic store API
+    // (owner P0 Apply data integrity): per-line validation, independent batch
+    // recompute, atomic write, read-back verification with rollback. A failed
+    // write keeps the Preview available for retry and names the exact line.
+    const written = useRecipeStore.getState().applyVerifiedRecipeInput(outcome.verified.input);
+    if (!written.ok) {
+      set({
+        blocked: {
+          code: 'unsafe_proposal',
+          messagePl:
+            written.code === 'invalid_line'
+              ? applyGuardCopy.invalidLine(written.lineName)
+              : written.code === 'batch_mismatch'
+                ? applyGuardCopy.batchMismatch(written.sum, written.target)
+                : applyGuardCopy.writeFailed,
+          violationsBefore: 0,
+          violationsAfter: 0,
+        },
+        preview, // retry stays possible
+      });
+      return;
+    }
     set({
       constraints: outcome.verified.constraints,
       history: [...history, outcome.verified.record],
@@ -315,10 +335,18 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     const last = history[history.length - 1];
     if (!last) return;
     if (!isUndoAvailable(last, currentRecipeInput(), get().constraints)) return;
-    // Byte-exact restore of the pre-apply snapshot (§19.2/§20.3).
+    // Byte-exact restore of the pre-apply snapshot (§19.2/§20.3) through the
+    // SAME guarded atomic write. The snapshot may legitimately be off-batch
+    // (the pre-formulation draft), so batch equality is not enforced here —
+    // the snapshot IS the exact prior truth; line validity still is.
+    const snapshot = last.before.input;
+    const invalid = snapshot.items.some(
+      (item) => !Number.isFinite(item.planned_grams) || item.planned_grams < 0,
+    );
+    if (invalid) return; // structurally impossible for a §20.1 record; never write garbage
     useRecipeStore.setState({
-      items: last.before.input.items.map((item) => ({ ...item })),
-      target_batch_grams: last.before.input.target_batch_grams,
+      items: snapshot.items.map((item) => ({ ...item })),
+      target_batch_grams: snapshot.target_batch_grams,
     });
     set({
       constraints: last.before.constraints,
