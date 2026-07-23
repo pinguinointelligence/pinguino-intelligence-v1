@@ -218,11 +218,13 @@ export function nameMatchQuality(normalizedName: string, rawQuery: string): 0 | 
   return haystackMatchesQuery(normalizedName, rawQuery) ? 3 : 4;
 }
 
-/** Customer-facing Polish form label for a Mapper subcategory (owner P0 — show the form). */
+/** Customer-facing Polish form label for a Mapper subcategory (owner P0 — show the form).
+ * Rank 0 is the generic natural state „Świeże" — NEVER the fruit-specific „Świeży owoc",
+ * because the same rank holds plain dairy milk, cream and fresh herbs. */
 export function formLabelPl(form: string | null | undefined): string {
   const rank = formRank(form);
   return (
-    ['Świeży owoc', 'Mrożony', 'Przecier', 'Koncentrat', 'Suszony', '', 'Pasta', 'Proszek', 'Aromat', 'Napój'][rank] ??
+    ['Świeże', 'Mrożone', 'Przecier', 'Koncentrat', 'Suszone', '', 'Pasta', 'Proszek', 'Aromat', 'Napój'][rank] ??
     ''
   );
 }

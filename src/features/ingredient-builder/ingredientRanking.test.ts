@@ -36,7 +36,10 @@ describe('form rank + label', () => {
     expect(formRank('fresh_fruit_profile')).toBeLessThan(formRank('fruit_puree'));
     expect(formRank('fruit_puree')).toBeLessThan(formRank('fruit_flavor_paste'));
     expect(formRank('fruit_flavor_paste')).toBeLessThan(formRank('fruit_soda'));
-    expect(formLabelPl('fresh_fruit_profile')).toBe('Świeży owoc');
+    // Owner P0 (grouping/labels): the natural-state label is the GENERIC „Świeże"
+    // (the rank-0 bucket also holds plain dairy milk, cream and fresh herbs).
+    expect(formLabelPl('fresh_fruit_profile')).toBe('Świeże');
+    expect(formLabelPl('milk')).toBe('Świeże');
     expect(formLabelPl('fruit_puree')).toBe('Przecier');
     expect(formLabelPl('fruit_soda')).toBe('Napój');
   });

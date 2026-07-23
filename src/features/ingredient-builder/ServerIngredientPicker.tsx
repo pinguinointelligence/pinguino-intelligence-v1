@@ -14,7 +14,7 @@ import { copy } from '@/copy/en';
 import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { getIngredientById } from '@/services/ingredients';
-import { formLabelPl } from './ingredientSearch';
+import { groupHitsByForm, resultRowTextPl } from './ingredientPresentation';
 import { useIngredientSearch } from './useIngredientSearch';
 import { PickerEmptyState } from './IngredientPicker';
 import type { IngredientLibrary } from './ingredientLibrary';
@@ -127,19 +127,17 @@ export function ServerIngredientPicker({
               value={effectiveId}
               onChange={(event) => setPicked({ norm: search.settledNorm, id: event.currentTarget.value })}
             >
-              {search.hits.length > 0 ? (
-                <optgroup label={b.resultsLabel}>
-                  {search.hits.map((hit) => {
-                    const form = formLabelPl(hit.form);
-                    return (
-                      <option key={hit.id} value={hit.id}>
-                        {hit.name}
-                        {form ? ` · ${form}` : ''}
-                      </option>
-                    );
-                  })}
+              {/* Owner P0: results separated by FORM group (Świeże → Mrożone → … → Inne),
+                  rank order preserved inside each group; row = NAZWA · Kategoria · Forma. */}
+              {groupHitsByForm(search.hits).map((group) => (
+                <optgroup key={group.group} label={group.headingPl}>
+                  {group.hits.map((hit) => (
+                    <option key={hit.id} value={hit.id}>
+                      {resultRowTextPl(hit)}
+                    </option>
+                  ))}
                 </optgroup>
-              ) : null}
+              ))}
               {filteredProducts.length > 0 ? (
                 <optgroup label="My Products">
                   {filteredProducts.map((product) => (
