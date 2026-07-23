@@ -19,10 +19,19 @@ const BRAND_DIR = resolve(__dirname, '../../../public/brand');
 const sha256 = (relative: string): string =>
   createHash('sha256').update(readFileSync(resolve(BRAND_DIR, relative))).digest('hex');
 
+/** SVG is TEXT — git eol filters may check it out as LF or CRLF depending on
+ * the worktree. The lock therefore hashes the eol-NORMALIZED content, so it
+ * pins the artwork itself, not the checkout convention. Binary assets (JPEG)
+ * keep the raw byte hash. */
+const sha256Text = (relative: string): string =>
+  createHash('sha256')
+    .update(readFileSync(resolve(BRAND_DIR, relative)).toString('utf8').replace(/\r\n/g, '\n'))
+    .digest('hex');
+
 describe('canonical logo asset lock (public/brand)', () => {
-  it('favicon.svg is byte-identical to the locked artwork', () => {
-    expect(sha256('favicon.svg')).toBe(
-      '66557d73e74ec13458fbc0f81433578197d2e6b143ccf9e5b6441560ff8453b4',
+  it('favicon.svg artwork is identical to the locked artwork (eol-normalized)', () => {
+    expect(sha256Text('favicon.svg')).toBe(
+      '6a0738acafdfbcaf970f51384a14a8dd670bd68e0d7a6254017f4f2dda3bac58',
     );
   });
 

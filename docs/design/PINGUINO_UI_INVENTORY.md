@@ -149,7 +149,7 @@ sets are NOT force-merged tonight (CustomerShellV1 is an owned seam); the doc re
 
 | Asset | Path | Dimensions / aspect | SHA-256 |
 |-------|------|--------------------|---------|
-| Favicon (canonical vector mark) | `public/brand/favicon.svg` | 627 bytes, square viewBox | `66557d73e74ec13458fbc0f81433578197d2e6b143ccf9e5b6441560ff8453b4` |
+| Favicon (canonical vector mark) | `public/brand/favicon.svg` | 627 bytes, square viewBox | `6a0738acafdfbcaf970f51384a14a8dd670bd68e0d7a6254017f4f2dda3bac58 (eol-normalized content hash; the artwork itself, checkout-independent)` |
 | Logo reference (photographic reference) | `public/brand/logo_reference.jpeg` | 1000×1000 px (1:1), 39 069 bytes, progressive JPEG | `8d28d57b5eb0708881a3b11a291f3c3092dd7e4108da6ed36aeed2083ce67dd7` |
 
 In-app rendering: `IvoryLogoMark` (SVG component) + `PINGÜINO` wordmark text — placement only,
