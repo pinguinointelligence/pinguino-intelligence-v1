@@ -9,6 +9,11 @@
  * HONEST rules, enforced here and by the DB:
  *   • Every query is RLS-scoped to the signed-in user (`auth.uid() = owner_user_id` / `user_id`);
  *     on INSERT the owner id is read from `supabase.auth.getUser()` — never trusted from the caller.
+ *   • FIRST SAVE IS TRANSACTIONAL when the DB provides it: `createRecipe` prefers the
+ *     `create_recipe_with_v1` RPC (migration 0036, SECURITY INVOKER — RLS still applies), where the
+ *     three inserts are ONE database transaction. When the function is absent (PGRST202/42883) the
+ *     adapter uses the original sequential path with a best-effort compensating delete — explicitly
+ *     documented as NON-transactional (a crash between insert and compensation can orphan a row).
  *   • IMMUTABILITY: a version snapshot, once written, is NEVER updated or deleted. Editing appends a
  *     new version; "restore" appends a NEW latest version derived from an old snapshot (history is
  *     preserved). The DB grants only SELECT+INSERT on recipe_versions, so a bug cannot rewrite it.
@@ -125,6 +130,24 @@ function isUniqueViolation(error: { code?: string; message?: string } | null): b
   return m.includes('duplicate key') || m.includes('unique constraint') || m.includes('already exists');
 }
 
+/** The transactional first-save RPC (migration 0036) is not present in this database —
+ * PostgREST PGRST202 (schema cache: function not found) or Postgres 42883 (undefined_function).
+ * ONLY this condition activates the documented non-transactional fallback; any other error is a
+ * real failure of the atomic save and is surfaced honestly, never retried down a weaker path. */
+function isFunctionMissing(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST202' || error.code === '42883') return true;
+  const m = (error.message ?? '').toLowerCase();
+  return m.includes('could not find the function') || m.includes('does not exist');
+}
+
+/** jsonb payload returned by public.create_recipe_with_v1 (migration 0036). */
+interface CreateRecipeRpcResult {
+  recipe: SavedRecipeRow;
+  meta: SavedRecipeMetaRow;
+  version: RecipeVersionRow;
+}
+
 function tempFromInput(input: unknown): number | null {
   const t = (input as { target_temperature_c?: unknown } | null | undefined)?.target_temperature_c;
   return typeof t === 'number' ? t : null;
@@ -196,6 +219,13 @@ function hydrateRecipe(sr: SavedRecipeRow, meta: SavedRecipeMetaRow): SavedRecip
 /* ── adapter ── */
 
 export class SupabaseRecipes {
+  /**
+   * True once this database has proven it lacks the migration-0036 RPC (function-not-found).
+   * Memoized per adapter instance so we probe at most once per session — after that, the
+   * documented non-transactional path is used without an extra failing round-trip.
+   */
+  private rpcFirstSaveUnavailable = false;
+
   constructor(private readonly client: SupabaseClient) {}
 
   /** The signed-in user id — the ONLY authorization key. Never trusted from the caller. */
@@ -297,6 +327,54 @@ export class SupabaseRecipes {
     if (metaErr) throw new Error(metaErr.message);
   }
 
+  /**
+   * TRANSACTIONAL first save via public.create_recipe_with_v1 (migration 0036): the three inserts
+   * (saved_recipes + saved_recipe_meta + recipe_versions v1) run inside ONE database transaction —
+   * a failure anywhere rolls everything back server-side; no orphan is possible and no client-side
+   * compensation is needed. Returns null ONLY when this database does not have the function yet
+   * (PGRST202/42883), which activates the documented non-transactional fallback below. Any other
+   * RPC error is a real failed save and is thrown — never silently retried down the weaker path.
+   */
+  private async tryCreateRecipeRpc(
+    args: CreateRecipeArgs,
+  ): Promise<{ recipe: SavedRecipe; version: RecipeVersion } | null> {
+    if (this.rpcFirstSaveUnavailable) return null;
+    // A client without .rpc (e.g. a minimal test fake) cannot use the transactional path.
+    const rpc = (this.client as { rpc?: unknown }).rpc;
+    if (typeof rpc !== 'function') {
+      this.rpcFirstSaveUnavailable = true;
+      return null;
+    }
+    const { data, error } = (await this.client.rpc('create_recipe_with_v1', {
+      p_name: args.title,
+      p_description: args.notes ?? null,
+      p_recipe_input: args.recipeInput,
+      p_batch_grams: batchFromInput(args.recipeInput),
+      p_total_batch_g: (args.recipeInput as unknown as { target_batch_grams?: number }).target_batch_grams ?? 0,
+      p_engine_version: args.trace.engineVersion,
+      p_config_version: args.trace.configVersion,
+      p_mapper_dataset_version: args.trace.mapperDatasetVersion ?? null,
+      p_product_profile: null,
+      p_temperature_c: tempFromInput(args.recipeInput),
+      p_source: args.source ?? 'manual',
+      p_note: null,
+    })) as { data: CreateRecipeRpcResult | null; error: { code?: string; message?: string } | null };
+    if (error) {
+      if (isFunctionMissing(error)) {
+        this.rpcFirstSaveUnavailable = true;
+        return null;
+      }
+      throw new Error(error.message ?? 'transactional first save failed');
+    }
+    if (!data?.recipe || !data.meta || !data.version) {
+      throw new Error('transactional first save returned an incomplete payload');
+    }
+    return {
+      recipe: hydrateRecipe(data.recipe, data.meta),
+      version: rowToVersion(data.version),
+    };
+  }
+
   async createRecipe(
     args: CreateRecipeArgs,
   ): Promise<{ recipe: SavedRecipe; version: RecipeVersion }> {
@@ -314,6 +392,12 @@ export class SupabaseRecipes {
     if (!args.capabilities.canViewExactGrams) {
       throw new Error('This plan cannot save exact-grams recipes.');
     }
+
+    // Preferred: ONE real DB transaction (migration 0036). Falls through ONLY when the function
+    // is not present in this database — the legacy compensating path below is the documented,
+    // explicitly non-transactional fallback (owner-run SQL closes the gap on staging).
+    const transactional = await this.tryCreateRecipeRpc(args);
+    if (transactional) return transactional;
 
     // 1) the mutable recipe row (legacy source of truth) → yields the recipe id.
     const { data: srData, error: srErr } = await this.client

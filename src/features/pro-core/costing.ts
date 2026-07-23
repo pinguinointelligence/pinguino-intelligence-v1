@@ -152,12 +152,59 @@ export function resolveIngredientCosts(
   });
 }
 
+/* ── identity-aware resolution (E3 keying fix) ────────────────────────────────── */
+
+/**
+ * The identity of ONE recipe line for cost lookup. The SAME physical ingredient can be known by
+ * several ids across the product vertical: a picked product enters the recipe under its product
+ * identity (PR-ING-*), while a formulation-added toolbox line carries the canonical basement /
+ * toolbox id (PI-ING-* or e.g. 'sucrose'), linked via the product's matched_basement_id. A cost
+ * entry recorded under one of those ids must still price the line under the other — otherwise the
+ * lookup finds nothing and the recipe cost collapses.
+ */
+export interface CostLineIdentity {
+  /** The line's primary ingredient id (the id the recipe line actually carries). */
+  ingredientId: string;
+  /**
+   * Alternate ids the same physical ingredient is known by (e.g. the product PR-ING-* id when the
+   * primary id is the canonical PI-ING-* basement id, or vice versa). Tried IN ORDER, only after
+   * the primary id found no applicable entry. Deterministic — never fuzzy matching.
+   */
+  aliasIds?: readonly string[];
+}
+
+/**
+ * Resolve cost_per_kg per LINE, trying the primary id first and then each alias in order. The
+ * FIRST id with an applicable entry decides — even if that entry then fails (currency mismatch,
+ * missing density…), the failure is reported honestly rather than silently shopping further
+ * aliases for a different supplier's price. The returned resolution is always keyed by the LINE's
+ * primary id, so snapshot lines stay keyed to the recipe line identity.
+ */
+export function resolveCostsForLines(
+  entries: readonly CostEntry[],
+  lines: readonly CostLineIdentity[],
+  options: ResolveOptions & { asOf: string },
+): CostResolution[] {
+  return lines.map((line) => {
+    const keys = [line.ingredientId, ...(line.aliasIds ?? [])];
+    for (const key of keys) {
+      const entry = selectCurrentEntry(entries, key, options.asOf);
+      if (entry) {
+        return { ...resolveEntryCostPerKg(entry, options), ingredientId: line.ingredientId };
+      }
+    }
+    return fail(line.ingredientId, options.targetCurrency, options.basis, 'unknown', null);
+  });
+}
+
 /* ── immutable cost snapshot ──────────────────────────────────────────────────── */
 
 export interface SnapshotLineInput {
   ingredientId: string;
   ingredientName: string;
   grams: number;
+  /** Alternate identities for cost lookup (see CostLineIdentity). Never stored on the snapshot. */
+  aliasIds?: readonly string[];
 }
 
 export interface BuildSnapshotInput {
@@ -221,4 +268,79 @@ export function buildRecipeCostSnapshot(input: BuildSnapshotInput): RecipeCostSn
       createdBy: input.createdBy,
     }),
   ) as RecipeCostSnapshot;
+}
+
+/* ── three-state presentation contract (E3) ───────────────────────────────────── */
+
+/**
+ * How a recipe cost may be PRESENTED — the state contract every cost surface must follow:
+ *   • 'complete'  — every line priced: totalCost + costPerKg are real numbers;
+ *   • 'partial'   — SOME lines priced: the known subtotal + priced mass are explicit and the
+ *                   missing-price ingredients are LISTED; recipe-level totalCost/costPerKg stay
+ *                   null (a gap is never averaged over or silently treated as 0);
+ *   • 'no_prices' — nothing priced (or no lines): only the missing list is meaningful.
+ * A missing price must degrade the display to 'partial' — never collapse the whole cost.
+ */
+export type RecipeCostPresentationState = 'complete' | 'partial' | 'no_prices';
+
+/** One unpriced line, with the honest reason it could not be priced. */
+export interface MissingCostLine {
+  ingredientId: string;
+  ingredientName: string;
+  state: CostState;
+  reason: string;
+}
+
+export interface RecipeCostPresentation {
+  state: RecipeCostPresentationState;
+  currency: string;
+  basis: CostBasis;
+  /** Whole-recipe money — non-null ONLY when state === 'complete' (never invented). */
+  totalCost: number | null;
+  costPerKg: number | null;
+  /** Sum of the PRICED lines only — the explicit "at least" subtotal in the partial state. */
+  knownCost: number;
+  /** Grams covered by priced lines vs the whole recipe — the honest coverage of knownCost. */
+  pricedGrams: number;
+  totalGrams: number;
+  pricedLineCount: number;
+  lineCount: number;
+  /** Every unpriced ingredient, explicitly listed (empty ONLY when state === 'complete'). */
+  missing: MissingCostLine[];
+}
+
+/**
+ * Derive the three-state presentation from a frozen snapshot. Pure. Missing prices are NEVER
+ * bridged: partial exposes the known subtotal + explicit missing list, and whole-recipe
+ * totalCost/costPerKg remain null unless every single line resolved.
+ */
+export function presentRecipeCost(snapshot: RecipeCostSnapshot): RecipeCostPresentation {
+  const priced = snapshot.lines.filter((l) => l.state === 'known' && l.lineCost !== null);
+  const missing: MissingCostLine[] = snapshot.lines
+    .filter((l) => l.state !== 'known')
+    .map((l) => ({
+      ingredientId: l.ingredientId,
+      ingredientName: l.ingredientName,
+      state: l.state,
+      reason: STATE_REASON[l.state],
+    }));
+  const state: RecipeCostPresentationState =
+    snapshot.lines.length > 0 && missing.length === 0
+      ? 'complete'
+      : priced.length > 0
+        ? 'partial'
+        : 'no_prices';
+  return {
+    state,
+    currency: snapshot.currency,
+    basis: snapshot.basis,
+    totalCost: state === 'complete' ? snapshot.totalCost : null,
+    costPerKg: state === 'complete' ? snapshot.costPerKg : null,
+    knownCost: priced.reduce((sum, l) => sum + (l.lineCost ?? 0), 0),
+    pricedGrams: priced.reduce((sum, l) => sum + l.grams, 0),
+    totalGrams: snapshot.lines.reduce((sum, l) => sum + l.grams, 0),
+    pricedLineCount: priced.length,
+    lineCount: snapshot.lines.length,
+    missing,
+  };
 }
