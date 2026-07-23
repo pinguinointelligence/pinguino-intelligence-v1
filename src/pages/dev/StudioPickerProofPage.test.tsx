@@ -59,7 +59,10 @@ describe('production picker still uses real RLS data (fixture does not leak into
 
   it('the production hook fetches the real products + ingredients services', () => {
     expect(hook.includes('listMyProducts')).toBe(true);
-    expect(hook.includes('listEngineApprovedIngredients')).toBe(true);
+    // Owner P0 (live search): the hook loads ONLY the exact matched reference
+    // rows — the full-catalogue preload is gone; search is per-query.
+    expect(hook.includes('listIngredientsByIds')).toBe(true);
+    expect(hook.includes('serverSearchLibrary')).toBe(true);
     expect(hook.includes('buildStudioPickerProofLibrary')).toBe(false); // never imports the fixture
   });
 

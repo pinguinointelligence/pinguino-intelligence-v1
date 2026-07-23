@@ -66,6 +66,7 @@ export function buildStudioPickerProofLibrary(): IngredientLibrary {
     formIndex,
     source: 'pi_base',
     status: 'ready',
+    serverSearch: false,
     products: productLib.ingredients,
     productProvenance: productLib.provenance,
   };

@@ -16,6 +16,7 @@ const lib = (over: Partial<IngredientLibrary> = {}): IngredientLibrary => ({
   formIndex: new Map(),
   source: 'pi_base',
   status: 'ready',
+  serverSearch: false,
   products: [],
   productProvenance: new Map(),
   ...over,

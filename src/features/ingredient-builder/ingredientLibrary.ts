@@ -31,6 +31,9 @@ export interface IngredientLibrary {
   formIndex: SearchIndex;
   source: LibrarySource;
   status: LibraryStatus;
+  /** Owner P0: Pro searches the LIVE backend per query — no preloaded catalogue.
+   * false = the local demo/fallback catalog (12 preview ingredients). */
+  serverSearch: boolean;
   /** The owner's confirmed products as engine ingredients ("My Products" group). The base
    * selector leaves this empty; the hook fills it from buildProductEngineLibrary. */
   products: readonly EngineIngredient[];
@@ -77,7 +80,22 @@ function demoLibrary(status: LibraryStatus): IngredientLibrary {
   const searchIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, demoSearchText(i)]));
   const nameIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, normalizeSearchText(i.name)]));
   const formIndex = new Map(DEMO_INGREDIENTS.map((i) => [i.id, i.category]));
-  return { ingredients: DEMO_INGREDIENTS, searchIndex, nameIndex, formIndex, source: 'demo', status, ...NO_PRODUCTS };
+  return {
+    ingredients: DEMO_INGREDIENTS, searchIndex, nameIndex, formIndex,
+    source: 'demo', status, serverSearch: false, ...NO_PRODUCTS,
+  };
+}
+
+/**
+ * Owner P0 (live complete Mapper search): the canonical Pro library carries NO
+ * preloaded catalogue — every settled picker query hits the live backend
+ * (`useIngredientSearch`). This is the ONLY Pro library shape.
+ */
+export function serverSearchLibrary(): IngredientLibrary {
+  return {
+    ingredients: [], searchIndex: new Map(), nameIndex: new Map(), formIndex: new Map(),
+    source: 'pi_base', status: 'ready', serverSearch: true, ...NO_PRODUCTS,
+  };
 }
 
 export interface SelectLibraryArgs {
@@ -105,7 +123,7 @@ export function selectIngredientLibrary({
     // Pro, fetching — show a loading state, never a demo flash.
     return {
       ingredients: [], searchIndex: new Map(), nameIndex: new Map(), formIndex: new Map(),
-      source: 'pi_base', status: 'loading', ...NO_PRODUCTS,
+      source: 'pi_base', status: 'loading', serverSearch: false, ...NO_PRODUCTS,
     };
   }
   if (rows.length === 0) {
@@ -124,7 +142,10 @@ export function selectIngredientLibrary({
     nameIndex.set(ingredient.id, normalizeSearchText(`${row.ingredient_name_display} ${row.ingredient_name_internal}`));
     formIndex.set(ingredient.id, row.ingredient_subcategory ?? '');
   }
-  return { ingredients, searchIndex, nameIndex, formIndex, source: 'pi_base', status: 'ready', ...NO_PRODUCTS };
+  return {
+    ingredients, searchIndex, nameIndex, formIndex,
+    source: 'pi_base', status: 'ready', serverSearch: false, ...NO_PRODUCTS,
+  };
 }
 
 /**

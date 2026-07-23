@@ -766,6 +766,11 @@ export const copy = {
       searchLabel: 'Szukaj składników',
       searchPlaceholder: 'Szukaj składnika, kategorii, marki lub ID…',
       resultsLabel: 'Wyniki',
+      liveSearchHint:
+        'Wpisz nazwę składnika, kategorię lub ID — wyszukiwanie działa na żywym katalogu PI.',
+      searching: 'Szukam w katalogu PI…',
+      searchError: 'Nie udało się przeszukać katalogu PI. Sprawdź połączenie i spróbuj ponownie.',
+      moreResults: 'Pokaż więcej wyników',
       needsData: 'Składnik został wybrany, ale wymaga uzupełnienia danych przed dokładnym przeliczeniem.',
       duplicateNotice: (count: number) =>
         count === 1

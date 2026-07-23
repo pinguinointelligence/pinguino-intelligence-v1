@@ -6,6 +6,7 @@ import type { EffectiveRecipeItem } from '@/engine';
 import { useLineLockControls } from '@/features/constraint-studio/useLineLockControls';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { IngredientPicker } from './IngredientPicker';
+import { ServerIngredientPicker } from './ServerIngredientPicker';
 import { IngredientRow, ROW_GRID, type IngredientRowActions } from './IngredientRow';
 import { useIngredientLibrary } from './useIngredientLibrary';
 
@@ -117,7 +118,13 @@ export function IngredientBuilder({
       )}
 
       <div className="mt-5">
-        <IngredientPicker library={library} onAdd={addIngredient} />
+        {library.serverSearch ? (
+          // Owner P0: canonical Pro — LIVE per-query backend search (no snapshot).
+          <ServerIngredientPicker library={library} onAdd={addIngredient} />
+        ) : (
+          // Demo / fallback: the local 12-ingredient preview catalog.
+          <IngredientPicker library={library} onAdd={addIngredient} />
+        )}
       </div>
     </Card>
   );
