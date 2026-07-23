@@ -183,6 +183,16 @@ export function diagnoseRecalcFailure(args: DiagnoseArgs): RecalcDiagnosis {
     case 'line_missing':
     case 'apply_failed':
       return { code: 'constraint_verification_failed', ...base };
+    case 'unsafe_proposal':
+      // A candidate was PRODUCED but rejected (no improvement / batch-only
+      // rescale of an out-of-band draft). Classified as the safety check
+      // stopping the proposal; the panel renders the exact rejection sentence.
+      return {
+        code: 'constraint_verification_failed',
+        ...base,
+        violatedMetrics: issue.violatedMetrics ?? [],
+        solverInvocations: issue.solverInvocations ?? 0,
+      };
     case 'no_proposal': {
       if (lockedRows.length === lockReport.length) {
         // Every single ingredient is non-adjustable — the explicit all-locked state.

@@ -12,6 +12,8 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       return copy.previewIssue.alreadyClean;
     case 'no_proposal':
       return copy.previewIssue.noProposal;
+    case 'unsafe_proposal':
+      return copy.previewIssue.unsafeProposal;
     case 'apply_failed':
       return copy.previewIssue.applyFailed;
     case 'invalid_constraints':

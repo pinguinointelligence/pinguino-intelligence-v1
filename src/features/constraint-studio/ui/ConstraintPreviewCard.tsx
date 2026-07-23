@@ -122,6 +122,15 @@ export function ConstraintPreviewCard({
           )
         ) : null}
         <p>{copy.preview.outOfBandDelta(preview.violationsBefore, preview.violationsAfter)}</p>
+        {/* Owner QA (Phase 12): the EXACT source of the proposal — never mislabels a
+            batch rescale as formulation. */}
+        {preview.autoBalance ? (
+          <p className="text-[0.65rem] text-ivory/40" data-testid="preview-source">
+            {preview.autoBalance.solverRounds > 0
+              ? copy.preview.sourceSolver(preview.autoBalance.solverRounds)
+              : copy.preview.sourceBatchRescale}
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-4 flex items-center gap-2">

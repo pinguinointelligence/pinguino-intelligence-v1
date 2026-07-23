@@ -10,7 +10,7 @@ import { calculateRecipe, type RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { buildOptimizePreview, plannedSum } from './applyPipeline';
+import { buildOptimizePreview, commitPreview, plannedSum, workingStateFingerprint } from './applyPipeline';
 import { useConstraintStudioStore } from './constraintStudioStore';
 import { diagnoseRecalcFailure } from './recalcDiagnosis';
 import { constraintStudioCopy } from './constraintStudioCopy';
@@ -90,11 +90,83 @@ describe('owner Test 2 — the 1 g recipe produces a REAL calculated Preview (te
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('literally-all-1 g (6 g total): the previous dead end now returns a preview at 1000 g', () => {
+  it('literally-all-1 g (6 g total): NEVER an equal-rescale preview — improved & differentiated, or honestly rejected', () => {
     const result = buildOptimizePreview(input(ALL_ONE_GRAM()), NO, 'now');
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+    if (result.ok) {
+      // If accepted, it must be a REAL formulation improvement: batch-true,
+      // differentiated quantities (never all-equal) and no duplicates.
+      const grams = result.preview.proposedInput.items.map((i) => i.planned_grams);
+      expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+      expect(new Set(grams.map((g) => Math.round(g * 10))).size).toBeGreaterThan(1); // not all equal
+    } else {
+      // Owner definitive-fail rule: the equal-proportions rescale is REJECTED.
+      expect(result.code).toBe('unsafe_proposal');
+      if (result.code !== 'unsafe_proposal') return;
+      expect(result.batchOnly).toBe(true);
+      expect((result.violatedMetrics ?? []).length).toBeGreaterThan(0);
+    }
+  });
+
+  /** PHASE 9 — the OWNER'S EXACT 8-ingredient fixture (all 1 g, Gelato/Classic/−11, unlocked). */
+  const OWNER_EIGHT = () => [
+    line('l-milk', 'milk_3_5', 1),
+    line('l-cream', 'cream_30', 1),
+    line('l-smp', 'smp', 1),
+    line('l-suc', 'sucrose', 1),
+    line('l-dex', 'dextrose', 1),
+    line('l-tara', 'tara_gum', 1),
+    line('l-salt', 'salt', 1),
+    line('l-inulin', 'inulin', 1),
+  ];
+
+  it('OWNER FIXTURE: eight × 1 g NEVER becomes eight × 125 g (tests 1/2/3 of the required list)', () => {
+    const result = buildOptimizePreview(input(OWNER_EIGHT()), NO, 'now');
+    if (result.ok) {
+      const grams = result.preview.proposedInput.items.map((i) => Math.round(i.planned_grams * 10) / 10);
+      // FORBIDDEN: the equal-proportion 125 g result — differentiated quantities required.
+      expect(grams.every((g) => g === 125)).toBe(false);
+      expect(new Set(grams).size).toBeGreaterThan(1);
+      expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+      // and it must be a genuine improvement, enforced again at the Apply door
+      expect(result.preview.violationsAfter).toBeLessThan(result.preview.violationsBefore);
+    } else {
+      // The HONEST fallback: rejection with proof — no Preview, no Apply.
+      expect(result.code).toBe('unsafe_proposal');
+      if (result.code !== 'unsafe_proposal') return;
+      expect(result.batchOnly).toBe(true); // proven: only the proportional rescale was possible
+      expect((result.violatedMetrics ?? []).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('OWNER FIXTURE at the door: a forged 8 × 125 g preview is STRUCTURALLY unappliable', () => {
+    seedStore(OWNER_EIGHT());
+    // Forge exactly what the owner saw: every line 125 g, batch 1000 g, 9 → 9.
+    const current = buildRecipeInput(useRecipeStore.getState());
+    const forged: RecipeInput = {
+      ...current,
+      items: current.items.map((item) => ({ ...item, planned_grams: 125 })),
+    };
+    const calc = calculateRecipe(forged);
+    const preview = {
+      kind: 'optimize' as const,
+      titlePl: 'forged',
+      baseFingerprint: workingStateFingerprint(current, NO),
+      proposedInput: forged,
+      nextConstraints: NO,
+      lines: [],
+      violationsBefore: 9,
+      violationsAfter: 9,
+      explanation: [],
+      engineVersion: calc.engine_version,
+      configVersion: calc.config_version,
+      createdAt: 'now',
+    };
+    const outcome = commitPreview(current, NO, preview, 'now', 'apply-owner8');
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.code).toBe('unsafe_proposal');
+    expect(outcome.messagePl).toContain('PI nie utworzyło bezpiecznej receptury. Propozycja została odrzucona.');
+    expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
   });
 
   it('GŁÓWNY (main) does not imply a lock — a main line off-batch still recalculates (test 4)', () => {
@@ -104,6 +176,39 @@ describe('owner Test 2 — the 1 g recipe produces a REAL calculated Preview (te
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+  });
+});
+
+describe('PHASE 10 — the owner\'s EXACT MyGelato copy (999.91 g)', () => {
+  const MYGELATO = () => [
+    line('l-milk', 'milk_3_5', 592.3),
+    line('l-cream', 'cream_30', 216.6),
+    line('l-smp', 'smp', 22),
+    line('l-suc', 'sucrose', 32.5),
+    line('l-dex', 'dextrose', 110),
+    line('l-salt', 'salt', 0.8),
+    line('l-inulin', 'inulin', 23.7),
+    line('l-tara', 'tara_gum', 2.01),
+  ];
+
+  it.each([-11, -12, -13])('temperature %d: classified correctly — never a rescale-only preview (tests 10/18/19)', (temp) => {
+    const result = buildOptimizePreview(input(MYGELATO(), temp), NO, 'now');
+    if (result.ok) {
+      // A REAL safe correction: improvement enforced + batch-true + no duplicates.
+      const p = result.preview;
+      const improved =
+        p.violationsAfter === 0 || p.violationsAfter < p.violationsBefore || (p.autoBalance?.solverRounds ?? 0) > 0;
+      expect(improved).toBe(true);
+      expect(Math.abs(plannedSum(p.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+      const ids = p.proposedInput.items.map((i) => i.ingredient.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    } else {
+      // already balanced, or a PROVEN failure with the exact scientific reason.
+      expect(['already_clean', 'no_proposal', 'unsafe_proposal']).toContain(result.code);
+      if (result.code === 'no_proposal' || result.code === 'unsafe_proposal') {
+        expect((result.violatedMetrics ?? []).length).toBeGreaterThan(0); // exact reason, not generic
+      }
+    }
   });
 });
 

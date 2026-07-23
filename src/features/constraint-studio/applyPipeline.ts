@@ -115,6 +115,14 @@ export interface ConstraintPreview {
 
 const violationCount = (result: RecipeResult): number => detectViolations(result).length;
 
+/** The engine's own weighted out-of-band measure: total severity points (distance
+ * beyond band edges in half-widths). A pure proportional rescale NEVER changes it
+ * (per-100 g composition invariant) — only real solver actions can reduce it. */
+const totalSeverity = (input: RecipeInput): number =>
+  detectViolations(calculateRecipe(input)).reduce((sum, v) => sum + v.severity_points, 0);
+
+const SEVERITY_EPS = 1e-9;
+
 const isConstrained = (set: ConstraintSet, lineId: string): boolean => {
   const constraint = set.byLineId[lineId];
   return constraint !== undefined && constraint.mode !== 'ai';
@@ -299,6 +307,17 @@ export type BuildPreviewResult =
   /** Owner P0 (Przelicz z PI): a no-proposal failure carries the PROOF — the solver
    * really ran (invocation count) and these exact metrics stayed out of band. */
   | { ok: false; code: 'no_proposal'; violatedMetrics?: string[]; solverInvocations?: number }
+  /** Owner P0 (definitive fail): the pipeline PRODUCED a candidate but REJECTED it —
+   * it did not improve the recipe (e.g. a batch-only rescale of an out-of-band
+   * draft: 8 × 125 g with violations 9 → 9). Never presented as a preview. */
+  | {
+      ok: false;
+      code: 'unsafe_proposal';
+      violatedMetrics?: string[];
+      solverInvocations?: number;
+      /** True when the only change was the proportional batch rescale. */
+      batchOnly?: boolean;
+    }
   | { ok: false; code: 'apply_failed' }
   | { ok: false; code: 'line_missing' }
   | { ok: false; code: 'rescale_invalid' }
@@ -439,6 +458,32 @@ export function buildOptimizePreview(
       violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
     }
     return { ok: false, code: 'no_proposal', violatedMetrics: violated, solverInvocations: solverRounds };
+  }
+
+  // OWNER P0 ACCEPTANCE GATE (definitive-fail repair): a changed candidate is a
+  // valid „Przelicz z PI" outcome ONLY when it is scientifically acceptable:
+  //   - every hard metric in range, OR
+  //   - strictly fewer violations, OR
+  //   - a REAL solver action verifiably reduced the engine's weighted severity
+  //     (a pure proportional rescale never changes per-100 g severity, so the
+  //     8 × 125 g batch-only case — violations 9 → 9, severity unchanged — is
+  //     structurally rejected and can never become a Preview).
+  const afterViolationList = detectViolations(calculateRecipe(working));
+  const violationsAfter = afterViolationList.length;
+  const severityBefore = totalSeverity(constrained.input);
+  const severityAfter = totalSeverity(working);
+  const improved =
+    violationsAfter === 0 ||
+    violationsAfter < violationsBefore ||
+    (lastProposal !== null && severityAfter < severityBefore - SEVERITY_EPS);
+  if (!improved) {
+    return {
+      ok: false,
+      code: 'unsafe_proposal',
+      violatedMetrics: [...new Set(afterViolationList.map((v) => v.metric))],
+      solverInvocations: solverRounds,
+      batchOnly: lastProposal === null,
+    };
   }
 
   const explanation = lastProposal
@@ -622,7 +667,10 @@ export type BlockedApply =
   /** Owner P0 Phase 6: the proposal would introduce a duplicate canonical ingredient. */
   | { code: 'duplicate_lines'; messagePl: string; ingredientNames: string[] }
   /** Owner P0 Phase 5: proposed planned sum breaks the target-batch invariant. */
-  | { code: 'batch_total_mismatch'; messagePl: string; proposedSum: number; targetBatch: number };
+  | { code: 'batch_total_mismatch'; messagePl: string; proposedSum: number; targetBatch: number }
+  /** Owner P0 (definitive fail): an optimize proposal that does not improve an
+   * out-of-band recipe (e.g. batch-only rescale, 9 → 9) is never appliable. */
+  | { code: 'unsafe_proposal'; messagePl: string; violationsBefore: number; violationsAfter: number };
 
 export type CommitPreviewResult = { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
 
@@ -698,6 +746,7 @@ export class VerifiedApply {
 
     // Owner P0 Phase 5 — BATCH INVARIANT (planned recipes, optimize path):
     // a 1000 g recipe stays 1000 g; a 2937.9 g result can never be applied.
+    // The batch rejection is the more specific message, so it runs first.
     const proposedHasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
     if (preview.kind === 'optimize' && !proposedHasActuals) {
       const proposedSum = plannedSum(preview.proposedInput);
@@ -709,6 +758,29 @@ export class VerifiedApply {
           messagePl: copy.blocked.batchMismatch(proposedSum, targetBatch),
           proposedSum,
           targetBatch,
+        };
+      }
+    }
+
+    // Owner P0 (definitive fail) — IMPROVEMENT INVARIANT, recomputed TRUSTLESSLY
+    // from the actual inputs (never from preview-carried numbers): an optimize
+    // proposal that leaves the recipe out of band without reducing the violation
+    // count OR the engine's weighted severity (the 8 × 125 g case: 9 → 9,
+    // severity unchanged) is structurally unappliable, whatever produced it.
+    if (preview.kind === 'optimize') {
+      const doorViolationsBefore = detectViolations(calculateRecipe(current)).length;
+      const doorViolationsAfter = detectViolations(calculateRecipe(preview.proposedInput)).length;
+      const doorImproved =
+        doorViolationsAfter === 0 ||
+        doorViolationsAfter < doorViolationsBefore ||
+        totalSeverity(preview.proposedInput) < totalSeverity(current) - SEVERITY_EPS;
+      if (!doorImproved) {
+        return {
+          ok: false,
+          code: 'unsafe_proposal',
+          messagePl: copy.blocked.unsafeProposal,
+          violationsBefore: doorViolationsBefore,
+          violationsAfter: doorViolationsAfter,
         };
       }
     }

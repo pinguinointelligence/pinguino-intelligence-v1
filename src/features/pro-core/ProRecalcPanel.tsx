@@ -44,7 +44,11 @@ function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): stri
     case 'recipe_input_incomplete':
       return d.incomplete;
     case 'constraint_verification_failed':
-      return d.verificationFailed;
+      // Owner P0 (definitive fail): a produced-but-REJECTED candidate renders the
+      // exact required rejection sentence, not the generic verification note.
+      return issue.code === 'unsafe_proposal'
+        ? constraintStudioCopy.previewIssue.unsafeProposal
+        : d.verificationFailed;
     case 'locked_constraints_conflict':
       return isAllLocked(diagnosis)
         ? d.allLocked

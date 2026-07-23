@@ -91,6 +91,13 @@ export const constraintStudioCopy = {
     totalsLine: (before: string, after: string, target: string) =>
       `Suma przed: ${before} · Po zastosowaniu: ${after} · Cel partii: ${target}`,
     totalsOk: 'Suma składników zgodna z docelową masą partii.',
+    /* Owner QA (Phase 12): the exact proposal source — honest, never inflated. */
+    sourceSolver: (rounds: number) =>
+      `Źródło propozycji: kanoniczny solver korekt PI (proposeCorrections, ${rounds} ` +
+      `${rounds === 1 ? 'runda' : 'rundy'}) + wyrównanie partii (§17.4).`,
+    sourceBatchRescale:
+      'Źródło propozycji: proporcjonalne wyrównanie partii (§17.4) — parametry receptury były już ' +
+      'w zatwierdzonym zakresie.',
     residualWarning: (residual: string) =>
       `Suma składników odbiega od docelowej masy partii o ${residual}. Zastosowanie zostanie zablokowane.`,
   },
@@ -113,6 +120,10 @@ export const constraintStudioCopy = {
     batchMismatch: (proposedSum: number, targetBatch: number) =>
       `Suma składników w podglądzie (${formatGramsPl(proposedSum)}) nie zgadza się z docelową ` +
       `masą partii (${formatGramsPl(targetBatch)}). Receptura nie została zmieniona.`,
+    /* Owner P0 (definitive fail) — the exact required rejection sentence. */
+    unsafeProposal:
+      'PI nie utworzyło bezpiecznej receptury. Propozycja została odrzucona. ' +
+      'Receptura nie została zmieniona.',
     dismiss: 'Rozumiem',
   },
 
@@ -125,6 +136,8 @@ export const constraintStudioCopy = {
       'blokad”, aby zobaczyć konkretną przyczynę.',
     applyFailed:
       'Nie udało się bezpiecznie przygotować propozycji solvera. Receptura nie została zmieniona.',
+    /* Owner P0 (definitive fail): a produced-but-rejected candidate (no improvement). */
+    unsafeProposal: 'PI nie utworzyło bezpiecznej receptury. Propozycja została odrzucona.',
     invalidConstraints: 'Blokady są nieprawidłowe względem bieżącej receptury.',
     lineMissing: 'Ten składnik nie znajduje się już w recepturze.',
     rescaleInvalid: 'Nowa partia musi być liczbą nieujemną.',
