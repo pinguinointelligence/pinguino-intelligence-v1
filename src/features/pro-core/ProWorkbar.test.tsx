@@ -19,6 +19,7 @@ interface MockRecipeState {
   currentVersionDate: string | null;
   dirty: boolean;
   category: string;
+  visibleProductType: string;
   mode: string;
   target_temperature_c: number;
   target_batch_grams: number;
@@ -29,7 +30,7 @@ interface MockRecipeState {
 
 let mockState: MockRecipeState = {
   savedRecipeId: null, savedRecipeName: null, currentVersionNumber: null, currentVersionDate: null,
-  dirty: false, category: 'milk_gelato', mode: 'premium', target_temperature_c: -12, target_batch_grams: 1000,
+  dirty: false, category: 'milk_gelato', visibleProductType: 'gelato', mode: 'premium', target_temperature_c: -12, target_batch_grams: 1000,
   machineKind: null, servingModeId: null, machineLabel: null,
 };
 const mockSave = {

@@ -257,15 +257,19 @@ describe('locks (tests 9/10)', () => {
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
   });
 
-  it('all-locked returns the explicit all-lock message through the diagnosis', () => {
-    const items = MUTILATED().map((i) => ({ ...i, lock_type: 'grams' as const }));
+  it('NEAR-BATCH all-locked keeps the explicit all-lock message (PI genuinely cannot act)', () => {
+    // A complete ~1000 g draft, every line locked: the local path owns the message.
+    const items = [
+      line('l-milk', 'milk_3_5', 610), line('l-cream', 'cream_30', 150), line('l-suc', 'sucrose', 120),
+      line('l-dex', 'dextrose', 60), line('l-smp', 'smp', 55), line('l-tara', 'tara_gum', 5),
+    ].map((i) => ({ ...i, lock_type: 'grams' as const }));
     const set = {
       byLineId: Object.fromEntries(items.map((i) => [i.id, { mode: 'locked' as const, grams: i.planned_grams }])),
     };
     const result = buildOptimizePreview(input(items as unknown as ReturnType<typeof line>[]), set, 'now');
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    if (result.code === 'already_clean') return; // not this fixture
+    if (result.code === 'already_clean') return; // in-band draft — nothing to do either way
     const diagnosis = diagnoseRecalcFailure({
       input: input(items as unknown as ReturnType<typeof line>[]),
       constraints: set,
@@ -274,6 +278,25 @@ describe('locks (tests 9/10)', () => {
     });
     expect(diagnosis.code).toBe('locked_constraints_conflict');
     expect(constraintStudioCopy.diagnosis.allLocked).toContain('Wszystkie składniki są zablokowane.');
+  });
+
+  it('FAR-OFF-batch all-locked routes to CONSTRAINED FORMULATION — locks byte-exact, toolbox fills the rest', () => {
+    const items = MUTILATED().map((i) => ({ ...i, lock_type: 'grams' as const }));
+    const set = {
+      byLineId: Object.fromEntries(items.map((i) => [i.id, { mode: 'locked' as const, grams: i.planned_grams }])),
+    };
+    const result = buildOptimizePreview(input(items as unknown as ReturnType<typeof line>[]), set, 'now');
+    if (result.ok) {
+      // every locked line preserved byte-exact; batch completed around them
+      for (const original of items) {
+        const proposed = result.preview.proposedInput.items.find((i) => i.id === original.id)!;
+        expect(Object.is(proposed.planned_grams, original.planned_grams)).toBe(true);
+      }
+      expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+    } else {
+      // honest structured failure only — never a generic unclassified one
+      expect(['unsafe_proposal', 'no_proposal', 'rescale_locked_sum']).toContain(result.code);
+    }
   });
 });
 

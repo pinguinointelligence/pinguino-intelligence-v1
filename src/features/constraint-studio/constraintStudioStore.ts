@@ -255,7 +255,12 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
 
   createOptimizePreview: () => {
     get().reconcile();
-    const result = buildOptimizePreview(currentRecipeInput(), get().constraints, nowIso());
+    // The CURRENT unsaved draft is the single calculation source; explicit
+    // user exclusions (removed ingredients) ride along so the formulation
+    // toolbox can never reintroduce them.
+    const result = buildOptimizePreview(currentRecipeInput(), get().constraints, nowIso(), {
+      excludedIngredientIds: useRecipeStore.getState().excludedIngredientIds,
+    });
     if (result.ok) set({ preview: result.preview, previewIssue: null, blocked: null });
     else set({ preview: null, previewIssue: result, blocked: null });
   },

@@ -18,11 +18,6 @@ import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSav
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
 
-const PRODUCT: Record<string, string> = {
-  milk_gelato: 'Gelato', fruit_gelato: 'Sorbet owocowy', nut_gelato: 'Gelato orzechowe',
-  chocolate_gelato: 'Gelato czekoladowe', alcohol_gelato: 'Gelato alkoholowe', sorbet: 'Sorbet',
-  vegan_gelato: 'Gelato wegańskie', custom: 'Custom',
-};
 const TIER: Record<string, string> = { eco: 'Eco', classic: 'Classic', premium: 'Premium', signature: 'Signature' };
 
 /** Serving-mode display labels (reuse the machine copy so there is ONE source of truth). */
@@ -49,7 +44,10 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
   const currentVersionDate = useRecipeStore((s) => s.currentVersionDate);
   const dirty = useRecipeStore((s) => s.dirty);
-  const category = useRecipeStore((s) => s.category);
+  // Owner P0 (state consistency): the workbar shows the VISIBLE product type —
+  // the SAME field the selector edits — never a privately-labelled internal
+  // category (the „Gelato selector / Sorbet owocowy header" mismatch).
+  const visibleProductType = useRecipeStore((s) => s.visibleProductType);
   const mode = useRecipeStore((s) => s.mode);
   const temperatureC = useRecipeStore((s) => s.target_temperature_c);
   const batchGrams = useRecipeStore((s) => s.target_batch_grams);
@@ -89,7 +87,7 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
   } else if (machineKind === 'home' && machineLabel) {
     context = `${machineLabel} · ${batchGrams} g`;
   } else {
-    context = `${PRODUCT[category] ?? category} · ${TIER[mode] ?? mode} · ${temperatureC} °C · ${batchGrams} g`;
+    context = `${copy.studio.goal.productTypes[visibleProductType]} · ${TIER[mode] ?? mode} · ${temperatureC} °C · ${batchGrams} g`;
   }
   const label = versionLabel(currentVersionNumber, currentVersionDate);
 

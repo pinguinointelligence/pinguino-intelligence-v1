@@ -48,6 +48,8 @@ export function OwnerDiagnosticPanel({
   const constraints = useConstraintStudioStore((s) => s.constraints);
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const preview = useConstraintStudioStore((s) => s.preview);
+  const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
+  const excludedIds = useRecipeStore((s) => s.excludedIngredientIds);
 
   const info = useMemo(() => {
     const detected = detectClassifications(input.items);
@@ -100,6 +102,34 @@ export function OwnerDiagnosticPanel({
         <Row label={d.configVersion} value={result.config_version} />
         <Row label={d.optimizerResult} value={info.optimizerCode} />
         <Row label={d.verifyResult} value={info.verification} />
+        {/* Owner P0 (formulation runtime) — screenshot-ready without devtools. */}
+        <Row label={d.dataSource} value={d.dataSourceDraft} />
+        <Row
+          label={d.formulationMode}
+          value={preview?.formulation ? preview.formulation.mode : previewIssue ? d.none : d.notRun}
+        />
+        <Row label={d.templateId} value={preview?.formulation?.templateId ?? d.none} />
+        <Row
+          label={d.missingRoles}
+          value={
+            preview?.formulation && preview.formulation.missingRoles.length > 0
+              ? preview.formulation.missingRoles.join(', ')
+              : d.none
+          }
+        />
+        <Row
+          label={d.addedByPi}
+          value={
+            preview?.formulation && preview.formulation.added.length > 0
+              ? preview.formulation.added.map((a) => `${a.name} ${Math.round(a.grams)} g`).join(', ')
+              : d.none
+          }
+        />
+        <Row label={d.excluded} value={excludedIds.length > 0 ? excludedIds.join(', ') : d.none} />
+        <Row
+          label={d.rejectionCode}
+          value={previewIssue ? previewIssue.code : blocked ? blocked.code : d.none}
+        />
       </dl>
     </details>
   );

@@ -49,6 +49,7 @@ import {
   routeFormulationMode,
   type FormulationAddedLine,
   type FormulationMode,
+  type FormulationOptions,
   type FormulationRecommendation,
 } from '@/features/formulation/formulate';
 import type { FunctionalRole } from '@/features/formulation/ingredientRoles';
@@ -450,8 +451,9 @@ function buildFormulationPreviewInternal(
   template: NonNullable<ReturnType<typeof routeFormulationMode>['template']>,
   mode: FormulationMode,
   createdAt: string,
+  options: FormulationOptions,
 ): BuildPreviewResult {
-  const built = buildFormulationProposal(input, set, template, mode);
+  const built = buildFormulationProposal(input, set, template, mode, options);
   if (!built.ok) {
     if (built.code === 'missing_required_role') {
       return { ok: false, code: 'missing_required_role', role: built.role, messagePl: built.messagePl };
@@ -552,6 +554,7 @@ export function buildOptimizePreview(
   input: RecipeInput,
   set: ConstraintSet,
   createdAt: string,
+  options: FormulationOptions = {},
 ): BuildPreviewResult {
   // OWNER P0 (full formulation) — deterministic MODE ROUTER first: a new/
   // incomplete/arbitrary draft is FORMULATED from the approved template
@@ -566,7 +569,7 @@ export function buildOptimizePreview(
     return { ok: false, code: 'unsupported_profile', reason: decision.reasons[0] ?? 'no_template' };
   }
   if (decision.mode !== 'local_correction' && decision.template) {
-    return buildFormulationPreviewInternal(input, set, decision.template, decision.mode, createdAt);
+    return buildFormulationPreviewInternal(input, set, decision.template, decision.mode, createdAt, options);
   }
 
   const constrained = applyConstraintsToRecipe(input, set);

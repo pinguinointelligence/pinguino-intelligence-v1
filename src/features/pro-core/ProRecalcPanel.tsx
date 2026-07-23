@@ -43,12 +43,21 @@ function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): stri
       return d.temperatureMismatch;
     case 'recipe_input_incomplete':
       return d.incomplete;
-    case 'constraint_verification_failed':
+    case 'constraint_verification_failed': {
       // Owner P0 (definitive fail): a produced-but-REJECTED candidate renders the
-      // exact required rejection sentence, not the generic verification note.
-      return issue.code === 'unsafe_proposal'
-        ? constraintStudioCopy.previewIssue.unsafeProposal
-        : d.verificationFailed;
+      // exact required rejection sentence PLUS the proven detail (metrics), never
+      // a bare generic message.
+      if (issue.code === 'unsafe_proposal') {
+        const labels = (issue.violatedMetrics ?? []).map(
+          (metric) => d.metricLabels[metric] ?? metric,
+        );
+        return (
+          constraintStudioCopy.previewIssue.unsafeProposal +
+          (labels.length > 0 ? ` Parametry poza zakresem: ${labels.join(', ')}.` : '')
+        );
+      }
+      return d.verificationFailed;
+    }
     case 'locked_constraints_conflict':
       return isAllLocked(diagnosis)
         ? d.allLocked

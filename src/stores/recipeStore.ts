@@ -38,6 +38,9 @@ export interface RecipeState {
   flavor_intensity: FlavorIntensity;
   cost_priority: CostPriority;
   items: RecipeItem[];
+  /** Canonical ingredient ids the user explicitly removed — the formulation
+   * toolbox never reintroduces them (cleared by adding the ingredient back). */
+  excludedIngredientIds: string[];
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
   activePresetId: PresetId | null;
   /**
@@ -191,6 +194,7 @@ export const useRecipeStore = create<RecipeState>()(
   persist(
     (set) => ({
       ...fromPreset(DEFAULT_PRESET),
+      excludedIngredientIds: [],
 
       setMode: (mode) => set({ mode, dirty: true }),
       // Direct internal-category writes (QA/diagnostic/tests) keep the visible projection coherent.
@@ -239,16 +243,26 @@ export const useRecipeStore = create<RecipeState>()(
             // Visible GELATO re-routes its INTERNAL category from the real ingredients
             // (chocolate/nut/fruit/alcohol are classifications, never visible types).
             ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
+            // Explicitly adding an ingredient back clears its exclusion (Phase 3
+            // input semantics: removed returns ONLY through an explicit add).
+            excludedIngredientIds: state.excludedIngredientIds.filter((id) => id !== ingredient.id),
             dirty: true,
           };
         }),
 
       removeItem: (lineId) =>
         set((state) => {
+          const removed = state.items.find((item) => item.id === lineId);
           const items = state.items.filter((item) => item.id !== lineId);
           return {
             items,
             ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
+            // Owner P0 (formulation): a REMOVED ingredient is excluded — PI must
+            // never silently reintroduce it via the toolbox.
+            excludedIngredientIds:
+              removed && !state.excludedIngredientIds.includes(removed.ingredient.id)
+                ? [...state.excludedIngredientIds, removed.ingredient.id]
+                : state.excludedIngredientIds,
             dirty: true,
           };
         }),
@@ -320,7 +334,7 @@ export const useRecipeStore = create<RecipeState>()(
           dirty: true,
         })),
 
-      loadPreset: (preset) => set(fromPreset(preset)),
+      loadPreset: (preset) => set({ ...fromPreset(preset), excludedIngredientIds: [] }),
       loadRecipeInput: (input, link = {}) =>
         set({
           mode: input.mode,
@@ -332,6 +346,7 @@ export const useRecipeStore = create<RecipeState>()(
           flavor_intensity: input.goals?.flavor_intensity ?? 'balanced',
           cost_priority: input.goals?.cost_priority ?? 'balanced',
           items: input.items.map((item) => ({ ...item })),
+          excludedIngredientIds: [], // a loaded recipe starts a fresh exclusion context
           activePresetId: null,
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,

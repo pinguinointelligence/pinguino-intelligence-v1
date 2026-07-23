@@ -54,24 +54,15 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
   const sum = sumPlanned(input);
   const hasActuals = input.items.some((item) => item.actual_grams !== null);
   const nearBatch = batch > 0 && Math.abs(sum - batch) / batch <= 0.25;
-  // Every line non-adjustable → the local path owns the honest all-locked
-  // diagnosis („Wszystkie składniki są zablokowane…") — formulation never
-  // overrides a fully-locked draft.
-  const allLocked =
-    input.items.length > 0 &&
-    input.items.every(
-      (item) =>
-        item.actual_grams !== null ||
-        item.lock_type !== 'unlocked' ||
-        set.byLineId[item.id]?.mode === 'locked' ||
-        set.byLineId[item.id]?.mode === 'range',
-    );
-
-  if (hasActuals || nearBatch || allLocked) {
+  // NEAR-BATCH all-locked drafts keep the local path (it owns the honest
+  // „Wszystkie składniki są zablokowane…" diagnosis — PI genuinely cannot act).
+  // A FAR-OFF-batch draft with locks is the CONSTRAINED FORMULATION case:
+  // locks are hard constraints PI solves AROUND (toolbox fills the rest).
+  if (hasActuals || nearBatch) {
     return {
       mode: 'local_correction',
       template: null,
-      reasons: [hasActuals ? 'poured_actuals' : allLocked ? 'all_locked' : 'draft_near_batch'],
+      reasons: [hasActuals ? 'poured_actuals' : 'draft_near_batch'],
     };
   }
 
@@ -138,12 +129,14 @@ const ROLE_LABEL_PL: Record<FunctionalRole, string> = {
   flavor_other: 'składnik smakowy',
 };
 
-/** Roles PI may fill automatically from the toolbox when unfilled (structural,
- * never flavour): water only — everything else becomes a recommendation. */
-const AUTO_FILL_ROLES: ReadonlySet<FunctionalRole> = new Set(['water']);
-
 const toolboxIngredient = (id: string) =>
   DEFAULT_CORRECTION_CANDIDATES.find((c) => c.id === id)?.ingredient ?? null;
+
+export interface FormulationOptions {
+  /** Canonical ingredient ids the user explicitly REMOVED / marked unavailable —
+   * PI never reintroduces them (they become recommendations instead). */
+  excludedIngredientIds?: readonly string[];
+}
 
 const lockOf = (set: ConstraintSet, lineId: string): IngredientConstraint | undefined =>
   set.byLineId[lineId];
@@ -163,7 +156,9 @@ export function buildFormulationProposal(
   set: ConstraintSet,
   template: FormulationTemplate,
   mode: FormulationMode,
+  options: FormulationOptions = {},
 ): BuildFormulationResult {
+  const excluded = new Set(options.excludedIngredientIds ?? []);
   const batch = input.target_batch_grams;
   const scale = batch / template.baseBatchG;
 
@@ -225,10 +220,14 @@ export function buildFormulationProposal(
       continue;
     }
 
-    // Unfilled role: auto-fill (structural), or honest gap + recommendation.
-    if (AUTO_FILL_ROLES.has(roleTarget.role) && roleTarget.toolboxId) {
+    // Unfilled role: AUTO-FILL from the approved functional toolbox (the owner
+    // product contract — the customer chooses the ingredients they consciously
+    // want; PI supplies the necessary approved technological base). Explicitly
+    // excluded (removed/unavailable) ingredients are NEVER reintroduced — they
+    // fall through to an honest recommendation instead.
+    if (roleTarget.toolboxId && !excluded.has(roleTarget.toolboxId)) {
       const ingredient = toolboxIngredient(roleTarget.toolboxId);
-      if (ingredient) {
+      if (ingredient && !excluded.has(ingredient.id)) {
         const item: RecipeItem = {
           id: `formulation-${roleTarget.toolboxId}`,
           ingredient,
@@ -236,13 +235,15 @@ export function buildFormulationProposal(
           actual_grams: null,
           lock_type: 'unlocked',
         };
-        planned.push({ item, grams: targetGrams, fixed: false });
+        planned.push({ item, grams: targetGrams, fixed: !roleTarget.adjustable });
         added.push({
           ingredientId: ingredient.id,
           name: ingredient.name,
           grams: targetGrams,
           role: roleTarget.role,
-          reasonPl: `PI dodało wodę, ponieważ zatwierdzona receptura ${template.templateId} wymaga fazy wodnej.`,
+          reasonPl:
+            `PI dodało składnik w roli „${ROLE_LABEL_PL[roleTarget.role]}", ponieważ ` +
+            `zatwierdzona receptura ${template.templateId} wymaga tej roli.`,
         });
         continue;
       }
@@ -311,6 +312,12 @@ export function buildFormulationProposal(
     return { ok: false, code: 'locked_exceeds_batch', lockedSum };
   }
   normalize(); // second pass after clamps
+
+  // Report the FINAL grams of auto-added lines (post-normalization truth).
+  for (const addedLine of added) {
+    const line = planned.find((p) => p.item.id === `formulation-${addedLine.ingredientId}`);
+    if (line) addedLine.grams = line.grams;
+  }
 
   const proposedInput: RecipeInput = {
     ...input,

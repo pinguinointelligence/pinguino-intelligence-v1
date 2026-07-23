@@ -156,7 +156,10 @@ describe('Phase 14 — locked 500 g milk (tests 2/3/4)', () => {
 describe('Phase 13 — unavailable ingredient (tests 5/7/8)', () => {
   it('removed inulin is NOT reintroduced; result carries the honest gap + recommendation', () => {
     const items = NO_GRAM_GELATO().filter((i) => i.id !== 'l-inulin');
-    const result = buildOptimizePreview(input(items, 'milk_gelato', -12), NO, 'now'); // G17 needs fiber
+    // The user REMOVED inulin (the store records the exclusion) — never re-added.
+    const result = buildOptimizePreview(input(items, 'milk_gelato', -12), NO, 'now', {
+      excludedIngredientIds: ['inulin'],
+    }); // G17 needs fiber
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const p = result.preview;
@@ -250,7 +253,7 @@ describe('Phase 18 — sorbet + vegan (tests 22/23)', () => {
     const p = result.preview;
     expect(p.formulation?.templateId).toBe('S01');
     expect(p.formulation?.added.some((a) => a.ingredientId === 'water')).toBe(true);
-    expect(p.formulation?.added[0]?.reasonPl).toContain('PI dodało wodę');
+    expect(p.formulation?.added[0]?.reasonPl).toContain('zatwierdzona receptura S01');
     expect(Math.abs(plannedSum(p.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
     expect(gramsOf(p.proposedInput, 'l-rasp')!).toBeGreaterThan(300); // the fruit role is real
   });
