@@ -26,13 +26,17 @@ const FILES = allSourceFiles();
 // The COMPLETE frontend env allowlist. VITE_SENTRY_DSN is a Sentry DSN — public
 // by design (ingest-only; it cannot read events). VITE_OFFER_*_ENABLED are public
 // boolean promotion flags (which list price is offered to new customers — no
-// secret, no PII). Anything else is disallowed.
+// secret, no PII). VITE_DESIGN_REVIEW is the staging-only owner design-review
+// opt-in ('1' on the staging deploy target only — no secret, no PII; markers are
+// additionally gated on the pro capability, see src/features/design-review).
+// Anything else is disallowed.
 const ALLOWED_ENV = new Set([
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_ANON_KEY',
   'VITE_SENTRY_DSN',
   'VITE_OFFER_LAUNCH_ENABLED',
   'VITE_OFFER_FOUNDING_ENABLED',
+  'VITE_DESIGN_REVIEW',
 ]);
 
 describe('Phase 2A security guards', () => {

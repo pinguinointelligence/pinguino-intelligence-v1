@@ -1,0 +1,45 @@
+/* PINGÜINO — dark professional scope (Masterpiece UX/UI Phase 4/5).
+ *
+ * ONE class flips an entire subtree to the canonical dark professional identity by
+ * re-mapping the SAME design tokens the components already consume (Tailwind v4
+ * utilities reference `var(--color-…)`). No component forks, no per-page visual
+ * system: `bg-paper` becomes deep graphite, `text-ink` becomes brand ivory, hairlines
+ * and status tones re-map to their AA dark-surface equivalents.
+ *
+ * Result inside `.theme-pro-dark`:
+ *  - primary action (`bg-ink text-paper`) → ivory button on graphite: the ONE
+ *    disciplined accent, maximum contrast, no new accent colors;
+ *  - the engine lab / Monitor (bg-shell #1a1a1a) reads as a slightly ELEVATED dark
+ *    surface — the light/dark sandwich disappears;
+ *  - focus rings, borders, placeholders, status and attention tones stay AA-readable.
+ *
+ * Scope is applied by page chrome (Pro workspace) only — light routes are untouched.
+ */
+.theme-pro-dark {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --color-paper: var(--color-graphite);
+  /* Text + primary action: brand ivory carries the identity (never a new accent). */
+  --color-ink: #efe9dc;
+  --color-ink-soft: #ddd5c4;
+
+  /* Secondary text scale (stone-*) re-mapped for graphite (AA at their usages). */
+  --color-stone-300: #55565c;
+  --color-stone-400: #908d85;
+  --color-stone-500: #a6a39b;
+  --color-stone-600: #bebab0;
+
+  /* Attention copy (pending recalculation / unsaved) — replaces light-amber leaks. */
+  --color-amber-700: var(--color-attention-soft);
+  --color-amber-300: var(--color-attention-soft);
+
+  /* Status + optimum accents — the dark-surface calibrated variants. */
+  --color-status-ideal: #96a487;
+  --color-status-risky: #c2a05e;
+  --color-status-error: #c9917e;
+  --color-gold: var(--color-gold-soft);
+
+  /* Owner review red — brightened for legibility on graphite (owner/QA only). */
+  --color-review: #e5484d;
+}

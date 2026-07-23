@@ -12,6 +12,12 @@
   /* Brand shell (Phase 6C) — global black AI-first surface + mega-menu layers */
   --color-shell: #1a1a1a;
   --color-shell-raised: #232323;
+
+  /* Dark professional workspace (Masterpiece Phase 4/5) — the canonical Pro identity.
+     Deep graphite BELOW the shell tone, so the engine lab (#1a1a1a) reads as a slightly
+     ELEVATED dark surface inside the workspace instead of a dark island on white. */
+  --color-graphite: #131417;
+  --color-graphite-raised: #1d1e22;
   /* Translucent ivory used for nav hover/active pills + hairlines on the shell */
   --color-shell-line: #efe9dc1f;
 
@@ -23,6 +29,16 @@
   --color-status-ideal: #6f7d63;
   --color-status-risky: #9c8a55;
   --color-status-error: #a06352;
+
+  /* Owner review marker (Masterpiece Phase 3) — the ONLY saturated red in the system.
+     Staging/owner-QA `DO PRZEGLĄDU` badges exclusively; never a customer-facing status. */
+  --color-review: #b3261e;
+
+  /* Attention accent (Masterpiece Phase 4) — replaces ad-hoc amber-* leaks for
+     "pending / unsaved / requires attention" copy. Desaturated, AA on paper. */
+  --color-attention: #8a5a2a;
+  /* The same attention accent for dark surfaces (AA on shell). */
+  --color-attention-soft: #cf9a5c;
 
   /* Golden Range — the brand's signature OPTIMUM accent (UIUX spec §15.3, §21.1).
      Owner decision (Slice A): gold marks the golden range / optimum ONLY — never

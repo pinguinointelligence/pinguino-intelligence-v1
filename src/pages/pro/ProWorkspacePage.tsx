@@ -36,6 +36,7 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { resolveProductionRepository } from '@/features/pro-core/proCoreProductionRepo';
 import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
+import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 
 const w = copy.proWorkspace;
@@ -106,10 +107,11 @@ function RecipeTab() {
     <div>
       <ProWorkbar onMonitor={() => setMonitorOpen(true)} onRecalc={startRecalc} />
       <ProRecalcPanel open={recalcOpen} onClose={() => setRecalcOpen(false)} />
-      {/* The engine lab keeps its native dark "canvas" tone inside the light workspace
-          (design lock: Monitor Pro / lab surface may be a dark panel). */}
+      {/* The engine lab keeps its native dark "canvas" tone; inside the dark professional
+          workspace (Masterpiece Phase 5) the shell tone reads as a slightly ELEVATED surface —
+          a hairline carries the elevation, no card-in-card chrome. */}
       <SurfaceToneContext.Provider value="shell">
-        <div className="mt-4 rounded-lg bg-shell text-ivory [color-scheme:dark]">
+        <div className="mt-4 rounded-lg border border-shell-line bg-shell text-ivory [color-scheme:dark]">
           <StudioEngineSurface />
         </div>
       </SurfaceToneContext.Provider>
@@ -145,7 +147,11 @@ function SettingsTab({ persona }: { persona: ProCorePersona }) {
               {user.email}
             </span>
           ) : authAvailable ? (
-            <button type="button" className={buttonClasses('primary', 'sm')} onClick={openAuthModal}>
+            <button
+              type="button"
+              className={buttonClasses('primary', 'sm')}
+              onClick={openAuthModal}
+            >
               {copy.menu.signIn}
             </button>
           ) : (
@@ -168,6 +174,9 @@ function MachineTab() {
   // The full Home machine profile page (default machine, container) stays reachable below.
   return (
     <div className="space-y-8">
+      {/* Owner review (RV-13, staging/QA only): per-recipe vs default machine — needs one
+          distinguishing sentence on each surface. Customers never see the badge. */}
+      <ReviewBadge itemId="RV-13" />
       <ProMachineSelector />
       <Link
         to="/profile/machine"
@@ -184,7 +193,14 @@ function TabPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona }) {
     case 'recipe':
       return <RecipeTab />;
     case 'monitor':
-      return <NoteTab note={w.monitorNote} />;
+      return (
+        <div className="space-y-3">
+          {/* Owner review (RV-12, staging/QA only): a note-only section — proposal: open the
+              Monitor drawer directly. Customers never see the badge. */}
+          <ReviewBadge itemId="RV-12" />
+          <NoteTab note={w.monitorNote} />
+        </div>
+      );
     case 'versions':
       return <RecipeVersionsSection />;
     case 'production': {
@@ -242,67 +258,73 @@ export function ProWorkspacePage() {
   const selectTab = (tab: TabId) => navigate(`/pro/${tab}`);
 
   return (
-    <AppShell
-      actions={
-        <>
-          <PersonaChip persona={persona} />
-          <DevPersonaSwitch persona={persona} />
-        </>
-      }
-    >
-      <div className="mx-auto max-w-6xl px-6">
-        <SectionLabel>{w.eyebrow}</SectionLabel>
-        <h1 className="mt-1 text-2xl font-light tracking-tight text-ink">{w.title}</h1>
-      </div>
-
-      {!isPro ? (
-        <div className="mx-auto flex max-w-6xl justify-center px-6 py-16">
-          <UpgradePrompt
-            message={w.gate.message}
-            cta={w.gate.cta}
-            onAction={() => {
-              window.location.assign('/subscription');
-            }}
-          />
+    // Masterpiece Phase 5 — the canonical Pro workspace wears the DARK PROFESSIONAL identity:
+    // one token scope flips the whole chrome (header, workbar, tabs, panels) to deep graphite +
+    // brand-ivory actions, so the engine lab stops being a dark island inside light chrome.
+    // Presentation only: same components, same tokens, same behavior; light routes untouched.
+    <div className="theme-pro-dark" data-testid="pro-dark-scope">
+      <AppShell
+        actions={
+          <>
+            <PersonaChip persona={persona} />
+            <DevPersonaSwitch persona={persona} />
+          </>
+        }
+      >
+        <div className="mx-auto max-w-6xl px-6">
+          <SectionLabel>{w.eyebrow}</SectionLabel>
+          <h1 className="mt-1 text-2xl font-light tracking-tight text-ink">{w.title}</h1>
         </div>
-      ) : (
-        <>
-          <nav
-            className="mx-auto mt-6 max-w-6xl overflow-x-auto border-b border-ink/10 px-6"
-            role="tablist"
-            aria-label={w.title}
-          >
-            <div className="flex min-w-max gap-1">
-              {TAB_ORDER.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === activeTab}
-                  onClick={() => selectTab(tab)}
-                  data-testid={`pro-tab-${tab}`}
-                  className={cn(
-                    '-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors',
-                    tab === activeTab
-                      ? 'border-ink font-medium text-ink'
-                      : 'border-transparent text-stone-500 hover:text-ink',
-                  )}
-                >
-                  {w.tabs[tab]}
-                </button>
-              ))}
-            </div>
-          </nav>
 
-          <div
-            className="mx-auto max-w-6xl px-6 pb-24 pt-8"
-            role="tabpanel"
-            data-testid={`pro-panel-${activeTab}`}
-          >
-            <TabPanel tab={activeTab} persona={persona} />
+        {!isPro ? (
+          <div className="mx-auto flex max-w-6xl justify-center px-6 py-16">
+            <UpgradePrompt
+              message={w.gate.message}
+              cta={w.gate.cta}
+              onAction={() => {
+                window.location.assign('/subscription');
+              }}
+            />
           </div>
-        </>
-      )}
-    </AppShell>
+        ) : (
+          <>
+            <nav
+              className="mx-auto mt-6 max-w-6xl overflow-x-auto border-b border-ink/10 px-6"
+              role="tablist"
+              aria-label={w.title}
+            >
+              <div className="flex min-w-max gap-1">
+                {TAB_ORDER.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === activeTab}
+                    onClick={() => selectTab(tab)}
+                    data-testid={`pro-tab-${tab}`}
+                    className={cn(
+                      '-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors',
+                      tab === activeTab
+                        ? 'border-ink font-medium text-ink'
+                        : 'border-transparent text-stone-500 hover:text-ink',
+                    )}
+                  >
+                    {w.tabs[tab]}
+                  </button>
+                ))}
+              </div>
+            </nav>
+
+            <div
+              className="mx-auto max-w-6xl px-6 pb-24 pt-8"
+              role="tabpanel"
+              data-testid={`pro-panel-${activeTab}`}
+            >
+              <TabPanel tab={activeTab} persona={persona} />
+            </div>
+          </>
+        )}
+      </AppShell>
+    </div>
   );
 }
