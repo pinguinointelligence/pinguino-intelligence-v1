@@ -39,7 +39,6 @@ import {
   buildCustomerRecipeView,
   buildRecipeStructure,
   buildCustomerResult,
-  gramVisibilityForPersona,
   SERVING_MODES,
   isNinjaMode,
   type CustomerRecipeLineInput,
@@ -98,7 +97,8 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { fromPriceCompact } from '@/billing/catalog/offerDisplay';
 import { resolveActiveOfferFlags } from '@/billing/catalog/offerFlags';
-import { compactRecipeContext, resultStatus, showTechnicalDetails } from './resultPresentation';
+import { compactRecipeContext, resultStatus } from './resultPresentation';
+import { customerShellAccessFor, demoPaywallVisible, resolveCustomerMachineGate } from './customerShellAccess';
 import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
 import { useIngredientResolution, type ResolvableLine } from './useIngredientResolution';
@@ -218,8 +218,15 @@ function Notice({ children }: { children: ReactNode }) {
  * flashes a mismatched colour. `min-h-[100dvh]` keeps the backdrop filling the
  * viewport.
  */
-function ShellRoot({ children }: { children: ReactNode }) {
-  return <div className="min-h-[100dvh] w-full bg-paper">{children}</div>;
+function ShellRoot({ persona, children }: { persona: CustomerPersona; children: ReactNode }) {
+  return (
+    // `data-persona` is the machine-checkable trace of the ENTITLEMENT-derived
+    // persona (never a hardcode): tests assert it flips with the access store,
+    // and staging QA can verify the signed-in plan without exposing any number.
+    <div data-persona={persona} className="min-h-[100dvh] w-full bg-paper">
+      {children}
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ *
@@ -234,6 +241,11 @@ export function CustomerShellV1() {
   // 'demo'|'home'|'pro' union. In production without a wired EffectiveAccess this
   // resolves to 'demo' — honest, never an invented paid scope.
   const persona = useProCorePersona() as CustomerPersona;
+  // The pure access-resolution seam: every plan-dependent presentation decision
+  // (grams visibility, Demo paywall, save capability, machine flow, technical
+  // details) is projected HERE from the entitlement-derived persona — tested in
+  // customerShellAccess.test.ts so no surface can drift back to a hardcode.
+  const access = customerShellAccessFor(persona);
   const setDevPersona = useProCoreAccessStore((s) => s.setDevPersona);
   // The authenticated user id scopes device-local state so nothing leaks between
   // accounts on the same browser (owner P0: Pro must not inherit Home's machine).
@@ -317,14 +329,12 @@ export function CustomerShellV1() {
    * record — a recipe override never sends a machine-owning user back to
    * onboarding.
    */
-  const machineGate: 'off' | 'loading' | 'onboarding' | 'saved' =
-    persona === 'pro'
-      ? 'off'
-      : machinePreference.status === 'loading'
-        ? 'loading'
-        : machinePreference.record === null || profileContextView === null || machineChangeOpen
-          ? 'onboarding'
-          : 'saved';
+  const machineGate: 'off' | 'loading' | 'onboarding' | 'saved' = resolveCustomerMachineGate({
+    machineFlow: access.machineFlow,
+    preferenceStatus: machinePreference.status,
+    hasUsableProfileMachine: machinePreference.record !== null && profileContextView !== null,
+    machineChangeOpen,
+  });
   const profileMachineRecord = machineGate === 'saved' ? machinePreference.record : null;
   // The machine the CURRENT recipe uses (override wins over the profile default).
   const machineRecord =
@@ -556,7 +566,7 @@ export function CustomerShellV1() {
   /* -------------------------------------------------------------- Home -- */
   if (flow === null) {
     return (
-      <ShellRoot>
+      <ShellRoot persona={persona}>
         <CustomerSurface>
           <CustomerMenu />
           {/* Responsive hero offset: push the opening interaction ~20-25% down the
@@ -655,8 +665,8 @@ export function CustomerShellV1() {
   const isReadyListPhase = recipePath === 'ready_recipe' && selectedDraft === null;
   const isConfigurePhase = typeRes.status === 'resolved' && recipePath === null;
 
-  // Result payload (redacted at source for Demo).
-  const capability = gramVisibilityForPersona(persona);
+  // Result payload (redacted at source for Demo) — the seam's capability.
+  const capability = access.gramVisibility;
   const resultMainFlavor = selectedDraft
     ? (selectedDraft.flavorTags[0] ?? null)
     : (chips[0] ?? null);
@@ -690,7 +700,7 @@ export function CustomerShellV1() {
     { recipeId: resultRecipeId, title: resultTitle, productType: resultType, lines: resultLineInputs },
     capability,
   );
-  const showStickyUpgrade = isResultPhase && !view.gramsVisible;
+  const showStickyUpgrade = demoPaywallVisible({ isResultPhase, gramsVisible: view.gramsVisible });
   // Entry prices for the paywall CTAs, from the canonical offer catalogue (never
   // hardcoded). Home is paid — a price always shows; Demo is the only free tier.
   const offerFlags = resolveActiveOfferFlags();
@@ -699,7 +709,7 @@ export function CustomerShellV1() {
   // Owner UX correction §3/§10: the Home/Demo customer never sees the internal
   // serving mode („Świeże”) or the „Dane techniczne” disclosure — those belong
   // to the professional (and Expert Mode) view only.
-  const showTechnical = showTechnicalDetails(persona);
+  const showTechnical = access.showsTechnicalDetails;
   // Owner UX correction §11: ONE unambiguous recipe status (never „prawie gotowa”
   // and „wyliczona przez silnik” side by side).
   const statusView = resultStatus({
@@ -923,7 +933,7 @@ export function CustomerShellV1() {
 
   /* ----------------------------------------------------------- Render -- */
   return (
-    <ShellRoot>
+    <ShellRoot persona={persona}>
       <CustomerSurface hasStickyCta={showStickyUpgrade} stickyReservePx={stickyReservePx}>
         <CustomerMenu />
         {/* §7.3 machine context bar. Shows the machine the CURRENT recipe uses;
