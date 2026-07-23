@@ -41,9 +41,42 @@ export function IngredientBuilder({
 
   const offTarget = Math.abs(totalBatchG - targetBatchG) > 0.1;
 
+  // Owner P0 repair (Phase 10): drafts saved BEFORE the canonical-identity fix
+  // may still carry duplicated solver rows. Detect plannable duplicates and
+  // offer an explicit one-click merge — never automatic, never touches locks.
+  const storeItems = useRecipeStore((state) => state.items);
+  const mergeDuplicates = useRecipeStore((state) => state.mergeDuplicateIngredientLines);
+  const duplicateCount = (() => {
+    const seen = new Set<string>();
+    let extras = 0;
+    for (const item of storeItems) {
+      if (item.lock_type !== 'unlocked' || item.actual_grams !== null) continue;
+      if (seen.has(item.ingredient.id)) extras += 1;
+      else seen.add(item.ingredient.id);
+    }
+    return extras;
+  })();
+
   return (
     <Card padding="lg">
       <SectionLabel>{b.title}</SectionLabel>
+
+      {duplicateCount > 0 ? (
+        <div
+          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300/30 bg-amber-300/[0.06] px-3 py-2.5"
+          data-testid="builder-duplicate-repair"
+        >
+          <p className="text-xs leading-relaxed text-amber-200/90">{b.duplicateNotice(duplicateCount)}</p>
+          <button
+            type="button"
+            className="rounded-md border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
+            onClick={mergeDuplicates}
+            data-testid="builder-merge-duplicates"
+          >
+            {b.mergeDuplicates}
+          </button>
+        </div>
+      ) : null}
 
       {items.length === 0 ? (
         <p className="mt-6 text-sm leading-relaxed text-ivory/60">{b.empty}</p>

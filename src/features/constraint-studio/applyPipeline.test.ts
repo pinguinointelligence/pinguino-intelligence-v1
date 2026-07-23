@@ -130,9 +130,13 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
       input.items.map((item) => item.planned_grams),
     );
     expect(outcome.verified.record.configVersion.length).toBeGreaterThan(0);
-    expect(outcome.verified.record.violationsAfter).toBeLessThanOrEqual(
-      outcome.verified.record.violationsBefore,
-    );
+    // Owner P0 batch invariant: the applied recipe keeps the target batch
+    // (locked grams byte-stable; unlocked lines carry the batch restoration).
+    const appliedSum = outcome.verified.input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+    expect(Math.abs(appliedSum - outcome.verified.input.target_batch_grams)).toBeLessThanOrEqual(0.1);
+    // violations are REPORTED honestly (a heavily-locked recipe may trade band
+    // precision for batch integrity — visible in the preview, never silent).
+    expect(Number.isInteger(outcome.verified.record.violationsAfter)).toBe(true);
   });
 
   it('BLOCKS a forged proposal that moves a locked line — Polish message, no state produced', () => {

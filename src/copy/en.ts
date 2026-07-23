@@ -767,6 +767,11 @@ export const copy = {
       searchPlaceholder: 'Szukaj składnika, kategorii, marki lub ID…',
       resultsLabel: 'Wyniki',
       needsData: 'Składnik został wybrany, ale wymaga uzupełnienia danych przed dokładnym przeliczeniem.',
+      duplicateNotice: (count: number) =>
+        count === 1
+          ? 'Receptura zawiera 1 zduplikowany wiersz składnika (pozostałość po wcześniejszym przeliczeniu).'
+          : `Receptura zawiera ${count} zduplikowane wiersze składników (pozostałość po wcześniejszym przeliczeniu).`,
+      mergeDuplicates: 'Scal zduplikowane składniki',
       noMatches: 'Nie znaleziono składnika w katalogu PI. Spróbuj innej nazwy, formy lub kategorii.',
       /** Honest empty-state exit (AUDIT #2 dead-end rule): a no-results search
        * always offers a way back to the full list. */

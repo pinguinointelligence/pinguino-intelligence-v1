@@ -34,6 +34,7 @@ import { recipeContext } from '@/features/studio/buildRecipeInput';
 import {
   applyConstraintsToRecipe,
   buildProposalExplanation,
+  BATCH_SUM_TOLERANCE_G,
   rescaleBatchToTarget,
   verifyConstraintsPreserved,
   type ConstraintExplanationEntry,
@@ -118,10 +119,95 @@ const isConstrained = (set: ConstraintSet, lineId: string): boolean => {
 };
 
 /**
+ * CANONICAL INGREDIENT IDENTITY (owner P0 — recalc duplication): the merge key
+ * is the STABLE `ingredient.id` (PI-ING-* / canonical toolbox id). A solver ADD
+ * whose ingredient already exists in the draft as a PLANNABLE line (unlocked,
+ * nothing poured) must UPDATE that line, never append a parallel row — the
+ * proven defect was `correction-dextrose-0`/`~2`/`~3` rows accumulating next to
+ * the existing Dekstroza line across recalcs (1000 g → ~2928 g).
+ *
+ * Never merged: lines held by an engine lock (main/required/already_added), a
+ * grams/range lock, or poured actuals — the engine's own top-up rule refuses to
+ * change those, so a genuinely parallel line next to them stays separate.
+ * Genuinely different ingredients (different stable ids) are never merged.
+ */
+export function mergeByCanonicalIdentity(base: RecipeInput, proposed: RecipeInput): RecipeInput {
+  const baseIds = new Set(base.items.map((item) => item.id));
+  const seenIds = new Set<string>();
+  const keepLineByIngredient = new Map<string, string>();
+  const merged: { item: (typeof proposed.items)[number]; extraGrams: number }[] = [];
+  let changed = false;
+
+  for (const item of proposed.items) {
+    // A TRUE base line = the first occurrence of a base id. A solver add can
+    // collide with a base id (`correction-dextrose-0` re-pushed next cycle),
+    // so id membership alone is not enough — occurrence order decides.
+    const isBaseLine = baseIds.has(item.id) && !seenIds.has(item.id);
+    seenIds.add(item.id);
+    const plannable = item.lock_type === 'unlocked' && item.actual_grams === null;
+    const keepLineId = plannable ? keepLineByIngredient.get(item.ingredient.id) : undefined;
+
+    if (plannable && keepLineId !== undefined && !isBaseLine) {
+      // Solver-added duplicate of an existing plannable line → fold grams in.
+      const target = merged.find((entry) => entry.item.id === keepLineId);
+      if (target) {
+        target.extraGrams += item.planned_grams;
+        changed = true;
+        continue;
+      }
+    }
+    if (plannable && keepLineId === undefined) {
+      keepLineByIngredient.set(item.ingredient.id, item.id);
+    }
+    merged.push({ item, extraGrams: 0 });
+  }
+
+  if (!changed) return proposed;
+  return {
+    ...proposed,
+    items: merged.map(({ item, extraGrams }) =>
+      extraGrams > 0 ? { ...item, planned_grams: item.planned_grams + extraGrams } : item,
+    ),
+  };
+}
+
+/** Plannable-duplicate census: ingredient.id → number of unlocked, un-poured lines. */
+const plannableCounts = (input: RecipeInput): Map<string, number> => {
+  const counts = new Map<string, number>();
+  for (const item of input.items) {
+    if (item.lock_type !== 'unlocked' || item.actual_grams !== null) continue;
+    counts.set(item.ingredient.id, (counts.get(item.ingredient.id) ?? 0) + 1);
+  }
+  return counts;
+};
+
+/**
+ * DUPLICATE INVARIANT (owner P0 Phase 6): the proposal must not introduce a NEW
+ * plannable duplicate of any canonical ingredient identity (pre-existing user
+ * duplicates in the base are preserved, never multiplied).
+ */
+export function findNewDuplicateIngredients(base: RecipeInput, proposed: RecipeInput): string[] {
+  const before = plannableCounts(base);
+  const names: string[] = [];
+  const nameByIngredient = new Map(proposed.items.map((item) => [item.ingredient.id, item.ingredient.name]));
+  for (const [ingredientId, count] of plannableCounts(proposed)) {
+    if (count > Math.max(1, before.get(ingredientId) ?? 0)) {
+      names.push(nameByIngredient.get(ingredientId) ?? ingredientId);
+    }
+  }
+  return names;
+}
+
+/** Sum of planned grams — the visible batch total. */
+export const plannedSum = (input: RecipeInput): number =>
+  input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+
+/**
  * Solver ADD actions create new lines with `correction-<ingredient>-<index>`
  * ids; a SECOND apply in the same session can therefore push a duplicate id.
  * New (non-base) lines are renamed to the first free `<id>~N` — deterministic,
  * and never touches an existing line's identity (constraints stay keyed).
+ * (After `mergeByCanonicalIdentity` this is a structural safety net only.)
  */
 export function ensureUniqueLineIds(base: RecipeInput, proposed: RecipeInput): RecipeInput {
   const baseIds = new Set(base.items.map((item) => item.id));
@@ -296,7 +382,19 @@ export function buildOptimizePreview(
   const applied = applyAutoFix({ input: constrained.input, proposal, context });
   if (!applied.success) return { ok: false, code: 'apply_failed' };
 
-  const proposedInput = ensureUniqueLineIds(input, applied.newInput);
+  // Owner P0 (recalc duplication): fold solver adds into existing plannable
+  // lines of the same canonical ingredient, then restore the target batch.
+  let proposedInput = ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, applied.newInput));
+  const hasActuals = input.items.some((item) => item.actual_grams !== null);
+  if (!hasActuals && Math.abs(plannedSum(proposedInput) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G) {
+    // The APPROVED §17.4 batch mechanism: proportional on unlocked lines,
+    // locked grams preserved exactly. Per-100 g concentrations — and therefore
+    // the solver's fix — are preserved by proportional scaling. If it refuses
+    // (unreachable in practice: a solver change implies a scalable line), the
+    // un-scaled proposal continues and the Apply door blocks it honestly.
+    const restored = rescaleBatchToTarget(proposedInput, set, input.target_batch_grams);
+    if (restored.ok) proposedInput = restored.input;
+  }
   return {
     ok: true,
     preview: finishPreview(
@@ -468,7 +566,11 @@ export type BlockedApply =
       code: 'constraints_violated';
       messagePl: string;
       violations: ConstraintPreservationViolation[];
-    };
+    }
+  /** Owner P0 Phase 6: the proposal would introduce a duplicate canonical ingredient. */
+  | { code: 'duplicate_lines'; messagePl: string; ingredientNames: string[] }
+  /** Owner P0 Phase 5: proposed planned sum breaks the target-batch invariant. */
+  | { code: 'batch_total_mismatch'; messagePl: string; proposedSum: number; targetBatch: number };
 
 export type CommitPreviewResult = { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
 
@@ -507,6 +609,7 @@ export class VerifiedApply {
     }
 
     // THE owner-mandated gate: every Apply verifies constraint preservation.
+    // Runs FIRST so a locked-line violation keeps its specific §17.2 message.
     const preserved = verifyConstraintsPreserved(preview.nextConstraints, preview.proposedInput);
     if (!preserved.ok) {
       return {
@@ -517,6 +620,45 @@ export class VerifiedApply {
         ),
         violations: preserved.violations,
       };
+    }
+
+    // Owner P0 Phase 6 — DUPLICATE INVARIANT: applying must be structurally
+    // impossible when the proposal would introduce a new plannable duplicate
+    // of any canonical ingredient identity (or a duplicate line id).
+    const lineIds = new Set<string>();
+    let duplicateLineId = false;
+    for (const item of preview.proposedInput.items) {
+      if (lineIds.has(item.id)) {
+        duplicateLineId = true;
+        break;
+      }
+      lineIds.add(item.id);
+    }
+    const newDuplicates = findNewDuplicateIngredients(current, preview.proposedInput);
+    if (duplicateLineId || newDuplicates.length > 0) {
+      return {
+        ok: false,
+        code: 'duplicate_lines',
+        messagePl: copy.blocked.duplicates(newDuplicates),
+        ingredientNames: newDuplicates,
+      };
+    }
+
+    // Owner P0 Phase 5 — BATCH INVARIANT (planned recipes, optimize path):
+    // a 1000 g recipe stays 1000 g; a 2937.9 g result can never be applied.
+    const proposedHasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
+    if (preview.kind === 'optimize' && !proposedHasActuals) {
+      const proposedSum = plannedSum(preview.proposedInput);
+      const targetBatch = preview.proposedInput.target_batch_grams;
+      if (Math.abs(proposedSum - targetBatch) > BATCH_SUM_TOLERANCE_G) {
+        return {
+          ok: false,
+          code: 'batch_total_mismatch',
+          messagePl: copy.blocked.batchMismatch(proposedSum, targetBatch),
+          proposedSum,
+          targetBatch,
+        };
+      }
     }
 
     const record: AppliedChangeRecord = {

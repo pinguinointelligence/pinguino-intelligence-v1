@@ -74,6 +74,11 @@ export function ConstraintPreviewCard({
   const beforeBatch = preview.lines.reduce((sum, line) => sum + (line.beforeGrams ?? 0), 0);
   const afterBatch = preview.lines.reduce((sum, line) => sum + (line.afterGrams ?? 0), 0);
   const batchChanged = Math.abs(afterBatch - beforeBatch) > 0.05;
+  const targetBatch = preview.proposedInput.target_batch_grams;
+  // Poured actuals put the recipe in production reality — the planned-batch
+  // residual is only meaningful for a purely planned recipe.
+  const hasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
+  const residualExceeded = !hasActuals && Math.abs(afterBatch - targetBatch) > 0.1;
 
   return (
     <section
@@ -98,6 +103,23 @@ export function ConstraintPreviewCard({
           <p className="font-mono tabular-nums">
             {copy.preview.batchLine(formatGramsPl(beforeBatch), formatGramsPl(afterBatch))}
           </p>
+        ) : null}
+        {/* Owner P0 Phase 5 — the batch invariant, always visible. */}
+        <p className="font-mono tabular-nums" data-testid="preview-totals">
+          {copy.preview.totalsLine(
+            formatGramsPl(beforeBatch),
+            formatGramsPl(afterBatch),
+            formatGramsPl(targetBatch),
+          )}
+        </p>
+        {!hasActuals ? (
+          residualExceeded ? (
+            <p className="text-status-risky" data-testid="preview-residual">
+              {copy.preview.residualWarning(formatGramsPl(Math.abs(afterBatch - targetBatch)))}
+            </p>
+          ) : (
+            <p data-testid="preview-batch-ok">{copy.preview.totalsOk}</p>
+          )
         ) : null}
         <p>{copy.preview.outOfBandDelta(preview.violationsBefore, preview.violationsAfter)}</p>
       </div>

@@ -83,6 +83,8 @@ export interface RecipeState {
 
   addIngredient: (ingredient: EngineIngredient, grams?: number) => void;
   removeItem: (lineId: string) => void;
+  /** Owner P0 repair: fold plannable duplicate-ingredient lines into one (explicit action). */
+  mergeDuplicateIngredientLines: () => void;
   setPlannedGrams: (lineId: string, grams: number) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
@@ -249,6 +251,37 @@ export const useRecipeStore = create<RecipeState>()(
             ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
             dirty: true,
           };
+        }),
+
+      /**
+       * Owner P0 (recalc duplication) — REPAIR for drafts saved before the
+       * canonical-identity fix: fold every later PLANNABLE (unlocked, nothing
+       * poured) line of an already-seen ingredient into the first such line
+       * (grams summed). Locked/poured lines and genuinely different
+       * ingredients are never touched. Explicit user action — never automatic.
+       */
+      mergeDuplicateIngredientLines: () =>
+        set((state) => {
+          const keepByIngredient = new Map<string, RecipeItem>();
+          const items: RecipeItem[] = [];
+          let merged = false;
+          for (const item of state.items) {
+            const plannable = item.lock_type === 'unlocked' && item.actual_grams === null;
+            if (!plannable) {
+              items.push(item);
+              continue;
+            }
+            const keep = keepByIngredient.get(item.ingredient.id);
+            if (keep) {
+              keep.planned_grams += item.planned_grams;
+              merged = true;
+              continue;
+            }
+            const copy = { ...item };
+            keepByIngredient.set(item.ingredient.id, copy);
+            items.push(copy);
+          }
+          return merged ? { items, dirty: true } : {};
         }),
 
       setPlannedGrams: (lineId, grams) =>

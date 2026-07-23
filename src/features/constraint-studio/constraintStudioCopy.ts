@@ -87,6 +87,12 @@ export const constraintStudioCopy = {
     cancel: 'Anuluj',
     applyNote:
       'Zastosowanie zmienia tylko wersję roboczą. Zapis wersji receptury to osobny, jawny krok.',
+    /* Owner P0 Phase 5 — the batch invariant, always visible in the preview. */
+    totalsLine: (before: string, after: string, target: string) =>
+      `Suma przed: ${before} · Po zastosowaniu: ${after} · Cel partii: ${target}`,
+    totalsOk: 'Suma składników zgodna z docelową masą partii.',
+    residualWarning: (residual: string) =>
+      `Suma składników odbiega od docelowej masy partii o ${residual}. Zastosowanie zostanie zablokowane.`,
   },
 
   /* ----------------------- the ONE owner-mandated blocked-apply notice ---- */
@@ -99,6 +105,14 @@ export const constraintStudioCopy = {
     stale:
       'Receptura lub blokady zmieniły się od utworzenia tego podglądu. Podgląd został ' +
       'unieważniony — utwórz go ponownie. Receptura nie została zmieniona.',
+    /* Owner P0 Phase 6 — verbatim first sentence. */
+    duplicates: (names: readonly string[]) =>
+      `Podgląd zawiera zduplikowane składniki i nie może zostać zastosowany.` +
+      `${names.length > 0 ? ` (${listPl(names)})` : ''} Receptura nie została zmieniona.`,
+    /* Owner P0 Phase 5 — the batch invariant block. */
+    batchMismatch: (proposedSum: number, targetBatch: number) =>
+      `Suma składników w podglądzie (${formatGramsPl(proposedSum)}) nie zgadza się z docelową ` +
+      `masą partii (${formatGramsPl(targetBatch)}). Receptura nie została zmieniona.`,
     dismiss: 'Rozumiem',
   },
 

@@ -72,15 +72,19 @@ describe('Phase 4 — no-lock recalculation at every professional temperature', 
   });
 
   it('−11, −12 and −13 produce DIFFERENT proposals (temperature-aware targeting, one shared route)', () => {
-    const added = [-11, -12, -13].map((temp) => {
+    // Owner P0 (recalc duplication): the solver's dextrose addition now UPDATES
+    // the existing dextrose line (canonical identity merge) instead of adding a
+    // parallel row — so the temperature-distinct amounts land on 'l-dex'.
+    const dextroseAfter = [-11, -12, -13].map((temp) => {
       const result = buildOptimizePreview(input(temp, cleanBase()), NO_CONSTRAINTS, NOW);
       if (!result.ok) throw new Error(`preview failed at ${temp}`);
-      const add = result.preview.lines.find((l) => l.kind === 'added');
-      return add?.afterGrams ?? null;
+      expect(result.preview.lines.every((l) => l.kind !== 'added')).toBe(true); // no duplicate rows
+      const dex = result.preview.lines.find((l) => l.lineId === 'l-dex');
+      return dex?.afterGrams ?? null;
     });
-    expect(added.every((g) => g !== null)).toBe(true);
+    expect(dextroseAfter.every((g) => g !== null)).toBe(true);
     // Three distinct gram amounts — impossible if all temperatures hit one band cell.
-    expect(new Set(added.map((g) => Math.round((g as number) * 10))).size).toBe(3);
+    expect(new Set(dextroseAfter.map((g) => Math.round((g as number) * 10))).size).toBe(3);
   });
 
   it('a failed/successful preview never mutates the input recipe (pure pipeline)', () => {
