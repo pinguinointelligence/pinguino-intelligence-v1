@@ -51,9 +51,11 @@ import {
   type FormulationMode,
   type FormulationOptions,
   type FormulationRecommendation,
+  type FormulationRoleTraceRow,
 } from '@/features/formulation/formulate';
 import type { FunctionalRole } from '@/features/formulation/ingredientRoles';
-import type { TemplateStatus } from '@/features/formulation/templateRegistry';
+import { selectFormulationTemplate, type TemplateStatus } from '@/features/formulation/templateRegistry';
+import { classifyViolationBands } from '@/features/formulation/violationBands';
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
 
@@ -111,6 +113,12 @@ export interface ConstraintPreview {
     missingRoles: FunctionalRole[];
     recommendations: FormulationRecommendation[];
     keptFixed: string[];
+    /** Phase-1 role trace (QA): one row per template role, in template order. */
+    roleTrace: FormulationRoleTraceRow[];
+    /** Owner Phase 6 (NIGHTLY): TRUE when this formulation was the
+     * template-seeded FALLBACK after the local corrector found no safe fix —
+     * same selected ingredient ids, locks, exclusions, batch, temperature. */
+    localFallback?: boolean;
   };
   /** Fingerprint of (input, constraints) the preview was built for. */
   baseFingerprint: string;
@@ -383,7 +391,34 @@ export type BuildPreviewResult =
   | { ok: false; code: 'unsupported_profile'; reason: string }
   /** A user-supplied role (fruit / plant base / chocolate) is missing and may
    * never be invented — precise missing-role stop with the Polish message. */
-  | { ok: false; code: 'missing_required_role'; role: string; messagePl: string };
+  | {
+      ok: false;
+      code: 'missing_required_role';
+      role: string;
+      messagePl: string;
+      /** Phase-1 role trace (QA) — how far the resolution got, per role. */
+      roleTrace?: FormulationRoleTraceRow[];
+    }
+  /** Owner P0 NIGHTLY Phase 7(b) — the BEST-SAFE FIXED POINT: the local
+   * corrector AND the template-seeded fallback both found no safe further
+   * improvement, and every remaining out-of-band metric sits on a
+   * PROVISIONAL/FALLBACK band (never a native approved one). This is an
+   * explanatory terminal state, NOT a failure: the current recipe is the best
+   * verified result for the chosen ingredients and constraints. */
+  | {
+      ok: false;
+      code: 'best_safe_result';
+      /** Proof: how many times the local solver was really invoked. */
+      solverInvocations: number;
+      /** Soft (provisional/fallback-band) metrics still out of range. */
+      softViolatedMetrics: string[];
+      /** Band provenance for the profile (calibration status). */
+      bandSource: 'category_fallback' | 'temperature_fallback';
+      /** The template the fallback seeded from (provenance). */
+      templateId: string;
+      templateStatus: TemplateStatus;
+      stopReason: 'local_no_proposal' | 'template_fixed_point';
+    };
 
 const finishPreview = (
   kind: PreviewKind,
@@ -452,11 +487,20 @@ function buildFormulationPreviewInternal(
   mode: FormulationMode,
   createdAt: string,
   options: FormulationOptions,
+  /** Owner Phase 6 (NIGHTLY): TRUE when invoked as the template-seeded
+   * fallback after a local-corrector failure (provenance marker only). */
+  localFallback = false,
 ): BuildPreviewResult {
   const built = buildFormulationProposal(input, set, template, mode, options);
   if (!built.ok) {
     if (built.code === 'missing_required_role') {
-      return { ok: false, code: 'missing_required_role', role: built.role, messagePl: built.messagePl };
+      return {
+        ok: false,
+        code: 'missing_required_role',
+        role: built.role,
+        messagePl: built.messagePl,
+        roleTrace: built.roleTrace,
+      };
     }
     if (built.code === 'no_adjustable_lines') {
       // Owner P0 Phase 9 (truthful messages): the locked sum FITS the target —
@@ -467,6 +511,9 @@ function buildFormulationPreviewInternal(
   }
   // Phase 10 — a proposal missing a HARD technological role may never become a
   // preview (soft gaps continue with an honest lower score + recommendations).
+  // ORDER (owner Phase 3): this completeness check runs only AFTER user-role
+  // resolution, canonical toolbox auto-fill and amount computation — a role is
+  // missing only if no approved, not-explicitly-excluded candidate existed.
   if (built.proposal.missingHardRoles.length > 0) {
     return {
       ok: false,
@@ -476,6 +523,7 @@ function buildFormulationPreviewInternal(
         `Brakuje składnika w twardej roli technologicznej: ` +
         `${built.proposal.missingHardRoles.join(', ')}. ` +
         `Dodaj zatwierdzony składnik tej roli, aby PI mogło ułożyć recepturę.`,
+      roleTrace: built.proposal.roleTrace,
     };
   }
 
@@ -549,6 +597,8 @@ function buildFormulationPreviewInternal(
     missingRoles: built.proposal.missingRoles,
     recommendations: built.proposal.recommendations,
     keptFixed: built.proposal.keptFixed,
+    roleTrace: built.proposal.roleTrace,
+    localFallback,
   };
   return { ok: true, preview };
 }
@@ -593,6 +643,52 @@ export function buildOptimizePreview(
   if (decision.mode !== 'local_correction' && decision.template) {
     return buildFormulationPreviewInternal(input, set, decision.template, decision.mode, createdAt, options);
   }
+
+  /**
+   * Owner Phase 6 (NIGHTLY, live FAILURE A): when the LOCAL corrector cannot
+   * improve a COMPLETE UNCONSTRAINED draft, PI no longer stops at the one-line
+   * failure. It seeds the approved/reference template for the SAME profile ×
+   * temperature with the SAME selected ingredient identities, locks,
+   * exclusions, batch and temperature and attempts a full reformulation
+   * (user-selected forms/brands are never replaced). If that cannot safely
+   * improve either, the outcome is classified by BAND PROVENANCE (Phase 8):
+   * remaining violations that sit ONLY on provisional/fallback bands yield the
+   * explanatory BEST-SAFE result — fallback bands never hard-reject alone.
+   * Any native-band violation keeps the honest local failure unchanged (the
+   * beat-the-null gate on native-band profiles stays absolute).
+   */
+  const withTemplateFallback = (
+    failure: Extract<BuildPreviewResult, { ok: false; code: 'no_proposal' | 'unsafe_proposal' }>,
+  ): BuildPreviewResult => {
+    if (!decision.reasons.includes('substantive_unconstrained_draft')) return failure;
+    const lookup = selectFormulationTemplate(input.category, input.target_temperature_c);
+    if (!lookup.template) return failure;
+    const seeded = buildFormulationPreviewInternal(
+      input,
+      set,
+      lookup.template,
+      'full_formulation',
+      createdAt,
+      options,
+      true,
+    );
+    if (seeded.ok) return seeded;
+    const bands = classifyViolationBands(input);
+    if (bands.hardMetrics.length === 0 && bands.softMetrics.length > 0) {
+      return {
+        ok: false,
+        code: 'best_safe_result',
+        solverInvocations: failure.solverInvocations ?? 0,
+        softViolatedMetrics: bands.softMetrics,
+        bandSource:
+          bands.bandSource === 'category_fallback' ? 'category_fallback' : 'temperature_fallback',
+        templateId: lookup.template.templateId,
+        templateStatus: lookup.template.status,
+        stopReason: seeded.code === 'unsafe_proposal' ? 'template_fixed_point' : 'local_no_proposal',
+      };
+    }
+    return failure;
+  };
 
   const constrained = applyConstraintsToRecipe(input, set);
   if (!constrained.ok) {
@@ -648,7 +744,14 @@ export function buildOptimizePreview(
     if (violated.length === 0) {
       violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
     }
-    return { ok: false, code: 'no_proposal', violatedMetrics: violated, solverInvocations: solverRounds };
+    // Owner Phase 6: a complete unconstrained draft gets the template-seeded
+    // fallback before the failure is final (never a bare one-line stop).
+    return withTemplateFallback({
+      ok: false,
+      code: 'no_proposal',
+      violatedMetrics: violated,
+      solverInvocations: solverRounds,
+    });
   }
 
   // OWNER P0 ACCEPTANCE GATE (definitive-fail repair): a changed candidate is a
@@ -668,13 +771,15 @@ export function buildOptimizePreview(
     violationsAfter < violationsBefore ||
     (lastProposal !== null && severityAfter < severityBefore - SEVERITY_EPS);
   if (!improved) {
-    return {
+    // Owner Phase 6: same fallback door — a produced-but-rejected local
+    // candidate on a complete unconstrained draft tries the template seed.
+    return withTemplateFallback({
       ok: false,
       code: 'unsafe_proposal',
       violatedMetrics: [...new Set(afterViolationList.map((v) => v.metric))],
       solverInvocations: solverRounds,
       batchOnly: lastProposal === null,
-    };
+    });
   }
 
   const explanation = lastProposal
@@ -849,6 +954,15 @@ export interface AppliedChangeRecord {
   explanation: ConstraintExplanationEntry[];
   violationsBefore: number;
   violationsAfter: number;
+  /** Owner A6 (complete Undo/history): the applied formulation's provenance —
+   * template id + toolbox-added markers ride the record (undo needs no page
+   * state to explain what PI added). Absent for non-formulation applies. */
+  formulation?: {
+    mode: FormulationMode;
+    templateId: string;
+    added: FormulationAddedLine[];
+    localFallback: boolean;
+  };
 }
 
 /* ── the ONLY door ───────────────────────────────────────────────────────── */
@@ -1048,6 +1162,16 @@ export class VerifiedApply {
       explanation: preview.explanation,
       violationsBefore: preview.violationsBefore,
       violationsAfter: preview.violationsAfter,
+      ...(preview.formulation
+        ? {
+            formulation: {
+              mode: preview.formulation.mode,
+              templateId: preview.formulation.templateId,
+              added: structuredClone(preview.formulation.added),
+              localFallback: preview.formulation.localFallback === true,
+            },
+          }
+        : {}),
     };
 
     return {

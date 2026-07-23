@@ -78,15 +78,22 @@ describe('owner acceptance — the exact reproduced scenario stays clean', () =>
     for (const temp of temps) {
       useRecipeStore.setState({ target_temperature_c: temp });
       recalcAndApply();
-      // The full auto-balance may introduce a genuinely NEW toolbox ingredient
-      // ONCE — but NEVER a duplicate canonical identity, and the row count must
-      // stabilize (no unbounded appending across cycles — the proven defect).
+      // The full auto-balance may introduce genuinely NEW toolbox ingredients —
+      // the solver's single add, or (owner P0 NIGHTLY Phase 6) the approved
+      // template's missing role carriers when the local corrector hits a fixed
+      // point and the template-seeded fallback completes the recipe (G17/G18
+      // add inulin + tara gum). NEVER a duplicate canonical identity, and the
+      // row count is BOUNDED by base 5 + the template's toolbox roles — the
+      // proven defect (unbounded appending, 5 → 10 rows, 1000 g → 2927.8 g)
+      // stays structurally impossible.
       expect(new Set(rows().map((i) => i.ingredient.id)).size).toBe(rows().length);
       expect(countOf('dextrose')).toBe(1); // test 1: updated, not duplicated
       expect(countOf('cream_30')).toBe(1); // test 2: updated, not duplicated
       expect(countOf('milk_3_5')).toBe(1);
-      expect(rows().length).toBeLessThanOrEqual(6); // base 5 + at most the one new toolbox line
-      if (stableCount !== null) expect(rows().length).toBe(stableCount); // no growth after cycle 1
+      expect(countOf('inulin')).toBeLessThanOrEqual(1); // toolbox adds are single
+      expect(countOf('tara_gum')).toBeLessThanOrEqual(1);
+      expect(rows().length).toBeLessThanOrEqual(7); // base 5 + template role carriers (inulin, tara)
+      if (stableCount !== null) expect(rows().length).toBeGreaterThanOrEqual(stableCount); // no row loss
       stableCount = rows().length;
       expect(Math.abs(sum() - 1000)).toBeLessThanOrEqual(0.1); // test 9: batch invariant
       expect(useRecipeStore.getState().target_batch_grams).toBe(1000);

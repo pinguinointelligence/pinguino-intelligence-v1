@@ -11,7 +11,9 @@
  */
 import { useMemo } from 'react';
 import { copy } from '@/copy/en';
+import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { recipeMatchScore } from '@/features/recipe-score';
 import { useRecipeStore } from '@/stores/recipeStore';
 import {
   constraintStudioCopy,
@@ -76,6 +78,39 @@ function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): stri
   }
 }
 
+/** Owner P0 NIGHTLY Phase 7(b) — the best-safe fixed point, rendered as an
+ * EXPLANATORY result: honest score, soft (provisional-band) deviations, the
+ * exact stop reason and the calibration status. Never a failure banner. */
+function BestSafeResultView({
+  issue,
+  input,
+}: {
+  issue: Extract<PreviewIssue, { code: 'best_safe_result' }>;
+  input: RecipeInput;
+}) {
+  const b = constraintStudioCopy.bestSafe;
+  const match = useMemo(() => recipeMatchScore(calculateRecipe(input).scores), [input]);
+  const softLabels = issue.softViolatedMetrics.map((metric) => d.metricLabels[metric] ?? metric);
+  return (
+    <div className="space-y-2" data-testid="pro-recalc-best-safe">
+      <p className="text-sm leading-relaxed text-ivory/90">
+        {constraintStudioCopy.previewIssue.bestSafeResult}
+      </p>
+      <p className="text-xs leading-relaxed text-ivory/70" data-testid="pro-recalc-best-safe-score">
+        {b.scoreLine(match.display, match.label)}
+      </p>
+      <p className="text-xs leading-relaxed text-ivory/70">
+        {softLabels.length > 0 ? b.softDeviations(softLabels) : b.noSoftDeviations}
+      </p>
+      <p className="text-xs leading-relaxed text-ivory/60">
+        {b.stopReason[issue.stopReason](issue.solverInvocations)}
+      </p>
+      <p className="text-xs leading-relaxed text-ivory/60">{b.calibration[issue.bandSource]}</p>
+      <p className="text-xs leading-relaxed text-ivory/50">{b.templateLine(issue.templateId)}</p>
+    </div>
+  );
+}
+
 /** Failed recalculation: the classified cause + the VERIFIED per-ingredient lock report. */
 function RecalcDiagnosisView({
   issue,
@@ -95,6 +130,13 @@ function RecalcDiagnosisView({
         {previewIssueMessagePl(issue)}
       </p>
     );
+  }
+
+  // Owner P0 NIGHTLY Phase 7(b): the BEST-SAFE FIXED POINT is an explanatory
+  // result, NEVER rendered as a failure — score, soft deviations, stop reason
+  // and calibration status, with the recipe unchanged and honestly usable.
+  if (issue.code === 'best_safe_result') {
+    return <BestSafeResultView issue={issue} input={input} />;
   }
 
   // Owner P0 (full formulation): honest structured states with their exact

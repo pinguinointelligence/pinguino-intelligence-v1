@@ -25,6 +25,7 @@ import { DEFAULT_CORRECTION_CANDIDATES, type RecipeInput, type RecipeItem } from
 import type { ConstraintSet, IngredientConstraint } from '@/features/recipe-constraints';
 import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
 import { selectFormulationTemplate, type FormulationTemplate } from './templateRegistry';
+import { canonicalToolboxIdentity, isToolboxCandidateExcluded } from './toolboxCanonical';
 
 /* ────────────────────────────────────────────────────────────── routing ── */
 
@@ -139,9 +140,41 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
 export interface FormulationAddedLine {
   ingredientId: string;
   name: string;
+  /** Stable canonical Mapper id (owner Phase 2 — staging-verified registry). */
+  mapperId: string | null;
+  /** Polish display name of the canonical registry entry. */
+  namePl: string | null;
   grams: number;
   role: FunctionalRole;
   reasonPl: string;
+}
+
+/** One row of the Phase-1 role trace (owner P0 — QA-visible ordering proof):
+ * required role | user supplied? | toolbox candidate | found? | filtered? |
+ * exact reason. Built for EVERY template role, in template order. */
+export interface FormulationRoleTraceRow {
+  role: FunctionalRole;
+  hard: boolean;
+  /** Template grams scaled to this batch (the role's target amount). */
+  templateGrams: number;
+  /** User-selected line ids carrying this role (empty = none supplied). */
+  userLineIds: string[];
+  /** The template's toolbox candidate id (null = user must supply the role). */
+  toolboxId: string | null;
+  /** Canonical Mapper id of that candidate (null when none registered). */
+  mapperId: string | null;
+  /** The candidate resolved in the approved engine toolbox catalogue? */
+  candidateFound: boolean;
+  /** The candidate (any canonical identity) is explicitly user-excluded? */
+  excluded: boolean;
+  outcome:
+    | 'user_filled'
+    | 'toolbox_added'
+    | 'missing_soft'
+    | 'missing_hard'
+    | 'user_supplied_required';
+  /** Exact machine-readable reason for the outcome. */
+  reason: string;
 }
 
 export interface FormulationRecommendation {
@@ -176,6 +209,8 @@ export interface FormulationProposal {
   recommendations: FormulationRecommendation[];
   /** Selected ingredients kept at the USER's amount (no role / no bound). */
   keptFixed: string[];
+  /** Phase-1 role trace — one row per template role, in template order. */
+  roleTrace: FormulationRoleTraceRow[];
 }
 
 const ROLE_LABEL_PL: Record<FunctionalRole, string> = {
@@ -213,7 +248,14 @@ const lockOf = (set: ConstraintSet, lineId: string): IngredientConstraint | unde
 
 export type BuildFormulationResult =
   | { ok: true; proposal: FormulationProposal }
-  | { ok: false; code: 'missing_required_role'; role: FunctionalRole; messagePl: string }
+  | {
+      ok: false;
+      code: 'missing_required_role';
+      role: FunctionalRole;
+      messagePl: string;
+      /** Role rows resolved up to (and including) the stopping role. */
+      roleTrace?: FormulationRoleTraceRow[];
+    }
   | { ok: false; code: 'locked_exceeds_batch'; lockedSum: number }
   /** Owner P0 (truthful messages): the locked sum FITS the batch but nothing
    * adjustable remains to fill the difference — never reported as
@@ -266,11 +308,27 @@ export function buildFormulationProposal(
   const missingHardRoles: FunctionalRole[] = [];
   const recommendations: FormulationRecommendation[] = [];
   const keptFixed: string[] = [];
+  const roleTrace: FormulationRoleTraceRow[] = [];
   const mappedLineIds = new Set<string>();
 
+  // ORDER (owner Phase 3): resolve user roles → identify missing template
+  // roles → resolve approved toolbox candidates by EXACT canonical identity →
+  // auto-add allowed candidates → resolve Engine rows → compute amounts —
+  // hard-role completeness is evaluated by the CALLER only after all of this.
+  // A role is "missing" only if no approved, template-allowed, Engine-ready,
+  // not-explicitly-excluded candidate exists.
   for (const roleTarget of template.roles) {
     const targetGrams = roleTarget.grams * scale;
     const matches = byRole.get(roleTarget.role) ?? [];
+    const canonical = roleTarget.toolboxId ? canonicalToolboxIdentity(roleTarget.toolboxId) : null;
+    const traceBase = {
+      role: roleTarget.role,
+      hard: HARD_ROLES.has(roleTarget.role),
+      templateGrams: targetGrams,
+      userLineIds: matches.map((m) => m.item.id),
+      toolboxId: roleTarget.toolboxId,
+      mapperId: canonical?.mapperId ?? null,
+    };
     if (matches.length > 0) {
       const share = targetGrams / matches.length;
       for (const match of matches) {
@@ -292,39 +350,70 @@ export function buildFormulationProposal(
           planned.push({ item: match.item, grams: share, fixed: !roleTarget.adjustable });
         }
       }
+      roleTrace.push({
+        ...traceBase,
+        candidateFound: true,
+        excluded: false,
+        outcome: 'user_filled',
+        reason: 'user_selected_ingredient_carries_role',
+      });
       continue;
     }
 
     // Unfilled role: AUTO-FILL from the approved functional toolbox (the owner
     // product contract — the customer chooses the ingredients they consciously
-    // want; PI supplies the necessary approved technological base). Explicitly
-    // excluded (removed/unavailable) ingredients are NEVER reintroduced — they
-    // fall through to an honest recommendation instead.
-    if (roleTarget.toolboxId && !excluded.has(roleTarget.toolboxId)) {
+    // want; PI supplies the necessary approved technological base). Candidates
+    // resolve by EXACT canonical registry identity (owner Phase 2). Explicitly
+    // excluded (removed/unavailable) ingredients — under the engine id OR the
+    // stable Mapper id — are NEVER reintroduced; they fall through to an
+    // honest recommendation instead.
+    if (roleTarget.toolboxId) {
       const ingredient = toolboxIngredient(roleTarget.toolboxId);
-      if (ingredient && !excluded.has(ingredient.id)) {
-        const item: RecipeItem = {
-          id: `formulation-${roleTarget.toolboxId}`,
-          ingredient,
-          planned_grams: targetGrams,
-          actual_grams: null,
-          lock_type: 'unlocked',
-        };
-        planned.push({ item, grams: targetGrams, fixed: !roleTarget.adjustable });
-        added.push({
-          ingredientId: ingredient.id,
-          name: ingredient.name,
-          grams: targetGrams,
-          role: roleTarget.role,
-          reasonPl:
-            `PI dodało składnik w roli „${ROLE_LABEL_PL[roleTarget.role]}", ponieważ ` +
-            `zatwierdzona receptura ${template.templateId} wymaga tej roli.`,
-        });
-        continue;
+      const candidateExcluded =
+        isToolboxCandidateExcluded(roleTarget.toolboxId, excluded) ||
+        (ingredient !== null && excluded.has(ingredient.id));
+      if (!candidateExcluded) {
+        if (ingredient) {
+          const item: RecipeItem = {
+            id: `formulation-${roleTarget.toolboxId}`,
+            ingredient,
+            planned_grams: targetGrams,
+            actual_grams: null,
+            lock_type: 'unlocked',
+          };
+          planned.push({ item, grams: targetGrams, fixed: !roleTarget.adjustable });
+          added.push({
+            ingredientId: ingredient.id,
+            name: ingredient.name,
+            mapperId: canonical?.mapperId ?? null,
+            namePl: canonical?.namePl ?? null,
+            grams: targetGrams,
+            role: roleTarget.role,
+            reasonPl:
+              `PI dodało ${canonical ? `„${canonical.namePl}" (${canonical.mapperId})` : 'składnik'} ` +
+              `w roli „${ROLE_LABEL_PL[roleTarget.role]}", ponieważ ` +
+              `zatwierdzona receptura ${template.templateId} wymaga tej roli.`,
+          });
+          roleTrace.push({
+            ...traceBase,
+            candidateFound: true,
+            excluded: false,
+            outcome: 'toolbox_added',
+            reason: 'approved_toolbox_candidate_auto_added',
+          });
+          continue;
+        }
       }
     }
     if (roleTarget.toolboxId === null && (roleTarget.role === 'fruit' || roleTarget.role === 'plant_liquid' || roleTarget.role === 'plant_fat' || roleTarget.role === 'chocolate_cocoa')) {
       // A user-supplied role that cannot be invented — precise missing-role stop.
+      roleTrace.push({
+        ...traceBase,
+        candidateFound: false,
+        excluded: false,
+        outcome: 'user_supplied_required',
+        reason: 'flavor_role_never_auto_added_user_must_supply',
+      });
       return {
         ok: false,
         code: 'missing_required_role',
@@ -332,10 +421,27 @@ export function buildFormulationProposal(
         messagePl:
           `Brakuje składnika w roli: ${ROLE_LABEL_PL[roleTarget.role]}. ` +
           `Wybierz składnik z katalogu PI, aby PI mogło ułożyć recepturę ${template.templateId}.`,
+        roleTrace,
       };
     }
+    const isHard = HARD_ROLES.has(roleTarget.role);
+    const candidateInCatalogue =
+      roleTarget.toolboxId !== null && toolboxIngredient(roleTarget.toolboxId) !== null;
+    roleTrace.push({
+      ...traceBase,
+      candidateFound: candidateInCatalogue,
+      excluded:
+        roleTarget.toolboxId !== null && isToolboxCandidateExcluded(roleTarget.toolboxId, excluded),
+      outcome: isHard ? 'missing_hard' : 'missing_soft',
+      reason:
+        roleTarget.toolboxId === null
+          ? 'template_names_no_toolbox_candidate'
+          : candidateInCatalogue
+            ? 'candidate_explicitly_excluded_by_user'
+            : 'candidate_not_in_approved_catalogue',
+    });
     missingRoles.push(roleTarget.role);
-    if (HARD_ROLES.has(roleTarget.role)) missingHardRoles.push(roleTarget.role);
+    if (isHard) missingHardRoles.push(roleTarget.role);
     recommendations.push({
       role: roleTarget.role,
       messagePl:
@@ -444,6 +550,7 @@ export function buildFormulationProposal(
       missingRoles,
       recommendations,
       keptFixed,
+      roleTrace,
     },
   };
 }
