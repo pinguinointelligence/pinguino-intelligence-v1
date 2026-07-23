@@ -153,9 +153,12 @@ export function ConstraintStudioSection() {
             <button
               type="button"
               className={secondaryButton}
+              // Owner P0 (scale safety): an empty/zero/invalid target never
+              // reaches the pipeline — the visible input is the ONLY source.
+              disabled={!Number.isFinite(Number(batchText)) || Number(batchText) <= 0 || batchText.trim() === ''}
               onClick={() => {
                 const grams = Number(batchText);
-                store.createBatchRescalePreview(grams);
+                if (Number.isFinite(grams) && grams > 0) store.createBatchRescalePreview(grams);
               }}
             >
               {copy.actions.rescale}

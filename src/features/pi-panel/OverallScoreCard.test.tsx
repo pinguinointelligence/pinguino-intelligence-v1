@@ -74,4 +74,35 @@ describe('OverallScoreCard — 1–10 public display (§15.1)', () => {
     expect(text).toContain('—');
     expect(text).not.toMatch(/\d\/10/);
   });
+
+  // Owner P0 (truthful score): unassessed axes NEVER masquerade as assessed.
+  it('provisional profile (some „Brak oceny" axes) → „Oceniono N z M obszarów" + partial note', () => {
+    const base = realResult();
+    const result: RecipeResult = {
+      ...base,
+      indicators: base.indicators.map((ind, i) => (i < 2 ? { ...ind, band: null } : ind)),
+    };
+    const html = renderToStaticMarkup(<OverallScoreCard result={result} mode="classic" />);
+    expect(html).toContain('data-testid="score-coverage"');
+    const text = visibleText(html);
+    const assessed = base.indicators.length - 2;
+    expect(text).toContain(`Oceniono ${assessed} z ${base.indicators.length} obszarów.`);
+    expect(text).toContain('częściowa');
+    // The integer score itself is unchanged — coverage is disclosed, not spun.
+    expect(text).toMatch(/([1-9]|10)\/10/);
+  });
+
+  it('fully banded result with no fallbacks → NO coverage note (nothing to disclose)', () => {
+    const base = realResult();
+    const result: RecipeResult = {
+      ...base,
+      indicators: base.indicators.map((ind) => ({
+        ...ind,
+        category_fallback: false,
+        temperature_fallback: false,
+      })),
+    };
+    const html = renderToStaticMarkup(<OverallScoreCard result={result} mode="classic" />);
+    expect(html).not.toContain('data-testid="score-coverage"');
+  });
 });

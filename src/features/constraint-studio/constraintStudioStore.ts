@@ -292,7 +292,14 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
   applyPreview: () => {
     const { preview, constraints, history } = get();
     if (!preview) return;
-    const outcome = commitPreview(currentRecipeInput(), constraints, preview, nowIso(), nextChangeId());
+    const outcome = commitPreview(
+      currentRecipeInput(),
+      constraints,
+      preview,
+      nowIso(),
+      nextChangeId(),
+      useRecipeStore.getState().excludedIngredientIds,
+    );
     if (!outcome.ok) {
       // The owner-mandated block: recipe untouched, clear Polish message.
       set({
@@ -347,6 +354,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     useRecipeStore.setState({
       items: snapshot.items.map((item) => ({ ...item })),
       target_batch_grams: snapshot.target_batch_grams,
+      // Owner P0 (complete Undo): exclusions return with the snapshot — no
+      // stale excluded IDs survive, no page refresh is ever needed.
+      excludedIngredientIds: [...last.before.excludedIngredientIds],
     });
     set({
       constraints: last.before.constraints,

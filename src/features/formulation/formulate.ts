@@ -44,37 +44,93 @@ const sumPlanned = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + item.planned_grams, 0);
 
 /**
- * Deterministic mode router. A draft whose planned mass is within ±25% of the
- * target batch is "sufficiently complete" → local correction (the existing
- * solver's supported region). Anything further (no grams, all-1 g, malformed
- * totals) is a formulation case — template seed, never rescale.
+ * Deterministic mode router (owner P0 — the ±25% mass-distance rule is GONE:
+ * it was scientifically meaningless — 944.6 g can need full reformulation
+ * because inulin was removed, 1120 g because milk is exactly locked, and a
+ * 1000 g draft can be technologically absurd). Routing now considers:
+ *  - poured actuals (production reality → the local rescue path);
+ *  - EXPLICIT hard/availability constraints (exact lock, range, exclusion) —
+ *    these demand GLOBAL redistribution → constrained full reformulation;
+ *  - target-batch mismatch (outside the approved tolerance) → reformulation;
+ *  - the local-correction basin: complete recipe, batch already at target and
+ *    no new hard constraints → the existing bounded corrector.
+ * An all-locked draft AT the target keeps the local path (it owns the honest
+ * „Wszystkie składniki są zablokowane…" diagnosis — PI genuinely cannot act).
  */
 export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): ModeDecision {
   const batch = input.target_batch_grams;
   const sum = sumPlanned(input);
   const hasActuals = input.items.some((item) => item.actual_grams !== null);
-  const nearBatch = batch > 0 && Math.abs(sum - batch) / batch <= 0.25;
-  // NEAR-BATCH all-locked drafts keep the local path (it owns the honest
-  // „Wszystkie składniki są zablokowane…" diagnosis — PI genuinely cannot act).
-  // A FAR-OFF-batch draft with locks is the CONSTRAINED FORMULATION case:
-  // locks are hard constraints PI solves AROUND (toolbox fills the rest).
-  if (hasActuals || nearBatch) {
+  if (hasActuals) {
+    return { mode: 'local_correction', template: null, reasons: ['poured_actuals'] };
+  }
+
+  const hardConstraints =
+    Object.values(set.byLineId).some((c) => c.mode !== 'ai') ||
+    input.items.some((item) => item.lock_type !== 'unlocked');
+  const allLocked =
+    input.items.length > 0 &&
+    input.items.every(
+      (item) => item.lock_type !== 'unlocked' || set.byLineId[item.id]?.mode === 'locked',
+    );
+
+  const lookup = selectFormulationTemplate(input.category, input.target_temperature_c);
+
+  // EVERY line locked → two honest cases. When the locked lines already cover
+  // the template's HARD roles, the recipe is complete and untouchable — the
+  // „Wszystkie składniki są zablokowane…" diagnosis (local path), at ANY batch
+  // distance. When hard roles are MISSING (a lone locked Milk 500 g), PI can
+  // still act without touching any lock: constrained reformulation adds the
+  // missing role carriers around the byte-preserved locked lines.
+  if (allLocked) {
+    const hardRolesCovered =
+      !lookup.template ||
+      lookup.template.roles.every(
+        (roleTarget) =>
+          !HARD_ROLES.has(roleTarget.role) ||
+          input.items.some(
+            (item) =>
+              resolveFunctionalRole(item.ingredient) === roleTarget.role && item.planned_grams > 0,
+          ),
+      );
+    if (hardRolesCovered) {
+      return { mode: 'local_correction', template: null, reasons: ['all_locked'] };
+    }
+  }
+
+  // EXPLICIT hard constraints (exact lock, range) ALWAYS select constrained
+  // reformulation — never a mass-distance heuristic (the owner's inulin-0 at
+  // 944.6 g and milk-500 at 1120 g failures).
+  if (hardConstraints) {
+    if (!lookup.template) {
+      return { mode: 'unsupported', template: null, reasons: [lookup.unsupportedReason ?? 'no_template'] };
+    }
     return {
-      mode: 'local_correction',
-      template: null,
-      reasons: [hasActuals ? 'poured_actuals' : 'draft_near_batch'],
+      mode: 'constrained_reformulation',
+      template: lookup.template,
+      reasons: ['hard_constraints_present', `draft_mass_${Math.round(sum)}g_vs_batch_${Math.round(batch)}g`],
     };
   }
 
-  const lookup = selectFormulationTemplate(input.category, input.target_temperature_c);
+  // Unconstrained: a SUBSTANTIVE draft (its own composition carries at least
+  // half the target mass) is the user's recipe — the verified local corrector
+  // owns it (it is batch-first and rescales 975 g → 1000 g itself, protected by
+  // the beat-the-null gate). A hollow draft (empty, all-zero, or the 8 × 1 g
+  // damaged case) has no composition to preserve → full formulation.
+  const substantiveDraft = batch > 0 && sum >= batch * 0.5;
+  if (substantiveDraft) {
+    return { mode: 'local_correction', template: null, reasons: ['substantive_unconstrained_draft'] };
+  }
   if (!lookup.template) {
     return { mode: 'unsupported', template: null, reasons: [lookup.unsupportedReason ?? 'no_template'] };
   }
-  const constrained = Object.values(set.byLineId).some((c) => c.mode !== 'ai');
   return {
-    mode: constrained ? 'constrained_reformulation' : 'full_formulation',
+    mode: 'full_formulation',
     template: lookup.template,
-    reasons: [`draft_mass_${Math.round(sum)}g_vs_batch_${Math.round(batch)}g`],
+    reasons: [
+      'composition_requires_formulation',
+      `draft_mass_${Math.round(sum)}g_vs_batch_${Math.round(batch)}g`,
+    ],
   };
 }
 
@@ -93,12 +149,26 @@ export interface FormulationRecommendation {
   messagePl: string;
 }
 
+/** Roles a frozen product cannot exist without (Phase 10): a proposal missing
+ * one of these entirely may NEVER be applied. Soft roles (fibre/body, milk
+ * solids, dairy fat) lower the honest score instead. */
+export const HARD_ROLES: ReadonlySet<FunctionalRole> = new Set([
+  'primary_liquid',
+  'water',
+  'sweetener_sucrose',
+  'sugar_freezing_control',
+  'stabilizer',
+]);
+
 export interface FormulationProposal {
   /** The COMPLETE next RecipeInput (atomic-replacement contract). */
   proposedInput: RecipeInput;
   templateId: string;
   templateStatus: FormulationTemplate['status'];
   mode: FormulationMode;
+  /** Template HARD roles with NO usable carrier at all — the preview must not
+   * exist (Phase 10); soft gaps go to `missingRoles`/`recommendations`. */
+  missingHardRoles: FunctionalRole[];
   /** Toolbox ingredients PI added (always shown with reasons). */
   added: FormulationAddedLine[];
   /** Template roles left unfilled (honest lower result + suggestions). */
@@ -144,7 +214,11 @@ const lockOf = (set: ConstraintSet, lineId: string): IngredientConstraint | unde
 export type BuildFormulationResult =
   | { ok: true; proposal: FormulationProposal }
   | { ok: false; code: 'missing_required_role'; role: FunctionalRole; messagePl: string }
-  | { ok: false; code: 'locked_exceeds_batch'; lockedSum: number };
+  | { ok: false; code: 'locked_exceeds_batch'; lockedSum: number }
+  /** Owner P0 (truthful messages): the locked sum FITS the batch but nothing
+   * adjustable remains to fill the difference — never reported as
+   * „zablokowana suma przekracza partię" (locked 500 g ≤ 1000 g target). */
+  | { ok: false; code: 'no_adjustable_lines' };
 
 /**
  * Build the complete initial proposal from the template + the user's selection.
@@ -189,6 +263,7 @@ export function buildFormulationProposal(
   const planned: PlannedLine[] = [];
   const added: FormulationAddedLine[] = [];
   const missingRoles: FunctionalRole[] = [];
+  const missingHardRoles: FunctionalRole[] = [];
   const recommendations: FormulationRecommendation[] = [];
   const keptFixed: string[] = [];
   const mappedLineIds = new Set<string>();
@@ -260,6 +335,7 @@ export function buildFormulationProposal(
       };
     }
     missingRoles.push(roleTarget.role);
+    if (HARD_ROLES.has(roleTarget.role)) missingHardRoles.push(roleTarget.role);
     recommendations.push({
       role: roleTarget.role,
       messagePl:
@@ -279,6 +355,28 @@ export function buildFormulationProposal(
         : Math.max(0, line.item.planned_grams);
     planned.push({ item: line.item, grams, fixed: true });
     keptFixed.push(line.item.ingredient.name);
+  }
+
+  // 3b. ROLE-GAP HONESTY (owner Fixture A): a template role whose only carriers
+  //     are locked at 0 g (unavailable intention) contributes nothing — report
+  //     the gap + an approved-alternative recommendation; NEVER reintroduce.
+  for (const roleTarget of template.roles) {
+    if (roleTarget.grams <= 0) continue;
+    const carriers = planned.filter(
+      (p) => resolveFunctionalRole(p.item.ingredient) === roleTarget.role,
+    );
+    if (carriers.length === 0) continue; // handled by the unfilled-role branch
+    const carried = carriers.reduce((s, p) => s + p.grams, 0);
+    const allZeroLocked = carried <= 0 && carriers.every((p) => p.fixed);
+    if (allZeroLocked && !missingRoles.includes(roleTarget.role)) {
+      missingRoles.push(roleTarget.role);
+      recommendations.push({
+        role: roleTarget.role,
+        messagePl:
+          `Składnik w roli „${ROLE_LABEL_PL[roleTarget.role]}" jest ustawiony na 0 g. ` +
+          `Wynik może być niższy — możesz użyć innego zatwierdzonego składnika pełniącego tę rolę.`,
+      });
+    }
   }
 
   // 4. Normalize to the EXACT batch: fixed lines keep their grams; adjustable
@@ -309,7 +407,13 @@ export function buildFormulationProposal(
   };
   if (!normalize()) {
     const lockedSum = planned.filter((p) => p.fixed).reduce((s, p) => s + p.grams, 0);
-    return { ok: false, code: 'locked_exceeds_batch', lockedSum };
+    // Truthful failure split (owner P0 Phase 9): claim „locked exceeds batch"
+    // ONLY when it is arithmetically true — a locked 500 g against a 1000 g
+    // target that merely lacks adjustable lines is a DIFFERENT, honest message.
+    if (lockedSum > batch + 0.1) {
+      return { ok: false, code: 'locked_exceeds_batch', lockedSum };
+    }
+    return { ok: false, code: 'no_adjustable_lines' };
   }
   normalize(); // second pass after clamps
 
@@ -336,6 +440,7 @@ export function buildFormulationProposal(
       templateStatus: template.status,
       mode,
       added,
+      missingHardRoles,
       missingRoles,
       recommendations,
       keptFixed,

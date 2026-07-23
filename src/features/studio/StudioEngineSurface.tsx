@@ -138,7 +138,14 @@ export function StudioEngineSurface({ forceDemo = false }: { forceDemo?: boolean
             <LockedPIPreview />
           )}
           {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
-          <CorrectionPanel corrections={corrections} onUpgrade={onUpgrade} />
+          <CorrectionPanel
+            corrections={corrections}
+            onUpgrade={onUpgrade}
+            recipeIncomplete={
+              input.items.length === 0 ||
+              input.items.reduce((sum, item) => sum + item.planned_grams, 0) <= 0.1
+            }
+          />
 
           {/* Owner P0 (canonical workbench): the assistant / flow-guide / optimization-preview /
               IF9-IF10 branch tools are SECONDARY diagnostics — clearly separated in a collapsed

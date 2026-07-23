@@ -22,9 +22,13 @@ function proposalTitle(kind: 'correction' | 'tradeoff' | 'impossible'): string |
 export function CorrectionPanel({
   corrections,
   onUpgrade,
+  recipeIncomplete = false,
 }: {
   corrections: CorrectionResult;
   onUpgrade?: () => void;
+  /** Owner P0 (truthful diagnostics): an empty/zero-mass RecipeInput must NEVER
+   * read as „Balanced" — the caller passes the honest completeness state. */
+  recipeIncomplete?: boolean;
 }) {
   const view = buildCorrectionView(corrections);
 
@@ -32,7 +36,9 @@ export function CorrectionPanel({
     return (
       <Card padding="lg">
         <SectionLabel>{c.title}</SectionLabel>
-        <p className="mt-4 text-sm leading-relaxed text-ivory/50">{c.none}</p>
+        <p className="mt-4 text-sm leading-relaxed text-ivory/50">
+          {recipeIncomplete ? c.incompleteRecipe : c.none}
+        </p>
       </Card>
     );
   }

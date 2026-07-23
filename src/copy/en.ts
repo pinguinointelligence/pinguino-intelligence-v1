@@ -769,6 +769,9 @@ export const copy = {
       eyebrow: 'Dopasowanie receptury',
       modeSuffix: 'tryb',
       empty: 'Dodaj składniki, aby ocenić recepturę.',
+      /* Owner P0 (score truthfulness) — assessment coverage, never a hidden gap. */
+      coverage: (assessed: number, total: number) => `Oceniono ${assessed} z ${total} obszarów.`,
+      partialNote: 'Ocena częściowa / prowizoryczna dla tego profilu.',
     },
     builder: {
       title: 'Składniki',
@@ -893,6 +896,8 @@ export const copy = {
     corrections: {
       title: 'Corrections',
       none: 'Balanced — no corrections needed.',
+      incompleteRecipe:
+        'Receptura jest niekompletna — dodaj składniki i gramatury, aby PI mogło ją ocenić.',
       demoPreviewNote: 'PI Preview — exact grams hidden.',
       demoDirections: {
         add: 'Add a balancing ingredient',

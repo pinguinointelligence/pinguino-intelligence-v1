@@ -33,6 +33,17 @@ export function OverallScoreCard({
   const match = recipeMatchScore(result.scores);
   const modeName = copy.studio.goal.modes[mode].name;
 
+  // Owner P0 (score truthfulness): show ASSESSMENT COVERAGE honestly. An
+  // indicator without a band (uncalibrated for this profile × temperature —
+  // e.g. provisional sorbet cells) is EXCLUDED from the assessed count and the
+  // card carries a partial-assessment note. Bands are never invented here.
+  const banded = result.indicators.filter((i) => i.band != null);
+  const total = result.indicators.length;
+  const partial = total > 0 && banded.length < total;
+  const fallbackBands = result.indicators.some(
+    (i) => i.category_fallback === true || i.temperature_fallback === true,
+  );
+
   return (
     <CharcoalPanel padding="lg">
       <div className="flex items-center justify-between gap-4">
@@ -59,6 +70,13 @@ export function OverallScoreCard({
           <span className="text-sm font-medium text-ivory">{match.label}</span>
         </div>
       )}
+
+      {match.score !== null && (partial || fallbackBands) ? (
+        <p className="mt-2 text-xs leading-relaxed text-ivory-soft" data-testid="score-coverage">
+          {o.coverage(banded.length, total)}
+          {partial || fallbackBands ? ` ${o.partialNote}` : ''}
+        </p>
+      ) : null}
     </CharcoalPanel>
   );
 }

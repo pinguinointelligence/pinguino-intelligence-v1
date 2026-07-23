@@ -458,7 +458,25 @@ function buildFormulationPreviewInternal(
     if (built.code === 'missing_required_role') {
       return { ok: false, code: 'missing_required_role', role: built.role, messagePl: built.messagePl };
     }
+    if (built.code === 'no_adjustable_lines') {
+      // Owner P0 Phase 9 (truthful messages): the locked sum FITS the target —
+      // never claim „zablokowana suma przekracza partię" here.
+      return { ok: false, code: 'rescale_no_scalable' };
+    }
     return { ok: false, code: 'rescale_locked_sum', minimumBatchGrams: built.lockedSum };
+  }
+  // Phase 10 — a proposal missing a HARD technological role may never become a
+  // preview (soft gaps continue with an honest lower score + recommendations).
+  if (built.proposal.missingHardRoles.length > 0) {
+    return {
+      ok: false,
+      code: 'missing_required_role',
+      role: built.proposal.missingHardRoles[0]!,
+      messagePl:
+        `Brakuje składnika w twardej roli technologicznej: ` +
+        `${built.proposal.missingHardRoles.join(', ')}. ` +
+        `Dodaj zatwierdzony składnik tej roli, aby PI mogło ułożyć recepturę.`,
+    };
   }
 
   const violationsBefore = violationCount(calculateRecipe(input));
@@ -486,11 +504,15 @@ function buildFormulationPreviewInternal(
     lastProposal = outcome.proposal;
   }
 
-  // Acceptance: the formulation must BEAT the draft's null-hypothesis baseline
-  // (in range, fewer violations, or strictly lower weighted severity than the
-  // proportional projection of what the user typed) — never merely equal it.
+  // Acceptance: an UNCONSTRAINED formulation must BEAT the draft's null
+  // hypothesis (never merely equal a proportional projection — the 8 × 125 g
+  // rule). A CONSTRAINED reformulation is different (owner P0): with exact
+  // locks / ranges / exclusions, the constrained optimum may legitimately
+  // EQUAL the projection — the hard gates (locks byte-exact, batch equality,
+  // no duplicates) protect it, and residual violations surface honestly as the
+  // best-achievable score with recommendations.
   const afterViolationList = detectViolations(calculateRecipe(working));
-  if (!beatsBaseline(input, working)) {
+  if (mode !== 'constrained_reformulation' && !beatsBaseline(input, working)) {
     return {
       ok: false,
       code: 'unsafe_proposal',
@@ -688,6 +710,11 @@ export function buildBatchRescalePreview(
   newBatchGrams: number,
   createdAt: string,
 ): BuildPreviewResult {
+  // Owner P0 (scale safety): the target must be a FINITE POSITIVE number — an
+  // empty/zero/NaN/negative scale input can never produce a 0 g preview.
+  if (!Number.isFinite(newBatchGrams) || newBatchGrams <= 0) {
+    return { ok: false, code: 'rescale_invalid' };
+  }
   const rescaled = rescaleBatchToTarget(input, set, newBatchGrams);
   if (!rescaled.ok) {
     switch (rescaled.reason) {
@@ -816,8 +843,8 @@ export interface AppliedChangeRecord {
   temperatureC: number;
   engineVersion: string;
   configVersion: string;
-  before: { input: RecipeInput; constraints: ConstraintSet };
-  after: { input: RecipeInput; constraints: ConstraintSet };
+  before: { input: RecipeInput; constraints: ConstraintSet; excludedIngredientIds: readonly string[] };
+  after: { input: RecipeInput; constraints: ConstraintSet; excludedIngredientIds: readonly string[] };
   lines: PreviewLineDiff[];
   explanation: ConstraintExplanationEntry[];
   violationsBefore: number;
@@ -871,6 +898,8 @@ export class VerifiedApply {
     preview: ConstraintPreview,
     at: string,
     id: string,
+    /** Owner P0 (complete Undo): current exclusions ride the §20.1 snapshot. */
+    excludedIngredientIds: readonly string[] = [],
   ): CommitPreviewResult {
     // §19.2: a preview never applies onto a state it was not built for.
     if (workingStateFingerprint(current, currentConstraints) !== preview.baseFingerprint) {
@@ -910,6 +939,25 @@ export class VerifiedApply {
         code: 'duplicate_lines',
         messagePl: copy.blocked.duplicates(newDuplicates),
         ingredientNames: newDuplicates,
+      };
+    }
+
+    // Owner P0 (scale safety): a batch-rescale preview whose target is not a
+    // finite positive number (the 944.6 g → 0 g corruption) is unappliable.
+    if (
+      preview.kind === 'batch_rescale' &&
+      (!Number.isFinite(preview.proposedInput.target_batch_grams) ||
+        preview.proposedInput.target_batch_grams <= 0)
+    ) {
+      return {
+        ok: false,
+        code: 'batch_total_mismatch',
+        messagePl: copy.blocked.batchMismatch(
+          preview.proposedInput.target_batch_grams,
+          current.target_batch_grams,
+        ),
+        proposedSum: preview.proposedInput.target_batch_grams,
+        targetBatch: current.target_batch_grams,
       };
     }
 
@@ -957,7 +1005,16 @@ export class VerifiedApply {
       // Beat-the-null check: the 8 × 125 g class of proposal IS the null
       // hypothesis for its draft and can never pass; a genuinely improved
       // formulation/correction always does (or the recipe is fully in range).
-      if (!beatsBaseline(current, preview.proposedInput)) {
+      // Owner P0 (constrained reformulation): when the CURRENT constraint set
+      // carries explicit hard constraints (recomputed here, never read from the
+      // preview), the constrained optimum may legitimately equal the null — the
+      // gates above (locks byte-exact, batch equality, duplicates) protect it
+      // and residual violations surface as the honest best-achievable score.
+      // The owner's 8 × 125 g failure had ZERO constraints, so it stays gated.
+      const hardConstrained =
+        Object.values(currentConstraints.byLineId).some((c) => c.mode !== 'ai') ||
+        current.items.some((item) => item.lock_type !== 'unlocked');
+      if (!hardConstrained && !beatsBaseline(current, preview.proposedInput)) {
         return {
           ok: false,
           code: 'unsafe_proposal',
@@ -977,8 +1034,16 @@ export class VerifiedApply {
       temperatureC: current.target_temperature_c,
       engineVersion: preview.engineVersion,
       configVersion: preview.configVersion,
-      before: { input: structuredClone(current), constraints: currentConstraints },
-      after: { input: structuredClone(preview.proposedInput), constraints: preview.nextConstraints },
+      before: {
+        input: structuredClone(current),
+        constraints: currentConstraints,
+        excludedIngredientIds: [...excludedIngredientIds],
+      },
+      after: {
+        input: structuredClone(preview.proposedInput),
+        constraints: preview.nextConstraints,
+        excludedIngredientIds: [...excludedIngredientIds],
+      },
       lines: preview.lines,
       explanation: preview.explanation,
       violationsBefore: preview.violationsBefore,
