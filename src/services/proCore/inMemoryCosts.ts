@@ -8,6 +8,7 @@
  */
 import {
   buildRecipeCostSnapshot,
+  resolveCostsForLines,
   resolveIngredientCosts,
   type ResolveOptions,
   type SnapshotLineInput,
@@ -72,11 +73,11 @@ export class InMemoryCosts {
     return resolveIngredientCosts(this.listEntries(ownerUserId), ingredientIds, options);
   }
 
-  /** Resolve current costs and freeze an immutable snapshot. */
+  /** Resolve current costs (identity-aware: primary id, then aliases) and freeze a snapshot. */
   buildSnapshot(args: BuildSnapshotArgs): RecipeCostSnapshot {
-    const resolutions = this.resolveCosts(
-      args.ownerUserId,
-      args.lines.map((l) => l.ingredientId),
+    const resolutions = resolveCostsForLines(
+      this.listEntries(args.ownerUserId),
+      args.lines,
       { targetCurrency: args.currency, basis: args.basis, asOf: args.asOf },
     );
     const snapshot = buildRecipeCostSnapshot({
