@@ -44,6 +44,15 @@ import {
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
+import {
+  buildFormulationProposal,
+  routeFormulationMode,
+  type FormulationAddedLine,
+  type FormulationMode,
+  type FormulationRecommendation,
+} from '@/features/formulation/formulate';
+import type { FunctionalRole } from '@/features/formulation/ingredientRoles';
+import type { TemplateStatus } from '@/features/formulation/templateRegistry';
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
 
@@ -91,6 +100,17 @@ export interface ConstraintPreview {
   titlePl: string;
   /** Owner P0 (Przelicz z PI) — auto-balance proof: what the orchestration actually did. */
   autoBalance?: { batchRescaled: boolean; solverRounds: number };
+  /** Owner P0 (full formulation): the formulation provenance — template seed,
+   * mode, auto-added toolbox lines (with reasons), honest gaps + suggestions. */
+  formulation?: {
+    mode: FormulationMode;
+    templateId: string;
+    templateStatus: TemplateStatus;
+    added: FormulationAddedLine[];
+    missingRoles: FunctionalRole[];
+    recommendations: FormulationRecommendation[];
+    keptFixed: string[];
+  };
   /** Fingerprint of (input, constraints) the preview was built for. */
   baseFingerprint: string;
   /** The proposed working state — applied ONLY through `commitPreview`. */
@@ -122,6 +142,39 @@ const totalSeverity = (input: RecipeInput): number =>
   detectViolations(calculateRecipe(input)).reduce((sum, v) => sum + v.severity_points, 0);
 
 const SEVERITY_EPS = 1e-9;
+
+/**
+ * The IMPROVEMENT BASELINE for a draft (owner P0 — no invented thresholds):
+ * a proposal is acceptable only if it BEATS the null hypothesis for that draft.
+ *  - Draft near its batch (±25%): the draft itself is the baseline.
+ *  - Draft far off batch (all-1 g, empty): the null hypothesis is „just scale
+ *    what you typed" — the proportional projection to the batch (equal split
+ *    when the draft carries no mass at all). The owner's forbidden 8 × 125 g
+ *    result IS this null, so it can never beat itself — while an approved
+ *    template formulation beats it decisively or fails honestly.
+ */
+function improvementBaseline(current: RecipeInput): RecipeInput | null {
+  const batch = current.target_batch_grams;
+  if (!(batch > 0) || current.items.length === 0) return null;
+  const sum = current.items.reduce((s, i) => s + i.planned_grams, 0);
+  if (Math.abs(sum - batch) / batch <= 0.25) return current;
+  const items =
+    sum > 0
+      ? current.items.map((i) => ({ ...i, planned_grams: (i.planned_grams / sum) * batch }))
+      : current.items.map((i) => ({ ...i, planned_grams: batch / current.items.length }));
+  return { ...current, items };
+}
+
+/** Does `proposed` strictly beat the draft's null-hypothesis baseline? */
+function beatsBaseline(current: RecipeInput, proposed: RecipeInput): boolean {
+  const proposedViolations = detectViolations(calculateRecipe(proposed)).length;
+  if (proposedViolations === 0) return true;
+  const baseline = improvementBaseline(current);
+  if (baseline === null) return false;
+  const baselineViolations = detectViolations(calculateRecipe(baseline)).length;
+  if (proposedViolations < baselineViolations) return true;
+  return totalSeverity(proposed) < totalSeverity(baseline) - SEVERITY_EPS;
+}
 
 const isConstrained = (set: ConstraintSet, lineId: string): boolean => {
   const constraint = set.byLineId[lineId];
@@ -323,7 +376,13 @@ export type BuildPreviewResult =
   | { ok: false; code: 'rescale_invalid' }
   | { ok: false; code: 'rescale_actuals' }
   | { ok: false; code: 'rescale_no_scalable' }
-  | { ok: false; code: 'rescale_locked_sum'; minimumBatchGrams: number };
+  | { ok: false; code: 'rescale_locked_sum'; minimumBatchGrams: number }
+  /** Owner P0 (full formulation): no approved template for this profile ×
+   * temperature — honest unsupported, never routed to another profile. */
+  | { ok: false; code: 'unsupported_profile'; reason: string }
+  /** A user-supplied role (fruit / plant base / chocolate) is missing and may
+   * never be invented — precise missing-role stop with the Polish message. */
+  | { ok: false; code: 'missing_required_role'; role: string; messagePl: string };
 
 const finishPreview = (
   kind: PreviewKind,
@@ -380,6 +439,97 @@ function solveOneRound(
 const MAX_SOLVER_ROUNDS = 4;
 
 /**
+ * FULL FORMULATION preview (owner P0): approved-template seed mapped onto the
+ * user's selection → fine-tuned by the EXISTING correction solver → verified.
+ * The template provides technological starting proportions; arbitrary draft
+ * ratios (8 × 1 g) are never preserved and never proportionally rescaled.
+ */
+function buildFormulationPreviewInternal(
+  input: RecipeInput,
+  set: ConstraintSet,
+  template: NonNullable<ReturnType<typeof routeFormulationMode>['template']>,
+  mode: FormulationMode,
+  createdAt: string,
+): BuildPreviewResult {
+  const built = buildFormulationProposal(input, set, template, mode);
+  if (!built.ok) {
+    if (built.code === 'missing_required_role') {
+      return { ok: false, code: 'missing_required_role', role: built.role, messagePl: built.messagePl };
+    }
+    return { ok: false, code: 'rescale_locked_sum', minimumBatchGrams: built.lockedSum };
+  }
+
+  const violationsBefore = violationCount(calculateRecipe(input));
+  const constrainedIngredientIds = new Set(
+    input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
+  );
+  const restore = (candidate: RecipeInput): RecipeInput => {
+    if (Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) return candidate;
+    const restored = rescaleBatchToTarget(candidate, set, input.target_batch_grams);
+    return restored.ok ? restored.input : candidate;
+  };
+
+  // One row per canonical identity + batch equality on the seeded recipe.
+  let working = restore(ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, built.proposal.proposedInput)));
+
+  // Fine-tune with the EXISTING bounded correction solver (≤2 rounds).
+  let solverRounds = 0;
+  let lastProposal: CorrectionProposal | null = null;
+  for (let round = 0; round < 2; round += 1) {
+    if (violationCount(calculateRecipe(working)) === 0) break;
+    const outcome = solveOneRound(working, constrainedIngredientIds);
+    solverRounds += 1;
+    if (outcome.applied === null) break;
+    working = restore(ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, outcome.applied)));
+    lastProposal = outcome.proposal;
+  }
+
+  // Acceptance: the formulation must BEAT the draft's null-hypothesis baseline
+  // (in range, fewer violations, or strictly lower weighted severity than the
+  // proportional projection of what the user typed) — never merely equal it.
+  const afterViolationList = detectViolations(calculateRecipe(working));
+  if (!beatsBaseline(input, working)) {
+    return {
+      ok: false,
+      code: 'unsafe_proposal',
+      violatedMetrics: [...new Set(afterViolationList.map((v) => v.metric))],
+      solverInvocations: solverRounds,
+      batchOnly: false,
+    };
+  }
+
+  const explanation = lastProposal
+    ? buildProposalExplanation(working, set, lastProposal)
+    : ((): ConstraintExplanationEntry[] => {
+        const lockedNames = lockedIngredientNames(input, set);
+        return lockedNames.length > 0 ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }] : [];
+      })();
+
+  const preview = finishPreview(
+    'optimize',
+    copy.preview.kindLabels.optimize,
+    input,
+    set,
+    working,
+    set,
+    violationsBefore,
+    explanation,
+    createdAt,
+  );
+  preview.autoBalance = { batchRescaled: true, solverRounds };
+  preview.formulation = {
+    mode,
+    templateId: built.proposal.templateId,
+    templateStatus: built.proposal.templateStatus,
+    added: built.proposal.added,
+    missingRoles: built.proposal.missingRoles,
+    recommendations: built.proposal.recommendations,
+    keptFixed: built.proposal.keptFixed,
+  };
+  return { ok: true, preview };
+}
+
+/**
  * „Przelicz z PI” (owner P0 — REAL AUTO-BALANCE): recalculate and automatically
  * balance the COMPLETE current recipe. Composes ONLY approved mechanisms — no
  * new math, no science change:
@@ -403,6 +553,22 @@ export function buildOptimizePreview(
   set: ConstraintSet,
   createdAt: string,
 ): BuildPreviewResult {
+  // OWNER P0 (full formulation) — deterministic MODE ROUTER first: a new/
+  // incomplete/arbitrary draft is FORMULATED from the approved template
+  // registry (never from the previous version, never by scaling arbitrary
+  // values); a complete near-batch draft keeps the existing local-correction
+  // path; an unsupported profile × temperature returns an honest structured
+  // state. The formulation path interprets ranges as TARGET constraints (a
+  // 0 g draft against a 150–250 g range is a solvable request, not an error);
+  // the correction path keeps the strict §17 current-grams validation.
+  const decision = routeFormulationMode(input, set);
+  if (decision.mode === 'unsupported') {
+    return { ok: false, code: 'unsupported_profile', reason: decision.reasons[0] ?? 'no_template' };
+  }
+  if (decision.mode !== 'local_correction' && decision.template) {
+    return buildFormulationPreviewInternal(input, set, decision.template, decision.mode, createdAt);
+  }
+
   const constrained = applyConstraintsToRecipe(input, set);
   if (!constrained.ok) {
     return { ok: false, code: 'invalid_constraints', issues: constrained.issues };
@@ -744,6 +910,23 @@ export class VerifiedApply {
       };
     }
 
+    // Owner P0 Phase 10 — RUNAWAY GUARD (optimize/formulation only; the explicit
+    // „Przeskaluj partię" action legitimately changes the target): the proposed
+    // TARGET batch must be the CURRENT target batch — a stale/multiplied target
+    // (the 111,000 g class of failure) is structurally unappliable.
+    if (preview.kind === 'optimize' && preview.proposedInput.target_batch_grams !== current.target_batch_grams) {
+      return {
+        ok: false,
+        code: 'batch_total_mismatch',
+        messagePl: copy.blocked.batchMismatch(
+          preview.proposedInput.target_batch_grams,
+          current.target_batch_grams,
+        ),
+        proposedSum: preview.proposedInput.target_batch_grams,
+        targetBatch: current.target_batch_grams,
+      };
+    }
+
     // Owner P0 Phase 5 — BATCH INVARIANT (planned recipes, optimize path):
     // a 1000 g recipe stays 1000 g; a 2937.9 g result can never be applied.
     // The batch rejection is the more specific message, so it runs first.
@@ -768,19 +951,16 @@ export class VerifiedApply {
     // count OR the engine's weighted severity (the 8 × 125 g case: 9 → 9,
     // severity unchanged) is structurally unappliable, whatever produced it.
     if (preview.kind === 'optimize') {
-      const doorViolationsBefore = detectViolations(calculateRecipe(current)).length;
-      const doorViolationsAfter = detectViolations(calculateRecipe(preview.proposedInput)).length;
-      const doorImproved =
-        doorViolationsAfter === 0 ||
-        doorViolationsAfter < doorViolationsBefore ||
-        totalSeverity(preview.proposedInput) < totalSeverity(current) - SEVERITY_EPS;
-      if (!doorImproved) {
+      // Beat-the-null check: the 8 × 125 g class of proposal IS the null
+      // hypothesis for its draft and can never pass; a genuinely improved
+      // formulation/correction always does (or the recipe is fully in range).
+      if (!beatsBaseline(current, preview.proposedInput)) {
         return {
           ok: false,
           code: 'unsafe_proposal',
           messagePl: copy.blocked.unsafeProposal,
-          violationsBefore: doorViolationsBefore,
-          violationsAfter: doorViolationsAfter,
+          violationsBefore: detectViolations(calculateRecipe(current)).length,
+          violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
         };
       }
     }

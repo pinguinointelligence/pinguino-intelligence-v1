@@ -124,7 +124,17 @@ export function ConstraintPreviewCard({
         <p>{copy.preview.outOfBandDelta(preview.violationsBefore, preview.violationsAfter)}</p>
         {/* Owner QA (Phase 12): the EXACT source of the proposal — never mislabels a
             batch rescale as formulation. */}
-        {preview.autoBalance ? (
+        {preview.formulation ? (
+          <p className="text-[0.65rem] text-ivory/40" data-testid="preview-source">
+            {copy.preview.sourceFormulation(
+              preview.formulation.templateId,
+              preview.autoBalance?.solverRounds ?? 0,
+            )}
+            {preview.formulation.templateStatus === 'reference_derived'
+              ? ` ${copy.preview.referenceDerivedNote}`
+              : ''}
+          </p>
+        ) : preview.autoBalance ? (
           <p className="text-[0.65rem] text-ivory/40" data-testid="preview-source">
             {preview.autoBalance.solverRounds > 0
               ? copy.preview.sourceSolver(preview.autoBalance.solverRounds)
@@ -132,6 +142,27 @@ export function ConstraintPreviewCard({
           </p>
         ) : null}
       </div>
+
+      {/* Owner P0 (full formulation): toolbox additions with reasons + honest
+          gaps + approved improvement suggestions. */}
+      {preview.formulation && preview.formulation.added.length > 0 ? (
+        <div className="mt-3 space-y-1" data-testid="preview-formulation-added">
+          {preview.formulation.added.map((line) => (
+            <p key={line.ingredientId} className="text-xs leading-relaxed text-ivory/70">
+              {copy.preview.addedLine(line.name, formatGramsPl(line.grams))} {line.reasonPl}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      {preview.formulation && preview.formulation.recommendations.length > 0 ? (
+        <div className="mt-3 space-y-1" data-testid="preview-formulation-recommendations">
+          {preview.formulation.recommendations.map((rec) => (
+            <p key={rec.role} className="text-xs leading-relaxed text-amber-200/90">
+              {rec.messagePl}
+            </p>
+          ))}
+        </div>
+      ) : null}
 
       <div className="mt-4 flex items-center gap-2">
         <button

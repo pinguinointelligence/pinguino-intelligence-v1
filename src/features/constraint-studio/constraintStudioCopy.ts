@@ -98,6 +98,13 @@ export const constraintStudioCopy = {
     sourceBatchRescale:
       'Źródło propozycji: proporcjonalne wyrównanie partii (§17.4) — parametry receptury były już ' +
       'w zatwierdzonym zakresie.',
+    /* Owner P0 (full formulation) — provenance line + honest reference-derived note. */
+    sourceFormulation: (templateId: string, rounds: number) =>
+      `Źródło formulacji: ${templateId} + kanoniczny solver korekt PI` +
+      `${rounds > 0 ? ` (${rounds} ${rounds === 1 ? 'runda' : 'rundy'})` : ''}.`,
+    referenceDerivedNote:
+      'Wzorzec pochodny z receptur referencyjnych (staging) — nie jest zatwierdzony naukowo.',
+    addedLine: (name: string, grams: string) => `PI dodało: ${name} · ${grams}.`,
     residualWarning: (residual: string) =>
       `Suma składników odbiega od docelowej masy partii o ${residual}. Zastosowanie zostanie zablokowane.`,
   },
@@ -138,6 +145,10 @@ export const constraintStudioCopy = {
       'Nie udało się bezpiecznie przygotować propozycji solvera. Receptura nie została zmieniona.',
     /* Owner P0 (definitive fail): a produced-but-rejected candidate (no improvement). */
     unsafeProposal: 'PI nie utworzyło bezpiecznej receptury. Propozycja została odrzucona.',
+    /* Owner P0 (full formulation): honest unsupported profile × temperature. */
+    unsupportedProfile:
+      'Ten profil produktu nie ma jeszcze zatwierdzonej receptury bazowej dla wybranej ' +
+      'temperatury serwowania. PI nie układa receptur bez zatwierdzonego wzorca.',
     invalidConstraints: 'Blokady są nieprawidłowe względem bieżącej receptury.',
     lineMissing: 'Ten składnik nie znajduje się już w recepturze.',
     rescaleInvalid: 'Nowa partia musi być liczbą nieujemną.',

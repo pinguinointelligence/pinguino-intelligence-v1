@@ -88,6 +88,19 @@ function RecalcDiagnosisView({
     );
   }
 
+  // Owner P0 (full formulation): honest structured states with their exact
+  // messages — no lock table (locks are not the cause).
+  if (issue.code === 'unsupported_profile' || issue.code === 'missing_required_role') {
+    return (
+      <div className="space-y-2" data-testid="pro-recalc-diagnosis" data-code={issue.code}>
+        <p className="text-sm leading-relaxed text-ivory/85">{previewIssueMessagePl(issue)}</p>
+        <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
+          {d.unchanged}
+        </p>
+      </div>
+    );
+  }
+
   const diagnosis = diagnoseRecalcFailure({ input, constraints, issue, servingModeId });
   const lockedRows = diagnosis.lockReport.filter((row) => !row.adjustable);
 
