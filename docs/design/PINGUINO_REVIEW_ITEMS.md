@@ -30,6 +30,7 @@ separate change.
 | RV-12 | Pro → Monitor tab is a note | `/pro/monitor` | note pointing at Receptura | navigation to an explanation, not a function | relocate: tab opens the Monitor drawer on the live result | pending |
 | RV-13 | Maszyna (per-recipe) vs Moja maszyna (default) | `/pro/machine` + `/profile/machine` | two machine surfaces | feels duplicated; roles differ but are unexplained | keep + one distinguishing sentence on each | pending |
 | RV-14 | Double context line in Pro recipe view | `/pro/recipe` | workbar context + lab header summary | two context lines in one viewport | merge presentation post-P0 (lab header is near owned files) | pending |
+| RV-15 | ComingSoonSurface (unrouted legacy placeholder) | unrouted | Phase 6C placeholder on legacy ShellLayout | dead-looking screen in the tree; no route imports it | remove-later (owner decision; legacy-shell cluster) | pending |
 
 ## Batch Rescue / Stock Shortage (presentation follow-ups, no marker route yet)
 
@@ -41,7 +42,7 @@ customer-facing contextual actions in the workbar `⋯` menu — **„Napraw got
 
 ## Where markers render today
 
-- Floating overlay (all routes): collapsed `Do przeglądu (14)` pill, bottom-left — lists
+- Floating overlay (all routes): collapsed `Do przeglądu (15)` pill, bottom-left — lists
   current-route items first, then the full registry with reasons + suggestions.
 - Inline `ReviewBadge` placements: `/pro` Monitor & Maszyna tab panels (Phase 5 edit).
 - Both render `null` for every non-owner session (tested).

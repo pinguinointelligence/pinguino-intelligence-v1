@@ -981,6 +981,11 @@ export const copy = {
     headline: 'This page does not exist.',
     back: 'Wróć na stronę główną',
   },
+  /** 404 — PL-unified copy (Masterpiece Phase 6). NEW namespace: the legacy `notFound`
+   * keys above are preserved untouched (parallel-safety copy rule). */
+  notFoundV2: {
+    headline: 'Ta strona nie istnieje.',
+  },
   footer: {
     line: 'PINGÜINO Intelligence — precision gelato intelligence.',
   },
