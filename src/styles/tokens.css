@@ -24,6 +24,16 @@
   --color-status-risky: #9c8a55;
   --color-status-error: #a06352;
 
+  /* Owner review marker (Masterpiece Phase 3) — the ONLY saturated red in the system.
+     Staging/owner-QA `DO PRZEGLĄDU` badges exclusively; never a customer-facing status. */
+  --color-review: #b3261e;
+
+  /* Attention accent (Masterpiece Phase 4) — replaces ad-hoc amber-* leaks for
+     "pending / unsaved / requires attention" copy. Desaturated, AA on paper. */
+  --color-attention: #8a5a2a;
+  /* The same attention accent for dark surfaces (AA on shell). */
+  --color-attention-soft: #cf9a5c;
+
   /* Golden Range — the brand's signature OPTIMUM accent (UIUX spec §15.3, §21.1).
      Owner decision (Slice A): gold marks the golden range / optimum ONLY — never
      generic "premium" decoration and never the sole Pro plan marker. Deep muted
