@@ -71,6 +71,30 @@ export interface RecipeState {
   machineLabel: string | null;
   /** Unsaved-changes flag: true after any edit, false after a load or a successful save. */
   dirty: boolean;
+  /**
+   * Owner P0 NIGHTLY (live FAILURE 1, Phase 3) — MONOTONIC DRAFT REVISION.
+   * Incremented on EVERY material edit (gram, add/remove, lock change, §17
+   * constraint change via `bumpDraftRevision`, exclusion, product type, tier/
+   * mode, temperature, batch, machine, apply, undo, load). A staged preview
+   * carries the revision it was built for; `commitPreview` rejects a revision
+   * mismatch (the additional monotonic guard next to the fingerprint guard),
+   * and the constraint-studio bridge invalidates staged state on every bump.
+   * NOT persisted — a fresh session legitimately starts at 0.
+   */
+  draftRevision: number;
+  /**
+   * Owner P0 NIGHTLY (live FAILURE 1, Phase 3) — DRAFT CONTEXT SEQUENCE.
+   * Incremented ONLY when a whole new draft context begins (`loadRecipeInput`,
+   * `loadPreset`, `resetToDemo`). The constraint-studio bridge resets the §17
+   * session (constraints + preview + staged state + history) when it changes:
+   * a loaded recipe starts a FRESH §17 context — constraints from an earlier
+   * session draft must never silently constrain the reloaded draft.
+   * NOT persisted.
+   */
+  draftContextSeq: number;
+  /** Increment `draftRevision` for a material edit that lives OUTSIDE this
+   * store (a §17 constraint/range change in the constraint-studio session). */
+  bumpDraftRevision: () => void;
 
   setMode: (mode: ProductMode) => void;
   setCategory: (category: ProductCategory) => void;
@@ -213,10 +237,21 @@ export const useRecipeStore = create<RecipeState>()(
     (set) => ({
       ...fromPreset(DEFAULT_PRESET),
       excludedIngredientIds: [],
+      draftRevision: 0,
+      draftContextSeq: 0,
 
-      setMode: (mode) => set({ mode, dirty: true }),
+      bumpDraftRevision: () =>
+        set((state) => ({ draftRevision: state.draftRevision + 1 })),
+
+      setMode: (mode) => set((state) => ({ mode, dirty: true, draftRevision: state.draftRevision + 1 })),
       // Direct internal-category writes (QA/diagnostic/tests) keep the visible projection coherent.
-      setCategory: (category) => set({ category, visibleProductType: visibleTypeOf(category), dirty: true }),
+      setCategory: (category) =>
+        set((state) => ({
+          category,
+          visibleProductType: visibleTypeOf(category),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
       setVisibleProductType: (visible) =>
         set((state) => ({
           visibleProductType: visible,
@@ -224,6 +259,7 @@ export const useRecipeStore = create<RecipeState>()(
           // 'protein' is honest-unsupported and keeps the previous category untouched.
           category: internalCategoryFor(visible, state.items, state.category),
           dirty: true,
+          draftRevision: state.draftRevision + 1,
         })),
       setServingMode: (servingModeId, temperatureC) =>
         set((state) => ({
@@ -235,23 +271,29 @@ export const useRecipeStore = create<RecipeState>()(
             ? { machineKind: null, machineId: null, machineLabel: null }
             : {}),
           dirty: true,
+          draftRevision: state.draftRevision + 1,
         })),
       // A MANUAL temperature change overrides any machine/serving route (owner P0 temperature
       // contract): clearing the machine context keeps the visible selection, the Engine input
       // and every label in agreement — a route mismatch becomes unrepresentable.
       setTargetTemperature: (target_temperature_c) =>
-        set({
+        set((state) => ({
           target_temperature_c,
           machineKind: null,
           servingModeId: null,
           machineId: null,
           machineLabel: null,
           dirty: true,
-        }),
-      setBatchGrams: (target_batch_grams) => set({ target_batch_grams, dirty: true }),
-      setMachineCapacity: (machine_capacity_grams) => set({ machine_capacity_grams, dirty: true }),
-      setFlavorIntensity: (flavor_intensity) => set({ flavor_intensity, dirty: true }),
-      setCostPriority: (cost_priority) => set({ cost_priority, dirty: true }),
+          draftRevision: state.draftRevision + 1,
+        })),
+      setBatchGrams: (target_batch_grams) =>
+        set((state) => ({ target_batch_grams, dirty: true, draftRevision: state.draftRevision + 1 })),
+      setMachineCapacity: (machine_capacity_grams) =>
+        set((state) => ({ machine_capacity_grams, dirty: true, draftRevision: state.draftRevision + 1 })),
+      setFlavorIntensity: (flavor_intensity) =>
+        set((state) => ({ flavor_intensity, dirty: true, draftRevision: state.draftRevision + 1 })),
+      setCostPriority: (cost_priority) =>
+        set((state) => ({ cost_priority, dirty: true, draftRevision: state.draftRevision + 1 })),
 
       applyVerifiedRecipeInput: (input) => {
         // Phase 5 — reject missing/invalid amounts (never coerce to zero).
@@ -278,7 +320,12 @@ export const useRecipeStore = create<RecipeState>()(
         const priorItems = prior.items;
         const priorBatch = prior.target_batch_grams;
         const nextItems = input.items.map((item) => ({ ...item }));
-        set({ items: nextItems, target_batch_grams: input.target_batch_grams, dirty: true });
+        set((state) => ({
+          items: nextItems,
+          target_batch_grams: input.target_batch_grams,
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        }));
         const written = useRecipeStore.getState();
         const writtenSum = written.items.reduce((total, item) => total + item.planned_grams, 0);
         const intact =
@@ -290,7 +337,12 @@ export const useRecipeStore = create<RecipeState>()(
           ) &&
           (hasActuals || Math.abs(writtenSum - input.target_batch_grams) <= 0.1);
         if (!intact) {
-          set({ items: priorItems, target_batch_grams: priorBatch });
+          // Rollback is itself a material write — the revision stays monotonic.
+          set((state) => ({
+            items: priorItems,
+            target_batch_grams: priorBatch,
+            draftRevision: state.draftRevision + 1,
+          }));
           return { ok: false, code: 'write_verification_failed' };
         }
         return { ok: true };
@@ -308,6 +360,7 @@ export const useRecipeStore = create<RecipeState>()(
             // input semantics: removed returns ONLY through an explicit add).
             excludedIngredientIds: state.excludedIngredientIds.filter((id) => id !== ingredient.id),
             dirty: true,
+            draftRevision: state.draftRevision + 1,
           };
         }),
 
@@ -332,6 +385,7 @@ export const useRecipeStore = create<RecipeState>()(
                   ? [...state.excludedIngredientIds, removed.ingredient.id]
                   : state.excludedIngredientIds,
             dirty: true,
+            draftRevision: state.draftRevision + 1,
           };
         }),
 
@@ -363,7 +417,7 @@ export const useRecipeStore = create<RecipeState>()(
             keepByIngredient.set(item.ingredient.id, copy);
             items.push(copy);
           }
-          return merged ? { items, dirty: true } : {};
+          return merged ? { items, dirty: true, draftRevision: state.draftRevision + 1 } : {};
         }),
 
       setPlannedGrams: (lineId, grams) =>
@@ -372,6 +426,7 @@ export const useRecipeStore = create<RecipeState>()(
             item.id === lineId ? { ...item, planned_grams: Math.max(0, grams) } : item,
           ),
           dirty: true,
+          draftRevision: state.draftRevision + 1,
         })),
 
       setActualGrams: (lineId, grams) =>
@@ -382,6 +437,7 @@ export const useRecipeStore = create<RecipeState>()(
               : item,
           ),
           dirty: true,
+          draftRevision: state.draftRevision + 1,
         })),
 
       setLockType: (lineId, lockType) =>
@@ -390,6 +446,7 @@ export const useRecipeStore = create<RecipeState>()(
             item.id === lineId ? { ...item, lock_type: lockType } : item,
           ),
           dirty: true,
+          draftRevision: state.draftRevision + 1,
         })),
 
       setMainIngredient: (lineId) =>
@@ -400,11 +457,25 @@ export const useRecipeStore = create<RecipeState>()(
             return item.lock_type === 'main' ? { ...item, lock_type: 'unlocked' } : item;
           }),
           dirty: true,
+          draftRevision: state.draftRevision + 1,
         })),
 
-      loadPreset: (preset) => set({ ...fromPreset(preset), excludedIngredientIds: [] }),
+      // Owner P0 NIGHTLY (live FAILURE 1): a preset load / recipe load / reset
+      // starts a WHOLE NEW draft context — `draftContextSeq` bumps so the
+      // constraint-studio bridge resets the §17 session (constraints, staged
+      // preview, history). Stale §17 locks/ranges from an earlier session
+      // draft must never survive into a reloaded recipe.
+      loadPreset: (preset) =>
+        set((state) => ({
+          ...fromPreset(preset),
+          excludedIngredientIds: [],
+          draftRevision: state.draftRevision + 1,
+          draftContextSeq: state.draftContextSeq + 1,
+        })),
       loadRecipeInput: (input, link = {}) =>
-        set({
+        set((state) => ({
+          draftRevision: state.draftRevision + 1,
+          draftContextSeq: state.draftContextSeq + 1,
           mode: input.mode,
           category: input.category,
           visibleProductType: visibleTypeOf(input.category),
@@ -430,7 +501,7 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionNumber: link.versionNumber ?? null,
           currentVersionDate: link.versionDate ?? null,
           dirty: false,
-        }),
+        })),
       markSaved: (id, name, versionNumber, versionDate = null) =>
         set({
           savedRecipeId: id,
@@ -449,8 +520,14 @@ export const useRecipeStore = create<RecipeState>()(
           target_temperature_c: sel.temperatureC,
           target_batch_grams: sel.batchGrams != null ? sel.batchGrams : state.target_batch_grams,
           dirty: true,
+          draftRevision: state.draftRevision + 1,
         })),
-      resetToDemo: () => set(fromPreset(DEFAULT_PRESET)),
+      resetToDemo: () =>
+        set((state) => ({
+          ...fromPreset(DEFAULT_PRESET),
+          draftRevision: state.draftRevision + 1,
+          draftContextSeq: state.draftContextSeq + 1,
+        })),
     }),
     { name: 'pinguino-recipe', partialize: recipePersistPartialize },
   ),

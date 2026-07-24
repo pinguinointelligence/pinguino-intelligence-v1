@@ -92,10 +92,16 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
 
   it('stale Preview is blocked after an edit (test 17)', () => {
     useConstraintStudioStore.getState().createOptimizePreview();
-    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    const staged = useConstraintStudioStore.getState().preview;
+    expect(staged).not.toBeNull();
     // the user edits AFTER preview → source revision no longer matches
     const first = useRecipeStore.getState().items[0]!;
     useRecipeStore.getState().setPlannedGrams(first.id, 5);
+    // Owner P0 NIGHTLY (Phase 3): the material edit invalidates the staged
+    // preview immediately — and a resurrected stale preview still cannot
+    // apply (monotonic revision + fingerprint at the commit door).
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    useConstraintStudioStore.setState({ preview: staged });
     useConstraintStudioStore.getState().applyPreview();
     expect(useConstraintStudioStore.getState().blocked?.code).toBe('stale_preview');
     expect(storeSum()).toBe(5); // recipe untouched apart from the user's own edit

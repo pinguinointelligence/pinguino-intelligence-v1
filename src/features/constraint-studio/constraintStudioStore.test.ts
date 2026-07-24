@@ -157,11 +157,22 @@ describe('§19 apply through the store', () => {
   it('a preview goes stale when the recipe changes before Apply', () => {
     loadAddFixScenario();
     useConstraintStudioStore.getState().createOptimizePreview();
+    const staged = useConstraintStudioStore.getState().preview;
+    expect(staged).not.toBeNull();
     useRecipeStore.getState().setPlannedGrams(MILK, 555);
 
-    const before = JSON.stringify(recipeItems());
-    useConstraintStudioStore.getState().applyPreview();
+    // Owner P0 NIGHTLY (Phase 3): the MATERIAL EDIT ITSELF invalidates the
+    // staged preview — instantly, not only at the Apply attempt.
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
 
+    const before = JSON.stringify(recipeItems());
+    useConstraintStudioStore.getState().applyPreview(); // no-op without a preview
+    expect(JSON.stringify(recipeItems())).toBe(before);
+
+    // And even a resurrected stale preview can never apply: the commit door
+    // rejects it (monotonic revision guard + fingerprint), recipe untouched.
+    useConstraintStudioStore.setState({ preview: staged });
+    useConstraintStudioStore.getState().applyPreview();
     expect(JSON.stringify(recipeItems())).toBe(before);
     expect(useConstraintStudioStore.getState().blocked?.code).toBe('stale_preview');
     expect(useConstraintStudioStore.getState().preview).toBeNull();

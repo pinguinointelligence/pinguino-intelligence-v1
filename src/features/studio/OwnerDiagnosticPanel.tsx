@@ -13,8 +13,10 @@ import { copy } from '@/copy/en';
 import { useAccess } from '@/access/useAccess';
 import { selectTargetBand, type CorrectionResult, type RecipeInput, type RecipeResult } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { MAX_SOLVER_ROUNDS, type IterationDiagnostics } from '@/features/constraint-studio/applyPipeline';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { buildLockReport } from '@/features/constraint-studio/recalcDiagnosis';
+import { assessStabilizerDosage } from '@/features/formulation/stabilizerDosage';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
 import { detectClassifications, type VisibleProductType } from './productType';
 
@@ -129,6 +131,61 @@ export function OwnerDiagnosticPanel({
     return { roleTraceLabel, solverRuns, fallbackInvoked, finalClassification };
   }, [preview, previewIssue, blocked]);
 
+  // Owner P0 NIGHTLY (FAILURE 2 + Phase 9) — iteration diagnostics + the
+  // approved stabilizer-dosage assessment. Reads ONLY already-computed
+  // preview/failure state and the live input; explicit units everywhere.
+  const iterationQa = useMemo(() => {
+    const iteration: IterationDiagnostics | undefined =
+      preview?.iteration ??
+      (previewIssue && 'iteration' in previewIssue ? previewIssue.iteration : undefined);
+    if (!iteration) {
+      return { count: d.none, trajectory: d.none, stop: d.none };
+    }
+    const count =
+      `${iteration.solverInvocations} / ${MAX_SOLVER_ROUNDS}` +
+      (iteration.capped ? ` (${d.iterationCapReached})` : '');
+    const trajectory =
+      iteration.rounds.map((round) => String(round.violations)).join(' → ') +
+      ' (severity ' +
+      iteration.rounds.map((round) => round.severityPoints.toFixed(2)).join(' → ') +
+      ')';
+    const stop = iteration.stopDetail
+      ? `${iteration.stopReason} (${iteration.stopDetail})`
+      : iteration.stopReason;
+    return { count, trajectory, stop };
+  }, [preview, previewIssue]);
+
+  const stabilizerQa = useMemo(() => {
+    const assessments = assessStabilizerDosage(input);
+    if (assessments.length === 0) {
+      return { dosage: d.none, provenance: d.none };
+    }
+    const statusLabel = {
+      within_window: d.stabilizerWithinWindow,
+      below_window: d.stabilizerBelowWindow,
+      above_window: d.stabilizerAboveWindow,
+      no_approved_window: d.stabilizerNoWindow,
+    } as const;
+    const dosage = assessments
+      .map((a) => {
+        const pct = a.percentOfTotalMix === null ? '—' : `${a.percentOfTotalMix.toFixed(2)} %`;
+        const window = a.window
+          ? `okno ${a.window.minPercentOfTotalMix}–${a.window.maxPercentOfTotalMix} % mieszanki (${a.window.mapperId})`
+          : statusLabel.no_approved_window;
+        return `${a.ingredientName} ${a.grams.toFixed(2)} g = ${pct} · ${window} · ${statusLabel[a.status]}`;
+      })
+      .join('; ');
+    // Provenance truth: a formulation preview's stabilizer amount is the
+    // template-controlled seed — labelled UNRESOLVED on reference_derived
+    // templates (never presented as scientifically endorsed).
+    const provenance = preview?.formulation
+      ? preview.formulation.templateStatus === 'reference_derived'
+        ? d.stabilizerSeedUnresolved
+        : d.stabilizerSeedApproved
+      : d.stabilizerUserDraft;
+    return { dosage, provenance };
+  }, [input, preview]);
+
   if (!technicalView) return null;
 
   return (
@@ -195,6 +252,13 @@ export function OwnerDiagnosticPanel({
         <Row label={d.solverRuns} value={qa.solverRuns} />
         <Row label={d.fallbackInvoked} value={qa.fallbackInvoked} />
         <Row label={d.finalClassification} value={qa.finalClassification} />
+        {/* Owner P0 NIGHTLY (FAILURE 2) — honest iteration diagnostics. */}
+        <Row label={d.iterationCount} value={iterationQa.count} />
+        <Row label={d.iterationTrajectory} value={iterationQa.trajectory} />
+        <Row label={d.iterationStop} value={iterationQa.stop} />
+        {/* Owner Phase 9 — approved stabilizer dosage (explicit units). */}
+        <Row label={d.stabilizerDosage} value={stabilizerQa.dosage} />
+        <Row label={d.stabilizerDosageProvenance} value={stabilizerQa.provenance} />
       </dl>
     </details>
   );
