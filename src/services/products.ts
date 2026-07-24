@@ -13,6 +13,7 @@
  *     (omit a field to leave it NULL); no `npac_value` anywhere.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser } from '@/services/auth';
 import { productMatchResultToPatch } from '@/data/products/productMatchResultToPatch';
 import {
@@ -34,7 +35,7 @@ const UNAVAILABLE = 'Products are not available in this build.';
 
 /** All products owned by the current user (RLS enforces ownership). */
 export async function listMyProducts(): Promise<ProductRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('products.listMyProducts', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -45,7 +46,7 @@ export async function listMyProducts(): Promise<ProductRow[]> {
 
 /** A single owned product by id (RLS still applies). */
 export async function getProduct(id: string): Promise<ProductRow | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('products.getProduct', null);
   const { data, error } = await supabase.from(TABLE).select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
   return (data as ProductRow | null) ?? null;
@@ -165,7 +166,7 @@ export async function saveProductMapperReview(
 /** A single owned row where `column` equals `value` (RLS scopes it to the caller).
  * `.limit(1)` guards the non-unique source_url / identity-hash lookups. */
 async function findOwnedProductBy(column: string, value: string): Promise<ProductRow | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('products.findOwnedProductBy', null);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -192,7 +193,7 @@ function identityKeyIsMeaningful(key: string): boolean {
 export async function findExistingProductForIdentity(
   input: ProductInsert,
 ): Promise<ProductRow | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('products.findExistingProductForIdentity', null);
 
   const normEan = normalizeEan(input.ean_code);
   if (normEan !== '') {

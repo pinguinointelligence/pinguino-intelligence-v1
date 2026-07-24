@@ -18,6 +18,7 @@
  * itself — no service role, no privileged key.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser } from '@/services/auth';
 import type { AcceptedMime } from '@/features/ocr-intake/intakeContracts';
 
@@ -106,7 +107,7 @@ export async function createIntakeImageSignedUrl(
   path: string,
   expiresInSeconds = 3600,
 ): Promise<string | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('ocrIntakeStorage.createIntakeImageSignedUrl', null);
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, expiresInSeconds);
   if (error) throw new Error(error.message);
   return data?.signedUrl ?? null;

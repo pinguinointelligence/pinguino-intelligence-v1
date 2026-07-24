@@ -6,6 +6,7 @@
  * reach these functions (or their TanStack hooks), never the client directly.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser } from '@/services/auth';
 import type { SavedRecipe, SaveRecipeInput } from '@/features/recipes/recipePayload';
 
@@ -14,7 +15,7 @@ const UNAVAILABLE = 'Saving is not available in this build.';
 
 /** All recipes owned by the current user (RLS enforces ownership). */
 export async function listMine(): Promise<SavedRecipe[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('recipes.listMine', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -24,7 +25,7 @@ export async function listMine(): Promise<SavedRecipe[]> {
 }
 
 export async function get(id: string): Promise<SavedRecipe | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('recipes.get', null);
   const { data, error } = await supabase.from(TABLE).select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
   return (data as SavedRecipe | null) ?? null;

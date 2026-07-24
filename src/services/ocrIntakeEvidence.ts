@@ -23,6 +23,7 @@
  *     persisted here (they live in the in-memory RawOcrResult only).
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import type {
   EvidenceProvenance,
   FieldReviewStatus,
@@ -98,7 +99,7 @@ export async function recordOcrRun(
 
 /** Every recorded OCR run for a session, oldest first. Read-only. */
 export async function listOcrRuns(sessionId: string): Promise<OcrExtractionRunRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('ocrIntakeEvidence.listOcrRuns', []);
   const { data, error } = await supabase
     .from(RUNS_TABLE)
     .select('*')
@@ -205,7 +206,7 @@ export async function saveEvidence(
 
 /** Every candidate evidence row for a session, by field then candidate index. Read-only. */
 export async function listEvidence(sessionId: string): Promise<OcrFieldEvidenceRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('ocrIntakeEvidence.listEvidence', []);
   const { data, error } = await supabase
     .from(EVIDENCE_TABLE)
     .select('*')

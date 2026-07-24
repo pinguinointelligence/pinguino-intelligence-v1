@@ -362,6 +362,12 @@ export class SupabaseRecipes {
     if (error) {
       if (isFunctionMissing(error)) {
         this.rpcFirstSaveUnavailable = true;
+        // State-contract visibility (Agent 5): the weaker path must never engage silently.
+        console.warn(
+          '[PINGÜINO] supabaseRecipes.createRecipe: migration-0036 RPC create_recipe_with_v1 is ' +
+            'missing in this database — using the documented NON-TRANSACTIONAL first-save fallback ' +
+            'for the rest of this session. Apply migration 0036 to restore the atomic path.',
+        );
         return null;
       }
       throw new Error(error.message ?? 'transactional first save failed');

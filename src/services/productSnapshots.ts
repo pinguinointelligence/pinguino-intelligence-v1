@@ -12,6 +12,7 @@
  *   • unknown numerics stay NULL (never coerced to 0); diffing is the pure productSnapshotDiff.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser } from '@/services/auth';
 import {
   diffSnapshot,
@@ -37,7 +38,7 @@ export interface ProductSnapshotRow extends SnapshotFields {
 
 /** Full snapshot history for a product, newest first (RLS scopes to the owner). Read-only. */
 export async function listProductSnapshots(productId: string): Promise<ProductSnapshotRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('productSnapshots.listProductSnapshots', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -49,7 +50,7 @@ export async function listProductSnapshots(productId: string): Promise<ProductSn
 
 /** The most recent snapshot for a product (RLS scopes it to the owner), or null. */
 export async function getLatestSnapshot(productId: string): Promise<ProductSnapshotRow | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('productSnapshots.getLatestSnapshot', null);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')

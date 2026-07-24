@@ -9,6 +9,7 @@
  * Returns empty/null gracefully when the backend is not configured.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { buildSearchTermGroups, SEARCHABLE_DB_FIELDS } from '@/features/ingredient-builder/ingredientSearch';
 
@@ -21,7 +22,7 @@ export function isIngredientBackendConfigured(): boolean {
 
 /** Active ingredients (RLS still scopes visibility to PI Pro members). */
 export async function listActiveIngredients(): Promise<IngredientRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('ingredients.listActiveIngredients', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -33,7 +34,7 @@ export async function listActiveIngredients(): Promise<IngredientRow[]> {
 
 /** Active ingredients approved for the PI recipe engines. */
 export async function listEngineApprovedIngredients(): Promise<IngredientRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('ingredients.listEngineApprovedIngredients', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -76,7 +77,7 @@ export async function searchEngineApprovedIngredients(
   rawQuery: string,
   options?: { limit?: number; signal?: AbortSignal },
 ): Promise<IngredientSearchRow[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('ingredients.searchEngineApprovedIngredients', []);
   const groups = buildSearchTermGroups(rawQuery);
   if (groups.length === 0) return [];
   const limit = options?.limit ?? 200;
@@ -116,7 +117,8 @@ export async function searchEngineApprovedIngredients(
 
 /** Reference rows for a known id set (the "My Products" linkage — small, exact). */
 export async function listIngredientsByIds(ids: readonly string[]): Promise<IngredientRow[]> {
-  if (!supabase || ids.length === 0) return [];
+  if (ids.length === 0) return []; // honest empty: nothing was asked for
+  if (!supabase) return emptyUnconfiguredRead('ingredients.listIngredientsByIds', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
@@ -127,7 +129,7 @@ export async function listIngredientsByIds(ids: readonly string[]): Promise<Ingr
 
 /** A single ingredient by its stable id (RLS still applies). */
 export async function getIngredientById(id: string): Promise<IngredientRow | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('ingredients.getIngredientById', null);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
