@@ -79,7 +79,7 @@ export function ServerIngredientPicker({
         <svg
           aria-hidden
           viewBox="0 0 20 20"
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/40"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/60"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -98,7 +98,7 @@ export function ServerIngredientPicker({
       </div>
 
       {!hasQuery ? (
-        <p className="text-xs leading-relaxed text-ivory/50" data-testid="picker-search-hint">
+        <p className="text-xs leading-relaxed text-ivory/65" data-testid="picker-search-hint">
           {b.liveSearchHint}
         </p>
       ) : search.isError ? (
@@ -106,11 +106,11 @@ export function ServerIngredientPicker({
           {b.searchError}
         </p>
       ) : search.isFetching ? (
-        <p className="text-xs text-ivory/50" role="status" aria-live="polite" data-testid="picker-searching">
+        <p className="text-xs text-ivory/65" role="status" aria-live="polite" data-testid="picker-searching">
           {b.searching}
         </p>
       ) : (
-        <p className="text-xs text-ivory/50" aria-live="polite">
+        <p className="text-xs text-ivory/65" aria-live="polite">
           <span className="font-mono tabular-nums text-ivory/70">{count.toLocaleString('en-US')}</span>{' '}
           {count === 1 ? b.resultUnitOne : b.resultUnitMany} {b.resultFoundSuffix}
         </p>
@@ -174,7 +174,7 @@ export function ServerIngredientPicker({
           ) : null}
 
           {selectedProvenance ? (
-            <p className="text-xs leading-relaxed text-ivory/50">
+            <p className="text-xs leading-relaxed text-ivory/65">
               {selectedProvenance.class_derived ? (
                 <span className="text-ivory/70">
                   {selectedProvenance.provenance_note ?? 'PI Calculated · class-derived · not independently measured'}

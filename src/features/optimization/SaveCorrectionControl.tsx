@@ -85,7 +85,7 @@ export function SaveCorrectionControl({
 
   // Unsigned (incl. demo sessions): a plain sign-in note, never a button.
   if (authStatus !== 'authed' || !user) {
-    return <p className="text-[11px] leading-relaxed text-ivory/30">Sign in to save corrections.</p>;
+    return <p className="text-[11px] leading-relaxed text-ivory/60">Sign in to save corrections.</p>;
   }
   // Signed-in Free: no control at all (no dead button, no upsell here).
   if (!exactCorrectionGrams || !saveRecipes) return null;
@@ -111,7 +111,7 @@ export function SaveCorrectionControl({
   if (!builds.engine_seeded.ok && !builds.regulator_shadow.ok) {
     const reason = builds.engine_seeded.ok ? null : builds.engine_seeded.reason;
     return (
-      <p className="text-[11px] leading-relaxed text-ivory/30">
+      <p className="text-[11px] leading-relaxed text-ivory/60">
         {reason ? REJECTION_TEXT[reason] : 'Nothing saveable in this preview.'}
       </p>
     );
@@ -150,10 +150,10 @@ export function SaveCorrectionControl({
 
   return (
     <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-ivory/40">
+      <p className="font-mono text-[10px] uppercase tracking-wide text-ivory/60">
         Save accepted correction
       </p>
-      <p className="text-[11px] leading-relaxed text-ivory/30">
+      <p className="text-[11px] leading-relaxed text-ivory/60">
         Writes one immutable correction record you own (original + corrected snapshots). The recipe
         itself is never changed.
       </p>
@@ -162,7 +162,7 @@ export function SaveCorrectionControl({
           <label
             key={m}
             className={`flex items-center gap-2 font-mono text-[11px] ${
-              builds[m].ok ? 'text-ivory/60' : 'text-ivory/25'
+              builds[m].ok ? 'text-ivory/60' : 'text-ivory/60'
             }`}
           >
             <input
@@ -178,7 +178,7 @@ export function SaveCorrectionControl({
         ))}
       </div>
       {!selected.ok ? (
-        <p className="text-[11px] leading-relaxed text-ivory/30">{REJECTION_TEXT[selected.reason]}</p>
+        <p className="text-[11px] leading-relaxed text-ivory/60">{REJECTION_TEXT[selected.reason]}</p>
       ) : null}
       <button
         type="button"

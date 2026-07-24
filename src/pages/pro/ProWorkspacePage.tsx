@@ -94,9 +94,11 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
 function RecipeTab() {
   // Sticky top workbar (name + canonical save + context + version/status + Monitor PI + Przelicz z PI)
   // above the engine lab. „Przelicz z PI" INITIATES the real canonical recalculation (owner P0):
-  // it stages an optimize preview in the ONE constraint-studio pipeline and opens the top-level
-  // Preview → Zastosuj/Anuluj → Cofnij panel right under the workbar. „Monitor PI" opens the
-  // Monitor drawer on the LIVE result.
+  // it stages an optimize preview in the ONE constraint-studio pipeline and opens the
+  // Preview → Zastosuj/Anuluj → Cofnij panel IN the primary path (owner P0 UX repair:
+  // setup → ingredients → Przelicz → Preview → Zastosuj → save, top to bottom). The same
+  // trigger exists twice — sticky workbar + in-flow under the ingredients table — both drive
+  // the ONE pipeline. „Monitor PI" opens the Monitor drawer on the LIVE result.
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [recalcOpen, setRecalcOpen] = useState(false);
   const startRecalc = () => {
@@ -106,13 +108,15 @@ function RecipeTab() {
   return (
     <div>
       <ProWorkbar onMonitor={() => setMonitorOpen(true)} onRecalc={startRecalc} />
-      <ProRecalcPanel open={recalcOpen} onClose={() => setRecalcOpen(false)} />
       {/* The engine lab keeps its native dark "canvas" tone; inside the dark professional
           workspace (Masterpiece Phase 5) the shell tone reads as a slightly ELEVATED surface —
           a hairline carries the elevation, no card-in-card chrome. */}
       <SurfaceToneContext.Provider value="shell">
         <div className="mt-4 rounded-lg border border-shell-line bg-shell text-ivory [color-scheme:dark]">
-          <StudioEngineSurface />
+          <StudioEngineSurface
+            onRecalc={startRecalc}
+            recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={() => setRecalcOpen(false)} />}
+          />
         </div>
       </SurfaceToneContext.Provider>
       <MonitorDrawer open={monitorOpen} onClose={() => setMonitorOpen(false)} />
@@ -198,7 +202,7 @@ function TabPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona }) {
           {/* Owner review (RV-12, staging/QA only): a note-only section — proposal: open the
               Monitor drawer directly. Customers never see the badge. */}
           <ReviewBadge itemId="RV-12" />
-          <NoteTab note={w.monitorNote} />
+          <NoteTab note={w.monitorNoteDrawer} />
         </div>
       );
     case 'versions':

@@ -11,7 +11,7 @@ import { IngredientRow, ROW_GRID, type IngredientRowActions } from './Ingredient
 import { useIngredientLibrary } from './useIngredientLibrary';
 
 const b = copy.studio.builder;
-const headCell = 'text-[0.6rem] font-medium tracking-label text-ivory/40 uppercase';
+const headCell = 'text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase';
 
 /** Items come from the engine result (effective grams, difference, share);
  * edits go back to the store. The engine remains the source of truth. */
@@ -104,10 +104,10 @@ export function IngredientBuilder({
           </div>
 
           <div className="mt-4 flex items-center justify-between border-t border-ivory/10 pt-4">
-            <span className="text-xs tracking-label text-ivory/50 uppercase">{b.batchTotal}</span>
+            <span className="text-xs tracking-label text-ivory/65 uppercase">{b.batchTotal}</span>
             <span className="flex items-baseline gap-3">
               {offTarget ? (
-                <span className="font-mono text-xs text-ivory/40 tabular-nums">
+                <span className="font-mono text-xs text-ivory/60 tabular-nums">
                   {b.target} {targetBatchG.toLocaleString('en-US')} {b.unit}
                 </span>
               ) : null}

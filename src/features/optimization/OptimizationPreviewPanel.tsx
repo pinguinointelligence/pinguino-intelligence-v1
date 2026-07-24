@@ -27,9 +27,9 @@ const fmt = (v: number | null | undefined): string =>
 function MetricRow({ label, before, after }: { label: string; before: number | null | undefined; after: number | null | undefined }) {
   return (
     <div className="flex justify-between gap-4 font-mono text-[11px] text-ivory/60">
-      <span className="text-ivory/40">{label}</span>
+      <span className="text-ivory/60">{label}</span>
       <span>
-        {fmt(before)} <span className="text-ivory/30">→ {fmt(after)}</span>
+        {fmt(before)} <span className="text-ivory/60">→ {fmt(after)}</span>
       </span>
     </div>
   );
@@ -60,14 +60,14 @@ export function OptimizationPreviewPanel({
         <span className={`text-sm font-medium ${DECISION_TONE[view.finalDecision] ?? 'text-ivory'}`}>
           {humanize(view.finalDecision)}
         </span>
-        <span className="font-mono text-[11px] text-ivory/40">
+        <span className="font-mono text-[11px] text-ivory/60">
           {view.productProfile} · {view.servingTemperatureC}°C
         </span>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-ivory/60">{recommendationFor(view.finalDecision)}</p>
 
       {/* Temperature-aware target instrumentation — label only, safe in every tier. */}
-      <p className="mt-2 font-mono text-[11px] text-ivory/40">
+      <p className="mt-2 font-mono text-[11px] text-ivory/60">
         solver target: {view.targetGuidance.solverTargetSource}
         {view.targetGuidance.solverTargetAligned
           ? ' · aligned with the regulator'
@@ -79,7 +79,7 @@ export function OptimizationPreviewPanel({
         const npac = view.bandComparison.comparisons.find((c) => c.metric === 'npac');
         if (!npac || !npac.engineBand || !npac.shadowBand) return null;
         return (
-          <p className="mt-1 font-mono text-[11px] text-ivory/40">
+          <p className="mt-1 font-mono text-[11px] text-ivory/60">
             shadow bands (not live · {view.bandComparison.shadowSource}): engine npac {npac.engineBand[0]}–
             {npac.engineBand[1]} vs regulator {npac.shadowBand[0]}–{npac.shadowBand[1]}
             {npac.aligned ? ' · aligned' : ` · divergent (Δ${npac.centerDelta?.toFixed(1)})`}
@@ -91,20 +91,20 @@ export function OptimizationPreviewPanel({
           names. Since CONFIG 0.6.0 the engine bands ARE temperature-aware, so for
           seeded cells this comparison is expected to read "same correction". */}
       {view.solverTargetInjection.active ? (
-        <p className="mt-1 font-mono text-[11px] text-ivory/40">
+        <p className="mt-1 font-mono text-[11px] text-ivory/60">
           regulator-shadow solver target:{' '}
           {view.solverTargetInjection.correctionChanged ? 'would change the correction' : 'same correction'}
           {view.solverTargetInjection.newViolationsUnderRegulator.length > 0
             ? ` · would target: ${view.solverTargetInjection.newViolationsUnderRegulator.map(humanize).join(', ')}`
             : ''}
-          <span className="text-ivory/30"> · Comparison only — engine target bands are temperature-aware</span>
+          <span className="text-ivory/60"> · Comparison only — engine target bands are temperature-aware</span>
         </p>
       ) : null}
 
       {/* Slice 14: regulator-shadow REAL gram solve (preview only). Safe summary in every tier —
           decision + whether it differs from / improves on the engine-seeded solve; no grams here. */}
       {view.regulatorShadowSolve.active ? (
-        <p className="mt-1 font-mono text-[11px] text-ivory/40">
+        <p className="mt-1 font-mono text-[11px] text-ivory/60">
           regulator-shadow gram solve: {humanize(view.regulatorShadowSolve.decision)}
           {view.solveComparison.correctionDiffers ? ' · differs from engine-seeded' : ' · same as engine-seeded'}
           {view.solveComparison.regulatorShadowImproved ? ' · improves (rerun-verified)' : ''}
@@ -113,8 +113,8 @@ export function OptimizationPreviewPanel({
 
       {/* Directional recommendation — safe in every tier (no grams, no ingredient names). */}
       {view.correctionGoals.length > 0 ? (
-        <p className="mt-3 text-xs leading-relaxed text-ivory/50">
-          <span className="text-ivory/40">Direction: </span>
+        <p className="mt-3 text-xs leading-relaxed text-ivory/65">
+          <span className="text-ivory/60">Direction: </span>
           {view.correctionGoals.map(humanize).join(' · ')}
         </p>
       ) : null}
@@ -122,11 +122,11 @@ export function OptimizationPreviewPanel({
       {/* Pro: the exact correction plan (target metric + lever ingredient classes). */}
       {policy.showCorrectionDetail && view.proposedCorrections.length > 0 ? (
         <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3">
-          <p className="font-mono text-[11px] text-ivory/40">correction plan</p>
+          <p className="font-mono text-[11px] text-ivory/60">correction plan</p>
           {view.proposedCorrections.map((p) => (
             <div key={p.goal} className="flex justify-between gap-3 font-mono text-[11px] text-ivory/70">
               <span>{humanize(p.goal)}</span>
-              <span className="text-ivory/40">{p.affectedIngredientClasses.map(humanize).join(' / ')}</span>
+              <span className="text-ivory/60">{p.affectedIngredientClasses.map(humanize).join(' / ')}</span>
             </div>
           ))}
         </div>
@@ -142,7 +142,7 @@ export function OptimizationPreviewPanel({
         <p className="mt-1 font-mono text-[11px] text-sky-300/80">
           regulator-shadow solver added:{' '}
           {view.regulatorShadowSolve.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}
-          <span className="text-ivory/30"> · preview only</span>
+          <span className="text-ivory/60"> · preview only</span>
         </p>
       ) : null}
 
@@ -158,17 +158,17 @@ export function OptimizationPreviewPanel({
       {/* Pro (technical view): the engine-seeded → regulator-shadow solver target comparison. */}
       {policy.showBeforeAfterMetrics && view.solverTargetInjection.comparisons.length > 0 ? (
         <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3">
-          <p className="font-mono text-[11px] text-ivory/40">
+          <p className="font-mono text-[11px] text-ivory/60">
             solver target: engine-seeded → regulator-shadow (preview only)
           </p>
           {view.solverTargetInjection.comparisons.map((c) => (
             <div key={c.metric} className="flex justify-between gap-3 font-mono text-[11px] text-ivory/70">
-              <span className="text-ivory/40">
+              <span className="text-ivory/60">
                 {humanize(c.metric)} = {fmt(c.value)}
               </span>
               <span>
                 {c.engineBand ? `${c.engineBand[0]}–${c.engineBand[1]}` : '—'}
-                <span className="text-ivory/30"> → {c.regulatorBand[0]}–{c.regulatorBand[1]}</span>
+                <span className="text-ivory/60"> → {c.regulatorBand[0]}–{c.regulatorBand[1]}</span>
                 {c.shadowViolation && !c.engineViolation ? (
                   <span className="text-amber-300/80"> · now out of band</span>
                 ) : null}
@@ -180,14 +180,14 @@ export function OptimizationPreviewPanel({
 
       {/* Free / Demo: the redaction affordance. */}
       {!policy.showExactGrams ? (
-        <p className="mt-3 text-[11px] leading-relaxed text-ivory/30">
+        <p className="mt-3 text-[11px] leading-relaxed text-ivory/60">
           Exact grams and the full correction plan are available on Pro.
         </p>
       ) : null}
 
       {/* DEV-only debug trace — additive, never relaxes customer redaction. */}
       {policy.showTrace ? (
-        <div className="mt-4 space-y-0.5 rounded bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-ivory/40">
+        <div className="mt-4 space-y-0.5 rounded bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-ivory/60">
           <div>
             DEV trace · rerun {view.rerunState} · optimizer {view.optimizerDecision} · flow {view.flowDecision}
           </div>

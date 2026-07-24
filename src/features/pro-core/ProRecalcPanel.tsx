@@ -106,7 +106,7 @@ function BestSafeResultView({
         {b.stopReason[issue.stopReason](issue.solverInvocations)}
       </p>
       <p className="text-xs leading-relaxed text-ivory/60">{b.calibration[issue.bandSource]}</p>
-      <p className="text-xs leading-relaxed text-ivory/50">{b.templateLine(issue.templateId)}</p>
+      <p className="text-xs leading-relaxed text-ivory/65">{b.templateLine(issue.templateId)}</p>
     </div>
   );
 }
@@ -164,7 +164,7 @@ function RecalcDiagnosisView({
 
       {lockedRows.length > 0 ? (
         <div className="rounded-md border border-ivory/15 px-3 py-3">
-          <p className="text-[0.65rem] font-medium tracking-label text-ivory/50 uppercase">
+          <p className="text-[0.65rem] font-medium tracking-label text-ivory/65 uppercase">
             {d.lockTable.heading}
           </p>
           <div className="mt-2 divide-y divide-ivory/10">
@@ -180,10 +180,10 @@ function RecalcDiagnosisView({
                   <span className="font-mono text-ivory/70 tabular-nums">
                     {formatGramsPl(row.actualGrams ?? row.plannedGrams)}
                   </span>
-                  <span className={row.adjustable ? 'text-ivory/40' : 'text-status-risky'}>
+                  <span className={row.adjustable ? 'text-ivory/60' : 'text-status-risky'}>
                     {d.lockTable.state[row.lockState]}
                   </span>
-                  <span className="text-ivory/40">{d.lockTable.source[row.source]}</span>
+                  <span className="text-ivory/60">{d.lockTable.source[row.source]}</span>
                 </span>
               </div>
             ))}

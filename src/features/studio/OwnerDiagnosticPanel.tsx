@@ -28,7 +28,7 @@ const isEngineReady = (input: RecipeInput['items'][number]): boolean => {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1">
-      <dt className="shrink-0 text-[0.7rem] tracking-label text-ivory/40 uppercase">{label}</dt>
+      <dt className="shrink-0 text-[0.7rem] tracking-label text-ivory/60 uppercase">{label}</dt>
       <dd className="min-w-0 truncate text-right font-mono text-xs text-ivory/80 tabular-nums">{value}</dd>
     </div>
   );

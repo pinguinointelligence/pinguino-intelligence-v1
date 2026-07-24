@@ -21,11 +21,11 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
-      <span className={muted ? 'pl-3 text-xs text-ivory/40' : 'text-sm text-ivory/70'}>
+      <span className={muted ? 'pl-3 text-xs text-ivory/60' : 'text-sm text-ivory/70'}>
         {label}
       </span>
       {value === null ? (
-        <span className="font-mono text-sm text-ivory/40">—</span>
+        <span className="font-mono text-sm text-ivory/60">—</span>
       ) : (
         <MetricValue value={value} unit={unit} precision={precision} size="sm" />
       )}
@@ -42,11 +42,11 @@ export function NutritionCostScorePanel({ result }: { result: RecipeResult }) {
 
       {/* Nutrition per 100 g */}
       <div className="mt-5">
-        <p className="text-xs font-medium tracking-label text-ivory/50 uppercase">
+        <p className="text-xs font-medium tracking-label text-ivory/65 uppercase">
           {m.nutritionTitle}
         </p>
         {nutrition === null ? (
-          <p className="mt-3 text-sm text-ivory/50">{m.unavailable}</p>
+          <p className="mt-3 text-sm text-ivory/65">{m.unavailable}</p>
         ) : (
           <div className="mt-2 divide-y divide-ivory/10">
             <Row label={m.kcal} value={nutrition.kcal} unit="kcal" precision={0} />
@@ -64,11 +64,13 @@ export function NutritionCostScorePanel({ result }: { result: RecipeResult }) {
         )}
       </div>
 
-      {/* Cost */}
+      {/* Cost — honest empty state when no ingredient prices exist (never a blank box). */}
       <div className="mt-6 border-t border-ivory/10 pt-4">
-        <p className="text-xs font-medium tracking-label text-ivory/50 uppercase">{m.costTitle}</p>
+        <p className="text-xs font-medium tracking-label text-ivory/65 uppercase">{m.costTitle}</p>
         {costs === null ? (
-          <p className="mt-3 text-sm text-ivory/50">{m.unavailable}</p>
+          <p className="mt-3 text-sm text-ivory/65" data-testid="cost-empty-state">
+            {m.costEmpty}
+          </p>
         ) : (
           <>
             <div className="mt-2 divide-y divide-ivory/10">

@@ -120,7 +120,7 @@ export function ConstraintStudioSection() {
   return (
     <Card padding="lg">
       <SectionLabel>{copy.section.title}</SectionLabel>
-      <p className="mt-2 text-xs leading-relaxed text-ivory/50">{copy.section.lead}</p>
+      <p className="mt-2 text-xs leading-relaxed text-ivory/65">{copy.section.lead}</p>
 
       <div className="mt-4 space-y-4">
         {lockedSumConflict ? (
@@ -164,7 +164,7 @@ export function ConstraintStudioSection() {
               {copy.actions.rescale}
             </button>
           </div>
-          <p className="text-xs leading-relaxed text-ivory/40">{copy.actions.rescaleHint}</p>
+          <p className="text-xs leading-relaxed text-ivory/60">{copy.actions.rescaleHint}</p>
         </div>
 
         {/* §18 feasibility — explicit, analysis-only. */}
@@ -172,7 +172,7 @@ export function ConstraintStudioSection() {
           <button type="button" className={`${secondaryButton} w-full`} onClick={store.runFeasibility}>
             {copy.actions.feasibility}
           </button>
-          <p className="text-xs leading-relaxed text-ivory/40">{copy.actions.feasibilityHint}</p>
+          <p className="text-xs leading-relaxed text-ivory/60">{copy.actions.feasibilityHint}</p>
         </div>
 
         {previewIssue ? (

@@ -94,8 +94,8 @@ export function SaveVersionControl() {
 
   return (
     <section aria-label={copy.save.title} className="border-t border-ivory/10 pt-4">
-      <p className="text-xs font-medium tracking-label text-ivory/50 uppercase">{copy.save.title}</p>
-      <p className="mt-1 text-xs leading-relaxed text-ivory/40">{copy.save.note}</p>
+      <p className="text-xs font-medium tracking-label text-ivory/65 uppercase">{copy.save.title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-ivory/60">{copy.save.note}</p>
 
       {gate.kind !== 'ready' ? (
         <p className="mt-2 text-xs leading-relaxed text-ivory/60">{gate.messagePl}</p>
@@ -108,7 +108,7 @@ export function SaveVersionControl() {
             type="button"
             disabled={busy}
             onClick={() => void save()}
-            className="rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:text-ivory/45"
+            className="rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:text-ivory/60"
           >
             {busy ? copy.save.saving : copy.save.saveButton}
           </button>

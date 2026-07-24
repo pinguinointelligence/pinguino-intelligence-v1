@@ -35,10 +35,10 @@ function DiffRow({ line }: { line: PreviewLineDiff }) {
           <span className="text-ivory/70">{formatGramsPl(line.beforeGrams ?? 0)}</span>
         ) : (
           <>
-            <span className="text-ivory/50">
+            <span className="text-ivory/65">
               {line.beforeGrams === null ? '—' : formatGramsPl(line.beforeGrams)}
             </span>
-            <span aria-hidden className="text-ivory/40">
+            <span aria-hidden className="text-ivory/60">
               →
             </span>
             <span className="text-ivory">
@@ -46,12 +46,12 @@ function DiffRow({ line }: { line: PreviewLineDiff }) {
             </span>
           </>
         )}
-        {delta ? <span className="text-xs text-ivory/50">{delta}</span> : null}
+        {delta ? <span className="text-xs text-ivory/65">{delta}</span> : null}
         {note ? (
           <span
             className={cn(
               'text-[0.65rem] tracking-[0.06em] uppercase',
-              line.locked ? 'text-status-risky' : 'text-ivory/40',
+              line.locked ? 'text-status-risky' : 'text-ivory/60',
             )}
           >
             {note}
@@ -73,6 +73,13 @@ export function ConstraintPreviewCard({
 }) {
   const beforeBatch = preview.lines.reduce((sum, line) => sum + (line.beforeGrams ?? 0), 0);
   const afterBatch = preview.lines.reduce((sum, line) => sum + (line.afterGrams ?? 0), 0);
+  // Owner P0 UX repair (truthful states): deliberate 0 g lines (unchanged, empty before AND
+  // after) are DE-EMPHASIZED at the bottom with an explanatory note — never top-of-list
+  // noise. Pure display split; totals above still sum over ALL lines.
+  const isZeroUnchanged = (line: PreviewLineDiff) =>
+    line.kind === 'unchanged' && (line.beforeGrams ?? 0) === 0 && (line.afterGrams ?? 0) === 0;
+  const mainLines = preview.lines.filter((line) => !isZeroUnchanged(line));
+  const zeroLines = preview.lines.filter(isZeroUnchanged);
   const batchChanged = Math.abs(afterBatch - beforeBatch) > 0.05;
   const targetBatch = preview.proposedInput.target_batch_grams;
   // Poured actuals put the recipe in production reality — the planned-batch
@@ -87,16 +94,43 @@ export function ConstraintPreviewCard({
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-ivory">{copy.preview.title}</p>
-        <span className="rounded border border-ivory/15 px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/50 uppercase">
+        <span className="rounded border border-ivory/15 px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/65 uppercase">
           {preview.titlePl}
         </span>
       </div>
 
       <div className="mt-3 divide-y divide-ivory/10">
-        {preview.lines.map((line) => (
+        {mainLines.map((line) => (
           <DiffRow key={line.lineId} line={line} />
         ))}
       </div>
+
+      {zeroLines.length > 0 ? (
+        <div
+          className="mt-3 rounded-md border border-ivory/10 px-3 py-2.5"
+          data-testid="preview-zero-unchanged"
+        >
+          <p className="text-[0.65rem] font-medium tracking-[0.08em] text-ivory/60 uppercase">
+            {copy.preview.zeroUnchangedHeading}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-ivory/60">
+            {copy.preview.zeroUnchangedNote}
+          </p>
+          <div className="mt-1">
+            {zeroLines.map((line) => (
+              <div
+                key={line.lineId}
+                className="flex items-baseline justify-between gap-3 py-1 text-[12px] text-ivory/60"
+              >
+                <span className="min-w-0 truncate">{line.name}</span>
+                <span className="shrink-0 font-mono tabular-nums">
+                  {formatGramsPl(0)} · {lineNote(line)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3 text-xs text-ivory/60">
         {batchChanged ? (
@@ -125,7 +159,7 @@ export function ConstraintPreviewCard({
         {/* Owner QA (Phase 12): the EXACT source of the proposal — never mislabels a
             batch rescale as formulation. */}
         {preview.formulation ? (
-          <p className="text-[0.65rem] text-ivory/40" data-testid="preview-source">
+          <p className="text-[0.65rem] text-ivory/60" data-testid="preview-source">
             {/* Owner P0 NIGHTLY Phase 6: name the template-seeded fallback honestly. */}
             {preview.formulation.localFallback ? `${copy.preview.localFallbackNote} ` : ''}
             {copy.preview.sourceFormulation(
@@ -137,7 +171,7 @@ export function ConstraintPreviewCard({
               : ''}
           </p>
         ) : preview.autoBalance ? (
-          <p className="text-[0.65rem] text-ivory/40" data-testid="preview-source">
+          <p className="text-[0.65rem] text-ivory/60" data-testid="preview-source">
             {preview.autoBalance.solverRounds > 0
               ? copy.preview.sourceSolver(preview.autoBalance.solverRounds)
               : copy.preview.sourceBatchRescale}
@@ -182,7 +216,7 @@ export function ConstraintPreviewCard({
           {copy.preview.cancel}
         </button>
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-ivory/40">{copy.preview.applyNote}</p>
+      <p className="mt-2 text-xs leading-relaxed text-ivory/60">{copy.preview.applyNote}</p>
     </section>
   );
 }

@@ -448,6 +448,11 @@ export const copy = {
     },
     monitorNote:
       'Aktywny panel Monitor Pro jest w zakładce Receptura (prawa kolumna). Osobna szuflada Monitora pojawi się w kolejnym etapie.',
+    /** Owner P0 UX repair (2026-07-24) — truthful note after the /pro/recipe restructure
+     * (the Monitor lives in the workbar drawer + the secondary section). ADDITIVE key. */
+    monitorNoteDrawer:
+      'Monitor PI otwiera się przyciskiem „Monitor PI" na pasku narzędzi w zakładce Receptura. ' +
+      'Pełne moduły Monitora znajdziesz tam również w sekcji „Analiza i moduły dodatkowe".',
     soon: {
       production:
         'Przebiegi produkcyjne — plan, wykonanie i odchylenia — pojawią się w kolejnym etapie. Zaplecze danych jest już podłączone.',
@@ -693,6 +698,34 @@ export const copy = {
       proOnly: 'Dokładne gramatury dostępne w PINGÜINO Pro.',
       run: 'Podgląd optymalizacji',
     },
+    /** Owner P0 UX repair (2026-07-24) — the ONE calm SECONDARY section under the primary
+     * recipe path on /pro/recipe: analysis modules collapsed by default, red-marked
+     * modules awaiting the owner's review. ADDITIVE keys only. */
+    secondary: {
+      title: 'Analiza i moduły dodatkowe',
+      note:
+        'Moduły domyślnie zwinięte — receptura powstaje wyżej. ' +
+        'Czerwone oznaczenia czekają na przegląd właściciela.',
+      modules: {
+        score: 'Dopasowanie receptury',
+        monitor: 'Monitor PI — pełne moduły',
+        nutrition: 'Wartości odżywcze i koszt',
+        corrections: 'Korekty PI',
+      },
+      reviewMarked: {
+        studioTools: 'Narzędzia partii i blokad (Studio)',
+        studioToolsNote:
+          'Przeskalowanie partii, wykonalność blokad i historia zmian — dawne narzędzia Studio.',
+        assistant: 'Asystent PI (szkic)',
+        flowGuide: 'Przewodnik przepływu',
+        optimization: 'Podgląd optymalizacji',
+        optimizationNote: 'Tylko podgląd — nie zmienia receptury.',
+        branchPreviews: 'Ratunek partii · Braki magazynowe (IF9/IF10)',
+        branchPreviewsNote: 'Przepływy produkcyjne — tylko podgląd, nic nie zapisują.',
+        ownerDiagnostic: 'Diagnostyka właściciela',
+        ownerDiagnosticNote: 'Rzeczywisty stan wejścia silnika — tylko sesje właściciela/QA.',
+      },
+    },
     /** Locked Free Preview panels (Phase 6C Slice 2B) — decorative, no exact values. */
     locked: {
       chip: 'PI Preview',
@@ -900,6 +933,9 @@ export const copy = {
       serving70: 'Per 70 g',
       serving80: 'Per 80 g',
       costIncomplete: 'Add ingredient prices for a complete cost.',
+      /** Owner P0 UX repair (2026-07-24): the HONEST empty state when no ingredient
+       * prices exist — never a blank box (ADDITIVE key). */
+      costEmpty: 'Brak cen składników — dodaj ceny, aby zobaczyć koszt.',
       scoreTitle: 'Scores',
       technical: 'Technical',
       flavor: 'Flavor',

@@ -55,7 +55,7 @@ export function OverallScoreCard({
 
       {match.score === null ? (
         <div className="mt-3" aria-label={match.ariaText}>
-          <span className="font-mono text-2xl font-medium text-ivory/40">{match.display}</span>
+          <span className="font-mono text-2xl font-medium text-ivory/60">{match.display}</span>
           <p className="mt-2 text-sm leading-relaxed text-ivory-soft">{match.label}</p>
         </div>
       ) : (

@@ -54,11 +54,13 @@ export const STATUS_CHIP_CLASSES: Record<IndicatorStatus, string> = {
   too_sweet: ERROR,
   too_weak: ERROR,
   too_expensive: RISKY,
-  premium: 'border-ink/15 bg-ivory text-ink',
+  /* Ivory fills carry SHELL text and dark fills use the charcoal SURFACE token, so the
+     chips stay readable inside `.theme-pro-dark` (where the ink token flips to ivory). */
+  premium: 'border-ink/15 bg-ivory text-shell',
   needs_correction: ERROR,
   locked: 'border-ink/10 bg-ink/5 text-stone-500',
-  pro: 'border-ink bg-ink text-ivory',
-  demo: 'border-ink/15 bg-ivory text-ink',
+  pro: 'border-charcoal bg-charcoal text-ivory',
+  demo: 'border-ink/15 bg-ivory text-shell',
 };
 
 const M_IDEAL = 'bg-status-ideal';
@@ -115,7 +117,7 @@ export const STATUS_CHIP_CLASSES_SHELL: Record<IndicatorStatus, string> = {
   too_sweet: ERROR_D,
   too_weak: ERROR_D,
   too_expensive: RISKY_D,
-  premium: 'border-ivory/30 bg-ivory text-ink',
+  premium: 'border-ivory/30 bg-ivory text-shell',
   needs_correction: ERROR_D,
   locked: 'border-ivory/10 bg-ivory/5 text-ivory/50',
   // Slice 2C polish — calmer, more premium on the dark shell.
