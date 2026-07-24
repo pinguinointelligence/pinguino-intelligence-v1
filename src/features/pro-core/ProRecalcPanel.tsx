@@ -242,61 +242,81 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
 
   if (!open) return null;
 
+  // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
+  // (520–720 px), never a giant page section. Zastosuj closes the overlay — the
+  // editor + LIVE Monitor update in place and the bottom action bar carries the
+  // applied confirmation + Cofnij. Same store pipeline, same testids.
   return (
-    <section
-      aria-label={r.title}
-      data-testid="pro-recalc-panel"
-      className="mt-3 rounded-lg bg-shell px-4 py-4 text-ivory [color-scheme:dark]"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">{r.title}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          data-testid="pro-recalc-close"
-          className="rounded-md border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
-        >
-          {r.close}
-        </button>
-      </div>
+    <div className="fixed inset-0 z-50" data-testid="pro-recalc-overlay">
+      <button
+        type="button"
+        aria-label={r.close}
+        onClick={onClose}
+        className="absolute inset-0 h-full w-full bg-black/60 motion-safe:animate-[appFadeIn_150ms_ease-out]"
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label={r.title}
+        data-testid="pro-recalc-panel"
+        className="absolute left-1/2 top-1/2 max-h-[85vh] w-[min(660px,92vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-ivory/15 bg-shell px-4 py-4 text-ivory shadow-2xl [color-scheme:dark]"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">{r.title}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            data-testid="pro-recalc-close"
+            className="rounded-md border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
+          >
+            {r.close}
+          </button>
+        </div>
 
-      <div className="mt-3 space-y-3">
-        {blocked ? <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} /> : null}
+        <div className="mt-3 space-y-3">
+          {blocked ? <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} /> : null}
 
-        {previewIssue ? (
-          <RecalcDiagnosisView
-            issue={previewIssue}
-            input={currentInput}
-            constraints={constraints}
-            servingModeId={servingModeId}
-          />
-        ) : null}
+          {previewIssue ? (
+            <RecalcDiagnosisView
+              issue={previewIssue}
+              input={currentInput}
+              constraints={constraints}
+              servingModeId={servingModeId}
+            />
+          ) : null}
 
-        {preview ? (
-          <ConstraintPreviewCard
-            preview={preview}
-            onApply={store.applyPreview}
-            onCancel={() => {
-              store.cancelPreview();
-              onClose();
-            }}
-          />
-        ) : null}
+          {preview ? (
+            <ConstraintPreviewCard
+              preview={preview}
+              onApply={() => {
+                store.applyPreview();
+                // Close ONLY on a successful apply — a verify-blocked apply keeps the
+                // overlay open so the honest BlockedApplyNotice stays in view.
+                const after = useConstraintStudioStore.getState();
+                if (after.preview === null && after.blocked === null) onClose();
+              }}
+              onCancel={() => {
+                store.cancelPreview();
+                onClose();
+              }}
+            />
+          ) : null}
 
-        {!preview && undoAvailable ? (
-          <div className="space-y-2" data-testid="pro-recalc-applied">
-            <p className="text-sm leading-relaxed text-ivory/80">{r.applied}</p>
-            <button
-              type="button"
-              onClick={store.undoLastApply}
-              data-testid="pro-recalc-undo"
-              className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
-            >
-              {r.undo}
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </section>
+          {!preview && undoAvailable ? (
+            <div className="space-y-2" data-testid="pro-recalc-applied">
+              <p className="text-sm leading-relaxed text-ivory/80">{r.applied}</p>
+              <button
+                type="button"
+                onClick={store.undoLastApply}
+                data-testid="pro-recalc-undo"
+                className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              >
+                {r.undo}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    </div>
   );
 }

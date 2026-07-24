@@ -53,12 +53,29 @@ describe('ProWorkspacePage (S3)', () => {
     }
   });
 
-  it('renders the full 9-tab nav for the Pro persona', () => {
+  it('keeps every former tab destination reachable (one hamburger, stable routes)', async () => {
+    // ONE-SCREEN architecture (owner, 2026-07-24): the visible tab row is GONE — every
+    // destination lives in the canonical nav config with its stable /pro/<section> route.
+    const { APP_NAV_ITEMS } = await import('@/features/shell/appNav');
+    const proRoutes = APP_NAV_ITEMS.filter((i) => i.group === 'pro').map((i) => i.to);
+    for (const section of [
+      'recipe',
+      'monitor',
+      'versions',
+      'production',
+      'history',
+      'costs',
+      'exports',
+      'settings',
+      'machine',
+    ]) {
+      expect(proRoutes, section).toContain(`/pro/${section}`);
+    }
+    // …and a titled section page renders for the Pro persona (no tab row, no gate).
     const html = renderAt('/pro/settings', 'pro');
     expect(html).toContain(w.title);
-    for (const label of Object.values(w.tabs)) {
-      expect(html).toContain(label);
-    }
+    expect(html).toContain(w.tabs.settings);
+    expect(html).not.toMatch(/role="tablist"/);
     // Gate copy must be absent for a Pro user.
     expect(html).not.toContain(w.gate.message);
   });

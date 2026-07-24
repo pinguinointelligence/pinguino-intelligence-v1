@@ -150,9 +150,18 @@ function RowLine({
 export function UserMonitorPro({
   result,
   servingTemperatureC,
+  forceAllModules = false,
+  stabilizationProvenanceNote,
 }: {
   result: RecipeResult;
   servingTemperatureC: number;
+  /** Monitor-completeness parity mode (owner B3): render EVERY §14.2 module regardless
+   * of the device layout's visibility toggles — modules may collapse, never disappear.
+   * The §14.3 pins/customize layer keeps working; only the visibility filter is bypassed. */
+  forceAllModules?: boolean;
+  /** B1 „Stabilizacja (+provenance sentence)" — an honest provenance line rendered under
+   * the Stabilizacja module rows (computed by the caller from approved-dosage science). */
+  stabilizationProvenanceNote?: string;
 }) {
   const [layout, setLayout] = useState<UserMonitorLayout>(() => loadUserMonitorLayout());
   const apply = (next: UserMonitorLayout) => {
@@ -273,12 +282,17 @@ export function UserMonitorPro({
         ))}
       </div>
 
-      {/* §14.2 — collapsible modules (visibility per UserMonitorLayout). */}
+      {/* §14.2 — collapsible modules (visibility per UserMonitorLayout; parity mode
+          renders EVERY module — collapse allowed, disappearance never — owner B3). */}
       <div className="mt-5 space-y-2 border-t border-ivory/10 pt-4">
         {modules
-          .filter((module) => layout.enabled[module.id])
+          .filter((module) => forceAllModules || layout.enabled[module.id])
           .map((module) => (
-            <details key={module.id} className="rounded-md border border-ivory/10 bg-black/20 px-3 py-2.5">
+            <details
+              key={module.id}
+              className="rounded-md border border-ivory/10 bg-black/20 px-3 py-2.5"
+              data-testid={`user-monitor-module-${module.id}`}
+            >
               <summary className="cursor-pointer list-none text-[13px] text-ivory">{module.title}</summary>
               <div className="mt-2">
                 {module.rows.map((row) => (
@@ -291,6 +305,11 @@ export function UserMonitorPro({
                     onMove={onMove}
                   />
                 ))}
+                {module.id === 'stabilizacja' && stabilizationProvenanceNote ? (
+                  <p className="mt-2 text-[11px] leading-relaxed text-ivory/60" data-testid="stabilization-provenance">
+                    {stabilizationProvenanceNote}
+                  </p>
+                ) : null}
                 {module.id === 'expert' ? (
                   <p className="mt-2 text-[11px] text-ivory/60">
                     Wersja silnika {result.engine_version} · konfiguracja {result.config_version}

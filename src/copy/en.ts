@@ -336,6 +336,9 @@ export const copy = {
       proCosts: 'Koszty',
       proExports: 'Eksporty',
       proSettings: 'Ustawienia',
+      /** One-hamburger rule (owner, 2026-07-24): the /pro/machine section moved from the
+       * removed workspace tab row into the canonical menu. ADDITIVE key. */
+      proMachine: 'Maszyna i serwowanie',
       machine: 'Moja maszyna',
       labels: 'Etykiety i produkty',
       subscription: 'Subskrypcja / Plan',
@@ -516,6 +519,80 @@ export const copy = {
       close: 'Zamknij',
       applied: 'Zastosowano zmiany do wersji roboczej. Zapisz nową wersję, aby je utrwalić.',
       undo: 'Cofnij',
+    },
+  },
+  /** ONE-SCREEN Pro workbench (owner architecture, 2026-07-24) — ADDITIVE copy only.
+   * The /pro/recipe editor is a single-viewport workspace: compact settings line,
+   * ingredient editor left, LIVE Monitor PI right, compact action bar, red review
+   * zone below the fold. PL copy. */
+  proWorkbench: {
+    settings: {
+      machineLink: 'Maszyna',
+      advanced: 'Więcej ustawień',
+      batchUnit: 'g',
+    },
+    actionBar: {
+      previewReady: 'Podgląd przeliczenia gotowy.',
+      openPreview: 'Otwórz podgląd',
+      total: 'Masa partii',
+      idleHint: 'Zmiany przeliczają się na bieżąco w Monitorze PI.',
+    },
+    reviewZone: {
+      title: 'Strefa przeglądu — moduły poza głównym ekranem',
+      note:
+        'Poniżej głównego ekranu roboczego (świadome przewinięcie). Każdy moduł działa i czeka ' +
+        'na decyzję właściciela — nic nie zostało usunięte.',
+      tableTitle: 'Inwentarz modułów do przeglądu',
+      columns: {
+        name: 'Moduł',
+        purpose: 'Funkcja',
+        route: 'Miejsce w aplikacji',
+        recommendation: 'Rekomendacja',
+        decision: 'Decyzja właściciela',
+      },
+      pending: 'OCZEKUJE',
+    },
+  },
+  /** Monitor PI — LIVE right-panel completeness layer (Agent M, owner B1–B6 contract).
+   * ADDITIVE keys only: the summary layer, truthful assessment states, detailed-section
+   * titles and the stabilization provenance sentence. PL copy. */
+  monitorPi: {
+    panelTitle: 'Monitor PI',
+    liveNote: 'Wynik na żywo — przelicza się przy każdej zmianie receptury.',
+    summary: {
+      scoreName: 'Dopasowanie receptury',
+      axesTitle: 'Osie jakości',
+      servingLabel: 'Temperatura serwowania',
+      assessmentNative: 'Ocena natywna — wskaźniki oceniane według zatwierdzonych zakresów.',
+      assessmentProvisional: 'Ocena częściowa / prowizoryczna',
+      provisionalSource: {
+        category:
+          'Źródło: zakresy zastępcze profilu (kalibracja naukowa tego profilu jest w toku).',
+        temperature: 'Źródło: najbliższa skalibrowana cela temperatury.',
+        estimated: 'Źródło: zakresy szacunkowe (status „estimated").',
+      },
+      provisionalReason:
+        'Część wskaźników nie ma natywnie zatwierdzonego zakresu dla tego profilu i tej temperatury.',
+      insufficient: 'Brak wystarczających danych do oceny.',
+      insufficientHint: 'Dodaj składniki i gramatury, aby zobaczyć pełny Monitor.',
+      violatedHeading: 'Wskaźniki poza zatwierdzonym zakresem',
+      withinBands: 'Wszystkie oceniane wskaźniki mieszczą się w zatwierdzonych zakresach.',
+      primaryOk: 'Brak ostrzeżeń silnika dla bieżącej receptury.',
+    },
+    sections: {
+      detailsTitle: 'Moduły szczegółowe',
+      score: 'Dopasowanie receptury — karta oceny',
+      nutrition: 'Wartości odżywcze i koszty',
+      corrections: 'Korekty PI',
+      advancedTitle: 'Zaawansowane / diagnostyka',
+    },
+    stabilization: {
+      provenanceNone:
+        'Receptura nie zawiera osobnego stabilizatora — stabilizację niosą składniki bazowe.',
+      provenanceAssessed: (count: number) =>
+        `Dozowanie stabilizatorów ocenione według zatwierdzonych okien dozowania (${count} poz.).`,
+      provenanceUnapproved:
+        'Stabilizator bez zatwierdzonego okna dozowania — ocena dozowania niedostępna.',
     },
   },
   /** PINGÜINO Pro — professional machine + serving-mode selector (S4). PL copy; connects EXISTING
@@ -951,6 +1028,10 @@ export const copy = {
       /** Owner P0 UX repair (2026-07-24): the HONEST empty state when no ingredient
        * prices exist — never a blank box (ADDITIVE key). */
       costEmpty: 'Brak cen składników — dodaj ceny, aby zobaczyć koszt.',
+      /** Monitor completeness (Agent M): the BATCH cost row — the engine's already-computed
+       * `costs.total_cost` was never presented; „koszt partii" is part of the owner's
+       * B1 parity inventory. ADDITIVE key. */
+      costBatch: 'Koszt partii',
       scoreTitle: 'Scores',
       technical: 'Technical',
       flavor: 'Flavor',
