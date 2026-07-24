@@ -26,6 +26,7 @@
  * (decision I) — `draftToRow` maps a closed key set to a closed column set.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser, type AuthUser } from '@/services/auth';
 import {
   validateAcceptedCorrectionDraft,
@@ -159,7 +160,7 @@ export async function createAcceptedCorrection(
 
 /** All correction records owned by the current user (RLS enforces ownership). */
 export async function listMyAcceptedCorrections(): Promise<AcceptedCorrectionRecord[]> {
-  if (!supabase) return [];
+  if (!supabase) return emptyUnconfiguredRead('acceptedCorrections.listMyAcceptedCorrections', []);
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')

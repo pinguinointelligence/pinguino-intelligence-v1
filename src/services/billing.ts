@@ -7,6 +7,7 @@
  * (2B.2 / 2B.3) — never the browser.
  */
 import { supabase } from '@/lib/supabase/client';
+import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import type { Subscription } from '@/access/subscription';
 
 const COLUMNS =
@@ -14,7 +15,7 @@ const COLUMNS =
 
 /** The current user's most relevant subscription row (RLS scopes it to them). */
 export async function getMySubscription(): Promise<Subscription | null> {
-  if (!supabase) return null;
+  if (!supabase) return emptyUnconfiguredRead('billing.getMySubscription', null);
   const { data, error } = await supabase
     .from('subscriptions')
     .select(COLUMNS)
