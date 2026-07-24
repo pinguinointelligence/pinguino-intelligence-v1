@@ -38,6 +38,9 @@ export function IngredientBuilder({
     setLockType: useRecipeStore((state) => state.setLockType),
     setMainIngredient: useRecipeStore((state) => state.setMainIngredient),
     removeItem: useRecipeStore((state) => state.removeItem),
+    // Owner FINAL CLOSURE C2 — the EXPLICIT „Niedostępny" action (the only
+    // exclusion source; „Usuń" merely removes the row from this recipe).
+    markIngredientUnavailable: useRecipeStore((state) => state.markIngredientUnavailable),
   });
 
   const offTarget = Math.abs(totalBatchG - targetBatchG) > 0.1;

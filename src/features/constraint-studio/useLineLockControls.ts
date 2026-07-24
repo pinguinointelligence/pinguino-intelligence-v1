@@ -1,8 +1,11 @@
 /**
  * Per-line §17 lock controls for the ingredient rows (SPEC §12.3 „[AI /
  * kłódka]”). Builds the view model the row renders and wraps the row actions
- * so dropdown/remove changes reconcile the constraint set (a manual lock-type
- * override consciously drops the §17 constraint; a removed line drops it too).
+ * so a lock-dropdown change reconciles the constraint set (a manual lock-type
+ * override consciously drops the §17 constraint). Row REMOVAL needs no
+ * wrapper (owner FINAL CLOSURE C3): `removeItem` is ONE atomic transaction —
+ * the store bridge drops the removed line's constraint entry synchronously
+ * inside that same setState, with EXACTLY one draftRevision bump.
  */
 import type { EffectiveRecipeItem } from '@/engine';
 import type {
@@ -24,7 +27,6 @@ export function useLineLockControls(): LineLockControls {
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const toggleLock = useConstraintStudioStore((state) => state.toggleLock);
   const onLineLockTypeChanged = useConstraintStudioStore((state) => state.onLineLockTypeChanged);
-  const onLineRemoved = useConstraintStudioStore((state) => state.onLineRemoved);
 
   const lockFor = (item: EffectiveRecipeItem): LineLockView => {
     const constraint = constraints.byLineId[item.id];
@@ -76,10 +78,8 @@ export function useLineLockControls(): LineLockControls {
       onLineLockTypeChanged(lineId, lockType);
       actions.setLockType(lineId, lockType);
     },
-    removeItem: (lineId) => {
-      onLineRemoved(lineId);
-      actions.removeItem(lineId);
-    },
+    // removeItem passes through untouched: the atomic store transaction +
+    // bridge own the §17 cleanup (owner FINAL CLOSURE C3).
   });
 
   return { lockFor, wrapActions };

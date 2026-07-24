@@ -114,8 +114,13 @@ describe('owner case B — Sorbet + Strawberry, no grams (Phase 6)', () => {
   });
 });
 
-describe('exclusion semantics (removed ≠ never-selected)', () => {
-  it('a REMOVED toolbox ingredient is never reintroduced; a fresh draft still gets full auto-fill', () => {
+// Owner FINAL CLOSURE C2 (2026-07-24) — SUPERSEDES the earlier removal-
+// excludes rule this block pinned: removal no longer excludes (it removes the
+// row from the CURRENT recipe only). The EXPLICIT `markIngredientUnavailable`
+// action is now the ONLY exclusion source; the frozen never-reintroduce and
+// explicit-add-clears pins below are unchanged.
+describe('exclusion semantics (EXPLICIT unavailable ≠ removed ≠ never-selected)', () => {
+  it('an EXPLICITLY unavailable toolbox ingredient is never reintroduced; a fresh draft still gets full auto-fill', () => {
     // Fresh draft: inulin never selected → G17 (−12) auto-fills it (approved toolbox).
     resetStore('gelato');
     useRecipeStore.setState({ target_temperature_c: -12, category: 'milk_gelato' });
@@ -124,11 +129,12 @@ describe('exclusion semantics (removed ≠ never-selected)', () => {
     const fresh = useConstraintStudioStore.getState().preview;
     expect(fresh?.formulation?.added.some((a) => a.ingredientId === 'inulin')).toBe(true);
 
-    // Now the user explicitly REMOVES inulin → excluded → never re-added.
+    // Now the user marks inulin EXPLICITLY unavailable → excluded → never re-added.
     useConstraintStudioStore.getState().cancelPreview();
     useRecipeStore.getState().addIngredient(findDemoIngredient('inulin')!, 0);
     const inulinLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'inulin')!;
-    useRecipeStore.getState().removeItem(inulinLine.id);
+    useRecipeStore.getState().markIngredientUnavailable(inulinLine.id);
+    expect(useRecipeStore.getState().items.some((i) => i.ingredient.id === 'inulin')).toBe(false);
     expect(useRecipeStore.getState().excludedIngredientIds).toContain('inulin');
     useConstraintStudioStore.getState().createOptimizePreview();
     const after = useConstraintStudioStore.getState().preview;
@@ -137,9 +143,24 @@ describe('exclusion semantics (removed ≠ never-selected)', () => {
     expect(after?.formulation?.missingRoles).toContain('fiber_body');
     expect(after?.formulation?.recommendations.some((r) => r.role === 'fiber_body')).toBe(true);
 
-    // Explicitly adding it back clears the exclusion (Phase 3 semantics).
+    // Explicitly adding it back clears the exclusion (frozen pin).
     useRecipeStore.getState().addIngredient(findDemoIngredient('inulin')!, 0);
     expect(useRecipeStore.getState().excludedIngredientIds).not.toContain('inulin');
+  });
+
+  it('a merely REMOVED toolbox ingredient MAY be refilled (FINAL CLOSURE C2)', () => {
+    resetStore('gelato');
+    useRecipeStore.setState({ target_temperature_c: -12, category: 'milk_gelato' });
+    useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
+    useRecipeStore.getState().addIngredient(findDemoIngredient('inulin')!, 0);
+    const inulinLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'inulin')!;
+    useRecipeStore.getState().removeItem(inulinLine.id);
+    expect(useRecipeStore.getState().excludedIngredientIds).toEqual([]);
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const after = useConstraintStudioStore.getState().preview;
+    expect(after).not.toBeNull();
+    // removal is not a scientific statement — the approved toolbox refills the role
+    expect(after?.formulation?.added.some((a) => a.ingredientId === 'inulin')).toBe(true);
   });
 });
 

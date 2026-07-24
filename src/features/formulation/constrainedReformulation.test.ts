@@ -188,10 +188,12 @@ describe('FIXTURE D — complete Undo restores exclusions (tests 14/15)', () => 
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();
     const firstApplied = JSON.stringify(useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]));
-    // 2. remove/exclude the inulin line
+    // 2. EXPLICITLY mark the inulin line unavailable (owner FINAL CLOSURE C2:
+    //    removal alone no longer excludes — the explicit action is the ONLY
+    //    exclusion source; the Undo-restores-exclusions pin below is frozen)
     const inulinLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'inulin');
     expect(inulinLine).toBeDefined();
-    useRecipeStore.getState().removeItem(inulinLine!.id);
+    useRecipeStore.getState().markIngredientUnavailable(inulinLine!.id);
     expect(useRecipeStore.getState().excludedIngredientIds).toContain('inulin');
     // 3. reformulate + apply (inulin must NOT return)
     useConstraintStudioStore.getState().createOptimizePreview();

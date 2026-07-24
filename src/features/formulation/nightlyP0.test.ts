@@ -246,12 +246,26 @@ describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () =
     expect(Math.abs(plannedSum(preview!.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
   });
 
-  it('same-draft removals still exclude honestly (kept semantics — removal DOES exclude)', () => {
+  // Owner FINAL CLOSURE C2 (2026-07-24) SUPERSEDES the earlier NIGHTLY
+  // removal-excludes rule pinned here before: „Remove row" removes the line
+  // from the CURRENT recipe ONLY and must NOT silently become a permanent
+  // scientific exclusion (it caused the live owner failure: removing Cream/
+  // SMP/Dextrose forbade the toolbox refill → missing_required_role, while a
+  // refresh cleared the non-persisted exclusions and „fixed" it). Exclusion
+  // now has exactly ONE source: the EXPLICIT `markIngredientUnavailable`
+  // action. Frozen pins kept: toolbox never reintroduces an EXPLICIT
+  // exclusion; an explicit add clears it; Undo restores exclusion state.
+  it('same-draft removal does NOT exclude; the EXPLICIT unavailable action DOES (FINAL CLOSURE C2)', () => {
     seedRecipeStore(FRUIT_COMPLETE(), 'fruit_gelato');
     // remove sucrose only — draft still has 6 lines (same draft continues)
     const suc = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'sucrose')!;
     useRecipeStore.getState().removeItem(suc.id);
-    expect(useRecipeStore.getState().excludedIngredientIds).toContain('sucrose');
+    expect(useRecipeStore.getState().excludedIngredientIds).toEqual([]);
+    // the EXPLICIT action is the only exclusion source
+    const dex = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'dextrose')!;
+    useRecipeStore.getState().markIngredientUnavailable(dex.id);
+    expect(useRecipeStore.getState().items.some((i) => i.ingredient.id === 'dextrose')).toBe(false);
+    expect(useRecipeStore.getState().excludedIngredientIds).toEqual(['dextrose']);
   });
 });
 
