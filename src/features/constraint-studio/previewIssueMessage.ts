@@ -17,6 +17,25 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
     case 'best_safe_result':
       // Owner P0 NIGHTLY Phase 7(b): explanatory terminal state, not a failure.
       return copy.previewIssue.bestSafeResult;
+    case 'impossible_under_constraints': {
+      // Owner Agent 3 (dominant-lock infeasibility): the exact conflicting
+      // constraint + the engine-verified nearest feasible alternative.
+      const conflictPart = issue.conflict
+        ? `Przy ograniczeniu „${issue.conflict.ingredientName}" = ${formatGramsPl(issue.conflict.grams)} `
+        : 'Przy obecnych ograniczeniach ';
+      const nearestPart =
+        issue.nearestFeasibleGrams !== null && issue.conflict
+          ? ` Najbliższa wykonalna wartość dla „${issue.conflict.ingredientName}": ` +
+            `maksymalnie ${formatGramsPl(issue.nearestFeasibleGrams)} (zweryfikowana przez Engine).`
+          : ' Brak wykonalnej alternatywy możliwej do wyliczenia dla tej blokady.';
+      return (
+        conflictPart +
+        'nie istnieje receptura mieszcząca się w zatwierdzonych zakresach — ' +
+        `PI wykonało pełne przeszukanie dozwolonych ruchów (wywołania solvera: ${issue.solverInvocations}).` +
+        nearestPart +
+        ' Receptura nie została zmieniona.'
+      );
+    }
     case 'unsupported_profile':
       return copy.previewIssue.unsupportedProfile;
     case 'missing_required_role':

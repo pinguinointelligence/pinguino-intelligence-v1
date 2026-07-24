@@ -140,8 +140,14 @@ function RecalcDiagnosisView({
   }
 
   // Owner P0 (full formulation): honest structured states with their exact
-  // messages — no lock table (locks are not the cause).
-  if (issue.code === 'unsupported_profile' || issue.code === 'missing_required_role') {
+  // messages — no lock table (locks are not the cause). Owner Agent 3:
+  // `impossible_under_constraints` carries its complete message (conflicting
+  // constraint + engine-verified nearest feasible value) the same way.
+  if (
+    issue.code === 'unsupported_profile' ||
+    issue.code === 'missing_required_role' ||
+    issue.code === 'impossible_under_constraints'
+  ) {
     return (
       <div className="space-y-2" data-testid="pro-recalc-diagnosis" data-code={issue.code}>
         <p className="text-sm leading-relaxed text-ivory/85">{previewIssueMessagePl(issue)}</p>
