@@ -45,6 +45,25 @@ const sumPlanned = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + item.planned_grams, 0);
 
 /**
+ * ZERO-GRAM SELECTED INGREDIENT SEMANTICS (owner binding rule, live repair):
+ * a SELECTED line at 0 g is „chosen but unfilled" — formulation MUST be allowed
+ * to give it grams. It stays at 0 ONLY when the zero is EXPLICIT: a §17
+ * padlock constraint `{mode:'locked', grams:0}` (or an exclusion, handled
+ * upstream). A bare `lock_type='grams'` at exactly 0 g with NO constraint
+ * entry is an artifact (legacy saved recipes / resolution-bridge lines / the
+ * lock dropdown) — it is NOT a deliberate „keep this role empty" instruction
+ * and must never silently produce the owner's „fruit stays 0 g" failure.
+ */
+export function isEffectivelyLockedLine(
+  item: RecipeItem,
+  constraint: IngredientConstraint | undefined,
+): boolean {
+  if (constraint?.mode === 'locked') return true;
+  if (item.lock_type !== 'grams') return false;
+  return item.planned_grams > 0; // grams-lock at 0 without a constraint = unfilled, not locked
+}
+
+/**
  * Deterministic mode router (owner P0 — the ±25% mass-distance rule is GONE:
  * it was scientifically meaningless — 944.6 g can need full reformulation
  * because inulin was removed, 1120 g because milk is exactly locked, and a
@@ -66,14 +85,16 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
     return { mode: 'local_correction', template: null, reasons: ['poured_actuals'] };
   }
 
+  // Zero-gram artifacts (selected-unfilled lines wearing a bare grams-lock)
+  // never count as constraints and never drive routing (owner binding rule).
+  const hardLine = (item: RecipeItem): boolean =>
+    item.lock_type !== 'unlocked' &&
+    (item.lock_type !== 'grams' || isEffectivelyLockedLine(item, set.byLineId[item.id]));
   const hardConstraints =
-    Object.values(set.byLineId).some((c) => c.mode !== 'ai') ||
-    input.items.some((item) => item.lock_type !== 'unlocked');
+    Object.values(set.byLineId).some((c) => c.mode !== 'ai') || input.items.some(hardLine);
   const allLocked =
     input.items.length > 0 &&
-    input.items.every(
-      (item) => item.lock_type !== 'unlocked' || set.byLineId[item.id]?.mode === 'locked',
-    );
+    input.items.every((item) => hardLine(item) || set.byLineId[item.id]?.mode === 'locked');
 
   const lookup = selectFormulationTemplate(input.category, input.target_temperature_c);
 
@@ -283,7 +304,9 @@ export function buildFormulationProposal(
     item,
     role: resolveFunctionalRole(item.ingredient),
     constraint: lockOf(set, item.id),
-    locked: item.lock_type === 'grams' || lockOf(set, item.id)?.mode === 'locked',
+    // Owner binding rule: a bare grams-lock at 0 g without a §17 constraint is
+    // a selected-UNFILLED line — fillable, never a deliberate zero.
+    locked: isEffectivelyLockedLine(item, lockOf(set, item.id)),
   }));
 
   // 2. Map template roles → selected lines (role grams split equally when the

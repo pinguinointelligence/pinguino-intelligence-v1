@@ -413,7 +413,16 @@ export const useRecipeStore = create<RecipeState>()(
           machine_capacity_grams: input.machine_capacity_grams,
           flavor_intensity: input.goals?.flavor_intensity ?? 'balanced',
           cost_priority: input.goals?.cost_priority ?? 'balanced',
-          items: input.items.map((item) => ({ ...item })),
+          // Owner binding rule (zero-gram semantics): a stored bare grams-lock
+          // at 0 g is a selected-UNFILLED artifact (legacy saves / resolution
+          // bridge), not a deliberate zero — heal it on load so the UI shows
+          // the truth. Explicit zeros live in §17 constraints, which are
+          // session state and never stored with the recipe input.
+          items: input.items.map((item) =>
+            item.lock_type === 'grams' && item.planned_grams === 0
+              ? { ...item, lock_type: 'unlocked' as const }
+              : { ...item },
+          ),
           excludedIngredientIds: [], // a loaded recipe starts a fresh exclusion context
           activePresetId: null,
           savedRecipeId: link.savedId ?? null,
