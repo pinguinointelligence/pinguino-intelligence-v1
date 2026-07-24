@@ -114,17 +114,24 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
 
 describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
   it('applies a verified preview; locked grams are byte-stable through the apply', () => {
-    const { input, set } = addFixScenario();
+    // ACCEPTANCE ADDENDUM (3), 2026-07-24: the BOTH-sugars-locked scenario now
+    // ends with hard-NATIVE residuals and is diagnostic-only (pinned below) —
+    // the apply-mechanics pin uses the hard-safe SINGLE-lock variant (dextrose
+    // locked, sucrose free → the solver converges to zero violations).
+    const input = withGrams(overSweetStarter(160), DEXTROSE, 40);
+    const set: ConstraintSet = { byLineId: { [DEXTROSE]: { mode: 'locked', grams: 40 } } };
     const built = buildOptimizePreview(input, set, 'now');
     expect(built.ok).toBe(true);
     if (!built.ok) return;
+    expect(built.preview.diagnosticOnly).toBe(false);
 
     const outcome = commitPreview(input, set, built.preview, '2026-07-17T12:00:00.000Z', 'apply-1');
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
 
-    expect(Object.is(lineGrams(outcome.verified.input, SUCROSE), 160)).toBe(true);
     expect(Object.is(lineGrams(outcome.verified.input, DEXTROSE), 40)).toBe(true);
+    // The free over-sweet sucrose was genuinely moved by the solver.
+    expect(lineGrams(outcome.verified.input, SUCROSE)).toBeLessThan(160);
     // §20.1 record: exact before snapshot + trace
     expect(outcome.verified.record.before.input.items.map((item) => item.planned_grams)).toEqual(
       input.items.map((item) => item.planned_grams),
@@ -137,6 +144,22 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     // violations are REPORTED honestly (a heavily-locked recipe may trade band
     // precision for batch integrity — visible in the preview, never silent).
     expect(Number.isInteger(outcome.verified.record.violationsAfter)).toBe(true);
+  });
+
+  it('ADDENDUM (3): the both-locked scenario keeps hard-NATIVE residuals → diagnostic only, door-blocked', () => {
+    const { input, set } = addFixScenario();
+    const built = buildOptimizePreview(input, set, 'now');
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    // Honest diagnostic marking on the preview itself…
+    expect(built.preview.diagnosticOnly).toBe(true);
+    expect(built.preview.hardResidualMetrics!.length).toBeGreaterThan(0);
+    // …and the STRUCTURAL refusal at the door (recomputed, not flag-trusted).
+    const outcome = commitPreview(input, set, built.preview, 'now', 'apply-diag');
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.code).toBe('hard_residual_violations');
+    expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
   });
 
   it('BLOCKS a forged proposal that moves a locked line — Polish message, no state produced', () => {

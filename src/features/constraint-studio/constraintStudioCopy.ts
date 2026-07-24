@@ -33,6 +33,26 @@ const listPl = (names: readonly string[]): string =>
     ? (names[0] ?? '')
     : `${names.slice(0, -1).join(', ')} i ${names[names.length - 1]}`;
 
+/** PL labels for the engine's target metrics (shared by the diagnosis proof
+ * list and the addendum-3 hard-residual block message). */
+const METRIC_LABELS_PL: Record<string, string> = {
+  pod: 'słodycz (POD)',
+  pac: 'PAC',
+  npac: 'NPAC',
+  fat: 'tłuszcz',
+  total_solids: 'sucha masa',
+  water: 'woda',
+  ice_fraction: 'udział lodu',
+  lactose: 'laktoza',
+  lactose_sandiness_risk: 'ryzyko piaszczystości (laktoza)',
+  aerating_protein: 'białko napowietrzające',
+  protein_in_solids: 'białko w suchej masie',
+  alcohol: 'alkohol',
+  sugars_in_solids: 'cukry w suchej masie',
+};
+
+const metricLabelPl = (metric: string): string => METRIC_LABELS_PL[metric] ?? metric;
+
 export const constraintStudioCopy = {
   /* ---------------------------------------------------------- section ----- */
   section: {
@@ -117,6 +137,18 @@ export const constraintStudioCopy = {
     zeroUnchangedHeading: 'Linie 0 g',
     zeroUnchangedNote:
       'Te pozycje formulacja celowo pozostawiła puste (0 g, bez zmian) — nie wpływają na wynik.',
+    /* ACCEPTANCE ADDENDUM (1+3): diagnostic-only preview — Apply is disabled
+       at the pipeline door; the card names WHY, honestly. */
+    diagnosticBadge: 'PODGLĄD DIAGNOSTYCZNY',
+    diagnosticHardResiduals: (metrics: readonly string[]) =>
+      `Wynik narusza zatwierdzone zakresy technologiczne (natywne): ` +
+      `${listPl(metrics.map(metricLabelPl))}. Ten podgląd służy wyłącznie diagnozie — ` +
+      'nie można go zastosować jako receptury.',
+    diagnosticIterationCap:
+      'Wynik zatrzymał się na limicie iteracji solvera i nie jest dowiedzioną najlepszą ' +
+      'osiągalną recepturą. Ten podgląd służy wyłącznie diagnozie — nie można go zastosować ' +
+      'jako receptury.',
+    applyDisabledDiagnostic: 'Zastosowanie wyłączone (podgląd diagnostyczny)',
   },
 
   /* ----------------------- the ONE owner-mandated blocked-apply notice ---- */
@@ -141,6 +173,16 @@ export const constraintStudioCopy = {
     unsafeProposal:
       'PI nie utworzyło bezpiecznej receptury. Propozycja została odrzucona. ' +
       'Receptura nie została zmieniona.',
+    /* ACCEPTANCE ADDENDUM (1): an iteration-capped result is never applicable. */
+    iterationCapDiagnostic:
+      'Wynik zatrzymał się na limicie iteracji solvera i nie jest dowiedzioną najlepszą ' +
+      'osiągalną recepturą. Podgląd ma charakter wyłącznie diagnostyczny — nie można go ' +
+      'zastosować. Receptura nie została zmieniona.',
+    /* ACCEPTANCE ADDENDUM (3): hard-native residual violations block Apply. */
+    hardResiduals: (metrics: readonly string[]) =>
+      `Proponowana receptura narusza zatwierdzone zakresy technologiczne (natywne): ` +
+      `${listPl(metrics.map(metricLabelPl))}. Podgląd ma charakter wyłącznie diagnostyczny — ` +
+      'nie można go zastosować. Receptura nie została zmieniona.',
     dismiss: 'Rozumiem',
   },
 
@@ -190,7 +232,8 @@ export const constraintStudioCopy = {
 
   /* ---------- Owner P0 NIGHTLY — best-safe result details (Phase 7/8) ------ */
   bestSafe: {
-    scoreLine: (display: string, label: string) => `Dopasowanie receptury: ${display} — ${label}.`,
+    /* ACCEPTANCE ADDENDUM (2): the readout names the TECHNICAL dimension. */
+    scoreLine: (display: string, label: string) => `Dopasowanie techniczne: ${display} — ${label}.`,
     softDeviations: (labels: readonly string[]) =>
       `Miękkie odchylenia (zakresy prowizoryczne): ${listPl(labels)}.`,
     noSoftDeviations: 'Brak odchyleń w zakresach prowizorycznych.',
@@ -226,21 +269,7 @@ export const constraintStudioCopy = {
       `bezpiecznej korekty w zatwierdzonych zakresach.` +
       (metricLabels.length > 0 ? ` Parametry poza zakresem: ${listPl(metricLabels)}.` : ''),
     /** PL labels for the engine's target metrics (proof list rendering). */
-    metricLabels: {
-      pod: 'słodycz (POD)',
-      pac: 'PAC',
-      npac: 'NPAC',
-      fat: 'tłuszcz',
-      total_solids: 'sucha masa',
-      water: 'woda',
-      ice_fraction: 'udział lodu',
-      lactose: 'laktoza',
-      lactose_sandiness_risk: 'ryzyko piaszczystości (laktoza)',
-      aerating_protein: 'białko napowietrzające',
-      protein_in_solids: 'białko w suchej masie',
-      alcohol: 'alkohol',
-      sugars_in_solids: 'cukry w suchej masie',
-    } as Record<string, string>,
+    metricLabels: METRIC_LABELS_PL,
     /** Verified: every ingredient is non-adjustable (locks / odważone gramatury). */
     allLocked:
       'Wszystkie składniki są zablokowane. Odblokuj przynajmniej jeden składnik, aby PI mogło ' +

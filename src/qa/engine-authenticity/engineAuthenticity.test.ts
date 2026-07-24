@@ -66,10 +66,21 @@ const PINS: Pin[] = [
   { id: 'T6', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 7, overall: 68.4243, iter: 3, stop: 'fixed_point_no_proposal', npac: 34.4739, ice: 52.9442, pod: 12.4016, viol: 5, hardSafe: true, batch: 1000 },
   { id: 'T7', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 7, overall: 69.09, iter: 2, stop: 'no_improving_move', npac: 38.5686, ice: 48.6221, pod: 14.4442, viol: 7, hardSafe: true, batch: 1000 },
   { id: 'T8', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 6, overall: 64.3631, iter: 2, stop: 'fixed_point_no_proposal', npac: 33.6056, ice: 53.8608, pod: 12.7948, viol: 7, hardSafe: true, batch: 1000 },
-  { id: 'T9', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 5, overall: 53.8735, iter: 12, stop: 'iteration_cap', npac: 31.897, ice: 55.6643, pod: 11.8586, viol: 10, hardSafe: true, batch: 1000 },
+  // ACCEPTANCE ADDENDUM (1), owner 2026-07-24 — DELIBERATE pin update: T9's
+  // iteration-capped run is no longer presented as a preview („iteration_cap
+  // can NEVER be labelled best-achievable proof"). It is the honest
+  // impossible_under_constraints; the record's metrics/score now assess the
+  // UNCHANGED 900 g draft (nothing was fabricated), not a proposed state.
+  { id: 'T9', verdict: 'HONEST-IMPOSSIBLE', outcome: 'impossible_under_constraints', ten: 5, overall: 45.4655, iter: 12, stop: 'iteration_cap', npac: 9.7209, ice: 79.0724, pod: 5.632, viol: 10, hardSafe: true, batch: 900 },
   { id: 'T10', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 8, overall: 82.1399, iter: 1, stop: 'fixed_point_no_proposal', npac: 36.6001, ice: 50.6999, pod: 16.0209, viol: 1, hardSafe: true, batch: 1000 },
   { id: 'T11', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 8, overall: 81.777, iter: 2, stop: 'no_improving_move', npac: 40.8515, ice: 46.2124, pod: 15.2472, viol: 2, hardSafe: true, batch: 1000 },
-  { id: 'T12', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 8, overall: 81.777, iter: 2, stop: 'no_improving_move', npac: 40.8515, ice: 46.2124, pod: 15.2472, viol: 2, hardSafe: true, batch: 1000 },
+  // ACCEPTANCE ADDENDUM (4), owner 2026-07-24 — DELIBERATE pin update: the
+  // MAX/RANGE fix (a §17 RANGE outranks the lock_type='grams' hold staging in
+  // buildFormulationProposal) gives T12's milk REAL freedom below the 500 g
+  // max: the solver lands at the template proportion 380 g (< 500) and the
+  // recipe improves (2 violations → 1; 81.777 → 82.1399). T11 (EXACT 500)
+  // stays byte-held — max may move below; exact may not.
+  { id: 'T12', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 8, overall: 82.1399, iter: 1, stop: 'fixed_point_no_proposal', npac: 36.6001, ice: 50.6999, pod: 16.0209, viol: 1, hardSafe: true, batch: 1000 },
   { id: 'T13', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 8, overall: 82.1399, iter: 1, stop: 'fixed_point_no_proposal', npac: 36.6001, ice: 50.6999, pod: 16.0209, viol: 1, hardSafe: true, batch: 1000 },
   { id: 'T14', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 7, overall: 70.8265, iter: 1, stop: 'fixed_point_no_proposal', npac: 36.6327, ice: 50.6655, pod: 18.8193, viol: 1, hardSafe: false, batch: 1000 },
   { id: 'T15', verdict: 'AUTHENTIC-BEST-ACHIEVABLE', outcome: 'preview', ten: 7, overall: 72.6138, iter: 4, stop: 'fixed_point_no_proposal', npac: 34.6228, ice: 52.787, pod: 12.5526, viol: 5, hardSafe: true, batch: 1000 },
@@ -107,8 +118,10 @@ describe('T1–T19 — pinned engine outcomes (drift detectors)', () => {
 });
 
 describe('structural invariants — locks, batch, identity (no fixture can fake these)', () => {
-  it('T1–T9: the strawberry EXACT lock is byte-exact and the batch returns to 1000 g', () => {
-    for (let i = 1; i <= 9; i += 1) {
+  it('T1–T8: the strawberry EXACT lock is byte-exact and the batch returns to 1000 g', () => {
+    // ADDENDUM (1): T9 no longer yields a proposed state (honest impossible) —
+    // the byte-exact-lock invariant is pinned on the eight feasible locks.
+    for (let i = 1; i <= 8; i += 1) {
       const record = byId(`T${i}`);
       const straw = record.finalLines!.find((row) => row.ingredientId === 'PI-ING-001553')!;
       expect(Object.is(straw.grams, i * 100), `T${i} strawberry ${straw.grams}`).toBe(true);
@@ -116,6 +129,14 @@ describe('structural invariants — locks, batch, identity (no fixture can fake 
       const ids = record.finalLines!.map((row) => row.ingredientId);
       expect(new Set(ids).size).toBe(ids.length); // one row per canonical identity
     }
+  });
+
+  it('T9 (ADDENDUM 1): the capped 900 g lock is the honest impossible — nothing fabricated', () => {
+    const record = byId('T9');
+    expect(record.outcome).toBe('impossible_under_constraints');
+    expect(record.finalLines).toBeNull(); // no proposed state exists
+    expect(record.stopReason).toBe('iteration_cap');
+    expect(record.verdict).toBe('HONEST-IMPOSSIBLE');
   });
 
   it('T1–T9 cross-table: the composition REALLY changes as the fruit rises (anti-constant proof)', () => {
@@ -134,17 +155,26 @@ describe('structural invariants — locks, batch, identity (no fixture can fake 
     expect(byId('T9').bestAchievableProof).toContain('CAP HIT');
   });
 
-  it('T11/T12: milk exactly 500 g; the rest is NOT proportionally scaled (dextrose factor diverges)', () => {
-    for (const id of ['T11', 'T12']) {
-      const record = byId(id);
-      const milk = record.finalLines!.find((row) => row.ingredientId === 'milk_3_5')!;
-      expect(Object.is(milk.grams, 500)).toBe(true);
-      expect(record.proportionalScaling.detected).toBe(false);
-      const factors = new Map(record.proportionalScaling.factors.map((f) => [f.lineId, f.factor]));
-      // strawberry & co. share ~0.72 while dextrose moved by ~2.19 — a real
-      // per-line decision, impossible under one shared scale factor.
-      expect(Math.abs(factors.get('l-dex')! - factors.get('l-straw')!)).toBeGreaterThan(1);
-    }
+  it('T11 (EXACT 500): milk byte-held; the rest is NOT proportionally scaled (dextrose factor diverges)', () => {
+    const record = byId('T11');
+    const milk = record.finalLines!.find((row) => row.ingredientId === 'milk_3_5')!;
+    expect(Object.is(milk.grams, 500)).toBe(true);
+    expect(record.proportionalScaling.detected).toBe(false);
+    const factors = new Map(record.proportionalScaling.factors.map((f) => [f.lineId, f.factor]));
+    // strawberry & co. share ~0.72 while dextrose moved by ~2.19 — a real
+    // per-line decision, impossible under one shared scale factor.
+    expect(Math.abs(factors.get('l-dex')! - factors.get('l-straw')!)).toBeGreaterThan(1);
+  });
+
+  it('T12 (MAX 500 — ADDENDUM 4): milk lands STRICTLY BELOW the max at the template proportion', () => {
+    // The max bound is a RANGE, never an exact hold: the solver chose 380 g
+    // (< 500) — different solver freedom than T11's byte-held exact lock.
+    const record = byId('T12');
+    const milk = record.finalLines!.find((row) => row.ingredientId === 'milk_3_5')!;
+    expect(milk.grams).toBeLessThan(500);
+    expect(milk.grams).toBeGreaterThan(0);
+    expect(Object.is(milk.grams, byId('T11').finalLines!.find((r) => r.ingredientId === 'milk_3_5')!.grams)).toBe(false);
+    expect(record.proportionalScaling.detected).toBe(false);
   });
 
   it('T13: the range 250–400 g is honored strictly inside the band', () => {

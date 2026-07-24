@@ -45,11 +45,16 @@ const SCORE_SURFACES = [
 ];
 
 describe('TASK A — score surfaces derive from the engine (source-level pins)', () => {
-  it('every score surface calls recipeMatchScore(…engine scores…) and hard-codes no score', () => {
+  it('every score surface derives its score from the engine adapters and hard-codes no score', () => {
+    // ACCEPTANCE ADDENDUM (2), owner 2026-07-24: public headline surfaces now
+    // derive „Dopasowanie techniczne" via `recipeTechnicalFit(` (band truth);
+    // `recipeMatchScore(` remains sanctioned for QA/diagnostic recorders.
     for (const rel of SCORE_SURFACES) {
       const source = read(rel);
       const derived =
-        /recipeMatchScore\(/.test(source) || /buildMonitorHomeView\(/.test(source);
+        /recipeTechnicalFit\(/.test(source) ||
+        /recipeMatchScore\(/.test(source) ||
+        /buildMonitorHomeView\(/.test(source);
       expect(derived, `${rel} must derive its score`).toBe(true);
       // No integer score literals feeding a display (config weights live in the
       // engine config, not in presentation surfaces).
@@ -62,7 +67,7 @@ describe('TASK A — score surfaces derive from the engine (source-level pins)',
     expect(recipeMatchScore(null).score).toBeNull();
     expect(recipeMatchScore({ overall: Number.NaN }).score).toBeNull();
     expect(recipeMatchScore({ overall: 4 }).score).toBe(1); // clamped floor
-    expect(recipeMatchScore({ overall: 53.8735 }).score).toBe(5); // T9 observed
+    expect(recipeMatchScore({ overall: 53.8735 }).score).toBe(5); // historical T9 preview value (pure-map pin)
     expect(recipeMatchScore({ overall: 82.1399 }).score).toBe(8); // T10 observed
     expect(recipeMatchScore({ overall: 88.1667 }).score).toBe(9); // T17 observed
     expect(recipeMatchScore({ overall: 99 }).score).toBe(10);
@@ -106,8 +111,9 @@ describe('TASK A — score surfaces derive from the engine (source-level pins)',
   });
 
   it('the §14.1 status line and readiness derive from the same engine result (no fake "balanced")', () => {
+    // ADDENDUM (2): the status line/readiness now read the TECHNICAL fit.
     const source = read('features/user-monitor/recipeIndicatorStatuses.ts');
-    expect(source).toContain('recipeMatchScore(result.scores)');
+    expect(source).toContain('recipeTechnicalFit(result)');
     expect(source).not.toMatch(/status:\s*['"]balanced['"]/);
   });
 });

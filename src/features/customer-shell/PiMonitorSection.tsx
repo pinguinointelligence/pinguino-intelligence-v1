@@ -42,7 +42,7 @@ import {
   type PiMonitorPersona,
   type PiRecalculationView,
 } from '@/features/pi-monitor';
-import { MATCH_SCORE_TOOLTIPS, type GoldenRangeReading } from '@/features/recipe-score';
+import { TECHNICAL_FIT_TOOLTIPS, type GoldenRangeReading } from '@/features/recipe-score';
 import { SelectableCard, TouchButton, notice } from './ui';
 import { customerShellCopy as copy } from './customerShellCopy';
 
@@ -147,12 +147,13 @@ export function MonitorHomeReadout({
 }) {
   return (
     <>
-      {/* §15.1 „Dopasowanie receptury" — integer 1–10 + verdict; never /100,
-          never a percent, never decimals. Tooltip: 10/10 ≠ laboratory claim. */}
+      {/* ACCEPTANCE ADDENDUM (2): „Dopasowanie techniczne" — integer 1–10 +
+          verdict; never /100, never a percent, never decimals. Tooltip: 10/10 =
+          all native bands in range, never a laboratory claim. */}
       <div
         className="mt-2 flex items-baseline gap-3"
         aria-label={home.score.ariaText}
-        title={MATCH_SCORE_TOOLTIPS[home.score.tooltipKey]}
+        title={TECHNICAL_FIT_TOOLTIPS[home.score.tooltipKey]}
       >
         <span className="font-mono text-[34px] font-medium leading-none tracking-tight tabular-nums text-ink">
           {home.score.display}

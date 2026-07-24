@@ -64,6 +64,7 @@ import {
   type FormulationTemplate,
   type TemplateStatus,
 } from '@/features/formulation/templateRegistry';
+import { isToolboxCandidateExcluded } from '@/features/formulation/toolboxCanonical';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
@@ -193,6 +194,15 @@ export interface ConstraintPreview {
   /** Owner P0 NIGHTLY (FAILURE 2): honest iteration diagnostics — count,
    * per-round violation/severity trajectory and the exact stop reason. */
   iteration?: IterationDiagnostics;
+  /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
+   * the PROPOSED state (classified by `classifyViolationBands` provenance).
+   * Non-empty ⇒ the preview is DIAGNOSTIC ONLY. The `commitPreview` door
+   * re-derives this trustlessly from `proposedInput` — never from this field. */
+  hardResidualMetrics?: string[];
+  /** ACCEPTANCE ADDENDUM (1+3): TRUE ⇒ diagnostic preview — Apply is
+   * structurally disabled at the door (iteration cap or hard-native residual).
+   * Presentation marker only; the door enforces independently. */
+  diagnosticOnly?: boolean;
   /** The proposed working state — applied ONLY through `commitPreview`. */
   proposedInput: RecipeInput;
   /** The constraint set in force AFTER apply (suggested fixes update a lock —
@@ -501,15 +511,18 @@ export type BuildPreviewResult =
       /** Owner P0 NIGHTLY (FAILURE 2): full iteration trajectory + stop reason. */
       iteration?: IterationDiagnostics;
     }
-  /** Owner Agent 3 (dominant-lock infeasibility): hard NATIVE approved bands
-   * stay violated and the engine-verified move search exhausted its
-   * deterministic budget WITHOUT proving a fixed point (capped asymptotic
-   * chase — the milk-900 signature): no permitted move reaches the approved
-   * ranges under the current constraints. Honest terminal state with the
-   * EXACT conflicting constraint and (when computable) the deterministic,
-   * engine-verified nearest feasible lock value found by bisection. A
-   * VERIFIED fixed point with residual hard violations instead presents as
-   * the proven best-achievable state (accept-with-explanation, frozen). */
+  /** Owner Agent 3 (dominant-lock infeasibility) + ACCEPTANCE ADDENDUM (1):
+   * a constrained reformulation whose engine-verified move search exhausted
+   * its deterministic budget WITHOUT proving a fixed point (`iteration_cap` —
+   * the milk-900 / strawberry-900 signature) is NEVER an applicable recipe:
+   * `iteration_cap` can NEVER be labelled best-achievable proof, whatever the
+   * band provenance of the residual violations. Honest terminal state with
+   * the EXACT conflicting constraint, (when computable) the deterministic,
+   * engine-verified nearest feasible lock value found by bisection, and
+   * (when deterministically applicable) the product-type alternative. A
+   * VERIFIED fixed point with residual violations instead presents as the
+   * proven best-achievable state (hard-native residuals are then blocked at
+   * the Apply door — addendum 3 — soft/provisional ones stay applicable). */
   | {
       ok: false;
       code: 'impossible_under_constraints';
@@ -522,9 +535,19 @@ export type BuildPreviewResult =
       } | null;
       /** Native approved bands still violated after the full move search. */
       hardViolatedMetrics: string[];
+      /** Addendum (1): ALL residual out-of-band metrics (any provenance) —
+       * the capped/degenerate evidence for provisional-band profiles. */
+      residualViolatedMetrics: string[];
+      /** TRUE when the deterministic iteration budget was exhausted without a
+       * proven fixed point (the addendum-1 trigger). */
+      capReached: boolean;
       /** Max grams of the conflicting lock for which a feasible formulation
        * exists (bisection, engine-verified); null when not computable. */
       nearestFeasibleGrams: number | null;
+      /** Addendum (1): deterministic product-type alternative — set when the
+       * conflicting lock is a FRUIT role and an approved template exists for
+       * sorbet at this serving temperature (routing/UX only, no science). */
+      alternativeProductType: 'sorbet' | null;
       solverInvocations: number;
       iteration: IterationDiagnostics;
       templateId: string;
@@ -574,6 +597,7 @@ export type AttemptedMoveRejection =
   | 'missing_candidate' // engine diagnosis: no correction candidate exists
   | 'solver_fixed_point' // engine returned no admissible improving move
   | 'constrained_add_blocked' // §17 add-intent filter (constrained ingredient)
+  | 'excluded_add_blocked' // never-reintroduce: user-excluded ingredient (Agent R handoff)
   | 'stabilizer_dosage_clamp' // approved Mapper dosage window
   | 'apply_failed' // proposal existed but could not be applied
   | 'no_metric_improvement'; // applied, verified NOT improving → reverted
@@ -623,12 +647,22 @@ const solverInputWithDeferredCapacity = (current: RecipeInput): RecipeInput => {
   return deferrable ? { ...current, machine_capacity_grams: null } : current;
 };
 
-/** One solver round: propose → filter (§17 add-intent + approved stabilizer
- * dosage clamp) → apply. PURE helper. Also reports every candidate the filter
- * rejected (owner Agent 3 — the attempted-move log). */
+/** One solver round: propose → filter (§17 add-intent + NEVER-REINTRODUCE
+ * exclusions + approved stabilizer dosage clamp) → apply. PURE helper. Also
+ * reports every candidate the filter rejected (owner Agent 3 — the
+ * attempted-move log).
+ *
+ * NEVER-REINTRODUCE (Agent R handoff, 2026-07-24): a solver ADD whose
+ * ingredient the user explicitly excluded/marked unavailable — under the
+ * engine candidate id OR the stable canonical Mapper id (the SAME matching as
+ * `isToolboxCandidateExcluded`) — is filtered here, so the LOCAL-correction
+ * route can no longer re-add an excluded ingredient (the formulation route
+ * already honored exclusions at the seed; this closes the solver-round gap on
+ * BOTH routes). */
 function solveOneRound(
   current: RecipeInput,
   constrainedIngredientIds: ReadonlySet<string>,
+  excludedIngredientIds: ReadonlySet<string>,
 ):
   | {
       applied: RecipeInput;
@@ -655,18 +689,29 @@ function solveOneRound(
     const addBlocked = candidate.actions.some(
       (action) => action.type === 'add' && constrainedIngredientIds.has(action.ingredient_id),
     );
+    // NEVER-REINTRODUCE (Agent R handoff): a solver ADD of an explicitly
+    // excluded ingredient — engine id OR canonical Mapper id — is rejected.
+    const excludedBlocked = candidate.actions.some(
+      (action) =>
+        action.type === 'add' &&
+        isToolboxCandidateExcluded(action.ingredient_id, excludedIngredientIds),
+    );
     // Owner Phase 9 (approved-bounds wiring): a solver action may never move a
     // registered stabilizer outside its approved Mapper window.
     const dosageBlocked = candidate.actions.some((action) =>
       violatesApprovedStabilizerDosage(current, action),
     );
-    if (!addBlocked && !dosageBlocked) {
+    if (!addBlocked && !excludedBlocked && !dosageBlocked) {
       proposal = candidate;
       break;
     }
     filtered.push({
       move: describeActions(candidate),
-      reason: addBlocked ? 'constrained_add_blocked' : 'stabilizer_dosage_clamp',
+      reason: addBlocked
+        ? 'constrained_add_blocked'
+        : excludedBlocked
+          ? 'excluded_add_blocked'
+          : 'stabilizer_dosage_clamp',
     });
   }
   if (!proposal) {
@@ -744,6 +789,7 @@ function iterateSolverToFixedPoint(
   start: RecipeInput,
   constrainedIngredientIds: ReadonlySet<string>,
   restore: (candidate: RecipeInput) => RecipeInput,
+  excludedIngredientIds: ReadonlySet<string> = new Set(),
 ): {
   working: RecipeInput;
   lastProposal: CorrectionProposal | null;
@@ -781,7 +827,7 @@ function iterateSolverToFixedPoint(
       violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
       break;
     }
-    const outcome = solveOneRound(working, constrainedIngredientIds);
+    const outcome = solveOneRound(working, constrainedIngredientIds, excludedIngredientIds);
     solverInvocations += 1;
     // Owner Agent 3 — QA move log: candidates the §17/dosage filter rejected.
     for (const rejected of outcome.filtered) {
@@ -873,6 +919,7 @@ function iterateFormulationSeed(
   input: RecipeInput,
   set: ConstraintSet,
   proposedInput: RecipeInput,
+  options: FormulationOptions = {},
 ): ReturnType<typeof iterateSolverToFixedPoint> {
   const constrainedIngredientIds = new Set(
     input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
@@ -887,7 +934,14 @@ function iterateFormulationSeed(
   const seeded = restore(
     ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, proposedInput)),
   );
-  return iterateSolverToFixedPoint(input, seeded, constrainedIngredientIds, restore);
+  // Agent R handoff: solver rounds honor the SAME exclusions the seed honored.
+  return iterateSolverToFixedPoint(
+    input,
+    seeded,
+    constrainedIngredientIds,
+    restore,
+    new Set(options.excludedIngredientIds ?? []),
+  );
 }
 
 /* ── dominant-lock infeasibility (owner Agent 3) ─────────────────────────── */
@@ -927,7 +981,9 @@ export const NEAREST_FEASIBLE_BISECTION_STEPS = 16;
 
 /** Engine-verified feasibility probe: lock the conflicting line at `grams`,
  * run the SAME constrained-formulation machinery, and require the final state
- * to violate NO hard NATIVE band. PURE and deterministic. */
+ * to violate NO hard NATIVE band AND to have converged WITHOUT hitting the
+ * iteration cap (ACCEPTANCE ADDENDUM 1: a capped run proves nothing, so it can
+ * never certify feasibility). PURE and deterministic. */
 function lockProbeFeasible(
   input: RecipeInput,
   set: ConstraintSet,
@@ -948,7 +1004,8 @@ function lockProbeFeasible(
   const built = buildFormulationProposal(probeInput, probeSet, template, 'constrained_reformulation', options);
   if (!built.ok) return false;
   if (built.proposal.missingHardRoles.length > 0) return false;
-  const iterated = iterateFormulationSeed(probeInput, probeSet, built.proposal.proposedInput);
+  const iterated = iterateFormulationSeed(probeInput, probeSet, built.proposal.proposedInput, options);
+  if (iterated.diagnostics.capped) return false;
   return classifyViolationBands(iterated.working).hardMetrics.length === 0;
 }
 
@@ -1056,7 +1113,7 @@ function buildFormulationPreviewInternal(
   // WHILE verified improvement exists; never 1 round by construction).
   // Fallback bands guide the iteration; the honest partial score labelling for
   // provisional profiles is kept unchanged.
-  const iterated = iterateFormulationSeed(input, set, built.proposal.proposedInput);
+  const iterated = iterateFormulationSeed(input, set, built.proposal.proposedInput, options);
   const working = iterated.working;
   const solverRounds = iterated.diagnostics.solverInvocations;
   const lastProposal = iterated.lastProposal;
@@ -1105,32 +1162,45 @@ function buildFormulationPreviewInternal(
         : 'engine_improved';
   const bands = classifyViolationBands(working);
 
-  // DOMINANT-LOCK INFEASIBILITY (owner Agent 3): hard NATIVE approved bands
-  // still violated AND the deterministic move search exhausted its budget
-  // WITHOUT ever proving a fixed point (`capped` — the milk-900 signature: an
-  // asymptotic severity chase that can never reach the approved ranges under
-  // the dominant lock). This is the honest `impossible_under_constraints`.
+  // DOMINANT-LOCK INFEASIBILITY (owner Agent 3) + ACCEPTANCE ADDENDUM (1) —
+  // T9 APPLICABILITY GATE: a constrained reformulation whose deterministic
+  // move search exhausted its budget WITHOUT ever proving a fixed point
+  // (`capped` — the milk-900 / strawberry-900 signature: an asymptotic chase
+  // that can never reach the approved ranges under the dominant lock) is
+  // NEVER an applicable recipe, WHATEVER the band provenance of the residual
+  // violations (`iteration_cap` can NEVER be labelled best-achievable proof).
+  // This is the honest `impossible_under_constraints`, carrying the exact
+  // conflict, the engine-verified nearest feasible lock value (bisection) and
+  // — when the conflicting lock is a fruit role with an approved sorbet
+  // template at this temperature — the deterministic product-type alternative.
   //
-  // BOUNDARY (owner frozen semantics, deliberately preserved): a VERIFIED
-  // fixed point with residual hard violations is the PROVEN best-achievable
-  // state — the accept-with-explanation contract (inulin-0 sorbet, milk-500
-  // gelato) — presented WITH the proof (`residual_violations_proven_unfixable`
-  // label), never silently as an optimal formulation.
-  if (
-    mode === 'constrained_reformulation' &&
-    verdict === 'engine_improved' &&
-    bands.hardMetrics.length > 0 &&
-    iterated.diagnostics.capped
-  ) {
+  // BOUNDARY (addendum 1, deliberately preserved): a VERIFIED fixed point
+  // (never the cap) with residual violations is the PROVEN best-achievable
+  // state — presented WITH the proof. Hard-NATIVE residuals are then blocked
+  // at the Apply door (addendum 3 — diagnostic preview only); soft/provisional
+  // residuals stay applicable with explanation.
+  if (mode === 'constrained_reformulation' && iterated.diagnostics.capped) {
     const conflict = dominantHeldConstraint(input, set);
+    const conflictLine = conflict
+      ? input.items.find((item) => item.id === conflict.lineId)
+      : undefined;
+    const fruitConflict =
+      conflictLine !== undefined && resolveFunctionalRole(conflictLine.ingredient) === 'fruit';
+    const sorbetTemplate =
+      fruitConflict && input.category !== 'sorbet'
+        ? selectFormulationTemplate('sorbet', input.target_temperature_c).template
+        : null;
     return {
       ok: false,
       code: 'impossible_under_constraints',
       conflict,
       hardViolatedMetrics: bands.hardMetrics,
+      residualViolatedMetrics: [...new Set(afterViolationList.map((v) => v.metric))],
+      capReached: true,
       nearestFeasibleGrams: conflict
         ? computeNearestFeasibleLockGrams(input, set, template, options, conflict)
         : null,
+      alternativeProductType: sorbetTemplate ? 'sorbet' : null,
       solverInvocations: solverRounds,
       iteration: iterated.diagnostics,
       templateId: template.templateId,
@@ -1216,6 +1286,11 @@ function buildFormulationPreviewInternal(
     localFallback,
     proof,
   };
+  // ACCEPTANCE ADDENDUM (1+3): diagnostic classification of the preview —
+  // hard-NATIVE residuals or a capped iteration make it DIAGNOSTIC ONLY (the
+  // door re-derives both trustlessly; this marks the presentation honestly).
+  preview.hardResidualMetrics = bands.hardMetrics;
+  preview.diagnosticOnly = bands.hardMetrics.length > 0 || iterated.diagnostics.capped;
   return { ok: true, preview };
 }
 
@@ -1339,7 +1414,15 @@ export function buildOptimizePreview(
   const constrainedIngredientIds = new Set(
     input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
   );
-  const iterated = iterateSolverToFixedPoint(input, working, constrainedIngredientIds, restoreBatch);
+  // Agent R handoff (never-reintroduce): the LOCAL route's solver rounds honor
+  // the canonical draft's explicit exclusions — engine ids AND Mapper ids.
+  const iterated = iterateSolverToFixedPoint(
+    input,
+    working,
+    constrainedIngredientIds,
+    restoreBatch,
+    new Set(options.excludedIngredientIds ?? []),
+  );
   working = iterated.working;
   const lastProposal = iterated.lastProposal;
   const solverRounds = iterated.diagnostics.solverInvocations;
@@ -1414,6 +1497,11 @@ export function buildOptimizePreview(
   );
   preview.autoBalance = { batchRescaled, solverRounds };
   preview.iteration = iterated.diagnostics;
+  // ACCEPTANCE ADDENDUM (1+3): the local-correction preview carries the same
+  // honest diagnostic classification as the formulation path.
+  const localBands = classifyViolationBands(working);
+  preview.hardResidualMetrics = localBands.hardMetrics;
+  preview.diagnosticOnly = localBands.hardMetrics.length > 0 || iterated.diagnostics.capped;
   return { ok: true, preview };
 }
 
@@ -1604,7 +1692,16 @@ export type BlockedApply =
   | { code: 'batch_total_mismatch'; messagePl: string; proposedSum: number; targetBatch: number }
   /** Owner P0 (definitive fail): an optimize proposal that does not improve an
    * out-of-band recipe (e.g. batch-only rescale, 9 → 9) is never appliable. */
-  | { code: 'unsafe_proposal'; messagePl: string; violationsBefore: number; violationsAfter: number };
+  | { code: 'unsafe_proposal'; messagePl: string; violationsBefore: number; violationsAfter: number }
+  /** ACCEPTANCE ADDENDUM (1): a preview whose iteration hit the deterministic
+   * cap is DIAGNOSTIC ONLY — `iteration_cap` can NEVER be labelled
+   * best-achievable proof, so Apply is structurally disabled at this door. */
+  | { code: 'iteration_cap_diagnostic'; messagePl: string }
+  /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands
+   * (hard by `violationBands` provenance) make the preview DIAGNOSTIC ONLY —
+   * re-derived TRUSTLESSLY from the proposed input at this door, never from
+   * preview-carried flags. Soft/provisional residuals stay applicable. */
+  | { code: 'hard_residual_violations'; messagePl: string; hardMetrics: string[] };
 
 export type CommitPreviewResult = { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
 
@@ -1773,6 +1870,38 @@ export class VerifiedApply {
           messagePl: copy.blocked.unsafeProposal,
           violationsBefore: detectViolations(calculateRecipe(current)).length,
           violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
+        };
+      }
+    }
+
+    // ACCEPTANCE ADDENDUM (1) — ITERATION-CAP GATE: a solver/formulation
+    // preview whose iteration diagnostics show the deterministic cap fired is
+    // NEVER applicable — `iteration_cap` can never be labelled best-achievable
+    // proof. (Formulation previews without iteration diagnostics are already
+    // rejected by the proof-consistency gate above.)
+    if (
+      preview.kind === 'optimize' &&
+      (preview.iteration?.capped === true || preview.iteration?.stopReason === 'iteration_cap')
+    ) {
+      return { ok: false, code: 'iteration_cap_diagnostic', messagePl: copy.blocked.iterationCapDiagnostic };
+    }
+
+    // ACCEPTANCE ADDENDUM (3) — HARD-RESIDUAL GATE, recomputed TRUSTLESSLY
+    // from the proposed input (never from preview-carried flags): residual
+    // violations classified HARD by native/approved band provenance
+    // (`classifyViolationBands`) make the preview DIAGNOSTIC ONLY — Apply is
+    // structurally disabled with the exact metric list. Soft/provisional
+    // residuals stay applicable with explanation (frozen semantics). This
+    // SUPERSEDES the earlier accept-with-explanation freeze for hard-native
+    // residuals (owner addendum, 2026-07-24).
+    if (preview.kind === 'optimize') {
+      const doorBands = classifyViolationBands(preview.proposedInput);
+      if (doorBands.hardMetrics.length > 0) {
+        return {
+          ok: false,
+          code: 'hard_residual_violations',
+          messagePl: copy.blocked.hardResiduals(doorBands.hardMetrics),
+          hardMetrics: doorBands.hardMetrics,
         };
       }
     }

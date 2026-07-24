@@ -164,8 +164,13 @@ describe('owner Test 2 — the 1 g recipe produces a REAL calculated Preview (te
     const outcome = commitPreview(current, NO, preview, 'now', 'apply-owner8');
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
-    expect(outcome.code).toBe('unsafe_proposal');
-    expect(outcome.messagePl).toContain('PI nie utworzyło bezpiecznej receptury. Propozycja została odrzucona.');
+    // ACCEPTANCE ADDENDUM (3), owner 2026-07-24 — DELIBERATE pin update: the
+    // door's hard-residual gate now fires FIRST. The forged 8 × 125 g state
+    // violates NATIVE approved bands, so it is refused as a diagnostic-only
+    // proposal (a fortiori structurally unappliable; the improvement invariant
+    // stays behind it unchanged for hard-safe cases).
+    expect(outcome.code).toBe('hard_residual_violations');
+    expect(outcome.messagePl).toContain('nie można go zastosować');
     expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
   });
 

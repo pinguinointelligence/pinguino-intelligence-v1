@@ -372,11 +372,16 @@ export function buildFormulationProposal(
       for (const match of matches) {
         mappedLineIds.add(match.item.id);
         const constraint = match.constraint;
-        if (match.locked && constraint?.mode === 'locked') {
-          planned.push({ item: match.item, grams: constraint.grams, fixed: true });
-        } else if (match.locked) {
-          planned.push({ item: match.item, grams: match.item.planned_grams, fixed: true });
-        } else if (constraint?.mode === 'range') {
+        // ACCEPTANCE ADDENDUM (4) — MAX/RANGE SEMANTICS: a §17 RANGE constraint
+        // takes priority over the `lock_type='grams'` HOLD-AT-CURRENT staging
+        // the UI applies to every constrained line. Before this fix the
+        // `match.locked` branch fired first, so a UI-staged range degraded to
+        // an EXACT hold at the current grams (the range branch was
+        // unreachable) and a max bound gave the solver no freedom to land
+        // BELOW it. A range now means: template share CLAMPED into
+        // [min, max] — the solver chooses within the bounds (max may move
+        // below; exact may not).
+        if (constraint?.mode === 'range') {
           planned.push({
             item: match.item,
             grams: Math.min(Math.max(share, constraint.minGrams), constraint.maxGrams),
@@ -384,6 +389,10 @@ export function buildFormulationProposal(
             min: constraint.minGrams,
             max: constraint.maxGrams,
           });
+        } else if (match.locked && constraint?.mode === 'locked') {
+          planned.push({ item: match.item, grams: constraint.grams, fixed: true });
+        } else if (match.locked) {
+          planned.push({ item: match.item, grams: match.item.planned_grams, fixed: true });
         } else {
           planned.push({ item: match.item, grams: share, fixed: !roleTarget.adjustable });
         }

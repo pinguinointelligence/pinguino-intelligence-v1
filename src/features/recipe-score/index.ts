@@ -17,6 +17,21 @@ export {
 } from './recipeMatchScore';
 
 export {
+  COST_DIMENSION_NAME,
+  COST_DIMENSION_NO_DATA_LABEL,
+  FLAVOR_DIMENSION_NAME,
+  TECHNICAL_FIT_DISPLAY_NAME,
+  TECHNICAL_FIT_PROVISIONAL_LABEL,
+  TECHNICAL_FIT_TOOLTIPS,
+  commercialDimensions,
+  recipeTechnicalFit,
+  type CommercialDimensionsPresentation,
+  type ScoreDimensionPresentation,
+  type TechnicalFitPresentation,
+  type TechnicalFitTooltipKey,
+} from './technicalFit';
+
+export {
   AMBER_OVERSHOOT_LIMIT_HALF_WIDTHS,
   GOLDEN_RANGE_SEVERITY,
   GOLDEN_RANGE_STATE_BY_INDICATOR_STATUS,
