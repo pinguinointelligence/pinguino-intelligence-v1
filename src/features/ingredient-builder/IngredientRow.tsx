@@ -84,7 +84,7 @@ function GramsField({
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
-      <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[0.65rem] text-ivory/40">
+      <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[0.65rem] text-ivory/60">
         {b.unit}
       </span>
     </div>
@@ -150,7 +150,7 @@ export function IngredientRow({
 
         <div className="text-right">
           {share === null ? (
-            <span className="text-sm text-ivory/40">—</span>
+            <span className="text-sm text-ivory/60">—</span>
           ) : (
             <MetricValue value={share} unit="%" size="sm" />
           )}
@@ -158,7 +158,7 @@ export function IngredientRow({
             <span
               className={cn(
                 'block font-mono text-[0.7rem] tabular-nums',
-                item.difference > 0 ? 'text-status-error' : 'text-ivory/50',
+                item.difference > 0 ? 'text-status-error' : 'text-ivory/65',
               )}
             >
               {item.difference > 0 ? '↑' : '↓'} {Math.abs(item.difference).toFixed(1)} {b.unit}
@@ -181,8 +181,8 @@ export function IngredientRow({
                   ? 'border-ivory bg-ivory text-shell'
                   : lock.state === 'range'
                     ? 'border-status-risky/50 text-status-risky'
-                    : 'border-ivory/15 text-ivory/40 hover:border-ivory/40 hover:text-ivory/70',
-                lock.toggleDisabled && 'cursor-not-allowed opacity-40 hover:border-ivory/15 hover:text-ivory/40',
+                    : 'border-ivory/15 text-ivory/60 hover:border-ivory/40 hover:text-ivory/70',
+                lock.toggleDisabled && 'cursor-not-allowed opacity-40 hover:border-ivory/15 hover:text-ivory/60',
               )}
             >
               <PadlockIcon closed={lock.state !== 'ai'} />
@@ -197,7 +197,7 @@ export function IngredientRow({
               'rounded border px-2 py-1 text-[0.6rem] font-medium tracking-[0.08em] uppercase transition-colors',
               isMain
                 ? 'border-ivory bg-ivory text-shell'
-                : 'border-ivory/15 text-ivory/40 hover:border-ivory/40 hover:text-ivory/70',
+                : 'border-ivory/15 text-ivory/60 hover:border-ivory/40 hover:text-ivory/70',
             )}
           >
             {b.main_short}
@@ -226,7 +226,7 @@ export function IngredientRow({
           type="button"
           aria-label={`${b.remove} ${item.ingredient.name}`}
           onClick={() => actions.removeItem(item.id)}
-          className="rounded-md border border-ivory/10 px-2 py-1.5 text-xs text-ivory/40 transition-colors hover:border-status-error/40 hover:text-status-error"
+          className="rounded-md border border-ivory/10 px-2 py-1.5 text-xs text-ivory/60 transition-colors hover:border-status-error/40 hover:text-status-error"
         >
           ✕
         </button>

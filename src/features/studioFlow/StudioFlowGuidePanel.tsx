@@ -45,27 +45,27 @@ export function StudioFlowGuidePanel({ view }: { view: OptimizationPreviewView |
 
   return (
     <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-ivory/40">Przewodnik</p>
+      <p className="font-mono text-[10px] uppercase tracking-wide text-ivory/60">Przewodnik</p>
       <div className="flex flex-col gap-1">
         <p className="text-sm font-medium text-ivory/90">{guidance.title}</p>
         {guidance.contextLine ? (
-          <p className="font-mono text-[11px] text-ivory/40">{guidance.contextLine}</p>
+          <p className="font-mono text-[11px] text-ivory/60">{guidance.contextLine}</p>
         ) : null}
         <p className="text-xs leading-relaxed text-ivory/60">{guidance.body}</p>
-        <p className="text-xs leading-relaxed text-ivory/50">→ {guidance.nextAction}</p>
+        <p className="text-xs leading-relaxed text-ivory/65">→ {guidance.nextAction}</p>
       </div>
 
-      <p className="text-[11px] leading-relaxed text-ivory/40">{guidance.tierNote}</p>
+      <p className="text-[11px] leading-relaxed text-ivory/60">{guidance.tierNote}</p>
 
       {guidance.saveNote ? (
-        <p className="text-[11px] leading-relaxed text-ivory/50">{guidance.saveNote}</p>
+        <p className="text-[11px] leading-relaxed text-ivory/65">{guidance.saveNote}</p>
       ) : null}
       {guidance.saveVsApplyNote ? (
-        <p className="text-[11px] leading-relaxed text-ivory/40">{guidance.saveVsApplyNote}</p>
+        <p className="text-[11px] leading-relaxed text-ivory/60">{guidance.saveVsApplyNote}</p>
       ) : null}
 
-      <details className="text-[11px] leading-relaxed text-ivory/40">
-        <summary className="cursor-pointer select-none font-mono text-[10px] uppercase tracking-wide text-ivory/40">
+      <details className="text-[11px] leading-relaxed text-ivory/60">
+        <summary className="cursor-pointer select-none font-mono text-[10px] uppercase tracking-wide text-ivory/60">
           Przepływy produkcyjne
         </summary>
         <div className="mt-1.5 space-y-1.5">
@@ -79,7 +79,7 @@ export function StudioFlowGuidePanel({ view }: { view: OptimizationPreviewView |
 
       <div className="border-t border-ivory/10 pt-1.5">
         {guidance.disclaimers.map((line) => (
-          <p key={line} className="text-[10px] leading-relaxed text-ivory/30">
+          <p key={line} className="text-[10px] leading-relaxed text-ivory/60">
             {line}
           </p>
         ))}

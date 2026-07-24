@@ -43,7 +43,7 @@ export function StudioModeToggle() {
           </button>
         ))}
       </div>
-      <span className="text-[0.625rem] text-ivory/40">{t.note}</span>
+      <span className="text-[0.625rem] text-ivory/60">{t.note}</span>
     </div>
   );
 }

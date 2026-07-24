@@ -18,6 +18,14 @@
      ELEVATED dark surface inside the workspace instead of a dark island on white. */
   --color-graphite: #131417;
   --color-graphite-raised: #1d1e22;
+
+  /* Charcoal SURFACE token (UX repair, owner P0 2026-07-24) — the fill of the deep
+     charcoal contrast panels (CharcoalPanel, Monitor Pro, dark status chips). On light
+     routes it equals ink (#101113) so nothing changes visually; inside `.theme-pro-dark`
+     it stays a DARK elevated surface (graphite-raised) while `--color-ink` flips to
+     ivory for text/actions. This is what prevents the ivory-on-ivory washout: surface
+     fills must NEVER ride the text token. */
+  --color-charcoal: #101113;
   /* Translucent ivory used for nav hover/active pills + hairlines on the shell */
   --color-shell-line: #efe9dc1f;
 

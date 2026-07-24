@@ -24,7 +24,7 @@ export function LockedPanel({
     <Card padding="lg">
       <div className="flex items-center justify-between gap-3">
         <SectionLabel>{title}</SectionLabel>
-        <span className="rounded border border-ivory/15 px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/45 uppercase">
+        <span className="rounded border border-ivory/15 px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/60 uppercase">
           {copy.studio.locked.chip}
         </span>
       </div>
@@ -39,7 +39,7 @@ export function SkeletonRow({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-center justify-between gap-4 py-1.5', className)}>
       <span aria-hidden className="h-2 w-28 rounded-full bg-ivory/[0.08]" />
-      <span className="font-mono text-sm text-ivory/30">—</span>
+      <span className="font-mono text-sm text-ivory/60">—</span>
     </div>
   );
 }

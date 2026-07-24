@@ -56,22 +56,22 @@ export function BranchWorkflowPreviewPanel({
       </div>
 
       {/* Hard display rules — always visible, every tier. */}
-      <p className="mt-2 text-[11px] leading-relaxed text-ivory/40">
+      <p className="mt-2 text-[11px] leading-relaxed text-ivory/60">
         Preview only — nothing is applied. No inventory is changed. No recipe is saved.
       </p>
 
       {preview.exactStatusReason ? (
-        <p className="mt-2 font-mono text-[11px] text-ivory/40">{humanize(preview.exactStatusReason)}</p>
+        <p className="mt-2 font-mono text-[11px] text-ivory/60">{humanize(preview.exactStatusReason)}</p>
       ) : null}
 
       {/* The locked user-decision menu — safe in every tier (names, no numbers). */}
       {menu.length > 0 ? (
         <div className="mt-3 border-t border-ivory/10 pt-3">
-          <p className="font-mono text-[11px] text-ivory/40">your decision (nothing runs until a later slice):</p>
+          <p className="font-mono text-[11px] text-ivory/60">your decision (nothing runs until a later slice):</p>
           <p className="mt-1 text-xs leading-relaxed text-ivory/60">{menu.map(humanize).join(' · ')}</p>
         </div>
       ) : menuLimitedReason ? (
-        <p className="mt-3 font-mono text-[11px] text-ivory/40">menu limited: {humanize(menuLimitedReason)}</p>
+        <p className="mt-3 font-mono text-[11px] text-ivory/60">menu limited: {humanize(menuLimitedReason)}</p>
       ) : null}
 
       {/* Pro: VERIFIED exact numbers only. */}
@@ -97,15 +97,15 @@ export function BranchWorkflowPreviewPanel({
       {policy.showBeforeAfterMetrics && preview.beforeMetrics && preview.afterMetrics ? (
         <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-1 border-t border-ivory/10 pt-3 sm:grid-cols-2">
           <div className="flex justify-between gap-4 font-mono text-[11px] text-ivory/60">
-            <span className="text-ivory/40">NPAC</span>
+            <span className="text-ivory/60">NPAC</span>
             <span>
-              {fmt(preview.beforeMetrics.npac)} <span className="text-ivory/30">→ {fmt(preview.afterMetrics.npac)}</span>
+              {fmt(preview.beforeMetrics.npac)} <span className="text-ivory/60">→ {fmt(preview.afterMetrics.npac)}</span>
             </span>
           </div>
           <div className="flex justify-between gap-4 font-mono text-[11px] text-ivory/60">
-            <span className="text-ivory/40">POD</span>
+            <span className="text-ivory/60">POD</span>
             <span>
-              {fmt(preview.beforeMetrics.pod)} <span className="text-ivory/30">→ {fmt(preview.afterMetrics.pod)}</span>
+              {fmt(preview.beforeMetrics.pod)} <span className="text-ivory/60">→ {fmt(preview.afterMetrics.pod)}</span>
             </span>
           </div>
         </div>
@@ -118,19 +118,19 @@ export function BranchWorkflowPreviewPanel({
         </p>
       ) : null}
       {allWarnings.length > 0 ? (
-        <p className="mt-2 font-mono text-[11px] text-ivory/40">warnings: {allWarnings.map(humanize).join(', ')}</p>
+        <p className="mt-2 font-mono text-[11px] text-ivory/60">warnings: {allWarnings.map(humanize).join(', ')}</p>
       ) : null}
 
       {/* Redacted tiers: the upgrade affordance instead of numbers. */}
       {!policy.showExactGrams ? (
-        <p className="mt-3 text-[11px] leading-relaxed text-ivory/30">
+        <p className="mt-3 text-[11px] leading-relaxed text-ivory/60">
           Exact verified grams and ratios are available on Pro.
         </p>
       ) : null}
 
       {/* DEV-only debug trace — additive, never relaxes customer redaction. */}
       {policy.showTrace ? (
-        <div className="mt-4 space-y-0.5 rounded bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-ivory/40">
+        <div className="mt-4 space-y-0.5 rounded bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-ivory/60">
           <div>
             DEV trace · solver {String(preview.trace.solverInvoked)} · override {String(preview.trace.targetOverrideActive)}
           </div>

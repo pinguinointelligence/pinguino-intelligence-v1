@@ -111,6 +111,12 @@ export const constraintStudioCopy = {
     addedLine: (name: string, grams: string) => `PI dodało: ${name} · ${grams}.`,
     residualWarning: (residual: string) =>
       `Suma składników odbiega od docelowej masy partii o ${residual}. Zastosowanie zostanie zablokowane.`,
+    /* Owner P0 UX repair (2026-07-24) — truthful de-emphasis of deliberate 0 g lines
+       (ADDITIVE keys): the formulation left them empty on purpose; they are moved to
+       the bottom of the diff and explained, never top-of-list noise. */
+    zeroUnchangedHeading: 'Linie 0 g',
+    zeroUnchangedNote:
+      'Te pozycje formulacja celowo pozostawiła puste (0 g, bez zmian) — nie wpływają na wynik.',
   },
 
   /* ----------------------- the ONE owner-mandated blocked-apply notice ---- */

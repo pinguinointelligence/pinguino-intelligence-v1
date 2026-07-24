@@ -52,13 +52,13 @@ export function StarterDraftPreview({
     return (
       <div className="space-y-1.5 rounded border border-ivory/10 bg-black/20 p-2.5">
         {display.status === 'needs_more_information' ? (
-          <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.needsInfo}</p>
+          <p className="text-[11px] leading-relaxed text-ivory/65">{A.starter.needsInfo}</p>
         ) : null}
         {display.status === 'not_supported' ? (
-          <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.notSupported}</p>
+          <p className="text-[11px] leading-relaxed text-ivory/65">{A.starter.notSupported}</p>
         ) : null}
         {display.status === 'blocked' ? (
-          <p className="text-[11px] leading-relaxed text-ivory/50">{A.incomplete}</p>
+          <p className="text-[11px] leading-relaxed text-ivory/65">{A.incomplete}</p>
         ) : null}
       </div>
     );
@@ -69,7 +69,7 @@ export function StarterDraftPreview({
   return (
     <div className="space-y-1.5 rounded border border-ivory/10 bg-black/20 p-2.5">
       <p className="text-sm font-medium text-ivory/90">{A.starter.readyTitle}</p>
-      <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.readyBody}</p>
+      <p className="text-[11px] leading-relaxed text-ivory/65">{A.starter.readyBody}</p>
 
       {/* Exact grams + numeric metrics are paid-tier; the redacted variant
           carries the ingredient STRUCTURE only (never exact grams). */}
@@ -78,13 +78,13 @@ export function StarterDraftPreview({
           <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 font-mono text-[11px] text-ivory/60">
             {display.lines.map((line) => (
               <div key={line.id} className="contents">
-                <dt className="text-ivory/50">{line.name}</dt>
+                <dt className="text-ivory/65">{line.name}</dt>
                 <dd className="text-right">{round1(line.grams)} g</dd>
               </div>
             ))}
           </dl>
           {display.enginePreview ? (
-            <p className="font-mono text-[10px] leading-relaxed text-ivory/40">
+            <p className="font-mono text-[10px] leading-relaxed text-ivory/60">
               {`silnik CONFIG ${display.enginePreview.configVersion} · npac ${
                 display.enginePreview.npacPoints?.toFixed(1) ?? '—'
               } · pod ${display.enginePreview.podPoints?.toFixed(1) ?? '—'} · lód ${
@@ -95,12 +95,12 @@ export function StarterDraftPreview({
         </>
       ) : (
         <>
-          <ul className="font-mono text-[11px] text-ivory/50">
+          <ul className="font-mono text-[11px] text-ivory/65">
             {display.lines.map((line) => (
               <li key={line.id}>· {line.name}</li>
             ))}
           </ul>
-          <p className="text-[11px] leading-relaxed text-ivory/40">{A.demoGramsNote}</p>
+          <p className="text-[11px] leading-relaxed text-ivory/60">{A.demoGramsNote}</p>
         </>
       )}
 
@@ -109,12 +109,12 @@ export function StarterDraftPreview({
         <p className="text-[11px] leading-relaxed text-emerald-300/70">{A.starter.inBand}</p>
       ) : null}
       {hasWarning('optimization_recommended') ? (
-        <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.optimizationRecommended}</p>
+        <p className="text-[11px] leading-relaxed text-ivory/65">{A.starter.optimizationRecommended}</p>
       ) : null}
       {hasWarning('flavor_manual_mapping_required') ? (
-        <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.flavorManual}</p>
+        <p className="text-[11px] leading-relaxed text-ivory/65">{A.starter.flavorManual}</p>
       ) : null}
-      <p className="text-[10px] leading-relaxed text-ivory/30">{A.starter.notSavedNote}</p>
+      <p className="text-[10px] leading-relaxed text-ivory/60">{A.starter.notSavedNote}</p>
 
       {/* Local Apply to Studio — renders ONLY when the display carries the
           payload (paid tier, ready status). Explicit click; replacement asks
@@ -124,7 +124,7 @@ export function StarterDraftPreview({
           {applyStage === 'confirming' ? (
             <>
               <p className="text-xs font-medium text-ivory/80">{A.starter.apply.replaceWarningTitle}</p>
-              <p className="text-[11px] leading-relaxed text-ivory/50">{A.starter.apply.replaceWarningBody}</p>
+              <p className="text-[11px] leading-relaxed text-ivory/65">{A.starter.apply.replaceWarningBody}</p>
               <div className="flex flex-wrap gap-1.5">
                 <button type="button" onClick={onApplyConfirm} className={buttonCls}>
                   {A.starter.apply.confirmCta}
@@ -136,7 +136,7 @@ export function StarterDraftPreview({
             </>
           ) : (
             <>
-              <p className="text-[10px] leading-relaxed text-ivory/30">{A.starter.apply.setsNote}</p>
+              <p className="text-[10px] leading-relaxed text-ivory/60">{A.starter.apply.setsNote}</p>
               <button type="button" onClick={onApplyRequest} className={buttonCls}>
                 {A.starter.apply.cta}
               </button>
@@ -146,7 +146,7 @@ export function StarterDraftPreview({
             <>
               <p className="text-[11px] leading-relaxed text-emerald-300/70">{A.starter.apply.appliedNote}</p>
               {appliedTrace ? (
-                <p className="font-mono text-[10px] leading-relaxed text-ivory/40">
+                <p className="font-mono text-[10px] leading-relaxed text-ivory/60">
                   {`${A.starter.apply.appliedSourceLabel}: ${appliedTrace.source} · ${appliedTrace.templateId ?? '—'}`}
                 </p>
               ) : null}

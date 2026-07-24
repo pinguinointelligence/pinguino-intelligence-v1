@@ -20,7 +20,7 @@ const b = copy.studio.builder;
 export function PickerEmptyState({ query, onClear }: { query: string; onClear: () => void }) {
   return (
     <div className="flex flex-col items-start gap-2">
-      <p className="text-sm text-ivory/50" role="status">
+      <p className="text-sm text-ivory/65" role="status">
         {b.noMatches}
       </p>
       {query.trim() !== '' ? (
@@ -75,7 +75,7 @@ export function IngredientPicker({
 
   if (library.status === 'loading') {
     return (
-      <p className="text-sm text-ivory/50" role="status" aria-live="polite">
+      <p className="text-sm text-ivory/65" role="status" aria-live="polite">
         {b.loadingLibrary}
       </p>
     );
@@ -104,7 +104,7 @@ export function IngredientPicker({
         <svg
           aria-hidden
           viewBox="0 0 20 20"
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/40"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ivory/60"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -123,7 +123,7 @@ export function IngredientPicker({
       </div>
 
       {/* Result count — always visible */}
-      <p className="text-xs text-ivory/50" aria-live="polite">
+      <p className="text-xs text-ivory/65" aria-live="polite">
         <span className="font-mono tabular-nums text-ivory/70">{count.toLocaleString('en-US')}</span>{' '}
         {count === 1 ? b.resultUnitOne : b.resultUnitMany} {b.resultFoundSuffix}
       </p>
@@ -196,7 +196,7 @@ export function IngredientPicker({
           ) : null}
 
           {selectedProvenance ? (
-            <p className="text-xs leading-relaxed text-ivory/50">
+            <p className="text-xs leading-relaxed text-ivory/65">
               {selectedProvenance.class_derived ? (
                 <span className="text-ivory/70">
                   {selectedProvenance.provenance_note ?? 'PI Calculated · class-derived · not independently measured'}
@@ -218,7 +218,7 @@ export function IngredientPicker({
       )}
 
       {library.status === 'fallback' ? (
-        <p className="text-xs text-ivory/40">{b.fallbackNote}</p>
+        <p className="text-xs text-ivory/60">{b.fallbackNote}</p>
       ) : null}
     </div>
   );

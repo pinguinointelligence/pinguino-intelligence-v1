@@ -6,7 +6,9 @@ export type ButtonSize = 'sm' | 'md';
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-ink text-paper hover:bg-ink-soft',
   ghost: 'border border-ink/15 text-ink hover:border-ink/40',
-  ivory: 'bg-ivory text-ink hover:bg-ivory/85',
+  /* Ivory fill carries SHELL text (visually identical on light routes) so the button
+     never washes out inside `.theme-pro-dark`, where the ink token flips to ivory. */
+  ivory: 'bg-ivory text-shell hover:bg-ivory/85',
 };
 
 const SIZES: Record<ButtonSize, string> = {

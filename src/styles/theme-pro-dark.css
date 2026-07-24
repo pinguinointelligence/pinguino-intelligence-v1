@@ -23,6 +23,11 @@
   /* Text + primary action: brand ivory carries the identity (never a new accent). */
   --color-ink: #efe9dc;
   --color-ink-soft: #ddd5c4;
+  /* Charcoal SURFACE stays dark (owner P0 UX repair, 2026-07-24): panels that fill with
+     `bg-charcoal` (CharcoalPanel / Monitor Pro / dark chips) read as a DARK elevated
+     surface with light text — never the ivory text token as a background. This is the
+     fix for the ivory-on-ivory washout the owner rejected on staging /pro/recipe. */
+  --color-charcoal: var(--color-graphite-raised);
 
   /* Secondary text scale (stone-*) re-mapped for graphite (AA at their usages). */
   --color-stone-300: #55565c;
@@ -40,6 +45,7 @@
   --color-status-error: #c9917e;
   --color-gold: var(--color-gold-soft);
 
-  /* Owner review red — brightened for legibility on graphite (owner/QA only). */
-  --color-review: #e5484d;
+  /* Owner review red — brightened for ≥4.5:1 legibility on graphite surfaces
+     (badge text over the review/10 tint included). Review markers only. */
+  --color-review: #ef6a6f;
 }

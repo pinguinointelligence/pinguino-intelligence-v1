@@ -39,7 +39,7 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
   { id: 'temp_minus_13', label: servingCopy.minus13 },
 ];
 
-const fieldLabel = 'text-xs font-medium tracking-label text-ivory/50 uppercase';
+const fieldLabel = 'text-xs font-medium tracking-label text-ivory/65 uppercase';
 const select =
   'rounded-md border border-ivory/15 bg-shell px-3 py-2 text-sm transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none';
 
@@ -107,10 +107,13 @@ export function GoalSetup() {
     <Card padding="lg">
       <SectionLabel>{g.title}</SectionLabel>
 
-      {/* Visible product type — exactly FOUR (owner P0); internal categories route silently. */}
-      <div className="mt-6">
-        <span className={fieldLabel}>{g.productTypeLabel}</span>
-        <div className="mt-3">
+      {/* Owner P0 UX repair (2026-07-24): the CORE setup is a COMPACT two-row group —
+          row 1: product type + quality tier; row 2: serving mode + batch. Same store
+          actions, same testids — only the presentation is condensed (no big tier cards). */}
+      <div className="mt-5 grid gap-x-8 gap-y-4 lg:grid-cols-2">
+        {/* Visible product type — exactly FOUR (owner P0); internal categories route silently. */}
+        <div className="flex flex-col gap-2">
+          <span className={fieldLabel}>{g.productTypeLabel}</span>
           <Segmented
             options={VISIBLE_PRODUCT_TYPES}
             value={store.visibleProductType}
@@ -118,53 +121,41 @@ export function GoalSetup() {
             labelOf={(option) => g.productTypes[option]}
             testidOf={(option) => `product-type-${option}`}
           />
+          {!isSupportedVisibleType(store.visibleProductType) ? (
+            <p className="text-xs leading-relaxed text-amber-300/90" data-testid="protein-unsupported">
+              {g.proteinUnsupported}
+            </p>
+          ) : null}
         </div>
-        {!isSupportedVisibleType(store.visibleProductType) ? (
-          <p className="mt-2 text-xs leading-relaxed text-amber-300/90" data-testid="protein-unsupported">
-            {g.proteinUnsupported}
-          </p>
-        ) : null}
-      </div>
 
-      {/* Quality tier — the ONE canonical strategy choice. */}
-      <div className="mt-6">
-        <span className={fieldLabel}>{g.modeLabel}</span>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {MODES.map((mode) => {
-            const active = store.mode === mode;
-            return (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={active}
-                data-testid={`quality-${mode}`}
-                onClick={() => store.setMode(mode)}
-                className={cn(
-                  'relative overflow-hidden rounded-md border p-3 pl-4 text-left transition-colors',
-                  active ? 'border-ivory bg-ivory/10' : 'border-ivory/15 hover:border-ivory/40',
-                )}
-              >
-                {active ? (
-                  <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-ivory" />
-                ) : null}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium tracking-label uppercase">
-                    {g.modes[mode].name}
-                  </span>
-                  <span className="text-[0.6rem] tracking-label text-ivory/40 uppercase">
-                    {g.modeFocus[mode]}
-                  </span>
-                </div>
-                <span className="mt-1 block text-xs leading-relaxed text-ivory/60">
-                  {g.modes[mode].body}
-                </span>
-              </button>
-            );
-          })}
+        {/* Quality tier — the ONE canonical strategy choice (full description on hover). */}
+        <div className="flex flex-col gap-2">
+          <span className={fieldLabel}>{g.modeLabel}</span>
+          <div className="flex flex-wrap gap-1.5">
+            {MODES.map((mode) => {
+              const active = store.mode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={active}
+                  data-testid={`quality-${mode}`}
+                  title={`${g.modeFocus[mode]} — ${g.modes[mode].body}`}
+                  onClick={() => store.setMode(mode)}
+                  className={cn(
+                    'rounded-md border px-3 py-1.5 text-sm transition-colors',
+                    active
+                      ? 'border-ivory bg-ivory text-shell'
+                      : 'border-ivory/15 text-ivory/70 hover:border-ivory/40',
+                  )}
+                >
+                  {g.modes[mode].name}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div className="mt-6 grid gap-5 sm:grid-cols-2">
         {/* Serving mode — Świeże/−11/−12/−13, ONE shared state. */}
         <div className="flex flex-col gap-2">
           <span className={fieldLabel}>{g.servingLabel}</span>
@@ -175,7 +166,7 @@ export function GoalSetup() {
             labelOf={(id) => SERVING_OPTIONS.find((option) => option.id === id)?.label ?? id}
             testidOf={(id) => `serving-${id}`}
           />
-          <p className="text-xs text-ivory/40">{g.temperatureHelp}</p>
+          <p className="text-xs text-ivory/60">{g.temperatureHelp}</p>
         </div>
 
         {/* Batch size with unit */}
@@ -204,7 +195,7 @@ export function GoalSetup() {
             </select>
           </div>
           {unit !== 'g' ? (
-            <p className="font-mono text-xs text-ivory/40 tabular-nums">
+            <p className="font-mono text-xs text-ivory/60 tabular-nums">
               = {Math.round(store.target_batch_grams).toLocaleString('en-US')} g
             </p>
           ) : null}
@@ -216,7 +207,7 @@ export function GoalSetup() {
         <summary className="cursor-pointer text-xs font-medium tracking-label text-ivory/60 uppercase">
           {g.advancedLabel}
         </summary>
-        <p className="mt-2 text-xs leading-relaxed text-ivory/40">{g.advancedNote}</p>
+        <p className="mt-2 text-xs leading-relaxed text-ivory/60">{g.advancedNote}</p>
         <div className="mt-4 grid gap-5 sm:grid-cols-2">
           {/* Machine capacity */}
           <label className="flex flex-col gap-2">
@@ -232,7 +223,7 @@ export function GoalSetup() {
                 store.setMachineCapacity(raw === '' ? null : Math.max(0, Number(raw)));
               }}
             />
-            <p className="text-xs text-ivory/40">{g.machineHelp}</p>
+            <p className="text-xs text-ivory/60">{g.machineHelp}</p>
           </label>
 
           {/* Flavor intensity */}

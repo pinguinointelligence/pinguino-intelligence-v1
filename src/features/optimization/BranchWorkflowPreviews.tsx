@@ -47,8 +47,8 @@ const RESCUE_PROBLEMS: readonly { value: BatchRescueProblem; label: string }[] =
 const parseMeasured = (raw: string): number | null => (raw.trim() === '' ? null : Number(raw));
 
 const inputCls =
-  'w-full rounded border border-ivory/20 bg-black/30 px-2 py-1.5 font-mono text-[11px] text-ivory placeholder:text-ivory/25';
-const labelCls = 'font-mono text-[10px] uppercase tracking-wide text-ivory/40';
+  'w-full rounded border border-ivory/20 bg-black/30 px-2 py-1.5 font-mono text-[11px] text-ivory placeholder:text-ivory/60';
+const labelCls = 'font-mono text-[10px] uppercase tracking-wide text-ivory/60';
 const buttonCls =
   'inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40';
 
@@ -149,7 +149,7 @@ export function BranchWorkflowPreviews({
     <div className="space-y-3 border-t border-ivory/10 pt-6">
       <div className="flex flex-col gap-1">
         <SectionLabel>Batch rescue &amp; stock shortage</SectionLabel>
-        <p className="text-xs leading-relaxed text-ivory/40">
+        <p className="text-xs leading-relaxed text-ivory/60">
           Preview only — nothing is applied. No inventory is changed. No recipe is saved. Decisions and any
           verified numbers come from the real engine with regulator verification; missing measurements block
           honestly instead of being guessed.
@@ -157,7 +157,7 @@ export function BranchWorkflowPreviews({
       </div>
 
       {!policy.canRunWorkflows ? (
-        <p className="text-[11px] leading-relaxed text-ivory/30">
+        <p className="text-[11px] leading-relaxed text-ivory/60">
           Batch rescue and stock shortage previews are available on Pro.
         </p>
       ) : (
@@ -213,7 +213,7 @@ export function BranchWorkflowPreviews({
               <Check label="may reformulate" checked={canReformulate} onChange={setCanReformulate} />
               <Check label="can buy / wait" checked={purchasePossible} onChange={setPurchasePossible} />
             </div>
-            <p className="text-[10px] leading-relaxed text-ivory/30">
+            <p className="text-[10px] leading-relaxed text-ivory/60">
               Verified substitute preview requires a calibrated substitute from the reference catalog —
               substitutes can never be typed in by hand.
             </p>

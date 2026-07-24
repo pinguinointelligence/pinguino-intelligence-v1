@@ -195,9 +195,9 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
   return (
     <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
       <div className="flex flex-col gap-0.5">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-ivory/40">Asystent</p>
+        <p className="font-mono text-[10px] uppercase tracking-wide text-ivory/60">Asystent</p>
         <p className="text-sm font-medium text-ivory/90">{A.introTitle}</p>
-        <p className="text-xs leading-relaxed text-ivory/50">{A.introBody}</p>
+        <p className="text-xs leading-relaxed text-ivory/65">{A.introBody}</p>
       </div>
 
       {!flow.started ? (
@@ -210,15 +210,15 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
             <div className="space-y-2 rounded border border-ivory/10 bg-black/20 p-2.5">
               <p className="text-xs font-medium text-ivory/80">
                 {question.prompt}
-                {!question.required ? <span className="text-ivory/30"> · opcjonalne</span> : null}
+                {!question.required ? <span className="text-ivory/60"> · opcjonalne</span> : null}
               </p>
               {question.helper ? (
-                <p className="text-[10px] leading-relaxed text-ivory/40">{question.helper}</p>
+                <p className="text-[10px] leading-relaxed text-ivory/60">{question.helper}</p>
               ) : null}
 
               {question.kind === 'text' ? (
                 <input
-                  className="w-full rounded border border-ivory/20 bg-black/30 px-2 py-1.5 text-[11px] text-ivory placeholder:text-ivory/25"
+                  className="w-full rounded border border-ivory/20 bg-black/30 px-2 py-1.5 text-[11px] text-ivory placeholder:text-ivory/60"
                   value={typeof pending === 'string' ? pending : ''}
                   placeholder="Wpisz odpowiedź…"
                   onChange={(e) => setPending(e.target.value)}
@@ -284,7 +284,7 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
           )}
 
           {!submittable ? (
-            <p className="text-[11px] leading-relaxed text-ivory/40">{A.incomplete}</p>
+            <p className="text-[11px] leading-relaxed text-ivory/60">{A.incomplete}</p>
           ) : null}
 
           <button type="button" onClick={prepare} className={buttonCls} disabled={!submittable}>
@@ -294,36 +294,36 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
           {draft ? (
             <div className="space-y-1.5 rounded border border-ivory/10 bg-black/20 p-2.5">
               <p className="text-sm font-medium text-ivory/90">{A.draftReadyTitle}</p>
-              <p className="text-[11px] leading-relaxed text-ivory/50">{A.draftReadyBody}</p>
+              <p className="text-[11px] leading-relaxed text-ivory/65">{A.draftReadyBody}</p>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-[11px] text-ivory/60">
-                <dt className="text-ivory/35">Profil</dt>
+                <dt className="text-ivory/60">Profil</dt>
                 <dd>{draft.intent.productProfile}</dd>
-                <dt className="text-ivory/35">Temperatura</dt>
+                <dt className="text-ivory/60">Temperatura</dt>
                 <dd>{draft.intent.servingTemperatureC}°C</dd>
-                <dt className="text-ivory/35">Batch</dt>
+                <dt className="text-ivory/60">Batch</dt>
                 <dd>{draft.batchSizeG !== null ? `${draft.batchSizeG} g` : 'ustawisz w recepturze'}</dd>
-                <dt className="text-ivory/35">Smak</dt>
+                <dt className="text-ivory/60">Smak</dt>
                 <dd>{draft.intent.flavorText ?? '—'}</dd>
-                <dt className="text-ivory/35">Tekstura</dt>
+                <dt className="text-ivory/60">Tekstura</dt>
                 <dd>{draft.intent.texturePreference}</dd>
-                <dt className="text-ivory/35">Słodycz</dt>
+                <dt className="text-ivory/60">Słodycz</dt>
                 <dd>{draft.intent.sweetnessPreference}</dd>
-                <dt className="text-ivory/35">Ograniczenia</dt>
+                <dt className="text-ivory/60">Ograniczenia</dt>
                 <dd>
                   {draft.restrictions.length > 0
                     ? answerLabel(questionById('restrictions'), draft.restrictions)
                     : '—'}
                 </dd>
-                <dt className="text-ivory/35">Cel</dt>
+                <dt className="text-ivory/60">Cel</dt>
                 <dd>{answerLabel(questionById('goal'), flow.answers.goal)}</dd>
               </dl>
               {!canViewExactGrams ? (
-                <p className="text-[11px] leading-relaxed text-ivory/40">{A.demoGramsNote}</p>
+                <p className="text-[11px] leading-relaxed text-ivory/60">{A.demoGramsNote}</p>
               ) : null}
               <div className="border-t border-ivory/10 pt-1.5">
-                <p className="text-[10px] leading-relaxed text-ivory/30">{A.noSaveNote}</p>
-                <p className="text-[10px] leading-relaxed text-ivory/30">{A.noRecipeChangeNote}</p>
-                <p className="text-[10px] leading-relaxed text-ivory/30">{A.deterministicNote}</p>
+                <p className="text-[10px] leading-relaxed text-ivory/60">{A.noSaveNote}</p>
+                <p className="text-[10px] leading-relaxed text-ivory/60">{A.noRecipeChangeNote}</p>
+                <p className="text-[10px] leading-relaxed text-ivory/60">{A.deterministicNote}</p>
               </div>
 
               {/* Intent → deterministic starter recipe draft (local preview only). */}
