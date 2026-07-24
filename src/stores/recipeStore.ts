@@ -38,8 +38,14 @@ export interface RecipeState {
   flavor_intensity: FlavorIntensity;
   cost_priority: CostPriority;
   items: RecipeItem[];
-  /** Canonical ingredient ids the user explicitly removed — the formulation
-   * toolbox never reintroduces them (cleared by adding the ingredient back). */
+  /**
+   * Canonical ingredient ids the user EXPLICITLY marked unavailable/excluded —
+   * the formulation toolbox never reintroduces them (cleared by adding the
+   * ingredient back). Owner FINAL CLOSURE C2 (supersedes the NIGHTLY-phase
+   * removal-excludes rule): `removeItem` NEVER writes here — removing a row
+   * only removes it from the CURRENT recipe. The ONLY exclusion source is the
+   * explicit `markIngredientUnavailable` action.
+   */
   excludedIngredientIds: string[];
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
   activePresetId: PresetId | null;
@@ -123,7 +129,24 @@ export interface RecipeState {
     | { ok: false; code: 'batch_mismatch'; sum: number; target: number }
     | { ok: false; code: 'write_verification_failed' };
   addIngredient: (ingredient: EngineIngredient, grams?: number) => void;
+  /**
+   * Owner FINAL CLOSURE C2/C3 — „Remove row": ONE atomic material-edit
+   * transaction that removes the line from the CURRENT recipe. It leaves NO
+   * orphan state (the §17 constraint entry for the removed line id is dropped
+   * synchronously by the constraint-studio store bridge inside this same
+   * setState) and NEVER creates a scientific exclusion — a removed ingredient
+   * may be refilled by the toolbox. Bumps `draftRevision` EXACTLY once.
+   */
   removeItem: (lineId: string) => void;
+  /**
+   * Owner FINAL CLOSURE C2 — the EXPLICIT „unavailable/exclude" action, the
+   * ONLY exclusion source: removes every line of the tapped line's canonical
+   * ingredient AND records the exclusion, so the toolbox never reintroduces
+   * it. Cleared only by explicitly adding the ingredient back
+   * (`addIngredient`) or by a draft-context change. ONE atomic transaction,
+   * ONE revision bump.
+   */
+  markIngredientUnavailable: (lineId: string) => void;
   /** Owner P0 repair: fold plannable duplicate-ingredient lines into one (explicit action). */
   mergeDuplicateIngredientLines: () => void;
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -356,8 +379,9 @@ export const useRecipeStore = create<RecipeState>()(
             // Visible GELATO re-routes its INTERNAL category from the real ingredients
             // (chocolate/nut/fruit/alcohol are classifications, never visible types).
             ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
-            // Explicitly adding an ingredient back clears its exclusion (Phase 3
-            // input semantics: removed returns ONLY through an explicit add).
+            // Explicitly adding an ingredient back clears its EXPLICIT
+            // exclusion (frozen pin: an excluded ingredient returns ONLY
+            // through an explicit add — never via the toolbox).
             excludedIngredientIds: state.excludedIngredientIds.filter((id) => id !== ingredient.id),
             dirty: true,
             draftRevision: state.draftRevision + 1,
@@ -366,24 +390,47 @@ export const useRecipeStore = create<RecipeState>()(
 
       removeItem: (lineId) =>
         set((state) => {
-          const removed = state.items.find((item) => item.id === lineId);
           const items = state.items.filter((item) => item.id !== lineId);
+          if (items.length === state.items.length) return {}; // unknown line — no-op
           return {
             items,
             ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
-            // Owner P0 (formulation): a REMOVED ingredient is excluded — PI must
-            // never silently reintroduce it via the toolbox.
-            // Owner P0 NIGHTLY (exclusion lifecycle, live FAILURE B): exclusions
-            // are DRAFT-SCOPED. Removing the LAST line ends the draft — the now
-            // empty draft starts a fresh exclusion context, so ingredients the
-            // user cleared away while emptying the old draft are never treated
-            // as excluded in the next one (never-selected ≠ excluded).
-            excludedIngredientIds:
-              items.length === 0
-                ? []
-                : removed && !state.excludedIngredientIds.includes(removed.ingredient.id)
-                  ? [...state.excludedIngredientIds, removed.ingredient.id]
-                  : state.excludedIngredientIds,
+            // Owner FINAL CLOSURE C2 (supersedes the NIGHTLY removal-excludes
+            // rule): „Remove row" = removed from the CURRENT recipe ONLY. It
+            // must NOT silently become a permanent scientific exclusion — the
+            // toolbox may refill the vacated role. Exclusion happens ONLY via
+            // the explicit `markIngredientUnavailable` action.
+            // KEPT (owner P0 NIGHTLY, live FAILURE B — draft-scoped
+            // lifecycle): removing the LAST line ends the draft; the empty
+            // draft starts a fresh exclusion context (never-selected ≠
+            // excluded), so even explicit exclusions do not leak into the
+            // next draft built from scratch.
+            ...(items.length === 0 ? { excludedIngredientIds: [] } : {}),
+            dirty: true,
+            // C3: EXACTLY one bump per material edit. The constraint-studio
+            // store bridge reconciles the §17 half (drops the removed line's
+            // constraint entry, invalidates staged previews) SYNCHRONOUSLY
+            // inside this same setState — no async effect, no second bump.
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
+
+      markIngredientUnavailable: (lineId) =>
+        set((state) => {
+          const target = state.items.find((item) => item.id === lineId);
+          if (!target) return {}; // unknown line — no-op
+          const ingredientId = target.ingredient.id;
+          const items = state.items.filter((item) => item.ingredient.id !== ingredientId);
+          return {
+            items,
+            ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
+            // THE explicit exclusion write (owner FINAL CLOSURE C2 — the only
+            // source). An explicit statement of unavailability stands even if
+            // it empties the draft; only an explicit add or a draft-context
+            // change clears it.
+            excludedIngredientIds: state.excludedIngredientIds.includes(ingredientId)
+              ? state.excludedIngredientIds
+              : [...state.excludedIngredientIds, ingredientId],
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };

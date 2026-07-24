@@ -868,6 +868,12 @@ export const copy = {
       mark_main: 'Ustaw jako główny',
       main_short: 'Główny',
       remove: 'Usuń',
+      /** Owner FINAL CLOSURE C2 (ADD-only keys) — the EXPLICIT „unavailable"
+       * action: the ONLY way an ingredient becomes excluded. „Usuń" merely
+       * removes the row from the current recipe. */
+      markUnavailable: 'Niedostępny',
+      markUnavailableTitle:
+        'Oznacz jako niedostępny — PI usunie składnik z receptury i nigdy nie doda go ponownie (wraca tylko przez ręczne dodanie).',
       unit: 'g',
       batchTotal: 'Suma partii',
       target: 'Cel',

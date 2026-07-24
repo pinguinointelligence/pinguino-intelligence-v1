@@ -215,9 +215,11 @@ export interface ConstraintStudioState {
     maxGrams: number,
   ) => { ok: boolean; issues: ConstraintValidationIssue[] };
   clearConstraint: (lineId: string) => void;
-  /** Reconcile hooks for the ingredient rows (dropdown / remove). */
+  /** Reconcile hook for the ingredient rows (lock dropdown override). Row
+   * REMOVAL needs no hook: the store bridge reconciles the §17 half
+   * synchronously inside the recipe store's own setState (owner FINAL
+   * CLOSURE C3 — one atomic material-edit transaction, one revision bump). */
   onLineLockTypeChanged: (lineId: string, lockType: LockType) => void;
-  onLineRemoved: (lineId: string) => void;
   /** Prune constraints for lines that no longer exist (preset loads etc.). */
   reconcile: () => void;
   /**
@@ -338,12 +340,6 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     if (existing === undefined || existing.mode === 'ai') return;
     if (lockType === 'grams' || ENGINE_KEPT_LOCKS.has(lockType)) return;
     // Conscious dropdown override → the §17 constraint is dropped with it.
-    set({ constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) }, ...CLEAR_STAGED });
-    useRecipeStore.getState().bumpDraftRevision(); // Phase 3: material edit
-  },
-
-  onLineRemoved: (lineId) => {
-    if (get().constraints.byLineId[lineId] === undefined) return;
     set({ constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) }, ...CLEAR_STAGED });
     useRecipeStore.getState().bumpDraftRevision(); // Phase 3: material edit
   },
@@ -508,9 +504,16 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
  *  - `draftContextSeq` change (loadRecipeInput / loadPreset / resetToDemo) →
  *    the §17 session RESETS: a loaded recipe starts a fresh constraint
  *    context — locks/ranges from an earlier session draft never survive;
- *  - `draftRevision` change (ANY material edit) → staged state built for the
- *    old draft (preview, previewIssue, feasibility, blocked) is invalidated
- *    unless the staged preview already carries the new revision.
+ *  - `draftRevision` change (ANY material edit) → owner FINAL CLOSURE C3,
+ *    both halves of the ONE atomic material-edit transaction:
+ *      1. the §17 constraint set is RECONCILED against the CURRENT lines
+ *         (entries for removed line ids are dropped) — zustand subscribers
+ *         run synchronously inside the recipe store's setState, so by the
+ *         time ANY caller observes the edit the constraint half is already
+ *         consistent (no async effect, no timeout, no second revision bump);
+ *      2. staged state built for the old draft (preview, previewIssue,
+ *         feasibility, blocked) is invalidated unless the staged preview
+ *         already carries the new revision.
  */
 useRecipeStore.subscribe((state, prev) => {
   if (state.draftContextSeq !== prev.draftContextSeq) {
@@ -519,15 +522,22 @@ useRecipeStore.subscribe((state, prev) => {
   }
   if (state.draftRevision !== prev.draftRevision) {
     const session = useConstraintStudioStore.getState();
+    // C3 step 1 — synchronous constraint reconciliation (write-time, not only
+    // read-time): a removed line's §17 entry never survives the transaction.
+    const reconciled = reconcileConstraints(state.items, session.constraints);
+    const constraintsPatch = reconciled !== session.constraints ? { constraints: reconciled } : {};
+    // C3 step 2 — staged-state invalidation (unchanged semantics).
     const previewCurrent = session.preview?.baseDraftRevision === state.draftRevision;
-    if (
+    const stagedPatch =
       !previewCurrent &&
       (session.preview !== null ||
         session.previewIssue !== null ||
         session.feasibility !== null ||
         session.blocked !== null)
-    ) {
-      useConstraintStudioStore.setState({ ...CLEAR_STAGED });
+        ? { ...CLEAR_STAGED }
+        : {};
+    if (Object.keys(constraintsPatch).length > 0 || Object.keys(stagedPatch).length > 0) {
+      useConstraintStudioStore.setState({ ...constraintsPatch, ...stagedPatch });
     }
   }
 });

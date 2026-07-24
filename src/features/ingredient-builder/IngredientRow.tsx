@@ -19,7 +19,12 @@ export interface IngredientRowActions {
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
   setMainIngredient: (lineId: string) => void;
+  /** Owner FINAL CLOSURE C2 — „Usuń" removes the row from the CURRENT recipe
+   * only; it never creates a scientific exclusion. */
   removeItem: (lineId: string) => void;
+  /** Owner FINAL CLOSURE C2 — the EXPLICIT „Niedostępny" action, the ONLY
+   * exclusion source (optional: rows without it render no such control). */
+  markIngredientUnavailable?: (lineId: string) => void;
 }
 
 /** §17 padlock view (UIUX spec §12.3 „[AI / kłódka]”) — supplied by the
@@ -222,14 +227,30 @@ export function IngredientRow({
           </select>
         </div>
 
-        <button
-          type="button"
-          aria-label={`${b.remove} ${item.ingredient.name}`}
-          onClick={() => actions.removeItem(item.id)}
-          className="rounded-md border border-ivory/10 px-2 py-1.5 text-xs text-ivory/60 transition-colors hover:border-status-error/40 hover:text-status-error"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1">
+          {actions.markIngredientUnavailable ? (
+            // Owner FINAL CLOSURE C2 — the EXPLICIT „Niedostępny" action: the
+            // ONLY exclusion source. „✕" (remove) only removes the row.
+            <button
+              type="button"
+              aria-label={`${b.markUnavailable} ${item.ingredient.name}`}
+              title={b.markUnavailableTitle}
+              onClick={() => actions.markIngredientUnavailable!(item.id)}
+              data-testid={`row-mark-unavailable-${item.id}`}
+              className="rounded-md border border-ivory/10 px-2 py-1.5 text-[0.6rem] font-medium tracking-[0.08em] text-ivory/50 uppercase transition-colors hover:border-status-error/40 hover:text-status-error"
+            >
+              {b.markUnavailable}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            aria-label={`${b.remove} ${item.ingredient.name}`}
+            onClick={() => actions.removeItem(item.id)}
+            className="rounded-md border border-ivory/10 px-2 py-1.5 text-xs text-ivory/60 transition-colors hover:border-status-error/40 hover:text-status-error"
+          >
+            ✕
+          </button>
+        </div>
       </div>
     </div>
   );
