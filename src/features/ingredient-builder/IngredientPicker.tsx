@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EngineIngredient } from '@/engine';
+import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import {
   filterIngredients,
   groupIngredientsByCategory,
@@ -218,7 +219,16 @@ export function IngredientPicker({
       )}
 
       {library.status === 'fallback' ? (
-        <p className="text-xs text-ivory/60">{b.fallbackNote}</p>
+        // Agent 4/5 fixture sweep: the FALLBACK is the bundled demo/reference catalog
+        // silently replacing the live PI library (error / empty read) — visibly pink,
+        // never mistakable for the 'ready' live library.
+        <p
+          className="flex flex-wrap items-center gap-2 text-xs text-ivory/60"
+          data-testid="nonprod-marked-picker-fallback"
+        >
+          <NonProductionBadge itemId="pro-demo-library" />
+          <span>{b.fallbackNote}</span>
+        </p>
       ) : null}
     </div>
   );

@@ -54,6 +54,7 @@ import {
   type ServingMode,
 } from '@/features/customer-flow';
 import { CATALOGUE_FIXTURES } from '@/features/customer-flow/__fixtures__/catalogueFixtures';
+import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import {
   CustomerSurface,
   CustomerSection,
@@ -1297,6 +1298,17 @@ export function CustomerShellV1() {
         {isReadyListPhase ? (
           <CustomerSection label={copy.ready.label} title={copy.ready.title} lead={copy.ready.lead}>
             {pathToggle}
+            {/* Agent 4 fixture sweep: these cards are TEST fixtures (metadata only),
+                not a real catalogue — marked pink until the approved catalogue lands. */}
+            <div
+              className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-ink/10 border-l-2 border-l-nonprod bg-nonprod/[0.03] px-4 py-2"
+              data-testid="nonprod-marked-start-ready-catalogue"
+            >
+              <NonProductionBadge itemId="start-ready-catalogue" />
+              <span className="text-xs leading-relaxed text-stone-600">
+                {'Karty gotowych receptur to dane testowe — prawdziwy katalog jeszcze nie jest podłączony.'}
+              </span>
+            </div>
             {matches.length === 0 ? (
               <EmptyStateView title={copy.ready.title} body={copy.ready.empty} />
             ) : (
@@ -1357,6 +1369,20 @@ export function CustomerShellV1() {
               ) : null}
               {selectedDraft ? (
                 <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{copy.result.draftNotice}</p>
+              ) : null}
+              {/* Agent 4 fixture sweep: a ready-recipe draft is BUILT ON a test fixture
+                  card (structure only, no engine grams) — marked pink until the real
+                  catalogue recipes replace the fixtures. */}
+              {selectedDraft ? (
+                <div
+                  className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-ink/10 border-l-2 border-l-nonprod bg-nonprod/[0.03] px-4 py-2"
+                  data-testid="nonprod-marked-start-ready-draft"
+                >
+                  <NonProductionBadge itemId="start-ready-draft" />
+                  <span className="text-xs leading-relaxed text-stone-600">
+                    {'Ten szkic powstał z karty testowej — struktura poglądowa bez wyliczonych ilości.'}
+                  </span>
+                </div>
               ) : null}
             </div>
 

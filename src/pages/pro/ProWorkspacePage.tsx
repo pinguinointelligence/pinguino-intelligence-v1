@@ -37,6 +37,7 @@ import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { resolveProductionRepository } from '@/features/pro-core/proCoreProductionRepo';
 import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
+import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 
 const w = copy.proWorkspace;
@@ -108,6 +109,20 @@ function RecipeTab() {
   return (
     <div>
       <ProWorkbar onMonitor={() => setMonitorOpen(true)} onRecalc={startRecalc} />
+      {/* Agent 4 fixture sweep: the starter recipe is the DEMO preset (milk-base) and the
+          ingredient picker serves the demo/reference library (literature compositions,
+          estimated EUR/kg costs) for Demo/non-Pro AND as the silent Pro fallback when the
+          live library read errors or is empty — marked pink until the verified PI library
+          replaces both paths. */}
+      <div
+        className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-ink/10 border-l-2 border-l-nonprod bg-nonprod/[0.03] px-4 py-2"
+        data-testid="nonprod-marked-pro-demo-library"
+      >
+        <NonProductionBadge itemId="pro-demo-library" />
+        <span className="text-xs leading-relaxed text-stone-600">
+          {'Receptura startowa i biblioteka składników to dane demo/referencyjne (wartości literaturowe, koszty szacunkowe).'}
+        </span>
+      </div>
       {/* The engine lab keeps its native dark "canvas" tone; inside the dark professional
           workspace (Masterpiece Phase 5) the shell tone reads as a slightly ELEVATED surface —
           a hairline carries the elevation, no card-in-card chrome. */}

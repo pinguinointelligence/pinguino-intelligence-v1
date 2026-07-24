@@ -4,6 +4,7 @@
  * restores nothing because the preview never touched the recipe (§19.2).
  */
 import { cn } from '@/lib/cn';
+import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import {
   constraintStudioCopy as copy,
   formatGramsDeltaPl,
@@ -169,6 +170,14 @@ export function ConstraintPreviewCard({
             {preview.formulation.templateStatus === 'reference_derived'
               ? ` ${copy.preview.referenceDerivedNote}`
               : ''}
+            {/* Agent 4 fixture sweep (presentation only): a reference_derived template is
+                NOT approved science — the pink marker names the source + replacement. */}
+            {preview.formulation.templateStatus === 'reference_derived' ? (
+              <>
+                {' '}
+                <NonProductionBadge itemId="preview-reference-template" />
+              </>
+            ) : null}
           </p>
         ) : preview.autoBalance ? (
           <p className="text-[0.65rem] text-ivory/60" data-testid="preview-source">

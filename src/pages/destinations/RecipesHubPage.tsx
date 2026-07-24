@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { DestinationSection, DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ImagePlaceholder } from '@/features/shell/MegaMenuItem';
+import { NonProductionMarker } from '@/features/design-review/NonProductionMarker';
 import { copy } from '@/copy/en';
 
 const r = copy.nav.recipes;
@@ -30,24 +31,31 @@ export function RecipesHubPage() {
     <DestinationSurface title={r.title} blurb={r.blurb}>
       <p className="max-w-2xl text-sm leading-relaxed text-ivory/55">{r.note}</p>
 
-      <DestinationSection label={r.browse} className="mt-12">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
-          <RecipeTile label={r.mine} to="/my-recipes" />
-          <RecipeTile label={r.pinguino} />
-          <RecipeTile label={r.featured} />
-          <RecipeTile label={r.recent} />
-          <RecipeTile label={r.startFrom} />
-        </div>
-      </DestinationSection>
+      {/* Agent 4 fixture sweep: every tile except „Moje receptury” is a decorative
+          placeholder with NO recipe collection behind it — marked pink until the
+          real catalogue lands. */}
+      <div className="mt-12">
+        <NonProductionMarker itemId="recipes-hub-tiles" tone="dark">
+          <DestinationSection label={r.browse}>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
+              <RecipeTile label={r.mine} to="/my-recipes" />
+              <RecipeTile label={r.pinguino} />
+              <RecipeTile label={r.featured} />
+              <RecipeTile label={r.recent} />
+              <RecipeTile label={r.startFrom} />
+            </div>
+          </DestinationSection>
 
-      <DestinationSection label={r.categories} className="mt-12">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-          <RecipeTile label={r.gelato} />
-          <RecipeTile label={r.sorbet} />
-          <RecipeTile label={r.vegan} />
-          <RecipeTile label={r.protein} />
-        </div>
-      </DestinationSection>
+          <DestinationSection label={r.categories} className="mt-12">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+              <RecipeTile label={r.gelato} />
+              <RecipeTile label={r.sorbet} />
+              <RecipeTile label={r.vegan} />
+              <RecipeTile label={r.protein} />
+            </div>
+          </DestinationSection>
+        </NonProductionMarker>
+      </div>
     </DestinationSurface>
   );
 }

@@ -7,6 +7,7 @@ import { buildNutritionDeclaration } from '@/data/label/nutritionLabel';
 import { buildCostBlock, buildPrintableLabelHtml, buildRecipeCsv } from '@/data/label/recipeExport';
 import { downloadCsv, printLabelHtml } from '@/data/label/downloadCsv';
 import { SAMPLE_LABEL_RESULT } from '@/data/label/sampleLabelRecipe';
+import { NonProductionMarker } from '@/features/design-review/NonProductionMarker';
 
 const l = copy.nav.label;
 
@@ -29,7 +30,17 @@ export function CreateLabelPage() {
   return (
     <DestinationSurface eyebrow={l.sampleHeading} title={l.title} blurb={l.blurb}>
       <div className="space-y-12">
-        <p className="max-w-2xl text-sm leading-relaxed text-ivory/55">{l.sampleNote}</p>
+        {/* Agent 4 fixture sweep: the WHOLE page renders the fixed sample recipe
+            (SAMPLE_LABEL_RESULT) — marked pink until the live-recipe source lands. */}
+        <NonProductionMarker
+          itemId="label-sample-recipe"
+          tone="dark"
+          // Visible copy avoids the word "Demo" (destination-pages guard test);
+          // the full provenance (incl. the preset name) stays in the tooltip.
+          note="Ta strona renderuje stałą przykładową recepturę — wartości odżywcze, skład i koszty nie dotyczą Twojej receptury."
+        >
+          <p className="max-w-2xl text-sm leading-relaxed text-ivory/55">{l.sampleNote}</p>
+        </NonProductionMarker>
 
         <DestinationSection label={l.declarationTitle} className="max-w-md">
           <p className="mb-4 text-xs tracking-label text-ivory/40 uppercase">

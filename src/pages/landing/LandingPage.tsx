@@ -32,6 +32,7 @@ import {
 } from '@/features/customer-shell/ui';
 import { CustomerMenu } from '@/features/customer-shell/ui/CustomerMenu';
 import { MonitorHomeReadout } from '@/features/customer-shell/PiMonitorSection';
+import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import { landingCopy as copy } from './landingCopy';
 import { buildLandingMonitorDemo } from './landingMonitorDemo';
 
@@ -148,10 +149,15 @@ function LandingMonitorPreview() {
   const m = copy.monitor;
   return (
     <div className={cn('w-full max-w-[420px] border border-ink/10 bg-paper p-6', radius.card, 'shadow-[0_10px_40px_rgba(16,17,19,0.08)]')}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className={cn(type.label, color.textMuted)}>{m.label}</p>
-        <span className={cn('rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-[11px] font-medium', color.textSecondary)}>
-          {m.exampleTag}
+        <span className="flex flex-wrap items-center gap-2">
+          {/* Agent 4 fixture sweep: real engine, FIXED vanilla demo payload — the pink
+              marker names the source next to the honest „Przykład” tag. */}
+          <NonProductionBadge itemId="landing-monitor-example" />
+          <span className={cn('rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-[11px] font-medium', color.textSecondary)}>
+            {m.exampleTag}
+          </span>
         </span>
       </div>
 
