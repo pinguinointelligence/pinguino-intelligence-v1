@@ -232,6 +232,21 @@ export interface FormulationProposal {
   keptFixed: string[];
   /** Phase-1 role trace — one row per template role, in template order. */
   roleTrace: FormulationRoleTraceRow[];
+  /**
+   * Owner addendum (Agent 3 — proportional-scaling detector baseline): the
+   * PRE-normalization seed grams per line id (template role targets / user
+   * amounts BEFORE `normalize()` squeezed them into the free envelope). Any
+   * presented state whose unlocked lines are one shared factor × this baseline
+   * is a proportional PROJECTION of the seed — never a formulation by itself.
+   */
+  seedBaselineGrams: Record<string, number>;
+  /**
+   * Owner addendum (3) — stabilizer-dose provenance: when the template
+   * controls the stabilizer dose (`adjustable:false`) and the carrier is not
+   * held by a user lock, the dose is INHERITED from the reference template,
+   * not optimized by the Engine — the preview must say so explicitly.
+   */
+  stabilizerDose: { lineId: string; scaledTemplateGrams: number; inherited: boolean } | null;
 }
 
 const ROLE_LABEL_PL: Record<FunctionalRole, string> = {
@@ -508,6 +523,37 @@ export function buildFormulationProposal(
     }
   }
 
+  // 3c. SEED BASELINE (owner addendum — proportional-scaling detector): freeze
+  //     the PRE-normalization grams per line. `normalize()` below is a pure
+  //     proportional projection of these values into the free envelope — the
+  //     detector downstream compares the FINAL presented state against this
+  //     baseline to prove whether real engine moves followed.
+  const seedBaselineGrams: Record<string, number> = {};
+  for (const p of planned) seedBaselineGrams[p.item.id] = p.grams;
+
+  // 3d. Stabilizer-dose provenance (owner addendum 3): template-controlled
+  //     dose (`adjustable:false`) on a carrier NOT held by a user lock is
+  //     INHERITED from the reference template — never Engine-optimized.
+  const stabilizerRole = template.roles.find((roleTarget) => roleTarget.role === 'stabilizer');
+  let stabilizerDose: FormulationProposal['stabilizerDose'] = null;
+  if (stabilizerRole) {
+    const carrier = planned.find(
+      (p) => resolveFunctionalRole(p.item.ingredient) === 'stabilizer',
+    );
+    if (carrier) {
+      const carrierConstraint = lockOf(set, carrier.item.id);
+      const userHeld =
+        carrierConstraint?.mode === 'locked' ||
+        carrierConstraint?.mode === 'range' ||
+        isEffectivelyLockedLine(carrier.item, carrierConstraint);
+      stabilizerDose = {
+        lineId: carrier.item.id,
+        scaledTemplateGrams: stabilizerRole.grams * scale,
+        inherited: !stabilizerRole.adjustable && !userHeld,
+      };
+    }
+  }
+
   // 4. Normalize to the EXACT batch: fixed lines keep their grams; adjustable
   //    template lines scale proportionally to fill the remainder. Two passes so
   //    range clamps re-normalize honestly.
@@ -574,6 +620,8 @@ export function buildFormulationProposal(
       recommendations,
       keptFixed,
       roleTrace,
+      seedBaselineGrams,
+      stabilizerDose,
     },
   };
 }

@@ -53,9 +53,17 @@ import {
   type FormulationRecommendation,
   type FormulationRoleTraceRow,
 } from '@/features/formulation/formulate';
-import type { FunctionalRole } from '@/features/formulation/ingredientRoles';
+import { resolveFunctionalRole, type FunctionalRole } from '@/features/formulation/ingredientRoles';
+import {
+  detectProportionalScaling,
+  type ProportionalScalingReport,
+} from '@/features/formulation/proportionalScaling';
 import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
-import { selectFormulationTemplate, type TemplateStatus } from '@/features/formulation/templateRegistry';
+import {
+  selectFormulationTemplate,
+  type FormulationTemplate,
+  type TemplateStatus,
+} from '@/features/formulation/templateRegistry';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
@@ -86,6 +94,53 @@ export function workingStateFingerprint(input: RecipeInput, set: ConstraintSet):
 /* ── preview model ───────────────────────────────────────────────────────── */
 
 export type PreviewKind = 'optimize' | 'batch_rescale' | 'suggested_fix';
+
+/* ── formulation authenticity proof (owner Agent 3 contract) ─────────────── */
+
+/** Owner addendum (3) — the exact required stabilizer-dose provenance sentence. */
+export const STABILIZER_TEMPLATE_DOSE_NOTE_PL =
+  'Dawka stabilizatora pochodzi z szablonu referencyjnego i nie została zoptymalizowana przez Engine.';
+
+export type FormulationProofVerdict =
+  /** ≥1 engine-verified improving move applied AND the presented composition is
+   * NOT a shared-factor projection of the seed. */
+  | 'engine_improved'
+  /** The formulation ends with every band in range — nothing left to prove. */
+  | 'all_bands_in_range'
+  /** The full move search ran and every move was rejected (or the net result
+   * equals the seed projection) — the presented state is the PROVEN
+   * best-achievable under the constraints; per-move rejection reasons live in
+   * `iteration.attemptedMoves`. NEVER presented as an optimized formulation. */
+  | 'no_feasible_improvement';
+
+/**
+ * THE AUTHENTICITY PROOF a formulation preview must carry (owner Agent 3
+ * contract): a proportional projection of the template seed may NEVER be
+ * presented as formulation unless the engine-verified optimizer ran and either
+ * improved it or PROVED it fixed-point best-achievable — and the preview says
+ * which, with the attempted-move log as evidence.
+ */
+export interface FormulationProof {
+  verdict: FormulationProofVerdict;
+  /** Applied verified-improving rounds (0 = the seed survived untouched). */
+  improvingMoves: number;
+  /** How many times the canonical solver was REALLY invoked. */
+  solverInvocations: number;
+  /** Proportional-scaling detector on the FINAL state vs the seed baseline. */
+  proportionalProjection: boolean;
+  sharedScaleFactor: number | null;
+  /** TRUE ⇒ the result must NEVER be presented as optimal — only best-effort. */
+  bestEffort: boolean;
+  bestEffortReasons: (
+    | 'provisional_bands'
+    | 'reference_derived_template'
+    | 'iteration_capped'
+    | 'residual_violations_proven_unfixable'
+  )[];
+  /** Owner addendum (3): present whenever the stabilizer dose in the FINAL
+   * state is inherited from the reference template (never Engine-optimized). */
+  stabilizerDoseNotePl: string | null;
+}
 
 export interface PreviewLineDiff {
   lineId: string;
@@ -120,6 +175,11 @@ export interface ConstraintPreview {
      * template-seeded FALLBACK after the local corrector found no safe fix —
      * same selected ingredient ids, locks, exclusions, batch, temperature. */
     localFallback?: boolean;
+    /** Owner Agent 3 (authenticity): the REQUIRED proof — verdict, scaling
+     * detector, best-effort labels, stabilizer-dose provenance. Every
+     * formulation preview built by this pipeline carries it; the Apply door
+     * rejects a formulation preview without a self-consistent proof. */
+    proof?: FormulationProof;
   };
   /** Fingerprint of (input, constraints) the preview was built for. */
   baseFingerprint: string;
@@ -440,6 +500,35 @@ export type BuildPreviewResult =
       stopReason: 'local_no_proposal' | 'template_fixed_point';
       /** Owner P0 NIGHTLY (FAILURE 2): full iteration trajectory + stop reason. */
       iteration?: IterationDiagnostics;
+    }
+  /** Owner Agent 3 (dominant-lock infeasibility): hard NATIVE approved bands
+   * stay violated and the engine-verified move search exhausted its
+   * deterministic budget WITHOUT proving a fixed point (capped asymptotic
+   * chase — the milk-900 signature): no permitted move reaches the approved
+   * ranges under the current constraints. Honest terminal state with the
+   * EXACT conflicting constraint and (when computable) the deterministic,
+   * engine-verified nearest feasible lock value found by bisection. A
+   * VERIFIED fixed point with residual hard violations instead presents as
+   * the proven best-achievable state (accept-with-explanation, frozen). */
+  | {
+      ok: false;
+      code: 'impossible_under_constraints';
+      /** The dominant held constraint (largest held grams) — the conflict. */
+      conflict: {
+        lineId: string;
+        ingredientName: string;
+        kind: 'locked' | 'range' | 'grams_lock';
+        grams: number;
+      } | null;
+      /** Native approved bands still violated after the full move search. */
+      hardViolatedMetrics: string[];
+      /** Max grams of the conflicting lock for which a feasible formulation
+       * exists (bisection, engine-verified); null when not computable. */
+      nearestFeasibleGrams: number | null;
+      solverInvocations: number;
+      iteration: IterationDiagnostics;
+      templateId: string;
+      templateStatus: TemplateStatus;
     };
 
 const finishPreview = (
@@ -479,40 +568,124 @@ export type NoProposalDetail =
   | 'apply_failed' // a proposal existed but could not be applied
   | 'provisional_band_conflict'; // remaining violations sit ONLY on fallback bands
 
+/* ── attempted-move log (owner Agent 3 — QA move-level evidence) ─────────── */
+
+export type AttemptedMoveRejection =
+  | 'missing_candidate' // engine diagnosis: no correction candidate exists
+  | 'solver_fixed_point' // engine returned no admissible improving move
+  | 'constrained_add_blocked' // §17 add-intent filter (constrained ingredient)
+  | 'stabilizer_dosage_clamp' // approved Mapper dosage window
+  | 'apply_failed' // proposal existed but could not be applied
+  | 'no_metric_improvement'; // applied, verified NOT improving → reverted
+
+/** One row of the per-move QA evidence log: what move the engine offered, what
+ * happened to it and the exact metric deltas for applied/reverted moves. */
+export interface AttemptedMoveLogEntry {
+  round: number;
+  /** Compact description of the exact engine actions ('none' when the engine
+   * returned no actionable move this round). */
+  move: string;
+  outcome: 'applied' | 'rejected' | 'none';
+  rejectionReason: AttemptedMoveRejection | null;
+  violationsBefore: number;
+  severityBefore: number;
+  /** Post-move metrics for applied / reverted moves (null when never applied). */
+  violationsAfter: number | null;
+  severityAfter: number | null;
+}
+
+const describeActions = (proposal: CorrectionProposal): string =>
+  proposal.actions.length === 0
+    ? 'none'
+    : proposal.actions
+        .map((action) => `${action.type} ${action.ingredient_id} ${action.grams.toFixed(1)} g`)
+        .join(' + ');
+
+/**
+ * CAPACITY DEFERRAL (Agent 1 §4 deciding mechanism — Agent 3 repair): the
+ * engine's capacity gate judges the PRE-restore hypothetical mass
+ * (verify.ts), while this pipeline restores the batch to its target AFTER
+ * every round — so with `machine_capacity_grams === target_batch_grams` (the
+ * natural Pro setting) EVERY add of ≥ 0.05 g was capacity-rejected and the
+ * solver was structurally disabled. Deferring the capacity check to the
+ * pipeline is SAFE exactly when the restore guarantee holds: planning lines
+ * only (no poured actuals) and the target batch itself fits the machine —
+ * the restored final mass equals the target batch, so the REAL capacity
+ * constraint is re-established by construction (and the Apply door's batch
+ * invariant enforces the restored sum). When the target does NOT fit the
+ * machine, the capacity stays with the engine — nothing is deferred.
+ */
+const solverInputWithDeferredCapacity = (current: RecipeInput): RecipeInput => {
+  const deferrable =
+    current.machine_capacity_grams !== null &&
+    current.target_batch_grams <= current.machine_capacity_grams &&
+    current.items.every((item) => item.actual_grams === null);
+  return deferrable ? { ...current, machine_capacity_grams: null } : current;
+};
+
 /** One solver round: propose → filter (§17 add-intent + approved stabilizer
- * dosage clamp) → apply. PURE helper. */
+ * dosage clamp) → apply. PURE helper. Also reports every candidate the filter
+ * rejected (owner Agent 3 — the attempted-move log). */
 function solveOneRound(
   current: RecipeInput,
   constrainedIngredientIds: ReadonlySet<string>,
 ):
-  | { applied: RecipeInput; proposal: CorrectionProposal }
-  | { applied: null; violated: string[]; detail: NoProposalDetail } {
-  const context = recipeContext(current);
-  const proposed = proposeAutoFix({ input: current, context, exactCorrectionGrams: true });
+  | {
+      applied: RecipeInput;
+      proposal: CorrectionProposal;
+      filtered: { move: string; reason: AttemptedMoveRejection }[];
+    }
+  | {
+      applied: null;
+      violated: string[];
+      detail: NoProposalDetail;
+      filtered: { move: string; reason: AttemptedMoveRejection }[];
+    } {
+  const solverInput = solverInputWithDeferredCapacity(current);
+  const context = recipeContext(solverInput);
+  const proposed = proposeAutoFix({ input: solverInput, context, exactCorrectionGrams: true });
   const violated = [...new Set(detectViolations(calculateRecipe(current)).map((v) => v.metric))];
-  if (proposed.redacted) return { applied: null, violated, detail: 'solver_fixed_point' };
-  const proposal: CorrectionProposal | undefined = proposed.proposals.find(
-    (candidate) =>
-      candidate.actions.length > 0 &&
-      candidate.actions.every(
-        (action) =>
-          (action.type !== 'add' || !constrainedIngredientIds.has(action.ingredient_id)) &&
-          // Owner Phase 9 (approved-bounds wiring): a solver action may never
-          // move a registered stabilizer outside its approved Mapper window.
-          !violatesApprovedStabilizerDosage(current, action),
-      ),
-  );
+  if (proposed.redacted) {
+    return { applied: null, violated, detail: 'solver_fixed_point', filtered: [] };
+  }
+  const filtered: { move: string; reason: AttemptedMoveRejection }[] = [];
+  let proposal: CorrectionProposal | undefined;
+  for (const candidate of proposed.proposals) {
+    if (candidate.actions.length === 0) continue;
+    const addBlocked = candidate.actions.some(
+      (action) => action.type === 'add' && constrainedIngredientIds.has(action.ingredient_id),
+    );
+    // Owner Phase 9 (approved-bounds wiring): a solver action may never move a
+    // registered stabilizer outside its approved Mapper window.
+    const dosageBlocked = candidate.actions.some((action) =>
+      violatesApprovedStabilizerDosage(current, action),
+    );
+    if (!addBlocked && !dosageBlocked) {
+      proposal = candidate;
+      break;
+    }
+    filtered.push({
+      move: describeActions(candidate),
+      reason: addBlocked ? 'constrained_add_blocked' : 'stabilizer_dosage_clamp',
+    });
+  }
   if (!proposal) {
     // Distinguish the engine's own diagnosis: an actions-empty blocked/
     // impossible proposal names its blocking constraint.
     const diagnosed = proposed.proposals.find((candidate) => candidate.actions.length === 0);
     const detail: NoProposalDetail =
       diagnosed?.blocking?.constraint === 'no_candidate' ? 'missing_candidate' : 'solver_fixed_point';
-    return { applied: null, violated, detail };
+    return { applied: null, violated, detail, filtered };
   }
-  const applied = applyAutoFix({ input: current, proposal, context });
-  if (!applied.success) return { applied: null, violated, detail: 'apply_failed' };
-  return { applied: applied.newInput, proposal };
+  const applied = applyAutoFix({ input: solverInput, proposal, context });
+  if (!applied.success) return { applied: null, violated, detail: 'apply_failed', filtered };
+  // The deferred capacity is presentation-invariant: restore the ORIGINAL
+  // machine capacity on the applied state (only grams may differ).
+  const newInput =
+    solverInput === current
+      ? applied.newInput
+      : { ...applied.newInput, machine_capacity_grams: current.machine_capacity_grams };
+  return { applied: newInput, proposal, filtered };
 }
 
 /**
@@ -548,6 +721,10 @@ export interface IterationDiagnostics {
   stopDetail: NoProposalDetail | null;
   /** TRUE only when the cap fired while improvement was still in progress. */
   capped: boolean;
+  /** Owner Agent 3 — the per-move QA evidence log: every move the engine
+   * offered, filtered, applied or reverted, with metric deltas and the exact
+   * rejection reason. The `no_feasible_improvement` proof lives here. */
+  attemptedMoves: AttemptedMoveLogEntry[];
 }
 
 /**
@@ -584,6 +761,7 @@ function iterateSolverToFixedPoint(
   let working = start;
   let current = measure(working);
   const rounds: IterationRoundDiagnostic[] = [{ round: 0, ...current }];
+  const attemptedMoves: AttemptedMoveLogEntry[] = [];
   let lastProposal: CorrectionProposal | null = null;
   let violated: string[] = [];
   let solverInvocations = 0;
@@ -605,7 +783,30 @@ function iterateSolverToFixedPoint(
     }
     const outcome = solveOneRound(working, constrainedIngredientIds);
     solverInvocations += 1;
+    // Owner Agent 3 — QA move log: candidates the §17/dosage filter rejected.
+    for (const rejected of outcome.filtered) {
+      attemptedMoves.push({
+        round,
+        move: rejected.move,
+        outcome: 'rejected',
+        rejectionReason: rejected.reason,
+        violationsBefore: current.violations,
+        severityBefore: current.severityPoints,
+        violationsAfter: null,
+        severityAfter: null,
+      });
+    }
     if (outcome.applied === null) {
+      attemptedMoves.push({
+        round,
+        move: 'none',
+        outcome: 'none',
+        rejectionReason: outcome.detail === 'provisional_band_conflict' ? 'solver_fixed_point' : outcome.detail,
+        violationsBefore: current.violations,
+        severityBefore: current.severityPoints,
+        violationsAfter: null,
+        severityAfter: null,
+      });
       violated = outcome.violated;
       stopReason = 'fixed_point_no_proposal';
       stopDetail = outcome.detail;
@@ -618,6 +819,16 @@ function iterateSolverToFixedPoint(
     const improved =
       next.violations < current.violations ||
       next.severityPoints < current.severityPoints - SEVERITY_EPS;
+    attemptedMoves.push({
+      round,
+      move: describeActions(outcome.proposal),
+      outcome: improved ? 'applied' : 'rejected',
+      rejectionReason: improved ? null : 'no_metric_improvement',
+      violationsBefore: current.violations,
+      severityBefore: current.severityPoints,
+      violationsAfter: next.violations,
+      severityAfter: next.severityPoints,
+    });
     if (!improved) {
       // Verified fixed point: the produced move did not improve after the
       // canonical merge + batch restoration — revert it and stop honestly.
@@ -647,8 +858,141 @@ function iterateSolverToFixedPoint(
     working,
     lastProposal,
     violated,
-    diagnostics: { solverInvocations, rounds, stopReason, stopDetail, capped },
+    diagnostics: { solverInvocations, rounds, stopReason, stopDetail, capped, attemptedMoves },
   };
+}
+
+/**
+ * Seed a formulation proposal into the canonical solver loop: one row per
+ * canonical identity, batch equality restored, then ITERATE to the verified
+ * fixed point. Shared by the formulation preview builder AND the
+ * nearest-feasible bisection probes (owner Agent 3 — identical machinery, so
+ * the bisection is engine-verified by construction).
+ */
+function iterateFormulationSeed(
+  input: RecipeInput,
+  set: ConstraintSet,
+  proposedInput: RecipeInput,
+): ReturnType<typeof iterateSolverToFixedPoint> {
+  const constrainedIngredientIds = new Set(
+    input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
+  );
+  const restore = (candidate: RecipeInput): RecipeInput => {
+    if (Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) {
+      return candidate;
+    }
+    const restored = rescaleBatchToTarget(candidate, set, input.target_batch_grams);
+    return restored.ok ? restored.input : candidate;
+  };
+  const seeded = restore(
+    ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, proposedInput)),
+  );
+  return iterateSolverToFixedPoint(input, seeded, constrainedIngredientIds, restore);
+}
+
+/* ── dominant-lock infeasibility (owner Agent 3) ─────────────────────────── */
+
+/** The DOMINANT held constraint: the locked/range/grams-locked line holding the
+ * largest grams (deterministic: first line wins a tie). */
+function dominantHeldConstraint(
+  input: RecipeInput,
+  set: ConstraintSet,
+): { lineId: string; ingredientName: string; kind: 'locked' | 'range' | 'grams_lock'; grams: number } | null {
+  let best: { lineId: string; ingredientName: string; kind: 'locked' | 'range' | 'grams_lock'; grams: number } | null =
+    null;
+  for (const item of input.items) {
+    const constraint = set.byLineId[item.id];
+    let kind: 'locked' | 'range' | 'grams_lock' | null = null;
+    let grams = 0;
+    if (constraint?.mode === 'locked') {
+      kind = 'locked';
+      grams = constraint.grams;
+    } else if (constraint?.mode === 'range') {
+      kind = 'range';
+      grams = constraint.minGrams;
+    } else if (item.lock_type === 'grams' && item.planned_grams > 0) {
+      kind = 'grams_lock';
+      grams = item.planned_grams;
+    }
+    if (kind === null) continue;
+    if (best === null || grams > best.grams) {
+      best = { lineId: item.id, ingredientName: item.ingredient.name, kind, grams };
+    }
+  }
+  return best;
+}
+
+/** Deterministic bisection budget for the nearest-feasible search. */
+export const NEAREST_FEASIBLE_BISECTION_STEPS = 16;
+
+/** Engine-verified feasibility probe: lock the conflicting line at `grams`,
+ * run the SAME constrained-formulation machinery, and require the final state
+ * to violate NO hard NATIVE band. PURE and deterministic. */
+function lockProbeFeasible(
+  input: RecipeInput,
+  set: ConstraintSet,
+  template: FormulationTemplate,
+  options: FormulationOptions,
+  lineId: string,
+  grams: number,
+): boolean {
+  const probeInput: RecipeInput = {
+    ...input,
+    items: input.items.map((item) =>
+      item.id === lineId ? { ...item, planned_grams: grams } : item,
+    ),
+  };
+  const probeSet: ConstraintSet = {
+    byLineId: { ...set.byLineId, [lineId]: { mode: 'locked', grams } },
+  };
+  const built = buildFormulationProposal(probeInput, probeSet, template, 'constrained_reformulation', options);
+  if (!built.ok) return false;
+  if (built.proposal.missingHardRoles.length > 0) return false;
+  const iterated = iterateFormulationSeed(probeInput, probeSet, built.proposal.proposedInput);
+  return classifyViolationBands(iterated.working).hardMetrics.length === 0;
+}
+
+/**
+ * NEAREST FEASIBLE LOCK VALUE (owner Agent 3 contract): the maximum grams of
+ * the conflicting lock for which a hard-band-feasible constrained formulation
+ * exists — computed by DETERMINISTIC bisection between the template's own role
+ * target (the verified feasible anchor) and the infeasible lock value, each
+ * probe engine-verified through the full pipeline. No invented science: every
+ * number returned has been proven feasible by the engine itself. Returns null
+ * when no feasible anchor exists (honest "no alternative computable").
+ */
+function computeNearestFeasibleLockGrams(
+  input: RecipeInput,
+  set: ConstraintSet,
+  template: FormulationTemplate,
+  options: FormulationOptions,
+  conflict: { lineId: string; grams: number },
+): number | null {
+  const line = input.items.find((item) => item.id === conflict.lineId);
+  if (!line) return null;
+  const role = resolveFunctionalRole(line.ingredient);
+  const roleTarget = template.roles.find((target) => target.role === role);
+  if (!roleTarget) return null;
+  const scale = input.target_batch_grams / template.baseBatchG;
+  const anchor = roleTarget.grams * scale;
+  if (!(anchor >= 0) || anchor >= conflict.grams) return null;
+  const feasible = (grams: number): boolean =>
+    lockProbeFeasible(input, set, template, options, conflict.lineId, grams);
+  if (!feasible(anchor)) return null;
+  let lo = anchor; // proven feasible
+  let hi = conflict.grams; // proven infeasible by the caller's outcome
+  for (let step = 0; step < NEAREST_FEASIBLE_BISECTION_STEPS; step += 1) {
+    const mid = (lo + hi) / 2;
+    if (feasible(mid)) lo = mid;
+    else hi = mid;
+  }
+  // Present a stable 0.1 g value — VERIFIED by the engine, never assumed.
+  let candidate = Math.floor(lo * 10) / 10;
+  for (let attempt = 0; attempt < 3 && candidate > anchor; attempt += 1) {
+    if (feasible(candidate)) return candidate;
+    candidate = Math.round((candidate - 0.1) * 10) / 10;
+  }
+  return anchor; // verified feasible above
 }
 
 /**
@@ -705,26 +1049,14 @@ function buildFormulationPreviewInternal(
   }
 
   const violationsBefore = violationCount(calculateRecipe(input));
-  const constrainedIngredientIds = new Set(
-    input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
-  );
-  const restore = (candidate: RecipeInput): RecipeInput => {
-    if (Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) return candidate;
-    const restored = rescaleBatchToTarget(candidate, set, input.target_batch_grams);
-    return restored.ok ? restored.input : candidate;
-  };
 
-  // One row per canonical identity + batch equality on the seeded recipe.
-  const seeded = restore(
-    ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, built.proposal.proposedInput)),
-  );
-
-  // Fine-tune with the EXISTING bounded correction solver — ITERATED to a
-  // verified fixed point (owner P0 NIGHTLY FAILURE 2: template-seed → engine →
-  // verified corrections WHILE verified improvement exists; never 1 round by
-  // construction). Fallback bands guide the iteration; the honest partial
-  // score labelling for provisional profiles is kept unchanged.
-  const iterated = iterateSolverToFixedPoint(input, seeded, constrainedIngredientIds, restore);
+  // One row per canonical identity + batch equality, then fine-tune with the
+  // EXISTING bounded correction solver — ITERATED to a verified fixed point
+  // (owner P0 NIGHTLY FAILURE 2: template-seed → engine → verified corrections
+  // WHILE verified improvement exists; never 1 round by construction).
+  // Fallback bands guide the iteration; the honest partial score labelling for
+  // provisional profiles is kept unchanged.
+  const iterated = iterateFormulationSeed(input, set, built.proposal.proposedInput);
   const working = iterated.working;
   const solverRounds = iterated.diagnostics.solverInvocations;
   const lastProposal = iterated.lastProposal;
@@ -733,9 +1065,10 @@ function buildFormulationPreviewInternal(
   // hypothesis (never merely equal a proportional projection — the 8 × 125 g
   // rule). A CONSTRAINED reformulation is different (owner P0): with exact
   // locks / ranges / exclusions, the constrained optimum may legitimately
-  // EQUAL the projection — the hard gates (locks byte-exact, batch equality,
-  // no duplicates) protect it, and residual violations surface honestly as the
-  // best-achievable score with recommendations.
+  // EQUAL the projection — but ONLY with the explicit authenticity proof
+  // (owner Agent 3): the verdict below, the scaling-detector evidence and the
+  // attempted-move log ride the preview, and hard NATIVE-band failure after
+  // real engine moves becomes the honest `impossible_under_constraints`.
   const afterViolationList = detectViolations(calculateRecipe(working));
   if (mode !== 'constrained_reformulation' && !beatsBaseline(input, working)) {
     return {
@@ -747,6 +1080,109 @@ function buildFormulationPreviewInternal(
       iteration: iterated.diagnostics,
     };
   }
+
+  /* ── AUTHENTICITY VERDICT (owner Agent 3 contract) ─────────────────────── */
+
+  // Scaling detector: is the FINAL state a shared-factor projection of the
+  // pre-normalization seed baseline? (Held lines prove nothing — excluded.)
+  const heldLineIds = new Set(
+    working.items
+      .filter((item) => isConstrained(set, item.id) || item.lock_type !== 'unlocked')
+      .map((item) => item.id),
+  );
+  const scaling: ProportionalScalingReport = detectProportionalScaling(
+    built.proposal.seedBaselineGrams,
+    working,
+    heldLineIds,
+  );
+  const appliedMoves = iterated.diagnostics.rounds.length - 1;
+  const violationsAfterCount = afterViolationList.length;
+  const verdict: FormulationProofVerdict =
+    violationsAfterCount === 0
+      ? 'all_bands_in_range'
+      : scaling.proportional || appliedMoves === 0
+        ? 'no_feasible_improvement'
+        : 'engine_improved';
+  const bands = classifyViolationBands(working);
+
+  // DOMINANT-LOCK INFEASIBILITY (owner Agent 3): hard NATIVE approved bands
+  // still violated AND the deterministic move search exhausted its budget
+  // WITHOUT ever proving a fixed point (`capped` — the milk-900 signature: an
+  // asymptotic severity chase that can never reach the approved ranges under
+  // the dominant lock). This is the honest `impossible_under_constraints`.
+  //
+  // BOUNDARY (owner frozen semantics, deliberately preserved): a VERIFIED
+  // fixed point with residual hard violations is the PROVEN best-achievable
+  // state — the accept-with-explanation contract (inulin-0 sorbet, milk-500
+  // gelato) — presented WITH the proof (`residual_violations_proven_unfixable`
+  // label), never silently as an optimal formulation.
+  if (
+    mode === 'constrained_reformulation' &&
+    verdict === 'engine_improved' &&
+    bands.hardMetrics.length > 0 &&
+    iterated.diagnostics.capped
+  ) {
+    const conflict = dominantHeldConstraint(input, set);
+    return {
+      ok: false,
+      code: 'impossible_under_constraints',
+      conflict,
+      hardViolatedMetrics: bands.hardMetrics,
+      nearestFeasibleGrams: conflict
+        ? computeNearestFeasibleLockGrams(input, set, template, options, conflict)
+        : null,
+      solverInvocations: solverRounds,
+      iteration: iterated.diagnostics,
+      templateId: template.templateId,
+      templateStatus: template.status,
+    };
+  }
+
+  // Best-effort labelling (owner Agent 3 + addendum): provisional/fallback
+  // bands or a reference-derived template NEVER claim optimality; a capped
+  // iteration never claims a proven fixed point; a proven-unfixable residual
+  // is named as such. The stabilizer-dose note appears exactly when the FINAL
+  // dose is still the template-inherited value (owner addendum 3).
+  const provisionalBands = bands.bandSource !== 'native' || bands.temperatureFallback;
+  const bestEffortReasons: FormulationProof['bestEffortReasons'] = [];
+  if (provisionalBands) bestEffortReasons.push('provisional_bands');
+  if (template.status !== 'approved') bestEffortReasons.push('reference_derived_template');
+  if (iterated.diagnostics.capped) bestEffortReasons.push('iteration_capped');
+  // A VERIFIED fixed point (never the cap) proves the residual violations are
+  // unfixable by any permitted move — the accept-with-explanation label.
+  if (violationsAfterCount > 0 && !iterated.diagnostics.capped) {
+    bestEffortReasons.push('residual_violations_proven_unfixable');
+  }
+  const stabilizer = built.proposal.stabilizerDose;
+  const stabilizerLine = stabilizer
+    ? working.items.find((item) => item.id === stabilizer.lineId)
+    : undefined;
+  const stabilizerDoseNotePl =
+    stabilizer !== null &&
+    stabilizer.inherited &&
+    stabilizerLine !== undefined &&
+    Math.abs(stabilizerLine.planned_grams - stabilizer.scaledTemplateGrams) <= 0.05
+      ? STABILIZER_TEMPLATE_DOSE_NOTE_PL
+      : null;
+  const proof: FormulationProof = {
+    verdict,
+    improvingMoves: appliedMoves,
+    solverInvocations: solverRounds,
+    proportionalProjection: scaling.proportional,
+    sharedScaleFactor: scaling.sharedFactor,
+    bestEffort: bestEffortReasons.length > 0,
+    bestEffortReasons,
+    stabilizerDoseNotePl,
+  };
+
+  // Agent 1 §5.2 repair: `added[].grams` must report the FINAL post-iteration
+  // truth (the diff rows already do) — one Preview, one set of numbers.
+  const finalAdded = built.proposal.added.map((addedLine) => {
+    const finalLine = working.items.find(
+      (item) => item.ingredient.id === addedLine.ingredientId,
+    );
+    return finalLine ? { ...addedLine, grams: finalLine.planned_grams } : addedLine;
+  });
 
   const explanation = lastProposal
     ? buildProposalExplanation(working, set, lastProposal)
@@ -772,12 +1208,13 @@ function buildFormulationPreviewInternal(
     mode,
     templateId: built.proposal.templateId,
     templateStatus: built.proposal.templateStatus,
-    added: built.proposal.added,
+    added: finalAdded,
     missingRoles: built.proposal.missingRoles,
     recommendations: built.proposal.recommendations,
     keptFixed: built.proposal.keptFixed,
     roleTrace: built.proposal.roleTrace,
     localFallback,
+    proof,
   };
   return { ok: true, preview };
 }
@@ -1085,8 +1522,19 @@ export function buildSuggestedFixPreview(
   const violationsBefore = violationCount(calculateRecipe(input));
 
   // „…i przelicz”: solver pass on top of the adjusted lock (locks respected).
+  // Agent 1 §5.3 repair: the no-solver fallback is normalized back to the
+  // target batch through the approved §17.4 rescale (locked grams byte-kept) —
+  // a `suggested_fix` preview is no longer the only path that could carry an
+  // off-batch proposal past the door (the door now gates it too).
   const optimized = buildOptimizePreview(adjustedInput, nextSet, createdAt);
-  const proposedInput = optimized.ok ? optimized.preview.proposedInput : adjustedInput;
+  const fallbackInput = ((): RecipeInput => {
+    if (Math.abs(plannedSum(adjustedInput) - adjustedInput.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) {
+      return adjustedInput;
+    }
+    const restored = rescaleBatchToTarget(adjustedInput, nextSet, adjustedInput.target_batch_grams);
+    return restored.ok ? restored.input : adjustedInput;
+  })();
+  const proposedInput = optimized.ok ? optimized.preview.proposedInput : fallbackInput;
   const explanation = optimized.ok
     ? optimized.preview.explanation
     : ((): ConstraintExplanationEntry[] => {
@@ -1264,11 +1712,13 @@ export class VerifiedApply {
       };
     }
 
-    // Owner P0 Phase 10 — RUNAWAY GUARD (optimize/formulation only; the explicit
-    // „Przeskaluj partię" action legitimately changes the target): the proposed
-    // TARGET batch must be the CURRENT target batch — a stale/multiplied target
-    // (the 111,000 g class of failure) is structurally unappliable.
-    if (preview.kind === 'optimize' && preview.proposedInput.target_batch_grams !== current.target_batch_grams) {
+    // Owner P0 Phase 10 — RUNAWAY GUARD (optimize/formulation AND suggested-fix
+    // — Agent 1 §5.3; the explicit „Przeskaluj partię" action legitimately
+    // changes the target): the proposed TARGET batch must be the CURRENT target
+    // batch — a stale/multiplied target (the 111,000 g class of failure) is
+    // structurally unappliable.
+    const batchGatedKind = preview.kind === 'optimize' || preview.kind === 'suggested_fix';
+    if (batchGatedKind && preview.proposedInput.target_batch_grams !== current.target_batch_grams) {
       return {
         ok: false,
         code: 'batch_total_mismatch',
@@ -1281,11 +1731,12 @@ export class VerifiedApply {
       };
     }
 
-    // Owner P0 Phase 5 — BATCH INVARIANT (planned recipes, optimize path):
+    // Owner P0 Phase 5 — BATCH INVARIANT (planned recipes, optimize path AND
+    // suggested-fix — Agent 1 §5.3: the §18.2 fallback previously bypassed it):
     // a 1000 g recipe stays 1000 g; a 2937.9 g result can never be applied.
     // The batch rejection is the more specific message, so it runs first.
     const proposedHasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
-    if (preview.kind === 'optimize' && !proposedHasActuals) {
+    if (batchGatedKind && !proposedHasActuals) {
       const proposedSum = plannedSum(preview.proposedInput);
       const targetBatch = preview.proposedInput.target_batch_grams;
       if (Math.abs(proposedSum - targetBatch) > BATCH_SUM_TOLERANCE_G) {
@@ -1295,6 +1746,33 @@ export class VerifiedApply {
           messagePl: copy.blocked.batchMismatch(proposedSum, targetBatch),
           proposedSum,
           targetBatch,
+        };
+      }
+    }
+
+    // Owner Agent 3 — AUTHENTICITY PROOF CONSISTENCY (closes the constrained
+    // exemption that masked zero-move projections): a formulation preview must
+    // carry its proof and iteration diagnostics, an `engine_improved` verdict
+    // must be backed by ≥1 really-applied round, and `all_bands_in_range` is
+    // re-verified trustlessly on the actual proposed input. A projection can
+    // therefore only ever apply as the EXPLICIT `no_feasible_improvement`
+    // best-effort state — never disguised as an optimized formulation.
+    if (preview.kind === 'optimize' && preview.formulation !== undefined) {
+      const proof = preview.formulation.proof;
+      const iteration = preview.iteration;
+      const proofBroken =
+        proof === undefined ||
+        iteration === undefined ||
+        (proof.verdict === 'engine_improved' && iteration.rounds.length <= 1) ||
+        (proof.verdict === 'all_bands_in_range' &&
+          detectViolations(calculateRecipe(preview.proposedInput)).length > 0);
+      if (proofBroken) {
+        return {
+          ok: false,
+          code: 'unsafe_proposal',
+          messagePl: copy.blocked.unsafeProposal,
+          violationsBefore: detectViolations(calculateRecipe(current)).length,
+          violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
         };
       }
     }
