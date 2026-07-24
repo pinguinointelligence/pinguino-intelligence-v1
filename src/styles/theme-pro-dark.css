@@ -48,4 +48,9 @@
   /* Owner review red — brightened for ≥4.5:1 legibility on graphite surfaces
      (badge text over the review/10 tint included). Review markers only. */
   --color-review: #ef6a6f;
+
+  /* Non-production data marker — brightened for ≥4.5:1 on graphite surfaces
+     (badge text over the nonprod/10 tint included). `TESTOWE / NIEPRODUKCYJNE`
+     markers only. */
+  --color-nonprod: var(--color-nonprod-soft);
 }

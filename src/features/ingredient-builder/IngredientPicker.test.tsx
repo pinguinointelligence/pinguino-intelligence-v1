@@ -93,3 +93,28 @@ describe('IngredientPicker — no-results state is not a dead end', () => {
     expect(text(html)).toContain(copy.studio.builder.noMatches);
   });
 });
+
+/**
+ * Agent 4/5 fixture sweep: when the live PI library errors or is empty, the
+ * picker silently serves the bundled demo/reference catalog (`status:
+ * 'fallback'`). That state must be VISIBLY pink — never mistakable for the
+ * 'ready' live library.
+ */
+describe('IngredientPicker — fallback demo catalog is visibly non-production', () => {
+  it("status 'fallback' renders the pink TESTOWE / NIEPRODUKCYJNE badge with the fallback note", () => {
+    const html = renderToStaticMarkup(
+      <IngredientPicker library={lib({ status: 'fallback' })} onAdd={() => {}} />,
+    );
+    expect(html).toContain('data-testid="nonprod-marked-picker-fallback"');
+    expect(html).toContain('data-testid="nonprod-badge-pro-demo-library"');
+    expect(html).toContain('TESTOWE / NIEPRODUKCYJNE');
+    expect(text(html)).toContain(copy.studio.builder.fallbackNote);
+  });
+
+  it("status 'ready' (the live library) shows NO pink badge and no fallback note", () => {
+    const html = renderToStaticMarkup(<IngredientPicker library={lib()} onAdd={() => {}} />);
+    expect(html).not.toContain('nonprod-badge');
+    expect(html).not.toContain('TESTOWE / NIEPRODUKCYJNE');
+    expect(text(html)).not.toContain(copy.studio.builder.fallbackNote);
+  });
+});
