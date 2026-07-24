@@ -827,13 +827,21 @@ export const copy = {
       costOptions: { low: 'Niski koszt', balanced: 'Zrównoważony', premium: 'Bez kompromisów' },
     },
     overall: {
-      /** §15.1 binding public name — the score is „Dopasowanie receptury" 1–10. */
-      eyebrow: 'Dopasowanie receptury',
+      /** ACCEPTANCE ADDENDUM (2), owner decision 2026-07-24 — the public
+       * headline integer is TECHNICAL recipe-fit („Dopasowanie techniczne");
+       * flavor/cost are separate labeled dimensions below, never blended in.
+       * Supersedes the §15.1 „Dopasowanie receptury" headline. */
+      eyebrow: 'Dopasowanie techniczne',
       modeSuffix: 'tryb',
       empty: 'Dodaj składniki, aby ocenić recepturę.',
       /* Owner P0 (score truthfulness) — assessment coverage, never a hidden gap. */
       coverage: (assessed: number, total: number) => `Oceniono ${assessed} z ${total} obszarów.`,
       partialNote: 'Ocena częściowa / prowizoryczna dla tego profilu.',
+      /* ACCEPTANCE ADDENDUM (2) — the separate commercial/subjective dimensions. */
+      dimensionsHeading: 'Wymiary dodatkowe (poza oceną techniczną)',
+      flavorDimension: 'Profil smakowy (subiektywny)',
+      costDimension: 'Koszt (komercyjny)',
+      costNoData: 'Brak danych kosztowych',
     },
     builder: {
       title: 'Składniki',

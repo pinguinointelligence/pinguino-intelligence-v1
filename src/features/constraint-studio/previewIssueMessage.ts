@@ -18,21 +18,34 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       // Owner P0 NIGHTLY Phase 7(b): explanatory terminal state, not a failure.
       return copy.previewIssue.bestSafeResult;
     case 'impossible_under_constraints': {
-      // Owner Agent 3 (dominant-lock infeasibility): the exact conflicting
-      // constraint + the engine-verified nearest feasible alternative.
+      // Owner Agent 3 (dominant-lock infeasibility) + ACCEPTANCE ADDENDUM (1):
+      // the exact conflicting constraint, the honest search account (full
+      // fixed-point search vs. exhausted deterministic budget), the
+      // engine-verified nearest feasible alternative and — when
+      // deterministically applicable — the product-type alternative.
       const conflictPart = issue.conflict
         ? `Przy ograniczeniu „${issue.conflict.ingredientName}" = ${formatGramsPl(issue.conflict.grams)} `
         : 'Przy obecnych ograniczeniach ';
+      const searchPart = issue.capReached
+        ? `PI wyczerpało deterministyczny budżet ruchów solvera (wywołania: ${issue.solverInvocations}) ` +
+          'bez osiągnięcia zatwierdzonych zakresów — taki wynik nigdy nie jest uznawany za recepturę.'
+        : `PI wykonało pełne przeszukanie dozwolonych ruchów (wywołania solvera: ${issue.solverInvocations}).`;
       const nearestPart =
         issue.nearestFeasibleGrams !== null && issue.conflict
           ? ` Najbliższa wykonalna wartość dla „${issue.conflict.ingredientName}": ` +
-            `maksymalnie ${formatGramsPl(issue.nearestFeasibleGrams)} (zweryfikowana przez Engine).`
+            `maksymalnie ${formatGramsPl(issue.nearestFeasibleGrams)} (zweryfikowana przez Engine) — ` +
+            'zmniejsz ten składnik do tej wartości.'
           : ' Brak wykonalnej alternatywy możliwej do wyliczenia dla tej blokady.';
+      const alternativePart =
+        issue.alternativeProductType === 'sorbet'
+          ? ' Możesz też zmienić typ produktu na Sorbet.'
+          : '';
       return (
         conflictPart +
         'nie istnieje receptura mieszcząca się w zatwierdzonych zakresach — ' +
-        `PI wykonało pełne przeszukanie dozwolonych ruchów (wywołania solvera: ${issue.solverInvocations}).` +
+        searchPart +
         nearestPart +
+        alternativePart +
         ' Receptura nie została zmieniona.'
       );
     }

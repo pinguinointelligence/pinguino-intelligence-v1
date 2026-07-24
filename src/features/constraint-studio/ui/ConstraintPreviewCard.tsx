@@ -88,6 +88,13 @@ export function ConstraintPreviewCard({
   const hasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
   const residualExceeded = !hasActuals && Math.abs(afterBatch - targetBatch) > 0.1;
 
+  // ACCEPTANCE ADDENDUM (1+3): a diagnostic-only preview (hard-native residual
+  // violations or an iteration-capped result) can never be applied — the
+  // pipeline door enforces this structurally; the card says WHY and disables
+  // the Apply control honestly (never a clickable button that fails later).
+  const diagnostic = preview.diagnosticOnly === true;
+  const hardResiduals = preview.hardResidualMetrics ?? [];
+
   return (
     <section
       aria-label={copy.preview.title}
@@ -99,6 +106,22 @@ export function ConstraintPreviewCard({
           {preview.titlePl}
         </span>
       </div>
+
+      {diagnostic ? (
+        <div
+          className="mt-3 rounded-md border border-status-risky/50 bg-status-risky/10 px-3 py-2.5"
+          data-testid="preview-diagnostic"
+        >
+          <p className="text-[0.65rem] font-medium tracking-[0.08em] text-status-risky uppercase">
+            {copy.preview.diagnosticBadge}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-ivory/80">
+            {hardResiduals.length > 0
+              ? copy.preview.diagnosticHardResiduals(hardResiduals)
+              : copy.preview.diagnosticIterationCap}
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-3 divide-y divide-ivory/10">
         {mainLines.map((line) => (
@@ -210,13 +233,25 @@ export function ConstraintPreviewCard({
       ) : null}
 
       <div className="mt-4 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onApply}
-          className="inline-flex flex-1 items-center justify-center rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell transition-colors hover:bg-ivory/90"
-        >
-          {copy.preview.apply}
-        </button>
+        {diagnostic ? (
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            data-testid="preview-apply-disabled"
+            className="inline-flex flex-1 cursor-not-allowed items-center justify-center rounded-md border border-ivory/20 bg-ivory/10 px-4 py-2.5 text-sm font-medium text-ivory/50"
+          >
+            {copy.preview.applyDisabledDiagnostic}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onApply}
+            className="inline-flex flex-1 items-center justify-center rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell transition-colors hover:bg-ivory/90"
+          >
+            {copy.preview.apply}
+          </button>
+        )}
         <button
           type="button"
           onClick={onCancel}
@@ -225,7 +260,9 @@ export function ConstraintPreviewCard({
           {copy.preview.cancel}
         </button>
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-ivory/60">{copy.preview.applyNote}</p>
+      {diagnostic ? null : (
+        <p className="mt-2 text-xs leading-relaxed text-ivory/60">{copy.preview.applyNote}</p>
+      )}
     </section>
   );
 }

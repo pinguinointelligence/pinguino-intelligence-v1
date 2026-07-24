@@ -97,7 +97,13 @@ describe('FIXTURE A — inulin unavailable (tests 3/4/5/6)', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('the safe suboptimal result APPLIES through the store (test 6 — accept with explanation)', () => {
+  it('ADDENDUM (3) SUPERSESSION: the hard-native residual result is DIAGNOSTIC ONLY — Apply blocked at the door', () => {
+    // OWNER ACCEPTANCE ADDENDUM (2026-07-24), supersedes the earlier
+    // accept-with-explanation freeze for hard-native residuals: FIXTURE A ends
+    // with a residual violation on a NATIVE approved band (sorbet ice_fraction
+    // 50.67 < 51), so the preview stays a diagnosis and `commitPreview`
+    // structurally refuses the apply. Soft/provisional residuals (FIXTURE B,
+    // fruit_gelato fallback bands) remain applicable with explanation.
     useRecipeStore.setState({
       mode: 'classic', category: 'sorbet', visibleProductType: 'sorbet', target_temperature_c: -11,
       target_batch_grams: 1000, machine_capacity_grams: null, flavor_intensity: 'balanced',
@@ -107,11 +113,17 @@ describe('FIXTURE A — inulin unavailable (tests 3/4/5/6)', () => {
     useConstraintStudioStore.setState({ constraints: INULIN_SET });
     useConstraintStudioStore.getState().createOptimizePreview();
     expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    expect(useConstraintStudioStore.getState().preview!.diagnosticOnly).toBe(true);
+    const before = JSON.stringify(useRecipeStore.getState().items.map((i) => [i.id, i.planned_grams]));
     useConstraintStudioStore.getState().applyPreview();
-    expect(useConstraintStudioStore.getState().blocked).toBeNull();
-    const items = useRecipeStore.getState().items;
-    expect(items.find((i) => i.id === 'l-inulin')!.planned_grams).toBe(0);
-    expect(Math.abs(items.reduce((a, i) => a + i.planned_grams, 0) - 1000)).toBeLessThanOrEqual(0.1);
+    const blocked = useConstraintStudioStore.getState().blocked;
+    expect(blocked).not.toBeNull();
+    expect(blocked!.code).toBe('hard_residual_violations');
+    // The recipe is untouched — inulin still 0, draft grams byte-identical.
+    expect(
+      JSON.stringify(useRecipeStore.getState().items.map((i) => [i.id, i.planned_grams])),
+    ).toBe(before);
+    expect(useRecipeStore.getState().items.find((i) => i.id === 'l-inulin')!.planned_grams).toBe(0);
   });
 });
 

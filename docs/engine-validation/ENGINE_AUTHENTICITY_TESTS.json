@@ -3363,75 +3363,32 @@
       "solverMode": "constrained_reformulation",
       "iterations": 12,
       "stopReason": "iteration_cap",
-      "outcome": "preview",
-      "outcomeDetail": "verified preview; violations 10 → 10",
-      "finalLines": [
-        {
-          "id": "l-straw",
-          "ingredientId": "PI-ING-001553",
-          "name": "STRAWBERRIES · Fresh Fruit",
-          "grams": 900
-        },
-        {
-          "id": "l-milk",
-          "ingredientId": "milk_3_5",
-          "name": "Milk 3.5 %",
-          "grams": 0.2149
-        },
-        {
-          "id": "formulation-cream_30",
-          "ingredientId": "cream_30",
-          "name": "Cream 30 %",
-          "grams": 0.0452
-        },
-        {
-          "id": "formulation-smp",
-          "ingredientId": "smp",
-          "name": "Skimmed milk powder",
-          "grams": 0.0226
-        },
-        {
-          "id": "formulation-sucrose",
-          "ingredientId": "sucrose",
-          "name": "Sucrose",
-          "grams": 0.0622
-        },
-        {
-          "id": "formulation-dextrose",
-          "ingredientId": "dextrose",
-          "name": "Dextrose (monohydrate)",
-          "grams": 99.6359
-        },
-        {
-          "id": "formulation-tara_gum",
-          "ingredientId": "tara_gum",
-          "name": "Tara gum",
-          "grams": 0.0192
-        }
-      ],
-      "batchTotalG": 1000,
+      "outcome": "impossible_under_constraints",
+      "outcomeDetail": "impossible_under_constraints",
+      "finalLines": null,
+      "batchTotalG": 900,
       "metrics": {
-        "podPoints": 11.8586,
-        "pacPoints": 24.9489,
-        "npacPoints": 31.897,
-        "iceFractionPercent": 55.6643,
-        "waterPercent": 78.2191,
-        "totalSolidsPercent": 21.7809,
-        "fatPercent": 0.2721,
-        "proteinPercent": 1.0816,
-        "lactosePercent": 0.0024
+        "podPoints": 5.632,
+        "pacPoints": 8.36,
+        "npacPoints": 9.7209,
+        "iceFractionPercent": 79.0724,
+        "waterPercent": 86,
+        "totalSolidsPercent": 14,
+        "fatPercent": 0.3,
+        "proteinPercent": 1.2,
+        "lactosePercent": 0
       },
       "stabilizer": {
-        "present": true,
-        "grams": 0.0192,
-        "percentOfMix": 0.0019,
-        "source": "template_seed_auto_added (dawka kontrolowana przez szablon, adjustable=false)",
+        "present": false,
+        "grams": null,
+        "percentOfMix": null,
+        "source": "absent",
         "engineHasStabilizerMetric": false,
         "optimizedByEngine": false,
-        "notePl": "Dawka stabilizatora pochodzi z szablonu referencyjnego i nie została zoptymalizowana przez Engine."
+        "notePl": null
       },
       "score": {
-        "overall0to100": 53.8735,
+        "overall0to100": 45.4655,
         "tenPoint": 5,
         "label": "Wymaga korekty",
         "provisionalBands": true
@@ -3439,102 +3396,102 @@
       "violations": [
         {
           "metric": "ice_fraction",
-          "value": 55.6643,
+          "value": 79.0724,
           "band": {
             "min": 45,
             "max": 54.5
           },
-          "severityPoints": 0.2451,
+          "severityPoints": 5.1731,
           "provenance": "soft"
         },
         {
           "metric": "npac",
-          "value": 31.897,
+          "value": 9.7209,
           "band": {
             "min": 33,
             "max": 42
           },
-          "severityPoints": 0.2451,
+          "severityPoints": 5.1731,
           "provenance": "soft"
         },
         {
           "metric": "pod",
-          "value": 11.8586,
+          "value": 5.632,
           "band": {
             "min": 12,
             "max": 17
           },
-          "severityPoints": 0.0566,
-          "provenance": "soft"
-        },
-        {
-          "metric": "total_solids",
-          "value": 21.7809,
-          "band": {
-            "min": 31,
-            "max": 45
-          },
-          "severityPoints": 1.317,
+          "severityPoints": 2.5472,
           "provenance": "soft"
         },
         {
           "metric": "water",
-          "value": 78.2191,
+          "value": 86,
           "band": {
             "min": 57,
             "max": 70
           },
-          "severityPoints": 1.2645,
+          "severityPoints": 2.4615,
+          "provenance": "soft"
+        },
+        {
+          "metric": "total_solids",
+          "value": 14,
+          "band": {
+            "min": 31,
+            "max": 45
+          },
+          "severityPoints": 2.4286,
           "provenance": "soft"
         },
         {
           "metric": "fat",
-          "value": 0.2721,
+          "value": 0.3,
           "band": {
             "min": 5,
             "max": 12
           },
-          "severityPoints": 1.3508,
-          "provenance": "soft"
-        },
-        {
-          "metric": "protein_in_solids",
-          "value": 4.9658,
-          "band": {
-            "min": 9,
-            "max": 13
-          },
-          "severityPoints": 2.0171,
+          "severityPoints": 1.3429,
           "provenance": "soft"
         },
         {
           "metric": "aerating_protein",
-          "value": 1.0816,
+          "value": 1.2,
           "band": {
             "min": 3,
             "max": 6
           },
-          "severityPoints": 1.2789,
+          "severityPoints": 1.2,
+          "provenance": "soft"
+        },
+        {
+          "metric": "protein_in_solids",
+          "value": 8.5714,
+          "band": {
+            "min": 9,
+            "max": 13
+          },
+          "severityPoints": 0.2143,
           "provenance": "soft"
         },
         {
           "metric": "lactose",
-          "value": 0.0024,
+          "value": 0,
           "band": {
             "min": 4,
             "max": 6
           },
-          "severityPoints": 3.9976,
+          "severityPoints": 4,
           "provenance": "soft"
         },
         {
           "metric": "lactose_sandiness_risk",
-          "value": 0.003,
+          "value": 0,
           "band": {
             "min": 5,
             "max": 9
           },
-          "severityPoints": 2.4985,
+          "severityPoints": 2.5,
           "provenance": "soft"
         }
       ],
@@ -3553,8 +3510,8 @@
         "src/features/formulation/templateRegistry.ts → fruit_gelato_ref_v1 (reference_derived)",
         "src/engine/config/targets.ts → TARGET_BANDS cell for milk_gelato fallback serving fruit_gelato"
       ],
-      "verdict": "AUTHENTIC-BEST-ACHIEVABLE",
-      "verdictReason": "Residual out-of-band metrics [ice_fraction, npac, pod, total_solids, water, fat, protein_in_solids, aerating_protein, lactose, lactose_sandiness_risk] sit ONLY on provisional/fallback bands — best verified result for these ingredients/constraints.",
+      "verdict": "HONEST-IMPOSSIBLE",
+      "verdictReason": "Structured failure 'impossible_under_constraints' — honest refusal state.",
       "engineVersion": "0.4.0",
       "configVersion": "0.7.0",
       "engineRecord": {
@@ -3571,87 +3528,57 @@
             "line": "l-milk",
             "ingredient_id": "milk_3_5",
             "name": "Milk 3.5 %",
-            "grams": 0.21486578383634578
-          },
-          {
-            "line": "formulation-cream_30",
-            "ingredient_id": "cream_30",
-            "name": "Cream 30 %",
-            "grams": 0.04523490186028334
-          },
-          {
-            "line": "formulation-smp",
-            "ingredient_id": "smp",
-            "name": "Skimmed milk powder",
-            "grams": 0.02261745093014167
-          },
-          {
-            "line": "formulation-sucrose",
-            "ingredient_id": "sucrose",
-            "name": "Sucrose",
-            "grams": 0.06219799005788956
-          },
-          {
-            "line": "formulation-dextrose",
-            "ingredient_id": "dextrose",
-            "name": "Dextrose (monohydrate)",
-            "grams": 99.63588879982855
-          },
-          {
-            "line": "formulation-tara_gum",
-            "ingredient_id": "tara_gum",
-            "name": "Tara gum",
-            "grams": 0.01919507348676496
+            "grams": 0
           }
         ],
-        "total_batch_g": 1000,
+        "total_batch_g": 900,
         "totals": {
-          "water_g": 782.1907,
-          "solids_g": 217.8093,
-          "fat_g": 2.7213,
-          "protein_g": 10.816,
-          "lactose_g": 0.0236,
-          "sucrose_g": 0.0622,
+          "water_g": 774,
+          "solids_g": 126,
+          "fat_g": 2.7,
+          "protein_g": 10.8,
+          "lactose_g": 0,
+          "sucrose_g": 0,
           "glucose_g": 18,
-          "dextrose_g": 91.665,
+          "dextrose_g": 0,
           "fructose_g": 21.6,
           "polyol_g": 0,
-          "fiber_g": 58.5154,
-          "salt_g": 0.0005,
+          "fiber_g": 58.5,
+          "salt_g": 0,
           "alcohol_g": 0
         },
         "percentages": {
-          "water_percent": 78.2191,
-          "solids_percent": 21.7809,
-          "fat_percent": 0.2721,
-          "protein_percent": 1.0816,
-          "lactose_percent": 0.0024,
-          "sucrose_percent": 0.0062,
-          "glucose_percent": 1.8,
-          "dextrose_percent": 9.1665,
-          "fructose_percent": 2.16,
+          "water_percent": 86,
+          "solids_percent": 14,
+          "fat_percent": 0.3,
+          "protein_percent": 1.2,
+          "lactose_percent": 0,
+          "sucrose_percent": 0,
+          "glucose_percent": 2,
+          "dextrose_percent": 0,
+          "fructose_percent": 2.4,
           "polyol_percent": 0,
-          "fiber_percent": 5.8515,
+          "fiber_percent": 6.5,
           "salt_percent": 0,
           "alcohol_percent": 0
         },
         "sugar": {
-          "sucrose_g": 0.0622,
+          "sucrose_g": 0,
           "glucose_g": 18,
-          "dextrose_g": 91.665,
+          "dextrose_g": 0,
           "fructose_g": 21.6,
-          "lactose_g": 0.0236,
+          "lactose_g": 0,
           "polyol_g": 0,
           "other_sugar_g": 0
         },
-        "pod_points": 11.8586,
-        "pac_points": 24.9489,
-        "npac_points": 31.897,
-        "ice_fraction_percent": 55.6643,
+        "pod_points": 5.632,
+        "pac_points": 8.36,
+        "npac_points": 9.7209,
+        "ice_fraction_percent": 79.0724,
         "indicators": [
           {
             "key": "pod",
-            "value": 11.8586,
+            "value": 5.632,
             "status": "too_weak",
             "band": {
               "min": 12,
@@ -3663,7 +3590,7 @@
           },
           {
             "key": "npac",
-            "value": 31.897,
+            "value": 9.7209,
             "status": "too_hard",
             "band": {
               "min": 33,
@@ -3675,7 +3602,7 @@
           },
           {
             "key": "ice_fraction",
-            "value": 55.6643,
+            "value": 79.0724,
             "status": "too_hard",
             "band": {
               "min": 45,
@@ -3687,7 +3614,7 @@
           },
           {
             "key": "lactose",
-            "value": 0.0024,
+            "value": 0,
             "status": "needs_correction",
             "band": {
               "min": 4,
@@ -3699,7 +3626,7 @@
           },
           {
             "key": "lactose_sandiness_risk",
-            "value": 0.003,
+            "value": 0,
             "status": "good",
             "band": {
               "min": 5,
@@ -3711,7 +3638,7 @@
           },
           {
             "key": "fat",
-            "value": 0.2721,
+            "value": 0.3,
             "status": "needs_correction",
             "band": {
               "min": 5,
@@ -3723,7 +3650,7 @@
           },
           {
             "key": "aerating_protein",
-            "value": 1.0816,
+            "value": 1.2,
             "status": "needs_correction",
             "band": {
               "min": 3,
@@ -3735,7 +3662,7 @@
           },
           {
             "key": "protein_in_solids",
-            "value": 4.9658,
+            "value": 8.5714,
             "status": "needs_correction",
             "band": {
               "min": 9,
@@ -3747,7 +3674,7 @@
           },
           {
             "key": "total_solids",
-            "value": 21.7809,
+            "value": 14,
             "status": "risky",
             "band": {
               "min": 31,
@@ -3759,7 +3686,7 @@
           },
           {
             "key": "water",
-            "value": 78.2191,
+            "value": 86,
             "status": "risky",
             "band": {
               "min": 57,
@@ -3784,18 +3711,20 @@
           }
         ],
         "scores": {
-          "technical": 35.6242,
+          "technical": 18.0389,
           "flavor": 70,
-          "cost": 60.4955,
-          "overall": 53.8735
+          "cost": 55,
+          "overall": 45.4655
         },
         "verdict": {
           "score": 5,
           "label": "Wymaga korekty"
         },
-        "cost_per_kg": 5.5604,
+        "cost_per_kg": 6,
         "cost_complete": true,
-        "warnings": []
+        "warnings": [
+          "batch_mass_mismatch"
+        ]
       }
     },
     {
@@ -4740,52 +4669,52 @@
       "targetBandSource": "category_fallback → milk_gelato bands (calibration-pending)",
       "initialSeed": "template fruit_gelato_ref_v1 (reference_derived) mapped onto the user's selected identities",
       "solverMode": "constrained_reformulation",
-      "iterations": 2,
-      "stopReason": "no_improving_move",
+      "iterations": 1,
+      "stopReason": "fixed_point_no_proposal",
       "outcome": "preview",
-      "outcomeDetail": "verified preview; violations 5 → 2",
+      "outcomeDetail": "verified preview; violations 5 → 1",
       "finalLines": [
         {
           "id": "l-straw",
           "ingredientId": "PI-ING-001553",
           "name": "STRAWBERRIES · Fresh Fruit",
-          "grams": 252.6773
+          "grams": 350
         },
         {
           "id": "l-milk",
           "ingredientId": "milk_3_5",
           "name": "Milk 3.5 %",
-          "grams": 500
+          "grams": 380
         },
         {
           "id": "l-cream",
           "ingredientId": "cream_30",
           "name": "Cream 30 %",
-          "grams": 57.7548
+          "grams": 80
         },
         {
           "id": "l-smp",
           "ingredientId": "smp",
           "name": "Skimmed milk powder",
-          "grams": 28.8774
+          "grams": 40
         },
         {
           "id": "l-suc",
           "ingredientId": "sucrose",
           "name": "Sucrose",
-          "grams": 79.4129
+          "grams": 110
         },
         {
           "id": "l-dex",
           "ingredientId": "dextrose",
           "name": "Dextrose",
-          "grams": 76.7929
+          "grams": 35
         },
         {
           "id": "l-tara",
           "ingredientId": "tara_gum",
           "name": "Tara gum",
-          "grams": 4.4847
+          "grams": 5
         },
         {
           "id": "l-water",
@@ -4796,50 +4725,40 @@
       ],
       "batchTotalG": 1000,
       "metrics": {
-        "podPoints": 15.2472,
-        "pacPoints": 27.5693,
-        "npacPoints": 40.8515,
-        "iceFractionPercent": 46.2124,
-        "waterPercent": 69.9111,
-        "totalSolidsPercent": 30.0889,
-        "fatPercent": 3.5815,
-        "proteinPercent": 3.0968,
-        "lactosePercent": 4.0922
+        "podPoints": 16.0209,
+        "pacPoints": 24.212,
+        "npacPoints": 36.6001,
+        "iceFractionPercent": 50.6999,
+        "waterPercent": 68.902,
+        "totalSolidsPercent": 31.098,
+        "fatPercent": 3.867,
+        "proteinPercent": 3.258,
+        "lactosePercent": 4.168
       },
       "stabilizer": {
         "present": true,
-        "grams": 4.4847,
-        "percentOfMix": 0.4485,
-        "source": "user_line_solver_or_lock (zmieniona względem draftu)",
+        "grams": 5,
+        "percentOfMix": 0.5,
+        "source": "user_line_template_dose (odziedziczona, niezmieniona)",
         "engineHasStabilizerMetric": false,
         "optimizedByEngine": false,
         "notePl": "Dawka stabilizatora pochodzi z szablonu referencyjnego i nie została zoptymalizowana przez Engine."
       },
       "score": {
-        "overall0to100": 81.777,
+        "overall0to100": 82.1399,
         "tenPoint": 8,
         "label": "Bardzo dobrze dopasowana",
         "provisionalBands": true
       },
       "violations": [
         {
-          "metric": "total_solids",
-          "value": 30.0889,
-          "band": {
-            "min": 31,
-            "max": 45
-          },
-          "severityPoints": 0.1302,
-          "provenance": "soft"
-        },
-        {
           "metric": "fat",
-          "value": 3.5815,
+          "value": 3.867,
           "band": {
             "min": 5,
             "max": 12
           },
-          "severityPoints": 0.4053,
+          "severityPoints": 0.3237,
           "provenance": "soft"
         }
       ],
@@ -4851,46 +4770,46 @@
           {
             "lineId": "l-straw",
             "name": "STRAWBERRIES · Fresh Fruit",
-            "factor": 0.7219
+            "factor": 1
           },
           {
             "lineId": "l-cream",
             "name": "Cream 30 %",
-            "factor": 0.7219
+            "factor": 1
           },
           {
             "lineId": "l-smp",
             "name": "Skimmed milk powder",
-            "factor": 0.7219
+            "factor": 1
           },
           {
             "lineId": "l-suc",
             "name": "Sucrose",
-            "factor": 0.7219
+            "factor": 1
           },
           {
             "lineId": "l-dex",
             "name": "Dextrose",
-            "factor": 2.1941
+            "factor": 1
           },
           {
             "lineId": "l-tara",
             "name": "Tara gum",
-            "factor": 0.8969
+            "factor": 1
           }
         ],
         "sharedFactor": null,
-        "matchedLines": 4,
+        "matchedLines": 6,
         "detected": false
       },
-      "bestAchievableProof": "solver invoked 2×; trajectory r0:v5/s2.7 → r1:v2/s0.5; stop=no_improving_move (provisional_band_conflict)",
+      "bestAchievableProof": "solver invoked 1×; trajectory r0:v1/s0.3; stop=fixed_point_no_proposal (provisional_band_conflict)",
       "runtimeReferenceData": [
         "src/data/demoIngredients.ts (canonical literature compositions; strawberry = documented raspberry surrogate PI-ING-001553)",
         "src/features/formulation/templateRegistry.ts → fruit_gelato_ref_v1 (reference_derived)",
         "src/engine/config/targets.ts → TARGET_BANDS cell for milk_gelato fallback serving fruit_gelato"
       ],
       "verdict": "AUTHENTIC-BEST-ACHIEVABLE",
-      "verdictReason": "Residual out-of-band metrics [total_solids, fat] sit ONLY on provisional/fallback bands — best verified result for these ingredients/constraints.",
+      "verdictReason": "Residual out-of-band metrics [fat] sit ONLY on provisional/fallback bands — best verified result for these ingredients/constraints.",
       "engineVersion": "0.4.0",
       "configVersion": "0.7.0",
       "engineRecord": {
@@ -4901,43 +4820,43 @@
             "line": "l-straw",
             "ingredient_id": "PI-ING-001553",
             "name": "STRAWBERRIES · Fresh Fruit",
-            "grams": 252.67730611316293
+            "grams": 350
           },
           {
             "line": "l-milk",
             "ingredient_id": "milk_3_5",
             "name": "Milk 3.5 %",
-            "grams": 500
+            "grams": 380
           },
           {
             "line": "l-cream",
             "ingredient_id": "cream_30",
             "name": "Cream 30 %",
-            "grams": 57.754812825865805
+            "grams": 80
           },
           {
             "line": "l-smp",
             "ingredient_id": "smp",
             "name": "Skimmed milk powder",
-            "grams": 28.877406412932903
+            "grams": 40
           },
           {
             "line": "l-suc",
             "ingredient_id": "sucrose",
             "name": "Sucrose",
-            "grams": 79.41286763556549
+            "grams": 110
           },
           {
             "line": "l-dex",
             "ingredient_id": "dextrose",
             "name": "Dextrose",
-            "grams": 76.79285828925222
+            "grams": 35
           },
           {
             "line": "l-tara",
             "ingredient_id": "tara_gum",
             "name": "Tara gum",
-            "grams": 4.484748723220641
+            "grams": 5
           },
           {
             "line": "l-water",
@@ -4948,53 +4867,53 @@
         ],
         "total_batch_g": 1000,
         "totals": {
-          "water_g": 699.1113,
-          "solids_g": 300.8887,
-          "fat_g": 35.8155,
-          "protein_g": 30.9676,
-          "lactose_g": 40.9222,
-          "sucrose_g": 79.4129,
-          "glucose_g": 5.0535,
-          "dextrose_g": 70.6494,
-          "fructose_g": 6.0643,
+          "water_g": 689.02,
+          "solids_g": 310.98,
+          "fat_g": 38.67,
+          "protein_g": 32.58,
+          "lactose_g": 41.68,
+          "sucrose_g": 110,
+          "glucose_g": 7,
+          "dextrose_g": 32.2,
+          "fructose_g": 8.4,
           "polyol_g": 0,
-          "fiber_g": 20.0118,
-          "salt_g": 0.8465,
+          "fiber_g": 26.75,
+          "salt_g": 0.86,
           "alcohol_g": 0
         },
         "percentages": {
-          "water_percent": 69.9111,
-          "solids_percent": 30.0889,
-          "fat_percent": 3.5815,
-          "protein_percent": 3.0968,
-          "lactose_percent": 4.0922,
-          "sucrose_percent": 7.9413,
-          "glucose_percent": 0.5054,
-          "dextrose_percent": 7.0649,
-          "fructose_percent": 0.6064,
+          "water_percent": 68.902,
+          "solids_percent": 31.098,
+          "fat_percent": 3.867,
+          "protein_percent": 3.258,
+          "lactose_percent": 4.168,
+          "sucrose_percent": 11,
+          "glucose_percent": 0.7,
+          "dextrose_percent": 3.22,
+          "fructose_percent": 0.84,
           "polyol_percent": 0,
-          "fiber_percent": 2.0012,
-          "salt_percent": 0.0847,
+          "fiber_percent": 2.675,
+          "salt_percent": 0.086,
           "alcohol_percent": 0
         },
         "sugar": {
-          "sucrose_g": 79.4129,
-          "glucose_g": 5.0535,
-          "dextrose_g": 70.6494,
-          "fructose_g": 6.0643,
-          "lactose_g": 40.9222,
+          "sucrose_g": 110,
+          "glucose_g": 7,
+          "dextrose_g": 32.2,
+          "fructose_g": 8.4,
+          "lactose_g": 41.68,
           "polyol_g": 0,
           "other_sugar_g": 0
         },
-        "pod_points": 15.2472,
-        "pac_points": 27.5693,
-        "npac_points": 40.8515,
-        "ice_fraction_percent": 46.2124,
+        "pod_points": 16.0209,
+        "pac_points": 24.212,
+        "npac_points": 36.6001,
+        "ice_fraction_percent": 50.6999,
         "indicators": [
           {
             "key": "pod",
-            "value": 15.2472,
-            "status": "ideal",
+            "value": 16.0209,
+            "status": "good",
             "band": {
               "min": 12,
               "max": 17
@@ -5005,8 +4924,8 @@
           },
           {
             "key": "npac",
-            "value": 40.8515,
-            "status": "good",
+            "value": 36.6001,
+            "status": "ideal",
             "band": {
               "min": 33,
               "max": 42
@@ -5017,8 +4936,8 @@
           },
           {
             "key": "ice_fraction",
-            "value": 46.2124,
-            "status": "good",
+            "value": 50.6999,
+            "status": "ideal",
             "band": {
               "min": 45,
               "max": 54.5
@@ -5029,7 +4948,7 @@
           },
           {
             "key": "lactose",
-            "value": 4.0922,
+            "value": 4.168,
             "status": "good",
             "band": {
               "min": 4,
@@ -5041,7 +4960,7 @@
           },
           {
             "key": "lactose_sandiness_risk",
-            "value": 5.8535,
+            "value": 6.0492,
             "status": "ideal",
             "band": {
               "min": 5,
@@ -5053,7 +4972,7 @@
           },
           {
             "key": "fat",
-            "value": 3.5815,
+            "value": 3.867,
             "status": "needs_correction",
             "band": {
               "min": 5,
@@ -5065,7 +4984,7 @@
           },
           {
             "key": "aerating_protein",
-            "value": 3.0968,
+            "value": 3.258,
             "status": "good",
             "band": {
               "min": 3,
@@ -5077,7 +4996,7 @@
           },
           {
             "key": "protein_in_solids",
-            "value": 10.292,
+            "value": 10.4766,
             "status": "ideal",
             "band": {
               "min": 9,
@@ -5089,8 +5008,8 @@
           },
           {
             "key": "total_solids",
-            "value": 30.0889,
-            "status": "risky",
+            "value": 31.098,
+            "status": "good",
             "band": {
               "min": 31,
               "max": 45
@@ -5101,7 +5020,7 @@
           },
           {
             "key": "water",
-            "value": 69.9111,
+            "value": 68.902,
             "status": "good",
             "band": {
               "min": 57,
@@ -5126,16 +5045,16 @@
           }
         ],
         "scores": {
-          "technical": 82.2773,
+          "technical": 88.3413,
           "flavor": 70,
-          "cost": 97.4644,
-          "overall": 81.777
+          "cost": 89.2133,
+          "overall": 82.1399
         },
         "verdict": {
           "score": 8,
           "label": "Bardzo dobrze dopasowana"
         },
-        "cost_per_kg": 2.6902,
+        "cost_per_kg": 3.309,
         "cost_complete": true,
         "warnings": []
       }

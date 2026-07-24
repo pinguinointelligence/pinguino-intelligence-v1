@@ -12,6 +12,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { calculateRecipe, type RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
+import {
+  overSweetStarter,
+  starterLine,
+  withGrams,
+} from '@/features/recipe-constraints/constraintFixtures';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
@@ -67,41 +72,75 @@ const recalcAndApply = () => {
   return { applied: !useConstraintStudioStore.getState().blocked, issue: null };
 };
 
+/**
+ * ACCEPTANCE ADDENDUM (3), 2026-07-24: the OWNER_BASE milk-gelato recalc ends
+ * with residual violations on NATIVE approved bands at every serving
+ * temperature, so its apply is now structurally DIAGNOSTIC-ONLY (blocked at
+ * the door). Apply-MECHANICS pins (double-apply, undo) therefore use this
+ * hard-safe applying scenario: the over-sweet starter with dextrose locked-
+ * by-value — the solver converges to ZERO violations and the apply flows.
+ */
+const seedApplyingScenario = () => {
+  const rec = withGrams(overSweetStarter(160), starterLine('dextrose'), 40);
+  useRecipeStore.setState({
+    mode: rec.mode,
+    category: rec.category,
+    target_temperature_c: rec.target_temperature_c,
+    target_batch_grams: rec.target_batch_grams,
+    machine_capacity_grams: rec.machine_capacity_grams,
+    flavor_intensity: 'balanced',
+    cost_priority: 'balanced',
+    items: rec.items.map((item) => ({ ...item })),
+  });
+  useConstraintStudioStore.getState().resetForTests();
+};
+
 beforeEach(() => {
   seedStore(-13);
 });
 
 describe('owner acceptance — the exact reproduced scenario stays clean', () => {
-  it('five recalc→apply cycles across −13/−11: no duplicates, no growth, dextrose/cream UPDATED, sum stays 1000 g', () => {
+  it('five recalc cycles across −13/−11: hard-residual outcomes are DIAGNOSTIC — recipe untouched, defect impossible a fortiori', () => {
+    // ACCEPTANCE ADDENDUM (3), 2026-07-24 — DELIBERATE pin update: the
+    // OWNER_BASE recalc keeps residual violations on NATIVE approved bands at
+    // −13 AND −11, so under the addendum its apply is structurally refused
+    // (diagnostic preview only). The owner's proven defect (unbounded
+    // appending, 5 → 10 rows, 1000 g → 2927.8 g) is now impossible A FORTIORI:
+    // nothing is ever written. Applied-cycle dedup mechanics stay covered by
+    // the applying scenarios below and by constrainedReformulation FIXTURE F.
     const temps = [-13, -11, -13, -11, -13];
-    let stableCount: number | null = null;
+    const before = JSON.stringify(rows().map((i) => [i.id, i.ingredient.id, i.planned_grams]));
     for (const temp of temps) {
       useRecipeStore.setState({ target_temperature_c: temp });
-      recalcAndApply();
-      // The full auto-balance may introduce genuinely NEW toolbox ingredients —
-      // the solver's single add, or (owner P0 NIGHTLY Phase 6) the approved
-      // template's missing role carriers when the local corrector hits a fixed
-      // point and the template-seeded fallback completes the recipe (G17/G18
-      // add inulin + tara gum). NEVER a duplicate canonical identity, and the
-      // row count is BOUNDED by base 5 + the template's toolbox roles — the
-      // proven defect (unbounded appending, 5 → 10 rows, 1000 g → 2927.8 g)
-      // stays structurally impossible.
+      const cycle = recalcAndApply();
+      expect(cycle.applied).toBe(false);
+      expect(useConstraintStudioStore.getState().blocked?.code).toBe('hard_residual_violations');
+      // Byte-identical draft after every refused cycle — no duplicates, no
+      // growth, no partial writes; batch target untouched.
+      expect(JSON.stringify(rows().map((i) => [i.id, i.ingredient.id, i.planned_grams]))).toBe(before);
       expect(new Set(rows().map((i) => i.ingredient.id)).size).toBe(rows().length);
-      expect(countOf('dextrose')).toBe(1); // test 1: updated, not duplicated
-      expect(countOf('cream_30')).toBe(1); // test 2: updated, not duplicated
-      expect(countOf('milk_3_5')).toBe(1);
-      expect(countOf('inulin')).toBeLessThanOrEqual(1); // toolbox adds are single
-      expect(countOf('tara_gum')).toBeLessThanOrEqual(1);
-      expect(rows().length).toBeLessThanOrEqual(7); // base 5 + template role carriers (inulin, tara)
-      if (stableCount !== null) expect(rows().length).toBeGreaterThanOrEqual(stableCount); // no row loss
-      stableCount = rows().length;
-      expect(Math.abs(sum() - 1000)).toBeLessThanOrEqual(0.1); // test 9: batch invariant
+      expect(Math.abs(sum() - 1000)).toBeLessThanOrEqual(0.1);
       expect(useRecipeStore.getState().target_batch_grams).toBe(1000);
+      useConstraintStudioStore.getState().dismissBlocked();
     }
-    // the dextrose LINE kept its stable identity and genuinely moved
-    const dex = rows().find((i) => i.id === 'l-dex')!;
-    expect(dex.ingredient.id).toBe('dextrose');
-    expect(dex.planned_grams).not.toBe(20);
+  });
+
+  it('five recalc→apply cycles on the APPLYING scenario: no duplicates, no growth, sum stays at target', () => {
+    // The applied-cycle mechanics pin (the defect's write path) on a hard-safe
+    // scenario: repeated recalc→apply cycles never duplicate a canonical
+    // identity and never break the batch invariant.
+    seedApplyingScenario();
+    const target = useRecipeStore.getState().target_batch_grams;
+    for (let cycle = 0; cycle < 5; cycle += 1) {
+      const first = rows().find((i) => i.lock_type === 'unlocked')!;
+      useRecipeStore.getState().setPlannedGrams(first.id, first.planned_grams + 5);
+      recalcAndApply();
+      expect(new Set(rows().map((i) => i.ingredient.id)).size).toBe(rows().length);
+      expect(countOf('dextrose')).toBe(1);
+      expect(countOf('sucrose')).toBe(1);
+      expect(useRecipeStore.getState().target_batch_grams).toBe(target);
+      expect(sum()).toBeLessThan(target + 100); // no runaway growth, ever
+    }
   });
 
   it.each([-11, -12, -13])('temperature %d: one apply keeps single rows and 1000 g (test 14)', (temp) => {
@@ -136,11 +175,15 @@ describe('genuinely new ingredients (test 3)', () => {
 });
 
 describe('double-apply protection (tests 4+5, Phase 9)', () => {
+  // ADDENDUM (3): the OWNER_BASE apply is now diagnostic-blocked, so the
+  // double-apply MECHANICS pins run on the hard-safe applying scenario.
   it('applying the same preview twice: second attempt is refused, recipe unchanged', () => {
+    seedApplyingScenario();
     useConstraintStudioStore.getState().createOptimizePreview();
     const preview = useConstraintStudioStore.getState().preview;
     expect(preview).not.toBeNull();
     useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull(); // first apply really landed
     const afterFirst = JSON.stringify(rows());
 
     // Forcing the SAME preview object back in (simulates a stale retry/dispatch).
@@ -151,8 +194,10 @@ describe('double-apply protection (tests 4+5, Phase 9)', () => {
   });
 
   it('double-click: the second synchronous applyPreview is a no-op (preview already consumed)', () => {
+    seedApplyingScenario();
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
     const afterFirst = JSON.stringify(rows());
     useConstraintStudioStore.getState().applyPreview(); // no preview staged → no-op
     expect(JSON.stringify(rows())).toBe(afterFirst);
@@ -289,6 +334,9 @@ describe('locks, undo, save/reopen (tests 11/12/13)', () => {
   });
 
   it('Undo restores the byte-exact pre-Apply recipe (test 13)', () => {
+    // ADDENDUM (3): runs on the hard-safe applying scenario (the OWNER_BASE
+    // apply is diagnostic-blocked and never writes, so there is nothing to undo).
+    seedApplyingScenario();
     const before = JSON.stringify(buildRecipeInput(useRecipeStore.getState()).items);
     recalcAndApply();
     expect(JSON.stringify(buildRecipeInput(useRecipeStore.getState()).items)).not.toBe(before);

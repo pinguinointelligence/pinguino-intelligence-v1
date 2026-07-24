@@ -13,7 +13,7 @@ import { useMemo } from 'react';
 import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { recipeMatchScore } from '@/features/recipe-score';
+import { recipeTechnicalFit } from '@/features/recipe-score';
 import { useRecipeStore } from '@/stores/recipeStore';
 import {
   constraintStudioCopy,
@@ -89,7 +89,8 @@ function BestSafeResultView({
   input: RecipeInput;
 }) {
   const b = constraintStudioCopy.bestSafe;
-  const match = useMemo(() => recipeMatchScore(calculateRecipe(input).scores), [input]);
+  // ACCEPTANCE ADDENDUM (2): the readout is the TECHNICAL fit dimension.
+  const match = useMemo(() => recipeTechnicalFit(calculateRecipe(input)), [input]);
   const softLabels = issue.softViolatedMetrics.map((metric) => d.metricLabels[metric] ?? metric);
   return (
     <div className="space-y-2" data-testid="pro-recalc-best-safe">

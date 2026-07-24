@@ -35,10 +35,17 @@ const lineGrams = (lineId: string): number => {
 const lineLockType = (lineId: string) =>
   recipeItems().find((item) => item.id === lineId)?.lock_type;
 
-/** The ADD-fixable scenario pinned by the feasibility tests. */
+/**
+ * The single-lock fixable scenario: dextrose locked at 40 g, sucrose free —
+ * the solver converges to ZERO violations, so the apply is hard-safe.
+ * ACCEPTANCE ADDENDUM (3), 2026-07-24: the former BOTH-sugars-locked scenario
+ * ends with residual violations on NATIVE bands and is now DIAGNOSTIC ONLY
+ * (Apply structurally blocked at the door — pinned in applyPipeline.test.ts
+ * and acceptanceAddendum.test.ts), so the apply-MECHANICS pins here use the
+ * hard-safe single-lock variant instead.
+ */
 const loadAddFixScenario = () => {
   loadRecipe(withGrams(overSweetStarter(160), DEXTROSE, 40));
-  useConstraintStudioStore.getState().toggleLock(SUCROSE);
   useConstraintStudioStore.getState().toggleLock(DEXTROSE);
 };
 
@@ -120,8 +127,10 @@ describe('§19 apply through the store', () => {
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
     expect(useConstraintStudioStore.getState().preview).toBeNull();
     expect(useConstraintStudioStore.getState().history.length).toBe(1);
-    expect(Object.is(lineGrams(SUCROSE), 160)).toBe(true);
+    // The LOCKED line is byte-stable through the apply…
     expect(Object.is(lineGrams(DEXTROSE), 40)).toBe(true);
+    // …while the free over-sweet sucrose was genuinely moved by the solver.
+    expect(lineGrams(SUCROSE)).toBeLessThan(160);
   });
 
   it('BLOCKS a forged preview: Polish message, recipe UNTOUCHED, no history entry', () => {
@@ -131,14 +140,14 @@ describe('§19 apply through the store', () => {
     expect(preview).not.toBeNull();
     if (!preview) return;
 
-    // Forge the staged proposal so it moves a locked line.
+    // Forge the staged proposal so it moves the LOCKED line (dextrose @ 40 g).
     useConstraintStudioStore.setState({
       preview: {
         ...preview,
         proposedInput: {
           ...preview.proposedInput,
           items: preview.proposedInput.items.map((item) =>
-            item.id === SUCROSE ? { ...item, planned_grams: 100 } : item,
+            item.id === DEXTROSE ? { ...item, planned_grams: 100 } : item,
           ),
         },
       },
