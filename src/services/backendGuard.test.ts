@@ -28,8 +28,8 @@ describe('backendGuard — emptyUnconfiguredRead', () => {
     expect(emptyUnconfiguredRead('m.list', [], false)).toEqual([]);
     expect(emptyUnconfiguredRead('m.get', null, false)).toBeNull();
     expect(console.warn).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(console.warn).mock.calls[0][0]).toContain('m.list');
-    expect(vi.mocked(console.warn).mock.calls[1][0]).toContain('m.get');
+    expect(vi.mocked(console.warn).mock.calls[0]?.[0]).toContain('m.list');
+    expect(vi.mocked(console.warn).mock.calls[1]?.[0]).toContain('m.get');
   });
 
   it('DEV: warns once per surface, not once per call', () => {
@@ -53,7 +53,7 @@ describe('backendGuard — emptyUnconfiguredRead', () => {
     }
     // Logged too, so a caller that swallows the error still leaves console evidence.
     expect(console.error).toHaveBeenCalled();
-    expect(vi.mocked(console.error).mock.calls[0][0]).toContain('products.listMyProducts');
+    expect(vi.mocked(console.error).mock.calls[0]?.[0]).toContain('products.listMyProducts');
   });
 
   it('PRODUCTION: never returns the empty value', () => {
