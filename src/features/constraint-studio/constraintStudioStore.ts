@@ -54,7 +54,87 @@ let changeSeq = 0;
 const nextChangeId = (): string => `apply-${Date.now().toString(36)}-${(changeSeq += 1).toString(36)}`;
 const nowIso = (): string => new Date().toISOString();
 
-const currentRecipeInput = (): RecipeInput => buildRecipeInput(useRecipeStore.getState());
+/* ── THE canonical current-draft selector (owner P0 NIGHTLY, FAILURE 1) ──── */
+
+/**
+ * The ONE canonical composition of the CURRENT draft across BOTH stores
+ * (recipe input + §17 constraint session). Every consumer — Monitor, Przelicz,
+ * Preview build, the Apply gate, Save, Undo feasibility, QA diagnostics —
+ * derives the draft from THIS selector; no consumer reconstructs it
+ * independently, so the recipe half and the constraint half can never drift
+ * apart again (the owner's stale-state failure).
+ */
+export interface CanonicalDraft {
+  /** Monotonic material-edit revision (recipeStore, Phase 3). */
+  revision: number;
+  /** Draft-context sequence — bumps only on load/preset/reset. */
+  contextSeq: number;
+  /** Engine input: line ids, grams, actuals, locks, batch, internal category/
+   * profile, serving temperature, tier (mode), machine capacity, goals. */
+  input: RecipeInput;
+  /** EFFECTIVE §17 constraints — reconciled against the CURRENT lines. */
+  constraints: ConstraintSet;
+  /** Explicit exclusions / unavailable ingredients (canonical + Mapper ids). */
+  excludedIngredientIds: readonly string[];
+  /** Machine/serving context (routing/UX only — never Engine math). */
+  machine: {
+    kind: 'professional' | 'home' | null;
+    servingModeId: string | null;
+    machineId: string | null;
+    label: string | null;
+  };
+  /** Canonical saved-recipe link (drives Save create-vs-version). */
+  savedRecipe: { id: string | null; name: string | null; versionNumber: number | null };
+}
+
+export function selectCanonicalDraft(): CanonicalDraft {
+  const recipe = useRecipeStore.getState();
+  const session = useConstraintStudioStore.getState();
+  return {
+    revision: recipe.draftRevision,
+    contextSeq: recipe.draftContextSeq,
+    input: buildRecipeInput(recipe),
+    constraints: reconcileConstraints(recipe.items, session.constraints),
+    excludedIngredientIds: recipe.excludedIngredientIds,
+    machine: {
+      kind: recipe.machineKind,
+      servingModeId: recipe.servingModeId,
+      machineId: recipe.machineId,
+      label: recipe.machineLabel,
+    },
+    savedRecipe: {
+      id: recipe.savedRecipeId,
+      name: recipe.savedRecipeName,
+      versionNumber: recipe.currentVersionNumber,
+    },
+  };
+}
+
+/**
+ * Deterministic serialization of the FORMULATION-MATERIAL draft fields (the
+ * owner Phase 1 equality contract): items (id, grams, actuals, lock), §17
+ * byLineId, exclusions, batch, category, temperature, tier(mode), machine
+ * capacity. Two drafts that serialize identically MUST formulate identically —
+ * revision/context metadata is intentionally excluded (a refresh resets it).
+ */
+export function canonicalDraftSerialization(draft: CanonicalDraft): string {
+  return JSON.stringify({
+    items: draft.input.items.map((item) => [
+      item.id,
+      item.ingredient.id,
+      item.planned_grams,
+      item.actual_grams,
+      item.lock_type,
+    ]),
+    byLineId: draft.constraints.byLineId,
+    exclusions: [...draft.excludedIngredientIds],
+    batch: draft.input.target_batch_grams,
+    category: draft.input.category,
+    temperature: draft.input.target_temperature_c,
+    tier: draft.input.mode,
+    machineCapacity: draft.input.machine_capacity_grams,
+  });
+}
 
 /** New constraint map without one line's entry (immutable). */
 const withoutLine = (
@@ -140,6 +220,14 @@ export interface ConstraintStudioState {
   onLineRemoved: (lineId: string) => void;
   /** Prune constraints for lines that no longer exist (preset loads etc.). */
   reconcile: () => void;
+  /**
+   * Owner P0 NIGHTLY (live FAILURE 1): start a FRESH §17 draft context —
+   * constraints, staged preview/issue/feasibility/blocked AND the §20 history
+   * are cleared. Called by the store bridge whenever the recipe store begins a
+   * new draft context (loadRecipeInput / loadPreset / resetToDemo): a loaded
+   * recipe must never inherit locks/ranges from an earlier session draft.
+   */
+  resetDraftSession: () => void;
 
   createOptimizePreview: () => void;
   createBatchRescalePreview: (newBatchGrams: number) => void;
@@ -187,6 +275,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
       // §17.2 steps 4–6: unlock → the solver may change the line again.
       set({ constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) }, ...CLEAR_STAGED });
       if (item.lock_type === 'grams') recipe.setLockType(lineId, 'unlocked');
+      else recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
       return;
     }
 
@@ -202,6 +291,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     });
     if (!ENGINE_KEPT_LOCKS.has(item.lock_type) && item.lock_type !== 'grams') {
       recipe.setLockType(lineId, 'grams');
+    } else {
+      recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
     }
   },
 
@@ -215,7 +306,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
         [lineId]: { mode: 'range', minGrams, maxGrams },
       },
     };
-    const validation = validateConstraintSet(currentRecipeInput(), candidateSet);
+    const validation = validateConstraintSet(selectCanonicalDraft().input, candidateSet);
     const lineIssues = validation.issues.filter(
       (issue) => issue.lineId === lineId && issue.severity === 'error',
     );
@@ -223,6 +314,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     set({ constraints: candidateSet, ...CLEAR_STAGED });
     if (!ENGINE_KEPT_LOCKS.has(item.lock_type) && item.lock_type !== 'grams') {
       recipe.setLockType(lineId, 'grams'); // held-at-current for every solver path
+    } else {
+      recipe.bumpDraftRevision(); // Phase 3: a §17 range edit is a material edit
     }
     return { ok: true, issues: [] };
   },
@@ -235,6 +328,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     const item = recipe.items.find((candidate) => candidate.id === lineId);
     if (item && item.lock_type === 'grams' && existing.mode !== 'ai') {
       recipe.setLockType(lineId, 'unlocked');
+    } else {
+      recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
     }
   },
 
@@ -244,11 +339,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     if (lockType === 'grams' || ENGINE_KEPT_LOCKS.has(lockType)) return;
     // Conscious dropdown override → the §17 constraint is dropped with it.
     set({ constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) }, ...CLEAR_STAGED });
+    useRecipeStore.getState().bumpDraftRevision(); // Phase 3: material edit
   },
 
   onLineRemoved: (lineId) => {
     if (get().constraints.byLineId[lineId] === undefined) return;
     set({ constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) }, ...CLEAR_STAGED });
+    useRecipeStore.getState().bumpDraftRevision(); // Phase 3: material edit
   },
 
   reconcile: () => {
@@ -256,35 +353,46 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     if (reconciled !== get().constraints) set({ constraints: reconciled });
   },
 
+  resetDraftSession: () =>
+    set({
+      constraints: { byLineId: {} },
+      history: [],
+      ...CLEAR_STAGED,
+    }),
+
   createOptimizePreview: () => {
     get().reconcile();
-    // The CURRENT unsaved draft is the single calculation source; explicit
-    // user exclusions (removed ingredients) ride along so the formulation
-    // toolbox can never reintroduce them.
-    const result = buildOptimizePreview(currentRecipeInput(), get().constraints, nowIso(), {
-      excludedIngredientIds: useRecipeStore.getState().excludedIngredientIds,
+    // THE canonical draft (owner P0 NIGHTLY FAILURE 1): recipe input + §17
+    // constraints + exclusions composed by the ONE selector — the preview is
+    // stamped with the draft revision it was built for.
+    const draft = selectCanonicalDraft();
+    const result = buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
+      excludedIngredientIds: draft.excludedIngredientIds,
     });
-    if (result.ok) set({ preview: result.preview, previewIssue: null, blocked: null });
-    else set({ preview: null, previewIssue: result, blocked: null });
+    if (result.ok) {
+      result.preview.baseDraftRevision = draft.revision;
+      set({ preview: result.preview, previewIssue: null, blocked: null });
+    } else set({ preview: null, previewIssue: result, blocked: null });
   },
 
   createBatchRescalePreview: (newBatchGrams) => {
     get().reconcile();
-    const result = buildBatchRescalePreview(
-      currentRecipeInput(),
-      get().constraints,
-      newBatchGrams,
-      nowIso(),
-    );
-    if (result.ok) set({ preview: result.preview, previewIssue: null, blocked: null });
-    else set({ preview: null, previewIssue: result, blocked: null });
+    const draft = selectCanonicalDraft();
+    const result = buildBatchRescalePreview(draft.input, draft.constraints, newBatchGrams, nowIso());
+    if (result.ok) {
+      result.preview.baseDraftRevision = draft.revision;
+      set({ preview: result.preview, previewIssue: null, blocked: null });
+    } else set({ preview: null, previewIssue: result, blocked: null });
   },
 
   createSuggestedFixPreview: (fix) => {
     get().reconcile();
-    const result = buildSuggestedFixPreview(currentRecipeInput(), get().constraints, fix, nowIso());
-    if (result.ok) set({ preview: result.preview, previewIssue: null, blocked: null });
-    else set({ preview: null, previewIssue: result, blocked: null });
+    const draft = selectCanonicalDraft();
+    const result = buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso());
+    if (result.ok) {
+      result.preview.baseDraftRevision = draft.revision;
+      set({ preview: result.preview, previewIssue: null, blocked: null });
+    } else set({ preview: null, previewIssue: result, blocked: null });
   },
 
   cancelPreview: () => set({ preview: null, previewIssue: null, blocked: null }),
@@ -292,13 +400,17 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
   applyPreview: () => {
     const { preview, constraints, history } = get();
     if (!preview) return;
+    // The Apply gate consumes the SAME canonical draft selector (FAILURE 1) +
+    // the monotonic revision (Phase 3) — the door itself re-checks both.
+    const draft = selectCanonicalDraft();
     const outcome = commitPreview(
-      currentRecipeInput(),
+      draft.input,
       constraints,
       preview,
       nowIso(),
       nextChangeId(),
-      useRecipeStore.getState().excludedIngredientIds,
+      draft.excludedIngredientIds,
+      draft.revision,
     );
     if (!outcome.ok) {
       // The owner-mandated block: recipe untouched, clear Polish message.
@@ -341,7 +453,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     const { history } = get();
     const last = history[history.length - 1];
     if (!last) return;
-    if (!isUndoAvailable(last, currentRecipeInput(), get().constraints)) return;
+    // Undo feasibility reads the SAME canonical draft selector (FAILURE 1).
+    if (!isUndoAvailable(last, selectCanonicalDraft().input, get().constraints)) return;
     // Byte-exact restore of the pre-apply snapshot (§19.2/§20.3) through the
     // SAME guarded atomic write. The snapshot may legitimately be off-batch
     // (the pre-formulation draft), so batch equality is not enforced here —
@@ -351,13 +464,15 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
       (item) => !Number.isFinite(item.planned_grams) || item.planned_grams < 0,
     );
     if (invalid) return; // structurally impossible for a §20.1 record; never write garbage
-    useRecipeStore.setState({
+    useRecipeStore.setState((state) => ({
       items: snapshot.items.map((item) => ({ ...item })),
       target_batch_grams: snapshot.target_batch_grams,
       // Owner P0 (complete Undo): exclusions return with the snapshot — no
       // stale excluded IDs survive, no page refresh is ever needed.
       excludedIngredientIds: [...last.before.excludedIngredientIds],
-    });
+      // Phase 3: the undo restore is itself a material edit (monotonic).
+      draftRevision: state.draftRevision + 1,
+    }));
     set({
       constraints: last.before.constraints,
       history: history.slice(0, -1),
@@ -367,8 +482,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
 
   runFeasibility: () => {
     get().reconcile();
+    const draft = selectCanonicalDraft();
     set({
-      feasibility: analyzeConstraintFeasibility(currentRecipeInput(), get().constraints),
+      feasibility: analyzeConstraintFeasibility(draft.input, draft.constraints),
       previewIssue: null,
     });
   },
@@ -382,3 +498,36 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
 
   resetForTests: () => set({ ...INITIAL, constraints: { byLineId: {} }, history: [] }),
 }));
+
+/* ── store bridge (owner P0 NIGHTLY, live FAILURE 1 — Phase 3 wiring) ────── */
+
+/**
+ * THE bridge between the recipe store and the §17 session — wired here in the
+ * STORE layer (never in UI files), so EVERY load/preset/reset/edit path is
+ * covered whichever surface triggered it:
+ *  - `draftContextSeq` change (loadRecipeInput / loadPreset / resetToDemo) →
+ *    the §17 session RESETS: a loaded recipe starts a fresh constraint
+ *    context — locks/ranges from an earlier session draft never survive;
+ *  - `draftRevision` change (ANY material edit) → staged state built for the
+ *    old draft (preview, previewIssue, feasibility, blocked) is invalidated
+ *    unless the staged preview already carries the new revision.
+ */
+useRecipeStore.subscribe((state, prev) => {
+  if (state.draftContextSeq !== prev.draftContextSeq) {
+    useConstraintStudioStore.getState().resetDraftSession();
+    return;
+  }
+  if (state.draftRevision !== prev.draftRevision) {
+    const session = useConstraintStudioStore.getState();
+    const previewCurrent = session.preview?.baseDraftRevision === state.draftRevision;
+    if (
+      !previewCurrent &&
+      (session.preview !== null ||
+        session.previewIssue !== null ||
+        session.feasibility !== null ||
+        session.blocked !== null)
+    ) {
+      useConstraintStudioStore.setState({ ...CLEAR_STAGED });
+    }
+  }
+});

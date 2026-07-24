@@ -54,6 +54,7 @@ import {
   type FormulationRoleTraceRow,
 } from '@/features/formulation/formulate';
 import type { FunctionalRole } from '@/features/formulation/ingredientRoles';
+import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
 import { selectFormulationTemplate, type TemplateStatus } from '@/features/formulation/templateRegistry';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
 
@@ -122,6 +123,16 @@ export interface ConstraintPreview {
   };
   /** Fingerprint of (input, constraints) the preview was built for. */
   baseFingerprint: string;
+  /**
+   * Owner P0 NIGHTLY (live FAILURE 1, Phase 3): the monotonic `draftRevision`
+   * this preview was built for (stamped by the store). `commitPreview` rejects
+   * a revision mismatch — the additional monotonic guard NEXT TO the
+   * fingerprint guard, so a preview can never apply onto a later draft.
+   */
+  baseDraftRevision?: number;
+  /** Owner P0 NIGHTLY (FAILURE 2): honest iteration diagnostics — count,
+   * per-round violation/severity trajectory and the exact stop reason. */
+  iteration?: IterationDiagnostics;
   /** The proposed working state — applied ONLY through `commitPreview`. */
   proposedInput: RecipeInput;
   /** The constraint set in force AFTER apply (suggested fixes update a lock —
@@ -368,7 +379,14 @@ export type BuildPreviewResult =
   | { ok: false; code: 'already_clean' }
   /** Owner P0 (Przelicz z PI): a no-proposal failure carries the PROOF — the solver
    * really ran (invocation count) and these exact metrics stayed out of band. */
-  | { ok: false; code: 'no_proposal'; violatedMetrics?: string[]; solverInvocations?: number }
+  | {
+      ok: false;
+      code: 'no_proposal';
+      violatedMetrics?: string[];
+      solverInvocations?: number;
+      /** Owner P0 NIGHTLY (FAILURE 2): full iteration trajectory + stop reason. */
+      iteration?: IterationDiagnostics;
+    }
   /** Owner P0 (definitive fail): the pipeline PRODUCED a candidate but REJECTED it —
    * it did not improve the recipe (e.g. a batch-only rescale of an out-of-band
    * draft: 8 × 125 g with violations 9 → 9). Never presented as a preview. */
@@ -379,6 +397,8 @@ export type BuildPreviewResult =
       solverInvocations?: number;
       /** True when the only change was the proportional batch rescale. */
       batchOnly?: boolean;
+      /** Owner P0 NIGHTLY (FAILURE 2): full iteration trajectory + stop reason. */
+      iteration?: IterationDiagnostics;
     }
   | { ok: false; code: 'apply_failed' }
   | { ok: false; code: 'line_missing' }
@@ -418,6 +438,8 @@ export type BuildPreviewResult =
       templateId: string;
       templateStatus: TemplateStatus;
       stopReason: 'local_no_proposal' | 'template_fixed_point';
+      /** Owner P0 NIGHTLY (FAILURE 2): full iteration trajectory + stop reason. */
+      iteration?: IterationDiagnostics;
     };
 
 const finishPreview = (
@@ -448,31 +470,186 @@ const finishPreview = (
   };
 };
 
-/** One solver round: propose → filter (§17 add-intent) → apply. PURE helper. */
+/** WHY a solver round produced no admissible move (owner P0 NIGHTLY FAILURE 2 —
+ * a fixed point is distinguished from a missing candidate and from a
+ * provisional-band-only conflict; never one generic bucket). */
+export type NoProposalDetail =
+  | 'solver_fixed_point' // engine found no safe/admissible improving move
+  | 'missing_candidate' // engine diagnosis: no correction candidate exists
+  | 'apply_failed' // a proposal existed but could not be applied
+  | 'provisional_band_conflict'; // remaining violations sit ONLY on fallback bands
+
+/** One solver round: propose → filter (§17 add-intent + approved stabilizer
+ * dosage clamp) → apply. PURE helper. */
 function solveOneRound(
   current: RecipeInput,
   constrainedIngredientIds: ReadonlySet<string>,
-): { applied: RecipeInput; proposal: CorrectionProposal } | { applied: null; violated: string[] } {
+):
+  | { applied: RecipeInput; proposal: CorrectionProposal }
+  | { applied: null; violated: string[]; detail: NoProposalDetail } {
   const context = recipeContext(current);
   const proposed = proposeAutoFix({ input: current, context, exactCorrectionGrams: true });
   const violated = [...new Set(detectViolations(calculateRecipe(current)).map((v) => v.metric))];
-  if (proposed.redacted) return { applied: null, violated };
+  if (proposed.redacted) return { applied: null, violated, detail: 'solver_fixed_point' };
   const proposal: CorrectionProposal | undefined = proposed.proposals.find(
     (candidate) =>
       candidate.actions.length > 0 &&
       candidate.actions.every(
-        (action) => action.type !== 'add' || !constrainedIngredientIds.has(action.ingredient_id),
+        (action) =>
+          (action.type !== 'add' || !constrainedIngredientIds.has(action.ingredient_id)) &&
+          // Owner Phase 9 (approved-bounds wiring): a solver action may never
+          // move a registered stabilizer outside its approved Mapper window.
+          !violatesApprovedStabilizerDosage(current, action),
       ),
   );
-  if (!proposal) return { applied: null, violated };
+  if (!proposal) {
+    // Distinguish the engine's own diagnosis: an actions-empty blocked/
+    // impossible proposal names its blocking constraint.
+    const diagnosed = proposed.proposals.find((candidate) => candidate.actions.length === 0);
+    const detail: NoProposalDetail =
+      diagnosed?.blocking?.constraint === 'no_candidate' ? 'missing_candidate' : 'solver_fixed_point';
+    return { applied: null, violated, detail };
+  }
   const applied = applyAutoFix({ input: current, proposal, context });
-  if (!applied.success) return { applied: null, violated };
+  if (!applied.success) return { applied: null, violated, detail: 'apply_failed' };
   return { applied: applied.newInput, proposal };
 }
 
-/** Max solver rounds per recalculation — idempotence is a proven engine
- * property (repeated propose→apply reaches a fixed point), the cap is a guard. */
-const MAX_SOLVER_ROUNDS = 4;
+/**
+ * Max verified-improvement rounds per recalculation (owner P0 NIGHTLY
+ * FAILURE 2): the DETERMINISTIC convergence guard. Iteration continues WHILE a
+ * verified improvement exists and stops ONLY at: all bands in range, a
+ * verified fixed point (no improving move), this cap (REPORTED honestly via
+ * `IterationDiagnostics.capped`) or a hard incompatibility upstream.
+ */
+export const MAX_SOLVER_ROUNDS = 12;
+
+export interface IterationRoundDiagnostic {
+  /** 0 = the starting state; N = the state after the N-th applied round. */
+  round: number;
+  violations: number;
+  /** The engine's own weighted out-of-band measure (severity points). */
+  severityPoints: number;
+}
+
+export type IterationStopReason =
+  | 'all_bands_in_range' // 10/10 — nothing left out of band
+  | 'fixed_point_no_proposal' // solver returned no admissible move (see detail)
+  | 'no_improving_move' // a move existed but verifiably improved nothing — reverted
+  | 'iteration_cap'; // deterministic guard hit — reported honestly
+
+export interface IterationDiagnostics {
+  /** How many times the canonical solver was REALLY invoked. */
+  solverInvocations: number;
+  /** Per-round violation/severity trajectory (round 0 = start). */
+  rounds: IterationRoundDiagnostic[];
+  stopReason: IterationStopReason;
+  /** Sub-classification when the solver returned no move (null otherwise). */
+  stopDetail: NoProposalDetail | null;
+  /** TRUE only when the cap fired while improvement was still in progress. */
+  capped: boolean;
+}
+
+/**
+ * ITERATE the canonical solver to a VERIFIED fixed point (owner P0 NIGHTLY
+ * FAILURE 2 — „stops after 1 round" repair). Deterministic: same input → same
+ * rounds → same result (the engine solver is deterministic and this loop adds
+ * no randomness). Each applied round must STRICTLY improve (fewer violations
+ * or lower engine severity after canonical-identity merge + batch restoration)
+ * — a non-improving move is reverted and ends the loop as the verified fixed
+ * point. Fallback/provisional bands GUIDE the iteration exactly like native
+ * bands (the honest partial-score labelling is a separate, kept concern);
+ * band provenance is classified in `stopDetail` when the loop stops on
+ * remaining soft-only violations.
+ */
+function iterateSolverToFixedPoint(
+  base: RecipeInput,
+  start: RecipeInput,
+  constrainedIngredientIds: ReadonlySet<string>,
+  restore: (candidate: RecipeInput) => RecipeInput,
+): {
+  working: RecipeInput;
+  lastProposal: CorrectionProposal | null;
+  violated: string[];
+  diagnostics: IterationDiagnostics;
+} {
+  const measure = (candidate: RecipeInput): { violations: number; severityPoints: number } => {
+    const list = detectViolations(calculateRecipe(candidate));
+    return {
+      violations: list.length,
+      severityPoints: list.reduce((sum, violation) => sum + violation.severity_points, 0),
+    };
+  };
+
+  let working = start;
+  let current = measure(working);
+  const rounds: IterationRoundDiagnostic[] = [{ round: 0, ...current }];
+  let lastProposal: CorrectionProposal | null = null;
+  let violated: string[] = [];
+  let solverInvocations = 0;
+  // Definite assignment: every loop exit path assigns a stop reason.
+  let stopReason!: IterationStopReason;
+  let stopDetail: NoProposalDetail | null = null;
+  let capped = false;
+
+  for (let round = 1; ; round += 1) {
+    if (current.violations === 0) {
+      stopReason = 'all_bands_in_range';
+      break;
+    }
+    if (round > MAX_SOLVER_ROUNDS) {
+      stopReason = 'iteration_cap';
+      capped = true;
+      violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
+      break;
+    }
+    const outcome = solveOneRound(working, constrainedIngredientIds);
+    solverInvocations += 1;
+    if (outcome.applied === null) {
+      violated = outcome.violated;
+      stopReason = 'fixed_point_no_proposal';
+      stopDetail = outcome.detail;
+      break;
+    }
+    const candidate = restore(
+      ensureUniqueLineIds(base, mergeByCanonicalIdentity(base, outcome.applied)),
+    );
+    const next = measure(candidate);
+    const improved =
+      next.violations < current.violations ||
+      next.severityPoints < current.severityPoints - SEVERITY_EPS;
+    if (!improved) {
+      // Verified fixed point: the produced move did not improve after the
+      // canonical merge + batch restoration — revert it and stop honestly.
+      stopReason = 'no_improving_move';
+      violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
+      break;
+    }
+    working = candidate;
+    lastProposal = outcome.proposal;
+    current = next;
+    rounds.push({ round, ...next });
+  }
+
+  // Band-provenance sub-classification (owner FAILURE 2): remaining violations
+  // that sit ONLY on provisional/fallback bands are named as such.
+  if (
+    (stopReason === 'fixed_point_no_proposal' || stopReason === 'no_improving_move') &&
+    current.violations > 0
+  ) {
+    const bands = classifyViolationBands(working);
+    if (bands.hardMetrics.length === 0 && bands.softMetrics.length > 0) {
+      stopDetail = 'provisional_band_conflict';
+    }
+  }
+
+  return {
+    working,
+    lastProposal,
+    violated,
+    diagnostics: { solverInvocations, rounds, stopReason, stopDetail, capped },
+  };
+}
 
 /**
  * FULL FORMULATION preview (owner P0): approved-template seed mapped onto the
@@ -538,19 +715,19 @@ function buildFormulationPreviewInternal(
   };
 
   // One row per canonical identity + batch equality on the seeded recipe.
-  let working = restore(ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, built.proposal.proposedInput)));
+  const seeded = restore(
+    ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, built.proposal.proposedInput)),
+  );
 
-  // Fine-tune with the EXISTING bounded correction solver (≤2 rounds).
-  let solverRounds = 0;
-  let lastProposal: CorrectionProposal | null = null;
-  for (let round = 0; round < 2; round += 1) {
-    if (violationCount(calculateRecipe(working)) === 0) break;
-    const outcome = solveOneRound(working, constrainedIngredientIds);
-    solverRounds += 1;
-    if (outcome.applied === null) break;
-    working = restore(ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, outcome.applied)));
-    lastProposal = outcome.proposal;
-  }
+  // Fine-tune with the EXISTING bounded correction solver — ITERATED to a
+  // verified fixed point (owner P0 NIGHTLY FAILURE 2: template-seed → engine →
+  // verified corrections WHILE verified improvement exists; never 1 round by
+  // construction). Fallback bands guide the iteration; the honest partial
+  // score labelling for provisional profiles is kept unchanged.
+  const iterated = iterateSolverToFixedPoint(input, seeded, constrainedIngredientIds, restore);
+  const working = iterated.working;
+  const solverRounds = iterated.diagnostics.solverInvocations;
+  const lastProposal = iterated.lastProposal;
 
   // Acceptance: an UNCONSTRAINED formulation must BEAT the draft's null
   // hypothesis (never merely equal a proportional projection — the 8 × 125 g
@@ -567,6 +744,7 @@ function buildFormulationPreviewInternal(
       violatedMetrics: [...new Set(afterViolationList.map((v) => v.metric))],
       solverInvocations: solverRounds,
       batchOnly: false,
+      iteration: iterated.diagnostics,
     };
   }
 
@@ -589,6 +767,7 @@ function buildFormulationPreviewInternal(
     createdAt,
   );
   preview.autoBalance = { batchRescaled: true, solverRounds };
+  preview.iteration = iterated.diagnostics;
   preview.formulation = {
     mode,
     templateId: built.proposal.templateId,
@@ -685,6 +864,7 @@ export function buildOptimizePreview(
         templateId: lookup.template.templateId,
         templateStatus: lookup.template.status,
         stopReason: seeded.code === 'unsafe_proposal' ? 'template_fixed_point' : 'local_no_proposal',
+        iteration: failure.iteration,
       };
     }
     return failure;
@@ -715,25 +895,18 @@ export function buildOptimizePreview(
     return { ok: false, code: 'already_clean' };
   }
 
-  // 2. Iterate the canonical solver on the batch-true recipe to a fixed point.
+  // 2. ITERATE the canonical solver on the batch-true recipe to a VERIFIED
+  //    fixed point (owner P0 NIGHTLY FAILURE 2): rounds continue WHILE a
+  //    verified improvement exists, up to the deterministic MAX_SOLVER_ROUNDS
+  //    guard — the stop reason and the per-round trajectory are reported.
   const constrainedIngredientIds = new Set(
     input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
   );
-  let lastProposal: CorrectionProposal | null = null;
-  let solverRounds = 0;
-  let violated: string[] = [];
-  for (let round = 0; round < MAX_SOLVER_ROUNDS; round += 1) {
-    if (violationCount(calculateRecipe(working)) === 0) break;
-    const outcome = solveOneRound(working, constrainedIngredientIds);
-    solverRounds += 1;
-    if (outcome.applied === null) {
-      violated = outcome.violated;
-      break;
-    }
-    // Canonical-identity merge (owner P0 duplication) + batch restoration.
-    working = restoreBatch(ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, outcome.applied)));
-    lastProposal = outcome.proposal;
-  }
+  const iterated = iterateSolverToFixedPoint(input, working, constrainedIngredientIds, restoreBatch);
+  working = iterated.working;
+  const lastProposal = iterated.lastProposal;
+  const solverRounds = iterated.diagnostics.solverInvocations;
+  let violated: string[] = iterated.violated;
 
   const changed =
     JSON.stringify(working.items.map((i) => [i.id, i.planned_grams])) !==
@@ -751,6 +924,7 @@ export function buildOptimizePreview(
       code: 'no_proposal',
       violatedMetrics: violated,
       solverInvocations: solverRounds,
+      iteration: iterated.diagnostics,
     });
   }
 
@@ -779,6 +953,7 @@ export function buildOptimizePreview(
       violatedMetrics: [...new Set(afterViolationList.map((v) => v.metric))],
       solverInvocations: solverRounds,
       batchOnly: lastProposal === null,
+      iteration: iterated.diagnostics,
     });
   }
 
@@ -801,6 +976,7 @@ export function buildOptimizePreview(
     createdAt,
   );
   preview.autoBalance = { batchRescaled, solverRounds };
+  preview.iteration = iterated.diagnostics;
   return { ok: true, preview };
 }
 
@@ -1014,7 +1190,20 @@ export class VerifiedApply {
     id: string,
     /** Owner P0 (complete Undo): current exclusions ride the §20.1 snapshot. */
     excludedIngredientIds: readonly string[] = [],
+    /** Owner P0 NIGHTLY (Phase 3): the CURRENT monotonic draft revision. When
+     * both the preview and the caller carry a revision, a mismatch is a stale
+     * preview — the additional monotonic guard next to the fingerprint. */
+    currentDraftRevision?: number,
   ): CommitPreviewResult {
+    // Phase 3 monotonic guard: a preview built for an earlier draft revision
+    // never applies, whatever the fingerprint says.
+    if (
+      preview.baseDraftRevision !== undefined &&
+      currentDraftRevision !== undefined &&
+      preview.baseDraftRevision !== currentDraftRevision
+    ) {
+      return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+    }
     // §19.2: a preview never applies onto a state it was not built for.
     if (workingStateFingerprint(current, currentConstraints) !== preview.baseFingerprint) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };

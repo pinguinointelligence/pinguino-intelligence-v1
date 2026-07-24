@@ -676,6 +676,21 @@ export const copy = {
       classificationIdle: 'nie uruchomiono',
       hardViolations: 'Twarde naruszenia (natywne zakresy)',
       softViolations: 'Miękkie naruszenia (zakresy prowizoryczne)',
+      /* Owner P0 NIGHTLY (live-state/opt/stabilizer agent) — ADD-only keys. */
+      iterationCount: 'Iteracje optymalizatora',
+      iterationCapReached: 'osiągnięto limit',
+      iterationTrajectory: 'Trajektoria naruszeń (rundy)',
+      iterationStop: 'Kod zatrzymania optymalizatora',
+      stabilizerDosage: 'Dawka stabilizatora',
+      stabilizerDosageProvenance: 'Dawka stabilizatora — pochodzenie',
+      stabilizerWithinWindow: 'w oknie',
+      stabilizerBelowWindow: 'PONIŻEJ okna',
+      stabilizerAboveWindow: 'POWYŻEJ okna',
+      stabilizerNoWindow: 'brak zatwierdzonego okna dawkowania',
+      stabilizerSeedUnresolved:
+        'seed wzorca (template-controlled) — wzorzec reference_derived; dawka nierozstrzygnięta naukowo dla tego profilu',
+      stabilizerSeedApproved: 'seed wzorca (template-controlled, zatwierdzony wzorzec)',
+      stabilizerUserDraft: 'wartość bieżącego szkicu użytkownika',
     },
     /** Collapsed „Narzędzia zaawansowane" section — the secondary QA/diagnostic tools. */
     advancedTools: {
