@@ -67,6 +67,10 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
   { id: 'proCosts', label: s.items.proCosts, to: '/pro/costs', group: 'pro', order: 16, requires: 'pro', isActive: proSection('costs') },
   { id: 'proExports', label: s.items.proExports, to: '/pro/exports', group: 'pro', order: 17, requires: 'pro', isActive: proSection('exports') },
   { id: 'proSettings', label: s.items.proSettings, to: '/pro/settings', group: 'pro', order: 18, requires: 'pro', isActive: proSection('settings') },
+  // One-hamburger rule (owner, 2026-07-24): the workspace tab row was removed — /pro/machine
+  // (the S4 professional machine + serving-mode section) moves INTO the canonical menu so
+  // every former tab destination stays reachable. ADDITIVE entry; route unchanged.
+  { id: 'proMachine', label: s.items.proMachine, to: '/pro/machine', group: 'pro', order: 19, requires: 'pro', isActive: proSection('machine') },
 ];
 
 export const NAV_GROUP_ORDER: readonly NavGroupId[] = ['main', 'pro'];

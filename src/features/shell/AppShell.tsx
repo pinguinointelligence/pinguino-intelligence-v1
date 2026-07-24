@@ -19,16 +19,31 @@ export function AppShell({
   children,
   maxWidthClass = 'max-w-6xl',
   contentClassName,
+  viewportLock = false,
 }: {
   actions?: ReactNode;
   children: ReactNode;
   maxWidthClass?: string;
   contentClassName?: string;
+  /** One-screen workbench (owner 2026-07-24): on desktop the shell locks to the viewport
+   * height (`h-dvh`, no BODY scroll) and `main` becomes the ONE intentional scroll
+   * surface — the workbench fills it exactly; only the below-fold review zone extends
+   * it. ADDITIVE prop; default shell behavior unchanged; mobile flows normally. */
+  viewportLock?: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-paper text-ink">
+    <div
+      className={cn(
+        'min-h-screen bg-paper text-ink',
+        viewportLock && 'lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-hidden',
+      )}
+    >
       <header
-        className={cn('mx-auto flex items-center justify-between gap-4 px-6 py-4', maxWidthClass)}
+        className={cn(
+          'mx-auto flex items-center justify-between gap-4 px-6 py-4',
+          maxWidthClass,
+          viewportLock && 'lg:w-full lg:shrink-0',
+        )}
         style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)' }}
       >
         <Link
@@ -46,7 +61,14 @@ export function AppShell({
           <AppNavDrawer />
         </div>
       </header>
-      <main className={contentClassName}>{children}</main>
+      <main
+        className={cn(
+          contentClassName,
+          viewportLock && 'lg:min-h-0 lg:flex-1 lg:overflow-y-auto',
+        )}
+      >
+        {children}
+      </main>
     </div>
   );
 }

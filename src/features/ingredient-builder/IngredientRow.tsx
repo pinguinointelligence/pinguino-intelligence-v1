@@ -101,12 +101,15 @@ export function IngredientRow({
   totalBatchG,
   actions,
   lock,
+  compact = false,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
   actions: IngredientRowActions;
   /** Optional §17 padlock (constraint-studio). Absent → legacy row. */
   lock?: IngredientRowLockView;
+  /** One-screen workbench density (owner: rows 44–56 px). Presentation only. */
+  compact?: boolean;
 }) {
   const share = totalBatchG > 0 ? (item.effective_grams / totalBatchG) * 100 : null;
   const isMain = item.lock_type === 'main';
@@ -120,7 +123,7 @@ export function IngredientRow({
         isConstraintLocked && 'bg-ivory/[0.05]',
       )}
     >
-      <div className={cn(ROW_GRID, 'py-2.5')}>
+      <div className={cn(ROW_GRID, compact ? 'py-1' : 'py-2.5')}>
         <div className="min-w-0">
           <span className="truncate text-sm text-ivory">{item.ingredient.name}</span>
           <span className="flex items-center gap-2">

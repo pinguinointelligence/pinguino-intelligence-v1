@@ -19,7 +19,9 @@ const REAL_ROUTES = new Set([
   '/', '/start', '/pro', '/studio', '/recipes', '/my-recipes', '/label', '/api',
   '/work-with-us', '/subscription', '/create-ingredient', '/profile/machine', '/products/import',
   '/pro/recipe', '/pro/monitor', '/pro/versions', '/pro/production', '/pro/history',
-  '/pro/costs', '/pro/exports', '/pro/settings',
+  // /pro/machine: served by the same `/pro/:section` route (S4 machine section) —
+  // promoted into the menu by the one-hamburger rule (owner, 2026-07-24).
+  '/pro/costs', '/pro/exports', '/pro/settings', '/pro/machine',
 ]);
 
 const loc = (pathname: string, search = '') => ({ pathname, search });
@@ -33,14 +35,16 @@ describe('canonical appNav config (one canonical PINGÜINO Pro)', () => {
     expect(mainIdsNon).toEqual(expected); // Moja maszyna / Etykiety i produkty / Subskrypcja never disappear
   });
 
-  it('Pro sees the full 8-item PINGÜINO Pro group on stable /pro/<section> paths', () => {
+  it('Pro sees the full 9-item PINGÜINO Pro group on stable /pro/<section> paths', () => {
+    // One-hamburger rule (owner, 2026-07-24): the workspace tab row is gone, so
+    // /pro/machine JOINED the menu — entries are only ever ADDED, never removed.
     const pro = visibleNavItems(true).filter((i) => i.group === 'pro');
     expect(pro.map((i) => i.id)).toEqual([
-      'proRecipe', 'proMonitor', 'proVersions', 'proProduction', 'proHistory', 'proCosts', 'proExports', 'proSettings',
+      'proRecipe', 'proMonitor', 'proVersions', 'proProduction', 'proHistory', 'proCosts', 'proExports', 'proSettings', 'proMachine',
     ]);
     expect(pro.map((i) => i.to)).toEqual([
       '/pro/recipe', '/pro/monitor', '/pro/versions', '/pro/production', '/pro/history',
-      '/pro/costs', '/pro/exports', '/pro/settings',
+      '/pro/costs', '/pro/exports', '/pro/settings', '/pro/machine',
     ]);
   });
 

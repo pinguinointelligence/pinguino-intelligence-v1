@@ -77,13 +77,16 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
     }
   });
 
-  it('5. the Pro menu contains Moja maszyna, Etykiety i produkty, Subskrypcja / Plan and all 8 Pro subitems', () => {
+  it('5. the Pro menu contains Moja maszyna, Etykiety i produkty, Subskrypcja / Plan and all 9 Pro subitems', () => {
     const items = visibleNavItems(true);
     const labels = items.map((i) => i.label);
     for (const required of ['Moja maszyna', 'Etykiety i produkty', 'Subskrypcja / Plan']) {
       expect(labels).toContain(required);
     }
-    expect(items.filter((i) => i.group === 'pro')).toHaveLength(8);
+    // One-hamburger rule (owner, 2026-07-24): the workspace tab row is gone, so the menu
+    // GREW by /pro/machine (9 subitems) — entries are only ever ADDED, never removed.
+    expect(items.filter((i) => i.group === 'pro')).toHaveLength(9);
+    expect(items.some((i) => i.id === 'proMachine' && i.to === '/pro/machine')).toBe(true);
   });
 
   it('6. the menu is identical across primary routes — every shell renders the ONE drawer/config', () => {

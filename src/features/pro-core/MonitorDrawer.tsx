@@ -1,18 +1,20 @@
 /**
- * PINGÜINO Pro — Monitor PI drawer (right side on desktop, bottom sheet on mobile). Opened from the
- * sticky workbar; reuses the existing UserMonitorPro on the LIVE engine result (recomputed on every
- * change) — no new Monitor math. Dark panel per the design lock (Monitor Pro may be a dark surface).
- * Accessible: backdrop, body-scroll lock, Escape to close, safe-area padding.
+ * PINGÜINO Pro — Monitor PI drawer (bottom sheet on mobile, right sheet on sm+). Opened
+ * from the workbar; renders the SAME complete `MonitorPanelContent` as the desktop LIVE
+ * right panel (owner B1 parity — the sheet is never a reduced Monitor) on the LIVE
+ * engine result (recomputed on every change) — no new Monitor math. Dark panel per the
+ * design lock. ONE predictable scroll surface (B6): the sheet body scrolls, nothing
+ * inside it clips. Accessible: backdrop, body-scroll lock, Escape, safe-area padding.
  */
 import { useEffect } from 'react';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
-import { UserMonitorPro } from '@/features/user-monitor';
+import { MonitorPanelContent } from '@/features/pro-workbench/MonitorPanelContent';
 import { useStudioResult } from '@/features/studio/useStudioResult';
 import { useRecipeStore } from '@/stores/recipeStore';
 
 export function MonitorDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { result } = useStudioResult();
+  const { result, corrections, input } = useStudioResult();
   const temperatureC = useRecipeStore((s) => s.target_temperature_c);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function MonitorDrawer({ open, onClose }: { open: boolean; onClose: () =>
           role="dialog"
           aria-modal="true"
           aria-label={copy.proWorkbar.monitor}
-          className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-ivory/10 bg-shell p-5 text-ivory [color-scheme:dark] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[440px] sm:max-w-[92vw] sm:rounded-none sm:border-l sm:border-t-0"
+          className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-ivory/10 bg-shell p-5 text-ivory [color-scheme:dark] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[480px] sm:max-w-[92vw] sm:rounded-none sm:border-l sm:border-t-0"
           style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1.25rem)' }}
         >
           <div className="mb-3 flex items-center justify-between">
@@ -61,7 +63,12 @@ export function MonitorDrawer({ open, onClose }: { open: boolean; onClose: () =>
               </svg>
             </button>
           </div>
-          <UserMonitorPro result={result} servingTemperatureC={temperatureC} />
+          <MonitorPanelContent
+            result={result}
+            servingTemperatureC={temperatureC}
+            corrections={corrections}
+            input={input}
+          />
         </div>
       </SurfaceToneContext.Provider>
     </div>

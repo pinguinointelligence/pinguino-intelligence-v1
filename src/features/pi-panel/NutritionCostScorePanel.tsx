@@ -75,6 +75,9 @@ export function NutritionCostScorePanel({ result }: { result: RecipeResult }) {
           <>
             <div className="mt-2 divide-y divide-ivory/10">
               <Row label={m.costPerKg} value={costs.cost_per_kg} unit="€" precision={2} />
+              {/* Monitor completeness (B1): the BATCH cost — the engine's already-computed
+                  `total_cost` was never presented; „Koszt partii" restores it. */}
+              <Row label={m.costBatch} value={costs.total_cost} unit="€" precision={2} />
               <Row label={m.serving60} value={costs.cost_per_serving_60g} unit="€" precision={2} />
               <Row label={m.serving70} value={costs.cost_per_serving_70g} unit="€" precision={2} />
               <Row label={m.serving80} value={costs.cost_per_serving_80g} unit="€" precision={2} />

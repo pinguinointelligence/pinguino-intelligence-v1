@@ -138,11 +138,13 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
     <section
       aria-label="PINGÜINO Pro — pasek narzędzi receptury"
       data-testid="pro-workbar"
-      className="sticky top-0 z-30 border-b border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur sm:px-6"
+      // One-screen workbench (owner): ONE compact row ≤64 px on desktop — name + save +
+      // context + version/status + Monitor + Przelicz inline; mobile keeps the wrapping rows.
+      className="sticky top-0 z-30 border-b border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur sm:px-6 lg:flex lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-1 lg:py-2"
       style={{ paddingTop: 'max(env(safe-area-inset-top), 0.75rem)' }}
     >
       {/* Row 1 — name + save (beside the name) + more */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 lg:min-w-0 lg:flex-1 lg:basis-80 lg:flex-nowrap">
         {showNameField ? (
           <div className="flex min-w-0 flex-1 flex-col">
             <label className="sr-only" htmlFor="pro-workbar-name">{w.nameLabel}</label>
@@ -259,9 +261,10 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
         ) : null}
       </div>
 
-      {/* optional note field */}
+      {/* optional note field — the small toggle link stays INLINE in the one desktop row;
+          only the OPEN textarea takes a (contextual) full-width second line. */}
       {showNameField || showNote ? (
-        <div className="mt-2">
+        <div className={showNote ? 'mt-2 lg:order-last lg:w-full' : 'mt-2 lg:mt-0 lg:w-auto lg:shrink-0'}>
           {!showNote ? (
             <button type="button" className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-2 hover:text-ink" onClick={() => setShowNote(true)}>
               {w.addNote}
@@ -280,18 +283,21 @@ export function ProWorkbar({ onMonitor, onRecalc }: { onMonitor: () => void; onR
       ) : null}
 
       {nameError ? (
-        <p role="alert" className="mt-1 text-xs text-status-risky" data-testid="pro-workbar-name-error">{nameError}</p>
+        <p role="alert" className="mt-1 text-xs text-status-risky lg:order-last lg:w-full" data-testid="pro-workbar-name-error">{nameError}</p>
       ) : null}
       {save.error ? (
-        <p role="alert" className="mt-1 text-xs text-status-risky" data-testid="pro-workbar-error">{save.error}</p>
+        <p role="alert" className="mt-1 text-xs text-status-risky lg:order-last lg:w-full" data-testid="pro-workbar-error">{save.error}</p>
       ) : null}
-      {blockedMsg && !save.error ? <p className="mt-1 text-xs text-stone-500">{blockedMsg}</p> : null}
+      {blockedMsg && !save.error ? (
+        <p className="mt-1 text-xs text-stone-500 lg:mt-0 lg:w-auto lg:shrink-0 lg:whitespace-nowrap">{blockedMsg}</p>
+      ) : null}
 
-      {/* Row 2 — context + version + status, and Row 3 — Monitor + Przelicz */}
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0 text-xs text-stone-500">
+      {/* Row 2 — context + version + status, and Row 3 — Monitor + Przelicz
+          (desktop: both inline in the ONE compact workbar row). */}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 lg:mt-0 lg:shrink-0 lg:flex-nowrap lg:justify-end lg:gap-x-3">
+        <div className="min-w-0 text-xs text-stone-500 lg:flex lg:items-baseline lg:gap-x-2">
           <p className="truncate" data-testid="pro-workbar-context">{context}</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2">
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 lg:mt-0 lg:flex-nowrap lg:whitespace-nowrap">
             {label ? <span className="text-ink" data-testid="pro-workbar-version">{label}</span> : null}
             <span className={statusTone} data-testid="pro-workbar-status">{w.status[statusKey]}</span>
             {linked && dirty ? <span className="text-amber-700">· {w.pendingRecalc}</span> : null}
