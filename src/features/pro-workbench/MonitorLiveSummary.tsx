@@ -14,7 +14,7 @@ import { copy } from '@/copy/en';
 import type { RecipeResult } from '@/engine';
 import { formatTemperatureC } from '@/features/customer-shell/temperature';
 import type { GoldenRangeReading } from '@/features/recipe-score';
-import { MATCH_SCORE_TOOLTIPS } from '@/features/recipe-score';
+import { TECHNICAL_FIT_DISPLAY_NAME, TECHNICAL_FIT_TOOLTIPS } from '@/features/recipe-score';
 import {
   buildUserMonitorSummaryCards,
   deriveMonitorStatusLine,
@@ -78,11 +78,11 @@ export function MonitorLiveSummary({
       <div className="flex items-start justify-between gap-3">
         <div
           aria-label={score.match.ariaText}
-          title={MATCH_SCORE_TOOLTIPS[score.match.tooltipKey]}
+          title={TECHNICAL_FIT_TOOLTIPS[score.match.tooltipKey]}
           data-testid="monitor-summary-score"
         >
           <p className="text-[0.625rem] font-medium tracking-label text-ivory/65 uppercase">
-            {c.summary.scoreName}
+            {TECHNICAL_FIT_DISPLAY_NAME}
           </p>
           <p className="mt-1 flex items-baseline gap-2.5">
             <span className="font-mono text-[32px] font-medium leading-none tracking-tight tabular-nums text-ivory">

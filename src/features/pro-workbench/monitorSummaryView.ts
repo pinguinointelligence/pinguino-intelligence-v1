@@ -5,9 +5,9 @@
  * no band values invented, no score re-derivation. Three responsibilities:
  *
  *  1. `monitorScoreView` — THE ONE seam through which the Monitor summary reads score
- *     fields. Today it consumes the §15.1 `recipeMatchScore` adapter (overall → 1–10).
- *     When the technical/flavor/cost split adapter lands (parallel score agent), the
- *     integration is a rewire of THIS function body only — no Monitor layout change.
+ *     fields. Since the CURRENT-DRAFT closure (owner P0, 2026-07-25) it consumes the
+ *     CANONICAL addendum-2 `recipeTechnicalFit` adapter — the same integer every other
+ *     public surface renders. No Monitor layout change was needed.
  *  2. `buildMonitorAssessment` — the owner's B5 truthful states:
  *       - `insufficient` (empty/zero-mass recipe or unscorable result) → the exact
  *         sentence „Brak wystarczających danych do oceny." — never a blank Monitor;
@@ -25,7 +25,7 @@ import { detectViolations, type RecipeInput, type RecipeResult } from '@/engine'
 import { copy } from '@/copy/en';
 import { buildWarnings, metricLabel, metricUnit } from '@/features/pi-panel/indicatorView';
 import type { TargetMetric } from '@/engine';
-import { recipeMatchScore, type RecipeMatchScorePresentation } from '@/features/recipe-score';
+import { recipeTechnicalFit, type TechnicalFitPresentation } from '@/features/recipe-score';
 import { assessStabilizerDosage } from '@/features/formulation/stabilizerDosage';
 
 const m = copy.monitorPi.summary;
@@ -35,16 +35,32 @@ const m = copy.monitorPi.summary;
  * ------------------------------------------------------------------------ */
 
 export interface MonitorScoreView {
-  /** §15.1 public presentation — integer 1–10 („7/10"), label, aria text. */
-  match: RecipeMatchScorePresentation;
+  /** ACCEPTANCE ADDENDUM (2) public presentation — integer 1–10 („7/10"),
+   * label, aria text. Since the CURRENT-DRAFT closure this is the CANONICAL
+   * „Dopasowanie techniczne" adapter, identical to every other surface. */
+  match: TechnicalFitPresentation;
 }
 
 /**
- * THE one score-reading function of the Monitor summary layer. The split
- * technical/flavor/cost adapter (parallel agent) rewires THIS body only.
+ * THE one score-reading function of the Monitor summary layer.
+ *
+ * OWNER CURRENT-DRAFT P0 (Phase 5) — ONE CANONICAL SCORE. This seam used to
+ * read the §15.1 match adapter over `result.scores`, i.e. the engine's mode-weighted
+ * `overall` blend (technical + flavor + cost). Every other public surface —
+ * the recalculation modal, OverallScoreCard, the §14.1 status badge, the
+ * customer Home monitor — had already migrated to the addendum-2
+ * `recipeTechnicalFit` adapter, so ONE draft legitimately rendered TWO
+ * different integers side by side: `overall 82.1 → 8/10` in the Monitor
+ * headline next to `technical 88.3 → 9/10` in the modal (the owner's exact
+ * „modal 9/10 vs Monitor 8/10" report). The rewire this function was written
+ * for is done here: identical input can no longer produce two integers.
+ *
+ * The `match.score === null` semantics `buildMonitorAssessment` depends on are
+ * preserved — `recipeTechnicalFit` returns a null score for an unscorable
+ * result exactly as `recipeMatchScore` did.
  */
 export function monitorScoreView(result: RecipeResult): MonitorScoreView {
-  return { match: recipeMatchScore(result.scores) };
+  return { match: recipeTechnicalFit(result) };
 }
 
 /* ------------------------------------------------------------------------ *

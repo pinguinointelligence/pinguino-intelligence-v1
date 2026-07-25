@@ -123,6 +123,23 @@ export function ConstraintPreviewCard({
         </div>
       ) : null}
 
+      {preview.batchReconciliationOnly ? (
+        <div
+          className="mt-3 rounded-md border border-ivory/15 px-3 py-2.5"
+          data-testid="preview-batch-reconciled"
+        >
+          <p className="text-[0.65rem] font-medium tracking-[0.08em] text-ivory/60 uppercase">
+            {copy.preview.batchReconciledHeading}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-ivory/80">
+            {copy.preview.batchReconciledNote(
+              formatGramsPl(preview.batchBeforeGrams ?? 0),
+              formatGramsPl(preview.proposedInput.target_batch_grams),
+            )}
+          </p>
+        </div>
+      ) : null}
+
       <div className="mt-3 divide-y divide-ivory/10">
         {mainLines.map((line) => (
           <DiffRow key={line.lineId} line={line} />

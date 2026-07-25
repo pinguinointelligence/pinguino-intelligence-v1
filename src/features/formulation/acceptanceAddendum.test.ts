@@ -237,24 +237,34 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
     expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
   });
 
-  it('genuinely feasible constrained results stay applicable (engine_improved without cap)', () => {
+  // CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25) — DELIBERATE expectation
+  // update: with the CURRENT-DRAFT candidate vector (every unlocked selected
+  // line is adjustable) both constrained fixtures now reach EVERY band in
+  // range, so the proof verdict strengthens from `engine_improved` /
+  // `no_feasible_improvement` to `all_bands_in_range`. Applicability — the
+  // property this block exists to pin — is unchanged.
+  it('genuinely feasible constrained results stay applicable (all bands in range, no cap)', () => {
     const rec = input([line('l-straw', STRAWBERRIES(), 600, 'grams')], 'fruit_gelato');
     const set: ConstraintSet = { byLineId: { 'l-straw': { mode: 'locked', grams: 600 } } };
     const result = buildOptimizePreview(rec, set, 'now');
     const preview = buildOk(result);
-    expect(preview.formulation?.proof?.verdict).toBe('engine_improved');
+    expect(preview.formulation?.proof?.verdict).toBe('all_bands_in_range');
+    expect(detectViolations(calculateRecipe(preview.proposedInput))).toHaveLength(0);
     expect(preview.iteration?.capped).toBe(false);
     const outcome = commitPreview(rec, set, preview, 'now', 'apply-test-600');
     expect(outcome.ok).toBe(true);
   });
 
-  it('a verified fixed point (no_feasible_improvement WITHOUT cap) stays applicable', () => {
+  it('a verified non-capped fixed point stays applicable (strawberry EXACT 350)', () => {
     const rec = input([line('l-straw', STRAWBERRIES(), 350, 'grams')], 'fruit_gelato');
     const set: ConstraintSet = { byLineId: { 'l-straw': { mode: 'locked', grams: 350 } } };
     const result = buildOptimizePreview(rec, set, 'now');
     const preview = buildOk(result);
-    expect(preview.formulation?.proof?.verdict).toBe('no_feasible_improvement');
+    expect(preview.formulation?.proof?.verdict).toBe('all_bands_in_range');
     expect(preview.iteration?.capped).toBe(false);
+    // The EXACT lock is still byte-exact after the current-draft optimization.
+    const straw = preview.proposedInput.items.find((item) => item.id === 'l-straw')!;
+    expect(Object.is(straw.planned_grams, 350)).toBe(true);
     const outcome = commitPreview(rec, set, preview, 'now', 'apply-test-350');
     expect(outcome.ok).toBe(true);
   });
@@ -291,10 +301,12 @@ describe('addendum2 — technical fit is the headline; flavor/cost are separate 
     expect(fit.score === null || fit.score <= 9).toBe(true);
   });
 
-  it('native profile with residual violations degrades honestly below 10 (T14 state)', () => {
-    const { input: rec, set } = t14();
-    const preview = buildOk(buildOptimizePreview(rec, set, 'now'));
-    const result = calculateRecipe(preview.proposedInput);
+  it('native profile with residual violations degrades honestly below 10 (T14 DRAFT state)', () => {
+    // CURRENT-DRAFT P0: the OPTIMIZED T14 now reaches every band; the honest
+    // degrade contract is therefore pinned on the state that still HAS
+    // residual violations — the user's un-optimized draft.
+    const { input: rec } = t14();
+    const result = calculateRecipe(rec);
     expect(detectViolations(result).length).toBeGreaterThan(0);
     const fit = recipeTechnicalFit(result);
     expect(fit.score).not.toBeNull();
@@ -306,16 +318,58 @@ describe('addendum2 — technical fit is the headline; flavor/cost are separate 
 /* ═══ addendum3 — HARD RESIDUALS ⇒ DIAGNOSTIC PREVIEW ONLY (T14/T19) ═════ */
 
 describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)', () => {
-  it('T14 (sorbet inulin-0, native ice 50.67 < 51): diagnostic preview, Apply blocked', () => {
+  /**
+   * CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25) — DELIBERATE update.
+   * The T14/T19 sorbet drafts USED to survive optimization with a hard-native
+   * `ice_fraction` residual; with the current-draft candidate vector the
+   * optimizer now REPAIRS them (0 violations), so the natural fixtures can no
+   * longer demonstrate the door. The addendum-3 guarantee is therefore pinned
+   * where it actually lives: the door re-derives band provenance TRUSTLESSLY
+   * from `proposedInput`, so a proposal carrying a hard-native residual is
+   * refused whatever the preview claims. The proposal below is the user's own
+   * un-optimized draft, proportionally normalized to the target batch (the
+   * per-100 g composition — and therefore the ice violation — is invariant
+   * under that scaling, so nothing is fabricated).
+   */
+  const draftAtTargetBatch = (rec: RecipeInput): RecipeInput => {
+    const factor = rec.target_batch_grams / plannedSum(rec);
+    return {
+      ...rec,
+      items: rec.items.map((item) => ({ ...item, planned_grams: item.planned_grams * factor })),
+    };
+  };
+
+  /** A preview carrying the hard-residual proposal, with a proof that is
+   * SELF-CONSISTENT with it (so the door's earlier proof gate cannot pre-empt
+   * the addendum-3 gate under test). */
+  const withHardResidualProposal = (
+    preview: ConstraintPreview,
+    rec: RecipeInput,
+  ): ConstraintPreview => {
+    const forged = structuredClone(preview);
+    forged.proposedInput = draftAtTargetBatch(rec);
+    if (forged.formulation?.proof) forged.formulation.proof.verdict = 'no_feasible_improvement';
+    return forged;
+  };
+
+  it('T14 (sorbet inulin-0, native ice 50.67 < 51): hard residual ⇒ Apply blocked at the door', () => {
     const { input: rec, set } = t14();
+    const proposal = draftAtTargetBatch(rec);
+    // The residual is HARD by the SAME provenance classifier the door uses.
+    expect(classifyViolationBands(proposal).hardMetrics).toContain('ice_fraction');
+
     const preview = buildOk(buildOptimizePreview(rec, set, 'now'));
-    // The preview itself is honestly marked diagnostic (hard ice residual).
-    expect(preview.hardResidualMetrics).toContain('ice_fraction');
-    expect(preview.diagnosticOnly).toBe(true);
-    // hardSafe=false by the SAME provenance classifier the door uses.
-    expect(classifyViolationBands(preview.proposedInput).hardMetrics).toContain('ice_fraction');
-    // THE DOOR: Apply structurally blocked with the honest metric list.
-    const outcome = commitPreview(rec, set, preview, 'now', 'apply-test-t14');
+    // The optimizer itself now repairs T14 — the improvement is real.
+    expect(classifyViolationBands(preview.proposedInput).hardMetrics).toEqual([]);
+
+    // THE DOOR on the hard-residual proposal: structurally blocked.
+    const outcome = commitPreview(
+      rec,
+      set,
+      withHardResidualProposal(preview, rec),
+      'now',
+      'apply-test-t14',
+    );
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
     expect(outcome.code).toBe('hard_residual_violations');
@@ -326,21 +380,22 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
     expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
   });
 
-  it('T19 (sorbet from strawberry, native ice 50.82 < 51): same door block', () => {
+  it('T19 (sorbet from strawberry): the native ice residual is REPAIRED, not laundered', () => {
+    // T19's draft is hollow (Strawberry 0 g), so it has no composition to
+    // normalize — the addendum-3 door itself is pinned on T14 above. What T19
+    // pins here is the CURRENT-DRAFT improvement: the formulated sorbet no
+    // longer leaves a hard NATIVE ice_fraction residual behind.
     const { input: rec, set } = t19();
     const preview = buildOk(buildOptimizePreview(rec, set, 'now'));
-    expect(preview.hardResidualMetrics).toContain('ice_fraction');
-    expect(preview.diagnosticOnly).toBe(true);
-    const outcome = commitPreview(rec, set, preview, 'now', 'apply-test-t19');
-    expect(outcome.ok).toBe(false);
-    if (outcome.ok) return;
-    expect(outcome.code).toBe('hard_residual_violations');
+    expect(classifyViolationBands(preview.proposedInput).hardMetrics).toEqual([]);
+    expect(preview.diagnosticOnly).toBe(false);
+    expect(commitPreview(rec, set, preview, 'now', 'apply-test-t19').ok).toBe(true);
   });
 
   it('the door is TRUSTLESS: stripping the preview flags does not open it', () => {
     const { input: rec, set } = t14();
     const preview = buildOk(buildOptimizePreview(rec, set, 'now'));
-    const stripped = structuredClone(preview);
+    const stripped = withHardResidualProposal(preview, rec);
     delete stripped.hardResidualMetrics;
     delete stripped.diagnosticOnly;
     const outcome = commitPreview(rec, set, stripped, 'now', 'apply-test-stripped');
@@ -349,18 +404,29 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
     expect(outcome.code).toBe('hard_residual_violations');
   });
 
+  it('a repaired native profile (no hard residual) stays applicable', () => {
+    const { input: rec, set } = t14();
+    const preview = buildOk(buildOptimizePreview(rec, set, 'now'));
+    expect(preview.hardResidualMetrics).toEqual([]);
+    expect(preview.diagnosticOnly).toBe(false);
+    // The exact 0 g inulin lock is byte-preserved (never re-added).
+    const inulin = preview.proposedInput.items.find((item) => item.id === 'l-inulin')!;
+    expect(Object.is(inulin.planned_grams, 0)).toBe(true);
+    const outcome = commitPreview(rec, set, preview, 'now', 'apply-test-t14-ok');
+    expect(outcome.ok).toBe(true);
+  });
+
   it('soft/provisional residuals STAY applicable with explanation (T12 state)', () => {
     const rec = input(milk500Items(), 'fruit_gelato');
     const preview = buildOk(buildOptimizePreview(rec, T12_SET, 'now'));
-    // Residuals exist but ALL sit on provisional fallback bands — soft.
-    expect(preview.violationsAfter).toBeGreaterThan(0);
+    // Any residual sits on provisional fallback bands only — never hard.
     expect(preview.hardResidualMetrics).toEqual([]);
     expect(preview.diagnosticOnly).toBe(false);
     const outcome = commitPreview(rec, T12_SET, preview, 'now', 'apply-test-soft');
     expect(outcome.ok).toBe(true);
   });
 
-  it('apply-through-store: T14 is blocked at the door and the recipe stays untouched', () => {
+  it('apply-through-store: a hard-residual proposal is blocked and the recipe stays untouched', () => {
     const { input: rec } = t14();
     useRecipeStore.setState({
       mode: 'classic',
@@ -378,8 +444,11 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
     useConstraintStudioStore.setState({ constraints: t14().set });
     const before = JSON.stringify(useRecipeStore.getState().items.map((i) => [i.id, i.planned_grams]));
     useConstraintStudioStore.getState().createOptimizePreview();
-    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
-    expect(useConstraintStudioStore.getState().preview!.diagnosticOnly).toBe(true);
+    const staged = useConstraintStudioStore.getState().preview;
+    expect(staged).not.toBeNull();
+    // Force the staged proposal to the hard-residual state (the door is the
+    // only thing being pinned here — it must refuse regardless of provenance).
+    useConstraintStudioStore.setState({ preview: withHardResidualProposal(staged!, rec) });
     useConstraintStudioStore.getState().applyPreview();
     const blocked = useConstraintStudioStore.getState().blocked;
     expect(blocked).not.toBeNull();

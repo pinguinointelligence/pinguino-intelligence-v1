@@ -32,6 +32,12 @@ import {
 } from '@/engine';
 import { recipeContext } from '@/features/studio/buildRecipeInput';
 import {
+  buildDraftCandidateVector,
+  describeDraftAdjustment,
+  sweepDraftCandidateVector,
+  type DraftSweepResult,
+} from './draftCandidateVector';
+import {
   applyConstraintsToRecipe,
   buildProposalExplanation,
   BATCH_SUM_TOLERANCE_G,
@@ -160,6 +166,15 @@ export interface ConstraintPreview {
   titlePl: string;
   /** Owner P0 (Przelicz z PI) — auto-balance proof: what the orchestration actually did. */
   autoBalance?: { batchRescaled: boolean; solverRounds: number };
+  /**
+   * Owner CURRENT-DRAFT P0 (primary root cause): TRUE ⇒ this preview exists
+   * because the draft was OFF its target batch and the batch was reconciled;
+   * NO further technical improvement was verified. The UI must say exactly
+   * that and must NEVER call it a technical improvement.
+   */
+  batchReconciliationOnly?: boolean;
+  /** The planned mass the draft carried before the reconciliation. */
+  batchBeforeGrams?: number;
   /** Owner P0 (full formulation): the formulation provenance — template seed,
    * mode, auto-added toolbox lines (with reasons), honest gaps + suggestions. */
   formulation?: {
@@ -253,6 +268,70 @@ function improvementBaseline(current: RecipeInput): RecipeInput | null {
       ? current.items.map((i) => ({ ...i, planned_grams: (i.planned_grams / sum) * batch }))
       : current.items.map((i) => ({ ...i, planned_grams: batch / current.items.length }));
   return { ...current, items };
+}
+
+/**
+ * Is the draft NEAR its target batch — i.e. is the draft ITSELF the null
+ * hypothesis rather than „just scale what you typed"? Exactly the ±25 % band
+ * `improvementBaseline` already uses (no new threshold): outside it, the
+ * proportional projection IS the whole proposal (the forbidden 8 × 125 g
+ * class); inside it, the composition is the user's recipe.
+ */
+function isNearTargetBatch(current: RecipeInput): boolean {
+  const baseline = improvementBaseline(current);
+  return baseline !== null && baseline === current;
+}
+
+/**
+ * Is the draft a DIFFERENTIATED composition? A hollow draft whose positive
+ * lines all carry the SAME grams projects onto an equal split (8 × 122 g → 8 ×
+ * 125 g) — that projection is the null hypothesis and may never be presented
+ * as a result. A real recipe always has differentiated grams.
+ */
+function isDifferentiatedComposition(current: RecipeInput): boolean {
+  const positives = current.items.filter((item) => item.planned_grams > 0);
+  if (positives.length < 2) return false;
+  const first = positives[0]!.planned_grams;
+  return positives.some(
+    (item) => Math.abs(item.planned_grams - first) > Math.max(1e-9, first * 1e-6),
+  );
+}
+
+/**
+ * BATCH RECONCILIATION (owner CURRENT-DRAFT P0, primary root cause).
+ *
+ * A substantive, differentiated draft sitting OFF its target batch (955 g /
+ * 1045 g against 1000 g) is not „already the best verified result" — it does
+ * not even weigh what the user asked for. Reaching the hard batch equality is
+ * a REQUIRED, legitimate outcome of „Przelicz z PI", so it must produce a real
+ * Preview even when no further TECHNICAL improvement can be verified.
+ *
+ * It must NOT open the door for the owner's forbidden 8 × 125 g class, where
+ * the proportional projection IS the entire proposal. The discriminators are
+ * therefore, all required and all recomputable from the two inputs alone (the
+ * Apply door re-derives them trustlessly — it never trusts a preview flag):
+ *   1. the draft really was off batch by more than the tolerance;
+ *   2. the draft is NEAR its target (the frozen ±25 % baseline band) — outside
+ *      it the null hypothesis is the projection, not the draft;
+ *   3. the draft is DIFFERENTIATED (never a uniform equal-split shape);
+ *   4. the proposal really lands on the target batch;
+ *   5. the proposal is not worse than the draft on the engine's own measures
+ *      (never more violations, never more severity).
+ * Engine-safety (no hard-native residual) and the batch invariant are enforced
+ * by the existing gates and are deliberately NOT duplicated here.
+ */
+export function isBatchReconciliation(current: RecipeInput, proposed: RecipeInput): boolean {
+  const target = current.target_batch_grams;
+  if (!(target > 0)) return false;
+  if (current.items.some((item) => item.actual_grams !== null)) return false;
+  if (Math.abs(plannedSum(current) - target) <= BATCH_SUM_TOLERANCE_G) return false; // (1)
+  if (!isNearTargetBatch(current)) return false; // (2)
+  if (!isDifferentiatedComposition(current)) return false; // (3)
+  if (Math.abs(plannedSum(proposed) - target) > BATCH_SUM_TOLERANCE_G) return false; // (4)
+  const before = detectViolations(calculateRecipe(current)).length;
+  const after = detectViolations(calculateRecipe(proposed)).length;
+  if (after > before) return false; // (5)
+  return totalSeverity(proposed) <= totalSeverity(current) + SEVERITY_EPS;
 }
 
 /** Does `proposed` strictly beat the draft's null-hypothesis baseline? */
@@ -443,6 +522,37 @@ const lockedIngredientNames = (input: RecipeInput, set: ConstraintSet): string[]
 
 /* ── preview builders ────────────────────────────────────────────────────── */
 
+/**
+ * Owner CURRENT-DRAFT P0 (Phase 4) — WHAT A STOP MUST PROVE.
+ *
+ * „The recipe already matches the reference template" is a RESEMBLANCE, not a
+ * proof of optimality, and can never be a sufficient stop on its own. Every
+ * terminal „no further safe improvement" state therefore carries this record:
+ * how many solver rounds and current-draft sweeps really ran, which of the
+ * user's own ingredients were offered to the optimizer and across which gram
+ * range they were tested, which metrics are still limiting, and whether the
+ * profile is scored on provisional bands at all.
+ */
+export interface BestSafeEvidence {
+  /** Solver rounds really invoked. */
+  solverInvocations: number;
+  /** CURRENT-DRAFT candidate-vector sweeps really performed. */
+  draftVectorSearches: number;
+  /** Iteration rounds recorded (round 0 = the starting state). */
+  iterations: number;
+  /** The user's own adjustable lines, with the exact gram range tested. */
+  testedCandidates: {
+    ingredientName: string;
+    currentGrams: number;
+    testedFromGrams: number;
+    testedToGrams: number;
+  }[];
+  /** Metrics still out of band on the terminal state (the limiting factors). */
+  limitingMetrics: string[];
+  /** TRUE ⇒ the profile is scored on provisional/fallback bands. */
+  provisionalProfile: boolean;
+}
+
 export type BuildPreviewResult =
   | { ok: true; preview: ConstraintPreview }
   | { ok: false; code: 'invalid_constraints'; issues: ConstraintValidationIssue[] }
@@ -504,10 +614,16 @@ export type BuildPreviewResult =
       softViolatedMetrics: string[];
       /** Band provenance for the profile (calibration status). */
       bandSource: 'category_fallback' | 'temperature_fallback';
-      /** The template the fallback seeded from (provenance). */
+      /** The template the fallback seeded from (provenance ONLY — owner
+       * CURRENT-DRAFT P0 Phase 4: resemblance to a reference template is NEVER
+       * evidence of optimality and must never be presented as the stop reason). */
       templateId: string;
       templateStatus: TemplateStatus;
       stopReason: 'local_no_proposal' | 'template_fixed_point';
+      /** Owner CURRENT-DRAFT P0 (Phase 4): the REAL evidence behind the stop —
+       * what was searched, over which ingredients, across which gram range, and
+       * which metrics are still limiting. Without this a stop is unprovable. */
+      evidence: BestSafeEvidence;
       /** Owner P0 NIGHTLY (FAILURE 2): full iteration trajectory + stop reason. */
       iteration?: IterationDiagnostics;
     }
@@ -599,8 +715,18 @@ export type AttemptedMoveRejection =
   | 'constrained_add_blocked' // §17 add-intent filter (constrained ingredient)
   | 'excluded_add_blocked' // never-reintroduce: user-excluded ingredient (Agent R handoff)
   | 'stabilizer_dosage_clamp' // approved Mapper dosage window
+  /** Owner CURRENT-DRAFT P0: the engine's REDUCE path picks the dominant
+   * contributor from `lock_type` alone and cannot see the §17 padlock layer —
+   * a move onto an exact-locked / range-held LINE is refused here, so a
+   * locked line can never be moved even inside a Preview. */
+  | 'constrained_line_blocked'
   | 'apply_failed' // proposal existed but could not be applied
-  | 'no_metric_improvement'; // applied, verified NOT improving → reverted
+  | 'no_metric_improvement' // applied, verified NOT improving → reverted
+  /** Owner CURRENT-DRAFT P0 (Phase 2/3): the whole CURRENT-DRAFT candidate
+   * vector was tested line by line and no gram move improved the engine's own
+   * measure — the fixed point is proven over the user's OWN ingredients, not
+   * merely over the engine's ADD catalogue. */
+  | 'draft_vector_no_improvement';
 
 /** One row of the per-move QA evidence log: what move the engine offered, what
  * happened to it and the exact metric deltas for applied/reverted moves. */
@@ -663,6 +789,8 @@ function solveOneRound(
   current: RecipeInput,
   constrainedIngredientIds: ReadonlySet<string>,
   excludedIngredientIds: ReadonlySet<string>,
+  /** §17-held LINE ids — the padlock layer the engine's own rules cannot see. */
+  heldLineIds: ReadonlySet<string> = new Set(),
 ):
   | {
       applied: RecipeInput;
@@ -701,7 +829,15 @@ function solveOneRound(
     const dosageBlocked = candidate.actions.some((action) =>
       violatesApprovedStabilizerDosage(current, action),
     );
-    if (!addBlocked && !excludedBlocked && !dosageBlocked) {
+    // Owner CURRENT-DRAFT P0 — §17 LINE HOLD: the engine's REDUCE path selects
+    // the dominant contributor from `lock_type` alone and is blind to the §17
+    // padlock layer, so a `locked`/`range` line could be moved INSIDE a
+    // preview (the Apply door then refused it — an honest but useless dead
+    // end). Any action targeting a held line is refused here instead.
+    const heldLineBlocked = candidate.actions.some(
+      (action) => action.target_line_id !== undefined && heldLineIds.has(action.target_line_id),
+    );
+    if (!addBlocked && !excludedBlocked && !dosageBlocked && !heldLineBlocked) {
       proposal = candidate;
       break;
     }
@@ -711,7 +847,9 @@ function solveOneRound(
         ? 'constrained_add_blocked'
         : excludedBlocked
           ? 'excluded_add_blocked'
-          : 'stabilizer_dosage_clamp',
+          : heldLineBlocked
+            ? 'constrained_line_blocked'
+            : 'stabilizer_dosage_clamp',
     });
   }
   if (!proposal) {
@@ -754,11 +892,45 @@ export type IterationStopReason =
   | 'all_bands_in_range' // 10/10 — nothing left out of band
   | 'fixed_point_no_proposal' // solver returned no admissible move (see detail)
   | 'no_improving_move' // a move existed but verifiably improved nothing — reverted
-  | 'iteration_cap'; // deterministic guard hit — reported honestly
+  | 'iteration_cap'; // deterministic guard hit — deterministic guard, reported honestly
+
+/**
+ * Owner CURRENT-DRAFT P0 (Phase 1 — instrumentation): WHAT the optimizer was
+ * actually given for this draft revision, captured per optimization run so a
+ * ledger/QA readout can PROVE that the user's current lines and their current
+ * grams reached the solver (never a stale or reference draft).
+ */
+export interface CandidateVectorDiagnostic {
+  lineId: string;
+  ingredientId: string;
+  ingredientName: string;
+  /** The grams the optimizer received for this line — the CURRENT draft value. */
+  currentGrams: number;
+  increasable: boolean;
+  /** The exact gram values the optimizer tested this line at. */
+  testedGrams: number[];
+}
 
 export interface IterationDiagnostics {
   /** How many times the canonical solver was REALLY invoked. */
   solverInvocations: number;
+  /** Owner CURRENT-DRAFT P0: how many times the CURRENT-DRAFT candidate vector
+   * (every unlocked selected line) was really searched. */
+  draftVectorSearches: number;
+  /** Owner CURRENT-DRAFT P0 (Phase 1): the candidate vector as passed to the
+   * optimizer on the FIRST round — the proof of what the optimizer saw. Grams
+   * are the BATCH-RECONCILED values the search really worked on; the untouched
+   * draft values are in `draftLineGrams` below. */
+  candidateVector: CandidateVectorDiagnostic[];
+  /** Owner Phase 1 — THE anti-staleness proof: the user's CURRENT draft as the
+   * optimizer received it, BEFORE any batch reconciliation (the 955 g / 1045 g
+   * question: did the optimizer get the real total or a stale 1000 g?). */
+  draftPlannedSumGrams: number;
+  draftLineGrams: { lineId: string; ingredientId: string; grams: number }[];
+  /** Total planned mass the search STARTED from (after batch reconciliation). */
+  startPlannedSumGrams: number;
+  /** The target batch the optimizer reconciled to. */
+  targetBatchGrams: number;
   /** Per-round violation/severity trajectory (round 0 = start). */
   rounds: IterationRoundDiagnostic[];
   stopReason: IterationStopReason;
@@ -790,6 +962,9 @@ function iterateSolverToFixedPoint(
   constrainedIngredientIds: ReadonlySet<string>,
   restore: (candidate: RecipeInput) => RecipeInput,
   excludedIngredientIds: ReadonlySet<string> = new Set(),
+  /** Owner CURRENT-DRAFT P0 (Phase 3): the §17 set, so EVERY unlocked selected
+   * line becomes an adjustable candidate for the optimizer. */
+  set: ConstraintSet = { byLineId: {} },
 ): {
   working: RecipeInput;
   lastProposal: CorrectionProposal | null;
@@ -811,6 +986,26 @@ function iterateSolverToFixedPoint(
   let lastProposal: CorrectionProposal | null = null;
   let violated: string[] = [];
   let solverInvocations = 0;
+  let draftVectorSearches = 0;
+  // §17 padlock layer, resolved to LINE ids once (the engine cannot see it).
+  const heldLineIds = new Set(
+    Object.entries(set.byLineId)
+      .filter(([, constraint]) => constraint.mode !== 'ai')
+      .map(([lineId]) => lineId),
+  );
+  // Owner Phase 1 instrumentation: the candidate vector of the STARTING state.
+  const candidateVector: CandidateVectorDiagnostic[] = buildDraftCandidateVector(
+    start,
+    set,
+    excludedIngredientIds,
+  ).map((candidate) => ({
+    lineId: candidate.lineId,
+    ingredientId: candidate.ingredientId,
+    ingredientName: candidate.ingredientName,
+    currentGrams: candidate.currentGrams,
+    increasable: candidate.increasable,
+    testedGrams: candidate.testedGrams,
+  }));
   // Definite assignment: every loop exit path assigns a stop reason.
   let stopReason!: IterationStopReason;
   let stopDetail: NoProposalDetail | null = null;
@@ -827,7 +1022,12 @@ function iterateSolverToFixedPoint(
       violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
       break;
     }
-    const outcome = solveOneRound(working, constrainedIngredientIds, excludedIngredientIds);
+    const outcome = solveOneRound(
+      working,
+      constrainedIngredientIds,
+      excludedIngredientIds,
+      heldLineIds,
+    );
     solverInvocations += 1;
     // Owner Agent 3 — QA move log: candidates the §17/dosage filter rejected.
     for (const rejected of outcome.filtered) {
@@ -842,12 +1042,72 @@ function iterateSolverToFixedPoint(
         severityAfter: null,
       });
     }
+
+    /**
+     * Owner CURRENT-DRAFT P0 (Phase 2/3) — SECOND TIER: the CURRENT-DRAFT
+     * candidate vector. The canonical solver ALWAYS runs first and keeps
+     * absolute priority (existing behaviour is byte-identical whenever it
+     * produces an improving move); only where it stops does the optimizer now
+     * additionally test the draft's OWN unlocked lines as adjustable
+     * quantities. „Not in the reference template" therefore no longer means
+     * „not adjustable" — and a fixed point is only ever claimed after the
+     * user's own ingredients were really tried.
+     */
+    const searchDraftVector = (): DraftSweepResult | null => {
+      draftVectorSearches += 1;
+      return sweepDraftCandidateVector({
+        start: working,
+        set,
+        excludedIngredientIds,
+        constraints: {
+          context: recipeContext(working),
+          mode: working.mode,
+          allow_main_ingredient_reduction: false,
+          // Capacity is re-established by construction: `normalize` restores the
+          // target batch after every accepted line (same deferral rationale as
+          // `solverInputWithDeferredCapacity`).
+          machine_capacity_grams: null,
+        },
+        normalize: (candidate) =>
+          restore(ensureUniqueLineIds(base, mergeByCanonicalIdentity(base, candidate))),
+        measure,
+        startMeasure: current,
+      });
+    };
+
     if (outcome.applied === null) {
+      const drafted = searchDraftVector();
+      if (drafted !== null) {
+        attemptedMoves.push({
+          round,
+          move: drafted.moves.map(describeDraftAdjustment).join(' + '),
+          outcome: 'applied',
+          rejectionReason: null,
+          violationsBefore: current.violations,
+          severityBefore: current.severityPoints,
+          violationsAfter: drafted.measure.violations,
+          severityAfter: drafted.measure.severityPoints,
+        });
+        working = drafted.input;
+        current = drafted.measure;
+        rounds.push({ round, ...drafted.measure });
+        continue;
+      }
       attemptedMoves.push({
         round,
         move: 'none',
         outcome: 'none',
         rejectionReason: outcome.detail === 'provisional_band_conflict' ? 'solver_fixed_point' : outcome.detail,
+        violationsBefore: current.violations,
+        severityBefore: current.severityPoints,
+        violationsAfter: null,
+        severityAfter: null,
+      });
+      attemptedMoves.push({
+        round,
+        move: `draft-vector (${candidateVector.length} adjustable lines)`,
+        outcome: 'none',
+        rejectionReason: 'draft_vector_no_improvement',
         violationsBefore: current.violations,
         severityBefore: current.severityPoints,
         violationsAfter: null,
@@ -876,8 +1136,37 @@ function iterateSolverToFixedPoint(
       severityAfter: next.severityPoints,
     });
     if (!improved) {
-      // Verified fixed point: the produced move did not improve after the
-      // canonical merge + batch restoration — revert it and stop honestly.
+      // The solver's own move did not improve — before declaring a fixed point,
+      // the CURRENT-DRAFT candidate vector must be searched (owner Phase 2/3).
+      const drafted = searchDraftVector();
+      if (drafted !== null) {
+        attemptedMoves.push({
+          round,
+          move: drafted.moves.map(describeDraftAdjustment).join(' + '),
+          outcome: 'applied',
+          rejectionReason: null,
+          violationsBefore: current.violations,
+          severityBefore: current.severityPoints,
+          violationsAfter: drafted.measure.violations,
+          severityAfter: drafted.measure.severityPoints,
+        });
+        working = drafted.input;
+        current = drafted.measure;
+        rounds.push({ round, ...drafted.measure });
+        continue;
+      }
+      attemptedMoves.push({
+        round,
+        move: `draft-vector (${candidateVector.length} adjustable lines)`,
+        outcome: 'none',
+        rejectionReason: 'draft_vector_no_improvement',
+        violationsBefore: current.violations,
+        severityBefore: current.severityPoints,
+        violationsAfter: null,
+        severityAfter: null,
+      });
+      // Verified fixed point: neither the engine solver's move nor ANY move of
+      // the current-draft candidate vector improved the engine's own measure.
       stopReason = 'no_improving_move';
       violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
       break;
@@ -904,7 +1193,24 @@ function iterateSolverToFixedPoint(
     working,
     lastProposal,
     violated,
-    diagnostics: { solverInvocations, rounds, stopReason, stopDetail, capped, attemptedMoves },
+    diagnostics: {
+      solverInvocations,
+      draftVectorSearches,
+      candidateVector,
+      draftPlannedSumGrams: plannedSum(base),
+      draftLineGrams: base.items.map((item) => ({
+        lineId: item.id,
+        ingredientId: item.ingredient.id,
+        grams: item.planned_grams,
+      })),
+      startPlannedSumGrams: plannedSum(start),
+      targetBatchGrams: start.target_batch_grams,
+      rounds,
+      stopReason,
+      stopDetail,
+      capped,
+      attemptedMoves,
+    },
   };
 }
 
@@ -935,12 +1241,15 @@ function iterateFormulationSeed(
     ensureUniqueLineIds(input, mergeByCanonicalIdentity(input, proposedInput)),
   );
   // Agent R handoff: solver rounds honor the SAME exclusions the seed honored.
+  // Owner CURRENT-DRAFT P0: the §17 set rides along so the current-draft
+  // candidate vector can never move an exact-locked / range-held line.
   return iterateSolverToFixedPoint(
     input,
     seeded,
     constrainedIngredientIds,
     restore,
     new Set(options.excludedIngredientIds ?? []),
+    set,
   );
 }
 
@@ -1295,6 +1604,48 @@ function buildFormulationPreviewInternal(
 }
 
 /**
+ * Owner CURRENT-DRAFT P0 (Phase 4): assemble the evidence a „no further safe
+ * improvement" stop must carry. PURE — it only reports what the optimizer
+ * really did; it never re-runs or re-judges anything.
+ */
+function buildBestSafeEvidence(
+  input: RecipeInput,
+  set: ConstraintSet,
+  iteration: IterationDiagnostics | undefined,
+  bands: ReturnType<typeof classifyViolationBands>,
+  options: FormulationOptions,
+): BestSafeEvidence {
+  const vector =
+    iteration?.candidateVector ??
+    buildDraftCandidateVector(input, set, new Set(options.excludedIngredientIds ?? [])).map(
+      (candidate) => ({
+        lineId: candidate.lineId,
+        ingredientId: candidate.ingredientId,
+        ingredientName: candidate.ingredientName,
+        currentGrams: candidate.currentGrams,
+        increasable: candidate.increasable,
+        testedGrams: candidate.testedGrams,
+      }),
+    );
+  return {
+    solverInvocations: iteration?.solverInvocations ?? 0,
+    draftVectorSearches: iteration?.draftVectorSearches ?? 0,
+    iterations: Math.max(0, (iteration?.rounds.length ?? 1) - 1),
+    testedCandidates: vector.map((candidate) => ({
+      ingredientName: candidate.ingredientName,
+      currentGrams: candidate.currentGrams,
+      testedFromGrams: candidate.testedGrams.length > 0 ? candidate.testedGrams[0]! : candidate.currentGrams,
+      testedToGrams:
+        candidate.testedGrams.length > 0
+          ? candidate.testedGrams[candidate.testedGrams.length - 1]!
+          : candidate.currentGrams,
+    })),
+    limitingMetrics: [...bands.hardMetrics, ...bands.softMetrics],
+    provisionalProfile: bands.bandSource !== 'native' || bands.temperatureFallback,
+  };
+}
+
+/**
  * „Przelicz z PI” (owner P0 — REAL AUTO-BALANCE): recalculate and automatically
  * balance the COMPLETE current recipe. Composes ONLY approved mechanisms — no
  * new math, no science change:
@@ -1376,10 +1727,63 @@ export function buildOptimizePreview(
         templateId: lookup.template.templateId,
         templateStatus: lookup.template.status,
         stopReason: seeded.code === 'unsafe_proposal' ? 'template_fixed_point' : 'local_no_proposal',
+        // Owner Phase 4: the stop must carry its REAL evidence, never template
+        // resemblance. Built from the iteration the optimizer really ran.
+        evidence: buildBestSafeEvidence(input, set, failure.iteration, bands, options),
         iteration: failure.iteration,
       };
     }
     return failure;
+  };
+
+  /**
+   * Owner CURRENT-DRAFT P0 (PRIMARY root cause) — THE BATCH-RECONCILIATION
+   * DOOR. Before ANY „no further improvement" outcome becomes final, an
+   * off-batch draft must still be brought to its target batch. The owner's
+   * verified failure was exactly this: Inulin 10 g → 955 g against a 1000 g
+   * target → no Preview at all, while PI claimed the recipe „is already the
+   * best verified result" — a false statement about a recipe that does not
+   * even weigh what was asked for.
+   *
+   * `isBatchReconciliation` carries the discrimination (near-batch,
+   * differentiated, not-worse) so the hollow 8 × 125 g class stays rejected;
+   * the preview is labelled `batchReconciliationOnly` so the surface tells the
+   * truth: the batch was reconciled and NO further technical improvement was
+   * verified.
+   */
+  const withBatchReconciliation = (
+    failure: BuildPreviewResult,
+    candidate: RecipeInput,
+    iteration: IterationDiagnostics | undefined,
+    violationsBefore: number,
+  ): BuildPreviewResult => {
+    if (failure.ok) return failure;
+    if (iteration?.capped === true) return failure;
+    if (!isBatchReconciliation(input, candidate)) return failure;
+    // Engine-safe only: a hard-native residual would make it diagnostic-only,
+    // which cannot help the user reach the target batch — stay honest instead.
+    const bands = classifyViolationBands(candidate);
+    if (bands.hardMetrics.length > 0) return failure;
+
+    const lockedNames = lockedIngredientNames(input, set);
+    const preview = finishPreview(
+      'optimize',
+      copy.preview.kindLabels.optimize,
+      input,
+      set,
+      candidate,
+      set,
+      violationsBefore,
+      lockedNames.length > 0 ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }] : [],
+      createdAt,
+    );
+    preview.autoBalance = { batchRescaled: true, solverRounds: iteration?.solverInvocations ?? 0 };
+    preview.iteration = iteration;
+    preview.batchReconciliationOnly = true;
+    preview.batchBeforeGrams = plannedSum(input);
+    preview.hardResidualMetrics = bands.hardMetrics;
+    preview.diagnosticOnly = false;
+    return { ok: true, preview };
   };
 
   const constrained = applyConstraintsToRecipe(input, set);
@@ -1422,6 +1826,7 @@ export function buildOptimizePreview(
     constrainedIngredientIds,
     restoreBatch,
     new Set(options.excludedIngredientIds ?? []),
+    set,
   );
   working = iterated.working;
   const lastProposal = iterated.lastProposal;
@@ -1438,14 +1843,20 @@ export function buildOptimizePreview(
       violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
     }
     // Owner Phase 6: a complete unconstrained draft gets the template-seeded
-    // fallback before the failure is final (never a bare one-line stop).
-    return withTemplateFallback({
-      ok: false,
-      code: 'no_proposal',
-      violatedMetrics: violated,
-      solverInvocations: solverRounds,
-      iteration: iterated.diagnostics,
-    });
+    // fallback before the failure is final (never a bare one-line stop); the
+    // CURRENT-DRAFT batch-reconciliation door is the last word (owner P0).
+    return withBatchReconciliation(
+      withTemplateFallback({
+        ok: false,
+        code: 'no_proposal',
+        violatedMetrics: violated,
+        solverInvocations: solverRounds,
+        iteration: iterated.diagnostics,
+      }),
+      working,
+      iterated.diagnostics,
+      violationsBefore,
+    );
   }
 
   // OWNER P0 ACCEPTANCE GATE (definitive-fail repair): a changed candidate is a
@@ -1466,15 +1877,22 @@ export function buildOptimizePreview(
     (lastProposal !== null && severityAfter < severityBefore - SEVERITY_EPS);
   if (!improved) {
     // Owner Phase 6: same fallback door — a produced-but-rejected local
-    // candidate on a complete unconstrained draft tries the template seed.
-    return withTemplateFallback({
-      ok: false,
-      code: 'unsafe_proposal',
-      violatedMetrics: [...new Set(afterViolationList.map((v) => v.metric))],
-      solverInvocations: solverRounds,
-      batchOnly: lastProposal === null,
-      iteration: iterated.diagnostics,
-    });
+    // candidate on a complete unconstrained draft tries the template seed;
+    // then the CURRENT-DRAFT batch-reconciliation door (owner P0 primary root
+    // cause: an off-batch draft is never „the best verified result").
+    return withBatchReconciliation(
+      withTemplateFallback({
+        ok: false,
+        code: 'unsafe_proposal',
+        violatedMetrics: [...new Set(afterViolationList.map((v) => v.metric))],
+        solverInvocations: solverRounds,
+        batchOnly: lastProposal === null,
+        iteration: iterated.diagnostics,
+      }),
+      working,
+      iterated.diagnostics,
+      violationsBefore,
+    );
   }
 
   const explanation = lastProposal
@@ -1924,7 +2342,14 @@ export class VerifiedApply {
       const hardConstrained =
         Object.values(currentConstraints.byLineId).some((c) => c.mode !== 'ai') ||
         current.items.some((item) => item.lock_type !== 'unlocked');
-      if (!hardConstrained && !beatsBaseline(current, preview.proposedInput)) {
+      // Owner CURRENT-DRAFT P0: a VERIFIED batch reconciliation of a
+      // near-batch, differentiated draft is a legitimate outcome even without
+      // a technical improvement — reaching the hard batch equality is part of
+      // the objective. Re-derived TRUSTLESSLY here from `current` +
+      // `proposedInput` (never from `preview.batchReconciliationOnly`), and
+      // deliberately narrow so the hollow 8 × 125 g class stays gated.
+      const reconciliation = isBatchReconciliation(current, preview.proposedInput);
+      if (!hardConstrained && !reconciliation && !beatsBaseline(current, preview.proposedInput)) {
         return {
           ok: false,
           code: 'unsafe_proposal',
