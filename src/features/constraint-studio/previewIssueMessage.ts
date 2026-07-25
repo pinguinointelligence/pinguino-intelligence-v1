@@ -16,7 +16,13 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       return copy.previewIssue.unsafeProposal;
     case 'best_safe_result':
       // Owner P0 NIGHTLY Phase 7(b): explanatory terminal state, not a failure.
-      return copy.previewIssue.bestSafeResult;
+      // OWNER FINAL INTEGRATION ADDENDUM item 3 (2026-07-25): the honest
+      // sentence is never shown alone — the STOP REASON rides with it, so the
+      // reader always sees WHY the search ended rather than an unqualified
+      // superlative. (The Pro panel additionally renders the full evidence.)
+      return `${copy.previewIssue.bestSafeResult} ${copy.bestSafe.stopReason[issue.stopReason](
+        issue.solverInvocations,
+      )}`;
     case 'impossible_under_constraints': {
       // Owner Agent 3 (dominant-lock infeasibility) + ACCEPTANCE ADDENDUM (1):
       // the exact conflicting constraint, the honest search account (full

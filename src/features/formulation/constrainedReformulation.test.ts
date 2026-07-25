@@ -68,9 +68,14 @@ describe('router — the ±25% rule is GONE (Phase 1 + tests 1/2)', () => {
     expect(decision.template?.templateId).toBe('S01');
   });
   it('milk-500 (1120 g, 12% off) routes to CONSTRAINED reformulation, not local', () => {
-    const decision = routeFormulationMode(input(MILK_500(), 'fruit_gelato'), MILK_SET);
+    const decision = routeFormulationMode(input(MILK_500(), 'milk_gelato'), MILK_SET);
     expect(decision.mode).toBe('constrained_reformulation');
-    expect(decision.template?.templateId).toBe('fruit_gelato_ref_v1');
+    // OWNER ADDENDUM items 1+2 (2026-07-25): the canonical family of this dairy
+    // fruit draft is milk_gelato, and its APPROVED seed is milk_base_v1 (the
+    // reference-derived fruit template is quarantined). The guarantee under
+    // test — an explicit lock routes to CONSTRAINED reformulation, never the
+    // local basin, whatever the mass distance — is unchanged.
+    expect(decision.template?.templateId).toBe('milk_base_v1');
   });
   it('a complete at-target unconstrained draft keeps the local basin', () => {
     const items = [
@@ -132,7 +137,7 @@ describe('FIXTURE A — inulin unavailable (tests 3/4/5/6)', () => {
 
 describe('FIXTURE B — milk exactly 500 g (tests 7/8/21)', () => {
   it('milk stays 500.0 byte-exact; total becomes exactly 1000 g; differentiated; no duplicates', () => {
-    const result = buildOptimizePreview(input(MILK_500(), 'fruit_gelato'), MILK_SET, 'now');
+    const result = buildOptimizePreview(input(MILK_500(), 'milk_gelato'), MILK_SET, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const p = result.preview;
@@ -146,7 +151,7 @@ describe('FIXTURE B — milk exactly 500 g (tests 7/8/21)', () => {
   });
 
   it('professional context: machine_capacity null never blocks (test 21)', () => {
-    const rec = input(MILK_500(), 'fruit_gelato');
+    const rec = input(MILK_500(), 'milk_gelato');
     expect(rec.machine_capacity_grams).toBeNull();
     const result = buildOptimizePreview(rec, MILK_SET, 'now');
     expect(result.ok).toBe(true);
@@ -171,7 +176,7 @@ describe('FIXTURE E + scale safety (tests 16/17/18)', () => {
     expect(result.preview.proposedInput.items.every((i) => Number.isFinite(i.planned_grams))).toBe(true);
   });
   it('locked 500 g does NOT trigger the locked-sum error against a 1000 g target (test 18)', () => {
-    const rec = input(MILK_500(), 'fruit_gelato');
+    const rec = input(MILK_500(), 'milk_gelato');
     const result = buildBatchRescalePreview(rec, MILK_SET, 1000, 'now');
     // 500 locked ≤ 1000 target → never rescale_locked_sum
     if (!result.ok) expect(result.code).not.toBe('rescale_locked_sum');
@@ -226,7 +231,7 @@ describe('FIXTURE D — complete Undo restores exclusions (tests 14/15)', () => 
 describe('FIXTURE F — 20 constrained cycles (tests 22/23)', () => {
   it('exact lock + edits over 20 cycles: 1000 g, no duplicates, no stale exclusions', () => {
     useRecipeStore.setState({
-      mode: 'classic', category: 'fruit_gelato', visibleProductType: 'gelato', target_temperature_c: -11,
+      mode: 'classic', category: 'milk_gelato', visibleProductType: 'gelato', target_temperature_c: -11,
       target_batch_grams: 1000, machine_capacity_grams: null, flavor_intensity: 'balanced',
       cost_priority: 'balanced', items: MILK_500(), excludedIngredientIds: [],
     });

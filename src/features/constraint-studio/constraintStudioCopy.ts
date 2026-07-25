@@ -130,6 +130,34 @@ export const constraintStudioCopy = {
     batchReconciledNote: (before: string, target: string) =>
       `Receptura ważyła ${before} przy celu partii ${target} — PI wyrównało ją dokładnie do celu. ` +
       `Nie potwierdzono dalszej poprawy technicznej: proporcje składników pozostają twoje.`,
+    /* ── OWNER FINAL INTEGRATION ADDENDUM item 4 (2026-07-25) ──────────────
+       „Batch reconciliation is NOT formulation improvement." The heading a
+       preview wears is computed TRUSTLESSLY from the before/after inputs
+       (`classifyPreviewOutcome`), never from a builder flag: a pure rescale
+       can never borrow the optimisation wording, and a verified improvement
+       can never be reduced to „przeskalowano". */
+    outcome: {
+      batchRescaleHeading: 'Przeskalowano partię',
+      optimizationHeading: 'PI zoptymalizowało recepturę',
+      /* The mixed case says BOTH, batch first (the owner's order of honesty). */
+      bothHeading: 'Przeskalowano partię i PI zoptymalizowało recepturę',
+      noChangeHeading: 'Bez zweryfikowanej zmiany',
+      /* Pure rescale: per-100 g composition identical — say exactly that. */
+      rescaleOnlyNote: (before: string, after: string) =>
+        `Zmieniono wyłącznie masę partii: ${before} → ${after}. Skład w przeliczeniu na 100 g ` +
+        `pozostaje bez zmian — to nie jest poprawa technologiczna receptury.`,
+      /* Mass reconciled but the composition also moved, with NO verified gain. */
+      rescaleChangedCompositionNote: (before: string, after: string) =>
+        `Zmieniono masę partii: ${before} → ${after}. PI nie potwierdziło poprawy technicznej — ` +
+        `proporcje pozostają twoje.`,
+      /* Only a REAL engine-verified gain may use this sentence. */
+      optimizationNote: (violationsBefore: number, violationsAfter: number) =>
+        `Engine potwierdził poprawę techniczną: parametry poza zatwierdzonym zakresem ` +
+        `${violationsBefore} → ${violationsAfter}.`,
+      noChangeNote:
+        'PI nie potwierdziło ani wyrównania partii, ani poprawy technicznej — ten podgląd ' +
+        'niczego takiego nie deklaruje.',
+    },
     /* Owner P0 NIGHTLY Phase 6 — the template-seeded fallback provenance note. */
     localFallbackNote:
       'Korekta lokalna nie znalazła bezpiecznej poprawy — PI ułożyło recepturę od zatwierdzonego ' +
@@ -150,10 +178,21 @@ export const constraintStudioCopy = {
       `Wynik narusza zatwierdzone zakresy technologiczne (natywne): ` +
       `${listPl(metrics.map(metricLabelPl))}. Ten podgląd służy wyłącznie diagnozie — ` +
       'nie można go zastosować jako receptury.',
+    /* OWNER ADDENDUM item 3 (honest terminology) — SUPERSEDES „nie jest
+       dowiedzioną najlepszą osiągalną recepturą": that phrasing implied some
+       OTHER result IS a proven best-achievable recipe. The solver is
+       coordinate descent over a fixed gram ladder — it can prove a local
+       fixed point, never a global optimum — so the honest statement is that
+       the search stopped on its own budget, not on a proof. */
     diagnosticIterationCap:
-      'Wynik zatrzymał się na limicie iteracji solvera i nie jest dowiedzioną najlepszą ' +
-      'osiągalną recepturą. Ten podgląd służy wyłącznie diagnozie — nie można go zastosować ' +
-      'jako receptury.',
+      'Solver zatrzymał się na limicie iteracji — przeszukiwanie nie zostało zakończone, ' +
+      'więc tego wyniku nie można uznać za recepturę. Ten podgląd służy wyłącznie diagnozie.',
+    /* OWNER ADDENDUM item 2 — non-approved formulation provenance. */
+    diagnosticReferenceDerived: (templateId: string) =>
+      `Ta propozycja pochodzi z receptury referencyjnej (${templateId}), która nie jest ` +
+      'zatwierdzona naukowo. Dane referencyjne służą wyłącznie diagnostyce — nie można ich ' +
+      'zastosować jako receptury produkcyjnej. Wybierz zatwierdzony profil produktu albo ' +
+      'wpisz własne gramatury i przelicz ponownie.',
     applyDisabledDiagnostic: 'Zastosowanie wyłączone (podgląd diagnostyczny)',
   },
 
@@ -179,11 +218,18 @@ export const constraintStudioCopy = {
     unsafeProposal:
       'PI nie utworzyło bezpiecznej receptury. Propozycja została odrzucona. ' +
       'Receptura nie została zmieniona.',
-    /* ACCEPTANCE ADDENDUM (1): an iteration-capped result is never applicable. */
+    /* ACCEPTANCE ADDENDUM (1): an iteration-capped result is never applicable.
+       Owner addendum item 3 — honest wording (see preview.diagnosticIterationCap). */
     iterationCapDiagnostic:
-      'Wynik zatrzymał się na limicie iteracji solvera i nie jest dowiedzioną najlepszą ' +
-      'osiągalną recepturą. Podgląd ma charakter wyłącznie diagnostyczny — nie można go ' +
-      'zastosować. Receptura nie została zmieniona.',
+      'Solver zatrzymał się na limicie iteracji — przeszukiwanie nie zostało zakończone, ' +
+      'więc tego wyniku nie można zastosować jako receptury. Podgląd ma charakter wyłącznie ' +
+      'diagnostyczny. Receptura nie została zmieniona.',
+    /* OWNER ADDENDUM item 2 — the reference-derived provenance refusal. */
+    referenceDerivedProvenance: (templateId: string) =>
+      `Ta propozycja pochodzi z receptury referencyjnej (${templateId}), która nie jest ` +
+      'zatwierdzona naukowo, więc nie może zostać zastosowana jako receptura produkcyjna. ' +
+      'Wybierz zatwierdzony profil produktu albo wpisz własne gramatury i przelicz ponownie. ' +
+      'Receptura nie została zmieniona.',
     /* ACCEPTANCE ADDENDUM (3): hard-native residual violations block Apply. */
     hardResiduals: (metrics: readonly string[]) =>
       `Proponowana receptura narusza zatwierdzone zakresy technologiczne (natywne): ` +
@@ -230,10 +276,20 @@ export const constraintStudioCopy = {
       `Zablokowane składniki ważą łącznie więcej niż nowa partia. ` +
       `Minimalna partia dla obecnych blokad: ${minimum}.`,
     /* Owner P0 NIGHTLY Phase 7(b) — the BEST-SAFE FIXED POINT (explanatory,
-     * NOT a failure): local corrector + template fallback both verified. */
+     * NOT a failure): local corrector + template fallback both verified.
+     *
+     * OWNER FINAL INTEGRATION ADDENDUM item 3 (2026-07-25) — SUPERSEDES
+     * „Obecna receptura jest najlepszym zweryfikowanym wynikiem dla aktualnych
+     * składników i ograniczeń." The optimizer is COORDINATE DESCENT over a
+     * fixed gram ladder (draftCandidateVector.ts) plus the engine's bounded
+     * correction solver: that proves a LOCAL verified fixed point, never a
+     * global mathematical optimum, so „the best verified result" was a claim
+     * the machinery cannot support. The honest sentence names the solver and
+     * is always rendered together with the exact stop reason. */
     bestSafeResult:
-      'PI nie znalazło dalszej bezpiecznej poprawy. Obecna receptura jest najlepszym ' +
-      'zweryfikowanym wynikiem dla aktualnych składników i ograniczeń.',
+      'PI nie znalazło dalszej bezpiecznej poprawy. To najlepszy wynik znaleziony przez ' +
+      'obecny solver dla aktualnych składników i ograniczeń — inne, lepsze rozwiązanie ' +
+      'może istnieć poza jego zasięgiem przeszukiwania.',
   },
 
   /* ---------- Owner P0 NIGHTLY — best-safe result details (Phase 7/8) ------ */

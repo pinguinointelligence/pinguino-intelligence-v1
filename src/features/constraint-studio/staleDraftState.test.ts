@@ -141,16 +141,41 @@ describe('PHASE 1 — deterministic owner repro: live state ≡ refreshed state 
     expect(live).toBe(refreshed);
   });
 
-  it('„Przelicz z PI" after the owner sequence formulates WITHOUT a refresh (the live failure)', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25) — SUPERSEDES „the
+  // 0 g fruit line was FILLED" for a DAIRY fruit gelato. `fruit_gelato` has no
+  // native seeded bands (⇒ canonical `milk_gelato`) and the only template that
+  // ever gave such a recipe a fruit dose (`fruit_gelato_ref_v1`, grams
+  // transcribed from a QA fixture) is quarantined, so PI has no APPROVED fruit
+  // dose to fill with and must ask instead of inventing one.
+  //
+  // THE GUARANTEE THIS TEST EXISTS TO PROTECT — the outcome reflects the
+  // CURRENT draft with NO refresh, never an earlier session's locked grams — is
+  // re-pinned below on BOTH branches: the honest stop names the fruit of the
+  // current draft, and typing an amount immediately produces a real 1000 g
+  // formulation, still without a refresh.
+  it('„Przelicz z PI" after the owner sequence uses the CURRENT draft WITHOUT a refresh (the live failure)', () => {
     const { strawLineId } = runOwnerSequence();
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const first = useConstraintStudioStore.getState();
+    // No stale §17 padlock from session 1 survived the load.
+    expect(first.constraints.byLineId).toEqual({});
+    // The 0 g fruit is never silently ignored: PI names THIS draft's fruit.
+    expect(first.preview).toBeNull();
+    expect(first.previewIssue?.code).toBe('missing_required_role');
+    if (first.previewIssue?.code === 'missing_required_role') {
+      expect(first.previewIssue.messagePl).toContain(STRAWBERRIES.name);
+    }
+
+    // …and the moment the user supplies the amount, the SAME session (no
+    // refresh) formulates the current draft to an exact 1000 g.
+    useRecipeStore.getState().setPlannedGrams(strawLineId, 200);
     useConstraintStudioStore.getState().createOptimizePreview();
     const { preview, previewIssue } = useConstraintStudioStore.getState();
     expect(previewIssue).toBeNull();
     expect(preview).not.toBeNull();
-    // The 0 g fruit line was FILLED (zero-gram semantics, no refresh needed) —
-    // never held at an earlier session's locked grams.
     const straw = preview!.proposedInput.items.find((i) => i.id === strawLineId)!;
     expect(straw.planned_grams).toBeGreaterThan(0);
+    // never held at an earlier session's locked grams (milk was padlocked @500)
     expect(Math.abs(plannedSum(preview!.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
   });
 
@@ -230,22 +255,30 @@ describe('PHASE 3 — revision invalidation (tests 2–4)', () => {
 });
 
 describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => {
-  it('OWNER A no-refresh: gelato, artifact-locked 0 g fruit fills after a poisoned session (test 6)', () => {
+  // OWNER ADDENDUM items 1+2 — the poisoned-session guarantee is unchanged; the
+  // fruit now carries a real amount because PI has no approved dose for a 0 g
+  // fruit in a dairy gelato (see the PHASE 1 supersession note above). The 0 g
+  // branch is pinned separately in the test right below.
+  it('OWNER A no-refresh: artifact-locked 0 g MILK fills after a poisoned session (test 6)', () => {
     // Poison the session first: an EARLIER draft with §17 locks.
     useRecipeStore.getState().addIngredient(MILK, 400);
     const early = useRecipeStore.getState().items[0]!;
     useConstraintStudioStore.getState().toggleLock(early.id);
-    // The owner's saved recipe: strawberries 0 g wearing an artifact grams-lock.
+    // The owner's saved recipe: fruit wearing an artifact grams-lock, milk 0 g.
     const saved = buildRecipeInput(useRecipeStore.getState());
     const poisoned = structuredClone({
       ...saved,
+      // An UNSEEDED category persisted by an older session — canonicalized at
+      // the engine seam (addendum item 1), never passed to selectTargetBand.
       category: 'fruit_gelato' as const,
       items: [
-        { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 0, actual_grams: null, lock_type: 'grams' as const },
+        { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 350, actual_grams: null, lock_type: 'grams' as const },
         { id: 'l-milk', ingredient: MILK, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' as const },
       ],
     });
     useRecipeStore.getState().loadRecipeInput(poisoned);
+    // The stale category never reaches the engine: dairy + fruit ⇒ milk_gelato.
+    expect(buildRecipeInput(useRecipeStore.getState()).category).toBe('milk_gelato');
     useConstraintStudioStore.getState().createOptimizePreview();
     const { preview, previewIssue } = useConstraintStudioStore.getState();
     expect(previewIssue).toBeNull();
@@ -254,6 +287,28 @@ describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => 
     expect(grams('l-straw')!).toBeGreaterThan(0);
     expect(grams('l-milk')!).toBeGreaterThan(0);
     expect(Math.abs(plannedSum(preview!.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+  });
+
+  it('OWNER A no-refresh: a 0 g fruit stops honestly instead of silently vanishing', () => {
+    useRecipeStore.getState().addIngredient(MILK, 400);
+    useConstraintStudioStore.getState().toggleLock(useRecipeStore.getState().items[0]!.id);
+    const saved = buildRecipeInput(useRecipeStore.getState());
+    useRecipeStore.getState().loadRecipeInput(
+      structuredClone({
+        ...saved,
+        category: 'fruit_gelato' as const,
+        items: [
+          { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 0, actual_grams: null, lock_type: 'grams' as const },
+          { id: 'l-milk', ingredient: MILK, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' as const },
+        ],
+      }),
+    );
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const { preview, previewIssue } = useConstraintStudioStore.getState();
+    expect(preview).toBeNull();
+    expect(previewIssue?.code).toBe('missing_required_role');
+    if (previewIssue?.code !== 'missing_required_role') return;
+    expect(previewIssue.messagePl).toContain(STRAWBERRIES.name);
   });
 
   it('OWNER B no-refresh: sorbet from 0 g selected fruit after a poisoned session (test 7)', () => {
@@ -310,8 +365,26 @@ describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => 
 
 describe('determinism — 10 repeated no-refresh cycles (test 9)', () => {
   it('the same draft produces the byte-identical proposal 10× in a row', () => {
-    runOwnerSequence();
+    // OWNER ADDENDUM items 1+2: the owner sequence ends with the fruit at 0 g,
+    // which is now the honest „give me the amount" stop rather than a preview
+    // (see the PHASE 1 supersession note). DETERMINISM — the guarantee this
+    // test exists to protect — is re-pinned over the OUTCOME, whichever branch
+    // it takes, and the fruit is then given an amount so the preview branch is
+    // proven byte-identical 10× too.
+    const { strawLineId } = runOwnerSequence();
     const proposals: string[] = [];
+    for (let cycle = 0; cycle < 10; cycle += 1) {
+      useConstraintStudioStore.getState().createOptimizePreview();
+      const { preview, previewIssue } = useConstraintStudioStore.getState();
+      expect(preview).toBeNull();
+      expect(previewIssue?.code).toBe('missing_required_role');
+      proposals.push(JSON.stringify(previewIssue));
+      useConstraintStudioStore.getState().cancelPreview();
+    }
+    for (const serialized of proposals) expect(serialized).toBe(proposals[0]);
+
+    useRecipeStore.getState().setPlannedGrams(strawLineId, 200);
+    proposals.length = 0;
     for (let cycle = 0; cycle < 10; cycle += 1) {
       useConstraintStudioStore.getState().createOptimizePreview();
       const { preview, previewIssue } = useConstraintStudioStore.getState();

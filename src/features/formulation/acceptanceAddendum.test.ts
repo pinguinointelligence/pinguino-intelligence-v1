@@ -46,6 +46,8 @@ import {
   selectCanonicalDraft,
   useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
+import { canonicalInternalCategory } from '@/features/studio/productType';
+import { isApprovedTemplateId, listFormulationTemplates } from './templateRegistry';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { verifyConstraintsPreserved, type ConstraintSet } from '@/features/recipe-constraints';
 import { recipeTechnicalFit, recipeMatchScore, commercialDimensions } from '@/features/recipe-score';
@@ -88,11 +90,23 @@ const input = (
   items,
 });
 
-/** T9 — Strawberry EXACT 900 g, Milk 0 g unlocked, Fruit Gelato −11 / 1000 g. */
+/**
+ * OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — every fixture in this
+ * file previously declared `category: 'fruit_gelato'`. That cell has NO native
+ * seeded bands, so `selectTargetBand` substituted the milk_gelato bands and
+ * flagged `category_fallback`. All these fixtures select milk, so their
+ * canonical family is `milk_gelato` — the SAME band values, now NATIVE. The
+ * addendum guarantees pinned here (1: iteration_cap is never applicable; 2:
+ * technical fit is the headline; 3: hard-native residuals block Apply; 4:
+ * max/range ≠ exact lock) are unchanged; where a residual now classifies HARD
+ * instead of SOFT the individual test says so explicitly.
+ */
+
+/** T9 — Strawberry EXACT 900 g, Milk 0 g unlocked, Gelato −11 / 1000 g. */
 const t9 = () => ({
   input: input(
     [line('l-straw', STRAWBERRIES(), 900, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
-    'fruit_gelato',
+    'milk_gelato',
   ),
   set: { byLineId: { 'l-straw': { mode: 'locked' as const, grams: 900 } } } satisfies ConstraintSet,
 });
@@ -174,9 +188,19 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
     expect(result.alternativeProductType).toBe('sorbet');
     // Degenerate outcome evidence: many residual violations, honestly listed.
     expect(result.residualViolatedMetrics.length).toBeGreaterThanOrEqual(5);
-    // PRESERVED pink context: the fruit_gelato template is reference-derived —
-    // a reference/demo/surrogate source can never produce a production claim.
-    expect(result.templateStatus).toBe('reference_derived');
+    // OWNER FINAL INTEGRATION ADDENDUM item 2 (2026-07-25) — SUPERSEDES
+    // „templateStatus === 'reference_derived'". The guarantee behind that pin
+    // was: a reference/demo/surrogate source can never produce a production
+    // claim. It is now enforced far more strongly — the reference-derived
+    // template is QUARANTINED out of the runtime registry entirely, so this
+    // refusal seeds from an APPROVED template and no runtime outcome can carry
+    // reference-derived provenance at all. Both halves are pinned here.
+    expect(result.templateStatus).toBe('approved');
+    expect(isApprovedTemplateId(result.templateId)).toBe(true);
+    expect(
+      listFormulationTemplates().some((t) => t.status !== 'approved'),
+      'the runtime registry must contain approved templates only',
+    ).toBe(false);
   });
 
   it('the Polish message names the conflict and BOTH suggestions (reduce fruit / switch to Sorbet)', () => {
@@ -209,7 +233,7 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
     const verified = buildOptimizePreview(
       input(
         [line('l-straw', STRAWBERRIES(), grams, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
-        'fruit_gelato',
+        'milk_gelato',
       ),
       { byLineId: { 'l-straw': { mode: 'locked', grams } } },
       'now',
@@ -220,7 +244,7 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
 
   it('DOOR-ENFORCED: a capped optimize preview can never commit (not UI-only)', () => {
     // A genuinely feasible constrained preview…
-    const rec = input([line('l-straw', STRAWBERRIES(), 600, 'grams')], 'fruit_gelato');
+    const rec = input([line('l-straw', STRAWBERRIES(), 600, 'grams')], 'milk_gelato');
     const set: ConstraintSet = { byLineId: { 'l-straw': { mode: 'locked', grams: 600 } } };
     const result = buildOptimizePreview(rec, set, 'now');
     const preview = buildOk(result);
@@ -244,7 +268,7 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
   // `no_feasible_improvement` to `all_bands_in_range`. Applicability — the
   // property this block exists to pin — is unchanged.
   it('genuinely feasible constrained results stay applicable (all bands in range, no cap)', () => {
-    const rec = input([line('l-straw', STRAWBERRIES(), 600, 'grams')], 'fruit_gelato');
+    const rec = input([line('l-straw', STRAWBERRIES(), 600, 'grams')], 'milk_gelato');
     const set: ConstraintSet = { byLineId: { 'l-straw': { mode: 'locked', grams: 600 } } };
     const result = buildOptimizePreview(rec, set, 'now');
     const preview = buildOk(result);
@@ -256,7 +280,7 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
   });
 
   it('a verified non-capped fixed point stays applicable (strawberry EXACT 350)', () => {
-    const rec = input([line('l-straw', STRAWBERRIES(), 350, 'grams')], 'fruit_gelato');
+    const rec = input([line('l-straw', STRAWBERRIES(), 350, 'grams')], 'milk_gelato');
     const set: ConstraintSet = { byLineId: { 'l-straw': { mode: 'locked', grams: 350 } } };
     const result = buildOptimizePreview(rec, set, 'now');
     const preview = buildOk(result);
@@ -291,14 +315,27 @@ describe('addendum2 — technical fit is the headline; flavor/cost are separate 
     expect(dims.cost.name).toBe('Koszt');
   });
 
-  it('provisional/fallback profiles can never show a validated native 10/10 (T12 state)', () => {
-    const preview = buildOk(buildOptimizePreview(input(milk500Items(), 'fruit_gelato'), T12_SET, 'now'));
-    const result = calculateRecipe(preview.proposedInput);
+  // OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — the T12 STATE is no
+  // longer provisional: it is a dairy fruit gelato, i.e. canonical `milk_gelato`
+  // scored on NATIVE bands. The guarantee this test exists to protect — a
+  // profile scored on SUBSTITUTED bands may never show a validated native 10/10
+  // — is unchanged and re-pinned below directly on the engine's fallback
+  // mechanism (which still exists for any category the science team has not
+  // seeded yet), together with the new fact that runtime can no longer reach it.
+  it('provisional/fallback profiles can never show a validated native 10/10', () => {
+    // `fruit_gelato` is an UNSEEDED engine cell → selectTargetBand substitutes
+    // the milk_gelato bands and flags category_fallback. Runtime can no longer
+    // produce this state (pinned right below), but the engine mechanism — and
+    // the honesty contract on top of it — must stay correct.
+    const provisionalState = input(milk500Items(), 'fruit_gelato');
+    const result = calculateRecipe(provisionalState);
     expect(result.indicators.some((i) => i.category_fallback === true)).toBe(true);
     const fit = recipeTechnicalFit(result);
     expect(fit.provisional).toBe(true);
     expect(fit.validatedNative).toBe(false);
     expect(fit.score === null || fit.score <= 9).toBe(true);
+    // …and no runtime routing can ever hand the engine that category again.
+    expect(canonicalInternalCategory('fruit_gelato', provisionalState.items)).toBe('milk_gelato');
   });
 
   it('native profile with residual violations degrades honestly below 10 (T14 DRAFT state)', () => {
@@ -417,7 +454,7 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
   });
 
   it('soft/provisional residuals STAY applicable with explanation (T12 state)', () => {
-    const rec = input(milk500Items(), 'fruit_gelato');
+    const rec = input(milk500Items(), 'milk_gelato');
     const preview = buildOk(buildOptimizePreview(rec, T12_SET, 'now'));
     // Any residual sits on provisional fallback bands only — never hard.
     expect(preview.hardResidualMetrics).toEqual([]);
@@ -548,7 +585,7 @@ describe('addendum4 — max/range is a RANGE constraint, never an exact-lock enc
   it('the runtime UI staging path builds {mode:"range",minGrams:0,maxGrams:500} — proven', () => {
     useRecipeStore.setState({
       mode: 'classic',
-      category: 'fruit_gelato',
+      category: 'milk_gelato',
       visibleProductType: 'gelato',
       target_temperature_c: -11,
       target_batch_grams: 1000,
@@ -601,7 +638,7 @@ describe('addendum4 — max/range is a RANGE constraint, never an exact-lock enc
       milk500Items().map((item) =>
         item.id === 'l-milk' ? { ...item, planned_grams: 450 } : item,
       ),
-      'fruit_gelato',
+      'milk_gelato',
     );
     expect(verifyConstraintsPreserved(T12_SET, state450).ok).toBe(true);
     expect(verifyConstraintsPreserved(T11_SET, state450).ok).toBe(false);
@@ -609,8 +646,8 @@ describe('addendum4 — max/range is a RANGE constraint, never an exact-lock enc
     // byte-held at 500 g while the max-500 solver lands BELOW the bound at the
     // template proportion (grams may only coincide when the optimum happens to
     // sit at the bound — here it does not).
-    const exact = buildOk(buildOptimizePreview(input(milk500Items(), 'fruit_gelato'), T11_SET, 'now'));
-    const ranged = buildOk(buildOptimizePreview(input(milk500Items(), 'fruit_gelato'), T12_SET, 'now'));
+    const exact = buildOk(buildOptimizePreview(input(milk500Items(), 'milk_gelato'), T11_SET, 'now'));
+    const ranged = buildOk(buildOptimizePreview(input(milk500Items(), 'milk_gelato'), T12_SET, 'now'));
     const milkExact = exact.proposedInput.items.find((i) => i.id === 'l-milk')!.planned_grams;
     const milkRanged = ranged.proposedInput.items.find((i) => i.id === 'l-milk')!.planned_grams;
     expect(Object.is(milkExact, 500)).toBe(true); // exact: byte-held
@@ -621,7 +658,7 @@ describe('addendum4 — max/range is a RANGE constraint, never an exact-lock enc
   });
 
   it('(c) range bounds are respected round-trip through preview + apply', () => {
-    const rec = input(milk500Items(), 'fruit_gelato');
+    const rec = input(milk500Items(), 'milk_gelato');
     const preview = buildOk(buildOptimizePreview(rec, T12_SET, 'now'));
     const outcome = commitPreview(rec, T12_SET, preview, 'now', 'apply-test-range');
     expect(outcome.ok).toBe(true);

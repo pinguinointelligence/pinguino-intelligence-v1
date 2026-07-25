@@ -39,7 +39,16 @@ const seedOwnerDraft = () => {
   useConstraintStudioStore.getState().resetForTests();
   useRecipeStore.getState().setVisibleProductType('gelato');
   useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
-  useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
+  // OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25): the fruit now
+  // carries a real amount. A dairy fruit gelato is canonical `milk_gelato`, and
+  // no APPROVED milk template has a `fruit` role now that the reference-derived
+  // `fruit_gelato_ref_v1` is quarantined — so a 0 g fruit is (correctly) an
+  // honest „give me the amount" stop rather than a preview (pinned in
+  // zeroGramSemantics.test.ts / liveRuntime.test.ts). This file's guarantees —
+  // byte-for-byte preview→store transfer, the guarded-write rejections, the
+  // batch invariant and one-shot apply — are about the APPLY path and are
+  // unchanged; the seed just has to be a recipe PI can actually formulate.
+  useRecipeStore.getState().addIngredient(STRAWBERRIES, 350);
 };
 
 const storeRows = () =>
@@ -96,6 +105,10 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     expect(staged).not.toBeNull();
     // the user edits AFTER preview → source revision no longer matches
     const first = useRecipeStore.getState().items[0]!;
+    const untouchedSum = useRecipeStore
+      .getState()
+      .items.slice(1)
+      .reduce((sum, item) => sum + item.planned_grams, 0);
     useRecipeStore.getState().setPlannedGrams(first.id, 5);
     // Owner P0 NIGHTLY (Phase 3): the material edit invalidates the staged
     // preview immediately — and a resurrected stale preview still cannot
@@ -104,7 +117,7 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     useConstraintStudioStore.setState({ preview: staged });
     useConstraintStudioStore.getState().applyPreview();
     expect(useConstraintStudioStore.getState().blocked?.code).toBe('stale_preview');
-    expect(storeSum()).toBe(5); // recipe untouched apart from the user's own edit
+    expect(storeSum()).toBe(untouchedSum + 5); // untouched apart from the user's own edit
   });
 });
 

@@ -180,6 +180,19 @@ const syntheticPreview = (): ConstraintPreview => {
   return {
     kind: 'optimize',
     titlePl: copy.preview.kindLabels.optimize,
+    // Owner addendum item 4: hand-forged fixtures declare the outcome
+    // classification explicitly (the real builders compute it).
+    outcomeClassification: {
+      outcome: 'no_verified_change',
+      batchReconciled: false,
+      compositionUnchanged: false,
+      engineImproved: false,
+      beforeGrams: 1000,
+      afterGrams: 1000,
+      targetBatchGrams: 1000,
+      violationsBefore: 0,
+      violationsAfter: 0,
+    },
     baseFingerprint: 'fp',
     proposedInput: base,
     nextConstraints: { byLineId: {} },

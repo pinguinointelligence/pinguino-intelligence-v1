@@ -11,12 +11,14 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { calculateRecipe, type RecipeInput, type RecipeItem } from '@/engine';
+import { calculateRecipe, TARGET_BANDS, type RecipeInput, type RecipeItem } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
+  NATIVE_BAND_CATEGORIES,
   VISIBLE_PRODUCT_TYPES,
+  canonicalInternalCategory,
   detectClassifications,
   gelatoInternalCategory,
   internalCategoryFor,
@@ -53,14 +55,78 @@ describe('visible product types', () => {
     expect(html).not.toContain('data-testid="product-type-chocolate"');
   });
 
-  it('3. chocolate routes internally without becoming a visible type', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — SUPERSEDES the
+  // „alcohol > chocolate > nut > fruit" routing priority. `alcohol_gelato`,
+  // `nut_gelato` and `fruit_gelato` carry NO native seeded band cell, so every
+  // result routed there was scored on substituted milk_gelato bands wearing a
+  // `category_fallback` flag. Alcohol, nuts and fruit are FLAVOUR COMPONENTS of
+  // a canonical family, never families. The guarantee this test protects —
+  // internal routing happens silently, none of it ever becomes a VISIBLE type —
+  // is re-pinned below on the canonical (native-banded) categories.
+  it('3. chocolate/alcohol/nut route internally, silently, and only to NATIVE cells', () => {
     const items = [line('l-milk', 'milk_3_5', 700), line('l-choc', 'dark_chocolate_70', 100)];
     expect(gelatoInternalCategory(items)).toBe('chocolate_gelato');
     expect(visibleTypeOf('chocolate_gelato')).toBe('gelato');
     expect(detectClassifications(items).chocolate).toBe(true);
-    // Priority: alcohol > chocolate > nut > fruit.
+    // Alcohol + fruit are flavour components: chocolate still owns the routing,
+    // and the result is a NATIVE cell (never the unseeded alcohol_gelato).
     const withAll = [...items, line('l-whi', 'whiskey_40', 20), line('l-rasp', 'raspberry', 50)];
-    expect(gelatoInternalCategory(withAll)).toBe('alcohol_gelato');
+    expect(gelatoInternalCategory(withAll)).toBe('chocolate_gelato');
+    expect(detectClassifications(withAll).alcohol).toBe(true); // detected, just not a family
+    expect(visibleTypeOf(gelatoInternalCategory(withAll))).toBe('gelato');
+    // A whiskey gelato with no chocolate is a plain milk gelato (native bands).
+    expect(
+      gelatoInternalCategory([line('l-milk', 'milk_3_5', 700), line('l-whi', 'whiskey_40', 70)]),
+    ).toBe('milk_gelato');
+    // A pistachio gelato likewise — nuts are a flavour component.
+    expect(
+      gelatoInternalCategory([
+        line('l-milk', 'milk_3_5', 700),
+        line('l-pist', 'pistachio_paste', 150),
+      ]),
+    ).toBe('milk_gelato');
+  });
+
+  // OWNER ADDENDUM item 1 — THE STRUCTURAL GATE, driven off the engine's own
+  // seeded-cell list so seeding a new cell in targets.ts automatically unlocks
+  // it here with no test edit.
+  it('no runtime derivation path can return a category without NATIVE seeded bands', () => {
+    const seeded = new Set(
+      TARGET_BANDS.filter((band) => band.status === 'seeded').map((band) => band.category),
+    );
+    expect([...NATIVE_BAND_CATEGORIES].sort()).toEqual([...seeded].sort());
+
+    const catalogue = [
+      'milk_3_5', 'cream_30', 'smp', 'sucrose', 'dextrose', 'tara_gum',
+      'raspberry', 'dark_chocolate_70', 'pistachio_paste', 'whiskey_40', 'water', 'inulin',
+    ];
+    // Every non-empty subset of a representative catalogue, through every
+    // visible type and every previous category the store could be carrying.
+    const subsets: RecipeItem[][] = [[]];
+    for (const id of catalogue) {
+      const ing = findDemoIngredient(id);
+      if (!ing) continue;
+      for (const existing of [...subsets]) {
+        subsets.push([...existing, line(`l-${id}`, id, 100)]);
+      }
+    }
+    const ALL_CATEGORIES: RecipeInput['category'][] = [
+      'milk_gelato', 'fruit_gelato', 'nut_gelato', 'chocolate_gelato',
+      'alcohol_gelato', 'sorbet', 'vegan_gelato', 'custom',
+    ];
+    for (const items of subsets) {
+      // (a) the live gelato derivation
+      expect(seeded.has(gelatoInternalCategory(items)), JSON.stringify(items.map((i) => i.id))).toBe(true);
+      // (b) the visible-type derivation, for every supported visible type
+      for (const visible of VISIBLE_PRODUCT_TYPES) {
+        if (visible === 'protein') continue; // honest-unsupported: keeps `previous`
+        expect(seeded.has(internalCategoryFor(visible, items, 'milk_gelato'))).toBe(true);
+      }
+      // (c) the canonicalization of anything arriving from outside
+      for (const category of ALL_CATEGORIES) {
+        expect(seeded.has(canonicalInternalCategory(category, items)), category).toBe(true);
+      }
+    }
   });
 
   it('the store re-routes internal category live as GELATO ingredients change', () => {
