@@ -214,6 +214,26 @@ export const HARD_ROLES: ReadonlySet<FunctionalRole> = new Set([
   'stabilizer',
 ]);
 
+/**
+ * FLAVOUR-DEFINING roles PI may NEVER invent an amount for (owner addendum
+ * items 1+2, 2026-07-25). These are the roles the registry already marks
+ * `toolboxId: null` — "never auto-added, the user must supply it" — plus the
+ * two flavour components addendum item 1 demoted from families to components
+ * (nuts, alcohol). When a template HAS a target for one of them (sorbet fruit
+ * 600 g, chocolate_base cocoa 85 g) the target fills it; when the approved
+ * template for the canonical family has NO target for it — the dairy-fruit
+ * gelato case after `fruit_gelato_ref_v1` was quarantined — PI has no approved
+ * dose and must ASK, never silently leave the chosen flavour at 0 g.
+ */
+export const USER_SUPPLIED_FLAVOUR_ROLES: ReadonlySet<FunctionalRole> = new Set([
+  'fruit',
+  'chocolate_cocoa',
+  'nut_paste',
+  'alcohol',
+  'plant_liquid',
+  'plant_fat',
+]);
+
 export interface FormulationProposal {
   /** The COMPLETE next RecipeInput (atomic-replacement contract). */
   proposedInput: RecipeInput;
@@ -348,6 +368,9 @@ export function buildFormulationProposal(
   const keptFixed: string[] = [];
   const roleTrace: FormulationRoleTraceRow[] = [];
   const mappedLineIds = new Set<string>();
+  /** Owner addendum items 1+2: selected 0 g lines the approved template has no
+   * role target for — reported honestly, never silently left empty. */
+  const unfillableSelections: { name: string; role: FunctionalRole }[] = [];
 
   // ORDER (owner Phase 3): resolve user roles → identify missing template
   // roles → resolve approved toolbox candidates by EXACT canonical identity →
@@ -499,15 +522,36 @@ export function buildFormulationProposal(
 
   // 3. Selected lines with NO template role: honest fixed carry-over at the
   //    user's amount (salt rule — no approved free-adjustment bound).
+  //
+  //    OWNER FINAL INTEGRATION ADDENDUM — items 1+2 (2026-07-25): after the
+  //    canonical-family rule a dairy fruit gelato seeds from the APPROVED
+  //    `milk_base_v1`/G17/G18 templates, which carry no `fruit` role target, and
+  //    the reference-derived `fruit_gelato_ref_v1` (fruit 350 g, transcribed
+  //    from a QA fixture) is quarantined. PI therefore has NO approved dose for
+  //    such a flavour line and may not invent one — but it must never leave the
+  //    user's chosen ingredient SILENTLY at 0 g either. A selected line that
+  //    carries no template role AND no grams gets an explicit recommendation
+  //    naming it, so the surface asks for the amount instead of pretending the
+  //    ingredient is not there.
   for (const line of lines) {
     if (mappedLineIds.has(line.item.id)) continue;
     const constraint = line.constraint;
+    const explicitZero = constraint?.mode === 'locked' && constraint.grams <= 0;
     const grams =
-      line.locked && constraint?.mode === 'locked'
-        ? constraint.grams
-        : Math.max(0, line.item.planned_grams);
+      // A §17 RANGE is the user's OWN explicit bound for this line — it is an
+      // instruction, not invented science, so a role-less line honors it just
+      // like a template-mapped one does (owner addendum items 1+2: this is what
+      // lets a user aim a flavour line the approved template has no target for).
+      constraint?.mode === 'range'
+        ? Math.min(Math.max(line.item.planned_grams, constraint.minGrams), constraint.maxGrams)
+        : line.locked && constraint?.mode === 'locked'
+          ? constraint.grams
+          : Math.max(0, line.item.planned_grams);
     planned.push({ item: line.item, grams, fixed: true });
     keptFixed.push(line.item.ingredient.name);
+    if (grams <= 0 && !explicitZero) {
+      unfillableSelections.push({ name: line.item.ingredient.name, role: line.role });
+    }
   }
 
   // 3b. ROLE-GAP HONESTY (owner Fixture A): a template role whose only carriers
@@ -530,6 +574,44 @@ export function buildFormulationProposal(
           `Wynik może być niższy — możesz użyć innego zatwierdzonego składnika pełniącego tę rolę.`,
       });
     }
+  }
+
+  // 3b-bis. UNFILLABLE SELECTION HONESTY (owner addendum items 1+2).
+  //
+  //     A chosen ingredient sitting at 0 g that the APPROVED template has no
+  //     role target for cannot be given an amount by PI without inventing
+  //     science. Two honest outcomes, never a silent zero:
+  //      - a FLAVOUR-DEFINING role (the fruit of a dairy fruit gelato, a nut
+  //        paste, an alcohol) — the recipe IS that flavour, so a formulation
+  //        that quietly returns a plain milk base would be a lie. PI stops and
+  //        asks for the amount, naming the exact ingredient.
+  //      - any other role (salt and friends — the existing salt rule) — the
+  //        line stays at the user's 0 g and PI reports the gap as a
+  //        recommendation, exactly as an unfilled soft template role does.
+  const flavourGap = unfillableSelections.find((entry) =>
+    USER_SUPPLIED_FLAVOUR_ROLES.has(entry.role),
+  );
+  if (flavourGap) {
+    return {
+      ok: false,
+      code: 'missing_required_role',
+      role: flavourGap.role,
+      messagePl:
+        `Składnik „${flavourGap.name}" (rola „${ROLE_LABEL_PL[flavourGap.role]}") ma 0 g, ` +
+        `a zatwierdzona receptura bazowa ${template.templateId} nie zawiera tej roli — ` +
+        `PI nie wymyśla dawki składnika smakowego. Wpisz ilość, ` +
+        `a PI ułoży resztę receptury wokół niej.`,
+      roleTrace,
+    };
+  }
+  for (const unfillable of unfillableSelections) {
+    recommendations.push({
+      role: unfillable.role,
+      messagePl:
+        `PI nie ma zatwierdzonej dawki dla składnika „${unfillable.name}" ` +
+        `(rola „${ROLE_LABEL_PL[unfillable.role]}") w tym profilu — wpisz ilość, ` +
+        `a PI ułoży resztę receptury wokół niej.`,
+    });
   }
 
   // 3c. SEED BASELINE (owner addendum — proportional-scaling detector): freeze

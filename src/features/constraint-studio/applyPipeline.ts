@@ -1338,9 +1338,22 @@ function computeNearestFeasibleLockGrams(
   if (!line) return null;
   const role = resolveFunctionalRole(line.ingredient);
   const roleTarget = template.roles.find((target) => target.role === role);
-  if (!roleTarget) return null;
   const scale = input.target_batch_grams / template.baseBatchG;
-  const anchor = roleTarget.grams * scale;
+  /**
+   * The FEASIBLE ANCHOR the bisection starts from.
+   *
+   * OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25): after the canonical-
+   * family rule, a dairy fruit gelato seeds from an APPROVED milk template that
+   * carries no `fruit` role at all, so `roleTarget` is undefined and the search
+   * used to bail out with "no computable alternative" — losing the single most
+   * useful thing the honest refusal can say. The approved template's own amount
+   * for a role it does not contain IS zero, and that is a real, approved,
+   * engine-verifiable state (it is literally the approved base recipe), so 0 g
+   * is the honest anchor. Nothing is invented: the anchor is only a STARTING
+   * point and `lockProbeFeasible` engine-verifies it (and every bisection step)
+   * through the full pipeline before any value is ever reported.
+   */
+  const anchor = roleTarget ? roleTarget.grams * scale : 0;
   if (!(anchor >= 0) || anchor >= conflict.grams) return null;
   const feasible = (grams: number): boolean =>
     lockProbeFeasible(input, set, template, options, conflict.lineId, grams);

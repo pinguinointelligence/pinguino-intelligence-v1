@@ -91,9 +91,17 @@ const withInulin = (grams: number, lock: 'unlocked' | 'grams' = 'unlocked') => [
   line('l-inulin', INULIN, grams, lock),
 ];
 
+// OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — SUPERSEDES the
+// `fruit_gelato` category these fixtures carried. That cell has NO native
+// seeded bands, so `selectTargetBand` silently substituted the milk_gelato
+// bands and flagged every indicator `category_fallback`. This dairy fruit
+// family is canonical GELATO → `milk_gelato`. The BAND VALUES are byte-
+// identical (the fallback WAS the milk_gelato band), so every number this
+// suite pins is unchanged; what changes is that the violations are now
+// measured on NATIVE approved bands instead of being labelled provisional.
 const draft = (items: ReturnType<typeof line>[], batch = 1000): RecipeInput => ({
   mode: 'classic',
-  category: 'fruit_gelato',
+  category: 'milk_gelato',
   target_temperature_c: -11,
   target_batch_grams: batch,
   machine_capacity_grams: null,
@@ -116,7 +124,7 @@ const inulinGrams = (input: RecipeInput): number =>
 const seedStore = (items: ReturnType<typeof line>[], constraints: ConstraintSet = NO) => {
   useRecipeStore.setState({
     mode: 'classic',
-    category: 'fruit_gelato',
+    category: 'milk_gelato', // canonical family (owner addendum item 1)
     visibleProductType: 'gelato',
     target_temperature_c: -11,
     target_batch_grams: TARGET,

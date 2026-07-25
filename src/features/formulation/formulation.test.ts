@@ -16,7 +16,13 @@ import {
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { routeFormulationMode } from './formulate';
 import { resolveFunctionalRole } from './ingredientRoles';
-import { listFormulationTemplates, selectFormulationTemplate } from './templateRegistry';
+import {
+  findFormulationTemplateById,
+  isApprovedTemplateId,
+  listFormulationTemplates,
+  listQuarantinedTemplates,
+  selectFormulationTemplate,
+} from './templateRegistry';
 
 const line = (id: string, ing: string, grams: number, lock: 'unlocked' | 'grams' | 'main' = 'unlocked') => ({
   id,
@@ -67,9 +73,22 @@ describe('template registry (Phase 1)', () => {
     expect(selectFormulationTemplate('vegan_gelato', -13).template?.templateId).toBe('V02_fixed');
     expect(selectFormulationTemplate('vegan_gelato', -11).template).toBeNull();
     expect(selectFormulationTemplate('custom', -11).unsupportedReason).toBe('no_template_for_category');
-    // the fruit template is explicitly reference-derived, never claimed approved
-    const fruit = listFormulationTemplates().find((t) => t.templateId === 'fruit_gelato_ref_v1')!;
+    // OWNER FINAL INTEGRATION ADDENDUM item 2 (2026-07-25) — SUPERSEDES „the
+    // fruit template is in the registry, explicitly reference-derived". It is
+    // now QUARANTINED: the runtime registry contains APPROVED templates only,
+    // and the reference-derived seed is reachable by id alone (tests,
+    // diagnostics, the Apply door's trustless provenance re-derivation). The
+    // guarantee — a reference-derived formula is never claimed approved — is
+    // re-pinned below and structurally strengthened.
+    expect(listFormulationTemplates().every((t) => t.status === 'approved')).toBe(true);
+    expect(listFormulationTemplates().some((t) => t.templateId === 'fruit_gelato_ref_v1')).toBe(false);
+    expect(selectFormulationTemplate('fruit_gelato', -11).template).toBeNull();
+    const fruit = findFormulationTemplateById('fruit_gelato_ref_v1')!;
     expect(fruit.status).toBe('reference_derived');
+    expect(isApprovedTemplateId('fruit_gelato_ref_v1')).toBe(false);
+    expect(listQuarantinedTemplates().map((t) => t.templateId)).toContain('fruit_gelato_ref_v1');
+    // An id that exists in NO registry is not approved either (trustless door).
+    expect(isApprovedTemplateId('totally-made-up')).toBe(false);
   });
 });
 
@@ -140,16 +159,22 @@ describe('Phase 14 — locked 500 g milk (tests 2/3/4)', () => {
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
   });
 
-  it('fruit range 150–250 g is respected (fruit gelato, reference-derived)', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25) — SUPERSEDES the
+  // `fruit_gelato` / `reference_derived` expectations. The canonical family of
+  // a dairy fruit gelato is `milk_gelato` and its seed is the APPROVED
+  // `milk_base_v1`. The guarantee under test — a §17 RANGE on a flavour line is
+  // honored end to end — is unchanged; the honest-label half is now stronger:
+  // the applied template can only ever be approved.
+  it('fruit range 150–250 g is respected (dairy fruit gelato, approved template)', () => {
     const items = [...NO_GRAM_GELATO(), line('l-rasp', 'raspberry', 0)];
     const set = { byLineId: { 'l-rasp': { mode: 'range' as const, minGrams: 150, maxGrams: 250 } } };
-    const result = buildOptimizePreview(input(items, 'fruit_gelato', -11), set, 'now');
+    const result = buildOptimizePreview(input(items, 'milk_gelato', -11), set, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const rasp = gramsOf(result.preview.proposedInput, 'l-rasp')!;
     expect(rasp).toBeGreaterThanOrEqual(150 - 0.001);
     expect(rasp).toBeLessThanOrEqual(250 + 0.001);
-    expect(result.preview.formulation?.templateStatus).toBe('reference_derived'); // honest label
+    expect(result.preview.formulation?.templateStatus).toBe('approved'); // honest label
   });
 });
 

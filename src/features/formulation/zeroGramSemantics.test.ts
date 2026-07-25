@@ -57,20 +57,49 @@ describe('isEffectivelyLockedLine — the binding predicate', () => {
 });
 
 describe('OWNER TEST A — Gelato from 0 g selected lines (artifact-locked fruit)', () => {
-  it('strawberries AND milk both become > 0; all support roles; exactly 1000 g', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25) — SUPERSEDES „the
+  // strawberries become > 0" for the DAIRY fruit gelato. Two structural facts
+  // changed under it: (1) `fruit_gelato` has no NATIVE seeded bands, so a dairy
+  // recipe containing fruit is canonical `milk_gelato`; (2) the only template
+  // that ever handed such a recipe a fruit dose — `fruit_gelato_ref_v1`, grams
+  // transcribed verbatim from a QA fixture — is quarantined, and no APPROVED
+  // milk_gelato template carries a `fruit` role.
+  //
+  // THE GUARANTEE THIS TEST EXISTS TO PROTECT is the owner's live failure:
+  // „the fruit stayed 0 g while the toolbox filled everything else" — i.e. a
+  // chosen ingredient must never be SILENTLY ignored. It is re-pinned here in
+  // its strongest form: PI refuses to produce that recipe at all and names the
+  // exact ingredient it needs an amount for. The predicate semantics
+  // (artifact-lock ≠ explicit zero) are unchanged and still pinned above.
+  it('the chosen fruit is NEVER silently left at 0 g — PI stops and names it', () => {
     // The exact poisoned state from the screenshots: fruit wears an artifact
     // grams-lock at 0 (no constraint entry), milk is unlocked at 0.
     const rec = input(
       [line('l-straw', STRAWBERRIES, 0, 'grams'), line('l-milk', MILK, 0)],
-      'fruit_gelato',
+      'milk_gelato',
+    );
+    const result = buildOptimizePreview(rec, NO, 'now');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('missing_required_role');
+    if (result.code !== 'missing_required_role') return;
+    expect(result.role).toBe('fruit');
+    expect(result.messagePl).toContain('STRAWBERRIES');
+    expect(result.messagePl).toContain('Wpisz ilość');
+  });
+
+  it('once the fruit has an amount, everything else fills and the batch is exact', () => {
+    const rec = input(
+      [line('l-straw', STRAWBERRIES, 350, 'grams'), line('l-milk', MILK, 0)],
+      'milk_gelato',
     );
     const result = buildOptimizePreview(rec, NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const p = result.preview;
     const grams = (id: string) => p.proposedInput.items.find((i) => i.id === id)?.planned_grams;
-    expect(grams('l-straw')!).toBeGreaterThan(0); // THE owner failure
-    expect(grams('l-milk')!).toBeGreaterThan(0);
+    expect(grams('l-straw')!).toBeGreaterThan(0);
+    expect(grams('l-milk')!).toBeGreaterThan(0); // THE owner failure, still fixed
     const byIng = (ing: string) =>
       p.proposedInput.items.find((i) => i.ingredient.id === ing)?.planned_grams ?? 0;
     for (const support of ['cream_30', 'smp', 'sucrose', 'dextrose', 'tara_gum']) {
@@ -130,10 +159,12 @@ describe('OWNER TEST C — explicit zero lock / exclusion still respected', () =
     );
   });
 
+  // Category updated to the canonical family (owner addendum item 1): the
+  // routing guarantee under test is unchanged.
   it('router: artifact zero-lock does NOT drive constrained routing; explicit lock does', () => {
     const artifact = input(
       [line('l-straw', STRAWBERRIES, 0, 'grams'), line('l-milk', MILK, 0)],
-      'fruit_gelato',
+      'milk_gelato',
     );
     expect(routeFormulationMode(artifact, NO).mode).toBe('full_formulation');
     const explicit = { byLineId: { 'l-straw': { mode: 'locked' as const, grams: 0 } } };
@@ -144,7 +175,7 @@ describe('OWNER TEST C — explicit zero lock / exclusion still respected', () =
 describe('load healing — stored artifact locks become unlocked on open', () => {
   it('loadRecipeInput normalizes grams-lock@0 to unlocked (UI shows the truth)', () => {
     useRecipeStore.getState().loadRecipeInput(
-      input([line('l-straw', STRAWBERRIES, 0, 'grams'), line('l-milk', MILK, 380, 'grams')], 'fruit_gelato'),
+      input([line('l-straw', STRAWBERRIES, 0, 'grams'), line('l-milk', MILK, 380, 'grams')], 'milk_gelato'),
     );
     const items = useRecipeStore.getState().items;
     expect(items.find((i) => i.id === 'l-straw')!.lock_type).toBe('unlocked'); // healed

@@ -4,6 +4,7 @@
  * correction context. No recipe math — the engine owns all numbers.
  */
 import type { CorrectionContext, RecipeInput } from '@/engine';
+import { canonicalInternalCategory } from '@/features/studio/productType';
 import type { RecipeState } from '@/stores/recipeStore';
 
 /** The input-only subset of the recipe store (no action methods). */
@@ -42,11 +43,25 @@ export function effectiveMachineCapacityGrams(state: RecipeInputState): number |
   return state.machine_capacity_grams;
 }
 
+/**
+ * OWNER FINAL INTEGRATION ADDENDUM — item 1 (canonical families, 2026-07-25).
+ *
+ * This function is the ONE seam every consumer crosses to reach the engine (Monitor,
+ * optimizer, `selectCanonicalDraft`, Save, QA — see the note above), so it is also the
+ * one place where the canonical-family rule can be made structural: an UNSEEDED internal
+ * category that arrived from a persisted draft, a saved version, a demo preset or a
+ * direct `setCategory` write is re-derived from the real ingredients BEFORE it can reach
+ * `selectTargetBand`. The engine can therefore never be asked for bands it does not own,
+ * and `category_fallback` can never be triggered by a runtime routing choice.
+ *
+ * No engine value is touched: `canonicalInternalCategory` only PICKS between existing
+ * engine categories, and returns an already-native category byte-identical.
+ */
 export function buildRecipeInput(state: RecipeInputState): RecipeInput {
   return {
     items: state.items,
     mode: state.mode,
-    category: state.category,
+    category: canonicalInternalCategory(state.category, state.items),
     target_temperature_c: state.target_temperature_c,
     target_batch_grams: state.target_batch_grams,
     machine_capacity_grams: effectiveMachineCapacityGrams(state),

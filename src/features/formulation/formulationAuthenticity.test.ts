@@ -64,9 +64,24 @@ const input = (
   items,
 });
 
-/** The owner failure: strawberry LOCKED at `grams`, fruit_gelato −11, 1000 g. */
+/**
+ * The owner failure: strawberry LOCKED at `grams`, GELATO −11, 1000 g.
+ *
+ * OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — SUPERSEDES the
+ * `fruit_gelato` category (and the fruit-only line-up) this fixture carried.
+ * `fruit_gelato` has NO native seeded band cell, so it can no longer occur at
+ * runtime; a dairy recipe containing fruit is canonical `milk_gelato`, and a
+ * draft with NO dairy at all would canonicalize to `sorbet`. The fixture
+ * therefore selects milk at 0 g — exactly the owner's live draft ("Gelato:
+ * Milk 3.5 % + STRAWBERRIES") — so it remains a GELATO case and is a state
+ * runtime can really produce. Every guarantee this suite pins (authenticity
+ * proof, scaling detector, dominant-lock infeasibility) is unchanged.
+ */
 const strawberryLocked = (grams: number) => ({
-  input: input([line('l-straw', STRAWBERRIES, grams, 'grams')], 'fruit_gelato'),
+  input: input(
+    [line('l-straw', STRAWBERRIES, grams, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+    'milk_gelato',
+  ),
   set: { byLineId: { 'l-straw': { mode: 'locked' as const, grams } } },
 });
 
@@ -277,7 +292,11 @@ describe('dominant-lock infeasibility on NATIVE bands (milk locked 900, milk_gel
 
 describe('constraint fidelity + determinism', () => {
   it('a max/range constraint is respected in the final formulation', () => {
-    const rec = input([line('l-straw', STRAWBERRIES, 350, 'grams')], 'fruit_gelato');
+    // Canonical GELATO family (owner addendum item 1): milk selected at 0 g.
+    const rec = input(
+      [line('l-straw', STRAWBERRIES, 350, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+      'milk_gelato',
+    );
     const set = { byLineId: { 'l-straw': { mode: 'range' as const, minGrams: 300, maxGrams: 400 } } };
     const result = buildOptimizePreview(rec, set, 'now');
     expect(result.ok).toBe(true);
@@ -387,7 +406,11 @@ describe('category purity and role completeness', () => {
   });
 
   it('Gelato cannot silently lose a required hard role (excluded milk → honest stop)', () => {
-    const rec = input([line('l-straw', STRAWBERRIES, 350, 'grams')], 'fruit_gelato');
+    // Canonical GELATO family (owner addendum item 1): milk selected at 0 g.
+    const rec = input(
+      [line('l-straw', STRAWBERRIES, 350, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+      'milk_gelato',
+    );
     const set = { byLineId: { 'l-straw': { mode: 'locked' as const, grams: 350 } } };
     const result = buildOptimizePreview(rec, set, 'now', { excludedIngredientIds: ['milk_3_5'] });
     // Either an honest missing-role stop, or a preview that STILL carries the
@@ -433,14 +456,14 @@ describe('Apply/Undo preserve the verified Engine output (constrained case)', ()
   it('apply writes EXACTLY the previewed grams; undo restores the prior state byte-exact', () => {
     useRecipeStore.setState({
       mode: 'classic',
-      category: 'fruit_gelato',
+      category: 'milk_gelato', // canonical family (owner addendum item 1)
       visibleProductType: 'gelato',
       target_temperature_c: -11,
       target_batch_grams: 1000,
       machine_capacity_grams: null,
       flavor_intensity: 'balanced',
       cost_priority: 'balanced',
-      items: [line('l-straw', STRAWBERRIES, 600, 'grams')],
+      items: [line('l-straw', STRAWBERRIES, 600, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
       excludedIngredientIds: [],
     });
     useConstraintStudioStore.getState().resetForTests();

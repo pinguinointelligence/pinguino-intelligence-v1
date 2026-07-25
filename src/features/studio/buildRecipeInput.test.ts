@@ -29,15 +29,44 @@ const state = (items: RecipeItem[]): RecipeInputState => ({
 });
 
 describe('buildRecipeInput', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — SUPERSEDES the
+  // `fruit_gelato` pass-through. `fruit_gelato` carries no NATIVE seeded band
+  // cell, so `selectTargetBand` silently substituted milk_gelato bands and
+  // flagged `category_fallback`. This seam now CANONICALIZES the category from
+  // the real ingredients (raspberry + milk 3.5 % ⇒ dairy fruit ⇒ milk_gelato),
+  // so the engine is never asked for bands it does not own. The guarantee this
+  // test protects — every store field maps through to the engine contract —
+  // is unchanged and re-pinned below, plus the canonicalization itself.
   it('maps store state to a valid RecipeInput including goals', () => {
     const input = buildRecipeInput(state([line('raspberry', 300, null, 'main'), line('milk_3_5', 500)]));
     expect(input.mode).toBe('premium');
-    expect(input.category).toBe('fruit_gelato');
+    expect(input.category).toBe('milk_gelato');
     expect(input.target_temperature_c).toBe(-12);
     expect(input.target_batch_grams).toBe(1200);
     expect(input.machine_capacity_grams).toBe(2000);
     expect(input.goals).toEqual({ flavor_intensity: 'maximum', cost_priority: 'low' });
     expect(input.items[0]!.lock_type).toBe('main');
+  });
+
+  // OWNER ADDENDUM item 1 — the canonicalization is a STRUCTURAL property of
+  // this seam, not a side effect of one fixture: no unseeded category can pass
+  // through it, and an already-native category passes through byte-identical.
+  it('canonicalizes every unseeded category and never touches a native one', () => {
+    const dairyFruit = [line('raspberry', 300), line('milk_3_5', 500)];
+    for (const unseeded of ['fruit_gelato', 'nut_gelato', 'alcohol_gelato', 'custom'] as const) {
+      const input = buildRecipeInput({ ...state(dairyFruit), category: unseeded });
+      expect(input.category, unseeded).toBe('milk_gelato');
+    }
+    // A water-based NON-DAIRY fruit draft canonicalizes to sorbet (owner rule).
+    expect(
+      buildRecipeInput({ ...state([line('raspberry', 300)]), category: 'fruit_gelato' }).category,
+    ).toBe('sorbet');
+    // Native categories are returned untouched.
+    for (const native of ['milk_gelato', 'chocolate_gelato', 'sorbet', 'vegan_gelato'] as const) {
+      expect(buildRecipeInput({ ...state(dairyFruit), category: native }).category, native).toBe(
+        native,
+      );
+    }
   });
 
   // OWNER CURRENT-DRAFT P0 (Phase 8) — the machine-context gate: an

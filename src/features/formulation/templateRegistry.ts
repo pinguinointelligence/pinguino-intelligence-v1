@@ -11,14 +11,36 @@
  *  - vegan −13 `V02_fixed`: locked clean vegan reference (ibid.);
  *  - fruit gelato −11 `fruit_gelato_ref_v1`: the repo's raspberry-premium
  *    reference proportions (goldenRecipes QA fixture) — status
- *    `reference_derived`, STAGING-ONLY, explicitly NOT scientifically approved
- *    as a template (Phase 8 contract); included for owner review.
+ *    `reference_derived`, QUARANTINED (see below), never runtime-selectable.
  *  - protein: NO approved template or target contract exists (recovery audit
  *    conclusion D) → honest `unsupported`, never routed to gelato silently.
  *
  * Role targets are per the template's own base batch; the formulation pipeline
  * scales them to the recipe's target batch and maps them onto the USER-selected
  * stable ingredient identities (never substituting brands for selections).
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * OWNER FINAL INTEGRATION ADDENDUM — item 2 (reference-derived quarantine,
+ * 2026-07-25).
+ *
+ * WHAT WAS TRUE BEFORE: `fruit_gelato_ref_v1` sat in the SAME array the runtime
+ * lookup scanned (`REGISTRY`), so a `fruit_gelato` recipe seeded its grams —
+ * transcribed verbatim from the goldenRecipes raspberry-premium QA FIXTURE —
+ * and the result could become an APPLICABLE production recipe as soon as the
+ * search stopped or the batch equalled the target.
+ *
+ * WHAT IS TRUE NOW: reference-derived formulas are QUARANTINED. Two lists:
+ *  - `RUNTIME_REGISTRY` — the ONLY list `selectFormulationTemplate` scans;
+ *    contains exclusively `status: 'approved'` templates (enforced by a
+ *    structural test, never by convention);
+ *  - `ALL_TEMPLATES` — approved + quarantined, reachable ONLY through
+ *    `findFormulationTemplateById` / `listQuarantinedTemplates`, so tests,
+ *    diagnostics and the trustless Apply-door provenance re-derivation can
+ *    still resolve the id.
+ * Combined with addendum item 1 (`fruit_gelato` is no longer a runtime category
+ * at all), `fruit_gelato_ref_v1` is unreachable at runtime by TWO independent
+ * structural facts.
+ * ───────────────────────────────────────────────────────────────────────────
  */
 import type { ProductCategory } from '@/engine';
 import type { FunctionalRole } from './ingredientRoles';
@@ -171,10 +193,12 @@ const VEGAN_M13: FormulationTemplate = {
 };
 
 /**
- * fruit_gelato_ref_v1 — REFERENCE-DERIVED (staging-only, NOT approved science):
- * the repo's raspberry-premium reference proportions (goldenRecipes QA fixture:
+ * fruit_gelato_ref_v1 — REFERENCE-DERIVED, QUARANTINED (owner addendum item 2).
+ * The repo's raspberry-premium reference proportions (goldenRecipes QA fixture:
  * fruit 350 / milk 380 / cream 80 / smp 40 / sucrose 110 / dextrose 35 / tara 5).
- * Explicitly labelled per the Phase 8 contract; included for owner review.
+ * NOT approved science, deliberately kept OUT of `RUNTIME_REGISTRY`: it exists
+ * only so tests, diagnostics and the Apply door's trustless provenance
+ * re-derivation can still resolve the id. No runtime path can select it.
  */
 const FRUIT_GELATO_M11: FormulationTemplate = {
   templateId: 'fruit_gelato_ref_v1',
@@ -194,12 +218,27 @@ const FRUIT_GELATO_M11: FormulationTemplate = {
   ],
 };
 
-const REGISTRY: readonly FormulationTemplate[] = [
+/**
+ * THE RUNTIME REGISTRY (owner addendum item 2): the ONLY list a runtime lookup
+ * scans. Every entry is `status: 'approved'` — pinned structurally by
+ * `templateQuarantine.test.ts`, so a non-approved template cannot be added here
+ * by accident in the future.
+ */
+const RUNTIME_REGISTRY: readonly FormulationTemplate[] = [
   GELATO_M11, GELATO_M12, GELATO_M13,
   CHOCOLATE_M11,
   SORBET_M11, SORBET_M12, SORBET_M13,
   VEGAN_M13,
-  FRUIT_GELATO_M11,
+];
+
+/** QUARANTINED templates: resolvable BY ID for tests / diagnostics / the Apply
+ * door's provenance re-derivation, NEVER selectable by a runtime lookup. */
+const QUARANTINED_TEMPLATES: readonly FormulationTemplate[] = [FRUIT_GELATO_M11];
+
+/** Approved + quarantined — the complete id space (id resolution only). */
+const ALL_TEMPLATES: readonly FormulationTemplate[] = [
+  ...RUNTIME_REGISTRY,
+  ...QUARANTINED_TEMPLATES,
 ];
 
 export interface TemplateLookup {
@@ -212,18 +251,49 @@ export interface TemplateLookup {
 }
 
 /** Resolve the formulation seed for a category × serving temperature. Protein
- * and any unknown category are honestly unsupported — never routed elsewhere. */
+ * and any unknown category are honestly unsupported — never routed elsewhere.
+ *
+ * Owner addendum item 2: scans `RUNTIME_REGISTRY` ONLY, so this function is
+ * structurally incapable of returning a non-approved template. */
 export function selectFormulationTemplate(
   category: ProductCategory,
   temperatureC: number,
 ): TemplateLookup {
-  const forCategory = REGISTRY.filter((t) => t.category === category);
+  const forCategory = RUNTIME_REGISTRY.filter((t) => t.category === category);
   if (forCategory.length === 0) return { template: null, unsupportedReason: 'no_template_for_category' };
   const exact = forCategory.find((t) => t.temperatureC === temperatureC);
   if (exact) return { template: exact, unsupportedReason: null };
   return { template: null, unsupportedReason: 'no_template_for_temperature' };
 }
 
+/** The runtime-selectable templates (approved only). */
 export function listFormulationTemplates(): readonly FormulationTemplate[] {
-  return REGISTRY;
+  return RUNTIME_REGISTRY;
+}
+
+/** The quarantined, NON-runtime templates (diagnostics / tests / ledger only). */
+export function listQuarantinedTemplates(): readonly FormulationTemplate[] {
+  return QUARANTINED_TEMPLATES;
+}
+
+/**
+ * Resolve a template BY ID across approved AND quarantined entries.
+ *
+ * Owner addendum item 2 — this is what makes the Apply door TRUSTLESS: the door
+ * never believes a preview's `templateStatus` field, it re-reads the status from
+ * this registry (the source of truth) using only the template id carried by the
+ * proposal. `null` = an id that exists in no registry at all, which the door
+ * must also treat as non-approved provenance.
+ */
+export function findFormulationTemplateById(templateId: string): FormulationTemplate | null {
+  return ALL_TEMPLATES.find((t) => t.templateId === templateId) ?? null;
+}
+
+/**
+ * TRUSTLESS provenance predicate for the Apply door (owner addendum item 2):
+ * TRUE only when `templateId` names a template that really carries
+ * `status: 'approved'` in this registry. An unknown id is NOT approved.
+ */
+export function isApprovedTemplateId(templateId: string): boolean {
+  return findFormulationTemplateById(templateId)?.status === 'approved';
 }

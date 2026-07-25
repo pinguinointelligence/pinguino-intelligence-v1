@@ -87,7 +87,20 @@ const FRUIT_FALLBACK_OK = () => [
 ];
 
 /** FAILURE B — the minimal fresh draft (both lines 0 g, unlocked). */
+// OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25): the fruit carries
+// a real amount. This dairy fruit draft is canonical `milk_gelato` (fruit_gelato
+// has no native seeded bands), whose APPROVED templates carry no `fruit` role
+// now that the reference-derived `fruit_gelato_ref_v1` is quarantined — so a
+// 0 g fruit is the honest "give me the amount" stop, pinned separately below.
+// FAILURE B (a minimal fresh draft must formulate completely, never the trio
+// message) is unchanged and re-pinned on this fixture.
 const MINIMAL_GELATO = () => [
+  line('l-milk', findDemoIngredient('milk_3_5')!, 0),
+  line('l-straw', STRAWBERRIES, 350),
+];
+
+/** The same draft with NO fruit amount — the honest-stop branch. */
+const MINIMAL_GELATO_NO_FRUIT_AMOUNT = () => [
   line('l-milk', findDemoIngredient('milk_3_5')!, 0),
   line('l-straw', STRAWBERRIES, 0),
 ];
@@ -116,7 +129,7 @@ const seedRecipeStore = (
   useConstraintStudioStore.getState().resetForTests();
 };
 
-beforeEach(() => seedRecipeStore([], 'fruit_gelato'));
+beforeEach(() => seedRecipeStore([], 'milk_gelato'));
 
 /* ───────────────────────── toolbox canonical identity (tests 2/3/4/8) ──── */
 
@@ -142,7 +155,7 @@ describe('canonical toolbox identity (owner Phase 2)', () => {
   });
 
   it('added lines carry stable canonical IDs + Polish names + role + grams + reason (test 8)', () => {
-    const result = buildOptimizePreview(input(MINIMAL_GELATO(), 'fruit_gelato'), NO, 'now');
+    const result = buildOptimizePreview(input(MINIMAL_GELATO(), 'milk_gelato'), NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const added = result.preview.formulation!.added;
@@ -165,14 +178,30 @@ describe('canonical toolbox identity (owner Phase 2)', () => {
 /* ─────────────── A1 / FAILURE B — minimal Gelato full formulation ───────── */
 
 describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () => {
-  it('Milk+Strawberry 0 g selects FULL FORMULATION on the fruit template (test 1)', () => {
-    const decision = routeFormulationMode(input(MINIMAL_GELATO(), 'fruit_gelato'), NO);
+  it('Milk 0 g + Strawberry selects FULL FORMULATION on the APPROVED milk template (test 1)', () => {
+    const decision = routeFormulationMode(input(MINIMAL_GELATO(), 'milk_gelato'), NO);
     expect(decision.mode).toBe('full_formulation');
-    expect(decision.template?.templateId).toBe('fruit_gelato_ref_v1');
+    expect(decision.template?.templateId).toBe('milk_base_v1');
+  });
+
+  // OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25) — the other half of
+  // FAILURE B: a chosen flavour the APPROVED template has no role target for is
+  // never silently left at 0 g. PI stops and names the exact ingredient.
+  it('a 0 g fruit is an honest named stop, never a silent milk base', () => {
+    const result = buildOptimizePreview(
+      input(MINIMAL_GELATO_NO_FRUIT_AMOUNT(), 'milk_gelato'),
+      NO,
+      'now',
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok || result.code !== 'missing_required_role') return;
+    expect(result.role).toBe('fruit');
+    expect(result.messagePl).toContain(STRAWBERRIES.name);
+    expect(result.messagePl).toContain('Wpisz ilość');
   });
 
   it('toolbox auto-fill precedes hard-role completeness — no missing-role stop on a fresh draft (test 5)', () => {
-    const result = buildOptimizePreview(input(MINIMAL_GELATO(), 'fruit_gelato'), NO, 'now');
+    const result = buildOptimizePreview(input(MINIMAL_GELATO(), 'milk_gelato'), NO, 'now');
     expect(result.ok).toBe(true); // NEVER the FAILURE B trio message on a fresh draft
     if (!result.ok) return;
     const trace = result.preview.formulation!.roleTrace;
@@ -183,7 +212,7 @@ describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () =
   });
 
   it('complete 1000 g Preview: user IDs preserved, trio auto-added, differentiated, no duplicates (tests 6/7)', () => {
-    const result = buildOptimizePreview(input(MINIMAL_GELATO(), 'fruit_gelato'), NO, 'now');
+    const result = buildOptimizePreview(input(MINIMAL_GELATO(), 'milk_gelato'), NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const p = result.preview;
@@ -210,13 +239,13 @@ describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () =
   });
 
   it('explicit exclusion (either canonical identity) prevents the auto-add (test 9)', () => {
-    const byEngineId = buildOptimizePreview(input(MINIMAL_GELATO(), 'fruit_gelato'), NO, 'now', {
+    const byEngineId = buildOptimizePreview(input(MINIMAL_GELATO(), 'milk_gelato'), NO, 'now', {
       excludedIngredientIds: ['sucrose'],
     });
     expect(byEngineId.ok).toBe(false);
     if (!byEngineId.ok) expect(byEngineId.code).toBe('missing_required_role');
     // the SAME exclusion expressed as the removed catalogue product's Mapper id
-    const byMapperId = buildOptimizePreview(input(MINIMAL_GELATO(), 'fruit_gelato'), NO, 'now', {
+    const byMapperId = buildOptimizePreview(input(MINIMAL_GELATO(), 'milk_gelato'), NO, 'now', {
       excludedIngredientIds: ['PI-ING-000514'],
     });
     expect(byMapperId.ok).toBe(false);
@@ -225,7 +254,7 @@ describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () =
 
   it('FAILURE B end-to-end: emptying the previous draft NEVER leaks exclusions into the fresh one (test 10)', () => {
     // The owner's real sequence: a full draft is cleared line by line…
-    seedRecipeStore(FRUIT_COMPLETE(), 'fruit_gelato');
+    seedRecipeStore(FRUIT_COMPLETE(), 'milk_gelato');
     for (const item of [...useRecipeStore.getState().items]) {
       useRecipeStore.getState().removeItem(item.id);
     }
@@ -235,14 +264,17 @@ describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () =
     // fresh minimal draft through the real store actions
     useRecipeStore.getState().setVisibleProductType('gelato');
     useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
-    useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
-    expect(useRecipeStore.getState().category).toBe('fruit_gelato');
+    useRecipeStore.getState().addIngredient(STRAWBERRIES, 350);
+    expect(useRecipeStore.getState().category).toBe('milk_gelato');
     useConstraintStudioStore.getState().createOptimizePreview();
     const { preview, previewIssue } = useConstraintStudioStore.getState();
     // the owner's FAILURE B message can no longer appear on a fresh draft
     expect(previewIssue).toBeNull();
     expect(preview).not.toBeNull();
-    expect(preview?.formulation?.templateId).toBe('fruit_gelato_ref_v1');
+    // Owner addendum item 2: the seed is an APPROVED template, never the
+    // quarantined reference-derived one.
+    expect(preview?.formulation?.templateId).toBe('milk_base_v1');
+    expect(preview?.formulation?.templateStatus).toBe('approved');
     expect(Math.abs(plannedSum(preview!.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
   });
 
@@ -256,7 +288,7 @@ describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () =
   // action. Frozen pins kept: toolbox never reintroduces an EXPLICIT
   // exclusion; an explicit add clears it; Undo restores exclusion state.
   it('same-draft removal does NOT exclude; the EXPLICIT unavailable action DOES (FINAL CLOSURE C2)', () => {
-    seedRecipeStore(FRUIT_COMPLETE(), 'fruit_gelato');
+    seedRecipeStore(FRUIT_COMPLETE(), 'milk_gelato');
     // remove sucrose only — draft still has 6 lines (same draft continues)
     const suc = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'sucrose')!;
     useRecipeStore.getState().removeItem(suc.id);
@@ -273,13 +305,13 @@ describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () =
 
 describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
   it('a complete recipe runs the LOCAL corrector first (test 11)', () => {
-    const decision = routeFormulationMode(input(FRUIT_COMPLETE(), 'fruit_gelato'), NO);
+    const decision = routeFormulationMode(input(FRUIT_COMPLETE(), 'milk_gelato'), NO);
     expect(decision.mode).toBe('local_correction');
     expect(decision.reasons).toContain('substantive_unconstrained_draft');
   });
 
   it('never the one-line hard failure from fallback bands alone (test 15)', () => {
-    const result = buildOptimizePreview(input(FRUIT_COMPLETE(), 'fruit_gelato'), NO, 'now');
+    const result = buildOptimizePreview(input(FRUIT_COMPLETE(), 'milk_gelato'), NO, 'now');
     // ok (verified improvement) or the explanatory best-safe result —
     // NEVER the bare no_proposal/unsafe_proposal one-liner (FAILURE A).
     if (!result.ok) {
@@ -299,7 +331,7 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
   // candidate vector the optimizer works the user's OWN unlocked lines and
   // produces a REAL Preview at exactly the target batch.
   it('resembling the reference template is NEVER a stop: the fixture optimizes (owner Phase 4)', () => {
-    const result = buildOptimizePreview(input(FRUIT_COMPLETE(), 'fruit_gelato'), NO, 'now');
+    const result = buildOptimizePreview(input(FRUIT_COMPLETE(), 'milk_gelato'), NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
@@ -308,7 +340,7 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
   });
 
   it('the live store path stages a real Preview (never the false „best verified result")', () => {
-    seedRecipeStore(FRUIT_COMPLETE(), 'fruit_gelato');
+    seedRecipeStore(FRUIT_COMPLETE(), 'milk_gelato');
     useConstraintStudioStore.getState().createOptimizePreview();
     const { preview, previewIssue } = useConstraintStudioStore.getState();
     expect(previewIssue).toBeNull();
@@ -347,7 +379,7 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
   });
 
   it('a complete fruit draft yields a verified Preview at exactly the target batch (test 12)', () => {
-    const result = buildOptimizePreview(input(FRUIT_FALLBACK_OK(), 'fruit_gelato'), NO, 'now');
+    const result = buildOptimizePreview(input(FRUIT_FALLBACK_OK(), 'milk_gelato'), NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
@@ -358,7 +390,7 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
   });
 
   it('the fallback reuses the SAME selected identities, batch and temperature (test 13)', () => {
-    const rec = input(FRUIT_FALLBACK_OK(), 'fruit_gelato');
+    const rec = input(FRUIT_FALLBACK_OK(), 'milk_gelato');
     const result = buildOptimizePreview(rec, NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -379,7 +411,11 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
 /* ───────────────── hard vs soft bands (owner Phase 8, test 14/15) ───────── */
 
 describe('band provenance classification (owner Phase 8)', () => {
-  it('fruit_gelato violations are SOFT (category fallback); native milk_gelato violations stay HARD (test 14)', () => {
+  // OWNER ADDENDUM item 1 (2026-07-25): the category stays 'fruit_gelato'
+  // HERE ON PURPOSE — this test pins the ENGINE's band-fallback mechanism,
+  // which still exists for any cell the science team has not seeded. Runtime
+  // can no longer route to it (pinned in canonicalWorkbench.test.tsx).
+  it('unseeded-cell violations are SOFT (category fallback); native milk_gelato violations stay HARD (test 14)', () => {
     const fruit = classifyViolationBands(input(FRUIT_COMPLETE(), 'fruit_gelato'));
     expect(fruit.bandSource).toBe('category_fallback');
     expect(fruit.hardMetrics).toEqual([]); // fallback bands never produce hard violations
@@ -412,10 +448,13 @@ describe('band provenance classification (owner Phase 8)', () => {
 
 describe('Apply → Undo → save/reopen for the minimal Gelato (tests 17/18/19)', () => {
   const stageMinimalPreview = () => {
-    seedRecipeStore([], 'fruit_gelato');
+    seedRecipeStore([], 'milk_gelato');
     useRecipeStore.getState().setVisibleProductType('gelato');
     useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
-    useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
+    // Owner addendum items 1+2: the fruit carries an amount (PI has no approved
+    // fruit dose for a dairy gelato — the 0 g branch is the honest stop, pinned
+    // separately). Apply/Undo/save-reopen guarantees are unchanged.
+    useRecipeStore.getState().addIngredient(STRAWBERRIES, 350);
     useConstraintStudioStore.getState().createOptimizePreview();
     const preview = useConstraintStudioStore.getState().preview;
     expect(preview).not.toBeNull();
@@ -439,18 +478,18 @@ describe('Apply → Undo → save/reopen for the minimal Gelato (tests 17/18/19)
     const record = useConstraintStudioStore.getState().history.at(-1)!;
     expect(record.before.excludedIngredientIds).toEqual([]);
     expect(record.after.excludedIngredientIds).toEqual([]);
-    expect(record.before.input.category).toBe('fruit_gelato');
+    expect(record.before.input.category).toBe('milk_gelato');
     expect(record.before.input.target_temperature_c).toBe(-11);
     expect(record.before.input.target_batch_grams).toBe(1000);
     expect(record.mode).toBe('classic'); // tier
-    expect(record.formulation?.templateId).toBe('fruit_gelato_ref_v1');
+    expect(record.formulation?.templateId).toBe('milk_base_v1'); // approved (addendum item 2)
     expect(record.formulation?.added.map((a) => a.ingredientId)).toEqual(
       expect.arrayContaining(['sucrose', 'dextrose', 'cream_30', 'smp', 'tara_gum']),
     );
     expect(record.formulation?.localFallback).toBe(false);
   });
 
-  it('Undo restores EXACTLY Milk 0 g + Strawberry 0 g and removes the PI-added lines (test 18)', () => {
+  it('Undo restores EXACTLY the two user lines and removes the PI-added lines (test 18)', () => {
     stageMinimalPreview();
     const before = JSON.stringify(
       buildRecipeInput(useRecipeStore.getState()).items.map((i) => [i.id, i.ingredient.id, i.planned_grams]),
@@ -462,7 +501,10 @@ describe('Apply → Undo → save/reopen for the minimal Gelato (tests 17/18/19)
       JSON.stringify(restored.map((i) => [i.id, i.ingredient.id, i.planned_grams])),
     ).toBe(before);
     expect(restored.length).toBe(2); // exactly the two user lines
-    expect(restored.every((i) => i.planned_grams === 0)).toBe(true);
+    // Owner addendum items 1+2: the staged draft is Milk 0 g + Strawberry 350 g
+    // (PI has no approved fruit dose to fill a 0 g fruit with). Undo must
+    // restore BOTH user grams byte-exact — the guarantee, unchanged.
+    expect(restored.map((i) => i.planned_grams)).toEqual([0, 350]);
     expect(restored.some((i) => i.id.startsWith('formulation-'))).toBe(false);
     expect(useRecipeStore.getState().excludedIngredientIds).toEqual([]);
   });
@@ -484,7 +526,7 @@ describe('Apply → Undo → save/reopen for the minimal Gelato (tests 17/18/19)
 
 describe('science freeze', () => {
   it('ENGINE 0.4.0 + CONFIG 0.7.0 unchanged (test 20)', () => {
-    const result = calculateRecipe(input(FRUIT_COMPLETE(), 'fruit_gelato'));
+    const result = calculateRecipe(input(FRUIT_COMPLETE(), 'milk_gelato'));
     expect(result.engine_version).toBe('0.4.0');
     expect(result.config_version).toBe('0.7.0');
   });

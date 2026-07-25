@@ -10,7 +10,7 @@
  * CURRENT engine output. Each run returns the owner's full structured template
  * (profile, template seed, solver mode, iterations, stop reason, final grams,
  * POD/PAC/NPAC/ice/water/solids/fat/protein/lactose, stabilizer provenance,
- * score, violations, hard-safe classification, best-achievable proof) plus:
+ * score, violations, hard-safe classification, best-found proof) plus:
  *  - a PROPORTIONAL-SCALING DETECTOR (output_i / baseline_i per unlocked
  *    ingredient — a shared factor ≠ 1 across most lines ⇒ SUSPECTED-FAKE);
  *  - a TARA (stabilizer) provenance report — the engine has NO stabilizer
@@ -35,6 +35,7 @@ import {
   type RecipeItem,
 } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
+import { canonicalInternalCategory } from '@/features/studio/productType';
 import {
   buildOptimizePreview,
   plannedSum,
@@ -71,6 +72,14 @@ const line = (
   lock_type: lock,
 });
 
+/**
+ * OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — this harness claims to
+ * run DIRECTLY against the real production pipeline, so it must not be able to
+ * construct a state the runtime cannot: the declared category is passed through
+ * the SAME canonicalization the engine seam applies (`buildRecipeInput`), so an
+ * unseeded cell (the `fruit_gelato` these fixtures used to declare) is derived
+ * back to its canonical family from the real ingredients.
+ */
 const input = (
   items: RecipeItem[],
   category: RecipeInput['category'],
@@ -78,7 +87,7 @@ const input = (
   batch = 1000,
 ): RecipeInput => ({
   mode: 'classic',
-  category,
+  category: canonicalInternalCategory(category, items),
   target_temperature_c: temp,
   target_batch_grams: batch,
   machine_capacity_grams: null,
@@ -155,10 +164,13 @@ export const AUTHENTICITY_CASES: readonly AuthenticityCaseDef[] = [
   ),
   {
     id: 'T10',
-    title: 'Strawberry 0 g + Milk 0 g unlocked — full formulation, actual optimum',
+    // Owner addendum items 1+2: the fruit carries a real amount — no APPROVED
+    // template has a fruit role for a dairy gelato, so a 0 g fruit is the
+    // honest "give me the amount" stop (pinned in the formulation suites).
+    title: 'Strawberry 350 g + Milk 0 g unlocked — full formulation, actual optimum',
     build: () => ({
       input: input(
-        [line('l-milk', demo('milk_3_5'), 0), line('l-straw', strawberrySurrogate(), 0)],
+        [line('l-milk', demo('milk_3_5'), 0), line('l-straw', strawberrySurrogate(), 350)],
         'fruit_gelato',
       ),
       set: NO_CONSTRAINTS,
@@ -223,7 +235,7 @@ export const AUTHENTICITY_CASES: readonly AuthenticityCaseDef[] = [
     title: 'Sucrose unavailable (excluded) — no silent substitution allowed',
     build: () => ({
       input: input(
-        [line('l-milk', demo('milk_3_5'), 0), line('l-straw', strawberrySurrogate(), 0)],
+        [line('l-milk', demo('milk_3_5'), 0), line('l-straw', strawberrySurrogate(), 350)],
         'fruit_gelato',
       ),
       set: NO_CONSTRAINTS,
@@ -262,9 +274,22 @@ export const AUTHENTICITY_CASES: readonly AuthenticityCaseDef[] = [
 
 /* ── structured record (the owner template) ────────────────────────────────── */
 
+/**
+ * OWNER FINAL INTEGRATION ADDENDUM item 3 (honest terminology, 2026-07-25).
+ *
+ * WHAT WAS TRUE BEFORE: the verdict was `AUTHENTIC-BEST-ACHIEVABLE`. The solver
+ * is COORDINATE DESCENT over a fixed gram ladder (see draftCandidateVector.ts):
+ * it can prove a LOCAL verified fixed point, never a global mathematical
+ * optimum, so "best achievable" was a claim the machinery cannot support.
+ *
+ * WHAT IS TRUE NOW: `AUTHENTIC-BEST-FOUND` — the best result THIS solver found,
+ * always reported together with its stop reason. `AUTHENTIC-OPTIMAL` keeps its
+ * narrow meaning: every approved NATIVE band is satisfied (0 violations) — a
+ * statement about the bands, still never a claim of global optimality.
+ */
 export type AuthenticityVerdict =
   | 'AUTHENTIC-OPTIMAL'
-  | 'AUTHENTIC-BEST-ACHIEVABLE'
+  | 'AUTHENTIC-BEST-FOUND'
   | 'HONEST-IMPOSSIBLE'
   | 'SUSPECTED-FAKE';
 
@@ -343,7 +368,7 @@ export interface AuthenticityRecord {
   violations: RecordedViolation[];
   hardSafe: boolean;
   proportionalScaling: ProportionalScalingReport;
-  bestAchievableProof: string;
+  bestFoundProof: string;
   runtimeReferenceData: string[];
   verdict: AuthenticityVerdict;
   verdictReason: string;
@@ -536,7 +561,7 @@ export function runAuthenticityCase(def: AuthenticityCaseDef): AuthenticityRecor
         .map((round) => `r${round.round}:v${round.violations}/s${round1(round.severityPoints)}`)
         .join(' → ')
     : 'n/a';
-  const bestAchievableProof = iteration
+  const bestFoundProof = iteration
     ? `solver invoked ${iteration.solverInvocations}×; trajectory ${roundsText}; stop=${iteration.stopReason}` +
       (iteration.stopDetail ? ` (${iteration.stopDetail})` : '') +
       (iteration.capped ? '; CAP HIT (reported honestly)' : '')
@@ -560,20 +585,20 @@ export function runAuthenticityCase(def: AuthenticityCaseDef): AuthenticityRecor
       verdict = 'AUTHENTIC-OPTIMAL';
       verdictReason = '0 violations on NATIVE approved bands — verified optimum.';
     } else if (violations.length === 0 && provisionalBands) {
-      verdict = 'AUTHENTIC-BEST-ACHIEVABLE';
+      verdict = 'AUTHENTIC-BEST-FOUND';
       verdictReason =
         '0 violations, but the profile is scored on PROVISIONAL (fallback/estimated) bands — honest partial validation, never presented as a validated native 10/10.';
     } else if (proportionalScaling.detected && !hasHardConstraints) {
       verdict = 'SUSPECTED-FAKE';
       verdictReason = `PROPORTIONAL SCALING DETECTED on an UNCONSTRAINED draft: ${proportionalScaling.matchedLines}/${proportionalScaling.eligibleLines} unlocked lines share factor ${proportionalScaling.sharedFactor} — not a per-line optimization.`;
     } else if (!hardResidual) {
-      verdict = 'AUTHENTIC-BEST-ACHIEVABLE';
-      verdictReason = `Residual out-of-band metrics [${violations.map((v) => v.metric).join(', ')}] sit ONLY on provisional/fallback bands — best verified result for these ingredients/constraints.`;
+      verdict = 'AUTHENTIC-BEST-FOUND';
+      verdictReason = `Residual out-of-band metrics [${violations.map((v) => v.metric).join(', ')}] sit ONLY on provisional/fallback bands — best result found by the current solver for these ingredients/constraints.`;
     } else if (hasHardConstraints) {
-      verdict = 'AUTHENTIC-BEST-ACHIEVABLE';
+      verdict = 'AUTHENTIC-BEST-FOUND';
       verdictReason = `Constrained optimum: hard-band residuals [${violations.filter((v) => v.provenance === 'hard').map((v) => v.metric).join(', ')}] remain because explicit user constraints bind — surfaced honestly, never hidden.`;
     } else if (provenAttempt) {
-      verdict = 'AUTHENTIC-BEST-ACHIEVABLE';
+      verdict = 'AUTHENTIC-BEST-FOUND';
       verdictReason = `Native-band PROVEN FIXED POINT: solver really attempted moves (${iteration!.solverInvocations}×, stop=${iteration!.stopReason}) and residual hard metrics [${violations.filter((v) => v.provenance === 'hard').map((v) => v.metric).join(', ')}] are reported, not hidden.`;
     } else {
       verdict = 'SUSPECTED-FAKE';
@@ -589,10 +614,10 @@ export function runAuthenticityCase(def: AuthenticityCaseDef): AuthenticityRecor
         verdictReason;
     }
   } else if (result.code === 'already_clean') {
-    verdict = provisionalBands ? 'AUTHENTIC-BEST-ACHIEVABLE' : 'AUTHENTIC-OPTIMAL';
+    verdict = provisionalBands ? 'AUTHENTIC-BEST-FOUND' : 'AUTHENTIC-OPTIMAL';
     verdictReason = 'Draft already inside every approved band — PI honestly proposes no change.';
   } else if (result.code === 'best_safe_result') {
-    verdict = 'AUTHENTIC-BEST-ACHIEVABLE';
+    verdict = 'AUTHENTIC-BEST-FOUND';
     verdictReason = `Explanatory best-safe fixed point: solver really ran ${result.solverInvocations}×, remaining deviations [${result.softViolatedMetrics.join(', ')}] sit only on ${result.bandSource} bands.`;
   } else if (result.code === 'missing_required_role' || result.code === 'unsupported_profile') {
     verdict = 'HONEST-IMPOSSIBLE';
@@ -674,7 +699,7 @@ export function runAuthenticityCase(def: AuthenticityCaseDef): AuthenticityRecor
     violations,
     hardSafe: !hardResidual,
     proportionalScaling,
-    bestAchievableProof,
+    bestFoundProof,
     runtimeReferenceData: [
       'src/data/demoIngredients.ts (canonical literature compositions; strawberry = documented raspberry surrogate PI-ING-001553)',
       template

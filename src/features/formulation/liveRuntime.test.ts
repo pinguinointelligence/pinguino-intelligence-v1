@@ -42,35 +42,66 @@ const resetStore = (visible: 'gelato' | 'sorbet') => {
 beforeEach(() => resetStore('gelato'));
 
 describe('owner case A — Gelato + Milk + Strawberry, no grams (Phase 5)', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM items 1+2 (2026-07-25) — SUPERSEDES the
+  // `fruit_gelato` expectations this block carried. `fruit_gelato` has no NATIVE
+  // seeded bands (targets.ts seeds milk/chocolate/sorbet/vegan only), so a dairy
+  // recipe containing fruit is canonical GELATO → `milk_gelato`. The guarantee
+  // this test exists to protect — the CURRENT draft (never a stale/saved one)
+  // controls routing, and the workbar shows the VISIBLE type — is re-pinned
+  // below on the canonical category.
   it('the CURRENT draft controls routing; workbar and selector agree on the visible type', () => {
     useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
     useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
     const s = useRecipeStore.getState();
-    // Visible = Gelato; internal derives fruit_gelato from the real ingredients.
+    // Visible = Gelato; internal derives the CANONICAL dairy family from the
+    // real ingredients (milk present ⇒ dairy ⇒ milk_gelato, NATIVE bands).
     expect(s.visibleProductType).toBe('gelato');
-    expect(s.category).toBe('fruit_gelato');
+    expect(s.category).toBe('milk_gelato');
     // The workbar renders the VISIBLE type — never a private internal label.
     expect(copy.studio.goal.productTypes[s.visibleProductType]).toBe('Gelato');
     // RecipeInput (the formulation source) is the CURRENT draft.
-    expect(buildRecipeInput(s).category).toBe('fruit_gelato');
+    expect(buildRecipeInput(s).category).toBe('milk_gelato');
   });
 
-  it('produces a REAL differentiated preview: user IDs preserved, toolbox roles auto-added with reasons', () => {
+  // OWNER ADDENDUM items 1+2 — SUPERSEDES „produces a REAL differentiated
+  // preview" for the ZERO-GRAM fruit case. The only template that ever gave a
+  // dairy fruit gelato a fruit dose was `fruit_gelato_ref_v1`, whose grams were
+  // transcribed from a QA fixture; item 2 quarantines it, and no APPROVED
+  // milk_gelato template carries a `fruit` role. PI must therefore not invent a
+  // fruit dose — and must not silently return a plain milk base either. The
+  // guarantee is re-pinned in its strongest form: the chosen fruit is NEVER
+  // silently left at 0 g; PI stops and names it. The companion test below
+  // re-pins that a fruit gelato WITH grams still formulates completely.
+  it('a 0 g fruit is never silently ignored: PI stops and asks for the amount', () => {
     useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
     useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const { preview, previewIssue } = useConstraintStudioStore.getState();
+    expect(preview).toBeNull(); // never a milk base pretending the fruit is not there
+    expect(previewIssue?.code).toBe('missing_required_role');
+    if (previewIssue?.code !== 'missing_required_role') return;
+    expect(previewIssue.role).toBe('fruit');
+    expect(previewIssue.messagePl).toContain('STRAWBERRIES');
+    expect(previewIssue.messagePl).toContain('Wpisz ilość');
+  });
+
+  it('with a real fruit amount it formulates completely on NATIVE milk bands', () => {
+    useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
+    useRecipeStore.getState().addIngredient(STRAWBERRIES, 350);
     useConstraintStudioStore.getState().createOptimizePreview();
     const { preview, previewIssue } = useConstraintStudioStore.getState();
     expect(previewIssue).toBeNull();
     expect(preview).not.toBeNull();
     if (!preview) return;
-    expect(preview.formulation?.mode).toBe('full_formulation');
-    expect(preview.formulation?.templateId).toBe('fruit_gelato_ref_v1');
+    expect(preview.formulation?.templateId).toBe('milk_base_v1');
+    // An APPROVED template — never reference-derived (addendum item 2).
+    expect(preview.formulation?.templateStatus).toBe('approved');
     expect(Math.abs(plannedSum(preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
     // the USER's stable ids carry real differentiated grams
     const milk = preview.proposedInput.items.find((i) => i.ingredient.id === 'milk_3_5')!;
     const straw = preview.proposedInput.items.find((i) => i.ingredient.id === 'PI-ING-001553')!;
     expect(milk.planned_grams).toBeGreaterThan(100);
-    expect(straw.planned_grams).toBeGreaterThan(100);
+    expect(straw.planned_grams).toBeGreaterThan(0); // the user's fruit is preserved
     expect(milk.planned_grams).not.toBe(straw.planned_grams); // differentiated
     // the toolbox supplied the technological base — visible with reasons
     const addedIds = preview.formulation!.added.map((a) => a.ingredientId);
@@ -104,13 +135,33 @@ describe('owner case B — Sorbet + Strawberry, no grams (Phase 6)', () => {
     expect(straw.planned_grams).toBeGreaterThan(300);
   });
 
-  it('switching Sorbet → Gelato immediately re-routes the template (test 4)', () => {
+  // OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — SUPERSEDES the
+  // `fruit_gelato` / `fruit_gelato_ref_v1` expectations. The owner rule: a
+  // WATER-BASED NON-DAIRY fruit recipe is a SORBET even when it was entered
+  // under visible Gelato (there is no dairy anywhere in this draft — the dairy
+  // test reads real composition, not names). The guarantee this test protects —
+  // switching the visible type re-routes the template INSTANTLY from the
+  // current draft, with no save — is re-pinned below, plus the new rule.
+  it('switching Sorbet → Gelato keeps a non-dairy fruit draft on the SORBET science (test 4)', () => {
     resetStore('sorbet');
     useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
     useRecipeStore.getState().setVisibleProductType('gelato');
-    expect(useRecipeStore.getState().category).toBe('fruit_gelato'); // instant, no save needed
+    // no dairy anywhere ⇒ canonical family is sorbet, whatever the selector said
+    expect(useRecipeStore.getState().category).toBe('sorbet');
     useConstraintStudioStore.getState().createOptimizePreview();
-    expect(useConstraintStudioStore.getState().preview?.formulation?.templateId).toBe('fruit_gelato_ref_v1');
+    expect(useConstraintStudioStore.getState().preview?.formulation?.templateId).toBe('S01');
+  });
+
+  it('adding real dairy re-routes the SAME draft to the milk family instantly (test 4b)', () => {
+    resetStore('sorbet');
+    useRecipeStore.getState().addIngredient(STRAWBERRIES, 350);
+    useRecipeStore.getState().setVisibleProductType('gelato');
+    expect(useRecipeStore.getState().category).toBe('sorbet'); // still no dairy
+    useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
+    // dairy now present ⇒ instant re-route, no save needed
+    expect(useRecipeStore.getState().category).toBe('milk_gelato');
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().preview?.formulation?.templateId).toBe('milk_base_v1');
   });
 });
 
