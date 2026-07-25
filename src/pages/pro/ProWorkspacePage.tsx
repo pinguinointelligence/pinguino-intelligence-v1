@@ -108,7 +108,11 @@ function RecipeWorkbench({ focusMonitor = false }: { focusMonitor?: boolean }) {
   // optimize preview in the ONE constraint-studio pipeline and opens the compact
   // Preview → Zastosuj/Anuluj → Cofnij OVERLAY. „Monitor PI" opens the bottom-sheet
   // Monitor (mobile); on desktop the LIVE panel is already pinned in the workbench.
-  const [monitorOpen, setMonitorOpen] = useState(false);
+  // Owner addendum item 5 (Monitor parity, GAP-2): below `lg` the pinned Monitor
+  // aside is `display:none`, so on /pro/monitor — the route whose whole purpose is
+  // the Monitor — a phone or tablet showed no Monitor at all until the user tapped
+  // the sheet open. Deep-linking to the Monitor opens the sheet it actually has.
+  const [monitorOpen, setMonitorOpen] = useState(focusMonitor);
   const [recalcOpen, setRecalcOpen] = useState(false);
   const startRecalc = () => {
     useConstraintStudioStore.getState().createOptimizePreview();
