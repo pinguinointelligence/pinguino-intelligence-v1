@@ -66,6 +66,7 @@ import {
 } from '@/features/formulation/proportionalScaling';
 import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
 import {
+  isApprovedTemplateId,
   selectFormulationTemplate,
   type FormulationTemplate,
   type TemplateStatus,
@@ -101,6 +102,116 @@ export function workingStateFingerprint(input: RecipeInput, set: ConstraintSet):
 /* ── preview model ───────────────────────────────────────────────────────── */
 
 export type PreviewKind = 'optimize' | 'batch_rescale' | 'suggested_fix';
+
+/* ── outcome classification (owner addendum item 4) ──────────────────────── */
+
+/**
+ * WHAT A PREVIEW ACTUALLY DID (owner FINAL INTEGRATION ADDENDUM item 4,
+ * 2026-07-25) — "batch reconciliation is NOT formulation improvement".
+ *
+ * WHAT WAS TRUE BEFORE: the CURRENT-DRAFT wave made an off-batch draft
+ * (955 g / 1045 g against a 1000 g target) produce a real Preview. That is
+ * correct behaviour, but the preview was titled „Dopasowanie receptury" for
+ * both a PURE RESCALE and a genuine technological improvement, and the only
+ * distinction was `batchReconciliationOnly` — a flag the BUILDER set.
+ *
+ * WHAT IS TRUE NOW: every preview carries this classification, RECOMPUTED
+ * TRUSTLESSLY from the before/after inputs alone (never from a builder flag),
+ * so the surface can only ever say what really happened:
+ *   · `batch_rescale`                    → „Przeskalowano partię"
+ *   · `engine_optimization`              → „PI zoptymalizowało recepturę"
+ *   · `batch_rescale_and_optimization`   → BOTH, batch first (order of honesty)
+ *   · `no_verified_change`               → neither claim is available
+ *
+ * `engineImproved` is the engine's OWN measure (fewer violations, or lower
+ * weighted severity) — a pure proportional rescale cannot change either,
+ * because every metric is per-100 g, so a pure reconciliation can never
+ * produce the optimisation wording by construction.
+ */
+export type PreviewOutcome =
+  | 'batch_rescale'
+  | 'engine_optimization'
+  | 'batch_rescale_and_optimization'
+  | 'no_verified_change';
+
+export interface PreviewOutcomeClassification {
+  outcome: PreviewOutcome;
+  /** The planned mass really moved AND landed on the target batch. */
+  batchReconciled: boolean;
+  /** Per-100 g composition identical within tolerance (a pure rescale). */
+  compositionUnchanged: boolean;
+  /** The engine verified fewer violations OR lower weighted severity. */
+  engineImproved: boolean;
+  beforeGrams: number;
+  afterGrams: number;
+  targetBatchGrams: number;
+  violationsBefore: number;
+  violationsAfter: number;
+}
+
+/** Per-100 g composition tolerance (0.01 g per 100 g — far below display). */
+const COMPOSITION_SHARE_TOLERANCE = 0.01;
+
+/**
+ * Is the proposal a PURE RESCALE — same lines, same per-100 g composition?
+ * Pure arithmetic on the two inputs; no flag, no builder intent.
+ */
+function isCompositionUnchanged(before: RecipeInput, after: RecipeInput): boolean {
+  const beforeSum = plannedSum(before);
+  const afterSum = plannedSum(after);
+  if (!(beforeSum > 0) || !(afterSum > 0)) return false;
+  if (before.items.length !== after.items.length) return false;
+  const afterById = new Map(after.items.map((item) => [item.id, item]));
+  for (const beforeItem of before.items) {
+    const afterItem = afterById.get(beforeItem.id);
+    if (!afterItem) return false;
+    const beforeShare = (beforeItem.planned_grams / beforeSum) * 100;
+    const afterShare = (afterItem.planned_grams / afterSum) * 100;
+    if (Math.abs(beforeShare - afterShare) > COMPOSITION_SHARE_TOLERANCE) return false;
+  }
+  return true;
+}
+
+/** THE trustless classification (owner addendum item 4). PURE. */
+export function classifyPreviewOutcome(
+  before: RecipeInput,
+  after: RecipeInput,
+): PreviewOutcomeClassification {
+  const beforeGrams = plannedSum(before);
+  const afterGrams = plannedSum(after);
+  const targetBatchGrams = after.target_batch_grams;
+  const violationsBefore = detectViolations(calculateRecipe(before)).length;
+  const violationsAfter = detectViolations(calculateRecipe(after)).length;
+
+  const massMoved = Math.abs(afterGrams - beforeGrams) > BATCH_SUM_TOLERANCE_G;
+  const landedOnTarget =
+    targetBatchGrams > 0 && Math.abs(afterGrams - targetBatchGrams) <= BATCH_SUM_TOLERANCE_G;
+  const batchReconciled = massMoved && landedOnTarget;
+  const compositionUnchanged = isCompositionUnchanged(before, after);
+  const engineImproved =
+    violationsAfter < violationsBefore ||
+    totalSeverity(after) < totalSeverity(before) - SEVERITY_EPS;
+
+  const outcome: PreviewOutcome = engineImproved
+    ? batchReconciled
+      ? 'batch_rescale_and_optimization'
+      : 'engine_optimization'
+    : batchReconciled
+      ? 'batch_rescale'
+      : 'no_verified_change';
+
+  return {
+    outcome,
+    batchReconciled,
+    compositionUnchanged,
+    engineImproved,
+    beforeGrams,
+    afterGrams,
+    targetBatchGrams,
+    violationsBefore,
+    violationsAfter,
+  };
+}
 
 /* ── formulation authenticity proof (owner Agent 3 contract) ─────────────── */
 
@@ -175,6 +286,14 @@ export interface ConstraintPreview {
   batchReconciliationOnly?: boolean;
   /** The planned mass the draft carried before the reconciliation. */
   batchBeforeGrams?: number;
+  /**
+   * OWNER ADDENDUM item 4 — WHAT THIS PREVIEW ACTUALLY DID, recomputed
+   * trustlessly from (baseInput, proposedInput) by `classifyPreviewOutcome`.
+   * The UI renders its wording from THIS, never from `batchReconciliationOnly`
+   * or any other builder-set flag, so a pure rescale can never be presented as
+   * an optimisation and an optimisation can never be presented as a rescale.
+   */
+  outcomeClassification: PreviewOutcomeClassification;
   /** Owner P0 (full formulation): the formulation provenance — template seed,
    * mode, auto-added toolbox lines (with reasons), honest gaps + suggestions. */
   formulation?: {
@@ -214,10 +333,14 @@ export interface ConstraintPreview {
    * Non-empty ⇒ the preview is DIAGNOSTIC ONLY. The `commitPreview` door
    * re-derives this trustlessly from `proposedInput` — never from this field. */
   hardResidualMetrics?: string[];
-  /** ACCEPTANCE ADDENDUM (1+3): TRUE ⇒ diagnostic preview — Apply is
-   * structurally disabled at the door (iteration cap or hard-native residual).
+  /** ACCEPTANCE ADDENDUM (1+3) + owner addendum item 2: TRUE ⇒ diagnostic
+   * preview — Apply is structurally disabled at the door (iteration cap,
+   * hard-native residual, or non-approved formulation provenance).
    * Presentation marker only; the door enforces independently. */
   diagnosticOnly?: boolean;
+  /** Owner addendum item 2 — WHICH honest explanation the card must render.
+   * Presentation only; every one of these is enforced again at the door. */
+  diagnosticReason?: 'hard_residual' | 'iteration_cap' | 'reference_derived';
   /** The proposed working state — applied ONLY through `commitPreview`. */
   proposedInput: RecipeInput;
   /** The constraint set in force AFTER apply (suggested fixes update a lock —
@@ -685,6 +808,9 @@ const finishPreview = (
   return {
     kind,
     titlePl,
+    // Owner addendum item 4: computed HERE, from the two inputs, for EVERY
+    // preview builder — there is no path that can produce a preview without it.
+    outcomeClassification: classifyPreviewOutcome(baseInput, proposedInput),
     baseFingerprint: workingStateFingerprint(baseInput, baseSet),
     proposedInput,
     nextConstraints,
@@ -1612,7 +1738,18 @@ function buildFormulationPreviewInternal(
   // hard-NATIVE residuals or a capped iteration make it DIAGNOSTIC ONLY (the
   // door re-derives both trustlessly; this marks the presentation honestly).
   preview.hardResidualMetrics = bands.hardMetrics;
-  preview.diagnosticOnly = bands.hardMetrics.length > 0 || iterated.diagnostics.capped;
+  // Owner addendum item 2: a non-approved formulation seed is DIAGNOSTIC ONLY,
+  // whatever the score — the door refuses it independently.
+  const referenceDerived = !isApprovedTemplateId(built.proposal.templateId);
+  preview.diagnosticOnly =
+    bands.hardMetrics.length > 0 || iterated.diagnostics.capped || referenceDerived;
+  preview.diagnosticReason = referenceDerived
+    ? 'reference_derived'
+    : bands.hardMetrics.length > 0
+      ? 'hard_residual'
+      : iterated.diagnostics.capped
+        ? 'iteration_cap'
+        : undefined;
   return { ok: true, preview };
 }
 
@@ -1933,6 +2070,12 @@ export function buildOptimizePreview(
   const localBands = classifyViolationBands(working);
   preview.hardResidualMetrics = localBands.hardMetrics;
   preview.diagnosticOnly = localBands.hardMetrics.length > 0 || iterated.diagnostics.capped;
+  preview.diagnosticReason =
+    localBands.hardMetrics.length > 0
+      ? 'hard_residual'
+      : iterated.diagnostics.capped
+        ? 'iteration_cap'
+        : undefined;
   return { ok: true, preview };
 }
 
@@ -2132,7 +2275,15 @@ export type BlockedApply =
    * (hard by `violationBands` provenance) make the preview DIAGNOSTIC ONLY —
    * re-derived TRUSTLESSLY from the proposed input at this door, never from
    * preview-carried flags. Soft/provisional residuals stay applicable. */
-  | { code: 'hard_residual_violations'; messagePl: string; hardMetrics: string[] };
+  | { code: 'hard_residual_violations'; messagePl: string; hardMetrics: string[] }
+  /** OWNER FINAL INTEGRATION ADDENDUM item 2 (2026-07-25): the formulation
+   * provenance is a NON-APPROVED template (reference-derived, or an id that
+   * exists in no registry at all). Reference data may be diagnostic, test-only
+   * or an internal seed — it may NEVER become an applicable production recipe,
+   * however the search ended and however exactly the batch matches. Re-derived
+   * at this door from the template id in the proposal against the registry's
+   * OWN status — never from `preview.formulation.templateStatus`. */
+  | { code: 'reference_derived_provenance'; messagePl: string; templateId: string };
 
 export type CommitPreviewResult = { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
 
@@ -2301,6 +2452,28 @@ export class VerifiedApply {
           messagePl: copy.blocked.unsafeProposal,
           violationsBefore: detectViolations(calculateRecipe(current)).length,
           violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
+        };
+      }
+    }
+
+    // OWNER FINAL INTEGRATION ADDENDUM item 2 (2026-07-25) — REFERENCE-DERIVED
+    // PROVENANCE GATE. A preview whose formulation seed is not an APPROVED
+    // template can never commit: reference data may be diagnostic, test-only or
+    // an internal search seed, but a reference-derived formula may NEVER be
+    // accepted as applicable merely because the search stopped or the batch
+    // equals the target. TRUSTLESS: the status is re-read from the registry by
+    // the template id the proposal carries — `preview.formulation.templateStatus`
+    // is never consulted, and an id that exists in NO registry is not approved
+    // either. (After addendum item 1 this is unreachable at runtime by TWO
+    // independent structural facts; the door is the last one.)
+    if (preview.kind === 'optimize' && preview.formulation !== undefined) {
+      const templateId = preview.formulation.templateId;
+      if (!isApprovedTemplateId(templateId)) {
+        return {
+          ok: false,
+          code: 'reference_derived_provenance',
+          messagePl: copy.blocked.referenceDerivedProvenance(templateId),
+          templateId,
         };
       }
     }

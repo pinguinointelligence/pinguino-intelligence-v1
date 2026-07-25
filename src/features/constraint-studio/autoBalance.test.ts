@@ -150,6 +150,19 @@ describe('owner Test 2 — the 1 g recipe produces a REAL calculated Preview (te
     const preview = {
       kind: 'optimize' as const,
       titlePl: 'forged',
+      // Owner addendum item 4: hand-forged fixtures declare the outcome
+      // classification explicitly (the real builders compute it).
+      outcomeClassification: {
+        outcome: 'no_verified_change' as const,
+        batchReconciled: false,
+        compositionUnchanged: false,
+        engineImproved: false,
+        beforeGrams: 1000,
+        afterGrams: 1000,
+        targetBatchGrams: 1000,
+        violationsBefore: 0,
+        violationsAfter: 0,
+      },
       baseFingerprint: workingStateFingerprint(current, NO),
       proposedInput: forged,
       nextConstraints: NO,

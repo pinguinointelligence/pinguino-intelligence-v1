@@ -373,8 +373,18 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
         },
       }),
     ).toBe(
-      'PI nie znalazło dalszej bezpiecznej poprawy. Obecna receptura jest najlepszym ' +
-        'zweryfikowanym wynikiem dla aktualnych składników i ograniczeń.',
+      // OWNER FINAL INTEGRATION ADDENDUM item 3 (2026-07-25) — SUPERSEDES „Obecna
+      // receptura jest najlepszym zweryfikowanym wynikiem…": the optimizer is
+      // coordinate descent over a fixed gram ladder, which proves a LOCAL fixed
+      // point, never a global optimum. The guarantee this test protects — the
+      // explanatory terminal state has ONE canonical sentence and the mapping
+      // to it is stable — is unchanged, and the message must now ALSO carry the
+      // stop reason so the claim is never unqualified.
+      'PI nie znalazło dalszej bezpiecznej poprawy. To najlepszy wynik znaleziony przez ' +
+        'obecny solver dla aktualnych składników i ograniczeń — inne, lepsze rozwiązanie ' +
+        'może istnieć poza jego zasięgiem przeszukiwania.' +
+        ' ' +
+        constraintStudioCopy.bestSafe.stopReason.template_fixed_point(3),
     );
   });
 
@@ -532,10 +542,15 @@ describe('science freeze', () => {
   });
 
   it('the best-safe copy key is the exact owner sentence (no repurposed keys)', () => {
+    // OWNER ADDENDUM item 3 (2026-07-25) — SUPERSEDES the previous sentence
+    // (see the mapping test above). The key itself is still never repurposed.
     expect(constraintStudioCopy.previewIssue.bestSafeResult).toBe(
-      'PI nie znalazło dalszej bezpiecznej poprawy. Obecna receptura jest najlepszym ' +
-        'zweryfikowanym wynikiem dla aktualnych składników i ograniczeń.',
+      'PI nie znalazło dalszej bezpiecznej poprawy. To najlepszy wynik znaleziony przez ' +
+        'obecny solver dla aktualnych składników i ograniczeń — inne, lepsze rozwiązanie ' +
+        'może istnieć poza jego zasięgiem przeszukiwania.',
     );
+    // …and it may never again claim a proven best/optimum.
+    expect(constraintStudioCopy.previewIssue.bestSafeResult).not.toContain('zweryfikowanym wynikiem');
     // pre-existing keys stayed intact (never repurposed)
     expect(constraintStudioCopy.previewIssue.alreadyClean).toBe(
       'Receptura znajduje się już w zatwierdzonym zakresie. PI nie proponuje zmian.',

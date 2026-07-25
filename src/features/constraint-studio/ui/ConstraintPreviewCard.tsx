@@ -94,6 +94,9 @@ export function ConstraintPreviewCard({
   // the Apply control honestly (never a clickable button that fails later).
   const diagnostic = preview.diagnosticOnly === true;
   const hardResiduals = preview.hardResidualMetrics ?? [];
+  const diagnosticReason = preview.diagnosticReason;
+  // Owner addendum item 4 — the trustless outcome classification.
+  const outcome = preview.outcomeClassification;
 
   return (
     <section
@@ -116,27 +119,60 @@ export function ConstraintPreviewCard({
             {copy.preview.diagnosticBadge}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-ivory/80">
-            {hardResiduals.length > 0
-              ? copy.preview.diagnosticHardResiduals(hardResiduals)
-              : copy.preview.diagnosticIterationCap}
+            {diagnosticReason === 'reference_derived'
+              ? copy.preview.diagnosticReferenceDerived(preview.formulation?.templateId ?? '—')
+              : hardResiduals.length > 0
+                ? copy.preview.diagnosticHardResiduals(hardResiduals)
+                : copy.preview.diagnosticIterationCap}
           </p>
         </div>
       ) : null}
 
-      {preview.batchReconciliationOnly ? (
+      {/* OWNER FINAL INTEGRATION ADDENDUM item 4 (2026-07-25) — WHAT THIS
+          PREVIEW ACTUALLY DID. The wording comes from `outcomeClassification`,
+          recomputed by the pipeline from the before/after inputs alone, so a
+          pure batch rescale can never render the optimisation sentence and a
+          verified improvement can never be reduced to „przeskalowano". */}
+      {outcome.outcome !== 'no_verified_change' ? (
         <div
           className="mt-3 rounded-md border border-ivory/15 px-3 py-2.5"
-          data-testid="preview-batch-reconciled"
+          data-testid="preview-outcome"
+          data-outcome={outcome.outcome}
         >
           <p className="text-[0.65rem] font-medium tracking-[0.08em] text-ivory/60 uppercase">
-            {copy.preview.batchReconciledHeading}
+            {outcome.outcome === 'batch_rescale_and_optimization'
+              ? copy.preview.outcome.bothHeading
+              : outcome.outcome === 'batch_rescale'
+                ? copy.preview.outcome.batchRescaleHeading
+                : copy.preview.outcome.optimizationHeading}
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-ivory/80">
-            {copy.preview.batchReconciledNote(
-              formatGramsPl(preview.batchBeforeGrams ?? 0),
-              formatGramsPl(preview.proposedInput.target_batch_grams),
-            )}
-          </p>
+          {outcome.batchReconciled ? (
+            <p
+              className="mt-1 text-xs leading-relaxed text-ivory/80"
+              data-testid="preview-batch-reconciled"
+            >
+              {outcome.compositionUnchanged
+                ? copy.preview.outcome.rescaleOnlyNote(
+                    formatGramsPl(outcome.beforeGrams),
+                    formatGramsPl(outcome.afterGrams),
+                  )
+                : copy.preview.outcome.rescaleChangedCompositionNote(
+                    formatGramsPl(outcome.beforeGrams),
+                    formatGramsPl(outcome.afterGrams),
+                  )}
+            </p>
+          ) : null}
+          {outcome.engineImproved ? (
+            <p
+              className="mt-1 text-xs leading-relaxed text-ivory/80"
+              data-testid="preview-engine-improved"
+            >
+              {copy.preview.outcome.optimizationNote(
+                outcome.violationsBefore,
+                outcome.violationsAfter,
+              )}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

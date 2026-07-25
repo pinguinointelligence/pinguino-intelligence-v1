@@ -754,7 +754,9 @@ export const copy = {
       fallbackInvoked: 'Fallback wzorca użyty',
       finalClassification: 'Klasyfikacja końcowa',
       classificationPreview: 'podgląd przygotowany',
-      classificationBestSafe: 'najlepszy bezpieczny wynik (best-safe)',
+      // Owner addendum item 3 (2026-07-25): the solver proves a LOCAL fixed
+      // point, never a global optimum — the label says "found", not "best".
+      classificationBestSafe: 'najlepszy znaleziony bezpieczny wynik (best-safe)',
       classificationIdle: 'nie uruchomiono',
       hardViolations: 'Twarde naruszenia (natywne zakresy)',
       softViolations: 'Miękkie naruszenia (zakresy prowizoryczne)',

@@ -74,8 +74,9 @@ const PINS: Pin[] = [
   // the quarantined `fruit_gelato_ref_v1` (item 2). Consequences, all visible
   // in this table:
   //   · 15 cases stop being provisional (T1–T13, T15, T16);
-  //   · 12 cases reach AUTHENTIC-OPTIMAL (0 violations on NATIVE approved
-  //     bands) — the verdict provisional bands used to make unreachable;
+  //   · 10 of them newly reach AUTHENTIC-OPTIMAL (0 violations on NATIVE
+  //     approved bands) — the verdict provisional bands made unreachable —
+  //     taking the total from 4 to 14;
   //   · T7/T8/T15/T9/T16 turn `hardSafe: false`: their residual violations are
   //     the SAME numbers, now classified HARD (native) instead of SOFT
   //     (provisional), so the addendum-3 door makes those previews
