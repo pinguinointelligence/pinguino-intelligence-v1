@@ -139,7 +139,23 @@ export function MonitorPanelContent({
         <p className="text-[0.625rem] font-medium tracking-label text-ivory/65 uppercase">
           {c.sections.advancedTitle}
         </p>
-        <div className="mt-2">
+        {/* PARITY VERIFICATION (owner addendum item 5 — Agent D, 2026-07-25): the
+            diagnostic rows are `<dd class="truncate">`, authored for the pre-redesign
+            full-width `max-w-4xl` column. Inside this 38 % Monitor column they were
+            measurably CLIPPED — at 1366×768 „Dawka stabilizatora" rendered 540 px of
+            sentence into a 224 px box (316 px, ~58 %, replaced by an ellipsis; the
+            approved dosage window and the in-window verdict were exactly what was lost),
+            and it still clipped 105 px at 1920×1080. That is content lost to layout,
+            which the owner's Monitor contract forbids. The row markup belongs to another
+            owner's component (`features/studio/OwnerDiagnosticPanel.tsx`), so the column
+            that imposes the narrow width takes responsibility for it here: a
+            presentation-only override that lets every value WRAP instead of being cut.
+            Descendant-selector specificity (0,2,1) beats `.truncate` (0,1,0); no value,
+            gating or diagnostic is added, removed or reworded. */}
+        <div
+          className="mt-2 [&_dd]:overflow-visible [&_dd]:text-left [&_dd]:break-words [&_dd]:whitespace-normal [&_dd]:text-clip"
+          data-testid="monitor-advanced-unclipped"
+        >
           {/* Iteration count, stop reason, trajectory, band/stabilizer provenance —
               the owner/QA truth panel (technicalView-gated inside; customers see nothing). */}
           <ReviewMarkedModule
