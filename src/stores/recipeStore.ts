@@ -56,6 +56,18 @@ export interface RecipeState {
    * removal-excludes rule): `removeItem` NEVER writes here — removing a row
    * only removes it from the CURRENT recipe. The ONLY exclusion source is the
    * explicit `markIngredientUnavailable` action.
+   *
+   * OWNER FINAL INTEGRATION ADDENDUM (Agent C — multi-remove/no-refresh):
+   * PERSISTED. An explicit „nie mam tego składnika" is DRAFT-MATERIAL (it is
+   * one of the eight fields `canonicalDraftSerialization` calls
+   * formulation-material), so it must survive a reload exactly like the grams
+   * do. Leaving it out of the partialize is what made the live session and the
+   * refreshed session formulate from DIFFERENT inputs — the asymmetry class the
+   * FINAL CLOSURE work only narrowed (it moved the writer from `removeItem` to
+   * `markIngredientUnavailable`) instead of sealing. The draft-scoped lifecycle
+   * is unchanged: load/preset/reset and an emptied draft still clear it, and an
+   * explicit re-add still lifts it — so a persisted exclusion is always
+   * recoverable through the UI.
    */
   excludedIngredientIds: string[];
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
@@ -247,6 +259,14 @@ const fromPreset = (preset: DemoPreset) => ({
  * appends v(n+1) to the SAME aggregate instead of starting a new one at v1. A stale link is safe
  * because the adapter re-reads the DB's authoritative `latest_version_number` and fails honestly
  * (offering "save as new") if the aggregate is gone.
+ *
+ * OWNER FINAL INTEGRATION ADDENDUM (Agent C) — the slice now carries EVERY
+ * formulation-material field of the canonical draft that lives in this store:
+ * items, batch, category/type, temperature, tier, machine capacity + provenance
+ * AND `excludedIngredientIds`. The §17 half (constraint `byLineId`) is persisted
+ * by its own store's partialize. Together they make the live payload and the
+ * post-refresh payload byte-identical — the reload can no longer silently drop
+ * an input the live click was using.
  */
 export function recipePersistPartialize(state: RecipeState) {
   return {
@@ -260,6 +280,8 @@ export function recipePersistPartialize(state: RecipeState) {
     flavor_intensity: state.flavor_intensity,
     cost_priority: state.cost_priority,
     items: state.items,
+    // Agent C (owner addendum): draft-material — see the field doc above.
+    excludedIngredientIds: state.excludedIngredientIds,
     activePresetId: state.activePresetId,
     savedRecipeId: state.savedRecipeId,
     savedRecipeName: state.savedRecipeName,
