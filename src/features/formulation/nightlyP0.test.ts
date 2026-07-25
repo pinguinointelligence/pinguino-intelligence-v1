@@ -292,35 +292,69 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
     }
   });
 
-  it('the best-safe fixed point returns the exact explanatory result, not a failure (test 16)', () => {
+  // CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25) — DELIBERATE SUPERSESSION.
+  // „Template similarity" is NOT proof of optimality (owner Phase 4): this very
+  // fixture returning `best_safe_result` / `template_fixed_point` IS the
+  // owner-verified failure this program closes. With the current-draft
+  // candidate vector the optimizer works the user's OWN unlocked lines and
+  // produces a REAL Preview at exactly the target batch.
+  it('resembling the reference template is NEVER a stop: the fixture optimizes (owner Phase 4)', () => {
     const result = buildOptimizePreview(input(FRUIT_COMPLETE(), 'fruit_gelato'), NO, 'now');
-    expect(result.ok).toBe(false); // this fixture IS the template — a fixed point
-    if (result.ok) return;
-    expect(result.code).toBe('best_safe_result');
-    if (result.code !== 'best_safe_result') return;
-    expect(result.stopReason).toBe('template_fixed_point');
-    expect(previewIssueMessagePl(result)).toBe(
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+    // The optimizer really searched the draft's own lines, not just the ADD set.
+    expect(result.preview.iteration!.candidateVector.length).toBeGreaterThan(0);
+  });
+
+  it('the live store path stages a real Preview (never the false „best verified result")', () => {
+    seedRecipeStore(FRUIT_COMPLETE(), 'fruit_gelato');
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const { preview, previewIssue } = useConstraintStudioStore.getState();
+    expect(previewIssue).toBeNull();
+    expect(preview).not.toBeNull();
+    // the recipe itself was NOT touched by building a preview
+    expect(Math.abs(plannedSum(buildRecipeInput(useRecipeStore.getState())) - 1000)).toBeLessThanOrEqual(0.1);
+  });
+
+  it('the explanatory best-safe message still exists for a genuine fixed point (test 16)', () => {
+    // The state is no longer produced by THIS fixture, but the copy contract
+    // and the message mapping stay pinned (they remain the honest terminal
+    // state whenever the local route AND the template seed both stop).
+    expect(
+      previewIssueMessagePl({
+        ok: false,
+        code: 'best_safe_result',
+        solverInvocations: 3,
+        softViolatedMetrics: ['fat'],
+        bandSource: 'category_fallback',
+        templateId: 'fruit_gelato_ref_v1',
+        templateStatus: 'reference_derived',
+        stopReason: 'template_fixed_point',
+        evidence: {
+          solverInvocations: 3,
+          draftVectorSearches: 3,
+          iterations: 2,
+          testedCandidates: [],
+          limitingMetrics: ['fat'],
+          provisionalProfile: true,
+        },
+      }),
+    ).toBe(
       'PI nie znalazło dalszej bezpiecznej poprawy. Obecna receptura jest najlepszym ' +
         'zweryfikowanym wynikiem dla aktualnych składników i ograniczeń.',
     );
   });
 
-  it('the live store path stages the best-safe state (never the generic rejection)', () => {
-    seedRecipeStore(FRUIT_COMPLETE(), 'fruit_gelato');
-    useConstraintStudioStore.getState().createOptimizePreview();
-    const { previewIssue } = useConstraintStudioStore.getState();
-    expect(previewIssue?.code).toBe('best_safe_result');
-    // the recipe was NOT touched
-    expect(Math.abs(plannedSum(buildRecipeInput(useRecipeStore.getState())) - 1000)).toBeLessThanOrEqual(0.1);
-  });
-
-  it('local no_proposal triggers the template-seeded fallback which CAN produce a verified Preview (test 12)', () => {
+  it('a complete fruit draft yields a verified Preview at exactly the target batch (test 12)', () => {
     const result = buildOptimizePreview(input(FRUIT_FALLBACK_OK(), 'fruit_gelato'), NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.preview.formulation?.localFallback).toBe(true); // the fallback really ran
-    expect(result.preview.formulation?.templateId).toBe('fruit_gelato_ref_v1');
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+    // When the template-seeded fallback DOES run it is still labelled honestly.
+    if (result.preview.formulation?.localFallback === true) {
+      expect(result.preview.formulation.templateId).toBe('fruit_gelato_ref_v1');
+    }
   });
 
   it('the fallback reuses the SAME selected identities, batch and temperature (test 13)', () => {

@@ -106,8 +106,48 @@ function BestSafeResultView({
       <p className="text-xs leading-relaxed text-ivory/60">
         {b.stopReason[issue.stopReason](issue.solverInvocations)}
       </p>
+      {/* Owner CURRENT-DRAFT P0 (Phase 4): the REAL evidence behind the stop —
+          what was searched, over which of the user's own ingredients, across
+          which gram range, and which metrics are still limiting. */}
+      <div className="space-y-1" data-testid="pro-recalc-best-safe-evidence">
+        <p className="text-xs leading-relaxed text-ivory/60">
+          {b.evidenceSearch(
+            issue.evidence.iterations,
+            issue.evidence.draftVectorSearches,
+            issue.evidence.testedCandidates.length,
+          )}
+        </p>
+        {issue.evidence.testedCandidates.map((candidate) => (
+          <p
+            key={candidate.ingredientName}
+            className="text-[0.7rem] leading-relaxed text-ivory/55"
+            data-testid="pro-recalc-tested-candidate"
+          >
+            {b.evidenceCandidate(
+              candidate.ingredientName,
+              formatGramsPl(candidate.currentGrams),
+              formatGramsPl(candidate.testedFromGrams),
+              formatGramsPl(candidate.testedToGrams),
+            )}
+          </p>
+        ))}
+        {issue.evidence.limitingMetrics.length > 0 ? (
+          <p className="text-xs leading-relaxed text-ivory/60">
+            {b.evidenceLimiting(
+              issue.evidence.limitingMetrics.map((metric) => d.metricLabels[metric] ?? metric),
+            )}
+          </p>
+        ) : null}
+        {issue.evidence.provisionalProfile ? (
+          <p className="text-xs leading-relaxed text-ivory/60">{b.evidenceProvisional}</p>
+        ) : null}
+      </div>
       <p className="text-xs leading-relaxed text-ivory/60">{b.calibration[issue.bandSource]}</p>
-      <p className="text-xs leading-relaxed text-ivory/65">{b.templateLine(issue.templateId)}</p>
+      {/* Template similarity is PROVENANCE ONLY — never the score, never the
+          reason (owner CURRENT-DRAFT P0 Phase 4/5). */}
+      <p className="text-xs leading-relaxed text-ivory/65">
+        {b.templateSimilarityLabel} — {b.templateLine(issue.templateId)}
+      </p>
     </div>
   );
 }

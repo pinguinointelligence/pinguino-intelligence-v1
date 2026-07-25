@@ -22,6 +22,7 @@ const state = (items: RecipeItem[]): RecipeInputState => ({
   target_temperature_c: -12,
   target_batch_grams: 1200,
   machine_capacity_grams: 2000,
+  machine_capacity_source: 'manual',
   flavor_intensity: 'maximum',
   cost_priority: 'low',
   items,
@@ -37,6 +38,24 @@ describe('buildRecipeInput', () => {
     expect(input.machine_capacity_grams).toBe(2000);
     expect(input.goals).toEqual({ flavor_intensity: 'maximum', cost_priority: 'low' });
     expect(input.items[0]!.lock_type).toBe('main');
+  });
+
+  // OWNER CURRENT-DRAFT P0 (Phase 8) — the machine-context gate: an
+  // unprovenanced capacity (the stale-localStorage class) never reaches the
+  // Engine, so it can never raise `machine_capacity_exceeded`.
+  it('an UNPROVENANCED capacity never reaches the engine', () => {
+    const base = state([line('milk_3_5', 500)]);
+    expect(buildRecipeInput({ ...base, machine_capacity_source: null }).machine_capacity_grams).toBeNull();
+    const legacy: RecipeInputState = { ...base };
+    delete legacy.machine_capacity_source;
+    expect(buildRecipeInput(legacy).machine_capacity_grams).toBeNull();
+  });
+
+  it('a machine-derived capacity DOES reach the engine', () => {
+    const base = state([line('milk_3_5', 500)]);
+    expect(
+      buildRecipeInput({ ...base, machine_capacity_source: 'machine' }).machine_capacity_grams,
+    ).toBe(2000);
   });
 });
 

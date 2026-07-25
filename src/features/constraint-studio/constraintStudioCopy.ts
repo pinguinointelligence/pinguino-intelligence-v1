@@ -124,6 +124,12 @@ export const constraintStudioCopy = {
       `${rounds > 0 ? ` (${rounds} ${rounds === 1 ? 'runda' : 'rundy'})` : ''}.`,
     referenceDerivedNote:
       'Wzorzec pochodny z receptur referencyjnych (staging) — nie jest zatwierdzony naukowo.',
+    /* Owner CURRENT-DRAFT P0 — a preview whose ONLY verified change is the
+       batch reconciliation. It is NEVER called a technical improvement. */
+    batchReconciledHeading: 'Wyrównanie partii',
+    batchReconciledNote: (before: string, target: string) =>
+      `Receptura ważyła ${before} przy celu partii ${target} — PI wyrównało ją dokładnie do celu. ` +
+      `Nie potwierdzono dalszej poprawy technicznej: proporcje składników pozostają twoje.`,
     /* Owner P0 NIGHTLY Phase 6 — the template-seeded fallback provenance note. */
     localFallbackNote:
       'Korekta lokalna nie znalazła bezpiecznej poprawy — PI ułożyło recepturę od zatwierdzonego ' +
@@ -237,14 +243,31 @@ export const constraintStudioCopy = {
     softDeviations: (labels: readonly string[]) =>
       `Miękkie odchylenia (zakresy prowizoryczne): ${listPl(labels)}.`,
     noSoftDeviations: 'Brak odchyleń w zakresach prowizorycznych.',
+    /* Owner CURRENT-DRAFT P0 (Phase 4) — a stop must be reported with its REAL
+       evidence. Resemblance to a reference template is NEVER a reason to stop
+       and is never phrased as one; it survives only as separate provenance
+       under „Zgodność ze wzorcem referencyjnym". */
     stopReason: {
       local_no_proposal: (invocations: number) =>
         `Powód zatrzymania: solver lokalny (uruchomiony ${invocations} ×) nie znalazł ` +
-        `bezpiecznej korekty, a wzorzec nie daje lepszego bezpiecznego wyniku.`,
+        `bezpiecznej korekty, a reformulacja od wzorca nie daje lepszego bezpiecznego wyniku.`,
       template_fixed_point: (invocations: number) =>
-        `Powód zatrzymania: receptura odpowiada już wzorcowi referencyjnemu — solver lokalny ` +
-        `(uruchomiony ${invocations} ×) i reformulacja od wzorca nie dają dalszej bezpiecznej poprawy.`,
+        `Powód zatrzymania: ani solver lokalny (uruchomiony ${invocations} ×), ani reformulacja ` +
+        `od wzorca nie znalazły dalszej zweryfikowanej poprawy.`,
     },
+    /* The searched evidence — what PI really tried before stopping. */
+    evidenceSearch: (iterations: number, sweeps: number, candidates: number) =>
+      `Zakres przeszukania: ${iterations} ${iterations === 1 ? 'iteracja' : 'iteracje'}, ` +
+      `${sweeps} ${sweeps === 1 ? 'przegląd' : 'przeglądy'} bieżącej receptury, ` +
+      `${candidates} ${candidates === 1 ? 'regulowany składnik' : 'regulowanych składników'}.`,
+    evidenceCandidate: (name: string, current: string, from: string, to: string) =>
+      `${name}: obecnie ${current}, testowano od ${from} do ${to}.`,
+    evidenceLimiting: (labels: readonly string[]) =>
+      `Parametry ograniczające: ${listPl(labels)}.`,
+    evidenceProvisional:
+      'Profil oceniany na zakresach prowizorycznych — wynik nie jest walidacją natywną.',
+    /* Template similarity is PROVENANCE, never the score and never the reason. */
+    templateSimilarityLabel: 'Zgodność ze wzorcem referencyjnym',
     calibration: {
       category_fallback:
         'Status kalibracji: profil oceniany według zakresów zastępczych (fallback profilu) — ' +

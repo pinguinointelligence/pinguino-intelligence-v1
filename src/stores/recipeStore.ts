@@ -35,6 +35,17 @@ export interface RecipeState {
   target_temperature_c: number;
   target_batch_grams: number;
   machine_capacity_grams: number | null;
+  /**
+   * OWNER CURRENT-DRAFT P0 (Phase 8) — WHERE the capacity came from. The engine
+   * raises `machine_capacity_exceeded` from `machine_capacity_grams` alone, so
+   * an UNPROVENANCED value (e.g. one persisted into localStorage by an earlier
+   * session and never cleared) made a 1000 g PROFESSIONAL recipe with no Home
+   * machine selected shout „batch exceeds machine capacity". A capacity only
+   * reaches the Engine when it has an explicit source: a Home machine
+   * selection ('machine') or an explicit user entry / saved recipe ('manual').
+   * null ⇒ no capacity limit is in force, whatever number happens to be stored.
+   */
+  machine_capacity_source: 'machine' | 'manual' | null;
   flavor_intensity: FlavorIntensity;
   cost_priority: CostPriority;
   items: RecipeItem[];
@@ -177,6 +188,8 @@ export interface RecipeState {
     label: string;
     temperatureC: number;
     batchGrams?: number | null;
+    /** Home machines only: the machine's real usable capacity in grams. */
+    capacityGrams?: number | null;
   }) => void;
   resetToDemo: () => void;
 }
@@ -204,6 +217,10 @@ const fromPreset = (preset: DemoPreset) => ({
   target_temperature_c: preset.target_temperature_c,
   target_batch_grams: preset.target_batch_grams,
   machine_capacity_grams: preset.machine_capacity_grams,
+  machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
+    | 'machine'
+    | 'manual'
+    | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   items: preset.items.map((item) => ({ ...item })),
@@ -239,6 +256,7 @@ export function recipePersistPartialize(state: RecipeState) {
     target_temperature_c: state.target_temperature_c,
     target_batch_grams: state.target_batch_grams,
     machine_capacity_grams: state.machine_capacity_grams,
+    machine_capacity_source: state.machine_capacity_source,
     flavor_intensity: state.flavor_intensity,
     cost_priority: state.cost_priority,
     items: state.items,
@@ -306,13 +324,26 @@ export const useRecipeStore = create<RecipeState>()(
           servingModeId: null,
           machineId: null,
           machineLabel: null,
+          // A MACHINE-derived capacity cannot outlive the machine context it
+          // came from; an explicit manual entry survives (owner Phase 8).
+          machine_capacity_grams:
+            state.machine_capacity_source === 'machine' ? null : state.machine_capacity_grams,
+          machine_capacity_source:
+            state.machine_capacity_source === 'machine' ? null : state.machine_capacity_source,
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
       setBatchGrams: (target_batch_grams) =>
         set((state) => ({ target_batch_grams, dirty: true, draftRevision: state.draftRevision + 1 })),
+      // An explicit user entry is legitimate provenance; clearing it removes
+      // the limit entirely (owner CURRENT-DRAFT P0, Phase 8).
       setMachineCapacity: (machine_capacity_grams) =>
-        set((state) => ({ machine_capacity_grams, dirty: true, draftRevision: state.draftRevision + 1 })),
+        set((state) => ({
+          machine_capacity_grams,
+          machine_capacity_source: machine_capacity_grams === null ? null : 'manual',
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
       setFlavorIntensity: (flavor_intensity) =>
         set((state) => ({ flavor_intensity, dirty: true, draftRevision: state.draftRevision + 1 })),
       setCostPriority: (cost_priority) =>
@@ -529,6 +560,7 @@ export const useRecipeStore = create<RecipeState>()(
           target_temperature_c: input.target_temperature_c,
           target_batch_grams: input.target_batch_grams,
           machine_capacity_grams: input.machine_capacity_grams,
+          machine_capacity_source: input.machine_capacity_grams === null ? null : 'manual',
           flavor_intensity: input.goals?.flavor_intensity ?? 'balanced',
           cost_priority: input.goals?.cost_priority ?? 'balanced',
           // Owner binding rule (zero-gram semantics): a stored bare grams-lock
@@ -557,6 +589,13 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionDate: versionDate,
           dirty: false,
         }),
+      // OWNER CURRENT-DRAFT P0 (Phase 8) — ONE SHARED MACHINE CONTEXT. The
+      // machine selection is now AUTHORITATIVE over the capacity: a
+      // PROFESSIONAL selection imposes no Home capacity limit (null), a HOME
+      // selection carries the machine's own usable capacity (or null when the
+      // catalogue states none). Previously this action left
+      // `machine_capacity_grams` untouched, so a stale value could outlive the
+      // machine that produced it and fire a capacity warning forever.
       setMachineSelection: (sel) =>
         set((state) => ({
           machineKind: sel.kind,
@@ -566,6 +605,9 @@ export const useRecipeStore = create<RecipeState>()(
           // Route to the existing supported cell — no Engine change, just the temperature input.
           target_temperature_c: sel.temperatureC,
           target_batch_grams: sel.batchGrams != null ? sel.batchGrams : state.target_batch_grams,
+          machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
+          machine_capacity_source:
+            sel.kind === 'home' && sel.capacityGrams != null ? 'machine' : null,
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),

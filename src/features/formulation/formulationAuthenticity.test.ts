@@ -24,7 +24,6 @@ import {
   buildBatchRescalePreview,
   buildOptimizePreview,
   plannedSum,
-  STABILIZER_TEMPLATE_DOSE_NOTE_PL,
 } from '@/features/constraint-studio/applyPipeline';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -213,7 +212,11 @@ describe('strawberry-600 (feasible case) still formulates', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const proof = result.preview.formulation!.proof!;
-    expect(proof.verdict).toBe('engine_improved');
+    // CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25): the current-draft
+    // candidate vector now drives this fixture to EVERY band in range, so the
+    // verdict strengthens from `engine_improved` to `all_bands_in_range`.
+    expect(proof.verdict).toBe('all_bands_in_range');
+    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toHaveLength(0);
     expect(proof.proportionalProjection).toBe(false);
     expect(proof.improvingMoves).toBeGreaterThan(0);
     const straw = result.preview.proposedInput.items.find((i) => i.id === 'l-straw')!;
@@ -330,20 +333,28 @@ describe('every constraint projection is Engine-evaluated and carries the proof'
     });
   }
 
-  it('structural validity (batch + locks hold) is NOT quality validity (strawberry-350 fixed point)', () => {
+  it('strawberry-350: the projection is no longer the answer — the draft vector really works it', () => {
+    // CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25) — DELIBERATE update.
+    // This fixture used to END on the untouched template projection (verdict
+    // `no_feasible_improvement`, `proportionalProjection = true`), which is
+    // exactly the „not in the template ⇒ not adjustable" defect. With the
+    // current-draft candidate vector the optimizer moves the draft's own
+    // unlocked lines and reaches every band; the projection is therefore no
+    // longer a fixed point, and the honest verdict is `all_bands_in_range`.
+    // The STRUCTURAL invariants this test guards are unchanged and re-pinned.
     const { input: rec, set } = strawberryLocked(350);
     const result = buildOptimizePreview(rec, set, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // Structurally valid: batch exact, lock byte-exact…
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
-    // …yet the verdict refuses to call the untouched projection "engine_improved":
+    const straw = result.preview.proposedInput.items.find((i) => i.id === 'l-straw')!;
+    expect(Object.is(straw.planned_grams, 350)).toBe(true);
+    // …and the result is a REAL engine outcome, never a relabelled projection.
     const proof = result.preview.formulation!.proof!;
-    expect(proof.verdict).toBe('no_feasible_improvement');
-    expect(proof.proportionalProjection).toBe(true);
-    expect(proof.bestEffort).toBe(true);
-    // and the stabilizer-dose provenance sentence is exposed (owner addendum 3).
-    expect(proof.stabilizerDoseNotePl).toBe(STABILIZER_TEMPLATE_DOSE_NOTE_PL);
+    expect(proof.verdict).toBe('all_bands_in_range');
+    expect(proof.proportionalProjection).toBe(false);
+    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toHaveLength(0);
   });
 
   it('a solver-reworked stabilizer dose does NOT claim template inheritance', () => {

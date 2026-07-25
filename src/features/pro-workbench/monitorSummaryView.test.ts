@@ -13,8 +13,9 @@ import {
   starterLine,
   withGrams,
   alcoholAndSugarHeavyJimBeam,
+  overSweetStarter,
 } from '@/features/recipe-constraints/constraintFixtures';
-import { recipeMatchScore } from '@/features/recipe-score';
+import { recipeTechnicalFit } from '@/features/recipe-score';
 import {
   buildMonitorAssessment,
   buildMonitorPrimarySignal,
@@ -25,12 +26,27 @@ import {
 const m = copy.monitorPi.summary;
 
 describe('monitorScoreView — THE one score seam', () => {
-  it('presents exactly the §15.1 adapter output (1–10 integer, label, aria)', () => {
+  it('presents exactly the CANONICAL technical-fit adapter (owner CURRENT-DRAFT P0, Phase 5)', () => {
+    // ONE CANONICAL SCORE: the Monitor headline used to read the engine's
+    // mode-weighted `overall` blend while every other public surface read the
+    // addendum-2 technical dimension — the owner's „modal 9/10 vs Monitor
+    // 8/10". The seam now reads the SAME adapter as everyone else.
     const result = calculateRecipe(starterMilkBase());
     const { match } = monitorScoreView(result);
-    expect(match).toEqual(recipeMatchScore(result.scores));
+    expect(match).toEqual(recipeTechnicalFit(result));
     expect(match.score).not.toBeNull();
     expect(match.display).toMatch(/^\d{1,2}\/10$/);
+  });
+
+  it('the Monitor and the recalculation modal can NEVER show two integers for one draft', () => {
+    for (const rec of [starterMilkBase(), overSweetStarter(220)]) {
+      const result = calculateRecipe(rec);
+      // The modal / OverallScoreCard / status-badge path…
+      const canonical = recipeTechnicalFit(result);
+      // …and the Monitor headline path.
+      expect(monitorScoreView(result).match.score).toBe(canonical.score);
+      expect(monitorScoreView(result).match.display).toBe(canonical.display);
+    }
   });
 });
 

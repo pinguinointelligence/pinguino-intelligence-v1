@@ -16,8 +16,9 @@
  * provisional-score labelling are unchanged.
  */
 import { describe, expect, it } from 'vitest';
-import type { RecipeInput } from '@/engine';
+import { calculateRecipe, type RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
+import { recipeTechnicalFit } from '@/features/recipe-score';
 import { B3_OWNER_DAIRY_MILK_GELATO, strawberrySurrogate } from '@/qa/engine-validation/fixtures';
 import { buildOptimizePreview, MAX_SOLVER_ROUNDS, plannedSum } from './applyPipeline';
 
@@ -84,28 +85,27 @@ describe('multi-round iteration on NATIVE approved bands (tests 11–12)', () =>
 describe('provisional/fallback profiles keep iterating AND keep the honest labels (test 13)', () => {
   it('fruit_gelato: fallback bands GUIDE the iteration; the label stays provisional', () => {
     const result = buildOptimizePreview(fruitComplete(), NO, 'now');
-    // This fixture IS the reference template — the honest terminal state is
-    // the explanatory best-safe result (never a bare 1-round rejection), with
-    // the iteration diagnostics attached and the band provenance named.
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.code).toBe('best_safe_result');
-    if (result.code !== 'best_safe_result') return;
-    expect(result.bandSource).toBe('category_fallback'); // provisional, labelled
-    expect(result.templateStatus).toBe('reference_derived'); // never „approved”
-    expect(result.iteration).toBeDefined();
-    // The solver REALLY ran and stopped for a named reason — not after round 1
-    // by construction: the stop is a verified fixed point / cap, never a
-    // hard-coded round limit of 1.
-    expect(result.iteration!.solverInvocations).toBeGreaterThan(0);
-    expect(['fixed_point_no_proposal', 'no_improving_move', 'iteration_cap']).toContain(
-      result.iteration!.stopReason,
+    // CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25) — DELIBERATE update:
+    // this fixture used to terminate as `best_safe_result` purely because it
+    // resembled the reference template. The current-draft candidate vector
+    // now improves it into a real Preview; what this test pins is that the
+    // fallback bands still GUIDE the iteration and the provisional labelling
+    // survives (a fallback profile can never present a validated native 10/10).
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const iteration = result.preview.iteration!;
+    expect(iteration.solverInvocations).toBeGreaterThan(0);
+    expect(['all_bands_in_range', 'fixed_point_no_proposal', 'no_improving_move']).toContain(
+      iteration.stopReason,
     );
-    // Provisional-band conflicts are named as such (fallback bands do not
-    // hard-reject alone — the explanatory state carries the classification).
-    if (result.iteration!.stopReason !== 'iteration_cap') {
-      expect(result.iteration!.stopDetail).toBe('provisional_band_conflict');
-    }
+    expect(iteration.capped).toBe(false);
+    // The fallback bands really drove it: the trajectory started out of band.
+    expect(iteration.rounds[0]!.violations).toBeGreaterThan(0);
+    // Provisional labelling survives — the profile is still fallback-banded.
+    const fit = recipeTechnicalFit(calculateRecipe(result.preview.proposedInput));
+    expect(fit.provisional).toBe(true);
+    expect(fit.validatedNative).toBe(false);
+    expect(fit.score!).toBeLessThanOrEqual(9);
   });
 });
 

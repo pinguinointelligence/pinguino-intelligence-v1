@@ -95,6 +95,9 @@ export function ProMachineSelector() {
       label: machineDisplayName(profile),
       temperatureC: temp,
       batchGrams: d.recommendedBatchGrams,
+      // OWNER CURRENT-DRAFT P0 (Phase 8): the Home machine's own usable
+      // capacity is the ONLY machine-derived capacity that may limit a batch.
+      capacityGrams: d.recommendedBatchGrams,
     });
     if (setAsDefault) {
       const record = buildMachinePreferenceRecord({
