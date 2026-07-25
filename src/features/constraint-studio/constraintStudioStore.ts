@@ -1,8 +1,20 @@
 /**
  * Constraint Studio session store (SPEC §17–§20) — constraints, the pending
- * preview, the §20 history and the blocked-apply notice. NOT persisted:
- * §19's Preview/Apply live in working memory; durable history is the
+ * preview, the §20 history and the blocked-apply notice. §19's Preview/Apply
+ * live in working memory and are NEVER persisted; durable history is the
  * pro-core save→version path (see ui/SaveVersionControl).
+ *
+ * OWNER FINAL INTEGRATION ADDENDUM (Agent C — multi-remove/no-refresh): the
+ * §17 CONSTRAINT SET alone is persisted (`constraintStudioPersistPartialize`).
+ * Reason: a §17 padlock writes BOTH halves of one lock — the exact grams here
+ * AND `lock_type: 'grams'` on the recipe line — and the recipe line IS
+ * persisted. Persisting only one half left a reloaded draft engine-frozen with
+ * no padlock to show for it, and made the live and the post-refresh canonical
+ * payload differ on `byLineId`. Staleness is still impossible: a draft-context
+ * change (load/preset/reset) clears the set through `resetDraftSession`, and the
+ * rehydrated set is reconciled against the rehydrated lines before it is ever
+ * read, so an entry survives ONLY while its line still exists AND still carries
+ * the engine lock.
  *
  * Recipe-write discipline: this file is the ONLY module in the feature that
  * writes to the recipe store (pinned by constraintStudioBoundary.test.ts),
@@ -21,6 +33,7 @@
  * line. Unlocking restores 'unlocked' and returns the line to the solver.
  */
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { LockType, RecipeInput, RecipeItem } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
@@ -263,7 +276,21 @@ const INITIAL = {
  * would block the apply anyway — clearing keeps the surface honest). */
 const CLEAR_STAGED = { preview: null, previewIssue: null, feasibility: null, blocked: null };
 
-export const useConstraintStudioStore = create<ConstraintStudioState>()((set, get) => ({
+/**
+ * OWNER FINAL INTEGRATION ADDENDUM (Agent C) — the persisted §17 slice: the
+ * CONSTRAINT SET and nothing else. `preview` / `previewIssue` / `blocked` /
+ * `feasibility` are staged results of ONE click and must never outlive the tab
+ * (a rehydrated preview would be stale by construction — its `baseDraftRevision`
+ * belongs to a session that no longer exists). `history` stays in working
+ * memory too: §20 undo restores a byte-exact in-memory snapshot, and durable
+ * history is the save→version path.
+ */
+export function constraintStudioPersistPartialize(state: ConstraintStudioState) {
+  return { constraints: state.constraints };
+}
+
+export const useConstraintStudioStore = create<ConstraintStudioState>()(
+  persist<ConstraintStudioState>((set, get) => ({
   ...INITIAL,
 
   toggleLock: (lineId) => {
@@ -493,7 +520,29 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()((set, ge
     set({ proCoreRecipeId: recipeId, lastSavedVersion: versionNumber }),
 
   resetForTests: () => set({ ...INITIAL, constraints: { byLineId: {} }, history: [] }),
-}));
+  }), {
+    name: 'pinguino-constraints',
+    partialize: constraintStudioPersistPartialize as (
+      state: ConstraintStudioState,
+    ) => ConstraintStudioState,
+    /**
+     * Rehydration is RECONCILED, never trusted: the persisted §17 entries are
+     * matched against the rehydrated recipe lines before the store is readable,
+     * so an entry whose line vanished (or whose engine lock was changed away)
+     * can never reach a consumer. The recipe store's own persist runs first —
+     * this module imports it, so its rehydration has already completed.
+     */
+    merge: (persisted, current) => {
+      const raw = (persisted as Partial<ConstraintStudioState> | undefined)?.constraints;
+      const constraints: ConstraintSet =
+        raw && typeof raw === 'object' && raw.byLineId ? raw : { byLineId: {} };
+      return {
+        ...current,
+        constraints: reconcileConstraints(useRecipeStore.getState().items, constraints),
+      };
+    },
+  }),
+);
 
 /* ── store bridge (owner P0 NIGHTLY, live FAILURE 1 — Phase 3 wiring) ────── */
 
