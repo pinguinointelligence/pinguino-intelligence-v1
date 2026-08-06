@@ -9,8 +9,9 @@ import { AppShell } from '@/features/shell/AppShell';
  * Reusable premium destination surface. Owner P0 (2026-07-22): destinations render under the
  * ONE canonical AppShell (logo left, canonical hamburger right, the one right-side drawer with
  * the identical menu) — the legacy black TopNav/mega-menu shell is gone from every routed page.
- * The page BODY keeps its dark premium tone (design lock: dark panels are allowed) — a calm
- * Tesla-style layout: eyebrow + large title + blurb + content, hairline dividers.
+ * Destination pages share the white editorial PINGÜINO language: strong headline,
+ * generous whitespace and hairline structure. Existing ivory utilities are remapped
+ * through the same light token scope used by Pro, so content and behavior stay intact.
  */
 export function DestinationSurface({
   eyebrow,
@@ -24,22 +25,24 @@ export function DestinationSurface({
   children?: ReactNode;
 }) {
   return (
-    <AppShell>
-      <SurfaceToneContext.Provider value="shell">
-        <div className="min-h-screen bg-shell text-ivory [color-scheme:dark]">
-          <div className="mx-auto w-full max-w-6xl px-6 pt-14 pb-28">
-            {eyebrow ? <SectionLabel tone="ivory">{eyebrow}</SectionLabel> : null}
-            <h1 className="mt-4 max-w-3xl text-4xl font-light tracking-tight text-balance text-ivory md:text-5xl">
-              {title}
-            </h1>
-            {blurb ? (
-              <p className="mt-5 max-w-xl text-lg leading-relaxed text-ivory/60">{blurb}</p>
-            ) : null}
-            {children ? <div className="mt-16">{children}</div> : null}
+    <div className="theme-pro-light">
+      <AppShell>
+        <SurfaceToneContext.Provider value="paper">
+          <div className="min-h-screen bg-paper text-ink">
+            <div className="mx-auto w-full max-w-6xl px-6 pt-16 pb-32 sm:pt-20">
+              {eyebrow ? <SectionLabel tone="ivory">{eyebrow}</SectionLabel> : null}
+              <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-[0.99] tracking-[-0.04em] text-balance text-ivory md:text-6xl">
+                {title}
+              </h1>
+              {blurb ? (
+                <p className="mt-5 max-w-xl text-lg leading-relaxed text-ivory/60">{blurb}</p>
+              ) : null}
+              {children ? <div className="mt-20">{children}</div> : null}
+            </div>
           </div>
-        </div>
-      </SurfaceToneContext.Provider>
-    </AppShell>
+        </SurfaceToneContext.Provider>
+      </AppShell>
+    </div>
   );
 }
 

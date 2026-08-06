@@ -185,7 +185,8 @@ export const copy = {
       note: 'An EU nutrition declaration, ingredient statement and cost breakdown, generated from your recipe. Export the recipe as CSV or print the label — all in your browser.',
       /** Standalone label page (Labels & Exports) — reads a fixed sample recipe. */
       sampleHeading: 'Sample recipe',
-      sampleNote: 'The values below come straight from the −11°C Engine for a balanced sample recipe. Build your own in the calculator to label it.',
+      sampleNote:
+        'The values below come straight from the −11°C Engine for a balanced sample recipe. Build your own in the calculator to label it.',
       declarationTitle: 'Nutrition declaration',
       statementNote: 'Ingredients in descending order of weight (EU QUID).',
       notAvailable: 'Not available',
@@ -217,13 +218,15 @@ export const copy = {
         app: {
           title: 'App only',
           body: 'PINGÜINO Intelligence for your team — recipes, balance and corrections.',
-          included: 'Recipe design, live PI Profile Indicators, AI guidance, cost and nutrition per recipe.',
+          included:
+            'Recipe design, live PI Profile Indicators, AI guidance, cost and nutrition per recipe.',
           forWhom: 'Gelato shops and recipe developers who want the full workspace.',
         },
         machinesApp: {
           title: 'Machines + App',
           body: 'Production machines paired with the app for end-to-end control.',
-          included: 'Everything in App only, plus connected production machines for end-to-end control.',
+          included:
+            'Everything in App only, plus connected production machines for end-to-end control.',
           forWhom: 'Production-focused makers upgrading to connected hardware.',
         },
         machineMixtures: {
@@ -306,7 +309,8 @@ export const copy = {
     orDivider: 'or',
     continueWithGoogle: 'Continue with Google',
     googleRedirecting: 'Connecting to Google…',
-    googleCancelled: 'Google sign-in was cancelled — nothing was changed. You can try again any time.',
+    googleCancelled:
+      'Google sign-in was cancelled — nothing was changed. You can try again any time.',
     googleFailed: 'Google sign-in didn’t complete. Please try again.',
   },
   /** Saved recipes + My Recipes (Phase 2A.2). */
@@ -342,6 +346,11 @@ export const copy = {
       machine: 'Moja maszyna',
       labels: 'Etykiety i produkty',
       subscription: 'Subskrypcja / Plan',
+      workWithUs: 'Współpraca',
+      createIngredient: 'Utwórz składnik',
+      api: 'API',
+      productImport: 'Import produktów',
+      proTools: 'Narzędzia zaawansowane',
     },
     account: {
       signIn: 'Zaloguj się',
@@ -405,7 +414,8 @@ export const copy = {
     blurb:
       'Historia wersji zapisuje się automatycznie przy każdym zapisie. Możesz przywrócić starszą wersję — powstaje wtedy nowa, najnowsza wersja (historia nie jest nadpisywana).',
     devPersona: 'Persona (dev):',
-    backendUnavailable: 'Historia wersji wymaga skonfigurowanego zaplecza. Niedostępna w tej wersji aplikacji.',
+    backendUnavailable:
+      'Historia wersji wymaga skonfigurowanego zaplecza. Niedostępna w tej wersji aplikacji.',
     localMode:
       'Tryb lokalny — wersje są trzymane tylko w pamięci i nie są trwałe (odświeżenie je czyści).',
     /** Shown when no recipe is open — versions are per-recipe, never a global list (S2 UX). */
@@ -442,6 +452,7 @@ export const copy = {
       exports: 'Eksporty',
       settings: 'Ustawienia',
       machine: 'Maszyna',
+      tools: 'Narzędzia zaawansowane',
     },
     gate: {
       title: 'PINGÜINO Pro',
@@ -462,8 +473,7 @@ export const copy = {
       history: 'Historia produkcji pojawi się w kolejnym etapie, na tym samym trwałym zapleczu.',
       costs:
         'Koszty składników i niezmienne migawki kosztów pojawią się w kolejnym etapie. Zaplecze danych jest już podłączone.',
-      exports:
-        'Eksporty receptur i kosztów (zależne od uprawnień) pojawią się w kolejnym etapie.',
+      exports: 'Eksporty receptur i kosztów (zależne od uprawnień) pojawią się w kolejnym etapie.',
     },
     backend: {
       label: 'Zaplecze danych',
@@ -517,7 +527,7 @@ export const copy = {
     recalcPanel: {
       title: 'Przeliczenie z PI',
       close: 'Zamknij',
-      applied: 'Zastosowano zmiany do wersji roboczej. Zapisz nową wersję, aby je utrwalić.',
+      applied: 'Zastosowano zmiany do receptury roboczej. Zapisz recepturę, aby je utrwalić.',
       undo: 'Cofnij',
     },
   },
@@ -526,6 +536,27 @@ export const copy = {
    * ingredient editor left, LIVE Monitor PI right, compact action bar, red review
    * zone below the fold. PL copy. */
   proWorkbench: {
+    profile: {
+      tabs: {
+        recipe: 'Profil',
+        monitor: 'Monitor',
+        production: 'Produkcja',
+        history: 'Historia',
+      },
+      title: 'Profil receptury',
+      axesTitle: 'Osie jakości',
+      axisControlPending: 'Sterowanie kierunkiem osi · DO PODŁĄCZENIA',
+      tutorialTitle: 'Jak poprawić dopasowanie',
+      settingsTitle: 'Ustawienia',
+      actualBatch: 'Aktualna partia',
+      nutritionTitle: 'Kalorie',
+      costTitle: 'Koszt',
+      per100g: 'na 100 g',
+      totalBatchCost: 'Koszt partii',
+      unavailable: 'Brak danych',
+      productionPending: 'DO PODŁĄCZENIA · widok produkcji czeka na przesłaną makietę.',
+      historyPending: 'DO PODŁĄCZENIA · historia pozostaje poza bieżącym zakresem.',
+    },
     settings: {
       machineLink: 'Maszyna',
       advanced: 'Więcej ustawień',
@@ -740,7 +771,11 @@ export const copy = {
       rejectionCode: 'Kod odrzucenia',
       notRun: 'nie uruchomiono',
       optimizer: { hasProposals: 'są propozycje', noProposal: 'brak propozycji' },
-      verify: { idle: 'brak zastosowania', previewStaged: 'podgląd przygotowany', blocked: 'zablokowano (verify)' },
+      verify: {
+        idle: 'brak zastosowania',
+        previewStaged: 'podgląd przygotowany',
+        blocked: 'zablokowano (verify)',
+      },
       yes: 'tak',
       no: 'nie',
       none: '—',
@@ -861,7 +896,12 @@ export const copy = {
       title: 'Cel receptury',
       /** Owner P0: exactly FOUR visible product types; internal categories route silently. */
       productTypeLabel: 'Typ produktu',
-      productTypes: { gelato: 'Gelato', sorbet: 'Sorbet', vegan: 'Wegańskie', protein: 'Proteinowe' },
+      productTypes: {
+        gelato: 'Gelato',
+        sorbet: 'Sorbet',
+        vegan: 'Wegańskie',
+        protein: 'Proteinowe',
+      },
       proteinUnsupported:
         'Profil proteinowy nie jest jeszcze naukowo kompletny. Receptura pozostaje w ostatnim ' +
         'obsługiwanym profilu — nic nie zostało zmienione.',
@@ -900,7 +940,12 @@ export const copy = {
       machineNone: 'Bez limitu',
       machineHelp: 'Opcjonalnie — ostrzeże, gdy partia się nie zmieści.',
       flavorLabel: 'Intensywność smaku',
-      flavorOptions: { light: 'Lekka', balanced: 'Zbalansowana', strong: 'Mocna', maximum: 'Maksymalna' },
+      flavorOptions: {
+        light: 'Lekka',
+        balanced: 'Zbalansowana',
+        strong: 'Mocna',
+        maximum: 'Maksymalna',
+      },
       costLabel: 'Priorytet kosztowy',
       /** 'premium' cost goal is labelled distinctly so it can never read as the PREMIUM tier. */
       costOptions: { low: 'Niski koszt', balanced: 'Zrównoważony', premium: 'Bez kompromisów' },
@@ -933,13 +978,15 @@ export const copy = {
       searching: 'Szukam w katalogu PI…',
       searchError: 'Nie udało się przeszukać katalogu PI. Sprawdź połączenie i spróbuj ponownie.',
       moreResults: 'Pokaż więcej wyników',
-      needsData: 'Składnik został wybrany, ale wymaga uzupełnienia danych przed dokładnym przeliczeniem.',
+      needsData:
+        'Składnik został wybrany, ale wymaga uzupełnienia danych przed dokładnym przeliczeniem.',
       duplicateNotice: (count: number) =>
         count === 1
           ? 'Receptura zawiera 1 zduplikowany wiersz składnika (pozostałość po wcześniejszym przeliczeniu).'
           : `Receptura zawiera ${count} zduplikowane wiersze składników (pozostałość po wcześniejszym przeliczeniu).`,
       mergeDuplicates: 'Scal zduplikowane składniki',
-      noMatches: 'Nie znaleziono składnika w katalogu PI. Spróbuj innej nazwy, formy lub kategorii.',
+      noMatches:
+        'Nie znaleziono składnika w katalogu PI. Spróbuj innej nazwy, formy lub kategorii.',
       /** Honest empty-state exit (AUDIT #2 dead-end rule): a no-results search
        * always offers a way back to the full list. */
       clearSearch: 'Wyczyść wyszukiwanie',

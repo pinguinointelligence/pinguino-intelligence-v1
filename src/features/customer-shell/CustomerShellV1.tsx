@@ -99,12 +99,17 @@ import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { fromPriceCompact } from '@/billing/catalog/offerDisplay';
 import { resolveActiveOfferFlags } from '@/billing/catalog/offerFlags';
 import { compactRecipeContext, resultStatus } from './resultPresentation';
-import { customerShellAccessFor, demoPaywallVisible, resolveCustomerMachineGate } from './customerShellAccess';
+import {
+  customerShellAccessFor,
+  demoPaywallVisible,
+  resolveCustomerMachineGate,
+} from './customerShellAccess';
 import { formatTemperatureC } from './temperature';
 import { resolveBatchSectionView } from './batchPresentation';
 import { useIngredientResolution, type ResolvableLine } from './useIngredientResolution';
 import { ResolutionSheet } from './ResolutionSheet';
 import { PiMonitorSection } from './PiMonitorSection';
+import { HomeSaveSection } from './HomeSaveSection';
 
 /* ------------------------------------------------------------------ *
  * Browser speech recognition (optional, never an external service)   *
@@ -293,7 +298,8 @@ export function CustomerShellV1() {
       selectMachinePreferenceStore({
         // Device fallback keyed by the signed-in user, so switching accounts on the
         // same browser loads the correct account's machine (never the previous one).
-        localDevice: () => localStorageMachinePreferenceStore(undefined, userScopedMachineKey(authUserId)),
+        localDevice: () =>
+          localStorageMachinePreferenceStore(undefined, userScopedMachineKey(authUserId)),
       }).store,
     [authUserId],
   );
@@ -307,7 +313,9 @@ export function CustomerShellV1() {
    *    written to the profile unless the user explicitly promotes it.
    * The recipe surface uses the EFFECTIVE machine = override ?? profile default.
    */
-  const [recipeMachineRecord, setRecipeMachineRecord] = useState<MachinePreferenceRecord | null>(null);
+  const [recipeMachineRecord, setRecipeMachineRecord] = useState<MachinePreferenceRecord | null>(
+    null,
+  );
   // One-time notice right after a recipe-scope machine change.
   const [recipeMachineNotice, setRecipeMachineNotice] = useState(false);
   // „Domyślna maszyna została zmieniona na …” confirmation (profile promotion).
@@ -455,8 +463,15 @@ export function CustomerShellV1() {
   const resolvableLines = useMemo<ResolvableLine[]>(() => {
     if (flow === null) return [];
     if (selectedDraft) {
-      const struct = buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags });
-      return struct.lines.map((l) => ({ ingredientId: l.id, ingredientName: structureLineName(l), resolution: l.resolution }));
+      const struct = buildRecipeStructure({
+        productType: selectedDraft.productType,
+        flavorTags: selectedDraft.flavorTags,
+      });
+      return struct.lines.map((l) => ({
+        ingredientId: l.id,
+        ingredientName: structureLineName(l),
+        resolution: l.resolution,
+      }));
     }
     const result = engineResult ?? buildCustomerResult(flow);
     return result.lines.map((l) => ({
@@ -549,10 +564,12 @@ export function CustomerShellV1() {
       rec.continuous = false;
       rec.onresult = (event) => {
         const transcript = event.results?.[0]?.[0]?.transcript ?? '';
-        if (transcript) setDraftText((prev) => (prev ? `${prev} ${transcript}`.trim() : transcript));
+        if (transcript)
+          setDraftText((prev) => (prev ? `${prev} ${transcript}`.trim() : transcript));
       };
       rec.onerror = (event) => {
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') setMicDenied(true);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed')
+          setMicDenied(true);
         setListening(false);
       };
       rec.onend = () => setListening(false);
@@ -576,7 +593,7 @@ export function CustomerShellV1() {
           <div style={{ paddingTop: 'clamp(2rem, 14svh, 9rem)' }}>
             <DevPersonaSelect persona={persona} onChange={switchPersona} />
             <header className="pt-2">
-              <h1 className="text-[28px] font-light leading-[1.15] tracking-tight text-ink sm:text-[34px]">
+              <h1 className="text-[30px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[38px]">
                 {copy.home.headline}
               </h1>
               <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-stone-600">
@@ -600,15 +617,30 @@ export function CustomerShellV1() {
                   e.preventDefault();
                   startFlowFromDraft();
                 }}
-                trailing={<MicrophoneButton state={micState} label={copy.mic[micLabelKey(micState)]} onClick={handleMic} />}
+                trailing={
+                  <MicrophoneButton
+                    state={micState}
+                    label={copy.mic[micLabelKey(micState)]}
+                    onClick={handleMic}
+                  />
+                }
               />
               <div className="mt-3">
-                <TouchButton variant="quiet" size="md" onClick={() => setDraftText(copy.home.example)}>
+                <TouchButton
+                  variant="quiet"
+                  size="md"
+                  onClick={() => setDraftText(copy.home.example)}
+                >
                   {copy.home.tryExample}
                 </TouchButton>
               </div>
               <div className="mt-6">
-                <TouchButton block size="lg" disabled={draftText.trim() === ''} onClick={startFlowFromDraft}>
+                <TouchButton
+                  block
+                  size="lg"
+                  disabled={draftText.trim() === ''}
+                  onClick={startFlowFromDraft}
+                >
                   {copy.home.next}
                 </TouchButton>
               </div>
@@ -637,7 +669,9 @@ export function CustomerShellV1() {
   // starting proposal — the guidance below marks divergence, warns above the
   // recommendation and offers the OPTIONAL even split; it never blocks.
   const machineRecommendedGrams =
-    machineGate === 'saved' && machineRecord !== null ? recommendedBatchGramsOf(machineRecord) : null;
+    machineGate === 'saved' && machineRecord !== null
+      ? recommendedBatchGramsOf(machineRecord)
+      : null;
   /** The profile's effective default — what a NEW recipe starts from (§5). */
   const machineProfileDefaultGrams =
     machineGate === 'saved' && machineRecord !== null
@@ -683,9 +717,14 @@ export function CustomerShellV1() {
   // The result lines: REAL engine base + flavor requirements for a new recipe; the
   // preserved structure for a ready-recipe draft. Grams (base) come from the real
   // calculateRecipe; Demo redaction happens in buildCustomerRecipeView.
-  const currentResult: CustomerResult | null = selectedDraft ? null : (engineResult ?? buildCustomerResult(flow));
+  const currentResult: CustomerResult | null = selectedDraft
+    ? null
+    : (engineResult ?? buildCustomerResult(flow));
   const resultLineInputs: CustomerRecipeLineInput[] = selectedDraft
-    ? buildRecipeStructure({ productType: selectedDraft.productType, flavorTags: selectedDraft.flavorTags }).lines.map((l) => ({
+    ? buildRecipeStructure({
+        productType: selectedDraft.productType,
+        flavorTags: selectedDraft.flavorTags,
+      }).lines.map((l) => ({
         ingredientId: l.id,
         ingredientName: structureLineName(l),
         grams: l.grams,
@@ -698,7 +737,12 @@ export function CustomerShellV1() {
         resolution: l.resolution,
       }));
   const view = buildCustomerRecipeView(
-    { recipeId: resultRecipeId, title: resultTitle, productType: resultType, lines: resultLineInputs },
+    {
+      recipeId: resultRecipeId,
+      title: resultTitle,
+      productType: resultType,
+      lines: resultLineInputs,
+    },
     capability,
   );
   const showStickyUpgrade = demoPaywallVisible({ isResultPhase, gramsVisible: view.gramsVisible });
@@ -855,17 +899,23 @@ export function CustomerShellV1() {
 
   /* -------------------------------------------------- Technical details -- */
   const modeReadable = selectedMode ? modeCopyFor(selectedMode.id).label : '—';
-  const calcTempReadable = route.temperatureC !== null ? formatTemperatureC(route.temperatureC) : '—';
+  const calcTempReadable =
+    route.temperatureC !== null ? formatTemperatureC(route.temperatureC) : '—';
   const technical = (
     <TechnicalDetails summary={copy.tech.summary}>
       <div className="pt-1">
         {typeRes.userFacingType ? (
-          <SummaryRow label={copy.tech.userFacingType} value={copy.productType.short[typeRes.userFacingType]} />
+          <SummaryRow
+            label={copy.tech.userFacingType}
+            value={copy.productType.short[typeRes.userFacingType]}
+          />
         ) : null}
         {typeRes.internalProfile ? (
           <SummaryRow
             label={copy.tech.internalProfile}
-            value={copy.tech.internalProfileLabels[typeRes.internalProfile] ?? typeRes.internalProfile}
+            value={
+              copy.tech.internalProfileLabels[typeRes.internalProfile] ?? typeRes.internalProfile
+            }
           />
         ) : null}
         {typeRes.chocolateRoutedInternally ? (
@@ -892,7 +942,9 @@ export function CustomerShellV1() {
           if (codes.length === 0) return null;
           return (
             <div className="mt-3 border-t border-ink/10 pt-3">
-              <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">{copy.tech.notesTitle}</p>
+              <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">
+                {copy.tech.notesTitle}
+              </p>
               <ul className="mt-2 space-y-1">
                 {codes.map((code, i) => (
                   <li key={`${code}-${i}`} className="text-[13px] leading-relaxed text-stone-600">
@@ -907,7 +959,9 @@ export function CustomerShellV1() {
         {/* Raw trace strings live ONLY in a dev-gated advanced sub-section. */}
         {import.meta.env.DEV ? (
           <div className="mt-3 border-t border-ink/10 pt-3">
-            <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">{copy.tech.advancedTitle}</p>
+            <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">
+              {copy.tech.advancedTitle}
+            </p>
             {typeRes.engineCategory ? (
               <SummaryRow label={copy.tech.engineCategory} value={typeRes.engineCategory} />
             ) : null}
@@ -959,13 +1013,25 @@ export function CustomerShellV1() {
           />
         ) : null}
         {/* One-time notice right after a recipe-scope machine change (§2). */}
-        {recipeMachineNotice && usingRecipeOverride && machineView !== null && profileMachineView !== null ? (
-          <div className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
+        {recipeMachineNotice &&
+        usingRecipeOverride &&
+        machineView !== null &&
+        profileMachineView !== null ? (
+          <div
+            className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}
+          >
             <p className="text-ink">
-              {machineOnboardingCopy.recipeMachine.onlyThisRecipe(machineView.name, profileMachineView.name)}
+              {machineOnboardingCopy.recipeMachine.onlyThisRecipe(
+                machineView.name,
+                profileMachineView.name,
+              )}
             </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <TouchButton variant="secondary" size="md" onClick={() => setRecipeMachineNotice(false)}>
+              <TouchButton
+                variant="secondary"
+                size="md"
+                onClick={() => setRecipeMachineNotice(false)}
+              >
                 {machineOnboardingCopy.recipeMachine.continueForRecipe}
               </TouchButton>
               <TouchButton variant="quiet" size="md" onClick={promoteRecipeMachineToDefault}>
@@ -979,13 +1045,19 @@ export function CustomerShellV1() {
         ) : null}
         {/* „Domyślna maszyna została zmieniona na …” confirmation (profile promoted). */}
         {defaultChangedName !== null ? (
-          <p role="status" className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.ideal} ${notice.text}`}>
+          <p
+            role="status"
+            className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.ideal} ${notice.text}`}
+          >
             ✓ {machineOnboardingCopy.recipeMachine.defaultChanged(defaultChangedName)}
           </p>
         ) : null}
         {/* Honest save-failure surface (owner §2/§3) — never a silent swallow. */}
         {machineSaveFailed ? (
-          <p role="alert" className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.error} ${notice.text}`}>
+          <p
+            role="alert"
+            className={`mt-3 rounded-xl px-4 py-3 text-[13px] ${notice.error} ${notice.text}`}
+          >
             {machineOnboardingCopy.settings.saveFailed}
           </p>
         ) : null}
@@ -1004,7 +1076,9 @@ export function CustomerShellV1() {
           </div>
         ) : null}
         <div className="flex items-center justify-between pt-4">
-          <h1 className="text-[22px] font-medium tracking-tight text-ink">{copy.home.headline}</h1>
+          <h1 className="text-[24px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink">
+            {copy.home.headline}
+          </h1>
           <TouchButton variant="quiet" size="md" onClick={resetAll}>
             {copy.home.restart}
           </TouchButton>
@@ -1021,7 +1095,11 @@ export function CustomerShellV1() {
           {chips.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {chips.map((tag) => (
-                <FlavorChip key={tag} label={flavorLabel(tag)} onRemove={() => update((s) => removeFlavorChip(s, tag))} />
+                <FlavorChip
+                  key={tag}
+                  label={flavorLabel(tag)}
+                  onRemove={() => update((s) => removeFlavorChip(s, tag))}
+                />
               ))}
             </div>
           ) : (
@@ -1044,7 +1122,11 @@ export function CustomerShellV1() {
                 commitChipDraft();
               }}
             />
-            <TouchButton variant="secondary" disabled={chipDraft.trim() === ''} onClick={commitChipDraft}>
+            <TouchButton
+              variant="secondary"
+              disabled={chipDraft.trim() === ''}
+              onClick={commitChipDraft}
+            >
               {copy.chips.addButton}
             </TouchButton>
           </div>
@@ -1059,7 +1141,11 @@ export function CustomerShellV1() {
 
         {/* Product type — four visible choices, never "Chocolate". */}
         {typeRes.status === 'unknown' || typeRes.status === 'unsupported' ? (
-          <CustomerSection label={copy.productType.label} title={copy.productType.title} lead={copy.productType.lead}>
+          <CustomerSection
+            label={copy.productType.label}
+            title={copy.productType.title}
+            lead={copy.productType.lead}
+          >
             <div className="grid grid-cols-1 gap-3">
               {productTypeQuestion().choices.map((choice) => {
                 const meta = copy.productType.byKey[choice.labelKey];
@@ -1102,7 +1188,11 @@ export function CustomerShellV1() {
             {machineGate === 'off' ? (
               /* Serving / machine mode — EXACTLY six customer-facing choices. Each is a
                  customer-facing alias to an existing temperature-aware Engine cell. */
-              <CustomerSection label={copy.modes.label} title={copy.modes.title} lead={copy.modes.lead}>
+              <CustomerSection
+                label={copy.modes.label}
+                title={copy.modes.title}
+                lead={copy.modes.lead}
+              >
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {proServingModes.map((m) => {
                     const c = modeCopyFor(m.id);
@@ -1124,7 +1214,11 @@ export function CustomerShellV1() {
                 mass (resolved; override hidden behind "Zmień ilość"); Direct / Fresh
                 modes ask only when the quantity is not already known. */}
             {flow.mode !== null ? (
-              <CustomerSection label={copy.batch.label} title={copy.batch.title} lead={copy.batch.lead}>
+              <CustomerSection
+                label={copy.batch.label}
+                title={copy.batch.title}
+                lead={copy.batch.lead}
+              >
                 {batchSection.mode === 'choose' ? (
                   renderBatchSelector()
                 ) : (
@@ -1155,7 +1249,8 @@ export function CustomerShellV1() {
 
                     {/* OWNER FINAL DECISION — soft-proposal guidance (never a block). */}
                     {batchGuidance.kind === 'custom' ||
-                    (batchGuidance.kind === 'custom_above' && batchGuidance.choice !== 'undecided') ? (
+                    (batchGuidance.kind === 'custom_above' &&
+                      batchGuidance.choice !== 'undecided') ? (
                       <div className="flex flex-wrap items-center gap-3">
                         <span className="text-[13px] text-stone-600">
                           {machineOnboardingCopy.batch.customInUse}
@@ -1174,9 +1269,14 @@ export function CustomerShellV1() {
                         </button>
                       </div>
                     ) : null}
-                    {batchGuidance.kind === 'custom_above' && batchGuidance.choice === 'undecided' ? (
-                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
-                        <p className="font-medium text-ink">{machineOnboardingCopy.batch.aboveWarning}</p>
+                    {batchGuidance.kind === 'custom_above' &&
+                    batchGuidance.choice === 'undecided' ? (
+                      <div
+                        className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}
+                      >
+                        <p className="font-medium text-ink">
+                          {machineOnboardingCopy.batch.aboveWarning}
+                        </p>
                         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                           <TouchButton
                             variant="secondary"
@@ -1214,7 +1314,9 @@ export function CustomerShellV1() {
                       </div>
                     ) : null}
                     {batchGuidance.kind === 'custom_above' && batchGuidance.split !== null ? (
-                      <div className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
+                      <div
+                        className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}
+                      >
                         <p className="font-medium text-ink">
                           {machineOnboardingCopy.split.message(batchGuidance.split.containers)}
                         </p>
@@ -1237,7 +1339,9 @@ export function CustomerShellV1() {
                         confirmation outlives the offer (once saved, the amount
                         EQUALS the default, so the offer's own condition stops
                         holding — the user must still see that it worked). */}
-                    {machineGate === 'saved' && machineRecord !== null && currentBatchGrams !== null ? (
+                    {machineGate === 'saved' &&
+                    machineRecord !== null &&
+                    currentBatchGrams !== null ? (
                       savedAsDefaultGrams === currentBatchGrams ? (
                         <p role="status" className="text-[13px] text-status-ideal">
                           ✓ {machineOnboardingCopy.recipeAmount.savedAsDefault}
@@ -1259,12 +1363,18 @@ export function CustomerShellV1() {
                             });
                           }}
                         >
-                          {machineOnboardingCopy.recipeAmount.saveAsDefault(formatGrams(currentBatchGrams))}
+                          {machineOnboardingCopy.recipeAmount.saveAsDefault(
+                            formatGrams(currentBatchGrams),
+                          )}
                         </button>
                       ) : null
                     ) : null}
                     {batchSection.showChangeAction ? (
-                      <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>
+                      <TouchButton
+                        variant="quiet"
+                        size="md"
+                        onClick={() => setForceBatchEdit((v) => !v)}
+                      >
                         {copy.batch.change}
                       </TouchButton>
                     ) : null}
@@ -1280,12 +1390,26 @@ export function CustomerShellV1() {
 
             {/* Two equal paths — neither is a default. */}
             {nq === 'recipe_path' ? (
-              <CustomerSection label={copy.path.label} title={copy.path.title} lead={copy.path.lead}>
+              <CustomerSection
+                label={copy.path.label}
+                title={copy.path.title}
+                lead={copy.path.lead}
+              >
                 <div className="grid grid-cols-1 gap-3">
-                  <TouchButton block variant="secondary" size="lg" onClick={() => update((s) => chooseRecipePath(s, 'new_recipe'))}>
+                  <TouchButton
+                    block
+                    variant="secondary"
+                    size="lg"
+                    onClick={() => update((s) => chooseRecipePath(s, 'new_recipe'))}
+                  >
                     {copy.path.newRecipe}
                   </TouchButton>
-                  <TouchButton block variant="secondary" size="lg" onClick={() => update((s) => chooseRecipePath(s, 'ready_recipe'))}>
+                  <TouchButton
+                    block
+                    variant="secondary"
+                    size="lg"
+                    onClick={() => update((s) => chooseRecipePath(s, 'ready_recipe'))}
+                  >
                     {copy.path.readyRecipe}
                   </TouchButton>
                 </div>
@@ -1306,7 +1430,9 @@ export function CustomerShellV1() {
             >
               <NonProductionBadge itemId="start-ready-catalogue" />
               <span className="text-xs leading-relaxed text-stone-600">
-                {'Karty gotowych receptur to dane testowe — prawdziwy katalog jeszcze nie jest podłączony.'}
+                {
+                  'Karty gotowych receptur to dane testowe — prawdziwy katalog jeszcze nie jest podłączony.'
+                }
               </span>
             </div>
             {matches.length === 0 ? (
@@ -1351,13 +1477,17 @@ export function CustomerShellV1() {
                 the internal serving mode („Świeże”) is never shown to the customer.
                 „Zmień ilość” re-opens the amount editor inline. */}
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-ink/10 bg-stone-50 px-4 py-3">
-              <span className="text-[15px] text-ink">{compactRecipeContext(resultType, batchRes.batchGrams)}</span>
+              <span className="text-[15px] text-ink">
+                {compactRecipeContext(resultType, batchRes.batchGrams)}
+              </span>
               <TouchButton variant="quiet" size="md" onClick={() => setForceBatchEdit((v) => !v)}>
                 {copy.batch.change}
               </TouchButton>
             </div>
             {forceBatchEdit ? (
-              <div className="mt-3">{isNinja ? renderCustomMassField() : renderBatchSelector()}</div>
+              <div className="mt-3">
+                {isNinja ? renderCustomMassField() : renderBatchSelector()}
+              </div>
             ) : null}
 
             {/* Owner UX correction §11: exactly ONE status, with optional one-line
@@ -1365,10 +1495,14 @@ export function CustomerShellV1() {
             <div className="mt-4">
               <Notice>{statusView.label}</Notice>
               {statusView.guidance ? (
-                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{statusView.guidance}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">
+                  {statusView.guidance}
+                </p>
               ) : null}
               {selectedDraft ? (
-                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{copy.result.draftNotice}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">
+                  {copy.result.draftNotice}
+                </p>
               ) : null}
               {/* Agent 4 fixture sweep: a ready-recipe draft is BUILT ON a test fixture
                   card (structure only, no engine grams) — marked pink until the real
@@ -1380,14 +1514,18 @@ export function CustomerShellV1() {
                 >
                   <NonProductionBadge itemId="start-ready-draft" />
                   <span className="text-xs leading-relaxed text-stone-600">
-                    {'Ten szkic powstał z karty testowej — struktura poglądowa bez wyliczonych ilości.'}
+                    {
+                      'Ten szkic powstał z karty testowej — struktura poglądowa bez wyliczonych ilości.'
+                    }
                   </span>
                 </div>
               ) : null}
             </div>
 
             <div className="mt-5">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">{copy.result.ingredientsTitle}</p>
+              <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">
+                {copy.result.ingredientsTitle}
+              </p>
               <div className="mt-1 divide-y divide-ink/10">
                 {view.lines.map((line) => {
                   // A line that STARTED unresolved (generic requirement) is tappable — it
@@ -1408,9 +1546,15 @@ export function CustomerShellV1() {
                       name={res?.state === 'resolved' && picked ? picked : line.ingredientName}
                       locked={!unresolved && line.grams === undefined}
                       lockedLabel={copy.result.lockedInPlans}
-                      amount={line.grams !== undefined ? `${line.grams} ${copy.device.unitGrams}` : undefined}
+                      amount={
+                        line.grams !== undefined
+                          ? `${line.grams} ${copy.device.unitGrams}`
+                          : undefined
+                      }
                       intensity={
-                        unresolved ? { label: chipLabel, onClick: () => resolution.open(line.ingredientId) } : undefined
+                        unresolved
+                          ? { label: chipLabel, onClick: () => resolution.open(line.ingredientId) }
+                          : undefined
                       }
                       onMore={unresolved ? () => resolution.open(line.ingredientId) : undefined}
                       moreLabel={`${copy.rowActions.moreForPrefix}: ${line.ingredientName}`}
@@ -1419,6 +1563,16 @@ export function CustomerShellV1() {
                 })}
               </div>
             </div>
+
+            {/* SAVE (Home-save repair 2026-07-26): the canonical plan matrix grants Home ONE
+                saved recipe, but this surface offered no save at all and `/pro` gates a `home`
+                persona behind the Pro upgrade prompt — so a paying Home subscriber could never
+                save. The section is capability-gated (Demo renders nothing) and delegates to THE
+                canonical save handler; it saves the SAME engine payload the Monitor consumes. */}
+            <HomeSaveSection
+              recipeInput={currentResult?.recipeInput ?? null}
+              resultTitle={resultTitle}
+            />
 
             <PiMonitorSection
               summary={resolution.summary}
@@ -1439,7 +1593,10 @@ export function CustomerShellV1() {
         ) : null}
 
         {/* Technical details are also available during collection — Pro only. */}
-        {showTechnical && status !== 'complete' && !isResultPhase && typeRes.status === 'resolved' ? (
+        {showTechnical &&
+        status !== 'complete' &&
+        !isResultPhase &&
+        typeRes.status === 'resolved' ? (
           <div className="mt-2">{technical}</div>
         ) : null}
       </CustomerSurface>
@@ -1505,7 +1662,10 @@ function DevPersonaSelect({
   if (!import.meta.env.DEV) return null;
   return (
     <div className="flex items-center justify-end gap-2 pt-1">
-      <label htmlFor="persona-select" className="text-[12px] uppercase tracking-[0.12em] text-stone-500">
+      <label
+        htmlFor="persona-select"
+        className="text-[12px] uppercase tracking-[0.12em] text-stone-500"
+      >
         {copy.persona.label}
       </label>
       <select

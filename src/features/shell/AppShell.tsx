@@ -64,7 +64,7 @@ export function AppShell({
       <main
         className={cn(
           contentClassName,
-          viewportLock && 'lg:min-h-0 lg:flex-1 lg:overflow-y-auto',
+          viewportLock && 'lg:min-h-0 lg:flex-1 lg:overflow-hidden',
         )}
       >
         {children}

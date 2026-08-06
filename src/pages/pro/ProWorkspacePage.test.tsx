@@ -68,6 +68,7 @@ describe('ProWorkspacePage (S3)', () => {
       'exports',
       'settings',
       'machine',
+      'tools',
     ]) {
       expect(proRoutes, section).toContain(`/pro/${section}`);
     }
@@ -85,10 +86,15 @@ describe('ProWorkspacePage (S3)', () => {
     expect(html).toContain('data-testid="pro-core-versions"');
   });
 
-  it('shows an honest backend indicator + "arrives later" note on Produkcja/Koszty', () => {
+  it('keeps Profile, Monitor, Production and Summary in one right-side workspace', () => {
     const production = renderAt('/pro/production', 'pro');
-    expect(production).toContain(w.soon.production);
-    expect(production).toContain('data-testid="pro-slice-backend"');
+    expect(production).toContain('data-testid="pro-context-tabs"');
+    expect(production).toContain('data-testid="pro-context-production"');
+    expect(production).toContain('W PRZYGOTOWANIU');
+    expect(production).toContain('data-testid="pro-context-summary-tab"');
+
+    const history = renderAt('/pro/history', 'pro');
+    expect(history).toContain('data-testid="pro-panel-history"');
 
     const costs = renderAt('/pro/costs', 'pro');
     expect(costs).toContain(w.soon.costs);

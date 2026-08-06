@@ -24,13 +24,7 @@ import {
 const a = copy.proWorkbench.actionBar;
 const r = copy.proWorkbar.recalcPanel;
 
-export function WorkbenchActionBar({
-  totalBatchG,
-  onOpenPreview,
-}: {
-  totalBatchG: number;
-  onOpenPreview: () => void;
-}) {
+export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => void }) {
   const preview = useConstraintStudioStore((s) => s.preview);
   const history = useConstraintStudioStore((s) => s.history);
   const constraints = useConstraintStudioStore((s) => s.constraints);
@@ -56,47 +50,51 @@ export function WorkbenchActionBar({
         cost_priority: costPriority,
         items,
       }),
-    [mode, category, temperatureC, batchGrams, machineCapacityGrams, flavorIntensity, costPriority, items],
+    [
+      mode,
+      category,
+      temperatureC,
+      batchGrams,
+      machineCapacityGrams,
+      flavorIntensity,
+      costPriority,
+      items,
+    ],
   );
 
   const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
 
   return (
     <div
-      className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-ivory/10 px-4 py-1.5"
+      className="flex min-w-0 items-center justify-end gap-2"
       data-testid="workbench-action-bar"
     >
-      <p className="font-mono text-[12px] tabular-nums text-ivory/70">
-        {a.total}:{' '}
-        <span className="text-ivory">{Math.round(totalBatchG).toLocaleString('pl-PL')} g</span>
-      </p>
-
       {preview ? (
         <span className="flex items-center gap-2" data-testid="workbench-action-preview">
-          <span className="text-[12px] text-ivory/80">{a.previewReady}</span>
+          <span className="hidden text-[10px] text-stone-500 xl:inline">{a.previewReady}</span>
           <button
             type="button"
             onClick={onOpenPreview}
             data-testid="workbench-open-preview"
-            className="rounded-md border border-ivory/25 px-3 py-1 text-[12px] font-medium text-ivory transition-colors hover:border-ivory/50"
+            className="h-8 rounded-sm border border-ink/20 px-2 text-[10px] font-semibold text-ink transition-colors hover:border-ink/45"
           >
             {a.openPreview}
           </button>
         </span>
       ) : undoAvailable ? (
         <span className="flex items-center gap-2" data-testid="workbench-action-applied">
-          <span className="text-[12px] text-ivory/80">{r.applied}</span>
+          <span className="hidden text-[10px] text-status-ideal xl:inline">{r.applied}</span>
           <button
             type="button"
             onClick={() => useConstraintStudioStore.getState().undoLastApply()}
             data-testid="workbench-undo"
-            className="rounded-md border border-ivory/25 px-3 py-1 text-[12px] font-medium text-ivory transition-colors hover:border-ivory/50"
+            className="h-8 rounded-sm border border-ink/20 px-2 text-[10px] font-semibold text-ink transition-colors hover:border-ink/45"
           >
             {r.undo}
           </button>
         </span>
       ) : (
-        <span className="text-[11px] text-ivory/60" data-testid="workbench-action-idle">
+        <span className="hidden text-[10px] text-stone-500 2xl:inline" data-testid="workbench-action-idle">
           {a.idleHint}
         </span>
       )}

@@ -77,7 +77,7 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
     }
   });
 
-  it('5. the Pro menu contains Moja maszyna, Etykiety i produkty, Subskrypcja / Plan and all 9 Pro subitems', () => {
+  it('5. the Pro menu contains all global destinations and all 10 Pro subitems', () => {
     const items = visibleNavItems(true);
     const labels = items.map((i) => i.label);
     for (const required of ['Moja maszyna', 'Etykiety i produkty', 'Subskrypcja / Plan']) {
@@ -85,7 +85,7 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
     }
     // One-hamburger rule (owner, 2026-07-24): the workspace tab row is gone, so the menu
     // GREW by /pro/machine (9 subitems) — entries are only ever ADDED, never removed.
-    expect(items.filter((i) => i.group === 'pro')).toHaveLength(9);
+    expect(items.filter((i) => i.group === 'pro')).toHaveLength(10);
     expect(items.some((i) => i.id === 'proMachine' && i.to === '/pro/machine')).toBe(true);
   });
 
@@ -111,7 +111,9 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
     expect(drawer).toContain('right-0');
     expect(drawer.includes('left-0')).toBe(false);
     expect(read('app', 'router.tsx').includes('ShellLayout')).toBe(false);
-    expect(read('components', 'shared', 'DestinationSurface.tsx').includes('ShellLayout')).toBe(false);
+    expect(read('components', 'shared', 'DestinationSurface.tsx').includes('ShellLayout')).toBe(
+      false,
+    );
   });
 
   it('18. no /dev/* link appears in the canonical navigation', () => {
@@ -135,13 +137,14 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     const name = html.indexOf('data-testid="pro-workbar-name"');
     const save = html.indexOf('data-testid="pro-workbar-save"');
     expect(name).toBeGreaterThan(-1);
-    expect(save).toBeGreaterThan(name);
+    expect(save).toBeLessThan(name);
     expect(html).toContain(copy.proWorkbar.saveNew); // Zapisz recepturę
   });
 
-  it('11. Monitor PI is visible at the top', () => {
-    expect(html).toContain('data-testid="pro-workbar-monitor"');
-    expect(html).toContain(copy.proWorkbar.monitor);
+  it('11. Monitor is visible in the top context tabs', () => {
+    expect(html).toContain('data-testid="pro-context-tabs"');
+    expect(html).toContain('data-testid="pro-context-monitor-tab"');
+    expect(html).toContain(copy.proWorkbench.profile.tabs.monitor);
   });
 
   it('12. Przelicz z PI is visible at the top', () => {
@@ -173,7 +176,9 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     // …and the page mounts no second save dialog or legacy version-save control.
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(page.includes('SaveRecipeDialog')).toBe(false);
-    expect(read('features', 'studio', 'StudioEngineSurface.tsx').includes('SaveVersionControl')).toBe(false);
+    expect(
+      read('features', 'studio', 'StudioEngineSurface.tsx').includes('SaveVersionControl'),
+    ).toBe(false);
   });
 });
 

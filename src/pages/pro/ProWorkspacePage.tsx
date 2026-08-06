@@ -31,11 +31,12 @@ import { copy } from '@/copy/en';
 import { AppShell } from '@/features/shell/AppShell';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { useSessionStore } from '@/stores/sessionStore';
 import { StudioEngineSurface, StudioReviewZone } from '@/features/studio/StudioEngineSurface';
 import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
 import { ProRecalcPanel } from '@/features/pro-core/ProRecalcPanel';
 import { ProMachineSelector } from '@/features/pro-core/ProMachineSelector';
-import { MonitorDrawer } from '@/features/pro-core/MonitorDrawer';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 import { ProSliceBackendState } from '@/features/pro-core/ProSliceBackendState';
@@ -43,9 +44,11 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { resolveProductionRepository } from '@/features/pro-core/proCoreProductionRepo';
 import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
-import { ReviewBadge } from '@/features/design-review/ReviewBadge';
-import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
+import type { ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
+import { useStudioResult } from '@/features/studio/useStudioResult';
+import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
+import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 
 const w = copy.proWorkspace;
 
@@ -61,13 +64,15 @@ const TAB_ORDER: TabId[] = [
   'exports',
   'settings',
   'machine',
+  'tools',
 ];
 
 const isTabId = (value: string | null): value is TabId =>
   value !== null && (TAB_ORDER as string[]).includes(value);
 
-/** The two sections that render the ONE-SCREEN workbench (viewport-locked shell). */
-const isWorkbenchSection = (tab: TabId): boolean => tab === 'recipe' || tab === 'monitor';
+/** The four contexts that share the same editor and right-side workspace. */
+const isWorkbenchSection = (tab: TabId): tab is ProContextTab =>
+  tab === 'recipe' || tab === 'monitor' || tab === 'production';
 
 function PersonaChip({ persona }: { persona: ProCorePersona }) {
   return (
@@ -84,6 +89,7 @@ function PersonaChip({ persona }: { persona: ProCorePersona }) {
  * view (and the gate) without a real login. Never rendered in a production build. */
 function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
   const setDevPersona = useProCoreAccessStore((s) => s.setDevPersona);
+  const setSessionPlan = useSessionStore((s) => s.setPlan);
   if (!import.meta.env.DEV) return null;
   return (
     <label className="flex items-center gap-2 text-xs text-stone-500">
@@ -91,7 +97,11 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
       <select
         className="rounded border border-ink/15 px-2 py-1"
         value={persona}
-        onChange={(e) => setDevPersona(e.target.value as ProCorePersona)}
+        onChange={(e) => {
+          const next = e.target.value as ProCorePersona;
+          setDevPersona(next);
+          setSessionPlan(next === 'pro' ? 'pro' : 'demo');
+        }}
         data-testid="pro-persona-switch"
       >
         <option value="pro">Pro</option>
@@ -102,67 +112,66 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
   );
 }
 
-/** The ONE-SCREEN recipe workbench (also serves /pro/monitor with the panel focused). */
-function RecipeWorkbench({ focusMonitor = false }: { focusMonitor?: boolean }) {
-  // „Przelicz z PI" INITIATES the real canonical recalculation (owner P0): it stages an
-  // optimize preview in the ONE constraint-studio pipeline and opens the compact
-  // Preview → Zastosuj/Anuluj → Cofnij OVERLAY. „Monitor PI" opens the bottom-sheet
-  // Monitor (mobile); on desktop the LIVE panel is already pinned in the workbench.
-  // Owner addendum item 5 (Monitor parity, GAP-2): below `lg` the pinned Monitor
-  // aside is `display:none`, so on /pro/monitor — the route whose whole purpose is
-  // the Monitor — a phone or tablet showed no Monitor at all until the user tapped
-  // the sheet open. Deep-linking to the Monitor opens the sheet it actually has.
-  const [monitorOpen, setMonitorOpen] = useState(focusMonitor);
-  const [recalcOpen, setRecalcOpen] = useState(false);
-  const startRecalc = () => {
-    useConstraintStudioStore.getState().createOptimizePreview();
-    setRecalcOpen(true);
-  };
+function ProTopActions({
+  persona,
+  onRecalculate,
+}: {
+  persona: ProCorePersona;
+  onRecalculate: () => void;
+}) {
+  const dirty = useRecipeStore((state) => state.dirty);
+  const { result } = useStudioResult();
+  const score = monitorScoreView(result).match;
 
   return (
-    <>
-      {/* ── The viewport-height region: workbar + demo-data marker + workbench. ── */}
-      <div className="lg:flex lg:h-full lg:min-h-0 lg:flex-col" data-testid="pro-viewport-region">
-        <div className="lg:shrink-0">
-          {focusMonitor ? <ReviewBadge itemId="RV-12" /> : null}
-          <ProWorkbar onMonitor={() => setMonitorOpen(true)} onRecalc={startRecalc} />
-          {/* Agent 4 fixture sweep: the starter recipe is the DEMO preset (milk-base) and the
-              ingredient picker serves the demo/reference library — marked pink until the
-              verified PI library replaces both paths. Compact single line (owner: the marker
-              stays visible, the workbench height budget stays intact). */}
-          <div
-            className="flex flex-wrap items-center gap-2 border-b border-ink/10 border-l-2 border-l-nonprod bg-nonprod/[0.03] px-4 py-1"
-            data-testid="nonprod-marked-pro-demo-library"
-          >
-            <NonProductionBadge itemId="pro-demo-library" />
-            <span className="text-[11px] leading-snug text-stone-600">
-              {'Receptura startowa i biblioteka składników to dane demo/referencyjne (wartości literaturowe, koszty szacunkowe).'}
-            </span>
-          </div>
-        </div>
+    <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-4" data-testid="pro-top-workbar">
+      <span className="hidden items-center gap-2 text-[11px] text-stone-600 md:flex">
+        <span className={`size-1.5 rounded-full ${dirty ? 'bg-gold' : 'bg-status-ideal'}`} />
+        {dirty ? copy.proWorkbar.pendingRecalc : copy.proWorkbar.status.clean}
+      </span>
+      <button
+        type="button"
+        onClick={onRecalculate}
+        data-testid="pro-workbar-recalc"
+        className="h-10 shrink-0 rounded-sm bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/35"
+      >
+        {copy.proWorkbar.recalc}
+      </button>
+      <span className="flex min-w-[4.5rem] items-center gap-2 border-l border-ink/10 pl-3" data-testid="pro-top-score">
+        <span className="font-mono text-lg font-semibold tabular-nums text-ink">{score.display}</span>
+        <span className="hidden max-w-28 text-[10px] leading-tight text-stone-500 xl:block">{score.label}</span>
+      </span>
+      <PersonaChip persona={persona} />
+      <DevPersonaSwitch persona={persona} />
+    </div>
+  );
+}
 
-        {/* The engine workbench keeps its native dark tone (Masterpiece Phase 5). */}
-        <SurfaceToneContext.Provider value="shell">
-          <div className="bg-shell text-ivory [color-scheme:dark] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-            <StudioEngineSurface
-              focusMonitor={focusMonitor}
-              onOpenRecalcPanel={() => setRecalcOpen(true)}
-              recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={() => setRecalcOpen(false)} />}
-            />
-          </div>
-        </SurfaceToneContext.Provider>
-      </div>
-
-      {/* ── BELOW the fold: the red review zone (intentional scroll only). ── */}
-      <SurfaceToneContext.Provider value="shell">
-        <div className="bg-shell text-ivory [color-scheme:dark]">
-          <StudioReviewZone />
+/** The ONE-SCREEN recipe workbench (also serves /pro/monitor with the panel focused). */
+function RecipeWorkbench({
+  activePanel,
+  recalcOpen,
+  onOpenRecalc,
+  onCloseRecalc,
+}: {
+  activePanel: ProContextTab;
+  recalcOpen: boolean;
+  onOpenRecalc: () => void;
+  onCloseRecalc: () => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col" data-testid="pro-viewport-region">
+      <SurfaceToneContext.Provider value="paper">
+        <div className="flex min-h-0 flex-1 flex-col bg-shell text-ivory">
+          <StudioEngineSurface
+            key={activePanel}
+            activePanel={activePanel}
+            recipeBar={<ProWorkbar onOpenPreview={onOpenRecalc} />}
+            recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={onCloseRecalc} />}
+          />
         </div>
       </SurfaceToneContext.Provider>
-
-      {/* Mobile bottom sheet — the SAME complete Monitor content as the desktop panel. */}
-      <MonitorDrawer open={monitorOpen} onClose={() => setMonitorOpen(false)} />
-    </>
+    </div>
   );
 }
 
@@ -267,12 +276,19 @@ function SectionPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona })
       return <SettingsTab persona={persona} />;
     case 'machine':
       return <MachineTab />;
+    case 'tools':
+      return (
+        <SurfaceToneContext.Provider value="paper">
+          <StudioReviewZone />
+        </SurfaceToneContext.Provider>
+      );
     default:
       return null;
   }
 }
 
 export function ProWorkspacePage() {
+  const [recalcOpen, setRecalcOpen] = useState(false);
   const persona = useProCorePersona();
   const { section } = useParams<{ section?: string }>();
   const [searchParams] = useSearchParams();
@@ -289,27 +305,40 @@ export function ProWorkspacePage() {
   }
 
   const activeTab: TabId = isTabId(section ?? null) ? (section as TabId) : 'recipe';
-  const workbench = isPro && isWorkbenchSection(activeTab);
+  const workbenchTab = isWorkbenchSection(activeTab) ? activeTab : null;
+  const workbench = isPro && workbenchTab !== null;
+  const startRecalc = () => {
+    useConstraintStudioStore.getState().createOptimizePreview();
+    setRecalcOpen(true);
+  };
 
   return (
-    // Masterpiece Phase 5 — the canonical Pro workspace wears the DARK PROFESSIONAL identity:
-    // one token scope flips the whole chrome to deep graphite + brand-ivory actions.
-    // Presentation only: same components, same tokens, same behavior; light routes untouched.
-    <div className={workbench ? 'theme-pro-dark lg:h-dvh' : 'theme-pro-dark'} data-testid="pro-dark-scope">
+    // White precision workspace: presentation-only token remap. The same components,
+    // values, content, actions and below-fold review zone remain intact.
+    <div
+      className={workbench ? 'theme-pro-light lg:h-dvh' : 'theme-pro-light'}
+      data-testid="pro-light-scope"
+    >
       <AppShell
         viewportLock={workbench}
         actions={
-          <>
-            <PersonaChip persona={persona} />
-            <DevPersonaSwitch persona={persona} />
-          </>
+          workbench ? (
+            <ProTopActions persona={persona} onRecalculate={startRecalc} />
+          ) : (
+            <>
+              <PersonaChip persona={persona} />
+              <DevPersonaSwitch persona={persona} />
+            </>
+          )
         }
       >
         {!isPro ? (
           <>
             <div className="mx-auto max-w-6xl px-6">
               <SectionLabel>{w.eyebrow}</SectionLabel>
-              <h1 className="mt-1 text-2xl font-light tracking-tight text-ink">{w.title}</h1>
+              <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
+                {w.title}
+              </h1>
             </div>
             <div className="mx-auto flex max-w-6xl justify-center px-6 py-16">
               <UpgradePrompt
@@ -325,14 +354,19 @@ export function ProWorkspacePage() {
           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
           // viewport belongs to the edit loop; every destination lives in the hamburger.
           <div className="lg:h-full lg:min-h-0" data-testid={`pro-panel-${activeTab}`}>
-            <RecipeWorkbench focusMonitor={activeTab === 'monitor'} />
+            <RecipeWorkbench
+              activePanel={workbenchTab!}
+              recalcOpen={recalcOpen}
+              onOpenRecalc={() => setRecalcOpen(true)}
+              onCloseRecalc={() => setRecalcOpen(false)}
+            />
           </div>
         ) : (
           // Plain titled sections (versions/production/history/costs/exports/settings/machine).
           <>
             <div className="mx-auto max-w-6xl px-6">
               <SectionLabel>{w.eyebrow}</SectionLabel>
-              <h1 className="mt-1 text-2xl font-light tracking-tight text-ink">
+              <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
                 {w.title} — {w.tabs[activeTab]}
               </h1>
             </div>

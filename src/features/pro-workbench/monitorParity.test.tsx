@@ -19,7 +19,12 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { calculateRecipe, proposeCorrections, type ProductCategory, type RecipeInput } from '@/engine';
+import {
+  calculateRecipe,
+  proposeCorrections,
+  type ProductCategory,
+  type RecipeInput,
+} from '@/engine';
 import { copy } from '@/copy/en';
 import { recipeContext } from '@/features/studio/buildRecipeInput';
 import {
@@ -120,7 +125,15 @@ describe('B1 parity inventory — every pre-redesign element, data-connected', (
       expect(text, module).toContain(module);
     }
     for (const id of [
-      'temperatura', 'cukry', 'woda', 'tluszcze', 'bialka', 'ciala_stale', 'stabilizacja', 'specjalne', 'expert',
+      'temperatura',
+      'cukry',
+      'woda',
+      'tluszcze',
+      'bialka',
+      'ciala_stale',
+      'stabilizacja',
+      'specjalne',
+      'expert',
     ]) {
       expect(html).toContain(`data-testid="user-monitor-module-${id}"`);
     }
@@ -229,9 +242,9 @@ describe('B4 — advanced marked, summary sacrosanct', () => {
 describe('nothing removed — one content component everywhere', () => {
   it('MonitorDrawer and the desktop panel both mount MonitorPanelContent (single source)', () => {
     const drawer = read('features', 'pro-core', 'MonitorDrawer.tsx');
-    const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
+    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     expect(drawer).toContain('<MonitorPanelContent');
-    expect(surface).toContain('<MonitorPanelContent');
+    expect(profile).toContain('<MonitorPanelContent');
     // The panel content mounts every historical module component.
     const content = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     for (const module of [

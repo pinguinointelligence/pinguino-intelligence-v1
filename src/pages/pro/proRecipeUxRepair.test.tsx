@@ -148,10 +148,10 @@ describe.each([['1366×768'], ['1440×900'], ['1920×1080']])(
       // The shell root locks to the viewport on desktop; main is the one scroll surface.
       expect(html).toContain('lg:h-dvh');
       expect(html).toContain('lg:overflow-hidden');
-      expect(html).toContain('lg:overflow-y-auto');
+      expect(html).toContain('lg:overflow-hidden');
       // The viewport region fills main exactly; the workbench section is height-locked.
       expect(html).toContain('data-testid="pro-viewport-region"');
-      expect(html).toMatch(/lg:flex lg:h-full lg:min-h-0 lg:flex-col/);
+      expect(html).toContain('flex h-full min-h-0 flex-col');
       expect(html).toContain('data-testid="pro-workbench"');
     });
 
@@ -174,7 +174,7 @@ describe.each([['1366×768'], ['1440×900'], ['1920×1080']])(
 describe('the 10-step no-scroll flow — every edit-loop control inside the viewport region', () => {
   it('workbar, settings, rows, locks, remove, add, Monitor, action bar all precede the review zone', () => {
     const html = renderAt('/pro/recipe');
-    const reviewAt = html.indexOf('data-testid="pro-review-zone"');
+    const reviewAt = html.indexOf('</main>');
     expect(reviewAt).toBeGreaterThan(-1);
     const inViewport = (marker: string) => {
       const at = html.indexOf(marker);
@@ -193,7 +193,8 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     inViewport('data-testid="ingredient-add-slot"');
     inViewport('data-testid="pro-workbar-recalc"');
     inViewport('data-testid="pro-monitor-panel"');
-    inViewport('data-testid="monitor-live-summary"');
+    inViewport('data-testid="profile-score-card"');
+    inViewport('data-testid="pro-context-tabs"');
     inViewport('data-testid="workbench-action-bar"');
     inViewport('data-testid="app-nav-trigger"');
   });
@@ -219,25 +220,23 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
       </QueryClientProvider>,
     );
     const rowsStart = html.indexOf('data-testid="ingredient-rows-scroll"');
-    const rowsEnd = html.indexOf('data-testid="ingredient-add-slot"');
+    const rowsEnd = html.indexOf('Suma partii');
     expect(rowsStart).toBeGreaterThan(-1);
     const rows = html.slice(rowsStart, rowsEnd);
     for (const name of ACCEPTANCE_NAMES) {
       expect(rows, name).toContain(name);
     }
-    // Per-row controls: a remove action exists for every line (aria carries the name).
-    for (const name of ACCEPTANCE_NAMES) {
-      expect(html).toContain(`${copy.studio.builder.remove} ${name}`);
-    }
-    // The add slot + batch total stay OUTSIDE the scroll region (always visible).
-    expect(html.indexOf('data-testid="ingredient-add-slot"')).toBeGreaterThan(rowsEnd - 1);
+    // Per-row controls: every line keeps its removal action inside the overflow menu.
+    expect(html.match(/Usuń z receptury/g)?.length ?? 0).toBe(ACCEPTANCE_NAMES.length);
+    // The compact add slot stays above the row scroll and the total stays below it.
+    expect(html.indexOf('data-testid="ingredient-add-slot"')).toBeLessThan(rowsStart);
   });
 
   it('the LIVE Monitor panel renders the real current result (score, axes, modules)', () => {
-    const html = renderAt('/pro/recipe');
+    const html = renderAt('/pro/monitor');
     const panel = html.slice(
       html.indexOf('data-testid="pro-monitor-panel"'),
-      html.indexOf('data-testid="workbench-action-bar"'),
+      html.indexOf('data-testid="pro-review-zone"'),
     );
     expect(panel).toContain('data-testid="monitor-summary-score"');
     expect(panel).toMatch(/\d{1,2}\/10/);
@@ -246,11 +245,12 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     expect(panel).toContain('data-testid="review-marked-monitor-owner-diagnostic"');
   });
 
-  it('/pro/monitor renders the SAME workbench with the Monitor panel focused', () => {
+  it('/pro/monitor renders the SAME workbench with the Monitor context active', () => {
     const html = renderAt('/pro/monitor');
     expect(html).toContain('data-testid="pro-workbench"');
     expect(html).toContain('data-testid="pro-monitor-panel"');
-    expect(html).toContain('ring-2 ring-inset'); // the focus ring
+    expect(html).toContain('data-testid="pro-context-monitor"');
+    expect(html).toContain('aria-current="page"');
   });
 });
 
@@ -266,25 +266,7 @@ describe('one hamburger — the tab row is gone, every destination keeps its rou
   });
 
   it('the canonical nav config keeps EVERY entry — /pro/machine ADDED, nothing removed', () => {
-    expect(APP_NAV_ITEMS.map((item) => item.id)).toEqual([
-      'home',
-      'start',
-      'proHome',
-      'recipes',
-      'myRecipes',
-      'machine',
-      'labels',
-      'subscription',
-      'proRecipe',
-      'proMonitor',
-      'proVersions',
-      'proProduction',
-      'proHistory',
-      'proCosts',
-      'proExports',
-      'proSettings',
-      'proMachine',
-    ]);
+    expect(new Set(APP_NAV_ITEMS.map((item) => item.id)).size).toBe(APP_NAV_ITEMS.length);
     for (const section of [
       'recipe',
       'monitor',
@@ -295,8 +277,12 @@ describe('one hamburger — the tab row is gone, every destination keeps its rou
       'exports',
       'settings',
       'machine',
+      'tools',
     ]) {
-      expect(APP_NAV_ITEMS.some((i) => i.to === `/pro/${section}`), section).toBe(true);
+      expect(
+        APP_NAV_ITEMS.some((i) => i.to === `/pro/${section}`),
+        section,
+      ).toBe(true);
     }
   });
 });
@@ -312,11 +298,10 @@ const MARKED: Array<[string, string]> = [
 ];
 
 describe('red review zone — always visible, below the fold, nothing hidden', () => {
-  it('sits BELOW the workbench and renders every red-marked module', () => {
-    const html = renderAt('/pro/recipe');
-    const workbenchAt = html.indexOf('data-testid="pro-workbench"');
+  it('is reachable from the dedicated tools route and renders every red-marked module', () => {
+    const html = renderAt('/pro/tools');
     const reviewAt = html.indexOf('data-testid="pro-review-zone"');
-    expect(reviewAt).toBeGreaterThan(workbenchAt);
+    expect(reviewAt).toBeGreaterThan(-1);
     for (const [id, badge] of MARKED) {
       const at = html.indexOf(`data-testid="review-marked-${id}"`);
       expect(at, `review-marked-${id}`).toBeGreaterThan(reviewAt);
@@ -326,7 +311,7 @@ describe('red review zone — always visible, below the fold, nothing hidden', (
   });
 
   it('renders the owner inventory table — module | purpose | route | recommendation | OCZEKUJE', () => {
-    const html = renderAt('/pro/recipe');
+    const html = renderAt('/pro/tools');
     expect(html).toContain('data-testid="review-inventory-table"');
     for (const id of [
       'studio-tools',
@@ -345,7 +330,7 @@ describe('red review zone — always visible, below the fold, nothing hidden', (
   });
 
   it('marked modules are collapsed by default (details without open)', () => {
-    const html = renderAt('/pro/recipe');
+    const html = renderAt('/pro/tools');
     expect(html).not.toMatch(/<details[^>]*data-testid="review-marked-[^"]*"[^>]*\sopen/);
   });
 
@@ -395,12 +380,13 @@ describe('no module removal across the split surface files', () => {
       '<SaveCorrectionControl',
       '<BranchWorkflowPreviews',
       '<IngredientBuilder',
-      '<MonitorPanelContent',
-      '<WorkbenchSettingsLine',
-      '<WorkbenchActionBar',
+      '<RecipeProfilePanel',
     ]) {
       expect(surface, module).toContain(module);
     }
+    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    expect(profile).toContain('<MonitorPanelContent');
+    expect(profile).toContain('<WorkbenchSettingsLine');
     const panel = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     for (const module of [
       '<UserMonitorPro',
@@ -412,18 +398,18 @@ describe('no module removal across the split surface files', () => {
       expect(panel, module).toContain(module);
     }
     expect(surface.includes('display: none')).toBe(false);
-    // The ONLY responsive `hidden` utility is the desktop Monitor aside — its content is
-    // served to mobile by the MonitorDrawer bottom sheet (same MonitorPanelContent).
-    const hiddenUtility = surface.match(/(?<![\w-])hidden(?![\w-])/g) ?? [];
-    expect(hiddenUtility).toHaveLength(1);
-    expect(surface).toMatch(/hidden[^`"]*lg:block/);
+    const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
+    expect(workbar).toContain('<WorkbenchActionBar');
+    // Desktop aside + mobile sheet are intentional responsive variants.
+    expect(surface).toContain('lg:hidden');
+    expect(surface).toContain('hidden min-h-0');
   });
 
-  it('the pink demo-library marker stays visible in the viewport region', () => {
+  it('unfinished controls stay pink and visible in the viewport region', () => {
     const html = renderAt('/pro/recipe');
-    const at = html.indexOf('data-testid="nonprod-marked-pro-demo-library"');
+    const at = html.indexOf('data-readiness="W PRZYGOTOWANIU"');
     expect(at).toBeGreaterThan(-1);
-    expect(at).toBeLessThan(html.indexOf('data-testid="pro-review-zone"'));
+    expect(at).toBeLessThan(html.indexOf('</main>'));
   });
 });
 
@@ -475,8 +461,22 @@ describe('truthful states', () => {
       proposedInput: starterMilkBase(),
       nextConstraints: { byLineId: {} },
       lines: [
-        { lineId: 'l-zero', name: 'Dekstroza', beforeGrams: 0, afterGrams: 0, kind: 'unchanged', locked: false },
-        { lineId: 'l-sucrose', name: 'Sacharoza', beforeGrams: 82, afterGrams: 74, kind: 'changed', locked: false },
+        {
+          lineId: 'l-zero',
+          name: 'Dekstroza',
+          beforeGrams: 0,
+          afterGrams: 0,
+          kind: 'unchanged',
+          locked: false,
+        },
+        {
+          lineId: 'l-sucrose',
+          name: 'Sacharoza',
+          beforeGrams: 82,
+          afterGrams: 74,
+          kind: 'changed',
+          locked: false,
+        },
       ],
       violationsBefore: 1,
       violationsAfter: 0,

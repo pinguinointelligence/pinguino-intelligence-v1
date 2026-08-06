@@ -17,15 +17,17 @@ import {
 import { ConstraintStudioSection } from '@/features/constraint-studio';
 import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuilder';
 import { PresetSelector } from '@/features/studio/PresetSelector';
-import { engineRouteLabel } from '@/features/studio/engineRouteLabel';
 import { useStudioResult } from '@/features/studio/useStudioResult';
 import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculatorPreview';
 import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule';
-import { MonitorPanelContent } from '@/features/pro-workbench/MonitorPanelContent';
 import { ProReviewZone, type ReviewInventoryRow } from '@/features/pro-workbench/ProReviewZone';
-import { WorkbenchActionBar } from '@/features/pro-workbench/WorkbenchActionBar';
-import { WorkbenchSettingsLine } from '@/features/pro-workbench/WorkbenchSettingsLine';
+import {
+  RecipeProfilePanel,
+  type CockpitTab,
+  type ProContextTab,
+} from '@/features/pro-workbench/RecipeProfilePanel';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
+import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 
 const { studio } = copy;
 
@@ -38,7 +40,8 @@ const REVIEW_INVENTORY: readonly ReviewInventoryRow[] = [
     name: studio.secondary.reviewMarked.studioTools,
     purpose: studio.secondary.reviewMarked.studioToolsNote,
     route: '/pro/recipe → strefa przeglądu',
-    recommendation: 'Scalić z edytorem (blokady są już w tabeli) lub zostawić jako narzędzie zaawansowane.',
+    recommendation:
+      'Scalić z edytorem (blokady są już w tabeli) lub zostawić jako narzędzie zaawansowane.',
   },
   {
     id: 'assistant',
@@ -102,30 +105,30 @@ const REVIEW_INVENTORY: readonly ReviewInventoryRow[] = [
  */
 export function StudioEngineSurface({
   forceDemo = false,
-  onOpenRecalcPanel,
   recalcSlot,
-  focusMonitor = false,
+  activePanel = 'recipe',
+  recipeBar,
 }: {
   forceDemo?: boolean;
-  /** Re-open the recalculation overlay on an ALREADY-staged preview (no new solve). */
-  onOpenRecalcPanel?: () => void;
   /** The Przelicz z PI overlay (Preview → Zastosuj/Anuluj → Cofnij), host-wired. */
   recalcSlot?: ReactNode;
-  /** /pro/monitor deep-link: visually focus the LIVE Monitor panel. */
-  focusMonitor?: boolean;
+  /** Stable right-panel route: Profile / Monitor / Production / History. */
+  activePanel?: ProContextTab;
+  /** The one recipe name/save bar, mounted at the bottom-left of the editor. */
+  recipeBar?: ReactNode;
 }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
   const { fullFormula } = useAccess();
   const { result, corrections, input } = useStudioResult();
+  const scoreDisplay = monitorScoreView(result).match.display;
 
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
-  const servingModeId = useRecipeStore((state) => state.servingModeId);
-
-  // The route chip derives from the CURRENT resolved Engine route (owner P0 temperature
-  // contract) — never a hardcoded engine name. Same store values buildRecipeInput uses.
-  const route = engineRouteLabel(servingModeId, temperatureC);
+  const initialCockpit: CockpitTab =
+    activePanel === 'monitor' ? 'monitor' : activePanel === 'production' ? 'production' : 'profile';
+  const [cockpitTab, setCockpitTab] = useState<CockpitTab>(initialCockpit);
+  const [mobileCockpitOpen, setMobileCockpitOpen] = useState(activePanel === 'monitor');
 
   // The public /demo entry is always a demo session that cold-opens the curated
   // default scenario; /pro (forceDemo=false) preserves persisted edits.
@@ -144,21 +147,6 @@ export function StudioEngineSurface({
         className="flex min-h-0 flex-col lg:flex-1 lg:overflow-hidden"
         data-testid="pro-workbench"
       >
-        {/* Row 2 — the compact settings line + the live Engine-route chip. */}
-        <div className="shrink-0">
-          <WorkbenchSettingsLine />
-          <div className="flex flex-wrap items-center gap-x-3 border-b border-ivory/10 px-4 py-1">
-            <span className="text-[10px] tracking-[0.06em] text-ivory/60 uppercase" data-testid="engine-route-chip">
-              {studio.eyebrow} · {route.main}
-            </span>
-            {route.detail ? (
-              <span className="text-[10px] leading-none text-ivory/60" data-testid="engine-route-detail">
-                {route.detail}
-              </span>
-            ) : null}
-          </div>
-        </div>
-
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
         <div className="min-h-0 flex-1 lg:flex lg:flex-row">
           <div
@@ -166,13 +154,16 @@ export function StudioEngineSurface({
             data-testid="workbench-editor-pane"
           >
             {fullFormula ? (
-              <IngredientBuilder
-                items={result.items}
-                totalBatchG={result.total_batch_g}
-                targetBatchG={batchGrams}
-                demo={forceDemo}
-                layout="workbench"
-              />
+              <div className="min-h-0 flex-1 lg:overflow-hidden">
+                <IngredientBuilder
+                  items={result.items}
+                  totalBatchG={result.total_batch_g}
+                  targetBatchG={batchGrams}
+                  demo={forceDemo}
+                  layout="workbench"
+                  mode={cockpitTab === 'production' ? 'production' : 'recipe'}
+                />
+              </div>
             ) : (
               <div className="px-4 py-3">
                 <LockedCalculatorPreview />
@@ -184,13 +175,13 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
-            className={`hidden min-h-0 px-4 py-3 lg:block lg:w-[38%] lg:overflow-y-auto ${
-              focusMonitor ? 'ring-2 ring-inset ring-ivory/40' : ''
-            }`}
+            className="hidden min-h-0 border-t border-ink/10 lg:block lg:w-[38%] lg:overflow-y-auto lg:border-t-0"
             data-testid="pro-monitor-panel"
-            aria-label={copy.monitorPi.panelTitle}
+            aria-label={copy.proWorkbench.profile.title}
           >
-            <MonitorPanelContent
+            <RecipeProfilePanel
+              activeTab={cockpitTab}
+              onTabChange={setCockpitTab}
               result={result}
               servingTemperatureC={temperatureC}
               corrections={corrections}
@@ -198,14 +189,37 @@ export function StudioEngineSurface({
             />
           </aside>
         </div>
+        <div className="shrink-0 border-t border-ink/10">{recipeBar}</div>
 
-        {/* Bottom action/result bar — thin, fixed inside the workbench. */}
-        <div className="shrink-0">
-          <WorkbenchActionBar
-            totalBatchG={result.total_batch_g}
-            onOpenPreview={onOpenRecalcPanel ?? (() => {})}
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => setMobileCockpitOpen(true)}
+          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-30 flex items-center gap-2 rounded-full border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink shadow-[0_8px_24px_rgba(16,17,19,0.12)] lg:hidden"
+          data-testid="mobile-cockpit-trigger"
+        >
+          <span className="font-mono tabular-nums">{scoreDisplay}</span>
+          Kokpit
+        </button>
+
+        {mobileCockpitOpen ? (
+          <div className="fixed inset-0 z-50 lg:hidden" data-testid="mobile-cockpit-sheet">
+            <button type="button" aria-label="Zamknij kokpit" onClick={() => setMobileCockpitOpen(false)} className="absolute inset-0 bg-black/35" />
+            <section className="absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-lg border-t border-ink/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_36px_rgba(16,17,19,0.14)]">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-white px-3 py-2">
+                <span className="text-xs font-semibold text-ink">Kokpit aktualnej receptury</span>
+                <button type="button" onClick={() => setMobileCockpitOpen(false)} className="grid size-9 place-items-center rounded-full border border-ink/10 text-lg text-ink">×</button>
+              </div>
+              <RecipeProfilePanel
+                activeTab={cockpitTab}
+                onTabChange={setCockpitTab}
+                result={result}
+                servingTemperatureC={temperatureC}
+                corrections={corrections}
+                input={input}
+              />
+            </section>
+          </div>
+        ) : null}
       </section>
 
       {/* Przelicz z PI — the compact OVERLAY (never a page section). */}
@@ -229,91 +243,96 @@ export function StudioReviewZone() {
 
   return (
     <ProReviewZone inventory={REVIEW_INVENTORY}>
-        {/* QA/demo scenarios are an internal tool (owner P0): never the default owner
+      {/* QA/demo scenarios are an internal tool (owner P0): never the default owner
             workspace — dev builds only, dead-code-eliminated from production. */}
-        {import.meta.env.DEV ? <PresetSelector /> : null}
+      {import.meta.env.DEV ? <PresetSelector /> : null}
 
-        {/* UIUX Slice E (§17–§20): locks, Preview→verify-gated Apply, §18 feasibility
+      {/* UIUX Slice E (§17–§20): locks, Preview→verify-gated Apply, §18 feasibility
             honesty, history/Undo/Explain — legacy Studio tools. Exact-gram surface —
             mounted only with fullFormula (§22.1: Demo never receives full grams). */}
-        {fullFormula ? (
-          <ReviewMarkedModule
-            id="studio-tools"
-            title={studio.secondary.reviewMarked.studioTools}
-            badge="DO PRZEGLĄDU"
-            note={studio.secondary.reviewMarked.studioToolsNote}
-          >
-            <ConstraintStudioSection />
-          </ReviewMarkedModule>
-        ) : null}
-
-        {/* Conversational Assistant Shell (PL-first, deterministic): read-only intent draft. */}
+      {fullFormula ? (
         <ReviewMarkedModule
-          id="assistant"
-          title={studio.secondary.reviewMarked.assistant}
-          badge="OPCJONALNE"
+          id="studio-tools"
+          title={studio.secondary.reviewMarked.studioTools}
+          badge="DO PRZEGLĄDU"
+          note={studio.secondary.reviewMarked.studioToolsNote}
         >
-          <StudioAssistantShell />
+          <ConstraintStudioSection />
         </ReviewMarkedModule>
+      ) : null}
 
-        {/* User-Flow guidance layer (PL-first, read-only): explains the current situation. */}
-        <ReviewMarkedModule
-          id="flow-guide"
-          title={studio.secondary.reviewMarked.flowGuide}
-          badge="OPCJONALNE"
-        >
-          <StudioFlowGuidePanel view={optimizationView} />
-        </ReviewMarkedModule>
+      {/* Conversational Assistant Shell (PL-first, deterministic): read-only intent draft. */}
+      <ReviewMarkedModule
+        id="assistant"
+        title={studio.secondary.reviewMarked.assistant}
+        badge="OPCJONALNE"
+      >
+        <StudioAssistantShell />
+      </ReviewMarkedModule>
 
-        {/* Production optimization preview (Slice 15): real solver + Base Engine rerun on the
+      {/* User-Flow guidance layer (PL-first, read-only): explains the current situation. */}
+      <ReviewMarkedModule
+        id="flow-guide"
+        title={studio.secondary.reviewMarked.flowGuide}
+        badge="OPCJONALNE"
+      >
+        <StudioFlowGuidePanel view={optimizationView} />
+      </ReviewMarkedModule>
+
+      {/* Production optimization preview (Slice 15): real solver + Base Engine rerun on the
             LIVE recipe on explicit click. Pure preview — never saves/applies/persists/mutates. */}
-        <ReviewMarkedModule
-          id="optimization"
-          title={studio.secondary.reviewMarked.optimization}
-          badge="OPCJONALNE"
-          note={studio.secondary.reviewMarked.optimizationNote}
-        >
-          <div className="space-y-3">
-            <p className="text-xs leading-relaxed text-ivory/60">
-              {studio.optimization.note}
-              {!exactCorrectionGrams ? ` ${studio.optimization.proOnly}` : ''}
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                setOptimizationView(previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }))
-              }
-              className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
-            >
-              {studio.optimization.run}
-            </button>
-            {optimizationView ? (
-              <>
-                <OptimizationPreviewPanel
-                  view={optimizationView}
-                  policy={optimizationDisplayPolicy({ exactCorrectionGrams, technicalView }, { dev: import.meta.env.DEV })}
-                />
-                {/* Slice 24 — the FIRST write control: signed-in Pro may persist an accepted
+      <ReviewMarkedModule
+        id="optimization"
+        title={studio.secondary.reviewMarked.optimization}
+        badge="OPCJONALNE"
+        note={studio.secondary.reviewMarked.optimizationNote}
+      >
+        <div className="space-y-3">
+          <p className="text-xs leading-relaxed text-ivory/60">
+            {studio.optimization.note}
+            {!exactCorrectionGrams ? ` ${studio.optimization.proOnly}` : ''}
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              setOptimizationView(
+                previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }),
+              )
+            }
+            className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+          >
+            {studio.optimization.run}
+          </button>
+          {optimizationView ? (
+            <>
+              <OptimizationPreviewPanel
+                view={optimizationView}
+                policy={optimizationDisplayPolicy(
+                  { exactCorrectionGrams, technicalView },
+                  { dev: import.meta.env.DEV },
+                )}
+              />
+              {/* Slice 24 — the FIRST write control: signed-in Pro may persist an accepted
                     correction as ONE immutable audit record. Explicit click; recipe never changed. */}
-                <SaveCorrectionControl view={optimizationView} recipe={input} />
-              </>
-            ) : null}
-          </div>
-        </ReviewMarkedModule>
+              <SaveCorrectionControl view={optimizationView} recipe={input} />
+            </>
+          ) : null}
+        </div>
+      </ReviewMarkedModule>
 
-        {/* IF9/IF10 branch previews (Slice 21): Batch Rescue + Stock Shortage —
+      {/* IF9/IF10 branch previews (Slice 21): Batch Rescue + Stock Shortage —
             paid-gated, explicit-click, non-persisted. */}
-        <ReviewMarkedModule
-          id="branch-previews"
-          title={studio.secondary.reviewMarked.branchPreviews}
-          badge="ADVANCED / REVIEW"
-          note={studio.secondary.reviewMarked.branchPreviewsNote}
-        >
-          <BranchWorkflowPreviews
-            recipe={input}
-            capabilities={{ exactCorrectionGrams, technicalView }}
-          />
-        </ReviewMarkedModule>
+      <ReviewMarkedModule
+        id="branch-previews"
+        title={studio.secondary.reviewMarked.branchPreviews}
+        badge="ADVANCED / REVIEW"
+        note={studio.secondary.reviewMarked.branchPreviewsNote}
+      >
+        <BranchWorkflowPreviews
+          recipe={input}
+          capabilities={{ exactCorrectionGrams, technicalView }}
+        />
+      </ReviewMarkedModule>
     </ProReviewZone>
   );
 }

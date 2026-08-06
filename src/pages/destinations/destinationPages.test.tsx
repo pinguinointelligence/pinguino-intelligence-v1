@@ -14,6 +14,22 @@ import { WorkWithUsPage } from './WorkWithUsPage';
 const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
 
 describe('Slice 3 destination pages', () => {
+  it('uses the same white editorial shell across destination pages', () => {
+    for (const el of [
+      <WorkWithUsPage key="w" />,
+      <CreateLabelPage key="l" />,
+      <APIPage key="a" />,
+      <CreateIngredientPage key="i" />,
+      <RecipesHubPage key="r" />,
+    ]) {
+      const html = render(el);
+      expect(html).toContain('theme-pro-light');
+      expect(html).toContain('bg-paper');
+      expect(html).toContain('font-semibold');
+      expect(html).not.toContain('[color-scheme:dark]');
+    }
+  });
+
   it('Work With Us shows the four offers + a mailto CTA', () => {
     const html = render(<WorkWithUsPage />);
     expect(html).toContain(copy.nav.work.offers.app.title);

@@ -92,12 +92,20 @@ function LandingSection({
       <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
         {title ? (
-          <h2 className={cn('mt-3 max-w-2xl text-[26px] font-light leading-[1.15] tracking-tight text-ink sm:text-[32px]')}>
+          <h2
+            className={cn(
+              'mt-3 max-w-2xl text-[28px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[36px]',
+            )}
+          >
             {title}
           </h2>
         ) : null}
-        {lead ? <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>{lead}</p> : null}
-        {children ? <div className={cn((eyebrow || title || lead) && 'mt-10')}>{children}</div> : null}
+        {lead ? (
+          <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>{lead}</p>
+        ) : null}
+        {children ? (
+          <div className={cn((eyebrow || title || lead) && 'mt-10')}>{children}</div>
+        ) : null}
       </div>
     </section>
   );
@@ -114,7 +122,13 @@ function CheckGlyph() {
       aria-hidden
       className="mt-1 shrink-0 text-ink"
     >
-      <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M3 8.5l3.2 3.2L13 5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -148,14 +162,25 @@ const DEMO_MONITOR_VIEW = buildLandingMonitorDemo();
 function LandingMonitorPreview() {
   const m = copy.monitor;
   return (
-    <div className={cn('w-full max-w-[420px] border border-ink/10 bg-paper p-6', radius.card, 'shadow-[0_10px_40px_rgba(16,17,19,0.08)]')}>
+    <div
+      className={cn(
+        'w-full max-w-[420px] border border-ink/10 bg-paper p-6',
+        radius.card,
+        'shadow-[0_10px_40px_rgba(16,17,19,0.08)]',
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className={cn(type.label, color.textMuted)}>{m.label}</p>
         <span className="flex flex-wrap items-center gap-2">
           {/* Agent 4 fixture sweep: real engine, FIXED vanilla demo payload — the pink
               marker names the source next to the honest „Przykład” tag. */}
           <NonProductionBadge itemId="landing-monitor-example" />
-          <span className={cn('rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-[11px] font-medium', color.textSecondary)}>
+          <span
+            className={cn(
+              'rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-[11px] font-medium',
+              color.textSecondary,
+            )}
+          >
             {m.exampleTag}
           </span>
         </span>
@@ -163,7 +188,9 @@ function LandingMonitorPreview() {
 
       <MonitorHomeReadout home={DEMO_MONITOR_VIEW} />
 
-      <p className={cn('mt-6 border-t border-ink/10 pt-4', type.caption, color.textSecondary)}>{m.plansNote}</p>
+      <p className={cn('mt-6 border-t border-ink/10 pt-4', type.caption, color.textSecondary)}>
+        {m.plansNote}
+      </p>
     </div>
   );
 }
@@ -190,7 +217,7 @@ export function LandingPage() {
         <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-16">
           <div>
             <Eyebrow>{copy.hero.eyebrow}</Eyebrow>
-            <h1 className="mt-4 max-w-2xl text-balance text-[34px] font-light leading-[1.12] tracking-tight sm:text-[44px] lg:text-[52px]">
+            <h1 className="mt-5 max-w-3xl text-balance text-[40px] font-semibold leading-[0.98] tracking-[-0.045em] sm:text-[56px] lg:text-[68px]">
               {copy.hero.headline}
             </h1>
             <p className={cn('mt-5 max-w-prose text-[17px] leading-relaxed', color.textSecondary)}>
@@ -207,7 +234,11 @@ export function LandingPage() {
           </div>
 
           {/* SLICE F SEAM — the interactive Monitor demo mounts here later. */}
-          <section id={MONITOR_DEMO_ID} aria-label={copy.monitor.label} className="justify-self-center lg:justify-self-end">
+          <section
+            id={MONITOR_DEMO_ID}
+            aria-label={copy.monitor.label}
+            className="justify-self-center lg:justify-self-end"
+          >
             <LandingMonitorPreview />
           </section>
         </div>
@@ -218,9 +249,13 @@ export function LandingPage() {
         <ol className="grid gap-10 md:grid-cols-3 md:gap-8">
           {copy.how.steps.map((step, i) => (
             <li key={step.title}>
-              <p className="font-mono text-[13px] tabular-nums text-stone-500">{String(i + 1).padStart(2, '0')}</p>
+              <p className="font-mono text-[13px] tabular-nums text-stone-500">
+                {String(i + 1).padStart(2, '0')}
+              </p>
               <h3 className={cn('mt-3', type.heading, color.textPrimary)}>{step.title}</h3>
-              <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>{step.body}</p>
+              <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
+                {step.body}
+              </p>
             </li>
           ))}
         </ol>
@@ -231,16 +266,32 @@ export function LandingPage() {
         <div className="grid gap-12 md:grid-cols-2 md:gap-8">
           <div>
             <Eyebrow>{copy.homeSection.label}</Eyebrow>
-            <h2 className={cn('mt-3 text-[22px] font-medium tracking-tight text-ink')}>{copy.homeSection.title}</h2>
-            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>{copy.homeSection.body}</p>
+            <h2
+              className={cn(
+                'mt-3 text-[24px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink',
+              )}
+            >
+              {copy.homeSection.title}
+            </h2>
+            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
+              {copy.homeSection.body}
+            </p>
             <div className="mt-6">
               <CheckList items={copy.homeSection.bullets} />
             </div>
           </div>
           <div>
             <Eyebrow>{copy.proSection.label}</Eyebrow>
-            <h2 className={cn('mt-3 text-[22px] font-medium tracking-tight text-ink')}>{copy.proSection.title}</h2>
-            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>{copy.proSection.body}</p>
+            <h2
+              className={cn(
+                'mt-3 text-[24px] font-semibold leading-[1.04] tracking-[-0.03em] text-ink',
+              )}
+            >
+              {copy.proSection.title}
+            </h2>
+            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
+              {copy.proSection.body}
+            </p>
             <div className="mt-6">
               <CheckList items={copy.proSection.bullets} />
             </div>
@@ -249,7 +300,11 @@ export function LandingPage() {
       </LandingSection>
 
       {/* Bezpieczna przewaga (§6.3.4) — descriptive, no fake numbers. */}
-      <LandingSection eyebrow={copy.advantage.label} title={copy.advantage.title} lead={copy.advantage.body}>
+      <LandingSection
+        eyebrow={copy.advantage.label}
+        title={copy.advantage.title}
+        lead={copy.advantage.body}
+      >
         <div className="max-w-2xl">
           <CheckList items={copy.advantage.bullets} />
         </div>
@@ -259,7 +314,14 @@ export function LandingPage() {
       <LandingSection eyebrow={copy.plans.label} title={copy.plans.title} lead={copy.plans.lead}>
         <div className="grid gap-6 md:grid-cols-2">
           {[copy.plans.home, copy.plans.pro].map((plan) => (
-            <div key={plan.name} className={cn('border border-ink/10 bg-paper p-6', radius.card, 'shadow-[0_1px_2px_rgba(16,17,19,0.05)]')}>
+            <div
+              key={plan.name}
+              className={cn(
+                'border border-ink/10 bg-paper p-6',
+                radius.card,
+                'shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
+              )}
+            >
               <h3 className={cn(type.heading, color.textPrimary)}>{plan.name}</h3>
               <p className={cn('mt-1', type.secondary, color.textSecondary)}>{plan.tagline}</p>
               <div className="mt-5">
@@ -299,10 +361,17 @@ export function LandingPage() {
                   aria-hidden
                   className={cn('shrink-0 text-stone-500 group-open:rotate-45', motion.transform)}
                 >
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path
+                    d="M8 3v10M3 8h10"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </summary>
-              <p className={cn('max-w-prose pb-5', type.secondary, color.textSecondary)}>{item.a}</p>
+              <p className={cn('max-w-prose pb-5', type.secondary, color.textSecondary)}>
+                {item.a}
+              </p>
             </details>
           ))}
         </div>
@@ -312,10 +381,12 @@ export function LandingPage() {
       <LandingSection>
         <div className="flex flex-col items-start gap-6">
           <div>
-            <h2 className="max-w-2xl text-[26px] font-light leading-[1.15] tracking-tight text-ink sm:text-[32px]">
+            <h2 className="max-w-2xl text-[28px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[36px]">
               {copy.finalCta.title}
             </h2>
-            <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>{copy.finalCta.body}</p>
+            <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>
+              {copy.finalCta.body}
+            </p>
           </div>
           <LinkCta to="/start" variant="primary" size="lg">
             {copy.finalCta.cta}
@@ -362,7 +433,9 @@ function Wordmark() {
       <IvoryLogoMark size={26} tone="ink" />
       <span className="leading-none">
         <span className="block text-base font-light tracking-wordmark">{copy.brand.name}</span>
-        <span className={cn('mt-1 block text-[0.55rem] font-light tracking-wordmark', color.textMuted)}>
+        <span
+          className={cn('mt-1 block text-[0.55rem] font-light tracking-wordmark', color.textMuted)}
+        >
           {copy.brand.sub}
         </span>
       </span>

@@ -49,7 +49,14 @@ describe('visible product types', () => {
       expect(html).toContain(`data-testid="product-type-${t}"`);
     }
     // No legacy primary category selector (Milk/Fruit/Nut/Chocolate/Alcohol/Custom).
-    for (const legacy of ['Milk gelato', 'Fruit gelato', 'Nut gelato', 'Chocolate gelato', 'Alcohol gelato', 'Custom']) {
+    for (const legacy of [
+      'Milk gelato',
+      'Fruit gelato',
+      'Nut gelato',
+      'Chocolate gelato',
+      'Alcohol gelato',
+      'Custom',
+    ]) {
       expect(html).not.toContain(legacy);
     }
     expect(html).not.toContain('data-testid="product-type-chocolate"');
@@ -97,8 +104,18 @@ describe('visible product types', () => {
     expect([...NATIVE_BAND_CATEGORIES].sort()).toEqual([...seeded].sort());
 
     const catalogue = [
-      'milk_3_5', 'cream_30', 'smp', 'sucrose', 'dextrose', 'tara_gum',
-      'raspberry', 'dark_chocolate_70', 'pistachio_paste', 'whiskey_40', 'water', 'inulin',
+      'milk_3_5',
+      'cream_30',
+      'smp',
+      'sucrose',
+      'dextrose',
+      'tara_gum',
+      'raspberry',
+      'dark_chocolate_70',
+      'pistachio_paste',
+      'whiskey_40',
+      'water',
+      'inulin',
     ];
     // Every non-empty subset of a representative catalogue, through every
     // visible type and every previous category the store could be carrying.
@@ -111,12 +128,21 @@ describe('visible product types', () => {
       }
     }
     const ALL_CATEGORIES: RecipeInput['category'][] = [
-      'milk_gelato', 'fruit_gelato', 'nut_gelato', 'chocolate_gelato',
-      'alcohol_gelato', 'sorbet', 'vegan_gelato', 'custom',
+      'milk_gelato',
+      'fruit_gelato',
+      'nut_gelato',
+      'chocolate_gelato',
+      'alcohol_gelato',
+      'sorbet',
+      'vegan_gelato',
+      'custom',
     ];
     for (const items of subsets) {
       // (a) the live gelato derivation
-      expect(seeded.has(gelatoInternalCategory(items)), JSON.stringify(items.map((i) => i.id))).toBe(true);
+      expect(
+        seeded.has(gelatoInternalCategory(items)),
+        JSON.stringify(items.map((i) => i.id)),
+      ).toBe(true);
       // (b) the visible-type derivation, for every supported visible type
       for (const visible of VISIBLE_PRODUCT_TYPES) {
         if (visible === 'protein') continue; // honest-unsupported: keeps `previous`
@@ -130,9 +156,15 @@ describe('visible product types', () => {
   });
 
   it('the store re-routes internal category live as GELATO ingredients change', () => {
-    useRecipeStore.getState().loadRecipeInput(
-      { items: [line('l-milk', 'milk_3_5', 700)], mode: 'classic', category: 'milk_gelato', target_temperature_c: -11, target_batch_grams: 1000, machine_capacity_grams: null, goals: { flavor_intensity: 'balanced', cost_priority: 'balanced' } },
-    );
+    useRecipeStore.getState().loadRecipeInput({
+      items: [line('l-milk', 'milk_3_5', 700)],
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -11,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      goals: { flavor_intensity: 'balanced', cost_priority: 'balanced' },
+    });
     useRecipeStore.getState().setVisibleProductType('gelato');
     useRecipeStore.getState().addIngredient(findDemoIngredient('dark_chocolate_70')!, 100);
     expect(useRecipeStore.getState().category).toBe('chocolate_gelato');
@@ -173,7 +205,12 @@ describe('quality tier', () => {
 /* -------------------------------------------------- serving mode (proof 6) -- */
 describe('serving mode', () => {
   it('6. Świeże/−11/−12/−13 share ONE mode source (servingModeId + temperature move together)', () => {
-    const cases: [string, number][] = [['fresh', -11], ['temp_minus_11', -11], ['temp_minus_12', -12], ['temp_minus_13', -13]];
+    const cases: [string, number][] = [
+      ['fresh', -11],
+      ['temp_minus_11', -11],
+      ['temp_minus_12', -12],
+      ['temp_minus_13', -13],
+    ];
     for (const [id, temp] of cases) {
       useRecipeStore.getState().setServingMode(id, temp);
       const s = useRecipeStore.getState();
@@ -218,9 +255,34 @@ describe('recalculation entry', () => {
   });
 });
 
+describe('new Pro profile layout', () => {
+  it('exposes four stable right-panel contexts and keeps actual batch in the profile', () => {
+    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    for (const label of ['Profil receptury', 'Monitor', 'Produkcja', 'Podsumowanie']) {
+      expect(profile).toContain(label);
+    }
+    expect(profile).toContain("export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary'");
+    const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+    expect(settings).toContain('profile-actual-batch');
+  });
+
+  it('shows explicit gram and percent lock controls through the canonical lock_type action', () => {
+    const row = read('features', 'ingredient-builder', 'IngredientRow.tsx');
+    expect(row).toContain('row-lock-grams-');
+    expect(row).toContain('row-lock-percent-');
+    expect(row).toContain("gramsLocked ? 'unlocked' : 'grams'");
+    expect(row).toContain('Blokada udziału procentowego nie jest jeszcze podłączona do solvera.');
+    expect(row).toContain('disabled');
+  });
+});
+
 /* ------------------------------------------ round-trip + engine equality (11–12) -- */
 describe('saved round-trip + engine equality', () => {
-  const base = (temp: number, category: RecipeInput['category'], extra: RecipeItem[] = []): RecipeInput => ({
+  const base = (
+    temp: number,
+    category: RecipeInput['category'],
+    extra: RecipeItem[] = [],
+  ): RecipeInput => ({
     items: [line('l-milk', 'milk_3_5', 700), line('l-suc', 'sucrose', 150), ...extra],
     mode: 'classic',
     category,
@@ -234,7 +296,10 @@ describe('saved round-trip + engine equality', () => {
     ['gelato −11', base(-11, 'milk_gelato')],
     ['gelato −12', base(-12, 'milk_gelato')],
     ['gelato −13', base(-13, 'milk_gelato')],
-    ['chocolate-routed gelato', base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)])],
+    [
+      'chocolate-routed gelato',
+      base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]),
+    ],
     ['sorbet', base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)])],
     ['vegan', base(-12, 'vegan_gelato')],
   ];
@@ -248,14 +313,17 @@ describe('saved round-trip + engine equality', () => {
 
       // "Save" = the same RecipeInput persisted; "reopen" = load it back.
       useRecipeStore.getState().resetToDemo();
-      useRecipeStore.getState().loadRecipeInput(draftInput, { savedId: 'r', savedName: 'X', versionNumber: 1 });
+      useRecipeStore
+        .getState()
+        .loadRecipeInput(draftInput, { savedId: 'r', savedName: 'X', versionNumber: 1 });
       const reopenedInput = buildRecipeInput(useRecipeStore.getState());
       const reopenedResult = calculateRecipe(reopenedInput);
 
       // Identical canonical input (ingredients, grams, category, temperature, batch)…
-      expect(reopenedInput.items.map((i) => [i.id, i.planned_grams]), label).toEqual(
-        draftInput.items.map((i) => [i.id, i.planned_grams]),
-      );
+      expect(
+        reopenedInput.items.map((i) => [i.id, i.planned_grams]),
+        label,
+      ).toEqual(draftInput.items.map((i) => [i.id, i.planned_grams]));
       expect(reopenedInput.category, label).toBe(draftInput.category);
       expect(reopenedInput.target_temperature_c, label).toBe(draftInput.target_temperature_c);
       // …and identical Engine output (the workbench never presents a different number).
@@ -264,9 +332,13 @@ describe('saved round-trip + engine equality', () => {
   });
 
   it('the reopened visible type projects correctly from the saved internal category', () => {
-    useRecipeStore.getState().loadRecipeInput(base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]));
+    useRecipeStore
+      .getState()
+      .loadRecipeInput(base(-12, 'chocolate_gelato', [line('l-choc', 'dark_chocolate_70', 80)]));
     expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
-    useRecipeStore.getState().loadRecipeInput(base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)]));
+    useRecipeStore
+      .getState()
+      .loadRecipeInput(base(-12, 'sorbet', [line('l-rasp', 'raspberry', 300)]));
     expect(useRecipeStore.getState().visibleProductType).toBe('sorbet');
   });
 });
@@ -275,7 +347,14 @@ describe('saved round-trip + engine equality', () => {
 describe('language', () => {
   it('13. the core workbench GOAL card carries no legacy English labels', () => {
     const html = renderToStaticMarkup(<GoalSetup />);
-    for (const legacy of ['Product Mode', 'Machine capacity', 'Cost priority', 'Flavor intensity', 'Category', 'Mouthfeel']) {
+    for (const legacy of [
+      'Product Mode',
+      'Machine capacity',
+      'Cost priority',
+      'Flavor intensity',
+      'Category',
+      'Mouthfeel',
+    ]) {
       expect(html, legacy).not.toContain(legacy);
     }
     expect(html).toContain('Poziom jakości');

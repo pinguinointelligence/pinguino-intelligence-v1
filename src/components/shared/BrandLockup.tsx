@@ -26,23 +26,15 @@ interface BrandLockupProps {
  */
 export function PenguinMark({ size = 28, className }: { size?: number; className?: string }) {
   return (
-    <svg
-      viewBox="0 0 100 140"
-      width={(size * 100) / 140}
+    <img
+      src="/brand/favicon.svg"
+      alt=""
+      width={size}
       height={size}
       aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={5.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      {/* Back → crown → beak (right-pointing) */}
-      <path d="M46 120 C40 102 35 84 34 64 C33 45 37 30 47 25 C53 22 60 24 63 30 C65 33 69 33 73 35" />
-      {/* Belly / front */}
-      <path d="M48 118 C53 101 58 84 58 64 C58 46 55 33 50 28" />
-    </svg>
+      data-logo-asset="/brand/favicon.svg"
+      className={cn('shrink-0 object-contain', className)}
+    />
   );
 }
 

@@ -68,12 +68,11 @@ vi.mock('@/access/useAccess', () => ({
 }));
 
 const { ProWorkspacePage } = await import('@/pages/pro/ProWorkspacePage');
-const { MonitorDrawer } = await import('@/features/pro-core/MonitorDrawer');
 
 /* ─────────────────────────── harness ─────────────────────────── */
 
 /** The REAL product route — the Monitor the owner actually opens. */
-function renderWorkbench(path = '/pro/recipe'): string {
+function renderWorkbench(path = '/pro/monitor'): string {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return renderToStaticMarkup(
     <QueryClientProvider client={client}>
@@ -91,7 +90,10 @@ function renderWorkbench(path = '/pro/recipe'): string {
  * sibling region) is the fallback bound. Neither belongs to the Monitor. */
 function monitorPanelOf(pageHtml: string): string {
   const start = pageHtml.indexOf('data-testid="pro-monitor-panel"');
-  expect(start, 'the LIVE Monitor panel must be mounted by the real /pro workbench').toBeGreaterThan(-1);
+  expect(
+    start,
+    'the LIVE Monitor panel must be mounted by the real /pro workbench',
+  ).toBeGreaterThan(-1);
   const bounds = ['data-testid="workbench-action-bar"', 'data-testid="pro-review-zone"']
     .map((marker) => pageHtml.indexOf(marker, start))
     .filter((index) => index > -1);
@@ -101,7 +103,11 @@ function monitorPanelOf(pageHtml: string): string {
 /** Markup attribute values arrive HTML-escaped (`&` → `&amp;`); Tailwind arbitrary
  * variants contain `&`, so class assertions must compare unescaped text. */
 const unescapeHtml = (html: string) =>
-  html.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  html
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"');
 
 const visibleText = (html: string) =>
   html
@@ -188,7 +194,12 @@ const MONITOR_PARITY_INVENTORY: readonly InventoryRow[] = [
     id: 'P03',
     element: 'Assessed coverage („Oceniono N z M obszarów")',
     before: 'OverallScoreCard `score-coverage`',
-    text: [copy.studio.overall.coverage(RESULT.indicators.filter((i) => i.band != null).length, RESULT.indicators.length)],
+    text: [
+      copy.studio.overall.coverage(
+        RESULT.indicators.filter((i) => i.band != null).length,
+        RESULT.indicators.length,
+      ),
+    ],
   },
   {
     id: 'P04',
@@ -336,7 +347,13 @@ const MONITOR_PARITY_INVENTORY: readonly InventoryRow[] = [
     id: 'P25',
     element: 'Band provenance + stabilizer dosage provenance',
     before: 'OwnerDiagnosticPanel A9/Phase-9 rows',
-    text: [d.bandSource, d.hardViolations, d.softViolations, d.stabilizerDosage, d.stabilizerDosageProvenance],
+    text: [
+      d.bandSource,
+      d.hardViolations,
+      d.softViolations,
+      d.stabilizerDosage,
+      d.stabilizerDosageProvenance,
+    ],
   },
 ];
 
@@ -345,12 +362,16 @@ describe('MONITOR PARITY — the re-derived inventory, executable against the RE
     '%s — %s',
     (_id, _element, row) => {
       for (const testId of row.testIds ?? []) {
-        expect(PANEL, `${row.id}: missing DOM anchor data-testid="${testId}" (was: ${row.before})`).toContain(
-          `data-testid="${testId}"`,
-        );
+        expect(
+          PANEL,
+          `${row.id}: missing DOM anchor data-testid="${testId}" (was: ${row.before})`,
+        ).toContain(`data-testid="${testId}"`);
       }
       for (const text of row.text ?? []) {
-        expect(PANEL_TEXT, `${row.id}: missing visible text "${text}" (was: ${row.before})`).toContain(text);
+        expect(
+          PANEL_TEXT,
+          `${row.id}: missing visible text "${text}" (was: ${row.before})`,
+        ).toContain(text);
       }
     },
   );
@@ -373,11 +394,16 @@ describe('the mounted Monitor receives the CURRENT draft engine result', () => {
     // re-pins the guarantee the retired flat `PIPanel` used to carry (all 11 metrics).
     expect(RESULT.indicators.length).toBeGreaterThanOrEqual(11);
     for (const indicator of RESULT.indicators) {
-      const presentation = FRIENDLY_METRIC_PRESENTATION[indicator.key as keyof typeof FRIENDLY_METRIC_PRESENTATION];
-      expect(presentation, `engine indicator "${indicator.key}" has no Monitor presentation`).toBeDefined();
-      expect(PANEL_TEXT, `engine indicator "${indicator.key}" is not rendered in the Monitor`).toContain(
-        presentation.label,
-      );
+      const presentation =
+        FRIENDLY_METRIC_PRESENTATION[indicator.key as keyof typeof FRIENDLY_METRIC_PRESENTATION];
+      expect(
+        presentation,
+        `engine indicator "${indicator.key}" has no Monitor presentation`,
+      ).toBeDefined();
+      expect(
+        PANEL_TEXT,
+        `engine indicator "${indicator.key}" is not rendered in the Monitor`,
+      ).toContain(presentation.label);
     }
   });
 
@@ -394,7 +420,10 @@ describe('the mounted Monitor receives the CURRENT draft engine result', () => {
       ['sugar.lactose_g', proNumber(RESULT.sugar.lactose_g)],
     ];
     for (const [field, formatted] of expectations) {
-      expect(PANEL_TEXT, `${field} = ${formatted} is not rendered by the mounted Monitor`).toContain(formatted);
+      expect(
+        PANEL_TEXT,
+        `${field} = ${formatted} is not rendered by the mounted Monitor`,
+      ).toContain(formatted);
     }
   });
 
@@ -411,7 +440,9 @@ describe('the mounted Monitor receives the CURRENT draft engine result', () => {
     const costs = RESULT.costs;
     if (costs !== null) {
       if (costs.cost_per_kg !== null) {
-        expect(PANEL_TEXT, 'koszt/kg must be the engine cost').toContain(costs.cost_per_kg.toFixed(2));
+        expect(PANEL_TEXT, 'koszt/kg must be the engine cost').toContain(
+          costs.cost_per_kg.toFixed(2),
+        );
       }
       if (costs.total_cost !== null) {
         expect(PANEL_TEXT, 'KOSZT PARTII must be the engine total_cost').toContain(
@@ -444,10 +475,12 @@ describe('no content is lost to layout', () => {
     expect(inner).not.toMatch(/\boverflow-y-auto\b/);
   });
 
-  it('nothing is CSS-hidden or removed', () => {
+  it('nothing is removed with display:none and all core modules remain present', () => {
     expect(PANEL).not.toContain('display:none');
     expect(PANEL).not.toContain('display: none');
-    expect(PANEL).not.toMatch(/class="[^"]*\bhidden\b/);
+    for (const id of ['monitor-live-summary', 'monitor-detail-monitor', 'monitor-detail-nutrition', 'monitor-detail-corrections', 'monitor-detail-score']) {
+      expect(PANEL).toContain(`data-testid="${id}"`);
+    }
   });
 
   it('single-line truncation never survives inside the narrow Monitor column', () => {
@@ -475,13 +508,28 @@ describe('no content is lost to layout', () => {
     expect(wrapperClass).toContain('[&_dd]:text-clip');
   });
 
-  it('the mobile bottom sheet carries the SAME Monitor content as the desktop panel', () => {
-    const drawer = renderToStaticMarkup(<MonitorDrawer open onClose={() => {}} />);
+  it('the mobile cockpit sheet carries the SAME Monitor content as the desktop panel', () => {
+    const mobileStart = PAGE.indexOf('data-testid="mobile-cockpit-sheet"');
+    expect(mobileStart).toBeGreaterThan(-1);
+    const drawer = PAGE.slice(mobileStart);
     const drawerIds = new Set(testIdsOf(drawer));
-    const missing = testIdsOf(PANEL).filter((id) => id !== 'pro-monitor-panel' && !drawerIds.has(id));
+    const routeContainerIds = new Set([
+      'pro-monitor-panel',
+      'pro-profile-panel',
+      'pro-context-tabs',
+      'pro-context-monitor',
+      'pro-workbar',
+      'pro-workbar-context',
+      'pro-workbar-name',
+      'pro-workbar-save',
+      'pro-workbar-status',
+    ]);
+    const missing = testIdsOf(PANEL).filter(
+      (id) => !routeContainerIds.has(id) && !drawerIds.has(id),
+    );
     expect(missing, 'the bottom sheet must not be a reduced Monitor').toEqual([]);
     // …and the sheet owns exactly ONE scroll surface.
-    expect(drawer).toContain('overflow-y-auto');
+    expect(drawer).toContain('max-h-[82dvh] overflow-y-auto');
     expect((drawer.match(/overflow-y-auto/g) ?? []).length).toBe(1);
   });
 });
@@ -522,15 +570,14 @@ describe('review marking — advanced marked, core never optional', () => {
     expect(PANEL.slice(advanced)).toContain('data-testid="owner-diagnostic"');
   });
 
-  it('the questionable modules remain reachable BELOW the core workbench, red-marked', () => {
-    // They live outside the Monitor, in the review zone — mounted, not removed.
-    const zone = PAGE.indexOf('data-testid="pro-review-zone"');
-    expect(zone, 'the red review zone must be mounted below the workbench').toBeGreaterThan(-1);
-    expect(zone, 'the review zone must come AFTER the workbench Monitor').toBeGreaterThan(
-      PAGE.indexOf('data-testid="pro-monitor-panel"'),
-    );
+  it('the questionable modules remain reachable on the dedicated review-tools route', () => {
+    const tools = renderWorkbench('/pro/tools');
+    const zone = tools.indexOf('data-testid="pro-review-zone"');
+    expect(zone, 'the red review zone must be mounted on /pro/tools').toBeGreaterThan(-1);
     for (const id of ['assistant', 'flow-guide', 'optimization', 'branch-previews']) {
-      expect(PAGE, `review-zone module "${id}" was removed`).toContain(`data-testid="review-marked-${id}"`);
+      expect(tools, `review-zone module "${id}" was removed`).toContain(
+        `data-testid="review-marked-${id}"`,
+      );
     }
   });
 });
@@ -545,19 +592,23 @@ describe('the one-screen workbench survives the complete Monitor', () => {
     const editor = PAGE.indexOf('data-testid="workbench-editor-pane"');
     const monitor = PAGE.indexOf('data-testid="pro-monitor-panel"');
     const actionBar = PAGE.indexOf('data-testid="workbench-action-bar"');
-    const zone = PAGE.indexOf('data-testid="pro-review-zone"');
     expect(region).toBeGreaterThan(-1);
     expect(editor).toBeGreaterThan(region);
     expect(monitor).toBeGreaterThan(editor);
-    // Primary actions sit inside the viewport region, BEFORE the below-fold review zone.
+    // Primary actions sit inside the viewport region after the split, in the fixed recipe bar.
+    expect(actionBar).toBeGreaterThan(editor);
     expect(actionBar).toBeGreaterThan(monitor);
-    expect(actionBar).toBeLessThan(zone);
+    expect(actionBar).toBeLessThan(PAGE.indexOf('</main>'));
   });
 
   it('the Monitor keeps its own scroll surface so its growth never scrolls the page', () => {
-    const asideTag = PAGE.slice(PAGE.lastIndexOf('<aside', PAGE.indexOf('data-testid="pro-monitor-panel"')));
+    const asideTag = PAGE.slice(
+      PAGE.lastIndexOf('<aside', PAGE.indexOf('data-testid="pro-monitor-panel"')),
+    );
     const openTag = asideTag.slice(0, asideTag.indexOf('>'));
     expect(openTag, 'the Monitor column owns its scroll').toContain('lg:overflow-y-auto');
-    expect(openTag, 'a flex child must be allowed to shrink or it pushes the page').toContain('min-h-0');
+    expect(openTag, 'a flex child must be allowed to shrink or it pushes the page').toContain(
+      'min-h-0',
+    );
   });
 });

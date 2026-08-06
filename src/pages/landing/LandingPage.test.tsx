@@ -16,7 +16,9 @@ describe('LandingPage — public landing per spec §6 (Slice A)', () => {
   it('renders the §6.1 hero verbatim: headline, subline and both CTAs', () => {
     const html = render();
     expect(html).toContain('Idealna receptura. Dopasowana do Twojej maszyny lub temperatury.');
-    expect(html).toContain('Wybierz smak, urządzenie lub temperaturę i ilość. PINGÜINO zajmie się resztą.');
+    expect(html).toContain(
+      'Wybierz smak, urządzenie lub temperaturę i ilość. PINGÜINO zajmie się resztą.',
+    );
     expect(html).toContain(copy.hero.ctaPrimary); // „Stwórz recepturę”
     expect(html).toContain(copy.hero.ctaSecondary); // „Zobacz, jak działa”
   });
@@ -70,6 +72,8 @@ describe('LandingPage — public landing per spec §6 (Slice A)', () => {
     expect(html).toContain('bg-paper');
     expect(html).not.toContain('bg-shell');
     expect(html).not.toContain('#0c0d0f');
+    expect(html).toContain('font-semibold');
+    expect(html).not.toContain('text-[34px] font-light');
   });
 
   it('uses gold ONLY inside the Monitor readout (owner decision: optimum only)', () => {

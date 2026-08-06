@@ -137,10 +137,13 @@ describe('markers are wired into the heavy shells (source-level proof)', () => {
     expect(src).toContain(`itemId="start-ready-draft"`);
   });
 
-  it('/pro/recipe — ProWorkspacePage marks the demo starter preset + demo ingredient library', () => {
-    const src = source('src/pages/pro/ProWorkspacePage.tsx');
-    expect(src).toContain('nonprod-marked-pro-demo-library');
-    expect(src).toContain(`itemId="pro-demo-library"`);
+  it('/pro/recipe — final controls use the canonical pink readiness system', () => {
+    const row = source('src/features/ingredient-builder/IngredientRow.tsx');
+    const profile = source('src/features/pro-workbench/RecipeProfilePanel.tsx');
+    expect(row).toContain('row-lock-percent-');
+    expect(row).toContain('border-nonprod/45');
+    expect(profile).toContain('ReadinessFrame');
+    expect(profile).toContain('W PRZYGOTOWANIU');
   });
 });
 

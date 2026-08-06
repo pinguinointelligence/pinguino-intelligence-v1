@@ -97,10 +97,11 @@ describe('engineRouteLabel — Świeże and derivation rules', () => {
 describe('surface wiring — header, Monitor and solver share the ONE store route', () => {
   const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
 
-  it('no hardcoded engine label remains; the header uses engineRouteLabel', () => {
+  it('the compact header has no duplicated engine-route strip or hardcoded label', () => {
     expect(surface.includes('engineTag')).toBe(false);
     expect(surface.includes("'Silnik −11")).toBe(false);
-    expect(surface).toContain('engineRouteLabel(servingModeId, temperatureC)');
+    expect(surface).not.toContain('engineRouteLabel(servingModeId, temperatureC)');
+    expect(surface).toContain('servingTemperatureC={temperatureC}');
   });
 
   it('the Monitor receives the SAME store temperature the Engine input uses', () => {

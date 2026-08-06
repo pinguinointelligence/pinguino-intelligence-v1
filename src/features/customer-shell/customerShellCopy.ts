@@ -354,6 +354,41 @@ export const customerShellCopy = {
     },
   },
 
+  /* ------------------------------------------------------------ Save recipe -- */
+  /**
+   * Canonical saved-recipe rule (owner decision, `proCoreCapabilities`): Demo nie zapisuje,
+   * plan Home przechowuje JEDNĄ recepturę (kolejne zapisy tej samej receptury to nowe wersje,
+   * nie druga receptura), plan Pro — bez ograniczeń. Copy nazywa tę zasadę wprost i zawsze
+   * pokazuje działanie, które NAPRAWDĘ jest dostępne.
+   */
+  save: {
+    label: 'Zapis',
+    title: 'Zapisz recepturę',
+    lead: 'Zapisana receptura czeka w „Moich recepturach” — wrócisz do niej i zapiszesz kolejną wersję.',
+    nameLabel: 'Nazwa receptury',
+    namePlaceholder: 'np. Gelato waniliowe',
+    nameRequired: 'Podaj nazwę receptury.',
+    noteLabel: 'Notatka do wersji (opcjonalnie)',
+    noteToggle: 'Dodaj notatkę',
+    create: 'Zapisz recepturę',
+    saving: 'Zapisuję…',
+    savedCreated: 'Zapisano recepturę.',
+    savedVersion: 'Zapisano nową wersję tej receptury.',
+    openMyRecipes: 'Otwórz „Moje receptury”',
+    /** The Home aggregate limit — stated plainly, with the action that IS allowed. */
+    homeLimitTitle: (title: string) => `Plan Home przechowuje jedną recepturę: „${title}”.`,
+    homeLimitLead:
+      'Kolejne wersje tej receptury zapiszesz bez ograniczeń. Osobne receptury bez limitu ma plan Pro.',
+    versionButton: (n: number) => `Zapisz jako wersję ${n}`,
+    signIn: 'Zaloguj się, aby zapisać recepturę.',
+    signInCta: 'Zaloguj się',
+    unavailable:
+      'Zapis receptur nie jest dostępny w tym środowisku. Receptura zostaje na ekranie — nic nie zostało zapisane.',
+    notCalculated: 'Recepturę zapiszesz, gdy silnik wyliczy dokładne ilości.',
+    loading: 'Sprawdzam Twoje zapisane receptury…',
+    localMode: 'Tryb lokalny (dev): zapis nie jest trwały i zniknie po odświeżeniu.',
+  },
+
   /* -------------------------------------------------------- Flavor intensity -- */
   intensity: {
     rowCta: 'Ustal intensywność smaku',

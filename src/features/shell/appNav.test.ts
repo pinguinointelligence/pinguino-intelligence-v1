@@ -21,30 +21,30 @@ const REAL_ROUTES = new Set([
   '/pro/recipe', '/pro/monitor', '/pro/versions', '/pro/production', '/pro/history',
   // /pro/machine: served by the same `/pro/:section` route (S4 machine section) —
   // promoted into the menu by the one-hamburger rule (owner, 2026-07-24).
-  '/pro/costs', '/pro/exports', '/pro/settings', '/pro/machine',
+  '/pro/costs', '/pro/exports', '/pro/settings', '/pro/machine', '/pro/tools',
 ]);
 
 const loc = (pathname: string, search = '') => ({ pathname, search });
 
 describe('canonical appNav config (one canonical PINGÜINO Pro)', () => {
-  it('NAWIGACJA carries the owner-fixed 8 items in order — „PINGÜINO Pro" third, for EVERYONE', () => {
+  it('NAWIGACJA keeps the accepted core order and adds the required destinations', () => {
     const mainIdsPro = visibleNavItems(true).filter((i) => i.group === 'main').map((i) => i.id);
     const mainIdsNon = visibleNavItems(false).filter((i) => i.group === 'main').map((i) => i.id);
-    const expected = ['home', 'start', 'proHome', 'recipes', 'myRecipes', 'machine', 'labels', 'subscription'];
+    const expected = ['home', 'start', 'proHome', 'recipes', 'myRecipes', 'machine', 'labels', 'subscription', 'workWithUs', 'createIngredient', 'api', 'productImport'];
     expect(mainIdsPro).toEqual(expected);
     expect(mainIdsNon).toEqual(expected); // Moja maszyna / Etykiety i produkty / Subskrypcja never disappear
   });
 
-  it('Pro sees the full 9-item PINGÜINO Pro group on stable /pro/<section> paths', () => {
+  it('Pro sees the full 10-item PINGÜINO Pro group on stable /pro/<section> paths', () => {
     // One-hamburger rule (owner, 2026-07-24): the workspace tab row is gone, so
     // /pro/machine JOINED the menu — entries are only ever ADDED, never removed.
     const pro = visibleNavItems(true).filter((i) => i.group === 'pro');
     expect(pro.map((i) => i.id)).toEqual([
-      'proRecipe', 'proMonitor', 'proVersions', 'proProduction', 'proHistory', 'proCosts', 'proExports', 'proSettings', 'proMachine',
+      'proRecipe', 'proMonitor', 'proVersions', 'proProduction', 'proHistory', 'proCosts', 'proExports', 'proSettings', 'proMachine', 'proTools',
     ]);
     expect(pro.map((i) => i.to)).toEqual([
       '/pro/recipe', '/pro/monitor', '/pro/versions', '/pro/production', '/pro/history',
-      '/pro/costs', '/pro/exports', '/pro/settings', '/pro/machine',
+      '/pro/costs', '/pro/exports', '/pro/settings', '/pro/machine', '/pro/tools',
     ]);
   });
 

@@ -7,7 +7,15 @@ import { useLineLockControls } from '@/features/constraint-studio/useLineLockCon
 import { useRecipeStore } from '@/stores/recipeStore';
 import { IngredientPicker } from './IngredientPicker';
 import { ServerIngredientPicker } from './ServerIngredientPicker';
-import { IngredientRow, ROW_GRID, type IngredientRowActions } from './IngredientRow';
+import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
+import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
+import {
+  IngredientRow,
+  PRODUCTION_ROW_GRID,
+  ROW_GRID,
+  type IngredientRowActions,
+  type IngredientTableMode,
+} from './IngredientRow';
 import { useIngredientLibrary } from './useIngredientLibrary';
 
 const b = copy.studio.builder;
@@ -21,6 +29,7 @@ export function IngredientBuilder({
   targetBatchG,
   demo,
   layout = 'card',
+  mode = 'recipe',
 }: {
   items: EffectiveRecipeItem[];
   totalBatchG: number;
@@ -32,12 +41,15 @@ export function IngredientBuilder({
    * header, batch total and add-ingredient picker stay visible without page movement.
    * Presentation only; identical store actions and testids. */
   layout?: 'card' | 'workbench';
+  mode?: IngredientTableMode;
 }) {
+  const [unavailableRows, setUnavailableRows] = useState<EffectiveRecipeItem[]>([]);
   const addIngredient = useRecipeStore((state) => state.addIngredient);
   const library = useIngredientLibrary({ demo });
   // §17 padlock layer (constraint-studio): per-line lock views + action
   // wrappers that reconcile the constraint set on dropdown/remove changes.
   const { lockFor, wrapActions } = useLineLockControls();
+  const markIngredientUnavailable = useRecipeStore((state) => state.markIngredientUnavailable);
   const actions: IngredientRowActions = wrapActions({
     setPlannedGrams: useRecipeStore((state) => state.setPlannedGrams),
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
@@ -46,7 +58,11 @@ export function IngredientBuilder({
     removeItem: useRecipeStore((state) => state.removeItem),
     // Owner FINAL CLOSURE C2 — the EXPLICIT „Niedostępny" action (the only
     // exclusion source; „Usuń" merely removes the row from this recipe).
-    markIngredientUnavailable: useRecipeStore((state) => state.markIngredientUnavailable),
+    markIngredientUnavailable: (lineId) => {
+      const snapshot = items.find((item) => item.id === lineId);
+      if (snapshot) setUnavailableRows((current) => [...current.filter((row) => row.id !== lineId), snapshot]);
+      markIngredientUnavailable(lineId);
+    },
   });
 
   const offTarget = Math.abs(totalBatchG - targetBatchG) > 0.1;
@@ -85,14 +101,17 @@ export function IngredientBuilder({
       </div>
     ) : null;
 
-  const header = (
-    <div className={`${ROW_GRID} pb-2`}>
-      <span className={headCell}>&nbsp;</span>
-      <span className={`${headCell} text-right`}>{b.planned}</span>
-      <span className={`${headCell} text-right`}>{b.actual}</span>
-      <span className={`${headCell} text-right`}>{b.share}</span>
-      <span className={headCell}>{b.lock}</span>
-      <span className={headCell}>&nbsp;</span>
+  const header = mode === 'production' ? (
+    <div className={`${PRODUCTION_ROW_GRID} px-3 py-2`}>
+      {['Składnik', 'Planowane', 'Faktycznie', 'Różnica', 'Status'].map((label, index) => (
+        <span key={label} className={`${headCell} ${index > 0 && index < 4 ? 'text-right' : ''}`}>{label}</span>
+      ))}
+    </div>
+  ) : (
+    <div className={`${ROW_GRID} px-3 py-2`}>
+      {['Składnik', '%', '', 'g', '', 'Rola', 'Dostępność', 'Cena/kg', ''].map((label, index) => (
+        <span key={`${label}-${index}`} className={`${headCell} ${[1, 3, 7].includes(index) ? 'text-right' : ''}`}>{label || '\u00a0'}</span>
+      ))}
     </div>
   );
 
@@ -104,8 +123,17 @@ export function IngredientBuilder({
       actions={actions}
       lock={lockFor(item)}
       compact={layout === 'workbench'}
+      mode={mode}
     />
   ));
+
+  const unavailable = mode === 'recipe' ? unavailableRows.map((item) => (
+    <div key={`unavailable-${item.id}`} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b border-status-error/20 bg-status-error/[0.045] px-3 py-2" data-testid="ingredient-unavailable-row">
+      <div className="min-w-0"><strong className="block truncate text-xs text-ink">{item.ingredient.name}</strong><span className="text-[9px] text-status-error">Wykluczony z bieżącej receptury</span></div>
+      <button type="button" disabled title="Wyszukiwanie zamiennika nie jest jeszcze podłączone." className="rounded-sm border border-nonprod/35 px-2 py-1 text-[9px] font-semibold text-nonprod">Znajdź zamiennik · W PRZYGOTOWANIU</button>
+      <button type="button" aria-label={`Ukryj informację o ${item.ingredient.name}`} onClick={() => setUnavailableRows((current) => current.filter((row) => row.id !== item.id))} className="grid size-7 place-items-center text-stone-500">×</button>
+    </div>
+  )) : null;
 
   const totalLine = (
     <div className="mt-4 flex items-center justify-between border-t border-ivory/10 pt-4">
@@ -123,10 +151,10 @@ export function IngredientBuilder({
 
   const picker = library.serverSearch ? (
     // Owner P0: canonical Pro — LIVE per-query backend search (no snapshot).
-    <ServerIngredientPicker library={library} onAdd={addIngredient} />
+    <ServerIngredientPicker library={library} onAdd={addIngredient} compact={layout === 'workbench'} />
   ) : (
     // Demo / fallback: the local 12-ingredient preview catalog.
-    <IngredientPicker library={library} onAdd={addIngredient} />
+    <IngredientPicker library={library} onAdd={addIngredient} compact={layout === 'workbench'} />
   );
 
   if (layout === 'workbench') {
@@ -134,27 +162,42 @@ export function IngredientBuilder({
     // editor pane; header, batch total and Add stay visible (owner zero-scroll rule).
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
-        <div className="shrink-0 px-4 pt-3">
-          <SectionLabel>{b.title}</SectionLabel>
-          {duplicateNotice}
+        <div className="shrink-0 border-b border-ink/10 px-3 py-2">
+          <div className="flex items-center justify-between gap-3">
+            <SectionLabel>{mode === 'production' ? 'Produkcja' : b.title}</SectionLabel>
+            {demo || library.status === 'fallback' ? <NonProductionBadge itemId="pro-demo-library" /> : null}
+          </div>
+          {mode === 'recipe' ? <div className="mt-2" data-testid="ingredient-add-slot">{picker}</div> : (
+            <ReadinessFrame
+              compact
+              className="mt-2"
+              state="W PRZYGOTOWANIU"
+              title="Tryb produkcyjny"
+              details={{
+                limitation: 'Design jest gotowy, ale przebieg produkcji nie jest zapisywany w repozytorium.',
+                calculationImpact: 'Faktyczne gramatury aktualizują wyłącznie bieżący szkic.',
+                remaining: 'Podłączyć statusy, zdarzenia i kontrakt ratunku partii.',
+              }}
+            >
+              <p className="text-[10px] text-stone-600">Już dodane ilości mogą pozostać bez zmian albo wzrosnąć — PI nie może usunąć składnika wlanego do partii.</p>
+            </ReadinessFrame>
+          )}
+          {mode === 'recipe' ? duplicateNotice : null}
         </div>
         {items.length === 0 ? (
           <p className="shrink-0 px-4 pt-4 text-sm leading-relaxed text-ivory/60">{b.empty}</p>
         ) : (
           <>
-            <div className="shrink-0 px-4 pt-3">{header}</div>
+            <div className="hidden shrink-0 border-b border-ink/[0.075] md:block">{header}</div>
             <div
-              className="min-h-0 flex-1 overflow-y-auto px-4"
+              className="min-h-0 flex-1 overflow-y-auto"
               data-testid="ingredient-rows-scroll"
             >
-              <div className="divide-y divide-ivory/10">{rows}</div>
+              <div>{rows}{unavailable}</div>
             </div>
-            <div className="shrink-0 px-4">{totalLine}</div>
+            <div className="shrink-0 px-3 pb-1">{totalLine}</div>
           </>
         )}
-        <div className="shrink-0 px-4 pb-3 pt-3" data-testid="ingredient-add-slot">
-          {picker}
-        </div>
       </div>
     );
   }
@@ -181,3 +224,4 @@ export function IngredientBuilder({
     </Card>
   );
 }
+import { useState } from 'react';

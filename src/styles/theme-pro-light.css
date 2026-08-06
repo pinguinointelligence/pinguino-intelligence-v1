@@ -1,0 +1,66 @@
+/* PINGÜINO Pro — white precision workspace.
+ *
+ * The workbench historically used shell/ivory utilities directly. This scope keeps
+ * the exact component tree and behaviour, but remaps those presentation tokens to
+ * the same white/charcoal language used by the customer routes. Technical values,
+ * review markers and non-production markers retain their semantic colours.
+ */
+.theme-pro-light {
+  color-scheme: light;
+
+  --color-paper: #ffffff;
+  --color-ink: #101113;
+  --color-ink-soft: #25272b;
+  --color-shell: #ffffff;
+  --color-shell-raised: #f7f6f3;
+  --color-charcoal: #ffffff;
+  --color-ivory: #101113;
+  --color-ivory-soft: #686962;
+  --color-shell-line: #1011131f;
+}
+
+/* Pro has no sanctioned dark island. Historical technical modules keep their
+   exact content and typography, but inherit the white cockpit surface here. */
+.theme-pro-light .bg-charcoal {
+  background-color: #ffffff;
+  border: 1px solid rgb(16 17 19 / 0.1);
+}
+
+.theme-pro-light .bg-black\/20 {
+  background-color: #f7f7f5;
+}
+
+.theme-pro-light [data-testid='ingredient-rows-scroll'],
+.theme-pro-light [data-testid='pro-monitor-panel'] {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* Information notation inspired by editorial measurement brackets: functional,
+   quiet, and reserved for provenance/context instead of becoming decoration. */
+.bracket-note {
+  position: relative;
+  margin-inline: 0.25rem;
+  padding-inline: 1rem;
+}
+
+.bracket-note::before,
+.bracket-note::after {
+  position: absolute;
+  inset-block: 0.2rem;
+  width: 0.5rem;
+  content: '';
+  pointer-events: none;
+}
+
+.bracket-note::before {
+  left: 0;
+  border-block: 1px solid currentColor;
+  border-left: 1px solid currentColor;
+}
+
+.bracket-note::after {
+  right: 0;
+  border-block: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+}

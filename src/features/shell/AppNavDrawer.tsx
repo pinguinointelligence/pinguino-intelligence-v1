@@ -5,6 +5,7 @@ import { copy } from '@/copy/en';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import { ReadinessBadge } from '@/features/design-review/ReadinessMarker';
 import {
   NAV_GROUP_ORDER,
   NAV_GROUP_TITLE,
@@ -155,11 +156,22 @@ export function AppNavDrawer() {
                           aria-current={active ? 'page' : undefined}
                           data-testid={`app-nav-item-${item.id}`}
                           className={cn(
-                            'flex min-h-11 items-center rounded-xl px-4 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
+                            'flex min-h-11 items-center justify-between gap-2 rounded-md px-4 py-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
                             active ? 'bg-ink/10 font-medium text-ink' : 'text-ink hover:bg-ink/5',
                           )}
                         >
-                          {item.label}
+                          <span>{item.label}</span>
+                          {item.readiness ? (
+                            <ReadinessBadge
+                              state={item.readiness.state}
+                              details={item.readiness.details}
+                              className="max-w-[10rem] shrink-0 whitespace-normal text-right leading-tight"
+                            />
+                          ) : item.decision ? (
+                            <span className="shrink-0 text-[9px] font-semibold tracking-[0.08em] text-review uppercase">
+                              {item.decision}
+                            </span>
+                          ) : null}
                         </Link>
                       );
                     })}

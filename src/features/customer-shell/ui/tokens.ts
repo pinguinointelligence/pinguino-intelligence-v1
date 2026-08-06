@@ -50,9 +50,9 @@ export const customerSpec = {
 
 export const type = {
   /** Page hero. */
-  display: 'text-[28px] leading-[1.15] font-light tracking-tight sm:text-[34px]',
+  display: 'text-[30px] leading-[1.04] font-semibold tracking-[-0.035em] sm:text-[38px]',
   /** Section / card title. */
-  title: 'text-[22px] leading-[1.2] font-medium tracking-tight',
+  title: 'text-[22px] leading-[1.08] font-semibold tracking-[-0.025em]',
   /** Sub-heading inside a card. */
   heading: 'text-[19px] leading-snug font-medium',
   /** Primary body — comfortable on mobile (>=17px). */

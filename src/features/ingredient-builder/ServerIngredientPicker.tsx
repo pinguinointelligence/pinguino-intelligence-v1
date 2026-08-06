@@ -25,11 +25,13 @@ export function ServerIngredientPicker({
   library,
   onAdd,
   initialQuery = '',
+  compact = false,
 }: {
   library: IngredientLibrary;
   onAdd: (ingredient: EngineIngredient) => void;
   /** Test seam: pre-settled query for static renders. */
   initialQuery?: string;
+  compact?: boolean;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [picked, setPicked] = useState<{ norm: string; id: string } | null>(null);
@@ -71,6 +73,41 @@ export function ServerIngredientPicker({
       setAdding(false);
     }
   };
+
+  if (compact) {
+    return (
+      <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] gap-2" data-testid="compact-server-ingredient-picker">
+        <input
+          type="search"
+          aria-label={b.searchLabel}
+          placeholder={b.searchPlaceholder}
+          className="h-9 min-w-0 rounded-sm border border-ink/15 bg-white px-3 text-xs text-ink focus:border-ink/40 focus:outline-none"
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+        />
+        <select
+          aria-label={b.addLabel}
+          className="h-9 min-w-0 rounded-sm border border-ink/15 bg-white px-2 text-xs text-ink focus:border-ink/40 focus:outline-none"
+          value={effectiveId}
+          onChange={(event) => setPicked({ norm: search.settledNorm, id: event.currentTarget.value })}
+        >
+          {search.hits.map((hit) => <option key={hit.id} value={hit.id}>{resultRowTextPl(hit)}</option>)}
+          {filteredProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+        </select>
+        <button
+          type="button"
+          disabled={!canAdd}
+          className="h-9 rounded-sm bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => void add()}
+          data-testid="picker-add"
+        >
+          ＋ {b.addLabel}
+        </button>
+        <span className="sr-only" aria-live="polite">{count} {b.resultFoundSuffix}</span>
+        {search.isError ? <span className="col-span-3 text-[9px] text-attention">{b.searchError}</span> : null}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2.5" data-testid="server-ingredient-picker">

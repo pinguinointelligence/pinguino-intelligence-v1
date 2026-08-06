@@ -47,9 +47,11 @@ export function PickerEmptyState({ query, onClear }: { query: string; onClear: (
 export function IngredientPicker({
   library,
   onAdd,
+  compact = false,
 }: {
   library: IngredientLibrary;
   onAdd: (ingredient: EngineIngredient) => void;
+  compact?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState('');
@@ -97,6 +99,42 @@ export function IngredientPicker({
     library.ingredients.some((i) => i.id === effectiveId) &&
     selectedIngredient.pac_value == null &&
     selectedIngredient.pod_value == null;
+
+  if (compact) {
+    return (
+      <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] gap-2" data-testid="compact-ingredient-picker">
+        <input
+          type="search"
+          aria-label={b.searchLabel}
+          placeholder={b.searchPlaceholder}
+          className="h-9 min-w-0 rounded-sm border border-ink/15 bg-white px-3 text-xs text-ink focus:border-ink/40 focus:outline-none"
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+        />
+        <select
+          aria-label={b.addLabel}
+          className="h-9 min-w-0 rounded-sm border border-ink/15 bg-white px-2 text-xs text-ink focus:border-ink/40 focus:outline-none"
+          value={effectiveId}
+          onChange={(event) => setSelectedId(event.currentTarget.value)}
+        >
+          {selectable.map((ingredient) => <option key={ingredient.id} value={ingredient.id}>{ingredient.name}</option>)}
+        </select>
+        <button
+          type="button"
+          className="h-9 rounded-sm bg-ink px-3 text-xs font-semibold text-white disabled:opacity-40"
+          disabled={effectiveId === ''}
+          onClick={() => {
+            const ingredient = [...library.ingredients, ...library.products].find((item) => item.id === effectiveId);
+            if (ingredient) onAdd(ingredient);
+          }}
+        >
+          ＋ {b.addLabel}
+        </button>
+        <span className="sr-only" aria-live="polite">{count} {b.resultFoundSuffix}</span>
+        {selectedNeedsData ? <span className="col-span-3 text-[9px] text-attention">{b.needsData}</span> : null}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2.5">

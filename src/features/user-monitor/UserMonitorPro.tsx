@@ -87,8 +87,10 @@ function RowLine({
   onUnpin?: (metric: TargetMetric) => void;
   onMove?: (metric: TargetMetric, direction: 'up' | 'down') => void;
 }) {
+  const markerPosition = row.reading?.side === 'below' ? '10%' : row.reading?.side === 'above' ? '90%' : '50%';
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-ivory/10 py-2 first:border-t-0">
+    <div className="border-t border-ivory/10 py-2 first:border-t-0">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
       <span className="text-[13px] text-ivory/70" title={row.expertTerm ?? undefined}>
         {row.label}
       </span>
@@ -143,6 +145,17 @@ function RowLine({
           </span>
         ) : null}
       </span>
+      </div>
+      {row.reading ? (
+        <div className="relative mt-1.5 flex h-1 overflow-visible" data-testid="monitor-protected-scale" aria-label={`Pozycja wskaźnika: ${row.reading.text}`}>
+          <span className="w-1/5 bg-status-error/75" />
+          <span className="w-1/5 bg-status-ideal/70" />
+          <span className="w-1/5 bg-gold/85" />
+          <span className="w-1/5 bg-status-ideal/70" />
+          <span className="w-1/5 bg-status-error/75" />
+          <span aria-hidden className="absolute top-1/2 h-3 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-ink shadow-[0_0_0_1px_white]" style={{ left: markerPosition }} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -211,7 +224,7 @@ export function UserMonitorPro({
     apply(movePinned(layout, metric, direction));
 
   return (
-    <CharcoalPanel padding="lg">
+    <CharcoalPanel padding="md" className="rounded-sm p-3">
       <div className="flex items-center justify-between gap-4">
         <SectionLabel tone="ivory">{USER_MONITOR_TITLE}</SectionLabel>
         {/* §14.1 status: gotowa / wymaga korekty / test rekomendowany. */}

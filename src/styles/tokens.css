@@ -46,7 +46,8 @@
      in the system. `TESTOWE / NIEPRODUKCYJNE` badges exclusively: surfaces serving
      fixture/sample/demo/reference data until the real data source replaces them.
      Deep magenta, AA (≥4.5:1) as text on white paper. */
-  --color-nonprod: #a8256b;
+  --color-nonproduction-pink: #a8256b;
+  --color-nonprod: var(--color-nonproduction-pink);
   /* The SAME marker for dark shell surfaces (/label, /recipes destinations) —
      lightened for ≥4.5:1 on #1a1a1a; still marker-only, never decoration. */
   --color-nonprod-soft: #f082b4;

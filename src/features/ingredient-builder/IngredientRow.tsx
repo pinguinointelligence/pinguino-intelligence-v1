@@ -1,97 +1,264 @@
 import { ConfidenceBadge } from '@/components/shared/ConfidenceBadge';
-import { MetricValue } from '@/components/shared/MetricValue';
+import { ReadinessBadge } from '@/features/design-review/ReadinessMarker';
 import { cn } from '@/lib/cn';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem, LockType } from '@/engine';
 
 const b = copy.studio.builder;
 
-/** Lock types selectable in the dropdown — `main` is handled by its own toggle. */
-const SELECTABLE_LOCKS: LockType[] = ['unlocked', 'grams', 'percent', 'already_added', 'required'];
+export type IngredientTableMode = 'recipe' | 'production';
 
-export const ROW_GRID = 'grid grid-cols-[1.5fr_0.85fr_0.85fr_0.6fr_1.4fr_auto] items-center gap-2';
+export const ROW_GRID =
+  'grid grid-cols-2 items-center gap-x-2 gap-y-1 md:grid-cols-[minmax(150px,1.65fr)_62px_30px_76px_30px_86px_92px_92px_34px]';
+export const PRODUCTION_ROW_GRID =
+  'grid grid-cols-2 items-center gap-x-3 gap-y-1 md:grid-cols-[minmax(180px,1.8fr)_90px_100px_88px_108px]';
 
-const cellInput =
-  'w-full rounded-md border border-ivory/15 bg-shell py-1.5 pr-5 pl-2 text-right font-mono text-sm tabular-nums transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none';
+const inputClass =
+  'h-8 w-full rounded-sm border border-ink/15 bg-white px-2 text-right font-mono text-xs tabular-nums text-ink transition-colors hover:border-ink/30 focus:border-ink/45 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500';
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
   setMainIngredient: (lineId: string) => void;
-  /** Owner FINAL CLOSURE C2 — „Usuń" removes the row from the CURRENT recipe
-   * only; it never creates a scientific exclusion. */
   removeItem: (lineId: string) => void;
-  /** Owner FINAL CLOSURE C2 — the EXPLICIT „Niedostępny" action, the ONLY
-   * exclusion source (optional: rows without it render no such control). */
   markIngredientUnavailable?: (lineId: string) => void;
 }
 
-/** §17 padlock view (UIUX spec §12.3 „[AI / kłódka]”) — supplied by the
- * constraint-studio feature; the row only renders it. When absent the row
- * behaves exactly as before. */
 export interface IngredientRowLockView {
   state: 'ai' | 'locked' | 'range';
-  /** The protected exact grams (locked) or min–max window (range), preformatted. */
   lockedGramsLabel: string | null;
   ariaLabel: string;
   title: string;
   badge: string | null;
-  /** §17.2: while locked, the exact grams cannot be edited manually. */
   plannedDisabled: boolean;
   toggleDisabled: boolean;
   onToggle: () => void;
 }
 
-/** Minimal one-family padlock glyph (§21.1 one icon system, no new deps). */
-function PadlockIcon({ closed }: { closed: boolean }) {
+function LockGlyph({ closed }: { closed: boolean }) {
   return (
-    <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <svg aria-hidden width="11" height="11" viewBox="0 0 12 12" fill="none">
       <rect x="2" y="5.2" width="8" height="5.4" rx="1" fill="currentColor" />
-      {closed ? (
-        <path d="M3.8 5V3.6a2.2 2.2 0 1 1 4.4 0V5" stroke="currentColor" strokeWidth="1.3" fill="none" />
-      ) : (
-        <path d="M3.8 5V3.6a2.2 2.2 0 0 1 4.3-.7" stroke="currentColor" strokeWidth="1.3" fill="none" />
-      )}
+      <path
+        d={closed ? 'M3.8 5V3.6a2.2 2.2 0 1 1 4.4 0V5' : 'M3.8 5V3.6a2.2 2.2 0 0 1 4.3-.7'}
+        stroke="currentColor"
+        strokeWidth="1.3"
+      />
     </svg>
   );
 }
 
-function GramsField({
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <span className="mb-1 block text-[9px] font-semibold tracking-[0.08em] text-stone-500 uppercase md:hidden">{children}</span>;
+}
+
+function GramField({
   label,
   value,
-  emphasised,
   disabled,
-  disabledTitle,
   onChange,
 }: {
   label: string;
   value: number | '';
-  emphasised?: boolean;
   disabled?: boolean;
-  disabledTitle?: string;
   onChange: (raw: string) => void;
 }) {
   return (
-    <div className="relative">
+    <label className="relative block">
+      <FieldLabel>{label}</FieldLabel>
       <input
         aria-label={label}
         type="number"
         min={0}
         disabled={disabled}
-        title={disabled ? disabledTitle : undefined}
-        placeholder={value === '' ? '—' : undefined}
-        className={cn(
-          cellInput,
-          emphasised && 'border-ivory/30',
-          disabled && 'cursor-not-allowed border-ivory/25 bg-ivory/[0.06] text-ivory/80',
-        )}
         value={value}
+        placeholder={value === '' ? '—' : undefined}
+        className={`${inputClass} pr-5`}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
-      <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[0.65rem] text-ivory/60">
-        {b.unit}
-      </span>
+      <span className="pointer-events-none absolute bottom-2 right-1.5 text-[9px] text-stone-500">g</span>
+    </label>
+  );
+}
+
+const percentLockDetails = {
+  limitation: 'Blokada udziału procentowego nie jest jeszcze podłączona do solvera.',
+  calculationImpact: 'Przeliczenie nie zachowuje ustawionego udziału.',
+  remaining: 'Zapisać docelowy udział i egzekwować go w Preview, Apply oraz solverze.',
+};
+
+const privatePriceDetails = {
+  limitation: 'Prywatna cena klienta nie jest jeszcze zapisywana na koncie.',
+  calculationImpact: 'Koszt korzysta wyłącznie z ceny systemowej składnika.',
+  remaining: 'Podłączyć prywatne ceny do danych konta i kalkulacji kosztu.',
+};
+
+const replacementDetails = {
+  limitation: 'Wyszukiwanie zamiennika nie jest jeszcze gotowe.',
+  calculationImpact: 'Wykluczony składnik nie jest ponownie dodawany, ale zamiennik nie zostanie dobrany automatycznie.',
+  remaining: 'Podłączyć ranking zamienników do aktualnej receptury.',
+};
+
+function RecipeRow({
+  item,
+  totalBatchG,
+  actions,
+  lock,
+}: {
+  item: EffectiveRecipeItem;
+  totalBatchG: number;
+  actions: IngredientRowActions;
+  lock?: IngredientRowLockView;
+}) {
+  const share = totalBatchG > 0 ? (item.effective_grams / totalBatchG) * 100 : null;
+  const isMain = item.lock_type === 'main';
+  const gramsLocked = lock?.state === 'locked' || item.lock_type === 'grams';
+  const price = item.ingredient.cost_per_kg;
+  const contribution = price === null ? null : (price * item.effective_grams) / 1000;
+
+  const setRole = (role: 'main' | 'supplementary') => {
+    if (role === 'main') actions.setMainIngredient(item.id);
+    else if (isMain) actions.setLockType(item.id, 'unlocked');
+  };
+
+  return (
+    <div className={ROW_GRID}>
+      <div className="col-span-2 min-w-0 md:col-span-1">
+        <span className="flex min-w-0 items-center gap-1.5">
+          {isMain ? <span aria-label="Składnik główny" className="text-gold">♛</span> : null}
+          <span className="truncate text-[13px] font-semibold text-ink" title={item.ingredient.name}>{item.ingredient.name}</span>
+        </span>
+        <span className="mt-0.5 flex items-center gap-2 text-[9px] text-stone-500">
+          <span className="truncate">{item.ingredient.source_type || 'PI Base'}</span>
+          <ConfidenceBadge score={item.ingredient.confidence_score} />
+        </span>
+      </div>
+
+      <div className="text-right">
+        <FieldLabel>Udział</FieldLabel>
+        <span className="font-mono text-xs font-semibold tabular-nums text-ink">
+          {share === null ? '—' : `${share.toFixed(1)}%`}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        disabled
+        aria-label={`${item.ingredient.name} — blokada procentowa w przygotowaniu`}
+        title={percentLockDetails.limitation}
+        data-testid={`row-lock-percent-${item.id}`}
+        className="grid size-7 place-items-center rounded-sm border border-nonprod/45 bg-nonprod/[0.055] font-mono text-[10px] font-semibold text-nonprod"
+      >
+        %
+      </button>
+
+      <GramField
+        label={`${item.ingredient.name} — gramatura`}
+        value={item.planned_grams}
+        disabled={lock?.plannedDisabled}
+        onChange={(raw) => actions.setPlannedGrams(item.id, Number(raw) || 0)}
+      />
+
+      <button
+        type="button"
+        aria-pressed={gramsLocked}
+        aria-label={`${gramsLocked ? 'Odblokuj' : 'Zablokuj'} gramaturę: ${item.ingredient.name}`}
+        title={lock?.title ?? b.lockTypes.grams}
+        disabled={lock?.toggleDisabled || isMain}
+        data-testid={`row-lock-grams-${item.id}`}
+        onClick={() => lock?.onToggle() ?? actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams')}
+        className={cn(
+          'grid size-7 place-items-center rounded-sm border transition-colors',
+          gramsLocked ? 'border-ink bg-ink text-white' : 'border-ink/15 text-stone-500 hover:border-ink/40 hover:text-ink',
+          (lock?.toggleDisabled || isMain) && 'cursor-not-allowed opacity-35',
+        )}
+      >
+        <LockGlyph closed={gramsLocked} />
+        {gramsLocked ? <span className="sr-only">Zablokowana</span> : null}
+      </button>
+
+      <label>
+        <FieldLabel>Rola</FieldLabel>
+        <select
+          aria-label={`${item.ingredient.name} — rola`}
+          value={isMain ? 'main' : 'supplementary'}
+          disabled={gramsLocked}
+          onChange={(event) => setRole(event.currentTarget.value as 'main' | 'supplementary')}
+          className="h-8 w-full rounded-sm border border-ink/15 bg-white px-2 text-[11px] text-ink focus:border-ink/40 focus:outline-none disabled:opacity-45"
+        >
+          <option value="main">Główny</option>
+          <option value="supplementary">Uzupełniający</option>
+        </select>
+      </label>
+
+      <button
+        type="button"
+        disabled={!actions.markIngredientUnavailable}
+        onClick={() => actions.markIngredientUnavailable?.(item.id)}
+        data-testid={`row-mark-unavailable-${item.id}`}
+        className="h-8 rounded-sm border border-status-ideal/30 bg-status-ideal/[0.07] px-2 text-[10px] font-semibold text-status-ideal transition-colors hover:border-status-error/40 hover:bg-status-error/[0.05] hover:text-status-error"
+      >
+        Dostępny
+      </button>
+
+      <div className="min-w-0 text-right">
+        <FieldLabel>Cena/kg</FieldLabel>
+        <span className="block font-mono text-[11px] tabular-nums text-ink">
+          {price === null ? 'Brak ceny' : `${price.toFixed(2)} €/kg`}
+        </span>
+        <span className="block truncate text-[8px] text-stone-500" title={contribution === null ? 'Koszt niepełny' : `Koszt w recepturze: ${contribution.toFixed(2)} €`}>
+          {contribution === null ? 'Koszt niepełny' : `${contribution.toFixed(2)} € w recepturze`}
+        </span>
+      </div>
+
+      <details className="relative justify-self-end">
+        <summary aria-label={`Opcje składnika ${item.ingredient.name}`} className="grid size-7 cursor-pointer list-none place-items-center rounded-sm border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink">•••</summary>
+        <div className="absolute right-0 z-40 mt-1 w-64 border border-ink/15 bg-white p-2 shadow-[0_8px_24px_rgba(16,17,19,0.08)]">
+          <ReadinessBadge state="W PRZYGOTOWANIU" details={percentLockDetails} className="mb-2" />
+          <button type="button" disabled className="mb-1 w-full rounded-sm border border-nonprod/30 px-2 py-1.5 text-left text-[10px] text-nonprod">
+            Znajdź zamiennik · W PRZYGOTOWANIU
+          </button>
+          <button type="button" disabled title={privatePriceDetails.limitation} className="mb-1 w-full rounded-sm border border-nonprod/30 px-2 py-1.5 text-left text-[10px] text-nonprod">
+            Moja cena · W PRZYGOTOWANIU
+          </button>
+          <button type="button" onClick={() => actions.setLockType(item.id, 'required')} className="w-full px-2 py-1.5 text-left text-[11px] text-ink hover:bg-stone-50">Oznacz jako wymagany</button>
+          <button type="button" onClick={() => actions.setLockType(item.id, 'already_added')} className="w-full px-2 py-1.5 text-left text-[11px] text-ink hover:bg-stone-50">Oznacz jako już dodany</button>
+          <button type="button" onClick={() => actions.removeItem(item.id)} className="w-full px-2 py-1.5 text-left text-[11px] text-status-error hover:bg-status-error/[0.05]">Usuń z receptury</button>
+          <span className="sr-only">{replacementDetails.limitation}</span>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function ProductionRow({ item, actions }: { item: EffectiveRecipeItem; actions: IngredientRowActions }) {
+  const actual = item.actual_grams;
+  const difference = actual === null ? null : actual - item.planned_grams;
+  const exact = difference !== null && Math.abs(difference) <= 0.05;
+  const status = actual === null ? 'Do dodania' : exact ? 'Dodano zgodnie z planem' : 'Dodano inną ilość';
+
+  return (
+    <div className={PRODUCTION_ROW_GRID}>
+      <div className="col-span-2 min-w-0 md:col-span-1">
+        <span className="truncate text-[13px] font-semibold text-ink">{item.ingredient.name}</span>
+      </div>
+      <div className="text-right font-mono text-xs tabular-nums text-ink"><FieldLabel>Planowane</FieldLabel>{item.planned_grams.toFixed(1)} g</div>
+      <GramField
+        label={`${item.ingredient.name} — faktycznie`}
+        value={actual ?? ''}
+        onChange={(raw) => actions.setActualGrams(item.id, raw === '' ? null : Math.max(0, Number(raw)))}
+      />
+      <div className={cn('text-right font-mono text-xs tabular-nums', difference === null || exact ? 'text-stone-500' : 'text-status-error')}>
+        <FieldLabel>Różnica</FieldLabel>{difference === null ? '—' : `${difference > 0 ? '+' : ''}${difference.toFixed(1)} g`}
+      </div>
+      <button
+        type="button"
+        onClick={() => actions.setActualGrams(item.id, item.planned_grams)}
+        className={cn('h-8 rounded-sm border px-2 text-[10px] font-semibold', exact ? 'border-status-ideal/35 bg-status-ideal/[0.08] text-status-ideal' : actual === null ? 'border-ink/15 text-ink' : 'border-status-error/35 bg-status-error/[0.06] text-status-error')}
+      >
+        {status}
+      </button>
     </div>
   );
 }
@@ -101,160 +268,22 @@ export function IngredientRow({
   totalBatchG,
   actions,
   lock,
-  compact = false,
+  mode = 'recipe',
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
   actions: IngredientRowActions;
-  /** Optional §17 padlock (constraint-studio). Absent → legacy row. */
   lock?: IngredientRowLockView;
-  /** One-screen workbench density (owner: rows 44–56 px). Presentation only. */
   compact?: boolean;
+  mode?: IngredientTableMode;
 }) {
-  const share = totalBatchG > 0 ? (item.effective_grams / totalBatchG) * 100 : null;
-  const isMain = item.lock_type === 'main';
-  const isConstraintLocked = lock?.state === 'locked';
-
   return (
-    <div
-      className={cn(
-        '-mx-2 rounded-sm px-2 transition-colors hover:bg-ivory/[0.04]',
-        isMain && 'bg-ivory/[0.07]',
-        isConstraintLocked && 'bg-ivory/[0.05]',
+    <div className="border-b border-ink/[0.075] px-3 py-1.5 transition-colors hover:bg-stone-50" data-ingredient-mode={mode}>
+      {mode === 'production' ? (
+        <ProductionRow item={item} actions={actions} />
+      ) : (
+        <RecipeRow item={item} totalBatchG={totalBatchG} actions={actions} lock={lock} />
       )}
-    >
-      <div className={cn(ROW_GRID, compact ? 'py-1' : 'py-2.5')}>
-        <div className="min-w-0">
-          <span className="truncate text-sm text-ivory">{item.ingredient.name}</span>
-          <span className="flex items-center gap-2">
-            <ConfidenceBadge score={item.ingredient.confidence_score} className="mt-0.5" />
-            {lock?.badge ? (
-              <span className="mt-0.5 rounded border border-status-risky/40 px-1 py-px text-[0.55rem] font-medium tracking-[0.08em] text-status-risky uppercase">
-                {lock.badge}
-                {lock.lockedGramsLabel ? (
-                  <span className="ml-1 font-mono tracking-normal normal-case tabular-nums">
-                    {lock.lockedGramsLabel}
-                  </span>
-                ) : null}
-              </span>
-            ) : null}
-          </span>
-        </div>
-
-        <GramsField
-          label={`${item.ingredient.name} ${b.planned}`}
-          value={item.planned_grams}
-          disabled={lock?.plannedDisabled}
-          disabledTitle={lock?.title}
-          onChange={(raw) => actions.setPlannedGrams(item.id, Number(raw) || 0)}
-        />
-
-        <GramsField
-          label={`${item.ingredient.name} ${b.actual}`}
-          value={item.actual_grams ?? ''}
-          emphasised={item.is_actual}
-          onChange={(raw) => actions.setActualGrams(item.id, raw === '' ? null : Math.max(0, Number(raw)))}
-        />
-
-        <div className="text-right">
-          {share === null ? (
-            <span className="text-sm text-ivory/60">—</span>
-          ) : (
-            <MetricValue value={share} unit="%" size="sm" />
-          )}
-          {item.is_actual && item.difference !== 0 ? (
-            <span
-              className={cn(
-                'block font-mono text-[0.7rem] tabular-nums',
-                item.difference > 0 ? 'text-status-error' : 'text-ivory/65',
-              )}
-            >
-              {item.difference > 0 ? '↑' : '↓'} {Math.abs(item.difference).toFixed(1)} {b.unit}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          {lock ? (
-            <button
-              type="button"
-              aria-pressed={lock.state !== 'ai'}
-              aria-label={lock.ariaLabel}
-              title={lock.title}
-              disabled={lock.toggleDisabled}
-              onClick={lock.onToggle}
-              className={cn(
-                'rounded border p-1.5 transition-colors',
-                lock.state === 'locked'
-                  ? 'border-ivory bg-ivory text-shell'
-                  : lock.state === 'range'
-                    ? 'border-status-risky/50 text-status-risky'
-                    : 'border-ivory/15 text-ivory/60 hover:border-ivory/40 hover:text-ivory/70',
-                lock.toggleDisabled && 'cursor-not-allowed opacity-40 hover:border-ivory/15 hover:text-ivory/60',
-              )}
-            >
-              <PadlockIcon closed={lock.state !== 'ai'} />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            aria-pressed={isMain}
-            onClick={() => (isMain ? actions.setLockType(item.id, 'unlocked') : actions.setMainIngredient(item.id))}
-            title={b.mark_main}
-            className={cn(
-              'rounded border px-2 py-1 text-[0.6rem] font-medium tracking-[0.08em] uppercase transition-colors',
-              isMain
-                ? 'border-ivory bg-ivory text-shell'
-                : 'border-ivory/15 text-ivory/60 hover:border-ivory/40 hover:text-ivory/70',
-            )}
-          >
-            {b.main_short}
-          </button>
-          <select
-            aria-label={`${item.ingredient.name} ${b.lock}`}
-            disabled={isMain}
-            className="min-w-0 flex-1 rounded-md border border-ivory/15 bg-shell px-2 py-1.5 text-xs transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none disabled:opacity-40"
-            value={item.lock_type}
-            onChange={(event) => actions.setLockType(item.id, event.currentTarget.value as LockType)}
-          >
-            {isMain ? (
-              <option value="main" disabled>
-                {b.lockTypes.main}
-              </option>
-            ) : null}
-            {SELECTABLE_LOCKS.map((lock) => (
-              <option key={lock} value={lock}>
-                {b.lockTypes[lock]}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-1">
-          {actions.markIngredientUnavailable ? (
-            // Owner FINAL CLOSURE C2 — the EXPLICIT „Niedostępny" action: the
-            // ONLY exclusion source. „✕" (remove) only removes the row.
-            <button
-              type="button"
-              aria-label={`${b.markUnavailable} ${item.ingredient.name}`}
-              title={b.markUnavailableTitle}
-              onClick={() => actions.markIngredientUnavailable!(item.id)}
-              data-testid={`row-mark-unavailable-${item.id}`}
-              className="rounded-md border border-ivory/10 px-2 py-1.5 text-[0.6rem] font-medium tracking-[0.08em] text-ivory/50 uppercase transition-colors hover:border-status-error/40 hover:text-status-error"
-            >
-              {b.markUnavailable}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            aria-label={`${b.remove} ${item.ingredient.name}`}
-            onClick={() => actions.removeItem(item.id)}
-            className="rounded-md border border-ivory/10 px-2 py-1.5 text-xs text-ivory/60 transition-colors hover:border-status-error/40 hover:text-status-error"
-          >
-            ✕
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
