@@ -103,7 +103,35 @@ Responsive measurements: 1366×768 → document 768, 1440×900 → document 900,
 - First served implementation bundle: `assets/index-D-UqAVlE.js` + `assets/index-PYj8hKlH.css`; verified to contain the new Profile, Production copy and `--color-nonproduction-pink`.
 - Served canonical logo SHA-256: `6A0738ACAFDFBCAF970F51384A14A8DD670BD68E0D7A6254017F4F2DDA3BAC58`, exact match.
 - The staging `/pro/recipe` route correctly returns the Pro access gate for an anonymous session. Authenticated owner screenshots cannot be produced without the owner's login; the browser did not bypass that gate.
-- Final mobile-QA repair commit and resulting served bundle: pending this ledger commit and redeployment.
+- Final application-code commit: `0400ab8` (`fix(pro): stabilize mobile workbar and responsive proof`).
+- GitHub status `Vercel – pinguino-staging`: `success`, deployment completed.
+- Final served bundle: `assets/index-CqmYWAwA.js` + `assets/index-W2rKC544.css`; verified after a cache-busting request (`X-Vercel-Cache: MISS`, `Last-Modified: Thu, 06 Aug 2026 18:08:35 GMT`).
+- Final served CSS contains the mobile one-column/two-row workbar contract and `flex-wrap: nowrap`; served JS contains Profile and honest Production limitation copy.
+
+## Files changed
+
+- Workspace/chrome: `AppShell`, `AppNavDrawer`, `appNav`, canonical logo wrappers and Pro workbar.
+- Main Pro workflow: `StudioEngineSurface`, `ProWorkspacePage`, `IngredientBuilder`, `IngredientRow`, picker surfaces, `RecipeProfilePanel`, settings/action bar and Monitor presentation.
+- Readiness/design: `ReadinessMarker`, `tokens.css`, `theme-pro-light.css` and four final design documents.
+- Regression coverage: `finalProWorkbenchDesign.test.tsx` plus focused navigation, Monitor, workbar, canonical workbench, temperature, destination and accessibility tests.
+- Proof artifacts: local Claude-approved JPGs plus the exact-viewport PNG set under `docs/design/screenshots/`.
+- Full exact lists are pinned by commits `a1e9f54` and `0400ab8`; no file under `src/engine/**` and no mapper dataset was changed.
+
+## Previously accepted flows retested
+
+- All 22 reachable hamburger links and all ten Pro destinations.
+- Recipe mode vs Production table transformation, gram locking, disabled percent locking, price/kg and unavailable replacement state.
+- Profile/Monitor/Production/Summary local switching and score education without route navigation.
+- Complete historical Monitor mounting, protected range presentation and red–green–gold–green–red scale order.
+- Professional vs Home machine serving-mode visibility and six canonical serving/machine choices.
+- Preview overlay, Save visibility, mobile cockpit sheet, logo hash and no Pro navy tokens.
+- Full repository suite: 392 files / 5355 tests passed.
+
+## Exact blockers and external actions
+
+1. Owner must sign in to `https://staging.pinguinoai.com/pro/recipe` to perform the authenticated served-staging click-through; anonymous access correctly shows the Pro gate.
+2. Claude rejected only the 1920 exported bitmap because the in-app browser clips the logical viewport under Windows display scaling. DOM geometry proves 1920-wide 62/38 layout and zero overflow, but a native browser capture is still required for an accepted 1920 visual artifact.
+3. Product functions intentionally left pink remain listed in `FINAL_PRO_WORKBENCH_PINK_INVENTORY.md`; they were not upgraded or fabricated by this design task.
 
 ## Remaining incomplete items
 
@@ -111,4 +139,4 @@ Product/readiness items are listed in `FINAL_PRO_WORKBENCH_PINK_INVENTORY.md`. A
 
 ## Git status
 
-Implementation commit `a1e9f54` was pushed to `origin/staging` and deployed successfully. The mobile-QA repair and responsive proofs are pending their final documentation commit and staging push.
+Application commits `a1e9f54` and `0400ab8` are committed and pushed to `origin/staging`. The current ledger update is documentation-only. Pre-existing unrelated untracked files remain preserved and unstaged; no production branch, production credentials, mapper data or engine science was changed.
