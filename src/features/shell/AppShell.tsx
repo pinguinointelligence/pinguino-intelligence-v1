@@ -42,9 +42,9 @@ export function AppShell({
         className={cn(
           'mx-auto flex items-center justify-between gap-4 px-6 py-4',
           maxWidthClass,
-          viewportLock && 'lg:w-full lg:shrink-0',
+          viewportLock && 'max-sm:grid max-sm:grid-cols-1 max-sm:items-stretch max-sm:gap-2 max-sm:px-3 max-sm:py-2 lg:w-full lg:shrink-0',
         )}
-        style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)' }}
+        style={{ paddingTop: viewportLock ? 'max(env(safe-area-inset-top), 0.5rem)' : 'max(env(safe-area-inset-top), 1rem)' }}
       >
         <Link
           to="/"
@@ -56,7 +56,10 @@ export function AppShell({
         </Link>
         {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
             never force horizontal page overflow (owner P0 responsive rule). */}
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+        <div className={cn(
+          'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
+          viewportLock && 'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between',
+        )}>
           {actions}
           <AppNavDrawer />
         </div>

@@ -171,6 +171,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     expect(shell).toContain('lg:h-dvh');
     expect(shell).toContain('lg:overflow-hidden');
+    expect(shell).toContain('max-sm:grid-cols-1');
+    expect(shell).toContain('max-sm:flex-nowrap');
     expect(surface).toContain('mobile-cockpit-trigger');
     expect(surface).toContain('mobile-cockpit-sheet');
     expect(surface).toContain('max-h-[82dvh]');
