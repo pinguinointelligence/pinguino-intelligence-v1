@@ -28,7 +28,8 @@ const state = (items: RecipeItem[], over: Partial<RecipeInputState> = {}): Recip
   ...over,
 });
 
-const run = (s: RecipeInputState) => calculateRecipe(buildRecipeInput(s));
+const run = (s: RecipeInputState, context: 'planning' | 'actual_batch' = 'planning') =>
+  calculateRecipe(buildRecipeInput(s, context));
 
 describe('studio result (engine is the source of truth)', () => {
   it('changing planned grams changes the result', () => {
@@ -40,7 +41,7 @@ describe('studio result (engine is the source of truth)', () => {
   });
 
   it('actual grams override planned grams (effective grams)', () => {
-    const result = run(state([line('milk_3_5', 800), line('sucrose', 130, 200)]));
+    const result = run(state([line('milk_3_5', 800), line('sucrose', 130, 200)]), 'actual_batch');
     expect(result.total_batch_g).toBe(1000); // 800 + 200 actual
     const sucrose = result.items.find((item) => item.id === 'l-sucrose')!;
     expect(sucrose.effective_grams).toBe(200);

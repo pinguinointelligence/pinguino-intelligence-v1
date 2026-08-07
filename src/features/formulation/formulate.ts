@@ -26,6 +26,10 @@ import type { ConstraintSet, IngredientConstraint } from '@/features/recipe-cons
 import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
 import { selectFormulationTemplate, type FormulationTemplate } from './templateRegistry';
 import { canonicalToolboxIdentity, isToolboxCandidateExcluded } from './toolboxCanonical';
+import {
+  canonicalIngredientId,
+  normalizeIngredientIdentity,
+} from '@/data/ingredients/canonicalIngredientIdentity';
 
 /* ────────────────────────────────────────────────────────────── routing ── */
 
@@ -125,12 +129,19 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
   // 944.6 g and milk-500 at 1120 g failures).
   if (hardConstraints) {
     if (!lookup.template) {
-      return { mode: 'unsupported', template: null, reasons: [lookup.unsupportedReason ?? 'no_template'] };
+      return {
+        mode: 'unsupported',
+        template: null,
+        reasons: [lookup.unsupportedReason ?? 'no_template'],
+      };
     }
     return {
       mode: 'constrained_reformulation',
       template: lookup.template,
-      reasons: ['hard_constraints_present', `draft_mass_${Math.round(sum)}g_vs_batch_${Math.round(batch)}g`],
+      reasons: [
+        'hard_constraints_present',
+        `draft_mass_${Math.round(sum)}g_vs_batch_${Math.round(batch)}g`,
+      ],
     };
   }
 
@@ -141,10 +152,18 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
   // damaged case) has no composition to preserve → full formulation.
   const substantiveDraft = batch > 0 && sum >= batch * 0.5;
   if (substantiveDraft) {
-    return { mode: 'local_correction', template: null, reasons: ['substantive_unconstrained_draft'] };
+    return {
+      mode: 'local_correction',
+      template: null,
+      reasons: ['substantive_unconstrained_draft'],
+    };
   }
   if (!lookup.template) {
-    return { mode: 'unsupported', template: null, reasons: [lookup.unsupportedReason ?? 'no_template'] };
+    return {
+      mode: 'unsupported',
+      template: null,
+      reasons: [lookup.unsupportedReason ?? 'no_template'],
+    };
   }
   return {
     mode: 'full_formulation',
@@ -188,6 +207,8 @@ export interface FormulationRoleTraceRow {
   candidateFound: boolean;
   /** The candidate (any canonical identity) is explicitly user-excluded? */
   excluded: boolean;
+  /** True when formulation reused an already-present canonical recipe line. */
+  existingLineReused?: boolean;
   outcome:
     | 'user_filled'
     | 'toolbox_added'
@@ -380,8 +401,14 @@ export function buildFormulationProposal(
   // not-explicitly-excluded candidate exists.
   for (const roleTarget of template.roles) {
     const targetGrams = roleTarget.grams * scale;
-    const matches = byRole.get(roleTarget.role) ?? [];
     const canonical = roleTarget.toolboxId ? canonicalToolboxIdentity(roleTarget.toolboxId) : null;
+    const exactCanonicalMatches = canonical
+      ? lines.filter((line) => canonicalIngredientId(line.item.ingredient) === canonical.mapperId)
+      : [];
+    const matches =
+      exactCanonicalMatches.length > 0
+        ? exactCanonicalMatches
+        : (byRole.get(roleTarget.role) ?? []);
     const traceBase = {
       role: roleTarget.role,
       hard: HARD_ROLES.has(roleTarget.role),
@@ -389,6 +416,7 @@ export function buildFormulationProposal(
       userLineIds: matches.map((m) => m.item.id),
       toolboxId: roleTarget.toolboxId,
       mapperId: canonical?.mapperId ?? null,
+      existingLineReused: matches.length > 0,
     };
     if (matches.length > 0) {
       const share = targetGrams / matches.length;
@@ -446,7 +474,13 @@ export function buildFormulationProposal(
         if (ingredient) {
           const item: RecipeItem = {
             id: `formulation-${roleTarget.toolboxId}`,
-            ingredient,
+            ingredient: normalizeIngredientIdentity(
+              {
+                ...ingredient,
+                canonical_ingredient_id: canonical?.mapperId,
+              },
+              'template',
+            ),
             planned_grams: targetGrams,
             actual_grams: null,
             lock_type: 'unlocked',
@@ -475,7 +509,13 @@ export function buildFormulationProposal(
         }
       }
     }
-    if (roleTarget.toolboxId === null && (roleTarget.role === 'fruit' || roleTarget.role === 'plant_liquid' || roleTarget.role === 'plant_fat' || roleTarget.role === 'chocolate_cocoa')) {
+    if (
+      roleTarget.toolboxId === null &&
+      (roleTarget.role === 'fruit' ||
+        roleTarget.role === 'plant_liquid' ||
+        roleTarget.role === 'plant_fat' ||
+        roleTarget.role === 'chocolate_cocoa')
+    ) {
       // A user-supplied role that cannot be invented — precise missing-role stop.
       roleTrace.push({
         ...traceBase,
@@ -628,9 +668,7 @@ export function buildFormulationProposal(
   const stabilizerRole = template.roles.find((roleTarget) => roleTarget.role === 'stabilizer');
   let stabilizerDose: FormulationProposal['stabilizerDose'] = null;
   if (stabilizerRole) {
-    const carrier = planned.find(
-      (p) => resolveFunctionalRole(p.item.ingredient) === 'stabilizer',
-    );
+    const carrier = planned.find((p) => resolveFunctionalRole(p.item.ingredient) === 'stabilizer');
     if (carrier) {
       const carrierConstraint = lockOf(set, carrier.item.id);
       const userHeld =

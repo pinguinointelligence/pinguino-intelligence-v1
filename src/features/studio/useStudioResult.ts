@@ -14,6 +14,7 @@ import {
 } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput, recipeContext } from './buildRecipeInput';
+import type { RecipeExecutionContext } from './buildRecipeInput';
 
 export interface StudioResult {
   result: RecipeResult;
@@ -22,12 +23,13 @@ export interface StudioResult {
   input: RecipeInput;
 }
 
-export function useStudioResult(): StudioResult {
+export function useStudioResult(context: RecipeExecutionContext = 'planning'): StudioResult {
   const mode = useRecipeStore((state) => state.mode);
   const category = useRecipeStore((state) => state.category);
   const target_temperature_c = useRecipeStore((state) => state.target_temperature_c);
   const target_batch_grams = useRecipeStore((state) => state.target_batch_grams);
   const machine_capacity_grams = useRecipeStore((state) => state.machine_capacity_grams);
+  const machine_capacity_source = useRecipeStore((state) => state.machine_capacity_source);
   const flavor_intensity = useRecipeStore((state) => state.flavor_intensity);
   const cost_priority = useRecipeStore((state) => state.cost_priority);
   const items = useRecipeStore((state) => state.items);
@@ -35,25 +37,31 @@ export function useStudioResult(): StudioResult {
 
   const input = useMemo(
     () =>
-      buildRecipeInput({
-        mode,
-        category,
-        target_temperature_c,
-        target_batch_grams,
-        machine_capacity_grams,
-        flavor_intensity,
-        cost_priority,
-        items,
-      }),
+      buildRecipeInput(
+        {
+          mode,
+          category,
+          target_temperature_c,
+          target_batch_grams,
+          machine_capacity_grams,
+          machine_capacity_source,
+          flavor_intensity,
+          cost_priority,
+          items,
+        },
+        context,
+      ),
     [
       mode,
       category,
       target_temperature_c,
       target_batch_grams,
       machine_capacity_grams,
+      machine_capacity_source,
       flavor_intensity,
       cost_priority,
       items,
+      context,
     ],
   );
 

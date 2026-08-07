@@ -6,6 +6,8 @@
  * capability). Normal customers — demo/home personas, and ANY persona on an unflagged
  * production build — never see a marker. Nothing is removed: the registry only flags items.
  */
+import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
@@ -18,8 +20,10 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
   useProCorePersona: () => mockPersona,
 }));
 
-const { ReviewBadge } = await import('./ReviewBadge');
+const { ReviewBadge, ReviewDecisionLabel } = await import('./ReviewBadge');
 const { DesignReviewOverlay, ReviewOverlayPanel } = await import('./ReviewOverlay');
+const SRC = resolve(import.meta.dirname, '..', '..');
+const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
 
 describe('isReviewModeEnabled (pure resolver)', () => {
   it('is OFF for every persona on a production build without the staging flag', () => {
@@ -104,6 +108,26 @@ describe('marker visibility (customers NEVER see red tags)', () => {
     expect(html).toContain('design-review-toggle');
     // Collapsed by default — the review list never obscures the page.
     expect(html).not.toContain('review-overlay-item-');
+  });
+
+  it('new Pro navigation/workbar decision labels also consume the owner/QA review gate', () => {
+    const renderDecision = (persona: ProCorePersona) => {
+      mockPersona = persona;
+      return renderToStaticMarkup(<ReviewDecisionLabel />);
+    };
+
+    expect(renderDecision('demo')).toBe('');
+    expect(renderDecision('home')).toBe('');
+    const ownerHtml = renderDecision('pro');
+    expect(ownerHtml).toContain('DO PRZEGLĄDU');
+    expect(ownerHtml).toContain('aria-hidden="true"');
+
+    const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
+
+    expect(drawer).toContain('ReviewDecisionLabel');
+    expect(drawer).toContain('item.decision ?');
+    expect(workbar).toContain('ReviewDecisionLabel');
   });
 
   it('the expanded panel lists the current-route item and the FULL registry (nothing hidden)', () => {

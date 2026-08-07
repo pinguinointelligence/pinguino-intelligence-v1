@@ -57,6 +57,9 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
 
   return {
     id: row.ingredient_id,
+    canonical_ingredient_id: row.ingredient_id,
+    private_product_id: null,
+    identity_provenance: 'mapper',
     name: row.ingredient_name_display.trim() || row.ingredient_name_internal,
     category,
     composition,

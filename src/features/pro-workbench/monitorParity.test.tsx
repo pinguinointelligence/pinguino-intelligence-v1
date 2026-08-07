@@ -168,6 +168,12 @@ describe('B1 parity inventory — every pre-redesign element, data-connected', (
     expect(html).toContain('data-testid="review-marked-monitor-owner-diagnostic"');
     expect(html).toContain('data-testid="owner-diagnostic"');
     expect(text).toContain(copy.studio.secondary.reviewMarked.ownerDiagnostic);
+    expect(html).toContain('data-testid="owner-identity-diagnostics"');
+    expect(text).toContain(copy.studio.diagnostic.identityCanonical);
+    expect(text).toContain(copy.studio.diagnostic.identityEffective);
+    expect(text).toContain(copy.studio.diagnostic.identityEngine);
+    expect(text).toContain(copy.studio.diagnostic.monitorRevision);
+    expect(text).toContain(copy.studio.diagnostic.formulationRevision);
   });
 });
 
@@ -192,11 +198,12 @@ describe('B5 truthful states — never a blank Monitor', () => {
     expect(html).toContain('data-testid="monitor-summary-coverage"');
   });
 
-  it('native violated bands render the EXACT band values', () => {
+  it('native violations show the current value and direction without exposing exact bands', () => {
     const html = renderPanel(withGrams(starterMilkBase(), starterLine('sucrose'), 10));
     expect(html).toContain('data-testid="monitor-violated-bands"');
-    // Every violated line carries value + (zakres min–max).
-    expect(visibleText(html)).toMatch(/\(zakres \d+([.,]\d+)?–\d+([.,]\d+)?/);
+    const text = visibleText(html);
+    expect(text).toMatch(/\d+([.,]\d+)?(%|°C| g\/l)?\s+\((poniżej|powyżej) złotego środka\)/);
+    expect(text).not.toMatch(/\(zakres \d+([.,]\d+)?–\d+([.,]\d+)?/);
   });
 });
 

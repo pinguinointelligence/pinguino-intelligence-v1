@@ -26,6 +26,10 @@ import { DEFAULT_CORRECTION_CANDIDATES, type EngineIngredient } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { recipePersistPartialize, useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import {
+  canonicalIngredientId,
+  ingredientProvenance,
+} from '@/data/ingredients/canonicalIngredientIdentity';
 import { plannedSum } from './applyPipeline';
 import {
   canonicalDraftSerialization,
@@ -77,7 +81,10 @@ const serializeLiveDraft = (): string => {
   return JSON.stringify({
     items: input.items.map((item) => [
       item.id,
+      canonicalIngredientId(item.ingredient),
       item.ingredient.id,
+      item.ingredient.private_product_id ?? null,
+      ingredientProvenance(item.ingredient),
       item.planned_grams,
       item.actual_grams,
       item.lock_type,
@@ -116,7 +123,9 @@ const runOwnerSequence = () => {
   // Later — the user OPENS the saved recipe (same session, no refresh)…
   useRecipeStore.getState().loadRecipeInput(saved, { savedId: 'r-owner', savedName: 'Owner' });
   // …and sets the strawberries to 0 g (the owner's live edit).
-  const strawLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === STRAWBERRIES.id)!;
+  const strawLine = useRecipeStore
+    .getState()
+    .items.find((i) => i.ingredient.id === STRAWBERRIES.id)!;
   useRecipeStore.getState().setPlannedGrams(strawLine.id, 0);
   return { saved, milkLineId: milkLine.id, strawLineId: strawLine.id };
 };
@@ -198,7 +207,8 @@ describe('PHASE 3 — revision invalidation (tests 2–4)', () => {
     seedCompleteDraft();
     useConstraintStudioStore.getState().createOptimizePreview();
     expect(
-      useConstraintStudioStore.getState().preview ?? useConstraintStudioStore.getState().previewIssue,
+      useConstraintStudioStore.getState().preview ??
+        useConstraintStudioStore.getState().previewIssue,
     ).not.toBeNull();
     const line = useRecipeStore.getState().items[0]!;
     useRecipeStore.getState().setPlannedGrams(line.id, 123);
@@ -272,8 +282,20 @@ describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => 
       // the engine seam (addendum item 1), never passed to selectTargetBand.
       category: 'fruit_gelato' as const,
       items: [
-        { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 350, actual_grams: null, lock_type: 'grams' as const },
-        { id: 'l-milk', ingredient: MILK, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' as const },
+        {
+          id: 'l-straw',
+          ingredient: STRAWBERRIES,
+          planned_grams: 350,
+          actual_grams: null,
+          lock_type: 'grams' as const,
+        },
+        {
+          id: 'l-milk',
+          ingredient: MILK,
+          planned_grams: 0,
+          actual_grams: null,
+          lock_type: 'unlocked' as const,
+        },
       ],
     });
     useRecipeStore.getState().loadRecipeInput(poisoned);
@@ -283,7 +305,8 @@ describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => 
     const { preview, previewIssue } = useConstraintStudioStore.getState();
     expect(previewIssue).toBeNull();
     expect(preview).not.toBeNull();
-    const grams = (id: string) => preview!.proposedInput.items.find((i) => i.id === id)?.planned_grams;
+    const grams = (id: string) =>
+      preview!.proposedInput.items.find((i) => i.id === id)?.planned_grams;
     expect(grams('l-straw')!).toBeGreaterThan(0);
     expect(grams('l-milk')!).toBeGreaterThan(0);
     expect(Math.abs(plannedSum(preview!.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
@@ -298,8 +321,20 @@ describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => 
         ...saved,
         category: 'fruit_gelato' as const,
         items: [
-          { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 0, actual_grams: null, lock_type: 'grams' as const },
-          { id: 'l-milk', ingredient: MILK, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' as const },
+          {
+            id: 'l-straw',
+            ingredient: STRAWBERRIES,
+            planned_grams: 0,
+            actual_grams: null,
+            lock_type: 'grams' as const,
+          },
+          {
+            id: 'l-milk',
+            ingredient: MILK,
+            planned_grams: 0,
+            actual_grams: null,
+            lock_type: 'unlocked' as const,
+          },
         ],
       }),
     );
@@ -319,7 +354,13 @@ describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => 
       ...saved,
       category: 'sorbet' as const,
       items: [
-        { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 0, actual_grams: null, lock_type: 'grams' as const },
+        {
+          id: 'l-straw',
+          ingredient: STRAWBERRIES,
+          planned_grams: 0,
+          actual_grams: null,
+          lock_type: 'grams' as const,
+        },
       ],
     });
     useRecipeStore.getState().loadRecipeInput(poisoned);
@@ -327,7 +368,9 @@ describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => 
     const { preview, previewIssue } = useConstraintStudioStore.getState();
     expect(previewIssue).toBeNull();
     expect(preview).not.toBeNull();
-    expect(preview!.proposedInput.items.find((i) => i.id === 'l-straw')!.planned_grams).toBeGreaterThan(0);
+    expect(
+      preview!.proposedInput.items.find((i) => i.id === 'l-straw')!.planned_grams,
+    ).toBeGreaterThan(0);
     const byIng = (ing: string) =>
       preview!.proposedInput.items.find((i) => i.ingredient.id === ing)?.planned_grams ?? 0;
     for (const dairy of ['milk_3_5', 'cream_30', 'smp']) expect(byIng(dairy)).toBe(0);
@@ -338,12 +381,48 @@ describe('PHASE 4 — zero-gram semantics WITHOUT refresh (tests 6–8)', () => 
       ...buildRecipeInput(useRecipeStore.getState()),
       category: 'sorbet' as const,
       items: [
-        { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 600, actual_grams: null, lock_type: 'unlocked' as const },
-        { id: 'l-water', ingredient: DEFAULT_CORRECTION_CANDIDATES.find((c) => c.id === 'water')!.ingredient, planned_grams: 181, actual_grams: null, lock_type: 'unlocked' as const },
-        { id: 'l-suc', ingredient: findDemoIngredient('sucrose')!, planned_grams: 103.8, actual_grams: null, lock_type: 'unlocked' as const },
-        { id: 'l-dex', ingredient: findDemoIngredient('dextrose')!, planned_grams: 59, actual_grams: null, lock_type: 'unlocked' as const },
-        { id: 'l-inulin', ingredient: findDemoIngredient('inulin')!, planned_grams: 55.4, actual_grams: null, lock_type: 'unlocked' as const },
-        { id: 'l-tara', ingredient: findDemoIngredient('tara_gum')!, planned_grams: 0.8, actual_grams: null, lock_type: 'unlocked' as const },
+        {
+          id: 'l-straw',
+          ingredient: STRAWBERRIES,
+          planned_grams: 600,
+          actual_grams: null,
+          lock_type: 'unlocked' as const,
+        },
+        {
+          id: 'l-water',
+          ingredient: DEFAULT_CORRECTION_CANDIDATES.find((c) => c.id === 'water')!.ingredient,
+          planned_grams: 181,
+          actual_grams: null,
+          lock_type: 'unlocked' as const,
+        },
+        {
+          id: 'l-suc',
+          ingredient: findDemoIngredient('sucrose')!,
+          planned_grams: 103.8,
+          actual_grams: null,
+          lock_type: 'unlocked' as const,
+        },
+        {
+          id: 'l-dex',
+          ingredient: findDemoIngredient('dextrose')!,
+          planned_grams: 59,
+          actual_grams: null,
+          lock_type: 'unlocked' as const,
+        },
+        {
+          id: 'l-inulin',
+          ingredient: findDemoIngredient('inulin')!,
+          planned_grams: 55.4,
+          actual_grams: null,
+          lock_type: 'unlocked' as const,
+        },
+        {
+          id: 'l-tara',
+          ingredient: findDemoIngredient('tara_gum')!,
+          planned_grams: 0.8,
+          actual_grams: null,
+          lock_type: 'unlocked' as const,
+        },
       ],
     });
     useRecipeStore.getState().loadRecipeInput(saved);
@@ -391,7 +470,14 @@ describe('determinism — 10 repeated no-refresh cycles (test 9)', () => {
       expect(previewIssue).toBeNull();
       expect(preview).not.toBeNull();
       proposals.push(
-        JSON.stringify(preview!.proposedInput.items.map((i) => [i.id, i.ingredient.id, i.planned_grams, i.lock_type])),
+        JSON.stringify(
+          preview!.proposedInput.items.map((i) => [
+            i.id,
+            i.ingredient.id,
+            i.planned_grams,
+            i.lock_type,
+          ]),
+        ),
       );
       useConstraintStudioStore.getState().cancelPreview();
     }

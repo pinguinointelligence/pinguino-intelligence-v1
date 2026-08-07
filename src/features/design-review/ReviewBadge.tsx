@@ -8,6 +8,27 @@
 import { useReviewMode } from './useReviewMode';
 import { REVIEW_ITEMS } from './reviewItems';
 
+export function ReviewDecisionLabel({ label = 'DO PRZEGLĄDU' }: { label?: string }) {
+  const enabled = useReviewMode();
+  if (!enabled) return null;
+  return (
+    <span className="ml-1 inline-flex shrink-0 items-center gap-1 text-[9px] font-semibold tracking-[0.08em] text-review uppercase">
+      <svg
+        width="9"
+        height="9"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.4}
+        aria-hidden
+      >
+        <path d="M5 21V4m0 0h13l-3 4 3 4H5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {label}
+    </span>
+  );
+}
+
 export function ReviewBadge({ itemId }: { itemId: string }) {
   const enabled = useReviewMode();
   if (!enabled) return null;
@@ -20,7 +41,15 @@ export function ReviewBadge({ itemId }: { itemId: string }) {
       className="inline-flex items-center gap-1 rounded border border-review/40 bg-review/10 px-1.5 py-0.5 align-middle text-[0.6rem] font-medium tracking-[0.08em] text-review uppercase"
     >
       {/* flag glyph — meaning is carried by icon + text, never color alone */}
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} aria-hidden>
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.4}
+        aria-hidden
+      >
         <path d="M5 21V4m0 0h13l-3 4 3 4H5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       DO PRZEGLĄDU

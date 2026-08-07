@@ -25,7 +25,12 @@ const STRAWBERRIES: EngineIngredient = {
   category: 'fruit',
 };
 
-const line = (id: string, ingredient: EngineIngredient, grams: number, lock: 'unlocked' | 'grams' = 'unlocked') => ({
+const line = (
+  id: string,
+  ingredient: EngineIngredient,
+  grams: number,
+  lock: 'unlocked' | 'grams' = 'unlocked',
+) => ({
   id,
   ingredient,
   planned_grams: grams,
@@ -33,8 +38,18 @@ const line = (id: string, ingredient: EngineIngredient, grams: number, lock: 'un
   lock_type: lock as 'unlocked',
 });
 
-const input = (items: ReturnType<typeof line>[], category: RecipeInput['category'], temp = -11, batch = 1000): RecipeInput => ({
-  mode: 'classic', category, target_temperature_c: temp, target_batch_grams: batch, machine_capacity_grams: null, items,
+const input = (
+  items: ReturnType<typeof line>[],
+  category: RecipeInput['category'],
+  temp = -11,
+  batch = 1000,
+): RecipeInput => ({
+  mode: 'classic',
+  category,
+  target_temperature_c: temp,
+  target_batch_grams: batch,
+  machine_capacity_grams: null,
+  items,
 });
 
 /** FIXTURE A — the owner's exact Sorbet with inulin locked at 0 (total 944.6 g). */
@@ -79,11 +94,16 @@ describe('router — the ±25% rule is GONE (Phase 1 + tests 1/2)', () => {
   });
   it('a complete at-target unconstrained draft keeps the local basin', () => {
     const items = [
-      line('l-milk', findDemoIngredient('milk_3_5')!, 610), line('l-cream', findDemoIngredient('cream_30')!, 150),
-      line('l-suc', findDemoIngredient('sucrose')!, 120), line('l-dex', findDemoIngredient('dextrose')!, 60),
-      line('l-smp', findDemoIngredient('smp')!, 55), line('l-tara', findDemoIngredient('tara_gum')!, 5),
+      line('l-milk', findDemoIngredient('milk_3_5')!, 610),
+      line('l-cream', findDemoIngredient('cream_30')!, 150),
+      line('l-suc', findDemoIngredient('sucrose')!, 120),
+      line('l-dex', findDemoIngredient('dextrose')!, 60),
+      line('l-smp', findDemoIngredient('smp')!, 55),
+      line('l-tara', findDemoIngredient('tara_gum')!, 5),
     ];
-    expect(routeFormulationMode(input(items, 'milk_gelato'), { byLineId: {} }).mode).toBe('local_correction');
+    expect(routeFormulationMode(input(items, 'milk_gelato'), { byLineId: {} }).mode).toBe(
+      'local_correction',
+    );
   });
 });
 
@@ -112,9 +132,16 @@ describe('FIXTURE A — inulin unavailable (tests 3/4/5/6)', () => {
     // the unavailable inulin never returns, the exact 0 g lock is
     // byte-preserved, the batch lands on target — are pinned on the WRITE.
     useRecipeStore.setState({
-      mode: 'classic', category: 'sorbet', visibleProductType: 'sorbet', target_temperature_c: -11,
-      target_batch_grams: 1000, machine_capacity_grams: null, flavor_intensity: 'balanced',
-      cost_priority: 'balanced', items: INULIN_ZERO(), excludedIngredientIds: [],
+      mode: 'classic',
+      category: 'sorbet',
+      visibleProductType: 'sorbet',
+      target_temperature_c: -11,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      flavor_intensity: 'balanced',
+      cost_priority: 'balanced',
+      items: INULIN_ZERO(),
+      excludedIngredientIds: [],
     });
     useConstraintStudioStore.getState().resetForTests();
     useConstraintStudioStore.setState({ constraints: INULIN_SET });
@@ -131,7 +158,9 @@ describe('FIXTURE A — inulin unavailable (tests 3/4/5/6)', () => {
     // One row per canonical identity, batch exactly on target.
     const ids = items.map((i) => i.ingredient.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(Math.abs(items.reduce((a, i) => a + i.planned_grams, 0) - 1000)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(items.reduce((a, i) => a + i.planned_grams, 0) - 1000)).toBeLessThanOrEqual(
+      0.1,
+    );
   });
 });
 
@@ -173,7 +202,9 @@ describe('FIXTURE E + scale safety (tests 16/17/18)', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
-    expect(result.preview.proposedInput.items.every((i) => Number.isFinite(i.planned_grams))).toBe(true);
+    expect(result.preview.proposedInput.items.every((i) => Number.isFinite(i.planned_grams))).toBe(
+      true,
+    );
   });
   it('locked 500 g does NOT trigger the locked-sum error against a 1000 g target (test 18)', () => {
     const rec = input(MILK_500(), 'milk_gelato');
@@ -186,23 +217,31 @@ describe('FIXTURE E + scale safety (tests 16/17/18)', () => {
 describe('FIXTURE D — complete Undo restores exclusions (tests 14/15)', () => {
   it('apply → exclude → reformulate → undo → exclusions restored; second run identical', () => {
     useRecipeStore.setState({
-      mode: 'classic', category: 'milk_gelato', visibleProductType: 'gelato', target_temperature_c: -12,
-      target_batch_grams: 1000, machine_capacity_grams: null, flavor_intensity: 'balanced',
-      cost_priority: 'balanced', items: [line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+      mode: 'classic',
+      category: 'milk_gelato',
+      visibleProductType: 'gelato',
+      target_temperature_c: -12,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      flavor_intensity: 'balanced',
+      cost_priority: 'balanced',
+      items: [line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
       excludedIngredientIds: [],
     });
     useConstraintStudioStore.getState().resetForTests();
     // 1. formulate + apply (G17 auto-fills inulin among others)
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();
-    const firstApplied = JSON.stringify(useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]));
+    const firstApplied = JSON.stringify(
+      useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]),
+    );
     // 2. EXPLICITLY mark the inulin line unavailable (owner FINAL CLOSURE C2:
     //    removal alone no longer excludes — the explicit action is the ONLY
     //    exclusion source; the Undo-restores-exclusions pin below is frozen)
     const inulinLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'inulin');
     expect(inulinLine).toBeDefined();
     useRecipeStore.getState().markIngredientUnavailable(inulinLine!.id);
-    expect(useRecipeStore.getState().excludedIngredientIds).toContain('inulin');
+    expect(useRecipeStore.getState().excludedIngredientIds).toContain('PI-ING-000456');
     // 3. reformulate + apply (inulin must NOT return)
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();
@@ -212,18 +251,28 @@ describe('FIXTURE D — complete Undo restores exclusions (tests 14/15)', () => 
     );
     // 4. undo → the exclusion state returns WITH the snapshot (no refresh needed)
     useConstraintStudioStore.getState().undoLastApply();
-    expect(useRecipeStore.getState().excludedIngredientIds).toContain('inulin');
+    expect(useRecipeStore.getState().excludedIngredientIds).toContain('PI-ING-000456');
     // 5. the FIRST apply cannot be undone across the manual removal (§20.3
     //    stale protection) — the attempt is a safe NO-OP, never a corruption
-    const before5 = JSON.stringify(useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]));
+    const before5 = JSON.stringify(
+      useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]),
+    );
     useConstraintStudioStore.getState().undoLastApply();
-    expect(JSON.stringify(useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]))).toBe(before5);
-    expect(useRecipeStore.getState().excludedIngredientIds).toContain('inulin');
+    expect(
+      JSON.stringify(
+        useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]),
+      ),
+    ).toBe(before5);
+    expect(useRecipeStore.getState().excludedIngredientIds).toContain('PI-ING-000456');
     // 6. reformulating again from the restored state is DETERMINISTIC: the
     //    same exclusions produce the same result, and inulin never returns
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();
-    expect(JSON.stringify(useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]))).toBe(secondApplied);
+    expect(
+      JSON.stringify(
+        useRecipeStore.getState().items.map((i) => [i.ingredient.id, i.planned_grams]),
+      ),
+    ).toBe(secondApplied);
     expect(firstApplied).not.toBe(secondApplied); // the exclusion genuinely changed the formulation
   });
 });
@@ -231,9 +280,16 @@ describe('FIXTURE D — complete Undo restores exclusions (tests 14/15)', () => 
 describe('FIXTURE F — 20 constrained cycles (tests 22/23)', () => {
   it('exact lock + edits over 20 cycles: 1000 g, no duplicates, no stale exclusions', () => {
     useRecipeStore.setState({
-      mode: 'classic', category: 'milk_gelato', visibleProductType: 'gelato', target_temperature_c: -11,
-      target_batch_grams: 1000, machine_capacity_grams: null, flavor_intensity: 'balanced',
-      cost_priority: 'balanced', items: MILK_500(), excludedIngredientIds: [],
+      mode: 'classic',
+      category: 'milk_gelato',
+      visibleProductType: 'gelato',
+      target_temperature_c: -11,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      flavor_intensity: 'balanced',
+      cost_priority: 'balanced',
+      items: MILK_500(),
+      excludedIngredientIds: [],
     });
     useConstraintStudioStore.getState().resetForTests();
     useConstraintStudioStore.setState({ constraints: MILK_SET });
@@ -241,7 +297,8 @@ describe('FIXTURE F — 20 constrained cycles (tests 22/23)', () => {
       const first = useRecipeStore.getState().items.find((i) => i.lock_type === 'unlocked')!;
       useRecipeStore.getState().setPlannedGrams(first.id, Math.max(0, first.planned_grams - 3));
       useConstraintStudioStore.getState().createOptimizePreview();
-      if (useConstraintStudioStore.getState().preview) useConstraintStudioStore.getState().applyPreview();
+      if (useConstraintStudioStore.getState().preview)
+        useConstraintStudioStore.getState().applyPreview();
       const items = useRecipeStore.getState().items;
       expect(useRecipeStore.getState().target_batch_grams).toBe(1000);
       const total = items.reduce((a, i) => a + i.planned_grams, 0);
@@ -263,7 +320,9 @@ describe('empty recipe is never balanced (test 20) + science freeze (test 24)', 
   });
   it('ENGINE/CONFIG unchanged', async () => {
     const { calculateRecipe } = await import('@/engine');
-    const r = calculateRecipe(input([line('l-m', findDemoIngredient('milk_3_5')!, 1000)], 'milk_gelato'));
+    const r = calculateRecipe(
+      input([line('l-m', findDemoIngredient('milk_3_5')!, 1000)], 'milk_gelato'),
+    );
     expect(r.engine_version).toBe('0.4.0');
     expect(r.config_version).toBe('0.7.0');
   });

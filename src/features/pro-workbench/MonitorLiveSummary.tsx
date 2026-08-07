@@ -64,7 +64,10 @@ export function MonitorLiveSummary({
   if (assessment.state === 'insufficient') {
     return (
       <div data-testid="monitor-live-summary" data-assessment="insufficient">
-        <p className="text-sm font-medium leading-relaxed text-ivory" data-testid="monitor-insufficient">
+        <p
+          className="text-sm font-medium leading-relaxed text-ivory"
+          data-testid="monitor-insufficient"
+        >
           {c.summary.insufficient}
         </p>
         <p className="mt-2 text-xs leading-relaxed text-ivory/65">{c.summary.insufficientHint}</p>
@@ -100,7 +103,11 @@ export function MonitorLiveSummary({
       </div>
 
       {/* Truthful assessment state + coverage (B5) */}
-      <div className="mt-3 space-y-1" data-testid="monitor-assessment" data-state={assessment.state}>
+      <div
+        className="mt-3 space-y-1"
+        data-testid="monitor-assessment"
+        data-state={assessment.state}
+      >
         <p
           className={`text-xs leading-relaxed ${
             assessment.state === 'provisional' ? 'text-status-risky' : 'text-ivory/70'
@@ -115,13 +122,18 @@ export function MonitorLiveSummary({
           <p className="text-[11px] leading-relaxed text-ivory/65">{assessment.reasonText}</p>
         ) : null}
         {assessment.coverageText ? (
-          <p className="text-[11px] leading-relaxed text-ivory/60" data-testid="monitor-summary-coverage">
+          <p
+            className="text-[11px] leading-relaxed text-ivory/60"
+            data-testid="monitor-summary-coverage"
+          >
             {assessment.coverageText}
           </p>
         ) : null}
       </div>
 
-      {/* Exact violated approved bands (native), or the honest all-in-band line. */}
+      {/* Current values stay visible, but approved numeric boundaries remain protected.
+          Directional language communicates the deviation without exposing the
+          optimization contract 1:1. */}
       {assessment.violatedBands.length > 0 ? (
         <div className="mt-3" data-testid="monitor-violated-bands">
           <p className="text-[0.625rem] font-medium tracking-label text-status-risky uppercase">
@@ -136,15 +148,17 @@ export function MonitorLiveSummary({
                   {band.unit}
                 </span>{' '}
                 <span className="text-ivory/60">
-                  (zakres {band.bandMin.toFixed(1)}–{band.bandMax.toFixed(1)}
-                  {band.unit})
+                  ({band.side === 'below' ? 'poniżej' : 'powyżej'} złotego środka)
                 </span>
               </li>
             ))}
           </ul>
         </div>
       ) : assessment.withinBandsText ? (
-        <p className="mt-3 text-[11px] leading-relaxed text-status-ideal" data-testid="monitor-within-bands">
+        <p
+          className="mt-3 text-[11px] leading-relaxed text-status-ideal"
+          data-testid="monitor-within-bands"
+        >
           {assessment.withinBandsText}
         </p>
       ) : null}
@@ -162,7 +176,9 @@ export function MonitorLiveSummary({
               data-testid={`monitor-axis-${axis.id}`}
             >
               <span className="text-ivory/70">{axis.label}</span>
-              <span className={`text-right text-[11px] leading-snug ${READING_TONE[axis.reading.state]}`}>
+              <span
+                className={`text-right text-[11px] leading-snug ${READING_TONE[axis.reading.state]}`}
+              >
                 {axis.reading.text}
               </span>
             </p>
@@ -178,10 +194,16 @@ export function MonitorLiveSummary({
             {formatTemperatureC(servingTemperatureC)}
           </span>
         </p>
-        <p className="text-[11px] leading-relaxed text-ivory/70" data-testid="monitor-summary-confidence">
+        <p
+          className="text-[11px] leading-relaxed text-ivory/70"
+          data-testid="monitor-summary-confidence"
+        >
           <span className="text-ivory/60">{confidence.name}:</span> {confidence.text}
         </p>
-        <p className="text-[11px] leading-relaxed text-ivory/70" data-testid="monitor-summary-readiness">
+        <p
+          className="text-[11px] leading-relaxed text-ivory/70"
+          data-testid="monitor-summary-readiness"
+        >
           <span className="text-ivory/60">{readiness.name}:</span> {readiness.readiness.label} —{' '}
           {readiness.readiness.text}
         </p>
@@ -189,7 +211,7 @@ export function MonitorLiveSummary({
 
       {/* ONE primary warning/success line (B2). */}
       <p
-        className={`mt-3 border-t border-ivory/10 pt-3 text-[12px] leading-relaxed ${SIGNAL_TONE[signal.kind === 'ok' ? 'ok' : signal.severity ?? 'info']}`}
+        className={`mt-3 border-t border-ivory/10 pt-3 text-[12px] leading-relaxed ${SIGNAL_TONE[signal.kind === 'ok' ? 'ok' : (signal.severity ?? 'info')]}`}
         data-testid="monitor-primary-signal"
         data-signal={signal.kind}
       >

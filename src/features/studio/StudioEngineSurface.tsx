@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { copy } from '@/copy/en';
 import { useAccess } from '@/access/useAccess';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -28,8 +28,14 @@ import {
 } from '@/features/pro-workbench/RecipeProfilePanel';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
+import {
+  MOBILE_COCKPIT_QUERY,
+  shouldActivateMobileCockpitModal,
+} from '@/features/studio/mobileCockpitModal';
 
 const { studio } = copy;
+const FOCUSABLE =
+  'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 /** Owner review inventory (2026-07-24, one-screen architecture): every module moved
  * BELOW the core workbench, with the explicit decision column = OCZEKUJE. Mirrors the
@@ -120,15 +126,19 @@ export function StudioEngineSurface({
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
   const { fullFormula } = useAccess();
-  const { result, corrections, input } = useStudioResult();
-  const scoreDisplay = monitorScoreView(result).match.display;
-
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
   const initialCockpit: CockpitTab =
     activePanel === 'monitor' ? 'monitor' : activePanel === 'production' ? 'production' : 'profile';
   const [cockpitTab, setCockpitTab] = useState<CockpitTab>(initialCockpit);
+  const { result, corrections, input } = useStudioResult(
+    cockpitTab === 'production' ? 'actual_batch' : 'planning',
+  );
+  const scoreDisplay = monitorScoreView(result).match.display;
   const [mobileCockpitOpen, setMobileCockpitOpen] = useState(activePanel === 'monitor');
+  const [mobileViewport, setMobileViewport] = useState(false);
+  const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const cockpitPanelRef = useRef<HTMLElement | null>(null);
 
   // The public /demo entry is always a demo session that cold-opens the curated
   // default scenario; /pro (forceDemo=false) preserves persisted edits.
@@ -138,6 +148,56 @@ export function StudioEngineSurface({
       loadPreset(DEFAULT_PRESET);
     }
   }, [forceDemo, setPlan, loadPreset]);
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_COCKPIT_QUERY);
+    const sync = () => setMobileViewport(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    if (!shouldActivateMobileCockpitModal(mobileCockpitOpen, mobileViewport)) return;
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    const trigger = cockpitTriggerRef.current;
+    const focusables = () =>
+      cockpitPanelRef.current
+        ? Array.from(cockpitPanelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
+        : [];
+
+    body.style.overflow = 'hidden';
+    focusables()[0]?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileCockpitOpen(false);
+        return;
+      }
+      if (e.key !== 'Tab') return;
+
+      const list = focusables();
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (!first || !last) return;
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      body.style.overflow = previousOverflow;
+      trigger?.focus();
+    };
+  }, [mobileCockpitOpen, mobileViewport]);
 
   return (
     <>
@@ -192,7 +252,11 @@ export function StudioEngineSurface({
         <div className="shrink-0 border-t border-ink/10">{recipeBar}</div>
 
         <button
+          ref={cockpitTriggerRef}
           type="button"
+          aria-haspopup="dialog"
+          aria-expanded={mobileCockpitOpen}
+          aria-controls="mobile-cockpit-dialog"
           onClick={() => setMobileCockpitOpen(true)}
           className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-30 flex items-center gap-2 rounded-full border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink shadow-[0_8px_24px_rgba(16,17,19,0.12)] lg:hidden"
           data-testid="mobile-cockpit-trigger"
@@ -203,11 +267,32 @@ export function StudioEngineSurface({
 
         {mobileCockpitOpen ? (
           <div className="fixed inset-0 z-50 lg:hidden" data-testid="mobile-cockpit-sheet">
-            <button type="button" aria-label="Zamknij kokpit" onClick={() => setMobileCockpitOpen(false)} className="absolute inset-0 bg-black/35" />
-            <section className="absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-lg border-t border-ink/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_36px_rgba(16,17,19,0.14)]">
+            <button
+              type="button"
+              aria-label="Zamknij kokpit"
+              onClick={() => setMobileCockpitOpen(false)}
+              className="absolute inset-0 bg-black/35"
+            />
+            <section
+              ref={cockpitPanelRef}
+              id="mobile-cockpit-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mobile-cockpit-title"
+              className="absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-lg border-t border-ink/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_36px_rgba(16,17,19,0.14)]"
+            >
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-white px-3 py-2">
-                <span className="text-xs font-semibold text-ink">Kokpit aktualnej receptury</span>
-                <button type="button" onClick={() => setMobileCockpitOpen(false)} className="grid size-9 place-items-center rounded-full border border-ink/10 text-lg text-ink">×</button>
+                <h2 id="mobile-cockpit-title" className="text-xs font-semibold text-ink">
+                  Kokpit aktualnej receptury
+                </h2>
+                <button
+                  type="button"
+                  aria-label="Zamknij kokpit"
+                  onClick={() => setMobileCockpitOpen(false)}
+                  className="grid size-9 place-items-center rounded-full border border-ink/10 text-lg text-ink"
+                >
+                  ×
+                </button>
               </div>
               <RecipeProfilePanel
                 activeTab={cockpitTab}

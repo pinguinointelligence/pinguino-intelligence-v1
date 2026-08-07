@@ -21,10 +21,7 @@ import { calculateRecipe, type EngineIngredient, type RecipeInput } from '@/engi
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import {
-  buildOptimizePreview,
-  plannedSum,
-} from '@/features/constraint-studio/applyPipeline';
+import { buildOptimizePreview, plannedSum } from '@/features/constraint-studio/applyPipeline';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { constraintStudioCopy } from '@/features/constraint-studio/constraintStudioCopy';
 import { previewIssueMessagePl } from '@/features/constraint-studio/previewIssueMessage';
@@ -297,7 +294,7 @@ describe('A1 — minimal Gelato (FAILURE B fixture) formulates completely', () =
     const dex = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'dextrose')!;
     useRecipeStore.getState().markIngredientUnavailable(dex.id);
     expect(useRecipeStore.getState().items.some((i) => i.ingredient.id === 'dextrose')).toBe(false);
-    expect(useRecipeStore.getState().excludedIngredientIds).toEqual(['dextrose']);
+    expect(useRecipeStore.getState().excludedIngredientIds).toEqual(['PI-ING-000494']);
   });
 });
 
@@ -346,7 +343,9 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
     expect(previewIssue).toBeNull();
     expect(preview).not.toBeNull();
     // the recipe itself was NOT touched by building a preview
-    expect(Math.abs(plannedSum(buildRecipeInput(useRecipeStore.getState())) - 1000)).toBeLessThanOrEqual(0.1);
+    expect(
+      Math.abs(plannedSum(buildRecipeInput(useRecipeStore.getState())) - 1000),
+    ).toBeLessThanOrEqual(0.1);
   });
 
   it('the explanatory best-safe message still exists for a genuine fixed point (test 16)', () => {
@@ -479,7 +478,9 @@ describe('Apply → Undo → save/reopen for the minimal Gelato (tests 17/18/19)
     expect(items.map((i) => [i.id, i.ingredient.id, i.planned_grams])).toEqual(
       preview.proposedInput.items.map((i) => [i.id, i.ingredient.id, i.planned_grams]),
     );
-    expect(Math.abs(items.reduce((a, i) => a + i.planned_grams, 0) - 1000)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(items.reduce((a, i) => a + i.planned_grams, 0) - 1000)).toBeLessThanOrEqual(
+      0.1,
+    );
   });
 
   it('the history record carries the A6 snapshot: exclusions, template id, toolbox-added markers', () => {
@@ -502,14 +503,18 @@ describe('Apply → Undo → save/reopen for the minimal Gelato (tests 17/18/19)
   it('Undo restores EXACTLY the two user lines and removes the PI-added lines (test 18)', () => {
     stageMinimalPreview();
     const before = JSON.stringify(
-      buildRecipeInput(useRecipeStore.getState()).items.map((i) => [i.id, i.ingredient.id, i.planned_grams]),
+      buildRecipeInput(useRecipeStore.getState()).items.map((i) => [
+        i.id,
+        i.ingredient.id,
+        i.planned_grams,
+      ]),
     );
     useConstraintStudioStore.getState().applyPreview();
     useConstraintStudioStore.getState().undoLastApply();
     const restored = useRecipeStore.getState().items;
-    expect(
-      JSON.stringify(restored.map((i) => [i.id, i.ingredient.id, i.planned_grams])),
-    ).toBe(before);
+    expect(JSON.stringify(restored.map((i) => [i.id, i.ingredient.id, i.planned_grams]))).toBe(
+      before,
+    );
     expect(restored.length).toBe(2); // exactly the two user lines
     // Owner addendum items 1+2: the staged draft is Milk 0 g + Strawberry 350 g
     // (PI has no approved fruit dose to fill a 0 g fruit with). Undo must
@@ -550,7 +555,9 @@ describe('science freeze', () => {
         'może istnieć poza jego zasięgiem przeszukiwania.',
     );
     // …and it may never again claim a proven best/optimum.
-    expect(constraintStudioCopy.previewIssue.bestSafeResult).not.toContain('zweryfikowanym wynikiem');
+    expect(constraintStudioCopy.previewIssue.bestSafeResult).not.toContain(
+      'zweryfikowanym wynikiem',
+    );
     // pre-existing keys stayed intact (never repurposed)
     expect(constraintStudioCopy.previewIssue.alreadyClean).toBe(
       'Receptura znajduje się już w zatwierdzonym zakresie. PI nie proponuje zmian.',

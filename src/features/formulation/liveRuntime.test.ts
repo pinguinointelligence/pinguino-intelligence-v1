@@ -105,7 +105,9 @@ describe('owner case A — Gelato + Milk + Strawberry, no grams (Phase 5)', () =
     expect(milk.planned_grams).not.toBe(straw.planned_grams); // differentiated
     // the toolbox supplied the technological base — visible with reasons
     const addedIds = preview.formulation!.added.map((a) => a.ingredientId);
-    expect(addedIds).toEqual(expect.arrayContaining(['cream_30', 'smp', 'sucrose', 'dextrose', 'tara_gum']));
+    expect(addedIds).toEqual(
+      expect.arrayContaining(['cream_30', 'smp', 'sucrose', 'dextrose', 'tara_gum']),
+    );
     for (const a of preview.formulation!.added) {
       expect(a.reasonPl).toContain('zatwierdzona receptura');
       expect(a.grams).toBeGreaterThan(0);
@@ -129,7 +131,9 @@ describe('owner case B — Sorbet + Strawberry, no grams (Phase 6)', () => {
     expect(preview.formulation?.templateId).toBe('S01');
     expect(Math.abs(plannedSum(preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
     const addedIds = preview.formulation!.added.map((a) => a.ingredientId);
-    expect(addedIds).toEqual(expect.arrayContaining(['water', 'sucrose', 'dextrose', 'inulin', 'tara_gum']));
+    expect(addedIds).toEqual(
+      expect.arrayContaining(['water', 'sucrose', 'dextrose', 'inulin', 'tara_gum']),
+    );
     expect(preview.proposedInput.items.some((i) => i.ingredient.id === 'milk_3_5')).toBe(false); // no dairy
     const straw = preview.proposedInput.items.find((i) => i.ingredient.id === 'PI-ING-001553')!;
     expect(straw.planned_grams).toBeGreaterThan(300);
@@ -161,7 +165,9 @@ describe('owner case B — Sorbet + Strawberry, no grams (Phase 6)', () => {
     // dairy now present ⇒ instant re-route, no save needed
     expect(useRecipeStore.getState().category).toBe('milk_gelato');
     useConstraintStudioStore.getState().createOptimizePreview();
-    expect(useConstraintStudioStore.getState().preview?.formulation?.templateId).toBe('milk_base_v1');
+    expect(useConstraintStudioStore.getState().preview?.formulation?.templateId).toBe(
+      'milk_base_v1',
+    );
   });
 });
 
@@ -186,7 +192,7 @@ describe('exclusion semantics (EXPLICIT unavailable ≠ removed ≠ never-select
     const inulinLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'inulin')!;
     useRecipeStore.getState().markIngredientUnavailable(inulinLine.id);
     expect(useRecipeStore.getState().items.some((i) => i.ingredient.id === 'inulin')).toBe(false);
-    expect(useRecipeStore.getState().excludedIngredientIds).toContain('inulin');
+    expect(useRecipeStore.getState().excludedIngredientIds).toContain('PI-ING-000456');
     useConstraintStudioStore.getState().createOptimizePreview();
     const after = useConstraintStudioStore.getState().preview;
     expect(after).not.toBeNull();
@@ -196,7 +202,7 @@ describe('exclusion semantics (EXPLICIT unavailable ≠ removed ≠ never-select
 
     // Explicitly adding it back clears the exclusion (frozen pin).
     useRecipeStore.getState().addIngredient(findDemoIngredient('inulin')!, 0);
-    expect(useRecipeStore.getState().excludedIngredientIds).not.toContain('inulin');
+    expect(useRecipeStore.getState().excludedIngredientIds).not.toContain('PI-ING-000456');
   });
 
   it('a merely REMOVED toolbox ingredient MAY be refilled (FINAL CLOSURE C2)', () => {

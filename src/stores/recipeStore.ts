@@ -17,7 +17,22 @@ import {
   visibleTypeOf,
   type VisibleProductType,
 } from '@/features/studio/productType';
-import type { EngineIngredient, LockType, ProductCategory, ProductMode, RecipeGoals, RecipeInput, RecipeItem } from '@/engine';
+import type {
+  EngineIngredient,
+  LockType,
+  ProductCategory,
+  ProductMode,
+  RecipeGoals,
+  RecipeInput,
+  RecipeItem,
+} from '@/engine';
+import {
+  canonicalDuplicateIds,
+  canonicalIngredientId,
+  canonicalIngredientIdFromSourceId,
+  normalizeIngredientIdentity,
+  normalizeRecipeItemIdentity,
+} from '@/data/ingredients/canonicalIngredientIdentity';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
@@ -146,9 +161,12 @@ export interface RecipeState {
    * back and VERIFIES the write — any mismatch rolls back to the exact prior
    * draft. Never coerces a missing amount to zero.
    */
-  applyVerifiedRecipeInput: (input: RecipeInput) =>
+  applyVerifiedRecipeInput: (
+    input: RecipeInput,
+  ) =>
     | { ok: true }
     | { ok: false; code: 'invalid_line'; lineName: string }
+    | { ok: false; code: 'duplicate_ingredient'; canonicalIds: string[] }
     | { ok: false; code: 'batch_mismatch'; sum: number; target: number }
     | { ok: false; code: 'write_verification_failed' };
   addIngredient: (ingredient: EngineIngredient, grams?: number) => void;
@@ -215,7 +233,7 @@ const makeLine = (
   lock_type: LockType = 'unlocked',
 ): RecipeItem => ({
   id: nextLineId(),
-  ingredient,
+  ingredient: normalizeIngredientIdentity(ingredient),
   planned_grams,
   actual_grams: null,
   lock_type,
@@ -235,7 +253,10 @@ const fromPreset = (preset: DemoPreset) => ({
     | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
-  items: preset.items.map((item) => ({ ...item })),
+  items: preset.items.map((item) => ({
+    ...item,
+    ingredient: normalizeIngredientIdentity(item.ingredient, 'demo'),
+  })),
   // Owner P0 NIGHTLY (exclusion lifecycle): exclusions are DRAFT-SCOPED — a
   // fresh preset load / reset starts a fresh exclusion context. An ingredient
   // never selected in the new draft is NOT excluded.
@@ -303,10 +324,10 @@ export const useRecipeStore = create<RecipeState>()(
       draftRevision: 0,
       draftContextSeq: 0,
 
-      bumpDraftRevision: () =>
-        set((state) => ({ draftRevision: state.draftRevision + 1 })),
+      bumpDraftRevision: () => set((state) => ({ draftRevision: state.draftRevision + 1 })),
 
-      setMode: (mode) => set((state) => ({ mode, dirty: true, draftRevision: state.draftRevision + 1 })),
+      setMode: (mode) =>
+        set((state) => ({ mode, dirty: true, draftRevision: state.draftRevision + 1 })),
       // Direct internal-category writes (QA/diagnostic/tests) keep the visible projection coherent.
       setCategory: (category) =>
         set((state) => ({
@@ -356,7 +377,11 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
       setBatchGrams: (target_batch_grams) =>
-        set((state) => ({ target_batch_grams, dirty: true, draftRevision: state.draftRevision + 1 })),
+        set((state) => ({
+          target_batch_grams,
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
       // An explicit user entry is legitimate provenance; clearing it removes
       // the limit entirely (owner CURRENT-DRAFT P0, Phase 8).
       setMachineCapacity: (machine_capacity_grams) =>
@@ -380,10 +405,21 @@ export const useRecipeStore = create<RecipeState>()(
             typeof grams !== 'number' ||
             Number.isNaN(grams) ||
             !Number.isFinite(grams) ||
-            grams < 0
+            grams < 0 ||
+            (item.actual_grams !== null &&
+              (!Number.isFinite(item.actual_grams) || item.actual_grams < 0)) ||
+            !canonicalIngredientId(item.ingredient).trim()
           ) {
             return { ok: false, code: 'invalid_line', lineName: item.ingredient?.name ?? item.id };
           }
+        }
+        const duplicateCanonicalIds = canonicalDuplicateIds(input.items);
+        if (duplicateCanonicalIds.length > 0) {
+          return {
+            ok: false,
+            code: 'duplicate_ingredient',
+            canonicalIds: duplicateCanonicalIds,
+          };
         }
         // Phase 6 — the door of last resort recomputes the total ITSELF.
         const hasActuals = input.items.some((item) => item.actual_grams !== null);
@@ -395,7 +431,7 @@ export const useRecipeStore = create<RecipeState>()(
         const prior = useRecipeStore.getState();
         const priorItems = prior.items;
         const priorBatch = prior.target_batch_grams;
-        const nextItems = input.items.map((item) => ({ ...item }));
+        const nextItems = input.items.map((item) => normalizeRecipeItemIdentity({ ...item }));
         set((state) => ({
           items: nextItems,
           target_batch_grams: input.target_batch_grams,
@@ -426,16 +462,30 @@ export const useRecipeStore = create<RecipeState>()(
 
       addIngredient: (ingredient, grams = 100) =>
         set((state) => {
-          const items = [...state.items, makeLine(ingredient, grams)];
+          const canonicalId = canonicalIngredientId(ingredient);
+          const existingIndex = state.items.findIndex(
+            (item) => canonicalIngredientId(item.ingredient) === canonicalId,
+          );
+          const normalizedIngredient = normalizeIngredientIdentity(ingredient);
+          const items =
+            existingIndex >= 0
+              ? state.items.map((item, index) =>
+                  index === existingIndex ? { ...item, ingredient: normalizedIngredient } : item,
+                )
+              : [...state.items, makeLine(normalizedIngredient, grams)];
           return {
             items,
             // Visible GELATO re-routes its INTERNAL category from the real ingredients
             // (chocolate/nut/fruit/alcohol are classifications, never visible types).
-            ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
+            ...(state.visibleProductType === 'gelato'
+              ? { category: gelatoInternalCategory(items) }
+              : {}),
             // Explicitly adding an ingredient back clears its EXPLICIT
             // exclusion (frozen pin: an excluded ingredient returns ONLY
             // through an explicit add — never via the toolbox).
-            excludedIngredientIds: state.excludedIngredientIds.filter((id) => id !== ingredient.id),
+            excludedIngredientIds: state.excludedIngredientIds.filter(
+              (id) => canonicalIngredientIdFromSourceId(id) !== canonicalId,
+            ),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -447,7 +497,9 @@ export const useRecipeStore = create<RecipeState>()(
           if (items.length === state.items.length) return {}; // unknown line — no-op
           return {
             items,
-            ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
+            ...(state.visibleProductType === 'gelato'
+              ? { category: gelatoInternalCategory(items) }
+              : {}),
             // Owner FINAL CLOSURE C2 (supersedes the NIGHTLY removal-excludes
             // rule): „Remove row" = removed from the CURRENT recipe ONLY. It
             // must NOT silently become a permanent scientific exclusion — the
@@ -472,11 +524,15 @@ export const useRecipeStore = create<RecipeState>()(
         set((state) => {
           const target = state.items.find((item) => item.id === lineId);
           if (!target) return {}; // unknown line — no-op
-          const ingredientId = target.ingredient.id;
-          const items = state.items.filter((item) => item.ingredient.id !== ingredientId);
+          const ingredientId = canonicalIngredientId(target.ingredient);
+          const items = state.items.filter(
+            (item) => canonicalIngredientId(item.ingredient) !== ingredientId,
+          );
           return {
             items,
-            ...(state.visibleProductType === 'gelato' ? { category: gelatoInternalCategory(items) } : {}),
+            ...(state.visibleProductType === 'gelato'
+              ? { category: gelatoInternalCategory(items) }
+              : {}),
             // THE explicit exclusion write (owner FINAL CLOSURE C2 — the only
             // source). An explicit statement of unavailability stands even if
             // it empties the draft; only an explicit add or a draft-context
@@ -507,14 +563,15 @@ export const useRecipeStore = create<RecipeState>()(
               items.push(item);
               continue;
             }
-            const keep = keepByIngredient.get(item.ingredient.id);
+            const ingredientId = canonicalIngredientId(item.ingredient);
+            const keep = keepByIngredient.get(ingredientId);
             if (keep) {
               keep.planned_grams += item.planned_grams;
               merged = true;
               continue;
             }
             const copy = { ...item };
-            keepByIngredient.set(item.ingredient.id, copy);
+            keepByIngredient.set(ingredientId, copy);
             items.push(copy);
           }
           return merged ? { items, dirty: true, draftRevision: state.draftRevision + 1 } : {};
@@ -590,11 +647,12 @@ export const useRecipeStore = create<RecipeState>()(
           // bridge), not a deliberate zero — heal it on load so the UI shows
           // the truth. Explicit zeros live in §17 constraints, which are
           // session state and never stored with the recipe input.
-          items: input.items.map((item) =>
-            item.lock_type === 'grams' && item.planned_grams === 0
-              ? { ...item, lock_type: 'unlocked' as const }
-              : { ...item },
-          ),
+          items: input.items.map((item) => {
+            const normalized = normalizeRecipeItemIdentity({ ...item });
+            return normalized.lock_type === 'grams' && normalized.planned_grams === 0
+              ? { ...normalized, lock_type: 'unlocked' as const }
+              : normalized;
+          }),
           excludedIngredientIds: [], // a loaded recipe starts a fresh exclusion context
           activePresetId: null,
           savedRecipeId: link.savedId ?? null,

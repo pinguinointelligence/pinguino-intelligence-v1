@@ -16,12 +16,16 @@ import { AppNavDrawer } from './AppNavDrawer';
  */
 export function AppShell({
   actions,
+  brand,
   children,
   maxWidthClass = 'max-w-6xl',
   contentClassName,
   viewportLock = false,
 }: {
   actions?: ReactNode;
+  /** Optional page-owned official lockup. The default shell mark remains unchanged
+   * for routes outside an explicitly approved redesign scope. */
+  brand?: ReactNode;
   children: ReactNode;
   maxWidthClass?: string;
   contentClassName?: string;
@@ -42,33 +46,41 @@ export function AppShell({
         className={cn(
           'mx-auto flex items-center justify-between gap-4 px-6 py-4',
           maxWidthClass,
-          viewportLock && 'max-sm:grid max-sm:grid-cols-1 max-sm:items-stretch max-sm:gap-2 max-sm:px-3 max-sm:py-2 lg:w-full lg:shrink-0',
+          viewportLock &&
+            'max-sm:grid max-sm:grid-cols-1 max-sm:items-stretch max-sm:gap-2 max-sm:px-3 max-sm:py-2 lg:w-full lg:shrink-0',
         )}
-        style={{ paddingTop: viewportLock ? 'max(env(safe-area-inset-top), 0.5rem)' : 'max(env(safe-area-inset-top), 1rem)' }}
+        style={{
+          paddingTop: viewportLock
+            ? 'max(env(safe-area-inset-top), 0.5rem)'
+            : 'max(env(safe-area-inset-top), 1rem)',
+        }}
       >
         <Link
           to="/"
           aria-label={copy.shell.brand}
           className="flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
         >
-          <IvoryLogoMark size={22} tone="ink" />
-          <span className="text-sm font-light tracking-wordmark">{copy.shell.brand}</span>
+          {brand ?? (
+            <>
+              <IvoryLogoMark size={22} tone="ink" />
+              <span className="text-sm font-light tracking-wordmark">{copy.shell.brand}</span>
+            </>
+          )}
         </Link>
         {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
             never force horizontal page overflow (owner P0 responsive rule). */}
-        <div className={cn(
-          'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-          viewportLock && 'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between',
-        )}>
+        <div
+          className={cn(
+            'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
+            viewportLock && 'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between',
+          )}
+        >
           {actions}
           <AppNavDrawer />
         </div>
       </header>
       <main
-        className={cn(
-          contentClassName,
-          viewportLock && 'lg:min-h-0 lg:flex-1 lg:overflow-hidden',
-        )}
+        className={cn(contentClassName, viewportLock && 'lg:min-h-0 lg:flex-1 lg:overflow-hidden')}
       >
         {children}
       </main>

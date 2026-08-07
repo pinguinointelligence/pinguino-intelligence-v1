@@ -4,11 +4,17 @@ import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
 import { WorkbenchActionBar } from '@/features/pro-workbench/WorkbenchActionBar';
+import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
 
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
 
-const TIER: Record<string, string> = { eco: 'ECO', classic: 'Classic', premium: 'Premium', signature: 'Signature' };
+const TIER: Record<string, string> = {
+  eco: 'ECO',
+  classic: 'Classic',
+  premium: 'Premium',
+  signature: 'Signature',
+};
 const SERVING_LABEL: Record<string, string> = {
   fresh: pm.serving.fresh,
   temp_minus_11: pm.serving.minus11,
@@ -40,10 +46,13 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
   const name = nameDraft ?? savedRecipeName ?? '';
 
   const product = copy.studio.goal.productTypes[visibleProductType];
-  const serving = servingModeId ? (SERVING_LABEL[servingModeId] ?? `${temperatureC}°C`) : `${temperatureC}°C`;
-  const context = machineKind === 'home' && machineLabel
-    ? `${machineLabel} · ${batchGrams} g`
-    : `${product} · ${TIER[mode] ?? mode} · ${serving} · ${batchGrams} g`;
+  const serving = servingModeId
+    ? (SERVING_LABEL[servingModeId] ?? `${temperatureC}°C`)
+    : `${temperatureC}°C`;
+  const context =
+    machineKind === 'home' && machineLabel
+      ? `${machineLabel} · ${batchGrams} g`
+      : `${product} · ${TIER[mode] ?? mode} · ${serving} · ${batchGrams} g`;
 
   const statusKey: keyof typeof w.status = save.error
     ? 'error'
@@ -109,22 +118,70 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
         </label>
 
         <details className="relative shrink-0">
-          <summary className="grid size-9 cursor-pointer list-none place-items-center rounded-sm border border-ink/10 text-sm text-stone-600">•••</summary>
+          <summary className="grid size-9 cursor-pointer list-none place-items-center rounded-sm border border-ink/10 text-sm text-stone-600">
+            •••
+          </summary>
           <div className="absolute bottom-11 left-0 z-40 w-72 border border-ink/15 bg-white p-3 shadow-[0_8px_24px_rgba(16,17,19,0.1)]">
-            <p className="text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase">Receptura</p>
+            <p className="text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
+              Receptura
+            </p>
             <p className="mt-2 text-xs text-ink">{context}</p>
-            <p className="mt-1 text-[10px] text-stone-500">{currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} · {w.status[statusKey]}</p>
-            <a href="/pro/versions" className="mt-3 block border-t border-ink/10 pt-2 text-[10px] font-semibold text-review">Wersje · DO PRZEGLĄDU</a>
+            <p className="mt-1 text-[10px] text-stone-500">
+              {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
+              {w.status[statusKey]}
+            </p>
+            <a
+              href="/pro/versions"
+              className="mt-3 block border-t border-ink/10 pt-2 text-[10px] font-semibold text-stone-600"
+            >
+              Wersje
+              <ReviewDecisionLabel />
+            </a>
           </div>
         </details>
 
-        <span className="hidden min-w-0 flex-1 truncate text-[10px] text-stone-500 lg:block" data-testid="pro-workbar-context">{context}</span>
-        <span className={cn('hidden text-[10px] xl:block', statusKey === 'error' ? 'text-status-error' : statusKey === 'dirty' ? 'text-attention' : 'text-stone-500')} data-testid="pro-workbar-status">{w.status[statusKey]}</span>
+        <span
+          className="hidden min-w-0 flex-1 truncate text-[10px] text-stone-500 lg:block"
+          data-testid="pro-workbar-context"
+        >
+          {context}
+        </span>
+        <span
+          className={cn(
+            'hidden text-[10px] xl:block',
+            statusKey === 'error'
+              ? 'text-status-error'
+              : statusKey === 'dirty'
+                ? 'text-attention'
+                : 'text-stone-500',
+          )}
+          data-testid="pro-workbar-status"
+        >
+          {w.status[statusKey]}
+        </span>
         <WorkbenchActionBar onOpenPreview={onOpenPreview} />
       </div>
 
-      {nameError ? <p role="alert" className="mt-1 text-[10px] text-status-error" data-testid="pro-workbar-name-error">{nameError}</p> : null}
-      {save.error ? <p role="alert" className="mt-1 text-[10px] text-status-error" data-testid="pro-workbar-error">{save.error}</p> : blockedMsg ? <p className="mt-1 text-[10px] text-stone-500">{blockedMsg}</p> : null}
+      {nameError ? (
+        <p
+          role="alert"
+          className="mt-1 text-[10px] text-status-error"
+          data-testid="pro-workbar-name-error"
+        >
+          {nameError}
+        </p>
+      ) : null}
+      {save.error ? (
+        <p
+          role="alert"
+          className="mt-1 text-[10px] text-status-error"
+          data-testid="pro-workbar-error"
+        >
+          {save.error}
+        </p>
+      ) : blockedMsg ? (
+        <p className="mt-1 text-[10px] text-stone-500">{blockedMsg}</p>
+      ) : null}
     </section>
   );
 }

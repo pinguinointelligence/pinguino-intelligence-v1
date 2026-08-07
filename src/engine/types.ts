@@ -110,8 +110,27 @@ export interface EngineIngredientFlags {
   is_stabilizer?: boolean;
 }
 
+/**
+ * Data-lineage only. These values never participate in Engine science; they
+ * keep one ingredient identity intact across Mapper, private Products,
+ * templates, saved recipes and formulation previews.
+ */
+export type IngredientIdentityProvenance =
+  | 'mapper'
+  | 'private_product'
+  | 'reference'
+  | 'demo'
+  | 'template';
+
 export interface EngineIngredient {
   id: string;
+  /** Stable Mapper identity used for merge/dedupe. `id` remains the source id
+   * for backwards compatibility with persisted recipes and Engine fixtures. */
+  canonical_ingredient_id?: string;
+  /** Optional private Product identity when a product borrows a Mapper row. */
+  private_product_id?: string | null;
+  /** Where this representation entered the recipe. Diagnostic only. */
+  identity_provenance?: IngredientIdentityProvenance;
   name: string;
   category: IngredientCategory;
   composition: IngredientComponentProfile;

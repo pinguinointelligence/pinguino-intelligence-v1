@@ -810,6 +810,17 @@ export const copy = {
         'seed wzorca (template-controlled) — wzorzec reference_derived; dawka nierozstrzygnięta naukowo dla tego profilu',
       stabilizerSeedApproved: 'seed wzorca (template-controlled, zatwierdzony wzorzec)',
       stabilizerUserDraft: 'wartość bieżącego szkicu użytkownika',
+      monitorRevision: 'Rewizja Monitor/Engine',
+      formulationRevision: 'Rewizja formulacji',
+      identityTable: 'Tożsamość i stan linii',
+      identityLine: 'Linia',
+      identityCanonical: 'Kanoniczne ID',
+      identityProduct: 'Product ID',
+      identitySource: 'Źródło',
+      identityVisible: 'Widoczne g',
+      identityEffective: 'Efektywne g',
+      identityEngine: 'Engine g',
+      identityRevision: 'Rewizja',
     },
     /** Collapsed „Narzędzia zaawansowane" section — the secondary QA/diagnostic tools. */
     advancedTools: {

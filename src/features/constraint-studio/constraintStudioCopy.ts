@@ -193,6 +193,13 @@ export const constraintStudioCopy = {
       'zatwierdzona naukowo. Dane referencyjne służą wyłącznie diagnostyce — nie można ich ' +
       'zastosować jako receptury produkcyjnej. Wybierz zatwierdzony profil produktu albo ' +
       'wpisz własne gramatury i przelicz ponownie.',
+    diagnosticBatchMismatch: (sum: string, target: string) =>
+      `Suma propozycji (${sum}) nie zgadza się z celem partii (${target}). ` +
+      'Podgląd jest wyłącznie diagnostyczny i nie może zostać zastosowany.',
+    diagnosticDuplicates: (names: readonly string[]) =>
+      `Propozycja zawiera powtórzoną kanoniczną tożsamość składnika` +
+      `${names.length > 0 ? ` (${listPl(names)})` : ''}. ` +
+      'Podgląd jest wyłącznie diagnostyczny i nie może zostać zastosowany.',
     applyDisabledDiagnostic: 'Zastosowanie wyłączone (podgląd diagnostyczny)',
   },
 
@@ -206,6 +213,12 @@ export const constraintStudioCopy = {
     stale:
       'Receptura lub blokady zmieniły się od utworzenia tego podglądu. Podgląd został ' +
       'unieważniony — utwórz go ponownie. Receptura nie została zmieniona.',
+    invalidLines: (names: readonly string[]) =>
+      `Podgląd zawiera nieprawidłowe lub niestabilne linie` +
+      `${names.length > 0 ? ` (${listPl(names)})` : ''}. Receptura nie została zmieniona.`,
+    excludedIngredients: (names: readonly string[]) =>
+      `Podgląd przywraca wykluczone składniki` +
+      `${names.length > 0 ? ` (${listPl(names)})` : ''}. Receptura nie została zmieniona.`,
     /* Owner P0 Phase 6 — verbatim first sentence. */
     duplicates: (names: readonly string[]) =>
       `Podgląd zawiera zduplikowane składniki i nie może zostać zastosowany.` +
@@ -318,8 +331,7 @@ export const constraintStudioCopy = {
       `${candidates} ${candidates === 1 ? 'regulowany składnik' : 'regulowanych składników'}.`,
     evidenceCandidate: (name: string, current: string, from: string, to: string) =>
       `${name}: obecnie ${current}, testowano od ${from} do ${to}.`,
-    evidenceLimiting: (labels: readonly string[]) =>
-      `Parametry ograniczające: ${listPl(labels)}.`,
+    evidenceLimiting: (labels: readonly string[]) => `Parametry ograniczające: ${listPl(labels)}.`,
     evidenceProvisional:
       'Profil oceniany na zakresach prowizorycznych — wynik nie jest walidacją natywną.',
     /* Template similarity is PROVENANCE, never the score and never the reason. */
@@ -363,8 +375,7 @@ export const constraintStudioCopy = {
     incomplete: 'Receptura jest niekompletna — dodaj składniki i ustaw partię, aby przeliczyć.',
     notEngineReady: (names: readonly string[]) =>
       `Składniki bez pełnych danych silnika: ${listPl(names)}. Uzupełnij dane, aby przeliczyć.`,
-    verificationFailed:
-      'Kontrola bezpieczeństwa zatrzymała propozycję solvera.',
+    verificationFailed: 'Kontrola bezpieczeństwa zatrzymała propozycję solvera.',
     /** ALWAYS appended to every failure message (owner rule). */
     unchanged: 'Receptura nie została zmieniona.',
     /** Poured actuals put the solver in add-only rescue mode (§15) — say it. */

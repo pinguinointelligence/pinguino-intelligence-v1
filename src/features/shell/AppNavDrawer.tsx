@@ -6,6 +6,7 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { ReadinessBadge } from '@/features/design-review/ReadinessMarker';
+import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
 import {
   NAV_GROUP_ORDER,
   NAV_GROUP_TITLE,
@@ -15,7 +16,8 @@ import {
 } from './appNav';
 
 const s = copy.shell;
-const FOCUSABLE = 'a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])';
+const FOCUSABLE =
+  'a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])';
 
 const iconButton =
   'grid h-11 w-11 place-items-center rounded-full text-ink transition-colors hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
@@ -44,7 +46,11 @@ export function AppNavDrawer() {
 
   const loc = { pathname: location.pathname, search: location.search };
   const items = visibleNavItems(canPro);
-  const planLabel = canPro ? s.account.planPro : persona === 'home' ? s.account.planHome : s.account.planNone;
+  const planLabel = canPro
+    ? s.account.planPro
+    : persona === 'home'
+      ? s.account.planHome
+      : s.account.planNone;
 
   const close = () => setOpen(false);
 
@@ -96,7 +102,15 @@ export function AppNavDrawer() {
         className={iconButton}
         data-testid="app-nav-trigger"
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} aria-hidden>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.6}
+          aria-hidden
+        >
           <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
         </svg>
       </button>
@@ -123,7 +137,15 @@ export function AppNavDrawer() {
             >
               <span className="text-sm font-light tracking-wordmark">{s.menuTitle}</span>
               <button type="button" aria-label={s.closeMenu} onClick={close} className={iconButton}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.7}
+                  aria-hidden
+                >
                   <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
                 </svg>
               </button>
@@ -168,9 +190,7 @@ export function AppNavDrawer() {
                               className="max-w-[10rem] shrink-0 whitespace-normal text-right leading-tight"
                             />
                           ) : item.decision ? (
-                            <span className="shrink-0 text-[9px] font-semibold tracking-[0.08em] text-review uppercase">
-                              {item.decision}
-                            </span>
+                            <ReviewDecisionLabel label={item.decision} />
                           ) : null}
                         </Link>
                       );
@@ -188,11 +208,16 @@ export function AppNavDrawer() {
                 {s.groups.account}
               </p>
               {!authAvailable ? (
-                <p className="px-4 py-2 text-xs leading-relaxed text-stone-400">{s.account.unavailable}</p>
+                <p className="px-4 py-2 text-xs leading-relaxed text-stone-400">
+                  {s.account.unavailable}
+                </p>
               ) : authStatus === 'authed' && user ? (
                 <div className="px-4 py-2">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate text-sm text-ink" title={user.email ?? undefined}>
+                    <span
+                      className="min-w-0 truncate text-sm text-ink"
+                      title={user.email ?? undefined}
+                    >
                       {user.email ?? s.account.signedInAs}
                     </span>
                     <button
@@ -207,7 +232,9 @@ export function AppNavDrawer() {
                       {s.account.signOut}
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-stone-500" data-testid="app-nav-plan">{planLabel}</p>
+                  <p className="mt-1 text-xs text-stone-500" data-testid="app-nav-plan">
+                    {planLabel}
+                  </p>
                 </div>
               ) : (
                 <button

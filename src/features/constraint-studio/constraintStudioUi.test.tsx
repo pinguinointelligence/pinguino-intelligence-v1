@@ -236,11 +236,13 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     <ConstraintPreviewCard preview={syntheticPreview()} onApply={noop} onCancel={noop} />,
   );
 
-  it('renders the proposal header and the explicit Apply/Cancel pair', () => {
+  it('renders the proposal header and disables Apply when the proposal misses its batch target', () => {
     expect(html).toContain('PINGÜINO proponuje:');
-    expect(html).toContain('Zastosuj zmiany');
+    expect(html).toContain('data-testid="preview-apply-disabled"');
+    expect(html).toContain(copy.preview.applyDisabledDiagnostic);
     expect(html).toContain('Anuluj');
-    expect(html).toContain(copy.preview.applyNote);
+    expect(html).toContain('684 g');
+    expect(html).toContain('1000 g');
   });
 
   it('shows old→new with the locked-unchanged note and the U+2212 delta', () => {
@@ -315,7 +317,9 @@ describe('FeasibilityNotice (§18)', () => {
       violationsBefore: [{ metric: 'pod', direction: 'high' }],
       evaluationsUsed: 12,
     };
-    const html = render(<FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />);
+    const html = render(
+      <FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />,
+    );
     expect(html).toContain('Nie można osiągnąć optymalnego balansu przy obecnych blokadach.');
     expect(html).toContain('Sucrose — zablokowane na 700 g.');
     expect(html).toContain('Aby wejść w optymalny zakres, ustaw maksymalnie 612 g.');
@@ -334,7 +338,9 @@ describe('FeasibilityNotice (§18)', () => {
       violationsBefore: [{ metric: 'alcohol', direction: 'high' }],
       evaluationsUsed: 20,
     };
-    const html = render(<FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />);
+    const html = render(
+      <FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />,
+    );
     expect(html).toContain(
       'Przy obecnych blokadach nie znaleziono rozwiązania w optymalnym zakresie. ' +
         'Odblokuj jeden z zaznaczonych składników lub zmień batch.',
@@ -363,7 +369,9 @@ describe('FeasibilityNotice (§18)', () => {
       violationsBefore: [{ metric: 'pod', direction: 'high' }],
       evaluationsUsed: 20,
     };
-    const html = render(<FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />);
+    const html = render(
+      <FeasibilityNotice input={input} analysis={analysis} handlers={handlers} />,
+    );
     expect(html).toContain('wspólnie uniemożliwiają osiągnięcie optymalnego zakresu');
     expect(html).toContain('Sucrose i Dextrose');
     expect(html).toContain('odblokuj jeden z nich, zmień zakres, zwiększ batch');
@@ -411,7 +419,9 @@ describe('ConstraintHistoryPanel (§20)', () => {
   });
 
   it('renders the empty state in Polish', () => {
-    const html = render(<ConstraintHistoryPanel history={[]} undoAvailable={false} onUndo={noop} />);
+    const html = render(
+      <ConstraintHistoryPanel history={[]} undoAvailable={false} onUndo={noop} />,
+    );
     expect(html).toContain('Brak zastosowanych zmian w tej sesji.');
   });
 });

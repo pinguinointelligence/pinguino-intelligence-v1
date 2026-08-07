@@ -4,6 +4,7 @@
  * correction context. No recipe math — the engine owns all numbers.
  */
 import type { CorrectionContext, RecipeInput } from '@/engine';
+import { normalizeRecipeItemIdentity } from '@/data/ingredients/canonicalIngredientIdentity';
 import { canonicalInternalCategory } from '@/features/studio/productType';
 import type { RecipeState } from '@/stores/recipeStore';
 
@@ -57,11 +58,25 @@ export function effectiveMachineCapacityGrams(state: RecipeInputState): number |
  * No engine value is touched: `canonicalInternalCategory` only PICKS between existing
  * engine categories, and returns an already-native category byte-identical.
  */
-export function buildRecipeInput(state: RecipeInputState): RecipeInput {
+export type RecipeExecutionContext = 'planning' | 'actual_batch';
+
+export function buildRecipeInput(
+  state: RecipeInputState,
+  context: RecipeExecutionContext = 'planning',
+): RecipeInput {
+  // A few shallow UI/test adapters legitimately provide a pre-hydration
+  // store shape. Treat that transient absence as an empty draft, never throw.
+  const items = state.items ?? [];
   return {
-    items: state.items,
+    // Recipe/Profile/Monitor/Formulation/Preview/Save are PLANNING surfaces.
+    // Persisted poured amounts belong only to an explicitly selected
+    // production context and may never silently override the visible grams.
+    items: items.map((item) => ({
+      ...normalizeRecipeItemIdentity(item),
+      actual_grams: context === 'actual_batch' ? item.actual_grams : null,
+    })),
     mode: state.mode,
-    category: canonicalInternalCategory(state.category, state.items),
+    category: canonicalInternalCategory(state.category, items),
     target_temperature_c: state.target_temperature_c,
     target_batch_grams: state.target_batch_grams,
     machine_capacity_grams: effectiveMachineCapacityGrams(state),

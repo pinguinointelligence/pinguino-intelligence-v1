@@ -10,7 +10,11 @@ import {
   formatGramsDeltaPl,
   formatGramsPl,
 } from '../constraintStudioCopy';
-import type { ConstraintPreview, PreviewLineDiff } from '../applyPipeline';
+import {
+  findCanonicalDuplicateIngredients,
+  type ConstraintPreview,
+  type PreviewLineDiff,
+} from '../applyPipeline';
 
 function lineNote(line: PreviewLineDiff): string {
   if (line.kind === 'added') return copy.preview.added;
@@ -87,12 +91,14 @@ export function ConstraintPreviewCard({
   // residual is only meaningful for a purely planned recipe.
   const hasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
   const residualExceeded = !hasActuals && Math.abs(afterBatch - targetBatch) > 0.1;
+  const canonicalDuplicates = findCanonicalDuplicateIngredients(preview.proposedInput);
+  const integrityDiagnostic = residualExceeded || canonicalDuplicates.length > 0;
 
   // ACCEPTANCE ADDENDUM (1+3): a diagnostic-only preview (hard-native residual
   // violations or an iteration-capped result) can never be applied — the
   // pipeline door enforces this structurally; the card says WHY and disables
   // the Apply control honestly (never a clickable button that fails later).
-  const diagnostic = preview.diagnosticOnly === true;
+  const diagnostic = preview.diagnosticOnly === true || integrityDiagnostic;
   const hardResiduals = preview.hardResidualMetrics ?? [];
   const diagnosticReason = preview.diagnosticReason;
   // Owner addendum item 4 — the trustless outcome classification.
@@ -119,11 +125,18 @@ export function ConstraintPreviewCard({
             {copy.preview.diagnosticBadge}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-ivory/80">
-            {diagnosticReason === 'reference_derived'
-              ? copy.preview.diagnosticReferenceDerived(preview.formulation?.templateId ?? '—')
-              : hardResiduals.length > 0
-                ? copy.preview.diagnosticHardResiduals(hardResiduals)
-                : copy.preview.diagnosticIterationCap}
+            {canonicalDuplicates.length > 0
+              ? copy.preview.diagnosticDuplicates(canonicalDuplicates)
+              : residualExceeded
+                ? copy.preview.diagnosticBatchMismatch(
+                    formatGramsPl(afterBatch),
+                    formatGramsPl(targetBatch),
+                  )
+                : diagnosticReason === 'reference_derived'
+                  ? copy.preview.diagnosticReferenceDerived(preview.formulation?.templateId ?? '—')
+                  : hardResiduals.length > 0
+                    ? copy.preview.diagnosticHardResiduals(hardResiduals)
+                    : copy.preview.diagnosticIterationCap}
           </p>
         </div>
       ) : null}
@@ -292,7 +305,7 @@ export function ConstraintPreviewCard({
             disabled
             aria-disabled="true"
             data-testid="preview-apply-disabled"
-            className="inline-flex flex-1 cursor-not-allowed items-center justify-center rounded-md border border-ivory/20 bg-ivory/10 px-4 py-2.5 text-sm font-medium text-ivory/50"
+            className="inline-flex flex-1 cursor-not-allowed items-center justify-center rounded-md border border-ivory/20 bg-ivory/10 px-4 py-2.5 text-sm font-medium text-ivory/70"
           >
             {copy.preview.applyDisabledDiagnostic}
           </button>

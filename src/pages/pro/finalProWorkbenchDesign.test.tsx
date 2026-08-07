@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -8,9 +9,15 @@ import { starterMilkBase } from '@/features/recipe-constraints/constraintFixture
 import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuilder';
 import { APP_NAV_ITEMS } from '@/features/shell/appNav';
 import { SurfaceToneContext } from '@/components/ui/surface';
+import { shouldActivateMobileCockpitModal } from '@/features/studio/mobileCockpitModal';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
+const ROOT = resolve(SRC, '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
+const sha256 = (...parts: string[]) =>
+  createHash('sha256')
+    .update(readFileSync(join(ROOT, ...parts)))
+    .digest('hex');
 
 const renderIngredients = (mode: 'recipe' | 'production') => {
   const input = starterMilkBase();
@@ -54,15 +61,42 @@ describe('final Pro visual system', () => {
     const tokens = read('styles', 'tokens.css');
     expect(tokens).toContain('--color-nonproduction-pink');
   });
+
+  it('uses the exact owner-provided logo source and the required cockpit background path', () => {
+    expect(sha256('public', 'logo', 'PI-logo-blackwhite.pdf')).toBe(
+      'b9c77cc5dfe399b1a558a0b3d33d1f3c3f434fd0322f87145e3fd5f59cac6cf9',
+    );
+    expect(existsSync(join(ROOT, 'public', 'logo', 'PI-logo-blackwhite-web.png'))).toBe(true);
+    expect(existsSync(join(ROOT, 'public', 'images', 'ice-cockpit-bg.png'))).toBe(true);
+    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+    const logo = read('components', 'shared', 'OfficialProLogo.tsx');
+    const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    expect(page).toContain('brand={<OfficialProLogo />}');
+    expect(logo).toContain("'/logo/PI-logo-blackwhite-web.png'");
+    expect(logo).toContain('data-logo-source="/logo/PI-logo-blackwhite.pdf"');
+    expect(panel).toContain('src="/images/ice-cockpit-bg.png"');
+    expect(panel).toContain('opacity-[0.16]');
+    const cockpit = panel.slice(panel.indexOf('data-testid="education-ice-cockpit"') - 180);
+    expect(cockpit.slice(0, 360)).not.toContain('overflow-hidden');
+  });
 });
 
 describe('one global menu and four local contexts', () => {
   it('keeps every accepted global Pro route in the hamburger inventory', () => {
     const routes = new Set(APP_NAV_ITEMS.map((item) => item.to));
     for (const route of [
-      '/pro/recipe', '/pro/monitor', '/pro/versions', '/pro/production', '/pro/history',
-      '/pro/costs', '/pro/exports', '/pro/settings', '/pro/machine', '/pro/tools',
-    ]) expect(routes, route).toContain(route);
+      '/pro/recipe',
+      '/pro/monitor',
+      '/pro/versions',
+      '/pro/production',
+      '/pro/history',
+      '/pro/costs',
+      '/pro/exports',
+      '/pro/settings',
+      '/pro/machine',
+      '/pro/tools',
+    ])
+      expect(routes, route).toContain(route);
     expect(new Set(APP_NAV_ITEMS.map((item) => item.id)).size).toBe(APP_NAV_ITEMS.length);
   });
 
@@ -95,7 +129,8 @@ describe('recipe and production table modes', () => {
 
   it('Production replaces builder controls with plan, actual, difference and status', () => {
     const html = renderIngredients('production');
-    for (const label of ['Planowane', 'Faktycznie', 'Różnica', 'Status']) expect(html).toContain(label);
+    for (const label of ['Planowane', 'Faktycznie', 'Różnica', 'Status'])
+      expect(html).toContain(label);
     expect(html).not.toContain('Szukaj składników');
     expect(html).not.toContain('Cena/kg');
     expect(html).toContain('data-readiness="W PRZYGOTOWANIU"');
@@ -122,11 +157,29 @@ describe('profile semantics and readiness', () => {
     expect(panel).toContain("'Zbalansowana'");
     expect(panel).toContain("'Zwarta'");
     expect(panel).not.toMatch(/structureLabel[^\n]*krem/i);
+    for (const label of [
+      'Mniej słodkie',
+      'Bardziej słodkie',
+      'Twardsze',
+      'Bardziej miękkie',
+      'Mniej kremowe',
+      'Bardziej kremowe',
+      'Delikatniejsze',
+      'Intensywniejsze',
+      'Wymaga uwagi',
+      'Stabilna',
+      'Bardzo stabilna',
+    ])
+      expect(panel).toContain(label);
   });
 
   it('marks Sorbet, Vegan, Protein and quality behavior honestly', () => {
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    for (const type of ["visibleProductType === 'sorbet'", "visibleProductType === 'vegan'", "visibleProductType === 'protein'"]) {
+    for (const type of [
+      "visibleProductType === 'sorbet'",
+      "visibleProductType === 'vegan'",
+      "visibleProductType === 'protein'",
+    ]) {
       expect(settings).toContain(type);
     }
     expect(settings).toContain('Poziomy zmieniają wagi i ranking');
@@ -145,8 +198,16 @@ describe('profile semantics and readiness', () => {
 describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('protects internal bands while showing red-green-gold-green-red position scales', () => {
     const monitor = read('features', 'user-monitor', 'UserMonitorPro.tsx');
+    const summary = read('features', 'pro-workbench', 'MonitorLiveSummary.tsx');
+    const diagnostic = read('features', 'studio', 'OwnerDiagnosticPanel.tsx');
     const scale = monitor.slice(monitor.indexOf('data-testid="monitor-protected-scale"'));
-    const order = ['bg-status-error/75', 'bg-status-ideal/70', 'bg-gold/85', 'bg-status-ideal/70', 'bg-status-error/75'];
+    const order = [
+      'bg-status-error/75',
+      'bg-status-ideal/70',
+      'bg-gold/85',
+      'bg-status-ideal/70',
+      'bg-status-error/75',
+    ];
     let cursor = 0;
     for (const token of order) {
       const next = scale.indexOf(token, cursor);
@@ -154,11 +215,24 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
       cursor = next + token.length;
     }
     expect(scale.slice(0, 700)).not.toMatch(/min|max|boundary/i);
+    expect(summary).not.toContain('band.bandMin.toFixed');
+    expect(summary).not.toContain('band.bandMax.toFixed');
+    expect(summary).toContain("'poniżej'");
+    expect(summary).toContain("'powyżej'");
+    expect(diagnostic).not.toContain('a.window.minPercentOfTotalMix');
+    expect(diagnostic).not.toContain('a.window.maxPercentOfTotalMix');
+    expect(diagnostic).not.toContain('a.window.mapperId');
   });
 
   it('keeps full Monitor modules mounted and Preview as a fixed overlay', () => {
     const panel = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
-    for (const component of ['UserMonitorPro', 'NutritionCostScorePanel', 'CorrectionPanel', 'OverallScoreCard', 'OwnerDiagnosticPanel']) {
+    for (const component of [
+      'UserMonitorPro',
+      'NutritionCostScorePanel',
+      'CorrectionPanel',
+      'OverallScoreCard',
+      'OwnerDiagnosticPanel',
+    ]) {
       expect(panel).toContain(component);
     }
     const preview = read('features', 'pro-core', 'ProRecalcPanel.tsx');
@@ -179,9 +253,33 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(surface).not.toContain('overflow-x-auto');
   });
 
+  it('treats the mobile cockpit as a real modal with keyboard and scroll containment', () => {
+    const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
+    expect(shouldActivateMobileCockpitModal(true, true)).toBe(true);
+    expect(shouldActivateMobileCockpitModal(true, false)).toBe(false);
+    expect(shouldActivateMobileCockpitModal(false, true)).toBe(false);
+    expect(surface).toContain('role="dialog"');
+    expect(surface).toContain('aria-modal="true"');
+    expect(surface).toContain('aria-haspopup="dialog"');
+    expect(surface).toContain('ref={cockpitPanelRef}');
+    expect(surface).toContain('ref={cockpitTriggerRef}');
+    expect(surface).toContain('window.matchMedia(MOBILE_COCKPIT_QUERY)');
+    expect(surface).toContain(
+      'shouldActivateMobileCockpitModal(mobileCockpitOpen, mobileViewport)',
+    );
+    expect(surface).toContain("e.key === 'Escape'");
+    expect(surface).toContain("e.key !== 'Tab'");
+    expect(surface).toContain("body.style.overflow = 'hidden'");
+  });
+
   it('uses pink only through explicit readiness states with accessible limitations', () => {
     const readiness = read('features', 'design-review', 'ReadinessMarker.tsx');
-    for (const state of ['W PRZYGOTOWANIU', 'TESTOWE / NIEPRODUKCYJNE', 'DO PRZEGLĄDU', 'CZĘŚCIOWO PODŁĄCZONE']) {
+    for (const state of [
+      'W PRZYGOTOWANIU',
+      'TESTOWE / NIEPRODUKCYJNE',
+      'DO PRZEGLĄDU',
+      'CZĘŚCIOWO PODŁĄCZONE',
+    ]) {
       expect(readiness).toContain(state);
     }
     expect(readiness).toContain('Ograniczenie:');

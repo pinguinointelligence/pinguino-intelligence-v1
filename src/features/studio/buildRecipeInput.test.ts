@@ -38,7 +38,9 @@ describe('buildRecipeInput', () => {
   // test protects — every store field maps through to the engine contract —
   // is unchanged and re-pinned below, plus the canonicalization itself.
   it('maps store state to a valid RecipeInput including goals', () => {
-    const input = buildRecipeInput(state([line('raspberry', 300, null, 'main'), line('milk_3_5', 500)]));
+    const input = buildRecipeInput(
+      state([line('raspberry', 300, null, 'main'), line('milk_3_5', 500)]),
+    );
     expect(input.mode).toBe('premium');
     expect(input.category).toBe('milk_gelato');
     expect(input.target_temperature_c).toBe(-12);
@@ -74,7 +76,9 @@ describe('buildRecipeInput', () => {
   // Engine, so it can never raise `machine_capacity_exceeded`.
   it('an UNPROVENANCED capacity never reaches the engine', () => {
     const base = state([line('milk_3_5', 500)]);
-    expect(buildRecipeInput({ ...base, machine_capacity_source: null }).machine_capacity_grams).toBeNull();
+    expect(
+      buildRecipeInput({ ...base, machine_capacity_source: null }).machine_capacity_grams,
+    ).toBeNull();
     const legacy: RecipeInputState = { ...base };
     delete legacy.machine_capacity_source;
     expect(buildRecipeInput(legacy).machine_capacity_grams).toBeNull();
@@ -95,7 +99,17 @@ describe('recipeContext', () => {
 
   it('switches to actual_batch when any line has actual grams', () => {
     expect(
-      recipeContext(buildRecipeInput(state([line('milk_3_5', 500, 520), line('sucrose', 130)]))),
+      recipeContext(
+        buildRecipeInput(state([line('milk_3_5', 500, 520), line('sucrose', 130)]), 'actual_batch'),
+      ),
     ).toBe('actual_batch');
+  });
+
+  it('does not let stale actual grams override normal Recipe/Monitor planning', () => {
+    const planning = buildRecipeInput(
+      state([line('milk_3_5', 500, 520), line('sucrose', 130, 120)]),
+    );
+    expect(planning.items.map((item) => item.actual_grams)).toEqual([null, null]);
+    expect(recipeContext(planning)).toBe('planning');
   });
 });

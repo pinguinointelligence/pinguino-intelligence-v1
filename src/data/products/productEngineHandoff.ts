@@ -23,6 +23,7 @@ import { blocksAutoVerify, detectRedFlags, type RedFlagInput } from './productRe
 import { resolveProductEngineValues, type ProductEngineInput } from './productEngineResolver';
 
 export interface ProductHandoffInput extends ProductEngineInput, RedFlagInput {
+  id?: string | null;
   product_code?: string | null;
   product_name_display?: string | null;
 }
@@ -60,7 +61,9 @@ export function prepareProductEngineIngredient(
       not_independently_measured: resolution.not_independently_measured,
       blocked_by_red_flags: blocked,
       warnings: redFlags.map((f) => f.reason),
-      reason: !reference ? `No reference profile available for ${product.matched_basement_id ?? 'this product'}.` : resolution.reason,
+      reason: !reference
+        ? `No reference profile available for ${product.matched_basement_id ?? 'this product'}.`
+        : resolution.reason,
     };
   }
 
@@ -69,6 +72,12 @@ export function prepareProductEngineIngredient(
   const ingredient: EngineIngredient = {
     ...base,
     id: (product.product_code && product.product_code.trim()) || base.id,
+    canonical_ingredient_id: base.canonical_ingredient_id ?? base.id,
+    private_product_id:
+      (product.id && product.id.trim()) ||
+      (product.product_code && product.product_code.trim()) ||
+      null,
+    identity_provenance: 'private_product',
     name: (product.product_name_display && product.product_name_display.trim()) || base.name,
     pac_value: resolution.pac_value,
     pod_value: resolution.pod_value,

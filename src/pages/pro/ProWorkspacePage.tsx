@@ -49,6 +49,7 @@ import type { ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel'
 import { useStudioResult } from '@/features/studio/useStudioResult';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
+import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 
 const w = copy.proWorkspace;
 
@@ -124,7 +125,10 @@ function ProTopActions({
   const score = monitorScoreView(result).match;
 
   return (
-    <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-4" data-testid="pro-top-workbar">
+    <div
+      className="flex min-w-0 items-center justify-end gap-2 sm:gap-4"
+      data-testid="pro-top-workbar"
+    >
       <span className="hidden items-center gap-2 text-[11px] text-stone-600 md:flex">
         <span className={`size-1.5 rounded-full ${dirty ? 'bg-gold' : 'bg-status-ideal'}`} />
         {dirty ? copy.proWorkbar.pendingRecalc : copy.proWorkbar.status.clean}
@@ -137,9 +141,16 @@ function ProTopActions({
       >
         {copy.proWorkbar.recalc}
       </button>
-      <span className="flex min-w-[4.5rem] items-center gap-2 border-l border-ink/10 pl-3" data-testid="pro-top-score">
-        <span className="font-mono text-lg font-semibold tabular-nums text-ink">{score.display}</span>
-        <span className="hidden max-w-28 text-[10px] leading-tight text-stone-500 xl:block">{score.label}</span>
+      <span
+        className="flex min-w-[4.5rem] items-center gap-2 border-l border-ink/10 pl-3"
+        data-testid="pro-top-score"
+      >
+        <span className="font-mono text-lg font-semibold tabular-nums text-ink">
+          {score.display}
+        </span>
+        <span className="hidden max-w-28 text-[10px] leading-tight text-stone-500 xl:block">
+          {score.label}
+        </span>
       </span>
       <PersonaChip persona={persona} />
       <DevPersonaSwitch persona={persona} />
@@ -321,6 +332,7 @@ export function ProWorkspacePage() {
     >
       <AppShell
         viewportLock={workbench}
+        brand={<OfficialProLogo />}
         actions={
           workbench ? (
             <ProTopActions persona={persona} onRecalculate={startRecalc} />

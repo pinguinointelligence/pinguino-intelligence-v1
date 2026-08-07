@@ -15,6 +15,12 @@
  * file (science freeze), and this module performs no I/O of any kind.
  */
 
+import {
+  CORE_INGREDIENT_IDENTITIES,
+  canonicalIngredientIdFromSourceId,
+  coreIdentityByToolboxId,
+} from '@/data/ingredients/canonicalIngredientIdentity';
+
 export interface ToolboxCanonicalIdentity {
   /** Engine correction-candidate id (DEFAULT_CORRECTION_CANDIDATES). */
   toolboxId: string;
@@ -24,22 +30,11 @@ export interface ToolboxCanonicalIdentity {
   namePl: string;
 }
 
-const CANONICAL: readonly ToolboxCanonicalIdentity[] = [
-  { toolboxId: 'sucrose', mapperId: 'PI-ING-000514', namePl: 'Sacharoza (cukier)' },
-  { toolboxId: 'dextrose', mapperId: 'PI-ING-000494', namePl: 'Dekstroza' },
-  { toolboxId: 'tara_gum', mapperId: 'PI-ING-000492', namePl: 'Guma tara' },
-  { toolboxId: 'cream_30', mapperId: 'PI-ING-000180', namePl: 'Śmietanka 30%' },
-  { toolboxId: 'milk_3_5', mapperId: 'PI-ING-000236', namePl: 'Mleko 3,5%' },
-  { toolboxId: 'smp', mapperId: 'PI-ING-000270', namePl: 'Odtłuszczone mleko w proszku' },
-  { toolboxId: 'inulin', mapperId: 'PI-ING-000456', namePl: 'Inulina' },
-  { toolboxId: 'water', mapperId: 'PI-ING-001409', namePl: 'Woda' },
-];
-
-const BY_TOOLBOX_ID = new Map(CANONICAL.map((entry) => [entry.toolboxId, entry]));
+const CANONICAL: readonly ToolboxCanonicalIdentity[] = CORE_INGREDIENT_IDENTITIES;
 
 /** Exact-identity lookup (null = candidate has no canonical registry entry). */
 export function canonicalToolboxIdentity(toolboxId: string): ToolboxCanonicalIdentity | null {
-  return BY_TOOLBOX_ID.get(toolboxId) ?? null;
+  return coreIdentityByToolboxId(toolboxId);
 }
 
 /**
@@ -53,9 +48,11 @@ export function isToolboxCandidateExcluded(
   toolboxId: string,
   excluded: ReadonlySet<string>,
 ): boolean {
-  if (excluded.has(toolboxId)) return true;
-  const canonical = BY_TOOLBOX_ID.get(toolboxId);
-  return canonical !== null && canonical !== undefined && excluded.has(canonical.mapperId);
+  const canonical = coreIdentityByToolboxId(toolboxId);
+  if (!canonical) return excluded.has(toolboxId);
+  return [...excluded].some(
+    (excludedId) => canonicalIngredientIdFromSourceId(excludedId) === canonical.mapperId,
+  );
 }
 
 export function listToolboxCanonicalIdentities(): readonly ToolboxCanonicalIdentity[] {

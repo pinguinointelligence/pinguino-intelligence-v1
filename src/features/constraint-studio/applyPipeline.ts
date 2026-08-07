@@ -73,6 +73,12 @@ import {
 } from '@/features/formulation/templateRegistry';
 import { isToolboxCandidateExcluded } from '@/features/formulation/toolboxCanonical';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
+import {
+  canonicalDuplicateIds,
+  canonicalIngredientId,
+  canonicalIngredientIdFromSourceId,
+  ingredientProvenance,
+} from '@/data/ingredients/canonicalIngredientIdentity';
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
 
@@ -86,6 +92,10 @@ export function workingStateFingerprint(input: RecipeInput, set: ConstraintSet):
   return JSON.stringify({
     items: input.items.map((item) => [
       item.id,
+      canonicalIngredientId(item.ingredient),
+      item.ingredient.id,
+      item.ingredient.private_product_id ?? null,
+      ingredientProvenance(item.ingredient),
       item.planned_grams,
       item.actual_grams,
       item.lock_type,
@@ -500,7 +510,8 @@ export function mergeByCanonicalIdentity(base: RecipeInput, proposed: RecipeInpu
     const isBaseLine = baseIds.has(item.id) && !seenIds.has(item.id);
     seenIds.add(item.id);
     const plannable = item.lock_type === 'unlocked' && item.actual_grams === null;
-    const keepLineId = plannable ? keepLineByIngredient.get(item.ingredient.id) : undefined;
+    const ingredientKey = canonicalIngredientId(item.ingredient);
+    const keepLineId = plannable ? keepLineByIngredient.get(ingredientKey) : undefined;
 
     if (plannable && keepLineId !== undefined && !isBaseLine) {
       // Solver-added duplicate of an existing plannable line → fold grams in.
@@ -512,7 +523,7 @@ export function mergeByCanonicalIdentity(base: RecipeInput, proposed: RecipeInpu
       }
     }
     if (plannable && keepLineId === undefined) {
-      keepLineByIngredient.set(item.ingredient.id, item.id);
+      keepLineByIngredient.set(ingredientKey, item.id);
     }
     merged.push({ item, extraGrams: 0 });
   }
@@ -531,7 +542,8 @@ const plannableCounts = (input: RecipeInput): Map<string, number> => {
   const counts = new Map<string, number>();
   for (const item of input.items) {
     if (item.lock_type !== 'unlocked' || item.actual_grams !== null) continue;
-    counts.set(item.ingredient.id, (counts.get(item.ingredient.id) ?? 0) + 1);
+    const ingredientKey = canonicalIngredientId(item.ingredient);
+    counts.set(ingredientKey, (counts.get(ingredientKey) ?? 0) + 1);
   }
   return counts;
 };
@@ -544,13 +556,24 @@ const plannableCounts = (input: RecipeInput): Map<string, number> => {
 export function findNewDuplicateIngredients(base: RecipeInput, proposed: RecipeInput): string[] {
   const before = plannableCounts(base);
   const names: string[] = [];
-  const nameByIngredient = new Map(proposed.items.map((item) => [item.ingredient.id, item.ingredient.name]));
+  const nameByIngredient = new Map(
+    proposed.items.map((item) => [canonicalIngredientId(item.ingredient), item.ingredient.name]),
+  );
   for (const [ingredientId, count] of plannableCounts(proposed)) {
     if (count > Math.max(1, before.get(ingredientId) ?? 0)) {
       names.push(nameByIngredient.get(ingredientId) ?? ingredientId);
     }
   }
   return names;
+}
+
+/** Strict normal-recipe invariant: no repeated canonical ingredient at all. */
+export function findCanonicalDuplicateIngredients(input: RecipeInput): string[] {
+  const duplicateIds = new Set(canonicalDuplicateIds(input.items));
+  const names = new Map(
+    input.items.map((item) => [canonicalIngredientId(item.ingredient), item.ingredient.name]),
+  );
+  return [...duplicateIds].map((id) => names.get(id) ?? id);
 }
 
 /** Sum of planned grams — the visible batch total. */
@@ -639,9 +662,7 @@ export function buildLineDiffs(
 }
 
 const lockedIngredientNames = (input: RecipeInput, set: ConstraintSet): string[] =>
-  input.items
-    .filter((item) => isConstrained(set, item.id))
-    .map((item) => item.ingredient.name);
+  input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.name);
 
 /* ── preview builders ────────────────────────────────────────────────────── */
 
@@ -940,19 +961,46 @@ function solveOneRound(
   let proposal: CorrectionProposal | undefined;
   for (const candidate of proposed.proposals) {
     if (candidate.actions.length === 0) continue;
-    const addBlocked = candidate.actions.some(
-      (action) => action.type === 'add' && constrainedIngredientIds.has(action.ingredient_id),
-    );
+    // An ADD for a canonical ingredient already in the recipe becomes a
+    // top-up of that stable line. A held/poured copy cannot be topped up and
+    // blocks the move instead of creating a semantic duplicate.
+    const canonicalCandidate: CorrectionProposal = {
+      ...candidate,
+      actions: candidate.actions.map((action) => {
+        if (action.type !== 'add' || action.target_line_id !== undefined) return action;
+        const canonicalId = canonicalIngredientIdFromSourceId(action.ingredient_id);
+        const existing = current.items.find(
+          (item) => canonicalIngredientId(item.ingredient) === canonicalId,
+        );
+        if (
+          existing &&
+          existing.lock_type === 'unlocked' &&
+          existing.actual_grams === null &&
+          !heldLineIds.has(existing.id)
+        ) {
+          return { ...action, target_line_id: existing.id };
+        }
+        return action;
+      }),
+    };
+    const addBlocked = canonicalCandidate.actions.some((action) => {
+      if (action.type !== 'add' || action.target_line_id !== undefined) return false;
+      const canonicalId = canonicalIngredientIdFromSourceId(action.ingredient_id);
+      return (
+        constrainedIngredientIds.has(canonicalId) ||
+        current.items.some((item) => canonicalIngredientId(item.ingredient) === canonicalId)
+      );
+    });
     // NEVER-REINTRODUCE (Agent R handoff): a solver ADD of an explicitly
     // excluded ingredient — engine id OR canonical Mapper id — is rejected.
-    const excludedBlocked = candidate.actions.some(
+    const excludedBlocked = canonicalCandidate.actions.some(
       (action) =>
         action.type === 'add' &&
         isToolboxCandidateExcluded(action.ingredient_id, excludedIngredientIds),
     );
     // Owner Phase 9 (approved-bounds wiring): a solver action may never move a
     // registered stabilizer outside its approved Mapper window.
-    const dosageBlocked = candidate.actions.some((action) =>
+    const dosageBlocked = canonicalCandidate.actions.some((action) =>
       violatesApprovedStabilizerDosage(current, action),
     );
     // Owner CURRENT-DRAFT P0 — §17 LINE HOLD: the engine's REDUCE path selects
@@ -960,11 +1008,11 @@ function solveOneRound(
     // padlock layer, so a `locked`/`range` line could be moved INSIDE a
     // preview (the Apply door then refused it — an honest but useless dead
     // end). Any action targeting a held line is refused here instead.
-    const heldLineBlocked = candidate.actions.some(
+    const heldLineBlocked = canonicalCandidate.actions.some(
       (action) => action.target_line_id !== undefined && heldLineIds.has(action.target_line_id),
     );
     if (!addBlocked && !excludedBlocked && !dosageBlocked && !heldLineBlocked) {
-      proposal = candidate;
+      proposal = canonicalCandidate;
       break;
     }
     filtered.push({
@@ -983,7 +1031,9 @@ function solveOneRound(
     // impossible proposal names its blocking constraint.
     const diagnosed = proposed.proposals.find((candidate) => candidate.actions.length === 0);
     const detail: NoProposalDetail =
-      diagnosed?.blocking?.constraint === 'no_candidate' ? 'missing_candidate' : 'solver_fixed_point';
+      diagnosed?.blocking?.constraint === 'no_candidate'
+        ? 'missing_candidate'
+        : 'solver_fixed_point';
     return { applied: null, violated, detail, filtered };
   }
   const applied = applyAutoFix({ input: solverInput, proposal, context });
@@ -1223,7 +1273,8 @@ function iterateSolverToFixedPoint(
         round,
         move: 'none',
         outcome: 'none',
-        rejectionReason: outcome.detail === 'provisional_band_conflict' ? 'solver_fixed_point' : outcome.detail,
+        rejectionReason:
+          outcome.detail === 'provisional_band_conflict' ? 'solver_fixed_point' : outcome.detail,
         violationsBefore: current.violations,
         severityBefore: current.severityPoints,
         violationsAfter: null,
@@ -1326,7 +1377,7 @@ function iterateSolverToFixedPoint(
       draftPlannedSumGrams: plannedSum(base),
       draftLineGrams: base.items.map((item) => ({
         lineId: item.id,
-        ingredientId: item.ingredient.id,
+        ingredientId: canonicalIngredientId(item.ingredient),
         grams: item.planned_grams,
       })),
       startPlannedSumGrams: plannedSum(start),
@@ -1354,7 +1405,9 @@ function iterateFormulationSeed(
   options: FormulationOptions = {},
 ): ReturnType<typeof iterateSolverToFixedPoint> {
   const constrainedIngredientIds = new Set(
-    input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
+    input.items
+      .filter((item) => isConstrained(set, item.id))
+      .map((item) => canonicalIngredientId(item.ingredient)),
   );
   const restore = (candidate: RecipeInput): RecipeInput => {
     if (Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) {
@@ -1386,9 +1439,18 @@ function iterateFormulationSeed(
 function dominantHeldConstraint(
   input: RecipeInput,
   set: ConstraintSet,
-): { lineId: string; ingredientName: string; kind: 'locked' | 'range' | 'grams_lock'; grams: number } | null {
-  let best: { lineId: string; ingredientName: string; kind: 'locked' | 'range' | 'grams_lock'; grams: number } | null =
-    null;
+): {
+  lineId: string;
+  ingredientName: string;
+  kind: 'locked' | 'range' | 'grams_lock';
+  grams: number;
+} | null {
+  let best: {
+    lineId: string;
+    ingredientName: string;
+    kind: 'locked' | 'range' | 'grams_lock';
+    grams: number;
+  } | null = null;
   for (const item of input.items) {
     const constraint = set.byLineId[item.id];
     let kind: 'locked' | 'range' | 'grams_lock' | null = null;
@@ -1436,10 +1498,21 @@ function lockProbeFeasible(
   const probeSet: ConstraintSet = {
     byLineId: { ...set.byLineId, [lineId]: { mode: 'locked', grams } },
   };
-  const built = buildFormulationProposal(probeInput, probeSet, template, 'constrained_reformulation', options);
+  const built = buildFormulationProposal(
+    probeInput,
+    probeSet,
+    template,
+    'constrained_reformulation',
+    options,
+  );
   if (!built.ok) return false;
   if (built.proposal.missingHardRoles.length > 0) return false;
-  const iterated = iterateFormulationSeed(probeInput, probeSet, built.proposal.proposedInput, options);
+  const iterated = iterateFormulationSeed(
+    probeInput,
+    probeSet,
+    built.proposal.proposedInput,
+    options,
+  );
   if (iterated.diagnostics.capped) return false;
   return classifyViolationBands(iterated.working).hardMetrics.length === 0;
 }
@@ -1697,7 +1770,9 @@ function buildFormulationPreviewInternal(
   // truth (the diff rows already do) — one Preview, one set of numbers.
   const finalAdded = built.proposal.added.map((addedLine) => {
     const finalLine = working.items.find(
-      (item) => item.ingredient.id === addedLine.ingredientId,
+      (item) =>
+        canonicalIngredientId(item.ingredient) ===
+        canonicalIngredientIdFromSourceId(addedLine.ingredientId),
     );
     return finalLine ? { ...addedLine, grams: finalLine.planned_grams } : addedLine;
   });
@@ -1706,7 +1781,9 @@ function buildFormulationPreviewInternal(
     ? buildProposalExplanation(working, set, lastProposal)
     : ((): ConstraintExplanationEntry[] => {
         const lockedNames = lockedIngredientNames(input, set);
-        return lockedNames.length > 0 ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }] : [];
+        return lockedNames.length > 0
+          ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }]
+          : [];
       })();
 
   const preview = finishPreview(
@@ -1784,7 +1861,8 @@ function buildBestSafeEvidence(
     testedCandidates: vector.map((candidate) => ({
       ingredientName: candidate.ingredientName,
       currentGrams: candidate.currentGrams,
-      testedFromGrams: candidate.testedGrams.length > 0 ? candidate.testedGrams[0]! : candidate.currentGrams,
+      testedFromGrams:
+        candidate.testedGrams.length > 0 ? candidate.testedGrams[0]! : candidate.currentGrams,
       testedToGrams:
         candidate.testedGrams.length > 0
           ? candidate.testedGrams[candidate.testedGrams.length - 1]!
@@ -1833,7 +1911,14 @@ export function buildOptimizePreview(
     return { ok: false, code: 'unsupported_profile', reason: decision.reasons[0] ?? 'no_template' };
   }
   if (decision.mode !== 'local_correction' && decision.template) {
-    return buildFormulationPreviewInternal(input, set, decision.template, decision.mode, createdAt, options);
+    return buildFormulationPreviewInternal(
+      input,
+      set,
+      decision.template,
+      decision.mode,
+      createdAt,
+      options,
+    );
   }
 
   /**
@@ -1876,7 +1961,8 @@ export function buildOptimizePreview(
           bands.bandSource === 'category_fallback' ? 'category_fallback' : 'temperature_fallback',
         templateId: lookup.template.templateId,
         templateStatus: lookup.template.status,
-        stopReason: seeded.code === 'unsafe_proposal' ? 'template_fixed_point' : 'local_no_proposal',
+        stopReason:
+          seeded.code === 'unsafe_proposal' ? 'template_fixed_point' : 'local_no_proposal',
         // Owner Phase 4: the stop must carry its REAL evidence, never template
         // resemblance. Built from the iteration the optimizer really ran.
         evidence: buildBestSafeEvidence(input, set, failure.iteration, bands, options),
@@ -1943,7 +2029,8 @@ export function buildOptimizePreview(
 
   const hasActuals = input.items.some((item) => item.actual_grams !== null);
   const offBatch = (candidate: RecipeInput): boolean =>
-    !hasActuals && Math.abs(plannedSum(candidate) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G;
+    !hasActuals &&
+    Math.abs(plannedSum(candidate) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G;
   const restoreBatch = (candidate: RecipeInput): RecipeInput => {
     if (!offBatch(candidate)) return candidate;
     const restored = rescaleBatchToTarget(candidate, set, input.target_batch_grams);
@@ -1966,7 +2053,9 @@ export function buildOptimizePreview(
   //    verified improvement exists, up to the deterministic MAX_SOLVER_ROUNDS
   //    guard — the stop reason and the per-round trajectory are reported.
   const constrainedIngredientIds = new Set(
-    input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.id),
+    input.items
+      .filter((item) => isConstrained(set, item.id))
+      .map((item) => canonicalIngredientId(item.ingredient)),
   );
   // Agent R handoff (never-reintroduce): the LOCAL route's solver rounds honor
   // the canonical draft's explicit exclusions — engine ids AND Mapper ids.
@@ -2049,7 +2138,9 @@ export function buildOptimizePreview(
     ? buildProposalExplanation(constrained.input, set, lastProposal)
     : ((): ConstraintExplanationEntry[] => {
         const lockedNames = lockedIngredientNames(input, set);
-        return lockedNames.length > 0 ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }] : [];
+        return lockedNames.length > 0
+          ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }]
+          : [];
       })();
 
   const preview = finishPreview(
@@ -2190,7 +2281,10 @@ export function buildSuggestedFixPreview(
   // off-batch proposal past the door (the door now gates it too).
   const optimized = buildOptimizePreview(adjustedInput, nextSet, createdAt);
   const fallbackInput = ((): RecipeInput => {
-    if (Math.abs(plannedSum(adjustedInput) - adjustedInput.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) {
+    if (
+      Math.abs(plannedSum(adjustedInput) - adjustedInput.target_batch_grams) <=
+      BATCH_SUM_TOLERANCE_G
+    ) {
       return adjustedInput;
     }
     const restored = rescaleBatchToTarget(adjustedInput, nextSet, adjustedInput.target_batch_grams);
@@ -2234,8 +2328,16 @@ export interface AppliedChangeRecord {
   temperatureC: number;
   engineVersion: string;
   configVersion: string;
-  before: { input: RecipeInput; constraints: ConstraintSet; excludedIngredientIds: readonly string[] };
-  after: { input: RecipeInput; constraints: ConstraintSet; excludedIngredientIds: readonly string[] };
+  before: {
+    input: RecipeInput;
+    constraints: ConstraintSet;
+    excludedIngredientIds: readonly string[];
+  };
+  after: {
+    input: RecipeInput;
+    constraints: ConstraintSet;
+    excludedIngredientIds: readonly string[];
+  };
   lines: PreviewLineDiff[];
   explanation: ConstraintExplanationEntry[];
   violationsBefore: number;
@@ -2255,6 +2357,8 @@ export interface AppliedChangeRecord {
 
 export type BlockedApply =
   | { code: 'stale_preview'; messagePl: string }
+  | { code: 'invalid_lines'; messagePl: string; lineNames: string[] }
+  | { code: 'excluded_ingredients'; messagePl: string; ingredientNames: string[] }
   | {
       code: 'constraints_violated';
       messagePl: string;
@@ -2266,7 +2370,12 @@ export type BlockedApply =
   | { code: 'batch_total_mismatch'; messagePl: string; proposedSum: number; targetBatch: number }
   /** Owner P0 (definitive fail): an optimize proposal that does not improve an
    * out-of-band recipe (e.g. batch-only rescale, 9 → 9) is never appliable. */
-  | { code: 'unsafe_proposal'; messagePl: string; violationsBefore: number; violationsAfter: number }
+  | {
+      code: 'unsafe_proposal';
+      messagePl: string;
+      violationsBefore: number;
+      violationsAfter: number;
+    }
   /** ACCEPTANCE ADDENDUM (1): a preview whose iteration hit the deterministic
    * cap is DIAGNOSTIC ONLY — `iteration_cap` can NEVER be labelled
    * best-achievable proof, so Apply is structurally disabled at this door. */
@@ -2285,7 +2394,9 @@ export type BlockedApply =
    * OWN status — never from `preview.formulation.templateStatus`. */
   | { code: 'reference_derived_provenance'; messagePl: string; templateId: string };
 
-export type CommitPreviewResult = { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
+export type CommitPreviewResult =
+  | { ok: true; verified: VerifiedApply }
+  | ({ ok: false } & BlockedApply);
 
 const violatedIngredientNames = (
   preview: ConstraintPreview,
@@ -2336,6 +2447,64 @@ export class VerifiedApply {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
 
+    // Trustless payload validation: stable line/canonical ids, finite
+    // non-negative planned/actual grams and a successful Engine evaluation.
+    const invalidLineNames = preview.proposedInput.items
+      .filter(
+        (item) =>
+          !item.id.trim() ||
+          !canonicalIngredientId(item.ingredient).trim() ||
+          !Number.isFinite(item.planned_grams) ||
+          item.planned_grams < 0 ||
+          (item.actual_grams !== null &&
+            (!Number.isFinite(item.actual_grams) || item.actual_grams < 0)),
+      )
+      .map((item) => item.ingredient.name || item.id);
+    if (invalidLineNames.length > 0) {
+      return {
+        ok: false,
+        code: 'invalid_lines',
+        messagePl: copy.blocked.invalidLines(invalidLineNames),
+        lineNames: invalidLineNames,
+      };
+    }
+    try {
+      const result = calculateRecipe(preview.proposedInput);
+      if (!Number.isFinite(result.total_batch_g)) throw new Error('non_finite_engine_total');
+    } catch {
+      const lineNames = preview.proposedInput.items.map((item) => item.ingredient.name);
+      return {
+        ok: false,
+        code: 'invalid_lines',
+        messagePl: copy.blocked.invalidLines(lineNames),
+        lineNames,
+      };
+    }
+
+    const excludedCanonicalIds = new Set(
+      excludedIngredientIds.map(canonicalIngredientIdFromSourceId),
+    );
+    const excludedNames = preview.proposedInput.items
+      .filter((item) => excludedCanonicalIds.has(canonicalIngredientId(item.ingredient)))
+      .map((item) => item.ingredient.name);
+    if (excludedNames.length > 0) {
+      return {
+        ok: false,
+        code: 'excluded_ingredients',
+        messagePl: copy.blocked.excludedIngredients(excludedNames),
+        ingredientNames: excludedNames,
+      };
+    }
+
+    if (preview.formulation?.roleTrace.some((row) => row.hard && row.outcome === 'missing_hard')) {
+      return {
+        ok: false,
+        code: 'invalid_lines',
+        messagePl: copy.blocked.invalidLines(['required_role']),
+        lineNames: ['required_role'],
+      };
+    }
+
     // THE owner-mandated gate: every Apply verifies constraint preservation.
     // Runs FIRST so a locked-line violation keeps its specific §17.2 message.
     const preserved = verifyConstraintsPreserved(preview.nextConstraints, preview.proposedInput);
@@ -2353,6 +2522,27 @@ export class VerifiedApply {
     // Owner P0 Phase 6 — DUPLICATE INVARIANT: applying must be structurally
     // impossible when the proposal would introduce a new plannable duplicate
     // of any canonical ingredient identity (or a duplicate line id).
+    // Batch equality is the first proposal-integrity verdict. The exact owner
+    // payload (1193.7 g vs 1000 g) therefore returns the required
+    // `batch_total_mismatch` even when the malformed payload also duplicates
+    // a canonical Milk line.
+    const earlyProposedHasActuals = preview.proposedInput.items.some(
+      (item) => item.actual_grams !== null,
+    );
+    if (!earlyProposedHasActuals) {
+      const proposedSum = plannedSum(preview.proposedInput);
+      const targetBatch = preview.proposedInput.target_batch_grams;
+      if (Math.abs(proposedSum - targetBatch) > BATCH_SUM_TOLERANCE_G) {
+        return {
+          ok: false,
+          code: 'batch_total_mismatch',
+          messagePl: copy.blocked.batchMismatch(proposedSum, targetBatch),
+          proposedSum,
+          targetBatch,
+        };
+      }
+    }
+
     const lineIds = new Set<string>();
     let duplicateLineId = false;
     for (const item of preview.proposedInput.items) {
@@ -2362,13 +2552,13 @@ export class VerifiedApply {
       }
       lineIds.add(item.id);
     }
-    const newDuplicates = findNewDuplicateIngredients(current, preview.proposedInput);
-    if (duplicateLineId || newDuplicates.length > 0) {
+    const canonicalDuplicates = findCanonicalDuplicateIngredients(preview.proposedInput);
+    if (duplicateLineId || canonicalDuplicates.length > 0) {
       return {
         ok: false,
         code: 'duplicate_lines',
-        messagePl: copy.blocked.duplicates(newDuplicates),
-        ingredientNames: newDuplicates,
+        messagePl: copy.blocked.duplicates(canonicalDuplicates),
+        ingredientNames: canonicalDuplicates,
       };
     }
 
@@ -2414,8 +2604,10 @@ export class VerifiedApply {
     // suggested-fix — Agent 1 §5.3: the §18.2 fallback previously bypassed it):
     // a 1000 g recipe stays 1000 g; a 2937.9 g result can never be applied.
     // The batch rejection is the more specific message, so it runs first.
-    const proposedHasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
-    if (batchGatedKind && !proposedHasActuals) {
+    const proposedHasActuals = preview.proposedInput.items.some(
+      (item) => item.actual_grams !== null,
+    );
+    if (!proposedHasActuals) {
       const proposedSum = plannedSum(preview.proposedInput);
       const targetBatch = preview.proposedInput.target_batch_grams;
       if (Math.abs(proposedSum - targetBatch) > BATCH_SUM_TOLERANCE_G) {
@@ -2487,7 +2679,11 @@ export class VerifiedApply {
       preview.kind === 'optimize' &&
       (preview.iteration?.capped === true || preview.iteration?.stopReason === 'iteration_cap')
     ) {
-      return { ok: false, code: 'iteration_cap_diagnostic', messagePl: copy.blocked.iterationCapDiagnostic };
+      return {
+        ok: false,
+        code: 'iteration_cap_diagnostic',
+        messagePl: copy.blocked.iterationCapDiagnostic,
+      };
     }
 
     // ACCEPTANCE ADDENDUM (3) — HARD-RESIDUAL GATE, recomputed TRUSTLESSLY

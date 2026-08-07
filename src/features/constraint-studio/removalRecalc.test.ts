@@ -76,13 +76,55 @@ const ownerSavedRecipe = (): RecipeInput =>
     ...buildRecipeInput(useRecipeStore.getState()),
     category: 'fruit_gelato' as const,
     items: [
-      { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 350, actual_grams: null, lock_type: 'unlocked' as const },
-      { id: 'l-milk', ingredient: findDemoIngredient('milk_3_5')!, planned_grams: 380, actual_grams: null, lock_type: 'unlocked' as const },
-      { id: 'l-cream', ingredient: findDemoIngredient('cream_30')!, planned_grams: 80, actual_grams: null, lock_type: 'unlocked' as const },
-      { id: 'l-smp', ingredient: findDemoIngredient('smp')!, planned_grams: 40, actual_grams: null, lock_type: 'unlocked' as const },
-      { id: 'l-suc', ingredient: findDemoIngredient('sucrose')!, planned_grams: 110, actual_grams: null, lock_type: 'unlocked' as const },
-      { id: 'l-dex', ingredient: findDemoIngredient('dextrose')!, planned_grams: 35, actual_grams: null, lock_type: 'unlocked' as const },
-      { id: 'l-tara', ingredient: findDemoIngredient('tara_gum')!, planned_grams: 5, actual_grams: null, lock_type: 'unlocked' as const },
+      {
+        id: 'l-straw',
+        ingredient: STRAWBERRIES,
+        planned_grams: 350,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+      {
+        id: 'l-milk',
+        ingredient: findDemoIngredient('milk_3_5')!,
+        planned_grams: 380,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+      {
+        id: 'l-cream',
+        ingredient: findDemoIngredient('cream_30')!,
+        planned_grams: 80,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+      {
+        id: 'l-smp',
+        ingredient: findDemoIngredient('smp')!,
+        planned_grams: 40,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+      {
+        id: 'l-suc',
+        ingredient: findDemoIngredient('sucrose')!,
+        planned_grams: 110,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+      {
+        id: 'l-dex',
+        ingredient: findDemoIngredient('dextrose')!,
+        planned_grams: 35,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
+      {
+        id: 'l-tara',
+        ingredient: findDemoIngredient('tara_gum')!,
+        planned_grams: 5,
+        actual_grams: null,
+        lock_type: 'unlocked' as const,
+      },
     ],
   });
 
@@ -229,7 +271,9 @@ describe('C3 — removal is ONE atomic material-edit transaction (owner F items 
     useConstraintStudioStore.getState().createOptimizePreview();
     const { preview } = useConstraintStudioStore.getState();
     expect(preview).not.toBeNull();
-    const dextroseLines = preview!.proposedInput.items.filter((i) => i.ingredient.id === 'dextrose');
+    const dextroseLines = preview!.proposedInput.items.filter(
+      (i) => i.ingredient.id === 'dextrose',
+    );
     expect(dextroseLines.length).toBe(1); // the role IS refilled (no exclusion)…
     expect(dextroseLines[0]!.id).not.toBe('l-dex'); // …under a NEW line identity
   });
@@ -264,7 +308,7 @@ describe('C2 — the EXPLICIT „unavailable" action is the ONLY exclusion sourc
     useRecipeStore.getState().loadRecipeInput(ownerSavedRecipe());
     useRecipeStore.getState().markIngredientUnavailable('l-dex');
     expect(useRecipeStore.getState().items.some((i) => i.id === 'l-dex')).toBe(false);
-    expect(useRecipeStore.getState().excludedIngredientIds).toContain('dextrose');
+    expect(useRecipeStore.getState().excludedIngredientIds).toContain('PI-ING-000494');
   });
 
   it('an EXPLICIT exclusion is never reintroduced on the canonical formulation route (frozen pin)', () => {
@@ -292,9 +336,9 @@ describe('C2 — the EXPLICIT „unavailable" action is the ONLY exclusion sourc
   it('explicitly adding the ingredient back clears the exclusion (frozen pin)', () => {
     useRecipeStore.getState().loadRecipeInput(ownerSavedRecipe());
     useRecipeStore.getState().markIngredientUnavailable('l-dex');
-    expect(useRecipeStore.getState().excludedIngredientIds).toContain('dextrose');
+    expect(useRecipeStore.getState().excludedIngredientIds).toContain('PI-ING-000494');
     useRecipeStore.getState().addIngredient(findDemoIngredient('dextrose')!, 35);
-    expect(useRecipeStore.getState().excludedIngredientIds).not.toContain('dextrose');
+    expect(useRecipeStore.getState().excludedIngredientIds).not.toContain('PI-ING-000494');
   });
 
   it('three distinct states stay distinct: fillable 0 g / exact-locked 0 / EXPLICIT excluded', () => {
@@ -319,7 +363,7 @@ describe('C2 — the EXPLICIT „unavailable" action is the ONLY exclusion sourc
   it('an emptied draft still ends the exclusion context (draft-scoped lifecycle, kept)', () => {
     useRecipeStore.getState().loadRecipeInput(ownerSavedRecipe());
     useRecipeStore.getState().markIngredientUnavailable('l-cream');
-    expect(useRecipeStore.getState().excludedIngredientIds).toContain('cream_30');
+    expect(useRecipeStore.getState().excludedIngredientIds).toContain('PI-ING-000180');
     for (const item of [...useRecipeStore.getState().items]) {
       useRecipeStore.getState().removeItem(item.id);
     }

@@ -454,7 +454,7 @@ describe('owner item 6.4 — the persistence asymmetries that remained (root cau
     useRecipeStore.getState().removeItem(DEXTROSE_LINE);
     useRecipeStore.getState().setPlannedGrams(SUCROSE_LINE, 140);
     const live = capturePayload();
-    expect(live.material.exclusions).toEqual(['cream_30']);
+    expect(live.material.exclusions).toEqual(['PI-ING-000180']);
 
     simulateReload();
     const refreshed = capturePayload();
@@ -493,9 +493,9 @@ describe('owner item 6.4 — the persistence asymmetries that remained (root cau
     expect(rehydrated?.mode).toBe('locked');
     expect(Object.is(rehydrated?.mode === 'locked' ? rehydrated.grams : NaN, 130)).toBe(true);
     // And the engine half still agrees.
-    expect(
-      useRecipeStore.getState().items.find((i) => i.id === SUCROSE_LINE)!.lock_type,
-    ).toBe('grams');
+    expect(useRecipeStore.getState().items.find((i) => i.id === SUCROSE_LINE)!.lock_type).toBe(
+      'grams',
+    );
   });
 
   it('a rehydrated §17 entry whose line is gone is RECONCILED away, never trusted', () => {
@@ -523,7 +523,7 @@ describe('owner item 6.4 — the persistence asymmetries that remained (root cau
     openSavedRecipe();
     useConstraintStudioStore.getState().toggleLock(SUCROSE_LINE);
     useRecipeStore.getState().markIngredientUnavailable(CREAM_LINE);
-    expect(useRecipeStore.getState().excludedIngredientIds).toEqual(['cream_30']);
+    expect(useRecipeStore.getState().excludedIngredientIds).toEqual(['PI-ING-000180']);
 
     // Opening ANOTHER saved recipe = a whole new draft context.
     openSavedRecipe();
@@ -560,9 +560,9 @@ describe('owner item 6.4 — the persistence asymmetries that remained (root cau
     ]) {
       expect(Object.keys(persistedRecipe), `missing from recipe partialize: ${key}`).toContain(key);
     }
-    expect(Object.keys(constraintStudioPersistPartialize(useConstraintStudioStore.getState()))).toEqual(
-      ['constraints'],
-    );
+    expect(
+      Object.keys(constraintStudioPersistPartialize(useConstraintStudioStore.getState())),
+    ).toEqual(['constraints']);
     // Staged working memory is deliberately NOT persisted.
     const sessionKeys = Object.keys(
       constraintStudioPersistPartialize(useConstraintStudioStore.getState()),

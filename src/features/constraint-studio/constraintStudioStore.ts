@@ -37,6 +37,10 @@ import { persist } from 'zustand/middleware';
 import type { LockType, RecipeInput, RecipeItem } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
+  canonicalIngredientId,
+  ingredientProvenance,
+} from '@/data/ingredients/canonicalIngredientIdentity';
+import {
   analyzeConstraintFeasibility,
   validateConstraintSet,
   type ConstraintFeasibilityAnalysis,
@@ -64,7 +68,8 @@ import {
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
 let changeSeq = 0;
-const nextChangeId = (): string => `apply-${Date.now().toString(36)}-${(changeSeq += 1).toString(36)}`;
+const nextChangeId = (): string =>
+  `apply-${Date.now().toString(36)}-${(changeSeq += 1).toString(36)}`;
 const nowIso = (): string => new Date().toISOString();
 
 /* ── THE canonical current-draft selector (owner P0 NIGHTLY, FAILURE 1) ──── */
@@ -134,7 +139,10 @@ export function canonicalDraftSerialization(draft: CanonicalDraft): string {
   return JSON.stringify({
     items: draft.input.items.map((item) => [
       item.id,
+      canonicalIngredientId(item.ingredient),
       item.ingredient.id,
+      item.ingredient.private_product_id ?? null,
+      ingredientProvenance(item.ingredient),
       item.planned_grams,
       item.actual_grams,
       item.lock_type,
@@ -169,7 +177,10 @@ export type PreviewIssue = Exclude<BuildPreviewResult, { ok: true }>;
  * are dropped, and a locked/range entry whose engine lock was manually changed
  * away (lock dropdown) is treated as a conscious user override and dropped.
  */
-export function reconcileConstraints(items: readonly RecipeItem[], set: ConstraintSet): ConstraintSet {
+export function reconcileConstraints(
+  items: readonly RecipeItem[],
+  set: ConstraintSet,
+): ConstraintSet {
   const itemById = new Map(items.map((item) => [item.id, item]));
   const byLineId: Record<string, IngredientConstraint> = {};
   let dropped = false;
@@ -290,258 +301,275 @@ export function constraintStudioPersistPartialize(state: ConstraintStudioState) 
 }
 
 export const useConstraintStudioStore = create<ConstraintStudioState>()(
-  persist<ConstraintStudioState>((set, get) => ({
-  ...INITIAL,
+  persist<ConstraintStudioState>(
+    (set, get) => ({
+      ...INITIAL,
 
-  toggleLock: (lineId) => {
-    const recipe = useRecipeStore.getState();
-    const item = recipe.items.find((candidate) => candidate.id === lineId);
-    if (!item) return;
-    if (item.actual_grams !== null) return; // poured material is already immutable (spec §15)
+      toggleLock: (lineId) => {
+        const recipe = useRecipeStore.getState();
+        const item = recipe.items.find((candidate) => candidate.id === lineId);
+        if (!item) return;
+        if (item.actual_grams !== null) return; // poured material is already immutable (spec §15)
 
-    const existing = get().constraints.byLineId[lineId];
-    if (existing !== undefined && existing.mode !== 'ai') {
-      // §17.2 steps 4–6: unlock → the solver may change the line again.
-      set({ constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) }, ...CLEAR_STAGED });
-      if (item.lock_type === 'grams') recipe.setLockType(lineId, 'unlocked');
-      else recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
-      return;
-    }
+        const existing = get().constraints.byLineId[lineId];
+        if (existing !== undefined && existing.mode !== 'ai') {
+          // §17.2 steps 4–6: unlock → the solver may change the line again.
+          set({
+            constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
+            ...CLEAR_STAGED,
+          });
+          if (item.lock_type === 'grams') recipe.setLockType(lineId, 'unlocked');
+          else recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
+          return;
+        }
 
-    // §17.2 steps 1–3: lock the EXACT grams (same float64 — no rounding).
-    set({
-      constraints: {
-        byLineId: {
-          ...get().constraints.byLineId,
-          [lineId]: { mode: 'locked', grams: item.planned_grams },
-        },
+        // §17.2 steps 1–3: lock the EXACT grams (same float64 — no rounding).
+        set({
+          constraints: {
+            byLineId: {
+              ...get().constraints.byLineId,
+              [lineId]: { mode: 'locked', grams: item.planned_grams },
+            },
+          },
+          ...CLEAR_STAGED,
+        });
+        if (!ENGINE_KEPT_LOCKS.has(item.lock_type) && item.lock_type !== 'grams') {
+          recipe.setLockType(lineId, 'grams');
+        } else {
+          recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
+        }
       },
-      ...CLEAR_STAGED,
-    });
-    if (!ENGINE_KEPT_LOCKS.has(item.lock_type) && item.lock_type !== 'grams') {
-      recipe.setLockType(lineId, 'grams');
-    } else {
-      recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
-    }
-  },
 
-  setRangeConstraint: (lineId, minGrams, maxGrams) => {
-    const recipe = useRecipeStore.getState();
-    const item = recipe.items.find((candidate) => candidate.id === lineId);
-    if (!item) return { ok: false, issues: [] };
-    const candidateSet: ConstraintSet = {
-      byLineId: {
-        ...get().constraints.byLineId,
-        [lineId]: { mode: 'range', minGrams, maxGrams },
+      setRangeConstraint: (lineId, minGrams, maxGrams) => {
+        const recipe = useRecipeStore.getState();
+        const item = recipe.items.find((candidate) => candidate.id === lineId);
+        if (!item) return { ok: false, issues: [] };
+        const candidateSet: ConstraintSet = {
+          byLineId: {
+            ...get().constraints.byLineId,
+            [lineId]: { mode: 'range', minGrams, maxGrams },
+          },
+        };
+        const validation = validateConstraintSet(selectCanonicalDraft().input, candidateSet);
+        const lineIssues = validation.issues.filter(
+          (issue) => issue.lineId === lineId && issue.severity === 'error',
+        );
+        if (lineIssues.length > 0) return { ok: false, issues: lineIssues };
+        set({ constraints: candidateSet, ...CLEAR_STAGED });
+        if (!ENGINE_KEPT_LOCKS.has(item.lock_type) && item.lock_type !== 'grams') {
+          recipe.setLockType(lineId, 'grams'); // held-at-current for every solver path
+        } else {
+          recipe.bumpDraftRevision(); // Phase 3: a §17 range edit is a material edit
+        }
+        return { ok: true, issues: [] };
       },
-    };
-    const validation = validateConstraintSet(selectCanonicalDraft().input, candidateSet);
-    const lineIssues = validation.issues.filter(
-      (issue) => issue.lineId === lineId && issue.severity === 'error',
-    );
-    if (lineIssues.length > 0) return { ok: false, issues: lineIssues };
-    set({ constraints: candidateSet, ...CLEAR_STAGED });
-    if (!ENGINE_KEPT_LOCKS.has(item.lock_type) && item.lock_type !== 'grams') {
-      recipe.setLockType(lineId, 'grams'); // held-at-current for every solver path
-    } else {
-      recipe.bumpDraftRevision(); // Phase 3: a §17 range edit is a material edit
-    }
-    return { ok: true, issues: [] };
-  },
 
-  clearConstraint: (lineId) => {
-    const existing = get().constraints.byLineId[lineId];
-    if (existing === undefined) return;
-    set({ constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) }, ...CLEAR_STAGED });
-    const recipe = useRecipeStore.getState();
-    const item = recipe.items.find((candidate) => candidate.id === lineId);
-    if (item && item.lock_type === 'grams' && existing.mode !== 'ai') {
-      recipe.setLockType(lineId, 'unlocked');
-    } else {
-      recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
-    }
-  },
+      clearConstraint: (lineId) => {
+        const existing = get().constraints.byLineId[lineId];
+        if (existing === undefined) return;
+        set({
+          constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
+          ...CLEAR_STAGED,
+        });
+        const recipe = useRecipeStore.getState();
+        const item = recipe.items.find((candidate) => candidate.id === lineId);
+        if (item && item.lock_type === 'grams' && existing.mode !== 'ai') {
+          recipe.setLockType(lineId, 'unlocked');
+        } else {
+          recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
+        }
+      },
 
-  onLineLockTypeChanged: (lineId, lockType) => {
-    const existing = get().constraints.byLineId[lineId];
-    if (existing === undefined || existing.mode === 'ai') return;
-    if (lockType === 'grams' || ENGINE_KEPT_LOCKS.has(lockType)) return;
-    // Conscious dropdown override → the §17 constraint is dropped with it.
-    set({ constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) }, ...CLEAR_STAGED });
-    useRecipeStore.getState().bumpDraftRevision(); // Phase 3: material edit
-  },
+      onLineLockTypeChanged: (lineId, lockType) => {
+        const existing = get().constraints.byLineId[lineId];
+        if (existing === undefined || existing.mode === 'ai') return;
+        if (lockType === 'grams' || ENGINE_KEPT_LOCKS.has(lockType)) return;
+        // Conscious dropdown override → the §17 constraint is dropped with it.
+        set({
+          constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
+          ...CLEAR_STAGED,
+        });
+        useRecipeStore.getState().bumpDraftRevision(); // Phase 3: material edit
+      },
 
-  reconcile: () => {
-    const reconciled = reconcileConstraints(useRecipeStore.getState().items, get().constraints);
-    if (reconciled !== get().constraints) set({ constraints: reconciled });
-  },
+      reconcile: () => {
+        const reconciled = reconcileConstraints(useRecipeStore.getState().items, get().constraints);
+        if (reconciled !== get().constraints) set({ constraints: reconciled });
+      },
 
-  resetDraftSession: () =>
-    set({
-      constraints: { byLineId: {} },
-      history: [],
-      ...CLEAR_STAGED,
+      resetDraftSession: () =>
+        set({
+          constraints: { byLineId: {} },
+          history: [],
+          ...CLEAR_STAGED,
+        }),
+
+      createOptimizePreview: () => {
+        get().reconcile();
+        // THE canonical draft (owner P0 NIGHTLY FAILURE 1): recipe input + §17
+        // constraints + exclusions composed by the ONE selector — the preview is
+        // stamped with the draft revision it was built for.
+        const draft = selectCanonicalDraft();
+        const result = buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
+          excludedIngredientIds: draft.excludedIngredientIds,
+        });
+        if (result.ok) {
+          result.preview.baseDraftRevision = draft.revision;
+          set({ preview: result.preview, previewIssue: null, blocked: null });
+        } else set({ preview: null, previewIssue: result, blocked: null });
+      },
+
+      createBatchRescalePreview: (newBatchGrams) => {
+        get().reconcile();
+        const draft = selectCanonicalDraft();
+        const result = buildBatchRescalePreview(
+          draft.input,
+          draft.constraints,
+          newBatchGrams,
+          nowIso(),
+        );
+        if (result.ok) {
+          result.preview.baseDraftRevision = draft.revision;
+          set({ preview: result.preview, previewIssue: null, blocked: null });
+        } else set({ preview: null, previewIssue: result, blocked: null });
+      },
+
+      createSuggestedFixPreview: (fix) => {
+        get().reconcile();
+        const draft = selectCanonicalDraft();
+        const result = buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso());
+        if (result.ok) {
+          result.preview.baseDraftRevision = draft.revision;
+          set({ preview: result.preview, previewIssue: null, blocked: null });
+        } else set({ preview: null, previewIssue: result, blocked: null });
+      },
+
+      cancelPreview: () => set({ preview: null, previewIssue: null, blocked: null }),
+
+      applyPreview: () => {
+        const { preview, constraints, history } = get();
+        if (!preview) return;
+        // The Apply gate consumes the SAME canonical draft selector (FAILURE 1) +
+        // the monotonic revision (Phase 3) — the door itself re-checks both.
+        const draft = selectCanonicalDraft();
+        const outcome = commitPreview(
+          draft.input,
+          constraints,
+          preview,
+          nowIso(),
+          nextChangeId(),
+          draft.excludedIngredientIds,
+          draft.revision,
+        );
+        if (!outcome.ok) {
+          // The owner-mandated block: recipe untouched, clear Polish message.
+          set({
+            blocked: outcome,
+            preview: outcome.code === 'stale_preview' ? null : preview,
+          });
+          return;
+        }
+        // The ONLY verified recipe write — through the GUARDED atomic store API
+        // (owner P0 Apply data integrity): per-line validation, independent batch
+        // recompute, atomic write, read-back verification with rollback. A failed
+        // write keeps the Preview available for retry and names the exact line.
+        const written = useRecipeStore.getState().applyVerifiedRecipeInput(outcome.verified.input);
+        if (!written.ok) {
+          set({
+            blocked: {
+              code: 'unsafe_proposal',
+              messagePl:
+                written.code === 'invalid_line'
+                  ? applyGuardCopy.invalidLine(written.lineName)
+                  : written.code === 'batch_mismatch'
+                    ? applyGuardCopy.batchMismatch(written.sum, written.target)
+                    : applyGuardCopy.writeFailed,
+              violationsBefore: 0,
+              violationsAfter: 0,
+            },
+            preview, // retry stays possible
+          });
+          return;
+        }
+        set({
+          constraints: outcome.verified.constraints,
+          history: [...history, outcome.verified.record],
+          ...CLEAR_STAGED,
+        });
+      },
+
+      undoLastApply: () => {
+        const { history } = get();
+        const last = history[history.length - 1];
+        if (!last) return;
+        // Undo feasibility reads the SAME canonical draft selector (FAILURE 1).
+        if (!isUndoAvailable(last, selectCanonicalDraft().input, get().constraints)) return;
+        // Byte-exact restore of the pre-apply snapshot (§19.2/§20.3) through the
+        // SAME guarded atomic write. The snapshot may legitimately be off-batch
+        // (the pre-formulation draft), so batch equality is not enforced here —
+        // the snapshot IS the exact prior truth; line validity still is.
+        const snapshot = last.before.input;
+        const invalid = snapshot.items.some(
+          (item) => !Number.isFinite(item.planned_grams) || item.planned_grams < 0,
+        );
+        if (invalid) return; // structurally impossible for a §20.1 record; never write garbage
+        useRecipeStore.setState((state) => ({
+          items: snapshot.items.map((item) => ({ ...item })),
+          target_batch_grams: snapshot.target_batch_grams,
+          // Owner P0 (complete Undo): exclusions return with the snapshot — no
+          // stale excluded IDs survive, no page refresh is ever needed.
+          excludedIngredientIds: [...last.before.excludedIngredientIds],
+          // Phase 3: the undo restore is itself a material edit (monotonic).
+          draftRevision: state.draftRevision + 1,
+        }));
+        set({
+          constraints: last.before.constraints,
+          history: history.slice(0, -1),
+          ...CLEAR_STAGED,
+        });
+      },
+
+      runFeasibility: () => {
+        get().reconcile();
+        const draft = selectCanonicalDraft();
+        set({
+          feasibility: analyzeConstraintFeasibility(draft.input, draft.constraints),
+          previewIssue: null,
+        });
+      },
+
+      clearFeasibility: () => set({ feasibility: null }),
+
+      dismissBlocked: () => set({ blocked: null }),
+
+      markProCoreRecipe: (recipeId, versionNumber) =>
+        set({ proCoreRecipeId: recipeId, lastSavedVersion: versionNumber }),
+
+      resetForTests: () => set({ ...INITIAL, constraints: { byLineId: {} }, history: [] }),
     }),
-
-  createOptimizePreview: () => {
-    get().reconcile();
-    // THE canonical draft (owner P0 NIGHTLY FAILURE 1): recipe input + §17
-    // constraints + exclusions composed by the ONE selector — the preview is
-    // stamped with the draft revision it was built for.
-    const draft = selectCanonicalDraft();
-    const result = buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
-      excludedIngredientIds: draft.excludedIngredientIds,
-    });
-    if (result.ok) {
-      result.preview.baseDraftRevision = draft.revision;
-      set({ preview: result.preview, previewIssue: null, blocked: null });
-    } else set({ preview: null, previewIssue: result, blocked: null });
-  },
-
-  createBatchRescalePreview: (newBatchGrams) => {
-    get().reconcile();
-    const draft = selectCanonicalDraft();
-    const result = buildBatchRescalePreview(draft.input, draft.constraints, newBatchGrams, nowIso());
-    if (result.ok) {
-      result.preview.baseDraftRevision = draft.revision;
-      set({ preview: result.preview, previewIssue: null, blocked: null });
-    } else set({ preview: null, previewIssue: result, blocked: null });
-  },
-
-  createSuggestedFixPreview: (fix) => {
-    get().reconcile();
-    const draft = selectCanonicalDraft();
-    const result = buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso());
-    if (result.ok) {
-      result.preview.baseDraftRevision = draft.revision;
-      set({ preview: result.preview, previewIssue: null, blocked: null });
-    } else set({ preview: null, previewIssue: result, blocked: null });
-  },
-
-  cancelPreview: () => set({ preview: null, previewIssue: null, blocked: null }),
-
-  applyPreview: () => {
-    const { preview, constraints, history } = get();
-    if (!preview) return;
-    // The Apply gate consumes the SAME canonical draft selector (FAILURE 1) +
-    // the monotonic revision (Phase 3) — the door itself re-checks both.
-    const draft = selectCanonicalDraft();
-    const outcome = commitPreview(
-      draft.input,
-      constraints,
-      preview,
-      nowIso(),
-      nextChangeId(),
-      draft.excludedIngredientIds,
-      draft.revision,
-    );
-    if (!outcome.ok) {
-      // The owner-mandated block: recipe untouched, clear Polish message.
-      set({
-        blocked: outcome,
-        preview: outcome.code === 'stale_preview' ? null : preview,
-      });
-      return;
-    }
-    // The ONLY verified recipe write — through the GUARDED atomic store API
-    // (owner P0 Apply data integrity): per-line validation, independent batch
-    // recompute, atomic write, read-back verification with rollback. A failed
-    // write keeps the Preview available for retry and names the exact line.
-    const written = useRecipeStore.getState().applyVerifiedRecipeInput(outcome.verified.input);
-    if (!written.ok) {
-      set({
-        blocked: {
-          code: 'unsafe_proposal',
-          messagePl:
-            written.code === 'invalid_line'
-              ? applyGuardCopy.invalidLine(written.lineName)
-              : written.code === 'batch_mismatch'
-                ? applyGuardCopy.batchMismatch(written.sum, written.target)
-                : applyGuardCopy.writeFailed,
-          violationsBefore: 0,
-          violationsAfter: 0,
-        },
-        preview, // retry stays possible
-      });
-      return;
-    }
-    set({
-      constraints: outcome.verified.constraints,
-      history: [...history, outcome.verified.record],
-      ...CLEAR_STAGED,
-    });
-  },
-
-  undoLastApply: () => {
-    const { history } = get();
-    const last = history[history.length - 1];
-    if (!last) return;
-    // Undo feasibility reads the SAME canonical draft selector (FAILURE 1).
-    if (!isUndoAvailable(last, selectCanonicalDraft().input, get().constraints)) return;
-    // Byte-exact restore of the pre-apply snapshot (§19.2/§20.3) through the
-    // SAME guarded atomic write. The snapshot may legitimately be off-batch
-    // (the pre-formulation draft), so batch equality is not enforced here —
-    // the snapshot IS the exact prior truth; line validity still is.
-    const snapshot = last.before.input;
-    const invalid = snapshot.items.some(
-      (item) => !Number.isFinite(item.planned_grams) || item.planned_grams < 0,
-    );
-    if (invalid) return; // structurally impossible for a §20.1 record; never write garbage
-    useRecipeStore.setState((state) => ({
-      items: snapshot.items.map((item) => ({ ...item })),
-      target_batch_grams: snapshot.target_batch_grams,
-      // Owner P0 (complete Undo): exclusions return with the snapshot — no
-      // stale excluded IDs survive, no page refresh is ever needed.
-      excludedIngredientIds: [...last.before.excludedIngredientIds],
-      // Phase 3: the undo restore is itself a material edit (monotonic).
-      draftRevision: state.draftRevision + 1,
-    }));
-    set({
-      constraints: last.before.constraints,
-      history: history.slice(0, -1),
-      ...CLEAR_STAGED,
-    });
-  },
-
-  runFeasibility: () => {
-    get().reconcile();
-    const draft = selectCanonicalDraft();
-    set({
-      feasibility: analyzeConstraintFeasibility(draft.input, draft.constraints),
-      previewIssue: null,
-    });
-  },
-
-  clearFeasibility: () => set({ feasibility: null }),
-
-  dismissBlocked: () => set({ blocked: null }),
-
-  markProCoreRecipe: (recipeId, versionNumber) =>
-    set({ proCoreRecipeId: recipeId, lastSavedVersion: versionNumber }),
-
-  resetForTests: () => set({ ...INITIAL, constraints: { byLineId: {} }, history: [] }),
-  }), {
-    name: 'pinguino-constraints',
-    partialize: constraintStudioPersistPartialize as (
-      state: ConstraintStudioState,
-    ) => ConstraintStudioState,
-    /**
-     * Rehydration is RECONCILED, never trusted: the persisted §17 entries are
-     * matched against the rehydrated recipe lines before the store is readable,
-     * so an entry whose line vanished (or whose engine lock was changed away)
-     * can never reach a consumer. The recipe store's own persist runs first —
-     * this module imports it, so its rehydration has already completed.
-     */
-    merge: (persisted, current) => {
-      const raw = (persisted as Partial<ConstraintStudioState> | undefined)?.constraints;
-      const constraints: ConstraintSet =
-        raw && typeof raw === 'object' && raw.byLineId ? raw : { byLineId: {} };
-      return {
-        ...current,
-        constraints: reconcileConstraints(useRecipeStore.getState().items, constraints),
-      };
+    {
+      name: 'pinguino-constraints',
+      partialize: constraintStudioPersistPartialize as (
+        state: ConstraintStudioState,
+      ) => ConstraintStudioState,
+      /**
+       * Rehydration is RECONCILED, never trusted: the persisted §17 entries are
+       * matched against the rehydrated recipe lines before the store is readable,
+       * so an entry whose line vanished (or whose engine lock was changed away)
+       * can never reach a consumer. The recipe store's own persist runs first —
+       * this module imports it, so its rehydration has already completed.
+       */
+      merge: (persisted, current) => {
+        const raw = (persisted as Partial<ConstraintStudioState> | undefined)?.constraints;
+        const constraints: ConstraintSet =
+          raw && typeof raw === 'object' && raw.byLineId ? raw : { byLineId: {} };
+        return {
+          ...current,
+          constraints: reconcileConstraints(useRecipeStore.getState().items, constraints),
+        };
+      },
     },
-  }),
+  ),
 );
 
 /* ── store bridge (owner P0 NIGHTLY, live FAILURE 1 — Phase 3 wiring) ────── */

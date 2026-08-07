@@ -13,8 +13,10 @@
  *         sentence „Brak wystarczających danych do oceny." — never a blank Monitor;
  *       - `provisional` (any indicator on a fallback/estimated band) → „Ocena
  *         częściowa / prowizoryczna" + SOURCE + coverage + reason;
- *       - `native` → the EXACT violated approved bands (value + band), or the honest
- *         all-in-band sentence; a 10/10 presentation stays the score adapter's job.
+ *       - `native` → violated approved bands retained for internal classification;
+ *         the public renderer shows the current value + direction but protects the
+ *         exact numeric boundaries, or shows the honest all-in-band sentence;
+ *         a 10/10 presentation stays the score adapter's job.
  *  3. `buildMonitorPrimarySignal` — B2's one primary warning/success line (the worst
  *     engine warning by severity, or the honest success sentence).
  *
@@ -91,7 +93,8 @@ export interface MonitorAssessmentView {
   assessedCount: number;
   totalCount: number;
   coverageText: string | null;
-  /** Native approved bands violated by the CURRENT result (exact values). */
+  /** Native approved bands violated by the CURRENT result. Exact boundaries remain
+   * internal to this view-model and must not be printed by the customer renderer. */
   violatedBands: ViolatedBandView[];
   /** Native + nothing violated → the honest all-in-band sentence. */
   withinBandsText: string | null;
@@ -107,8 +110,7 @@ export function buildMonitorAssessment(result: RecipeResult): MonitorAssessmentV
   const { match } = monitorScoreView(result);
   const banded = result.indicators.filter((i) => i.band != null);
   const total = result.indicators.length;
-  const coverageText =
-    total > 0 ? copy.studio.overall.coverage(banded.length, total) : null;
+  const coverageText = total > 0 ? copy.studio.overall.coverage(banded.length, total) : null;
 
   if (result.total_batch_g <= 0 || match.score === null) {
     return {

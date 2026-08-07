@@ -55,10 +55,9 @@ const mockSave = {
 };
 
 vi.mock('@/stores/recipeStore', () => ({
-  useRecipeStore: Object.assign(
-    (sel: (s: MockRecipeState) => unknown) => sel(mockState),
-    { subscribe: () => () => undefined },
-  ),
+  useRecipeStore: Object.assign((sel: (s: MockRecipeState) => unknown) => sel(mockState), {
+    subscribe: () => () => undefined,
+  }),
 }));
 vi.mock('@/features/recipes/useCanonicalRecipeSave', () => ({
   useCanonicalRecipeSave: () => mockSave,
@@ -94,7 +93,8 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(html).toContain('Zapisz nową wersję');
     expect(html).toContain(w.status.clean); // Wszystkie zmiany zapisane
     expect(html).toContain('v3');
-    expect(html).toContain('Wersje · DO PRZEGLĄDU');
+    expect(html).toContain('>Wersje</a>');
+    expect(html).not.toContain('DO PRZEGLĄDU');
   });
 
   it('shows the compact recipe context (product · tier · serving · batch)', () => {

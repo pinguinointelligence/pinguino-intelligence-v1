@@ -11,14 +11,26 @@ import { useMemo } from 'react';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { copy } from '@/copy/en';
 import { useAccess } from '@/access/useAccess';
-import { selectTargetBand, type CorrectionResult, type RecipeInput, type RecipeResult } from '@/engine';
+import {
+  selectTargetBand,
+  type CorrectionResult,
+  type RecipeInput,
+  type RecipeResult,
+} from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { MAX_SOLVER_ROUNDS, type IterationDiagnostics } from '@/features/constraint-studio/applyPipeline';
+import {
+  MAX_SOLVER_ROUNDS,
+  type IterationDiagnostics,
+} from '@/features/constraint-studio/applyPipeline';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { buildLockReport } from '@/features/constraint-studio/recalcDiagnosis';
 import { assessStabilizerDosage } from '@/features/formulation/stabilizerDosage';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
 import { detectClassifications, type VisibleProductType } from './productType';
+import {
+  canonicalIngredientId,
+  ingredientProvenance,
+} from '@/data/ingredients/canonicalIngredientIdentity';
 
 const d = copy.studio.diagnostic;
 
@@ -31,7 +43,9 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1">
       <dt className="shrink-0 text-[0.7rem] tracking-label text-ivory/60 uppercase">{label}</dt>
-      <dd className="min-w-0 truncate text-right font-mono text-xs text-ivory/80 tabular-nums">{value}</dd>
+      <dd className="min-w-0 truncate text-right font-mono text-xs text-ivory/80 tabular-nums">
+        {value}
+      </dd>
     </div>
   );
 }
@@ -53,6 +67,8 @@ export function OwnerDiagnosticPanel({
   const preview = useConstraintStudioStore((s) => s.preview);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
   const excludedIds = useRecipeStore((s) => s.excludedIngredientIds);
+  const draftRevision = useRecipeStore((s) => s.draftRevision);
+  const visibleItems = useRecipeStore((s) => s.items);
 
   const info = useMemo(() => {
     const detected = detectClassifications(input.items);
@@ -61,14 +77,12 @@ export function OwnerDiagnosticPanel({
     const npac = result.indicators.find((i) => i.key === 'npac');
     const lockReport = buildLockReport(input, constraints);
     const unresolved = input.items.filter((item) => !isEngineReady(item)).map((item) => item.id);
-    const detectedList = (
-      [
-        detected.chocolate && d.class.chocolate,
-        detected.fruit && d.class.fruit,
-        detected.nut && d.class.nut,
-        detected.alcohol && d.class.alcohol,
-      ].filter(Boolean) as string[]
-    );
+    const detectedList = [
+      detected.chocolate && d.class.chocolate,
+      detected.fruit && d.class.fruit,
+      detected.nut && d.class.nut,
+      detected.alcohol && d.class.alcohol,
+    ].filter(Boolean) as string[];
     // Owner P0 NIGHTLY (A9) — hard vs soft remaining violations by band
     // provenance + the profile's band source (read-only classification).
     const bands = classifyViolationBands(input);
@@ -105,12 +119,17 @@ export function OwnerDiagnosticPanel({
             .map(
               (row) =>
                 `${row.role}→${row.outcome}` +
-                (row.toolboxId ? `(${row.toolboxId}${row.mapperId ? `=${row.mapperId}` : ''})` : ''),
+                (row.toolboxId
+                  ? `(${row.toolboxId}${row.mapperId ? `=${row.mapperId}` : ''})`
+                  : '') +
+                `[reused=${row.existingLineReused ? 'yes' : 'no'}; reason=${row.reason}]`,
             )
             .join('; ')
         : d.none;
     const solverRuns =
-      previewIssue && 'solverInvocations' in previewIssue && previewIssue.solverInvocations !== undefined
+      previewIssue &&
+      'solverInvocations' in previewIssue &&
+      previewIssue.solverInvocations !== undefined
         ? String(previewIssue.solverInvocations)
         : preview?.autoBalance
           ? String(preview.autoBalance.solverRounds)
@@ -169,9 +188,7 @@ export function OwnerDiagnosticPanel({
     const dosage = assessments
       .map((a) => {
         const pct = a.percentOfTotalMix === null ? '—' : `${a.percentOfTotalMix.toFixed(2)} %`;
-        const window = a.window
-          ? `okno ${a.window.minPercentOfTotalMix}–${a.window.maxPercentOfTotalMix} % mieszanki (${a.window.mapperId})`
-          : statusLabel.no_approved_window;
+        const window = a.window ? 'zatwierdzone okno dozowania' : statusLabel.no_approved_window;
         return `${a.ingredientName} ${a.grams.toFixed(2)} g = ${pct} · ${window} · ${statusLabel[a.status]}`;
       })
       .join('; ');
@@ -188,8 +205,14 @@ export function OwnerDiagnosticPanel({
 
   if (!technicalView) return null;
 
+  const engineByLineId = new Map(result.items.map((item) => [item.id, item]));
+  const inputByLineId = new Map(input.items.map((item) => [item.id, item]));
+
   return (
-    <details className="rounded-md border border-ivory/10 bg-ivory/[0.02] px-4 py-3" data-testid="owner-diagnostic">
+    <details
+      className="rounded-md border border-ivory/10 bg-ivory/[0.02] px-4 py-3"
+      data-testid="owner-diagnostic"
+    >
       <summary className="cursor-pointer">
         <SectionLabel>{d.title}</SectionLabel>
       </summary>
@@ -204,7 +227,10 @@ export function OwnerDiagnosticPanel({
         <Row label={d.fallbackFlag} value={info.fallback} />
         <Row label={d.batch} value={`${Math.round(input.target_batch_grams)} g`} />
         <Row label={d.ingredientCount} value={String(input.items.length)} />
-        <Row label={d.unresolved} value={info.unresolved.length === 0 ? '0' : info.unresolved.join(', ')} />
+        <Row
+          label={d.unresolved}
+          value={info.unresolved.length === 0 ? '0' : info.unresolved.join(', ')}
+        />
         <Row label={d.activeLocks} value={String(info.lockedCount)} />
         <Row label={d.engineVersion} value={result.engine_version} />
         <Row label={d.configVersion} value={result.config_version} />
@@ -229,7 +255,9 @@ export function OwnerDiagnosticPanel({
           label={d.addedByPi}
           value={
             preview?.formulation && preview.formulation.added.length > 0
-              ? preview.formulation.added.map((a) => `${a.name} ${Math.round(a.grams)} g`).join(', ')
+              ? preview.formulation.added
+                  .map((a) => `${a.name} ${Math.round(a.grams)} g`)
+                  .join(', ')
               : d.none
           }
         />
@@ -259,7 +287,55 @@ export function OwnerDiagnosticPanel({
         {/* Owner Phase 9 — approved stabilizer dosage (explicit units). */}
         <Row label={d.stabilizerDosage} value={stabilizerQa.dosage} />
         <Row label={d.stabilizerDosageProvenance} value={stabilizerQa.provenance} />
+        <Row label={d.monitorRevision} value={String(draftRevision)} />
+        <Row
+          label={d.formulationRevision}
+          value={
+            preview?.baseDraftRevision === undefined ? d.none : String(preview.baseDraftRevision)
+          }
+        />
       </dl>
+      <div className="mt-4 overflow-x-auto" data-testid="owner-identity-diagnostics">
+        <p className="mb-2 text-[0.7rem] tracking-label text-ivory/60 uppercase">
+          {d.identityTable}
+        </p>
+        <table className="min-w-[860px] w-full border-collapse text-left font-mono text-[10px] text-ivory/75 tabular-nums">
+          <thead className="text-ivory/50">
+            <tr className="border-b border-ivory/10">
+              <th className="py-1 pr-3">{d.identityLine}</th>
+              <th className="py-1 pr-3">{d.identityCanonical}</th>
+              <th className="py-1 pr-3">{d.identityProduct}</th>
+              <th className="py-1 pr-3">{d.identitySource}</th>
+              <th className="py-1 pr-3 text-right">{d.identityVisible}</th>
+              <th className="py-1 pr-3 text-right">{d.identityEffective}</th>
+              <th className="py-1 pr-3 text-right">{d.identityEngine}</th>
+              <th className="py-1 text-right">{d.identityRevision}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleItems.map((visibleItem) => {
+              const engineInput = inputByLineId.get(visibleItem.id);
+              const engineItem = engineByLineId.get(visibleItem.id);
+              return (
+                <tr key={visibleItem.id} className="border-b border-ivory/5">
+                  <td className="py-1 pr-3">{visibleItem.id}</td>
+                  <td className="py-1 pr-3">{canonicalIngredientId(visibleItem.ingredient)}</td>
+                  <td className="py-1 pr-3">{visibleItem.ingredient.private_product_id ?? '—'}</td>
+                  <td className="py-1 pr-3">{ingredientProvenance(visibleItem.ingredient)}</td>
+                  <td className="py-1 pr-3 text-right">{visibleItem.planned_grams.toFixed(2)}</td>
+                  <td className="py-1 pr-3 text-right">
+                    {(engineInput?.actual_grams ?? engineInput?.planned_grams ?? 0).toFixed(2)}
+                  </td>
+                  <td className="py-1 pr-3 text-right">
+                    {(engineItem?.effective_grams ?? 0).toFixed(2)}
+                  </td>
+                  <td className="py-1 text-right">{draftRevision}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </details>
   );
 }
