@@ -12,6 +12,7 @@ import {
 } from '../constraintStudioCopy';
 import {
   findCanonicalDuplicateIngredients,
+  plannedSum,
   type ConstraintPreview,
   type PreviewLineDiff,
 } from '../applyPipeline';
@@ -77,7 +78,9 @@ export function ConstraintPreviewCard({
   onCancel: () => void;
 }) {
   const beforeBatch = preview.lines.reduce((sum, line) => sum + (line.beforeGrams ?? 0), 0);
-  const afterBatch = preview.lines.reduce((sum, line) => sum + (line.afterGrams ?? 0), 0);
+  // Applicability follows the proposal payload, not the presentation diff.
+  // A stale/incomplete diff must never make an off-target payload look safe.
+  const afterBatch = plannedSum(preview.proposedInput);
   // Owner P0 UX repair (truthful states): deliberate 0 g lines (unchanged, empty before AND
   // after) are DE-EMPHASIZED at the bottom with an explanatory note — never top-of-list
   // noise. Pure display split; totals above still sum over ALL lines.

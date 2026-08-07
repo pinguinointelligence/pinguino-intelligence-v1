@@ -194,7 +194,15 @@ const syntheticPreview = (): ConstraintPreview => {
       violationsAfter: 0,
     },
     baseFingerprint: 'fp',
-    proposedInput: base,
+    // The payload itself misses the target; the card must never infer
+    // applicability from the display diff alone.
+    proposedInput: {
+      ...base,
+      items: base.items.map((item, index) => ({
+        ...item,
+        planned_grams: index === 0 ? 684 : 0,
+      })),
+    },
     nextConstraints: { byLineId: {} },
     lines: [
       {

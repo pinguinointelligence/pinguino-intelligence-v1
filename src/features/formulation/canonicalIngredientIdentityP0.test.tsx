@@ -233,6 +233,30 @@ describe('P0 canonical ingredient identity + current draft integrity', () => {
     expect(html).toContain('data-testid="preview-apply-disabled"');
     expect(html).toContain('disabled=""');
 
+    // The card must derive the proposal total from the payload itself, not from
+    // a stale/incomplete display diff. The Apply door already does this; the UI
+    // must disable the same malformed payload before the click.
+    const mismatchedPayload: RecipeInput = {
+      ...current,
+      items: current.items.map((item, index) =>
+        index === 0 ? { ...item, planned_grams: item.planned_grams + 193.7 } : item,
+      ),
+    };
+    const staleDiffPreview: ConstraintPreview = {
+      ...preview,
+      proposedInput: mismatchedPayload,
+      lines: preview.lines.slice(0, current.items.length),
+    };
+    const staleDiffHtml = renderToStaticMarkup(
+      <ConstraintPreviewCard
+        preview={staleDiffPreview}
+        onApply={() => undefined}
+        onCancel={() => undefined}
+      />,
+    );
+    expect(staleDiffHtml).toContain('data-testid="preview-apply-disabled"');
+    expect(staleDiffHtml).toContain('disabled=""');
+
     // Independent semantic-duplicate door at an otherwise exact 1000 g total.
     const balancedDuplicate: RecipeInput = {
       ...current,
@@ -251,6 +275,138 @@ describe('P0 canonical ingredient identity + current draft integrity', () => {
     expect(duplicateWrite.ok).toBe(false);
     if (!duplicateWrite.ok) expect(duplicateWrite.code).toBe('duplicate_ingredient');
     expect(JSON.stringify(useRecipeStore.getState().items)).toBe(storeBefore);
+  });
+
+  it('rejects a canonical line whose required source ingredient id is blank', () => {
+    const current = ownerSameInputRecipe();
+    const proposed: RecipeInput = {
+      ...current,
+      items: current.items.map((item, index) =>
+        index === 0
+          ? {
+              ...item,
+              ingredient: {
+                ...item.ingredient,
+                id: '   ',
+                canonical_ingredient_id: canonicalIngredientId(item.ingredient),
+              },
+            }
+          : item,
+      ),
+    };
+    const preview: ConstraintPreview = {
+      kind: 'suggested_fix',
+      titlePl: 'Blank source identity proof',
+      outcomeClassification: {
+        outcome: 'no_verified_change',
+        batchReconciled: false,
+        compositionUnchanged: true,
+        engineImproved: false,
+        beforeGrams: 1000,
+        afterGrams: 1000,
+        targetBatchGrams: 1000,
+        violationsBefore: 0,
+        violationsAfter: 0,
+      },
+      baseFingerprint: workingStateFingerprint(current, EMPTY_CONSTRAINTS),
+      proposedInput: proposed,
+      nextConstraints: EMPTY_CONSTRAINTS,
+      lines: current.items.map((item) => ({
+        lineId: item.id,
+        name: item.ingredient.name,
+        beforeGrams: item.planned_grams,
+        afterGrams: item.planned_grams,
+        kind: 'unchanged' as const,
+        locked: false,
+      })),
+      violationsBefore: 0,
+      violationsAfter: 0,
+      explanation: [],
+      engineVersion: 'test',
+      configVersion: 'test',
+      createdAt: '2026-08-07T00:00:00.000Z',
+    };
+
+    const committed = commitPreview(
+      current,
+      EMPTY_CONSTRAINTS,
+      preview,
+      '2026-08-07T00:00:01.000Z',
+      'blank-source-id',
+    );
+    expect(committed.ok).toBe(false);
+    if (!committed.ok) expect(committed.code).toBe('invalid_lines');
+
+    useRecipeStore.getState().loadRecipeInput(current);
+    const before = JSON.stringify(useRecipeStore.getState().items);
+    const written = useRecipeStore.getState().applyVerifiedRecipeInput(proposed);
+    expect(written.ok).toBe(false);
+    if (!written.ok) expect(written.code).toBe('invalid_line');
+    expect(JSON.stringify(useRecipeStore.getState().items)).toBe(before);
+  });
+
+  it('rejects a non-finite target batch atomically even when production actuals are present', () => {
+    const current = ownerSameInputRecipe();
+    useRecipeStore.getState().loadRecipeInput(current);
+    const invalid: RecipeInput = {
+      ...current,
+      target_batch_grams: Number.NaN,
+      items: current.items.map((item, index) => ({
+        ...item,
+        actual_grams: index === 0 ? item.planned_grams : null,
+      })),
+    };
+    const beforeItems = JSON.stringify(useRecipeStore.getState().items);
+    const beforeBatch = useRecipeStore.getState().target_batch_grams;
+
+    const written = useRecipeStore.getState().applyVerifiedRecipeInput(invalid);
+
+    expect(written.ok).toBe(false);
+    if (!written.ok) expect(written.code).toBe('batch_mismatch');
+    expect(JSON.stringify(useRecipeStore.getState().items)).toBe(beforeItems);
+    expect(useRecipeStore.getState().target_batch_grams).toBe(beforeBatch);
+  });
+
+  it('rejects blank or duplicate line ids at the final store write boundary', () => {
+    const current = ownerSameInputRecipe();
+    useRecipeStore.getState().loadRecipeInput(current);
+    const before = JSON.stringify(useRecipeStore.getState().items);
+    const blankLine: RecipeInput = {
+      ...current,
+      items: current.items.map((item, index) => (index === 0 ? { ...item, id: '   ' } : item)),
+    };
+    const duplicateLine: RecipeInput = {
+      ...current,
+      items: current.items.map((item, index) =>
+        index === 1 ? { ...item, id: current.items[0]!.id } : item,
+      ),
+    };
+
+    const blankWrite = useRecipeStore.getState().applyVerifiedRecipeInput(blankLine);
+    const duplicateWrite = useRecipeStore.getState().applyVerifiedRecipeInput(duplicateLine);
+
+    expect(blankWrite.ok).toBe(false);
+    if (!blankWrite.ok) expect(blankWrite.code).toBe('invalid_line');
+    expect(duplicateWrite.ok).toBe(false);
+    if (!duplicateWrite.ok) expect(duplicateWrite.code).toBe('invalid_line');
+    expect(JSON.stringify(useRecipeStore.getState().items)).toBe(before);
+  });
+
+  it('treats known Mapper and toolbox source ids as authoritative over stale metadata', () => {
+    const sucrose = DEFAULT_CORRECTION_CANDIDATES.find((entry) => entry.id === 'sucrose')!;
+    expect(
+      canonicalIngredientId({
+        ...sucrose.ingredient,
+        canonical_ingredient_id: 'PI-ING-000236',
+      }),
+    ).toBe('PI-ING-000514');
+    expect(
+      canonicalIngredientId({
+        ...sucrose.ingredient,
+        id: 'PI-ING-000514',
+        canonical_ingredient_id: 'PI-ING-000236',
+      }),
+    ).toBe('PI-ING-000514');
   });
 
   it('Test F: 20 edit/formulate Apply-or-Cancel cycles keep ids stable, one row per ingredient and target equality', () => {

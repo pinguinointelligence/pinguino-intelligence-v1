@@ -65,9 +65,15 @@ export function canonicalIngredientIdFromSourceId(sourceId: string): string {
 
 /** Exact stable key. Legacy toolbox ids resolve through the closed registry. */
 export function canonicalIngredientId(ingredient: EngineIngredient): string {
+  // Known toolbox ids and Mapper ids are authoritative source identities.
+  // Persisted metadata may enrich private-product rows, but it may never
+  // relabel a known scientific source as a different ingredient.
+  const toolboxIdentity = BY_TOOLBOX_ID.get(ingredient.id);
+  if (toolboxIdentity) return toolboxIdentity.mapperId;
+  if (ingredient.id.startsWith('PI-ING-')) return ingredient.id;
   const explicit = ingredient.canonical_ingredient_id?.trim();
   if (explicit) return explicit;
-  return canonicalIngredientIdFromSourceId(ingredient.id);
+  return ingredient.id;
 }
 
 export function ingredientProvenance(ingredient: EngineIngredient): IngredientIdentityProvenance {

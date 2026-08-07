@@ -91,11 +91,14 @@ describe('APPROVED_PI_CALCULATED_CODES — owner approval gate', () => {
 describe('buildClassDerivedEngineIngredient', () => {
   it('borrows composition from the basis anchor but overrides pac/pod and identity', () => {
     const ing = buildClassDerivedEngineIngredient({
-      product: { product_code: 'PR-SKIM', product_name_display: 'Leche desnatada' },
+      product: { id: 'private-skim-id', product_code: 'PR-SKIM', product_name_display: 'Leche desnatada' },
       compositionBasis: MILK_15,
       derived: { pac_value: 5.19, pod_value: 0.71 },
     });
     expect(ing.id).toBe('PR-SKIM'); // product identity, not the reference's
+    expect(ing.canonical_ingredient_id).toBe('PR-SKIM');
+    expect(ing.private_product_id).toBe('private-skim-id');
+    expect(ing.identity_provenance).toBe('private_product');
     expect(ing.name).toBe('Leche desnatada');
     expect(ing.pac_value).toBe(5.19); // class-derived, overridden
     expect(ing.pod_value).toBe(0.71);

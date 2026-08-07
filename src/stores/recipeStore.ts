@@ -398,10 +398,15 @@ export const useRecipeStore = create<RecipeState>()(
 
       applyVerifiedRecipeInput: (input) => {
         // Phase 5 — reject missing/invalid amounts (never coerce to zero).
+        const lineIds = new Set<string>();
         for (const item of input.items) {
           const grams = item.planned_grams;
           if (
-            !item.ingredient?.id ||
+            typeof item.id !== 'string' ||
+            !item.id.trim() ||
+            lineIds.has(item.id) ||
+            typeof item.ingredient?.id !== 'string' ||
+            !item.ingredient.id.trim() ||
             typeof grams !== 'number' ||
             Number.isNaN(grams) ||
             !Number.isFinite(grams) ||
@@ -412,6 +417,7 @@ export const useRecipeStore = create<RecipeState>()(
           ) {
             return { ok: false, code: 'invalid_line', lineName: item.ingredient?.name ?? item.id };
           }
+          lineIds.add(item.id);
         }
         const duplicateCanonicalIds = canonicalDuplicateIds(input.items);
         if (duplicateCanonicalIds.length > 0) {
@@ -424,7 +430,11 @@ export const useRecipeStore = create<RecipeState>()(
         // Phase 6 — the door of last resort recomputes the total ITSELF.
         const hasActuals = input.items.some((item) => item.actual_grams !== null);
         const sum = input.items.reduce((total, item) => total + item.planned_grams, 0);
-        if (!hasActuals && Math.abs(sum - input.target_batch_grams) > 0.1) {
+        if (
+          !Number.isFinite(input.target_batch_grams) ||
+          input.target_batch_grams <= 0 ||
+          (!hasActuals && Math.abs(sum - input.target_batch_grams) > 0.1)
+        ) {
           return { ok: false, code: 'batch_mismatch', sum, target: input.target_batch_grams };
         }
         // Phase 7 — atomic write + read-back verification with rollback.

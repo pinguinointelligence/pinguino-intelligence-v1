@@ -23,12 +23,15 @@ const refRow = (over: Partial<IngredientRow> = {}): IngredientRow =>
 describe('prepareProductEngineIngredient — confirmed match borrows the reference profile', () => {
   it('produces an EngineIngredient with the product identity + reference composition + reference pac/pod', () => {
     const h = prepareProductEngineIngredient(
-      { mapper_status: 'matched', matched_basement_id: 'PI-ING-000180', product_code: 'PR-ING-000010', product_name_display: 'Nata para montar' },
+      { id: 'private-cream-id', mapper_status: 'matched', matched_basement_id: 'PI-ING-000180', product_code: 'PR-ING-000010', product_name_display: 'Nata para montar' },
       refRow(),
     );
     expect(h.ready).toBe(true);
     expect(h.ingredient?.id).toBe('PR-ING-000010'); // product identity
     expect(h.ingredient?.name).toBe('Nata para montar');
+    expect(h.ingredient?.canonical_ingredient_id).toBe('PI-ING-000180');
+    expect(h.ingredient?.private_product_id).toBe('private-cream-id');
+    expect(h.ingredient?.identity_provenance).toBe('private_product');
     expect(h.ingredient?.pac_value).toBe(3.668); // reference-linked engine values
     expect(h.ingredient?.pod_value).toBe(0.512);
     expect(h.ingredient?.composition.water_percent).toBe(64.42); // reference's full composition

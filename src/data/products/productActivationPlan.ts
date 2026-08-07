@@ -119,14 +119,20 @@ export function formatClassDerivedReviewNotes(args: {
  * ingredient is unverified + external-sourced (never claims independent measurement).
  */
 export function buildClassDerivedEngineIngredient(args: {
-  product: { product_code: string; product_name_display?: string | null };
+  product: { id?: string | null; product_code: string; product_name_display?: string | null };
   compositionBasis: IngredientRow;
   derived: { pac_value: number; pod_value: number };
 }): EngineIngredient {
   const base = ingredientRowToEngineIngredient(args.compositionBasis);
+  const productCode = args.product.product_code.trim() || base.id;
   return {
     ...base,
-    id: args.product.product_code.trim() || base.id,
+    id: productCode,
+    // A class-derived product only borrows a composition basis; it is not an
+    // exact Mapper match and must retain its own private-product identity.
+    canonical_ingredient_id: productCode,
+    private_product_id: args.product.id?.trim() || productCode,
+    identity_provenance: 'private_product',
     name: (args.product.product_name_display && args.product.product_name_display.trim()) || base.name,
     pac_value: args.derived.pac_value,
     pod_value: args.derived.pod_value,

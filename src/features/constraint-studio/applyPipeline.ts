@@ -2452,7 +2452,10 @@ export class VerifiedApply {
     const invalidLineNames = preview.proposedInput.items
       .filter(
         (item) =>
+          typeof item.id !== 'string' ||
           !item.id.trim() ||
+          typeof item.ingredient?.id !== 'string' ||
+          !item.ingredient.id.trim() ||
           !canonicalIngredientId(item.ingredient).trim() ||
           !Number.isFinite(item.planned_grams) ||
           item.planned_grams < 0 ||
