@@ -20,10 +20,7 @@
  * rules (§14). Unsupported product or temperature is BLOCKED with a reason,
  * never silently mapped onto another profile or temperature.
  */
-import {
-  PRODUCT_PROFILE_REGISTRY,
-  type SpineGateId,
-} from './productProfiles';
+import { PRODUCT_PROFILE_REGISTRY, type SpineGateId } from './productProfiles';
 import {
   getTemperatureRegulatorSettingsOrNull,
   isMetricInBand,
@@ -274,9 +271,20 @@ const PROFILE_GOAL_VOCAB: Readonly<Record<ProductProfile, ReadonlySet<Correction
     'adjust_cocoa_fat_balance',
     'restore_stabilizer',
   ]),
+  protein_gelato: new Set([
+    'increase_npac',
+    'decrease_npac',
+    'reduce_lactose_sanding',
+    'increase_solids',
+    'decrease_solids',
+    'reduce_pod',
+    'increase_pod',
+    'restore_stabilizer',
+  ]),
 };
 
-const isFiniteNumber = (value: number | undefined): value is number => typeof value === 'number' && Number.isFinite(value);
+const isFiniteNumber = (value: number | undefined): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 const clampScore = (value: number): number => Math.max(0, Math.min(100, Math.round(value)));
 
@@ -291,7 +299,9 @@ const goalForMiss = (
   switch (gate) {
     case 'pod':
       // Standard Gelato's doc says `reduce_pod`; the others say `decrease_pod`.
-      return direction === 'below' ? pick('increase_pod') : pick('reduce_pod') ?? pick('decrease_pod');
+      return direction === 'below'
+        ? pick('increase_pod')
+        : (pick('reduce_pod') ?? pick('decrease_pod'));
     case 'total_solids':
       return direction === 'below' ? pick('increase_solids') : pick('decrease_solids');
     case 'water':
@@ -359,7 +369,11 @@ const STATUS_FOR_NPAC: Readonly<Record<NpacStatus, TemperatureRegulatorStatus>> 
   invalid: 'invalid',
 };
 
-const classifyNpac = (value: number, band: readonly [number, number], cleanCenter?: readonly [number, number]): NpacStatus => {
+const classifyNpac = (
+  value: number,
+  band: readonly [number, number],
+  cleanCenter?: readonly [number, number],
+): NpacStatus => {
   if (value < band[0]) return 'below_band';
   if (value > band[1]) return 'above_band';
   if (!cleanCenter) return 'clean_center';
@@ -383,7 +397,10 @@ export function evaluateTemperatureRegulator(
   input: TemperatureRegulatorEvaluationInput,
 ): TemperatureRegulatorEvaluation {
   const texture = input.texturePreference ?? 'medium';
-  const settings = getTemperatureRegulatorSettingsOrNull(input.productProfile, input.servingTemperatureC);
+  const settings = getTemperatureRegulatorSettingsOrNull(
+    input.productProfile,
+    input.servingTemperatureC,
+  );
 
   if (!settings) {
     // Distinguish which axis is unsupported for an honest blocked reason.
@@ -429,7 +446,8 @@ export function evaluateTemperatureRegulator(
       band: npacBand,
       level: 'hard',
       inBand,
-      direction: npacStatus === 'below_band' ? 'below' : npacStatus === 'above_band' ? 'above' : 'in',
+      direction:
+        npacStatus === 'below_band' ? 'below' : npacStatus === 'above_band' ? 'above' : 'in',
     });
     if (npacStatus === 'below_band') {
       hardGateFailures.push('npac');
@@ -484,7 +502,8 @@ export function evaluateTemperatureRegulator(
     if (raw < 0) warnings.push(`invalid_metric_value:${spec.metric}`);
 
     const inBand = isMetricInBand(raw, band);
-    const direction: 'below' | 'in' | 'above' = raw < band[0] ? 'below' : raw > band[1] ? 'above' : 'in';
+    const direction: 'below' | 'in' | 'above' =
+      raw < band[0] ? 'below' : raw > band[1] ? 'above' : 'in';
 
     if (spec.gate === 'protein_share_in_solids' && level === 'advisory') {
       // Chocolate: advisory only — cocoa solids dilute dairy protein share. Never
@@ -503,7 +522,15 @@ export function evaluateTemperatureRegulator(
         advisoryFlags.push('protein_share_above_visible_benchmark');
         penalty += 3;
       }
-      metricEvaluations.push({ gate: spec.gate, metric: spec.metric, value: raw, band, level: 'advisory', inBand, direction });
+      metricEvaluations.push({
+        gate: spec.gate,
+        metric: spec.metric,
+        value: raw,
+        band,
+        level: 'advisory',
+        inBand,
+        direction,
+      });
       continue;
     }
 

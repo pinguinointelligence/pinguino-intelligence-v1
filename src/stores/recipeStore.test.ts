@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { recipePersistPartialize, type RecipeState } from './recipeStore';
+import { recipePersistPartialize, useRecipeStore, type RecipeState } from './recipeStore';
 
 const state = {
   mode: 'classic',
+  formulation_strategy: 'eco',
   category: 'milk_gelato',
   target_temperature_c: -11,
   target_batch_grams: 1000,
@@ -10,6 +11,7 @@ const state = {
   flavor_intensity: 'balanced',
   cost_priority: 'balanced',
   items: [{ id: 'line-1' }],
+  target_protein_percent: 22.4,
   activePresetId: 'milk-base',
   savedRecipeId: 'aggregate-42',
   savedRecipeName: 'Moja receptura',
@@ -32,9 +34,33 @@ describe('recipePersistPartialize', () => {
   it('still persists the in-progress recipe content + preset highlight', () => {
     const persisted = recipePersistPartialize(state);
     expect(persisted.mode).toBe('classic');
+    expect(persisted.formulation_strategy).toBe('eco');
     expect(persisted.category).toBe('milk_gelato');
     expect(persisted.items).toBe(state.items);
     expect(persisted.activePresetId).toBe('milk-base');
     expect(persisted.target_batch_grams).toBe(1000);
+    expect(persisted.target_protein_percent).toBe(22.4);
+  });
+});
+
+describe('formulation strategy store contract', () => {
+  it('changes strategy without changing Engine mode and invalidates the draft exactly once', () => {
+    const prior = useRecipeStore.getState();
+    try {
+      useRecipeStore.setState({
+        mode: 'classic',
+        formulation_strategy: 'optimal',
+        dirty: false,
+        draftRevision: 40,
+      });
+      useRecipeStore.getState().setFormulationStrategy('eco');
+      const next = useRecipeStore.getState();
+      expect(next.formulation_strategy).toBe('eco');
+      expect(next.mode).toBe('classic');
+      expect(next.dirty).toBe(true);
+      expect(next.draftRevision).toBe(41);
+    } finally {
+      useRecipeStore.setState(prior, true);
+    }
   });
 });

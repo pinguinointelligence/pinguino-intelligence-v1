@@ -51,6 +51,7 @@ const PRODUCT_BY_CATEGORY: Partial<Record<ProductCategory, ProductProfileId>> = 
   milk_gelato: 'gelato',
   sorbet: 'sorbet',
   vegan_gelato: 'vegan',
+  protein_gelato: 'protein',
 };
 
 export function deriveProductType(

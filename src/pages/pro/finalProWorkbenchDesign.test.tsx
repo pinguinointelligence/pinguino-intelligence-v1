@@ -62,22 +62,22 @@ describe('final Pro visual system', () => {
     expect(tokens).toContain('--color-nonproduction-pink');
   });
 
-  it('uses the exact owner-provided logo source and the required cockpit background path', () => {
+  it('uses the exact owner-provided logo and removes the retired ice-circle tutorial', () => {
     expect(sha256('public', 'logo', 'PI-logo-blackwhite.pdf')).toBe(
       'b9c77cc5dfe399b1a558a0b3d33d1f3c3f434fd0322f87145e3fd5f59cac6cf9',
     );
     expect(existsSync(join(ROOT, 'public', 'logo', 'PI-logo-blackwhite-web.png'))).toBe(true);
-    expect(existsSync(join(ROOT, 'public', 'images', 'ice-cockpit-bg.png'))).toBe(true);
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const education = read('features', 'education', 'ContextualEducationView.tsx');
     expect(page).toContain('brand={<OfficialProLogo />}');
     expect(logo).toContain("'/logo/PI-logo-blackwhite-web.png'");
     expect(logo).toContain('data-logo-source="/logo/PI-logo-blackwhite.pdf"');
-    expect(panel).toContain('src="/images/ice-cockpit-bg.png"');
-    expect(panel).toContain('opacity-[0.16]');
-    const cockpit = panel.slice(panel.indexOf('data-testid="education-ice-cockpit"') - 180);
-    expect(cockpit.slice(0, 360)).not.toContain('overflow-hidden');
+    expect(panel).toContain('<ContextualEducationView');
+    expect(education).not.toContain('ice-cockpit-bg.png');
+    expect(education).not.toContain('education-ice-cockpit');
+    expect(education).toContain('contextual-learning-hub');
   });
 });
 
@@ -141,100 +141,97 @@ describe('recipe and production table modes', () => {
     expect(html).toMatch(/<button[^>]*disabled[^>]*data-testid="row-lock-percent-[^"]+"/);
     expect(html).toContain('border-nonprod/45');
     expect(html).toMatch(/data-testid="row-lock-grams-[^"]+"/);
-    expect(html).toContain('Moja cena · W PRZYGOTOWANIU');
+    expect(html).toContain('Moja cena');
+    expect(html).toContain('Moja cena za kg');
     expect(html).toContain('Znajdź zamiennik · W PRZYGOTOWANIU');
   });
 });
 
 describe('profile semantics and readiness', () => {
-  it('provides four direction controls and two read-only technological axes', () => {
-    const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+  it('provides four target axes and two information-only technological axes', () => {
+    const panel = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
+    const scale = read('features', 'pro-workbench', 'RecipeAxisScale.tsx');
     for (const id of ['sweetness', 'softness', 'creaminess', 'flavor']) {
       expect(panel).toContain(`id: '${id}'`);
     }
-    expect(panel).toContain('data-testid="profile-readonly-axes"');
-    expect(panel).toContain("'Lekka'");
-    expect(panel).toContain("'Zbalansowana'");
-    expect(panel).toContain("'Zwarta'");
-    expect(panel).not.toMatch(/structureLabel[^\n]*krem/i);
+    for (const id of ['structure', 'stability']) expect(panel).toContain(`id: '${id}'`);
     for (const label of [
-      'Mniej słodkie',
-      'Bardziej słodkie',
-      'Twardsze',
-      'Bardziej miękkie',
-      'Mniej kremowe',
-      'Bardziej kremowe',
-      'Delikatniejsze',
-      'Intensywniejsze',
-      'Wymaga uwagi',
-      'Stabilna',
-      'Bardzo stabilna',
+      'Słodycz',
+      'Miękkość',
+      'Kremowość',
+      'Intensywność smaku',
+      'Struktura',
+      'Stabilność',
     ])
       expect(panel).toContain(label);
+    expect(scale).toContain('axis-minus-');
+    expect(scale).toContain('axis-plus-');
+    expect(`${panel}\n${scale}`.toLowerCase()).not.toContain('read only');
   });
 
   it('marks Sorbet, Vegan, Protein and quality behavior honestly', () => {
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    for (const type of [
-      "visibleProductType === 'sorbet'",
-      "visibleProductType === 'vegan'",
-      "visibleProductType === 'protein'",
-    ]) {
+    for (const type of ["visibleProductType === 'sorbet'", "visibleProductType === 'vegan'"]) {
       expect(settings).toContain(type);
     }
-    expect(settings).toContain('Poziomy zmieniają wagi i ranking');
+    expect(settings).toContain('<ProteinTargetControl');
+    expect(settings).toContain('Mapper 2088');
+    expect(settings).not.toContain('testid="workbench-quality"');
+    expect(settings).toContain('testid="workbench-strategy"');
+    expect(settings).toContain("label: 'OPTIMAL'");
+    expect(settings).toContain("label: 'ECO'");
+    expect(settings).toContain('Najlepsza receptura. Koszt nie steruje składem.');
+    expect(settings).not.toContain('const MODES: ProductMode[]');
     expect(settings).toContain('CZĘŚCIOWO PODŁĄCZONE');
   });
 
   it('hides serving mode for home machines and keeps it for professional machines', () => {
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    expect(settings).toContain("const homeMachine = store.machineKind === 'home'");
-    expect(settings).toContain('home-machine-auto-serving');
-    expect(settings).toContain('Ustawienia dopasowane automatycznie do wybranej maszyny.');
+    expect(settings).toContain("store.machineKind === 'home'");
+    expect(settings).toContain('home-machine-capacity');
+    expect(settings).toContain('Pojemność jednego cyklu');
     expect(settings).toContain('testid="workbench-serving"');
   });
 });
 
 describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('protects internal bands while showing red-green-gold-green-red position scales', () => {
-    const monitor = read('features', 'user-monitor', 'UserMonitorPro.tsx');
-    const summary = read('features', 'pro-workbench', 'MonitorLiveSummary.tsx');
+    const monitor = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
+    const model = read('features', 'pro-workbench', 'professionalMonitorModel.ts');
     const diagnostic = read('features', 'studio', 'OwnerDiagnosticPanel.tsx');
-    const scale = monitor.slice(monitor.indexOf('data-testid="monitor-protected-scale"'));
     const order = [
-      'bg-status-error/75',
-      'bg-status-ideal/70',
-      'bg-gold/85',
-      'bg-status-ideal/70',
-      'bg-status-error/75',
+      'bg-status-error/20',
+      'bg-status-ideal/28',
+      'bg-gold/34',
+      'bg-status-ideal/28',
+      'bg-status-error/20',
     ];
     let cursor = 0;
     for (const token of order) {
-      const next = scale.indexOf(token, cursor);
+      const next = monitor.indexOf(token, cursor);
       expect(next, token).toBeGreaterThanOrEqual(cursor);
       cursor = next + token.length;
     }
-    expect(scale.slice(0, 700)).not.toMatch(/min|max|boundary/i);
-    expect(summary).not.toContain('band.bandMin.toFixed');
-    expect(summary).not.toContain('band.bandMax.toFixed');
-    expect(summary).toContain("'poniżej'");
-    expect(summary).toContain("'powyżej'");
+    expect(monitor).not.toContain('band.bandMin.toFixed');
+    expect(monitor).not.toContain('band.bandMax.toFixed');
+    expect(model).toContain('bandPosition');
     expect(diagnostic).not.toContain('a.window.minPercentOfTotalMix');
     expect(diagnostic).not.toContain('a.window.maxPercentOfTotalMix');
     expect(diagnostic).not.toContain('a.window.mapperId');
   });
 
-  it('keeps full Monitor modules mounted and Preview as a fixed overlay', () => {
+  it('keeps the focused Monitor modules mounted and Preview as a fixed overlay', () => {
     const panel = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     for (const component of [
-      'UserMonitorPro',
+      'ProfessionalMonitorModules',
       'NutritionCostScorePanel',
       'CorrectionPanel',
-      'OverallScoreCard',
       'OwnerDiagnosticPanel',
     ]) {
       expect(panel).toContain(component);
     }
+    expect(panel).not.toContain('UserMonitorPro');
+    expect(panel).not.toContain('OverallScoreCard');
     const preview = read('features', 'pro-core', 'ProRecalcPanel.tsx');
     expect(preview).toContain('fixed inset-0');
     expect(preview).toContain('role="dialog"');

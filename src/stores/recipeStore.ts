@@ -33,12 +33,32 @@ import {
   normalizeIngredientIdentity,
   normalizeRecipeItemIdentity,
 } from '@/data/ingredients/canonicalIngredientIdentity';
+import { useAuthStore } from '@/stores/authStore';
+import { readRecipeProfileMetadata } from '@/features/pro-workbench/recipeProfilePersistence';
+import {
+  DEFAULT_DIRECTION_TARGETS,
+  type ProfileSettingsSnapshot,
+  useRecipeProfileStore,
+} from '@/features/pro-workbench/recipeProfileStore';
+import { PROTEIN_GELATO_TARGET } from '@/spine';
+import {
+  normalizeFormulationStrategy,
+  type FormulationStrategy,
+} from '@/features/formulation-strategy/strategy';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
+const normalizeProteinTarget = (value: number): number => {
+  const finite = Number.isFinite(value) ? value : PROTEIN_GELATO_TARGET.defaultPercent;
+  return (
+    Math.round(Math.max(0, finite) / PROTEIN_GELATO_TARGET.inputStepPercent) *
+    PROTEIN_GELATO_TARGET.inputStepPercent
+  );
+};
 
 export interface RecipeState {
   mode: ProductMode;
+  formulation_strategy: FormulationStrategy;
   category: ProductCategory;
   /**
    * The CUSTOMER-FACING product type (owner P0): exactly Gelato/Sorbet/Vegan/Protein. `category`
@@ -63,6 +83,7 @@ export interface RecipeState {
   machine_capacity_source: 'machine' | 'manual' | null;
   flavor_intensity: FlavorIntensity;
   cost_priority: CostPriority;
+  target_protein_percent: number;
   items: RecipeItem[];
   /**
    * Canonical ingredient ids the user EXPLICITLY marked unavailable/excluded —
@@ -85,6 +106,8 @@ export interface RecipeState {
    * recoverable through the UI.
    */
   excludedIngredientIds: string[];
+  /** Canonical identities that were Main when explicitly marked unavailable. */
+  unavailableMainIngredientIds: string[];
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
   activePresetId: PresetId | null;
   /**
@@ -139,8 +162,12 @@ export interface RecipeState {
   /** Increment `draftRevision` for a material edit that lives OUTSIDE this
    * store (a §17 constraint/range change in the constraint-studio session). */
   bumpDraftRevision: () => void;
+  /** Desired Profile target changed. Marks the saved draft + recalculation state dirty without
+   * changing ingredient grams or any Engine field. */
+  markProfileTargetChanged: () => void;
 
   setMode: (mode: ProductMode) => void;
+  setFormulationStrategy: (strategy: FormulationStrategy) => void;
   setCategory: (category: ProductCategory) => void;
   /** Pick the visible product type; the internal category derives from it + the ingredients. */
   setVisibleProductType: (visible: VisibleProductType) => void;
@@ -151,6 +178,7 @@ export interface RecipeState {
   setMachineCapacity: (grams: number | null) => void;
   setFlavorIntensity: (value: FlavorIntensity) => void;
   setCostPriority: (value: CostPriority) => void;
+  setTargetProteinPercent: (value: number) => void;
 
   /**
    * Owner P0 (Apply data integrity) — the ONLY sanctioned write for a verified
@@ -193,7 +221,7 @@ export interface RecipeState {
   setPlannedGrams: (lineId: string, grams: number) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
-  /** Marks one line as the main ingredient; clears any previous main line. */
+  /** Adds one line to the Main ingredient set; existing Main lines stay Main. */
   setMainIngredient: (lineId: string) => void;
   /** Atomically replace goal + ingredients with a curated demo scenario. */
   loadPreset: (preset: DemoPreset) => void;
@@ -241,7 +269,8 @@ const makeLine = (
 
 /** Snapshot of a preset as fresh store state (items cloned so edits never touch preset data). */
 const fromPreset = (preset: DemoPreset) => ({
-  mode: preset.mode,
+  mode: 'classic' as const,
+  formulation_strategy: normalizeFormulationStrategy(preset.mode),
   category: preset.category,
   visibleProductType: visibleTypeOf(preset.category),
   target_temperature_c: preset.target_temperature_c,
@@ -253,6 +282,7 @@ const fromPreset = (preset: DemoPreset) => ({
     | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
+  target_protein_percent: PROTEIN_GELATO_TARGET.defaultPercent,
   items: preset.items.map((item) => ({
     ...item,
     ingredient: normalizeIngredientIdentity(item.ingredient, 'demo'),
@@ -261,6 +291,7 @@ const fromPreset = (preset: DemoPreset) => ({
   // fresh preset load / reset starts a fresh exclusion context. An ingredient
   // never selected in the new draft is NOT excluded.
   excludedIngredientIds: [] as string[],
+  unavailableMainIngredientIds: [] as string[],
   activePresetId: preset.id,
   savedRecipeId: null,
   savedRecipeName: null,
@@ -271,6 +302,29 @@ const fromPreset = (preset: DemoPreset) => ({
   machineId: null,
   machineLabel: null,
   dirty: false,
+});
+
+const profileOwnerKey = (): string => useAuthStore.getState().user?.id ?? 'local-device';
+
+const profileFields = (
+  profile: ProfileSettingsSnapshot,
+  items: RecipeItem[],
+  currentCategory: ProductCategory,
+) => ({
+  mode: 'classic' as const,
+  formulation_strategy: normalizeFormulationStrategy(profile.formulationStrategy),
+  visibleProductType: profile.visibleProductType,
+  category: internalCategoryFor(profile.visibleProductType, items, currentCategory),
+  target_temperature_c: profile.targetTemperatureC,
+  target_batch_grams: profile.targetBatchGrams,
+  machine_capacity_grams: profile.machineKind === 'home' ? profile.machineCapacityGrams : null,
+  machine_capacity_source: (profile.machineKind === 'home' && profile.machineCapacityGrams !== null
+    ? 'machine'
+    : null) as 'machine' | null,
+  machineKind: profile.machineKind,
+  servingModeId: profile.servingModeId,
+  machineId: profile.machineId,
+  machineLabel: profile.machineLabel,
 });
 
 /**
@@ -292,6 +346,7 @@ const fromPreset = (preset: DemoPreset) => ({
 export function recipePersistPartialize(state: RecipeState) {
   return {
     mode: state.mode,
+    formulation_strategy: state.formulation_strategy,
     category: state.category,
     visibleProductType: state.visibleProductType,
     target_temperature_c: state.target_temperature_c,
@@ -300,9 +355,11 @@ export function recipePersistPartialize(state: RecipeState) {
     machine_capacity_source: state.machine_capacity_source,
     flavor_intensity: state.flavor_intensity,
     cost_priority: state.cost_priority,
+    target_protein_percent: state.target_protein_percent,
     items: state.items,
     // Agent C (owner addendum): draft-material — see the field doc above.
     excludedIngredientIds: state.excludedIngredientIds,
+    unavailableMainIngredientIds: state.unavailableMainIngredientIds,
     activePresetId: state.activePresetId,
     savedRecipeId: state.savedRecipeId,
     savedRecipeName: state.savedRecipeName,
@@ -321,13 +378,22 @@ export const useRecipeStore = create<RecipeState>()(
     (set) => ({
       ...fromPreset(DEFAULT_PRESET),
       excludedIngredientIds: [],
+      unavailableMainIngredientIds: [],
       draftRevision: 0,
       draftContextSeq: 0,
 
       bumpDraftRevision: () => set((state) => ({ draftRevision: state.draftRevision + 1 })),
+      markProfileTargetChanged: () =>
+        set((state) => ({ dirty: true, draftRevision: state.draftRevision + 1 })),
 
       setMode: (mode) =>
         set((state) => ({ mode, dirty: true, draftRevision: state.draftRevision + 1 })),
+      setFormulationStrategy: (formulation_strategy) =>
+        set((state) => ({
+          formulation_strategy,
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
       // Direct internal-category writes (QA/diagnostic/tests) keep the visible projection coherent.
       setCategory: (category) =>
         set((state) => ({
@@ -395,6 +461,12 @@ export const useRecipeStore = create<RecipeState>()(
         set((state) => ({ flavor_intensity, dirty: true, draftRevision: state.draftRevision + 1 })),
       setCostPriority: (cost_priority) =>
         set((state) => ({ cost_priority, dirty: true, draftRevision: state.draftRevision + 1 })),
+      setTargetProteinPercent: (value) =>
+        set((state) => ({
+          target_protein_percent: normalizeProteinTarget(value),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
 
       applyVerifiedRecipeInput: (input) => {
         // Phase 5 — reject missing/invalid amounts (never coerce to zero).
@@ -473,6 +545,9 @@ export const useRecipeStore = create<RecipeState>()(
       addIngredient: (ingredient, grams = 100) =>
         set((state) => {
           const canonicalId = canonicalIngredientId(ingredient);
+          const restoresUnavailableMain = state.unavailableMainIngredientIds.some(
+            (id) => canonicalIngredientIdFromSourceId(id) === canonicalId,
+          );
           const existingIndex = state.items.findIndex(
             (item) => canonicalIngredientId(item.ingredient) === canonicalId,
           );
@@ -482,7 +557,13 @@ export const useRecipeStore = create<RecipeState>()(
               ? state.items.map((item, index) =>
                   index === existingIndex ? { ...item, ingredient: normalizedIngredient } : item,
                 )
-              : [...state.items, makeLine(normalizedIngredient, grams)];
+              : [
+                  ...state.items,
+                  {
+                    ...makeLine(normalizedIngredient, grams),
+                    lock_type: restoresUnavailableMain ? ('main' as const) : ('unlocked' as const),
+                  },
+                ];
           return {
             items,
             // Visible GELATO re-routes its INTERNAL category from the real ingredients
@@ -494,6 +575,9 @@ export const useRecipeStore = create<RecipeState>()(
             // exclusion (frozen pin: an excluded ingredient returns ONLY
             // through an explicit add — never via the toolbox).
             excludedIngredientIds: state.excludedIngredientIds.filter(
+              (id) => canonicalIngredientIdFromSourceId(id) !== canonicalId,
+            ),
+            unavailableMainIngredientIds: state.unavailableMainIngredientIds.filter(
               (id) => canonicalIngredientIdFromSourceId(id) !== canonicalId,
             ),
             dirty: true,
@@ -520,7 +604,9 @@ export const useRecipeStore = create<RecipeState>()(
             // draft starts a fresh exclusion context (never-selected ≠
             // excluded), so even explicit exclusions do not leak into the
             // next draft built from scratch.
-            ...(items.length === 0 ? { excludedIngredientIds: [] } : {}),
+            ...(items.length === 0
+              ? { excludedIngredientIds: [], unavailableMainIngredientIds: [] }
+              : {}),
             dirty: true,
             // C3: EXACTLY one bump per material edit. The constraint-studio
             // store bridge reconciles the §17 half (drops the removed line's
@@ -550,6 +636,11 @@ export const useRecipeStore = create<RecipeState>()(
             excludedIngredientIds: state.excludedIngredientIds.includes(ingredientId)
               ? state.excludedIngredientIds
               : [...state.excludedIngredientIds, ingredientId],
+            unavailableMainIngredientIds:
+              target.lock_type === 'main' &&
+              !state.unavailableMainIngredientIds.includes(ingredientId)
+                ? [...state.unavailableMainIngredientIds, ingredientId]
+                : state.unavailableMainIngredientIds,
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -618,11 +709,9 @@ export const useRecipeStore = create<RecipeState>()(
 
       setMainIngredient: (lineId) =>
         set((state) => ({
-          items: state.items.map((item) => {
-            if (item.id === lineId) return { ...item, lock_type: 'main' };
-            // demote any previous main line back to unlocked
-            return item.lock_type === 'main' ? { ...item, lock_type: 'unlocked' } : item;
-          }),
+          items: state.items.map((item) =>
+            item.id === lineId ? { ...item, lock_type: 'main' } : item,
+          ),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
@@ -632,45 +721,82 @@ export const useRecipeStore = create<RecipeState>()(
       // constraint-studio bridge resets the §17 session (constraints, staged
       // preview, history). Stale §17 locks/ranges from an earlier session
       // draft must never survive into a reloaded recipe.
-      loadPreset: (preset) =>
+      loadPreset: (preset) => {
         set((state) => ({
           ...fromPreset(preset),
           excludedIngredientIds: [],
+          unavailableMainIngredientIds: [],
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
-        })),
-      loadRecipeInput: (input, link = {}) =>
+        }));
+        const opened = useRecipeStore.getState();
+        useRecipeProfileStore
+          .getState()
+          .openDraft(opened.draftContextSeq, DEFAULT_DIRECTION_TARGETS);
+      },
+      loadRecipeInput: (input, link = {}) => {
+        const metadata = readRecipeProfileMetadata(input);
+        const savedRecipe = link.savedId != null || link.savedName != null;
+        const defaults = savedRecipe
+          ? null
+          : useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
+        const profile = metadata ?? defaults;
+        const normalizedItems = input.items.map((item) => {
+          const normalized = normalizeRecipeItemIdentity({ ...item });
+          return normalized.lock_type === 'grams' && normalized.planned_grams === 0
+            ? { ...normalized, lock_type: 'unlocked' as const }
+            : normalized;
+        });
         set((state) => ({
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
-          mode: input.mode,
-          category: input.category,
-          visibleProductType: visibleTypeOf(input.category),
-          target_temperature_c: input.target_temperature_c,
-          target_batch_grams: input.target_batch_grams,
-          machine_capacity_grams: input.machine_capacity_grams,
-          machine_capacity_source: input.machine_capacity_grams === null ? null : 'manual',
+          ...(profile
+            ? profileFields(profile, normalizedItems, input.category)
+            : {
+                mode: 'classic' as const,
+                category: input.category,
+                visibleProductType: visibleTypeOf(input.category),
+                target_temperature_c: input.target_temperature_c,
+                target_batch_grams: input.target_batch_grams,
+                machine_capacity_grams: input.machine_capacity_grams,
+                machine_capacity_source:
+                  input.machine_capacity_grams === null ? null : ('manual' as const),
+                machineKind: null,
+                servingModeId: null,
+                machineId: null,
+                machineLabel: null,
+              }),
+          formulation_strategy: normalizeFormulationStrategy(
+            profile?.formulationStrategy ?? input.goals?.formulation_strategy ?? input.mode,
+          ),
           flavor_intensity: input.goals?.flavor_intensity ?? 'balanced',
           cost_priority: input.goals?.cost_priority ?? 'balanced',
+          target_protein_percent: normalizeProteinTarget(
+            input.goals?.target_protein_percent ?? PROTEIN_GELATO_TARGET.defaultPercent,
+          ),
           // Owner binding rule (zero-gram semantics): a stored bare grams-lock
           // at 0 g is a selected-UNFILLED artifact (legacy saves / resolution
           // bridge), not a deliberate zero — heal it on load so the UI shows
           // the truth. Explicit zeros live in §17 constraints, which are
           // session state and never stored with the recipe input.
-          items: input.items.map((item) => {
-            const normalized = normalizeRecipeItemIdentity({ ...item });
-            return normalized.lock_type === 'grams' && normalized.planned_grams === 0
-              ? { ...normalized, lock_type: 'unlocked' as const }
-              : normalized;
-          }),
+          items: normalizedItems,
           excludedIngredientIds: [], // a loaded recipe starts a fresh exclusion context
+          unavailableMainIngredientIds: [],
           activePresetId: null,
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
           currentVersionNumber: link.versionNumber ?? null,
           currentVersionDate: link.versionDate ?? null,
           dirty: false,
-        })),
+        }));
+        const opened = useRecipeStore.getState();
+        useRecipeProfileStore
+          .getState()
+          .openDraft(
+            opened.draftContextSeq,
+            profile?.directionTargets ?? DEFAULT_DIRECTION_TARGETS,
+          );
+      },
       markSaved: (id, name, versionNumber, versionDate = null) =>
         set({
           savedRecipeId: id,
@@ -701,12 +827,23 @@ export const useRecipeStore = create<RecipeState>()(
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
-      resetToDemo: () =>
+      resetToDemo: () => {
+        const base = fromPreset(DEFAULT_PRESET);
+        const defaults = useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
         set((state) => ({
-          ...fromPreset(DEFAULT_PRESET),
+          ...base,
+          ...(defaults ? profileFields(defaults, base.items, base.category) : {}),
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
-        })),
+        }));
+        const opened = useRecipeStore.getState();
+        useRecipeProfileStore
+          .getState()
+          .openDraft(
+            opened.draftContextSeq,
+            defaults?.directionTargets ?? DEFAULT_DIRECTION_TARGETS,
+          );
+      },
     }),
     { name: 'pinguino-recipe', partialize: recipePersistPartialize },
   ),

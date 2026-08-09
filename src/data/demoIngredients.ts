@@ -48,6 +48,7 @@ const demo = (
   npac_value: null,
   de_value: null,
   cost_per_kg, // reference estimate — demo only
+  cost_currency: 'EUR',
   confidence_score: 85, // demo/reference, not verified
   source_type: 'manual',
   is_verified: false,

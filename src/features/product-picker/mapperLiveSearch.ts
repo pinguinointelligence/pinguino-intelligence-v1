@@ -1,7 +1,7 @@
 /**
  * PINGÜINO Product Picker — LIVE Mapper catalogue search (pure view-models).
  *
- * The „Składniki PI" side of the two-source picker: the 2,083-row Mapper
+ * The „Składniki PI" side of the two-source picker: the 2,088-row Mapper
  * Basement library searched SERVER-SIDE through the demo-safe read model (the
  * backend adapter in `@/services/productPicker/mapperSearch` owns the IO). This
  * module is PURE: the async lifecycle (debounce, stale-request cancellation,

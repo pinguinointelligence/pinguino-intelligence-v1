@@ -59,6 +59,14 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       return copy.previewIssue.unsupportedProfile;
     case 'missing_required_role':
       return issue.messagePl;
+    case 'main_ratio_conflict':
+      return issue.messagePl;
+    case 'main_ingredient_unavailable':
+      return issue.messagePl;
+    case 'vegan_ingredient_conflict':
+      return issue.messagePl;
+    case 'vegan_profile_constraint':
+      return issue.messagePl;
     case 'apply_failed':
       return copy.previewIssue.applyFailed;
     case 'invalid_constraints':

@@ -1,0 +1,273 @@
+import type { RecipeInput, RecipeResult, TargetMetric } from '@/engine';
+import {
+  GOLDEN_RANGE_STATE_TEXT,
+  bandPosition,
+  type GoldenRangeReading,
+} from '@/features/recipe-score';
+import { assessStabilizerDosage } from '@/features/formulation/stabilizerDosage';
+
+export type ProfessionalMonitorModuleId =
+  | 'freezing'
+  | 'sugars'
+  | 'water-solids'
+  | 'fat'
+  | 'protein'
+  | 'stability';
+
+export type ProfessionalRawMetricKey =
+  | 'pod'
+  | 'pac'
+  | 'npac'
+  | 'ice_fraction'
+  | 'water'
+  | 'total_solids'
+  | 'fat'
+  | 'aerating_protein'
+  | 'protein_in_solids'
+  | 'lactose'
+  | 'lactose_sandiness_risk';
+
+export interface ProfessionalMonitorMetric {
+  id: string;
+  rawMetric?: ProfessionalRawMetricKey;
+  label: string;
+  value: number | null;
+  unit: string;
+  reading: GoldenRangeReading | null;
+  tooltip: string;
+}
+
+export interface ProfessionalMonitorModule {
+  id: ProfessionalMonitorModuleId;
+  title: string;
+  primary: ProfessionalMonitorMetric[];
+  secondary: ProfessionalMonitorMetric[];
+  problem: boolean;
+}
+
+const TOOLTIP = {
+  ice: 'Udział zamrożonej wody. Wpływa na twardość i odczucie lodu w temperaturze serwowania.',
+  pac: 'Siła przeciwzamrożeniowa mieszanki. Wyższa wartość zwykle oznacza słabsze zamarzanie.',
+  npac: 'Wskaźnik związany z odpornością mieszanki na zamarzanie i zachowaniem w temperaturze.',
+  pod: 'Odczuwalna słodycz wynikająca z całego profilu cukrów receptury.',
+  sugars: 'Łączna ilość cukrów obliczona przez Engine dla 100 g mieszanki.',
+  water: 'Udział wody w całej recepturze. Wpływa na zamrożenie, strukturę i stabilność.',
+  solids: 'Udział składników innych niż woda. Wpływa na pełnię i strukturę produktu.',
+  fat: 'Łączny udział tłuszczu. Wpływa na kremowość, pełnię i topnienie.',
+  aeratingProtein: 'Część białek wspierająca napowietrzenie i utrzymanie struktury.',
+  proteinInSolids: 'Udział białka w suchej części mieszanki.',
+  lactoseRisk: 'Wskaźnik ryzyka wyczuwalnej krystalizacji laktozy podczas przechowywania.',
+  stabilizer: 'Ilość stabilizatora w bieżącej recepturze względem zatwierdzonego profilu składnika.',
+  stability: 'Semantyczny stan zachowania przy zamrażaniu, bez powtarzania surowej wartości NPAC.',
+  serving: 'Temperatura użyta przez Engine do bieżącej oceny technologicznej.',
+  fiber: 'Łączna ilość błonnika w całej partii.',
+  totalFat: 'Łączna masa tłuszczu w aktualnej partii.',
+  totalProtein: 'Łączna masa białka w aktualnej partii.',
+  sugarType: 'Masa tego rodzaju cukru w aktualnej partii.',
+  lactose: 'Udział laktozy w całej mieszance.',
+  salt: 'Łączna masa soli w aktualnej partii.',
+  alcohol: 'Udział alkoholu w całej mieszance.',
+} as const;
+
+const indicator = (result: RecipeResult, metric: TargetMetric) =>
+  result.indicators.find((candidate) => candidate.key === metric);
+
+const readingFor = (result: RecipeResult, metric: TargetMetric): GoldenRangeReading | null => {
+  const source = indicator(result, metric);
+  if (source?.value == null || source.band == null) return null;
+  return bandPosition(source?.value, source?.band ?? null);
+};
+
+const metric = (
+  id: string,
+  label: string,
+  value: number | null,
+  unit: string,
+  tooltip: string,
+  reading: GoldenRangeReading | null = null,
+  rawMetric?: ProfessionalRawMetricKey,
+): ProfessionalMonitorMetric => ({ id, rawMetric, label, value, unit, reading, tooltip });
+
+const classified = (
+  result: RecipeResult,
+  target: TargetMetric,
+  label: string,
+  tooltip: string,
+  rawMetric: ProfessionalRawMetricKey,
+): ProfessionalMonitorMetric =>
+  metric(
+    target,
+    label,
+    indicator(result, target)?.value ?? null,
+    target === 'ice_fraction' || target === 'water' || target === 'total_solids' || target === 'fat' ||
+      target === 'aerating_protein' || target === 'protein_in_solids' || target === 'lactose'
+      ? '%'
+      : '',
+    tooltip,
+    readingFor(result, target),
+    rawMetric,
+  );
+
+const stabilizerReading = (
+  status: ReturnType<typeof assessStabilizerDosage>[number]['status'],
+): GoldenRangeReading => {
+  if (status === 'within_window') {
+    return {
+      state: 'golden',
+      textKey: GOLDEN_RANGE_STATE_TEXT.golden.textKey,
+      text: GOLDEN_RANGE_STATE_TEXT.golden.text,
+      side: 'inside',
+    };
+  }
+  if (status === 'below_window' || status === 'above_window') {
+    return {
+      state: 'red',
+      textKey: GOLDEN_RANGE_STATE_TEXT.red.textKey,
+      text: GOLDEN_RANGE_STATE_TEXT.red.text,
+      side: status === 'below_window' ? 'below' : 'above',
+    };
+  }
+  return {
+    state: 'neutral',
+    textKey: GOLDEN_RANGE_STATE_TEXT.neutral.textKey,
+    text: GOLDEN_RANGE_STATE_TEXT.neutral.text,
+    side: null,
+  };
+};
+
+const hasProblem = (rows: readonly ProfessionalMonitorMetric[]) =>
+  rows.some((row) => row.reading?.state === 'red');
+
+export function buildProfessionalMonitorModules(
+  result: RecipeResult,
+  servingTemperatureC: number,
+  input: RecipeInput,
+): ProfessionalMonitorModule[] {
+  const stabilizers = assessStabilizerDosage(input);
+  const stabilizer = stabilizers[0] ?? null;
+  const npacReading = readingFor(result, 'npac');
+
+  const definitions: Omit<ProfessionalMonitorModule, 'problem'>[] = [
+    {
+      id: 'freezing',
+      title: 'Zamrożenie',
+      primary: [
+        classified(result, 'ice_fraction', 'Frakcja lodu', TOOLTIP.ice, 'ice_fraction'),
+        metric('pac', 'PAC', result.pac_points, '', TOOLTIP.pac, null, 'pac'),
+        classified(result, 'npac', 'NPAC', TOOLTIP.npac, 'npac'),
+      ],
+      secondary: [
+        metric('serving-temperature', 'Temperatura serwowania', servingTemperatureC, '°C', TOOLTIP.serving),
+      ],
+    },
+    {
+      id: 'sugars',
+      title: 'Słodycz i cukry',
+      primary: [
+        classified(result, 'pod', 'POD', TOOLTIP.pod, 'pod'),
+        metric(
+          'total-sugars',
+          'Cukry ogółem',
+          result.nutrition_per_100g?.sugars_g ?? null,
+          'g/100 g',
+          TOOLTIP.sugars,
+        ),
+      ],
+      secondary: [
+        metric('sucrose', 'Sacharoza', result.sugar.sucrose_g, 'g', TOOLTIP.sugarType),
+        metric('dextrose', 'Dekstroza', result.sugar.dextrose_g, 'g', TOOLTIP.sugarType),
+        metric('glucose', 'Glukoza', result.sugar.glucose_g, 'g', TOOLTIP.sugarType),
+        metric('fructose', 'Fruktoza', result.sugar.fructose_g, 'g', TOOLTIP.sugarType),
+      ],
+    },
+    {
+      id: 'water-solids',
+      title: 'Woda i ciała stałe',
+      primary: [
+        classified(result, 'water', 'Woda', TOOLTIP.water, 'water'),
+        classified(result, 'total_solids', 'Ciała stałe', TOOLTIP.solids, 'total_solids'),
+      ],
+      secondary: [metric('fiber', 'Błonnik', result.totals.fiber_g, 'g', TOOLTIP.fiber)],
+    },
+    {
+      id: 'fat',
+      title: 'Tłuszcz i kremowość',
+      primary: [classified(result, 'fat', 'Tłuszcz', TOOLTIP.fat, 'fat')],
+      secondary: [metric('fat-total', 'Tłuszcz w partii', result.totals.fat_g, 'g', TOOLTIP.totalFat)],
+    },
+    {
+      id: 'protein',
+      title: 'Białko i struktura',
+      primary: [
+        classified(
+          result,
+          'aerating_protein',
+          'Białko napowietrzające',
+          TOOLTIP.aeratingProtein,
+          'aerating_protein',
+        ),
+        classified(
+          result,
+          'protein_in_solids',
+          'Białko w suchej masie',
+          TOOLTIP.proteinInSolids,
+          'protein_in_solids',
+        ),
+      ],
+      secondary: [
+        metric('protein-total', 'Białko w partii', result.totals.protein_g, 'g', TOOLTIP.totalProtein),
+      ],
+    },
+    {
+      id: 'stability',
+      title: 'Stabilność i ryzyka',
+      primary: [
+        metric('freezing-stability', 'Stabilność zamrażania', null, '', TOOLTIP.stability, npacReading),
+        classified(
+          result,
+          'lactose_sandiness_risk',
+          'Ryzyko krystalizacji laktozy',
+          TOOLTIP.lactoseRisk,
+          'lactose_sandiness_risk',
+        ),
+        metric(
+          'stabilizer',
+          'Stabilizator',
+          stabilizer?.percentOfTotalMix ?? null,
+          '%',
+          TOOLTIP.stabilizer,
+          stabilizer ? stabilizerReading(stabilizer.status) : null,
+        ),
+      ],
+      secondary: [
+        classified(result, 'lactose', 'Laktoza', TOOLTIP.lactose, 'lactose'),
+        metric(
+          'alcohol',
+          'Alkohol',
+          indicator(result, 'alcohol')?.value ?? null,
+          '%',
+          TOOLTIP.alcohol,
+          readingFor(result, 'alcohol'),
+        ),
+        metric('salt', 'Sól', result.totals.salt_g, 'g', TOOLTIP.salt),
+      ],
+    },
+  ];
+
+  return definitions.map((module) => ({
+    ...module,
+    problem: hasProblem([...module.primary, ...module.secondary]),
+  }));
+}
+
+export function professionalMonitorRawValues(
+  modules: readonly ProfessionalMonitorModule[],
+): Record<ProfessionalRawMetricKey, number | null> {
+  const values = {} as Record<ProfessionalRawMetricKey, number | null>;
+  for (const module of modules) {
+    for (const row of [...module.primary, ...module.secondary]) {
+      if (row.rawMetric) values[row.rawMetric] = row.value;
+    }
+  }
+  return values;
+}

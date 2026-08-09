@@ -87,6 +87,23 @@ describe('approved dosage identity (staging-verified PI-ING-000492)', () => {
     expect(assessment.unitGrams).toBe('grams');
     expect(assessment.unitPercent).toBe('percent_of_total_mix');
   });
+
+  it('resolves a matched private product through its exact canonical Tara identity', () => {
+    const input = fruitFixture(5);
+    const tara = input.items.find((item) => item.id === 'l-tara')!;
+    tara.ingredient = {
+      ...tara.ingredient,
+      id: 'PR-ING-PRIVATE-TARA',
+      canonical_ingredient_id: 'PI-ING-000492',
+      private_product_id: 'private-tara-row',
+      identity_provenance: 'private_product',
+    };
+    const assessment = assessStabilizerDosage(input).find(
+      (item) => item.ingredientId === 'PR-ING-PRIVATE-TARA',
+    )!;
+    expect(assessment.status).toBe('within_window');
+    expect(assessment.window?.mapperId).toBe('PI-ING-000492');
+  });
 });
 
 describe('bounds violations are DETECTED (test 19)', () => {
@@ -117,6 +134,7 @@ describe('bounds violations are DETECTED (test 19)', () => {
       ingredient: {
         ...findDemoIngredient('tara_gum')!,
         id: 'unknown_blend_x',
+        canonical_ingredient_id: 'unknown_blend_x',
         name: 'Unknown Stabilizer Blend',
       },
       planned_grams: 5,

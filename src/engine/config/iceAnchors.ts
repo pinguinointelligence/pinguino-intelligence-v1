@@ -84,6 +84,36 @@ export const ICE_ANCHOR_ROWS: readonly IceAnchorRow[] = [
     status: 'seeded',
     source: 'golden_fixtures:G11,G18',
   },
+  {
+    category: 'protein_gelato',
+    temperature_c: -11,
+    npac_low: 33,
+    ice_at_npac_low: 54.5,
+    npac_high: 42,
+    ice_at_npac_high: 45,
+    status: 'seeded',
+    source: 'owner_approved_standard_physics:locked_spec_v1',
+  },
+  {
+    category: 'protein_gelato',
+    temperature_c: -12,
+    npac_low: 44.98,
+    ice_at_npac_low: 50.35,
+    npac_high: 46.18,
+    ice_at_npac_high: 50.34,
+    status: 'seeded',
+    source: 'owner_approved_standard_physics:G15,G17',
+  },
+  {
+    category: 'protein_gelato',
+    temperature_c: -13,
+    npac_low: 51.77,
+    ice_at_npac_low: 49.73,
+    npac_high: 53.15,
+    ice_at_npac_high: 49.69,
+    status: 'seeded',
+    source: 'owner_approved_standard_physics:G11,G18',
+  },
 ];
 
 /**

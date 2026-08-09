@@ -75,8 +75,14 @@ const CLEAN_1000 = () => [
 describe('addendum item 2 — reference-derived provenance can never commit', () => {
   it('no runtime lookup can select a non-approved template, for ANY category × temperature', () => {
     const ALL_CATEGORIES: ProductCategory[] = [
-      'milk_gelato', 'fruit_gelato', 'nut_gelato', 'chocolate_gelato',
-      'alcohol_gelato', 'sorbet', 'vegan_gelato', 'custom',
+      'milk_gelato',
+      'fruit_gelato',
+      'nut_gelato',
+      'chocolate_gelato',
+      'alcohol_gelato',
+      'sorbet',
+      'vegan_gelato',
+      'custom',
     ];
     for (const category of ALL_CATEGORIES) {
       for (const temperature of [-10, -11, -12, -13, -14]) {
@@ -180,9 +186,9 @@ describe('addendum item 2 — reference-derived provenance can never commit', ()
 
   it('the reference-derived seed is diagnostic-only when it is presented at all', () => {
     // The card renders the honest explanation + next step for this reason code.
-    expect(constraintStudioCopy.preview.diagnosticReferenceDerived('fruit_gelato_ref_v1')).toContain(
-      'wyłącznie diagnostyce',
-    );
+    expect(
+      constraintStudioCopy.preview.diagnosticReferenceDerived('fruit_gelato_ref_v1'),
+    ).toContain('wyłącznie diagnostyce');
     expect(constraintStudioCopy.preview.diagnosticReferenceDerived('X')).toContain(
       'Wybierz zatwierdzony profil produktu',
     );
@@ -291,10 +297,15 @@ describe('addendum item 3 — honest terminology (no global-optimum claims)', ()
 
 describe('addendum item 4 — the outcome classification is recomputed, never claimed', () => {
   it('a PURE rescale is „Przeskalowano partię" and can never say optimisation', () => {
-    const before = input(CLEAN_1000().map((item) => ({ ...item, planned_grams: item.planned_grams * 0.955 })));
+    const before = input(
+      CLEAN_1000().map((item) => ({ ...item, planned_grams: item.planned_grams * 0.955 })),
+    );
     // the same composition, projected onto the exact target batch
     const factor = 1000 / plannedSum(before);
-    const after = { ...before, items: before.items.map((i) => ({ ...i, planned_grams: i.planned_grams * factor })) };
+    const after = {
+      ...before,
+      items: before.items.map((i) => ({ ...i, planned_grams: i.planned_grams * factor })),
+    };
 
     const classification = classifyPreviewOutcome(before, after);
     expect(classification.batchReconciled).toBe(true);
@@ -376,7 +387,13 @@ describe('addendum item 1 — the native-band list is derived, never hard-coded'
     ].sort();
     expect([...NATIVE_BAND_CATEGORIES].sort()).toEqual(seeded);
     // Today that is exactly the four canonical families.
-    expect(seeded).toEqual(['chocolate_gelato', 'milk_gelato', 'sorbet', 'vegan_gelato']);
+    expect(seeded).toEqual([
+      'chocolate_gelato',
+      'milk_gelato',
+      'protein_gelato',
+      'sorbet',
+      'vegan_gelato',
+    ]);
   });
 
   it('every runtime-selectable template targets a NATIVE-banded category', () => {

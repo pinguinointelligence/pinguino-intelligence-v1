@@ -37,6 +37,13 @@ import {
   sweepDraftCandidateVector,
   type DraftSweepResult,
 } from './draftCandidateVector';
+import { sweepEcoDraftCost } from './ecoDraftCostSweep';
+import type { CustomerPriceIndex } from '@/features/pro-core/effectiveRecipePricing';
+import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
+import {
+  verifyEcoFlavourProtection,
+  type EcoFlavourViolation,
+} from '@/features/formulation-strategy/flavourFloor';
 import {
   applyConstraintsToRecipe,
   buildProposalExplanation,
@@ -68,17 +75,49 @@ import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabili
 import {
   isApprovedTemplateId,
   selectFormulationTemplate,
+  selectFormulationTemplateForRecipe,
   type FormulationTemplate,
   type TemplateStatus,
 } from '@/features/formulation/templateRegistry';
 import { isToolboxCandidateExcluded } from '@/features/formulation/toolboxCanonical';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
 import {
+  captureMainIngredientIntent,
+  mainIdentityViolationMessage,
+  verifyMainIngredientIdentity,
+  type MainIdentityViolation,
+} from '@/features/formulation/mainIngredientContract';
+import {
   canonicalDuplicateIds,
   canonicalIngredientId,
   canonicalIngredientIdFromSourceId,
   ingredientProvenance,
 } from '@/data/ingredients/canonicalIngredientIdentity';
+import {
+  veganRecipeEligibilityIssues,
+  type VeganRecipeEligibilityIssue,
+} from '@/data/ingredients/veganEligibility';
+import {
+  veganProfileConstraintIssues,
+  veganProfileConstraintMessagePl,
+  type VeganProfileConstraintIssue,
+} from '@/features/formulation/veganProfileConstraints';
+import {
+  veganSubstitutionMessagePl,
+  veganSubstitutionRecommendations,
+  type VeganSubstitutionRecommendation,
+} from '@/features/formulation/veganSubstitutions';
+import {
+  assessProteinTarget,
+  fitProteinTarget,
+  type ProteinTargetAssessment,
+} from '@/features/protein-gelato/proteinTarget';
+
+/** Build-only commercial inputs. They rank ECO candidates in memory and are
+ * deliberately absent from RecipeInput, Preview payloads and saved versions. */
+export interface OptimizePreviewOptions extends FormulationOptions {
+  effectivePriceOverrides?: CustomerPriceIndex;
+}
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
 
@@ -105,6 +144,7 @@ export function workingStateFingerprint(input: RecipeInput, set: ConstraintSet):
     category: input.category,
     temperature: input.target_temperature_c,
     machine: input.machine_capacity_grams,
+    goals: input.goals ?? null,
     constraints: set.byLineId,
   });
 }
@@ -152,6 +192,8 @@ export interface PreviewOutcomeClassification {
   compositionUnchanged: boolean;
   /** The engine verified fewer violations OR lower weighted severity. */
   engineImproved: boolean;
+  /** The native-safe Protein candidate moved closer to the persisted target. */
+  proteinTargetImproved?: boolean;
   beforeGrams: number;
   afterGrams: number;
   targetBatchGrams: number;
@@ -198,9 +240,20 @@ export function classifyPreviewOutcome(
     targetBatchGrams > 0 && Math.abs(afterGrams - targetBatchGrams) <= BATCH_SUM_TOLERANCE_G;
   const batchReconciled = massMoved && landedOnTarget;
   const compositionUnchanged = isCompositionUnchanged(before, after);
-  const engineImproved =
+  const nativeImproved =
     violationsAfter < violationsBefore ||
     totalSeverity(after) < totalSeverity(before) - SEVERITY_EPS;
+  const beforeProtein = assessProteinTarget(before);
+  const afterProtein = assessProteinTarget(after);
+  const proteinTargetImproved =
+    beforeProtein.applicable &&
+    afterProtein.applicable &&
+    beforeProtein.targetPercent === afterProtein.targetPercent &&
+    beforeProtein.absoluteResidualPp !== null &&
+    afterProtein.absoluteResidualPp !== null &&
+    afterProtein.hardSafe &&
+    afterProtein.absoluteResidualPp < beforeProtein.absoluteResidualPp - 1e-9;
+  const engineImproved = nativeImproved || proteinTargetImproved;
 
   const outcome: PreviewOutcome = engineImproved
     ? batchReconciled
@@ -217,6 +270,7 @@ export function classifyPreviewOutcome(
     engineImproved,
     beforeGrams,
     afterGrams,
+    proteinTargetImproved,
     targetBatchGrams,
     violationsBefore,
     violationsAfter,
@@ -337,6 +391,8 @@ export interface ConstraintPreview {
   baseDraftRevision?: number;
   /** Owner P0 NIGHTLY (FAILURE 2): honest iteration diagnostics — count,
    * per-round violation/severity trajectory and the exact stop reason. */
+  /** Protein product-layer target vs actual on the staged candidate. */
+  proteinTarget?: ProteinTargetAssessment;
   iteration?: IterationDiagnostics;
   /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
    * the PROPOSED state (classified by `classifyViolationBands` provenance).
@@ -350,7 +406,11 @@ export interface ConstraintPreview {
   diagnosticOnly?: boolean;
   /** Owner addendum item 2 — WHICH honest explanation the card must render.
    * Presentation only; every one of these is enforced again at the door. */
-  diagnosticReason?: 'hard_residual' | 'iteration_cap' | 'reference_derived';
+  diagnosticReason?:
+    | 'hard_residual'
+    | 'iteration_cap'
+    | 'reference_derived'
+    | 'protein_target_residual';
   /** The proposed working state — applied ONLY through `commitPreview`. */
   proposedInput: RecipeInput;
   /** The constraint set in force AFTER apply (suggested fixes update a lock —
@@ -581,6 +641,32 @@ export const plannedSum = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + item.planned_grams, 0);
 
 /**
+ * Solver moves are normalized back to the requested batch after every round.
+ * Every positive Main line is held at the candidate's current group amount for
+ * that normalization, so the generic rescaler can only redistribute the
+ * technological envelope and cannot independently drift one flavour carrier.
+ */
+function rescalePreservingMainGroup(
+  identityInput: RecipeInput,
+  candidate: RecipeInput,
+  set: ConstraintSet,
+  targetBatchGrams: number,
+): ReturnType<typeof rescaleBatchToTarget> {
+  const byLineId = { ...set.byLineId };
+  for (const main of captureMainIngredientIntent(identityInput)) {
+    const current = candidate.items.find(
+      (item) =>
+        item.id === main.lineId &&
+        canonicalIngredientId(item.ingredient) === main.canonicalIngredientId &&
+        item.lock_type === 'main',
+    );
+    if (!current || !(current.planned_grams > 0)) continue;
+    byLineId[main.lineId] = { mode: 'locked', grams: current.planned_grams };
+  }
+  return rescaleBatchToTarget(candidate, { byLineId }, targetBatchGrams);
+}
+
+/**
  * Solver ADD actions create new lines with `correction-<ingredient>-<index>`
  * ids; a SECOND apply in the same session can therefore push a duplicate id.
  * New (non-base) lines are renamed to the first free `<id>~N` — deterministic,
@@ -730,6 +816,34 @@ export type BuildPreviewResult =
   | { ok: false; code: 'rescale_actuals' }
   | { ok: false; code: 'rescale_no_scalable' }
   | { ok: false; code: 'rescale_locked_sum'; minimumBatchGrams: number }
+  | {
+      ok: false;
+      code: 'main_ratio_conflict';
+      lineIds: string[];
+      ingredientNames: string[];
+      messagePl: string;
+    }
+  | {
+      ok: false;
+      code: 'main_ingredient_unavailable';
+      ingredientIds: string[];
+      messagePl: string;
+    }
+  | {
+      ok: false;
+      code: 'vegan_ingredient_conflict';
+      issues: VeganRecipeEligibilityIssue[];
+      substitutions: VeganSubstitutionRecommendation[];
+      messagePl: string;
+    }
+  | {
+      ok: false;
+      code: 'vegan_profile_constraint';
+      issues: VeganProfileConstraintIssue[];
+      messagePl: string;
+      /** Non-appliable candidate retained only for calibration diagnostics. */
+      diagnosticInput: RecipeInput;
+    }
   /** Owner P0 (full formulation): no approved template for this profile ×
    * temperature — honest unsupported, never routed to another profile. */
   | { ok: false; code: 'unsupported_profile'; reason: string }
@@ -814,6 +928,62 @@ export type BuildPreviewResult =
       templateStatus: TemplateStatus;
     };
 
+function mainSafePreview(input: RecipeInput, preview: ConstraintPreview): BuildPreviewResult {
+  if (preview.proposedInput.category === 'vegan_gelato') {
+    const issues = veganRecipeEligibilityIssues(preview.proposedInput.items);
+    if (issues.length > 0) {
+      const substitutions = veganSubstitutionRecommendations(preview.proposedInput.items, issues);
+      return {
+        ok: false,
+        code: 'vegan_ingredient_conflict',
+        issues,
+        substitutions,
+        messagePl:
+          'Receptura Wegańska zawiera składniki bez potwierdzonej zgodności Vegan: ' +
+          issues.map((issue) => `${issue.ingredientName} [${issue.status}]`).join(', ') +
+          '. PI nie usunie ich ani nie zastąpi po cichu.' +
+          veganSubstitutionMessagePl(substitutions),
+      };
+    }
+    const profileIssues = veganProfileConstraintIssues(preview.proposedInput);
+    if (profileIssues.length > 0) {
+      return {
+        ok: false,
+        code: 'vegan_profile_constraint',
+        issues: profileIssues,
+        messagePl: veganProfileConstraintMessagePl(profileIssues),
+        diagnosticInput: preview.proposedInput,
+      };
+    }
+  }
+  if (normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco') {
+    const flavour = verifyEcoFlavourProtection(input, preview.proposedInput);
+    if (!flavour.ok) {
+      return {
+        ok: false,
+        code: 'main_ratio_conflict',
+        lineIds: [...new Set(flavour.violations.map((violation) => violation.lineId))],
+        ingredientNames: [
+          ...new Set(flavour.violations.map((violation) => violation.ingredientName)),
+        ],
+        messagePl:
+          'ECO zablokowane: propozycja narusza tożsamość smaku, Flavour Floor lub proporcję Main.',
+      };
+    }
+  }
+  const identity = verifyMainIngredientIdentity(input, preview.proposedInput);
+  if (identity.ok) return { ok: true, preview };
+  return {
+    ok: false,
+    code: 'main_ratio_conflict',
+    lineIds: [...new Set(identity.violations.flatMap((violation) => violation.lineIds))],
+    ingredientNames: [
+      ...new Set(identity.violations.flatMap((violation) => violation.ingredientNames)),
+    ],
+    messagePl: mainIdentityViolationMessage(identity),
+  };
+}
+
 const finishPreview = (
   kind: PreviewKind,
   titlePl: string,
@@ -835,6 +1005,7 @@ const finishPreview = (
     baseFingerprint: workingStateFingerprint(baseInput, baseSet),
     proposedInput,
     nextConstraints,
+    proteinTarget: assessProteinTarget(proposedInput, afterResult),
     lines: buildLineDiffs(baseInput, proposedInput, nextConstraints),
     violationsBefore,
     violationsAfter: violationCount(afterResult),
@@ -1068,6 +1239,8 @@ export type IterationStopReason =
   | 'all_bands_in_range' // 10/10 — nothing left out of band
   | 'fixed_point_no_proposal' // solver returned no admissible move (see detail)
   | 'no_improving_move' // a move existed but verifiably improved nothing — reverted
+  | 'protein_target_reached'
+  | 'protein_best_achievable'
   | 'iteration_cap'; // deterministic guard hit — deterministic guard, reported honestly
 
 /**
@@ -1113,6 +1286,8 @@ export interface IterationDiagnostics {
   /** Sub-classification when the solver returned no move (null otherwise). */
   stopDetail: NoProposalDetail | null;
   /** TRUE only when the cap fired while improvement was still in progress. */
+  /** Product target assessment at the exact final candidate. */
+  proteinTarget?: ProteinTargetAssessment;
   capped: boolean;
   /** Owner Agent 3 — the per-move QA evidence log: every move the engine
    * offered, filtered, applied or reverted, with metric deltas and the exact
@@ -1141,6 +1316,7 @@ function iterateSolverToFixedPoint(
   /** Owner CURRENT-DRAFT P0 (Phase 3): the §17 set, so EVERY unlocked selected
    * line becomes an adjustable candidate for the optimizer. */
   set: ConstraintSet = { byLineId: {} },
+  priceOverrides: CustomerPriceIndex = {},
 ): {
   working: RecipeInput;
   lastProposal: CorrectionProposal | null;
@@ -1189,6 +1365,30 @@ function iterateSolverToFixedPoint(
 
   for (let round = 1; ; round += 1) {
     if (current.violations === 0) {
+      if (working.category === 'protein_gelato') {
+        const targetFit = fitProteinTarget(working, set, [...excludedIngredientIds]);
+        if (targetFit.changed) {
+          const next = measure(targetFit.input);
+          attemptedMoves.push({
+            round,
+            move: `protein-target ${targetFit.sourceLineId ?? 'source'} ↔ ${targetFit.balancingLineId ?? 'balance'}`,
+            outcome: 'applied',
+            rejectionReason: null,
+            violationsBefore: current.violations,
+            severityBefore: current.severityPoints,
+            violationsAfter: next.violations,
+            severityAfter: next.severityPoints,
+          });
+          working = targetFit.input;
+          current = next;
+          rounds.push({ round, ...next });
+          continue;
+        }
+        stopReason = targetFit.assessment.reached
+          ? 'protein_target_reached'
+          : 'protein_best_achievable';
+        break;
+      }
       stopReason = 'all_bands_in_range';
       break;
     }
@@ -1231,21 +1431,33 @@ function iterateSolverToFixedPoint(
      */
     const searchDraftVector = (): DraftSweepResult | null => {
       draftVectorSearches += 1;
+      const constraints = {
+        context: recipeContext(working),
+        mode: working.mode,
+        allow_main_ingredient_reduction: false,
+        // Capacity is re-established by construction after every accepted line.
+        machine_capacity_grams: null,
+      } as const;
+      const normalize = (candidate: RecipeInput) =>
+        restore(ensureUniqueLineIds(base, mergeByCanonicalIdentity(base, candidate)));
+
+      if (normalizeFormulationStrategy(base.goals?.formulation_strategy ?? base.mode) === 'eco') {
+        return sweepEcoDraftCost({
+          identityInput: base,
+          start: working,
+          set,
+          excludedIngredientIds,
+          constraints,
+          normalize,
+          priceOverrides,
+        });
+      }
       return sweepDraftCandidateVector({
         start: working,
         set,
         excludedIngredientIds,
-        constraints: {
-          context: recipeContext(working),
-          mode: working.mode,
-          allow_main_ingredient_reduction: false,
-          // Capacity is re-established by construction: `normalize` restores the
-          // target batch after every accepted line (same deferral rationale as
-          // `solverInputWithDeferredCapacity`).
-          machine_capacity_grams: null,
-        },
-        normalize: (candidate) =>
-          restore(ensureUniqueLineIds(base, mergeByCanonicalIdentity(base, candidate))),
+        constraints,
+        normalize,
         measure,
         startMeasure: current,
       });
@@ -1384,6 +1596,7 @@ function iterateSolverToFixedPoint(
       targetBatchGrams: start.target_batch_grams,
       rounds,
       stopReason,
+      proteinTarget: assessProteinTarget(working),
       stopDetail,
       capped,
       attemptedMoves,
@@ -1402,7 +1615,7 @@ function iterateFormulationSeed(
   input: RecipeInput,
   set: ConstraintSet,
   proposedInput: RecipeInput,
-  options: FormulationOptions = {},
+  options: OptimizePreviewOptions = {},
 ): ReturnType<typeof iterateSolverToFixedPoint> {
   const constrainedIngredientIds = new Set(
     input.items
@@ -1413,7 +1626,7 @@ function iterateFormulationSeed(
     if (Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) {
       return candidate;
     }
-    const restored = rescaleBatchToTarget(candidate, set, input.target_batch_grams);
+    const restored = rescalePreservingMainGroup(input, candidate, set, input.target_batch_grams);
     return restored.ok ? restored.input : candidate;
   };
   const seeded = restore(
@@ -1429,6 +1642,7 @@ function iterateFormulationSeed(
     restore,
     new Set(options.excludedIngredientIds ?? []),
     set,
+    options.effectivePriceOverrides,
   );
 }
 
@@ -1585,13 +1799,15 @@ function buildFormulationPreviewInternal(
   template: NonNullable<ReturnType<typeof routeFormulationMode>['template']>,
   mode: FormulationMode,
   createdAt: string,
-  options: FormulationOptions,
+  options: OptimizePreviewOptions,
   /** Owner Phase 6 (NIGHTLY): TRUE when invoked as the template-seeded
    * fallback after a local-corrector failure (provenance marker only). */
   localFallback = false,
 ): BuildPreviewResult {
   const built = buildFormulationProposal(input, set, template, mode, options);
   if (!built.ok) {
+    if (built.code === 'main_ratio_conflict') return built;
+    if (built.code === 'main_ingredient_unavailable') return built;
     if (built.code === 'missing_required_role') {
       return {
         ok: false,
@@ -1634,7 +1850,20 @@ function buildFormulationPreviewInternal(
   // WHILE verified improvement exists; never 1 round by construction).
   // Fallback bands guide the iteration; the honest partial score labelling for
   // provisional profiles is kept unchanged.
-  const iterated = iterateFormulationSeed(input, set, built.proposal.proposedInput, options);
+  const stabilizerDose = built.proposal.stabilizerDose;
+  const solverSet: ConstraintSet =
+    input.category === 'vegan_gelato' && stabilizerDose?.inherited
+      ? {
+          byLineId: {
+            ...set.byLineId,
+            [stabilizerDose.lineId]: {
+              mode: 'locked',
+              grams: stabilizerDose.scaledTemplateGrams,
+            },
+          },
+        }
+      : set;
+  const iterated = iterateFormulationSeed(input, solverSet, built.proposal.proposedInput, options);
   const working = iterated.working;
   const solverRounds = iterated.diagnostics.solverInvocations;
   const lastProposal = iterated.lastProposal;
@@ -1665,7 +1894,7 @@ function buildFormulationPreviewInternal(
   // pre-normalization seed baseline? (Held lines prove nothing — excluded.)
   const heldLineIds = new Set(
     working.items
-      .filter((item) => isConstrained(set, item.id) || item.lock_type !== 'unlocked')
+      .filter((item) => isConstrained(solverSet, item.id) || item.lock_type !== 'unlocked')
       .map((item) => item.id),
   );
   const scaling: ProportionalScalingReport = detectProportionalScaling(
@@ -1818,16 +2047,23 @@ function buildFormulationPreviewInternal(
   // Owner addendum item 2: a non-approved formulation seed is DIAGNOSTIC ONLY,
   // whatever the score — the door refuses it independently.
   const referenceDerived = !isApprovedTemplateId(built.proposal.templateId);
+  const proteinResidual =
+    preview.proteinTarget?.applicable === true && !preview.proteinTarget.reached;
   preview.diagnosticOnly =
-    bands.hardMetrics.length > 0 || iterated.diagnostics.capped || referenceDerived;
+    bands.hardMetrics.length > 0 ||
+    iterated.diagnostics.capped ||
+    referenceDerived ||
+    proteinResidual;
   preview.diagnosticReason = referenceDerived
     ? 'reference_derived'
     : bands.hardMetrics.length > 0
       ? 'hard_residual'
       : iterated.diagnostics.capped
         ? 'iteration_cap'
-        : undefined;
-  return { ok: true, preview };
+        : proteinResidual
+          ? 'protein_target_residual'
+          : undefined;
+  return mainSafePreview(input, preview);
 }
 
 /**
@@ -1896,8 +2132,36 @@ export function buildOptimizePreview(
   input: RecipeInput,
   set: ConstraintSet,
   createdAt: string,
-  options: FormulationOptions = {},
+  options: OptimizePreviewOptions = {},
 ): BuildPreviewResult {
+  if (input.category === 'vegan_gelato') {
+    const issues = veganRecipeEligibilityIssues(input.items);
+    if (issues.length > 0) {
+      const substitutions = veganSubstitutionRecommendations(input.items, issues);
+      return {
+        ok: false,
+        code: 'vegan_ingredient_conflict',
+        issues,
+        substitutions,
+        messagePl:
+          'Receptura Wegańska zawiera składniki wymagające usunięcia lub zatwierdzonego zamiennika: ' +
+          issues.map((issue) => `${issue.ingredientName} [${issue.status}]`).join(', ') +
+          '. Składniki Główne pozostają bez zmian.' +
+          veganSubstitutionMessagePl(substitutions),
+      };
+    }
+  }
+  if ((options.unavailableMainIngredientIds?.length ?? 0) > 0) {
+    const ingredientIds = [...new Set(options.unavailableMainIngredientIds)];
+    return {
+      ok: false,
+      code: 'main_ingredient_unavailable',
+      ingredientIds,
+      messagePl:
+        `Składnik Główny (${ingredientIds.join(', ')}) jest oznaczony jako niedostępny. ` +
+        'PI nie usunie go po cichu: wybierz zatwierdzony zamiennik albo przywróć składnik.',
+    };
+  }
   // OWNER P0 (full formulation) — deterministic MODE ROUTER first: a new/
   // incomplete/arbitrary draft is FORMULATED from the approved template
   // registry (never from the previous version, never by scaling arbitrary
@@ -1938,7 +2202,7 @@ export function buildOptimizePreview(
     failure: Extract<BuildPreviewResult, { ok: false; code: 'no_proposal' | 'unsafe_proposal' }>,
   ): BuildPreviewResult => {
     if (!decision.reasons.includes('substantive_unconstrained_draft')) return failure;
-    const lookup = selectFormulationTemplate(input.category, input.target_temperature_c);
+    const lookup = selectFormulationTemplateForRecipe(input);
     if (!lookup.template) return failure;
     const seeded = buildFormulationPreviewInternal(
       input,
@@ -2019,7 +2283,7 @@ export function buildOptimizePreview(
     preview.batchBeforeGrams = plannedSum(input);
     preview.hardResidualMetrics = bands.hardMetrics;
     preview.diagnosticOnly = false;
-    return { ok: true, preview };
+    return mainSafePreview(input, preview);
   };
 
   const constrained = applyConstraintsToRecipe(input, set);
@@ -2033,7 +2297,7 @@ export function buildOptimizePreview(
     Math.abs(plannedSum(candidate) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G;
   const restoreBatch = (candidate: RecipeInput): RecipeInput => {
     if (!offBatch(candidate)) return candidate;
-    const restored = rescaleBatchToTarget(candidate, set, input.target_batch_grams);
+    const restored = rescalePreservingMainGroup(input, candidate, set, input.target_batch_grams);
     return restored.ok ? restored.input : candidate;
   };
 
@@ -2044,7 +2308,27 @@ export function buildOptimizePreview(
   const beforeResult = calculateRecipe(constrained.input);
   const violationsBefore = violationCount(beforeResult);
   const hasCritical = beforeResult.warnings.some((warning) => warning.severity === 'critical');
-  if (violationCount(calculateRecipe(working)) === 0 && !hasCritical && !batchRescaled) {
+  const initialProteinTarget = assessProteinTarget(working);
+  const strategy = normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode);
+  if (
+    strategy !== 'eco' &&
+    violationCount(calculateRecipe(working)) === 0 &&
+    !hasCritical &&
+    !batchRescaled &&
+    (!initialProteinTarget.applicable || initialProteinTarget.reached)
+  ) {
+    if (input.category === 'vegan_gelato') {
+      const profileIssues = veganProfileConstraintIssues(input);
+      if (profileIssues.length > 0) {
+        return {
+          ok: false,
+          code: 'vegan_profile_constraint',
+          issues: profileIssues,
+          messagePl: veganProfileConstraintMessagePl(profileIssues),
+          diagnosticInput: input,
+        };
+      }
+    }
     return { ok: false, code: 'already_clean' };
   }
 
@@ -2066,6 +2350,7 @@ export function buildOptimizePreview(
     restoreBatch,
     new Set(options.excludedIngredientIds ?? []),
     set,
+    options.effectivePriceOverrides,
   );
   working = iterated.working;
   const lastProposal = iterated.lastProposal;
@@ -2160,14 +2445,19 @@ export function buildOptimizePreview(
   // honest diagnostic classification as the formulation path.
   const localBands = classifyViolationBands(working);
   preview.hardResidualMetrics = localBands.hardMetrics;
-  preview.diagnosticOnly = localBands.hardMetrics.length > 0 || iterated.diagnostics.capped;
+  const proteinResidual =
+    preview.proteinTarget?.applicable === true && !preview.proteinTarget.reached;
+  preview.diagnosticOnly =
+    localBands.hardMetrics.length > 0 || iterated.diagnostics.capped || proteinResidual;
   preview.diagnosticReason =
     localBands.hardMetrics.length > 0
       ? 'hard_residual'
       : iterated.diagnostics.capped
         ? 'iteration_cap'
-        : undefined;
-  return { ok: true, preview };
+        : proteinResidual
+          ? 'protein_target_residual'
+          : undefined;
+  return mainSafePreview(input, preview);
 }
 
 /**
@@ -2202,6 +2492,19 @@ export function buildBatchRescalePreview(
           minimumBatchGrams: rescaled.minimumBatchGrams ?? 0,
         };
     }
+  }
+
+  const mainIdentity = verifyMainIngredientIdentity(input, rescaled.input);
+  if (!mainIdentity.ok) {
+    return {
+      ok: false,
+      code: 'main_ratio_conflict',
+      lineIds: [...new Set(mainIdentity.violations.flatMap((violation) => violation.lineIds))],
+      ingredientNames: [
+        ...new Set(mainIdentity.violations.flatMap((violation) => violation.ingredientNames)),
+      ],
+      messagePl: mainIdentityViolationMessage(mainIdentity),
+    };
   }
 
   const violationsBefore = violationCount(calculateRecipe(input));
@@ -2291,6 +2594,18 @@ export function buildSuggestedFixPreview(
     return restored.ok ? restored.input : adjustedInput;
   })();
   const proposedInput = optimized.ok ? optimized.preview.proposedInput : fallbackInput;
+  const mainIdentity = verifyMainIngredientIdentity(input, proposedInput);
+  if (!mainIdentity.ok) {
+    return {
+      ok: false,
+      code: 'main_ratio_conflict',
+      lineIds: [...new Set(mainIdentity.violations.flatMap((violation) => violation.lineIds))],
+      ingredientNames: [
+        ...new Set(mainIdentity.violations.flatMap((violation) => violation.ingredientNames)),
+      ],
+      messagePl: mainIdentityViolationMessage(mainIdentity),
+    };
+  }
   const explanation = optimized.ok
     ? optimized.preview.explanation
     : ((): ConstraintExplanationEntry[] => {
@@ -2360,12 +2675,34 @@ export type BlockedApply =
   | { code: 'invalid_lines'; messagePl: string; lineNames: string[] }
   | { code: 'excluded_ingredients'; messagePl: string; ingredientNames: string[] }
   | {
+      code: 'vegan_ingredients_invalid';
+      messagePl: string;
+      issues: VeganRecipeEligibilityIssue[];
+    }
+  | {
+      code: 'vegan_profile_constraint_invalid';
+      messagePl: string;
+      issues: VeganProfileConstraintIssue[];
+    }
+  | {
       code: 'constraints_violated';
       messagePl: string;
       violations: ConstraintPreservationViolation[];
     }
   /** Owner P0 Phase 6: the proposal would introduce a duplicate canonical ingredient. */
   | { code: 'duplicate_lines'; messagePl: string; ingredientNames: string[] }
+  /** Owner P0 multi-main: no applicable proposal may remove, zero, demote or
+   * ratio-drift a positive Main identity from the draft it was built for. */
+  | {
+      code: 'main_identity_violated';
+      messagePl: string;
+      violations: MainIdentityViolation[];
+    }
+  | {
+      code: 'eco_flavour_floor_violated';
+      messagePl: string;
+      violations: EcoFlavourViolation[];
+    }
   /** Owner P0 Phase 5: proposed planned sum breaks the target-batch invariant. */
   | { code: 'batch_total_mismatch'; messagePl: string; proposedSum: number; targetBatch: number }
   /** Owner P0 (definitive fail): an optimize proposal that does not improve an
@@ -2407,6 +2744,22 @@ const violatedIngredientNames = (
 };
 
 /**
+ * Preview may change formulation and target batch only. The scientific/product
+ * context it was verified under must be exactly the current context: otherwise
+ * a forged payload could validate grams under an easier profile and then write
+ * those grams into the unchanged current profile.
+ */
+function sameVerifiedRecipeContext(current: RecipeInput, proposed: RecipeInput): boolean {
+  return (
+    proposed.mode === current.mode &&
+    proposed.category === current.category &&
+    Object.is(proposed.target_temperature_c, current.target_temperature_c) &&
+    Object.is(proposed.machine_capacity_grams, current.machine_capacity_grams) &&
+    JSON.stringify(proposed.goals ?? null) === JSON.stringify(current.goals ?? null)
+  );
+}
+
+/**
  * A verified, applicable recipe change. PRIVATE constructor: the only way to
  * obtain an instance is `VerifiedApply.commit` (aliased `commitPreview`),
  * which ALWAYS runs `verifyConstraintsPreserved` — so an Apply path that
@@ -2444,6 +2797,9 @@ export class VerifiedApply {
     }
     // §19.2: a preview never applies onto a state it was not built for.
     if (workingStateFingerprint(current, currentConstraints) !== preview.baseFingerprint) {
+      return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+    }
+    if (!sameVerifiedRecipeContext(current, preview.proposedInput)) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
 
@@ -2484,6 +2840,29 @@ export class VerifiedApply {
       };
     }
 
+    if (preview.proposedInput.category === 'vegan_gelato') {
+      const veganIssues = veganRecipeEligibilityIssues(preview.proposedInput.items);
+      if (veganIssues.length > 0) {
+        return {
+          ok: false,
+          code: 'vegan_ingredients_invalid',
+          messagePl:
+            'Apply zablokowany: receptura Wegańska zawiera składniki bez potwierdzonej zgodności Vegan: ' +
+            veganIssues.map((issue) => `${issue.ingredientName} [${issue.status}]`).join(', '),
+          issues: veganIssues,
+        };
+      }
+      const profileIssues = veganProfileConstraintIssues(preview.proposedInput);
+      if (profileIssues.length > 0) {
+        return {
+          ok: false,
+          code: 'vegan_profile_constraint_invalid',
+          messagePl: `Apply zablokowany: ${veganProfileConstraintMessagePl(profileIssues)}`,
+          issues: profileIssues,
+        };
+      }
+    }
+
     const excludedCanonicalIds = new Set(
       excludedIngredientIds.map(canonicalIngredientIdFromSourceId),
     );
@@ -2497,6 +2876,34 @@ export class VerifiedApply {
         messagePl: copy.blocked.excludedIngredients(excludedNames),
         ingredientNames: excludedNames,
       };
+    }
+
+    // MULTI-MAIN IDENTITY GATE — intentionally BEFORE batch/integrity scoring:
+    // a mathematically neat batch is irrelevant if it is a different flavour.
+    // Re-derived from the current input and the actual payload; no preview flag
+    // is trusted and every Preview/Apply route passes through this door.
+    const mainIdentity = verifyMainIngredientIdentity(current, preview.proposedInput);
+    if (!mainIdentity.ok) {
+      return {
+        ok: false,
+        code: 'main_identity_violated',
+        messagePl: mainIdentityViolationMessage(mainIdentity),
+        violations: mainIdentity.violations,
+      };
+    }
+    if (
+      normalizeFormulationStrategy(current.goals?.formulation_strategy ?? current.mode) === 'eco'
+    ) {
+      const flavour = verifyEcoFlavourProtection(current, preview.proposedInput);
+      if (!flavour.ok) {
+        return {
+          ok: false,
+          code: 'eco_flavour_floor_violated',
+          messagePl:
+            'Apply zablokowany: propozycja ECO narusza tożsamość smaku, Flavour Floor lub proporcję Main.',
+          violations: flavour.violations,
+        };
+      }
     }
 
     if (preview.formulation?.roleTrace.some((row) => row.hard && row.outcome === 'missing_hard')) {
@@ -2705,6 +3112,24 @@ export class VerifiedApply {
           code: 'hard_residual_violations',
           messagePl: copy.blocked.hardResiduals(doorBands.hardMetrics),
           hardMetrics: doorBands.hardMetrics,
+        };
+      }
+    }
+
+    if (preview.kind === 'optimize' && current.category === 'protein_gelato') {
+      const currentTarget = assessProteinTarget(current);
+      const proposedTarget = assessProteinTarget(preview.proposedInput);
+      const targetIdentityPreserved =
+        preview.proposedInput.category === 'protein_gelato' &&
+        proposedTarget.targetPercent === currentTarget.targetPercent;
+      if (!targetIdentityPreserved || !proposedTarget.hardSafe || !proposedTarget.reached) {
+        return {
+          ok: false,
+          code: 'unsafe_proposal',
+          messagePl:
+            'Apply zablokowany: kandydat Protein nie osiąga wybranego celu białka w natywnie bezpiecznej recepturze.',
+          violationsBefore: detectViolations(calculateRecipe(current)).length,
+          violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
         };
       }
     }

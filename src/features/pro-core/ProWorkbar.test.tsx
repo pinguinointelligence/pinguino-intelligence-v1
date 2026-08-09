@@ -21,6 +21,7 @@ interface MockRecipeState {
   category: string;
   visibleProductType: string;
   mode: string;
+  formulation_strategy: 'optimal' | 'eco';
   target_temperature_c: number;
   target_batch_grams: number;
   machineKind: 'professional' | 'home' | null;
@@ -38,6 +39,7 @@ let mockState: MockRecipeState = {
   visibleProductType: 'gelato',
   mode: 'premium',
   target_temperature_c: -12,
+  formulation_strategy: 'optimal',
   target_batch_grams: 1000,
   machineKind: null,
   servingModeId: null,
@@ -105,10 +107,12 @@ describe('ProWorkbar (sticky top workbar)', () => {
       currentVersionDate: '2026-07-21T10:00:00.000Z',
       category: 'milk_gelato',
       mode: 'premium',
+      formulation_strategy: 'eco',
       target_temperature_c: -12,
       target_batch_grams: 1000,
     });
-    expect(html).toContain('Gelato · Premium · -12°C · 1000 g');
+    expect(html).toContain('Gelato');
+    expect(html).toContain('ECO');
   });
 });
 

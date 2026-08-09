@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import { assessEngineIngredientVeganEligibility } from '@/data/ingredients/veganEligibility';
 import { prepareProductEngineIngredient } from './productEngineHandoff';
 
 /** Minimal reference row (only the fields the engine mapper reads). */
@@ -78,6 +79,46 @@ describe('prepareProductEngineIngredient — gates + red flags', () => {
     expect(h.provenance).toBe('product_measured');
     expect(h.ingredient?.pac_value).toBe(9);
     expect(h.ingredient?.source_type).toBe('producer_label');
+  });
+
+  it('uses the private product Vegan declaration instead of inheriting the matched reference flag', () => {
+    const veganReference = refRow({
+      ingredient_id: 'PI-ING-001565',
+      ingredient_name_internal: 'oat_drink',
+      ingredient_name_display: 'Oat drink',
+      ingredient_category: 'beverage',
+      ingredient_subcategory: 'plant_drink_oat',
+      verification_status: 'Verified',
+      approved_for_engines: true,
+      vegan: 'true',
+      dairy_free: 'true',
+      milk_fat_percent: 0,
+      non_fat_milk_solids_percent: 0,
+      lactose_percent: 0,
+    });
+    const base = {
+      mapper_status: 'matched',
+      matched_basement_id: 'PI-ING-001565',
+      product_code: 'PR-VEGAN-DECLARATION',
+    } as const;
+
+    const explicitlyFalse = prepareProductEngineIngredient(
+      { ...base, vegan: 'false' },
+      veganReference,
+    ).ingredient!;
+    expect(assessEngineIngredientVeganEligibility(explicitlyFalse)).toMatchObject({
+      status: 'VEGAN_FALSE',
+      reasons: ['private_product_vegan_false'],
+    });
+
+    const unknown = prepareProductEngineIngredient(base, veganReference).ingredient!;
+    expect(assessEngineIngredientVeganEligibility(unknown).status).toBe('VEGAN_UNKNOWN');
+
+    const explicitlyTrue = prepareProductEngineIngredient(
+      { ...base, vegan: 'true' },
+      veganReference,
+    ).ingredient!;
+    expect(assessEngineIngredientVeganEligibility(explicitlyTrue).status).toBe('VEGAN_VERIFIED');
   });
 });
 

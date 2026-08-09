@@ -59,6 +59,7 @@ const resetSession = () => {
     cost_priority: 'balanced',
     items: [],
     excludedIngredientIds: [],
+    unavailableMainIngredientIds: [],
     savedRecipeId: null,
     savedRecipeName: null,
     dirty: false,
@@ -91,11 +92,13 @@ const serializeLiveDraft = (): string => {
     ]),
     byLineId: constraints.byLineId,
     exclusions: [...recipe.excludedIngredientIds],
+    unavailableMains: [...recipe.unavailableMainIngredientIds],
     batch: input.target_batch_grams,
     category: input.category,
     temperature: input.target_temperature_c,
     tier: input.mode,
     machineCapacity: input.machine_capacity_grams,
+    goals: input.goals,
   });
 };
 

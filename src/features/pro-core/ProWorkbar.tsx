@@ -9,12 +9,7 @@ import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
 
-const TIER: Record<string, string> = {
-  eco: 'ECO',
-  classic: 'Classic',
-  premium: 'Premium',
-  signature: 'Signature',
-};
+const TIER = { optimal: 'OPTIMAL', eco: 'ECO' } as const;
 const SERVING_LABEL: Record<string, string> = {
   fresh: pm.serving.fresh,
   temp_minus_11: pm.serving.minus11,
@@ -32,7 +27,7 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
   const dirty = useRecipeStore((s) => s.dirty);
   const visibleProductType = useRecipeStore((s) => s.visibleProductType);
-  const mode = useRecipeStore((s) => s.mode);
+  const mode = useRecipeStore((s) => s.formulation_strategy);
   const temperatureC = useRecipeStore((s) => s.target_temperature_c);
   const batchGrams = useRecipeStore((s) => s.target_batch_grams);
   const machineKind = useRecipeStore((s) => s.machineKind);

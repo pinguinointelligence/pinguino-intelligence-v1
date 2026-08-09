@@ -130,14 +130,14 @@ export function gelatoInternalCategory(items: readonly RecipeItem[]): ProductCat
 
 /**
  * The internal category for a visible type + the current ingredients.
- * Protein is NOT scientifically complete: it maps to no engine category — callers keep the
- * previous category and show the honest unsupported state (never a silent guess).
+ * Every visible product type maps to one dedicated seeded calculation policy.
  */
 export function internalCategoryFor(
   visible: VisibleProductType,
   items: readonly RecipeItem[],
-  previous: ProductCategory,
+  _previous: ProductCategory,
 ): ProductCategory {
+  void _previous;
   switch (visible) {
     case 'gelato':
       return gelatoInternalCategory(items);
@@ -146,7 +146,7 @@ export function internalCategoryFor(
     case 'vegan':
       return 'vegan_gelato';
     case 'protein':
-      return previous; // honest unsupported — the recipe is never silently re-profiled
+      return 'protein_gelato';
   }
 }
 
@@ -178,12 +178,14 @@ export function visibleTypeOf(category: ProductCategory): VisibleProductType {
       return 'sorbet';
     case 'vegan_gelato':
       return 'vegan';
+    case 'protein_gelato':
+      return 'protein';
     default:
       return 'gelato'; // milk/fruit/nut/chocolate/alcohol gelato + custom are all visible GELATO
   }
 }
 
-/** True when the visible type is scientifically supported by the Engine today. */
+/** True when the visible type owns native seeded bands. */
 export function isSupportedVisibleType(visible: VisibleProductType): boolean {
-  return visible !== 'protein';
+  return hasNativeSeededBands(internalCategoryFor(visible, [], 'milk_gelato'));
 }

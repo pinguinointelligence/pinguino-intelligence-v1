@@ -35,6 +35,7 @@
  * unresolved pending the owner's stabilizer-activity target.
  */
 import type { CorrectionAction, RecipeInput } from '@/engine';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { resolveFunctionalRole } from './ingredientRoles';
 
 export type StabilizerIdentityKind = 'pure_gum' | 'stabilizer_blend';
@@ -141,6 +142,7 @@ export interface StabilizerDosageAssessment {
 
 const sumPlanned = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+const DOSAGE_EPS = 1e-9;
 
 /**
  * Assess every stabilizer-role line of the recipe against its OWN approved
@@ -152,14 +154,14 @@ export function assessStabilizerDosage(input: RecipeInput): StabilizerDosageAsse
   const assessments: StabilizerDosageAssessment[] = [];
   for (const item of input.items) {
     if (resolveFunctionalRole(item.ingredient) !== 'stabilizer') continue;
-    const window = approvedStabilizerDosage(item.ingredient.id);
+    const window = approvedStabilizerDosage(canonicalIngredientId(item.ingredient));
     const percent = totalMix > 0 ? (item.planned_grams / totalMix) * 100 : null;
     let status: StabilizerDosageStatus = 'no_approved_window';
     if (window !== null && percent !== null) {
       status =
-        percent < window.minPercentOfTotalMix
+        percent < window.minPercentOfTotalMix - DOSAGE_EPS
           ? 'below_window'
-          : percent > window.maxPercentOfTotalMix
+          : percent > window.maxPercentOfTotalMix + DOSAGE_EPS
             ? 'above_window'
             : 'within_window';
     }
@@ -178,8 +180,6 @@ export function assessStabilizerDosage(input: RecipeInput): StabilizerDosageAsse
   }
   return assessments;
 }
-
-const DOSAGE_EPS = 1e-9;
 
 /**
  * SAFETY CLAMP (owner Phase 9 — the approved-bounds wiring): TRUE when a
@@ -202,7 +202,7 @@ export function violatesApprovedStabilizerDosage(
     .filter(
       (item) =>
         item.ingredient.id === action.ingredient_id ||
-        approvedStabilizerDosage(item.ingredient.id)?.mapperId === entry.mapperId,
+        approvedStabilizerDosage(canonicalIngredientId(item.ingredient))?.mapperId === entry.mapperId,
     )
     .reduce((sum, item) => sum + item.planned_grams, 0);
   if (action.type === 'add') {

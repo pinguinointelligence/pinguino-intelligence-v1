@@ -18,6 +18,7 @@
 import type { EngineIngredient, EngineIngredientFlags, IngredientComponentProfile } from '@/engine';
 import { mapDatasetCategory } from './categoryMapping';
 import type { IngredientRow } from './ingredientRow';
+import { assessMapperVeganEligibility } from './veganEligibility';
 
 /** Required-number coercion at the engine seam (unknown component → 0). */
 const num = (value: number | null | undefined): number => value ?? 0;
@@ -50,10 +51,13 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
 
   // best-effort engine hints from the mapped category + dietary flag
   const flags: EngineIngredientFlags = {};
+  const vegan = assessMapperVeganEligibility(row);
   if (category === 'dairy') flags.is_dairy = true;
   if (category === 'stabilizer') flags.is_stabilizer = true;
   if (category === 'flavor') flags.is_flavor_booster = true;
   if (row.vegan === 'false') flags.is_animal_origin = true;
+  flags.vegan_eligibility = vegan.status;
+  flags.vegan_eligibility_reasons = vegan.reasons;
 
   return {
     id: row.ingredient_id,
@@ -69,6 +73,7 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
     // recipe-level NPAC from pac_value; ingredient-level NPAC does not exist.
     de_value: row.de_value,
     cost_per_kg: row.cost_per_kg,
+    cost_currency: row.currency || null,
     confidence_score: row.data_confidence_percent ?? 0,
     source_type: 'verified_db',
     // v1.0 vocabulary: every 'Verified*' status family counts as verified

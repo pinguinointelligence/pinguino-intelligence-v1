@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildCustomerEngineRecipe } from './customerEngineRecipe';
-import { createCustomerFlow, setProductType, selectServingMode, setBatchGrams } from './customerFlow';
+import {
+  createCustomerFlow,
+  setProductType,
+  selectServingMode,
+  setBatchGrams,
+} from './customerFlow';
 
 /**
  * The customer result must run the REAL engine (calculateRecipe) via the shared
@@ -8,7 +13,11 @@ import { createCustomerFlow, setProductType, selectServingMode, setBatchGrams } 
  * a real RecipeInput + real metrics come out for supported profiles, and that
  * unsupported profiles / incomplete state resolve honestly (never a faked recipe).
  */
-const gelatoFlow = (text: string, mode: 'temp_minus_12' | 'ninja_swirl' | 'ninja_gelato', batch?: number) => {
+const gelatoFlow = (
+  text: string,
+  mode: 'temp_minus_12' | 'ninja_swirl' | 'ninja_gelato',
+  batch?: number,
+) => {
   let s = createCustomerFlow({ text });
   s = setProductType(s, 'gelato');
   s = selectServingMode(s, mode);
@@ -59,13 +68,15 @@ describe('customer → REAL engine bridge', () => {
     expect(r.draft?.recipeInput).toBeNull();
   });
 
-  it('protein resolves to an honest unsupported gap (no engine profile)', () => {
+  it('protein resolves to its engine profile; missing starter seed stays an honest no_template', () => {
     let s = createCustomerFlow();
     s = setProductType(s, 'protein');
     s = selectServingMode(s, 'temp_minus_12');
+    s = setBatchGrams(s, 1000);
     const r = buildCustomerEngineRecipe(s);
     expect(r.calculated).toBe(false);
-    expect(r.reason).toBe('profile_unsupported');
+    expect(r.reason).toBe('no_template');
+    expect(r.draft?.productProfile).toBe('protein_gelato');
   });
 
   it('an incomplete flow (no mode/batch) does not fabricate a recipe', () => {

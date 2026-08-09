@@ -186,7 +186,7 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     inViewport('data-testid="pro-workbar-save"');
     inViewport('data-testid="workbench-settings-line"');
     inViewport('data-testid="workbench-product-type"');
-    inViewport('data-testid="workbench-quality"');
+    inViewport('data-testid="workbench-strategy"');
     inViewport('data-testid="workbench-serving"');
     inViewport('data-testid="workbench-batch"');
     inViewport('data-testid="ingredient-rows-scroll"');
@@ -240,8 +240,10 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     );
     expect(panel).toContain('data-testid="monitor-summary-score"');
     expect(panel).toMatch(/\d{1,2}\/10/);
-    expect(panel).toContain('data-testid="monitor-axis-stabilnosc"');
-    expect(panel).toContain('data-testid="user-monitor-module-expert"');
+    expect(panel).toContain('data-testid="profile-axis-stability"');
+    expect(panel).toContain('data-testid="monitor-module-freezing"');
+    expect(panel).toContain('data-testid="monitor-module-stability"');
+    expect(panel).not.toContain('data-testid="user-monitor-module-expert"');
     expect(panel).toContain('data-testid="review-marked-monitor-owner-diagnostic"');
   });
 
@@ -369,8 +371,8 @@ describe('recalculation overlay', () => {
 
 /* ──────────────────── 7. nothing removed + truthful states ──────────────────── */
 
-describe('no module removal across the split surface files', () => {
-  it('every legacy module is still MOUNTED (surface + monitor panel + review zone)', () => {
+describe('no unrelated module removal across the split surface files', () => {
+  it('keeps the workbench surface and mounts the focused Monitor contract', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     for (const module of [
       '<ConstraintStudioSection',
@@ -389,14 +391,15 @@ describe('no module removal across the split surface files', () => {
     expect(profile).toContain('<WorkbenchSettingsLine');
     const panel = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     for (const module of [
-      '<UserMonitorPro',
+      '<ProfessionalMonitorModules',
       '<NutritionCostScorePanel',
       '<CorrectionPanel',
-      '<OverallScoreCard',
       '<OwnerDiagnosticPanel',
     ]) {
       expect(panel, module).toContain(module);
     }
+    expect(panel).not.toContain('<UserMonitorPro');
+    expect(panel).not.toContain('<OverallScoreCard');
     expect(surface.includes('display: none')).toBe(false);
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
     expect(workbar).toContain('<WorkbenchActionBar');

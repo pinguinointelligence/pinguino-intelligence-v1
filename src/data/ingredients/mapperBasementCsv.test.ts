@@ -2,7 +2,7 @@
  * Mapper Basement source-file guards (v1.0).
  *
  * Proves that docs/ingredients/validation/mapper_basement.csv is the canonical
- * v1.0 dataset (2,083 rows, 62 columns) delivered as
+ * v1.0 dataset (2,088 rows, 62 columns) delivered as
  * PINGUINO_MAPPER_BASEMENT_FINAL_CLEAN.csv — IDs are never renumbered
  * (PI-ING-000001 … PI-ING-002108 with intentional gaps), and PAC/POD stay
  * populated. Pure file read (vitest node env); does NOT touch the runtime
@@ -58,8 +58,8 @@ const mbData = mb.slice(1).filter((r) => !(r.length === 1 && r[0] === ''));
 const col = (name: string) => mbHeader.indexOf(name);
 
 describe('mapper_basement.csv — canonical v1.0 dataset', () => {
-  it('has exactly 2083 data rows', () => {
-    expect(mbData).toHaveLength(2083);
+  it('has exactly 2088 data rows', () => {
+    expect(mbData).toHaveLength(2088);
   });
 
   it('has exactly 62 columns (header + every row)', () => {
@@ -82,26 +82,38 @@ describe('mapper_basement.csv — canonical v1.0 dataset', () => {
 
   it('every ingredient_id is unique, PI-ING-prefixed, and never renumbered', () => {
     const ids = mbData.map((r) => r[col('ingredient_id')]!);
-    expect(new Set(ids).size).toBe(2083);
+    expect(new Set(ids).size).toBe(2088);
     expect(ids.every((id) => id.startsWith('PI-ING-'))).toBe(true);
     expect(ids.some((id) => id.startsWith('PR-ING-'))).toBe(false);
     const sorted = [...ids].sort();
     expect(sorted[0]).toBe('PI-ING-000001');
-    expect(sorted[sorted.length - 1]).toBe('PI-ING-002108'); // gaps are intentional
+    expect(sorted[sorted.length - 1]).toBe('PI-ING-002113'); // gaps are intentional
   });
 
   it('every ingredient_name_internal is unique and non-blank', () => {
     const names = mbData.map((r) => r[col('ingredient_name_internal')]!);
-    expect(new Set(names).size).toBe(2083);
+    expect(new Set(names).size).toBe(2088);
     expect(names.every((n) => n.trim() !== '')).toBe(true);
   });
 
-  it('PAC and POD are populated on every row (engine sources of truth)', () => {
+  it('PAC and POD are populated on every engine-approved row', () => {
     const pac = col('pac_value');
     const pod = col('pod_value');
-    for (const row of mbData) {
+    const approved = col('approved_for_engines');
+    for (const row of mbData.filter((entry) => entry[approved]?.toLowerCase() === 'true')) {
       expect((row[pac] ?? '').trim() !== '').toBe(true);
       expect((row[pod] ?? '').trim() !== '').toBe(true);
     }
+  });
+
+  it('keeps unresolved PAC/POD candidates explicitly out of Engine approval', () => {
+    const pac = col('pac_value');
+    const pod = col('pod_value');
+    const approved = col('approved_for_engines');
+    const unresolved = mbData.filter(
+      (row) => (row[pac] ?? '').trim() === '' || (row[pod] ?? '').trim() === '',
+    );
+    expect(unresolved.map((row) => row[col('ingredient_id')])).toEqual(['PI-ING-002113']);
+    expect(unresolved[0]?.[approved]?.toLowerCase()).toBe('false');
   });
 });

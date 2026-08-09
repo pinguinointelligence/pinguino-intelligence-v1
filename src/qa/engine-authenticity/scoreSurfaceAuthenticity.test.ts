@@ -53,13 +53,16 @@ describe('TASK A — score surfaces derive from the engine (source-level pins)',
       const source = read(rel);
       const derived =
         /recipeTechnicalFit\(/.test(source) ||
+        /recipeFitForInput\(/.test(source) ||
         /recipeMatchScore\(/.test(source) ||
         /buildMonitorHomeView\(/.test(source);
       expect(derived, `${rel} must derive its score`).toBe(true);
       // No integer score literals feeding a display (config weights live in the
       // engine config, not in presentation surfaces).
       expect(/score:\s*\d/.test(source), `hard-coded score in ${rel}`).toBe(false);
-      expect(/display:\s*['"`]\d+\/10['"`]/.test(source), `hard-coded display in ${rel}`).toBe(false);
+      expect(/display:\s*['"`]\d+\/10['"`]/.test(source), `hard-coded display in ${rel}`).toBe(
+        false,
+      );
     }
   });
 

@@ -49,6 +49,7 @@ import {
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { constraintStudioCopy } from './constraintStudioCopy';
 
 const applyGuardCopy = constraintStudioCopy.applyGuard;
@@ -94,6 +95,8 @@ export interface CanonicalDraft {
   constraints: ConstraintSet;
   /** Explicit exclusions / unavailable ingredients (canonical + Mapper ids). */
   excludedIngredientIds: readonly string[];
+  /** Exclusions that were Main when marked unavailable. */
+  unavailableMainIngredientIds: readonly string[];
   /** Machine/serving context (routing/UX only — never Engine math). */
   machine: {
     kind: 'professional' | 'home' | null;
@@ -114,6 +117,7 @@ export function selectCanonicalDraft(): CanonicalDraft {
     input: buildRecipeInput(recipe),
     constraints: reconcileConstraints(recipe.items, session.constraints),
     excludedIngredientIds: recipe.excludedIngredientIds,
+    unavailableMainIngredientIds: recipe.unavailableMainIngredientIds,
     machine: {
       kind: recipe.machineKind,
       servingModeId: recipe.servingModeId,
@@ -149,11 +153,13 @@ export function canonicalDraftSerialization(draft: CanonicalDraft): string {
     ]),
     byLineId: draft.constraints.byLineId,
     exclusions: [...draft.excludedIngredientIds],
+    unavailableMains: [...draft.unavailableMainIngredientIds],
     batch: draft.input.target_batch_grams,
     category: draft.input.category,
     temperature: draft.input.target_temperature_c,
     tier: draft.input.mode,
     machineCapacity: draft.input.machine_capacity_grams,
+    goals: draft.input.goals ?? null,
   });
 }
 
@@ -412,6 +418,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         const draft = selectCanonicalDraft();
         const result = buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
           excludedIngredientIds: draft.excludedIngredientIds,
+          unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
+          effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
         });
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;

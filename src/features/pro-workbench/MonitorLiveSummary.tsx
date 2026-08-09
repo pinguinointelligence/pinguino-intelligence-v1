@@ -1,222 +1,60 @@
-/**
- * PINGÜINO Pro — Monitor PI LIVE summary (B2 first layer; owner one-screen architecture).
- *
- * The PERMANENT (non-collapsible) top block of the right Monitor panel: the technical
- * 1–10 score + §15.1 label, the §14.1 status badge, the truthful assessment state
- * (native / provisional / insufficient — B5), coverage, the six quality axes with
- * green/amber/red TEXT readings (never color alone), serving temperature, the §20.5
- * TEXT statuses (Pewność danych + Gotowość produkcyjna) and ONE primary
- * warning/success line. Presentation only — every value is an already-computed
- * `RecipeResult` field read through the pure view models.
- */
-import { useMemo } from 'react';
-import { copy } from '@/copy/en';
-import type { RecipeResult } from '@/engine';
-import { formatTemperatureC } from '@/features/customer-shell/temperature';
-import type { GoldenRangeReading } from '@/features/recipe-score';
-import { TECHNICAL_FIT_DISPLAY_NAME, TECHNICAL_FIT_TOOLTIPS } from '@/features/recipe-score';
-import {
-  buildUserMonitorSummaryCards,
-  deriveMonitorStatusLine,
-  deriveRecipeDataConfidence,
-  deriveRecipeReadiness,
-} from '@/features/user-monitor';
-import {
-  buildMonitorAssessment,
-  buildMonitorPrimarySignal,
-  monitorScoreView,
-} from './monitorSummaryView';
-
-const c = copy.monitorPi;
-
-/** Złoty Zakres reading tones on the dark panel — text carries the meaning. */
-const READING_TONE: Record<GoldenRangeReading['state'], string> = {
-  golden: 'text-gold-soft font-medium',
-  info: 'text-ivory/70',
-  amber: 'text-status-risky',
-  red: 'text-status-error',
-  neutral: 'text-ivory/60',
-};
-
-const SIGNAL_TONE: Record<'info' | 'warning' | 'critical' | 'ok', string> = {
-  ok: 'text-status-ideal',
-  info: 'text-ivory/70',
-  warning: 'text-status-risky',
-  critical: 'text-status-error',
-};
+import type { RecipeInput, RecipeResult } from '@/engine';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { ProfileDirectionAxes } from './ProfileDirectionAxes';
+import { profileSnapshotFromState } from './recipeProfilePersistence';
+import { profileSettingsSignature, useRecipeProfileStore } from './recipeProfileStore';
+import { monitorScoreView } from './monitorSummaryView';
 
 export function MonitorLiveSummary({
   result,
-  servingTemperatureC,
+  input,
+  onOpenProfile,
 }: {
   result: RecipeResult;
-  servingTemperatureC: number;
+  input: RecipeInput;
+  onOpenProfile?: () => void;
 }) {
-  const score = useMemo(() => monitorScoreView(result), [result]);
-  const assessment = useMemo(() => buildMonitorAssessment(result), [result]);
-  const signal = useMemo(() => buildMonitorPrimarySignal(result), [result]);
-  const statusLine = useMemo(() => deriveMonitorStatusLine(result), [result]);
-  const axes = useMemo(() => buildUserMonitorSummaryCards(result), [result]);
-  const confidence = useMemo(() => deriveRecipeDataConfidence(result), [result]);
-  const readiness = useMemo(() => deriveRecipeReadiness(result), [result]);
-
-  /* B5 — insufficient input: NEVER a blank Monitor; the exact honest sentence. */
-  if (assessment.state === 'insufficient') {
-    return (
-      <div data-testid="monitor-live-summary" data-assessment="insufficient">
-        <p
-          className="text-sm font-medium leading-relaxed text-ivory"
-          data-testid="monitor-insufficient"
-        >
-          {c.summary.insufficient}
-        </p>
-        <p className="mt-2 text-xs leading-relaxed text-ivory/65">{c.summary.insufficientHint}</p>
-      </div>
-    );
-  }
+  const recipe = useRecipeStore();
+  const targets = useRecipeProfileStore((state) => state.directionTargets);
+  const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
+  const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
+  const currentSignature = profileSettingsSignature(
+    profileSnapshotFromState(recipe, targets),
+    recipe.draftContextSeq,
+  );
+  const confirmed =
+    confirmedSignature === currentSignature && confirmedContextSeq === recipe.draftContextSeq;
+  const score = monitorScoreView(result, input).match;
 
   return (
-    <div data-testid="monitor-live-summary" data-assessment={assessment.state}>
-      {/* Score + §14.1 status badge */}
-      <div className="flex items-start justify-between gap-3">
-        <div
-          aria-label={score.match.ariaText}
-          title={TECHNICAL_FIT_TOOLTIPS[score.match.tooltipKey]}
-          data-testid="monitor-summary-score"
+    <section data-testid="monitor-live-summary">
+      {!confirmed ? (
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          className="mb-2 flex w-full items-center gap-2 border border-gold/40 bg-gold/[0.055] px-3 py-2 text-left text-[10px] font-semibold text-attention"
+          data-testid="monitor-preflight-reminder"
         >
-          <p className="text-[0.625rem] font-medium tracking-label text-ivory/65 uppercase">
-            {TECHNICAL_FIT_DISPLAY_NAME}
-          </p>
-          <p className="mt-1 flex items-baseline gap-2.5">
-            <span className="font-mono text-[32px] font-medium leading-none tracking-tight tabular-nums text-ivory">
-              {score.match.display}
-            </span>
-            <span className="text-sm font-medium text-ivory">{score.match.label}</span>
-          </p>
-        </div>
-        <span
-          className="shrink-0 rounded border border-ivory/25 px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/70 uppercase"
-          data-testid="monitor-summary-badge"
-        >
-          {statusLine.text}
-        </span>
-      </div>
-
-      {/* Truthful assessment state + coverage (B5) */}
-      <div
-        className="mt-3 space-y-1"
-        data-testid="monitor-assessment"
-        data-state={assessment.state}
-      >
-        <p
-          className={`text-xs leading-relaxed ${
-            assessment.state === 'provisional' ? 'text-status-risky' : 'text-ivory/70'
-          }`}
-        >
-          {assessment.headline}
-        </p>
-        {assessment.sourceText ? (
-          <p className="text-[11px] leading-relaxed text-ivory/65">{assessment.sourceText}</p>
-        ) : null}
-        {assessment.reasonText ? (
-          <p className="text-[11px] leading-relaxed text-ivory/65">{assessment.reasonText}</p>
-        ) : null}
-        {assessment.coverageText ? (
-          <p
-            className="text-[11px] leading-relaxed text-ivory/60"
-            data-testid="monitor-summary-coverage"
-          >
-            {assessment.coverageText}
-          </p>
-        ) : null}
-      </div>
-
-      {/* Current values stay visible, but approved numeric boundaries remain protected.
-          Directional language communicates the deviation without exposing the
-          optimization contract 1:1. */}
-      {assessment.violatedBands.length > 0 ? (
-        <div className="mt-3" data-testid="monitor-violated-bands">
-          <p className="text-[0.625rem] font-medium tracking-label text-status-risky uppercase">
-            {c.summary.violatedHeading}
-          </p>
-          <ul className="mt-1 space-y-0.5">
-            {assessment.violatedBands.map((band) => (
-              <li key={band.metric} className="text-[11px] leading-relaxed text-ivory/80">
-                {band.label}:{' '}
-                <span className="font-mono tabular-nums text-status-risky">
-                  {band.value.toFixed(1)}
-                  {band.unit}
-                </span>{' '}
-                <span className="text-ivory/60">
-                  ({band.side === 'below' ? 'poniżej' : 'powyżej'} złotego środka)
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : assessment.withinBandsText ? (
-        <p
-          className="mt-3 text-[11px] leading-relaxed text-status-ideal"
-          data-testid="monitor-within-bands"
-        >
-          {assessment.withinBandsText}
-        </p>
+          <span aria-hidden>⚠</span>
+          <span className="flex-1">Sprawdź ustawienia receptury</span>
+          <span aria-hidden>›</span>
+        </button>
       ) : null}
-
-      {/* Six quality axes — TEXT readings, worst-of per axis (§14.1). */}
-      <div className="mt-4 border-t border-ivory/10 pt-3" data-testid="monitor-summary-axes">
-        <p className="text-[0.625rem] font-medium tracking-label text-ivory/65 uppercase">
-          {c.summary.axesTitle}
-        </p>
-        <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
-          {axes.map((axis) => (
-            <p
-              key={axis.id}
-              className="flex items-baseline justify-between gap-2 text-[12px]"
-              data-testid={`monitor-axis-${axis.id}`}
-            >
-              <span className="text-ivory/70">{axis.label}</span>
-              <span
-                className={`text-right text-[11px] leading-snug ${READING_TONE[axis.reading.state]}`}
-              >
-                {axis.reading.text}
-              </span>
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {/* Serving temperature + §20.5 TEXT statuses. */}
-      <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3">
-        <p className="text-[11px] text-ivory/65">
-          {c.summary.servingLabel}:{' '}
-          <span className="font-mono tabular-nums text-ivory">
-            {formatTemperatureC(servingTemperatureC)}
-          </span>
-        </p>
-        <p
-          className="text-[11px] leading-relaxed text-ivory/70"
-          data-testid="monitor-summary-confidence"
-        >
-          <span className="text-ivory/60">{confidence.name}:</span> {confidence.text}
-        </p>
-        <p
-          className="text-[11px] leading-relaxed text-ivory/70"
-          data-testid="monitor-summary-readiness"
-        >
-          <span className="text-ivory/60">{readiness.name}:</span> {readiness.readiness.label} —{' '}
-          {readiness.readiness.text}
-        </p>
-      </div>
-
-      {/* ONE primary warning/success line (B2). */}
-      <p
-        className={`mt-3 border-t border-ivory/10 pt-3 text-[12px] leading-relaxed ${SIGNAL_TONE[signal.kind === 'ok' ? 'ok' : (signal.severity ?? 'info')]}`}
-        data-testid="monitor-primary-signal"
-        data-signal={signal.kind}
+      <div
+        className="flex items-baseline gap-3 border-b border-ink/10 px-3 py-2"
+        aria-label={score.ariaText}
+        data-testid="monitor-summary-score"
       >
-        {signal.text}
-      </p>
-    </div>
+        <span className="font-mono text-2xl font-semibold tabular-nums text-ink">
+          {result.total_batch_g > 0 ? score.display : '—/10'}
+        </span>
+        <strong className="text-sm text-ink">
+          {result.total_batch_g > 0 ? score.label : 'Brak danych'}
+        </strong>
+      </div>
+      <div data-testid="monitor-summary-axes">
+        <ProfileDirectionAxes result={result} />
+      </div>
+    </section>
   );
 }

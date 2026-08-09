@@ -384,7 +384,15 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
     rec: RecipeInput,
   ): ConstraintPreview => {
     const forged = structuredClone(preview);
-    forged.proposedInput = draftAtTargetBatch(rec);
+    const hardResidual = draftAtTargetBatch(rec);
+    // Forge only formulation/batch. Product/science context must stay exactly
+    // the context under which the staged Preview was built; that invariant now
+    // has its own trustless Apply gate.
+    forged.proposedInput = {
+      ...forged.proposedInput,
+      target_batch_grams: hardResidual.target_batch_grams,
+      items: hardResidual.items,
+    };
     if (forged.formulation?.proof) forged.formulation.proof.verdict = 'no_feasible_improvement';
     return forged;
   };

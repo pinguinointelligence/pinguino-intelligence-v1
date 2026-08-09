@@ -1,28 +1,48 @@
+import { useEffect } from 'react';
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem } from '@/engine';
 import { useLineLockControls } from '@/features/constraint-studio/useLineLockControls';
-import { useRecipeStore } from '@/stores/recipeStore';
-import { IngredientPicker } from './IngredientPicker';
-import { ServerIngredientPicker } from './ServerIngredientPicker';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
-import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { useCustomerPriceStore } from '@/stores/customerPriceStore';
+import { useAuthStore } from '@/stores/authStore';
+import {
+  CUSTOMER_COST_CURRENCY,
+  canPersistCustomerPrice,
+  customerPriceCanonicalId,
+  effectiveCostForIngredient,
+} from '@/features/pro-core/effectiveRecipePricing';
+import { effectiveLineCost } from '@/features/pro-core/costing';
+import { IngredientPicker } from './IngredientPicker';
 import {
   IngredientRow,
   PRODUCTION_ROW_GRID,
   ROW_GRID,
   type IngredientRowActions,
   type IngredientTableMode,
+  type ProductionRowActions,
 } from './IngredientRow';
+import { ServerIngredientPicker } from './ServerIngredientPicker';
+import {
+  ingredientRowMeta,
+  unresolvedRequiredIngredients,
+  useIngredientTableUxStore,
+} from './ingredientTableUxStore';
 import { useIngredientLibrary } from './useIngredientLibrary';
+import type { IngredientPriceView } from './IngredientPriceControl';
+import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
+import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
 
 const b = copy.studio.builder;
 const headCell = 'text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase';
 
-/** Items come from the engine result (effective grams, difference, share);
- * edits go back to the store. The engine remains the source of truth. */
+/**
+ * Items come from the Engine result; edits return to the canonical recipe store.
+ * Recipe-only row metadata never enters RecipeInput or Engine mathematics.
+ */
 export function IngredientBuilder({
   items,
   totalBatchG,
@@ -30,58 +50,86 @@ export function IngredientBuilder({
   demo,
   layout = 'card',
   mode = 'recipe',
+  production,
 }: {
   items: EffectiveRecipeItem[];
   totalBatchG: number;
   targetBatchG: number;
-  /** /demo route — keep the local catalog and never fetch the PI Base library. */
   demo: boolean;
-  /** One-screen workbench (owner 2026-07-24): `workbench` renders the SAME editor as a
-   * height-filling column whose ROWS region is the one internal scroll surface — the
-   * header, batch total and add-ingredient picker stay visible without page movement.
-   * Presentation only; identical store actions and testids. */
   layout?: 'card' | 'workbench';
   mode?: IngredientTableMode;
+  production?: ProductionWorkspaceView;
 }) {
-  const [unavailableRows, setUnavailableRows] = useState<EffectiveRecipeItem[]>([]);
+  const authUserId = useAuthStore((state) =>
+    state.status === 'authed' ? (state.user?.id ?? null) : null,
+  );
+  const customerOwnerUserId =
+    !demo && (authUserId ?? (import.meta.env.DEV ? '00000000-0000-0000-0000-000000000001' : null));
+  const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
+  const loadCustomerPrices = useCustomerPriceStore((state) => state.loadForOwner);
+  const saveCustomerPrice = useCustomerPriceStore((state) => state.saveOverride);
+  const resetCustomerPrice = useCustomerPriceStore((state) => state.resetOverride);
+
+  useEffect(() => {
+    if (!customerOwnerUserId) return;
+    void loadCustomerPrices(customerOwnerUserId);
+  }, [customerOwnerUserId, loadCustomerPrices]);
+
   const addIngredient = useRecipeStore((state) => state.addIngredient);
   const library = useIngredientLibrary({ demo });
-  // §17 padlock layer (constraint-studio): per-line lock views + action
-  // wrappers that reconcile the constraint set on dropdown/remove changes.
   const { lockFor, wrapActions } = useLineLockControls();
-  const markIngredientUnavailable = useRecipeStore((state) => state.markIngredientUnavailable);
-  const actions: IngredientRowActions = wrapActions({
+
+  const setRoleMeta = useIngredientTableUxStore((state) => state.setRole);
+  const toggleRequired = useIngredientTableUxStore((state) => state.toggleRequired);
+  const setUnavailable = useIngredientTableUxStore((state) => state.setUnavailable);
+  const clearLineMeta = useIngredientTableUxStore((state) => state.clearLine);
+  const markRequiredRemoved = useIngredientTableUxStore((state) => state.markRequiredRemoved);
+  const metaByLineId = useIngredientTableUxStore((state) => state.metaByLineId);
+  const unresolvedByLineId = useIngredientTableUxStore(
+    (state) => state.unresolvedRequiredByLineId,
+  );
+
+  const removeItem = useRecipeStore((state) => state.removeItem);
+  const coreActions: IngredientRowActions = wrapActions({
     setPlannedGrams: useRecipeStore((state) => state.setPlannedGrams),
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
     setLockType: useRecipeStore((state) => state.setLockType),
     setMainIngredient: useRecipeStore((state) => state.setMainIngredient),
-    removeItem: useRecipeStore((state) => state.removeItem),
-    // Owner FINAL CLOSURE C2 — the EXPLICIT „Niedostępny" action (the only
-    // exclusion source; „Usuń" merely removes the row from this recipe).
-    markIngredientUnavailable: (lineId) => {
-      const snapshot = items.find((item) => item.id === lineId);
-      if (snapshot) setUnavailableRows((current) => [...current.filter((row) => row.id !== lineId), snapshot]);
-      markIngredientUnavailable(lineId);
+    removeItem: (lineId) => {
+      removeItem(lineId);
+      clearLineMeta(lineId);
     },
   });
 
+  const actions: IngredientRowActions = {
+    ...coreActions,
+    setCustomerRole: (lineId, role) => {
+      if (role === 'main') {
+        setRoleMeta(lineId, 'standard');
+        coreActions.setMainIngredient(lineId);
+        return;
+      }
+      const current = useRecipeStore.getState().items.find((item) => item.id === lineId);
+      if (current?.lock_type === 'main') coreActions.setLockType(lineId, 'unlocked');
+      setRoleMeta(lineId, role);
+    },
+    toggleRequired,
+    // Reversible Recipe UX state: marking unavailable does not remove/exclude
+    // the canonical recipe line. The existing scientific exclusion store action
+    // is retained for already-accepted non-table flows.
+    setIngredientUnavailable: setUnavailable,
+    removeRequiredIngredient: (lineId, name) => {
+      coreActions.removeItem(lineId);
+      markRequiredRemoved(lineId, name);
+    },
+  };
+
   const offTarget = Math.abs(totalBatchG - targetBatchG) > 0.1;
 
-  // Owner P0 repair (Phase 10): drafts saved BEFORE the canonical-identity fix
-  // may still carry duplicated solver rows. Detect plannable duplicates and
-  // offer an explicit one-click merge — never automatic, never touches locks.
+  // Explicit repair for old drafts only; never merge canonical lines automatically.
   const storeItems = useRecipeStore((state) => state.items);
   const mergeDuplicates = useRecipeStore((state) => state.mergeDuplicateIngredientLines);
-  const duplicateCount = (() => {
-    const seen = new Set<string>();
-    let extras = 0;
-    for (const item of storeItems) {
-      if (item.lock_type !== 'unlocked' || item.actual_grams !== null) continue;
-      if (seen.has(item.ingredient.id)) extras += 1;
-      else seen.add(item.ingredient.id);
-    }
-    return extras;
-  })();
+  const duplicateCount = repairableCanonicalDuplicateCount(storeItems);
 
   const duplicateNotice =
     duplicateCount > 0 ? (
@@ -89,7 +137,9 @@ export function IngredientBuilder({
         className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300/30 bg-amber-300/[0.06] px-3 py-2.5"
         data-testid="builder-duplicate-repair"
       >
-        <p className="text-xs leading-relaxed text-amber-200/90">{b.duplicateNotice(duplicateCount)}</p>
+        <p className="text-xs leading-relaxed text-amber-200/90">
+          {b.duplicateNotice(duplicateCount)}
+        </p>
         <button
           type="button"
           className="rounded-md border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
@@ -101,39 +151,141 @@ export function IngredientBuilder({
       </div>
     ) : null;
 
-  const header = mode === 'production' ? (
-    <div className={`${PRODUCTION_ROW_GRID} px-3 py-2`}>
-      {['Składnik', 'Planowane', 'Faktycznie', 'Różnica', 'Status'].map((label, index) => (
-        <span key={label} className={`${headCell} ${index > 0 && index < 4 ? 'text-right' : ''}`}>{label}</span>
-      ))}
-    </div>
-  ) : (
-    <div className={`${ROW_GRID} px-3 py-2`}>
-      {['Składnik', '%', '', 'g', '', 'Rola', 'Dostępność', 'Cena/kg', ''].map((label, index) => (
-        <span key={`${label}-${index}`} className={`${headCell} ${[1, 3, 7].includes(index) ? 'text-right' : ''}`}>{label || '\u00a0'}</span>
-      ))}
-    </div>
-  );
+  const header =
+    mode === 'production' ? (
+      <div className={`${PRODUCTION_ROW_GRID} px-3 py-2`}>
+        {['Składnik', 'Planowane', 'Faktycznie · Status / potwierdź', 'Różnica'].map((label, index) => (
+          <span
+            key={label}
+            className={`${headCell} ${index === 1 || index === 3 ? 'text-right' : ''}`}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+    ) : (
+      <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
+        {['Składnik', '%', 'Ilość', 'Cena/kg', ''].map((label, index) => (
+          <span
+            key={`${label}-${index}`}
+            className={`${headCell} ${[1, 3].includes(index) ? 'text-right' : ''}`}
+          >
+            {label || '\u00a0'}
+          </span>
+        ))}
+      </div>
+    );
 
-  const rows = items.map((item) => (
-    <IngredientRow
-      key={item.id}
-      item={item}
-      totalBatchG={totalBatchG}
-      actions={actions}
-      lock={lockFor(item)}
-      compact={layout === 'workbench'}
-      mode={mode}
-    />
-  ));
+  const rows = items.map((item) => {
+    const rawIngredient =
+      storeItems.find((candidate) => candidate.id === item.id)?.ingredient ?? item.ingredient;
+    const cost = effectiveCostForIngredient(rawIngredient, customerPrices);
+    const canonicalId = customerPriceCanonicalId(rawIngredient);
+    const priceView: IngredientPriceView = {
+      cost,
+      lineCost: effectiveLineCost(item.effective_grams, cost),
+      canEdit:
+        mode === 'recipe' &&
+        customerOwnerUserId !== null &&
+        canPersistCustomerPrice(rawIngredient),
+      onSave:
+        customerOwnerUserId && canonicalId
+          ? async (pricePerKg) => {
+              await saveCustomerPrice({
+                ownerUserId: customerOwnerUserId,
+                canonicalIngredientId: canonicalId,
+                pricePerKg,
+                currency: CUSTOMER_COST_CURRENCY,
+              });
+            }
+          : undefined,
+      onReset:
+        customerOwnerUserId && canonicalId
+          ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
+          : undefined,
+    };
+    const productionLine =
+      production?.session?.lines.find((line) => line.lineId === item.id) ??
+      (mode === 'production'
+        ? {
+            lineId: item.id,
+            canonicalIngredientId:
+              item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+            name: item.ingredient.name,
+            plannedGrams: item.planned_grams,
+            targetGrams: item.planned_grams,
+            draftActualGrams: item.actual_grams ?? item.planned_grams,
+            physicalAddedGrams: item.actual_grams ?? 0,
+            confirmed: item.actual_grams !== null,
+            confirmedAt: null,
+            confirmationOrder: null,
+            recordCorrectionCount: 0,
+          }
+        : undefined);
+    const productionActions: ProductionRowActions | undefined = production
+      ? {
+          setDraftActual: production.setDraftActual,
+          confirmLine: production.confirmLine,
+          reopenRecord: production.reopenRecord,
+        }
+      : mode === 'production'
+        ? {
+            setDraftActual: actions.setActualGrams,
+            confirmLine: (lineId) => {
+              const current = items.find((candidate) => candidate.id === lineId);
+              if (current) {
+                actions.setActualGrams(lineId, current.actual_grams ?? current.planned_grams);
+              }
+            },
+            reopenRecord: (lineId) => actions.setActualGrams(lineId, null),
+          }
+        : undefined;
 
-  const unavailable = mode === 'recipe' ? unavailableRows.map((item) => (
-    <div key={`unavailable-${item.id}`} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 border-b border-status-error/20 bg-status-error/[0.045] px-3 py-2" data-testid="ingredient-unavailable-row">
-      <div className="min-w-0"><strong className="block truncate text-xs text-ink">{item.ingredient.name}</strong><span className="text-[9px] text-status-error">Wykluczony z bieżącej receptury</span></div>
-      <button type="button" disabled title="Wyszukiwanie zamiennika nie jest jeszcze podłączone." className="rounded-sm border border-nonprod/35 px-2 py-1 text-[9px] font-semibold text-nonprod">Znajdź zamiennik · W PRZYGOTOWANIU</button>
-      <button type="button" aria-label={`Ukryj informację o ${item.ingredient.name}`} onClick={() => setUnavailableRows((current) => current.filter((row) => row.id !== item.id))} className="grid size-7 place-items-center text-stone-500">×</button>
-    </div>
-  )) : null;
+    return (
+      <IngredientRow
+        key={item.id}
+        item={item}
+        totalBatchG={totalBatchG}
+        actions={actions}
+        lock={lockFor(item)}
+        compact={layout === 'workbench'}
+        mode={mode}
+        meta={ingredientRowMeta(metaByLineId, item.id)}
+        priceView={mode === 'recipe' ? priceView : undefined}
+        productionLine={productionLine}
+        productionActions={productionActions}
+      />
+    );
+  });
+
+  const unresolved = unresolvedRequiredIngredients({
+    unresolvedRequiredByLineId: unresolvedByLineId,
+  });
+  const infeasibleNotice =
+    mode === 'recipe' && unresolved.length > 0 ? (
+      <div
+        role="alert"
+        className="border-b border-status-error/25 bg-status-error/[0.055] px-3 py-2"
+        data-testid="recipe-infeasible-notice"
+      >
+        <p className="text-[10px] font-semibold tracking-label text-status-error uppercase">
+          {b.ingredientTable.infeasible.title}
+        </p>
+        <p className="mt-1 text-[10px] leading-relaxed text-stone-600">
+          {b.ingredientTable.infeasible.body} ({unresolved.map((entry) => entry.name).join(', ')})
+        </p>
+      </div>
+    ) : null;
+
+  const addIngredientAndResolveRequiredRole = (ingredient: Parameters<typeof addIngredient>[0]) => {
+    addIngredient(ingredient);
+    const normalizedName = ingredient.name.trim().toLocaleLowerCase('pl');
+    for (const unresolvedEntry of Object.values(unresolvedByLineId)) {
+      if (unresolvedEntry.name.trim().toLocaleLowerCase('pl') === normalizedName) {
+        clearLineMeta(unresolvedEntry.lineId);
+      }
+    }
+  };
 
   const totalLine = (
     <div className="mt-4 flex items-center justify-between border-t border-ivory/10 pt-4">
@@ -150,37 +302,49 @@ export function IngredientBuilder({
   );
 
   const picker = library.serverSearch ? (
-    // Owner P0: canonical Pro — LIVE per-query backend search (no snapshot).
-    <ServerIngredientPicker library={library} onAdd={addIngredient} compact={layout === 'workbench'} />
+    <ServerIngredientPicker
+      library={library}
+      onAdd={addIngredientAndResolveRequiredRole}
+      compact={layout === 'workbench'}
+    />
   ) : (
-    // Demo / fallback: the local 12-ingredient preview catalog.
-    <IngredientPicker library={library} onAdd={addIngredient} compact={layout === 'workbench'} />
+    <IngredientPicker
+      library={library}
+      onAdd={addIngredientAndResolveRequiredRole}
+      compact={layout === 'workbench'}
+    />
   );
 
   if (layout === 'workbench') {
-    // One-screen workbench: the ROWS region is the ONE internal scroll surface of the
-    // editor pane; header, batch total and Add stay visible (owner zero-scroll rule).
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
         <div className="shrink-0 border-b border-ink/10 px-3 py-2">
           <div className="flex items-center justify-between gap-3">
             <SectionLabel>{mode === 'production' ? 'Produkcja' : b.title}</SectionLabel>
-            {demo || library.status === 'fallback' ? <NonProductionBadge itemId="pro-demo-library" /> : null}
+            {demo || library.status === 'fallback' ? (
+              <NonProductionBadge itemId="pro-demo-library" />
+            ) : null}
           </div>
-          {mode === 'recipe' ? <div className="mt-2" data-testid="ingredient-add-slot">{picker}</div> : (
-            <ReadinessFrame
-              compact
-              className="mt-2"
-              state="W PRZYGOTOWANIU"
-              title="Tryb produkcyjny"
-              details={{
-                limitation: 'Design jest gotowy, ale przebieg produkcji nie jest zapisywany w repozytorium.',
-                calculationImpact: 'Faktyczne gramatury aktualizują wyłącznie bieżący szkic.',
-                remaining: 'Podłączyć statusy, zdarzenia i kontrakt ratunku partii.',
-              }}
-            >
-              <p className="text-[10px] text-stone-600">Już dodane ilości mogą pozostać bez zmian albo wzrosnąć — PI nie może usunąć składnika wlanego do partii.</p>
-            </ReadinessFrame>
+          {mode === 'recipe' ? (
+            <div className="mt-2" data-testid="ingredient-add-slot">
+              {picker}
+            </div>
+          ) : (
+            <div className="mt-2 flex items-center justify-between gap-3 border border-ink/10 bg-stone-50 px-3 py-2">
+              <p className="text-[10px] text-stone-600">
+                Odważ · skoryguj −/+ · potwierdź ✓. Potwierdzonego materiału PI nigdy nie odejmuje.
+              </p>
+              <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink">
+                {production?.progress
+                  ? `${production.progress.confirmedCount}/${production.progress.totalCount}`
+                  : '0/0'}
+              </span>
+              {!production ? (
+                <span className="sr-only" data-readiness="W PRZYGOTOWANIU">
+                  W PRZYGOTOWANIU
+                </span>
+              ) : null}
+            </div>
           )}
           {mode === 'recipe' ? duplicateNotice : null}
         </div>
@@ -189,11 +353,11 @@ export function IngredientBuilder({
         ) : (
           <>
             <div className="hidden shrink-0 border-b border-ink/[0.075] md:block">{header}</div>
-            <div
-              className="min-h-0 flex-1 overflow-y-auto"
-              data-testid="ingredient-rows-scroll"
-            >
-              <div>{rows}{unavailable}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto" data-testid="ingredient-rows-scroll">
+              <div>
+                {infeasibleNotice}
+                {rows}
+              </div>
             </div>
             <div className="shrink-0 px-3 pb-1">{totalLine}</div>
           </>
@@ -205,23 +369,20 @@ export function IngredientBuilder({
   return (
     <Card padding="lg">
       <SectionLabel>{b.title}</SectionLabel>
-
       {duplicateNotice}
-
       {items.length === 0 ? (
         <p className="mt-6 text-sm leading-relaxed text-ivory/60">{b.empty}</p>
       ) : (
         <>
           <div className="mt-5 divide-y divide-ivory/10">
             {header}
+            {infeasibleNotice}
             {rows}
           </div>
           {totalLine}
         </>
       )}
-
       <div className="mt-5">{picker}</div>
     </Card>
   );
 }
-import { useState } from 'react';

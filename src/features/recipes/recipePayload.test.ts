@@ -99,6 +99,28 @@ describe('savedToRecipeInput (load validation)', () => {
     expect(result.npac_points).not.toBeNull();
   });
 
+  it('round-trips the Protein product and exact user target without falling back to Gelato', () => {
+    const base = sampleInput();
+    const input = {
+      ...base,
+      category: 'protein_gelato' as const,
+      goals: {
+        ...base.goals,
+        target_protein_percent: 22.4,
+      },
+    };
+    const payload = buildSavePayload({
+      name: 'Protein strawberry',
+      recipeInput: input,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    expect(payload.product_type).toBe('protein');
+    const loaded = savedToRecipeInput(JSON.parse(JSON.stringify(payload.recipe_input)));
+    expect(loaded.category).toBe('protein_gelato');
+    expect(loaded.goals?.target_protein_percent).toBe(22.4);
+    expect(loaded.items).toEqual(input.items);
+  });
   it('tolerates unknown/future fields (old saves keep loading)', () => {
     const stored = JSON.parse(JSON.stringify(sampleInput())) as {
       items: Array<{ ingredient: Record<string, unknown> }>;

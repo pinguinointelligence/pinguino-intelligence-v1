@@ -20,7 +20,10 @@ const SRC = strip(readFileSync(new URL('./useCanonicalRecipeSave.ts', import.met
 
 describe('resolveSaveTarget — the /pro default is untouched', () => {
   it('no option → the recipe-store link (what the workbar has always saved into)', () => {
-    expect(resolveSaveTarget(undefined, LINKED)).toEqual({ recipeId: 'rc-1', title: 'Gelato waniliowe' });
+    expect(resolveSaveTarget(undefined, LINKED)).toEqual({
+      recipeId: 'rc-1',
+      title: 'Gelato waniliowe',
+    });
   });
 
   it('no option + an unlinked draft → null (a create, not a version)', () => {
@@ -50,8 +53,12 @@ describe('resolveSaveTarget — an explicit target isolates the other surface', 
 
 describe('handler invariants', () => {
   it('the DEFAULT payload source is still the recipe-store draft through buildRecipeInput', () => {
-    expect(SRC).toContain('buildRecipeInput(useRecipeStore.getState())');
+    expect(SRC).toContain('const state = useRecipeStore.getState();');
+    expect(SRC).toContain('const input = buildRecipeInput(state);');
+    expect(SRC).toContain('attachRecipeProfileMetadata(');
     expect(SRC).toContain('options.buildInput ?? (() => buildRecipeInputFromStore())');
+    expect(SRC).not.toContain('applyEffectiveCustomerPrices');
+    expect(SRC).not.toContain('useCustomerPriceStore');
   });
 
   it('every recipe-store write is gated on linkStoreDraft (default true = /pro behaviour)', () => {
@@ -62,7 +69,9 @@ describe('handler invariants', () => {
         expect(line.trim().startsWith('markSaved(')).toBe(true); // only inside the guarded block
       }
     }
-    expect(SRC).toContain('if (linkStoreDraft) useRecipeStore.setState({ savedRecipeName: recipe.title });');
+    expect(SRC).toContain(
+      'if (linkStoreDraft) useRecipeStore.setState({ savedRecipeName: recipe.title });',
+    );
   });
 
   it('persistence still goes through the ONE pro-core repository port', () => {

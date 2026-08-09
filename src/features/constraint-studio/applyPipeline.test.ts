@@ -236,6 +236,38 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     const outcome = commitPreview(input, unlockedSet, built.preview, 'now', 'apply-w');
     expect(outcome).toMatchObject({ ok: false, code: 'stale_preview' });
   });
+
+  it.each([
+    ['mode', (input: RecipeInput) => ({ ...input, mode: 'premium' as const })],
+    ['category', (input: RecipeInput) => ({ ...input, category: 'sorbet' as const })],
+    [
+      'temperature',
+      (input: RecipeInput) => ({
+        ...input,
+        target_temperature_c: input.target_temperature_c === -11 ? -12 : -11,
+      }),
+    ],
+    ['machine capacity', (input: RecipeInput) => ({ ...input, machine_capacity_grams: 1500 })],
+    [
+      'goals',
+      (input: RecipeInput) => ({ ...input, goals: { ...input.goals, sweetness: 'high' as const } }),
+    ],
+  ])('refuses a forged proposed %s context before Engine verification', (_field, forge) => {
+    const input = withGrams(overSweetStarter(160), DEXTROSE, 40);
+    const set: ConstraintSet = { byLineId: { [DEXTROSE]: { mode: 'locked', grams: 40 } } };
+    const built = buildOptimizePreview(input, set, 'now');
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const forged: ConstraintPreview = {
+      ...built.preview,
+      proposedInput: forge(built.preview.proposedInput),
+    };
+
+    expect(commitPreview(input, set, forged, 'now', 'forged-context')).toMatchObject({
+      ok: false,
+      code: 'stale_preview',
+    });
+  });
 });
 
 describe('batch rescale preview (§17.4)', () => {

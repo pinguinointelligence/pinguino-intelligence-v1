@@ -13,8 +13,8 @@ import { useMemo } from 'react';
 import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { recipeTechnicalFit } from '@/features/recipe-score';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
 import {
   constraintStudioCopy,
   formatGramsPl,
@@ -90,7 +90,7 @@ function BestSafeResultView({
 }) {
   const b = constraintStudioCopy.bestSafe;
   // ACCEPTANCE ADDENDUM (2): the readout is the TECHNICAL fit dimension.
-  const match = useMemo(() => recipeTechnicalFit(calculateRecipe(input)), [input]);
+  const match = useMemo(() => recipeFitForInput(input, calculateRecipe(input)), [input]);
   const softLabels = issue.softViolatedMetrics.map((metric) => d.metricLabels[metric] ?? metric);
   return (
     <div className="space-y-2" data-testid="pro-recalc-best-safe">
@@ -187,6 +187,8 @@ function RecalcDiagnosisView({
   if (
     issue.code === 'unsupported_profile' ||
     issue.code === 'missing_required_role' ||
+    issue.code === 'vegan_ingredient_conflict' ||
+    issue.code === 'vegan_profile_constraint' ||
     issue.code === 'impossible_under_constraints'
   ) {
     return (
@@ -206,7 +208,9 @@ function RecalcDiagnosisView({
     <div className="space-y-3" data-testid="pro-recalc-diagnosis" data-code={diagnosis.code}>
       <p className="text-sm leading-relaxed text-ivory/85">{diagnosisMessage(diagnosis, issue)}</p>
       {diagnosis.pouredCount > 0 ? (
-        <p className="text-xs leading-relaxed text-amber-300/90">{d.pouredNote(diagnosis.pouredCount)}</p>
+        <p className="text-xs leading-relaxed text-amber-300/90">
+          {d.pouredNote(diagnosis.pouredCount)}
+        </p>
       ) : null}
 
       {lockedRows.length > 0 ? (
@@ -261,6 +265,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
   const machineCapacityGrams = useRecipeStore((s) => s.machine_capacity_grams);
   const flavorIntensity = useRecipeStore((s) => s.flavor_intensity);
   const costPriority = useRecipeStore((s) => s.cost_priority);
+  const targetProteinPercent = useRecipeStore((s) => s.target_protein_percent);
   const items = useRecipeStore((s) => s.items);
   const servingModeId = useRecipeStore((s) => s.servingModeId);
 
@@ -275,8 +280,19 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
         flavor_intensity: flavorIntensity,
         cost_priority: costPriority,
         items,
+        target_protein_percent: targetProteinPercent,
       }),
-    [mode, category, temperatureC, batchGrams, machineCapacityGrams, flavorIntensity, costPriority, items],
+    [
+      mode,
+      category,
+      temperatureC,
+      batchGrams,
+      machineCapacityGrams,
+      flavorIntensity,
+      costPriority,
+      targetProteinPercent,
+      items,
+    ],
   );
 
   const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
@@ -315,7 +331,9 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
         </div>
 
         <div className="mt-3 space-y-3">
-          {blocked ? <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} /> : null}
+          {blocked ? (
+            <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} />
+          ) : null}
 
           {previewIssue ? (
             <RecalcDiagnosisView

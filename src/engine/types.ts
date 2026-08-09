@@ -22,6 +22,7 @@ export type ProductCategory =
   | 'alcohol_gelato'
   | 'sorbet'
   | 'vegan_gelato'
+  | 'protein_gelato'
   | 'custom';
 
 /** Spec §13/§15 — the six lock types. `already_added` lines can never be reduced. */
@@ -108,6 +109,9 @@ export interface EngineIngredientFlags {
   is_animal_origin?: boolean;
   is_flavor_booster?: boolean;
   is_stabilizer?: boolean;
+  /** Dietary provenance only; never participates in Base Engine formulas. */
+  vegan_eligibility?: 'VEGAN_VERIFIED' | 'VEGAN_FALSE' | 'VEGAN_UNKNOWN' | 'VEGAN_CONFLICT';
+  vegan_eligibility_reasons?: string[];
 }
 
 /**
@@ -151,6 +155,8 @@ export interface EngineIngredient {
   /** Cost per kg — null = UNKNOWN (creates the incomplete cost state);
    * 0 = explicitly free (e.g. water). Never silently treated as 0. */
   cost_per_kg: number | null;
+  /** ISO 4217 source currency for the reference cost. Missing means unpriceable without override. */
+  cost_currency?: string | null;
   /** 0–100 (masterplan §16). */
   confidence_score: number;
   source_type: SourceType;
@@ -186,8 +192,12 @@ export interface RecipeGoals {
   flavor_intensity?: 'light' | 'balanced' | 'strong' | 'maximum';
   creaminess?: 'light' | 'classic' | 'premium' | 'dense';
   cost_priority?: 'low' | 'balanced' | 'premium';
+  formulation_strategy?: 'optimal' | 'eco';
   main_priority?: 'normal' | 'high' | 'maximum';
   dietary?: DietaryFlag[];
+  /** Desired total protein in the final batch. Product-level preference only;
+   * Base Engine composition still calculates the actual value from every line. */
+  target_protein_percent?: number;
 }
 
 export interface RecipeInput {

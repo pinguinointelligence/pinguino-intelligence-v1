@@ -14,5 +14,6 @@ export const DENSITY_DEFAULTS: Record<ProductCategory, number> = {
   alcohol_gelato: 1.06,
   sorbet: 1.12,
   vegan_gelato: 1.08,
+  protein_gelato: 1.08,
   custom: 1.08,
 };

@@ -86,12 +86,12 @@ export const NON_PRODUCTION_ITEMS: readonly NonProductionItem[] = [
   },
   {
     id: 'recipes-hub-tiles',
-    file: 'src/pages/destinations/RecipesHubPage.tsx',
-    identifier: 'RecipeTile (ImagePlaceholder)',
+    file: 'src/data/recipes/curatedCollections.ts + src/data/recipes/flavorCatalogue.generated.ts',
+    identifier: 'CURATED_RECIPE_CANDIDATES / FLAVOR_CATALOGUE_SOURCE',
     reason:
-      'Kafelki katalogu (receptury PINGÜINO, wyróżnione, kategorie) to dekoracyjne placeholdery — nie stoi za nimi żadna prawdziwa kolekcja receptur.',
+      'Widoczne w trybie deweloperskim kierunki są danymi inspiracyjnymi lub kandydatami przed testem kuchennym — nie są gotowymi recepturami produkcyjnymi.',
     replacement:
-      'Prawdziwe kolekcje receptur z katalogu (zdjęcia + linki) po uruchomieniu katalogu receptur.',
+      'Publiczne karty pojawią się dopiero po Mapperze, formulacji, weryfikacji Engine, teście kuchennym, ocenie sensorycznej i publikacji.',
   },
   {
     id: 'landing-monitor-example',

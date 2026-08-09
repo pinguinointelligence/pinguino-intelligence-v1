@@ -29,6 +29,7 @@ import { buildWarnings, metricLabel, metricUnit } from '@/features/pi-panel/indi
 import type { TargetMetric } from '@/engine';
 import { recipeTechnicalFit, type TechnicalFitPresentation } from '@/features/recipe-score';
 import { assessStabilizerDosage } from '@/features/formulation/stabilizerDosage';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
 
 const m = copy.monitorPi.summary;
 
@@ -61,8 +62,10 @@ export interface MonitorScoreView {
  * preserved — `recipeTechnicalFit` returns a null score for an unscorable
  * result exactly as `recipeMatchScore` did.
  */
-export function monitorScoreView(result: RecipeResult): MonitorScoreView {
-  return { match: recipeTechnicalFit(result) };
+export function monitorScoreView(result: RecipeResult, input?: RecipeInput): MonitorScoreView {
+  return {
+    match: input ? recipeFitForInput(input, result) : recipeTechnicalFit(result),
+  };
 }
 
 /* ------------------------------------------------------------------------ *

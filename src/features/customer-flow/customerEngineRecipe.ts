@@ -4,9 +4,9 @@
  * Drives the SAME locked starter-template path the studio assistant uses
  * (`buildStarterRecipeFromIntent` → real `calculateRecipe`), from the customer
  * flow state. This replaces the hardcoded preview skeleton with a real Engine
- * result for the profiles that have a safe reference template (standard_gelato,
- * chocolate_gelato). It invents nothing: sorbet / vegan / protein and any
- * incomplete state resolve to an honest not-calculated reason, never a fake recipe.
+ * result for profiles that have a safe starter template. It invents nothing:
+ * profiles without a starter seed and incomplete states resolve to an honest
+ * not-calculated reason, never a fake recipe.
  *
  *  - profile comes from the INTENT (internal chocolate routing preserved);
  *  - temperature comes from the selected SERVING MODE (the six-mode matrix);
@@ -28,7 +28,7 @@ import { CUSTOMER_TYPE_TO_SPINE_PROFILE_INPUT } from './types';
 export type CustomerEngineReason =
   | 'ok' // a real calculateRecipe result exists
   | 'incomplete' // type / mode / batch not resolved yet
-  | 'profile_unsupported' // e.g. protein — honest gap, no engine profile
+  | 'profile_unsupported' // reserved for a genuinely unsupported profile
   | 'no_template'; // sorbet / vegan — no safe reference base yet (never faked)
 
 export interface CustomerEngineRecipe {
@@ -54,7 +54,7 @@ export function buildCustomerEngineRecipe(state: CustomerFlowState): CustomerEng
   const route = resolveServingRoute(state);
   const batch = resolveBatch(state);
 
-  // The internal engine profile must be resolved (protein / unknown → not built).
+  // The internal engine profile must be resolved (unknown/unsupported → not built).
   if (type.internalProfile === null) {
     return NOT_BUILT(type.status === 'unsupported' ? 'profile_unsupported' : 'incomplete');
   }
@@ -84,5 +84,9 @@ export function buildCustomerEngineRecipe(state: CustomerFlowState): CustomerEng
   if (draft.status === 'ready' && draft.recipeInput !== null) {
     return { draft, calculated: true, reason: 'ok' };
   }
-  return { draft, calculated: false, reason: draft.status === 'not_supported' ? 'no_template' : 'incomplete' };
+  return {
+    draft,
+    calculated: false,
+    reason: draft.status === 'not_supported' ? 'no_template' : 'incomplete',
+  };
 }

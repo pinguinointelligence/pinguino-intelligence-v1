@@ -136,6 +136,7 @@ describe('visible product types', () => {
       'sorbet',
       'vegan_gelato',
       'custom',
+      'protein_gelato',
     ];
     for (const items of subsets) {
       // (a) the live gelato derivation
@@ -145,7 +146,6 @@ describe('visible product types', () => {
       ).toBe(true);
       // (b) the visible-type derivation, for every supported visible type
       for (const visible of VISIBLE_PRODUCT_TYPES) {
-        if (visible === 'protein') continue; // honest-unsupported: keeps `previous`
         expect(seeded.has(internalCategoryFor(visible, items, 'milk_gelato'))).toBe(true);
       }
       // (c) the canonicalization of anything arriving from outside
@@ -171,13 +171,13 @@ describe('visible product types', () => {
     expect(useRecipeStore.getState().visibleProductType).toBe('gelato'); // visible stays Gelato
   });
 
-  it('Protein is honest-unsupported — never silently re-profiles the recipe', () => {
+  it('Protein uses its dedicated seeded category and renders the real target control', () => {
     useRecipeStore.getState().setCategory('milk_gelato');
     useRecipeStore.getState().setVisibleProductType('protein');
     expect(useRecipeStore.getState().visibleProductType).toBe('protein');
-    expect(useRecipeStore.getState().category).toBe('milk_gelato'); // unchanged
-    expect(internalCategoryFor('protein', [], 'sorbet')).toBe('sorbet');
-    expect(renderToStaticMarkup(<GoalSetup />)).not.toContain('data-testid="protein-unsupported"');
+    expect(useRecipeStore.getState().category).toBe('protein_gelato');
+    expect(internalCategoryFor('protein', [], 'sorbet')).toBe('protein_gelato');
+    expect(useRecipeStore.getState().target_protein_percent).toBe(20);
   });
 });
 
@@ -261,9 +261,12 @@ describe('new Pro profile layout', () => {
     for (const label of ['Profil receptury', 'Monitor', 'Produkcja', 'Podsumowanie']) {
       expect(profile).toContain(label);
     }
-    expect(profile).toContain("export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary'");
+    expect(profile).toContain(
+      "export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary'",
+    );
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    expect(settings).toContain('profile-actual-batch');
+    expect(settings).toContain('profile-batch-combined');
+    expect(settings).toContain('actualBatchG.toLocaleString');
   });
 
   it('shows explicit gram and percent lock controls through the canonical lock_type action', () => {

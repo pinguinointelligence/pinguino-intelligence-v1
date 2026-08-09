@@ -41,6 +41,13 @@ export interface MetricBand {
   notes?: readonly string[];
 }
 
+export const PROTEIN_GELATO_TARGET = {
+  defaultPercent: 20,
+  controlStepPercent: 1,
+  inputStepPercent: 0.1,
+  tolerancePercent: 0.1,
+} as const;
+
 export interface TemperatureRegulatorSettings {
   productProfile: ProductProfile;
   servingTemperatureC: ServingTemperatureC;
@@ -59,6 +66,7 @@ export interface TemperatureRegulatorSettings {
   aeratingProtein?: MetricBand;
   proteinShareInSolids?: MetricBand;
   stabilizer: { required: true };
+  proteinTarget?: typeof PROTEIN_GELATO_TARGET;
 
   disabledGates: readonly string[];
   advisoryGates: readonly string[];
@@ -148,6 +156,84 @@ const standardGelatoMinus13: TemperatureRegulatorSettings = {
   notes: ['main locked reference: G18', 'lower clean anchor: G11'],
 };
 
+// Protein Gelato: separate profile using owner-approved Standard physical settings.
+const PROTEIN_DISABLED_GATES = [
+  'lactose',
+  'lactose_sanding',
+  'aerating_protein',
+  'protein_share_in_solids',
+] as const;
+
+const proteinGelatoMinus11: TemperatureRegulatorSettings = {
+  productProfile: 'protein_gelato',
+  servingTemperatureC: -11,
+  status: 'owner_approved_standard_physics_protein_v1',
+  configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+  npac: { band: [33, 42], cleanCenter: [39, 41], overlapNext: [42, 42] },
+  iceFraction: { band: [45, 54.5] },
+  pod: { band: [12, 17] },
+  fat: { band: [5, 12] },
+  solids: { band: [31, 45] },
+  water: { band: [57, 70] },
+  proteinTarget: PROTEIN_GELATO_TARGET,
+  stabilizer: { required: true },
+  disabledGates: PROTEIN_DISABLED_GATES,
+  advisoryGates: [],
+  notes: [
+    'separate Protein Gelato profile; Standard Gelato serving physics reused by owner decision',
+    'total protein target is recipe-specific and never replaces Main flavor identity',
+  ],
+};
+
+const proteinGelatoMinus12: TemperatureRegulatorSettings = {
+  productProfile: 'protein_gelato',
+  servingTemperatureC: -12,
+  status: 'owner_approved_standard_physics_protein_v1',
+  configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+  npac: {
+    band: [42, 50],
+    cleanCenter: [45, 46.2],
+    lockedReference: 46.18,
+    lowerCleanAnchor: 44.98,
+    overlapPrevious: [42, 43],
+    overlapNext: [48, 50],
+  },
+  iceFraction: { band: [46, 54], lockedReference: 50.34 },
+  pod: { band: [12, 17], lockedReference: 15.57 },
+  fat: { band: [5, 12], lockedReference: 6.19 },
+  solids: { band: [31, 44], lockedReference: 36.82 },
+  water: { band: [56, 70], lockedReference: 63.18 },
+  proteinTarget: PROTEIN_GELATO_TARGET,
+  stabilizer: { required: true },
+  disabledGates: PROTEIN_DISABLED_GATES,
+  advisoryGates: [],
+  notes: ['separate Protein Gelato profile; G17/G15 physical calibration reused by owner decision'],
+};
+
+const proteinGelatoMinus13: TemperatureRegulatorSettings = {
+  productProfile: 'protein_gelato',
+  servingTemperatureC: -13,
+  status: 'owner_approved_standard_physics_protein_v1',
+  configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+  npac: {
+    band: [48, 55],
+    cleanCenter: [51.5, 53.2],
+    lockedReference: 53.15,
+    lowerCleanAnchor: 51.77,
+    overlapPrevious: [48, 50],
+  },
+  iceFraction: { band: [46, 52], lockedReference: 49.69 },
+  pod: { band: [12, 17], lockedReference: 16.37 },
+  fat: { band: [5, 12], lockedReference: 5.89 },
+  solids: { band: [35, 45], lockedReference: 37.22 },
+  water: { band: [55, 65], lockedReference: 62.78 },
+  proteinTarget: PROTEIN_GELATO_TARGET,
+  stabilizer: { required: true },
+  disabledGates: PROTEIN_DISABLED_GATES,
+  advisoryGates: [],
+  notes: ['separate Protein Gelato profile; G18/G11 physical calibration reused by owner decision'],
+};
+
 /* ========================================================================== *
  * Sorbet (Temperature_Regulator_SORBET.md)                                   *
  * ========================================================================== */
@@ -205,7 +291,12 @@ const sorbetMinus13: TemperatureRegulatorSettings = {
   status: 'locked_v0_1',
   configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
   pod: { band: [15, 25], lockedReference: 21.21 },
-  npac: { band: [48, 55], cleanCenter: [51, 52.5], lockedReference: 52.22, overlapPrevious: [48, 49] },
+  npac: {
+    band: [48, 55],
+    cleanCenter: [51, 52.5],
+    lockedReference: 52.22,
+    overlapPrevious: [48, 49],
+  },
   iceFraction: { band: [50, 58], lockedReference: 54.28 },
   solids: { band: [25, 33], lockedReference: 30.82 },
   water: { band: [67, 73], lockedReference: 69.18 },
@@ -261,7 +352,9 @@ const veganGelatoMinus12: TemperatureRegulatorSettings = {
   stabilizer: { required: true },
   disabledGates: VEGAN_DISABLED_GATES,
   advisoryGates: [],
-  notes: ['derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed'],
+  notes: [
+    'derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed',
+  ],
 };
 
 const veganGelatoMinus13: TemperatureRegulatorSettings = {
@@ -270,7 +363,12 @@ const veganGelatoMinus13: TemperatureRegulatorSettings = {
   status: 'locked_pinguino_v0_1',
   configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
   pod: { band: [13, 25], lockedReference: 22.08, mediumEvidence: 20.58 },
-  npac: { band: [50, 64], cleanCenter: [53.5, 60.0], lockedReference: 59.47, mediumEvidence: 53.75 },
+  npac: {
+    band: [50, 64],
+    cleanCenter: [53.5, 60.0],
+    lockedReference: 59.47,
+    mediumEvidence: 53.75,
+  },
   iceFraction: { band: [46, 58], lockedReference: 51.06, mediumEvidence: 51.35 },
   fat: { band: [0, 12], lockedReference: 5.08, mediumEvidence: 4.21 },
   solids: { band: [30, 43], lockedReference: 36.24, mediumEvidence: 36.17 },
@@ -292,7 +390,9 @@ const CHOCOLATE_PROTEIN_SHARE: MetricBand = {
   band: [8, 13], // advisory band — cocoa solids dilute dairy protein share
   visibleBenchmark: [9, 13],
   hardMinimum: 7,
-  notes: ['soft/advisory gate — never a standard-gelato hard fail when chocolate structure is good'],
+  notes: [
+    'soft/advisory gate — never a standard-gelato hard fail when chocolate structure is good',
+  ],
 };
 
 const chocolateGelatoMinus11: TemperatureRegulatorSettings = {
@@ -325,7 +425,12 @@ const chocolateGelatoMinus12: TemperatureRegulatorSettings = {
   status: 'locked_pinguino_internal_v0_1',
   configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
   pod: { band: [12, 20] },
-  npac: { band: [43, 52], cleanCenter: [47, 49.5], overlapPrevious: [43, 45], overlapNext: [49, 52] },
+  npac: {
+    band: [43, 52],
+    cleanCenter: [47, 49.5],
+    overlapPrevious: [43, 45],
+    overlapNext: [49, 52],
+  },
   iceFraction: { band: [46, 54] },
   lactose: { band: [4, 6] },
   lactoseSanding: { band: [5, 9] },
@@ -384,10 +489,23 @@ const chocolateGelatoMinus13: TemperatureRegulatorSettings = {
 const REGISTRY: Readonly<
   Record<ProductProfile, Readonly<Record<ServingTemperatureC, TemperatureRegulatorSettings>>>
 > = {
-  standard_gelato: { [-11]: standardGelatoMinus11, [-12]: standardGelatoMinus12, [-13]: standardGelatoMinus13 },
+  standard_gelato: {
+    [-11]: standardGelatoMinus11,
+    [-12]: standardGelatoMinus12,
+    [-13]: standardGelatoMinus13,
+  },
   sorbet: { [-11]: sorbetMinus11, [-12]: sorbetMinus12, [-13]: sorbetMinus13 },
   vegan_gelato: { [-11]: veganGelatoMinus11, [-12]: veganGelatoMinus12, [-13]: veganGelatoMinus13 },
-  chocolate_gelato: { [-11]: chocolateGelatoMinus11, [-12]: chocolateGelatoMinus12, [-13]: chocolateGelatoMinus13 },
+  chocolate_gelato: {
+    [-11]: chocolateGelatoMinus11,
+    [-12]: chocolateGelatoMinus12,
+    [-13]: chocolateGelatoMinus13,
+  },
+  protein_gelato: {
+    [-11]: proteinGelatoMinus11,
+    [-12]: proteinGelatoMinus12,
+    [-13]: proteinGelatoMinus13,
+  },
 };
 
 export const getTemperatureRegulatorSettings = (
@@ -396,7 +514,11 @@ export const getTemperatureRegulatorSettings = (
 ): TemperatureRegulatorSettings => REGISTRY[productProfile][servingTemperatureC];
 
 const isActiveProfile = (value: string): value is ProductProfile =>
-  value === 'standard_gelato' || value === 'sorbet' || value === 'vegan_gelato' || value === 'chocolate_gelato';
+  value === 'standard_gelato' ||
+  value === 'sorbet' ||
+  value === 'vegan_gelato' ||
+  value === 'chocolate_gelato' ||
+  value === 'protein_gelato';
 
 const isSupportedTemperature = (value: number): value is ServingTemperatureC =>
   value === -11 || value === -12 || value === -13;
@@ -488,7 +610,10 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       costPerKg: 6.8,
       costPer80g: 0.54,
     },
-    notes: ['clean −11 °C validation anchor — confirms the current base behavior stays stable', 'too hard for −12 °C, far too hard for −13 °C'],
+    notes: [
+      'clean −11 °C validation anchor — confirms the current base behavior stays stable',
+      'too hard for −12 °C, far too hard for −13 °C',
+    ],
   },
   {
     id: 'G17',
@@ -518,7 +643,10 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       costPerKg: 6.86,
       costPer80g: 0.55,
     },
-    notes: ['final clean reference for Standard Gelato −12 °C', 'too soft for −11 °C, too hard for −13 °C'],
+    notes: [
+      'final clean reference for Standard Gelato −12 °C',
+      'too soft for −11 °C, too hard for −13 °C',
+    ],
   },
   {
     id: 'G15',
@@ -538,7 +666,10 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       solids: 36.88,
       water: 63.12,
     },
-    notes: ['lower / firmer clean −12 °C anchor', 'the locked doc documents metrics only — no formula, no cost'],
+    notes: [
+      'lower / firmer clean −12 °C anchor',
+      'the locked doc documents metrics only — no formula, no cost',
+    ],
   },
   {
     id: 'G18',
@@ -568,7 +699,10 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       costPerKg: 5.81,
       costPer80g: 0.46,
     },
-    notes: ['final clean reference for Standard Gelato −13 °C', 'too soft for −12 °C, far too soft for −11 °C'],
+    notes: [
+      'final clean reference for Standard Gelato −13 °C',
+      'too soft for −12 °C, far too soft for −11 °C',
+    ],
   },
   {
     id: 'G11',
@@ -590,7 +724,10 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       costPerKg: 6.21,
       costPer80g: 0.5,
     },
-    notes: ['lower / firmer clean −13 °C anchor', 'the locked doc documents metrics only — no formula'],
+    notes: [
+      'lower / firmer clean −13 °C anchor',
+      'the locked doc documents metrics only — no formula',
+    ],
   },
   {
     id: 'S01',
@@ -605,7 +742,15 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       { ingredient: 'water', grams: 181 },
       { ingredient: 'strawberries', grams: 600 },
     ],
-    expected: { pod: 19.16, npac: 37.71, iceFraction: 57.43, solids: 27.85, water: 72.15, costPerKg: 8.19, costPer80g: 0.66 },
+    expected: {
+      pod: 19.16,
+      npac: 37.71,
+      iceFraction: 57.43,
+      solids: 27.85,
+      water: 72.15,
+      costPerKg: 8.19,
+      costPer80g: 0.66,
+    },
     notes: ['final clean reference for Sorbet −11 °C'],
   },
   {
@@ -621,7 +766,15 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       { ingredient: 'water', grams: 164.2 },
       { ingredient: 'strawberries', grams: 600 },
     ],
-    expected: { pod: 19.97, npac: 44.18, iceFraction: 55.95, solids: 29.29, water: 70.71, costPerKg: 8.14, costPer80g: 0.65 },
+    expected: {
+      pod: 19.97,
+      npac: 44.18,
+      iceFraction: 55.95,
+      solids: 29.29,
+      water: 70.71,
+      costPerKg: 8.14,
+      costPer80g: 0.65,
+    },
     notes: ['final clean reference for Sorbet −12 °C'],
   },
   {
@@ -637,7 +790,15 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       { ingredient: 'water', grams: 146.2 },
       { ingredient: 'strawberries', grams: 600 },
     ],
-    expected: { pod: 21.21, npac: 52.22, iceFraction: 54.28, solids: 30.82, water: 69.18, costPerKg: 7.63, costPer80g: 0.61 },
+    expected: {
+      pod: 21.21,
+      npac: 52.22,
+      iceFraction: 54.28,
+      solids: 30.82,
+      water: 69.18,
+      costPerKg: 7.63,
+      costPer80g: 0.61,
+    },
     notes: ['final clean reference for Sorbet −13 °C'],
   },
   {
@@ -653,7 +814,15 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       { ingredient: 'water', grams: 264.2 },
       { ingredient: '100% mango pulp', grams: 500 },
     ],
-    expected: { pod: 23.75, npac: 52.55, iceFraction: 51.37, solids: 34.51, water: 65.49, costPerKg: 6.3, costPer80g: 0.5 },
+    expected: {
+      pod: 23.75,
+      npac: 52.55,
+      iceFraction: 51.37,
+      solids: 34.51,
+      water: 65.49,
+      costPerKg: 6.3,
+      costPer80g: 0.5,
+    },
     notes: [
       'mango validation — NOT a clean locked mango reference (total solids too high, water too low)',
       'evidence that Sorbet needs fruit-specific Designer/Optimizer logic; strawberry ratios must not be forced onto mango',
@@ -674,8 +843,20 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       { ingredient: 'inulin', grams: 53.1 },
       { ingredient: 'tara gum', grams: 1.9 },
     ],
-    expected: { pod: 22.08, npac: 59.47, iceFraction: 51.06, fat: 5.08, solids: 36.24, water: 63.76, costPerKg: 5.46, costPer80g: 0.44 },
-    notes: ['clean Vegan −13 °C reference — upper / soft-side clean anchor', 'no dairy-only gate may fail this recipe'],
+    expected: {
+      pod: 22.08,
+      npac: 59.47,
+      iceFraction: 51.06,
+      fat: 5.08,
+      solids: 36.24,
+      water: 63.76,
+      costPerKg: 5.46,
+      costPer80g: 0.44,
+    },
+    notes: [
+      'clean Vegan −13 °C reference — upper / soft-side clean anchor',
+      'no dairy-only gate may fail this recipe',
+    ],
   },
   {
     id: 'V02_AUTO',
@@ -691,8 +872,20 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       { ingredient: 'inulin', grams: 84.4 },
       { ingredient: 'tara gum', grams: 1.94 },
     ],
-    expected: { pod: 20.58, npac: 53.75, iceFraction: 51.35, fat: 4.21, solids: 36.17, water: 63.83, costPerKg: 8.59, costPer80g: 0.69 },
-    notes: ['medium-side evidence for Vegan −13 °C — not the final locked formula (cost high due to high inulin)', 'useful for Vegan Optimizer behavior later'],
+    expected: {
+      pod: 20.58,
+      npac: 53.75,
+      iceFraction: 51.35,
+      fat: 4.21,
+      solids: 36.17,
+      water: 63.83,
+      costPerKg: 8.59,
+      costPer80g: 0.69,
+    },
+    notes: [
+      'medium-side evidence for Vegan −13 °C — not the final locked formula (cost high due to high inulin)',
+      'useful for Vegan Optimizer behavior later',
+    ],
   },
   {
     id: 'V01_rejected',
@@ -708,8 +901,20 @@ export const TEMPERATURE_REGULATOR_GOLDEN_FIXTURES: readonly TemperatureRegulato
       { ingredient: 'inulin', grams: 43.1 },
       { ingredient: 'tara gum', grams: 1.9 },
     ],
-    expected: { pod: 16.08, npac: 32.91, iceFraction: 59.79, fat: 4.13, solids: 26.74, water: 73.26, costPerKg: 4.46, costPer80g: 0.36 },
-    notes: ['REJECTED evidence — too hard / too low NPAC for Vegan −13 °C, too much water, too low solids', 'useful as a failure example for the Vegan Optimizer — never a clean target'],
+    expected: {
+      pod: 16.08,
+      npac: 32.91,
+      iceFraction: 59.79,
+      fat: 4.13,
+      solids: 26.74,
+      water: 73.26,
+      costPerKg: 4.46,
+      costPer80g: 0.36,
+    },
+    notes: [
+      'REJECTED evidence — too hard / too low NPAC for Vegan −13 °C, too much water, too low solids',
+      'useful as a failure example for the Vegan Optimizer — never a clean target',
+    ],
   },
   {
     id: 'C01_fixed',

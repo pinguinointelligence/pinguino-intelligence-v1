@@ -38,10 +38,10 @@ describe('pink markers render on marked surfaces', () => {
     expect(html).toContain('src/data/label/sampleLabelRecipe.ts'); // tooltip source
   });
 
-  it('/recipes — the placeholder tiles carry the block marker + badge', () => {
+  it('/recipes — normal customer mode does not expose owner-review state', () => {
     const html = render(<RecipesHubPage />);
-    expect(html).toContain('data-testid="nonprod-marked-recipes-hub-tiles"');
-    expect(html).toContain(NON_PRODUCTION_BADGE_LABEL);
+    expect(html).not.toContain('data-testid="nonprod-marked-recipes-hub-tiles"');
+    expect(html).not.toContain('TRYB OWNER REVIEW');
     // The one REAL tile (Moje receptury) still renders inside — nothing removed.
     expect(html).toContain('href="/my-recipes"');
   });
@@ -87,7 +87,14 @@ const previewWithTemplate = (templateStatus: TemplateStatus): ConstraintPreview 
     roleTrace: [],
   },
   lines: [
-    { lineId: 'l-milk', name: 'Mleko 3,5%', beforeGrams: 600, afterGrams: 600, kind: 'unchanged', locked: false },
+    {
+      lineId: 'l-milk',
+      name: 'Mleko 3,5%',
+      beforeGrams: 600,
+      afterGrams: 600,
+      kind: 'unchanged',
+      locked: false,
+    },
   ],
   violationsBefore: 1,
   violationsAfter: 0,
@@ -161,7 +168,7 @@ describe('markers absent where the data is genuinely production', () => {
     'src/pages/destinations/SubscriptionPage.tsx',
     // CSV import — real parser + real owner-scoped write path.
     'src/pages/destinations/ProductImportPage.tsx',
-    // Live Mapper search picker — the real 2,083-row read model, honest unavailable states.
+    // Live Mapper search picker — the real 2,088-row read model, honest unavailable states.
     'src/features/customer-shell/ResolutionSheet.tsx',
   ];
 

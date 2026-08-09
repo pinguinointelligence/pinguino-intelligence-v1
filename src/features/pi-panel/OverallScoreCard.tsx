@@ -21,19 +21,26 @@
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { CharcoalPanel } from '@/components/ui/CharcoalPanel';
 import { copy } from '@/copy/en';
-import type { ProductMode, RecipeResult } from '@/engine';
-import { TECHNICAL_FIT_TOOLTIPS, commercialDimensions, recipeTechnicalFit } from '@/features/recipe-score';
+import type { ProductMode, RecipeInput, RecipeResult } from '@/engine';
+import {
+  TECHNICAL_FIT_TOOLTIPS,
+  commercialDimensions,
+  recipeTechnicalFit,
+} from '@/features/recipe-score';
 
+import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
 const o = copy.studio.overall;
 
 export function OverallScoreCard({
   result,
   mode,
+  input,
 }: {
   result: RecipeResult;
   mode: ProductMode;
+  input?: RecipeInput;
 }) {
-  const fit = recipeTechnicalFit(result);
+  const fit = input ? recipeFitForInput(input, result) : recipeTechnicalFit(result);
   const dimensions = commercialDimensions(result.scores);
   const modeName = copy.studio.goal.modes[mode].name;
 

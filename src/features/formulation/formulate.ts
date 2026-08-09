@@ -24,12 +24,15 @@
 import { DEFAULT_CORRECTION_CANDIDATES, type RecipeInput, type RecipeItem } from '@/engine';
 import type { ConstraintSet, IngredientConstraint } from '@/features/recipe-constraints';
 import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
-import { selectFormulationTemplate, type FormulationTemplate } from './templateRegistry';
+import { selectFormulationTemplateForRecipe, type FormulationTemplate } from './templateRegistry';
 import { canonicalToolboxIdentity, isToolboxCandidateExcluded } from './toolboxCanonical';
+import { findVerifiedVeganFormulationCandidate } from '@/data/ingredients/verifiedVeganToolbox';
+import { findVerifiedProteinFormulationCandidate } from '@/data/ingredients/verifiedProteinToolbox';
 import {
   canonicalIngredientId,
   normalizeIngredientIdentity,
 } from '@/data/ingredients/canonicalIngredientIdentity';
+import { resolveMainRatioScale } from './mainIngredientContract';
 
 /* ────────────────────────────────────────────────────────────── routing ── */
 
@@ -100,7 +103,7 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
     input.items.length > 0 &&
     input.items.every((item) => hardLine(item) || set.byLineId[item.id]?.mode === 'locked');
 
-  const lookup = selectFormulationTemplate(input.category, input.target_temperature_c);
+  const lookup = selectFormulationTemplateForRecipe(input);
 
   // EVERY line locked → two honest cases. When the locked lines already cover
   // the template's HARD roles, the recipe is complete and untouchable — the
@@ -312,12 +315,16 @@ const ROLE_LABEL_PL: Record<FunctionalRole, string> = {
 };
 
 const toolboxIngredient = (id: string) =>
-  DEFAULT_CORRECTION_CANDIDATES.find((c) => c.id === id)?.ingredient ?? null;
+  DEFAULT_CORRECTION_CANDIDATES.find((c) => c.id === id)?.ingredient ??
+  findVerifiedVeganFormulationCandidate(id) ??
+  findVerifiedProteinFormulationCandidate(id);
 
 export interface FormulationOptions {
   /** Canonical ingredient ids the user explicitly REMOVED / marked unavailable —
    * PI never reintroduces them (they become recommendations instead). */
   excludedIngredientIds?: readonly string[];
+  /** Canonical exclusions that were Main before their row was removed. */
+  unavailableMainIngredientIds?: readonly string[];
 }
 
 const lockOf = (set: ConstraintSet, lineId: string): IngredientConstraint | undefined =>
@@ -337,7 +344,20 @@ export type BuildFormulationResult =
   /** Owner P0 (truthful messages): the locked sum FITS the batch but nothing
    * adjustable remains to fill the difference — never reported as
    * „zablokowana suma przekracza partię" (locked 500 g ≤ 1000 g target). */
-  | { ok: false; code: 'no_adjustable_lines' };
+  | { ok: false; code: 'no_adjustable_lines' }
+  | {
+      ok: false;
+      code: 'main_ratio_conflict';
+      lineIds: string[];
+      ingredientNames: string[];
+      messagePl: string;
+    }
+  | {
+      ok: false;
+      code: 'main_ingredient_unavailable';
+      ingredientIds: string[];
+      messagePl: string;
+    };
 
 /**
  * Build the complete initial proposal from the template + the user's selection.
@@ -351,6 +371,17 @@ export function buildFormulationProposal(
   mode: FormulationMode,
   options: FormulationOptions = {},
 ): BuildFormulationResult {
+  if ((options.unavailableMainIngredientIds?.length ?? 0) > 0) {
+    const ingredientIds = [...new Set(options.unavailableMainIngredientIds)];
+    return {
+      ok: false,
+      code: 'main_ingredient_unavailable',
+      ingredientIds,
+      messagePl:
+        `Składnik Główny (${ingredientIds.join(', ')}) jest oznaczony jako niedostępny. ` +
+        'PI nie usunie tożsamości receptury: dodaj zatwierdzony zamiennik lub przywróć składnik.',
+    };
+  }
   const excluded = new Set(options.excludedIngredientIds ?? []);
   const batch = input.target_batch_grams;
   const scale = batch / template.baseBatchG;
@@ -405,10 +436,17 @@ export function buildFormulationProposal(
     const exactCanonicalMatches = canonical
       ? lines.filter((line) => canonicalIngredientId(line.item.ingredient) === canonical.mapperId)
       : [];
-    const matches =
-      exactCanonicalMatches.length > 0
-        ? exactCanonicalMatches
-        : (byRole.get(roleTarget.role) ?? []);
+    const roleMatches = byRole.get(roleTarget.role) ?? [];
+    // Protein Main is recipe identity, not a broad structural-role fallback.
+    // A Main vanilla dairy paste, for example, must not become the 460 g milk
+    // base. Keep this profile-scoped so accepted Gelato/Vegan formulation
+    // behavior remains unchanged.
+    const protectProteinMain = input.category === 'protein_gelato';
+    const fallbackRoleMatches =
+      roleTarget.toolboxId === null || !protectProteinMain
+        ? roleMatches
+        : roleMatches.filter((line) => line.item.lock_type !== 'main');
+    const matches = exactCanonicalMatches.length > 0 ? exactCanonicalMatches : fallbackRoleMatches;
     const traceBase = {
       role: roleTarget.role,
       hard: HARD_ROLES.has(roleTarget.role),
@@ -425,6 +463,10 @@ export function buildFormulationProposal(
         const constraint = match.constraint;
         // ACCEPTANCE ADDENDUM (4) — MAX/RANGE SEMANTICS: a §17 RANGE constraint
         // takes priority over the `lock_type='grams'` HOLD-AT-CURRENT staging
+        if (protectProteinMain && match.item.lock_type === 'main') {
+          planned.push({ item: match.item, grams: match.item.planned_grams, fixed: true });
+          continue;
+        }
         // the UI applies to every constrained line. Before this fix the
         // `match.locked` branch fired first, so a UI-staged range degraded to
         // an EXACT hold at the current grams (the range branch was
@@ -654,7 +696,50 @@ export function buildFormulationProposal(
     });
   }
 
-  // 3c. SEED BASELINE (owner addendum — proportional-scaling detector): freeze
+  // 3c. MULTI-MAIN IDENTITY: all positive Main lines are one ratio group.
+  // Templates may provide the technological structure and may suggest a total
+  // for a represented flavour role, but they may never split multiple Main
+  // carriers equally or otherwise overwrite the user's relative intent. Exact
+  // locks/ranges anchor the WHOLE group; an incompatible anchor is an honest
+  // conflict, never a silently broken ratio.
+  const plannedMainTotal = planned
+    .filter((entry) => entry.item.lock_type === 'main')
+    .reduce((sum, entry) => sum + entry.grams, 0);
+  const mainScale = resolveMainRatioScale(input, set.byLineId, plannedMainTotal);
+  if (!mainScale.ok) return mainScale;
+  if (mainScale.mains.length > 0) {
+    const scaledMainTotal = mainScale.mains.reduce(
+      (sum, main) => sum + main.grams * mainScale.scaleFactor,
+      0,
+    );
+    if (scaledMainTotal > batch + 0.1) {
+      return {
+        ok: false,
+        code: 'main_ratio_conflict',
+        lineIds: mainScale.mains.map((main) => main.lineId),
+        ingredientNames: mainScale.mains.map((main) => main.ingredientName),
+        messagePl:
+          `Proporcja składników Głównych (${mainScale.mains.map((main) => main.ingredientName).join(', ')}) ` +
+          `wymaga ${scaledMainTotal.toFixed(1)} g, więcej niż docelowa partia ${batch.toFixed(1)} g. ` +
+          'PI nie zmieniło blokad ani tożsamości receptury.',
+      };
+    }
+    const originalByLineId = new Map(
+      mainScale.mains.map((main) => [main.lineId, main.grams] as const),
+    );
+    for (const entry of planned) {
+      const originalGrams = originalByLineId.get(entry.item.id);
+      if (originalGrams === undefined) continue;
+      entry.grams = originalGrams * mainScale.scaleFactor;
+      // The group amount is resolved once. Independent normalization of its
+      // members could drift the ratio; technological lines fill the envelope.
+      entry.fixed = true;
+      delete entry.min;
+      delete entry.max;
+    }
+  }
+
+  // 3d. SEED BASELINE (owner addendum — proportional-scaling detector): freeze
   //     the PRE-normalization grams per line. `normalize()` below is a pure
   //     proportional projection of these values into the free envelope — the
   //     detector downstream compares the FINAL presented state against this
@@ -662,7 +747,7 @@ export function buildFormulationProposal(
   const seedBaselineGrams: Record<string, number> = {};
   for (const p of planned) seedBaselineGrams[p.item.id] = p.grams;
 
-  // 3d. Stabilizer-dose provenance (owner addendum 3): template-controlled
+  // 3e. Stabilizer-dose provenance (owner addendum 3): template-controlled
   //     dose (`adjustable:false`) on a carrier NOT held by a user lock is
   //     INHERITED from the reference template — never Engine-optimized.
   const stabilizerRole = template.roles.find((roleTarget) => roleTarget.role === 'stabilizer');

@@ -120,6 +120,23 @@ describe('ingredientRowToEngineIngredient', () => {
     expect(eng.source_type).toBe('verified_db');
     expect(eng.is_verified).toBe(true);
     expect(eng.flags?.is_animal_origin).toBe(true); // vegan = false
+    expect(eng.flags?.vegan_eligibility).toBe('VEGAN_FALSE');
+  });
+
+  it('carries fail-closed verified Vegan eligibility into Engine flags', () => {
+    const eng = ingredientRowToEngineIngredient(
+      makeRow({
+        ingredient_id: 'PI-ING-001565',
+        ingredient_name_internal: 'oat_drink',
+        ingredient_name_display: 'Oat drink',
+        ingredient_category: 'beverage',
+        ingredient_subcategory: 'plant_drink_oat',
+        vegan: 'true',
+        dairy_free: 'true',
+      }),
+    );
+    expect(eng.flags?.vegan_eligibility).toBe('VEGAN_VERIFIED');
+    expect(eng.flags?.vegan_eligibility_reasons).toEqual(['verified_mapper_vegan_true']);
   });
 
   it('handles unknowns honestly', () => {

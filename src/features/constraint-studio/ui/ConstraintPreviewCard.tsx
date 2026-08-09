@@ -137,10 +137,36 @@ export function ConstraintPreviewCard({
                   )
                 : diagnosticReason === 'reference_derived'
                   ? copy.preview.diagnosticReferenceDerived(preview.formulation?.templateId ?? '—')
-                  : hardResiduals.length > 0
-                    ? copy.preview.diagnosticHardResiduals(hardResiduals)
-                    : copy.preview.diagnosticIterationCap}
+                  : diagnosticReason === 'protein_target_residual'
+                    ? 'Kandydat jest natywnie bezpieczny, ale nie osiąga wybranego celu białka. Apply pozostaje zablokowany.'
+                    : hardResiduals.length > 0
+                      ? copy.preview.diagnosticHardResiduals(hardResiduals)
+                      : copy.preview.diagnosticIterationCap}
           </p>
+        </div>
+      ) : null}
+
+      {preview.proteinTarget?.applicable ? (
+        <div
+          className="mt-3 grid grid-cols-2 gap-3 border border-ivory/15 px-3 py-2.5"
+          data-testid="preview-protein-target"
+        >
+          <div>
+            <p className="text-[0.65rem] tracking-[0.08em] text-ivory/60 uppercase">Cel białka</p>
+            <p className="mt-1 font-mono text-sm tabular-nums text-ivory">
+              {preview.proteinTarget.targetPercent?.toFixed(1)}%
+            </p>
+          </div>
+          <div>
+            <p className="text-[0.65rem] tracking-[0.08em] text-ivory/60 uppercase">
+              Wynik po zmianie
+            </p>
+            <p
+              className={`mt-1 font-mono text-sm tabular-nums ${preview.proteinTarget.reached ? 'text-status-ideal' : 'text-status-risky'}`}
+            >
+              {preview.proteinTarget.actualPercent?.toFixed(1)}%
+            </p>
+          </div>
         </div>
       ) : null}
 

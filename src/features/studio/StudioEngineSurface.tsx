@@ -28,6 +28,7 @@ import {
 } from '@/features/pro-workbench/RecipeProfilePanel';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
+import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
 import {
   MOBILE_COCKPIT_QUERY,
   shouldActivateMobileCockpitModal,
@@ -131,10 +132,17 @@ export function StudioEngineSurface({
   const initialCockpit: CockpitTab =
     activePanel === 'monitor' ? 'monitor' : activePanel === 'production' ? 'production' : 'profile';
   const [cockpitTab, setCockpitTab] = useState<CockpitTab>(initialCockpit);
-  const { result, corrections, input } = useStudioResult(
-    cockpitTab === 'production' ? 'actual_batch' : 'planning',
-  );
-  const scoreDisplay = monitorScoreView(result).match.display;
+  const planning = useStudioResult('planning');
+  const production = useProductionWorkspace(cockpitTab === 'production');
+  const { result, corrections, input } =
+    cockpitTab === 'production'
+      ? {
+          result: production.forecastResult,
+          corrections: production.corrections,
+          input: production.forecastInput,
+        }
+      : planning;
+  const scoreDisplay = monitorScoreView(result, input).match.display;
   const [mobileCockpitOpen, setMobileCockpitOpen] = useState(activePanel === 'monitor');
   const [mobileViewport, setMobileViewport] = useState(false);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -222,6 +230,7 @@ export function StudioEngineSurface({
                   demo={forceDemo}
                   layout="workbench"
                   mode={cockpitTab === 'production' ? 'production' : 'recipe'}
+                  production={production}
                 />
               </div>
             ) : (
@@ -246,10 +255,37 @@ export function StudioEngineSurface({
               servingTemperatureC={temperatureC}
               corrections={corrections}
               input={input}
+              production={production}
             />
           </aside>
         </div>
-        <div className="shrink-0 border-t border-ink/10">{recipeBar}</div>
+        <div className="shrink-0 border-t border-ink/10">
+          {cockpitTab === 'production' && production.session?.status === 'in_progress' ? (
+            <div className="flex min-h-12 items-center justify-between gap-3 bg-white px-3 py-2 text-ink" data-testid="production-bottom-bar">
+              <div className="min-w-0">
+                <strong className="block truncate text-xs">{production.session.source.recipeName}</strong>
+                <span className="font-mono text-[9px] tabular-nums text-stone-500">
+                  {production.progress?.confirmedCount ?? 0}/{production.progress?.totalCount ?? 0} · {production.progress?.confirmedMassG.toFixed(1) ?? '0.0'} g w naczyniu
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={!production.progress?.coherent}
+                onClick={production.complete}
+                className="h-9 shrink-0 bg-ink px-4 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
+              >
+                Zakończ produkcję
+              </button>
+            </div>
+          ) : cockpitTab === 'production' && production.session?.status === 'completed' ? (
+            <div className="flex min-h-12 items-center justify-between bg-white px-3 py-2 text-xs text-ink">
+              <span>Partia zakończona · Master Label</span>
+              <span className="font-mono tabular-nums">{production.session?.completionSnapshot?.actualFinalMassG.toFixed(1) ?? '—'} g</span>
+            </div>
+          ) : (
+            recipeBar
+          )}
+        </div>
 
         <button
           ref={cockpitTriggerRef}
@@ -301,6 +337,7 @@ export function StudioEngineSurface({
                 servingTemperatureC={temperatureC}
                 corrections={corrections}
                 input={input}
+                production={production}
               />
             </section>
           </div>

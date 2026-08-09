@@ -10,16 +10,16 @@ import {
 const ALL = Object.values(PRODUCT_PROFILE_REGISTRY);
 
 describe('Product Profile Registry — existence (locked v1.0)', () => {
-  it('contains exactly the four active v1.0 profiles', () => {
+  it('contains the four frozen profiles plus the canonical Protein profile', () => {
     expect(Object.keys(PRODUCT_PROFILE_REGISTRY).sort()).toEqual(
       [...ACTIVE_PRODUCT_PROFILES].sort(),
     );
-    expect(ACTIVE_PRODUCT_PROFILES).toHaveLength(4);
+    expect(ACTIVE_PRODUCT_PROFILES).toHaveLength(5);
   });
 
-  it('has no granita, protein, fresh or storage profile', () => {
+  it('has no alias-only protein, granita, fresh or storage profile', () => {
     const keys = Object.keys(PRODUCT_PROFILE_REGISTRY);
-    for (const unsupported of ['granita', 'protein', 'protein_gelato', 'fresh', 'storage_minus18']) {
+    for (const unsupported of ['granita', 'protein', 'fresh', 'storage_minus18']) {
       expect(keys).not.toContain(unsupported);
     }
   });

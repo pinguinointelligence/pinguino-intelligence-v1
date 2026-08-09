@@ -1,8 +1,7 @@
 /// <reference types="node" />
 /**
- * v0.95 no-NPAC hotfix guards — the active ingredient table/seed/service must
- * carry NO ingredient-level `npac_value`, keep the PI Pro-only read model, and
- * the app must query the v0.95 table.
+ * Historical v0.95 no-NPAC rollback guards. Runtime uses Mapper 2088; this
+ * fixture remains under validation/history only as regression evidence.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -18,6 +17,7 @@ const CSV = read(
   'docs',
   'ingredients',
   'validation',
+  'history',
   'pinguino_base_ingredients_cleaned_v0_95_no_npac.csv',
 );
 

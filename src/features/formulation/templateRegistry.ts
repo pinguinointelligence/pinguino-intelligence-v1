@@ -42,8 +42,8 @@
  * structural facts.
  * ───────────────────────────────────────────────────────────────────────────
  */
-import type { ProductCategory } from '@/engine';
-import type { FunctionalRole } from './ingredientRoles';
+import type { ProductCategory, RecipeInput } from '@/engine';
+import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
 
 export type TemplateStatus = 'approved' | 'reference_derived' | 'unsupported';
 
@@ -64,11 +64,22 @@ export interface FormulationTemplate {
   templateId: string;
   category: ProductCategory;
   temperatureC: number;
+  veganFlavorStrategy?: VeganFlavorStrategy;
+  proteinFlavorStrategy?: ProteinFlavorStrategy;
+  proteinRoute?: ProteinRoute;
   status: TemplateStatus;
   approvalSource: string;
   baseBatchG: number;
   roles: readonly TemplateRoleTarget[];
 }
+
+export type VeganFlavorStrategy =
+  | 'neutral'
+  | 'fruit'
+  | 'nut'
+  | 'cocoa'
+  | 'mixed_main'
+  | 'unsupported_mixed_main';
 
 const T = (
   role: FunctionalRole,
@@ -153,7 +164,15 @@ const CHOCOLATE_M11: FormulationTemplate = {
 };
 
 /** S01/S02/S03 — locked clean sorbet references (fruit is USER-supplied). */
-const sorbet = (id: string, temp: number, sucrose: number, dextrose: number, inulin: number, tara: number, water: number): FormulationTemplate => ({
+const sorbet = (
+  id: string,
+  temp: number,
+  sucrose: number,
+  dextrose: number,
+  inulin: number,
+  tara: number,
+  water: number,
+): FormulationTemplate => ({
   templateId: id,
   category: 'sorbet',
   temperatureC: temp,
@@ -173,25 +192,195 @@ const SORBET_M11 = sorbet('S01', -11, 103.8, 59, 55.4, 0.8, 181);
 const SORBET_M12 = sorbet('S02', -12, 90, 90, 55, 0.8, 164.2);
 const SORBET_M13 = sorbet('S03', -13, 78, 125, 50, 0.8, 146.2);
 
-/** V02_fixed — locked clean vegan reference (−13; plant roles USER-supplied). */
-const VEGAN_M13: FormulationTemplate = {
-  templateId: 'V02_fixed',
-  category: 'vegan_gelato',
-  temperatureC: -13,
-  status: 'approved',
-  approvalSource: 'temperatureRegulator.ts V02_fixed (locked clean vegan reference)',
-  baseBatchG: 1000,
-  roles: [
-    T('water', 200, 'water'),
-    T('plant_liquid', 250, null), // the user's plant drink — never invented
-    T('plant_fat', 250, null), // the user's coconut/plant fat — never invented
-    T('sweetener_sucrose', 95, 'sucrose'),
-    T('sugar_freezing_control', 150, 'dextrose'),
-    T('fiber_body', 53.1, 'inulin'),
-    T('stabilizer', 1.9, 'tara_gum', false),
-  ],
+interface VeganMinus13Seed {
+  strategy: VeganFlavorStrategy;
+  water: number;
+  plantLiquid: number;
+  plantFat: number;
+  sucrose: number;
+  dextrose: number;
+  inulin: number;
+  mainRole?: FunctionalRole;
+  mainGrams?: number;
+}
+
+const VEGAN_MINUS13_SEEDS: readonly VeganMinus13Seed[] = [
+  {
+    strategy: 'neutral',
+    water: 397.4,
+    plantLiquid: 250,
+    plantFat: 52.5,
+    sucrose: 95,
+    dextrose: 150,
+    inulin: 53.1,
+  },
+  {
+    strategy: 'fruit',
+    water: 152.2,
+    plantLiquid: 213.3,
+    plantFat: 33.6,
+    sucrose: 107,
+    dextrose: 107.7,
+    inulin: 59.9,
+    mainRole: 'fruit',
+    mainGrams: 324.3,
+  },
+  {
+    strategy: 'mixed_main',
+    water: 176.5,
+    plantLiquid: 213.3,
+    plantFat: 33.6,
+    sucrose: 107,
+    dextrose: 107.7,
+    inulin: 59.9,
+    mainRole: 'fruit',
+    mainGrams: 300,
+  },
+  {
+    strategy: 'nut',
+    water: 331.6,
+    plantLiquid: 261.6,
+    plantFat: 34.1,
+    sucrose: 77.4,
+    dextrose: 118.8,
+    inulin: 54.6,
+    mainRole: 'nut_paste',
+    mainGrams: 119.9,
+  },
+  {
+    strategy: 'cocoa',
+    water: 358.7,
+    plantLiquid: 250.9,
+    plantFat: 42.1,
+    sucrose: 120.4,
+    dextrose: 109.5,
+    inulin: 56.8,
+    mainRole: 'chocolate_cocoa',
+    mainGrams: 59.6,
+  },
+];
+
+const adaptVeganSugarsForTemperature = (
+  seed: VeganMinus13Seed,
+  temperatureC: -11 | -12 | -13,
+): { sucrose: number; dextrose: number } => {
+  // Owner reference proves a 50 g sucrose↔dextrose substitution changes NPAC
+  // without changing sugar mass. −12 uses that observed step. −11 continues
+  // the same physical direction with a bounded 90 g shift; the Engine still
+  // evaluates the exact recipe against its native temperature band.
+  const requestedShift = temperatureC === -13 ? 0 : temperatureC === -12 ? 50 : 90;
+  const shift = Math.min(requestedShift, seed.dextrose);
+  return { sucrose: seed.sucrose + shift, dextrose: seed.dextrose - shift };
 };
 
+const veganTemplate = (
+  seed: VeganMinus13Seed,
+  temperatureC: -11 | -12 | -13,
+): FormulationTemplate => {
+  const sugars = adaptVeganSugarsForTemperature(seed, temperatureC);
+  const neutralMinus13 = seed.strategy === 'neutral' && temperatureC === -13;
+  return {
+    templateId: neutralMinus13
+      ? 'V02_fixed'
+      : `vegan_${seed.strategy}_minus${Math.abs(temperatureC)}_final`,
+    category: 'vegan_gelato',
+    temperatureC,
+    veganFlavorStrategy: seed.strategy,
+    status: 'approved',
+    approvalSource:
+      'owner Vegan final task: MyGelato −13 reference + canonical PINGÜINO temperature direction; Mapper v1.0 plant identities',
+    baseBatchG: 1000,
+    roles: [
+      ...(seed.mainRole && seed.mainGrams ? [T(seed.mainRole, seed.mainGrams, null)] : []),
+      T('water', seed.water, 'water'),
+      T('plant_liquid', seed.plantLiquid, 'PI-ING-001565'),
+      T('plant_fat', seed.plantFat, 'PI-ING-000163'),
+      T('sweetener_sucrose', sugars.sucrose, 'sucrose'),
+      T('sugar_freezing_control', sugars.dextrose, 'dextrose'),
+      T('fiber_body', seed.inulin, 'inulin'),
+      // Exact Mapper Tara minimum: 0.2% of a 1000 g mix. Never MyGelato 0 g.
+      T('stabilizer', 2, 'tara_gum', false),
+    ],
+  };
+};
+
+const VEGAN_TEMPLATES: readonly FormulationTemplate[] = VEGAN_MINUS13_SEEDS.flatMap((seed) =>
+  ([-11, -12, -13] as const).map((temperature) => veganTemplate(seed, temperature)),
+);
+
+export type ProteinFlavorStrategy = 'neutral' | 'fruit' | 'nut' | 'cocoa' | 'coffee' | 'mixed_main';
+export type ProteinRoute = 'dairy' | 'plant';
+
+interface ProteinTemplateSeed {
+  route: ProteinRoute;
+  temperatureC: -11 | -12 | -13;
+  sucrose: number;
+  dextrose: number;
+}
+
+const PROTEIN_STRATEGIES: readonly {
+  strategy: ProteinFlavorStrategy;
+  mainRole: FunctionalRole | null;
+}[] = [
+  { strategy: 'neutral', mainRole: null },
+  { strategy: 'fruit', mainRole: 'fruit' },
+  { strategy: 'nut', mainRole: 'nut_paste' },
+  { strategy: 'cocoa', mainRole: 'chocolate_cocoa' },
+  { strategy: 'coffee', mainRole: 'flavor_other' },
+  { strategy: 'mixed_main', mainRole: null },
+];
+
+const PROTEIN_SEEDS: readonly ProteinTemplateSeed[] = [
+  { route: 'dairy', temperatureC: -11, sucrose: 82, dextrose: 34 },
+  { route: 'dairy', temperatureC: -12, sucrose: 30, dextrose: 86 },
+  { route: 'dairy', temperatureC: -13, sucrose: 0, dextrose: 116 },
+  { route: 'plant', temperatureC: -11, sucrose: 110, dextrose: 15 },
+  { route: 'plant', temperatureC: -12, sucrose: 50, dextrose: 75 },
+  { route: 'plant', temperatureC: -13, sucrose: 0, dextrose: 125 },
+];
+
+const proteinTemplate = (
+  seed: ProteinTemplateSeed,
+  strategy: ProteinFlavorStrategy,
+  mainRole: FunctionalRole | null,
+): FormulationTemplate => {
+  const calibratedNeutralDairyMinus11 =
+    seed.route === 'dairy' && seed.temperatureC === -11 && strategy === 'neutral';
+  return {
+    templateId: `protein_${seed.route}_${strategy}_minus${Math.abs(seed.temperatureC)}_v1`,
+    category: 'protein_gelato',
+    temperatureC: seed.temperatureC,
+    proteinFlavorStrategy: strategy,
+    proteinRoute: seed.route,
+    status: 'approved',
+    approvalSource:
+      'owner Protein Gelato final task; exact verified Mapper protein identities; owner-approved Standard serving physics',
+    baseBatchG: 1000,
+    roles: [
+      ...(mainRole ? [T(mainRole, 0, null)] : []),
+      ...(seed.route === 'dairy'
+        ? [
+            T('primary_liquid', calibratedNeutralDairyMinus11 ? 0 : 460, 'milk_3_5'),
+            T('dairy_fat', calibratedNeutralDairyMinus11 ? 110 : 100, 'cream_30'),
+            T('protein_source', calibratedNeutralDairyMinus11 ? 246.8375 : 230, 'PI-ING-000264'),
+            T('water', calibratedNeutralDairyMinus11 ? 505.1625 : 92, 'water'),
+          ]
+        : [
+            T('plant_liquid', 400, 'PI-ING-001565'),
+            T('plant_fat', 35, 'PI-ING-000163'),
+            T('protein_source', 238, 'PI-ING-000452'),
+            T('water', 200, 'water'),
+          ]),
+      T('sweetener_sucrose', calibratedNeutralDairyMinus11 ? 80 : seed.sucrose, 'sucrose'),
+      T('sugar_freezing_control', calibratedNeutralDairyMinus11 ? 56 : seed.dextrose, 'dextrose'),
+      T('stabilizer', 2, 'tara_gum', false),
+    ],
+  };
+};
+
+const PROTEIN_TEMPLATES: readonly FormulationTemplate[] = PROTEIN_SEEDS.flatMap((seed) =>
+  PROTEIN_STRATEGIES.map(({ strategy, mainRole }) => proteinTemplate(seed, strategy, mainRole)),
+);
 /**
  * fruit_gelato_ref_v1 — REFERENCE-DERIVED, QUARANTINED (owner addendum item 2).
  * The repo's raspberry-premium reference proportions (goldenRecipes QA fixture:
@@ -205,7 +394,8 @@ const FRUIT_GELATO_M11: FormulationTemplate = {
   category: 'fruit_gelato',
   temperatureC: -11,
   status: 'reference_derived',
-  approvalSource: 'goldenRecipes.ts raspberry-premium proportions (QA fixture — reference-derived, staging-only)',
+  approvalSource:
+    'goldenRecipes.ts raspberry-premium proportions (QA fixture — reference-derived, staging-only)',
   baseBatchG: 1000,
   roles: [
     T('fruit', 350, null),
@@ -225,10 +415,15 @@ const FRUIT_GELATO_M11: FormulationTemplate = {
  * by accident in the future.
  */
 const RUNTIME_REGISTRY: readonly FormulationTemplate[] = [
-  GELATO_M11, GELATO_M12, GELATO_M13,
+  GELATO_M11,
+  GELATO_M12,
+  GELATO_M13,
   CHOCOLATE_M11,
-  SORBET_M11, SORBET_M12, SORBET_M13,
-  VEGAN_M13,
+  ...PROTEIN_TEMPLATES,
+  SORBET_M11,
+  SORBET_M12,
+  SORBET_M13,
+  ...VEGAN_TEMPLATES,
 ];
 
 /** QUARANTINED templates: resolvable BY ID for tests / diagnostics / the Apply
@@ -244,10 +439,7 @@ const ALL_TEMPLATES: readonly FormulationTemplate[] = [
 export interface TemplateLookup {
   template: FormulationTemplate | null;
   /** Honest reason when null. */
-  unsupportedReason:
-    | 'no_template_for_category'
-    | 'no_template_for_temperature'
-    | null;
+  unsupportedReason: 'no_template_for_category' | 'no_template_for_temperature' | null;
 }
 
 /** Resolve the formulation seed for a category × serving temperature. Protein
@@ -260,10 +452,87 @@ export function selectFormulationTemplate(
   temperatureC: number,
 ): TemplateLookup {
   const forCategory = RUNTIME_REGISTRY.filter((t) => t.category === category);
-  if (forCategory.length === 0) return { template: null, unsupportedReason: 'no_template_for_category' };
-  const exact = forCategory.find((t) => t.temperatureC === temperatureC);
+  if (forCategory.length === 0)
+    return { template: null, unsupportedReason: 'no_template_for_category' };
+  const exact = forCategory.find(
+    (t) =>
+      t.temperatureC === temperatureC &&
+      (category !== 'vegan_gelato' || t.veganFlavorStrategy === 'neutral'),
+  );
   if (exact) return { template: exact, unsupportedReason: null };
   return { template: null, unsupportedReason: 'no_template_for_temperature' };
+}
+
+export function veganFlavorStrategyForRecipe(input: RecipeInput): VeganFlavorStrategy {
+  if (input.category !== 'vegan_gelato') return 'neutral';
+  const mains = input.items.filter((item) => item.lock_type === 'main' && item.planned_grams > 0);
+  const mainRoles = mains.map((item) => resolveFunctionalRole(item.ingredient));
+  if (mains.length > 1) {
+    if (mainRoles.every((role) => role === 'fruit')) return 'mixed_main';
+    if (mainRoles.every((role) => role === 'nut_paste')) return 'nut';
+    if (mainRoles.every((role) => role === 'chocolate_cocoa')) return 'cocoa';
+    return 'unsupported_mixed_main';
+  }
+  const role = mainRoles[0] ?? null;
+  if (role === 'fruit') return 'fruit';
+  if (role === 'nut_paste') return 'nut';
+  if (role === 'chocolate_cocoa') return 'cocoa';
+  return 'neutral';
+}
+
+export function proteinFlavorStrategyForRecipe(input: RecipeInput): ProteinFlavorStrategy {
+  const mains = input.items.filter((item) => item.lock_type === 'main' && item.planned_grams > 0);
+  if (mains.length > 1) return 'mixed_main';
+  const main = mains[0];
+  if (!main) return 'neutral';
+  const role = resolveFunctionalRole(main.ingredient);
+  if (role === 'fruit') return 'fruit';
+  if (role === 'nut_paste') return 'nut';
+  if (role === 'chocolate_cocoa') return 'cocoa';
+  const label = main.ingredient.name.toLowerCase();
+  if (label.includes('coffee') || label.includes('espresso') || label.includes('kawa'))
+    return 'coffee';
+  return 'neutral';
+}
+
+export function proteinRouteForRecipe(input: RecipeInput): ProteinRoute {
+  if (input.goals?.dietary?.includes('vegan')) return 'plant';
+  const selectedPlantProtein = input.items.some(
+    (item) =>
+      resolveFunctionalRole(item.ingredient) === 'protein_source' &&
+      item.ingredient.flags?.vegan_eligibility === 'VEGAN_VERIFIED',
+  );
+  return selectedPlantProtein ? 'plant' : 'dairy';
+}
+
+export function selectFormulationTemplateForRecipe(input: RecipeInput): TemplateLookup {
+  if (input.category === 'protein_gelato') {
+    const strategy = proteinFlavorStrategyForRecipe(input);
+    const route = proteinRouteForRecipe(input);
+    const template = RUNTIME_REGISTRY.find(
+      (candidate) =>
+        candidate.category === 'protein_gelato' &&
+        candidate.temperatureC === input.target_temperature_c &&
+        candidate.proteinFlavorStrategy === strategy &&
+        candidate.proteinRoute === route,
+    );
+    return template
+      ? { template, unsupportedReason: null }
+      : { template: null, unsupportedReason: 'no_template_for_temperature' };
+  }
+  if (input.category !== 'vegan_gelato') {
+    return selectFormulationTemplate(input.category, input.target_temperature_c);
+  }
+  const strategy = veganFlavorStrategyForRecipe(input);
+  const template = RUNTIME_REGISTRY.find(
+    (candidate) =>
+      candidate.category === 'vegan_gelato' &&
+      candidate.temperatureC === input.target_temperature_c &&
+      candidate.veganFlavorStrategy === strategy,
+  );
+  return template
+    ? { template, unsupportedReason: null }
+    : { template: null, unsupportedReason: 'no_template_for_temperature' };
 }
 
 /** The runtime-selectable templates (approved only). */

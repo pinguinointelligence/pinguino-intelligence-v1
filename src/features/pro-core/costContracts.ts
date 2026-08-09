@@ -14,6 +14,35 @@ export type PurchaseUnit = 'g' | 'kg' | 'ml' | 'l' | 'unit' | 'package';
 /** Whether a resolved cost is net (tax-excluded) or gross (tax-included). */
 export type CostBasis = 'net' | 'gross';
 
+/** Which immutable source won the effective-price precedence for a recipe line. */
+export type CostSource = 'customer_override' | 'mapper_reference' | 'missing';
+
+/**
+ * ONE current private price override for one canonical ingredient in one customer scope.
+ * `ownerUserId` is the existing tenancy boundary; no display-name matching is permitted.
+ */
+export interface CustomerIngredientPriceOverride {
+  overrideId: string;
+  ownerUserId: string;
+  canonicalIngredientId: string;
+  pricePerKg: number;
+  currency: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The single price-precedence result consumed by UI, costing, Preview and ECO. */
+export interface EffectiveIngredientCost {
+  canonicalIngredientId: string;
+  pricePerKg: number | null;
+  currency: string;
+  source: CostSource;
+  mapperPricePerKg: number | null;
+  customerOverridePerKg: number | null;
+  overrideId: string | null;
+}
+
 /** A single purchase record — what the user actually paid for a quantity of an ingredient. */
 export interface CostEntry {
   entryId: string;
@@ -75,6 +104,10 @@ export interface CostSnapshotLine {
   costPerKg: number | null;
   lineCost: number | null;
   state: CostState;
+  /** Frozen price provenance. Older snapshots may omit these additive fields. */
+  source?: CostSource;
+  mapperPricePerKg?: number | null;
+  customerOverridePerKg?: number | null;
 }
 
 /** A frozen record of a recipe/production cost at one point in time. Never mutated afterward. */

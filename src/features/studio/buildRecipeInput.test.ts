@@ -18,6 +18,7 @@ const line = (
 
 const state = (items: RecipeItem[]): RecipeInputState => ({
   mode: 'premium',
+  formulation_strategy: 'eco',
   category: 'fruit_gelato',
   target_temperature_c: -12,
   target_batch_grams: 1200,
@@ -41,12 +42,17 @@ describe('buildRecipeInput', () => {
     const input = buildRecipeInput(
       state([line('raspberry', 300, null, 'main'), line('milk_3_5', 500)]),
     );
-    expect(input.mode).toBe('premium');
+    expect(input.mode).toBe('classic');
     expect(input.category).toBe('milk_gelato');
     expect(input.target_temperature_c).toBe(-12);
     expect(input.target_batch_grams).toBe(1200);
     expect(input.machine_capacity_grams).toBe(2000);
-    expect(input.goals).toEqual({ flavor_intensity: 'maximum', cost_priority: 'low' });
+    expect(input.goals).toEqual({
+      formulation_strategy: 'eco',
+      flavor_intensity: 'maximum',
+      cost_priority: 'low',
+      target_protein_percent: 20,
+    });
     expect(input.items[0]!.lock_type).toBe('main');
   });
 
@@ -64,7 +70,13 @@ describe('buildRecipeInput', () => {
       buildRecipeInput({ ...state([line('raspberry', 300)]), category: 'fruit_gelato' }).category,
     ).toBe('sorbet');
     // Native categories are returned untouched.
-    for (const native of ['milk_gelato', 'chocolate_gelato', 'sorbet', 'vegan_gelato'] as const) {
+    for (const native of [
+      'milk_gelato',
+      'chocolate_gelato',
+      'sorbet',
+      'vegan_gelato',
+      'protein_gelato',
+    ] as const) {
       expect(buildRecipeInput({ ...state(dairyFruit), category: native }).category, native).toBe(
         native,
       );

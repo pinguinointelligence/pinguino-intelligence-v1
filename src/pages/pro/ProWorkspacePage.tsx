@@ -28,6 +28,7 @@ import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
+import { cn } from '@/lib/cn';
 import { AppShell } from '@/features/shell/AppShell';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -46,10 +47,13 @@ import { resolveProductionRepository } from '@/features/pro-core/proCoreProducti
 import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
-import { useStudioResult } from '@/features/studio/useStudioResult';
-import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
+import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { useStudioResult } from '@/features/studio/useStudioResult';
+import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
+import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 
 const w = copy.proWorkspace;
 
@@ -116,31 +120,66 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
 function ProTopActions({
   persona,
   onRecalculate,
+  activePanel,
 }: {
   persona: ProCorePersona;
   onRecalculate: () => void;
+  activePanel: ProContextTab;
 }) {
   const dirty = useRecipeStore((state) => state.dirty);
-  const { result } = useStudioResult();
-  const score = monitorScoreView(result).match;
+  const directionPending = useRecipeProfileStore((state) => state.awaitingRecalculation);
+  const unresolvedRequiredCount = useIngredientTableUxStore(
+    (state) => Object.keys(state.unresolvedRequiredByLineId).length,
+  );
+  const pending = dirty || directionPending;
+  const { result, input } = useStudioResult();
+  const production = useProductionWorkspace(activePanel === 'production');
+  const score =
+    activePanel === 'production'
+      ? production.score
+      : monitorScoreView(result, input).match;
+  const blocked = activePanel === 'production' || unresolvedRequiredCount > 0;
 
   return (
     <div
       className="flex min-w-0 items-center justify-end gap-2 sm:gap-4"
       data-testid="pro-top-workbar"
     >
-      <span className="hidden items-center gap-2 text-[11px] text-stone-600 md:flex">
-        <span className={`size-1.5 rounded-full ${dirty ? 'bg-gold' : 'bg-status-ideal'}`} />
-        {dirty ? copy.proWorkbar.pendingRecalc : copy.proWorkbar.status.clean}
-      </span>
       <button
         type="button"
         onClick={onRecalculate}
+        disabled={blocked}
+        title={
+          activePanel === 'production'
+            ? 'Przeliczenie receptury jest wyłączone w trybie produkcji.'
+            : unresolvedRequiredCount > 0
+            ? copy.studio.builder.ingredientTable.infeasible.body
+            : pending
+              ? 'Zmieniono recepturę lub ustawienia. Przelicz ponownie.'
+              : 'Obliczenie jest aktualne.'
+        }
         data-testid="pro-workbar-recalc"
-        className="h-10 shrink-0 rounded-sm bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/35"
+        className="h-10 shrink-0 rounded-sm bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 disabled:cursor-not-allowed disabled:bg-status-error/15 disabled:text-status-error"
       >
-        {copy.proWorkbar.recalc}
+        <span>{activePanel === 'production' ? 'Tryb produkcji' : copy.proWorkbar.recalc}</span>
+        <span
+          className={cn(
+            'ml-2 inline-block size-1.5 rounded-full align-middle',
+            pending ? 'bg-gold' : 'bg-status-ideal',
+          )}
+          aria-label={pending ? 'Oczekuje na przeliczenie' : 'Aktualne'}
+          data-testid="pro-recalc-state"
+          data-state={pending ? 'pending' : 'current'}
+        />
       </button>
+      {unresolvedRequiredCount > 0 ? (
+        <span
+          className="hidden text-[9px] font-semibold tracking-label text-status-error uppercase xl:inline"
+          data-testid="pro-recalc-required-block"
+        >
+          {copy.studio.builder.ingredientTable.infeasible.title}
+        </span>
+      ) : null}
       <span
         className="flex min-w-[4.5rem] items-center gap-2 border-l border-ink/10 pl-3"
         data-testid="pro-top-score"
@@ -319,6 +358,9 @@ export function ProWorkspacePage() {
   const workbenchTab = isWorkbenchSection(activeTab) ? activeTab : null;
   const workbench = isPro && workbenchTab !== null;
   const startRecalc = () => {
+    if (Object.keys(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).length > 0) {
+      return;
+    }
     useConstraintStudioStore.getState().createOptimizePreview();
     setRecalcOpen(true);
   };
@@ -332,10 +374,15 @@ export function ProWorkspacePage() {
     >
       <AppShell
         viewportLock={workbench}
+        maxWidthClass="max-w-none"
         brand={<OfficialProLogo />}
         actions={
           workbench ? (
-            <ProTopActions persona={persona} onRecalculate={startRecalc} />
+            <ProTopActions
+              persona={persona}
+              onRecalculate={startRecalc}
+              activePanel={workbenchTab!}
+            />
           ) : (
             <>
               <PersonaChip persona={persona} />

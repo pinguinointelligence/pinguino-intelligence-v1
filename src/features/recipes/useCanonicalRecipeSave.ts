@@ -22,6 +22,11 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import {
+  attachRecipeProfileMetadata,
+  profileSnapshotFromState,
+} from '@/features/pro-workbench/recipeProfilePersistence';
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
@@ -30,7 +35,14 @@ const TRACE = {
 };
 
 /** The DEFAULT payload source: the Pro recipe-store draft (`/pro` behaviour, unchanged). */
-const buildRecipeInputFromStore = (): RecipeInput => buildRecipeInput(useRecipeStore.getState());
+const buildRecipeInputFromStore = (): RecipeInput => {
+  const state = useRecipeStore.getState();
+  const input = buildRecipeInput(state);
+  return attachRecipeProfileMetadata(
+    input,
+    profileSnapshotFromState(state, useRecipeProfileStore.getState().directionTargets),
+  );
+};
 
 export type SaveBlockedReason = 'signin' | 'unavailable' | 'plan' | null;
 

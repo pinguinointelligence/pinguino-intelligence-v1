@@ -53,8 +53,8 @@ const dataRows = parsed
 const col = (name: string) => headers.indexOf(name);
 
 describe('Mapper Basement dataset (mapper_basement.csv)', () => {
-  it('has exactly 2083 rows and 62 columns', () => {
-    expect(dataRows.length).toBe(2083);
+  it('has exactly 2088 rows and 62 columns', () => {
+    expect(dataRows.length).toBe(2088);
     expect(headers.length).toBe(62);
     for (const row of dataRows) expect(row.length).toBe(62);
   });
@@ -98,8 +98,12 @@ describe('Mapper Basement dataset (mapper_basement.csv)', () => {
       'Superseded Duplicate',
       'Verified',
       'Verified / Basis Check Needed',
+      'Verified / Engine mapping review',
       'Verified / PI Calculated',
       'Verified / Public Label',
+      'Vegan verified / allergen label review required',
+      'Vegan verified / cross-contamination noted',
+      'Vegan/dairy-free verified / allergen label review required',
     ]);
     for (const row of dataRows) {
       expect(['true', 'false']).toContain((row[base] ?? '').toLowerCase());

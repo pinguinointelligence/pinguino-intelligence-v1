@@ -5,7 +5,9 @@
 -- values. It is NEVER automatically modified — it changes only by an approved
 -- internal version replacement, and it is not used for customer uploads.
 -- Source of truth on disk: docs/ingredients/validation/mapper_basement.csv
--- (542 rows). Loaded by supabase/seed/mapper_basement_v0_95.sql.
+-- The current approved replacement contains 2,088 rows and is loaded by
+-- supabase/seed/mapper_basement_v1_0.sql. This historical table migration is
+-- intentionally unchanged structurally; dataset versions are replaced by seed.
 --
 -- No-NPAC model: there is deliberately NO ingredient-level NPAC value.
 --   • `pac_value` is the ingredient freezing-power source of truth.
@@ -24,10 +26,10 @@
 --
 -- Rollback: the legacy tables `public.ingredients_final_v0_95_no_npac` (0005)
 -- and `public.ingredients` (0004) are kept for ROLLBACK ONLY and are NOT dropped.
--- The app keeps querying the legacy table until a later slice switches it over.
+-- The app queries `public.mapper_basement`; legacy tables remain rollback-only.
 --
 -- Apply in the Supabase SQL editor or via `supabase db push`, then load
--- supabase/seed/mapper_basement_v0_95.sql. No privileged key here.
+-- supabase/seed/mapper_basement_v1_0.sql. No privileged key here.
 
 create table if not exists public.mapper_basement (
   -- identity

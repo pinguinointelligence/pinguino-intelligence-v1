@@ -15,7 +15,94 @@ import type {
   CostState,
   PurchaseUnit,
   RecipeCostSnapshot,
+  CustomerIngredientPriceOverride,
+  EffectiveIngredientCost,
 } from './costContracts';
+
+export interface EffectiveCostInput {
+  canonicalIngredientId: string;
+  mapperPricePerKg: number | null;
+  mapperCurrency: string | null;
+  customerOverride?: CustomerIngredientPriceOverride | null;
+  targetCurrency: string;
+}
+
+export const isCustomerPriceCanonicalIngredientId = (value: string): boolean =>
+  /^PI-ING-\d{6}$/.test(value.trim());
+
+/**
+ * THE ONE price-precedence resolver.
+ *
+ * Customer override wins only when it belongs to this canonical ingredient and
+ * has the requested currency. Otherwise the Mapper reference is used. Missing
+ * never becomes zero and currencies are never converted.
+ */
+export function resolveEffectiveIngredientCost(input: EffectiveCostInput): EffectiveIngredientCost {
+  const override = input.customerOverride ?? null;
+  const validOverride =
+    override !== null &&
+    override.canonicalIngredientId === input.canonicalIngredientId &&
+    override.currency === input.targetCurrency &&
+    Number.isFinite(override.pricePerKg) &&
+    override.pricePerKg >= 0;
+  const validMapper =
+    input.mapperCurrency === input.targetCurrency &&
+    input.mapperPricePerKg !== null &&
+    Number.isFinite(input.mapperPricePerKg) &&
+    input.mapperPricePerKg >= 0;
+
+  if (override !== null && !validOverride) {
+    return {
+      canonicalIngredientId: input.canonicalIngredientId,
+      pricePerKg: null,
+      currency: input.targetCurrency,
+      source: 'missing',
+      mapperPricePerKg: validMapper ? input.mapperPricePerKg : null,
+      customerOverridePerKg:
+        Number.isFinite(override.pricePerKg) && override.pricePerKg >= 0
+          ? override.pricePerKg
+          : null,
+      overrideId: override.overrideId,
+    };
+  }
+
+  if (validOverride) {
+    return {
+      canonicalIngredientId: input.canonicalIngredientId,
+      pricePerKg: override.pricePerKg,
+      currency: input.targetCurrency,
+      source: 'customer_override',
+      mapperPricePerKg: validMapper ? input.mapperPricePerKg : null,
+      customerOverridePerKg: override.pricePerKg,
+      overrideId: override.overrideId,
+    };
+  }
+  if (validMapper) {
+    return {
+      canonicalIngredientId: input.canonicalIngredientId,
+      pricePerKg: input.mapperPricePerKg,
+      currency: input.targetCurrency,
+      source: 'mapper_reference',
+      mapperPricePerKg: input.mapperPricePerKg,
+      customerOverridePerKg: null,
+      overrideId: null,
+    };
+  }
+  return {
+    canonicalIngredientId: input.canonicalIngredientId,
+    pricePerKg: null,
+    currency: input.targetCurrency,
+    source: 'missing',
+    mapperPricePerKg: validMapper ? input.mapperPricePerKg : null,
+    customerOverridePerKg: null,
+    overrideId: null,
+  };
+}
+
+/** Exact live line contribution; an unknown effective price remains unknown. */
+export function effectiveLineCost(grams: number, cost: EffectiveIngredientCost): number | null {
+  return cost.pricePerKg === null ? null : (grams / 1000) * cost.pricePerKg;
+}
 
 export type KgResult = { ok: true; kg: number } | { ok: false; missing: CostState };
 
@@ -26,7 +113,11 @@ export interface ConvertContext {
 }
 
 /** Convert a purchase quantity to kilograms using ONLY safe, explicit conversions. */
-export function toKilograms(quantity: number, unit: PurchaseUnit, ctx: ConvertContext = {}): KgResult {
+export function toKilograms(
+  quantity: number,
+  unit: PurchaseUnit,
+  ctx: ConvertContext = {},
+): KgResult {
   if (!(quantity > 0)) return { ok: false, missing: 'invalid' };
   switch (unit) {
     case 'g':
@@ -62,11 +153,18 @@ const STATE_REASON: Record<CostState, string> = {
   needs_density: 'Costing a volume purchase needs an explicit density (g/ml).',
   needs_unit_weight: 'Costing a unit/package purchase needs an explicit unit weight (g).',
   needs_units_per_package: 'Costing a package purchase needs the number of units per package.',
-  needs_tax_rate: 'Converting between net and gross needs an explicit tax rate; it is never guessed.',
+  needs_tax_rate:
+    'Converting between net and gross needs an explicit tax rate; it is never guessed.',
   invalid: 'The purchase quantity must be greater than zero.',
 };
 
-const fail = (ingredientId: string, currency: string, basis: CostBasis, state: CostState, entryId: string | null): CostResolution => ({
+const fail = (
+  ingredientId: string,
+  currency: string,
+  basis: CostBasis,
+  state: CostState,
+  entryId: string | null,
+): CostResolution => ({
   ingredientId,
   costPerKg: null,
   currency,
@@ -129,11 +227,15 @@ export function selectCurrentEntry(
   asOf: string,
 ): CostEntry | null {
   const applicable = entries.filter(
-    (e) => e.ingredientId === ingredientId && e.effectiveFrom <= asOf && (e.expiresAt == null || asOf < e.expiresAt),
+    (e) =>
+      e.ingredientId === ingredientId &&
+      e.effectiveFrom <= asOf &&
+      (e.expiresAt == null || asOf < e.expiresAt),
   );
   if (applicable.length === 0) return null;
   return applicable.reduce((best, e) => {
-    if (e.effectiveFrom !== best.effectiveFrom) return e.effectiveFrom > best.effectiveFrom ? e : best;
+    if (e.effectiveFrom !== best.effectiveFrom)
+      return e.effectiveFrom > best.effectiveFrom ? e : best;
     if (e.createdAt !== best.createdAt) return e.createdAt > best.createdAt ? e : best;
     return e.entryId > best.entryId ? e : best;
   });

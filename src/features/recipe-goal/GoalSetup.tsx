@@ -7,11 +7,9 @@ import type { ProductMode } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
-import {
-  VISIBLE_PRODUCT_TYPES,
-  isSupportedVisibleType,
-  type VisibleProductType,
-} from '@/features/studio/productType';
+import { VISIBLE_PRODUCT_TYPES, type VisibleProductType } from '@/features/studio/productType';
+import { useStudioResult } from '@/features/studio/useStudioResult';
+import { ProteinTargetControl } from '@/features/protein-gelato/ProteinTargetControl';
 
 const g = copy.studio.goal;
 const servingCopy = copy.proMachine.serving;
@@ -85,6 +83,7 @@ function Segmented<T extends string | number>({
 export function GoalSetup() {
   const store = useRecipeStore();
   const [unit, setUnit] = useState<BatchUnit>('g');
+  const { result } = useStudioResult();
 
   const batchDisplay = fromGrams(store.target_batch_grams, unit, store.category);
 
@@ -93,7 +92,8 @@ export function GoalSetup() {
   const activeServing =
     store.servingModeId ??
     SERVING_OPTIONS.find(
-      (option) => option.id !== 'fresh' && temperatureForMode(option.id) === store.target_temperature_c,
+      (option) =>
+        option.id !== 'fresh' && temperatureForMode(option.id) === store.target_temperature_c,
     )?.id ??
     null;
 
@@ -121,10 +121,8 @@ export function GoalSetup() {
             labelOf={(option) => g.productTypes[option]}
             testidOf={(option) => `product-type-${option}`}
           />
-          {!isSupportedVisibleType(store.visibleProductType) ? (
-            <p className="text-xs leading-relaxed text-amber-300/90" data-testid="protein-unsupported">
-              {g.proteinUnsupported}
-            </p>
+          {store.visibleProductType === 'protein' ? (
+            <ProteinTargetControl actualPercent={result.percentages.protein_percent} tone="dark" />
           ) : null}
         </div>
 
@@ -177,9 +175,15 @@ export function GoalSetup() {
               type="number"
               min={0}
               className={cn(select, 'w-full font-mono tabular-nums')}
-              value={Number.isFinite(batchDisplay) ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3)) : 0}
+              value={
+                Number.isFinite(batchDisplay)
+                  ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3))
+                  : 0
+              }
               onChange={(event) =>
-                store.setBatchGrams(toGrams(event.currentTarget.valueAsNumber || 0, unit, store.category))
+                store.setBatchGrams(
+                  toGrams(event.currentTarget.valueAsNumber || 0, unit, store.category),
+                )
               }
             />
             <select
@@ -203,7 +207,10 @@ export function GoalSetup() {
       </div>
 
       {/* Advanced goal tuning — explicit, collapsed, NEVER a silent override of the tier. */}
-      <details className="mt-6 rounded-md border border-ivory/10 px-4 py-3" data-testid="goal-advanced">
+      <details
+        className="mt-6 rounded-md border border-ivory/10 px-4 py-3"
+        data-testid="goal-advanced"
+      >
         <summary className="cursor-pointer text-xs font-medium tracking-label text-ivory/60 uppercase">
           {g.advancedLabel}
         </summary>

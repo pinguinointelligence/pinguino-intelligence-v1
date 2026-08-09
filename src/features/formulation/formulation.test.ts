@@ -3,8 +3,9 @@
  * Every seed gram is a verbatim approved repo record; Engine science untouched.
  */
 import { describe, expect, it } from 'vitest';
-import { calculateRecipe, type EngineIngredient, type RecipeInput } from '@/engine';
+import { calculateRecipe, type RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
+import { findVerifiedVeganFormulationCandidate } from '@/data/ingredients/verifiedVeganToolbox';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
@@ -71,7 +72,8 @@ describe('template registry (Phase 1)', () => {
     expect(selectFormulationTemplate('sorbet', -12).template?.templateId).toBe('S02');
     expect(selectFormulationTemplate('sorbet', -13).template?.templateId).toBe('S03');
     expect(selectFormulationTemplate('vegan_gelato', -13).template?.templateId).toBe('V02_fixed');
-    expect(selectFormulationTemplate('vegan_gelato', -11).template).toBeNull();
+    expect(selectFormulationTemplate('vegan_gelato', -12).template?.templateId).toBe('vegan_neutral_minus12_final');
+    expect(selectFormulationTemplate('vegan_gelato', -11).template?.templateId).toBe('vegan_neutral_minus11_final');
     expect(selectFormulationTemplate('custom', -11).unsupportedReason).toBe('no_template_for_category');
     // OWNER FINAL INTEGRATION ADDENDUM item 2 (2026-07-25) — SUPERSEDES „the
     // fruit template is in the registry, explicitly reference-derived". It is
@@ -294,17 +296,9 @@ describe('Phase 18 — sorbet + vegan (tests 22/23)', () => {
     expect(result.messagePl).toContain('owoc');
   });
 
-  it('vegan −13 with user plant ingredients works; vegan −11 honestly unsupported (no dairy fallback)', () => {
-    const oat: EngineIngredient = {
-      ...findDemoIngredient('milk_3_5')!,
-      id: 'PI-ING-OAT-TEST', name: 'Oat drink', category: 'other',
-      flags: { is_animal_origin: false },
-    };
-    const coconut: EngineIngredient = {
-      ...findDemoIngredient('cream_30')!,
-      id: 'PI-ING-COCO-TEST', name: 'Coconut milk 22%', category: 'other',
-      flags: { is_animal_origin: false },
-    };
+  it('vegan −13 and −11 use verified Mapper plant ingredients with no dairy fallback', () => {
+    const oat = findVerifiedVeganFormulationCandidate('PI-ING-001565')!;
+    const coconut = findVerifiedVeganFormulationCandidate('PI-ING-000163')!;
     const items = [
       { id: 'l-oat', ingredient: oat, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' as const },
       { id: 'l-coco', ingredient: coconut, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' as const },
@@ -318,9 +312,13 @@ describe('Phase 18 — sorbet + vegan (tests 22/23)', () => {
       expect(Math.abs(plannedSum(ok.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
       expect(gramsOf(ok.preview.proposedInput, 'l-oat')!).toBeGreaterThan(0);
     }
-    const unsupported = buildOptimizePreview(input(items, 'vegan_gelato', -11), NO, 'now');
-    expect(unsupported.ok).toBe(false);
-    if (!unsupported.ok) expect(unsupported.code).toBe('unsupported_profile');
+    const minus11 = buildOptimizePreview(input(items, 'vegan_gelato', -11), NO, 'now');
+    expect(minus11.ok).toBe(true);
+    if (minus11.ok) {
+      expect(minus11.preview.formulation?.templateId).toBe('vegan_neutral_minus11_final');
+      expect(Math.abs(plannedSum(minus11.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+      expect(minus11.preview.proposedInput.items.some((item) => item.ingredient.flags?.is_dairy)).toBe(false);
+    }
   });
 
   it('chocolate −11 uses the chocolate template; unsupported profile (custom) is honest (test 21/24)', () => {

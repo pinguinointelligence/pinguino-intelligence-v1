@@ -48,8 +48,39 @@ export const CORE_INGREDIENT_IDENTITIES: readonly CoreIngredientIdentity[] = [
   { role: 'water', toolboxId: 'water', mapperId: 'PI-ING-001409', namePl: 'Woda' },
 ] as const;
 
-const BY_TOOLBOX_ID = new Map(CORE_INGREDIENT_IDENTITIES.map((entry) => [entry.toolboxId, entry]));
-const BY_MAPPER_ID = new Map(CORE_INGREDIENT_IDENTITIES.map((entry) => [entry.mapperId, entry]));
+/** Protein-profile aliases share canonical deduplication without widening the frozen core toolbox. */
+export const PROTEIN_INGREDIENT_IDENTITIES: readonly CoreIngredientIdentity[] = [
+  { role: 'protein_source', toolboxId: 'wpc_60', mapperId: 'PI-ING-000294', namePl: 'WPC60' },
+  { role: 'protein_source', toolboxId: 'mpc_75', mapperId: 'PI-ING-000237', namePl: 'MPC75' },
+  {
+    role: 'protein_source',
+    toolboxId: 'protein_gel_wpc',
+    mapperId: 'PI-ING-000264',
+    namePl: 'Protein Gel WPC',
+  },
+  { role: 'protein_source', toolboxId: 'wpc_80', mapperId: 'PI-ING-000295', namePl: 'WPC80' },
+  { role: 'high_protein_dairy', toolboxId: 'skyr_12', mapperId: 'PI-ING-001395', namePl: 'Skyr' },
+  { role: 'high_protein_dairy', toolboxId: 'skyr_11', mapperId: 'PI-ING-001451', namePl: 'Skyr' },
+  {
+    role: 'protein_source',
+    toolboxId: 'pea_protein',
+    mapperId: 'PI-ING-000451',
+    namePl: 'Bialko grochu',
+  },
+  {
+    role: 'protein_source',
+    toolboxId: 'rice_protein',
+    mapperId: 'PI-ING-000452',
+    namePl: 'Bialko ryzowe',
+  },
+] as const;
+
+const ALL_INGREDIENT_IDENTITIES = [
+  ...CORE_INGREDIENT_IDENTITIES,
+  ...PROTEIN_INGREDIENT_IDENTITIES,
+] as const;
+const BY_TOOLBOX_ID = new Map(ALL_INGREDIENT_IDENTITIES.map((entry) => [entry.toolboxId, entry]));
+const BY_MAPPER_ID = new Map(ALL_INGREDIENT_IDENTITIES.map((entry) => [entry.mapperId, entry]));
 
 export function coreIdentityByToolboxId(toolboxId: string): CoreIngredientIdentity | null {
   return BY_TOOLBOX_ID.get(toolboxId) ?? null;

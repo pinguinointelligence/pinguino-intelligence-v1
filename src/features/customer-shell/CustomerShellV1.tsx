@@ -110,6 +110,7 @@ import { useIngredientResolution, type ResolvableLine } from './useIngredientRes
 import { ResolutionSheet } from './ResolutionSheet';
 import { PiMonitorSection } from './PiMonitorSection';
 import { HomeSaveSection } from './HomeSaveSection';
+import { parseInspirationStartIntent } from '@/data/recipes/inspirationHandoff';
 
 /* ------------------------------------------------------------------ *
  * Browser speech recognition (optional, never an external service)   *
@@ -240,7 +241,14 @@ function ShellRoot({ persona, children }: { persona: CustomerPersona; children: 
  * ------------------------------------------------------------------ */
 
 export function CustomerShellV1() {
-  const [flow, setFlow] = useState<CustomerFlowState | null>(null);
+  const discoveryIntent = parseInspirationStartIntent(
+    typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search),
+  );
+  const [flow, setFlow] = useState<CustomerFlowState | null>(() =>
+    discoveryIntent === null
+      ? null
+      : chooseRecipePath(createCustomerFlow({ text: discoveryIntent.prompt }), 'new_recipe'),
+  );
   // Persona comes from the REAL entitlement chain (resolveProCorePersona → the
   // account-access EffectiveAccess, DEV override in development), never a hardcoded
   // 'demo' (owner P0 2026-07-18). CustomerPersona and ProCorePersona are the same
@@ -258,7 +266,7 @@ export function CustomerShellV1() {
   const authUserId = useAuthStore((s) => (s.status === 'authed' ? (s.user?.id ?? null) : null));
 
   // Home-screen draft (before the flow is created).
-  const [draftText, setDraftText] = useState('');
+  const [draftText, setDraftText] = useState(discoveryIntent?.prompt ?? '');
 
   // In-flow local input drafts.
   const [chipDraft, setChipDraft] = useState('');

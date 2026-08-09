@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ALLOWED_ENGINE_FUNCTIONS } from './__fixtures__/allowedEngineFunctions';
-import { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C, type IceAnchorRow } from './config/iceAnchors';
+import {
+  ICE_ANCHOR_ROWS,
+  ICE_TEMPERATURE_SLOPE_PER_C,
+  type IceAnchorRow,
+} from './config/iceAnchors';
 import { estimateIceFraction, type IceFractionInput } from './iceFraction';
 import * as engine from './index';
 
@@ -97,12 +101,18 @@ describe('temperature awareness (slope fallback for NON-seeded temperatures)', (
   // (row.temperature − target) × slope = (−13 − −14) × 2 = +2 ice.
   it('a colder non-seeded temperature (−14) shifts the nearest seeded (−13) row by +slope', () => {
     const at13 = estimateIceFraction(milk(51.77, -13))!; // exactly 49.73
-    expect(estimateIceFraction(milk(51.77, -14))).toBeCloseTo(at13 + ICE_TEMPERATURE_SLOPE_PER_C, 9);
+    expect(estimateIceFraction(milk(51.77, -14))).toBeCloseTo(
+      at13 + ICE_TEMPERATURE_SLOPE_PER_C,
+      9,
+    );
   });
 
   it('a warmer non-seeded temperature (−8) shifts the nearest seeded (−11) row by −slope', () => {
     const at11 = estimateIceFraction(milk(37.5, -11))!; // 49.75
-    expect(estimateIceFraction(milk(37.5, -8))).toBeCloseTo(at11 - 3 * ICE_TEMPERATURE_SLOPE_PER_C, 9);
+    expect(estimateIceFraction(milk(37.5, -8))).toBeCloseTo(
+      at11 - 3 * ICE_TEMPERATURE_SLOPE_PER_C,
+      9,
+    );
   });
 
   it('colder ⇒ more ice for non-seeded temperatures below the seeded range', () => {
@@ -113,7 +123,10 @@ describe('temperature awareness (slope fallback for NON-seeded temperatures)', (
 
   it('the temperature slope is configurable (calibration what-ifs)', () => {
     const at13 = estimateIceFraction(milk(51.77, -13))!;
-    expect(estimateIceFraction(milk(51.77, -14), { temperature_slope: 3 })).toBeCloseTo(at13 + 3, 9);
+    expect(estimateIceFraction(milk(51.77, -14), { temperature_slope: 3 })).toBeCloseTo(
+      at13 + 3,
+      9,
+    );
   });
 
   it('temperature at or above 0 °C → 0 ice', () => {
@@ -165,13 +178,23 @@ describe('category awareness', () => {
 
   it('no fake anchors are invented — exactly three seeded milk_gelato rows, all approved-sourced', () => {
     // Every seeded row carries a traceable provenance and covers milk_gelato only.
-    expect(ICE_ANCHOR_ROWS).toHaveLength(3);
+    expect(ICE_ANCHOR_ROWS).toHaveLength(6);
     for (const row of ICE_ANCHOR_ROWS) {
-      expect(row.category).toBe('milk_gelato');
+      expect(['milk_gelato', 'protein_gelato']).toContain(row.category);
       expect(row.status).toBe('seeded');
       expect(typeof row.source).toBe('string');
     }
-    expect(ICE_ANCHOR_ROWS.map((r) => r.temperature_c)).toEqual([-11, -12, -13]);
+    expect(
+      ICE_ANCHOR_ROWS.filter((r) => r.category === 'milk_gelato').map((r) => r.temperature_c),
+    ).toEqual([-11, -12, -13]);
+    expect(
+      ICE_ANCHOR_ROWS.filter((r) => r.category === 'protein_gelato').map((r) => r.temperature_c),
+    ).toEqual([-11, -12, -13]);
+    expect(ICE_ANCHOR_ROWS.filter((r) => r.category === 'milk_gelato')).toHaveLength(3);
+    expect(ICE_ANCHOR_ROWS.filter((r) => r.category === 'protein_gelato')).toHaveLength(3);
+    expect(
+      ICE_ANCHOR_ROWS.slice(3).every((r) => (r.source ?? '').includes('owner_approved_standard_physics')),
+    ).toBe(true);
     // −11 verbatim from the locked spec (unchanged).
     expect(ICE_ANCHOR_ROWS[0]).toMatchObject({
       temperature_c: -11,

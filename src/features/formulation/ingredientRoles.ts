@@ -37,7 +37,8 @@ export function resolveFunctionalRole(ingredient: EngineIngredient): FunctionalR
   if (ingredient.category === 'water' || id === 'water' || name === 'water') return 'water';
   // Inulin by IDENTITY first — datasets file it under stabilizer/specialty, but
   // it is the body/fibre agent, not a gum. Gums stay stabilizers.
-  if (id.includes('inulin') || name.includes('inulin') || name.includes('inulina')) return 'fiber_body';
+  if (id.includes('inulin') || name.includes('inulin') || name.includes('inulina'))
+    return 'fiber_body';
   if (ingredient.category === 'stabilizer') return 'stabilizer';
   if (c.salt_percent >= 50) return 'salt_modifier';
   if (ingredient.category === 'fruit') return 'fruit';
@@ -62,6 +63,7 @@ export function resolveFunctionalRole(ingredient: EngineIngredient): FunctionalR
 
   if (ingredient.category === 'dairy') {
     if (c.fat_percent >= 20) return 'dairy_fat';
+    if (c.protein_percent >= 50) return 'protein_source';
     if (c.solids_percent >= 85) return c.protein_percent >= 25 ? 'milk_solids' : 'milk_solids';
     if (c.protein_percent >= 25) return 'protein_source';
     return 'primary_liquid';
@@ -69,8 +71,16 @@ export function resolveFunctionalRole(ingredient: EngineIngredient): FunctionalR
 
   // Plant-based liquids/fats (vegan): non-animal, liquid-like or fatty.
   const animal = ingredient.flags?.is_animal_origin === true;
-  if (!animal && (name.includes('coconut') || name.includes('kokos')) && c.fat_percent >= 10) return 'plant_fat';
-  if (!animal && c.water_percent >= 75 && (name.includes('drink') || name.includes('oat') || name.includes('soy') || name.includes('napój'))) {
+  if (!animal && (name.includes('coconut') || name.includes('kokos')) && c.fat_percent >= 10)
+    return 'plant_fat';
+  if (
+    !animal &&
+    c.water_percent >= 75 &&
+    (name.includes('drink') ||
+      name.includes('oat') ||
+      name.includes('soy') ||
+      name.includes('napój'))
+  ) {
     return 'plant_liquid';
   }
   if (c.protein_percent >= 30) return 'protein_source';

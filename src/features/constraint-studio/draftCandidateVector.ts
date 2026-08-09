@@ -53,6 +53,7 @@ import { isToolboxCandidateExcluded } from '@/features/formulation/toolboxCanoni
 import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
 import { HARD_ROLES } from '@/features/formulation/formulate';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
+import type { FormulationStrategy } from '@/features/formulation-strategy/strategy';
 
 /**
  * The deterministic gram ladder, as fractions of the TARGET BATCH. Five steps
@@ -148,7 +149,9 @@ export function buildDraftCandidateVector(
     // unless it is the last carrier of a hard technological role.
     if (current > MIN_MOVE_GRAMS && emptiable) tested.add(0);
 
-    const testedGrams = [...tested].filter((g) => Math.abs(g - current) >= MIN_MOVE_GRAMS).sort((a, b) => a - b);
+    const testedGrams = [...tested]
+      .filter((g) => Math.abs(g - current) >= MIN_MOVE_GRAMS)
+      .sort((a, b) => a - b);
     if (testedGrams.length === 0) continue;
 
     candidates.push({
@@ -240,6 +243,8 @@ export const describeDraftAdjustment = (move: DraftAdjustmentMove): string =>
 export interface DraftStateMeasure {
   violations: number;
   severityPoints: number;
+  /** Complete effective recipe cost/kg. Null means comparison is not allowed. */
+  costPerKg?: number | null;
 }
 
 export interface DraftSweepArgs {
@@ -252,6 +257,7 @@ export interface DraftSweepArgs {
   /** ENGINE evaluation of a candidate — the ONLY judge of quality. */
   measure: (candidate: RecipeInput) => DraftStateMeasure;
   startMeasure: DraftStateMeasure;
+  strategy?: FormulationStrategy;
 }
 
 export interface DraftSweepResult {
@@ -333,8 +339,11 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
     );
     if (!candidate) continue;
 
-    let bestForLine: { input: RecipeInput; measure: DraftStateMeasure; move: DraftAdjustmentMove } | null =
-      null;
+    let bestForLine: {
+      input: RecipeInput;
+      measure: DraftStateMeasure;
+      move: DraftAdjustmentMove;
+    } | null = null;
     for (const toGrams of candidate.testedGrams) {
       const actions = draftAdjustmentActions(candidate, toGrams);
       if (actions.length === 0) continue;

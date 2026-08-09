@@ -258,4 +258,50 @@ export const TARGET_BANDS: readonly TargetBand[] = [
       alcohol: ALCOHOL_RANGE,
     },
   },
+
+  // protein_gelato: owner-approved Standard Gelato physical envelope.
+  // This separate profile reuses only validated serving physics. Protein is
+  // evaluated against its per-recipe goal; Base Engine formulas stay unchanged.
+  {
+    category: 'protein_gelato',
+    temperature_c: -11,
+    status: 'seeded',
+    metrics: {
+      pod: { min: 12, max: 17 },
+      npac: { min: 33, max: 42 },
+      ice_fraction: { min: 45, max: 54.5 },
+      fat: { min: 5, max: 12 },
+      total_solids: { min: 31, max: 45 },
+      water: { min: 57, max: 70 },
+      alcohol: ALCOHOL_RANGE,
+    },
+  },
+  {
+    category: 'protein_gelato',
+    temperature_c: -12,
+    status: 'seeded',
+    metrics: {
+      pod: { min: 12, max: 17 },
+      npac: { min: 42, max: 50 },
+      ice_fraction: { min: 46, max: 54 },
+      fat: { min: 5, max: 12 },
+      total_solids: { min: 31, max: 44 },
+      water: { min: 56, max: 70 },
+      alcohol: ALCOHOL_RANGE,
+    },
+  },
+  {
+    category: 'protein_gelato',
+    temperature_c: -13,
+    status: 'seeded',
+    metrics: {
+      pod: { min: 12, max: 17 },
+      npac: { min: 48, max: 55 },
+      ice_fraction: { min: 46, max: 52 },
+      fat: { min: 5, max: 12 },
+      total_solids: { min: 35, max: 45 },
+      water: { min: 55, max: 65 },
+      alcohol: ALCOHOL_RANGE,
+    },
+  },
 ];

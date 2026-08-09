@@ -5,9 +5,7 @@ import { CHOCOLATE_CORRECTION_FAMILIES, DAIRY_CORRECTION_FAMILIES } from './prod
 import type { NormalizedRecipeIntent, ProductProfile, QualityTier } from './types';
 
 /** Fresh, fully-isolated intent for direct designer tests. */
-const intentFor = (
-  overrides: Partial<NormalizedRecipeIntent> = {},
-): NormalizedRecipeIntent => ({
+const intentFor = (overrides: Partial<NormalizedRecipeIntent> = {}): NormalizedRecipeIntent => ({
   productProfile: 'standard_gelato',
   qualityTier: 'classic',
   servingTemperatureC: -12,
@@ -52,7 +50,9 @@ const collectKeys = (value: unknown): string[] =>
 
 describe('designRecipe — core (pure, deterministic, strategy-only)', () => {
   it('is deterministic and does not mutate its input', () => {
-    const intent = normalizeRecipeIntent({ input: { flavorText: 'czekoladowe', qualityTier: 'premium' } });
+    const intent = normalizeRecipeIntent({
+      input: { flavorText: 'czekoladowe', qualityTier: 'premium' },
+    });
     const snapshot = JSON.stringify(intent);
     expect(designRecipe(intent)).toEqual(designRecipe(intent));
     expect(JSON.stringify(intent)).toBe(snapshot);
@@ -63,11 +63,22 @@ describe('designRecipe — core (pure, deterministic, strategy-only)', () => {
   });
 
   it('never calculates chemistry — no numeric values and no POD/PAC/NPAC/gram fields in the plan', () => {
-    for (const profile of ['standard_gelato', 'sorbet', 'vegan_gelato', 'chocolate_gelato'] as const) {
+    for (const profile of [
+      'standard_gelato',
+      'sorbet',
+      'vegan_gelato',
+      'chocolate_gelato',
+    ] as const) {
       const plan = designRecipe(intentFor({ productProfile: profile }));
-      expect(collectLeaves(plan).some((leaf) => typeof leaf === 'number'), profile).toBe(false);
+      expect(
+        collectLeaves(plan).some((leaf) => typeof leaf === 'number'),
+        profile,
+      ).toBe(false);
       const keys = collectKeys(plan).map((k) => k.toLowerCase());
-      expect(keys.some((k) => /(^|_)(pod|pac|npac)($|_)|gram/.test(k)), profile).toBe(false);
+      expect(
+        keys.some((k) => /(^|_)(pod|pac|npac)($|_)|gram/.test(k)),
+        profile,
+      ).toBe(false);
     }
   });
 
@@ -139,15 +150,32 @@ describe('designRecipe — product-specific ingredient families', () => {
 
 describe('designRecipe — gates carried from the Product Profile Registry', () => {
   it('sorbet constraints carry the disabled dairy gates', () => {
-    const { disabledGates } = designRecipe(intentFor({ productProfile: 'sorbet' })).optimizerConstraints;
-    for (const gate of ['lactose', 'lactose_sanding', 'dairy_fat_logic', 'aerating_dairy_protein', 'dairy_protein_share_in_solids', 'msnf_required_gate']) {
+    const { disabledGates } = designRecipe(
+      intentFor({ productProfile: 'sorbet' }),
+    ).optimizerConstraints;
+    for (const gate of [
+      'lactose',
+      'lactose_sanding',
+      'dairy_fat_logic',
+      'aerating_dairy_protein',
+      'dairy_protein_share_in_solids',
+      'msnf_required_gate',
+    ]) {
       expect(disabledGates).toContain(gate);
     }
   });
 
   it('vegan constraints carry the disabled dairy-only gates', () => {
-    const { disabledGates } = designRecipe(intentFor({ productProfile: 'vegan_gelato' })).optimizerConstraints;
-    for (const gate of ['lactose', 'lactose_sanding', 'aerating_dairy_protein', 'dairy_protein_share_in_solids', 'msnf_required_gate']) {
+    const { disabledGates } = designRecipe(
+      intentFor({ productProfile: 'vegan_gelato' }),
+    ).optimizerConstraints;
+    for (const gate of [
+      'lactose',
+      'lactose_sanding',
+      'aerating_dairy_protein',
+      'dairy_protein_share_in_solids',
+      'msnf_required_gate',
+    ]) {
       expect(disabledGates).toContain(gate);
     }
   });
@@ -158,12 +186,19 @@ describe('designRecipe — gates carried from the Product Profile Registry', () 
     ).optimizerConstraints;
     expect(advisoryGates).toContain('protein_share_in_solids');
     expect(disabledGates).not.toContain('protein_share_in_solids');
-    const standard = designRecipe(intentFor({ productProfile: 'standard_gelato' })).optimizerConstraints;
+    const standard = designRecipe(
+      intentFor({ productProfile: 'standard_gelato' }),
+    ).optimizerConstraints;
     expect(standard.advisoryGates).not.toContain('protein_share_in_solids');
   });
 
   it('stabilizerRequired is true for every active profile', () => {
-    for (const profile of ['standard_gelato', 'sorbet', 'vegan_gelato', 'chocolate_gelato'] as const) {
+    for (const profile of [
+      'standard_gelato',
+      'sorbet',
+      'vegan_gelato',
+      'chocolate_gelato',
+    ] as const) {
       const plan = designRecipe(intentFor({ productProfile: profile }));
       expect(plan.optimizerConstraints.stabilizerRequired, profile).toBe(true);
       expect(plan.ingredientStrategy.stabilizerRequired, profile).toBe(true);
@@ -173,7 +208,12 @@ describe('designRecipe — gates carried from the Product Profile Registry', () 
 
 describe('designRecipe — quality strategy', () => {
   const heroIntent = (tier: QualityTier, profile: ProductProfile = 'standard_gelato') =>
-    intentFor({ productProfile: profile, qualityTier: tier, flavorGroup: 'fruit', flavorTags: ['strawberry'] });
+    intentFor({
+      productProfile: profile,
+      qualityTier: tier,
+      flavorGroup: 'fruit',
+      flavorTags: ['strawberry'],
+    });
 
   it('eco is a low-cost strategy with boosters off by default', () => {
     const plan = designRecipe(heroIntent('eco'));
@@ -206,7 +246,9 @@ describe('designRecipe — quality strategy', () => {
   });
 
   it('naturalOnly / allowBoosters=false forbid boosters at any tier', () => {
-    const naturalOnly = normalizeRecipeIntent({ input: { naturalOnly: true, qualityTier: 'signature' } });
+    const naturalOnly = normalizeRecipeIntent({
+      input: { naturalOnly: true, qualityTier: 'signature' },
+    });
     expect(designRecipe(naturalOnly).ingredientStrategy.boosterPolicy).toBe('forbidden');
     expect(designRecipe(naturalOnly).qualityStrategy.boostersPermitted).toBe(false);
 
@@ -234,7 +276,9 @@ describe('designRecipe — hero ingredient policy from flavor', () => {
   });
 
   it('alcohol flavor is treated as a technical constraint, not a blindly protected hero', () => {
-    const plan = designRecipe(normalizeRecipeIntent({ input: { flavorText: 'rum', qualityTier: 'premium' } }));
+    const plan = designRecipe(
+      normalizeRecipeIntent({ input: { flavorText: 'rum', qualityTier: 'premium' } }),
+    );
     expect(plan.heroIngredientPolicy.notes.join(' ')).toMatch(/technical constraint/);
   });
 });
@@ -253,7 +297,9 @@ describe('designRecipe — texture and sweetness target intents (labels only)', 
     ['balanced', 'product_clean_center'],
     ['high', 'upper_product_safe_side'],
   ] as const)('sweetness %s -> %s', (sweetness, target) => {
-    expect(designRecipe(intentFor({ sweetnessPreference: sweetness })).sweetnessTarget).toBe(target);
+    expect(designRecipe(intentFor({ sweetnessPreference: sweetness })).sweetnessTarget).toBe(
+      target,
+    );
   });
 });
 
@@ -268,6 +314,7 @@ describe('designRecipe — warning propagation', () => {
     expect(granita.warnings.map((w) => w.code)).toContain('granita_unsupported_v1');
 
     const protein = designRecipe(normalizeRecipeIntent({ input: { flavorText: 'proteinowe' } }));
-    expect(protein.warnings.map((w) => w.code)).toContain('unsupported_product_profile');
+    expect(protein.productProfile).toBe('protein_gelato');
+    expect(protein.warnings.map((w) => w.code)).not.toContain('unsupported_product_profile');
   });
 });

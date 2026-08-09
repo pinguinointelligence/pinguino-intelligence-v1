@@ -32,6 +32,9 @@
   /* Brand */
   --color-ivory: #efe9dc;
   --color-ivory-soft: #efe9dca3;
+  /* Educational diagrams stay pale ivory even inside the light Pro theme,
+     where the historical `ivory` text token is intentionally remapped to ink. */
+  --color-education-ivory: #efe8dc;
 
   /* Status — desaturated, laboratory-grade (never bright) */
   --color-status-ideal: #6f7d63;

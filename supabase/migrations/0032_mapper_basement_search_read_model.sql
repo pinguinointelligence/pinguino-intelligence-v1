@@ -1,7 +1,7 @@
 -- 0032 — Track F (owner 2026-07-17): safe search read model for the canonical
 -- Mapper Basement ingredient library (Składniki PI).
 --
--- WHY: the customer Product/Ingredient Picker cannot search the 2,083-row
+-- WHY: the customer Product/Ingredient Picker cannot search the 2,088-row
 -- `mapper_basement` library because its ONLY SELECT policy
 -- (`mapper_basement_select_pro`) is gated on `authenticated` + an ACTIVE
 -- subscription + `approved_for_base`. Searching the ingredient library to build a

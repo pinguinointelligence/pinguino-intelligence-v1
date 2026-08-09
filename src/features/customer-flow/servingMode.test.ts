@@ -50,7 +50,16 @@ describe('serving mode matrix — EXACTLY six owner-approved modes', () => {
 
   it('has no −18, no arbitrary custom temperature, and no stale Ninja aliases', () => {
     for (const m of SERVING_MODES) expect([-11, -12, -13]).toContain(m.temperatureC);
-    for (const stale of ['freezer_minus_18', 'deep18', 'custom', 'displayFresh', 'ninja', 'ninja_creami', 'ninja_deluxe', 'ninja_2']) {
+    for (const stale of [
+      'freezer_minus_18',
+      'deep18',
+      'custom',
+      'displayFresh',
+      'ninja',
+      'ninja_creami',
+      'ninja_deluxe',
+      'ninja_2',
+    ]) {
       expect(servingModeById(stale)).toBeNull();
       expect(isNinjaMode(stale)).toBe(false);
     }
@@ -78,9 +87,20 @@ describe('mode × product-profile routing — profile from INTENT, temperature f
   });
 
   it('Standard Gelato: Świeże→−11, Ninja Gelato→−13/700, Ninja Swirl→−11/480', () => {
-    expect(route(build('gelato', 'fresh'))).toMatchObject({ profile: 'standard_gelato', temp: -11 });
-    expect(route(build('gelato', 'ninja_gelato'))).toMatchObject({ profile: 'standard_gelato', temp: -13, mass: 700 });
-    expect(route(build('gelato', 'ninja_swirl'))).toMatchObject({ profile: 'standard_gelato', temp: -11, mass: 480 });
+    expect(route(build('gelato', 'fresh'))).toMatchObject({
+      profile: 'standard_gelato',
+      temp: -11,
+    });
+    expect(route(build('gelato', 'ninja_gelato'))).toMatchObject({
+      profile: 'standard_gelato',
+      temp: -13,
+      mass: 700,
+    });
+    expect(route(build('gelato', 'ninja_swirl'))).toMatchObject({
+      profile: 'standard_gelato',
+      temp: -11,
+      mass: 480,
+    });
   });
 
   it('Chocolate intent stays visible Gelato but routes chocolate_gelato internally', () => {
@@ -95,14 +115,30 @@ describe('mode × product-profile routing — profile from INTENT, temperature f
   });
 
   it('Sorbet keeps its profile across modes (never silently Standard Gelato)', () => {
-    expect(route(build('sorbet', 'ninja_gelato'))).toMatchObject({ profile: 'sorbet', temp: -13, mass: 700 });
-    expect(route(build('sorbet', 'ninja_swirl'))).toMatchObject({ profile: 'sorbet', temp: -11, mass: 480 });
+    expect(route(build('sorbet', 'ninja_gelato'))).toMatchObject({
+      profile: 'sorbet',
+      temp: -13,
+      mass: 700,
+    });
+    expect(route(build('sorbet', 'ninja_swirl'))).toMatchObject({
+      profile: 'sorbet',
+      temp: -11,
+      mass: 480,
+    });
     expect(route(build('sorbet', 'fresh'))).toMatchObject({ profile: 'sorbet', temp: -11 });
   });
 
   it('Vegan keeps its profile across modes and never falls back to Standard Gelato', () => {
-    expect(route(build('vegan', 'ninja_gelato'))).toMatchObject({ profile: 'vegan_gelato', temp: -13, mass: 700 });
-    expect(route(build('vegan', 'ninja_swirl'))).toMatchObject({ profile: 'vegan_gelato', temp: -11, mass: 480 });
+    expect(route(build('vegan', 'ninja_gelato'))).toMatchObject({
+      profile: 'vegan_gelato',
+      temp: -13,
+      mass: 700,
+    });
+    expect(route(build('vegan', 'ninja_swirl'))).toMatchObject({
+      profile: 'vegan_gelato',
+      temp: -11,
+      mass: 480,
+    });
     expect(route(build('vegan', 'fresh')).profile).not.toBe('standard_gelato');
   });
 
@@ -111,8 +147,8 @@ describe('mode × product-profile routing — profile from INTENT, temperature f
     s = setProductType(s, 'protein');
     s = selectServingMode(s, 'ninja_gelato');
     const r = resolveProductType(s);
-    expect(r.status).toBe('unsupported');
-    expect(r.internalProfile).toBeNull();
+    expect(r.status).toBe('resolved');
+    expect(r.internalProfile).toBe('protein_gelato');
     expect(r.internalProfile).not.toBe('standard_gelato');
   });
 });

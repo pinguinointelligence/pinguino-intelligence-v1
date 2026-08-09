@@ -26,6 +26,7 @@ export interface ProductHandoffInput extends ProductEngineInput, RedFlagInput {
   id?: string | null;
   product_code?: string | null;
   product_name_display?: string | null;
+  vegan?: 'true' | 'false' | 'unknown' | null;
 }
 
 export interface ProductEngineHandoff {
@@ -69,6 +70,27 @@ export function prepareProductEngineIngredient(
 
   // Borrow the reference's clean, verified composition; override identity + resolved pac/pod.
   const base = ingredientRowToEngineIngredient(reference);
+  const referenceVeganStatus = base.flags?.vegan_eligibility;
+  const productVeganAssessment =
+    product.vegan === 'false'
+      ? {
+          status: 'VEGAN_FALSE' as const,
+          reasons: ['private_product_vegan_false'],
+        }
+      : product.vegan === 'true' && referenceVeganStatus === 'VEGAN_VERIFIED'
+        ? {
+            status: 'VEGAN_VERIFIED' as const,
+            reasons: ['private_product_vegan_true_and_verified_reference'],
+          }
+        : product.vegan === 'true'
+          ? {
+              status: 'VEGAN_CONFLICT' as const,
+              reasons: ['private_product_vegan_true_but_reference_not_verified_vegan'],
+            }
+          : {
+              status: 'VEGAN_UNKNOWN' as const,
+              reasons: ['private_product_vegan_unknown'],
+            };
   const ingredient: EngineIngredient = {
     ...base,
     id: (product.product_code && product.product_code.trim()) || base.id,
@@ -84,6 +106,11 @@ export function prepareProductEngineIngredient(
     source_type: resolution.provenance === 'product_measured' ? 'producer_label' : 'external_db',
     is_verified: false,
     confidence_score: 0,
+    flags: {
+      ...base.flags,
+      vegan_eligibility: productVeganAssessment.status,
+      vegan_eligibility_reasons: productVeganAssessment.reasons,
+    },
   };
 
   const warnings = redFlags.map((f) => f.reason);
