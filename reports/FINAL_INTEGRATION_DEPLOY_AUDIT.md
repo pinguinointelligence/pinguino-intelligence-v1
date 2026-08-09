@@ -120,7 +120,7 @@ Final integrated gate:
 | `npm audit` | PASS, 0 vulnerabilities |
 | `git diff --check` | PASS |
 
-Final local build assets: `dist/assets/index-BBunAyZi.js`, `dist/assets/index-BOCM4VCP.css`, and `dist/assets/esm-CJnO6XFT.js`.
+Final local build assets after the focused Production correction: `dist/assets/index-D9r0VZcU.js`, `dist/assets/index-BOCM4VCP.css`, and `dist/assets/esm-CUdMt782.js`.
 
 Focused gates included Mapper source/seed (**3 files / 24 tests** in independent rerun), final security/app fixes (**6 files / 60 tests**), product/integration suites (**153**, **107**, and **69** test focused waves), plus the full repository suite. The OCR tests emit a non-fatal optional Italian special-words resource diagnostic; the suites exit green and no OCR assertion is hidden.
 
@@ -157,15 +157,16 @@ Existing configuration only; no `.vercel/project.json`, second project, or new V
 | URL | `https://staging.pinguinoai.com` |
 | Vercel project | `pinguino-staging` / `prj_6h8PDTCUrdDdXNzfEfjJNsVL5BcE` |
 | Backend | Supabase `tunabqqrwabacxjcxxkz` |
-| Deployed Git SHA | `5b931ff139253e9c6acead18f4d88b2791fd5f13` |
-| Vercel deployment ID | `dpl_D2kjVRaR2yYYaWooxVFeVnGpSNBB` |
-| Vercel deployment URL | `pinguino-staging-kn5ndt7ny-pinguinointelligence-7784s-projects.vercel.app` |
-| Served JS/CSS bundle | `assets/index-DtgU5a7p.js` / `assets/index-BOCM4VCP.css` |
-| Served bundle SHA-256 | JS `9B7BAD14124B686B2FEF18548FAF9CF3D482B9D6570059DD3DC2677E93FAC8BA`; CSS `2F9AFEA9E41120600D25FFCFE4D09D8944A71865723E8FE81C261B99D92087DD` |
-| Served asset timestamp | `Sun, 09 Aug 2026 18:37:47 GMT` |
-| Final served response proof | `HTTP/1.1 200 OK`; `X-Vercel-Cache: HIT`; `X-Vercel-Id: cdg1::d5jtg-1786301086776-bf19e1d1e3aa` |
+| Deployed Git SHA | `4bd4f50f3c371e579d8b071567764ece0fffe51b` |
+| Vercel deployment ID | `DUMo2CMbUBrbqvs32ehxmrXv3irr` |
+| Vercel deployment dashboard | `https://vercel.com/pinguinointelligence-7784s-projects/pinguino-staging/DUMo2CMbUBrbqvs32ehxmrXv3irr` |
+| Served JS/CSS bundle | `assets/index-r5vLKcLl.js` / `assets/index-BOCM4VCP.css` |
+| Served bundle SHA-256 | JS `E32F5CB01AFBC809EAC124845CC6FE53D9F828D2EA4EB8F5336F93FA91250AB2`; CSS `2F9AFEA9E41120600D25FFCFE4D09D8944A71865723E8FE81C261B99D92087DD` |
+| Served JS bytes | `2,711,054` |
+| Served asset timestamp | `Sun, 09 Aug 2026 21:53:44 GMT` |
+| Final served response proof | `HTTP 200`; served JavaScript contains the full and short deployed SHA plus `Zakończ produkcję`, `Master Label` and `Powiększ partię` |
 
-GitHub/Vercel deployment status is successful and points to deployment `D2kjVRaR2yYYaWooxVFeVnGpSNBB`. The served JavaScript contains the staging ref, the exact staging/production hostname gates and only **39** selected Mapper fixture IDs. It does not contain the production ref or the full 2088-row Mapper. Bundle identity was verified by content as well as by filename.
+GitHub/Vercel deployment status is successful and points to deployment `DUMo2CMbUBrbqvs32ehxmrXv3irr`. The served JavaScript contains the deployed commit, Production, Master Label and Batch Rescue content. Bundle identity was verified by content and SHA-256, not only by filename. Only `staging` was pushed. No production branch, domain or configuration command was issued.
 
 ## 7. Beginner QA
 
@@ -382,13 +383,152 @@ Every row below was captured from the actually served build, not a local fixture
 5. **Exact commands:** `npm run typecheck`; `npm run lint`; `npm test`; `npm run build`; `npm run recipes:validate`; `npm audit`; `git diff --check`; focused Vitest waves documented in §4; Supabase migration list/dry-run/REST/RLS probes documented in §2–3.
 6. **Results:** typecheck/build/diff/recipes/audit green; lint 0 errors/2 known warnings; 433 files/5689 tests green.
 7. **Previously accepted flows retested:** Base Engine, all product types, canonical draft, locks/unavailable/batch, Preview/Apply/Undo, save/version, Multi-Main, Direction honesty, pricing/OPTIMAL/ECO, Production/rescue/actuals, Master Label gates, Lost & Legendary, menu, OCR/intake.
-8. **Deployment environment:** existing Vercel staging + staging Supabase only; deployed SHA `5b931ff139253e9c6acead18f4d88b2791fd5f13`, deployment `dpl_D2kjVRaR2yYYaWooxVFeVnGpSNBB`, bundle `index-DtgU5a7p.js` + `index-BOCM4VCP.css`; exact served proof is in §6/§23. Production untouched.
+8. **Deployment environment:** existing Vercel staging + staging Supabase only; deployed SHA `4bd4f50f3c371e579d8b071567764ece0fffe51b`, deployment `DUMo2CMbUBrbqvs32ehxmrXv3irr`, bundle `index-r5vLKcLl.js` + `index-BOCM4VCP.css`; exact served proof is in §6/§23/§26. Production untouched.
 9. **Remaining incomplete items:** complete list in §22.
 10. **External actions:** regulatory validation, process/calibration data approval, server Production ledger, canonical allergen/facility/shelf-life data, multi-currency and server-side IP architecture.
-11. **Git status:** functional integration and review-gate commits are pushed to `origin/staging`; production refs were not pushed or deployed. This audit and its served screenshots are committed locally as evidence after the proven deployment and intentionally are not pushed, because an evidence-only push would trigger a different Vercel SHA/bundle and invalidate the exact served-build identity recorded above. Final status is clean and one evidence commit ahead of `origin/staging`.
+11. **Git status:** functional integration, review-gate work and the focused Production correction are pushed to `origin/staging`; production refs were not pushed or deployed. This final audit and its served screenshots are committed locally as evidence after the proven deployment and intentionally are not pushed, because an evidence-only push would trigger a different Vercel SHA/bundle and invalidate the exact served-build identity recorded above. Final status is clean and one evidence commit ahead of `origin/staging`.
 
 ## 25. Final status
 
 **PARTIAL — BLOCKERS EXPLICIT**
 
 The integrated staging release can be deployed and tested by the Owner, but the application as a whole cannot truthfully be called production-complete while the explicit Production ledger, label/regulatory, process-data, science/calibration, currency and server-side security blockers above remain.
+
+## 26. Final Production integration verification and Owner handoff
+
+### A. Ambiguity resolved
+
+The earlier wording “Produkcja nie została wdrożona ani zmieniona” referred to the **production deployment environment/domain**, not to the Production feature. The Production, Batch Rescue and Master Label feature set is integrated into staging. The public production domain was not updated with this staging feature set.
+
+### B. Source commit representation
+
+Source commit: `4ec3f495f5da30e368a26b9eee8f184e5ae9c34d`.
+
+`4ec3f495` is not a Git ancestor of the final staging commit because the integration was reconciled/squashed over the legitimate staging line (`merge-base 7d33ec7c2d56936f1b6cc2e22e2526d60ab9e10b`). A path-by-path comparison of every file touched by the source commit produced:
+
+- 36 of 45 paths: byte-identical;
+- 9 of 45 paths: changed but functionally equivalent or strengthened by later accepted fixes;
+- 0 of 45 paths: missing.
+
+The exact Production/Batch Rescue/Master Label core remains represented, including `ProductionCockpit`, `productionRescue`, `productionSession`, `MasterLabelEditor`, label model, market profiles and tests. The nine reconciled paths preserve the feature while adding later account isolation, recipe UX, owner-session and workspace improvements.
+
+### C. Focused correction found during served QA
+
+The first served walkthrough exposed one operator-state defect: after a verified rescue reopened the Cream line for a top-up, the line still correctly displayed `W naczyniu: 130.0 g`, but the cockpit aggregate excluded that already physical 130 g because it summed only currently confirmed lines.
+
+Correction commit: `4bd4f50f3c371e579d8b071567764ece0fffe51b` (`fix(production): keep physical vessel mass visible during rescue`).
+
+The correction changes only the presentation/state aggregate: `confirmedMassG` now sums `physicalAddedGrams` for every production line. Completion coherence and `confirmedCount` still depend on confirmation state. Forecast, rescue candidate generation, final actual snapshot, Engine calculations and Engine science are unchanged.
+
+Independent post-fix verdict: **DEPLOY — no blocker**.
+
+### D. Exact 130 → 180 rescue proof on the final served bundle
+
+| Fact | Exact result |
+| --- | --- |
+| Planned Sucrose | 130 g |
+| Physically confirmed Sucrose | 180 g |
+| Sucrose after rescue | remains 180 g |
+| Existing canonical top-up line | `milk-base:cream_30` |
+| Exact Cream top-up | `227.75342952471976 g` |
+| Final Cream target | `357.75342952471976 g` |
+| Final batch | `1277.7534295247196 g` |
+| Technical score | 10/10 |
+| Canonical identity | 6 lines / 6 unique canonical IDs / 0 duplicates |
+
+Immediately after applying rescue, before confirming the Cream top-up, the final served UI reports:
+
+- `5 / 6 składników`;
+- Cream `W naczyniu: 130.0 g`;
+- cockpit `W naczyniu 1050.0 g`;
+- `Przewidywany finał 1277.8 g`;
+- score 10/10.
+
+This is the exact operator-state invariant the correction was intended to protect.
+
+### E. Actuals authority and frozen Master Label
+
+The completed Production snapshot is the authority for Master Label, not the original planned recipe. A separate exact runtime fixture completed a 1000 g plan as 1020 g actual by changing Milk from 670 g to 690 g. The frozen result retained both planned 1000 g and actual 1020 g, while Master Label read Milk 690 g / 67.6470588% and actual nutrition values.
+
+In the served 130 → 180 walkthrough, Master Label opens only after coherent completion and shows the frozen actual batch `1277.8 g`.
+
+### F. Main and Multi-Main safety
+
+Production rescue uses add-only physical floors. Confirmed material is never reduced. Core Main identity/ratio suites pass. Independent Production runs for Multi-Main 1:1 and 2:1 over-add both returned explicit `impossible` with zero proposals instead of changing flavour identity or ratio.
+
+There is still a coverage gap for a separate Production-specific fixture for every Main/locked/unavailable-next combination. The shared physical-floor/add-only gates are role-agnostic and the core Multi-Main regression suite passes, but the missing dedicated edge fixtures are not described as commercial validation.
+
+### G. Master Label truth and blockers
+
+- EU, USA, Canada, UK and Australia/NZ remain `PARTIAL`.
+- `Inny rynek` remains `RESEARCH`.
+- verified canonical allergens are incomplete, so the UI says `WYMAGA WERYFIKACJI` and print remains disabled;
+- shelf life is not invented; the durability field remains `WYMAGA POTWIERDZENIA` without a validated basis;
+- actual ingredient and nutrition values come from the frozen completed batch;
+- browser/system print remains a preparation surface, not a controlled regulatory PDF/printer pipeline.
+
+### H. Final served mobile QA
+
+| Viewport | Interaction proof | Overflow |
+| --- | --- | --- |
+| 360 × 800 | −/+ stepper changed Milk 670 → 671 → 670, manual 672 accepted, explicit ✓ confirmation | `scrollWidth = clientWidth = 345` |
+| 390 × 844 | remaining lines confirmed, rescue shown and applied in mobile cockpit | `scrollWidth = clientWidth = 390` |
+| 430 × 932 | Cream top-up confirmed, Production completed, Master Label opened, market controls exercised, print remained disabled | `scrollWidth = clientWidth = 430` |
+
+All primary mobile actions were interacted with successfully. There is no horizontal scrolling. A possible subpixel overlay edge (below one CSS pixel in earlier geometry probes) did not create scrollable overflow or clip an actionable control.
+
+### I. Final served screenshots
+
+- [Exact 130 → 180 rescue on final bundle](qa/final-production-handoff/09-new-bundle-rescue-130-to-180.png)
+- [Physical mass 1050 g retained after rescue reopens Cream](qa/final-production-handoff/10-new-bundle-physical-mass-1050.png)
+- [Master Label from final actual 1277.8 g](qa/final-production-handoff/11-new-bundle-master-label-1277-8.png)
+- [Mobile 360 stepper](qa/final-production-handoff/12-new-bundle-mobile-360-stepper.png)
+- [Mobile 390 rescue cockpit](qa/final-production-handoff/13-new-bundle-mobile-390-rescue.png)
+- [Mobile 430 Master Label](qa/final-production-handoff/14-new-bundle-mobile-430-master-label.png)
+
+Screenshots 01–08 in the same directory document the original served walkthrough that discovered the physical-mass aggregate defect; screenshots 09–14 are the mandatory repeat against the corrected final bundle.
+
+### J. Production-domain isolation
+
+Read-only QA at `https://www.pinguinoai.com/recipes` after the staging push still served the separate older customer UI (`Start from a balanced base`) and did not contain `Zakończ produkcję` or `Master Label`. The production JS bundle was distinct from staging and contained neither the correction SHA nor the integrated staging SHA. No production branch, custom domain or Vercel configuration command was issued.
+
+### K. Final verification commands and counts
+
+| Gate | Result |
+| --- | --- |
+| Pre-fix focused Production/Master Label/integration wave | 15 files / 160 tests PASS |
+| Main/correction/ingredient UX regression wave | 3 files / 43 tests PASS |
+| Exact verbose 130 → 180 rescue suite | 1 file / 6 tests PASS |
+| Independent pre-fix exact-deployed-source review | 9 files / 56 tests PASS |
+| Post-fix focused Production/Master Label wave | 4 files / 26 tests PASS |
+| Independent post-fix review | 3 files / 18 tests PASS |
+| `npm run typecheck` | PASS |
+| `npm run lint` | PASS, 0 errors / 2 unchanged Fast Refresh warnings |
+| `npm test` | 433 files / 5689 tests PASS / 0 failed |
+| `npm run build` | PASS, 1067 modules |
+| `git diff --check` | PASS |
+| Served browser console | 0 warnings / 0 errors |
+
+### L. Handoff verdict
+
+The accepted Production, Batch Rescue and Master Label feature set is represented in the deployed staging source and bundle. The exact over-add path, canonical folding, actual-batch authority, mobile flow and truthful label blockers were verified against the served staging application. The small operator aggregate defect found during QA was corrected, independently reviewed, fully regressed and redeployed to the same staging target.
+
+The product is suitable for Owner staging verification, but not for a claim of regulated production completion because the explicit server-ledger, regulatory-label, allergen, shelf-life, incomplete workflow and controlled-print blockers remain.
+
+## 27. Completion ledger — final Production verification turn
+
+1. **Requested scope:** verify Production/Master Label integration, resolve deployment-language ambiguity, prove the 130 → 180 rescue, run focused/full gates, correct only accepted missing behavior, redeploy staging if required, repeat online desktop/mobile QA and provide Owner handoff.
+2. **Completed work:** source-representation audit, exact runtime rescue proof, actual-authority proof, independent review, one presentation/state correction, full regression, staging push/deploy, content-level bundle verification, desktop/mobile served QA, production-domain isolation proof and final report.
+3. **Files changed:** `src/features/production-workspace/productionSession.ts`, `src/features/production-workspace/productionSession.test.ts`, this report, and screenshots under `reports/qa/final-production-handoff/`.
+4. **Tests added/changed:** regression proving reopened rescue lines retain their physical mass in the vessel aggregate; no Engine-science tests changed.
+5. **Exact commands:** focused Vitest commands for Production/Master Label/rescue/session/UI and Main/correction regressions; `npm run typecheck`; `npm run lint`; `npm test`; `npm run build`; `git diff --check`; exact commands and counts are recorded in §26.K and the task terminal log.
+6. **Test results:** all focused gates green; full suite 433 files / 5689 tests / 0 failures; build/typecheck green; lint 0 errors and 2 unchanged warnings.
+7. **Previously accepted flows retested:** explicit per-line confirmations, actual deviations, add-only rescue, canonical top-up folding, Main/Multi-Main fail-closed behavior, coherent finish, frozen actual snapshot, Master Label preflight, market states, mobile stepper/cockpit/finish/label.
+8. **Deployment environment verified:** `https://staging.pinguinoai.com`, commit `4bd4f50f3c371e579d8b071567764ece0fffe51b`, Vercel deployment `DUMo2CMbUBrbqvs32ehxmrXv3irr`, served JS `index-r5vLKcLl.js` SHA-256 `E32F5CB01AFBC809EAC124845CC6FE53D9F828D2EA4EB8F5336F93FA91250AB2`.
+9. **Remaining incomplete items:** server-authoritative append-only Production ledger; Production substitution/unavailable-next/automated step/topping flows; canonical allergen rehydration; validated shelf-life; legally completed market profiles; controlled PDF/printer pipeline; dedicated Production fixtures for every Main/locked/unavailable edge.
+10. **Exact blockers/external actions:** listed and classified in §22 and §26.F–G; they require data, regulatory, science, product and server-architecture decisions, not a hidden UI workaround.
+11. **Git diff and commit status:** functional correction committed as `4bd4f50f3c371e579d8b071567764ece0fffe51b` and pushed only to `staging`; final report/screenshots are committed locally after deployment so served-bundle identity remains exact; production untouched.
+
+## 28. Final Production handoff status
+
+**PARTIAL — BLOCKERS EXPLICIT**
