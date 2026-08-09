@@ -299,7 +299,11 @@ export function productionProgress(session: ProductionSession): ProductionProgre
   return {
     confirmedCount: confirmed.length,
     totalCount: session.lines.length,
-    confirmedMassG: confirmed.reduce((sum, line) => sum + line.physicalAddedGrams, 0),
+    // A rescue can reopen a previously confirmed line for an additional top-up.
+    // The original physical amount remains in the vessel even while that line is
+    // pending again, so the operator-facing vessel mass must sum every physical
+    // floor rather than only lines whose current target is fully confirmed.
+    confirmedMassG: session.lines.reduce((sum, line) => sum + line.physicalAddedGrams, 0),
     forecastFinalMassG: forecast.items.reduce(
       (sum, item) => sum + (item.actual_grams ?? item.planned_grams),
       0,

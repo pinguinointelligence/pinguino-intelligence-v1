@@ -113,6 +113,10 @@ describe('production session physical-reality contract', () => {
       draftActualGrams: line.plannedGrams + 3,
       confirmed: false,
     });
+    expect(productionProgress(rescued)).toMatchObject({
+      confirmedCount: 0,
+      confirmedMassG: line.plannedGrams,
+    });
     expect(() => setDraftActualGrams(rescued, line.lineId, line.plannedGrams - 1)).toThrow(
       /cannot remove physically added/,
     );
