@@ -10,6 +10,7 @@ export function useReviewMode(): boolean {
   return isReviewModeEnabled({
     isDev: import.meta.env.DEV,
     envFlag: import.meta.env.VITE_DESIGN_REVIEW as string | undefined,
+    hostname: typeof window === 'undefined' ? undefined : window.location.hostname,
     persona,
   });
 }

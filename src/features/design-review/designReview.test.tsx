@@ -28,7 +28,27 @@ const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
 describe('isReviewModeEnabled (pure resolver)', () => {
   it('is OFF for every persona on a production build without the staging flag', () => {
     for (const persona of ['demo', 'home', 'pro'] as const) {
-      expect(isReviewModeEnabled({ isDev: false, envFlag: undefined, persona })).toBe(false);
+      expect(
+        isReviewModeEnabled({
+          isDev: false,
+          envFlag: undefined,
+          hostname: 'www.pinguinoai.com',
+          persona,
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('keeps both production hosts fail-closed even if the review flag is misconfigured', () => {
+    for (const hostname of ['pinguinoai.com', 'www.pinguinoai.com']) {
+      expect(
+        isReviewModeEnabled({
+          isDev: false,
+          envFlag: '1',
+          hostname,
+          persona: 'pro',
+        }),
+      ).toBe(false);
     }
   });
 
@@ -41,7 +61,43 @@ describe('isReviewModeEnabled (pure resolver)', () => {
 
   it('is ON only for the owner/QA (pro) capability in dev or on the flagged staging deploy', () => {
     expect(isReviewModeEnabled({ isDev: true, envFlag: undefined, persona: 'pro' })).toBe(true);
-    expect(isReviewModeEnabled({ isDev: false, envFlag: '1', persona: 'pro' })).toBe(true);
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: '1',
+        hostname: 'pinguino-staging-preview.vercel.app',
+        persona: 'pro',
+      }),
+    ).toBe(true);
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: undefined,
+        hostname: 'staging.pinguinoai.com',
+        persona: 'pro',
+      }),
+    ).toBe(true);
+  });
+
+  it('recognises only the exact canonical staging host and keeps customer personas hidden', () => {
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: undefined,
+        hostname: 'staging.pinguinoai.com.evil.example',
+        persona: 'pro',
+      }),
+    ).toBe(false);
+    for (const persona of ['demo', 'home'] as const) {
+      expect(
+        isReviewModeEnabled({
+          isDev: false,
+          envFlag: undefined,
+          hostname: 'staging.pinguinoai.com',
+          persona,
+        }),
+      ).toBe(false);
+    }
   });
 
   it('ignores unknown flag values (only the explicit "1" opts in)', () => {

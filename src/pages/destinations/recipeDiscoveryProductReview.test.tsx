@@ -28,7 +28,30 @@ describe('recipe discovery product review', () => {
   it('requires the existing Pro owner/QA review capability before showing review state', () => {
     expect(isReviewModeEnabled({ isDev: true, envFlag: undefined, persona: 'pro' })).toBe(true);
     expect(isReviewModeEnabled({ isDev: true, envFlag: undefined, persona: 'home' })).toBe(false);
-    expect(isReviewModeEnabled({ isDev: false, envFlag: '1', persona: 'pro' })).toBe(true);
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: '1',
+        hostname: 'pinguino-staging-preview.vercel.app',
+        persona: 'pro',
+      }),
+    ).toBe(true);
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: '1',
+        hostname: 'www.pinguinoai.com',
+        persona: 'pro',
+      }),
+    ).toBe(false);
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: undefined,
+        hostname: 'staging.pinguinoai.com',
+        persona: 'pro',
+      }),
+    ).toBe(true);
     expect(isReviewModeEnabled({ isDev: false, envFlag: undefined, persona: 'pro' })).toBe(false);
     expect(source).toContain('const ownerReviewMode = useReviewMode()');
     expect(source).toContain('<OwnerReviewFrame enabled={ownerReviewMode}>');
