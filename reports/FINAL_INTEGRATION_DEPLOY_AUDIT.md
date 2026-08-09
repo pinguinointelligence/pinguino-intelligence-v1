@@ -114,13 +114,13 @@ Final integrated gate:
 | --- | --- |
 | `npm run typecheck` | PASS |
 | `npm run lint` | PASS, 0 errors; 2 pre-existing Fast Refresh warnings (`src/app/router.tsx:46`, `src/features/pro-core/RecipeVersionsSection.tsx:24`) |
-| `npm test` | **433 files / 5687 tests passed / 0 failed** |
+| `npm test` | **433 files / 5689 tests passed / 0 failed** |
 | `npm run build` | PASS, 1067 modules; large-chunk advisory only |
 | `npm run recipes:validate` | PASS, 2500 recipes / 80 committed images / 2420 intentionally missing images |
 | `npm audit` | PASS, 0 vulnerabilities |
 | `git diff --check` | PASS |
 
-Final local build assets: `dist/assets/index-D2bHKxoF.js`, `dist/assets/index-BOCM4VCP.css`, and `dist/assets/esm-tjY47NDa.js`.
+Final local build assets: `dist/assets/index-BBunAyZi.js`, `dist/assets/index-BOCM4VCP.css`, and `dist/assets/esm-CJnO6XFT.js`.
 
 Focused gates included Mapper source/seed (**3 files / 24 tests** in independent rerun), final security/app fixes (**6 files / 60 tests**), product/integration suites (**153**, **107**, and **69** test focused waves), plus the full repository suite. The OCR tests emit a non-fatal optional Italian special-words resource diagnostic; the suites exit green and no OCR assertion is hidden.
 
@@ -143,7 +143,9 @@ Fixes and regressions:
 - canonical duplicate repair keys by canonical ID.
 - stale Mapper and process documentation was corrected.
 
-Final reviewer verdict: **DEPLOY — no unresolved P0/P1/P2 integration blocker**. The independently rerun seed review also returned **DEPLOY** after confirming 8352 lowercase dietary literals and 0 uppercase values.
+Final reviewer verdict for the integrated product chain: **DEPLOY — no unresolved P0/P1/P2 integration blocker**. The independently rerun seed review also returned **DEPLOY** after confirming 8352 lowercase dietary literals and 0 uppercase values.
+
+The first served build then exposed one staging-only review-mode configuration gap: Vercel did not define `VITE_DESIGN_REVIEW`, so the Owner could not inspect unpublished candidates online. The smallest repair used the exact canonical staging hostname as an additional Owner-review gate. The independent reviewer rejected the first variant because a build-time flag could still enable review mode on a production hostname. The final variant checks and denies `pinguinoai.com` and `www.pinguinoai.com` before every flag/development/staging allow-path. Its focused gate passed **3 files / 30 tests**, and the final independent verdict was **DEPLOY**. Demo and Home remain denied; normal production customer mode remains denied.
 
 ## 6. Deployment
 
@@ -155,10 +157,15 @@ Existing configuration only; no `.vercel/project.json`, second project, or new V
 | URL | `https://staging.pinguinoai.com` |
 | Vercel project | `pinguino-staging` / `prj_6h8PDTCUrdDdXNzfEfjJNsVL5BcE` |
 | Backend | Supabase `tunabqqrwabacxjcxxkz` |
-| Deployed Git SHA | _filled after staging push_ |
-| Vercel deployment ID | _filled after staging deployment_ |
-| Served JS/CSS bundle | _filled from deployed HTML_ |
-| Timestamp | _filled after deployment_ |
+| Deployed Git SHA | `5b931ff139253e9c6acead18f4d88b2791fd5f13` |
+| Vercel deployment ID | `dpl_D2kjVRaR2yYYaWooxVFeVnGpSNBB` |
+| Vercel deployment URL | `pinguino-staging-kn5ndt7ny-pinguinointelligence-7784s-projects.vercel.app` |
+| Served JS/CSS bundle | `assets/index-DtgU5a7p.js` / `assets/index-BOCM4VCP.css` |
+| Served bundle SHA-256 | JS `9B7BAD14124B686B2FEF18548FAF9CF3D482B9D6570059DD3DC2677E93FAC8BA`; CSS `2F9AFEA9E41120600D25FFCFE4D09D8944A71865723E8FE81C261B99D92087DD` |
+| Served asset timestamp | `Sun, 09 Aug 2026 18:37:47 GMT` |
+| Final served response proof | `HTTP/1.1 200 OK`; `X-Vercel-Cache: HIT`; `X-Vercel-Id: cdg1::d5jtg-1786301086776-bf19e1d1e3aa` |
+
+GitHub/Vercel deployment status is successful and points to deployment `D2kjVRaR2yYYaWooxVFeVnGpSNBB`. The served JavaScript contains the staging ref, the exact staging/production hostname gates and only **39** selected Mapper fixture IDs. It does not contain the production ref or the full 2088-row Mapper. Bundle identity was verified by content as well as by filename.
 
 ## 7. Beginner QA
 
@@ -170,7 +177,7 @@ Existing configuration only; no `.vercel/project.json`, second project, or new V
 | Batch change | PASS | canonical draft, percentages and current batch remain synchronized |
 | Cancel Preview / Apply / Undo | PASS | one Preview→verified Apply route; Undo restores exact prior formulation |
 | Save / reopen / version restore | PASS | canonical IDs, Main roles and target/profile state round-trip |
-| Browser online click-through | _filled after deployment_ | served staging, not local fixture |
+| Browser online click-through | PASS | served staging: edit grams → live percentages/batch → Recalculate → Preview → Apply → Undo → Save → reload |
 
 ## 8. Professional QA
 
@@ -279,11 +286,19 @@ Preflight blocks print for missing verified allergens, missing validated/user-en
 
 ## 17. Mobile QA
 
-Required served-staging viewports: 390×844, one narrower phone, one larger modern phone, plus desktop 1440×900. Final browser results and screenshots are recorded in the post-deploy evidence subsection below.
+The served build was exercised at desktop 1440×900, requested phone 390×844, narrower 360×800 and larger 430×932. The browser reports 375 CSS document pixels at the 390-wide viewport because of its scrollbar; document `scrollWidth` stays equal to `clientWidth`, so there is no horizontal overflow.
+
+- Public Home at 390×844 keeps canonical branding and the clearly non-production Monitor example.
+- Inspiration/Owner Review at 390×844 remains usable with no horizontal overflow.
+- Pro Profile at 390×844 keeps the ingredient/editor flow and cockpit accessible.
+- Pro menu at 360×800 is vertically scrollable and has no visible interactive clipping or horizontal overflow. One covered background/backdrop text node is geometrically clipped while the menu is open; it is not a visible menu control and is recorded rather than hidden.
+- Master Label and completed Production at 430×932 have no horizontal overflow or clipped visible controls.
+
+Screenshots are linked in §23.
 
 ## 18. Menu
 
-Static/regression coverage confirms one canonical role/capability menu, active states, no stale `Ninja 2` name, and correct professional/customer visibility. Online desktop/mobile navigation evidence is recorded after deployment.
+Static/regression coverage and served mobile QA confirm one canonical role/capability menu, active states, no stale `Ninja 2` name, correct professional/customer visibility, vertical scrolling on the narrower phone, and no visible horizontal clipping. The Owner Review badge remains visually distinct and is not presented as customer-ready functionality.
 
 ## 19. Demo / Home / Pro capability truth
 
@@ -333,7 +348,30 @@ Future direction remains server-side Mapper + proprietary rules + classifier + s
 
 ## 23. Post-deploy online QA evidence
 
-_This subsection is filled only from the actually served staging build after the staging push. Local evidence is not substituted for online proof._
+Every row below was captured from the actually served build, not a local fixture.
+
+| Served scenario | Result | Exact evidence |
+| --- | --- | --- |
+| Public Home desktop | PASS | canonical logo, black/white presentation, no horizontal overflow, Monitor marked `TESTOWE / NIEPRODUKCYJNE`; [screenshot 01](qa/final-integration-served/01-home-desktop-1440x900.png) |
+| Customer Recipes | PASS | unpublished Lost & Legendary candidates hidden; no `RESEARCH`, Owner Review or candidate-name leakage; [screenshot 02](qa/final-integration-served/02-recipes-desktop-1440x900.png) |
+| Inspiration first view | PASS | concrete first six: Chocolate 460, Strawberry 140, Vanilla 121, Caramel 153, Pistachio 204, Coconut 140; Protein only in product-type filter; [screenshot 03](qa/final-integration-served/03-inspiration-families-desktop-1440x900.png) |
+| Customer Lost & Legendary | PASS | customer sees testing/publication explanation, not unpublished cards; [screenshot 04](qa/final-integration-served/04-lost-customer-desktop-1440x900.png) |
+| Pro Profile desktop | PASS | canonical logo, black/white system, editor and cockpit together in a 1440×900 viewport, pink unfinished controls visible, document height exactly one viewport in normal flow; [screenshot 05](qa/final-integration-served/05-pro-profile-desktop-1440x900.png) |
+| Monitor desktop | PASS | complete historical modules retained, technical score 10 visible, golden-middle semantics preserved, proprietary exact target ranges not exposed; [screenshot 06](qa/final-integration-served/06-pro-monitor-desktop-1440x900.png) |
+| Recipe canonical draft | PASS | Milk 670→660 immediately changed percentages and current batch to 990 without refresh; immediate Recalculate produced a 990→1000 proportional Preview; [screenshot 07](qa/final-integration-served/07-pro-preview-desktop-1440x900.png) |
+| Apply / Undo / Save | PASS | Apply produced exact 1000 g without canonical duplicate; Undo restored Milk 660 and batch 990 exactly; Milk reset to 670, recipe saved as `QA FINAL c6a0ab1`, reload restored name and value with all changes saved |
+| Production initial | PASS | six physical lines, one explicit confirmation per line, finish initially disabled; [screenshot 08](qa/final-integration-served/08-production-desktop-1440x900.png) |
+| Production completed | PASS with declared architecture blocker | all six lines confirmed and exact 1000 g completed actual shown; this is client-workflow proof, not an authoritative append-only server ledger; [screenshot 09](qa/final-integration-served/09-production-completed-desktop-1440x900.png) |
+| Master Label from actual | PASS with print blocked honestly | actual completed 1000 g is the source; market/language separated; allergen, shelf-life, operator and print blockers visible; `Inny rynek` = RESEARCH, EU = PARTIAL, print disabled; [screenshot 10](qa/final-integration-served/10-master-label-blocked-desktop-1440x900.png) |
+| Owner Review desktop | PASS | staging Pro shows `TRYB OWNER REVIEW`, strong pink `TESTOWE / NIEPRODUKCYJNE`, `DO PRZEGLĄDU (15)`, RESEARCH cards, and explicit original/adaptation semantics (`Oryginalna wersja`, `Jawna adaptacja`, `Oryginał`, `Adaptacja PINGÜINO`); [screenshot 11](qa/final-integration-served/11-lost-owner-review-desktop-1440x900.png) |
+| Owner Recipes mobile 390×844 | PASS | no horizontal overflow; [screenshot 12](qa/final-integration-served/12-recipes-owner-mobile-390x844.png) |
+| Pro Profile mobile 390×844 | PASS | no horizontal overflow; cockpit/Owner Review state visible; [screenshot 13](qa/final-integration-served/13-pro-profile-mobile-390x844.png) |
+| Pro menu mobile 360×800 | PASS with recorded covered-node caveat | visible menu usable and scrollable, no horizontal overflow or visible control clipping; [screenshot 14](qa/final-integration-served/14-pro-menu-mobile-360x800.png) |
+| Master Label mobile 430×932 | PASS | no horizontal overflow; `TESTOWE / NIEPRODUKCYJNE` and allergen warning remain prominent; [screenshot 15](qa/final-integration-served/15-label-mobile-430x932.png) |
+| Production mobile 430×932 | PASS | no horizontal overflow; completed physical actuals remain visible; [screenshot 16](qa/final-integration-served/16-production-mobile-430x932.png) |
+| Public Home mobile 390×844 | PASS | live DOM measurement: no horizontal overflow (`scrollWidth = clientWidth = 375`), canonical branding and test-only Monitor copy visible |
+| Normal production customer publication gate | PASS | read-only QA at `https://www.pinguinoai.com/recipes`: no Owner Review, RESEARCH, unverified-production badge, review count, or Lost candidate names; production was not deployed or modified |
+| Browser console | PASS | zero warning/error entries in the final inspected tab |
 
 ## 24. AGENTS.md completion ledger
 
@@ -342,12 +380,12 @@ _This subsection is filled only from the actually served staging build after the
 3. **Files changed:** full authoritative list is `git diff --name-status 7d33ec7...<final SHA>`; principal areas are `src/data/ingredients`, `src/features/formulation`, `constraint-studio`, `protein-gelato`, `production-workspace`, `master-label`, Pro workbench, recipe discovery, stores/services, Mapper docs/seed and migrations 0037/0038.
 4. **Tests added/changed:** Mapper 2088/source/seed, Vegan/Protein toolboxes, account boundary, forged Apply, ECO/private pricing, canonical duplicate repair, Production owner/rescue, RLS migration, Whisky boundary, Profile/Monitor/workbench/design truth.
 5. **Exact commands:** `npm run typecheck`; `npm run lint`; `npm test`; `npm run build`; `npm run recipes:validate`; `npm audit`; `git diff --check`; focused Vitest waves documented in §4; Supabase migration list/dry-run/REST/RLS probes documented in §2–3.
-6. **Results:** typecheck/build/diff/recipes/audit green; lint 0 errors/2 known warnings; 433 files/5687 tests green.
+6. **Results:** typecheck/build/diff/recipes/audit green; lint 0 errors/2 known warnings; 433 files/5689 tests green.
 7. **Previously accepted flows retested:** Base Engine, all product types, canonical draft, locks/unavailable/batch, Preview/Apply/Undo, save/version, Multi-Main, Direction honesty, pricing/OPTIMAL/ECO, Production/rescue/actuals, Master Label gates, Lost & Legendary, menu, OCR/intake.
-8. **Deployment environment:** existing Vercel staging + staging Supabase only; exact served proof is in §6/§23 after publish. Production untouched.
+8. **Deployment environment:** existing Vercel staging + staging Supabase only; deployed SHA `5b931ff139253e9c6acead18f4d88b2791fd5f13`, deployment `dpl_D2kjVRaR2yYYaWooxVFeVnGpSNBB`, bundle `index-DtgU5a7p.js` + `index-BOCM4VCP.css`; exact served proof is in §6/§23. Production untouched.
 9. **Remaining incomplete items:** complete list in §22.
 10. **External actions:** regulatory validation, process/calibration data approval, server Production ledger, canonical allergen/facility/shelf-life data, multi-currency and server-side IP architecture.
-11. **Git status:** final SHA/status/push evidence recorded after online QA. No commit/push/deployment to production.
+11. **Git status:** functional integration and review-gate commits are pushed to `origin/staging`; production refs were not pushed or deployed. This audit and its served screenshots are committed locally as evidence after the proven deployment and intentionally are not pushed, because an evidence-only push would trigger a different Vercel SHA/bundle and invalidate the exact served-build identity recorded above. Final status is clean and one evidence commit ahead of `origin/staging`.
 
 ## 25. Final status
 
