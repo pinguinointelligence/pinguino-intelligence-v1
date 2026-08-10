@@ -413,6 +413,10 @@ describe('no unrelated module removal across the split surface files', () => {
     expect(surface.includes('display: none')).toBe(false);
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
     expect(workbar).toContain('<WorkbenchActionBar');
+    const actionBar = read('features', 'pro-workbench', 'WorkbenchActionBar.tsx');
+    expect(actionBar).toContain('direction_targets: directionTargets');
+    expect(actionBar).toContain('excludedIngredientIds');
+    expect(actionBar).toContain('machine_capacity_source: machineCapacitySource');
     // Desktop aside + mobile sheet are intentional responsive variants.
     expect(surface).toContain('lg:hidden');
     expect(surface).toContain('hidden min-h-0');

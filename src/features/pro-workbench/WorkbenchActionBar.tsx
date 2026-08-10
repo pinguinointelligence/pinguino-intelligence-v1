@@ -34,10 +34,19 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
   const temperatureC = useRecipeStore((s) => s.target_temperature_c);
   const batchGrams = useRecipeStore((s) => s.target_batch_grams);
   const machineCapacityGrams = useRecipeStore((s) => s.machine_capacity_grams);
+  const machineCapacitySource = useRecipeStore((s) => s.machine_capacity_source);
   const flavorIntensity = useRecipeStore((s) => s.flavor_intensity);
   const costPriority = useRecipeStore((s) => s.cost_priority);
+  const targetProteinPercent = useRecipeStore((s) => s.target_protein_percent);
+  const formulationStrategy = useRecipeStore((s) => s.formulation_strategy);
+  const directionTargets = useRecipeStore((s) => s.direction_targets);
+  const directionTargetsActive = useRecipeStore((s) => s.direction_targets_active);
+  const excludedIngredientIds = useRecipeStore((s) => s.excludedIngredientIds);
+  const unavailableMainIngredientIds = useRecipeStore((s) => s.unavailableMainIngredientIds);
   const items = useRecipeStore((s) => s.items);
 
+  // Mirror every RecipeInputState field used by the canonical draft. Omitting
+  // Direction targets here made a valid Apply look stale and hid Undo.
   const currentInput = useMemo(
     () =>
       buildRecipeInput({
@@ -46,8 +55,15 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
         target_temperature_c: temperatureC,
         target_batch_grams: batchGrams,
         machine_capacity_grams: machineCapacityGrams,
+        machine_capacity_source: machineCapacitySource,
         flavor_intensity: flavorIntensity,
         cost_priority: costPriority,
+        target_protein_percent: targetProteinPercent,
+        formulation_strategy: formulationStrategy,
+        direction_targets: directionTargets,
+        direction_targets_active: directionTargetsActive,
+        excludedIngredientIds,
+        unavailableMainIngredientIds,
         items,
       }),
     [
@@ -56,8 +72,15 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
       temperatureC,
       batchGrams,
       machineCapacityGrams,
+      machineCapacitySource,
       flavorIntensity,
       costPriority,
+      targetProteinPercent,
+      formulationStrategy,
+      directionTargets,
+      directionTargetsActive,
+      excludedIngredientIds,
+      unavailableMainIngredientIds,
       items,
     ],
   );

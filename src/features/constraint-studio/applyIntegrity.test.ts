@@ -12,7 +12,11 @@ import type { EngineIngredient, RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { useConstraintStudioStore } from './constraintStudioStore';
+import {
+  isUndoAvailable,
+  selectCanonicalDraft,
+  useConstraintStudioStore,
+} from './constraintStudioStore';
 import { constraintStudioCopy } from './constraintStudioCopy';
 import { commitPreview, workingStateFingerprint } from './applyPipeline';
 
@@ -32,10 +36,15 @@ const seedOwnerDraft = () => {
     target_temperature_c: -11,
     target_batch_grams: 1000,
     machine_capacity_grams: null,
+    machine_capacity_source: null,
     flavor_intensity: 'balanced',
     cost_priority: 'balanced',
+    formulation_strategy: 'optimal',
+    direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    direction_targets_active: false,
     items: [],
     excludedIngredientIds: [],
+    unavailableMainIngredientIds: [],
   });
   useConstraintStudioStore.getState().resetForTests();
   useRecipeStore.getState().setVisibleProductType('gelato');
@@ -98,6 +107,18 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     const saved = buildRecipeInput(useRecipeStore.getState());
     useRecipeStore.getState().loadRecipeInput(saved, { savedId: 'r-int', savedName: 'I' });
     expect(JSON.stringify(buildRecipeInput(useRecipeStore.getState()).items)).toBe(appliedSnapshot);
+  });
+
+  it('keeps canonical Undo available after a Direction Apply', () => {
+    useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+
+    const studio = useConstraintStudioStore.getState();
+    const last = studio.history[studio.history.length - 1];
+    expect(isUndoAvailable(last, selectCanonicalDraft().input, studio.constraints)).toBe(true);
   });
 
   it('stale Preview is blocked after an edit (test 17)', () => {
