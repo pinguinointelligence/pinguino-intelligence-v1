@@ -77,21 +77,27 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
     }
   });
 
-  it('5. the Pro menu contains all global destinations and all 10 Pro subitems', () => {
-    const items = visibleNavItems(true);
-    const labels = items.map((i) => i.label);
-    for (const required of ['Moja maszyna', 'Etykiety i produkty', 'Subskrypcja / Plan']) {
-      expect(labels).toContain(required);
-    }
-    // One-hamburger rule (owner, 2026-07-24): the workspace tab row is gone, so the menu
-    // GREW by /pro/machine (9 subitems) — entries are only ever ADDED, never removed.
-    expect(items.filter((i) => i.group === 'pro')).toHaveLength(10);
-    expect(items.some((i) => i.id === 'proMachine' && i.to === '/pro/machine')).toBe(true);
+  it('5. the Pro menu promotes destinations only; contextual tools stay inside them', () => {
+    const items = visibleNavItems('pro');
+    expect(items.map((item) => item.id)).toEqual([
+      'proWorkspace',
+      'recipes',
+      'production',
+      'products',
+      'machine',
+      'memberShop',
+      'workWithUs',
+      'franchise',
+    ]);
+    expect(items.some((item) => item.to === '/pro/monitor')).toBe(false);
+    expect(items.some((item) => item.to === '/products/import')).toBe(false);
   });
 
   it('6. the menu is identical across primary routes — every shell renders the ONE drawer/config', () => {
     // The config itself is location-independent (visibleNavItems takes only the capability)…
-    expect(visibleNavItems(true).map((i) => i.id)).toEqual(visibleNavItems(true).map((i) => i.id));
+    expect(visibleNavItems('pro').map((i) => i.id)).toEqual(
+      visibleNavItems('pro').map((i) => i.id),
+    );
     // …and every shell renders AppNavDrawer: the canonical AppShell, and the customer bar.
     expect(read('features', 'shell', 'AppShell.tsx')).toContain('AppNavDrawer');
     expect(read('features', 'customer-shell', 'ui', 'CustomerMenu.tsx')).toContain('AppNavDrawer');

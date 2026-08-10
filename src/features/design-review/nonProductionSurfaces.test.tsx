@@ -42,8 +42,9 @@ describe('pink markers render on marked surfaces', () => {
     const html = render(<RecipesHubPage />);
     expect(html).not.toContain('data-testid="nonprod-marked-recipes-hub-tiles"');
     expect(html).not.toContain('TRYB OWNER REVIEW');
-    // The one REAL tile (Moje receptury) still renders inside — nothing removed.
-    expect(html).toContain('href="/my-recipes"');
+    // The real saved-recipe content remains inside the canonical internal MOJE tab.
+    expect(html).toContain('data-testid="recipes-tab-mine"');
+    expect(html).not.toContain('href="/my-recipes"');
   });
 
   it('/ — the landing Monitor example carries the compact badge next to the honest tag', () => {

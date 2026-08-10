@@ -26,15 +26,19 @@ import { BranchRecalculationPreviewPage } from '@/pages/dev/BranchRecalculationP
 import { PiMonitorDevPage } from '@/pages/dev/PiMonitorDevPage';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
-import { MyRecipesPage } from '@/pages/recipes/MyRecipesPage';
 import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import {
   APIPage,
+  AccountSettingsPage,
   CreateIngredientPage,
-  CreateLabelPage,
+  FranchisePage,
+  HowItWorksPage,
   ProductImportPage,
+  ProductsHubPage,
+  ProductionHubPage,
   RecipesHubPage,
+  ShopPage,
   SubscriptionPage,
   WorkWithUsPage,
 } from '@/pages/destinations';
@@ -65,6 +69,10 @@ export function AppRoutes() {
           the customer flow lives at /start behind the primary CTA. */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/start" element={<CustomerShellV1 />} />
+      <Route path="/home" element={<CustomerShellV1 />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
+      <Route path="/shop" element={<ShopPage />} />
+      <Route path="/franchise" element={<FranchisePage />} />
       {/* Owner decision (2026-07-17): retire the legacy dark AI-chat Home — „no page
           may look legacy”. /classic now redirects into the light flow, like /demo.
           The HomePage component is kept in the tree, just unrouted. */}
@@ -77,25 +85,34 @@ export function AppRoutes() {
           (recipe/monitor/versions/production/history/costs/exports/settings — direct link +
           refresh restore the same section). */}
       <Route path="/pro" element={<ProWorkspacePage />} />
+      <Route path="/pro/history" element={<Navigate to="/production?tab=history" replace />} />
+      <Route path="/pro/machine" element={<Navigate to="/machine" replace />} />
+      <Route path="/pro/settings" element={<Navigate to="/account" replace />} />
       <Route path="/pro/:section" element={<ProWorkspacePage />} />
       {/* There is NO separate Studio product: /studio and /calculator land in the canonical
           PINGÜINO Pro recipe editor (query params preserved for /studio deep links). */}
       <Route path="/studio" element={<LegacyStudioRedirect />} />
       <Route path="/calculator" element={<Navigate to={PRO_RECIPE_PATH} replace />} />
 
-      {/* Recipes hub (browse) + the saved-recipes list (self-guards anonymous visitors). */}
+      {/* One canonical recipe library. Legacy bookmarks keep their meaning through a redirect. */}
       <Route path="/recipes" element={<RecipesHubPage />} />
-      <Route path="/my-recipes" element={<MyRecipesPage />} />
+      <Route path="/my-recipes" element={<Navigate to="/recipes?tab=mine" replace />} />
 
-      {/* Phase 6C Slice 3 nav destinations. */}
-      <Route path="/label" element={<CreateLabelPage />} />
+      {/* Canonical member hubs. Contextual recipe/production tools remain available by deep link. */}
+      <Route path="/products" element={<ProductsHubPage />} />
+      <Route path="/production" element={<ProductionHubPage />} />
+      <Route path="/account" element={<AccountSettingsPage />} />
+      <Route path="/machine" element={<MachineProfilePage />} />
+      <Route path="/label" element={<Navigate to="/production?tab=labels" replace />} />
+
+      {/* Existing destination functions preserved, but no longer promoted as global menu items. */}
       <Route path="/api" element={<APIPage />} />
       <Route path="/work-with-us" element={<WorkWithUsPage />} />
       <Route path="/subscription" element={<SubscriptionPage />} />
       <Route path="/create-ingredient" element={<CreateIngredientPage />} />
 
       {/* Profil → Moja maszyna (UIUX Slice B §8.6) — view/change the saved Home machine. */}
-      <Route path="/profile/machine" element={<MachineProfilePage />} />
+      <Route path="/profile/machine" element={<Navigate to="/machine" replace />} />
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />
@@ -110,26 +127,60 @@ export function AppRoutes() {
       {import.meta.env.DEV && <Route path="/dev/mapper-batch-6" element={<MapperBatch6Page />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-review" element={<MapperReviewPage />} />}
       {import.meta.env.DEV && <Route path="/dev/mapper-status" element={<MapperStatusPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/enrichment-preview" element={<EnrichmentPreviewPage />} />}
+      {import.meta.env.DEV && (
+        <Route path="/dev/enrichment-preview" element={<EnrichmentPreviewPage />} />
+      )}
       {import.meta.env.DEV && <Route path="/dev/snapshot-audit" element={<SnapshotAuditPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/studio-picker-proof" element={<StudioPickerProofPage />} />}
+      {import.meta.env.DEV && (
+        <Route path="/dev/studio-picker-proof" element={<StudioPickerProofPage />} />
+      )}
       {import.meta.env.DEV && <Route path="/dev/intake-hub" element={<IntakeHubPage />} />}
       {import.meta.env.DEV && (
-        <Route path="/dev/ocr-intake" element={<OcrIntakePage wiring={buildRealIntakeWiring()} />} />
+        <Route
+          path="/dev/ocr-intake"
+          element={<OcrIntakePage wiring={buildRealIntakeWiring()} />}
+        />
       )}
       {import.meta.env.DEV && <Route path="/dev/ocr-batch" element={<OcrBatchPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/reference-proposals" element={<ReferenceProposalsPage />} />}
+      {import.meta.env.DEV && (
+        <Route path="/dev/reference-proposals" element={<ReferenceProposalsPage />} />
+      )}
       {import.meta.env.DEV && <Route path="/dev/spine" element={<SpineStatusPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/product-intelligence-preview" element={<ProductIntelligencePreviewPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/pi-calculated-activation-preview" element={<PiCalculatedActivationPreviewPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/optimization-preview" element={<OptimizationPreviewPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/branch-recalculation-preview" element={<BranchRecalculationPreviewPage />} />}
+      {import.meta.env.DEV && (
+        <Route
+          path="/dev/product-intelligence-preview"
+          element={<ProductIntelligencePreviewPage />}
+        />
+      )}
+      {import.meta.env.DEV && (
+        <Route
+          path="/dev/pi-calculated-activation-preview"
+          element={<PiCalculatedActivationPreviewPage />}
+        />
+      )}
+      {import.meta.env.DEV && (
+        <Route path="/dev/optimization-preview" element={<OptimizationPreviewPage />} />
+      )}
+      {import.meta.env.DEV && (
+        <Route
+          path="/dev/branch-recalculation-preview"
+          element={<BranchRecalculationPreviewPage />}
+        />
+      )}
       {import.meta.env.DEV && <Route path="/dev/pi-monitor" element={<PiMonitorDevPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/account-access" element={<AccountAccessDevPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/product-verification" element={<ProductVerificationDevPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/ingredient-resolution" element={<IngredientResolutionDevPage />} />}
+      {import.meta.env.DEV && (
+        <Route path="/dev/account-access" element={<AccountAccessDevPage />} />
+      )}
+      {import.meta.env.DEV && (
+        <Route path="/dev/product-verification" element={<ProductVerificationDevPage />} />
+      )}
+      {import.meta.env.DEV && (
+        <Route path="/dev/ingredient-resolution" element={<IngredientResolutionDevPage />} />
+      )}
       {import.meta.env.DEV && <Route path="/dev/pro-recipes" element={<ProCoreRecipesDevPage />} />}
-      {import.meta.env.DEV && <Route path="/dev/pro-production" element={<ProCoreProductionDevPage />} />}
+      {import.meta.env.DEV && (
+        <Route path="/dev/pro-production" element={<ProCoreProductionDevPage />} />
+      )}
       {import.meta.env.DEV && <Route path="/dev/pro-costs" element={<ProCoreCostsDevPage />} />}
 
       <Route path="*" element={<NotFoundPage />} />

@@ -135,9 +135,7 @@ function ProTopActions({
   const { result, input } = useStudioResult();
   const production = useProductionWorkspace(activePanel === 'production');
   const score =
-    activePanel === 'production'
-      ? production.score
-      : monitorScoreView(result, input).match;
+    activePanel === 'production' ? production.score : monitorScoreView(result, input).match;
   const blocked = activePanel === 'production' || unresolvedRequiredCount > 0;
 
   return (
@@ -153,10 +151,10 @@ function ProTopActions({
           activePanel === 'production'
             ? 'Przeliczenie receptury jest wyłączone w trybie produkcji.'
             : unresolvedRequiredCount > 0
-            ? copy.studio.builder.ingredientTable.infeasible.body
-            : pending
-              ? 'Zmieniono recepturę lub ustawienia. Przelicz ponownie.'
-              : 'Obliczenie jest aktualne.'
+              ? copy.studio.builder.ingredientTable.infeasible.body
+              : pending
+                ? 'Zmieniono recepturę lub ustawienia. Przelicz ponownie.'
+                : 'Obliczenie jest aktualne.'
         }
         data-testid="pro-workbar-recalc"
         className="h-10 shrink-0 rounded-sm bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 disabled:cursor-not-allowed disabled:bg-status-error/15 disabled:text-status-error"
@@ -265,7 +263,7 @@ function SettingsTab({ persona }: { persona: ProCorePersona }) {
         </dd>
       </div>
       <Link
-        to="/profile/machine"
+        to="/machine"
         className="inline-block text-sm text-ink underline decoration-ink/25 underline-offset-4 transition-colors hover:text-stone-600"
       >
         {w.openMachine}
@@ -284,7 +282,7 @@ function MachineTab() {
       <ReviewBadge itemId="RV-13" />
       <ProMachineSelector />
       <Link
-        to="/profile/machine"
+        to="/machine"
         className="inline-block text-sm text-ink underline decoration-ink/25 underline-offset-4 transition-colors hover:text-stone-600"
       >
         {w.openMachine}

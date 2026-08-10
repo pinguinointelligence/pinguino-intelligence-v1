@@ -267,10 +267,9 @@ describe('one hamburger — the tab row is gone, every destination keeps its rou
     expect(html).toContain('data-testid="app-nav-trigger"');
   });
 
-  it('the canonical nav config keeps EVERY entry — /pro/machine ADDED, nothing removed', () => {
+  it('the canonical nav config keeps contextual workbench routes out of global navigation', () => {
     expect(new Set(APP_NAV_ITEMS.map((item) => item.id)).size).toBe(APP_NAV_ITEMS.length);
     for (const section of [
-      'recipe',
       'monitor',
       'versions',
       'production',
@@ -284,8 +283,9 @@ describe('one hamburger — the tab row is gone, every destination keeps its rou
       expect(
         APP_NAV_ITEMS.some((i) => i.to === `/pro/${section}`),
         section,
-      ).toBe(true);
+      ).toBe(false);
     }
+    expect(APP_NAV_ITEMS.some((item) => item.to === '/pro/recipe')).toBe(true);
   });
 });
 

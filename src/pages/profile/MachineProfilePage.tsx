@@ -31,13 +31,17 @@ import {
   type MachineSettingsSubmit,
 } from '@/features/machine-onboarding';
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 
 type PageMode = 'view' | 'onboarding' | 'edit_custom';
 
 export function MachineProfilePage() {
   const navigate = useNavigate();
+  const persona = useProCorePersona();
   const store = useMemo(
-    () => selectMachinePreferenceStore({ localDevice: () => localStorageMachinePreferenceStore() }).store,
+    () =>
+      selectMachinePreferenceStore({ localDevice: () => localStorageMachinePreferenceStore() })
+        .store,
     [],
   );
   const preference = useMachinePreference(store);
@@ -115,7 +119,10 @@ export function MachineProfilePage() {
       <CustomerMenu />
       <div className="py-8">
         {defaultChangedName !== null ? (
-          <p role="status" className="mb-4 rounded-xl border border-status-ideal/40 bg-status-ideal/10 px-4 py-3 text-[13px] text-stone-700">
+          <p
+            role="status"
+            className="mb-4 rounded-xl border border-status-ideal/40 bg-status-ideal/10 px-4 py-3 text-[13px] text-stone-700"
+          >
             ✓ {machineOnboardingCopy.recipeMachine.defaultChanged(defaultChangedName)}
           </p>
         ) : null}
@@ -127,8 +134,10 @@ export function MachineProfilePage() {
             setMode('onboarding');
           }}
           onSave={handleSave}
-          onGoToRecipe={() => void navigate('/start')}
-          {...(editableCustomProfile !== null ? { onEditCustom: () => setMode('edit_custom') } : {})}
+          onGoToRecipe={() => void navigate(persona === 'pro' ? '/pro/recipe' : '/home')}
+          {...(editableCustomProfile !== null
+            ? { onEditCustom: () => setMode('edit_custom') }
+            : {})}
         />
       </div>
     </CustomerSurface>

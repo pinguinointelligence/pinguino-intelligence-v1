@@ -53,11 +53,9 @@ describe('ProWorkspacePage (S3)', () => {
     }
   });
 
-  it('keeps every former tab destination reachable (one hamburger, stable routes)', async () => {
-    // ONE-SCREEN architecture (owner, 2026-07-24): the visible tab row is GONE — every
-    // destination lives in the canonical nav config with its stable /pro/<section> route.
+  it('keeps workbench sections reachable by deep link without promoting them globally', async () => {
     const { APP_NAV_ITEMS } = await import('@/features/shell/appNav');
-    const proRoutes = APP_NAV_ITEMS.filter((i) => i.group === 'pro').map((i) => i.to);
+    const globalRoutes = APP_NAV_ITEMS.map((item) => item.to);
     for (const section of [
       'recipe',
       'monitor',
@@ -70,7 +68,12 @@ describe('ProWorkspacePage (S3)', () => {
       'machine',
       'tools',
     ]) {
-      expect(proRoutes, section).toContain(`/pro/${section}`);
+      const sectionHtml = renderAt(`/pro/${section}`, 'pro');
+      expect(sectionHtml, section).toContain('data-testid="pro-light-scope"');
+      expect(sectionHtml, section).not.toContain(w.gate.message);
+      if (section !== 'recipe' && section !== 'production') {
+        expect(globalRoutes, section).not.toContain(`/pro/${section}`);
+      }
     }
     // …and a titled section page renders for the Pro persona (no tab row, no gate).
     const html = renderAt('/pro/settings', 'pro');
@@ -106,6 +109,6 @@ describe('ProWorkspacePage (S3)', () => {
     expect(html).toContain('data-testid="pro-machine-selector"');
     expect(html).toContain('data-testid="pro-machine-professional"');
     expect(html).toContain(copy.proMachine.professional.title);
-    expect(html).toContain('href="/profile/machine"');
+    expect(html).toContain('href="/machine"');
   });
 });

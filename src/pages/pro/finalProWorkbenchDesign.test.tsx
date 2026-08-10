@@ -82,10 +82,10 @@ describe('final Pro visual system', () => {
 });
 
 describe('one global menu and four local contexts', () => {
-  it('keeps every accepted global Pro route in the hamburger inventory', () => {
+  it('keeps one shallow Pro workspace destination and removes contextual routes from the hamburger', () => {
     const routes = new Set(APP_NAV_ITEMS.map((item) => item.to));
+    expect(routes).toContain('/pro/recipe');
     for (const route of [
-      '/pro/recipe',
       '/pro/monitor',
       '/pro/versions',
       '/pro/production',
@@ -96,7 +96,7 @@ describe('one global menu and four local contexts', () => {
       '/pro/machine',
       '/pro/tools',
     ])
-      expect(routes, route).toContain(route);
+      expect(routes, route).not.toContain(route);
     expect(new Set(APP_NAV_ITEMS.map((item) => item.id)).size).toBe(APP_NAV_ITEMS.length);
   });
 

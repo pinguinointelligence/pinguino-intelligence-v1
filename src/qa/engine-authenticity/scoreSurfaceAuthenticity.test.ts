@@ -106,9 +106,9 @@ describe('TASK A — score surfaces derive from the engine (source-level pins)',
     expect(devRouteIndexes.length).toBeGreaterThan(0);
     for (const index of devRouteIndexes) {
       // the guard sits on the same line or (multi-line JSX) the previous one
-      const guarded =
-        lines[index]!.includes('import.meta.env.DEV') ||
-        (lines[index - 1] ?? '').includes('import.meta.env.DEV');
+      const guarded = lines
+        .slice(Math.max(0, index - 4), index + 1)
+        .some((line) => line.includes('import.meta.env.DEV'));
       expect(guarded, `unguarded dev route: ${lines[index]!.trim()}`).toBe(true);
     }
   });

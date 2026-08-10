@@ -5,3 +5,11 @@ export { ProductImportPage } from './ProductImportPage';
 export { RecipesHubPage } from './RecipesHubPage';
 export { SubscriptionPage } from './SubscriptionPage';
 export { WorkWithUsPage } from './WorkWithUsPage';
+export {
+  AccountSettingsPage,
+  FranchisePage,
+  HowItWorksPage,
+  ProductsHubPage,
+  ProductionHubPage,
+  ShopPage,
+} from './GlobalDestinationPages';

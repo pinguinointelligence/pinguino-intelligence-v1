@@ -20,6 +20,7 @@ import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import { customerShellCopy } from '@/features/customer-shell/customerShellCopy';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
+import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { landingCopy } from '@/pages/landing/landingCopy';
 import { AppRoutes, LegacyStudioRedirect, PRO_RECIPE_PATH } from './router';
@@ -46,7 +47,9 @@ function collectRoutes(node: ReactNode, acc: RouteEntry[] = []): RouteEntry[] {
   return acc;
 }
 
-const routes = collectRoutes((AppRoutes() as ReactElement<{ children?: ReactNode }>).props.children);
+const routes = collectRoutes(
+  (AppRoutes() as ReactElement<{ children?: ReactNode }>).props.children,
+);
 const byPath = new Map(routes.map((r) => [r.path, r.element]));
 
 const elementType = (path: string): unknown =>
@@ -105,8 +108,25 @@ describe('Slice A routing contract', () => {
     expect(elementType('/pro/:section')).toBe(ProWorkspacePage);
   });
 
-  it('registers the Slice B machine profile page at /profile/machine', () => {
-    expect(byPath.has('/profile/machine')).toBe(true);
+  it('registers the canonical plan hubs and keeps legacy addresses as redirects', () => {
+    expect(elementType('/home')).toBe(CustomerShellV1);
+    expect(elementType('/machine')).toBe(MachineProfilePage);
+    for (const path of [
+      '/products',
+      '/production',
+      '/account',
+      '/how-it-works',
+      '/shop',
+      '/franchise',
+    ]) {
+      expect(byPath.has(path), path).toBe(true);
+    }
+    expect(redirectTarget('/my-recipes')).toBe('/recipes?tab=mine');
+    expect(redirectTarget('/profile/machine')).toBe('/machine');
+    expect(redirectTarget('/pro/machine')).toBe('/machine');
+    expect(redirectTarget('/pro/settings')).toBe('/account');
+    expect(redirectTarget('/pro/history')).toBe('/production?tab=history');
+    expect(redirectTarget('/label')).toBe('/production?tab=labels');
   });
 
   it('keeps every pre-existing public route registered (zero 404 regressions)', () => {

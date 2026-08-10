@@ -5,12 +5,11 @@ import { copy } from '@/copy/en';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
-import { ReadinessBadge } from '@/features/design-review/ReadinessMarker';
-import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
+import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import {
   NAV_GROUP_ORDER,
-  NAV_GROUP_TITLE,
   isGroupActive,
+  navigationAudience,
   visibleNavItems,
   type NavGroupId,
 } from './appNav';
@@ -18,40 +17,36 @@ import {
 const s = copy.shell;
 const FOCUSABLE =
   'a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])';
-
 const iconButton =
   'grid h-11 w-11 place-items-center rounded-full text-ink transition-colors hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
-/**
- * The ONE canonical navigation drawer used by every application shell (AppShell). Renders the
- * hamburger trigger (top-right) + a LIGHT right-side drawer driven by the single `appNav` config:
- * grouped (Nawigacja / PINGÜINO Pro / Narzędzia / Plan i konto), capability-filtered (Pro sees the
- * Pro group; others see one safe upsell), with a consistent active state (nested + `?tab=` aware).
- * Accessible: backdrop, body-scroll lock, focus trap, Escape, focus return to the trigger, safe-area.
- */
+/** The one shallow, plan-aware destination drawer used by every shell. */
 export function AppNavDrawer() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const location = useLocation();
-
   const persona = useProCorePersona();
-  const canPro = persona === 'pro';
+  const capabilities = proCoreCapabilitiesFor(persona);
+  const authStatus = useAuthStore((state) => state.status);
+  const user = useAuthStore((state) => state.user);
+  const signOut = useAuthStore((state) => state.signOut);
+  const openAuthModal = useAuthModalStore((state) => state.open);
 
-  const authAvailable = useAuthStore((s2) => s2.available);
-  const authStatus = useAuthStore((s2) => s2.status);
-  const user = useAuthStore((s2) => s2.user);
-  const signOut = useAuthStore((s2) => s2.signOut);
-  const openAuthModal = useAuthModalStore((s2) => s2.open);
-
+  // The explicit DEV persona is an owner-review mechanism. Production remains
+  // strictly auth-driven: an anonymous visitor always receives the guest menu.
+  const devMemberPreview = import.meta.env.DEV && persona !== 'demo';
+  const audience = navigationAudience({
+    authenticated: authStatus === 'authed' || devMemberPreview,
+    canSaveRecipes: capabilities.canSaveRecipe,
+    canUseProductionMode: capabilities.canUseProductionMode,
+  });
+  const items = visibleNavItems(audience);
+  const workspaceItem = items.find((item) => item.workspaceHome);
   const loc = { pathname: location.pathname, search: location.search };
-  const items = visibleNavItems(canPro);
-  const planLabel = canPro
-    ? s.account.planPro
-    : persona === 'home'
-      ? s.account.planHome
-      : s.account.planNone;
-
+  const planLabel =
+    audience === 'pro' ? s.account.planPro : audience === 'home' ? s.account.planHome : null;
+  const memberAccount = audience !== 'guest';
   const close = () => setOpen(false);
 
   useEffect(() => {
@@ -63,22 +58,22 @@ export function AppNavDrawer() {
     const focusables = () =>
       panelRef.current ? Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)) : [];
     focusables()[0]?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         setOpen(false);
         return;
       }
-      if (e.key !== 'Tab') return;
+      if (event.key !== 'Tab') return;
       const list = focusables();
       const first = list[0];
       const last = list[list.length - 1];
       if (!first || !last) return;
       const active = document.activeElement;
-      if (e.shiftKey && active === first) {
-        e.preventDefault();
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
         first.focus();
       }
     };
@@ -129,13 +124,26 @@ export function AppNavDrawer() {
             aria-modal="true"
             aria-label={s.menuTitle}
             data-testid="app-nav-drawer"
-            className="absolute right-0 top-0 flex h-full w-[86vw] max-w-[360px] flex-col border-l border-ink/10 bg-paper text-ink motion-safe:animate-[appDrawerIn_240ms_cubic-bezier(0.32,0.72,0,1)]"
+            data-audience={audience}
+            className="absolute right-0 top-0 flex h-full w-[88vw] max-w-[360px] flex-col border-l border-ink/10 bg-paper text-ink motion-safe:animate-[appDrawerIn_240ms_cubic-bezier(0.32,0.72,0,1)]"
           >
             <div
-              className="flex items-center justify-between px-5 pb-2 pt-5"
+              className="flex items-center justify-between px-6 pb-3 pt-5"
               style={{ paddingTop: 'max(env(safe-area-inset-top), 1.25rem)' }}
             >
-              <span className="text-sm font-light tracking-wordmark">{s.menuTitle}</span>
+              {workspaceItem ? (
+                <Link
+                  to={workspaceItem.to}
+                  onClick={close}
+                  aria-current={workspaceItem.isActive(loc) ? 'page' : undefined}
+                  data-testid={`app-nav-item-${workspaceItem.id}`}
+                  className="text-sm font-medium tracking-[0.08em] text-ink"
+                >
+                  {workspaceItem.label}
+                </Link>
+              ) : (
+                <span className="text-sm font-light tracking-wordmark">{s.brand}</span>
+              )}
               <button type="button" aria-label={s.closeMenu} onClick={close} className={iconButton}>
                 <svg
                   width="18"
@@ -151,90 +159,85 @@ export function AppNavDrawer() {
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label={s.menuTitle}>
+            <nav className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" aria-label={s.menuTitle}>
               {NAV_GROUP_ORDER.map((group: NavGroupId) => {
-                const groupItems = items.filter((i) => i.group === group);
+                const groupItems = items.filter(
+                  (item) => item.group === group && !item.workspaceHome,
+                );
                 if (groupItems.length === 0) return null;
-                // Parent-group highlight: „PINGÜINO Pro" stays visibly active on every /pro/* route.
-                const groupActive = isGroupActive(group, loc, canPro);
+                const groupActive = isGroupActive(group, loc, audience);
                 return (
-                  <div key={group} className="pb-2">
-                    <p
-                      data-active={groupActive || undefined}
-                      className={cn(
-                        'px-3 pb-1 pt-3 text-[0.65rem] font-medium tracking-label uppercase',
-                        groupActive ? 'text-ink' : 'text-stone-400',
-                      )}
-                    >
-                      {NAV_GROUP_TITLE[group]}
-                    </p>
-                    {groupItems.map((item) => {
-                      const active = item.isActive(loc);
-                      return (
-                        <Link
-                          key={item.id}
-                          to={item.to}
-                          onClick={close}
-                          aria-current={active ? 'page' : undefined}
-                          data-testid={`app-nav-item-${item.id}`}
-                          className={cn(
-                            'flex min-h-11 items-center justify-between gap-2 rounded-md px-4 py-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
-                            active ? 'bg-ink/10 font-medium text-ink' : 'text-ink hover:bg-ink/5',
-                          )}
-                        >
-                          <span>{item.label}</span>
-                          {item.readiness ? (
-                            <ReadinessBadge
-                              state={item.readiness.state}
-                              details={item.readiness.details}
-                              className="max-w-[10rem] shrink-0 whitespace-normal text-right leading-tight"
-                            />
-                          ) : item.decision ? (
-                            <ReviewDecisionLabel label={item.decision} />
-                          ) : null}
-                        </Link>
-                      );
-                    })}
+                  <div
+                    key={group}
+                    className={cn(
+                      'py-3',
+                      group === 'ecosystem' && 'mt-2 border-t border-ink/10 pt-5',
+                    )}
+                    data-active={groupActive || undefined}
+                  >
+                    <div className="space-y-0.5">
+                      {groupItems.map((item) => {
+                        const active = item.isActive(loc);
+                        return (
+                          <Link
+                            key={item.id}
+                            to={item.to}
+                            onClick={close}
+                            aria-current={active ? 'page' : undefined}
+                            data-testid={`app-nav-item-${item.id}`}
+                            className={cn(
+                              'flex min-h-12 items-center rounded-sm px-4 py-2.5 text-[15px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
+                              active ? 'bg-ink text-white' : 'text-ink hover:bg-ink/5',
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
             </nav>
 
             <div
-              className="border-t border-ink/10 px-3 py-3"
-              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}
+              className="border-t border-ink/10 px-4 py-4"
+              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}
+              data-testid="app-nav-account-block"
             >
-              <p className="px-3 pb-1 text-[0.65rem] font-medium tracking-label text-stone-400 uppercase">
-                {s.groups.account}
-              </p>
-              {!authAvailable ? (
-                <p className="px-4 py-2 text-xs leading-relaxed text-stone-400">
-                  {s.account.unavailable}
-                </p>
-              ) : authStatus === 'authed' && user ? (
-                <div className="px-4 py-2">
-                  <div className="flex items-center justify-between gap-3">
+              {memberAccount ? (
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/account"
+                    onClick={close}
+                    className="min-w-0 flex-1 rounded-sm px-4 py-2 hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    data-testid="app-nav-account-link"
+                  >
                     <span
-                      className="min-w-0 truncate text-sm text-ink"
-                      title={user.email ?? undefined}
+                      className="block truncate text-sm text-ink"
+                      title={user?.email ?? undefined}
                     >
-                      {user.email ?? s.account.signedInAs}
+                      {user?.email ??
+                        (devMemberPreview ? 'owner-review@pinguino.local' : s.account.signedInAs)}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        close();
-                        void signOut();
-                      }}
-                      className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-                      data-testid="app-nav-signout"
+                    <span
+                      className="mt-0.5 block text-xs text-stone-500"
+                      data-testid="app-nav-plan"
                     >
-                      {s.account.signOut}
-                    </button>
-                  </div>
-                  <p className="mt-1 text-xs text-stone-500" data-testid="app-nav-plan">
-                    {planLabel}
-                  </p>
+                      {planLabel}
+                    </span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      close();
+                      if (authStatus === 'authed') void signOut();
+                    }}
+                    className="min-h-11 shrink-0 rounded-sm px-3 text-xs font-medium text-ink hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    data-testid="app-nav-signout"
+                  >
+                    {s.account.signOut}
+                  </button>
                 </div>
               ) : (
                 <button
@@ -243,7 +246,8 @@ export function AppNavDrawer() {
                     close();
                     openAuthModal();
                   }}
-                  className="block min-h-11 w-full rounded-xl px-4 text-left text-sm text-ink transition-colors hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                  className="block min-h-12 w-full rounded-sm px-4 text-left text-[15px] text-ink hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                  data-testid="app-nav-signin"
                 >
                   {s.account.signIn}
                 </button>

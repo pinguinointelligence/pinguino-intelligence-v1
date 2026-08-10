@@ -54,9 +54,25 @@ describe('canonical application shell', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
     expect(drawer).toContain('right-0');
     expect(drawer.includes('left-0')).toBe(false);
-    expect(drawer).toContain("e.key === 'Escape'");
+    expect(drawer).toContain("event.key === 'Escape'");
     expect(drawer).toContain("body.style.overflow = 'hidden'");
     expect(drawer).toContain('aria-modal="true"');
+  });
+
+  it('uses one mobile/desktop sitemap with comfortable targets and one drawer scroll surface', () => {
+    const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    expect(drawer).toContain('w-[88vw] max-w-[360px]');
+    expect(drawer).toContain('min-h-12');
+    expect(drawer.match(/overflow-y-auto/g)).toHaveLength(1);
+    expect(drawer).toContain('data-testid="app-nav-account-block"');
+    expect(drawer).not.toMatch(/ReadinessBadge|W PRZYGOTOWANIU|CZĘŚCIOWO PODŁĄCZONE/);
+  });
+
+  it('routes the canonical logo to Guest, Home or Pro workspace instead of public Demo after login', () => {
+    const shell = read('features', 'shell', 'AppShell.tsx');
+    expect(shell).toContain("audience === 'pro' ? '/pro/recipe'");
+    expect(shell).toContain("audience === 'home' ? '/home' : '/'");
+    expect(shell).toContain('to={brandDestination}');
   });
 
   it('there is NO separate legacy Studio page — /studio is a redirect into PINGÜINO Pro', () => {

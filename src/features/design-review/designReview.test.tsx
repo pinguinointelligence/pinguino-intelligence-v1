@@ -166,7 +166,7 @@ describe('marker visibility (customers NEVER see red tags)', () => {
     expect(html).not.toContain('review-overlay-item-');
   });
 
-  it('new Pro navigation/workbar decision labels also consume the owner/QA review gate', () => {
+  it('keeps review labels contextual to workbar; global navigation stays customer-clean', () => {
     const renderDecision = (persona: ProCorePersona) => {
       mockPersona = persona;
       return renderToStaticMarkup(<ReviewDecisionLabel />);
@@ -181,8 +181,8 @@ describe('marker visibility (customers NEVER see red tags)', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
 
-    expect(drawer).toContain('ReviewDecisionLabel');
-    expect(drawer).toContain('item.decision ?');
+    expect(drawer).not.toContain('ReviewDecisionLabel');
+    expect(drawer).not.toContain('item.decision ?');
     expect(workbar).toContain('ReviewDecisionLabel');
   });
 

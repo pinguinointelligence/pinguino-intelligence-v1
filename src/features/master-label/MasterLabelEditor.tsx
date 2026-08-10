@@ -8,7 +8,13 @@ import { masterLabelIdForSnapshot, useMasterLabelStore } from './masterLabelStor
 
 const MARKET_CODES: readonly MarketProfileCode[] = ['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM'];
 
-export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletionSnapshot }) {
+export function MasterLabelEditor({
+  snapshot,
+  printLabel = 'Drukuj · Systemowa',
+}: {
+  snapshot: ProductionCompletionSnapshot;
+  printLabel?: string;
+}) {
   const label = useMasterLabelStore((state) => state.label);
   const initialize = useMasterLabelStore((state) => state.initializeFromSnapshot);
   const replace = useMasterLabelStore((state) => state.replace);
@@ -40,7 +46,9 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
     <div className="space-y-3 p-3" data-testid="master-label-editor">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[9px] font-semibold tracking-[0.12em] text-stone-500 uppercase">Master Label</p>
+          <p className="text-[9px] font-semibold tracking-[0.12em] text-stone-500 uppercase">
+            Master Label
+          </p>
           <h3 className="text-sm font-semibold text-ink">Etykieta z faktycznej partii</h3>
         </div>
         <span className="border border-nonprod/35 bg-nonprod/[0.06] px-2 py-1 text-[9px] font-semibold text-nonprod">
@@ -49,7 +57,9 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
       </div>
 
       <section className="border border-ink/10 p-2">
-        <p className="mb-2 text-[9px] font-semibold tracking-[0.08em] text-stone-500 uppercase">Rynek sprzedaży</p>
+        <p className="mb-2 text-[9px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
+          Rynek sprzedaży
+        </p>
         <div className="grid grid-cols-3 gap-1">
           {MARKET_CODES.map((code) => (
             <button
@@ -74,7 +84,9 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
 
       <section className="grid grid-cols-2 gap-2 border border-ink/10 p-2">
         <label className="col-span-2">
-          <span className="mb-1 block text-[9px] text-stone-500">Języki etykiety · oddzielone przecinkiem</span>
+          <span className="mb-1 block text-[9px] text-stone-500">
+            Języki etykiety · oddzielone przecinkiem
+          </span>
           <input
             value={active.labelLanguages.join(', ')}
             onChange={(event) => {
@@ -90,18 +102,26 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
         {active.labelLanguages.map((language) => (
           <div key={language} className="col-span-2 grid grid-cols-2 gap-2">
             <label>
-              <span className="mb-1 block text-[9px] text-stone-500">Nazwa · {language.toUpperCase()}</span>
+              <span className="mb-1 block text-[9px] text-stone-500">
+                Nazwa · {language.toUpperCase()}
+              </span>
               <input
                 value={active.productName[language] ?? ''}
-                onChange={(event) => updateLanguageText('productName', language, event.currentTarget.value)}
+                onChange={(event) =>
+                  updateLanguageText('productName', language, event.currentTarget.value)
+                }
                 className="h-9 w-full border border-ink/15 px-2 text-xs"
               />
             </label>
             <label>
-              <span className="mb-1 block text-[9px] text-stone-500">Nazwa prawna · {language.toUpperCase()}</span>
+              <span className="mb-1 block text-[9px] text-stone-500">
+                Nazwa prawna · {language.toUpperCase()}
+              </span>
               <input
                 value={active.legalProductName[language] ?? ''}
-                onChange={(event) => updateLanguageText('legalProductName', language, event.currentTarget.value)}
+                onChange={(event) =>
+                  updateLanguageText('legalProductName', language, event.currentTarget.value)
+                }
                 className="h-9 w-full border border-ink/15 px-2 text-xs"
               />
             </label>
@@ -132,7 +152,10 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
           <input
             value={active.operator.operatorName}
             onChange={(event) =>
-              replace({ ...active, operator: { ...active.operator, operatorName: event.currentTarget.value } })
+              replace({
+                ...active,
+                operator: { ...active.operator, operatorName: event.currentTarget.value },
+              })
             }
             className="h-9 w-full border border-ink/15 px-2 text-xs"
           />
@@ -142,13 +165,18 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
           <input
             value={active.operator.address}
             onChange={(event) =>
-              replace({ ...active, operator: { ...active.operator, address: event.currentTarget.value } })
+              replace({
+                ...active,
+                operator: { ...active.operator, address: event.currentTarget.value },
+              })
             }
             className="h-9 w-full border border-ink/15 px-2 text-xs"
           />
         </label>
         <label className="col-span-2">
-          <span className="mb-1 block text-[9px] text-stone-500">Przechowywanie · {primaryLanguage.toUpperCase()}</span>
+          <span className="mb-1 block text-[9px] text-stone-500">
+            Przechowywanie · {primaryLanguage.toUpperCase()}
+          </span>
           <input
             value={active.storageInstructions[primaryLanguage] ?? ''}
             onChange={(event) =>
@@ -166,13 +194,19 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
             type="date"
             value={active.productionDate}
             onChange={(event) =>
-              replace({ ...active, productionDate: event.currentTarget.value, productionDateReviewed: true })
+              replace({
+                ...active,
+                productionDate: event.currentTarget.value,
+                productionDateReviewed: true,
+              })
             }
             className="h-9 w-full border border-ink/15 px-2 text-xs"
           />
         </label>
         <label>
-          <span className="mb-1 block text-[9px] font-semibold text-nonprod">Najlepiej spożyć · WYMAGA POTWIERDZENIA</span>
+          <span className="mb-1 block text-[9px] font-semibold text-nonprod">
+            Najlepiej spożyć · WYMAGA POTWIERDZENIA
+          </span>
           <input
             type="date"
             value={active.dateMark.date ?? ''}
@@ -191,7 +225,8 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
           />
         </label>
         <p className="col-span-2 text-[9px] leading-relaxed text-stone-500">
-          PINGÜINO nie dodaje dni do daty produkcji. Data wymaga podstawy i potwierdzenia użytkownika.
+          PINGÜINO nie dodaje dni do daty produkcji. Data wymaga podstawy i potwierdzenia
+          użytkownika.
         </p>
       </section>
 
@@ -200,12 +235,15 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
         title="Alergeny"
         compact
         details={{
-          limitation: 'EngineIngredient nie przenosi jeszcze zweryfikowanych danych alergenowych Mapper.',
+          limitation:
+            'EngineIngredient nie przenosi jeszcze zweryfikowanych danych alergenowych Mapper.',
           calculationImpact: 'Nie zmienia obliczeń receptury; blokuje gotowość etykiety.',
           remaining: 'Rehydratować zweryfikowane alergeny po canonical ingredient ID.',
         }}
       >
-        <p className="text-[10px] text-stone-600">WYMAGA WERYFIKACJI. Nie deklarujemy „brak alergenów”.</p>
+        <p className="text-[10px] text-stone-600">
+          WYMAGA WERYFIKACJI. Nie deklarujemy „brak alergenów”.
+        </p>
       </ReadinessFrame>
 
       <section className="border border-ink/10 p-2">
@@ -213,7 +251,9 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
           <span className="text-[9px] text-stone-500">Format</span>
           <select
             value={active.format}
-            onChange={(event) => replace({ ...active, format: event.currentTarget.value as 'rectangle' | 'round' })}
+            onChange={(event) =>
+              replace({ ...active, format: event.currentTarget.value as 'rectangle' | 'round' })
+            }
             className="h-9 border border-ink/15 px-2 text-xs"
           >
             <option value="rectangle">Prostokąt</option>
@@ -224,7 +264,9 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
             type="number"
             min={1}
             value={active.copies}
-            onChange={(event) => replace({ ...active, copies: Math.max(1, Number(event.currentTarget.value) || 1) })}
+            onChange={(event) =>
+              replace({ ...active, copies: Math.max(1, Number(event.currentTarget.value) || 1) })
+            }
             className="h-9 w-16 border border-ink/15 px-2 font-mono text-xs"
           />
         </div>
@@ -236,8 +278,12 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
         <ul className="mt-2 space-y-1">
           {preflight.items.map((item) => (
             <li key={item.field} className="flex items-start justify-between gap-2 text-[9px]">
-              <span>{item.status === 'ready' ? '✓' : '!'} {item.label}</span>
-              <span className={item.status === 'ready' ? 'text-status-ideal' : 'text-nonprod'}>{item.message}</span>
+              <span>
+                {item.status === 'ready' ? '✓' : '!'} {item.label}
+              </span>
+              <span className={item.status === 'ready' ? 'text-status-ideal' : 'text-nonprod'}>
+                {item.message}
+              </span>
             </li>
           ))}
         </ul>
@@ -245,12 +291,15 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
           <input
             type="checkbox"
             checked={active.preflightAcknowledged}
-            onChange={(event) => replace({ ...active, preflightAcknowledged: event.currentTarget.checked })}
+            onChange={(event) =>
+              replace({ ...active, preflightAcknowledged: event.currentTarget.checked })
+            }
           />
           Sprawdziłem dane etykiety przed wydrukiem.
         </label>
         <p className="mt-2 text-[9px] leading-relaxed text-stone-500">
-          Etykieta została przygotowana na podstawie danych receptury, produkcji i informacji podanych przez użytkownika. Nie jest certyfikatem prawnym.
+          Etykieta została przygotowana na podstawie danych receptury, produkcji i informacji
+          podanych przez użytkownika. Nie jest certyfikatem prawnym.
         </p>
         <button
           type="button"
@@ -258,7 +307,7 @@ export function MasterLabelEditor({ snapshot }: { snapshot: ProductionCompletion
           onClick={() => printMasterLabel(active)}
           className="mt-3 h-10 w-full bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
         >
-          Drukuj · Systemowa
+          {printLabel}
         </button>
       </section>
     </div>

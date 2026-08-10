@@ -2,8 +2,12 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { copy } from '@/copy/en';
+import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
+import { useAuthStore } from '@/stores/authStore';
 import { AppNavDrawer } from './AppNavDrawer';
+import { navigationAudience } from './appNav';
 
 /**
  * THE ONE canonical application shell.
@@ -35,6 +39,17 @@ export function AppShell({
    * it. ADDITIVE prop; default shell behavior unchanged; mobile flows normally. */
   viewportLock?: boolean;
 }) {
+  const persona = useProCorePersona();
+  const capabilities = proCoreCapabilitiesFor(persona);
+  const authStatus = useAuthStore((state) => state.status);
+  const devMemberPreview = import.meta.env.DEV && persona !== 'demo';
+  const audience = navigationAudience({
+    authenticated: authStatus === 'authed' || devMemberPreview,
+    canSaveRecipes: capabilities.canSaveRecipe,
+    canUseProductionMode: capabilities.canUseProductionMode,
+  });
+  const brandDestination = audience === 'pro' ? '/pro/recipe' : audience === 'home' ? '/home' : '/';
+
   return (
     <div
       className={cn(
@@ -56,7 +71,7 @@ export function AppShell({
         }}
       >
         <Link
-          to="/"
+          to={brandDestination}
           aria-label={copy.shell.brand}
           className="flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
         >

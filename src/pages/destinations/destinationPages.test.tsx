@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { copy } from '@/copy/en';
@@ -11,7 +12,15 @@ import { RecipesHubPage } from './RecipesHubPage';
 import { SubscriptionPage } from './SubscriptionPage';
 import { WorkWithUsPage } from './WorkWithUsPage';
 
-const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
+const renderAt = (path: string, el: ReactElement) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderToStaticMarkup(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>{el}</MemoryRouter>
+    </QueryClientProvider>,
+  );
+};
+const render = (el: ReactElement) => renderAt('/', el);
 
 describe('Slice 3 destination pages', () => {
   it('uses the same white editorial shell across destination pages', () => {
@@ -77,11 +86,24 @@ describe('Slice 3 destination pages', () => {
     expect(html).toContain(copy.nav.comingSoon);
   });
 
-  it('Recipes hub links My Recipes to /my-recipes and shows categories', () => {
+  it('Recipes hub exposes the canonical three-part library without a legacy My Recipes link', () => {
     const html = render(<RecipesHubPage />);
-    expect(html).toContain(copy.nav.recipes.mine);
-    expect(html).toContain('href="/my-recipes"');
+    expect(html).toContain('data-testid="recipes-tab-mine"');
+    expect(html).toContain('data-testid="recipes-tab-pinguino"');
+    expect(html).toContain('data-testid="recipes-tab-inspiration"');
+    expect(html).not.toContain('href="/my-recipes"');
     expect(html).toContain(copy.nav.recipes.gelato);
+  });
+
+  it('routes Mine, PINGÜINO and Inspiration inside the same recipe destination', () => {
+    const mine = renderAt('/recipes?tab=mine', <RecipesHubPage />);
+    expect(mine).toContain('data-testid="recipes-mine"');
+    const curated = renderAt('/recipes', <RecipesHubPage />);
+    expect(curated).toContain(copy.nav.recipes.discovery.lostTitle.replace('&', '&amp;'));
+    expect(curated).toContain(copy.nav.recipes.discovery.naturalTitle);
+    const inspiration = renderAt('/recipes?tab=inspiration', <RecipesHubPage />);
+    expect(inspiration).toContain(copy.nav.recipes.discovery.inspirationTitle);
+    expect(inspiration).not.toContain(copy.nav.recipes.discovery.lostTitle);
   });
 
   it('no destination page shows customer-facing "Demo"', () => {

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { Card } from '@/components/ui/Card';
@@ -26,13 +26,16 @@ import {
 } from '@/data/recipes/inspirationHandoff';
 import { NonProductionMarker } from '@/features/design-review/NonProductionMarker';
 import { useReviewMode } from '@/features/design-review/useReviewMode';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
+import { MyRecipesContent } from '@/pages/recipes/MyRecipesPage';
 
 const r = copy.nav.recipes;
 const d = r.discovery;
 const MAX_FEATURED = 6;
 
 type DiscoveryView = 'home' | 'lost' | 'natural' | 'inspiration' | 'countries';
+type RecipeLibraryTab = 'mine' | 'pinguino' | 'inspiration';
 type IconName = 'left' | 'right' | 'book' | 'globe' | 'leaf' | 'search' | 'sparkles';
 
 function Icon({ name, className = 'h-4 w-4' }: { name: IconName; className?: string }) {
@@ -502,85 +505,127 @@ function CountriesView({ ownerReviewMode }: { ownerReviewMode: boolean }) {
 }
 
 export function RecipesHubPage() {
+  const [params, setParams] = useSearchParams();
   const [view, setView] = useState<DiscoveryView>('home');
   const ownerReviewMode = useReviewMode();
+  const persona = useProCorePersona();
+  const requestedTab = params.get('tab');
+  const activeTab: RecipeLibraryTab =
+    requestedTab === 'mine' || requestedTab === 'inspiration' || requestedTab === 'pinguino'
+      ? requestedTab
+      : 'pinguino';
+  const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
+  const selectTab = (tab: RecipeLibraryTab) => {
+    const next = new URLSearchParams(params);
+    if (tab === 'pinguino') next.delete('tab');
+    else next.set('tab', tab);
+    setParams(next);
+    setView('home');
+  };
+
   return (
-    <DestinationSurface eyebrow={d.eyebrow} title={d.question} blurb={d.intro}>
-      {view !== 'home' ? <BackButton onClick={() => setView('home')} /> : null}
-      <div className={view !== 'home' ? 'mt-10' : undefined}>
-        {view === 'home' ? (
-          <>
-            <OwnerReviewFrame enabled={ownerReviewMode}>
-              <div className="grid gap-x-8 md:grid-cols-3">
-                <ActionCard
-                  icon={<Icon name="book" className="h-5 w-5" />}
-                  title={d.lostTitle}
-                  body={d.lostBody}
-                  onClick={() => setView('lost')}
-                />
-                <ActionCard
-                  icon={<Icon name="leaf" className="h-5 w-5" />}
-                  title={d.naturalTitle}
-                  body={d.naturalBody}
-                  onClick={() => setView('natural')}
-                />
-                <ActionCard
-                  icon={<Icon name="sparkles" className="h-5 w-5" />}
-                  title={d.inspirationTitle}
-                  body={d.inspirationBody}
-                  onClick={() => setView('inspiration')}
-                />
-              </div>
-            </OwnerReviewFrame>
-            <div className="mt-10 grid gap-3 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => setView('countries')}
-                className={buttonClasses('ghost', 'sm')}
-              >
-                <Icon name="globe" className="mr-2 h-4 w-4" />
-                {d.countries}
-              </button>
-              <button
-                type="button"
-                onClick={() => setView('inspiration')}
-                className={buttonClasses('ghost', 'sm')}
-              >
-                <Icon name="search" className="mr-2 h-4 w-4" />
-                {d.ingredient}
-              </button>
-              <button
-                type="button"
-                onClick={() => setView('natural')}
-                className={buttonClasses('ghost', 'sm')}
-              >
-                <Icon name="sparkles" className="mr-2 h-4 w-4" />
-                {d.recommended}
-              </button>
-            </div>
-            <div className="mt-12 border-t border-ink/10 pt-6">
-              <Link
-                to="/my-recipes"
-                className="inline-flex items-center gap-2 text-sm font-medium text-ink hover:opacity-60"
-              >
-                {r.mine}
-                <Icon name="right" />
-              </Link>
-              <p className="mt-4 text-xs text-stone-400">
-                {r.gelato} · {r.sorbet} · {r.vegan} · {r.protein}
-              </p>
-            </div>
-          </>
-        ) : null}
-        {view === 'lost' ? (
-          <CuratedCollectionView collection="lost_legendary" ownerReviewMode={ownerReviewMode} />
-        ) : null}
-        {view === 'natural' ? (
-          <CuratedCollectionView collection="natural_icon" ownerReviewMode={ownerReviewMode} />
-        ) : null}
-        {view === 'inspiration' ? <InspirationView /> : null}
-        {view === 'countries' ? <CountriesView ownerReviewMode={ownerReviewMode} /> : null}
+    <DestinationSurface
+      eyebrow={d.eyebrow}
+      title="Receptury"
+      blurb="Twoje receptury, kolekcje PINGÜINO i inspiracje smakowe — w jednej bibliotece."
+    >
+      <div className="mb-10 flex flex-wrap items-end justify-between gap-4 border-b border-ink/15">
+        <div
+          role="tablist"
+          aria-label="Biblioteka receptur"
+          className="flex min-w-0 overflow-x-auto"
+        >
+          {(
+            [
+              ['mine', 'MOJE'],
+              ['pinguino', 'PINGÜINO'],
+              ['inspiration', 'INSPIRACJE'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === id}
+              onClick={() => selectTab(id)}
+              className={cn(
+                'min-h-12 shrink-0 border-b-2 px-4 text-xs font-semibold tracking-[0.08em]',
+                activeTab === id ? 'border-ink text-ink' : 'border-transparent text-stone-400',
+              )}
+              data-testid={`recipes-tab-${id}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <Link
+          to={newRecipeHref}
+          className="mb-2 text-sm font-medium text-ink transition-opacity hover:opacity-55"
+        >
+          + Nowa receptura
+        </Link>
       </div>
+
+      {activeTab === 'mine' ? <MyRecipesContent /> : null}
+      {activeTab === 'inspiration' ? <InspirationView /> : null}
+      {activeTab === 'pinguino' ? (
+        <>
+          {view !== 'home' ? <BackButton onClick={() => setView('home')} /> : null}
+          <div className={view !== 'home' ? 'mt-10' : undefined}>
+            {view === 'home' ? (
+              <>
+                <OwnerReviewFrame enabled={ownerReviewMode}>
+                  <div className="grid gap-x-8 md:grid-cols-2">
+                    <ActionCard
+                      icon={<Icon name="book" className="h-5 w-5" />}
+                      title={d.lostTitle}
+                      body={d.lostBody}
+                      onClick={() => setView('lost')}
+                    />
+                    <ActionCard
+                      icon={<Icon name="leaf" className="h-5 w-5" />}
+                      title={d.naturalTitle}
+                      body={d.naturalBody}
+                      onClick={() => setView('natural')}
+                    />
+                  </div>
+                </OwnerReviewFrame>
+                <div className="mt-10 grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setView('countries')}
+                    className={buttonClasses('ghost', 'sm')}
+                  >
+                    <Icon name="globe" className="mr-2 h-4 w-4" />
+                    {d.countries}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView('natural')}
+                    className={buttonClasses('ghost', 'sm')}
+                  >
+                    <Icon name="sparkles" className="mr-2 h-4 w-4" />
+                    {d.recommended}
+                  </button>
+                </div>
+                <p className="mt-12 border-t border-ink/10 pt-6 text-xs text-stone-400">
+                  {r.gelato} · {r.sorbet} · {r.vegan} · {r.protein}
+                </p>
+              </>
+            ) : null}
+            {view === 'lost' ? (
+              <CuratedCollectionView
+                collection="lost_legendary"
+                ownerReviewMode={ownerReviewMode}
+              />
+            ) : null}
+            {view === 'natural' ? (
+              <CuratedCollectionView collection="natural_icon" ownerReviewMode={ownerReviewMode} />
+            ) : null}
+            {view === 'countries' ? <CountriesView ownerReviewMode={ownerReviewMode} /> : null}
+          </div>
+        </>
+      ) : null}
     </DestinationSurface>
   );
 }

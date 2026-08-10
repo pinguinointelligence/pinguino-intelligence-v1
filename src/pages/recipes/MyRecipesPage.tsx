@@ -9,6 +9,7 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 
 const r = copy.recipes;
 
@@ -33,8 +34,9 @@ function Cell({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function MyRecipesPage() {
+export function MyRecipesContent() {
   const navigate = useNavigate();
+  const persona = useProCorePersona();
   const available = useAuthStore((state) => state.available);
   const status = useAuthStore((state) => state.status);
   const openAuthModal = useAuthModalStore((state) => state.open);
@@ -67,7 +69,7 @@ export function MyRecipesPage() {
             }
           : { savedId: null, savedName: row.name, versionNumber: null, versionDate: null },
       );
-      navigate('/studio');
+      navigate(persona === 'pro' ? '/pro/recipe' : '/home');
     } catch {
       // A malformed saved recipe cannot be loaded — leave the user on the list.
     }
@@ -76,62 +78,81 @@ export function MyRecipesPage() {
   const rows = recipesQuery.data ?? [];
 
   return (
-    <AppShell maxWidthClass="max-w-4xl">
-      <div className="mx-auto max-w-4xl px-6 pb-24 pt-2">
-        <SectionLabel>{r.title}</SectionLabel>
+    <div className="pb-16 pt-2" data-testid="recipes-mine">
+      <SectionLabel>{r.title}</SectionLabel>
 
-        {!available ? (
-          <p className="mt-6 text-sm leading-relaxed text-stone-500">{r.unavailable}</p>
-        ) : !authed ? (
-          <div className="mt-6 flex items-center gap-4">
-            <p className="text-sm leading-relaxed text-stone-600">{r.signInToView}</p>
-            <button type="button" className={buttonClasses('primary', 'sm')} onClick={openAuthModal}>
-              {r.signInCta}
-            </button>
-          </div>
-        ) : recipesQuery.isLoading ? (
-          <p className="mt-6 text-sm text-stone-500">{r.loading}</p>
-        ) : rows.length === 0 ? (
-          <p className="mt-6 text-sm leading-relaxed text-stone-500">{r.empty}</p>
-        ) : (
-          <ul className="mt-6 divide-y divide-ink/5">
-            {rows.map((row) => (
-              <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
-                <div className="min-w-0">
-                  <p className="truncate text-base text-ink">{row.name}</p>
-                  {row.description ? (
-                    <p className="mt-0.5 truncate text-xs text-stone-500">{row.description}</p>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-5">
-                  <Cell label={r.columns.product} value={labelFor(PRODUCT_LABELS, row.product_type)} />
-                  <Cell label={r.columns.serving} value={labelFor(SERVING_LABELS, row.serving_profile)} />
-                  <Cell label={r.columns.engine} value={row.active_engine_label} />
-                  <Cell label={r.columns.batch} value={`${row.batch_grams} g`} />
-                  <Cell
-                    label={r.columns.updated}
-                    value={new Date(row.updated_at).toLocaleDateString('pl-PL')}
-                  />
-                  <button type="button" className={buttonClasses('primary', 'sm')} onClick={() => void onOpen(row)}>
-                    {r.open}
-                  </button>
-                  <button
-                    type="button"
-                    className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-status-risky"
-                    onClick={() => {
-                      if (window.confirm(r.confirmDelete)) deleteRecipe.mutate(row.id);
-                    }}
-                  >
-                    {r.delete}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        {/* S2 UX: version history is NOT duplicated here. Moje receptury shows ONE list of recipe
+      {!available ? (
+        <p className="mt-6 text-sm leading-relaxed text-stone-500">{r.unavailable}</p>
+      ) : !authed ? (
+        <div className="mt-6 flex items-center gap-4">
+          <p className="text-sm leading-relaxed text-stone-600">{r.signInToView}</p>
+          <button type="button" className={buttonClasses('primary', 'sm')} onClick={openAuthModal}>
+            {r.signInCta}
+          </button>
+        </div>
+      ) : recipesQuery.isLoading ? (
+        <p className="mt-6 text-sm text-stone-500">{r.loading}</p>
+      ) : rows.length === 0 ? (
+        <p className="mt-6 text-sm leading-relaxed text-stone-500">{r.empty}</p>
+      ) : (
+        <ul className="mt-6 divide-y divide-ink/5">
+          {rows.map((row) => (
+            <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
+              <div className="min-w-0">
+                <p className="truncate text-base text-ink">{row.name}</p>
+                {row.description ? (
+                  <p className="mt-0.5 truncate text-xs text-stone-500">{row.description}</p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-5">
+                <Cell
+                  label={r.columns.product}
+                  value={labelFor(PRODUCT_LABELS, row.product_type)}
+                />
+                <Cell
+                  label={r.columns.serving}
+                  value={labelFor(SERVING_LABELS, row.serving_profile)}
+                />
+                <Cell label={r.columns.engine} value={row.active_engine_label} />
+                <Cell label={r.columns.batch} value={`${row.batch_grams} g`} />
+                <Cell
+                  label={r.columns.updated}
+                  value={new Date(row.updated_at).toLocaleDateString('pl-PL')}
+                />
+                <button
+                  type="button"
+                  className={buttonClasses('primary', 'sm')}
+                  onClick={() => void onOpen(row)}
+                >
+                  {r.open}
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-status-risky"
+                  onClick={() => {
+                    if (window.confirm(r.confirmDelete)) deleteRecipe.mutate(row.id);
+                  }}
+                >
+                  {r.delete}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {/* S2 UX: version history is NOT duplicated here. Moje receptury shows ONE list of recipe
             aggregates; a recipe's immutable version history lives in the PINGÜINO Pro „Wersje" tab,
             scoped to the opened recipe. */}
+    </div>
+  );
+}
+
+/** Legacy standalone wrapper. The canonical customer route embeds the same content in /recipes. */
+export function MyRecipesPage() {
+  return (
+    <AppShell maxWidthClass="max-w-4xl">
+      <div className="mx-auto max-w-4xl px-6 pb-24 pt-2">
+        <MyRecipesContent />
       </div>
     </AppShell>
   );
