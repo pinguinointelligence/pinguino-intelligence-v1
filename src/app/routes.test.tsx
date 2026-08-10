@@ -23,7 +23,13 @@ import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { landingCopy } from '@/pages/landing/landingCopy';
-import { AppRoutes, LegacyStudioRedirect, PRO_RECIPE_PATH } from './router';
+import {
+  AppRoutes,
+  LegacyDestinationRedirect,
+  LegacyStudioRedirect,
+  PRO_RECIPE_PATH,
+} from './router';
+import { legacyDestinationRedirectTo } from './redirectState';
 
 /* ------------------------------------------------------------- helpers -- */
 
@@ -92,8 +98,13 @@ describe('Slice A routing contract', () => {
   it('sends /studio and /calculator into the canonical PINGÜINO Pro recipe editor (owner P0)', () => {
     // /studio is a query-preserving redirect component (NOT the legacy Studio editor)…
     expect(elementType('/studio')).toBe(LegacyStudioRedirect);
-    // …and /calculator goes straight to the canonical editor path.
-    expect(redirectTarget('/calculator')).toBe(PRO_RECIPE_PATH);
+    // …and /calculator preserves deep-link state on the canonical editor path.
+    expect(elementType('/calculator')).toBe(LegacyDestinationRedirect);
+    expect(legacyDestinationRedirectTo(PRO_RECIPE_PATH, '?draft=abc')).toEqual({
+      pathname: PRO_RECIPE_PATH,
+      search: '?draft=abc',
+      hash: '',
+    });
     expect(PRO_RECIPE_PATH).toBe('/pro/recipe');
     // The legacy Studio page is gone from the route table entirely.
     for (const [, element] of byPath) {
@@ -121,12 +132,52 @@ describe('Slice A routing contract', () => {
     ]) {
       expect(byPath.has(path), path).toBe(true);
     }
-    expect(redirectTarget('/my-recipes')).toBe('/recipes?tab=mine');
-    expect(redirectTarget('/profile/machine')).toBe('/machine');
-    expect(redirectTarget('/pro/machine')).toBe('/machine');
-    expect(redirectTarget('/pro/settings')).toBe('/account');
-    expect(redirectTarget('/pro/history')).toBe('/production?tab=history');
-    expect(redirectTarget('/label')).toBe('/production?tab=labels');
+    for (const path of [
+      '/my-recipes',
+      '/profile/machine',
+      '/pro/machine',
+      '/pro/settings',
+      '/pro/history',
+      '/label',
+    ]) {
+      expect(elementType(path)).toBe(LegacyDestinationRedirect);
+    }
+  });
+
+  it('preserves incoming recipe/session query state through every canonical legacy redirect', () => {
+    expect(
+      legacyDestinationRedirectTo('/recipes', '?recipe=r-1&tab=old', { tab: 'mine' }, '#line-2'),
+    ).toEqual({
+      pathname: '/recipes',
+      search: '?recipe=r-1&tab=mine',
+      hash: '#line-2',
+    });
+    expect(
+      legacyDestinationRedirectTo('/production', '?session=run-7&tab=old', {
+        tab: 'history',
+      }),
+    ).toEqual({
+      pathname: '/production',
+      search: '?session=run-7&tab=history',
+      hash: '',
+    });
+    expect(
+      legacyDestinationRedirectTo('/production', '?session=run-8&label=active', {
+        tab: 'labels',
+      }),
+    ).toEqual({
+      pathname: '/production',
+      search: '?session=run-8&label=active&tab=labels',
+      hash: '',
+    });
+    expect(legacyDestinationRedirectTo('/machine', '?recipe=r-2')).toMatchObject({
+      pathname: '/machine',
+      search: '?recipe=r-2',
+    });
+    expect(legacyDestinationRedirectTo('/account', '?returnTo=recipe')).toMatchObject({
+      pathname: '/account',
+      search: '?returnTo=recipe',
+    });
   });
 
   it('keeps every pre-existing public route registered (zero 404 regressions)', () => {

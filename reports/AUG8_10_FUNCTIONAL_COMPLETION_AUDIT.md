@@ -31,13 +31,13 @@ The before-state authority and evidence are recorded in `reports/AUG8_10_REQUIRE
 | Explicit process-path confirmation  | Yes                                                         | decisive classifications require imported evidence                              | cold/heat confirmation, safety cannot be overridden, UNKNOWN only acknowledged                                                                 | contextual Process Guide                 | See served QA section |
 | Heat-sensitive late-add guidance    | Yes when metadata exists                                    | source rows unavailable                                                         | metadata-backed rendering test; no invented time/temperature                                                                                   | contextual Process Guide                 | See served QA section |
 | Contextual “Dlaczego?”              | Yes for process, Direction, locks and substitution outcomes | —                                                                               | human explanations derive from deterministic decision/action data; normal view exposes no equations                                            | Preview / Process Guide                  | See served QA section |
-| Recipe substitution                 | Yes                                                         | Production substitution remains intentionally deferred                          | full paginated verified catalogue → candidates → Preview → Apply; explicit no-candidate                                                        | ingredient row                           | See served QA section |
+| Recipe substitution                 | Yes                                                         | Production substitution remains intentionally deferred                          | full server-paged verified catalogue fetch → safety-ranked top 12 same-role/Vegan/allergen-compatible candidates → Preview → Apply; explicit no-candidate | ingredient row                           | See served QA section |
 | Main substitution                   | Yes with explicit consent                                   | —                                                                               | session-only consent bound to base fingerprint and from/to canonical IDs                                                                       | ingredient row                           | See served QA section |
 | Exact gram lock                     | Yes                                                         | —                                                                               | hard equality before Preview and again at Apply                                                                                                | ingredient row                           | See served QA section |
 | Percent lock                        | Yes                                                         | —                                                                               | exact share of final target batch; grams track batch; mutually exclusive with gram/range locks                                                 | ingredient row                           | See served QA section |
 | Range                               | Yes                                                         | —                                                                               | min/max verified at proposal and Apply                                                                                                         | ingredient row                           | See served QA section |
 | Required                            | Yes                                                         | —                                                                               | Engine-native `required`; forged removal/identity/gram/lock mutation blocked                                                                   | ingredient row                           | See served QA section |
-| Unavailable                         | Yes                                                         | —                                                                               | line removed, canonical exclusion stored, automatic reintroduction blocked                                                                     | ingredient row                           | See served QA section |
+| Unavailable                         | Yes                                                         | —                                                                               | row remains as an explicit replacement tombstone, canonical exclusion is stored, automatic reintroduction is blocked                            | ingredient row                           | See served QA section |
 | Main/Multi-Main                     | Yes                                                         | —                                                                               | positive identity, stable IDs and exact 1:1, 2:1, 1:1:1 contracts retained                                                                     | `/pro/recipe`                            | See served QA section |
 | Protein 21→22 honesty               | Yes                                                         | —                                                                               | exact 20/21, monotonic best-safe frontier for 22, Apply withheld below target                                                                  | Protein profile                          | See evidence below    |
 | Whisky reformulation                | Yes                                                         | —                                                                               | real Mapper whisky, exact lock, normal rebalance, Preview/Apply and first blocked boundary                                                     | Gelato profile                           | See evidence below    |
@@ -47,7 +47,7 @@ The before-state authority and evidence are recorded in `reports/AUG8_10_REQUIRE
 | Menu/navigation                     | Yes                                                         | —                                                                               | obsolete Production readiness removed; working percent/substitution/Direction not pink; one canonical menu                                     | hamburger                                | See served QA section |
 | Lost & Legendary gating             | Preserved                                                   | —                                                                               | public hides unpublished; owner review remains pink; AUTHENTIC/ADAPTABLE distinction unchanged                                                 | `/recipes`                               | See automated tests   |
 | Production/Batch Rescue             | Preserved exactly                                           | —                                                                               | required 130→180 physical-amount regression remains green                                                                                      | `/pro/production`                        | See served QA section |
-| Master Label safety                 | Preserved                                                   | legal/regulatory/allergen/shelf-life blockers are legitimate                    | frozen actual source and print/preflight blockers unchanged                                                                                    | `/label`                                 | See served QA section |
+| Master Label safety                 | Preserved and strengthened                                  | legal/regulatory/allergen/shelf-life blockers are legitimate                    | frozen actual source; system print also requires a VERIFIED regulatory market profile                                                          | `/production?tab=labels`                 | See served QA section |
 | New Home redesign                   | Intentionally not started                                   | Out of scope by Owner instruction                                               | no Home redesign files introduced                                                                                                              | `/`                                      | N/A                   |
 
 ## B. Fixes made in this completion cycle
@@ -215,7 +215,7 @@ The accepted physical-reality fixture remains unchanged:
 
 Removed/updated because the function is now real:
 
-- global Direction `W PRZYGOTOWANIU` → Sweetness and Softness show operational state;
+- global Direction `W PRZYGOTOWANIU` → only the exact verified Sweetness/Softness cells show operational state; the header is derived from the active profile;
 - `Znajdź zamiennik · W PRZYGOTOWANIU` → real recipe substitution;
 - percent-lock unfinished marker → real charcoal active lock;
 - Production navigation readiness warning → functional Production route;
@@ -249,8 +249,8 @@ Completed local gates before independent review:
 
 - `npm run typecheck` — PASS.
 - `npm run lint` — PASS, 0 errors; two unchanged `react-refresh/only-export-components` warnings in `src/app/router.tsx` and `src/features/pro-core/RecipeVersionsSection.tsx`.
-- `npm test` — PASS, **441 files / 5,791 tests** after global-menu integration.
-- `npm run build` — PASS, 1,074 transformed modules; existing chunk-size warning only.
+- `npm test` — PASS, **441 files / 5,794 tests** after the independent-review remediations.
+- `npm run build` — PASS, 1,075 transformed modules; existing chunk-size warning only.
 - `npm run recipes:validate` — PASS, source workbook hash matched; 2,500/2,500 imported ranks; 80/80 mapped images; zero duplicate hashes.
 - `npm audit` — PASS, **0 vulnerabilities**.
 - `git diff --check` — PASS.
@@ -263,7 +263,26 @@ The exact final commands and post-review rerun are recorded in the completion le
 
 ## P. Independent review
 
-Mandatory independent review is in progress against the exact uncommitted diff. Final verdict, focused commands and any remediation will be recorded here before deployment.
+The mandatory independent pass against integration checkpoint `4e31006` returned
+`BLOCK` with two legitimate trust/safety findings: Verified Apply could accept a
+forged mutation of an already-added physical line, and Master Label system print
+did not require a `VERIFIED` regulatory profile. It also identified presentation
+accuracy issues in legacy redirects, the Direction header and this report.
+
+The remediation now:
+
+- rejects mutations of physical `actual_grams`, `planned_grams`, native lock,
+  canonical identity or composition before Engine evaluation;
+- rejects non-null actual mass on newly proposed lines;
+- requires a `VERIFIED` market profile before system print;
+- preserves recipe/session/query/hash state in legacy redirects;
+- derives the Direction header from the exact operational axes; and
+- describes the server-paged substitution fetch and top-12 safety-ranked UI
+  accurately.
+
+Post-remediation focused gates are **6 files / 70 tests PASS** and the final full
+gate is **441 files / 5,794 tests PASS**. A second independent pass is required
+against the exact remediation commit before any staging push.
 
 ## Q. Deployment
 
@@ -297,9 +316,9 @@ No unfinished internally achievable item is relabelled as an external blocker.
 3. **Files changed** — final `git diff --stat` is recorded before commit; changes are confined to product-layer types/orchestration/UI/tests, services, migration and reports. Base Engine formulas/config and Mapper CSV are unchanged.
 4. **Tests added or changed** — Direction targets/assessment, substitution flow, process metadata/classifier, percent/required/unavailable constraints, Protein frontier, Whisky boundary, ECO numeric proof and UI/readiness regressions.
 5. **Exact commands executed** — `npm run typecheck`; `npm run lint`; `npm test`; `npm run build`; `npm run recipes:validate`; `npm audit`; `git diff --check`; focused `vitest run` commands for the domains above; Mapper hash/shape/diff checks.
-6. **Test results** — current post-menu-integration result: 5,791/5,791 full tests pass, typecheck/build pass, lint has zero errors, audit has zero vulnerabilities. Final post-review counts follow in the staging release report.
+6. **Test results** — final pre-deployment result: 5,794/5,794 full tests pass, typecheck/build pass, lint has zero errors and two unchanged warnings, audit has zero vulnerabilities. Served results follow in the staging release report.
 7. **Previously accepted flows retested** — canonical current draft; Preview/Apply/Undo; exact/range/Main/Multi-Main; Vegan/Protein; pricing/OPTIMAL/ECO; Production/Batch Rescue/Master Label; Lost & Legendary; menu; save/version/account boundaries.
 8. **Deployment environment verified** — only `origin/staging` and `https://staging.pinguinoai.com` are in scope. Latest `origin/staging` was fetched and remains `4bd4f50f3c371e579d8b071567764ece0fffe51b`. Served evidence pending final push.
 9. **Remaining incomplete items** — only the five external/new-science/legal/future-architecture items in section R.
 10. **Exact blockers/external actions** — supply the exact approved process workbook; approve/produce sensory calibration datasets; complete regulatory/allergen/shelf-life work in its own validated phase.
-11. **Git diff and commit status** — worktree intentionally uncommitted during independent review; final integrated commit/push evidence will replace this line before handoff.
+11. **Git diff and commit status** — checkpoint `4e31006` plus the independent-review remediation described above; the exact remediation commit and push evidence are recorded in the staging release report.

@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router';
+import { legacyDestinationRedirectTo } from './redirectState';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
 import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
@@ -62,6 +63,23 @@ export function LegacyStudioRedirect() {
   return <Navigate to={studioRedirectTo(location.search)} replace />;
 }
 
+/** Preserve recipe/session query state while consolidating a legacy destination. */
+export function LegacyDestinationRedirect({
+  pathname,
+  forcedSearch,
+}: {
+  pathname: string;
+  forcedSearch?: Readonly<Record<string, string>>;
+}) {
+  const location = useLocation();
+  return (
+    <Navigate
+      to={legacyDestinationRedirectTo(pathname, location.search, forcedSearch, location.hash)}
+      replace
+    />
+  );
+}
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -85,25 +103,41 @@ export function AppRoutes() {
           (recipe/monitor/versions/production/history/costs/exports/settings — direct link +
           refresh restore the same section). */}
       <Route path="/pro" element={<ProWorkspacePage />} />
-      <Route path="/pro/history" element={<Navigate to="/production?tab=history" replace />} />
-      <Route path="/pro/machine" element={<Navigate to="/machine" replace />} />
-      <Route path="/pro/settings" element={<Navigate to="/account" replace />} />
+      <Route
+        path="/pro/history"
+        element={
+          <LegacyDestinationRedirect pathname="/production" forcedSearch={{ tab: 'history' }} />
+        }
+      />
+      <Route path="/pro/machine" element={<LegacyDestinationRedirect pathname="/machine" />} />
+      <Route path="/pro/settings" element={<LegacyDestinationRedirect pathname="/account" />} />
       <Route path="/pro/:section" element={<ProWorkspacePage />} />
       {/* There is NO separate Studio product: /studio and /calculator land in the canonical
           PINGÜINO Pro recipe editor (query params preserved for /studio deep links). */}
       <Route path="/studio" element={<LegacyStudioRedirect />} />
-      <Route path="/calculator" element={<Navigate to={PRO_RECIPE_PATH} replace />} />
+      <Route
+        path="/calculator"
+        element={<LegacyDestinationRedirect pathname={PRO_RECIPE_PATH} />}
+      />
 
       {/* One canonical recipe library. Legacy bookmarks keep their meaning through a redirect. */}
       <Route path="/recipes" element={<RecipesHubPage />} />
-      <Route path="/my-recipes" element={<Navigate to="/recipes?tab=mine" replace />} />
+      <Route
+        path="/my-recipes"
+        element={<LegacyDestinationRedirect pathname="/recipes" forcedSearch={{ tab: 'mine' }} />}
+      />
 
       {/* Canonical member hubs. Contextual recipe/production tools remain available by deep link. */}
       <Route path="/products" element={<ProductsHubPage />} />
       <Route path="/production" element={<ProductionHubPage />} />
       <Route path="/account" element={<AccountSettingsPage />} />
       <Route path="/machine" element={<MachineProfilePage />} />
-      <Route path="/label" element={<Navigate to="/production?tab=labels" replace />} />
+      <Route
+        path="/label"
+        element={
+          <LegacyDestinationRedirect pathname="/production" forcedSearch={{ tab: 'labels' }} />
+        }
+      />
 
       {/* Existing destination functions preserved, but no longer promoted as global menu items. */}
       <Route path="/api" element={<APIPage />} />
@@ -112,7 +146,10 @@ export function AppRoutes() {
       <Route path="/create-ingredient" element={<CreateIngredientPage />} />
 
       {/* Profil → Moja maszyna (UIUX Slice B §8.6) — view/change the saved Home machine. */}
-      <Route path="/profile/machine" element={<Navigate to="/machine" replace />} />
+      <Route
+        path="/profile/machine"
+        element={<LegacyDestinationRedirect pathname="/machine" />}
+      />
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />

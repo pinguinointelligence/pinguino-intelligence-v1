@@ -14,6 +14,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useConstraintStudioStore } from './constraintStudioStore';
 import { constraintStudioCopy } from './constraintStudioCopy';
+import { commitPreview, workingStateFingerprint } from './applyPipeline';
 
 /** STRAWBERRIES · Fresh Fruit shaped like the live Mapper row. */
 const STRAWBERRIES: EngineIngredient = {
@@ -142,6 +143,94 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     expect(
       useRecipeStore.getState().items.find((item) => item.id === required.id)?.planned_grams,
     ).toBe(required.planned_grams);
+  });
+
+  it('trustless Apply cannot forge physical actual grams or unlock an already-added line', () => {
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    if (!preview) return;
+
+    const constraints = { byLineId: {} } as const;
+    const current = buildRecipeInput(useRecipeStore.getState());
+    const physical = current.items[0]!;
+    physical.actual_grams = 100;
+    physical.lock_type = 'already_added';
+
+    const forgedActual = structuredClone(preview);
+    forgedActual.baseDraftRevision = undefined;
+    forgedActual.baseFingerprint = workingStateFingerprint(current, constraints);
+    const forgedActualLine = forgedActual.proposedInput.items.find(
+      (item) => item.id === physical.id,
+    )!;
+    forgedActualLine.actual_grams = 999;
+    forgedActualLine.lock_type = 'already_added';
+
+    expect(
+      commitPreview(current, constraints, forgedActual, '2026-08-10T13:00:00Z', 'forged-actual'),
+    ).toMatchObject({
+      ok: false,
+      code: 'physical_actual_violated',
+      lineNames: [physical.ingredient.name],
+    });
+
+    const forgedActualRemoval = structuredClone(preview);
+    forgedActualRemoval.baseDraftRevision = undefined;
+    forgedActualRemoval.baseFingerprint = workingStateFingerprint(current, constraints);
+    const forgedActualRemovalLine = forgedActualRemoval.proposedInput.items.find(
+      (item) => item.id === physical.id,
+    )!;
+    forgedActualRemovalLine.actual_grams = null;
+    forgedActualRemovalLine.lock_type = 'already_added';
+
+    expect(
+      commitPreview(
+        current,
+        constraints,
+        forgedActualRemoval,
+        '2026-08-10T13:00:00Z',
+        'forged-actual-removal',
+      ),
+    ).toMatchObject({
+      ok: false,
+      code: 'physical_actual_violated',
+      lineNames: [physical.ingredient.name],
+    });
+
+    const forgedLock = structuredClone(preview);
+    forgedLock.baseDraftRevision = undefined;
+    forgedLock.baseFingerprint = workingStateFingerprint(current, constraints);
+    const forgedLockLine = forgedLock.proposedInput.items.find(
+      (item) => item.id === physical.id,
+    )!;
+    forgedLockLine.actual_grams = 100;
+    forgedLockLine.lock_type = 'unlocked';
+
+    expect(
+      commitPreview(current, constraints, forgedLock, '2026-08-10T13:00:01Z', 'forged-lock'),
+    ).toMatchObject({
+      ok: false,
+      code: 'physical_actual_violated',
+      lineNames: [physical.ingredient.name],
+    });
+
+    const forgedPlan = structuredClone(preview);
+    forgedPlan.baseDraftRevision = undefined;
+    forgedPlan.baseFingerprint = workingStateFingerprint(current, constraints);
+    const forgedPlanLine = forgedPlan.proposedInput.items.find(
+      (item) => item.id === physical.id,
+    )!;
+    forgedPlanLine.actual_grams = 100;
+    forgedPlanLine.lock_type = 'already_added';
+    forgedPlanLine.planned_grams = physical.planned_grams + 500;
+
+    expect(
+      commitPreview(current, constraints, forgedPlan, '2026-08-10T13:00:02Z', 'forged-plan'),
+    ).toMatchObject({
+      ok: false,
+      code: 'physical_actual_violated',
+      lineNames: [physical.ingredient.name],
+    });
   });
 });
 

@@ -16,7 +16,7 @@ import {
   type MasterLabelData,
 } from './masterLabel';
 import { buildMasterLabelPrintHtml } from './masterLabelPrint';
-import { marketProfile } from './marketProfiles';
+import { MARKET_PROFILES, marketProfile } from './marketProfiles';
 
 function completedSnapshot(delta = 0) {
   const input: RecipeInput = {
@@ -178,14 +178,29 @@ describe('Master Label — one actual-batch source model', () => {
     expect(JSON.stringify(data)).not.toContain('Never print me.');
   });
 
-  it('prints N copies through one safe HTML model and excludes internal costs/notes', () => {
+  it('blocks system print while the selected regulatory market profile is only PARTIAL', () => {
     const data = printable(build());
     const preflight = buildLabelPreflight(data);
-    expect(preflight.readyForSystemPrint).toBe(true);
+    expect(preflight.readyForSystemPrint).toBe(false);
     expect(preflight.regulatoryProfileVerified).toBe(false);
-    const html = buildMasterLabelPrintHtml(data);
-    expect(html.match(/<article class="label">/g)).toHaveLength(3);
-    expect(html).not.toContain('Koszt');
-    expect(html).not.toContain('Never print me.');
+    expect(() => buildMasterLabelPrintHtml(data)).toThrow('Master Label preflight is incomplete.');
+  });
+
+  it('prints N safe copies only after the market profile itself is VERIFIED', () => {
+    const profile = MARKET_PROFILES.EU as { status: 'VERIFIED' | 'PARTIAL' | 'RESEARCH_REQUIRED' };
+    const previousStatus = profile.status;
+    profile.status = 'VERIFIED';
+    try {
+      const data = printable(build());
+      const preflight = buildLabelPreflight(data);
+      expect(preflight.readyForSystemPrint).toBe(true);
+      expect(preflight.regulatoryProfileVerified).toBe(true);
+      const html = buildMasterLabelPrintHtml(data);
+      expect(html.match(/<article class="label">/g)).toHaveLength(3);
+      expect(html).not.toContain('Koszt');
+      expect(html).not.toContain('Never print me.');
+    } finally {
+      profile.status = previousStatus;
+    }
   });
 });

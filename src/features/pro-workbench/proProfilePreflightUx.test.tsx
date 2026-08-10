@@ -240,6 +240,12 @@ describe('six-axis target language', () => {
     expect(axes).toContain("? 'NIEOBSŁUGIWANE'");
     expect(axes).toContain("? 'BRAK DANYCH'");
     expect(axes).toContain("? 'WYMAGA KALIBRACJI'");
+    expect(axes).toContain('operationalAxisLabels');
+    expect(axes).toContain('Brak zweryfikowanego Preview');
+    expect(axes).not.toContain('Słodycz i miękkość · Preview');
+    expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).not.toContain(
+      'Słodycz i Miękkość Direction już działają',
+    );
   });
 
   it('moves only the desired target and marks recalculation pending', () => {

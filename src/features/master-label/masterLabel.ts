@@ -266,10 +266,17 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
   const items: LabelPreflightItem[] = [
     {
       field: 'profile',
-      status: profile.status === 'RESEARCH_REQUIRED' ? 'research' : 'review',
+      status:
+        profile.status === 'VERIFIED'
+          ? 'ready'
+          : profile.status === 'RESEARCH_REQUIRED'
+            ? 'research'
+            : 'review',
       label: `Profil ${profile.label}`,
       message:
-        profile.status === 'RESEARCH_REQUIRED'
+        profile.status === 'VERIFIED'
+          ? 'Profil regulacyjny zweryfikowany.'
+          : profile.status === 'RESEARCH_REQUIRED'
           ? 'Profil wymaga weryfikacji.'
           : profile.rendererLimitation,
     },
@@ -285,12 +292,14 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
   ];
   const missingCount = required.filter((item) => item.status === 'missing').length;
   const reviewCount = items.filter((item) => item.status === 'review' || item.status === 'research').length;
+  const regulatoryProfileVerified = profile.status === 'VERIFIED';
   return {
     items,
     missingCount,
     reviewCount,
-    readyForSystemPrint: missingCount === 0 && data.preflightAcknowledged,
-    regulatoryProfileVerified: profile.status === 'VERIFIED',
+    readyForSystemPrint:
+      missingCount === 0 && data.preflightAcknowledged && regulatoryProfileVerified,
+    regulatoryProfileVerified,
   };
 }
 

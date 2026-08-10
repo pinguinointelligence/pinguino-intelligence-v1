@@ -2888,6 +2888,7 @@ export type BlockedApply =
   | { code: 'stale_preview'; messagePl: string }
   | { code: 'invalid_lines'; messagePl: string; lineNames: string[] }
   | { code: 'ingredient_identity_violated'; messagePl: string; lineNames: string[] }
+  | { code: 'physical_actual_violated'; messagePl: string; lineNames: string[] }
   | { code: 'excluded_ingredients'; messagePl: string; ingredientNames: string[] }
   | {
       code: 'vegan_ingredients_invalid';
@@ -3023,6 +3024,46 @@ function ingredientIdentityIntegrityViolations(
 }
 
 /**
+ * Preview/Apply may reformulate the future plan, but it is never an authority
+ * for physical production facts. Existing actuals are immutable, a line that
+ * was not physically added cannot acquire an actual through a forged preview,
+ * and a solver-added line must start without an actual. The native physical
+ * lock/identity of an already-added line is immutable as well.
+ */
+function physicalActualIntegrityViolations(
+  current: RecipeInput,
+  proposed: RecipeInput,
+): string[] {
+  const currentByLineId = new Map(current.items.map((item) => [item.id, item]));
+  const violations: string[] = [];
+
+  for (const item of proposed.items) {
+    const existing = currentByLineId.get(item.id);
+    if (!existing) {
+      if (item.actual_grams !== null) violations.push(item.ingredient.name || item.id);
+      continue;
+    }
+
+    const actualChanged = !Object.is(item.actual_grams, existing.actual_grams);
+    const existingIsPhysical =
+      existing.actual_grams !== null || existing.lock_type === 'already_added';
+    const physicalLineChanged =
+      existingIsPhysical &&
+      (!Object.is(item.planned_grams, existing.planned_grams) ||
+        item.lock_type !== existing.lock_type ||
+        canonicalIngredientId(item.ingredient) !==
+          canonicalIngredientId(existing.ingredient) ||
+        substitutionIngredientFingerprint(item.ingredient) !==
+          substitutionIngredientFingerprint(existing.ingredient));
+    if (actualChanged || physicalLineChanged) {
+      violations.push(existing.ingredient.name || existing.id);
+    }
+  }
+
+  return [...new Set(violations)];
+}
+
+/**
  * A verified, applicable recipe change. PRIVATE constructor: the only way to
  * obtain an instance is `VerifiedApply.commit` (aliased `commitPreview`),
  * which ALWAYS runs `verifyConstraintsPreserved` — so an Apply path that
@@ -3101,6 +3142,19 @@ export class VerifiedApply {
         messagePl:
           'Apply zablokowany: propozycja zmienia tożsamość lub profil składnika bez zatwierdzonego źródła Mapper/toolbox.',
         lineNames: identityViolations,
+      };
+    }
+    const physicalActualViolations = physicalActualIntegrityViolations(
+      current,
+      preview.proposedInput,
+    );
+    if (physicalActualViolations.length > 0) {
+      return {
+        ok: false,
+        code: 'physical_actual_violated',
+        messagePl:
+          'Apply zablokowany: Preview nie może zmieniać ilości ani tożsamości materiału już znajdującego się w naczyniu.',
+        lineNames: physicalActualViolations,
       };
     }
     try {

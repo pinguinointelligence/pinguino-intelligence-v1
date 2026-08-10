@@ -223,7 +223,7 @@ export function WorkbenchSettingsLine({
                 calculationImpact:
                   'Niezweryfikowane składniki blokują Preview i Apply; wynik natywny nie obejmuje jeszcze FP, T50 ani celów sensorycznych.',
                 remaining:
-                  'Zweryfikować produkcyjnie -11/-12 oraz dostarczyć zatwierdzone dane FP/T50; Słodycz i Miękkość Direction już działają.',
+                  'Zweryfikować produkcyjnie -11/-12 oraz dostarczyć zatwierdzone dane FP/T50; Direction pozostaje zablokowane do czasu pełnej, bezpiecznej ścieżki Preview/Apply.',
               }}
             />
           ) : null}
