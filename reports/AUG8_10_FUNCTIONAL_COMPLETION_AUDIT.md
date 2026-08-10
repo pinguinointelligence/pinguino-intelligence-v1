@@ -235,13 +235,16 @@ The frozen machine names remain exactly: `−11°C`, `−12°C`, `−13°C`, `Ś
 
 ## N. Served mobile QA
 
-To be populated from the deployed staging build after independent review and push.
+The final served staging bundle was exercised in the in-app browser. The compact
+recipe editor, modal cockpit, Production stepper/rescue and Label history remain
+usable at `390×844`; earlier `360×800` and `430×932` sweeps had no horizontal
+overflow. Console errors: `0`.
 
 | Viewport | scrollWidth = clientWidth | Primary controls | Modal/Preview | Screenshot |
 | -------- | ------------------------- | ---------------- | ------------- | ---------- |
-| 360×800  | pending served QA         | pending          | pending       | pending    |
-| 390×844  | pending served QA         | pending          | pending       | pending    |
-| 430×932  | pending served QA         | pending          | pending       | pending    |
+| 360×800  | yes                       | visible          | usable        | `02-guest-landing-mobile.png`, `08-global-menu-mobile.png` |
+| 390×844  | yes                       | visible          | usable        | `26-pro-mobile-final.png`, `27-production-mobile-final.png`, `28-labels-mobile-final.png` |
+| 430×932  | yes                       | visible          | usable        | earlier served sweep retained in browser QA log |
 
 ## O. Automated tests
 
@@ -300,20 +303,21 @@ The action bar now reconstructs every `RecipeInputState` material field used by
 the canonical draft, including Direction, formulation strategy, Protein target,
 machine-capacity provenance and exclusions. A new Direction Apply → Undo
 availability regression is green. Final focused gates are **3 files / 49 tests
-PASS** and the full gate is **441 files / 5,798 tests PASS**. This final served-QA
-correction requires its own exact-commit review before the replacement staging
-push.
+PASS** and the full gate is **441 files / 5,798 tests PASS**. Exact-commit review
+of `ec693282` returned `DEPLOY`: canonical inputs matched, Apply exposed Undo,
+Undo restored the formulation byte-for-byte while retaining Direction, and a
+later gram edit correctly invalidated Undo.
 
 ## Q. Deployment
 
 | Item                    | Final evidence                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Staging URL             | `https://staging.pinguinoai.com`                                                                             |
-| Integrated commit       | pending                                                                                                      |
-| Vercel deployment ID    | pending                                                                                                      |
-| Served JS bundle        | pending                                                                                                      |
-| Served commit/SHA proof | pending                                                                                                      |
-| Backend                 | staging project ref `tunabqqrwabacxjcxxkz`; migration pending safe application                               |
+| Integrated commit       | `ec693282bd4fe6cc68a0084deb3671a3d89cf689`                                                                  |
+| Vercel deployment ID    | `AXF2mfxBVJrrzJrmjXEbJN1r1f1L`                                                                              |
+| Served JS bundle        | `assets/index-BgC8XTBZ.js` · SHA-256 `5EEBB5E4EC0E575647C65EDFB905798FD4A4ACFE9A1648452319F9C8AFCD4DC1`        |
+| Served commit/SHA proof | bundle contains full commit SHA plus final trust, Production and Label markers                               |
+| Backend                 | staging `tunabqqrwabacxjcxxkz`; migration `20260810125404_mapper_process_metadata.sql` applied; dry-run clean |
 | Mapper                  | 2,088 rows, 62 columns, SHA-256 `B13F5DB4AFFD9C3BE5CCBE59B40920053197A3697A3FA1BD4A859406E8BAED38`; no diff  |
 | Process Metadata        | schema/version manifest prepared; approved workbook/hash unavailable, therefore no rows fabricated or seeded |
 
@@ -338,7 +342,7 @@ No unfinished internally achievable item is relabelled as an external blocker.
 5. **Exact commands executed** — `npm run typecheck`; `npm run lint`; `npm test`; `npm run build`; `npm run recipes:validate`; `npm audit`; `git diff --check`; focused `vitest run` commands for the domains above; Mapper hash/shape/diff checks.
 6. **Test results** — final post-served-QA result: 5,798/5,798 full tests pass, typecheck/build pass, lint has zero errors and two unchanged warnings, audit has zero vulnerabilities. Served results follow in the staging release report.
 7. **Previously accepted flows retested** — canonical current draft; Preview/Apply/Undo; exact/range/Main/Multi-Main; Vegan/Protein; pricing/OPTIMAL/ECO; Production/Batch Rescue/Master Label; Lost & Legendary; menu; save/version/account boundaries.
-8. **Deployment environment verified** — only `origin/staging` and `https://staging.pinguinoai.com` are in scope. Latest `origin/staging` was fetched and remains `4bd4f50f3c371e579d8b071567764ece0fffe51b`. Served evidence pending final push.
+8. **Deployment environment verified** — only `origin/staging` and `https://staging.pinguinoai.com` were changed. Integration started from fetched `origin/staging` `4bd4f50f3c371e579d8b071567764ece0fffe51b`; the served bundle contains `ec693282bd4fe6cc68a0084deb3671a3d89cf689`.
 9. **Remaining incomplete items** — only the five external/new-science/legal/future-architecture items in section R.
 10. **Exact blockers/external actions** — supply the exact approved process workbook; approve/produce sensory calibration datasets; complete regulatory/allergen/shelf-life work in its own validated phase.
-11. **Git diff and commit status** — checkpoint `4e31006` plus the independent-review remediation described above; the exact remediation commit and push evidence are recorded in the staging release report.
+11. **Git diff and commit status** — code is clean through `ec693282`; the final evidence commit adds only the release ledger and QA images. No production push, production deployment, secret, environment file or Mapper dataset mutation occurred.
