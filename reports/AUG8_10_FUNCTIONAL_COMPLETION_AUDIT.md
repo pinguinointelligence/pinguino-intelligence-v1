@@ -249,8 +249,8 @@ Completed local gates before independent review:
 
 - `npm run typecheck` — PASS.
 - `npm run lint` — PASS, 0 errors; two unchanged `react-refresh/only-export-components` warnings in `src/app/router.tsx` and `src/features/pro-core/RecipeVersionsSection.tsx`.
-- `npm test` — PASS, **440 files / 5,783 tests**.
-- `npm run build` — PASS, 1,073 transformed modules; existing chunk-size warning only.
+- `npm test` — PASS, **441 files / 5,791 tests** after global-menu integration.
+- `npm run build` — PASS, 1,074 transformed modules; existing chunk-size warning only.
 - `npm run recipes:validate` — PASS, source workbook hash matched; 2,500/2,500 imported ranks; 80/80 mapped images; zero duplicate hashes.
 - `npm audit` — PASS, **0 vulnerabilities**.
 - `git diff --check` — PASS.
@@ -297,7 +297,7 @@ No unfinished internally achievable item is relabelled as an external blocker.
 3. **Files changed** — final `git diff --stat` is recorded before commit; changes are confined to product-layer types/orchestration/UI/tests, services, migration and reports. Base Engine formulas/config and Mapper CSV are unchanged.
 4. **Tests added or changed** — Direction targets/assessment, substitution flow, process metadata/classifier, percent/required/unavailable constraints, Protein frontier, Whisky boundary, ECO numeric proof and UI/readiness regressions.
 5. **Exact commands executed** — `npm run typecheck`; `npm run lint`; `npm test`; `npm run build`; `npm run recipes:validate`; `npm audit`; `git diff --check`; focused `vitest run` commands for the domains above; Mapper hash/shape/diff checks.
-6. **Test results** — current pre-menu-integration result: 5,783/5,783 full tests pass, typecheck/build pass, lint has zero errors, audit has zero vulnerabilities. Final post-review counts follow in the staging release report.
+6. **Test results** — current post-menu-integration result: 5,791/5,791 full tests pass, typecheck/build pass, lint has zero errors, audit has zero vulnerabilities. Final post-review counts follow in the staging release report.
 7. **Previously accepted flows retested** — canonical current draft; Preview/Apply/Undo; exact/range/Main/Multi-Main; Vegan/Protein; pricing/OPTIMAL/ECO; Production/Batch Rescue/Master Label; Lost & Legendary; menu; save/version/account boundaries.
 8. **Deployment environment verified** — only `origin/staging` and `https://staging.pinguinoai.com` are in scope. Latest `origin/staging` was fetched and remains `4bd4f50f3c371e579d8b071567764ece0fffe51b`. Served evidence pending final push.
 9. **Remaining incomplete items** — only the five external/new-science/legal/future-architecture items in section R.
