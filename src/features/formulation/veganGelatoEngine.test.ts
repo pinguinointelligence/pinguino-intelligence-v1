@@ -429,7 +429,9 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     const inulinIssue = attempted.issues.find(
       (issue) => issue.code === 'inulin_above_calibration_envelope',
     );
-    expect(inulinIssue?.grams).toBeCloseTo(211.136526, 5);
+    // Tara stays at its 2 g template-controlled dose; the body lever therefore
+    // lands at the updated deterministic Inulin diagnostic value.
+    expect(inulinIssue?.grams).toBeCloseTo(210.872673, 5);
     expect(inulinIssue?.maxGrams).toBeCloseTo(83.1, 6);
     const after = proof(attempted.diagnosticInput);
     expect(after.score).toBeGreaterThanOrEqual(before.score ?? 1);

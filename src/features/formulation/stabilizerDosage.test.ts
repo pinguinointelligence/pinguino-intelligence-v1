@@ -148,6 +148,25 @@ describe('bounds violations are DETECTED (test 19)', () => {
 });
 
 describe('the safety clamp on solver actions (Phase 9 wiring)', () => {
+  it('resolves a private-product action through canonical Tara before clamping', () => {
+    const input = fruitFixture(5);
+    const tara = input.items.find((item) => item.id === 'l-tara')!;
+    tara.ingredient = {
+      ...tara.ingredient,
+      id: 'PR-ING-PRIVATE-TARA',
+      canonical_ingredient_id: 'PI-ING-000492',
+      private_product_id: 'private-tara-row',
+      identity_provenance: 'private_product',
+    };
+    expect(
+      violatesApprovedStabilizerDosage(input, {
+        type: 'add',
+        ingredient_id: 'PR-ING-PRIVATE-TARA',
+        grams: 8,
+      }),
+    ).toBe(true);
+  });
+
   it('an ADD pushing tara above 1 % of the mix is rejected', () => {
     const input = fruitFixture(5); // 5 g / 1000 g = 0.5 %
     expect(

@@ -87,8 +87,14 @@ import {
   detectProportionalScaling,
   type ProportionalScalingReport,
 } from '@/features/formulation/proportionalScaling';
-import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
 import {
+  isTemplateControlledStabilizer,
+  templateControlledStabilizerViolations,
+  violatesApprovedStabilizerDosage,
+  withTemplateControlledStabilizerLocks,
+} from '@/features/formulation/stabilizerDosage';
+import {
+  findFormulationTemplateById,
   isApprovedTemplateId,
   selectFormulationTemplate,
   selectFormulationTemplateForRecipe,
@@ -1398,6 +1404,11 @@ function iterateSolverToFixedPoint(
   violated: string[];
   diagnostics: IterationDiagnostics;
 } {
+  // Stabilizer dosage windows are safety clamps, not an Engine activity
+  // gradient. Keep every current stabilizer dose as an internal solver hold in
+  // the canonical corrector, draft-vector, ECO and Protein paths. The hold is
+  // deliberately not persisted as a user-visible §17 lock.
+  const solverSet = withTemplateControlledStabilizerLocks(start, set);
   const measure = (candidate: RecipeInput): { violations: number; severityPoints: number } => {
     const list = recipeDirectionViolations(candidate);
     return {
@@ -1416,14 +1427,14 @@ function iterateSolverToFixedPoint(
   let draftVectorSearches = 0;
   // §17 padlock layer, resolved to LINE ids once (the engine cannot see it).
   const heldLineIds = new Set(
-    Object.entries(set.byLineId)
+    Object.entries(solverSet.byLineId)
       .filter(([, constraint]) => constraint.mode !== 'ai')
       .map(([lineId]) => lineId),
   );
   // Owner Phase 1 instrumentation: the candidate vector of the STARTING state.
   const candidateVector: CandidateVectorDiagnostic[] = buildDraftCandidateVector(
     start,
-    set,
+    solverSet,
     excludedIngredientIds,
   ).map((candidate) => ({
     lineId: candidate.lineId,
@@ -1441,7 +1452,7 @@ function iterateSolverToFixedPoint(
   for (let round = 1; ; round += 1) {
     if (current.violations === 0) {
       if (working.category === 'protein_gelato') {
-        const targetFit = fitProteinTarget(working, set, [...excludedIngredientIds]);
+        const targetFit = fitProteinTarget(working, solverSet, [...excludedIngredientIds]);
         if (targetFit.changed) {
           const next = measure(targetFit.input);
           attemptedMoves.push({
@@ -1520,7 +1531,7 @@ function iterateSolverToFixedPoint(
         return sweepEcoDraftCost({
           identityInput: base,
           start: working,
-          set,
+          set: solverSet,
           excludedIngredientIds,
           constraints,
           normalize,
@@ -1529,7 +1540,7 @@ function iterateSolverToFixedPoint(
       }
       return sweepDraftCandidateVector({
         start: working,
-        set,
+        set: solverSet,
         excludedIngredientIds,
         constraints,
         normalize,
@@ -1692,16 +1703,22 @@ function iterateFormulationSeed(
   proposedInput: RecipeInput,
   options: OptimizePreviewOptions = {},
 ): ReturnType<typeof iterateSolverToFixedPoint> {
+  const solverSet = withTemplateControlledStabilizerLocks(proposedInput, set);
   const constrainedIngredientIds = new Set(
-    input.items
-      .filter((item) => isConstrained(set, item.id))
+    proposedInput.items
+      .filter((item) => isConstrained(solverSet, item.id))
       .map((item) => canonicalIngredientId(item.ingredient)),
   );
   const restore = (candidate: RecipeInput): RecipeInput => {
     if (Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) {
       return candidate;
     }
-    const restored = rescalePreservingMainGroup(input, candidate, set, input.target_batch_grams);
+    const restored = rescalePreservingMainGroup(
+      input,
+      candidate,
+      solverSet,
+      input.target_batch_grams,
+    );
     return restored.ok ? restored.input : candidate;
   };
   const seeded = restore(
@@ -1716,7 +1733,7 @@ function iterateFormulationSeed(
     constrainedIngredientIds,
     restore,
     new Set(options.excludedIngredientIds ?? []),
-    set,
+    solverSet,
     options.effectivePriceOverrides,
   );
 }
@@ -1925,19 +1942,10 @@ function buildFormulationPreviewInternal(
   // WHILE verified improvement exists; never 1 round by construction).
   // Fallback bands guide the iteration; the honest partial score labelling for
   // provisional profiles is kept unchanged.
-  const stabilizerDose = built.proposal.stabilizerDose;
-  const solverSet: ConstraintSet =
-    input.category === 'vegan_gelato' && stabilizerDose?.inherited
-      ? {
-          byLineId: {
-            ...set.byLineId,
-            [stabilizerDose.lineId]: {
-              mode: 'locked',
-              grams: stabilizerDose.scaledTemplateGrams,
-            },
-          },
-        }
-      : set;
+  const solverSet = withTemplateControlledStabilizerLocks(
+    built.proposal.proposedInput,
+    set,
+  );
   const iterated = iterateFormulationSeed(input, solverSet, built.proposal.proposedInput, options);
   const working = iterated.working;
   const solverRounds = iterated.diagnostics.solverInvocations;
@@ -2374,6 +2382,10 @@ export function buildOptimizePreview(
     return mainSafePreview(input, preview);
   };
 
+  const solverSet = withTemplateControlledStabilizerLocks(input, set);
+  // Apply only the user's visible constraints to the candidate state. The
+  // stabilizer hold is internal orchestration state and must never surface as
+  // a native/item lock or a visible §17 padlock.
   const constrained = applyConstraintsToRecipe(input, set);
   if (!constrained.ok) {
     return { ok: false, code: 'invalid_constraints', issues: constrained.issues };
@@ -2385,7 +2397,12 @@ export function buildOptimizePreview(
     Math.abs(plannedSum(candidate) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G;
   const restoreBatch = (candidate: RecipeInput): RecipeInput => {
     if (!offBatch(candidate)) return candidate;
-    const restored = rescalePreservingMainGroup(input, candidate, set, input.target_batch_grams);
+    const restored = rescalePreservingMainGroup(
+      input,
+      candidate,
+      solverSet,
+      input.target_batch_grams,
+    );
     return restored.ok ? restored.input : candidate;
   };
 
@@ -2426,7 +2443,7 @@ export function buildOptimizePreview(
   //    guard — the stop reason and the per-round trajectory are reported.
   const constrainedIngredientIds = new Set(
     input.items
-      .filter((item) => isConstrained(set, item.id))
+      .filter((item) => isConstrained(solverSet, item.id))
       .map((item) => canonicalIngredientId(item.ingredient)),
   );
   // Agent R handoff (never-reintroduce): the LOCAL route's solver rounds honor
@@ -2437,7 +2454,7 @@ export function buildOptimizePreview(
     constrainedIngredientIds,
     restoreBatch,
     new Set(options.excludedIngredientIds ?? []),
-    set,
+    solverSet,
     options.effectivePriceOverrides,
   );
   working = iterated.working;
@@ -2587,6 +2604,12 @@ export function buildSubstitutionPreview(
     reasons.push('same_canonical_ingredient');
   }
   if (
+    isTemplateControlledStabilizer(original.ingredient) ||
+    isTemplateControlledStabilizer(substitute)
+  ) {
+    reasons.push('template_controlled_stabilizer_substitution_unsupported');
+  }
+  if (
     input.items.some(
       (item) =>
         item.id !== lineId &&
@@ -2690,7 +2713,31 @@ export function buildBatchRescalePreview(
   if (!Number.isFinite(newBatchGrams) || newBatchGrams <= 0) {
     return { ok: false, code: 'rescale_invalid' };
   }
-  const rescaled = rescaleBatchToTarget(input, set, newBatchGrams);
+  const batchRatio = newBatchGrams / input.target_batch_grams;
+  const isPercentContract = (item: RecipeInput['items'][number]): boolean =>
+    set.byLineId[item.id]?.mode === 'percent' ||
+    (set.byLineId[item.id] === undefined && item.lock_type === 'percent');
+  const fixedLineIds = new Set(
+    input.items
+      .filter(
+        (item) =>
+          !isPercentContract(item) &&
+          (item.lock_type !== 'unlocked' || isConstrained(set, item.id)),
+      )
+      .map((item) => item.id),
+  );
+  const stabilizerScaledInput: RecipeInput = {
+    ...input,
+    items: input.items.map((item) =>
+      !fixedLineIds.has(item.id) &&
+      !isPercentContract(item) &&
+      isTemplateControlledStabilizer(item.ingredient)
+        ? { ...item, planned_grams: item.planned_grams * batchRatio }
+        : item,
+    ),
+  };
+  const batchSolverSet = withTemplateControlledStabilizerLocks(stabilizerScaledInput, set);
+  const rescaled = rescaleBatchToTarget(stabilizerScaledInput, batchSolverSet, newBatchGrams);
   if (!rescaled.ok) {
     switch (rescaled.reason) {
       case 'invalid_constraints':
@@ -2889,6 +2936,7 @@ export type BlockedApply =
   | { code: 'invalid_lines'; messagePl: string; lineNames: string[] }
   | { code: 'ingredient_identity_violated'; messagePl: string; lineNames: string[] }
   | { code: 'physical_actual_violated'; messagePl: string; lineNames: string[] }
+  | { code: 'substitution_invalid'; messagePl: string; reasons: string[] }
   | { code: 'excluded_ingredients'; messagePl: string; ingredientNames: string[] }
   | {
       code: 'vegan_ingredients_invalid';
@@ -3159,6 +3207,123 @@ export class VerifiedApply {
         messagePl:
           'Apply zablokowany: Preview nie może zmieniać ilości ani tożsamości materiału już znajdującego się w naczyniu.',
         lineNames: physicalActualViolations,
+      };
+    }
+    if (preview.kind === 'substitution' && preview.substitution !== undefined) {
+      const currentLine = current.items.find((item) => item.id === preview.substitution?.lineId);
+      const proposedLine = preview.proposedInput.items.find(
+        (item) => item.id === preview.substitution?.lineId,
+      );
+      if (
+        (currentLine && isTemplateControlledStabilizer(currentLine.ingredient)) ||
+        (proposedLine && isTemplateControlledStabilizer(proposedLine.ingredient))
+      ) {
+        return {
+          ok: false,
+          code: 'substitution_invalid',
+          reasons: ['template_controlled_stabilizer_substitution_unsupported'],
+          messagePl:
+            'Zamiana stabilizatora jest zablokowana: brak zatwierdzonego przelicznika aktywności i dawki dla tej pary składników.',
+        };
+      }
+    }
+    // Preserve the accepted, more-specific runaway-target diagnosis before
+    // ingredient-level contract gates inspect the forged composition.
+    if (
+      (preview.kind === 'optimize' ||
+        preview.kind === 'suggested_fix' ||
+        preview.kind === 'substitution') &&
+      preview.proposedInput.target_batch_grams !== current.target_batch_grams
+    ) {
+      return {
+        ok: false,
+        code: 'batch_total_mismatch',
+        messagePl: copy.blocked.batchMismatch(
+          preview.proposedInput.target_batch_grams,
+          current.target_batch_grams,
+        ),
+        proposedSum: preview.proposedInput.target_batch_grams,
+        targetBatch: current.target_batch_grams,
+      };
+    }
+    const stabilizerFixedLineIds = new Set(
+      current.items
+        .filter(
+          (item) =>
+            currentConstraints.byLineId[item.id]?.mode !== 'percent' &&
+            !(
+              currentConstraints.byLineId[item.id] === undefined && item.lock_type === 'percent'
+            ) &&
+            (item.lock_type !== 'unlocked' || isConstrained(currentConstraints, item.id)),
+        )
+        .map((item) => item.id),
+    );
+    const formulationSeed = (() => {
+      if (preview.kind !== 'optimize' || preview.formulation === undefined) return undefined;
+      const template = findFormulationTemplateById(preview.formulation.templateId);
+      if (template?.status !== 'approved') return undefined;
+      const routedTemplate = selectFormulationTemplateForRecipe(current).template;
+      if (routedTemplate?.templateId !== template.templateId) return undefined;
+      const stabilizerRole = template.roles.find((role) => role.role === 'stabilizer');
+      if (!stabilizerRole || !(template.baseBatchG > 0)) return undefined;
+      const approvedSeedIngredients = stabilizerRole.toolboxId
+        ? approvedFormulationToolboxIngredients(stabilizerRole.toolboxId)
+        : [];
+      const currentStabilizerLineIds = current.items
+        .filter(
+          (item) =>
+            isTemplateControlledStabilizer(item.ingredient) &&
+            approvedSeedIngredients.some(
+              (approved) =>
+                canonicalIngredientId(approved) === canonicalIngredientId(item.ingredient),
+            ),
+        )
+        .map((item) => item.id);
+      const approvedAddedLineIds = preview.proposedInput.items
+        .filter((item) => {
+          if (!isTemplateControlledStabilizer(item.ingredient)) return false;
+          if (current.items.some((existing) => existing.id === item.id)) return false;
+          if (!stabilizerRole.toolboxId) return false;
+          return approvedSeedIngredients.some(
+            (approved) =>
+              canonicalIngredientId(approved) === canonicalIngredientId(item.ingredient) &&
+              substitutionIngredientFingerprint(approved) ===
+                substitutionIngredientFingerprint(item.ingredient),
+          );
+        })
+        .map((item) => item.id);
+      return {
+        totalGrams:
+          stabilizerRole.grams *
+          (preview.proposedInput.target_batch_grams / template.baseBatchG),
+        allowedLineIds: new Set([...currentStabilizerLineIds, ...approvedAddedLineIds]),
+      };
+    })();
+    const stabilizerViolations = templateControlledStabilizerViolations(
+      current,
+      preview.proposedInput,
+      preview.kind === 'batch_rescale' && current.target_batch_grams > 0
+        ? {
+            proportionalBatchRatio:
+              preview.proposedInput.target_batch_grams / current.target_batch_grams,
+            fixedLineIds: stabilizerFixedLineIds,
+          }
+        : { approvedFormulationSeed: formulationSeed },
+    );
+    if (stabilizerViolations.length > 0) {
+      const violations: ConstraintPreservationViolation[] = stabilizerViolations.map(
+        (violation) => ({
+          lineId: violation.lineId,
+          code: violation.code === 'line_missing' ? 'line_missing' : 'locked_grams_changed',
+        }),
+      );
+      return {
+        ok: false,
+        code: 'constraints_violated',
+        messagePl: copy.blocked.constraintsViolated(
+          stabilizerViolations.map((violation) => violation.ingredientName),
+        ),
+        violations,
       };
     }
     try {
@@ -3531,7 +3696,8 @@ export class VerifiedApply {
     // independent structural facts; the door is the last one.)
     if (preview.kind === 'optimize' && preview.formulation !== undefined) {
       const templateId = preview.formulation.templateId;
-      if (!isApprovedTemplateId(templateId)) {
+      const routedTemplateId = selectFormulationTemplateForRecipe(current).template?.templateId;
+      if (!isApprovedTemplateId(templateId) || routedTemplateId !== templateId) {
         return {
           ok: false,
           code: 'reference_derived_provenance',

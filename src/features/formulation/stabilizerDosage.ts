@@ -36,6 +36,7 @@
  */
 import type { CorrectionAction, RecipeInput } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import type { ConstraintSet } from '@/features/recipe-constraints';
 import { resolveFunctionalRole } from './ingredientRoles';
 
 export type StabilizerIdentityKind = 'pure_gum' | 'stabilizer_blend';
@@ -145,6 +146,153 @@ const sumPlanned = (input: RecipeInput): number =>
 const DOSAGE_EPS = 1e-9;
 
 /**
+ * A stabilizer carrier has an approved identity/dose contract, but no approved
+ * Engine activity gradient. Its dosage window is a safety clamp only: it is
+ * never permission for PI to move the dose while chasing POD, NPAC or a
+ * Direction preference. Inulin resolves to `fiber_body`, so it deliberately
+ * remains an adjustable solids/body lever.
+ */
+export const isTemplateControlledStabilizer = (
+  ingredient: RecipeInput['items'][number]['ingredient'],
+): boolean => resolveFunctionalRole(ingredient) === 'stabilizer';
+
+/**
+ * Solver-only exact holds for every stabilizer line in the state being
+ * optimized. These holds are not written into the user's visible §17 locks;
+ * they enforce the existing template contract inside every shared correction
+ * and formulation search. A user may explicitly change the current dose; the
+ * next search then holds that newly chosen value exactly.
+ */
+export function withTemplateControlledStabilizerLocks(
+  input: RecipeInput,
+  set: ConstraintSet,
+): ConstraintSet {
+  const stabilizers = input.items.filter((item) =>
+    isTemplateControlledStabilizer(item.ingredient),
+  );
+  if (stabilizers.length === 0) return set;
+  const byLineId = { ...set.byLineId };
+  for (const item of stabilizers) {
+    const visible = set.byLineId[item.id];
+    // A percent lock is an explicit proportional contract. At the current
+    // batch it still holds the dose exactly, while the batch-rescale route may
+    // carry the same percentage to another batch.
+    if (visible?.mode === 'percent') {
+      byLineId[item.id] = visible;
+      continue;
+    }
+    if (
+      visible === undefined &&
+      item.lock_type === 'percent' &&
+      input.target_batch_grams > 0
+    ) {
+      byLineId[item.id] = {
+        mode: 'percent',
+        percent: (item.planned_grams / input.target_batch_grams) * 100,
+      };
+      continue;
+    }
+    const heldGrams =
+      visible?.mode === 'locked'
+        ? visible.grams
+        : visible?.mode === 'range'
+          ? Math.min(Math.max(item.planned_grams, visible.minGrams), visible.maxGrams)
+          : item.planned_grams;
+    byLineId[item.id] = { mode: 'locked', grams: heldGrams };
+  }
+  return { byLineId };
+}
+
+export interface TemplateControlledStabilizerViolation {
+  lineId: string;
+  ingredientName: string;
+  code: 'line_missing' | 'dose_changed';
+}
+
+export interface TemplateControlledStabilizerComparisonOptions {
+  /** Explicit batch-rescale is the one approved path that scales an unlocked
+   * template dose proportionally with the whole recipe. */
+  proportionalBatchRatio?: number;
+  /** User-visible §17/native locks stay byte-exact even during batch scale. */
+  fixedLineIds?: ReadonlySet<string>;
+  /** Narrow exception re-derived from an approved formulation template. */
+  approvedFormulationSeed?: {
+    totalGrams: number;
+    allowedLineIds: ReadonlySet<string>;
+  };
+}
+
+/**
+ * Trustless Apply invariant. A positive stabilizer dose already present in the
+ * current draft is established recipe intent and must survive byte-exactly.
+ * A missing/zero template role may still be filled by an approved formulation
+ * seed; explicit §17 zero locks are guarded independently by the constraint
+ * door.
+ */
+export function templateControlledStabilizerViolations(
+  current: RecipeInput,
+  proposed: RecipeInput,
+  options: TemplateControlledStabilizerComparisonOptions = {},
+): TemplateControlledStabilizerViolation[] {
+  const proposedByLineId = new Map(proposed.items.map((item) => [item.id, item]));
+  const violations: TemplateControlledStabilizerViolation[] = [];
+  const currentStabilizers = current.items.filter((item) =>
+    isTemplateControlledStabilizer(item.ingredient),
+  );
+  const proposedStabilizers = proposed.items.filter((item) =>
+    isTemplateControlledStabilizer(item.ingredient),
+  );
+  const hasEstablishedPositiveDose = currentStabilizers.some((item) => item.planned_grams > 0);
+  const seed = !hasEstablishedPositiveDose ? options.approvedFormulationSeed : undefined;
+  const positiveProposedStabilizers = proposedStabilizers.filter(
+    (item) => item.planned_grams > DOSAGE_EPS,
+  );
+  const seedIsExact =
+    seed !== undefined &&
+    positiveProposedStabilizers.length > 0 &&
+    positiveProposedStabilizers.every((item) => seed.allowedLineIds.has(item.id)) &&
+    Math.abs(
+      positiveProposedStabilizers.reduce((sum, item) => sum + item.planned_grams, 0) -
+        seed.totalGrams,
+    ) <= DOSAGE_EPS;
+  for (const item of currentStabilizers) {
+    const next = proposedByLineId.get(item.id);
+    if (!next) {
+      violations.push({
+        lineId: item.id,
+        ingredientName: item.ingredient.name,
+        code: 'line_missing',
+      });
+      continue;
+    }
+    if (seedIsExact && seed?.allowedLineIds.has(item.id)) continue;
+    const mayScale =
+      options.proportionalBatchRatio !== undefined &&
+      !options.fixedLineIds?.has(item.id);
+    const expectedGrams = mayScale
+      ? item.planned_grams * options.proportionalBatchRatio!
+      : item.planned_grams;
+    if (Math.abs(next.planned_grams - expectedGrams) > DOSAGE_EPS) {
+      violations.push({
+        lineId: item.id,
+        ingredientName: item.ingredient.name,
+        code: 'dose_changed',
+      });
+    }
+  }
+  const currentLineIds = new Set(currentStabilizers.map((item) => item.id));
+  for (const item of proposedStabilizers) {
+    if (currentLineIds.has(item.id) || (seedIsExact && seed?.allowedLineIds.has(item.id))) continue;
+    violations.push({
+      lineId: item.id,
+      ingredientName: item.ingredient.name,
+      code: 'dose_changed',
+    });
+  }
+  return violations;
+}
+
+/**
  * Assess every stabilizer-role line of the recipe against its OWN approved
  * dosage window (exact identity, explicit units). PURE, diagnostic — never
  * mutates and never blocks; consumers decide (QA rows, solver-action clamp).
@@ -194,7 +342,13 @@ export function violatesApprovedStabilizerDosage(
   current: RecipeInput,
   action: Pick<CorrectionAction, 'type' | 'ingredient_id' | 'grams'>,
 ): boolean {
-  const entry = approvedStabilizerDosage(action.ingredient_id);
+  // Correction actions may carry a private/product line source id while the
+  // approved window is keyed by the canonical Mapper identity. Resolve from
+  // the actual current line before applying the clamp.
+  const actionLine = current.items.find((item) => item.ingredient.id === action.ingredient_id);
+  const entry = approvedStabilizerDosage(
+    actionLine ? canonicalIngredientId(actionLine.ingredient) : action.ingredient_id,
+  );
   if (entry === null) return false;
   const totalMix = sumPlanned(current);
   if (totalMix <= 0) return false;

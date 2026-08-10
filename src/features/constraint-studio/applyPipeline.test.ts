@@ -36,6 +36,7 @@ import { constraintStudioCopy as copy } from './constraintStudioCopy';
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
 const MILK = starterLine('milk_3_5');
+const TARA = starterLine('tara_gum');
 
 const NO_CONSTRAINTS: ConstraintSet = { byLineId: {} };
 
@@ -315,7 +316,9 @@ describe('batch rescale preview (§17.4)', () => {
       ),
     };
     const built = buildBatchRescalePreview(adjusted, set, 1000, 'now');
-    expect(built).toMatchObject({ ok: false, code: 'rescale_locked_sum', minimumBatchGrams: 1100 });
+    // Milk + sucrose are user-locked (1100 g) and the 5 g established Tara
+    // dose is internally template-controlled, so the real minimum is 1105 g.
+    expect(built).toMatchObject({ ok: false, code: 'rescale_locked_sum', minimumBatchGrams: 1105 });
   });
 });
 
@@ -347,6 +350,11 @@ describe('suggested fix (§18.2 „Ustaw X g i przelicz”)', () => {
       mode: 'locked',
       grams: action.grams,
     });
+    // Changing a sugar bound cannot silently rewrite the established,
+    // template-controlled stabilizer contract.
+    expect(Object.is(lineGrams(built.preview.proposedInput, TARA), lineGrams(input, TARA))).toBe(
+      true,
+    );
 
     const outcome = commitPreview(input, set, built.preview, 'now', 'apply-s');
     expect(outcome.ok).toBe(true);

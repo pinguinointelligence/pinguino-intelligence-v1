@@ -124,6 +124,17 @@ describe('verified Mapper recipe substitute catalogue', () => {
     expect(candidates.some((candidate) => candidate.ingredient!.composition.alcohol_percent > 30)).toBe(true);
   });
 
+  it('never exposes generic same-role substitutes for template-controlled Tara', () => {
+    expect(
+      verifiedRecipeSubstituteCandidates(
+        inputFor(row('PI-ING-000492')),
+        'source-line',
+        rows,
+        100,
+      ),
+    ).toEqual([]);
+  });
+
   it('does not silently change allergens and returns an honest empty state when no safe role match exists', () => {
     const milkCandidates = verifiedRecipeSubstituteCandidates(
       inputFor(row('PI-ING-000264')),

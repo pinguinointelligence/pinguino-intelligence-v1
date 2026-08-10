@@ -52,6 +52,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { verifyConstraintsPreserved, type ConstraintSet } from '@/features/recipe-constraints';
 import { recipeTechnicalFit, recipeMatchScore, commercialDimensions } from '@/features/recipe-score';
 import { classifyViolationBands } from './violationBands';
+import { isTemplateControlledStabilizer } from './stabilizerDosage';
 
 /* ── the owner's EXACT T-case fixtures (mirrors qa/engine-authenticity) ───── */
 
@@ -369,10 +370,23 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
    * under that scaling, so nothing is fabricated).
    */
   const draftAtTargetBatch = (rec: RecipeInput): RecipeInput => {
-    const factor = rec.target_batch_grams / plannedSum(rec);
+    // The hard-residual fixture must forge only the native-band state under
+    // test. Stabilizer mass is template-controlled and therefore held exactly
+    // while the remaining formulation is normalized to the target batch.
+    const stabilizerMass = rec.items
+      .filter((item) => isTemplateControlledStabilizer(item.ingredient))
+      .reduce((sum, item) => sum + item.planned_grams, 0);
+    const adjustableMass = rec.items
+      .filter((item) => !isTemplateControlledStabilizer(item.ingredient))
+      .reduce((sum, item) => sum + item.planned_grams, 0);
+    const factor = (rec.target_batch_grams - stabilizerMass) / adjustableMass;
     return {
       ...rec,
-      items: rec.items.map((item) => ({ ...item, planned_grams: item.planned_grams * factor })),
+      items: rec.items.map((item) =>
+        isTemplateControlledStabilizer(item.ingredient)
+          ? item
+          : { ...item, planned_grams: item.planned_grams * factor },
+      ),
     };
   };
 

@@ -157,6 +157,30 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
     };
   }
 
+  // A substantive draft can still be technologically incomplete. The local
+  // gram corrector may improve Engine bands without restoring a template HARD
+  // role (for example Dextrose / sugar_freezing_control). Route that state
+  // through the approved template before any Preview exists.
+  const missingHardRole = lookup.template?.roles.some(
+    (roleTarget) =>
+      HARD_ROLES.has(roleTarget.role) &&
+      // Stabilizer absence has its own profile-specific, fail-closed readiness
+      // gate. A substantive recipe must report that state, not silently turn
+      // into a full formulation merely because the technical Engine bands pass.
+      roleTarget.role !== 'stabilizer' &&
+      !input.items.some(
+        (item) =>
+          resolveFunctionalRole(item.ingredient) === roleTarget.role && item.planned_grams > 0,
+      ),
+  );
+  if (missingHardRole && lookup.template) {
+    return {
+      mode: 'full_formulation',
+      template: lookup.template,
+      reasons: ['missing_hard_role'],
+    };
+  }
+
   // Unconstrained: a SUBSTANTIVE draft (its own composition carries at least
   // half the target mass) is the user's recipe — the verified local corrector
   // owns it (it is batch-first and rescales 975 g → 1000 g itself, protected by
@@ -478,7 +502,17 @@ export function buildFormulationProposal(
       roleTarget.toolboxId === null || !protectProteinMain
         ? roleMatches
         : roleMatches.filter((line) => line.item.lock_type !== 'main');
-    const matches = exactCanonicalMatches.length > 0 ? exactCanonicalMatches : fallbackRoleMatches;
+    // A zero-dose stabilizer has no established identity/dose contract. Only
+    // the exact approved toolbox identity may receive the template seed; an
+    // arbitrary role-shaped line must stay at zero while the approved carrier
+    // is added. A positive user-selected stabilizer is established intent and
+    // remains byte-held by the branch below.
+    const templateEligibleFallbackMatches =
+      roleTarget.role === 'stabilizer'
+        ? fallbackRoleMatches.filter((line) => line.item.planned_grams > 0)
+        : fallbackRoleMatches;
+    const matches =
+      exactCanonicalMatches.length > 0 ? exactCanonicalMatches : templateEligibleFallbackMatches;
     const traceBase = {
       role: roleTarget.role,
       hard: HARD_ROLES.has(roleTarget.role),
@@ -493,6 +527,25 @@ export function buildFormulationProposal(
       for (const match of matches) {
         mappedLineIds.add(match.item.id);
         const constraint = match.constraint;
+        // Stabilizer windows are safety clamps, not an approved activity
+        // gradient. Once a recipe carries a positive stabilizer dose, full and
+        // constrained formulation must preserve that established dose exactly
+        // instead of silently replacing it with a batch-scaled template share.
+        // A missing/zero carrier may still be seeded from the approved
+        // template; explicit batch rescale is handled by its dedicated route.
+        if (roleTarget.role === 'stabilizer' && match.item.planned_grams > 0) {
+          const heldGrams =
+            constraint?.mode === 'locked'
+              ? constraint.grams
+              : constraint?.mode === 'range'
+                ? Math.min(
+                    Math.max(match.item.planned_grams, constraint.minGrams),
+                    constraint.maxGrams,
+                  )
+                : match.item.planned_grams;
+          planned.push({ item: match.item, grams: heldGrams, fixed: true });
+          continue;
+        }
         // ACCEPTANCE ADDENDUM (4) — MAX/RANGE SEMANTICS: a §17 RANGE constraint
         // takes priority over the `lock_type='grams'` HOLD-AT-CURRENT staging
         if (protectProteinMain && match.item.lock_type === 'main') {

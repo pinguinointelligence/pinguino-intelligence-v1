@@ -50,18 +50,28 @@ import {
 } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { isToolboxCandidateExcluded } from '@/features/formulation/toolboxCanonical';
-import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
+import {
+  isTemplateControlledStabilizer,
+  violatesApprovedStabilizerDosage,
+} from '@/features/formulation/stabilizerDosage';
 import { HARD_ROLES } from '@/features/formulation/formulate';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import type { FormulationStrategy } from '@/features/formulation-strategy/strategy';
 
 /**
- * The deterministic gram ladder, as fractions of the TARGET BATCH. Five steps
+ * The deterministic gram ladder, as fractions of the TARGET BATCH. Six steps
  * per direction (plus the explicit „to zero" move) — a fixed, finite grid, NOT
  * a tuned constant: no band, target or coefficient informs it, and the engine
  * alone decides whether any resulting state is better.
  */
-export const DRAFT_ADJUSTMENT_STEP_FRACTIONS: readonly number[] = [0.005, 0.01, 0.02, 0.05, 0.1];
+export const DRAFT_ADJUSTMENT_STEP_FRACTIONS: readonly number[] = [
+  0.001,
+  0.005,
+  0.01,
+  0.02,
+  0.05,
+  0.1,
+];
 
 /** Smallest move worth proposing (the engine rejects `grams <= EPSILON`). */
 const MIN_MOVE_GRAMS = 0.05;
@@ -131,6 +141,11 @@ export function buildDraftCandidateVector(
     if (item.lock_type !== 'unlocked') continue;
     if (item.actual_grams !== null) continue;
     if (isHeldByConstraint(set, item.id)) continue;
+    // A dosage window is a SAFETY CLAMP, not an activity gradient. Gums and
+    // stabilizer blends are template-controlled and therefore never enter the
+    // generic gram-search vector. Inulin resolves to `fiber_body` and remains
+    // available as the approved solids/body lever.
+    if (isTemplateControlledStabilizer(item.ingredient)) continue;
 
     // NEVER-REINTRODUCE: an excluded ingredient may shrink, never grow.
     const increasable = !isToolboxCandidateExcluded(item.ingredient.id, excludedIngredientIds);

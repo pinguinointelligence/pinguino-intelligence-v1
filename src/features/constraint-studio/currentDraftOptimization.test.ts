@@ -173,11 +173,12 @@ describe('the optimizer receives the CURRENT draft (owner Phase 1, tests 1–3)'
       expect(iteration.draftLineGrams.find((l) => l.lineId === 'l-inulin')!.grams).toBe(grams);
       // …and it was offered as an adjustable candidate on the batch-true state
       // (the grams there are the CURRENT value carried through the §17.4
-      // reconciliation — proportional to the draft, never a template value).
+      // reconciliation — proportional inside the free envelope, while the
+      // template-controlled Tara dose stays byte-exact).
       const seen = iteration.candidateVector.find((c) => c.lineId === 'l-inulin');
       expect(seen, `inulin ${grams} g must be offered`).toBeDefined();
       expect(seen!.currentGrams).toBeCloseTo(
-        grams * (TARGET / plannedSum(rec)),
+        grams * ((TARGET - 4) / (plannedSum(rec) - 4)),
         6,
       );
       expect(iteration.startPlannedSumGrams).toBeCloseTo(TARGET, 6);

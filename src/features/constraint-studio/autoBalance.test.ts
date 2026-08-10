@@ -177,14 +177,11 @@ describe('owner Test 2 — the 1 g recipe produces a REAL calculated Preview (te
     const outcome = commitPreview(current, NO, preview, 'now', 'apply-owner8');
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
-    // ACCEPTANCE ADDENDUM (3), owner 2026-07-24 — DELIBERATE pin update: the
-    // door's hard-residual gate now fires FIRST. The forged 8 × 125 g state
-    // violates NATIVE approved bands, so it is refused as a diagnostic-only
-    // proposal (a fortiori structurally unappliable; the improvement invariant
-    // stays behind it unchanged for hard-safe cases).
-    expect(outcome.code).toBe('hard_residual_violations');
-    expect(outcome.messagePl).toContain('nie można go zastosować');
-    expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
+    // The trustless stabilizer contract is now the earliest applicable gate:
+    // the forged equal split changes template-controlled Tara from 1 g to
+    // 125 g, so it is rejected before hard-residual scoring.
+    expect(outcome.code).toBe('constraints_violated');
+    expect(outcome.messagePl).toContain('Tara');
   });
 
   it('GŁÓWNY (main) does not imply a lock — a main line off-batch still recalculates (test 4)', () => {

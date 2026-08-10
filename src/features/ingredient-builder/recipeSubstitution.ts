@@ -146,6 +146,10 @@ export function verifiedRecipeSubstituteCandidates(
       .map((item) => canonicalIngredientId(item.ingredient)),
   );
   const originalRole = resolveFunctionalRole(original.ingredient);
+  // Stabilizer identity/dose is template-controlled. Mapper verification and a
+  // matching functional role do not provide an activity conversion contract,
+  // so the generic substitution catalogue must not offer gums/blends here.
+  if (originalRole === 'stabilizer') return [];
   const originalRow = rows.find((row) => row.ingredient_id === originalCanonicalId);
   const originalAllergens = normalizedAllergens(originalRow?.allergens ?? null);
   const isMain = original.lock_type === 'main';

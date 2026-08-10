@@ -376,16 +376,15 @@ describe('every constraint projection is Engine-evaluated and carries the proof'
     expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toHaveLength(0);
   });
 
-  it('a solver-reworked stabilizer dose does NOT claim template inheritance', () => {
+  it('an established stabilizer dose is never reworked by the solver', () => {
     const { input: rec, set } = strawberryLocked(600);
     const result = buildOptimizePreview(rec, set, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const tara = result.preview.proposedInput.items.find((i) => i.ingredient.id === 'tara_gum')!;
     const proof = result.preview.formulation!.proof!;
-    if (Math.abs(tara.planned_grams - 5) > 0.05) {
-      expect(proof.stabilizerDoseNotePl).toBeNull();
-    }
+    expect(tara.planned_grams).toBe(5);
+    expect(proof.stabilizerDoseNotePl).toContain('Engine');
   });
 });
 
