@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RecipeInput } from '@/engine';
 import { educationCopy as copy } from '@/copy/education.pl';
 import {
   FRESH_GELATO_EDUCATION,
   availableMachineEducationCategories,
-  classifyHeatProcess,
   contextualEducationPrompts,
   genericMachineEducation,
   ingredientExample,
   machineEducationById,
   microIngredient,
-  processIdentityForItem,
   topLevelEducationOrder,
   verifiedPlantOriginsForRecipe,
   type EducationAudience,
@@ -21,8 +19,8 @@ import {
   type MicroIngredientId,
   type RecipeProcessEvidence,
 } from '.';
-import { listProcessEvidenceByIngredientIds } from '@/services/processMetadata';
 import { processReasonText } from './processReasonText';
+import { useRecipeProcessRuntime } from './useRecipeProcessRuntime';
 
 type ActiveLesson = { id: EducationLessonId; focus?: string } | null;
 
@@ -650,58 +648,32 @@ export function ContextualEducationView({
   input,
   machineId = null,
   audience = 'pro',
+  initialLesson,
   processEvidence,
   onBack,
 }: {
   input: RecipeInput;
   machineId?: string | null;
   audience?: EducationAudience;
+  initialLesson?: EducationLessonId;
   processEvidence?: readonly RecipeProcessEvidence[];
   onBack: () => void;
 }) {
-  const [active, setActive] = useState<ActiveLesson>(null);
-  const [runtimeProcessEvidence, setRuntimeProcessEvidence] = useState<
-    readonly RecipeProcessEvidence[]
-  >([]);
-  const processIds = useMemo(() => input.items.map(processIdentityForItem), [input]);
-  const processIngredientNames = useMemo(
-    () =>
-      new Map(
-        input.items.map((item) => [processIdentityForItem(item), item.ingredient.name] as const),
-      ),
-    [input],
+  const [active, setActive] = useState<ActiveLesson>(() =>
+    initialLesson === undefined ? null : { id: initialLesson },
   );
-  useEffect(() => {
-    if (processEvidence !== undefined) return;
-    let activeRequest = true;
-    void listProcessEvidenceByIngredientIds(processIds)
-      .then((evidence) => {
-        if (activeRequest) setRuntimeProcessEvidence(evidence);
-      })
-      .catch(() => {
-        if (activeRequest) setRuntimeProcessEvidence([]);
-      });
-    return () => {
-      activeRequest = false;
-    };
-  }, [processEvidence, processIds]);
-  const classification = useMemo(
-    () =>
-      classifyHeatProcess({
-        ingredientIds: processIds,
-        evidence: processEvidence ?? runtimeProcessEvidence,
-      }),
-    [processEvidence, processIds, runtimeProcessEvidence],
-  );
+  const processRuntime = useRecipeProcessRuntime(input, processEvidence);
+  const directInitialLesson =
+    initialLesson !== undefined && active?.id === initialLesson && active.focus === undefined;
 
   return (
     <div className="mx-auto w-full max-w-3xl p-3 sm:p-4" data-testid="profile-education-view">
       <button
         type="button"
-        onClick={active === null ? onBack : () => setActive(null)}
+        onClick={active === null || directInitialLesson ? onBack : () => setActive(null)}
         className="mb-4 min-h-10 text-xs font-semibold text-ink underline underline-offset-4"
       >
-        {active === null ? copy.backToRecipe : copy.backToHub}
+        {active === null || directInitialLesson ? copy.backToRecipe : copy.backToHub}
       </button>
       {active === null ? (
         <EducationHub input={input} audience={audience} onOpen={setActive} />
@@ -715,9 +687,9 @@ export function ContextualEducationView({
         />
       ) : (
         <ProcessLesson
-          key={classification.status}
-          classification={classification}
-          ingredientNamesById={processIngredientNames}
+          key={processRuntime.classification.status}
+          classification={processRuntime.classification}
+          ingredientNamesById={processRuntime.ingredientNamesById}
           machineId={machineId}
         />
       )}

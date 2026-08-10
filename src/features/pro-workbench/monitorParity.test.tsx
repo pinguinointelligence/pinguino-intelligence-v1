@@ -103,9 +103,14 @@ describe('professional Monitor acceptance contract', () => {
   it('keeps Nutrition/Cost secondary and owner diagnostics separate as ADVANCED', () => {
     expect(html).toContain('data-testid="monitor-secondary-nutrition"');
     expect(text).toContain('DO PRZEGLĄDU');
+    expect(html).toContain('data-testid="monitor-process-guide-entry"');
+    expect(text).toContain('Jak je przygotować?');
     expect(html).toContain('data-testid="monitor-owner-diagnostics"');
     expect(html).toContain('data-testid="review-marked-monitor-owner-diagnostic"');
     expect(text).toContain('ADVANCED');
+    expect(html.indexOf('monitor-process-guide-entry')).toBeLessThan(
+      html.indexOf('monitor-owner-diagnostics'),
+    );
   });
 
   it('uses protected position scales without exposing proprietary min/max ranges', () => {
@@ -137,8 +142,11 @@ describe('Monitor layout and integration seams', () => {
   it('uses one MonitorPanelContent source for desktop and mobile hosts', () => {
     const drawer = read('features', 'pro-core', 'MonitorDrawer.tsx');
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const content = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     expect(drawer).toContain('<MonitorPanelContent');
     expect(profile).toContain('<MonitorPanelContent');
+    expect(content).toContain('setProcessGuideOpen(true)');
+    expect(content).toContain('initialLesson="process"');
   });
 
   it('keeps the score behind the existing technical-score seam', () => {

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAccess } from '@/access/useAccess';
 import type { CorrectionResult, RecipeInput, RecipeResult } from '@/engine';
 import { CorrectionPanel } from '@/features/corrections/CorrectionPanel';
@@ -8,6 +8,10 @@ import { OwnerDiagnosticPanel } from '@/features/studio/OwnerDiagnosticPanel';
 import { LockedNutritionPreview } from '@/features/studio/locked/LockedNutritionPreview';
 import { LockedPIPreview } from '@/features/studio/locked/LockedPIPreview';
 import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule';
+import { ContextualEducationView } from '@/features/education/ContextualEducationView';
+import { ProcessGuideEntry } from '@/features/education/ProcessGuideEntry';
+import { useRecipeProcessRuntime } from '@/features/education/useRecipeProcessRuntime';
+import { useRecipeStore } from '@/stores/recipeStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { ProfessionalMonitorModules } from './ProfessionalMonitorModules';
 import { buildProfessionalMonitorModules } from './professionalMonitorModel';
@@ -28,6 +32,8 @@ export function MonitorPanelContent({
 }) {
   const { technicalView } = useAccess();
   const setPlan = useSessionStore((state) => state.setPlan);
+  const machineId = useRecipeStore((state) => state.machineId);
+  const [processGuideOpen, setProcessGuideOpen] = useState(false);
   const onUpgrade = import.meta.env.DEV ? () => setPlan('pro') : undefined;
   const modules = useMemo(
     () => buildProfessionalMonitorModules(result, servingTemperatureC, input),
@@ -35,6 +41,20 @@ export function MonitorPanelContent({
   );
   const correctionView = useMemo(() => buildCorrectionView(corrections), [corrections]);
   const recipeIncomplete = result.total_batch_g <= 0;
+  const processRuntime = useRecipeProcessRuntime(input);
+
+  if (processGuideOpen) {
+    return (
+      <ContextualEducationView
+        input={input}
+        machineId={machineId}
+        audience="pro"
+        initialLesson="process"
+        processEvidence={processRuntime.evidence}
+        onBack={() => setProcessGuideOpen(false)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-3 text-ink" data-testid="monitor-panel-content">
@@ -74,6 +94,12 @@ export function MonitorPanelContent({
           {technicalView ? <NutritionCostScorePanel result={result} /> : <LockedNutritionPreview />}
         </div>
       </details>
+
+      <ProcessGuideEntry
+        classification={processRuntime.classification}
+        loading={processRuntime.loading}
+        onOpen={() => setProcessGuideOpen(true)}
+      />
 
       <div data-testid="monitor-owner-diagnostics" className="border-t border-ink/10 pt-2">
         <div

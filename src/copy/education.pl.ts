@@ -188,6 +188,8 @@ export const educationCopy = {
     futureFormulaNote: 'Skład przyszłej mieszanki PINGÜINO nie jest jeszcze zatwierdzony.',
   },
   process: {
+    entryAction: 'Zobacz sposób przygotowania',
+    entryLoading: 'Sprawdzam potwierdzone dane procesu…',
     question: 'Czy tę mieszankę trzeba podgrzać?',
     statuses: {
       cold_process_ok: {

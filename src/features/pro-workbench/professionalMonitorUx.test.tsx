@@ -171,9 +171,14 @@ describe('professional Monitor — final owner-approved information architecture
     expect(html).not.toContain('monitor-detail-score');
     expect(html).toContain('data-testid="monitor-secondary-nutrition"');
     expect(textOf(html)).toContain('DO PRZEGLĄDU');
+    expect(html).toContain('data-testid="monitor-process-guide-entry"');
+    expect(textOf(html)).toContain('Jak je przygotować?');
     expect(html).toContain('data-testid="monitor-owner-diagnostics"');
     expect(textOf(html)).toContain('Diagnostyka właściciela');
     expect(textOf(html)).toContain('ADVANCED');
+    expect(html.indexOf('monitor-process-guide-entry')).toBeLessThan(
+      html.indexOf('monitor-owner-diagnostics'),
+    );
   });
 
   it('preserves pin/layout contracts without mounting their noisy presentation in normal Monitor', () => {
