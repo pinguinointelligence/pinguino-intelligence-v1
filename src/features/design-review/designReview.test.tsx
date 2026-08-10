@@ -135,10 +135,10 @@ describe('marker visibility (customers NEVER see red tags)', () => {
     mockPersona = persona;
     return renderToStaticMarkup(<ReviewBadge itemId="RV-12" />);
   };
-  const renderOverlay = (persona: ProCorePersona) => {
+  const renderOverlay = (persona: ProCorePersona, path = '/pro/monitor') => {
     mockPersona = persona;
     return renderToStaticMarkup(
-      <MemoryRouter initialEntries={['/pro/monitor']}>
+      <MemoryRouter initialEntries={[path]}>
         <DesignReviewOverlay />
       </MemoryRouter>,
     );
@@ -164,6 +164,13 @@ describe('marker visibility (customers NEVER see red tags)', () => {
     expect(html).toContain('design-review-toggle');
     // Collapsed by default — the review list never obscures the page.
     expect(html).not.toContain('review-overlay-item-');
+  });
+
+  it('keeps the owner-review toggle above every Pro workbench save bar', () => {
+    for (const path of ['/pro', '/pro/recipe', '/pro/monitor', '/pro/production']) {
+      expect(renderOverlay('pro', path)).toContain('bottom-[4.5rem]');
+    }
+    expect(renderOverlay('pro', '/pro/settings')).toContain('bottom-4');
   });
 
   it('keeps review labels contextual to workbar; global navigation stays customer-clean', () => {

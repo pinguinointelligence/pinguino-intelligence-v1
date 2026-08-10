@@ -2,7 +2,9 @@
  * ReviewOverlay — the floating owner-review panel (Masterpiece UX/UI Phase 3).
  *
  * A small collapsed `DO PRZEGLĄDU (n)` pill in the bottom-left corner, visible ONLY in owner/QA
- * review mode (dev or flagged staging + pro capability). Expanding it lists the review items for
+ * review mode (dev or flagged staging + pro capability). On every Pro workbench route it sits above
+ * the persistent save bar so review tooling can never cover a customer action. Expanding it lists
+ * the review items for
  * the CURRENT route first, then the full registry — each with its reason and suggested action —
  * so the owner can walk every flagged surface without any item being hidden or removed.
  * Decisions are NEVER made here: the checklist lives in docs/design/PINGUINO_REVIEW_ITEMS.md.
@@ -12,6 +14,8 @@ import { useLocation } from 'react-router';
 import { cn } from '@/lib/cn';
 import { useReviewMode } from './useReviewMode';
 import { REVIEW_ITEMS, reviewItemsForPath, type ReviewItem } from './reviewItems';
+
+const PRO_WORKBENCH_PATHS = new Set(['/pro', '/pro/recipe', '/pro/monitor', '/pro/production']);
 
 const SUGGESTION_LABEL: Record<ReviewItem['suggestion'], string> = {
   keep: 'zachować',
@@ -95,9 +99,14 @@ export function DesignReviewOverlay() {
   const [open, setOpen] = useState(false);
   if (!enabled) return null;
 
+  const clearsRecipeWorkbar = PRO_WORKBENCH_PATHS.has(location.pathname);
+
   return (
     <div
-      className="fixed bottom-4 left-4 z-[60] font-sans"
+      className={cn(
+        'fixed left-4 z-[60] font-sans',
+        clearsRecipeWorkbar ? 'bottom-[4.5rem]' : 'bottom-4',
+      )}
       data-testid="design-review-overlay"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
