@@ -418,6 +418,8 @@ describe('persistence, Apply and Undo boundaries', () => {
     const result = commitPreview(current, NO, forged, 'now', 'change-1');
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect((result as { code: string }).code).toBe('main_identity_violated');
+    // The universal line-contract gate now rejects the forged lock transition
+    // before the later Main-specific identity gate can run.
+    expect((result as { code: string }).code).toBe('physical_actual_violated');
   });
 });

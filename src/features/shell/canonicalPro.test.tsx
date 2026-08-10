@@ -48,6 +48,7 @@ describe('canonical PINGÜINO Pro — routes (proofs 1–3)', () => {
     expect(studioRedirectTo('?recipe=abc&tab=recipes')).toEqual({
       pathname: '/pro/recipe',
       search: '?recipe=abc&tab=recipes',
+      hash: '',
     });
     const router = read('app', 'router.tsx');
     expect(router).toContain(`path="/studio" element={<LegacyStudioRedirect />}`);

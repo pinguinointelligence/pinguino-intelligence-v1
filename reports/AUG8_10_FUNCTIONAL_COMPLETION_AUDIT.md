@@ -249,7 +249,7 @@ Completed local gates before independent review:
 
 - `npm run typecheck` — PASS.
 - `npm run lint` — PASS, 0 errors; two unchanged `react-refresh/only-export-components` warnings in `src/app/router.tsx` and `src/features/pro-core/RecipeVersionsSection.tsx`.
-- `npm test` — PASS, **441 files / 5,794 tests** after the independent-review remediations.
+- `npm test` — PASS, **441 files / 5,797 tests** after the independent-review remediations.
 - `npm run build` — PASS, 1,075 transformed modules; existing chunk-size warning only.
 - `npm run recipes:validate` — PASS, source workbook hash matched; 2,500/2,500 imported ranks; 80/80 mapped images; zero duplicate hashes.
 - `npm audit` — PASS, **0 vulnerabilities**.
@@ -280,9 +280,17 @@ The remediation now:
 - describes the server-paged substitution fetch and top-12 safety-ranked UI
   accurately.
 
-Post-remediation focused gates are **6 files / 70 tests PASS** and the final full
-gate is **441 files / 5,794 tests PASS**. A second independent pass is required
-against the exact remediation commit before any staging push.
+The second pass against `73e243b` found one remaining promotion bypass: an
+ordinary unlocked line could still acquire a forged `already_added`, `required`
+or `main` lock. It also found that `/studio` preserved search parameters but not
+the URL hash. The final correction makes every existing line's lock immutable
+at Apply, requires solver-added lines to start unlocked and without actual mass,
+adds all three promotion regressions, and preserves query + hash for every
+legacy entry including `/studio`, `/classic`, `/demo` and `/customer-v1`.
+
+Final focused gates are **4 files / 56 tests PASS** and the final full gate is
+**441 files / 5,797 tests PASS**. One final independent pass is required against
+the exact correction commit before any staging push.
 
 ## Q. Deployment
 
@@ -316,7 +324,7 @@ No unfinished internally achievable item is relabelled as an external blocker.
 3. **Files changed** — final `git diff --stat` is recorded before commit; changes are confined to product-layer types/orchestration/UI/tests, services, migration and reports. Base Engine formulas/config and Mapper CSV are unchanged.
 4. **Tests added or changed** — Direction targets/assessment, substitution flow, process metadata/classifier, percent/required/unavailable constraints, Protein frontier, Whisky boundary, ECO numeric proof and UI/readiness regressions.
 5. **Exact commands executed** — `npm run typecheck`; `npm run lint`; `npm test`; `npm run build`; `npm run recipes:validate`; `npm audit`; `git diff --check`; focused `vitest run` commands for the domains above; Mapper hash/shape/diff checks.
-6. **Test results** — final pre-deployment result: 5,794/5,794 full tests pass, typecheck/build pass, lint has zero errors and two unchanged warnings, audit has zero vulnerabilities. Served results follow in the staging release report.
+6. **Test results** — final pre-deployment result: 5,797/5,797 full tests pass, typecheck/build pass, lint has zero errors and two unchanged warnings, audit has zero vulnerabilities. Served results follow in the staging release report.
 7. **Previously accepted flows retested** — canonical current draft; Preview/Apply/Undo; exact/range/Main/Multi-Main; Vegan/Protein; pricing/OPTIMAL/ECO; Production/Batch Rescue/Master Label; Lost & Legendary; menu; save/version/account boundaries.
 8. **Deployment environment verified** — only `origin/staging` and `https://staging.pinguinoai.com` are in scope. Latest `origin/staging` was fetched and remains `4bd4f50f3c371e579d8b071567764ece0fffe51b`. Served evidence pending final push.
 9. **Remaining incomplete items** — only the five external/new-science/legal/future-architecture items in section R.

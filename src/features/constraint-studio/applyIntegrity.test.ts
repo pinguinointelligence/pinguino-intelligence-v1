@@ -232,6 +232,39 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
       lineNames: [physical.ingredient.name],
     });
   });
+
+  it.each(['already_added', 'required', 'main'] as const)(
+    'trustless Apply cannot forge an unlocked line into %s',
+    (forgedLockType) => {
+      useConstraintStudioStore.getState().createOptimizePreview();
+      const preview = useConstraintStudioStore.getState().preview;
+      expect(preview).not.toBeNull();
+      if (!preview) return;
+
+      const constraints = { byLineId: {} } as const;
+      const current = buildRecipeInput(useRecipeStore.getState());
+      const unlocked = current.items.find((item) => item.lock_type === 'unlocked')!;
+      const forged = structuredClone(preview);
+      forged.baseDraftRevision = undefined;
+      forged.baseFingerprint = workingStateFingerprint(current, constraints);
+      const forgedLine = forged.proposedInput.items.find((item) => item.id === unlocked.id)!;
+      forgedLine.lock_type = forgedLockType;
+
+      expect(
+        commitPreview(
+          current,
+          constraints,
+          forged,
+          '2026-08-10T13:00:03Z',
+          `forged-${forgedLockType}`,
+        ),
+      ).toMatchObject({
+        ok: false,
+        code: 'physical_actual_violated',
+        lineNames: [unlocked.ingredient.name],
+      });
+    },
+  );
 });
 
 describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape', () => {

@@ -14,7 +14,7 @@
  */
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MemoryRouter, Navigate } from 'react-router';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import { customerShellCopy } from '@/features/customer-shell/customerShellCopy';
@@ -28,6 +28,7 @@ import {
   LegacyDestinationRedirect,
   LegacyStudioRedirect,
   PRO_RECIPE_PATH,
+  studioRedirectTo,
 } from './router';
 import { legacyDestinationRedirectTo } from './redirectState';
 
@@ -61,12 +62,6 @@ const byPath = new Map(routes.map((r) => [r.path, r.element]));
 const elementType = (path: string): unknown =>
   isValidElement(byPath.get(path)) ? (byPath.get(path) as ReactElement).type : undefined;
 
-const redirectTarget = (path: string): string | undefined => {
-  const el = byPath.get(path);
-  if (!isValidElement(el) || el.type !== Navigate) return undefined;
-  return (el as ReactElement<{ to?: string }>).props.to;
-};
-
 const renderAt = (path: string) =>
   renderToStaticMarkup(
     <MemoryRouter initialEntries={[path]}>
@@ -90,14 +85,25 @@ describe('Slice A routing contract', () => {
     expect(html).toContain(customerShellCopy.home.headline); // „Jakie lody dziś robimy?”
   });
 
-  it('redirects the legacy /customer-v1 and /demo entries to /start (replace)', () => {
-    expect(redirectTarget('/customer-v1')).toBe('/start');
-    expect(redirectTarget('/demo')).toBe('/start');
+  it('redirects legacy flow entries to /start while preserving deep-link state', () => {
+    expect(elementType('/customer-v1')).toBe(LegacyDestinationRedirect);
+    expect(elementType('/demo')).toBe(LegacyDestinationRedirect);
+    expect(elementType('/classic')).toBe(LegacyDestinationRedirect);
+    expect(legacyDestinationRedirectTo('/start', '?recipe=r-legacy', {}, '#step-2')).toEqual({
+      pathname: '/start',
+      search: '?recipe=r-legacy',
+      hash: '#step-2',
+    });
   });
 
   it('sends /studio and /calculator into the canonical PINGÜINO Pro recipe editor (owner P0)', () => {
     // /studio is a query-preserving redirect component (NOT the legacy Studio editor)…
     expect(elementType('/studio')).toBe(LegacyStudioRedirect);
+    expect(studioRedirectTo('?draft=abc', '#ingredient-2')).toEqual({
+      pathname: PRO_RECIPE_PATH,
+      search: '?draft=abc',
+      hash: '#ingredient-2',
+    });
     // …and /calculator preserves deep-link state on the canonical editor path.
     expect(elementType('/calculator')).toBe(LegacyDestinationRedirect);
     expect(legacyDestinationRedirectTo(PRO_RECIPE_PATH, '?draft=abc')).toEqual({

@@ -3027,8 +3027,10 @@ function ingredientIdentityIntegrityViolations(
  * Preview/Apply may reformulate the future plan, but it is never an authority
  * for physical production facts. Existing actuals are immutable, a line that
  * was not physically added cannot acquire an actual through a forged preview,
- * and a solver-added line must start without an actual. The native physical
- * lock/identity of an already-added line is immutable as well.
+ * and a solver-added line must start unlocked and without an actual. A Preview
+ * is never an authority for lock transitions: every existing line keeps its
+ * current native lock. The identity and planned mass of an already-added line
+ * are immutable as well.
  */
 function physicalActualIntegrityViolations(
   current: RecipeInput,
@@ -3040,22 +3042,24 @@ function physicalActualIntegrityViolations(
   for (const item of proposed.items) {
     const existing = currentByLineId.get(item.id);
     if (!existing) {
-      if (item.actual_grams !== null) violations.push(item.ingredient.name || item.id);
+      if (item.actual_grams !== null || item.lock_type !== 'unlocked') {
+        violations.push(item.ingredient.name || item.id);
+      }
       continue;
     }
 
     const actualChanged = !Object.is(item.actual_grams, existing.actual_grams);
+    const lockChanged = item.lock_type !== existing.lock_type;
     const existingIsPhysical =
       existing.actual_grams !== null || existing.lock_type === 'already_added';
     const physicalLineChanged =
       existingIsPhysical &&
       (!Object.is(item.planned_grams, existing.planned_grams) ||
-        item.lock_type !== existing.lock_type ||
         canonicalIngredientId(item.ingredient) !==
           canonicalIngredientId(existing.ingredient) ||
         substitutionIngredientFingerprint(item.ingredient) !==
           substitutionIngredientFingerprint(existing.ingredient));
-    if (actualChanged || physicalLineChanged) {
+    if (actualChanged || lockChanged || physicalLineChanged) {
       violations.push(existing.ingredient.name || existing.id);
     }
   }

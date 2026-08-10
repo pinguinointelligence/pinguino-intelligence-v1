@@ -47,10 +47,14 @@ import {
 /** The canonical PINGÜINO Pro recipe editor path — the ONE professional workspace (owner P0). */
 export const PRO_RECIPE_PATH = '/pro/recipe';
 
-/** Pure target of the /studio redirect: the canonical editor, query params preserved. */
-export const studioRedirectTo = (search: string): { pathname: string; search: string } => ({
+/** Pure target of the /studio redirect: the canonical editor, deep-link state preserved. */
+export const studioRedirectTo = (
+  search: string,
+  hash = '',
+): { pathname: string; search: string; hash: string } => ({
   pathname: PRO_RECIPE_PATH,
   search,
+  hash,
 });
 
 /**
@@ -60,7 +64,7 @@ export const studioRedirectTo = (search: string): { pathname: string; search: st
  */
 export function LegacyStudioRedirect() {
   const location = useLocation();
-  return <Navigate to={studioRedirectTo(location.search)} replace />;
+  return <Navigate to={studioRedirectTo(location.search, location.hash)} replace />;
 }
 
 /** Preserve recipe/session query state while consolidating a legacy destination. */
@@ -94,10 +98,10 @@ export function AppRoutes() {
       {/* Owner decision (2026-07-17): retire the legacy dark AI-chat Home — „no page
           may look legacy”. /classic now redirects into the light flow, like /demo.
           The HomePage component is kept in the tree, just unrouted. */}
-      <Route path="/classic" element={<Navigate to="/start" replace />} />
+      <Route path="/classic" element={<LegacyDestinationRedirect pathname="/start" />} />
       {/* Legacy /demo entry pointed at the flow → keep old links/bookmarks landing
           in the flow, not on the marketing page. */}
-      <Route path="/demo" element={<Navigate to="/start" replace />} />
+      <Route path="/demo" element={<LegacyDestinationRedirect pathname="/start" />} />
       {/* PINGÜINO Pro — the ONE canonical professional workspace (owner P0, 2026-07-22).
           /pro = workspace root (shows the recipe editor); /pro/<section> = stable section URLs
           (recipe/monitor/versions/production/history/costs/exports/settings — direct link +
@@ -155,7 +159,7 @@ export function AppRoutes() {
       <Route path="/products/import" element={<ProductImportPage />} />
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}
-      <Route path="/customer-v1" element={<Navigate to="/start" replace />} />
+      <Route path="/customer-v1" element={<LegacyDestinationRedirect pathname="/start" />} />
 
       {/* DEV-ONLY internal tools — registered only in a dev build, never linked in nav.
           In production import.meta.env.DEV is false, so the route is never created and
