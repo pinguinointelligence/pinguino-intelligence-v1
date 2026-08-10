@@ -9,7 +9,7 @@ Production branch, production Vercel, production Supabase and customer data: **n
 
 All functionality that can be completed from the accepted repository science and data is implemented locally, covered by regression tests and awaiting the mandatory independent review and served-staging verification. No Base Engine chemistry constants, native target bands or the canonical Mapper dataset were changed.
 
-The one unavailable approved input is the Owner workbook `mapper_basement_2088_process_enriched_2026-08-08*.xlsx`, sheet `07_Process_Metadata_2026-08-08`. An exhaustive search of the repository, all worktrees, Codex attachments, Desktop, Downloads, Documents and OneDrive returned no copy. Its 2,088 canonical-ID decisions cannot legally or scientifically be reconstructed from the five aggregate counts. The separate schema, deterministic adapter, fail-closed classifier and UI are complete; until the exact workbook is supplied and imported, runtime process decisions correctly remain `UNKNOWN`.
+The Owner has now supplied the approved canonical process companion as `mapper_process_metadata.csv`. It was verified at SHA-256 `c185d08ef89229001ffc56eceda0dbe55442e9abe0327d2b27742e40d8dbc9f4`, 2,088 rows, 22 columns, 2,088 unique nonblank IDs and exact 1:1 Mapper alignment, then imported transactionally into staging with fail-closed database assertions and read-only RLS. No process decision was reconstructed or researched by the implementation.
 
 ## A. Complete request matrix
 
@@ -25,11 +25,11 @@ The before-state authority and evidence are recorded in `reports/AUG8_10_REQUIRE
 | Flavour intensity Direction         | No fabricated movement                                      | ingredient/family potency data required                                         | explicit per-axis blocker; Main mass heuristic is not presented as calibrated intensity                                                        | `/pro/recipe`                            | See served QA section |
 | Direction persistence and staleness | Yes                                                         | —                                                                               | save/reopen/version payload + revision + canonical working fingerprint tests                                                                   | `/pro/recipe`, `/pro/versions`           | See served QA section |
 | One customer-visible fit score      | Yes                                                         | —                                                                               | one feature-layer assessment combines native safety, supported Direction residuals and Protein target; technical safety is retained separately | Profile / Monitor / Production / top bar | See served QA section |
-| Process companion schema            | Yes                                                         | Dataset rows not imported because exact approved workbook is absent             | migration `0039_mapper_process_metadata.sql`, read-only RLS, version/hash manifest                                                             | contextual Process Guide                 | See served QA section |
-| Process workbook import             | No                                                          | **EXTERNAL:** approved workbook absent; recreating 2,088 decisions is forbidden | exhaustive filesystem search returned no match                                                                                                 | staging backend                          | N/A                   |
-| Recipe process classifier           | Yes                                                         | Runtime remains UNKNOWN until companion rows exist                              | cold/function/safety/both/unknown tests; all ingredient IDs aggregated; UNKNOWN fail-closed                                                    | contextual Process Guide                 | See served QA section |
-| Explicit process-path confirmation  | Yes                                                         | decisive classifications require imported evidence                              | cold/heat confirmation, safety cannot be overridden, UNKNOWN only acknowledged                                                                 | contextual Process Guide                 | See served QA section |
-| Heat-sensitive late-add guidance    | Yes when metadata exists                                    | source rows unavailable                                                         | metadata-backed rendering test; no invented time/temperature                                                                                   | contextual Process Guide                 | See served QA section |
+| Process companion schema            | Yes                                                         | —                                                                               | migrations `0039`, `0040` and `0041`; exact 2,088-row seed; read-only RLS; version/hash manifest and database assertions                        | contextual Process Guide                 | See final staging report |
+| Process workbook import             | Yes                                                         | —                                                                               | Owner CSV SHA `c185d08e…`; 2,088 rows / 22 columns / 2,088 exact Mapper IDs; status counts 636/56/7/0/1,389                                    | staging backend                          | See final staging report |
+| Recipe process classifier           | Yes                                                         | `HEAT_REQUIRED_FOR_BOTH` has zero canonical source rows and is covered by deterministic aggregation fixtures, not fabricated data | all ingredient IDs aggregated; heat precedence; UNKNOWN fail-closed; source-backed late-add warnings retained                                 | contextual Process Guide                 | See final staging report |
+| Explicit process-path confirmation  | Yes                                                         | —                                                                               | cold/heat confirmation, safety cannot be overridden, UNKNOWN only acknowledged                                                                 | contextual Process Guide                 | See final staging report |
+| Heat-sensitive late-add guidance    | Yes when supplied by metadata                               | —                                                                               | metadata-backed rendering and mixed-recipe aggregation; no invented time/temperature                                                           | contextual Process Guide                 | See final staging report |
 | Contextual “Dlaczego?”              | Yes for process, Direction, locks and substitution outcomes | —                                                                               | human explanations derive from deterministic decision/action data; normal view exposes no equations                                            | Preview / Process Guide                  | See served QA section |
 | Recipe substitution                 | Yes                                                         | Production substitution remains intentionally deferred                          | full server-paged verified catalogue fetch → safety-ranked top 12 same-role/Vegan/allergen-compatible candidates → Preview → Apply; explicit no-candidate | ingredient row                           | See served QA section |
 | Main substitution                   | Yes with explicit consent                                   | —                                                                               | session-only consent bound to base fingerprint and from/to canonical IDs                                                                       | ingredient row                           | See served QA section |
@@ -101,7 +101,7 @@ Working Sweetness zones are lower/middle/upper sub-zones of the accepted POD ran
 | safety + function, or one `BOTH`                                | heat/both          | both reasons remain visible                             | cold cannot override                        | PASS   |
 | any unresolved ingredient without a stronger heat decision      | unknown            | insufficient-data explanation                           | never defaults to cold; acknowledgment only | PASS   |
 
-The tests use exact canonical-ID companion rows because the approved Owner workbook is absent. A verified heat-sensitive Whisky fixture surfaces only its supplied “add after cooling” guidance and proves that no temperature or duration is invented. On staging, before the approved rows are imported, the expected honest runtime result is `UNKNOWN`.
+The approved Owner companion is now imported exactly. Its SHA-256 is `c185d08ef89229001ffc56eceda0dbe55442e9abe0327d2b27742e40d8dbc9f4`; all 2,088 IDs match Mapper 1:1 and the canonical status counts are 636/56/7/0/1,389. Deterministic fixtures cover every aggregation state, including `HEAT_REQUIRED_FOR_BOTH` (which intentionally has zero direct canonical rows). A heat recipe with a separate source-backed heat-sensitive ingredient retains only the supplied late-addition guidance; no temperature or duration is invented.
 
 ## E. Recipe substitution matrix
 
@@ -252,12 +252,12 @@ Completed local gates before independent review:
 
 - `npm run typecheck` — PASS.
 - `npm run lint` — PASS, 0 errors; two unchanged `react-refresh/only-export-components` warnings in `src/app/router.tsx` and `src/features/pro-core/RecipeVersionsSection.tsx`.
-- `npm test` — PASS, **441 files / 5,798 tests** after the served-QA remediation.
+- `npm test` — PASS, **442 files / 5,802 tests** after the process-metadata import gate.
 - `npm run build` — PASS, 1,075 transformed modules; existing chunk-size warning only.
 - `npm run recipes:validate` — PASS, source workbook hash matched; 2,500/2,500 imported ranks; 80/80 mapped images; zero duplicate hashes.
 - `npm audit` — PASS, **0 vulnerabilities**.
 - `git diff --check` — PASS.
-- broad completion-focused run — PASS, **26 files / 251 tests** (latest trust-boundary and domain sweep; earlier broader completion runs also passed).
+- broad completion-focused run — PASS, **28 files / 311 tests** (process, Direction, locks, substitution, Mapper, trust boundary, Production and Label regressions).
 - direction/score focused run — PASS, **5 files / 76 tests**.
 - required/Main/Multi-Main focused run — PASS, **4 files / 67 tests**.
 - Protein + real Whisky evidence run — PASS, **2 files / 23 tests**.
@@ -319,17 +319,16 @@ later gram edit correctly invalidated Undo.
 | Served commit/SHA proof | bundle contains full commit SHA plus final trust, Production and Label markers                               |
 | Backend                 | staging `tunabqqrwabacxjcxxkz`; migration `20260810125404_mapper_process_metadata.sql` applied; dry-run clean |
 | Mapper                  | 2,088 rows, 62 columns, SHA-256 `B13F5DB4AFFD9C3BE5CCBE59B40920053197A3697A3FA1BD4A859406E8BAED38`; no diff  |
-| Process Metadata        | schema/version manifest prepared; approved workbook/hash unavailable, therefore no rows fabricated or seeded |
+| Process Metadata        | approved Owner companion imported: 2,088 rows / 22 columns / 2,088 unique exact Mapper IDs; SHA-256 `c185d08ef89229001ffc56eceda0dbe55442e9abe0327d2b27742e40d8dbc9f4`; read-only assertion migration applied |
 
 ## R. Remaining blockers
 
 Only the following require authority or evidence outside this implementation:
 
-1. **EXTERNAL DATA** — provide the exact approved `mapper_basement_2088_process_enriched_2026-08-08*.xlsx`, sheet `07_Process_Metadata_2026-08-08`, so its hash, expected 636/56/7/0/1389 counts and 2,088 canonical IDs can be verified and transactionally imported into staging.
-2. **NEW SCIENCE / OWNER CALIBRATION** — sensory Creaminess model; the existing fat percentage is not a valid substitute.
-3. **NEW DATA / OWNER CALIBRATION** — ingredient/family-specific perceived flavour-intensity potency.
-4. **LEGAL / REGULATORY / DATA** — fully verified market-specific Master Label renderers, canonical allergen data, shelf-life basis and controlled print artifact pipeline.
-5. **FUTURE ARCHITECTURE** — Production substitutions after physical additions, full server-side proprietary-IP migration, global rate limiting and the separately planned Home redesign.
+1. **NEW SCIENCE / OWNER CALIBRATION** — sensory Creaminess model; the existing fat percentage is not a valid substitute.
+2. **NEW DATA / OWNER CALIBRATION** — ingredient/family-specific perceived flavour-intensity potency.
+3. **LEGAL / REGULATORY / DATA** — fully verified market-specific Master Label renderers, canonical allergen data, shelf-life basis and controlled print artifact pipeline.
+4. **FUTURE ARCHITECTURE** — Production substitutions after physical additions, full server-side proprietary-IP migration, global rate limiting and the separately planned Home redesign.
 
 No unfinished internally achievable item is relabelled as an external blocker.
 
@@ -340,9 +339,9 @@ No unfinished internally achievable item is relabelled as an external blocker.
 3. **Files changed** — final `git diff --stat` is recorded before commit; changes are confined to product-layer types/orchestration/UI/tests, services, migration and reports. Base Engine formulas/config and Mapper CSV are unchanged.
 4. **Tests added or changed** — Direction targets/assessment, substitution flow, process metadata/classifier, percent/required/unavailable constraints, Protein frontier, Whisky boundary, ECO numeric proof and UI/readiness regressions.
 5. **Exact commands executed** — `npm run typecheck`; `npm run lint`; `npm test`; `npm run build`; `npm run recipes:validate`; `npm audit`; `git diff --check`; focused `vitest run` commands for the domains above; Mapper hash/shape/diff checks.
-6. **Test results** — final post-served-QA result: 5,798/5,798 full tests pass, typecheck/build pass, lint has zero errors and two unchanged warnings, audit has zero vulnerabilities. Served results follow in the staging release report.
+6. **Test results** — current pre-deploy result: 5,802/5,802 full tests pass, typecheck/build pass, lint has zero errors and two unchanged warnings, audit has zero vulnerabilities. Served results follow in the staging release report.
 7. **Previously accepted flows retested** — canonical current draft; Preview/Apply/Undo; exact/range/Main/Multi-Main; Vegan/Protein; pricing/OPTIMAL/ECO; Production/Batch Rescue/Master Label; Lost & Legendary; menu; save/version/account boundaries.
 8. **Deployment environment verified** — only `origin/staging` and `https://staging.pinguinoai.com` were changed. Integration started from fetched `origin/staging` `4bd4f50f3c371e579d8b071567764ece0fffe51b`; the served bundle contains `ec693282bd4fe6cc68a0084deb3671a3d89cf689`.
-9. **Remaining incomplete items** — only the five external/new-science/legal/future-architecture items in section R.
-10. **Exact blockers/external actions** — supply the exact approved process workbook; approve/produce sensory calibration datasets; complete regulatory/allergen/shelf-life work in its own validated phase.
+9. **Remaining incomplete items** — only the four new-science/legal/future-architecture items in section R.
+10. **Exact blockers/external actions** — approve/produce sensory calibration datasets; complete regulatory/allergen/shelf-life work in its own validated phase.
 11. **Git diff and commit status** — code is clean through `ec693282`; the final evidence commit adds only the release ledger and QA images. No production push, production deployment, secret, environment file or Mapper dataset mutation occurred.

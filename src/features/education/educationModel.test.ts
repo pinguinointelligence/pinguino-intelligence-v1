@@ -146,8 +146,25 @@ describe('process classification is positive-evidence only', () => {
         dataset_version: '2026-08-08',
       },
     ]);
-    expect(evidenceRows[0]?.explanation).toContain('Dodaj po schłodzeniu');
-    expect(evidenceRows[0]?.explanation).not.toMatch(/\d+\s*(min|°C)/);
+    expect(evidenceRows[0]?.lateAdditionGuidance).toContain('Dodaj po schłodzeniu');
+    expect(evidenceRows[0]?.lateAdditionGuidance).not.toMatch(/\d+\s*(min|°C)/);
+  });
+
+  it('retains a source-backed late-addition warning when another ingredient requires heat', () => {
+    const volatile = {
+      ...evidence('cold_process_approved', 'whisky'),
+      lateAdditionGuidance: 'Dodaj po schłodzeniu bazy, aby ograniczyć utratę aromatu.',
+    };
+    const result = classifyHeatProcess({
+      ingredientIds: ['chocolate', 'whisky'],
+      evidence: [evidence('heat_required_for_function', 'chocolate'), volatile],
+    });
+    expect(result.status).toBe('heat_required_for_function');
+    expect(result.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ ingredientId: 'whisky', explanation: volatile.lateAdditionGuidance }),
+      ]),
+    );
   });
 });
 

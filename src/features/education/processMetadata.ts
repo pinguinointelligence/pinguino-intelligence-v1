@@ -48,10 +48,11 @@ export function mapperProcessRowsToEvidence(
       reasonType:
         decision === 'heat_required_for_safety' ? ('food_safety' as const) : row.reason_type,
       affectedIngredientIds: [row.ingredient_id],
-      explanation:
+      explanation: row.explanation_pl,
+      lateAdditionGuidance:
         row.heat_sensitive && row.late_addition_guidance_pl
-          ? `${row.explanation_pl} ${row.late_addition_guidance_pl}`
-          : row.explanation_pl,
+          ? row.late_addition_guidance_pl
+          : null,
       source: {
         id: `${row.dataset_version}:${row.ingredient_id}:${decision}`,
         label: row.source_label,

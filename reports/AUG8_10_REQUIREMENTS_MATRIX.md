@@ -106,4 +106,18 @@ Primary inspected authorities:
 5. Regulatory/legal Master Label completion, canonical allergen source, validated shelf-life and controlled print artifact pipeline.
 6. New Home redesign and future full server-side proprietary architecture.
 
+## Owner correction addendum — 2026-08-10
+
+This file intentionally preserves the pre-implementation state above. The later
+Owner-QA correction supplied the approved canonical companion as
+`mapper_process_metadata.csv`; it is not a reconstruction of the missing workbook.
+The supplied source verifies at SHA-256
+`c185d08ef89229001ffc56eceda0dbe55442e9abe0327d2b27742e40d8dbc9f4`,
+2,088 rows, 22 columns, 2,088 unique nonblank IDs, exact 1:1 Mapper alignment and
+status counts 636/56/7/0/1,389. The correction gate imports it transactionally
+through migrations `0040` and `0041`, asserts the same facts in staging, retains
+read-only RLS, keeps `UNKNOWN` fail-closed and does not modify Mapper. Current
+operational and served evidence belongs to
+`reports/FINAL_AUG8_10_STAGING_RELEASE.md`.
+
 This matrix is a living execution record. Final statuses and exact test/served evidence will be added to `reports/AUG8_10_FUNCTIONAL_COMPLETION_AUDIT.md`; no missing code item above may be relabeled as an external blocker merely because it is difficult.

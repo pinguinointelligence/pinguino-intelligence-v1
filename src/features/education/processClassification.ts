@@ -34,6 +34,8 @@ export interface RecipeProcessEvidence {
   /** Exact ingredient identities covered by this evidence. No category/name matching. */
   affectedIngredientIds: readonly string[];
   explanation: string;
+  /** Optional source-backed handling warning; never inferred from an ingredient name. */
+  lateAdditionGuidance?: string | null;
   source: ProcessEvidenceSource;
 }
 
@@ -63,6 +65,19 @@ const reasonFromEvidence = (evidence: RecipeProcessEvidence): HeatProcessReason 
   evidenceSource: evidence.source,
 });
 
+const lateAdditionReasonFromEvidence = (
+  evidence: RecipeProcessEvidence,
+): HeatProcessReason | null => {
+  const explanation = evidence.lateAdditionGuidance?.trim();
+  if (!explanation) return null;
+  return {
+    type: 'process_requirement',
+    ingredientId: evidence.affectedIngredientIds[0] ?? null,
+    explanation,
+    evidenceSource: evidence.source,
+  };
+};
+
 /**
  * Evidence-only process classifier. It never reads names, categories, warnings,
  * target bands or Engine scores. Positive cold approval must cover every exact
@@ -86,6 +101,10 @@ export function classifyHeatProcess({
   const functional = verified.filter((entry) => entry.decision === 'heat_required_for_function');
   const safety = verified.filter((entry) => entry.decision === 'heat_required_for_safety');
   const heatEvidence = [...functional, ...safety];
+  const lateAdditionEvidence = verified.filter((entry) => entry.lateAdditionGuidance?.trim());
+  const lateAdditionReasons = lateAdditionEvidence
+    .map(lateAdditionReasonFromEvidence)
+    .filter((reason): reason is HeatProcessReason => reason !== null);
 
   if (functional.length > 0 || safety.length > 0) {
     const status: HeatProcessStatus =
@@ -96,9 +115,11 @@ export function classifyHeatProcess({
           : 'heat_required_for_safety';
     return {
       status,
-      reasons: heatEvidence.map(reasonFromEvidence),
-      affectedIngredientIds: unique(heatEvidence.flatMap((entry) => entry.affectedIngredientIds)),
-      decisionSources: uniqueSources(heatEvidence),
+      reasons: [...heatEvidence.map(reasonFromEvidence), ...lateAdditionReasons],
+      affectedIngredientIds: unique(
+        [...heatEvidence, ...lateAdditionEvidence].flatMap((entry) => entry.affectedIngredientIds),
+      ),
+      decisionSources: uniqueSources([...heatEvidence, ...lateAdditionEvidence]),
     };
   }
 
@@ -108,9 +129,9 @@ export function classifyHeatProcess({
   if (currentIds.length > 0 && missing.length === 0) {
     return {
       status: 'cold_process_ok',
-      reasons: cold.map(reasonFromEvidence),
+      reasons: [...cold.map(reasonFromEvidence), ...lateAdditionReasons],
       affectedIngredientIds: currentIds,
-      decisionSources: uniqueSources(cold),
+      decisionSources: uniqueSources([...cold, ...lateAdditionEvidence]),
     };
   }
 

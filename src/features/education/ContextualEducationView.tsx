@@ -372,9 +372,9 @@ function ProcessStatus({
           {classification.status === 'unknown' ? (
             <span
               className="text-[9px] font-semibold tracking-[0.08em] text-nonprod uppercase"
-              data-readiness="DO PODŁĄCZENIA"
+              data-readiness={copy.process.dataMissing}
             >
-              {copy.machine.timingPending}
+              {copy.process.dataMissing}
             </span>
           ) : null}
         </div>

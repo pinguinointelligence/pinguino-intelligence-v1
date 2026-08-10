@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
+import { educationCopy } from '@/copy/education.pl';
 import { ContextualEducationView } from './ContextualEducationView';
 import { processReasonText } from './processReasonText';
 
@@ -73,6 +74,22 @@ describe('contextual education runtime surface', () => {
     ).toBe('Mleko 3,5% — Brak zweryfikowanego procesu.');
     expect(processReasonText('PI-ING-UNKNOWN', 'Brak danych.', names)).toContain(
       'PI-ING-UNKNOWN',
+    );
+  });
+
+  it('uses explicit human wording for every process outcome', () => {
+    expect(educationCopy.process.statuses.cold_process_ok.title).toContain('na zimno');
+    expect(educationCopy.process.statuses.heat_required_for_function.title).toContain(
+      'technologicznie',
+    );
+    expect(educationCopy.process.statuses.heat_required_for_safety.title).toContain(
+      'bezpieczeństwa',
+    );
+    expect(educationCopy.process.statuses.heat_required_for_both.title).toContain(
+      'technologicznie i dla bezpieczeństwa',
+    );
+    expect(educationCopy.process.statuses.unknown.title).toContain(
+      'Nie można bezpiecznie potwierdzić',
     );
   });
 });

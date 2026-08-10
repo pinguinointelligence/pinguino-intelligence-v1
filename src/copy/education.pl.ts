@@ -191,26 +191,27 @@ export const educationCopy = {
     question: 'Czy tę mieszankę trzeba podgrzać?',
     statuses: {
       cold_process_ok: {
-        title: 'Proces na zimno',
-        note: 'Zatwierdzone dane procesu obejmują wszystkie składniki tej receptury.',
+        title: 'Można przygotować na zimno',
+        note: 'Zatwierdzone dane potwierdzają proces na zimno dla wszystkich składników tej receptury.',
       },
       heat_required_for_function: {
-        title: 'Wymaga podgrzania',
+        title: 'Podgrzanie wymagane technologicznie',
         note: 'Co najmniej jeden składnik wymaga ciepła do prawidłowego działania.',
       },
       heat_required_for_safety: {
-        title: 'Wymaga podgrzania',
+        title: 'Podgrzanie wymagane dla bezpieczeństwa',
         note: 'Zatwierdzony proces wymaga obróbki cieplnej ze względów bezpieczeństwa.',
       },
       heat_required_for_both: {
-        title: 'Wymaga podgrzania',
+        title: 'Podgrzanie wymagane technologicznie i dla bezpieczeństwa',
         note: 'Ciepło jest wymagane zarówno dla działania składnika, jak i dla bezpieczeństwa procesu.',
       },
       unknown: {
-        title: 'Sprawdź proces składnika',
-        note: 'Brak wystarczających danych o procesie.',
+        title: 'Nie można bezpiecznie potwierdzić procesu na zimno',
+        note: 'Dla co najmniej jednego składnika brakuje wystarczających danych procesu.',
       },
     },
+    dataMissing: 'NIEWYSTARCZAJĄCE DANE',
     reasonLabels: {
       ingredient_function: 'Działanie składnika',
       food_safety: 'Bezpieczeństwo procesu',

@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "recipes:import": "node scripts/importFlavorCatalogue.mjs",
-    "recipes:validate": "node scripts/importFlavorCatalogue.mjs --check"
+    "recipes:validate": "node scripts/importFlavorCatalogue.mjs --check",
+    "process:validate": "node scripts/buildProcessMetadataSeed.mjs --check"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "^5.2.8",
