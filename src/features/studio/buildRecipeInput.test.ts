@@ -52,6 +52,15 @@ describe('buildRecipeInput', () => {
       flavor_intensity: 'maximum',
       cost_priority: 'low',
       target_protein_percent: 20,
+      direction_targets: {
+        sweetness: 0,
+        softness: 0,
+        creaminess: 0,
+        flavor: 0,
+      },
+      direction_targets_active: false,
+      excluded_ingredient_ids: [],
+      unavailable_main_ingredient_ids: [],
     });
     expect(input.items[0]!.lock_type).toBe('main');
   });

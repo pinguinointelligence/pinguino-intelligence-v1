@@ -14,6 +14,7 @@ import type {
 } from '@/features/ingredient-builder/IngredientRow';
 import { constraintStudioCopy as copy, formatGramsPl } from './constraintStudioCopy';
 import { useConstraintStudioStore } from './constraintStudioStore';
+import { useRecipeStore } from '@/stores/recipeStore';
 
 /** The row's padlock view model — defined by the row, produced here. */
 export type LineLockView = IngredientRowLockView;
@@ -26,12 +27,40 @@ export interface LineLockControls {
 export function useLineLockControls(): LineLockControls {
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const toggleLock = useConstraintStudioStore((state) => state.toggleLock);
+  const togglePercentLock = useConstraintStudioStore((state) => state.togglePercentLock);
   const onLineLockTypeChanged = useConstraintStudioStore((state) => state.onLineLockTypeChanged);
 
   const lockFor = (item: EffectiveRecipeItem): LineLockView => {
     const constraint = constraints.byLineId[item.id];
     const name = item.ingredient.name;
     const hasActuals = item.actual_grams !== null;
+    const targetBatchGrams = useRecipeStore.getState().target_batch_grams;
+    const percent =
+      constraint?.mode === 'percent'
+        ? constraint.percent
+        : item.lock_type === 'percent' && targetBatchGrams > 0
+          ? (item.planned_grams / targetBatchGrams) * 100
+          : null;
+    const percentView = {
+      percentLocked: percent !== null,
+      percentLabel: percent === null ? undefined : `${percent.toFixed(4)}%`,
+      percentToggleDisabled: hasActuals,
+      onTogglePercent: () => togglePercentLock(item.id),
+    };
+
+    if (percent !== null) {
+      return {
+        state: 'percent',
+        lockedGramsLabel: `${percent.toFixed(4)}%`,
+        ariaLabel: `${name} — odblokuj udział procentowy`,
+        title: `Stały udział finalnej partii: ${percent.toFixed(4)}%`,
+        badge: 'UDZIAŁ',
+        plannedDisabled: true,
+        toggleDisabled: false,
+        onToggle: () => toggleLock(item.id),
+        ...percentView,
+      };
+    }
 
     if (constraint?.mode === 'locked') {
       const gramsLabel = formatGramsPl(constraint.grams);
@@ -44,6 +73,7 @@ export function useLineLockControls(): LineLockControls {
         plannedDisabled: true,
         toggleDisabled: false,
         onToggle: () => toggleLock(item.id),
+        ...percentView,
       };
     }
 
@@ -57,6 +87,7 @@ export function useLineLockControls(): LineLockControls {
         plannedDisabled: false,
         toggleDisabled: false,
         onToggle: () => toggleLock(item.id),
+        ...percentView,
       };
     }
 
@@ -69,6 +100,7 @@ export function useLineLockControls(): LineLockControls {
       plannedDisabled: false,
       toggleDisabled: hasActuals,
       onToggle: () => toggleLock(item.id),
+      ...percentView,
     };
   };
 

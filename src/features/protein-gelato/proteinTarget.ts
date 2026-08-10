@@ -7,6 +7,7 @@ import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { recipeTechnicalFit, type TechnicalFitPresentation } from '@/features/recipe-score';
 import { MATCH_SCORE_LABELS, type TenPointScore } from '@/features/recipe-score/recipeMatchScore';
+import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
 
 import { PROTEIN_GELATO_TARGET } from '@/spine';
 
@@ -158,6 +159,7 @@ export function fitProteinTarget(
   input: RecipeInput,
   set: ConstraintSet = { byLineId: {} },
   excludedIngredientIds: readonly string[] = [],
+  probeLowerTargets = true,
 ): ProteinTargetFit {
   const before = assessProteinTarget(input);
   const unchanged = (reason: ProteinTargetFitReason): ProteinTargetFit => ({
@@ -455,6 +457,48 @@ export function fitProteinTarget(
     }
   }
 
+  // Frontier monotonicity: an infeasible higher request may never be labelled
+  // "best achievable" with LESS protein than a lower target the same verified
+  // formulation space can already reach. Probe the immediately lower 1 pp
+  // control targets (bounded to five) and judge those candidates against the
+  // ORIGINAL target. This is product-layer search only; every candidate still
+  // passes the unchanged native Engine hard-safety gate in `consider`.
+  if (
+    probeLowerTargets &&
+    before.targetPercent !== null &&
+    before.actualPercent !== null &&
+    before.targetPercent > before.actualPercent + PROTEIN_GELATO_TARGET.tolerancePercent &&
+    selectedBest()?.assessment.reached !== true
+  ) {
+    const originalTarget = before.targetPercent;
+    for (
+      let lowerTarget = originalTarget - PROTEIN_GELATO_TARGET.controlStepPercent, probes = 0;
+      lowerTarget > before.actualPercent + PROTEIN_GELATO_TARGET.tolerancePercent && probes < 5;
+      lowerTarget -= PROTEIN_GELATO_TARGET.controlStepPercent, probes += 1
+    ) {
+      const lowerInput: RecipeInput = {
+        ...input,
+        goals: { ...input.goals, target_protein_percent: lowerTarget },
+      };
+      const lower = fitProteinTarget(lowerInput, set, excludedIngredientIds, false);
+      if (!lower.assessment.hardSafe || lower.assessment.actualPercent === null) continue;
+      const restoredTargetInput: RecipeInput = {
+        ...lower.input,
+        goals: { ...lower.input.goals, target_protein_percent: originalTarget },
+      };
+      const movement = restoredTargetInput.items.reduce((sum, item) => {
+        const prior = input.items.find((candidate) => candidate.id === item.id);
+        return sum + Math.abs(item.planned_grams - (prior?.planned_grams ?? 0));
+      }, 0);
+      consider(
+        restoredTargetInput,
+        lower.sourceLineId ?? 'protein-frontier',
+        lower.balancingLineId ?? 'protein-frontier',
+        movement,
+      );
+    }
+  }
+
   const finalBest = selectedBest();
   if (finalBest === null)
     return unchanged(candidates.length < 2 ? 'no_adjustable_pair' : 'best_achievable');
@@ -477,19 +521,29 @@ export function recipeFitForInput(
   result: RecipeResult = calculateRecipe(input),
 ): TechnicalFitPresentation {
   const base = recipeTechnicalFit(result);
+  const direction = assessRecipeDirection(input, result);
   const target = assessProteinTarget(input, result);
-  if (!target.applicable || base.score === null || target.score === null) return base;
+  if (base.score === null) return base;
+  if (!target.applicable && direction.score === null) return base;
 
-  const score = target.score as TenPointScore;
+  const score = Math.min(
+    base.score,
+    direction.score ?? 10,
+    target.applicable && target.score !== null ? target.score : 10,
+  ) as TenPointScore;
   const label = MATCH_SCORE_LABELS[score];
+  const directionAria = direction.active
+    ? ` Kierunek receptury: ${direction.reachedAxisCount} z ${direction.supportedAxisCount} obsługiwanych osi w celu.`
+    : '';
+  const proteinAria = target.applicable
+    ? ` Cel białka ${target.targetPercent?.toFixed(1)}%, wynik ${target.actualPercent?.toFixed(1)}%.`
+    : '';
   return {
     ...base,
     score,
     label,
     display: `${score}/10`,
-    ariaText:
-      `Dopasowanie receptury Protein: ${score} na 10 — ${label}. ` +
-      `Cel białka ${target.targetPercent?.toFixed(1)}%, wynik ${target.actualPercent?.toFixed(1)}%.`,
-    validatedNative: base.validatedNative && target.reached,
+    ariaText: `Dopasowanie receptury: ${score} na 10 — ${label}.${directionAria}${proteinAria}`,
+    validatedNative: base.validatedNative && (!target.applicable || target.reached),
   };
 }

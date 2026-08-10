@@ -176,13 +176,16 @@ export const copy = {
       discovery: {
         eyebrow: 'BIBLIOTEKA SMAKU',
         question: 'Co chcesz zrobić?',
-        intro: 'Wybierz wyjątkowy kierunek albo zacznij od składnika. Do edytora przejdziesz bez katalogowego labiryntu.',
+        intro:
+          'Wybierz wyjątkowy kierunek albo zacznij od składnika. Do edytora przejdziesz bez katalogowego labiryntu.',
         lostTitle: 'Lost & Legendary',
-        lostBody: 'Udokumentowane smaki regionalne i zanikające — tylko wtedy, gdy da się je odtworzyć uczciwie.',
+        lostBody:
+          'Udokumentowane smaki regionalne i zanikające — tylko wtedy, gdy da się je odtworzyć uczciwie.',
         naturalTitle: 'Natural Icons',
         naturalBody: 'Nowoczesne smaki premium oparte na prawdziwych, jakościowych składnikach.',
         inspirationTitle: 'Znajdź inspirację',
-        inspirationBody: '2 500 kierunków smakowych zebranych w czytelne rodziny — nie gotowe receptury.',
+        inspirationBody:
+          '2 500 kierunków smakowych zebranych w czytelne rodziny — nie gotowe receptury.',
         countries: 'Wybierz kraj',
         ingredient: 'Zacznij od składnika',
         recommended: 'Polecane',
@@ -194,7 +197,8 @@ export const copy = {
         adaptation: 'Adaptacja PINGÜINO',
         showMore: 'Pokaż więcej inspiracji',
         showLess: 'Pokaż mniej',
-        noPublished: 'Ta kolekcja przechodzi jeszcze Mapper, testy kuchenne i ocenę sensoryczną. Nie pokazujemy jej jako gotowej przed zatwierdzeniem.',
+        noPublished:
+          'Ta kolekcja przechodzi jeszcze Mapper, testy kuchenne i ocenę sensoryczną. Nie pokazujemy jej jako gotowej przed zatwierdzeniem.',
         developmentPreview: 'Podgląd kuratorski — niezweryfikowane produkcyjnie',
         directions: 'Wybierz kierunek',
         families: 'Rodziny składników',
@@ -1114,7 +1118,7 @@ export const copy = {
           heading: 'Usuń',
           action: 'Usuń z receptury',
         },
-        percentReadiness: 'Blokada procentowa · W PRZYGOTOWANIU',
+        percentReadiness: 'Blokada procentowa',
         requiredDialog: {
           title: 'Ten składnik jest wymagany',
           body: 'Usunięcie tego składnika może uniemożliwić przygotowanie tej receptury.',
@@ -1130,14 +1134,15 @@ export const copy = {
           confirm: 'Tak, usuń składnik',
         },
         substituteDialog: {
-          title: (name: string) => `Brakuje: ${name}`,
-          intro: 'PINGÜINO może użyć:',
-          pending: 'W PRZYGOTOWANIU',
-          pendingBody:
-            'Ranking zamienników nie jest jeszcze podłączony. PINGÜINO nie proponuje przypadkowego składnika.',
+          title: (name: string) => `Zamiennik dla: ${name}`,
+          intro: 'Zweryfikowane kandydaty o tej samej roli technologicznej:',
+          pending: 'WYSZUKIWANIE',
+          pendingBody: 'Brak bezpiecznego zamiennika dla bieżącego profilu i znanych ograniczeń.',
           direct: 'Zamiennik bezpośredni',
           reformulation: 'Wymaga reformulacji',
-          use: 'Użyj',
+          use: 'Przygotuj Preview',
+          mainConfirmation:
+            'Rozumiem, że zamiana składnika Głównego zmienia tożsamość smaku receptury.',
           cancel: 'Anuluj',
         },
         infeasible: {

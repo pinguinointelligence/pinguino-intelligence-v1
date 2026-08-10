@@ -5,10 +5,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { useAuthStore } from '@/stores/authStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
-import {
-  VISIBLE_PRODUCT_TYPES,
-  type VisibleProductType,
-} from '@/features/studio/productType';
+import { VISIBLE_PRODUCT_TYPES, type VisibleProductType } from '@/features/studio/productType';
 import {
   MACHINE_CATALOG,
   deriveMachineSetup,
@@ -97,7 +94,7 @@ export function WorkbenchSettingsLine({
   actualProteinPercent?: number;
 }) {
   const store = useRecipeStore();
-  const directionTargets = useRecipeProfileStore((state) => state.directionTargets);
+  const directionTargets = store.direction_targets;
   const openedContextSeq = useRecipeProfileStore((state) => state.openedContextSeq);
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
@@ -226,7 +223,7 @@ export function WorkbenchSettingsLine({
                 calculationImpact:
                   'Niezweryfikowane składniki blokują Preview i Apply; wynik natywny nie obejmuje jeszcze FP, T50 ani celów sensorycznych.',
                 remaining:
-                  'Zweryfikować produkcyjnie -11/-12 oraz dostarczyć zatwierdzone dane FP/T50 i Recipe Direction Targets.',
+                  'Zweryfikować produkcyjnie -11/-12 oraz dostarczyć zatwierdzone dane FP/T50; Słodycz i Miękkość Direction już działają.',
               }}
             />
           ) : null}
@@ -351,18 +348,11 @@ export function WorkbenchSettingsLine({
             onChange={(strategy) => store.setFormulationStrategy(strategy)}
             testid="workbench-strategy"
           />
-          <ReadinessBadge
-            className="ml-[7.3rem] mt-1"
-            state="CZĘŚCIOWO PODŁĄCZONE"
-            details={{
-              limitation:
-                store.formulation_strategy === 'eco'
-                  ? 'ECO działa wyłącznie w granicach twardej technologii i ochrony smaku.'
-                  : 'OPTIMAL nie używa ceny jako celu formulacji.',
-              calculationImpact: STRATEGY_COPY[store.formulation_strategy].description,
-              remaining: 'Kalibracje bez zweryfikowanych danych pozostają oznaczone i zablokowane.',
-            }}
-          />
+          <p className="ml-[7.3rem] mt-1 text-[9px] leading-relaxed text-stone-500">
+            {store.formulation_strategy === 'eco'
+              ? 'ECO działa w granicach twardej technologii i ochrony smaku.'
+              : 'OPTIMAL dobiera technologię bez używania ceny jako celu.'}
+          </p>
         </div>
       </div>
 

@@ -1,10 +1,19 @@
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem } from '@/engine';
+import {
+  canonicalIngredientId,
+  canonicalIngredientIdFromSourceId,
+} from '@/data/ingredients/canonicalIngredientIdentity';
 import { useLineLockControls } from '@/features/constraint-studio/useLineLockControls';
+import {
+  selectCanonicalDraft,
+  useConstraintStudioStore,
+} from '@/features/constraint-studio/constraintStudioStore';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
@@ -35,6 +44,8 @@ import { useIngredientLibrary } from './useIngredientLibrary';
 import type { IngredientPriceView } from './IngredientPriceControl';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
+import { listEngineApprovedIngredients } from '@/services/ingredients';
+import { verifiedRecipeSubstituteCandidates } from './recipeSubstitution';
 
 const b = copy.studio.builder;
 const headCell = 'text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase';
@@ -60,6 +71,7 @@ export function IngredientBuilder({
   mode?: IngredientTableMode;
   production?: ProductionWorkspaceView;
 }) {
+  const queryClient = useQueryClient();
   const authUserId = useAuthStore((state) =>
     state.status === 'authed' ? (state.user?.id ?? null) : null,
   );
@@ -85,11 +97,10 @@ export function IngredientBuilder({
   const clearLineMeta = useIngredientTableUxStore((state) => state.clearLine);
   const markRequiredRemoved = useIngredientTableUxStore((state) => state.markRequiredRemoved);
   const metaByLineId = useIngredientTableUxStore((state) => state.metaByLineId);
-  const unresolvedByLineId = useIngredientTableUxStore(
-    (state) => state.unresolvedRequiredByLineId,
-  );
+  const unresolvedByLineId = useIngredientTableUxStore((state) => state.unresolvedRequiredByLineId);
 
   const removeItem = useRecipeStore((state) => state.removeItem);
+  const setCanonicalUnavailable = useRecipeStore((state) => state.setIngredientUnavailable);
   const coreActions: IngredientRowActions = wrapActions({
     setPlannedGrams: useRecipeStore((state) => state.setPlannedGrams),
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
@@ -113,14 +124,56 @@ export function IngredientBuilder({
       if (current?.lock_type === 'main') coreActions.setLockType(lineId, 'unlocked');
       setRoleMeta(lineId, role);
     },
-    toggleRequired,
-    // Reversible Recipe UX state: marking unavailable does not remove/exclude
-    // the canonical recipe line. The existing scientific exclusion store action
-    // is retained for already-accepted non-table flows.
-    setIngredientUnavailable: setUnavailable,
+    toggleRequired: (lineId) => {
+      const current = useRecipeStore.getState().items.find((item) => item.id === lineId);
+      const storedRequired = ingredientRowMeta(metaByLineId, lineId).required;
+      const currentlyRequired = storedRequired || current?.lock_type === 'required';
+      if (current?.lock_type === 'unlocked' && !currentlyRequired) {
+        coreActions.setLockType(lineId, 'required');
+        if (!storedRequired) toggleRequired(lineId);
+        return;
+      }
+      if (current?.lock_type === 'required') {
+        coreActions.setLockType(lineId, 'unlocked');
+        if (storedRequired) toggleRequired(lineId);
+        return;
+      }
+      // Main, exact-gram, percent and range locks already provide a stronger
+      // invariant. Keep their Engine/constraint state and only add the visible
+      // Required meaning instead of replacing a crown or a lock.
+      toggleRequired(lineId);
+    },
+    setIngredientUnavailable: (lineId, unavailable) => {
+      // Keep the unavailable row as an explicit replacement tombstone. Its
+      // canonical identity is excluded immediately, so normal formulation
+      // cannot accept it, while the beginner can still choose "Znajdź
+      // zamiennik" from the same row.
+      setUnavailable(lineId, unavailable);
+      setCanonicalUnavailable(lineId, unavailable);
+    },
     removeRequiredIngredient: (lineId, name) => {
       coreActions.removeItem(lineId);
       markRequiredRemoved(lineId, name);
+    },
+    requestSubstitutes: async (lineId) => {
+      if (demo || mode !== 'recipe') return [];
+      const catalogue = await queryClient.fetchQuery({
+        queryKey: ['verified-recipe-substitute-catalogue'],
+        queryFn: listEngineApprovedIngredients,
+        staleTime: 5 * 60 * 1000,
+      });
+      return verifiedRecipeSubstituteCandidates(selectCanonicalDraft().input, lineId, catalogue);
+    },
+    selectSubstitute: (lineId, candidate, mainIdentityConfirmed) => {
+      if (!candidate.ingredient || !candidate.authorization) return;
+      useConstraintStudioStore
+        .getState()
+        .createSubstitutionPreview(
+          lineId,
+          candidate.ingredient,
+          candidate.authorization,
+          mainIdentityConfirmed,
+        );
     },
   };
 
@@ -128,6 +181,7 @@ export function IngredientBuilder({
 
   // Explicit repair for old drafts only; never merge canonical lines automatically.
   const storeItems = useRecipeStore((state) => state.items);
+  const excludedIngredientIds = useRecipeStore((state) => state.excludedIngredientIds);
   const mergeDuplicates = useRecipeStore((state) => state.mergeDuplicateIngredientLines);
   const duplicateCount = repairableCanonicalDuplicateCount(storeItems);
 
@@ -154,14 +208,16 @@ export function IngredientBuilder({
   const header =
     mode === 'production' ? (
       <div className={`${PRODUCTION_ROW_GRID} px-3 py-2`}>
-        {['Składnik', 'Planowane', 'Faktycznie · Status / potwierdź', 'Różnica'].map((label, index) => (
-          <span
-            key={label}
-            className={`${headCell} ${index === 1 || index === 3 ? 'text-right' : ''}`}
-          >
-            {label}
-          </span>
-        ))}
+        {['Składnik', 'Planowane', 'Faktycznie · Status / potwierdź', 'Różnica'].map(
+          (label, index) => (
+            <span
+              key={label}
+              className={`${headCell} ${index === 1 || index === 3 ? 'text-right' : ''}`}
+            >
+              {label}
+            </span>
+          ),
+        )}
       </div>
     ) : (
       <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
@@ -185,9 +241,7 @@ export function IngredientBuilder({
       cost,
       lineCost: effectiveLineCost(item.effective_grams, cost),
       canEdit:
-        mode === 'recipe' &&
-        customerOwnerUserId !== null &&
-        canPersistCustomerPrice(rawIngredient),
+        mode === 'recipe' && customerOwnerUserId !== null && canPersistCustomerPrice(rawIngredient),
       onSave:
         customerOwnerUserId && canonicalId
           ? async (pricePerKg) => {
@@ -241,6 +295,10 @@ export function IngredientBuilder({
           }
         : undefined;
 
+    const storedMeta = ingredientRowMeta(metaByLineId, item.id);
+    const unavailableFromDraft = excludedIngredientIds.some(
+      (id) => canonicalIngredientIdFromSourceId(id) === canonicalIngredientId(item.ingredient),
+    );
     return (
       <IngredientRow
         key={item.id}
@@ -250,7 +308,7 @@ export function IngredientBuilder({
         lock={lockFor(item)}
         compact={layout === 'workbench'}
         mode={mode}
-        meta={ingredientRowMeta(metaByLineId, item.id)}
+        meta={{ ...storedMeta, unavailable: storedMeta.unavailable || unavailableFromDraft }}
         priceView={mode === 'recipe' ? priceView : undefined}
         productionLine={productionLine}
         productionActions={productionActions}

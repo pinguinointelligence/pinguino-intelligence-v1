@@ -22,7 +22,6 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import {
   attachRecipeProfileMetadata,
   profileSnapshotFromState,
@@ -40,7 +39,7 @@ const buildRecipeInputFromStore = (): RecipeInput => {
   const input = buildRecipeInput(state);
   return attachRecipeProfileMetadata(
     input,
-    profileSnapshotFromState(state, useRecipeProfileStore.getState().directionTargets),
+    profileSnapshotFromState(state, state.direction_targets),
   );
 };
 

@@ -493,7 +493,9 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
     expect(staged).not.toBeNull();
     // Force the staged proposal to the hard-residual state (the door is the
     // only thing being pinned here — it must refuse regardless of provenance).
-    useConstraintStudioStore.setState({ preview: withHardResidualProposal(staged!, rec) });
+    useConstraintStudioStore.setState({
+      preview: withHardResidualProposal(staged!, selectCanonicalDraft().input),
+    });
     useConstraintStudioStore.getState().applyPreview();
     const blocked = useConstraintStudioStore.getState().blocked;
     expect(blocked).not.toBeNull();

@@ -73,6 +73,8 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       return copy.previewIssue.invalidConstraints;
     case 'line_missing':
       return copy.previewIssue.lineMissing;
+    case 'substitution_invalid':
+      return issue.messagePl;
     case 'rescale_invalid':
       return copy.previewIssue.rescaleInvalid;
     case 'rescale_actuals':

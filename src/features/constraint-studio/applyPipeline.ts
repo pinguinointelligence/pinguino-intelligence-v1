@@ -27,10 +27,19 @@ import {
   detectViolations,
   proposeAutoFix,
   type CorrectionProposal,
+  type EngineIngredient,
   type RecipeInput,
   type RecipeResult,
 } from '@/engine';
 import { recipeContext } from '@/features/studio/buildRecipeInput';
+import {
+  buildRecipeDirectionPlan,
+  recipeDirectionViolations,
+} from '@/features/recipe-direction/recipeDirectionTargets';
+import {
+  assessRecipeDirection,
+  type RecipeDirectionAssessment,
+} from '@/features/recipe-direction/recipeDirectionAssessment';
 import {
   buildDraftCandidateVector,
   describeDraftAdjustment,
@@ -58,6 +67,7 @@ import {
 } from '@/features/recipe-constraints';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
 import {
+  approvedFormulationToolboxIngredients,
   buildFormulationProposal,
   routeFormulationMode,
   type FormulationAddedLine,
@@ -67,6 +77,12 @@ import {
   type FormulationRoleTraceRow,
 } from '@/features/formulation/formulate';
 import { resolveFunctionalRole, type FunctionalRole } from '@/features/formulation/ingredientRoles';
+import {
+  isVerifiedRuntimeSubstitute,
+  hasVerifiedMapperSubstitutionAuthorization,
+  substitutionIngredientFingerprint,
+} from '@/features/ingredient-builder/recipeSubstitution';
+import type { SubstituteAuthorization } from '@/features/ingredient-builder/ingredientTableUx';
 import {
   detectProportionalScaling,
   type ProportionalScalingReport,
@@ -151,7 +167,54 @@ export function workingStateFingerprint(input: RecipeInput, set: ConstraintSet):
 
 /* ── preview model ───────────────────────────────────────────────────────── */
 
-export type PreviewKind = 'optimize' | 'batch_rescale' | 'suggested_fix';
+export type PreviewKind = 'optimize' | 'batch_rescale' | 'suggested_fix' | 'substitution';
+
+export interface SubstitutionPreviewProof {
+  lineId: string;
+  fromCanonicalId: string;
+  toCanonicalId: string;
+  fromName: string;
+  toName: string;
+  changesMainIdentity: boolean;
+  candidateFingerprint: string;
+  mapperRowFingerprint: string;
+  allergensFingerprint: string;
+  veganEligibility: string;
+}
+
+/** Session-only explicit Main consent. It is never serialized in a preview or recipe. */
+export interface SubstitutionConsent {
+  baseFingerprint: string;
+  lineId: string;
+  fromCanonicalId: string;
+  toCanonicalId: string;
+}
+
+export interface SubstitutionSessionAuthorization {
+  baseFingerprint: string;
+  lineId: string;
+  fromCanonicalId: string;
+  toCanonicalId: string;
+  /** Exact in-memory authorization object returned with the fetched Mapper row. */
+  mapperAuthorization: SubstituteAuthorization;
+}
+
+/** Session-only consent for a native-safe candidate that misses a selected
+ * preference target. Bound to the exact base, target tuple and candidate. */
+export interface DirectionBestAchievableConsent {
+  baseFingerprint: string;
+  targetFingerprint: string;
+  candidateFingerprint: string;
+}
+
+export function directionTargetFingerprint(input: RecipeInput): string {
+  return JSON.stringify([
+    input.category,
+    input.target_temperature_c,
+    input.goals?.direction_targets_active === true,
+    input.goals?.direction_targets ?? null,
+  ]);
+}
 
 /* ── outcome classification (owner addendum item 4) ──────────────────────── */
 
@@ -339,6 +402,8 @@ export interface PreviewLineDiff {
 export interface ConstraintPreview {
   kind: PreviewKind;
   titlePl: string;
+  /** Exact identity swap; the Apply door re-derives every field. */
+  substitution?: SubstitutionPreviewProof;
   /** Owner P0 (Przelicz z PI) — auto-balance proof: what the orchestration actually did. */
   autoBalance?: { batchRescaled: boolean; solverRounds: number };
   /**
@@ -393,6 +458,8 @@ export interface ConstraintPreview {
    * per-round violation/severity trajectory and the exact stop reason. */
   /** Protein product-layer target vs actual on the staged candidate. */
   proteinTarget?: ProteinTargetAssessment;
+  /** One product-layer target-fit truth for Profile/Monitor/Preview/Production. */
+  directionAssessment?: RecipeDirectionAssessment;
   iteration?: IterationDiagnostics;
   /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
    * the PROPOSED state (classified by `classifyViolationBands` provenance).
@@ -812,6 +879,7 @@ export type BuildPreviewResult =
     }
   | { ok: false; code: 'apply_failed' }
   | { ok: false; code: 'line_missing' }
+  | { ok: false; code: 'substitution_invalid'; reasons: string[]; messagePl: string }
   | { ok: false; code: 'rescale_invalid' }
   | { ok: false; code: 'rescale_actuals' }
   | { ok: false; code: 'rescale_no_scalable' }
@@ -1006,6 +1074,7 @@ const finishPreview = (
     proposedInput,
     nextConstraints,
     proteinTarget: assessProteinTarget(proposedInput, afterResult),
+    directionAssessment: assessRecipeDirection(proposedInput, afterResult),
     lines: buildLineDiffs(baseInput, proposedInput, nextConstraints),
     violationsBefore,
     violationsAfter: violationCount(afterResult),
@@ -1123,8 +1192,14 @@ function solveOneRound(
     } {
   const solverInput = solverInputWithDeferredCapacity(current);
   const context = recipeContext(solverInput);
-  const proposed = proposeAutoFix({ input: solverInput, context, exactCorrectionGrams: true });
-  const violated = [...new Set(detectViolations(calculateRecipe(current)).map((v) => v.metric))];
+  const directionPlan = buildRecipeDirectionPlan(solverInput);
+  const proposed = proposeAutoFix({
+    input: solverInput,
+    context,
+    exactCorrectionGrams: true,
+    targetBandOverride: directionPlan.bands,
+  });
+  const violated = [...new Set(recipeDirectionViolations(current).map((v) => v.metric))];
   if (proposed.redacted) {
     return { applied: null, violated, detail: 'solver_fixed_point', filtered: [] };
   }
@@ -1324,7 +1399,7 @@ function iterateSolverToFixedPoint(
   diagnostics: IterationDiagnostics;
 } {
   const measure = (candidate: RecipeInput): { violations: number; severityPoints: number } => {
-    const list = detectViolations(calculateRecipe(candidate));
+    const list = recipeDirectionViolations(candidate);
     return {
       violations: list.length,
       severityPoints: list.reduce((sum, violation) => sum + violation.severity_points, 0),
@@ -1395,7 +1470,7 @@ function iterateSolverToFixedPoint(
     if (round > MAX_SOLVER_ROUNDS) {
       stopReason = 'iteration_cap';
       capped = true;
-      violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
+      violated = [...new Set(recipeDirectionViolations(working).map((v) => v.metric))];
       break;
     }
     const outcome = solveOneRound(
@@ -2170,6 +2245,19 @@ export function buildOptimizePreview(
   // state. The formulation path interprets ranges as TARGET constraints (a
   // 0 g draft against a 150–250 g range is a solvable request, not an error);
   // the correction path keeps the strict §17 current-grams validation.
+  const mainIntent = captureMainIngredientIntent(input);
+  const mainTotal = mainIntent.reduce((sum, line) => sum + line.grams, 0);
+  if (mainTotal > input.target_batch_grams + BATCH_SUM_TOLERANCE_G) {
+    return {
+      ok: false,
+      code: 'main_ratio_conflict',
+      lineIds: mainIntent.map((line) => line.lineId),
+      ingredientNames: mainIntent.map((line) => line.ingredientName),
+      messagePl:
+        `Składniki Główne ważą ${mainTotal.toFixed(1)} g, więcej niż docelowa partia ` +
+        `${input.target_batch_grams.toFixed(1)} g. PI nie zmniejszyło tożsamości receptury po cichu.`,
+    };
+  }
   const decision = routeFormulationMode(input, set);
   if (decision.mode === 'unsupported') {
     return { ok: false, code: 'unsupported_profile', reason: decision.reasons[0] ?? 'no_template' };
@@ -2312,7 +2400,7 @@ export function buildOptimizePreview(
   const strategy = normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode);
   if (
     strategy !== 'eco' &&
-    violationCount(calculateRecipe(working)) === 0 &&
+    recipeDirectionViolations(working).length === 0 &&
     !hasCritical &&
     !batchRescaled &&
     (!initialProteinTarget.applicable || initialProteinTarget.reached)
@@ -2364,7 +2452,7 @@ export function buildOptimizePreview(
     // The PROVEN failure: solver really ran `solverRounds` times and these
     // exact metrics stayed out of band (empty = no violations detectable).
     if (violated.length === 0) {
-      violated = [...new Set(detectViolations(calculateRecipe(working)).map((v) => v.metric))];
+      violated = [...new Set(recipeDirectionViolations(working).map((v) => v.metric))];
     }
     // Owner Phase 6: a complete unconstrained draft gets the template-seeded
     // fallback before the failure is final (never a bare one-line stop); the
@@ -2458,6 +2546,132 @@ export function buildOptimizePreview(
           ? 'protein_target_residual'
           : undefined;
   return mainSafePreview(input, preview);
+}
+
+/**
+ * Normal RECIPE substitution. The candidate is first swapped into an immutable
+ * draft, then the existing deterministic optimizer is allowed to rebalance it.
+ * The returned payload is rebased onto the ORIGINAL draft so the normal stale
+ * fingerprint, constraints, duplicate, hard-safety and Apply gates remain the
+ * only write path.
+ */
+export function buildSubstitutionPreview(
+  input: RecipeInput,
+  set: ConstraintSet,
+  lineId: string,
+  substitute: EngineIngredient,
+  authorization: SubstituteAuthorization,
+  createdAt: string,
+  options: OptimizePreviewOptions = {},
+): BuildPreviewResult {
+  const original = input.items.find((item) => item.id === lineId);
+  if (!original) return { ok: false, code: 'line_missing' };
+  const reasons: string[] = [];
+  if (input.items.some((item) => item.actual_grams !== null))
+    reasons.push('actual_batch_not_recipe');
+  if (!isVerifiedRuntimeSubstitute(substitute))
+    reasons.push('candidate_not_verified_mapper_reference');
+  const substituteFingerprint = substitutionIngredientFingerprint(substitute);
+  if (
+    !hasVerifiedMapperSubstitutionAuthorization(authorization) ||
+    authorization.canonicalId !== canonicalIngredientId(substitute) ||
+    authorization.ingredientFingerprint !== substituteFingerprint ||
+    authorization.mapperRowFingerprint.length === 0
+  ) {
+    reasons.push('candidate_authorization_mismatch');
+  }
+  if (input.category === 'vegan_gelato' && authorization.veganEligibility !== 'VEGAN_VERIFIED') {
+    reasons.push('candidate_authorization_not_vegan');
+  }
+  if (canonicalIngredientId(original.ingredient) === canonicalIngredientId(substitute)) {
+    reasons.push('same_canonical_ingredient');
+  }
+  if (
+    input.items.some(
+      (item) =>
+        item.id !== lineId &&
+        canonicalIngredientId(item.ingredient) === canonicalIngredientId(substitute),
+    )
+  ) {
+    reasons.push('canonical_duplicate');
+  }
+  if (resolveFunctionalRole(original.ingredient) !== resolveFunctionalRole(substitute)) {
+    reasons.push('different_functional_role');
+  }
+  if (input.category === 'vegan_gelato') {
+    const vegan = substitute.flags?.vegan_eligibility;
+    if (vegan !== 'VEGAN_VERIFIED') reasons.push('candidate_not_verified_vegan');
+  }
+  if (reasons.length > 0) {
+    return {
+      ok: false,
+      code: 'substitution_invalid',
+      reasons,
+      messagePl: `Brak bezpiecznego zamiennika: ${reasons.join(', ')}.`,
+    };
+  }
+
+  const swapped: RecipeInput = {
+    ...input,
+    items: input.items.map((item) =>
+      item.id === lineId ? { ...item, ingredient: structuredClone(substitute) } : item,
+    ),
+  };
+  const optimized = buildOptimizePreview(swapped, set, createdAt, options);
+  const proposed = optimized.ok
+    ? optimized.preview.proposedInput
+    : optimized.code === 'already_clean'
+      ? swapped
+      : null;
+  if (!proposed) return optimized;
+
+  const nativeResidual = detectViolations(calculateRecipe(proposed));
+  const directionResidual = recipeDirectionViolations(proposed);
+  const protein = assessProteinTarget(proposed);
+  const preserved = verifyConstraintsPreserved(set, proposed);
+  if (
+    nativeResidual.length > 0 ||
+    directionResidual.length > 0 ||
+    (protein.applicable && !protein.reached) ||
+    !preserved.ok
+  ) {
+    return {
+      ok: false,
+      code: 'substitution_invalid',
+      reasons: [
+        ...nativeResidual.map((violation) => `hard:${violation.metric}`),
+        ...directionResidual.map((violation) => `direction:${violation.metric}`),
+        ...(protein.applicable && !protein.reached ? ['protein_target'] : []),
+        ...(!preserved.ok ? ['constraint_not_preserved'] : []),
+      ],
+      messagePl: 'Brak bezpiecznego zamiennika dla bieżących blokad i profilu receptury.',
+    };
+  }
+
+  const preview = finishPreview(
+    'substitution',
+    `Zamiana: ${original.ingredient.name} → ${substitute.name}`,
+    input,
+    set,
+    proposed,
+    set,
+    violationCount(calculateRecipe(input)),
+    optimized.ok ? optimized.preview.explanation : [],
+    createdAt,
+  );
+  preview.substitution = {
+    lineId,
+    fromCanonicalId: canonicalIngredientId(original.ingredient),
+    toCanonicalId: canonicalIngredientId(substitute),
+    fromName: original.ingredient.name,
+    toName: substitute.name,
+    changesMainIdentity: original.lock_type === 'main',
+    candidateFingerprint: authorization.ingredientFingerprint,
+    mapperRowFingerprint: authorization.mapperRowFingerprint,
+    allergensFingerprint: authorization.allergensFingerprint,
+    veganEligibility: authorization.veganEligibility,
+  };
+  return { ok: true, preview };
 }
 
 /**
@@ -2673,6 +2887,7 @@ export interface AppliedChangeRecord {
 export type BlockedApply =
   | { code: 'stale_preview'; messagePl: string }
   | { code: 'invalid_lines'; messagePl: string; lineNames: string[] }
+  | { code: 'ingredient_identity_violated'; messagePl: string; lineNames: string[] }
   | { code: 'excluded_ingredients'; messagePl: string; ingredientNames: string[] }
   | {
       code: 'vegan_ingredients_invalid';
@@ -2703,6 +2918,7 @@ export type BlockedApply =
       messagePl: string;
       violations: EcoFlavourViolation[];
     }
+  | { code: 'direction_consent_required'; messagePl: string }
   /** Owner P0 Phase 5: proposed planned sum breaks the target-batch invariant. */
   | { code: 'batch_total_mismatch'; messagePl: string; proposedSum: number; targetBatch: number }
   /** Owner P0 (definitive fail): an optimize proposal that does not improve an
@@ -2760,6 +2976,53 @@ function sameVerifiedRecipeContext(current: RecipeInput, proposed: RecipeInput):
 }
 
 /**
+ * A PI proposal may change grams, never ingredient truth. Existing lines keep
+ * their complete canonical/composition fingerprint. The sole exception is the
+ * exact substitution line, whose Mapper session proof is verified separately
+ * below. New lines must byte-match one of the frozen, canonical formulation
+ * toolbox payloads; self-declared `is_verified` flags are not authority.
+ */
+function ingredientIdentityIntegrityViolations(
+  current: RecipeInput,
+  preview: ConstraintPreview,
+): string[] {
+  const proposedByLineId = new Map(preview.proposedInput.items.map((item) => [item.id, item]));
+  const currentIds = new Set(current.items.map((item) => item.id));
+  const authorizedSubstitutionLineId =
+    preview.kind === 'substitution' ? preview.substitution?.lineId : undefined;
+  const violations: string[] = [];
+
+  for (const existing of current.items) {
+    const proposed = proposedByLineId.get(existing.id);
+    if (!proposed) {
+      violations.push(existing.ingredient.name);
+      continue;
+    }
+    if (existing.id === authorizedSubstitutionLineId) continue;
+    if (
+      canonicalIngredientId(existing.ingredient) !==
+        canonicalIngredientId(proposed.ingredient) ||
+      substitutionIngredientFingerprint(existing.ingredient) !==
+        substitutionIngredientFingerprint(proposed.ingredient)
+    ) {
+      violations.push(existing.ingredient.name);
+    }
+  }
+
+  for (const added of preview.proposedInput.items.filter((item) => !currentIds.has(item.id))) {
+    const exactApproved = approvedFormulationToolboxIngredients(added.ingredient.id).some(
+      (approved) =>
+        canonicalIngredientId(approved) === canonicalIngredientId(added.ingredient) &&
+        substitutionIngredientFingerprint(approved) ===
+          substitutionIngredientFingerprint(added.ingredient),
+    );
+    if (!exactApproved) violations.push(added.ingredient.name || added.id);
+  }
+
+  return [...new Set(violations)];
+}
+
+/**
  * A verified, applicable recipe change. PRIVATE constructor: the only way to
  * obtain an instance is `VerifiedApply.commit` (aliased `commitPreview`),
  * which ALWAYS runs `verifyConstraintsPreserved` — so an Apply path that
@@ -2785,6 +3048,9 @@ export class VerifiedApply {
      * both the preview and the caller carry a revision, a mismatch is a stale
      * preview — the additional monotonic guard next to the fingerprint. */
     currentDraftRevision?: number,
+    substitutionConsent?: SubstitutionConsent | null,
+    substitutionAuthorization?: SubstitutionSessionAuthorization | null,
+    directionConsent?: DirectionBestAchievableConsent | null,
   ): CommitPreviewResult {
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
     // never applies, whatever the fingerprint says.
@@ -2827,9 +3093,35 @@ export class VerifiedApply {
         lineNames: invalidLineNames,
       };
     }
+    const identityViolations = ingredientIdentityIntegrityViolations(current, preview);
+    if (identityViolations.length > 0) {
+      return {
+        ok: false,
+        code: 'ingredient_identity_violated',
+        messagePl:
+          'Apply zablokowany: propozycja zmienia tożsamość lub profil składnika bez zatwierdzonego źródła Mapper/toolbox.',
+        lineNames: identityViolations,
+      };
+    }
     try {
       const result = calculateRecipe(preview.proposedInput);
       if (!Number.isFinite(result.total_batch_g)) throw new Error('non_finite_engine_total');
+      const direction = assessRecipeDirection(preview.proposedInput, result);
+      if (direction.active && direction.supportedAxisCount > 0 && !direction.reached) {
+        const consentValid =
+          directionConsent?.baseFingerprint === preview.baseFingerprint &&
+          directionConsent.targetFingerprint === directionTargetFingerprint(current) &&
+          directionConsent.candidateFingerprint ===
+            workingStateFingerprint(preview.proposedInput, preview.nextConstraints);
+        if (!consentValid) {
+          return {
+            ok: false,
+            code: 'direction_consent_required',
+            messagePl:
+              'Apply zablokowany: najbliższy bezpieczny profil wymaga jawnego potwierdzenia użytkownika.',
+          };
+        }
+      }
     } catch {
       const lineNames = preview.proposedInput.items.map((item) => item.ingredient.name);
       return {
@@ -2878,11 +3170,119 @@ export class VerifiedApply {
       };
     }
 
+    // Engine-native `required` is a hard line contract. Normal solver paths
+    // already keep every non-unlocked line; the Apply door repeats that truth
+    // from the current draft so a forged payload cannot remove, rename or
+    // change a Required line behind the UI.
+    const requiredViolations: ConstraintPreservationViolation[] = [];
+    for (const required of current.items.filter((item) => item.lock_type === 'required')) {
+      const proposed = preview.proposedInput.items.find((item) => item.id === required.id);
+      if (!proposed) {
+        requiredViolations.push({ lineId: required.id, code: 'line_missing' });
+        continue;
+      }
+      if (
+        canonicalIngredientId(proposed.ingredient) !== canonicalIngredientId(required.ingredient) ||
+        !Object.is(proposed.planned_grams, required.planned_grams) ||
+        proposed.lock_type !== 'required'
+      ) {
+        requiredViolations.push({ lineId: required.id, code: 'locked_grams_changed' });
+      }
+    }
+    if (requiredViolations.length > 0) {
+      return {
+        ok: false,
+        code: 'constraints_violated',
+        messagePl: copy.blocked.constraintsViolated(
+          requiredViolations.map(
+            (violation) =>
+              current.items.find((item) => item.id === violation.lineId)?.ingredient.name ??
+              violation.lineId,
+          ),
+        ),
+        violations: requiredViolations,
+      };
+    }
+
     // MULTI-MAIN IDENTITY GATE — intentionally BEFORE batch/integrity scoring:
     // a mathematically neat batch is irrelevant if it is a different flavour.
     // Re-derived from the current input and the actual payload; no preview flag
     // is trusted and every Preview/Apply route passes through this door.
-    const mainIdentity = verifyMainIngredientIdentity(current, preview.proposedInput);
+    const substitution = preview.substitution;
+    let mainIdentityBase = current;
+    if (preview.kind === 'substitution') {
+      const currentLine = substitution
+        ? current.items.find((item) => item.id === substitution.lineId)
+        : undefined;
+      const proposedLine = substitution
+        ? preview.proposedInput.items.find((item) => item.id === substitution.lineId)
+        : undefined;
+      const proofValid =
+        substitution !== undefined &&
+        currentLine !== undefined &&
+        proposedLine !== undefined &&
+        canonicalIngredientId(currentLine.ingredient) === substitution.fromCanonicalId &&
+        canonicalIngredientId(proposedLine.ingredient) === substitution.toCanonicalId &&
+        substitution.fromCanonicalId !== substitution.toCanonicalId &&
+        isVerifiedRuntimeSubstitute(proposedLine.ingredient) &&
+        resolveFunctionalRole(currentLine.ingredient) ===
+          resolveFunctionalRole(proposedLine.ingredient) &&
+        substitution.changesMainIdentity === (currentLine.lock_type === 'main') &&
+        substitution.candidateFingerprint ===
+          substitutionIngredientFingerprint(proposedLine.ingredient);
+      const authorizationValid =
+        proofValid &&
+        substitutionAuthorization?.baseFingerprint === preview.baseFingerprint &&
+        hasVerifiedMapperSubstitutionAuthorization(substitutionAuthorization.mapperAuthorization) &&
+        substitutionAuthorization.lineId === substitution.lineId &&
+        substitutionAuthorization.fromCanonicalId === substitution.fromCanonicalId &&
+        substitutionAuthorization.toCanonicalId === substitution.toCanonicalId &&
+        substitutionAuthorization.mapperAuthorization.canonicalId === substitution.toCanonicalId &&
+        substitutionAuthorization.mapperAuthorization.ingredientFingerprint ===
+          substitution.candidateFingerprint &&
+        substitutionAuthorization.mapperAuthorization.mapperRowFingerprint ===
+          substitution.mapperRowFingerprint &&
+        substitutionAuthorization.mapperAuthorization.allergensFingerprint ===
+          substitution.allergensFingerprint &&
+        substitutionAuthorization.mapperAuthorization.veganEligibility ===
+          substitution.veganEligibility;
+      if (!authorizationValid) {
+        return {
+          ok: false,
+          code: 'main_identity_violated',
+          messagePl:
+            'Apply zablokowany: zamiennik nie ma aktualnego potwierdzenia z katalogu Mapper.',
+          violations: [],
+        };
+      }
+      if (substitution.changesMainIdentity) {
+        const consentValid =
+          substitutionConsent?.baseFingerprint === preview.baseFingerprint &&
+          substitutionConsent.lineId === substitution.lineId &&
+          substitutionConsent.fromCanonicalId === substitution.fromCanonicalId &&
+          substitutionConsent.toCanonicalId === substitution.toCanonicalId;
+        if (!consentValid) {
+          return {
+            ok: false,
+            code: 'main_identity_violated',
+            messagePl:
+              'Apply zablokowany: zamiana składnika Głównego wymaga jawnego potwierdzenia zmiany smaku.',
+            violations: [],
+          };
+        }
+        mainIdentityBase = {
+          ...current,
+          items: current.items.map((item) =>
+            item.id === substitution.lineId
+              ? { ...item, ingredient: proposedLine.ingredient }
+              : item,
+          ),
+        };
+      }
+    } else if (substitution !== undefined) {
+      return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+    }
+    const mainIdentity = verifyMainIngredientIdentity(mainIdentityBase, preview.proposedInput);
     if (!mainIdentity.ok) {
       return {
         ok: false,
@@ -2996,7 +3396,10 @@ export class VerifiedApply {
     // changes the target): the proposed TARGET batch must be the CURRENT target
     // batch — a stale/multiplied target (the 111,000 g class of failure) is
     // structurally unappliable.
-    const batchGatedKind = preview.kind === 'optimize' || preview.kind === 'suggested_fix';
+    const batchGatedKind =
+      preview.kind === 'optimize' ||
+      preview.kind === 'suggested_fix' ||
+      preview.kind === 'substitution';
     if (batchGatedKind && preview.proposedInput.target_batch_grams !== current.target_batch_grams) {
       return {
         ok: false,
@@ -3104,7 +3507,7 @@ export class VerifiedApply {
     // residuals stay applicable with explanation (frozen semantics). This
     // SUPERSEDES the earlier accept-with-explanation freeze for hard-native
     // residuals (owner addendum, 2026-07-24).
-    if (preview.kind === 'optimize') {
+    if (preview.kind === 'optimize' || preview.kind === 'substitution') {
       const doorBands = classifyViolationBands(preview.proposedInput);
       if (doorBands.hardMetrics.length > 0) {
         return {
@@ -3116,7 +3519,10 @@ export class VerifiedApply {
       }
     }
 
-    if (preview.kind === 'optimize' && current.category === 'protein_gelato') {
+    if (
+      (preview.kind === 'optimize' || preview.kind === 'substitution') &&
+      current.category === 'protein_gelato'
+    ) {
       const currentTarget = assessProteinTarget(current);
       const proposedTarget = assessProteinTarget(preview.proposedInput);
       const targetIdentityPreserved =

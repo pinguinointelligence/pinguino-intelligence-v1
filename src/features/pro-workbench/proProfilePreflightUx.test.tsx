@@ -198,7 +198,7 @@ describe('preflight and recipe-specific persistence', () => {
       targetBatchGrams: 875,
       targetTemperatureC: -13,
       servingModeId: 'temp_minus_13',
-      directionTargets: { ...DEFAULT_DIRECTION_TARGETS, sweetness: 2 as const },
+      directionTargets: { ...DEFAULT_DIRECTION_TARGETS, sweetness: 1 as const },
     };
     const savedInput = attachRecipeProfileMetadata(
       {
@@ -217,7 +217,7 @@ describe('preflight and recipe-specific persistence', () => {
     expect(useRecipeStore.getState().mode).toBe('classic');
     expect(useRecipeStore.getState().formulation_strategy).toBe('optimal');
     expect(useRecipeStore.getState().servingModeId).toBe('temp_minus_13');
-    expect(useRecipeProfileStore.getState().directionTargets.sweetness).toBe(2);
+    expect(useRecipeProfileStore.getState().directionTargets.sweetness).toBe(1);
     expect(useRecipeProfileStore.getState().confirmedSignature).toBeNull();
   });
 });
@@ -235,14 +235,18 @@ describe('six-axis target language', () => {
     expect(scale).toContain('data-testid={`axis-minus-${id}`}');
     expect(scale).toContain('data-testid={`axis-plus-${id}`}');
     expect(`${axes}\n${scale}`.toLowerCase()).not.toContain('read only');
-    expect(axes).toContain('STEROWANIE W PRZYGOTOWANIU');
+    expect(axes).toContain('readiness={readiness}');
+    expect(axes).toContain("state?.status === 'blocked_runtime'");
+    expect(axes).toContain("? 'NIEOBSŁUGIWANE'");
+    expect(axes).toContain("? 'BRAK DANYCH'");
+    expect(axes).toContain("? 'WYMAGA KALIBRACJI'");
   });
 
   it('moves only the desired target and marks recalculation pending', () => {
     const beforeItems = JSON.stringify(useRecipeStore.getState().items);
-    useRecipeProfileStore.getState().moveAxisTarget('sweetness', -1);
-    expect(useRecipeProfileStore.getState().directionTargets.sweetness).toBe(-1);
-    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+    useRecipeStore.getState().moveDirectionTarget('sweetness', -1);
+    expect(useRecipeStore.getState().direction_targets.sweetness).toBe(-1);
+    expect(useRecipeStore.getState().dirty).toBe(true);
     expect(JSON.stringify(useRecipeStore.getState().items)).toBe(beforeItems);
   });
 

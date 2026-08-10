@@ -1,4 +1,4 @@
-import type { LockType } from '@/engine';
+import type { EngineIngredient, LockType } from '@/engine';
 
 /** Customer vocabulary only. Engine lock enums are deliberately not exposed here. */
 export type IngredientCustomerRole = 'standard' | 'addition';
@@ -13,9 +13,22 @@ export interface IngredientRowMeta {
 export interface SubstituteCandidate {
   id: string;
   name: string;
+  ingredient?: EngineIngredient;
+  /** Session-only evidence derived from the exact fetched Mapper row. It is
+   * never persisted with a recipe or trusted from the Preview payload. */
+  authorization?: SubstituteAuthorization;
   fit: 'direct' | 'reformulation';
   expectedImpact: string;
   compatibility: string;
+  requiresMainConfirmation?: boolean;
+}
+
+export interface SubstituteAuthorization {
+  canonicalId: string;
+  ingredientFingerprint: string;
+  mapperRowFingerprint: string;
+  allergensFingerprint: string;
+  veganEligibility: string;
 }
 
 export const DEFAULT_INGREDIENT_ROW_META: IngredientRowMeta = {
@@ -46,10 +59,7 @@ export function customerRoleFor(
  * switch contract without pretending the currently unfinished percentage solver
  * contract is available from the UI.
  */
-export function nextExclusiveLock(
-  current: LockType,
-  requested: 'grams' | 'percent',
-): LockType {
+export function nextExclusiveLock(current: LockType, requested: 'grams' | 'percent'): LockType {
   return current === requested ? 'unlocked' : requested;
 }
 

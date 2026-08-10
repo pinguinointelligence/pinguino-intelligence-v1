@@ -1,15 +1,17 @@
 import type { RecipeResult } from '@/engine';
+import { buildRecipeDirectionPlan } from '@/features/recipe-direction/recipeDirectionTargets';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { buildUserMonitorSummaryCards } from '@/features/user-monitor';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { RecipeAxisScale } from './RecipeAxisScale';
-import { actualPositionFromReading, targetStepToPosition } from './recipeAxisModel';
-import { type AdjustableAxisId, useRecipeProfileStore } from './recipeProfileStore';
-
-const directionDetails = {
-  limitation: 'Cele kierunkowe są zapisane, ale nie sterują jeszcze reformulacją solvera.',
-  calculationImpact: 'Przesunięcie celu nie zmienia gramów ani aktualnego wyniku.',
-  remaining: 'Podłączyć cztery cele do zatwierdzonego kontraktu Preview i Apply.',
-};
+import {
+  actualPositionFromReading,
+  directionAxisRelation,
+  metricPositionInNativeBand,
+  targetBandPosition,
+  targetStepToPosition,
+} from './recipeAxisModel';
+import { type AdjustableAxisId } from './recipeProfileStore';
 
 const ADJUSTABLE_AXES: readonly {
   id: AdjustableAxisId;
@@ -28,19 +30,16 @@ const INFORMATION_AXES = [
 ] as const;
 
 export function ProfileDirectionAxes({ result }: { result: RecipeResult }) {
-  const targets = useRecipeProfileStore((state) => state.directionTargets);
-  const moveTarget = useRecipeProfileStore((state) => state.moveAxisTarget);
-  const markProfileTargetChanged = useRecipeStore((state) => state.markProfileTargetChanged);
+  const recipe = useRecipeStore();
+  const targets = recipe.direction_targets;
+  const directionPlan = buildRecipeDirectionPlan(buildRecipeInput(recipe));
+  const statusByAxis = new Map(directionPlan.axes.map((axis) => [axis.axis, axis]));
   const readings = new Map(
     buildUserMonitorSummaryCards(result).map((axis) => [axis.id, axis.reading]),
   );
 
   const move = (axis: AdjustableAxisId, delta: -1 | 1) => {
-    const before = useRecipeProfileStore.getState().directionTargets[axis];
-    moveTarget(axis, delta);
-    if (useRecipeProfileStore.getState().directionTargets[axis] !== before) {
-      markProfileTargetChanged();
-    }
+    recipe.moveDirectionTarget(axis, delta);
   };
 
   return (
@@ -49,28 +48,56 @@ export function ProfileDirectionAxes({ result }: { result: RecipeResult }) {
         <h3 className="text-[10px] font-semibold tracking-[0.08em] text-ink uppercase">
           Kierunek i stan
         </h3>
-        <span
-          className="inline-flex cursor-help items-center gap-1 border border-nonprod/35 bg-nonprod/[0.055] px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.06em] text-nonprod uppercase"
-          title={`${directionDetails.limitation} ${directionDetails.calculationImpact} ${directionDetails.remaining}`}
-          data-readiness="W PRZYGOTOWANIU"
-        >
-          <span aria-hidden className="size-1 rounded-full bg-nonprod" />
-          STEROWANIE W PRZYGOTOWANIU
+        <span className="text-[8px] font-semibold tracking-[0.06em] text-status-ideal uppercase">
+          Słodycz i miękkość · Preview
         </span>
       </div>
       <div className="space-y-1.5">
-        {ADJUSTABLE_AXES.map((axis) => (
-          <RecipeAxisScale
-            key={axis.id}
-            id={axis.id}
-            label={axis.label}
-            adjustable
-            targetPosition={targetStepToPosition(targets[axis.id])}
-            actualPosition={actualPositionFromReading(readings.get(axis.readingId))}
-            onDecrease={() => move(axis.id, -1)}
-            onIncrease={() => move(axis.id, 1)}
-          />
-        ))}
+        {ADJUSTABLE_AXES.map((axis) => {
+          const state = statusByAxis.get(axis.id);
+          const working = state?.status === 'working';
+          const readiness =
+            state?.status === 'blocked_runtime'
+              ? 'NIEOBSŁUGIWANE'
+              : state?.status === 'blocked_data'
+                ? 'BRAK DANYCH'
+                : state?.status === 'blocked_science'
+                  ? 'WYMAGA KALIBRACJI'
+                  : 'DZIAŁA';
+          const indicator = state?.metric
+            ? result.indicators.find((candidate) => candidate.key === state.metric)
+            : undefined;
+          const hasMetricScale =
+            working &&
+            state?.targetBand != null &&
+            indicator?.band != null &&
+            indicator.value != null &&
+            Number.isFinite(indicator.value);
+          const targetPosition = hasMetricScale
+            ? targetBandPosition(state.targetBand!, indicator!.band!)
+            : targetStepToPosition(targets[axis.id]);
+          const actualPosition = hasMetricScale
+            ? metricPositionInNativeBand(indicator!.value!, indicator!.band!)
+            : actualPositionFromReading(readings.get(axis.readingId));
+          const relation = hasMetricScale
+            ? directionAxisRelation(indicator!.value!, indicator!.band!, state.targetBand!)
+            : undefined;
+          return (
+            <RecipeAxisScale
+              key={axis.id}
+              id={axis.id}
+              label={axis.label}
+              adjustable={working}
+              readiness={readiness}
+              readinessReason={state?.reason ?? undefined}
+              targetPosition={targetPosition}
+              actualPosition={actualPosition}
+              relation={relation}
+              onDecrease={() => move(axis.id, -1)}
+              onIncrease={() => move(axis.id, 1)}
+            />
+          );
+        })}
         <div className="my-1.5 border-t border-ink/8" />
         {INFORMATION_AXES.map((axis) => (
           <RecipeAxisScale

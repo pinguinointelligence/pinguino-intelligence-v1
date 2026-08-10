@@ -1,5 +1,5 @@
 import { cn } from '@/lib/cn';
-import { axisRelation } from './recipeAxisModel';
+import { axisRelation, type AxisRelation } from './recipeAxisModel';
 
 export function RecipeAxisScale({
   id,
@@ -9,6 +9,9 @@ export function RecipeAxisScale({
   adjustable,
   onDecrease,
   onIncrease,
+  readiness,
+  readinessReason,
+  relation: relationOverride,
 }: {
   id: string;
   label: string;
@@ -17,8 +20,11 @@ export function RecipeAxisScale({
   adjustable?: boolean;
   onDecrease?: () => void;
   onIncrease?: () => void;
+  readiness?: 'DZIAŁA' | 'WYMAGA KALIBRACJI' | 'NIEOBSŁUGIWANE' | 'BRAK DANYCH';
+  readinessReason?: string;
+  relation?: AxisRelation;
 }) {
-  const relation = axisRelation(actualPosition, targetPosition);
+  const relation = relationOverride ?? axisRelation(actualPosition, targetPosition);
   const acceptableStart = Math.max(0, targetPosition - 25);
   const acceptableEnd = Math.min(100, targetPosition + 25);
   const actualTone =
@@ -34,8 +40,22 @@ export function RecipeAxisScale({
       data-testid={`profile-axis-${id}`}
       data-axis-relation={relation}
     >
-      <span className="truncate text-[9px] font-semibold tracking-[0.06em] text-stone-600 uppercase">
-        {label}
+      <span
+        className="flex min-w-0 items-center gap-1 text-[9px] font-semibold tracking-[0.06em] text-stone-600 uppercase"
+        title={readinessReason}
+      >
+        <span className="truncate">{label}</span>
+        {readiness ? (
+          <span
+            className={cn(
+              'shrink-0 text-[6px] tracking-normal',
+              readiness === 'DZIAŁA' ? 'text-status-ideal' : 'text-nonprod',
+            )}
+            data-readiness={readiness}
+          >
+            {readiness}
+          </span>
+        ) : null}
       </span>
       <div
         className={cn(

@@ -119,6 +119,30 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     expect(useConstraintStudioStore.getState().blocked?.code).toBe('stale_preview');
     expect(storeSum()).toBe(untouchedSum + 5); // untouched apart from the user's own edit
   });
+
+  it('trustless Apply rejects a forged change to an Engine-native Required line', () => {
+    const required = useRecipeStore
+      .getState()
+      .items.find((item) => item.ingredient.name.includes('STRAWBERRIES'))!;
+    useRecipeStore.getState().setLockType(required.id, 'required');
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    if (!preview) return;
+
+    const forged = structuredClone(preview);
+    const forgedRequired = forged.proposedInput.items.find((item) => item.id === required.id)!;
+    forgedRequired.planned_grams += 1;
+    const balancing = forged.proposedInput.items.find((item) => item.id !== required.id)!;
+    balancing.planned_grams -= 1;
+    useConstraintStudioStore.setState({ preview: forged });
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked?.code).toBe('constraints_violated');
+    expect(
+      useRecipeStore.getState().items.find((item) => item.id === required.id)?.planned_grams,
+    ).toBe(required.planned_grams);
+  });
 });
 
 describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape', () => {
@@ -129,7 +153,9 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
     useConstraintStudioStore.getState().applyPreview();
     const before = JSON.stringify(storeRows()); // the applied, healthy draft
     const base = validInput();
-    const result = useRecipeStore.getState().applyVerifiedRecipeInput(mutate(structuredClone(base)));
+    const result = useRecipeStore
+      .getState()
+      .applyVerifiedRecipeInput(mutate(structuredClone(base)));
     return { result, before };
   };
 

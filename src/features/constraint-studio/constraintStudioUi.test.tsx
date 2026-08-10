@@ -264,6 +264,41 @@ describe('ConstraintPreviewCard (§19.1)', () => {
   it('reports the honest out-of-band delta without band values', () => {
     expect(html).toContain('Parametry poza optymalnym zakresem: 2 → 0');
   });
+
+  it('names a verified identity swap and the selected human direction without exposing bands', () => {
+    const preview = syntheticPreview();
+    preview.substitution = {
+      lineId: 'l-milk',
+      fromCanonicalId: 'milk-original',
+      toCanonicalId: 'milk-substitute',
+      fromName: 'Mleko A',
+      toName: 'Mleko B',
+      changesMainIdentity: false,
+      candidateFingerprint: 'candidate-fingerprint',
+      mapperRowFingerprint: 'mapper-row-fingerprint',
+      allergensFingerprint: '',
+      veganEligibility: 'VEGAN_UNKNOWN',
+    };
+    preview.proposedInput = {
+      ...preview.proposedInput,
+      goals: {
+        ...preview.proposedInput.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: -1, softness: 1, creaminess: 0, flavor: 0 },
+      },
+    };
+    const directedHtml = render(
+      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+    );
+
+    expect(directedHtml).toContain('data-testid="preview-substitution"');
+    expect(directedHtml).toContain('Mleko A');
+    expect(directedHtml).toContain('Mleko B');
+    expect(directedHtml).toContain('data-testid="preview-direction-reason"');
+    expect(directedHtml).toContain('mniej słodkie');
+    expect(directedHtml).toContain('miększe');
+    expect(directedHtml).not.toContain('targetBand');
+  });
 });
 
 /* ── blocked notice (the owner-mandated block) ───────────────────────────── */

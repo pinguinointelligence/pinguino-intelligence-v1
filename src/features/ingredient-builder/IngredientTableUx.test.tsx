@@ -45,6 +45,9 @@ const lock = (locked = false): IngredientRowLockView => ({
   plannedDisabled: locked,
   toggleDisabled: false,
   onToggle: vi.fn(),
+  percentLocked: false,
+  percentToggleDisabled: false,
+  onTogglePercent: vi.fn(),
 });
 
 const renderRow = (
@@ -62,7 +65,11 @@ const renderRow = (
     />,
   );
 
-const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const text = (html: string) =>
+  html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const renderBuilder = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -203,16 +210,25 @@ describe('Recipe ingredient table — quiet primary surface', () => {
 });
 
 describe('Recipe ingredient table — locks, units and availability', () => {
-  it('keeps percentage lock visible, pink and honestly disabled', () => {
+  it('rehydrates the visible Required state from the persisted Engine lock', () => {
+    const html = renderRow({ ...baseItem, lock_type: 'required' });
+    expect(html).toContain('aria-label="Składnik wymagany"');
+    expect(text(html)).toContain('Składnik wymagany ✓');
+  });
+
+  it('keeps percentage lock visible and operational', () => {
     const html = renderRow();
-    expect(html).toMatch(/<button[^>]*disabled[^>]*data-testid="row-lock-percent-/);
-    expect(html).toContain('border-nonprod/45');
-    expect(html).toContain('blokada procentowa w przygotowaniu');
+    const button =
+      html.match(/<button[^>]*data-testid="row-lock-percent-[\s\S]*?<\/button>/)?.[0] ?? '';
+    expect(button).not.toContain('disabled');
+    expect(button).toContain('zablokuj udział procentowy');
+    expect(html.toLowerCase()).not.toContain('blokada procentowa w przygotowaniu');
   });
 
   it('makes an active exact gram lock obvious in charcoal, never red', () => {
     const html = renderRow({ ...baseItem, lock_type: 'grams' }, DEFAULT_INGREDIENT_ROW_META, false);
-    const gramButton = html.match(/<button[^>]*data-testid="row-lock-grams-[\s\S]*?<\/button>/)?.[0] ?? '';
+    const gramButton =
+      html.match(/<button[^>]*data-testid="row-lock-grams-[\s\S]*?<\/button>/)?.[0] ?? '';
     expect(gramButton).toContain('bg-ink');
     expect(gramButton).toContain('text-white');
     expect(gramButton).not.toContain('status-error');
@@ -232,15 +248,16 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(html).toContain('data-unavailable="true"');
     expect(text(html)).toContain('NIEDOSTĘPNY');
     expect(text(html)).toContain('Oznacz jako dostępny');
-    expect(text(html)).toContain('Znajdź zamiennik · W PRZYGOTOWANIU');
+    expect(text(html)).toContain('Znajdź zamiennik');
+    expect(text(html)).not.toContain('Znajdź zamiennik · W PRZYGOTOWANIU');
   });
 
-  it('opens an honest substitute placement without fabricated recommendations', () => {
+  it('opens the operational substitute picker and fails closed without a safe candidate', () => {
     const html = renderToStaticMarkup(
       <SubstituteDialog ingredientName="Milk" candidates={[]} onClose={() => {}} />,
     );
-    expect(text(html)).toContain('Brakuje: Milk');
-    expect(text(html)).toContain('Ranking zamienników nie jest jeszcze podłączony');
+    expect(text(html)).toContain('Zamiennik dla: Milk');
+    expect(text(html)).toContain('Brak bezpiecznego zamiennika');
     expect(html).not.toContain('Candidate A');
     expect(html).not.toContain('>Użyj<');
   });

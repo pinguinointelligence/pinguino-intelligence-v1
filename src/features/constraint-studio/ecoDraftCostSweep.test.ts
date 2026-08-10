@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { EngineIngredient, RecipeInput } from '@/engine';
 import { effectiveInputCostPerKg, sweepEcoDraftCost } from './ecoDraftCostSweep';
 import type { CustomerPriceIndex } from '@/features/pro-core/effectiveRecipePricing';
+import { verifyEcoFlavourProtection } from '@/features/formulation-strategy/flavourFloor';
 
 const composition = {
   water_percent: 100,
@@ -130,5 +131,38 @@ describe('bounded ECO current-draft sweep', () => {
     expect(result!.input.items.find((item) => item.id === 'a')!.planned_grams).toBeGreaterThan(500);
     expect(result!.input.items.find((item) => item.id === 'a')!.ingredient.cost_per_kg).toBe(10);
     expect(result!.input.items.find((item) => item.id === 'b')!.ingredient.cost_per_kg).toBe(1);
+  });
+
+  it('runs the real ECO sweep and freezes an expensive uncalibrated Pistachio Main', () => {
+    const pistachio = recipe(80, 1);
+    pistachio.items[0] = {
+      ...pistachio.items[0]!,
+      ingredient: {
+        ...pistachio.items[0]!.ingredient,
+        name: 'Pistachio paste',
+        category: 'nut_paste',
+      },
+      planned_grams: 150,
+      lock_type: 'main',
+    };
+    pistachio.items[1] = { ...pistachio.items[1]!, planned_grams: 850 };
+    expect(effectiveInputCostPerKg(pistachio)).toBeCloseTo(12.85, 9);
+
+    const swept = run(pistachio);
+    expect(swept).toBeNull();
+    expect(pistachio.items[0]?.planned_grams).toBe(150);
+
+    const cheaper = {
+      ...pistachio,
+      items: [
+        { ...pistachio.items[0]!, planned_grams: 100 },
+        { ...pistachio.items[1]!, planned_grams: 900 },
+      ],
+    };
+    expect(effectiveInputCostPerKg(cheaper)).toBeCloseTo(8.9, 9);
+    expect(verifyEcoFlavourProtection(pistachio, cheaper)).toMatchObject({
+      ok: false,
+      violations: [{ code: 'unknown_floor_reduced', minimumGrams: 150, actualGrams: 100 }],
+    });
   });
 });

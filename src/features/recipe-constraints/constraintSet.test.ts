@@ -110,6 +110,19 @@ describe('applyConstraintsToRecipe (§17.1–§17.3)', () => {
     expect(applied.applied).toContainEqual({ lineId: SUCROSE, note: 'range_held_at_current' });
   });
 
+  it('percent lock maps to an exact share of the final target batch', () => {
+    const input = starterMilkBase();
+    const applied = applyConstraintsToRecipe(input, {
+      byLineId: { [SUCROSE]: { mode: 'percent', percent: 13 } },
+    });
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    const line = applied.input.items.find((item) => item.id === SUCROSE)!;
+    expect(line.lock_type).toBe('percent');
+    expect(line.planned_grams).toBe(130);
+    expect(applied.applied).toContainEqual({ lineId: SUCROSE, note: 'percent_exact' });
+  });
+
   it('ai on an engine-protected line keeps the engine lock (§18.1 hierarchy)', () => {
     const input = starterMilkBase();
     input.items[0] = { ...input.items[0]!, lock_type: 'main' };
@@ -287,6 +300,37 @@ describe('lock through a REAL solve (§17.2 / §25.1)', () => {
 });
 
 describe('batch change (§17.4)', () => {
+  it('changes percent-locked grams exactly with the final batch while gram locks stay fixed', () => {
+    const input = starterMilkBase();
+    const set: ConstraintSet = {
+      byLineId: {
+        [SUCROSE]: { mode: 'percent', percent: 13 },
+        [DEXTROSE]: { mode: 'locked', grams: 30 },
+      },
+    };
+    const rescaled = rescaleBatchToTarget(input, set, 1500);
+    expect(rescaled.ok).toBe(true);
+    if (!rescaled.ok) return;
+    expect(rescaled.input.items.find((item) => item.id === SUCROSE)?.planned_grams).toBe(195);
+    expect(rescaled.input.items.find((item) => item.id === DEXTROSE)?.planned_grams).toBe(30);
+    expect(verifyConstraintsPreserved(set, rescaled.input).ok).toBe(true);
+    expect(rescaled.input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(
+      1500,
+      10,
+    );
+  });
+
+  it('rehydrated lock_type percent preserves its derived share without a session constraint', () => {
+    const input = starterMilkBase();
+    input.items = input.items.map((item) =>
+      item.id === SUCROSE ? { ...item, lock_type: 'percent' as const } : item,
+    );
+    const rescaled = rescaleBatchToTarget(input, { byLineId: {} }, 2000);
+    expect(rescaled.ok).toBe(true);
+    if (!rescaled.ok) return;
+    expect(rescaled.input.items.find((item) => item.id === SUCROSE)?.planned_grams).toBe(260);
+  });
+
   it('rescales only unlocked lines; locked grams stay bit-for-bit', () => {
     const input = starterMilkBase(); // total 1000
     const set = lockSet(SUCROSE, 130);
@@ -352,6 +396,18 @@ describe('batch change (§17.4)', () => {
 });
 
 describe('verifyConstraintsPreserved (§17.2 hard guarantee)', () => {
+  it('rejects a forged Apply that changes only the locked percentage', () => {
+    const input = starterMilkBase();
+    const set: ConstraintSet = {
+      byLineId: { [SUCROSE]: { mode: 'percent', percent: 13 } },
+    };
+    expect(verifyConstraintsPreserved(set, input).ok).toBe(true);
+    const forged = withGrams(input, SUCROSE, 130.0001);
+    expect(verifyConstraintsPreserved(set, forged).violations).toEqual([
+      { lineId: SUCROSE, code: 'locked_percent_changed' },
+    ]);
+  });
+
   it('flags even a 0.05 g drift on a locked line (Object.is, no epsilon)', () => {
     const input = starterMilkBase();
     const drifted = withGrams(input, SUCROSE, 130.05);

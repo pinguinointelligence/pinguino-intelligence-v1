@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { ProductMode } from '@/engine';
+import type { ProductMode, RecipeDirectionTarget, RecipeDirectionTargets } from '@/engine';
 import type { VisibleProductType } from '@/features/studio/productType';
 import {
   normalizeFormulationStrategy,
@@ -8,8 +8,8 @@ import {
 } from '@/features/formulation-strategy/strategy';
 
 export type AdjustableAxisId = 'sweetness' | 'softness' | 'creaminess' | 'flavor';
-export type DirectionTarget = -2 | -1 | 0 | 1 | 2;
-export type DirectionTargets = Readonly<Record<AdjustableAxisId, DirectionTarget>>;
+export type DirectionTarget = RecipeDirectionTarget;
+export type DirectionTargets = Readonly<RecipeDirectionTargets>;
 
 export const DEFAULT_DIRECTION_TARGETS: DirectionTargets = Object.freeze({
   sweetness: 0,
@@ -72,7 +72,7 @@ interface RecipeProfileState {
 }
 
 const clampTarget = (value: number): DirectionTarget =>
-  Math.max(-2, Math.min(2, value)) as DirectionTarget;
+  Math.max(-1, Math.min(1, value)) as DirectionTarget;
 
 export const useRecipeProfileStore = create<RecipeProfileState>()(
   persist(

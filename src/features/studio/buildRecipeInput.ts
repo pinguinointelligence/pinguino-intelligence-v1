@@ -17,7 +17,16 @@ export type RecipeInputState = Pick<
   | 'items'
 > &
   Partial<
-    Pick<RecipeState, 'machine_capacity_source' | 'target_protein_percent' | 'formulation_strategy'>
+    Pick<
+      RecipeState,
+      | 'machine_capacity_source'
+      | 'target_protein_percent'
+      | 'formulation_strategy'
+      | 'direction_targets'
+      | 'direction_targets_active'
+      | 'excludedIngredientIds'
+      | 'unavailableMainIngredientIds'
+    >
   >;
 
 export function effectiveMachineCapacityGrams(state: RecipeInputState): number | null {
@@ -50,6 +59,15 @@ export function buildRecipeInput(
       flavor_intensity: state.flavor_intensity,
       cost_priority: state.cost_priority,
       target_protein_percent: state.target_protein_percent ?? PROTEIN_GELATO_TARGET.defaultPercent,
+      direction_targets: {
+        sweetness: state.direction_targets?.sweetness ?? 0,
+        softness: state.direction_targets?.softness ?? 0,
+        creaminess: state.direction_targets?.creaminess ?? 0,
+        flavor: state.direction_targets?.flavor ?? 0,
+      },
+      direction_targets_active: state.direction_targets_active ?? false,
+      excluded_ingredient_ids: [...(state.excludedIngredientIds ?? [])],
+      unavailable_main_ingredient_ids: [...(state.unavailableMainIngredientIds ?? [])],
     },
   };
 }

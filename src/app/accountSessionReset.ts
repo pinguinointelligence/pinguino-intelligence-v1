@@ -20,6 +20,7 @@ import { useIntakeStore } from '@/stores/intakeStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
+import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 
 export const ACCOUNT_OWNER_STORAGE_KEY = 'pinguino-active-account-owner';
 export const ANONYMOUS_OWNER_MARKER = '__pinguino_anonymous__';
@@ -127,4 +128,5 @@ export function clearAccountScopedClientState(queryClient: QueryClient): void {
   useCustomerPriceStore.getState().clear();
   useProductionSessionStore.getState().clear();
   useMasterLabelStore.getState().clear();
+  useIngredientTableUxStore.getState().reset();
 }

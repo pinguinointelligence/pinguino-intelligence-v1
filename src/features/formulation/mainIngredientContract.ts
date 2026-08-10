@@ -129,8 +129,9 @@ export function verifyMainIngredientIdentity(
 }
 
 export interface MainConstraintLike {
-  mode: 'ai' | 'locked' | 'range';
+  mode: 'ai' | 'locked' | 'percent' | 'range';
   grams?: number;
+  percent?: number;
   minGrams?: number;
   maxGrams?: number;
 }
@@ -181,6 +182,16 @@ export function resolveMainRatioScale(
         return conflict();
       }
       exactScale = factor;
+    } else if (constraint?.mode === 'percent') {
+      const percent = constraint.percent;
+      if (percent === undefined || !Number.isFinite(percent) || percent < 0 || percent > 100) {
+        return conflict();
+      }
+      const factor = (input.target_batch_grams * percent) / 100 / main.grams;
+      if (exactScale !== null && Math.abs(factor - exactScale) > MAIN_RATIO_TOLERANCE) {
+        return conflict();
+      }
+      exactScale = factor;
     } else if (constraint?.mode === 'range') {
       if (
         constraint.minGrams === undefined ||
@@ -204,13 +215,16 @@ export function resolveMainRatioScale(
   }
 
   const originalTotal = mains.reduce((sum, main) => sum + main.grams, 0);
-  const desiredScale = desiredMainTotal > POSITIVE_GRAMS_EPSILON ? desiredMainTotal / originalTotal : 1;
+  const desiredScale =
+    desiredMainTotal > POSITIVE_GRAMS_EPSILON ? desiredMainTotal / originalTotal : 1;
   const scaleFactor = exactScale ?? Math.min(Math.max(desiredScale, minScale), maxScale);
   if (!(scaleFactor > POSITIVE_GRAMS_EPSILON) || !Number.isFinite(scaleFactor)) return conflict();
   return { ok: true, scaleFactor, mains };
 }
 
-export function mainIdentityViolationMessage(check: Extract<MainIdentityCheck, { ok: false }>): string {
+export function mainIdentityViolationMessage(
+  check: Extract<MainIdentityCheck, { ok: false }>,
+): string {
   const names = [...new Set(check.violations.flatMap((violation) => violation.ingredientNames))];
   return (
     `Propozycja narusza tożsamość składników Głównych (${names.join(', ')}): ` +

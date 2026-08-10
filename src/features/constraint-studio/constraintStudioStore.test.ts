@@ -15,6 +15,7 @@ import type { RecipeInput } from '@/engine';
 import {
   alcoholAndSugarHeavyJimBeam,
   overSweetStarter,
+  starterMilkBase,
   starterLine,
   withGrams,
 } from '@/features/recipe-constraints/constraintFixtures';
@@ -49,12 +50,45 @@ const loadAddFixScenario = () => {
   useConstraintStudioStore.getState().toggleLock(DEXTROSE);
 };
 
+const directionInput = (): RecipeInput => {
+  const input = starterMilkBase();
+  return {
+    ...input,
+    goals: {
+      ...input.goals,
+      direction_targets: {
+        sweetness: -1,
+        softness: 0,
+        creaminess: 0,
+        flavor: 0,
+      },
+      direction_targets_active: true,
+    },
+  };
+};
+
 beforeEach(() => {
   useRecipeStore.getState().resetToDemo();
   useConstraintStudioStore.getState().resetForTests();
 });
 
 describe('§17.1/§17.2 padlock', () => {
+  it('toggles a mutually-exclusive percentage lock and invalidates the draft revision', () => {
+    loadRecipe(overSweetStarter(130));
+    const beforeRevision = useRecipeStore.getState().draftRevision;
+    useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+    expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toEqual({
+      mode: 'percent',
+      percent: 13,
+    });
+    expect(lineLockType(SUCROSE)).toBe('percent');
+    expect(useRecipeStore.getState().draftRevision).toBe(beforeRevision + 1);
+
+    useConstraintStudioStore.getState().toggleLock(SUCROSE);
+    expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toBeUndefined();
+    expect(lineLockType(SUCROSE)).toBe('unlocked');
+  });
+
   it('locks the EXACT current grams and maps onto engine lock_type grams', () => {
     loadRecipe(overSweetStarter(220));
     useConstraintStudioStore.getState().toggleLock(SUCROSE);
@@ -117,6 +151,42 @@ describe('§17.1/§17.2 padlock', () => {
 });
 
 describe('§19 apply through the store', () => {
+  it('requires the explicit best-achievable decision before normal Preview, Apply and Undo', () => {
+    loadRecipe(directionInput());
+    const before = JSON.stringify(recipeItems().map((item) => [item.id, item.planned_grams]));
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().directionBestCandidate).not.toBeNull();
+    expect(useConstraintStudioStore.getState().directionConsent).toBeNull();
+
+    useConstraintStudioStore.getState().acceptBestDirectionCandidate();
+    expect(useConstraintStudioStore.getState().directionBestCandidate).toBeNull();
+    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    expect(useConstraintStudioStore.getState().directionConsent).not.toBeNull();
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+    expect(useConstraintStudioStore.getState().directionConsent).toBeNull();
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(0);
+    expect(JSON.stringify(recipeItems().map((item) => [item.id, item.planned_grams]))).toBe(before);
+  });
+
+  it('invalidates a pending best-achievable decision as soon as its target changes', () => {
+    loadRecipe(directionInput());
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().directionBestCandidate).not.toBeNull();
+
+    useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
+
+    expect(useConstraintStudioStore.getState().directionBestCandidate).toBeNull();
+    expect(useConstraintStudioStore.getState().directionConsent).toBeNull();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+  });
+
   it('applies a verified optimize preview: recipe updated, locks byte-stable, history recorded', () => {
     loadAddFixScenario();
     useConstraintStudioStore.getState().createOptimizePreview();

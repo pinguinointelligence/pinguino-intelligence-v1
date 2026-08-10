@@ -1,6 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { EffectiveRecipeItem, EngineIngredient, RecipeInput } from '@/engine';
+import {
+  calculateRecipe,
+  detectViolations,
+  type EffectiveRecipeItem,
+  type EngineIngredient,
+  type RecipeInput,
+} from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { IngredientRow } from '@/features/ingredient-builder/IngredientRow';
 import {
@@ -8,6 +14,7 @@ import {
   buildOptimizePreview,
   buildSuggestedFixPreview,
   commitPreview,
+  directionTargetFingerprint,
   findCanonicalDuplicateIngredients,
   plannedSum,
   workingStateFingerprint,
@@ -201,6 +208,64 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
     expect(banana.planned_grams).toBeGreaterThanOrEqual(100);
     expect(banana.planned_grams).toBeLessThanOrEqual(250);
     expect(banana.planned_grams / strawberry.planned_grams).toBeCloseTo(1, 8);
+  });
+
+  it('combines Direction with 2:1 Multi-Main and a range constraint', () => {
+    const input: RecipeInput = {
+      ...ownerInput(200, 100),
+      goals: {
+        direction_targets: {
+          sweetness: 1,
+          softness: 1,
+          creaminess: 0,
+          flavor: 0,
+        },
+        direction_targets_active: true,
+      },
+    };
+    const constraints = {
+      byLineId: {
+        'line-banana': { mode: 'range' as const, minGrams: 160, maxGrams: 300 },
+      },
+    };
+    const result = buildOptimizePreview(input, constraints, '2026-08-10T00:00:00.000Z');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const after = result.preview.proposedInput;
+    const banana = after.items.find((item) => item.id === 'line-banana')!;
+    const strawberry = after.items.find((item) => item.id === 'line-strawberry')!;
+
+    expect(detectViolations(calculateRecipe(after))).toEqual([]);
+    expect(banana.planned_grams / strawberry.planned_grams).toBeCloseTo(2, 8);
+    expect(banana.planned_grams).toBeGreaterThanOrEqual(160);
+    expect(banana.planned_grams).toBeLessThanOrEqual(300);
+
+    const assessment = result.preview.directionAssessment;
+    const consent =
+      assessment?.reached === false
+        ? {
+            baseFingerprint: result.preview.baseFingerprint,
+            targetFingerprint: directionTargetFingerprint(input),
+            candidateFingerprint: workingStateFingerprint(
+              result.preview.proposedInput,
+              result.preview.nextConstraints,
+            ),
+          }
+        : null;
+    expect(
+      commitPreview(
+        input,
+        constraints,
+        result.preview,
+        '2026-08-10T00:01:00.000Z',
+        'direction-multi-main-locks',
+        [],
+        undefined,
+        null,
+        null,
+        consent,
+      ).ok,
+    ).toBe(true);
   });
 
   it('batch reconciliation preserves a free Main ratio and rejects an exact-lock drift', () => {

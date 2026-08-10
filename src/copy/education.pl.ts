@@ -227,6 +227,13 @@ export const educationCopy = {
       'Przejdź do mrożenia',
     ],
     exactParametersMissing: 'Dokładny czas i temperatura nie są podane bez zatwierdzonego źródła.',
+    confirmations: {
+      cold: 'Potwierdzam proces na zimno',
+      heat: 'Potwierdzam proces z podgrzaniem',
+      unknown: 'Rozumiem — proces wymaga weryfikacji',
+      accepted: 'Ścieżka procesu potwierdzona',
+      required: 'Najpierw potwierdź decyzję procesu.',
+    },
   },
   machine: {
     title: 'Jak działa Twoja maszyna?',

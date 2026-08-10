@@ -9,10 +9,12 @@ import {
   classifyHeatProcess,
   contextualEducationPrompts,
   machineEducationForProfile,
+  mapperProcessRowsToEvidence,
   topLevelEducationOrder,
   verifiedPlantOrigin,
   type ProcessEvidenceDecision,
   type RecipeProcessEvidence,
+  type MapperProcessMetadataRow,
 } from '.';
 
 const source = (id: string, verificationStatus: 'verified' | 'provisional' = 'verified') => ({
@@ -102,6 +104,50 @@ describe('process classification is positive-evidence only', () => {
       }),
     );
     expect(serialized).not.toMatch(/82|85|minutes|temperatureC|timeMinutes/);
+  });
+
+  it.each([
+    ['COLD_PROCESS_OK', 'cold_process_ok'],
+    ['HEAT_REQUIRED_FOR_FUNCTION', 'heat_required_for_function'],
+    ['HEAT_REQUIRED_FOR_SAFETY', 'heat_required_for_safety'],
+    ['HEAT_REQUIRED_FOR_BOTH', 'heat_required_for_both'],
+    ['UNKNOWN', 'unknown'],
+  ] as const)('maps companion %s to fail-closed recipe status %s', (decision, expected) => {
+    const row: MapperProcessMetadataRow = {
+      ingredient_id: 'PI-ING-PROCESS',
+      process_decision: decision,
+      reason_type: 'process_requirement',
+      explanation_pl: 'Zweryfikowana decyzja procesu.',
+      heat_sensitive: false,
+      late_addition_guidance_pl: null,
+      source_label: 'Owner Process Metadata',
+      source_reference: 'owner-workbook:07_Process_Metadata_2026-08-08',
+      verification_status: 'verified',
+      dataset_version: '2026-08-08',
+    };
+    const evidenceRows = mapperProcessRowsToEvidence([row]);
+    expect(
+      classifyHeatProcess({ ingredientIds: [row.ingredient_id], evidence: evidenceRows }).status,
+    ).toBe(expected);
+  });
+
+  it('surfaces verified late-addition guidance without inventing timing', () => {
+    const evidenceRows = mapperProcessRowsToEvidence([
+      {
+        ingredient_id: 'PI-ING-WHISKY',
+        process_decision: 'COLD_PROCESS_OK',
+        reason_type: 'process_requirement',
+        explanation_pl: 'Składnik jest zgodny z procesem na zimno.',
+        heat_sensitive: true,
+        late_addition_guidance_pl: 'Dodaj po schłodzeniu bazy, aby ograniczyć utratę aromatu.',
+        source_label: 'Owner Process Metadata',
+        source_reference: 'owner-workbook:07_Process_Metadata_2026-08-08',
+        verification_status: 'verified',
+        dataset_version: '2026-08-08',
+      },
+    ]);
+    expect(evidenceRows[0]?.explanation).toContain('Dodaj po schłodzeniu');
+    expect(evidenceRows[0]?.explanation).not.toMatch(/\d+\s*(min|°C)/);
   });
 });
 

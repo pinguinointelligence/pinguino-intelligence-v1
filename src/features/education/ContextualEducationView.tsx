@@ -4,7 +4,6 @@ import { educationCopy as copy } from '@/copy/education.pl';
 import {
   FRESH_GELATO_EDUCATION,
   availableMachineEducationCategories,
-  classifyCurrentRecipeProcess,
   classifyHeatProcess,
   contextualEducationPrompts,
   genericMachineEducation,
@@ -22,6 +21,8 @@ import {
   type MicroIngredientId,
   type RecipeProcessEvidence,
 } from '.';
+import { listProcessEvidenceByIngredientIds } from '@/services/processMetadata';
+import { processReasonText } from './processReasonText';
 
 type ActiveLesson = { id: EducationLessonId; focus?: string } | null;
 
@@ -96,10 +97,12 @@ function DeckControls({
   step,
   total,
   onStep,
+  canContinue = true,
 }: {
   step: number;
   total: number;
   onStep: (step: number) => void;
+  canContinue?: boolean;
 }) {
   return (
     <div className="mt-4 flex items-center justify-between gap-2 border-t border-ink/10 pt-3">
@@ -115,7 +118,9 @@ function DeckControls({
         <button
           type="button"
           onClick={() => onStep(step + 1)}
-          className="min-h-10 bg-ink px-4 text-xs font-semibold text-white"
+          disabled={!canContinue}
+          title={!canContinue ? copy.process.confirmations.required : undefined}
+          className="min-h-10 bg-ink px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-35"
         >
           {copy.lesson.next}
         </button>
@@ -342,7 +347,17 @@ function IngredientsLesson({ input, initialFocus }: { input: RecipeInput; initia
   );
 }
 
-function ProcessStatus({ classification }: { classification: HeatProcessClassification }) {
+function ProcessStatus({
+  classification,
+  ingredientNamesById,
+  confirmed,
+  onConfirm,
+}: {
+  classification: HeatProcessClassification;
+  ingredientNamesById: ReadonlyMap<string, string>;
+  confirmed: boolean;
+  onConfirm: () => void;
+}) {
   const statusCopy = copy.process.statuses[classification.status];
   const heat = classification.status.startsWith('heat_required');
   const cold = classification.status === 'cold_process_ok';
@@ -364,7 +379,7 @@ function ProcessStatus({ classification }: { classification: HeatProcessClassifi
           ) : null}
         </div>
         <p className="mt-1 text-xs leading-relaxed text-stone-600">{statusCopy.note}</p>
-        {classification.reasons.length > 0 && classification.status !== 'unknown' ? (
+        {classification.reasons.length > 0 ? (
           <ul className="mt-3 space-y-2 border-t border-ink/10 pt-3">
             {classification.reasons.map((reason, index) => (
               <li
@@ -372,9 +387,21 @@ function ProcessStatus({ classification }: { classification: HeatProcessClassifi
                 className="text-xs text-stone-600"
               >
                 <strong className="text-ink">{copy.process.reasonLabels[reason.type]}:</strong>{' '}
-                {reason.explanation}
+                {processReasonText(
+                  reason.ingredientId,
+                  reason.explanation,
+                  ingredientNamesById,
+                )}
               </li>
             ))}
+            {classification.status === 'unknown'
+              ? classification.affectedIngredientIds.slice(1).map((ingredientId) => (
+                  <li key={ingredientId} className="text-xs text-stone-600">
+                    <strong className="text-ink">{copy.process.reasonLabels.missing_data}:</strong>{' '}
+                    {ingredientNamesById.get(ingredientId) ?? ingredientId}
+                  </li>
+                ))
+              : null}
           </ul>
         ) : null}
       </div>
@@ -388,6 +415,21 @@ function ProcessStatus({ classification }: { classification: HeatProcessClassifi
           {copy.process.exactParametersMissing}
         </p>
       ) : null}
+      <button
+        type="button"
+        onClick={onConfirm}
+        aria-pressed={confirmed}
+        data-testid="process-path-confirm"
+        className={`mt-3 min-h-11 w-full border px-3 py-2 text-xs font-semibold ${confirmed ? 'border-status-ok/40 bg-status-ok/[0.06] text-status-ok' : 'border-ink bg-ink text-white'}`}
+      >
+        {confirmed
+          ? copy.process.confirmations.accepted
+          : classification.status === 'cold_process_ok'
+            ? copy.process.confirmations.cold
+            : classification.status === 'unknown'
+              ? copy.process.confirmations.unknown
+              : copy.process.confirmations.heat}
+      </button>
     </div>
   );
 }
@@ -513,20 +555,30 @@ function ProcessComparison() {
 
 function ProcessLesson({
   classification,
+  ingredientNamesById,
   machineId,
 }: {
   classification: HeatProcessClassification;
+  ingredientNamesById: ReadonlyMap<string, string>;
   machineId: string | null;
 }) {
   const [step, setStep] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
   const lessonRef = useLessonTop(step);
   return (
     <section ref={lessonRef}>
       <LessonProgress step={step} total={3} />
-      {step === 0 ? <ProcessStatus classification={classification} /> : null}
+      {step === 0 ? (
+        <ProcessStatus
+          classification={classification}
+          ingredientNamesById={ingredientNamesById}
+          confirmed={confirmed}
+          onConfirm={() => setConfirmed(true)}
+        />
+      ) : null}
       {step === 1 ? <MachineGuide machineId={machineId} /> : null}
       {step === 2 ? <ProcessComparison /> : null}
-      <DeckControls step={step} total={3} onStep={setStep} />
+      <DeckControls step={step} total={3} onStep={setStep} canContinue={step !== 0 || confirmed} />
     </section>
   );
 }
@@ -608,15 +660,38 @@ export function ContextualEducationView({
   onBack: () => void;
 }) {
   const [active, setActive] = useState<ActiveLesson>(null);
+  const [runtimeProcessEvidence, setRuntimeProcessEvidence] = useState<
+    readonly RecipeProcessEvidence[]
+  >([]);
+  const processIds = useMemo(() => input.items.map(processIdentityForItem), [input]);
+  const processIngredientNames = useMemo(
+    () =>
+      new Map(
+        input.items.map((item) => [processIdentityForItem(item), item.ingredient.name] as const),
+      ),
+    [input],
+  );
+  useEffect(() => {
+    if (processEvidence !== undefined) return;
+    let activeRequest = true;
+    void listProcessEvidenceByIngredientIds(processIds)
+      .then((evidence) => {
+        if (activeRequest) setRuntimeProcessEvidence(evidence);
+      })
+      .catch(() => {
+        if (activeRequest) setRuntimeProcessEvidence([]);
+      });
+    return () => {
+      activeRequest = false;
+    };
+  }, [processEvidence, processIds]);
   const classification = useMemo(
     () =>
-      processEvidence === undefined
-        ? classifyCurrentRecipeProcess(input)
-        : classifyHeatProcess({
-            ingredientIds: input.items.map(processIdentityForItem),
-            evidence: processEvidence,
-          }),
-    [input, processEvidence],
+      classifyHeatProcess({
+        ingredientIds: processIds,
+        evidence: processEvidence ?? runtimeProcessEvidence,
+      }),
+    [processEvidence, processIds, runtimeProcessEvidence],
   );
 
   return (
@@ -639,7 +714,12 @@ export function ContextualEducationView({
           initialFocus={active.focus}
         />
       ) : (
-        <ProcessLesson classification={classification} machineId={machineId} />
+        <ProcessLesson
+          key={classification.status}
+          classification={classification}
+          ingredientNamesById={processIngredientNames}
+          machineId={machineId}
+        />
       )}
     </div>
   );

@@ -77,7 +77,7 @@ describe('Pro workspace — white precision scope', () => {
   it('keeps the informational bracket and the review tools route', () => {
     const html = renderAt('/pro/recipe', 'pro');
     expect(html).toContain('bracket-note');
-    expect(html).toContain('data-readiness="W PRZYGOTOWANIU"');
+    expect(html).toContain('data-readiness="WYMAGA KALIBRACJI"');
     expect(renderAt('/pro/tools', 'pro')).toContain('data-testid="pro-review-zone"');
   });
 

@@ -89,6 +89,8 @@ const serializeLiveDraft = (): string => {
       item.planned_grams,
       item.actual_grams,
       item.lock_type,
+      item.range_constraint?.min_grams ?? null,
+      item.range_constraint?.max_grams ?? null,
     ]),
     byLineId: constraints.byLineId,
     exclusions: [...recipe.excludedIngredientIds],

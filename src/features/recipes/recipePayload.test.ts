@@ -121,6 +121,60 @@ describe('savedToRecipeInput (load validation)', () => {
     expect(loaded.goals?.target_protein_percent).toBe(22.4);
     expect(loaded.items).toEqual(input.items);
   });
+  it('round-trips exact Recipe Direction targets without persisting any Apply consent', () => {
+    const base = sampleInput();
+    const input = {
+      ...base,
+      goals: {
+        ...base.goals,
+        direction_targets: {
+          sweetness: -1 as const,
+          softness: 1 as const,
+          creaminess: 0 as const,
+          flavor: 0 as const,
+        },
+        direction_targets_active: true,
+      },
+    };
+    const payload = buildSavePayload({
+      name: 'Directional gelato',
+      recipeInput: input,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    const serialized = JSON.stringify(payload.recipe_input);
+    expect(serialized).not.toContain('substitutionConsent');
+    const loaded = savedToRecipeInput(JSON.parse(serialized));
+    expect(loaded.goals?.direction_targets).toEqual(input.goals.direction_targets);
+    expect(loaded.goals?.direction_targets_active).toBe(true);
+  });
+  it('round-trips persisted range and unavailable sidecars through a saved version', () => {
+    const base = sampleInput();
+    const [first] = base.items;
+    const input = {
+      ...base,
+      items: base.items.map((item) =>
+        item.id === first!.id
+          ? { ...item, lock_type: 'grams' as const, range_constraint: { min_grams: 90, max_grams: 140 } }
+          : item,
+      ),
+      goals: {
+        ...base.goals,
+        excluded_ingredient_ids: ['PI-ING-000494'],
+        unavailable_main_ingredient_ids: ['PI-ING-001553'],
+      },
+    };
+    const payload = buildSavePayload({
+      name: 'Range and availability',
+      recipeInput: input,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    const loaded = savedToRecipeInput(JSON.parse(JSON.stringify(payload.recipe_input)));
+    expect(loaded.items[0]?.range_constraint).toEqual({ min_grams: 90, max_grams: 140 });
+    expect(loaded.goals?.excluded_ingredient_ids).toEqual(['PI-ING-000494']);
+    expect(loaded.goals?.unavailable_main_ingredient_ids).toEqual(['PI-ING-001553']);
+  });
   it('tolerates unknown/future fields (old saves keep loading)', () => {
     const stored = JSON.parse(JSON.stringify(sampleInput())) as {
       items: Array<{ ingredient: Record<string, unknown> }>;

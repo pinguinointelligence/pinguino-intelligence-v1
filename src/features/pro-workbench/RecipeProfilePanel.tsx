@@ -161,33 +161,14 @@ function ProductionPanel({ production }: { production?: ProductionWorkspaceView 
 
   return (
     <div data-testid="pro-context-production">
-      <ReadinessFrame
-        className="m-3"
-        state="W PRZYGOTOWANIU"
-        title="Produkcja"
-        details={{
-          limitation: 'Design gotowy. Logika produkcyjna nie jest jeszcze podłączona.',
-          calculationImpact:
-            'Faktyczne ilości aktualizują szkic, ale nie zapisują przebiegu produkcji.',
-          remaining: 'Podłączyć repozytorium, statusy, zdarzenia i solver ratunku partii.',
-        }}
-      >
-        <ol className="space-y-2 text-xs text-stone-600">
-          <li>1. Odważ składnik zgodnie z planem.</li>
-          <li>2. Wpisz faktyczną ilość w tabeli po lewej.</li>
-          <li>
-            3. Przy odchyleniu wybierz: zachowaj partię, zwiększ partię, przelicz pozostałe albo
-            zgłoś brak.
-          </li>
-        </ol>
-        <button
-          type="button"
-          disabled
-          className="mt-3 w-full rounded-sm bg-nonprod px-3 py-2 text-xs font-semibold text-white opacity-65"
-        >
-          Przelicz produkcję · W PRZYGOTOWANIU
-        </button>
-      </ReadinessFrame>
+      <div className="m-3 border border-status-error/30 bg-status-error/[0.035] p-3" role="alert">
+        <h3 className="text-xs font-semibold text-status-error">
+          Nie udało się uruchomić sesji produkcji
+        </h3>
+        <p className="mt-1 text-[10px] leading-relaxed text-stone-600">
+          Wróć do Profilu receptury i otwórz Produkcję ponownie. Receptura nie została zmieniona.
+        </p>
+      </div>
     </div>
   );
 }
@@ -288,7 +269,6 @@ export function RecipeProfilePanel({
             className={`border-b-2 px-1 py-2 text-[10px] font-semibold transition-colors ${activeTab === tab.id ? 'border-ink text-ink' : 'border-transparent text-stone-500 hover:text-ink'}`}
           >
             {tab.label}
-            {tab.id === 'production' ? <span className="ml-1 text-nonprod">•</span> : null}
           </button>
         ))}
       </nav>

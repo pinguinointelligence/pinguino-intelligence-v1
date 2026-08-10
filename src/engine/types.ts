@@ -173,6 +173,9 @@ export interface RecipeItem {
   /** Real production amount (Actual Batch Mode, spec §15). */
   actual_grams: number | null;
   lock_type: LockType;
+  /** Product-layer persisted Pro range. Base Engine still sees the conservative
+   * grams/Main lock; orchestration rehydrates and verifies these bounds. */
+  range_constraint?: { min_grams: number; max_grams: number };
   production_step?: number;
   notes?: string;
 }
@@ -198,6 +201,29 @@ export interface RecipeGoals {
   /** Desired total protein in the final batch. Product-level preference only;
    * Base Engine composition still calculates the actual value from every line. */
   target_protein_percent?: number;
+  /**
+   * Canonical customer direction intent. These are product-layer preferences,
+   * not Base Engine chemistry: -1 = lower/firmer, 0 = approved clean middle,
+   * +1 = higher/softer. Unsupported sensory axes remain recorded so save and
+   * reopen never lose the owner's intent, but they are not fabricated into
+   * Engine targets.
+   */
+  direction_targets?: RecipeDirectionTargets;
+  /** True only after the user explicitly changes/accepts Direction. */
+  direction_targets_active?: boolean;
+  /** Draft-material availability sidecars. They are product orchestration
+   * state and never participate in Base Engine chemistry. */
+  excluded_ingredient_ids?: string[];
+  unavailable_main_ingredient_ids?: string[];
+}
+
+export type RecipeDirectionTarget = -1 | 0 | 1;
+
+export interface RecipeDirectionTargets {
+  sweetness: RecipeDirectionTarget;
+  softness: RecipeDirectionTarget;
+  creaminess: RecipeDirectionTarget;
+  flavor: RecipeDirectionTarget;
 }
 
 export interface RecipeInput {

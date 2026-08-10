@@ -15,7 +15,7 @@ export function MonitorLiveSummary({
   onOpenProfile?: () => void;
 }) {
   const recipe = useRecipeStore();
-  const targets = useRecipeProfileStore((state) => state.directionTargets);
+  const targets = recipe.direction_targets;
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
   const currentSignature = profileSettingsSignature(

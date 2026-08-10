@@ -13,6 +13,7 @@ import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { createProductionSession } from '@/features/production-workspace/productionSession';
 import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
+import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import {
   ANONYMOUS_OWNER_MARKER,
   clearAccountScopedClientState,
@@ -129,6 +130,7 @@ describe('clearAccountScopedClientState — wipes the previous account private s
       }),
     });
     useMasterLabelStore.setState({ label: null });
+    useIngredientTableUxStore.getState().markRequiredRemoved('private-line', 'Secret ingredient');
 
     clearAccountScopedClientState(qc);
 
@@ -140,5 +142,6 @@ describe('clearAccountScopedClientState — wipes the previous account private s
     expect(useCustomerPriceStore.getState().overridesByCanonicalId).toEqual({});
     expect(useProductionSessionStore.getState().session).toBeNull();
     expect(useMasterLabelStore.getState().label).toBeNull();
+    expect(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).toEqual({});
   });
 });

@@ -362,6 +362,16 @@ describe('recalculation overlay', () => {
     expect(src).toContain('after.preview === null && after.blocked === null');
   });
 
+  it('keeps best-achievable consent compact, pink and ahead of the normal Preview/Apply route', () => {
+    const src = read('features', 'pro-core', 'ProRecalcPanel.tsx');
+    expect(src).toContain('data-testid="direction-best-decision"');
+    expect(src).toContain('data-testid="direction-best-accept"');
+    expect(src).toContain('Przelicz najlepiej możliwie');
+    expect(src).toContain('border-nonprod/50');
+    expect(src).toContain('onAccept={store.acceptBestDirectionCandidate}');
+    expect(src).toContain('<ConstraintPreviewCard');
+  });
+
   it('the workbar Przelicz drives the ONE canonical pipeline (createOptimizePreview)', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(page).toContain('createOptimizePreview');
@@ -408,9 +418,9 @@ describe('no unrelated module removal across the split surface files', () => {
     expect(surface).toContain('hidden min-h-0');
   });
 
-  it('unfinished controls stay pink and visible in the viewport region', () => {
+  it('only genuinely uncalibrated controls stay pink and visible in the viewport region', () => {
     const html = renderAt('/pro/recipe');
-    const at = html.indexOf('data-readiness="W PRZYGOTOWANIU"');
+    const at = html.indexOf('data-readiness="WYMAGA KALIBRACJI"');
     expect(at).toBeGreaterThan(-1);
     expect(at).toBeLessThan(html.indexOf('</main>'));
   });

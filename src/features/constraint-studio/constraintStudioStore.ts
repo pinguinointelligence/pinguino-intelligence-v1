@@ -34,10 +34,12 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { LockType, RecipeInput, RecipeItem } from '@/engine';
+import type { EngineIngredient, LockType, RecipeInput, RecipeItem } from '@/engine';
+import type { SubstituteAuthorization } from '@/features/ingredient-builder/ingredientTableUx';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
   canonicalIngredientId,
+  canonicalIngredientIdFromSourceId,
   ingredientProvenance,
 } from '@/data/ingredients/canonicalIngredientIdentity';
 import {
@@ -56,14 +58,19 @@ const applyGuardCopy = constraintStudioCopy.applyGuard;
 import {
   buildBatchRescalePreview,
   buildOptimizePreview,
+  buildSubstitutionPreview,
   buildSuggestedFixPreview,
   commitPreview,
+  directionTargetFingerprint,
   workingStateFingerprint,
   type AppliedChangeRecord,
   type BlockedApply,
   type BuildPreviewResult,
   type ConstraintPreview,
+  type DirectionBestAchievableConsent,
   type SuggestedBoundFix,
+  type SubstitutionConsent,
+  type SubstitutionSessionAuthorization,
 } from './applyPipeline';
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -115,7 +122,7 @@ export function selectCanonicalDraft(): CanonicalDraft {
     revision: recipe.draftRevision,
     contextSeq: recipe.draftContextSeq,
     input: buildRecipeInput(recipe),
-    constraints: reconcileConstraints(recipe.items, session.constraints),
+    constraints: reconcileConstraints(recipe.items, session.constraints, recipe.target_batch_grams),
     excludedIngredientIds: recipe.excludedIngredientIds,
     unavailableMainIngredientIds: recipe.unavailableMainIngredientIds,
     machine: {
@@ -150,6 +157,8 @@ export function canonicalDraftSerialization(draft: CanonicalDraft): string {
       item.planned_grams,
       item.actual_grams,
       item.lock_type,
+      item.range_constraint?.min_grams ?? null,
+      item.range_constraint?.max_grams ?? null,
     ]),
     byLineId: draft.constraints.byLineId,
     exclusions: [...draft.excludedIngredientIds],
@@ -186,27 +195,54 @@ export type PreviewIssue = Exclude<BuildPreviewResult, { ok: true }>;
 export function reconcileConstraints(
   items: readonly RecipeItem[],
   set: ConstraintSet,
+  targetBatchGrams?: number,
 ): ConstraintSet {
   const itemById = new Map(items.map((item) => [item.id, item]));
   const byLineId: Record<string, IngredientConstraint> = {};
-  let dropped = false;
+  let changed = false;
   for (const [lineId, constraint] of Object.entries(set.byLineId)) {
     const item = itemById.get(lineId);
     if (!item) {
-      dropped = true;
+      changed = true;
       continue;
     }
     if (
       constraint.mode !== 'ai' &&
       item.lock_type !== 'grams' &&
+      item.lock_type !== 'percent' &&
       !ENGINE_KEPT_LOCKS.has(item.lock_type)
     ) {
-      dropped = true;
+      changed = true;
       continue;
     }
     byLineId[lineId] = constraint;
   }
-  return dropped ? { byLineId } : set;
+  if (targetBatchGrams !== undefined && targetBatchGrams > 0) {
+    for (const item of items) {
+      if (item.range_constraint && byLineId[item.id] === undefined) {
+        const { min_grams: minGrams, max_grams: maxGrams } = item.range_constraint;
+        if (
+          Number.isFinite(minGrams) &&
+          Number.isFinite(maxGrams) &&
+          minGrams >= 0 &&
+          minGrams <= maxGrams &&
+          item.planned_grams >= minGrams &&
+          item.planned_grams <= maxGrams
+        ) {
+          byLineId[item.id] = { mode: 'range', minGrams, maxGrams };
+          changed = true;
+          continue;
+        }
+      }
+      if (item.lock_type !== 'percent' || byLineId[item.id] !== undefined) continue;
+      byLineId[item.id] = {
+        mode: 'percent',
+        percent: (item.planned_grams / targetBatchGrams) * 100,
+      };
+      changed = true;
+    }
+  }
+  return changed ? { byLineId } : set;
 }
 
 /** §20.3 guard: undo is offered only while the working state still equals the
@@ -223,12 +259,26 @@ export function isUndoAvailable(
   );
 }
 
+const unavailableLineName = (draft: CanonicalDraft): string | null => {
+  const excluded = new Set(draft.excludedIngredientIds.map(canonicalIngredientIdFromSourceId));
+  return (
+    draft.input.items.find((item) => excluded.has(canonicalIngredientId(item.ingredient)))
+      ?.ingredient.name ?? null
+  );
+};
+
 /* ── store ───────────────────────────────────────────────────────────────── */
 
 export interface ConstraintStudioState {
   constraints: ConstraintSet;
   preview: ConstraintPreview | null;
   previewIssue: PreviewIssue | null;
+  /** Session-only; never persisted. Bound to exact base + Main identity swap. */
+  substitutionConsent: SubstitutionConsent | null;
+  substitutionAuthorization: SubstitutionSessionAuthorization | null;
+  /** Candidate is hidden until the user explicitly chooses the compromise. */
+  directionBestCandidate: ConstraintPreview | null;
+  directionConsent: DirectionBestAchievableConsent | null;
   blocked: BlockedApply | null;
   feasibility: ConstraintFeasibilityAnalysis | null;
   history: AppliedChangeRecord[];
@@ -238,6 +288,8 @@ export interface ConstraintStudioState {
 
   /** §17.1 padlock: AI ↔ locked at the EXACT current grams. */
   toggleLock: (lineId: string) => void;
+  /** Percentage of the final target batch, mutually exclusive with gram/range. */
+  togglePercentLock: (lineId: string) => void;
   /** §17.3 range (feature-flagged UI). Honest validation — never clamps. */
   setRangeConstraint: (
     lineId: string,
@@ -262,8 +314,15 @@ export interface ConstraintStudioState {
   resetDraftSession: () => void;
 
   createOptimizePreview: () => void;
+  acceptBestDirectionCandidate: () => void;
   createBatchRescalePreview: (newBatchGrams: number) => void;
   createSuggestedFixPreview: (fix: SuggestedBoundFix) => void;
+  createSubstitutionPreview: (
+    lineId: string,
+    substitute: EngineIngredient,
+    authorization: SubstituteAuthorization,
+    confirmMainIdentity: boolean,
+  ) => void;
   cancelPreview: () => void;
   /** THE apply — the only recipe write; goes through `commitPreview`. */
   applyPreview: () => void;
@@ -282,6 +341,10 @@ const INITIAL = {
   constraints: { byLineId: {} } as ConstraintSet,
   preview: null,
   previewIssue: null,
+  substitutionConsent: null,
+  substitutionAuthorization: null,
+  directionBestCandidate: null,
+  directionConsent: null,
   blocked: null,
   feasibility: null,
   history: [] as AppliedChangeRecord[],
@@ -291,7 +354,16 @@ const INITIAL = {
 
 /** Any constraint edit invalidates the staged preview + analysis (staleness
  * would block the apply anyway — clearing keeps the surface honest). */
-const CLEAR_STAGED = { preview: null, previewIssue: null, feasibility: null, blocked: null };
+const CLEAR_STAGED = {
+  preview: null,
+  previewIssue: null,
+  substitutionConsent: null,
+  substitutionAuthorization: null,
+  directionBestCandidate: null,
+  directionConsent: null,
+  feasibility: null,
+  blocked: null,
+};
 
 /**
  * OWNER FINAL INTEGRATION ADDENDUM (Agent C) — the persisted §17 slice: the
@@ -324,8 +396,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
             ...CLEAR_STAGED,
           });
-          if (item.lock_type === 'grams') recipe.setLockType(lineId, 'unlocked');
-          else recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
+          if (item.lock_type === 'grams' || item.lock_type === 'percent') {
+            recipe.setLockType(lineId, 'unlocked');
+          } else recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
           return;
         }
 
@@ -346,6 +419,34 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         }
       },
 
+      togglePercentLock: (lineId) => {
+        const recipe = useRecipeStore.getState();
+        const item = recipe.items.find((candidate) => candidate.id === lineId);
+        if (!item || item.actual_grams !== null || recipe.target_batch_grams <= 0) return;
+        const existing = get().constraints.byLineId[lineId];
+        if (existing?.mode === 'percent' || item.lock_type === 'percent') {
+          set({
+            constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
+            ...CLEAR_STAGED,
+          });
+          if (item.lock_type === 'percent') recipe.setLockType(lineId, 'unlocked');
+          else recipe.bumpDraftRevision();
+          return;
+        }
+        const percent = (item.planned_grams / recipe.target_batch_grams) * 100;
+        set({
+          constraints: {
+            byLineId: {
+              ...get().constraints.byLineId,
+              [lineId]: { mode: 'percent', percent },
+            },
+          },
+          ...CLEAR_STAGED,
+        });
+        if (!ENGINE_KEPT_LOCKS.has(item.lock_type)) recipe.setLockType(lineId, 'percent');
+        else recipe.bumpDraftRevision();
+      },
+
       setRangeConstraint: (lineId, minGrams, maxGrams) => {
         const recipe = useRecipeStore.getState();
         const item = recipe.items.find((candidate) => candidate.id === lineId);
@@ -362,11 +463,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         );
         if (lineIssues.length > 0) return { ok: false, issues: lineIssues };
         set({ constraints: candidateSet, ...CLEAR_STAGED });
-        if (!ENGINE_KEPT_LOCKS.has(item.lock_type) && item.lock_type !== 'grams') {
-          recipe.setLockType(lineId, 'grams'); // held-at-current for every solver path
-        } else {
-          recipe.bumpDraftRevision(); // Phase 3: a §17 range edit is a material edit
-        }
+        recipe.setRangeLock(lineId, minGrams, maxGrams);
         return { ok: true, issues: [] };
       },
 
@@ -379,7 +476,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         });
         const recipe = useRecipeStore.getState();
         const item = recipe.items.find((candidate) => candidate.id === lineId);
-        if (item && item.lock_type === 'grams' && existing.mode !== 'ai') {
+        if (existing.mode === 'range') {
+          recipe.clearRangeLock(lineId);
+        } else if (
+          item &&
+          (item.lock_type === 'grams' || item.lock_type === 'percent') &&
+          existing.mode !== 'ai'
+        ) {
           recipe.setLockType(lineId, 'unlocked');
         } else {
           recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
@@ -389,7 +492,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       onLineLockTypeChanged: (lineId, lockType) => {
         const existing = get().constraints.byLineId[lineId];
         if (existing === undefined || existing.mode === 'ai') return;
-        if (lockType === 'grams' || ENGINE_KEPT_LOCKS.has(lockType)) return;
+        if (lockType === 'grams' || lockType === 'percent' || ENGINE_KEPT_LOCKS.has(lockType))
+          return;
         // Conscious dropdown override → the §17 constraint is dropped with it.
         set({
           constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
@@ -399,13 +503,22 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       },
 
       reconcile: () => {
-        const reconciled = reconcileConstraints(useRecipeStore.getState().items, get().constraints);
+        const recipe = useRecipeStore.getState();
+        const reconciled = reconcileConstraints(
+          recipe.items,
+          get().constraints,
+          recipe.target_batch_grams,
+        );
         if (reconciled !== get().constraints) set({ constraints: reconciled });
       },
 
       resetDraftSession: () =>
         set({
-          constraints: { byLineId: {} },
+          constraints: reconcileConstraints(
+            useRecipeStore.getState().items,
+            { byLineId: {} },
+            useRecipeStore.getState().target_batch_grams,
+          ),
           history: [],
           ...CLEAR_STAGED,
         }),
@@ -416,6 +529,24 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // constraints + exclusions composed by the ONE selector — the preview is
         // stamped with the draft revision it was built for.
         const draft = selectCanonicalDraft();
+        const unavailable = unavailableLineName(draft);
+        if (unavailable) {
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            blocked: null,
+            previewIssue: {
+              ok: false,
+              code: 'substitution_invalid',
+              reasons: ['unavailable_ingredient_present'],
+              messagePl: `${unavailable} jest oznaczony jako niedostępny. Wybierz zamiennik albo usuń linię.`,
+            },
+          });
+          return;
+        }
         const result = buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
           excludedIngredientIds: draft.excludedIngredientIds,
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
@@ -423,8 +554,68 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         });
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
-          set({ preview: result.preview, previewIssue: null, blocked: null });
-        } else set({ preview: null, previewIssue: result, blocked: null });
+          const direction = result.preview.directionAssessment;
+          const needsConsent =
+            result.preview.diagnosticOnly !== true &&
+            direction?.active === true &&
+            direction.supportedAxisCount > 0 &&
+            !direction.reached;
+          set(
+            needsConsent
+              ? {
+                  preview: null,
+                  directionBestCandidate: result.preview,
+                  directionConsent: null,
+                  substitutionConsent: null,
+                  substitutionAuthorization: null,
+                  previewIssue: null,
+                  blocked: null,
+                }
+              : {
+                  preview: result.preview,
+                  directionBestCandidate: null,
+                  directionConsent: null,
+                  substitutionConsent: null,
+                  substitutionAuthorization: null,
+                  previewIssue: null,
+                  blocked: null,
+                },
+          );
+        } else {
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            previewIssue: result,
+            blocked: null,
+          });
+        }
+      },
+
+      acceptBestDirectionCandidate: () => {
+        const candidate = get().directionBestCandidate;
+        if (!candidate) return;
+        const current = selectCanonicalDraft();
+        if (workingStateFingerprint(current.input, current.constraints) !== candidate.baseFingerprint) {
+          set({ ...CLEAR_STAGED });
+          return;
+        }
+        set({
+          preview: candidate,
+          directionBestCandidate: null,
+          directionConsent: {
+            baseFingerprint: candidate.baseFingerprint,
+            targetFingerprint: directionTargetFingerprint(current.input),
+            candidateFingerprint: workingStateFingerprint(
+              candidate.proposedInput,
+              candidate.nextConstraints,
+            ),
+          },
+          previewIssue: null,
+          blocked: null,
+        });
       },
 
       createBatchRescalePreview: (newBatchGrams) => {
@@ -438,8 +629,26 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         );
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
-          set({ preview: result.preview, previewIssue: null, blocked: null });
-        } else set({ preview: null, previewIssue: result, blocked: null });
+          set({
+            preview: result.preview,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            previewIssue: null,
+            blocked: null,
+          });
+        } else {
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            previewIssue: result,
+            blocked: null,
+          });
+        }
       },
 
       createSuggestedFixPreview: (fix) => {
@@ -448,14 +657,128 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         const result = buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso());
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
-          set({ preview: result.preview, previewIssue: null, blocked: null });
-        } else set({ preview: null, previewIssue: result, blocked: null });
+          set({
+            preview: result.preview,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            previewIssue: null,
+            blocked: null,
+          });
+        } else {
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            previewIssue: result,
+            blocked: null,
+          });
+        }
       },
 
-      cancelPreview: () => set({ preview: null, previewIssue: null, blocked: null }),
+      createSubstitutionPreview: (lineId, substitute, authorization, confirmMainIdentity) => {
+        get().reconcile();
+        const draft = selectCanonicalDraft();
+        const currentLine = draft.input.items.find((item) => item.id === lineId);
+        const changesMainIdentity = currentLine?.lock_type === 'main';
+        if (changesMainIdentity && !confirmMainIdentity) {
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            blocked: null,
+            previewIssue: {
+              ok: false,
+              code: 'substitution_invalid',
+              reasons: ['main_identity_confirmation_required'],
+              messagePl: 'Zamiana składnika Głównego wymaga jawnego potwierdzenia zmiany smaku.',
+            },
+          });
+          return;
+        }
+        const result = buildSubstitutionPreview(
+          draft.input,
+          draft.constraints,
+          lineId,
+          substitute,
+          authorization,
+          nowIso(),
+          {
+            excludedIngredientIds: draft.excludedIngredientIds,
+            unavailableMainIngredientIds: draft.unavailableMainIngredientIds.filter(
+              (id) => id !== currentLine?.ingredient.canonical_ingredient_id,
+            ),
+            effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+          },
+        );
+        if (result.ok) {
+          result.preview.baseDraftRevision = draft.revision;
+          const proof = result.preview.substitution;
+          const consent =
+            proof?.changesMainIdentity && confirmMainIdentity
+              ? {
+                  baseFingerprint: result.preview.baseFingerprint,
+                  lineId: proof.lineId,
+                  fromCanonicalId: proof.fromCanonicalId,
+                  toCanonicalId: proof.toCanonicalId,
+                }
+              : null;
+          const sessionAuthorization: SubstitutionSessionAuthorization | null = proof
+            ? {
+                baseFingerprint: result.preview.baseFingerprint,
+                lineId: proof.lineId,
+                fromCanonicalId: proof.fromCanonicalId,
+                toCanonicalId: proof.toCanonicalId,
+                mapperAuthorization: authorization,
+              }
+            : null;
+          set({
+            preview: result.preview,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: consent,
+            substitutionAuthorization: sessionAuthorization,
+            previewIssue: null,
+            blocked: null,
+          });
+        } else {
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            previewIssue: result,
+            blocked: null,
+          });
+        }
+      },
+
+      cancelPreview: () =>
+        set({
+          preview: null,
+          directionBestCandidate: null,
+          directionConsent: null,
+          previewIssue: null,
+          substitutionConsent: null,
+          substitutionAuthorization: null,
+          blocked: null,
+        }),
 
       applyPreview: () => {
-        const { preview, constraints, history } = get();
+        const {
+          preview,
+          constraints,
+          history,
+          substitutionConsent,
+          substitutionAuthorization,
+          directionConsent,
+        } = get();
         if (!preview) return;
         // The Apply gate consumes the SAME canonical draft selector (FAILURE 1) +
         // the monotonic revision (Phase 3) — the door itself re-checks both.
@@ -468,6 +791,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           nextChangeId(),
           draft.excludedIngredientIds,
           draft.revision,
+          substitutionConsent,
+          substitutionAuthorization,
+          directionConsent,
         );
         if (!outcome.ok) {
           // The owner-mandated block: recipe untouched, clear Polish message.
@@ -573,7 +899,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           raw && typeof raw === 'object' && raw.byLineId ? raw : { byLineId: {} };
         return {
           ...current,
-          constraints: reconcileConstraints(useRecipeStore.getState().items, constraints),
+          constraints: reconcileConstraints(
+            useRecipeStore.getState().items,
+            constraints,
+            useRecipeStore.getState().target_batch_grams,
+          ),
         };
       },
     },
@@ -609,13 +939,19 @@ useRecipeStore.subscribe((state, prev) => {
     const session = useConstraintStudioStore.getState();
     // C3 step 1 — synchronous constraint reconciliation (write-time, not only
     // read-time): a removed line's §17 entry never survives the transaction.
-    const reconciled = reconcileConstraints(state.items, session.constraints);
+    const reconciled = reconcileConstraints(
+      state.items,
+      session.constraints,
+      state.target_batch_grams,
+    );
     const constraintsPatch = reconciled !== session.constraints ? { constraints: reconciled } : {};
     // C3 step 2 — staged-state invalidation (unchanged semantics).
     const previewCurrent = session.preview?.baseDraftRevision === state.draftRevision;
     const stagedPatch =
       !previewCurrent &&
       (session.preview !== null ||
+        session.directionBestCandidate !== null ||
+        session.directionConsent !== null ||
         session.previewIssue !== null ||
         session.feasibility !== null ||
         session.blocked !== null)

@@ -90,7 +90,7 @@ describe('ProWorkspacePage (S3)', () => {
     const production = renderAt('/pro/production', 'pro');
     expect(production).toContain('data-testid="pro-context-tabs"');
     expect(production).toContain('data-testid="pro-context-production"');
-    expect(production).toContain('W PRZYGOTOWANIU');
+    expect(production).toContain('Przygotowywanie bezpiecznej sesji produkcji');
     expect(production).toContain('data-testid="pro-context-summary-tab"');
 
     const history = renderAt('/pro/history', 'pro');

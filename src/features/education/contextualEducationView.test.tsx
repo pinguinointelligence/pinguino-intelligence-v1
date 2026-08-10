@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { ContextualEducationView } from './ContextualEducationView';
+import { processReasonText } from './processReasonText';
 
 const source = readFileSync(resolve(import.meta.dirname, 'ContextualEducationView.tsx'), 'utf8');
 
@@ -56,5 +57,22 @@ describe('contextual education runtime surface', () => {
     expect(source).not.toContain('solver');
     expect(source).not.toContain('CorrectionPanel');
     expect(source).not.toContain('calculateRecipe');
+  });
+
+  it('names each unresolved ingredient in the UNKNOWN explanation', () => {
+    const names = new Map([
+      ['PI-ING-000236', 'Mleko 3,5%'],
+      ['PI-ING-000514', 'Sacharoza'],
+    ]);
+    expect(
+      processReasonText(
+        'PI-ING-000236',
+        'Brak zweryfikowanego procesu.',
+        names,
+      ),
+    ).toBe('Mleko 3,5% — Brak zweryfikowanego procesu.');
+    expect(processReasonText('PI-ING-UNKNOWN', 'Brak danych.', names)).toContain(
+      'PI-ING-UNKNOWN',
+    );
   });
 });

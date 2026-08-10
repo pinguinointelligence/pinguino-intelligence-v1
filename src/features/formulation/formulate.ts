@@ -21,7 +21,12 @@
  *  - a missing optional role is NEVER silently re-added — it lowers the result
  *    honestly and produces an improvement recommendation instead.
  */
-import { DEFAULT_CORRECTION_CANDIDATES, type RecipeInput, type RecipeItem } from '@/engine';
+import {
+  DEFAULT_CORRECTION_CANDIDATES,
+  type EngineIngredient,
+  type RecipeInput,
+  type RecipeItem,
+} from '@/engine';
 import type { ConstraintSet, IngredientConstraint } from '@/features/recipe-constraints';
 import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
 import { selectFormulationTemplateForRecipe, type FormulationTemplate } from './templateRegistry';
@@ -96,6 +101,10 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
   // never count as constraints and never drive routing (owner binding rule).
   const hardLine = (item: RecipeItem): boolean =>
     item.lock_type !== 'unlocked' &&
+    // Main is an identity/ratio invariant, not an instruction to discard the
+    // current composition and require a profile template. The local corrector
+    // and trustless Apply door already preserve the complete Main group.
+    item.lock_type !== 'main' &&
     (item.lock_type !== 'grams' || isEffectivelyLockedLine(item, set.byLineId[item.id]));
   const hardConstraints =
     Object.values(set.byLineId).some((c) => c.mode !== 'ai') || input.items.some(hardLine);
@@ -319,6 +328,29 @@ const toolboxIngredient = (id: string) =>
   findVerifiedVeganFormulationCandidate(id) ??
   findVerifiedProteinFormulationCandidate(id);
 
+/**
+ * Exact approved ingredient payloads that may legitimately appear as a NEW
+ * line in a PI proposal. The Apply door uses these immutable references to
+ * re-authorize additions instead of trusting provenance flags carried by the
+ * preview. A core correction candidate is admissible only when it has a
+ * canonical Mapper registry binding; verified Vegan/Protein candidates carry
+ * their Mapper id directly.
+ */
+export function approvedFormulationToolboxIngredients(
+  id: string,
+): readonly EngineIngredient[] {
+  const ingredient = toolboxIngredient(id);
+  if (!ingredient) return [];
+  const canonical = canonicalToolboxIdentity(id);
+  const mapperId = canonical?.mapperId ?? ingredient.canonical_ingredient_id;
+  if (typeof mapperId !== 'string' || !mapperId.startsWith('PI-ING-')) return [];
+  const normalized = normalizeIngredientIdentity(
+    { ...ingredient, canonical_ingredient_id: mapperId },
+    'template',
+  );
+  return [ingredient, normalized];
+}
+
 export interface FormulationOptions {
   /** Canonical ingredient ids the user explicitly REMOVED / marked unavailable —
    * PI never reintroduces them (they become recommendations instead). */
@@ -514,15 +546,24 @@ export function buildFormulationProposal(
         (ingredient !== null && excluded.has(ingredient.id));
       if (!candidateExcluded) {
         if (ingredient) {
+          const approvedIngredient = approvedFormulationToolboxIngredients(
+            roleTarget.toolboxId,
+          )[1];
+          if (!approvedIngredient) {
+            missingRoles.push(roleTarget.role);
+            if (HARD_ROLES.has(roleTarget.role)) missingHardRoles.push(roleTarget.role);
+            roleTrace.push({
+              ...traceBase,
+              candidateFound: false,
+              excluded: false,
+              outcome: HARD_ROLES.has(roleTarget.role) ? 'missing_hard' : 'missing_soft',
+              reason: 'candidate_missing_canonical_mapper_authorization',
+            });
+            continue;
+          }
           const item: RecipeItem = {
             id: `formulation-${roleTarget.toolboxId}`,
-            ingredient: normalizeIngredientIdentity(
-              {
-                ...ingredient,
-                canonical_ingredient_id: canonical?.mapperId,
-              },
-              'template',
-            ),
+            ingredient: approvedIngredient,
             planned_grams: targetGrams,
             actual_grams: null,
             lock_type: 'unlocked',

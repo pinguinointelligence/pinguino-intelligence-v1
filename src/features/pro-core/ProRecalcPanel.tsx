@@ -249,8 +249,68 @@ function RecalcDiagnosisView({
   );
 }
 
+function DirectionBestDecision({
+  candidate,
+  onAccept,
+  onBack,
+}: {
+  candidate: import('@/features/constraint-studio/applyPipeline').ConstraintPreview;
+  onAccept: () => void;
+  onBack: () => void;
+}) {
+  const assessment = candidate.directionAssessment;
+  const labels: Record<string, string> = {
+    sweetness: 'Słodycz',
+    softness: 'Miękkość',
+    creaminess: 'Kremowość',
+    flavor: 'Intensywność smaku',
+  };
+  const missed = assessment?.residuals.filter((residual) => !residual.reached) ?? [];
+  return (
+    <div className="space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4" data-testid="direction-best-decision">
+      <div>
+        <p className="text-sm font-medium text-ivory">
+          Nie mogę osiągnąć dokładnie wybranego celu.
+        </p>
+        <p className="mt-1 text-xs text-ivory/70">
+          Najbliższy poprawny wynik: {assessment?.score ?? 9}/10
+        </p>
+      </div>
+      {missed.length > 0 ? (
+        <div className="space-y-1" data-testid="direction-best-residuals">
+          {missed.map((residual) => (
+            <p key={residual.axis} className="text-xs text-nonprod">
+              {labels[residual.axis] ?? residual.axis}: cel nieosiągnięty
+            </p>
+          ))}
+        </div>
+      ) : null}
+      <p className="text-xs text-ivory/65">Wszystkie natywne wymagania technologiczne pozostają ważne.</p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onAccept}
+          data-testid="direction-best-accept"
+          className="rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell"
+        >
+          Przelicz najlepiej możliwie
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          data-testid="direction-best-back"
+          className="rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory"
+        >
+          Wróć
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const preview = useConstraintStudioStore((s) => s.preview);
+  const directionBestCandidate = useConstraintStudioStore((s) => s.directionBestCandidate);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const history = useConstraintStudioStore((s) => s.history);
@@ -266,6 +326,8 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
   const flavorIntensity = useRecipeStore((s) => s.flavor_intensity);
   const costPriority = useRecipeStore((s) => s.cost_priority);
   const targetProteinPercent = useRecipeStore((s) => s.target_protein_percent);
+  const directionTargets = useRecipeStore((s) => s.direction_targets);
+  const directionTargetsActive = useRecipeStore((s) => s.direction_targets_active);
   const items = useRecipeStore((s) => s.items);
   const servingModeId = useRecipeStore((s) => s.servingModeId);
 
@@ -281,6 +343,8 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
         cost_priority: costPriority,
         items,
         target_protein_percent: targetProteinPercent,
+        direction_targets: directionTargets,
+        direction_targets_active: directionTargetsActive,
       }),
     [
       mode,
@@ -291,6 +355,8 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
       flavorIntensity,
       costPriority,
       targetProteinPercent,
+      directionTargets,
+      directionTargetsActive,
       items,
     ],
   );
@@ -341,6 +407,17 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               input={currentInput}
               constraints={constraints}
               servingModeId={servingModeId}
+            />
+          ) : null}
+
+          {directionBestCandidate ? (
+            <DirectionBestDecision
+              candidate={directionBestCandidate}
+              onAccept={store.acceptBestDirectionCandidate}
+              onBack={() => {
+                store.cancelPreview();
+                onClose();
+              }}
             />
           ) : null}
 

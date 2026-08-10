@@ -11,7 +11,10 @@
 import { supabase } from '@/lib/supabase/client';
 import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
-import { buildSearchTermGroups, SEARCHABLE_DB_FIELDS } from '@/features/ingredient-builder/ingredientSearch';
+import {
+  buildSearchTermGroups,
+  SEARCHABLE_DB_FIELDS,
+} from '@/features/ingredient-builder/ingredientSearch';
 
 const TABLE = 'mapper_basement';
 
@@ -35,14 +38,22 @@ export async function listActiveIngredients(): Promise<IngredientRow[]> {
 /** Active ingredients approved for the PI recipe engines. */
 export async function listEngineApprovedIngredients(): Promise<IngredientRow[]> {
   if (!supabase) return emptyUnconfiguredRead('ingredients.listEngineApprovedIngredients', []);
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('*')
-    .eq('is_active', true)
-    .eq('approved_for_engines', true)
-    .order('ingredient_name_display', { ascending: true });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as IngredientRow[];
+  const rows: IngredientRow[] = [];
+  for (let offset = 0; ; offset += SEARCH_DB_PAGE_ROWS) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('is_active', true)
+      .eq('approved_for_engines', true)
+      .order('ingredient_name_display', { ascending: true })
+      .order('ingredient_id', { ascending: true })
+      .range(offset, offset + SEARCH_DB_PAGE_ROWS - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as IngredientRow[];
+    rows.push(...page);
+    if (page.length < SEARCH_DB_PAGE_ROWS) break;
+  }
+  return rows;
 }
 
 /**

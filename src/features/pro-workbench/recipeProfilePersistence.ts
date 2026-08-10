@@ -2,11 +2,7 @@ import type { RecipeInput } from '@/engine';
 import { copy } from '@/copy/en';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import type { RecipeState } from '@/stores/recipeStore';
-import type {
-  DirectionTarget,
-  DirectionTargets,
-  ProfileSettingsSnapshot,
-} from './recipeProfileStore';
+import type { DirectionTargets, ProfileSettingsSnapshot } from './recipeProfileStore';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
 
 const PROFILE_METADATA_KEY = 'pinguino_profile_v1' as const;
@@ -17,7 +13,6 @@ type PersistedRecipeInput = RecipeInput & {
 
 const PRODUCT_TYPES = new Set(['gelato', 'sorbet', 'vegan', 'protein']);
 const MODES = new Set(['eco', 'classic', 'premium', 'signature']);
-const TARGETS = new Set<DirectionTarget>([-2, -1, 0, 1, 2]);
 const PROFESSIONAL_SERVING_IDS = [
   'fresh',
   'temp_minus_11',
@@ -50,12 +45,19 @@ export function profileSnapshotFromState(
   };
 }
 
-const validTargets = (value: unknown): value is DirectionTargets => {
-  if (!value || typeof value !== 'object') return false;
+const normalizedLegacyTargets = (value: unknown): DirectionTargets | null => {
+  if (!value || typeof value !== 'object') return null;
   const record = value as Record<string, unknown>;
-  return ['sweetness', 'softness', 'creaminess', 'flavor'].every((axis) =>
-    TARGETS.has(record[axis] as DirectionTarget),
-  );
+  const axes = ['sweetness', 'softness', 'creaminess', 'flavor'] as const;
+  if (!axes.every((axis) => typeof record[axis] === 'number' && Number.isFinite(record[axis]))) {
+    return null;
+  }
+  return Object.fromEntries(
+    axes.map((axis) => [
+      axis,
+      (record[axis] as number) < 0 ? -1 : (record[axis] as number) > 0 ? 1 : 0,
+    ]),
+  ) as unknown as DirectionTargets;
 };
 
 /** Add UI-only recipe metadata. Engine fields and item grams remain byte-for-byte unchanged. */
@@ -89,12 +91,13 @@ export function readRecipeProfileMetadata(input: RecipeInput): ProfileSettingsSn
     typeof record.servingModeId !== 'string' ||
     typeof record.targetTemperatureC !== 'number' ||
     (record.machineCapacityGrams !== null && typeof record.machineCapacityGrams !== 'number') ||
-    !validTargets(record.directionTargets)
+    !normalizedLegacyTargets(record.directionTargets)
   ) {
     return null;
   }
   return {
     ...(record as unknown as ProfileSettingsSnapshot),
+    directionTargets: normalizedLegacyTargets(record.directionTargets)!,
     formulationStrategy: normalizeFormulationStrategy(
       (record.formulationStrategy as string | undefined) ?? (record.mode as string),
     ),

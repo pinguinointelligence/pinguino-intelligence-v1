@@ -147,7 +147,46 @@ describe('Protein Gelato target orchestration', () => {
       'protein-high-target',
     );
     expect(committed.ok).toBe(false);
-  }, 20_000);
+  }, 40_000);
+
+  it.each([-11, -12, -13] as const)(
+    'keeps the Strawberry 20→21→22 frontier monotonic at %s°C',
+    (temperatureC) => {
+      const rows = [20, 21, 22].map((targetPercent) => {
+        const input = proteinDraft(temperatureC, targetPercent);
+        const built = buildOptimizePreview(input, EMPTY, '2026-08-10T00:00:00.000Z');
+        if (!built.ok)
+          return { targetPercent, actualPercent: null, applicable: false, code: built.code };
+        const assessment = assessProteinTarget(
+          built.preview.proposedInput,
+          calculateRecipe(built.preview.proposedInput),
+        );
+        const committed = commitPreview(
+          input,
+          EMPTY,
+          built.preview,
+          '2026-08-10T00:01:00.000Z',
+          `protein-${temperatureC}-${targetPercent}`,
+        );
+        return {
+          targetPercent,
+          actualPercent: assessment.actualPercent,
+          applicable: committed.ok,
+          code: committed.ok ? 'applied' : committed.code,
+        };
+      });
+      const achieved21 = rows.find((row) => row.targetPercent === 21);
+      const requested22 = rows.find((row) => row.targetPercent === 22);
+      if (achieved21?.applicable && achieved21.actualPercent !== null) {
+        expect(requested22?.actualPercent ?? -Infinity).toBeGreaterThanOrEqual(
+          achieved21.actualPercent - 0.05,
+        );
+      }
+      if (!requested22?.applicable) expect(requested22?.code).not.toBe('applied');
+      console.info(`PROTEIN_FRONTIER_${temperatureC}`, JSON.stringify(rows));
+    },
+    30_000,
+  );
 
   it('retains selected Skyr and uses its natural protein before added concentrate', () => {
     const highProtein = proteinDraft(-12, 20);

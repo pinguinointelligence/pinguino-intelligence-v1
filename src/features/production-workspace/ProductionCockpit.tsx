@@ -6,8 +6,8 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
   const { session, progress, rescue, score } = production;
   if (!session || !progress) {
     return (
-      <p className="p-3 text-xs text-nonprod">
-        Przygotowywanie produkcji · W PRZYGOTOWANIU…
+      <p className="p-3 text-xs text-stone-500" role="status">
+        Przygotowywanie bezpiecznej sesji produkcji…
       </p>
     );
   }
@@ -16,7 +16,9 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
     return (
       <div data-testid="production-completed">
         <section className="border-b border-status-ideal/25 bg-status-ideal/[0.04] p-3">
-          <p className="text-[9px] font-semibold tracking-[0.12em] text-status-ideal uppercase">Produkcja zakończona</p>
+          <p className="text-[9px] font-semibold tracking-[0.12em] text-status-ideal uppercase">
+            Produkcja zakończona
+          </p>
           <div className="mt-1 flex items-end justify-between gap-3">
             <strong className="text-sm text-ink">{session.source.recipeName}</strong>
             <span className="font-mono text-lg font-semibold tabular-nums text-ink">
@@ -41,30 +43,42 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
       <section className="border border-ink/10 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[9px] font-semibold tracking-[0.12em] text-stone-500 uppercase">Produkcja</p>
+            <p className="text-[9px] font-semibold tracking-[0.12em] text-stone-500 uppercase">
+              Produkcja
+            </p>
             <strong className="mt-1 block text-lg text-ink">
               {progress.confirmedCount} / {progress.totalCount} składników
             </strong>
           </div>
-          <span className="font-mono text-xl font-semibold tabular-nums text-ink">{score.display}</span>
+          <span className="font-mono text-xl font-semibold tabular-nums text-ink">
+            {score.display}
+          </span>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden bg-stone-100">
           <span
             className="block h-full bg-ink transition-[width]"
-            style={{ width: `${progress.totalCount > 0 ? (progress.confirmedCount / progress.totalCount) * 100 : 0}%` }}
+            style={{
+              width: `${progress.totalCount > 0 ? (progress.confirmedCount / progress.totalCount) * 100 : 0}%`,
+            }}
           />
         </div>
         <dl className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
           <div>
             <dt className="text-stone-500">W naczyniu</dt>
-            <dd className="font-mono font-semibold tabular-nums text-ink">{progress.confirmedMassG.toFixed(1)} g</dd>
+            <dd className="font-mono font-semibold tabular-nums text-ink">
+              {progress.confirmedMassG.toFixed(1)} g
+            </dd>
           </div>
           <div>
             <dt className="text-stone-500">Przewidywany finał</dt>
-            <dd className="font-mono font-semibold tabular-nums text-ink">{progress.forecastFinalMassG.toFixed(1)} g</dd>
+            <dd className="font-mono font-semibold tabular-nums text-ink">
+              {progress.forecastFinalMassG.toFixed(1)} g
+            </dd>
           </div>
         </dl>
-        <p className="mt-2 text-[10px] text-stone-500">Przewidywany wynik końcowy · {score.display}</p>
+        <p className="mt-2 text-[10px] text-stone-500">
+          Przewidywany wynik końcowy · {score.display}
+        </p>
       </section>
 
       {session.source.recipeVersionId === null ? (
@@ -74,16 +88,22 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
           compact
           details={{
             limitation: 'Run nie jest jeszcze powiązany z trwałym ID wersji receptury.',
-            calculationImpact: 'Plan sesji jest zamrożony lokalnie i pozostaje oddzielony od receptury.',
+            calculationImpact:
+              'Plan sesji jest zamrożony lokalnie i pozostaje oddzielony od receptury.',
             remaining: 'Zapisać recepturę i utworzyć run przez ProductionRepository.',
           }}
         >
-          <p className="text-[10px] text-stone-600">Do produkcji komercyjnej użyj zapisanej wersji receptury.</p>
+          <p className="text-[10px] text-stone-600">
+            Do produkcji komercyjnej użyj zapisanej wersji receptury.
+          </p>
         </ReadinessFrame>
       ) : null}
 
       {rescue?.state === 'options' ? (
-        <section className="border border-attention/30 bg-attention/[0.04] p-3" data-testid="production-rescue-options">
+        <section
+          className="border border-attention/30 bg-attention/[0.04] p-3"
+          data-testid="production-rescue-options"
+        >
           <h3 className="text-xs font-semibold text-ink">Korekta po odchyleniu</h3>
           <div className="mt-2 space-y-2">
             {rescue.options.map((option) => (
@@ -95,16 +115,27 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
               >
                 <span className="flex items-center justify-between gap-2">
                   <strong className="text-[11px] text-ink">{option.title}</strong>
-                  <span className="font-mono text-[10px] tabular-nums text-ink">{option.finalMassG.toFixed(1)} g · {option.scoreDisplay}</span>
+                  <span className="font-mono text-[10px] tabular-nums text-ink">
+                    {option.finalMassG.toFixed(1)} g · {option.scoreDisplay}
+                  </span>
                 </span>
-                <span className="mt-1 block text-[9px] leading-relaxed text-stone-500">{option.explanation}</span>
+                <span className="mt-1 block text-[9px] leading-relaxed text-stone-500">
+                  {option.explanation}
+                </span>
                 {option.instructions.length > 0 ? (
                   <span className="mt-2 block space-y-0.5">
                     {option.instructions.map((instruction) => (
-                      <span key={`${instruction.lineId}-${instruction.ingredientName}-${instruction.kind}`} className="flex justify-between text-[10px]">
-                        <span>{instruction.kind === 'add' ? 'Dodaj jeszcze' : 'Nowy plan'} · {instruction.ingredientName}</span>
+                      <span
+                        key={`${instruction.lineId}-${instruction.ingredientName}-${instruction.kind}`}
+                        className="flex justify-between text-[10px]"
+                      >
+                        <span>
+                          {instruction.kind === 'add' ? 'Dodaj jeszcze' : 'Nowy plan'} ·{' '}
+                          {instruction.ingredientName}
+                        </span>
                         <strong className="font-mono tabular-nums">
-                          {instruction.kind === 'add' ? '+' : '→ '}{instruction.grams.toFixed(1)} g
+                          {instruction.kind === 'add' ? '+' : '→ '}
+                          {instruction.grams.toFixed(1)} g
                         </strong>
                       </span>
                     ))}
@@ -117,7 +148,10 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
       ) : null}
 
       {rescue?.state === 'impossible' ? (
-        <section className="border border-status-error/30 bg-status-error/[0.035] p-3" data-testid="production-rescue-impossible">
+        <section
+          className="border border-status-error/30 bg-status-error/[0.035] p-3"
+          data-testid="production-rescue-impossible"
+        >
           <h3 className="text-xs font-semibold text-status-error">Brak możliwej korekty</h3>
           <p className="mt-1 text-[10px] leading-relaxed text-stone-600">{rescue.reason}</p>
         </section>
@@ -128,12 +162,18 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
         title="Brakuje składnika · etapy · toppingi"
         compact
         details={{
-          limitation: 'Zamienniki w połowie produkcji i automatyczne etapy nie mają jeszcze pełnego kontraktu canonical/allergen/process.',
-          calculationImpact: 'Potwierdzona masa pozostaje zachowana; PI nie tworzy niezweryfikowanej korekty.',
+          limitation:
+            'Zamienniki w połowie produkcji i automatyczne etapy nie mają jeszcze pełnego kontraktu canonical/allergen/process.',
+          calculationImpact:
+            'Potwierdzona masa pozostaje zachowana; PI nie tworzy niezweryfikowanej korekty.',
           remaining: 'Podłączyć verified substitute oraz Heat/Cold Process bez inferencji z nazw.',
         }}
       >
-        <button type="button" disabled className="w-full border border-nonprod/35 px-3 py-2 text-[10px] font-semibold text-nonprod">
+        <button
+          type="button"
+          disabled
+          className="w-full border border-nonprod/35 px-3 py-2 text-[10px] font-semibold text-nonprod"
+        >
           Brakuje składnika · W PRZYGOTOWANIU
         </button>
       </ReadinessFrame>
@@ -145,7 +185,9 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
         className="h-11 w-full bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
         data-testid="complete-production"
       >
-        {progress.coherent ? 'Zakończ produkcję' : `Potwierdź pozostałe · ${progress.totalCount - progress.confirmedCount}`}
+        {progress.coherent
+          ? 'Zakończ produkcję'
+          : `Potwierdź pozostałe · ${progress.totalCount - progress.confirmedCount}`}
       </button>
     </div>
   );

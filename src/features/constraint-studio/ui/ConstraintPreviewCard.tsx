@@ -17,6 +17,17 @@ import {
   type PreviewLineDiff,
 } from '../applyPipeline';
 
+function directionSummary(preview: ConstraintPreview): string | null {
+  if (preview.proposedInput.goals?.direction_targets_active !== true) return null;
+  const targets = preview.proposedInput.goals.direction_targets;
+  if (!targets) return null;
+  const labels = [
+    targets.sweetness < 0 ? 'mniej słodkie' : targets.sweetness > 0 ? 'bardziej słodkie' : null,
+    targets.softness < 0 ? 'twardsze' : targets.softness > 0 ? 'miększe' : null,
+  ].filter((label): label is string => label !== null);
+  return labels.length > 0 ? labels.join(' · ') : 'środek wybranego profilu';
+}
+
 function lineNote(line: PreviewLineDiff): string {
   if (line.kind === 'added') return copy.preview.added;
   if (line.kind === 'removed') return copy.preview.removed;
@@ -106,6 +117,7 @@ export function ConstraintPreviewCard({
   const diagnosticReason = preview.diagnosticReason;
   // Owner addendum item 4 — the trustless outcome classification.
   const outcome = preview.outcomeClassification;
+  const selectedDirection = directionSummary(preview);
 
   return (
     <section
@@ -118,6 +130,48 @@ export function ConstraintPreviewCard({
           {preview.titlePl}
         </span>
       </div>
+
+      {preview.substitution ? (
+        <div
+          className="mt-3 border border-ivory/15 px-3 py-2.5 text-xs leading-relaxed text-ivory/80"
+          data-testid="preview-substitution"
+        >
+          <span className="font-semibold text-ivory">Zweryfikowana zamiana:</span>{' '}
+          {preview.substitution.fromName} → {preview.substitution.toName}.
+          {preview.substitution.changesMainIdentity
+            ? ' Zmienia tożsamość składnika Głównego i wymaga jawnej zgody przed Apply.'
+            : ' Rola technologiczna i reguły bezpieczeństwa pozostają sprawdzane przez Apply.'}
+        </div>
+      ) : null}
+
+      {selectedDirection ? (
+        <div
+          className="mt-3 border border-ivory/15 px-3 py-2.5 text-xs leading-relaxed text-ivory/80"
+          data-testid="preview-direction-reason"
+        >
+          <span className="font-semibold text-ivory">Wybrany kierunek:</span> {selectedDirection}.
+          PI zmieniło wyłącznie dozwolone składniki; blokady gramowe, procentowe, role Główne i
+          wykluczenia pozostają nienaruszalne.
+        </div>
+      ) : null}
+
+      {preview.directionAssessment?.active ? (
+        <div
+          className="mt-3 grid grid-cols-[auto_1fr] items-center gap-3 border border-ivory/15 px-3 py-2.5"
+          data-testid="preview-direction-score"
+        >
+          <span
+            className={`font-mono text-lg tabular-nums ${preview.directionAssessment.reached ? 'text-status-ideal' : 'text-nonprod'}`}
+          >
+            {preview.directionAssessment.score ?? '—'}/10
+          </span>
+          <p className="text-xs leading-relaxed text-ivory/70">
+            {preview.directionAssessment.reached
+              ? 'PI osiągnęło wybrany profil.'
+              : 'Najbliższy bezpieczny profil — zaakceptowany świadomie przed tym Preview.'}
+          </p>
+        </div>
+      ) : null}
 
       {diagnostic ? (
         <div
@@ -342,6 +396,7 @@ export function ConstraintPreviewCard({
           <button
             type="button"
             onClick={onApply}
+            data-testid="preview-apply"
             className="inline-flex flex-1 items-center justify-center rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell transition-colors hover:bg-ivory/90"
           >
             {copy.preview.apply}
@@ -350,6 +405,7 @@ export function ConstraintPreviewCard({
         <button
           type="button"
           onClick={onCancel}
+          data-testid="preview-cancel"
           className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
         >
           {copy.preview.cancel}

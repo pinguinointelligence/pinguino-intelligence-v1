@@ -49,7 +49,12 @@ export interface IngredientRowActions {
   toggleRequired?: (lineId: string) => void;
   setIngredientUnavailable?: (lineId: string, unavailable: boolean) => void;
   removeRequiredIngredient?: (lineId: string, name: string) => void;
-  selectSubstitute?: (lineId: string, candidate: SubstituteCandidate) => void;
+  requestSubstitutes?: (lineId: string) => Promise<readonly SubstituteCandidate[]>;
+  selectSubstitute?: (
+    lineId: string,
+    candidate: SubstituteCandidate,
+    mainIdentityConfirmed: boolean,
+  ) => void;
   /** Retained store capability; Recipe mode intentionally no longer calls it. */
   markIngredientUnavailable?: (lineId: string) => void;
 }
@@ -61,7 +66,7 @@ export interface ProductionRowActions {
 }
 
 export interface IngredientRowLockView {
-  state: 'ai' | 'locked' | 'range';
+  state: 'ai' | 'locked' | 'percent' | 'range';
   lockedGramsLabel: string | null;
   ariaLabel: string;
   title: string;
@@ -69,6 +74,10 @@ export interface IngredientRowLockView {
   plannedDisabled: boolean;
   toggleDisabled: boolean;
   onToggle: () => void;
+  percentLocked?: boolean;
+  percentLabel?: string;
+  percentToggleDisabled?: boolean;
+  onTogglePercent?: () => void;
 }
 
 function LockGlyph({ closed }: { closed: boolean }) {
@@ -112,12 +121,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const percentLockDetails = {
-  limitation: 'Blokada udziału procentowego nie jest jeszcze podłączona do solvera.',
-  calculationImpact: 'Przeliczenie nie zachowuje ustawionego udziału.',
-  remaining: 'Zapisać docelowy udział i egzekwować go w Preview, Apply oraz solverze.',
-};
-
 function DialogShell({
   label,
   testId,
@@ -128,7 +131,10 @@ function DialogShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/45 p-4" data-testid={testId}>
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center bg-black/45 p-4"
+      data-testid={testId}
+    >
       <section
         role="dialog"
         aria-modal="true"
@@ -144,23 +150,45 @@ function DialogShell({
 export function SubstituteDialog({
   ingredientName,
   candidates,
+  loading = false,
   onUse,
   onClose,
 }: {
   ingredientName: string;
   candidates: readonly SubstituteCandidate[];
-  onUse?: (candidate: SubstituteCandidate) => void;
+  loading?: boolean;
+  onUse?: (candidate: SubstituteCandidate, mainIdentityConfirmed: boolean) => void;
   onClose: () => void;
 }) {
+  const [mainIdentityConfirmed, setMainIdentityConfirmed] = useState(false);
+  const hasMainCandidate = candidates.some((candidate) => candidate.requiresMainConfirmation);
   return (
-    <DialogShell label={t.substituteDialog.title(ingredientName)} testId="ingredient-substitute-dialog">
-      <p className="text-[10px] font-semibold tracking-label text-stone-500 uppercase">
-        {t.substituteDialog.pending}
-      </p>
+    <DialogShell
+      label={t.substituteDialog.title(ingredientName)}
+      testId="ingredient-substitute-dialog"
+    >
+      {loading ? (
+        <p className="text-[10px] font-semibold tracking-label text-stone-500 uppercase">
+          {t.substituteDialog.pending}
+        </p>
+      ) : null}
       <h2 className="mt-2 text-lg font-semibold">{t.substituteDialog.title(ingredientName)}</h2>
-      {candidates.length > 0 ? (
+      {loading ? (
+        <p className="mt-4 text-sm text-stone-600">Sprawdzam zweryfikowane źródła…</p>
+      ) : candidates.length > 0 ? (
         <>
           <p className="mt-2 text-sm text-stone-600">{t.substituteDialog.intro}</p>
+          {hasMainCandidate ? (
+            <label className="mt-4 flex items-start gap-2 border border-nonprod/30 bg-nonprod/[0.045] p-3 text-xs leading-relaxed text-ink">
+              <input
+                type="checkbox"
+                checked={mainIdentityConfirmed}
+                onChange={(event) => setMainIdentityConfirmed(event.currentTarget.checked)}
+                className="mt-0.5"
+              />
+              <span>{t.substituteDialog.mainConfirmation}</span>
+            </label>
+          ) : null}
           <ol className="mt-4 space-y-2">
             {candidates.map((candidate) => (
               <li key={candidate.id} className="border border-ink/10 p-3">
@@ -177,8 +205,9 @@ export function SubstituteDialog({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onUse?.(candidate)}
-                    className="shrink-0 rounded-sm bg-ink px-3 py-2 text-xs font-semibold text-white"
+                    disabled={candidate.requiresMainConfirmation && !mainIdentityConfirmed}
+                    onClick={() => onUse?.(candidate, mainIdentityConfirmed)}
+                    className="shrink-0 rounded-sm bg-ink px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     {t.substituteDialog.use}
                   </button>
@@ -225,12 +254,22 @@ export function RequiredRemovalDialog({
     return (
       <DialogShell label={t.requiredDialog.confirmTitle} testId="required-removal-confirm-dialog">
         <h2 className="text-lg font-semibold">{t.requiredDialog.confirmTitle}</h2>
-        <p className="mt-3 text-sm leading-relaxed text-stone-600">{t.requiredDialog.confirmBody}</p>
+        <p className="mt-3 text-sm leading-relaxed text-stone-600">
+          {t.requiredDialog.confirmBody}
+        </p>
         <div className="mt-5 flex flex-wrap gap-2">
-          <button type="button" onClick={onClose} className="rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold"
+          >
             {t.requiredDialog.keep}
           </button>
-          <button type="button" onClick={onConfirmDestructive} className="rounded-sm border border-status-error/45 bg-status-error px-4 py-2 text-xs font-semibold text-white">
+          <button
+            type="button"
+            onClick={onConfirmDestructive}
+            className="rounded-sm border border-status-error/45 bg-status-error px-4 py-2 text-xs font-semibold text-white"
+          >
             {t.requiredDialog.confirm}
           </button>
         </div>
@@ -240,28 +279,44 @@ export function RequiredRemovalDialog({
 
   return (
     <DialogShell label={t.requiredDialog.title} testId="required-removal-dialog">
-      <p className="text-[10px] font-semibold tracking-label text-status-error uppercase">{ingredientName}</p>
+      <p className="text-[10px] font-semibold tracking-label text-status-error uppercase">
+        {ingredientName}
+      </p>
       <h2 className="mt-2 text-lg font-semibold">{t.requiredDialog.title}</h2>
       <p className="mt-3 text-sm leading-relaxed text-stone-600">{t.requiredDialog.body}</p>
       {route === 'offer-substitute' ? (
         <div className="mt-4 border border-ink/10 p-3">
           <p className="text-sm font-semibold">{t.requiredDialog.substituteAvailable}</p>
-          <button type="button" onClick={onFindSubstitute} className="mt-3 rounded-sm bg-ink px-4 py-2 text-xs font-semibold text-white">
+          <button
+            type="button"
+            onClick={onFindSubstitute}
+            className="mt-3 rounded-sm bg-ink px-4 py-2 text-xs font-semibold text-white"
+          >
             {t.recipe.findSubstitute}
           </button>
         </div>
       ) : (
         <div className="mt-4 border border-status-error/25 bg-status-error/[0.045] p-3">
           <p className="text-sm font-semibold text-status-error">{t.requiredDialog.noSubstitute}</p>
-          <p className="mt-2 text-xs leading-relaxed text-stone-600">{t.requiredDialog.noSubstituteBody}</p>
+          <p className="mt-2 text-xs leading-relaxed text-stone-600">
+            {t.requiredDialog.noSubstituteBody}
+          </p>
         </div>
       )}
       <div className="mt-5 flex flex-wrap gap-2">
-        <button type="button" onClick={onClose} className="rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold"
+        >
           {route === 'offer-substitute' ? t.substituteDialog.cancel : t.requiredDialog.keep}
         </button>
         {route === 'no-substitute' ? (
-          <button type="button" onClick={onRequestDestructive} className="rounded-sm border border-status-error/45 px-4 py-2 text-xs font-semibold text-status-error">
+          <button
+            type="button"
+            onClick={onRequestDestructive}
+            className="rounded-sm border border-status-error/45 px-4 py-2 text-xs font-semibold text-status-error"
+          >
             {t.requiredDialog.removeInfeasible}
           </button>
         ) : null}
@@ -270,7 +325,13 @@ export function RequiredRemovalDialog({
   );
 }
 
-function IngredientDataDialog({ item, onClose }: { item: EffectiveRecipeItem; onClose: () => void }) {
+function IngredientDataDialog({
+  item,
+  onClose,
+}: {
+  item: EffectiveRecipeItem;
+  onClose: () => void;
+}) {
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   const rows = [
     [t.data.source, item.ingredient.source_type || 'Baza PINGÜINO'],
@@ -289,7 +350,11 @@ function IngredientDataDialog({ item, onClose }: { item: EffectiveRecipeItem; on
           </div>
         ))}
       </dl>
-      <button type="button" onClick={onClose} className="mt-5 rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold">
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-5 rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold"
+      >
         {t.substituteDialog.cancel}
       </button>
     </DialogShell>
@@ -314,10 +379,16 @@ function RecipeRow({
   priceView?: IngredientPriceView;
 }) {
   const [unit, setUnit] = useState<IngredientDisplayUnit>('g');
-  const [dialog, setDialog] = useState<'substitute' | 'required' | 'required-confirm' | 'data' | null>(null);
+  const [dialog, setDialog] = useState<
+    'substitute' | 'required' | 'required-confirm' | 'data' | null
+  >(null);
+  const [loadedSubstitutes, setLoadedSubstitutes] =
+    useState<readonly SubstituteCandidate[]>(substituteCandidates);
+  const [substitutesLoading, setSubstitutesLoading] = useState(false);
   const share = totalBatchG > 0 ? (item.effective_grams / totalBatchG) * 100 : null;
   const role = customerRoleFor(item.lock_type, meta);
   const isMain = role === 'main';
+  const required = meta.required || item.lock_type === 'required';
   const gramsLocked = lock?.state === 'locked' || item.lock_type === 'grams';
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   const displayQuantity = gramsToDisplayValue(item.planned_grams, unit);
@@ -337,11 +408,22 @@ function RecipeRow({
   };
 
   const requestRemove = () => {
-    if (requiredRemovalRoute(meta.required, substituteCandidates) === 'normal-remove') {
+    if (requiredRemovalRoute(required, substituteCandidates) === 'normal-remove') {
       actions.removeItem(item.id);
       return;
     }
     setDialog('required');
+  };
+
+  const openSubstitute = () => {
+    setDialog('substitute');
+    if (!actions.requestSubstitutes) return;
+    setSubstitutesLoading(true);
+    void actions
+      .requestSubstitutes(item.id)
+      .then(setLoadedSubstitutes)
+      .catch(() => setLoadedSubstitutes([]))
+      .finally(() => setSubstitutesLoading(false));
   };
 
   return (
@@ -349,21 +431,45 @@ function RecipeRow({
       <div className={ROW_GRID}>
         <div className="col-span-2 min-w-0 md:col-span-1">
           <span className="flex min-w-0 items-center gap-1.5">
-            {isMain ? <span aria-label="Składnik główny" title={t.role.mainHint}><MainRoleGlyph /></span> : null}
-            {role === 'addition' ? <AdditionRoleGlyph /> : null}
-            {meta.required ? (
-              <span aria-label="Składnik wymagany" title={t.recipe.requiredHint} className="grid size-3.5 place-items-center rounded-full border border-ink/30 text-[9px] font-bold text-ink">!</span>
+            {isMain ? (
+              <span aria-label="Składnik główny" title={t.role.mainHint}>
+                <MainRoleGlyph />
+              </span>
             ) : null}
-            <span className="truncate text-[13px] font-semibold text-ink" title={item.ingredient.name}>{item.ingredient.name}</span>
+            {role === 'addition' ? <AdditionRoleGlyph /> : null}
+            {required ? (
+              <span
+                aria-label="Składnik wymagany"
+                title={t.recipe.requiredHint}
+                className="grid size-3.5 place-items-center rounded-full border border-ink/30 text-[9px] font-bold text-ink"
+              >
+                !
+              </span>
+            ) : null}
+            <span
+              className="truncate text-[13px] font-semibold text-ink"
+              title={item.ingredient.name}
+            >
+              {item.ingredient.name}
+            </span>
             {estimated ? (
-              <span aria-label={t.data.estimatedHint} title={t.data.estimatedHint} className="size-1.5 shrink-0 rounded-full bg-status-risky" data-testid={`row-estimated-${item.id}`} />
+              <span
+                aria-label={t.data.estimatedHint}
+                title={t.data.estimatedHint}
+                className="size-1.5 shrink-0 rounded-full bg-status-risky"
+                data-testid={`row-estimated-${item.id}`}
+              />
             ) : null}
           </span>
           {meta.unavailable ? (
             <span className="mt-1 flex items-center gap-2 text-[9px] font-semibold text-status-error">
               {t.recipe.unavailableStatus}
-              <button type="button" onClick={() => setDialog('substitute')} className="text-nonprod underline decoration-nonprod/35 underline-offset-2">
-                {t.recipe.findSubstitute} · {t.substituteDialog.pending}
+              <button
+                type="button"
+                onClick={openSubstitute}
+                className="text-ink underline decoration-ink/25 underline-offset-2"
+              >
+                {t.recipe.findSubstitute}
               </button>
             </span>
           ) : null}
@@ -377,14 +483,24 @@ function RecipeRow({
             </span>
             <button
               type="button"
-              disabled
-              aria-label={`${item.ingredient.name} — blokada procentowa w przygotowaniu`}
-              aria-pressed="false"
-              title={percentLockDetails.limitation}
+              disabled={lock?.percentToggleDisabled ?? true}
+              onClick={lock?.onTogglePercent}
+              aria-label={`${item.ingredient.name} — ${lock?.percentLocked ? 'odblokuj udział procentowy' : 'zablokuj udział procentowy'}`}
+              aria-pressed={lock?.percentLocked ?? false}
+              title={
+                lock?.percentLocked
+                  ? `Udział zablokowany: ${lock.percentLabel ?? ''}`
+                  : 'Zablokuj procent finalnej partii'
+              }
               data-testid={`row-lock-percent-${item.id}`}
-              className="grid size-7 shrink-0 place-items-center rounded-sm border border-nonprod/45 bg-nonprod/[0.055] text-nonprod"
+              className={cn(
+                'grid size-7 shrink-0 place-items-center rounded-sm border transition-colors',
+                lock?.percentLocked
+                  ? 'border-ink bg-ink text-white'
+                  : 'border-ink/15 bg-white text-stone-500 hover:border-ink/40',
+              )}
             >
-              <LockGlyph closed={false} />
+              <LockGlyph closed={lock?.percentLocked ?? false} />
             </button>
           </div>
         </div>
@@ -397,7 +513,7 @@ function RecipeRow({
               type="number"
               min={0}
               step={unit === 'kg' ? 0.001 : 0.1}
-              disabled={lock?.plannedDisabled || gramsLocked}
+              disabled={lock?.plannedDisabled || gramsLocked || lock?.percentLocked}
               value={Number(displayQuantity.toFixed(unit === 'kg' ? 3 : 1))}
               onChange={(event) =>
                 actions.setPlannedGrams(
@@ -424,7 +540,9 @@ function RecipeRow({
               title={lock?.title ?? b.lockTypes.grams}
               disabled={lock?.toggleDisabled || isMain}
               data-testid={`row-lock-grams-${item.id}`}
-              onClick={() => lock?.onToggle() ?? actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams')}
+              onClick={() =>
+                lock?.onToggle() ?? actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams')
+              }
               className={cn(
                 'grid size-7 shrink-0 place-items-center rounded-sm border transition-colors',
                 gramsLocked
@@ -442,21 +560,53 @@ function RecipeRow({
         <IngredientPriceCell view={resolvedPriceView} />
 
         <details className="relative justify-self-end">
-          <summary aria-label={`Opcje składnika ${item.ingredient.name}`} className="grid size-7 cursor-pointer list-none place-items-center rounded-sm border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink">•••</summary>
-          <div className="absolute right-0 z-40 mt-1 max-h-[70vh] w-72 overflow-auto border border-ink/15 bg-white p-2 shadow-[0_8px_24px_rgba(16,17,19,0.08)]" data-testid={`row-menu-${item.id}`}>
+          <summary
+            aria-label={`Opcje składnika ${item.ingredient.name}`}
+            className="grid size-7 cursor-pointer list-none place-items-center rounded-sm border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink"
+          >
+            •••
+          </summary>
+          <div
+            className="absolute right-0 z-40 mt-1 max-h-[70vh] w-72 overflow-auto border border-ink/15 bg-white p-2 shadow-[0_8px_24px_rgba(16,17,19,0.08)]"
+            data-testid={`row-menu-${item.id}`}
+          >
             <MenuHeading>{t.role.heading}</MenuHeading>
-            <MenuButton selected={role === 'main'} disabled={gramsLocked} onClick={() => setRole('main')}>{t.role.main}</MenuButton>
-            <MenuButton selected={role === 'standard'} onClick={() => setRole('standard')}>{t.role.standard}</MenuButton>
+            <MenuButton
+              selected={role === 'main'}
+              disabled={gramsLocked}
+              onClick={() => setRole('main')}
+            >
+              {t.role.main}
+            </MenuButton>
+            <MenuButton selected={role === 'standard'} onClick={() => setRole('standard')}>
+              {t.role.standard}
+            </MenuButton>
             <MenuButton selected={role === 'addition'} onClick={() => setRole('addition')}>
-              <span className="flex items-center justify-between gap-2"><span>{t.role.addition}</span><span className="text-[8px] font-semibold text-nonprod">{t.role.additionReadiness}</span></span>
+              <span className="flex items-center justify-between gap-2">
+                <span>{t.role.addition}</span>
+                <span className="text-[8px] font-semibold text-nonprod">
+                  {t.role.additionReadiness}
+                </span>
+              </span>
             </MenuButton>
 
             <MenuDivider />
             <MenuHeading>{t.recipe.heading}</MenuHeading>
-            <MenuButton selected={meta.required} onClick={() => actions.toggleRequired?.(item.id)}>{meta.required ? t.recipe.requiredOn : t.recipe.requiredOff}</MenuButton>
-            <MenuButton selected={meta.unavailable} onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}>{meta.unavailable ? t.recipe.available : t.recipe.unavailable}</MenuButton>
-            <button type="button" onClick={() => setDialog('substitute')} className="w-full px-2 py-1.5 text-left text-[11px] text-nonprod hover:bg-nonprod/[0.045]">
-              {t.recipe.findSubstitute} · {t.substituteDialog.pending}
+            <MenuButton selected={required} onClick={() => actions.toggleRequired?.(item.id)}>
+              {required ? t.recipe.requiredOn : t.recipe.requiredOff}
+            </MenuButton>
+            <MenuButton
+              selected={meta.unavailable}
+              onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
+            >
+              {meta.unavailable ? t.recipe.available : t.recipe.unavailable}
+            </MenuButton>
+            <button
+              type="button"
+              onClick={openSubstitute}
+              className="w-full px-2 py-1.5 text-left text-[11px] text-ink hover:bg-stone-50"
+            >
+              {t.recipe.findSubstitute}
             </button>
 
             <MenuDivider />
@@ -466,8 +616,13 @@ function RecipeRow({
 
             <MenuDivider />
             <MenuHeading>{t.remove.heading}</MenuHeading>
-            <button type="button" onClick={requestRemove} className="w-full px-2 py-1.5 text-left text-[11px] text-status-error hover:bg-status-error/[0.05]">{t.remove.action}</button>
-            <span className="sr-only">{t.percentReadiness}</span>
+            <button
+              type="button"
+              onClick={requestRemove}
+              className="w-full px-2 py-1.5 text-left text-[11px] text-status-error hover:bg-status-error/[0.05]"
+            >
+              {t.remove.action}
+            </button>
           </div>
         </details>
       </div>
@@ -475,8 +630,12 @@ function RecipeRow({
       {dialog === 'substitute' ? (
         <SubstituteDialog
           ingredientName={item.ingredient.name}
-          candidates={substituteCandidates}
-          onUse={(candidate) => actions.selectSubstitute?.(item.id, candidate)}
+          candidates={loadedSubstitutes}
+          loading={substitutesLoading}
+          onUse={(candidate, mainIdentityConfirmed) => {
+            actions.selectSubstitute?.(item.id, candidate, mainIdentityConfirmed);
+            setDialog(null);
+          }}
           onClose={() => setDialog(null)}
         />
       ) : null}
@@ -485,7 +644,7 @@ function RecipeRow({
           ingredientName={item.ingredient.name}
           candidates={substituteCandidates}
           confirmDestructive={dialog === 'required-confirm'}
-          onFindSubstitute={() => setDialog('substitute')}
+          onFindSubstitute={openSubstitute}
           onRequestDestructive={() => setDialog('required-confirm')}
           onConfirmDestructive={() => {
             actions.removeRequiredIngredient?.(item.id, item.ingredient.name);
@@ -494,12 +653,18 @@ function RecipeRow({
           onClose={() => setDialog(null)}
         />
       ) : null}
-      {dialog === 'data' ? <IngredientDataDialog item={item} onClose={() => setDialog(null)} /> : null}
+      {dialog === 'data' ? (
+        <IngredientDataDialog item={item} onClose={() => setDialog(null)} />
+      ) : null}
     </>
   );
 }
 function MenuHeading({ children }: { children: React.ReactNode }) {
-  return <p className="px-2 pb-1 pt-1 text-[9px] font-semibold tracking-[0.08em] text-stone-400 uppercase">{children}</p>;
+  return (
+    <p className="px-2 pb-1 pt-1 text-[9px] font-semibold tracking-[0.08em] text-stone-400 uppercase">
+      {children}
+    </p>
+  );
 }
 
 function MenuDivider() {
@@ -598,7 +763,9 @@ function ProductionRow({
               }}
               className="h-11 w-full border border-ink/15 bg-white px-2 pr-5 text-right font-mono text-sm font-semibold tabular-nums text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ink disabled:bg-stone-100"
             />
-            <span className="pointer-events-none absolute right-1.5 top-3 text-[9px] text-stone-500">g</span>
+            <span className="pointer-events-none absolute right-1.5 top-3 text-[9px] text-stone-500">
+              g
+            </span>
           </label>
           <button
             type="button"
@@ -622,9 +789,7 @@ function ProductionRow({
                 : 'Potwierdź, że ta ilość została fizycznie dodana.'
             }
             onClick={() =>
-              line.confirmed
-                ? actions.reopenRecord(line.lineId)
-                : actions.confirmLine(line.lineId)
+              line.confirmed ? actions.reopenRecord(line.lineId) : actions.confirmLine(line.lineId)
             }
             className={cn(
               'grid min-h-11 place-items-center border border-l-0 text-base font-semibold focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ink',
@@ -688,7 +853,9 @@ export function IngredientRow({
     <div
       className={cn(
         'border-b border-ink/[0.075] px-3 py-1.5 transition-colors hover:bg-stone-50',
-        mode === 'recipe' && meta.unavailable && 'border-status-error/20 bg-status-error/[0.045] hover:bg-status-error/[0.06]',
+        mode === 'recipe' &&
+          meta.unavailable &&
+          'border-status-error/20 bg-status-error/[0.045] hover:bg-status-error/[0.06]',
       )}
       data-ingredient-mode={mode}
       data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}

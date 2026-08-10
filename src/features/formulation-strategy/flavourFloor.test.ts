@@ -131,4 +131,61 @@ describe('ECO Flavour Floor', () => {
     if (!outcome.ok)
       expect(outcome.violations.some((v) => v.code === 'multi_main_ratio_changed')).toBe(true);
   });
+
+  it('fails closed for an expensive Pistachio Main without a calibrated floor — numeric ECO proof', () => {
+    const pistachio = ingredient('PI-ING-PISTACHIO-UNMAPPED-FLOOR', 'Pistachio paste', 'nut_paste');
+    pistachio.cost_per_kg = 80;
+    const cheap = ingredient('PI-ING-CHEAP-BASE', 'Cheap balancing base', 'water');
+    cheap.cost_per_kg = 1;
+    const before: RecipeInput = {
+      ...input([]),
+      items: [
+        {
+          id: 'pistachio-main',
+          ingredient: pistachio,
+          planned_grams: 150,
+          actual_grams: null,
+          lock_type: 'main',
+        },
+        {
+          id: 'cheap-base',
+          ingredient: cheap,
+          planned_grams: 850,
+          actual_grams: null,
+          lock_type: 'unlocked',
+        },
+      ],
+    };
+    const unsafeCheaper: RecipeInput = {
+      ...before,
+      items: before.items.map((item) =>
+        item.id === 'pistachio-main'
+          ? { ...item, planned_grams: 100 }
+          : { ...item, planned_grams: 900 },
+      ),
+    };
+    const cost = (recipe: RecipeInput) =>
+      recipe.items.reduce(
+        (sum, item) => sum + (item.planned_grams / 1000) * (item.ingredient.cost_per_kg ?? 0),
+        0,
+      );
+
+    expect(cost(before)).toBeCloseTo(12.85, 9);
+    expect(cost(unsafeCheaper)).toBeCloseTo(8.9, 9);
+    expect(verifyEcoFlavourProtection(before, unsafeCheaper)).toMatchObject({
+      ok: false,
+      violations: [
+        {
+          code: 'unknown_floor_reduced',
+          lineId: 'pistachio-main',
+          minimumGrams: 150,
+          actualGrams: 100,
+        },
+      ],
+    });
+    // Accepted ECO state freezes the flavour identity instead of inventing a
+    // potency minimum: grams and therefore cost remain the user's baseline.
+    expect(verifyEcoFlavourProtection(before, before).ok).toBe(true);
+    expect(cost(before)).toBeCloseTo(12.85, 9);
+  });
 });

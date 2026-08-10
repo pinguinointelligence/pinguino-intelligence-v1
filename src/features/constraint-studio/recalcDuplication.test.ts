@@ -12,6 +12,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { calculateRecipe, type RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { approvedFormulationToolboxIngredients } from '@/features/formulation/formulate';
 import {
   overSweetStarter,
   starterLine,
@@ -320,11 +322,23 @@ describe('Apply-door invariants (tests 10 + Phase 6)', () => {
 
   it('a proposal introducing a duplicate ingredient is blocked with the owner message (Phase 6)', () => {
     const current = buildRecipeInput(useRecipeStore.getState());
+    const dextrose = current.items.find(
+      (item) => item.ingredient.canonical_ingredient_id === 'PI-ING-000494',
+    )!;
+    const approvedDextrose = approvedFormulationToolboxIngredients('dextrose').find(
+      (ingredient) =>
+        canonicalIngredientId(ingredient) === canonicalIngredientId(dextrose.ingredient),
+    )!;
     const withDuplicate: RecipeInput = {
       ...current,
       items: [
         ...current.items.map((item) => ({ ...item })),
-        { ...line('correction-dextrose-0', 'dextrose', 0.05) },
+        {
+          ...dextrose,
+          id: 'correction-dextrose-0',
+          ingredient: approvedDextrose,
+          planned_grams: 0.05,
+        },
       ],
     };
     const outcome = commitPreview(

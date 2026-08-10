@@ -23,6 +23,7 @@ import type { TargetMetric, TargetRange } from '@/engine';
 export type IngredientConstraint =
   | { mode: 'ai' }
   | { mode: 'locked'; grams: number }
+  | { mode: 'percent'; percent: number }
   | { mode: 'range'; minGrams: number; maxGrams: number };
 
 /** Per-recipe constraint set, keyed by recipe line id (`RecipeItem.id`). */
@@ -39,6 +40,8 @@ export type ConstraintValidationCode =
   | 'non_finite_grams'
   /** grams / minGrams / maxGrams is negative. */
   | 'negative_grams'
+  /** percent is outside the closed 0..100 interval. */
+  | 'invalid_percent'
   /** range with minGrams > maxGrams. */
   | 'range_min_above_max'
   /** range whose current planned grams lie outside [minGrams, maxGrams] —
@@ -74,6 +77,10 @@ export type AppliedConstraintNote =
    * changed by locking; within this layer the line is still never moved
    * (`allow_main_ingredient_reduction` is never set). */
   | 'locked_main_kept'
+  /** percent → exact percentage of the current target batch. */
+  | 'percent_exact'
+  /** percent on Main → Main identity kept while percentage stays exact. */
+  | 'percent_main_kept'
   /** range → line held at its current grams via `lock_type: 'grams'`. The
    * engine solver has NO bounded-move support (audit: `CorrectionRequest` /
    * `CorrectionAction` carry no per-line bounds), so the range is enforced
@@ -231,6 +238,7 @@ export type ConstraintFeasibilityAnalysis =
 
 export type ConstraintPreservationCode =
   | 'locked_grams_changed'
+  | 'locked_percent_changed'
   | 'range_exceeded'
   | 'line_missing';
 

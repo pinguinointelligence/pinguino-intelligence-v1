@@ -123,7 +123,7 @@ describe('recipe and production table modes', () => {
     const html = renderIngredients('recipe');
     expect(html).toContain('Cena/kg');
     expect(html).toContain('Zablokuj gramaturę:');
-    expect(html).toContain('blokada procentowa w przygotowaniu');
+    expect(html).toContain('zablokuj udział procentowy');
     expect(html).not.toContain('Faktycznie');
   });
 
@@ -136,14 +136,15 @@ describe('recipe and production table modes', () => {
     expect(html).toContain('data-readiness="W PRZYGOTOWANIU"');
   });
 
-  it('keeps percentage lock disabled and pink while gram lock remains interactive', () => {
+  it('keeps percentage and gram locks interactive and mutually visible', () => {
     const html = renderIngredients('recipe');
-    expect(html).toMatch(/<button[^>]*disabled[^>]*data-testid="row-lock-percent-[^"]+"/);
-    expect(html).toContain('border-nonprod/45');
+    expect(html).toMatch(/data-testid="row-lock-percent-[^"]+"/);
+    expect(html).not.toMatch(/<button[^>]*disabled[^>]*data-testid="row-lock-percent-[^"]+"/);
     expect(html).toMatch(/data-testid="row-lock-grams-[^"]+"/);
     expect(html).toContain('Moja cena');
     expect(html).toContain('Moja cena za kg');
-    expect(html).toContain('Znajdź zamiennik · W PRZYGOTOWANIU');
+    expect(html).toContain('Znajdź zamiennik');
+    expect(html).not.toContain('Znajdź zamiennik · W PRZYGOTOWANIU');
   });
 });
 

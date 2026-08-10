@@ -3,10 +3,15 @@ import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
-import { starterMilkBase, starterLine, withGrams } from '@/features/recipe-constraints/constraintFixtures';
+import {
+  starterMilkBase,
+  starterLine,
+  withGrams,
+} from '@/features/recipe-constraints/constraintFixtures';
 import { recipeContext } from '@/features/studio/buildRecipeInput';
 import { targetStepToPosition } from './recipeAxisModel';
 import { useRecipeProfileStore } from './recipeProfileStore';
+import { useRecipeStore } from '@/stores/recipeStore';
 
 vi.mock('@/access/useAccess', () => ({
   useAccess: () => ({
@@ -55,9 +60,14 @@ describe('professional Monitor — final owner-approved information architecture
     expect(html).not.toContain('monitor-detail-score');
     expect(html).toContain('data-testid="monitor-summary-axes"');
     expect(html).toContain('data-testid="profile-direction-axes"');
-    for (const id of ['sweetness', 'softness', 'creaminess', 'flavor']) {
+    for (const id of ['sweetness', 'softness']) {
       expect(html).toContain(`data-testid="axis-minus-${id}"`);
       expect(html).toContain(`data-testid="axis-plus-${id}"`);
+    }
+    for (const id of ['creaminess', 'flavor']) {
+      expect(html).toContain(`data-testid="profile-axis-${id}"`);
+      expect(html).not.toContain(`data-testid="axis-minus-${id}"`);
+      expect(html).toContain('WYMAGA KALIBRACJI');
     }
     for (const id of ['structure', 'stability']) {
       expect(html).toContain(`data-testid="profile-axis-${id}"`);
@@ -72,19 +82,17 @@ describe('professional Monitor — final owner-approved information architecture
     const before = renderMonitor(input);
     expect(before).toContain('data-testid="axis-target-sweetness" data-position="50"');
 
-    useRecipeProfileStore.getState().moveAxisTarget('sweetness', 1);
+    useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
     const after = renderMonitor(input);
     expect(after).toContain('data-testid="axis-actual-sweetness"');
-    expect(
-      targetStepToPosition(useRecipeProfileStore.getState().directionTargets.sweetness),
-    ).toBe(75);
-    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+    expect(targetStepToPosition(useRecipeStore.getState().direction_targets.sweetness)).toBe(100);
+    expect(useRecipeStore.getState().dirty).toBe(true);
     expect(input.items.map((item) => item.planned_grams)).toEqual(gramsBefore);
 
     const profile = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     const summary = read('features', 'pro-workbench', 'MonitorLiveSummary.tsx');
     expect(summary).toContain('<ProfileDirectionAxes');
-    expect(profile).toContain('useRecipeProfileStore');
+    expect(profile).toContain('moveDirectionTarget');
   });
 
   it('removes customer-facing confidence/readiness/trial copy and duplicate batch warnings', () => {
@@ -136,9 +144,7 @@ describe('professional Monitor — final owner-approved information architecture
     const html = renderMonitor({ ...starterMilkBase(), items: [] });
     expect(html).toContain('data-evaluation="none"');
     for (const metric of ['ice_fraction', 'npac', 'pod', 'water', 'total_solids', 'fat']) {
-      expect(html).toContain(
-        `data-raw-metric="${metric}" data-evaluation="none"`,
-      );
+      expect(html).toContain(`data-raw-metric="${metric}" data-evaluation="none"`);
       expect(html).not.toContain(`data-testid="monitor-actual-${metric}"`);
     }
     expect(textOf(html)).not.toContain('Brak oceny');

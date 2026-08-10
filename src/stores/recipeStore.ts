@@ -23,6 +23,8 @@ import type {
   ProductCategory,
   ProductMode,
   RecipeGoals,
+  RecipeDirectionTarget,
+  RecipeDirectionTargets,
   RecipeInput,
   RecipeItem,
 } from '@/engine';
@@ -35,6 +37,7 @@ import {
 } from '@/data/ingredients/canonicalIngredientIdentity';
 import { useAuthStore } from '@/stores/authStore';
 import { readRecipeProfileMetadata } from '@/features/pro-workbench/recipeProfilePersistence';
+import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import {
   DEFAULT_DIRECTION_TARGETS,
   type ProfileSettingsSnapshot,
@@ -84,6 +87,9 @@ export interface RecipeState {
   flavor_intensity: FlavorIntensity;
   cost_priority: CostPriority;
   target_protein_percent: number;
+  /** Canonical persisted direction intent used by Preview formulation. */
+  direction_targets: RecipeDirectionTargets;
+  direction_targets_active: boolean;
   items: RecipeItem[];
   /**
    * Canonical ingredient ids the user EXPLICITLY marked unavailable/excluded —
@@ -179,6 +185,7 @@ export interface RecipeState {
   setFlavorIntensity: (value: FlavorIntensity) => void;
   setCostPriority: (value: CostPriority) => void;
   setTargetProteinPercent: (value: number) => void;
+  moveDirectionTarget: (axis: keyof RecipeDirectionTargets, delta: -1 | 1) => void;
 
   /**
    * Owner P0 (Apply data integrity) — the ONLY sanctioned write for a verified
@@ -216,11 +223,16 @@ export interface RecipeState {
    * ONE revision bump.
    */
   markIngredientUnavailable: (lineId: string) => void;
+  /** Keep the line as an explicit replacement tombstone while excluding its
+   * canonical identity from every automatic proposal. */
+  setIngredientUnavailable: (lineId: string, unavailable: boolean) => void;
   /** Owner P0 repair: fold plannable duplicate-ingredient lines into one (explicit action). */
   mergeDuplicateIngredientLines: () => void;
   setPlannedGrams: (lineId: string, grams: number) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
+  setRangeLock: (lineId: string, minGrams: number, maxGrams: number) => void;
+  clearRangeLock: (lineId: string) => void;
   /** Adds one line to the Main ingredient set; existing Main lines stay Main. */
   setMainIngredient: (lineId: string) => void;
   /** Atomically replace goal + ingredients with a curated demo scenario. */
@@ -283,6 +295,8 @@ const fromPreset = (preset: DemoPreset) => ({
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   target_protein_percent: PROTEIN_GELATO_TARGET.defaultPercent,
+  direction_targets: { ...DEFAULT_DIRECTION_TARGETS },
+  direction_targets_active: false,
   items: preset.items.map((item) => ({
     ...item,
     ingredient: normalizeIngredientIdentity(item.ingredient, 'demo'),
@@ -325,6 +339,8 @@ const profileFields = (
   servingModeId: profile.servingModeId,
   machineId: profile.machineId,
   machineLabel: profile.machineLabel,
+  direction_targets: { ...profile.directionTargets },
+  direction_targets_active: Object.values(profile.directionTargets).some((target) => target !== 0),
 });
 
 /**
@@ -356,6 +372,8 @@ export function recipePersistPartialize(state: RecipeState) {
     flavor_intensity: state.flavor_intensity,
     cost_priority: state.cost_priority,
     target_protein_percent: state.target_protein_percent,
+    direction_targets: state.direction_targets,
+    direction_targets_active: state.direction_targets_active,
     items: state.items,
     // Agent C (owner addendum): draft-material — see the field doc above.
     excludedIngredientIds: state.excludedIngredientIds,
@@ -467,6 +485,20 @@ export const useRecipeStore = create<RecipeState>()(
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
+      moveDirectionTarget: (axis, delta) =>
+        set((state) => {
+          const current = state.direction_targets[axis];
+          const next = Math.max(-1, Math.min(1, current + delta)) as RecipeDirectionTarget;
+          if (next === current) return {};
+          const direction_targets = { ...state.direction_targets, [axis]: next };
+          useRecipeProfileStore.getState().setDirectionTargets(direction_targets);
+          return {
+            direction_targets,
+            direction_targets_active: true,
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
 
       applyVerifiedRecipeInput: (input) => {
         // Phase 5 — reject missing/invalid amounts (never coerce to zero).
@@ -646,6 +678,40 @@ export const useRecipeStore = create<RecipeState>()(
           };
         }),
 
+      setIngredientUnavailable: (lineId, unavailable) =>
+        set((state) => {
+          const target = state.items.find((item) => item.id === lineId);
+          if (!target) return {};
+          const ingredientId = canonicalIngredientId(target.ingredient);
+          const excludedIngredientIds = unavailable
+            ? state.excludedIngredientIds.includes(ingredientId)
+              ? state.excludedIngredientIds
+              : [...state.excludedIngredientIds, ingredientId]
+            : state.excludedIngredientIds.filter(
+                (id) => canonicalIngredientIdFromSourceId(id) !== ingredientId,
+              );
+          const unavailableMainIngredientIds = unavailable
+            ? target.lock_type === 'main' &&
+              !state.unavailableMainIngredientIds.includes(ingredientId)
+              ? [...state.unavailableMainIngredientIds, ingredientId]
+              : state.unavailableMainIngredientIds
+            : state.unavailableMainIngredientIds.filter(
+                (id) => canonicalIngredientIdFromSourceId(id) !== ingredientId,
+              );
+          if (
+            excludedIngredientIds === state.excludedIngredientIds &&
+            unavailableMainIngredientIds === state.unavailableMainIngredientIds
+          ) {
+            return {};
+          }
+          return {
+            excludedIngredientIds,
+            unavailableMainIngredientIds,
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
+
       /**
        * Owner P0 (recalc duplication) — REPAIR for drafts saved before the
        * canonical-identity fix: fold every later PLANNABLE (unlocked, nothing
@@ -701,8 +767,44 @@ export const useRecipeStore = create<RecipeState>()(
       setLockType: (lineId, lockType) =>
         set((state) => ({
           items: state.items.map((item) =>
-            item.id === lineId ? { ...item, lock_type: lockType } : item,
+            item.id === lineId
+              ? (() => {
+                  const withoutRange = { ...item };
+                  delete withoutRange.range_constraint;
+                  return { ...withoutRange, lock_type: lockType };
+                })()
+              : item,
           ),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
+
+      setRangeLock: (lineId, minGrams, maxGrams) =>
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === lineId
+              ? {
+                  ...item,
+                  lock_type: item.lock_type === 'main' ? 'main' : 'grams',
+                  range_constraint: { min_grams: minGrams, max_grams: maxGrams },
+                }
+              : item,
+          ),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
+
+      clearRangeLock: (lineId) =>
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.id !== lineId || item.range_constraint === undefined) return item;
+            const withoutRange = { ...item };
+            delete withoutRange.range_constraint;
+            return {
+              ...withoutRange,
+              lock_type: item.lock_type === 'grams' ? ('unlocked' as const) : item.lock_type,
+            };
+          }),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
@@ -722,6 +824,7 @@ export const useRecipeStore = create<RecipeState>()(
       // preview, history). Stale §17 locks/ranges from an earlier session
       // draft must never survive into a reloaded recipe.
       loadPreset: (preset) => {
+        useIngredientTableUxStore.getState().reset();
         set((state) => ({
           ...fromPreset(preset),
           excludedIngredientIds: [],
@@ -735,6 +838,7 @@ export const useRecipeStore = create<RecipeState>()(
           .openDraft(opened.draftContextSeq, DEFAULT_DIRECTION_TARGETS);
       },
       loadRecipeInput: (input, link = {}) => {
+        useIngredientTableUxStore.getState().reset();
         const metadata = readRecipeProfileMetadata(input);
         const savedRecipe = link.savedId != null || link.savedName != null;
         const defaults = savedRecipe
@@ -774,14 +878,22 @@ export const useRecipeStore = create<RecipeState>()(
           target_protein_percent: normalizeProteinTarget(
             input.goals?.target_protein_percent ?? PROTEIN_GELATO_TARGET.defaultPercent,
           ),
+          direction_targets: {
+            ...(profile?.directionTargets ??
+              input.goals?.direction_targets ??
+              DEFAULT_DIRECTION_TARGETS),
+          },
+          direction_targets_active:
+            input.goals?.direction_targets_active ??
+            Object.values(profile?.directionTargets ?? {}).some((target) => target !== 0),
           // Owner binding rule (zero-gram semantics): a stored bare grams-lock
           // at 0 g is a selected-UNFILLED artifact (legacy saves / resolution
           // bridge), not a deliberate zero — heal it on load so the UI shows
           // the truth. Explicit zeros live in §17 constraints, which are
           // session state and never stored with the recipe input.
           items: normalizedItems,
-          excludedIngredientIds: [], // a loaded recipe starts a fresh exclusion context
-          unavailableMainIngredientIds: [],
+          excludedIngredientIds: [...(input.goals?.excluded_ingredient_ids ?? [])],
+          unavailableMainIngredientIds: [...(input.goals?.unavailable_main_ingredient_ids ?? [])],
           activePresetId: null,
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
@@ -792,10 +904,7 @@ export const useRecipeStore = create<RecipeState>()(
         const opened = useRecipeStore.getState();
         useRecipeProfileStore
           .getState()
-          .openDraft(
-            opened.draftContextSeq,
-            profile?.directionTargets ?? DEFAULT_DIRECTION_TARGETS,
-          );
+          .openDraft(opened.draftContextSeq, opened.direction_targets);
       },
       markSaved: (id, name, versionNumber, versionDate = null) =>
         set({
@@ -828,6 +937,7 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
       resetToDemo: () => {
+        useIngredientTableUxStore.getState().reset();
         const base = fromPreset(DEFAULT_PRESET);
         const defaults = useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
         set((state) => ({
