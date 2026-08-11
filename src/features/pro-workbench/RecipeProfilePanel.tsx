@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
 import type { CorrectionResult, RecipeInput, RecipeResult } from '@/engine';
@@ -35,23 +35,28 @@ function ProfileContent({
   onOpenEducation: () => void;
 }) {
   return (
-    <div data-testid="pro-context-recipe">
+    <div className="p-3" data-testid="pro-context-recipe">
+      <div
+        className="grid min-w-0 items-start gap-3 xl:grid-cols-[1.08fr_0.92fr]"
+        data-testid="profile-desktop-grid"
+      >
+        <ProfileDirectionAxes result={result} className="min-w-0" />
+        <WorkbenchSettingsLine
+          actualBatchG={result.total_batch_g}
+          actualProteinPercent={result.percentages.protein_percent}
+          className="min-w-0"
+          compact
+        />
+      </div>
       <button
         type="button"
         onClick={onOpenEducation}
-        className="pro-focus-ring mx-3 mt-3 flex min-h-11 w-[calc(100%-1.5rem)] items-center justify-between rounded-[16px] border border-ink/10 bg-white px-4 text-left text-sm font-semibold text-ink shadow-pro-sm"
+        className="pro-focus-ring mt-3 flex min-h-11 w-full items-center justify-between rounded-[16px] border border-white/20 bg-white/6 px-4 text-left text-xs font-semibold text-white/82 shadow-pro-e0"
         data-testid="profile-learning-entry"
       >
         <span>Dlaczego taki wynik i jak przygotować recepturę?</span>
         <span aria-hidden>›</span>
       </button>
-      <div className="p-2">
-        <WorkbenchSettingsLine
-          actualBatchG={result.total_batch_g}
-          actualProteinPercent={result.percentages.protein_percent}
-        />
-      </div>
-      <ProfileDirectionAxes result={result} />
     </div>
   );
 }
@@ -236,9 +241,17 @@ export function RecipeProfilePanel({
   production?: ProductionWorkspaceView;
 }) {
   const [educationOpen, setEducationOpen] = useState(false);
+  const tabPanelRef = useRef<HTMLDivElement>(null);
   const machineId = useRecipeStore((state) => state.machineId);
+  useEffect(() => {
+    if (tabPanelRef.current) tabPanelRef.current.scrollTop = 0;
+  }, [activeTab, educationOpen]);
   return (
-    <div data-testid="pro-profile-panel" className="min-h-full bg-[#17191d] text-ink">
+    <div
+      data-testid="pro-profile-panel"
+      data-testid-shell="pro-intelligence-shell"
+      className="min-h-full bg-[#17191d] text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/10 lg:shadow-pro-e2"
+    >
       <div className="sticky top-0 z-30 bg-[#17191d]" data-testid="workbench-sticky-chrome">
         <WorkbenchIntelligenceHeader
           result={canonicalResult ?? result}
@@ -295,10 +308,12 @@ export function RecipeProfilePanel({
       </div>
 
       <div
+        ref={tabPanelRef}
         id={`pro-context-${activeTab}-tabpanel`}
         role="tabpanel"
         aria-labelledby={`pro-context-${activeTab}-tab-control`}
         tabIndex={0}
+        className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
       >
         {activeTab === 'profile' && educationOpen ? (
           <ContextualEducationView

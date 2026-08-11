@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { RecipeInput } from '@/engine';
+import { calculateRecipe, type RecipeInput } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import {
   MACHINE_CATALOG,
@@ -25,6 +25,7 @@ import {
   readRecipeProfileMetadata,
 } from './recipeProfilePersistence';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
+import { ProfileDirectionAxes } from './ProfileDirectionAxes';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -84,7 +85,9 @@ describe('profile hierarchy and compact preflight', () => {
     const directionAt = panel.indexOf('<ProfileDirectionAxes');
     expect(scoreAt).toBeGreaterThan(-1);
     expect(settingsAt).toBeGreaterThan(-1);
-    expect(directionAt).toBeGreaterThan(settingsAt);
+    expect(directionAt).toBeLessThan(settingsAt);
+    expect(panel).toContain('data-testid="profile-desktop-grid"');
+    expect(panel).toContain('xl:grid-cols-[1.08fr_0.92fr]');
     expect(panel).not.toContain('<NutritionAndCost');
     expect(panel).toContain('data-testid="profile-learning-entry"');
     expect(panel).toContain('setEducationOpen(true)');
@@ -92,6 +95,19 @@ describe('profile hierarchy and compact preflight', () => {
     expect(read('features', 'education', 'ContextualEducationView.tsx')).toContain(
       'data-testid="profile-education-view"',
     );
+  });
+
+  it('uses one inset shell and one desktop body scroller for every cockpit tab', () => {
+    const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
+    expect(surface).toContain('lg:overflow-hidden lg:border-t-0 lg:p-3');
+    expect(panel).toContain('lg:rounded-[28px]');
+    expect(panel).toContain('lg:shadow-pro-e2');
+    expect(panel).toContain('lg:flex-1 lg:overflow-y-auto');
+    expect(panel).toContain("activeTab === 'profile'");
+    expect(panel).toContain("activeTab === 'monitor'");
+    expect(panel).toContain("activeTab === 'production'");
+    expect(panel).toContain("activeTab === 'summary'");
   });
 
   it('keeps canonical field order and removes legacy advanced settings', () => {
@@ -294,11 +310,36 @@ describe('five-detent direction language', () => {
     expect(axes).toContain('Brak wystarczających danych');
     expect(axes).toContain('Zbalansowana');
     expect(axes).toContain('Bardzo stabilna');
+    expect(axes).toContain('profile-readonly-');
+    expect(axes).toContain('role="img"');
+    expect(axes).toContain('Pole tylko do odczytu');
+    expect(axes).toContain('low="Lekka"');
+    expect(axes).toContain('high="Pełna"');
+    expect(axes).toContain('low="Niska"');
+    expect(axes).toContain('high="Wysoka"');
+    expect(axes).toContain('p-2 shadow-pro-md');
+    expect(axes).toContain('space-y-2');
     expect(axes).not.toContain('Teraz</');
     expect(axes).not.toContain('Cel</');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).not.toContain(
       'Słodycz i Miękkość Direction już działają',
     );
+  });
+
+  it('renders Structure and Stability as accessible read-only visual scales, never controls', () => {
+    const html = renderToStaticMarkup(
+      <ProfileDirectionAxes result={calculateRecipe(starterMilkBase())} />,
+    );
+    for (const id of ['structure', 'stability']) {
+      const start = html.indexOf(`data-testid="profile-readonly-${id}"`);
+      expect(start).toBeGreaterThan(-1);
+      const end = html.indexOf('</div>', start);
+      const card = html.slice(start, end);
+      expect(card).toContain('role="img"');
+      expect(card).toContain('Pole tylko do odczytu');
+      expect(card).not.toContain('<button');
+      expect(card).not.toContain('<input');
+    }
   });
 
   it('moves only the desired target and marks recalculation pending', () => {

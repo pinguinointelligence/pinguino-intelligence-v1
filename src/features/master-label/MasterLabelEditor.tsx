@@ -32,7 +32,11 @@ export function MasterLabelEditor({
   const active = label?.sourceCompletionSessionId === snapshot.sessionId ? label : null;
   const preflight = useMemo(() => (active ? buildLabelPreflight(active) : null), [active]);
   if (!active || !preflight) {
-    return <p className="p-3 text-xs text-stone-500">Przygotowywanie Master Label…</p>;
+    return (
+      <p className="m-3 rounded-[22px] border border-white/10 bg-[#f7f5f0] p-4 text-xs text-stone-600 shadow-pro-e1">
+        Przygotowywanie Master Label…
+      </p>
+    );
   }
   const profile = marketProfile(active.market);
   const primaryLanguage = active.labelLanguages[0] ?? 'pl';
@@ -43,7 +47,10 @@ export function MasterLabelEditor({
   ) => replace({ ...active, [field]: { ...active[field], [language]: value } });
 
   return (
-    <div className="space-y-3 p-3" data-testid="master-label-editor">
+    <div
+      className="m-3 space-y-3 rounded-[22px] border border-white/10 bg-[#f7f5f0] p-4 text-ink shadow-pro-e1"
+      data-testid="master-label-editor"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold tracking-[0.12em] text-stone-600 uppercase">
@@ -306,7 +313,7 @@ export function MasterLabelEditor({
           type="button"
           disabled={!preflight.readyForSystemPrint}
           onClick={() => printMasterLabel(active)}
-          className="mt-3 h-11 w-full bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
+          className="mt-3 h-11 w-full bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-700"
         >
           {printLabel}
         </button>

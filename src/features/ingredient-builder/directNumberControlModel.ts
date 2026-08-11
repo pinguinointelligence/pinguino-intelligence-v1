@@ -30,3 +30,30 @@ export function scrubbedValue(
 export function boundedNumberValue(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
+
+export function committedNumberValue({
+  value,
+  min,
+  max,
+  decimals,
+  preservePrecision,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  decimals: number;
+  preservePrecision: boolean;
+}): number {
+  const bounded = boundedNumberValue(value, min, max);
+  return preservePrecision ? bounded : Number(bounded.toFixed(decimals));
+}
+
+const decimalPlaces = (value: number): number => {
+  for (let places = 0; places < 3; places += 1) {
+    if (Math.abs(value - Number(value.toFixed(places))) <= 1e-9) return places;
+  }
+  return 3;
+};
+
+export const productionControlDecimals = (value: number, step: number): number =>
+  Math.max(decimalPlaces(value), decimalPlaces(step));

@@ -22,6 +22,7 @@ import {
   type SubstituteCandidate,
 } from './ingredientTableUx';
 import { DirectNumberControl } from './DirectNumberControl';
+import { ProductionActualControl } from '@/features/production-workspace/ProductionActualControl';
 
 const b = copy.studio.builder;
 const t = b.ingredientTable;
@@ -30,7 +31,7 @@ export type IngredientTableMode = 'recipe' | 'production';
 
 /** Recipe mode only: Ingredient | % + lock | quantity + lock/unit | price | menu. */
 export const ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(206px,1fr)_96px_44px]';
+  'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(202px,1fr)_96px_44px]';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 
@@ -858,97 +859,67 @@ function ProductionRow({
   const correctionMode = !line.confirmed && line.recordCorrectionCount > 0;
   const minimum = correctionMode ? 0 : line.physicalAddedGrams;
   const setValue = (next: number) => actions.setDraftActual(line.lineId, Math.max(minimum, next));
-  const displayedValue = String(Math.round(value * 1_000) / 1_000);
 
   return (
     <div
       className={PRODUCTION_ROW_GRID}
       data-production-confirmed={line.confirmed ? 'true' : 'false'}
+      data-production-mode={correctionMode ? 'correction' : 'addition'}
     >
       <div className="min-w-0">
-        <span className="truncate text-[13px] font-semibold text-ink">{item.ingredient.name}</span>
+        <span className="block truncate text-[13px] font-semibold text-ink">
+          {item.ingredient.name}
+        </span>
+        <span
+          className={cn(
+            'mt-1 inline-flex min-h-6 items-center rounded-full border px-2 text-[10px] font-semibold',
+            correctionMode
+              ? 'border-attention/30 bg-pro-amber text-attention'
+              : line.confirmed
+                ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
+                : 'border-ink/10 bg-stone-50 text-stone-600',
+          )}
+          data-testid={`production-mode-${line.lineId}`}
+          role="status"
+          aria-live="polite"
+        >
+          {correctionMode ? 'Korekta zapisu' : line.confirmed ? 'Potwierdzono' : 'Dodawanie'}
+        </span>
         {line.physicalAddedGrams > 0 && !line.confirmed ? (
           <span className="mt-0.5 block text-xs text-stone-600">
             W naczyniu: {formatProductionMassG(line.physicalAddedGrams)} g
           </span>
         ) : null}
       </div>
-      <div className="text-left font-mono text-xs tabular-nums text-ink md:text-right">
-        <FieldLabel>Plan</FieldLabel>
-        {formatProductionMassG(line.plannedGrams)} g
+      <div className="rounded-[14px] border border-ink/8 bg-stone-50 px-3 py-2 text-left md:text-right">
+        <span className="block text-[10px] font-semibold text-stone-600 md:block">Plan</span>
+        <strong className="font-mono text-sm tabular-nums text-ink">
+          {formatProductionMassG(line.plannedGrams)} g
+        </strong>
       </div>
       <div>
         <FieldLabel>Faktycznie · potwierdź</FieldLabel>
-        <div
-          className="grid grid-cols-[44px_minmax(74px,1fr)_44px_48px] items-stretch"
-          data-testid={`production-stepper-${line.lineId}`}
-        >
-          <button
-            type="button"
-            disabled={line.confirmed}
-            aria-label={`${item.ingredient.name} — zmniejsz o ${step} g`}
-            onClick={() => setValue(value - step)}
-            className="grid min-h-11 place-items-center border border-r-0 border-ink/15 bg-white text-lg font-medium text-ink transition-colors hover:bg-stone-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ink disabled:bg-stone-100 disabled:text-stone-400"
-          >
-            −
-          </button>
-          <label className="relative min-w-0">
-            <span className="sr-only">{item.ingredient.name} — faktyczna gramatura</span>
-            <input
-              type="number"
-              min={minimum}
-              step="any"
-              inputMode="decimal"
-              value={displayedValue}
-              disabled={line.confirmed}
-              onChange={(event) => {
-                const next = Number(event.currentTarget.value);
-                if (Number.isFinite(next)) setValue(next);
-              }}
-              className="h-11 w-full border border-ink/15 bg-white px-2 pr-5 text-right font-mono text-sm font-semibold tabular-nums text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ink disabled:bg-stone-100"
-            />
-            <span className="pointer-events-none absolute right-1.5 top-3 text-xs text-stone-600">
-              g
-            </span>
-          </label>
-          <button
-            type="button"
-            disabled={line.confirmed}
-            aria-label={`${item.ingredient.name} — zwiększ o ${step} g`}
-            onClick={() => setValue(value + step)}
-            className="grid min-h-11 place-items-center border border-l-0 border-ink/15 bg-white text-lg font-medium text-ink transition-colors hover:bg-stone-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ink disabled:bg-stone-100 disabled:text-stone-400"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            aria-label={
-              line.confirmed
-                ? `${item.ingredient.name} — popraw zapis`
-                : `${item.ingredient.name} — potwierdź dodanie`
-            }
-            title={
-              line.confirmed
-                ? 'Zmienia zapis faktycznej ilości — użyj tylko jeśli poprzednia wartość została wpisana błędnie.'
-                : 'Potwierdź, że ta ilość została fizycznie dodana.'
-            }
-            onClick={() =>
-              line.confirmed ? actions.reopenRecord(line.lineId) : actions.confirmLine(line.lineId)
-            }
-            className={cn(
-              'grid min-h-11 place-items-center border border-l-0 text-base font-semibold focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ink',
-              line.confirmed
-                ? 'border-status-ideal/35 bg-status-ideal/[0.08] text-status-ideal'
-                : 'border-ink bg-ink text-white hover:bg-ink-soft',
-            )}
-          >
-            {line.confirmed ? '↺' : '✓'}
-          </button>
-        </div>
+        <ProductionActualControl
+          lineId={line.lineId}
+          ingredientName={item.ingredient.name}
+          value={value}
+          minimum={minimum}
+          step={step}
+          confirmed={line.confirmed}
+          correctionMode={correctionMode}
+          onChange={setValue}
+          onConfirm={() =>
+            line.confirmed ? actions.reopenRecord(line.lineId) : actions.confirmLine(line.lineId)
+          }
+          describedBy={correctionMode ? `production-correction-${line.lineId}` : undefined}
+        />
         {correctionMode ? (
           <p
             className="mt-1 text-xs leading-snug text-attention"
             data-testid={`production-record-correction-${line.lineId}`}
+            id={`production-correction-${line.lineId}`}
+            role="status"
+            aria-live="polite"
           >
             Poprawiasz zapis faktycznej ilości — tylko jeśli poprzednia wartość była wpisana
             błędnie.
@@ -957,13 +928,28 @@ function ProductionRow({
       </div>
       <div
         className={cn(
-          'font-mono text-xs tabular-nums md:text-right',
-          exact ? 'text-stone-500' : 'text-attention',
+          'rounded-[14px] border px-3 py-2 md:text-right',
+          exact
+            ? 'border-ink/8 bg-stone-50 text-stone-600'
+            : 'border-attention/25 bg-pro-amber/65 text-attention',
         )}
+        data-testid={`production-difference-${line.lineId}`}
+        data-production-difference={exact ? 'exact' : difference > 0 ? 'over' : 'under'}
+        role="status"
+        aria-live="polite"
+        aria-label={`Różnica względem planu: ${difference > 0 ? 'plus ' : difference < 0 ? 'minus ' : ''}${formatProductionMassG(Math.abs(difference))} gramów${exact ? ', zgodnie z planem' : difference > 0 ? ', powyżej planu' : ', poniżej planu'}`}
       >
         <FieldLabel>Różnica</FieldLabel>
-        {difference > 0 ? '+' : ''}
-        {formatProductionMassG(difference)} g
+        <span className="block text-[10px] font-semibold">Odchylenie</span>
+        <strong className="block font-mono text-sm tabular-nums">
+          {difference > 0 ? '+' : ''}
+          {formatProductionMassG(difference)} g
+        </strong>
+        {!exact ? (
+          <span className="mt-0.5 block text-[10px] font-medium">
+            {difference > 0 ? 'powyżej planu' : 'poniżej planu'}
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -996,7 +982,9 @@ export function IngredientRow({
   return (
     <div
       className={cn(
-        'border-b border-ink/[0.075] px-3 py-3 transition-colors hover:bg-stone-50',
+        mode === 'production'
+          ? 'mx-2 mb-2 rounded-[20px] border border-ink/[0.08] bg-white/95 px-3 py-3 shadow-pro-e1 transition-colors hover:border-ink/15'
+          : 'border-b border-ink/[0.075] px-3 py-3 transition-colors hover:bg-stone-50',
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'main' &&
           'border-gold/20 bg-education-ivory/55 hover:bg-education-ivory/75',

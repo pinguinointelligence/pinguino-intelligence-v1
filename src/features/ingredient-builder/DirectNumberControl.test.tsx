@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DirectNumberControl } from './DirectNumberControl';
 import {
   acceleratedStepMultiplier,
   boundedNumberValue,
+  committedNumberValue,
   heldValueAfterTicks,
   scrubbedValue,
 } from './directNumberControlModel';
@@ -27,6 +29,32 @@ describe('DirectNumberControl', () => {
     expect(boundedNumberValue(11, 12, 14)).toBe(12);
     expect(boundedNumberValue(13, 12, 14)).toBe(13);
     expect(boundedNumberValue(15, 12, 14)).toBe(14);
+  });
+
+  it('can round the presentation without truncating Production physical precision', () => {
+    const exact = 357.75342952471976 + 1;
+    expect(
+      committedNumberValue({
+        value: exact,
+        min: 0,
+        max: Number.POSITIVE_INFINITY,
+        decimals: 3,
+        preservePrecision: true,
+      }),
+    ).toBe(exact);
+    expect(
+      committedNumberValue({
+        value: exact,
+        min: 0,
+        max: Number.POSITIVE_INFINITY,
+        decimals: 3,
+        preservePrecision: false,
+      }),
+    ).toBe(358.753);
+
+    const source = readFileSync(new URL('./DirectNumberControl.tsx', import.meta.url), 'utf8');
+    expect(source).toContain('if (!draftDirty.current)');
+    expect(source.indexOf('if (!draftDirty.current)')).toBeLessThan(source.indexOf('const parsed = Number(draft)'));
   });
 
   it('renders minus, editable spinbutton, plus, keyboard metadata and no native number input', () => {

@@ -5,6 +5,8 @@ import { useConstraintStudioStore } from '@/features/constraint-studio/constrain
 import { buildRecipeDirectionPlan } from '@/features/recipe-direction/recipeDirectionTargets';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { buildUserMonitorSummaryCards } from '@/features/user-monitor';
+import type { GoldenRangeReading } from '@/features/recipe-score';
+import { actualPositionFromReading } from './recipeAxisModel';
 import { useRecipeStore } from '@/stores/recipeStore';
 import {
   useRecipeProfileStore,
@@ -43,6 +45,7 @@ const formatMetric = (value: number | null | undefined): string =>
   value == null || !Number.isFinite(value) ? '—' : value.toFixed(2);
 
 function DirectionPreferenceControl({
+  label,
   axis,
   intent,
   onMove,
@@ -52,6 +55,7 @@ function DirectionPreferenceControl({
   low,
   high,
 }: {
+  label: string;
   axis: AdjustableAxisId;
   intent: DirectionIntent;
   onMove: (delta: -1 | 1) => void;
@@ -63,14 +67,20 @@ function DirectionPreferenceControl({
 }) {
   return (
     <article
-      className="rounded-[20px] border border-ink/10 bg-white p-4 shadow-pro-sm"
+      className="rounded-[20px] border border-ink/10 bg-white p-3 shadow-pro-sm"
       data-testid={`direction-intent-${axis}`}
     >
-      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-ink">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-sm font-semibold text-ink">{label}</h4>
+        <p className="text-right text-[10px] text-stone-600" role="status" aria-live="polite">
+          Wybrano: <strong className="text-ink">{INTENT_LABEL[intent]}</strong>
+        </p>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px] font-semibold text-stone-600">
         <span>{low}</span>
         <span>{high}</span>
       </div>
-      <div className="mt-3 grid grid-cols-[44px_1fr_44px] items-center gap-3">
+      <div className="mt-1 grid grid-cols-[44px_1fr_44px] items-center gap-2">
         <button
           type="button"
           onClick={() => onMove(-1)}
@@ -123,12 +133,9 @@ function DirectionPreferenceControl({
           +
         </button>
       </div>
-      <p className="mt-3 text-sm text-ink" role="status" aria-live="polite">
-        Wybrano: <strong>{INTENT_LABEL[intent]}</strong>
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-stone-600">
+      <p className="mt-1.5 text-[11px] leading-snug text-stone-600">
         {preview == null
-          ? `Aktualna receptura: ${metricLabel} ${formatMetric(current)}. Przelicz, aby zobaczyć bezpieczny wynik.`
+          ? `Teraz: ${metricLabel} ${formatMetric(current)} · wynik po Preview`
           : `Teraz: ${metricLabel} ${formatMetric(current)} → Po zmianie: ${metricLabel} ${formatMetric(preview)}`}
       </p>
     </article>
@@ -137,14 +144,79 @@ function DirectionPreferenceControl({
 
 function UnavailableDirection({ title, body }: { title: string; body: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[18px] border border-nonprod/25 bg-nonprod/[0.035] px-4 py-3">
+    <div className="flex min-h-11 items-center justify-between gap-3 rounded-[18px] border border-nonprod/25 bg-nonprod/[0.035] px-3 py-2">
       <span className="text-sm font-semibold text-ink">{title}</span>
       <span className="text-right text-xs font-medium text-nonprod">{body}</span>
     </div>
   );
 }
 
-export function ProfileDirectionAxes({ result }: { result: RecipeResult }) {
+function readOnlyPosition(reading: GoldenRangeReading): number | null {
+  if (reading.side === null || reading.state === 'neutral') return null;
+  return actualPositionFromReading(reading) / 25;
+}
+
+function ReadOnlyAxisResult({
+  title,
+  id,
+  resultLabel,
+  reading,
+  low,
+  high,
+}: {
+  title: string;
+  id: 'structure' | 'stability';
+  resultLabel: string;
+  reading: GoldenRangeReading;
+  low: string;
+  high: string;
+}) {
+  const position = readOnlyPosition(reading);
+  return (
+    <div
+      className="rounded-[18px] border border-ink/8 bg-white px-3 py-1.5"
+      data-testid={`profile-readonly-${id}`}
+      role="img"
+      aria-label={`${title}: ${resultLabel}. Skala od ${low} do ${high}. ${reading.text}. Pole tylko do odczytu.`}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-xs font-medium text-stone-600">{title}</p>
+        <strong className="text-sm text-ink">{resultLabel}</strong>
+      </div>
+      <div className="mt-1.5 grid grid-cols-5 gap-1" aria-hidden>
+        {[0, 1, 2, 3, 4].map((segment) => (
+          <span
+            key={segment}
+            className={cn(
+              'h-2 rounded-full border',
+              segment === position
+                ? reading.state === 'golden'
+                  ? 'border-gold bg-gold'
+                  : reading.state === 'red'
+                    ? 'border-status-error bg-status-error'
+                    : 'border-attention bg-attention'
+                : segment === 2
+                  ? 'border-gold/30 bg-gold/12'
+                  : 'border-ink/8 bg-stone-100',
+            )}
+          />
+        ))}
+      </div>
+      <div className="mt-0.5 flex items-center justify-between text-[10px] font-medium text-stone-600" aria-hidden>
+        <span>{low}</span>
+        <span>{high}</span>
+      </div>
+    </div>
+  );
+}
+
+export function ProfileDirectionAxes({
+  result,
+  className,
+}: {
+  result: RecipeResult;
+  className?: string;
+}) {
   const recipe = useRecipeStore();
   const preview = useConstraintStudioStore((state) => state.preview);
   const previewResult = useMemo(
@@ -173,16 +245,17 @@ export function ProfileDirectionAxes({ result }: { result: RecipeResult }) {
 
   return (
     <section
-      className="mx-3 my-3 rounded-[22px] border border-white/55 bg-[#f7f5f0] p-4 shadow-pro-md"
+      className={cn(
+        'rounded-[22px] border border-white/55 bg-[#f7f5f0] p-2 shadow-pro-md',
+        className,
+      )}
       data-testid="profile-direction-axes"
     >
-      <div className="mb-4">
-        <p className="text-xs font-semibold text-stone-600">Kierunek receptury</p>
-        <h3 className="mt-1 text-lg font-semibold text-ink">
-          Jak ma smakować i zachowywać się produkt?
-        </h3>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h3 className="text-base font-semibold text-ink">Kierunek receptury</h3>
+        <span className="text-[10px] font-medium text-stone-600">5 poziomów</span>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2">
         {AXES.map((axis) => {
           const state = statusByAxis.get(axis.id);
           if (state?.status !== 'working') {
@@ -200,8 +273,8 @@ export function ProfileDirectionAxes({ result }: { result: RecipeResult }) {
           }
           return (
             <div key={axis.id}>
-              <p className="mb-2 text-sm font-semibold text-ink">{axis.label}</p>
               <DirectionPreferenceControl
+                label={axis.label}
                 axis={axis.id}
                 intent={intents[axis.id]}
                 onMove={(delta) => move(axis.id, delta)}
@@ -216,21 +289,35 @@ export function ProfileDirectionAxes({ result }: { result: RecipeResult }) {
         })}
         <UnavailableDirection title="Kremowość" body="Kalibracja w przygotowaniu" />
         <UnavailableDirection title="Intensywność smaku" body="Brak wystarczających danych" />
-        <div className="grid grid-cols-2 gap-3 pt-1">
-          <div className="rounded-[18px] border border-ink/8 bg-white px-4 py-3">
-            <p className="text-xs text-stone-600">Struktura</p>
-            <strong className="mt-1 block text-sm text-ink">
-              {cards.get('struktura')?.reading.state === 'golden' ? 'Zbalansowana' : 'Wymaga uwagi'}
-            </strong>
-          </div>
-          <div className="rounded-[18px] border border-ink/8 bg-white px-4 py-3">
-            <p className="text-xs text-stone-600">Stabilność</p>
-            <strong className="mt-1 block text-sm text-ink">
-              {cards.get('stabilnosc')?.reading.state === 'golden'
-                ? 'Bardzo stabilna'
-                : 'Wymaga uwagi'}
-            </strong>
-          </div>
+        <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+          {cards.get('struktura') ? (
+            <ReadOnlyAxisResult
+              title="Struktura"
+              id="structure"
+              resultLabel={
+                cards.get('struktura')!.reading.state === 'golden'
+                  ? 'Zbalansowana'
+                  : 'Wymaga uwagi'
+              }
+              reading={cards.get('struktura')!.reading}
+              low="Lekka"
+              high="Pełna"
+            />
+          ) : null}
+          {cards.get('stabilnosc') ? (
+            <ReadOnlyAxisResult
+              title="Stabilność"
+              id="stability"
+              resultLabel={
+                cards.get('stabilnosc')!.reading.state === 'golden'
+                  ? 'Bardzo stabilna'
+                  : 'Wymaga uwagi'
+              }
+              reading={cards.get('stabilnosc')!.reading}
+              low="Niska"
+              high="Wysoka"
+            />
+          ) : null}
         </div>
       </div>
     </section>

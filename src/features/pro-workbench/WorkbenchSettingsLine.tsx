@@ -53,6 +53,7 @@ function LabeledSelect<T extends string>({
   labelOf,
   onChange,
   testid,
+  stacked = false,
 }: {
   label: string;
   value: T;
@@ -60,12 +61,24 @@ function LabeledSelect<T extends string>({
   labelOf: (option: T) => string;
   onChange: (next: T) => void;
   testid: string;
+  stacked?: boolean;
 }) {
   return (
-    <label className="grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2">
-      <span className="text-xs font-medium text-stone-600">{label}</span>
+    <label
+      className={cn(
+        stacked ? 'relative block' : 'grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2',
+      )}
+    >
+      <span
+        className={cn(
+          'font-medium text-stone-600',
+          stacked ? 'pointer-events-none absolute left-3 top-1.5 z-10 text-[10px]' : 'text-xs',
+        )}
+      >
+        {label}
+      </span>
       <select
-        className={`${compactSelect} w-full`}
+        className={cn(compactSelect, 'w-full', stacked && 'h-[52px] pt-4')}
         value={value}
         aria-label={label}
         data-testid={testid}
@@ -88,9 +101,13 @@ function ownerPreferenceKey(): string {
 export function WorkbenchSettingsLine({
   actualBatchG,
   actualProteinPercent = 0,
+  className,
+  compact = false,
 }: {
   actualBatchG: number;
   actualProteinPercent?: number;
+  className?: string;
+  compact?: boolean;
 }) {
   const store = useRecipeStore();
   const resizeBatchGrams = useConstraintStudioStore((state) => state.resizeBatchGrams);
@@ -168,12 +185,14 @@ export function WorkbenchSettingsLine({
   return (
     <section
       className={cn(
-        'rounded-[22px] border p-4 shadow-pro-e2 transition-colors',
+        'rounded-[22px] border shadow-pro-e2 transition-colors',
+        compact ? 'p-3' : 'p-4',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
           : confirmed
             ? 'border-white/55 bg-[#f7f5f0]'
             : 'border-gold/45 bg-[#f7f1df]',
+        className,
       )}
       data-testid="workbench-settings-line"
       data-preflight-state={
@@ -193,7 +212,7 @@ export function WorkbenchSettingsLine({
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className={compact ? 'space-y-2' : 'space-y-3'}>
         <div>
           <LabeledSelect
             label={g.productTypeLabel}
@@ -202,10 +221,11 @@ export function WorkbenchSettingsLine({
             labelOf={(option) => g.productTypes[option]}
             onChange={(next: VisibleProductType) => store.setVisibleProductType(next)}
             testid="workbench-product-type"
+            stacked={compact}
           />
           {store.visibleProductType === 'sorbet' ? (
             <ReadinessBadge
-              className="ml-[7.3rem] mt-1"
+              className={cn('mt-1', !compact && 'ml-[7.3rem]')}
               state="W PRZYGOTOWANIU"
               details={{
                 limitation: 'Sorbet nie blokuje istniejącego nabiału.',
@@ -217,7 +237,7 @@ export function WorkbenchSettingsLine({
           ) : null}
           {store.visibleProductType === 'vegan' ? (
             <ReadinessBadge
-              className="ml-[7.3rem] mt-1"
+              className={cn('mt-1', !compact && 'ml-[7.3rem]')}
               state="CZĘŚCIOWO PODŁĄCZONE"
               details={{
                 limitation:
@@ -230,7 +250,7 @@ export function WorkbenchSettingsLine({
             />
           ) : null}
           {store.visibleProductType === 'protein' ? (
-            <div className="ml-[7.3rem] mt-1">
+            <div className={cn('mt-1', !compact && 'ml-[7.3rem]')}>
               <ProteinTargetControl actualPercent={actualProteinPercent} />
             </div>
           ) : null}
@@ -253,10 +273,11 @@ export function WorkbenchSettingsLine({
             }
           }}
           testid="workbench-machine"
+          stacked={compact}
         />
 
         <div
-          className="ml-[7.3rem] border-l border-ink/15 pl-2"
+          className={cn('border-l border-ink/15 pl-2', !compact && 'ml-[7.3rem]')}
           data-testid="machine-conditional-settings"
         >
           {!showsProfessionalServing(store.machineKind) ? (
@@ -292,18 +313,29 @@ export function WorkbenchSettingsLine({
               labelOf={(id) => SERVING_OPTIONS.find((option) => option.id === id)?.label ?? id}
               onChange={pickServing}
               testid="workbench-serving"
+              stacked={compact}
             />
           )}
         </div>
 
         <div
           className={cn(
-            'grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2 rounded-[16px] border px-3 py-2',
+            'grid items-center gap-2 rounded-[16px] border px-3 py-2',
+            compact
+              ? 'relative min-h-[64px] grid-cols-1 pt-5'
+              : 'grid-cols-[6.8rem_minmax(0,1fr)]',
             batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
           )}
           data-testid="profile-batch-combined"
         >
-          <span className="text-xs font-medium text-stone-600">Partia</span>
+          <span
+            className={cn(
+              'font-medium text-stone-600',
+              compact ? 'absolute left-3 top-1.5 text-[10px]' : 'text-xs',
+            )}
+          >
+            Partia
+          </span>
           <div className="flex min-w-0 items-center justify-end gap-1.5">
             <strong className="font-mono text-xs tabular-nums text-ink">
               {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
@@ -347,11 +379,12 @@ export function WorkbenchSettingsLine({
             labelOf={(strategy) => STRATEGY_COPY[strategy].label}
             onChange={(strategy) => store.setFormulationStrategy(strategy)}
             testid="workbench-strategy"
+            stacked={compact}
           />
-          <p className="ml-[7.3rem] mt-1 text-xs leading-relaxed text-stone-600">
+          <p className={cn('mt-1 text-xs leading-relaxed text-stone-600', !compact && 'ml-[7.3rem]')}>
             {store.formulation_strategy === 'eco'
-              ? 'ECO działa w granicach twardej technologii i ochrony smaku.'
-              : 'OPTIMAL dobiera technologię bez używania ceny jako celu.'}
+              ? 'Koszt w granicach technologii i smaku.'
+              : 'Technologia bez celu kosztowego.'}
           </p>
         </div>
       </div>

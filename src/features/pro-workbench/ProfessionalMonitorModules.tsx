@@ -107,21 +107,22 @@ function ModuleStatus({ module }: { module: ProfessionalMonitorModule }) {
     .filter((reading) => reading !== null);
   const neutral = readings.length === 0 || readings.every((reading) => reading.state === 'neutral');
   const golden = readings.length > 0 && readings.every((reading) => reading.state === 'golden');
+  const label = module.problem ? 'UWAGA' : neutral ? 'NIEOCENIONE' : golden ? 'W ZAKRESIE' : 'OCENIONE';
   return (
     <span
       className={cn(
-        'grid size-5 place-items-center text-xs font-semibold',
+        'inline-flex min-h-6 items-center rounded-full border px-2 text-[10px] font-semibold',
         module.problem
-          ? 'text-status-error'
+          ? 'border-[#e7a891]/30 bg-[#a56454]/18 text-[#f0baa6]'
           : neutral
-            ? 'text-white/55'
+            ? 'border-white/10 bg-white/5 text-white/65'
             : golden
-              ? 'text-[#d7b768]'
-              : 'text-[#b9cbb1]',
+              ? 'border-[#d7b768]/30 bg-[#d7b768]/10 text-[#e5cb8b]'
+              : 'border-[#b9cbb1]/25 bg-[#b9cbb1]/10 text-[#cbd8c5]',
       )}
       aria-label={module.problem ? 'Wymaga uwagi' : neutral ? 'Brak oceny' : 'Stan oceniony'}
     >
-      {module.problem ? '!' : neutral ? '?' : '●'}
+      {label}
     </span>
   );
 }

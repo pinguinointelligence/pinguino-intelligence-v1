@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { cn } from '@/lib/cn';
 import {
   acceleratedStepMultiplier,
-  boundedNumberValue,
+  committedNumberValue,
   scrubbedValue,
 } from './directNumberControlModel';
 
@@ -17,6 +17,8 @@ interface DirectNumberControlProps {
   disabled?: boolean;
   onChange: (value: number) => void;
   testId: string;
+  ariaDescribedBy?: string;
+  preservePrecision?: boolean;
 }
 
 export function DirectNumberControl({
@@ -30,10 +32,14 @@ export function DirectNumberControl({
   disabled = false,
   onChange,
   testId,
+  ariaDescribedBy,
+  preservePrecision = false,
 }: DirectNumberControlProps) {
+  const accessibleValue = Number(value.toFixed(decimals));
   const valueRef = useRef(value);
   const [draft, setDraft] = useState(value.toFixed(decimals));
   const [editing, setEditing] = useState(false);
+  const draftDirty = useRef(false);
   const repeatTimer = useRef<number | null>(null);
   const repeatCount = useRef(0);
   const repeated = useRef(false);
@@ -56,12 +62,18 @@ export function DirectNumberControl({
   );
 
   const commit = (next: number) => {
-    const bounded = boundedNumberValue(next, min, max);
-    const quantized = Number(bounded.toFixed(decimals));
-    valueRef.current = quantized;
-    setDraft(quantized.toFixed(decimals));
+    const committed = committedNumberValue({
+      value: next,
+      min,
+      max,
+      decimals,
+      preservePrecision,
+    });
+    valueRef.current = committed;
+    setDraft(committed.toFixed(decimals));
+    draftDirty.current = false;
     setEditing(false);
-    onChange(quantized);
+    onChange(committed);
   };
   const nudge = (direction: -1 | 1, multiplier = 1) =>
     commit(valueRef.current + direction * step * multiplier);
@@ -112,6 +124,7 @@ export function DirectNumberControl({
         disabled && 'bg-stone-100 opacity-55',
       )}
       data-testid={testId}
+      data-preserve-precision={preservePrecision ? 'true' : undefined}
     >
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {ariaLabel}: {value.toFixed(decimals)} {suffix}
@@ -150,18 +163,26 @@ export function DirectNumberControl({
           disabled={disabled}
           aria-valuemin={min}
           aria-valuemax={Number.isFinite(max) ? max : undefined}
-          aria-valuenow={value}
+          aria-valuenow={accessibleValue}
           aria-label={ariaLabel}
+          aria-describedby={ariaDescribedBy}
           value={editing ? draft : value.toFixed(decimals)}
           onFocus={() => {
             setDraft(valueRef.current.toFixed(decimals));
+            draftDirty.current = false;
             setEditing(true);
           }}
           onChange={(event) => {
+            draftDirty.current = true;
             setEditing(true);
             setDraft(event.currentTarget.value.replace(',', '.'));
           }}
           onBlur={() => {
+            if (!draftDirty.current) {
+              setDraft(valueRef.current.toFixed(decimals));
+              setEditing(false);
+              return;
+            }
             const parsed = Number(draft);
             if (Number.isFinite(parsed)) commit(parsed);
             else {

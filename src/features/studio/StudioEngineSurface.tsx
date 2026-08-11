@@ -218,7 +218,7 @@ export function StudioEngineSurface({
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
         <div className="min-h-0 flex-1 lg:flex lg:flex-row">
           <div
-            className="min-h-0 lg:flex lg:w-[62%] lg:flex-col lg:border-r lg:border-pro-line"
+            className="min-h-0 lg:flex lg:w-[60%] lg:flex-col lg:border-r lg:border-pro-line"
             data-testid="workbench-editor-pane"
           >
             {fullFormula && cockpitTab === 'production' && !productionReady ? (
@@ -263,7 +263,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
-            className="hidden min-h-0 border-t border-pro-line lg:block lg:w-[38%] lg:overflow-y-auto lg:border-t-0"
+            className="hidden min-h-0 border-t border-pro-line bg-pro-warm lg:block lg:w-[40%] lg:overflow-hidden lg:border-t-0 lg:p-3"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
           >
