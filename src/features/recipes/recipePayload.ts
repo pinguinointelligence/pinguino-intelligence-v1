@@ -123,6 +123,8 @@ const item = z.looseObject({
   planned_grams: z.number(),
   actual_grams: z.number().nullable(),
   lock_type: z.string(),
+  percent_constraint: z.object({ percent: z.number() }).optional(),
+  grams_constraint: z.object({ grams: z.number() }).optional(),
 });
 
 export const recipeInputSchema = z.looseObject({

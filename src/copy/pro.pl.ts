@@ -1,0 +1,25 @@
+/** Centralised customer-facing Polish copy for the Pro workbench. */
+export const proWorkbenchCopy = {
+  nutrition: {
+    title: 'Wartości odżywcze i koszt',
+    nutritionTitle: 'Na 100 g',
+    unavailable: 'Brak danych odżywczych.',
+    kcal: 'Energia',
+    fat: 'Tłuszcz',
+    saturated: 'w tym kwasy nasycone',
+    carbs: 'Węglowodany',
+    sugars: 'w tym cukry',
+    protein: 'Białko',
+    salt: 'Sól',
+    fiber: 'Błonnik',
+    alcohol: 'Alkohol',
+    costTitle: 'Koszt',
+    costEmpty: 'Brak cen składników.',
+    costPerKg: 'Na 1 kg',
+    costBatch: 'Cała partia',
+    serving60: 'Porcja 60 g',
+    serving70: 'Porcja 70 g',
+    serving80: 'Porcja 80 g',
+    costIncomplete: 'Koszt częściowy — uzupełnij brakujące ceny składników.',
+  },
+} as const;

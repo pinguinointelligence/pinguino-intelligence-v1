@@ -295,12 +295,12 @@ export function OwnerDiagnosticPanel({
           }
         />
       </dl>
-      <div className="mt-4 overflow-x-auto" data-testid="owner-identity-diagnostics">
+      <div className="mt-4 min-w-0 overflow-visible" data-testid="owner-identity-diagnostics">
         <p className="mb-2 text-[0.7rem] tracking-label text-ivory/60 uppercase">
           {d.identityTable}
         </p>
-        <table className="min-w-[860px] w-full border-collapse text-left font-mono text-[10px] text-ivory/75 tabular-nums">
-          <thead className="text-ivory/50">
+        <table className="w-full table-fixed border-collapse text-left font-mono text-[10px] text-ivory/75 tabular-nums max-sm:block">
+          <thead className="text-ivory/70 max-sm:hidden">
             <tr className="border-b border-ivory/10">
               <th className="py-1 pr-3">{d.identityLine}</th>
               <th className="py-1 pr-3">{d.identityCanonical}</th>
@@ -312,24 +312,26 @@ export function OwnerDiagnosticPanel({
               <th className="py-1 text-right">{d.identityRevision}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="max-sm:block max-sm:space-y-2">
             {visibleItems.map((visibleItem) => {
               const engineInput = inputByLineId.get(visibleItem.id);
               const engineItem = engineByLineId.get(visibleItem.id);
               return (
-                <tr key={visibleItem.id} className="border-b border-ivory/5">
-                  <td className="py-1 pr-3">{visibleItem.id}</td>
-                  <td className="py-1 pr-3">{canonicalIngredientId(visibleItem.ingredient)}</td>
-                  <td className="py-1 pr-3">{visibleItem.ingredient.private_product_id ?? '—'}</td>
-                  <td className="py-1 pr-3">{ingredientProvenance(visibleItem.ingredient)}</td>
-                  <td className="py-1 pr-3 text-right">{visibleItem.planned_grams.toFixed(2)}</td>
-                  <td className="py-1 pr-3 text-right">
+                <tr key={visibleItem.id} className="border-b border-ivory/5 max-sm:grid max-sm:grid-cols-2 max-sm:gap-x-2 max-sm:rounded-lg max-sm:border max-sm:border-ivory/10 max-sm:p-2">
+                  <td className="break-all py-1 pr-3"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityLine}</span>{visibleItem.id}</td>
+                  <td className="break-all py-1 pr-3"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityCanonical}</span>{canonicalIngredientId(visibleItem.ingredient)}</td>
+                  <td className="break-all py-1 pr-3"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityProduct}</span>{visibleItem.ingredient.private_product_id ?? '—'}</td>
+                  <td className="break-all py-1 pr-3"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identitySource}</span>{ingredientProvenance(visibleItem.ingredient)}</td>
+                  <td className="py-1 pr-3 text-right max-sm:text-left"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityVisible}</span>{visibleItem.planned_grams.toFixed(2)}</td>
+                  <td className="py-1 pr-3 text-right max-sm:text-left">
+                    <span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityEffective}</span>
                     {(engineInput?.actual_grams ?? engineInput?.planned_grams ?? 0).toFixed(2)}
                   </td>
-                  <td className="py-1 pr-3 text-right">
+                  <td className="py-1 pr-3 text-right max-sm:text-left">
+                    <span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityEngine}</span>
                     {(engineItem?.effective_grams ?? 0).toFixed(2)}
                   </td>
-                  <td className="py-1 text-right">{draftRevision}</td>
+                  <td className="py-1 text-right max-sm:text-left"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityRevision}</span>{draftRevision}</td>
                 </tr>
               );
             })}

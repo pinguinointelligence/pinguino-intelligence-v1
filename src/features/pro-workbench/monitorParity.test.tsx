@@ -33,6 +33,8 @@ vi.mock('@/access/useAccess', () => ({
 }));
 
 const { MonitorPanelContent } = await import('./MonitorPanelContent');
+const { ProfessionalMonitorModules } = await import('./ProfessionalMonitorModules');
+const { buildProfessionalMonitorModules } = await import('./professionalMonitorModel');
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -114,11 +116,37 @@ describe('professional Monitor acceptance contract', () => {
   });
 
   it('uses protected position scales without exposing proprietary min/max ranges', () => {
-    expect(html).toContain('grid-cols-5');
-    expect(html).toContain('bg-status-error/20');
-    expect(html).toContain('bg-status-ideal/28');
-    expect(html).toContain('bg-gold/34');
+    expect(html).toContain('bg-pro-graphite');
+    expect(html).toContain('bg-gold/26');
+    expect(html).toContain('Złoty środek');
+    expect(html).not.toContain('rotate-45');
     expect(text).not.toMatch(/zakres\s+-?\d+[.,]?\d*\s*[–-]\s*-?\d+/i);
+  });
+
+  it('renders a distinct gold Preview marker for every evaluated technical metric', () => {
+    const input = starterMilkBase();
+    const previewInput = {
+      ...input,
+      items: input.items.map((item, index) =>
+        index === 0 ? { ...item, planned_grams: item.planned_grams + 1 } : item,
+      ),
+    };
+    const current = buildProfessionalMonitorModules(
+      calculateRecipe(input),
+      input.target_temperature_c,
+      input,
+    );
+    const preview = buildProfessionalMonitorModules(
+      calculateRecipe(previewInput),
+      previewInput.target_temperature_c,
+      previewInput,
+    );
+    const previewHtml = renderToStaticMarkup(
+      <ProfessionalMonitorModules modules={current} previewModules={preview} />,
+    );
+    expect(previewHtml).toContain('data-testid="monitor-preview-pod"');
+    expect(previewHtml).toContain('border-gold');
+    expect(visibleText(previewHtml)).toContain('Preview');
   });
 
   it('renders honest no-evaluation scales for incomplete input without hiding modules', () => {
@@ -147,6 +175,7 @@ describe('Monitor layout and integration seams', () => {
     expect(profile).toContain('<MonitorPanelContent');
     expect(content).toContain('setProcessGuideOpen(true)');
     expect(content).toContain('initialLesson="process"');
+    expect(content).toContain('previewModules={previewModules}');
   });
 
   it('keeps the score behind the existing technical-score seam', () => {

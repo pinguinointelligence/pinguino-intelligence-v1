@@ -714,6 +714,36 @@ export const plannedSum = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + item.planned_grams, 0);
 
 /**
+ * Re-apply the canonical mass implied by every active constraint without
+ * leaking orchestration-only locks (for example the template stabilizer hold)
+ * into the recipe shown to the user.
+ *
+ * This matters even when the candidate already sums to the requested batch:
+ * a formulation seed can be batch-exact while a percentage-locked line has
+ * drifted by a shared scale factor.
+ */
+function applyConstraintMassesPreservingLockTypes(
+  candidate: RecipeInput,
+  set: ConstraintSet,
+): RecipeInput {
+  const constrained = applyConstraintsToRecipe(candidate, set);
+  if (!constrained.ok) return candidate;
+
+  const originalLockTypeByLineId = new Map(
+    candidate.items.map((item) => [item.id, item.lock_type] as const),
+  );
+  return {
+    ...constrained.input,
+    items: constrained.input.items.map((item) => {
+      const originalLockType = originalLockTypeByLineId.get(item.id);
+      return originalLockType !== undefined && item.lock_type !== originalLockType
+        ? { ...item, lock_type: originalLockType }
+        : item;
+    }),
+  };
+}
+
+/**
  * Solver moves are normalized back to the requested batch after every round.
  * Every positive Main line is held at the candidate's current group amount for
  * that normalization, so the generic rescaler can only redistribute the
@@ -725,9 +755,10 @@ function rescalePreservingMainGroup(
   set: ConstraintSet,
   targetBatchGrams: number,
 ): ReturnType<typeof rescaleBatchToTarget> {
+  const constrainedCandidate = applyConstraintMassesPreservingLockTypes(candidate, set);
   const byLineId = { ...set.byLineId };
   for (const main of captureMainIngredientIntent(identityInput)) {
-    const current = candidate.items.find(
+    const current = constrainedCandidate.items.find(
       (item) =>
         item.id === main.lineId &&
         canonicalIngredientId(item.ingredient) === main.canonicalIngredientId &&
@@ -736,7 +767,7 @@ function rescalePreservingMainGroup(
     if (!current || !(current.planned_grams > 0)) continue;
     byLineId[main.lineId] = { mode: 'locked', grams: current.planned_grams };
   }
-  return rescaleBatchToTarget(candidate, { byLineId }, targetBatchGrams);
+  return rescaleBatchToTarget(constrainedCandidate, { byLineId }, targetBatchGrams);
 }
 
 /**
@@ -1710,7 +1741,10 @@ function iterateFormulationSeed(
       .map((item) => canonicalIngredientId(item.ingredient)),
   );
   const restore = (candidate: RecipeInput): RecipeInput => {
-    if (Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) {
+    const batchIsExact =
+      Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G;
+    const constraintsAreExact = verifyConstraintsPreserved(solverSet, candidate).ok;
+    if (batchIsExact && constraintsAreExact) {
       return candidate;
     }
     const restored = rescalePreservingMainGroup(
@@ -2396,7 +2430,8 @@ export function buildOptimizePreview(
     !hasActuals &&
     Math.abs(plannedSum(candidate) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G;
   const restoreBatch = (candidate: RecipeInput): RecipeInput => {
-    if (!offBatch(candidate)) return candidate;
+    const constraintDrift = !hasActuals && !verifyConstraintsPreserved(solverSet, candidate).ok;
+    if (!offBatch(candidate) && !constraintDrift) return candidate;
     const restored = rescalePreservingMainGroup(
       input,
       candidate,

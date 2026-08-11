@@ -39,9 +39,16 @@ let mockState: MockRecipeState = {
   setBatchGrams: () => {},
 };
 
-vi.mock('@/stores/recipeStore', () => ({
-  useRecipeStore: (sel: (s: MockRecipeState) => unknown) => sel(mockState),
-}));
+vi.mock('@/stores/recipeStore', () => {
+  const useRecipeStore = Object.assign(
+    (sel: (s: MockRecipeState) => unknown) => sel(mockState),
+    {
+      getState: () => mockState,
+      subscribe: () => () => {},
+    },
+  );
+  return { useRecipeStore };
+});
 
 const { ProMachineSelector } = await import('./ProMachineSelector');
 const m = copy.proMachine;

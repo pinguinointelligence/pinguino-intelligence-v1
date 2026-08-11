@@ -221,7 +221,9 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     const button =
       html.match(/<button[^>]*data-testid="row-lock-percent-[\s\S]*?<\/button>/)?.[0] ?? '';
     expect(button).not.toContain('disabled');
-    expect(button).toContain('zablokuj udział procentowy');
+    expect(button).toContain('Zablokuj % partii');
+    expect(button).toContain('aria-pressed="false"');
+    expect(button).toContain('<span aria-hidden="true">%</span>');
     expect(html.toLowerCase()).not.toContain('blokada procentowa w przygotowaniu');
   });
 
@@ -231,6 +233,8 @@ describe('Recipe ingredient table — locks, units and availability', () => {
       html.match(/<button[^>]*data-testid="row-lock-grams-[\s\S]*?<\/button>/)?.[0] ?? '';
     expect(gramButton).toContain('bg-ink');
     expect(gramButton).toContain('text-white');
+    expect(gramButton).toContain('Gramatura zablokowana');
+    expect(gramButton).toContain('<span aria-hidden="true">g</span>');
     expect(gramButton).not.toContain('status-error');
     expect(html).toMatch(/<input[^>]*disabled/);
   });

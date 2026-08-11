@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useAuthStore } from '@/stores/authStore';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import {
@@ -49,7 +50,7 @@ export function ProMachineSelector() {
   const machineId = useRecipeStore((s) => s.machineId);
   const batchGrams = useRecipeStore((s) => s.target_batch_grams);
   const setMachineSelection = useRecipeStore((s) => s.setMachineSelection);
-  const setBatchGrams = useRecipeStore((s) => s.setBatchGrams);
+  const resizeBatchGrams = useConstraintStudioStore((s) => s.resizeBatchGrams);
 
   const authUserId = useAuthStore((s) => s.user?.id ?? null);
   const prefStore = useMemo(
@@ -94,11 +95,14 @@ export function ProMachineSelector() {
       machineId: profile.id,
       label: machineDisplayName(profile),
       temperatureC: temp,
-      batchGrams: d.recommendedBatchGrams,
+      // The canonical §17 resize below applies both durable item sidecars and
+      // any older rehydrated Main/Required percentage constraint.
+      batchGrams: null,
       // OWNER CURRENT-DRAFT P0 (Phase 8): the Home machine's own usable
       // capacity is the ONLY machine-derived capacity that may limit a batch.
       capacityGrams: d.recommendedBatchGrams,
     });
+    if (d.recommendedBatchGrams != null) resizeBatchGrams(d.recommendedBatchGrams);
     if (setAsDefault) {
       const record = buildMachinePreferenceRecord({
         profile,
@@ -162,7 +166,7 @@ export function ProMachineSelector() {
 
       {/* 2 — Maszyny domowe (below, reuse the registry + approved auto-routing) */}
       <section>
-        <h3 className="text-xs font-medium tracking-label text-stone-400 uppercase">{m.home.heading}</h3>
+        <h3 className="text-xs font-medium tracking-label text-stone-600 uppercase">{m.home.heading}</h3>
         <label className="mt-2 flex items-center gap-2 text-xs text-stone-600">
           <input
             type="checkbox"
@@ -207,7 +211,7 @@ export function ProMachineSelector() {
       {/* 3 — Inne urządzenia (real registry records only; honest verification note) */}
       {otherDevices.length > 0 ? (
         <section data-testid="pro-machine-other">
-          <h3 className="text-xs font-medium tracking-label text-stone-400 uppercase">{m.other.heading}</h3>
+          <h3 className="text-xs font-medium tracking-label text-stone-600 uppercase">{m.other.heading}</h3>
           <ul className="mt-3 space-y-2">
             {otherDevices.map((profile) => (
               <li
@@ -215,7 +219,7 @@ export function ProMachineSelector() {
                 className="flex flex-col rounded-lg border border-ink/10 bg-stone-50 px-4 py-3"
               >
                 <span className="text-sm text-stone-600">{machineDisplayName(profile)}</span>
-                <span className="mt-0.5 text-xs text-stone-400">{m.other.needsReview}</span>
+                <span className="mt-0.5 text-xs text-stone-600">{m.other.needsReview}</span>
               </li>
             ))}
           </ul>
@@ -234,7 +238,7 @@ export function ProMachineSelector() {
                 value={batchGrams}
                 onChange={(e) => {
                   const n = Number(e.target.value);
-                  if (Number.isFinite(n) && n > 0) setBatchGrams(Math.round(n));
+                  if (Number.isFinite(n) && n > 0) resizeBatchGrams(Math.round(n));
                 }}
                 data-testid="pro-machine-batch"
                 className="w-32 rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink focus:border-ink/40 focus:outline-none"

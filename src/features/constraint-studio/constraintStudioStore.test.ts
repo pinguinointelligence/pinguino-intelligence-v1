@@ -20,6 +20,7 @@ import {
   withGrams,
 } from '@/features/recipe-constraints/constraintFixtures';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useConstraintStudioStore } from './constraintStudioStore';
 
 const SUCROSE = starterLine('sucrose');
@@ -85,8 +86,104 @@ describe('§17.1/§17.2 padlock', () => {
     expect(useRecipeStore.getState().draftRevision).toBe(beforeRevision + 1);
 
     useConstraintStudioStore.getState().toggleLock(SUCROSE);
-    expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toBeUndefined();
-    expect(lineLockType(SUCROSE)).toBe('unlocked');
+    expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toEqual({
+      mode: 'locked',
+      grams: 130,
+    });
+    expect(lineLockType(SUCROSE)).toBe('grams');
+
+    useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+    expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toEqual({
+      mode: 'percent',
+      percent: 13,
+    });
+    expect(lineLockType(SUCROSE)).toBe('percent');
+  });
+
+  it('keeps the visible percentage share coherent when Profile resizes 1000 → 1200', () => {
+    loadRecipe(overSweetStarter(130));
+    useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+    useConstraintStudioStore.getState().toggleLock(DEXTROSE);
+
+    const dextroseBefore = lineGrams(DEXTROSE);
+    useRecipeStore.getState().setBatchGrams(1200);
+
+    expect(useRecipeStore.getState().target_batch_grams).toBe(1200);
+    expect(lineGrams(SUCROSE)).toBeCloseTo(156, 10);
+    expect(lineGrams(SUCROSE) / 1200).toBeCloseTo(0.13, 10);
+    expect(lineLockType(SUCROSE)).toBe('percent');
+    expect(lineGrams(DEXTROSE)).toBe(dextroseBefore);
+    expect(lineLockType(DEXTROSE)).toBe('grams');
+  });
+
+  it.each(['main', 'required', 'already_added'] as const)(
+    'keeps a canonical percentage on an engine-kept %s role during 1000 → 1200',
+    (role) => {
+      loadRecipe(overSweetStarter(130));
+      useRecipeStore.getState().setLockType(SUCROSE, role);
+      useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+
+      expect(lineLockType(SUCROSE)).toBe(role);
+      expect(useConstraintStudioStore.getState().constraints.byLineId[SUCROSE]).toEqual({
+        mode: 'percent',
+        percent: 13,
+      });
+
+      useConstraintStudioStore.getState().resizeBatchGrams(1200);
+
+      expect(lineGrams(SUCROSE)).toBeCloseTo(156, 10);
+      expect(lineGrams(SUCROSE) / 1200).toBeCloseTo(0.13, 10);
+      expect(lineLockType(SUCROSE)).toBe(role);
+    },
+  );
+
+  it('preserves the 1000 → 1200 percent contract through Preview, Apply and exact Undo', () => {
+    loadRecipe(overSweetStarter(130));
+    useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
+    useRecipeStore.getState().setBatchGrams(1200);
+    const beforePreview = buildRecipeInput(useRecipeStore.getState());
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    expect(
+      preview?.proposedInput.items.find((item) => item.id === SUCROSE)?.planned_grams,
+    ).toBeCloseTo(156, 8);
+
+    useConstraintStudioStore.getState().applyPreview();
+    const applied = buildRecipeInput(useRecipeStore.getState());
+    expect(applied.items.find((item) => item.id === SUCROSE)?.lock_type).toBe('percent');
+    expect(applied.items.find((item) => item.id === SUCROSE)?.planned_grams).toBeCloseTo(156, 8);
+    expect(applied.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(1200, 1);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(beforePreview);
+  });
+
+  it('preserves Required plus an exact-grams lock through Preview, Apply and Undo', () => {
+    loadRecipe(overSweetStarter(130));
+    useRecipeStore.getState().setLockType(SUCROSE, 'required');
+    useConstraintStudioStore.getState().toggleLock(SUCROSE);
+    const beforePreview = buildRecipeInput(useRecipeStore.getState());
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    expect(preview?.proposedInput.items.find((item) => item.id === SUCROSE)).toMatchObject({
+      lock_type: 'required',
+      planned_grams: 130,
+    });
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(buildRecipeInput(useRecipeStore.getState()).items.find((item) => item.id === SUCROSE)).toMatchObject({
+      lock_type: 'required',
+      planned_grams: 130,
+      grams_constraint: { grams: 130 },
+    });
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(beforePreview);
   });
 
   it('locks the EXACT current grams and maps onto engine lock_type grams', () => {

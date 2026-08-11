@@ -111,7 +111,7 @@ export function RecipeVersionsSection() {
             </p>
           ) : (
             <div className="mt-4">
-              <p className="text-xs tracking-label text-stone-400 uppercase">
+              <p className="text-xs tracking-label text-stone-600 uppercase">
                 {c.currentRecipe} <span className="text-sm normal-case text-ink">{recipeName ?? '—'}</span>
               </p>
 

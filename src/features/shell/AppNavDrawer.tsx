@@ -6,6 +6,7 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
+import { MobileDesignReviewEntry } from '@/features/design-review/ReviewOverlay';
 import {
   NAV_GROUP_ORDER,
   isGroupActive,
@@ -198,6 +199,7 @@ export function AppNavDrawer() {
                   </div>
                 );
               })}
+              <MobileDesignReviewEntry />
             </nav>
 
             <div

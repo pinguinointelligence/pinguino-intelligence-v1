@@ -36,6 +36,17 @@
      where the historical `ivory` text token is intentionally remapped to ink. */
   --color-education-ivory: #efe8dc;
 
+  /* Pro Apple 2.0 — one calm material system. Warm surfaces organise the
+     intelligence pane; graphite is reserved for a small number of decisive
+     cards and actions, never used as generic decoration. */
+  --color-pro-warm: #f6f4ef;
+  --color-pro-warm-raised: #fbfaf7;
+  --color-pro-line: #dcd8cf;
+  --color-pro-graphite: #191a1d;
+  --color-pro-sage: #e8ece5;
+  --color-pro-amber: #f2eadc;
+  --color-pro-terracotta: #efe2dd;
+
   /* Status — desaturated, laboratory-grade (never bright) */
   --color-status-ideal: #6f7d63;
   --color-status-risky: #9c8a55;
@@ -78,4 +89,8 @@
   /* Wide tracking for uppercase section labels (echoes the wordmark) */
   --tracking-label: 0.18em;
   --tracking-wordmark: 0.32em;
+
+  /* Pro elevation is deliberately quiet: one hairline plus one diffuse lift. */
+  --shadow-pro-sm: 0 1px 2px rgb(16 17 19 / 0.04), 0 8px 24px rgb(16 17 19 / 0.035);
+  --shadow-pro-md: 0 2px 4px rgb(16 17 19 / 0.06), 0 18px 48px rgb(16 17 19 / 0.08);
 }

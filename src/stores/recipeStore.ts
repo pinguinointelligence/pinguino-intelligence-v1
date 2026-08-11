@@ -180,7 +180,12 @@ export interface RecipeState {
   /** Pick a serving mode (Świeże/−11/−12/−13) — ONE state drives mode + Engine temperature. */
   setServingMode: (servingModeId: string, temperatureC: number) => void;
   setTargetTemperature: (temperature_c: number) => void;
-  setBatchGrams: (grams: number) => void;
+  setBatchGrams: (
+    grams: number,
+    /** Canonical §17 percentages for lines whose stronger Engine role keeps
+     * lock_type as Main/Required/already-added. */
+    percentByLineId?: Readonly<Record<string, number>>,
+  ) => void;
   setMachineCapacity: (grams: number | null) => void;
   setFlavorIntensity: (value: FlavorIntensity) => void;
   setCostPriority: (value: CostPriority) => void;
@@ -231,6 +236,12 @@ export interface RecipeState {
   setPlannedGrams: (lineId: string, grams: number) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
+  /** Persist/remove the product-layer percent sidecar while retaining a
+   * stronger Main/Required/already-added Engine role when present. */
+  setPercentLock: (lineId: string, percent: number | null) => void;
+  /** Persist/remove the product-layer exact-grams sidecar while retaining a
+   * stronger Main/Required/already-added Engine role when present. */
+  setGramLock: (lineId: string, grams: number | null) => void;
   setRangeLock: (lineId: string, minGrams: number, maxGrams: number) => void;
   clearRangeLock: (lineId: string) => void;
   /** Adds one line to the Main ingredient set; existing Main lines stay Main. */
@@ -278,6 +289,45 @@ const makeLine = (
   actual_grams: null,
   lock_type,
 });
+
+const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set([
+  'main',
+  'already_added',
+  'required',
+]);
+
+/** Apply every durable percentage share to a new positive batch. Legacy
+ * `lock_type: percent` rows without the sidecar still scale by their current
+ * share while the previous batch is known. Physical actuals are immutable. */
+const resizePercentLockedItems = (
+  items: readonly RecipeItem[],
+  previousBatchGrams: number,
+  nextBatchGrams: number,
+  percentByLineId?: Readonly<Record<string, number>>,
+): RecipeItem[] => {
+  if (!Number.isFinite(nextBatchGrams) || nextBatchGrams <= 0) return [...items];
+  const previousBatchKnown = Number.isFinite(previousBatchGrams) && previousBatchGrams > 0;
+  const ratio = previousBatchKnown ? nextBatchGrams / previousBatchGrams : 1;
+  return items.map((item) => {
+    if (item.actual_grams !== null) return item;
+    const canonicalPercent =
+      percentByLineId?.[item.id] ?? item.percent_constraint?.percent;
+    if (
+      canonicalPercent !== undefined &&
+      Number.isFinite(canonicalPercent) &&
+      canonicalPercent >= 0 &&
+      canonicalPercent <= 100
+    ) {
+      return {
+        ...item,
+        planned_grams: (nextBatchGrams * canonicalPercent) / 100,
+      };
+    }
+    return item.lock_type === 'percent' && previousBatchKnown
+      ? { ...item, planned_grams: item.planned_grams * ratio }
+      : item;
+  });
+};
 
 /** Snapshot of a preset as fresh store state (items cloned so edits never touch preset data). */
 const fromPreset = (preset: DemoPreset) => ({
@@ -460,12 +510,23 @@ export const useRecipeStore = create<RecipeState>()(
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
-      setBatchGrams: (target_batch_grams) =>
-        set((state) => ({
-          target_batch_grams,
-          dirty: true,
-          draftRevision: state.draftRevision + 1,
-        })),
+      setBatchGrams: (target_batch_grams, percentByLineId) =>
+        set((state) => {
+          return {
+            target_batch_grams,
+            // A percentage lock is a share of the FINAL batch, not a delayed solver hint.
+            // Keep its visible grams coherent at the same moment the user resizes the batch.
+            // Physical actuals are never rewritten by this planning control.
+            items: resizePercentLockedItems(
+              state.items,
+              state.target_batch_grams,
+              target_batch_grams,
+              percentByLineId,
+            ),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
       // An explicit user entry is legitimate provenance; clearing it removes
       // the limit entirely (owner CURRENT-DRAFT P0, Phase 8).
       setMachineCapacity: (machine_capacity_grams) =>
@@ -769,9 +830,11 @@ export const useRecipeStore = create<RecipeState>()(
           items: state.items.map((item) =>
             item.id === lineId
               ? (() => {
-                  const withoutRange = { ...item };
-                  delete withoutRange.range_constraint;
-                  return { ...withoutRange, lock_type: lockType };
+                   const withoutRange = { ...item };
+                   delete withoutRange.range_constraint;
+                   delete withoutRange.percent_constraint;
+                   delete withoutRange.grams_constraint;
+                   return { ...withoutRange, lock_type: lockType };
                 })()
               : item,
           ),
@@ -779,15 +842,82 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
 
+      setPercentLock: (lineId, percent) => {
+        if (
+          percent !== null &&
+          (!Number.isFinite(percent) || percent < 0 || percent > 100)
+        )
+          return;
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.id !== lineId) return item;
+            const next = { ...item };
+            delete next.range_constraint;
+            delete next.grams_constraint;
+            if (percent === null) {
+              delete next.percent_constraint;
+              return {
+                ...next,
+                lock_type: item.lock_type === 'percent' ? ('unlocked' as const) : item.lock_type,
+              };
+            }
+            return {
+              ...next,
+              lock_type: ENGINE_KEPT_LOCKS.has(item.lock_type)
+                ? item.lock_type
+                : ('percent' as const),
+              percent_constraint: { percent },
+            };
+          }),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        }));
+      },
+
+      setGramLock: (lineId, grams) => {
+        if (grams !== null && (!Number.isFinite(grams) || grams < 0)) return;
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.id !== lineId) return item;
+            const next = { ...item };
+            delete next.range_constraint;
+            delete next.percent_constraint;
+            if (grams === null) {
+              delete next.grams_constraint;
+              return {
+                ...next,
+                lock_type: item.lock_type === 'grams' ? ('unlocked' as const) : item.lock_type,
+              };
+            }
+            return {
+              ...next,
+              lock_type: ENGINE_KEPT_LOCKS.has(item.lock_type)
+                ? item.lock_type
+                : ('grams' as const),
+              grams_constraint: { grams },
+            };
+          }),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        }));
+      },
+
       setRangeLock: (lineId, minGrams, maxGrams) =>
         set((state) => ({
           items: state.items.map((item) =>
             item.id === lineId
-              ? {
-                  ...item,
-                  lock_type: item.lock_type === 'main' ? 'main' : 'grams',
-                  range_constraint: { min_grams: minGrams, max_grams: maxGrams },
-                }
+              ? (() => {
+                  const withoutPercent = { ...item };
+                  delete withoutPercent.percent_constraint;
+                  delete withoutPercent.grams_constraint;
+                  return {
+                    ...withoutPercent,
+                    lock_type: ENGINE_KEPT_LOCKS.has(item.lock_type)
+                      ? item.lock_type
+                      : ('grams' as const),
+                    range_constraint: { min_grams: minGrams, max_grams: maxGrams },
+                  };
+                })()
               : item,
           ),
           dirty: true,
@@ -922,20 +1052,32 @@ export const useRecipeStore = create<RecipeState>()(
       // `machine_capacity_grams` untouched, so a stale value could outlive the
       // machine that produced it and fire a capacity warning forever.
       setMachineSelection: (sel) =>
-        set((state) => ({
-          machineKind: sel.kind,
-          servingModeId: sel.servingModeId,
-          machineId: sel.machineId,
-          machineLabel: sel.label,
-          // Route to the existing supported cell — no Engine change, just the temperature input.
-          target_temperature_c: sel.temperatureC,
-          target_batch_grams: sel.batchGrams != null ? sel.batchGrams : state.target_batch_grams,
-          machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
-          machine_capacity_source:
-            sel.kind === 'home' && sel.capacityGrams != null ? 'machine' : null,
-          dirty: true,
-          draftRevision: state.draftRevision + 1,
-        })),
+        set((state) => {
+          const targetBatchGrams =
+            sel.batchGrams != null ? sel.batchGrams : state.target_batch_grams;
+          return {
+            machineKind: sel.kind,
+            servingModeId: sel.servingModeId,
+            machineId: sel.machineId,
+            machineLabel: sel.label,
+            // Route to the existing supported cell — no Engine change, just the temperature input.
+            target_temperature_c: sel.temperatureC,
+            target_batch_grams: targetBatchGrams,
+            items:
+              sel.batchGrams != null
+                ? resizePercentLockedItems(
+                    state.items,
+                    state.target_batch_grams,
+                    targetBatchGrams,
+                  )
+                : state.items,
+            machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
+            machine_capacity_source:
+              sel.kind === 'home' && sel.capacityGrams != null ? 'machine' : null,
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
       resetToDemo: () => {
         useIngredientTableUxStore.getState().reset();
         const base = fromPreset(DEFAULT_PRESET);

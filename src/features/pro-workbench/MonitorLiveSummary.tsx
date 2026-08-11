@@ -32,7 +32,7 @@ export function MonitorLiveSummary({
         <button
           type="button"
           onClick={onOpenProfile}
-          className="mb-2 flex w-full items-center gap-2 border border-gold/40 bg-gold/[0.055] px-3 py-2 text-left text-[10px] font-semibold text-attention"
+          className="mb-2 flex min-h-11 w-full items-center gap-2 rounded-lg border border-gold/40 bg-gold/[0.055] px-3 py-2 text-left text-[10px] font-semibold text-attention"
           data-testid="monitor-preflight-reminder"
         >
           <span aria-hidden>⚠</span>
@@ -41,16 +41,19 @@ export function MonitorLiveSummary({
         </button>
       ) : null}
       <div
-        className="flex items-baseline gap-3 border-b border-ink/10 px-3 py-2"
+        className="rounded-xl bg-pro-graphite px-4 py-3 text-white shadow-pro-md"
         aria-label={score.ariaText}
         data-testid="monitor-summary-score"
       >
-        <span className="font-mono text-2xl font-semibold tabular-nums text-ink">
-          {result.total_batch_g > 0 ? score.display : '—/10'}
-        </span>
-        <strong className="text-sm text-ink">
-          {result.total_batch_g > 0 ? score.label : 'Brak danych'}
-        </strong>
+        <span className="text-[10px] font-semibold tracking-[0.12em] text-education-ivory/70 uppercase">Dopasowanie techniczne receptury</span>
+        <div className="mt-1 flex items-baseline gap-3">
+          <span className="font-mono text-2xl font-semibold tabular-nums text-white">
+            {result.total_batch_g > 0 ? score.display : '—/10'}
+          </span>
+          <strong className="text-sm text-white">
+            {result.total_batch_g > 0 ? score.label : 'Brak danych'}
+          </strong>
+        </div>
       </div>
       <div data-testid="monitor-summary-axes">
         <ProfileDirectionAxes result={result} />

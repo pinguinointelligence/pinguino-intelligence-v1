@@ -82,7 +82,7 @@ const isWorkbenchSection = (tab: TabId): tab is ProContextTab =>
 function PersonaChip({ persona }: { persona: ProCorePersona }) {
   return (
     <span
-      className="rounded border border-ink/15 px-2 py-0.5 text-[0.65rem] font-medium tracking-label text-stone-600 uppercase"
+      className="hidden rounded border border-ink/15 px-2 py-0.5 text-[0.65rem] font-medium tracking-label text-stone-600 uppercase sm:inline-flex"
       data-testid="pro-persona-chip"
     >
       {persona}
@@ -140,7 +140,7 @@ function ProTopActions({
 
   return (
     <div
-      className="flex min-w-0 items-center justify-end gap-2 sm:gap-4"
+      className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-4"
       data-testid="pro-top-workbar"
     >
       <button
@@ -157,7 +157,7 @@ function ProTopActions({
                 : 'Obliczenie jest aktualne.'
         }
         data-testid="pro-workbar-recalc"
-        className="h-10 shrink-0 rounded-sm bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 disabled:cursor-not-allowed disabled:bg-status-error/15 disabled:text-status-error"
+        className="h-11 shrink-0 rounded-lg bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 disabled:cursor-not-allowed disabled:bg-status-error/15 disabled:text-status-error sm:px-4 sm:text-sm"
       >
         <span>{activePanel === 'production' ? 'Tryb produkcji' : copy.proWorkbar.recalc}</span>
         <span
@@ -172,21 +172,22 @@ function ProTopActions({
       </button>
       {unresolvedRequiredCount > 0 ? (
         <span
-          className="hidden text-[9px] font-semibold tracking-label text-status-error uppercase xl:inline"
+          className="hidden text-[10px] font-semibold tracking-label text-status-error uppercase xl:inline"
           data-testid="pro-recalc-required-block"
         >
           {copy.studio.builder.ingredientTable.infeasible.title}
         </span>
       ) : null}
       <span
-        className="flex min-w-[4.5rem] items-center gap-2 border-l border-ink/10 pl-3"
+        className="flex min-w-0 items-center gap-2 border-l border-ink/10 pl-2 sm:min-w-[4.5rem] sm:pl-3"
         data-testid="pro-top-score"
+        aria-label={`${activePanel === 'production' ? 'Przewidywane dopasowanie partii' : 'Dopasowanie techniczne receptury'}: ${score.display}`}
       >
         <span className="font-mono text-lg font-semibold tabular-nums text-ink">
           {score.display}
         </span>
-        <span className="hidden max-w-28 text-[10px] leading-tight text-stone-500 xl:block">
-          {score.label}
+        <span className="hidden max-w-32 text-[10px] leading-tight text-stone-500 xl:block">
+          {activePanel === 'production' ? 'Przewidywane dopasowanie partii' : 'Dopasowanie techniczne receptury'}
         </span>
       </span>
       <PersonaChip persona={persona} />
@@ -237,13 +238,13 @@ function SettingsTab({ persona }: { persona: ProCorePersona }) {
   return (
     <dl className="max-w-md space-y-4">
       <div className="flex items-center justify-between gap-4 border-b border-ink/5 pb-3">
-        <dt className="text-xs tracking-label text-stone-400 uppercase">{w.settings.access}</dt>
+        <dt className="text-xs tracking-label text-stone-600 uppercase">{w.settings.access}</dt>
         <dd>
           <PersonaChip persona={persona} />
         </dd>
       </div>
       <div className="flex items-center justify-between gap-4 border-b border-ink/5 pb-3">
-        <dt className="text-xs tracking-label text-stone-400 uppercase">{w.settings.account}</dt>
+        <dt className="text-xs tracking-label text-stone-600 uppercase">{w.settings.account}</dt>
         <dd className="min-w-0 text-sm text-ink">
           {authed && user?.email ? (
             <span className="truncate" title={user.email}>

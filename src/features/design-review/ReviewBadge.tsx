@@ -12,7 +12,7 @@ export function ReviewDecisionLabel({ label = 'DO PRZEGLĄDU' }: { label?: strin
   const enabled = useReviewMode();
   if (!enabled) return null;
   return (
-    <span className="ml-1 inline-flex shrink-0 items-center gap-1 text-[9px] font-semibold tracking-[0.08em] text-review uppercase">
+    <span className="ml-1 inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-[0.08em] text-review uppercase">
       <svg
         width="9"
         height="9"

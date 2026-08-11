@@ -13,17 +13,18 @@
   --color-ink-soft: #25272b;
   --color-shell: #ffffff;
   --color-shell-raised: #f7f6f3;
-  --color-charcoal: #ffffff;
+  --color-charcoal: #191a1d;
   --color-ivory: #101113;
   --color-ivory-soft: #686962;
   --color-shell-line: #1011131f;
+  --color-status-ideal: #56624e;
 }
 
-/* Pro has no sanctioned dark island. Historical technical modules keep their
-   exact content and typography, but inherit the white cockpit surface here. */
+/* A deliberate dark intelligence card is part of the canonical Pro hierarchy.
+   It is used sparingly for decisive score/Preview surfaces. */
 .theme-pro-light .bg-charcoal {
-  background-color: #ffffff;
-  border: 1px solid rgb(16 17 19 / 0.1);
+  background-color: var(--color-charcoal);
+  border: 1px solid rgb(239 233 220 / 0.12);
 }
 
 .theme-pro-light .bg-black\/20 {
@@ -34,6 +35,75 @@
 .theme-pro-light [data-testid='pro-monitor-panel'] {
   overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+.theme-pro-light [data-testid='workbench-editor-pane'] {
+  background: var(--color-paper);
+}
+
+.theme-pro-light [data-testid='pro-monitor-panel'] {
+  background: var(--color-pro-warm);
+  border-color: var(--color-pro-line);
+}
+
+.theme-pro-light [data-testid='app-nav-drawer'] {
+  background: var(--color-pro-warm-raised);
+  border-color: var(--color-pro-line);
+  box-shadow: var(--shadow-pro-md);
+}
+
+/* Owner/QA tooling must never obscure modal workflow actions (Preview Apply,
+   the mobile cockpit, production confirmation, or the canonical menu). */
+body:has([role='dialog'][aria-modal='true']) [data-testid='design-review-overlay'] {
+  display: none;
+}
+
+body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-overlay'] {
+  display: none;
+}
+
+.pro-module {
+  border: 1px solid var(--color-pro-line);
+  border-radius: 0.875rem;
+  background: var(--color-pro-warm-raised);
+  box-shadow: var(--shadow-pro-sm);
+}
+
+.pro-module-flat {
+  border: 1px solid var(--color-pro-line);
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 0.72);
+}
+
+.pro-focus-ring:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+.theme-pro-light .bg-pro-graphite.pro-focus-ring:focus-visible,
+.theme-pro-light [data-testid='pro-recalc-panel'] :where(button, a, input, select, summary):focus-visible {
+  outline-color: var(--color-gold-soft);
+}
+
+.pro-scroll-safe {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.theme-pro-light :where(button, a, input, select, summary):focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-pro-light *,
+  .theme-pro-light *::before,
+  .theme-pro-light *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* Information notation inspired by editorial measurement brackets: functional,

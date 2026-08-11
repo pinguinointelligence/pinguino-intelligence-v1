@@ -45,7 +45,7 @@ function DiffRow({ line }: { line: PreviewLineDiff }) {
       : null;
 
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1.5">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 py-2">
       <span className="min-w-0 truncate text-sm text-ivory">{line.name}</span>
       <span className="flex shrink-0 items-baseline gap-2 font-mono text-sm tabular-nums">
         {line.kind === 'unchanged' ? (
@@ -122,18 +122,21 @@ export function ConstraintPreviewCard({
   return (
     <section
       aria-label={copy.preview.title}
-      className="rounded-md border border-ivory/20 bg-ivory/[0.04] px-4 py-4"
+      className="rounded-xl bg-white/[0.035] px-3 py-3 sm:px-4 sm:py-4"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-ivory">{copy.preview.title}</p>
-        <span className="rounded border border-ivory/15 px-2 py-0.5 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/65 uppercase">
+        <span>
+          <span className="block text-[0.625rem] font-semibold tracking-[0.12em] text-gold-soft uppercase">Preview</span>
+          <span className="mt-1 block text-base font-medium text-ivory">{copy.preview.title}</span>
+        </span>
+        <span className="rounded-full border border-ivory/15 bg-white/[0.04] px-2.5 py-1 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/65 uppercase">
           {preview.titlePl}
         </span>
       </div>
 
       {preview.substitution ? (
         <div
-          className="mt-3 border border-ivory/15 px-3 py-2.5 text-xs leading-relaxed text-ivory/80"
+          className="mt-3 rounded-lg bg-white/[0.045] px-3 py-2.5 text-xs leading-relaxed text-ivory/80"
           data-testid="preview-substitution"
         >
           <span className="font-semibold text-ivory">Zweryfikowana zamiana:</span>{' '}
@@ -146,7 +149,7 @@ export function ConstraintPreviewCard({
 
       {selectedDirection ? (
         <div
-          className="mt-3 border border-ivory/15 px-3 py-2.5 text-xs leading-relaxed text-ivory/80"
+          className="mt-3 rounded-lg bg-white/[0.045] px-3 py-2.5 text-xs leading-relaxed text-ivory/80"
           data-testid="preview-direction-reason"
         >
           <span className="font-semibold text-ivory">Wybrany kierunek:</span> {selectedDirection}.
@@ -157,11 +160,11 @@ export function ConstraintPreviewCard({
 
       {preview.directionAssessment?.active ? (
         <div
-          className="mt-3 grid grid-cols-[auto_1fr] items-center gap-3 border border-ivory/15 px-3 py-2.5"
+          className="mt-3 grid grid-cols-[auto_1fr] items-center gap-3 rounded-lg border border-gold-soft/25 bg-gold-soft/[0.06] px-3 py-2.5"
           data-testid="preview-direction-score"
         >
           <span
-            className={`font-mono text-lg tabular-nums ${preview.directionAssessment.reached ? 'text-status-ideal' : 'text-nonprod'}`}
+            className={`font-mono text-lg tabular-nums ${preview.directionAssessment.reached ? 'text-status-ideal' : 'text-gold-soft'}`}
           >
             {preview.directionAssessment.score ?? '—'}/10
           </span>
@@ -272,10 +275,13 @@ export function ConstraintPreviewCard({
         </div>
       ) : null}
 
-      <div className="mt-3 divide-y divide-ivory/10">
+      <div className="mt-4">
+        <p className="mb-1 text-[0.625rem] font-semibold tracking-[0.12em] text-ivory/65 uppercase">Proponowane zmiany</p>
+        <div className="divide-y divide-ivory/10 rounded-lg bg-black/15 px-3">
         {mainLines.map((line) => (
           <DiffRow key={line.lineId} line={line} />
         ))}
+        </div>
       </div>
 
       {zeroLines.length > 0 ? (
@@ -381,7 +387,7 @@ export function ConstraintPreviewCard({
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="sticky bottom-0 -mx-3 mt-4 flex items-center gap-2 border-t border-ivory/10 bg-shell/95 px-3 pt-3 pb-1 backdrop-blur sm:-mx-4 sm:px-4">
         {diagnostic ? (
           <button
             type="button"
@@ -397,7 +403,7 @@ export function ConstraintPreviewCard({
             type="button"
             onClick={onApply}
             data-testid="preview-apply"
-            className="inline-flex flex-1 items-center justify-center rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell transition-colors hover:bg-ivory/90"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-ivory px-4 py-2.5 text-sm font-semibold text-shell shadow-pro-sm transition-transform hover:-translate-y-px hover:bg-ivory/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-soft"
           >
             {copy.preview.apply}
           </button>
@@ -406,7 +412,7 @@ export function ConstraintPreviewCard({
           type="button"
           onClick={onCancel}
           data-testid="preview-cancel"
-          className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-soft"
         >
           {copy.preview.cancel}
         </button>

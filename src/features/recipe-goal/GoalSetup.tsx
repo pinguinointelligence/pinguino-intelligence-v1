@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { copy } from '@/copy/en';
 import type { ProductMode } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { VISIBLE_PRODUCT_TYPES, type VisibleProductType } from '@/features/studio/productType';
@@ -82,6 +83,7 @@ function Segmented<T extends string | number>({
 
 export function GoalSetup() {
   const store = useRecipeStore();
+  const resizeBatchGrams = useConstraintStudioStore((state) => state.resizeBatchGrams);
   const [unit, setUnit] = useState<BatchUnit>('g');
   const { result } = useStudioResult();
 
@@ -181,7 +183,7 @@ export function GoalSetup() {
                   : 0
               }
               onChange={(event) =>
-                store.setBatchGrams(
+                resizeBatchGrams(
                   toGrams(event.currentTarget.valueAsNumber || 0, unit, store.category),
                 )
               }

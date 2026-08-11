@@ -7,6 +7,8 @@ import {
   useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
+import { buildRecipeVersion, restoreVersion } from '@/features/pro-core/recipeVersioning';
+import { savedToRecipeInput } from '@/features/recipes/recipePayload';
 
 const state = {
   mode: 'classic',
@@ -151,6 +153,264 @@ describe('saved range and availability sidecars', () => {
       expect(useRecipeStore.getState().excludedIngredientIds).toContain(
         sucrose!.ingredient.canonical_ingredient_id,
       );
+    } finally {
+      useRecipeStore.setState(priorRecipe, true);
+      useConstraintStudioStore.setState(priorConstraint, true);
+    }
+  });
+});
+
+describe('saved percentage lock contract', () => {
+  it('survives save, reload and immutable version restore after a batch resize', () => {
+    const priorRecipe = useRecipeStore.getState();
+    const priorConstraint = useConstraintStudioStore.getState();
+    try {
+      useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
+      useConstraintStudioStore.getState().resetForTests();
+      useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+      const sucrose = useRecipeStore.getState().items[0]!;
+      useConstraintStudioStore.getState().togglePercentLock(sucrose.id);
+      useRecipeStore.getState().setBatchGrams(1200);
+
+      const saved = buildRecipeInput(useRecipeStore.getState());
+      const version = buildRecipeVersion(
+        {
+          recipeId: 'percent-recipe',
+          ownerUserId: 'owner',
+          versionNumber: 1,
+          recipeInput: saved,
+          trace: { engineVersion: 'test', configVersion: 'test' },
+          source: 'manual',
+          createdBy: 'owner',
+          createdAt: '2026-08-11T00:00:00.000Z',
+        },
+        'percent-v1',
+      );
+      useRecipeStore.getState().loadRecipeInput(structuredClone(version.recipeInput));
+      expect(useRecipeStore.getState().items[0]).toMatchObject({
+        lock_type: 'percent',
+        planned_grams: 156,
+      });
+
+      const restored = restoreVersion(
+        [version],
+        1,
+        'owner',
+        '2026-08-11T00:01:00.000Z',
+        'percent-v2',
+      );
+      expect(restored.recipeInput.items[0]).toMatchObject({
+        lock_type: 'percent',
+        planned_grams: 156,
+      });
+      expect(restored.recipeInput.target_batch_grams).toBe(1200);
+    } finally {
+      useRecipeStore.setState(priorRecipe, true);
+      useConstraintStudioStore.setState(priorConstraint, true);
+    }
+  });
+
+  it.each(['main', 'required', 'already_added'] as const)(
+    'persists a % partii sidecar without weakening the %s role through save, reload and version restore',
+    (role) => {
+      const priorRecipe = useRecipeStore.getState();
+      const priorConstraint = useConstraintStudioStore.getState();
+      try {
+        useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
+        useConstraintStudioStore.getState().resetForTests();
+        useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+        const line = useRecipeStore.getState().items[0]!;
+        useRecipeStore.getState().setLockType(line.id, role);
+        useConstraintStudioStore.getState().togglePercentLock(line.id);
+        useConstraintStudioStore.getState().resizeBatchGrams(1200);
+
+        const saved = savedToRecipeInput(
+          JSON.parse(JSON.stringify(buildRecipeInput(useRecipeStore.getState()))) as unknown,
+        );
+        expect(saved.items[0]).toMatchObject({
+          lock_type: role,
+          planned_grams: 156,
+          percent_constraint: { percent: 13 },
+        });
+        const version = buildRecipeVersion(
+          {
+            recipeId: `percent-${role}`,
+            ownerUserId: 'owner',
+            versionNumber: 1,
+            recipeInput: saved,
+            trace: { engineVersion: 'test', configVersion: 'test' },
+            source: 'manual',
+            createdBy: 'owner',
+            createdAt: '2026-08-11T00:00:00.000Z',
+          },
+          `percent-${role}-v1`,
+        );
+
+        useRecipeStore.getState().loadRecipeInput(structuredClone(version.recipeInput), {
+          savedId: `percent-${role}`,
+          savedName: role,
+          versionNumber: 1,
+        });
+        expect(selectCanonicalDraft().constraints.byLineId[line.id]).toEqual({
+          mode: 'percent',
+          percent: 13,
+        });
+        expect(useRecipeStore.getState().items[0]).toMatchObject({
+          lock_type: role,
+          planned_grams: 156,
+          percent_constraint: { percent: 13 },
+        });
+
+        const restored = restoreVersion(
+          [version],
+          1,
+          'owner',
+          '2026-08-11T00:01:00.000Z',
+          `percent-${role}-v2`,
+        );
+        expect(restored.recipeInput.items[0]).toMatchObject({
+          lock_type: role,
+          planned_grams: 156,
+          percent_constraint: { percent: 13 },
+        });
+      } finally {
+        useRecipeStore.setState(priorRecipe, true);
+        useConstraintStudioStore.setState(priorConstraint, true);
+      }
+    },
+  );
+
+  it.each(['required', 'already_added'] as const)(
+    'atomically replaces a %% lock with durable exact grams on a %s role',
+    (role) => {
+      const priorRecipe = useRecipeStore.getState();
+      const priorConstraint = useConstraintStudioStore.getState();
+      try {
+        useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
+        useConstraintStudioStore.getState().resetForTests();
+        useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+        const line = useRecipeStore.getState().items[0]!;
+        useRecipeStore.getState().setLockType(line.id, role);
+        useConstraintStudioStore.getState().togglePercentLock(line.id);
+        useConstraintStudioStore.getState().toggleLock(line.id);
+
+        expect(selectCanonicalDraft().constraints.byLineId[line.id]).toEqual({
+          mode: 'locked',
+          grams: 130,
+        });
+        expect(useRecipeStore.getState().items[0]).toMatchObject({
+          lock_type: role,
+          planned_grams: 130,
+          grams_constraint: { grams: 130 },
+        });
+        expect(useRecipeStore.getState().items[0]?.percent_constraint).toBeUndefined();
+
+        useConstraintStudioStore.getState().resizeBatchGrams(1200);
+        expect(useRecipeStore.getState().items[0]?.planned_grams).toBe(130);
+
+        const saved = savedToRecipeInput(
+          JSON.parse(JSON.stringify(buildRecipeInput(useRecipeStore.getState()))) as unknown,
+        );
+        const version = buildRecipeVersion(
+          {
+            recipeId: `grams-${role}`,
+            ownerUserId: 'owner',
+            versionNumber: 1,
+            recipeInput: saved,
+            trace: { engineVersion: 'test', configVersion: 'test' },
+            source: 'manual',
+            createdBy: 'owner',
+            createdAt: '2026-08-11T00:00:00.000Z',
+          },
+          `grams-${role}-v1`,
+        );
+
+        useRecipeStore.getState().loadRecipeInput(structuredClone(version.recipeInput));
+        expect(selectCanonicalDraft().constraints.byLineId[line.id]).toEqual({
+          mode: 'locked',
+          grams: 130,
+        });
+        expect(useRecipeStore.getState().items[0]).toMatchObject({
+          lock_type: role,
+          planned_grams: 130,
+          grams_constraint: { grams: 130 },
+        });
+
+        const restored = restoreVersion(
+          [version],
+          1,
+          'owner',
+          '2026-08-11T00:01:00.000Z',
+          `grams-${role}-v2`,
+        );
+        expect(restored.recipeInput.items[0]).toMatchObject({
+          lock_type: role,
+          planned_grams: 130,
+          grams_constraint: { grams: 130 },
+        });
+      } finally {
+        useRecipeStore.setState(priorRecipe, true);
+        useConstraintStudioStore.setState(priorConstraint, true);
+      }
+    },
+  );
+
+  it.each(['required', 'already_added'] as const)(
+    'persists a direct exact-grams lock on a %s role after reopen',
+    (role) => {
+      const priorRecipe = useRecipeStore.getState();
+      const priorConstraint = useConstraintStudioStore.getState();
+      try {
+        useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
+        useConstraintStudioStore.getState().resetForTests();
+        useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+        const line = useRecipeStore.getState().items[0]!;
+        useRecipeStore.getState().setLockType(line.id, role);
+        useConstraintStudioStore.getState().toggleLock(line.id);
+
+        const saved = savedToRecipeInput(
+          JSON.parse(JSON.stringify(buildRecipeInput(useRecipeStore.getState()))) as unknown,
+        );
+        useRecipeStore.getState().loadRecipeInput(saved);
+
+        expect(selectCanonicalDraft().constraints.byLineId[line.id]).toEqual({
+          mode: 'locked',
+          grams: 130,
+        });
+        expect(useRecipeStore.getState().items[0]).toMatchObject({
+          lock_type: role,
+          grams_constraint: { grams: 130 },
+        });
+      } finally {
+        useRecipeStore.setState(priorRecipe, true);
+        useConstraintStudioStore.setState(priorConstraint, true);
+      }
+    },
+  );
+
+  it('restores canonical percentage grams after the batch field is cleared and re-entered', () => {
+    const priorRecipe = useRecipeStore.getState();
+    const priorConstraint = useConstraintStudioStore.getState();
+    try {
+      useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
+      useConstraintStudioStore.getState().resetForTests();
+      useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+      const line = useRecipeStore.getState().items[0]!;
+      useConstraintStudioStore.getState().togglePercentLock(line.id);
+
+      useConstraintStudioStore.getState().resizeBatchGrams(0);
+      expect(useRecipeStore.getState().items[0]!.planned_grams).toBe(130);
+      useConstraintStudioStore.getState().resizeBatchGrams(1200);
+
+      expect(useRecipeStore.getState().items[0]).toMatchObject({
+        lock_type: 'percent',
+        planned_grams: 156,
+        percent_constraint: { percent: 13 },
+      });
+      expect(selectCanonicalDraft().constraints.byLineId[line.id]).toEqual({
+        mode: 'percent',
+        percent: 13,
+      });
     } finally {
       useRecipeStore.setState(priorRecipe, true);
       useConstraintStudioStore.setState(priorConstraint, true);

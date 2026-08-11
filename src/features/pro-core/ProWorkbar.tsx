@@ -93,7 +93,7 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
           onClick={() => void doSave()}
           disabled={save.busy || save.blocked !== null}
           data-testid="pro-workbar-save"
-          className="h-9 shrink-0 rounded-sm bg-ink px-3 text-xs font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45"
+          className="h-11 shrink-0 rounded-lg bg-ink px-3 text-xs font-semibold text-white transition-colors hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45 lg:h-9"
         >
           {save.busy ? w.status.saving : linked ? 'Zapisz nową wersję' : w.saveNew}
         </button>
@@ -108,15 +108,15 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
               if (nameError) setNameError(null);
             }}
             data-testid="pro-workbar-name"
-            className="h-9 w-full min-w-0 rounded-sm border border-ink/15 bg-white px-3 text-sm font-semibold text-ink placeholder:text-stone-400 focus:border-ink/45 focus:outline-none"
+            className="h-11 w-full min-w-0 rounded-lg border border-ink/15 bg-white px-3 text-sm font-semibold text-ink placeholder:text-stone-600 focus:border-ink/45 focus:outline-none lg:h-9"
           />
         </label>
 
         <details className="relative shrink-0">
-          <summary className="grid size-9 cursor-pointer list-none place-items-center rounded-sm border border-ink/10 text-sm text-stone-600">
+          <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-lg border border-ink/10 text-sm text-stone-600 lg:size-9">
             •••
           </summary>
-          <div className="absolute bottom-11 left-0 z-40 w-72 border border-ink/15 bg-white p-3 shadow-[0_8px_24px_rgba(16,17,19,0.1)]">
+          <div className="absolute bottom-11 left-0 z-40 w-72 rounded-lg border border-ink/15 bg-white p-3 shadow-pro-md">
             <p className="text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
               Receptura
             </p>

@@ -46,18 +46,18 @@ export function MasterLabelEditor({
     <div className="space-y-3 p-3" data-testid="master-label-editor">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[9px] font-semibold tracking-[0.12em] text-stone-500 uppercase">
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-stone-600 uppercase">
             Master Label
           </p>
           <h3 className="text-sm font-semibold text-ink">Etykieta z faktycznej partii</h3>
         </div>
-        <span className="border border-nonprod/35 bg-nonprod/[0.06] px-2 py-1 text-[9px] font-semibold text-nonprod">
+        <span className="border border-nonprod/35 bg-nonprod/[0.06] px-2 py-1 text-[10px] font-semibold text-nonprod">
           {profile.status === 'RESEARCH_REQUIRED' ? 'RESEARCH' : profile.status}
         </span>
       </div>
 
       <section className="border border-ink/10 p-2">
-        <p className="mb-2 text-[9px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
+        <p className="mb-2 text-[10px] font-semibold tracking-[0.08em] text-stone-600 uppercase">
           Rynek sprzedaży
         </p>
         <div className="grid grid-cols-3 gap-1">
@@ -79,12 +79,12 @@ export function MasterLabelEditor({
             </button>
           ))}
         </div>
-        <p className="mt-2 text-[9px] leading-relaxed text-nonprod">{profile.rendererLimitation}</p>
+        <p className="mt-2 text-[10px] leading-relaxed text-nonprod">{profile.rendererLimitation}</p>
       </section>
 
       <section className="grid grid-cols-2 gap-2 border border-ink/10 p-2">
         <label className="col-span-2">
-          <span className="mb-1 block text-[9px] text-stone-500">
+          <span className="mb-1 block text-[10px] text-stone-600">
             Języki etykiety · oddzielone przecinkiem
           </span>
           <input
@@ -102,7 +102,7 @@ export function MasterLabelEditor({
         {active.labelLanguages.map((language) => (
           <div key={language} className="col-span-2 grid grid-cols-2 gap-2">
             <label>
-              <span className="mb-1 block text-[9px] text-stone-500">
+              <span className="mb-1 block text-[10px] text-stone-600">
                 Nazwa · {language.toUpperCase()}
               </span>
               <input
@@ -114,7 +114,7 @@ export function MasterLabelEditor({
               />
             </label>
             <label>
-              <span className="mb-1 block text-[9px] text-stone-500">
+              <span className="mb-1 block text-[10px] text-stone-600">
                 Nazwa prawna · {language.toUpperCase()}
               </span>
               <input
@@ -128,7 +128,7 @@ export function MasterLabelEditor({
           </div>
         ))}
         <label>
-          <span className="mb-1 block text-[9px] text-stone-500">Masa netto opakowania · g</span>
+          <span className="mb-1 block text-[10px] text-stone-600">Masa netto opakowania · g</span>
           <input
             type="number"
             min={0}
@@ -140,7 +140,7 @@ export function MasterLabelEditor({
           />
         </label>
         <label>
-          <span className="mb-1 block text-[9px] text-stone-500">LOT</span>
+          <span className="mb-1 block text-[10px] text-stone-600">LOT</span>
           <input
             value={active.lotCode}
             onChange={(event) => replace({ ...active, lotCode: event.currentTarget.value })}
@@ -148,7 +148,7 @@ export function MasterLabelEditor({
           />
         </label>
         <label>
-          <span className="mb-1 block text-[9px] text-stone-500">Operator</span>
+          <span className="mb-1 block text-[10px] text-stone-600">Operator</span>
           <input
             value={active.operator.operatorName}
             onChange={(event) =>
@@ -161,7 +161,7 @@ export function MasterLabelEditor({
           />
         </label>
         <label>
-          <span className="mb-1 block text-[9px] text-stone-500">Adres operatora</span>
+          <span className="mb-1 block text-[10px] text-stone-600">Adres operatora</span>
           <input
             value={active.operator.address}
             onChange={(event) =>
@@ -174,7 +174,7 @@ export function MasterLabelEditor({
           />
         </label>
         <label className="col-span-2">
-          <span className="mb-1 block text-[9px] text-stone-500">
+          <span className="mb-1 block text-[10px] text-stone-600">
             Przechowywanie · {primaryLanguage.toUpperCase()}
           </span>
           <input
@@ -189,7 +189,7 @@ export function MasterLabelEditor({
 
       <section className="grid grid-cols-2 gap-2 border border-ink/10 p-2">
         <label>
-          <span className="mb-1 block text-[9px] text-stone-500">Data produkcji</span>
+          <span className="mb-1 block text-[10px] text-stone-600">Data produkcji</span>
           <input
             type="date"
             value={active.productionDate}
@@ -204,7 +204,7 @@ export function MasterLabelEditor({
           />
         </label>
         <label>
-          <span className="mb-1 block text-[9px] font-semibold text-nonprod">
+          <span className="mb-1 block text-[10px] font-semibold text-nonprod">
             Najlepiej spożyć · WYMAGA POTWIERDZENIA
           </span>
           <input
@@ -224,7 +224,7 @@ export function MasterLabelEditor({
             className="h-9 w-full border border-nonprod/35 px-2 text-xs"
           />
         </label>
-        <p className="col-span-2 text-[9px] leading-relaxed text-stone-500">
+        <p className="col-span-2 text-[10px] leading-relaxed text-stone-600">
           PINGÜINO nie dodaje dni do daty produkcji. Data wymaga podstawy i potwierdzenia
           użytkownika.
         </p>
@@ -248,7 +248,7 @@ export function MasterLabelEditor({
 
       <section className="border border-ink/10 p-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[9px] text-stone-500">Format</span>
+          <span className="text-[10px] text-stone-600">Format</span>
           <select
             value={active.format}
             onChange={(event) =>
@@ -259,7 +259,7 @@ export function MasterLabelEditor({
             <option value="rectangle">Prostokąt</option>
             <option value="round">Okrągła</option>
           </select>
-          <span className="text-[9px] text-stone-500">Kopie</span>
+          <span className="text-[10px] text-stone-600">Kopie</span>
           <input
             type="number"
             min={1}
@@ -270,14 +270,14 @@ export function MasterLabelEditor({
             className="h-9 w-16 border border-ink/15 px-2 font-mono text-xs"
           />
         </div>
-        <p className="mt-2 text-[9px] text-stone-500">Drukarka: Systemowa</p>
+        <p className="mt-2 text-[10px] text-stone-600">Drukarka: Systemowa</p>
       </section>
 
       <section className="border border-ink/10 p-2" data-testid="master-label-preflight">
         <h4 className="text-xs font-semibold text-ink">Gotowość etykiety</h4>
         <ul className="mt-2 space-y-1">
           {preflight.items.map((item) => (
-            <li key={item.field} className="flex items-start justify-between gap-2 text-[9px]">
+            <li key={item.field} className="flex items-start justify-between gap-2 text-[10px]">
               <span>
                 {item.status === 'ready' ? '✓' : '!'} {item.label}
               </span>
@@ -297,7 +297,7 @@ export function MasterLabelEditor({
           />
           Sprawdziłem dane etykiety przed wydrukiem.
         </label>
-        <p className="mt-2 text-[9px] leading-relaxed text-stone-500">
+        <p className="mt-2 text-[10px] leading-relaxed text-stone-600">
           Etykieta została przygotowana na podstawie danych receptury, produkcji i informacji
           podanych przez użytkownika. Nie jest certyfikatem prawnym.
         </p>

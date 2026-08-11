@@ -252,7 +252,7 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     expect(html).toContain('data-testid="pro-workbench"');
     expect(html).toContain('data-testid="pro-monitor-panel"');
     expect(html).toContain('data-testid="pro-context-monitor"');
-    expect(html).toContain('aria-current="page"');
+    expect(html).toContain('aria-selected="true"');
   });
 });
 
@@ -261,7 +261,8 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
 describe('one hamburger — the tab row is gone, every destination keeps its route', () => {
   it('no visible tab row renders on /pro/recipe', () => {
     const html = renderAt('/pro/recipe');
-    expect(html).not.toMatch(/role="tablist"/);
+    expect(html).toContain('data-testid="pro-context-tabs"');
+    expect(html).toMatch(/role="tablist"/);
     expect(html).not.toContain('data-testid="pro-tab-recipe"');
     // The ONE hamburger is in the header.
     expect(html).toContain('data-testid="app-nav-trigger"');
@@ -356,7 +357,7 @@ describe('recalculation overlay', () => {
     const src = read('features', 'pro-core', 'ProRecalcPanel.tsx');
     expect(src).toContain('data-testid="pro-recalc-overlay"');
     expect(src).toContain('fixed inset-0');
-    expect(src).toContain('w-[min(660px,92vw)]'); // 520 ≤ 660 ≤ 720
+    expect(src).toContain('w-[min(680px,calc(100vw-1.5rem))]'); // compact desktop, safe mobile gutter
     expect(src).toContain('role="dialog"');
     // Apply closes the overlay ONLY on success (blocked apply keeps the honest notice).
     expect(src).toContain('after.preview === null && after.blocked === null');
@@ -450,10 +451,10 @@ describe('truthful states', () => {
     );
     if (result.costs === null) {
       expect(html).toContain('data-testid="cost-empty-state"');
-      expect(html).toContain(copy.studio.metrics.costEmpty);
+      expect(html).toContain('Brak cen składników.');
     } else {
-      expect(html).toContain(copy.studio.metrics.costPerKg);
-      expect(html).toContain(copy.studio.metrics.costBatch);
+      expect(html).toContain('Na 1 kg');
+      expect(html).toContain('Cała partia');
     }
   });
 

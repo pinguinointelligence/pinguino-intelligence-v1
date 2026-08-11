@@ -176,6 +176,16 @@ export interface RecipeItem {
   /** Product-layer persisted Pro range. Base Engine still sees the conservative
    * grams/Main lock; orchestration rehydrates and verifies these bounds. */
   range_constraint?: { min_grams: number; max_grams: number };
+  /** Product-layer persisted final-batch share. This sidecar lets a percentage
+   * constraint coexist with the stronger Main/Required/already-added identity
+   * contract. Base Engine formulas do not consume it; Pro orchestration
+   * rehydrates and verifies the percentage constraint. */
+  percent_constraint?: { percent: number };
+  /** Product-layer persisted exact mass. This sidecar lets an exact-grams
+   * constraint coexist with the stronger Main/Required/already-added identity
+   * contract. Base Engine formulas do not consume it; Pro orchestration
+   * rehydrates and verifies the exact constraint. */
+  grams_constraint?: { grams: number };
   production_step?: number;
   notes?: string;
 }

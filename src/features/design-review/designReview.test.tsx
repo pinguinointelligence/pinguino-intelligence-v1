@@ -21,7 +21,7 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
 }));
 
 const { ReviewBadge, ReviewDecisionLabel } = await import('./ReviewBadge');
-const { DesignReviewOverlay, ReviewOverlayPanel } = await import('./ReviewOverlay');
+const { DesignReviewOverlay, MobileDesignReviewEntry, ReviewOverlayPanel } = await import('./ReviewOverlay');
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
 
@@ -143,12 +143,22 @@ describe('marker visibility (customers NEVER see red tags)', () => {
       </MemoryRouter>,
     );
   };
+  const renderMobileEntry = (persona: ProCorePersona, path = '/pro/monitor') => {
+    mockPersona = persona;
+    return renderToStaticMarkup(
+      <MemoryRouter initialEntries={[path]}>
+        <MobileDesignReviewEntry />
+      </MemoryRouter>,
+    );
+  };
 
   it('demo and home customer sessions render NO badge and NO overlay (empty output)', () => {
     expect(renderBadge('demo')).toBe('');
     expect(renderBadge('home')).toBe('');
     expect(renderOverlay('demo')).toBe('');
     expect(renderOverlay('home')).toBe('');
+    expect(renderMobileEntry('demo')).toBe('');
+    expect(renderMobileEntry('home')).toBe('');
   });
 
   it('the owner/QA (pro) session in this dev test build sees the badge with reason + text meaning', () => {
@@ -166,11 +176,20 @@ describe('marker visibility (customers NEVER see red tags)', () => {
     expect(html).not.toContain('review-overlay-item-');
   });
 
-  it('keeps the owner-review toggle above every Pro workbench save bar', () => {
-    for (const path of ['/pro', '/pro/recipe', '/pro/monitor', '/pro/production']) {
-      expect(renderOverlay('pro', path)).toContain('bottom-[4.5rem]');
-    }
-    expect(renderOverlay('pro', '/pro/settings')).toContain('bottom-4');
+  it('keeps the owner-review toggle in normal flow instead of covering primary controls', () => {
+    const html = renderOverlay('pro', '/pro/recipe');
+    expect(html).toContain('relative');
+    expect(html).not.toContain('fixed');
+    expect(html).not.toContain('bottom-');
+
+    const shell = read('features', 'shell', 'AppShell.tsx');
+    expect(shell).toContain('<DesignReviewOverlay />');
+
+    const mobile = renderMobileEntry('pro');
+    expect(mobile).toContain('mobile-design-review-entry');
+    expect(mobile).toContain('Tryb przeglądu właściciela');
+    const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    expect(drawer).toContain('<MobileDesignReviewEntry />');
   });
 
   it('keeps review labels contextual to workbar; global navigation stays customer-clean', () => {

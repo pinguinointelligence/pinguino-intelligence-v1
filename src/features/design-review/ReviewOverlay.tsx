@@ -15,8 +15,6 @@ import { cn } from '@/lib/cn';
 import { useReviewMode } from './useReviewMode';
 import { REVIEW_ITEMS, reviewItemsForPath, type ReviewItem } from './reviewItems';
 
-const PRO_WORKBENCH_PATHS = new Set(['/pro', '/pro/recipe', '/pro/monitor', '/pro/production']);
-
 const SUGGESTION_LABEL: Record<ReviewItem['suggestion'], string> = {
   keep: 'zachować',
   rename: 'zmienić nazwę',
@@ -46,13 +44,26 @@ function ReviewRow({ item, current }: { item: ReviewItem; current: boolean }) {
 }
 
 /** The expanded panel — exported for direct presentational testing (no interaction needed). */
-export function ReviewOverlayPanel({ pathname, onClose }: { pathname: string; onClose?: () => void }) {
+export function ReviewOverlayPanel({
+  pathname,
+  onClose,
+  className,
+}: {
+  pathname: string;
+  onClose?: () => void;
+  className?: string;
+}) {
   const currentItems = reviewItemsForPath(pathname);
   const currentIds = new Set(currentItems.map((item) => item.id));
   const otherItems = REVIEW_ITEMS.filter((item) => !currentIds.has(item.id));
 
   return (
-    <div className="mb-2 max-h-[70vh] w-[min(92vw,420px)] overflow-y-auto rounded-lg border border-ink/15 bg-paper p-3 text-ink shadow-xl">
+    <div
+      className={cn(
+        'mb-2 max-h-[70vh] w-[min(92vw,420px)] overflow-y-auto rounded-xl border border-ink/15 bg-paper p-3 text-ink shadow-pro-md',
+        className,
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
         <p className="text-[0.65rem] font-medium tracking-label text-review uppercase">
           Tryb przeglądu właściciela — staging
@@ -60,7 +71,7 @@ export function ReviewOverlayPanel({ pathname, onClose }: { pathname: string; on
         <button
           type="button"
           onClick={onClose}
-          className="rounded px-2 py-1 text-xs text-stone-500 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+          className="min-h-11 rounded-lg px-3 py-1 text-xs text-stone-600 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 sm:min-h-0 sm:px-2"
         >
           Zamknij
         </button>
@@ -71,7 +82,7 @@ export function ReviewOverlayPanel({ pathname, onClose }: { pathname: string; on
       </p>
       {currentItems.length > 0 ? (
         <>
-          <p className="mt-3 text-[0.65rem] font-medium tracking-label text-stone-400 uppercase">
+          <p className="mt-3 text-[0.65rem] font-medium tracking-label text-stone-600 uppercase">
             Na tej stronie
           </p>
           <ul className="mt-1 space-y-2">
@@ -81,7 +92,7 @@ export function ReviewOverlayPanel({ pathname, onClose }: { pathname: string; on
           </ul>
         </>
       ) : null}
-      <p className="mt-3 text-[0.65rem] font-medium tracking-label text-stone-400 uppercase">
+      <p className="mt-3 text-[0.65rem] font-medium tracking-label text-stone-600 uppercase">
         Wszystkie pozycje ({REVIEW_ITEMS.length})
       </p>
       <ul className="mt-1 space-y-2">
@@ -99,30 +110,61 @@ export function DesignReviewOverlay() {
   const [open, setOpen] = useState(false);
   if (!enabled) return null;
 
-  const clearsRecipeWorkbar = PRO_WORKBENCH_PATHS.has(location.pathname);
-
   return (
     <div
-      className={cn(
-        'fixed left-4 z-[60] font-sans',
-        clearsRecipeWorkbar ? 'bottom-[4.5rem]' : 'bottom-4',
-      )}
+      className="relative z-[60] hidden shrink-0 flex-col items-start font-sans sm:flex"
       data-testid="design-review-overlay"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {open ? <ReviewOverlayPanel pathname={location.pathname} onClose={() => setOpen(false)} /> : null}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         data-testid="design-review-toggle"
-        className="inline-flex items-center gap-1.5 rounded-full border border-review/50 bg-paper px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.08em] text-review uppercase shadow-lg transition-colors hover:bg-review/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-review/50"
+        className="inline-flex items-center gap-1.5 rounded-full border border-review/50 bg-paper px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.08em] text-review uppercase shadow-pro-md transition-colors hover:bg-review/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-review/50"
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} aria-hidden>
           <path d="M5 21V4m0 0h13l-3 4 3 4H5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         Do przeglądu ({REVIEW_ITEMS.length})
       </button>
+      {open ? (
+        <ReviewOverlayPanel
+          pathname={location.pathname}
+          onClose={() => setOpen(false)}
+          className="mb-0 mt-2"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Mobile owner-review access lives inside the existing navigation drawer.
+ * It remains available at 360/390/430 without becoming a floating layer over
+ * ingredient locks, Preview, Save or production controls. */
+export function MobileDesignReviewEntry() {
+  const enabled = useReviewMode();
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  if (!enabled) return null;
+
+  return (
+    <div className="border-t border-review/20 px-1 py-3 sm:hidden" data-testid="mobile-design-review-entry">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex min-h-11 w-full items-center justify-between rounded-lg border border-review/35 bg-review/5 px-3 text-left text-[11px] font-semibold tracking-[0.08em] text-review uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-review/50"
+      >
+        <span>Tryb przeglądu właściciela</span>
+        <span aria-hidden>{open ? '−' : '+'}</span>
+      </button>
+      {open ? (
+        <ReviewOverlayPanel
+          pathname={location.pathname}
+          onClose={() => setOpen(false)}
+          className="mt-2 w-full max-w-none"
+        />
+      ) : null}
     </div>
   );
 }

@@ -16,7 +16,7 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
     return (
       <div data-testid="production-completed">
         <section className="border-b border-status-ideal/25 bg-status-ideal/[0.04] p-3">
-          <p className="text-[9px] font-semibold tracking-[0.12em] text-status-ideal uppercase">
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-status-ideal uppercase">
             Produkcja zakończona
           </p>
           <div className="mt-1 flex items-end justify-between gap-3">
@@ -28,7 +28,7 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
           <button
             type="button"
             onClick={production.startNewSession}
-            className="mt-3 border border-ink/15 px-3 py-2 text-[10px] font-semibold text-ink"
+            className="mt-3 min-h-11 rounded-lg border border-ink/15 px-3 py-2 text-[10px] font-semibold text-ink"
           >
             Rozpocznij nową partię
           </button>
@@ -39,19 +39,20 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
   }
 
   return (
-    <div className="space-y-3 p-3" data-testid="production-cockpit">
-      <section className="border border-ink/10 p-3">
+    <div className="pro-scroll-safe space-y-3 p-3" data-testid="production-cockpit">
+      <section className="pro-module overflow-hidden p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[9px] font-semibold tracking-[0.12em] text-stone-500 uppercase">
+            <p className="text-[10px] font-semibold tracking-[0.12em] text-stone-500 uppercase">
               Produkcja
             </p>
             <strong className="mt-1 block text-lg text-ink">
               {progress.confirmedCount} / {progress.totalCount} składników
             </strong>
           </div>
-          <span className="font-mono text-xl font-semibold tabular-nums text-ink">
-            {score.display}
+          <span className="text-right">
+            <span className="block text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase">Przewidywane dopasowanie partii</span>
+            <span className="mt-1 block font-mono text-xl font-semibold tabular-nums text-ink">{score.display}</span>
           </span>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden bg-stone-100">
@@ -76,8 +77,8 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
             </dd>
           </div>
         </dl>
-        <p className="mt-2 text-[10px] text-stone-500">
-          Przewidywany wynik końcowy · {score.display}
+        <p className="mt-2 rounded-lg bg-pro-sage px-2 py-1.5 text-[10px] text-status-ideal">
+          Ocena dotyczy przewidywanego składu po zakończeniu bieżącej partii · {score.display}
         </p>
       </section>
 
@@ -101,7 +102,7 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
 
       {rescue?.state === 'options' ? (
         <section
-          className="border border-attention/30 bg-attention/[0.04] p-3"
+          className="pro-module border-attention/30 bg-pro-amber/55 p-3"
           data-testid="production-rescue-options"
         >
           <h3 className="text-xs font-semibold text-ink">Korekta po odchyleniu</h3>
@@ -111,7 +112,7 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
                 key={option.id}
                 type="button"
                 onClick={() => production.applyVerifiedRescue(option.candidateInput)}
-                className="w-full border border-ink/15 bg-white p-2 text-left hover:border-ink/35"
+                className="pro-focus-ring w-full rounded-lg border border-ink/12 bg-white p-2.5 text-left shadow-pro-sm transition-transform hover:-translate-y-px hover:border-ink/35"
               >
                 <span className="flex items-center justify-between gap-2">
                   <strong className="text-[11px] text-ink">{option.title}</strong>
@@ -119,7 +120,7 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
                     {option.finalMassG.toFixed(1)} g · {option.scoreDisplay}
                   </span>
                 </span>
-                <span className="mt-1 block text-[9px] leading-relaxed text-stone-500">
+                <span className="mt-1 block text-[10px] leading-relaxed text-stone-500">
                   {option.explanation}
                 </span>
                 {option.instructions.length > 0 ? (
@@ -182,7 +183,7 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
         type="button"
         disabled={!progress.coherent}
         onClick={production.complete}
-        className="h-11 w-full bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
+        className="pro-focus-ring h-11 w-full rounded-xl bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-transform enabled:hover:-translate-y-px disabled:cursor-not-allowed disabled:bg-stone-300"
         data-testid="complete-production"
       >
         {progress.coherent

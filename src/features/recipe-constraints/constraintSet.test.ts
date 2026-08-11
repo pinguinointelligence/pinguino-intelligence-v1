@@ -146,6 +146,26 @@ describe('applyConstraintsToRecipe (§17.1–§17.3)', () => {
     expect(applied.applied).toContainEqual({ lineId: mainLineId, note: 'locked_main_kept' });
   });
 
+  it.each(['required', 'already_added'] as const)(
+    'keeps the stronger %s role for locked, percent and range constraints',
+    (role) => {
+      const input = starterMilkBase();
+      input.items[0] = { ...input.items[0]!, lock_type: role };
+      const lineId = input.items[0]!.id;
+      const cases: ConstraintSet[] = [
+        { byLineId: { [lineId]: { mode: 'locked', grams: 650 } } },
+        { byLineId: { [lineId]: { mode: 'percent', percent: 60 } } },
+        { byLineId: { [lineId]: { mode: 'range', minGrams: 600, maxGrams: 700 } } },
+      ];
+      for (const set of cases) {
+        const applied = applyConstraintsToRecipe(input, set);
+        expect(applied.ok).toBe(true);
+        if (!applied.ok) continue;
+        expect(applied.input.items[0]?.lock_type).toBe(role);
+      }
+    },
+  );
+
   it('a line with actual_grams is left untouched (physically poured, spec §15)', () => {
     const input = starterMilkBase();
     input.items[3] = { ...input.items[3]!, actual_grams: 131, lock_type: 'already_added' };

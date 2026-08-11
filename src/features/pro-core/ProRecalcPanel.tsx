@@ -9,7 +9,7 @@
  * stays intact. Preview rows render through the same pure ConstraintPreviewCard; failures render
  * the same honest Polish messages; a verify-failed apply renders the same BlockedApplyNotice.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
@@ -37,6 +37,8 @@ import type { ConstraintSet } from '@/features/recipe-constraints';
 
 const r = copy.proWorkbar.recalcPanel;
 const d = constraintStudioCopy.diagnosis;
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** The headline for a classified failure — proven by the lock report below it. */
 function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): string {
@@ -291,7 +293,7 @@ function DirectionBestDecision({
           type="button"
           onClick={onAccept}
           data-testid="direction-best-accept"
-          className="rounded-md bg-ivory px-4 py-2.5 text-sm font-medium text-shell"
+          className="min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell"
         >
           Przelicz najlepiej możliwie
         </button>
@@ -299,7 +301,7 @@ function DirectionBestDecision({
           type="button"
           onClick={onBack}
           data-testid="direction-best-back"
-          className="rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory"
+          className="min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory"
         >
           Wróć
         </button>
@@ -309,6 +311,54 @@ function DirectionBestDecision({
 }
 
 export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const panelRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    body.style.overflow = 'hidden';
+    const focusables = () =>
+      panelRef.current
+        ? Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
+        : [];
+    (focusables()[0] ?? panelRef.current)?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const list = focusables();
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (!first || !last) {
+        event.preventDefault();
+        panelRef.current?.focus();
+        return;
+      }
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      body.style.overflow = previousOverflow;
+      trigger?.focus();
+    };
+  }, [open]);
+
   const preview = useConstraintStudioStore((s) => s.preview);
   const directionBestCandidate = useConstraintStudioStore((s) => s.directionBestCandidate);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
@@ -378,11 +428,13 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
         className="absolute inset-0 h-full w-full bg-black/60 motion-safe:animate-[appFadeIn_150ms_ease-out]"
       />
       <section
+        ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={r.title}
         data-testid="pro-recalc-panel"
-        className="absolute left-1/2 top-1/2 max-h-[85vh] w-[min(660px,92vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-ivory/15 bg-shell px-4 py-4 text-ivory shadow-2xl [color-scheme:dark]"
+        className="absolute left-1/2 top-1/2 max-h-[88vh] w-[min(680px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-shell px-4 py-4 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#efe9dc] [--color-shell:#191a1d] [color-scheme:dark] sm:px-5 sm:py-5"
       >
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">{r.title}</p>
@@ -390,7 +442,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
             type="button"
             onClick={onClose}
             data-testid="pro-recalc-close"
-            className="rounded-md border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
+            className="min-h-11 rounded-lg border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
           >
             {r.close}
           </button>
@@ -445,7 +497,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
                 type="button"
                 onClick={store.undoLastApply}
                 data-testid="pro-recalc-undo"
-                className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
               >
                 {r.undo}
               </button>

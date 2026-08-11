@@ -99,7 +99,7 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
             type="button"
             onClick={onOpenPreview}
             data-testid="workbench-open-preview"
-            className="h-8 rounded-sm border border-ink/20 px-2 text-[10px] font-semibold text-ink transition-colors hover:border-ink/45"
+            className="h-11 rounded-lg border border-ink/20 px-2 text-[10px] font-semibold text-ink transition-colors hover:border-ink/45 lg:h-8"
           >
             {a.openPreview}
           </button>
@@ -111,7 +111,7 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
             type="button"
             onClick={() => useConstraintStudioStore.getState().undoLastApply()}
             data-testid="workbench-undo"
-            className="h-8 rounded-sm border border-ink/20 px-2 text-[10px] font-semibold text-ink transition-colors hover:border-ink/45"
+            className="h-11 rounded-lg border border-ink/20 px-2 text-[10px] font-semibold text-ink transition-colors hover:border-ink/45 lg:h-8"
           >
             {r.undo}
           </button>

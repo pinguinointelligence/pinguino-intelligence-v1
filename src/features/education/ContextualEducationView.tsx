@@ -177,7 +177,7 @@ function SugarLesson() {
             {copy.sugar.rows.map((row) => (
               <div key={row.id} className="grid grid-cols-[1fr_auto] gap-3 py-2.5">
                 <strong className="text-xs text-ink">{row.name}</strong>
-                <span className="grid gap-1 text-[9px] text-stone-500">
+                <span className="grid gap-1 text-[10px] text-stone-600">
                   <span className="flex items-center justify-between gap-3">
                     {copy.sugar.scaleSweetness}
                     <RelativeDots value={row.sweetness} label={copy.sugar.scaleSweetness} />
@@ -369,7 +369,7 @@ function ProcessStatus({
           <strong className="text-base text-ink">{statusCopy.title}</strong>
           {classification.status === 'unknown' ? (
             <span
-              className="text-[9px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+              className="text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
               data-readiness={copy.process.dataMissing}
             >
               {copy.process.dataMissing}
@@ -477,7 +477,7 @@ function MachineGuide({ machineId }: { machineId: string | null }) {
           <div className="mt-3 flex items-center justify-between gap-2 border-t border-ink/10 pt-2">
             <p className="text-[11px] text-stone-500">{guide.timing.text}</p>
             <span
-              className="shrink-0 text-[9px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+              className="shrink-0 text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
               data-testid="timing-readiness"
               data-readiness={copy.machine.timingPending}
             >
@@ -513,7 +513,7 @@ function ProcessComparison() {
             type="button"
             onClick={() => setActivePath(path.id)}
             aria-pressed={activePath === path.id}
-            className={`min-h-11 border px-1.5 py-2 text-[9px] font-semibold tracking-[0.04em] uppercase ${activePath === path.id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
+            className={`min-h-11 border px-1.5 py-2 text-[10px] font-semibold tracking-[0.04em] uppercase ${activePath === path.id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
           >
             {path.label}
           </button>
@@ -526,7 +526,7 @@ function ProcessComparison() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-ink">{copy.machine.timingQuestion}</h3>
           <span
-            className="text-[9px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+            className="text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
             data-readiness={copy.machine.timingPending}
           >
             {copy.machine.timingPending}

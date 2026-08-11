@@ -65,18 +65,19 @@ describe('Pro workspace — white precision scope', () => {
     }
   });
 
-  it('the engine lab carries the precision hairline inside the light scope', () => {
+  it('the engine lab carries the canonical warm precision hairline inside the light scope', () => {
     const html = renderAt('/pro/recipe', 'pro');
-    expect(html).toContain('border-ivory/10');
+    expect(html).toContain('border-pro-line');
+    expect(html).toContain('bg-pro-warm');
     expect(html).toContain('data-testid="workbench-editor-pane"');
     expect(html).toContain('data-testid="pro-monitor-panel"');
     expect(html).toContain('lg:w-[62%]');
     expect(html).toContain('lg:w-[38%]');
   });
 
-  it('keeps the informational bracket and the review tools route', () => {
+  it('keeps the explicit Direction legend/readiness and the review tools route', () => {
     const html = renderAt('/pro/recipe', 'pro');
-    expect(html).toContain('bracket-note');
+    expect(html).toContain('aria-label="Legenda kierunku"');
     expect(html).toContain('data-readiness="WYMAGA KALIBRACJI"');
     expect(renderAt('/pro/tools', 'pro')).toContain('data-testid="pro-review-zone"');
   });

@@ -175,6 +175,29 @@ describe('savedToRecipeInput (load validation)', () => {
     expect(loaded.goals?.excluded_ingredient_ids).toEqual(['PI-ING-000494']);
     expect(loaded.goals?.unavailable_main_ingredient_ids).toEqual(['PI-ING-001553']);
   });
+  it('round-trips a durable exact-grams sidecar without weakening Required', () => {
+    const base = sampleInput();
+    const [first] = base.items;
+    const input = {
+      ...base,
+      items: base.items.map((item) =>
+        item.id === first!.id
+          ? { ...item, lock_type: 'required' as const, grams_constraint: { grams: item.planned_grams } }
+          : item,
+      ),
+    };
+    const payload = buildSavePayload({
+      name: 'Required exact grams',
+      recipeInput: input,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    const loaded = savedToRecipeInput(JSON.parse(JSON.stringify(payload.recipe_input)));
+    expect(loaded.items[0]).toMatchObject({
+      lock_type: 'required',
+      grams_constraint: { grams: first!.planned_grams },
+    });
+  });
   it('tolerates unknown/future fields (old saves keep loading)', () => {
     const stored = JSON.parse(JSON.stringify(sampleInput())) as {
       items: Array<{ ingredient: Record<string, unknown> }>;

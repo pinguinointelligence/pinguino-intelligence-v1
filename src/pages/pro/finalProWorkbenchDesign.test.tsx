@@ -49,8 +49,11 @@ describe('final Pro visual system', () => {
     ].join('\n');
     expect(files).not.toMatch(/(?:bg|text|border)-navy/);
     const theme = read('styles', 'theme-pro-light.css');
-    expect(theme).toContain('background-color: #ffffff');
+    expect(theme).toContain('background-color: var(--color-charcoal)');
     expect(theme).toContain('.theme-pro-light .bg-charcoal');
+    for (const token of ['--color-pro-warm', '--color-pro-graphite', '--shadow-pro-sm']) {
+      expect(read('styles', 'tokens.css')).toContain(token);
+    }
   });
 
   it('keeps primary actions black with white text and semantic colors purposeful', () => {
@@ -122,8 +125,8 @@ describe('recipe and production table modes', () => {
   it('normal recipe mode shows planned grams but no actual-production column', () => {
     const html = renderIngredients('recipe');
     expect(html).toContain('Cena/kg');
-    expect(html).toContain('Zablokuj gramaturę:');
-    expect(html).toContain('zablokuj udział procentowy');
+    expect(html).toContain('Zablokuj gramy');
+    expect(html).toContain('Zablokuj % partii');
     expect(html).not.toContain('Faktycznie');
   });
 
@@ -196,29 +199,48 @@ describe('profile semantics and readiness', () => {
 });
 
 describe('Monitor, overlay, responsiveness and truthfulness', () => {
-  it('protects internal bands while showing red-green-gold-green-red position scales', () => {
+  it('protects internal bands while using one graphite-current and gold-target marker language', () => {
     const monitor = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
     const model = read('features', 'pro-workbench', 'professionalMonitorModel.ts');
     const diagnostic = read('features', 'studio', 'OwnerDiagnosticPanel.tsx');
-    const order = [
-      'bg-status-error/20',
-      'bg-status-ideal/28',
-      'bg-gold/34',
-      'bg-status-ideal/28',
-      'bg-status-error/20',
-    ];
-    let cursor = 0;
-    for (const token of order) {
-      const next = monitor.indexOf(token, cursor);
-      expect(next, token).toBeGreaterThanOrEqual(cursor);
-      cursor = next + token.length;
-    }
+    expect(monitor).toContain('bg-pro-graphite');
+    expect(monitor).toContain('bg-gold');
+    expect(monitor).toContain('Teraz');
+    expect(monitor).toContain('Złoty środek');
+    expect(monitor).not.toContain('rotate-45');
     expect(monitor).not.toContain('band.bandMin.toFixed');
     expect(monitor).not.toContain('band.bandMax.toFixed');
     expect(model).toContain('bandPosition');
     expect(diagnostic).not.toContain('a.window.minPercentOfTotalMix');
     expect(diagnostic).not.toContain('a.window.maxPercentOfTotalMix');
     expect(diagnostic).not.toContain('a.window.mapperId');
+  });
+
+  it('uses distinct Direction semantics and keeps the Pro summary fully Polish', () => {
+    const scale = read('features', 'pro-workbench', 'RecipeAxisScale.tsx');
+    const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
+    const summary = read('features', 'pi-panel', 'NutritionCostScorePanel.tsx');
+    const proCopy = read('copy', 'pro.pl.ts');
+    expect(scale).toContain('axis-preview-');
+    expect(scale).toContain('bg-pro-graphite');
+    expect(scale).not.toContain('rotate-45');
+    for (const label of ['Teraz', 'Cel', 'Preview']) expect(axes).toContain(label);
+    for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {
+      expect(proCopy).toContain(label);
+    }
+    expect(summary).toContain("copy/pro.pl");
+  });
+
+  it('names score concepts and provides shared keyboard/reduced-motion treatment', () => {
+    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
+    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+    const theme = read('styles', 'theme-pro-light.css');
+    expect(profile).toContain('Dopasowanie techniczne receptury');
+    expect(page).toContain('Dopasowanie techniczne receptury');
+    expect(production).toContain('Przewidywane dopasowanie partii');
+    expect(theme).toContain(':focus-visible');
+    expect(theme).toContain('prefers-reduced-motion: reduce');
   });
 
   it('keeps the focused Monitor modules mounted and Preview as a fixed overlay', () => {

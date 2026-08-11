@@ -14,7 +14,7 @@ const m = copy.menu;
 const itemClass =
   'block rounded-md px-3 py-2 text-sm text-ink transition-colors hover:bg-ink/5';
 const soonChip =
-  'rounded border border-ink/10 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.08em] text-stone-400 uppercase';
+  'rounded border border-ink/10 px-1.5 py-0.5 text-[0.65rem] font-medium tracking-[0.08em] text-stone-600 uppercase';
 
 /**
  * Hamburger menu — New, Advanced Studio, and future subscriber items (Step 6A).
@@ -85,7 +85,7 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
               {[m.items.production, m.items.saved].map((label) => (
                 <div
                   key={label}
-                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-stone-400"
+                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-stone-600"
                 >
                   <span>{label}</span>
                   <span className={soonChip}>{m.soon}</span>
@@ -95,7 +95,7 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
 
             <div className="mt-auto border-t border-ink/5 pt-3">
               {!authAvailable ? (
-                <p className="px-3 py-2 text-xs leading-relaxed text-stone-400">{m.authUnavailable}</p>
+                <p className="px-3 py-2 text-xs leading-relaxed text-stone-600">{m.authUnavailable}</p>
               ) : authStatus === 'authed' && user ? (
                 <>
                   <div className="flex items-center justify-between gap-3 px-3 py-2">
@@ -115,7 +115,7 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
                   {subscriptionPlan === 'pro' ? (
                     <p className="px-3 pb-1 text-xs text-stone-500">{copy.billing.proActive}</p>
                   ) : (
-                    <div className="flex items-center justify-between px-3 pb-1 text-sm text-stone-400">
+                    <div className="flex items-center justify-between px-3 pb-1 text-sm text-stone-600">
                       <span>{copy.billing.upgrade}</span>
                       <span className={soonChip}>{copy.billing.comingSoon}</span>
                     </div>

@@ -91,6 +91,8 @@ const serializeLiveDraft = (): string => {
       item.lock_type,
       item.range_constraint?.min_grams ?? null,
       item.range_constraint?.max_grams ?? null,
+      item.percent_constraint?.percent ?? null,
+      item.grams_constraint?.grams ?? null,
     ]),
     byLineId: constraints.byLineId,
     exclusions: [...recipe.excludedIngredientIds],
@@ -105,7 +107,7 @@ const serializeLiveDraft = (): string => {
 };
 
 /** Simulated page refresh: the recipe store rehydrates its persisted slice;
- * the §17 session store (NOT persisted) starts empty — exactly what F5 does. */
+ * the session store starts empty and reconstructs only durable §17 sidecars. */
 const simulateRefresh = () => {
   const persisted = recipePersistPartialize(useRecipeStore.getState());
   useConstraintStudioStore.getState().resetForTests();
@@ -122,7 +124,7 @@ const runOwnerSequence = () => {
   const milkLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === MILK.id)!;
   useConstraintStudioStore.getState().toggleLock(milkLine.id); // §17 padlock @500 g
   // The recipe is SAVED — the stored RecipeInput has STABLE line ids and the
-  // engine grams-lock, but §17 constraints are session state, never stored.
+  // engine grams-lock plus its durable §17 exact-mass sidecar.
   const saved = structuredClone(buildRecipeInput(useRecipeStore.getState()));
 
   // Later — the user OPENS the saved recipe (same session, no refresh)…
@@ -171,8 +173,14 @@ describe('PHASE 1 — deterministic owner repro: live state ≡ refreshed state 
     const { strawLineId } = runOwnerSequence();
     useConstraintStudioStore.getState().createOptimizePreview();
     const first = useConstraintStudioStore.getState();
-    // No stale §17 padlock from session 1 survived the load.
-    expect(first.constraints.byLineId).toEqual({});
+    // The saved milk padlock is intentionally durable; no unrelated session
+    // constraint is present and the new fruit edit remains the current draft.
+    expect(first.constraints.byLineId).toEqual({
+      [useRecipeStore.getState().items.find((item) => item.ingredient.id === MILK.id)!.id]: {
+        mode: 'locked',
+        grams: 500,
+      },
+    });
     // The 0 g fruit is never silently ignored: PI names THIS draft's fruit.
     expect(first.preview).toBeNull();
     expect(first.previewIssue?.code).toBe('missing_required_role');
@@ -193,9 +201,11 @@ describe('PHASE 1 — deterministic owner repro: live state ≡ refreshed state 
     expect(Math.abs(plannedSum(preview!.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
   });
 
-  it('loading a saved recipe starts a FRESH §17 context (stale padlock never survives)', () => {
-    runOwnerSequence();
-    expect(useConstraintStudioStore.getState().constraints.byLineId).toEqual({});
+  it('loading a saved recipe starts a fresh session and rehydrates only its durable padlock', () => {
+    const { milkLineId } = runOwnerSequence();
+    expect(useConstraintStudioStore.getState().constraints.byLineId).toEqual({
+      [milkLineId]: { mode: 'locked', grams: 500 },
+    });
     expect(useConstraintStudioStore.getState().preview).toBeNull();
     expect(useConstraintStudioStore.getState().history).toEqual([]);
   });

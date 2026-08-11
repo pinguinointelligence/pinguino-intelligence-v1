@@ -159,6 +159,8 @@ export function canonicalDraftSerialization(draft: CanonicalDraft): string {
       item.lock_type,
       item.range_constraint?.min_grams ?? null,
       item.range_constraint?.max_grams ?? null,
+      item.percent_constraint?.percent ?? null,
+      item.grams_constraint?.grams ?? null,
     ]),
     byLineId: draft.constraints.byLineId,
     exclusions: [...draft.excludedIngredientIds],
@@ -217,8 +219,7 @@ export function reconcileConstraints(
     }
     byLineId[lineId] = constraint;
   }
-  if (targetBatchGrams !== undefined && targetBatchGrams > 0) {
-    for (const item of items) {
+  for (const item of items) {
       if (item.range_constraint && byLineId[item.id] === undefined) {
         const { min_grams: minGrams, max_grams: maxGrams } = item.range_constraint;
         if (
@@ -234,13 +235,42 @@ export function reconcileConstraints(
           continue;
         }
       }
-      if (item.lock_type !== 'percent' || byLineId[item.id] !== undefined) continue;
+      const savedGrams = item.grams_constraint?.grams;
+      if (
+        byLineId[item.id] === undefined &&
+        savedGrams !== undefined &&
+        Number.isFinite(savedGrams) &&
+        savedGrams >= 0 &&
+        Object.is(item.planned_grams, savedGrams)
+      ) {
+        byLineId[item.id] = { mode: 'locked', grams: savedGrams };
+        changed = true;
+        continue;
+      }
+      const savedPercent = item.percent_constraint?.percent;
+      if (
+        byLineId[item.id] === undefined &&
+        savedPercent !== undefined &&
+        Number.isFinite(savedPercent) &&
+        savedPercent >= 0 &&
+        savedPercent <= 100
+      ) {
+        byLineId[item.id] = { mode: 'percent', percent: savedPercent };
+        changed = true;
+        continue;
+      }
+      if (
+        targetBatchGrams === undefined ||
+        targetBatchGrams <= 0 ||
+        item.lock_type !== 'percent' ||
+        byLineId[item.id] !== undefined
+      )
+        continue;
       byLineId[item.id] = {
         mode: 'percent',
         percent: (item.planned_grams / targetBatchGrams) * 100,
       };
       changed = true;
-    }
   }
   return changed ? { byLineId } : set;
 }
@@ -290,6 +320,9 @@ export interface ConstraintStudioState {
   toggleLock: (lineId: string) => void;
   /** Percentage of the final target batch, mutually exclusive with gram/range. */
   togglePercentLock: (lineId: string) => void;
+  /** Resize the visible batch while applying every canonical §17 percentage,
+   * including lines that retain a stronger Main/Required/physical role. */
+  resizeBatchGrams: (grams: number) => void;
   /** §17.3 range (feature-flagged UI). Honest validation — never clamps. */
   setRangeConstraint: (
     lineId: string,
@@ -390,15 +423,31 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         if (item.actual_grams !== null) return; // poured material is already immutable (spec §15)
 
         const existing = get().constraints.byLineId[lineId];
+        if (existing?.mode === 'percent' || item.lock_type === 'percent') {
+          // Apple 2.0 lock contract: % and g are two mutually-exclusive modes,
+          // not a three-step toggle. Selecting grams replaces the percentage
+          // constraint atomically and preserves the exact current Float64 mass.
+          set({
+            constraints: {
+              byLineId: {
+                ...get().constraints.byLineId,
+                [lineId]: { mode: 'locked', grams: item.planned_grams },
+              },
+            },
+            ...CLEAR_STAGED,
+          });
+          recipe.setGramLock(lineId, item.planned_grams);
+          return;
+        }
         if (existing !== undefined && existing.mode !== 'ai') {
           // §17.2 steps 4–6: unlock → the solver may change the line again.
           set({
             constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
             ...CLEAR_STAGED,
           });
-          if (item.lock_type === 'grams' || item.lock_type === 'percent') {
-            recipe.setLockType(lineId, 'unlocked');
-          } else recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
+          if (existing.mode === 'locked') recipe.setGramLock(lineId, null);
+          else if (existing.mode === 'range') recipe.clearRangeLock(lineId);
+          else recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
           return;
         }
 
@@ -412,11 +461,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           },
           ...CLEAR_STAGED,
         });
-        if (!ENGINE_KEPT_LOCKS.has(item.lock_type) && item.lock_type !== 'grams') {
-          recipe.setLockType(lineId, 'grams');
-        } else {
-          recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
-        }
+        recipe.setGramLock(lineId, item.planned_grams);
       },
 
       togglePercentLock: (lineId) => {
@@ -429,8 +474,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
             ...CLEAR_STAGED,
           });
-          if (item.lock_type === 'percent') recipe.setLockType(lineId, 'unlocked');
-          else recipe.bumpDraftRevision();
+          recipe.setPercentLock(lineId, null);
           return;
         }
         const percent = (item.planned_grams / recipe.target_batch_grams) * 100;
@@ -443,8 +487,16 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           },
           ...CLEAR_STAGED,
         });
-        if (!ENGINE_KEPT_LOCKS.has(item.lock_type)) recipe.setLockType(lineId, 'percent');
-        else recipe.bumpDraftRevision();
+        recipe.setPercentLock(lineId, percent);
+      },
+
+      resizeBatchGrams: (grams) => {
+        const percentByLineId = Object.fromEntries(
+          Object.entries(get().constraints.byLineId).flatMap(([lineId, constraint]) =>
+            constraint.mode === 'percent' ? [[lineId, constraint.percent] as const] : [],
+          ),
+        );
+        useRecipeStore.getState().setBatchGrams(grams, percentByLineId);
       },
 
       setRangeConstraint: (lineId, minGrams, maxGrams) => {
@@ -475,15 +527,12 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           ...CLEAR_STAGED,
         });
         const recipe = useRecipeStore.getState();
-        const item = recipe.items.find((candidate) => candidate.id === lineId);
-        if (existing.mode === 'range') {
+        if (existing.mode === 'percent') {
+          recipe.setPercentLock(lineId, null);
+        } else if (existing.mode === 'range') {
           recipe.clearRangeLock(lineId);
-        } else if (
-          item &&
-          (item.lock_type === 'grams' || item.lock_type === 'percent') &&
-          existing.mode !== 'ai'
-        ) {
-          recipe.setLockType(lineId, 'unlocked');
+        } else if (existing.mode === 'locked') {
+          recipe.setGramLock(lineId, null);
         } else {
           recipe.bumpDraftRevision(); // Phase 3: a §17 edit is a material edit
         }
@@ -499,7 +548,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           constraints: { byLineId: withoutLine(get().constraints.byLineId, lineId) },
           ...CLEAR_STAGED,
         });
-        useRecipeStore.getState().bumpDraftRevision(); // Phase 3: material edit
+        const recipe = useRecipeStore.getState();
+        if (existing.mode === 'locked') recipe.setGramLock(lineId, null);
+        else if (existing.mode === 'percent') recipe.setPercentLock(lineId, null);
+        else if (existing.mode === 'range') recipe.clearRangeLock(lineId);
+        else recipe.bumpDraftRevision(); // Phase 3: material edit
       },
 
       reconcile: () => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useAuthStore } from '@/stores/authStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
@@ -43,7 +44,7 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
 ];
 
 const compactSelect =
-  'h-8 min-w-0 rounded-sm border border-ink/15 bg-white px-2 text-[11px] text-ink transition-colors hover:border-ink/35 focus:border-ink/45 focus:outline-none';
+  'h-11 min-w-0 rounded-lg border border-ink/12 bg-white px-2 text-[11px] text-ink shadow-pro-sm transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold lg:h-9';
 
 function LabeledSelect<T extends string>({
   label,
@@ -62,7 +63,7 @@ function LabeledSelect<T extends string>({
 }) {
   return (
     <label className="grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2">
-      <span className="text-[9px] font-semibold tracking-[0.06em] text-stone-500 uppercase">
+      <span className="text-[10px] font-semibold tracking-[0.06em] text-stone-500 uppercase">
         {label}
       </span>
       <select
@@ -94,6 +95,7 @@ export function WorkbenchSettingsLine({
   actualProteinPercent?: number;
 }) {
   const store = useRecipeStore();
+  const resizeBatchGrams = useConstraintStudioStore((state) => state.resizeBatchGrams);
   const directionTargets = store.direction_targets;
   const openedContextSeq = useRecipeProfileStore((state) => state.openedContextSeq);
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
@@ -156,20 +158,23 @@ export function WorkbenchSettingsLine({
       machineId: profile.id,
       label: machineDisplayName(profile),
       temperatureC: temp,
-      batchGrams: setup.recommendedBatchGrams,
+      // Batch ownership stays in the canonical §17 resize path below so an
+      // older rehydrated Main/Required percent sidecar is honoured too.
+      batchGrams: null,
       capacityGrams: setup.recommendedBatchGrams,
     });
+    if (setup.recommendedBatchGrams != null) resizeBatchGrams(setup.recommendedBatchGrams);
   };
 
   return (
     <section
       className={cn(
-        'border p-2 transition-colors',
+        'rounded-xl border p-3 shadow-pro-sm transition-colors',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
           : confirmed
-            ? 'border-ink/10 bg-white'
-            : 'border-gold/45 bg-gold/[0.055]',
+            ? 'border-pro-line bg-white/80'
+            : 'border-gold/45 bg-education-ivory/65',
       )}
       data-testid="workbench-settings-line"
       data-preflight-state={
@@ -182,7 +187,7 @@ export function WorkbenchSettingsLine({
         </h3>
         <span
           className={cn(
-            'text-[9px] font-semibold tracking-[0.06em] uppercase',
+            'text-[10px] font-semibold tracking-[0.06em] uppercase',
             hardConflict ? 'text-status-error' : confirmed ? 'text-status-ideal' : 'text-attention',
           )}
           data-testid="profile-preflight-status"
@@ -296,12 +301,12 @@ export function WorkbenchSettingsLine({
 
         <div
           className={cn(
-            'grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2 border px-2 py-1.5',
-            batchMismatch ? 'border-gold/35 bg-gold/[0.045]' : 'border-ink/10 bg-white',
+            'grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2 rounded-lg border px-2 py-1.5',
+            batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
           )}
           data-testid="profile-batch-combined"
         >
-          <span className="text-[9px] font-semibold tracking-[0.06em] text-stone-500 uppercase">
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-stone-500 uppercase">
             Partia
           </span>
           <div className="flex min-w-0 items-center justify-end gap-1.5">
@@ -321,7 +326,7 @@ export function WorkbenchSettingsLine({
               data-testid="workbench-batch"
               aria-label="Docelowa partia"
               onChange={(event) =>
-                store.setBatchGrams(
+                resizeBatchGrams(
                   toGrams(event.currentTarget.valueAsNumber || 0, unit, store.category),
                 )
               }
@@ -339,7 +344,7 @@ export function WorkbenchSettingsLine({
           </div>
         </div>
 
-        <div className="border border-ink/10 p-1.5">
+        <div className="rounded-lg border border-ink/10 bg-white/65 p-1.5">
           <LabeledSelect
             label="TRYB"
             value={store.formulation_strategy}
@@ -348,7 +353,7 @@ export function WorkbenchSettingsLine({
             onChange={(strategy) => store.setFormulationStrategy(strategy)}
             testid="workbench-strategy"
           />
-          <p className="ml-[7.3rem] mt-1 text-[9px] leading-relaxed text-stone-500">
+          <p className="ml-[7.3rem] mt-1 text-[10px] leading-relaxed text-stone-500">
             {store.formulation_strategy === 'eco'
               ? 'ECO działa w granicach twardej technologii i ochrony smaku.'
               : 'OPTIMAL dobiera technologię bez używania ceny jako celu.'}
@@ -363,7 +368,7 @@ export function WorkbenchSettingsLine({
             disabled={hardConflict}
             onClick={() => confirmSettings(signature, store.draftContextSeq)}
             data-testid="profile-settings-confirm"
-            className="h-8 flex-1 bg-ink px-3 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-35"
+            className="pro-focus-ring h-11 flex-1 rounded-lg bg-ink px-3 text-[11px] font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35 lg:h-9"
           >
             Potwierdź ustawienia
           </button>
@@ -381,7 +386,7 @@ export function WorkbenchSettingsLine({
             saveDefaults(ownerPreferenceKey(), snapshot);
             setDefaultsSaved(true);
           }}
-          className="h-8 border border-ink/15 bg-white px-2 text-[10px] text-stone-600 hover:border-ink/35"
+          className="pro-focus-ring h-11 rounded-lg border border-ink/15 bg-white px-2 text-[10px] text-stone-600 hover:border-ink/35 lg:h-9"
           data-testid="profile-settings-set-default"
         >
           {defaultsSaved ? '✓ Domyślne zapisane' : 'Ustaw jako domyślne'}

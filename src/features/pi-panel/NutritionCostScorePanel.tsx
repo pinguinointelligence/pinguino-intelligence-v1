@@ -1,10 +1,11 @@
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
-import { copy } from '@/copy/en';
+import { proWorkbenchCopy } from '@/copy/pro.pl';
 import type { RecipeResult } from '@/engine';
+import { cn } from '@/lib/cn';
 
-const m = copy.studio.metrics;
+const m = proWorkbenchCopy.nutrition;
 
 function Row({
   label,
@@ -33,11 +34,23 @@ function Row({
   );
 }
 
-export function NutritionCostScorePanel({ result }: { result: RecipeResult }) {
+export function NutritionCostScorePanel({
+  result,
+  embedded = false,
+}: {
+  result: RecipeResult;
+  embedded?: boolean;
+}) {
   const { nutrition_per_100g: nutrition, costs } = result;
 
   return (
-    <Card padding="lg">
+    <Card
+      padding="none"
+      className={cn(
+        'p-4',
+        embedded ? 'border-0 bg-transparent shadow-none' : 'pro-module',
+      )}
+    >
       <SectionLabel>{m.title}</SectionLabel>
 
       {/* Nutrition per 100 g */}

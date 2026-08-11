@@ -129,7 +129,8 @@ describe('Production workspace touch-first UI', () => {
       startNewSession: vi.fn(),
     } as unknown as ProductionWorkspaceView;
     const html = renderToStaticMarkup(<ProductionCockpit production={view} />);
-    expect(html).toContain('Przewidywany wynik końcowy');
+    expect(html).toContain('Przewidywane dopasowanie partii');
+    expect(html).toContain('Ocena dotyczy przewidywanego składu');
     expect(html).toContain('0 / 6 składników');
     expect(html).not.toContain('Nutrition');
     expect(html).not.toContain('POD');

@@ -38,12 +38,12 @@ function NutritionAndCost({ result }: { result: RecipeResult }) {
 
   return (
     <div
-      className="grid grid-cols-2 divide-x divide-ink/10 border-t border-ink/10"
+      className="mx-3 mb-3 grid grid-cols-2 divide-x divide-pro-line overflow-hidden rounded-xl border border-pro-line bg-white/80 shadow-pro-sm max-[430px]:grid-cols-1 max-[430px]:divide-x-0 max-[430px]:divide-y"
       data-testid="profile-nutrition-cost"
     >
       <section className="p-3">
         <p className="text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
-          Nutrition · na 100 g
+          Wartości odżywcze · na 100 g
         </p>
         {nutritionRows.length ? (
           <dl className="mt-2 space-y-1">
@@ -107,19 +107,20 @@ function ProfileScoreCard({
     <button
       type="button"
       onClick={onOpenEducation}
-      className="flex w-full items-center gap-3 border-b border-ink/10 px-3 py-2 text-left hover:bg-stone-50"
+      className="pro-focus-ring mx-3 mt-3 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl bg-pro-graphite px-4 py-3 text-left text-white shadow-pro-md transition-transform hover:-translate-y-px"
       data-testid="profile-score-card"
     >
-      <span className="grid size-12 shrink-0 place-items-center rounded-full border-2 border-status-ideal font-mono text-base font-semibold tabular-nums text-status-ideal">
+      <span className="grid size-12 shrink-0 place-items-center rounded-full border border-gold-soft/70 bg-white/[0.04] font-mono text-base font-semibold tabular-nums text-white">
         {score.display}
       </span>
       <span className="min-w-0 flex-1">
-        <strong className="block text-sm text-ink">{score.label}</strong>
-        <span className="bracket-note mt-0.5 block text-[11px] leading-snug text-stone-500">
+        <span className="mb-0.5 block text-[10px] font-semibold tracking-[0.12em] text-education-ivory/70 uppercase">Dopasowanie techniczne receptury</span>
+        <strong className="block text-sm text-white">{score.label}</strong>
+        <span className="mt-0.5 block text-[11px] leading-snug text-education-ivory/75">
           {assessment.headline}
         </span>
       </span>
-      <span className="text-xl text-stone-500" aria-hidden>
+      <span className="text-xl text-education-ivory/60" aria-hidden>
         ›
       </span>
     </button>
@@ -176,8 +177,8 @@ function ProductionPanel({ production }: { production?: ProductionWorkspaceView 
 function SummaryPanel({ result }: { result: RecipeResult }) {
   const version = useRecipeStore((state) => state.currentVersionNumber);
   return (
-    <div className="space-y-2 p-3" data-testid="pro-context-summary">
-      <section className="border border-ink/10 p-3">
+    <div className="pro-scroll-safe space-y-3 p-3" data-testid="pro-context-summary">
+      <section className="pro-module p-4">
         <h3 className="text-sm font-semibold text-ink">Skład receptury</h3>
         <p className="mt-2 text-[11px] leading-relaxed text-stone-600">
           {result.items.map((item) => item.ingredient.name).join(', ') || 'Brak składników'}
@@ -250,57 +251,87 @@ export function RecipeProfilePanel({
   const [educationOpen, setEducationOpen] = useState(false);
   const machineId = useRecipeStore((state) => state.machineId);
   return (
-    <div data-testid="pro-profile-panel" className="min-h-full bg-white text-ink">
+    <div data-testid="pro-profile-panel" className="min-h-full bg-pro-warm text-ink">
       <nav
         aria-label="Kokpit aktualnej receptury"
-        className="grid grid-cols-4 border-b border-ink/10"
+        role="tablist"
+        aria-orientation="horizontal"
+        onKeyDown={(event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const currentIndex = TABS.findIndex((tab) => tab.id === activeTab);
+          const nextIndex =
+            event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? TABS.length - 1
+                : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) %
+                  TABS.length;
+          const next = TABS[nextIndex]!;
+          setEducationOpen(false);
+          onTabChange(next.id);
+          const tabs = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+          tabs[nextIndex]?.focus();
+        }}
+        className="sticky top-0 z-20 grid grid-cols-4 border-b border-pro-line bg-pro-warm/95 px-2 pt-2 backdrop-blur"
         data-testid="pro-context-tabs"
       >
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
+            id={`pro-context-${tab.id}-tab-control`}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`pro-context-${tab.id}-tabpanel`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             data-testid={`pro-context-${tab.id}-tab`}
             onClick={() => {
               setEducationOpen(false);
               onTabChange(tab.id);
             }}
-            aria-current={activeTab === tab.id ? 'page' : undefined}
-            className={`border-b-2 px-1 py-2 text-[10px] font-semibold transition-colors ${activeTab === tab.id ? 'border-ink text-ink' : 'border-transparent text-stone-500 hover:text-ink'}`}
+            className={`pro-focus-ring min-h-11 min-w-0 rounded-t-lg border-b-2 px-1 py-2 text-[10px] font-semibold transition-colors ${activeTab === tab.id ? 'border-ink bg-white/75 text-ink' : 'border-transparent text-stone-500 hover:bg-white/45 hover:text-ink'}`}
           >
             {tab.label}
           </button>
         ))}
       </nav>
 
-      {activeTab === 'profile' && educationOpen ? (
-        <ContextualEducationView
-          input={input}
-          machineId={machineId}
-          audience="pro"
-          onBack={() => setEducationOpen(false)}
-        />
-      ) : null}
-      {activeTab === 'profile' && !educationOpen ? (
-        <ProfileContent
-          result={result}
-          input={input}
-          onOpenEducation={() => setEducationOpen(true)}
-        />
-      ) : null}
-      {activeTab === 'monitor' ? (
-        <div className="p-3" data-testid="pro-context-monitor">
-          <MonitorPanelContent
-            result={result}
-            servingTemperatureC={servingTemperatureC}
-            corrections={corrections}
+      <div
+        id={`pro-context-${activeTab}-tabpanel`}
+        role="tabpanel"
+        aria-labelledby={`pro-context-${activeTab}-tab-control`}
+        tabIndex={0}
+      >
+        {activeTab === 'profile' && educationOpen ? (
+          <ContextualEducationView
             input={input}
-            onOpenProfile={() => onTabChange('profile')}
+            machineId={machineId}
+            audience="pro"
+            onBack={() => setEducationOpen(false)}
           />
-        </div>
-      ) : null}
-      {activeTab === 'production' ? <ProductionPanel production={production} /> : null}
-      {activeTab === 'summary' ? <SummaryPanel result={result} /> : null}
+        ) : null}
+        {activeTab === 'profile' && !educationOpen ? (
+          <ProfileContent
+            result={result}
+            input={input}
+            onOpenEducation={() => setEducationOpen(true)}
+          />
+        ) : null}
+        {activeTab === 'monitor' ? (
+          <div className="pro-scroll-safe p-3" data-testid="pro-context-monitor">
+            <MonitorPanelContent
+              result={result}
+              servingTemperatureC={servingTemperatureC}
+              corrections={corrections}
+              input={input}
+              onOpenProfile={() => onTabChange('profile')}
+            />
+          </div>
+        ) : null}
+        {activeTab === 'production' ? <ProductionPanel production={production} /> : null}
+        {activeTab === 'summary' ? <SummaryPanel result={result} /> : null}
+      </div>
     </div>
   );
 }

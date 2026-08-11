@@ -25,12 +25,12 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
       <span className="flex items-center justify-end gap-1 font-mono text-[11px] tabular-nums text-ink">
         {cost.pricePerKg === null ? '—' : `${money(cost.pricePerKg)} ${cost.currency}/kg`}
         {own ? (
-          <span className="rounded-sm bg-stone-200 px-1 py-px font-sans text-[8px] font-semibold text-stone-700">
+          <span className="rounded-sm bg-stone-200 px-1 py-px font-sans text-[10px] font-semibold text-stone-700">
             Moja
           </span>
         ) : null}
       </span>
-      <span className="block truncate text-[8px] text-stone-500">
+      <span className="block truncate text-[10px] text-stone-600">
         {lineCost === null ? 'Koszt niepełny' : `${money(lineCost)} ${cost.currency}`}
       </span>
     </div>
@@ -87,7 +87,7 @@ export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
   return (
     <div className="mb-2 border border-ink/10 p-2" data-testid="customer-price-editor">
       <p className="text-[10px] font-semibold text-ink">Moja cena</p>
-      <label className="mt-1 grid grid-cols-[1fr_auto] items-center gap-2 text-[9px] text-stone-500">
+      <label className="mt-1 grid grid-cols-[1fr_auto] items-center gap-2 text-[10px] text-stone-600">
         <span>Cena za kg</span>
         <span className="flex items-center gap-1">
           <input
@@ -95,18 +95,18 @@ export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
             inputMode="decimal"
             aria-label="Moja cena za kg"
             onChange={(event) => setRaw(event.currentTarget.value)}
-            className="h-7 w-20 rounded-sm border border-ink/15 px-2 text-right font-mono text-[11px] text-ink focus:border-ink/40 focus:outline-none"
+            className="h-11 w-20 rounded-lg border border-ink/15 px-2 text-right font-mono text-[11px] text-ink focus:border-ink/40 focus:outline-none"
           />
           {view.cost.currency}
         </span>
       </label>
-      {error ? <p className="mt-1 text-[9px] text-status-error">{error}</p> : null}
+      {error ? <p className="mt-1 text-[10px] text-status-error">{error}</p> : null}
       <div className="mt-2 flex items-center justify-between gap-2">
         <button
           type="button"
           disabled={busy}
           onClick={() => void reset()}
-          className="text-[9px] text-stone-500 underline decoration-stone-300 underline-offset-2 disabled:opacity-40"
+          className="min-h-11 text-[10px] text-stone-600 underline decoration-stone-300 underline-offset-2 disabled:opacity-40"
         >
           Przywróć cenę bazową
         </button>
@@ -114,7 +114,7 @@ export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
           type="button"
           disabled={busy}
           onClick={() => void save()}
-          className="rounded-sm bg-ink px-2 py-1 text-[10px] font-semibold text-white disabled:opacity-40"
+          className="min-h-11 rounded-lg bg-ink px-3 py-2 text-[10px] font-semibold text-white disabled:opacity-40"
         >
           Zapisz
         </button>

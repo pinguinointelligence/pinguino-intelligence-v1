@@ -37,7 +37,7 @@ export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 
 const inputClass =
-  'h-8 w-full rounded-sm border border-ink/15 bg-white px-2 text-right font-mono text-xs tabular-nums text-ink transition-colors hover:border-ink/30 focus:border-ink/45 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500';
+  'h-11 w-full rounded-lg border border-ink/15 bg-white px-2 text-right font-mono text-xs tabular-nums text-ink shadow-pro-sm transition-colors hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500';
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -80,19 +80,6 @@ export interface IngredientRowLockView {
   onTogglePercent?: () => void;
 }
 
-function LockGlyph({ closed }: { closed: boolean }) {
-  return (
-    <svg aria-hidden width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <rect x="2" y="5.2" width="8" height="5.4" rx="1" fill="currentColor" />
-      <path
-        d={closed ? 'M3.8 5V3.6a2.2 2.2 0 1 1 4.4 0V5' : 'M3.8 5V3.6a2.2 2.2 0 0 1 4.3-.7'}
-        stroke="currentColor"
-        strokeWidth="1.3"
-      />
-    </svg>
-  );
-}
-
 function MainRoleGlyph() {
   return (
     <svg aria-hidden width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gold">
@@ -115,9 +102,29 @@ function AdditionRoleGlyph() {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1 block text-[9px] font-semibold tracking-[0.08em] text-stone-500 uppercase md:hidden">
+    <span className="mb-1 block text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase md:hidden">
       {children}
     </span>
+  );
+}
+
+function LockGlyph({ locked }: { locked: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      width="11"
+      height="11"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <rect x="3" y="7" width="10" height="7" rx="2" />
+      <path
+        d={locked ? 'M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2' : 'M10.75 7V5a2.75 2.75 0 0 0-5.5 0'}
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
@@ -139,7 +146,7 @@ function DialogShell({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="w-[min(520px,94vw)] rounded-sm border border-ink/15 bg-white p-5 text-ink shadow-[0_18px_60px_rgba(16,17,19,0.2)]"
+        className="w-[min(520px,94vw)] rounded-xl border border-ink/15 bg-white p-5 text-ink shadow-pro-md"
       >
         {children}
       </section>
@@ -207,7 +214,7 @@ export function SubstituteDialog({
                     type="button"
                     disabled={candidate.requiresMainConfirmation && !mainIdentityConfirmed}
                     onClick={() => onUse?.(candidate, mainIdentityConfirmed)}
-                    className="shrink-0 rounded-sm bg-ink px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-35"
+                    className="min-h-11 shrink-0 rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     {t.substituteDialog.use}
                   </button>
@@ -224,7 +231,7 @@ export function SubstituteDialog({
       <button
         type="button"
         onClick={onClose}
-        className="mt-5 rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold"
+        className="mt-5 min-h-11 rounded-lg border border-ink/20 px-4 py-2 text-xs font-semibold"
       >
         {t.substituteDialog.cancel}
       </button>
@@ -261,14 +268,14 @@ export function RequiredRemovalDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold"
+            className="min-h-11 rounded-lg border border-ink/20 px-4 py-2 text-xs font-semibold"
           >
             {t.requiredDialog.keep}
           </button>
           <button
             type="button"
             onClick={onConfirmDestructive}
-            className="rounded-sm border border-status-error/45 bg-status-error px-4 py-2 text-xs font-semibold text-white"
+            className="min-h-11 rounded-lg border border-status-error/45 bg-status-error px-4 py-2 text-xs font-semibold text-white"
           >
             {t.requiredDialog.confirm}
           </button>
@@ -290,7 +297,7 @@ export function RequiredRemovalDialog({
           <button
             type="button"
             onClick={onFindSubstitute}
-            className="mt-3 rounded-sm bg-ink px-4 py-2 text-xs font-semibold text-white"
+            className="mt-3 min-h-11 rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white"
           >
             {t.recipe.findSubstitute}
           </button>
@@ -307,7 +314,7 @@ export function RequiredRemovalDialog({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold"
+          className="min-h-11 rounded-lg border border-ink/20 px-4 py-2 text-xs font-semibold"
         >
           {route === 'offer-substitute' ? t.substituteDialog.cancel : t.requiredDialog.keep}
         </button>
@@ -315,7 +322,7 @@ export function RequiredRemovalDialog({
           <button
             type="button"
             onClick={onRequestDestructive}
-            className="rounded-sm border border-status-error/45 px-4 py-2 text-xs font-semibold text-status-error"
+            className="min-h-11 rounded-lg border border-status-error/45 px-4 py-2 text-xs font-semibold text-status-error"
           >
             {t.requiredDialog.removeInfeasible}
           </button>
@@ -353,7 +360,7 @@ function IngredientDataDialog({
       <button
         type="button"
         onClick={onClose}
-        className="mt-5 rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold"
+        className="mt-5 min-h-11 rounded-lg border border-ink/20 px-4 py-2 text-xs font-semibold"
       >
         {t.substituteDialog.cancel}
       </button>
@@ -441,7 +448,7 @@ function RecipeRow({
               <span
                 aria-label="Składnik wymagany"
                 title={t.recipe.requiredHint}
-                className="grid size-3.5 place-items-center rounded-full border border-ink/30 text-[9px] font-bold text-ink"
+                className="grid size-4 place-items-center rounded-full border border-ink/30 text-[10px] font-bold text-ink"
               >
                 !
               </span>
@@ -462,15 +469,34 @@ function RecipeRow({
             ) : null}
           </span>
           {meta.unavailable ? (
-            <span className="mt-1 flex items-center gap-2 text-[9px] font-semibold text-status-error">
+            <span className="mt-1 flex items-center gap-2 text-[10px] font-semibold text-status-error">
               {t.recipe.unavailableStatus}
               <button
                 type="button"
                 onClick={openSubstitute}
-                className="text-ink underline decoration-ink/25 underline-offset-2"
+                className="inline-flex min-h-11 items-center rounded-lg px-2 text-ink underline decoration-ink/25 underline-offset-2"
               >
                 {t.recipe.findSubstitute}
               </button>
+            </span>
+          ) : null}
+          {lock && lock.state !== 'ai' ? (
+            <span
+              className={cn(
+                'mt-1 inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] uppercase',
+                lock.state === 'percent'
+                  ? 'bg-education-ivory text-gold'
+                  : lock.state === 'range'
+                    ? 'bg-pro-amber text-attention'
+                    : 'bg-pro-sage text-ink',
+              )}
+              data-testid={`row-lock-state-${item.id}`}
+            >
+              {lock.state === 'percent'
+                ? `% partii · ${lock.lockedGramsLabel ?? ''}`
+                : lock.state === 'range'
+                  ? `Zakres · ${lock.lockedGramsLabel ?? ''}`
+                  : `Gramy · ${lock.lockedGramsLabel ?? ''}`}
             </span>
           ) : null}
         </div>
@@ -485,7 +511,7 @@ function RecipeRow({
               type="button"
               disabled={lock?.percentToggleDisabled ?? true}
               onClick={lock?.onTogglePercent}
-              aria-label={`${item.ingredient.name} — ${lock?.percentLocked ? 'odblokuj udział procentowy' : 'zablokuj udział procentowy'}`}
+              aria-label={`${item.ingredient.name} — ${lock?.percentLocked ? '% partii zablokowany. Odblokuj' : 'Zablokuj % partii'}`}
               aria-pressed={lock?.percentLocked ?? false}
               title={
                 lock?.percentLocked
@@ -494,13 +520,14 @@ function RecipeRow({
               }
               data-testid={`row-lock-percent-${item.id}`}
               className={cn(
-                'grid size-7 shrink-0 place-items-center rounded-sm border transition-colors',
+                'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-[10px] font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold',
                 lock?.percentLocked
-                  ? 'border-ink bg-ink text-white'
-                  : 'border-ink/15 bg-white text-stone-500 hover:border-ink/40',
+                  ? 'border-gold/60 bg-education-ivory text-ink'
+                  : 'border-ink/15 bg-white text-stone-500 hover:border-gold/50 hover:text-gold',
               )}
             >
-              <LockGlyph closed={lock?.percentLocked ?? false} />
+              <LockGlyph locked={lock?.percentLocked ?? false} />
+              <span aria-hidden>%</span>
             </button>
           </div>
         </div>
@@ -528,7 +555,7 @@ function RecipeRow({
               value={unit}
               onChange={(event) => setUnit(event.currentTarget.value as IngredientDisplayUnit)}
               data-testid={`row-unit-${item.id}`}
-              className="h-8 w-12 shrink-0 rounded-sm border border-ink/15 bg-white px-1 font-mono text-[10px] text-ink focus:border-ink/40 focus:outline-none"
+              className="h-11 w-12 shrink-0 rounded-lg border border-ink/15 bg-white px-1 font-mono text-[10px] text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
             >
               <option value="g">g</option>
               <option value="kg">kg</option>
@@ -536,7 +563,7 @@ function RecipeRow({
             <button
               type="button"
               aria-pressed={gramsLocked}
-              aria-label={`${gramsLocked ? 'Odblokuj' : 'Zablokuj'} gramaturę: ${item.ingredient.name}`}
+              aria-label={`${item.ingredient.name} — ${gramsLocked ? 'Gramatura zablokowana. Odblokuj' : 'Zablokuj gramy'}`}
               title={lock?.title ?? b.lockTypes.grams}
               disabled={lock?.toggleDisabled || isMain}
               data-testid={`row-lock-grams-${item.id}`}
@@ -544,14 +571,15 @@ function RecipeRow({
                 lock?.onToggle() ?? actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams')
               }
               className={cn(
-                'grid size-7 shrink-0 place-items-center rounded-sm border transition-colors',
+                'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-[10px] font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
                 gramsLocked
                   ? 'border-ink bg-ink text-white'
                   : 'border-ink/15 bg-white text-stone-500 hover:border-ink/40 hover:text-ink',
                 (lock?.toggleDisabled || isMain) && 'cursor-not-allowed opacity-35',
               )}
             >
-              <LockGlyph closed={gramsLocked} />
+              <LockGlyph locked={gramsLocked} />
+              <span aria-hidden>g</span>
               {gramsLocked ? <span className="sr-only">Zablokowana</span> : null}
             </button>
           </div>
@@ -562,12 +590,12 @@ function RecipeRow({
         <details className="relative justify-self-end">
           <summary
             aria-label={`Opcje składnika ${item.ingredient.name}`}
-            className="grid size-7 cursor-pointer list-none place-items-center rounded-sm border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink"
+            className="pro-focus-ring grid size-11 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink"
           >
             •••
           </summary>
           <div
-            className="absolute right-0 z-40 mt-1 max-h-[70vh] w-72 overflow-auto border border-ink/15 bg-white p-2 shadow-[0_8px_24px_rgba(16,17,19,0.08)]"
+            className="absolute right-0 z-40 mt-1 max-h-[70vh] w-72 overflow-auto rounded-xl border border-ink/15 bg-white p-2 shadow-pro-md"
             data-testid={`row-menu-${item.id}`}
           >
             <MenuHeading>{t.role.heading}</MenuHeading>
@@ -584,7 +612,7 @@ function RecipeRow({
             <MenuButton selected={role === 'addition'} onClick={() => setRole('addition')}>
               <span className="flex items-center justify-between gap-2">
                 <span>{t.role.addition}</span>
-                <span className="text-[8px] font-semibold text-nonprod">
+                <span className="text-[10px] font-semibold text-nonprod">
                   {t.role.additionReadiness}
                 </span>
               </span>
@@ -604,7 +632,7 @@ function RecipeRow({
             <button
               type="button"
               onClick={openSubstitute}
-              className="w-full px-2 py-1.5 text-left text-[11px] text-ink hover:bg-stone-50"
+              className="min-h-11 w-full px-2 py-2 text-left text-[11px] text-ink hover:bg-stone-50"
             >
               {t.recipe.findSubstitute}
             </button>
@@ -619,7 +647,7 @@ function RecipeRow({
             <button
               type="button"
               onClick={requestRemove}
-              className="w-full px-2 py-1.5 text-left text-[11px] text-status-error hover:bg-status-error/[0.05]"
+              className="min-h-11 w-full px-2 py-2 text-left text-[11px] text-status-error hover:bg-status-error/[0.05]"
             >
               {t.remove.action}
             </button>
@@ -661,7 +689,7 @@ function RecipeRow({
 }
 function MenuHeading({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-2 pb-1 pt-1 text-[9px] font-semibold tracking-[0.08em] text-stone-400 uppercase">
+    <p className="px-2 pb-1 pt-1 text-[10px] font-semibold tracking-[0.08em] text-stone-600 uppercase">
       {children}
     </p>
   );
@@ -689,7 +717,7 @@ function MenuButton({
       disabled={disabled}
       aria-pressed={selected}
       className={cn(
-        'w-full px-2 py-1.5 text-left text-[11px] text-ink hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-35',
+        'min-h-11 w-full px-2 py-2 text-left text-[11px] text-ink hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-35',
         selected && 'bg-stone-100 font-semibold',
       )}
     >
@@ -724,7 +752,7 @@ function ProductionRow({
       <div className="min-w-0">
         <span className="truncate text-[13px] font-semibold text-ink">{item.ingredient.name}</span>
         {line.physicalAddedGrams > 0 && !line.confirmed ? (
-          <span className="mt-0.5 block text-[9px] text-stone-500">
+          <span className="mt-0.5 block text-[10px] text-stone-500">
             W naczyniu: {line.physicalAddedGrams.toFixed(1)} g
           </span>
         ) : null}
@@ -763,7 +791,7 @@ function ProductionRow({
               }}
               className="h-11 w-full border border-ink/15 bg-white px-2 pr-5 text-right font-mono text-sm font-semibold tabular-nums text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ink disabled:bg-stone-100"
             />
-            <span className="pointer-events-none absolute right-1.5 top-3 text-[9px] text-stone-500">
+            <span className="pointer-events-none absolute right-1.5 top-3 text-[10px] text-stone-500">
               g
             </span>
           </label>
@@ -803,7 +831,7 @@ function ProductionRow({
         </div>
         {correctionMode ? (
           <p
-            className="mt-1 text-[9px] leading-snug text-attention"
+            className="mt-1 text-[10px] leading-snug text-attention"
             data-testid={`production-record-correction-${line.lineId}`}
           >
             Poprawiasz zapis faktycznej ilości — tylko jeśli poprzednia wartość była wpisana

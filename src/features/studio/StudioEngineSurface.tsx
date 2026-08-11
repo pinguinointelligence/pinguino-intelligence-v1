@@ -218,7 +218,7 @@ export function StudioEngineSurface({
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
         <div className="min-h-0 flex-1 lg:flex lg:flex-row">
           <div
-            className="min-h-0 lg:flex lg:w-[62%] lg:flex-col lg:border-r lg:border-ivory/10"
+            className="min-h-0 lg:flex lg:w-[62%] lg:flex-col lg:border-r lg:border-pro-line"
             data-testid="workbench-editor-pane"
           >
             {fullFormula ? (
@@ -244,7 +244,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
-            className="hidden min-h-0 border-t border-ink/10 lg:block lg:w-[38%] lg:overflow-y-auto lg:border-t-0"
+            className="hidden min-h-0 border-t border-pro-line lg:block lg:w-[38%] lg:overflow-y-auto lg:border-t-0"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
           >
@@ -264,7 +264,7 @@ export function StudioEngineSurface({
             <div className="flex min-h-12 items-center justify-between gap-3 bg-white px-3 py-2 text-ink" data-testid="production-bottom-bar">
               <div className="min-w-0">
                 <strong className="block truncate text-xs">{production.session.source.recipeName}</strong>
-                <span className="font-mono text-[9px] tabular-nums text-stone-500">
+                <span className="font-mono text-[10px] tabular-nums text-stone-500">
                   {production.progress?.confirmedCount ?? 0}/{production.progress?.totalCount ?? 0} · {production.progress?.confirmedMassG.toFixed(1) ?? '0.0'} g w naczyniu
                 </span>
               </div>
@@ -272,7 +272,7 @@ export function StudioEngineSurface({
                 type="button"
                 disabled={!production.progress?.coherent}
                 onClick={production.complete}
-                className="h-9 shrink-0 bg-ink px-4 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
+                className="h-11 shrink-0 bg-ink px-4 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
               >
                 Zakończ produkcję
               </button>
@@ -294,7 +294,7 @@ export function StudioEngineSurface({
           aria-expanded={mobileCockpitOpen}
           aria-controls="mobile-cockpit-dialog"
           onClick={() => setMobileCockpitOpen(true)}
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-30 flex items-center gap-2 rounded-full border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink shadow-[0_8px_24px_rgba(16,17,19,0.12)] lg:hidden"
+          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-30 flex min-h-11 items-center gap-2 rounded-full border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink shadow-pro-md lg:hidden"
           data-testid="mobile-cockpit-trigger"
         >
           <span className="font-mono tabular-nums">{scoreDisplay}</span>
@@ -315,7 +315,7 @@ export function StudioEngineSurface({
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-cockpit-title"
-              className="absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-lg border-t border-ink/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_36px_rgba(16,17,19,0.14)]"
+              className="absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-xl border-t border-ink/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-pro-md"
             >
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-white px-3 py-2">
                 <h2 id="mobile-cockpit-title" className="text-xs font-semibold text-ink">
@@ -325,7 +325,7 @@ export function StudioEngineSurface({
                   type="button"
                   aria-label="Zamknij kokpit"
                   onClick={() => setMobileCockpitOpen(false)}
-                  className="grid size-9 place-items-center rounded-full border border-ink/10 text-lg text-ink"
+                  className="grid size-11 place-items-center rounded-full border border-ink/10 text-lg text-ink"
                 >
                   ×
                 </button>
@@ -421,7 +421,7 @@ export function StudioReviewZone() {
                 previewOptimization({ recipe: input, intent: studioIntentFromRecipe(input) }),
               )
             }
-            className="inline-flex w-full items-center justify-center rounded-md border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
           >
             {studio.optimization.run}
           </button>

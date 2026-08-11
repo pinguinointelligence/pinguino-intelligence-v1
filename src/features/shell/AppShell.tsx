@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { copy } from '@/copy/en';
+import { DesignReviewOverlay } from '@/features/design-review/ReviewOverlay';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
@@ -91,6 +92,9 @@ export function AppShell({
           )}
         >
           {actions}
+          {/* Owner/QA only. Kept in normal header flow so review tooling can
+              never cover an ingredient control or another primary action. */}
+          <DesignReviewOverlay />
           <AppNavDrawer />
         </div>
       </header>

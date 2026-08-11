@@ -81,13 +81,13 @@ export function ServerIngredientPicker({
           type="search"
           aria-label={b.searchLabel}
           placeholder={b.searchPlaceholder}
-          className="h-9 min-w-0 rounded-sm border border-ink/15 bg-white px-3 text-xs text-ink focus:border-ink/40 focus:outline-none"
+          className="h-11 min-w-0 rounded-lg border border-ink/15 bg-white px-3 text-xs text-ink focus:border-ink/40 focus:outline-none lg:h-9"
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}
         />
         <select
           aria-label={b.addLabel}
-          className="h-9 min-w-0 rounded-sm border border-ink/15 bg-white px-2 text-xs text-ink focus:border-ink/40 focus:outline-none"
+          className="h-11 min-w-0 rounded-lg border border-ink/15 bg-white px-2 text-xs text-ink focus:border-ink/40 focus:outline-none lg:h-9"
           value={effectiveId}
           onChange={(event) => setPicked({ norm: search.settledNorm, id: event.currentTarget.value })}
         >
@@ -97,14 +97,14 @@ export function ServerIngredientPicker({
         <button
           type="button"
           disabled={!canAdd}
-          className="h-9 rounded-sm bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-11 rounded-lg bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 lg:h-9"
           onClick={() => void add()}
           data-testid="picker-add"
         >
           ＋ {b.addLabel}
         </button>
         <span className="sr-only" aria-live="polite">{count} {b.resultFoundSuffix}</span>
-        {search.isError ? <span className="col-span-3 text-[9px] text-attention">{b.searchError}</span> : null}
+        {search.isError ? <span className="col-span-3 text-[10px] text-attention">{b.searchError}</span> : null}
       </div>
     );
   }
@@ -188,7 +188,7 @@ export function ServerIngredientPicker({
             <button
               type="button"
               disabled={!canAdd}
-              className="inline-flex items-center justify-center rounded-md border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => void add()}
               data-testid="picker-add"
             >
@@ -202,7 +202,7 @@ export function ServerIngredientPicker({
           {search.hasMore ? (
             <button
               type="button"
-              className="self-start rounded-md border border-ivory/15 px-3 py-1.5 text-xs text-ivory/70 transition-colors hover:border-ivory/40"
+              className="min-h-11 self-start rounded-lg border border-ivory/15 px-3 py-2 text-xs text-ivory/70 transition-colors hover:border-ivory/40"
               onClick={search.loadMore}
               data-testid="picker-load-more"
             >

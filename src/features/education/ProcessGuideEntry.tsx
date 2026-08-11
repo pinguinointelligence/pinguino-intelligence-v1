@@ -32,7 +32,7 @@ export function ProcessGuideEntry({
       <span className="shrink-0 text-right">
         {unknown ? (
           <span
-            className="mb-0.5 block text-[8px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+            className="mb-0.5 block text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
             data-readiness={copy.process.dataMissing}
           >
             {copy.process.dataMissing}

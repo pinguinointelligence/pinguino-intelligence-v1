@@ -32,7 +32,7 @@ export function ReadinessBadge({
       aria-label={`${state}. ${description}`}
       data-readiness={state}
       className={cn(
-        'inline-flex cursor-help items-center gap-1 rounded-sm border border-nonprod/35 bg-nonprod/[0.055] px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.08em] text-nonprod uppercase',
+        'inline-flex cursor-help items-center gap-1 rounded-sm border border-nonprod/35 bg-nonprod/[0.055] px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase',
         className,
       )}
     >

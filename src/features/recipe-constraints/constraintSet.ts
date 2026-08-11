@@ -168,10 +168,9 @@ export function applyConstraintsToRecipe(
     }
 
     if (constraint.mode === 'locked') {
-      if (item.lock_type === 'main') {
-        // Keep 'main' so the flavor score (engine reads lock_type === 'main')
-        // is not silently changed by locking; the line is still never moved
-        // within this layer (allow_main_ingredient_reduction is never set).
+      if (ENGINE_PROTECTED_LOCKS.has(item.lock_type)) {
+        // Keep the stronger Engine role. A user constraint controls mass but
+        // must never weaken Main/Required/already-added identity semantics.
         applied.push({ lineId: item.id, note: 'locked_main_kept' });
         return { ...item, planned_grams: constraint.grams };
       }
@@ -181,7 +180,7 @@ export function applyConstraintsToRecipe(
 
     if (constraint.mode === 'percent') {
       const grams = (input.target_batch_grams * constraint.percent) / 100;
-      if (item.lock_type === 'main') {
+      if (ENGINE_PROTECTED_LOCKS.has(item.lock_type)) {
         applied.push({ lineId: item.id, note: 'percent_main_kept' });
         return { ...item, planned_grams: grams };
       }
@@ -192,7 +191,7 @@ export function applyConstraintsToRecipe(
     // range: hold at current grams for the solver (the engine has no bounded
     // moves — audit evidence in the module header); the feasibility layer
     // explores [minGrams, maxGrams] with real engine evaluations.
-    if (item.lock_type === 'main') {
+    if (ENGINE_PROTECTED_LOCKS.has(item.lock_type)) {
       applied.push({ lineId: item.id, note: 'range_main_kept' });
       return item;
     }

@@ -143,7 +143,7 @@ describe('IngredientRow padlock', () => {
         }}
       />,
     );
-    expect(html).toContain('Odblokuj gramaturę: Sucrose');
+    expect(html).toContain('Sucrose — Gramatura zablokowana. Odblokuj');
     expect(html).toContain('Zablokowana');
     expect(html).toContain('disabled');
     expect(html).toContain('aria-pressed="true"');
@@ -167,7 +167,7 @@ describe('IngredientRow padlock', () => {
         }}
       />,
     );
-    expect(html).toContain('Zablokuj gramaturę: Sucrose');
+    expect(html).toContain('Sucrose — Zablokuj gramy');
     expect(html).toContain('aria-pressed="false"');
     expect(html).not.toContain('Zablokowana');
   });
