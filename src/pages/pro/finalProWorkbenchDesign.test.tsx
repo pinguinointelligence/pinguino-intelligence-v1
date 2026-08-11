@@ -141,24 +141,25 @@ describe('recipe and production table modes', () => {
 
   it('keeps percentage and gram locks interactive and mutually visible', () => {
     const html = renderIngredients('recipe');
+    const row = read('features', 'ingredient-builder', 'IngredientRow.tsx');
+    const price = read('features', 'ingredient-builder', 'IngredientPriceControl.tsx');
     expect(html).toMatch(/data-testid="row-lock-percent-[^"]+"/);
     expect(html).not.toMatch(/<button[^>]*disabled[^>]*data-testid="row-lock-percent-[^"]+"/);
     expect(html).toMatch(/data-testid="row-lock-grams-[^"]+"/);
-    expect(html).toContain('Moja cena');
-    expect(html).toContain('Moja cena za kg');
-    expect(html).toContain('Znajdź zamiennik');
-    expect(html).not.toContain('Znajdź zamiennik · W PRZYGOTOWANIU');
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(row).toContain('t.recipe.findSubstitute');
+    expect(row).not.toContain('W PRZYGOTOWANIU');
+    expect(price).toContain('Moja cena');
+    expect(price).toContain('Moja cena za kg');
   });
 });
 
 describe('profile semantics and readiness', () => {
-  it('provides four target axes and two information-only technological axes', () => {
+  it('provides two calibrated target axes, two honest blockers and two editorial readings', () => {
     const panel = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
-    const scale = read('features', 'pro-workbench', 'RecipeAxisScale.tsx');
-    for (const id of ['sweetness', 'softness', 'creaminess', 'flavor']) {
+    for (const id of ['sweetness', 'softness']) {
       expect(panel).toContain(`id: '${id}'`);
     }
-    for (const id of ['structure', 'stability']) expect(panel).toContain(`id: '${id}'`);
     for (const label of [
       'Słodycz',
       'Miękkość',
@@ -168,9 +169,11 @@ describe('profile semantics and readiness', () => {
       'Stabilność',
     ])
       expect(panel).toContain(label);
-    expect(scale).toContain('axis-minus-');
-    expect(scale).toContain('axis-plus-');
-    expect(`${panel}\n${scale}`.toLowerCase()).not.toContain('read only');
+    expect(panel).toContain('([-2, -1, 0, 1, 2] as const)');
+    expect(panel).toContain('<UnavailableDirection title="Kremowość"');
+    expect(panel).toContain('<UnavailableDirection title="Intensywność smaku"');
+    expect(panel).toContain("'Zbalansowana'");
+    expect(panel).toContain("'Bardzo stabilna'");
   });
 
   it('marks Sorbet, Vegan, Protein and quality behavior honestly', () => {
@@ -199,14 +202,17 @@ describe('profile semantics and readiness', () => {
 });
 
 describe('Monitor, overlay, responsiveness and truthfulness', () => {
-  it('protects internal bands while using one graphite-current and gold-target marker language', () => {
+  it('protects internal bands while using one current marker, a gold optimum and staged Preview', () => {
     const monitor = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
     const model = read('features', 'pro-workbench', 'professionalMonitorModel.ts');
     const diagnostic = read('features', 'studio', 'OwnerDiagnosticPanel.tsx');
-    expect(monitor).toContain('bg-pro-graphite');
-    expect(monitor).toContain('bg-gold');
-    expect(monitor).toContain('Teraz');
-    expect(monitor).toContain('Złoty środek');
+    expect(monitor).toContain('monitor-actual-');
+    expect(monitor).toContain('monitor-preview-');
+    expect(monitor).toContain('grid-cols-[18fr_18fr_28fr_18fr_18fr]');
+    expect(monitor).toContain('bg-[#8f5e4d]/72');
+    expect(monitor).toContain('bg-[#b98555]/68');
+    expect(monitor).toContain('bg-[#d7b768]');
+    expect(monitor).toContain('złoty środek optimum');
     expect(monitor).not.toContain('rotate-45');
     expect(monitor).not.toContain('band.bandMin.toFixed');
     expect(monitor).not.toContain('band.bandMax.toFixed');
@@ -216,28 +222,35 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(diagnostic).not.toContain('a.window.mapperId');
   });
 
-  it('uses distinct Direction semantics and keeps the Pro summary fully Polish', () => {
-    const scale = read('features', 'pro-workbench', 'RecipeAxisScale.tsx');
+  it('uses explicit five-detent Direction semantics and keeps the Pro summary fully Polish', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     const summary = read('features', 'pi-panel', 'NutritionCostScorePanel.tsx');
     const proCopy = read('copy', 'pro.pl.ts');
-    expect(scale).toContain('axis-preview-');
-    expect(scale).toContain('bg-pro-graphite');
-    expect(scale).not.toContain('rotate-45');
-    for (const label of ['Teraz', 'Cel', 'Preview']) expect(axes).toContain(label);
+    for (const label of [
+      'Mniej słodkie',
+      'Bardziej słodkie',
+      'Twardsze',
+      'Bardziej miękkie',
+      'Wybrano:',
+      'Po zmianie:',
+    ])
+      expect(axes).toContain(label);
+    expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {
       expect(proCopy).toContain(label);
     }
-    expect(summary).toContain("copy/pro.pl");
+    expect(summary).toContain('copy/pro.pl');
   });
 
   it('names score concepts and provides shared keyboard/reduced-motion treatment', () => {
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const theme = read('styles', 'theme-pro-light.css');
-    expect(profile).toContain('Dopasowanie techniczne receptury');
-    expect(page).toContain('Dopasowanie techniczne receptury');
+    expect(profile).toContain('WorkbenchIntelligenceHeader');
+    expect(header).toContain('Dopasowanie techniczne receptury');
+    expect(page).not.toContain('production.score');
     expect(production).toContain('Przewidywane dopasowanie partii');
     expect(theme).toContain(':focus-visible');
     expect(theme).toContain('prefers-reduced-motion: reduce');
@@ -269,7 +282,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(shell).toContain('max-sm:flex-nowrap');
     expect(surface).toContain('mobile-cockpit-trigger');
     expect(surface).toContain('mobile-cockpit-sheet');
-    expect(surface).toContain('max-h-[82dvh]');
+    expect(surface).toContain('max-h-[88dvh]');
     expect(surface).not.toContain('overflow-x-auto');
   });
 

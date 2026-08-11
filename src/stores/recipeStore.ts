@@ -48,6 +48,10 @@ import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
+import {
+  readPracticalRecipeAudit,
+  type PracticalRecipeSavedAudit,
+} from '@/features/practical-recipe/practicalRecipe';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
@@ -144,6 +148,9 @@ export interface RecipeState {
   machineLabel: string | null;
   /** Unsaved-changes flag: true after any edit, false after a load or a successful save. */
   dirty: boolean;
+  /** Verified whole-gram provenance restored from a saved recipe/version. It
+   * never grants Apply consent; every consumer matches its material fingerprint. */
+  practicalRecipeAudit: PracticalRecipeSavedAudit | null;
   /**
    * Owner P0 NIGHTLY (live FAILURE 1, Phase 3) — MONOTONIC DRAFT REVISION.
    * Incremented on EVERY material edit (gram, add/remove, lock change, §17
@@ -162,7 +169,9 @@ export interface RecipeState {
    * session (constraints + preview + staged state + history) when it changes:
    * a loaded recipe starts a FRESH §17 context — constraints from an earlier
    * session draft must never silently constrain the reloaded draft.
-   * NOT persisted.
+   * Persisted only as a context identity so the separately persisted five-detent
+   * Profile intent cannot be rebound to a different draft after an ambient refresh.
+   * It still changes only on an explicit whole-draft transition.
    */
   draftContextSeq: number;
   /** Increment `draftRevision` for a material edit that lives OUTSIDE this
@@ -191,6 +200,7 @@ export interface RecipeState {
   setCostPriority: (value: CostPriority) => void;
   setTargetProteinPercent: (value: number) => void;
   moveDirectionTarget: (axis: keyof RecipeDirectionTargets, delta: -1 | 1) => void;
+  setDirectionTarget: (axis: keyof RecipeDirectionTargets, target: -1 | 0 | 1) => void;
 
   /**
    * Owner P0 (Apply data integrity) — the ONLY sanctioned write for a verified
@@ -234,6 +244,8 @@ export interface RecipeState {
   /** Owner P0 repair: fold plannable duplicate-ingredient lines into one (explicit action). */
   mergeDuplicateIngredientLines: () => void;
   setPlannedGrams: (lineId: string, grams: number) => void;
+  /** One atomic direct-manipulation write for a coherent full recipe vector. */
+  setPlannedGramsVector: (gramsByLineId: Readonly<Record<string, number>>) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
   /** Persist/remove the product-layer percent sidecar while retaining a
@@ -260,7 +272,13 @@ export interface RecipeState {
     },
   ) => void;
   /** Link the draft to its persisted aggregate after a create/version/restore. Clears dirty. */
-  markSaved: (id: string, name: string, versionNumber: number, versionDate?: string | null) => void;
+  markSaved: (
+    id: string,
+    name: string,
+    versionNumber: number,
+    versionDate?: string | null,
+    practicalRecipeAudit?: PracticalRecipeSavedAudit | null,
+  ) => void;
   /** Select a Pro machine/serving mode (S4): sets the routing temperature + context + optional batch. */
   setMachineSelection: (sel: {
     kind: 'professional' | 'home';
@@ -290,11 +308,7 @@ const makeLine = (
   lock_type,
 });
 
-const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set([
-  'main',
-  'already_added',
-  'required',
-]);
+const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
 /** Apply every durable percentage share to a new positive batch. Legacy
  * `lock_type: percent` rows without the sidecar still scale by their current
@@ -310,8 +324,7 @@ const resizePercentLockedItems = (
   const ratio = previousBatchKnown ? nextBatchGrams / previousBatchGrams : 1;
   return items.map((item) => {
     if (item.actual_grams !== null) return item;
-    const canonicalPercent =
-      percentByLineId?.[item.id] ?? item.percent_constraint?.percent;
+    const canonicalPercent = percentByLineId?.[item.id] ?? item.percent_constraint?.percent;
     if (
       canonicalPercent !== undefined &&
       Number.isFinite(canonicalPercent) &&
@@ -366,6 +379,7 @@ const fromPreset = (preset: DemoPreset) => ({
   machineId: null,
   machineLabel: null,
   dirty: false,
+  practicalRecipeAudit: null,
 });
 
 const profileOwnerKey = (): string => useAuthStore.getState().user?.id ?? 'local-device';
@@ -438,6 +452,8 @@ export function recipePersistPartialize(state: RecipeState) {
     machineId: state.machineId,
     machineLabel: state.machineLabel,
     dirty: state.dirty,
+    practicalRecipeAudit: state.practicalRecipeAudit,
+    draftContextSeq: state.draftContextSeq,
   };
 }
 
@@ -632,6 +648,7 @@ export const useRecipeStore = create<RecipeState>()(
           }));
           return { ok: false, code: 'write_verification_failed' };
         }
+        useRecipeProfileStore.getState().acknowledgeRecalculation();
         return { ok: true };
       },
 
@@ -813,6 +830,41 @@ export const useRecipeStore = create<RecipeState>()(
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
+      setDirectionTarget: (axis, target) =>
+        set((state) => {
+          if (state.direction_targets[axis] === target) return {};
+          return {
+            direction_targets: { ...state.direction_targets, [axis]: target },
+            direction_targets_active:
+              target !== 0 ||
+              Object.entries(state.direction_targets).some(
+                ([key, value]) => key !== axis && value !== 0,
+              ),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
+
+      setPlannedGramsVector: (gramsByLineId) =>
+        set((state) => {
+          const touched = state.items.some(
+            (item) =>
+              gramsByLineId[item.id] !== undefined &&
+              Number.isFinite(gramsByLineId[item.id]) &&
+              !Object.is(item.planned_grams, gramsByLineId[item.id]),
+          );
+          if (!touched) return {};
+          return {
+            items: state.items.map((item) => {
+              const grams = gramsByLineId[item.id];
+              return grams !== undefined && Number.isFinite(grams)
+                ? { ...item, planned_grams: Math.max(0, grams) }
+                : item;
+            }),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
 
       setActualGrams: (lineId, grams) =>
         set((state) => ({
@@ -830,11 +882,11 @@ export const useRecipeStore = create<RecipeState>()(
           items: state.items.map((item) =>
             item.id === lineId
               ? (() => {
-                   const withoutRange = { ...item };
-                   delete withoutRange.range_constraint;
-                   delete withoutRange.percent_constraint;
-                   delete withoutRange.grams_constraint;
-                   return { ...withoutRange, lock_type: lockType };
+                  const withoutRange = { ...item };
+                  delete withoutRange.range_constraint;
+                  delete withoutRange.percent_constraint;
+                  delete withoutRange.grams_constraint;
+                  return { ...withoutRange, lock_type: lockType };
                 })()
               : item,
           ),
@@ -843,11 +895,7 @@ export const useRecipeStore = create<RecipeState>()(
         })),
 
       setPercentLock: (lineId, percent) => {
-        if (
-          percent !== null &&
-          (!Number.isFinite(percent) || percent < 0 || percent > 100)
-        )
-          return;
+        if (percent !== null && (!Number.isFinite(percent) || percent < 0 || percent > 100)) return;
         set((state) => ({
           items: state.items.map((item) => {
             if (item.id !== lineId) return item;
@@ -970,6 +1018,7 @@ export const useRecipeStore = create<RecipeState>()(
       loadRecipeInput: (input, link = {}) => {
         useIngredientTableUxStore.getState().reset();
         const metadata = readRecipeProfileMetadata(input);
+        const practicalRecipeAudit = readPracticalRecipeAudit(input);
         const savedRecipe = link.savedId != null || link.savedName != null;
         const defaults = savedRecipe
           ? null
@@ -1030,19 +1079,22 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionNumber: link.versionNumber ?? null,
           currentVersionDate: link.versionDate ?? null,
           dirty: false,
+          practicalRecipeAudit,
         }));
         const opened = useRecipeStore.getState();
+        useIngredientTableUxStore.getState().hydrateRecipeMeta(profile?.ingredientUxByLineId ?? {});
         useRecipeProfileStore
           .getState()
-          .openDraft(opened.draftContextSeq, opened.direction_targets);
+          .openDraft(opened.draftContextSeq, opened.direction_targets, profile?.directionIntents);
       },
-      markSaved: (id, name, versionNumber, versionDate = null) =>
+      markSaved: (id, name, versionNumber, versionDate = null, practicalRecipeAudit) =>
         set({
           savedRecipeId: id,
           savedRecipeName: name,
           currentVersionNumber: versionNumber,
           currentVersionDate: versionDate,
           dirty: false,
+          ...(practicalRecipeAudit === undefined ? {} : { practicalRecipeAudit }),
         }),
       // OWNER CURRENT-DRAFT P0 (Phase 8) — ONE SHARED MACHINE CONTEXT. The
       // machine selection is now AUTHORITATIVE over the capacity: a
@@ -1065,11 +1117,7 @@ export const useRecipeStore = create<RecipeState>()(
             target_batch_grams: targetBatchGrams,
             items:
               sel.batchGrams != null
-                ? resizePercentLockedItems(
-                    state.items,
-                    state.target_batch_grams,
-                    targetBatchGrams,
-                  )
+                ? resizePercentLockedItems(state.items, state.target_batch_grams, targetBatchGrams)
                 : state.items,
             machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
             machine_capacity_source:
@@ -1094,6 +1142,7 @@ export const useRecipeStore = create<RecipeState>()(
           .openDraft(
             opened.draftContextSeq,
             defaults?.directionTargets ?? DEFAULT_DIRECTION_TARGETS,
+            defaults?.directionIntents,
           );
       },
     }),

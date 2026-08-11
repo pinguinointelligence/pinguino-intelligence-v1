@@ -12,7 +12,7 @@ export function ReviewDecisionLabel({ label = 'DO PRZEGLĄDU' }: { label?: strin
   const enabled = useReviewMode();
   if (!enabled) return null;
   return (
-    <span className="ml-1 inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-[0.08em] text-review uppercase">
+    <span className="ml-1 inline-flex shrink-0 items-center gap-1 text-xs font-semibold tracking-[0.06em] text-review uppercase">
       <svg
         width="9"
         height="9"
@@ -38,7 +38,7 @@ export function ReviewBadge({ itemId }: { itemId: string }) {
     <span
       data-testid={`review-badge-${item.id}`}
       title={`${item.id}: ${item.reason}`}
-      className="inline-flex items-center gap-1 rounded border border-review/40 bg-review/10 px-1.5 py-0.5 align-middle text-[0.6rem] font-medium tracking-[0.08em] text-review uppercase"
+      className="inline-flex items-center gap-1 rounded border border-review/40 bg-review/10 px-1.5 py-0.5 align-middle text-xs font-medium tracking-[0.06em] text-review uppercase"
     >
       {/* flag glyph — meaning is carried by icon + text, never color alone */}
       <svg

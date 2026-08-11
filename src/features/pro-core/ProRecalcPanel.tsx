@@ -122,7 +122,7 @@ function BestSafeResultView({
         {issue.evidence.testedCandidates.map((candidate) => (
           <p
             key={candidate.ingredientName}
-            className="text-[0.7rem] leading-relaxed text-ivory/55"
+            className="text-xs leading-relaxed text-ivory/70"
             data-testid="pro-recalc-tested-candidate"
           >
             {b.evidenceCandidate(
@@ -217,7 +217,7 @@ function RecalcDiagnosisView({
 
       {lockedRows.length > 0 ? (
         <div className="rounded-md border border-ivory/15 px-3 py-3">
-          <p className="text-[0.65rem] font-medium tracking-label text-ivory/65 uppercase">
+          <p className="text-xs font-medium tracking-label text-ivory/75 uppercase">
             {d.lockTable.heading}
           </p>
           <div className="mt-2 divide-y divide-ivory/10">
@@ -269,7 +269,10 @@ function DirectionBestDecision({
   };
   const missed = assessment?.residuals.filter((residual) => !residual.reached) ?? [];
   return (
-    <div className="space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4" data-testid="direction-best-decision">
+    <div
+      className="space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4"
+      data-testid="direction-best-decision"
+    >
       <div>
         <p className="text-sm font-medium text-ivory">
           Nie mogę osiągnąć dokładnie wybranego celu.
@@ -287,7 +290,9 @@ function DirectionBestDecision({
           ))}
         </div>
       ) : null}
-      <p className="text-xs text-ivory/65">Wszystkie natywne wymagania technologiczne pozostają ważne.</p>
+      <p className="text-xs text-ivory/65">
+        Wszystkie natywne wymagania technologiczne pozostają ważne.
+      </p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -324,9 +329,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     body.style.overflow = 'hidden';
     const focusables = () =>
-      panelRef.current
-        ? Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
-        : [];
+      panelRef.current ? Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)) : [];
     (focusables()[0] ?? panelRef.current)?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {

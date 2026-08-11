@@ -2,7 +2,11 @@ import type { RecipeInput } from '@/engine';
 import { copy } from '@/copy/en';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import type { RecipeState } from '@/stores/recipeStore';
-import type { DirectionTargets, ProfileSettingsSnapshot } from './recipeProfileStore';
+import type {
+  DirectionIntents,
+  DirectionTargets,
+  ProfileSettingsSnapshot,
+} from './recipeProfileStore';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
 
 const PROFILE_METADATA_KEY = 'pinguino_profile_v1' as const;
@@ -23,6 +27,7 @@ const PROFESSIONAL_SERVING_IDS = [
 export function profileSnapshotFromState(
   state: RecipeState,
   directionTargets: DirectionTargets,
+  directionIntents?: DirectionIntents,
 ): ProfileSettingsSnapshot {
   const servingModeId =
     state.servingModeId ??
@@ -42,6 +47,7 @@ export function profileSnapshotFromState(
     targetTemperatureC: state.target_temperature_c,
     machineCapacityGrams: state.machine_capacity_grams,
     directionTargets,
+    ...(directionIntents ? { directionIntents: { ...directionIntents } } : {}),
   };
 }
 
@@ -64,12 +70,19 @@ const normalizedLegacyTargets = (value: unknown): DirectionTargets | null => {
 export function attachRecipeProfileMetadata(
   input: RecipeInput,
   settings: ProfileSettingsSnapshot,
+  ingredientUxByLineId: Readonly<
+    Record<string, { role: 'standard' | 'addition'; required: boolean }>
+  > = {},
 ): RecipeInput {
   return {
     ...input,
     [PROFILE_METADATA_KEY]: {
       ...settings,
       directionTargets: { ...settings.directionTargets },
+      directionIntents: settings.directionIntents
+        ? { ...settings.directionIntents }
+        : { ...settings.directionTargets },
+      ingredientUxByLineId: structuredClone(ingredientUxByLineId),
     },
   } as PersistedRecipeInput;
 }
@@ -98,10 +111,40 @@ export function readRecipeProfileMetadata(input: RecipeInput): ProfileSettingsSn
   return {
     ...(record as unknown as ProfileSettingsSnapshot),
     directionTargets: normalizedLegacyTargets(record.directionTargets)!,
+    directionIntents:
+      normalizedDirectionIntents(record.directionIntents) ??
+      normalizedDirectionIntents(record.directionTargets),
+    ingredientUxByLineId: normalizedIngredientUx(record.ingredientUxByLineId),
     formulationStrategy: normalizeFormulationStrategy(
       (record.formulationStrategy as string | undefined) ?? (record.mode as string),
     ),
   };
 }
+
+const normalizedDirectionIntents = (value: unknown): DirectionIntents | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  const axes = ['sweetness', 'softness', 'creaminess', 'flavor'] as const;
+  if (!axes.every((axis) => typeof record[axis] === 'number' && Number.isFinite(record[axis]))) {
+    return undefined;
+  }
+  return Object.fromEntries(
+    axes.map((axis) => [axis, Math.max(-2, Math.min(2, Math.round(record[axis] as number)))]),
+  ) as unknown as DirectionIntents;
+};
+
+const normalizedIngredientUx = (
+  value: unknown,
+): Readonly<Record<string, { role: 'standard' | 'addition'; required: boolean }>> | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const result: Record<string, { role: 'standard' | 'addition'; required: boolean }> = {};
+  for (const [lineId, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!lineId || !raw || typeof raw !== 'object') continue;
+    const row = raw as Record<string, unknown>;
+    if (row.role !== 'standard' && row.role !== 'addition') continue;
+    result[lineId] = { role: row.role, required: row.required === true };
+  }
+  return result;
+};
 
 export { PROFILE_METADATA_KEY };

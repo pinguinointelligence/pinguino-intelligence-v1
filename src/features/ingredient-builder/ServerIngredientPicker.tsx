@@ -50,7 +50,8 @@ export function ServerIngredientPicker({
   const pickedId = picked && picked.norm === search.settledNorm ? picked.id : null;
   const effectiveId =
     pickedId !== null &&
-    (search.hits.some((hit) => hit.id === pickedId) || filteredProducts.some((p) => p.id === pickedId))
+    (search.hits.some((hit) => hit.id === pickedId) ||
+      filteredProducts.some((p) => p.id === pickedId))
       ? pickedId
       : (search.hits[0]?.id ?? filteredProducts[0]?.id ?? '');
   const count = search.hits.length + filteredProducts.length;
@@ -76,7 +77,10 @@ export function ServerIngredientPicker({
 
   if (compact) {
     return (
-      <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] gap-2" data-testid="compact-server-ingredient-picker">
+      <div
+        className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] gap-2"
+        data-testid="compact-server-ingredient-picker"
+      >
         <input
           type="search"
           aria-label={b.searchLabel}
@@ -89,10 +93,20 @@ export function ServerIngredientPicker({
           aria-label={b.addLabel}
           className="h-11 min-w-0 rounded-lg border border-ink/15 bg-white px-2 text-xs text-ink focus:border-ink/40 focus:outline-none lg:h-9"
           value={effectiveId}
-          onChange={(event) => setPicked({ norm: search.settledNorm, id: event.currentTarget.value })}
+          onChange={(event) =>
+            setPicked({ norm: search.settledNorm, id: event.currentTarget.value })
+          }
         >
-          {search.hits.map((hit) => <option key={hit.id} value={hit.id}>{resultRowTextPl(hit)}</option>)}
-          {filteredProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+          {search.hits.map((hit) => (
+            <option key={hit.id} value={hit.id}>
+              {resultRowTextPl(hit)}
+            </option>
+          ))}
+          {filteredProducts.map((product) => (
+            <option key={product.id} value={product.id}>
+              {product.name}
+            </option>
+          ))}
         </select>
         <button
           type="button"
@@ -103,8 +117,12 @@ export function ServerIngredientPicker({
         >
           ＋ {b.addLabel}
         </button>
-        <span className="sr-only" aria-live="polite">{count} {b.resultFoundSuffix}</span>
-        {search.isError ? <span className="col-span-3 text-[10px] text-attention">{b.searchError}</span> : null}
+        <span className="sr-only" aria-live="polite">
+          {count} {b.resultFoundSuffix}
+        </span>
+        {search.isError ? (
+          <span className="col-span-3 text-xs text-attention">{b.searchError}</span>
+        ) : null}
       </div>
     );
   }
@@ -143,12 +161,19 @@ export function ServerIngredientPicker({
           {b.searchError}
         </p>
       ) : search.isFetching ? (
-        <p className="text-xs text-ivory/65" role="status" aria-live="polite" data-testid="picker-searching">
+        <p
+          className="text-xs text-ivory/65"
+          role="status"
+          aria-live="polite"
+          data-testid="picker-searching"
+        >
           {b.searching}
         </p>
       ) : (
         <p className="text-xs text-ivory/65" aria-live="polite">
-          <span className="font-mono tabular-nums text-ivory/70">{count.toLocaleString('en-US')}</span>{' '}
+          <span className="font-mono tabular-nums text-ivory/70">
+            {count.toLocaleString('en-US')}
+          </span>{' '}
           {count === 1 ? b.resultUnitOne : b.resultUnitMany} {b.resultFoundSuffix}
         </p>
       )}
@@ -162,7 +187,9 @@ export function ServerIngredientPicker({
               aria-label={b.addLabel}
               className="flex-1 rounded-md border border-ivory/15 bg-shell px-3 py-2 text-sm transition-colors hover:border-ivory/30 focus:border-ivory/40 focus:outline-none"
               value={effectiveId}
-              onChange={(event) => setPicked({ norm: search.settledNorm, id: event.currentTarget.value })}
+              onChange={(event) =>
+                setPicked({ norm: search.settledNorm, id: event.currentTarget.value })
+              }
             >
               {/* Owner P0: results separated by FORM group (Świeże → Mrożone → … → Inne),
                   rank order preserved inside each group; row = NAZWA · Kategoria · Forma. */}
@@ -214,15 +241,16 @@ export function ServerIngredientPicker({
             <p className="text-xs leading-relaxed text-ivory/65">
               {selectedProvenance.class_derived ? (
                 <span className="text-ivory/70">
-                  {selectedProvenance.provenance_note ?? 'PI Calculated · class-derived · not independently measured'}
+                  {selectedProvenance.provenance_note ??
+                    'PI Calculated · class-derived · not independently measured'}
                 </span>
               ) : (
                 <>
                   {selectedProvenance.status_label ? (
                     <span className="text-ivory/70">{selectedProvenance.status_label} · </span>
                   ) : null}
-                  <span className="text-ivory/70">Reference-linked profile</span> · PAC/POD from approved
-                  reference · not independently measured
+                  <span className="text-ivory/70">Reference-linked profile</span> · PAC/POD from
+                  approved reference · not independently measured
                 </>
               )}
             </p>

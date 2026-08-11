@@ -137,7 +137,7 @@ export function ProMachineSelector() {
         <h3 className="text-lg font-medium">{m.professional.title}</h3>
         <p className="mt-1 max-w-xl text-sm text-paper/70">{m.professional.body}</p>
 
-        <p className="mt-4 text-[0.65rem] font-medium tracking-label text-paper/60 uppercase">
+        <p className="mt-4 text-xs font-medium tracking-label text-paper/70 uppercase">
           {m.professional.chooseServing}
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -166,7 +166,9 @@ export function ProMachineSelector() {
 
       {/* 2 — Maszyny domowe (below, reuse the registry + approved auto-routing) */}
       <section>
-        <h3 className="text-xs font-medium tracking-label text-stone-600 uppercase">{m.home.heading}</h3>
+        <h3 className="text-xs font-medium tracking-label text-stone-600 uppercase">
+          {m.home.heading}
+        </h3>
         <label className="mt-2 flex items-center gap-2 text-xs text-stone-600">
           <input
             type="checkbox"
@@ -183,7 +185,9 @@ export function ProMachineSelector() {
             const d = deriveMachineSetup(profile);
             const active = machineKind === 'home' && machineId === profile.id;
             const batchNote =
-              d.recommendedBatchGrams != null ? m.home.recommended(d.recommendedBatchGrams) : m.home.userSetsBatch;
+              d.recommendedBatchGrams != null
+                ? m.home.recommended(d.recommendedBatchGrams)
+                : m.home.userSetsBatch;
             return (
               <li key={profile.id}>
                 <button
@@ -196,7 +200,9 @@ export function ProMachineSelector() {
                     active ? 'border-ink bg-ink/5' : 'border-ink/15 hover:border-ink/40',
                   )}
                 >
-                  <span className="text-sm font-medium text-ink">{machineDisplayName(profile)}</span>
+                  <span className="text-sm font-medium text-ink">
+                    {machineDisplayName(profile)}
+                  </span>
                   <span className="mt-0.5 text-xs text-stone-500">{batchNote}</span>
                 </button>
               </li>
@@ -204,14 +210,18 @@ export function ProMachineSelector() {
           })}
         </ul>
         {savedDefault ? (
-          <p className="mt-2 text-xs text-emerald-700" data-testid="pro-machine-default-saved">{m.home.savedDefault}</p>
+          <p className="mt-2 text-xs text-emerald-700" data-testid="pro-machine-default-saved">
+            {m.home.savedDefault}
+          </p>
         ) : null}
       </section>
 
       {/* 3 — Inne urządzenia (real registry records only; honest verification note) */}
       {otherDevices.length > 0 ? (
         <section data-testid="pro-machine-other">
-          <h3 className="text-xs font-medium tracking-label text-stone-600 uppercase">{m.other.heading}</h3>
+          <h3 className="text-xs font-medium tracking-label text-stone-600 uppercase">
+            {m.other.heading}
+          </h3>
           <ul className="mt-3 space-y-2">
             {otherDevices.map((profile) => (
               <li

@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
-import { IngredientRow, type IngredientRowActions } from '@/features/ingredient-builder/IngredientRow';
+import {
+  IngredientRow,
+  type IngredientRowActions,
+} from '@/features/ingredient-builder/IngredientRow';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import { ProductionCockpit } from './ProductionCockpit';
 import {
@@ -75,7 +78,15 @@ describe('Production workspace touch-first UI', () => {
     );
     const html = renderToStaticMarkup(
       <IngredientRow
-        item={calculateRecipe({ ...input, items: input.items.map((item, index) => ({ ...item, actual_grams: index === 0 ? line.plannedGrams + 2 : null })) }).items[0]!}
+        item={
+          calculateRecipe({
+            ...input,
+            items: input.items.map((item, index) => ({
+              ...item,
+              actual_grams: index === 0 ? line.plannedGrams + 2 : null,
+            })),
+          }).items[0]!
+        }
         totalBatchG={1002}
         actions={recipeActions}
         mode="production"
@@ -83,7 +94,7 @@ describe('Production workspace touch-first UI', () => {
         productionActions={{ setDraftActual: vi.fn(), confirmLine: vi.fn(), reopenRecord: vi.fn() }}
       />,
     );
-    expect(html).toContain('+2.0 g');
+    expect(html).toContain('+2 g');
     expect(html).toContain('popraw zapis');
     expect(html).toContain('>↺</button>');
   });

@@ -41,20 +41,28 @@ export function RecipeAxisScale({
       data-axis-relation={relation}
     >
       <span
-        className="min-w-0 text-[10px] font-semibold tracking-[0.06em] text-stone-600 uppercase"
+        className="min-w-0 text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase"
         title={readinessReason}
       >
         <span className="block leading-tight whitespace-normal">{label}</span>
         {readiness ? (
           <span
-            className={cn('mt-1 inline-flex max-w-full rounded-full px-1.5 py-0.5 text-[10px] leading-tight tracking-normal whitespace-normal', readiness === 'DZIAŁA' ? 'bg-pro-sage text-status-ideal' : 'bg-nonprod/[0.07] text-nonprod')}
+            className={cn(
+              'mt-1 inline-flex max-w-full rounded-md px-2 py-1 text-xs leading-tight tracking-normal whitespace-normal',
+              readiness === 'DZIAŁA'
+                ? 'bg-pro-sage text-status-ideal'
+                : 'bg-nonprod/[0.07] text-nonprod',
+            )}
             data-readiness={readiness}
           >
             {readiness}
           </span>
         ) : null}
         {relation === 'outside' ? (
-          <span className="mt-1 block text-[10px] font-semibold tracking-normal text-status-error" data-axis-status="outside">
+          <span
+            className="mt-1 block text-xs font-semibold tracking-normal text-status-error"
+            data-axis-status="outside"
+          >
             Poza wybranym celem
           </span>
         ) : null}

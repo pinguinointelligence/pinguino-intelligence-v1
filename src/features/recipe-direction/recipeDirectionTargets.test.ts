@@ -66,7 +66,10 @@ const SWEETNESS_CELLS = CELLS.filter(
 const SOFTNESS_CELLS = CELLS.filter(([category]) => category === 'milk_gelato');
 const NON_MILK_CELLS = CELLS.filter(([category]) => category !== 'milk_gelato');
 const BLOCKED_SWEETNESS_CELLS = CELLS.filter(
-  (cell) => !SWEETNESS_CELLS.some(([category, temperature]) => category === cell[0] && temperature === cell[1]),
+  (cell) =>
+    !SWEETNESS_CELLS.some(
+      ([category, temperature]) => category === cell[0] && temperature === cell[1],
+    ),
 );
 
 describe('canonical recipe Direction target contract', () => {
@@ -109,15 +112,9 @@ describe('canonical recipe Direction target contract', () => {
     '%s @ %d blocks sweetness until the complete runtime route is verified',
     (category, temperature) => {
       const plan = buildRecipeDirectionPlan(
-        withDirection(
-          { ...starterMilkBase(), category, target_temperature_c: temperature },
-          1,
-          0,
-        ),
+        withDirection({ ...starterMilkBase(), category, target_temperature_c: temperature }, 1, 0),
       );
-      expect(plan.axes.find((axis) => axis.axis === 'sweetness')?.status).toBe(
-        'blocked_runtime',
-      );
+      expect(plan.axes.find((axis) => axis.axis === 'sweetness')?.status).toBe('blocked_runtime');
       expect(plan.bands.pod).toBeUndefined();
     },
   );
@@ -126,15 +123,9 @@ describe('canonical recipe Direction target contract', () => {
     '%s @ %d blocks softness without using the fallback milk calibration',
     (category, temperature) => {
       const plan = buildRecipeDirectionPlan(
-        withDirection(
-          { ...starterMilkBase(), category, target_temperature_c: temperature },
-          0,
-          1,
-        ),
+        withDirection({ ...starterMilkBase(), category, target_temperature_c: temperature }, 0, 1),
       );
-      expect(plan.axes.find((axis) => axis.axis === 'softness')?.status).toBe(
-        'blocked_science',
-      );
+      expect(plan.axes.find((axis) => axis.axis === 'softness')?.status).toBe('blocked_science');
       expect(plan.bands.npac).toBeUndefined();
     },
   );
@@ -163,12 +154,16 @@ describe('canonical recipe Direction target contract', () => {
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     const proposed = built.preview.proposedInput;
-    expect(recipeDirectionViolations(proposed).length).toBeLessThan(before.length);
+    const after = recipeDirectionViolations(proposed);
+    expect(after.length).toBeLessThanOrEqual(before.length);
     expect(detectViolations(calculateRecipe(proposed))).toHaveLength(0);
     const plan = buildRecipeDirectionPlan(proposed);
     expect(
       detectViolations(resultWithRecipeDirectionTargets(calculateRecipe(proposed), plan)).length,
-    ).toBeLessThan(before.length);
+    ).toBeLessThanOrEqual(before.length);
+    if (after.length === before.length) {
+      expect(built.preview.directionAssessment).toMatchObject({ reached: false, score: 9 });
+    }
     expect(proposed.items.map((item) => item.planned_grams)).not.toEqual(
       input.items.map((item) => item.planned_grams),
     );

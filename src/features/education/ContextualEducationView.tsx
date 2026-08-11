@@ -31,18 +31,29 @@ const entryCopy = {
 } as const;
 
 function ArrowChain({ steps }: { steps: readonly string[] }) {
+  const heat = steps.some((step) => step.toLocaleLowerCase('pl-PL').includes('podgrzej'));
+  const phases = heat
+    ? ['Przygotuj', 'Podgrzej', 'Schłodź', 'Mroź']
+    : ['Przygotuj', 'Wlej', 'Mroź', 'Serwuj'];
   return (
-    <ol className="grid gap-1.5" data-testid="education-causal-chain">
+    <ol className="relative grid gap-0 pl-2" data-testid="education-causal-chain">
       {steps.map((step, index) => (
-        <li key={`${step}-${index}`} className="contents">
-          <span className="border border-ink/10 bg-white px-2.5 py-2 text-[11px] leading-snug text-ink">
-            {step}
-          </span>
+        <li
+          key={`${step}-${index}`}
+          className="relative grid grid-cols-[2rem_1fr] gap-3 pb-3 last:pb-0"
+        >
           {index < steps.length - 1 ? (
-            <span className="text-center text-xs text-stone-400" aria-hidden>
-              ↓
-            </span>
+            <span className="absolute bottom-0 left-[0.94rem] top-6 w-px bg-gold/35" aria-hidden />
           ) : null}
+          <span className="relative z-10 grid size-8 place-items-center rounded-full border border-gold/35 bg-education-ivory font-mono text-xs font-semibold text-gold-deep shadow-pro-sm">
+            {index + 1}
+          </span>
+          <span className="rounded-[18px] border border-ink/9 bg-white px-3 py-3 shadow-pro-sm">
+            <strong className="block text-sm text-ink">
+              {phases[index] ?? `Etap ${index + 1}`}
+            </strong>
+            <span className="mt-1 block text-xs leading-relaxed text-stone-600">{step}</span>
+          </span>
         </li>
       ))}
     </ol>
@@ -54,7 +65,7 @@ function InlineChain({ steps }: { steps: readonly string[] }) {
     <ol className="flex flex-wrap items-center gap-1.5" data-testid="education-inline-chain">
       {steps.map((step, index) => (
         <li key={`${step}-${index}`} className="flex items-center gap-1.5">
-          <span className="border border-ink/10 bg-white px-2.5 py-2 text-[11px] leading-snug text-ink">
+          <span className="rounded-lg border border-ink/10 bg-white px-2.5 py-2 text-xs leading-snug text-ink">
             {step}
           </span>
           {index < steps.length - 1 ? (
@@ -79,7 +90,7 @@ function useLessonTop(step: number) {
 function LessonProgress({ step, total }: { step: number; total: number }) {
   return (
     <div className="mb-3 flex items-center justify-between" aria-label={`${step + 1} / ${total}`}>
-      <span className="font-mono text-[10px] tabular-nums text-stone-500">
+      <span className="font-mono text-xs tabular-nums text-stone-600">
         {step + 1} / {total}
       </span>
       <span className="flex gap-1" aria-hidden>
@@ -108,7 +119,7 @@ function DeckControls({
         type="button"
         onClick={() => onStep(Math.max(0, step - 1))}
         disabled={step === 0}
-        className="min-h-10 px-2 text-xs font-semibold text-stone-600 disabled:invisible"
+        className="min-h-11 rounded-lg px-3 text-xs font-semibold text-stone-600 disabled:invisible"
       >
         {copy.lesson.previous}
       </button>
@@ -118,7 +129,7 @@ function DeckControls({
           onClick={() => onStep(step + 1)}
           disabled={!canContinue}
           title={!canContinue ? copy.process.confirmations.required : undefined}
-          className="min-h-10 bg-ink px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-35"
+          className="min-h-11 rounded-lg bg-ink px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-35"
         >
           {copy.lesson.next}
         </button>
@@ -177,7 +188,7 @@ function SugarLesson() {
             {copy.sugar.rows.map((row) => (
               <div key={row.id} className="grid grid-cols-[1fr_auto] gap-3 py-2.5">
                 <strong className="text-xs text-ink">{row.name}</strong>
-                <span className="grid gap-1 text-[10px] text-stone-600">
+                <span className="grid gap-1 text-xs text-stone-600">
                   <span className="flex items-center justify-between gap-3">
                     {copy.sugar.scaleSweetness}
                     <RelativeDots value={row.sweetness} label={copy.sugar.scaleSweetness} />
@@ -196,7 +207,7 @@ function SugarLesson() {
         <div>
           <h2 className="text-xl font-semibold leading-tight text-ink">{copy.sugar.conclusion}</h2>
           <details className="mt-4 border border-ink/10 bg-paper p-3">
-            <summary className="min-h-8 cursor-pointer text-xs font-semibold text-ink">
+            <summary className="flex min-h-11 cursor-pointer items-center text-xs font-semibold text-ink">
               {copy.lesson.technical}
             </summary>
             <p className="mt-2 text-xs leading-relaxed text-stone-600">
@@ -235,7 +246,7 @@ function IngredientExamples({ initialFocus }: { initialFocus?: string }) {
             type="button"
             onClick={() => chooseExample(id)}
             aria-pressed={id === exampleId}
-            className={`min-h-11 border px-2 py-2 text-[11px] font-semibold ${id === exampleId ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
+            className={`min-h-11 rounded-lg border px-2 py-2 text-xs font-semibold ${id === exampleId ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
           >
             {ingredientExample(id).name}
           </button>
@@ -249,7 +260,7 @@ function IngredientExamples({ initialFocus }: { initialFocus?: string }) {
             onClick={() => setEffectId(candidate.id)}
             aria-pressed={candidate.id === effect.id}
             data-testid="ingredient-effect-chip"
-            className={`min-h-10 border px-3 py-2 text-[11px] font-semibold ${candidate.id === effect.id ? 'border-gold bg-education-ivory text-ink' : 'border-ink/10 bg-white text-stone-600'}`}
+            className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold ${candidate.id === effect.id ? 'border-gold bg-education-ivory text-ink' : 'border-ink/10 bg-white text-stone-600'}`}
           >
             {candidate.label}
           </button>
@@ -278,7 +289,7 @@ function MicroIngredients({ initialFocus }: { initialFocus?: string }) {
             type="button"
             onClick={() => setActive(id)}
             aria-pressed={id === active}
-            className={`min-h-11 border px-2 py-2 text-[11px] font-semibold ${id === active ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
+            className={`min-h-11 rounded-lg border px-2 py-2 text-xs font-semibold ${id === active ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
           >
             {microIngredient(id).name}
           </button>
@@ -306,7 +317,7 @@ function ENumberLesson({ input }: { input: RecipeInput }) {
               className="border border-ink/10 bg-paper p-3"
               data-testid="plant-origin-claim"
             >
-              <span className="text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
+              <span className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
                 {copy.micro.plantOrigin}
               </span>
               <p className="mt-1 text-sm font-semibold text-ink">
@@ -319,7 +330,7 @@ function ENumberLesson({ input }: { input: RecipeInput }) {
       ) : null}
       <div className="mt-4 border border-nonprod/30 border-l-2 border-l-nonprod bg-nonprod/[0.035] p-3">
         <span
-          className="text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+          className="text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
           data-readiness={copy.micro.futureFormula}
         >
           {copy.micro.futureFormula}
@@ -363,13 +374,13 @@ function ProcessStatus({
     <div data-testid="process-classification" data-process-status={classification.status}>
       <h2 className="text-xl font-semibold tracking-tight text-ink">{copy.process.question}</h2>
       <div
-        className={`mt-3 border border-l-2 p-4 ${classification.status === 'unknown' ? 'border-nonprod/30 border-l-nonprod bg-nonprod/[0.035]' : 'border-ink/10 border-l-gold bg-paper'}`}
+        className={`mt-3 rounded-[20px] border border-l-4 p-4 shadow-pro-sm ${classification.status === 'unknown' ? 'border-nonprod/30 border-l-nonprod bg-nonprod/[0.035]' : 'border-ink/10 border-l-gold bg-paper'}`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <strong className="text-base text-ink">{statusCopy.title}</strong>
           {classification.status === 'unknown' ? (
             <span
-              className="text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+              className="text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
               data-readiness={copy.process.dataMissing}
             >
               {copy.process.dataMissing}
@@ -385,11 +396,7 @@ function ProcessStatus({
                 className="text-xs text-stone-600"
               >
                 <strong className="text-ink">{copy.process.reasonLabels[reason.type]}:</strong>{' '}
-                {processReasonText(
-                  reason.ingredientId,
-                  reason.explanation,
-                  ingredientNamesById,
-                )}
+                {processReasonText(reason.ingredientId, reason.explanation, ingredientNamesById)}
               </li>
             ))}
             {classification.status === 'unknown'
@@ -409,7 +416,7 @@ function ProcessStatus({
         </div>
       ) : null}
       {heat ? (
-        <p className="mt-3 border border-ink/10 p-2 text-[11px] leading-relaxed text-stone-500">
+        <p className="mt-3 rounded-[16px] border border-ink/10 p-3 text-xs leading-relaxed text-stone-600">
           {copy.process.exactParametersMissing}
         </p>
       ) : null}
@@ -418,7 +425,7 @@ function ProcessStatus({
         onClick={onConfirm}
         aria-pressed={confirmed}
         data-testid="process-path-confirm"
-        className={`mt-3 min-h-11 w-full border px-3 py-2 text-xs font-semibold ${confirmed ? 'border-status-ok/40 bg-status-ok/[0.06] text-status-ok' : 'border-ink bg-ink text-white'}`}
+        className={`mt-3 min-h-11 w-full rounded-[14px] border px-3 py-2 text-xs font-semibold ${confirmed ? 'border-status-ok/40 bg-status-ok/[0.06] text-status-ok' : 'border-ink bg-ink text-white shadow-pro-sm'}`}
       >
         {confirmed
           ? copy.process.confirmations.accepted
@@ -453,7 +460,7 @@ function MachineGuide({ machineId }: { machineId: string | null }) {
             type="button"
             onClick={() => setCategory(id)}
             aria-pressed={category === id}
-            className={`min-h-10 border px-2.5 py-2 text-[10px] font-semibold ${category === id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
+            className={`min-h-11 rounded-lg border px-2.5 py-2 text-xs font-semibold ${category === id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
           >
             {genericMachineEducation(id).title}
           </button>
@@ -475,9 +482,9 @@ function MachineGuide({ machineId }: { machineId: string | null }) {
           <p className="mt-3 text-xs font-semibold text-ink">{guide.timing.text}</p>
         ) : (
           <div className="mt-3 flex items-center justify-between gap-2 border-t border-ink/10 pt-2">
-            <p className="text-[11px] text-stone-500">{guide.timing.text}</p>
+            <p className="text-xs text-stone-600">{guide.timing.text}</p>
             <span
-              className="shrink-0 text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+              className="shrink-0 text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
               data-testid="timing-readiness"
               data-readiness={copy.machine.timingPending}
             >
@@ -513,7 +520,7 @@ function ProcessComparison() {
             type="button"
             onClick={() => setActivePath(path.id)}
             aria-pressed={activePath === path.id}
-            className={`min-h-11 border px-1.5 py-2 text-[10px] font-semibold tracking-[0.04em] uppercase ${activePath === path.id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
+            className={`min-h-11 rounded-lg border px-1.5 py-2 text-xs font-semibold tracking-[0.03em] uppercase ${activePath === path.id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
           >
             {path.label}
           </button>
@@ -526,7 +533,7 @@ function ProcessComparison() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-ink">{copy.machine.timingQuestion}</h3>
           <span
-            className="text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+            className="text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
             data-readiness={copy.machine.timingPending}
           >
             {copy.machine.timingPending}
@@ -539,13 +546,13 @@ function ProcessComparison() {
               type="button"
               onClick={() => setChoice(item)}
               aria-pressed={choice === item}
-              className={`min-h-11 border px-1.5 py-2 text-[10px] font-semibold ${choice === item ? 'border-nonprod bg-white text-nonprod' : 'border-ink/10 bg-white text-stone-600'}`}
+              className={`min-h-11 rounded-lg border px-1.5 py-2 text-xs font-semibold ${choice === item ? 'border-nonprod bg-white text-nonprod' : 'border-ink/10 bg-white text-stone-600'}`}
             >
               {item}
             </button>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-stone-500">{copy.machine.timingPendingNote}</p>
+        <p className="mt-2 text-xs text-stone-600">{copy.machine.timingPendingNote}</p>
       </div>
     </div>
   );
@@ -596,7 +603,7 @@ function EducationHub({
       <h1 className="text-xl font-semibold leading-tight tracking-tight text-ink">
         {copy.heading}
       </h1>
-      <p className="mt-4 text-[10px] font-semibold tracking-[0.1em] text-stone-500 uppercase">
+      <p className="mt-4 text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
         {copy.contextLabel}
       </p>
       <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -609,13 +616,11 @@ function EducationHub({
             data-testid="contextual-card"
           >
             <strong className="block text-xs leading-snug text-ink">{prompt.title}</strong>
-            <span className="mt-1 block text-[10px] leading-relaxed text-stone-500">
-              {prompt.note}
-            </span>
+            <span className="mt-1 block text-xs leading-relaxed text-stone-600">{prompt.note}</span>
           </button>
         ))}
       </div>
-      <p className="mt-5 text-[10px] font-semibold tracking-[0.1em] text-stone-500 uppercase">
+      <p className="mt-5 text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
         {copy.entriesLabel}
       </p>
       <div className="mt-2 divide-y divide-ink/10 border-y border-ink/10">
@@ -631,7 +636,7 @@ function EducationHub({
             >
               <span>
                 <strong className="block text-sm text-ink">{entry.title}</strong>
-                <span className="mt-0.5 block text-[10px] text-stone-500">{entry.note}</span>
+                <span className="mt-0.5 block text-xs text-stone-600">{entry.note}</span>
               </span>
               <span className="text-lg text-stone-400" aria-hidden>
                 ›
@@ -667,11 +672,14 @@ export function ContextualEducationView({
     initialLesson !== undefined && active?.id === initialLesson && active.focus === undefined;
 
   return (
-    <div className="mx-auto w-full max-w-3xl p-3 sm:p-4" data-testid="profile-education-view">
+    <div
+      className="mx-auto min-h-full w-full max-w-none bg-[#f7f5f0] p-4 text-ink sm:p-5"
+      data-testid="profile-education-view"
+    >
       <button
         type="button"
         onClick={active === null || directInitialLesson ? onBack : () => setActive(null)}
-        className="mb-4 min-h-10 text-xs font-semibold text-ink underline underline-offset-4"
+        className="mb-4 min-h-11 rounded-lg px-2 text-xs font-semibold text-ink underline underline-offset-4"
       >
         {active === null || directInitialLesson ? copy.backToRecipe : copy.backToHub}
       </button>

@@ -9,6 +9,13 @@ import {
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { buildRecipeVersion, restoreVersion } from '@/features/pro-core/recipeVersioning';
 import { savedToRecipeInput } from '@/features/recipes/recipePayload';
+import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import {
+  attachPracticalRecipeAudit,
+  practicalRecipeAuditMatchesInput,
+  practicalizeRecipeCandidate,
+  readPracticalRecipeAudit,
+} from '@/features/practical-recipe/practicalRecipe';
 
 const state = {
   mode: 'classic',
@@ -28,6 +35,7 @@ const state = {
   savedRecipeName: 'Moja receptura',
   currentVersionNumber: 3,
   dirty: true,
+  draftContextSeq: 7,
 } as unknown as RecipeState;
 
 describe('recipePersistPartialize', () => {
@@ -58,6 +66,73 @@ describe('recipePersistPartialize', () => {
       flavor: 0,
     });
     expect(persisted.direction_targets_active).toBe(true);
+    expect(persisted.draftContextSeq).toBe(7);
+  });
+});
+
+describe('saved practical recipe provenance', () => {
+  it('rehydrates a matching verified whole-gram fingerprint and invalidates it after an edit', () => {
+    const prior = useRecipeStore.getState();
+    try {
+      const practical = practicalizeRecipeCandidate(ownerSameInputRecipe(), { byLineId: {} });
+      expect(practical.ok).toBe(true);
+      if (!practical.ok) return;
+      useRecipeStore.getState().loadRecipeInput(practical.audit.executableInput, {
+        savedId: 'recipe-practical',
+      });
+      const canonicalSavedInput = buildRecipeInput(useRecipeStore.getState());
+      const saved = attachPracticalRecipeAudit(
+        canonicalSavedInput,
+        practical.audit.exactInput,
+        '2026-08-11T12:00:00.000Z',
+      );
+      useRecipeStore.getState().loadRecipeInput(saved, { savedId: 'recipe-practical' });
+      const loaded = useRecipeStore.getState();
+      const loadedInput = buildRecipeInput(loaded);
+      expect(practicalRecipeAuditMatchesInput(loadedInput, loaded.practicalRecipeAudit)).toBe(true);
+      useRecipeStore
+        .getState()
+        .setPlannedGrams(loaded.items[0]!.id, loaded.items[0]!.planned_grams + 1);
+      expect(
+        practicalRecipeAuditMatchesInput(
+          buildRecipeInput(useRecipeStore.getState()),
+          useRecipeStore.getState().practicalRecipeAudit,
+        ),
+      ).toBe(false);
+    } finally {
+      useRecipeStore.setState(prior);
+    }
+  });
+
+  it('writes the exact audit returned by Save into the persisted linked draft', () => {
+    const prior = useRecipeStore.getState();
+    try {
+      const practical = practicalizeRecipeCandidate(ownerSameInputRecipe(), { byLineId: {} });
+      expect(practical.ok).toBe(true);
+      if (!practical.ok) return;
+      useRecipeStore.getState().loadRecipeInput(practical.audit.executableInput, {
+        savedId: null,
+      });
+      const current = buildRecipeInput(useRecipeStore.getState());
+      const payload = attachPracticalRecipeAudit(
+        current,
+        practical.audit.exactInput,
+        '2026-08-11T12:30:00.000Z',
+      );
+      const audit = readPracticalRecipeAudit(payload);
+      expect(audit).not.toBeNull();
+      useRecipeStore
+        .getState()
+        .markSaved('saved-practical', 'Owner G17', 1, '2026-08-11T12:31:00.000Z', audit);
+      const saved = useRecipeStore.getState();
+      expect(saved.dirty).toBe(false);
+      expect(
+        practicalRecipeAuditMatchesInput(buildRecipeInput(saved), saved.practicalRecipeAudit),
+      ).toBe(true);
+      expect(recipePersistPartialize(saved).practicalRecipeAudit).toEqual(audit);
+    } finally {
+      useRecipeStore.setState(prior, true);
+    }
   });
 });
 
@@ -125,9 +200,9 @@ describe('saved range and availability sidecars', () => {
       useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 600);
       useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 400);
       const [milk, sucrose] = useRecipeStore.getState().items;
-      expect(
-        useConstraintStudioStore.getState().setRangeConstraint(milk!.id, 550, 650).ok,
-      ).toBe(true);
+      expect(useConstraintStudioStore.getState().setRangeConstraint(milk!.id, 550, 650).ok).toBe(
+        true,
+      );
       useRecipeStore.getState().setIngredientUnavailable(sucrose!.id, true);
 
       const saved = buildRecipeInput(useRecipeStore.getState());

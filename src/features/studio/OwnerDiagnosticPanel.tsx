@@ -42,7 +42,7 @@ const isEngineReady = (input: RecipeInput['items'][number]): boolean => {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1">
-      <dt className="shrink-0 text-[0.7rem] tracking-label text-ivory/60 uppercase">{label}</dt>
+      <dt className="shrink-0 text-xs tracking-label text-ivory/70 uppercase">{label}</dt>
       <dd className="min-w-0 truncate text-right font-mono text-xs text-ivory/80 tabular-nums">
         {value}
       </dd>
@@ -296,10 +296,8 @@ export function OwnerDiagnosticPanel({
         />
       </dl>
       <div className="mt-4 min-w-0 overflow-visible" data-testid="owner-identity-diagnostics">
-        <p className="mb-2 text-[0.7rem] tracking-label text-ivory/60 uppercase">
-          {d.identityTable}
-        </p>
-        <table className="w-full table-fixed border-collapse text-left font-mono text-[10px] text-ivory/75 tabular-nums max-sm:block">
+        <p className="mb-2 text-xs tracking-label text-ivory/70 uppercase">{d.identityTable}</p>
+        <table className="w-full table-fixed border-collapse text-left font-mono text-xs text-ivory/80 tabular-nums max-sm:block">
           <thead className="text-ivory/70 max-sm:hidden">
             <tr className="border-b border-ivory/10">
               <th className="py-1 pr-3">{d.identityLine}</th>
@@ -317,21 +315,58 @@ export function OwnerDiagnosticPanel({
               const engineInput = inputByLineId.get(visibleItem.id);
               const engineItem = engineByLineId.get(visibleItem.id);
               return (
-                <tr key={visibleItem.id} className="border-b border-ivory/5 max-sm:grid max-sm:grid-cols-2 max-sm:gap-x-2 max-sm:rounded-lg max-sm:border max-sm:border-ivory/10 max-sm:p-2">
-                  <td className="break-all py-1 pr-3"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityLine}</span>{visibleItem.id}</td>
-                  <td className="break-all py-1 pr-3"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityCanonical}</span>{canonicalIngredientId(visibleItem.ingredient)}</td>
-                  <td className="break-all py-1 pr-3"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityProduct}</span>{visibleItem.ingredient.private_product_id ?? '—'}</td>
-                  <td className="break-all py-1 pr-3"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identitySource}</span>{ingredientProvenance(visibleItem.ingredient)}</td>
-                  <td className="py-1 pr-3 text-right max-sm:text-left"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityVisible}</span>{visibleItem.planned_grams.toFixed(2)}</td>
+                <tr
+                  key={visibleItem.id}
+                  className="border-b border-ivory/5 max-sm:grid max-sm:grid-cols-2 max-sm:gap-x-2 max-sm:rounded-lg max-sm:border max-sm:border-ivory/10 max-sm:p-2"
+                >
+                  <td className="break-all py-1 pr-3">
+                    <span className="mb-0.5 block font-sans text-xs text-ivory/70 sm:hidden">
+                      {d.identityLine}
+                    </span>
+                    {visibleItem.id}
+                  </td>
+                  <td className="break-all py-1 pr-3">
+                    <span className="mb-0.5 block font-sans text-xs text-ivory/70 sm:hidden">
+                      {d.identityCanonical}
+                    </span>
+                    {canonicalIngredientId(visibleItem.ingredient)}
+                  </td>
+                  <td className="break-all py-1 pr-3">
+                    <span className="mb-0.5 block font-sans text-xs text-ivory/70 sm:hidden">
+                      {d.identityProduct}
+                    </span>
+                    {visibleItem.ingredient.private_product_id ?? '—'}
+                  </td>
+                  <td className="break-all py-1 pr-3">
+                    <span className="mb-0.5 block font-sans text-xs text-ivory/70 sm:hidden">
+                      {d.identitySource}
+                    </span>
+                    {ingredientProvenance(visibleItem.ingredient)}
+                  </td>
                   <td className="py-1 pr-3 text-right max-sm:text-left">
-                    <span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityEffective}</span>
+                    <span className="mb-0.5 block font-sans text-xs text-ivory/70 sm:hidden">
+                      {d.identityVisible}
+                    </span>
+                    {visibleItem.planned_grams.toFixed(2)}
+                  </td>
+                  <td className="py-1 pr-3 text-right max-sm:text-left">
+                    <span className="mb-0.5 block font-sans text-xs text-ivory/70 sm:hidden">
+                      {d.identityEffective}
+                    </span>
                     {(engineInput?.actual_grams ?? engineInput?.planned_grams ?? 0).toFixed(2)}
                   </td>
                   <td className="py-1 pr-3 text-right max-sm:text-left">
-                    <span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityEngine}</span>
+                    <span className="mb-0.5 block font-sans text-xs text-ivory/70 sm:hidden">
+                      {d.identityEngine}
+                    </span>
                     {(engineItem?.effective_grams ?? 0).toFixed(2)}
                   </td>
-                  <td className="py-1 text-right max-sm:text-left"><span className="mb-0.5 block font-sans text-[10px] text-ivory/65 sm:hidden">{d.identityRevision}</span>{draftRevision}</td>
+                  <td className="py-1 text-right max-sm:text-left">
+                    <span className="mb-0.5 block font-sans text-xs text-ivory/70 sm:hidden">
+                      {d.identityRevision}
+                    </span>
+                    {draftRevision}
+                  </td>
                 </tr>
               );
             })}

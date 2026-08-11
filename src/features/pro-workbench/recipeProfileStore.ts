@@ -10,8 +10,16 @@ import {
 export type AdjustableAxisId = 'sweetness' | 'softness' | 'creaminess' | 'flavor';
 export type DirectionTarget = RecipeDirectionTarget;
 export type DirectionTargets = Readonly<RecipeDirectionTargets>;
+export type DirectionIntent = -2 | -1 | 0 | 1 | 2;
+export type DirectionIntents = Readonly<Record<AdjustableAxisId, DirectionIntent>>;
 
 export const DEFAULT_DIRECTION_TARGETS: DirectionTargets = Object.freeze({
+  sweetness: 0,
+  softness: 0,
+  creaminess: 0,
+  flavor: 0,
+});
+export const DEFAULT_DIRECTION_INTENTS: DirectionIntents = Object.freeze({
   sweetness: 0,
   softness: 0,
   creaminess: 0,
@@ -33,6 +41,10 @@ export interface ProfileSettingsSnapshot {
   targetTemperatureC: number;
   machineCapacityGrams: number | null;
   directionTargets: DirectionTargets;
+  directionIntents?: DirectionIntents;
+  ingredientUxByLineId?: Readonly<
+    Record<string, { role: 'standard' | 'addition'; required: boolean }>
+  >;
 }
 
 /** Material preflight signature. Ingredient grams and direction targets are deliberately absent. */
@@ -54,16 +66,19 @@ export function profileSettingsSignature(
   ]);
 }
 
-interface RecipeProfileState {
+export interface RecipeProfileState {
   directionTargets: DirectionTargets;
+  directionIntents: DirectionIntents;
   awaitingRecalculation: boolean;
   openedContextSeq: number | null;
   confirmedSignature: string | null;
   confirmedContextSeq: number | null;
   defaultsByOwner: Record<string, ProfileSettingsSnapshot>;
-  openDraft: (contextSeq: number, targets?: DirectionTargets) => void;
+  openDraft: (contextSeq: number, targets?: DirectionTargets, intents?: DirectionIntents) => void;
   moveAxisTarget: (axis: AdjustableAxisId, delta: -1 | 1) => void;
+  moveAxisIntent: (axis: AdjustableAxisId, delta: -1 | 1) => void;
   setDirectionTargets: (targets: DirectionTargets) => void;
+  acknowledgeRecalculation: () => void;
   confirmSettings: (signature: string, contextSeq: number) => void;
   isConfirmed: (signature: string, contextSeq: number) => boolean;
   saveDefaults: (ownerKey: string, settings: ProfileSettingsSnapshot) => void;
@@ -73,20 +88,34 @@ interface RecipeProfileState {
 
 const clampTarget = (value: number): DirectionTarget =>
   Math.max(-1, Math.min(1, value)) as DirectionTarget;
+const clampIntent = (value: number): DirectionIntent =>
+  Math.max(-2, Math.min(2, value)) as DirectionIntent;
+const intentsFromTargets = (targets: DirectionTargets): DirectionIntents => ({
+  sweetness: targets.sweetness,
+  softness: targets.softness,
+  creaminess: targets.creaminess,
+  flavor: targets.flavor,
+});
 
 export const useRecipeProfileStore = create<RecipeProfileState>()(
   persist(
     (set, get) => ({
       directionTargets: DEFAULT_DIRECTION_TARGETS,
+      directionIntents: DEFAULT_DIRECTION_INTENTS,
       awaitingRecalculation: false,
       openedContextSeq: null,
       confirmedSignature: null,
       confirmedContextSeq: null,
       defaultsByOwner: {},
 
-      openDraft: (openedContextSeq, targets = DEFAULT_DIRECTION_TARGETS) =>
+      openDraft: (
+        openedContextSeq,
+        targets = DEFAULT_DIRECTION_TARGETS,
+        intents = intentsFromTargets(targets),
+      ) =>
         set({
           directionTargets: { ...targets },
+          directionIntents: { ...intents },
           awaitingRecalculation: false,
           openedContextSeq,
           confirmedSignature: null,
@@ -102,7 +131,18 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
           awaitingRecalculation: true,
         })),
 
+      moveAxisIntent: (axis, delta) =>
+        set((state) => ({
+          directionIntents: {
+            ...state.directionIntents,
+            [axis]: clampIntent(state.directionIntents[axis] + delta),
+          },
+          awaitingRecalculation: true,
+        })),
+
       setDirectionTargets: (directionTargets) => set({ directionTargets: { ...directionTargets } }),
+
+      acknowledgeRecalculation: () => set({ awaitingRecalculation: false }),
 
       confirmSettings: (confirmedSignature, confirmedContextSeq) =>
         set({ confirmedSignature, confirmedContextSeq }),
@@ -120,6 +160,9 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
               ...settings,
               formulationStrategy: normalizeFormulationStrategy(settings.formulationStrategy),
               directionTargets: { ...settings.directionTargets },
+              directionIntents: settings.directionIntents
+                ? { ...settings.directionIntents }
+                : undefined,
             },
           },
         })),
@@ -132,6 +175,9 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
               formulationStrategy: normalizeFormulationStrategy(
                 stored.formulationStrategy ?? stored.mode,
               ),
+              directionIntents: stored.directionIntents
+                ? { ...stored.directionIntents }
+                : undefined,
             }
           : null;
       },
@@ -139,6 +185,7 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
       resetForTests: () =>
         set({
           directionTargets: DEFAULT_DIRECTION_TARGETS,
+          directionIntents: DEFAULT_DIRECTION_INTENTS,
           awaitingRecalculation: false,
           openedContextSeq: null,
           confirmedSignature: null,
@@ -149,7 +196,21 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
     {
       name: 'pinguino-profile-preferences-v1',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ defaultsByOwner: state.defaultsByOwner }),
+      partialize: recipeProfilePersistPartialize,
     },
   ),
 );
+
+/**
+ * Keep the five-detent owner intent bound to the same persisted draft context.
+ * Engine still owns the canonical three-state target; these fields only retain
+ * the richer presentation intent across an ambient browser refresh.
+ */
+export function recipeProfilePersistPartialize(state: RecipeProfileState) {
+  return {
+    defaultsByOwner: state.defaultsByOwner,
+    directionIntents: state.directionIntents,
+    awaitingRecalculation: state.awaitingRecalculation,
+    openedContextSeq: state.openedContextSeq,
+  };
+}

@@ -49,12 +49,22 @@ export function ProReviewZone({
           aria-label={z.tableTitle}
         >
           <thead>
-            <tr className="border-b border-ivory/15 text-[0.6rem] tracking-label text-ivory/60 uppercase">
-              <th scope="col" className="px-3 py-2 font-medium">{z.columns.name}</th>
-              <th scope="col" className="px-3 py-2 font-medium">{z.columns.purpose}</th>
-              <th scope="col" className="px-3 py-2 font-medium">{z.columns.route}</th>
-              <th scope="col" className="px-3 py-2 font-medium">{z.columns.recommendation}</th>
-              <th scope="col" className="px-3 py-2 font-medium">{z.columns.decision}</th>
+            <tr className="border-b border-ivory/15 text-xs tracking-label text-ivory/70 uppercase">
+              <th scope="col" className="px-3 py-2 font-medium">
+                {z.columns.name}
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                {z.columns.purpose}
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                {z.columns.route}
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                {z.columns.recommendation}
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium">
+                {z.columns.decision}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-ivory/10">
@@ -65,7 +75,7 @@ export function ProReviewZone({
                 <td className="px-3 py-2 text-ivory/70">{row.route}</td>
                 <td className="px-3 py-2 text-ivory/70">{row.recommendation}</td>
                 <td className="px-3 py-2">
-                  <span className="rounded border border-review/40 bg-review/10 px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.08em] text-review uppercase">
+                  <span className="rounded border border-review/40 bg-review/10 px-1.5 py-0.5 text-xs font-medium tracking-[0.06em] text-review uppercase">
                     {z.pending}
                   </span>
                 </td>

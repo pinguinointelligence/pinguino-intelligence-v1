@@ -81,9 +81,16 @@ const STRAWBERRY = verifiedMain(
   'STRAWBERRIES · Fresh Fruit',
   'fruit',
   {
-    water_percent: 89, solids_percent: 11, fat_percent: 0.3, protein_percent: 0.7,
-    carbohydrate_percent: 8, sugar_percent: 5.8, sucrose_percent: 1,
-    glucose_percent: 2.4, fructose_percent: 2.4, fiber_percent: 2,
+    water_percent: 89,
+    solids_percent: 11,
+    fat_percent: 0.3,
+    protein_percent: 0.7,
+    carbohydrate_percent: 8,
+    sugar_percent: 5.8,
+    sucrose_percent: 1,
+    glucose_percent: 2.4,
+    fructose_percent: 2.4,
+    fiber_percent: 2,
     kcal_per_100g: 32,
   },
   6.928,
@@ -94,9 +101,15 @@ const BANANA = verifiedMain(
   'BANANA · Puree',
   'fruit',
   {
-    water_percent: 76.5, solids_percent: 23.5, protein_percent: 1,
-    carbohydrate_percent: 22, sugar_percent: 18.4, sucrose_percent: 11,
-    glucose_percent: 4, fructose_percent: 3.4, salt_percent: 0.5,
+    water_percent: 76.5,
+    solids_percent: 23.5,
+    protein_percent: 1,
+    carbohydrate_percent: 22,
+    sugar_percent: 18.4,
+    sucrose_percent: 11,
+    glucose_percent: 4,
+    fructose_percent: 3.4,
+    salt_percent: 0.5,
     kcal_per_100g: 92,
   },
   19.86,
@@ -107,9 +120,15 @@ const PISTACHIO = verifiedMain(
   'PISTACHIO · Aldori Paste · 100% Nut',
   'nut_paste',
   {
-    water_percent: 8, solids_percent: 92, fat_percent: 45, protein_percent: 20,
-    carbohydrate_percent: 17, sugar_percent: 7.7, sucrose_percent: 7.7,
-    fiber_percent: 10, kcal_per_100g: 573,
+    water_percent: 8,
+    solids_percent: 92,
+    fat_percent: 45,
+    protein_percent: 20,
+    carbohydrate_percent: 17,
+    sugar_percent: 7.7,
+    sucrose_percent: 7.7,
+    fiber_percent: 10,
+    kcal_per_100g: 573,
   },
   7.7,
   7.7,
@@ -119,9 +138,14 @@ const COCOA = verifiedMain(
   'COCOA ALKALIZED 100% · Cacao Barry Cocoa Powder',
   'chocolate_cocoa',
   {
-    solids_percent: 100, fat_percent: 23, protein_percent: 18.9,
-    carbohydrate_percent: 8.8, sugar_percent: 0.4, fiber_percent: 29,
-    salt_percent: 0.04, kcal_per_100g: 384,
+    solids_percent: 100,
+    fat_percent: 23,
+    protein_percent: 18.9,
+    carbohydrate_percent: 8.8,
+    sugar_percent: 0.4,
+    fiber_percent: 29,
+    salt_percent: 0.04,
+    kcal_per_100g: 384,
   },
   0.4,
   0.634,
@@ -191,13 +215,16 @@ const proof = (input: RecipeInput) => {
 
 const formulate = (source: RecipeInput) => {
   const outcome = buildOptimizePreview(source, NO, '2026-08-08T00:00:00.000Z');
-  if (!outcome.ok) throw new Error(`Vegan fixture failed: ${outcome.code} ${JSON.stringify(outcome)}`);
+  if (!outcome.ok)
+    throw new Error(`Vegan fixture failed: ${outcome.code} ${JSON.stringify(outcome)}`);
   return outcome.preview;
 };
 
 const canonicalIds = (input: RecipeInput): string[] =>
   input.items.map((item) => item.ingredient.canonical_ingredient_id ?? item.ingredient.id);
-const WATER = DEFAULT_CORRECTION_CANDIDATES.find((candidate) => candidate.id === 'water')!.ingredient;
+const WATER = DEFAULT_CORRECTION_CANDIDATES.find(
+  (candidate) => candidate.id === 'water',
+)!.ingredient;
 
 describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
   const cases = [
@@ -219,8 +246,12 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
       expect(preview.formulation?.templateStatus).toBe('approved');
       expect(Math.abs(plannedSum(preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
       expect(veganRecipeEligibilityIssues(preview.proposedInput.items)).toEqual([]);
-      expect(new Set(canonicalIds(preview.proposedInput)).size).toBe(preview.proposedInput.items.length);
-      expect(preview.proposedInput.items.some((item) => item.ingredient.flags?.is_dairy)).toBe(false);
+      expect(new Set(canonicalIds(preview.proposedInput)).size).toBe(
+        preview.proposedInput.items.length,
+      );
+      expect(preview.proposedInput.items.some((item) => item.ingredient.flags?.is_dairy)).toBe(
+        false,
+      );
       if (name !== 'neutral' && name !== 'almond') {
         const main = preview.proposedInput.items.find((item) => item.lock_type === 'main');
         expect(main?.planned_grams).toBeGreaterThan(0);
@@ -299,28 +330,33 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
   it.each([
     ['1:1', 150, 150, 1],
     ['2:1', 200, 100, 2],
-  ] as const)('preserves the Strawberry/Banana %s Multi-Main contract', (_label, bananaG, strawberryG, ratio) => {
-    const source = recipe([
-      line('banana', BANANA, bananaG, 'main'),
-      line('strawberry', STRAWBERRY, strawberryG, 'main'),
-    ]);
-    const preview = formulate(source);
-    const banana = preview.proposedInput.items.find((item) => item.id === 'banana')!;
-    const strawberry = preview.proposedInput.items.find((item) => item.id === 'strawberry')!;
-    expect(banana.lock_type).toBe('main');
-    expect(strawberry.lock_type).toBe('main');
-    expect(banana.planned_grams / strawberry.planned_grams).toBeCloseTo(ratio, 6);
-    expect(new Set(canonicalIds(preview.proposedInput)).size).toBe(preview.proposedInput.items.length);
-    const apply = commitPreview(
-      source,
-      NO,
-      preview,
-      '2026-08-08T00:00:01.000Z',
-      `vegan-multimain-${ratio}`,
-    );
-    expect(apply.ok).toBe(true);
-    expect(proof(preview.proposedInput)).toMatchSnapshot();
-  });
+  ] as const)(
+    'preserves the Strawberry/Banana %s Multi-Main contract',
+    (_label, bananaG, strawberryG, ratio) => {
+      const source = recipe([
+        line('banana', BANANA, bananaG, 'main'),
+        line('strawberry', STRAWBERRY, strawberryG, 'main'),
+      ]);
+      const preview = formulate(source);
+      const banana = preview.proposedInput.items.find((item) => item.id === 'banana')!;
+      const strawberry = preview.proposedInput.items.find((item) => item.id === 'strawberry')!;
+      expect(banana.lock_type).toBe('main');
+      expect(strawberry.lock_type).toBe('main');
+      expect(banana.planned_grams / strawberry.planned_grams).toBeCloseTo(ratio, 6);
+      expect(new Set(canonicalIds(preview.proposedInput)).size).toBe(
+        preview.proposedInput.items.length,
+      );
+      const apply = commitPreview(
+        source,
+        NO,
+        preview,
+        '2026-08-08T00:00:01.000Z',
+        `vegan-multimain-${ratio}`,
+      );
+      expect(apply.ok).toBe(true);
+      expect(proof(preview.proposedInput)).toMatchSnapshot();
+    },
+  );
 
   it('calculates verified pea/rice proteins without any dairy gate', () => {
     const neutral = formulate(recipe([line('oat', OAT, 0)])).proposedInput;
@@ -338,7 +374,9 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     const result = calculateRecipe(structural);
     expect(result.percentages.protein_percent).toBeGreaterThan(1);
     expect(result.percentages.lactose_percent).toBe(0);
-    expect(detectViolations(result).some((violation) => violation.metric === 'lactose')).toBe(false);
+    expect(detectViolations(result).some((violation) => violation.metric === 'lactose')).toBe(
+      false,
+    );
     expect(
       detectViolations(result).some((violation) => violation.metric === 'protein_in_solids'),
     ).toBe(false);
@@ -431,7 +469,7 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     );
     // Tara stays at its 2 g template-controlled dose; the body lever therefore
     // lands at the updated deterministic Inulin diagnostic value.
-    expect(inulinIssue?.grams).toBeCloseTo(210.872673, 5);
+    expect(inulinIssue?.grams).toBe(211);
     expect(inulinIssue?.maxGrams).toBeCloseTo(83.1, 6);
     const after = proof(attempted.diagnosticInput);
     expect(after.score).toBeGreaterThanOrEqual(before.score ?? 1);
@@ -441,7 +479,9 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
   });
 
   it('save/reopen and immutable version restore reproduce the exact Vegan recipe and score', () => {
-    const formulated = formulate(recipe([line('strawberry', STRAWBERRY, 300, 'main')])).proposedInput;
+    const formulated = formulate(
+      recipe([line('strawberry', STRAWBERRY, 300, 'main')]),
+    ).proposedInput;
     const beforeScore = recipeTechnicalFit(calculateRecipe(formulated));
     const payload = buildSavePayload({
       name: 'Vegan Strawberry',
@@ -454,19 +494,28 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     expect(reopened).toEqual(formulated);
     expect(reopened.category).toBe('vegan_gelato');
     expect(reopened.target_temperature_c).toBe(-13);
-    expect(reopened.items.filter((item) => item.lock_type === 'main').map((item) => item.id)).toEqual([
-      'strawberry',
-    ]);
+    expect(
+      reopened.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
+    ).toEqual(['strawberry']);
     expect(veganRecipeEligibilityIssues(reopened.items)).toEqual([]);
     expect(recipeTechnicalFit(calculateRecipe(reopened))).toEqual(beforeScore);
 
     const first = buildRecipeVersion(
       {
-        recipeId: 'vegan-recipe', ownerUserId: 'owner', versionNumber: 1,
+        recipeId: 'vegan-recipe',
+        ownerUserId: 'owner',
+        versionNumber: 1,
         recipeInput: formulated,
-        trace: { engineVersion: ENGINE_VERSION, configVersion: CONFIG_VERSION, mapperDatasetVersion: 'v1.0' },
-        source: 'optimizer_correction', createdBy: 'owner', createdAt: '2026-08-08T00:00:00.000Z',
-        productProfile: 'vegan', temperatureC: -13,
+        trace: {
+          engineVersion: ENGINE_VERSION,
+          configVersion: CONFIG_VERSION,
+          mapperDatasetVersion: 'v1.0',
+        },
+        source: 'optimizer_correction',
+        createdBy: 'owner',
+        createdAt: '2026-08-08T00:00:00.000Z',
+        productProfile: 'vegan',
+        temperatureC: -13,
       },
       'vegan-v1',
     );
@@ -474,11 +523,20 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     changedInput.items[0]!.planned_grams += 1;
     const second = buildRecipeVersion(
       {
-        recipeId: 'vegan-recipe', ownerUserId: 'owner', versionNumber: 2,
+        recipeId: 'vegan-recipe',
+        ownerUserId: 'owner',
+        versionNumber: 2,
         recipeInput: changedInput,
-        trace: { engineVersion: ENGINE_VERSION, configVersion: CONFIG_VERSION, mapperDatasetVersion: 'v1.0' },
-        source: 'manual', createdBy: 'owner', createdAt: '2026-08-08T00:01:00.000Z',
-        productProfile: 'vegan', temperatureC: -13,
+        trace: {
+          engineVersion: ENGINE_VERSION,
+          configVersion: CONFIG_VERSION,
+          mapperDatasetVersion: 'v1.0',
+        },
+        source: 'manual',
+        createdBy: 'owner',
+        createdAt: '2026-08-08T00:01:00.000Z',
+        productProfile: 'vegan',
+        temperatureC: -13,
       },
       'vegan-v2',
     );

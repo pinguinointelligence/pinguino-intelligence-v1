@@ -1,17 +1,34 @@
 import { useEffect, useMemo } from 'react';
 import { calculateRecipe, proposeCorrections } from '@/engine';
 import { useAuthStore } from '@/stores/authStore';
-import { useRecipeStore } from '@/stores/recipeStore';
+import { useRecipeStore, type RecipeState } from '@/stores/recipeStore';
 import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeInput';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import { assessProductionRescue } from './productionRescue';
 import { buildProductionForecastInput, productionProgress } from './productionSession';
 import { useProductionSessionStore } from './productionSessionStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  practicalRecipeAuditMatchesInput,
+  practicalizeRecipeCandidate,
+} from '@/features/practical-recipe/practicalRecipe';
 
 const newSessionId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `production-${Date.now().toString(36)}`;
+
+export const productionSourceForRecipe = (
+  recipe: Pick<RecipeState, 'dirty' | 'savedRecipeId' | 'savedRecipeName' | 'currentVersionNumber'>,
+) => ({
+  recipeId: recipe.savedRecipeId,
+  recipeVersionId:
+    !recipe.dirty && recipe.savedRecipeId && recipe.currentVersionNumber
+      ? `${recipe.savedRecipeId}:v${recipe.currentVersionNumber}`
+      : null,
+  recipeVersionNumber: recipe.dirty ? null : recipe.currentVersionNumber,
+  recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
+});
 
 export function useProductionWorkspace(enabled: boolean) {
   const recipe = useRecipeStore();
@@ -26,59 +43,41 @@ export function useProductionWorkspace(enabled: boolean) {
   const applyVerifiedRescue = useProductionSessionStore((state) => state.applyVerifiedRescue);
   const complete = useProductionSessionStore((state) => state.complete);
   const startNewSession = useProductionSessionStore((state) => state.startNewSession);
+  const constraints = useConstraintStudioStore((state) => state.constraints);
+  const lastApplied = useConstraintStudioStore((state) => state.history.at(-1));
 
-  const plannedInput = useMemo(
-    () =>
-      buildRecipeInput(
-        {
-          mode: recipe.mode,
-          formulation_strategy: recipe.formulation_strategy,
-          category: recipe.category,
-          target_temperature_c: recipe.target_temperature_c,
-          target_batch_grams: recipe.target_batch_grams,
-          machine_capacity_grams: recipe.machine_capacity_grams,
-          machine_capacity_source: recipe.machine_capacity_source,
-          flavor_intensity: recipe.flavor_intensity,
-          cost_priority: recipe.cost_priority,
-          target_protein_percent: recipe.target_protein_percent,
-          items: recipe.items,
-        },
-        'planning',
-      ),
-    [
-      recipe.mode,
-      recipe.formulation_strategy,
-      recipe.category,
-      recipe.target_temperature_c,
-      recipe.target_batch_grams,
-      recipe.machine_capacity_grams,
-      recipe.machine_capacity_source,
-      recipe.flavor_intensity,
-      recipe.cost_priority,
-      recipe.target_protein_percent,
-      recipe.items,
-    ],
-  );
+  const plannedInput = useMemo(() => buildRecipeInput(recipe, 'planning'), [recipe]);
 
-  const source = useMemo(
-    () => ({
-      recipeId: recipe.savedRecipeId,
-      recipeVersionId:
-        recipe.savedRecipeId && recipe.currentVersionNumber
-          ? `${recipe.savedRecipeId}:v${recipe.currentVersionNumber}`
-          : null,
-      recipeVersionNumber: recipe.currentVersionNumber,
-      recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
-    }),
-    [
-      recipe.savedRecipeId,
-      recipe.savedRecipeName,
-      recipe.currentVersionNumber,
-    ],
-  );
+  const practicalGate = useMemo(() => {
+    const currentWasApplied =
+      lastApplied?.practicalization !== undefined &&
+      JSON.stringify(lastApplied.after.input) === JSON.stringify(plannedInput);
+    const restoredVerified = practicalRecipeAuditMatchesInput(
+      plannedInput,
+      recipe.practicalRecipeAudit,
+    );
+    if (!currentWasApplied && !restoredVerified) {
+      return {
+        ready: false,
+        message:
+          'Zastosuj najpierw zweryfikowane Preview receptury wykonawczej. Produkcja nie uruchamia niezweryfikowanego szkicu.',
+      };
+    }
+    const result = practicalizeRecipeCandidate(plannedInput, constraints);
+    if (!result.ok) return { ready: false, message: result.messagePl };
+    return JSON.stringify(result.audit.executableInput) === JSON.stringify(plannedInput)
+      ? { ready: true, message: null }
+      : {
+          ready: false,
+          message:
+            'Zastosuj najpierw zweryfikowane Preview w pełnych gramach. Produkcja nie uruchomi ułamkowego szkicu.',
+        };
+  }, [constraints, lastApplied, plannedInput, recipe.practicalRecipeAudit]);
+
+  const source = useMemo(() => productionSourceForRecipe(recipe), [recipe]);
 
   useEffect(() => {
-    if (!enabled || plannedInput.items.length === 0) return;
+    if (!enabled || !practicalGate.ready || plannedInput.items.length === 0) return;
     ensureSession({
       ownerUserId,
       source,
@@ -86,7 +85,7 @@ export function useProductionWorkspace(enabled: boolean) {
       now: new Date().toISOString(),
       sessionId: newSessionId(),
     });
-  }, [enabled, ensureSession, ownerUserId, plannedInput, source]);
+  }, [enabled, ensureSession, ownerUserId, plannedInput, practicalGate.ready, source]);
 
   const forecastInput = useMemo(
     () => (session ? buildProductionForecastInput(session) : plannedInput),
@@ -119,6 +118,8 @@ export function useProductionWorkspace(enabled: boolean) {
     progress,
     score,
     corrections,
+    practicalReady: practicalGate.ready,
+    practicalBlockMessage: practicalGate.message,
     setDraftActual,
     confirmLine: (lineId: string) => confirmLine(lineId, new Date().toISOString()),
     reopenRecord,

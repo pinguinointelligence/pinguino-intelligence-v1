@@ -12,10 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
-import {
-  analyzeConstraintFeasibility,
-  type ConstraintSet,
-} from '@/features/recipe-constraints';
+import { analyzeConstraintFeasibility, type ConstraintSet } from '@/features/recipe-constraints';
 import {
   overSweetStarter,
   starterLine,
@@ -140,8 +137,13 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     expect(outcome.verified.record.configVersion.length).toBeGreaterThan(0);
     // Owner P0 batch invariant: the applied recipe keeps the target batch
     // (locked grams byte-stable; unlocked lines carry the batch restoration).
-    const appliedSum = outcome.verified.input.items.reduce((sum, item) => sum + item.planned_grams, 0);
-    expect(Math.abs(appliedSum - outcome.verified.input.target_batch_grams)).toBeLessThanOrEqual(0.1);
+    const appliedSum = outcome.verified.input.items.reduce(
+      (sum, item) => sum + item.planned_grams,
+      0,
+    );
+    expect(Math.abs(appliedSum - outcome.verified.input.target_batch_grams)).toBeLessThanOrEqual(
+      0.1,
+    );
     // violations are REPORTED honestly (a heavily-locked recipe may trade band
     // precision for batch integrity — visible in the preview, never silent).
     expect(Number.isInteger(outcome.verified.record.violationsAfter)).toBe(true);
@@ -194,7 +196,9 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
 
   it('BLOCKS even a 0.1 g drift on a locked line (§17.2 „nawet o 0,1 g”)', () => {
     const input = starterMilkBase();
-    const set: ConstraintSet = { byLineId: { [MILK]: { mode: 'locked', grams: lineGrams(input, MILK) } } };
+    const set: ConstraintSet = {
+      byLineId: { [MILK]: { mode: 'locked', grams: lineGrams(input, MILK) } },
+    };
     const rescale = buildBatchRescalePreview(input, set, 1500, 'now');
     expect(rescale.ok).toBe(true);
     if (!rescale.ok) return;
@@ -272,7 +276,7 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
 });
 
 describe('batch rescale preview (§17.4)', () => {
-  it('preserves an awkward locked float byte-for-byte while the rest scales', () => {
+  it('keeps an awkward locked float byte-exact in Preview and blocks non-executable Apply', () => {
     const awkward = 600.3000000000001; // deliberately awkward float (round-trips exactly)
     const input = withGrams(starterMilkBase(), MILK, awkward);
     const set: ConstraintSet = { byLineId: { [MILK]: { mode: 'locked', grams: awkward } } };
@@ -281,19 +285,23 @@ describe('batch rescale preview (§17.4)', () => {
     expect(built.ok).toBe(true);
     if (!built.ok) return;
 
+    expect(Object.is(lineGrams(built.preview.proposedInput, MILK), awkward)).toBe(true);
+    // The user-owned fractional exact lock wins; it is never rounded behind
+    // the padlock.  The whole-gram execution contract therefore blocks Apply.
     const outcome = commitPreview(input, set, built.preview, 'now', 'apply-b');
-    expect(outcome.ok).toBe(true);
-    if (!outcome.ok) return;
+    expect(outcome).toMatchObject({
+      ok: false,
+      code: 'practicalization_invalid',
+      reason: 'exact_gram_lock_not_whole_gram',
+    });
 
-    expect(Object.is(lineGrams(outcome.verified.input, MILK), awkward)).toBe(true);
-    const total = outcome.verified.input.items.reduce((sum, item) => sum + item.planned_grams, 0);
-    expect(Math.abs(total - 1500)).toBeLessThanOrEqual(0.1);
-    expect(outcome.verified.input.target_batch_grams).toBe(1500);
-    // every non-locked line actually moved
+    // every non-locked line was still considered by the exact rescale
     const milkDiff = built.preview.lines.find((line) => line.lineId === MILK);
     expect(milkDiff).toMatchObject({ kind: 'unchanged', locked: true });
     expect(
-      built.preview.lines.filter((line) => line.lineId !== MILK).every((line) => line.kind === 'changed'),
+      built.preview.lines
+        .filter((line) => line.lineId !== MILK)
+        .every((line) => line.kind === 'changed'),
     ).toBe(true);
   });
 

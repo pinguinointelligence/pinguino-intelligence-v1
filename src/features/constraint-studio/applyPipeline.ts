@@ -134,11 +134,20 @@ import {
   fitProteinTarget,
   type ProteinTargetAssessment,
 } from '@/features/protein-gelato/proteinTarget';
+import {
+  practicalizeRecipeCandidate,
+  PRACTICAL_RECIPE_MODEL_VERSION,
+  type PracticalRecipeAudit,
+  type PracticalRecipeResult,
+} from '@/features/practical-recipe/practicalRecipe';
 
 /** Build-only commercial inputs. They rank ECO candidates in memory and are
  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
 export interface OptimizePreviewOptions extends FormulationOptions {
   effectivePriceOverrides?: CustomerPriceIndex;
+  /** Pro workbench provenance gate: even a clean, already-integer recipe must
+   * pass through the canonical Preview → Apply door before Save/Production. */
+  requirePracticalPreview?: boolean;
 }
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
@@ -419,6 +428,11 @@ export interface ConstraintPreview {
    * that and must NEVER call it a technical improvement.
    */
   batchReconciliationOnly?: boolean;
+  /** TRUE only when the recipe was already inside every selected/native band
+   * and Preview exists solely to turn the exact draft into an executable
+   * whole-gram vector. Apply never trusts this marker; it re-derives the exact
+   * equality and the practical candidate from the current draft. */
+  practicalizationOnly?: boolean;
   /** The planned mass the draft carried before the reconciliation. */
   batchBeforeGrams?: number;
   /**
@@ -483,7 +497,19 @@ export interface ConstraintPreview {
     | 'hard_residual'
     | 'iteration_cap'
     | 'reference_derived'
-    | 'protein_target_residual';
+    | 'protein_target_residual'
+    | 'practicalization_blocked';
+  /** Owner 2026-08-11: exact Engine candidate and the independently
+   * Engine-recalculated whole-gram recipe the user will physically make.
+   * Session-only Preview provenance; the practical input remains the sole
+   * value that may cross Apply into the canonical recipe store. */
+  practicalization?:
+    | { status: 'ready'; audit: PracticalRecipeAudit }
+    | {
+        status: 'blocked';
+        modelVersion: typeof PRACTICAL_RECIPE_MODEL_VERSION;
+        failure: Extract<PracticalRecipeResult, { ok: false }>;
+      };
   /** The proposed working state — applied ONLY through `commitPreview`. */
   proposedInput: RecipeInput;
   /** The constraint set in force AFTER apply (suggested fixes update a lock —
@@ -1100,21 +1126,38 @@ const finishPreview = (
   explanation: ConstraintExplanationEntry[],
   createdAt: string,
 ): ConstraintPreview => {
-  const afterResult = calculateRecipe(proposedInput);
+  const practical = practicalizeRecipeCandidate(proposedInput, nextConstraints);
+  const executableInput = practical.ok ? practical.audit.executableInput : proposedInput;
+  const afterResult = practical.ok
+    ? practical.audit.executableResult
+    : calculateRecipe(proposedInput);
   return {
     kind,
     titlePl,
     // Owner addendum item 4: computed HERE, from the two inputs, for EVERY
     // preview builder — there is no path that can produce a preview without it.
-    outcomeClassification: classifyPreviewOutcome(baseInput, proposedInput),
+    outcomeClassification: classifyPreviewOutcome(baseInput, executableInput),
     baseFingerprint: workingStateFingerprint(baseInput, baseSet),
-    proposedInput,
+    proposedInput: executableInput,
     nextConstraints,
-    proteinTarget: assessProteinTarget(proposedInput, afterResult),
-    directionAssessment: assessRecipeDirection(proposedInput, afterResult),
-    lines: buildLineDiffs(baseInput, proposedInput, nextConstraints),
+    proteinTarget: assessProteinTarget(executableInput, afterResult),
+    directionAssessment: assessRecipeDirection(executableInput, afterResult),
+    lines: buildLineDiffs(baseInput, executableInput, nextConstraints),
     violationsBefore,
     violationsAfter: violationCount(afterResult),
+    practicalization: practical.ok
+      ? { status: 'ready', audit: practical.audit }
+      : {
+          status: 'blocked',
+          modelVersion: PRACTICAL_RECIPE_MODEL_VERSION,
+          failure: practical,
+        },
+    ...(practical.ok
+      ? {}
+      : {
+          diagnosticOnly: true,
+          diagnosticReason: 'practicalization_blocked' as const,
+        }),
     explanation,
     engineVersion: afterResult.engine_version,
     configVersion: afterResult.config_version,
@@ -1976,10 +2019,7 @@ function buildFormulationPreviewInternal(
   // WHILE verified improvement exists; never 1 round by construction).
   // Fallback bands guide the iteration; the honest partial score labelling for
   // provisional profiles is kept unchanged.
-  const solverSet = withTemplateControlledStabilizerLocks(
-    built.proposal.proposedInput,
-    set,
-  );
+  const solverSet = withTemplateControlledStabilizerLocks(built.proposal.proposedInput, set);
   const iterated = iterateFormulationSeed(input, solverSet, built.proposal.proposedInput, options);
   const working = iterated.working;
   const solverRounds = iterated.diagnostics.solverInvocations;
@@ -2468,6 +2508,31 @@ export function buildOptimizePreview(
           diagnosticInput: input,
         };
       }
+    }
+    const practical = practicalizeRecipeCandidate(input, set);
+    const needsPracticalPreview =
+      options.requirePracticalPreview === true ||
+      !practical.ok ||
+      JSON.stringify(practical.audit.executableInput) !== JSON.stringify(input);
+    if (needsPracticalPreview) {
+      // A clean, already-integer Pro draft still needs the SAME Preview →
+      // Apply provenance before Save/Production.  A zero-diff Preview is
+      // deliberate executable validation, not a second apply route.
+      const preview = finishPreview(
+        'optimize',
+        options.requirePracticalPreview === true
+          ? 'Zweryfikuj recepturę wykonawczą'
+          : 'Przygotuj recepturę do wykonania',
+        input,
+        set,
+        input,
+        set,
+        violationsBefore,
+        [],
+        createdAt,
+      );
+      preview.practicalizationOnly = true;
+      return mainSafePreview(input, preview);
     }
     return { ok: false, code: 'already_clean' };
   }
@@ -2962,6 +3027,13 @@ export interface AppliedChangeRecord {
     added: FormulationAddedLine[];
     localFallback: boolean;
   };
+  /** Session history audit: the exact Engine candidate that preceded the
+   * whole-gram executable input stored in `after.input`. */
+  practicalization?: {
+    modelVersion: typeof PRACTICAL_RECIPE_MODEL_VERSION;
+    exactInput: RecipeInput;
+    lines: PracticalRecipeAudit['lines'];
+  };
 }
 
 /* ── the ONLY door ───────────────────────────────────────────────────────── */
@@ -3029,7 +3101,12 @@ export type BlockedApply =
    * however the search ended and however exactly the batch matches. Re-derived
    * at this door from the template id in the proposal against the registry's
    * OWN status — never from `preview.formulation.templateStatus`. */
-  | { code: 'reference_derived_provenance'; messagePl: string; templateId: string };
+  | { code: 'reference_derived_provenance'; messagePl: string; templateId: string }
+  | {
+      code: 'practicalization_invalid';
+      messagePl: string;
+      reason: string;
+    };
 
 export type CommitPreviewResult =
   | { ok: true; verified: VerifiedApply }
@@ -3084,8 +3161,7 @@ function ingredientIdentityIntegrityViolations(
     }
     if (existing.id === authorizedSubstitutionLineId) continue;
     if (
-      canonicalIngredientId(existing.ingredient) !==
-        canonicalIngredientId(proposed.ingredient) ||
+      canonicalIngredientId(existing.ingredient) !== canonicalIngredientId(proposed.ingredient) ||
       substitutionIngredientFingerprint(existing.ingredient) !==
         substitutionIngredientFingerprint(proposed.ingredient)
     ) {
@@ -3115,10 +3191,7 @@ function ingredientIdentityIntegrityViolations(
  * current native lock. The identity and planned mass of an already-added line
  * are immutable as well.
  */
-function physicalActualIntegrityViolations(
-  current: RecipeInput,
-  proposed: RecipeInput,
-): string[] {
+function physicalActualIntegrityViolations(current: RecipeInput, proposed: RecipeInput): string[] {
   const currentByLineId = new Map(current.items.map((item) => [item.id, item]));
   const violations: string[] = [];
 
@@ -3138,8 +3211,7 @@ function physicalActualIntegrityViolations(
     const physicalLineChanged =
       existingIsPhysical &&
       (!Object.is(item.planned_grams, existing.planned_grams) ||
-        canonicalIngredientId(item.ingredient) !==
-          canonicalIngredientId(existing.ingredient) ||
+        canonicalIngredientId(item.ingredient) !== canonicalIngredientId(existing.ingredient) ||
         substitutionIngredientFingerprint(item.ingredient) !==
           substitutionIngredientFingerprint(existing.ingredient));
     if (actualChanged || lockChanged || physicalLineChanged) {
@@ -3195,6 +3267,51 @@ export class VerifiedApply {
     }
     if (!sameVerifiedRecipeContext(current, preview.proposedInput)) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+    }
+
+    // Owner 2026-08-11 practical recipe contract. The Preview carries the
+    // exact Engine candidate only as audit provenance; Apply independently
+    // rebuilds the whole-gram candidate and demands byte-identical input.
+    // Removing or forging this proof cannot turn rounding into an authority.
+    let exactCandidate = preview.proposedInput;
+    let practicalizationRecheckFailure: Extract<CommitPreviewResult, { ok: false }> | null = null;
+    if (preview.practicalization?.status === 'blocked') {
+      return {
+        ok: false,
+        code: 'practicalization_invalid',
+        reason: preview.practicalization.failure.code,
+        messagePl: preview.practicalization.failure.messagePl,
+      };
+    }
+    if (preview.practicalization?.status === 'ready') {
+      const audit = preview.practicalization.audit;
+      if (
+        audit.modelVersion !== PRACTICAL_RECIPE_MODEL_VERSION ||
+        !sameVerifiedRecipeContext(current, audit.exactInput)
+      ) {
+        practicalizationRecheckFailure = {
+          ok: false,
+          code: 'practicalization_invalid',
+          reason: 'model_or_context_mismatch',
+          messagePl:
+            'Apply zablokowany: kandydat pełnych gramów nie odpowiada bieżącej recepturze.',
+        };
+      }
+      const rederived = practicalizeRecipeCandidate(audit.exactInput, preview.nextConstraints);
+      if (
+        !rederived.ok ||
+        JSON.stringify(rederived.audit.executableInput) !== JSON.stringify(preview.proposedInput) ||
+        JSON.stringify(rederived.audit.executableInput) !== JSON.stringify(audit.executableInput)
+      ) {
+        practicalizationRecheckFailure = {
+          ok: false,
+          code: 'practicalization_invalid',
+          reason: rederived.ok ? 'candidate_fingerprint_mismatch' : rederived.code,
+          messagePl:
+            'Apply zablokowany: nie udało się ponownie potwierdzić tej samej receptury w pełnych gramach.',
+        };
+      }
+      exactCandidate = audit.exactInput;
     }
 
     // Trustless payload validation: stable line/canonical ids, finite
@@ -3281,14 +3398,40 @@ export class VerifiedApply {
         targetBatch: current.target_batch_grams,
       };
     }
+    const earlyPreserved = verifyConstraintsPreserved(
+      preview.nextConstraints,
+      preview.proposedInput,
+    );
+    if (!earlyPreserved.ok) {
+      return {
+        ok: false,
+        code: 'constraints_violated',
+        messagePl: copy.blocked.constraintsViolated(
+          violatedIngredientNames(preview, earlyPreserved.violations),
+        ),
+        violations: earlyPreserved.violations,
+      };
+    }
+    const earlyHasActuals = preview.proposedInput.items.some((item) => item.actual_grams !== null);
+    if (!earlyHasActuals) {
+      const proposedSum = plannedSum(preview.proposedInput);
+      const targetBatch = preview.proposedInput.target_batch_grams;
+      if (Math.abs(proposedSum - targetBatch) > BATCH_SUM_TOLERANCE_G) {
+        return {
+          ok: false,
+          code: 'batch_total_mismatch',
+          messagePl: copy.blocked.batchMismatch(proposedSum, targetBatch),
+          proposedSum,
+          targetBatch,
+        };
+      }
+    }
     const stabilizerFixedLineIds = new Set(
       current.items
         .filter(
           (item) =>
             currentConstraints.byLineId[item.id]?.mode !== 'percent' &&
-            !(
-              currentConstraints.byLineId[item.id] === undefined && item.lock_type === 'percent'
-            ) &&
+            !(currentConstraints.byLineId[item.id] === undefined && item.lock_type === 'percent') &&
             (item.lock_type !== 'unlocked' || isConstrained(currentConstraints, item.id)),
         )
         .map((item) => item.id),
@@ -3314,7 +3457,7 @@ export class VerifiedApply {
             ),
         )
         .map((item) => item.id);
-      const approvedAddedLineIds = preview.proposedInput.items
+      const approvedAddedLineIds = exactCandidate.items
         .filter((item) => {
           if (!isTemplateControlledStabilizer(item.ingredient)) return false;
           if (current.items.some((existing) => existing.id === item.id)) return false;
@@ -3329,18 +3472,16 @@ export class VerifiedApply {
         .map((item) => item.id);
       return {
         totalGrams:
-          stabilizerRole.grams *
-          (preview.proposedInput.target_batch_grams / template.baseBatchG),
+          stabilizerRole.grams * (exactCandidate.target_batch_grams / template.baseBatchG),
         allowedLineIds: new Set([...currentStabilizerLineIds, ...approvedAddedLineIds]),
       };
     })();
     const stabilizerViolations = templateControlledStabilizerViolations(
       current,
-      preview.proposedInput,
+      exactCandidate,
       preview.kind === 'batch_rescale' && current.target_batch_grams > 0
         ? {
-            proportionalBatchRatio:
-              preview.proposedInput.target_batch_grams / current.target_batch_grams,
+            proportionalBatchRatio: exactCandidate.target_batch_grams / current.target_batch_grams,
             fixedLineIds: stabilizerFixedLineIds,
           }
         : { approvedFormulationSeed: formulationSeed },
@@ -3359,6 +3500,70 @@ export class VerifiedApply {
           stabilizerViolations.map((violation) => violation.ingredientName),
         ),
         violations,
+      };
+    }
+    const practicalStabilizerViolations: ConstraintPreservationViolation[] = [];
+    const proposedByLineIdForPractical = new Map(
+      preview.proposedInput.items.map((item) => [item.id, item]),
+    );
+    for (const exactLine of exactCandidate.items.filter((item) =>
+      isTemplateControlledStabilizer(item.ingredient),
+    )) {
+      const practicalLine = proposedByLineIdForPractical.get(exactLine.id);
+      if (
+        !practicalLine ||
+        canonicalIngredientId(practicalLine.ingredient) !==
+          canonicalIngredientId(exactLine.ingredient) ||
+        !Object.is(practicalLine.planned_grams, Math.round(exactLine.planned_grams))
+      ) {
+        practicalStabilizerViolations.push({
+          lineId: exactLine.id,
+          code: practicalLine ? 'locked_grams_changed' : 'line_missing',
+        });
+      }
+    }
+    if (practicalStabilizerViolations.length > 0) {
+      return {
+        ok: false,
+        code: 'constraints_violated',
+        messagePl: copy.blocked.constraintsViolated(
+          practicalStabilizerViolations.map(
+            (violation) =>
+              exactCandidate.items.find((item) => item.id === violation.lineId)?.ingredient.name ??
+              violation.lineId,
+          ),
+        ),
+        violations: practicalStabilizerViolations,
+      };
+    }
+    const practicalRequiredViolations: ConstraintPreservationViolation[] = [];
+    for (const exactLine of exactCandidate.items.filter((item) => item.lock_type === 'required')) {
+      const practicalLine = proposedByLineIdForPractical.get(exactLine.id);
+      if (
+        !practicalLine ||
+        practicalLine.lock_type !== 'required' ||
+        canonicalIngredientId(practicalLine.ingredient) !==
+          canonicalIngredientId(exactLine.ingredient) ||
+        !Object.is(practicalLine.planned_grams, exactLine.planned_grams)
+      ) {
+        practicalRequiredViolations.push({
+          lineId: exactLine.id,
+          code: practicalLine ? 'locked_grams_changed' : 'line_missing',
+        });
+      }
+    }
+    if (practicalRequiredViolations.length > 0) {
+      return {
+        ok: false,
+        code: 'constraints_violated',
+        messagePl: copy.blocked.constraintsViolated(
+          practicalRequiredViolations.map(
+            (violation) =>
+              exactCandidate.items.find((item) => item.id === violation.lineId)?.ingredient.name ??
+              violation.lineId,
+          ),
+        ),
+        violations: practicalRequiredViolations,
       };
     }
     try {
@@ -3573,20 +3778,6 @@ export class VerifiedApply {
       };
     }
 
-    // THE owner-mandated gate: every Apply verifies constraint preservation.
-    // Runs FIRST so a locked-line violation keeps its specific §17.2 message.
-    const preserved = verifyConstraintsPreserved(preview.nextConstraints, preview.proposedInput);
-    if (!preserved.ok) {
-      return {
-        ok: false,
-        code: 'constraints_violated',
-        messagePl: copy.blocked.constraintsViolated(
-          violatedIngredientNames(preview, preserved.violations),
-        ),
-        violations: preserved.violations,
-      };
-    }
-
     // Owner P0 Phase 6 — DUPLICATE INVARIANT: applying must be structurally
     // impossible when the proposal would introduce a new plannable duplicate
     // of any canonical ingredient identity (or a duplicate line id).
@@ -3778,6 +3969,11 @@ export class VerifiedApply {
       }
     }
 
+    // Native hard-residual diagnostics remain more authoritative than a
+    // derived whole-gram fingerprint mismatch. Both fail closed; this order
+    // preserves the accepted operator-facing reason.
+    if (practicalizationRecheckFailure !== null) return practicalizationRecheckFailure;
+
     if (
       (preview.kind === 'optimize' || preview.kind === 'substitution') &&
       current.category === 'protein_gelato'
@@ -3824,7 +4020,17 @@ export class VerifiedApply {
       // `proposedInput` (never from `preview.batchReconciliationOnly`), and
       // deliberately narrow so the hollow 8 × 125 g class stays gated.
       const reconciliation = isBatchReconciliation(current, preview.proposedInput);
-      if (!hardConstrained && !reconciliation && !beatsBaseline(current, preview.proposedInput)) {
+      const practicalizationOnly =
+        preview.practicalization?.status === 'ready' &&
+        JSON.stringify(preview.practicalization.audit.exactInput) === JSON.stringify(current) &&
+        JSON.stringify(preview.practicalization.audit.executableInput) ===
+          JSON.stringify(preview.proposedInput);
+      if (
+        !hardConstrained &&
+        !reconciliation &&
+        !practicalizationOnly &&
+        !beatsBaseline(current, preview.proposedInput)
+      ) {
         return {
           ok: false,
           code: 'unsafe_proposal',
@@ -3833,6 +4039,16 @@ export class VerifiedApply {
           violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
         };
       }
+    }
+
+    if (preview.practicalization === undefined) {
+      return {
+        ok: false,
+        code: 'practicalization_invalid',
+        reason: 'missing_proof',
+        messagePl:
+          'Apply zablokowany: Preview nie zawiera zweryfikowanej receptury wykonawczej w pełnych gramach.',
+      };
     }
 
     const record: AppliedChangeRecord = {
@@ -3865,6 +4081,15 @@ export class VerifiedApply {
               templateId: preview.formulation.templateId,
               added: structuredClone(preview.formulation.added),
               localFallback: preview.formulation.localFallback === true,
+            },
+          }
+        : {}),
+      ...(preview.practicalization.status === 'ready'
+        ? {
+            practicalization: {
+              modelVersion: preview.practicalization.audit.modelVersion,
+              exactInput: structuredClone(preview.practicalization.audit.exactInput),
+              lines: structuredClone(preview.practicalization.audit.lines),
             },
           }
         : {}),

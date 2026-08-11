@@ -118,15 +118,37 @@ export function ConstraintPreviewCard({
   // Owner addendum item 4 — the trustless outcome classification.
   const outcome = preview.outcomeClassification;
   const selectedDirection = directionSummary(preview);
+  const protectedFacts = [
+    [
+      'Blokady',
+      preview.proposedInput.items.filter(
+        (item) =>
+          item.lock_type === 'grams' ||
+          item.lock_type === 'percent' ||
+          item.lock_type === 'already_added' ||
+          item.grams_constraint !== undefined ||
+          item.percent_constraint !== undefined ||
+          item.range_constraint !== undefined,
+      ).length,
+    ],
+    ['Główne', preview.proposedInput.items.filter((item) => item.lock_type === 'main').length],
+    [
+      'Wymagane',
+      preview.proposedInput.items.filter((item) => item.lock_type === 'required').length,
+    ],
+    ['Wykluczenia', preview.proposedInput.goals?.excluded_ingredient_ids?.length ?? 0],
+  ] as const;
 
   return (
     <section
       aria-label={copy.preview.title}
-      className="rounded-xl bg-white/[0.035] px-3 py-3 sm:px-4 sm:py-4"
+      className="rounded-[22px] bg-white/[0.035] px-3 py-3 sm:px-4 sm:py-4"
     >
       <div className="flex items-center justify-between gap-3">
         <span>
-          <span className="block text-[0.625rem] font-semibold tracking-[0.12em] text-gold-soft uppercase">Preview</span>
+          <span className="block text-[0.625rem] font-semibold tracking-[0.12em] text-gold-soft uppercase">
+            Preview
+          </span>
           <span className="mt-1 block text-base font-medium text-ivory">{copy.preview.title}</span>
         </span>
         <span className="rounded-full border border-ivory/15 bg-white/[0.04] px-2.5 py-1 text-[0.625rem] font-medium tracking-[0.08em] text-ivory/65 uppercase">
@@ -157,6 +179,74 @@ export function ConstraintPreviewCard({
           wykluczenia pozostają nienaruszalne.
         </div>
       ) : null}
+
+      {preview.practicalization?.status === 'ready' ? (
+        <div
+          className="mt-3 rounded-[18px] border border-gold-soft/25 bg-gold-soft/[0.055] px-3 py-3"
+          data-testid="preview-practical-recipe"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <strong className="text-sm text-ivory">Receptura wykonawcza · pełne gramy</strong>
+            <span className="text-xs font-semibold text-status-ideal">
+              ✓ Engine sprawdzony ponownie
+            </span>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-ivory/65">
+            Dokładny kandydat PI został przeliczony na fizyczny wektor gramowy, a POD, NPAC i
+            wszystkie twarde bramki policzono ponownie dla liczb widocznych poniżej.
+          </p>
+          <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-ivory/70">
+            <div className="rounded-xl bg-black/15 px-3 py-2">
+              <dt>Dokładny Engine</dt>
+              <dd className="mt-1 font-mono tabular-nums text-ivory">
+                {preview.practicalization.audit.exactTotalGrams.toFixed(3)} g
+              </dd>
+            </div>
+            <div className="rounded-xl bg-black/15 px-3 py-2">
+              <dt>Do wykonania</dt>
+              <dd className="mt-1 font-mono tabular-nums text-ivory">
+                {preview.practicalization.audit.executableTotalGrams.toFixed(0)} g
+              </dd>
+            </div>
+          </dl>
+        </div>
+      ) : preview.practicalization?.status === 'blocked' ? (
+        <div
+          className="mt-3 rounded-[18px] border border-status-risky/40 bg-status-risky/10 px-3 py-3"
+          data-testid="preview-practical-blocker"
+        >
+          <strong className="text-sm text-status-risky">
+            Nie można utworzyć bezpiecznej receptury pełnogramowej
+          </strong>
+          <p className="mt-1 text-xs leading-relaxed text-ivory/75">
+            {preview.practicalization.failure.messagePl}
+          </p>
+        </div>
+      ) : null}
+
+      <section
+        className="mt-3 rounded-[18px] border border-ivory/12 bg-white/[0.025] px-3 py-3"
+        data-testid="preview-protected-contracts"
+      >
+        <p className="text-[0.625rem] font-semibold tracking-[0.12em] text-ivory/65 uppercase">
+          Chronione przez Apply
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {protectedFacts.map(([label, count]) => (
+            <span
+              key={label}
+              className="rounded-full border border-ivory/12 px-2.5 py-1 text-xs text-ivory/75"
+            >
+              {label}: <strong className="font-mono tabular-nums text-ivory">{count}</strong>
+            </span>
+          ))}
+          {preview.formulation?.proof?.stabilizerDoseNotePl ? (
+            <span className="rounded-full border border-gold-soft/25 px-2.5 py-1 text-xs text-gold-soft">
+              Stabilizator: dawka szablonowa
+            </span>
+          ) : null}
+        </div>
+      </section>
 
       {preview.directionAssessment?.active ? (
         <div
@@ -276,11 +366,13 @@ export function ConstraintPreviewCard({
       ) : null}
 
       <div className="mt-4">
-        <p className="mb-1 text-[0.625rem] font-semibold tracking-[0.12em] text-ivory/65 uppercase">Proponowane zmiany</p>
+        <p className="mb-1 text-[0.625rem] font-semibold tracking-[0.12em] text-ivory/65 uppercase">
+          Proponowane zmiany
+        </p>
         <div className="divide-y divide-ivory/10 rounded-lg bg-black/15 px-3">
-        {mainLines.map((line) => (
-          <DiffRow key={line.lineId} line={line} />
-        ))}
+          {mainLines.map((line) => (
+            <DiffRow key={line.lineId} line={line} />
+          ))}
         </div>
       </div>
 

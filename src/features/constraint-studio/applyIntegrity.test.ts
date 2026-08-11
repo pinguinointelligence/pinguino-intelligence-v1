@@ -160,7 +160,11 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     useConstraintStudioStore.setState({ preview: forged });
 
     useConstraintStudioStore.getState().applyPreview();
-    expect(useConstraintStudioStore.getState().blocked?.code).toBe('constraints_violated');
+    // The forged executable vector no longer matches the independently
+    // re-derived practical candidate. Either guard is sufficient, but the
+    // practical proof is intentionally checked before the legacy constraint
+    // payload so a forged Preview never becomes rounding authority.
+    expect(useConstraintStudioStore.getState().blocked?.code).toBe('practicalization_invalid');
     expect(
       useRecipeStore.getState().items.find((item) => item.id === required.id)?.planned_grams,
     ).toBe(required.planned_grams);
@@ -221,9 +225,7 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     const forgedLock = structuredClone(preview);
     forgedLock.baseDraftRevision = undefined;
     forgedLock.baseFingerprint = workingStateFingerprint(current, constraints);
-    const forgedLockLine = forgedLock.proposedInput.items.find(
-      (item) => item.id === physical.id,
-    )!;
+    const forgedLockLine = forgedLock.proposedInput.items.find((item) => item.id === physical.id)!;
     forgedLockLine.actual_grams = 100;
     forgedLockLine.lock_type = 'unlocked';
 
@@ -238,9 +240,7 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     const forgedPlan = structuredClone(preview);
     forgedPlan.baseDraftRevision = undefined;
     forgedPlan.baseFingerprint = workingStateFingerprint(current, constraints);
-    const forgedPlanLine = forgedPlan.proposedInput.items.find(
-      (item) => item.id === physical.id,
-    )!;
+    const forgedPlanLine = forgedPlan.proposedInput.items.find((item) => item.id === physical.id)!;
     forgedPlanLine.actual_grams = 100;
     forgedPlanLine.lock_type = 'already_added';
     forgedPlanLine.planned_grams = physical.planned_grams + 500;

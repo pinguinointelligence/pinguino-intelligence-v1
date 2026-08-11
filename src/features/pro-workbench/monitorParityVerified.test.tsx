@@ -122,10 +122,11 @@ describe('real Pro Monitor route', () => {
     }
   });
 
-  it('has exactly one score and shares the six-axis component with Profile', () => {
-    expect(PANEL.match(/data-testid="monitor-summary-score"/g)).toHaveLength(1);
-    expect(PANEL.match(/data-testid="profile-direction-axes"/g)).toHaveLength(1);
-    expect(PANEL.match(/data-testid="profile-axis-/g)).toHaveLength(6);
+  it('has analysis-only Direction evidence and no duplicate Profile controls', () => {
+    expect(PANEL).not.toContain('data-testid="monitor-summary-score"');
+    expect(PANEL.match(/data-testid="monitor-direction-evidence"/g)).toHaveLength(1);
+    expect(PANEL).not.toContain('data-testid="profile-direction-axes"');
+    expect(PANEL).not.toContain('jeden poziom');
   });
 
   it('does not reintroduce superseded customer-facing diagnostics', () => {

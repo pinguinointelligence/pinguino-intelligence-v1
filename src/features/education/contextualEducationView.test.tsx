@@ -39,7 +39,7 @@ describe('contextual education runtime surface', () => {
   it('implements tap/click controls and no hover-only lesson path', () => {
     expect(source).toContain('onClick={() => onOpen');
     expect(source).toContain('onClick={() => setEffectId');
-    expect(source).toContain('min-h-10');
+    expect(source).toContain('min-h-11');
     expect(source).toContain('min-h-11');
     expect(source).not.toContain('onMouseEnter');
   });
@@ -65,16 +65,10 @@ describe('contextual education runtime surface', () => {
       ['PI-ING-000236', 'Mleko 3,5%'],
       ['PI-ING-000514', 'Sacharoza'],
     ]);
-    expect(
-      processReasonText(
-        'PI-ING-000236',
-        'Brak zweryfikowanego procesu.',
-        names,
-      ),
-    ).toBe('Mleko 3,5% — Brak zweryfikowanego procesu.');
-    expect(processReasonText('PI-ING-UNKNOWN', 'Brak danych.', names)).toContain(
-      'PI-ING-UNKNOWN',
+    expect(processReasonText('PI-ING-000236', 'Brak zweryfikowanego procesu.', names)).toBe(
+      'Mleko 3,5% — Brak zweryfikowanego procesu.',
     );
+    expect(processReasonText('PI-ING-UNKNOWN', 'Brak danych.', names)).toContain('PI-ING-UNKNOWN');
   });
 
   it('uses explicit human wording for every process outcome', () => {

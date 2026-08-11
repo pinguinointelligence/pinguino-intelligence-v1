@@ -44,7 +44,7 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
 ];
 
 const compactSelect =
-  'h-11 min-w-0 rounded-lg border border-ink/12 bg-white px-2 text-[11px] text-ink shadow-pro-sm transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold lg:h-9';
+  'h-11 min-w-0 rounded-[14px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e1 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold';
 
 function LabeledSelect<T extends string>({
   label,
@@ -63,9 +63,7 @@ function LabeledSelect<T extends string>({
 }) {
   return (
     <label className="grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2">
-      <span className="text-[10px] font-semibold tracking-[0.06em] text-stone-500 uppercase">
-        {label}
-      </span>
+      <span className="text-xs font-medium text-stone-600">{label}</span>
       <select
         className={`${compactSelect} w-full`}
         value={value}
@@ -97,6 +95,7 @@ export function WorkbenchSettingsLine({
   const store = useRecipeStore();
   const resizeBatchGrams = useConstraintStudioStore((state) => state.resizeBatchGrams);
   const directionTargets = store.direction_targets;
+  const directionIntents = useRecipeProfileStore((state) => state.directionIntents);
   const openedContextSeq = useRecipeProfileStore((state) => state.openedContextSeq);
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
@@ -117,7 +116,7 @@ export function WorkbenchSettingsLine({
     }
   }, [directionTargets, openDraft, openedContextSeq, store.draftContextSeq]);
 
-  const snapshot = profileSnapshotFromState(store, directionTargets);
+  const snapshot = profileSnapshotFromState(store, directionTargets, directionIntents);
   const signature = profileSettingsSignature(snapshot, store.draftContextSeq);
   const confirmed =
     confirmedSignature === signature && confirmedContextSeq === store.draftContextSeq;
@@ -169,12 +168,12 @@ export function WorkbenchSettingsLine({
   return (
     <section
       className={cn(
-        'rounded-xl border p-3 shadow-pro-sm transition-colors',
+        'rounded-[22px] border p-4 shadow-pro-e2 transition-colors',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
           : confirmed
-            ? 'border-pro-line bg-white/80'
-            : 'border-gold/45 bg-education-ivory/65',
+            ? 'border-white/55 bg-[#f7f5f0]'
+            : 'border-gold/45 bg-[#f7f1df]',
       )}
       data-testid="workbench-settings-line"
       data-preflight-state={
@@ -182,12 +181,10 @@ export function WorkbenchSettingsLine({
       }
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[10px] font-semibold tracking-[0.08em] text-ink uppercase">
-          Ustawienia receptury
-        </h3>
+        <h3 className="text-base font-semibold text-ink">Ustawienia receptury</h3>
         <span
           className={cn(
-            'text-[10px] font-semibold tracking-[0.06em] uppercase',
+            'text-xs font-semibold',
             hardConflict ? 'text-status-error' : confirmed ? 'text-status-ideal' : 'text-attention',
           )}
           data-testid="profile-preflight-status"
@@ -196,7 +193,7 @@ export function WorkbenchSettingsLine({
         </span>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-3">
         <div>
           <LabeledSelect
             label={g.productTypeLabel}
@@ -263,7 +260,7 @@ export function WorkbenchSettingsLine({
           data-testid="machine-conditional-settings"
         >
           {!showsProfessionalServing(store.machineKind) ? (
-            <div className="space-y-0.5 text-[10px] text-stone-600">
+            <div className="space-y-0.5 text-xs text-stone-600">
               <p data-testid="home-machine-capacity">
                 Pojemność jednego cyklu:{' '}
                 <strong className="font-mono text-ink">
@@ -301,14 +298,12 @@ export function WorkbenchSettingsLine({
 
         <div
           className={cn(
-            'grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2 rounded-lg border px-2 py-1.5',
+            'grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2 rounded-[16px] border px-3 py-2',
             batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
           )}
           data-testid="profile-batch-combined"
         >
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-stone-500 uppercase">
-            Partia
-          </span>
+          <span className="text-xs font-medium text-stone-600">Partia</span>
           <div className="flex min-w-0 items-center justify-end gap-1.5">
             <strong className="font-mono text-xs tabular-nums text-ink">
               {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
@@ -344,7 +339,7 @@ export function WorkbenchSettingsLine({
           </div>
         </div>
 
-        <div className="rounded-lg border border-ink/10 bg-white/65 p-1.5">
+        <div className="rounded-[16px] border border-ink/10 bg-white/70 p-2">
           <LabeledSelect
             label="TRYB"
             value={store.formulation_strategy}
@@ -353,7 +348,7 @@ export function WorkbenchSettingsLine({
             onChange={(strategy) => store.setFormulationStrategy(strategy)}
             testid="workbench-strategy"
           />
-          <p className="ml-[7.3rem] mt-1 text-[10px] leading-relaxed text-stone-500">
+          <p className="ml-[7.3rem] mt-1 text-xs leading-relaxed text-stone-600">
             {store.formulation_strategy === 'eco'
               ? 'ECO działa w granicach twardej technologii i ochrony smaku.'
               : 'OPTIMAL dobiera technologię bez używania ceny jako celu.'}
@@ -368,13 +363,13 @@ export function WorkbenchSettingsLine({
             disabled={hardConflict}
             onClick={() => confirmSettings(signature, store.draftContextSeq)}
             data-testid="profile-settings-confirm"
-            className="pro-focus-ring h-11 flex-1 rounded-lg bg-ink px-3 text-[11px] font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35 lg:h-9"
+            className="pro-focus-ring h-11 flex-1 rounded-[14px] bg-ink px-3 text-sm font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35"
           >
             Potwierdź ustawienia
           </button>
         ) : (
           <span
-            className="flex-1 text-[10px] text-status-ideal"
+            className="flex-1 text-xs text-status-ideal"
             data-testid="profile-settings-confirmed"
           >
             ✓ Ustawienia sprawdzone
@@ -386,7 +381,7 @@ export function WorkbenchSettingsLine({
             saveDefaults(ownerPreferenceKey(), snapshot);
             setDefaultsSaved(true);
           }}
-          className="pro-focus-ring h-11 rounded-lg border border-ink/15 bg-white px-2 text-[10px] text-stone-600 hover:border-ink/35 lg:h-9"
+          className="pro-focus-ring h-11 rounded-[14px] border border-ink/15 bg-white px-3 text-xs font-medium text-stone-600 hover:border-ink/35"
           data-testid="profile-settings-set-default"
         >
           {defaultsSaved ? '✓ Domyślne zapisane' : 'Ustaw jako domyślne'}

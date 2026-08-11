@@ -7,9 +7,15 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 import { ProfileDirectionAxes } from './ProfileDirectionAxes';
 import { MonitorPanelContent } from './MonitorPanelContent';
-import { buildMonitorAssessment, monitorScoreView } from './monitorSummaryView';
 import { ProductionCockpit } from '@/features/production-workspace/ProductionCockpit';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
+import { WorkbenchIntelligenceHeader } from './WorkbenchIntelligenceHeader';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  practicalRecipeAuditMatchesInput,
+  practicalizeRecipeCandidate,
+} from '@/features/practical-recipe/practicalRecipe';
+import { useRecipeProcessRuntime } from '@/features/education/useRecipeProcessRuntime';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary';
@@ -21,124 +27,24 @@ const TABS: readonly { id: CockpitTab; label: string }[] = [
   { id: 'summary', label: 'Podsumowanie' },
 ];
 
-function NutritionAndCost({ result }: { result: RecipeResult }) {
-  const nutrition = result.nutrition_per_100g;
-  const costs = result.costs;
-  const nutritionRows = nutrition
-    ? [
-        ['Energia', `${nutrition.kcal.toFixed(0)} kcal`],
-        ['Tłuszcz', `${nutrition.fat_g.toFixed(1)} g`],
-        ['Węglowodany', `${nutrition.carbohydrate_g.toFixed(1)} g`],
-        ['w tym cukry', `${nutrition.sugars_g.toFixed(1)} g`],
-        ['Białko', `${nutrition.protein_g.toFixed(1)} g`],
-        ['Błonnik', `${nutrition.fiber_g.toFixed(1)} g`],
-        ['Sól', `${nutrition.salt_g.toFixed(2)} g`],
-      ]
-    : [];
-
-  return (
-    <div
-      className="mx-3 mb-3 grid grid-cols-2 divide-x divide-pro-line overflow-hidden rounded-xl border border-pro-line bg-white/80 shadow-pro-sm max-[430px]:grid-cols-1 max-[430px]:divide-x-0 max-[430px]:divide-y"
-      data-testid="profile-nutrition-cost"
-    >
-      <section className="p-3">
-        <p className="text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
-          Wartości odżywcze · na 100 g
-        </p>
-        {nutritionRows.length ? (
-          <dl className="mt-2 space-y-1">
-            {nutritionRows.map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-2 text-[10px]">
-                <dt className="text-stone-600">{label}</dt>
-                <dd className="font-mono tabular-nums text-ink">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : (
-          <p className="mt-2 text-xs text-stone-500">Brak danych odżywczych</p>
-        )}
-      </section>
-      <section className="p-3">
-        <p className="text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
-          Koszt
-        </p>
-        {costs?.complete ? (
-          <dl className="mt-2 space-y-1 text-[10px]">
-            <div className="flex justify-between gap-2">
-              <dt>Partia</dt>
-              <dd className="font-mono tabular-nums">{costs.total_cost?.toFixed(2)} €</dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt>1 kg</dt>
-              <dd className="font-mono tabular-nums">{costs.cost_per_kg?.toFixed(2)} €</dd>
-            </div>
-            <div className="flex justify-between gap-2">
-              <dt>Porcja 80 g</dt>
-              <dd className="font-mono tabular-nums">{costs.cost_per_serving_80g?.toFixed(2)} €</dd>
-            </div>
-          </dl>
-        ) : (
-          <div className="mt-2">
-            <p className="text-xs font-semibold text-attention">Koszt niepełny</p>
-            <p className="mt-1 text-[10px] text-stone-500">
-              Brakuje cen dla {costs?.missing_cost_ingredient_ids.length ?? result.items.length}{' '}
-              składników.
-            </p>
-          </div>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function ProfileScoreCard({
-  result,
-  input,
-  onOpenEducation,
-}: {
-  result: RecipeResult;
-  input: RecipeInput;
-  onOpenEducation: () => void;
-}) {
-  const score = monitorScoreView(result, input).match;
-  const assessment = buildMonitorAssessment(result);
-
-  return (
-    <button
-      type="button"
-      onClick={onOpenEducation}
-      className="pro-focus-ring mx-3 mt-3 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl bg-pro-graphite px-4 py-3 text-left text-white shadow-pro-md transition-transform hover:-translate-y-px"
-      data-testid="profile-score-card"
-    >
-      <span className="grid size-12 shrink-0 place-items-center rounded-full border border-gold-soft/70 bg-white/[0.04] font-mono text-base font-semibold tabular-nums text-white">
-        {score.display}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="mb-0.5 block text-[10px] font-semibold tracking-[0.12em] text-education-ivory/70 uppercase">Dopasowanie techniczne receptury</span>
-        <strong className="block text-sm text-white">{score.label}</strong>
-        <span className="mt-0.5 block text-[11px] leading-snug text-education-ivory/75">
-          {assessment.headline}
-        </span>
-      </span>
-      <span className="text-xl text-education-ivory/60" aria-hidden>
-        ›
-      </span>
-    </button>
-  );
-}
-
 function ProfileContent({
   result,
-  input,
   onOpenEducation,
 }: {
   result: RecipeResult;
-  input: RecipeInput;
   onOpenEducation: () => void;
 }) {
   return (
     <div data-testid="pro-context-recipe">
-      <ProfileScoreCard result={result} input={input} onOpenEducation={onOpenEducation} />
+      <button
+        type="button"
+        onClick={onOpenEducation}
+        className="pro-focus-ring mx-3 mt-3 flex min-h-11 w-[calc(100%-1.5rem)] items-center justify-between rounded-[16px] border border-ink/10 bg-white px-4 text-left text-sm font-semibold text-ink shadow-pro-sm"
+        data-testid="profile-learning-entry"
+      >
+        <span>Dlaczego taki wynik i jak przygotować recepturę?</span>
+        <span aria-hidden>›</span>
+      </button>
       <div className="p-2">
         <WorkbenchSettingsLine
           actualBatchG={result.total_batch_g}
@@ -146,7 +52,6 @@ function ProfileContent({
         />
       </div>
       <ProfileDirectionAxes result={result} />
-      <NutritionAndCost result={result} />
     </div>
   );
 }
@@ -166,7 +71,7 @@ function ProductionPanel({ production }: { production?: ProductionWorkspaceView 
         <h3 className="text-xs font-semibold text-status-error">
           Nie udało się uruchomić sesji produkcji
         </h3>
-        <p className="mt-1 text-[10px] leading-relaxed text-stone-600">
+        <p className="mt-1 text-xs leading-relaxed text-stone-600">
           Wróć do Profilu receptury i otwórz Produkcję ponownie. Receptura nie została zmieniona.
         </p>
       </div>
@@ -174,58 +79,136 @@ function ProductionPanel({ production }: { production?: ProductionWorkspaceView 
   );
 }
 
-function SummaryPanel({ result }: { result: RecipeResult }) {
+const PROCESS_LABEL = {
+  cold_process_ok: 'Proces na zimno potwierdzony',
+  heat_required_for_function: 'Podgrzanie wymagane technologicznie',
+  heat_required_for_safety: 'Podgrzanie wymagane dla bezpieczeństwa',
+  heat_required_for_both: 'Podgrzanie wymagane technologicznie i dla bezpieczeństwa',
+  unknown: 'Brak pełnych danych procesu',
+} as const;
+
+function SummaryPanel({ result, input }: { result: RecipeResult; input: RecipeInput }) {
   const version = useRecipeStore((state) => state.currentVersionNumber);
+  const dirty = useRecipeStore((state) => state.dirty);
+  const constraints = useConstraintStudioStore((state) => state.constraints);
+  const lastApplied = useConstraintStudioStore((state) => state.history.at(-1));
+  const restoredAudit = useRecipeStore((state) => state.practicalRecipeAudit);
+  const practical = practicalizeRecipeCandidate(input, constraints);
+  const process = useRecipeProcessRuntime(input);
+  const practicalCurrent =
+    practical.ok &&
+    ((lastApplied?.practicalization !== undefined &&
+      JSON.stringify(lastApplied.after.input) === JSON.stringify(input)) ||
+      practicalRecipeAuditMatchesInput(input, restoredAudit)) &&
+    practical.audit.executableInput.items.every((item, index) =>
+      Object.is(item.planned_grams, input.items[index]?.planned_grams),
+    );
+  const executableResult =
+    practicalCurrent && practical.ok ? practical.audit.executableResult : result;
   return (
-    <div className="pro-scroll-safe space-y-3 p-3" data-testid="pro-context-summary">
-      <section className="pro-module p-4">
-        <h3 className="text-sm font-semibold text-ink">Skład receptury</h3>
-        <p className="mt-2 text-[11px] leading-relaxed text-stone-600">
-          {result.items.map((item) => item.ingredient.name).join(', ') || 'Brak składników'}
-        </p>
+    <div className="pro-scroll-safe space-y-3 p-3 text-white" data-testid="pro-context-summary">
+      <section className="rounded-[22px] border border-white/10 bg-white/[0.045] p-4 shadow-pro-e0">
+        <p className="text-xs font-semibold text-[#d7b768]">Finalna bieżąca wersja</p>
+        <div className="mt-2 flex items-baseline justify-between gap-3">
+          <h3 className="text-lg font-semibold text-white">Receptura wykonawcza</h3>
+          <span className="text-xs text-white/55">
+            {version ? `v${version}` : 'wersja robocza'} ·{' '}
+            {dirty ? 'niezapisane zmiany' : 'zapisana'}
+          </span>
+        </div>
+        {practicalCurrent && practical.ok ? (
+          <div className="mt-4 divide-y divide-white/8" data-testid="summary-executable-recipe">
+            {practical.audit.executableInput.items
+              .filter((item) => item.planned_grams > 0)
+              .map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-4 py-2.5">
+                  <span className="min-w-0 truncate text-sm text-white/82">
+                    {item.ingredient.name}
+                  </span>
+                  <strong className="font-mono text-sm tabular-nums text-white">
+                    {item.planned_grams.toFixed(0)} g
+                  </strong>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div
+            className="mt-4 rounded-[18px] border border-[#d7b768]/30 bg-[#d7b768]/8 p-3"
+            data-testid="summary-practical-blocked"
+          >
+            <strong className="text-sm text-[#f0dca7]">
+              Najpierw przygotuj recepturę wykonawczą w Preview
+            </strong>
+            <p className="mt-1 text-xs leading-relaxed text-white/62">
+              Summary nie zaokrągla liczb tylko do wyświetlenia. Zastosuj zweryfikowany kandydat
+              pełnogramowy, aby lista była fizycznie wykonalna.
+            </p>
+          </div>
+        )}
       </section>
-      <NutritionCostScorePanel result={result} />
+      <section className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+        <div className="rounded-[20px] border border-white/9 bg-white/[0.035] p-4">
+          <h3 className="text-sm font-semibold text-white">Kompozycja</h3>
+          <dl className="mt-3 space-y-2 text-xs text-white/65">
+            {[
+              ['Woda', executableResult.percentages.water_percent],
+              ['Ciała stałe', executableResult.percentages.solids_percent],
+              ['Tłuszcz', executableResult.percentages.fat_percent],
+              ['Białko', executableResult.percentages.protein_percent],
+              ['Laktoza', executableResult.percentages.lactose_percent],
+            ].map(([label, value]) => (
+              <div key={label as string} className="flex justify-between gap-3">
+                <dt>{label}</dt>
+                <dd className="font-mono tabular-nums text-white">
+                  {typeof value === 'number' ? `${value.toFixed(1)}%` : '—'}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <div className="rounded-[20px] border border-white/9 bg-white/[0.035] p-4">
+          <h3 className="text-sm font-semibold text-white">Proces i gotowość</h3>
+          <dl className="mt-3 space-y-2 text-xs text-white/65">
+            <div className="flex justify-between gap-3">
+              <dt>Proces</dt>
+              <dd className="text-right text-white">
+                {process.loading ? 'Sprawdzam…' : PROCESS_LABEL[process.classification.status]}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Ilość netto</dt>
+              <dd className="font-mono text-white">
+                {executableResult.total_batch_g.toFixed(0)} g
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Etykieta</dt>
+              <dd className="text-nonprod-soft">wymaga weryfikacji danych</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Eksport / druk</dt>
+              <dd className="text-nonprod-soft">zablokowane do preflight</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+      <div className="rounded-[22px] bg-[#f7f5f0] p-2 text-ink">
+        <NutritionCostScorePanel result={executableResult} />
+      </div>
       <ReadinessFrame
         state="W PRZYGOTOWANIU"
         title="Alergeny i deklaracja"
         compact
+        tone="dark"
         details={{
-          limitation: 'Dane etykiety nie są jeszcze podłączone do aktualnej receptury.',
+          limitation: 'Brak pełnej, zweryfikowanej deklaracji wszystkich składników.',
           calculationImpact: 'Nie wpływa na obliczenia techniczne.',
-          remaining:
-            'Zweryfikować dane składników i zbudować deklarację bez niepotwierdzonych claimów.',
+          remaining: 'Uzupełnić dane i przejść Master Label preflight.',
         }}
       >
-        <p className="text-[10px] text-stone-600">
-          Nie deklarujemy „bez alergenów”, „bez glutenu” ani innych oznaczeń bez zweryfikowanych
-          danych składników.
+        <p className="text-xs text-white/72">
+          Nie deklarujemy claimów ani gotowości druku bez danych źródłowych.
         </p>
-      </ReadinessFrame>
-      <ReadinessFrame
-        state="TESTOWE / NIEPRODUKCYJNE"
-        title="Wpływ receptury na etykietę"
-        compact
-        details={{
-          limitation: 'Obecny eksport etykiety korzysta z danych przykładowych.',
-          calculationImpact: 'Nie wpływa na recepturę.',
-          remaining:
-            'Podłączyć bieżącą recepturę, ilość netto, przechowywanie, pochodzenie i eksport.',
-        }}
-      >
-        <dl className="space-y-1 text-[10px]">
-          <div className="flex justify-between">
-            <dt>Ilość netto</dt>
-            <dd className="font-mono">{result.total_batch_g.toFixed(0)} g</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt>Wersja</dt>
-            <dd>{version ? `v${version}` : 'wersja robocza'}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt>Eksport / druk</dt>
-            <dd className="text-nonprod">niepodłączone</dd>
-          </div>
-        </dl>
       </ReadinessFrame>
     </div>
   );
@@ -238,6 +221,8 @@ export function RecipeProfilePanel({
   servingTemperatureC,
   corrections,
   input,
+  canonicalResult,
+  canonicalInput,
   production,
 }: {
   activeTab: CockpitTab;
@@ -246,56 +231,68 @@ export function RecipeProfilePanel({
   servingTemperatureC: number;
   corrections: CorrectionResult;
   input: RecipeInput;
+  canonicalResult?: RecipeResult;
+  canonicalInput?: RecipeInput;
   production?: ProductionWorkspaceView;
 }) {
   const [educationOpen, setEducationOpen] = useState(false);
   const machineId = useRecipeStore((state) => state.machineId);
   return (
-    <div data-testid="pro-profile-panel" className="min-h-full bg-pro-warm text-ink">
-      <nav
-        aria-label="Kokpit aktualnej receptury"
-        role="tablist"
-        aria-orientation="horizontal"
-        onKeyDown={(event) => {
-          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-          event.preventDefault();
-          const currentIndex = TABS.findIndex((tab) => tab.id === activeTab);
-          const nextIndex =
-            event.key === 'Home'
-              ? 0
-              : event.key === 'End'
-                ? TABS.length - 1
-                : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) %
-                  TABS.length;
-          const next = TABS[nextIndex]!;
-          setEducationOpen(false);
-          onTabChange(next.id);
-          const tabs = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
-          tabs[nextIndex]?.focus();
-        }}
-        className="sticky top-0 z-20 grid grid-cols-4 border-b border-pro-line bg-pro-warm/95 px-2 pt-2 backdrop-blur"
-        data-testid="pro-context-tabs"
-      >
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            id={`pro-context-${tab.id}-tab-control`}
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            aria-controls={`pro-context-${tab.id}-tabpanel`}
-            tabIndex={activeTab === tab.id ? 0 : -1}
-            data-testid={`pro-context-${tab.id}-tab`}
-            onClick={() => {
-              setEducationOpen(false);
-              onTabChange(tab.id);
-            }}
-            className={`pro-focus-ring min-h-11 min-w-0 rounded-t-lg border-b-2 px-1 py-2 text-[10px] font-semibold transition-colors ${activeTab === tab.id ? 'border-ink bg-white/75 text-ink' : 'border-transparent text-stone-500 hover:bg-white/45 hover:text-ink'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+    <div data-testid="pro-profile-panel" className="min-h-full bg-[#17191d] text-ink">
+      <div className="sticky top-0 z-30 bg-[#17191d]" data-testid="workbench-sticky-chrome">
+        <WorkbenchIntelligenceHeader
+          result={canonicalResult ?? result}
+          input={canonicalInput ?? input}
+          onOpenLearning={() => {
+            onTabChange('profile');
+            setEducationOpen(true);
+          }}
+        />
+        <nav
+          aria-label="Kokpit aktualnej receptury"
+          role="tablist"
+          aria-orientation="horizontal"
+          onKeyDown={(event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const currentIndex = TABS.findIndex((tab) => tab.id === activeTab);
+            const nextIndex =
+              event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                  ? TABS.length - 1
+                  : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) %
+                    TABS.length;
+            const next = TABS[nextIndex]!;
+            setEducationOpen(false);
+            onTabChange(next.id);
+            const tabs = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+            tabs[nextIndex]?.focus();
+          }}
+          className="grid grid-cols-4 border-b border-white/10 bg-[#17191d]/95 px-2 pt-2 backdrop-blur"
+          data-testid="pro-context-tabs"
+        >
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              id={`pro-context-${tab.id}-tab-control`}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`pro-context-${tab.id}-tabpanel`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
+              data-testid={`pro-context-${tab.id}-tab`}
+              onClick={() => {
+                setEducationOpen(false);
+                onTabChange(tab.id);
+              }}
+              className={`pro-focus-ring min-h-11 min-w-0 rounded-t-[12px] border-b-2 px-1 py-2 text-xs font-semibold transition-colors ${activeTab === tab.id ? 'border-[#d7b768] bg-white/10 text-white' : 'border-transparent text-white/65 hover:bg-white/5 hover:text-white'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       <div
         id={`pro-context-${activeTab}-tabpanel`}
@@ -312,14 +309,10 @@ export function RecipeProfilePanel({
           />
         ) : null}
         {activeTab === 'profile' && !educationOpen ? (
-          <ProfileContent
-            result={result}
-            input={input}
-            onOpenEducation={() => setEducationOpen(true)}
-          />
+          <ProfileContent result={result} onOpenEducation={() => setEducationOpen(true)} />
         ) : null}
         {activeTab === 'monitor' ? (
-          <div className="pro-scroll-safe p-3" data-testid="pro-context-monitor">
+          <div className="pro-scroll-safe p-3 text-white" data-testid="pro-context-monitor">
             <MonitorPanelContent
               result={result}
               servingTemperatureC={servingTemperatureC}
@@ -330,7 +323,7 @@ export function RecipeProfilePanel({
           </div>
         ) : null}
         {activeTab === 'production' ? <ProductionPanel production={production} /> : null}
-        {activeTab === 'summary' ? <SummaryPanel result={result} /> : null}
+        {activeTab === 'summary' ? <SummaryPanel result={result} input={input} /> : null}
       </div>
     </div>
   );

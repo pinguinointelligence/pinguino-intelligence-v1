@@ -40,7 +40,6 @@ import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/Constrain
 import { constraintStudioCopy } from '@/features/constraint-studio/constraintStudioCopy';
 import type { ConstraintPreview } from '@/features/constraint-studio/applyPipeline';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
-import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule';
 
 /* ───────────────────────── stylesheet → token resolution ───────────────────────── */
 
@@ -273,9 +272,30 @@ const syntheticPreview = (): ConstraintPreview => ({
   proposedInput: starterMilkBase(),
   nextConstraints: { byLineId: {} },
   lines: [
-    { lineId: 'l-milk', name: 'Mleko 3,5%', beforeGrams: 600, afterGrams: 600, kind: 'unchanged', locked: true },
-    { lineId: 'l-sucrose', name: 'Sacharoza', beforeGrams: 82, afterGrams: 74, kind: 'changed', locked: false },
-    { lineId: 'l-zero', name: 'Dekstroza', beforeGrams: 0, afterGrams: 0, kind: 'unchanged', locked: false },
+    {
+      lineId: 'l-milk',
+      name: 'Mleko 3,5%',
+      beforeGrams: 600,
+      afterGrams: 600,
+      kind: 'unchanged',
+      locked: true,
+    },
+    {
+      lineId: 'l-sucrose',
+      name: 'Sacharoza',
+      beforeGrams: 82,
+      afterGrams: 74,
+      kind: 'changed',
+      locked: false,
+    },
+    {
+      lineId: 'l-zero',
+      name: 'Dekstroza',
+      beforeGrams: 0,
+      afterGrams: 0,
+      kind: 'unchanged',
+      locked: false,
+    },
   ],
   violationsBefore: 2,
   violationsAfter: 0,
@@ -339,7 +359,9 @@ describe('theme-pro-dark tokens — surfaces DARK, ivory text AA (stylesheet-der
       const fg = resolveToken(token);
       expect(fg, token).not.toBeNull();
       const ratio = contrastRatio(fg!, raised);
-      expect(ratio, `${token} on graphite-raised = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio, `${token} on graphite-raised = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+        4.5,
+      );
     }
   });
 });
@@ -350,7 +372,10 @@ describe('Monitor / right-panel components — every rendered text node ≥ 4.5:
   const corrections = proposeCorrections({ input, context: recipeContext(input), redact: false });
 
   const CASES: Array<[string, () => string]> = [
-    ['UserMonitorPro', () => renderShell(<UserMonitorPro result={result} servingTemperatureC={-12} />)],
+    [
+      'UserMonitorPro',
+      () => renderShell(<UserMonitorPro result={result} servingTemperatureC={-12} />),
+    ],
     ['OverallScoreCard', () => renderShell(<OverallScoreCard result={result} mode="classic" />)],
     ['NutritionCostScorePanel', () => renderShell(<NutritionCostScorePanel result={result} />)],
     [
@@ -361,16 +386,11 @@ describe('Monitor / right-panel components — every rendered text node ≥ 4.5:
       'ConstraintPreviewCard (incl. de-emphasized 0 g lines)',
       () =>
         renderShell(
-          <ConstraintPreviewCard preview={syntheticPreview()} onApply={() => {}} onCancel={() => {}} />,
-        ),
-    ],
-    [
-      'ReviewMarkedModule (red badge)',
-      () =>
-        renderShell(
-          <ReviewMarkedModule id="x" title="Moduł" badge="DO PRZEGLĄDU" note="Notatka testowa.">
-            <p>Zawartość</p>
-          </ReviewMarkedModule>,
+          <ConstraintPreviewCard
+            preview={syntheticPreview()}
+            onApply={() => {}}
+            onCancel={() => {}}
+          />,
         ),
     ],
   ];

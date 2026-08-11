@@ -61,12 +61,11 @@ describe('professional Monitor acceptance contract', () => {
   const html = renderPanel(starterMilkBase());
   const text = visibleText(html);
 
-  it('renders exactly one technical score and the exact shared six-axis component', () => {
-    expect(html.match(/data-testid="monitor-summary-score"/g)).toHaveLength(1);
-    expect(html).toContain('data-testid="profile-direction-axes"');
-    for (const axis of ['sweetness', 'softness', 'creaminess', 'flavor', 'structure', 'stability']) {
-      expect(html).toContain(`data-testid="profile-axis-${axis}"`);
-    }
+  it('renders analysis-only Direction evidence and no duplicate score or Profile controls', () => {
+    expect(html).not.toContain('data-testid="monitor-summary-score"');
+    expect(html).toContain('data-testid="monitor-direction-evidence"');
+    expect(html).not.toContain('data-testid="profile-direction-axes"');
+    expect(html).not.toContain('jeden poziom');
   });
 
   it('renders the six approved technology modules and keeps core metrics visible', () => {
@@ -102,23 +101,22 @@ describe('professional Monitor acceptance contract', () => {
     expect(html).not.toContain('user-monitor-module-');
   });
 
-  it('keeps Nutrition/Cost secondary and owner diagnostics separate as ADVANCED', () => {
+  it('keeps Nutrition/Cost secondary, Process reachable, and customer Monitor free of QA chrome', () => {
     expect(html).toContain('data-testid="monitor-secondary-nutrition"');
     expect(text).toContain('DO PRZEGLĄDU');
     expect(html).toContain('data-testid="monitor-process-guide-entry"');
     expect(text).toContain('Jak je przygotować?');
-    expect(html).toContain('data-testid="monitor-owner-diagnostics"');
-    expect(html).toContain('data-testid="review-marked-monitor-owner-diagnostic"');
-    expect(text).toContain('ADVANCED');
-    expect(html.indexOf('monitor-process-guide-entry')).toBeLessThan(
-      html.indexOf('monitor-owner-diagnostics'),
-    );
+    expect(html).not.toContain('data-testid="monitor-owner-diagnostics"');
+    expect(html).not.toContain('data-testid="review-marked-monitor-owner-diagnostic"');
+    const source = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
+    expect(source.indexOf('<ProcessGuideEntry')).toBeLessThan(source.indexOf('ownerReviewMode ?'));
   });
 
   it('uses protected position scales without exposing proprietary min/max ranges', () => {
-    expect(html).toContain('bg-pro-graphite');
-    expect(html).toContain('bg-gold/26');
-    expect(html).toContain('Złoty środek');
+    expect(html).toContain('data-testid="monitor-range-zones-');
+    expect(html).toContain('grid-cols-[18fr_18fr_28fr_18fr_18fr]');
+    expect(html).toContain('bg-[#d7b768]');
+    expect(html).toContain('Środkowa złota strefa');
     expect(html).not.toContain('rotate-45');
     expect(text).not.toMatch(/zakres\s+-?\d+[.,]?\d*\s*[–-]\s*-?\d+/i);
   });
@@ -145,8 +143,8 @@ describe('professional Monitor acceptance contract', () => {
       <ProfessionalMonitorModules modules={current} previewModules={preview} />,
     );
     expect(previewHtml).toContain('data-testid="monitor-preview-pod"');
-    expect(previewHtml).toContain('border-gold');
-    expect(visibleText(previewHtml)).toContain('Preview');
+    expect(previewHtml).toContain('text-[#d7b768]');
+    expect(visibleText(previewHtml)).toContain('Po zmianie');
   });
 
   it('renders honest no-evaluation scales for incomplete input without hiding modules', () => {
@@ -155,7 +153,7 @@ describe('professional Monitor acceptance contract', () => {
       expect(empty).toContain(`data-testid="monitor-module-${id}"`);
     }
     expect(empty).toContain('data-evaluation="none"');
-    expect(empty).toContain('bg-stone-200');
+    expect(empty).toContain('bg-white/10');
   });
 });
 
@@ -178,10 +176,11 @@ describe('Monitor layout and integration seams', () => {
     expect(content).toContain('previewModules={previewModules}');
   });
 
-  it('keeps the score behind the existing technical-score seam', () => {
-    const summary = read('features', 'pro-workbench', 'MonitorLiveSummary.tsx');
-    expect(summary).toContain('monitorScoreView');
-    expect(summary).not.toContain('recipeMatchScore(');
+  it('keeps the canonical score behind the persistent workbench header seam', () => {
+    const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
+    expect(header).toContain('monitorScoreView');
+    expect(header).toContain('workbench-intelligence-header');
+    expect(header).not.toContain('recipeMatchScore(');
   });
 
   it('keeps the historical customizable Monitor available without mounting it in normal Pro Monitor', () => {

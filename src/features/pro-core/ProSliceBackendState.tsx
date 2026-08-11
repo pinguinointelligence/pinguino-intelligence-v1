@@ -31,7 +31,7 @@ export function ProSliceBackendState({
         className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs ${tone}`}
         data-testid="pro-slice-backend"
       >
-        <span className="text-[0.6rem] tracking-label uppercase opacity-70">{b.label}</span>
+        <span className="text-xs tracking-[0.04em] uppercase opacity-75">{b.label}</span>
         <span className="font-medium">{status}</span>
       </div>
     </div>

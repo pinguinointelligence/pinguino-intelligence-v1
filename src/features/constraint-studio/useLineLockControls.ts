@@ -43,7 +43,7 @@ export function useLineLockControls(): LineLockControls {
           : null;
     const percentView = {
       percentLocked: percent !== null,
-      percentLabel: percent === null ? undefined : `${percent.toFixed(4)}%`,
+      percentLabel: percent === null ? undefined : `${percent.toFixed(1)}%`,
       percentToggleDisabled: hasActuals,
       onTogglePercent: () => togglePercentLock(item.id),
     };
@@ -51,9 +51,9 @@ export function useLineLockControls(): LineLockControls {
     if (percent !== null) {
       return {
         state: 'percent',
-        lockedGramsLabel: `${percent.toFixed(4)}%`,
+        lockedGramsLabel: `${percent.toFixed(1)}%`,
         ariaLabel: `${name} — odblokuj udział procentowy`,
-        title: `Stały udział finalnej partii: ${percent.toFixed(4)}%`,
+        title: `Stały udział finalnej partii: ${percent.toFixed(1)}%`,
         badge: 'UDZIAŁ',
         plannedDisabled: true,
         toggleDisabled: false,
@@ -84,6 +84,8 @@ export function useLineLockControls(): LineLockControls {
         ariaLabel: copy.lock.lockAria(name),
         title: copy.range.note,
         badge: copy.lock.rangeBadge,
+        minGrams: constraint.minGrams,
+        maxGrams: constraint.maxGrams,
         plannedDisabled: false,
         toggleDisabled: false,
         onToggle: () => toggleLock(item.id),

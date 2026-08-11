@@ -50,9 +50,14 @@ import { canonicalInternalCategory } from '@/features/studio/productType';
 import { isApprovedTemplateId, listFormulationTemplates } from './templateRegistry';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { verifyConstraintsPreserved, type ConstraintSet } from '@/features/recipe-constraints';
-import { recipeTechnicalFit, recipeMatchScore, commercialDimensions } from '@/features/recipe-score';
+import {
+  recipeTechnicalFit,
+  recipeMatchScore,
+  commercialDimensions,
+} from '@/features/recipe-score';
 import { classifyViolationBands } from './violationBands';
 import { isTemplateControlledStabilizer } from './stabilizerDosage';
+import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
 
 /* ── the owner's EXACT T-case fixtures (mirrors qa/engine-authenticity) ───── */
 
@@ -106,7 +111,10 @@ const input = (
 /** T9 — Strawberry EXACT 900 g, Milk 0 g unlocked, Gelato −11 / 1000 g. */
 const t9 = () => ({
   input: input(
-    [line('l-straw', STRAWBERRIES(), 900, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+    [
+      line('l-straw', STRAWBERRIES(), 900, 'grams'),
+      line('l-milk', findDemoIngredient('milk_3_5')!, 0),
+    ],
     'milk_gelato',
   ),
   set: { byLineId: { 'l-straw': { mode: 'locked' as const, grams: 900 } } } satisfies ConstraintSet,
@@ -124,7 +132,9 @@ const milk500Items = () => [
   line('l-water', WATER, 0),
 ];
 const T11_SET: ConstraintSet = { byLineId: { 'l-milk': { mode: 'locked', grams: 500 } } };
-const T12_SET: ConstraintSet = { byLineId: { 'l-milk': { mode: 'range', minGrams: 0, maxGrams: 500 } } };
+const T12_SET: ConstraintSet = {
+  byLineId: { 'l-milk': { mode: 'range', minGrams: 0, maxGrams: 500 } },
+};
 
 /** T14 — the owner sorbet fixture, inulin locked at 0 (944.6 g draft). */
 const t14 = () => ({
@@ -233,7 +243,10 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
     const grams = first.nearestFeasibleGrams!;
     const verified = buildOptimizePreview(
       input(
-        [line('l-straw', STRAWBERRIES(), grams, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+        [
+          line('l-straw', STRAWBERRIES(), grams, 'grams'),
+          line('l-milk', findDemoIngredient('milk_3_5')!, 0),
+        ],
         'milk_gelato',
       ),
       { byLineId: { 'l-straw': { mode: 'locked', grams } } },
@@ -399,14 +412,22 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
   ): ConstraintPreview => {
     const forged = structuredClone(preview);
     const hardResidual = draftAtTargetBatch(rec);
+    const currentTara = rec.items.find((item) => item.id === 'l-tara');
+    const residualTara = hardResidual.items.find((item) => item.id === 'l-tara');
+    const residualWater = hardResidual.items.find((item) => item.id === 'l-water');
+    if (currentTara && residualTara && residualWater) {
+      residualWater.planned_grams += residualTara.planned_grams - currentTara.planned_grams;
+      residualTara.planned_grams = currentTara.planned_grams;
+    }
+    const practical = practicalizeRecipeCandidate(hardResidual, forged.nextConstraints);
+    if (!practical.ok) throw new Error(`hard residual fixture: ${practical.code}`);
     // Forge only formulation/batch. Product/science context must stay exactly
     // the context under which the staged Preview was built; that invariant now
     // has its own trustless Apply gate.
     forged.proposedInput = {
-      ...forged.proposedInput,
-      target_batch_grams: hardResidual.target_batch_grams,
-      items: hardResidual.items,
+      ...practical.audit.executableInput,
     };
+    forged.practicalization = { status: 'ready', audit: practical.audit };
     if (forged.formulation?.proof) forged.formulation.proof.verdict = 'no_feasible_improvement';
     return forged;
   };
@@ -501,7 +522,9 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
     });
     useConstraintStudioStore.getState().resetForTests();
     useConstraintStudioStore.setState({ constraints: t14().set });
-    const before = JSON.stringify(useRecipeStore.getState().items.map((i) => [i.id, i.planned_grams]));
+    const before = JSON.stringify(
+      useRecipeStore.getState().items.map((i) => [i.id, i.planned_grams]),
+    );
     useConstraintStudioStore.getState().createOptimizePreview();
     const staged = useConstraintStudioStore.getState().preview;
     expect(staged).not.toBeNull();
@@ -544,30 +567,37 @@ describe('handoff (Agent R) — an explicitly excluded ingredient never returns 
     const result = buildOptimizePreview(milkRemovedDraft(), NO_SET, 'now');
     // Nothing excluded → the template fallback completes the gelato with milk.
     if (result.ok) {
-      expect(result.preview.proposedInput.items.some((i) => i.ingredient.id === 'milk_3_5')).toBe(true);
+      expect(result.preview.proposedInput.items.some((i) => i.ingredient.id === 'milk_3_5')).toBe(
+        true,
+      );
     }
   });
 
   it.each([
     ['engine id', 'milk_3_5'],
     ['canonical Mapper id', 'PI-ING-000236'],
-  ])('excluded under the %s: milk NEVER returns — solver ADDs are filtered', (_label, excludedId) => {
-    const result = buildOptimizePreview(milkRemovedDraft(), NO_SET, 'now', {
-      excludedIngredientIds: [excludedId],
-    });
-    if (result.ok) {
-      // If anything is proposed at all, it must not contain the excluded milk.
-      expect(result.preview.proposedInput.items.some((i) => i.ingredient.id === 'milk_3_5')).toBe(false);
-    } else {
-      // The honest refusal path: neither the local solver nor the template
-      // fallback fabricated the excluded ingredient — there is NO proposed
-      // state at all (contrast with the CONTROL run above, which reintroduces
-      // milk through the fallback when nothing is excluded). The move-level
-      // `excluded_add_blocked` evidence is pinned in the preview-path test
-      // below, where the engine's chosen move IS the milk add.
-      expect(result.code).not.toBe('impossible_under_constraints');
-    }
-  });
+  ])(
+    'excluded under the %s: milk NEVER returns — solver ADDs are filtered',
+    (_label, excludedId) => {
+      const result = buildOptimizePreview(milkRemovedDraft(), NO_SET, 'now', {
+        excludedIngredientIds: [excludedId],
+      });
+      if (result.ok) {
+        // If anything is proposed at all, it must not contain the excluded milk.
+        expect(result.preview.proposedInput.items.some((i) => i.ingredient.id === 'milk_3_5')).toBe(
+          false,
+        );
+      } else {
+        // The honest refusal path: neither the local solver nor the template
+        // fallback fabricated the excluded ingredient — there is NO proposed
+        // state at all (contrast with the CONTROL run above, which reintroduces
+        // milk through the fallback when nothing is excluded). The move-level
+        // `excluded_add_blocked` evidence is pinned in the preview-path test
+        // below, where the engine's chosen move IS the milk add.
+        expect(result.code).not.toBe('impossible_under_constraints');
+      }
+    },
+  );
 
   it('inside a successful LOCAL preview the excluded add is logged as excluded_add_blocked and no line is fabricated', () => {
     // Sucrose locked over-sweet: the engine's preferred fix is the milk-dilution
@@ -631,12 +661,21 @@ describe('addendum4 — max/range is a RANGE constraint, never an exact-lock enc
     const milkLine = useRecipeStore.getState().items.find((i) => i.id === 'l-milk')!;
     expect(milkLine.lock_type).toBe('grams');
     const draft = selectCanonicalDraft();
-    expect(draft.constraints.byLineId['l-milk']).toEqual({ mode: 'range', minGrams: 0, maxGrams: 500 });
+    expect(draft.constraints.byLineId['l-milk']).toEqual({
+      mode: 'range',
+      minGrams: 0,
+      maxGrams: 500,
+    });
   });
 
   it('(a) the optimum may use LESS than the max: milk max 800 on native milk_gelato lands strictly below', () => {
-    const rec = input([line('l-milk', findDemoIngredient('milk_3_5')!, 700, 'grams')], 'milk_gelato');
-    const set: ConstraintSet = { byLineId: { 'l-milk': { mode: 'range', minGrams: 0, maxGrams: 800 } } };
+    const rec = input(
+      [line('l-milk', findDemoIngredient('milk_3_5')!, 700, 'grams')],
+      'milk_gelato',
+    );
+    const set: ConstraintSet = {
+      byLineId: { 'l-milk': { mode: 'range', minGrams: 0, maxGrams: 800 } },
+    };
     const result = buildOptimizePreview(rec, set, 'now');
     const preview = buildOk(result);
     const milk = preview.proposedInput.items.find((i) => i.id === 'l-milk')!;
@@ -659,9 +698,7 @@ describe('addendum4 — max/range is a RANGE constraint, never an exact-lock enc
     // …and different structural freedom: milk at 450 g satisfies the RANGE but
     // violates the EXACT lock (max may move below; exact may not).
     const state450 = input(
-      milk500Items().map((item) =>
-        item.id === 'l-milk' ? { ...item, planned_grams: 450 } : item,
-      ),
+      milk500Items().map((item) => (item.id === 'l-milk' ? { ...item, planned_grams: 450 } : item)),
       'milk_gelato',
     );
     expect(verifyConstraintsPreserved(T12_SET, state450).ok).toBe(true);
@@ -670,8 +707,12 @@ describe('addendum4 — max/range is a RANGE constraint, never an exact-lock enc
     // byte-held at 500 g while the max-500 solver lands BELOW the bound at the
     // template proportion (grams may only coincide when the optimum happens to
     // sit at the bound — here it does not).
-    const exact = buildOk(buildOptimizePreview(input(milk500Items(), 'milk_gelato'), T11_SET, 'now'));
-    const ranged = buildOk(buildOptimizePreview(input(milk500Items(), 'milk_gelato'), T12_SET, 'now'));
+    const exact = buildOk(
+      buildOptimizePreview(input(milk500Items(), 'milk_gelato'), T11_SET, 'now'),
+    );
+    const ranged = buildOk(
+      buildOptimizePreview(input(milk500Items(), 'milk_gelato'), T12_SET, 'now'),
+    );
     const milkExact = exact.proposedInput.items.find((i) => i.id === 'l-milk')!.planned_grams;
     const milkRanged = ranged.proposedInput.items.find((i) => i.id === 'l-milk')!.planned_grams;
     expect(Object.is(milkExact, 500)).toBe(true); // exact: byte-held
@@ -697,6 +738,8 @@ describe('addendum4 — max/range is a RANGE constraint, never an exact-lock enc
       maxGrams: 500,
     });
     // And the verified state passes its own range verification round-trip.
-    expect(verifyConstraintsPreserved(outcome.verified.constraints, outcome.verified.input).ok).toBe(true);
+    expect(
+      verifyConstraintsPreserved(outcome.verified.constraints, outcome.verified.input).ok,
+    ).toBe(true);
   });
 });

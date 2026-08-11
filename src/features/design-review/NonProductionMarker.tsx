@@ -90,7 +90,7 @@ export function NonProductionBadge({
       data-nonprod-source={item.file}
       title={tooltip}
       aria-label={`${NON_PRODUCTION_BADGE_LABEL} — ${tooltip}`}
-      className={`inline-flex shrink-0 cursor-help items-center gap-1 rounded border px-1.5 py-0.5 text-[0.6rem] font-medium tracking-[0.08em] uppercase ${BADGE_TONE[tone]}`}
+      className={`inline-flex shrink-0 cursor-help items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium tracking-[0.06em] uppercase ${BADGE_TONE[tone]}`}
     >
       <FlaskGlyph />
       {NON_PRODUCTION_BADGE_LABEL}
@@ -127,7 +127,9 @@ export function NonProductionMarker({
     >
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
         {title ? (
-          <span className={`text-[13px] font-medium ${tone === 'dark' ? 'text-ivory' : 'text-ink'}`}>
+          <span
+            className={`text-[13px] font-medium ${tone === 'dark' ? 'text-ivory' : 'text-ink'}`}
+          >
             {title}
           </span>
         ) : null}

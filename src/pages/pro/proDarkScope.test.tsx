@@ -65,20 +65,24 @@ describe('Pro workspace — white precision scope', () => {
     }
   });
 
-  it('the engine lab carries the canonical warm precision hairline inside the light scope', () => {
+  it('the editor stays light while the Intelligence pane is unmistakably graphite', () => {
     const html = renderAt('/pro/recipe', 'pro');
     expect(html).toContain('border-pro-line');
-    expect(html).toContain('bg-pro-warm');
+    expect(html).toContain('bg-paper');
+    expect(html).toContain('bg-[#17191d]');
+    expect(html).toContain('data-testid="workbench-intelligence-header"');
     expect(html).toContain('data-testid="workbench-editor-pane"');
     expect(html).toContain('data-testid="pro-monitor-panel"');
     expect(html).toContain('lg:w-[62%]');
     expect(html).toContain('lg:w-[38%]');
   });
 
-  it('keeps the explicit Direction legend/readiness and the review tools route', () => {
+  it('keeps explicit Direction choices, honest blocked axes and the review tools route', () => {
     const html = renderAt('/pro/recipe', 'pro');
-    expect(html).toContain('aria-label="Legenda kierunku"');
-    expect(html).toContain('data-readiness="WYMAGA KALIBRACJI"');
+    expect(html).toContain('Wybrano:');
+    expect(html).toContain('Kalibracja w przygotowaniu');
+    expect(html).toContain('Brak wystarczających danych');
+    expect(html).not.toContain('aria-label="Legenda kierunku"');
     expect(renderAt('/pro/tools', 'pro')).toContain('data-testid="pro-review-zone"');
   });
 

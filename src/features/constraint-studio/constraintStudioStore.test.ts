@@ -73,6 +73,27 @@ beforeEach(() => {
   useConstraintStudioStore.getState().resetForTests();
 });
 
+describe('Pro executable validation', () => {
+  it('offers the canonical Preview and Apply even when a clean recipe needs zero gram changes', () => {
+    loadRecipe(starterMilkBase());
+    const before = buildRecipeInput(useRecipeStore.getState());
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+
+    expect(preview).not.toBeNull();
+    expect(preview?.practicalizationOnly).toBe(true);
+    expect(preview?.practicalization?.status).toBe('ready');
+    expect(preview?.proposedInput).toEqual(before);
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+    expect(useConstraintStudioStore.getState().history[0]?.practicalization).toBeDefined();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+  });
+});
+
 describe('§17.1/§17.2 padlock', () => {
   it('toggles a mutually-exclusive percentage lock and invalidates the draft revision', () => {
     loadRecipe(overSweetStarter(130));
@@ -176,7 +197,9 @@ describe('§17.1/§17.2 padlock', () => {
 
     useConstraintStudioStore.getState().applyPreview();
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
-    expect(buildRecipeInput(useRecipeStore.getState()).items.find((item) => item.id === SUCROSE)).toMatchObject({
+    expect(
+      buildRecipeInput(useRecipeStore.getState()).items.find((item) => item.id === SUCROSE),
+    ).toMatchObject({
       lock_type: 'required',
       planned_grams: 130,
       grams_constraint: { grams: 130 },

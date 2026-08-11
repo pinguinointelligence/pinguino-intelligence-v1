@@ -134,15 +134,15 @@ export function StudioEngineSurface({
   const [cockpitTab, setCockpitTab] = useState<CockpitTab>(initialCockpit);
   const planning = useStudioResult('planning');
   const production = useProductionWorkspace(cockpitTab === 'production');
-  const { result, corrections, input } =
-    cockpitTab === 'production'
-      ? {
-          result: production.forecastResult,
-          corrections: production.corrections,
-          input: production.forecastInput,
-        }
-      : planning;
-  const scoreDisplay = monitorScoreView(result, input).match.display;
+  const productionReady = cockpitTab === 'production' && production.practicalReady !== false;
+  const { result, corrections, input } = productionReady
+    ? {
+        result: production.forecastResult,
+        corrections: production.corrections,
+        input: production.forecastInput,
+      }
+    : planning;
+  const scoreDisplay = monitorScoreView(planning.result, planning.input).match.display;
   const [mobileCockpitOpen, setMobileCockpitOpen] = useState(activePanel === 'monitor');
   const [mobileViewport, setMobileViewport] = useState(false);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -221,7 +221,26 @@ export function StudioEngineSurface({
             className="min-h-0 lg:flex lg:w-[62%] lg:flex-col lg:border-r lg:border-pro-line"
             data-testid="workbench-editor-pane"
           >
-            {fullFormula ? (
+            {fullFormula && cockpitTab === 'production' && !productionReady ? (
+              <section
+                className="grid h-full min-h-[24rem] place-items-center bg-paper p-6"
+                data-testid="production-editor-practical-block"
+              >
+                <div className="max-w-md rounded-[22px] border border-attention/25 bg-pro-amber/35 p-6 text-center shadow-pro-sm">
+                  <p className="text-xs font-semibold tracking-[0.08em] text-attention uppercase">
+                    Wymaga receptury wykonawczej
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold text-ink">
+                    Najpierw zweryfikuj Preview
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-stone-600">
+                    Produkcja nie pokazuje ani nie przyjmuje gramatur ze szkicu. Zastosuj praktyczną
+                    recepturę pełnogramową, a ten obszar przełączy się na plan, faktyczną masę i
+                    potwierdzenia.
+                  </p>
+                </div>
+              </section>
+            ) : fullFormula ? (
               <div className="min-h-0 flex-1 lg:overflow-hidden">
                 <IngredientBuilder
                   items={result.items}
@@ -229,7 +248,7 @@ export function StudioEngineSurface({
                   targetBatchG={batchGrams}
                   demo={forceDemo}
                   layout="workbench"
-                  mode={cockpitTab === 'production' ? 'production' : 'recipe'}
+                  mode={productionReady ? 'production' : 'recipe'}
                   production={production}
                 />
               </div>
@@ -255,51 +274,28 @@ export function StudioEngineSurface({
               servingTemperatureC={temperatureC}
               corrections={corrections}
               input={input}
+              canonicalResult={planning.result}
+              canonicalInput={planning.input}
               production={production}
             />
           </aside>
         </div>
-        <div className="shrink-0 border-t border-ink/10">
-          {cockpitTab === 'production' && production.session?.status === 'in_progress' ? (
-            <div className="flex min-h-12 items-center justify-between gap-3 bg-white px-3 py-2 text-ink" data-testid="production-bottom-bar">
-              <div className="min-w-0">
-                <strong className="block truncate text-xs">{production.session.source.recipeName}</strong>
-                <span className="font-mono text-[10px] tabular-nums text-stone-500">
-                  {production.progress?.confirmedCount ?? 0}/{production.progress?.totalCount ?? 0} · {production.progress?.confirmedMassG.toFixed(1) ?? '0.0'} g w naczyniu
-                </span>
-              </div>
-              <button
-                type="button"
-                disabled={!production.progress?.coherent}
-                onClick={production.complete}
-                className="h-11 shrink-0 bg-ink px-4 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
-              >
-                Zakończ produkcję
-              </button>
-            </div>
-          ) : cockpitTab === 'production' && production.session?.status === 'completed' ? (
-            <div className="flex min-h-12 items-center justify-between bg-white px-3 py-2 text-xs text-ink">
-              <span>Partia zakończona · Master Label</span>
-              <span className="font-mono tabular-nums">{production.session?.completionSnapshot?.actualFinalMassG.toFixed(1) ?? '—'} g</span>
-            </div>
-          ) : (
-            recipeBar
-          )}
+        <div className="shrink-0 border-t border-ink/10 bg-white px-3 py-2 lg:hidden">
+          <button
+            ref={cockpitTriggerRef}
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={mobileCockpitOpen}
+            aria-controls="mobile-cockpit-dialog"
+            onClick={() => setMobileCockpitOpen(true)}
+            className="pro-focus-ring flex min-h-11 w-full items-center justify-between rounded-[14px] border border-ink/12 bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-e1"
+            data-testid="mobile-cockpit-trigger"
+          >
+            <span>Otwórz kokpit receptury</span>
+            <span className="font-mono tabular-nums text-gold-soft">{scoreDisplay}</span>
+          </button>
         </div>
-
-        <button
-          ref={cockpitTriggerRef}
-          type="button"
-          aria-haspopup="dialog"
-          aria-expanded={mobileCockpitOpen}
-          aria-controls="mobile-cockpit-dialog"
-          onClick={() => setMobileCockpitOpen(true)}
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-30 flex min-h-11 items-center gap-2 rounded-full border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink shadow-pro-md lg:hidden"
-          data-testid="mobile-cockpit-trigger"
-        >
-          <span className="font-mono tabular-nums">{scoreDisplay}</span>
-          Kokpit
-        </button>
+        <div className="shrink-0 border-t border-ink/10">{recipeBar}</div>
 
         {mobileCockpitOpen ? (
           <div className="fixed inset-0 z-50 lg:hidden" data-testid="mobile-cockpit-sheet">
@@ -315,30 +311,34 @@ export function StudioEngineSurface({
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-cockpit-title"
-              className="absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-xl border-t border-ink/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-pro-md"
+              className="absolute inset-x-0 bottom-0 flex max-h-[88dvh] flex-col overflow-hidden rounded-t-[26px] border-t border-white/10 bg-[#17191d] pb-[env(safe-area-inset-bottom)] shadow-pro-e3"
             >
-              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-white px-3 py-2">
-                <h2 id="mobile-cockpit-title" className="text-xs font-semibold text-ink">
+              <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-3">
+                <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-white">
                   Kokpit aktualnej receptury
                 </h2>
                 <button
                   type="button"
                   aria-label="Zamknij kokpit"
                   onClick={() => setMobileCockpitOpen(false)}
-                  className="grid size-11 place-items-center rounded-full border border-ink/10 text-lg text-ink"
+                  className="grid size-11 place-items-center rounded-full border border-white/15 text-lg text-white"
                 >
                   ×
                 </button>
               </div>
-              <RecipeProfilePanel
-                activeTab={cockpitTab}
-                onTabChange={setCockpitTab}
-                result={result}
-                servingTemperatureC={temperatureC}
-                corrections={corrections}
-                input={input}
-                production={production}
-              />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <RecipeProfilePanel
+                  activeTab={cockpitTab}
+                  onTabChange={setCockpitTab}
+                  result={result}
+                  servingTemperatureC={temperatureC}
+                  corrections={corrections}
+                  input={input}
+                  canonicalResult={planning.result}
+                  canonicalInput={planning.input}
+                  production={production}
+                />
+              </div>
             </section>
           </div>
         ) : null}

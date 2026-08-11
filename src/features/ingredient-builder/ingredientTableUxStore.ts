@@ -19,6 +19,9 @@ interface IngredientTableUxState {
   setUnavailable: (lineId: string, unavailable: boolean) => void;
   clearLine: (lineId: string) => void;
   markRequiredRemoved: (lineId: string, name: string) => void;
+  hydrateRecipeMeta: (
+    metaByLineId: Readonly<Record<string, { role: IngredientCustomerRole; required: boolean }>>,
+  ) => void;
   reset: () => void;
 }
 
@@ -75,6 +78,16 @@ export const useIngredientTableUxStore = create<IngredientTableUxState>()(
               [lineId]: { lineId, name },
             },
           };
+        }),
+      hydrateRecipeMeta: (recipeMeta) =>
+        set({
+          metaByLineId: Object.fromEntries(
+            Object.entries(recipeMeta).map(([lineId, meta]) => [
+              lineId,
+              { ...DEFAULT_INGREDIENT_ROW_META, role: meta.role, required: meta.required },
+            ]),
+          ),
+          unresolvedRequiredByLineId: {},
         }),
       reset: () => set({ metaByLineId: {}, unresolvedRequiredByLineId: {} }),
     }),

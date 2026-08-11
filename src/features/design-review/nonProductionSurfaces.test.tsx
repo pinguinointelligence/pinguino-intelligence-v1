@@ -148,10 +148,13 @@ describe('markers are wired into the heavy shells (source-level proof)', () => {
   it('/pro/recipe — final controls use the canonical pink readiness system', () => {
     const row = source('src/features/ingredient-builder/IngredientRow.tsx');
     const profile = source('src/features/pro-workbench/RecipeProfilePanel.tsx');
+    const direction = source('src/features/pro-workbench/ProfileDirectionAxes.tsx');
     expect(row).toContain('row-lock-percent-');
-    expect(row).toContain('border-nonprod/45');
-    expect(profile).toContain('ReadinessFrame');
-    expect(profile).toContain('W PRZYGOTOWANIU');
+    expect(row).toContain('border-nonprod/30');
+    expect(profile).toContain('ProfileDirectionAxes');
+    expect(direction).toContain('border-nonprod/25');
+    expect(direction).toContain('Kalibracja w przygotowaniu');
+    expect(direction).toContain('Brak wystarczających danych');
   });
 });
 

@@ -54,45 +54,31 @@ function renderMonitor(input: RecipeInput = starterMilkBase()) {
 describe('professional Monitor — final owner-approved information architecture', () => {
   beforeEach(() => useRecipeProfileStore.getState().resetForTests());
 
-  it('renders one score and the exact shared Profile six-axis component/state', () => {
+  it('keeps Monitor analysis-only and leaves the canonical score to the shared workbench header', () => {
     const html = renderMonitor();
-    expect((html.match(/data-testid="monitor-summary-score"/g) ?? []).length).toBe(1);
+    expect(html).not.toContain('data-testid="monitor-summary-score"');
     expect(html).not.toContain('monitor-detail-score');
-    expect(html).toContain('data-testid="monitor-summary-axes"');
-    expect(html).toContain('data-testid="profile-direction-axes"');
-    for (const id of ['sweetness', 'softness']) {
-      expect(html).toContain(`data-testid="axis-minus-${id}"`);
-      expect(html).toContain(`data-testid="axis-plus-${id}"`);
-    }
-    for (const id of ['creaminess', 'flavor']) {
-      expect(html).toContain(`data-testid="profile-axis-${id}"`);
-      expect(html).not.toContain(`data-testid="axis-minus-${id}"`);
-      expect(html).toContain('WYMAGA KALIBRACJI');
-    }
-    for (const id of ['structure', 'stability']) {
-      expect(html).toContain(`data-testid="profile-axis-${id}"`);
-      expect(html).not.toContain(`data-testid="axis-minus-${id}"`);
-      expect(html).not.toContain(`data-testid="axis-plus-${id}"`);
-    }
+    expect(html).toContain('data-testid="monitor-direction-evidence"');
+    expect(html).not.toContain('data-testid="profile-direction-axes"');
+    expect(html).not.toContain('jeden poziom');
+    expect(textOf(html)).toContain('Kierunek ustawiasz w Profilu');
   });
 
-  it('uses one shared target state; moving it keeps the actual marker and grams independent', () => {
+  it('reads the shared target state without exposing any mutation control', () => {
     const input = starterMilkBase();
     const gramsBefore = input.items.map((item) => item.planned_grams);
-    const before = renderMonitor(input);
-    expect(before).toContain('data-testid="axis-target-sweetness" data-position="50"');
-
     useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
     const after = renderMonitor(input);
-    expect(after).toContain('data-testid="axis-actual-sweetness"');
+    expect(textOf(after)).toContain('Słodycz');
     expect(targetStepToPosition(useRecipeStore.getState().direction_targets.sweetness)).toBe(100);
     expect(useRecipeStore.getState().dirty).toBe(true);
     expect(input.items.map((item) => item.planned_grams)).toEqual(gramsBefore);
 
     const profile = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     const summary = read('features', 'pro-workbench', 'MonitorLiveSummary.tsx');
-    expect(summary).toContain('<ProfileDirectionAxes');
-    expect(profile).toContain('moveDirectionTarget');
+    expect(summary).not.toContain('ProfileDirectionAxes');
+    expect(summary).not.toContain('setDirectionTarget');
+    expect(profile).toContain('setDirectionTarget');
   });
 
   it('removes customer-facing confidence/readiness/trial copy and duplicate batch warnings', () => {
@@ -166,19 +152,17 @@ describe('professional Monitor — final owner-approved information architecture
     expect(html).not.toContain('data-testid="workbench-settings-line"');
   });
 
-  it('keeps corrections and nutrition/cost compact and secondary, with owner diagnostics separate', () => {
+  it('keeps corrections and nutrition/cost compact and hides QA diagnostics from customer mode', () => {
     const html = renderMonitor();
     expect(html).not.toContain('monitor-detail-score');
     expect(html).toContain('data-testid="monitor-secondary-nutrition"');
     expect(textOf(html)).toContain('DO PRZEGLĄDU');
     expect(html).toContain('data-testid="monitor-process-guide-entry"');
     expect(textOf(html)).toContain('Jak je przygotować?');
-    expect(html).toContain('data-testid="monitor-owner-diagnostics"');
-    expect(textOf(html)).toContain('Diagnostyka właściciela');
-    expect(textOf(html)).toContain('ADVANCED');
-    expect(html.indexOf('monitor-process-guide-entry')).toBeLessThan(
-      html.indexOf('monitor-owner-diagnostics'),
-    );
+    expect(html).not.toContain('data-testid="monitor-owner-diagnostics"');
+    expect(textOf(html)).not.toContain('Diagnostyka właściciela');
+    const source = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
+    expect(source.indexOf('<ProcessGuideEntry')).toBeLessThan(source.indexOf('ownerReviewMode ?'));
   });
 
   it('preserves pin/layout contracts without mounting their noisy presentation in normal Monitor', () => {

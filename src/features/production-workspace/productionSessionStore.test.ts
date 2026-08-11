@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { useProductionSessionStore } from './productionSessionStore';
+import { assessProductionRescue } from './productionRescue';
 
 const recipe = (): RecipeInput => ({
   items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
@@ -74,5 +75,33 @@ describe('production session store', () => {
       sessionId: 'run-b',
       ownerUserId: 'owner-b',
     });
+  });
+
+  it('re-derives the whole-gram rescue and rejects a forged or stale candidate', () => {
+    start();
+    const sucrose = useProductionSessionStore
+      .getState()
+      .session!.lines.find((line) => line.name.toLowerCase().includes('sucrose'))!;
+    useProductionSessionStore.getState().setDraftActual(sucrose.lineId, 180);
+    useProductionSessionStore.getState().confirmLine(sucrose.lineId, '2026-08-11T10:01:00.000Z');
+    const option = assessProductionRescue(
+      useProductionSessionStore.getState().session!,
+    ).options.find((candidate) => candidate.id === 'enlarge_batch')!;
+    expect(option).toBeDefined();
+    expect(option.candidateInput.items.every((item) => Number.isInteger(item.planned_grams))).toBe(
+      true,
+    );
+
+    const forged = structuredClone(option.candidateInput);
+    forged.items[0] = {
+      ...forged.items[0]!,
+      planned_grams: forged.items[0]!.planned_grams + 1,
+    };
+    expect(() => useProductionSessionStore.getState().applyVerifiedRescue(forged)).toThrow(
+      /stale or was not verified/,
+    );
+    expect(() =>
+      useProductionSessionStore.getState().applyVerifiedRescue(option.candidateInput),
+    ).not.toThrow();
   });
 });

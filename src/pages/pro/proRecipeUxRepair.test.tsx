@@ -193,7 +193,7 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     inViewport('data-testid="ingredient-add-slot"');
     inViewport('data-testid="pro-workbar-recalc"');
     inViewport('data-testid="pro-monitor-panel"');
-    inViewport('data-testid="profile-score-card"');
+    inViewport('data-testid="workbench-intelligence-header"');
     inViewport('data-testid="pro-context-tabs"');
     inViewport('data-testid="workbench-action-bar"');
     inViewport('data-testid="app-nav-trigger"');
@@ -226,21 +226,24 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     for (const name of ACCEPTANCE_NAMES) {
       expect(rows, name).toContain(name);
     }
-    // Per-row controls: every line keeps its removal action inside the overflow menu.
-    expect(html.match(/Usuń z receptury/g)?.length ?? 0).toBe(ACCEPTANCE_NAMES.length);
+    // Every row owns one accessible contextual-dialog trigger; destructive actions stay inside it.
+    expect(html.match(/aria-controls="row-menu-dialog-/g)?.length ?? 0).toBe(
+      ACCEPTANCE_NAMES.length,
+    );
     // The compact add slot stays above the row scroll and the total stays below it.
     expect(html.indexOf('data-testid="ingredient-add-slot"')).toBeLessThan(rowsStart);
   });
 
-  it('the LIVE Monitor panel renders the real current result (score, axes, modules)', () => {
+  it('the LIVE Monitor renders the canonical header, analysis evidence and technical modules', () => {
     const html = renderAt('/pro/monitor');
     const panel = html.slice(
       html.indexOf('data-testid="pro-monitor-panel"'),
       html.indexOf('data-testid="pro-review-zone"'),
     );
-    expect(panel).toContain('data-testid="monitor-summary-score"');
+    expect(panel).toContain('data-testid="workbench-intelligence-header"');
     expect(panel).toMatch(/\d{1,2}\/10/);
-    expect(panel).toContain('data-testid="profile-axis-stability"');
+    expect(panel).toContain('data-testid="monitor-direction-evidence"');
+    expect(panel).not.toContain('data-testid="profile-direction-axes"');
     expect(panel).toContain('data-testid="monitor-module-freezing"');
     expect(panel).toContain('data-testid="monitor-module-stability"');
     expect(panel).not.toContain('data-testid="user-monitor-module-expert"');
@@ -253,6 +256,14 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     expect(html).toContain('data-testid="pro-monitor-panel"');
     expect(html).toContain('data-testid="pro-context-monitor"');
     expect(html).toContain('aria-selected="true"');
+  });
+
+  it('blocks both Production panes until one verified practical Preview has been applied', () => {
+    const html = renderAt('/pro/production');
+    expect(html).toContain('data-testid="production-editor-practical-block"');
+    expect(html).toContain('data-testid="production-practical-block"');
+    expect(html).toContain('Najpierw zweryfikuj Preview');
+    expect(html).not.toContain('data-testid="production-stepper-');
   });
 });
 
@@ -337,9 +348,9 @@ describe('red review zone — always visible, below the fold, nothing hidden', (
     expect(html).not.toMatch(/<details[^>]*data-testid="review-marked-[^"]*"[^>]*\sopen/);
   });
 
-  it('the marker component is NOT gated behind review mode or env flags (owner sees it immediately)', () => {
+  it('the marker component is gated to owner review mode and never leaks into customer Pro', () => {
     const src = read('features', 'design-review', 'ReviewMarkedModule.tsx');
-    expect(src.includes('useReviewMode')).toBe(false);
+    expect(src.includes('useReviewMode')).toBe(true);
     expect(src.includes('VITE_DESIGN_REVIEW')).toBe(false);
     expect(src.includes('import.meta.env')).toBe(false);
   });
@@ -423,9 +434,9 @@ describe('no unrelated module removal across the split surface files', () => {
     expect(surface).toContain('hidden min-h-0');
   });
 
-  it('only genuinely uncalibrated controls stay pink and visible in the viewport region', () => {
+  it('only genuinely uncalibrated directions remain explicit and visibly unavailable', () => {
     const html = renderAt('/pro/recipe');
-    const at = html.indexOf('data-readiness="WYMAGA KALIBRACJI"');
+    const at = html.indexOf('Kalibracja w przygotowaniu');
     expect(at).toBeGreaterThan(-1);
     expect(at).toBeLessThan(html.indexOf('</main>'));
   });

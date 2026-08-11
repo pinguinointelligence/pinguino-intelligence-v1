@@ -220,57 +220,57 @@ export function reconcileConstraints(
     byLineId[lineId] = constraint;
   }
   for (const item of items) {
-      if (item.range_constraint && byLineId[item.id] === undefined) {
-        const { min_grams: minGrams, max_grams: maxGrams } = item.range_constraint;
-        if (
-          Number.isFinite(minGrams) &&
-          Number.isFinite(maxGrams) &&
-          minGrams >= 0 &&
-          minGrams <= maxGrams &&
-          item.planned_grams >= minGrams &&
-          item.planned_grams <= maxGrams
-        ) {
-          byLineId[item.id] = { mode: 'range', minGrams, maxGrams };
-          changed = true;
-          continue;
-        }
-      }
-      const savedGrams = item.grams_constraint?.grams;
+    if (item.range_constraint && byLineId[item.id] === undefined) {
+      const { min_grams: minGrams, max_grams: maxGrams } = item.range_constraint;
       if (
-        byLineId[item.id] === undefined &&
-        savedGrams !== undefined &&
-        Number.isFinite(savedGrams) &&
-        savedGrams >= 0 &&
-        Object.is(item.planned_grams, savedGrams)
+        Number.isFinite(minGrams) &&
+        Number.isFinite(maxGrams) &&
+        minGrams >= 0 &&
+        minGrams <= maxGrams &&
+        item.planned_grams >= minGrams &&
+        item.planned_grams <= maxGrams
       ) {
-        byLineId[item.id] = { mode: 'locked', grams: savedGrams };
+        byLineId[item.id] = { mode: 'range', minGrams, maxGrams };
         changed = true;
         continue;
       }
-      const savedPercent = item.percent_constraint?.percent;
-      if (
-        byLineId[item.id] === undefined &&
-        savedPercent !== undefined &&
-        Number.isFinite(savedPercent) &&
-        savedPercent >= 0 &&
-        savedPercent <= 100
-      ) {
-        byLineId[item.id] = { mode: 'percent', percent: savedPercent };
-        changed = true;
-        continue;
-      }
-      if (
-        targetBatchGrams === undefined ||
-        targetBatchGrams <= 0 ||
-        item.lock_type !== 'percent' ||
-        byLineId[item.id] !== undefined
-      )
-        continue;
-      byLineId[item.id] = {
-        mode: 'percent',
-        percent: (item.planned_grams / targetBatchGrams) * 100,
-      };
+    }
+    const savedGrams = item.grams_constraint?.grams;
+    if (
+      byLineId[item.id] === undefined &&
+      savedGrams !== undefined &&
+      Number.isFinite(savedGrams) &&
+      savedGrams >= 0 &&
+      Object.is(item.planned_grams, savedGrams)
+    ) {
+      byLineId[item.id] = { mode: 'locked', grams: savedGrams };
       changed = true;
+      continue;
+    }
+    const savedPercent = item.percent_constraint?.percent;
+    if (
+      byLineId[item.id] === undefined &&
+      savedPercent !== undefined &&
+      Number.isFinite(savedPercent) &&
+      savedPercent >= 0 &&
+      savedPercent <= 100
+    ) {
+      byLineId[item.id] = { mode: 'percent', percent: savedPercent };
+      changed = true;
+      continue;
+    }
+    if (
+      targetBatchGrams === undefined ||
+      targetBatchGrams <= 0 ||
+      item.lock_type !== 'percent' ||
+      byLineId[item.id] !== undefined
+    )
+      continue;
+    byLineId[item.id] = {
+      mode: 'percent',
+      percent: (item.planned_grams / targetBatchGrams) * 100,
+    };
+    changed = true;
   }
   return changed ? { byLineId } : set;
 }
@@ -604,6 +604,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           excludedIngredientIds: draft.excludedIngredientIds,
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+          requirePracticalPreview: true,
         });
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
@@ -651,7 +652,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         const candidate = get().directionBestCandidate;
         if (!candidate) return;
         const current = selectCanonicalDraft();
-        if (workingStateFingerprint(current.input, current.constraints) !== candidate.baseFingerprint) {
+        if (
+          workingStateFingerprint(current.input, current.constraints) !== candidate.baseFingerprint
+        ) {
           set({ ...CLEAR_STAGED });
           return;
         }

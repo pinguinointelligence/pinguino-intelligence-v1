@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { RecipeInput } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import {
   MACHINE_CATALOG,
@@ -14,12 +15,16 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import {
   DEFAULT_DIRECTION_TARGETS,
   profileSettingsSignature,
+  recipeProfilePersistPartialize,
   showsProfessionalServing,
   useRecipeProfileStore,
 } from './recipeProfileStore';
-import { attachRecipeProfileMetadata, readRecipeProfileMetadata } from './recipeProfilePersistence';
+import {
+  attachRecipeProfileMetadata,
+  PROFILE_METADATA_KEY,
+  readRecipeProfileMetadata,
+} from './recipeProfilePersistence';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
-import { RecipeAxisScale } from './RecipeAxisScale';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -45,18 +50,20 @@ beforeEach(() => {
 });
 
 describe('canonical Pro header contract', () => {
-  it('keeps the approved logo left-aligned and uses the shared score seam in the top workbar', () => {
+  it('keeps the approved logo left-aligned and owns score in one persistent right header', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+    const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
     expect(page).toContain('maxWidthClass="max-w-none"');
     expect(page).toContain('brand={<OfficialProLogo />}');
-    expect(page).toContain('data-testid="pro-top-score"');
-    expect(page).toContain('monitorScoreView(result, input).match');
+    expect(page).not.toContain('data-testid="pro-top-score"');
+    expect(header).toContain('data-testid="workbench-intelligence-header"');
+    expect(header).toContain('monitorScoreView(result, input).match');
     const topActions = page.slice(
       page.indexOf('function ProTopActions'),
       page.indexOf('function RecipeWorkbench'),
     );
-    expect(topActions.match(/data-testid="pro-top-score"/g)).toHaveLength(1);
+    expect(topActions).not.toContain('Dopasowanie techniczne receptury');
     expect(logo).toContain("'/logo/PI-logo-blackwhite-web.png'");
     expect(logo).toContain('data-logo-source="/logo/PI-logo-blackwhite.pdf"');
   });
@@ -70,16 +77,16 @@ describe('canonical Pro header contract', () => {
 });
 
 describe('profile hierarchy and compact preflight', () => {
-  it('renders score → settings → axes → nutrition and preserves score education', () => {
+  it('renders one persistent score header, then Profile inputs without Summary duplication', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    const scoreAt = panel.indexOf('<ProfileScoreCard');
+    const scoreAt = panel.indexOf('<WorkbenchIntelligenceHeader');
     const settingsAt = panel.indexOf('<WorkbenchSettingsLine');
     const directionAt = panel.indexOf('<ProfileDirectionAxes');
-    const nutritionAt = panel.indexOf('<NutritionAndCost');
     expect(scoreAt).toBeGreaterThan(-1);
-    expect(settingsAt).toBeGreaterThan(scoreAt);
+    expect(settingsAt).toBeGreaterThan(-1);
     expect(directionAt).toBeGreaterThan(settingsAt);
-    expect(nutritionAt).toBeGreaterThan(directionAt);
+    expect(panel).not.toContain('<NutritionAndCost');
+    expect(panel).toContain('data-testid="profile-learning-entry"');
     expect(panel).toContain('setEducationOpen(true)');
     expect(panel).toContain('<ContextualEducationView');
     expect(read('features', 'education', 'ContextualEducationView.tsx')).toContain(
@@ -163,10 +170,47 @@ describe('preflight and recipe-specific persistence', () => {
   it('round-trips saved profile settings and direction targets without changing Engine fields', () => {
     const input = starterMilkBase();
     const beforeItems = JSON.stringify(input.items);
-    const attached = attachRecipeProfileMetadata(input, settings());
+    const attached = attachRecipeProfileMetadata(
+      input,
+      {
+        ...settings(),
+        directionIntents: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
+      },
+      { [input.items[0]!.id]: { role: 'addition', required: true } },
+    );
     expect(JSON.stringify(attached.items)).toBe(beforeItems);
     expect(attached.target_batch_grams).toBe(input.target_batch_grams);
-    expect(readRecipeProfileMetadata(attached)).toEqual(settings());
+    expect(readRecipeProfileMetadata(attached)).toEqual({
+      ...settings(),
+      directionIntents: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
+      ingredientUxByLineId: { [input.items[0]!.id]: { role: 'addition', required: true } },
+    });
+  });
+
+  it('preserves legacy five-detent intent when old metadata stored ±2 in directionTargets', () => {
+    const legacy = attachRecipeProfileMetadata(starterMilkBase(), settings()) as RecipeInput &
+      Record<string, unknown>;
+    const metadata = legacy[PROFILE_METADATA_KEY] as Record<string, unknown>;
+    metadata.directionTargets = {
+      sweetness: -2,
+      softness: 2,
+      creaminess: 0,
+      flavor: 0,
+    };
+    delete metadata.directionIntents;
+    const restored = readRecipeProfileMetadata(legacy);
+    expect(restored?.directionTargets).toEqual({
+      sweetness: -1,
+      softness: 1,
+      creaminess: 0,
+      flavor: 0,
+    });
+    expect(restored?.directionIntents).toEqual({
+      sweetness: -2,
+      softness: 2,
+      creaminess: 0,
+      flavor: 0,
+    });
   });
 
   it('stores defaults separately from the open recipe', () => {
@@ -177,6 +221,21 @@ describe('preflight and recipe-specific persistence', () => {
     });
     expect(useRecipeProfileStore.getState().defaultsFor('owner-a')?.targetBatchGrams).toBe(1_400);
     expect(useRecipeStore.getState().target_batch_grams).toBe(originalBatch);
+  });
+
+  it('preserves the five-detent intent in defaults instead of collapsing ±2 to Engine ±1', () => {
+    const directionIntents = {
+      ...DEFAULT_DIRECTION_TARGETS,
+      sweetness: -2 as const,
+      softness: 2 as const,
+    };
+    useRecipeProfileStore.getState().saveDefaults('owner-five-detent', {
+      ...settings(),
+      directionIntents,
+    });
+    expect(
+      useRecipeProfileStore.getState().defaultsFor('owner-five-detent')?.directionIntents,
+    ).toEqual(directionIntents);
   });
 
   it('loads defaults only for a new draft and lets a saved recipe override them exactly', () => {
@@ -222,27 +281,21 @@ describe('preflight and recipe-specific persistence', () => {
   });
 });
 
-describe('six-axis target language', () => {
-  it('renders four adjustable axes, two information axes and no read-only copy', () => {
+describe('five-detent direction language', () => {
+  it('renders two supported intent controls and four honest editorial results', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
-    const scale = read('features', 'pro-workbench', 'RecipeAxisScale.tsx');
-    for (const id of ['sweetness', 'softness', 'creaminess', 'flavor']) {
-      expect(axes).toContain(`id: '${id}'`);
-    }
-    for (const id of ['structure', 'stability']) {
-      expect(axes).toContain(`id: '${id}'`);
-    }
-    expect(scale).toContain('data-testid={`axis-minus-${id}`}');
-    expect(scale).toContain('data-testid={`axis-plus-${id}`}');
-    expect(`${axes}\n${scale}`.toLowerCase()).not.toContain('read only');
-    expect(axes).toContain('readiness={readiness}');
-    expect(axes).toContain("state?.status === 'blocked_runtime'");
-    expect(axes).toContain("? 'NIEOBSŁUGIWANE'");
-    expect(axes).toContain("? 'BRAK DANYCH'");
-    expect(axes).toContain("? 'WYMAGA KALIBRACJI'");
-    expect(axes).toContain('operationalAxisLabels');
-    expect(axes).toContain('Brak zweryfikowanego Preview');
-    expect(axes).not.toContain('Słodycz i miękkość · Preview');
+    expect(axes).toContain("id: 'sweetness'");
+    expect(axes).toContain("id: 'softness'");
+    expect(axes).toContain('[-2, -1, 0, 1, 2]');
+    expect(axes).toContain('Wybrano:');
+    expect(axes).toContain('Mniej słodkie');
+    expect(axes).toContain('Bardziej miękkie');
+    expect(axes).toContain('Kalibracja w przygotowaniu');
+    expect(axes).toContain('Brak wystarczających danych');
+    expect(axes).toContain('Zbalansowana');
+    expect(axes).toContain('Bardzo stabilna');
+    expect(axes).not.toContain('Teraz</');
+    expect(axes).not.toContain('Cel</');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).not.toContain(
       'Słodycz i Miękkość Direction już działają',
     );
@@ -256,23 +309,64 @@ describe('six-axis target language', () => {
     expect(JSON.stringify(useRecipeStore.getState().items)).toBe(beforeItems);
   });
 
-  it('keeps target and actual markers structurally independent', () => {
-    const scale = read('features', 'pro-workbench', 'RecipeAxisScale.tsx');
-    expect(scale).toContain('data-testid={`axis-target-${id}`}');
-    expect(scale).toContain('data-testid={`axis-actual-${id}`}');
-    expect(scale).toContain('targetPosition');
-    expect(scale).toContain('actualPosition');
-    const html = renderToStaticMarkup(
-      <RecipeAxisScale
-        id="sweetness"
-        label="Słodycz"
-        adjustable
-        targetPosition={25}
-        actualPosition={75}
-      />,
+  it('keeps five-step owner intent separate from three-state Engine target', () => {
+    useRecipeProfileStore.getState().moveAxisIntent('sweetness', 1);
+    useRecipeProfileStore.getState().moveAxisIntent('sweetness', 1);
+    expect(useRecipeProfileStore.getState().directionIntents.sweetness).toBe(2);
+    useRecipeStore.getState().setDirectionTarget('sweetness', 1);
+    expect(useRecipeStore.getState().direction_targets.sweetness).toBe(1);
+  });
+
+  it('persists the open five-detent intent with its draft context across ambient refresh', () => {
+    useRecipeProfileStore.getState().openDraft(17, DEFAULT_DIRECTION_TARGETS);
+    useRecipeProfileStore.getState().moveAxisIntent('sweetness', 1);
+    useRecipeProfileStore.getState().moveAxisIntent('sweetness', 1);
+
+    expect(recipeProfilePersistPartialize(useRecipeProfileStore.getState())).toMatchObject({
+      openedContextSeq: 17,
+      awaitingRecalculation: true,
+      directionIntents: { sweetness: 2, softness: 0, creaminess: 0, flavor: 0 },
+    });
+  });
+
+  it('retains five-detent defaults when a fresh demo draft is opened', () => {
+    useRecipeProfileStore.getState().saveDefaults('local-device', {
+      ...settings(),
+      directionIntents: { sweetness: -2, softness: 2, creaminess: 0, flavor: 0 },
+    });
+    useRecipeStore.getState().resetToDemo();
+
+    expect(useRecipeProfileStore.getState().directionIntents).toEqual({
+      sweetness: -2,
+      softness: 2,
+      creaminess: 0,
+      flavor: 0,
+    });
+  });
+
+  it('marks same-sign detent movement dirty and clears pending state only after verified Apply', () => {
+    useRecipeStore.setState({ dirty: false, draftRevision: 0 });
+    useRecipeProfileStore.getState().moveAxisIntent('sweetness', -1);
+    useRecipeProfileStore.getState().moveAxisIntent('sweetness', -1);
+    useRecipeStore.getState().markProfileTargetChanged();
+    expect(useRecipeStore.getState().dirty).toBe(true);
+    expect(useRecipeStore.getState().draftRevision).toBe(1);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+
+    expect(useRecipeStore.getState().applyVerifiedRecipeInput(starterMilkBase())).toEqual({
+      ok: true,
+    });
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+  });
+
+  it('wires the Profile detent and settings snapshot to the durable intent contract', () => {
+    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain(
+      'else recipe.markProfileTargetChanged()',
     );
-    expect(html).toContain('data-position="25"');
-    expect(html).toContain('data-position="75"');
+    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('min-h-11');
+    expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).toContain(
+      'profileSnapshotFromState(store, directionTargets, directionIntents)',
+    );
   });
 });
 

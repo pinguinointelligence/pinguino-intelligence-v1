@@ -13,6 +13,7 @@ import {
   type ProductionSession,
   type ProductionSource,
 } from './productionSession';
+import { assessProductionRescue, productionRescueCandidateFingerprint } from './productionRescue';
 
 export interface ProductionSessionStoreState {
   session: ProductionSession | null;
@@ -100,9 +101,19 @@ export const useProductionSessionStore = create<ProductionSessionStoreState>()(
           session: correctRecordedPhysicalGrams(requireSession(state.session), lineId, grams),
         })),
       applyVerifiedRescue: (candidate) =>
-        set((state) => ({
-          session: applyVerifiedRescueInput(requireSession(state.session), candidate),
-        })),
+        set((state) => {
+          const session = requireSession(state.session);
+          const fingerprint = productionRescueCandidateFingerprint(candidate);
+          const verified = assessProductionRescue(session).options.find(
+            (option) => productionRescueCandidateFingerprint(option.candidateInput) === fingerprint,
+          );
+          if (!verified) {
+            throw new Error(
+              'Production rescue candidate is stale or was not verified for this session.',
+            );
+          }
+          return { session: applyVerifiedRescueInput(session, verified.candidateInput) };
+        }),
       setNotes: (notes) =>
         set((state) => {
           const session = requireSession(state.session);

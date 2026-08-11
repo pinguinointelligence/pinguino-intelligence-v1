@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem, LockType } from '@/engine';
 import { cn } from '@/lib/cn';
@@ -16,14 +16,12 @@ import {
 import {
   DEFAULT_INGREDIENT_ROW_META,
   customerRoleFor,
-  displayValueToGrams,
-  gramsToDisplayValue,
   requiredRemovalRoute,
   type IngredientCustomerRole,
-  type IngredientDisplayUnit,
   type IngredientRowMeta,
   type SubstituteCandidate,
 } from './ingredientTableUx';
+import { DirectNumberControl } from './DirectNumberControl';
 
 const b = copy.studio.builder;
 const t = b.ingredientTable;
@@ -32,15 +30,13 @@ export type IngredientTableMode = 'recipe' | 'production';
 
 /** Recipe mode only: Ingredient | % + lock | quantity + lock/unit | price | menu. */
 export const ROW_GRID =
-  'grid grid-cols-2 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(180px,1.7fr)_minmax(112px,0.65fr)_minmax(156px,0.9fr)_112px_34px]';
+  'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(206px,1fr)_96px_44px]';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 
-const inputClass =
-  'h-11 w-full rounded-lg border border-ink/15 bg-white px-2 text-right font-mono text-xs tabular-nums text-ink shadow-pro-sm transition-colors hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500';
-
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
+  setPlannedPercent?: (lineId: string, percent: number) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
   setMainIngredient: (lineId: string) => void;
@@ -78,6 +74,9 @@ export interface IngredientRowLockView {
   percentLabel?: string;
   percentToggleDisabled?: boolean;
   onTogglePercent?: () => void;
+  /** Canonical gram bounds while a §17 range remains editable. */
+  minGrams?: number;
+  maxGrams?: number;
 }
 
 function MainRoleGlyph() {
@@ -88,21 +87,9 @@ function MainRoleGlyph() {
   );
 }
 
-function AdditionRoleGlyph() {
-  return (
-    <span
-      aria-label="Dodatek"
-      title={t.role.additionHint}
-      className="grid size-3.5 place-items-center rounded-full border border-nonprod/45 text-[10px] font-semibold leading-none text-nonprod"
-    >
-      +
-    </span>
-  );
-}
-
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1 block text-[10px] font-semibold tracking-[0.08em] text-stone-500 uppercase md:hidden">
+    <span className="mb-1 block text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase md:hidden">
       {children}
     </span>
   );
@@ -132,21 +119,67 @@ function DialogShell({
   label,
   testId,
   children,
+  onClose,
 }: {
   label: string;
   testId: string;
   children: React.ReactNode;
+  onClose: () => void;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  useEffect(() => {
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const focusable = () => [
+      ...(dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ) ?? []),
+    ];
+    focusable()[0]?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const nodes = focusable();
+      if (nodes.length === 0) return;
+      const first = nodes[0]!;
+      const last = nodes[nodes.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, []);
+
   return (
     <div
       className="fixed inset-0 z-[70] grid place-items-center bg-black/45 p-4"
       data-testid={testId}
     >
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="w-[min(520px,94vw)] rounded-xl border border-ink/15 bg-white p-5 text-ink shadow-pro-md"
+        className="max-h-[min(86vh,760px)] w-[min(520px,94vw)] overflow-y-auto rounded-[24px] border border-ink/15 bg-white p-5 text-ink shadow-pro-md"
       >
         {children}
       </section>
@@ -173,9 +206,10 @@ export function SubstituteDialog({
     <DialogShell
       label={t.substituteDialog.title(ingredientName)}
       testId="ingredient-substitute-dialog"
+      onClose={onClose}
     >
       {loading ? (
-        <p className="text-[10px] font-semibold tracking-label text-stone-500 uppercase">
+        <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
           {t.substituteDialog.pending}
         </p>
       ) : null}
@@ -202,7 +236,7 @@ export function SubstituteDialog({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <strong className="text-sm">{candidate.name}</strong>
-                    <p className="mt-1 text-[10px] font-semibold text-stone-500">
+                    <p className="mt-1 text-xs font-semibold text-stone-600">
                       {candidate.fit === 'direct'
                         ? t.substituteDialog.direct
                         : t.substituteDialog.reformulation}
@@ -259,7 +293,11 @@ export function RequiredRemovalDialog({
   const route = requiredRemovalRoute(true, candidates);
   if (confirmDestructive) {
     return (
-      <DialogShell label={t.requiredDialog.confirmTitle} testId="required-removal-confirm-dialog">
+      <DialogShell
+        label={t.requiredDialog.confirmTitle}
+        testId="required-removal-confirm-dialog"
+        onClose={onClose}
+      >
         <h2 className="text-lg font-semibold">{t.requiredDialog.confirmTitle}</h2>
         <p className="mt-3 text-sm leading-relaxed text-stone-600">
           {t.requiredDialog.confirmBody}
@@ -285,8 +323,8 @@ export function RequiredRemovalDialog({
   }
 
   return (
-    <DialogShell label={t.requiredDialog.title} testId="required-removal-dialog">
-      <p className="text-[10px] font-semibold tracking-label text-status-error uppercase">
+    <DialogShell label={t.requiredDialog.title} testId="required-removal-dialog" onClose={onClose}>
+      <p className="text-xs font-semibold tracking-[0.04em] text-status-error uppercase">
         {ingredientName}
       </p>
       <h2 className="mt-2 text-lg font-semibold">{t.requiredDialog.title}</h2>
@@ -347,7 +385,11 @@ function IngredientDataDialog({
     [t.data.id, item.ingredient.canonical_ingredient_id ?? item.ingredient.id],
   ];
   return (
-    <DialogShell label={`${t.data.open}: ${item.ingredient.name}`} testId="ingredient-data-dialog">
+    <DialogShell
+      label={`${t.data.open}: ${item.ingredient.name}`}
+      testId="ingredient-data-dialog"
+      onClose={onClose}
+    >
       <h2 className="text-lg font-semibold">{item.ingredient.name}</h2>
       <dl className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
         {rows.map(([label, value]) => (
@@ -385,7 +427,8 @@ function RecipeRow({
   substituteCandidates: readonly SubstituteCandidate[];
   priceView?: IngredientPriceView;
 }) {
-  const [unit, setUnit] = useState<IngredientDisplayUnit>('g');
+  const unit = 'g' as const;
+  const [rowMenuOpen, setRowMenuOpen] = useState(false);
   const [dialog, setDialog] = useState<
     'substitute' | 'required' | 'required-confirm' | 'data' | null
   >(null);
@@ -396,9 +439,10 @@ function RecipeRow({
   const role = customerRoleFor(item.lock_type, meta);
   const isMain = role === 'main';
   const required = meta.required || item.lock_type === 'required';
-  const gramsLocked = lock?.state === 'locked' || item.lock_type === 'grams';
+  const rangeLocked = lock?.state === 'range' || item.range_constraint !== undefined;
+  const gramsLocked = !rangeLocked && (lock?.state === 'locked' || item.lock_type === 'grams');
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
-  const displayQuantity = gramsToDisplayValue(item.planned_grams, unit);
+  const displayQuantity = item.planned_grams;
   const baseCost = priceView?.cost ?? effectiveCostForIngredient(item.ingredient, {});
   const resolvedPriceView =
     priceView ??
@@ -415,6 +459,7 @@ function RecipeRow({
   };
 
   const requestRemove = () => {
+    setRowMenuOpen(false);
     if (requiredRemovalRoute(required, substituteCandidates) === 'normal-remove') {
       actions.removeItem(item.id);
       return;
@@ -423,6 +468,7 @@ function RecipeRow({
   };
 
   const openSubstitute = () => {
+    setRowMenuOpen(false);
     setDialog('substitute');
     if (!actions.requestSubstitutes) return;
     setSubstitutesLoading(true);
@@ -436,14 +482,27 @@ function RecipeRow({
   return (
     <>
       <div className={ROW_GRID}>
-        <div className="col-span-2 min-w-0 md:col-span-1">
+        <div className="min-w-0">
           <span className="flex min-w-0 items-center gap-1.5">
             {isMain ? (
-              <span aria-label="Składnik główny" title={t.role.mainHint}>
+              <span
+                aria-label="Składnik główny"
+                title={t.role.mainHint}
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-education-ivory px-2 py-1 text-xs font-semibold text-gold"
+              >
                 <MainRoleGlyph />
+                <span>Główny</span>
               </span>
             ) : null}
-            {role === 'addition' ? <AdditionRoleGlyph /> : null}
+            {role === 'addition' ? (
+              <span
+                aria-label="Dodatek"
+                title={t.role.additionHint}
+                className="shrink-0 rounded-lg bg-pro-sage px-2 py-1 text-xs font-semibold text-ink"
+              >
+                Dodatek
+              </span>
+            ) : null}
             {required ? (
               <span
                 aria-label="Składnik wymagany"
@@ -469,7 +528,7 @@ function RecipeRow({
             ) : null}
           </span>
           {meta.unavailable ? (
-            <span className="mt-1 flex items-center gap-2 text-[10px] font-semibold text-status-error">
+            <span className="mt-1 flex items-center gap-2 text-xs font-semibold text-status-error">
               {t.recipe.unavailableStatus}
               <button
                 type="button"
@@ -483,7 +542,7 @@ function RecipeRow({
           {lock && lock.state !== 'ai' ? (
             <span
               className={cn(
-                'mt-1 inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] uppercase',
+                'mt-1 inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold tracking-[0.03em] uppercase',
                 lock.state === 'percent'
                   ? 'bg-education-ivory text-gold'
                   : lock.state === 'range'
@@ -504,9 +563,24 @@ function RecipeRow({
         <div>
           <FieldLabel>{t.columns.percent}</FieldLabel>
           <div className="flex items-center justify-end gap-1.5">
-            <span className="min-w-14 text-right font-mono text-xs font-semibold tabular-nums text-ink">
-              {share === null ? '—' : `${share.toFixed(1)}%`}
-            </span>
+            <DirectNumberControl
+              value={share ?? 0}
+              step={0.1}
+              min={0}
+              max={100}
+              decimals={1}
+              suffix="%"
+              ariaLabel={`${item.ingredient.name} — udział w partii`}
+              disabled={
+                share === null ||
+                !actions.setPlannedPercent ||
+                Boolean(lock?.plannedDisabled) ||
+                gramsLocked ||
+                Boolean(lock?.percentLocked)
+              }
+              onChange={(percent) => actions.setPlannedPercent?.(item.id, percent)}
+              testId={`row-percent-control-${item.id}`}
+            />
             <button
               type="button"
               disabled={lock?.percentToggleDisabled ?? true}
@@ -520,9 +594,9 @@ function RecipeRow({
               }
               data-testid={`row-lock-percent-${item.id}`}
               className={cn(
-                'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-[10px] font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold',
+                'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold',
                 lock?.percentLocked
-                  ? 'border-gold/60 bg-education-ivory text-ink'
+                  ? 'border-ink bg-ink text-white shadow-pro-sm'
                   : 'border-ink/15 bg-white text-stone-500 hover:border-gold/50 hover:text-gold',
               )}
             >
@@ -534,32 +608,21 @@ function RecipeRow({
 
         <div>
           <FieldLabel>{t.columns.quantity}</FieldLabel>
-          <div className="flex items-center gap-1">
-            <input
-              aria-label={`${item.ingredient.name} — ilość w ${unit}`}
-              type="number"
-              min={0}
-              step={unit === 'kg' ? 0.001 : 0.1}
-              disabled={lock?.plannedDisabled || gramsLocked || lock?.percentLocked}
-              value={Number(displayQuantity.toFixed(unit === 'kg' ? 3 : 1))}
-              onChange={(event) =>
-                actions.setPlannedGrams(
-                  item.id,
-                  Math.max(0, displayValueToGrams(Number(event.currentTarget.value) || 0, unit)),
-                )
+          <div className="flex items-center gap-1.5">
+            <DirectNumberControl
+              value={displayQuantity}
+              step={1}
+              min={lock?.state === 'range' ? lock.minGrams : 0}
+              max={lock?.state === 'range' ? lock.maxGrams : undefined}
+              decimals={Number.isInteger(displayQuantity) ? 0 : 1}
+              suffix={unit}
+              ariaLabel={`${item.ingredient.name} — ilość w ${unit}`}
+              disabled={
+                Boolean(lock?.plannedDisabled) || gramsLocked || Boolean(lock?.percentLocked)
               }
-              className={cn(inputClass, 'min-w-0', gramsLocked && 'border-ink/45')}
+              onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
+              testId={`row-grams-control-${item.id}`}
             />
-            <select
-              aria-label={`${item.ingredient.name} — jednostka ilości`}
-              value={unit}
-              onChange={(event) => setUnit(event.currentTarget.value as IngredientDisplayUnit)}
-              data-testid={`row-unit-${item.id}`}
-              className="h-11 w-12 shrink-0 rounded-lg border border-ink/15 bg-white px-1 font-mono text-[10px] text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
-            >
-              <option value="g">g</option>
-              <option value="kg">kg</option>
-            </select>
             <button
               type="button"
               aria-pressed={gramsLocked}
@@ -571,7 +634,7 @@ function RecipeRow({
                 lock?.onToggle() ?? actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams')
               }
               className={cn(
-                'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-[10px] font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
+                'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
                 gramsLocked
                   ? 'border-ink bg-ink text-white'
                   : 'border-ink/15 bg-white text-stone-500 hover:border-ink/40 hover:text-ink',
@@ -587,72 +650,122 @@ function RecipeRow({
 
         <IngredientPriceCell view={resolvedPriceView} />
 
-        <details className="relative justify-self-end">
-          <summary
+        <div className="relative justify-self-end">
+          <button
+            type="button"
             aria-label={`Opcje składnika ${item.ingredient.name}`}
-            className="pro-focus-ring grid size-11 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink"
+            aria-haspopup="dialog"
+            aria-expanded={rowMenuOpen}
+            aria-controls={`row-menu-dialog-${item.id}`}
+            onClick={() => setRowMenuOpen(true)}
+            className="pro-focus-ring grid size-11 place-items-center rounded-full border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink"
           >
             •••
-          </summary>
-          <div
-            className="absolute right-0 z-40 mt-1 max-h-[70vh] w-72 overflow-auto rounded-xl border border-ink/15 bg-white p-2 shadow-pro-md"
-            data-testid={`row-menu-${item.id}`}
-          >
-            <MenuHeading>{t.role.heading}</MenuHeading>
-            <MenuButton
-              selected={role === 'main'}
-              disabled={gramsLocked}
-              onClick={() => setRole('main')}
+          </button>
+          {rowMenuOpen ? (
+            <DialogShell
+              label={`Opcje składnika ${item.ingredient.name}`}
+              testId={`row-menu-${item.id}`}
+              onClose={() => setRowMenuOpen(false)}
             >
-              {t.role.main}
-            </MenuButton>
-            <MenuButton selected={role === 'standard'} onClick={() => setRole('standard')}>
-              {t.role.standard}
-            </MenuButton>
-            <MenuButton selected={role === 'addition'} onClick={() => setRole('addition')}>
-              <span className="flex items-center justify-between gap-2">
-                <span>{t.role.addition}</span>
-                <span className="text-[10px] font-semibold text-nonprod">
-                  {t.role.additionReadiness}
-                </span>
-              </span>
-            </MenuButton>
+              <div id={`row-menu-dialog-${item.id}`}>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <strong className="text-sm text-ink">{item.ingredient.name}</strong>
+                  <button
+                    type="button"
+                    onClick={() => setRowMenuOpen(false)}
+                    className="grid size-11 place-items-center rounded-full border border-ink/12 text-lg text-ink"
+                    aria-label="Zamknij opcje składnika"
+                  >
+                    ×
+                  </button>
+                </div>
+                <MenuHeading>{t.role.heading}</MenuHeading>
+                <MenuButton
+                  selected={role === 'main'}
+                  disabled={gramsLocked}
+                  onClick={() => {
+                    setRole('main');
+                    setRowMenuOpen(false);
+                  }}
+                >
+                  {t.role.main}
+                </MenuButton>
+                <MenuButton
+                  selected={role === 'standard'}
+                  onClick={() => {
+                    setRole('standard');
+                    setRowMenuOpen(false);
+                  }}
+                >
+                  {t.role.standard}
+                </MenuButton>
+                <MenuButton
+                  selected={role === 'addition'}
+                  onClick={() => {
+                    setRole('addition');
+                    setRowMenuOpen(false);
+                  }}
+                >
+                  {t.role.addition}
+                </MenuButton>
+                {role === 'addition' ? (
+                  <p className="px-2 pb-2 text-xs leading-relaxed text-nonprod">
+                    Proces dodatku jest w przygotowaniu; rola pozostaje zapisana, ale nie udaje
+                    gotowej automatyzacji.
+                  </p>
+                ) : null}
 
-            <MenuDivider />
-            <MenuHeading>{t.recipe.heading}</MenuHeading>
-            <MenuButton selected={required} onClick={() => actions.toggleRequired?.(item.id)}>
-              {required ? t.recipe.requiredOn : t.recipe.requiredOff}
-            </MenuButton>
-            <MenuButton
-              selected={meta.unavailable}
-              onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
-            >
-              {meta.unavailable ? t.recipe.available : t.recipe.unavailable}
-            </MenuButton>
-            <button
-              type="button"
-              onClick={openSubstitute}
-              className="min-h-11 w-full px-2 py-2 text-left text-[11px] text-ink hover:bg-stone-50"
-            >
-              {t.recipe.findSubstitute}
-            </button>
+                <MenuDivider />
+                <MenuHeading>{t.recipe.heading}</MenuHeading>
+                <MenuButton
+                  selected={required}
+                  onClick={() => {
+                    actions.toggleRequired?.(item.id);
+                    setRowMenuOpen(false);
+                  }}
+                >
+                  {required ? t.recipe.requiredOn : t.recipe.requiredOff}
+                </MenuButton>
+                <MenuButton
+                  selected={meta.unavailable}
+                  onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
+                >
+                  {meta.unavailable ? t.recipe.available : t.recipe.unavailable}
+                </MenuButton>
+                <button
+                  type="button"
+                  onClick={openSubstitute}
+                  className="min-h-11 w-full rounded-lg px-2 py-2 text-left text-xs text-ink hover:bg-stone-50"
+                >
+                  {t.recipe.findSubstitute}
+                </button>
 
-            <MenuDivider />
-            <MenuHeading>{t.data.heading}</MenuHeading>
-            <MenuButton onClick={() => setDialog('data')}>{t.data.open}</MenuButton>
-            <CustomerPriceEditor view={priceView} />
+                <MenuDivider />
+                <MenuHeading>{t.data.heading}</MenuHeading>
+                <MenuButton
+                  onClick={() => {
+                    setRowMenuOpen(false);
+                    setDialog('data');
+                  }}
+                >
+                  {t.data.open}
+                </MenuButton>
+                <CustomerPriceEditor view={priceView} />
 
-            <MenuDivider />
-            <MenuHeading>{t.remove.heading}</MenuHeading>
-            <button
-              type="button"
-              onClick={requestRemove}
-              className="min-h-11 w-full px-2 py-2 text-left text-[11px] text-status-error hover:bg-status-error/[0.05]"
-            >
-              {t.remove.action}
-            </button>
-          </div>
-        </details>
+                <MenuDivider />
+                <MenuHeading>{t.remove.heading}</MenuHeading>
+                <button
+                  type="button"
+                  onClick={requestRemove}
+                  className="min-h-11 w-full rounded-lg px-2 py-2 text-left text-xs text-status-error hover:bg-status-error/[0.05]"
+                >
+                  {t.remove.action}
+                </button>
+              </div>
+            </DialogShell>
+          ) : null}
+        </div>
       </div>
 
       {dialog === 'substitute' ? (
@@ -689,7 +802,7 @@ function RecipeRow({
 }
 function MenuHeading({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-2 pb-1 pt-1 text-[10px] font-semibold tracking-[0.08em] text-stone-600 uppercase">
+    <p className="px-2 pb-1 pt-1 text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
       {children}
     </p>
   );
@@ -717,7 +830,7 @@ function MenuButton({
       disabled={disabled}
       aria-pressed={selected}
       className={cn(
-        'min-h-11 w-full px-2 py-2 text-left text-[11px] text-ink hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-35',
+        'min-h-11 w-full rounded-lg px-2 py-2 text-left text-xs text-ink hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-35',
         selected && 'bg-stone-100 font-semibold',
       )}
     >
@@ -725,6 +838,9 @@ function MenuButton({
     </button>
   );
 }
+
+const formatProductionMassG = (value: number): string =>
+  Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
 
 function ProductionRow({
   item,
@@ -752,14 +868,14 @@ function ProductionRow({
       <div className="min-w-0">
         <span className="truncate text-[13px] font-semibold text-ink">{item.ingredient.name}</span>
         {line.physicalAddedGrams > 0 && !line.confirmed ? (
-          <span className="mt-0.5 block text-[10px] text-stone-500">
-            W naczyniu: {line.physicalAddedGrams.toFixed(1)} g
+          <span className="mt-0.5 block text-xs text-stone-600">
+            W naczyniu: {formatProductionMassG(line.physicalAddedGrams)} g
           </span>
         ) : null}
       </div>
       <div className="text-left font-mono text-xs tabular-nums text-ink md:text-right">
         <FieldLabel>Plan</FieldLabel>
-        {line.plannedGrams.toFixed(1)} g
+        {formatProductionMassG(line.plannedGrams)} g
       </div>
       <div>
         <FieldLabel>Faktycznie · potwierdź</FieldLabel>
@@ -791,7 +907,7 @@ function ProductionRow({
               }}
               className="h-11 w-full border border-ink/15 bg-white px-2 pr-5 text-right font-mono text-sm font-semibold tabular-nums text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ink disabled:bg-stone-100"
             />
-            <span className="pointer-events-none absolute right-1.5 top-3 text-[10px] text-stone-500">
+            <span className="pointer-events-none absolute right-1.5 top-3 text-xs text-stone-600">
               g
             </span>
           </label>
@@ -831,7 +947,7 @@ function ProductionRow({
         </div>
         {correctionMode ? (
           <p
-            className="mt-1 text-[10px] leading-snug text-attention"
+            className="mt-1 text-xs leading-snug text-attention"
             data-testid={`production-record-correction-${line.lineId}`}
           >
             Poprawiasz zapis faktycznej ilości — tylko jeśli poprzednia wartość była wpisana
@@ -847,7 +963,7 @@ function ProductionRow({
       >
         <FieldLabel>Różnica</FieldLabel>
         {difference > 0 ? '+' : ''}
-        {difference.toFixed(1)} g
+        {formatProductionMassG(difference)} g
       </div>
     </div>
   );
@@ -880,7 +996,13 @@ export function IngredientRow({
   return (
     <div
       className={cn(
-        'border-b border-ink/[0.075] px-3 py-1.5 transition-colors hover:bg-stone-50',
+        'border-b border-ink/[0.075] px-3 py-3 transition-colors hover:bg-stone-50',
+        mode === 'recipe' &&
+          customerRoleFor(item.lock_type, meta) === 'main' &&
+          'border-gold/20 bg-education-ivory/55 hover:bg-education-ivory/75',
+        mode === 'recipe' &&
+          customerRoleFor(item.lock_type, meta) === 'addition' &&
+          'bg-pro-sage/35 hover:bg-pro-sage/55',
         mode === 'recipe' &&
           meta.unavailable &&
           'border-status-error/20 bg-status-error/[0.045] hover:bg-status-error/[0.06]',
@@ -888,6 +1010,7 @@ export function IngredientRow({
       data-ingredient-mode={mode}
       data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}
       data-line-id={item.id}
+      data-customer-role={mode === 'recipe' ? customerRoleFor(item.lock_type, meta) : undefined}
     >
       {mode === 'production' ? (
         productionLine && productionActions ? (

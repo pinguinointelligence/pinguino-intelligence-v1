@@ -51,9 +51,6 @@ import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
-import { useStudioResult } from '@/features/studio/useStudioResult';
-import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
-import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 
 const w = copy.proWorkspace;
 
@@ -82,7 +79,7 @@ const isWorkbenchSection = (tab: TabId): tab is ProContextTab =>
 function PersonaChip({ persona }: { persona: ProCorePersona }) {
   return (
     <span
-      className="hidden rounded border border-ink/15 px-2 py-0.5 text-[0.65rem] font-medium tracking-label text-stone-600 uppercase sm:inline-flex"
+      className="hidden rounded border border-ink/15 px-2 py-0.5 text-xs font-medium tracking-label text-stone-600 uppercase sm:inline-flex"
       data-testid="pro-persona-chip"
     >
       {persona}
@@ -132,10 +129,6 @@ function ProTopActions({
     (state) => Object.keys(state.unresolvedRequiredByLineId).length,
   );
   const pending = dirty || directionPending;
-  const { result, input } = useStudioResult();
-  const production = useProductionWorkspace(activePanel === 'production');
-  const score =
-    activePanel === 'production' ? production.score : monitorScoreView(result, input).match;
   const blocked = activePanel === 'production' || unresolvedRequiredCount > 0;
 
   return (
@@ -172,24 +165,12 @@ function ProTopActions({
       </button>
       {unresolvedRequiredCount > 0 ? (
         <span
-          className="hidden text-[10px] font-semibold tracking-label text-status-error uppercase xl:inline"
+          className="hidden text-xs font-semibold tracking-[0.04em] text-status-error uppercase xl:inline"
           data-testid="pro-recalc-required-block"
         >
           {copy.studio.builder.ingredientTable.infeasible.title}
         </span>
       ) : null}
-      <span
-        className="flex min-w-0 items-center gap-2 border-l border-ink/10 pl-2 sm:min-w-[4.5rem] sm:pl-3"
-        data-testid="pro-top-score"
-        aria-label={`${activePanel === 'production' ? 'Przewidywane dopasowanie partii' : 'Dopasowanie techniczne receptury'}: ${score.display}`}
-      >
-        <span className="font-mono text-lg font-semibold tabular-nums text-ink">
-          {score.display}
-        </span>
-        <span className="hidden max-w-32 text-[10px] leading-tight text-stone-500 xl:block">
-          {activePanel === 'production' ? 'Przewidywane dopasowanie partii' : 'Dopasowanie techniczne receptury'}
-        </span>
-      </span>
       <PersonaChip persona={persona} />
       <DevPersonaSwitch persona={persona} />
     </div>

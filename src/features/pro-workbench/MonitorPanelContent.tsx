@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useAccess } from '@/access/useAccess';
-import { calculateRecipe, type CorrectionResult, type RecipeInput, type RecipeResult } from '@/engine';
+import {
+  calculateRecipe,
+  type CorrectionResult,
+  type RecipeInput,
+  type RecipeResult,
+} from '@/engine';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { CorrectionPanel } from '@/features/corrections/CorrectionPanel';
 import { buildCorrectionView } from '@/features/corrections/correctionView';
@@ -17,6 +22,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { ProfessionalMonitorModules } from './ProfessionalMonitorModules';
 import { buildProfessionalMonitorModules } from './professionalMonitorModel';
 import { MonitorLiveSummary } from './MonitorLiveSummary';
+import { useReviewMode } from '@/features/design-review/useReviewMode';
 
 export function MonitorPanelContent({
   result,
@@ -32,6 +38,7 @@ export function MonitorPanelContent({
   onOpenProfile?: () => void;
 }) {
   const { technicalView } = useAccess();
+  const ownerReviewMode = useReviewMode();
   const setPlan = useSessionStore((state) => state.setPlan);
   const machineId = useRecipeStore((state) => state.machineId);
   const preview = useConstraintStudioStore((state) => state.preview);
@@ -68,7 +75,7 @@ export function MonitorPanelContent({
   }
 
   return (
-    <div className="pro-scroll-safe space-y-3 text-ink" data-testid="monitor-panel-content">
+    <div className="pro-scroll-safe space-y-3 text-white" data-testid="monitor-panel-content">
       <MonitorLiveSummary result={result} input={input} onOpenProfile={onOpenProfile} />
 
       {technicalView ? (
@@ -79,10 +86,10 @@ export function MonitorPanelContent({
 
       {correctionView.proposals.length > 0 ? (
         <details
-          className="pro-module-flat overflow-hidden"
+          className="overflow-hidden rounded-[20px] border border-white/9 bg-white/[0.035]"
           data-testid="monitor-correction-summary"
         >
-          <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-semibold tracking-[0.06em] text-ink uppercase">
+          <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold text-white">
             PI ma propozycję poprawy →
           </summary>
           <div className="border-t border-ink/8 p-2">
@@ -96,16 +103,16 @@ export function MonitorPanelContent({
       ) : null}
 
       <details
-        className="pro-module-flat overflow-hidden"
+        className="overflow-hidden rounded-[20px] border border-white/9 bg-white/[0.035]"
         data-testid="monitor-secondary-nutrition"
       >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[10px] font-semibold tracking-[0.06em] text-stone-600 uppercase">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-xs font-semibold text-white/72">
           <span>Wartości odżywcze i koszty</span>
-          <span className="border border-nonprod/30 bg-nonprod/[0.04] px-1.5 py-0.5 text-[10px] text-nonprod">
+          <span className="rounded-md border border-nonprod-soft/40 bg-nonprod/[0.08] px-2 py-1 text-xs text-nonprod-soft">
             DO PRZEGLĄDU
           </span>
         </summary>
-        <div className="border-t border-ink/8 p-2">
+        <div className="border-t border-white/8 bg-[#f7f5f0] p-2 text-ink">
           {technicalView ? (
             <NutritionCostScorePanel result={result} embedded />
           ) : (
@@ -120,21 +127,23 @@ export function MonitorPanelContent({
         onOpen={() => setProcessGuideOpen(true)}
       />
 
-      <div data-testid="monitor-owner-diagnostics" className="border-t border-ink/10 pt-2">
-        <div
-          className="[&_dd]:overflow-visible [&_dd]:text-left [&_dd]:break-words [&_dd]:whitespace-normal [&_dd]:text-clip"
-          data-testid="monitor-advanced-unclipped"
-        >
-          <ReviewMarkedModule
-            id="monitor-owner-diagnostic"
-            title="Diagnostyka właściciela"
-            badge="ADVANCED"
-            note="Rzeczywisty stan Engine i solvera — poza codziennym Monitor Pro."
+      {ownerReviewMode ? (
+        <div data-testid="monitor-owner-diagnostics" className="border-t border-white/10 pt-2">
+          <div
+            className="[&_dd]:overflow-visible [&_dd]:text-left [&_dd]:break-words [&_dd]:whitespace-normal [&_dd]:text-clip"
+            data-testid="monitor-advanced-unclipped"
           >
-            <OwnerDiagnosticPanel result={result} input={input} corrections={corrections} />
-          </ReviewMarkedModule>
+            <ReviewMarkedModule
+              id="monitor-owner-diagnostic"
+              title="Diagnostyka właściciela"
+              badge="ADVANCED"
+              note="Rzeczywisty stan Engine i solvera — poza codziennym Monitor Pro."
+            >
+              <OwnerDiagnosticPanel result={result} input={input} corrections={corrections} />
+            </ReviewMarkedModule>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -5,10 +5,7 @@ import {
   ownerSameInputRecipe,
 } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import type { ConstraintSet } from '@/features/recipe-constraints';
-import {
-  overSweetStarter,
-  starterLine,
-} from '@/features/recipe-constraints/constraintFixtures';
+import { overSweetStarter, starterLine } from '@/features/recipe-constraints/constraintFixtures';
 import {
   buildBatchRescalePreview,
   buildOptimizePreview,
@@ -43,7 +40,39 @@ const gramsOf = (input: RecipeInput, canonicalId: string): number =>
     (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === canonicalId,
   )!.planned_grams;
 
+const exactCandidateOf = (
+  preview: Extract<ReturnType<typeof buildOptimizePreview>, { ok: true }>['preview'],
+): RecipeInput => {
+  expect(preview.practicalization?.status).toBe('ready');
+  if (preview.practicalization?.status !== 'ready') throw new Error('missing practical audit');
+  return preview.practicalization.audit.exactInput;
+};
+
 describe('P0 - template-controlled stabilizer contract', () => {
+  it('creates an executable Preview for an Engine-clean but fractional G17 draft', () => {
+    const directionSeed = buildOptimizePreview(ownerDirectionFixture(-1), NO_CONSTRAINTS, AT);
+    expect(directionSeed.ok).toBe(true);
+    if (!directionSeed.ok) return;
+    const input = exactCandidateOf(directionSeed.preview);
+    input.goals = {
+      ...input.goals,
+      direction_targets_active: false,
+      direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    };
+    expect(detectViolations(calculateRecipe(input))).toEqual([]);
+    const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.preview.practicalization?.status).toBe('ready');
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.inulin.id)).toBe(54.1);
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
+      1.9,
+    );
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.inulin.id)).toBe(54);
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
+    expect(commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'practical-only').ok).toBe(true);
+  });
+
   it('reproduces the exact Owner Sweetness LESS fixture without moving Tara', () => {
     const input = ownerDirectionFixture(-1);
     const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
@@ -53,20 +82,25 @@ describe('P0 - template-controlled stabilizer contract', () => {
     const before = calculateRecipe(input);
     const after = calculateRecipe(built.preview.proposedInput);
     expect(gramsOf(input, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
+      1.9,
+    );
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
     expect(before.pod_points).toBeCloseTo(15.5712, 10);
-    expect(after.pod_points).toBeCloseTo(14.381812499288948, 10);
+    expect(after.pod_points).toBeCloseTo(14.368792, 10);
     expect(after.pod_points!).toBeLessThan(before.pod_points!);
     expect(detectViolations(after)).toEqual([]);
     expect(built.preview.directionAssessment).toMatchObject({
       active: true,
       reached: false,
-      score: 9,
+      // The customer-visible score is always recomputed from the executable
+      // whole-gram vector, never retained from the hidden exact candidate.
+      score: 8,
     });
 
     expect(
       Object.fromEntries(
-        built.preview.proposedInput.items.map((item) => [
+        exactCandidateOf(built.preview).items.map((item) => [
           item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
           item.planned_grams,
         ]),
@@ -80,14 +114,24 @@ describe('P0 - template-controlled stabilizer contract', () => {
       [OWNER_MAPPER_INGREDIENTS.inulin.id]: 110.15592148930214,
       [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 1.9,
     });
+    expect(
+      Object.fromEntries(
+        built.preview.proposedInput.items.map((item) => [
+          item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+          item.planned_grams,
+        ]),
+      ),
+    ).toEqual({
+      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 565,
+      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 131,
+      [OWNER_MAPPER_INGREDIENTS.smp.id]: 45,
+      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 76,
+      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 71,
+      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 110,
+      [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 2,
+    });
 
-    const withoutConsent = commitPreview(
-      input,
-      NO_CONSTRAINTS,
-      built.preview,
-      AT,
-      'no-consent',
-    );
+    const withoutConsent = commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'no-consent');
     expect(withoutConsent).toMatchObject({ ok: false, code: 'direction_consent_required' });
     const applied = commitPreview(
       input,
@@ -110,7 +154,13 @@ describe('P0 - template-controlled stabilizer contract', () => {
     );
     expect(applied.ok).toBe(true);
     if (!applied.ok) return;
-    expect(gramsOf(applied.verified.input, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
+    expect(gramsOf(applied.verified.input, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
+    expect(
+      gramsOf(
+        applied.verified.record.practicalization!.exactInput,
+        OWNER_MAPPER_INGREDIENTS.tara_gum.id,
+      ),
+    ).toBe(1.9);
     expect(applied.verified.record.before.input).toEqual(input);
   });
 
@@ -127,7 +177,10 @@ describe('P0 - template-controlled stabilizer contract', () => {
         expect(built.code).toBe('already_clean');
         continue;
       }
-      expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
+      expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
+        1.9,
+      );
+      expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
     }
   });
 
@@ -155,7 +208,10 @@ describe('P0 - template-controlled stabilizer contract', () => {
     const built = buildOptimizePreview(input, constraints, AT);
     expect(built.ok, built.ok ? '' : built.code).toBe(true);
     if (!built.ok) return;
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
+      1.9,
+    );
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
   });
 
   it('does not batch-scale an established Tara dose during generic constrained reformulation', () => {
@@ -168,9 +224,9 @@ describe('P0 - template-controlled stabilizer contract', () => {
     const built = buildOptimizePreview(input, constraints, AT);
     expect(built.ok, built.ok ? '' : built.code).toBe(true);
     if (!built.ok) return;
-    expect(built.preview.proposedInput.items.find((item) => item.id === taraLineId)?.planned_grams).toBe(
-      5,
-    );
+    expect(
+      built.preview.proposedInput.items.find((item) => item.id === taraLineId)?.planned_grams,
+    ).toBe(5);
   });
 
   it('rejects a forged in-window Tara mutation at the trustless Apply door', () => {
@@ -202,7 +258,10 @@ describe('P0 - template-controlled stabilizer contract', () => {
     const built = buildBatchRescalePreview(input, NO_CONSTRAINTS, 2000, AT);
     expect(built.ok).toBe(true);
     if (!built.ok) return;
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3.8);
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
+      3.8,
+    );
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(4);
     const applied = commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'scale');
     expect(applied.ok).toBe(true);
   });
@@ -227,7 +286,14 @@ describe('P0 - template-controlled stabilizer contract', () => {
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3.8);
-    expect(commitPreview(input, constraints, built.preview, AT, 'percent-scale').ok).toBe(true);
+    expect(built.preview.practicalization).toMatchObject({
+      status: 'blocked',
+      failure: { code: 'percent_lock_not_whole_gram' },
+    });
+    expect(commitPreview(input, constraints, built.preview, AT, 'percent-scale')).toMatchObject({
+      ok: false,
+      code: 'practicalization_invalid',
+    });
   });
 
   it('rejects a forged seed from an existing zero-dose stabilizer', () => {
@@ -244,7 +310,10 @@ describe('P0 - template-controlled stabilizer contract', () => {
     const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
     expect(built.ok).toBe(true);
     if (!built.ok) return;
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
+      1.9,
+    );
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
     expect(commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'approved-zero-seed').ok).toBe(
       true,
     );
@@ -281,10 +350,13 @@ describe('P0 - template-controlled stabilizer contract', () => {
     const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
     expect(built.ok).toBe(true);
     if (!built.ok) return;
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
-    expect(commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'approved-missing-seed').ok).toBe(
-      true,
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
+      1.9,
     );
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
+    expect(
+      commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'approved-missing-seed').ok,
+    ).toBe(true);
 
     const forged = structuredClone(built.preview);
     const tara = forged.proposedInput.items.find(
@@ -318,9 +390,11 @@ describe('P0 - template-controlled stabilizer contract', () => {
     )!;
     wrongMilk.planned_grams -= 5 - wrongTara.planned_grams;
     wrongTara.planned_grams = 5;
-    expect(commitPreview(input, NO_CONSTRAINTS, wrongTemplate, AT, 'wrong-template')).toMatchObject({
-      ok: false,
-    });
+    expect(commitPreview(input, NO_CONSTRAINTS, wrongTemplate, AT, 'wrong-template')).toMatchObject(
+      {
+        ok: false,
+      },
+    );
   });
 
   it('never gives an approved template dose to an unapproved zero-dose stabilizer identity', () => {
@@ -346,13 +420,17 @@ describe('P0 - template-controlled stabilizer contract', () => {
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     const unapproved = built.preview.proposedInput.items.find(
-      (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'UNAPPROVED-STAB',
+      (item) =>
+        (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'UNAPPROVED-STAB',
     );
     expect(unapproved?.planned_grams).toBe(0);
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
-    expect(commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'approved-identity-seed').ok).toBe(
-      true,
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
+      1.9,
     );
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
+    expect(
+      commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'approved-identity-seed').ok,
+    ).toBe(true);
 
     const forged = structuredClone(built.preview);
     const approved = forged.proposedInput.items.find(
@@ -361,7 +439,8 @@ describe('P0 - template-controlled stabilizer contract', () => {
         OWNER_MAPPER_INGREDIENTS.tara_gum.id,
     )!;
     const forgedUnapproved = forged.proposedInput.items.find(
-      (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'UNAPPROVED-STAB',
+      (item) =>
+        (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'UNAPPROVED-STAB',
     )!;
     forgedUnapproved.planned_grams = approved.planned_grams;
     approved.planned_grams = 0;

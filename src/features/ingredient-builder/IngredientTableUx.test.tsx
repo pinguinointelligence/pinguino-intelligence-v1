@@ -128,13 +128,37 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(header).not.toContain('Dostępność');
   });
 
-  it('keeps Role editing in the contextual menu using customer vocabulary', () => {
-    const row = text(renderRow());
-    expect(row).toContain('Rola składnika');
-    expect(row).toContain('Główny');
-    expect(row).toContain('Standardowy');
-    expect(row).toContain('Dodatek');
-    expect(row).not.toContain('supplementary');
+  it('exposes active range bounds to the direct grams control', () => {
+    const rangeLock: IngredientRowLockView = {
+      ...lock(false),
+      state: 'range',
+      lockedGramsLabel: '12 g – 14 g',
+      badge: 'ZAKRES',
+      minGrams: 12,
+      maxGrams: 14,
+    };
+    const html = renderToStaticMarkup(
+      <IngredientRow
+        item={{ ...baseItem, planned_grams: 13 }}
+        totalBatchG={calculated.total_batch_g}
+        actions={actions()}
+        lock={rangeLock}
+        meta={DEFAULT_INGREDIENT_ROW_META}
+      />,
+    );
+    const gramsControl = html.match(
+      new RegExp(`data-testid="row-grams-control-${baseItem.id}"[\\s\\S]*?</div>`),
+    )?.[0];
+    expect(gramsControl).toContain('aria-valuemin="12"');
+    expect(gramsControl).toContain('aria-valuemax="14"');
+  });
+
+  it('exposes Role editing through one contextual dialog trigger without row noise', () => {
+    const row = renderRow();
+    expect(row).toContain('aria-haspopup="dialog"');
+    expect(row).toContain(`aria-controls="row-menu-dialog-${baseItem.id}"`);
+    expect(row).toContain('aria-expanded="false"');
+    expect(text(row)).not.toContain('supplementary');
   });
 
   it('shows a minimal Main icon and no Standard badge noise', () => {
@@ -145,10 +169,12 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(standard).not.toContain('aria-label="Składnik główny"');
   });
 
-  it('shows the Addition icon and its honest partial-readiness label', () => {
+  it('shows the understandable Add-on label and keeps limitations inside action detail', () => {
     const html = renderRow(baseItem, { ...DEFAULT_INGREDIENT_ROW_META, role: 'addition' });
     expect(html).toContain('aria-label="Dodatek"');
-    expect(text(html)).toContain('CZĘŚCIOWO PODŁĄCZONE');
+    expect(text(html)).toContain('Dodatek');
+    expect(text(html)).not.toContain('Proces dodatku jest w przygotowaniu');
+    expect(text(html)).not.toContain('CZĘŚCIOWO PODŁĄCZONE');
   });
 
   it('hides provenance noise in the verified normal row and exposes full data under menu', () => {
@@ -160,7 +186,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     const visibleNameArea = html.slice(0, html.indexOf('data-testid="row-lock-percent'));
     expect(visibleNameArea).not.toContain(verified.ingredient.source_type);
     expect(visibleNameArea).not.toContain('Very high confidence');
-    expect(text(html)).toContain('Dane składnika');
+    expect(html).toContain('aria-haspopup="dialog"');
     expect(html).not.toContain('data-testid="ingredient-data-dialog"');
   });
 
@@ -213,7 +239,7 @@ describe('Recipe ingredient table — locks, units and availability', () => {
   it('rehydrates the visible Required state from the persisted Engine lock', () => {
     const html = renderRow({ ...baseItem, lock_type: 'required' });
     expect(html).toContain('aria-label="Składnik wymagany"');
-    expect(text(html)).toContain('Składnik wymagany ✓');
+    expect(html).toContain('title="Składnik wymagany dla tej receptury."');
   });
 
   it('keeps percentage lock visible and operational', () => {
@@ -239,11 +265,12 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(html).toMatch(/<input[^>]*disabled/);
   });
 
-  it('renders the explicit g/kg presentation selector beside canonical quantity', () => {
+  it('keeps executable quantity in canonical grams without an invisible unit focus stop', () => {
     const html = renderRow();
-    expect(html).toContain(`data-testid="row-unit-${baseItem.id}"`);
-    expect(html).toContain('<option value="g" selected="">g</option>');
-    expect(html).toContain('<option value="kg">kg</option>');
+    expect(html).toContain(`data-testid="row-grams-control-${baseItem.id}"`);
+    expect(html).toContain('ilość w g');
+    expect(html).not.toContain(`data-testid="row-unit-${baseItem.id}"`);
+    expect(html).not.toContain('<option value="kg">');
   });
 
   it('keeps an unavailable ingredient in the same row and offers restoration', () => {
@@ -251,8 +278,8 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(html).toContain(`data-line-id="${baseItem.id}"`);
     expect(html).toContain('data-unavailable="true"');
     expect(text(html)).toContain('NIEDOSTĘPNY');
-    expect(text(html)).toContain('Oznacz jako dostępny');
     expect(text(html)).toContain('Znajdź zamiennik');
+    expect(html).toContain('aria-haspopup="dialog"');
     expect(text(html)).not.toContain('Znajdź zamiennik · W PRZYGOTOWANIU');
   });
 

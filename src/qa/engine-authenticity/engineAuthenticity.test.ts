@@ -18,6 +18,7 @@ import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { buildOptimizePreview } from '@/features/constraint-studio/applyPipeline';
 import {
   AUTHENTICITY_CASES,
   engineHasStabilizerMetric,
@@ -84,25 +85,291 @@ const PINS: Pin[] = [
   // Item 3 renames the verdict AUTHENTIC-BEST-ACHIEVABLE → AUTHENTIC-BEST-FOUND
   // (coordinate descent proves a local fixed point, never a global optimum).
   // ─────────────────────────────────────────────────────────────────────────
-  { id: 'T1', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 9, overall: 87, iter: 1, stop: 'all_bands_in_range', npac: 38.1755, ice: 49.0369, pod: 16.5948, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T2', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 9, overall: 86.8292, iter: 3, stop: 'all_bands_in_range', npac: 38.955, ice: 48.2142, pod: 13.8665, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T3', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 9, overall: 85.0429, iter: 3, stop: 'all_bands_in_range', npac: 38.6364, ice: 48.5505, pod: 13.0725, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T4', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 8, overall: 80.3334, iter: 3, stop: 'all_bands_in_range', npac: 41.5991, ice: 45.4232, pod: 12.4933, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T5', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 8, overall: 78.2333, iter: 3, stop: 'all_bands_in_range', npac: 41.2169, ice: 45.8266, pod: 12.2752, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T6', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 8, overall: 78.6835, iter: 7, stop: 'all_bands_in_range', npac: 38.184, ice: 49.028, pod: 12.471, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T7', verdict: 'AUTHENTIC-BEST-FOUND', outcome: 'preview', ten: 7, overall: 74.4695, iter: 8, stop: 'fixed_point_no_proposal', npac: 33.0761, ice: 54.4197, pod: 14.1571, viol: 1, hardSafe: false, batch: 1000 },
-  { id: 'T8', verdict: 'AUTHENTIC-BEST-FOUND', outcome: 'preview', ten: 7, overall: 72.0399, iter: 7, stop: 'no_improving_move', npac: 40.7018, ice: 46.3703, pod: 14.1455, viol: 2, hardSafe: false, batch: 1000 },
-  { id: 'T9', verdict: 'HONEST-IMPOSSIBLE', outcome: 'impossible_under_constraints', ten: 5, overall: 45.4655, iter: 12, stop: 'iteration_cap', npac: 9.7209, ice: 79.0724, pod: 5.632, viol: 10, hardSafe: false, batch: 900 },
-  { id: 'T10', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 8, overall: 84.85, iter: 3, stop: 'all_bands_in_range', npac: 39.776, ice: 47.3475, pod: 13.4102, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T11', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 9, overall: 86.0154, iter: 6, stop: 'all_bands_in_range', npac: 37.091, ice: 50.1817, pod: 12.0381, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T12', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 9, overall: 86.2123, iter: 3, stop: 'all_bands_in_range', npac: 39.3714, ice: 47.7747, pod: 14.2128, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T13', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 9, overall: 85.8966, iter: 3, stop: 'all_bands_in_range', npac: 38.9396, ice: 48.2305, pod: 13.4459, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T14', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 7, overall: 73.7897, iter: 1, stop: 'all_bands_in_range', npac: 36.0237, ice: 51.3083, pod: 18.5605, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T15', verdict: 'AUTHENTIC-BEST-FOUND', outcome: 'preview', ten: 8, overall: 81.837, iter: 7, stop: 'fixed_point_no_proposal', npac: 38.4715, ice: 48.7246, pod: 12.7985, viol: 3, hardSafe: false, batch: 1000 },
-  { id: 'T16', verdict: 'HONEST-IMPOSSIBLE', outcome: 'missing_required_role', ten: 5, overall: 45.4655, iter: null, stop: 'missing_required_role', npac: 9.7209, ice: 79.0724, pod: 5.632, viol: 10, hardSafe: false, batch: 350 },
-  { id: 'T17', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 9, overall: 88.1667, iter: 0, stop: 'all_bands_in_range', npac: 47.4851, ice: 50.3291, pod: 14.9362, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T18', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 9, overall: 88.1667, iter: 1, stop: 'all_bands_in_range', npac: 51.5649, ice: 49.7359, pod: 15.0125, viol: 0, hardSafe: true, batch: 1000 },
-  { id: 'T19', verdict: 'AUTHENTIC-OPTIMAL', outcome: 'preview', ten: 7, overall: 73.9983, iter: 1, stop: 'all_bands_in_range', npac: 36.1656, ice: 51.1586, pod: 17.6555, viol: 0, hardSafe: true, batch: 1000 },
+  {
+    id: 'T1',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 9,
+    overall: 87,
+    iter: 1,
+    stop: 'all_bands_in_range',
+    npac: 38.1755,
+    ice: 49.0369,
+    pod: 16.5948,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T2',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 9,
+    overall: 86.8292,
+    iter: 3,
+    stop: 'all_bands_in_range',
+    npac: 38.955,
+    ice: 48.2142,
+    pod: 13.8665,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T3',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 9,
+    overall: 85.0429,
+    iter: 3,
+    stop: 'all_bands_in_range',
+    npac: 38.6364,
+    ice: 48.5505,
+    pod: 13.0725,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T4',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 8,
+    overall: 80.3334,
+    iter: 3,
+    stop: 'all_bands_in_range',
+    npac: 41.5991,
+    ice: 45.4232,
+    pod: 12.4933,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T5',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 8,
+    overall: 78.2333,
+    iter: 3,
+    stop: 'all_bands_in_range',
+    npac: 41.2169,
+    ice: 45.8266,
+    pod: 12.2752,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T6',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 8,
+    overall: 78.6835,
+    iter: 7,
+    stop: 'all_bands_in_range',
+    npac: 38.184,
+    ice: 49.028,
+    pod: 12.471,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T7',
+    verdict: 'AUTHENTIC-BEST-FOUND',
+    outcome: 'preview',
+    ten: 7,
+    overall: 74.4695,
+    iter: 8,
+    stop: 'fixed_point_no_proposal',
+    npac: 33.0761,
+    ice: 54.4197,
+    pod: 14.1571,
+    viol: 1,
+    hardSafe: false,
+    batch: 1000,
+  },
+  {
+    id: 'T8',
+    verdict: 'AUTHENTIC-BEST-FOUND',
+    outcome: 'preview',
+    ten: 7,
+    overall: 72.0399,
+    iter: 7,
+    stop: 'no_improving_move',
+    npac: 40.7018,
+    ice: 46.3703,
+    pod: 14.1455,
+    viol: 2,
+    hardSafe: false,
+    batch: 1000,
+  },
+  {
+    id: 'T9',
+    verdict: 'HONEST-IMPOSSIBLE',
+    outcome: 'impossible_under_constraints',
+    ten: 5,
+    overall: 45.4655,
+    iter: 12,
+    stop: 'iteration_cap',
+    npac: 9.7209,
+    ice: 79.0724,
+    pod: 5.632,
+    viol: 10,
+    hardSafe: false,
+    batch: 900,
+  },
+  {
+    id: 'T10',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 8,
+    overall: 84.85,
+    iter: 3,
+    stop: 'all_bands_in_range',
+    npac: 39.776,
+    ice: 47.3475,
+    pod: 13.4102,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T11',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 9,
+    overall: 86.0154,
+    iter: 6,
+    stop: 'all_bands_in_range',
+    npac: 37.091,
+    ice: 50.1817,
+    pod: 12.0381,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T12',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 9,
+    overall: 86.2123,
+    iter: 3,
+    stop: 'all_bands_in_range',
+    npac: 39.3714,
+    ice: 47.7747,
+    pod: 14.2128,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T13',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 9,
+    overall: 85.8966,
+    iter: 3,
+    stop: 'all_bands_in_range',
+    npac: 38.9396,
+    ice: 48.2305,
+    pod: 13.4459,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T14',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 7,
+    overall: 73.7897,
+    iter: 1,
+    stop: 'all_bands_in_range',
+    npac: 36.0237,
+    ice: 51.3083,
+    pod: 18.5605,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T15',
+    verdict: 'AUTHENTIC-BEST-FOUND',
+    outcome: 'preview',
+    ten: 8,
+    overall: 81.837,
+    iter: 7,
+    stop: 'fixed_point_no_proposal',
+    npac: 38.4715,
+    ice: 48.7246,
+    pod: 12.7985,
+    viol: 3,
+    hardSafe: false,
+    batch: 1000,
+  },
+  {
+    id: 'T16',
+    verdict: 'HONEST-IMPOSSIBLE',
+    outcome: 'missing_required_role',
+    ten: 5,
+    overall: 45.4655,
+    iter: null,
+    stop: 'missing_required_role',
+    npac: 9.7209,
+    ice: 79.0724,
+    pod: 5.632,
+    viol: 10,
+    hardSafe: false,
+    batch: 350,
+  },
+  {
+    id: 'T17',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 9,
+    overall: 88.1667,
+    iter: 0,
+    stop: 'all_bands_in_range',
+    npac: 47.4851,
+    ice: 50.3291,
+    pod: 14.9362,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T18',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 9,
+    overall: 88.1667,
+    iter: 1,
+    stop: 'all_bands_in_range',
+    npac: 51.5649,
+    ice: 49.7359,
+    pod: 15.0125,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
+  {
+    id: 'T19',
+    verdict: 'AUTHENTIC-OPTIMAL',
+    outcome: 'preview',
+    ten: 7,
+    overall: 73.9983,
+    iter: 1,
+    stop: 'all_bands_in_range',
+    npac: 36.1656,
+    ice: 51.1586,
+    pod: 17.6555,
+    viol: 0,
+    hardSafe: true,
+    batch: 1000,
+  },
 ];
 
 describe('T1–T19 — pinned engine outcomes (drift detectors)', () => {
@@ -188,7 +455,12 @@ describe('structural invariants — locks, batch, identity (no fixture can fake 
     const milk = record.finalLines!.find((row) => row.ingredientId === 'milk_3_5')!;
     expect(milk.grams).toBeLessThan(500);
     expect(milk.grams).toBeGreaterThan(0);
-    expect(Object.is(milk.grams, byId('T11').finalLines!.find((r) => r.ingredientId === 'milk_3_5')!.grams)).toBe(false);
+    expect(
+      Object.is(
+        milk.grams,
+        byId('T11').finalLines!.find((r) => r.ingredientId === 'milk_3_5')!.grams,
+      ),
+    ).toBe(false);
     expect(record.proportionalScaling.detected).toBe(false);
   });
 
@@ -286,7 +558,20 @@ describe('10/10 contract (owner requirement e)', () => {
     // violations) and is re-pinned below as the contract itself.
     const optimal = records.filter((record) => record.verdict === 'AUTHENTIC-OPTIMAL');
     expect(optimal.map((record) => record.testId)).toEqual([
-      'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T10', 'T11', 'T12', 'T13', 'T14', 'T17', 'T18', 'T19',
+      'T1',
+      'T2',
+      'T3',
+      'T4',
+      'T5',
+      'T6',
+      'T10',
+      'T11',
+      'T12',
+      'T13',
+      'T14',
+      'T17',
+      'T18',
+      'T19',
     ]);
     for (const record of optimal) {
       expect(record.violations, record.testId).toHaveLength(0);
@@ -296,7 +581,9 @@ describe('10/10 contract (owner requirement e)', () => {
     for (const record of records) {
       if (record.verdict === 'AUTHENTIC-OPTIMAL') continue;
       expect(
-        record.violations.length > 0 || record.score.provisionalBands || record.outcome !== 'preview',
+        record.violations.length > 0 ||
+          record.score.provisionalBands ||
+          record.outcome !== 'preview',
         record.testId,
       ).toBe(true);
     }
@@ -334,11 +621,23 @@ describe('T20 — repeatability / anti-fixture', () => {
         flavor_intensity: 'balanced',
         cost_priority: 'balanced',
         items: [
-          { id: 'l-milk', ingredient: findDemoIngredient('milk_3_5')!, planned_grams: 0, actual_grams: null, lock_type: 'unlocked' },
+          {
+            id: 'l-milk',
+            ingredient: findDemoIngredient('milk_3_5')!,
+            planned_grams: 0,
+            actual_grams: null,
+            lock_type: 'unlocked',
+          },
           // Addendum items 1+2: the fruit carries an amount — no APPROVED
           // template has a fruit role for a dairy gelato, so a 0 g fruit is the
           // honest stop (pinned in the formulation suites), not a preview.
-          { id: 'l-straw', ingredient: STRAWBERRIES, planned_grams: 350, actual_grams: null, lock_type: 'unlocked' },
+          {
+            id: 'l-straw',
+            ingredient: STRAWBERRIES,
+            planned_grams: 350,
+            actual_grams: null,
+            lock_type: 'unlocked',
+          },
         ],
         excludedIngredientIds: [],
       });
@@ -362,9 +661,17 @@ describe('T20 — repeatability / anti-fixture', () => {
     expect(second).not.toBeNull();
     expect(gramsSignature(second!.proposedInput)).toBe(beforeReload);
 
-    // the store path agrees with the pure direct path line-for-line
-    const direct = byId('T10');
-    const directPairs = direct.finalLines!.map((row) => [row.ingredientId, row.grams]);
+    // The store path agrees with the pure direct executable Preview
+    // line-for-line. Authenticity pins intentionally retain the exact Engine
+    // candidate; operator paths consume the separately audited whole-gram
+    // vector.
+    const pure = buildOptimizePreview(savedDraft, { byLineId: {} }, 'T20-DIRECT');
+    expect(pure.ok).toBe(true);
+    if (!pure.ok) return;
+    const directPairs = pure.preview.proposedInput.items.map((item) => [
+      item.ingredient.id,
+      item.planned_grams,
+    ]);
     const storePairs = first!.proposedInput.items.map((item) => [
       item.ingredient.id,
       Math.round(item.planned_grams * 1e4) / 1e4,

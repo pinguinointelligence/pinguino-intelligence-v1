@@ -28,14 +28,17 @@ function ReviewRow({ item, current }: { item: ReviewItem; current: boolean }) {
   return (
     <li
       data-testid={`review-overlay-item-${item.id}`}
-      className={cn('rounded-md border px-3 py-2', current ? 'border-review/50 bg-review/10' : 'border-ink/10')}
+      className={cn(
+        'rounded-md border px-3 py-2',
+        current ? 'border-review/50 bg-review/10' : 'border-ink/10',
+      )}
     >
       <p className="flex items-baseline gap-2 text-xs font-medium text-ink">
         <span className="text-review">{item.id}</span>
         <span className="min-w-0">{item.label}</span>
       </p>
-      <p className="mt-1 text-[0.7rem] leading-relaxed text-stone-600">{item.reason}</p>
-      <p className="mt-1 text-[0.65rem] text-stone-500">
+      <p className="mt-1 text-xs leading-relaxed text-stone-600">{item.reason}</p>
+      <p className="mt-1 text-xs text-stone-600">
         Trasa: <span className="font-mono">{item.route}</span> · Propozycja:{' '}
         {SUGGESTION_LABEL[item.suggestion]} · Decyzja właściciela: oczekuje
       </p>
@@ -65,7 +68,7 @@ export function ReviewOverlayPanel({
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[0.65rem] font-medium tracking-label text-review uppercase">
+        <p className="text-xs font-medium tracking-label text-review uppercase">
           Tryb przeglądu właściciela — staging
         </p>
         <button
@@ -76,13 +79,13 @@ export function ReviewOverlayPanel({
           Zamknij
         </button>
       </div>
-      <p className="mt-1 text-[0.7rem] leading-relaxed text-stone-500">
-        Oznaczenia „DO PRZEGLĄDU” widzą wyłącznie sesje właściciela/QA. Nic nie zostało
-        usunięte ani ukryte. Lista decyzji: docs/design/PINGUINO_REVIEW_ITEMS.md
+      <p className="mt-1 text-xs leading-relaxed text-stone-600">
+        Oznaczenia „DO PRZEGLĄDU” widzą wyłącznie sesje właściciela/QA. Nic nie zostało usunięte ani
+        ukryte. Lista decyzji: docs/design/PINGUINO_REVIEW_ITEMS.md
       </p>
       {currentItems.length > 0 ? (
         <>
-          <p className="mt-3 text-[0.65rem] font-medium tracking-label text-stone-600 uppercase">
+          <p className="mt-3 text-xs font-medium tracking-label text-stone-600 uppercase">
             Na tej stronie
           </p>
           <ul className="mt-1 space-y-2">
@@ -92,7 +95,7 @@ export function ReviewOverlayPanel({
           </ul>
         </>
       ) : null}
-      <p className="mt-3 text-[0.65rem] font-medium tracking-label text-stone-600 uppercase">
+      <p className="mt-3 text-xs font-medium tracking-label text-stone-600 uppercase">
         Wszystkie pozycje ({REVIEW_ITEMS.length})
       </p>
       <ul className="mt-1 space-y-2">
@@ -120,9 +123,17 @@ export function DesignReviewOverlay() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         data-testid="design-review-toggle"
-        className="inline-flex items-center gap-1.5 rounded-full border border-review/50 bg-paper px-3 py-1.5 text-[0.65rem] font-medium tracking-[0.08em] text-review uppercase shadow-pro-md transition-colors hover:bg-review/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-review/50"
+        className="inline-flex items-center gap-1.5 rounded-full border border-review/50 bg-paper px-3 py-1.5 text-xs font-medium tracking-[0.06em] text-review uppercase shadow-pro-md transition-colors hover:bg-review/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-review/50"
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} aria-hidden>
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.4}
+          aria-hidden
+        >
           <path d="M5 21V4m0 0h13l-3 4 3 4H5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         Do przeglądu ({REVIEW_ITEMS.length})
@@ -148,12 +159,15 @@ export function MobileDesignReviewEntry() {
   if (!enabled) return null;
 
   return (
-    <div className="border-t border-review/20 px-1 py-3 sm:hidden" data-testid="mobile-design-review-entry">
+    <div
+      className="border-t border-review/20 px-1 py-3 sm:hidden"
+      data-testid="mobile-design-review-entry"
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex min-h-11 w-full items-center justify-between rounded-lg border border-review/35 bg-review/5 px-3 text-left text-[11px] font-semibold tracking-[0.08em] text-review uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-review/50"
+        className="flex min-h-11 w-full items-center justify-between rounded-lg border border-review/35 bg-review/5 px-3 text-left text-xs font-semibold tracking-[0.06em] text-review uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-review/50"
       >
         <span>Tryb przeglądu właściciela</span>
         <span aria-hidden>{open ? '−' : '+'}</span>

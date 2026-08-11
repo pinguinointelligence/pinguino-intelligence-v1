@@ -75,13 +75,31 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   background: rgb(255 255 255 / 0.72);
 }
 
+.shadow-pro-e0 {
+  box-shadow: var(--shadow-pro-e0);
+}
+
+.shadow-pro-e1 {
+  box-shadow: var(--shadow-pro-e1);
+}
+
+.shadow-pro-e2 {
+  box-shadow: var(--shadow-pro-e2);
+}
+
+.shadow-pro-e3 {
+  box-shadow: var(--shadow-pro-e3);
+}
+
 .pro-focus-ring:focus-visible {
   outline: 2px solid var(--color-gold);
   outline-offset: 3px;
 }
 
 .theme-pro-light .bg-pro-graphite.pro-focus-ring:focus-visible,
-.theme-pro-light [data-testid='pro-recalc-panel'] :where(button, a, input, select, summary):focus-visible {
+.theme-pro-light
+  [data-testid='pro-recalc-panel']
+  :where(button, a, input, select, summary):focus-visible {
   outline-color: var(--color-gold-soft);
 }
 
@@ -94,6 +112,20 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
 .theme-pro-light :where(button, a, input, select, summary):focus-visible {
   outline: 2px solid var(--color-gold);
   outline-offset: 2px;
+}
+
+/* Pro owns explicit, accessible +/- controls. Browser-native number arrows are
+   suppressed so Chromium and Firefox cannot add a second competing stepper. */
+.theme-pro-light input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.theme-pro-light input[type='number']::-webkit-inner-spin-button,
+.theme-pro-light input[type='number']::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -24,21 +24,25 @@ export function ProcessGuideEntry({
       data-process-status={loading ? 'loading' : classification.status}
     >
       <span className="min-w-0">
-        <strong className="block text-xs font-semibold text-ink">{copy.entries.process.title}</strong>
-        <span className={`mt-0.5 block text-[10px] leading-snug ${unknown ? 'text-nonprod' : 'text-stone-500'}`}>
+        <strong className="block text-xs font-semibold text-ink">
+          {copy.entries.process.title}
+        </strong>
+        <span
+          className={`mt-0.5 block text-xs leading-snug ${unknown ? 'text-nonprod' : 'text-stone-600'}`}
+        >
           {status}
         </span>
       </span>
       <span className="shrink-0 text-right">
         {unknown ? (
           <span
-            className="mb-0.5 block text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase"
+            className="mb-0.5 block text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
             data-readiness={copy.process.dataMissing}
           >
             {copy.process.dataMissing}
           </span>
         ) : null}
-        <span className="text-[10px] font-semibold text-ink">{copy.process.entryAction} →</span>
+        <span className="text-xs font-semibold text-ink">{copy.process.entryAction} →</span>
       </span>
     </button>
   );

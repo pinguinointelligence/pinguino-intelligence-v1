@@ -21,7 +21,9 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
 }));
 
 const { ReviewBadge, ReviewDecisionLabel } = await import('./ReviewBadge');
-const { DesignReviewOverlay, MobileDesignReviewEntry, ReviewOverlayPanel } = await import('./ReviewOverlay');
+const { ReviewMarkedModule } = await import('./ReviewMarkedModule');
+const { DesignReviewOverlay, MobileDesignReviewEntry, ReviewOverlayPanel } =
+  await import('./ReviewOverlay');
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
 
@@ -159,6 +161,27 @@ describe('marker visibility (customers NEVER see red tags)', () => {
     expect(renderOverlay('home')).toBe('');
     expect(renderMobileEntry('demo')).toBe('');
     expect(renderMobileEntry('home')).toBe('');
+    for (const persona of ['demo', 'home'] as const) {
+      mockPersona = persona;
+      expect(
+        renderToStaticMarkup(
+          <ReviewMarkedModule id="customer-clean" title="Internal review">
+            hidden diagnostic
+          </ReviewMarkedModule>,
+        ),
+      ).toBe('');
+    }
+  });
+
+  it('retains review-marked historical modules for the owner/QA session only', () => {
+    mockPersona = 'pro';
+    const html = renderToStaticMarkup(
+      <ReviewMarkedModule id="owner-history" title="Historical module">
+        historical diagnostic
+      </ReviewMarkedModule>,
+    );
+    expect(html).toContain('review-marked-owner-history');
+    expect(html).toContain('historical diagnostic');
   });
 
   it('the owner/QA (pro) session in this dev test build sees the badge with reason + text meaning', () => {

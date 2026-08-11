@@ -20,10 +20,12 @@ export function ReadinessBadge({
   state,
   details,
   className,
+  tone = 'light',
 }: {
   state: ReadinessState;
   details: ReadinessDetails;
   className?: string;
+  tone?: 'light' | 'dark';
 }) {
   const description = tooltip(details);
   return (
@@ -32,7 +34,10 @@ export function ReadinessBadge({
       aria-label={`${state}. ${description}`}
       data-readiness={state}
       className={cn(
-        'inline-flex cursor-help items-center gap-1 rounded-sm border border-nonprod/35 bg-nonprod/[0.055] px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-nonprod uppercase',
+        'inline-flex cursor-help items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold tracking-[0.04em] uppercase',
+        tone === 'dark'
+          ? 'border-nonprod-soft/45 bg-nonprod-soft/10 text-nonprod-soft'
+          : 'border-nonprod/35 bg-nonprod/[0.055] text-nonprod',
         className,
       )}
     >
@@ -49,6 +54,7 @@ export function ReadinessFrame({
   children,
   compact = false,
   className,
+  tone = 'light',
 }: {
   state: ReadinessState;
   details: ReadinessDetails;
@@ -56,19 +62,29 @@ export function ReadinessFrame({
   children: ReactNode;
   compact?: boolean;
   className?: string;
+  tone?: 'light' | 'dark';
 }) {
   return (
     <section
       className={cn(
-        'border border-nonprod/25 border-l-2 border-l-nonprod bg-nonprod/[0.025]',
+        'border border-l-2',
+        tone === 'dark'
+          ? 'border-nonprod-soft/30 border-l-nonprod-soft bg-nonprod-soft/[0.055] text-white'
+          : 'border-nonprod/25 border-l-nonprod bg-nonprod/[0.025]',
         compact ? 'p-2' : 'p-3',
         className,
       )}
       data-readiness-frame={state}
     >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        {title ? <h3 className="text-xs font-semibold text-ink">{title}</h3> : <span />}
-        <ReadinessBadge state={state} details={details} />
+        {title ? (
+          <h3 className={cn('text-xs font-semibold', tone === 'dark' ? 'text-white' : 'text-ink')}>
+            {title}
+          </h3>
+        ) : (
+          <span />
+        )}
+        <ReadinessBadge state={state} details={details} tone={tone} />
       </div>
       {children}
     </section>

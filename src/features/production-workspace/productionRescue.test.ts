@@ -80,7 +80,9 @@ describe('production rescue orchestration', () => {
 
   it('folds solver top-ups into the existing canonical line instead of duplicating it', () => {
     const run = make();
-    const sucrose = run.lines.find((candidate) => candidate.name.toLowerCase().includes('sucrose'))!;
+    const sucrose = run.lines.find((candidate) =>
+      candidate.name.toLowerCase().includes('sucrose'),
+    )!;
     const confirmed = confirmProductionLine(
       setDraftActualGrams(run, sucrose.lineId, sucrose.plannedGrams + 50),
       sucrose.lineId,
@@ -107,7 +109,9 @@ describe('production rescue orchestration', () => {
 
   it('reproduces the accepted 130 g → 180 g sucrose rescue without rewriting physical history', () => {
     const run = make();
-    const sucrose = run.lines.find((candidate) => candidate.name.toLowerCase().includes('sucrose'))!;
+    const sucrose = run.lines.find((candidate) =>
+      candidate.name.toLowerCase().includes('sucrose'),
+    )!;
     expect(sucrose.plannedGrams).toBe(130);
     const confirmed = confirmProductionLine(
       setDraftActualGrams(run, sucrose.lineId, 180),
@@ -118,15 +122,33 @@ describe('production rescue orchestration', () => {
     const enlarge = assessment.options.find((option) => option.id === 'enlarge_batch');
 
     expect(enlarge).toBeDefined();
-    const rescuedSucrose = enlarge!.candidateInput.items.find((item) => item.id === sucrose.lineId)!;
+    const rescuedSucrose = enlarge!.candidateInput.items.find(
+      (item) => item.id === sucrose.lineId,
+    )!;
     expect(rescuedSucrose.actual_grams ?? rescuedSucrose.planned_grams).toBe(180);
-    expect(enlarge!.finalMassG).toBeCloseTo(1277.8, 0);
+    expect(enlarge!.finalMassG).toBe(1278);
+    expect(
+      enlarge!.candidateInput.items.every((item) => Number.isInteger(item.planned_grams)),
+    ).toBe(true);
+    expect(enlarge!.candidateInput.items.every((item) => item.actual_grams === null)).toBe(true);
+    expect(enlarge!.practicalAudit.executableResult).not.toBe(enlarge!.practicalAudit.exactResult);
+    expect(enlarge!.practicalAudit.hardGatePassed).toBe(true);
     expect(enlarge!.scoreDisplay).toBe('10/10');
     const creamInstructions = enlarge!.instructions.filter((instruction) =>
       instruction.ingredientName.toLowerCase().includes('cream'),
     );
     expect(creamInstructions).toHaveLength(1);
-    expect(creamInstructions[0]!.grams).toBeCloseTo(227.8, 0);
+    expect(creamInstructions[0]!.grams).toBe(228);
+    const exactCream = enlarge!.exactCandidateInput.items.find((item) =>
+      item.ingredient.name.toLowerCase().includes('cream'),
+    )!;
+    const beforeCream = assessment.forecastInput.items.find((item) =>
+      item.ingredient.name.toLowerCase().includes('cream'),
+    )!;
+    expect(
+      (exactCream.actual_grams ?? exactCream.planned_grams) -
+        (beforeCream.actual_grams ?? beforeCream.planned_grams),
+    ).toBeCloseTo(227.75342952471976, 8);
     const canonicalIds = enlarge!.candidateInput.items.map((item) =>
       canonicalIngredientId(item.ingredient),
     );
@@ -140,7 +162,11 @@ describe('production rescue orchestration', () => {
         ? line.plannedGrams + 500
         : line.plannedGrams;
       run = setDraftActualGrams(run, line.lineId, grams);
-      run = confirmProductionLine(run, line.lineId, `2026-08-09T10:${line.confirmationOrder ?? '10'}:00.000Z`);
+      run = confirmProductionLine(
+        run,
+        line.lineId,
+        `2026-08-09T10:${line.confirmationOrder ?? '10'}:00.000Z`,
+      );
     }
     const assessment = assessProductionRescue(run);
     if (assessment.state === 'impossible') {

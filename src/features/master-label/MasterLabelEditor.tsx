@@ -73,7 +73,7 @@ export function MasterLabelEditor({
                   preflightAcknowledged: false,
                 })
               }
-              className={`min-h-9 border px-2 text-[10px] font-semibold ${active.market === code ? 'border-ink bg-ink text-white' : 'border-ink/15 text-ink'}`}
+              className={`min-h-11 border px-2 text-[10px] font-semibold ${active.market === code ? 'border-ink bg-ink text-white' : 'border-ink/15 text-ink'}`}
             >
               {MARKET_PROFILES[code].label}
             </button>
@@ -96,7 +96,7 @@ export function MasterLabelEditor({
                 .filter(Boolean);
               replace({ ...active, labelLanguages: languages.length ? languages : ['pl'] });
             }}
-            className="h-9 w-full border border-ink/15 px-2 text-xs"
+            className="h-11 w-full border border-ink/15 px-2 text-xs"
           />
         </label>
         {active.labelLanguages.map((language) => (
@@ -110,7 +110,7 @@ export function MasterLabelEditor({
                 onChange={(event) =>
                   updateLanguageText('productName', language, event.currentTarget.value)
                 }
-                className="h-9 w-full border border-ink/15 px-2 text-xs"
+                className="h-11 w-full border border-ink/15 px-2 text-xs"
               />
             </label>
             <label>
@@ -122,7 +122,7 @@ export function MasterLabelEditor({
                 onChange={(event) =>
                   updateLanguageText('legalProductName', language, event.currentTarget.value)
                 }
-                className="h-9 w-full border border-ink/15 px-2 text-xs"
+                className="h-11 w-full border border-ink/15 px-2 text-xs"
               />
             </label>
           </div>
@@ -136,7 +136,7 @@ export function MasterLabelEditor({
             onChange={(event) =>
               replace({ ...active, netQuantityG: Number(event.currentTarget.value) || null })
             }
-            className="h-9 w-full border border-ink/15 px-2 font-mono text-xs"
+            className="h-11 w-full border border-ink/15 px-2 font-mono text-xs"
           />
         </label>
         <label>
@@ -144,7 +144,7 @@ export function MasterLabelEditor({
           <input
             value={active.lotCode}
             onChange={(event) => replace({ ...active, lotCode: event.currentTarget.value })}
-            className="h-9 w-full border border-ink/15 px-2 text-xs"
+            className="h-11 w-full border border-ink/15 px-2 text-xs"
           />
         </label>
         <label>
@@ -157,7 +157,7 @@ export function MasterLabelEditor({
                 operator: { ...active.operator, operatorName: event.currentTarget.value },
               })
             }
-            className="h-9 w-full border border-ink/15 px-2 text-xs"
+            className="h-11 w-full border border-ink/15 px-2 text-xs"
           />
         </label>
         <label>
@@ -170,7 +170,7 @@ export function MasterLabelEditor({
                 operator: { ...active.operator, address: event.currentTarget.value },
               })
             }
-            className="h-9 w-full border border-ink/15 px-2 text-xs"
+            className="h-11 w-full border border-ink/15 px-2 text-xs"
           />
         </label>
         <label className="col-span-2">
@@ -182,7 +182,7 @@ export function MasterLabelEditor({
             onChange={(event) =>
               updateLanguageText('storageInstructions', primaryLanguage, event.currentTarget.value)
             }
-            className="h-9 w-full border border-ink/15 px-2 text-xs"
+            className="h-11 w-full border border-ink/15 px-2 text-xs"
           />
         </label>
       </section>
@@ -200,7 +200,7 @@ export function MasterLabelEditor({
                 productionDateReviewed: true,
               })
             }
-            className="h-9 w-full border border-ink/15 px-2 text-xs"
+            className="h-11 w-full border border-ink/15 px-2 text-xs"
           />
         </label>
         <label>
@@ -221,7 +221,7 @@ export function MasterLabelEditor({
                 },
               })
             }
-            className="h-9 w-full border border-nonprod/35 px-2 text-xs"
+            className="h-11 w-full border border-nonprod/35 px-2 text-xs"
           />
         </label>
         <p className="col-span-2 text-[10px] leading-relaxed text-stone-600">
@@ -254,7 +254,7 @@ export function MasterLabelEditor({
             onChange={(event) =>
               replace({ ...active, format: event.currentTarget.value as 'rectangle' | 'round' })
             }
-            className="h-9 border border-ink/15 px-2 text-xs"
+            className="h-11 border border-ink/15 px-2 text-xs"
           >
             <option value="rectangle">Prostokąt</option>
             <option value="round">Okrągła</option>
@@ -267,7 +267,7 @@ export function MasterLabelEditor({
             onChange={(event) =>
               replace({ ...active, copies: Math.max(1, Number(event.currentTarget.value) || 1) })
             }
-            className="h-9 w-16 border border-ink/15 px-2 font-mono text-xs"
+            className="h-11 w-16 border border-ink/15 px-2 font-mono text-xs"
           />
         </div>
         <p className="mt-2 text-[10px] text-stone-600">Drukarka: Systemowa</p>
@@ -287,9 +287,10 @@ export function MasterLabelEditor({
             </li>
           ))}
         </ul>
-        <label className="mt-3 flex items-start gap-2 text-[10px] text-ink">
+        <label className="mt-3 flex min-h-11 items-center gap-2 text-[10px] text-ink">
           <input
             type="checkbox"
+            className="size-5 shrink-0"
             checked={active.preflightAcknowledged}
             onChange={(event) =>
               replace({ ...active, preflightAcknowledged: event.currentTarget.checked })
@@ -305,7 +306,7 @@ export function MasterLabelEditor({
           type="button"
           disabled={!preflight.readyForSystemPrint}
           onClick={() => printMasterLabel(active)}
-          className="mt-3 h-10 w-full bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
+          className="mt-3 h-11 w-full bg-ink px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300"
         >
           {printLabel}
         </button>

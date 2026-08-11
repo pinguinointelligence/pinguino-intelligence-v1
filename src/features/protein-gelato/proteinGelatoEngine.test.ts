@@ -54,7 +54,13 @@ describe('Protein Gelato target orchestration', () => {
           hardSafe: true,
           score: 10,
         });
-        expect(assessment.actualPercent).toBeCloseTo(targetPercent, 6);
+        // Preview is the executable whole-gram vector.  The exact solver
+        // candidate remains in provenance, while the rerun target assessment
+        // must stay inside its approved 0.1 percentage-point tolerance.
+        expect(assessment.actualPercent).not.toBeNull();
+        if (assessment.actualPercent === null) return;
+        expect(Math.abs(assessment.actualPercent - targetPercent)).toBeLessThanOrEqual(0.1);
+        expect(proposed.items.every((item) => Number.isInteger(item.planned_grams))).toBe(true);
         expect(proposed.items.find((item) => item.id === 'main-raspberry')?.planned_grams).toBe(
           100,
         );

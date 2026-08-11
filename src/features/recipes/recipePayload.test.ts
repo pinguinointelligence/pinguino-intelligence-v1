@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, CONFIG_VERSION, ENGINE_VERSION } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import {
+  attachPracticalRecipeAudit,
+  practicalRecipeAuditMatchesInput,
+  practicalizeRecipeCandidate,
+  readPracticalRecipeAudit,
+} from '@/features/practical-recipe/practicalRecipe';
 import {
   buildSavePayload,
   deriveProductType,
@@ -155,7 +162,11 @@ describe('savedToRecipeInput (load validation)', () => {
       ...base,
       items: base.items.map((item) =>
         item.id === first!.id
-          ? { ...item, lock_type: 'grams' as const, range_constraint: { min_grams: 90, max_grams: 140 } }
+          ? {
+              ...item,
+              lock_type: 'grams' as const,
+              range_constraint: { min_grams: 90, max_grams: 140 },
+            }
           : item,
       ),
       goals: {
@@ -182,7 +193,11 @@ describe('savedToRecipeInput (load validation)', () => {
       ...base,
       items: base.items.map((item) =>
         item.id === first!.id
-          ? { ...item, lock_type: 'required' as const, grams_constraint: { grams: item.planned_grams } }
+          ? {
+              ...item,
+              lock_type: 'required' as const,
+              grams_constraint: { grams: item.planned_grams },
+            }
           : item,
       ),
     };
@@ -197,6 +212,30 @@ describe('savedToRecipeInput (load validation)', () => {
       lock_type: 'required',
       grams_constraint: { grams: first!.planned_grams },
     });
+  });
+  it('round-trips the exact→executable practical audit with the saved canonical input', () => {
+    const practical = practicalizeRecipeCandidate(ownerSameInputRecipe(), { byLineId: {} });
+    expect(practical.ok).toBe(true);
+    if (!practical.ok) return;
+    const savedInput = attachPracticalRecipeAudit(
+      practical.audit.executableInput,
+      practical.audit.exactInput,
+      '2026-08-11T12:00:00.000Z',
+    );
+    const payload = buildSavePayload({
+      name: 'Owner practical G17',
+      recipeInput: savedInput,
+      intakeProductId: null,
+      intakeServingId: null,
+    });
+    const loaded = savedToRecipeInput(JSON.parse(JSON.stringify(payload.recipe_input)));
+    const audit = readPracticalRecipeAudit(loaded);
+    const taraLine = loaded.items.find((line) => line.id === 'owner:tara_gum');
+    expect(audit?.modelVersion).toBe(practical.audit.modelVersion);
+    expect(taraLine).toBeDefined();
+    expect(audit?.exactGramsByLineId[taraLine!.id]).toBe(1.9);
+    expect(taraLine?.planned_grams).toBe(2);
+    expect(practicalRecipeAuditMatchesInput(loaded, audit)).toBe(true);
   });
   it('tolerates unknown/future fields (old saves keep loading)', () => {
     const stored = JSON.parse(JSON.stringify(sampleInput())) as {

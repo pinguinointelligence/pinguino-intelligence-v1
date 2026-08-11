@@ -22,6 +22,16 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  attachPracticalRecipeAudit,
+  attachSavedPracticalRecipeAudit,
+  practicalRecipeAuditMatchesInput,
+  practicalizeRecipeCandidate,
+  readPracticalRecipeAudit,
+} from '@/features/practical-recipe/practicalRecipe';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import {
   attachRecipeProfileMetadata,
   profileSnapshotFromState,
@@ -37,10 +47,32 @@ const TRACE = {
 const buildRecipeInputFromStore = (): RecipeInput => {
   const state = useRecipeStore.getState();
   const input = buildRecipeInput(state);
-  return attachRecipeProfileMetadata(
+  const withProfile = attachRecipeProfileMetadata(
     input,
-    profileSnapshotFromState(state, state.direction_targets),
+    profileSnapshotFromState(
+      state,
+      state.direction_targets,
+      useRecipeProfileStore.getState().directionIntents,
+    ),
+    Object.fromEntries(
+      state.items.flatMap((item) => {
+        const meta = useIngredientTableUxStore.getState().metaByLineId[item.id];
+        return meta && (meta.role === 'addition' || meta.required)
+          ? [[item.id, { role: meta.role, required: meta.required }] as const]
+          : [];
+      }),
+    ),
   );
+  const last = useConstraintStudioStore.getState().history.at(-1);
+  const currentWasApplied =
+    last?.practicalization !== undefined &&
+    JSON.stringify(last.after.input) === JSON.stringify(input);
+  if (currentWasApplied) {
+    return attachPracticalRecipeAudit(withProfile, last.practicalization!.exactInput, last!.at);
+  }
+  return practicalRecipeAuditMatchesInput(input, state.practicalRecipeAudit)
+    ? attachSavedPracticalRecipeAudit(withProfile, state.practicalRecipeAudit!)
+    : withProfile;
 };
 
 export type SaveBlockedReason = 'signin' | 'unavailable' | 'plan' | null;
@@ -90,6 +122,9 @@ export interface CanonicalRecipeSave {
   busy: boolean;
   error: string | null;
   clearError: () => void;
+  /** Pro-only execution gate. Home supplies its own payload and is untouched. */
+  practicalBlocked: boolean;
+  practicalBlockMessage: string | null;
   /** Create a NEW recipe aggregate + immutable v1 with this name (+ optional first-version note). */
   createNew: (title: string, note?: string) => Promise<boolean>;
   /** Append a new immutable version to the currently-linked recipe (+ optional change note). */
@@ -116,6 +151,8 @@ export function useCanonicalRecipeSave(
   const storeSavedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const storeSavedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const markSaved = useRecipeStore((s) => s.markSaved);
+  const draftRevision = useRecipeStore((s) => s.draftRevision);
+  const constraints = useConstraintStudioStore((s) => s.constraints);
 
   const linkStoreDraft = options.linkStoreDraft ?? true;
   const buildInput = options.buildInput ?? (() => buildRecipeInputFromStore());
@@ -128,6 +165,41 @@ export function useCanonicalRecipeSave(
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const practicalGate = useMemo(() => {
+    // Intentional reactive invalidation: the canonical payload itself is read
+    // trustlessly from the store so every material draft revision rechecks the gate.
+    void draftRevision;
+    // Explicit payloads belong to Home/other surfaces. This reconstruction is
+    // deliberately Pro-only and must not change their accepted save contract.
+    if (options.buildInput !== undefined) return { blocked: false, message: null };
+    const input = buildRecipeInputFromStore();
+    const state = useRecipeStore.getState();
+    const last = useConstraintStudioStore.getState().history.at(-1);
+    const currentWasApplied =
+      last?.practicalization !== undefined &&
+      JSON.stringify(last.after.input) === JSON.stringify(buildRecipeInput(state));
+    const restoredVerified = practicalRecipeAuditMatchesInput(
+      buildRecipeInput(state),
+      state.practicalRecipeAudit,
+    );
+    if (!currentWasApplied && !restoredVerified) {
+      return {
+        blocked: true,
+        message: 'Przed zapisem otwórz Preview i zastosuj zweryfikowaną recepturę wykonawczą.',
+      };
+    }
+    const result = practicalizeRecipeCandidate(input, constraints);
+    if (!result.ok) return { blocked: true, message: result.messagePl };
+    const exactAsWritten = JSON.stringify(result.audit.executableInput) === JSON.stringify(input);
+    return exactAsWritten
+      ? { blocked: false, message: null }
+      : {
+          blocked: true,
+          message:
+            'Przed zapisem otwórz Preview i zastosuj zweryfikowaną recepturę w pełnych gramach.',
+        };
+  }, [constraints, draftRevision, options.buildInput]);
 
   const blocked: SaveBlockedReason = !authed
     ? 'signin'
@@ -147,8 +219,15 @@ export function useCanonicalRecipeSave(
     ]);
   };
 
-  const run = async (fn: () => Promise<string | null>): Promise<boolean> => {
+  const run = async (
+    fn: () => Promise<string | null>,
+    requirePracticalRecipe = false,
+  ): Promise<boolean> => {
     if (blocked !== null || !repository) return false;
+    if (requirePracticalRecipe && practicalGate.blocked) {
+      setError(practicalGate.message);
+      return false;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -168,29 +247,39 @@ export function useCanonicalRecipeSave(
     busy,
     error,
     clearError: () => setError(null),
+    practicalBlocked: practicalGate.blocked,
+    practicalBlockMessage: practicalGate.message,
     createNew: (title, note) =>
       run(async () => {
+        const recipeInput = buildInput();
         const { recipe, version } = await repository!.createRecipe({
           ownerUserId: ownerId,
           title: title.trim(),
           notes: note?.trim() || null,
-          recipeInput: buildInput(),
+          recipeInput,
           trace: TRACE,
           source: 'manual',
           by: ownerId,
           capabilities: caps,
         });
         if (linkStoreDraft) {
-          markSaved(recipe.recipeId, recipe.title, version.versionNumber, version.createdAt);
+          markSaved(
+            recipe.recipeId,
+            recipe.title,
+            version.versionNumber,
+            version.createdAt,
+            readPracticalRecipeAudit(recipeInput),
+          );
         }
         return recipe.recipeId;
-      }),
+      }, true),
     saveVersion: (note) =>
       run(async () => {
         if (!savedRecipeId) throw new Error('Brak powiązanej receptury.');
+        const recipeInput = buildInput();
         const version = await repository!.saveNewVersion(
           savedRecipeId,
-          buildInput(),
+          recipeInput,
           TRACE,
           ownerId,
           {
@@ -203,10 +292,11 @@ export function useCanonicalRecipeSave(
             useRecipeStore.getState().savedRecipeName ?? savedRecipeName ?? '',
             version.versionNumber,
             version.createdAt,
+            readPracticalRecipeAudit(recipeInput),
           );
         }
         return savedRecipeId;
-      }),
+      }, true),
     rename: (title) =>
       run(async () => {
         if (!savedRecipeId) throw new Error('Brak powiązanej receptury.');

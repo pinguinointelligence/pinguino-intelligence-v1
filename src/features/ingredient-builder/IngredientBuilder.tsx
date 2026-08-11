@@ -46,9 +46,10 @@ import type { ProductionWorkspaceView } from '@/features/production-workspace/us
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
 import { listEngineApprovedIngredients } from '@/services/ingredients';
 import { verifiedRecipeSubstituteCandidates } from './recipeSubstitution';
+import { buildDirectPercentEdit } from './directPercentEdit';
 
 const b = copy.studio.builder;
-const headCell = 'text-[0.6rem] font-medium tracking-label text-ivory/60 uppercase';
+const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
 
 /**
  * Items come from the Engine result; edits return to the canonical recipe store.
@@ -112,8 +113,21 @@ export function IngredientBuilder({
     },
   });
 
+  const setPlannedGramsVector = useRecipeStore((state) => state.setPlannedGramsVector);
+
   const actions: IngredientRowActions = {
     ...coreActions,
+    setPlannedPercent: (lineId, percent) => {
+      const draft = selectCanonicalDraft();
+      const next = buildDirectPercentEdit(
+        draft.input,
+        draft.constraints,
+        lineId,
+        percent,
+        draft.excludedIngredientIds,
+      );
+      if (next.ok) setPlannedGramsVector(next.gramsByLineId);
+    },
     setCustomerRole: (lineId, role) => {
       if (role === 'main') {
         setRoleMeta(lineId, 'standard');
@@ -121,8 +135,12 @@ export function IngredientBuilder({
         return;
       }
       const current = useRecipeStore.getState().items.find((item) => item.id === lineId);
+      const previousRole = ingredientRowMeta(metaByLineId, lineId).role;
       if (current?.lock_type === 'main') coreActions.setLockType(lineId, 'unlocked');
       setRoleMeta(lineId, role);
+      if (current?.lock_type !== 'main' && previousRole !== role) {
+        useRecipeStore.getState().markProfileTargetChanged();
+      }
     },
     toggleRequired: (lineId) => {
       const current = useRecipeStore.getState().items.find((item) => item.id === lineId);
@@ -142,6 +160,7 @@ export function IngredientBuilder({
       // invariant. Keep their Engine/constraint state and only add the visible
       // Required meaning instead of replacing a crown or a lock.
       toggleRequired(lineId);
+      useRecipeStore.getState().markProfileTargetChanged();
     },
     setIngredientUnavailable: (lineId, unavailable) => {
       // Keep the unavailable row as an explicit replacement tombstone. Its
@@ -326,10 +345,10 @@ export function IngredientBuilder({
         className="border-b border-status-error/25 bg-status-error/[0.055] px-3 py-2"
         data-testid="recipe-infeasible-notice"
       >
-        <p className="text-[10px] font-semibold tracking-label text-status-error uppercase">
+        <p className="text-xs font-semibold tracking-[0.04em] text-status-error uppercase">
           {b.ingredientTable.infeasible.title}
         </p>
-        <p className="mt-1 text-[10px] leading-relaxed text-stone-600">
+        <p className="mt-1 text-xs leading-relaxed text-stone-600">
           {b.ingredientTable.infeasible.body} ({unresolved.map((entry) => entry.name).join(', ')})
         </p>
       </div>
@@ -389,10 +408,10 @@ export function IngredientBuilder({
             </div>
           ) : (
             <div className="mt-2 flex items-center justify-between gap-3 border border-ink/10 bg-stone-50 px-3 py-2">
-              <p className="text-[10px] text-stone-600">
+              <p className="text-xs text-stone-600">
                 Odważ · skoryguj −/+ · potwierdź ✓. Potwierdzonego materiału PI nigdy nie odejmuje.
               </p>
-              <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink">
+              <span className="shrink-0 font-mono text-xs tabular-nums text-ink">
                 {production?.progress
                   ? `${production.progress.confirmedCount}/${production.progress.totalCount}`
                   : '0/0'}

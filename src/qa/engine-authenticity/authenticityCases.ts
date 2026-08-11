@@ -502,7 +502,15 @@ export function runAuthenticityCase(def: AuthenticityCaseDef): AuthenticityRecor
     def.options ?? {},
   );
 
-  const finalInput = result.ok ? result.preview.proposedInput : null;
+  // Authenticity pins the exact solver/Engine candidate.  The customer
+  // Preview deliberately exposes the separately rerun whole-gram executable
+  // vector; measuring that here would turn a product-layer rounding change
+  // into a false Base-Engine drift.
+  const finalInput = result.ok
+    ? result.preview.practicalization?.status === 'ready'
+      ? result.preview.practicalization.audit.exactInput
+      : result.preview.proposedInput
+    : null;
   const assessed = finalInput ?? rec;
   const engineRecord = recordEngineOutput(assessed);
   const assessedResult = calculateRecipe(assessed);
@@ -732,7 +740,10 @@ export interface DeterminismBatteryResult {
 /** Canonical byte-comparable signature of a preview outcome + its engine metrics. */
 export function previewSignature(result: BuildPreviewResult): string {
   if (!result.ok) return JSON.stringify({ failed: result.code });
-  const proposed = result.preview.proposedInput;
+  const proposed =
+    result.preview.practicalization?.status === 'ready'
+      ? result.preview.practicalization.audit.exactInput
+      : result.preview.proposedInput;
   const calc = calculateRecipe(proposed);
   return JSON.stringify({
     items: proposed.items.map((item) => [item.id, item.ingredient.id, item.planned_grams]),
