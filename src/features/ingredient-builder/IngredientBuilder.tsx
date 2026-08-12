@@ -47,6 +47,7 @@ import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
 import { listEngineApprovedIngredients } from '@/services/ingredients';
 import { verifiedRecipeSubstituteCandidates } from './recipeSubstitution';
 import { buildDirectPercentEdit } from './directPercentEdit';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 
 const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
@@ -109,6 +110,9 @@ export function IngredientBuilder({
   const draggedToppingId = useRef<string | null>(null);
   const [pickerNotice, setPickerNotice] = useState<string | null>(null);
   const [reorderNotice, setReorderNotice] = useState('');
+  const dirty = useRecipeStore((state) => state.dirty);
+  const directionPending = useRecipeProfileStore((state) => state.awaitingRecalculation);
+  const recalcPending = dirty || directionPending;
   const library = useIngredientLibrary({ demo });
   const { lockFor, wrapActions } = useLineLockControls();
 
@@ -562,23 +566,38 @@ export function IngredientBuilder({
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
         <div className="shrink-0 border-b border-ink/10 px-3 py-2">
-          <div className="flex items-center justify-between gap-3">
+          <div className={mode === 'recipe' ? 'sr-only' : 'flex items-center justify-between gap-3'}>
             <SectionLabel>{mode === 'production' ? 'Produkcja' : 'Baza lodowa'}</SectionLabel>
             {demo || library.status === 'fallback' ? (
               <NonProductionBadge itemId="pro-demo-library" />
             ) : null}
           </div>
           {mode === 'recipe' ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="ingredient-add-slot">
-              {picker}
+            <div
+              className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-2 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,.85fr)_minmax(202px,1fr)_96px_44px] 2xl:grid-cols-[minmax(300px,1fr)_222px_260px_76px_44px]"
+              data-testid="ingredient-add-toolbar"
+            >
+              <span className="hidden min-w-0 md:block" aria-hidden />
+              <div className="justify-self-start" data-testid="ingredient-add-slot">
+                {picker}
+              </div>
+              <span
+                className={recalcPending ? 'hidden text-right text-xs text-attention md:col-span-2 md:block' : 'hidden text-right text-xs text-status-ideal md:col-span-2 md:block'}
+                data-testid="pro-recalc-state"
+                data-state={recalcPending ? 'pending' : 'current'}
+              >
+                <span aria-hidden className="mr-1.5">•</span>
+                {recalcPending ? 'Oczekuje na przeliczenie' : 'Obliczenie aktualne'}
+              </span>
               {onRecalculate ? (
                 <button
                   type="button"
                   onClick={onRecalculate}
-                  className="pro-focus-ring h-11 rounded-xl bg-ink px-4 text-xs font-semibold text-white shadow-pro-e1 hover:bg-graphite"
+                  aria-label="Przelicz z PI"
+                  className="pro-focus-ring grid size-11 place-items-center rounded-xl border border-gold/35 bg-ink font-mono text-sm font-semibold text-white shadow-pro-e1 hover:bg-graphite"
                   data-testid="pro-workbar-recalc"
                 >
-                  Przelicz z PI
+                  <span className="text-gold-soft">PI<sup className="text-[9px]">+</sup></span>
                 </button>
               ) : null}
             </div>
@@ -629,7 +648,15 @@ export function IngredientBuilder({
         ) : (
           <>
             {items.length > 0 ? (
-              <div className="hidden shrink-0 border-b border-ink/[0.075] md:block">{header}</div>
+              <div
+                className={
+                  mode === 'recipe'
+                    ? 'sr-only'
+                    : 'hidden shrink-0 border-b border-ink/[0.075] md:block'
+                }
+              >
+                {header}
+              </div>
             ) : null}
             <div className="min-h-0 flex-1 overflow-y-auto" data-testid="ingredient-rows-scroll">
               <div>

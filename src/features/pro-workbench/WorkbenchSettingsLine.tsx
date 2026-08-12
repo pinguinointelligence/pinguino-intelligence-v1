@@ -43,7 +43,7 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
 ];
 
 const compactSelect =
-  'h-11 min-w-0 rounded-[14px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e1 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold';
+  'h-11 min-w-0 rounded-[14px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e1 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold lg:h-9 lg:rounded-[12px] lg:text-xs';
 
 function LabeledSelect<T extends string>({
   label,
@@ -77,7 +77,7 @@ function LabeledSelect<T extends string>({
         {label}
       </span>
       <select
-        className={cn(compactSelect, 'w-full', stacked && 'h-[52px] pt-4')}
+        className={cn(compactSelect, 'w-full', stacked && 'h-[52px] pt-4 lg:h-10')}
         value={value}
         aria-label={label}
         data-testid={testid}
@@ -179,7 +179,7 @@ export function WorkbenchSettingsLine({
     <section
       className={cn(
         'rounded-[22px] border shadow-pro-e2 transition-colors',
-        compact ? 'p-3' : 'p-4',
+        compact ? 'p-3 lg:p-2.5' : 'p-4',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
           : confirmed
@@ -193,14 +193,14 @@ export function WorkbenchSettingsLine({
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-ink">Ustawienia receptury</h3>
+      <div className="mb-2 flex items-center justify-center gap-2">
+        <h3 className="text-sm font-semibold text-ink">Ustawienia receptury</h3>
         <span
           role="status"
           aria-live="polite"
           aria-atomic="true"
           className={cn(
-            'text-xs font-semibold',
+            'sr-only text-xs font-semibold',
             hardConflict ? 'text-status-error' : confirmed ? 'text-status-ideal' : 'text-attention',
           )}
           data-testid="profile-preflight-status"
@@ -213,7 +213,7 @@ export function WorkbenchSettingsLine({
         </span>
       </div>
 
-      <div className={compact ? 'space-y-2' : 'space-y-3'}>
+      <div className={compact ? 'space-y-2 lg:space-y-1' : 'space-y-3'}>
         <div>
           <LabeledSelect
             label={g.productTypeLabel}
@@ -323,7 +323,7 @@ export function WorkbenchSettingsLine({
           className={cn(
             'grid items-center gap-2 rounded-[16px] border px-3 py-2',
             compact
-              ? 'relative min-h-[64px] grid-cols-1 pt-5'
+              ? 'relative min-h-[64px] grid-cols-1 pt-5 lg:min-h-[54px] lg:py-1 lg:pt-4'
               : 'grid-cols-[6.8rem_minmax(0,1fr)]',
             batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
           )}
@@ -372,7 +372,7 @@ export function WorkbenchSettingsLine({
           </div>
         </div>
 
-        <div className="rounded-[16px] border border-ink/10 bg-white/70 p-2">
+        <div className="rounded-[16px] border border-ink/10 bg-white/70 p-2 lg:rounded-[14px] lg:p-1.5">
           <LabeledSelect
             label="TRYB"
             value={store.formulation_strategy}
@@ -382,7 +382,7 @@ export function WorkbenchSettingsLine({
             testid="workbench-strategy"
             stacked={compact}
           />
-          <p className={cn('mt-1 text-xs leading-relaxed text-stone-600', !compact && 'ml-[7.3rem]')}>
+          <p className={cn('mt-1 text-xs leading-relaxed text-stone-600 lg:text-[10px]', !compact && 'ml-[7.3rem]')}>
             {STRATEGY_COPY[store.formulation_strategy].description}
           </p>
         </div>
@@ -395,7 +395,7 @@ export function WorkbenchSettingsLine({
             disabled={hardConflict}
             onClick={() => confirmSettings(signature, store.draftContextSeq)}
             data-testid="profile-settings-confirm"
-            className="pro-focus-ring h-11 flex-1 rounded-[14px] bg-ink px-3 text-sm font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35"
+            className="pro-focus-ring h-11 flex-1 rounded-[14px] bg-ink px-3 text-sm font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35 lg:h-9 lg:rounded-[12px] lg:text-xs"
           >
             Potwierdź ustawienia
           </button>

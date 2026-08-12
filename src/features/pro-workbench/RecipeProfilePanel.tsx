@@ -28,8 +28,72 @@ const TABS: readonly { id: CockpitTab; label: string }[] = [
   { id: 'profile', label: 'Profil receptury' },
   { id: 'monitor', label: 'Monitor' },
   { id: 'production', label: 'Produkcja' },
-  { id: 'summary', label: 'Podsumowanie' },
+  { id: 'summary', label: 'Etykieta' },
 ];
+
+function CompactMetricRow({
+  label,
+  value,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex min-h-5 items-center justify-between gap-3 border-b border-ink/7 py-0.5 last:border-0">
+      <dt className={muted ? 'pl-2 text-[10px] text-stone-500' : 'text-[11px] text-stone-600'}>
+        {label}
+      </dt>
+      <dd className="shrink-0 font-mono text-[11px] font-semibold tabular-nums text-ink">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function NutritionCostProfileGrid({ result }: { result: RecipeResult }) {
+  const nutrition = result.nutrition_per_100g;
+  const costs = result.costs;
+  const grams = (value: number | null | undefined, precision = 1) =>
+    value === null || value === undefined ? '—' : `${value.toFixed(precision)} g`;
+  const euro = (value: number | null | undefined) =>
+    value === null || value === undefined ? '—' : `${value.toFixed(2)} €`;
+  return (
+    <>
+      <section
+        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1"
+        data-testid="profile-nutrition-card"
+      >
+        <h3 className="mb-1 text-center text-xs font-semibold text-ink">Wartości odżywcze</h3>
+        <dl>
+          <CompactMetricRow label="Energia" value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'} />
+          <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
+          <CompactMetricRow label="w tym kwasy nasycone" value={grams(nutrition?.saturated_fat_g)} muted />
+          <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
+          <CompactMetricRow label="w tym cukry" value={grams(nutrition?.sugars_g)} muted />
+          <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
+          <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
+          <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
+        </dl>
+      </section>
+      <section
+        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1"
+        data-testid="profile-cost-card"
+      >
+        <h3 className="mb-1 text-center text-xs font-semibold text-ink">Koszt</h3>
+        <dl>
+          <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
+          <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
+          <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
+          <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
+          <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
+        </dl>
+        <p className="mt-4 text-center text-[10px] text-stone-500">Aktualizuj ceny w produktach</p>
+      </section>
+    </>
+  );
+}
 
 function ProfileContent({
   result,
@@ -39,10 +103,11 @@ function ProfileContent({
   onOpenEducation: () => void;
 }) {
   return (
-    <div className="p-3" data-testid="pro-context-recipe">
+    <div className="p-2.5" data-testid="pro-context-recipe">
       <div
-        className="grid min-w-0 items-start gap-3 xl:grid-cols-[1.08fr_0.92fr]"
+        className="grid min-w-0 items-stretch gap-2.5 xl:grid-cols-[1.08fr_0.92fr]"
         data-testid="profile-desktop-grid"
+        data-profile-layout="2x2"
       >
         <ProfileDirectionAxes result={result} className="min-w-0" />
         <WorkbenchSettingsLine
@@ -51,11 +116,12 @@ function ProfileContent({
           className="min-w-0"
           compact
         />
+        <NutritionCostProfileGrid result={result} />
       </div>
       <button
         type="button"
         onClick={onOpenEducation}
-        className="pro-focus-ring mt-3 flex min-h-11 w-full items-center justify-between rounded-[16px] border border-white/20 bg-white/6 px-4 text-left text-xs font-semibold text-white/82 shadow-pro-e0"
+        className="pro-focus-ring mt-2.5 flex min-h-11 w-full items-center justify-between rounded-[16px] border border-white/20 bg-white/6 px-4 text-left text-xs font-semibold text-white/82 shadow-pro-e0"
         data-testid="profile-learning-entry"
       >
         <span>Dlaczego taki wynik i jak przygotować recepturę?</span>
@@ -377,7 +443,7 @@ export function RecipeProfilePanel({
         role="tabpanel"
         aria-labelledby={`pro-context-${activeTab}-tab-control`}
         tabIndex={0}
-        className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+        className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:[scrollbar-gutter:stable]"
       >
         {activeTab === 'profile' && educationOpen ? (
           <ContextualEducationView

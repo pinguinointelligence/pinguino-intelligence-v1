@@ -55,7 +55,7 @@ describe('canonical Pro header contract', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
-    expect(page).toContain('maxWidthClass="max-w-none"');
+    expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('brand={<OfficialProLogo />}');
     expect(page).not.toContain('data-testid="pro-top-score"');
     expect(header).toContain('data-testid="workbench-intelligence-header"');
@@ -71,8 +71,9 @@ describe('canonical Pro header contract', () => {
 
   it('integrates pending state into the recalculation control', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
-    expect(page).toContain('data-testid="pro-recalc-state"');
-    expect(page).toContain('Oczekuje na przeliczenie');
+    const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
+    expect(builder).toContain('data-testid="pro-recalc-state"');
+    expect(builder).toContain('Oczekuje na przeliczenie');
     expect(page).toContain("pinguino:profile-settings-required");
     expect(page).toContain('profile.isConfirmed(signature, recipe.draftContextSeq)');
     expect(page).not.toContain('copy.proWorkbar.pendingRecalc');
@@ -102,7 +103,7 @@ describe('profile hierarchy and compact preflight', () => {
   it('uses one inset shell and one desktop body scroller for every cockpit tab', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(surface).toContain('lg:overflow-hidden lg:border-t-0 lg:p-3');
+    expect(surface).toContain('lg:min-w-0 lg:overflow-hidden lg:border-t-0');
     expect(panel).toContain('lg:rounded-[28px]');
     expect(panel).toContain('lg:shadow-pro-e2');
     expect(panel).toContain('lg:flex-1 lg:overflow-y-auto');

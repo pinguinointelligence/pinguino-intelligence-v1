@@ -69,7 +69,7 @@ function RegulatorRow({
   return (
     <article
       className={cn(
-        'grid min-h-[58px] grid-cols-[minmax(0,1fr)_44px_minmax(104px,1.25fr)_44px] items-center gap-1.5 rounded-[16px] border bg-white px-2 py-1.5 shadow-pro-e0 sm:grid-cols-[minmax(105px,.8fr)_44px_minmax(128px,1.2fr)_44px] sm:gap-2 sm:px-2.5',
+        'grid min-h-[58px] grid-cols-[minmax(0,1fr)_44px_minmax(104px,1.25fr)_44px] items-center gap-1.5 rounded-[16px] border bg-white px-2 py-1.5 shadow-pro-e0 sm:grid-cols-[minmax(105px,.8fr)_44px_minmax(128px,1.2fr)_44px] sm:gap-2 sm:px-2.5 lg:h-12 lg:min-h-0 lg:grid-cols-[minmax(92px,.8fr)_36px_minmax(104px,1.2fr)_36px] lg:rounded-[14px] lg:px-2 lg:py-1',
         unavailable ? 'border-nonprod/28' : 'border-ink/8',
       )}
       data-testid={`profile-regulator-${id}`}
@@ -89,7 +89,7 @@ function RegulatorRow({
           aria-label={`${label}: przesuń w lewo`}
           disabled={disabled || value <= -2}
           onClick={() => onMove?.(-1)}
-          className="pro-focus-ring grid size-11 place-items-center rounded-xl border border-ink/12 bg-white text-xl text-ink shadow-pro-e0 disabled:opacity-25"
+          className="pro-focus-ring grid size-11 place-items-center rounded-xl border border-ink/12 bg-white text-xl text-ink shadow-pro-e0 disabled:opacity-25 lg:size-9 lg:rounded-[10px] lg:text-lg"
         >
           −
         </button>
@@ -121,7 +121,7 @@ function RegulatorRow({
           }
         }}
         className={cn(
-          'min-h-11 rounded-xl',
+          'min-h-11 rounded-xl lg:min-h-9 lg:rounded-[10px]',
           !disabled && 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold',
         )}
       >
@@ -133,7 +133,7 @@ function RegulatorRow({
           aria-label={`${label}: przesuń w prawo`}
           disabled={disabled || value >= 2}
           onClick={() => onMove?.(1)}
-          className="pro-focus-ring grid size-11 place-items-center rounded-xl border border-ink/12 bg-white text-xl text-ink shadow-pro-e0 disabled:opacity-25"
+          className="pro-focus-ring grid size-11 place-items-center rounded-xl border border-ink/12 bg-white text-xl text-ink shadow-pro-e0 disabled:opacity-25 lg:size-9 lg:rounded-[10px] lg:text-lg"
         >
           +
         </button>

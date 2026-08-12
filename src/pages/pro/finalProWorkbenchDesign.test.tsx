@@ -113,7 +113,7 @@ describe('one global menu and four local contexts', () => {
 
   it('renders Profile, Monitor, Production and Summary as contextual controls', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    for (const label of ['Profil receptury', 'Monitor', 'Produkcja', 'Podsumowanie']) {
+    for (const label of ['Profil receptury', 'Monitor', 'Produkcja', 'Etykieta']) {
       expect(panel).toContain(`label: '${label}'`);
     }
     expect(panel).toContain('onTabChange(tab.id)');

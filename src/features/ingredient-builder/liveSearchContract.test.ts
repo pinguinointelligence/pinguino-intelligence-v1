@@ -210,7 +210,7 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     const src = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     const backdropClass = src.indexOf('className="fixed inset-0 z-[89]');
     const backdropStart = src.lastIndexOf('<div', backdropClass);
-    const dialogClass = src.indexOf('className="shadow-pro-e3 fixed');
+    const dialogClass = src.indexOf("'shadow-pro-e3 fixed");
     const dialogStart = src.lastIndexOf('<div', dialogClass);
     const dialogEnd = src.indexOf('onKeyDown={(event)', dialogStart);
     const backdrop = src.slice(backdropStart, dialogStart);

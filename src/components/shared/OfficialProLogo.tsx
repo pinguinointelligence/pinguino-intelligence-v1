@@ -11,7 +11,7 @@ const OFFICIAL_PRO_LOGO = '/logo/PI-logo-blackwhite-web.png';
  */
 export function OfficialProLogo({ className }: { className?: string }) {
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex items-center">
       <img
         src={OFFICIAL_PRO_LOGO}
         alt=""
@@ -20,11 +20,11 @@ export function OfficialProLogo({ className }: { className?: string }) {
         aria-hidden
         data-logo-asset={OFFICIAL_PRO_LOGO}
         data-logo-source="/logo/PI-logo-blackwhite.pdf"
-        className={cn('h-11 w-auto shrink-0 object-contain sm:h-12', className)}
+        className={cn(
+          'h-11 w-auto shrink-0 object-contain sm:h-12 lg:h-[146px]',
+          className,
+        )}
       />
-      <span className="rounded-lg border border-ink/15 px-2 py-1 text-[10px] font-semibold tracking-[0.08em] text-ink">
-        PRO
-      </span>
     </span>
   );
 }

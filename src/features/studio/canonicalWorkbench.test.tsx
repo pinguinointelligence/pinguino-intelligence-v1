@@ -258,7 +258,7 @@ describe('recalculation entry', () => {
 describe('new Pro profile layout', () => {
   it('exposes four stable right-panel contexts and keeps actual batch in the profile', () => {
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    for (const label of ['Profil receptury', 'Monitor', 'Produkcja', 'Podsumowanie']) {
+    for (const label of ['Profil receptury', 'Monitor', 'Produkcja', 'Etykieta']) {
       expect(profile).toContain(label);
     }
     expect(profile).toContain(

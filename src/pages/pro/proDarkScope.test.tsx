@@ -91,8 +91,8 @@ describe('Pro workspace — white precision scope', () => {
     expect(html).toContain('data-testid="workbench-intelligence-header"');
     expect(html).toContain('data-testid="workbench-editor-pane"');
     expect(html).toContain('data-testid="pro-monitor-panel"');
-    expect(html).toContain('lg:w-[60%]');
-    expect(html).toContain('lg:w-[40%]');
+    expect(html).toContain('2xl:grid-cols-[minmax(0,1064px)_minmax(0,638px)]');
+    expect(html).toContain('2xl:gap-16');
   });
 
   it('keeps explicit Direction choices, honest blocked axes and the review tools route', () => {

@@ -1,4 +1,12 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { createPortal } from 'react-dom';
 import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
@@ -22,6 +30,17 @@ interface PickerOption {
   local?: EngineIngredient;
 }
 
+const DESKTOP_PICKER_WIDTH = 494;
+const DESKTOP_PICKER_HEIGHT = 476;
+
+interface PickerPosition {
+  desktop: boolean;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 export function ProductPickerPopover({
   library,
   scope,
@@ -39,12 +58,41 @@ export function ProductPickerPopover({
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const [adding, setAdding] = useState(false);
+  const [position, setPosition] = useState<PickerPosition | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const pickerInstanceId = useId().replace(/:/g, '');
   const server = useIngredientSearch({ enabled: open && library.serverSearch, query });
+
+  useLayoutEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+    const updatePosition = () => {
+      const trigger = triggerRef.current?.getBoundingClientRect();
+      if (!trigger) return;
+      const desktop = window.matchMedia('(min-width: 1024px)').matches;
+      if (!desktop) {
+        setPosition({ desktop: false, left: 0, top: 0, width: 0, height: 0 });
+        return;
+      }
+      const monitorLeft = document
+        .querySelector<HTMLElement>('[data-testid="pro-monitor-panel"]')
+        ?.getBoundingClientRect().left;
+      const rightLimit = Math.min(window.innerWidth - 16, (monitorLeft ?? window.innerWidth) - 16);
+      const width = Math.max(320, Math.min(DESKTOP_PICKER_WIDTH, rightLimit - trigger.left));
+      const top = trigger.bottom + 8;
+      const height = Math.max(280, Math.min(DESKTOP_PICKER_HEIGHT, window.innerHeight - top - 16));
+      setPosition({ desktop: true, left: trigger.left, top, width, height });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open]);
 
   const options = useMemo<PickerOption[]>(() => {
     if (library.serverSearch) {
@@ -135,6 +183,15 @@ export function ProductPickerPopover({
   const label = triggerLabel ?? (scope === 'BASE_FORMULATION' ? 'Dodaj składnik' : 'Dodaj topping');
   const listId = `product-picker-${scope.toLowerCase()}-${pickerInstanceId}`;
   const dialogId = `${listId}-dialog`;
+  const anchored = position?.desktop === true;
+  const dialogStyle: CSSProperties | undefined = anchored
+    ? {
+        left: position.left,
+        top: position.top,
+        width: position.width,
+        height: position.height,
+      }
+    : undefined;
   return (
     <div className={cn('relative', className)} data-picker-scope={scope}>
       <button
@@ -163,7 +220,14 @@ export function ProductPickerPopover({
         <div
           id={dialogId}
           ref={dialogRef}
-          className="shadow-pro-e3 fixed left-1/2 top-1/2 z-[90] flex w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-ink/12 bg-white"
+          className={cn(
+            'shadow-pro-e3 fixed z-[90] flex flex-col overflow-hidden rounded-2xl border border-ink/12 bg-white',
+            anchored
+              ? 'translate-x-0 translate-y-0'
+              : 'left-1/2 top-1/2 h-[min(29.75rem,calc(100dvh-2rem))] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2',
+          )}
+          style={dialogStyle}
+          data-picker-position={anchored ? 'anchored' : 'modal'}
           role="dialog"
           aria-modal="true"
           aria-label={label}
@@ -201,10 +265,11 @@ export function ProductPickerPopover({
             }
           }}
         >
-          <div className="sticky top-0 z-10 border-b border-ink/10 bg-white p-3">
+          <div className="z-10 shrink-0 border-b border-ink/10 bg-white p-3">
+            <div className="relative">
             <input
               ref={inputRef}
-              type="search"
+              type="text"
               role="combobox"
               aria-controls={listId}
               aria-expanded="true"
@@ -216,8 +281,24 @@ export function ProductPickerPopover({
                 setQuery(event.currentTarget.value);
                 setActiveIndex(0);
               }}
-              className="h-11 w-full rounded-xl border border-ink/15 bg-stone-50 px-3 text-sm text-ink outline-none focus:border-gold"
+              className="h-11 w-full rounded-xl border border-ink/15 bg-stone-50 px-3 pr-11 text-sm text-ink outline-none focus:border-gold focus:ring-2 focus:ring-gold/18"
             />
+              {query ? (
+                <button
+                  type="button"
+                  aria-label="Wyczyść wyszukiwanie"
+                  data-testid="product-picker-clear"
+                  onClick={() => {
+                    setQuery('');
+                    setActiveIndex(0);
+                    inputRef.current?.focus();
+                  }}
+                  className="pro-focus-ring absolute right-1 top-1 grid size-9 place-items-center rounded-lg text-base font-semibold text-stone-600 hover:bg-stone-100 hover:text-ink"
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
             <p className="mt-2 text-xs text-stone-600" role="status" aria-live="polite">
               {library.serverSearch && query.trim() && !server.isSettled
                 ? 'Szukam…'
@@ -229,7 +310,7 @@ export function ProductPickerPopover({
             ref={listRef}
             role="listbox"
             aria-label={`Produkty — ${label}`}
-            className="max-h-[min(26rem,58vh)] scroll-smooth overflow-y-auto p-2 motion-reduce:scroll-auto"
+            className="min-h-0 flex-1 overflow-y-auto scroll-smooth p-2 motion-reduce:scroll-auto"
           >
             {options.length === 0 ? (
               <p className="px-3 py-5 text-sm text-stone-600">
@@ -245,7 +326,7 @@ export function ProductPickerPopover({
                   aria-selected={index === safeActiveIndex}
                   data-option-index={index}
                   className={cn(
-                    'flex min-h-11 w-full items-center justify-between gap-4 rounded-xl px-3 py-2 text-left',
+                    'flex min-h-11 w-full items-center justify-between gap-4 rounded-xl px-3 py-2 text-left lg:min-h-[38px] lg:rounded-lg lg:py-1.5',
                     index === safeActiveIndex ? 'bg-education-ivory text-ink' : 'hover:bg-stone-50',
                   )}
                   onMouseEnter={() => setActiveIndex(index)}

@@ -230,9 +230,9 @@ export function StudioEngineSurface({
         data-testid="pro-workbench"
       >
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
-        <div className="min-h-0 flex-1 lg:flex lg:flex-row">
+        <div className="min-h-0 flex-1 lg:grid lg:h-[min(742px,calc(100dvh-210px))] lg:flex-none lg:grid-cols-[minmax(0,1.66fr)_minmax(420px,1fr)] lg:gap-4 2xl:grid-cols-[minmax(0,1064px)_minmax(0,638px)] 2xl:gap-16">
           <div
-            className="min-h-0 lg:flex lg:w-[60%] lg:flex-col lg:border-r lg:border-pro-line"
+            className="min-h-0 lg:flex lg:min-w-0 lg:flex-col"
             data-testid="workbench-editor-pane"
           >
             {fullFormula && cockpitTab === 'production' && !productionReady ? (
@@ -278,7 +278,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
-            className="hidden min-h-0 border-t border-pro-line bg-pro-warm lg:block lg:w-[40%] lg:overflow-hidden lg:border-t-0 lg:p-3"
+            className="hidden min-h-0 border-t border-pro-line bg-pro-warm lg:block lg:min-w-0 lg:overflow-hidden lg:border-t-0"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
           >
@@ -310,7 +310,9 @@ export function StudioEngineSurface({
             <span className="font-mono tabular-nums text-gold-soft">{scoreDisplay}</span>
           </button>
         </div>
-        <div className="shrink-0 border-t border-ink/10">{recipeBar}</div>
+        <div className="shrink-0 border-t border-ink/10 lg:mt-2 lg:border-0 2xl:mt-9">
+          {recipeBar}
+        </div>
 
         {mobileCockpitOpen ? (
           <div className="fixed inset-0 z-50 lg:hidden" data-testid="mobile-cockpit-sheet">

@@ -28,7 +28,6 @@ import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
-import { cn } from '@/lib/cn';
 import { AppShell } from '@/features/shell/AppShell';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -110,25 +109,15 @@ function ProTopActions({
 }: {
   persona: ProCorePersona;
 }) {
-  const dirty = useRecipeStore((state) => state.dirty);
-  const directionPending = useRecipeProfileStore((state) => state.awaitingRecalculation);
   const unresolvedRequiredCount = useIngredientTableUxStore(
     (state) => Object.keys(state.unresolvedRequiredByLineId).length,
   );
-  const pending = dirty || directionPending;
 
   return (
     <div
       className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-4"
       data-testid="pro-top-workbar"
     >
-      <span
-        className={cn('hidden text-xs xl:inline', pending ? 'text-attention' : 'text-status-ideal')}
-        data-testid="pro-recalc-state"
-        data-state={pending ? 'pending' : 'current'}
-      >
-        {pending ? 'Oczekuje na przeliczenie' : 'Obliczenie aktualne'}
-      </span>
       {unresolvedRequiredCount > 0 ? (
         <span
           className="hidden text-xs font-semibold tracking-[0.04em] text-status-error uppercase xl:inline"
@@ -138,6 +127,12 @@ function ProTopActions({
         </span>
       ) : null}
       <DevPersonaSwitch persona={persona} />
+      <span
+        className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-[10px] font-semibold tracking-[0.08em] text-ink"
+        data-testid="pro-plan-indicator"
+      >
+        PRO
+      </span>
     </div>
   );
 }
@@ -334,7 +329,7 @@ export function ProWorkspacePage() {
     >
       <AppShell
         viewportLock={workbench}
-        maxWidthClass="max-w-none"
+        maxWidthClass="max-w-[1776px]"
         brand={<OfficialProLogo />}
         actions={
           workbench ? (
@@ -367,7 +362,10 @@ export function ProWorkspacePage() {
         ) : workbench ? (
           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
           // viewport belongs to the edit loop; every destination lives in the hamburger.
-          <div className="lg:h-full lg:min-h-0" data-testid={`pro-panel-${activeTab}`}>
+          <div
+            className="lg:mx-auto lg:h-full lg:min-h-0 lg:w-[calc(100%-4rem)] lg:max-w-[1776px]"
+            data-testid={`pro-panel-${activeTab}`}
+          >
             <RecipeWorkbench
               activePanel={workbenchTab!}
               recalcOpen={recalcOpen}

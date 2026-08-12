@@ -31,7 +31,7 @@ export type IngredientTableMode = 'recipe' | 'production';
 
 /** Recipe mode only: Ingredient | % + lock | quantity + lock/unit | price | menu. */
 export const ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(202px,1fr)_96px_44px]';
+  'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(202px,1fr)_96px_44px] 2xl:grid-cols-[minmax(300px,1fr)_222px_260px_76px_44px]';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 
@@ -82,9 +82,16 @@ export interface IngredientRowLockView {
   maxGrams?: number;
 }
 
-function MainRoleGlyph() {
+function MainRoleGlyph({ active = true }: { active?: boolean }) {
   return (
-    <svg aria-hidden width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gold">
+    <svg
+      aria-hidden
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      className={active ? 'text-gold' : 'text-stone-300'}
+    >
       <path d="M2 5.5 5.3 8 8 3l2.7 5L14 5.5l-1 6H3l-1-6Z" fill="currentColor" />
     </svg>
   );
@@ -512,13 +519,29 @@ function RecipeRow({
             >
               ⠿
             </span>
+            <button
+              type="button"
+              aria-label={isMain ? 'Zmień na składnik standardowy' : 'Ustaw jako składnik główny'}
+              aria-pressed={isMain}
+              title={isMain ? 'Główny — kliknij, aby ustawić Standardowy' : t.role.mainHint}
+              disabled={!isMain && gramsLocked}
+              onClick={() => setRole(isMain ? 'standard' : 'main')}
+              data-testid={`row-main-toggle-${item.id}`}
+              className={cn(
+                'pro-focus-ring grid size-8 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-35',
+                isMain
+                  ? 'border-gold/22 bg-education-ivory'
+                  : 'border-transparent bg-transparent hover:border-gold/18 hover:bg-education-ivory/55',
+              )}
+            >
+              <MainRoleGlyph active={isMain} />
+            </button>
             {isMain ? (
               <span
                 aria-label="Składnik główny"
                 title={t.role.mainHint}
                 className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-education-ivory px-2 py-1 text-xs font-semibold text-gold"
               >
-                <MainRoleGlyph />
                 <span>Główny</span>
               </span>
             ) : null}
