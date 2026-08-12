@@ -1,0 +1,14 @@
+﻿[
+  {
+    "state": "closed",
+    "differentPixels": 5992,
+    "totalPixels": 2129920,
+    "percentage": 0.281325
+  },
+  {
+    "state": "picker",
+    "differentPixels": 7189,
+    "totalPixels": 2129920,
+    "percentage": 0.337524
+  }
+]

@@ -85,9 +85,7 @@ export function IngredientBuilder({
   const compositionMigrationAmbiguities = useRecipeStore(
     (state) => state.compositionMigrationAmbiguities,
   );
-  const resolveCompositionAmbiguity = useRecipeStore(
-    (state) => state.resolveCompositionAmbiguity,
-  );
+  const resolveCompositionAmbiguity = useRecipeStore((state) => state.resolveCompositionAmbiguity);
   const loadCustomerPrices = useCustomerPriceStore((state) => state.loadForOwner);
   const saveCustomerPrice = useCustomerPriceStore((state) => state.saveOverride);
   const resetCustomerPrice = useCustomerPriceStore((state) => state.resetOverride);
@@ -118,9 +116,8 @@ export function IngredientBuilder({
 
   const baseReorderNotice = (lineId: string, action: string): string => {
     const state = useRecipeStore.getState();
-    const orderedIds = state.baseOrder.length > 0
-      ? state.baseOrder
-      : state.items.map((item) => item.id);
+    const orderedIds =
+      state.baseOrder.length > 0 ? state.baseOrder : state.items.map((item) => item.id);
     const position = orderedIds.indexOf(lineId) + 1;
     const name = state.items.find((item) => item.id === lineId)?.ingredient.name ?? 'Składnik';
     return `${name} ${action} w Bazie. Pozycja ${Math.max(position, 1)} z ${orderedIds.length}.`;
@@ -505,8 +502,7 @@ export function IngredientBuilder({
     const priceView: IngredientPriceView = {
       cost,
       lineCost: effectiveLineCost(item.planned_grams, cost),
-      canEdit:
-        customerOwnerUserId !== null && canPersistCustomerPrice(item.ingredient),
+      canEdit: customerOwnerUserId !== null && canPersistCustomerPrice(item.ingredient),
       onSave:
         customerOwnerUserId && canonicalId
           ? async (pricePerKg) => {
@@ -537,10 +533,7 @@ export function IngredientBuilder({
         onMove={(direction) => {
           moveTopping(item.id, direction);
           setReorderNotice(
-            toppingReorderNotice(
-              item.id,
-              `przesunięto ${direction < 0 ? 'wyżej' : 'niżej'}`,
-            ),
+            toppingReorderNotice(item.id, `przesunięto ${direction < 0 ? 'wyżej' : 'niżej'}`),
           );
         }}
         onDragStart={() => {
@@ -565,8 +558,10 @@ export function IngredientBuilder({
   if (layout === 'workbench') {
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
-        <div className="shrink-0 border-b border-ink/10 px-3 py-2">
-          <div className={mode === 'recipe' ? 'sr-only' : 'flex items-center justify-between gap-3'}>
+        <div className="shrink-0 border-b border-ink/10 px-3 py-2 2xl:pb-[27px] 2xl:pt-[21px]">
+          <div
+            className={mode === 'recipe' ? 'sr-only' : 'flex items-center justify-between gap-3'}
+          >
             <SectionLabel>{mode === 'production' ? 'Produkcja' : 'Baza lodowa'}</SectionLabel>
             {demo || library.status === 'fallback' ? (
               <NonProductionBadge itemId="pro-demo-library" />
@@ -578,15 +573,24 @@ export function IngredientBuilder({
               data-testid="ingredient-add-toolbar"
             >
               <span className="hidden min-w-0 md:block" aria-hidden />
-              <div className="justify-self-start" data-testid="ingredient-add-slot">
+              <div
+                className="justify-self-start 2xl:-ml-[11px] 2xl:self-start"
+                data-testid="ingredient-add-slot"
+              >
                 {picker}
               </div>
               <span
-                className={recalcPending ? 'hidden text-right text-xs text-attention md:col-span-2 md:block' : 'hidden text-right text-xs text-status-ideal md:col-span-2 md:block'}
+                className={
+                  recalcPending
+                    ? 'hidden text-right text-xs text-attention md:col-span-2 md:block'
+                    : 'hidden text-right text-xs text-status-ideal md:col-span-2 md:block'
+                }
                 data-testid="pro-recalc-state"
                 data-state={recalcPending ? 'pending' : 'current'}
               >
-                <span aria-hidden className="mr-1.5">•</span>
+                <span aria-hidden className="mr-1.5">
+                  •
+                </span>
                 {recalcPending ? 'Oczekuje na przeliczenie' : 'Obliczenie aktualne'}
               </span>
               {onRecalculate ? (
@@ -594,10 +598,15 @@ export function IngredientBuilder({
                   type="button"
                   onClick={onRecalculate}
                   aria-label="Przelicz z PI"
-                  className="pro-focus-ring grid size-11 place-items-center rounded-xl border border-gold/35 bg-ink font-mono text-sm font-semibold text-white shadow-pro-e1 hover:bg-graphite"
+                  className="pro-focus-ring relative grid size-11 place-items-center rounded-xl border border-gold/35 bg-ink font-mono text-sm font-semibold text-white shadow-pro-e1 hover:bg-graphite 2xl:-mt-px 2xl:size-auto 2xl:h-[52px] 2xl:w-[54px] 2xl:border-transparent 2xl:bg-transparent 2xl:shadow-none 2xl:hover:bg-transparent"
                   data-testid="pro-workbar-recalc"
                 >
-                  <span className="text-gold-soft">PI<sup className="text-[9px]">+</sup></span>
+                  <span
+                    className="text-gold-soft 2xl:absolute 2xl:left-2 2xl:top-[7px] 2xl:grid 2xl:h-[38px] 2xl:w-[39px] 2xl:place-items-center 2xl:rounded-xl 2xl:border 2xl:border-gold/35 2xl:bg-ink 2xl:shadow-pro-e1"
+                    data-testid="pi-control-core"
+                  >
+                    PI<sup className="text-[9px]">+</sup>
+                  </span>
                 </button>
               ) : null}
             </div>
@@ -627,7 +636,12 @@ export function IngredientBuilder({
               {pickerNotice}
             </p>
           ) : null}
-          <p className="sr-only" role="status" aria-live="polite" data-testid="composition-reorder-status">
+          <p
+            className="sr-only"
+            role="status"
+            aria-live="polite"
+            data-testid="composition-reorder-status"
+          >
             {reorderNotice}
           </p>
           {mode === 'recipe' && compositionMigrationAmbiguities.length > 0 ? (
@@ -661,20 +675,39 @@ export function IngredientBuilder({
             <div className="min-h-0 flex-1 overflow-y-auto" data-testid="ingredient-rows-scroll">
               <div>
                 {infeasibleNotice}
-                {items.length > 0 ? rows : (
+                {items.length > 0 ? (
+                  rows
+                ) : (
                   <p className="px-4 py-5 text-sm leading-relaxed text-stone-600">{b.empty}</p>
                 )}
                 {mode === 'recipe' ? (
                   <>
-                    <div className="flex items-center justify-between border-t border-ink/10 bg-stone-50 px-4 py-3" data-testid="base-mass-total">
-                      <span className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">Baza lodowa</span>
-                      <strong className="font-mono text-sm tabular-nums text-ink">{totalBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g</strong>
+                    <div
+                      className="flex items-center justify-between border-t border-ink/10 bg-stone-50 px-4 py-3"
+                      data-testid="base-mass-total"
+                    >
+                      <span className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
+                        Baza lodowa
+                      </span>
+                      <strong className="font-mono text-sm tabular-nums text-ink">
+                        {totalBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+                      </strong>
                     </div>
-                    <section className="border-t border-status-ideal/15" aria-labelledby="topping-section-heading">
+                    <section
+                      className="border-t border-status-ideal/15"
+                      aria-labelledby="topping-section-heading"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-3 bg-pro-sage/18 px-3 py-3">
                         <div>
-                          <h3 id="topping-section-heading" className="text-xs font-semibold tracking-[0.05em] text-ink uppercase">Toppingi po produkcji</h3>
-                          <p className="mt-0.5 text-xs text-stone-600">Nie zmieniają bilansu ani wyniku technicznego bazy.</p>
+                          <h3
+                            id="topping-section-heading"
+                            className="text-xs font-semibold tracking-[0.05em] text-ink uppercase"
+                          >
+                            Toppingi po produkcji
+                          </h3>
+                          <p className="mt-0.5 text-xs text-stone-600">
+                            Nie zmieniają bilansu ani wyniku technicznego bazy.
+                          </p>
                         </div>
                         <ProductPickerPopover
                           library={library}
@@ -684,9 +717,13 @@ export function IngredientBuilder({
                       </div>
                       {toppings.length > 0 ? (
                         <>
-                          <div className={`${TOPPING_ROW_GRID} hidden border-y border-status-ideal/12 bg-pro-sage/12 px-3 py-2 md:grid`}>
+                          <div
+                            className={`${TOPPING_ROW_GRID} hidden border-y border-status-ideal/12 bg-pro-sage/12 px-3 py-2 md:grid`}
+                          >
                             {['Topping', 'Ilość', 'Cena/kg', ''].map((label) => (
-                              <span key={label || 'menu'} className={headCell}>{label || '\u00a0'}</span>
+                              <span key={label || 'menu'} className={headCell}>
+                                {label || '\u00a0'}
+                              </span>
                             ))}
                           </div>
                           {toppingRows}
@@ -748,14 +785,23 @@ export function CompositionMassSummary({
   toppingMassG: number;
 }) {
   return (
-    <div className="space-y-2 border-t border-ink/10 bg-white px-4 py-3" data-testid="composition-mass-summary">
+    <div
+      className="space-y-2 border-t border-ink/10 bg-white px-4 py-3"
+      data-testid="composition-mass-summary"
+    >
       <div className="flex items-center justify-between text-xs text-stone-600">
         <span>Toppingi</span>
-        <strong className="font-mono tabular-nums text-ink">+{toppingMassG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g</strong>
+        <strong className="font-mono tabular-nums text-ink">
+          +{toppingMassG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+        </strong>
       </div>
       <div className="flex items-center justify-between border-t border-ink/10 pt-2">
-        <span className="text-xs font-semibold tracking-[0.04em] text-ink uppercase">Produkt finalny</span>
-        <strong className="font-mono text-base tabular-nums text-ink">{(baseMassG + toppingMassG).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g</strong>
+        <span className="text-xs font-semibold tracking-[0.04em] text-ink uppercase">
+          Produkt finalny
+        </span>
+        <strong className="font-mono text-base tabular-nums text-ink">
+          {(baseMassG + toppingMassG).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+        </strong>
       </div>
     </div>
   );

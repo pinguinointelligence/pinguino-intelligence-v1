@@ -77,7 +77,7 @@ function LabeledSelect<T extends string>({
         {label}
       </span>
       <select
-        className={cn(compactSelect, 'w-full', stacked && 'h-[52px] pt-4 lg:h-10')}
+        className={cn(compactSelect, 'w-full', stacked && 'h-[52px] pt-4 lg:h-10 2xl:h-[43px]')}
         value={value}
         aria-label={label}
         data-testid={testid}
@@ -213,7 +213,7 @@ export function WorkbenchSettingsLine({
         </span>
       </div>
 
-      <div className={compact ? 'space-y-2 lg:space-y-1' : 'space-y-3'}>
+      <div className={compact ? 'space-y-2 lg:space-y-1 2xl:space-y-2' : 'space-y-3'}>
         <div>
           <LabeledSelect
             label={g.productTypeLabel}
@@ -323,7 +323,7 @@ export function WorkbenchSettingsLine({
           className={cn(
             'grid items-center gap-2 rounded-[16px] border px-3 py-2',
             compact
-              ? 'relative min-h-[64px] grid-cols-1 pt-5 lg:min-h-[54px] lg:py-1 lg:pt-4'
+              ? 'relative min-h-[64px] grid-cols-1 pt-5 lg:min-h-[54px] lg:py-1 lg:pt-4 2xl:h-[63px] 2xl:min-h-[63px]'
               : 'grid-cols-[6.8rem_minmax(0,1fr)]',
             batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
           )}
@@ -372,7 +372,7 @@ export function WorkbenchSettingsLine({
           </div>
         </div>
 
-        <div className="rounded-[16px] border border-ink/10 bg-white/70 p-2 lg:rounded-[14px] lg:p-1.5">
+        <div className="rounded-[16px] border border-ink/10 bg-white/70 p-2 lg:rounded-[14px] lg:p-1.5 2xl:p-2">
           <LabeledSelect
             label="TRYB"
             value={store.formulation_strategy}
@@ -382,13 +382,18 @@ export function WorkbenchSettingsLine({
             testid="workbench-strategy"
             stacked={compact}
           />
-          <p className={cn('mt-1 text-xs leading-relaxed text-stone-600 lg:text-[10px]', !compact && 'ml-[7.3rem]')}>
+          <p
+            className={cn(
+              'mt-1 text-xs leading-relaxed text-stone-600 lg:text-[10px]',
+              !compact && 'ml-[7.3rem]',
+            )}
+          >
             {STRATEGY_COPY[store.formulation_strategy].description}
           </p>
         </div>
       </div>
 
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex items-center gap-2 2xl:mt-1">
         {!confirmed || hardConflict ? (
           <button
             type="button"

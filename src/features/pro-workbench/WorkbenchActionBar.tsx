@@ -88,7 +88,10 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
   const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
 
   return (
-    <div className="flex min-w-0 items-center justify-end gap-2" data-testid="workbench-action-bar">
+    <div
+      className="flex min-w-0 items-center justify-end gap-2 2xl:absolute 2xl:left-[650px]"
+      data-testid="workbench-action-bar"
+    >
       {preview ? (
         <span className="flex items-center gap-2" data-testid="workbench-action-preview">
           <span className="hidden text-xs text-stone-600 xl:inline">{a.previewReady}</span>
@@ -114,10 +117,7 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
           </button>
         </span>
       ) : (
-        <span
-          className="hidden text-xs text-stone-600 2xl:inline"
-          data-testid="workbench-action-idle"
-        >
+        <span className="hidden text-xs text-stone-600" data-testid="workbench-action-idle">
           {a.idleHint}
         </span>
       )}

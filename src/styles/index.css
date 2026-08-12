@@ -18,3 +18,39 @@
     @apply bg-ivory text-ink;
   }
 }
+
+@layer components {
+  @media (min-width: 1536px) {
+    .intelligence-tabpanel-scroll {
+      scrollbar-width: none;
+    }
+
+    .intelligence-tabpanel-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .product-picker-results {
+      scrollbar-width: none;
+    }
+
+    .product-picker-results::-webkit-scrollbar {
+      display: none;
+    }
+
+    [data-scope='BASE_FORMULATION'] [data-testid^='row-percent-control-'],
+    [data-scope='BASE_FORMULATION'] [data-testid^='row-grams-control-'] {
+      height: 40px;
+      grid-template-columns: 40px minmax(68px, 1fr) 40px;
+    }
+
+    [data-scope='BASE_FORMULATION'] [data-testid^='row-percent-control-'] > button,
+    [data-scope='BASE_FORMULATION'] [data-testid^='row-grams-control-'] > button,
+    [data-scope='BASE_FORMULATION'] [data-testid^='row-lock-percent-'],
+    [data-scope='BASE_FORMULATION'] [data-testid^='row-lock-grams-'],
+    [data-scope='BASE_FORMULATION'] button[aria-haspopup='dialog'] {
+      width: 40px;
+      min-width: 40px;
+      height: 40px;
+    }
+  }
+}

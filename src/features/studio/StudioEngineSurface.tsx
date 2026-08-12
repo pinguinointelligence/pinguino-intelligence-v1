@@ -168,7 +168,8 @@ export function StudioEngineSurface({
       );
     };
     window.addEventListener('pinguino:profile-settings-required', showProfileSettings);
-    return () => window.removeEventListener('pinguino:profile-settings-required', showProfileSettings);
+    return () =>
+      window.removeEventListener('pinguino:profile-settings-required', showProfileSettings);
   }, []);
 
   useEffect(() => {
@@ -230,7 +231,17 @@ export function StudioEngineSurface({
         data-testid="pro-workbench"
       >
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
-        <div className="min-h-0 flex-1 lg:grid lg:h-[min(742px,calc(100dvh-210px))] lg:flex-none lg:grid-cols-[minmax(0,1.66fr)_minmax(420px,1fr)] lg:gap-4 2xl:grid-cols-[minmax(0,1064px)_minmax(0,638px)] 2xl:gap-16">
+        <div className="min-h-0 flex-1 lg:grid lg:h-[min(742px,calc(100dvh-210px))] lg:flex-none lg:grid-cols-[minmax(0,1.66fr)_minmax(420px,1fr)] lg:gap-4 2xl:relative 2xl:ml-0.5 2xl:-mt-0.5 2xl:w-[1761px] 2xl:grid-cols-[1062px_635px] 2xl:gap-16">
+          <span
+            aria-hidden
+            data-testid="workbench-divider-rail"
+            className="pointer-events-none absolute left-[1076px] top-[100px] hidden h-[640px] w-[11px] rounded-full border border-ink/45 bg-white 2xl:block"
+          >
+            <span
+              className="absolute inset-x-0 top-0 h-8 rounded-full bg-ink"
+              data-testid="workbench-divider-handle"
+            />
+          </span>
           <div
             className="min-h-0 lg:flex lg:min-w-0 lg:flex-col"
             data-testid="workbench-editor-pane"
@@ -310,7 +321,7 @@ export function StudioEngineSurface({
             <span className="font-mono tabular-nums text-gold-soft">{scoreDisplay}</span>
           </button>
         </div>
-        <div className="shrink-0 border-t border-ink/10 lg:mt-2 lg:border-0 2xl:mt-9">
+        <div className="shrink-0 border-t border-ink/10 lg:mt-2 lg:border-0 2xl:ml-0.5 2xl:mt-9 2xl:w-[1761px]">
           {recipeBar}
         </div>
 

@@ -1,0 +1,96 @@
+﻿{
+  "target": {
+    "x": 215,
+    "y": 56,
+    "width": 37,
+    "height": 74
+  },
+  "actual": {
+    "x": 214,
+    "y": 56,
+    "width": 38,
+    "height": 75
+  },
+  "tolerancePx": 2,
+  "assertions": [
+    {
+      "element": "logoGlyph",
+      "field": "x",
+      "expected": 215,
+      "actual": 214,
+      "delta": -1,
+      "passed": true
+    },
+    {
+      "element": "logoGlyph",
+      "field": "y",
+      "expected": 56,
+      "actual": 56,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "logoGlyph",
+      "field": "width",
+      "expected": 37,
+      "actual": 38,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "logoGlyph",
+      "field": "height",
+      "expected": 74,
+      "actual": 75,
+      "delta": 1,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "wordmarkTarget": {
+    "x": 141,
+    "y": 157,
+    "width": 178,
+    "height": 39
+  },
+  "wordmarkActual": {
+    "x": 141,
+    "y": 155,
+    "width": 178,
+    "height": 38
+  },
+  "wordmarkAssertions": [
+    {
+      "element": "logoWordmark",
+      "field": "x",
+      "expected": 141,
+      "actual": 141,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "logoWordmark",
+      "field": "y",
+      "expected": 157,
+      "actual": 155,
+      "delta": -2,
+      "passed": true
+    },
+    {
+      "element": "logoWordmark",
+      "field": "width",
+      "expected": 178,
+      "actual": 178,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "logoWordmark",
+      "field": "height",
+      "expected": 39,
+      "actual": 38,
+      "delta": -1,
+      "passed": true
+    }
+  ]
+}

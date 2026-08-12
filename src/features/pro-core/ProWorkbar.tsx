@@ -85,13 +85,13 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
     <section
       aria-label="PINGÜINO Pro — nazwa i zapis receptury"
       data-testid="pro-workbar"
-      className="rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none"
+      className="rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none"
     >
-      <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(0,1.66fr)_minmax(420px,1fr)] lg:items-center lg:gap-4 2xl:grid-cols-[minmax(0,1064px)_minmax(0,638px)] 2xl:gap-16">
-        <div className="flex min-w-0 items-center justify-end gap-2 px-0.5 lg:justify-start">
+      <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(0,1.66fr)_minmax(420px,1fr)] lg:items-center lg:gap-4 2xl:grid-cols-[1062px_635px] 2xl:gap-16">
+        <div className="flex min-w-0 items-center justify-end gap-2 px-0.5 2xl:relative 2xl:h-[40px]">
           <span
             className={cn(
-              'min-w-0 truncate text-xs',
+              'min-w-0 truncate text-xs 2xl:absolute 2xl:left-[729px]',
               statusKey === 'error'
                 ? 'text-status-error'
                 : statusKey === 'dirty' || statusKey === 'newUnsaved'
@@ -108,12 +108,12 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
             onClick={() => void doSave()}
             disabled={save.busy || save.blocked !== null || save.practicalBlocked}
             data-testid="pro-workbar-save"
-            className="h-11 shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45"
+            className="h-11 shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45 2xl:absolute 2xl:left-[893px] 2xl:h-[37px] 2xl:w-[103px] 2xl:px-2 2xl:text-[10px]"
           >
             {save.busy ? w.status.saving : linked ? 'Zapisz nową wersję' : w.saveNew}
           </button>
-          <details className="relative shrink-0">
-            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-sm text-stone-600">
+          <details className="relative shrink-0 2xl:absolute 2xl:left-[1014px]">
+            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-sm text-stone-600 2xl:size-[40px]">
               •••
             </summary>
             <div className="absolute bottom-12 left-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
@@ -139,8 +139,8 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
             {context}
           </span>
         </div>
-        <div className="flex min-w-0 items-center gap-3">
-          <label className="min-w-28 flex-1">
+        <div className="flex min-w-0 items-center gap-3 2xl:-ml-0.5 2xl:justify-between">
+          <label className="min-w-28 flex-1 2xl:w-[402px] 2xl:flex-none 2xl:-translate-y-0.5">
             <span className="sr-only">{w.nameLabel}</span>
             <input
               value={name}
@@ -150,7 +150,7 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
                 if (nameError) setNameError(null);
               }}
               data-testid="pro-workbar-name"
-              className="h-11 w-full min-w-0 rounded-[14px] border border-ink/15 bg-white px-3 text-sm font-semibold text-ink shadow-pro-e0 placeholder:text-stone-600 focus:border-ink/45 focus:outline-none"
+              className="h-11 w-full min-w-0 rounded-[14px] border border-ink/15 bg-white px-3 text-sm font-semibold text-ink shadow-pro-e0 placeholder:text-stone-600 focus:border-ink/45 focus:outline-none 2xl:h-[39px]"
             />
           </label>
           <span
@@ -176,7 +176,10 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
           {save.error}
         </p>
       ) : save.practicalBlockMessage ? (
-        <p className="mt-1 text-xs text-attention" data-testid="pro-workbar-practical-block">
+        <p
+          className="mt-1 text-xs text-attention 2xl:sr-only"
+          data-testid="pro-workbar-practical-block"
+        >
           {save.practicalBlockMessage}
         </p>
       ) : blockedMsg ? (

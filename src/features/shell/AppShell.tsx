@@ -60,7 +60,7 @@ export function AppShell({
     >
       <header
         className={cn(
-          'mx-auto flex items-center justify-between gap-4 px-6 py-4',
+          'mx-auto flex items-center justify-between gap-4 px-6 py-4 2xl:px-0',
           maxWidthClass,
           viewportLock &&
             'max-sm:grid max-sm:grid-cols-1 max-sm:items-stretch max-sm:gap-2 max-sm:px-3 max-sm:py-2 lg:h-[136px] lg:w-full lg:shrink-0 lg:items-start lg:overflow-visible lg:py-0',
@@ -76,7 +76,7 @@ export function AppShell({
           aria-label={copy.shell.brand}
           className={cn(
             'flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
-            viewportLock && 'lg:z-20 lg:mt-7',
+            viewportLock && 'lg:z-20 lg:mt-7 2xl:mt-[46px] 2xl:ml-[3px]',
           )}
         >
           {brand ?? (
@@ -91,8 +91,7 @@ export function AppShell({
         <div
           className={cn(
             'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-            viewportLock &&
-              'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between lg:mt-6',
+            viewportLock && 'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between lg:mt-6',
           )}
         >
           {actions}

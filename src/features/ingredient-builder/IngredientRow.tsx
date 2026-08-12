@@ -509,12 +509,12 @@ function RecipeRow({
         data-scope="BASE_FORMULATION"
       >
         <div className="min-w-0">
-          <span className="flex min-w-0 items-center gap-1.5">
+          <span className="flex min-w-0 items-center gap-1.5 2xl:gap-1">
             <span
               aria-hidden
               draggable
               onDragStart={() => onDragStart?.(item.id)}
-              className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-6"
+              className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-6 2xl:order-1 2xl:size-5"
               title="Przeciągnij, aby zmienić kolejność"
             >
               ⠿
@@ -528,19 +528,25 @@ function RecipeRow({
               onClick={() => setRole(isMain ? 'standard' : 'main')}
               data-testid={`row-main-toggle-${item.id}`}
               className={cn(
-                'pro-focus-ring grid size-8 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-35',
+                'pro-focus-ring grid size-8 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-35 2xl:order-10 2xl:size-6',
+                isMain && '2xl:flex 2xl:w-auto 2xl:gap-1 2xl:px-2',
                 isMain
                   ? 'border-gold/22 bg-education-ivory'
                   : 'border-transparent bg-transparent hover:border-gold/18 hover:bg-education-ivory/55',
               )}
             >
               <MainRoleGlyph active={isMain} />
+              {isMain ? (
+                <span className="hidden text-[11px] font-semibold text-gold 2xl:inline">
+                  Główny
+                </span>
+              ) : null}
             </button>
             {isMain ? (
               <span
                 aria-label="Składnik główny"
                 title={t.role.mainHint}
-                className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-education-ivory px-2 py-1 text-xs font-semibold text-gold"
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-education-ivory px-2 py-1 text-xs font-semibold text-gold 2xl:hidden"
               >
                 <span>Główny</span>
               </span>
@@ -564,7 +570,7 @@ function RecipeRow({
               </span>
             ) : null}
             <span
-              className="truncate text-[13px] font-semibold text-ink"
+              className="truncate text-[13px] font-semibold text-ink 2xl:order-2"
               title={item.ingredient.name}
             >
               {item.ingredient.name}
@@ -573,7 +579,7 @@ function RecipeRow({
               <span
                 aria-label={t.data.estimatedHint}
                 title={t.data.estimatedHint}
-                className="size-1.5 shrink-0 rounded-full bg-status-risky"
+                className="mr-auto size-1.5 shrink-0 rounded-full bg-status-risky 2xl:order-3"
                 data-testid={`row-estimated-${item.id}`}
               />
             ) : null}
@@ -1048,7 +1054,7 @@ export function IngredientRow({
       className={cn(
         mode === 'production'
           ? 'mx-2 mb-2 rounded-[20px] border border-ink/[0.08] bg-white/95 px-3 py-3 shadow-pro-e1 transition-colors hover:border-ink/15'
-          : 'border-b border-ink/[0.075] px-3 py-3 transition-colors hover:bg-stone-50',
+          : 'border-b border-ink/[0.075] px-3 py-3 transition-colors hover:bg-stone-50 2xl:py-[7px]',
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'main' &&
           'border-gold/20 bg-education-ivory/55 hover:bg-education-ivory/75',

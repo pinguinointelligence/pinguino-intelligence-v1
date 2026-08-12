@@ -62,14 +62,21 @@ function NutritionCostProfileGrid({ result }: { result: RecipeResult }) {
   return (
     <>
       <section
-        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1"
+        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1 2xl:mt-px 2xl:h-[204px]"
         data-testid="profile-nutrition-card"
       >
         <h3 className="mb-1 text-center text-xs font-semibold text-ink">Wartości odżywcze</h3>
         <dl>
-          <CompactMetricRow label="Energia" value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'} />
+          <CompactMetricRow
+            label="Energia"
+            value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
+          />
           <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
-          <CompactMetricRow label="w tym kwasy nasycone" value={grams(nutrition?.saturated_fat_g)} muted />
+          <CompactMetricRow
+            label="w tym kwasy nasycone"
+            value={grams(nutrition?.saturated_fat_g)}
+            muted
+          />
           <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
           <CompactMetricRow label="w tym cukry" value={grams(nutrition?.sugars_g)} muted />
           <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
@@ -78,7 +85,7 @@ function NutritionCostProfileGrid({ result }: { result: RecipeResult }) {
         </dl>
       </section>
       <section
-        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1"
+        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1 2xl:h-[206px]"
         data-testid="profile-cost-card"
       >
         <h3 className="mb-1 text-center text-xs font-semibold text-ink">Koszt</h3>
@@ -103,17 +110,17 @@ function ProfileContent({
   onOpenEducation: () => void;
 }) {
   return (
-    <div className="p-2.5" data-testid="pro-context-recipe">
+    <div className="p-2.5 2xl:w-[635px] 2xl:pr-[9px]" data-testid="pro-context-recipe">
       <div
-        className="grid min-w-0 items-stretch gap-2.5 xl:grid-cols-[1.08fr_0.92fr]"
+        className="grid min-w-0 items-start gap-2.5 xl:grid-cols-[1.08fr_0.92fr] 2xl:grid-cols-[331px_273px] 2xl:gap-x-3 2xl:gap-y-2.5"
         data-testid="profile-desktop-grid"
         data-profile-layout="2x2"
       >
-        <ProfileDirectionAxes result={result} className="min-w-0" />
+        <ProfileDirectionAxes result={result} className="min-w-0 2xl:mt-px 2xl:h-[369px]" />
         <WorkbenchSettingsLine
           actualBatchG={result.total_batch_g}
           actualProteinPercent={result.percentages.protein_percent}
-          className="min-w-0"
+          className="min-w-0 2xl:h-[371px]"
           compact
         />
         <NutritionCostProfileGrid result={result} />
@@ -257,15 +264,21 @@ function SummaryPanel({
         <dl className="mt-3 space-y-2 text-xs">
           <div className="flex items-center justify-between gap-3 text-white/65">
             <dt>Baza lodowa</dt>
-            <dd className="font-mono tabular-nums text-white">{finalProduct.baseMassG.toFixed(0)} g</dd>
+            <dd className="font-mono tabular-nums text-white">
+              {finalProduct.baseMassG.toFixed(0)} g
+            </dd>
           </div>
           <div className="flex items-center justify-between gap-3 text-white/65">
             <dt>Toppingi · {finalProduct.toppingCount}</dt>
-            <dd className="font-mono tabular-nums text-white">+{finalProduct.toppingMassG.toFixed(0)} g</dd>
+            <dd className="font-mono tabular-nums text-white">
+              +{finalProduct.toppingMassG.toFixed(0)} g
+            </dd>
           </div>
           <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2 text-white">
             <dt className="font-semibold">Produkt finalny</dt>
-            <dd className="font-mono text-base font-semibold tabular-nums">{finalProduct.finalMassG.toFixed(0)} g</dd>
+            <dd className="font-mono text-base font-semibold tabular-nums">
+              {finalProduct.finalMassG.toFixed(0)} g
+            </dd>
           </div>
         </dl>
         {summaryToppings.length > 0 ? (
@@ -274,7 +287,11 @@ function SummaryPanel({
               <div key={item.id} className="flex justify-between gap-3 py-2 text-xs text-white/72">
                 <span className="truncate">Topping · {item.ingredient.name}</span>
                 <span className="font-mono tabular-nums text-white">
-                  {(completed ? (item.actual_grams ?? item.planned_grams) : item.planned_grams).toFixed(0)} g
+                  {(completed
+                    ? (item.actual_grams ?? item.planned_grams)
+                    : item.planned_grams
+                  ).toFixed(0)}{' '}
+                  g
                 </span>
               </div>
             ))}
@@ -312,9 +329,7 @@ function SummaryPanel({
             </div>
             <div className="flex justify-between gap-3">
               <dt>Masa całej partii produktu finalnego</dt>
-              <dd className="font-mono text-white">
-                {finalProduct.finalMassG.toFixed(0)} g
-              </dd>
+              <dd className="font-mono text-white">{finalProduct.finalMassG.toFixed(0)} g</dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt>Etykieta</dt>
@@ -327,7 +342,10 @@ function SummaryPanel({
           </dl>
         </div>
       </section>
-      <div className="rounded-[22px] bg-[#f7f5f0] p-2 text-ink" data-testid="summary-final-nutrition-cost">
+      <div
+        className="rounded-[22px] bg-[#f7f5f0] p-2 text-ink"
+        data-testid="summary-final-nutrition-cost"
+      >
         <NutritionCostScorePanel result={finalDisplayResult} />
       </div>
       <ReadinessFrame
@@ -412,7 +430,7 @@ export function RecipeProfilePanel({
             const tabs = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
             tabs[nextIndex]?.focus();
           }}
-          className="grid grid-cols-4 border-b border-white/10 bg-[#17191d]/95 px-2 pt-2 backdrop-blur"
+          className="grid grid-cols-4 border-b border-white/10 bg-[#17191d]/95 px-2 pt-2 backdrop-blur 2xl:h-[48px] 2xl:p-0"
           data-testid="pro-context-tabs"
         >
           {TABS.map((tab) => (
@@ -429,7 +447,7 @@ export function RecipeProfilePanel({
                 setEducationOpen(false);
                 onTabChange(tab.id);
               }}
-              className={`pro-focus-ring min-h-11 min-w-0 rounded-t-[12px] border-b-2 px-1 py-2 text-xs font-semibold transition-colors ${activeTab === tab.id ? 'border-[#d7b768] bg-white/10 text-white' : 'border-transparent text-white/65 hover:bg-white/5 hover:text-white'}`}
+              className={`pro-focus-ring min-h-11 min-w-0 rounded-t-[12px] border-b-2 px-1 py-2 text-xs font-semibold transition-colors 2xl:h-[48px] 2xl:min-h-0 2xl:py-0 ${activeTab === tab.id ? 'border-[#d7b768] bg-white/10 text-white' : 'border-transparent text-white/65 hover:bg-white/5 hover:text-white'}`}
             >
               {tab.label}
             </button>
@@ -443,7 +461,7 @@ export function RecipeProfilePanel({
         role="tabpanel"
         aria-labelledby={`pro-context-${activeTab}-tab-control`}
         tabIndex={0}
-        className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:[scrollbar-gutter:stable]"
+        className="intelligence-tabpanel-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:[scrollbar-gutter:stable] 2xl:[scrollbar-gutter:auto]"
       >
         {activeTab === 'profile' && educationOpen ? (
           <ContextualEducationView

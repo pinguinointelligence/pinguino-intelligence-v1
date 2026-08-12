@@ -21,7 +21,7 @@ export function OfficialProLogo({ className }: { className?: string }) {
         data-logo-asset={OFFICIAL_PRO_LOGO}
         data-logo-source="/logo/PI-logo-blackwhite.pdf"
         className={cn(
-          'h-11 w-auto shrink-0 object-contain sm:h-12 lg:h-[146px]',
+          'h-11 w-auto shrink-0 object-contain sm:h-12 lg:h-[146px] 2xl:h-[141px] 2xl:w-[182px] 2xl:object-fill',
           className,
         )}
       />
