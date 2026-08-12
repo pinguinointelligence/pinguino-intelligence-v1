@@ -2,7 +2,8 @@
 
 Date: 2026-08-12  
 Scope: staging only  
-Implementation commit: `4fe5ac6` (ledger/deployment evidence follows in a second staging commit)
+Implementation commit: `4fe5ac6`  
+Initial ledger commit: `5d5ccbb03b1fbf76667f529879634dfaf9d11b37`
 
 ## 1. Requested scope
 
@@ -89,16 +90,31 @@ Closed stale picker selection, picker focus trap/Escape/portal geometry, full-ro
 
 ## 10. Deployment environment verified
 
-Supabase staging migration is applied and current. Git/Vercel staging deployment and served browser QA are recorded below after push; production remains excluded.
+- `origin/staging` accepted `5d5ccbb03b1fbf76667f529879634dfaf9d11b37`.
+- GitHub/Vercel status for that exact SHA is `success` / `Deployment has completed`.
+- Vercel deployment `Production – pinguino-staging` is explicitly reported as `production_environment=false` by GitHub's deployment API.
+- The other connected Vercel project received only `Preview – pinguino-intelligence`, also `production_environment=false`; customer production was not deployed.
+- `https://staging.pinguinoai.com/` returns HTTP 200 and serves `assets/index-D8rqVz_H.js`.
+- Served bundle SHA-256: `34A3BCBF2946A15E2F4EEB23F253929832587C61CCABA36064A26F87E5E5034A`; size 2,847,978 bytes.
+- Bundle-content verification finds the final implementation contracts, including `Dodaj topping`, `POST_PROCESS_ADDON`, `Baza lodowa`, `Toppingi po produkcji`, `Produkt finalny`, `Dopasowanie techniczne receptury`, `Priorytet smaku.`, `Priorytet kosztu.`, `Domyślne ustawienia receptury` and `Zmiany niepotwierdzone`.
+- Supabase staging migration is applied and current as documented in section 4.
 
 ## 11. Remaining incomplete items / blockers
 
-At the pre-push ledger checkpoint there are no known code, test, database or independent-review P0/P1/P2 blockers. Staging Git push, Vercel served-bundle verification and authenticated browser evidence remain operational completion gates and must be appended before final READY status.
+There are no known code, test, database, deployment or independent-review P0/P1/P2 blockers. One external operational gate remains:
+
+- the only connected browser session is not authenticated/entitled for Pro staging;
+- direct served navigation to `/pro/recipe` shows the Pro entitlement gate, and its CTA routes to `/subscription`;
+- exact served evidence is saved at `reports/qa/final-pro-topping-system/served-pro-auth-gate-1440x900.png`;
+- therefore the mandatory served Owner interactions and screenshot package (Base/Topping pickers, same Milk in both scopes, 1000+130=1130, ordering, Main, regulators, Account defaults, pending Profile, Monitor/Topping summary, Production stages, Summary and Master Label) cannot be honestly claimed yet.
+
+No authentication bypass, account creation, password entry or production access was attempted. Final status must remain `NOT READY — EXACT DEFECTS REMAIN` until an authenticated Pro staging browser session is available and the complete served QA passes.
 
 ## 12. Git diff and commit status
 
 - base/newest `origin/staging`: `dd87e3a34ae9f0b740648ae0450896942f9a5b2f`;
 - implementation commit: `4fe5ac6`;
+- initial staging/ledger commit: `5d5ccbb03b1fbf76667f529879634dfaf9d11b37`;
 - branch: `codex/final-pro-topping-system`;
 - no merge/rebase conflicts; staging had not advanced beyond the branch base;
 - the ledger itself is committed separately before the staging push.
