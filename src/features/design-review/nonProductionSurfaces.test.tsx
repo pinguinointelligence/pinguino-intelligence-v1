@@ -152,9 +152,10 @@ describe('markers are wired into the heavy shells (source-level proof)', () => {
     expect(row).toContain('row-lock-percent-');
     expect(row).toContain('border-nonprod/30');
     expect(profile).toContain('ProfileDirectionAxes');
-    expect(direction).toContain('border-nonprod/25');
-    expect(direction).toContain('Kalibracja w przygotowaniu');
-    expect(direction).toContain('Brak wystarczających danych');
+    expect(direction).toContain('border-nonprod/28');
+    expect(direction).toContain("data-regulator-state={unavailable ? 'unavailable'");
+    expect(direction).toContain('unavailable="Kalibracja"');
+    expect(direction).toContain('unavailable="Brak danych"');
   });
 });
 

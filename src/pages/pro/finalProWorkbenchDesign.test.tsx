@@ -57,9 +57,10 @@ describe('final Pro visual system', () => {
   });
 
   it('keeps primary actions black with white text and semantic colors purposeful', () => {
-    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+    const editor = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
-    expect(page).toMatch(/bg-ink[^"']*text-white/);
+    expect(editor).toMatch(/bg-ink[^"']*text-white/);
+    expect(editor).toContain('data-testid="pro-workbar-recalc"');
     expect(workbar).toMatch(/bg-ink[^"']*text-white/);
     const tokens = read('styles', 'tokens.css');
     expect(tokens).toContain('--color-nonproduction-pink');
@@ -119,6 +120,16 @@ describe('one global menu and four local contexts', () => {
     expect(panel).toContain('setEducationOpen(true)');
     expect(panel).not.toContain('navigate(');
   });
+
+  it('switches Summary to the frozen actual Base and Toppings after Production completion', () => {
+    const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    expect(panel).toContain('production?.session?.completionSnapshot');
+    expect(panel).toContain("completed?.productComposition.toppings ?? toppings");
+    expect(panel).toContain("completed ? 'Faktyczna zakończona partia'");
+    expect(panel).toContain('item.actual_grams ?? item.planned_grams');
+    expect(panel).toContain('Masa całej partii produktu finalnego');
+    expect(panel).not.toContain('Ilość netto produktu finalnego');
+  });
 });
 
 describe('recipe and production table modes', () => {
@@ -158,7 +169,7 @@ describe('profile semantics and readiness', () => {
   it('provides two calibrated target axes, two honest blockers and two editorial readings', () => {
     const panel = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     for (const id of ['sweetness', 'softness']) {
-      expect(panel).toContain(`id: '${id}'`);
+      expect(panel).toContain(`['${id}',`);
     }
     for (const label of [
       'Słodycz',
@@ -169,15 +180,20 @@ describe('profile semantics and readiness', () => {
       'Stabilność',
     ])
       expect(panel).toContain(label);
-    expect(panel).toContain('([-2, -1, 0, 1, 2] as const)');
-    expect(panel).toContain('<UnavailableDirection title="Kremowość"');
-    expect(panel).toContain('<UnavailableDirection title="Intensywność smaku"');
+    expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
+    expect(panel).toContain('id="creaminess"');
+    expect(panel).toContain('unavailable="Kalibracja"');
+    expect(panel).toContain('id="intensity"');
+    expect(panel).toContain('unavailable="Brak danych"');
+    expect(panel).toContain('data-regulator-state');
     expect(panel).toContain("'Zbalansowana'");
     expect(panel).toContain("'Bardzo stabilna'");
   });
 
   it('marks Sorbet, Vegan, Protein and quality behavior honestly', () => {
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+    expect(settings).toContain('role="status"');
+    expect(settings).toContain('aria-live="polite"');
     for (const type of ["visibleProductType === 'sorbet'", "visibleProductType === 'vegan'"]) {
       expect(settings).toContain(type);
     }
@@ -187,7 +203,8 @@ describe('profile semantics and readiness', () => {
     expect(settings).toContain('testid="workbench-strategy"');
     expect(settings).toContain("label: 'OPTIMAL'");
     expect(settings).toContain("label: 'ECO'");
-    expect(settings).toContain('Najlepsza receptura. Koszt nie steruje składem.');
+    expect(settings).toContain('Priorytet smaku.');
+    expect(settings).toContain('Priorytet kosztu.');
     expect(settings).not.toContain('const MODES: ProductMode[]');
     expect(settings).toContain('CZĘŚCIOWO PODŁĄCZONE');
   });
@@ -222,19 +239,16 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(diagnostic).not.toContain('a.window.mapperId');
   });
 
-  it('uses explicit five-detent Direction semantics and keeps the Pro summary fully Polish', () => {
+  it('uses explicit five-detent Direction semantics without permanent helper clutter and keeps the Pro summary fully Polish', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     const summary = read('features', 'pi-panel', 'NutritionCostScorePanel.tsx');
     const proCopy = read('copy', 'pro.pl.ts');
-    for (const label of [
-      'Mniej słodkie',
-      'Bardziej słodkie',
-      'Twardsze',
-      'Bardziej miękkie',
-      'Wybrano:',
-      'Po zmianie:',
-    ])
-      expect(axes).toContain(label);
+    expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
+    expect(axes).toContain('role={readOnly ? \'img\' : \'slider\'}');
+    expect(axes).toContain('aria-valuemin={!readOnly ? -2 : undefined}');
+    expect(axes).toContain('aria-valuemax={!readOnly ? 2 : undefined}');
+    expect(axes).not.toContain('Wybrano:');
+    expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {
       expect(proCopy).toContain(label);

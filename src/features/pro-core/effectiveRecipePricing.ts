@@ -4,6 +4,7 @@ import type {
   CustomerIngredientPriceOverride,
   EffectiveIngredientCost,
 } from '@/features/pro-core/costContracts';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   effectiveLineCost,
   isCustomerPriceCanonicalIngredientId,
@@ -63,6 +64,27 @@ export function applyEffectiveCustomerPrices(
       };
     }),
   };
+}
+
+/** Product-layer equivalent for POST_PROCESS_ADDON lines. It is a transient
+ * runtime projection only; canonical recipe/version sidecars keep Mapper facts
+ * and never freeze a customer's private current price. */
+export function applyEffectiveCustomerPricesToToppings(
+  toppings: readonly RecipeToppingItem[],
+  overrides: CustomerPriceIndex,
+  currency = CUSTOMER_COST_CURRENCY,
+): RecipeToppingItem[] {
+  return toppings.map((item) => {
+    const effective = effectiveCostForIngredient(item.ingredient, overrides, currency);
+    return {
+      ...item,
+      ingredient: {
+        ...item.ingredient,
+        cost_per_kg: effective.pricePerKg,
+        cost_currency: effective.pricePerKg === null ? null : effective.currency,
+      },
+    };
+  });
 }
 
 export interface EffectiveRecipeCostSummary {

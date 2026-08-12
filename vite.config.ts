@@ -14,5 +14,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
+    // Full formulation/Protein proofs are CPU-bound and OCR fixtures load
+    // shared language assets. Run files serially so `npm test` exercises the
+    // real per-test time contracts without cross-file resource starvation.
+    fileParallelism: false,
   },
 });

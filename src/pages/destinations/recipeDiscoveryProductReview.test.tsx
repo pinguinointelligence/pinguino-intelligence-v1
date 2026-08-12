@@ -25,7 +25,7 @@ describe('recipe discovery product review', () => {
     expect(html).not.toContain('TRYB OWNER REVIEW');
   });
 
-  it('requires the existing Pro owner/QA review capability before showing review state', () => {
+  it('requires Pro capability plus an explicit owner/QA opt-in on staging', () => {
     expect(isReviewModeEnabled({ isDev: true, envFlag: undefined, persona: 'pro' })).toBe(true);
     expect(isReviewModeEnabled({ isDev: true, envFlag: undefined, persona: 'home' })).toBe(false);
     expect(
@@ -34,6 +34,7 @@ describe('recipe discovery product review', () => {
         envFlag: '1',
         hostname: 'pinguino-staging-preview.vercel.app',
         persona: 'pro',
+        ownerOptIn: true,
       }),
     ).toBe(true);
     expect(
@@ -50,6 +51,15 @@ describe('recipe discovery product review', () => {
         envFlag: undefined,
         hostname: 'staging.pinguinoai.com',
         persona: 'pro',
+      }),
+    ).toBe(false);
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: undefined,
+        hostname: 'staging.pinguinoai.com',
+        persona: 'pro',
+        ownerOptIn: true,
       }),
     ).toBe(true);
     expect(isReviewModeEnabled({ isDev: false, envFlag: undefined, persona: 'pro' })).toBe(false);

@@ -76,12 +76,16 @@ export interface RecipeProfileState {
   defaultsByOwner: Record<string, ProfileSettingsSnapshot>;
   openDraft: (contextSeq: number, targets?: DirectionTargets, intents?: DirectionIntents) => void;
   moveAxisTarget: (axis: AdjustableAxisId, delta: -1 | 1) => void;
-  moveAxisIntent: (axis: AdjustableAxisId, delta: -1 | 1) => void;
+  moveAxisIntent: (axis: AdjustableAxisId, delta: number) => void;
   setDirectionTargets: (targets: DirectionTargets) => void;
   acknowledgeRecalculation: () => void;
   confirmSettings: (signature: string, contextSeq: number) => void;
   isConfirmed: (signature: string, contextSeq: number) => boolean;
   saveDefaults: (ownerKey: string, settings: ProfileSettingsSnapshot) => void;
+  replaceDefaultsForOwner: (
+    ownerUserId: string,
+    rows: readonly { productContextKey: VisibleProductType; settings: ProfileSettingsSnapshot }[],
+  ) => void;
   defaultsFor: (ownerKey: string) => ProfileSettingsSnapshot | null;
   resetForTests: () => void;
 }
@@ -166,6 +170,27 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
             },
           },
         })),
+
+      replaceDefaultsForOwner: (ownerUserId, rows) =>
+        set((state) => {
+          const prefix = `${ownerUserId}:`;
+          const defaultsByOwner = Object.fromEntries(
+            Object.entries(state.defaultsByOwner).filter(([key]) => !key.startsWith(prefix)),
+          );
+          for (const row of rows) {
+            defaultsByOwner[`${prefix}${row.productContextKey}`] = {
+              ...row.settings,
+              formulationStrategy: normalizeFormulationStrategy(
+                row.settings.formulationStrategy ?? row.settings.mode,
+              ),
+              directionTargets: { ...row.settings.directionTargets },
+              directionIntents: row.settings.directionIntents
+                ? { ...row.settings.directionIntents }
+                : undefined,
+            };
+          }
+          return { defaultsByOwner };
+        }),
 
       defaultsFor: (ownerKey) => {
         const stored = get().defaultsByOwner[ownerKey];

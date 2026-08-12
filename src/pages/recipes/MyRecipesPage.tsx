@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import { readRecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 
 const r = copy.recipes;
 
@@ -66,8 +67,21 @@ export function MyRecipesContent() {
               savedName: row.name,
               versionNumber: aggregate.latestVersionNumber,
               versionDate: aggregate.updatedAt,
+              composition: readRecipeCompositionMetadata(
+                row.product_composition,
+                input.items.map((item) => item.id),
+              ),
             }
-          : { savedId: null, savedName: row.name, versionNumber: null, versionDate: null },
+          : {
+              savedId: null,
+              savedName: row.name,
+              versionNumber: null,
+              versionDate: null,
+              composition: readRecipeCompositionMetadata(
+                row.product_composition,
+                input.items.map((item) => item.id),
+              ),
+            },
       );
       navigate(persona === 'pro' ? '/pro/recipe' : '/home');
     } catch {

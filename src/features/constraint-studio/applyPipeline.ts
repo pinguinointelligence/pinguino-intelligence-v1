@@ -106,9 +106,11 @@ import { classifyViolationBands } from '@/features/formulation/violationBands';
 import {
   captureMainIngredientIntent,
   mainIdentityViolationMessage,
+  resolveMainRatioScale,
   verifyMainIngredientIdentity,
   type MainIdentityViolation,
 } from '@/features/formulation/mainIngredientContract';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
 import {
   canonicalDuplicateIds,
   canonicalIngredientId,
@@ -180,6 +182,18 @@ export function workingStateFingerprint(input: RecipeInput, set: ConstraintSet):
   });
 }
 
+function constraintSetFingerprint(set: ConstraintSet): string {
+  return JSON.stringify(
+    Object.entries(set.byLineId)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([lineId, constraint]) => [lineId, constraint]),
+  );
+}
+
+function sameConstraintSet(left: ConstraintSet, right: ConstraintSet): boolean {
+  return constraintSetFingerprint(left) === constraintSetFingerprint(right);
+}
+
 /* ── preview model ───────────────────────────────────────────────────────── */
 
 export type PreviewKind = 'optimize' | 'batch_rescale' | 'suggested_fix' | 'substitution';
@@ -220,6 +234,16 @@ export interface DirectionBestAchievableConsent {
   baseFingerprint: string;
   targetFingerprint: string;
   candidateFingerprint: string;
+}
+
+/** Session-only authorization for the one constraint transition explicitly
+ * selected through “Ustaw X g i przelicz”. Preview payloads are untrusted;
+ * Apply independently derives the permitted next set from this authorization. */
+export interface SuggestedFixSessionAuthorization {
+  baseFingerprint: string;
+  type: 'set_max' | 'set_min';
+  lineId: string;
+  grams: number;
 }
 
 export function directionTargetFingerprint(input: RecipeInput): string {
@@ -480,6 +504,14 @@ export interface ConstraintPreview {
   proteinTarget?: ProteinTargetAssessment;
   /** One product-layer target-fit truth for Profile/Monitor/Preview/Production. */
   directionAssessment?: RecipeDirectionAssessment;
+  /**
+   * Product-layer flavour priority proof. Engine science remains unchanged:
+   * the orchestration first fixes the best public technical-score class, then
+   * maximises the whole Main set with one shared ratio-preserving scale and
+   * finally lets the existing correction loop settle only the remaining
+   * eligible lines.
+   */
+  mainObjective?: MainFlavourObjectiveProof;
   iteration?: IterationDiagnostics;
   /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
    * the PROPOSED state (classified by `classifyViolationBands` provenance).
@@ -510,6 +542,9 @@ export interface ConstraintPreview {
         modelVersion: typeof PRACTICAL_RECIPE_MODEL_VERSION;
         failure: Extract<PracticalRecipeResult, { ok: false }>;
       };
+  /** Audit provenance only. Apply requires a matching session authorization
+   * and re-derives the exact permitted constraint transition. */
+  suggestedFix?: SuggestedBoundFix;
   /** The proposed working state — applied ONLY through `commitPreview`. */
   proposedInput: RecipeInput;
   /** The constraint set in force AFTER apply (suggested fixes update a lock —
@@ -527,6 +562,27 @@ export interface ConstraintPreview {
   configVersion: string;
   createdAt: string;
 }
+
+export interface MainFlavourObjectiveProof {
+  status: 'maximized' | 'held_by_contract' | 'no_admissible_increase';
+  startingMainGrams: number;
+  exactAcceptedMainGrams: number;
+  executableMainGrams: number;
+  firstHigherRejectedGrams: number | null;
+  firstHigherRejectedReason:
+    | 'batch_or_constraints'
+    | 'hard_gate'
+    | 'technical_score_class'
+    | 'main_identity'
+    | null;
+  technicalScore: number | null;
+  attempts: number;
+}
+
+const mainObjectiveCache = new WeakMap<
+  RecipeInput,
+  Map<string, { input: RecipeInput; proof: MainFlavourObjectiveProof | null }>
+>();
 
 /* ── shared helpers ──────────────────────────────────────────────────────── */
 
@@ -1472,6 +1528,8 @@ function iterateSolverToFixedPoint(
    * line becomes an adjustable candidate for the optimizer. */
   set: ConstraintSet = { byLineId: {} },
   priceOverrides: CustomerPriceIndex = {},
+  probeLowerProteinTargets = true,
+  minimumProteinScore: number | null = null,
 ): {
   working: RecipeInput;
   lastProposal: CorrectionProposal | null;
@@ -1526,8 +1584,27 @@ function iterateSolverToFixedPoint(
   for (let round = 1; ; round += 1) {
     if (current.violations === 0) {
       if (working.category === 'protein_gelato') {
-        const targetFit = fitProteinTarget(working, solverSet, [...excludedIngredientIds]);
+        const targetFit = fitProteinTarget(
+          working,
+          solverSet,
+          [...excludedIngredientIds],
+          probeLowerProteinTargets,
+        );
         if (targetFit.changed) {
+          // The Main frontier only needs to prove preservation of the already
+          // selected Protein score class. `fitProteinTarget` has already run
+          // its complete product-layer search from this candidate; once that
+          // result reaches the required class, repeating the same search from
+          // successive partial states cannot improve the lexicographic Main
+          // decision. Normal Protein formulation keeps the historical
+          // progressive-fit behaviour through the default `null` threshold.
+          if (
+            minimumProteinScore !== null &&
+            (targetFit.assessment.score ?? -Infinity) < minimumProteinScore
+          ) {
+            stopReason = 'protein_best_achievable';
+            break;
+          }
           const next = measure(targetFit.input);
           attemptedMoves.push({
             round,
@@ -1542,6 +1619,12 @@ function iterateSolverToFixedPoint(
           working = targetFit.input;
           current = next;
           rounds.push({ round, ...next });
+          if (minimumProteinScore !== null) {
+            stopReason = targetFit.assessment.reached
+              ? 'protein_target_reached'
+              : 'protein_best_achievable';
+            break;
+          }
           continue;
         }
         stopReason = targetFit.assessment.reached
@@ -1762,6 +1845,1059 @@ function iterateSolverToFixedPoint(
       attemptedMoves,
     },
   };
+}
+
+const MAIN_OBJECTIVE_EPSILON_G = 0.05;
+const MAIN_OBJECTIVE_MAX_PROBES = 16;
+
+type MainObjectiveProbe =
+  | { ok: true; input: RecipeInput; mainGrams: number; score: number | null }
+  | {
+      ok: false;
+      mainGrams: number;
+      reason:
+        | 'batch_or_constraints'
+        | 'hard_gate'
+        | 'technical_score_class'
+        | 'main_identity';
+    };
+
+const mainGroupTotal = (identityInput: RecipeInput, candidate: RecipeInput): number => {
+  const byLineId = new Map(candidate.items.map((item) => [item.id, item] as const));
+  return captureMainIngredientIntent(identityInput).reduce(
+    (sum, main) => sum + (byLineId.get(main.lineId)?.planned_grams ?? 0),
+    0,
+  );
+};
+
+/**
+ * Owner final Main semantics. This is deliberately product orchestration, not
+ * Engine science: all candidate amounts are proposed outside Engine, every
+ * candidate is then recalculated by the unchanged Engine and must remain in
+ * the already-best public technical-score class. Multi-Main always moves as a
+ * single ratio-preserving group. A bounded bisection is deterministic and
+ * reports the first higher rejected mass instead of claiming infinity-level
+ * precision.
+ */
+function maximizeMainFromStart(
+  identityInput: RecipeInput,
+  start: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions,
+): { input: RecipeInput; proof: MainFlavourObjectiveProof | null } {
+  const mains = captureMainIngredientIntent(identityInput);
+  if (mains.length === 0 || identityInput.items.some((item) => item.actual_grams !== null)) {
+    return { input: start, proof: null };
+  }
+
+  // The proof's starting point is always the CURRENT canonical draft, not a
+  // template/solver seed. A formulation seed may already carry a different
+  // Main mass; reporting that as "starting" would make a valid Preview
+  // impossible to re-verify at the trustless Apply door.
+  const startingMainGrams = mainGroupTotal(identityInput, identityInput);
+  const searchStartingMainGrams = mainGroupTotal(identityInput, start);
+  const baselineResult = calculateRecipe(start);
+  const identityResult = calculateRecipe(identityInput);
+  const startProtein = assessProteinTarget(start, baselineResult);
+  const identityProtein = assessProteinTarget(identityInput, identityResult);
+  const baselineProteinResidual =
+    start.category !== 'protein_gelato'
+      ? null
+      : Math.min(
+          startProtein.absoluteResidualPp ?? Infinity,
+          identityProtein.absoluteResidualPp ?? Infinity,
+        );
+  const preservesProteinFrontier = (
+    candidate: RecipeInput,
+    result = calculateRecipe(candidate),
+  ): boolean => {
+    if (candidate.category !== 'protein_gelato' || baselineProteinResidual === null) return true;
+    const residual = assessProteinTarget(candidate, result).absoluteResidualPp;
+    return residual !== null && residual <= baselineProteinResidual + 1e-9;
+  };
+  const startScore = recipeFitForInput(start, baselineResult).score;
+  const identityScore = recipeFitForInput(identityInput, identityResult).score;
+  const startHardCount = classifyViolationBands(start).hardMetrics.length;
+  const identityHardCount = classifyViolationBands(identityInput).hardMetrics.length;
+  // Lexicographic rule: a different solver/template seed must never define a
+  // lower "best class" than the current draft already proves achievable.
+  // Main optimisation is allowed only inside a native-hard-safe class.
+  const baselineHardCount = Math.min(startHardCount, identityHardCount);
+  const baselineScore: number | null =
+    startScore === null
+      ? identityScore
+      : identityScore === null
+        ? startScore
+        : Math.max(startScore, identityScore);
+  const baselineDirectionReached = assessRecipeDirection(start, baselineResult).reachedAxisCount;
+  if (
+    !(startingMainGrams > 0) ||
+    !(searchStartingMainGrams > 0) ||
+    baselineScore === null ||
+    baselineHardCount > 0
+  ) {
+    return {
+      input: start,
+      proof: {
+        status: 'no_admissible_increase',
+        startingMainGrams,
+        exactAcceptedMainGrams: startingMainGrams,
+        executableMainGrams: startingMainGrams,
+        firstHigherRejectedGrams: null,
+        firstHigherRejectedReason: 'technical_score_class',
+        technicalScore: baselineScore,
+        attempts: 0,
+      },
+    };
+  }
+
+  const excludedIngredientIds = new Set(options.excludedIngredientIds ?? []);
+  let attempts = 0;
+  const practicalScoreIfAdmissible = (candidate: RecipeInput): number | null => {
+    const practical = practicalizeRecipeCandidate(candidate, set);
+    if (!practical.ok) return null;
+    const executable = practical.audit.executableInput;
+    const identity = verifyMainIngredientIdentity(identityInput, executable);
+    const constraints = verifyConstraintsPreserved(set, executable);
+    const hardCount = classifyViolationBands(executable).hardMetrics.length;
+    const score = recipeFitForInput(executable, practical.audit.executableResult).score;
+    const directionReached = assessRecipeDirection(
+      executable,
+      practical.audit.executableResult,
+    ).reachedAxisCount;
+    const ecoValid =
+      normalizeFormulationStrategy(
+        identityInput.goals?.formulation_strategy ?? identityInput.mode,
+      ) !== 'eco' || verifyEcoFlavourProtection(identityInput, executable).ok;
+    const veganValid =
+      executable.category !== 'vegan_gelato' ||
+      (veganRecipeEligibilityIssues(executable.items).length === 0 &&
+        veganProfileConstraintIssues(executable).length === 0);
+    return identity.ok &&
+      constraints.ok &&
+      hardCount <= baselineHardCount &&
+      score !== null &&
+      score >= baselineScore &&
+      directionReached >= baselineDirectionReached &&
+      preservesProteinFrontier(executable, practical.audit.executableResult) &&
+      ecoValid &&
+      veganValid
+      ? score
+      : null;
+  };
+  const probe = (desiredMainGrams: number): MainObjectiveProbe => {
+    attempts += 1;
+    const ratio = resolveMainRatioScale(identityInput, set.byLineId, desiredMainGrams);
+    if (!ratio.ok) {
+      return { ok: false, mainGrams: desiredMainGrams, reason: 'batch_or_constraints' };
+    }
+    const requestedMainGrams = ratio.mains.reduce(
+      (sum, main) => sum + main.grams * ratio.scaleFactor,
+      0,
+    );
+    const mainByLineId = new Map(
+      ratio.mains.map((main) => [main.lineId, main.grams * ratio.scaleFactor] as const),
+    );
+    const staged: RecipeInput = {
+      ...start,
+      items: start.items.map((item) => {
+        const grams = mainByLineId.get(item.id);
+        return grams === undefined ? item : { ...item, planned_grams: grams };
+      }),
+    };
+    const mainSet: ConstraintSet = {
+      byLineId: {
+        ...set.byLineId,
+        ...Object.fromEntries(
+          [...mainByLineId].map(([lineId, grams]) => [lineId, { mode: 'locked', grams }] as const),
+        ),
+      },
+    };
+    const solverSet = withTemplateControlledStabilizerLocks(staged, mainSet);
+    const rescaled = rescaleBatchToTarget(staged, solverSet, identityInput.target_batch_grams);
+    // Proportional normalization is not the whole feasible space. In
+    // particular a flavour carrier can often advance one more executable gram
+    // by taking that gram from one eligible balancer (for example Milk) while
+    // a proportional reduction of every line would cross an unrelated gate.
+    // Probe the proportional candidate AND every deterministic one-line donor;
+    // all of them still pass the unchanged Engine and contract gates below.
+    const candidates: RecipeInput[] = rescaled.ok ? [rescaled.input] : [];
+    const batchDelta = plannedSum(staged) - identityInput.target_batch_grams;
+    if (Math.abs(batchDelta) > BATCH_SUM_TOLERANCE_G) {
+      for (const donor of staged.items) {
+        if (
+          mainByLineId.has(donor.id) ||
+          donor.actual_grams !== null ||
+          isConstrained(solverSet, donor.id) ||
+          excludedIngredientIds.has(canonicalIngredientId(donor.ingredient))
+        ) {
+          continue;
+        }
+        const nextGrams = donor.planned_grams - batchDelta;
+        if (!Number.isFinite(nextGrams) || nextGrams < 0) continue;
+        const candidate = {
+          ...staged,
+          items: staged.items.map((item) =>
+            item.id === donor.id ? { ...item, planned_grams: nextGrams } : item,
+          ),
+        };
+        if (Math.abs(plannedSum(candidate) - identityInput.target_batch_grams) <= BATCH_SUM_TOLERANCE_G) {
+          candidates.push(candidate);
+        }
+      }
+    }
+
+    let rejection: Extract<MainObjectiveProbe, { ok: false }>['reason'] =
+      'batch_or_constraints';
+    let best: Extract<MainObjectiveProbe, { ok: true }> | null = null;
+    for (const settled of candidates) {
+      const identity = verifyMainIngredientIdentity(identityInput, settled);
+      const constraints = verifyConstraintsPreserved(set, settled);
+      if (!identity.ok || !constraints.ok) {
+        rejection = 'main_identity';
+        continue;
+      }
+      if (
+        normalizeFormulationStrategy(
+          identityInput.goals?.formulation_strategy ?? identityInput.mode,
+        ) === 'eco' &&
+        !verifyEcoFlavourProtection(identityInput, settled).ok
+      ) {
+        rejection = 'main_identity';
+        continue;
+      }
+      if (
+        settled.category === 'vegan_gelato' &&
+        (veganRecipeEligibilityIssues(settled.items).length > 0 ||
+          veganProfileConstraintIssues(settled).length > 0)
+      ) {
+        rejection = 'hard_gate';
+        continue;
+      }
+      const hardCount = classifyViolationBands(settled).hardMetrics.length;
+      if (hardCount > baselineHardCount) {
+        rejection = 'hard_gate';
+        continue;
+      }
+      const settledResult = calculateRecipe(settled);
+      const score = recipeFitForInput(settled, settledResult).score;
+      const directionReached = assessRecipeDirection(
+        settled,
+        settledResult,
+      ).reachedAxisCount;
+      if (score === null || score < baselineScore) {
+        rejection = 'technical_score_class';
+        continue;
+      }
+      if (directionReached < baselineDirectionReached) {
+        rejection = 'technical_score_class';
+        continue;
+      }
+      if (!preservesProteinFrontier(settled, settledResult)) {
+        rejection = 'technical_score_class';
+        continue;
+      }
+      const practicalScore = practicalScoreIfAdmissible(settled);
+      if (practicalScore === null) {
+        rejection = 'technical_score_class';
+        continue;
+      }
+      const accepted = {
+        ok: true as const,
+        input: settled,
+        mainGrams: mainGroupTotal(identityInput, settled),
+        score: practicalScore,
+      };
+      if (best === null || (accepted.score ?? -Infinity) > (best.score ?? -Infinity)) best = accepted;
+    }
+    return best ?? { ok: false, mainGrams: requestedMainGrams, reason: rejection };
+  };
+
+  const settleRemainingLines = (candidate: RecipeInput): RecipeInput => {
+    const mainSet: ConstraintSet = {
+      byLineId: {
+        ...set.byLineId,
+        ...Object.fromEntries(
+          mains.map((main) => {
+            const grams = candidate.items.find((item) => item.id === main.lineId)?.planned_grams;
+            return [main.lineId, { mode: 'locked', grams: grams ?? main.grams }] as const;
+          }),
+        ),
+      },
+    };
+    const solverSet = withTemplateControlledStabilizerLocks(candidate, mainSet);
+    const constrainedIngredientIds = new Set(
+      candidate.items
+        .filter((item) => isConstrained(solverSet, item.id))
+        .map((item) => canonicalIngredientId(item.ingredient)),
+    );
+    const restore = (next: RecipeInput): RecipeInput => {
+      const normalized = rescalePreservingMainGroup(
+        identityInput,
+        next,
+        solverSet,
+        identityInput.target_batch_grams,
+      );
+      return normalized.ok ? normalized.input : next;
+    };
+    return iterateSolverToFixedPoint(
+      identityInput,
+      candidate,
+      constrainedIngredientIds,
+      restore,
+      excludedIngredientIds,
+      solverSet,
+      options.effectivePriceOverrides,
+    ).working;
+  };
+  const settleIfAdmissible = (candidate: RecipeInput): RecipeInput => {
+    const settled = settleRemainingLines(candidate);
+    const identity = verifyMainIngredientIdentity(identityInput, settled);
+    const constraints = verifyConstraintsPreserved(set, settled);
+    const hardCount = classifyViolationBands(settled).hardMetrics.length;
+    const settledResult = calculateRecipe(settled);
+    const score = recipeFitForInput(settled, settledResult).score;
+    const directionReached = assessRecipeDirection(
+      settled,
+      settledResult,
+    ).reachedAxisCount;
+    const ecoValid =
+      normalizeFormulationStrategy(identityInput.goals?.formulation_strategy ?? identityInput.mode) !==
+        'eco' || verifyEcoFlavourProtection(identityInput, settled).ok;
+    const veganValid =
+      settled.category !== 'vegan_gelato' ||
+      (veganRecipeEligibilityIssues(settled.items).length === 0 &&
+        veganProfileConstraintIssues(settled).length === 0);
+    const practicalScore = practicalScoreIfAdmissible(settled);
+    return identity.ok &&
+      constraints.ok &&
+      hardCount <= baselineHardCount &&
+      score !== null &&
+      score >= baselineScore &&
+      directionReached >= baselineDirectionReached &&
+      preservesProteinFrontier(settled, settledResult) &&
+      ecoValid &&
+      veganValid &&
+      practicalScore !== null
+      ? settled
+      : candidate;
+  };
+
+  // A Main exact/percent/range sidecar may resolve every requested amount back
+  // to the current group mass. Detect that explicitly; it is a held contract,
+  // not a failed optimiser.
+  const upper = probe(identityInput.target_batch_grams);
+  if (upper.ok && upper.mainGrams <= searchStartingMainGrams + MAIN_OBJECTIVE_EPSILON_G) {
+    return {
+      input: start,
+      proof: {
+        status: 'held_by_contract',
+        startingMainGrams,
+        exactAcceptedMainGrams: startingMainGrams,
+        executableMainGrams: startingMainGrams,
+        firstHigherRejectedGrams: null,
+        firstHigherRejectedReason: null,
+        technicalScore: baselineScore,
+        attempts,
+      },
+    };
+  }
+  if (upper.ok) {
+    const settledUpper = settleIfAdmissible(upper.input);
+    return {
+      input: settledUpper,
+      proof: {
+        status: 'maximized',
+        startingMainGrams,
+        exactAcceptedMainGrams: upper.mainGrams,
+        executableMainGrams: upper.mainGrams,
+        firstHigherRejectedGrams: null,
+        firstHigherRejectedReason: null,
+        technicalScore: recipeFitForInput(settledUpper, calculateRecipe(settledUpper)).score,
+        attempts,
+      },
+    };
+  }
+
+  let acceptedInput = start;
+  let acceptedMainGrams = searchStartingMainGrams;
+  let acceptedScore: number | null = baselineScore;
+  let rejectedMainGrams = Math.max(searchStartingMainGrams, upper.mainGrams);
+  let rejectedReason = upper.reason;
+
+  for (let index = 0; index < MAIN_OBJECTIVE_MAX_PROBES; index += 1) {
+    if (rejectedMainGrams - acceptedMainGrams <= MAIN_OBJECTIVE_EPSILON_G) break;
+    const desired = acceptedMainGrams + (rejectedMainGrams - acceptedMainGrams) / 2;
+    const candidate = probe(desired);
+    if (candidate.ok && candidate.mainGrams > acceptedMainGrams + 1e-9) {
+      acceptedInput = candidate.input;
+      acceptedMainGrams = candidate.mainGrams;
+      acceptedScore = candidate.score;
+    } else {
+      rejectedMainGrams = Math.max(acceptedMainGrams, candidate.mainGrams);
+      if (!candidate.ok) rejectedReason = candidate.reason;
+      if (rejectedMainGrams <= acceptedMainGrams + 1e-9) break;
+    }
+  }
+
+  const settledAccepted =
+    acceptedMainGrams > startingMainGrams + MAIN_OBJECTIVE_EPSILON_G
+      ? settleIfAdmissible(acceptedInput)
+      : acceptedInput;
+  return {
+    input: settledAccepted,
+    proof: {
+      status:
+        acceptedMainGrams > startingMainGrams + MAIN_OBJECTIVE_EPSILON_G
+          ? 'maximized'
+          : 'no_admissible_increase',
+      startingMainGrams,
+      exactAcceptedMainGrams: acceptedMainGrams,
+      executableMainGrams: acceptedMainGrams,
+      firstHigherRejectedGrams:
+        rejectedMainGrams > acceptedMainGrams + 1e-9 ? rejectedMainGrams : null,
+      firstHigherRejectedReason:
+        rejectedMainGrams > acceptedMainGrams + 1e-9 ? rejectedReason : null,
+      technicalScore:
+        acceptedMainGrams > startingMainGrams + MAIN_OBJECTIVE_EPSILON_G
+          ? recipeFitForInput(settledAccepted, calculateRecipe(settledAccepted)).score
+          : acceptedScore,
+      attempts,
+    },
+  };
+}
+
+function maximizeMainFlavourObjective(
+  identityInput: RecipeInput,
+  start: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions,
+): { input: RecipeInput; proof: MainFlavourObjectiveProof | null } {
+  const cacheKey = JSON.stringify([
+    workingStateFingerprint(start, set),
+    options.excludedIngredientIds ?? [],
+    options.effectivePriceOverrides ?? {},
+  ]);
+  const cached = mainObjectiveCache.get(identityInput)?.get(cacheKey);
+  if (cached) return cached;
+  const primary = maximizeMainFromStart(identityInput, start, set, options);
+  const sameStartingVector =
+    identityInput.items.length === start.items.length &&
+    identityInput.items.every((item, index) => {
+      const candidate = start.items[index];
+      return (
+        candidate?.id === item.id &&
+        Math.abs(candidate.planned_grams - item.planned_grams) <= 1e-9
+      );
+    });
+  // A solver/template seed is only one path through the feasible space. The
+  // canonical draft itself is a second deterministic seed and can preserve a
+  // better single-donor frontier. Compare both after whole-gram execution and
+  // keep the larger admissible Main group.
+  const direct = sameStartingVector
+    ? primary
+    : maximizeMainFromStart(identityInput, identityInput, set, options);
+  const executableOutcome = (candidate: { input: RecipeInput }) => {
+    const practical = practicalizeRecipeCandidate(candidate.input, set);
+    const input = practical.ok ? practical.audit.executableInput : candidate.input;
+    const result = practical.ok ? practical.audit.executableResult : calculateRecipe(input);
+    return {
+      input,
+      mainGrams: mainGroupTotal(identityInput, input),
+      hardCount: classifyViolationBands(input).hardMetrics.length,
+      score: recipeFitForInput(input, result).score,
+      proteinResidual: assessProteinTarget(input, result).absoluteResidualPp,
+    };
+  };
+  const betterCandidate = (
+    current: { input: RecipeInput; proof: MainFlavourObjectiveProof | null },
+    candidate: { input: RecipeInput; proof: MainFlavourObjectiveProof | null },
+  ) => {
+    const currentOutcome = executableOutcome(current);
+    const candidateOutcome = executableOutcome(candidate);
+    const keepsBestClass =
+      candidateOutcome.hardCount <= currentOutcome.hardCount &&
+      candidateOutcome.score !== null &&
+      currentOutcome.score !== null &&
+      candidateOutcome.score >= currentOutcome.score &&
+      (identityInput.category !== 'protein_gelato' ||
+        (candidateOutcome.proteinResidual !== null &&
+          currentOutcome.proteinResidual !== null &&
+          candidateOutcome.proteinResidual <= currentOutcome.proteinResidual + 1e-9));
+    return keepsBestClass &&
+      candidateOutcome.mainGrams > currentOutcome.mainGrams + MAIN_OBJECTIVE_EPSILON_G
+      ? candidate
+      : current;
+  };
+  let selected = betterCandidate(primary, direct);
+  // Settling the remaining lines can expose another admissible whole-gram
+  // step. Repeat the same deterministic frontier until the executable Main
+  // total reaches a fixed point; never certify the first local envelope as a
+  // global maximum.
+  for (let round = 0; round < 2; round += 1) {
+    const next = maximizeMainFromStart(identityInput, selected.input, set, options);
+    const reseededRaw = maximizeMainFromStart(selected.input, selected.input, set, options);
+    const reseeded = reseededRaw.proof
+      ? {
+          input: reseededRaw.input,
+          proof: {
+            ...reseededRaw.proof,
+            startingMainGrams: mainGroupTotal(identityInput, identityInput),
+            attempts: (selected.proof?.attempts ?? 0) + reseededRaw.proof.attempts,
+          },
+        }
+      : reseededRaw;
+    const advanced = betterCandidate(selected, betterCandidate(next, reseeded));
+    if (advanced === selected) break;
+    selected = advanced;
+  }
+
+  const practicalSelected = practicalizeRecipeCandidate(selected.input, set);
+  const selectedMains = captureMainIngredientIntent(identityInput);
+  if (selected.proof && practicalSelected.ok && selectedMains.length > 0) {
+    const selectedExecutable = practicalSelected.audit.executableInput;
+    const selectedResult = practicalSelected.audit.executableResult;
+    const identityResult = calculateRecipe(identityInput);
+    // The formulation/protein pass establishes the best target residual before
+    // flavour maximisation.  The discrete whole-gram Main frontier must retain
+    // that residual, not merely remain inside the same coarse public score
+    // bucket.  Otherwise a higher requested protein target can paradoxically
+    // finish with less actual protein while Main keeps increasing.
+    const baselineProteinResidual =
+      identityInput.category === 'protein_gelato'
+        ? assessProteinTarget(selectedExecutable, selectedResult).absoluteResidualPp
+        : null;
+    const preservesProteinFrontier = (
+      candidate: RecipeInput,
+      result = calculateRecipe(candidate),
+    ): boolean => {
+      if (candidate.category !== 'protein_gelato' || baselineProteinResidual === null) {
+        return true;
+      }
+      const residual = assessProteinTarget(candidate, result).absoluteResidualPp;
+      return residual !== null && residual <= baselineProteinResidual + 1e-9;
+    };
+    const baselineHardCount = Math.min(
+      classifyViolationBands(selectedExecutable).hardMetrics.length,
+      classifyViolationBands(identityInput).hardMetrics.length,
+    );
+    const selectedScore = recipeFitForInput(selectedExecutable, selectedResult).score;
+    const identityScore = recipeFitForInput(identityInput, identityResult).score;
+    const baselineScore =
+      selectedScore === null
+        ? identityScore
+        : identityScore === null
+          ? selectedScore
+          : Math.max(selectedScore, identityScore);
+    const baselineDirectionReached = Math.max(
+      assessRecipeDirection(
+      selectedExecutable,
+      selectedResult,
+      ).reachedAxisCount,
+      assessRecipeDirection(identityInput, identityResult).reachedAxisCount,
+    );
+    const excludedIngredientIds = new Set(options.excludedIngredientIds ?? []);
+    const nextExecutableTarget = (
+      afterMainGrams: number,
+      minimumAdvanceGrams = 1,
+    ): number | null => {
+      const first = Math.max(
+        0,
+        Math.floor(afterMainGrams + MAIN_OBJECTIVE_EPSILON_G) +
+          Math.max(1, Math.floor(minimumAdvanceGrams)),
+      );
+      const last = Math.floor(identityInput.target_batch_grams + BATCH_SUM_TOLERANCE_G);
+      for (let total = first; total <= last; total += 1) {
+        const ratio = resolveMainRatioScale(identityInput, set.byLineId, total);
+        if (!ratio.ok) continue;
+        const grams = ratio.mains.map((main) => main.grams * ratio.scaleFactor);
+        if (grams.every((value) => Math.abs(value - Math.round(value)) <= 1e-7)) {
+          return grams.reduce((sum, value) => sum + Math.round(value), 0);
+        }
+      }
+      return null;
+    };
+    const exactByLineId = new Map(selected.input.items.map((item) => [item.id, item] as const));
+    const initialFrontierInput: RecipeInput = {
+      ...selectedExecutable,
+      items: selectedExecutable.items.map((item) => {
+        const exact = exactByLineId.get(item.id);
+        return exact && isTemplateControlledStabilizer(item.ingredient)
+          ? { ...item, planned_grams: exact.planned_grams }
+          : item;
+      }),
+    };
+    let frontierInputs: RecipeInput[] = [initialFrontierInput];
+    let frontierMainGrams = mainGroupTotal(identityInput, selectedExecutable);
+    let exactAcceptedInput = selected.input;
+    let exactAcceptedMainGrams = selected.proof.exactAcceptedMainGrams;
+    let firstHigherRejectedGrams: number | null = null;
+    let firstHigherRejectedReason: MainFlavourObjectiveProof['firstHigherRejectedReason'] = null;
+    let discreteAttempts = 0;
+    let executableJumpGrams = 1;
+    const proteinUnitFrontier =
+      identityInput.category === 'protein_gelato' && baselineScore === 10;
+
+    while (baselineScore !== null) {
+      const desiredMainGrams = nextExecutableTarget(
+        frontierMainGrams,
+        proteinUnitFrontier ? 1 : executableJumpGrams,
+      );
+      if (desiredMainGrams === null) break;
+      discreteAttempts += 1;
+      const ratio = resolveMainRatioScale(identityInput, set.byLineId, desiredMainGrams);
+      if (!ratio.ok) {
+        firstHigherRejectedGrams = desiredMainGrams;
+        firstHigherRejectedReason = 'batch_or_constraints';
+        break;
+      }
+      const mainByLineId = new Map(
+        ratio.mains.map((main) => [main.lineId, main.grams * ratio.scaleFactor] as const),
+      );
+      const mainSet: ConstraintSet = {
+        byLineId: {
+          ...set.byLineId,
+          ...Object.fromEntries(
+            [...mainByLineId].map(([lineId, grams]) => [lineId, { mode: 'locked', grams }] as const),
+          ),
+        },
+      };
+      const candidates: Array<{ input: RecipeInput; solverSet: ConstraintSet }> = [];
+      for (const seed of frontierInputs) {
+        const staged: RecipeInput = {
+          ...seed,
+          items: seed.items.map((item) => {
+            const grams = mainByLineId.get(item.id);
+            return grams === undefined ? item : { ...item, planned_grams: grams };
+          }),
+        };
+        const solverSet = withTemplateControlledStabilizerLocks(staged, mainSet);
+        const proportional = rescaleBatchToTarget(
+          staged,
+          solverSet,
+          identityInput.target_batch_grams,
+        );
+        if (proportional.ok) candidates.push({ input: proportional.input, solverSet });
+        const batchDelta = plannedSum(staged) - identityInput.target_batch_grams;
+        for (const donor of staged.items) {
+          if (
+            mainByLineId.has(donor.id) ||
+            donor.actual_grams !== null ||
+            isConstrained(solverSet, donor.id) ||
+            excludedIngredientIds.has(canonicalIngredientId(donor.ingredient))
+          ) continue;
+          const nextGrams = donor.planned_grams - batchDelta;
+          if (!Number.isFinite(nextGrams) || nextGrams < 0) continue;
+          candidates.push({
+            solverSet,
+            input: {
+              ...staged,
+              items: staged.items.map((item) =>
+                item.id === donor.id ? { ...item, planned_grams: nextGrams } : item,
+              ),
+            },
+          });
+        }
+      }
+
+      const accepted: Array<{
+        exactInput: RecipeInput;
+        executableInput: RecipeInput;
+        score: number;
+      }> = [];
+      let rejection: MainFlavourObjectiveProof['firstHigherRejectedReason'] =
+        'batch_or_constraints';
+      const rejectionPriority: Record<
+        Exclude<MainFlavourObjectiveProof['firstHigherRejectedReason'], null>,
+        number
+      > = {
+        batch_or_constraints: 0,
+        technical_score_class: 1,
+        main_identity: 2,
+        hard_gate: 3,
+      };
+      const recordRejection = (
+        reason: Exclude<MainFlavourObjectiveProof['firstHigherRejectedReason'], null>,
+      ) => {
+        if (rejection === null || rejectionPriority[reason] > rejectionPriority[rejection]) {
+          rejection = reason;
+        }
+      };
+      const directlyAccepted = identityInput.category === 'protein_gelato' ? candidates.flatMap(({ input: candidate }) => {
+        const practical = practicalizeRecipeCandidate(candidate, set);
+        if (!practical.ok) return [];
+        const executable = practical.audit.executableInput;
+        const score = recipeFitForInput(executable, practical.audit.executableResult).score;
+        const admissible =
+          verifyMainIngredientIdentity(identityInput, executable).ok &&
+          verifyConstraintsPreserved(set, executable).ok &&
+          classifyViolationBands(executable).hardMetrics.length <= baselineHardCount &&
+          score !== null &&
+          score >= baselineScore &&
+          assessRecipeDirection(executable, practical.audit.executableResult).reachedAxisCount >=
+            baselineDirectionReached &&
+          preservesProteinFrontier(executable, practical.audit.executableResult) &&
+          (normalizeFormulationStrategy(
+            identityInput.goals?.formulation_strategy ?? identityInput.mode,
+          ) !== 'eco' || verifyEcoFlavourProtection(identityInput, executable).ok) &&
+          (executable.category !== 'vegan_gelato' ||
+            (veganRecipeEligibilityIssues(executable.items).length === 0 &&
+              veganProfileConstraintIssues(executable).length === 0));
+        return admissible && score !== null
+          ? [{ exactInput: candidate, executableInput: executable, score }]
+          : [];
+      }) : [];
+      accepted.push(...directlyAccepted);
+      const unsettledCandidates = directlyAccepted.length === 0 ? candidates : [];
+      const settlementCandidates =
+        identityInput.category === 'protein_gelato' && unsettledCandidates.length > 1
+          ? [...unsettledCandidates]
+              .map((candidate, index) => {
+                const result = calculateRecipe(candidate.input);
+                return {
+                  ...candidate,
+                  index,
+                  hardCount: classifyViolationBands(candidate.input).hardMetrics.length,
+                  score: recipeFitForInput(candidate.input, result).score ?? -Infinity,
+                };
+              })
+              .sort(
+                (left, right) =>
+                  left.hardCount - right.hardCount ||
+                  right.score - left.score ||
+                  left.index - right.index,
+              )
+              .slice(0, 1)
+          : unsettledCandidates;
+      // Protein fitting is itself a verified multidimensional search. Running
+      // that identical search for every near-equivalent donor makes one
+      // Preview take minutes. Select its deterministic best native candidate
+      // once; standard/vegan/sorbet/chocolate still exhaust every donor path.
+      for (const { input: candidate, solverSet } of settlementCandidates) {
+        const constrainedIngredientIds = new Set(
+          candidate.items
+            .filter((item) => isConstrained(solverSet, item.id))
+            .map((item) => canonicalIngredientId(item.ingredient)),
+        );
+        const restore = (next: RecipeInput): RecipeInput => {
+          const normalized = rescalePreservingMainGroup(
+            identityInput,
+            next,
+            solverSet,
+            identityInput.target_batch_grams,
+          );
+          return normalized.ok ? normalized.input : next;
+        };
+        const settledCandidate = iterateSolverToFixedPoint(
+          identityInput,
+          candidate,
+          constrainedIngredientIds,
+          restore,
+          excludedIngredientIds,
+          solverSet,
+          options.effectivePriceOverrides,
+          false,
+          baselineScore,
+        ).working;
+        const practical = practicalizeRecipeCandidate(settledCandidate, set);
+        if (!practical.ok) {
+          recordRejection('batch_or_constraints');
+          continue;
+        }
+        const executable = practical.audit.executableInput;
+        if (
+          !verifyMainIngredientIdentity(identityInput, executable).ok ||
+          !verifyConstraintsPreserved(set, executable).ok
+        ) {
+          recordRejection('main_identity');
+          continue;
+        }
+        if (classifyViolationBands(executable).hardMetrics.length > baselineHardCount) {
+          recordRejection('hard_gate');
+          continue;
+        }
+        const score = recipeFitForInput(executable, practical.audit.executableResult).score;
+        const directionReached = assessRecipeDirection(
+          executable,
+          practical.audit.executableResult,
+        ).reachedAxisCount;
+        if (
+          score === null ||
+          score < baselineScore ||
+          directionReached < baselineDirectionReached
+        ) {
+          recordRejection('technical_score_class');
+          continue;
+        }
+        if (!preservesProteinFrontier(executable, practical.audit.executableResult)) {
+          recordRejection('technical_score_class');
+          continue;
+        }
+        if (
+          normalizeFormulationStrategy(
+            identityInput.goals?.formulation_strategy ?? identityInput.mode,
+          ) === 'eco' &&
+          !verifyEcoFlavourProtection(identityInput, executable).ok
+        ) {
+          recordRejection('main_identity');
+          continue;
+        }
+        if (
+          executable.category === 'vegan_gelato' &&
+          (veganRecipeEligibilityIssues(executable.items).length > 0 ||
+            veganProfileConstraintIssues(executable).length > 0)
+        ) {
+          recordRejection('hard_gate');
+          continue;
+        }
+        accepted.push({
+          exactInput: settledCandidate,
+          executableInput: executable,
+          score,
+        });
+      }
+      if (accepted.length === 0) {
+        if (!proteinUnitFrontier && executableJumpGrams > 1) {
+          executableJumpGrams = Math.max(1, Math.floor(executableJumpGrams / 2));
+          continue;
+        }
+        firstHigherRejectedGrams = desiredMainGrams;
+        firstHigherRejectedReason = rejection;
+        break;
+      }
+      accepted.sort((left, right) => right.score - left.score);
+      const winner = accepted[0]!;
+      // Once the search is on the discrete executable frontier, its accepted
+      // proof must reference the same Engine-verified whole-gram vector that
+      // the operator can Apply, while the exact template-controlled stabilizer
+      // dose remains the internal scientific source for the later approved
+      // practical 1.9 g -> 2 g transform. Keeping every fractional precursor
+      // produced a misleading 7/10 proof; replacing Tara itself broke its
+      // trustless template-dose gate.
+      const winnerExactByLineId = new Map(
+        winner.exactInput.items.map((item) => [item.id, item] as const),
+      );
+      exactAcceptedInput = {
+        ...winner.executableInput,
+        items: winner.executableInput.items.map((item) => {
+          const exact = winnerExactByLineId.get(item.id);
+          return exact && isTemplateControlledStabilizer(item.ingredient)
+            ? { ...item, planned_grams: exact.planned_grams }
+            : item;
+        }),
+      };
+      exactAcceptedMainGrams = mainGroupTotal(identityInput, exactAcceptedInput);
+      frontierMainGrams = mainGroupTotal(identityInput, winner.executableInput);
+      const uniqueFrontiers = new Map<string, RecipeInput>();
+      for (const outcome of accepted) {
+        const acceptedExactByLineId = new Map(
+          outcome.exactInput.items.map((item) => [item.id, item] as const),
+        );
+        const nextFrontier: RecipeInput = {
+          ...outcome.executableInput,
+          items: outcome.executableInput.items.map((item) => {
+            const exact = acceptedExactByLineId.get(item.id);
+            return exact && isTemplateControlledStabilizer(item.ingredient)
+              ? { ...item, planned_grams: exact.planned_grams }
+              : item;
+          }),
+        };
+        const key = nextFrontier.items
+          .map((item) => `${item.id}:${item.planned_grams.toFixed(8)}`)
+          .join('|');
+        if (!uniqueFrontiers.has(key)) uniqueFrontiers.set(key, nextFrontier);
+      }
+      frontierInputs = [...uniqueFrontiers.values()].slice(0, 4);
+      executableJumpGrams = proteinUnitFrontier
+        ? 1
+        : Math.min(identityInput.target_batch_grams, executableJumpGrams * 2);
+    }
+
+    if (frontierMainGrams > mainGroupTotal(identityInput, selectedExecutable) + MAIN_OBJECTIVE_EPSILON_G) {
+      selected = {
+        input: exactAcceptedInput,
+        proof: {
+          ...selected.proof,
+          status: 'maximized',
+          exactAcceptedMainGrams,
+          executableMainGrams: frontierMainGrams,
+          firstHigherRejectedGrams,
+          firstHigherRejectedReason,
+          technicalScore: recipeFitForInput(
+            exactAcceptedInput,
+            calculateRecipe(exactAcceptedInput),
+          ).score,
+          attempts: selected.proof.attempts + discreteAttempts,
+        },
+      };
+    } else if (selected.proof.status === 'maximized') {
+      selected = {
+        ...selected,
+        proof: {
+          ...selected.proof,
+          firstHigherRejectedGrams,
+          firstHigherRejectedReason,
+          attempts: selected.proof.attempts + discreteAttempts,
+        },
+      };
+    }
+  }
+  const perIdentity = mainObjectiveCache.get(identityInput) ?? new Map();
+  perIdentity.set(cacheKey, selected);
+  mainObjectiveCache.set(identityInput, perIdentity);
+  return selected;
+}
+
+function attachMainObjective(
+  preview: ConstraintPreview,
+  identityInput: RecipeInput,
+  proof: MainFlavourObjectiveProof | null,
+): void {
+  if (!proof) return;
+  preview.mainObjective = {
+    ...proof,
+    executableMainGrams: mainGroupTotal(identityInput, preview.proposedInput),
+  };
+}
+
+/**
+ * A Direction solve may reach the requested preference band only by crossing a
+ * native hard gate. In that case keep the already-established Main-group
+ * objective fixed and find the furthest hard-safe point on the same proposed
+ * path. This is product-layer orchestration only: every point is recalculated
+ * by the unchanged Engine, and no target band or formula is altered.
+ */
+function bestHardSafeDirectionSegment(
+  identityInput: RecipeInput,
+  unsafeInput: RecipeInput,
+  set: ConstraintSet,
+  excludedIngredientIds: ReadonlySet<string>,
+): RecipeInput | null {
+  if (
+    !identityInput.goals?.direction_targets_active ||
+    detectViolations(calculateRecipe(identityInput)).length > 0 ||
+    detectViolations(calculateRecipe(unsafeInput)).length === 0
+  ) {
+    return null;
+  }
+  const mains = captureMainIngredientIntent(identityInput);
+  const unsafeByLineId = new Map(unsafeInput.items.map((item) => [item.id, item] as const));
+  const targetMainGrams = mainGroupTotal(identityInput, unsafeInput);
+  const mainByLineId = new Map(
+    mains.map((main) => [main.lineId, unsafeByLineId.get(main.lineId)?.planned_grams ?? main.grams]),
+  );
+  const staged: RecipeInput = {
+    ...identityInput,
+    items: identityInput.items.map((item) => {
+      const grams = mainByLineId.get(item.id);
+      return grams === undefined ? item : { ...item, planned_grams: grams };
+    }),
+  };
+  const mainSet: ConstraintSet = {
+    byLineId: {
+      ...set.byLineId,
+      ...Object.fromEntries(
+        [...mainByLineId].map(([lineId, grams]) => [lineId, { mode: 'locked', grams }] as const),
+      ),
+    },
+  };
+  const solverSet = withTemplateControlledStabilizerLocks(staged, mainSet);
+  const anchors: RecipeInput[] = [];
+  const proportional = rescaleBatchToTarget(
+    staged,
+    solverSet,
+    identityInput.target_batch_grams,
+  );
+  if (proportional.ok) anchors.push(proportional.input);
+  const batchDelta = plannedSum(staged) - identityInput.target_batch_grams;
+  for (const donor of staged.items) {
+    if (
+      mainByLineId.has(donor.id) ||
+      donor.actual_grams !== null ||
+      isConstrained(solverSet, donor.id) ||
+      excludedIngredientIds.has(canonicalIngredientId(donor.ingredient))
+    ) {
+      continue;
+    }
+    const grams = donor.planned_grams - batchDelta;
+    if (!Number.isFinite(grams) || grams < 0) continue;
+    anchors.push({
+      ...staged,
+      items: staged.items.map((item) =>
+        item.id === donor.id ? { ...item, planned_grams: grams } : item,
+      ),
+    });
+  }
+
+  const identityDirectionSeverity = recipeDirectionViolations(identityInput).reduce(
+    (sum, violation) => sum + violation.severity_points,
+    0,
+  );
+  const admissible = (candidate: RecipeInput): boolean => {
+    if (
+      Math.abs(plannedSum(candidate) - identityInput.target_batch_grams) >
+        BATCH_SUM_TOLERANCE_G ||
+      Math.abs(mainGroupTotal(identityInput, candidate) - targetMainGrams) >
+        MAIN_OBJECTIVE_EPSILON_G ||
+      !verifyMainIngredientIdentity(identityInput, candidate).ok ||
+      !verifyConstraintsPreserved(set, candidate).ok ||
+      detectViolations(calculateRecipe(candidate)).length > 0
+    ) {
+      return false;
+    }
+    const practical = practicalizeRecipeCandidate(candidate, set);
+    if (!practical.ok) return false;
+    const executable = practical.audit.executableInput;
+    return (
+      Math.abs(mainGroupTotal(identityInput, executable) - targetMainGrams) <=
+        MAIN_OBJECTIVE_EPSILON_G &&
+      verifyMainIngredientIdentity(identityInput, executable).ok &&
+      verifyConstraintsPreserved(set, executable).ok &&
+      detectViolations(practical.audit.executableResult).length === 0
+    );
+  };
+  const interpolate = (anchor: RecipeInput, ratio: number): RecipeInput => ({
+    ...anchor,
+    items: anchor.items.map((item) => {
+      const unsafe = unsafeByLineId.get(item.id);
+      if (!unsafe || mainByLineId.has(item.id)) return item;
+      return {
+        ...item,
+        planned_grams:
+          item.planned_grams + (unsafe.planned_grams - item.planned_grams) * ratio,
+      };
+    }),
+  });
+
+  let best: { input: RecipeInput; severity: number; ratio: number } | null = null;
+  for (const anchor of anchors) {
+    if (!admissible(anchor)) continue;
+    let low = 0;
+    let high = 1;
+    let accepted = anchor;
+    for (let index = 0; index < 18; index += 1) {
+      const ratio = (low + high) / 2;
+      const candidate = interpolate(anchor, ratio);
+      if (admissible(candidate)) {
+        low = ratio;
+        accepted = candidate;
+      } else {
+        high = ratio;
+      }
+    }
+    const severity = recipeDirectionViolations(accepted).reduce(
+      (sum, violation) => sum + violation.severity_points,
+      0,
+    );
+    if (
+      severity < identityDirectionSeverity - SEVERITY_EPS &&
+      (best === null || severity < best.severity - SEVERITY_EPS ||
+        (Math.abs(severity - best.severity) <= SEVERITY_EPS && low > best.ratio))
+    ) {
+      best = { input: accepted, severity, ratio: low };
+    }
+  }
+  return best?.input ?? null;
 }
 
 /**
@@ -2021,7 +3157,8 @@ function buildFormulationPreviewInternal(
   // provisional profiles is kept unchanged.
   const solverSet = withTemplateControlledStabilizerLocks(built.proposal.proposedInput, set);
   const iterated = iterateFormulationSeed(input, solverSet, built.proposal.proposedInput, options);
-  const working = iterated.working;
+  const mainObjective = maximizeMainFlavourObjective(input, iterated.working, set, options);
+  const working = mainObjective.input;
   const solverRounds = iterated.diagnostics.solverInvocations;
   const lastProposal = iterated.lastProposal;
 
@@ -2183,6 +3320,7 @@ function buildFormulationPreviewInternal(
     explanation,
     createdAt,
   );
+  attachMainObjective(preview, input, mainObjective.proof);
   preview.autoBalance = { batchRescaled: true, solverRounds };
   preview.iteration = iterated.diagnostics;
   preview.formulation = {
@@ -2509,6 +3647,28 @@ export function buildOptimizePreview(
         };
       }
     }
+    const cleanMainObjective = maximizeMainFlavourObjective(input, working, set, options);
+    if (
+      cleanMainObjective.proof?.status === 'maximized' &&
+      cleanMainObjective.proof.exactAcceptedMainGrams >
+        cleanMainObjective.proof.startingMainGrams + MAIN_OBJECTIVE_EPSILON_G
+    ) {
+      const preview = finishPreview(
+        'optimize',
+        copy.preview.kindLabels.optimize,
+        input,
+        set,
+        cleanMainObjective.input,
+        set,
+        violationsBefore,
+        [],
+        createdAt,
+      );
+      attachMainObjective(preview, input, cleanMainObjective.proof);
+      preview.hardResidualMetrics = classifyViolationBands(cleanMainObjective.input).hardMetrics;
+      preview.diagnosticOnly = false;
+      return mainSafePreview(input, preview);
+    }
     const practical = practicalizeRecipeCandidate(input, set);
     const needsPracticalPreview =
       options.requirePracticalPreview === true ||
@@ -2532,6 +3692,7 @@ export function buildOptimizePreview(
         createdAt,
       );
       preview.practicalizationOnly = true;
+      attachMainObjective(preview, input, cleanMainObjective.proof);
       return mainSafePreview(input, preview);
     }
     return { ok: false, code: 'already_clean' };
@@ -2557,7 +3718,15 @@ export function buildOptimizePreview(
     solverSet,
     options.effectivePriceOverrides,
   );
-  working = iterated.working;
+  const mainObjective = maximizeMainFlavourObjective(input, iterated.working, set, options);
+  working = mainObjective.input;
+  const hardSafeDirection = bestHardSafeDirectionSegment(
+    constrained.input,
+    working,
+    set,
+    new Set(options.excludedIngredientIds ?? []),
+  );
+  if (hardSafeDirection) working = hardSafeDirection;
   const lastProposal = iterated.lastProposal;
   const solverRounds = iterated.diagnostics.solverInvocations;
   let violated: string[] = iterated.violated;
@@ -2603,7 +3772,10 @@ export function buildOptimizePreview(
   const improved =
     violationsAfter === 0 ||
     violationsAfter < violationsBefore ||
-    (lastProposal !== null && severityAfter < severityBefore - SEVERITY_EPS);
+    (lastProposal !== null && severityAfter < severityBefore - SEVERITY_EPS) ||
+    (mainObjective.proof?.status === 'maximized' &&
+      mainObjective.proof.exactAcceptedMainGrams >
+        mainObjective.proof.startingMainGrams + MAIN_OBJECTIVE_EPSILON_G);
   if (!improved) {
     // Owner Phase 6: same fallback door — a produced-but-rejected local
     // candidate on a complete unconstrained draft tries the template seed;
@@ -2644,6 +3816,7 @@ export function buildOptimizePreview(
     explanation,
     createdAt,
   );
+  attachMainObjective(preview, input, mainObjective.proof);
   preview.autoBalance = { batchRescaled, solverRounds };
   preview.iteration = iterated.diagnostics;
   // ACCEPTANCE ADDENDUM (1+3): the local-correction preview carries the same
@@ -2895,21 +4068,11 @@ export interface SuggestedBoundFix {
   grams: number;
 }
 
-/**
- * §18.2 „Ustaw X g i przelicz”: apply a GENUINELY COMPUTED feasibility bound
- * to the constrained line (an explicit, user-sanctioned lock change), then let
- * the real solver adjust the rest on top. Falls back to the plain bound change
- * when the solver has nothing further to propose.
- */
-export function buildSuggestedFixPreview(
-  input: RecipeInput,
+function constraintSetAfterSuggestedFix(
   set: ConstraintSet,
   fix: SuggestedBoundFix,
-  createdAt: string,
-): BuildPreviewResult {
-  const line = input.items.find((item) => item.id === fix.lineId);
-  if (!line) return { ok: false, code: 'line_missing' };
-
+): ConstraintSet | null {
+  if (!Number.isFinite(fix.grams) || fix.grams < 0 || !fix.lineId.trim()) return null;
   const current: IngredientConstraint | undefined = set.byLineId[fix.lineId];
   const nextConstraint: IngredientConstraint =
     current?.mode === 'range'
@@ -2925,9 +4088,26 @@ export function buildSuggestedFixPreview(
             maxGrams: Math.max(current.maxGrams, fix.grams),
           }
       : { mode: 'locked', grams: fix.grams };
-  const nextSet: ConstraintSet = {
-    byLineId: { ...set.byLineId, [fix.lineId]: nextConstraint },
-  };
+  return { byLineId: { ...set.byLineId, [fix.lineId]: nextConstraint } };
+}
+
+/**
+ * §18.2 „Ustaw X g i przelicz”: apply a GENUINELY COMPUTED feasibility bound
+ * to the constrained line (an explicit, user-sanctioned lock change), then let
+ * the real solver adjust the rest on top. Falls back to the plain bound change
+ * when the solver has nothing further to propose.
+ */
+export function buildSuggestedFixPreview(
+  input: RecipeInput,
+  set: ConstraintSet,
+  fix: SuggestedBoundFix,
+  createdAt: string,
+): BuildPreviewResult {
+  const line = input.items.find((item) => item.id === fix.lineId);
+  if (!line) return { ok: false, code: 'line_missing' };
+
+  const nextSet = constraintSetAfterSuggestedFix(set, fix);
+  if (!nextSet) return { ok: false, code: 'apply_failed' };
 
   const adjustedInput: RecipeInput = {
     ...input,
@@ -2978,17 +4158,20 @@ export function buildSuggestedFixPreview(
 
   return {
     ok: true,
-    preview: finishPreview(
-      'suggested_fix',
-      copy.preview.kindLabels.suggested_fix,
-      input,
-      set,
-      proposedInput,
-      nextSet,
-      violationsBefore,
-      explanation,
-      createdAt,
-    ),
+    preview: {
+      ...finishPreview(
+        'suggested_fix',
+        copy.preview.kindLabels.suggested_fix,
+        input,
+        set,
+        proposedInput,
+        nextSet,
+        violationsBefore,
+        explanation,
+        createdAt,
+      ),
+      suggestedFix: { ...fix },
+    },
   };
 }
 
@@ -3251,6 +4434,7 @@ export class VerifiedApply {
     substitutionConsent?: SubstitutionConsent | null,
     substitutionAuthorization?: SubstitutionSessionAuthorization | null,
     directionConsent?: DirectionBestAchievableConsent | null,
+    suggestedFixAuthorization?: SuggestedFixSessionAuthorization | null,
   ): CommitPreviewResult {
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
     // never applies, whatever the fingerprint says.
@@ -3266,6 +4450,34 @@ export class VerifiedApply {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
     if (!sameVerifiedRecipeContext(current, preview.proposedInput)) {
+      return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+    }
+
+    // `nextConstraints` is part of an untrusted Preview payload. Normal
+    // optimize/rescale/substitution routes must preserve the authenticated
+    // current set byte-for-byte. The one intentional transition — a suggested
+    // bound fix — is accepted only with a session authorization bound to the
+    // same base fingerprint and is independently re-derived here.
+    let verifiedNextConstraints = currentConstraints;
+    if (preview.kind === 'suggested_fix') {
+      const proof = preview.suggestedFix;
+      const authorized = suggestedFixAuthorization;
+      if (
+        proof === undefined ||
+        authorized == null ||
+        authorized.baseFingerprint !== preview.baseFingerprint ||
+        proof.type !== authorized.type ||
+        proof.lineId !== authorized.lineId ||
+        !Object.is(proof.grams, authorized.grams)
+      ) {
+        return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+      }
+      const rederived = constraintSetAfterSuggestedFix(currentConstraints, proof);
+      if (rederived === null || !sameConstraintSet(preview.nextConstraints, rederived)) {
+        return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+      }
+      verifiedNextConstraints = rederived;
+    } else if (!sameConstraintSet(preview.nextConstraints, currentConstraints)) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
 
@@ -3297,7 +4509,7 @@ export class VerifiedApply {
             'Apply zablokowany: kandydat pełnych gramów nie odpowiada bieżącej recepturze.',
         };
       }
-      const rederived = practicalizeRecipeCandidate(audit.exactInput, preview.nextConstraints);
+      const rederived = practicalizeRecipeCandidate(audit.exactInput, verifiedNextConstraints);
       if (
         !rederived.ok ||
         JSON.stringify(rederived.audit.executableInput) !== JSON.stringify(preview.proposedInput) ||
@@ -3399,7 +4611,7 @@ export class VerifiedApply {
       };
     }
     const earlyPreserved = verifyConstraintsPreserved(
-      preview.nextConstraints,
+      verifiedNextConstraints,
       preview.proposedInput,
     );
     if (!earlyPreserved.ok) {
@@ -3575,7 +4787,7 @@ export class VerifiedApply {
           directionConsent?.baseFingerprint === preview.baseFingerprint &&
           directionConsent.targetFingerprint === directionTargetFingerprint(current) &&
           directionConsent.candidateFingerprint ===
-            workingStateFingerprint(preview.proposedInput, preview.nextConstraints);
+            workingStateFingerprint(preview.proposedInput, verifiedNextConstraints);
         if (!consentValid) {
           return {
             ok: false,
@@ -3753,6 +4965,62 @@ export class VerifiedApply {
         messagePl: mainIdentityViolationMessage(mainIdentity),
         violations: mainIdentity.violations,
       };
+    }
+    const currentMainGrams = mainGroupTotal(mainIdentityBase, mainIdentityBase);
+    const exactMainGrams = mainGroupTotal(mainIdentityBase, exactCandidate);
+    const executableMainGrams = mainGroupTotal(mainIdentityBase, preview.proposedInput);
+    if (executableMainGrams < currentMainGrams - MAIN_OBJECTIVE_EPSILON_G) {
+      return {
+        ok: false,
+        code: 'main_identity_violated',
+        messagePl:
+          'Apply zablokowany: propozycja zmniejsza grupę Główną mimo aktywnego priorytetu smaku.',
+        violations: [],
+      };
+    }
+    const mainMoved = executableMainGrams > currentMainGrams + MAIN_OBJECTIVE_EPSILON_G;
+    if (preview.kind === 'optimize' && mainMoved) {
+      const proof = preview.mainObjective;
+      const exactScore = recipeFitForInput(exactCandidate, calculateRecipe(exactCandidate)).score;
+      const proofValid =
+        proof?.status === 'maximized' &&
+        Math.abs(proof.startingMainGrams - currentMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
+        Math.abs(proof.exactAcceptedMainGrams - exactMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
+        Math.abs(proof.executableMainGrams - executableMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
+        proof.technicalScore === exactScore &&
+        (proof.firstHigherRejectedGrams === null ||
+          proof.firstHigherRejectedGrams >
+            proof.exactAcceptedMainGrams + MAIN_OBJECTIVE_EPSILON_G / 10);
+      if (!proofValid) {
+        return {
+          ok: false,
+          code: 'main_identity_violated',
+          messagePl:
+            'Apply zablokowany: nie udało się ponownie potwierdzić dowodu maksymalizacji składnika Głównego.',
+          violations: [],
+        };
+      }
+      // A self-consistent proof is not enough: rebuild the deterministic Main
+      // frontier from the current trusted draft. This closes forged or stale
+      // "maximized" proofs that stop below an executable whole-gram candidate.
+      const rebuilt = buildOptimizePreview(
+        current,
+        currentConstraints,
+        preview.createdAt,
+        { excludedIngredientIds },
+      );
+      const recomputedExecutableMainGrams = rebuilt.ok
+        ? mainGroupTotal(mainIdentityBase, rebuilt.preview.proposedInput)
+        : currentMainGrams;
+      if (recomputedExecutableMainGrams > executableMainGrams + MAIN_OBJECTIVE_EPSILON_G) {
+        return {
+          ok: false,
+          code: 'main_identity_violated',
+          messagePl:
+            'Apply zablokowany: propozycja nie jest maksymalnym wykonalnym poziomem składnika Głównego.',
+          violations: [],
+        };
+      }
     }
     if (
       normalizeFormulationStrategy(current.goals?.formulation_strategy ?? current.mode) === 'eco'
@@ -4067,7 +5335,7 @@ export class VerifiedApply {
       },
       after: {
         input: structuredClone(preview.proposedInput),
-        constraints: preview.nextConstraints,
+        constraints: verifiedNextConstraints,
         excludedIngredientIds: [...excludedIngredientIds],
       },
       lines: preview.lines,
@@ -4099,7 +5367,7 @@ export class VerifiedApply {
       ok: true,
       verified: new VerifiedApply(
         structuredClone(preview.proposedInput),
-        preview.nextConstraints,
+        verifiedNextConstraints,
         record,
       ),
     };

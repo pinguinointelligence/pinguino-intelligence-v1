@@ -23,6 +23,26 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
   useProCorePersona: () => 'pro',
 }));
 
+// A Pro persona is presentation only; exact-formula entitlement is a separate,
+// canonical access boundary. This proof renders the paid Pro workbench.
+vi.mock('@/access/useAccess', () => ({
+  useAccess: () => ({
+    plan: 'pro',
+    tier: 'pro',
+    isSignedIn: true,
+    isPro: true,
+    exactCorrectionGrams: true,
+    fullFormula: true,
+    technicalView: true,
+    canViewExactGrams: true,
+    canApplyStarterToStudio: true,
+    saveRecipes: true,
+    myRecipes: true,
+    productionMode: true,
+    rescueMode: true,
+  }),
+}));
+
 const { ProWorkspacePage } = await import('@/pages/pro/ProWorkspacePage');
 
 const SRC = resolve(import.meta.dirname, '..', '..');

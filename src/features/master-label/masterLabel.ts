@@ -111,21 +111,42 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
   const { snapshot } = input;
   const profile = marketProfile(input.market);
   const languages = input.labelLanguages.length > 0 ? [...new Set(input.labelLanguages)] : ['pl'];
-  const total = snapshot.finalResult.total_batch_g;
+  const total = snapshot.finalProduct.finalMassG;
   const evidence = input.allergenEvidenceByCanonicalId ?? {};
-  const ingredients: MasterLabelIngredient[] = snapshot.finalResult.items
-    .filter((item) => item.effective_grams > 0)
-    .slice()
-    .sort((a, b) => b.effective_grams - a.effective_grams)
+  // Legal declaration order is mass-descending and independent of the manual
+  // Base/Topping UI order. The same canonical product may validly exist once
+  // in each scope, but it is one ingredient in the final product declaration.
+  const declarationLines = new Map<
+    string,
+    { lineId: string; canonicalId: string | null; name: string; grams: number }
+  >();
+  for (const item of snapshot.finalProduct.items.filter((row) => row.effective_grams > 0)) {
+    const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null;
+    const key = canonicalId ? `canonical:${canonicalId}` : `line:${item.id}`;
+    const existing = declarationLines.get(key);
+    if (existing) {
+      existing.grams += item.effective_grams;
+      existing.lineId = `${existing.lineId}+${item.id}`;
+    } else {
+      declarationLines.set(key, {
+        lineId: item.id,
+        canonicalId,
+        name: item.ingredient.name,
+        grams: item.effective_grams,
+      });
+    }
+  }
+  const ingredients: MasterLabelIngredient[] = [...declarationLines.values()]
+    .sort((a, b) => b.grams - a.grams)
     .map((item) => {
-      const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null;
+      const canonicalId = item.canonicalId;
       const allergenEvidence = canonicalId ? evidence[canonicalId] : undefined;
       return {
-        lineId: item.id,
+        lineId: item.lineId,
         canonicalIngredientId: canonicalId,
-        names: translated(item.ingredient.name, languages),
-        actualGrams: item.effective_grams,
-        percent: total > 0 ? (item.effective_grams / total) * 100 : 0,
+        names: translated(item.name, languages),
+        actualGrams: item.grams,
+        percent: total > 0 ? (item.grams / total) * 100 : 0,
         allergenEvidenceStatus: allergenEvidence?.status ?? 'missing',
         allergenSourceRevision: allergenEvidence?.sourceRevision ?? null,
       };
@@ -158,8 +179,8 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       mayContain,
       reviewedByUser: false,
     },
-    nutritionSource: snapshot.finalResult.nutrition_per_100g,
-    nutritionDeclaration: buildNutritionDeclaration(snapshot.finalResult.nutrition_per_100g),
+    nutritionSource: snapshot.finalProduct.nutritionPer100g,
+    nutritionDeclaration: buildNutritionDeclaration(snapshot.finalProduct.nutritionPer100g),
     // Batch mass is not package net quantity. Never fabricate this field.
     netQuantityG: null,
     servingQuantityG: null,

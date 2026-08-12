@@ -12,6 +12,8 @@ import {
   writePersistedAccountOwner,
   type AccountOwnerStorage,
 } from './accountSessionReset';
+import { listUserRecipeDefaults } from '@/services/userRecipeDefaults';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 
 const queryClient = new QueryClient();
 
@@ -68,6 +70,27 @@ function ResolvedAccountProviders({
       cancelled = true;
     };
   }, [userId, userEmail, setEffectiveAccess]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void listUserRecipeDefaults(userId).then((rows) => {
+      if (cancelled) return;
+      useRecipeProfileStore.getState().replaceDefaultsForOwner(
+        userId,
+        rows.map((row) => ({
+          productContextKey: row.product_context_key,
+          settings: row.settings,
+        })),
+      );
+    }).catch(() => {
+      // Defaults are convenience state. A transient read failure must not
+      // block the recipe workspace or fabricate fallback settings.
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   if (isolatedIdentity !== identity) return null;
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;

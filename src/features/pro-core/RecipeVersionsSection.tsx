@@ -63,6 +63,7 @@ export function RecipeVersionsSection() {
           savedName: recipeName,
           versionNumber: created.versionNumber,
           versionDate: created.createdAt,
+          composition: created.productComposition,
         });
       } catch (error) {
         setMsg((error as Error).message);

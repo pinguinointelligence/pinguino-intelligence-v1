@@ -53,6 +53,7 @@ function fakeClient() {
 vi.mock('@/lib/supabase/client', () => ({ supabase: fakeClient() }));
 
 import { SEARCH_DB_PAGE_ROWS, searchEngineApprovedIngredients } from '@/services/ingredients';
+import { isProductPickerSelectionCurrent } from './productPickerModel';
 
 beforeEach(() => { captured.length = 0; backendRows = []; });
 
@@ -169,18 +170,58 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
   });
 
   it('the builder mounts the live picker for serverSearch libraries', () => {
-    const src = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
-    expect(src).toContain('library.serverSearch');
-    expect(src).toContain('<ServerIngredientPicker');
+    const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
+    const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+    expect(builder).toContain('<ProductPickerPopover');
+    expect(picker).toContain('library.serverSearch');
+    expect(picker).toContain('useIngredientSearch');
+    expect(picker).toContain('getIngredientById(option.id)');
   });
 
-  it('stale-add protection: selection is keyed to the settled query and add resolves by exact id', () => {
-    const src = read('features', 'ingredient-builder', 'ServerIngredientPicker.tsx');
-    expect(src).toContain('picked.norm === search.settledNorm');
-    expect(src).toContain('getIngredientById(effectiveId)');
-    expect(src).toContain('disabled={!canAdd}');
-    // Add stays disabled until the CURRENT query's response is in (no stale Add).
-    expect(src).toContain('(!hasQuery || search.isSettled)');
+  it('stale-add protection: the current picker rejects old server hits until the new query settles', () => {
+    expect(
+      isProductPickerSelectionCurrent({
+        serverSearch: true,
+        serverSettled: false,
+        localOption: false,
+      }),
+    ).toBe(false);
+    expect(
+      isProductPickerSelectionCurrent({
+        serverSearch: true,
+        serverSettled: true,
+        localOption: false,
+      }),
+    ).toBe(true);
+    expect(
+      isProductPickerSelectionCurrent({
+        serverSearch: true,
+        serverSettled: false,
+        localOption: true,
+      }),
+    ).toBe(true);
+    const src = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+    expect(src).toContain('server.isSettled');
+    expect(src).toContain('isProductPickerSelectionCurrent');
+    expect(src).toContain('getIngredientById(option.id)');
+  });
+
+  it('binds modal identity and the focus trap to the visible picker, never its backdrop', () => {
+    const src = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+    const backdropClass = src.indexOf('className="fixed inset-0 z-[89]');
+    const backdropStart = src.lastIndexOf('<div', backdropClass);
+    const dialogClass = src.indexOf('className="shadow-pro-e3 fixed');
+    const dialogStart = src.lastIndexOf('<div', dialogClass);
+    const dialogEnd = src.indexOf('onKeyDown={(event)', dialogStart);
+    const backdrop = src.slice(backdropStart, dialogStart);
+    const dialog = src.slice(dialogStart, dialogEnd);
+    expect(backdrop).not.toContain('id={dialogId}');
+    expect(backdrop).not.toContain('ref={dialogRef}');
+    expect(dialog).toContain('id={dialogId}');
+    expect(dialog).toContain('ref={dialogRef}');
+    expect(dialog).toContain('aria-modal="true"');
+    expect(src).toContain("dialogRef.current?.querySelectorAll<HTMLElement>");
+    expect(src).toContain('triggerRef.current?.focus()');
   });
 
   it('debounce + per-query key + abort propagation: a stale response can never overwrite a newer query', () => {

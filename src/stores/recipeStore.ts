@@ -52,6 +52,11 @@ import {
   readPracticalRecipeAudit,
   type PracticalRecipeSavedAudit,
 } from '@/features/practical-recipe/practicalRecipe';
+import {
+  readRecipeCompositionMetadata,
+  type RecipeCompositionMetadata,
+  type RecipeToppingItem,
+} from '@/features/recipe-composition/recipeCompositionPersistence';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
@@ -95,6 +100,11 @@ export interface RecipeState {
   direction_targets: RecipeDirectionTargets;
   direction_targets_active: boolean;
   items: RecipeItem[];
+  /** Display/workflow order only; Engine item order remains canonical and untouched. */
+  baseOrder: string[];
+  /** Post-process additions. They never enter Base Engine formulation. */
+  toppings: RecipeToppingItem[];
+  compositionMigrationAmbiguities: Array<{ lineId: string; reason: string }>;
   /**
    * Canonical ingredient ids the user EXPLICITLY marked unavailable/excluded —
    * the formulation toolbox never reintroduces them (cleared by adding the
@@ -220,6 +230,14 @@ export interface RecipeState {
     | { ok: false; code: 'batch_mismatch'; sum: number; target: number }
     | { ok: false; code: 'write_verification_failed' };
   addIngredient: (ingredient: EngineIngredient, grams?: number) => void;
+  addTopping: (ingredient: EngineIngredient, grams?: number) => void;
+  removeTopping: (lineId: string) => void;
+  setToppingGrams: (lineId: string, grams: number) => void;
+  setToppingActualGrams: (lineId: string, grams: number | null) => void;
+  replaceToppingIngredient: (lineId: string, ingredient: EngineIngredient) => void;
+  moveBaseItem: (lineId: string, direction: -1 | 1) => void;
+  moveTopping: (lineId: string, direction: -1 | 1) => void;
+  resolveCompositionAmbiguity: (lineId: string) => void;
   /**
    * Owner FINAL CLOSURE C2/C3 — „Remove row": ONE atomic material-edit
    * transaction that removes the line from the CURRENT recipe. It leaves NO
@@ -269,6 +287,7 @@ export interface RecipeState {
       savedName?: string | null;
       versionNumber?: number | null;
       versionDate?: string | null;
+      composition?: RecipeCompositionMetadata | null;
     },
   ) => void;
   /** Link the draft to its persisted aggregate after a create/version/restore. Clears dirty. */
@@ -307,6 +326,37 @@ const makeLine = (
   actual_grams: null,
   lock_type,
 });
+
+const sortedBaseItems = (items: readonly RecipeItem[]): RecipeItem[] =>
+  items.slice();
+
+const orderedBaseItems = (items: readonly RecipeItem[], order: readonly string[]): RecipeItem[] => {
+  if (order.length === 0) return [...items];
+  const rank = new Map(order.map((id, index) => [id, index]));
+  return items
+    .map((item, index) => ({ item, rank: rank.get(item.id) ?? order.length + index }))
+    .sort((a, b) => a.rank - b.rank)
+    .map(({ item }) => item);
+};
+
+const sortedToppings = (items: readonly RecipeToppingItem[]): RecipeToppingItem[] =>
+  items
+    .slice()
+    .sort((a, b) => a.addon_sort_order - b.addon_sort_order)
+    .map((item, index) => ({ ...item, addon_sort_order: index }));
+
+const moveWithin = <T extends { id: string }>(
+  items: readonly T[],
+  lineId: string,
+  direction: -1 | 1,
+): T[] => {
+  const index = items.findIndex((item) => item.id === lineId);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= items.length) return [...items];
+  const next = [...items];
+  [next[index], next[target]] = [next[target]!, next[index]!];
+  return next;
+};
 
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
@@ -364,6 +414,9 @@ const fromPreset = (preset: DemoPreset) => ({
     ...item,
     ingredient: normalizeIngredientIdentity(item.ingredient, 'demo'),
   })),
+  baseOrder: preset.items.map((item) => item.id),
+  toppings: [] as RecipeToppingItem[],
+  compositionMigrationAmbiguities: [] as Array<{ lineId: string; reason: string }>,
   // Owner P0 NIGHTLY (exclusion lifecycle): exclusions are DRAFT-SCOPED — a
   // fresh preset load / reset starts a fresh exclusion context. An ingredient
   // never selected in the new draft is NOT excluded.
@@ -383,6 +436,8 @@ const fromPreset = (preset: DemoPreset) => ({
 });
 
 const profileOwnerKey = (): string => useAuthStore.getState().user?.id ?? 'local-device';
+const productDefaultsKey = (visible: VisibleProductType): string =>
+  `${profileOwnerKey()}:${visible}`;
 
 const profileFields = (
   profile: ProfileSettingsSnapshot,
@@ -439,6 +494,9 @@ export function recipePersistPartialize(state: RecipeState) {
     direction_targets: state.direction_targets,
     direction_targets_active: state.direction_targets_active,
     items: state.items,
+    baseOrder: state.baseOrder,
+    toppings: state.toppings,
+    compositionMigrationAmbiguities: state.compositionMigrationAmbiguities,
     // Agent C (owner addendum): draft-material — see the field doc above.
     excludedIngredientIds: state.excludedIngredientIds,
     unavailableMainIngredientIds: state.unavailableMainIngredientIds,
@@ -621,10 +679,20 @@ export const useRecipeStore = create<RecipeState>()(
         // Phase 7 — atomic write + read-back verification with rollback.
         const prior = useRecipeStore.getState();
         const priorItems = prior.items;
+        const priorBaseOrder = prior.baseOrder;
+        const priorToppings = prior.toppings;
+        const priorMigrationAmbiguities = prior.compositionMigrationAmbiguities;
         const priorBatch = prior.target_batch_grams;
-        const nextItems = input.items.map((item) => normalizeRecipeItemIdentity({ ...item }));
+        const nextItems = sortedBaseItems(
+          input.items.map((item) => normalizeRecipeItemIdentity({ ...item })),
+        );
+        const nextToppings = priorToppings;
+        const nextBaseOrder = orderedBaseItems(nextItems, priorBaseOrder).map((item) => item.id);
         set((state) => ({
           items: nextItems,
+          baseOrder: nextBaseOrder,
+          toppings: nextToppings,
+          compositionMigrationAmbiguities: priorMigrationAmbiguities,
           target_batch_grams: input.target_batch_grams,
           dirty: true,
           draftRevision: state.draftRevision + 1,
@@ -643,6 +711,9 @@ export const useRecipeStore = create<RecipeState>()(
           // Rollback is itself a material write — the revision stays monotonic.
           set((state) => ({
             items: priorItems,
+            baseOrder: priorBaseOrder,
+            toppings: priorToppings,
+            compositionMigrationAmbiguities: priorMigrationAmbiguities,
             target_batch_grams: priorBatch,
             draftRevision: state.draftRevision + 1,
           }));
@@ -674,12 +745,17 @@ export const useRecipeStore = create<RecipeState>()(
                     lock_type: restoresUnavailableMain ? ('main' as const) : ('unlocked' as const),
                   },
                 ];
+          const orderedItems = sortedBaseItems(items);
           return {
-            items,
+            items: orderedItems,
+            baseOrder:
+              existingIndex >= 0
+                ? state.baseOrder
+                : [...state.baseOrder.filter((id) => orderedItems.some((item) => item.id === id)), orderedItems.at(-1)!.id],
             // Visible GELATO re-routes its INTERNAL category from the real ingredients
             // (chocolate/nut/fruit/alcohol are classifications, never visible types).
             ...(state.visibleProductType === 'gelato'
-              ? { category: gelatoInternalCategory(items) }
+              ? { category: gelatoInternalCategory(orderedItems) }
               : {}),
             // Explicitly adding an ingredient back clears its EXPLICIT
             // exclusion (frozen pin: an excluded ingredient returns ONLY
@@ -695,12 +771,136 @@ export const useRecipeStore = create<RecipeState>()(
           };
         }),
 
+      addTopping: (ingredient, grams = 0) =>
+        set((state) => {
+          const canonicalId = canonicalIngredientId(ingredient);
+          const normalized = normalizeIngredientIdentity(ingredient);
+          const existingIndex = state.toppings.findIndex(
+            (item) => canonicalIngredientId(item.ingredient) === canonicalId,
+          );
+          const toppings =
+            existingIndex >= 0
+              ? state.toppings.map((item, index) =>
+                  index === existingIndex ? { ...item, ingredient: normalized } : item,
+                )
+              : [
+                  ...state.toppings,
+                  {
+                    id: nextLineId(),
+                    ingredient: normalized,
+                    planned_grams: Math.max(0, grams),
+                    actual_grams: null,
+                    process_scope: 'POST_PROCESS_ADDON' as const,
+                    addon_sort_order: state.toppings.length,
+                  },
+                ];
+          return {
+            toppings: sortedToppings(toppings),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
+      removeTopping: (lineId) =>
+        set((state) => {
+          const toppings = state.toppings.filter((item) => item.id !== lineId);
+          if (toppings.length === state.toppings.length) return {};
+          return {
+            toppings: sortedToppings(toppings),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
+      setToppingGrams: (lineId, grams) =>
+        set((state) => ({
+          toppings: state.toppings.map((item) =>
+            item.id === lineId ? { ...item, planned_grams: Math.max(0, grams) } : item,
+          ),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
+      setToppingActualGrams: (lineId, grams) =>
+        set((state) => ({
+          toppings: state.toppings.map((item) =>
+            item.id === lineId
+              ? { ...item, actual_grams: grams === null ? null : Math.max(0, grams) }
+              : item,
+          ),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
+      replaceToppingIngredient: (lineId, ingredient) =>
+        set((state) => {
+          const current = state.toppings.find((item) => item.id === lineId);
+          if (!current) return {};
+          const canonicalId = canonicalIngredientId(ingredient);
+          const normalized = normalizeIngredientIdentity(ingredient);
+          const duplicate = state.toppings.find(
+            (item) => item.id !== lineId && canonicalIngredientId(item.ingredient) === canonicalId,
+          );
+          const toppings = duplicate
+            ? state.toppings
+                .filter((item) => item.id !== lineId)
+                .map((item) =>
+                  item.id === duplicate.id
+                    ? {
+                        ...item,
+                        ingredient: normalized,
+                        planned_grams: item.planned_grams + current.planned_grams,
+                        actual_grams:
+                          item.actual_grams === null && current.actual_grams === null
+                            ? null
+                            : (item.actual_grams ?? item.planned_grams) +
+                              (current.actual_grams ?? current.planned_grams),
+                      }
+                    : item,
+                )
+            : state.toppings.map((item) =>
+                item.id === lineId ? { ...item, ingredient: normalized } : item,
+              );
+          return {
+            toppings: sortedToppings(toppings),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
+      moveBaseItem: (lineId, direction) =>
+        set((state) => ({
+          baseOrder: moveWithin(
+            state.baseOrder.map((id) => ({ id })),
+            lineId,
+            direction,
+          ).map((item) => item.id),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
+      moveTopping: (lineId, direction) =>
+        set((state) => ({
+          toppings: moveWithin(sortedToppings(state.toppings), lineId, direction).map(
+            (item, index) => ({ ...item, addon_sort_order: index }),
+          ),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
+      resolveCompositionAmbiguity: (lineId) =>
+        set((state) => {
+          const next = state.compositionMigrationAmbiguities.filter(
+            (ambiguity) => ambiguity.lineId !== lineId,
+          );
+          if (next.length === state.compositionMigrationAmbiguities.length) return {};
+          return {
+            compositionMigrationAmbiguities: next,
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
+
       removeItem: (lineId) =>
         set((state) => {
           const items = state.items.filter((item) => item.id !== lineId);
           if (items.length === state.items.length) return {}; // unknown line — no-op
           return {
             items,
+            baseOrder: state.baseOrder.filter((id) => items.some((item) => item.id === id)),
             ...(state.visibleProductType === 'gelato'
               ? { category: gelatoInternalCategory(items) }
               : {}),
@@ -736,6 +936,7 @@ export const useRecipeStore = create<RecipeState>()(
           );
           return {
             items,
+            baseOrder: state.baseOrder.filter((id) => items.some((item) => item.id === id)),
             ...(state.visibleProductType === 'gelato'
               ? { category: gelatoInternalCategory(items) }
               : {}),
@@ -819,7 +1020,14 @@ export const useRecipeStore = create<RecipeState>()(
             keepByIngredient.set(ingredientId, copy);
             items.push(copy);
           }
-          return merged ? { items, dirty: true, draftRevision: state.draftRevision + 1 } : {};
+          return merged
+            ? {
+                items,
+                baseOrder: state.baseOrder.filter((id) => items.some((item) => item.id === id)),
+                dirty: true,
+                draftRevision: state.draftRevision + 1,
+              }
+            : {};
         }),
 
       setPlannedGrams: (lineId, grams) =>
@@ -1018,11 +1226,17 @@ export const useRecipeStore = create<RecipeState>()(
       loadRecipeInput: (input, link = {}) => {
         useIngredientTableUxStore.getState().reset();
         const metadata = readRecipeProfileMetadata(input);
+        const compositionMetadata = readRecipeCompositionMetadata(
+          link.composition,
+          input.items.map((item) => item.id),
+        );
         const practicalRecipeAudit = readPracticalRecipeAudit(input);
         const savedRecipe = link.savedId != null || link.savedName != null;
+        const visibleForDefaults = visibleTypeOf(input.category);
         const defaults = savedRecipe
           ? null
-          : useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
+          : (useRecipeProfileStore.getState().defaultsFor(productDefaultsKey(visibleForDefaults)) ??
+            useRecipeProfileStore.getState().defaultsFor(profileOwnerKey()));
         const profile = metadata ?? defaults;
         const normalizedItems = input.items.map((item) => {
           const normalized = normalizeRecipeItemIdentity({ ...item });
@@ -1030,6 +1244,26 @@ export const useRecipeStore = create<RecipeState>()(
             ? { ...normalized, lock_type: 'unlocked' as const }
             : normalized;
         });
+        const legacyAdditionItems = normalizedItems.filter(
+          (item) => metadata?.ingredientUxByLineId?.[item.id]?.role === 'addition',
+        );
+        // Historical "Dodatek" was UI-only metadata while the line still
+        // participated in Base Engine. Its post-process meaning cannot be
+        // proven, so keep the formula byte-identical and record the ambiguity.
+        const loadedToppings: RecipeToppingItem[] = compositionMetadata?.toppings ?? [];
+        const migrationAmbiguities = [
+          ...(compositionMetadata?.migrationAmbiguities ?? []),
+          ...legacyAdditionItems.map((item) => ({
+            lineId: item.id,
+            reason: 'LEGACY_ADDITION_ROLE_DID_NOT_PROVE_POST_PROCESS_SCOPE',
+          })),
+        ].filter(
+          (item, index, all) =>
+            all.findIndex(
+              (candidate) =>
+                candidate.lineId === item.lineId && candidate.reason === item.reason,
+            ) === index,
+        );
         set((state) => ({
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
@@ -1071,6 +1305,12 @@ export const useRecipeStore = create<RecipeState>()(
           // the truth. Explicit zeros live in §17 constraints, which are
           // session state and never stored with the recipe input.
           items: normalizedItems,
+          baseOrder: orderedBaseItems(
+            normalizedItems,
+            compositionMetadata?.baseOrder ?? normalizedItems.map((item) => item.id),
+          ).map((item) => item.id),
+          toppings: sortedToppings(loadedToppings),
+          compositionMigrationAmbiguities: migrationAmbiguities,
           excludedIngredientIds: [...(input.goals?.excluded_ingredient_ids ?? [])],
           unavailableMainIngredientIds: [...(input.goals?.unavailable_main_ingredient_ids ?? [])],
           activePresetId: null,
@@ -1129,7 +1369,9 @@ export const useRecipeStore = create<RecipeState>()(
       resetToDemo: () => {
         useIngredientTableUxStore.getState().reset();
         const base = fromPreset(DEFAULT_PRESET);
-        const defaults = useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
+        const defaults =
+          useRecipeProfileStore.getState().defaultsFor(productDefaultsKey(base.visibleProductType)) ??
+          useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
         set((state) => ({
           ...base,
           ...(defaults ? profileFields(defaults, base.items, base.category) : {}),

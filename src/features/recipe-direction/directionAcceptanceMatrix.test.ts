@@ -145,12 +145,10 @@ describe('Direction operational acceptance matrix', () => {
       for (const axis of ['sweetness', 'softness'] as const) {
         const applicable: Array<{ requested: -1 | 0 | 1; value: number }> = [];
         for (const requested of [-1, 0, 1] as const) {
-          const base = cleanBase(category, temperature);
-          const before = calculateRecipe(base);
-          const input: RecipeInput = {
-            ...base,
+          const planningInput: RecipeInput = {
+            ...draft(category, temperature),
             goals: {
-              ...base.goals,
+              ...draft(category, temperature).goals,
               direction_targets: {
                 sweetness: axis === 'sweetness' ? requested : 0,
                 softness: axis === 'softness' ? requested : 0,
@@ -160,7 +158,7 @@ describe('Direction operational acceptance matrix', () => {
               direction_targets_active: true,
             },
           };
-          const plan = buildRecipeDirectionPlan(input);
+          const plan = buildRecipeDirectionPlan(planningInput);
           const axisPlan = plan.axes.find((candidate) => candidate.axis === axis)!;
           if (axisPlan.status !== 'working') {
             expect(axisPlan.targetBand).toBeNull();
@@ -179,6 +177,12 @@ describe('Direction operational acceptance matrix', () => {
             );
             continue;
           }
+          const base = cleanBase(category, temperature);
+          const before = calculateRecipe(base);
+          const input: RecipeInput = {
+            ...base,
+            goals: planningInput.goals,
+          };
           expect(axisPlan.targetBand).not.toBeNull();
           expect(axis === 'sweetness' ? plan.bands.pod : plan.bands.npac).toBeDefined();
           const built = buildOptimizePreview(
@@ -195,6 +199,18 @@ describe('Direction operational acceptance matrix', () => {
           const nativeResidual = detectViolations(after);
           expect(plannedSum(output)).toBeCloseTo(output.target_batch_grams, 6);
           if (built.ok) {
+            if (built.preview.diagnosticOnly) {
+              console.info('DIRECTION_DIAGNOSTIC_ONLY', JSON.stringify({
+                category, temperature, axis, requested,
+                explanation: built.preview.explanation,
+                kind: built.preview.kind,
+                diagnosticReason: built.preview.diagnosticReason,
+                iteration: built.preview.iteration,
+                mainObjective: built.preview.mainObjective,
+                hardResidualMetrics: built.preview.hardResidualMetrics,
+                practicalization: built.preview.practicalization,
+              }));
+            }
             expect(built.preview.diagnosticOnly).toBe(false);
             expect(nativeResidual).toEqual([]);
             expect(recipeTechnicalFit(after).score).toBe(10);

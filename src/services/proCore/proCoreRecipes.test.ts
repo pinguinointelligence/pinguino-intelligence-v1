@@ -8,6 +8,7 @@ import {
   restoreVersion,
 } from '@/features/pro-core/recipeVersioning';
 import type { RecipeCapabilities } from '@/features/pro-core/recipeContracts';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import {
   attachPracticalRecipeAudit,
@@ -19,6 +20,29 @@ import { InMemoryRecipes } from './inMemoryRecipes';
 
 const TRACE = { engineVersion: 'e1', configVersion: 'c1' };
 const NOW = '2026-07-12T10:00:00.000Z';
+const COMPOSITION: RecipeCompositionMetadata = {
+  schemaVersion: 1,
+  baseScope: 'BASE_FORMULATION',
+  baseOrder: ['a'],
+  toppings: [
+    {
+      id: 'top-milk',
+      ingredient: {
+        id: 'PI-ING-MILK',
+        canonical_ingredient_id: 'PI-ING-MILK',
+        name: 'Milk topping',
+        category: 'dairy',
+        composition: { water: 87, total_solids: 13 },
+        source_type: 'manual',
+      } as unknown as RecipeCompositionMetadata['toppings'][number]['ingredient'],
+      planned_grams: 70,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON',
+      addon_sort_order: 0,
+    },
+  ],
+  migrationAmbiguities: [],
+};
 
 // The domain only reads item.id / item.ingredient.name / item.planned_grams + top-level batch.
 const item = (id: string, name: string, grams: number) => ({
@@ -109,6 +133,33 @@ describe('pure versioning domain', () => {
     expect(restored.source).toBe('restored');
     expect(restored.restoredFromVersion).toBe(1);
     expect(restored.recipeInput.items[0]?.planned_grams).toBe(600); // v1's values
+  });
+
+  it('freezes and restores the product composition sidecar with its recipe version', () => {
+    const source = JSON.parse(JSON.stringify(COMPOSITION)) as RecipeCompositionMetadata;
+    const v1 = buildRecipeVersion(
+      {
+        recipeId: 'r', ownerUserId: 'u', versionNumber: 1,
+        recipeInput: input(1000, [item('a', 'Milk', 1000)]),
+        productComposition: source,
+        trace: TRACE, source: 'manual', createdBy: 'u', createdAt: NOW,
+      },
+      'v1',
+    );
+    source.toppings[0]!.planned_grams = 999;
+    const v2 = buildRecipeVersion(
+      {
+        recipeId: 'r', ownerUserId: 'u', versionNumber: 2,
+        recipeInput: input(1200, [item('a', 'Milk', 1200)]),
+        productComposition: { ...COMPOSITION, toppings: [] },
+        trace: TRACE, source: 'manual', createdBy: 'u', createdAt: NOW,
+      },
+      'v2',
+    );
+    const restored = restoreVersion([v1, v2], 1, 'u', NOW, 'v3');
+    expect(v1.productComposition?.toppings[0]?.planned_grams).toBe(70);
+    expect(restored.productComposition).toEqual(COMPOSITION);
+    expect(restored.productComposition).not.toBe(v1.productComposition);
   });
 
   it('compareVersions reports added/removed/changed/unchanged + identical', () => {

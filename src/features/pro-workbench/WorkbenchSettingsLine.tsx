@@ -3,7 +3,6 @@ import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
-import { useAuthStore } from '@/stores/authStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { VISIBLE_PRODUCT_TYPES, type VisibleProductType } from '@/features/studio/productType';
@@ -33,8 +32,8 @@ const servingCopy = copy.proMachine.serving;
 const professionalLabel = copy.proMachine.professionalLabel;
 
 const STRATEGY_COPY: Record<FormulationStrategy, { label: string; description: string }> = {
-  optimal: { label: 'OPTIMAL', description: 'Najlepsza receptura. Koszt nie steruje składem.' },
-  eco: { label: 'ECO', description: 'Najniższy koszt przy zachowaniu technologii i smaku.' },
+  optimal: { label: 'OPTIMAL', description: 'Priorytet smaku.' },
+  eco: { label: 'ECO', description: 'Priorytet kosztu.' },
 };
 const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
   { id: 'fresh', label: servingCopy.fresh },
@@ -94,10 +93,6 @@ function LabeledSelect<T extends string>({
   );
 }
 
-function ownerPreferenceKey(): string {
-  return useAuthStore.getState().user?.id ?? 'local-device';
-}
-
 export function WorkbenchSettingsLine({
   actualBatchG,
   actualProteinPercent = 0,
@@ -118,9 +113,7 @@ export function WorkbenchSettingsLine({
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
   const openDraft = useRecipeProfileStore((state) => state.openDraft);
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
-  const saveDefaults = useRecipeProfileStore((state) => state.saveDefaults);
   const [unit, setUnit] = useState<BatchUnit>('g');
-  const [defaultsSaved, setDefaultsSaved] = useState(false);
   const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
   const selectedHome =
     store.machineKind === 'home'
@@ -195,6 +188,7 @@ export function WorkbenchSettingsLine({
         className,
       )}
       data-testid="workbench-settings-line"
+      tabIndex={-1}
       data-preflight-state={
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
@@ -202,13 +196,20 @@ export function WorkbenchSettingsLine({
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-base font-semibold text-ink">Ustawienia receptury</h3>
         <span
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
           className={cn(
             'text-xs font-semibold',
             hardConflict ? 'text-status-error' : confirmed ? 'text-status-ideal' : 'text-attention',
           )}
           data-testid="profile-preflight-status"
         >
-          {hardConflict ? 'Konflikt ustawień' : confirmed ? '✓ Potwierdzone' : 'Sprawdź ustawienia'}
+          {hardConflict
+            ? 'Konflikt ustawień'
+            : confirmed
+              ? '✓ Potwierdzone'
+              : 'Zmiany niepotwierdzone'}
         </span>
       </div>
 
@@ -382,9 +383,7 @@ export function WorkbenchSettingsLine({
             stacked={compact}
           />
           <p className={cn('mt-1 text-xs leading-relaxed text-stone-600', !compact && 'ml-[7.3rem]')}>
-            {store.formulation_strategy === 'eco'
-              ? 'Koszt w granicach technologii i smaku.'
-              : 'Technologia bez celu kosztowego.'}
+            {STRATEGY_COPY[store.formulation_strategy].description}
           </p>
         </div>
       </div>
@@ -408,17 +407,6 @@ export function WorkbenchSettingsLine({
             ✓ Ustawienia sprawdzone
           </span>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            saveDefaults(ownerPreferenceKey(), snapshot);
-            setDefaultsSaved(true);
-          }}
-          className="pro-focus-ring h-11 rounded-[14px] border border-ink/15 bg-white px-3 text-xs font-medium text-stone-600 hover:border-ink/35"
-          data-testid="profile-settings-set-default"
-        >
-          {defaultsSaved ? '✓ Domyślne zapisane' : 'Ustaw jako domyślne'}
-        </button>
       </div>
     </section>
   );

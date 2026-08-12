@@ -241,7 +241,7 @@ export function fitProteinTarget(
       best = candidate;
   };
 
-  for (const source of sources) {
+  exactPairSearch: for (const source of sources) {
     const sourceProtein = source.ingredient.composition.protein_percent;
     const balancers = candidates
       .filter(
@@ -277,6 +277,16 @@ export function fitProteinTarget(
       };
 
       consider(next, source.id, balancer.id, Math.abs(sourceDelta));
+
+      // The two-line equation above targets the requested protein mass
+      // exactly. Once the unchanged Engine accepts that candidate and the
+      // product-layer residual is numerically zero, no later pair or
+      // coordinated grid candidate can improve the primary objective. Stop
+      // here instead of exhaustively evaluating thousands of equivalent
+      // candidates. Native hard-safety remains enforced inside `consider`.
+      if ((selectedBest()?.assessment.absoluteResidualPp ?? Infinity) <= 1e-9) {
+        break exactPairSearch;
+      }
 
       // A protein-exact two-line exchange can cross a native water/solids or
       // POD/NPAC edge. Search one additional mass-neutral exchange between
@@ -459,9 +469,11 @@ export function fitProteinTarget(
 
   // Frontier monotonicity: an infeasible higher request may never be labelled
   // "best achievable" with LESS protein than a lower target the same verified
-  // formulation space can already reach. Probe the immediately lower 1 pp
-  // control targets (bounded to five) and judge those candidates against the
-  // ORIGINAL target. This is product-layer search only; every candidate still
+  // formulation space can already reach. Find the highest reachable whole-pp
+  // control target by deterministic bisection, then judge every probe against
+  // the ORIGINAL target. A fixed "five values below" scan missed the valid
+  // 21% frontier for 30% requests and could therefore return less protein than
+  // a 25% request. This is product-layer search only; every candidate still
   // passes the unchanged native Engine hard-safety gate in `consider`.
   if (
     probeLowerTargets &&
@@ -471,31 +483,37 @@ export function fitProteinTarget(
     selectedBest()?.assessment.reached !== true
   ) {
     const originalTarget = before.targetPercent;
-    for (
-      let lowerTarget = originalTarget - PROTEIN_GELATO_TARGET.controlStepPercent, probes = 0;
-      lowerTarget > before.actualPercent + PROTEIN_GELATO_TARGET.tolerancePercent && probes < 5;
-      lowerTarget -= PROTEIN_GELATO_TARGET.controlStepPercent, probes += 1
-    ) {
+    const step = PROTEIN_GELATO_TARGET.controlStepPercent;
+    let reachableStep = Math.floor(before.actualPercent / step);
+    let unreachableStep = Math.ceil(originalTarget / step);
+    let probes = 0;
+    while (unreachableStep - reachableStep > 1 && probes < 8) {
+      const probeStep = Math.floor((reachableStep + unreachableStep) / 2);
+      const lowerTarget = probeStep * step;
       const lowerInput: RecipeInput = {
         ...input,
         goals: { ...input.goals, target_protein_percent: lowerTarget },
       };
       const lower = fitProteinTarget(lowerInput, set, excludedIngredientIds, false);
-      if (!lower.assessment.hardSafe || lower.assessment.actualPercent === null) continue;
-      const restoredTargetInput: RecipeInput = {
-        ...lower.input,
-        goals: { ...lower.input.goals, target_protein_percent: originalTarget },
-      };
-      const movement = restoredTargetInput.items.reduce((sum, item) => {
-        const prior = input.items.find((candidate) => candidate.id === item.id);
-        return sum + Math.abs(item.planned_grams - (prior?.planned_grams ?? 0));
-      }, 0);
-      consider(
-        restoredTargetInput,
-        lower.sourceLineId ?? 'protein-frontier',
-        lower.balancingLineId ?? 'protein-frontier',
-        movement,
-      );
+      probes += 1;
+      if (lower.assessment.hardSafe && lower.assessment.actualPercent !== null) {
+        const restoredTargetInput: RecipeInput = {
+          ...lower.input,
+          goals: { ...lower.input.goals, target_protein_percent: originalTarget },
+        };
+        const movement = restoredTargetInput.items.reduce((sum, item) => {
+          const prior = input.items.find((candidate) => candidate.id === item.id);
+          return sum + Math.abs(item.planned_grams - (prior?.planned_grams ?? 0));
+        }, 0);
+        consider(
+          restoredTargetInput,
+          lower.sourceLineId ?? 'protein-frontier',
+          lower.balancingLineId ?? 'protein-frontier',
+          movement,
+        );
+      }
+      if (lower.assessment.reached && lower.assessment.hardSafe) reachableStep = probeStep;
+      else unreachableStep = probeStep;
     }
   }
 

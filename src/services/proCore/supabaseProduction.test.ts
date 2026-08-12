@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
 import { buildRecipeVersion } from '@/features/pro-core/recipeVersioning';
 import type { RecipeVersion } from '@/features/pro-core/recipeContracts';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { supabaseProductionRepository } from './supabaseProduction';
 
@@ -129,6 +130,39 @@ const makeVersion = (versionId: string, versionNumber = 1, batch = 1000): Recipe
     { recipeId: 'r-1', ownerUserId: U1, versionNumber, recipeInput: input(batch, [item('milk', 'Milk', 600), item('sugar', 'Sugar', 400)]), trace: TRACE, source: 'manual', createdBy: U1, createdAt: '2026-07-12T10:00:00.000Z' },
     versionId,
   );
+const makeVersionWithToppings = (): RecipeVersion => {
+  const productComposition: RecipeCompositionMetadata = {
+    schemaVersion: 1,
+    baseScope: 'BASE_FORMULATION',
+    baseOrder: ['sugar', 'milk'],
+    toppings: [
+      {
+        id: 'top-milk',
+        ingredient: {
+          id: 'PI-ING-MILK', canonical_ingredient_id: 'PI-ING-MILK', name: 'Milk topping',
+        } as unknown as RecipeCompositionMetadata['toppings'][number]['ingredient'],
+        planned_grams: 70, actual_grams: null, process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
+      },
+      {
+        id: 'top-sauce',
+        ingredient: {
+          id: 'PI-ING-SAUCE', canonical_ingredient_id: 'PI-ING-SAUCE', name: 'Strawberry sauce',
+        } as unknown as RecipeCompositionMetadata['toppings'][number]['ingredient'],
+        planned_grams: 60, actual_grams: null, process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 1,
+      },
+    ],
+    migrationAmbiguities: [],
+  };
+  return buildRecipeVersion(
+    {
+      recipeId: 'r-1', ownerUserId: U1, versionNumber: 1,
+      recipeInput: input(1000, [item('milk', 'Milk', 600), item('sugar', 'Sugar', 400)]),
+      productComposition,
+      trace: TRACE, source: 'manual', createdBy: U1, createdAt: '2026-07-12T10:00:00.000Z',
+    },
+    'ver-topping',
+  );
+};
 
 /** A deterministic clock (increments per call) + id generator for stable event ordering. */
 function seams(prefix = 'gen') {
@@ -167,6 +201,29 @@ describe('supabaseProduction — createRun persists the frozen plan from an EXAC
     expect(store.tables.production_run_planned_items).toHaveLength(2);
     expect(store.tables.production_run_events).toHaveLength(1);
     expect(store.tables.production_runs![0]!.recipe_version_id).toBe('ver-1');
+  });
+
+  it('freezes independently ordered Base and topping rows without changing the Base batch meaning', async () => {
+    const repo = repoFor(store);
+    const run = await repo.createRun({
+      ownerUserId: U1,
+      version: makeVersionWithToppings(),
+      target: { kind: 'weight_g', grams: 2000 },
+      capabilities: PRO,
+      by: U1,
+    });
+    expect(run.plannedBatchG).toBe(2000);
+    expect(run.plannedItems.map((line) => [line.id, line.processScope, line.scopePosition])).toEqual([
+      ['sugar', 'BASE_FORMULATION', 0],
+      ['milk', 'BASE_FORMULATION', 1],
+      ['top-milk', 'POST_PROCESS_ADDON', 0],
+      ['top-sauce', 'POST_PROCESS_ADDON', 1],
+    ]);
+    expect(run.plannedItems.filter((line) => line.processScope === 'POST_PROCESS_ADDON').map((line) => line.plannedGrams)).toEqual([140, 120]);
+    const persisted = store.tables.production_run_planned_items as Array<Record<string, unknown>>;
+    expect(persisted[2]).toMatchObject({
+      process_scope: 'POST_PROCESS_ADDON', canonical_ingredient_id: 'PI-ING-MILK', scope_position: 0,
+    });
   });
 
   it('refuses Production Mode for Demo and Home, and writes nothing', async () => {

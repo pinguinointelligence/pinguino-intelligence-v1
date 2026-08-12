@@ -12,7 +12,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
-import { isReviewModeEnabled } from './reviewMode';
+import { isReviewModeEnabled, ownerReviewStorageKey } from './reviewMode';
 import { REVIEW_ITEMS, reviewItemsForPath } from './reviewItems';
 
 let mockPersona: ProCorePersona = 'pro';
@@ -28,6 +28,11 @@ const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
 
 describe('isReviewModeEnabled (pure resolver)', () => {
+  it('scopes explicit owner-review opt-in to the authenticated account', () => {
+    expect(ownerReviewStorageKey('owner-a')).not.toBe(ownerReviewStorageKey('owner-b'));
+    expect(ownerReviewStorageKey(null)).not.toBe(ownerReviewStorageKey('owner-a'));
+  });
+
   it('is OFF for every persona on a production build without the staging flag', () => {
     for (const persona of ['demo', 'home', 'pro'] as const) {
       expect(
@@ -69,6 +74,7 @@ describe('isReviewModeEnabled (pure resolver)', () => {
         envFlag: '1',
         hostname: 'pinguino-staging-preview.vercel.app',
         persona: 'pro',
+        ownerOptIn: true,
       }),
     ).toBe(true);
     expect(
@@ -77,8 +83,21 @@ describe('isReviewModeEnabled (pure resolver)', () => {
         envFlag: undefined,
         hostname: 'staging.pinguinoai.com',
         persona: 'pro',
+        ownerOptIn: true,
       }),
     ).toBe(true);
+  });
+
+  it('keeps a normal commercial Pro session clean on staging until owner review is explicit', () => {
+    expect(
+      isReviewModeEnabled({
+        isDev: false,
+        envFlag: '1',
+        hostname: 'staging.pinguinoai.com',
+        persona: 'pro',
+        ownerOptIn: false,
+      }),
+    ).toBe(false);
   });
 
   it('recognises only the exact canonical staging host and keeps customer personas hidden', () => {

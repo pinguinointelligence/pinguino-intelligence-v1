@@ -8,6 +8,7 @@
  * canSaveRecipe capability) is refused at the gate — it never receives a save-capable payload.
  */
 import type { RecipeInput } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   buildRecipeVersion,
   canCreateNewRecipe,
@@ -30,6 +31,7 @@ export interface CreateRecipeInput {
   title: string;
   notes?: string | null;
   recipeInput: RecipeInput;
+  productComposition?: RecipeCompositionMetadata | null;
   trace: VersionTrace;
   source?: RecipeVersionSource;
   by: string;
@@ -68,7 +70,7 @@ export class InMemoryRecipes {
     const recipeId = this.nextId();
     const version = buildRecipeVersion({
       recipeId, ownerUserId: input.ownerUserId, versionNumber: 1,
-      recipeInput: input.recipeInput, trace: input.trace, source: input.source ?? 'manual',
+      recipeInput: input.recipeInput, productComposition: input.productComposition, trace: input.trace, source: input.source ?? 'manual',
       createdBy: input.by, createdAt: now,
     }, this.nextId());
     const recipe: SavedRecipe = {
@@ -83,12 +85,12 @@ export class InMemoryRecipes {
   }
 
   /** Explicit "Save new version" — editing produces a NEW immutable version. */
-  saveNewVersion(recipeId: string, recipeInput: RecipeInput, trace: VersionTrace, by: string, opts: { source?: RecipeVersionSource; note?: string } = {}): RecipeVersion {
+  saveNewVersion(recipeId: string, recipeInput: RecipeInput, trace: VersionTrace, by: string, opts: { source?: RecipeVersionSource; note?: string } = {}, productComposition?: RecipeCompositionMetadata | null): RecipeVersion {
     const recipe = this.require(recipeId);
     const list = this.versions.get(recipeId) ?? [];
     const version = buildRecipeVersion({
       recipeId, ownerUserId: recipe.ownerUserId, versionNumber: nextVersionNumber(list),
-      recipeInput, trace, source: opts.source ?? 'manual', createdBy: by, createdAt: this.now(), note: opts.note ?? null,
+      recipeInput, productComposition, trace, source: opts.source ?? 'manual', createdBy: by, createdAt: this.now(), note: opts.note ?? null,
     }, this.nextId());
     list.push(version);
     this.versions.set(recipeId, list);

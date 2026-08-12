@@ -72,7 +72,9 @@ describe('canonical Pro header contract', () => {
   it('integrates pending state into the recalculation control', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(page).toContain('data-testid="pro-recalc-state"');
-    expect(page).toContain('Zmieniono recepturę lub ustawienia. Przelicz ponownie.');
+    expect(page).toContain('Oczekuje na przeliczenie');
+    expect(page).toContain("pinguino:profile-settings-required");
+    expect(page).toContain('profile.isConfirmed(signature, recipe.draftContextSeq)');
     expect(page).not.toContain('copy.proWorkbar.pendingRecalc');
   });
 });
@@ -136,7 +138,10 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card).toContain('data-testid="home-machine-capacity"');
     expect(card).toContain('Pojemność jednego cyklu');
     expect(card).toContain('data-testid="profile-batch-combined"');
-    expect(card).toContain('Ustaw jako domyślne');
+    expect(card).not.toContain('Ustaw jako domyślne');
+    expect(read('features', 'pro-workbench', 'AccountRecipeDefaults.tsx')).toContain(
+      'Domyślne ustawienia receptury',
+    );
   });
 
   it('renders serving immediately for Professional and capacity instead for a Home machine', () => {
@@ -239,6 +244,22 @@ describe('preflight and recipe-specific persistence', () => {
     expect(useRecipeStore.getState().target_batch_grams).toBe(originalBatch);
   });
 
+  it('atomically replaces authenticated-owner defaults and removes stale product rows', () => {
+    useRecipeProfileStore.getState().saveDefaults('owner-a:gelato', settings());
+    useRecipeProfileStore.getState().saveDefaults('owner-a:sorbet', {
+      ...settings(), visibleProductType: 'sorbet',
+    });
+    useRecipeProfileStore.getState().saveDefaults('owner-b:gelato', settings());
+    useRecipeProfileStore.getState().replaceDefaultsForOwner('owner-a', [{
+      productContextKey: 'gelato',
+      settings: { ...settings(), targetBatchGrams: 1_400 },
+    }]);
+    expect(useRecipeProfileStore.getState().defaultsFor('owner-a:gelato')?.targetBatchGrams)
+      .toBe(1_400);
+    expect(useRecipeProfileStore.getState().defaultsFor('owner-a:sorbet')).toBeNull();
+    expect(useRecipeProfileStore.getState().defaultsFor('owner-b:gelato')).not.toBeNull();
+  });
+
   it('preserves the five-detent intent in defaults instead of collapsing ±2 to Engine ±1', () => {
     const directionIntents = {
       ...DEFAULT_DIRECTION_TARGETS,
@@ -298,27 +319,24 @@ describe('preflight and recipe-specific persistence', () => {
 });
 
 describe('five-detent direction language', () => {
-  it('renders two supported intent controls and four honest editorial results', () => {
+  it('renders exactly one six-row regulator family without Direction text clutter', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
-    expect(axes).toContain("id: 'sweetness'");
-    expect(axes).toContain("id: 'softness'");
+    expect(axes).toContain("['sweetness'");
+    expect(axes).toContain("['softness'");
     expect(axes).toContain('[-2, -1, 0, 1, 2]');
-    expect(axes).toContain('Wybrano:');
-    expect(axes).toContain('Mniej słodkie');
-    expect(axes).toContain('Bardziej miękkie');
-    expect(axes).toContain('Kalibracja w przygotowaniu');
-    expect(axes).toContain('Brak wystarczających danych');
+    expect(axes).not.toContain('Wybrano:');
+    expect(axes).not.toContain('Mniej słodkie');
+    expect(axes).not.toContain('Bardziej słodkie');
+    expect(axes).toContain('unavailable="Kalibracja"');
+    expect(axes).toContain('unavailable="Brak danych"');
     expect(axes).toContain('Zbalansowana');
     expect(axes).toContain('Bardzo stabilna');
-    expect(axes).toContain('profile-readonly-');
-    expect(axes).toContain('role="img"');
-    expect(axes).toContain('Pole tylko do odczytu');
-    expect(axes).toContain('low="Lekka"');
-    expect(axes).toContain('high="Pełna"');
-    expect(axes).toContain('low="Niska"');
-    expect(axes).toContain('high="Wysoka"');
-    expect(axes).toContain('p-2 shadow-pro-md');
-    expect(axes).toContain('space-y-2');
+    expect(axes).toContain('profile-regulator-');
+    expect(axes).toContain("role={readOnly ? 'img' : 'slider'}");
+    expect(axes).toContain("id=\"creaminess\"");
+    expect(axes).toContain("id=\"intensity\"");
+    expect(axes).toContain("id=\"structure\"");
+    expect(axes).toContain("id=\"stability\"");
     expect(axes).not.toContain('Teraz</');
     expect(axes).not.toContain('Cel</');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).not.toContain(
@@ -331,12 +349,12 @@ describe('five-detent direction language', () => {
       <ProfileDirectionAxes result={calculateRecipe(starterMilkBase())} />,
     );
     for (const id of ['structure', 'stability']) {
-      const start = html.indexOf(`data-testid="profile-readonly-${id}"`);
+      const start = html.indexOf(`data-testid="profile-regulator-${id}"`);
       expect(start).toBeGreaterThan(-1);
-      const end = html.indexOf('</div>', start);
+      const end = html.indexOf('</article>', start);
       const card = html.slice(start, end);
       expect(card).toContain('role="img"');
-      expect(card).toContain('Pole tylko do odczytu');
+      expect(card).toContain('data-regulator-state="readonly"');
       expect(card).not.toContain('<button');
       expect(card).not.toContain('<input');
     }

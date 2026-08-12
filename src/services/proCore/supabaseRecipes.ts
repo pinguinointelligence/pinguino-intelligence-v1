@@ -29,6 +29,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import type { RecipeInput } from '@/engine';
 import {
+  readRecipeCompositionMetadata,
+  type RecipeCompositionMetadata,
+} from '@/features/recipe-composition/recipeCompositionPersistence';
+import {
   buildRecipeVersion,
   canCreateNewRecipe,
   compareVersions,
@@ -58,6 +62,7 @@ interface SavedRecipeRow {
   name: string;
   description: string | null;
   recipe_input: unknown;
+  product_composition: unknown | null;
   product_type: string | null;
   serving_profile: string | null;
   engine_version: string;
@@ -83,6 +88,7 @@ interface RecipeVersionRow {
   owner_user_id: string;
   version_number: number;
   recipe_input: unknown;
+  product_composition: unknown | null;
   total_batch_g: number | string;
   product_profile: string | null;
   temperature_c: number | string | null;
@@ -102,6 +108,7 @@ interface RecipeVersionInsert {
   owner_user_id: string;
   version_number: number;
   recipe_input: RecipeInput;
+  product_composition: RecipeCompositionMetadata | null;
   total_batch_g: number;
   product_profile: string | null;
   temperature_c: number | null;
@@ -165,6 +172,10 @@ function rowToVersion(row: RecipeVersionRow): RecipeVersion {
     ownerUserId: row.owner_user_id,
     versionNumber: row.version_number,
     recipeInput: row.recipe_input as RecipeInput,
+    productComposition: readRecipeCompositionMetadata(
+      row.product_composition,
+      (row.recipe_input as RecipeInput).items.map((item) => item.id),
+    ),
     totalBatchG: num(row.total_batch_g),
     productProfile: row.product_profile ?? null,
     temperatureC: row.temperature_c == null ? null : num(row.temperature_c),
@@ -185,6 +196,7 @@ function versionToInsert(version: RecipeVersion): RecipeVersionInsert {
     owner_user_id: version.ownerUserId,
     version_number: version.versionNumber,
     recipe_input: version.recipeInput,
+    product_composition: version.productComposition,
     total_batch_g: version.totalBatchG,
     product_profile: version.productProfile,
     temperature_c: version.temperatureC,
@@ -307,6 +319,7 @@ export class SupabaseRecipes {
   private async advanceAggregate(recipeId: string, version: RecipeVersion): Promise<void> {
     const recipePatch: Record<string, unknown> = {
       recipe_input: version.recipeInput,
+      product_composition: version.productComposition,
       batch_grams: Math.round(version.totalBatchG),
       engine_version: version.engineVersion,
       config_version: version.configVersion,
@@ -349,6 +362,7 @@ export class SupabaseRecipes {
       p_name: args.title,
       p_description: args.notes ?? null,
       p_recipe_input: args.recipeInput,
+      p_product_composition: args.productComposition ?? null,
       p_batch_grams: batchFromInput(args.recipeInput),
       p_total_batch_g: (args.recipeInput as unknown as { target_batch_grams?: number }).target_batch_grams ?? 0,
       p_engine_version: args.trace.engineVersion,
@@ -413,6 +427,7 @@ export class SupabaseRecipes {
         name: args.title,
         description: args.notes ?? null,
         recipe_input: args.recipeInput,
+        product_composition: args.productComposition ?? null,
         product_type: null,
         engine_version: args.trace.engineVersion,
         config_version: args.trace.configVersion,
@@ -449,6 +464,7 @@ export class SupabaseRecipes {
           ownerUserId: uid,
           versionNumber: 1,
           recipeInput: args.recipeInput,
+          productComposition: args.productComposition ?? null,
           trace: args.trace,
           source: args.source ?? 'manual',
           createdBy: args.by,
@@ -473,6 +489,7 @@ export class SupabaseRecipes {
     trace: { engineVersion: string; configVersion: string; mapperDatasetVersion?: string | null },
     by: string,
     opts: SaveVersionOpts = {},
+    productComposition: RecipeCompositionMetadata | null = null,
   ): Promise<RecipeVersion> {
     await this.requireUserId();
     const meta = await this.fetchMeta(recipeId);
@@ -486,6 +503,7 @@ export class SupabaseRecipes {
           ownerUserId: meta.owner_user_id,
           versionNumber: nextNumber,
           recipeInput,
+          productComposition,
           trace,
           source: opts.source ?? 'manual',
           createdBy: by,
@@ -642,8 +660,8 @@ export function supabaseRecipesRepository(client: SupabaseClient): RecipesReposi
   const svc = new SupabaseRecipes(client);
   return {
     createRecipe: (args) => svc.createRecipe(args),
-    saveNewVersion: (recipeId, recipeInput, trace, by, opts) =>
-      svc.saveNewVersion(recipeId, recipeInput, trace, by, opts),
+    saveNewVersion: (recipeId, recipeInput, trace, by, opts, productComposition) =>
+      svc.saveNewVersion(recipeId, recipeInput, trace, by, opts, productComposition ?? null),
     renameRecipe: (recipeId, title) => svc.renameRecipe(recipeId, title),
     archiveRecipe: (recipeId, archived) => svc.archiveRecipe(recipeId, archived),
     restore: (recipeId, targetVersionNumber, by, caps) =>

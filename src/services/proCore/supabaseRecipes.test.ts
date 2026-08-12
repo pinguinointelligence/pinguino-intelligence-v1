@@ -10,8 +10,9 @@
  * (never a false "saved").
  */
 import { describe, expect, it } from 'vitest';
-import type { RecipeInput } from '@/engine';
+import type { EngineIngredient, RecipeInput } from '@/engine';
 import type { RecipeCapabilities } from '@/features/pro-core/recipeContracts';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { supabaseRecipesRepository } from './supabaseRecipes';
 import { FakeDB, makeClient, type Result } from './supabaseRecipesFake';
 
@@ -23,6 +24,48 @@ const DEMO: RecipeCapabilities = { canSaveRecipe: false, canViewRecipeVersions: 
 const item = (id: string, name: string, grams: number) => ({ id, ingredient: { name }, planned_grams: grams });
 const input = (batch: number, items: ReturnType<typeof item>[]): RecipeInput =>
   ({ items, mode: 'gelato', category: 'gelato', target_temperature_c: -11, target_batch_grams: batch, machine_capacity_grams: null }) as unknown as RecipeInput;
+const toppingIngredient: EngineIngredient = {
+  id: 'PI-ING-MILK',
+  canonical_ingredient_id: 'PI-ING-MILK',
+  name: 'Milk topping',
+  category: 'dairy',
+  composition: {
+    water_percent: 87,
+    solids_percent: 13,
+    fat_percent: 3.5,
+    protein_percent: 3.4,
+    carbohydrate_percent: 5,
+    sugar_percent: 5,
+    sucrose_percent: 0,
+    glucose_percent: 0,
+    dextrose_percent: 0,
+    fructose_percent: 0,
+    lactose_percent: 5,
+    polyol_percent: 0,
+    fiber_percent: 0,
+    salt_percent: 0.1,
+    alcohol_percent: 0,
+    kcal_per_100g: 61,
+  },
+  pod_value: null,
+  pac_value: null,
+  de_value: null,
+  cost_per_kg: 1,
+  confidence_score: 100,
+  source_type: 'manual',
+  is_verified: true,
+};
+const composition = (grams: number): RecipeCompositionMetadata => ({
+  schemaVersion: 1,
+  baseScope: 'BASE_FORMULATION',
+  baseOrder: ['a'],
+  toppings: [{
+    id: 'top-milk',
+    ingredient: toppingIngredient,
+    planned_grams: grams, actual_grams: null, process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
+  }],
+  migrationAmbiguities: [],
+});
 
 /* ── tests (the in-memory fake SupabaseClient lives in ./supabaseRecipesFake) ── */
 
@@ -103,6 +146,29 @@ describe('supabase RecipesRepository adapter (fake client)', () => {
     expect(db.recipe_versions).toHaveLength(3);
     expect(JSON.stringify(db.recipe_versions.slice(0, 2))).toBe(historyBefore);
     expect(db.saved_recipe_meta[0]!.latest_version_number).toBe(3);
+  });
+
+  it('round-trips and restores the immutable Base/Topping composition sidecar', async () => {
+    const { repo } = seed();
+    const { recipe, version: v1 } = await repo.createRecipe({
+      ownerUserId: 'user-1', title: 'Milk topping',
+      recipeInput: input(1000, [item('a', 'Milk', 1000)]),
+      productComposition: composition(70),
+      trace: TRACE, by: 'user-1', capabilities: PRO,
+    });
+    expect(v1.productComposition).toEqual(composition(70));
+    const v2 = await repo.saveNewVersion(
+      recipe.recipeId,
+      input(1000, [item('a', 'Milk', 1000)]),
+      TRACE,
+      'user-1',
+      undefined,
+      composition(90),
+    );
+    expect(v2.productComposition).toEqual(composition(90));
+    const restored = await repo.restore(recipe.recipeId, 1, 'user-1', PRO);
+    expect(restored.versionNumber).toBe(3);
+    expect(restored.productComposition).toEqual(composition(70));
   });
 
   it('the store refuses any UPDATE on recipe_versions (append-only, matching the DB grants)', async () => {

@@ -4,6 +4,8 @@ import { buildRecipeVersion } from '@/features/pro-core/recipeVersioning';
 import type { RecipeVersion } from '@/features/pro-core/recipeContracts';
 import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { InMemoryProduction } from './inMemoryProduction';
+import { computeDeviation } from '@/features/pro-core/productionMode';
+import type { ProductionRun } from '@/features/pro-core/productionContracts';
 
 const TRACE = { engineVersion: 'e1', configVersion: 'c1' };
 const NOW = '2026-07-12T10:00:00.000Z';
@@ -129,6 +131,37 @@ describe('InMemoryProduction — actuals, deviation & immutable plan', () => {
     const plannedBefore = JSON.stringify(run.plannedItems);
     svc.recordActual(run.runId, { by: 'u1', items: [{ id: 'milk', name: 'Milk', actualGrams: 9999 }] });
     expect(JSON.stringify(svc.getRun(run.runId)!.plannedItems)).toBe(plannedBefore);
+  });
+
+  it('keeps Base vessel deviation independent from post-process topping mass', () => {
+    const base = startInProgress();
+    const run: ProductionRun = {
+      ...base,
+      plannedBatchG: 1000,
+      plannedItems: [
+        { id: 'base', name: 'Base', canonicalIngredientId: 'BASE', processScope: 'BASE_FORMULATION', scopePosition: 0, plannedGrams: 1000, displayGrams: 1000 },
+        { id: 'topping', name: 'Sauce', canonicalIngredientId: 'SAUCE', processScope: 'POST_PROCESS_ADDON', scopePosition: 0, plannedGrams: 130, displayGrams: 130 },
+      ],
+      actual: {
+        items: [
+          { id: 'base', name: 'Base', actualGrams: 1000 },
+          { id: 'topping', name: 'Sauce', actualGrams: 135 },
+        ],
+        actualTotalMixG: 1000,
+        actualYieldG: null,
+        wasteG: null,
+        substitutions: [],
+        operatorNotes: null,
+        deviationReason: null,
+        recordedBy: 'u1',
+        recordedAt: NOW,
+      },
+    };
+    const deviation = computeDeviation(run);
+    expect(deviation.plannedTotalG).toBe(1000);
+    expect(deviation.actualTotalMixG).toBe(1000);
+    expect(deviation.totalDeltaG).toBe(0);
+    expect(deviation.lines.find((line) => line.id === 'topping')?.deltaGrams).toBe(5);
   });
 });
 

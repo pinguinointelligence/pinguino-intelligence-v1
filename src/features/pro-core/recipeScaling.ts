@@ -13,6 +13,8 @@
  * an honest `needs_more_information` result unless the caller supplies the density or yield.
  */
 import type { RecipeInput } from '@/engine';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { RecipeVersion } from './recipeContracts';
 
 /** How much of the recipe to make. Weight is always exact; volume/portions need a conversion. */
@@ -24,6 +26,9 @@ export type ScaleTarget =
 export interface ScaledIngredient {
   id: string;
   name: string;
+  canonicalIngredientId: string | null;
+  processScope: 'BASE_FORMULATION';
+  scopePosition: number;
   /** The version's original planned grams for this line. */
   sourceGrams: number;
   /** Canonical scaled grams (calculation precision — milligram grid by default). */
@@ -48,6 +53,8 @@ export interface ExactScaleResult {
   canonicalDecimals: number;
   displayDecimals: number;
   lines: ScaledIngredient[];
+  /** Product-layer order/topping snapshot. Never passed to Base Engine. */
+  productComposition: RecipeCompositionMetadata | null;
   /** Preserved verbatim from the source version. */
   productProfile: string | null;
   temperatureC: number | null;
@@ -173,6 +180,9 @@ export function scaleRecipeVersion(
   }
 
   const items = version.recipeInput.items;
+  const basePosition = new Map(
+    (version.productComposition?.baseOrder ?? items.map((item) => item.id)).map((id, index) => [id, index]),
+  );
   const sources = items.map((it) => it.planned_grams);
   const sourceTotalG = sources.reduce((sum, g) => sum + g, 0);
   if (!(sourceTotalG > 0)) {
@@ -185,6 +195,9 @@ export function scaleRecipeVersion(
   const lines: ScaledIngredient[] = items.map((it, i) => ({
     id: it.id,
     name: it.ingredient.name,
+    canonicalIngredientId: it.ingredient.id ? canonicalIngredientId(it.ingredient) || null : null,
+    processScope: 'BASE_FORMULATION',
+    scopePosition: basePosition.get(it.id) ?? i,
     sourceGrams: it.planned_grams,
     grams: canonicalUnits[i]! / 10 ** canonicalDecimals,
     displayGrams: displayUnits[i]! / 10 ** displayDecimals,
@@ -203,6 +216,9 @@ export function scaleRecipeVersion(
     canonicalDecimals,
     displayDecimals,
     lines,
+    productComposition: version.productComposition
+      ? (JSON.parse(JSON.stringify(version.productComposition)) as RecipeCompositionMetadata)
+      : null,
     productProfile: version.productProfile,
     temperatureC: version.temperatureC,
     engineVersion: version.engineVersion,

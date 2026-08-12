@@ -23,15 +23,23 @@ export interface ReviewModeInputs {
   hostname?: string;
   /** The EXISTING resolved pro-core persona (owner/QA sessions resolve to 'pro'). */
   persona: ProCorePersona;
+  /** Explicit per-session owner/QA opt-in. Commercial Pro entitlement alone
+   * must never expose internal review surfaces on staging. */
+  ownerOptIn?: boolean;
+}
+
+export function ownerReviewStorageKey(ownerUserId: string | null): string {
+  return `pinguino-owner-review:${ownerUserId ?? 'anonymous'}`;
 }
 
 /** True only for owner/QA sessions in dev or on an explicitly recognised staging deploy. */
 export function isReviewModeEnabled(inputs: ReviewModeInputs): boolean {
   const isProductionHost =
     inputs.hostname === 'pinguinoai.com' || inputs.hostname === 'www.pinguinoai.com';
+  const stagingAllows =
+    inputs.hostname === 'staging.pinguinoai.com' || inputs.envFlag === '1';
   const environmentAllows =
-    !isProductionHost &&
-    (inputs.isDev || inputs.hostname === 'staging.pinguinoai.com' || inputs.envFlag === '1');
+    !isProductionHost && (inputs.isDev || (stagingAllows && inputs.ownerOptIn === true));
   const capabilityAllows = inputs.persona === 'pro';
   return environmentAllows && capabilityAllows;
 }

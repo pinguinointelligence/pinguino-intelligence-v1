@@ -21,6 +21,7 @@ export interface SavedRecipe {
   name: string;
   description: string | null;
   recipe_input: unknown;
+  product_composition?: unknown | null;
   product_type: string | null;
   serving_profile: string | null;
   active_engine_label: string;
@@ -100,7 +101,7 @@ export function buildSavePayload(args: {
 
 const composition = z.record(z.string(), z.number()); // per-100g numeric fields only
 
-const ingredient = z.looseObject({
+export const savedEngineIngredientSchema = z.looseObject({
   id: z.string(),
   name: z.string(),
   category: z.string(),
@@ -119,7 +120,7 @@ const ingredient = z.looseObject({
 
 const item = z.looseObject({
   id: z.string(),
-  ingredient,
+  ingredient: savedEngineIngredientSchema,
   planned_grams: z.number(),
   actual_grams: z.number().nullable(),
   lock_type: z.string(),

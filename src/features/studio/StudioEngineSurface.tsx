@@ -115,6 +115,7 @@ export function StudioEngineSurface({
   recalcSlot,
   activePanel = 'recipe',
   recipeBar,
+  onRecalculate,
 }: {
   forceDemo?: boolean;
   /** The Przelicz z PI overlay (Preview → Zastosuj/Anuluj → Cofnij), host-wired. */
@@ -123,6 +124,7 @@ export function StudioEngineSurface({
   activePanel?: ProContextTab;
   /** The one recipe name/save bar, mounted at the bottom-left of the editor. */
   recipeBar?: ReactNode;
+  onRecalculate?: () => void;
 }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
@@ -156,6 +158,18 @@ export function StudioEngineSurface({
       loadPreset(DEFAULT_PRESET);
     }
   }, [forceDemo, setPlan, loadPreset]);
+
+  useEffect(() => {
+    const showProfileSettings = () => {
+      setCockpitTab('profile');
+      setMobileCockpitOpen(true);
+      queueMicrotask(() =>
+        document.querySelector<HTMLElement>('[data-testid="workbench-settings-line"]')?.focus(),
+      );
+    };
+    window.addEventListener('pinguino:profile-settings-required', showProfileSettings);
+    return () => window.removeEventListener('pinguino:profile-settings-required', showProfileSettings);
+  }, []);
 
   useEffect(() => {
     const query = window.matchMedia(MOBILE_COCKPIT_QUERY);
@@ -250,6 +264,7 @@ export function StudioEngineSurface({
                   layout="workbench"
                   mode={productionReady ? 'production' : 'recipe'}
                   production={production}
+                  onRecalculate={onRecalculate}
                 />
               </div>
             ) : (

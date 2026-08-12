@@ -61,9 +61,11 @@ describe('Protein Gelato target orchestration', () => {
         if (assessment.actualPercent === null) return;
         expect(Math.abs(assessment.actualPercent - targetPercent)).toBeLessThanOrEqual(0.1);
         expect(proposed.items.every((item) => Number.isInteger(item.planned_grams))).toBe(true);
-        expect(proposed.items.find((item) => item.id === 'main-raspberry')?.planned_grams).toBe(
-          100,
-        );
+        const mainGrams = proposed.items.find(
+          (item) => item.id === 'main-raspberry',
+        )?.planned_grams;
+        expect(mainGrams).toBeGreaterThanOrEqual(100);
+        expect(built.preview.mainObjective?.technicalScore).toBe(10);
         expect(proposed.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(
           1000,
           6,
@@ -82,7 +84,7 @@ describe('Protein Gelato target orchestration', () => {
           '2026-08-09T10:01:00.000Z',
           'protein-apply',
         );
-        expect(committed.ok).toBe(true);
+        expect(committed.ok, JSON.stringify(committed)).toBe(true);
       });
     }
   }
@@ -115,7 +117,8 @@ describe('Protein Gelato target orchestration', () => {
       expect(
         built.preview.proposedInput.items.find((item) => item.id === 'main-raspberry')
           ?.planned_grams,
-      ).toBe(100);
+      ).toBeGreaterThanOrEqual(100);
+      expect(built.preview.mainObjective?.technicalScore).toBe(10);
     });
   }
 
@@ -156,6 +159,28 @@ describe('Protein Gelato target orchestration', () => {
   }, 40_000);
 
   it.each([-11, -12, -13] as const)(
+    'never lowers best-achievable actual protein when the high target rises from 25 to 30 at %s°C',
+    (temperatureC) => {
+      const outcomes = [25, 30].map((targetPercent) => {
+        const input = proteinDraft(temperatureC, targetPercent);
+        const built = buildOptimizePreview(input, EMPTY, '2026-08-12T00:00:00.000Z');
+        expect(built.ok, built.ok ? '' : JSON.stringify(built)).toBe(true);
+        if (!built.ok) return { targetPercent, actualPercent: null };
+        const result = calculateRecipe(built.preview.proposedInput);
+        expect(detectViolations(result)).toEqual([]);
+        return {
+          targetPercent,
+          actualPercent: assessProteinTarget(built.preview.proposedInput, result).actualPercent,
+        };
+      });
+      expect(outcomes[1]!.actualPercent ?? -Infinity).toBeGreaterThanOrEqual(
+        (outcomes[0]!.actualPercent ?? Infinity) - 0.05,
+      );
+    },
+    60_000,
+  );
+
+  it.each([-11, -12, -13] as const)(
     'keeps the Strawberry 20→21→22 frontier monotonic at %s°C',
     (temperatureC) => {
       const rows = [20, 21, 22].map((targetPercent) => {
@@ -189,7 +214,6 @@ describe('Protein Gelato target orchestration', () => {
         );
       }
       if (!requested22?.applicable) expect(requested22?.code).not.toBe('applied');
-      console.info(`PROTEIN_FRONTIER_${temperatureC}`, JSON.stringify(rows));
     },
     30_000,
   );
@@ -248,7 +272,7 @@ describe('Protein Gelato target orchestration', () => {
     );
   });
 
-  it('never changes either Main line or their 2:1 identity ratio', () => {
+  it('maximizes the Main group without changing either identity or the 2:1 ratio', () => {
     const input = proteinDraft(-12, 20);
     input.items = [
       { ...input.items[0]!, id: 'main-raspberry', planned_grams: 120 },
@@ -267,9 +291,10 @@ describe('Protein Gelato target orchestration', () => {
       (item) => item.id === 'main-raspberry',
     );
     const banana = built.preview.proposedInput.items.find((item) => item.id === 'main-banana');
-    expect(raspberry?.planned_grams).toBe(120);
-    expect(banana?.planned_grams).toBe(60);
+    expect(raspberry?.planned_grams).toBeGreaterThanOrEqual(120);
+    expect(banana?.planned_grams).toBeGreaterThanOrEqual(60);
     expect((raspberry?.planned_grams ?? 0) / (banana?.planned_grams ?? 1)).toBe(2);
+    expect(built.preview.mainObjective?.technicalScore).toBe(10);
   });
 
   it('refuses to formulate when Protein Main is unavailable', () => {

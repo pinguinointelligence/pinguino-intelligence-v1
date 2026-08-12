@@ -54,6 +54,8 @@ export interface IngredientRowActions {
   ) => void;
   /** Retained store capability; Recipe mode intentionally no longer calls it. */
   markIngredientUnavailable?: (lineId: string) => void;
+  moveUp?: (lineId: string) => void;
+  moveDown?: (lineId: string) => void;
 }
 
 export interface ProductionRowActions {
@@ -116,7 +118,7 @@ function LockGlyph({ locked }: { locked: boolean }) {
   );
 }
 
-function DialogShell({
+export function DialogShell({
   label,
   testId,
   children,
@@ -419,6 +421,10 @@ function RecipeRow({
   meta,
   substituteCandidates,
   priceView,
+  canMoveUp,
+  canMoveDown,
+  onDragStart,
+  onDrop,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
@@ -427,6 +433,10 @@ function RecipeRow({
   meta: IngredientRowMeta;
   substituteCandidates: readonly SubstituteCandidate[];
   priceView?: IngredientPriceView;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onDragStart?: (lineId: string) => void;
+  onDrop?: (lineId: string) => void;
 }) {
   const unit = 'g' as const;
   const [rowMenuOpen, setRowMenuOpen] = useState(false);
@@ -482,9 +492,26 @@ function RecipeRow({
 
   return (
     <>
-      <div className={ROW_GRID}>
+      <div
+        className={ROW_GRID}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          onDrop?.(item.id);
+        }}
+        data-scope="BASE_FORMULATION"
+      >
         <div className="min-w-0">
           <span className="flex min-w-0 items-center gap-1.5">
+            <span
+              aria-hidden
+              draggable
+              onDragStart={() => onDragStart?.(item.id)}
+              className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-6"
+              title="Przeciągnij, aby zmienić kolejność"
+            >
+              ⠿
+            </span>
             {isMain ? (
               <span
                 aria-label="Składnik główny"
@@ -497,11 +524,11 @@ function RecipeRow({
             ) : null}
             {role === 'addition' ? (
               <span
-                aria-label="Dodatek"
-                title={t.role.additionHint}
-                className="shrink-0 rounded-lg bg-pro-sage px-2 py-1 text-xs font-semibold text-ink"
+                aria-label="Dawny Dodatek — wymaga decyzji"
+                title="Historyczna rola nie potwierdza, że produkt był dodawany po produkcji. Wybierz Główny lub Standardowy."
+                className="shrink-0 rounded-lg border border-attention/30 bg-attention/[0.08] px-2 py-1 text-xs font-semibold text-attention"
               >
-                Dodatek
+                Dawny Dodatek · decyzja
               </span>
             ) : null}
             {required ? (
@@ -701,21 +728,27 @@ function RecipeRow({
                 >
                   {t.role.standard}
                 </MenuButton>
+
+                <MenuDivider />
+                <MenuHeading>Kolejność</MenuHeading>
                 <MenuButton
-                  selected={role === 'addition'}
+                  disabled={!canMoveUp}
                   onClick={() => {
-                    setRole('addition');
+                    actions.moveUp?.(item.id);
                     setRowMenuOpen(false);
                   }}
                 >
-                  {t.role.addition}
+                  Przesuń wyżej
                 </MenuButton>
-                {role === 'addition' ? (
-                  <p className="px-2 pb-2 text-xs leading-relaxed text-nonprod">
-                    Proces dodatku jest w przygotowaniu; rola pozostaje zapisana, ale nie udaje
-                    gotowej automatyzacji.
-                  </p>
-                ) : null}
+                <MenuButton
+                  disabled={!canMoveDown}
+                  onClick={() => {
+                    actions.moveDown?.(item.id);
+                    setRowMenuOpen(false);
+                  }}
+                >
+                  Przesuń niżej
+                </MenuButton>
 
                 <MenuDivider />
                 <MenuHeading>{t.recipe.heading}</MenuHeading>
@@ -966,6 +999,10 @@ export function IngredientRow({
   priceView,
   productionLine,
   productionActions,
+  canMoveUp = false,
+  canMoveDown = false,
+  onDragStart,
+  onDrop,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
@@ -978,6 +1015,10 @@ export function IngredientRow({
   priceView?: IngredientPriceView;
   productionLine?: ProductionLineState;
   productionActions?: ProductionRowActions;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onDragStart?: (lineId: string) => void;
+  onDrop?: (lineId: string) => void;
 }) {
   return (
     <div
@@ -999,6 +1040,7 @@ export function IngredientRow({
       data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}
       data-line-id={item.id}
       data-customer-role={mode === 'recipe' ? customerRoleFor(item.lock_type, meta) : undefined}
+      tabIndex={-1}
     >
       {mode === 'production' ? (
         productionLine && productionActions ? (
@@ -1013,6 +1055,10 @@ export function IngredientRow({
           meta={meta}
           substituteCandidates={substituteCandidates}
           priceView={priceView}
+          canMoveUp={canMoveUp}
+          canMoveDown={canMoveDown}
+          onDragStart={onDragStart}
+          onDrop={onDrop}
         />
       )}
     </div>

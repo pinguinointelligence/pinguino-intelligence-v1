@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
@@ -25,7 +25,6 @@ import {
   effectiveCostForIngredient,
 } from '@/features/pro-core/effectiveRecipePricing';
 import { effectiveLineCost } from '@/features/pro-core/costing';
-import { IngredientPicker } from './IngredientPicker';
 import {
   IngredientRow,
   PRODUCTION_ROW_GRID,
@@ -34,7 +33,8 @@ import {
   type IngredientTableMode,
   type ProductionRowActions,
 } from './IngredientRow';
-import { ServerIngredientPicker } from './ServerIngredientPicker';
+import { ProductPickerPopover } from './ProductPickerPopover';
+import { ToppingRow, TOPPING_ROW_GRID } from './ToppingRow';
 import {
   ingredientRowMeta,
   unresolvedRequiredIngredients,
@@ -63,6 +63,7 @@ export function IngredientBuilder({
   layout = 'card',
   mode = 'recipe',
   production,
+  onRecalculate,
 }: {
   items: EffectiveRecipeItem[];
   totalBatchG: number;
@@ -71,6 +72,7 @@ export function IngredientBuilder({
   layout?: 'card' | 'workbench';
   mode?: IngredientTableMode;
   production?: ProductionWorkspaceView;
+  onRecalculate?: () => void;
 }) {
   const queryClient = useQueryClient();
   const authUserId = useAuthStore((state) =>
@@ -79,6 +81,12 @@ export function IngredientBuilder({
   const customerOwnerUserId =
     !demo && (authUserId ?? (import.meta.env.DEV ? '00000000-0000-0000-0000-000000000001' : null));
   const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
+  const compositionMigrationAmbiguities = useRecipeStore(
+    (state) => state.compositionMigrationAmbiguities,
+  );
+  const resolveCompositionAmbiguity = useRecipeStore(
+    (state) => state.resolveCompositionAmbiguity,
+  );
   const loadCustomerPrices = useCustomerPriceStore((state) => state.loadForOwner);
   const saveCustomerPrice = useCustomerPriceStore((state) => state.saveOverride);
   const resetCustomerPrice = useCustomerPriceStore((state) => state.resetOverride);
@@ -89,8 +97,40 @@ export function IngredientBuilder({
   }, [customerOwnerUserId, loadCustomerPrices]);
 
   const addIngredient = useRecipeStore((state) => state.addIngredient);
+  const addTopping = useRecipeStore((state) => state.addTopping);
+  const toppings = useRecipeStore((state) => state.toppings);
+  const baseOrder = useRecipeStore((state) => state.baseOrder);
+  const removeTopping = useRecipeStore((state) => state.removeTopping);
+  const setToppingGrams = useRecipeStore((state) => state.setToppingGrams);
+  const replaceToppingIngredient = useRecipeStore((state) => state.replaceToppingIngredient);
+  const moveBaseItem = useRecipeStore((state) => state.moveBaseItem);
+  const moveTopping = useRecipeStore((state) => state.moveTopping);
+  const draggedBaseId = useRef<string | null>(null);
+  const draggedToppingId = useRef<string | null>(null);
+  const [pickerNotice, setPickerNotice] = useState<string | null>(null);
+  const [reorderNotice, setReorderNotice] = useState('');
   const library = useIngredientLibrary({ demo });
   const { lockFor, wrapActions } = useLineLockControls();
+
+  const baseReorderNotice = (lineId: string, action: string): string => {
+    const state = useRecipeStore.getState();
+    const orderedIds = state.baseOrder.length > 0
+      ? state.baseOrder
+      : state.items.map((item) => item.id);
+    const position = orderedIds.indexOf(lineId) + 1;
+    const name = state.items.find((item) => item.id === lineId)?.ingredient.name ?? 'Składnik';
+    return `${name} ${action} w Bazie. Pozycja ${Math.max(position, 1)} z ${orderedIds.length}.`;
+  };
+
+  const toppingReorderNotice = (lineId: string, action: string): string => {
+    const state = useRecipeStore.getState();
+    const ordered = [...state.toppings].sort(
+      (left, right) => left.addon_sort_order - right.addon_sort_order,
+    );
+    const position = ordered.findIndex((item) => item.id === lineId) + 1;
+    const name = ordered.find((item) => item.id === lineId)?.ingredient.name ?? 'Topping';
+    return `${name} ${action} w toppingach. Pozycja ${Math.max(position, 1)} z ${ordered.length}.`;
+  };
 
   const setRoleMeta = useIngredientTableUxStore((state) => state.setRole);
   const toggleRequired = useIngredientTableUxStore((state) => state.toggleRequired);
@@ -132,6 +172,7 @@ export function IngredientBuilder({
       if (role === 'main') {
         setRoleMeta(lineId, 'standard');
         coreActions.setMainIngredient(lineId);
+        resolveCompositionAmbiguity(lineId);
         return;
       }
       const current = useRecipeStore.getState().items.find((item) => item.id === lineId);
@@ -141,6 +182,7 @@ export function IngredientBuilder({
       if (current?.lock_type !== 'main' && previousRole !== role) {
         useRecipeStore.getState().markProfileTargetChanged();
       }
+      resolveCompositionAmbiguity(lineId);
     },
     toggleRequired: (lineId) => {
       const current = useRecipeStore.getState().items.find((item) => item.id === lineId);
@@ -193,6 +235,14 @@ export function IngredientBuilder({
           candidate.authorization,
           mainIdentityConfirmed,
         );
+    },
+    moveUp: (lineId) => {
+      moveBaseItem(lineId, -1);
+      setReorderNotice(baseReorderNotice(lineId, 'przesunięto wyżej'));
+    },
+    moveDown: (lineId) => {
+      moveBaseItem(lineId, 1);
+      setReorderNotice(baseReorderNotice(lineId, 'przesunięto niżej'));
     },
   };
 
@@ -251,7 +301,14 @@ export function IngredientBuilder({
       </div>
     );
 
-  const rows = items.map((item) => {
+  const orderIndex = new Map(baseOrder.map((id, index) => [id, index]));
+  const orderedItems = [...items].sort((left, right) => {
+    const leftIndex = orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+    const rightIndex = orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+    return leftIndex === rightIndex ? 0 : leftIndex - rightIndex;
+  });
+
+  const rows = orderedItems.map((item, rowIndex) => {
     const rawIngredient =
       storeItems.find((candidate) => candidate.id === item.id)?.ingredient ?? item.ingredient;
     const cost = effectiveCostForIngredient(rawIngredient, customerPrices);
@@ -331,6 +388,24 @@ export function IngredientBuilder({
         priceView={mode === 'recipe' ? priceView : undefined}
         productionLine={productionLine}
         productionActions={productionActions}
+        canMoveUp={rowIndex > 0}
+        canMoveDown={rowIndex < orderedItems.length - 1}
+        onDragStart={(lineId) => {
+          draggedBaseId.current = lineId;
+        }}
+        onDrop={(targetLineId) => {
+          const source = draggedBaseId.current;
+          draggedBaseId.current = null;
+          if (!source || source === targetLineId) return;
+          const sourceIndex = orderedItems.findIndex((entry) => entry.id === source);
+          const targetIndex = orderedItems.findIndex((entry) => entry.id === targetLineId);
+          if (sourceIndex < 0 || targetIndex < 0) return;
+          const direction: -1 | 1 = targetIndex < sourceIndex ? -1 : 1;
+          for (let index = sourceIndex; index !== targetIndex; index += direction) {
+            moveBaseItem(source, direction);
+          }
+          setReorderNotice(baseReorderNotice(source, 'przeniesiono'));
+        }}
       />
     );
   });
@@ -355,13 +430,45 @@ export function IngredientBuilder({
     ) : null;
 
   const addIngredientAndResolveRequiredRole = (ingredient: Parameters<typeof addIngredient>[0]) => {
+    const canonicalId = canonicalIngredientId(ingredient);
+    const existing = useRecipeStore
+      .getState()
+      .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+    if (existing) {
+      setPickerNotice(
+        `${ingredient.name} już znajduje się w Bazie. Przeniesiono fokus do istniejącego wiersza.`,
+      );
+      return { focusLineId: existing.id };
+    }
     addIngredient(ingredient);
+    const added = useRecipeStore
+      .getState()
+      .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+    setPickerNotice(null);
     const normalizedName = ingredient.name.trim().toLocaleLowerCase('pl');
     for (const unresolvedEntry of Object.values(unresolvedByLineId)) {
       if (unresolvedEntry.name.trim().toLocaleLowerCase('pl') === normalizedName) {
         clearLineMeta(unresolvedEntry.lineId);
       }
     }
+    return added ? { focusLineId: added.id } : undefined;
+  };
+
+  const addOrFocusTopping = (ingredient: Parameters<typeof addTopping>[0]) => {
+    const canonicalId = canonicalIngredientId(ingredient);
+    const existing = useRecipeStore
+      .getState()
+      .toppings.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+    addTopping(ingredient);
+    const selected = useRecipeStore
+      .getState()
+      .toppings.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+    setPickerNotice(
+      existing
+        ? `${ingredient.name} już jest toppingiem. Zachowano jeden wiersz i przeniesiono do niego fokus.`
+        : null,
+    );
+    return selected ? { focusLineId: selected.id } : undefined;
   };
 
   const totalLine = (
@@ -378,33 +485,102 @@ export function IngredientBuilder({
     </div>
   );
 
-  const picker = library.serverSearch ? (
-    <ServerIngredientPicker
+  const picker = (
+    <ProductPickerPopover
       library={library}
+      scope="BASE_FORMULATION"
       onAdd={addIngredientAndResolveRequiredRole}
-      compact={layout === 'workbench'}
-    />
-  ) : (
-    <IngredientPicker
-      library={library}
-      onAdd={addIngredientAndResolveRequiredRole}
-      compact={layout === 'workbench'}
     />
   );
+
+  const toppingTotalG = toppings.reduce((sum, item) => sum + item.planned_grams, 0);
+  const finalTotalG = totalBatchG + toppingTotalG;
+  const toppingRows = toppings.map((item, index) => {
+    const cost = effectiveCostForIngredient(item.ingredient, customerPrices);
+    const canonicalId = customerPriceCanonicalId(item.ingredient);
+    const priceView: IngredientPriceView = {
+      cost,
+      lineCost: effectiveLineCost(item.planned_grams, cost),
+      canEdit:
+        customerOwnerUserId !== null && canPersistCustomerPrice(item.ingredient),
+      onSave:
+        customerOwnerUserId && canonicalId
+          ? async (pricePerKg) => {
+              await saveCustomerPrice({
+                ownerUserId: customerOwnerUserId,
+                canonicalIngredientId: canonicalId,
+                pricePerKg,
+                currency: CUSTOMER_COST_CURRENCY,
+              });
+            }
+          : undefined,
+      onReset:
+        customerOwnerUserId && canonicalId
+          ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
+          : undefined,
+    };
+    return (
+      <ToppingRow
+        key={item.id}
+        item={item}
+        priceView={priceView}
+        library={library}
+        canMoveUp={index > 0}
+        canMoveDown={index < toppings.length - 1}
+        onChange={(grams) => setToppingGrams(item.id, grams)}
+        onRemove={() => removeTopping(item.id)}
+        onReplace={(ingredient) => replaceToppingIngredient(item.id, ingredient)}
+        onMove={(direction) => {
+          moveTopping(item.id, direction);
+          setReorderNotice(
+            toppingReorderNotice(
+              item.id,
+              `przesunięto ${direction < 0 ? 'wyżej' : 'niżej'}`,
+            ),
+          );
+        }}
+        onDragStart={() => {
+          draggedToppingId.current = item.id;
+        }}
+        onDrop={() => {
+          const source = draggedToppingId.current;
+          draggedToppingId.current = null;
+          if (!source || source === item.id) return;
+          const sourceIndex = toppings.findIndex((entry) => entry.id === source);
+          if (sourceIndex < 0) return;
+          const direction: -1 | 1 = index < sourceIndex ? -1 : 1;
+          for (let position = sourceIndex; position !== index; position += direction) {
+            moveTopping(source, direction);
+          }
+          setReorderNotice(toppingReorderNotice(source, 'przeniesiono'));
+        }}
+      />
+    );
+  });
 
   if (layout === 'workbench') {
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
         <div className="shrink-0 border-b border-ink/10 px-3 py-2">
           <div className="flex items-center justify-between gap-3">
-            <SectionLabel>{mode === 'production' ? 'Produkcja' : b.title}</SectionLabel>
+            <SectionLabel>{mode === 'production' ? 'Produkcja' : 'Baza lodowa'}</SectionLabel>
             {demo || library.status === 'fallback' ? (
               <NonProductionBadge itemId="pro-demo-library" />
             ) : null}
           </div>
           {mode === 'recipe' ? (
-            <div className="mt-2" data-testid="ingredient-add-slot">
+            <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="ingredient-add-slot">
               {picker}
+              {onRecalculate ? (
+                <button
+                  type="button"
+                  onClick={onRecalculate}
+                  className="pro-focus-ring h-11 rounded-xl bg-ink px-4 text-xs font-semibold text-white shadow-pro-e1 hover:bg-graphite"
+                  data-testid="pro-workbar-recalc"
+                >
+                  Przelicz z PI
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="mt-2 flex items-center justify-between gap-3 border border-ink/10 bg-stone-50 px-3 py-2">
@@ -423,20 +599,79 @@ export function IngredientBuilder({
               ) : null}
             </div>
           )}
+          {mode === 'recipe' && pickerNotice ? (
+            <p
+              className="mt-2 rounded-xl border border-gold/25 bg-education-ivory px-3 py-2 text-xs text-stone-700"
+              role="status"
+              data-testid="product-picker-notice"
+            >
+              {pickerNotice}
+            </p>
+          ) : null}
+          <p className="sr-only" role="status" aria-live="polite" data-testid="composition-reorder-status">
+            {reorderNotice}
+          </p>
+          {mode === 'recipe' && compositionMigrationAmbiguities.length > 0 ? (
+            <p
+              className="mt-2 rounded-xl border border-attention/30 bg-attention/[0.07] px-3 py-2 text-xs text-stone-700"
+              role="status"
+              data-testid="composition-migration-ambiguity"
+            >
+              {compositionMigrationAmbiguities.length === 1
+                ? '1 historyczny wpis wymaga decyzji. Zachowano go w Bazie — wybierz Główny lub Standardowy.'
+                : `${compositionMigrationAmbiguities.length} historyczne wpisy wymagają decyzji. Zachowano je bez zmiany receptury.`}
+            </p>
+          ) : null}
           {mode === 'recipe' ? duplicateNotice : null}
         </div>
-        {items.length === 0 ? (
+        {items.length === 0 && mode === 'production' ? (
           <p className="shrink-0 px-4 pt-4 text-sm leading-relaxed text-ivory/60">{b.empty}</p>
         ) : (
           <>
-            <div className="hidden shrink-0 border-b border-ink/[0.075] md:block">{header}</div>
+            {items.length > 0 ? (
+              <div className="hidden shrink-0 border-b border-ink/[0.075] md:block">{header}</div>
+            ) : null}
             <div className="min-h-0 flex-1 overflow-y-auto" data-testid="ingredient-rows-scroll">
               <div>
                 {infeasibleNotice}
-                {rows}
+                {items.length > 0 ? rows : (
+                  <p className="px-4 py-5 text-sm leading-relaxed text-stone-600">{b.empty}</p>
+                )}
+                {mode === 'recipe' ? (
+                  <>
+                    <div className="flex items-center justify-between border-t border-ink/10 bg-stone-50 px-4 py-3" data-testid="base-mass-total">
+                      <span className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">Baza lodowa</span>
+                      <strong className="font-mono text-sm tabular-nums text-ink">{totalBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g</strong>
+                    </div>
+                    <section className="border-t border-status-ideal/15" aria-labelledby="topping-section-heading">
+                      <div className="flex flex-wrap items-center justify-between gap-3 bg-pro-sage/18 px-3 py-3">
+                        <div>
+                          <h3 id="topping-section-heading" className="text-xs font-semibold tracking-[0.05em] text-ink uppercase">Toppingi po produkcji</h3>
+                          <p className="mt-0.5 text-xs text-stone-600">Nie zmieniają bilansu ani wyniku technicznego bazy.</p>
+                        </div>
+                        <ProductPickerPopover
+                          library={library}
+                          scope="POST_PROCESS_ADDON"
+                          onAdd={addOrFocusTopping}
+                        />
+                      </div>
+                      {toppings.length > 0 ? (
+                        <>
+                          <div className={`${TOPPING_ROW_GRID} hidden border-y border-status-ideal/12 bg-pro-sage/12 px-3 py-2 md:grid`}>
+                            {['Topping', 'Ilość', 'Cena/kg', ''].map((label) => (
+                              <span key={label || 'menu'} className={headCell}>{label || '\u00a0'}</span>
+                            ))}
+                          </div>
+                          {toppingRows}
+                        </>
+                      ) : null}
+                    </section>
+                    <CompositionMassSummary baseMassG={totalBatchG} toppingMassG={toppingTotalG} />
+                  </>
+                ) : null}
               </div>
             </div>
-            <div className="shrink-0 px-3 pb-1">{totalLine}</div>
+            {mode === 'production' ? <div className="shrink-0 px-3 pb-1">{totalLine}</div> : null}
           </>
         )}
       </div>
@@ -460,6 +695,41 @@ export function IngredientBuilder({
         </>
       )}
       <div className="mt-5">{picker}</div>
+      <section className="mt-6 border-t border-status-ideal/20 pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SectionLabel>Toppingi po produkcji</SectionLabel>
+          <ProductPickerPopover
+            library={library}
+            scope="POST_PROCESS_ADDON"
+            onAdd={addOrFocusTopping}
+          />
+        </div>
+        <div className="mt-3">{toppingRows}</div>
+        <div className="mt-4 flex justify-between text-sm text-ivory/70">
+          <span>Toppingi +{toppingTotalG.toLocaleString('pl-PL')} g</span>
+          <strong>Produkt finalny {finalTotalG.toLocaleString('pl-PL')} g</strong>
+        </div>
+      </section>
     </Card>
+  );
+}
+export function CompositionMassSummary({
+  baseMassG,
+  toppingMassG,
+}: {
+  baseMassG: number;
+  toppingMassG: number;
+}) {
+  return (
+    <div className="space-y-2 border-t border-ink/10 bg-white px-4 py-3" data-testid="composition-mass-summary">
+      <div className="flex items-center justify-between text-xs text-stone-600">
+        <span>Toppingi</span>
+        <strong className="font-mono tabular-nums text-ink">+{toppingMassG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g</strong>
+      </div>
+      <div className="flex items-center justify-between border-t border-ink/10 pt-2">
+        <span className="text-xs font-semibold tracking-[0.04em] text-ink uppercase">Produkt finalny</span>
+        <strong className="font-mono text-base tabular-nums text-ink">{(baseMassG + toppingMassG).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g</strong>
+      </div>
+    </div>
   );
 }

@@ -248,8 +248,19 @@ describe('Protein Gelato calibration report', () => {
       const exact10 = target.hardSafe && target.reached;
       if (target.hardSafe) expect(violations).toEqual([]);
       else expect(violations.length).toBeGreaterThan(0);
-      for (const [id, grams] of fixture.expectedMain) {
-        expect(proposed.items.find((item) => item.id === id)?.planned_grams).toBe(grams);
+      const mainScales = fixture.expectedMain.map(([id, grams]) => {
+        const proposedGrams = proposed.items.find((item) => item.id === id)?.planned_grams;
+        expect(proposedGrams).toBeGreaterThanOrEqual(grams);
+        return proposedGrams! / grams;
+      });
+      for (const scale of mainScales.slice(1)) expect(scale).toBeCloseTo(mainScales[0]!, 7);
+      if (fixture.expectedMain.length > 0) {
+        expect(built.preview.mainObjective).toMatchObject({
+          startingMainGrams: fixture.expectedMain.reduce((sum, [, grams]) => sum + grams, 0),
+          technicalScore: expect.any(Number),
+        });
+      } else {
+        expect(built.preview.mainObjective).toBeUndefined();
       }
       if (fixture.expectedSource) {
         expect(
@@ -325,9 +336,8 @@ describe('Protein Gelato bounded target sweep', () => {
         expect(typeof score).toBe('number');
         if (exact10) expect(score).toBe(10);
         else expect(score).toBeLessThan(10);
-        expect(proposed.items.find((item) => item.id === 'main-strawberry')?.planned_grams).toBe(
-          100,
-        );
+        expect(proposed.items.find((item) => item.id === 'main-strawberry')?.planned_grams)
+          .toBeGreaterThanOrEqual(100);
         expect(proposed.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(
           1000,
           6,

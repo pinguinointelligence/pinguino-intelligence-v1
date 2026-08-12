@@ -8,6 +8,7 @@
  * version; restoring an old version creates a NEW latest version (history never moves back).
  */
 import type { RecipeInput } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 
 /** Where a version came from (its provenance in the edit history). */
 export type RecipeVersionSource =
@@ -26,6 +27,8 @@ export interface RecipeVersion {
   versionNumber: number;
   /** The engine source of truth — results are recomputed from this, never stored stale. */
   recipeInput: RecipeInput;
+  /** Product-layer scope/order/topping snapshot. Never enters Base Engine. */
+  productComposition: RecipeCompositionMetadata | null;
   /** Total batch weight (g) captured for quick display + guards (recomputable from input). */
   totalBatchG: number;
   productProfile: string | null;

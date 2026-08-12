@@ -105,6 +105,9 @@ interface PlannedRow {
   planned_grams: number | string;
   display_grams: number | string;
   position: number;
+  process_scope?: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
+  canonical_ingredient_id?: string | null;
+  scope_position?: number;
 }
 
 interface ActualRow {
@@ -139,10 +142,19 @@ const numOrNull = (v: number | string | null): number | null => (v == null ? nul
 
 function mapPlanned(rows: PlannedRow[]): PlannedIngredient[] {
   return [...rows]
-    .sort((a, b) => a.position - b.position)
+    .sort((a, b) => {
+      const scopeA = a.process_scope ?? 'BASE_FORMULATION';
+      const scopeB = b.process_scope ?? 'BASE_FORMULATION';
+      if (scopeA !== scopeB) return scopeA === 'BASE_FORMULATION' ? -1 : 1;
+      const scoped = (a.scope_position ?? a.position) - (b.scope_position ?? b.position);
+      return scoped || a.position - b.position;
+    })
     .map((r) => ({
       id: r.line_id,
       name: r.name,
+      canonicalIngredientId: r.canonical_ingredient_id ?? null,
+      processScope: r.process_scope ?? 'BASE_FORMULATION',
+      scopePosition: r.scope_position ?? r.position,
       plannedGrams: num(r.planned_grams),
       displayGrams: num(r.display_grams),
     }));
@@ -355,6 +367,9 @@ export function supabaseProductionRepository(
             planned_grams: p.plannedGrams,
             display_grams: p.displayGrams,
             position: i,
+            process_scope: p.processScope,
+            canonical_ingredient_id: p.canonicalIngredientId,
+            scope_position: p.scopePosition,
           })),
         );
         if (plannedInsert.error) throw new ProductionPersistenceError(plannedInsert.error.message);

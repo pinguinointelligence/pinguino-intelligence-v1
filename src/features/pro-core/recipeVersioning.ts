@@ -7,6 +7,7 @@
  * user id — never a plan price id, never email.
  */
 import type { RecipeInput } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type {
   IngredientLineDiff,
   RecipeCapabilities,
@@ -32,6 +33,7 @@ export interface CreateVersionInput {
   ownerUserId: string;
   versionNumber: number;
   recipeInput: RecipeInput;
+  productComposition?: RecipeCompositionMetadata | null;
   trace: VersionTrace;
   source: RecipeVersionSource;
   createdBy: string;
@@ -51,6 +53,9 @@ export function buildRecipeVersion(input: CreateVersionInput, versionId: string)
     ownerUserId: input.ownerUserId,
     versionNumber: input.versionNumber,
     recipeInput: snapshot,
+    productComposition: input.productComposition
+      ? (JSON.parse(JSON.stringify(input.productComposition)) as RecipeCompositionMetadata)
+      : null,
     totalBatchG: snapshot.target_batch_grams,
     productProfile: input.productProfile ?? null,
     temperatureC: input.temperatureC ?? snapshot.target_temperature_c ?? null,
@@ -90,6 +95,7 @@ export function restoreVersion(
       ownerUserId: target.ownerUserId,
       versionNumber: nextVersionNumber(versions),
       recipeInput: target.recipeInput,
+      productComposition: target.productComposition,
       trace: { engineVersion: target.engineVersion, configVersion: target.configVersion, mapperDatasetVersion: target.mapperDatasetVersion },
       source: 'restored',
       createdBy: by,

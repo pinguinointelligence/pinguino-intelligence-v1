@@ -36,6 +36,7 @@ import {
   attachRecipeProfileMetadata,
   profileSnapshotFromState,
 } from '@/features/pro-workbench/recipeProfilePersistence';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
@@ -252,11 +253,16 @@ export function useCanonicalRecipeSave(
     createNew: (title, note) =>
       run(async () => {
         const recipeInput = buildInput();
+        const productComposition =
+          options.buildInput === undefined
+            ? recipeCompositionFromState(useRecipeStore.getState())
+            : null;
         const { recipe, version } = await repository!.createRecipe({
           ownerUserId: ownerId,
           title: title.trim(),
           notes: note?.trim() || null,
           recipeInput,
+          productComposition,
           trace: TRACE,
           source: 'manual',
           by: ownerId,
@@ -277,6 +283,10 @@ export function useCanonicalRecipeSave(
       run(async () => {
         if (!savedRecipeId) throw new Error('Brak powiązanej receptury.');
         const recipeInput = buildInput();
+        const productComposition =
+          options.buildInput === undefined
+            ? recipeCompositionFromState(useRecipeStore.getState())
+            : null;
         const version = await repository!.saveNewVersion(
           savedRecipeId,
           recipeInput,
@@ -285,6 +295,7 @@ export function useCanonicalRecipeSave(
           {
             note: note?.trim() || undefined,
           },
+          productComposition,
         );
         if (linkStoreDraft) {
           markSaved(

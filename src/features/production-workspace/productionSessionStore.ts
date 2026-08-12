@@ -13,6 +13,10 @@ import {
   type ProductionSession,
   type ProductionSource,
 } from './productionSession';
+import {
+  recipeCompositionFromState,
+  type RecipeCompositionMetadata,
+} from '@/features/recipe-composition/recipeCompositionPersistence';
 import { assessProductionRescue, productionRescueCandidateFingerprint } from './productionRescue';
 
 export interface ProductionSessionStoreState {
@@ -21,6 +25,7 @@ export interface ProductionSessionStoreState {
     ownerUserId: string | null;
     source: ProductionSource;
     plannedInput: RecipeInput;
+    plannedComposition?: RecipeCompositionMetadata;
     now: string;
     sessionId: string;
   }) => void;
@@ -28,6 +33,7 @@ export interface ProductionSessionStoreState {
     ownerUserId: string | null;
     source: ProductionSource;
     plannedInput: RecipeInput;
+    plannedComposition?: RecipeCompositionMetadata;
     now: string;
     sessionId: string;
   }) => void;
@@ -45,6 +51,7 @@ const buildSession = (input: {
   ownerUserId: string | null;
   source: ProductionSource;
   plannedInput: RecipeInput;
+  plannedComposition?: RecipeCompositionMetadata;
   now: string;
   sessionId: string;
 }) =>
@@ -53,6 +60,7 @@ const buildSession = (input: {
     ownerUserId: input.ownerUserId,
     source: input.source,
     plannedInput: input.plannedInput,
+    plannedComposition: input.plannedComposition,
     startedAt: input.now,
   });
 
@@ -73,7 +81,7 @@ export const useProductionSessionStore = create<ProductionSessionStoreState>()(
           ) {
             return state;
           }
-          const fingerprint = productionSourceFingerprint(input.plannedInput);
+          const fingerprint = productionSourceFingerprint(input.plannedInput, input.plannedComposition);
           if (
             state.session?.status === 'completed' &&
             state.session.sourceFingerprint === fingerprint &&
@@ -157,7 +165,32 @@ export const useProductionSessionStore = create<ProductionSessionStoreState>()(
     }),
     {
       name: 'pinguino-production-session',
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        if (version >= 2) return persisted as ProductionSessionStoreState;
+        const state = persisted as { session?: ProductionSession | null };
+        if (!state.session) return state as ProductionSessionStoreState;
+        const legacy = state.session as ProductionSession & {
+          addonLines?: ProductionSession['addonLines'];
+          plannedComposition?: RecipeCompositionMetadata;
+          stage?: ProductionSession['stage'];
+        };
+        const plannedComposition = legacy.plannedComposition ??
+          recipeCompositionFromState({
+            items: legacy.plannedInput.items,
+            baseOrder: legacy.plannedInput.items.map((item) => item.id),
+          });
+        return {
+          ...state,
+          session: {
+            ...legacy,
+            schemaVersion: 2,
+            plannedComposition,
+            addonLines: legacy.addonLines ?? [],
+            stage: legacy.stage ?? 'base',
+          },
+        } as ProductionSessionStoreState;
+      },
       partialize: (state) => ({ session: state.session }),
     },
   ),

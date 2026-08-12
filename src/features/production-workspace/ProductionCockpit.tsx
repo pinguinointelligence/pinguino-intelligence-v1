@@ -1,12 +1,15 @@
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
 import { MasterLabelEditor } from '@/features/master-label/MasterLabelEditor';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
+import { ProductionActualControl } from './ProductionActualControl';
+import { productionStepForGrams } from './productionSession';
 
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
 
 export function ProductionCockpit({ production }: { production: ProductionWorkspaceView }) {
   const { session, progress, rescue, score } = production;
+  const toppingProgress = production.toppingProgress;
   if (production.practicalReady === false) {
     return (
       <section
@@ -180,9 +183,67 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
         </section>
       ) : null}
 
+      {session.stage === 'addons' && session.addonLines.length > 0 ? (
+        <section
+          className="overflow-hidden rounded-[22px] border border-status-ideal/25 bg-status-ideal/[0.06]"
+          data-testid="production-topping-stage"
+        >
+          <div className="flex items-end justify-between gap-3 border-b border-white/10 px-4 py-3">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.05em] text-[#c9d4c2] uppercase">Etap 2</p>
+              <h3 className="mt-1 text-sm font-semibold text-white">Toppingi po produkcji</h3>
+              <p className="mt-1 text-xs text-white/58">Nie uruchamiają korekty ani Rescue bazy.</p>
+            </div>
+            <span className="font-mono text-sm tabular-nums text-white">
+              {toppingProgress?.confirmedCount ?? 0}/{toppingProgress?.totalCount ?? 0}
+            </span>
+          </div>
+          <div className="divide-y divide-white/8 px-3 py-1">
+            {session.addonLines.map((line) => {
+              const value = line.confirmed ? line.physicalAddedGrams : line.draftActualGrams;
+              const difference = value - line.plannedGrams;
+              return (
+                <div key={line.lineId} className="py-3" data-testid={`production-topping-${line.lineId}`}>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-xs font-semibold text-white">{line.name}</span>
+                    <span className="shrink-0 font-mono text-xs tabular-nums text-white/65">
+                      plan {formatPhysicalMassG(line.plannedGrams)} g ·{' '}
+                      <strong className={Math.abs(difference) <= 0.05 ? 'text-white/65' : 'text-attention-soft'}>
+                        {difference > 0 ? '+' : ''}{formatPhysicalMassG(difference)} g
+                      </strong>
+                    </span>
+                  </div>
+                  <ProductionActualControl
+                    lineId={line.lineId}
+                    ingredientName={`${line.name} — topping`}
+                    value={value}
+                    minimum={line.recordCorrectionCount > 0 ? 0 : line.physicalAddedGrams}
+                    step={productionStepForGrams(line.targetGrams)}
+                    confirmed={line.confirmed}
+                    correctionMode={!line.confirmed && line.recordCorrectionCount > 0}
+                    onChange={(grams) => production.setDraftActual(line.lineId, grams)}
+                    onConfirm={() =>
+                      line.confirmed
+                        ? production.reopenRecord(line.lineId)
+                        : production.confirmLine(line.lineId)
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-between border-t border-white/10 px-4 py-3 text-xs">
+            <span className="text-white/58">Faktyczne toppingi</span>
+            <strong className="font-mono tabular-nums text-white">
+              {formatPhysicalMassG(toppingProgress?.forecastMassG ?? 0)} g
+            </strong>
+          </div>
+        </section>
+      ) : null}
+
       <ReadinessFrame
         state="W PRZYGOTOWANIU"
-        title="Brakuje składnika · etapy · toppingi"
+        title="Brakuje składnika · automatyczne etapy"
         compact
         tone="dark"
         details={{
@@ -204,14 +265,16 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
 
       <button
         type="button"
-        disabled={!progress.coherent}
+        disabled={!progress.coherent || !(toppingProgress?.coherent ?? true)}
         onClick={production.complete}
         className="pro-focus-ring h-11 w-full rounded-xl bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-transform enabled:hover:-translate-y-px disabled:cursor-not-allowed disabled:bg-stone-300"
         data-testid="complete-production"
       >
-        {progress.coherent
+        {progress.coherent && (toppingProgress?.coherent ?? true)
           ? 'Zakończ produkcję'
-          : `Potwierdź pozostałe · ${progress.totalCount - progress.confirmedCount}`}
+          : session.stage === 'addons'
+            ? `Potwierdź toppingi · ${(toppingProgress?.totalCount ?? 0) - (toppingProgress?.confirmedCount ?? 0)}`
+            : `Potwierdź bazę · ${progress.totalCount - progress.confirmedCount}`}
       </button>
     </div>
   );

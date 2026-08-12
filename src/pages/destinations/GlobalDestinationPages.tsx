@@ -7,6 +7,7 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { MasterLabelEditor } from '@/features/master-label/MasterLabelEditor';
+import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
 
 const quietLink =
   'flex min-h-14 items-center justify-between border-b border-ink/10 py-3 text-sm text-ink transition-opacity hover:opacity-55';
@@ -172,16 +173,31 @@ export function ProductionHubPage() {
       ) : (
         <>
           <div role="tablist" aria-label="Sekcje produkcji" className="flex border-b border-ink/15">
-            {productionTabs.map((tab) => (
+            {productionTabs.map((tab, index) => (
               <button
                 key={tab.id}
                 type="button"
                 role="tab"
+                id={`production-hub-${tab.id}-tab`}
+                aria-controls={`production-hub-${tab.id}-panel`}
                 aria-selected={active === tab.id}
+                tabIndex={active === tab.id ? 0 : -1}
                 onClick={() => setParams(tab.id === 'current' ? {} : { tab: tab.id })}
+                onKeyDown={(event) => {
+                  let nextIndex: number | null = null;
+                  if (event.key === 'ArrowRight') nextIndex = (index + 1) % productionTabs.length;
+                  else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + productionTabs.length) % productionTabs.length;
+                  else if (event.key === 'Home') nextIndex = 0;
+                  else if (event.key === 'End') nextIndex = productionTabs.length - 1;
+                  if (nextIndex === null) return;
+                  event.preventDefault();
+                  const next = productionTabs[nextIndex]!;
+                  setParams(next.id === 'current' ? {} : { tab: next.id });
+                  queueMicrotask(() => document.getElementById(`production-hub-${next.id}-tab`)?.focus());
+                }}
                 className={cn(
                   'min-h-12 border-b-2 px-4 text-xs font-semibold tracking-[0.08em]',
-                  active === tab.id ? 'border-ink text-ink' : 'border-transparent text-stone-400',
+                  active === tab.id ? 'border-ink text-ink' : 'border-transparent text-stone-600',
                 )}
                 data-testid={`production-tab-${tab.id}`}
               >
@@ -191,7 +207,13 @@ export function ProductionHubPage() {
           </div>
 
           {active === 'current' ? (
-            <section className="py-8" data-testid="production-current">
+            <section
+              id="production-hub-current-panel"
+              role="tabpanel"
+              aria-labelledby="production-hub-current-tab"
+              className="py-8"
+              data-testid="production-current"
+            >
               <h2 className="text-xl font-semibold text-ink">Bieżąca produkcja</h2>
               {session?.status === 'in_progress' ? (
                 <>
@@ -217,7 +239,13 @@ export function ProductionHubPage() {
           ) : null}
 
           {active === 'history' ? (
-            <section className="py-8" data-testid="production-history">
+            <section
+              id="production-hub-history-panel"
+              role="tabpanel"
+              aria-labelledby="production-hub-history-tab"
+              className="py-8"
+              data-testid="production-history"
+            >
               <h2 className="text-xl font-semibold text-ink">Historia produkcji</h2>
               {snapshot ? (
                 <div className="mt-6 border-y border-ink/10 py-5">
@@ -255,7 +283,13 @@ export function ProductionHubPage() {
           ) : null}
 
           {active === 'labels' ? (
-            <section className="py-8" data-testid="production-labels">
+            <section
+              id="production-hub-labels-panel"
+              role="tabpanel"
+              aria-labelledby="production-hub-labels-tab"
+              className="py-8"
+              data-testid="production-labels"
+            >
               <h2 className="text-xl font-semibold text-ink">Etykiety z zakończonych partii</h2>
               {snapshot ? (
                 <div className="mt-6 border border-ink/10">
@@ -314,6 +348,7 @@ export function AccountSettingsPage() {
             <span className="text-sm text-stone-500">Bezpieczeństwo</span>
             <span className="text-sm text-stone-600">Ustawienia konta</span>
           </div>
+          <AccountRecipeDefaults />
         </div>
       )}
     </DestinationSurface>

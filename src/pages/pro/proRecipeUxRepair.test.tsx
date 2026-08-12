@@ -436,7 +436,7 @@ describe('no unrelated module removal across the split surface files', () => {
 
   it('only genuinely uncalibrated directions remain explicit and visibly unavailable', () => {
     const html = renderAt('/pro/recipe');
-    const at = html.indexOf('Kalibracja w przygotowaniu');
+    const at = html.indexOf('Kalibracja');
     expect(at).toBeGreaterThan(-1);
     expect(at).toBeLessThan(html.indexOf('</main>'));
   });

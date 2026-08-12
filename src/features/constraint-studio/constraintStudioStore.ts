@@ -69,6 +69,7 @@ import {
   type ConstraintPreview,
   type DirectionBestAchievableConsent,
   type SuggestedBoundFix,
+  type SuggestedFixSessionAuthorization,
   type SubstitutionConsent,
   type SubstitutionSessionAuthorization,
 } from './applyPipeline';
@@ -306,6 +307,7 @@ export interface ConstraintStudioState {
   /** Session-only; never persisted. Bound to exact base + Main identity swap. */
   substitutionConsent: SubstitutionConsent | null;
   substitutionAuthorization: SubstitutionSessionAuthorization | null;
+  suggestedFixAuthorization: SuggestedFixSessionAuthorization | null;
   /** Candidate is hidden until the user explicitly chooses the compromise. */
   directionBestCandidate: ConstraintPreview | null;
   directionConsent: DirectionBestAchievableConsent | null;
@@ -376,6 +378,7 @@ const INITIAL = {
   previewIssue: null,
   substitutionConsent: null,
   substitutionAuthorization: null,
+  suggestedFixAuthorization: null,
   directionBestCandidate: null,
   directionConsent: null,
   blocked: null,
@@ -392,6 +395,7 @@ const CLEAR_STAGED = {
   previewIssue: null,
   substitutionConsent: null,
   substitutionAuthorization: null,
+  suggestedFixAuthorization: null,
   directionBestCandidate: null,
   directionConsent: null,
   feasibility: null,
@@ -691,6 +695,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             directionConsent: null,
             substitutionConsent: null,
             substitutionAuthorization: null,
+            suggestedFixAuthorization: null,
             previewIssue: null,
             blocked: null,
           });
@@ -701,6 +706,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             directionConsent: null,
             substitutionConsent: null,
             substitutionAuthorization: null,
+            suggestedFixAuthorization: null,
             previewIssue: result,
             blocked: null,
           });
@@ -719,6 +725,12 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             directionConsent: null,
             substitutionConsent: null,
             substitutionAuthorization: null,
+            suggestedFixAuthorization: {
+              baseFingerprint: result.preview.baseFingerprint,
+              type: fix.type,
+              lineId: fix.lineId,
+              grams: fix.grams,
+            },
             previewIssue: null,
             blocked: null,
           });
@@ -729,6 +741,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             directionConsent: null,
             substitutionConsent: null,
             substitutionAuthorization: null,
+            suggestedFixAuthorization: null,
             previewIssue: result,
             blocked: null,
           });
@@ -823,6 +836,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           previewIssue: null,
           substitutionConsent: null,
           substitutionAuthorization: null,
+          suggestedFixAuthorization: null,
           blocked: null,
         }),
 
@@ -834,6 +848,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           substitutionConsent,
           substitutionAuthorization,
           directionConsent,
+          suggestedFixAuthorization,
         } = get();
         if (!preview) return;
         // The Apply gate consumes the SAME canonical draft selector (FAILURE 1) +
@@ -850,6 +865,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           substitutionConsent,
           substitutionAuthorization,
           directionConsent,
+          suggestedFixAuthorization,
         );
         if (!outcome.ok) {
           // The owner-mandated block: recipe untouched, clear Polish message.

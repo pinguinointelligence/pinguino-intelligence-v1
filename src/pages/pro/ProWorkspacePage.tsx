@@ -51,6 +51,8 @@ import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { profileSettingsSignature } from '@/features/pro-workbench/recipeProfileStore';
+import { profileSnapshotFromState } from '@/features/pro-workbench/recipeProfilePersistence';
 
 const w = copy.proWorkspace;
 
@@ -75,17 +77,6 @@ const isTabId = (value: string | null): value is TabId =>
 /** The four contexts that share the same editor and right-side workspace. */
 const isWorkbenchSection = (tab: TabId): tab is ProContextTab =>
   tab === 'recipe' || tab === 'monitor' || tab === 'production';
-
-function PersonaChip({ persona }: { persona: ProCorePersona }) {
-  return (
-    <span
-      className="hidden rounded border border-ink/15 px-2 py-0.5 text-xs font-medium tracking-label text-stone-600 uppercase sm:inline-flex"
-      data-testid="pro-persona-chip"
-    >
-      {persona}
-    </span>
-  );
-}
 
 /** DEV-only persona switch — mirrors RecipeVersionsSection so acceptance can reach the Pro
  * view (and the gate) without a real login. Never rendered in a production build. */
@@ -116,12 +107,8 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
 
 function ProTopActions({
   persona,
-  onRecalculate,
-  activePanel,
 }: {
   persona: ProCorePersona;
-  onRecalculate: () => void;
-  activePanel: ProContextTab;
 }) {
   const dirty = useRecipeStore((state) => state.dirty);
   const directionPending = useRecipeProfileStore((state) => state.awaitingRecalculation);
@@ -129,40 +116,19 @@ function ProTopActions({
     (state) => Object.keys(state.unresolvedRequiredByLineId).length,
   );
   const pending = dirty || directionPending;
-  const blocked = activePanel === 'production' || unresolvedRequiredCount > 0;
 
   return (
     <div
       className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-4"
       data-testid="pro-top-workbar"
     >
-      <button
-        type="button"
-        onClick={onRecalculate}
-        disabled={blocked}
-        title={
-          activePanel === 'production'
-            ? 'Przeliczenie receptury jest wyłączone w trybie produkcji.'
-            : unresolvedRequiredCount > 0
-              ? copy.studio.builder.ingredientTable.infeasible.body
-              : pending
-                ? 'Zmieniono recepturę lub ustawienia. Przelicz ponownie.'
-                : 'Obliczenie jest aktualne.'
-        }
-        data-testid="pro-workbar-recalc"
-        className="h-11 shrink-0 rounded-lg bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-colors hover:bg-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 disabled:cursor-not-allowed disabled:bg-status-error/15 disabled:text-status-error sm:px-4 sm:text-sm"
+      <span
+        className={cn('hidden text-xs xl:inline', pending ? 'text-attention' : 'text-status-ideal')}
+        data-testid="pro-recalc-state"
+        data-state={pending ? 'pending' : 'current'}
       >
-        <span>{activePanel === 'production' ? 'Tryb produkcji' : copy.proWorkbar.recalc}</span>
-        <span
-          className={cn(
-            'ml-2 inline-block size-1.5 rounded-full align-middle',
-            pending ? 'bg-gold' : 'bg-status-ideal',
-          )}
-          aria-label={pending ? 'Oczekuje na przeliczenie' : 'Aktualne'}
-          data-testid="pro-recalc-state"
-          data-state={pending ? 'pending' : 'current'}
-        />
-      </button>
+        {pending ? 'Oczekuje na przeliczenie' : 'Obliczenie aktualne'}
+      </span>
       {unresolvedRequiredCount > 0 ? (
         <span
           className="hidden text-xs font-semibold tracking-[0.04em] text-status-error uppercase xl:inline"
@@ -171,7 +137,6 @@ function ProTopActions({
           {copy.studio.builder.ingredientTable.infeasible.title}
         </span>
       ) : null}
-      <PersonaChip persona={persona} />
       <DevPersonaSwitch persona={persona} />
     </div>
   );
@@ -182,11 +147,13 @@ function RecipeWorkbench({
   activePanel,
   recalcOpen,
   onOpenRecalc,
+  onRecalculate,
   onCloseRecalc,
 }: {
   activePanel: ProContextTab;
   recalcOpen: boolean;
   onOpenRecalc: () => void;
+  onRecalculate: () => void;
   onCloseRecalc: () => void;
 }) {
   return (
@@ -198,6 +165,7 @@ function RecipeWorkbench({
             activePanel={activePanel}
             recipeBar={<ProWorkbar onOpenPreview={onOpenRecalc} />}
             recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={onCloseRecalc} />}
+            onRecalculate={onRecalculate}
           />
         </div>
       </SurfaceToneContext.Provider>
@@ -221,7 +189,7 @@ function SettingsTab({ persona }: { persona: ProCorePersona }) {
       <div className="flex items-center justify-between gap-4 border-b border-ink/5 pb-3">
         <dt className="text-xs tracking-label text-stone-600 uppercase">{w.settings.access}</dt>
         <dd>
-          <PersonaChip persona={persona} />
+          <span className="text-sm font-medium text-ink">{persona === 'pro' ? 'Pełny dostęp' : persona}</span>
         </dd>
       </div>
       <div className="flex items-center justify-between gap-4 border-b border-ink/5 pb-3">
@@ -341,6 +309,18 @@ export function ProWorkspacePage() {
     if (Object.keys(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).length > 0) {
       return;
     }
+    const recipe = useRecipeStore.getState();
+    const profile = useRecipeProfileStore.getState();
+    const snapshot = profileSnapshotFromState(
+      recipe,
+      recipe.direction_targets,
+      profile.directionIntents,
+    );
+    const signature = profileSettingsSignature(snapshot, recipe.draftContextSeq);
+    if (!profile.isConfirmed(signature, recipe.draftContextSeq)) {
+      window.dispatchEvent(new CustomEvent('pinguino:profile-settings-required'));
+      return;
+    }
     useConstraintStudioStore.getState().createOptimizePreview();
     setRecalcOpen(true);
   };
@@ -358,14 +338,9 @@ export function ProWorkspacePage() {
         brand={<OfficialProLogo />}
         actions={
           workbench ? (
-            <ProTopActions
-              persona={persona}
-              onRecalculate={startRecalc}
-              activePanel={workbenchTab!}
-            />
+            <ProTopActions persona={persona} />
           ) : (
             <>
-              <PersonaChip persona={persona} />
               <DevPersonaSwitch persona={persona} />
             </>
           )
@@ -397,6 +372,7 @@ export function ProWorkspacePage() {
               activePanel={workbenchTab!}
               recalcOpen={recalcOpen}
               onOpenRecalc={() => setRecalcOpen(true)}
+              onRecalculate={startRecalc}
               onCloseRecalc={() => setRecalcOpen(false)}
             />
           </div>

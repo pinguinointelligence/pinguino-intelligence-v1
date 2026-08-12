@@ -51,12 +51,29 @@ export interface BuildRunInput {
 }
 
 function plannedFromScale(scaled: ExactScaleResult): PlannedIngredient[] {
-  return scaled.lines.map((l) => ({
+  const base = scaled.lines.slice().sort((a, b) => a.scopePosition - b.scopePosition).map((l) => ({
     id: l.id,
     name: l.name,
+    canonicalIngredientId: l.canonicalIngredientId,
+    processScope: l.processScope,
+    scopePosition: l.scopePosition,
     plannedGrams: l.grams,
     displayGrams: l.displayGrams,
   }));
+  const toppings = (scaled.productComposition?.toppings ?? [])
+    .slice()
+    .sort((a, b) => a.addon_sort_order - b.addon_sort_order)
+    .map((item, index) => ({
+      id: item.id,
+      name: item.ingredient.name,
+      canonicalIngredientId:
+        item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+      processScope: 'POST_PROCESS_ADDON' as const,
+      scopePosition: index,
+      plannedGrams: Number((item.planned_grams * scaled.factor).toFixed(scaled.canonicalDecimals)),
+      displayGrams: Number((item.planned_grams * scaled.factor).toFixed(scaled.displayDecimals)),
+    }));
+  return [...base, ...toppings];
 }
 
 /** Build a fresh production run (status `draft`) from an exact recipe-version scale result. */
@@ -260,7 +277,12 @@ export function computeDeviation(run: ProductionRun): ProductionDeviation {
       deltaPercent,
     };
   });
-  const plannedTotalG = run.plannedItems.reduce((sum, p) => sum + p.plannedGrams, 0);
+  // `actualTotalMixG` is the Base vessel mass. Post-process toppings have
+  // independent actual lines and final-product totals; including them here
+  // would fabricate a Base deviation and could incorrectly trigger rescue.
+  const plannedTotalG = run.plannedItems
+    .filter((item) => item.processScope === 'BASE_FORMULATION')
+    .reduce((sum, p) => sum + p.plannedGrams, 0);
   const actualTotalMixG = run.actual?.actualTotalMixG ?? null;
   return {
     lines,

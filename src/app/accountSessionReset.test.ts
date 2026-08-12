@@ -15,6 +15,10 @@ import { createProductionSession } from '@/features/production-workspace/product
 import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import {
+  DEFAULT_DIRECTION_TARGETS,
+  useRecipeProfileStore,
+} from '@/features/pro-workbench/recipeProfileStore';
+import {
   ANONYMOUS_OWNER_MARKER,
   clearAccountScopedClientState,
   isAccountBoundaryChange,
@@ -131,6 +135,13 @@ describe('clearAccountScopedClientState — wipes the previous account private s
     });
     useMasterLabelStore.setState({ label: null });
     useIngredientTableUxStore.getState().markRequiredRemoved('private-line', 'Secret ingredient');
+    useRecipeProfileStore.getState().saveDefaults('owner-a:gelato', {
+      visibleProductType: 'gelato', mode: 'classic', formulationStrategy: 'optimal',
+      targetBatchGrams: 1800, machineKind: 'professional', machineId: null,
+      machineLabel: 'Private machine', servingModeId: 'temp_minus_12',
+      targetTemperatureC: -12, machineCapacityGrams: null,
+      directionTargets: DEFAULT_DIRECTION_TARGETS,
+    });
 
     clearAccountScopedClientState(qc);
 
@@ -143,5 +154,6 @@ describe('clearAccountScopedClientState — wipes the previous account private s
     expect(useProductionSessionStore.getState().session).toBeNull();
     expect(useMasterLabelStore.getState().label).toBeNull();
     expect(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).toEqual({});
+    expect(useRecipeProfileStore.getState().defaultsByOwner).toEqual({});
   });
 });

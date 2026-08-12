@@ -63,7 +63,7 @@ function completedSnapshot(delta = 0) {
 
 function evidence(snapshot = completedSnapshot()): Record<string, IngredientAllergenEvidence> {
   return Object.fromEntries(
-    snapshot.finalResult.items.map((item) => {
+    snapshot.finalProduct.items.map((item) => {
       const id = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
       return [
         id,
@@ -77,6 +77,75 @@ function evidence(snapshot = completedSnapshot()): Record<string, IngredientAlle
       ];
     }),
   );
+}
+
+function completedSnapshotWithToppings(sameCanonicalAsBase = false) {
+  const input: RecipeInput = {
+    items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+    mode: 'classic',
+    category: DEFAULT_PRESET.category,
+    target_temperature_c: DEFAULT_PRESET.target_temperature_c,
+    target_batch_grams: DEFAULT_PRESET.target_batch_grams,
+    machine_capacity_grams: null,
+  };
+  const ingredient = input.items[0]!.ingredient;
+  let session = createProductionSession({
+    sessionId: 'run-label-toppings',
+    ownerUserId: 'owner',
+    source: {
+      recipeId: 'recipe',
+      recipeVersionId: 'version',
+      recipeVersionNumber: 1,
+      recipeName: 'Gelato z toppingami',
+    },
+    plannedInput: input,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: [...input.items.map((item) => item.id)].reverse(),
+      toppings: [
+        {
+          id: 'sauce-topping',
+          ingredient: { ...ingredient, id: 'PI-ING-SAUCE', canonical_ingredient_id: 'PI-ING-SAUCE', name: 'Sauce' },
+          planned_grams: 60,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 0,
+        },
+        {
+          id: 'milk-topping',
+          ingredient: sameCanonicalAsBase
+            ? { ...ingredient, name: 'Milk topping' }
+            : { ...ingredient, id: 'PI-ING-TOP-MILK', canonical_ingredient_id: 'PI-ING-TOP-MILK', name: 'Milk topping' },
+          planned_grams: 70,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 1,
+        },
+      ],
+      migrationAmbiguities: [],
+    },
+    startedAt: '2026-08-09T10:00:00.000Z',
+  });
+  for (const [index, line] of session.lines.entries()) {
+    session = confirmProductionLine(session, line.lineId, `2026-08-09T10:0${index}:00.000Z`);
+  }
+  session = setDraftActualGrams(session, 'milk-topping', 75);
+  session = confirmProductionLine(session, 'milk-topping', '2026-08-09T10:20:00.000Z');
+  session = confirmProductionLine(session, 'sauce-topping', '2026-08-09T10:21:00.000Z');
+  return completeProductionSession(
+    session,
+    calculateRecipe({
+      ...input,
+      items: input.items.map((item) => ({
+        ...item,
+        actual_grams: item.planned_grams,
+        lock_type: 'already_added' as const,
+      })),
+    }),
+    '2026-08-09T11:00:00.000Z',
+    'owner',
+  ).completionSnapshot!;
 }
 
 const build = (delta = 0) => {
@@ -120,6 +189,54 @@ describe('Master Label — one actual-batch source model', () => {
     expect(actual.ingredients[0]!.percent).not.toBe(planned.ingredients[0]!.percent);
     expect(actual.nutritionSource).not.toEqual(planned.nutritionSource);
     expect(actual.sourceCompletionSessionId).toBe('run-label');
+  });
+
+  it('uses actual toppings and legal mass order independently from manual UI order', () => {
+    const snapshot = completedSnapshotWithToppings();
+    const data = buildMasterLabelData({
+      masterLabelId: 'label-toppings',
+      snapshot,
+      market: 'EU',
+      uiLanguage: 'pl',
+      labelLanguages: ['pl'],
+      allergenEvidenceByCanonicalId: evidence(snapshot),
+    });
+    expect(snapshot.finalProduct.finalMassG).toBe(1135);
+    expect(data.ingredients.find((item) => item.lineId === 'milk-topping')?.actualGrams).toBe(75);
+    expect(data.ingredients.find((item) => item.lineId === 'sauce-topping')?.actualGrams).toBe(60);
+    expect(data.ingredients.reduce((sum, item) => sum + item.actualGrams, 0)).toBe(1135);
+    expect(data.ingredients.map((item) => item.actualGrams)).toEqual(
+      [...data.ingredients.map((item) => item.actualGrams)].sort((a, b) => b - a),
+    );
+  });
+
+  it('aggregates the same canonical product from Base and Toppings into one legal declaration', () => {
+    const snapshot = completedSnapshotWithToppings(true);
+    const canonicalId =
+      snapshot.finalProduct.items[0]!.ingredient.canonical_ingredient_id ??
+      snapshot.finalProduct.items[0]!.ingredient.id;
+    const factualMass = snapshot.finalProduct.items
+      .filter(
+        (item) =>
+          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === canonicalId,
+      )
+      .reduce((sum, item) => sum + item.effective_grams, 0);
+    const data = buildMasterLabelData({
+      masterLabelId: 'label-shared-canonical',
+      snapshot,
+      market: 'EU',
+      uiLanguage: 'pl',
+      labelLanguages: ['pl'],
+      allergenEvidenceByCanonicalId: evidence(snapshot),
+    });
+    const declarations = data.ingredients.filter(
+      (item) => item.canonicalIngredientId === canonicalId,
+    );
+    expect(declarations).toHaveLength(1);
+    expect(declarations[0]!.actualGrams).toBe(factualMass);
+    expect(data.ingredients.reduce((sum, item) => sum + item.actualGrams, 0)).toBe(
+      snapshot.finalProduct.finalMassG,
+    );
   });
 
   it('keeps UI language, market and label languages independent', () => {

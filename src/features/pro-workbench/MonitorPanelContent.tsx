@@ -23,6 +23,55 @@ import { ProfessionalMonitorModules } from './ProfessionalMonitorModules';
 import { buildProfessionalMonitorModules } from './professionalMonitorModel';
 import { MonitorLiveSummary } from './MonitorLiveSummary';
 import { useReviewMode } from '@/features/design-review/useReviewMode';
+import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { polishPositionNoun } from './polishPositionNoun';
+
+export function MonitorToppingSummary({
+  toppings,
+  actualByLineId = new Map(),
+}: {
+  toppings: readonly RecipeToppingItem[];
+  actualByLineId?: ReadonlyMap<string, number>;
+}) {
+  if (toppings.length === 0) return null;
+  const toppingMassG = toppings.reduce((sum, item) => sum + item.planned_grams, 0);
+  return (
+    <details
+      className="overflow-hidden rounded-[20px] border border-status-ideal/20 bg-status-ideal/[0.055]"
+      data-testid="monitor-topping-summary"
+    >
+      <summary className="cursor-pointer list-none px-4 py-3">
+        <span className="flex items-center justify-between gap-3">
+          <span>
+            <strong className="block text-xs text-white">Toppingi po produkcji</strong>
+            <span className="mt-0.5 block text-xs text-white/58">
+              {toppings.length} {polishPositionNoun(toppings.length)}{' '}
+              · {toppingMassG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+            </span>
+          </span>
+          <span aria-hidden className="text-white/60">⌄</span>
+        </span>
+        <span className="mt-1 block text-xs text-[#c9d4c2]">Nie wpływają na bilans bazy.</span>
+      </summary>
+      <div className="divide-y divide-white/8 border-t border-white/8 px-4 py-1">
+        {toppings.map((item) => (
+          <div key={item.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
+            <span className="min-w-0 truncate text-white/75">{item.ingredient.name}</span>
+            <span className="shrink-0 font-mono tabular-nums text-white">
+              {item.planned_grams.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+              {actualByLineId.has(item.id)
+                ? ` · faktycznie ${actualByLineId.get(item.id)!.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g`
+                : item.actual_grams !== null
+                  ? ` · faktycznie ${item.actual_grams.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g`
+                  : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
 
 export function MonitorPanelContent({
   result,
@@ -30,12 +79,14 @@ export function MonitorPanelContent({
   corrections,
   input,
   onOpenProfile,
+  production,
 }: {
   result: RecipeResult;
   servingTemperatureC: number;
   corrections: CorrectionResult;
   input: RecipeInput;
   onOpenProfile?: () => void;
+  production?: ProductionWorkspaceView;
 }) {
   const { technicalView } = useAccess();
   const ownerReviewMode = useReviewMode();
@@ -60,6 +111,12 @@ export function MonitorPanelContent({
   const correctionView = useMemo(() => buildCorrectionView(corrections), [corrections]);
   const recipeIncomplete = result.total_batch_g <= 0;
   const processRuntime = useRecipeProcessRuntime(input);
+  const toppings = useRecipeStore((state) => state.toppings);
+  const actualToppingByLineId = new Map(
+    (production?.session?.addonLines ?? [])
+      .filter((line) => line.confirmed || line.physicalAddedGrams > 0)
+      .map((line) => [line.lineId, line.physicalAddedGrams] as const),
+  );
 
   if (processGuideOpen) {
     return (
@@ -126,6 +183,8 @@ export function MonitorPanelContent({
         loading={processRuntime.loading}
         onOpen={() => setProcessGuideOpen(true)}
       />
+
+      <MonitorToppingSummary toppings={toppings} actualByLineId={actualToppingByLineId} />
 
       {ownerReviewMode ? (
         <div data-testid="monitor-owner-diagnostics" className="border-t border-white/10 pt-2">

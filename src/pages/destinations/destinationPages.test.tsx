@@ -91,6 +91,12 @@ describe('Slice 3 destination pages', () => {
     expect(html).toContain('data-testid="recipes-tab-mine"');
     expect(html).toContain('data-testid="recipes-tab-pinguino"');
     expect(html).toContain('data-testid="recipes-tab-inspiration"');
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('aria-controls="recipes-panel-pinguino"');
+    expect(html).toContain('id="recipes-panel-pinguino"');
+    expect(html).toContain('role="tabpanel"');
+    expect(html).toContain('tabindex="-1"');
+    expect(html).toContain('min-h-11');
     expect(html).not.toContain('href="/my-recipes"');
     expect(html).toContain(copy.nav.recipes.gelato);
   });

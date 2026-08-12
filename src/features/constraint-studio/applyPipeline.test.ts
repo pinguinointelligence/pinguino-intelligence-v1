@@ -242,6 +242,34 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     expect(outcome).toMatchObject({ ok: false, code: 'stale_preview' });
   });
 
+  it('rejects a forged Preview that removes authenticated constraints or moves the locked line', () => {
+    const input = withGrams(overSweetStarter(160), DEXTROSE, 40);
+    const set: ConstraintSet = { byLineId: { [DEXTROSE]: { mode: 'locked', grams: 40 } } };
+    const built = buildOptimizePreview(input, set, 'now');
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+
+    const removed: ConstraintPreview = { ...built.preview, nextConstraints: { byLineId: {} } };
+    expect(commitPreview(input, set, removed, 'now', 'forged-constraints')).toMatchObject({
+      ok: false,
+      code: 'stale_preview',
+    });
+
+    const moved: ConstraintPreview = {
+      ...removed,
+      proposedInput: {
+        ...removed.proposedInput,
+        items: removed.proposedInput.items.map((item) =>
+          item.id === DEXTROSE ? { ...item, planned_grams: 41 } : item,
+        ),
+      },
+    };
+    expect(commitPreview(input, set, moved, 'now', 'forged-lock-and-constraints')).toMatchObject({
+      ok: false,
+      code: 'stale_preview',
+    });
+  });
+
   it.each([
     ['mode', (input: RecipeInput) => ({ ...input, mode: 'premium' as const })],
     ['category', (input: RecipeInput) => ({ ...input, category: 'sorbet' as const })],
@@ -364,12 +392,55 @@ describe('suggested fix (§18.2 „Ustaw X g i przelicz”)', () => {
       true,
     );
 
-    const outcome = commitPreview(input, set, built.preview, 'now', 'apply-s');
+    const authorization = {
+      baseFingerprint: built.preview.baseFingerprint,
+      type: action.type,
+      lineId: action.lineId,
+      grams: action.grams,
+    } as const;
+    const outcome = commitPreview(
+      input,
+      set,
+      built.preview,
+      'now',
+      'apply-s',
+      [],
+      undefined,
+      null,
+      null,
+      null,
+      authorization,
+    );
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     expect(Object.is(lineGrams(outcome.verified.input, SUCROSE), action.grams)).toBe(true);
     // the bound was engine-verified clean → the applied state is clean
     expect(detectViolations(calculateRecipe(outcome.verified.input)).length).toBe(0);
+
+    const unrelatedConstraint: ConstraintPreview = {
+      ...built.preview,
+      nextConstraints: {
+        byLineId: {
+          ...built.preview.nextConstraints.byLineId,
+          [MILK]: { mode: 'locked', grams: lineGrams(input, MILK) },
+        },
+      },
+    };
+    expect(
+      commitPreview(
+        input,
+        set,
+        unrelatedConstraint,
+        'now',
+        'forged-suggested-fix',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        authorization,
+      ),
+    ).toMatchObject({ ok: false, code: 'stale_preview' });
   });
 });
 

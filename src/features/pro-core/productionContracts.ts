@@ -21,6 +21,10 @@ export type ProductionStatus = 'draft' | 'planned' | 'in_progress' | 'completed'
 export interface PlannedIngredient {
   id: string;
   name: string;
+  canonicalIngredientId: string | null;
+  processScope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
+  /** Position inside its own scope. Base and topping order never cross. */
+  scopePosition: number;
   /** Canonical scaled grams (calculation precision). */
   plannedGrams: number;
   /** Display / export grams (totals the batch exactly on the display grid). */

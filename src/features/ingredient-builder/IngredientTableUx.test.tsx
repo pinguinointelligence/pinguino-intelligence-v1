@@ -169,12 +169,13 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(standard).not.toContain('aria-label="Składnik główny"');
   });
 
-  it('shows the understandable Add-on label and keeps limitations inside action detail', () => {
+  it('keeps a legacy Add-on line visible as an ambiguity, never as a new Base role', () => {
     const html = renderRow(baseItem, { ...DEFAULT_INGREDIENT_ROW_META, role: 'addition' });
-    expect(html).toContain('aria-label="Dodatek"');
-    expect(text(html)).toContain('Dodatek');
+    expect(html).toContain('aria-label="Dawny Dodatek — wymaga decyzji"');
+    expect(text(html)).toContain('Dawny Dodatek · decyzja');
     expect(text(html)).not.toContain('Proces dodatku jest w przygotowaniu');
     expect(text(html)).not.toContain('CZĘŚCIOWO PODŁĄCZONE');
+    expect(html).not.toContain("setRole('addition')");
   });
 
   it('hides provenance noise in the verified normal row and exposes full data under menu', () => {

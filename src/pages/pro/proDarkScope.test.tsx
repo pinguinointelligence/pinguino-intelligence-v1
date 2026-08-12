@@ -20,6 +20,24 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
   useProCorePersona: () => mockPersona,
 }));
 
+vi.mock('@/access/useAccess', () => ({
+  useAccess: () => ({
+    plan: 'pro',
+    tier: 'pro',
+    isSignedIn: true,
+    isPro: true,
+    exactCorrectionGrams: true,
+    fullFormula: true,
+    technicalView: true,
+    canViewExactGrams: true,
+    canApplyStarterToStudio: true,
+    saveRecipes: true,
+    myRecipes: true,
+    productionMode: true,
+    rescueMode: true,
+  }),
+}));
+
 const { ProWorkspacePage } = await import('./ProWorkspacePage');
 
 const renderAt = (path: string, persona: ProCorePersona) => {
@@ -79,9 +97,11 @@ describe('Pro workspace — white precision scope', () => {
 
   it('keeps explicit Direction choices, honest blocked axes and the review tools route', () => {
     const html = renderAt('/pro/recipe', 'pro');
-    expect(html).toContain('Wybrano:');
-    expect(html).toContain('Kalibracja w przygotowaniu');
-    expect(html).toContain('Brak wystarczających danych');
+    expect(html).toContain('aria-valuemin="-2"');
+    expect(html).toContain('aria-valuemax="2"');
+    expect(html).toContain('Kalibracja');
+    expect(html).toContain('Brak danych');
+    expect(html).not.toContain('Wybrano:');
     expect(html).not.toContain('aria-label="Legenda kierunku"');
     expect(renderAt('/pro/tools', 'pro')).toContain('data-testid="pro-review-zone"');
   });

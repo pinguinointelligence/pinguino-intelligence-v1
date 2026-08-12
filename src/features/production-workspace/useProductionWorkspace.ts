@@ -5,13 +5,23 @@ import { useRecipeStore, type RecipeState } from '@/stores/recipeStore';
 import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeInput';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import { assessProductionRescue } from './productionRescue';
-import { buildProductionForecastInput, productionProgress } from './productionSession';
+import {
+  buildProductionForecastInput,
+  productionProgress,
+  toppingProductionProgress,
+} from './productionSession';
 import { useProductionSessionStore } from './productionSessionStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { useCustomerPriceStore } from '@/stores/customerPriceStore';
+import {
+  applyEffectiveCustomerPrices,
+  applyEffectiveCustomerPricesToToppings,
+} from '@/features/pro-core/effectiveRecipePricing';
 import {
   practicalRecipeAuditMatchesInput,
   practicalizeRecipeCandidate,
 } from '@/features/practical-recipe/practicalRecipe';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 
 const newSessionId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -45,8 +55,20 @@ export function useProductionWorkspace(enabled: boolean) {
   const startNewSession = useProductionSessionStore((state) => state.startNewSession);
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const lastApplied = useConstraintStudioStore((state) => state.history.at(-1));
+  const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
 
-  const plannedInput = useMemo(() => buildRecipeInput(recipe, 'planning'), [recipe]);
+  const plannedInput = useMemo(
+    () => applyEffectiveCustomerPrices(buildRecipeInput(recipe, 'planning'), customerPrices),
+    [customerPrices, recipe],
+  );
+  const plannedComposition = useMemo(
+    () =>
+      recipeCompositionFromState({
+        ...recipe,
+        toppings: applyEffectiveCustomerPricesToToppings(recipe.toppings, customerPrices),
+      }),
+    [customerPrices, recipe],
+  );
 
   const practicalGate = useMemo(() => {
     const currentWasApplied =
@@ -82,10 +104,11 @@ export function useProductionWorkspace(enabled: boolean) {
       ownerUserId,
       source,
       plannedInput,
+      plannedComposition,
       now: new Date().toISOString(),
       sessionId: newSessionId(),
     });
-  }, [enabled, ensureSession, ownerUserId, plannedInput, practicalGate.ready, source]);
+  }, [enabled, ensureSession, ownerUserId, plannedComposition, plannedInput, practicalGate.ready, source]);
 
   const forecastInput = useMemo(
     () => (session ? buildProductionForecastInput(session) : plannedInput),
@@ -97,6 +120,10 @@ export function useProductionWorkspace(enabled: boolean) {
     [session],
   );
   const progress = useMemo(() => (session ? productionProgress(session) : null), [session]);
+  const toppingProgress = useMemo(
+    () => (session ? toppingProductionProgress(session) : null),
+    [session],
+  );
   const score = monitorScoreView(forecastResult, forecastInput).match;
   const corrections = useMemo(
     () =>
@@ -116,6 +143,7 @@ export function useProductionWorkspace(enabled: boolean) {
     forecastResult,
     rescue,
     progress,
+    toppingProgress,
     score,
     corrections,
     practicalReady: practicalGate.ready,
@@ -130,6 +158,7 @@ export function useProductionWorkspace(enabled: boolean) {
         ownerUserId,
         source,
         plannedInput,
+        plannedComposition,
         now: new Date().toISOString(),
         sessionId: newSessionId(),
       }),

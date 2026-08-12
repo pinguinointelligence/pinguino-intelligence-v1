@@ -170,7 +170,7 @@ describe('P0 canonical ingredient identity + current draft integrity', () => {
     const proposed: RecipeInput = { ...current, items: [...current.items, added] };
     const engine = calculateRecipe(proposed);
     const preview: ConstraintPreview = {
-      kind: 'suggested_fix',
+      kind: 'optimize',
       titlePl: 'Owner 1193.7 g proof',
       outcomeClassification: {
         outcome: 'no_verified_change',
@@ -295,7 +295,7 @@ describe('P0 canonical ingredient identity + current draft integrity', () => {
       ),
     };
     const preview: ConstraintPreview = {
-      kind: 'suggested_fix',
+      kind: 'optimize',
       titlePl: 'Blank source identity proof',
       outcomeClassification: {
         outcome: 'no_verified_change',

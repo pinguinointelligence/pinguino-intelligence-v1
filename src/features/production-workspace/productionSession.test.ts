@@ -10,10 +10,12 @@ import {
   correctRecordedPhysicalGrams,
   createProductionSession,
   productionProgress,
+  toppingProductionProgress,
   productionStepForGrams,
   reopenProductionRecord,
   setDraftActualGrams,
 } from './productionSession';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 
 function recipe(): RecipeInput {
   return {
@@ -43,6 +45,30 @@ function session() {
 }
 
 describe('production session physical-reality contract', () => {
+  it('uses persisted Base order for the operator without reordering Engine input', () => {
+    const input = recipe();
+    const reversed = input.items.map((item) => item.id).reverse();
+    const run = createProductionSession({
+      sessionId: 'ordered-run',
+      ownerUserId: 'owner-1',
+      source: {
+        recipeId: 'recipe-1', recipeVersionId: 'version-1', recipeVersionNumber: 1,
+        recipeName: 'Ordered base',
+      },
+      plannedInput: input,
+      plannedComposition: {
+        schemaVersion: 1,
+        baseScope: 'BASE_FORMULATION',
+        baseOrder: reversed,
+        toppings: [],
+        migrationAmbiguities: [],
+      },
+      startedAt: '2026-08-11T00:00:00.000Z',
+    });
+    expect(run.lines.map((line) => line.lineId)).toEqual(reversed);
+    expect(run.plannedInput.items.map((item) => item.id)).toEqual(input.items.map((item) => item.id));
+  });
+
   it('defaults every editable actual to plan without marking material as added', () => {
     const run = session();
     expect(run.lines.every((line) => line.draftActualGrams === line.plannedGrams)).toBe(true);
@@ -169,6 +195,91 @@ describe('production session physical-reality contract', () => {
     const line = run.lines[0]!;
     expect(setDraftActualGrams(run, line.lineId, 671.123_456).lines[0]!.draftActualGrams).toBe(
       671.123_456,
+    );
+  });
+
+  it('runs Base first, then actual toppings, without changing Base score or Rescue input', () => {
+    const plannedInput = recipe();
+    const toppingIngredient = plannedInput.items[0]!.ingredient;
+    const composition: RecipeCompositionMetadata = {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: plannedInput.items.map((item) => item.id),
+      toppings: [
+        {
+          id: 'topping-milk',
+          ingredient: { ...toppingIngredient, id: 'PI-ING-TOP-MILK', canonical_ingredient_id: 'PI-ING-TOP-MILK' },
+          planned_grams: 70,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 0,
+        },
+        {
+          id: 'topping-sauce',
+          ingredient: { ...toppingIngredient, id: 'PI-ING-TOP-SAUCE', canonical_ingredient_id: 'PI-ING-TOP-SAUCE' },
+          planned_grams: 60,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 1,
+        },
+      ],
+      migrationAmbiguities: [],
+    };
+    let run = createProductionSession({
+      sessionId: 'run-toppings',
+      ownerUserId: 'owner-1',
+      source: {
+        recipeId: 'recipe-1',
+        recipeVersionId: 'version-1',
+        recipeVersionNumber: 1,
+        recipeName: 'Base plus toppings',
+      },
+      plannedInput,
+      plannedComposition: composition,
+      startedAt: '2026-08-09T10:00:00.000Z',
+    });
+    const baseBefore = calculateRecipe(plannedInput);
+    expect(() =>
+      confirmProductionLine(run, 'topping-milk', '2026-08-09T10:00:30.000Z'),
+    ).toThrow(/after every Base ingredient/);
+
+    for (const [index, line] of run.lines.entries()) {
+      run = confirmProductionLine(run, line.lineId, `2026-08-09T10:${index + 1}:00.000Z`);
+    }
+    expect(run.stage).toBe('addons');
+    const baseForecast = buildProductionForecastInput(run);
+    expect(baseForecast.items.map((item) => item.actual_grams ?? item.planned_grams)).toEqual(
+      plannedInput.items.map((item) => item.planned_grams),
+    );
+    const baseAfterConfirmation = calculateRecipe(baseForecast);
+    const baseScientificResult = { ...baseBefore, items: [] };
+    const confirmedScientificResult = { ...baseAfterConfirmation, items: [] };
+    expect(confirmedScientificResult).toEqual(baseScientificResult);
+
+    run = setDraftActualGrams(run, 'topping-milk', 75);
+    run = confirmProductionLine(run, 'topping-milk', '2026-08-09T10:20:00.000Z');
+    run = confirmProductionLine(run, 'topping-sauce', '2026-08-09T10:21:00.000Z');
+    expect(toppingProductionProgress(run)).toMatchObject({
+      confirmedCount: 2,
+      totalCount: 2,
+      confirmedMassG: 135,
+      forecastMassG: 135,
+      coherent: true,
+    });
+
+    const finalInput = buildFinalActualInput(run);
+    const completed = completeProductionSession(
+      run,
+      calculateRecipe(finalInput),
+      '2026-08-09T11:00:00.000Z',
+      'owner-1',
+    );
+    expect(completed.completionSnapshot?.finalResult.scores).toEqual(baseBefore.scores);
+    expect(completed.completionSnapshot?.finalProduct.baseMassG).toBe(1000);
+    expect(completed.completionSnapshot?.finalProduct.toppingMassG).toBe(135);
+    expect(completed.completionSnapshot?.finalProduct.finalMassG).toBe(1135);
+    expect(completed.completionSnapshot?.finalProduct.items).toHaveLength(
+      plannedInput.items.length + 2,
     );
   });
 });

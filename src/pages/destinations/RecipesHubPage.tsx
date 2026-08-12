@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { Card } from '@/components/ui/Card';
@@ -29,6 +29,7 @@ import { useReviewMode } from '@/features/design-review/useReviewMode';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
 import { MyRecipesContent } from '@/pages/recipes/MyRecipesPage';
+import { startNewProRecipe } from './startNewProRecipe';
 
 const r = copy.nav.recipes;
 const d = r.discovery;
@@ -37,6 +38,12 @@ const MAX_FEATURED = 6;
 type DiscoveryView = 'home' | 'lost' | 'natural' | 'inspiration' | 'countries';
 type RecipeLibraryTab = 'mine' | 'pinguino' | 'inspiration';
 type IconName = 'left' | 'right' | 'book' | 'globe' | 'leaf' | 'search' | 'sparkles';
+
+const RECIPE_LIBRARY_TABS = [
+  ['mine', 'MOJE'],
+  ['pinguino', 'PINGÜINO'],
+  ['inspiration', 'INSPIRACJE'],
+] as const satisfies readonly (readonly [RecipeLibraryTab, string])[];
 
 function Icon({ name, className = 'h-4 w-4' }: { name: IconName; className?: string }) {
   const paths: Readonly<Record<IconName, ReactNode>> = {
@@ -505,6 +512,7 @@ function CountriesView({ ownerReviewMode }: { ownerReviewMode: boolean }) {
 }
 
 export function RecipesHubPage() {
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [view, setView] = useState<DiscoveryView>('home');
   const ownerReviewMode = useReviewMode();
@@ -522,6 +530,24 @@ export function RecipesHubPage() {
     setParams(next);
     setView('home');
   };
+  const handleTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentTab: RecipeLibraryTab,
+  ) => {
+    const currentIndex = RECIPE_LIBRARY_TABS.findIndex(([id]) => id === currentTab);
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % RECIPE_LIBRARY_TABS.length;
+    if (event.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + RECIPE_LIBRARY_TABS.length) % RECIPE_LIBRARY_TABS.length;
+    }
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = RECIPE_LIBRARY_TABS.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextTab = RECIPE_LIBRARY_TABS[nextIndex]![0];
+    selectTab(nextTab);
+    requestAnimationFrame(() => document.getElementById(`recipes-tab-${nextTab}`)?.focus());
+  };
 
   return (
     <DestinationSurface
@@ -535,22 +561,20 @@ export function RecipesHubPage() {
           aria-label="Biblioteka receptur"
           className="flex min-w-0 overflow-x-auto"
         >
-          {(
-            [
-              ['mine', 'MOJE'],
-              ['pinguino', 'PINGÜINO'],
-              ['inspiration', 'INSPIRACJE'],
-            ] as const
-          ).map(([id, label]) => (
+          {RECIPE_LIBRARY_TABS.map(([id, label]) => (
             <button
               key={id}
+              id={`recipes-tab-${id}`}
               type="button"
               role="tab"
               aria-selected={activeTab === id}
+              aria-controls={`recipes-panel-${id}`}
+              tabIndex={activeTab === id ? 0 : -1}
               onClick={() => selectTab(id)}
+              onKeyDown={(event) => handleTabKeyDown(event, id)}
               className={cn(
                 'min-h-12 shrink-0 border-b-2 px-4 text-xs font-semibold tracking-[0.08em]',
-                activeTab === id ? 'border-ink text-ink' : 'border-transparent text-stone-400',
+                activeTab === id ? 'border-ink text-ink' : 'border-transparent text-stone-600',
               )}
               data-testid={`recipes-tab-${id}`}
             >
@@ -558,18 +582,34 @@ export function RecipesHubPage() {
             </button>
           ))}
         </div>
-        <Link
-          to={newRecipeHref}
-          className="mb-2 text-sm font-medium text-ink transition-opacity hover:opacity-55"
+        <button
+          type="button"
+          onClick={() => {
+            if (persona === 'pro') startNewProRecipe();
+            navigate(newRecipeHref);
+          }}
+          className="mb-1 inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-ink transition-opacity hover:opacity-55"
         >
           + Nowa receptura
-        </Link>
+        </button>
       </div>
 
-      {activeTab === 'mine' ? <MyRecipesContent /> : null}
-      {activeTab === 'inspiration' ? <InspirationView /> : null}
+      {activeTab === 'mine' ? (
+        <div id="recipes-panel-mine" role="tabpanel" aria-labelledby="recipes-tab-mine">
+          <MyRecipesContent />
+        </div>
+      ) : null}
+      {activeTab === 'inspiration' ? (
+        <div
+          id="recipes-panel-inspiration"
+          role="tabpanel"
+          aria-labelledby="recipes-tab-inspiration"
+        >
+          <InspirationView />
+        </div>
+      ) : null}
       {activeTab === 'pinguino' ? (
-        <>
+        <div id="recipes-panel-pinguino" role="tabpanel" aria-labelledby="recipes-tab-pinguino">
           {view !== 'home' ? <BackButton onClick={() => setView('home')} /> : null}
           <div className={view !== 'home' ? 'mt-10' : undefined}>
             {view === 'home' ? (
@@ -624,7 +664,7 @@ export function RecipesHubPage() {
             ) : null}
             {view === 'countries' ? <CountriesView ownerReviewMode={ownerReviewMode} /> : null}
           </div>
-        </>
+        </div>
       ) : null}
     </DestinationSurface>
   );

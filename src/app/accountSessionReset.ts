@@ -21,6 +21,7 @@ import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 
 export const ACCOUNT_OWNER_STORAGE_KEY = 'pinguino-active-account-owner';
 export const ANONYMOUS_OWNER_MARKER = '__pinguino_anonymous__';
@@ -122,6 +123,9 @@ export function isAccountBoundaryChange(
 export function clearAccountScopedClientState(queryClient: QueryClient): void {
   // Drop every cached query (saved-recipes / my-products are globally keyed).
   queryClient.clear();
+  // Defaults are account-owned even though the UX cache is local-first. Clear
+  // them before rebuilding the neutral draft so account A can never seed B.
+  useRecipeProfileStore.getState().resetForTests();
   // Reset the persisted private recipe draft + intake conversation to defaults.
   useRecipeStore.getState().resetToDemo();
   useIntakeStore.getState().reset();

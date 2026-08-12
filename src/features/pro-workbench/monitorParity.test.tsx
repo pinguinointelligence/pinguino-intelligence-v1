@@ -32,7 +32,7 @@ vi.mock('@/access/useAccess', () => ({
   }),
 }));
 
-const { MonitorPanelContent } = await import('./MonitorPanelContent');
+const { MonitorPanelContent, MonitorToppingSummary } = await import('./MonitorPanelContent');
 const { ProfessionalMonitorModules } = await import('./ProfessionalMonitorModules');
 const { buildProfessionalMonitorModules } = await import('./professionalMonitorModel');
 
@@ -154,6 +154,30 @@ describe('professional Monitor acceptance contract', () => {
     }
     expect(empty).toContain('data-evaluation="none"');
     expect(empty).toContain('bg-white/10');
+  });
+
+  it('keeps topping facts collapsed and informational without changing Base metrics', () => {
+    const input = starterMilkBase();
+    const before = calculateRecipe(input);
+    const ingredient = input.items[0]!.ingredient;
+    const html = renderToStaticMarkup(
+      <MonitorToppingSummary
+        toppings={[{
+          id: 'topping-milk', ingredient, planned_grams: 70, actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
+        }]}
+        actualByLineId={new Map([['topping-milk', 75]])}
+      />,
+    );
+    expect(html).toContain('data-testid="monitor-topping-summary"');
+    expect(visibleText(html)).toContain('Toppingi po produkcji');
+    expect(visibleText(html)).toContain('Nie wpływają na bilans bazy.');
+    expect(visibleText(html)).toContain('faktycznie 75 g');
+    expect(html).not.toContain('open=""');
+    const after = calculateRecipe(input);
+    expect(after.pod_points).toBe(before.pod_points);
+    expect(after.npac_points).toBe(before.npac_points);
+    expect(after.scores).toEqual(before.scores);
   });
 });
 

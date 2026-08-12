@@ -1,4 +1,16 @@
-import type { RecipeInput, RecipeItem, RecipeResult } from '@/engine';
+import type {
+  EffectiveRecipeItem,
+  NutritionPer100g,
+  RecipeCosts,
+  RecipeInput,
+  RecipeItem,
+  RecipeResult,
+} from '@/engine';
+import {
+  recipeCompositionFromState,
+  type RecipeCompositionMetadata,
+} from '@/features/recipe-composition/recipeCompositionPersistence';
+import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
 
 export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
 
@@ -45,6 +57,15 @@ export interface ProductionCompletionSnapshot {
   plannedInput: RecipeInput;
   finalActualInput: RecipeInput;
   finalResult: RecipeResult;
+  finalProduct: {
+    items: EffectiveRecipeItem[];
+    nutritionPer100g: NutritionPer100g | null;
+    costs: RecipeCosts | null;
+    baseMassG: number;
+    toppingMassG: number;
+    finalMassG: number;
+  };
+  productComposition: RecipeCompositionMetadata;
   confirmedOrder: Array<{
     lineId: string;
     canonicalIngredientId: string | null;
@@ -64,7 +85,7 @@ export interface ProductionCompletionSnapshot {
 }
 
 export interface ProductionSession {
-  schemaVersion: 1;
+  schemaVersion: 2;
   sessionId: string;
   ownerUserId: string | null;
   source: ProductionSource;
@@ -73,9 +94,12 @@ export interface ProductionSession {
   startedAt: string;
   completedAt: string | null;
   plannedInput: RecipeInput;
+  plannedComposition: RecipeCompositionMetadata;
   /** Solver-verified additions required after production starts. The frozen plan remains untouched. */
   rescueAddedItems: RecipeItem[];
   lines: ProductionLineState[];
+  addonLines: ProductionLineState[];
+  stage: 'base' | 'addons';
   substitutions: ProductionSubstitution[];
   customerLabelNote: string;
   internalProductionNote: string;
@@ -87,6 +111,7 @@ export interface CreateProductionSessionInput {
   ownerUserId: string | null;
   source: ProductionSource;
   plannedInput: RecipeInput;
+  plannedComposition?: RecipeCompositionMetadata;
   startedAt: string;
 }
 
@@ -106,7 +131,10 @@ function cloneRecipeInput(input: RecipeInput): RecipeInput {
   };
 }
 
-export function productionSourceFingerprint(input: RecipeInput): string {
+export function productionSourceFingerprint(
+  input: RecipeInput,
+  composition?: RecipeCompositionMetadata,
+): string {
   return JSON.stringify({
     category: input.category,
     temperature: input.target_temperature_c,
@@ -119,23 +147,48 @@ export function productionSourceFingerprint(input: RecipeInput): string {
       lockType: item.lock_type,
       productionStep: item.production_step ?? null,
     })),
+    composition: composition
+      ? {
+          baseOrder: composition.baseOrder,
+          toppings: composition.toppings.map((item) => ({
+            lineId: item.id,
+            ingredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+            grams: item.planned_grams,
+            position: item.addon_sort_order,
+          })),
+        }
+      : null,
   });
 }
 
 export function createProductionSession(input: CreateProductionSessionInput): ProductionSession {
   const plannedInput = cloneRecipeInput(input.plannedInput);
+  const plannedComposition = input.plannedComposition ??
+    recipeCompositionFromState({ items: plannedInput.items, baseOrder: plannedInput.items.map((item) => item.id) });
+  const basePosition = new Map(
+    plannedComposition.baseOrder.map((lineId, index) => [lineId, index] as const),
+  );
+  const orderedBaseItems = plannedInput.items
+    .map((item, sourceIndex) => ({ item, sourceIndex }))
+    .sort(
+      (a, b) =>
+        (basePosition.get(a.item.id) ?? a.sourceIndex) -
+        (basePosition.get(b.item.id) ?? b.sourceIndex),
+    )
+    .map(({ item }) => item);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sessionId: input.sessionId,
     ownerUserId: input.ownerUserId,
     source: { ...input.source },
-    sourceFingerprint: productionSourceFingerprint(plannedInput),
+    sourceFingerprint: productionSourceFingerprint(plannedInput, plannedComposition),
     status: 'in_progress',
     startedAt: input.startedAt,
     completedAt: null,
     plannedInput,
+    plannedComposition,
     rescueAddedItems: [],
-    lines: plannedInput.items.map((item) => ({
+    lines: orderedBaseItems.map((item) => ({
       lineId: item.id,
       canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
       name: item.ingredient.name,
@@ -148,6 +201,20 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
       confirmationOrder: null,
       recordCorrectionCount: 0,
     })),
+    addonLines: plannedComposition.toppings.map((item) => ({
+      lineId: item.id,
+      canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+      name: item.ingredient.name,
+      plannedGrams: item.planned_grams,
+      targetGrams: item.planned_grams,
+      draftActualGrams: item.planned_grams,
+      physicalAddedGrams: 0,
+      confirmed: false,
+      confirmedAt: null,
+      confirmationOrder: null,
+      recordCorrectionCount: 0,
+    })),
+    stage: 'base',
     substitutions: [],
     customerLabelNote: '',
     internalProductionNote: '',
@@ -172,8 +239,22 @@ function updateLine(
     found = true;
     return updater(line);
   });
+  const addonLines = session.addonLines.map((line) => {
+    if (line.lineId !== lineId) return line;
+    found = true;
+    return updater(line);
+  });
   if (!found) throw new Error(`Unknown production line: ${lineId}.`);
-  return { ...session, lines };
+  return { ...session, lines, addonLines };
+}
+
+function requireAddonStageIfNeeded(session: ProductionSession, lineId: string): void {
+  if (
+    session.addonLines.some((line) => line.lineId === lineId) &&
+    (session.stage !== 'addons' || session.lines.some((line) => !line.confirmed))
+  ) {
+    throw new Error('Toppings can only be recorded after every Base ingredient is confirmed.');
+  }
 }
 
 export function setDraftActualGrams(
@@ -182,6 +263,7 @@ export function setDraftActualGrams(
   grams: number,
 ): ProductionSession {
   requireActive(session);
+  requireAddonStageIfNeeded(session, lineId);
   if (!Number.isFinite(grams) || grams < 0) throw new Error('Actual grams must be finite and non-negative.');
   return updateLine(session, lineId, (line) => {
     if (line.confirmed) throw new Error('Use record correction before editing a confirmed line.');
@@ -201,15 +283,21 @@ export function confirmProductionLine(
   at: string,
 ): ProductionSession {
   requireActive(session);
+  requireAddonStageIfNeeded(session, lineId);
   const nextOrder =
-    session.lines.reduce((max, line) => Math.max(max, line.confirmationOrder ?? 0), 0) + 1;
-  return updateLine(session, lineId, (line) => ({
+    [...session.lines, ...session.addonLines].reduce(
+      (max, line) => Math.max(max, line.confirmationOrder ?? 0),
+      0,
+    ) + 1;
+  const updated = updateLine(session, lineId, (line) => ({
     ...line,
     physicalAddedGrams: line.draftActualGrams,
     confirmed: true,
     confirmedAt: at,
     confirmationOrder: nextOrder,
   }));
+  const baseDone = updated.lines.length > 0 && updated.lines.every((line) => line.confirmed);
+  return baseDone && updated.addonLines.length > 0 ? { ...updated, stage: 'addons' } : updated;
 }
 
 /**
@@ -222,6 +310,7 @@ export function reopenProductionRecord(
   lineId: string,
 ): ProductionSession {
   requireActive(session);
+  requireAddonStageIfNeeded(session, lineId);
   return updateLine(session, lineId, (line) => {
     if (!line.confirmed) return line;
     return {
@@ -240,6 +329,7 @@ export function correctRecordedPhysicalGrams(
   grams: number,
 ): ProductionSession {
   requireActive(session);
+  requireAddonStageIfNeeded(session, lineId);
   if (!Number.isFinite(grams) || grams < 0) throw new Error('Actual grams must be finite and non-negative.');
   return updateLine(session, lineId, (line) => {
     if (line.recordCorrectionCount < 1 || line.confirmed) {
@@ -313,6 +403,28 @@ export function productionProgress(session: ProductionSession): ProductionProgre
   };
 }
 
+export interface ToppingProductionProgress {
+  confirmedCount: number;
+  totalCount: number;
+  confirmedMassG: number;
+  forecastMassG: number;
+  coherent: boolean;
+}
+
+export function toppingProductionProgress(session: ProductionSession): ToppingProductionProgress {
+  const confirmed = session.addonLines.filter((line) => line.confirmed);
+  return {
+    confirmedCount: confirmed.length,
+    totalCount: session.addonLines.length,
+    confirmedMassG: session.addonLines.reduce((sum, line) => sum + line.physicalAddedGrams, 0),
+    forecastMassG: session.addonLines.reduce(
+      (sum, line) => sum + (line.confirmed ? line.physicalAddedGrams : line.targetGrams),
+      0,
+    ),
+    coherent: session.addonLines.every((line) => line.confirmed),
+  };
+}
+
 export function applyVerifiedRescueInput(
   session: ProductionSession,
   candidate: RecipeInput,
@@ -364,10 +476,20 @@ export function completeProductionSession(
 ): ProductionSession {
   requireActive(session);
   const finalActualInput = buildFinalActualInput(session);
-  const actualFinalMassG = finalActualInput.items.reduce(
-    (sum, item) => sum + (item.actual_grams ?? 0),
-    0,
-  );
+  if (session.addonLines.some((line) => !line.confirmed)) {
+    throw new Error('Every topping must be confirmed before production completion.');
+  }
+  const addonById = new Map(session.addonLines.map((line) => [line.lineId, line]));
+  const actualToppings = session.plannedComposition.toppings.map((item) => ({
+    ...item,
+    actual_grams: addonById.get(item.id)?.physicalAddedGrams ?? null,
+  }));
+  const finalProduct = calculateFinalProduct(finalActualInput, actualToppings, 'actual_batch');
+  const actualFinalMassG = finalProduct.finalMassG;
+  const frozenComposition: RecipeCompositionMetadata = {
+    ...session.plannedComposition,
+    toppings: actualToppings,
+  };
   const snapshot: ProductionCompletionSnapshot = {
     sessionId: session.sessionId,
     ownerUserId: session.ownerUserId,
@@ -375,7 +497,16 @@ export function completeProductionSession(
     plannedInput: cloneRecipeInput(session.plannedInput),
     finalActualInput,
     finalResult,
-    confirmedOrder: session.lines
+    finalProduct: {
+      items: finalProduct.finalItems,
+      nutritionPer100g: finalProduct.finalNutritionPer100g,
+      costs: finalProduct.finalCosts,
+      baseMassG: finalProduct.baseMassG,
+      toppingMassG: finalProduct.toppingMassG,
+      finalMassG: finalProduct.finalMassG,
+    },
+    productComposition: frozenComposition,
+    confirmedOrder: [...session.lines, ...session.addonLines]
       .filter(
         (line): line is ProductionLineState & { confirmedAt: string; confirmationOrder: number } =>
           line.confirmedAt !== null && line.confirmationOrder !== null,
