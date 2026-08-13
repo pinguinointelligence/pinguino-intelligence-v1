@@ -7,23 +7,26 @@ export interface ProductBehaviorModuleGate {
 }
 
 /**
- * Trustless recipe boundary for already-resolved products. Legacy recipe lines
- * without a Unified Product Intelligence snapshot retain their accepted
- * behaviour. Once a line has a snapshot, however, no consumer may reinterpret
- * it or silently continue when the named module permission is absent.
+ * Trustless recipe boundary for resolved products. Callers pass every line ID
+ * whose product lineage requires a Unified Product Intelligence snapshot; a
+ * missing snapshot and a denied module permission fail through the same gate.
  */
 export function productBehaviorModuleGate(
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
   module: ProductBehaviorModule,
+  requiredLineIds: readonly string[] = [],
 ): ProductBehaviorModuleGate {
-  const blockedLineIds = Object.entries(snapshots)
+  const missingLineIds = requiredLineIds.filter((lineId) => snapshots[lineId] === undefined);
+  const blockedLineIds = [...new Set([
+    ...missingLineIds,
+    ...Object.entries(snapshots)
     .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
     .filter(([, snapshot]) => {
       const state = snapshot.moduleEligibility[module];
       return state !== 'eligible' && state !== 'label_only';
     })
-    .map(([lineId]) => lineId)
-    .sort();
+    .map(([lineId]) => lineId),
+  ])].sort();
 
   return blockedLineIds.length === 0
     ? { ready: true, blockedLineIds: [], reason: null }
@@ -34,6 +37,35 @@ export function productBehaviorModuleGate(
       };
 }
 
+/** A line created by Mapper/private/catalog product intake must carry the
+ * immutable resolver snapshot. Demo/template/reference fixtures without a
+ * product lineage remain outside this persistence gate. */
+export function productBehaviorRequiredLineIds(input: {
+  items: ReadonlyArray<{ id: string; ingredient: { identity_provenance?: string } }>;
+  toppings?: ReadonlyArray<{
+    id: string;
+    ingredient: { identity_provenance?: string; kind?: string; catalog_product_id?: string };
+  }>;
+}): string[] {
+  const base = input.items
+    .filter(({ ingredient }) =>
+      ingredient.identity_provenance === 'mapper' ||
+      ingredient.identity_provenance === 'private_product' ||
+      ingredient.identity_provenance === 'reference',
+    )
+    .map(({ id }) => id);
+  const toppings = (input.toppings ?? [])
+    .filter(({ ingredient }) =>
+      ingredient.kind === 'catalog_label_topping' ||
+      typeof ingredient.catalog_product_id === 'string' ||
+      ingredient.identity_provenance === 'mapper' ||
+      ingredient.identity_provenance === 'private_product' ||
+      ingredient.identity_provenance === 'reference',
+    )
+    .map(({ id }) => id);
+  return [...new Set([...base, ...toppings])].sort();
+}
+
 export function mainBehaviorBlockReason(
   snapshot: ProductBehaviorSnapshot | null | undefined,
 ): string | null {
@@ -42,7 +74,8 @@ export function mainBehaviorBlockReason(
     return 'Topping nie może pełnić roli Main.';
   }
   if (snapshot.moduleEligibility.MAIN !== 'eligible') {
-    return snapshot.blockReasons[0] === 'main_policy_unknown'
+    return snapshot.mainClassification === 'MAIN_BLOCKED_POLICY' ||
+      snapshot.blockReasons.includes('main_policy_missing')
       ? 'Brak zatwierdzonego zakresu Main dla tego produktu i profilu.'
       : 'Produkt nie jest zatwierdzony jako Main w tym profilu.';
   }

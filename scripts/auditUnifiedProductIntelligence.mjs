@@ -53,6 +53,11 @@ const structural = new Set([
   'sweetener', 'stabilizer', 'fiber', 'emulsifier', 'starch', 'acid', 'colorant',
   'functional_additive', 'additive',
 ]);
+const mainPolicyCandidates = new Set([
+  'fruit', 'fruit_powder', 'flavor_paste', 'flavor_powder', 'flavor_syrup',
+  'flavor_concentrate', 'chocolate', 'cocoa', 'nut', 'nut_paste', 'coffee',
+  'coffee_tea', 'alcohol', 'beverage', 'confectionery_spread',
+]);
 const carrierIds = new Set([
   'PI-ING-000200', 'PI-ING-000201', 'PI-ING-000234', 'PI-ING-000235', 'PI-ING-000236',
 ]);
@@ -61,23 +66,39 @@ const audit = mapper.map((row) => {
   const reviewed = exact.get(row.ingredient_id);
   const notMain = structural.has(row.ingredient_category.toLowerCase()) ||
     row.ingredient_subcategory.toLowerCase() === 'water';
+  const proteinContributor = row.ingredient_category.toLowerCase() === 'protein';
+  const mainBlockedPolicy = mainPolicyCandidates.has(row.ingredient_category.toLowerCase());
   const processRow = processById.get(row.ingredient_id);
   return {
     ingredient_id: row.ingredient_id,
     ingredient_name: row.ingredient_name_display,
     base_eligible: row.approved_for_base,
     engine_eligible: row.approved_for_engines,
-    main_eligibility: reviewed?.main ?? (notMain ? 'NOT_MAIN' : 'UNKNOWN'),
+    main_eligibility: reviewed?.main ?? (
+      proteinContributor
+        ? 'PROTEIN_CONTRIBUTOR_ONLY'
+        : mainBlockedPolicy
+          ? 'MAIN_BLOCKED_POLICY'
+          : 'NOT_MAIN'
+    ),
     family: reviewed?.family ?? 'UNKNOWN_REQUIRES_REVIEW',
     subfamily: reviewed?.subfamily ?? 'UNKNOWN_REQUIRES_REVIEW',
     form: reviewed?.form ?? 'UNKNOWN_REQUIRES_REVIEW',
     form_hint: row.ingredient_subcategory || 'other',
-    supported_profiles: reviewed?.profiles ?? 'UNKNOWN_REQUIRES_REVIEW',
-    policy_coverage: reviewed ? 'OWNER_PROVISIONAL_V1' : 'UNKNOWN_REQUIRES_REVIEW',
+    supported_profiles: reviewed?.profiles ?? 'STANDARD_WHERE_MAPPER_APPROVED',
+    policy_coverage: reviewed
+      ? 'OWNER_PROVISIONAL_V1'
+      : mainBlockedPolicy
+        ? 'MAIN_BLOCKED_POLICY'
+        : 'NOT_APPLICABLE',
     process_mapping: processRow?.process_status ?? 'UNKNOWN',
     process_evidence_level: processRow?.process_evidence_level ?? 'UNKNOWN',
     vegan_status: row.vegan === 'TRUE' ? 'verified' : row.vegan === 'FALSE' ? 'false' : 'unknown',
-    protein_behavior: Number(row.aerating_protein_percent || 0) > 0 ? 'contributor_candidate' : 'UNKNOWN_REQUIRES_REVIEW',
+    protein_behavior: proteinContributor
+      ? 'PROTEIN_CONTRIBUTOR_ONLY'
+      : Number(row.aerating_protein_percent || 0) > 0
+        ? 'CONTRIBUTOR_EVIDENCE_ONLY'
+        : 'NOT_APPLICABLE',
     approved_liquid_dairy_carrier: carrierIds.has(row.ingredient_id) ? 'TRUE' : 'FALSE',
   };
 });
@@ -115,7 +136,7 @@ Generated deterministically from the locked Mapper CSV and its immutable process
 
 ${Object.entries(mainCounts).sort().map(([key, value]) => `- ${key}: **${value}**`).join('\n')}
 
-Only three exact owner fixtures have a provisional Main policy binding. Structural categories are deterministically NOT_MAIN. Every other row remains UNKNOWN_REQUIRES_REVIEW; no family, form, concentration or policy is guessed.
+Only three exact owner fixtures have a provisional Main policy binding. Genuine flavour/product-form candidates without approved science are deterministically MAIN_BLOCKED_POLICY: they remain usable as Standard where Mapper permits, but cannot be optimized as Main. Protein-category rows are PROTEIN_CONTRIBUTOR_ONLY. Every other row is deterministically NOT_MAIN. No family, form, concentration or limit is guessed.
 
 ## Process evidence
 
@@ -123,8 +144,8 @@ ${Object.entries(processCounts).sort().map(([key, value]) => `- ${key}: **${valu
 
 ## Coverage limitations
 
-- Governed family/subfamily/form/profile policy coverage: **3 / 2088** exact reviewed bindings.
-- All 2088 rows are present; UNKNOWN rows are never removed by an inner join.
+- Governed Main envelope coverage: **3 / 2088** exact reviewed bindings.
+- All 2088 rows have a deterministic ordinary behavior; generic runtime UNKNOWN is zero.
 - Protein percentages are preserved as evidence. Positive protein is not promoted to a final behavior except as an explicit contributor candidate.
 - Runtime active catalog counts require the service-only \`catalog_product_behavior_audit_v1\` view on a migrated database. The linked staging migration ledger is currently unreconciled, so catalog counts are not fabricated here.
 `;

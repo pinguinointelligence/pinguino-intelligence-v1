@@ -112,6 +112,7 @@ import {
 } from '@/features/formulation/mainIngredientContract';
 import {
   mainEnvelopeSearchCeilingGrams,
+  productBehaviorModuleGate,
   productBehaviorSnapshotFingerprint,
   verifyMainEnvelope,
   type MainEnvelopeViolation,
@@ -4322,6 +4323,44 @@ export type CommitPreviewResult =
   | { ok: true; verified: VerifiedApply }
   | ({ ok: false } & BlockedApply);
 
+function productBehaviorIdentityViolation(
+  input: RecipeInput,
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+): MainEnvelopeViolation | null {
+  const lineIds = input.items
+    .filter((item) => {
+      const snapshot = snapshots[item.id];
+      if (!snapshot) return false;
+      const canonicalId = canonicalIngredientId(item.ingredient);
+      if (
+        snapshot.mapperIngredientId !== null &&
+        snapshot.mapperIngredientId !== canonicalId
+      ) return true;
+      if (snapshot.source === 'catalog_import') {
+        const productToken = `catalog:${snapshot.productId}`;
+        return item.ingredient.id !== productToken &&
+          !item.ingredient.private_product_id?.startsWith(`${productToken}:version:`);
+      }
+      if (
+        snapshot.source === 'ocr' ||
+        snapshot.source === 'manual' ||
+        snapshot.source === 'internal_subproduct'
+      ) {
+        return item.ingredient.private_product_id !== snapshot.productId;
+      }
+      return false;
+    })
+    .map((item) => item.id);
+  return lineIds.length === 0
+    ? null
+    : {
+        code: 'product_behavior_identity_mismatch',
+        lineIds,
+        messagePl:
+          'Snapshot zachowania produktu nie odpowiada aktualnej toÅ¼samoÅ›ci skÅ‚adnika.',
+      };
+}
+
 /** Binds a successful Preview to immutable product/version/policy authority
  * and rejects the rounded vector before it can be shown as applicable. */
 export function bindProductBehaviorToPreview(
@@ -4329,6 +4368,35 @@ export function bindProductBehaviorToPreview(
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
 ): BuildPreviewResult {
   if (!result.ok) return result;
+  const moduleGate = productBehaviorModuleGate(snapshots, 'BASE_RECIPE');
+  if (!moduleGate.ready) {
+    return {
+      ok: false,
+      code: 'product_behavior_invalid',
+      violations: [{
+        code: 'product_behavior_missing',
+        lineIds: moduleGate.blockedLineIds,
+        messagePl:
+          moduleGate.reason ??
+          'Receptura wymaga ponownej walidacji danych produktu przed Preview.',
+      }],
+      messagePl:
+        moduleGate.reason ??
+        'Receptura wymaga ponownej walidacji danych produktu przed Preview.',
+    };
+  }
+  const identityViolation = productBehaviorIdentityViolation(
+    result.preview.proposedInput,
+    snapshots,
+  );
+  if (identityViolation) {
+    return {
+      ok: false,
+      code: 'product_behavior_invalid',
+      violations: [identityViolation],
+      messagePl: identityViolation.messagePl,
+    };
+  }
   const managed = Object.keys(snapshots).length > 0;
   if (!managed) return result;
   const verification = verifyMainEnvelope({
@@ -5046,6 +5114,38 @@ export class VerifiedApply {
         violations: mainEnvelope.violations,
         messagePl: mainEnvelope.violations[0]?.messagePl ??
           'Apply zablokowany: zachowanie produktu nie jest zatwierdzone.',
+      };
+    }
+    const behaviorGate = productBehaviorModuleGate(
+      currentProductBehaviorSnapshots,
+      'BASE_RECIPE',
+    );
+    if (!behaviorGate.ready) {
+      return {
+        ok: false,
+        code: 'product_behavior_invalid',
+        violations: [{
+          code: 'product_behavior_missing',
+          lineIds: behaviorGate.blockedLineIds,
+          messagePl:
+            behaviorGate.reason ??
+            'Apply zablokowany: receptura wymaga ponownej walidacji danych produktu.',
+        }],
+        messagePl:
+          behaviorGate.reason ??
+          'Apply zablokowany: receptura wymaga ponownej walidacji danych produktu.',
+      };
+    }
+    const identityViolation = productBehaviorIdentityViolation(
+      preview.proposedInput,
+      currentProductBehaviorSnapshots,
+    );
+    if (identityViolation) {
+      return {
+        ok: false,
+        code: 'product_behavior_invalid',
+        violations: [identityViolation],
+        messagePl: identityViolation.messagePl,
       };
     }
     const currentMainGrams = mainGroupTotal(mainIdentityBase, mainIdentityBase);

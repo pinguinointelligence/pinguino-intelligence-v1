@@ -5,6 +5,8 @@ import { mainBehaviorBlockReason } from './productBehaviorAccess';
 const EPSILON = 1e-7;
 
 export type MainEnvelopeViolationCode =
+  | 'product_behavior_missing'
+  | 'product_behavior_identity_mismatch'
   | 'main_behavior_missing'
   | 'main_behavior_blocked'
   | 'main_policy_inconsistent'
@@ -39,8 +41,8 @@ const baseSnapshots = (
 
 /** Product-layer Main contract. It consumes immutable resolver snapshots only;
  * it never derives families/forms/policies from ingredient names and never
- * changes Engine science. Legacy lines without snapshots remain compatible,
- * while every resolver-managed Main fails closed if its authority is absent. */
+ * changes Engine science. Product-lineage Main rows fail closed if their
+ * authority is absent; demo/template fixtures remain outside this boundary. */
 export function verifyMainEnvelope(input: {
   recipe: RecipeInput;
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
@@ -52,6 +54,19 @@ export function verifyMainEnvelope(input: {
     return { ok: true, equivalentPercent: null, targetPercent: null, hardLimitPercent: null, policyId: null };
   }
   const managed = mains.filter((item) => input.snapshots[item.id] !== undefined);
+  const missingRequired = mains.filter((item) =>
+    input.snapshots[item.id] === undefined && item.ingredient.private_product_id != null,
+  );
+  if (missingRequired.length > 0) {
+    return {
+      ok: false,
+      violations: [{
+        code: 'main_behavior_missing',
+        lineIds: missingRequired.map((item) => item.id),
+        messagePl: 'Składnik Main wymaga ponownej walidacji produktu i polityki Main.',
+      }],
+    };
+  }
   if (managed.length === 0) {
     return { ok: true, equivalentPercent: null, targetPercent: null, hardLimitPercent: null, policyId: null };
   }

@@ -13,11 +13,12 @@ Generated deterministically from the locked Mapper CSV and its immutable process
 
 ## Main eligibility
 
+- MAIN_BLOCKED_POLICY: **1314**
 - MAIN_PROFILE_SPECIFIC: **3**
-- NOT_MAIN: **119**
-- UNKNOWN: **1966**
+- NOT_MAIN: **765**
+- PROTEIN_CONTRIBUTOR_ONLY: **6**
 
-Only three exact owner fixtures have a provisional Main policy binding. Structural categories are deterministically NOT_MAIN. Every other row remains UNKNOWN_REQUIRES_REVIEW; no family, form, concentration or policy is guessed.
+Only three exact owner fixtures have a provisional Main policy binding. Genuine flavour/product-form candidates without approved science are deterministically MAIN_BLOCKED_POLICY: they remain usable as Standard where Mapper permits, but cannot be optimized as Main. Protein-category rows are PROTEIN_CONTRIBUTOR_ONLY. Every other row is deterministically NOT_MAIN. No family, form, concentration or limit is guessed.
 
 ## Process evidence
 
@@ -28,7 +29,7 @@ Only three exact owner fixtures have a provisional Main policy binding. Structur
 
 ## Coverage limitations
 
-- Governed family/subfamily/form/profile policy coverage: **3 / 2088** exact reviewed bindings.
-- All 2088 rows are present; UNKNOWN rows are never removed by an inner join.
+- Governed Main envelope coverage: **3 / 2088** exact reviewed bindings.
+- All 2088 rows have a deterministic ordinary behavior; generic runtime UNKNOWN is zero.
 - Protein percentages are preserved as evidence. Positive protein is not promoted to a final behavior except as an explicit contributor candidate.
 - Runtime active catalog counts require the service-only `catalog_product_behavior_audit_v1` view on a migrated database. The linked staging migration ledger is currently unreconciled, so catalog counts are not fabricated here.

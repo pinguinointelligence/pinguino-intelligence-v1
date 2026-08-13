@@ -110,6 +110,7 @@ export interface ProductBehaviorBinding {
     | 'PROTEIN_CONTRIBUTOR_ONLY'
     | 'TOPPING_ONLY'
     | 'NOT_MAIN'
+    | 'MAIN_BLOCKED_POLICY'
     | 'UNKNOWN';
   mainPolicyId: string | null;
   baseAllowed: boolean;
