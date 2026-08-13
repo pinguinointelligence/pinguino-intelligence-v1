@@ -36,7 +36,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { EngineIngredient, LockType, RecipeInput, RecipeItem } from '@/engine';
 import type { SubstituteAuthorization } from '@/features/ingredient-builder/ingredientTableUx';
-import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import {
+  productBehaviorRequiredLineIds,
+  type ProductBehaviorSnapshot,
+} from '@/features/product-intelligence';
+import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
+import { useAuthStore } from '@/stores/authStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
   canonicalIngredientId,
@@ -1032,6 +1037,133 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
  *         feasibility, blocked) is invalidated unless the staged preview
  *         already carries the new revision.
  */
+function serverBehaviorPreviewIssue(
+  lineIds: readonly string[],
+): Extract<BuildPreviewResult, { ok: false; code: 'product_behavior_invalid' }> {
+  return {
+    ok: false,
+    code: 'product_behavior_invalid',
+    violations: [{
+      code: 'product_behavior_missing',
+      lineIds: [...lineIds],
+      messagePl: 'Klasyfikacja produktu zmieniła się. Uruchom ponowne przeliczenie.',
+    }],
+    messagePl: 'Klasyfikacja produktu zmieniła się. Uruchom ponowne przeliczenie.',
+  };
+}
+
+async function currentBaseAuthorityReady(input: {
+  recipe: RecipeInput;
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+}): Promise<{ ready: true } | { ready: false; lineIds: string[] }> {
+  const required = productBehaviorRequiredLineIds({ items: input.recipe.items });
+  if (required.length === 0) return { ready: true };
+  try {
+    const validation = await validateRecipeBehaviorOnServer({
+      recipe: input.recipe,
+      snapshots: input.snapshots,
+      module: 'BASE_RECIPE',
+      accountId: useAuthStore.getState().user?.id ?? null,
+    });
+    return validation.ready
+      ? { ready: true }
+      : { ready: false, lineIds: validation.staleLineIds };
+  } catch {
+    return { ready: false, lineIds: required };
+  }
+}
+
+/** Runtime wrapper: every customer-visible Preview rechecks current server
+ * authority while pure store actions remain deterministic domain seams. */
+export async function createOptimizePreviewWithServerAuthority(): Promise<void> {
+  const draft = selectCanonicalDraft();
+  const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+  const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
+  if (!validation.ready) {
+    useConstraintStudioStore.setState({
+      preview: null,
+      directionBestCandidate: null,
+      previewIssue: serverBehaviorPreviewIssue(validation.lineIds),
+      blocked: null,
+    });
+    return;
+  }
+  if (useRecipeStore.getState().draftRevision !== draft.revision) return;
+  useConstraintStudioStore.getState().createOptimizePreview();
+}
+
+export async function createBatchRescalePreviewWithServerAuthority(
+  grams: number,
+): Promise<void> {
+  const draft = selectCanonicalDraft();
+  const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+  const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
+  if (!validation.ready) {
+    useConstraintStudioStore.setState({
+      preview: null,
+      previewIssue: serverBehaviorPreviewIssue(validation.lineIds),
+      blocked: null,
+    });
+    return;
+  }
+  if (useRecipeStore.getState().draftRevision !== draft.revision) return;
+  useConstraintStudioStore.getState().createBatchRescalePreview(grams);
+}
+
+export async function createSuggestedFixPreviewWithServerAuthority(
+  fix: SuggestedBoundFix,
+): Promise<void> {
+  const draft = selectCanonicalDraft();
+  const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+  const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
+  if (!validation.ready) {
+    useConstraintStudioStore.setState({
+      preview: null,
+      previewIssue: serverBehaviorPreviewIssue(validation.lineIds),
+      blocked: null,
+    });
+    return;
+  }
+  if (useRecipeStore.getState().draftRevision !== draft.revision) return;
+  useConstraintStudioStore.getState().createSuggestedFixPreview(fix);
+}
+
+/** Terminal Apply wrapper. Stale product authority clears the Preview before
+ * the guarded recipe-store write is reached. */
+export async function applyPreviewWithServerAuthority(): Promise<void> {
+  const session = useConstraintStudioStore.getState();
+  const preview = session.preview;
+  if (!preview) return;
+  const currentSnapshots = useRecipeStore.getState().productBehaviorSnapshots;
+  const snapshots = session.substitutionAuthorization
+    ? {
+        ...currentSnapshots,
+        [session.substitutionAuthorization.lineId]:
+          session.substitutionAuthorization.productBehaviorSnapshot,
+      }
+    : currentSnapshots;
+  const revision = useRecipeStore.getState().draftRevision;
+  const validation = await currentBaseAuthorityReady({
+    recipe: preview.proposedInput,
+    snapshots,
+  });
+  if (
+    !validation.ready ||
+    useRecipeStore.getState().draftRevision !== revision ||
+    useConstraintStudioStore.getState().preview !== preview
+  ) {
+    useConstraintStudioStore.setState({
+      preview: null,
+      blocked: {
+        code: 'stale_preview',
+        messagePl: 'Apply zablokowany: klasyfikacja produktu zmieniła się. Uruchom ponowne Preview.',
+      },
+    });
+    return;
+  }
+  useConstraintStudioStore.getState().applyPreview();
+}
+
 useRecipeStore.subscribe((state, prev) => {
   if (state.draftContextSeq !== prev.draftContextSeq) {
     useConstraintStudioStore.getState().resetDraftSession();

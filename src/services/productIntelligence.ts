@@ -1,9 +1,89 @@
-import type { ProductBehaviorContext, ServerResolvedProductBehavior } from '@/features/product-intelligence';
+import type { RecipeInput } from '@/engine';
+import type { EngineIngredient } from '@/engine';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
+import {
+  productBehaviorRequiredLineIds,
+  type ProductBehaviorContext,
+  type ProductBehaviorModule,
+  type ProductBehaviorSnapshot,
+  type ServerResolvedProductBehavior,
+} from '@/features/product-intelligence';
+import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
 import { supabase } from '@/lib/supabase/client';
 
 export type ProductBehaviorEntity =
   | { entityKind: 'mapper'; entityId: string }
   | { entityKind: 'catalog_product_version'; entityId: string };
+
+export interface RecipeBehaviorServerValidationLine {
+  lineId: string;
+  entityKind: ProductBehaviorEntity['entityKind'];
+  entityId: string;
+  productId: string;
+  productVersionId: string;
+  behaviorBindingId: string;
+  behaviorBindingVersion: string;
+  factsFingerprint: string;
+  taxonomyVersion: string;
+  mapperIngredientId: string | null;
+  mainPolicyId: string | null;
+  mainPolicyVersion: string | null;
+}
+
+export interface RecipeBehaviorServerValidationResult {
+  ready: boolean;
+  module: ProductBehaviorModule;
+  lines: Array<{ lineId: string; state: 'ready' | 'stale'; reasons: string[] }>;
+  staleLineIds: string[];
+}
+
+interface RecipeBehaviorServerValidationGroup {
+  lines: RecipeBehaviorServerValidationLine[];
+  context: ProductBehaviorContext;
+}
+
+const TECHNICAL_FACT_FIELDS: ReadonlyArray<[
+  keyof EngineIngredient['composition'] | 'pod_value' | 'pac_value' | 'de_value',
+  string,
+]> = [
+  ['water_percent', 'water'], ['solids_percent', 'totalSolids'],
+  ['fat_percent', 'fat'], ['saturated_fat_percent', 'saturatedFat'],
+  ['protein_percent', 'protein'], ['carbohydrate_percent', 'carbohydrate'],
+  ['sugar_percent', 'sugars'], ['sucrose_percent', 'sucrose'],
+  ['glucose_percent', 'glucose'], ['dextrose_percent', 'dextrose'],
+  ['fructose_percent', 'fructose'], ['lactose_percent', 'lactose'],
+  ['polyol_percent', 'polyols'], ['fiber_percent', 'fibre'],
+  ['salt_percent', 'salt'], ['alcohol_percent', 'alcohol'],
+  ['kcal_per_100g', 'energyKcal'], ['pod_value', 'podValue'],
+  ['pac_value', 'pacValue'], ['de_value', 'deValue'],
+];
+
+function ingredientTechnicalValue(
+  ingredient: EngineIngredient,
+  field: keyof EngineIngredient['composition'] | 'pod_value' | 'pac_value' | 'de_value',
+): number | null | undefined {
+  return field in ingredient.composition
+    ? ingredient.composition[field as keyof EngineIngredient['composition']]
+    : ingredient[field as 'pod_value' | 'pac_value' | 'de_value'];
+}
+
+function technicalFactsMatch(
+  ingredient: EngineIngredient,
+  snapshot: ProductBehaviorSnapshot,
+): boolean {
+  if (snapshot.processScope !== 'BASE_FORMULATION') return true;
+  const technical = snapshot.sharedFacts?.technicalComposition;
+  if (!technical || Object.keys(technical).length === 0) return false;
+  return TECHNICAL_FACT_FIELDS.every(([ingredientField, snapshotField]) => {
+    const expected = technical[snapshotField];
+    const actual = ingredientTechnicalValue(ingredient, ingredientField);
+    if (expected === undefined) return false;
+    if (expected === null || actual === null || actual === undefined) {
+      return expected === null && (actual === null || actual === undefined);
+    }
+    return Number.isFinite(expected) && Number.isFinite(actual) && Math.abs(expected - actual) <= 1e-7;
+  });
+}
 
 const asStringArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
@@ -37,6 +117,193 @@ function readServerResolvedProductBehavior(value: unknown): ServerResolvedProduc
       : null,
     warnings: asStringArray(row.warnings),
     blockReasons: asStringArray(row.blockReasons),
+  };
+}
+
+function serverValidationLine(
+  lineId: string,
+  snapshot: ProductBehaviorSnapshot,
+): RecipeBehaviorServerValidationLine | null {
+  const mapper = snapshot.source === 'mapper';
+  const entityId = mapper ? snapshot.mapperIngredientId : snapshot.productVersionId;
+  if (!entityId) return null;
+  return {
+    lineId,
+    entityKind: mapper ? 'mapper' : 'catalog_product_version',
+    entityId,
+    productId: snapshot.productId,
+    productVersionId: snapshot.productVersionId,
+    behaviorBindingId: snapshot.behaviorBindingId,
+    behaviorBindingVersion: snapshot.behaviorBindingVersion,
+    factsFingerprint: snapshot.factsFingerprint,
+    taxonomyVersion: snapshot.taxonomyVersion,
+    mapperIngredientId: snapshot.mapperIngredientId,
+    mainPolicyId: snapshot.mainPolicyId,
+    mainPolicyVersion: snapshot.mainPolicyVersion,
+  };
+}
+
+/** Builds only immutable references for the server terminal gate. Product
+ * facts and permission booleans are always loaded again by PostgreSQL. */
+export function buildRecipeBehaviorServerValidationGroups(input: {
+  recipe: RecipeInput;
+  toppings?: readonly RecipeToppingItem[];
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  module: ProductBehaviorModule;
+  accountId: string | null;
+}): { groups: RecipeBehaviorServerValidationGroup[]; invalidLineIds: string[] } {
+  const requiredLineIds = productBehaviorRequiredLineIds({
+    items: input.recipe.items,
+    toppings: input.toppings,
+  });
+  const mainLineIds = new Set(
+    input.recipe.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
+  );
+  const invalidLineIds: string[] = [];
+  const byContext = new Map<string, RecipeBehaviorServerValidationGroup>();
+
+  for (const lineId of requiredLineIds) {
+    const snapshot = input.snapshots[lineId];
+    const recipeLine = input.recipe.items.find((item) => item.id === lineId);
+    if (
+      !snapshot ||
+      snapshot.resolutionState !== 'RESOLVED' ||
+      (recipeLine !== undefined && !technicalFactsMatch(recipeLine.ingredient, snapshot))
+    ) {
+      invalidLineIds.push(lineId);
+      continue;
+    }
+    const line = serverValidationLine(lineId, snapshot);
+    if (!line) {
+      invalidLineIds.push(lineId);
+      continue;
+    }
+    const requestedRole = mainLineIds.has(lineId) ? 'MAIN' : 'STANDARD';
+    const key = `${snapshot.processScope}:${requestedRole}`;
+    const existing = byContext.get(key);
+    if (existing) {
+      existing.lines.push(line);
+      continue;
+    }
+    byContext.set(key, {
+      lines: [line],
+      context: {
+        accountId: input.accountId,
+        productProfile: input.recipe.category,
+        temperatureC: input.recipe.target_temperature_c,
+        mode: normalizeFormulationStrategy(
+          input.recipe.goals?.formulation_strategy ?? input.recipe.mode,
+        ),
+        processScope: snapshot.processScope,
+        requestedRole,
+        module: input.module,
+      },
+    });
+  }
+
+  return {
+    groups: [...byContext.values()].map((group) => ({
+      ...group,
+      lines: [...group.lines].sort((left, right) => left.lineId.localeCompare(right.lineId)),
+    })),
+    invalidLineIds: [...invalidLineIds].sort(),
+  };
+}
+
+function readRecipeBehaviorServerValidation(
+  value: unknown,
+  expectedModule: ProductBehaviorModule,
+): RecipeBehaviorServerValidationResult | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  if (
+    row.schemaVersion !== 1 ||
+    typeof row.ready !== 'boolean' ||
+    row.module !== expectedModule ||
+    !Array.isArray(row.lines) ||
+    !Array.isArray(row.staleLineIds)
+  ) return null;
+  const lines = row.lines.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const line = entry as Record<string, unknown>;
+    if (
+      typeof line.lineId !== 'string' ||
+      (line.state !== 'ready' && line.state !== 'stale') ||
+      !Array.isArray(line.reasons)
+    ) return [];
+    return [{
+      lineId: line.lineId,
+      state: line.state as 'ready' | 'stale',
+      reasons: asStringArray(line.reasons),
+    }];
+  });
+  if (lines.length !== row.lines.length) return null;
+  return {
+    ready: row.ready,
+    module: expectedModule,
+    lines,
+    staleLineIds: asStringArray(row.staleLineIds),
+  };
+}
+
+/** Re-resolves current version, classification, mapping, taxonomy and Main
+ * policy immediately before a terminal recipe operation. */
+export async function validateRecipeBehaviorOnServer(input: {
+  recipe: RecipeInput;
+  toppings?: readonly RecipeToppingItem[];
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  module: ProductBehaviorModule;
+  accountId: string | null;
+}): Promise<RecipeBehaviorServerValidationResult> {
+  const built = buildRecipeBehaviorServerValidationGroups(input);
+  if (built.invalidLineIds.length > 0) {
+    return {
+      ready: false,
+      module: input.module,
+      staleLineIds: built.invalidLineIds,
+      lines: built.invalidLineIds.map((lineId) => ({
+        lineId,
+        state: 'stale',
+        reasons: ['behavior_snapshot_missing_or_unresolved'],
+      })),
+    };
+  }
+  if (built.groups.length === 0) {
+    return { ready: true, module: input.module, staleLineIds: [], lines: [] };
+  }
+  if (!supabase) {
+    const lineIds = built.groups.flatMap((group) => group.lines.map((line) => line.lineId)).sort();
+    return {
+      ready: false,
+      module: input.module,
+      staleLineIds: lineIds,
+      lines: lineIds.map((lineId) => ({
+        lineId,
+        state: 'stale',
+        reasons: ['behavior_server_validation_unavailable'],
+      })),
+    };
+  }
+
+  const client = supabase;
+  const results = await Promise.all(built.groups.map(async (group) => {
+    const { data, error } = await client.rpc('validate_recipe_behavior_v1', {
+      p_lines: group.lines,
+      p_context: group.context,
+    });
+    if (error) throw new Error(error.message);
+    const parsed = readRecipeBehaviorServerValidation(data, input.module);
+    if (!parsed) throw new Error('Nieprawidłowa odpowiedź walidacji zachowania produktu.');
+    return parsed;
+  }));
+  const lines = results.flatMap((result) => result.lines)
+    .sort((left, right) => left.lineId.localeCompare(right.lineId));
+  const staleLineIds = [...new Set(results.flatMap((result) => result.staleLineIds))].sort();
+  return {
+    ready: results.every((result) => result.ready) && staleLineIds.length === 0,
+    module: input.module,
+    lines,
+    staleLineIds,
   };
 }
 

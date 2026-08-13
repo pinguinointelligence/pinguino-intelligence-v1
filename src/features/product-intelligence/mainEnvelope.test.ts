@@ -204,6 +204,55 @@ describe('versioned Main envelope', () => {
     })).toMatchObject({ ok: false, violations: [expect.objectContaining({ code: 'multi_main_policy_unknown' })] });
   });
 
+  it.each([
+    [162.15, 162.15],
+    [216.2, 108.1],
+  ])('accepts the approved Vegan same-family Multi-Main total envelope', (firstGrams, secondGrams) => {
+    const baseRecipe = recipe(firstGrams, 400);
+    const sameFamily: RecipeInput = {
+      ...baseRecipe,
+      category: 'vegan_gelato',
+      items: [
+        ...baseRecipe.items.map((item) => item.id === 'sugar'
+          ? { ...item, planned_grams: item.planned_grams - secondGrams }
+          : item),
+        {
+          id: 'banana',
+          ingredient: ingredient('banana'),
+          planned_grams: secondGrams,
+          actual_grams: null,
+          lock_type: 'main',
+        },
+      ],
+    };
+    const groupSnapshot = (lineId: string, mapperIngredientId: string, subfamilyId: string) =>
+      snapshot(lineId, {
+        mapperIngredientId,
+        familyId: 'fruit',
+        subfamilyId,
+        mainPolicyId: 'main-vegan-fruit-combination-v1',
+        mainPolicyVersion: '1',
+        ecoFloorPercent: 32.43,
+        optimalCeilingPercent: 32.43,
+        hardLimitPercent: 32.43,
+        requiresLiquidDairyCarrier: false,
+        liquidDairyCarrierFloorPercent: null,
+      });
+    const result = verifyMainEnvelope({
+      recipe: sameFamily,
+      snapshots: {
+        berry: groupSnapshot('berry', 'berry_puree', 'berry'),
+        banana: groupSnapshot('banana', 'banana_puree', 'banana'),
+      },
+      mode: 'optimal',
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      policyId: 'main-vegan-fruit-combination-v1',
+    });
+    expect(result.ok && result.equivalentPercent).toBeCloseTo(32.43, 8);
+  });
+
   it('does not apply the ordinary dairy carrier gate to a profile policy that does not require it', () => {
     const proteinSnapshot = snapshot('berry', {
       requiresLiquidDairyCarrier: false,

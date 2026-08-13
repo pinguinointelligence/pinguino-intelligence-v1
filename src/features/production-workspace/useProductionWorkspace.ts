@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { calculateRecipe, proposeCorrections } from '@/engine';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore, type RecipeState } from '@/stores/recipeStore';
@@ -26,6 +26,7 @@ import {
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
 } from '@/features/product-intelligence';
+import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 
 const newSessionId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -60,6 +61,11 @@ export function useProductionWorkspace(enabled: boolean) {
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const lastApplied = useConstraintStudioStore((state) => state.history.at(-1));
   const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
+  const [behaviorServerGate, setBehaviorServerGate] = useState<{
+    key: string | null;
+    ready: boolean;
+    message: string | null;
+  }>({ key: null, ready: false, message: null });
 
   const plannedInput = useMemo(
     () => applyEffectiveCustomerPrices(buildRecipeInput(recipe, 'planning'), customerPrices),
@@ -114,21 +120,92 @@ export function useProductionWorkspace(enabled: boolean) {
           message:
             'Zastosuj najpierw zweryfikowane Preview w pełnych gramach. Produkcja nie uruchomi ułamkowego szkicu.',
         };
-  }, [constraints, lastApplied, plannedInput, recipe.practicalRecipeAudit, recipe.productBehaviorSnapshots]);
+  }, [
+    constraints,
+    lastApplied,
+    plannedInput,
+    recipe.items,
+    recipe.practicalRecipeAudit,
+    recipe.productBehaviorSnapshots,
+    recipe.toppings,
+  ]);
 
   const source = useMemo(() => productionSourceForRecipe(recipe), [recipe]);
+  const requiredBehaviorLineIds = useMemo(
+    () => productBehaviorRequiredLineIds({
+      items: plannedInput.items,
+      toppings: plannedComposition.toppings,
+    }),
+    [plannedComposition.toppings, plannedInput.items],
+  );
+  const behaviorValidationKey = useMemo(
+    () => JSON.stringify({
+      ownerUserId,
+      recipe: plannedInput,
+      toppings: plannedComposition.toppings,
+      snapshots: plannedComposition.behaviorSnapshots ?? {},
+    }),
+    [ownerUserId, plannedComposition, plannedInput],
+  );
+  const behaviorServerReady = requiredBehaviorLineIds.length === 0 || (
+    behaviorServerGate.key === behaviorValidationKey && behaviorServerGate.ready
+  );
+  const behaviorServerMessage = behaviorServerGate.key === behaviorValidationKey
+    ? behaviorServerGate.message
+    : null;
 
   useEffect(() => {
     if (!enabled || !practicalGate.ready || plannedInput.items.length === 0) return;
-    ensureSession({
-      ownerUserId,
-      source,
-      plannedInput,
-      plannedComposition,
-      now: new Date().toISOString(),
-      sessionId: newSessionId(),
+    let cancelled = false;
+    const validationPromise = requiredBehaviorLineIds.length === 0
+      ? Promise.resolve({ ready: true, staleLineIds: [] as string[] })
+      : validateRecipeBehaviorOnServer({
+          recipe: plannedInput,
+          toppings: plannedComposition.toppings,
+          snapshots: plannedComposition.behaviorSnapshots ?? {},
+          module: 'PRODUCTION',
+          accountId: ownerUserId,
+        });
+    void validationPromise.then((validation) => {
+      if (cancelled) return;
+      if (!validation.ready) {
+        setBehaviorServerGate({
+          key: behaviorValidationKey,
+          ready: false,
+          message: `Produkcja zablokowana: klasyfikacja produktu wymaga ponownego przeliczenia (${validation.staleLineIds.join(', ')}).`,
+        });
+        return;
+      }
+      setBehaviorServerGate({ key: behaviorValidationKey, ready: true, message: null });
+      ensureSession({
+        ownerUserId,
+        source,
+        plannedInput,
+        plannedComposition,
+        now: new Date().toISOString(),
+        sessionId: newSessionId(),
+      });
+    }).catch(() => {
+      if (!cancelled) {
+        setBehaviorServerGate({
+          key: behaviorValidationKey,
+          ready: false,
+          message: 'Produkcja zablokowana: nie udało się potwierdzić aktualnej klasyfikacji produktu.',
+        });
+      }
     });
-  }, [enabled, ensureSession, ownerUserId, plannedComposition, plannedInput, practicalGate.ready, source]);
+    return () => { cancelled = true; };
+  }, [
+    behaviorValidationKey,
+    enabled,
+    ensureSession,
+    ownerUserId,
+    plannedComposition,
+    plannedInput,
+    practicalGate.ready,
+    requiredBehaviorLineIds.length,
+    source,
+  ]);
 
   const forecastInput = useMemo(
     () => (session ? buildProductionForecastInput(session) : plannedInput),
@@ -166,14 +243,48 @@ export function useProductionWorkspace(enabled: boolean) {
     toppingProgress,
     score,
     corrections,
-    practicalReady: practicalGate.ready,
-    practicalBlockMessage: practicalGate.message,
+    practicalReady: practicalGate.ready && behaviorServerReady,
+    practicalBlockMessage: practicalGate.message ?? behaviorServerMessage,
     setDraftActual,
     confirmLine: (lineId: string) => confirmLine(lineId, new Date().toISOString()),
     reopenRecord,
-    applyVerifiedRescue,
+    applyVerifiedRescue: async (candidate: typeof plannedInput) => {
+      const validation = await validateRecipeBehaviorOnServer({
+        recipe: candidate,
+        toppings: plannedComposition.toppings,
+        snapshots: plannedComposition.behaviorSnapshots ?? {},
+        module: 'BATCH_RESCUE',
+        accountId: ownerUserId,
+      });
+      if (!validation.ready) {
+        setBehaviorServerGate({
+          key: behaviorValidationKey,
+          ready: false,
+          message: `Ratowanie partii zablokowane: klasyfikacja produktu wymaga ponownego przeliczenia (${validation.staleLineIds.join(', ')}).`,
+        });
+        return;
+      }
+      applyVerifiedRescue(candidate);
+    },
     complete: () => complete(new Date().toISOString(), ownerUserId),
-    startNewSession: () =>
+    startNewSession: async () => {
+      if (requiredBehaviorLineIds.length > 0) {
+        const validation = await validateRecipeBehaviorOnServer({
+          recipe: plannedInput,
+          toppings: plannedComposition.toppings,
+          snapshots: plannedComposition.behaviorSnapshots ?? {},
+          module: 'PRODUCTION',
+          accountId: ownerUserId,
+        });
+        if (!validation.ready) {
+          setBehaviorServerGate({
+            key: behaviorValidationKey,
+            ready: false,
+            message: `Produkcja zablokowana: klasyfikacja produktu wymaga ponownego przeliczenia (${validation.staleLineIds.join(', ')}).`,
+          });
+          return;
+        }
+      }
       startNewSession({
         ownerUserId,
         source,
@@ -181,7 +292,8 @@ export function useProductionWorkspace(enabled: boolean) {
         plannedComposition,
         now: new Date().toISOString(),
         sessionId: newSessionId(),
-      }),
+      });
+    },
   };
 }
 

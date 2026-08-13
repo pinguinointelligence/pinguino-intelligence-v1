@@ -15,7 +15,12 @@ vi.mock('@/services/productIngest', () => ({
   ingestProduct: h.ingest,
 }));
 
-import { updateProduct, updateProductUnlessStatus } from './products';
+import {
+  saveProductMapperReview,
+  saveProductMatchResult,
+  updateProduct,
+  updateProductUnlessStatus,
+} from './products';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -61,5 +66,63 @@ describe('updateProductUnlessStatus — write-time status guard', () => {
     const written = h.ingest.mock.calls[0]?.[0].input as Record<string, unknown>;
     expect(written.salt_percent).toBe(0.1);
     expect(written).not.toHaveProperty('pac_value');
+  });
+});
+
+describe('Mapper authority events use canonical ingest', () => {
+  it('records an automatic match only as a non-authoritative Mapper candidate', async () => {
+    h.state.data = { id: 'p1', mapper_status: null };
+    await saveProductMatchResult('p1', {
+      mapper_status: 'matched',
+      matched_basement_id: 'PI-ING-000099',
+      match_confidence: 'exact',
+      match_method: 'exact_ean',
+      mapper_notes: null,
+      normalized_name: 'milk',
+      normalized_category: 'dairy',
+      needs_review_reason: null,
+      missing_fields: [],
+      candidate_ids: ['PI-ING-000099'],
+      candidate_count: 1,
+    });
+    const written = h.ingest.mock.calls[0]?.[0].input as Record<string, unknown>;
+    expect(written.mapperCandidate).toMatchObject({
+      mapper_status: 'matched',
+      matched_basement_id: 'PI-ING-000099',
+    });
+    expect(written).not.toHaveProperty('mapperDecision');
+  });
+
+  it('requires verified review evidence before a positive Mapper decision', async () => {
+    h.state.data = { id: 'p1', matched_basement_id: 'PI-ING-000099' };
+    await saveProductMapperReview('p1', {
+      mapper_status: 'matched',
+      matched_basement_id: 'PI-ING-000099',
+    }, {
+      reviewedBy: 'owner',
+      reviewNotes: 'Independent producer specification verified.',
+      reviewSignoffId: '00000000-0000-4000-8000-000000000099',
+    });
+    const written = h.ingest.mock.calls[0]?.[0].input as Record<string, unknown>;
+    expect(written.mapperDecision).toEqual({ mapperIngredientId: 'PI-ING-000099' });
+    expect(written.reviewEvidence).toMatchObject({
+      reviewedBy: 'owner',
+      reviewSignoffId: '00000000-0000-4000-8000-000000000099',
+    });
+  });
+
+  it('keeps an unsigned visual confirmation in the review queue', async () => {
+    h.state.data = { id: 'p1', matched_basement_id: 'PI-ING-000099' };
+    await saveProductMapperReview('p1', {
+      mapper_status: 'matched',
+      matched_basement_id: 'PI-ING-000099',
+    });
+    const written = h.ingest.mock.calls[0]?.[0].input as Record<string, unknown>;
+    expect(written.mapperCandidate).toMatchObject({
+      mapperIngredientId: 'PI-ING-000099',
+      decisionRequested: 'matched',
+      reviewed: true,
+    });
+    expect(written).not.toHaveProperty('mapperDecision');
   });
 });

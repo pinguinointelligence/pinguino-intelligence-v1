@@ -152,7 +152,30 @@ export async function saveProductMatchResult(
   productId: string,
   result: ProductMatchResult,
 ): Promise<ProductRow> {
-  return updateProduct(productId, productMatchResultToPatch(result));
+  const current = await getProduct(productId);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct(current);
+  request.source = 'admin';
+  request.input.productId = productId;
+  request.input.operation = 'upsert';
+  request.input.mapperCandidate = productMatchResultToPatch(result);
+  const idempotencyKey = await productIngestIdempotencyKey(
+    request.source,
+    request.input,
+    `mapper-candidate:${productId}`,
+  );
+  const ingested = await ingestProduct({ ...request, idempotencyKey, productId });
+  if (!ingested.productId) throw new Error('Mapper candidate intake did not return a product.');
+  const product = await getProduct(ingested.productId);
+  if (!product) throw new Error('Canonical product is not visible after Mapper candidate intake.');
+  return product;
+}
+
+export interface ProductMapperReviewAuthorization {
+  reviewedBy: string;
+  reviewNotes: string;
+  reviewSignoffId?: string | null;
+  independentProvenance?: boolean;
 }
 
 /**
@@ -166,8 +189,50 @@ export async function saveProductMatchResult(
 export async function saveProductMapperReview(
   productId: string,
   patch: ProductMapperResultUpdate,
+  authorization?: ProductMapperReviewAuthorization,
 ): Promise<ProductRow> {
-  return updateProduct(productId, patch);
+  const current = await getProduct(productId);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct(current);
+  request.source = 'admin';
+  request.input.productId = productId;
+  request.input.operation = 'upsert';
+
+  const mapperIngredientId = patch.matched_basement_id ?? current.matched_basement_id ?? null;
+  const rejecting = patch.mapper_status === 'rejected';
+  const canAuthorize = rejecting || Boolean(
+    authorization?.reviewSignoffId || authorization?.independentProvenance === true,
+  );
+  if (canAuthorize) {
+    request.input.mapperDecision = {
+      mapperIngredientId: rejecting ? null : mapperIngredientId,
+    };
+    request.input.reviewEvidence = {
+      reviewedBy: authorization?.reviewedBy ?? 'authenticated-admin',
+      reviewNotes: authorization?.reviewNotes ?? patch.mapper_notes ?? 'Manual Mapper review decision.',
+      reviewSignoffId: authorization?.reviewSignoffId ?? null,
+      independentProvenance: authorization?.independentProvenance === true,
+    };
+  } else {
+    // A visual reviewer choice without an independently verified sign-off is
+    // evidence for the review queue, never an Engine mapping authorization.
+    request.input.mapperCandidate = {
+      ...patch,
+      mapperIngredientId,
+      decisionRequested: patch.mapper_status,
+      reviewed: true,
+    };
+  }
+  const idempotencyKey = await productIngestIdempotencyKey(
+    request.source,
+    request.input,
+    `${canAuthorize ? 'mapper-decision' : 'mapper-review-candidate'}:${productId}`,
+  );
+  const ingested = await ingestProduct({ ...request, idempotencyKey, productId });
+  if (!ingested.productId) throw new Error('Mapper review intake did not return a product.');
+  const product = await getProduct(ingested.productId);
+  if (!product) throw new Error('Canonical product is not visible after Mapper review intake.');
+  return product;
 }
 
 /* ── D5B: identity-aware duplicate prevention ──────────────────────────────────

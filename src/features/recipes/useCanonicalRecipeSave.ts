@@ -41,6 +41,7 @@ import {
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
 } from '@/features/product-intelligence';
+import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
@@ -241,6 +242,28 @@ export function useCanonicalRecipeSave(
     ]);
   };
 
+  const validateCurrentBehavior = async (
+    recipeInput: RecipeInput,
+    productComposition: ReturnType<typeof recipeCompositionFromState> | null,
+  ) => {
+    // Explicit payloads belong to Home/other accepted surfaces and do not own
+    // the Pro recipe behavior snapshot map.
+    if (options.buildInput !== undefined) return;
+    const state = useRecipeStore.getState();
+    const validation = await validateRecipeBehaviorOnServer({
+      recipe: recipeInput,
+      toppings: productComposition?.toppings ?? [],
+      snapshots: state.productBehaviorSnapshots,
+      module: 'SAVE',
+      accountId: authUserId,
+    });
+    if (!validation.ready) {
+      throw new Error(
+        `Zapis zablokowany: klasyfikacja produktu wymaga ponownego przeliczenia (${validation.staleLineIds.join(', ')}).`,
+      );
+    }
+  };
+
   const run = async (
     fn: () => Promise<string | null>,
     requirePracticalRecipe = false,
@@ -278,6 +301,7 @@ export function useCanonicalRecipeSave(
           options.buildInput === undefined
             ? recipeCompositionFromState(useRecipeStore.getState())
             : null;
+        await validateCurrentBehavior(recipeInput, productComposition);
         const { recipe, version } = await repository!.createRecipe({
           ownerUserId: ownerId,
           title: title.trim(),
@@ -308,6 +332,7 @@ export function useCanonicalRecipeSave(
           options.buildInput === undefined
             ? recipeCompositionFromState(useRecipeStore.getState())
             : null;
+        await validateCurrentBehavior(recipeInput, productComposition);
         const version = await repository!.saveNewVersion(
           savedRecipeId,
           recipeInput,

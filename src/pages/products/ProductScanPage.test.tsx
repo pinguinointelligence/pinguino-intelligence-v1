@@ -32,11 +32,14 @@ describe('customer OCR global-catalog entry', () => {
     expect(SOURCE).toContain('assessDuplicate');
   });
 
-  it('preflights ownership and rate before evidence download/archive', () => {
-    const preflight = EDGE.indexOf("service.rpc('begin_global_catalog_submission'");
+  it('captures owned evidence and enters the canonical ingest transaction exactly once', () => {
     const capture = EDGE.indexOf('captureOwnedEvidence({');
-    expect(preflight).toBeGreaterThan(0);
-    expect(capture).toBeGreaterThan(preflight);
+    const ingest = EDGE.indexOf("service.rpc('ingest_product_v1'");
+    expect(capture).toBeGreaterThan(0);
+    expect(ingest).toBeGreaterThan(capture);
+    expect(EDGE.match(/service\.rpc\('ingest_product_v1'/g)).toHaveLength(1);
+    expect(EDGE).not.toContain("service.rpc('begin_global_catalog_submission'");
+    expect(EDGE).not.toContain("service.rpc('submit_owned_product_to_global_catalog_v2'");
     expect(EDGE).toContain('ocr_evidence_checksum_mismatch');
     expect(EDGE).toContain('CATALOG_RISK_HMAC_SECRET');
     expect(EDGE).not.toContain('hmacRiskValue(forwarded, serviceKey)');

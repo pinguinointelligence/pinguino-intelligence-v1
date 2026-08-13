@@ -121,6 +121,9 @@ describe('canonical product root forward migration', () => {
     expect(sql).toContain("v_binding_id:=public.classify_catalog_product_behavior_v2(");
     expect(sql).toContain("'admin_mapper_decision'");
     expect(sql).toContain("'mapper_authorization_required'");
+    expect(sql).toContain("mapper_status=case when v_mapper_ingredient_id is null then 'rejected' else 'matched' end");
+    expect(sql).toContain("mapper_status='needs_review'");
+    expect(sql).toContain('Mapper candidate requires an independently verified sign-off.');
     expect(sql).not.toMatch(/grant execute on function public\.ingest_product_v1[^;]+authenticated/i);
   });
 

@@ -135,10 +135,6 @@ export function MonitorPanelContent({
     () => recipeBehaviorModuleGate(behaviorAuthority, 'MONITOR'),
     [behaviorAuthority],
   );
-  const nutritionGate = useMemo(
-    () => recipeBehaviorModuleGate(behaviorAuthority, 'NUTRITION'),
-    [behaviorAuthority],
-  );
   const processFacts = useMemo(
     () => frozenProcessEvidence(behaviorAuthority),
     [behaviorAuthority],
@@ -147,7 +143,11 @@ export function MonitorPanelContent({
     input,
     behaviorAuthority.requiredLineIds.length > 0 ? processFacts.evidence : undefined,
   );
-  const technicalViewAllowed = technicalView && monitorGate.ready;
+  // Monitor is an inspection surface. Legacy recipes without a complete UPI
+  // snapshot must remain readable even though every mutating boundary stays
+  // fail-closed. The gate is surfaced as authority state; it must not replace
+  // already calculated, read-only Engine metrics with a paywall skeleton.
+  const technicalViewAllowed = technicalView;
   const actualToppingByLineId = new Map(
     (production?.session?.addonLines ?? [])
       .filter((line) => line.confirmed || line.physicalAddedGrams > 0)
@@ -168,7 +168,11 @@ export function MonitorPanelContent({
   }
 
   return (
-    <div className="pro-scroll-safe space-y-3 text-white" data-testid="monitor-panel-content">
+    <div
+      className="pro-scroll-safe space-y-3 text-white"
+      data-testid="monitor-panel-content"
+      data-behavior-authority={monitorGate.ready ? 'ready' : 'revalidation-required'}
+    >
       {technicalViewAllowed ? (
         <MonitorLiveSummary result={result} input={input} onOpenProfile={onOpenProfile} />
       ) : (
@@ -208,7 +212,7 @@ export function MonitorPanelContent({
           </span>
         </summary>
         <div className="border-t border-white/8 bg-[#f7f5f0] p-2 text-ink">
-          {technicalViewAllowed && nutritionGate.ready ? (
+          {technicalViewAllowed ? (
             <NutritionCostScorePanel result={result} embedded />
           ) : (
             <LockedNutritionPreview />

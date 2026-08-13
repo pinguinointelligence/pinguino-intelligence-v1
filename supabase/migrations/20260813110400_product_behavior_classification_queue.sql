@@ -161,8 +161,8 @@ values
   ('main-sorbet-strawberry-fresh-1553',1,'pinguino-product-taxonomy-v1','published','sorbet','fruit','berry','fresh','PI-ING-001553','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',60,60,60,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateIds":["S01","S02","S03"],"fixture":"exact_strawberry_600g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
   ('main-sorbet-lime-fresh-0369',1,'pinguino-product-taxonomy-v1','published','sorbet','fruit','citrus','fresh','PI-ING-000369','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',60,60,60,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateIds":["S01","S02","S03"],"fixture":"exact_citrus_600g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
   ('main-sorbet-mango-puree-0340',1,'pinguino-product-taxonomy-v1','published','sorbet','fruit','mango_tropical','puree','PI-ING-000340','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',60,60,60,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateIds":["S01","S02","S03"],"fixture":"exact_mango_600g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
-  ('main-vegan-strawberry-fresh-1553',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','fruit','berry','fresh','PI-ING-001553','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',32.43,32.43,32.43,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_fruit_minus13_final","fixture":"exact_strawberry_324.3g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
-  ('main-vegan-banana-puree-1589',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','fruit','banana','puree','PI-ING-001589','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',32.43,32.43,32.43,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_fruit_minus13_final","fixture":"exact_banana_324.3g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
+  ('main-vegan-strawberry-fresh-1553',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','fruit','berry','fresh','PI-ING-001553','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',32.43,32.43,32.43,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_fruit_minus13_final","fixture":"exact_strawberry_324.3g_per_1000g","scope":"exact_mapper_identity_only","multiMainGroupKey":"main-vegan-fruit-combination-v1"}',now()),
+  ('main-vegan-banana-puree-1589',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','fruit','banana','puree','PI-ING-001589','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',32.43,32.43,32.43,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_fruit_minus13_final","fixture":"exact_banana_324.3g_per_1000g","scope":"exact_mapper_identity_only","multiMainGroupKey":"main-vegan-fruit-combination-v1"}',now()),
   ('main-vegan-pistachio-paste-0614',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','nut',null,'paste','PI-ING-000614','MAIN_PROFILE_SPECIFIC','NUT_EQUIVALENT',11.99,11.99,11.99,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_nut_minus13_final","fixture":"exact_pistachio_119.9g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
   ('main-vegan-cocoa-powder-1578',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','chocolate_cocoa',null,'cocoa_powder','PI-ING-001578','MAIN_PROFILE_SPECIFIC','COCOA_SOLIDS_EQUIVALENT',5.96,5.96,5.96,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_cocoa_minus13_final","fixture":"exact_cocoa_59.6g_per_1000g","scope":"exact_mapper_identity_only"}',now())
 on conflict(policy_key,version) do nothing;
@@ -1135,7 +1135,11 @@ begin
       'polyols',to_jsonb(m.polyol_percent),
       'fibre',to_jsonb(m.fiber_percent),
       'salt',to_jsonb(m.salt_percent),
-      'alcohol',to_jsonb(m.alcohol_percent)
+      'alcohol',to_jsonb(m.alcohol_percent),
+      'energyKcal',to_jsonb(m.kcal_per_100g),
+      'podValue',to_jsonb(m.pod_value),
+      'pacValue',to_jsonb(m.pac_value),
+      'deValue',to_jsonb(m.de_value)
     )) into v_mapper_composition
     from public.mapper_basement m
     where m.ingredient_id=v_mapping and m.is_active
@@ -1221,7 +1225,11 @@ begin
         'polyols',v_version_facts->'polyol_percent',
         'fibre',v_version_facts->'fiber_percent',
         'salt',v_version_facts->'salt_percent',
-        'alcohol',v_version_facts->'alcohol_percent'
+        'alcohol',v_version_facts->'alcohol_percent',
+        'energyKcal',v_version_facts->'kcal_per_100g',
+        'podValue',v_version_facts->'pod_value',
+        'pacValue',v_version_facts->'pac_value',
+        'deValue',v_version_facts->'de_value'
       )),
       'nutritionPer100g',jsonb_build_object(
         'basis','per_100g',
@@ -1415,7 +1423,7 @@ begin
     'state',case when v_allowed then 'eligible' else 'blocked' end,
     'moduleEligibility',v_module_eligibility,
     'mainPolicy',case when v_policy.id is null or v_policy_ambiguous then null else jsonb_build_object(
-      'policyId',v_policy.policy_key,
+      'policyId',coalesce(nullif(v_policy.evidence->>'multiMainGroupKey',''),v_policy.policy_key),
       'policyVersion',v_policy.version::text,
       'familyId',v_policy.family_id,
       'subfamilyId',v_policy.subfamily_id,

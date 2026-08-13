@@ -148,6 +148,20 @@ describe('product behavior classification v2 migration', () => {
     expect(resolver).toContain("'moduleEligibility',v_module_eligibility");
   });
 
+  it('binds the accepted Vegan Strawberry/Banana same-family Multi-Main group', () => {
+    expect(migration.match(/"multiMainGroupKey":"main-vegan-fruit-combination-v1"/g))
+      .toHaveLength(2);
+    expect(migration).toContain(
+      "coalesce(nullif(v_policy.evidence->>'multiMainGroupKey',''),v_policy.policy_key)",
+    );
+  });
+
+  it('freezes the exact Mapper Engine values used by terminal recipe validation', () => {
+    for (const key of ['energyKcal', 'podValue', 'pacValue', 'deValue']) {
+      expect(migration).toContain(`'${key}'`);
+    }
+  });
+
   it('resolves only current canonical versions/bindings and active exact Mapper references', () => {
     const resolver = migration.slice(migration.indexOf('create or replace function public.resolve_product_behavior_v1'));
     expect(resolver).toContain('where b.product_version_id=v_version_id and b.is_current');

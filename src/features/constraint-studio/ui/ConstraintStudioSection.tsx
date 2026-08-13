@@ -22,7 +22,13 @@ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { constraintStudioCopy as copy, formatGramsPl } from '../constraintStudioCopy';
 import { constraintStudioFlags } from '../constraintStudioFlags';
-import { isUndoAvailable, useConstraintStudioStore } from '../constraintStudioStore';
+import {
+  applyPreviewWithServerAuthority,
+  createBatchRescalePreviewWithServerAuthority,
+  createSuggestedFixPreviewWithServerAuthority,
+  isUndoAvailable,
+  useConstraintStudioStore,
+} from '../constraintStudioStore';
 import { previewIssueMessagePl } from '../previewIssueMessage';
 import { BlockedApplyNotice } from './BlockedApplyNotice';
 import { ConstraintHistoryPanel } from './ConstraintHistoryPanel';
@@ -158,7 +164,9 @@ export function ConstraintStudioSection() {
               disabled={!Number.isFinite(Number(batchText)) || Number(batchText) <= 0 || batchText.trim() === ''}
               onClick={() => {
                 const grams = Number(batchText);
-                if (Number.isFinite(grams) && grams > 0) store.createBatchRescalePreview(grams);
+                if (Number.isFinite(grams) && grams > 0) {
+                  void createBatchRescalePreviewWithServerAuthority(grams);
+                }
               }}
             >
               {copy.actions.rescale}
@@ -184,7 +192,7 @@ export function ConstraintStudioSection() {
         {preview ? (
           <ConstraintPreviewCard
             preview={preview}
-            onApply={store.applyPreview}
+            onApply={() => { void applyPreviewWithServerAuthority(); }}
             onCancel={store.cancelPreview}
           />
         ) : null}
@@ -194,10 +202,11 @@ export function ConstraintStudioSection() {
             input={currentInput}
             analysis={feasibility}
             handlers={{
-              onSuggestedFix: store.createSuggestedFixPreview,
+              onSuggestedFix: (fix) => { void createSuggestedFixPreviewWithServerAuthority(fix); },
               onUnlock: store.clearConstraint,
-              onChangeBatch: (minimumBatchGrams) =>
-                store.createBatchRescalePreview(Math.ceil(minimumBatchGrams)),
+              onChangeBatch: (minimumBatchGrams) => {
+                void createBatchRescalePreviewWithServerAuthority(Math.ceil(minimumBatchGrams));
+              },
               onKeepAsIs: store.clearFeasibility,
             }}
           />

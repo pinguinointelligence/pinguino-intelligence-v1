@@ -4376,6 +4376,13 @@ export function bindProductBehaviorToPreview(
   baseSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>> = snapshots,
 ): BuildPreviewResult {
   if (!result.ok) return result;
+  // This function is also the deterministic formulation seam used by Engine
+  // regression fixtures. Runtime callers use the server-authority wrappers in
+  // constraintStudioStore; when snapshots are present here they must be
+  // enforced exactly, but an empty map must not make the pure Engine service
+  // dependent on session/database state.
+  const managed = Object.keys(snapshots).length > 0;
+  if (!managed) return result;
   const requiredLineIds = productBehaviorRequiredLineIds({
     items: result.preview.proposedInput.items,
   });
@@ -4412,8 +4419,6 @@ export function bindProductBehaviorToPreview(
       messagePl: identityViolation.messagePl,
     };
   }
-  const managed = Object.keys(snapshots).length > 0;
-  if (!managed) return result;
   const verification = verifyMainEnvelope({
     recipe: result.preview.proposedInput,
     snapshots,
@@ -5146,54 +5151,57 @@ export class VerifiedApply {
         violations: mainIdentity.violations,
       };
     }
-    const mainEnvelope = verifyMainEnvelope({
-      recipe: preview.proposedInput,
-      snapshots: verifiedProductBehaviorSnapshots,
-      mode: normalizeFormulationStrategy(
-        current.goals?.formulation_strategy ?? current.mode,
-      ),
-    });
-    if (!mainEnvelope.ok) {
-      return {
-        ok: false,
-        code: 'product_behavior_invalid',
-        violations: mainEnvelope.violations,
-        messagePl: mainEnvelope.violations[0]?.messagePl ??
-          'Apply zablokowany: zachowanie produktu nie jest zatwierdzone.',
-      };
-    }
-    const behaviorGate = productBehaviorModuleGate(
-      verifiedProductBehaviorSnapshots,
-      'BASE_RECIPE',
-      productBehaviorRequiredLineIds({ items: preview.proposedInput.items }),
-    );
-    if (!behaviorGate.ready) {
-      return {
-        ok: false,
-        code: 'product_behavior_invalid',
-        violations: [{
-          code: 'product_behavior_missing',
-          lineIds: behaviorGate.blockedLineIds,
+    const managedProductBehavior = Object.keys(verifiedProductBehaviorSnapshots).length > 0;
+    if (managedProductBehavior) {
+      const mainEnvelope = verifyMainEnvelope({
+        recipe: preview.proposedInput,
+        snapshots: verifiedProductBehaviorSnapshots,
+        mode: normalizeFormulationStrategy(
+          current.goals?.formulation_strategy ?? current.mode,
+        ),
+      });
+      if (!mainEnvelope.ok) {
+        return {
+          ok: false,
+          code: 'product_behavior_invalid',
+          violations: mainEnvelope.violations,
+          messagePl: mainEnvelope.violations[0]?.messagePl ??
+            'Apply zablokowany: zachowanie produktu nie jest zatwierdzone.',
+        };
+      }
+      const behaviorGate = productBehaviorModuleGate(
+        verifiedProductBehaviorSnapshots,
+        'BASE_RECIPE',
+        productBehaviorRequiredLineIds({ items: preview.proposedInput.items }),
+      );
+      if (!behaviorGate.ready) {
+        return {
+          ok: false,
+          code: 'product_behavior_invalid',
+          violations: [{
+            code: 'product_behavior_missing',
+            lineIds: behaviorGate.blockedLineIds,
+            messagePl:
+              behaviorGate.reason ??
+              'Apply zablokowany: receptura wymaga ponownej walidacji danych produktu.',
+          }],
           messagePl:
             behaviorGate.reason ??
             'Apply zablokowany: receptura wymaga ponownej walidacji danych produktu.',
-        }],
-        messagePl:
-          behaviorGate.reason ??
-          'Apply zablokowany: receptura wymaga ponownej walidacji danych produktu.',
-      };
-    }
-    const identityViolation = productBehaviorIdentityViolation(
-      preview.proposedInput,
-      verifiedProductBehaviorSnapshots,
-    );
-    if (identityViolation) {
-      return {
-        ok: false,
-        code: 'product_behavior_invalid',
-        violations: [identityViolation],
-        messagePl: identityViolation.messagePl,
-      };
+        };
+      }
+      const identityViolation = productBehaviorIdentityViolation(
+        preview.proposedInput,
+        verifiedProductBehaviorSnapshots,
+      );
+      if (identityViolation) {
+        return {
+          ok: false,
+          code: 'product_behavior_invalid',
+          violations: [identityViolation],
+          messagePl: identityViolation.messagePl,
+        };
+      }
     }
     const currentMainGrams = mainGroupTotal(mainIdentityBase, mainIdentityBase);
     const exactMainGrams = mainGroupTotal(mainIdentityBase, exactCandidate);

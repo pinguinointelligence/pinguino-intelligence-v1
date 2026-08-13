@@ -778,6 +778,16 @@ begin
     v_binding_id:=public.classify_catalog_product_behavior_v2(
       v_version_id,'mapper-decision:'||left(v_payload_fingerprint,24)
     );
+    update public.products set
+      mapper_status=case when v_mapper_ingredient_id is null then 'rejected' else 'matched' end,
+      matched_basement_id=v_mapper_ingredient_id,
+      match_method='manual_mapping',
+      match_confidence=case when v_mapper_ingredient_id is null then 'rejected' else 'high' end,
+      needs_review_reason=case when v_mapper_ingredient_id is null
+        then 'Mapper candidate rejected by authorized reviewer.' else null end,
+      mapper_notes=v_review_evidence->>'reviewNotes',
+      reviewed_by=p_actor_user_id,reviewed_at=now(),updated_at=now()
+    where id=v_product_id;
     insert into public.product_ingest_events(
       actor_user_id,source,idempotency_key,payload_fingerprint,product_id,product_version_id,
       behavior_binding_id,status,result_snapshot
@@ -1299,6 +1309,21 @@ begin
   end if;
 
   if v_mapper_candidate<>'{}'::jsonb then
+    update public.products set
+      mapper_status='needs_review',
+      match_method=nullif(v_mapper_candidate->>'match_method',''),
+      match_confidence=nullif(v_mapper_candidate->>'match_confidence',''),
+      mapper_notes=coalesce(nullif(v_mapper_candidate->>'mapper_notes',''),mapper_notes),
+      normalized_name=coalesce(nullif(v_mapper_candidate->>'normalized_name',''),normalized_name),
+      normalized_category=coalesce(nullif(v_mapper_candidate->>'normalized_category',''),normalized_category),
+      needs_review_reason=coalesce(
+        nullif(v_mapper_candidate->>'needs_review_reason',''),
+        'Mapper candidate requires an independently verified sign-off.'
+      ),
+      candidate_count=case when jsonb_typeof(v_mapper_candidate->'candidate_ids')='array'
+        then jsonb_array_length(v_mapper_candidate->'candidate_ids') else candidate_count end,
+      updated_at=now()
+    where id=v_product_id;
     insert into public.product_review_cases(
       consolidation_key,product_id,product_version_id,kind,missing_fields,latest_evidence
     ) values(

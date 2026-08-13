@@ -37,7 +37,9 @@ import { StudioEngineSurface, StudioReviewZone } from '@/features/studio/StudioE
 import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
 import { ProRecalcPanel } from '@/features/pro-core/ProRecalcPanel';
 import { ProMachineSelector } from '@/features/pro-core/ProMachineSelector';
-import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  createOptimizePreviewWithServerAuthority,
+} from '@/features/constraint-studio/constraintStudioStore';
 import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 import { ProSliceBackendState } from '@/features/pro-core/ProSliceBackendState';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
@@ -302,7 +304,7 @@ export function ProWorkspacePage() {
   const activeTab: TabId = isTabId(section ?? null) ? (section as TabId) : 'recipe';
   const workbenchTab = isWorkbenchSection(activeTab) ? activeTab : null;
   const workbench = isPro && workbenchTab !== null;
-  const startRecalc = () => {
+  const startRecalc = async () => {
     if (Object.keys(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).length > 0) {
       return;
     }
@@ -318,7 +320,7 @@ export function ProWorkspacePage() {
       window.dispatchEvent(new CustomEvent('pinguino:profile-settings-required'));
       return;
     }
-    useConstraintStudioStore.getState().createOptimizePreview();
+    await createOptimizePreviewWithServerAuthority();
     setRecalcOpen(true);
   };
 
