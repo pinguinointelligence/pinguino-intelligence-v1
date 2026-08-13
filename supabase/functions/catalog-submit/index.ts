@@ -31,6 +31,72 @@ interface ServerOcrResult {
   verifiedFields: Record<string, unknown>;
 }
 
+const INGEST_SOURCES = new Set([
+  'ocr',
+  'barcode',
+  'manual',
+  'admin',
+  'catalog_import',
+  'retailer_feed',
+  'spreadsheet',
+  'supplier_specification',
+  'shop',
+  'franchise',
+  'internal_subproduct',
+  'future_integration',
+]);
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+async function legacyOwnedProductInput(input: {
+  service: ServiceClient;
+  actorUserId: string;
+  productId: string;
+}): Promise<Record<string, unknown>> {
+  const { data, error } = await input.service
+    .from('products')
+    .select('*')
+    .eq('id', input.productId)
+    .eq('owner_user_id', input.actorUserId)
+    .maybeSingle();
+  if (error || !data) throw new Error('owned_source_product_not_found');
+  const extracted = objectValue(data.extracted_json);
+  return {
+    productKind: 'commercial_product',
+    displayName: data.product_name_display,
+    originalName: data.product_name_internal,
+    originalLanguage: extracted.originalLanguage ?? null,
+    brand: data.brand,
+    explicitlyUnbranded: extracted.explicitlyUnbranded === true,
+    canonicalFamily: null,
+    category: data.product_category,
+    countryOfOrigin: data.country,
+    ean: data.ean_code,
+    barcode: data.barcode,
+    facts: {
+      packageSize: data.package_size,
+      waterPercent: data.water_percent,
+      totalSolidsPercent: data.total_solids_percent,
+      fatPercent: data.fat_percent,
+      saturatedFatPercent: data.saturated_fat_percent,
+      proteinPercent: data.protein_percent,
+      carbohydratePercent: data.carbohydrate_percent,
+      sugarsPercent: data.total_sugars_percent,
+      fibrePercent: data.fiber_percent,
+      saltPercent: data.salt_percent,
+      energyKcal: data.kcal_per_100g,
+      allergensText: data.allergens,
+      ingredientsText: extracted.ingredientsText ?? null,
+      nutritionBasis: extracted.nutritionBasis ?? 'per_100g',
+    },
+    provenance: data.source_type ?? 'ocr',
+  };
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 }
@@ -103,7 +169,7 @@ async function captureOwnedEvidence(input: {
     .select('id,user_id,state')
     .eq('id', input.ocrSessionId)
     .eq('user_id', input.actorUserId)
-    .in('state', ['saved', 'cancelled'])
+    .in('state', ['ready_to_save', 'duplicate_blocked', 'saved', 'cancelled'])
     .maybeSingle();
   if (sessionError || !session) throw new Error('owned_saved_ocr_session_not_found');
 
@@ -164,7 +230,7 @@ async function attestServerOcr(input: {
   actorUserId: string;
   ocrSessionId: string;
   evidence: CapturedEvidence;
-  sourceProductSnapshotSha256: string;
+  expectedPublicSnapshotSha256: string;
   market: string | null;
 }): Promise<string | null> {
   const endpoint = Deno.env.get('CATALOG_OCR_VERIFY_URL');
@@ -177,7 +243,7 @@ async function attestServerOcr(input: {
     .select('id,verified_fields,image_checksums')
     .eq('source_session_key', input.ocrSessionId);
   const reusable = (prior ?? []).find((row) =>
-    row.verified_fields?.sourceProductSnapshotSha256 === input.sourceProductSnapshotSha256
+    row.verified_fields?.sourceProductSnapshotSha256 === input.expectedPublicSnapshotSha256
       && (row.verified_fields?.market ?? null) === input.market
       && JSON.stringify(row.image_checksums) === JSON.stringify(input.evidence.imageChecksums));
   if (reusable?.id) return reusable.id as string;
@@ -201,7 +267,7 @@ async function attestServerOcr(input: {
         // The trusted worker must return the complete normalized public-facts
         // object. SQL compares it byte-for-byte as jsonb to server-built facts;
         // echoing only this hash can never make a product GREEN.
-        expectedPublicSnapshotSha256: input.sourceProductSnapshotSha256,
+        expectedPublicSnapshotSha256: input.expectedPublicSnapshotSha256,
         market: input.market,
       }),
     });
@@ -221,7 +287,7 @@ async function attestServerOcr(input: {
     typeof result.verifiedFields !== 'object' ||
     result.verifiedFields === null
   ) return null;
-  if (result.verifiedFields.sourceProductSnapshotSha256 !== input.sourceProductSnapshotSha256) {
+  if (result.verifiedFields.sourceProductSnapshotSha256 !== input.expectedPublicSnapshotSha256) {
     return null;
   }
   const evidenceSha = await sha256Text(JSON.stringify({
@@ -285,10 +351,20 @@ Deno.serve(async (request) => {
   if (authError || !auth.user) return json({ error: 'authentication_required' }, 401);
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return json({ error: 'invalid_json' }, 400); }
-  const privateProductId = typeof body.privateProductId === 'string' ? body.privateProductId : null;
+  const legacyPrivateProductId = typeof body.privateProductId === 'string'
+    ? body.privateProductId
+    : typeof objectValue(body.input).legacyPrivateProductId === 'string'
+      ? objectValue(body.input).legacyPrivateProductId as string
+      : null;
+  const source = typeof body.source === 'string'
+    ? body.source
+    : legacyPrivateProductId ? 'ocr' : null;
   const ocrSessionId = typeof body.ocrSessionId === 'string' ? body.ocrSessionId : null;
   const idempotencyKey = typeof body.idempotencyKey === 'string' ? body.idempotencyKey : null;
-  if (!privateProductId || !ocrSessionId || !idempotencyKey) return json({ error: 'missing_required_fields' }, 400);
+  if (!source || !INGEST_SOURCES.has(source) || !idempotencyKey) {
+    return json({ error: 'missing_or_invalid_required_fields' }, 400);
+  }
+  if (source === 'ocr' && !ocrSessionId) return json({ error: 'ocr_session_required' }, 400);
   if (idempotencyKey.length > 160) return json({ error: 'invalid_idempotency_key' }, 400);
   const market = typeof body.market === 'string' ? body.market.trim().slice(0, 64) : null;
   const retailer = typeof body.retailer === 'string' ? body.retailer.trim().slice(0, 120) : null;
@@ -297,6 +373,13 @@ Deno.serve(async (request) => {
     ? body.distinguishingEvidence
     : {};
   if (JSON.stringify(distinguishingEvidence).length > 8_000) return json({ error: 'distinguishing_evidence_too_large' }, 400);
+  const suppliedInput = objectValue(body.input);
+  const suppliedEvidence = objectValue(body.evidence);
+  const privateOverlay = objectValue(body.privateOverlay);
+  if (JSON.stringify(suppliedInput).length > 200_000 || JSON.stringify(suppliedEvidence).length > 200_000) {
+    return json({ error: 'ingest_payload_too_large' }, 400);
+  }
+  if (JSON.stringify(privateOverlay).length > 32_000) return json({ error: 'private_overlay_too_large' }, 400);
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
   const device = typeof body.deviceSignal === 'string' ? body.deviceSignal : null;
   const service = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -309,101 +392,71 @@ Deno.serve(async (request) => {
   });
   const ipHash = riskSecret ? await hmacRiskValue(forwarded, riskSecret) : null;
   const deviceHash = riskSecret ? await hmacRiskValue(device?.slice(0, 512) ?? null, riskSecret) : null;
-  const payloadHash = await sha256Text(`${auth.user.id}:${privateProductId}:${ocrSessionId}`);
-  const { data: reservation, error: reservationError } = await service.rpc('begin_global_catalog_submission', {
-    p_actor_user_id: auth.user.id,
-    p_ocr_session_id: ocrSessionId,
-    p_idempotency_key: idempotencyKey,
-    p_payload_hash: payloadHash,
-    p_ip_hash: ipHash,
-    p_device_hash: deviceHash,
-    p_risk_challenge_passed: riskChallengePassed,
-  });
-  if (reservationError) return json({ error: 'catalog_preflight_failed' }, 409);
-  if (!reservation?.allowed) {
-    return json({
-      kind: 'rate_limited',
-      productId: null,
-      status: null,
-      autoFavorited: false,
-      duplicateCandidates: [],
-      missingFields: [],
-      reviewCaseKey: null,
-      retryAt: reservation?.retryAt ?? null,
-      challengeRequired: reservation?.challengeRequired === true,
-      rateReason: reservation?.reason ?? 'rate_limited',
-    });
-  }
-  const { data: sourceProductSnapshotSha256, error: snapshotError } = await service.rpc(
-    'global_catalog_product_snapshot_hash',
-    { p_actor_user_id: auth.user.id, p_private_product_id: privateProductId },
-  );
-  if (snapshotError || typeof sourceProductSnapshotSha256 !== 'string') {
+  let canonicalInput: Record<string, unknown>;
+  try {
+    canonicalInput = legacyPrivateProductId
+      ? await legacyOwnedProductInput({ service, actorUserId: auth.user.id, productId: legacyPrivateProductId })
+      : { ...suppliedInput };
+  } catch {
     return json({ error: 'source_product_snapshot_failed' }, 409);
   }
-  if (reservation?.idempotent) {
-    const { data: prior } = await service
-      .from('global_catalog_submissions')
-      .select('outcome,result_snapshot')
-      .eq('submitter_user_id', auth.user.id)
-      .eq('idempotency_key', idempotencyKey)
-      .maybeSingle();
-    const decision = body.duplicateDecision === 'same' || body.duplicateDecision === 'different';
-    const resumesBlocked = body.resumeBlocked === true && prior?.outcome === 'blocked';
-    if (prior && resumesBlocked) {
-      const { data: priorBinding } = await service
-        .from('global_catalog_product_session_bindings')
-        .select('product_snapshot_sha256')
-        .eq('private_product_id', privateProductId)
-        .eq('ocr_session_id', ocrSessionId)
-        .maybeSingle();
-      const priorRateLimited = prior.result_snapshot?.kind === 'rate_limited';
-      const retryAt = typeof prior.result_snapshot?.retryAt === 'string'
-        ? Date.parse(prior.result_snapshot.retryAt)
-        : Number.NaN;
-      const retryWindowOpen = priorRateLimited && Number.isFinite(retryAt) && retryAt <= Date.now();
-      if (priorBinding?.product_snapshot_sha256 === sourceProductSnapshotSha256 && !retryWindowOpen) {
-        return json(prior.result_snapshot);
-      }
-    }
-    if (prior && ((!decision && !resumesBlocked) || (decision && prior.outcome !== 'likely_duplicate' && prior.outcome !== 'blocked'))) {
-      return json(prior.result_snapshot);
-    }
-  }
-  let evidence: CapturedEvidence;
+  canonicalInput.market = market;
+  canonicalInput.retailer = retailer;
+  canonicalInput.packageLanguage = packageLanguage;
+  canonicalInput.duplicateDecision = body.duplicateDecision === 'same' || body.duplicateDecision === 'different'
+    ? body.duplicateDecision
+    : null;
+  canonicalInput.distinguishingEvidence = distinguishingEvidence;
+  if (typeof body.duplicateProductId === 'string') canonicalInput.duplicateProductId = body.duplicateProductId;
+
+  let evidence: CapturedEvidence = {
+    imagePhashes: [],
+    archivedImagePaths: [],
+    imageChecksums: [],
+    images: [],
+  };
   let serverAttestationId: string | null;
   try {
-    evidence = await captureOwnedEvidence({ service, actorUserId: auth.user.id, ocrSessionId });
-    serverAttestationId = await attestServerOcr({
-      service,
-      actorUserId: auth.user.id,
-      ocrSessionId,
-      evidence,
-      sourceProductSnapshotSha256,
-      market,
-    });
+    if (ocrSessionId) {
+      evidence = await captureOwnedEvidence({ service, actorUserId: auth.user.id, ocrSessionId });
+      const expectedPublicSnapshotSha256 = await sha256Text(JSON.stringify(canonicalInput));
+      serverAttestationId = await attestServerOcr({
+        service,
+        actorUserId: auth.user.id,
+        ocrSessionId,
+        evidence,
+        expectedPublicSnapshotSha256,
+        market,
+      });
+    } else {
+      serverAttestationId = null;
+    }
   } catch {
     return json({ error: 'catalog_evidence_verification_failed' }, 409);
   }
-  const { data, error } = await service.rpc('submit_owned_product_to_global_catalog_v2', {
+  const { data, error } = await service.rpc('ingest_product_v1', {
     p_actor_user_id: auth.user.id,
-    p_private_product_id: privateProductId,
-    p_ocr_session_id: ocrSessionId,
+    p_source: source,
     p_idempotency_key: idempotencyKey,
-    p_market: market,
-    p_retailer: retailer,
-    p_package_language: packageLanguage,
-    // pHash and archived paths are always derived above from owned server data;
-    // similarly named browser fields are deliberately ignored.
-    p_image_phashes: evidence.imagePhashes,
-    p_archived_image_paths: evidence.archivedImagePaths,
-    p_duplicate_decision: body.duplicateDecision === 'same' || body.duplicateDecision === 'different' ? body.duplicateDecision : null,
-    p_distinguishing_evidence: distinguishingEvidence,
-    p_ip_hash: ipHash,
-    p_device_hash: deviceHash,
-    p_rate_reservation_id: reservation.reservationId,
-    p_server_attestation_id: serverAttestationId,
+    p_input: canonicalInput,
+    p_evidence: {
+      ...suppliedEvidence,
+      ocrSessionId,
+      archivedImagePaths: evidence.archivedImagePaths,
+      imageChecksums: evidence.imageChecksums,
+      imagePhashes: evidence.imagePhashes,
+      serverAttestationId,
+    },
+    p_private_overlay: privateOverlay,
+    p_risk: {
+      ipHash,
+      deviceHash,
+      challengePassed: riskChallengePassed,
+    },
   });
-  if (error) return json({ error: 'catalog_submission_failed' }, 400);
+  if (error) {
+    if (/idempotency|payload mismatch/i.test(error.message)) return json({ error: 'idempotency_payload_mismatch' }, 409);
+    return json({ error: 'product_ingest_failed' }, 400);
+  }
   return json(data);
 });

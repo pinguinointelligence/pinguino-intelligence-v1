@@ -7,6 +7,7 @@ import type {
   CatalogSubmissionResult,
 } from '@/features/global-catalog/contracts';
 import { aliasesForFamily } from '@/features/global-catalog/normalization';
+import { ingestProduct } from '@/services/productIngest';
 
 const UNAVAILABLE = 'Global product catalog is not available in this build.';
 const CATALOG_DEVICE_SIGNAL_KEY = 'pinguino_catalog_device_session_v1';
@@ -292,26 +293,26 @@ export async function submitOwnedOcrProductToGlobalCatalog(input: {
   riskChallengeToken?: string | null;
   resumeBlocked?: boolean;
 }): Promise<CatalogSubmissionResult> {
-  if (!supabase) throw new Error(UNAVAILABLE);
-  const { data, error } = await supabase.functions.invoke('catalog-submit', {
-    body: {
-      privateProductId: input.privateProductId,
-      ocrSessionId: input.ocrSessionId,
-      idempotencyKey: input.idempotencyKey,
-      market: input.market ?? null,
-      retailer: input.retailer ?? null,
-      packageLanguage: input.packageLanguage ?? null,
-      duplicateDecision: input.duplicateDecision ?? null,
-      distinguishingEvidence: input.distinguishingEvidence ?? {},
-      // Private session-scoped abuse signal. The Edge function HMACs it before
-      // persistence; raw device/session values never enter the shared catalog.
-      deviceSignal: input.deviceSignal ?? currentCatalogDeviceSignal(),
-      riskChallengeToken: input.riskChallengeToken ?? null,
-      resumeBlocked: input.resumeBlocked === true,
-    },
+  return ingestProduct({
+    source: 'ocr',
+    idempotencyKey: input.idempotencyKey,
+    // Compatibility input for an intake session saved before the canonical-root
+    // migration. The Edge adapter loads this owned row and passes normalized facts
+    // to ingest_product_v1; it never creates a second catalog identity.
+    input: { legacyPrivateProductId: input.privateProductId },
+    productId: input.privateProductId,
+    ocrSessionId: input.ocrSessionId,
+    market: input.market ?? null,
+    retailer: input.retailer ?? null,
+    packageLanguage: input.packageLanguage ?? null,
+    duplicateDecision: input.duplicateDecision ?? null,
+    distinguishingEvidence: input.distinguishingEvidence ?? {},
+    // Private session-scoped abuse signal. The Edge function HMACs it before
+    // persistence; raw device/session values never enter the shared catalog.
+    deviceSignal: input.deviceSignal ?? currentCatalogDeviceSignal(),
+    riskChallengeToken: input.riskChallengeToken ?? null,
+    resumeBlocked: input.resumeBlocked === true,
   });
-  if (error) throw new Error(error.message);
-  return data as CatalogSubmissionResult;
 }
 
 export function catalogSubmissionMessage(result: CatalogSubmissionResult): string | null {

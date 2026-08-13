@@ -45,7 +45,8 @@ vi.mock('@/lib/supabase/client', () => {
       },
       maybeSingle: () => {
         h.lookupCalls.push([b._col, b._val]);
-        return Promise.resolve({ data: h.lookup(b._col, b._val), error: null });
+        const data = b._col === 'id' && h.insertAttempted ? h.insertResult : h.lookup(b._col, b._val);
+        return Promise.resolve({ data, error: null });
       },
       single: () =>
         h.insertError
@@ -56,6 +57,16 @@ vi.mock('@/lib/supabase/client', () => {
   };
   return { supabase: { from: () => make() }, isSupabaseConfigured: true };
 });
+vi.mock('@/services/productIngest', () => ({
+  canonicalIngestFromLegacyProduct: (input: Record<string, unknown>) => ({ source: 'manual', input, privateOverlay: {} }),
+  productIngestIdempotencyKey: async () => 'product:manual:test',
+  ingestProduct: async ({ input }: { input: Record<string, unknown> }) => {
+    h.insertAttempted = true;
+    h.insertedPayloads.push(input);
+    if (h.insertError) throw new Error(h.insertError.message);
+    return { productId: (h.insertResult as { id?: string } | null)?.id ?? null };
+  },
+}));
 
 import { createProductWithIdentity, findExistingProductForIdentity } from './products';
 
@@ -142,16 +153,15 @@ describe('createProductWithIdentity — dedupe-then-create', () => {
     expect(h.insertedPayloads).toHaveLength(0);
   });
 
-  it('inserts a new row with the computed product_identity_hash and NO app-side product_code', async () => {
+  it('creates through canonical ingest with no app-side product code', async () => {
     h.insertResult = CREATED;
     const r = await createProductWithIdentity({ ean_code: '111', brand: 'Babbi', product_name_display: 'Crumble' });
     expect(r).toBe(CREATED);
     expect(h.insertedPayloads).toHaveLength(1);
     const payload = h.insertedPayloads[0]!;
-    expect('product_identity_hash' in payload).toBe(true);
-    expect(typeof payload.product_identity_hash).toBe('string');
+    expect(payload.ean_code).toBe('111');
     expect('product_code' in payload).toBe(false); // DB assigns it; never app-side
-    expect(payload.owner_user_id).toBe('user-1');
+    expect('owner_user_id' in payload).toBe(false);
   });
 
   it('is race-safe: on insert failure it re-runs the lookup and returns the concurrent row', async () => {

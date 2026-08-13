@@ -19,8 +19,6 @@
  *     pure identity key (the same one D5B dedupes on).
  */
 import { createProductWithIdentity, findExistingProductForIdentity } from '@/services/products';
-import { matchAndSaveProduct } from '@/services/productMapper';
-import { snapshotNewProduct, snapshotSourceChange } from '@/services/productSnapshots';
 import { productIdentityKey, productInsertToIdentityInput } from '@/data/products/productIdentity';
 import type { ProductIntakeCandidate } from '@/data/products/productTableParser';
 
@@ -30,8 +28,7 @@ export interface ImportProductCatalogOptions {
   /** Keep importing past a row failure (default true). When false, the first failing row is
    * recorded and then the error is rethrown immediately. */
   continueOnError?: boolean;
-  /** Record a product_snapshots history row on create, and on a CHANGED existing source
-   * (default true). Best-effort: a snapshot failure is a per-row warning, never a row failure. */
+  /** @deprecated Canonical ingest always creates/retains the authoritative immutable version. */
   snapshot?: boolean;
 }
 
@@ -85,7 +82,6 @@ export async function importProductCatalog(
 ): Promise<ProductImportSummary> {
   const runMatch = options.runMatch === true;
   const continueOnError = options.continueOnError !== false;
-  const snapshot = options.snapshot !== false;
 
   const summary: ProductImportSummary = {
     total: candidates.length,
@@ -101,7 +97,9 @@ export async function importProductCatalog(
   };
 
   const seenKeys = new Map<string, number>(); // identity key -> the first row's rowIndex
-  let matchingAvailable = runMatch; // flips off after the first match failure
+  if (runMatch) {
+    summary.warnings.push('Legacy client-side Mapper matching is ignored; canonical ingest owns classification.');
+  }
 
   for (const candidate of candidates) {
     const row: ImportRowResult = {
@@ -141,14 +139,6 @@ export async function importProductCatalog(
         summary.existingDuplicates += 1;
         summary.productIds.push(existing.id);
         summary.productCodes.push(existing.product_code);
-        // best-effort: record a history snapshot only if the source data changed
-        if (snapshot) {
-          try {
-            await snapshotSourceChange(existing.id, candidate.insert);
-          } catch (snapError) {
-            row.warnings.push(`snapshot skipped: ${errorMessage(snapError)}`);
-          }
-        }
         summary.rowResults.push(row);
         continue;
       }
@@ -161,27 +151,6 @@ export async function importProductCatalog(
       summary.created += 1;
       summary.productIds.push(product.id);
       summary.productCodes.push(product.product_code);
-
-      // 6b. best-effort: record the first history snapshot for the new product
-      if (snapshot) {
-        try {
-          await snapshotNewProduct(product);
-        } catch (snapError) {
-          row.warnings.push(`snapshot skipped: ${errorMessage(snapError)}`);
-        }
-      }
-
-      // 7. optional, best-effort matching of the CREATED product only
-      if (matchingAvailable) {
-        try {
-          await matchAndSaveProduct(product.id);
-        } catch (matchError) {
-          const message = errorMessage(matchError);
-          row.warnings.push(`match skipped: ${message}`);
-          summary.warnings.push(`matching unavailable after row ${candidate.rowIndex}: ${message}`);
-          matchingAvailable = false; // stop trying for the remaining rows
-        }
-      }
 
       summary.rowResults.push(row);
     } catch (error) {

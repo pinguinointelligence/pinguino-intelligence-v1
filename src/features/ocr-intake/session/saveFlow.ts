@@ -360,7 +360,15 @@ export async function saveIntakeSession(
   session: ProductIntakeSession,
   flow: SaveFlowState,
   existing: readonly ExistingProductForDedup[],
-  options: { resolution?: DuplicateResolutionAction; explicitlyUnbranded?: boolean } = {},
+  options: {
+    resolution?: DuplicateResolutionAction;
+    explicitlyUnbranded?: boolean;
+    /** Server adapter used by persisted OCR so identity/version/behavior commit once. */
+    persistCandidate?: (candidate: ProductIntakeCandidate) => Promise<{
+      productId: string;
+      productCode: string | null;
+    }>;
+  } = {},
 ): Promise<SaveSessionOutcome> {
   if (flow.sessionId !== session.sessionId) {
     throw new SaveFlowError(
@@ -448,16 +456,21 @@ export async function saveIntakeSession(
 
   const nextFlow: SaveFlowState = { ...flow, importCalls: flow.importCalls + 1 };
   try {
-    const summary = await importProductCatalog([candidate], { runMatch: false });
-    const productId = summary.productIds[0] ?? null;
-    if (summary.failed > 0 || productId === null) {
-      const error = summary.rowResults[0]?.error ?? 'import did not produce a product';
-      return { session: failSession(current, error), flow: nextFlow, result: { kind: 'failed', error } };
-    }
+    const persisted = options.persistCandidate
+      ? await options.persistCandidate(candidate)
+      : await (async () => {
+          const summary = await importProductCatalog([candidate], { runMatch: false });
+          const productId = summary.productIds[0] ?? null;
+          if (summary.failed > 0 || productId === null) {
+            throw new Error(summary.rowResults[0]?.error ?? 'import did not produce a product');
+          }
+          return { productId, productCode: summary.productCodes[0] ?? null };
+        })();
+    const productId = persisted.productId;
     const savedFlow: SaveFlowState = {
       ...nextFlow,
       savedProductId: productId,
-      savedProductCode: summary.productCodes[0] ?? null,
+      savedProductCode: persisted.productCode,
     };
     return {
       session: markSaved(current),

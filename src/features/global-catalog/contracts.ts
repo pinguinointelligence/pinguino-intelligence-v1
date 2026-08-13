@@ -131,7 +131,7 @@ export interface CatalogReviewCase {
 }
 
 export interface CatalogSubmissionResult {
-  kind: 'existing' | 'created' | 'likely_duplicate' | 'blocked' | 'rate_limited';
+  kind: 'existing' | 'created' | 'updated' | 'retired' | 'likely_duplicate' | 'blocked' | 'rate_limited';
   productId: string | null;
   status: CatalogStatus | null;
   autoFavorited: boolean;

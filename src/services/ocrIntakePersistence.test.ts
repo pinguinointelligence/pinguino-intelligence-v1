@@ -17,14 +17,20 @@ vi.mock('@/features/ocr-intake/session/saveFlow', () => ({
   buildSessionCandidate: vi.fn(() => ({ candidate: { status: 'valid', insert: { product_name_display: 'Completed product' } } })),
   saveIntakeSession: vi.fn(),
 }));
-vi.mock('@/services/products', () => ({ updateProduct: vi.fn(async () => undefined) }));
+vi.mock('@/services/productIngest', () => ({
+  canonicalIngestFromLegacyProduct: vi.fn((insert: Record<string, unknown>) => ({
+    source: 'ocr', input: { ...insert }, privateOverlay: {},
+  })),
+  productIngestIdempotencyKey: vi.fn(async () => 'product:ocr:completion'),
+  ingestProduct: vi.fn(async () => ({
+    kind: 'created', productId: 'catalog-1', productVersionId: 'version-1', behaviorBindingId: 'binding-1',
+    ingestEventId: 'event-1', status: 'manual_unverified', autoFavorited: true,
+    duplicateCandidates: [], missingFields: [], invalidFields: [], reviewCaseKey: null, retryAt: null,
+  })),
+}));
 vi.mock('@/services/globalCatalog', () => ({
   getCatalogMarketPreferences: vi.fn(async () => ({
     primaryMarket: 'ES', additionalMarkets: [], preferredRetailers: [], defaultScope: 'my_markets_and_global',
-  })),
-  submitOwnedOcrProductToGlobalCatalog: vi.fn(async () => ({
-    kind: 'created', productId: 'catalog-1', status: 'verified', autoFavorited: true,
-    duplicateCandidates: [], missingFields: [], reviewCaseKey: null, retryAt: null,
   })),
 }));
 
@@ -32,8 +38,7 @@ import { createSession, saveImageMetadata, updateSessionState } from '@/services
 import { uploadIntakeImage } from '@/services/ocrIntakeStorage';
 import { recordOcrRun, saveEvidence } from '@/services/ocrIntakeEvidence';
 import { saveIntakeSession } from '@/features/ocr-intake/session/saveFlow';
-import { submitOwnedOcrProductToGlobalCatalog } from '@/services/globalCatalog';
-import { updateProduct } from '@/services/products';
+import { ingestProduct } from '@/services/productIngest';
 import { completeSavedOcrProductAndRetryCatalog, persistSessionAndSave } from './ocrIntakePersistence';
 
 const image: IntakeImage = {
@@ -70,7 +75,14 @@ const session: ProductIntakeSession = {
 };
 const bytes = () => new Map([['i1', new Uint8Array(10)]]);
 const setSave = (result: SaveFlowResult) =>
-  vi.mocked(saveIntakeSession).mockResolvedValue({ session, flow: { sessionId: 's1' } as never, result });
+  vi.mocked(saveIntakeSession).mockImplementation(async (_session, _flow, _existing, options) => {
+    if (result.kind === 'saved' && options?.persistCandidate) {
+      await options.persistCandidate({
+        status: 'valid', insert: { product_name_display: 'Completed product' }, warnings: [], skipReason: null, rowIndex: 0,
+      });
+    }
+    return { session, flow: { sessionId: 's1' } as never, result };
+  });
 
 afterEach(() => vi.clearAllMocks());
 
@@ -97,8 +109,8 @@ describe('persistSessionAndSave', () => {
     expect(updateSessionState).toHaveBeenCalledWith('s1', 'saved', { savedAt: expect.any(String) });
     // The service pipeline captured evidence and wrote the authoritative link.
     expect(out.savedProductLinkPending).toBe(false);
-    expect(submitOwnedOcrProductToGlobalCatalog).toHaveBeenCalledWith(expect.objectContaining({
-      privateProductId: 'PR-1',
+    expect(ingestProduct).toHaveBeenCalledWith(expect.objectContaining({
+      source: 'ocr',
       ocrSessionId: 's1',
       idempotencyKey: 'ocr:s1',
     }));
@@ -124,10 +136,9 @@ describe('persistSessionAndSave', () => {
     setSave({ kind: 'open_existing', existingProductId: 'PR-9' });
     await persistSessionAndSave(session, bytes(), []);
     expect(updateSessionState).toHaveBeenCalledWith('s1', 'cancelled', { cancelledAt: expect.any(String) });
-    expect(submitOwnedOcrProductToGlobalCatalog).toHaveBeenCalledWith(expect.objectContaining({
-      privateProductId: 'PR-9',
+    expect(ingestProduct).toHaveBeenCalledWith(expect.objectContaining({
+      productId: 'PR-9',
       ocrSessionId: 's1',
-      idempotencyKey: 'ocr:s1',
     }));
   });
 
@@ -146,8 +157,7 @@ describe('persistSessionAndSave', () => {
     } as never;
     await completeSavedOcrProductAndRetryCatalog(result, session, { market: 'ES' });
     expect(saveEvidence).toHaveBeenCalledWith('s1', session.fields);
-    expect(updateProduct).toHaveBeenCalledWith('PR-1', expect.objectContaining({ product_name_display: 'Completed product' }));
-    expect(vi.mocked(saveEvidence).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(updateProduct).mock.invocationCallOrder[0]!);
-    expect(submitOwnedOcrProductToGlobalCatalog).toHaveBeenCalledWith(expect.objectContaining({ resumeBlocked: true }));
+    expect(ingestProduct).toHaveBeenCalledWith(expect.objectContaining({ productId: 'PR-1', resumeBlocked: true }));
+    expect(vi.mocked(saveEvidence).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(ingestProduct).mock.invocationCallOrder[0]!);
   });
 });

@@ -45,7 +45,9 @@ describe('global catalog RLS and trust boundaries', () => {
     expect(edge).toContain("x-forwarded-for");
     expect(edge).toContain("HMAC");
     expect(edge).toContain("TURNSTILE_SECRET_KEY");
-    expect(edge).toContain("submit_owned_product_to_global_catalog");
+    expect(edge).toContain("service.rpc('ingest_product_v1'");
+    expect(edge).not.toContain("service.rpc('begin_global_catalog_submission'");
+    expect(edge).not.toContain("service.rpc('submit_owned_product_to_global_catalog_v2'");
     expect(migration).toContain('reserve_global_catalog_rate_slot');
     expect(migration).toContain("'ip_risk'");
     expect(migration).toContain("'device_risk'");
@@ -59,7 +61,7 @@ describe('global catalog RLS and trust boundaries', () => {
     expect(edge).toContain("from('product-intake-images')");
     expect(edge).toContain("from('global-catalog-evidence')");
     expect(edge).toContain('perceptualHash(bytes');
-    expect(edge).toContain('p_image_phashes: evidence.imagePhashes');
+    expect(edge).toContain('imagePhashes: evidence.imagePhashes');
     expect(edge).not.toMatch(/body\.imagePhashes/);
     expect(migration).toContain('global_catalog_phash_distance');
     expect(migration).toContain('archivedImagePaths');

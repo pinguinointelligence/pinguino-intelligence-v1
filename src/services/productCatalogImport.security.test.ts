@@ -43,13 +43,13 @@ describe('productCatalogImport — boundaries (D5C2)', () => {
 
   it('imports ONLY the allowed services + identity helpers + types', () => {
     expect(CODE.includes("from '@/services/products'")).toBe(true);
-    expect(CODE.includes("from '@/services/productMapper'")).toBe(true);
+    expect(CODE.includes("from '@/services/productMapper'")).toBe(false);
     expect(CODE.includes("from '@/data/products/productIdentity'")).toBe(true);
     expect(/@\/services\/ingredients/.test(CODE)).toBe(false);
   });
 
   it('runs matchAndSaveProduct only under an explicit runMatch gate — never auto-run', () => {
-    expect(CODE.includes('matchAndSaveProduct(')).toBe(true);
+    expect(CODE.includes('matchAndSaveProduct(')).toBe(false);
     expect(/options\.runMatch === true/.test(CODE)).toBe(true);
     expect(/\b(cron|schedule|setInterval|setTimeout|onInsert|trigger|subscribe|background)\b/i.test(CODE)).toBe(false);
   });

@@ -26,9 +26,15 @@ import { buildSessionCandidate, createSaveFlowState, saveIntakeSession } from '@
 import type { DuplicateResolutionAction, SaveFlowResult } from '@/features/ocr-intake/session/saveFlow';
 import type { ExistingProductForDedup } from '@/features/ocr-intake/session/duplicateCheck';
 import type { IntakeSessionState, ProductIntakeSession } from '@/features/ocr-intake/intakeContracts';
-import { getCatalogMarketPreferences, submitOwnedOcrProductToGlobalCatalog } from '@/services/globalCatalog';
+import { getCatalogMarketPreferences } from '@/services/globalCatalog';
 import type { CatalogSubmissionResult } from '@/features/global-catalog/contracts';
-import { updateProduct } from '@/services/products';
+import {
+  canonicalIngestFromLegacyProduct,
+  ingestProduct,
+  productIngestIdempotencyKey,
+  type ProductIngestResult,
+} from '@/services/productIngest';
+import type { ProductIntakeCandidate } from '@/data/products/productTableParser';
 
 export interface PersistSessionOptions {
   resolution?: DuplicateResolutionAction;
@@ -55,6 +61,41 @@ export interface PersistSessionResult {
   globalCatalogContributionError: string | null;
 }
 
+async function ingestOcrCandidate(input: {
+  candidate: ProductIntakeCandidate;
+  session: ProductIntakeSession;
+  productId?: string | null;
+  market?: string | null;
+  retailer?: string | null;
+  duplicateDecision?: 'same' | 'different' | null;
+  distinguishingEvidence?: Record<string, unknown>;
+  riskChallengeToken?: string | null;
+  resumeBlocked?: boolean;
+  idempotencyScope?: string;
+}): Promise<ProductIngestResult> {
+  const canonical = canonicalIngestFromLegacyProduct(input.candidate.insert);
+  canonical.input.productId = input.productId ?? null;
+  canonical.input.duplicateDecision = input.duplicateDecision ?? null;
+  canonical.input.distinguishingEvidence = input.distinguishingEvidence ?? {};
+  const idempotencyKey = input.idempotencyScope
+    ? await productIngestIdempotencyKey('ocr', canonical.input, input.idempotencyScope)
+    : `ocr:${input.session.sessionId}`;
+  return ingestProduct({
+    ...canonical,
+    source: 'ocr',
+    idempotencyKey,
+    productId: input.productId ?? null,
+    ocrSessionId: input.session.sessionId,
+    market: input.market ?? null,
+    retailer: input.retailer ?? null,
+    packageLanguage: successfulLanguageHint(input.session),
+    duplicateDecision: input.duplicateDecision ?? null,
+    distinguishingEvidence: input.distinguishingEvidence ?? {},
+    riskChallengeToken: input.riskChallengeToken ?? null,
+    resumeBlocked: input.resumeBlocked === true,
+  });
+}
+
 export async function retryGlobalCatalogContribution(
   result: PersistSessionResult,
   session: ProductIntakeSession,
@@ -65,21 +106,25 @@ export async function retryGlobalCatalogContribution(
     market?: string | null;
     retailer?: string | null;
     resumeBlocked?: boolean;
+    explicitlyUnbranded?: boolean;
   } = {},
 ): Promise<CatalogSubmissionResult> {
   if (result.saveResult.kind !== 'saved' && result.saveResult.kind !== 'open_existing') {
     throw new Error('Only a saved or explicitly confirmed existing OCR product can be contributed.');
   }
   const preferences = await getCatalogMarketPreferences();
-  return submitOwnedOcrProductToGlobalCatalog({
-    privateProductId: result.saveResult.kind === 'saved'
+  const { candidate } = buildSessionCandidate(session, {
+    explicitlyUnbranded: options.explicitlyUnbranded,
+  });
+  if (candidate.status === 'skip') throw new Error(candidate.skipReason ?? 'Product identity is incomplete.');
+  return ingestOcrCandidate({
+    candidate,
+    session,
+    productId: result.saveResult.kind === 'saved'
       ? result.saveResult.productId
       : result.saveResult.existingProductId,
-    ocrSessionId: session.sessionId,
-    idempotencyKey: `ocr:${session.sessionId}`,
     market: options.market ?? preferences.primaryMarket,
     retailer: options.retailer ?? null,
-    packageLanguage: successfulLanguageHint(session),
     duplicateDecision: options.duplicateDecision ?? null,
     distinguishingEvidence: options.distinguishingEvidence ?? {},
     riskChallengeToken: options.riskChallengeToken ?? null,
@@ -110,8 +155,16 @@ export async function completeSavedOcrProductAndRetryCatalog(
   // before updating the owner product, so RED → BLUE derives public facts from
   // the edited evidence instead of merely changing status around stale data.
   await saveEvidence(session.sessionId, session.fields);
-  await updateProduct(productId, candidate.insert);
-  return retryGlobalCatalogContribution(result, session, { ...options, resumeBlocked: true });
+  const preferences = await getCatalogMarketPreferences();
+  return ingestOcrCandidate({
+    candidate,
+    session,
+    productId,
+    market: options.market ?? preferences.primaryMarket,
+    retailer: options.retailer ?? null,
+    resumeBlocked: true,
+    idempotencyScope: `manual-completion:${session.sessionId}`,
+  });
 }
 
 function assertNever(value: never): never {
@@ -149,12 +202,40 @@ export async function persistSessionAndSave(
   }
   await saveEvidence(session.sessionId, session.fields);
 
+  await updateSessionState(session.sessionId, 'ready_to_save');
+  let globalCatalogContribution: ProductIngestResult | null = null;
+  let globalCatalogContributionError: string | null = null;
+  const marketPreferences = await getCatalogMarketPreferences();
+
   // 4. the ONE products write — through the EXISTING identity-aware save flow only
   const outcome = await saveIntakeSession(
     session,
     createSaveFlowState(session.sessionId),
     existing,
-    options,
+    {
+      ...options,
+      persistCandidate: async (candidate) => {
+        globalCatalogContribution = await ingestOcrCandidate({
+          candidate,
+          session,
+          market: options.market ?? marketPreferences.primaryMarket,
+          retailer: options.retailer ?? null,
+          duplicateDecision: options.resolution === 'create_new' ? 'different' : null,
+          distinguishingEvidence: options.resolution === 'create_new'
+            ? options.distinguishingEvidence ?? {}
+            : {},
+        });
+        if (!globalCatalogContribution.productId) {
+          throw new Error(globalCatalogContribution.kind === 'rate_limited'
+            ? 'catalog_rate_limited'
+            : 'canonical_ingest_did_not_return_product');
+        }
+        return {
+          productId: globalCatalogContribution.productId,
+          productCode: globalCatalogContribution.productCode ?? null,
+        };
+      },
+    },
   );
   const saveResult = outcome.result;
 
@@ -184,38 +265,27 @@ export async function persistSessionAndSave(
 
   const row = await updateSessionState(session.sessionId, targetState, timestamps);
 
-  let globalCatalogContribution: CatalogSubmissionResult | null = null;
-  let globalCatalogContributionError: string | null = null;
-  const resolvedProductId =
-    saveResult.kind === 'saved'
-      ? saveResult.productId
-      : saveResult.kind === 'open_existing'
-        ? saveResult.existingProductId
-      : null;
-  if (resolvedProductId !== null) {
-    const packageLanguage = successfulLanguageHint(session);
+  if (saveResult.kind === 'open_existing') {
+    const { candidate } = buildSessionCandidate(session, options);
+    if (candidate.status !== 'skip') {
+      try {
+        globalCatalogContribution = await ingestOcrCandidate({
+          candidate,
+          session,
+          productId: saveResult.existingProductId,
+          market: options.market ?? marketPreferences.primaryMarket,
+          retailer: options.retailer ?? null,
+          duplicateDecision: 'same',
+          idempotencyScope: `existing:${session.sessionId}`,
+        });
+      } catch (error) {
+        globalCatalogContributionError = error instanceof Error ? error.message : 'catalog_contribution_failed';
+      }
+    }
+  } else if (saveResult.kind === 'failed' && globalCatalogContribution === null) {
     try {
-      const marketPreferences = await getCatalogMarketPreferences();
-      globalCatalogContribution = await submitOwnedOcrProductToGlobalCatalog({
-        privateProductId: resolvedProductId,
-        ocrSessionId: session.sessionId,
-        idempotencyKey: `ocr:${session.sessionId}`,
-        // Country-of-origin remains separate; market comes from account preferences in
-        // the server pipeline when the intake does not carry an explicit sale market.
-        market: options.market ?? marketPreferences.primaryMarket,
-        retailer: options.retailer ?? null,
-        packageLanguage,
-        // A distinct-product decision carries recognized, non-scientific variant
-        // evidence. It never fabricates a composition difference.
-        distinguishingEvidence:
-          options.resolution === 'create_new'
-            ? options.distinguishingEvidence ?? {}
-            : {},
-        duplicateDecision: options.resolution === 'create_new' ? 'different' : null,
-      });
+      throw new Error(saveResult.error);
     } catch (error) {
-      // The private save is already durable. Surface the automatic contribution as
-      // retryable instead of throwing and causing the UI to repeat uploads/inserts.
       globalCatalogContributionError = error instanceof Error ? error.message : 'catalog_contribution_failed';
     }
   }

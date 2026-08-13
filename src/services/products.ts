@@ -14,8 +14,12 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import { emptyUnconfiguredRead } from '@/services/backendGuard';
-import { getCurrentUser } from '@/services/auth';
 import { productMatchResultToPatch } from '@/data/products/productMatchResultToPatch';
+import {
+  canonicalIngestFromLegacyProduct,
+  ingestProduct,
+  productIngestIdempotencyKey,
+} from '@/services/productIngest';
 import {
   normalizeEan,
   productIdentityKey,
@@ -55,15 +59,13 @@ export async function getProduct(id: string): Promise<ProductRow | null> {
 /** Create a product owned by the current user. Unknown fields stay NULL (never 0). */
 export async function createProduct(payload: ProductInsert): Promise<ProductRow> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const user = await getCurrentUser();
-  if (!user) throw new Error('You must be signed in to add a product.');
-  const { data, error } = await supabase
-    .from(TABLE)
-    .insert({ ...payload, owner_user_id: user.id })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return data as ProductRow;
+  const request = canonicalIngestFromLegacyProduct(payload);
+  const idempotencyKey = await productIngestIdempotencyKey(request.source, request.input);
+  const result = await ingestProduct({ ...request, idempotencyKey });
+  if (!result.productId) throw new Error('Product ingest did not return a canonical product.');
+  const product = await getProduct(result.productId);
+  if (!product) throw new Error('Canonical product is not visible after ingest.');
+  return product;
 }
 
 /** STRUCTURAL GUARD: product ENGINE values are never written through the generic update paths —
@@ -85,15 +87,17 @@ export type ProductUpdatePatch = Omit<ProductUpdate, (typeof STRIPPED_ENGINE_FIE
  * never write them. */
 export async function updateProduct(id: string, patch: ProductUpdatePatch): Promise<ProductRow> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const { data, error } = await supabase
-    .from(TABLE)
-    .update(stripEngineValues(patch))
-    .eq('id', id)
-    .select()
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error('Product not found or not owned.');
-  return data as ProductRow;
+  const current = await getProduct(id);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct({ ...current, ...stripEngineValues(patch) });
+  request.input.productId = id;
+  request.input.operation = 'upsert';
+  const idempotencyKey = await productIngestIdempotencyKey(request.source, request.input, `update:${id}`);
+  const result = await ingestProduct({ ...request, idempotencyKey, productId: id });
+  if (!result.productId) throw new Error('Product update did not return a canonical product.');
+  const product = await getProduct(result.productId);
+  if (!product) throw new Error('Canonical product is not visible after update.');
+  return product;
 }
 
 /**
@@ -108,23 +112,32 @@ export async function updateProductUnlessStatus(
   unlessStatus: ProductStatus,
 ): Promise<ProductRow> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const { data, error } = await supabase
-    .from(TABLE)
-    .update(stripEngineValues(patch))
-    .eq('id', id)
-    .neq('status', unlessStatus)
-    .select()
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error(`Product not found, not owned, or its status is '${unlessStatus}' (write refused).`);
-  return data as ProductRow;
+  const current = await getProduct(id);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct({ ...current, ...stripEngineValues(patch) });
+  request.input.productId = id;
+  request.input.operation = 'upsert';
+  request.input.expectedStatusNot = unlessStatus;
+  const idempotencyKey = await productIngestIdempotencyKey(request.source, request.input, `guarded-update:${id}`);
+  const result = await ingestProduct({ ...request, idempotencyKey, productId: id });
+  if (!result.productId) {
+    throw new Error(`Product not found, not owned, or its status is '${unlessStatus}' (write refused).`);
+  }
+  const product = await getProduct(result.productId);
+  if (!product) throw new Error('Canonical product is not visible after update.');
+  return product;
 }
 
 /** Delete an owned product (RLS scopes the delete to the owner). */
 export async function removeProduct(id: string): Promise<void> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const { error } = await supabase.from(TABLE).delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  const current = await getProduct(id);
+  if (!current) throw new Error('Product not found or not owned.');
+  const request = canonicalIngestFromLegacyProduct(current);
+  request.input.productId = id;
+  request.input.operation = 'retire';
+  const idempotencyKey = await productIngestIdempotencyKey(request.source, request.input, `retire:${id}`);
+  await ingestProduct({ ...request, idempotencyKey, productId: id, operation: 'retire' });
 }
 
 /**

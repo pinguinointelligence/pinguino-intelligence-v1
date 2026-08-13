@@ -8,8 +8,6 @@ const h = vi.hoisted(() => ({
   findExisting: vi.fn(),
   createWithIdentity: vi.fn(),
   matchAndSave: vi.fn(),
-  snapshotNew: vi.fn(),
-  snapshotChange: vi.fn(),
 }));
 
 vi.mock('@/services/products', () => ({
@@ -18,10 +16,6 @@ vi.mock('@/services/products', () => ({
 }));
 vi.mock('@/services/productMapper', () => ({
   matchAndSaveProduct: h.matchAndSave,
-}));
-vi.mock('@/services/productSnapshots', () => ({
-  snapshotNewProduct: h.snapshotNew,
-  snapshotSourceChange: h.snapshotChange,
 }));
 
 import { importProductCatalog } from './productCatalogImport';
@@ -48,14 +42,12 @@ beforeEach(() => {
   h.findExisting.mockResolvedValue(null);
   h.createWithIdentity.mockImplementation(() => Promise.resolve(makeRow()));
   h.matchAndSave.mockResolvedValue({});
-  h.snapshotNew.mockResolvedValue({});
-  h.snapshotChange.mockResolvedValue(null);
 });
 
 describe('importProductCatalog — snapshots (best-effort)', () => {
   it('records a created-product snapshot on create, and does not match by default', async () => {
     await importProductCatalog([candidate({ rowIndex: 1 })]);
-    expect(h.snapshotNew).toHaveBeenCalledTimes(1);
+    expect(h.createWithIdentity).toHaveBeenCalledTimes(1);
     expect(h.matchAndSave).not.toHaveBeenCalled();
   });
 
@@ -63,21 +55,12 @@ describe('importProductCatalog — snapshots (best-effort)', () => {
     h.findExisting.mockResolvedValue({ id: 'id-existing', product_code: 'PR-ING-000099' });
     const s = await importProductCatalog([candidate({ rowIndex: 1 })]);
     expect(s.existingDuplicates).toBe(1);
-    expect(h.snapshotChange).toHaveBeenCalledWith('id-existing', { brand: 'B', product_name_display: 'N' });
-    expect(h.snapshotNew).not.toHaveBeenCalled();
-  });
-
-  it('a snapshot failure becomes a per-row warning, not a row failure', async () => {
-    h.snapshotNew.mockRejectedValue(new Error('rls denied'));
-    const s = await importProductCatalog([candidate({ rowIndex: 1 })]);
-    expect(s.created).toBe(1);
-    expect(s.rowResults[0]!.outcome).toBe('created');
-    expect(s.rowResults[0]!.warnings.some((w) => /snapshot skipped: rls denied/.test(w))).toBe(true);
+    expect(h.createWithIdentity).not.toHaveBeenCalled();
   });
 
   it('snapshot:false disables snapshot writes', async () => {
     await importProductCatalog([candidate({ rowIndex: 1 })], { snapshot: false });
-    expect(h.snapshotNew).not.toHaveBeenCalled();
+    expect(h.createWithIdentity).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -156,10 +139,10 @@ describe('importProductCatalog — optional matching (runMatch)', () => {
     expect(h.matchAndSave).not.toHaveBeenCalled();
   });
 
-  it('runMatch:true calls matchAndSaveProduct with the CREATED product id', async () => {
+  it('runMatch:true delegates classification to canonical ingest', async () => {
     const s = await importProductCatalog([candidate({ rowIndex: 1 })], { runMatch: true });
-    expect(h.matchAndSave).toHaveBeenCalledTimes(1);
-    expect(h.matchAndSave).toHaveBeenCalledWith(s.rowResults[0]!.productId);
+    expect(h.matchAndSave).not.toHaveBeenCalled();
+    expect(s.warnings).toContain('Legacy client-side Mapper matching is ignored; canonical ingest owns classification.');
   });
 
   it('a match failure keeps the product CREATED (warning, not failure) and short-circuits later matches', async () => {
@@ -174,9 +157,8 @@ describe('importProductCatalog — optional matching (runMatch)', () => {
     expect(s.created).toBe(2);
     expect(s.failed).toBe(0);
     expect(s.rowResults[0]!.outcome).toBe('created');
-    expect(s.rowResults[0]!.warnings.some((w) => /match skipped/.test(w))).toBe(true);
-    expect(s.warnings.some((w) => /matching unavailable/.test(w))).toBe(true);
-    expect(h.matchAndSave).toHaveBeenCalledTimes(1); // short-circuited after the first failure
+    expect(s.warnings).toContain('Legacy client-side Mapper matching is ignored; canonical ingest owns classification.');
+    expect(h.matchAndSave).not.toHaveBeenCalled();
   });
 });
 
