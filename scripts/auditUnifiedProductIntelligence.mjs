@@ -38,70 +38,202 @@ const escapeCsv = (value) => {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 };
 const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
+const lower = (value) => String(value ?? '').toLowerCase();
+
+const EXACT_MAIN = new Map([
+  ['PI-ING-001553', { family: 'fruit', subfamily: 'berry', form: 'fresh', profiles: 'milk_gelato;sorbet;vegan_gelato', coverage: 'OWNER_PROVISIONAL_V2;PINGUINO_CALIBRATED_EXACT' }],
+  ['PI-ING-000345', { family: 'fruit', subfamily: 'banana', form: 'fresh', profiles: 'milk_gelato', coverage: 'OWNER_PROVISIONAL_V2' }],
+  ['PI-ING-000366', { family: 'fruit', subfamily: 'kiwi', form: 'fresh', profiles: 'milk_gelato', coverage: 'OWNER_PROVISIONAL_V2' }],
+  ['PI-ING-000369', { family: 'fruit', subfamily: 'citrus', form: 'fresh', profiles: 'sorbet', coverage: 'PINGUINO_CALIBRATED_EXACT' }],
+  ['PI-ING-000340', { family: 'fruit', subfamily: 'mango_tropical', form: 'puree', profiles: 'sorbet', coverage: 'PINGUINO_CALIBRATED_EXACT' }],
+  ['PI-ING-001589', { family: 'fruit', subfamily: 'banana', form: 'puree', profiles: 'vegan_gelato', coverage: 'PINGUINO_CALIBRATED_EXACT' }],
+  ['PI-ING-000614', { family: 'nut', subfamily: null, form: 'paste', profiles: 'vegan_gelato', coverage: 'PINGUINO_CALIBRATED_EXACT' }],
+  ['PI-ING-001578', { family: 'chocolate_cocoa', subfamily: null, form: 'cocoa_powder', profiles: 'vegan_gelato', coverage: 'PINGUINO_CALIBRATED_EXACT' }],
+]);
+const PROTEIN_FLAVOUR_FIXTURES_WITHOUT_SENSORY_ENVELOPE = new Set([
+  'PI-ING-001553','PI-ING-001589','PI-ING-000614','PI-ING-001578','PI-ING-000166',
+]);
+const LIQUID_DAIRY_CARRIERS = new Set([
+  'PI-ING-000200', 'PI-ING-000201', 'PI-ING-000234', 'PI-ING-000235', 'PI-ING-000236',
+]);
+const STRUCTURAL_CATEGORIES = new Set([
+  'sweetener', 'stabilizer', 'fiber', 'emulsifier', 'starch', 'acid', 'colorant',
+  'functional_additive', 'additive',
+]);
+const TOPPING_CATEGORIES = new Set([
+  'confectionery_inclusion', 'bakery_inclusion', 'decorative_inclusion', 'variegate', 'coating',
+]);
+const FLAVOUR_CANDIDATE_CATEGORIES = new Set([
+  'fruit', 'fruit_powder', 'flavor_paste', 'flavor_powder', 'flavor_syrup',
+  'flavor_concentrate', 'chocolate', 'cocoa', 'nut', 'nut_paste', 'coffee',
+  'coffee_tea', 'alcohol', 'beverage', 'confectionery_spread',
+]);
+const FLAVOUR_FAMILIES = new Set([
+  'coconut', 'bakery_cookie', 'spice_herb', 'vanilla', 'caramel', 'honey', 'dairy_flavour',
+]);
+
+function familyFor(category, subcategory) {
+  const cat = lower(category);
+  const sub = lower(subcategory);
+  if (sub === 'honey') return 'honey';
+  if (sub.includes('caramel') || sub === 'kajmak') return 'caramel';
+  if (sub.includes('vanilla')) return 'vanilla';
+  if (cat === 'fruit') return 'fruit';
+  if (cat === 'nut' || cat === 'nut_paste') return 'nut';
+  if (cat === 'chocolate' || cat === 'cocoa') return 'chocolate_cocoa';
+  if (cat === 'coffee' || cat === 'coffee_tea' || sub.includes('coffee') || sub === 'espresso_coffee') return 'coffee';
+  if (cat === 'alcohol') return 'alcohol';
+  if (cat === 'coconut') return 'coconut';
+  if (cat === 'bakery' || cat === 'bakery_inclusion') return 'bakery_cookie';
+  if (cat === 'spice' || cat === 'botanical') return 'spice_herb';
+  if (cat === 'dairy' && new Set([
+    'mascarpone_cheese', 'natural_yogurt', 'skyr_yoghurt', 'greek_yogurt', 'yoghurt_9_percent',
+    'fermented_milk_drink', 'cream_cheese', 'soft_cheese', 'blue_cheese', 'brie_cheese',
+    'blue_cheese_roquefort', 'parmesan_cheese', 'fatty_cottage_cheese', 'fatty_cottage_cheese_8_percent',
+  ]).has(sub)) return 'dairy_flavour';
+  return null;
+}
+
+function subfamilyFor(row) {
+  const exact = EXACT_MAIN.get(row.ingredient_id);
+  if (exact) return exact.subfamily;
+  const cat = lower(row.ingredient_category);
+  const sub = lower(row.ingredient_subcategory);
+  if (cat === 'fruit' && ['citrus', 'lemon', 'lime', 'orange'].some((token) => sub.includes(token))) return 'citrus';
+  if (cat === 'fruit' && sub.includes('tropical')) return 'mango_tropical';
+  return null;
+}
+
+function formFor(category, subcategory) {
+  const cat = lower(category);
+  const sub = lower(subcategory);
+  if (sub.includes('juice_concentrate') || sub.includes('concentrate')) return 'concentrate';
+  if (sub.includes('fresh')) return 'fresh';
+  if (sub.includes('frozen')) return 'frozen';
+  if (sub.includes('puree')) return 'puree';
+  if (sub.includes('juice')) return 'juice';
+  if (sub.includes('extract')) return 'extract';
+  if (sub === 'espresso_coffee') return 'espresso';
+  if (sub.includes('dark_chocolate')) return 'dark_chocolate';
+  if (sub.includes('milk_chocolate')) return 'milk_chocolate';
+  if (sub.includes('cocoa_mass')) return 'cocoa_mass';
+  if (sub.includes('cocoa_powder')) return 'cocoa_powder';
+  if (sub.includes('powder')) return 'powder';
+  if (cat === 'alcohol' && sub.includes('cream_liqueur')) return 'cream_liqueur';
+  if (cat === 'alcohol') return 'alcoholic_beverage';
+  if (cat === 'flavor_paste' || cat === 'flavour_paste') return 'flavour_paste';
+  if (sub.includes('syrup')) return 'syrup';
+  if (sub.includes('paste')) return 'paste';
+  if ((cat === 'nut' || cat === 'nut_paste') && new Set([
+    'pistachio', 'almond', 'peanut', 'walnut', 'cashew', 'pecan', 'hazelnut',
+    'brazil_nuts', 'chestnut', 'macadamia',
+  ]).has(sub)) return 'whole_nut';
+  if (sub.includes('dried')) return 'dried';
+  if (sub.includes('peel')) return 'peel';
+  if (sub.includes('drink') || ['milk', 'fresh_milk', 'water', 'cream'].includes(sub)) return 'liquid';
+  return null;
+}
+
+function classify(row, processRow) {
+  const category = lower(row.ingredient_category);
+  const subcategory = lower(row.ingredient_subcategory);
+  const exact = EXACT_MAIN.get(row.ingredient_id);
+  const family = exact?.family ?? familyFor(category, subcategory);
+  const subfamily = exact?.subfamily ?? subfamilyFor(row);
+  const form = exact?.form ?? formFor(category, subcategory);
+  const structural = STRUCTURAL_CATEGORIES.has(category) || subcategory === 'water';
+  const topping = TOPPING_CATEGORIES.has(category);
+  const flavourCandidate = FLAVOUR_CANDIDATE_CATEGORIES.has(category) || FLAVOUR_FAMILIES.has(family);
+
+  let behaviorRole;
+  let mainPolicyStatus;
+  let mainEligibility;
+  let profileApplicability;
+  if (exact) {
+    behaviorRole = 'MAIN_PROFILE_SPECIFIC';
+    mainPolicyStatus = 'COVERED';
+    mainEligibility = 'MAIN_PROFILE_SPECIFIC';
+    profileApplicability = exact.profiles;
+  } else if (category === 'protein') {
+    behaviorRole = 'PROTEIN_CONTRIBUTOR_ONLY';
+    mainPolicyStatus = 'NOT_APPLICABLE';
+    mainEligibility = 'PROTEIN_CONTRIBUTOR_ONLY';
+    profileApplicability = 'protein_gelato:contributor_only';
+  } else if (topping) {
+    behaviorRole = 'TOPPING_ONLY';
+    mainPolicyStatus = 'NOT_APPLICABLE';
+    mainEligibility = 'TOPPING_ONLY';
+    profileApplicability = 'POST_PROCESS_ADDON:where_mapper_approved';
+  } else if (structural) {
+    behaviorRole = 'STRUCTURAL_ONLY';
+    mainPolicyStatus = 'NOT_APPLICABLE';
+    mainEligibility = 'NOT_MAIN';
+    profileApplicability = 'ALL_EXISTING:structural_where_mapper_approved';
+  } else if (flavourCandidate) {
+    behaviorRole = 'UNKNOWN_REQUIRES_EVIDENCE';
+    mainPolicyStatus = family === null || form === null ? 'BLOCKED_DATA' : 'BLOCKED_SCIENCE';
+    mainEligibility = 'MAIN_BLOCKED_POLICY';
+    profileApplicability = 'AUTOMATIC_MAIN:blocked_pending_exact_evidence';
+  } else {
+    behaviorRole = 'STANDARD_ONLY';
+    mainPolicyStatus = 'NOT_APPLICABLE';
+    mainEligibility = 'STANDARD_ONLY';
+    profileApplicability = 'ALL_EXISTING:standard_where_mapper_approved';
+  }
+
+  const reasons = [];
+  if (behaviorRole === 'UNKNOWN_REQUIRES_EVIDENCE') {
+    if (!family && !form) reasons.push('family_and_form_evidence_missing');
+    else if (!family) reasons.push('family_evidence_missing');
+    else if (!form) reasons.push('form_or_concentration_evidence_missing');
+    else reasons.push('profile_main_policy_missing');
+  }
+  if (behaviorRole === 'PROTEIN_CONTRIBUTOR_ONLY') reasons.push('protein_contributor_not_flavour_main');
+  if (behaviorRole === 'TOPPING_ONLY') reasons.push('post_process_product_not_base_main');
+  if (behaviorRole === 'STRUCTURAL_ONLY') reasons.push('structural_product_not_flavour_main');
+  if (behaviorRole === 'STANDARD_ONLY') reasons.push('standard_product_not_flavour_main');
+  if (PROTEIN_FLAVOUR_FIXTURES_WITHOUT_SENSORY_ENVELOPE.has(row.ingredient_id)) {
+    reasons.push('protein_flavour_envelope_not_sensory_calibrated');
+  }
+  if ((processRow?.process_status ?? 'UNKNOWN') === 'UNKNOWN') reasons.push('process_evidence_missing');
+
+  return {
+    ingredient_id: row.ingredient_id,
+    ingredient_name: row.ingredient_name_display,
+    ingredient_category: row.ingredient_category,
+    ingredient_subcategory: row.ingredient_subcategory,
+    base_eligible: row.approved_for_base,
+    engine_eligible: row.approved_for_engines,
+    behavior_role: behaviorRole,
+    main_policy_status: mainPolicyStatus,
+    main_eligibility_compatibility: mainEligibility,
+    family: family ?? 'UNRESOLVED',
+    subfamily: subfamily ?? 'UNRESOLVED',
+    form: form ?? 'UNRESOLVED',
+    form_hint: row.ingredient_subcategory || 'other',
+    profile_applicability: profileApplicability,
+    base_permission: row.approved_for_base === 'TRUE' && row.approved_for_engines === 'TRUE' ? 'ELIGIBLE' : 'BLOCKED_MAPPER_APPROVAL',
+    main_permission: mainPolicyStatus === 'COVERED' ? 'ELIGIBLE' : mainPolicyStatus,
+    policy_coverage: exact?.coverage ?? mainPolicyStatus,
+    process_mapping: processRow?.process_status ?? 'UNKNOWN',
+    process_evidence_level: processRow?.process_evidence_level ?? 'UNKNOWN',
+    vegan_status: row.vegan === 'TRUE' ? 'verified' : row.vegan === 'FALSE' ? 'false' : 'unknown',
+    protein_behavior: category === 'protein'
+      ? 'PROTEIN_CONTRIBUTOR_ONLY'
+      : Number(row.aerating_protein_percent || 0) > 0
+        ? 'CONTRIBUTOR_EVIDENCE_ONLY'
+        : 'NOT_APPLICABLE',
+    approved_liquid_dairy_carrier: LIQUID_DAIRY_CARRIERS.has(row.ingredient_id) ? 'TRUE' : 'FALSE',
+    exact_reason_codes: reasons.length > 0 ? reasons.join(';') : 'NONE',
+  };
+}
 
 const mapperSource = fs.readFileSync(mapperPath, 'utf8');
 const processSource = fs.readFileSync(processPath, 'utf8');
 const mapper = parseCsv(mapperSource);
 const processRows = parseCsv(processSource);
 const processById = new Map(processRows.map((row) => [row.ingredient_id, row]));
-const exact = new Map([
-  ['PI-ING-001553', { family: 'fruit', subfamily: 'berry', form: 'fresh', main: 'MAIN_PROFILE_SPECIFIC', profiles: 'fruit_gelato' }],
-  ['PI-ING-000345', { family: 'fruit', subfamily: 'banana', form: 'fresh', main: 'MAIN_PROFILE_SPECIFIC', profiles: 'fruit_gelato' }],
-  ['PI-ING-000366', { family: 'fruit', subfamily: 'kiwi', form: 'fresh', main: 'MAIN_PROFILE_SPECIFIC', profiles: 'fruit_gelato' }],
-]);
-const structural = new Set([
-  'sweetener', 'stabilizer', 'fiber', 'emulsifier', 'starch', 'acid', 'colorant',
-  'functional_additive', 'additive',
-]);
-const mainPolicyCandidates = new Set([
-  'fruit', 'fruit_powder', 'flavor_paste', 'flavor_powder', 'flavor_syrup',
-  'flavor_concentrate', 'chocolate', 'cocoa', 'nut', 'nut_paste', 'coffee',
-  'coffee_tea', 'alcohol', 'beverage', 'confectionery_spread',
-]);
-const carrierIds = new Set([
-  'PI-ING-000200', 'PI-ING-000201', 'PI-ING-000234', 'PI-ING-000235', 'PI-ING-000236',
-]);
-
-const audit = mapper.map((row) => {
-  const reviewed = exact.get(row.ingredient_id);
-  const notMain = structural.has(row.ingredient_category.toLowerCase()) ||
-    row.ingredient_subcategory.toLowerCase() === 'water';
-  const proteinContributor = row.ingredient_category.toLowerCase() === 'protein';
-  const mainBlockedPolicy = mainPolicyCandidates.has(row.ingredient_category.toLowerCase());
-  const processRow = processById.get(row.ingredient_id);
-  return {
-    ingredient_id: row.ingredient_id,
-    ingredient_name: row.ingredient_name_display,
-    base_eligible: row.approved_for_base,
-    engine_eligible: row.approved_for_engines,
-    main_eligibility: reviewed?.main ?? (
-      proteinContributor
-        ? 'PROTEIN_CONTRIBUTOR_ONLY'
-        : mainBlockedPolicy
-          ? 'MAIN_BLOCKED_POLICY'
-          : 'NOT_MAIN'
-    ),
-    family: reviewed?.family ?? 'UNKNOWN_REQUIRES_REVIEW',
-    subfamily: reviewed?.subfamily ?? 'UNKNOWN_REQUIRES_REVIEW',
-    form: reviewed?.form ?? 'UNKNOWN_REQUIRES_REVIEW',
-    form_hint: row.ingredient_subcategory || 'other',
-    supported_profiles: reviewed?.profiles ?? 'STANDARD_WHERE_MAPPER_APPROVED',
-    policy_coverage: reviewed
-      ? 'OWNER_PROVISIONAL_V1'
-      : mainBlockedPolicy
-        ? 'MAIN_BLOCKED_POLICY'
-        : 'NOT_APPLICABLE',
-    process_mapping: processRow?.process_status ?? 'UNKNOWN',
-    process_evidence_level: processRow?.process_evidence_level ?? 'UNKNOWN',
-    vegan_status: row.vegan === 'TRUE' ? 'verified' : row.vegan === 'FALSE' ? 'false' : 'unknown',
-    protein_behavior: proteinContributor
-      ? 'PROTEIN_CONTRIBUTOR_ONLY'
-      : Number(row.aerating_protein_percent || 0) > 0
-        ? 'CONTRIBUTOR_EVIDENCE_ONLY'
-        : 'NOT_APPLICABLE',
-    approved_liquid_dairy_carrier: carrierIds.has(row.ingredient_id) ? 'TRUE' : 'FALSE',
-  };
-});
+const audit = mapper.map((row) => classify(row, processById.get(row.ingredient_id)));
 
 if (mapper.length !== 2088 || new Set(mapper.map((row) => row.ingredient_id)).size !== 2088) {
   throw new Error(`Mapper exhaustiveness failed: rows=${mapper.length}`);
@@ -110,6 +242,14 @@ if (processRows.length !== 2088 || processById.size !== 2088) {
   throw new Error(`Process exhaustiveness failed: rows=${processRows.length}`);
 }
 for (const row of mapper) if (!processById.has(row.ingredient_id)) throw new Error(`Missing process row ${row.ingredient_id}`);
+for (const row of audit) {
+  if (!row.behavior_role || !row.main_policy_status || !row.profile_applicability) {
+    throw new Error(`Incomplete behavior classification: ${row.ingredient_id}`);
+  }
+  if (row.behavior_role === 'UNKNOWN_REQUIRES_EVIDENCE' && row.exact_reason_codes === 'NONE') {
+    throw new Error(`Unknown classification lacks an exact reason: ${row.ingredient_id}`);
+  }
+}
 
 const headers = Object.keys(audit[0]);
 const csv = [headers.join(','), ...audit.map((row) => headers.map((key) => escapeCsv(row[key])).join(','))].join('\n') + '\n';
@@ -117,11 +257,24 @@ const counts = (field) => audit.reduce((result, row) => {
   result[row[field]] = (result[row[field]] ?? 0) + 1;
   return result;
 }, {});
-const mainCounts = counts('main_eligibility');
+const behaviorRoleCounts = counts('behavior_role');
+const policyStatusCounts = counts('main_policy_status');
 const processCounts = counts('process_mapping');
+const familyCounts = counts('family');
+const exactReasonCounts = audit.flatMap((row) => row.exact_reason_codes === 'NONE' ? [] : row.exact_reason_codes.split(';'))
+  .reduce((result, reason) => {
+    result[reason] = (result[reason] ?? 0) + 1;
+    return result;
+  }, {});
+
+const listCounts = (value) => Object.entries(value)
+  .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+  .map(([key, count]) => `- ${key}: **${count}**`)
+  .join('\n');
+
 const md = `# Mapper 2088 Product Behavior Audit
 
-Generated deterministically from the locked Mapper CSV and its immutable process companion. This report does not write to Mapper.
+Generated deterministically from the locked Mapper CSV and its immutable process companion. This report does not write to Mapper and does not create flavour science.
 
 ## Reconciliation
 
@@ -132,25 +285,48 @@ Generated deterministically from the locked Mapper CSV and its immutable process
 - Process SHA-256: \`${sha256(processSource)}\`
 - Detailed exhaustive output: [MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.csv](./MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.csv)
 
-## Main eligibility
+## Behavior role (separate from policy coverage)
 
-${Object.entries(mainCounts).sort().map(([key, value]) => `- ${key}: **${value}**`).join('\n')}
+${listCounts(behaviorRoleCounts)}
 
-Only three exact owner fixtures have a provisional Main policy binding. Genuine flavour/product-form candidates without approved science are deterministically MAIN_BLOCKED_POLICY: they remain usable as Standard where Mapper permits, but cannot be optimized as Main. Protein-category rows are PROTEIN_CONTRIBUTOR_ONLY. Every other row is deterministically NOT_MAIN. No family, form, concentration or limit is guessed.
+## Main policy status
+
+${listCounts(policyStatusCounts)}
+
+Eight exact identities have profile-scoped Main coverage: three owner-provisional dairy fixtures and seven exact PINGUINO-calibrated Sorbet/Vegan fixture policies (Strawberry is shared by all three profiles). Flavor candidates without sufficient family/form/concentration evidence are BLOCKED_DATA. Candidates with an identified family and form but without approved sensory limits are BLOCKED_SCIENCE. Neither status changes existing Base/Engine approvals.
+
+## Stable family classification
+
+${listCounts(familyCounts)}
+
+UNRESOLVED is retained only where the structured Mapper category/subcategory cannot establish a stable family without guessing. Every unresolved automatic-Main candidate has an exact reason in the CSV.
+
+## Exact reason coverage
+
+${listCounts(exactReasonCounts)}
 
 ## Process evidence
 
-${Object.entries(processCounts).sort().map(([key, value]) => `- ${key}: **${value}**`).join('\n')}
+${listCounts(processCounts)}
 
-## Coverage limitations
+## Science boundary
 
-- Governed Main envelope coverage: **3 / 2088** exact reviewed bindings.
-- All 2088 rows have a deterministic ordinary behavior; generic runtime UNKNOWN is zero.
-- Protein percentages are preserved as evidence. Positive protein is not promoted to a final behavior except as an explicit contributor candidate.
-- Runtime active catalog counts require the service-only \`catalog_product_behavior_audit_v1\` view on a migrated database. The linked staging migration ledger is currently unreconciled, so catalog counts are not fabricated here.
+- Exact governed Main coverage: **${policyStatusCounts.COVERED ?? 0} / 2088** identity bindings (profile applicability remains explicit per row).
+- Runtime role classification is exhaustive: **${audit.length} / 2088**.
+- Automatic-Main unknowns without an exact reason: **${audit.filter((row) => row.behavior_role === 'UNKNOWN_REQUIRES_EVIDENCE' && row.exact_reason_codes === 'NONE').length}**.
+- The audit does not infer compound concentration, coffee retained mass, alcohol ABV or flavour intensity. Sorbet/Vegan policies are restricted to exact accepted template fixtures. Protein flavour fixtures remain explicitly blocked because the accepted calibration proves protein-target feasibility, not a sensory Main envelope.
 `;
 
 fs.mkdirSync(path.dirname(reportCsv), { recursive: true });
 fs.writeFileSync(reportCsv, csv);
 fs.writeFileSync(reportMd, md);
-console.log(JSON.stringify({ mapperRows: mapper.length, mainCounts, processCounts }, null, 2));
+console.log(JSON.stringify({
+  mapperRows: mapper.length,
+  behaviorRoleCounts,
+  policyStatusCounts,
+  processCounts,
+  familyCounts,
+  exactReasonCounts,
+  mapperSha256: sha256(mapperSource),
+  processSha256: sha256(processSource),
+}, null, 2));

@@ -11,12 +11,12 @@ const dairy = (
   subfamilyId: string | null = null,
 ): MainEnvelopePolicy => ({
   policyId,
-  policyVersion: 'owner-provisional-2026-08-12',
+  policyVersion: 'owner-provisional-v2-2026-08-12',
   taxonomyVersion: 'pinguino-product-taxonomy-v1',
   familyId,
   subfamilyId,
   formId,
-  productProfiles: ['milk_gelato', 'fruit_gelato', 'nut_gelato', 'chocolate_gelato'],
+  productProfiles: ['milk_gelato'],
   basis: familyId === 'nut' ? 'NUT_EQUIVALENT' : 'FRUIT_EQUIVALENT',
   ecoFloorPercent,
   optimalCeilingPercent,
@@ -31,9 +31,10 @@ const dairy = (
 });
 
 /**
- * Initial, explicitly provisional policies supplied by the owner. Profiles not
- * listed here fail closed. Sorbet/Vegan/Protein policies must be activated by
- * adding a reviewed registry record; the resolver itself needs no code change.
+ * Initial family/form policies supplied by the owner. Exact-Mapper Sorbet and
+ * Vegan fixture policies live in the server registry because this legacy
+ * in-memory shape cannot represent an exact ingredient identity. Protein
+ * flavour envelopes remain blocked until sensory Main calibration exists.
  */
 export const DEFAULT_PRODUCT_BEHAVIOR_REGISTRY: ProductBehaviorRegistry = {
   taxonomyVersion: 'pinguino-product-taxonomy-v1',
@@ -41,10 +42,11 @@ export const DEFAULT_PRODUCT_BEHAVIOR_REGISTRY: ProductBehaviorRegistry = {
     dairy('main-fruit-fresh-dairy', 'fruit', 'fresh', 20, 35, 45),
     dairy('main-fruit-puree-dairy', 'fruit', 'puree', 20, 35, 45),
     dairy('main-berry-fresh-dairy', 'fruit', 'fresh', 25, 35, 45, [], 'berry'),
+    dairy('main-berry-puree-dairy', 'fruit', 'puree', 25, 35, 45, [], 'berry'),
     dairy('main-kiwi-fresh-dairy', 'fruit', 'fresh', 10, 15, 20, [], 'kiwi'),
     dairy('main-banana-fresh-dairy', 'fruit', 'fresh', 10, 20, 30, [], 'banana'),
     dairy(
-      'main-pure-nut-paste-dairy-v1',
+      'main-pure-nut-paste-dairy',
       'nut',
       'pure_nut_paste',
       8,
