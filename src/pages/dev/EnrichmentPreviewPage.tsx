@@ -7,8 +7,8 @@
  * OFF: fill / agree / conflict / skip) → tick the fields to apply → "Apply selected enrichment".
  *
  * Safety: the write goes through `applyProductEnrichment`, which writes ONLY the label-nutrition
- * allowlist (never pac/pod, identity/EAN/product_code, status, or mapper_basement), snapshots the
- * change, and refuses a PI Verified product unless the reviewer explicitly overrides. OFF is a
+ * allowlist (never pac/pod, identity/EAN/product_code, status, or mapper_basement), versions the
+ * change atomically, and refuses a PI Verified product unless the reviewer explicitly overrides. OFF is a
  * weak `public_composition_db` source, so conflicts default to KEEP-stored (unticked). Mercadona
  * private-label EANs aren't in OFF (404 → not-found); use a known public EAN to exercise step 2.
  *
@@ -328,9 +328,7 @@ export function EnrichmentPreviewPage() {
         allowPiVerifiedOverride: override,
         reason: reason.trim() || undefined,
       });
-      setApplyMessage(
-        `Applied ${res.appliedFields.length} field(s); snapshot ${res.snapshot ? res.snapshot.change_type : 'unchanged'}.`,
-      );
+      setApplyMessage(`Applied ${res.appliedFields.length} field(s); canonical version recorded.`);
       setProducts((prev) => prev.map((p) => (p.id === res.product.id ? res.product : p)));
     } catch (error) {
       setApplyError(error instanceof Error ? error.message : String(error));
@@ -345,7 +343,7 @@ export function EnrichmentPreviewPage() {
       <h1 className="mt-3 text-2xl font-light tracking-tight">Enrichment (OpenFoodFacts)</h1>
       <p className="mt-2 text-sm text-stone-600">
         Read-only keyless lookup by EAN, then a reviewed per-field merge. Writes only label nutrition
-        (never PAC/POD, identity, or the reference base); every applied change is snapshotted.
+        (never PAC/POD, identity, or the reference base); every applied change creates an immutable version.
       </p>
 
       <div className="mt-6 flex gap-2">

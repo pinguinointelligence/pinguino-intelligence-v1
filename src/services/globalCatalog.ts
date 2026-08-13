@@ -119,13 +119,13 @@ export async function savePrivateCatalogProductPrice(input: {
   if (!supabase) throw new Error(UNAVAILABLE);
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required.');
-  const { error } = await supabase.from('account_catalog_product_data').upsert({
+  const { error } = await supabase.from('user_product_relations').upsert({
     user_id: user.id,
-    catalog_product_id: input.catalogProductId,
+    product_id: input.catalogProductId,
     private_price: input.pricePerKg,
     currency: input.currency,
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id,catalog_product_id' });
+  }, { onConflict: 'user_id,product_id' });
   if (error) throw new Error(error.message);
 }
 
@@ -134,10 +134,10 @@ export async function resetPrivateCatalogProductPrice(catalogProductId: string):
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required.');
   const { error } = await supabase
-    .from('account_catalog_product_data')
+    .from('user_product_relations')
     .update({ private_price: null, currency: null, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)
-    .eq('catalog_product_id', catalogProductId);
+    .eq('product_id', catalogProductId);
   if (error) throw new Error(error.message);
 }
 
@@ -162,13 +162,23 @@ export async function listCatalogFavorites(): Promise<Array<{ entityKind: 'pi_ba
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.favorites', []);
   const { data, error } = await supabase
     .from('global_catalog_favorites')
-    .select('entity_kind,catalog_product_id,mapper_ingredient_id');
+    .select('entity_kind,catalog_product_id,mapper_ingredient_id')
+    .eq('entity_kind', 'pi_base');
   if (error) throw new Error(error.message);
-  return (data ?? []).flatMap((row) => {
+  const pi = (data ?? []).flatMap((row) => {
     const entityKind = row.entity_kind as 'pi_base' | 'commercial_product';
     const id = entityKind === 'pi_base' ? row.mapper_ingredient_id : row.catalog_product_id;
     return typeof id === 'string' ? [{ entityKind, id }] : [];
   });
+  const { data: commercial, error: commercialError } = await supabase
+    .from('user_product_relations')
+    .select('product_id')
+    .eq('favorite', true);
+  if (commercialError) throw new Error(commercialError.message);
+  return [
+    ...pi,
+    ...(commercial ?? []).map((row) => ({ entityKind: 'commercial_product' as const, id: row.product_id })),
+  ];
 }
 
 export async function listCatalogRecent(): Promise<Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>> {
@@ -176,14 +186,26 @@ export async function listCatalogRecent(): Promise<Array<{ entityKind: 'pi_base'
   const { data, error } = await supabase
     .from('global_catalog_recent_usage')
     .select('entity_kind,catalog_product_id,mapper_ingredient_id')
+    .eq('entity_kind', 'pi_base')
     .order('last_used_at', { ascending: false })
     .limit(100);
   if (error) throw new Error(error.message);
-  return (data ?? []).flatMap((row) => {
+  const pi = (data ?? []).flatMap((row) => {
     const entityKind = row.entity_kind as 'pi_base' | 'commercial_product';
     const id = entityKind === 'pi_base' ? row.mapper_ingredient_id : row.catalog_product_id;
     return typeof id === 'string' ? [{ entityKind, id }] : [];
   });
+  const { data: commercial, error: commercialError } = await supabase
+    .from('user_product_relations')
+    .select('product_id,recently_used_at')
+    .not('recently_used_at', 'is', null)
+    .order('recently_used_at', { ascending: false })
+    .limit(100);
+  if (commercialError) throw new Error(commercialError.message);
+  return [
+    ...pi,
+    ...(commercial ?? []).map((row) => ({ entityKind: 'commercial_product' as const, id: row.product_id })),
+  ];
 }
 
 export async function setCatalogFavorite(input: {
@@ -194,7 +216,17 @@ export async function setCatalogFavorite(input: {
   if (!supabase) throw new Error(UNAVAILABLE);
   const user = await getCurrentUser();
   if (!user) throw new Error('Musisz być zalogowany, aby zmienić Ulubione.');
-  const key = input.entityKind === 'pi_base' ? 'mapper_ingredient_id' : 'catalog_product_id';
+  if (input.entityKind === 'commercial_product') {
+    const { error } = await supabase.from('user_product_relations').upsert({
+      user_id: user.id,
+      product_id: input.id,
+      favorite: input.favorite,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,product_id' });
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const key = 'mapper_ingredient_id';
   if (!input.favorite) {
     const { error } = await supabase
       .from('global_catalog_favorites')
@@ -206,10 +238,10 @@ export async function setCatalogFavorite(input: {
   }
   const payload = {
     user_id: user.id,
-    entity_key: `${input.entityKind === 'pi_base' ? 'pi' : 'catalog'}:${input.id}`,
+    entity_key: `pi:${input.id}`,
     entity_kind: input.entityKind,
-    catalog_product_id: input.entityKind === 'commercial_product' ? input.id : null,
-    mapper_ingredient_id: input.entityKind === 'pi_base' ? input.id : null,
+    catalog_product_id: null,
+    mapper_ingredient_id: input.id,
   };
   const { error } = await supabase
     .from('global_catalog_favorites')
@@ -225,6 +257,16 @@ export async function markCatalogProductUsed(input: {
   const user = await getCurrentUser();
   if (!user) return;
   const commercial = input.entityKind === 'commercial_product';
+  if (commercial) {
+    const { error } = await supabase.from('user_product_relations').upsert({
+      user_id: user.id,
+      product_id: input.id,
+      recently_used_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,product_id' });
+    if (error) throw new Error(error.message);
+    return;
+  }
   const { error } = await supabase.from('global_catalog_recent_usage').upsert(
     {
       user_id: user.id,

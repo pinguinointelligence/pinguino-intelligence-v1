@@ -1,6 +1,6 @@
 /**
- * Reviewed enrichment WRITE service. Applies a reviewer-approved enrichment patch onto an owned
- * product and records a snapshot of the change. The ONLY writable fields are the label-nutrition
+ * Reviewed enrichment WRITE service. Applies a reviewer-approved enrichment patch through the
+ * canonical ingest transaction. The ONLY writable fields are the label-nutrition
  * columns (ENRICHABLE_FIELDS); everything else is stripped before the write.
  *
  * Safety (enforced here + by productEnrichment.security.test.ts):
@@ -8,11 +8,10 @@
  *   • the patch is re-narrowed to ENRICHABLE_FIELDS, so pac_value/pod_value, identity
  *     (EAN/barcode/product_code), and status can NEVER be written;
  *   • a PI Verified product is NOT silently overwritten — it requires an explicit override;
- *   • every applied change is captured as an append-only product_snapshots row;
+ *   • every applied change creates an immutable canonical product_versions row;
  *   • no privileged key; no engine; no npac_value; PAC/POD is never computed.
  */
 import { getProduct, updateProduct, updateProductUnlessStatus } from '@/services/products';
-import { snapshotSourceChange, type ProductSnapshotRow } from '@/services/productSnapshots';
 import { ENRICHABLE_FIELDS, type EnrichableField, type EnrichmentPatch } from '@/data/products/productEnrichment';
 import type { ProductRow } from '@/data/products/productRow';
 
@@ -25,7 +24,7 @@ export interface ApplyEnrichmentOptions {
 
 export interface ApplyEnrichmentResult {
   product: ProductRow;
-  snapshot: ProductSnapshotRow | null;
+  versionRecorded: true;
   appliedFields: EnrichableField[];
 }
 
@@ -40,7 +39,8 @@ function narrowToEnrichable(patch: EnrichmentPatch): Partial<Record<EnrichableFi
 }
 
 /**
- * Apply a reviewed enrichment patch to a product, then snapshot the change. Throws if the patch
+ * Apply a reviewed enrichment patch to a product. The ingest transaction creates its immutable
+ * version atomically. Throws if the patch
  * is empty after narrowing, if the product is missing/not owned, or if it is PI Verified and no
  * explicit override was given.
  */
@@ -63,11 +63,9 @@ export async function applyProductEnrichment(
   }
 
   // WRITE-TIME guard (closes the check-then-write race): without an explicit override the update
-  // itself refuses a row that became PI Verified after the read above. The snapshot is recorded
-  // only AFTER an allowed write.
+  // itself refuses a row that became PI Verified after the read above.
   const product = options.allowPiVerifiedOverride
     ? await updateProduct(productId, safe)
     : await updateProductUnlessStatus(productId, safe, 'pi_verified');
-  const snapshot = await snapshotSourceChange(productId, product);
-  return { product, snapshot, appliedFields };
+  return { product, versionRecorded: true, appliedFields };
 }
