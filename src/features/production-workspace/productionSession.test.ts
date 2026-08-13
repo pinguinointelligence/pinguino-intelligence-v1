@@ -53,6 +53,7 @@ describe('production session physical-reality contract', () => {
     const lineId = input.items[0]!.id;
     const behavior = {
       schemaVersion: 1,
+      resolutionState: 'RESOLVED',
       lineId,
       productId: 'product-1',
       productVersionId: 'version-1',

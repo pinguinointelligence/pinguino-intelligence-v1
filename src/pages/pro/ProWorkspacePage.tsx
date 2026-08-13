@@ -52,6 +52,7 @@ import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredi
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { profileSettingsSignature } from '@/features/pro-workbench/recipeProfileStore';
 import { profileSnapshotFromState } from '@/features/pro-workbench/recipeProfilePersistence';
+import { useLegacyRecipeBehaviorRevalidation } from '@/features/product-intelligence';
 
 const w = copy.proWorkspace;
 
@@ -286,6 +287,7 @@ export function ProWorkspacePage() {
   const { section } = useParams<{ section?: string }>();
   const [searchParams] = useSearchParams();
   const isPro = persona === 'pro';
+  useLegacyRecipeBehaviorRevalidation(isPro);
 
   // Legacy `/pro?tab=<id>` deep-links → the stable `/pro/<id>` path (replace keeps history clean).
   const legacyTab = searchParams.get('tab');

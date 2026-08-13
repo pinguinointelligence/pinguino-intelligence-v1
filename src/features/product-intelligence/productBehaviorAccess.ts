@@ -22,6 +22,7 @@ export function productBehaviorModuleGate(
     ...Object.entries(snapshots)
     .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
     .filter(([, snapshot]) => {
+      if (snapshot.resolutionState === 'REVALIDATION_REQUIRED') return true;
       const state = snapshot.moduleEligibility[module];
       return state !== 'eligible' && state !== 'label_only';
     })

@@ -74,6 +74,7 @@ const behaviorSnapshot = (
   mainEligible = false,
 ): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
+  resolutionState: 'RESOLVED',
   lineId,
   productId: `mapper:${mapperIngredientId}`,
   productVersionId: `mapper:${mapperIngredientId}:version:1`,

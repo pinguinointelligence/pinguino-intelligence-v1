@@ -32,7 +32,9 @@ export interface ResolveProductBehaviorInput {
 
 const MODULES: readonly ProductBehaviorModule[] = [
   'SEARCH', 'BASE_RECIPE', 'MAIN', 'OPTIMAL', 'ECO', 'TOPPING',
-  'SUBSTITUTION', 'COST', 'MONITOR', 'PRODUCTION', 'LABEL', 'NUTRITION', 'SAVE',
+  'SUBSTITUTION', 'COST', 'MONITOR', 'PRODUCTION', 'LABEL', 'NUTRITION',
+  'ALLERGENS', 'PROCESS', 'SUMMARY', 'BATCH_RESCUE', 'MASTER_LABEL',
+  'RECIPE_VERSION', 'RESTORE', 'EXPORT', 'SAVE',
 ];
 
 function entry(
@@ -115,6 +117,30 @@ export function resolveProductBehavior(
     NUTRITION: labelReady
       ? entry('NUTRITION', input.technical.engineReady ? 'eligible' : 'label_only')
       : entry('NUTRITION', 'blocked', 'nutrition_facts_missing_or_not_approved'),
+    ALLERGENS: labelReady
+      ? entry('ALLERGENS', input.technical.engineReady ? 'eligible' : 'label_only')
+      : entry('ALLERGENS', 'blocked', 'allergen_facts_missing_or_not_approved'),
+    PROCESS: baseReady || toppingReady
+      ? entry('PROCESS', input.technical.engineReady ? 'eligible' : 'label_only')
+      : entry('PROCESS', 'blocked', 'process_behavior_not_approved'),
+    SUMMARY: baseReady || toppingReady
+      ? entry('SUMMARY', input.technical.engineReady ? 'eligible' : 'label_only')
+      : entry('SUMMARY', 'blocked', 'summary_facts_missing_or_not_approved'),
+    BATCH_RESCUE: baseReady
+      ? entry('BATCH_RESCUE', 'eligible')
+      : entry('BATCH_RESCUE', 'blocked', 'rescue_behavior_not_approved'),
+    MASTER_LABEL: labelReady
+      ? entry('MASTER_LABEL', input.technical.engineReady ? 'eligible' : 'label_only')
+      : entry('MASTER_LABEL', 'blocked', 'label_facts_missing_or_not_approved'),
+    RECIPE_VERSION: baseReady || toppingReady
+      ? entry('RECIPE_VERSION', input.technical.engineReady ? 'eligible' : 'label_only')
+      : entry('RECIPE_VERSION', 'blocked', 'product_behavior_not_versionable'),
+    RESTORE: baseReady || toppingReady
+      ? entry('RESTORE', input.technical.engineReady ? 'eligible' : 'label_only')
+      : entry('RESTORE', 'blocked', 'product_behavior_not_restorable'),
+    EXPORT: labelReady
+      ? entry('EXPORT', input.technical.engineReady ? 'eligible' : 'label_only')
+      : entry('EXPORT', 'blocked', 'export_facts_missing_or_not_approved'),
     SAVE: baseReady || toppingReady
       ? entry('SAVE', input.technical.engineReady ? 'eligible' : 'label_only')
       : entry('SAVE', 'blocked', 'product_behavior_not_executable'),
@@ -155,6 +181,7 @@ export function snapshotResolvedProductBehavior(input: {
   const policy = input.resolved.mainPolicy;
   return {
     schemaVersion: 1,
+    resolutionState: 'RESOLVED',
     lineId: input.lineId,
     productId: input.resolved.product.productId,
     productVersionId: input.resolved.product.productVersionId,
@@ -208,6 +235,7 @@ export function snapshotServerResolvedProductBehavior(input: {
     policy !== null;
   return {
     schemaVersion: 1,
+    resolutionState: 'RESOLVED',
     lineId: input.lineId,
     productId: input.resolved.productId,
     productVersionId: input.resolved.productVersionId,
@@ -259,6 +287,7 @@ export function productBehaviorSnapshotFingerprint(
       .map(([lineId, value]) => [
         lineId,
         value.productVersionId,
+        value.resolutionState,
         value.factsFingerprint,
         value.behaviorBindingId,
         value.behaviorBindingVersion,
@@ -296,7 +325,13 @@ export function readProductBehaviorSnapshot(value: unknown): ProductBehaviorSnap
     !Array.isArray(row.warnings) || !row.warnings.every((entry) => typeof entry === 'string') ||
     !Array.isArray(row.blockReasons) || !row.blockReasons.every((entry) => typeof entry === 'string')
   ) return null;
-  return structuredClone(row as ProductBehaviorSnapshot);
+  const resolutionState = row.resolutionState ?? 'RESOLVED';
+  if (
+    resolutionState !== 'RESOLVED' &&
+    resolutionState !== 'LEGACY_RECONSTRUCTED' &&
+    resolutionState !== 'REVALIDATION_REQUIRED'
+  ) return null;
+  return structuredClone({ ...row, resolutionState } as ProductBehaviorSnapshot);
 }
 
 /** Context is resolved once; consumers only read the named module result. */

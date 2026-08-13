@@ -14,7 +14,20 @@ export type ProductBehaviorModule =
   | 'PRODUCTION'
   | 'LABEL'
   | 'NUTRITION'
+  | 'ALLERGENS'
+  | 'PROCESS'
+  | 'SUMMARY'
+  | 'BATCH_RESCUE'
+  | 'MASTER_LABEL'
+  | 'RECIPE_VERSION'
+  | 'RESTORE'
+  | 'EXPORT'
   | 'SAVE';
+
+export type ProductBehaviorSnapshotState =
+  | 'RESOLVED'
+  | 'LEGACY_RECONSTRUCTED'
+  | 'REVALIDATION_REQUIRED';
 
 export type ProductSourceKind =
   | 'mapper'
@@ -206,6 +219,7 @@ export interface ResolvedProductBehavior {
 /** Immutable recipe/version snapshot. No Engine formula reads this object. */
 export interface ProductBehaviorSnapshot {
   schemaVersion: 1;
+  resolutionState: ProductBehaviorSnapshotState;
   lineId: string;
   productId: string;
   productVersionId: string;

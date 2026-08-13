@@ -7,6 +7,7 @@ import {
 
 const snapshot = (lineId: string): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
+  resolutionState: 'RESOLVED',
   lineId,
   productId: 'product-1',
   productVersionId: 'version-1',
@@ -63,5 +64,17 @@ describe('product behavior snapshot completeness', () => {
     });
     expect(productBehaviorModuleGate({ line: snapshot('line') }, 'PRODUCTION', ['line']).ready)
       .toBe(true);
+  });
+
+  it('keeps an unresolved reconstructed line fail-closed in every module', () => {
+    const unresolved = {
+      ...snapshot('legacy-line'),
+      resolutionState: 'REVALIDATION_REQUIRED' as const,
+    };
+    expect(productBehaviorModuleGate(
+      { 'legacy-line': unresolved },
+      'RESTORE',
+      ['legacy-line'],
+    )).toMatchObject({ ready: false, blockedLineIds: ['legacy-line'] });
   });
 });

@@ -20,6 +20,7 @@ const snapshot = (
   overrides: Partial<ProductBehaviorSnapshot> = {},
 ): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
+  resolutionState: 'RESOLVED',
   lineId,
   productId: `product-${lineId}`,
   productVersionId: `version-${lineId}`,
