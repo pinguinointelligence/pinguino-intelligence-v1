@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const SQL = readFileSync(
-  join(REPO, 'supabase', 'migrations', '0003_billing_subscriptions.sql'),
+  join(REPO, 'supabase', 'migrations', '20260716101446_0003_billing_subscriptions.sql'),
   'utf8',
 );
 

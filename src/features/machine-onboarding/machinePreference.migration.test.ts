@@ -2,7 +2,8 @@
 /**
  * 0030 user-machine-preference migration guard — contract-lockstep + §23.4
  * safety invariants, proven statically against the SQL text (comment-stripped).
- * No live DB. The migration file is COMMITTED but NOT APPLIED (file-first).
+ * No live DB. The migration body is checked against the exact staging-applied
+ * migration recovered from the linked migration ledger.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -14,7 +15,7 @@ import {
 } from '@/features/machine-catalog';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const RAW = readFileSync(join(REPO, 'supabase', 'migrations', '0030_user_machine_preference.sql'), 'utf8');
+const RAW = readFileSync(join(REPO, 'supabase', 'migrations', '20260717111837_0030_user_machine_preference.sql'), 'utf8');
 const CODE = RAW.replace(/--.*$/gm, '');
 
 const HOME_TECHNOLOGIES = Object.entries(HOME_TECHNOLOGY_TO_VISIBLE_MODE)
@@ -80,9 +81,9 @@ describe('0030 user_machine_preference migration', () => {
     expect(/capacity_snapshot jsonb not null/.test(CODE)).toBe(true);
   });
 
-  it('documents the FILE-FIRST / not-applied contract in the header', () => {
-    expect(RAW).toContain('NOT APPLIED');
-    expect(RAW).toContain('riwipywgqobrulyzrzad'); // never production
+  it('documents the staging-applied contract in the recovered header', () => {
+    expect(RAW).toContain('Applied to STAGING');
+    expect(RAW).toContain('2026-07-17');
   });
 });
 
@@ -91,7 +92,7 @@ describe('0030 user_machine_preference migration', () => {
 /* ------------------------------------------------------------------ */
 
 const RAW_0031 = readFileSync(
-  join(REPO, 'supabase', 'migrations', '0031_user_machine_preference_user_default.sql'),
+  join(REPO, 'supabase', 'migrations', '20260717134505_0031_user_machine_preference_user_default.sql'),
   'utf8',
 );
 const CODE_0031 = RAW_0031.replace(/--.*$/gm, '');

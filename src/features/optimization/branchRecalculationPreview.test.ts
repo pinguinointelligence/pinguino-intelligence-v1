@@ -414,8 +414,8 @@ describe('branchRecalculationPreview — boundary (preview only, no writes anywh
   it('accepted-correction migrations applied — 0012 table+RLS, 0013 tier policy; proposal records kept', () => {
     const migrations = readdirSync(join(ROOT, 'supabase', 'migrations'));
     expect(migrations.filter((f) => /accepted_correction/i.test(f))).toEqual([
-      '0012_accepted_corrections.sql',
-      '0013_accepted_corrections_tier_policy.sql',
+      '20260716101930_0012_accepted_corrections.sql',
+      '20260716102003_0013_accepted_corrections_tier_policy.sql',
     ]);
     expect(existsSync(join(ROOT, 'docs', 'spine', 'proposals', 'accepted_corrections_table.proposal.sql'))).toBe(true);
     expect(existsSync(join(ROOT, 'docs', 'spine', 'proposals', 'accepted_corrections_tier_policy.proposal.sql'))).toBe(true);

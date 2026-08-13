@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
-const migration = fs.readFileSync(path.join(ROOT, 'supabase/migrations/0043_global_product_catalog.sql'), 'utf8');
-const hardening = fs.readFileSync(path.join(ROOT, 'supabase/migrations/0044_global_product_catalog_trust_hardening.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20260813110000_global_product_catalog.sql'), 'utf8');
+const hardening = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20260813110100_global_product_catalog_trust_hardening.sql'), 'utf8');
 const edge = fs.readFileSync(path.join(ROOT, 'supabase/functions/catalog-submit/index.ts'), 'utf8');
 const picker = fs.readFileSync(path.join(ROOT, 'src/features/ingredient-builder/ProductPickerPopover.tsx'), 'utf8');
 const ingredientService = fs.readFileSync(path.join(ROOT, 'src/services/ingredients.ts'), 'utf8');

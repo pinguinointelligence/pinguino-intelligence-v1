@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const read = (...p: string[]) => readFileSync(join(REPO, ...p), 'utf8');
 
-const MIGRATION = read('supabase', 'migrations', '0005_ingredients_final_v0_95_no_npac.sql');
+const MIGRATION = read('supabase', 'migrations', '20260716101552_0005_ingredients_final_v0_95_no_npac.sql');
 const SEED = read('supabase', 'seed', 'ingredients_final_v0_95_no_npac.sql');
 const SERVICE = read('src', 'services', 'ingredients.ts');
 const CSV = read(

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const SQL = readFileSync(
-  join(REPO, 'supabase', 'migrations', '0037_customer_ingredient_prices.sql'),
+  join(REPO, 'supabase', 'migrations', '20260809194004_customer_ingredient_prices.sql'),
   'utf8',
 );
 const CODE = SQL.replace(/--.*$/gm, '');

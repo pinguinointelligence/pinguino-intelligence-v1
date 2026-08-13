@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProductionEventType, ProductionStatus } from './productionContracts';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '0028_production_runs.sql'), 'utf8');
+const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '20260716103031_0028_production_runs.sql'), 'utf8');
 const CODE = SQL.replace(/--.*$/gm, '');
 
 const TABLES = [

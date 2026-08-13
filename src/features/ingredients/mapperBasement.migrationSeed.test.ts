@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const read = (...p: string[]) => readFileSync(join(REPO, ...p), 'utf8');
 
-const MIGRATION = read('supabase', 'migrations', '0006_mapper_basement.sql');
+const MIGRATION = read('supabase', 'migrations', '20260716101631_0006_mapper_basement.sql');
 const SEED = read('supabase', 'seed', 'mapper_basement_v1_0.sql');
 const SERVICE = read('src', 'services', 'ingredients.ts');
 

@@ -46,9 +46,9 @@ const executable = (sql: string): string =>
 const flat = (sql: string): string => executable(sql).replace(/\s+/g, ' ');
 
 const FILES = [
-  '0022_ocr_intake_sessions.sql',
-  '0023_ocr_extraction_evidence.sql',
-  '0024_ocr_intake_storage.sql',
+  '20260716102627_0022_ocr_intake_sessions.sql',
+  '20260716102709_0023_ocr_extraction_evidence.sql',
+  '20260716102741_0024_ocr_intake_storage.sql',
 ] as const;
 
 const SQL = new Map<string, string>(FILES.map((f) => [f, readSql(f)]));
@@ -171,12 +171,12 @@ const FIELD_KEYS = vocab<IntakeFieldKey>({
 });
 
 const TABLES_BY_FILE: Record<string, string[]> = {
-  '0022_ocr_intake_sessions.sql': [
+  '20260716102627_0022_ocr_intake_sessions.sql': [
     'ocr_intake_batches',
     'ocr_intake_sessions',
     'ocr_intake_images',
   ],
-  '0023_ocr_extraction_evidence.sql': ['ocr_extraction_runs', 'ocr_field_evidence'],
+  '20260716102709_0023_ocr_extraction_evidence.sql': ['ocr_extraction_runs', 'ocr_field_evidence'],
 };
 
 describe('CRLF safety of this guard itself', () => {
@@ -215,9 +215,9 @@ describe('intake tables exist with RLS enabled', () => {
 });
 
 describe('contract lockstep — CHECK vocabularies match intakeContracts.ts EXACTLY', () => {
-  const sessions = tableBlock('0022_ocr_intake_sessions.sql', 'ocr_intake_sessions');
-  const images = tableBlock('0022_ocr_intake_sessions.sql', 'ocr_intake_images');
-  const evidence = tableBlock('0023_ocr_extraction_evidence.sql', 'ocr_field_evidence');
+  const sessions = tableBlock('20260716102627_0022_ocr_intake_sessions.sql', 'ocr_intake_sessions');
+  const images = tableBlock('20260716102627_0022_ocr_intake_sessions.sql', 'ocr_intake_images');
+  const evidence = tableBlock('20260716102709_0023_ocr_extraction_evidence.sql', 'ocr_field_evidence');
 
   it('ocr_intake_sessions.state = IntakeSessionState (9 states)', () => {
     expect(checkVocab(sessions, 'state').sort()).toEqual(SESSION_STATES);
@@ -300,10 +300,10 @@ describe('evidence integrity — write-once, provenance-honest', () => {
   });
 
   it('runs + evidence are immutable shapes: no updated_at column, no touch trigger', () => {
-    const runs = tableBlock('0023_ocr_extraction_evidence.sql', 'ocr_extraction_runs');
+    const runs = tableBlock('20260716102709_0023_ocr_extraction_evidence.sql', 'ocr_extraction_runs');
     const runsColumns = runs.slice(0, runs.indexOf('create index'));
     expect(runsColumns.includes('updated_at')).toBe(false);
-    const evidence = tableBlock('0023_ocr_extraction_evidence.sql', 'ocr_field_evidence');
+    const evidence = tableBlock('20260716102709_0023_ocr_extraction_evidence.sql', 'ocr_field_evidence');
     const evidenceColumns = evidence.slice(0, evidence.indexOf('create index'));
     expect(evidenceColumns.includes('updated_at')).toBe(false);
     expect(/create trigger ocr_extraction_runs_touch/i.test(ALL_EXEC)).toBe(false);
@@ -311,7 +311,7 @@ describe('evidence integrity — write-once, provenance-honest', () => {
   });
 
   it('the original OCR text is required evidence (full_text not null) with provider + timing', () => {
-    const runs = tableBlock('0023_ocr_extraction_evidence.sql', 'ocr_extraction_runs');
+    const runs = tableBlock('20260716102709_0023_ocr_extraction_evidence.sql', 'ocr_extraction_runs');
     expect(runs).toContain('full_text text not null');
     expect(runs).toContain('provider_id text not null');
     expect(runs).toContain('duration_ms integer not null check (duration_ms >= 0)');
@@ -327,7 +327,7 @@ describe('evidence integrity — write-once, provenance-honest', () => {
   });
 
   it('confidence is SPLIT (extraction vs normalization), both bounded 0..100, both nullable', () => {
-    const evidence = tableBlock('0023_ocr_extraction_evidence.sql', 'ocr_field_evidence');
+    const evidence = tableBlock('20260716102709_0023_ocr_extraction_evidence.sql', 'ocr_field_evidence');
     expect(evidence).toContain(
       'extraction_confidence integer check (extraction_confidence is null or (extraction_confidence >= 0 and extraction_confidence <= 100))',
     );
@@ -366,8 +366,8 @@ describe('session/image writes — owner-scoped rows, column-scoped updates', ()
 
   it('every intake policy is owner-scoped via auth.uid() (direct or through the session)', () => {
     const policies: string[] = [
-      ...(executable(sqlOf('0022_ocr_intake_sessions.sql')).match(/create policy[^;]+;/g) ?? []),
-      ...(executable(sqlOf('0023_ocr_extraction_evidence.sql')).match(/create policy[^;]+;/g) ?? []),
+      ...(executable(sqlOf('20260716102627_0022_ocr_intake_sessions.sql')).match(/create policy[^;]+;/g) ?? []),
+      ...(executable(sqlOf('20260716102709_0023_ocr_extraction_evidence.sql')).match(/create policy[^;]+;/g) ?? []),
     ];
     expect(policies).toHaveLength(15);
     for (const policy of policies) {
@@ -384,12 +384,12 @@ describe('session/image writes — owner-scoped rows, column-scoped updates', ()
   });
 
   it('sessions cascade from the auth user (intake is user working data, not financial history)', () => {
-    const sessions = tableBlock('0022_ocr_intake_sessions.sql', 'ocr_intake_sessions');
+    const sessions = tableBlock('20260716102627_0022_ocr_intake_sessions.sql', 'ocr_intake_sessions');
     expect(sessions).toContain('user_id uuid not null references auth.users (id) on delete cascade');
   });
 
   it('saved_product_id is a SOFT text link — no FK into public.products anywhere', () => {
-    const sessions = tableBlock('0022_ocr_intake_sessions.sql', 'ocr_intake_sessions');
+    const sessions = tableBlock('20260716102627_0022_ocr_intake_sessions.sql', 'ocr_intake_sessions');
     expect(sessions).toContain('saved_product_id text');
     expect(/saved_product_id[^,]*references/i.test(sessions)).toBe(false);
     expect(/references\s+public\.products\b/i.test(ALL_EXEC)).toBe(false);
@@ -409,7 +409,7 @@ describe('session/image writes — owner-scoped rows, column-scoped updates', ()
   });
 
   it('batches carry NO stored outcome counters — the sessions are the truth', () => {
-    const batches = tableBlock('0022_ocr_intake_sessions.sql', 'ocr_intake_batches');
+    const batches = tableBlock('20260716102627_0022_ocr_intake_sessions.sql', 'ocr_intake_batches');
     const columns = batches.slice(0, batches.indexOf('create index'));
     for (const drift of ['saved_count', 'failed_count', 'processed', 'outcome']) {
       expect(columns.includes(drift), drift).toBe(false);
@@ -418,7 +418,7 @@ describe('session/image writes — owner-scoped rows, column-scoped updates', ()
 });
 
 describe('storage — private bucket, owner-path policies, honest caps', () => {
-  const storage = sqlOf('0024_ocr_intake_storage.sql');
+  const storage = sqlOf('20260716102741_0024_ocr_intake_storage.sql');
   const storageFlat = flat(storage);
 
   it('seeds the product-intake-images bucket PRIVATE with exact caps, idempotently', () => {
@@ -438,7 +438,7 @@ describe('storage — private bucket, owner-path policies, honest caps', () => {
 
   it('bucket file_size_limit equals the image-table byte_size cap (single source of truth)', () => {
     const bucketLimit = storageFlat.match(/false, (\d+), array\[/)?.[1];
-    const columnCap = flat(sqlOf('0022_ocr_intake_sessions.sql')).match(/byte_size > 0 and byte_size <= (\d+)/)?.[1];
+    const columnCap = flat(sqlOf('20260716102627_0022_ocr_intake_sessions.sql')).match(/byte_size > 0 and byte_size <= (\d+)/)?.[1];
     expect(bucketLimit).toBeDefined();
     expect(bucketLimit).toBe(columnCap);
   });

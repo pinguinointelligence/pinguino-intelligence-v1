@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const MIGRATION = readFileSync(
-  join(REPO, 'supabase', 'migrations', '0035_retire_legacy_products_reviewed.sql'),
+  join(REPO, 'supabase', 'migration_sources', 'legacy_short_sequence', '0035_retire_legacy_products_reviewed.sql'),
   'utf8',
 );
 // Executable view = comments stripped, whitespace normalized (so predicate/order checks only

@@ -196,7 +196,7 @@ describe('acceptedCorrectionDraft — boundary (pure, NON-writing)', () => {
 describe('accepted_corrections migration — LIVE (Slice 24, migration 0012)', () => {
   const proposalPath = join(ROOT, 'docs', 'spine', 'proposals', 'accepted_corrections_table.proposal.sql');
   const proposal = readFileSync(proposalPath, 'utf8');
-  const migrationPath = join(ROOT, 'supabase', 'migrations', '0012_accepted_corrections.sql');
+  const migrationPath = join(ROOT, 'supabase', 'migrations', '20260716101930_0012_accepted_corrections.sql');
   const migration = readFileSync(migrationPath, 'utf8');
 
   /** Executable SQL only — full-line comments and blank lines stripped. */
@@ -210,8 +210,8 @@ describe('accepted_corrections migration — LIVE (Slice 24, migration 0012)', (
   it('exists in the live migration path — 0012 (table+RLS) and 0013 (tier policy)', () => {
     const migrations = readdirSync(join(ROOT, 'supabase', 'migrations'));
     expect(migrations.filter((f) => /accepted_correction/i.test(f))).toEqual([
-      '0012_accepted_corrections.sql',
-      '0013_accepted_corrections_tier_policy.sql',
+      '20260716101930_0012_accepted_corrections.sql',
+      '20260716102003_0013_accepted_corrections_tier_policy.sql',
     ]);
   });
 

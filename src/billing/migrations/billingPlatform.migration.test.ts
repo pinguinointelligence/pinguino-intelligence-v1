@@ -35,14 +35,14 @@ const executable = (sql: string): string =>
 const flat = (sql: string): string => executable(sql).replace(/\s+/g, ' ');
 
 const FILES = [
-  '0014_billing_price_catalog.sql',
-  '0015_customer_subscriptions_entitlements.sql',
-  '0016_partner_program.sql',
-  '0017_referral_attribution.sql',
-  '0018_commission_ledger.sql',
-  '0019_payouts.sql',
-  '0020_invite_codes.sql',
-  '0021_webhook_events_audit_log.sql',
+  '20260716102044_0014_billing_price_catalog.sql',
+  '20260716102130_0015_customer_subscriptions_entitlements.sql',
+  '20260716102213_0016_partner_program.sql',
+  '20260716102300_0017_referral_attribution.sql',
+  '20260716102349_0018_commission_ledger.sql',
+  '20260716102429_0019_payouts.sql',
+  '20260716102506_0020_invite_codes.sql',
+  '20260716102532_0021_webhook_events_audit_log.sql',
 ] as const;
 
 const SQL = new Map<string, string>(FILES.map((f) => [f, readSql(f)]));
@@ -55,27 +55,27 @@ const ALL = FILES.map(sqlOf).join('\n');
 const ALL_EXEC = executable(ALL);
 
 const TABLES_BY_FILE: Record<string, string[]> = {
-  '0014_billing_price_catalog.sql': ['billing_price_catalog'],
-  '0015_customer_subscriptions_entitlements.sql': [
+  '20260716102044_0014_billing_price_catalog.sql': ['billing_price_catalog'],
+  '20260716102130_0015_customer_subscriptions_entitlements.sql': [
     'customer_subscriptions',
     'entitlements',
     'subscription_conversion_intents',
   ],
-  '0016_partner_program.sql': ['partner_applications', 'partners', 'partner_codes'],
-  '0017_referral_attribution.sql': [
+  '20260716102213_0016_partner_program.sql': ['partner_applications', 'partners', 'partner_codes'],
+  '20260716102300_0017_referral_attribution.sql': [
     'referral_clicks',
     'referral_attributions',
     'partner_benefit_uses',
   ],
-  '0018_commission_ledger.sql': [
+  '20260716102349_0018_commission_ledger.sql': [
     'partner_tier_snapshots',
     'commission_rules',
     'commission_entries',
     'commission_adjustments',
   ],
-  '0019_payouts.sql': ['payout_batches', 'partner_payouts', 'partner_payout_items'],
-  '0020_invite_codes.sql': ['invite_code_slots', 'invite_codes'],
-  '0021_webhook_events_audit_log.sql': ['stripe_webhook_events', 'audit_log'],
+  '20260716102429_0019_payouts.sql': ['payout_batches', 'partner_payouts', 'partner_payout_items'],
+  '20260716102506_0020_invite_codes.sql': ['invite_code_slots', 'invite_codes'],
+  '20260716102532_0021_webhook_events_audit_log.sql': ['stripe_webhook_events', 'audit_log'],
 };
 
 describe('CRLF safety of this guard itself', () => {
@@ -166,7 +166,7 @@ describe('service-role-only writes — no client write path anywhere', () => {
 });
 
 describe('billing_price_catalog (0014) — structure', () => {
-  const sql = () => sqlOf('0014_billing_price_catalog.sql');
+  const sql = () => sqlOf('20260716102044_0014_billing_price_catalog.sql');
 
   it('pins offer_key and lookup_key unique, EUR-only integer cents', () => {
     expect(sql().includes('offer_key text not null unique')).toBe(true);
@@ -207,7 +207,7 @@ describe('billing_price_catalog (0014) — structure', () => {
 });
 
 describe('billing_price_catalog (0014) — the 11 locked offers, seeded verbatim', () => {
-  const f = flat(sqlOf('0014_billing_price_catalog.sql'));
+  const f = flat(sqlOf('20260716102044_0014_billing_price_catalog.sql'));
 
   // (offer_key, product, cadence, variant, lookup_key, amount_cents, currency,
   //  interval, interval_count, public_enabled, renewal_offer_key,
@@ -246,7 +246,7 @@ describe('billing_price_catalog (0014) — the 11 locked offers, seeded verbatim
 });
 
 describe('customer_subscriptions + entitlements + conversion intents (0015)', () => {
-  const sql = () => sqlOf('0015_customer_subscriptions_entitlements.sql');
+  const sql = () => sqlOf('20260716102130_0015_customer_subscriptions_entitlements.sql');
 
   it('EXTENDS the 0003 cache — never drops or alters public.subscriptions', () => {
     const exec = executable(sql());
@@ -289,7 +289,7 @@ describe('customer_subscriptions + entitlements + conversion intents (0015)', ()
 });
 
 describe('partner program (0016)', () => {
-  const sql = () => sqlOf('0016_partner_program.sql');
+  const sql = () => sqlOf('20260716102213_0016_partner_program.sql');
 
   it('applications: full status vocabulary + ONE non-terminal application per user', () => {
     const f = flat(sql());
@@ -321,7 +321,7 @@ describe('partner program (0016)', () => {
 });
 
 describe('referral attribution + benefit uses (0017)', () => {
-  const sql = () => sqlOf('0017_referral_attribution.sql');
+  const sql = () => sqlOf('20260716102300_0017_referral_attribution.sql');
 
   it('attributions: unique ACTIVE owner per subscription — partial unique (§14.14)', () => {
     const f = flat(sql());
@@ -354,7 +354,7 @@ describe('referral attribution + benefit uses (0017)', () => {
 });
 
 describe('commission ledger (0018)', () => {
-  const sql = () => sqlOf('0018_commission_ledger.sql');
+  const sql = () => sqlOf('20260716102349_0018_commission_ledger.sql');
 
   it('tier snapshots: one per partner per month, month pinned to day 1 (§14.14)', () => {
     const f = flat(sql());
@@ -420,7 +420,7 @@ describe('commission ledger (0018)', () => {
 });
 
 describe('payouts (0019)', () => {
-  const sql = () => sqlOf('0019_payouts.sql');
+  const sql = () => sqlOf('20260716102429_0019_payouts.sql');
 
   it('batches: unique month + currency + livemode — a month can never run twice (§14.14)', () => {
     const f = flat(sql());
@@ -454,7 +454,7 @@ describe('payouts (0019)', () => {
 });
 
 describe('invite codes (0020)', () => {
-  const sql = () => sqlOf('0020_invite_codes.sql');
+  const sql = () => sqlOf('20260716102506_0020_invite_codes.sql');
 
   it('slots: stable slot_number, enabled flag, current-code link closed via ALTER (circular FK)', () => {
     expect(sql().includes('slot_number integer not null unique check (slot_number >= 1)')).toBe(true);
@@ -484,7 +484,7 @@ describe('invite codes (0020)', () => {
 });
 
 describe('webhook durability + audit (0021)', () => {
-  const sql = () => sqlOf('0021_webhook_events_audit_log.sql');
+  const sql = () => sqlOf('20260716102532_0021_webhook_events_audit_log.sql');
 
   it('events: unique event key (account_scope, livemode, event_id) — exactly-once intake (§14.14)', () => {
     expect(flat(sql())).toContain('unique (account_scope, livemode, event_id)');

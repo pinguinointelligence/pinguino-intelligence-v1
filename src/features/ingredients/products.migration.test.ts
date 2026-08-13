@@ -18,7 +18,7 @@ const REPO = resolve(import.meta.dirname, '..', '..', '..');
 // (the per-line `--.*$` comment strip cannot cross a stray `\r`).
 const read = (...p: string[]) => readFileSync(join(REPO, ...p), 'utf8').replace(/\r\n/g, '\n');
 
-const MIGRATION = read('supabase', 'migrations', '0007_products.sql');
+const MIGRATION = read('supabase', 'migrations', '20260716101708_0007_products.sql');
 const SERVICE = read('src', 'services', 'ingredients.ts');
 
 /** The migration with every SQL line comment (-- … end of line) removed. */

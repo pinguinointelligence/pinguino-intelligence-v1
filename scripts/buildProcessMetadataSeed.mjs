@@ -277,7 +277,7 @@ const main = () => {
     positional[1] ?? 'docs/ingredients/validation/mapper_basement.csv',
   );
   const outputPath = resolve(
-    positional[2] ?? 'supabase/migrations/0040_mapper_process_metadata_seed.sql',
+    positional[2] ?? 'supabase/migrations/20260810165100_mapper_process_metadata_seed.sql',
   );
   const { rows, manifest } = validateProcessMetadataDataset(processPath, mapperPath);
   if (!process.argv.includes('--check')) {

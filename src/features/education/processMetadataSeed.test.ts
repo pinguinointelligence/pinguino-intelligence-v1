@@ -5,12 +5,12 @@ import { describe, expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '..', '..', '..');
 const script = resolve(root, 'scripts', 'buildProcessMetadataSeed.mjs');
-const migration = resolve(root, 'supabase', 'migrations', '0040_mapper_process_metadata_seed.sql');
+const migration = resolve(root, 'supabase', 'migrations', '20260810165100_mapper_process_metadata_seed.sql');
 const readonlyAssertion = resolve(
   root,
   'supabase',
   'migrations',
-  '0041_mapper_process_metadata_readonly_assertion.sql',
+  '20260810165300_mapper_process_metadata_readonly_assertion.sql',
 );
 const expectedSha = 'c185d08ef89229001ffc56eceda0dbe55442e9abe0327d2b27742e40d8dbc9f4';
 

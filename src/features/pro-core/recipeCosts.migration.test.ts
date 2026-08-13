@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { CostBasis, PurchaseUnit } from './costContracts';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '0029_recipe_costs.sql'), 'utf8');
+const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '20260716103057_0029_recipe_costs.sql'), 'utf8');
 const CODE = SQL.replace(/--.*$/gm, '');
 
 const TABLES = ['ingredient_cost_entries', 'recipe_cost_snapshots'] as const;

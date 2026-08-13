@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { RecipeVersionSource } from './recipeContracts';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const CODE = readFileSync(join(REPO, 'supabase', 'migrations', '0027_saved_recipes_and_versions.sql'), 'utf8').replace(/--.*$/gm, '');
+const CODE = readFileSync(join(REPO, 'supabase', 'migrations', '20260716102958_0027_saved_recipes_and_versions.sql'), 'utf8').replace(/--.*$/gm, '');
 
 const SOURCES: RecipeVersionSource[] = ['manual', 'starter_draft', 'optimizer_correction', 'restored', 'imported'];
 

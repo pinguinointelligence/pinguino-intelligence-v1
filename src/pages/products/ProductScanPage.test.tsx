@@ -11,7 +11,7 @@ vi.mock('@/services/ocrIntakePersistence', () => ({ persistSessionAndSave: vi.fn
 const render = () => renderToStaticMarkup(<MemoryRouter><ProductScanPage /></MemoryRouter>);
 const SOURCE = readFileSync(join(process.cwd(), 'src/pages/products/ProductScanPage.tsx'), 'utf8');
 const EDGE = readFileSync(join(process.cwd(), 'supabase/functions/catalog-submit/index.ts'), 'utf8');
-const HARDENING = readFileSync(join(process.cwd(), 'supabase/migrations/0044_global_product_catalog_trust_hardening.sql'), 'utf8');
+const HARDENING = readFileSync(join(process.cwd(), 'supabase/migrations/20260813110100_global_product_catalog_trust_hardening.sql'), 'utf8');
 
 describe('customer OCR global-catalog entry', () => {
   it('is a real customer surface with multi-image roles, honest privacy and no opt-in', () => {

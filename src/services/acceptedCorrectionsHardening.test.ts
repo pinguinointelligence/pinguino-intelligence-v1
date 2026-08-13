@@ -48,7 +48,7 @@ describe('tier policy — Option A LIVE as migration 0013, exact semantics', () 
     ROOT,
     'supabase',
     'migrations',
-    '0013_accepted_corrections_tier_policy.sql',
+    '20260716102003_0013_accepted_corrections_tier_policy.sql',
   );
   const migration = readFileSync(migrationPath, 'utf8');
 
@@ -64,8 +64,8 @@ describe('tier policy — Option A LIVE as migration 0013, exact semantics', () 
     expect(proposalPath.includes('supabase')).toBe(false);
     const migrations = readdirSync(join(ROOT, 'supabase', 'migrations'));
     expect(migrations.filter((f) => /accepted_correction/i.test(f))).toEqual([
-      '0012_accepted_corrections.sql',
-      '0013_accepted_corrections_tier_policy.sql',
+      '20260716101930_0012_accepted_corrections.sql',
+      '20260716102003_0013_accepted_corrections_tier_policy.sql',
     ]);
   });
 

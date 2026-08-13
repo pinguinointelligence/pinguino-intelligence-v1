@@ -18,7 +18,7 @@ const REPO = resolve(import.meta.dirname, '..', '..', '..');
 // Normalize CRLF: a Windows autocrlf checkout must parse identically to an LF one
 // (the per-line `--.*$` comment strip cannot cross a stray `\r`).
 const MIGRATION = readFileSync(
-  join(REPO, 'supabase', 'migrations', '0010_products_code_sequence_grants.sql'),
+  join(REPO, 'supabase', 'migrations', '20260716101830_0010_products_code_sequence_grants.sql'),
   'utf8',
 ).replace(/\r\n/g, '\n');
 

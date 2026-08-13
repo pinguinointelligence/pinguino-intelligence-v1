@@ -57,7 +57,7 @@ create table if not exists public.product_behavior_policy_versions (
   exact_catalog_product_version_id uuid references public.global_catalog_product_versions(id) on delete restrict,
   main_eligibility text not null check (main_eligibility in (
     'MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC','STANDARD_ONLY','PROTEIN_CONTRIBUTOR_ONLY',
-    'TOPPING_ONLY','NOT_MAIN','UNKNOWN'
+    'TOPPING_ONLY','NOT_MAIN','MAIN_BLOCKED_POLICY','UNKNOWN'
   )),
   basis text check (basis is null or basis in (
     'FRUIT_EQUIVALENT','NUT_EQUIVALENT','COCOA_SOLIDS_EQUIVALENT','ETHANOL_PERCENT',
@@ -114,7 +114,7 @@ create table if not exists public.mapper_product_behavior_bindings (
   form_hint text,
   main_eligibility text not null check (main_eligibility in (
     'MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC','STANDARD_ONLY','PROTEIN_CONTRIBUTOR_ONLY',
-    'TOPPING_ONLY','NOT_MAIN','UNKNOWN'
+    'TOPPING_ONLY','NOT_MAIN','MAIN_BLOCKED_POLICY','UNKNOWN'
   )),
   vegan_eligibility text not null check (vegan_eligibility in ('verified','false','unknown','conflict')),
   protein_behavior text not null check (protein_behavior in ('contributor','neutral','unknown')),
@@ -141,7 +141,7 @@ create table if not exists public.catalog_product_behavior_bindings (
   form_id text,
   main_eligibility text not null check (main_eligibility in (
     'MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC','STANDARD_ONLY','PROTEIN_CONTRIBUTOR_ONLY',
-    'TOPPING_ONLY','NOT_MAIN','UNKNOWN'
+    'TOPPING_ONLY','NOT_MAIN','MAIN_BLOCKED_POLICY','UNKNOWN'
   )),
   vegan_eligibility text not null check (vegan_eligibility in ('verified','false','unknown','conflict')),
   protein_behavior text not null check (protein_behavior in ('contributor','neutral','unknown')),
@@ -274,11 +274,15 @@ select
     when lower(coalesce(m.ingredient_subcategory,'')) like '%liquid%' then 'liquid'
     else 'other'
   end,
-  case when lower(m.ingredient_category) in (
-    'sweetener','stabilizer','fiber','emulsifier','starch','acid','colorant',
-    'functional_additive','additive'
-  ) or lower(coalesce(m.ingredient_subcategory,''))='water'
-    then 'NOT_MAIN' else 'UNKNOWN' end,
+  case
+    when lower(m.ingredient_category)='protein' then 'PROTEIN_CONTRIBUTOR_ONLY'
+    when lower(m.ingredient_category) in (
+      'fruit','fruit_powder','flavor_paste','flavor_powder','flavor_syrup',
+      'flavor_concentrate','chocolate','cocoa','nut','nut_paste','coffee',
+      'coffee_tea','alcohol','beverage','confectionery_spread'
+    ) then 'MAIN_BLOCKED_POLICY'
+    else 'NOT_MAIN'
+  end,
   case m.vegan when 'true' then 'verified' when 'false' then 'false' else 'unknown' end,
   case when coalesce(m.aerating_protein_percent,0)>0 then 'contributor'
        when coalesce(m.protein_percent,0)=0 then 'neutral' else 'unknown' end,
@@ -390,7 +394,7 @@ declare
   v_family text;
   v_subfamily text;
   v_form text;
-  v_main text := 'UNKNOWN';
+  v_main text := 'MAIN_BLOCKED_POLICY';
   v_base boolean := false;
   v_topping boolean := false;
   v_liquid_dairy_carrier boolean := false;
@@ -428,8 +432,8 @@ begin
     where p.status='published' and p.taxonomy_version_id=v_taxonomy
       and p.family_id=v_family and p.form_id=v_form
   ) then v_main := 'MAIN_PROFILE_SPECIFIC';
-  elsif v_family is not null then v_main := 'UNKNOWN';
-  else v_main := case when v_mapping is not null then 'STANDARD_ONLY' else 'UNKNOWN' end;
+  elsif v_family is not null then v_main := 'MAIN_BLOCKED_POLICY';
+  else v_main := case when v_mapping is not null then 'STANDARD_ONLY' else 'MAIN_BLOCKED_POLICY' end;
   end if;
   update public.catalog_product_behavior_bindings set is_current=false
   where catalog_product_id=v_product_id and is_current;
@@ -455,7 +459,7 @@ begin
     case when v_product.status='manual_unverified' then array['catalog_manual_unverified'] else '{}'::text[] end,
     array_remove(array[
       case when not v_base then 'base_technical_authority_missing' end,
-      case when v_main='UNKNOWN' then 'main_policy_unknown' end
+      case when v_main='MAIN_BLOCKED_POLICY' then 'main_policy_missing' end
     ],null),p_classifier_version
   ) returning id into v_binding;
   v_key := 'catalog:'||p_catalog_product_version_id::text||':'||p_classifier_version;
@@ -465,10 +469,10 @@ begin
   ) values (
     'catalog_product_version',p_catalog_product_version_id::text,p_classifier_version,v_taxonomy,
     encode(extensions.digest(coalesce(v_product.public_data,'{}'::jsonb)::text,'sha256'),'hex'),
-    case when v_main='UNKNOWN' then 'unknown_requires_review' else 'classified' end,
+    'classified',
     jsonb_build_object('catalogStatus',v_product.status,'mapperIngredientId',v_mapping),v_binding,v_key
   ) on conflict (idempotency_key) do nothing;
-  if v_main='UNKNOWN' then
+  if v_main='MAIN_BLOCKED_POLICY' then
     insert into public.global_catalog_review_cases(
       consolidation_key,catalog_product_id,kind,missing_fields,normalized_data,latest_evidence
     ) values (
@@ -513,7 +517,7 @@ begin
     v_source,v_submission.submitter_user_id,v_submission.private_product_id,new.product_id,
     new.id,encode(extensions.digest(new.snapshot::text,'sha256'),'hex'),
     'catalog-version:'||new.id::text,
-    case when (select main_eligibility from public.catalog_product_behavior_bindings where id=v_binding)='UNKNOWN'
+    case when (select main_eligibility from public.catalog_product_behavior_bindings where id=v_binding)='MAIN_BLOCKED_POLICY'
       then 'review' else 'accepted' end,
     jsonb_build_object('behaviorBindingId',v_binding,'catalogVersionId',new.id)
   ) on conflict (source,idempotency_key) do nothing;

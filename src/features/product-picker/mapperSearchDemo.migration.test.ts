@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const SQL = readFileSync(
-  join(REPO, 'supabase', 'migrations', '0033_mapper_search_demo_read_model.sql'),
+  join(REPO, 'supabase', 'migrations', '20260809194003_mapper_search_demo_read_model.sql'),
   'utf8',
 );
 

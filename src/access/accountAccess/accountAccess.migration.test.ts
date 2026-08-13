@@ -11,7 +11,7 @@ import { BLOCKING_ACCOUNT_STATES } from './contracts';
 import type { AccountState, AuthProvider } from './contracts';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
-const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '0025_account_access.sql'), 'utf8');
+const SQL = readFileSync(join(REPO, 'supabase', 'migrations', '20260716102828_0025_account_access.sql'), 'utf8');
 const CODE = SQL.replace(/--.*$/gm, ''); // strip line comments
 
 const TABLES = [
