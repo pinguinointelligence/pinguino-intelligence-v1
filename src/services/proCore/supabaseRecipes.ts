@@ -44,6 +44,7 @@ import type {
   RecipeVersionSource,
   SavedRecipe,
 } from '@/features/pro-core/recipeContracts';
+import { recipeVersionBehaviorGate } from '@/features/product-intelligence';
 import type {
   CreateRecipeArgs,
   RecipesRepository,
@@ -412,6 +413,12 @@ export class SupabaseRecipes {
     if (!args.capabilities.canViewExactGrams) {
       throw new Error('This plan cannot save exact-grams recipes.');
     }
+    const behaviorGate = recipeVersionBehaviorGate(
+      args.recipeInput,
+      args.productComposition,
+      'RECIPE_VERSION',
+    );
+    if (!behaviorGate.ready) throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
 
     // Preferred: ONE real DB transaction (migration 0036). Falls through ONLY when the function
     // is not present in this database — the legacy compensating path below is the documented,
@@ -492,6 +499,12 @@ export class SupabaseRecipes {
     productComposition: RecipeCompositionMetadata | null = null,
   ): Promise<RecipeVersion> {
     await this.requireUserId();
+    const behaviorGate = recipeVersionBehaviorGate(
+      recipeInput,
+      productComposition,
+      'RECIPE_VERSION',
+    );
+    if (!behaviorGate.ready) throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
     const meta = await this.fetchMeta(recipeId);
     if (!meta) throw new Error(`unknown recipe ${recipeId}`);
 
@@ -564,6 +577,18 @@ export class SupabaseRecipes {
     // Retry-safe: on each attempt the fresh history yields the correct next number (max + 1).
     const version = await this.appendVersionWithRetry(recipeId, async () => {
       const history = await this.getVersions(recipeId);
+      const target = history.find((candidate) => candidate.versionNumber === targetVersionNumber);
+      if (!target) throw new Error(`version ${targetVersionNumber} does not exist`);
+      const behaviorGate = recipeVersionBehaviorGate(
+        target.recipeInput,
+        target.productComposition,
+        'RESTORE',
+      );
+      if (!behaviorGate.ready) {
+        throw new Error(
+          behaviorGate.reason ?? 'Recipe version requires product behavior revalidation before restore.',
+        );
+      }
       return restoreVersion(history, targetVersionNumber, by, new Date().toISOString(), '');
     });
     await this.advanceAggregate(recipeId, version);

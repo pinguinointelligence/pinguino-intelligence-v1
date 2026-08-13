@@ -14,6 +14,7 @@ import type { EngineIngredient, RecipeInput } from '@/engine';
 import type { RecipeCapabilities } from '@/features/pro-core/recipeContracts';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { supabaseRecipesRepository } from './supabaseRecipes';
 import { FakeDB, makeClient, type Result } from './supabaseRecipesFake';
 
@@ -67,6 +68,42 @@ const composition = (grams: number): RecipeCompositionMetadata => ({
   }],
   migrationAmbiguities: [],
 });
+const labelBehaviorSnapshot: ProductBehaviorSnapshot = {
+  schemaVersion: 1,
+  resolutionState: 'RESOLVED',
+  lineId: 'top-label-sauce',
+  productId: 'label-sauce',
+  productVersionId: 'v1',
+  source: 'catalog_import',
+  factsFingerprint: 'label-sauce-facts-v1',
+  behaviorBindingId: 'label-sauce-binding-v1',
+  behaviorBindingVersion: '1',
+  taxonomyVersion: 'taxonomy-v1',
+  familyId: null,
+  subfamilyId: null,
+  formId: null,
+  verificationState: 'verified',
+  technicalAuthority: 'none',
+  mapperIngredientId: null,
+  mainClassification: 'TOPPING_ONLY',
+  mainPolicyId: null,
+  mainPolicyVersion: null,
+  ecoFloorPercent: null,
+  optimalCeilingPercent: null,
+  hardLimitPercent: null,
+  mainEquivalentFactor: null,
+  mainBasis: null,
+  requiresLiquidDairyCarrier: false,
+  liquidDairyCarrierFloorPercent: null,
+  approvedLiquidDairyCarrier: false,
+  approvedMixedFamilyIds: [],
+  moduleEligibility: { RECIPE_VERSION: 'label_only', RESTORE: 'label_only' },
+  processScope: 'POST_PROCESS_ADDON',
+  resolverVersion: 'resolver-v1',
+  sharedFacts: null,
+  warnings: [],
+  blockReasons: [],
+};
 const labelComposition = (grams: number): RecipeCompositionMetadata => ({
   schemaVersion: 1,
   baseScope: 'BASE_FORMULATION',
@@ -96,6 +133,7 @@ const labelComposition = (grams: number): RecipeCompositionMetadata => ({
     process_scope: 'POST_PROCESS_ADDON',
     addon_sort_order: 0,
   }],
+  behaviorSnapshots: { 'top-label-sauce': labelBehaviorSnapshot },
   migrationAmbiguities: [],
 });
 

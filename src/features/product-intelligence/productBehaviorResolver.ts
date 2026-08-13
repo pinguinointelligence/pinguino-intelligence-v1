@@ -213,6 +213,7 @@ export function snapshotResolvedProductBehavior(input: {
     processScope: input.processScope,
     approvedLiquidDairyCarrier: input.resolved.binding.approvedLiquidDairyCarrier,
     resolverVersion: input.resolved.resolverVersion,
+    sharedFacts: null,
     warnings: [...input.resolved.warnings],
     blockReasons: [...input.resolved.blockReasons],
   };
@@ -265,6 +266,9 @@ export function snapshotServerResolvedProductBehavior(input: {
     processScope: input.processScope,
     approvedLiquidDairyCarrier: input.resolved.approvedLiquidDairyCarrier,
     resolverVersion: input.resolved.resolverVersion,
+    sharedFacts: input.resolved.sharedFacts
+      ? structuredClone(input.resolved.sharedFacts)
+      : null,
     moduleEligibility: {
       ...input.resolved.moduleEligibility,
       [input.resolved.module]: input.resolved.state,
@@ -305,6 +309,7 @@ export function productBehaviorSnapshotFingerprint(
         value.approvedMixedFamilyIds,
         value.moduleEligibility,
         value.processScope,
+        value.sharedFacts ?? null,
       ]),
   );
 }
@@ -325,6 +330,18 @@ export function readProductBehaviorSnapshot(value: unknown): ProductBehaviorSnap
     !Array.isArray(row.warnings) || !row.warnings.every((entry) => typeof entry === 'string') ||
     !Array.isArray(row.blockReasons) || !row.blockReasons.every((entry) => typeof entry === 'string')
   ) return null;
+  if (row.sharedFacts !== undefined && row.sharedFacts !== null) {
+    const facts = row.sharedFacts;
+    if (
+      typeof facts !== 'object' ||
+      facts.schemaVersion !== 1 ||
+      (facts.technicalComposition !== null && typeof facts.technicalComposition !== 'object') ||
+      (facts.nutritionPer100g !== null && typeof facts.nutritionPer100g !== 'object') ||
+      (facts.allergens !== null && typeof facts.allergens !== 'object') ||
+      !Array.isArray(facts.processEvidence) ||
+      !Array.isArray(facts.profileEligibility)
+    ) return null;
+  }
   const resolutionState = row.resolutionState ?? 'RESOLVED';
   if (
     resolutionState !== 'RESOLVED' &&

@@ -28,6 +28,11 @@ import type { RecipeToppingItem } from '@/features/recipe-composition/recipeComp
 import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 import { polishPositionNoun } from './polishPositionNoun';
+import {
+  buildRecipeBehaviorAuthority,
+  frozenProcessEvidence,
+  recipeBehaviorModuleGate,
+} from '@/features/product-intelligence';
 
 export function MonitorToppingSummary({
   toppings,
@@ -120,8 +125,29 @@ export function MonitorPanelContent({
   }, [preview]);
   const correctionView = useMemo(() => buildCorrectionView(corrections), [corrections]);
   const recipeIncomplete = result.total_batch_g <= 0;
-  const processRuntime = useRecipeProcessRuntime(input);
   const toppings = useRecipeStore((state) => state.toppings);
+  const behaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
+  const behaviorAuthority = useMemo(
+    () => buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots: behaviorSnapshots }),
+    [behaviorSnapshots, input.items, toppings],
+  );
+  const monitorGate = useMemo(
+    () => recipeBehaviorModuleGate(behaviorAuthority, 'MONITOR'),
+    [behaviorAuthority],
+  );
+  const nutritionGate = useMemo(
+    () => recipeBehaviorModuleGate(behaviorAuthority, 'NUTRITION'),
+    [behaviorAuthority],
+  );
+  const processFacts = useMemo(
+    () => frozenProcessEvidence(behaviorAuthority),
+    [behaviorAuthority],
+  );
+  const processRuntime = useRecipeProcessRuntime(
+    input,
+    behaviorAuthority.requiredLineIds.length > 0 ? processFacts.evidence : undefined,
+  );
+  const technicalViewAllowed = technicalView && monitorGate.ready;
   const actualToppingByLineId = new Map(
     (production?.session?.addonLines ?? [])
       .filter((line) => line.confirmed || line.physicalAddedGrams > 0)
@@ -143,13 +169,15 @@ export function MonitorPanelContent({
 
   return (
     <div className="pro-scroll-safe space-y-3 text-white" data-testid="monitor-panel-content">
-      <MonitorLiveSummary result={result} input={input} onOpenProfile={onOpenProfile} />
-
-      {technicalView ? (
-        <ProfessionalMonitorModules modules={modules} previewModules={previewModules} />
+      {technicalViewAllowed ? (
+        <MonitorLiveSummary result={result} input={input} onOpenProfile={onOpenProfile} />
       ) : (
         <LockedPIPreview />
       )}
+
+      {technicalViewAllowed ? (
+        <ProfessionalMonitorModules modules={modules} previewModules={previewModules} />
+      ) : null}
 
       {correctionView.proposals.length > 0 ? (
         <details
@@ -180,7 +208,7 @@ export function MonitorPanelContent({
           </span>
         </summary>
         <div className="border-t border-white/8 bg-[#f7f5f0] p-2 text-ink">
-          {technicalView ? (
+          {technicalViewAllowed && nutritionGate.ready ? (
             <NutritionCostScorePanel result={result} embedded />
           ) : (
             <LockedNutritionPreview />

@@ -14,6 +14,7 @@ import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine'
 import { recipeContext } from '@/features/studio/buildRecipeInput';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 vi.mock('@/access/useAccess', () => ({
   useAccess: () => ({
@@ -33,6 +34,23 @@ vi.mock('@/access/useAccess', () => ({
   }),
 }));
 
+let mockRecipeState: Record<string, unknown> = {
+  items: [],
+  toppings: [],
+  productBehaviorSnapshots: {},
+  machineId: null,
+};
+vi.mock('@/stores/recipeStore', () => ({
+  useRecipeStore: Object.assign(
+    (selector?: (state: Record<string, unknown>) => unknown) =>
+      selector ? selector(mockRecipeState) : mockRecipeState,
+    {
+      getState: () => mockRecipeState,
+      subscribe: () => () => undefined,
+    },
+  ),
+}));
+
 const { MonitorPanelContent, MonitorToppingSummary } = await import('./MonitorPanelContent');
 const { ProfessionalMonitorModules } = await import('./ProfessionalMonitorModules');
 const { buildProfessionalMonitorModules } = await import('./professionalMonitorModel');
@@ -46,6 +64,87 @@ const visibleText = (html: string) =>
     .replace(/\s+/g, ' ');
 
 function renderPanel(input: RecipeInput) {
+  const productBehaviorSnapshots = Object.fromEntries(input.items.map((item) => {
+    const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
+    const snapshot: ProductBehaviorSnapshot = {
+      schemaVersion: 1,
+      resolutionState: 'RESOLVED',
+      lineId: item.id,
+      productId: canonicalId,
+      productVersionId: `mapper:${canonicalId}`,
+      source: 'mapper',
+      factsFingerprint: `facts:${canonicalId}`,
+      behaviorBindingId: `binding:${canonicalId}`,
+      behaviorBindingVersion: 'test-v1',
+      taxonomyVersion: 'test-taxonomy-v1',
+      familyId: null,
+      subfamilyId: null,
+      formId: null,
+      verificationState: 'verified',
+      technicalAuthority: 'mapper_exact',
+      mapperIngredientId: canonicalId,
+      mainClassification: 'NOT_MAIN',
+      mainPolicyId: null,
+      mainPolicyVersion: null,
+      ecoFloorPercent: null,
+      optimalCeilingPercent: null,
+      hardLimitPercent: null,
+      mainEquivalentFactor: null,
+      mainBasis: null,
+      requiresLiquidDairyCarrier: false,
+      liquidDairyCarrierFloorPercent: null,
+      approvedLiquidDairyCarrier: false,
+      approvedMixedFamilyIds: [],
+      moduleEligibility: { MONITOR: 'eligible', NUTRITION: 'eligible', PROCESS: 'eligible' },
+      processScope: 'BASE_FORMULATION',
+      resolverVersion: 'test-resolver-v1',
+      sharedFacts: {
+        schemaVersion: 1,
+        technicalComposition: { ...item.ingredient.composition },
+        nutritionPer100g: {
+          basis: 'per_100g', energyKcal: null, fat: null, saturatedFat: null,
+          carbohydrate: null, sugars: null, protein: null, salt: null, fibre: null,
+        },
+        allergens: null,
+        processEvidence: [{
+          decision: 'cold_process_approved',
+          reasonType: 'process_requirement',
+          affectedIngredientIds: [canonicalId],
+          explanation: 'Test fixture process authority.',
+          source: {
+            id: `process:${canonicalId}`,
+            label: 'Test process authority',
+            reference: 'test-process-v1',
+            verificationStatus: 'verified',
+          },
+        }],
+        profileEligibility: [input.category],
+        veganEligibility: 'unknown',
+        proteinBehavior: 'unknown',
+        referencePrice: null,
+      },
+      warnings: [],
+      blockReasons: [],
+    };
+    return [item.id, snapshot];
+  }));
+  mockRecipeState = {
+    items: input.items,
+    toppings: [],
+    productBehaviorSnapshots,
+    machineId: null,
+    machineKind: 'professional',
+    machineLabel: null,
+    machine_capacity_grams: input.machine_capacity_grams,
+    servingModeId: 'temp_minus_11',
+    target_temperature_c: input.target_temperature_c,
+    target_batch_grams: input.target_batch_grams,
+    visibleProductType: 'gelato',
+    mode: 'classic',
+    formulation_strategy: 'optimal',
+    direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    draftContextSeq: 0,
+  };
   const result = calculateRecipe(input);
   const corrections = proposeCorrections({ input, context: recipeContext(input), redact: false });
   return renderToStaticMarkup(

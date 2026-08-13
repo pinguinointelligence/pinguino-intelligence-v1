@@ -5,6 +5,10 @@ import { buildLabelPreflight } from './masterLabel';
 import { printMasterLabel } from './masterLabelPrint';
 import { MARKET_PROFILES, marketProfile, type MarketProfileCode } from './marketProfiles';
 import { masterLabelIdForSnapshot, useMasterLabelStore } from './masterLabelStore';
+import {
+  buildRecipeBehaviorAuthority,
+  recipeBehaviorModuleGate,
+} from '@/features/product-intelligence';
 
 const MARKET_CODES: readonly MarketProfileCode[] = ['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM'];
 
@@ -18,6 +22,18 @@ export function MasterLabelEditor({
   const label = useMasterLabelStore((state) => state.label);
   const initialize = useMasterLabelStore((state) => state.initializeFromSnapshot);
   const replace = useMasterLabelStore((state) => state.replace);
+  const behaviorAuthority = useMemo(
+    () => buildRecipeBehaviorAuthority({
+      items: snapshot.finalActualInput.items,
+      toppings: snapshot.productComposition.toppings,
+      snapshots: snapshot.productComposition.behaviorSnapshots ?? {},
+    }),
+    [snapshot],
+  );
+  const behaviorGate = useMemo(
+    () => recipeBehaviorModuleGate(behaviorAuthority, 'MASTER_LABEL'),
+    [behaviorAuthority],
+  );
 
   useEffect(() => {
     initialize({
@@ -28,9 +44,26 @@ export function MasterLabelEditor({
       labelLanguages: ['pl'],
     });
   }, [initialize, snapshot]);
-
   const active = label?.sourceCompletionSessionId === snapshot.sessionId ? label : null;
   const preflight = useMemo(() => (active ? buildLabelPreflight(active) : null), [active]);
+
+  if (!behaviorGate.ready) {
+    return (
+      <ReadinessFrame
+        state="W PRZYGOTOWANIU"
+        title="Master Label zablokowany"
+        tone="dark"
+        details={{
+          limitation: behaviorGate.reason ?? 'Brak zamrożonych danych produktu.',
+          calculationImpact: 'Nie zmienia receptury ani zakończonej partii.',
+          remaining: 'Uzupełnij i zatwierdź dane wersji produktu.',
+        }}
+      >
+        <p className="text-xs text-white/65">{behaviorGate.reason}</p>
+      </ReadinessFrame>
+    );
+  }
+
   if (!active || !preflight) {
     return (
       <p className="m-3 rounded-[22px] border border-white/10 bg-[#f7f5f0] p-4 text-xs text-stone-600 shadow-pro-e1">

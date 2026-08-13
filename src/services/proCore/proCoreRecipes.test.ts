@@ -9,6 +9,7 @@ import {
 } from '@/features/pro-core/recipeVersioning';
 import type { RecipeCapabilities } from '@/features/pro-core/recipeContracts';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import {
   attachPracticalRecipeAudit,
@@ -43,6 +44,54 @@ const COMPOSITION: RecipeCompositionMetadata = {
   ],
   migrationAmbiguities: [],
 };
+
+const behaviorComposition = (input: RecipeInput): RecipeCompositionMetadata => ({
+  schemaVersion: 1,
+  baseScope: 'BASE_FORMULATION',
+  baseOrder: input.items.map((item) => item.id),
+  toppings: [],
+  behaviorSnapshots: Object.fromEntries(input.items.map((item) => {
+    const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
+    const behavior: ProductBehaviorSnapshot = {
+      schemaVersion: 1,
+      resolutionState: 'LEGACY_RECONSTRUCTED',
+      lineId: item.id,
+      productId: item.ingredient.private_product_id ?? canonicalId,
+      productVersionId: `mapper:${canonicalId}`,
+      source: 'mapper',
+      factsFingerprint: `facts:${canonicalId}`,
+      behaviorBindingId: `binding:${canonicalId}`,
+      behaviorBindingVersion: 'test-v1',
+      taxonomyVersion: 'test-taxonomy-v1',
+      familyId: null,
+      subfamilyId: null,
+      formId: null,
+      verificationState: 'verified',
+      technicalAuthority: 'mapper_exact',
+      mapperIngredientId: canonicalId,
+      mainClassification: 'NOT_MAIN',
+      mainPolicyId: null,
+      mainPolicyVersion: null,
+      ecoFloorPercent: null,
+      optimalCeilingPercent: null,
+      hardLimitPercent: null,
+      mainEquivalentFactor: null,
+      mainBasis: null,
+      requiresLiquidDairyCarrier: false,
+      liquidDairyCarrierFloorPercent: null,
+      approvedLiquidDairyCarrier: false,
+      approvedMixedFamilyIds: [],
+      moduleEligibility: { RECIPE_VERSION: 'eligible', RESTORE: 'eligible' },
+      processScope: 'BASE_FORMULATION',
+      resolverVersion: 'test-resolver-v1',
+      sharedFacts: null,
+      warnings: [],
+      blockReasons: [],
+    };
+    return [item.id, behavior];
+  })),
+  migrationAmbiguities: [],
+});
 
 // The domain only reads item.id / item.ingredient.name / item.planned_grams + top-level batch.
 const item = (id: string, name: string, grams: number) => ({
@@ -300,6 +349,7 @@ describe('in-memory adapter', () => {
       ownerUserId: 'u1',
       title: 'Practical G17',
       recipeInput: saved,
+      productComposition: behaviorComposition(saved),
       trace: TRACE,
       by: 'u1',
       capabilities: PRO,

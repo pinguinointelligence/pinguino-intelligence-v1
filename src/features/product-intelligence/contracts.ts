@@ -1,4 +1,5 @@
 import type { ProductCategory } from '@/engine';
+import type { RecipeProcessEvidence } from '@/features/education/processClassification';
 
 /** Product-layer modules which are allowed to ask what a product may do. */
 export type ProductBehaviorModule =
@@ -53,6 +54,36 @@ export type ProductProcessScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
 export type ProductRequestedRole = 'STANDARD' | 'MAIN';
 export type ProductFormulationMode = 'optimal' | 'eco';
 
+export type ProductBehaviorRole =
+  | 'MAIN_ALLOWED'
+  | 'MAIN_PROFILE_SPECIFIC'
+  | 'STANDARD_ONLY'
+  | 'STRUCTURAL_ONLY'
+  | 'PROTEIN_CONTRIBUTOR_ONLY'
+  | 'TOPPING_ONLY'
+  | 'NOT_MAIN'
+  | 'UNKNOWN_REQUIRES_EVIDENCE';
+
+export type MainPolicyStatus =
+  | 'COVERED'
+  | 'NOT_APPLICABLE'
+  | 'BLOCKED_DATA'
+  | 'BLOCKED_SCIENCE'
+  | 'UNKNOWN_REQUIRES_EVIDENCE';
+
+export type ProductPolicyEvidenceStatus =
+  | 'PRODUCTION_VALIDATED'
+  | 'PINGUINO_CALIBRATED'
+  | 'OWNER_PROVISIONAL'
+  | 'SOURCE_REFERENCE'
+  | 'MAPPER_DERIVED_PROVISIONAL'
+  | 'BLOCKED_DATA'
+  | 'BLOCKED_SCIENCE'
+  // Legacy in-memory registries remain readable during the forward migration.
+  | 'owner_provisional'
+  | 'verified'
+  | 'reference_only';
+
 /** Stable taxonomy ids are data, not a closed TypeScript enum. */
 export type ProductFamilyId = string;
 export type ProductFormId = string;
@@ -103,7 +134,7 @@ export interface MainEnvelopePolicy {
   requiresLiquidDairyCarrier: boolean;
   liquidDairyCarrierFloorPercent: number | null;
   approvedMixedFamilyIds: readonly string[];
-  evidenceStatus: 'owner_provisional' | 'verified' | 'reference_only';
+  evidenceStatus: ProductPolicyEvidenceStatus;
   source: string;
   warnings: readonly string[];
 }
@@ -158,10 +189,20 @@ export interface ServerResolvedProductBehavior {
   familyId: string | null;
   subfamilyId: string | null;
   formId: string | null;
+  behaviorRole?: ProductBehaviorRole;
+  mainPolicyStatus?: MainPolicyStatus;
+  profileApplicability?: Record<string, unknown>;
+  classificationReasonCodes?: string[];
   mainEligibility: ProductBehaviorBinding['mainClassification'];
   veganEligibility: ProductBehaviorBinding['veganEligibility'];
   proteinBehavior: ProductBehaviorBinding['proteinBehavior'];
   processBehavior: Record<string, unknown>;
+  /** Immutable shared facts for this exact product version. Account-private
+   * price/supplier/note/stock data is deliberately excluded. */
+  sharedFacts?: SharedProductBehaviorFacts | null;
+  /** RLS-protected, request-account overlay. This object is transient and is
+   * never copied into ProductBehaviorSnapshot or recipe versions. */
+  privateOverlay?: PrivateProductBehaviorOverlay | null;
   approvedLiquidDairyCarrier: boolean;
   context: Record<string, unknown>;
   module: ProductBehaviorModule;
@@ -216,6 +257,59 @@ export interface ResolvedProductBehavior {
   resolverVersion: string;
 }
 
+export interface ProductNutritionFactsPer100g {
+  basis: 'per_100g';
+  energyKcal: number | null;
+  fat: number | null;
+  saturatedFat: number | null;
+  carbohydrate: number | null;
+  sugars: number | null;
+  protein: number | null;
+  salt: number | null;
+  fibre: number | null;
+}
+
+export interface ProductAllergenFacts {
+  ingredientsText: string | null;
+  allergensText: string | null;
+  declared: string[];
+  mayContain: string[];
+  evidenceVersion: string | null;
+}
+
+export interface SharedProductReferencePrice {
+  pricePerKg: number;
+  currency: string;
+  sourceVersion: string;
+}
+
+/** Facts that application modules may project without independently reading a
+ * mutable product/catalog table. The payload belongs to one exact product
+ * version and participates in the recipe behavior fingerprint. */
+export interface SharedProductBehaviorFacts {
+  schemaVersion: 1;
+  technicalComposition: Readonly<Record<string, number | null>> | null;
+  nutritionPer100g: ProductNutritionFactsPer100g | null;
+  allergens: ProductAllergenFacts | null;
+  processEvidence: RecipeProcessEvidence[];
+  profileEligibility: ProductCategory[];
+  veganEligibility: ProductBehaviorBinding['veganEligibility'];
+  proteinBehavior: ProductBehaviorBinding['proteinBehavior'];
+  referencePrice: SharedProductReferencePrice | null;
+}
+
+/** Request-account data returned separately by the server resolver. It must
+ * never be embedded in a shared product or recipe behavior snapshot. */
+export interface PrivateProductBehaviorOverlay {
+  favorite: boolean;
+  recentAt: string | null;
+  privatePricePerKg: number | null;
+  privatePriceCurrency: string | null;
+  supplier: string | null;
+  note: string | null;
+  stock: number | null;
+}
+
 /** Immutable recipe/version snapshot. No Engine formula reads this object. */
 export interface ProductBehaviorSnapshot {
   schemaVersion: 1;
@@ -249,6 +343,9 @@ export interface ProductBehaviorSnapshot {
   moduleEligibility: Partial<Record<ProductBehaviorModule, RuntimeEligibilityState>>;
   processScope: ProductProcessScope;
   resolverVersion: string;
+  /** Frozen shared facts for this exact version. Optional only for schema-v1
+   * compatibility; facts-dependent module gates fail closed when it is absent. */
+  sharedFacts?: SharedProductBehaviorFacts | null;
   warnings: string[];
   blockReasons: string[];
 }

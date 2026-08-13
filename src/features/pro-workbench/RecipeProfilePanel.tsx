@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
 import type { CorrectionResult, RecipeInput, RecipeResult } from '@/engine';
@@ -22,6 +22,11 @@ import { applyEffectiveCustomerPricesToToppings } from '@/features/pro-core/effe
 import { SummaryBaseRecipeList } from './SummaryBaseRecipeList';
 import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
+import {
+  buildRecipeBehaviorAuthority,
+  frozenProcessEvidence,
+  recipeBehaviorModuleGate,
+} from '@/features/product-intelligence';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary';
@@ -186,9 +191,38 @@ function SummaryPanel({
   const lastApplied = useConstraintStudioStore((state) => state.history.at(-1));
   const restoredAudit = useRecipeStore((state) => state.practicalRecipeAudit);
   const toppings = useRecipeStore((state) => state.toppings);
+  const behaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
   const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
+  const completed = production?.session?.completionSnapshot ?? null;
+  const authorityItems = completed?.finalActualInput.items ?? input.items;
+  const processInput = completed?.finalActualInput ?? input;
+  const authorityToppings = completed?.productComposition.toppings ?? toppings;
+  const authoritySnapshots = completed?.productComposition.behaviorSnapshots ?? behaviorSnapshots;
   const practical = practicalizeRecipeCandidate(input, constraints);
-  const process = useRecipeProcessRuntime(input);
+  const behaviorAuthority = useMemo(
+    () => buildRecipeBehaviorAuthority({
+      items: authorityItems,
+      toppings: authorityToppings,
+      snapshots: authoritySnapshots,
+    }),
+    [authorityItems, authoritySnapshots, authorityToppings],
+  );
+  const summaryGate = useMemo(
+    () => recipeBehaviorModuleGate(behaviorAuthority, 'SUMMARY'),
+    [behaviorAuthority],
+  );
+  const nutritionGate = useMemo(
+    () => recipeBehaviorModuleGate(behaviorAuthority, 'NUTRITION'),
+    [behaviorAuthority],
+  );
+  const processFacts = useMemo(
+    () => frozenProcessEvidence(behaviorAuthority),
+    [behaviorAuthority],
+  );
+  const process = useRecipeProcessRuntime(
+    processInput,
+    behaviorAuthority.requiredLineIds.length > 0 ? processFacts.evidence : undefined,
+  );
   const practicalCurrent =
     practical.ok &&
     ((lastApplied?.practicalization !== undefined &&
@@ -206,7 +240,6 @@ function SummaryPanel({
     applyEffectiveCustomerPricesToToppings(toppings, customerPrices),
     'planning',
   );
-  const completed = production?.session?.completionSnapshot ?? null;
   const summaryInput = completed?.finalActualInput ?? executableInput;
   const summaryToppings = completed?.productComposition.toppings ?? toppings;
   const finalProduct = completed
@@ -228,8 +261,8 @@ function SummaryPanel({
     // rows are presented through the product-layer mass/nutrition projection.
     items: summaryBaseResult.items,
     total_batch_g: finalProduct.finalMassG,
-    nutrition_per_100g: finalProduct.finalNutritionPer100g,
-    costs: finalProduct.finalCosts,
+    nutrition_per_100g: nutritionGate.ready ? finalProduct.finalNutritionPer100g : null,
+    costs: summaryGate.ready ? finalProduct.finalCosts : null,
   };
   return (
     <div className="pro-scroll-safe space-y-3 p-3 text-white" data-testid="pro-context-summary">
@@ -244,7 +277,7 @@ function SummaryPanel({
             {dirty ? 'niezapisane zmiany' : 'zapisana'}
           </span>
         </div>
-        {completed || (practicalCurrent && practical.ok) ? (
+        {summaryGate.ready && (completed || (practicalCurrent && practical.ok)) ? (
           <SummaryBaseRecipeList items={summaryInput.items} completed={completed !== null} />
         ) : (
           <div
@@ -361,7 +394,7 @@ function SummaryPanel({
       >
         <NutritionCostScorePanel
           result={finalDisplayResult}
-          nutritionOverride={finalProduct.finalLabelNutritionPer100g}
+          nutritionOverride={nutritionGate.ready ? finalProduct.finalLabelNutritionPer100g : null}
         />
       </div>
       <ReadinessFrame
