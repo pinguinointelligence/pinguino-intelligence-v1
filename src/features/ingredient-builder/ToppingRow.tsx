@@ -10,7 +10,11 @@ import {
 import { DialogShell } from './IngredientRow';
 import { ProductPickerPopover } from './ProductPickerPopover';
 import type { IngredientLibrary } from './ingredientLibrary';
-import type { EngineIngredient } from '@/engine';
+import {
+  isCatalogLabelToppingIngredient,
+  type RecipeToppingIngredient,
+} from '@/features/recipe-composition/labelTopping';
+import type { ProductBehaviorContext, ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 export const TOPPING_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(190px,1.5fr)_minmax(200px,1fr)_96px_44px]';
@@ -27,6 +31,7 @@ export function ToppingRow({
   onMove,
   onDragStart,
   onDrop,
+  behaviorContext,
 }: {
   item: RecipeToppingItem;
   priceView: IngredientPriceView;
@@ -34,13 +39,17 @@ export function ToppingRow({
   canMoveDown: boolean;
   onChange: (grams: number) => void;
   onRemove: () => void;
-  onReplace: (ingredient: EngineIngredient) => void;
+  onReplace: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   library: IngredientLibrary;
+  behaviorContext: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
   onMove: (direction: -1 | 1) => void;
   onDragStart: () => void;
   onDrop: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const catalogLabel = isCatalogLabelToppingIngredient(item.ingredient)
+    ? item.ingredient
+    : null;
   return (
     <div
       className="border-b border-status-ideal/15 bg-pro-sage/28 px-3 py-3 hover:bg-pro-sage/45"
@@ -74,6 +83,21 @@ export function ToppingRow({
             </strong>
           </span>
           <span className="mt-1 block pl-6 text-xs text-stone-600">Dodatek po produkcji</span>
+          {catalogLabel ? (
+            <span
+              className={cn(
+                'mt-1 inline-flex rounded-md px-2 py-1 text-xs font-semibold',
+                catalogLabel.verification_status === 'verified'
+                  ? 'bg-status-ideal/12 text-status-ideal'
+                  : 'bg-sky-100 text-sky-800',
+              )}
+              data-testid="catalog-topping-verification"
+            >
+              {catalogLabel.verification_status === 'verified'
+                ? 'Zweryfikowany produkt katalogowy'
+                : 'Dodany manualnie · niezweryfikowany'}
+            </span>
+          ) : null}
         </div>
 
         <div>
@@ -136,6 +160,18 @@ export function ToppingRow({
                 <dt className="text-stone-600">Nazwa</dt>
                 <dd className="text-right font-medium text-ink">{item.ingredient.name}</dd>
               </div>
+              {catalogLabel ? (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-stone-600">Skład z etykiety</dt>
+                    <dd className="text-right font-medium text-ink">{catalogLabel.ingredients_text}</dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-stone-600">Alergeny z etykiety</dt>
+                    <dd className="text-right font-medium text-ink">{catalogLabel.allergens_text}</dd>
+                  </div>
+                </>
+              ) : null}
               <div className="flex items-start justify-between gap-3">
                 <dt className="text-stone-600">ID</dt>
                 <dd className="break-all text-right font-mono text-ink">
@@ -153,9 +189,10 @@ export function ToppingRow({
             <ProductPickerPopover
               library={library}
               scope="POST_PROCESS_ADDON"
+              behaviorContext={behaviorContext}
               triggerLabel="Zamień topping"
-              onAdd={(ingredient) => {
-                onReplace(ingredient);
+              onAdd={(ingredient, behavior) => {
+                onReplace(ingredient, behavior);
                 setMenuOpen(false);
               }}
             />

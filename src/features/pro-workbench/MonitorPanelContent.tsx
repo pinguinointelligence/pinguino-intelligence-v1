@@ -25,6 +25,8 @@ import { MonitorLiveSummary } from './MonitorLiveSummary';
 import { useReviewMode } from '@/features/design-review/useReviewMode';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 import { polishPositionNoun } from './polishPositionNoun';
 
 export function MonitorToppingSummary({
@@ -57,7 +59,15 @@ export function MonitorToppingSummary({
       <div className="divide-y divide-white/8 border-t border-white/8 px-4 py-1">
         {toppings.map((item) => (
           <div key={item.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
-            <span className="min-w-0 truncate text-white/75">{item.ingredient.name}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="min-w-0 truncate text-white/75">{item.ingredient.name}</span>
+              {isCatalogLabelToppingIngredient(item.ingredient) ? (
+                <CatalogVerificationBadge
+                  status={item.ingredient.verification_status}
+                  tone="dark"
+                />
+              ) : null}
+            </span>
             <span className="shrink-0 font-mono tabular-nums text-white">
               {item.planned_grams.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
               {actualByLineId.has(item.id)

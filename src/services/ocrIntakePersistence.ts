@@ -10,12 +10,10 @@
  *      directly and never names it;
  *   5. updateSessionState to mirror the SaveFlowResult.
  *
- * HONESTY / KNOWN LIMITATION (documented, never hidden): the frontend CANNOT populate
- * `ocr_intake_sessions.saved_product_id` — that column has NO client grant (0022; it is
- * service role only and needs a future server/edge step). So on a successful save this
- * orchestrator records state 'saved' + saved_at but does NOT attempt to write
- * saved_product_id, and surfaces `savedProductLinkPending: true` on its result. It never
- * silently pretends the catalog link was written.
+ * The frontend cannot populate `ocr_intake_sessions.saved_product_id`; the catalog
+ * Edge/RPC links it only after ownership, archived evidence and rate controls pass.
+ * Until that server step succeeds this orchestrator reports
+ * `savedProductLinkPending: true` and never pretends the link was written.
  *
  * This module reaches Supabase ONLY through the sibling intake services and the existing
  * save flow — it imports no database client, issues no raw query, uses no service role.
@@ -24,13 +22,20 @@ import { createSession, saveImageMetadata, updateSessionState } from '@/services
 import type { OcrIntakeSessionRow, SessionStateTimestamps } from '@/services/ocrIntakeSessions';
 import { uploadIntakeImage } from '@/services/ocrIntakeStorage';
 import { recordOcrRun, saveEvidence } from '@/services/ocrIntakeEvidence';
-import { createSaveFlowState, saveIntakeSession } from '@/features/ocr-intake/session/saveFlow';
+import { buildSessionCandidate, createSaveFlowState, saveIntakeSession } from '@/features/ocr-intake/session/saveFlow';
 import type { DuplicateResolutionAction, SaveFlowResult } from '@/features/ocr-intake/session/saveFlow';
 import type { ExistingProductForDedup } from '@/features/ocr-intake/session/duplicateCheck';
 import type { IntakeSessionState, ProductIntakeSession } from '@/features/ocr-intake/intakeContracts';
+import { getCatalogMarketPreferences, submitOwnedOcrProductToGlobalCatalog } from '@/services/globalCatalog';
+import type { CatalogSubmissionResult } from '@/features/global-catalog/contracts';
+import { updateProduct } from '@/services/products';
 
 export interface PersistSessionOptions {
   resolution?: DuplicateResolutionAction;
+  explicitlyUnbranded?: boolean;
+  market?: string | null;
+  retailer?: string | null;
+  distinguishingEvidence?: Record<string, unknown>;
 }
 
 export interface PersistSessionResult {
@@ -40,11 +45,73 @@ export interface PersistSessionResult {
   saveResult: SaveFlowResult;
   /**
    * TRUE only when a product was actually saved: the catalog link into
-   * `ocr_intake_sessions.saved_product_id` is still PENDING a future server/edge step
-   * (the client has no grant to write it). Honest signal — never a claim that the link
-   * exists.
+   * `ocr_intake_sessions.saved_product_id` is still pending the guarded server step
+   * (the client has no grant to write it).
    */
   savedProductLinkPending: boolean;
+  /** Automatic shared-catalog contribution. Present for a saved/resolved product. */
+  globalCatalogContribution: CatalogSubmissionResult | null;
+  /** A private save never disappears behind a transient shared-catalog failure. */
+  globalCatalogContributionError: string | null;
+}
+
+export async function retryGlobalCatalogContribution(
+  result: PersistSessionResult,
+  session: ProductIntakeSession,
+  options: {
+    duplicateDecision?: 'same' | 'different' | null;
+    distinguishingEvidence?: Record<string, unknown>;
+    riskChallengeToken?: string | null;
+    market?: string | null;
+    retailer?: string | null;
+    resumeBlocked?: boolean;
+  } = {},
+): Promise<CatalogSubmissionResult> {
+  if (result.saveResult.kind !== 'saved' && result.saveResult.kind !== 'open_existing') {
+    throw new Error('Only a saved or explicitly confirmed existing OCR product can be contributed.');
+  }
+  const preferences = await getCatalogMarketPreferences();
+  return submitOwnedOcrProductToGlobalCatalog({
+    privateProductId: result.saveResult.kind === 'saved'
+      ? result.saveResult.productId
+      : result.saveResult.existingProductId,
+    ocrSessionId: session.sessionId,
+    idempotencyKey: `ocr:${session.sessionId}`,
+    market: options.market ?? preferences.primaryMarket,
+    retailer: options.retailer ?? null,
+    packageLanguage: successfulLanguageHint(session),
+    duplicateDecision: options.duplicateDecision ?? null,
+    distinguishingEvidence: options.distinguishingEvidence ?? {},
+    riskChallengeToken: options.riskChallengeToken ?? null,
+    resumeBlocked: options.resumeBlocked === true,
+  });
+}
+
+export async function completeSavedOcrProductAndRetryCatalog(
+  result: PersistSessionResult,
+  session: ProductIntakeSession,
+  options: {
+    explicitlyUnbranded?: boolean;
+    market?: string | null;
+    retailer?: string | null;
+  } = {},
+): Promise<CatalogSubmissionResult> {
+  if (result.saveResult.kind !== 'saved' && result.saveResult.kind !== 'open_existing') {
+    throw new Error('Only a saved or explicitly confirmed existing OCR product can be completed.');
+  }
+  const { candidate } = buildSessionCandidate(session, options);
+  if (candidate.status === 'skip') throw new Error(candidate.skipReason ?? 'Product identity is incomplete.');
+  // This is an owner-scoped update of the private product. Engine fields remain
+  // stripped by updateProduct; the server can only publish it as BLUE afterward.
+  const productId = result.saveResult.kind === 'saved'
+    ? result.saveResult.productId
+    : result.saveResult.existingProductId;
+  // Evidence is append-only. Manual completion writes a new reviewed snapshot
+  // before updating the owner product, so RED → BLUE derives public facts from
+  // the edited evidence instead of merely changing status around stale data.
+  await saveEvidence(session.sessionId, session.fields);
+  await updateProduct(productId, candidate.insert);
+  return retryGlobalCatalogContribution(result, session, { ...options, resumeBlocked: true });
 }
 
 function assertNever(value: never): never {
@@ -117,10 +184,54 @@ export async function persistSessionAndSave(
 
   const row = await updateSessionState(session.sessionId, targetState, timestamps);
 
+  let globalCatalogContribution: CatalogSubmissionResult | null = null;
+  let globalCatalogContributionError: string | null = null;
+  const resolvedProductId =
+    saveResult.kind === 'saved'
+      ? saveResult.productId
+      : saveResult.kind === 'open_existing'
+        ? saveResult.existingProductId
+      : null;
+  if (resolvedProductId !== null) {
+    const packageLanguage = successfulLanguageHint(session);
+    try {
+      const marketPreferences = await getCatalogMarketPreferences();
+      globalCatalogContribution = await submitOwnedOcrProductToGlobalCatalog({
+        privateProductId: resolvedProductId,
+        ocrSessionId: session.sessionId,
+        idempotencyKey: `ocr:${session.sessionId}`,
+        // Country-of-origin remains separate; market comes from account preferences in
+        // the server pipeline when the intake does not carry an explicit sale market.
+        market: options.market ?? marketPreferences.primaryMarket,
+        retailer: options.retailer ?? null,
+        packageLanguage,
+        // A distinct-product decision carries recognized, non-scientific variant
+        // evidence. It never fabricates a composition difference.
+        distinguishingEvidence:
+          options.resolution === 'create_new'
+            ? options.distinguishingEvidence ?? {}
+            : {},
+        duplicateDecision: options.resolution === 'create_new' ? 'different' : null,
+      });
+    } catch (error) {
+      // The private save is already durable. Surface the automatic contribution as
+      // retryable instead of throwing and causing the UI to repeat uploads/inserts.
+      globalCatalogContributionError = error instanceof Error ? error.message : 'catalog_contribution_failed';
+    }
+  }
+
   return {
     session: row,
     saveResult,
     // a saved product exists but its saved_product_id link awaits a server/edge step
-    savedProductLinkPending: saveResult.kind === 'saved',
+    // The service RPC writes saved_product_id only after evidence capture succeeds.
+    savedProductLinkPending: saveResult.kind === 'saved' && globalCatalogContribution === null,
+    globalCatalogContribution,
+    globalCatalogContributionError,
   };
+}
+
+function successfulLanguageHint(session: ProductIntakeSession): string | null {
+  const hints = Object.values(session.ocrRuns).flatMap((outcome) => outcome.ok ? outcome.result.languageHints : []);
+  return hints.find((hint) => hint.trim() !== '') ?? null;
 }

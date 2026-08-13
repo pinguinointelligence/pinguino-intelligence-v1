@@ -61,6 +61,8 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
       return issue.messagePl;
     case 'main_ratio_conflict':
       return issue.messagePl;
+    case 'product_behavior_invalid':
+      return issue.messagePl;
     case 'main_ingredient_unavailable':
       return issue.messagePl;
     case 'vegan_ingredient_conflict':

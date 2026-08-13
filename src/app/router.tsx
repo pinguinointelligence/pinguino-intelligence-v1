@@ -36,6 +36,7 @@ import {
   FranchisePage,
   HowItWorksPage,
   ProductImportPage,
+  ProductScanPage,
   ProductsHubPage,
   ProductionHubPage,
   RecipesHubPage,
@@ -157,6 +158,7 @@ export function AppRoutes() {
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />
+      <Route path="/products/scan" element={<ProductScanPage />} />
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}
       <Route path="/customer-v1" element={<LegacyDestinationRedirect pathname="/start" />} />

@@ -110,6 +110,13 @@ import {
   verifyMainIngredientIdentity,
   type MainIdentityViolation,
 } from '@/features/formulation/mainIngredientContract';
+import {
+  mainEnvelopeSearchCeilingGrams,
+  productBehaviorSnapshotFingerprint,
+  verifyMainEnvelope,
+  type MainEnvelopeViolation,
+  type ProductBehaviorSnapshot,
+} from '@/features/product-intelligence';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
 import {
   canonicalDuplicateIds,
@@ -147,6 +154,9 @@ import {
  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
 export interface OptimizePreviewOptions extends FormulationOptions {
   effectivePriceOverrides?: CustomerPriceIndex;
+  /** Immutable per-line product/version/policy authority. Engine formulas do
+   * not read it; product orchestration and the Apply trust door do. */
+  productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   /** Pro workbench provenance gate: even a clean, already-integer recipe must
    * pass through the canonical Preview → Apply door before Save/Production. */
   requirePracticalPreview?: boolean;
@@ -491,6 +501,8 @@ export interface ConstraintPreview {
   };
   /** Fingerprint of (input, constraints) the preview was built for. */
   baseFingerprint: string;
+  /** Product/version/policy staleness guard, present for resolver-managed drafts. */
+  productBehaviorFingerprint?: string;
   /**
    * Owner P0 NIGHTLY (live FAILURE 1, Phase 3): the monotonic `draftRevision`
    * this preview was built for (stamped by the store). `commitPreview` rejects
@@ -1008,6 +1020,12 @@ export type BuildPreviewResult =
       code: 'main_ratio_conflict';
       lineIds: string[];
       ingredientNames: string[];
+      messagePl: string;
+    }
+  | {
+      ok: false;
+      code: 'product_behavior_invalid';
+      violations: MainEnvelopeViolation[];
       messagePl: string;
     }
   | {
@@ -2186,7 +2204,11 @@ function maximizeMainFromStart(
   // A Main exact/percent/range sidecar may resolve every requested amount back
   // to the current group mass. Detect that explicitly; it is a held contract,
   // not a failed optimiser.
-  const upper = probe(identityInput.target_batch_grams);
+  const behaviorCeiling = mainEnvelopeSearchCeilingGrams({
+    recipe: identityInput,
+    snapshots: options.productBehaviorSnapshots ?? {},
+  });
+  const upper = probe(behaviorCeiling ?? identityInput.target_batch_grams);
   if (upper.ok && upper.mainGrams <= searchStartingMainGrams + MAIN_OBJECTIVE_EPSILON_G) {
     return {
       input: start,
@@ -4253,6 +4275,11 @@ export type BlockedApply =
       violations: MainIdentityViolation[];
     }
   | {
+      code: 'product_behavior_invalid';
+      messagePl: string;
+      violations: MainEnvelopeViolation[];
+    }
+  | {
       code: 'eco_flavour_floor_violated';
       messagePl: string;
       violations: EcoFlavourViolation[];
@@ -4294,6 +4321,35 @@ export type BlockedApply =
 export type CommitPreviewResult =
   | { ok: true; verified: VerifiedApply }
   | ({ ok: false } & BlockedApply);
+
+/** Binds a successful Preview to immutable product/version/policy authority
+ * and rejects the rounded vector before it can be shown as applicable. */
+export function bindProductBehaviorToPreview(
+  result: BuildPreviewResult,
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+): BuildPreviewResult {
+  if (!result.ok) return result;
+  const managed = Object.keys(snapshots).length > 0;
+  if (!managed) return result;
+  const verification = verifyMainEnvelope({
+    recipe: result.preview.proposedInput,
+    snapshots,
+    mode: normalizeFormulationStrategy(
+      result.preview.proposedInput.goals?.formulation_strategy ?? result.preview.proposedInput.mode,
+    ),
+  });
+  if (!verification.ok) {
+    return {
+      ok: false,
+      code: 'product_behavior_invalid',
+      violations: verification.violations,
+      messagePl: verification.violations[0]?.messagePl ??
+        'Nie udało się potwierdzić zachowania produktu w tej recepturze.',
+    };
+  }
+  result.preview.productBehaviorFingerprint = productBehaviorSnapshotFingerprint(snapshots);
+  return result;
+}
 
 const violatedIngredientNames = (
   preview: ConstraintPreview,
@@ -4435,6 +4491,9 @@ export class VerifiedApply {
     substitutionAuthorization?: SubstitutionSessionAuthorization | null,
     directionConsent?: DirectionBestAchievableConsent | null,
     suggestedFixAuthorization?: SuggestedFixSessionAuthorization | null,
+    currentProductBehaviorSnapshots: Readonly<
+      Record<string, ProductBehaviorSnapshot | undefined>
+    > = {},
   ): CommitPreviewResult {
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
     // never applies, whatever the fingerprint says.
@@ -4447,6 +4506,13 @@ export class VerifiedApply {
     }
     // §19.2: a preview never applies onto a state it was not built for.
     if (workingStateFingerprint(current, currentConstraints) !== preview.baseFingerprint) {
+      return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+    }
+    if (
+      preview.productBehaviorFingerprint !== undefined &&
+      productBehaviorSnapshotFingerprint(currentProductBehaviorSnapshots) !==
+        preview.productBehaviorFingerprint
+    ) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
     if (!sameVerifiedRecipeContext(current, preview.proposedInput)) {
@@ -4964,6 +5030,22 @@ export class VerifiedApply {
         code: 'main_identity_violated',
         messagePl: mainIdentityViolationMessage(mainIdentity),
         violations: mainIdentity.violations,
+      };
+    }
+    const mainEnvelope = verifyMainEnvelope({
+      recipe: preview.proposedInput,
+      snapshots: currentProductBehaviorSnapshots,
+      mode: normalizeFormulationStrategy(
+        current.goals?.formulation_strategy ?? current.mode,
+      ),
+    });
+    if (!mainEnvelope.ok) {
+      return {
+        ok: false,
+        code: 'product_behavior_invalid',
+        violations: mainEnvelope.violations,
+        messagePl: mainEnvelope.violations[0]?.messagePl ??
+          'Apply zablokowany: zachowanie produktu nie jest zatwierdzone.',
       };
     }
     const currentMainGrams = mainGroupTotal(mainIdentityBase, mainIdentityBase);

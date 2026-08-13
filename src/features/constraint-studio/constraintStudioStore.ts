@@ -57,6 +57,7 @@ import { constraintStudioCopy } from './constraintStudioCopy';
 const applyGuardCopy = constraintStudioCopy.applyGuard;
 import {
   buildBatchRescalePreview,
+  bindProductBehaviorToPreview,
   buildOptimizePreview,
   buildSubstitutionPreview,
   buildSuggestedFixPreview,
@@ -604,12 +605,14 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
           return;
         }
-        const result = buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
+        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const result = bindProductBehaviorToPreview(buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
           excludedIngredientIds: draft.excludedIngredientIds,
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
           requirePracticalPreview: true,
-        });
+          productBehaviorSnapshots: snapshots,
+        }), snapshots);
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
           const direction = result.preview.directionAssessment;
@@ -681,12 +684,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       createBatchRescalePreview: (newBatchGrams) => {
         get().reconcile();
         const draft = selectCanonicalDraft();
-        const result = buildBatchRescalePreview(
+        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const result = bindProductBehaviorToPreview(buildBatchRescalePreview(
           draft.input,
           draft.constraints,
           newBatchGrams,
           nowIso(),
-        );
+        ), snapshots);
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
           set({
@@ -716,7 +720,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       createSuggestedFixPreview: (fix) => {
         get().reconcile();
         const draft = selectCanonicalDraft();
-        const result = buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso());
+        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const result = bindProductBehaviorToPreview(
+          buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso()),
+          snapshots,
+        );
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
           set({
@@ -770,7 +778,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
           return;
         }
-        const result = buildSubstitutionPreview(
+        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const result = bindProductBehaviorToPreview(buildSubstitutionPreview(
           draft.input,
           draft.constraints,
           lineId,
@@ -783,8 +792,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               (id) => id !== currentLine?.ingredient.canonical_ingredient_id,
             ),
             effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+            productBehaviorSnapshots: snapshots,
           },
-        );
+        ), snapshots);
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
           const proof = result.preview.substitution;
@@ -866,6 +876,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           substitutionAuthorization,
           directionConsent,
           suggestedFixAuthorization,
+          useRecipeStore.getState().productBehaviorSnapshots,
         );
         if (!outcome.ok) {
           // The owner-mandated block: recipe untouched, clear Polish message.

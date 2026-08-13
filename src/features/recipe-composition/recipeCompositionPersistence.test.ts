@@ -10,6 +10,8 @@ import {
   recipeCompositionFromState,
   type RecipeToppingItem,
 } from './recipeCompositionPersistence';
+import { toppingIngredientIdentity } from './labelTopping';
+import type { CatalogLabelToppingIngredient } from './labelTopping';
 
 const topping = (id: string, grams: number, canonicalId = id): RecipeToppingItem => ({
   id,
@@ -23,6 +25,25 @@ const topping = (id: string, grams: number, canonicalId = id): RecipeToppingItem
   process_scope: 'POST_PROCESS_ADDON',
   addon_sort_order: 0,
 });
+
+const labelIngredient: CatalogLabelToppingIngredient = {
+  kind: 'catalog_label_topping',
+  id: 'catalog:label-sauce',
+  canonical_ingredient_id: 'catalog:label-sauce',
+  private_product_id: 'catalog:label-sauce:version:v1',
+  name: 'Label sauce',
+  catalog_product_id: 'label-sauce',
+  catalog_version_id: 'v1',
+  verification_status: 'verified',
+  label_nutrition_per_100g: {
+    basis: 'per_100g', energyKcal: 180, fat: 1, saturatedFat: 0.2,
+    carbohydrate: 42, sugars: 38, protein: 1, salt: 0.04, fibre: 2,
+  },
+  ingredients_text: 'Fruit, sugar',
+  allergens_text: 'None declared',
+  cost_per_kg: null,
+  cost_currency: null,
+};
 
 describe('Base/Topping composition sidecar', () => {
   beforeEach(() => {
@@ -46,7 +67,7 @@ describe('Base/Topping composition sidecar', () => {
       state.items.filter((item) => canonicalIngredientId(item.ingredient) === canonicalId),
     ).toHaveLength(baseBefore);
     expect(
-      state.toppings.filter((item) => canonicalIngredientId(item.ingredient) === canonicalId),
+      state.toppings.filter((item) => toppingIngredientIdentity(item.ingredient) === canonicalId),
     ).toHaveLength(1);
     expect(state.toppings[0]!.planned_grams).toBe(70);
     expect(calculateRecipe(buildRecipeInput(state))).toEqual(engineBefore);
@@ -162,6 +183,27 @@ describe('Base/Topping composition sidecar', () => {
     expect(metadata.toppings.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(130);
   });
 
+  it('round-trips a label-only catalog Topping without creating Engine composition', () => {
+    const item: RecipeToppingItem = {
+      id: 'label-topping-line',
+      ingredient: labelIngredient,
+      planned_grams: 80,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON',
+      addon_sort_order: 0,
+    };
+    const metadata = recipeCompositionFromState({
+      items: useRecipeStore.getState().items,
+      toppings: [item],
+    });
+    const parsed = readRecipeCompositionMetadata(metadata);
+
+    expect(parsed?.toppings).toHaveLength(1);
+    expect(parsed?.toppings[0]?.ingredient).toEqual(labelIngredient);
+    expect(parsed?.toppings[0]?.ingredient).not.toHaveProperty('composition');
+    expect(toppingIngredientIdentity(parsed!.toppings[0]!.ingredient)).toBe('catalog:label-sauce');
+  });
+
   it('keeps topping substitution inside topping scope and merges a duplicate canonical target', () => {
     const [milk, sugar] = useRecipeStore.getState().items.map((item) => item.ingredient);
     useRecipeStore.getState().addTopping(milk!, 70);
@@ -176,7 +218,7 @@ describe('Base/Topping composition sidecar', () => {
       planned_grams: 130,
       process_scope: 'POST_PROCESS_ADDON',
     });
-    expect(canonicalIngredientId(state.toppings[0]!.ingredient)).toBe(
+    expect(toppingIngredientIdentity(state.toppings[0]!.ingredient)).toBe(
       canonicalIngredientId(sugar!),
     );
     expect(state.items).toHaveLength(DEFAULT_PRESET.items.length);

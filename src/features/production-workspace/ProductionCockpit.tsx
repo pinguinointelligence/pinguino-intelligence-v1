@@ -3,6 +3,8 @@ import { MasterLabelEditor } from '@/features/master-label/MasterLabelEditor';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
 import { ProductionActualControl } from './ProductionActualControl';
 import { productionStepForGrams } from './productionSession';
+import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
@@ -47,6 +49,23 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
               {formatPhysicalMassG(session.completionSnapshot.actualFinalMassG)} g
             </span>
           </div>
+          {session.completionSnapshot.productComposition.toppings.some((item) =>
+            isCatalogLabelToppingIngredient(item.ingredient),
+          ) ? (
+            <div className="mt-3 flex flex-wrap gap-2" data-testid="production-completed-catalog-provenance">
+              {session.completionSnapshot.productComposition.toppings.map((item) =>
+                isCatalogLabelToppingIngredient(item.ingredient) ? (
+                  <span key={item.id} className="flex items-center gap-2 text-xs text-white/72">
+                    <span className="max-w-44 truncate">{item.ingredient.name}</span>
+                    <CatalogVerificationBadge
+                      status={item.ingredient.verification_status}
+                      tone="dark"
+                    />
+                  </span>
+                ) : null,
+              )}
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={production.startNewSession}
@@ -202,10 +221,25 @@ export function ProductionCockpit({ production }: { production: ProductionWorksp
             {session.addonLines.map((line) => {
               const value = line.confirmed ? line.physicalAddedGrams : line.draftActualGrams;
               const difference = value - line.plannedGrams;
+              const plannedTopping = session.plannedComposition.toppings.find(
+                (item) => item.id === line.lineId,
+              );
+              const catalogIngredient = plannedTopping &&
+                isCatalogLabelToppingIngredient(plannedTopping.ingredient)
+                ? plannedTopping.ingredient
+                : null;
               return (
                 <div key={line.lineId} className="py-3" data-testid={`production-topping-${line.lineId}`}>
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate text-xs font-semibold text-white">{line.name}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="min-w-0 truncate text-xs font-semibold text-white">{line.name}</span>
+                      {catalogIngredient ? (
+                        <CatalogVerificationBadge
+                          status={catalogIngredient.verification_status}
+                          tone="dark"
+                        />
+                      ) : null}
+                    </span>
                     <span className="shrink-0 font-mono text-xs tabular-nums text-white/65">
                       plan {formatPhysicalMassG(line.plannedGrams)} g ·{' '}
                       <strong className={Math.abs(difference) <= 0.05 ? 'text-white/65' : 'text-attention-soft'}>

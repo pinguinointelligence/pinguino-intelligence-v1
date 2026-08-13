@@ -432,6 +432,7 @@ function RecipeRow({
   canMoveDown,
   onDragStart,
   onDrop,
+  mainUnavailableReason,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
@@ -444,6 +445,7 @@ function RecipeRow({
   canMoveDown: boolean;
   onDragStart?: (lineId: string) => void;
   onDrop?: (lineId: string) => void;
+  mainUnavailableReason?: string | null;
 }) {
   const unit = 'g' as const;
   const [rowMenuOpen, setRowMenuOpen] = useState(false);
@@ -740,7 +742,7 @@ function RecipeRow({
                 <MenuHeading>{t.role.heading}</MenuHeading>
                 <MenuButton
                   selected={role === 'main'}
-                  disabled={gramsLocked}
+                  disabled={gramsLocked || Boolean(mainUnavailableReason)}
                   onClick={() => {
                     setRole('main');
                     setRowMenuOpen(false);
@@ -748,6 +750,11 @@ function RecipeRow({
                 >
                   {t.role.main}
                 </MenuButton>
+                {mainUnavailableReason ? (
+                  <p className="px-3 pb-2 text-xs leading-relaxed text-status-error" role="status">
+                    {mainUnavailableReason}
+                  </p>
+                ) : null}
                 <MenuButton
                   selected={role === 'standard'}
                   onClick={() => {
@@ -1032,6 +1039,7 @@ export function IngredientRow({
   canMoveDown = false,
   onDragStart,
   onDrop,
+  mainUnavailableReason,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
@@ -1048,6 +1056,7 @@ export function IngredientRow({
   canMoveDown?: boolean;
   onDragStart?: (lineId: string) => void;
   onDrop?: (lineId: string) => void;
+  mainUnavailableReason?: string | null;
 }) {
   return (
     <div
@@ -1088,6 +1097,7 @@ export function IngredientRow({
           canMoveDown={canMoveDown}
           onDragStart={onDragStart}
           onDrop={onDrop}
+          mainUnavailableReason={mainUnavailableReason}
         />
       )}
     </div>

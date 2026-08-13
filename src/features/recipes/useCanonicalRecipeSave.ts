@@ -37,6 +37,7 @@ import {
   profileSnapshotFromState,
 } from '@/features/pro-workbench/recipeProfilePersistence';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { productBehaviorModuleGate } from '@/features/product-intelligence';
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
@@ -176,6 +177,15 @@ export function useCanonicalRecipeSave(
     if (options.buildInput !== undefined) return { blocked: false, message: null };
     const input = buildRecipeInputFromStore();
     const state = useRecipeStore.getState();
+    const behaviorGate = productBehaviorModuleGate(state.productBehaviorSnapshots, 'SAVE');
+    if (!behaviorGate.ready) {
+      return {
+        blocked: true,
+        message:
+          behaviorGate.reason ??
+          'Receptura zawiera produkt bez zatwierdzonego uprawnienia do zapisu.',
+      };
+    }
     const last = useConstraintStudioStore.getState().history.at(-1);
     const currentWasApplied =
       last?.practicalization !== undefined &&

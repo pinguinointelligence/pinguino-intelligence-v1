@@ -22,8 +22,9 @@ export function buildMasterLabelPrintHtml(data: MasterLabelData): string {
   const ingredients = data.ingredients
     .map((ingredient) => primaryText(ingredient.names, data.labelLanguages))
     .join(', ');
-  const allergens = data.allergens.declared.length > 0
-    ? `<p><strong>Alergeny:</strong> ${escapeHtml(data.allergens.declared.join(', '))}</p>`
+  const allergenTexts = [...data.allergens.declared, ...data.allergens.labelStatements];
+  const allergens = allergenTexts.length > 0
+    ? `<p><strong>Alergeny:</strong> ${escapeHtml(allergenTexts.join('; '))}</p>`
     : '<p><strong>Alergeny:</strong> dane składników zweryfikowane przez użytkownika</p>';
   const nutrition = data.nutritionDeclaration?.rows
     .map((row) => `<tr><th>${escapeHtml(row.label)}</th><td>${escapeHtml(row.valueDisplay ?? '—')}</td></tr>`)

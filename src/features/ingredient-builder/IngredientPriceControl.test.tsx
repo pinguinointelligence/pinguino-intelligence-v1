@@ -73,4 +73,12 @@ describe('customer price input', () => {
     expect(html).toContain('Zapisz');
     expect(html).toContain('Przywróć cenę bazową');
   });
+
+  it('names catalog-price reset as deletion when no shared base price exists', () => {
+    const html = renderToStaticMarkup(
+      <CustomerPriceEditor view={{ ...view(), resetLabel: 'Usuń moją cenę' }} />,
+    );
+    expect(html).toContain('Usuń moją cenę');
+    expect(html).not.toContain('Przywróć cenę bazową');
+  });
 });

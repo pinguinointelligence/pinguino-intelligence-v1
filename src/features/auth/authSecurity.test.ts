@@ -37,6 +37,8 @@ const ALLOWED_ENV = new Set([
   'VITE_OFFER_LAUNCH_ENABLED',
   'VITE_OFFER_FOUNDING_ENABLED',
   'VITE_DESIGN_REVIEW',
+  // Public Cloudflare widget site key. The secret remains Edge-only.
+  'VITE_TURNSTILE_SITE_KEY',
 ]);
 
 describe('Phase 2A security guards', () => {

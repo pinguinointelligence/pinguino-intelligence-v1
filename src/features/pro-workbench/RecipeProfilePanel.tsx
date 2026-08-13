@@ -20,6 +20,8 @@ import { calculateFinalProduct } from '@/features/recipe-composition/finalProduc
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { applyEffectiveCustomerPricesToToppings } from '@/features/pro-core/effectiveRecipePricing';
 import { SummaryBaseRecipeList } from './SummaryBaseRecipeList';
+import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary';
@@ -211,6 +213,7 @@ function SummaryPanel({
     ? {
         finalItems: completed.finalProduct.items,
         finalNutritionPer100g: completed.finalProduct.nutritionPer100g,
+        finalLabelNutritionPer100g: completed.finalProduct.labelNutritionPer100g,
         finalCosts: completed.finalProduct.costs,
         baseMassG: completed.finalProduct.baseMassG,
         toppingMassG: completed.finalProduct.toppingMassG,
@@ -221,7 +224,9 @@ function SummaryPanel({
   const summaryBaseResult = completed?.finalResult ?? executableResult;
   const finalDisplayResult: RecipeResult = {
     ...summaryBaseResult,
-    items: finalProduct.finalItems,
+    // RecipeResult remains an Engine/Base result. Label-only POST_PROCESS_ADDON
+    // rows are presented through the product-layer mass/nutrition projection.
+    items: summaryBaseResult.items,
     total_batch_g: finalProduct.finalMassG,
     nutrition_per_100g: finalProduct.finalNutritionPer100g,
     costs: finalProduct.finalCosts,
@@ -285,7 +290,15 @@ function SummaryPanel({
           <div className="mt-3 divide-y divide-white/8 border-t border-white/8">
             {summaryToppings.map((item) => (
               <div key={item.id} className="flex justify-between gap-3 py-2 text-xs text-white/72">
-                <span className="truncate">Topping · {item.ingredient.name}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">Topping · {item.ingredient.name}</span>
+                  {isCatalogLabelToppingIngredient(item.ingredient) ? (
+                    <CatalogVerificationBadge
+                      status={item.ingredient.verification_status}
+                      tone="dark"
+                    />
+                  ) : null}
+                </span>
                 <span className="font-mono tabular-nums text-white">
                   {(completed
                     ? (item.actual_grams ?? item.planned_grams)
@@ -346,7 +359,10 @@ function SummaryPanel({
         className="rounded-[22px] bg-[#f7f5f0] p-2 text-ink"
         data-testid="summary-final-nutrition-cost"
       >
-        <NutritionCostScorePanel result={finalDisplayResult} />
+        <NutritionCostScorePanel
+          result={finalDisplayResult}
+          nutritionOverride={finalProduct.finalLabelNutritionPer100g}
+        />
       </div>
       <ReadinessFrame
         state="W PRZYGOTOWANIU"

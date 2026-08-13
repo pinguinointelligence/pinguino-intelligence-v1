@@ -22,6 +22,7 @@ import {
   practicalizeRecipeCandidate,
 } from '@/features/practical-recipe/practicalRecipe';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { productBehaviorModuleGate } from '@/features/product-intelligence';
 
 const newSessionId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -71,6 +72,18 @@ export function useProductionWorkspace(enabled: boolean) {
   );
 
   const practicalGate = useMemo(() => {
+    const behaviorGate = productBehaviorModuleGate(
+      recipe.productBehaviorSnapshots,
+      'PRODUCTION',
+    );
+    if (!behaviorGate.ready) {
+      return {
+        ready: false,
+        message:
+          behaviorGate.reason ??
+          'Receptura zawiera produkt bez zatwierdzonego uprawnienia do Produkcji.',
+      };
+    }
     const currentWasApplied =
       lastApplied?.practicalization !== undefined &&
       JSON.stringify(lastApplied.after.input) === JSON.stringify(plannedInput);
@@ -94,7 +107,7 @@ export function useProductionWorkspace(enabled: boolean) {
           message:
             'Zastosuj najpierw zweryfikowane Preview w pełnych gramach. Produkcja nie uruchomi ułamkowego szkicu.',
         };
-  }, [constraints, lastApplied, plannedInput, recipe.practicalRecipeAudit]);
+  }, [constraints, lastApplied, plannedInput, recipe.practicalRecipeAudit, recipe.productBehaviorSnapshots]);
 
   const source = useMemo(() => productionSourceForRecipe(recipe), [recipe]);
 

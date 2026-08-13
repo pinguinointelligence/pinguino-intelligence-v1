@@ -63,7 +63,12 @@ describe('per-query server request (tests 3/4/5)', () => {
     expect(captured.length).toBe(1);
     const cap = captured[0]!;
     expect(cap.table).toBe('mapper_basement');
-    expect(cap.eq).toEqual([['is_active', true], ['approved_for_engines', true]]);
+    expect(cap.eq).toEqual([
+      ['is_active', true],
+      ['approved_for_base', true],
+      ['approved_for_engines', true],
+      ['verification_status', 'verified'],
+    ]);
     expect(cap.or.length).toBe(1); // one significant token („świeże" is a stopword)
     expect(cap.or[0]).toContain('ingredient_name_display.ilike.*truskaw*');
     expect(cap.or[0]).toContain('ingredient_name_internal.ilike.*straw*');
@@ -113,7 +118,12 @@ describe('per-query server request (tests 3/4/5)', () => {
     await searchEngineApprovedIngredients('milk', { limit: 700 });
     expect(captured.length).toBe(2);
     for (const c of captured) {
-      expect(c.eq).toEqual([['is_active', true], ['approved_for_engines', true]]);
+      expect(c.eq).toEqual([
+        ['is_active', true],
+        ['approved_for_base', true],
+        ['approved_for_engines', true],
+        ['verification_status', 'verified'],
+      ]);
       expect(c.or).toEqual(captured[0]!.or);
       expect(c.order.map(([col]) => col)).toEqual(['ingredient_name_display', 'ingredient_id']); // stable tiebreak
     }
@@ -175,7 +185,7 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     expect(builder).toContain('<ProductPickerPopover');
     expect(picker).toContain('library.serverSearch');
     expect(picker).toContain('useIngredientSearch');
-    expect(picker).toContain('getIngredientById(option.id)');
+    expect(picker).toContain('getEngineApprovedIngredientById(option.id)');
   });
 
   it('stale-add protection: the current picker rejects old server hits until the new query settles', () => {
@@ -203,7 +213,7 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     const src = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     expect(src).toContain('server.isSettled');
     expect(src).toContain('isProductPickerSelectionCurrent');
-    expect(src).toContain('getIngredientById(option.id)');
+    expect(src).toContain('getEngineApprovedIngredientById(option.id)');
   });
 
   it('binds modal identity and the focus trap to the visible picker, never its backdrop', () => {

@@ -70,10 +70,10 @@ describe('OcrIntakePage — full session surface (contract panels)', () => {
 
   it('renders the duplicate panel with only its allowed actions', () => {
     const html = render(<OcrIntakePage />);
-    expect(text(html)).toMatch(/Likely duplicate/);
-    expect(html).toContain('aria-label="Open existing product"');
-    expect(html).toContain('aria-label="Update existing (reviewed merge)"');
-    expect(html).toContain('aria-label="Create as new product"');
+    expect(text(html)).toMatch(/Czy to ten sam produkt\?/);
+    expect(html).toContain('aria-label="Tak, to ten produkt"');
+    expect(html).toContain('aria-label="Uzupełnij istniejący produkt"');
+    expect(html).toContain('aria-label="Nie, to inny produkt"');
   });
 
   it('keeps the duplicate re-check honestly disabled while unwired, and links the batch queue', () => {

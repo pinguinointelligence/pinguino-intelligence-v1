@@ -1,6 +1,10 @@
-import type { NutritionPer100g } from '@/engine';
-import { buildNutritionDeclaration, type NutritionDeclaration } from '@/data/label/nutritionLabel';
+import {
+  buildNutritionDeclaration,
+  type LabelNutritionPer100g,
+  type NutritionDeclaration,
+} from '@/data/label/nutritionLabel';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
+import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import {
   marketProfile,
   type MarketProfileCode,
@@ -38,6 +42,8 @@ export interface MasterLabelIngredient {
   percent: number;
   allergenEvidenceStatus: IngredientAllergenEvidence['status'];
   allergenSourceRevision: string | null;
+  sourceIngredientsText: string | null;
+  sourceAllergensText: string | null;
 }
 
 export interface MasterLabelData {
@@ -56,9 +62,10 @@ export interface MasterLabelData {
     status: 'complete' | 'incomplete';
     declared: string[];
     mayContain: string[];
+    labelStatements: string[];
     reviewedByUser: boolean;
   };
-  nutritionSource: NutritionPer100g | null;
+  nutritionSource: LabelNutritionPer100g | null;
   nutritionDeclaration: NutritionDeclaration | null;
   netQuantityG: number | null;
   servingQuantityG: number | null;
@@ -118,21 +125,38 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
   // in each scope, but it is one ingredient in the final product declaration.
   const declarationLines = new Map<
     string,
-    { lineId: string; canonicalId: string | null; name: string; grams: number }
+    {
+      lineId: string;
+      canonicalId: string | null;
+      name: string;
+      grams: number;
+      sourceIngredientsText: string | null;
+      sourceAllergensText: string | null;
+      labelEvidenceVerified: boolean;
+    }
   >();
   for (const item of snapshot.finalProduct.items.filter((row) => row.effective_grams > 0)) {
     const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null;
+    const labelIngredient = isCatalogLabelToppingIngredient(item.ingredient)
+      ? item.ingredient
+      : null;
     const key = canonicalId ? `canonical:${canonicalId}` : `line:${item.id}`;
     const existing = declarationLines.get(key);
     if (existing) {
       existing.grams += item.effective_grams;
       existing.lineId = `${existing.lineId}+${item.id}`;
+      existing.sourceIngredientsText ??= labelIngredient?.ingredients_text ?? null;
+      existing.sourceAllergensText ??= labelIngredient?.allergens_text ?? null;
+      existing.labelEvidenceVerified ||= labelIngredient?.verification_status === 'verified';
     } else {
       declarationLines.set(key, {
         lineId: item.id,
         canonicalId,
         name: item.ingredient.name,
         grams: item.effective_grams,
+        sourceIngredientsText: labelIngredient?.ingredients_text ?? null,
+        sourceAllergensText: labelIngredient?.allergens_text ?? null,
+        labelEvidenceVerified: labelIngredient?.verification_status === 'verified',
       });
     }
   }
@@ -141,23 +165,41 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     .map((item) => {
       const canonicalId = item.canonicalId;
       const allergenEvidence = canonicalId ? evidence[canonicalId] : undefined;
+      const embeddedEvidenceStatus: IngredientAllergenEvidence['status'] = item.labelEvidenceVerified
+        ? 'verified'
+        : 'missing';
+      const declarationName = item.sourceIngredientsText
+        ? `${item.name} (${item.sourceIngredientsText})`
+        : item.name;
       return {
         lineId: item.lineId,
         canonicalIngredientId: canonicalId,
-        names: translated(item.name, languages),
+        names: translated(declarationName, languages),
         actualGrams: item.grams,
         percent: total > 0 ? (item.grams / total) * 100 : 0,
-        allergenEvidenceStatus: allergenEvidence?.status ?? 'missing',
-        allergenSourceRevision: allergenEvidence?.sourceRevision ?? null,
+        allergenEvidenceStatus: allergenEvidence?.status ?? embeddedEvidenceStatus,
+        allergenSourceRevision: allergenEvidence?.sourceRevision
+          ?? (item.labelEvidenceVerified ? 'catalog-label-snapshot' : null),
+        sourceIngredientsText: item.sourceIngredientsText,
+        sourceAllergensText: item.sourceAllergensText,
       };
     });
-  const allEvidence = ingredients.map((ingredient) =>
-    ingredient.canonicalIngredientId ? evidence[ingredient.canonicalIngredientId] : undefined,
-  );
-  const allergenComplete =
-    ingredients.length > 0 && allEvidence.every((item) => item?.status === 'verified');
+  const allEvidence = ingredients.map((ingredient) => {
+    const external = ingredient.canonicalIngredientId
+      ? evidence[ingredient.canonicalIngredientId]
+      : undefined;
+    if (external) return external;
+    return ingredient.allergenEvidenceStatus === 'verified'
+      ? { status: 'verified' as const, allergens: [], mayContain: [] }
+      : undefined;
+  });
+  const allergenComplete = ingredients.length > 0
+    && ingredients.every((item) => item.allergenEvidenceStatus === 'verified');
   const declared = [...new Set(allEvidence.flatMap((item) => item?.allergens ?? []))].sort();
   const mayContain = [...new Set(allEvidence.flatMap((item) => item?.mayContain ?? []))].sort();
+  const labelStatements = [...new Set(
+    ingredients.map((item) => item.sourceAllergensText?.trim()).filter((item): item is string => Boolean(item)),
+  )];
   const facility = { ...emptyFacility(), ...input.facilityDefaults };
   const completedDate = snapshot.productionCompletedAt.slice(0, 10);
 
@@ -177,10 +219,14 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       status: allergenComplete ? 'complete' : 'incomplete',
       declared,
       mayContain,
+      labelStatements,
       reviewedByUser: false,
     },
-    nutritionSource: snapshot.finalProduct.nutritionPer100g,
-    nutritionDeclaration: buildNutritionDeclaration(snapshot.finalProduct.nutritionPer100g),
+    nutritionSource:
+      snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g,
+    nutritionDeclaration: buildNutritionDeclaration(
+      snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g,
+    ),
     // Batch mass is not package net quantity. Never fabricate this field.
     netQuantityG: null,
     servingQuantityG: null,

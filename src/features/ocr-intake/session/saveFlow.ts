@@ -110,7 +110,10 @@ export function concatenatedOcrText(session: ProductIntakeSession): string | nul
  *   • detected_text = concatenated raw OCR; extracted_json = the full v2 audit.
  * Pure — builds a LOCAL candidate; persisting is `saveIntakeSession`'s single import call.
  */
-export function buildSessionCandidate(session: ProductIntakeSession): SessionCandidate {
+export function buildSessionCandidate(
+  session: ProductIntakeSession,
+  options: { explicitlyUnbranded?: boolean } = {},
+): SessionCandidate {
   const value = (key: Parameters<typeof resolvedValueOf>[1]): string | null =>
     resolvedValueOf(session.fields, key);
 
@@ -162,6 +165,7 @@ export function buildSessionCandidate(session: ProductIntakeSession): SessionCan
   // evidence audit only; detected_text below carries the raw OCR verbatim.
 
   const candidate = mapRowToProductInsert(row, 'generic', 0);
+  const explicitlyUnbranded = options.explicitlyUnbranded === true && value('brand') === null;
 
   // label-scan specifics on top of the shared mapping (same pattern as reviewState v1)
   candidate.insert.source_type = 'label_scan';
@@ -171,6 +175,7 @@ export function buildSessionCandidate(session: ProductIntakeSession): SessionCan
     engine: OCR_ENGINE_INFO,
     sessionId: session.sessionId,
     basis,
+    explicitlyUnbranded,
     manualEan: session.manualEan,
     eanSource,
     images: session.images.map((i) => ({
@@ -355,7 +360,7 @@ export async function saveIntakeSession(
   session: ProductIntakeSession,
   flow: SaveFlowState,
   existing: readonly ExistingProductForDedup[],
-  options: { resolution?: DuplicateResolutionAction } = {},
+  options: { resolution?: DuplicateResolutionAction; explicitlyUnbranded?: boolean } = {},
 ): Promise<SaveSessionOutcome> {
   if (flow.sessionId !== session.sessionId) {
     throw new SaveFlowError(
@@ -374,7 +379,7 @@ export async function saveIntakeSession(
         productId: flow.savedProductId,
         productCode: flow.savedProductCode,
         alreadySaved: true,
-        assessment: assessCandidate(buildSessionCandidate(session).candidate),
+        assessment: assessCandidate(buildSessionCandidate(session, options).candidate),
         postSave: postSaveInstruction(flow.savedProductId),
       },
     };
@@ -387,7 +392,7 @@ export async function saveIntakeSession(
     );
   }
 
-  const { candidate } = buildSessionCandidate(session);
+  const { candidate } = buildSessionCandidate(session, options);
   if (candidate.status === 'skip') {
     const failed = failSession(session, candidate.skipReason ?? 'no usable identity');
     return { session: failed, flow, result: { kind: 'failed', error: candidate.skipReason ?? 'no usable identity' } };

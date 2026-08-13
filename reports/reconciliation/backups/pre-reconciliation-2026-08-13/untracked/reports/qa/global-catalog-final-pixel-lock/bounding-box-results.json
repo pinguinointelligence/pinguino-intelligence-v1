@@ -1,0 +1,752 @@
+{
+  "url": "http://127.0.0.1:5174/pro/recipe",
+  "viewport": {
+    "width": 2048,
+    "height": 1040,
+    "deviceScaleFactor": 1
+  },
+  "tolerancePx": 2,
+  "fixture": {
+    "rows": 6,
+    "main": "true",
+    "strategy": "eco"
+  },
+  "targets": {
+    "editor": {
+      "x": 138,
+      "width": 1062
+    },
+    "shell": {
+      "x": 1264,
+      "y": 134,
+      "width": 635,
+      "height": 742
+    },
+    "add": {
+      "x": 551,
+      "y": 155,
+      "width": 125,
+      "height": 46
+    },
+    "firstRow": {
+      "x": 138,
+      "y": 234,
+      "width": 1062,
+      "height": 63
+    },
+    "picker": {
+      "x": 551,
+      "y": 213,
+      "width": 499,
+      "height": 480
+    },
+    "direction": {
+      "x": 1274,
+      "y": 280,
+      "width": 331,
+      "height": 369
+    },
+    "settings": {
+      "x": 1617,
+      "y": 279,
+      "width": 273,
+      "height": 371
+    },
+    "nutrition": {
+      "x": 1273,
+      "y": 661,
+      "width": 332,
+      "height": 204
+    },
+    "cost": {
+      "x": 1617,
+      "y": 660,
+      "width": 273,
+      "height": 206
+    },
+    "workbarSave": {
+      "x": 1031,
+      "y": 915,
+      "width": 103,
+      "height": 37
+    },
+    "recipeName": {
+      "x": 1262,
+      "y": 912,
+      "width": 402,
+      "height": 39
+    },
+    "addCore": {
+      "x": 555,
+      "y": 159,
+      "width": 117,
+      "height": 38
+    },
+    "piCore": {
+      "x": 1152,
+      "y": 161,
+      "width": 39,
+      "height": 38
+    },
+    "dividerHandle": {
+      "y": 234,
+      "height": 32
+    },
+    "pickerSearch": {
+      "x": 565,
+      "y": 226,
+      "width": 471,
+      "height": 38
+    },
+    "pickerHeader": {
+      "x": 554,
+      "y": 216,
+      "width": 493,
+      "height": 79
+    },
+    "pickerScrollThumb": {
+      "x": 1037,
+      "y": 600,
+      "width": 7,
+      "height": 50
+    }
+  },
+  "closedBounds": {
+    "viewport": {
+      "width": 2048,
+      "height": 1040,
+      "dpr": 1
+    },
+    "editor": {
+      "x": 138,
+      "y": 134,
+      "width": 1062,
+      "height": 742,
+      "right": 1200,
+      "bottom": 876
+    },
+    "shell": {
+      "x": 1264,
+      "y": 134,
+      "width": 635,
+      "height": 742,
+      "right": 1899,
+      "bottom": 876
+    },
+    "add": {
+      "x": 551,
+      "y": 155,
+      "width": 125,
+      "height": 46,
+      "right": 676,
+      "bottom": 201
+    },
+    "firstRow": {
+      "x": 138,
+      "y": 235,
+      "width": 1062,
+      "height": 63,
+      "right": 1200,
+      "bottom": 298
+    },
+    "direction": {
+      "x": 1275,
+      "y": 280,
+      "width": 331,
+      "height": 369,
+      "right": 1606,
+      "bottom": 649
+    },
+    "settings": {
+      "x": 1618,
+      "y": 279,
+      "width": 273,
+      "height": 371,
+      "right": 1891,
+      "bottom": 650
+    },
+    "nutrition": {
+      "x": 1275,
+      "y": 661,
+      "width": 331,
+      "height": 204,
+      "right": 1606,
+      "bottom": 865
+    },
+    "cost": {
+      "x": 1618,
+      "y": 660,
+      "width": 273,
+      "height": 206,
+      "right": 1891,
+      "bottom": 866
+    },
+    "workbarSave": {
+      "x": 1031,
+      "y": 914.5,
+      "width": 103,
+      "height": 37,
+      "right": 1134,
+      "bottom": 951.5
+    },
+    "recipeName": {
+      "x": 1262,
+      "y": 911.5,
+      "width": 402,
+      "height": 39,
+      "right": 1664,
+      "bottom": 950.5
+    },
+    "addCore": {
+      "x": 555,
+      "y": 159,
+      "width": 117,
+      "height": 38,
+      "right": 672,
+      "bottom": 197
+    },
+    "piCore": {
+      "x": 1153,
+      "y": 162.5,
+      "width": 39,
+      "height": 38,
+      "right": 1192,
+      "bottom": 200.5
+    },
+    "dividerHandle": {
+      "x": 1215,
+      "y": 235,
+      "width": 9,
+      "height": 32,
+      "right": 1224,
+      "bottom": 267
+    },
+    "pickerSearch": null,
+    "pickerHeader": null,
+    "pickerScrollThumb": null,
+    "picker": null
+  },
+  "pickerBounds": {
+    "x": 551,
+    "y": 213,
+    "width": 499,
+    "height": 480,
+    "right": 1050,
+    "bottom": 693
+  },
+  "assertions": [
+    {
+      "element": "editor",
+      "field": "x",
+      "expected": 138,
+      "actual": 138,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "editor",
+      "field": "width",
+      "expected": 1062,
+      "actual": 1062,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "shell",
+      "field": "x",
+      "expected": 1264,
+      "actual": 1264,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "shell",
+      "field": "y",
+      "expected": 134,
+      "actual": 134,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "shell",
+      "field": "width",
+      "expected": 635,
+      "actual": 635,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "shell",
+      "field": "height",
+      "expected": 742,
+      "actual": 742,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "add",
+      "field": "x",
+      "expected": 551,
+      "actual": 551,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "add",
+      "field": "y",
+      "expected": 155,
+      "actual": 155,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "add",
+      "field": "width",
+      "expected": 125,
+      "actual": 125,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "add",
+      "field": "height",
+      "expected": 46,
+      "actual": 46,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "firstRow",
+      "field": "x",
+      "expected": 138,
+      "actual": 138,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "firstRow",
+      "field": "y",
+      "expected": 234,
+      "actual": 235,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "firstRow",
+      "field": "width",
+      "expected": 1062,
+      "actual": 1062,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "firstRow",
+      "field": "height",
+      "expected": 63,
+      "actual": 63,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "direction",
+      "field": "x",
+      "expected": 1274,
+      "actual": 1275,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "direction",
+      "field": "y",
+      "expected": 280,
+      "actual": 280,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "direction",
+      "field": "width",
+      "expected": 331,
+      "actual": 331,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "direction",
+      "field": "height",
+      "expected": 369,
+      "actual": 369,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "settings",
+      "field": "x",
+      "expected": 1617,
+      "actual": 1618,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "settings",
+      "field": "y",
+      "expected": 279,
+      "actual": 279,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "settings",
+      "field": "width",
+      "expected": 273,
+      "actual": 273,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "settings",
+      "field": "height",
+      "expected": 371,
+      "actual": 371,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "nutrition",
+      "field": "x",
+      "expected": 1273,
+      "actual": 1275,
+      "delta": 2,
+      "passed": true
+    },
+    {
+      "element": "nutrition",
+      "field": "y",
+      "expected": 661,
+      "actual": 661,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "nutrition",
+      "field": "width",
+      "expected": 332,
+      "actual": 331,
+      "delta": -1,
+      "passed": true
+    },
+    {
+      "element": "nutrition",
+      "field": "height",
+      "expected": 204,
+      "actual": 204,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "cost",
+      "field": "x",
+      "expected": 1617,
+      "actual": 1618,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "cost",
+      "field": "y",
+      "expected": 660,
+      "actual": 660,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "cost",
+      "field": "width",
+      "expected": 273,
+      "actual": 273,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "cost",
+      "field": "height",
+      "expected": 206,
+      "actual": 206,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "workbarSave",
+      "field": "x",
+      "expected": 1031,
+      "actual": 1031,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "workbarSave",
+      "field": "y",
+      "expected": 915,
+      "actual": 914.5,
+      "delta": -0.5,
+      "passed": true
+    },
+    {
+      "element": "workbarSave",
+      "field": "width",
+      "expected": 103,
+      "actual": 103,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "workbarSave",
+      "field": "height",
+      "expected": 37,
+      "actual": 37,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "recipeName",
+      "field": "x",
+      "expected": 1262,
+      "actual": 1262,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "recipeName",
+      "field": "y",
+      "expected": 912,
+      "actual": 911.5,
+      "delta": -0.5,
+      "passed": true
+    },
+    {
+      "element": "recipeName",
+      "field": "width",
+      "expected": 402,
+      "actual": 402,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "recipeName",
+      "field": "height",
+      "expected": 39,
+      "actual": 39,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "addCore",
+      "field": "x",
+      "expected": 555,
+      "actual": 555,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "addCore",
+      "field": "y",
+      "expected": 159,
+      "actual": 159,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "addCore",
+      "field": "width",
+      "expected": 117,
+      "actual": 117,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "addCore",
+      "field": "height",
+      "expected": 38,
+      "actual": 38,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "piCore",
+      "field": "x",
+      "expected": 1152,
+      "actual": 1153,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "piCore",
+      "field": "y",
+      "expected": 161,
+      "actual": 162.5,
+      "delta": 1.5,
+      "passed": true
+    },
+    {
+      "element": "piCore",
+      "field": "width",
+      "expected": 39,
+      "actual": 39,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "piCore",
+      "field": "height",
+      "expected": 38,
+      "actual": 38,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "dividerHandle",
+      "field": "y",
+      "expected": 234,
+      "actual": 235,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "dividerHandle",
+      "field": "height",
+      "expected": 32,
+      "actual": 32,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "picker",
+      "field": "x",
+      "expected": 551,
+      "actual": 551,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "picker",
+      "field": "y",
+      "expected": 213,
+      "actual": 213,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "picker",
+      "field": "width",
+      "expected": 499,
+      "actual": 499,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "picker",
+      "field": "height",
+      "expected": 480,
+      "actual": 480,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "pickerSearch",
+      "field": "x",
+      "expected": 565,
+      "actual": 566,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "pickerSearch",
+      "field": "y",
+      "expected": 226,
+      "actual": 227,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "pickerSearch",
+      "field": "width",
+      "expected": 471,
+      "actual": 469,
+      "delta": -2,
+      "passed": true
+    },
+    {
+      "element": "pickerSearch",
+      "field": "height",
+      "expected": 38,
+      "actual": 38,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "pickerHeader",
+      "field": "x",
+      "expected": 554,
+      "actual": 555,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "pickerHeader",
+      "field": "y",
+      "expected": 216,
+      "actual": 217,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "pickerHeader",
+      "field": "width",
+      "expected": 493,
+      "actual": 491,
+      "delta": -2,
+      "passed": true
+    },
+    {
+      "element": "pickerHeader",
+      "field": "height",
+      "expected": 79,
+      "actual": 80,
+      "delta": 1,
+      "passed": true
+    },
+    {
+      "element": "pickerScrollThumb",
+      "field": "x",
+      "expected": 1037,
+      "actual": 1036,
+      "delta": -1,
+      "passed": true
+    },
+    {
+      "element": "pickerScrollThumb",
+      "field": "y",
+      "expected": 600,
+      "actual": 600,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "pickerScrollThumb",
+      "field": "width",
+      "expected": 7,
+      "actual": 7,
+      "delta": 0,
+      "passed": true
+    },
+    {
+      "element": "pickerScrollThumb",
+      "field": "height",
+      "expected": 50,
+      "actual": 50,
+      "delta": 0,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

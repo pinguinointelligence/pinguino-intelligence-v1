@@ -8,6 +8,7 @@ import {
   canPersistCustomerPrice,
   customerPriceCanonicalId,
   effectiveCostForIngredient,
+  effectiveCostForToppingIngredient,
   summarizeEffectiveRecipeCost,
 } from './effectiveRecipePricing';
 
@@ -147,6 +148,34 @@ describe('effective customer pricing', () => {
       totalCost: 0.56,
       costPerKg: 1.12,
       complete: true,
+    });
+  });
+
+  it('uses only the caller-private catalog price for a label-only Topping', () => {
+    const cost = effectiveCostForToppingIngredient({
+      kind: 'catalog_label_topping',
+      id: 'catalog:sauce',
+      canonical_ingredient_id: 'catalog:sauce',
+      private_product_id: 'catalog:sauce:version:v1',
+      name: 'Sauce',
+      catalog_product_id: 'sauce',
+      catalog_version_id: 'v1',
+      verification_status: 'verified',
+      label_nutrition_per_100g: {
+        basis: 'per_100g', energyKcal: 200, fat: 1, saturatedFat: null,
+        carbohydrate: 48, sugars: null, protein: 1, salt: 0.05, fibre: null,
+      },
+      ingredients_text: 'Fruit, sugar',
+      allergens_text: 'None declared',
+      cost_per_kg: 8.5,
+      cost_currency: 'EUR',
+    }, {});
+    expect(cost).toMatchObject({
+      canonicalIngredientId: 'catalog:sauce',
+      pricePerKg: 8.5,
+      source: 'customer_override',
+      mapperPricePerKg: null,
+      customerOverridePerKg: 8.5,
     });
   });
 });

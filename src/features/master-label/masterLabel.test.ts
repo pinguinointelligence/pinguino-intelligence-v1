@@ -17,6 +17,7 @@ import {
 } from './masterLabel';
 import { buildMasterLabelPrintHtml } from './masterLabelPrint';
 import { MARKET_PROFILES, marketProfile } from './marketProfiles';
+import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 
 function completedSnapshot(delta = 0) {
   const input: RecipeInput = {
@@ -148,6 +149,72 @@ function completedSnapshotWithToppings(sameCanonicalAsBase = false) {
   ).completionSnapshot!;
 }
 
+function completedSnapshotWithLabelTopping() {
+  const input: RecipeInput = {
+    items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+    mode: 'classic',
+    category: DEFAULT_PRESET.category,
+    target_temperature_c: DEFAULT_PRESET.target_temperature_c,
+    target_batch_grams: DEFAULT_PRESET.target_batch_grams,
+    machine_capacity_grams: null,
+  };
+  const ingredient: CatalogLabelToppingIngredient = {
+    kind: 'catalog_label_topping',
+    id: 'catalog:fruit-sauce',
+    canonical_ingredient_id: 'catalog:fruit-sauce',
+    private_product_id: 'catalog:fruit-sauce:version:v1',
+    name: 'Fruit sauce',
+    catalog_product_id: 'fruit-sauce',
+    catalog_version_id: 'v1',
+    verification_status: 'verified',
+    label_nutrition_per_100g: {
+      basis: 'per_100g', energyKcal: 210, fat: 0.5, saturatedFat: 0.1,
+      carbohydrate: 50, sugars: 44, protein: 0.7, salt: 0.02, fibre: 2,
+    },
+    ingredients_text: 'Fruit, sugar',
+    allergens_text: 'None declared',
+    cost_per_kg: null,
+    cost_currency: null,
+  };
+  let session = createProductionSession({
+    sessionId: 'run-label-catalog-topping',
+    ownerUserId: 'owner',
+    source: {
+      recipeId: 'recipe', recipeVersionId: 'version', recipeVersionNumber: 1,
+      recipeName: 'Gelato z sosem',
+    },
+    plannedInput: input,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: input.items.map((item) => item.id),
+      toppings: [{
+        id: 'label-topping-line', ingredient, planned_grams: 80, actual_grams: null,
+        process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
+      }],
+      migrationAmbiguities: [],
+    },
+    startedAt: '2026-08-12T10:00:00.000Z',
+  });
+  for (const [index, line] of session.lines.entries()) {
+    session = confirmProductionLine(session, line.lineId, `2026-08-12T10:0${index}:00.000Z`);
+  }
+  session = confirmProductionLine(session, 'label-topping-line', '2026-08-12T10:20:00.000Z');
+  return completeProductionSession(
+    session,
+    calculateRecipe({
+      ...input,
+      items: input.items.map((item) => ({
+        ...item,
+        actual_grams: item.planned_grams,
+        lock_type: 'already_added' as const,
+      })),
+    }),
+    '2026-08-12T11:00:00.000Z',
+    'owner',
+  ).completionSnapshot!;
+}
+
 const build = (delta = 0) => {
   const snapshot = completedSnapshot(delta);
   return buildMasterLabelData({
@@ -237,6 +304,32 @@ describe('Master Label — one actual-batch source model', () => {
     expect(data.ingredients.reduce((sum, item) => sum + item.actualGrams, 0)).toBe(
       snapshot.finalProduct.finalMassG,
     );
+  });
+
+  it('uses label-only commercial Topping nutrition in the final label without Engine science', () => {
+    const snapshot = completedSnapshotWithLabelTopping();
+    const data = buildMasterLabelData({
+      masterLabelId: 'label-catalog-topping',
+      snapshot,
+      market: 'EU',
+      uiLanguage: 'pl',
+      labelLanguages: ['pl'],
+      allergenEvidenceByCanonicalId: evidence(snapshot),
+    });
+
+    expect(snapshot.finalProduct.nutritionPer100g).toBeNull();
+    expect(snapshot.finalProduct.labelNutritionPer100g).not.toBeNull();
+    expect(data.nutritionSource).toEqual(snapshot.finalProduct.labelNutritionPer100g);
+    expect(data.nutritionSource?.alcohol_g).toBeNull();
+    expect(data.ingredients).toContainEqual(expect.objectContaining({
+      canonicalIngredientId: 'catalog:fruit-sauce',
+      actualGrams: 80,
+      sourceIngredientsText: 'Fruit, sugar',
+      sourceAllergensText: 'None declared',
+    }));
+    expect(data.ingredients.find((item) => item.canonicalIngredientId === 'catalog:fruit-sauce')
+      ?.names.pl).toContain('Fruit, sugar');
+    expect(data.allergens.labelStatements).toContain('None declared');
   });
 
   it('keeps UI language, market and label languages independent', () => {

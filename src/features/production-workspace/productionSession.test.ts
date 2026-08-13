@@ -16,6 +16,7 @@ import {
   setDraftActualGrams,
 } from './productionSession';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 
 function recipe(): RecipeInput {
   return {
@@ -280,6 +281,73 @@ describe('production session physical-reality contract', () => {
     expect(completed.completionSnapshot?.finalProduct.finalMassG).toBe(1135);
     expect(completed.completionSnapshot?.finalProduct.items).toHaveLength(
       plannedInput.items.length + 2,
+    );
+  });
+
+  it('freezes a label-only commercial Topping for final nutrition without entering Engine', () => {
+    const plannedInput = recipe();
+    const labelIngredient: CatalogLabelToppingIngredient = {
+      kind: 'catalog_label_topping',
+      id: 'catalog:fruit-sauce',
+      canonical_ingredient_id: 'catalog:fruit-sauce',
+      private_product_id: 'catalog:fruit-sauce:version:v1',
+      name: 'Fruit sauce',
+      catalog_product_id: 'fruit-sauce',
+      catalog_version_id: 'v1',
+      verification_status: 'manual_unverified',
+      label_nutrition_per_100g: {
+        basis: 'per_100g', energyKcal: 210, fat: 0.5, saturatedFat: 0.1,
+        carbohydrate: 50, sugars: 44, protein: 0.7, salt: 0.02, fibre: 2,
+      },
+      ingredients_text: 'Fruit, sugar',
+      allergens_text: 'None declared',
+      cost_per_kg: null,
+      cost_currency: null,
+    };
+    let run = createProductionSession({
+      sessionId: 'run-label-only-topping',
+      ownerUserId: 'owner-1',
+      source: {
+        recipeId: 'recipe-1', recipeVersionId: 'version-1', recipeVersionNumber: 1,
+        recipeName: 'Base plus label topping',
+      },
+      plannedInput,
+      plannedComposition: {
+        schemaVersion: 1,
+        baseScope: 'BASE_FORMULATION',
+        baseOrder: plannedInput.items.map((item) => item.id),
+        toppings: [{
+          id: 'label-topping-line',
+          ingredient: labelIngredient,
+          planned_grams: 80,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 0,
+        }],
+        migrationAmbiguities: [],
+      },
+      startedAt: '2026-08-12T10:00:00.000Z',
+    });
+    for (const [index, line] of run.lines.entries()) {
+      run = confirmProductionLine(run, line.lineId, `2026-08-12T10:0${index}:00.000Z`);
+    }
+    run = setDraftActualGrams(run, 'label-topping-line', 85);
+    run = confirmProductionLine(run, 'label-topping-line', '2026-08-12T10:20:00.000Z');
+    const finalInput = buildFinalActualInput(run);
+    const baseResult = calculateRecipe(finalInput);
+    const completed = completeProductionSession(
+      run,
+      baseResult,
+      '2026-08-12T11:00:00.000Z',
+      'owner-1',
+    );
+
+    expect(completed.completionSnapshot?.finalResult).toEqual(baseResult);
+    expect(completed.completionSnapshot?.finalProduct.toppingMassG).toBe(85);
+    expect(completed.completionSnapshot?.finalProduct.labelNutritionPer100g).not.toBeNull();
+    expect(completed.completionSnapshot?.finalProduct.nutritionPer100g).toBeNull();
+    expect(completed.completionSnapshot?.finalProduct.items.at(-1)?.ingredient).toEqual(
+      labelIngredient,
     );
   });
 });

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 
@@ -12,8 +13,14 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
 const { AccountSettingsPage, HowItWorksPage, ProductsHubPage, ProductionHubPage, FranchisePage } =
   await import('./GlobalDestinationPages');
 
-const render = (element: ReactNode, path = '/') =>
-  renderToStaticMarkup(<MemoryRouter initialEntries={[path]}>{element}</MemoryRouter>);
+const render = (element: ReactNode, path = '/') => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderToStaticMarkup(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>{element}</MemoryRouter>
+    </QueryClientProvider>,
+  );
+};
 
 describe('canonical global destination hubs', () => {
   beforeEach(() => {
@@ -37,10 +44,12 @@ describe('canonical global destination hubs', () => {
   it('consolidates customer product intake under one Products destination', () => {
     persona = 'home';
     const html = render(<ProductsHubPage />, '/products');
-    expect(html).toContain('Twoje produkty');
-    expect(html).toContain('href="/create-ingredient"');
+    expect(html).toContain('Katalog produktów');
+    expect(html).toContain('href="/products/scan"');
     expect(html).toContain('href="/products/import"');
     expect(html).toContain('+ Dodaj produkt');
+    expect(html).toContain('Katalog PINGÜINO');
+    expect(html).toContain('★ Ulubione');
   });
 
   it('exposes one Pro Production hub with Current, History and Labels', () => {

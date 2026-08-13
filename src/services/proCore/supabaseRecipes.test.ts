@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import type { EngineIngredient, RecipeInput } from '@/engine';
 import type { RecipeCapabilities } from '@/features/pro-core/recipeContracts';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { supabaseRecipesRepository } from './supabaseRecipes';
 import { FakeDB, makeClient, type Result } from './supabaseRecipesFake';
 
@@ -63,6 +64,37 @@ const composition = (grams: number): RecipeCompositionMetadata => ({
     id: 'top-milk',
     ingredient: toppingIngredient,
     planned_grams: grams, actual_grams: null, process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
+  }],
+  migrationAmbiguities: [],
+});
+const labelComposition = (grams: number): RecipeCompositionMetadata => ({
+  schemaVersion: 1,
+  baseScope: 'BASE_FORMULATION',
+  baseOrder: ['a'],
+  toppings: [{
+    id: 'top-label-sauce',
+    ingredient: {
+      kind: 'catalog_label_topping',
+      id: 'catalog:label-sauce',
+      canonical_ingredient_id: 'catalog:label-sauce',
+      private_product_id: 'catalog:label-sauce:version:v1',
+      name: 'Label sauce',
+      catalog_product_id: 'label-sauce',
+      catalog_version_id: 'v1',
+      verification_status: 'verified',
+      label_nutrition_per_100g: {
+        basis: 'per_100g', energyKcal: 180, fat: 1, saturatedFat: 0.2,
+        carbohydrate: 42, sugars: 38, protein: 1, salt: 0.04, fibre: 2,
+      },
+      ingredients_text: 'Fruit, sugar',
+      allergens_text: 'None declared',
+      cost_per_kg: null,
+      cost_currency: null,
+    } satisfies CatalogLabelToppingIngredient,
+    planned_grams: grams,
+    actual_grams: null,
+    process_scope: 'POST_PROCESS_ADDON',
+    addon_sort_order: 0,
   }],
   migrationAmbiguities: [],
 });
@@ -169,6 +201,29 @@ describe('supabase RecipesRepository adapter (fake client)', () => {
     const restored = await repo.restore(recipe.recipeId, 1, 'user-1', PRO);
     expect(restored.versionNumber).toBe(3);
     expect(restored.productComposition).toEqual(composition(70));
+  });
+
+  it('round-trips and restores a label-only catalog Topping snapshot', async () => {
+    const { repo } = seed();
+    const { recipe, version: v1 } = await repo.createRecipe({
+      ownerUserId: 'user-1', title: 'Label sauce topping',
+      recipeInput: input(1000, [item('a', 'Milk', 1000)]),
+      productComposition: labelComposition(80),
+      trace: TRACE, by: 'user-1', capabilities: PRO,
+    });
+    expect(v1.productComposition).toEqual(labelComposition(80));
+    const v2 = await repo.saveNewVersion(
+      recipe.recipeId,
+      input(1000, [item('a', 'Milk', 1000)]),
+      TRACE,
+      'user-1',
+      undefined,
+      labelComposition(90),
+    );
+    expect(v2.productComposition).toEqual(labelComposition(90));
+    const restored = await repo.restore(recipe.recipeId, 1, 'user-1', PRO);
+    expect(restored.productComposition).toEqual(labelComposition(80));
+    expect(restored.productComposition?.toppings[0]?.ingredient).not.toHaveProperty('composition');
   });
 
   it('the store refuses any UPDATE on recipe_versions (append-only, matching the DB grants)', async () => {

@@ -8,6 +8,8 @@ import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities'
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { MasterLabelEditor } from '@/features/master-label/MasterLabelEditor';
 import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
+import { AccountProductMarkets } from '@/features/global-catalog/AccountProductMarkets';
+import { GlobalCatalogSearchPanel } from '@/features/global-catalog/GlobalCatalogSearchPanel';
 
 const quietLink =
   'flex min-h-14 items-center justify-between border-b border-ink/10 py-3 text-sm text-ink transition-opacity hover:opacity-55';
@@ -88,7 +90,7 @@ export function ProductsHubPage() {
   const capabilities = proCoreCapabilitiesFor(persona);
   return (
     <DestinationSurface
-      eyebrow="Katalog klienta"
+      eyebrow="Katalog PINGÜINO"
       title="Produkty"
       blurb="Produkty, dopasowanie Mapper, dostępność i prywatna cena — w jednym kanonicznym miejscu."
     >
@@ -100,20 +102,20 @@ export function ProductsHubPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink/10 pb-6">
             <div>
-              <h2 className="text-xl font-semibold tracking-[-0.025em] text-ink">Twoje produkty</h2>
+              <h2 className="text-xl font-semibold tracking-[-0.025em] text-ink">Katalog produktów</h2>
               <p className="mt-1 text-sm text-stone-500">
                 Jedna biblioteka; wszystkie metody dodawania trafiają do tego samego procesu intake.
               </p>
             </div>
             <Link
-              to="/create-ingredient"
+              to="/products/scan"
               className="min-h-11 px-2 py-3 text-xs font-medium tracking-label text-ink uppercase transition-opacity hover:opacity-55"
             >
               + Dodaj produkt
             </Link>
           </div>
           <div className="mt-2">
-            <Link to="/create-ingredient" className={quietLink}>
+            <Link to="/products/scan" className={quietLink}>
               <span>
                 <strong className="block font-medium">Ręcznie lub ze zdjęcia etykiety</strong>
                 <span className="mt-1 block text-xs text-stone-500">
@@ -132,6 +134,7 @@ export function ProductsHubPage() {
               <span aria-hidden>→</span>
             </Link>
           </div>
+          <GlobalCatalogSearchPanel />
           <p className="mt-8 max-w-xl text-xs leading-relaxed text-stone-500">
             Prywatna cena klienta pozostaje własnością istniejącego modelu danych. Ten hub nie
             tworzy drugiego magazynu cen.
@@ -348,6 +351,7 @@ export function AccountSettingsPage() {
             <span className="text-sm text-stone-500">Bezpieczeństwo</span>
             <span className="text-sm text-stone-600">Ustawienia konta</span>
           </div>
+          <AccountProductMarkets />
           <AccountRecipeDefaults />
         </div>
       )}

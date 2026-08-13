@@ -103,7 +103,9 @@ export async function searchEngineApprovedIngredients(
       .from(TABLE)
       .select(SEARCH_RESULT_COLUMNS)
       .eq('is_active', true)
-      .eq('approved_for_engines', true);
+      .eq('approved_for_base', true)
+      .eq('approved_for_engines', true)
+      .eq('verification_status', 'verified');
     // One AND-group per token; OR across (alias term × safe column) within it.
     for (const terms of groups) {
       query = query.or(
@@ -138,6 +140,23 @@ export async function listIngredientsByIds(ids: readonly string[]): Promise<Ingr
   return (data ?? []) as IngredientRow[];
 }
 
+/** Exact-id list with the same current trust gate as Base selection. Used for
+ * private Favorites/Recent so a later Mapper revocation disappears immediately. */
+export async function listEngineApprovedIngredientsByIds(ids: readonly string[]): Promise<IngredientRow[]> {
+  if (ids.length === 0) return [];
+  if (!supabase) return emptyUnconfiguredRead('ingredients.listEngineApprovedIngredientsByIds', []);
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('*')
+    .in('ingredient_id', [...ids])
+    .eq('is_active', true)
+    .eq('approved_for_base', true)
+    .eq('approved_for_engines', true)
+    .eq('verification_status', 'verified');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as IngredientRow[];
+}
+
 /** A single ingredient by its stable id (RLS still applies). */
 export async function getIngredientById(id: string): Promise<IngredientRow | null> {
   if (!supabase) return emptyUnconfiguredRead('ingredients.getIngredientById', null);
@@ -145,6 +164,23 @@ export async function getIngredientById(id: string): Promise<IngredientRow | nul
     .from(TABLE)
     .select('*')
     .eq('ingredient_id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as IngredientRow | null) ?? null;
+}
+
+/** Selection-time trust gate for catalog-to-Base mapping. Search results can
+ * become stale; this rechecks every current Mapper eligibility flag at click. */
+export async function getEngineApprovedIngredientById(id: string): Promise<IngredientRow | null> {
+  if (!supabase) return emptyUnconfiguredRead('ingredients.getEngineApprovedIngredientById', null);
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('*')
+    .eq('ingredient_id', id)
+    .eq('is_active', true)
+    .eq('approved_for_base', true)
+    .eq('approved_for_engines', true)
+    .eq('verification_status', 'verified')
     .maybeSingle();
   if (error) throw new Error(error.message);
   return (data as IngredientRow | null) ?? null;

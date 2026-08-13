@@ -3,6 +3,7 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
 import { proWorkbenchCopy } from '@/copy/pro.pl';
 import type { RecipeResult } from '@/engine';
+import type { LabelNutritionPer100g } from '@/data/label/nutritionLabel';
 import { cn } from '@/lib/cn';
 
 const m = proWorkbenchCopy.nutrition;
@@ -37,11 +38,14 @@ function Row({
 export function NutritionCostScorePanel({
   result,
   embedded = false,
+  nutritionOverride,
 }: {
   result: RecipeResult;
   embedded?: boolean;
+  nutritionOverride?: LabelNutritionPer100g | null;
 }) {
-  const { nutrition_per_100g: nutrition, costs } = result;
+  const nutrition = nutritionOverride === undefined ? result.nutrition_per_100g : nutritionOverride;
+  const { costs } = result;
 
   return (
     <Card
@@ -70,7 +74,7 @@ export function NutritionCostScorePanel({
             <Row label={m.protein} value={nutrition.protein_g} unit="g" />
             <Row label={m.salt} value={nutrition.salt_g} unit="g" precision={2} />
             <Row label={m.fiber} value={nutrition.fiber_g} unit="g" />
-            {nutrition.alcohol_g > 0 ? (
+            {nutrition.alcohol_g !== null && nutrition.alcohol_g > 0 ? (
               <Row label={m.alcohol} value={nutrition.alcohol_g} unit="g" />
             ) : null}
           </div>

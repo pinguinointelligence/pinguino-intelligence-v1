@@ -1,0 +1,71 @@
+﻿1 .M N... 100644 100644 100644 f670a74f85a4ba8d6693a0c433b59a82358642e8 f670a74f85a4ba8d6693a0c433b59a82358642e8 package.json
+1 .M N... 100644 100644 100644 0c6b631ecdb885bdcc0705ff41d57b10ba909115 0c6b631ecdb885bdcc0705ff41d57b10ba909115 src/app/router.tsx
+1 .M N... 100644 100644 100644 ca5873da199987b89f0be68f43b973b92ba4e75a ca5873da199987b89f0be68f43b973b92ba4e75a src/app/routes.test.tsx
+1 .M N... 100644 100644 100644 4e299ebbbedb1c73be9006f4dfac8f851cf6c836 4e299ebbbedb1c73be9006f4dfac8f851cf6c836 src/data/label/nutritionLabel.test.ts
+1 .M N... 100644 100644 100644 348cc94a7119ef3251867a40e7f4a0fcf7759f72 348cc94a7119ef3251867a40e7f4a0fcf7759f72 src/data/label/nutritionLabel.ts
+1 .M N... 100644 100644 100644 9dac2fb92ad51c6f91ab9f8fc1ba1e4c6c18b3d4 9dac2fb92ad51c6f91ab9f8fc1ba1e4c6c18b3d4 src/features/auth/authSecurity.test.ts
+1 .M N... 100644 100644 100644 c72d761cd36ae3bf2cbbc0ffbf8658776625d046 c72d761cd36ae3bf2cbbc0ffbf8658776625d046 src/features/constraint-studio/applyPipeline.ts
+1 .M N... 100644 100644 100644 0a2c404ae4935f0d311b8baea85754fdc64cad9f 0a2c404ae4935f0d311b8baea85754fdc64cad9f src/features/constraint-studio/constraintStudioStore.ts
+1 .M N... 100644 100644 100644 3047b08835e58f51e70d60164b103fb282e8ac6d 3047b08835e58f51e70d60164b103fb282e8ac6d src/features/constraint-studio/previewIssueMessage.ts
+1 .M N... 100644 100644 100644 8410a0318da83d2588756a84d7c5dbdf5fc1c757 8410a0318da83d2588756a84d7c5dbdf5fc1c757 src/features/ingredient-builder/IngredientBuilder.tsx
+1 .M N... 100644 100644 100644 1856e7f2e69c590a63ccc606746c422a069f0324 1856e7f2e69c590a63ccc606746c422a069f0324 src/features/ingredient-builder/IngredientPriceControl.test.tsx
+1 .M N... 100644 100644 100644 cf617f41b25ef8a7401046681c10b3fd0a22dcfc cf617f41b25ef8a7401046681c10b3fd0a22dcfc src/features/ingredient-builder/IngredientPriceControl.tsx
+1 .M N... 100644 100644 100644 9ae2494aa2b08c9d09442a3d4c7143b34ea2cb27 9ae2494aa2b08c9d09442a3d4c7143b34ea2cb27 src/features/ingredient-builder/IngredientRow.tsx
+1 .M N... 100644 100644 100644 48d1bb96ad0758757c135a3a3c664febcc4a696e 48d1bb96ad0758757c135a3a3c664febcc4a696e src/features/ingredient-builder/ProductPickerPopover.tsx
+1 .M N... 100644 100644 100644 73a6c76f9a6f057821cb32017c72f2e5aed4e410 73a6c76f9a6f057821cb32017c72f2e5aed4e410 src/features/ingredient-builder/ToppingRow.tsx
+1 .M N... 100644 100644 100644 3d119982b72f575e77632ee9bdb2cb4cd678adb8 3d119982b72f575e77632ee9bdb2cb4cd678adb8 src/features/ingredient-builder/liveSearchContract.test.ts
+1 .M N... 100644 100644 100644 3e190ba0976dfbf5ec725dfea43288fdee9dce57 3e190ba0976dfbf5ec725dfea43288fdee9dce57 src/features/ingredient-builder/productPickerModel.ts
+1 .M N... 100644 100644 100644 bae1beab54bd25fe02baf89ef6418d45b5b9c679 bae1beab54bd25fe02baf89ef6418d45b5b9c679 src/features/master-label/masterLabel.test.ts
+1 .M N... 100644 100644 100644 78161db146b61ab46221c7d418acfdcfaf55d472 78161db146b61ab46221c7d418acfdcfaf55d472 src/features/master-label/masterLabel.ts
+1 .M N... 100644 100644 100644 7e05eeec3d3db08d15ba9540e26fae00b6f8dcbc 7e05eeec3d3db08d15ba9540e26fae00b6f8dcbc src/features/master-label/masterLabelPrint.ts
+1 .M N... 100644 100644 100644 13c36ca8156eeb09e3d5923d30e4e94b6d616bcc 13c36ca8156eeb09e3d5923d30e4e94b6d616bcc src/features/ocr-intake/ocrCopy.ts
+1 .M N... 100644 100644 100644 fa3172452d4031c7689dd3aac1480a0ddfcf3e3e fa3172452d4031c7689dd3aac1480a0ddfcf3e3e src/features/ocr-intake/session/saveFlow.test.ts
+1 .M N... 100644 100644 100644 3d4880e1aa85e53cb136e6245728a542860b773d 3d4880e1aa85e53cb136e6245728a542860b773d src/features/ocr-intake/session/saveFlow.ts
+1 .M N... 100644 100644 100644 24f93432bae71ae770a9c31be0ea6f28787d5089 24f93432bae71ae770a9c31be0ea6f28787d5089 src/features/pi-panel/NutritionCostScorePanel.tsx
+1 .M N... 100644 100644 100644 83d7acc0be56cca0e18cb4e3e08978a138758fcf 83d7acc0be56cca0e18cb4e3e08978a138758fcf src/features/pro-core/effectiveRecipePricing.test.ts
+1 .M N... 100644 100644 100644 66ec03dd9df03cda43b95f711c8fcd0cad305406 66ec03dd9df03cda43b95f711c8fcd0cad305406 src/features/pro-core/effectiveRecipePricing.ts
+1 .M N... 100644 100644 100644 c444bc3147c6c9a1d311e42a86249b9baf26e8a1 c444bc3147c6c9a1d311e42a86249b9baf26e8a1 src/features/pro-workbench/MonitorPanelContent.tsx
+1 .M N... 100644 100644 100644 e62bb8c0cbfa989affa9ef864087f47eaff2c2a0 e62bb8c0cbfa989affa9ef864087f47eaff2c2a0 src/features/pro-workbench/RecipeProfilePanel.tsx
+1 .M N... 100644 100644 100644 b7c63f21257509ab89efa4f7fa2d96127f2e6a14 b7c63f21257509ab89efa4f7fa2d96127f2e6a14 src/features/pro-workbench/monitorParity.test.tsx
+1 .M N... 100644 100644 100644 fb4da2e2b6722adfcb3d7a2ab7d9349b3392ad6a fb4da2e2b6722adfcb3d7a2ab7d9349b3392ad6a src/features/production-workspace/ProductionCockpit.tsx
+1 .M N... 100644 100644 100644 23b95d337b47e131eab63e244b5a9477efcca697 23b95d337b47e131eab63e244b5a9477efcca697 src/features/production-workspace/productionSession.test.ts
+1 .M N... 100644 100644 100644 a0ec29492e1301cdf3fa189b9552f87fb021a585 a0ec29492e1301cdf3fa189b9552f87fb021a585 src/features/production-workspace/productionSession.ts
+1 .M N... 100644 100644 100644 b9e6425efcaccf440133388d35ca27729b70f6ea b9e6425efcaccf440133388d35ca27729b70f6ea src/features/production-workspace/useProductionWorkspace.ts
+1 .M N... 100644 100644 100644 80f43120b9647d694931fdec2c7861e39668fda6 80f43120b9647d694931fdec2c7861e39668fda6 src/features/recipe-composition/finalProduct.test.ts
+1 .M N... 100644 100644 100644 0f2762e590de46489cbe22535250204f39028f77 0f2762e590de46489cbe22535250204f39028f77 src/features/recipe-composition/finalProduct.ts
+1 .M N... 100644 100644 100644 e9eb9c804cdbcefade559842b7396e5f6baf4be4 e9eb9c804cdbcefade559842b7396e5f6baf4be4 src/features/recipe-composition/recipeCompositionPersistence.test.ts
+1 .M N... 100644 100644 100644 1631d84cb99e800407d71500884eb1b79cd3abf7 1631d84cb99e800407d71500884eb1b79cd3abf7 src/features/recipe-composition/recipeCompositionPersistence.ts
+1 .M N... 100644 100644 100644 7dab00c6fa7359464f82853b9027bf9c8aadd495 7dab00c6fa7359464f82853b9027bf9c8aadd495 src/features/recipe-composition/recipeCompositionUi.test.tsx
+1 .M N... 100644 100644 100644 3e98d2da8851b08316fb4ad6975448ef31ab49b8 3e98d2da8851b08316fb4ad6975448ef31ab49b8 src/features/recipes/useCanonicalRecipeSave.ts
+1 .M N... 100644 100644 100644 5d9544c692bcdb1d60e4314c7ae7f112cc8e6388 5d9544c692bcdb1d60e4314c7ae7f112cc8e6388 src/pages/destinations/GlobalDestinationPages.test.tsx
+1 .M N... 100644 100644 100644 6cba1981a552432da2b18e27d53995841d46a12c 6cba1981a552432da2b18e27d53995841d46a12c src/pages/destinations/GlobalDestinationPages.tsx
+1 .M N... 100644 100644 100644 249c981ff62dd8d20cf06dde0e1baa1e4bd459a5 249c981ff62dd8d20cf06dde0e1baa1e4bd459a5 src/pages/destinations/index.ts
+1 .M N... 100644 100644 100644 b0a7d288da151a1ce1fb3bb0402234113f162fc2 b0a7d288da151a1ce1fb3bb0402234113f162fc2 src/pages/dev/OcrIntakePage.test.tsx
+1 .M N... 100644 100644 100644 f89aee18db11dd56d1e2e9f7009f217ac4f27804 f89aee18db11dd56d1e2e9f7009f217ac4f27804 src/services/ingredients.ts
+1 .M N... 100644 100644 100644 530c23ecade5b215de0639288778d97217ebb9d4 530c23ecade5b215de0639288778d97217ebb9d4 src/services/ocrIntakePersistence.test.ts
+1 .M N... 100644 100644 100644 17d1fca2d57241d9fed54bcd5bec2c280eef531b 17d1fca2d57241d9fed54bcd5bec2c280eef531b src/services/ocrIntakePersistence.ts
+1 .M N... 100644 100644 100644 ae4c2ea19dc81ad94c057b9204abd628b8e865e0 ae4c2ea19dc81ad94c057b9204abd628b8e865e0 src/services/proCore/supabaseRecipes.test.ts
+1 .M N... 100644 100644 100644 940bc2e4dc944ef05c9e8abdbba0041af75cba20 940bc2e4dc944ef05c9e8abdbba0041af75cba20 src/stores/recipeStore.ts
+? docs/GLOBAL_CATALOG_ADMIN_QUEUE_CONTRACT.md
+? docs/GLOBAL_CATALOG_SERVER_OCR_CONTRACT.md
+? docs/engine/PRODUCT_PROFILE_MATRICES.md
+? docs/formulation/MAIN_FLAVOUR_ENVELOPE_REGISTRY.md
+? docs/formulation/MAIN_FLAVOUR_ENVELOPE_SPEC.md
+? docs/products/
+? reports/CATALOG_PRODUCT_BEHAVIOR_AUDIT.md
+? reports/MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.csv
+? reports/MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.md
+? reports/UNIFIED_PRODUCT_INTELLIGENCE_COMPLETION_LEDGER.md
+? reports/qa/global-catalog-final-pixel-lock/
+? reports/reconciliation/
+? scripts/auditUnifiedProductIntelligence.mjs
+? src/features/global-catalog/
+? src/features/product-intelligence/
+? src/features/recipe-composition/labelTopping.ts
+? src/pages/products/
+? src/services/globalCatalog.ts
+? src/services/productIntelligence.ts
+? supabase/functions/catalog-submit/
+? supabase/migrations/0043_global_product_catalog.sql
+? supabase/migrations/0044_global_product_catalog_trust_hardening.sql
+? supabase/migrations/0045_unified_product_intelligence.sql

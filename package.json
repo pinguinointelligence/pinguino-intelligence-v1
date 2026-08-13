@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "recipes:import": "node scripts/importFlavorCatalogue.mjs",
     "recipes:validate": "node scripts/importFlavorCatalogue.mjs --check",
-    "process:validate": "node scripts/buildProcessMetadataSeed.mjs --check"
+    "process:validate": "node scripts/buildProcessMetadataSeed.mjs --check",
+    "products:audit": "node scripts/auditUnifiedProductIntelligence.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.2.8",

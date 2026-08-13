@@ -23,7 +23,12 @@ import {
   canPersistCustomerPrice,
   customerPriceCanonicalId,
   effectiveCostForIngredient,
+  effectiveCostForToppingIngredient,
 } from '@/features/pro-core/effectiveRecipePricing';
+import {
+  isCatalogLabelToppingIngredient,
+  toppingIngredientIdentity,
+} from '@/features/recipe-composition/labelTopping';
 import { effectiveLineCost } from '@/features/pro-core/costing';
 import {
   IngredientRow,
@@ -48,6 +53,14 @@ import { listEngineApprovedIngredients } from '@/services/ingredients';
 import { verifiedRecipeSubstituteCandidates } from './recipeSubstitution';
 import { buildDirectPercentEdit } from './directPercentEdit';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import {
+  resetPrivateCatalogProductPrice,
+  savePrivateCatalogProductPrice,
+} from '@/services/globalCatalog';
+import {
+  mainBehaviorBlockReason,
+  type ProductBehaviorSnapshot,
+} from '@/features/product-intelligence';
 
 const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
@@ -97,6 +110,11 @@ export function IngredientBuilder({
 
   const addIngredient = useRecipeStore((state) => state.addIngredient);
   const addTopping = useRecipeStore((state) => state.addTopping);
+  const setProductBehaviorSnapshot = useRecipeStore((state) => state.setProductBehaviorSnapshot);
+  const behaviorProfile = useRecipeStore((state) => state.category);
+  const behaviorTemperatureC = useRecipeStore((state) => state.target_temperature_c);
+  const behaviorMode = useRecipeStore((state) => state.formulation_strategy);
+  const productBehaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
   const toppings = useRecipeStore((state) => state.toppings);
   const baseOrder = useRecipeStore((state) => state.baseOrder);
   const removeTopping = useRecipeStore((state) => state.removeTopping);
@@ -407,6 +425,7 @@ export function IngredientBuilder({
           }
           setReorderNotice(baseReorderNotice(source, 'przeniesiono'));
         }}
+        mainUnavailableReason={mainBehaviorBlockReason(productBehaviorSnapshots[item.id])}
       />
     );
   });
@@ -430,12 +449,16 @@ export function IngredientBuilder({
       </div>
     ) : null;
 
-  const addIngredientAndResolveRequiredRole = (ingredient: Parameters<typeof addIngredient>[0]) => {
-    const canonicalId = canonicalIngredientId(ingredient);
+  const addIngredientAndResolveRequiredRole = (
+    ingredient: Parameters<typeof addIngredient>[0],
+    behavior?: ProductBehaviorSnapshot,
+  ) => {
+    const canonicalId = toppingIngredientIdentity(ingredient);
     const existing = useRecipeStore
       .getState()
       .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
     if (existing) {
+      if (behavior) setProductBehaviorSnapshot(existing.id, { ...behavior, lineId: existing.id });
       setPickerNotice(
         `${ingredient.name} już znajduje się w Bazie. Przeniesiono fokus do istniejącego wiersza.`,
       );
@@ -445,6 +468,7 @@ export function IngredientBuilder({
     const added = useRecipeStore
       .getState()
       .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+    if (added && behavior) setProductBehaviorSnapshot(added.id, { ...behavior, lineId: added.id });
     setPickerNotice(null);
     const normalizedName = ingredient.name.trim().toLocaleLowerCase('pl');
     for (const unresolvedEntry of Object.values(unresolvedByLineId)) {
@@ -455,15 +479,19 @@ export function IngredientBuilder({
     return added ? { focusLineId: added.id } : undefined;
   };
 
-  const addOrFocusTopping = (ingredient: Parameters<typeof addTopping>[0]) => {
-    const canonicalId = canonicalIngredientId(ingredient);
+  const addOrFocusTopping = (
+    ingredient: Parameters<typeof addTopping>[0],
+    behavior?: ProductBehaviorSnapshot,
+  ) => {
+    const canonicalId = toppingIngredientIdentity(ingredient);
     const existing = useRecipeStore
       .getState()
-      .toppings.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+      .toppings.find((item) => toppingIngredientIdentity(item.ingredient) === canonicalId);
     addTopping(ingredient);
     const selected = useRecipeStore
       .getState()
-      .toppings.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+      .toppings.find((item) => toppingIngredientIdentity(item.ingredient) === canonicalId);
+    if (selected && behavior) setProductBehaviorSnapshot(selected.id, { ...behavior, lineId: selected.id });
     setPickerNotice(
       existing
         ? `${ingredient.name} już jest toppingiem. Zachowano jeden wiersz i przeniesiono do niego fokus.`
@@ -490,6 +518,12 @@ export function IngredientBuilder({
     <ProductPickerPopover
       library={library}
       scope="BASE_FORMULATION"
+      behaviorContext={{
+        accountId: authUserId,
+        productProfile: behaviorProfile,
+        temperatureC: behaviorTemperatureC,
+        mode: behaviorMode,
+      }}
       onAdd={addIngredientAndResolveRequiredRole}
     />
   );
@@ -497,14 +531,37 @@ export function IngredientBuilder({
   const toppingTotalG = toppings.reduce((sum, item) => sum + item.planned_grams, 0);
   const finalTotalG = totalBatchG + toppingTotalG;
   const toppingRows = toppings.map((item, index) => {
-    const cost = effectiveCostForIngredient(item.ingredient, customerPrices);
-    const canonicalId = customerPriceCanonicalId(item.ingredient);
+    const cost = effectiveCostForToppingIngredient(item.ingredient, customerPrices);
+    const labelTopping = isCatalogLabelToppingIngredient(item.ingredient)
+      ? item.ingredient
+      : null;
+    const engineTopping = isCatalogLabelToppingIngredient(item.ingredient)
+      ? null
+      : item.ingredient;
+    const canonicalId = engineTopping ? customerPriceCanonicalId(engineTopping) : null;
     const priceView: IngredientPriceView = {
       cost,
       lineCost: effectiveLineCost(item.planned_grams, cost),
-      canEdit: customerOwnerUserId !== null && canPersistCustomerPrice(item.ingredient),
+      resetLabel: labelTopping ? 'Usuń moją cenę' : undefined,
+      canEdit: customerOwnerUserId !== null && (
+        labelTopping !== null || (engineTopping !== null && canPersistCustomerPrice(engineTopping))
+      ),
       onSave:
-        customerOwnerUserId && canonicalId
+        customerOwnerUserId && labelTopping
+          ? async (pricePerKg) => {
+              await savePrivateCatalogProductPrice({
+                catalogProductId: labelTopping.catalog_product_id,
+                pricePerKg,
+                currency: CUSTOMER_COST_CURRENCY,
+              });
+              replaceToppingIngredient(item.id, {
+                ...labelTopping,
+                cost_per_kg: pricePerKg,
+                cost_currency: CUSTOMER_COST_CURRENCY,
+              });
+              await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
+            }
+          : customerOwnerUserId && canonicalId
           ? async (pricePerKg) => {
               await saveCustomerPrice({
                 ownerUserId: customerOwnerUserId,
@@ -515,7 +572,17 @@ export function IngredientBuilder({
             }
           : undefined,
       onReset:
-        customerOwnerUserId && canonicalId
+        customerOwnerUserId && labelTopping
+          ? async () => {
+              await resetPrivateCatalogProductPrice(labelTopping.catalog_product_id);
+              replaceToppingIngredient(item.id, {
+                ...labelTopping,
+                cost_per_kg: null,
+                cost_currency: null,
+              });
+              await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
+            }
+          : customerOwnerUserId && canonicalId
           ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
           : undefined,
     };
@@ -525,11 +592,20 @@ export function IngredientBuilder({
         item={item}
         priceView={priceView}
         library={library}
+        behaviorContext={{
+          accountId: authUserId,
+          productProfile: behaviorProfile,
+          temperatureC: behaviorTemperatureC,
+          mode: behaviorMode,
+        }}
         canMoveUp={index > 0}
         canMoveDown={index < toppings.length - 1}
         onChange={(grams) => setToppingGrams(item.id, grams)}
         onRemove={() => removeTopping(item.id)}
-        onReplace={(ingredient) => replaceToppingIngredient(item.id, ingredient)}
+        onReplace={(ingredient, behavior) => {
+          replaceToppingIngredient(item.id, ingredient);
+          if (behavior) setProductBehaviorSnapshot(item.id, { ...behavior, lineId: item.id });
+        }}
         onMove={(direction) => {
           moveTopping(item.id, direction);
           setReorderNotice(
@@ -712,6 +788,12 @@ export function IngredientBuilder({
                         <ProductPickerPopover
                           library={library}
                           scope="POST_PROCESS_ADDON"
+                          behaviorContext={{
+                            accountId: authUserId,
+                            productProfile: behaviorProfile,
+                            temperatureC: behaviorTemperatureC,
+                            mode: behaviorMode,
+                          }}
                           onAdd={addOrFocusTopping}
                         />
                       </div>
@@ -765,6 +847,12 @@ export function IngredientBuilder({
           <ProductPickerPopover
             library={library}
             scope="POST_PROCESS_ADDON"
+            behaviorContext={{
+              accountId: authUserId,
+              productProfile: behaviorProfile,
+              temperatureC: behaviorTemperatureC,
+              mode: behaviorMode,
+            }}
             onAdd={addOrFocusTopping}
           />
         </div>

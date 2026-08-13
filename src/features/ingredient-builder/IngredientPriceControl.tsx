@@ -8,6 +8,7 @@ export interface IngredientPriceView {
   canEdit: boolean;
   onSave?: (pricePerKg: number) => Promise<void>;
   onReset?: () => Promise<void>;
+  resetLabel?: string;
 }
 
 const money = (value: number): string =>
@@ -108,7 +109,7 @@ export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
           onClick={() => void reset()}
           className="min-h-11 text-xs text-stone-600 underline decoration-stone-300 underline-offset-2 disabled:opacity-40"
         >
-          Przywróć cenę bazową
+          {view.resetLabel ?? 'Przywróć cenę bazową'}
         </button>
         <button
           type="button"

@@ -6,6 +6,11 @@ import type {
 } from '@/features/pro-core/costContracts';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
+  cloneToppingIngredient,
+  isCatalogLabelToppingIngredient,
+  type RecipeToppingIngredient,
+} from '@/features/recipe-composition/labelTopping';
+import {
   effectiveLineCost,
   isCustomerPriceCanonicalIngredientId,
   resolveEffectiveIngredientCost,
@@ -39,6 +44,25 @@ export function effectiveCostForIngredient(
     customerOverride: overrides[id] ?? null,
     targetCurrency: currency,
   });
+}
+
+export function effectiveCostForToppingIngredient(
+  ingredient: RecipeToppingIngredient,
+  overrides: CustomerPriceIndex,
+  currency = CUSTOMER_COST_CURRENCY,
+): EffectiveIngredientCost {
+  if (!isCatalogLabelToppingIngredient(ingredient)) {
+    return effectiveCostForIngredient(ingredient, overrides, currency);
+  }
+  return {
+    canonicalIngredientId: ingredient.canonical_ingredient_id,
+    pricePerKg: ingredient.cost_per_kg,
+    currency: ingredient.cost_currency ?? currency,
+    source: ingredient.cost_per_kg === null ? 'missing' : 'customer_override',
+    mapperPricePerKg: null,
+    customerOverridePerKg: ingredient.cost_per_kg,
+    overrideId: null,
+  };
 }
 
 /**
@@ -75,7 +99,17 @@ export function applyEffectiveCustomerPricesToToppings(
   currency = CUSTOMER_COST_CURRENCY,
 ): RecipeToppingItem[] {
   return toppings.map((item) => {
-    const effective = effectiveCostForIngredient(item.ingredient, overrides, currency);
+    const effective = effectiveCostForToppingIngredient(item.ingredient, overrides, currency);
+    if (isCatalogLabelToppingIngredient(item.ingredient)) {
+      return {
+        ...item,
+        ingredient: {
+          ...cloneToppingIngredient(item.ingredient),
+          cost_per_kg: effective.pricePerKg,
+          cost_currency: effective.pricePerKg === null ? null : effective.currency,
+        },
+      };
+    }
     return {
       ...item,
       ingredient: {

@@ -130,6 +130,7 @@ describe('Slice A routing contract', () => {
     expect(elementType('/machine')).toBe(MachineProfilePage);
     for (const path of [
       '/products',
+      '/products/scan',
       '/production',
       '/account',
       '/how-it-works',

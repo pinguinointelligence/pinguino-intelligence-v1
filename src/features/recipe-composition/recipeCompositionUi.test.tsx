@@ -12,7 +12,9 @@ import {
   IngredientBuilder,
 } from '@/features/ingredient-builder/IngredientBuilder';
 import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPickerPopover';
+import { productPickerUnavailableReason } from '@/features/ingredient-builder/productPickerModel';
 import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
+import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -119,5 +121,33 @@ describe('Base/Topping owner entry points', () => {
     expect(summary).not.toContain('Ilość netto produktu finalnego');
     expect(summary).toContain('finalProduct.finalMassG.toFixed(0)');
     expect(summary).toContain('summary-final-nutrition-cost');
+    expect(summary).toContain('<CatalogVerificationBadge');
+    const monitor = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
+    const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
+    expect(monitor).toContain('<CatalogVerificationBadge');
+    expect(production).toContain('production-completed-catalog-provenance');
+    expect(production).toContain('<CatalogVerificationBadge');
+  });
+
+  it('explains unavailable products for the selected scope and keeps the reason focusable', () => {
+    const hit: CatalogProductSearchHit = {
+      id: 'catalog-ml', entityKind: 'commercial_product', status: 'manual_unverified',
+      displayName: 'Sos', originalName: null, originalLanguage: null, brand: 'Marka',
+      canonicalFamily: null, category: null, mappedIngredientId: null,
+      markets: ['PL'], retailers: [], eans: [], aliases: [], favorite: false,
+      recentlyUsedAt: null, usableInBase: false, usableAsTopping: false,
+      missingFields: [],
+      invalidFields: ['nutrition_basis_per_100ml_requires_density_for_gram_topping'],
+      verificationMethod: 'manual_unverified', publicData: {},
+    };
+    expect(productPickerUnavailableReason('BASE_FORMULATION', hit)).toContain('PINGÜINO Base');
+    expect(productPickerUnavailableReason('POST_PROCESS_ADDON', hit)).toContain('100 ml');
+    expect(productPickerUnavailableReason('POST_PROCESS_ADDON', hit)).toContain('gęstość');
+    const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+    expect(picker).toContain('aria-disabled={!option.selectable}');
+    expect(picker).not.toMatch(/data-option-index=\{index\}\s+disabled=/);
+    expect(picker).toContain('data-testid="product-picker-unavailable-reason"');
+    expect(picker).toContain("? 'GREEN, zweryfikowany'");
+    expect(picker).toContain("? 'BLUE, manualny i niezweryfikowany'");
   });
 });

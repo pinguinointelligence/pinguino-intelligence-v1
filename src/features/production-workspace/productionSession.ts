@@ -1,5 +1,4 @@
 import type {
-  EffectiveRecipeItem,
   NutritionPer100g,
   RecipeCosts,
   RecipeInput,
@@ -10,7 +9,11 @@ import {
   recipeCompositionFromState,
   type RecipeCompositionMetadata,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
-import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
+import {
+  calculateFinalProduct,
+  type FinalProductItem,
+  type ProductLabelNutritionPer100g,
+} from '@/features/recipe-composition/finalProduct';
 
 export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
 
@@ -58,8 +61,9 @@ export interface ProductionCompletionSnapshot {
   finalActualInput: RecipeInput;
   finalResult: RecipeResult;
   finalProduct: {
-    items: EffectiveRecipeItem[];
+    items: FinalProductItem[];
     nutritionPer100g: NutritionPer100g | null;
+    labelNutritionPer100g: ProductLabelNutritionPer100g | null;
     costs: RecipeCosts | null;
     baseMassG: number;
     toppingMassG: number;
@@ -500,6 +504,7 @@ export function completeProductionSession(
     finalProduct: {
       items: finalProduct.finalItems,
       nutritionPer100g: finalProduct.finalNutritionPer100g,
+      labelNutritionPer100g: finalProduct.finalLabelNutritionPer100g,
       costs: finalProduct.finalCosts,
       baseMassG: finalProduct.baseMassG,
       toppingMassG: finalProduct.toppingMassG,

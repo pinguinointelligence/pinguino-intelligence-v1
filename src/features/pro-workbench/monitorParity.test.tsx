@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
 import { recipeContext } from '@/features/studio/buildRecipeInput';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
+import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 
 vi.mock('@/access/useAccess', () => ({
   useAccess: () => ({
@@ -159,7 +160,24 @@ describe('professional Monitor acceptance contract', () => {
   it('keeps topping facts collapsed and informational without changing Base metrics', () => {
     const input = starterMilkBase();
     const before = calculateRecipe(input);
-    const ingredient = input.items[0]!.ingredient;
+    const ingredient: CatalogLabelToppingIngredient = {
+      kind: 'catalog_label_topping',
+      id: 'catalog:sauce',
+      canonical_ingredient_id: 'catalog:sauce',
+      private_product_id: 'catalog:sauce:v1',
+      name: 'Sos owocowy',
+      catalog_product_id: 'sauce',
+      catalog_version_id: 'v1',
+      verification_status: 'manual_unverified',
+      label_nutrition_per_100g: {
+        basis: 'per_100g', energyKcal: 180, fat: 0.2, saturatedFat: null,
+        carbohydrate: 43, sugars: null, protein: 0.4, salt: 0.01, fibre: null,
+      },
+      ingredients_text: 'Owoce, cukier',
+      allergens_text: 'Brak deklaracji',
+      cost_per_kg: null,
+      cost_currency: null,
+    };
     const html = renderToStaticMarkup(
       <MonitorToppingSummary
         toppings={[{
@@ -173,6 +191,8 @@ describe('professional Monitor acceptance contract', () => {
     expect(visibleText(html)).toContain('Toppingi po produkcji');
     expect(visibleText(html)).toContain('Nie wpływają na bilans bazy.');
     expect(visibleText(html)).toContain('faktycznie 75 g');
+    expect(html).toContain('data-catalog-verification="manual_unverified"');
+    expect(visibleText(html)).toContain('Dodany manualnie');
     expect(html).not.toContain('open=""');
     const after = calculateRecipe(input);
     expect(after.pod_points).toBe(before.pod_points);
