@@ -95,10 +95,11 @@ describe('Unified Product Behavior Resolver', () => {
         },
       },
       'SAVE',
+      ['managed'],
     );
     expect(blocked.ready).toBe(false);
     expect(blocked.blockedLineIds).toEqual(['managed']);
-    expect(productBehaviorModuleGate({}, 'SAVE').ready).toBe(true);
+    expect(productBehaviorModuleGate({}, 'SAVE', []).ready).toBe(true);
   });
   it('returns one complete module matrix from one versioned binding', () => {
     const result = resolve();

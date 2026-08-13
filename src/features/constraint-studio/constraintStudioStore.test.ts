@@ -22,12 +22,67 @@ import {
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useConstraintStudioStore } from './constraintStudioStore';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
 const MILK = starterLine('milk_3_5');
 
-const loadRecipe = (input: RecipeInput) => useRecipeStore.getState().loadRecipeInput(input);
+const behaviorSnapshot = (
+  lineId: string,
+  mapperIngredientId: string,
+): ProductBehaviorSnapshot => ({
+  schemaVersion: 1,
+  lineId,
+  productId: `mapper:${mapperIngredientId}`,
+  productVersionId: `mapper:${mapperIngredientId}:version:1`,
+  source: 'mapper',
+  factsFingerprint: `facts:${mapperIngredientId}`,
+  behaviorBindingId: `binding:${mapperIngredientId}`,
+  behaviorBindingVersion: '1',
+  taxonomyVersion: 'test-v1',
+  familyId: `family:${mapperIngredientId}`,
+  subfamilyId: null,
+  formId: 'test-form',
+  verificationState: 'verified',
+  technicalAuthority: 'mapper_exact',
+  mapperIngredientId,
+  mainClassification: 'MAIN_ALLOWED',
+  mainPolicyId: `policy:${mapperIngredientId}`,
+  mainPolicyVersion: '1',
+  ecoFloorPercent: 0,
+  optimalCeilingPercent: 100,
+  hardLimitPercent: 100,
+  mainEquivalentFactor: 1,
+  mainBasis: 'PERCENT_OF_BASE',
+  requiresLiquidDairyCarrier: false,
+  liquidDairyCarrierFloorPercent: null,
+  approvedLiquidDairyCarrier: true,
+  approvedMixedFamilyIds: [],
+  moduleEligibility: {
+    BASE_RECIPE: 'eligible',
+    MAIN: 'eligible',
+    OPTIMAL: 'eligible',
+    ECO: 'eligible',
+    SAVE: 'eligible',
+    PRODUCTION: 'eligible',
+  },
+  processScope: 'BASE_FORMULATION',
+  resolverVersion: 'test-v1',
+  warnings: [],
+  blockReasons: [],
+});
+
+const loadRecipe = (input: RecipeInput) => {
+  useRecipeStore.getState().loadRecipeInput(input);
+  for (const item of useRecipeStore.getState().items) {
+    const mapperIngredientId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
+    useRecipeStore.getState().setProductBehaviorSnapshot(
+      item.id,
+      behaviorSnapshot(item.id, mapperIngredientId),
+    );
+  }
+};
 const recipeItems = () => useRecipeStore.getState().items;
 const lineGrams = (lineId: string): number => {
   const line = recipeItems().find((item) => item.id === lineId);

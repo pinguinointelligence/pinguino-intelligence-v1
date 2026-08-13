@@ -14,6 +14,10 @@ import {
   type FinalProductItem,
   type ProductLabelNutritionPer100g,
 } from '@/features/recipe-composition/finalProduct';
+import {
+  productBehaviorModuleGate,
+  productBehaviorRequiredLineIds,
+} from '@/features/product-intelligence';
 
 export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
 
@@ -154,6 +158,17 @@ export function productionSourceFingerprint(
     composition: composition
       ? {
           baseOrder: composition.baseOrder,
+          behaviorSnapshots: Object.entries(composition.behaviorSnapshots ?? {})
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([lineId, snapshot]) => ({
+              lineId,
+              productVersionId: snapshot.productVersionId,
+              factsFingerprint: snapshot.factsFingerprint,
+              behaviorBindingId: snapshot.behaviorBindingId,
+              behaviorBindingVersion: snapshot.behaviorBindingVersion,
+              taxonomyVersion: snapshot.taxonomyVersion,
+              resolverVersion: snapshot.resolverVersion,
+            })),
           toppings: composition.toppings.map((item) => ({
             lineId: item.id,
             ingredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
@@ -456,6 +471,17 @@ export function applyVerifiedRescueInput(
   const rescueAddedItems = candidate.items
     .filter((item) => !knownIds.has(item.id))
     .map((item) => ({ ...item, actual_grams: null }));
+  const requiredRescueIds = productBehaviorRequiredLineIds({ items: rescueAddedItems });
+  const rescueGate = productBehaviorModuleGate(
+    session.plannedComposition.behaviorSnapshots ?? {},
+    'PRODUCTION',
+    requiredRescueIds,
+  );
+  if (!rescueGate.ready) {
+    throw new Error(
+      rescueGate.reason ?? 'Production rescue requires verified product behavior.',
+    );
+  }
   const addedLines: ProductionLineState[] = rescueAddedItems.map((item) => ({
     lineId: item.id,
     canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,

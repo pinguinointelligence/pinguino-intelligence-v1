@@ -15,6 +15,7 @@ import type {
 } from '@/features/ingredient-builder/ingredientTableUx';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { selectCanonicalDraft, useConstraintStudioStore } from './constraintStudioStore';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 const strawberry: EngineIngredient = {
   ...findDemoIngredient('raspberry')!,
@@ -67,6 +68,53 @@ const candidateFor = (lineId: string): SubstituteCandidate => {
   return candidate!;
 };
 
+const behaviorSnapshot = (
+  lineId: string,
+  mapperIngredientId: string,
+  mainEligible = false,
+): ProductBehaviorSnapshot => ({
+  schemaVersion: 1,
+  lineId,
+  productId: `mapper:${mapperIngredientId}`,
+  productVersionId: `mapper:${mapperIngredientId}:version:1`,
+  source: 'mapper',
+  factsFingerprint: `facts:${mapperIngredientId}`,
+  behaviorBindingId: `binding:${mapperIngredientId}`,
+  behaviorBindingVersion: '1',
+  taxonomyVersion: 'test-v1',
+  familyId: mainEligible ? 'fruit' : null,
+  subfamilyId: null,
+  formId: mainEligible ? 'fresh' : null,
+  verificationState: 'verified',
+  technicalAuthority: 'mapper_exact',
+  mapperIngredientId,
+  mainClassification: mainEligible ? 'MAIN_PROFILE_SPECIFIC' : 'STANDARD_ONLY',
+  mainPolicyId: mainEligible ? 'test-fruit-main' : null,
+  mainPolicyVersion: mainEligible ? '1' : null,
+  ecoFloorPercent: mainEligible ? 10 : null,
+  optimalCeilingPercent: mainEligible ? 100 : null,
+  hardLimitPercent: mainEligible ? 100 : null,
+  mainEquivalentFactor: mainEligible ? 1 : null,
+  mainBasis: mainEligible ? 'FRUIT_EQUIVALENT' : null,
+  requiresLiquidDairyCarrier: false,
+  liquidDairyCarrierFloorPercent: null,
+  approvedLiquidDairyCarrier: !mainEligible,
+  approvedMixedFamilyIds: [],
+  moduleEligibility: {
+    BASE_RECIPE: 'eligible',
+    SUBSTITUTION: 'eligible',
+    MAIN: mainEligible ? 'eligible' : 'blocked',
+    OPTIMAL: 'eligible',
+    ECO: 'eligible',
+    SAVE: 'eligible',
+    PRODUCTION: 'eligible',
+  },
+  processScope: 'BASE_FORMULATION',
+  resolverVersion: 'test-v1',
+  warnings: [],
+  blockReasons: [],
+});
+
 const select = (lineId: string, candidate: SubstituteCandidate, confirmMain = false) =>
   useConstraintStudioStore
     .getState()
@@ -74,6 +122,11 @@ const select = (lineId: string, candidate: SubstituteCandidate, confirmMain = fa
       lineId,
       candidate.ingredient!,
       candidate.authorization!,
+      behaviorSnapshot(
+        lineId,
+        candidate.ingredient!.canonical_ingredient_id ?? candidate.ingredient!.id,
+        useRecipeStore.getState().items.find((item) => item.id === lineId)?.lock_type === 'main',
+      ),
       confirmMain,
     );
 
@@ -89,12 +142,23 @@ beforeEach(() => {
     cost_priority: 'balanced',
     direction_targets_active: false,
     items: [],
+    productBehaviorSnapshots: {},
     excludedIngredientIds: [],
     unavailableMainIngredientIds: [],
   });
   useConstraintStudioStore.getState().resetForTests();
   useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
   useRecipeStore.getState().addIngredient(strawberry, 350);
+  for (const item of useRecipeStore.getState().items) {
+    useRecipeStore.getState().setProductBehaviorSnapshot(
+      item.id,
+      behaviorSnapshot(
+        item.id,
+        item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+        item.ingredient.name.includes('STRAWBERRIES'),
+      ),
+    );
+  }
   useConstraintStudioStore.getState().createOptimizePreview();
   useConstraintStudioStore.getState().applyPreview();
   expect(useConstraintStudioStore.getState().blocked).toBeNull();
@@ -104,6 +168,8 @@ describe('normal recipe substitution → Preview → Apply', () => {
   it('keeps the active recipe unchanged before Apply, applies once, and Undo restores identity', () => {
     const line = useRecipeStore.getState().items.find((item) => item.lock_type !== 'main')!;
     const originalId = line.ingredient.canonical_ingredient_id ?? line.ingredient.id;
+    const originalBehaviorVersion =
+      useRecipeStore.getState().productBehaviorSnapshots[line.id]?.productVersionId;
     const candidate = candidateFor(line.id);
 
     select(line.id, candidate);
@@ -120,11 +186,17 @@ describe('normal recipe substitution → Preview → Apply', () => {
       useRecipeStore.getState().items.find((item) => item.id === line.id)?.ingredient
         .canonical_ingredient_id,
     ).toBe(candidate.id);
+    expect(
+      useRecipeStore.getState().productBehaviorSnapshots[line.id]?.mapperIngredientId,
+    ).toBe(candidate.id);
     useConstraintStudioStore.getState().undoLastApply();
     expect(
       useRecipeStore.getState().items.find((item) => item.id === line.id)?.ingredient
         .canonical_ingredient_id,
     ).toBe(originalId);
+    expect(
+      useRecipeStore.getState().productBehaviorSnapshots[line.id]?.productVersionId,
+    ).toBe(originalBehaviorVersion);
   });
 
   it('requires explicit Main identity consent and blocks a preview whose session consent is removed', () => {
@@ -194,5 +266,30 @@ describe('normal recipe substitution → Preview → Apply', () => {
       code: 'substitution_invalid',
       reasons: expect.arrayContaining(['candidate_authorization_mismatch']),
     });
+  });
+
+  it('rejects a forged replacement behavior snapshot at Apply', () => {
+    const line = useRecipeStore.getState().items.find((item) => item.lock_type !== 'main')!;
+    const candidate = candidateFor(line.id);
+    select(line.id, candidate);
+    const authorization = useConstraintStudioStore.getState().substitutionAuthorization;
+    expect(authorization).not.toBeNull();
+    useConstraintStudioStore.setState({
+      substitutionAuthorization: authorization
+        ? {
+            ...authorization,
+            productBehaviorSnapshot: {
+              ...authorization.productBehaviorSnapshot,
+              mapperIngredientId: line.ingredient.canonical_ingredient_id ?? line.ingredient.id,
+            },
+          }
+        : null,
+    });
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked?.code).toBe('main_identity_violated');
+    expect(
+      useRecipeStore.getState().items.find((item) => item.id === line.id)?.ingredient
+        .canonical_ingredient_id,
+    ).toBe(line.ingredient.canonical_ingredient_id);
   });
 });

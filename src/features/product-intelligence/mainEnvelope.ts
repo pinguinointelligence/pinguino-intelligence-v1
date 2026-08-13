@@ -1,6 +1,9 @@
 import type { RecipeInput } from '@/engine';
 import type { ProductBehaviorSnapshot } from './contracts';
-import { mainBehaviorBlockReason } from './productBehaviorAccess';
+import {
+  mainBehaviorBlockReason,
+  productBehaviorRequiredLineIds,
+} from './productBehaviorAccess';
 
 const EPSILON = 1e-7;
 
@@ -54,8 +57,9 @@ export function verifyMainEnvelope(input: {
     return { ok: true, equivalentPercent: null, targetPercent: null, hardLimitPercent: null, policyId: null };
   }
   const managed = mains.filter((item) => input.snapshots[item.id] !== undefined);
+  const requiredLineIds = new Set(productBehaviorRequiredLineIds({ items: input.recipe.items }));
   const missingRequired = mains.filter((item) =>
-    input.snapshots[item.id] === undefined && item.ingredient.private_product_id != null,
+    input.snapshots[item.id] === undefined && requiredLineIds.has(item.id),
   );
   if (missingRequired.length > 0) {
     return {

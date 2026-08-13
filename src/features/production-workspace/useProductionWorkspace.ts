@@ -22,7 +22,10 @@ import {
   practicalizeRecipeCandidate,
 } from '@/features/practical-recipe/practicalRecipe';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
-import { productBehaviorModuleGate } from '@/features/product-intelligence';
+import {
+  productBehaviorModuleGate,
+  productBehaviorRequiredLineIds,
+} from '@/features/product-intelligence';
 
 const newSessionId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -75,6 +78,10 @@ export function useProductionWorkspace(enabled: boolean) {
     const behaviorGate = productBehaviorModuleGate(
       recipe.productBehaviorSnapshots,
       'PRODUCTION',
+      productBehaviorRequiredLineIds({
+        items: recipe.items,
+        toppings: recipe.toppings,
+      }),
     );
     if (!behaviorGate.ready) {
       return {

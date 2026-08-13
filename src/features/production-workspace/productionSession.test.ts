@@ -10,6 +10,7 @@ import {
   correctRecordedPhysicalGrams,
   createProductionSession,
   productionProgress,
+  productionSourceFingerprint,
   toppingProductionProgress,
   productionStepForGrams,
   reopenProductionRecord,
@@ -17,6 +18,7 @@ import {
 } from './productionSession';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 function recipe(): RecipeInput {
   return {
@@ -46,6 +48,58 @@ function session() {
 }
 
 describe('production session physical-reality contract', () => {
+  it('binds the production source to immutable product behavior authority', () => {
+    const input = recipe();
+    const lineId = input.items[0]!.id;
+    const behavior = {
+      schemaVersion: 1,
+      lineId,
+      productId: 'product-1',
+      productVersionId: 'version-1',
+      source: 'mapper',
+      factsFingerprint: 'facts-1',
+      behaviorBindingId: 'binding-1',
+      behaviorBindingVersion: '1',
+      taxonomyVersion: 'taxonomy-1',
+      resolverVersion: 'resolver-1',
+    } as ProductBehaviorSnapshot;
+    const composition: RecipeCompositionMetadata = {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: input.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: { [lineId]: behavior },
+      migrationAmbiguities: [],
+    };
+    const first = productionSourceFingerprint(input, composition);
+    const second = productionSourceFingerprint(input, {
+      ...composition,
+      behaviorSnapshots: {
+        [lineId]: { ...behavior, behaviorBindingVersion: '2' },
+      },
+    });
+    expect(second).not.toBe(first);
+  });
+
+  it('rejects a rescue-added Mapper line without behavior authority', () => {
+    const run = session();
+    const candidate = buildProductionForecastInput(run);
+    candidate.items.push({
+      ...candidate.items[0]!,
+      id: 'rescue-mapper-line',
+      ingredient: {
+        ...candidate.items[0]!.ingredient,
+        id: 'PI-ING-rescue',
+        canonical_ingredient_id: 'PI-ING-rescue',
+        identity_provenance: 'mapper',
+      },
+      planned_grams: 1,
+      actual_grams: null,
+    });
+    expect(() => applyVerifiedRescueInput(run, candidate)).toThrow(
+      /Brak zatwierdzonego uprawnienia PRODUCTION/,
+    );
+  });
   it('uses persisted Base order for the operator without reordering Engine input', () => {
     const input = recipe();
     const reversed = input.items.map((item) => item.id).reverse();

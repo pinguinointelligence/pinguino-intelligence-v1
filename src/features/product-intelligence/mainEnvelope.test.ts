@@ -123,6 +123,39 @@ describe('versioned Main envelope', () => {
         violations: [{ code: 'main_behavior_missing', lineIds: ['berry'] }],
       });
   });
+
+  it('also blocks a legacy Mapper Main without a private product id', () => {
+    const input = recipe(350, 400);
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: {
+        ...input.items[0]!.ingredient,
+        private_product_id: undefined,
+        identity_provenance: 'mapper',
+      },
+    };
+    expect(verifyMainEnvelope({ recipe: input, snapshots: {}, mode: 'optimal' }))
+      .toMatchObject({
+        ok: false,
+        violations: [{ code: 'main_behavior_missing', lineIds: ['berry'] }],
+      });
+  });
+
+  it('blocks Preview when any applicable Mapper line lacks a snapshot', () => {
+    const input = recipe(300, 400);
+    input.items[1] = {
+      ...input.items[1]!,
+      ingredient: { ...input.items[1]!.ingredient, identity_provenance: 'mapper' },
+    };
+    expect(bindProductBehaviorToPreview(
+      buildBatchRescalePreview(input, { byLineId: {} }, 1100, '2026-08-12T00:00:00Z'),
+      { berry: snapshots().berry },
+    )).toMatchObject({
+      ok: false,
+      code: 'product_behavior_invalid',
+      violations: [{ code: 'product_behavior_missing', lineIds: ['milk'] }],
+    });
+  });
   it('applies the ordinary dairy carrier boundary at 299/300/301 g per kg', () => {
     expect(verifyMainEnvelope({ recipe: recipe(300, 299), snapshots: snapshots(), mode: 'optimal' })).toMatchObject({
       ok: false,

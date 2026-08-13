@@ -65,6 +65,7 @@ import {
 } from '@/features/recipe-composition/labelTopping';
 import {
   mainBehaviorBlockReason,
+  productBehaviorRequiredLineIds,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
 
@@ -235,6 +236,7 @@ export interface RecipeState {
    */
   applyVerifiedRecipeInput: (
     input: RecipeInput,
+    productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot>>,
   ) =>
     | { ok: true }
     | { ok: false; code: 'invalid_line'; lineName: string }
@@ -654,7 +656,7 @@ export const useRecipeStore = create<RecipeState>()(
           };
         }),
 
-      applyVerifiedRecipeInput: (input) => {
+      applyVerifiedRecipeInput: (input, productBehaviorSnapshots) => {
         // Phase 5 — reject missing/invalid amounts (never coerce to zero).
         const lineIds = new Set<string>();
         for (const item of input.items) {
@@ -708,21 +710,41 @@ export const useRecipeStore = create<RecipeState>()(
         );
         const nextToppings = priorToppings;
         const nextBaseOrder = orderedBaseItems(nextItems, priorBaseOrder).map((item) => item.id);
+        const nextLineIds = new Set([
+          ...nextItems.map((item) => item.id),
+          ...nextToppings.map((item) => item.id),
+        ]);
+        if (
+          productBehaviorSnapshots &&
+          Object.entries(productBehaviorSnapshots).some(
+            ([lineId, snapshot]) =>
+              !nextLineIds.has(lineId) ||
+              snapshot.lineId !== lineId ||
+              (nextItems.some((item) => item.id === lineId)
+                ? snapshot.processScope !== 'BASE_FORMULATION'
+                : snapshot.processScope !== 'POST_PROCESS_ADDON'),
+          )
+        ) {
+          return { ok: false, code: 'write_verification_failed' };
+        }
+        const nextProductBehaviorSnapshots = productBehaviorSnapshots
+          ? structuredClone(productBehaviorSnapshots)
+          : Object.fromEntries(
+              Object.entries(prior.productBehaviorSnapshots).filter(([lineId]) => {
+                const priorBase = prior.items.find((item) => item.id === lineId);
+                const nextBase = nextItems.find((item) => item.id === lineId);
+                if (priorBase && nextBase) {
+                  return canonicalIngredientId(priorBase.ingredient) ===
+                    canonicalIngredientId(nextBase.ingredient);
+                }
+                return nextToppings.some((item) => item.id === lineId);
+              }),
+            );
         set((state) => ({
           items: nextItems,
           baseOrder: nextBaseOrder,
           toppings: nextToppings,
-          productBehaviorSnapshots: Object.fromEntries(
-            Object.entries(state.productBehaviorSnapshots).filter(([lineId]) => {
-              const priorBase = state.items.find((item) => item.id === lineId);
-              const nextBase = nextItems.find((item) => item.id === lineId);
-              if (priorBase && nextBase) {
-                return canonicalIngredientId(priorBase.ingredient) ===
-                  canonicalIngredientId(nextBase.ingredient);
-              }
-              return nextToppings.some((item) => item.id === lineId);
-            }),
-          ),
+          productBehaviorSnapshots: nextProductBehaviorSnapshots,
           compositionMigrationAmbiguities: priorMigrationAmbiguities,
           target_batch_grams: input.target_batch_grams,
           dirty: true,
@@ -1269,7 +1291,12 @@ export const useRecipeStore = create<RecipeState>()(
 
       setMainIngredient: (lineId) =>
         set((state) => {
-          if (mainBehaviorBlockReason(state.productBehaviorSnapshots[lineId])) return {};
+          const snapshotRequired = productBehaviorRequiredLineIds({ items: state.items })
+            .includes(lineId);
+          if (mainBehaviorBlockReason(
+            state.productBehaviorSnapshots[lineId],
+            snapshotRequired,
+          )) return {};
           return {
             items: state.items.map((item) =>
               item.id === lineId ? { ...item, lock_type: 'main' } : item,

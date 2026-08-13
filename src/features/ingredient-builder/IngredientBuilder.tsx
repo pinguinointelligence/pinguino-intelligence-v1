@@ -59,8 +59,14 @@ import {
 } from '@/services/globalCatalog';
 import {
   mainBehaviorBlockReason,
+  productBehaviorRequiredLineIds,
+  snapshotServerResolvedProductBehavior,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
+import {
+  productBehaviorBlockedMessage,
+  resolveProductBehaviorForSelection,
+} from '@/services/productIntelligence';
 
 const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
@@ -244,16 +250,45 @@ export function IngredientBuilder({
       });
       return verifiedRecipeSubstituteCandidates(selectCanonicalDraft().input, lineId, catalogue);
     },
-    selectSubstitute: (lineId, candidate, mainIdentityConfirmed) => {
+    selectSubstitute: async (lineId, candidate, mainIdentityConfirmed) => {
       if (!candidate.ingredient || !candidate.authorization) return;
+      const currentLine = useRecipeStore.getState().items.find((item) => item.id === lineId);
+      if (!currentLine) return;
+      const resolved = await resolveProductBehaviorForSelection({
+        entity: { entityKind: 'mapper', entityId: candidate.id },
+        context: {
+          accountId: authUserId,
+          productProfile: behaviorProfile,
+          temperatureC: behaviorTemperatureC,
+          mode: behaviorMode,
+          processScope: 'BASE_FORMULATION',
+          requestedRole: currentLine.lock_type === 'main' ? 'MAIN' : 'STANDARD',
+          module: 'SUBSTITUTION',
+        },
+      }).catch(() => null);
+      if (!resolved) {
+        setPickerNotice('Nie udało się potwierdzić aktualnego zachowania zamiennika. Spróbuj ponownie.');
+        return;
+      }
+      if (resolved.state === 'blocked') {
+        setPickerNotice(productBehaviorBlockedMessage(resolved));
+        return;
+      }
+      const behavior = snapshotServerResolvedProductBehavior({
+        lineId,
+        processScope: 'BASE_FORMULATION',
+        resolved,
+      });
       useConstraintStudioStore
         .getState()
         .createSubstitutionPreview(
           lineId,
           candidate.ingredient,
           candidate.authorization,
+          behavior,
           mainIdentityConfirmed,
         );
+      setPickerNotice(null);
     },
     moveUp: (lineId) => {
       moveBaseItem(lineId, -1);
@@ -264,6 +299,11 @@ export function IngredientBuilder({
       setReorderNotice(baseReorderNotice(lineId, 'przesunięto niżej'));
     },
   };
+
+  const behaviorRequiredLineIds = new Set(productBehaviorRequiredLineIds({
+    items: useRecipeStore.getState().items,
+    toppings,
+  }));
 
   const offTarget = Math.abs(totalBatchG - targetBatchG) > 0.1;
 
@@ -425,7 +465,10 @@ export function IngredientBuilder({
           }
           setReorderNotice(baseReorderNotice(source, 'przeniesiono'));
         }}
-        mainUnavailableReason={mainBehaviorBlockReason(productBehaviorSnapshots[item.id])}
+        mainUnavailableReason={mainBehaviorBlockReason(
+          productBehaviorSnapshots[item.id],
+          behaviorRequiredLineIds.has(item.id),
+        )}
       />
     );
   });

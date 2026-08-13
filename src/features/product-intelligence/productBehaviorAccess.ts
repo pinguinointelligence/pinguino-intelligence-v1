@@ -14,7 +14,7 @@ export interface ProductBehaviorModuleGate {
 export function productBehaviorModuleGate(
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
   module: ProductBehaviorModule,
-  requiredLineIds: readonly string[] = [],
+  requiredLineIds: readonly string[],
 ): ProductBehaviorModuleGate {
   const missingLineIds = requiredLineIds.filter((lineId) => snapshots[lineId] === undefined);
   const blockedLineIds = [...new Set([
@@ -68,8 +68,13 @@ export function productBehaviorRequiredLineIds(input: {
 
 export function mainBehaviorBlockReason(
   snapshot: ProductBehaviorSnapshot | null | undefined,
+  snapshotRequired = false,
 ): string | null {
-  if (!snapshot) return null;
+  if (!snapshot) {
+    return snapshotRequired
+      ? 'Produkt wymaga ponownej walidacji przed ustawieniem jako Main.'
+      : null;
+  }
   if (snapshot.processScope !== 'BASE_FORMULATION') {
     return 'Topping nie może pełnić roli Main.';
   }

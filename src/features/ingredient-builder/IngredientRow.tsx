@@ -51,7 +51,7 @@ export interface IngredientRowActions {
     lineId: string,
     candidate: SubstituteCandidate,
     mainIdentityConfirmed: boolean,
-  ) => void;
+  ) => void | Promise<void>;
   /** Retained store capability; Recipe mode intentionally no longer calls it. */
   markIngredientUnavailable?: (lineId: string) => void;
   moveUp?: (lineId: string) => void;

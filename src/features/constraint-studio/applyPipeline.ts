@@ -113,6 +113,7 @@ import {
 import {
   mainEnvelopeSearchCeilingGrams,
   productBehaviorModuleGate,
+  productBehaviorRequiredLineIds,
   productBehaviorSnapshotFingerprint,
   verifyMainEnvelope,
   type MainEnvelopeViolation,
@@ -237,6 +238,8 @@ export interface SubstitutionSessionAuthorization {
   toCanonicalId: string;
   /** Exact in-memory authorization object returned with the fetched Mapper row. */
   mapperAuthorization: SubstituteAuthorization;
+  /** Server-resolved authority for the replacement, bound to this exact line. */
+  productBehaviorSnapshot: ProductBehaviorSnapshot;
 }
 
 /** Session-only consent for a native-safe candidate that misses a selected
@@ -504,6 +507,8 @@ export interface ConstraintPreview {
   baseFingerprint: string;
   /** Product/version/policy staleness guard, present for resolver-managed drafts. */
   productBehaviorFingerprint?: string;
+  /** Authority of the unchanged draft. Substitution has a different proposed fingerprint. */
+  baseProductBehaviorFingerprint?: string;
   /**
    * Owner P0 NIGHTLY (live FAILURE 1, Phase 3): the monotonic `draftRevision`
    * this preview was built for (stamped by the store). `commitPreview` rejects
@@ -4214,11 +4219,13 @@ export interface AppliedChangeRecord {
     input: RecipeInput;
     constraints: ConstraintSet;
     excludedIngredientIds: readonly string[];
+    productBehaviorSnapshots?: Record<string, ProductBehaviorSnapshot>;
   };
   after: {
     input: RecipeInput;
     constraints: ConstraintSet;
     excludedIngredientIds: readonly string[];
+    productBehaviorSnapshots?: Record<string, ProductBehaviorSnapshot>;
   };
   lines: PreviewLineDiff[];
   explanation: ConstraintExplanationEntry[];
@@ -4366,9 +4373,17 @@ function productBehaviorIdentityViolation(
 export function bindProductBehaviorToPreview(
   result: BuildPreviewResult,
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+  baseSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>> = snapshots,
 ): BuildPreviewResult {
   if (!result.ok) return result;
-  const moduleGate = productBehaviorModuleGate(snapshots, 'BASE_RECIPE');
+  const requiredLineIds = productBehaviorRequiredLineIds({
+    items: result.preview.proposedInput.items,
+  });
+  const moduleGate = productBehaviorModuleGate(
+    snapshots,
+    'BASE_RECIPE',
+    requiredLineIds,
+  );
   if (!moduleGate.ready) {
     return {
       ok: false,
@@ -4416,6 +4431,7 @@ export function bindProductBehaviorToPreview(
     };
   }
   result.preview.productBehaviorFingerprint = productBehaviorSnapshotFingerprint(snapshots);
+  result.preview.baseProductBehaviorFingerprint = productBehaviorSnapshotFingerprint(baseSnapshots);
   return result;
 }
 
@@ -4541,6 +4557,7 @@ export class VerifiedApply {
     readonly input: RecipeInput,
     readonly constraints: ConstraintSet,
     readonly record: AppliedChangeRecord,
+    readonly productBehaviorSnapshots: Record<string, ProductBehaviorSnapshot>,
   ) {}
 
   static commit(
@@ -4576,10 +4593,12 @@ export class VerifiedApply {
     if (workingStateFingerprint(current, currentConstraints) !== preview.baseFingerprint) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
+    const expectedBaseBehaviorFingerprint =
+      preview.baseProductBehaviorFingerprint ?? preview.productBehaviorFingerprint;
     if (
-      preview.productBehaviorFingerprint !== undefined &&
+      expectedBaseBehaviorFingerprint !== undefined &&
       productBehaviorSnapshotFingerprint(currentProductBehaviorSnapshots) !==
-        preview.productBehaviorFingerprint
+        expectedBaseBehaviorFingerprint
     ) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
@@ -5018,6 +5037,12 @@ export class VerifiedApply {
     // Re-derived from the current input and the actual payload; no preview flag
     // is trusted and every Preview/Apply route passes through this door.
     const substitution = preview.substitution;
+    let verifiedProductBehaviorSnapshots: Record<string, ProductBehaviorSnapshot> =
+      Object.fromEntries(
+        Object.entries(currentProductBehaviorSnapshots)
+          .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
+          .map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
+      );
     let mainIdentityBase = current;
     if (preview.kind === 'substitution') {
       const currentLine = substitution
@@ -5054,7 +5079,15 @@ export class VerifiedApply {
         substitutionAuthorization.mapperAuthorization.allergensFingerprint ===
           substitution.allergensFingerprint &&
         substitutionAuthorization.mapperAuthorization.veganEligibility ===
-          substitution.veganEligibility;
+          substitution.veganEligibility &&
+        substitutionAuthorization.productBehaviorSnapshot.lineId === substitution.lineId &&
+        substitutionAuthorization.productBehaviorSnapshot.processScope === 'BASE_FORMULATION' &&
+        substitutionAuthorization.productBehaviorSnapshot.mapperIngredientId ===
+          substitution.toCanonicalId &&
+        substitutionAuthorization.productBehaviorSnapshot.moduleEligibility.SUBSTITUTION ===
+          'eligible' &&
+        substitutionAuthorization.productBehaviorSnapshot.moduleEligibility.BASE_RECIPE ===
+          'eligible';
       if (!authorizationValid) {
         return {
           ok: false,
@@ -5064,6 +5097,12 @@ export class VerifiedApply {
           violations: [],
         };
       }
+      verifiedProductBehaviorSnapshots = {
+        ...verifiedProductBehaviorSnapshots,
+        [substitution.lineId]: structuredClone(
+          substitutionAuthorization.productBehaviorSnapshot,
+        ),
+      };
       if (substitution.changesMainIdentity) {
         const consentValid =
           substitutionConsent?.baseFingerprint === preview.baseFingerprint &&
@@ -5091,6 +5130,13 @@ export class VerifiedApply {
     } else if (substitution !== undefined) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
+    if (
+      preview.productBehaviorFingerprint !== undefined &&
+      productBehaviorSnapshotFingerprint(verifiedProductBehaviorSnapshots) !==
+        preview.productBehaviorFingerprint
+    ) {
+      return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+    }
     const mainIdentity = verifyMainIngredientIdentity(mainIdentityBase, preview.proposedInput);
     if (!mainIdentity.ok) {
       return {
@@ -5102,7 +5148,7 @@ export class VerifiedApply {
     }
     const mainEnvelope = verifyMainEnvelope({
       recipe: preview.proposedInput,
-      snapshots: currentProductBehaviorSnapshots,
+      snapshots: verifiedProductBehaviorSnapshots,
       mode: normalizeFormulationStrategy(
         current.goals?.formulation_strategy ?? current.mode,
       ),
@@ -5117,8 +5163,9 @@ export class VerifiedApply {
       };
     }
     const behaviorGate = productBehaviorModuleGate(
-      currentProductBehaviorSnapshots,
+      verifiedProductBehaviorSnapshots,
       'BASE_RECIPE',
+      productBehaviorRequiredLineIds({ items: preview.proposedInput.items }),
     );
     if (!behaviorGate.ready) {
       return {
@@ -5138,7 +5185,7 @@ export class VerifiedApply {
     }
     const identityViolation = productBehaviorIdentityViolation(
       preview.proposedInput,
-      currentProductBehaviorSnapshots,
+      verifiedProductBehaviorSnapshots,
     );
     if (identityViolation) {
       return {
@@ -5514,11 +5561,19 @@ export class VerifiedApply {
         input: structuredClone(current),
         constraints: currentConstraints,
         excludedIngredientIds: [...excludedIngredientIds],
+        productBehaviorSnapshots: structuredClone(
+          Object.fromEntries(
+            Object.entries(currentProductBehaviorSnapshots).filter(
+              (entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined,
+            ),
+          ),
+        ),
       },
       after: {
         input: structuredClone(preview.proposedInput),
         constraints: verifiedNextConstraints,
         excludedIngredientIds: [...excludedIngredientIds],
+        productBehaviorSnapshots: structuredClone(verifiedProductBehaviorSnapshots),
       },
       lines: preview.lines,
       explanation: preview.explanation,
@@ -5551,6 +5606,7 @@ export class VerifiedApply {
         structuredClone(preview.proposedInput),
         verifiedNextConstraints,
         record,
+        structuredClone(verifiedProductBehaviorSnapshots),
       ),
     };
   }

@@ -53,7 +53,7 @@ describe('constraint-studio boundary guard', () => {
         // batch recompute + read-back rollback); undo restores the exact
         // pipeline-captured snapshot via one direct setState.
         expect(writes.length, 'undo is the only direct recipe write').toBe(1);
-        expect(source).toContain('applyVerifiedRecipeInput(outcome.verified.input)');
+        expect(source).toContain('outcome.verified.productBehaviorSnapshots');
         expect(source).toContain('snapshot.items.map((item) => ({ ...item }))');
       } else {
         expect(writes.length, `unexpected recipe write in ${file}`).toBe(0);

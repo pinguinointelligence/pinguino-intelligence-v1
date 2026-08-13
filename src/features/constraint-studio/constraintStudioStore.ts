@@ -36,6 +36,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { EngineIngredient, LockType, RecipeInput, RecipeItem } from '@/engine';
 import type { SubstituteAuthorization } from '@/features/ingredient-builder/ingredientTableUx';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
   canonicalIngredientId,
@@ -357,6 +358,7 @@ export interface ConstraintStudioState {
     lineId: string,
     substitute: EngineIngredient,
     authorization: SubstituteAuthorization,
+    productBehaviorSnapshot: ProductBehaviorSnapshot,
     confirmMainIdentity: boolean,
   ) => void;
   cancelPreview: () => void;
@@ -756,7 +758,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         }
       },
 
-      createSubstitutionPreview: (lineId, substitute, authorization, confirmMainIdentity) => {
+      createSubstitutionPreview: (
+        lineId,
+        substitute,
+        authorization,
+        productBehaviorSnapshot,
+        confirmMainIdentity,
+      ) => {
         get().reconcile();
         const draft = selectCanonicalDraft();
         const currentLine = draft.input.items.find((item) => item.id === lineId);
@@ -779,6 +787,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           return;
         }
         const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const proposedSnapshots = {
+          ...snapshots,
+          [lineId]: { ...productBehaviorSnapshot, lineId },
+        };
         const result = bindProductBehaviorToPreview(buildSubstitutionPreview(
           draft.input,
           draft.constraints,
@@ -792,9 +804,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               (id) => id !== currentLine?.ingredient.canonical_ingredient_id,
             ),
             effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
-            productBehaviorSnapshots: snapshots,
+            productBehaviorSnapshots: proposedSnapshots,
           },
-        ), snapshots);
+        ), proposedSnapshots, snapshots);
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
           const proof = result.preview.substitution;
@@ -814,6 +826,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                 fromCanonicalId: proof.fromCanonicalId,
                 toCanonicalId: proof.toCanonicalId,
                 mapperAuthorization: authorization,
+                productBehaviorSnapshot: { ...productBehaviorSnapshot, lineId },
               }
             : null;
           set({
@@ -890,7 +903,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // (owner P0 Apply data integrity): per-line validation, independent batch
         // recompute, atomic write, read-back verification with rollback. A failed
         // write keeps the Preview available for retry and names the exact line.
-        const written = useRecipeStore.getState().applyVerifiedRecipeInput(outcome.verified.input);
+        const written = useRecipeStore.getState().applyVerifiedRecipeInput(
+          outcome.verified.input,
+          outcome.verified.productBehaviorSnapshots,
+        );
         if (!written.ok) {
           set({
             blocked: {
@@ -936,6 +952,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           // Owner P0 (complete Undo): exclusions return with the snapshot — no
           // stale excluded IDs survive, no page refresh is ever needed.
           excludedIngredientIds: [...last.before.excludedIngredientIds],
+          ...(last.before.productBehaviorSnapshots
+            ? { productBehaviorSnapshots: structuredClone(last.before.productBehaviorSnapshots) }
+            : {}),
           // Phase 3: the undo restore is itself a material edit (monotonic).
           draftRevision: state.draftRevision + 1,
         }));
