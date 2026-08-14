@@ -66,6 +66,14 @@ where is_active and approved_for_base;
 revoke all on public.mapper_basement_search from public,anon;
 grant select on public.mapper_basement_search to authenticated;
 
+-- Create indexes before the backfill below. Canonical product update triggers
+-- leave deferred events in this migration transaction, after which PostgreSQL
+-- correctly refuses CREATE INDEX on the affected table (SQLSTATE 55006).
+create index if not exists product_aliases_normalized_trgm_idx
+  on public.product_aliases using gin(normalized_alias extensions.gin_trgm_ops);
+create index if not exists products_search_document_trgm_idx
+  on public.products using gin(search_document extensions.gin_trgm_ops);
+
 -- Mapper aliases are governed catalogue data, not a frontend synonym table.
 -- Seed the accepted multilingual family vocabulary against the canonical
 -- mapper_reference products without changing mapper_basement itself.
@@ -124,11 +132,6 @@ set search_document=trim(concat_ws(' ',p.search_document,(
     ))),updated_at=now()
 where p.is_active and exists(select 1 from public.product_aliases a where a.product_id=p.id);
 select set_config('app.canonical_product_ingest','',true);
-
-create index if not exists product_aliases_normalized_trgm_idx
-  on public.product_aliases using gin(normalized_alias extensions.gin_trgm_ops);
-create index if not exists products_search_document_trgm_idx
-  on public.products using gin(search_document extensions.gin_trgm_ops);
 
 drop function if exists public.search_products_v1(text,text,text,text[],boolean,text,integer,integer);
 drop function if exists public.search_products_v1(text,text,text,text[],boolean,text,text,integer,integer);

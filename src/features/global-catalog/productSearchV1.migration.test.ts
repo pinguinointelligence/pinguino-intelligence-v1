@@ -60,7 +60,8 @@ describe('canonical product search v1', () => {
       'kcal_per_100g',
       'cost_per_kg',
       'currency',
-    ]) expect(migration).toContain(column);
+    ])
+      expect(migration).toContain(column);
   });
 
   it('does not erase PINGUINO Base rows through market, retailer or lowercase status filters', () => {
@@ -85,6 +86,15 @@ describe('canonical product search v1', () => {
     expect(migration).toContain('insert into public.product_aliases');
     expect(migration).toContain('where a.product_id=p.id');
     expect(migration).toContain('select a.normalized_alias from public.product_aliases');
+  });
+
+  it('creates search indexes before trigger-producing canonical backfills', () => {
+    const productsIndex = migration.indexOf(
+      'create index if not exists products_search_document_trgm_idx',
+    );
+    const canonicalBackfill = migration.indexOf('update public.products p');
+    expect(productsIndex).toBeGreaterThan(0);
+    expect(canonicalBackfill).toBeGreaterThan(productsIndex);
   });
 
   it('makes search the only picker authority while preserving selection-time behavior resolution', () => {
@@ -124,21 +134,28 @@ describe('canonical product search v1', () => {
     expect(migration).toContain("'label_facts'");
     expect(migration).toContain("'package_image_near_exact'");
     expect(migration).toContain('global_catalog_phash_distance');
-    expect(migration).toContain('grant execute on function public.preview_product_duplicates_v1(jsonb) to authenticated');
+    expect(migration).toContain(
+      'grant execute on function public.preview_product_duplicates_v1(jsonb) to authenticated',
+    );
     expect(service).toContain("supabase.rpc('preview_product_duplicates_v1'");
   });
 
   it('resolves legacy Mapper, product, version, binding and normalized identities through one server adapter', () => {
     expect(migration).toContain('resolve_legacy_recipe_behavior_v1');
     for (const key of [
-      'behaviorBindingId', 'productVersionId', 'productId',
-      'mapperIngredientId', 'canonicalIdentity', 'normalizedIdentity',
-    ]) expect(migration).toContain(key);
+      'behaviorBindingId',
+      'productVersionId',
+      'productId',
+      'mapperIngredientId',
+      'canonicalIdentity',
+      'normalizedIdentity',
+    ])
+      expect(migration).toContain(key);
     expect(migration).toContain('b.is_current and p.current_behavior_binding_id=b.id');
     expect(migration).toContain('if v_entity_id is null');
     expect(migration).not.toContain("elsif coalesce(p_reference->>'productVersionId'");
     expect(migration).toContain('return public.resolve_product_behavior_v1');
-    expect(migration).toContain("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
-    expect(migration).not.toContain("^[0-9a-f-]{36}$");
+    expect(migration).toContain('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+    expect(migration).not.toContain('^[0-9a-f-]{36}$');
   });
 });
