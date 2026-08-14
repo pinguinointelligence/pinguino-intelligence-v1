@@ -35,7 +35,7 @@ function relevanceFor(hit: CatalogProductSearchHit, query: string, context: Cata
   return Math.max(0, score);
 }
 
-function groupFor(hit: CatalogProductSearchHit, preferences: CatalogMarketPreferences): RankedCatalogHit['group'] {
+export function catalogGroupFor(hit: CatalogProductSearchHit, preferences: CatalogMarketPreferences): RankedCatalogHit['group'] {
   if (hit.status === 'blocked') return 'blocked';
   if (hit.favorite || hit.recentlyUsedAt) return 'favorites_recent';
   if (hit.entityKind === 'pi_base') return 'pi_base';
@@ -43,6 +43,20 @@ function groupFor(hit: CatalogProductSearchHit, preferences: CatalogMarketPrefer
   if (hit.status === 'verified' && hit.markets.some((market) => markets.has(market))) return 'verified_markets';
   if (hit.status === 'manual_unverified') return 'manual';
   return 'global';
+}
+
+/** The server RPC is the relevance authority. This presentation adapter only
+ * attaches headings and preserves the exact server order; it never drops or
+ * re-ranks multilingual/typo hits. */
+export function preserveServerProductRank(
+  hits: readonly CatalogProductSearchHit[],
+  preferences: CatalogMarketPreferences,
+): RankedCatalogHit[] {
+  return hits.map((hit) => ({
+    ...hit,
+    relevance: hit.relevance ?? 0,
+    group: catalogGroupFor(hit, preferences),
+  }));
 }
 
 export function rankCatalogHits(input: {
@@ -64,9 +78,11 @@ export function rankCatalogHits(input: {
     hit.retailers.some((retailer) => input.preferences.preferredRetailers.includes(retailer)) ? 1 : 0;
   return input.hits
     .filter((hit) => !input.favoritesOnly || hit.favorite)
-    .filter((hit) => selected.size === 0 || hit.markets.some((market) => selected.has(market)))
+    // PINGÜINO Base references are global scientific identities. They never
+    // disappear because an account selected a commercial market.
+    .filter((hit) => hit.entityKind === 'pi_base' || selected.size === 0 || hit.markets.some((market) => selected.has(market)))
     .filter((hit) => !input.retailer || hit.retailers.includes(input.retailer))
-    .map((hit) => ({ ...hit, relevance: relevanceFor(hit, input.query, input.context), group: groupFor(hit, input.preferences) }))
+    .map((hit) => ({ ...hit, relevance: relevanceFor(hit, input.query, input.context), group: catalogGroupFor(hit, input.preferences) }))
     .filter((hit) => hit.relevance > 0)
     .sort((a, b) =>
       b.relevance - a.relevance ||

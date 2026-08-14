@@ -53,6 +53,7 @@ import {
 // The live-catalogue backend adapter (sanctioned service layer — the only IO here).
 import {
   fetchIngredientEngineValues,
+  searchCanonicalMapperIngredients,
   searchMapperIngredients,
   MAPPER_SEARCH_DEFAULT_LIMIT,
 } from '@/services/productPicker/mapperSearch';
@@ -130,12 +131,14 @@ export interface IngredientResolutionController {
  */
 export interface LiveCatalogueDeps {
   searchIngredients: typeof searchMapperIngredients;
+  searchAuthenticatedIngredients?: typeof searchMapperIngredients;
   fetchEngineValues: typeof fetchIngredientEngineValues;
   debounceMs?: number;
 }
 
 const DEFAULT_LIVE_DEPS: LiveCatalogueDeps = {
   searchIngredients: searchMapperIngredients,
+  searchAuthenticatedIngredients: searchCanonicalMapperIngredients,
   fetchEngineValues: fetchIngredientEngineValues,
 };
 
@@ -236,11 +239,13 @@ export function useIngredientResolution(
       searchAbortRef.current?.abort();
       const controller = new AbortController();
       searchAbortRef.current = controller;
-      void liveDeps
-        .searchIngredients({ text, limit: MAPPER_SEARCH_DEFAULT_LIMIT, offset, signal: controller.signal })
+      const search = access.authenticated
+        ? (liveDeps.searchAuthenticatedIngredients ?? liveDeps.searchIngredients)
+        : liveDeps.searchIngredients;
+      void search({ text, limit: MAPPER_SEARCH_DEFAULT_LIMIT, offset, signal: controller.signal })
         .then((outcome) => setLiveSearch((s) => liveSearchSettled(s, id, outcome, mode)));
     },
-    [liveDeps],
+    [access.authenticated, liveDeps],
   );
 
   // A blank box still searches something honest: the requirement line's own name

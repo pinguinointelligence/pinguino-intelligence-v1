@@ -30,7 +30,11 @@ import {
   isAllLocked,
   type RecalcDiagnosis,
 } from '@/features/constraint-studio/recalcDiagnosis';
-import { previewIssueMessagePl } from '@/features/constraint-studio/previewIssueMessage';
+import {
+  customerOptimizerNoSolutionPl,
+  customerPreviewIssueMessagePl,
+  customerStopReasonPl,
+} from '@/features/constraint-studio/customerConstraintStudioPresentation';
 import { BlockedApplyNotice } from '@/features/constraint-studio/ui/BlockedApplyNotice';
 import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import type { RecipeInput } from '@/engine';
@@ -74,10 +78,10 @@ function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): stri
       const labels = (diagnosis.violatedMetrics ?? []).map(
         (metric) => d.metricLabels[metric] ?? metric,
       );
-      return d.optimizerNoSolution(labels, diagnosis.solverInvocations ?? 0);
+      return customerOptimizerNoSolutionPl(labels);
     }
     default:
-      return previewIssueMessagePl(issue);
+      return customerPreviewIssueMessagePl(issue);
   }
 }
 
@@ -107,19 +111,12 @@ function BestSafeResultView({
         {softLabels.length > 0 ? b.softDeviations(softLabels) : b.noSoftDeviations}
       </p>
       <p className="text-xs leading-relaxed text-ivory/60">
-        {b.stopReason[issue.stopReason](issue.solverInvocations)}
+        {customerStopReasonPl(issue.stopReason)}
       </p>
       {/* Owner CURRENT-DRAFT P0 (Phase 4): the REAL evidence behind the stop —
           what was searched, over which of the user's own ingredients, across
           which gram range, and which metrics are still limiting. */}
       <div className="space-y-1" data-testid="pro-recalc-best-safe-evidence">
-        <p className="text-xs leading-relaxed text-ivory/60">
-          {b.evidenceSearch(
-            issue.evidence.iterations,
-            issue.evidence.draftVectorSearches,
-            issue.evidence.testedCandidates.length,
-          )}
-        </p>
         {issue.evidence.testedCandidates.map((candidate) => (
           <p
             key={candidate.ingredientName}
@@ -171,7 +168,7 @@ function RecalcDiagnosisView({
   if (issue.code === 'already_clean') {
     return (
       <p className="text-sm leading-relaxed text-ivory/70" data-testid="pro-recalc-issue">
-        {previewIssueMessagePl(issue)}
+        {customerPreviewIssueMessagePl(issue)}
       </p>
     );
   }
@@ -189,6 +186,8 @@ function RecalcDiagnosisView({
   // constraint + engine-verified nearest feasible value) the same way.
   if (
     issue.code === 'unsupported_profile' ||
+    issue.code === 'practicalization_blocked' ||
+    issue.code === 'missing_prices' ||
     issue.code === 'missing_required_role' ||
     issue.code === 'vegan_ingredient_conflict' ||
     issue.code === 'vegan_profile_constraint' ||
@@ -196,7 +195,7 @@ function RecalcDiagnosisView({
   ) {
     return (
       <div className="space-y-2" data-testid="pro-recalc-diagnosis" data-code={issue.code}>
-        <p className="text-sm leading-relaxed text-ivory/85">{previewIssueMessagePl(issue)}</p>
+        <p className="text-sm leading-relaxed text-ivory/85">{customerPreviewIssueMessagePl(issue)}</p>
         <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
           {d.unchanged}
         </p>
@@ -368,6 +367,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const history = useConstraintStudioStore((s) => s.history);
+  const recalculationTerminal = useConstraintStudioStore((s) => s.recalculationTerminal);
   const constraints = useConstraintStudioStore((s) => s.constraints);
   // Actions are stable references — reading them once via getState is safe.
   const store = useConstraintStudioStore.getState();
@@ -457,7 +457,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
             <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} />
           ) : null}
 
-          {previewIssue ? (
+          {previewIssue && recalculationTerminal ? (
             <RecalcDiagnosisView
               issue={previewIssue}
               input={currentInput}
@@ -466,7 +466,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
             />
           ) : null}
 
-          {directionBestCandidate ? (
+          {directionBestCandidate && recalculationTerminal?.state === 'PREVIEW_READY' ? (
             <DirectionBestDecision
               candidate={directionBestCandidate}
               onAccept={store.acceptBestDirectionCandidate}
@@ -477,7 +477,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
             />
           ) : null}
 
-          {preview ? (
+          {preview && recalculationTerminal?.state === 'PREVIEW_READY' ? (
             <ConstraintPreviewCard
               preview={preview}
               onApply={() => {
@@ -496,7 +496,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
             />
           ) : null}
 
-          {!preview && undoAvailable ? (
+          {!preview && recalculationTerminal === null && undoAvailable ? (
             <div className="space-y-2" data-testid="pro-recalc-applied">
               <p className="text-sm leading-relaxed text-ivory/80">{r.applied}</p>
               <button

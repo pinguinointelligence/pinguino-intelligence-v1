@@ -268,6 +268,9 @@ export const constraintStudioCopy = {
   previewIssue: {
     /* Owner P0 (Przelicz z PI) — the exact required already-balanced sentence. */
     alreadyClean: 'Receptura znajduje się już w zatwierdzonym zakresie. PI nie proponuje zmian.',
+    missingPrices: (names: readonly string[]) =>
+      `Tryb ECO wymaga ceny dla każdego składnika. Uzupełnij ceny: ${names.join(', ')}. ` +
+      'Receptura nie została zmieniona.',
     noProposal:
       'Solver nie znalazł korekty możliwej przy obecnych blokadach. Użyj „Sprawdź wykonalność ' +
       'blokad”, aby zobaczyć konkretną przyczynę.',

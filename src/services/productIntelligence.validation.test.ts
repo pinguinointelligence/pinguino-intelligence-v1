@@ -297,5 +297,12 @@ describe('recipe behavior server validation', () => {
     expect(save).toContain("module: 'SAVE'");
     expect(production).toContain("module: 'PRODUCTION'");
     expect(production).toContain("module: 'BATCH_RESCUE'");
+    expect(studio.indexOf('markRecalculationRequired()')).toBeLessThan(
+      studio.indexOf('await currentBaseAuthorityReady'),
+    );
+    expect(studio).toContain('recipe_changed_during_validation:');
+    expect(studio).toContain('Uruchom przeliczenie ponownie dla bieżącej receptury.');
+    expect(studio).toContain('catalog_version_identity_mismatch:');
+    expect(studio).toContain('mapper_entity_identity_mismatch:');
   });
 });

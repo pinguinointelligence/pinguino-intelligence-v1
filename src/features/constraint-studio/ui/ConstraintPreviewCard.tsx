@@ -11,6 +11,10 @@ import {
   formatGramsPl,
 } from '../constraintStudioCopy';
 import {
+  customerFormulationSourcePl,
+  customerSolverSourcePl,
+} from '../customerConstraintStudioPresentation';
+import {
   findCanonicalDuplicateIngredients,
   plannedSum,
   type ConstraintPreview,
@@ -433,10 +437,7 @@ export function ConstraintPreviewCard({
           <p className="text-[0.65rem] text-ivory/60" data-testid="preview-source">
             {/* Owner P0 NIGHTLY Phase 6: name the template-seeded fallback honestly. */}
             {preview.formulation.localFallback ? `${copy.preview.localFallbackNote} ` : ''}
-            {copy.preview.sourceFormulation(
-              preview.formulation.templateId,
-              preview.autoBalance?.solverRounds ?? 0,
-            )}
+            {customerFormulationSourcePl(preview.formulation.templateId)}
             {preview.formulation.templateStatus === 'reference_derived'
               ? ` ${copy.preview.referenceDerivedNote}`
               : ''}
@@ -452,7 +453,7 @@ export function ConstraintPreviewCard({
         ) : preview.autoBalance ? (
           <p className="text-[0.65rem] text-ivory/60" data-testid="preview-source">
             {preview.autoBalance.solverRounds > 0
-              ? copy.preview.sourceSolver(preview.autoBalance.solverRounds)
+              ? customerSolverSourcePl
               : copy.preview.sourceBatchRescale}
           </p>
         ) : null}

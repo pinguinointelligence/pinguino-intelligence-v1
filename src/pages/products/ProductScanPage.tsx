@@ -3,7 +3,15 @@ import { Link } from 'react-router';
 import { TesseractOcrProvider } from '@/features/ocr-intake/provider/tesseractProvider';
 import { extractEvidence } from '@/features/ocr-intake/evidenceExtractor';
 import { toEvidenceSources } from '@/features/ocr-intake/ui/intakeWiring';
-import { EvidenceReviewPanel } from '@/features/ocr-intake/ui/EvidenceReviewPanel';
+import { CustomerOcrSummary } from '@/features/ocr-intake/ui/CustomerOcrSummary';
+import {
+  customerDuplicateChoices,
+  customerDuplicateDecisionCopy,
+} from '@/features/ocr-intake/ui/customerDuplicateChoices';
+import {
+  customerOcrMissingActions,
+  settleCustomerReview,
+} from '@/features/ocr-intake/ui/customerOcrReviewPolicy';
 import {
   addImage,
   beginExtraction,
@@ -23,10 +31,12 @@ import {
   buildSessionCandidate,
   type DuplicateResolutionAction,
 } from '@/features/ocr-intake/session/saveFlow';
-import { validateLabelImage } from '@/features/ocr-intake/ocrEngine';
+import { browserPerceptualHash } from '@/features/ocr-intake/imagePerceptualHash';
+import { prepareEvidenceImage } from '@/features/ocr-intake/prepareEvidenceImage';
 import {
   completeSavedOcrProductAndRetryCatalog,
   persistSessionAndSave,
+  previewOcrDuplicateCandidates,
   retryGlobalCatalogContribution,
   type PersistSessionResult,
 } from '@/services/ocrIntakePersistence';
@@ -40,6 +50,7 @@ import type {
   ProductIntakeSession,
 } from '@/features/ocr-intake/intakeContracts';
 import { CatalogRiskChallenge } from '@/features/global-catalog/CatalogRiskChallenge';
+import type { DuplicateCandidate } from '@/features/global-catalog/contracts';
 import {
   duplicateFactDifferences,
   duplicateSimilarityPercent,
@@ -72,9 +83,6 @@ const sha256 = async (bytes: Uint8Array): Promise<string> => {
     .join('');
 };
 
-const acceptedMime = (value: string): value is AcceptedMime =>
-  value === 'image/png' || value === 'image/jpeg' || value === 'image/webp';
-
 const MISSING_FIELD_LABELS: Record<string, string> = {
   product_name: 'czytelna nazwa produktu',
   product_identity: 'czytelna nazwa produktu',
@@ -104,6 +112,34 @@ const MISSING_FIELD_LABELS: Record<string, string> = {
 
 const missingFieldLabel = (value: string): string =>
   MISSING_FIELD_LABELS[value] ?? value.replaceAll('_', ' ');
+
+function sessionForConfirmedExistingProduct(
+  session: ProductIntakeSession,
+  duplicate: DuplicateCandidate,
+): ProductIntakeSession {
+  let next = session;
+  // The new scan remains evidence, not a fact update. Do not force the customer
+  // to confirm low-confidence optional OCR values before choosing an existing
+  // canonical product; mark those unresolved observations honestly unknown.
+  for (const field of next.fields) {
+    if (
+      field.reviewStatus === 'needs_confirmation' ||
+      field.reviewStatus === 'conflict_unresolved'
+    ) {
+      next = markFieldUnknown(next, field.fieldKey);
+    }
+  }
+  const existingName = next.fields.find((field) => field.fieldKey === 'product_name');
+  if (duplicate.displayName && existingName) {
+    next = editFieldValue(next, 'product_name', duplicate.displayName);
+  }
+  const existingBrand = next.fields.find((field) => field.fieldKey === 'brand');
+  if (duplicate.brand && existingBrand) {
+    next = editFieldValue(next, 'brand', duplicate.brand);
+  }
+  if (duplicate.ean) next = setManualEan(next, duplicate.ean);
+  return next;
+}
 
 function statusCopy(result: PersistSessionResult): { title: string; detail: string; tone: string } {
   const shared = result.globalCatalogContribution;
@@ -206,6 +242,12 @@ export function ProductScanPage() {
   const [explicitlyUnbranded, setExplicitlyUnbranded] = useState(false);
   const [duplicateDifference, setDuplicateDifference] = useState('');
   const [selectedDuplicateProductId, setSelectedDuplicateProductId] = useState<string | null>(null);
+  const [duplicatePreview, setDuplicatePreview] = useState<DuplicateCandidate[]>([]);
+  const selectedDuplicate =
+    duplicatePreview.find((candidate) => candidate.productId === selectedDuplicateProductId) ??
+    null;
+  const hasExactDuplicate = duplicatePreview.some((candidate) => candidate.strength === 'exact');
+  const displayedDuplicatePreview = customerDuplicateChoices(duplicatePreview);
   const busy = progress !== null;
   const unresolved = useMemo(
     () =>
@@ -216,6 +258,11 @@ export function ProductScanPage() {
       ).length ?? 0,
     [session],
   );
+  const missingActions = useMemo(
+    () => (session ? customerOcrMissingActions(session, { explicitlyUnbranded }) : []),
+    [explicitlyUnbranded, session],
+  );
+  const identityMissing = missingActions.some((action) => action.blocksSave);
   const currentScan = useMemo(() => {
     if (!session) return null;
     const { candidate } = buildSessionCandidate(session, { explicitlyUnbranded });
@@ -227,25 +274,26 @@ export function ProductScanPage() {
       market: scanMarket.trim() || null,
     } satisfies DuplicateComparisonFacts;
   }, [explicitlyUnbranded, scanMarket, session]);
-
-  const addFiles = (files: FileList | null) => {
+  const localDuplicateCopy = customerDuplicateDecisionCopy(
+    duplicate?.verdict === 'exact_duplicate',
+  );
+  const addFiles = async (files: FileList | null) => {
     if (!files) return;
     setError(null);
     const next: PendingImage[] = [];
-    for (const file of Array.from(files).slice(0, 10 - pending.length)) {
-      const validation = validateLabelImage({
-        filename: file.name,
-        mime: file.type || null,
-        sizeBytes: file.size,
-      });
-      if (!validation.ok || !acceptedMime(file.type)) {
-        setError(validation.reason ?? `Nieobsługiwany format: ${file.name}`);
+    for (const suppliedFile of Array.from(files).slice(0, 10 - pending.length)) {
+      const prepared = await prepareEvidenceImage(suppliedFile);
+      if (!prepared.ok) {
+        setError(prepared.reason);
         continue;
       }
+      const { file } = prepared;
       next.push({
         id: crypto.randomUUID(),
         file,
-        role: pending.length + next.length === 0 ? 'front' : 'other',
+        // A first upload is not evidence of the front-of-pack. The customer must
+        // identify the photo role; legal/back copy must never nominate a product name.
+        role: 'other',
       });
     }
     setPending((current) => [...current, ...next]);
@@ -256,6 +304,7 @@ export function ProductScanPage() {
     setError(null);
     setResult(null);
     setDuplicate(null);
+    setDuplicatePreview([]);
     setProgress('Przygotowuję zdjęcia…');
     try {
       let next = createIntakeSession(crypto.randomUUID());
@@ -275,18 +324,31 @@ export function ProductScanPage() {
       next = beginExtraction(next);
       for (let index = 0; index < next.images.length; index += 1) {
         const image = next.images[index]!;
-        setProgress(`OCR ${index + 1}/${next.images.length}: ${image.fileName}`);
+        setProgress('Analizujemy produkt');
         next = beginImageAnalysis(next, image.imageId);
         const outcome = await providerRef.current.recognize({
           imageId: image.imageId,
           bytes: bytesRef.current.get(image.imageId)!,
           mime: image.mime,
-          languages: ['pol', 'eng', 'spa', 'deu', 'ita'],
+          languages: ['pol', 'eng', 'spa', 'deu', 'fra', 'ita'],
         });
         next = completeImageAnalysis(next, image.imageId, outcome);
       }
       next = extractSessionFields(next, (runs, images) =>
         extractEvidence(toEvidenceSources(runs, images)),
+      );
+      next = settleCustomerReview(next);
+      const imagePhashes = (
+        await Promise.all(pending.map((item) => browserPerceptualHash(item.file)))
+      ).filter((hash): hash is string => hash !== null);
+      const previews = await previewOcrDuplicateCandidates(next, {
+        explicitlyUnbranded,
+        imagePhashes,
+      });
+      setDuplicatePreview(previews);
+      setSelectedDuplicateProductId(
+        (previews.find((candidate) => candidate.strength === 'exact') ?? previews[0])?.productId ??
+          null,
       );
       setSession(next);
     } catch (caught) {
@@ -299,39 +361,44 @@ export function ProductScanPage() {
   const update = (fn: (value: ProductIntakeSession) => ProductIntakeSession) =>
     setSession((current) => (current ? fn(current) : current));
 
-  const resolveStraightforward = () =>
-    update((current) => {
-      let next = current;
-      for (const field of next.fields) {
-        if (field.reviewStatus !== 'needs_confirmation') continue;
-        const hasValue = field.candidates.some((candidate) => candidate.normalized !== null);
-        next = hasValue
-          ? confirmFieldReview(next, field.fieldKey)
-          : markFieldUnknown(next, field.fieldKey);
-      }
-      return next;
-    });
-
-  const persist = async (resolution?: DuplicateResolutionAction) => {
+  const persist = async (
+    resolution?: DuplicateResolutionAction,
+    canonicalDuplicateDecision?: 'same' | 'different',
+  ) => {
     if (!session || busy) return;
     setError(null);
     setProgress('Sprawdzam duplikaty i zapisuję…');
     try {
-      const ready = markReadyToSave(session);
+      const reviewed =
+        resolution === 'open_existing' && selectedDuplicate
+          ? sessionForConfirmedExistingProduct(session, selectedDuplicate)
+          : session;
+      const ready = markReadyToSave(reviewed);
       const owned = existing.length > 0 ? existing : await listMyProducts();
       if (existing.length === 0) setExisting(owned);
+      const duplicateRows = [
+        ...owned,
+        ...duplicatePreview.map((candidate) => ({
+          id: candidate.productId,
+          product_name_display: candidate.displayName ?? null,
+          brand: candidate.brand ?? null,
+          package_size: candidate.netQuantity ?? null,
+          ean_code: candidate.ean ?? null,
+        })),
+      ];
       const candidate = buildSessionCandidate(ready, { explicitlyUnbranded }).candidate;
       const assessment = assessDuplicate(
         { insert: candidate.insert, manualEan: ready.manualEan },
-        owned,
+        duplicateRows,
       );
       if (assessment.verdict !== 'new_product' && !resolution) {
         setDuplicate(assessment);
         setSelectedDuplicateProductId(assessment.reasons[0]?.existingProductId ?? null);
         return;
       }
-      const saved = await persistSessionAndSave(ready, bytesRef.current, owned, {
+      const saved = await persistSessionAndSave(ready, bytesRef.current, duplicateRows, {
         resolution,
+        canonicalDuplicateDecision: canonicalDuplicateDecision ?? null,
         duplicateProductId: selectedDuplicateProductId,
         explicitlyUnbranded,
         market: scanMarket.trim() || null,
@@ -344,6 +411,7 @@ export function ProductScanPage() {
         saved.globalCatalogContribution?.duplicateCandidates[0]?.productId ?? null,
       );
       setDuplicate(null);
+      setDuplicatePreview([]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać produktu.');
     } finally {
@@ -434,7 +502,7 @@ export function ProductScanPage() {
         ← Produkty
       </Link>
       <p className="mt-6 text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">
-        Global Product Catalog
+        Wspólny katalog produktów
       </p>
       <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em]">
         Dodaj produkt ze zdjęć etykiety
@@ -447,6 +515,9 @@ export function ProductScanPage() {
 
       {!session ? (
         <section className="mt-8 rounded-[20px] border border-ink/10 bg-white p-5 shadow-e1">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">
+            {busy ? 'Krok 2 z 4 · Analizujemy produkt' : 'Krok 1 z 4 · Zdjęcia etykiety'}
+          </p>
           <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-ink/25 px-4 text-center focus-within:ring-2 focus-within:ring-gold">
             <span className="font-medium">Dodaj zdjęcia opakowania</span>
             <span className="mt-1 text-xs text-stone-600">
@@ -457,7 +528,7 @@ export function ProductScanPage() {
               type="file"
               multiple
               accept="image/png,image/jpeg,image/webp"
-              onChange={(event) => addFiles(event.target.files)}
+              onChange={(event) => void addFiles(event.target.files)}
             />
           </label>
           {pending.length > 0 ? (
@@ -516,18 +587,14 @@ export function ProductScanPage() {
           <section className="mt-8 rounded-[20px] border border-ink/10 bg-white p-4 shadow-e1 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">
+                  Krok 3 z 4 · Sprawdzenie danych
+                </p>
                 <h2 className="text-xl font-semibold">Sprawdź odczytane dane</h2>
                 <p className="mt-1 text-xs text-stone-600">
                   Brak wartości pozostaje brakiem — nigdy zerem.
                 </p>
               </div>
-              <button
-                type="button"
-                className="min-h-11 rounded-xl border border-ink/15 px-4 text-xs font-medium"
-                onClick={resolveStraightforward}
-              >
-                Potwierdź odczytane / oznacz braki
-              </button>
             </div>
             <label className="mt-4 block text-xs font-medium text-stone-600">
               EAN wpisany ręcznie
@@ -567,8 +634,10 @@ export function ProductScanPage() {
               />
               Ten produkt jest jawnie bez marki
             </label>
-            <EvidenceReviewPanel
+            <CustomerOcrSummary
               fields={session.fields}
+              missingActions={missingActions.map((action) => action.label)}
+              market={scanMarket}
               onEdit={(key: IntakeFieldKey, value: string) =>
                 update((current) => editFieldValue(current, key, value))
               }
@@ -582,10 +651,104 @@ export function ProductScanPage() {
                 update((current) => confirmFieldReview(current, key))
               }
             />
+            {duplicatePreview.length > 0 ? (
+              <section
+                className="mt-4 rounded-2xl border border-gold/40 bg-gold/10 p-4"
+                aria-labelledby="analysis-duplicate-title"
+              >
+                <h3 id="analysis-duplicate-title" className="text-sm font-semibold">
+                  {hasExactDuplicate ? 'Ten produkt już istnieje' : 'Czy to ten sam produkt?'}
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-stone-700">
+                  Sprawdziliśmy kod, nazwę, opakowanie i fakty z etykiety od razu po analizie.
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {displayedDuplicatePreview.map((candidate) => (
+                    <li
+                      key={candidate.productId}
+                      className="rounded-xl border border-ink/10 bg-white p-3 text-xs"
+                    >
+                      <label className="flex cursor-pointer items-start gap-3">
+                        <input
+                          type="radio"
+                          name="analysis-duplicate"
+                          className="mt-0.5 size-4 accent-ink"
+                          checked={selectedDuplicateProductId === candidate.productId}
+                          onChange={() => setSelectedDuplicateProductId(candidate.productId)}
+                        />
+                        <span>
+                          <strong className="block text-sm text-ink">
+                            {candidate.displayName ?? 'Istniejący produkt'}
+                          </strong>
+                          {[candidate.brand, candidate.netQuantity, candidate.ean]
+                            .filter(Boolean)
+                            .join(' · ')}
+                          <span className="mt-1 block text-stone-600">
+                            {candidate.strength === 'exact'
+                              ? 'Dokładna zgodność'
+                              : 'Prawdopodobna zgodność'}{' '}
+                            · {Math.round(candidate.score * 100)}%
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                {!hasExactDuplicate ? (
+                  <label className="mt-3 block text-xs font-medium text-stone-700">
+                    Jeśli to inny produkt, opisz konkretną różnicę
+                    <textarea
+                      value={duplicateDifference}
+                      onChange={(event) => setDuplicateDifference(event.currentTarget.value)}
+                      placeholder="np. inna masa, skład lub kod EAN"
+                      className="mt-1 min-h-20 w-full rounded-xl border border-ink/15 bg-white p-3 text-sm"
+                    />
+                  </label>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={!selectedDuplicateProductId || busy}
+                    className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-white disabled:opacity-40"
+                    onClick={() => void persist('open_existing', 'same')}
+                  >
+                    {selectedDuplicate?.strength === 'exact' ? 'Użyj tego produktu' : 'Tak'}
+                  </button>
+                  {!hasExactDuplicate ? (
+                    <button
+                      type="button"
+                      disabled={duplicateDifference.trim().length < 6 || busy || unresolved > 0}
+                      className="min-h-11 rounded-xl border border-ink/20 bg-white px-4 text-sm disabled:opacity-40"
+                      onClick={() => void persist('create_new', 'different')}
+                    >
+                      Nie, to inny produkt
+                    </button>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+            <label className="mt-4 flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-dashed border-ink/20 px-4 text-center text-xs font-medium text-stone-700">
+              Dodaj brakujące zdjęcie i przeanalizuj ponownie
+              <input
+                className="sr-only"
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) => {
+                  void addFiles(event.currentTarget.files);
+                  setSession(null);
+                }}
+              />
+            </label>
             <div className="sticky bottom-3 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink/15 bg-white/95 p-3 shadow-e2 backdrop-blur">
               <span className="text-xs text-stone-600">
+                <strong className="mr-2 uppercase tracking-[0.12em]">Krok 4 z 4 · Zapis</strong>
                 {unresolved === 0
-                  ? 'Wszystkie pola rozstrzygnięte.'
+                  ? identityMissing
+                    ? 'Dodaj przód opakowania, aby zapisać produkt.'
+                    : missingActions.length > 0
+                      ? 'Możesz zapisać jako RED albo dodać brakujące zdjęcia.'
+                      : 'Wszystkie pola rozstrzygnięte.'
                   : `Do rozstrzygnięcia: ${unresolved}`}
               </span>
               <button
@@ -593,6 +756,8 @@ export function ProductScanPage() {
                 className="min-h-11 rounded-xl bg-ink px-5 text-sm font-semibold text-white disabled:opacity-40"
                 disabled={
                   unresolved > 0 ||
+                  identityMissing ||
+                  duplicatePreview.length > 0 ||
                   busy ||
                   (result !== null && result.globalCatalogContribution?.status !== 'blocked')
                 }
@@ -614,7 +779,7 @@ export function ProductScanPage() {
               className="mt-5 rounded-[20px] border border-gold/40 bg-gold/10 p-5"
             >
               <h2 id="duplicate-title" className="font-semibold">
-                Czy to ten sam produkt?
+                {localDuplicateCopy.title}
               </h2>
               <p className="mt-2 text-sm text-stone-700">
                 Znaleziono {duplicate.verdict === 'exact_duplicate' ? 'dokładny' : 'prawdopodobny'}{' '}
@@ -701,9 +866,9 @@ export function ProductScanPage() {
                   type="button"
                   disabled={!selectedDuplicateProductId}
                   className="min-h-11 rounded-xl bg-ink px-4 text-sm text-white disabled:opacity-40"
-                  onClick={() => void persist('open_existing')}
+                  onClick={() => void persist('open_existing', 'same')}
                 >
-                  Tak, to ten produkt
+                  {localDuplicateCopy.confirm}
                 </button>
                 {duplicate.allowedActions.includes('create_new') ? (
                   <button
@@ -712,7 +877,7 @@ export function ProductScanPage() {
                     className="min-h-11 rounded-xl border border-ink/20 bg-white px-4 text-sm disabled:opacity-40"
                     onClick={() => void persist('create_new')}
                   >
-                    Nie, utwórz osobny
+                    {localDuplicateCopy.reject}
                   </button>
                 ) : null}
               </div>
@@ -739,7 +904,11 @@ export function ProductScanPage() {
                     type="button"
                     disabled={!riskToken || busy}
                     className="mt-3 min-h-11 rounded-xl border border-ink/20 bg-white px-4 text-sm disabled:opacity-40"
-                    onClick={() => void retryContribution()}
+                    onClick={() =>
+                      void retryContribution(
+                        result.saveResult.kind === 'open_existing' ? 'same' : undefined,
+                      )
+                    }
                   >
                     Zweryfikuj i ponów
                   </button>
@@ -822,7 +991,7 @@ export function ProductScanPage() {
                       className="min-h-11 rounded-xl bg-ink px-4 text-sm text-white disabled:opacity-40"
                       onClick={() => void retryContribution('same')}
                     >
-                      Tak, to ten produkt
+                      Tak
                     </button>
                     <button
                       type="button"
@@ -830,7 +999,7 @@ export function ProductScanPage() {
                       className="min-h-11 rounded-xl border border-ink/20 bg-white px-4 text-sm disabled:opacity-40"
                       onClick={() => void retryContribution('different')}
                     >
-                      Nie, to inny wariant
+                      Nie, to inny produkt
                     </button>
                   </div>
                 </div>
@@ -844,7 +1013,7 @@ export function ProductScanPage() {
                     accept="image/png,image/jpeg,image/webp"
                     className="sr-only"
                     onChange={(event) => {
-                      addFiles(event.currentTarget.files);
+                      void addFiles(event.currentTarget.files);
                       setSession(null);
                       setResult(null);
                     }}

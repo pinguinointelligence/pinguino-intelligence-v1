@@ -794,15 +794,26 @@ export function IngredientBuilder({
             {reorderNotice}
           </p>
           {mode === 'recipe' && compositionMigrationAmbiguities.length > 0 ? (
-            <p
+            <div
               className="mt-2 rounded-xl border border-attention/30 bg-attention/[0.07] px-3 py-2 text-xs text-stone-700"
               role="status"
               data-testid="composition-migration-ambiguity"
             >
-              {compositionMigrationAmbiguities.length === 1
-                ? '1 historyczny wpis wymaga decyzji. Zachowano go w Bazie — wybierz Główny lub Standardowy.'
-                : `${compositionMigrationAmbiguities.length} historyczne wpisy wymagają decyzji. Zachowano je bez zmiany receptury.`}
-            </p>
+              <p>
+                {compositionMigrationAmbiguities.length === 1
+                  ? '1 historyczny wpis wymaga decyzji.'
+                  : `${compositionMigrationAmbiguities.length} historyczne wpisy wymagają decyzji.`}
+              </p>
+              <ul className="mt-1 space-y-1">
+                {compositionMigrationAmbiguities.map((issue) => {
+                  const line = items.find((item) => item.id === issue.lineId);
+                  const reason = issue.reason.startsWith('LEGACY_BEHAVIOR:')
+                    ? issue.reason.slice('LEGACY_BEHAVIOR:'.length)
+                    : 'Wybierz dla tej linii rolę Główny lub Standardowy.';
+                  return <li key={`${issue.lineId}:${issue.reason}`}>{line?.ingredient.name ?? issue.lineId}: {reason}</li>;
+                })}
+              </ul>
+            </div>
           ) : null}
           {mode === 'recipe' ? duplicateNotice : null}
         </div>

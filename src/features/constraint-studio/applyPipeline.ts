@@ -47,7 +47,10 @@ import {
   type DraftSweepResult,
 } from './draftCandidateVector';
 import { sweepEcoDraftCost } from './ecoDraftCostSweep';
-import type { CustomerPriceIndex } from '@/features/pro-core/effectiveRecipePricing';
+import {
+  effectiveCostForIngredient,
+  type CustomerPriceIndex,
+} from '@/features/pro-core/effectiveRecipePricing';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
 import {
   verifyEcoFlavourProtection,
@@ -995,6 +998,8 @@ export type BuildPreviewResult =
   | { ok: true; preview: ConstraintPreview }
   | { ok: false; code: 'invalid_constraints'; issues: ConstraintValidationIssue[] }
   | { ok: false; code: 'already_clean' }
+  | { ok: false; code: 'practicalization_blocked'; lineIds: string[]; messagePl: string }
+  | { ok: false; code: 'missing_prices'; lineIds: string[]; ingredientNames: string[] }
   /** Owner P0 (Przelicz z PI): a no-proposal failure carries the PROOF — the solver
    * really ran (invocation count) and these exact metrics stayed out of band. */
   | {
@@ -3685,6 +3690,22 @@ export function buildOptimizePreview(
   const hasCritical = beforeResult.warnings.some((warning) => warning.severity === 'critical');
   const initialProteinTarget = assessProteinTarget(working);
   const strategy = normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode);
+  if (strategy === 'eco') {
+    const missingPrices = input.items.filter(
+      (item) => effectiveCostForIngredient(
+        item.ingredient,
+        options.effectivePriceOverrides ?? {},
+      ).pricePerKg === null,
+    );
+    if (missingPrices.length > 0) {
+      return {
+        ok: false,
+        code: 'missing_prices',
+        lineIds: missingPrices.map((item) => item.id),
+        ingredientNames: missingPrices.map((item) => item.ingredient.name),
+      };
+    }
+  }
   if (
     strategy !== 'eco' &&
     recipeDirectionViolations(working).length === 0 &&
@@ -3727,22 +3748,26 @@ export function buildOptimizePreview(
       return mainSafePreview(input, preview, options.productBehaviorSnapshots);
     }
     const practical = practicalizeRecipeCandidate(input, set);
+    if (!practical.ok) {
+      return {
+        ok: false,
+        code: 'practicalization_blocked',
+        lineIds: practical.lineIds,
+        messagePl: practical.messagePl,
+      };
+    }
     const needsPracticalPreview =
-      options.requirePracticalPreview === true ||
-      !practical.ok ||
-      JSON.stringify(practical.audit.executableInput) !== JSON.stringify(input);
+      workingStateFingerprint(practical.audit.executableInput, set) !==
+      workingStateFingerprint(input, set);
     if (needsPracticalPreview) {
-      // A clean, already-integer Pro draft still needs the SAME Preview →
-      // Apply provenance before Save/Production.  A zero-diff Preview is
-      // deliberate executable validation, not a second apply route.
+      // Whole-gram preparation changed the executable recipe, therefore the
+      // user must see and accept the exact diff through the normal Preview.
       const preview = finishPreview(
         'optimize',
-        options.requirePracticalPreview === true
-          ? 'Zweryfikuj recepturę wykonawczą'
-          : 'Przygotuj recepturę do wykonania',
+        'Przygotuj recepturę do wykonania',
         input,
         set,
-        input,
+        practical.audit.executableInput,
         set,
         violationsBefore,
         [],
@@ -3795,6 +3820,16 @@ export function buildOptimizePreview(
     JSON.stringify(working.items.map((i) => [i.id, i.planned_grams])) !==
     JSON.stringify(input.items.map((i) => [i.id, i.planned_grams]));
   if (!changed) {
+    const currentHardSafe = classifyViolationBands(working).hardMetrics.length === 0;
+    const currentDirectionSafe = recipeDirectionViolations(working).length === 0;
+    const currentProtein = assessProteinTarget(working);
+    if (
+      currentHardSafe &&
+      currentDirectionSafe &&
+      (!currentProtein.applicable || currentProtein.reached)
+    ) {
+      return { ok: false, code: 'already_clean' };
+    }
     // The PROVEN failure: solver really ran `solverRounds` times and these
     // exact metrics stayed out of band (empty = no violations detectable).
     if (violated.length === 0) {
@@ -4396,7 +4431,7 @@ function productBehaviorIdentityViolation(
         code: 'product_behavior_identity_mismatch',
         lineIds,
         messagePl:
-          'Snapshot zachowania produktu nie odpowiada aktualnej toÅ¼samoÅ›ci skÅ‚adnika.',
+          'Snapshot zachowania produktu nie odpowiada aktualnej tożsamości składnika.',
       };
 }
 

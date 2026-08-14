@@ -350,6 +350,29 @@ export async function resolveProductBehaviorForSelection(input: {
   return readServerResolvedProductBehavior(data);
 }
 
+/** Recovery adapter for saved payloads created before one canonical recipe
+ * reference shape existed. PostgreSQL resolves all accepted stable references
+ * to the same current immutable version and then calls the canonical resolver. */
+export async function resolveLegacyRecipeBehaviorForSelection(input: {
+  reference: {
+    mapperIngredientId?: string | null;
+    canonicalIdentity?: string | null;
+    productId?: string | null;
+    productVersionId?: string | null;
+    behaviorBindingId?: string | null;
+    normalizedIdentity?: string | null;
+  };
+  context: ProductBehaviorContext;
+}): Promise<ServerResolvedProductBehavior | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc('resolve_legacy_recipe_behavior_v1', {
+    p_reference: input.reference,
+    p_context: input.context,
+  });
+  if (error) throw new Error(error.message);
+  return readServerResolvedProductBehavior(data);
+}
+
 /** Resolves every newly introduced Base line in a proposed vector before the
  * Preview is exposed. This is the shared seam for solver-added toolbox and
  * correction lines; callers never synthesize built-in permissions locally. */

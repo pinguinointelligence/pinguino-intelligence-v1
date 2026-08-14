@@ -237,6 +237,7 @@ export interface RecipeState {
   applyVerifiedRecipeInput: (
     input: RecipeInput,
     productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot>>,
+    options?: { acknowledgeRecalculation?: boolean },
   ) =>
     | { ok: true }
     | { ok: false; code: 'invalid_line'; lineName: string }
@@ -698,7 +699,7 @@ export const useRecipeStore = create<RecipeState>()(
           };
         }),
 
-      applyVerifiedRecipeInput: (input, productBehaviorSnapshots) => {
+      applyVerifiedRecipeInput: (input, productBehaviorSnapshots, options) => {
         // Phase 5 — reject missing/invalid amounts (never coerce to zero).
         const lineIds = new Set<string>();
         for (const item of input.items) {
@@ -817,7 +818,11 @@ export const useRecipeStore = create<RecipeState>()(
           }));
           return { ok: false, code: 'write_verification_failed' };
         }
-        useRecipeProfileStore.getState().acknowledgeRecalculation();
+        if (options?.acknowledgeRecalculation === false) {
+          useRecipeProfileStore.getState().markRecalculationRequired();
+        } else {
+          useRecipeProfileStore.getState().acknowledgeRecalculation();
+        }
         return { ok: true };
       },
 

@@ -17,6 +17,7 @@ import {
 } from '@/features/ingredient-builder/ingredientSearch';
 
 const TABLE = 'mapper_basement';
+const AUTHENTICATED_SELECTION_VIEW = 'mapper_basement_search';
 
 /** Whether the PI Base backend is configured (the live search path exists). */
 export function isIngredientBackendConfigured(): boolean {
@@ -41,9 +42,8 @@ export async function listEngineApprovedIngredients(): Promise<IngredientRow[]> 
   const rows: IngredientRow[] = [];
   for (let offset = 0; ; offset += SEARCH_DB_PAGE_ROWS) {
     const { data, error } = await supabase
-      .from(TABLE)
+      .from(AUTHENTICATED_SELECTION_VIEW)
       .select('*')
-      .eq('is_active', true)
       .eq('approved_for_engines', true)
       .order('ingredient_name_display', { ascending: true })
       .order('ingredient_id', { ascending: true })
@@ -71,13 +71,15 @@ export interface IngredientSearchRow {
   ingredient_id: string;
   ingredient_name_display: string;
   ingredient_name_internal: string;
-  brand: string | null;
+  /** Optional compatibility field for injected/test rows. The sanctioned
+   * authenticated view does not expose a brand column. */
+  brand?: string | null;
   ingredient_category: string;
   ingredient_subcategory: string | null;
 }
 
 export const SEARCH_RESULT_COLUMNS =
-  'ingredient_id,ingredient_name_display,ingredient_name_internal,brand,ingredient_category,ingredient_subcategory';
+  'ingredient_id,ingredient_name_display,ingredient_name_internal,ingredient_category,ingredient_subcategory';
 
 /** Rows fetched per `.range` window — strictly below the PostgREST `max-rows`
  * cap (1,000 on Supabase), so no single request can ever be silently truncated
@@ -100,12 +102,11 @@ export async function searchEngineApprovedIngredients(
   for (let offset = 0; offset < limit; ) {
     const to = Math.min(offset + SEARCH_DB_PAGE_ROWS, limit) - 1;
     let query = supabase
-      .from(TABLE)
+      .from(AUTHENTICATED_SELECTION_VIEW)
       .select(SEARCH_RESULT_COLUMNS)
-      .eq('is_active', true)
       .eq('approved_for_base', true)
       .eq('approved_for_engines', true)
-      .eq('verification_status', 'verified');
+      .ilike('verification_status', 'Verified%');
     // One AND-group per token; OR across (alias term × safe column) within it.
     for (const terms of groups) {
       query = query.or(
@@ -133,7 +134,7 @@ export async function listIngredientsByIds(ids: readonly string[]): Promise<Ingr
   if (ids.length === 0) return []; // honest empty: nothing was asked for
   if (!supabase) return emptyUnconfiguredRead('ingredients.listIngredientsByIds', []);
   const { data, error } = await supabase
-    .from(TABLE)
+    .from(AUTHENTICATED_SELECTION_VIEW)
     .select('*')
     .in('ingredient_id', [...ids]);
   if (error) throw new Error(error.message);
@@ -146,13 +147,12 @@ export async function listEngineApprovedIngredientsByIds(ids: readonly string[])
   if (ids.length === 0) return [];
   if (!supabase) return emptyUnconfiguredRead('ingredients.listEngineApprovedIngredientsByIds', []);
   const { data, error } = await supabase
-    .from(TABLE)
+    .from(AUTHENTICATED_SELECTION_VIEW)
     .select('*')
     .in('ingredient_id', [...ids])
-    .eq('is_active', true)
     .eq('approved_for_base', true)
     .eq('approved_for_engines', true)
-    .eq('verification_status', 'verified');
+    .ilike('verification_status', 'Verified%');
   if (error) throw new Error(error.message);
   return (data ?? []) as IngredientRow[];
 }
@@ -161,7 +161,7 @@ export async function listEngineApprovedIngredientsByIds(ids: readonly string[])
 export async function getIngredientById(id: string): Promise<IngredientRow | null> {
   if (!supabase) return emptyUnconfiguredRead('ingredients.getIngredientById', null);
   const { data, error } = await supabase
-    .from(TABLE)
+    .from(AUTHENTICATED_SELECTION_VIEW)
     .select('*')
     .eq('ingredient_id', id)
     .maybeSingle();
@@ -174,13 +174,12 @@ export async function getIngredientById(id: string): Promise<IngredientRow | nul
 export async function getEngineApprovedIngredientById(id: string): Promise<IngredientRow | null> {
   if (!supabase) return emptyUnconfiguredRead('ingredients.getEngineApprovedIngredientById', null);
   const { data, error } = await supabase
-    .from(TABLE)
+    .from(AUTHENTICATED_SELECTION_VIEW)
     .select('*')
     .eq('ingredient_id', id)
-    .eq('is_active', true)
     .eq('approved_for_base', true)
     .eq('approved_for_engines', true)
-    .eq('verification_status', 'verified')
+    .ilike('verification_status', 'Verified%')
     .maybeSingle();
   if (error) throw new Error(error.message);
   return (data as IngredientRow | null) ?? null;

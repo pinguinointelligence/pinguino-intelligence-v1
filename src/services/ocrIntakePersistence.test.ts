@@ -170,21 +170,52 @@ describe('persistSessionAndSave', () => {
     expect(out.savedProductLinkPending).toBe(false);
   });
 
-  it('cancels the local intake on open_existing but still resolves the confirmed product through the shared catalog', async () => {
+  it('saves the intake on open_existing after resolving the confirmed shared product', async () => {
     setSave({ kind: 'open_existing', existingProductId: 'PR-9' });
     await persistSessionAndSave(session, bytes(), []);
-    expect(updateSessionState).toHaveBeenCalledWith('s1', 'cancelled', {
-      cancelledAt: expect.any(String),
+    expect(updateSessionState).toHaveBeenCalledWith('s1', 'saved', {
+      savedAt: expect.any(String),
     });
     expect(ingestProduct).toHaveBeenCalledWith(
       expect.objectContaining({
-        productId: 'PR-9',
+        productId: null,
         ocrSessionId: 's1',
+        duplicateDecision: 'same',
+        input: expect.objectContaining({ duplicateProductId: 'PR-9' }),
       }),
     );
     expect(vi.mocked(ingestProduct).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(updateSessionState).mock.invocationCallOrder.at(-1)!,
     );
+  });
+
+  it('keeps a failed open_existing contribution retryable instead of cancelling the OCR session', async () => {
+    setSave({ kind: 'open_existing', existingProductId: 'PR-9' });
+    vi.mocked(ingestProduct).mockRejectedValueOnce(new Error('temporary catalog failure'));
+
+    const out = await persistSessionAndSave(session, bytes(), []);
+
+    expect(updateSessionState).toHaveBeenCalledWith('s1', 'duplicate_blocked', {});
+    expect(out.savedProductLinkPending).toBe(true);
+    expect(out.globalCatalogContributionError).toBe('temporary catalog failure');
+  });
+
+  it('preserves the same-product decision when an existing contribution is retried', async () => {
+    const result = {
+      session: { id: 's1' },
+      saveResult: { kind: 'open_existing', existingProductId: 'shared-product' },
+      savedProductLinkPending: false,
+      globalCatalogContribution: null,
+      globalCatalogContributionError: 'temporary failure',
+    } as never;
+
+    await retryGlobalCatalogContribution(result, session);
+
+    expect(ingestProduct).toHaveBeenCalledWith(expect.objectContaining({
+      productId: null,
+      duplicateDecision: 'same',
+      input: expect.objectContaining({ duplicateProductId: 'shared-product' }),
+    }));
   });
 
   it('keeps a rate-limited OCR session retryable and saves it after a successful retry', async () => {

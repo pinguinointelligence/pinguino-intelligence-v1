@@ -130,23 +130,44 @@ beforeEach(() => {
 });
 
 describe('Pro executable validation', () => {
-  it('offers the canonical Preview and Apply even when a clean recipe needs zero gram changes', () => {
+  it('returns one NO_CHANGE_NEEDED terminal when a clean recipe needs zero gram changes', () => {
     loadRecipe(starterMilkBase());
     const before = buildRecipeInput(useRecipeStore.getState());
 
     useConstraintStudioStore.getState().createOptimizePreview();
-    const preview = useConstraintStudioStore.getState().preview;
-
-    expect(preview).not.toBeNull();
-    expect(preview?.practicalizationOnly).toBe(true);
-    expect(preview?.practicalization?.status).toBe('ready');
-    expect(preview?.proposedInput).toEqual(before);
-
-    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).toEqual({
+      ok: false,
+      code: 'already_clean',
+    });
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
+    expect(useConstraintStudioStore.getState().history).toEqual([]);
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
-    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
-    expect(useConstraintStudioStore.getState().history[0]?.practicalization).toBeDefined();
     expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+  });
+
+  it('has one blocked terminal state with exact missing-price evidence in ECO', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: { ...input.items[0]!.ingredient, cost_per_kg: null, cost_currency: null },
+    };
+    loadRecipe(input);
+    useConstraintStudioStore.setState({ history: [{ id: 'old-run' } as never] });
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+
+    expect(useConstraintStudioStore.getState().previewIssue).toMatchObject({
+      code: 'missing_prices',
+      ingredientNames: [input.items[0]!.ingredient.name],
+    });
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'BLOCKED', code: 'missing_prices',
+    });
+    expect(useConstraintStudioStore.getState().history).toEqual([]);
   });
 });
 

@@ -419,6 +419,15 @@ describe('five-detent direction language', () => {
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
   });
 
+  it('invalidates the current score after every material ingredient edit', () => {
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
+    const line = useRecipeStore.getState().items[0]!;
+
+    useRecipeStore.getState().setPlannedGrams(line.id, line.planned_grams + 1);
+
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+  });
+
   it('wires the Profile detent and settings snapshot to the durable intent contract', () => {
     expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain(
       'else recipe.markProfileTargetChanged()',

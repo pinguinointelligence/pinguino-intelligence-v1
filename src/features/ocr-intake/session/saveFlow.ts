@@ -56,6 +56,7 @@ import {
   successfulRuns,
 } from './intakeSession';
 import { resolvedValueOf } from './reviewedFields';
+import { detectLabelLanguages, parseLabelText } from '../labelTextParser';
 
 /* ── typed errors ────────────────────────────────────────────────────────── */
 
@@ -182,6 +183,11 @@ export function buildSessionCandidate(
 
   const candidate = mapRowToProductInsert(row, 'generic', 0);
   const explicitlyUnbranded = options.explicitlyUnbranded === true && value('brand') === null;
+  const runs = successfulRuns(session);
+  const labelLanguages = [...new Set(runs.flatMap((run) => detectLabelLanguages(run.fullText)))];
+  const manufacturerEvidence = runs
+    .map((run) => parseLabelText(run.lines).manufacturerEvidence.value)
+    .filter((entry): entry is string => entry !== null);
 
   // label-scan specifics on top of the shared mapping (same pattern as reviewState v1)
   candidate.insert.source_type = 'label_scan';
@@ -191,7 +197,14 @@ export function buildSessionCandidate(
     engine: OCR_ENGINE_INFO,
     sessionId: session.sessionId,
     basis,
+    nutritionBasis: basis,
     explicitlyUnbranded,
+    originalLanguage: labelLanguages[0] ?? null,
+    labelLanguages,
+    ingredientsText: value('ingredients_text'),
+    allergensText: value('allergens_text'),
+    mayContainText: value('may_contain_text'),
+    manufacturerEvidence,
     manualEan: session.manualEan,
     eanSource,
     images: session.images.map((i) => ({

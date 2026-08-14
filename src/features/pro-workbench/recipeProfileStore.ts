@@ -78,6 +78,7 @@ export interface RecipeProfileState {
   moveAxisTarget: (axis: AdjustableAxisId, delta: -1 | 1) => void;
   moveAxisIntent: (axis: AdjustableAxisId, delta: number) => void;
   setDirectionTargets: (targets: DirectionTargets) => void;
+  markRecalculationRequired: () => void;
   acknowledgeRecalculation: () => void;
   confirmSettings: (signature: string, contextSeq: number) => void;
   isConfirmed: (signature: string, contextSeq: number) => boolean;
@@ -145,6 +146,8 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
         })),
 
       setDirectionTargets: (directionTargets) => set({ directionTargets: { ...directionTargets } }),
+
+      markRecalculationRequired: () => set({ awaitingRecalculation: true }),
 
       acknowledgeRecalculation: () => set({ awaitingRecalculation: false }),
 

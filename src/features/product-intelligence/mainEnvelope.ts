@@ -151,7 +151,7 @@ export function verifyMainEnvelope(input: {
       violations: [{
         code: 'multi_main_policy_unknown',
         lineIds: managed.map((item) => item.id),
-        messagePl: 'Brak zatwierdzonego wspÃ³lnego limitu dla tej grupy Main.',
+        messagePl: 'Brak zatwierdzonego wspólnego limitu dla tej grupy Main.',
       }],
     };
   }

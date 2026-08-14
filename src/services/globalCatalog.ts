@@ -3,10 +3,10 @@ import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser } from '@/services/auth';
 import type {
   CatalogMarketPreferences,
+  DuplicateCandidate,
   CatalogProductSearchHit,
   CatalogSubmissionResult,
 } from '@/features/global-catalog/contracts';
-import { aliasesForFamily } from '@/features/global-catalog/normalization';
 import { ingestProduct } from '@/services/productIngest';
 
 const UNAVAILABLE = 'Global product catalog is not available in this build.';
@@ -30,14 +30,17 @@ function currentCatalogDeviceSignal(): string | null {
 interface SearchRow {
   id: string;
   current_version_id: string | null;
-  status: 'verified' | 'manual_unverified' | 'blocked';
-  verification_method: 'automatic' | 'human' | 'manual_unverified' | 'blocked';
+  entity_kind: 'pi_base' | 'commercial_product';
+  status: 'pi_base' | 'verified' | 'manual_unverified' | 'blocked';
+  verification_method: 'pi_base' | 'automatic' | 'human' | 'manual_unverified' | 'blocked';
+  provenance: string | null;
   display_name: string;
   original_name: string | null;
   original_language: string | null;
   brand: string | null;
   canonical_family: string | null;
   category: string | null;
+  product_form: string | null;
   mapped_ingredient_id: string | null;
   markets: string[] | null;
   retailers: string[] | null;
@@ -45,11 +48,28 @@ interface SearchRow {
   aliases: string[] | null;
   favorite: boolean;
   recently_used_at: string | null;
+  usable_in_base: boolean;
+  main_allowed: boolean;
+  usable_as_topping: boolean;
+  blocked_reason: string | null;
   missing_fields: string[] | null;
   invalid_fields: string[] | null;
   public_data: Record<string, unknown> | null;
   private_price: number | null;
   private_currency: string | null;
+  relevance: number | string;
+}
+
+interface DuplicatePreviewRow {
+  product_id: string;
+  strength: 'exact' | 'likely' | 'none';
+  score: number | string;
+  reasons: string[] | null;
+  display_name: string | null;
+  brand: string | null;
+  net_quantity: string | null;
+  market: string | null;
+  ean: string | null;
 }
 
 const REQUIRED_TOPPING_FACTS = [
@@ -70,7 +90,6 @@ function hasCompleteLabelOnlyToppingFacts(publicData: Record<string, unknown> | 
 }
 
 function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
-  const usable = row.status !== 'blocked';
   const nutrition = row.public_data?.nutrition;
   const nutritionBasis = nutrition && typeof nutrition === 'object'
     ? (nutrition as Record<string, unknown>).basis
@@ -78,25 +97,32 @@ function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
   return {
     id: row.id,
     currentVersionId: row.current_version_id,
-    entityKind: 'commercial_product',
+    entityKind: row.entity_kind,
     status: row.status,
+    provenance: row.provenance,
     displayName: row.display_name,
     originalName: row.original_name,
     originalLanguage: row.original_language,
     brand: row.brand,
     canonicalFamily: row.canonical_family,
     category: row.category,
+    productForm: row.product_form,
     mappedIngredientId: row.mapped_ingredient_id,
     markets: row.markets ?? [],
     retailers: row.retailers ?? [],
     eans: row.eans ?? [],
-    aliases: [...new Set([...(row.aliases ?? []), ...aliasesForFamily(row.canonical_family)])],
+    aliases: [...new Set(row.aliases ?? [])],
     favorite: row.favorite,
     recentlyUsedAt: row.recently_used_at,
-    usableInBase: usable && Boolean(row.mapped_ingredient_id),
+    usableInBase: row.usable_in_base,
+    mainAllowed: row.main_allowed,
     // Label-only additions stay outside Base/Engine. Declared nutrition can
     // still feed product mass, cost and final-label preflight.
-    usableAsTopping: usable && hasCompleteLabelOnlyToppingFacts(row.public_data),
+    usableAsTopping: row.entity_kind === 'pi_base'
+      ? row.usable_as_topping
+      : row.usable_as_topping && hasCompleteLabelOnlyToppingFacts(row.public_data),
+    blockedReason: row.blocked_reason,
+    relevance: Number(row.relevance),
     missingFields: row.missing_fields ?? [],
     invalidFields: [
       ...(row.invalid_fields ?? []),
@@ -141,21 +167,58 @@ export async function resetPrivateCatalogProductPrice(catalogProductId: string):
   if (error) throw new Error(error.message);
 }
 
-export async function searchGlobalCatalog(input: {
+export async function searchProducts(input: {
   query: string;
-  markets?: readonly string[];
+  context: 'BASE' | 'TOPPING';
+  marketScope?: 'my_markets' | 'my_markets_and_global' | 'global' | 'strict_market';
+  selectedMarkets?: readonly string[];
   favoritesOnly?: boolean;
+  productProfile?: string | null;
+  entityKind?: 'pi_base' | 'commercial_product' | null;
   limit?: number;
+  cursor?: number;
 }): Promise<CatalogProductSearchHit[]> {
-  if (!supabase) return emptyUnconfiguredRead('globalCatalog.search', []);
-  const { data, error } = await supabase.rpc('search_global_catalog', {
+  if (!supabase) return emptyUnconfiguredRead('globalCatalog.searchProducts', []);
+  const { data, error } = await supabase.rpc('search_products_v1', {
     p_query: input.query,
-    p_market: [...(input.markets ?? [])],
+    p_context: input.context,
+    p_market_scope: input.marketScope ?? 'my_markets_and_global',
+    p_selected_markets: [...(input.selectedMarkets ?? [])],
     p_favorites_only: input.favoritesOnly ?? false,
+    p_product_profile: input.productProfile ?? null,
+    p_entity_kind: input.entityKind ?? null,
     p_limit: input.limit ?? 100,
+    p_cursor: input.cursor ?? 0,
   });
   if (error) throw new Error(error.message);
   return ((data ?? []) as SearchRow[]).map(mapSearchRow);
+}
+
+export async function previewProductDuplicates(facts: {
+  displayName: string | null;
+  brand: string | null;
+  packageSize: string | null;
+  ean: string | null;
+  ingredientsText: string | null;
+  nutrition: Record<string, unknown> | null;
+  imagePhashes: string[];
+}): Promise<DuplicateCandidate[]> {
+  if (!supabase) return emptyUnconfiguredRead('globalCatalog.previewDuplicates', []);
+  const { data, error } = await supabase.rpc('preview_product_duplicates_v1', {
+    p_facts: facts,
+  });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as DuplicatePreviewRow[]).map((row) => ({
+    productId: row.product_id,
+    strength: row.strength,
+    score: Number(row.score),
+    reasons: row.reasons ?? [],
+    displayName: row.display_name,
+    brand: row.brand,
+    netQuantity: row.net_quantity,
+    market: row.market,
+    ean: row.ean,
+  }));
 }
 
 export async function listCatalogFavorites(): Promise<Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>> {

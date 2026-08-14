@@ -348,8 +348,8 @@ function SummaryPanel({
           data-testid="summary-legacy-inspection"
           className="rounded-lg border border-ivory/20 bg-ivory/[0.06] px-3 py-2 text-xs leading-relaxed text-ivory/80"
         >
-          PodglÄ…d historyczny korzysta z zapisanych danych receptury. Przed edycjÄ…, przeliczeniem,
-          zapisem lub produkcjÄ… utwÃ³rz nowÄ… wersjÄ™ z aktualnÄ… walidacjÄ… produktÃ³w.
+          Podgląd historyczny korzysta z zapisanych danych receptury. Przed edycją, przeliczeniem,
+          zapisem lub produkcją utwórz nową wersję z aktualną walidacją produktów.
         </p>
       ) : null}
       <section className="rounded-[22px] border border-white/10 bg-white/[0.045] p-4 shadow-pro-e0">

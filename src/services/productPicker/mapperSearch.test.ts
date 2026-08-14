@@ -32,7 +32,7 @@ vi.mock('@/lib/supabase/client', () => {
   const record = (method: string, args: unknown[]) => h.calls.push({ method, args });
   const makeBuilder = (): Record<string, unknown> => {
     const builder: Record<string, unknown> = {};
-    for (const method of ['select', 'or', 'eq', 'order', 'range', 'abortSignal']) {
+    for (const method of ['select', 'or', 'eq', 'ilike', 'order', 'range', 'abortSignal']) {
       builder[method] = (...args: unknown[]) => {
         record(method, args);
         return builder;

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
+import { evidenceImageDimensionsAllowed } from '../_shared/evidenceImageDimensions.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -156,6 +157,7 @@ async function perceptualHash(
   // ImageScript's stable decoder covers PNG/JPEG. WebP stays archived with its
   // cryptographic checksum and simply has no perceptual hash; never fabricate one.
   if (mime === 'image/webp') return null;
+  if (!evidenceImageDimensionsAllowed(bytes, mime)) return null;
   try {
     const decoded = await Image.decode(bytes);
     const resized = (await decoded.resize(8, 8)) ?? decoded;
@@ -166,8 +168,9 @@ async function perceptualHash(
         let r = 0;
         let g = 0;
         let b = 0;
-        if (Array.isArray(value)) {
-          [r, g, b] = value as number[];
+        if (Array.isArray(value) || ArrayBuffer.isView(value)) {
+          const channels = Array.from(value as ArrayLike<number>);
+          [r = 0, g = 0, b = 0] = channels;
         } else if (typeof value === 'number') {
           r = (value >>> 24) & 255;
           g = (value >>> 16) & 255;
@@ -234,6 +237,9 @@ async function captureOwnedEvidence(input: {
         .join('');
       if (actualChecksum !== image.checksum_sha256.toLowerCase()) {
         throw new Error(`ocr_evidence_checksum_mismatch:${image.id}`);
+      }
+      if (!evidenceImageDimensionsAllowed(bytes, image.mime)) {
+        throw new Error(`ocr_evidence_image_dimensions_invalid:${image.id}`);
       }
       const archivePath = `${input.ocrSessionId}/${image.display_order}-${image.id}-${image.checksum_sha256}.${ext}`;
       const { error: archiveError } = await input.service.storage

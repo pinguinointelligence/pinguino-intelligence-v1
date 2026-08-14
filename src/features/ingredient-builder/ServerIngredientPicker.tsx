@@ -6,14 +6,14 @@
  * Stale-selection protection (Phase 10): a selection is remembered TOGETHER
  * with the normalized query it was made in — a query change invalidates it,
  * `Dodaj składnik` is disabled until the CURRENT response settles, and the
- * added ingredient is resolved fresh by exact stable id (`getIngredientById`),
+ * added ingredient is resolved fresh by the current verified exact-id gate,
  * so an older response can never inject a stale candidate.
  */
 import { useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
-import { getIngredientById } from '@/services/ingredients';
+import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { groupHitsByForm, resultRowTextPl } from './ingredientPresentation';
 import { useIngredientSearch } from './useIngredientSearch';
 import { PickerEmptyState } from './IngredientPicker';
@@ -68,7 +68,7 @@ export function ServerIngredientPicker({
     // Resolve the FULL approved scientific row fresh, by exact stable id.
     setAdding(true);
     try {
-      const row = await getIngredientById(effectiveId);
+      const row = await getEngineApprovedIngredientById(effectiveId);
       if (row) onAdd(ingredientRowToEngineIngredient(row));
     } finally {
       setAdding(false);

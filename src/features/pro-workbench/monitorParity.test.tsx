@@ -339,9 +339,20 @@ describe('Monitor layout and integration seams', () => {
 
   it('keeps the canonical score behind the persistent workbench header seam', () => {
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
+    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const mainEnvelope = read('features', 'product-intelligence', 'mainEnvelope.ts');
     expect(header).toContain('monitorScoreView');
+    expect(header).toContain('recalculationTerminal');
+    expect(header).toContain('previewMatch');
+    expect(header).toContain('Podgląd ·');
     expect(header).toContain('workbench-intelligence-header');
+    expect(header).toContain('Podgląd historyczny');
+    expect(header).not.toContain('PodglÄ…d historyczny');
     expect(header).not.toContain('recipeMatchScore(');
+    expect(profile).toContain('Podgląd historyczny');
+    expect(profile).not.toMatch(/PodglÄ|edycjÄ|utwÃ|produktÃ/);
+    expect(mainEnvelope).toContain('wspólnego limitu');
+    expect(mainEnvelope).not.toContain('wspÃ³lnego');
   });
 
   it('keeps the historical customizable Monitor available without mounting it in normal Pro Monitor', () => {

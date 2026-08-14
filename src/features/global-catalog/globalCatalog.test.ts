@@ -9,9 +9,10 @@ import {
   updateCatalogProductVersion,
 } from './pipeline';
 import { evaluateCatalogRateLimit, type CatalogRateEvent } from './rateLimit';
-import { rankCatalogHits } from './ranking';
+import { preserveServerProductRank, rankCatalogHits } from './ranking';
 import { catalogEngineEligibility, verifyCatalogCandidate } from './verification';
 import { labelOnlyCatalogToppingIngredient, mappedCatalogIngredient } from './catalogIngredient';
+import { resolveCatalogMarketScope } from './useGlobalCatalogPicker';
 import {
   duplicateFactDifferences,
   duplicateSimilarityPercent,
@@ -63,6 +64,21 @@ function candidate(overrides: Partial<CatalogCandidateInput> = {}): CatalogCandi
     ...overrides,
   };
 }
+
+describe('catalog market scope', () => {
+  it('preserves an account default of global unless the user selects a market explicitly', () => {
+    expect(resolveCatalogMarketScope({
+      forceGlobal: false,
+      hasSelectedMarkets: false,
+      defaultScope: 'global',
+    })).toBe('global');
+    expect(resolveCatalogMarketScope({
+      forceGlobal: false,
+      hasSelectedMarkets: true,
+      defaultScope: 'global',
+    })).toBe('strict_market');
+  });
+});
 
 describe('global catalog normalization and deterministic verification', () => {
   it('keeps duplicate similarity in its existing 0..100 scale and lists concrete differences', () => {
@@ -292,6 +308,15 @@ describe('fixtures F–I: multilingual, markets, favorites and context ranking',
     for (const query of ['truskawka', 'strawberry', 'fresa', 'Erdbeere', 'fragola']) {
       expect(rankCatalogHits({ hits: [strawberry], query, context: 'base', preferences })[0]?.id).toBe(strawberry.id);
     }
+  });
+
+  it('preserves the server order and does not discard typo/alias hits locally', () => {
+    const serverHits = [
+      hit({ id: 'fresh-strawberry', relevance: 140 }),
+      hit({ id: 'strawberry-puree', displayName: 'Puree truskawkowe', relevance: 110 }),
+    ];
+    expect(preserveServerProductRank(serverHits, preferences).map((item) => item.id))
+      .toEqual(['fresh-strawberry', 'strawberry-puree']);
   });
 
   it('G ranks primary/additional market products before equally relevant global products', () => {

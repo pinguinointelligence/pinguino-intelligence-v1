@@ -56,7 +56,7 @@ export interface ExtractedField<T> {
   detection: FieldDetection;
 }
 
-export type LanguageHint = 'en' | 'es' | 'de' | 'pl' | 'it' | 'unknown';
+export type LanguageHint = 'en' | 'es' | 'de' | 'fr' | 'pl' | 'it' | 'unknown';
 
 export type PackageUnit = 'g' | 'kg' | 'ml' | 'l';
 
@@ -123,6 +123,8 @@ export interface LabelExtraction {
   ingredientsText: ExtractedField<string>;
   allergens: ExtractedField<string>;
   mayContain: ExtractedField<string>;
+  /** Manufacturer/legal-operator evidence is separate from brand and supplier. */
+  manufacturerEvidence: ExtractedField<string>;
   storageInstructions: ExtractedField<string>;
   /** claims read from the label; value true ONLY when printed — absence is null,
    * NEVER false (a missing claim is unknown, not a negative). */
@@ -132,6 +134,7 @@ export interface LabelExtraction {
   claimLactoseFree: ExtractedField<boolean>;
   /** language hint from label vocabulary — a hint only, never written to a product. */
   languageHint: LanguageHint;
+  languageHints: LanguageHint[];
   /** extraction-level warnings (duplicated blocks, serving-only basis, …). */
   warnings: string[];
 }
@@ -362,10 +365,10 @@ const basisRank: Record<NutritionBasis, number> = {
 /* ── section extraction (ingredients / allergens / storage) ───────────────── */
 
 /** Section-heading vocabulary, EN/ES/DE/PL/IT (diacritic-tolerant for OCR noise). */
-const INGREDIENTS_HEADING = /\bingredient(?:s|es|i)?(?![a-z])|\bzutaten(?![a-z])|sk[łl]adniki(?![a-ząćęłńóśźż])/i;
+const INGREDIENTS_HEADING = /\bingr[ée]dient(?:s|es|i)?(?![a-z])|\bzutaten(?![a-z])|sk[łl]adniki(?![a-ząćęłńóśźż])/i;
 const ALLERGENS_HEADING = /\ballergens?(?![a-z])|\bal[ée]rgenos?(?![a-z])|\ballergene(?![a-z])|\balergeny(?![a-z])|\ballergeni(?![a-z])/i;
 const MAY_CONTAIN_HEADING =
-  /may\s+contain|puede\s+contener|traces\s+of|\btrazas\b|kann\s+spuren|mo[żz]e\s+zawiera[ćc]?|pu[òo]\s+contenere|[śs]ladowe\s+ilo[śs]ci/i;
+  /may\s+contain|peut\s*contenir|puede\s+contener|traces\s+of|\btrazas\s+de\b|kann\s+(?:spuren|.+?\s+enthalten)|mo[żz]e\s+zawiera[ćc]?|pu[òo]\s+contenere|[śs]ladowe\s+ilo[śs]ci/i;
 const NUTRITION_HEADING =
   /nutrition|nutritional|informaci[óo]n\s+nutricional|valores?\s+medios|n[äa]hrwert|warto[śs][ćc]\s+od[żz]ywcza|valori\s+nutrizionali/i;
 const STORAGE_HEADING =
@@ -380,6 +383,7 @@ const SECTION_STOPPERS = [
   NUTRITION_HEADING,
   STORAGE_HEADING,
   /best\s+before|consumir\s+preferentemente|mindestens\s+haltbar|najlepiej\s+spo[żz]y[ćc]|da\s+consumarsi/i,
+  /\bmondelez\b|verbraucherservice|service\s+consommateurs|hergestellt\s+in|fabriqu[ée]\s+en|pro\s+anruf|appel\s+non\s+surtax[ée]/i,
 ];
 
 const isSectionStart = (text: string): boolean => SECTION_STOPPERS.some((re) => re.test(text));
@@ -416,6 +420,9 @@ const NET_QTY_KEYWORD =
   /net\s*(weight|quantity|wt|content)|peso\s+neto|contenido\s+neto|cantidad\s+neta|nettogewicht|nettof[üu]llmenge|f[üu]llmenge|masa\s+netto|zawarto[śs][ćc]\s+netto|obj[ęe]to[śs][ćc]\s+netto|peso\s+netto|contenuto\s+netto|quantit[àa]\s+netta/i;
 const NET_QTY_VALUE = /(\d(?:[\d\s]*[.,])?\d*)\s*(kg|g|ml|l)\b\s*(℮|e)?/i;
 const STANDALONE_QTY = /^\s*(\d(?:[\d\s]*[.,])?\d*)\s*(kg|g|ml|l)\s*(℮|e)?\s*$/i;
+/** OCR commonly turns the estimated-sign `℮` into `e`, `e€` or `€ e`. The
+ * nearby mass/volume unit is mandatory, so service prices cannot qualify. */
+const OCR_NET_MARK_QTY = /(?:℮|(?:^|[\s,;])e\s*€?|€\s*e)\s*\d(?:[\d\s]*[.,])?\d*\s*(?:kg|g|ml|l)\b/i;
 /** multipack: "6 x 330 ml", "6x330ml", "6 × 330 ml" — count × per-unit size. */
 const MULTIPACK_QTY = /(\d{1,3})\s*[x×]\s*(\d(?:[\d\s]*[.,])?\d*)\s*(kg|g|ml|l)\b/i;
 
@@ -530,12 +537,29 @@ const EN_MARKERS = [/ingredients\b/i, /\benergy\b/i, /\bfat\b/i, /\bsugars\b/i, 
 const DE_MARKERS = [/zutaten/i, /n[äa]hrwerte?/i, /brennwert/i, /kann\s+spuren/i, /davon\s+zucker/i, /\bfett\b/i, /eiwei(?:ß|ss)/i, /\bsalz\b/i, /kohle?nhydrate/i, /nettogewicht|f[üu]llmenge/i, /enth[äa]lt/i, /lagern|lagerung/i];
 const PL_MARKERS = [/sk[łl]adniki/i, /warto[śs][ćc]\s+od[żz]ywcza/i, /warto[śs][ćc]\s+energetyczna/i, /mo[żz]e\s+zawiera[ćc]/i, /bia[łl]ko/i, /\bs[óo]l\b/i, /t[łl]uszcz/i, /w\s+tym\s+cukry/i, /w[ęe]glowodany/i, /b[łl]onnik/i, /przechowywa[ćc]/i, /zawiera\b/i];
 const IT_MARKERS = [/ingredienti/i, /valori\s+nutrizionali/i, /valore\s+energetico/i, /pu[òo]\s+contenere/i, /\bgrassi\b/i, /di\s+cui\s+zuccheri/i, /proteine/i, /\bsale\b/i, /carboidrati/i, /\bconservare\b/i];
+const FR_MARKERS = [/ingr[ée]dients/i, /peut\s+contenir/i, /valeurs?\s+nutritionnelles?/i, /mati[èe]res?\s+grasses?/i, /dont\s+sucres/i, /prot[ée]ines/i, /\bsel\b/i, /fabriqu[ée]/i];
+
+export function detectLabelLanguages(text: string): LanguageHint[] {
+  const scores: Array<[LanguageHint, number]> = [
+    ['en', EN_MARKERS.filter((re) => re.test(text)).length],
+    ['es', ES_MARKERS.filter((re) => re.test(text)).length],
+    ['de', DE_MARKERS.filter((re) => re.test(text)).length],
+    ['fr', FR_MARKERS.filter((re) => re.test(text)).length],
+    ['pl', PL_MARKERS.filter((re) => re.test(text)).length],
+    ['it', IT_MARKERS.filter((re) => re.test(text)).length],
+  ];
+  return scores
+    .filter(([, score]) => score >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .map(([language]) => language);
+}
 
 function detectLanguage(text: string): LanguageHint {
   const scores: Array<[LanguageHint, number]> = [
     ['en', EN_MARKERS.filter((re) => re.test(text)).length],
     ['es', ES_MARKERS.filter((re) => re.test(text)).length],
     ['de', DE_MARKERS.filter((re) => re.test(text)).length],
+    ['fr', FR_MARKERS.filter((re) => re.test(text)).length],
     ['pl', PL_MARKERS.filter((re) => re.test(text)).length],
     ['it', IT_MARKERS.filter((re) => re.test(text)).length],
   ];
@@ -567,6 +591,9 @@ export function parseLabelText(input: ParsedOcrLine[]): LabelExtraction {
   let firstLine100ml: ParsedOcrLine | null = null;
   let firstLineServing: ParsedOcrLine | null = null;
   for (const line of lines) {
+    if (INGREDIENTS_HEADING.test(line.text) || MAY_CONTAIN_HEADING.test(line.text)) {
+      currentBasis = 'unknown';
+    }
     const is100g = BASIS_100G.test(line.text);
     const is100ml = BASIS_100ML.test(line.text);
     const isServing = BASIS_SERVING.test(line.text);
@@ -607,7 +634,11 @@ export function parseLabelText(input: ParsedOcrLine[]): LabelExtraction {
   for (const spec of NUTRIENT_SPECS) {
     const readings: RowReading[] = [];
     lines.forEach((line, idx) => {
-      const c = extractNutrientFromLine(line, spec, basisAt[idx] ?? 'unknown');
+      const lineBasis = basisAt[idx] ?? 'unknown';
+      // Legal/ingredient copy can contain words such as sugar plus arbitrary
+      // gram values. Accept nutrient rows only under an explicit table basis.
+      if (lineBasis === 'unknown' || INGREDIENTS_HEADING.test(line.text) || MAY_CONTAIN_HEADING.test(line.text)) return;
+      const c = extractNutrientFromLine(line, spec, lineBasis);
       if (c) readings.push(c);
     });
     nutrientCandidates[spec.key] = readings.map((r) => ({
@@ -665,7 +696,8 @@ export function parseLabelText(input: ParsedOcrLine[]): LabelExtraction {
   }
 
   /* energy (kJ + kcal) — energy keyword line (EN/ES/DE/PL/IT), or its continuation */
-  const energyLineIdx = lines.findIndex((l) => ENERGY_ROW.test(l.text));
+  const energyLineIdx = lines.findIndex((l, idx) =>
+    basisAt[idx] !== 'unknown' && ENERGY_ROW.test(l.text) && !INGREDIENTS_HEADING.test(l.text));
   let energyKj = emptyField<number>();
   let energyKcal = emptyField<number>();
   const energyCandidates: ParsedOcrLine[] = [];
@@ -690,14 +722,14 @@ export function parseLabelText(input: ParsedOcrLine[]): LabelExtraction {
     }
   }
 
-  /* ingredients — EN/ES/DE/PL/IT headings */
+  /* ingredients — EN/ES/DE/FR/PL/IT headings */
   let ingredientsText = emptyField<string>();
   const ingIdx = lines.findIndex(
-    (l) => /^(ingredient(s|es|i)?|zutaten|sk[łl]adniki)\s*[:-]?/i.test(l.text) || /\b(ingredient(s|es|i)|zutaten|sk[łl]adniki)\s*:/i.test(l.text),
+    (l) => /^(ingr[ée]dient(s|es|i)?|zutaten|sk[łl]adniki)\s*[:-]?/i.test(l.text) || /\b(ingr[ée]dient(s|es|i)|zutaten|sk[łl]adniki)\s*:/i.test(l.text),
   );
   if (ingIdx >= 0) {
     const line = lines[ingIdx];
-    const fragment = line ? line.text.replace(/^.*?(?:ingredient(?:s|es|i)?|zutaten|sk[łl]adniki)\s*[:-]?\s*/i, '') : '';
+    const fragment = line ? line.text.replace(/^.*?(?:ingr[ée]dient(?:s|es|i)?|zutaten|sk[łl]adniki)\s*[:-]?\s*/i, '') : '';
     const section = captureSection(lines, ingIdx, fragment);
     if (section.text !== '') ingredientsText = foundField(section.text, section.sourceLines);
   }
@@ -722,14 +754,34 @@ export function parseLabelText(input: ParsedOcrLine[]): LabelExtraction {
   const mayIdx = lines.findIndex((l) => MAY_CONTAIN_HEADING.test(l.text));
   if (mayIdx >= 0) {
     const line = lines[mayIdx];
-    const fragment = line
-      ? line.text.replace(
-          /^.*?(may\s+contain|puede\s+contener(?:\s+trazas\s+de)?|traces\s+of|trazas\s+de|kann\s+spuren\s+von|mo[żz]e\s+zawiera[ćc](?:\s+[śs]ladowe\s+ilo[śs]ci)?|pu[òo]\s+contenere(?:\s+tracce\s+di)?)\s*[:-]?\s*/i,
+    const directGerman = line ? /kann\s+(.+?)\s+enthalten/i.exec(line.text) : null;
+    const directFrench = line ? /peut\s*contenir\s*([^,.;]+)/i.exec(line.text) : null;
+    const fragment = directGerman?.[1]
+      ? directGerman[1]
+      : directFrench?.[1]
+        ? directFrench[1]
+      : line ? line.text.replace(
+          /^.*?(may\s+contain|peut\s*contenir|puede\s+contener(?:\s+trazas\s+de)?|traces\s+of|trazas\s+de|kann\s+(?:spuren\s+von\s+)?|mo[żz]e\s+zawiera[ćc](?:\s+[śs]ladowe\s+ilo[śs]ci)?|pu[òo]\s+contenere(?:\s+tracce\s+di)?)\s*[:-]?\s*/i,
           '',
         )
       : '';
-    const section = captureSection(lines, mayIdx, fragment);
+    // A complete same-line legal statement is self-contained. Continuing it
+    // would absorb the next language, manufacturer/address and package mass.
+    const section = directGerman?.[1] || directFrench?.[1]
+      ? { text: fragment.trim(), sourceLines: line ? [line] : [] }
+      : captureSection(lines, mayIdx, fragment);
     if (section.text !== '') mayContain = foundField(section.text, section.sourceLines);
+  }
+
+  let manufacturerEvidence = emptyField<string>();
+  const manufacturerLines = lines.filter((l) =>
+    /\bmondelez\b|manufactured\s+(?:by|for)|hergestellt\s+(?:von|f[üu]r)|fabriqu[ée]\s+(?:par|pour)|fabricado\s+(?:por|para)/i.test(l.text),
+  );
+  if (manufacturerLines.length > 0) {
+    manufacturerEvidence = foundField(
+      manufacturerLines.map((line) => line.text).join(' '),
+      manufacturerLines,
+    );
   }
 
   /* storage instructions — EN/ES/DE/PL/IT */
@@ -748,7 +800,7 @@ export function parseLabelText(input: ParsedOcrLine[]): LabelExtraction {
     lines.find((l) => NET_QTY_KEYWORD.test(l.text) && (NET_QTY_VALUE.test(l.text) || MULTIPACK_QTY.test(l.text))) ??
     lines.find((l) => MULTIPACK_QTY.test(l.text)) ??
     lines.find((l) => STANDALONE_QTY.test(l.text)) ??
-    lines.find((l) => /℮/.test(l.text) && NET_QTY_VALUE.test(l.text));
+    lines.find((l) => OCR_NET_MARK_QTY.test(l.text) && NET_QTY_VALUE.test(l.text));
   if (qtyLine) {
     const parsed = parsePackageSize(qtyLine.text);
     if (parsed.size !== null && parsed.unit !== null && parsed.printed !== null) {
@@ -868,9 +920,11 @@ export function parseLabelText(input: ParsedOcrLine[]): LabelExtraction {
     ingredientsText,
     allergens,
     mayContain,
+    manufacturerEvidence,
     storageInstructions,
     ...claimFields,
     languageHint: detectLanguage(fullText),
+    languageHints: detectLabelLanguages(fullText),
     warnings: globalWarnings,
   };
 }

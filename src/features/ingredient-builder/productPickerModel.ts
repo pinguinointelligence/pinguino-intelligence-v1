@@ -27,6 +27,7 @@ export function productPickerUnavailableReason(
   scope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON',
   hit: CatalogProductSearchHit,
 ): string {
+  if (hit.blockedReason) return hit.blockedReason;
   if (hit.status === 'blocked') {
     const defects = [...hit.missingFields, ...hit.invalidFields].map(defectLabel);
     return defects.length > 0

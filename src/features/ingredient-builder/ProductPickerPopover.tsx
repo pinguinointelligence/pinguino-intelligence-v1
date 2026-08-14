@@ -10,15 +10,14 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
 import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
-import { getEngineApprovedIngredientById, listEngineApprovedIngredientsByIds } from '@/services/ingredients';
+import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { markCatalogProductUsed } from '@/services/globalCatalog';
 import { cn } from '@/lib/cn';
 import { mappedCatalogIngredient, labelOnlyCatalogToppingIngredient } from '@/features/global-catalog/catalogIngredient';
-import { rankCatalogHits } from '@/features/global-catalog/ranking';
+import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { RecipeToppingIngredient } from '@/features/recipe-composition/labelTopping';
@@ -32,7 +31,6 @@ import {
   resolveProductBehaviorForSelection,
 } from '@/services/productIntelligence';
 import { filterIngredients, type IngredientLibrary } from './ingredientLibrary';
-import { useIngredientSearch } from './useIngredientSearch';
 import {
   isProductPickerSelectionCurrent,
   productPickerUnavailableReason,
@@ -112,25 +110,16 @@ export function ProductPickerPopover({
   const listRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const pickerInstanceId = useId().replace(/:/g, '');
-  const server = useIngredientSearch({ enabled: open && library.serverSearch, query });
   const globalCatalog = useGlobalCatalogPicker({
     enabled: open && library.serverSearch,
     query,
     favoritesOnly,
+    context: scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING',
+    productProfile: behaviorContext?.productProfile ?? null,
     selectedMarkets: marketFilter && marketFilter !== '__GLOBAL__' ? [marketFilter] : [],
     forceGlobal: marketFilter === '__GLOBAL__',
     limit: 500,
   });
-  const pinnedBaseIds = [...new Set([...globalCatalog.favorites, ...globalCatalog.recent])]
-    .filter((key) => key.startsWith('pi_base:'))
-    .filter((key) => !favoritesOnly || globalCatalog.favorites.has(key))
-    .map((key) => key.slice('pi_base:'.length));
-  const pinnedBase = useQuery({
-    queryKey: ['product-picker-pinned-base', pinnedBaseIds.sort().join(',')],
-    queryFn: () => listEngineApprovedIngredientsByIds(pinnedBaseIds),
-    enabled: open && library.serverSearch && query.trim() === '' && pinnedBaseIds.length > 0,
-  });
-
   useLayoutEffect(() => {
     if (!open || typeof window === 'undefined') return;
     const updatePosition = () => {
@@ -163,66 +152,29 @@ export function ProductPickerPopover({
     if (library.serverSearch) {
       // Never expose hits belonging to the previous debounced query. A quick
       // type -> Enter must not add a stale canonical ingredient.
-      const hits = server.isSettled
-        ? server.hits.map((hit) => ({
-            id: hit.id,
-            name: hit.name,
-            detail: hit.form,
-            entityKind: 'pi_base' as const,
-            status: 'pi_base' as const,
-            favorite: globalCatalog.favorites.has(`pi_base:${hit.id}`),
-            market: null,
-            originalName: null,
-            group: globalCatalog.favorites.has(`pi_base:${hit.id}`) || globalCatalog.recent.has(`pi_base:${hit.id}`)
-              ? 'favorites_recent' as const
-              : 'pi_base' as const,
-            selectable: true,
-          }))
-        : [];
-      const pinned = query.trim() === ''
-        ? (pinnedBase.data ?? []).map((row) => ({
-            id: row.ingredient_id,
-            name: row.ingredient_name_display,
-            detail: row.ingredient_subcategory ?? row.ingredient_category,
-            entityKind: 'pi_base' as const,
-            status: 'pi_base' as const,
-            favorite: globalCatalog.favorites.has(`pi_base:${row.ingredient_id}`),
-            market: null,
-            originalName: null,
-            group: 'favorites_recent' as const,
-            selectable: true,
-          }))
-        : [];
-      const catalog = rankCatalogHits({
-        hits: globalCatalog.hits,
-        query,
-        context: scope === 'BASE_FORMULATION' ? 'base' : 'topping',
-        preferences: globalCatalog.preferences,
-        favoritesOnly,
-        // `__GLOBAL__` is a UI sentinel, never a real market. Passing it into
-        // the ranker would filter every commercial result back out.
-        selectedMarkets: marketFilter && marketFilter !== '__GLOBAL__' ? [marketFilter] : [],
-      }).map((hit) => ({
-        id: `catalog:${hit.id}`,
+      const catalog = globalCatalog.isSettled ? preserveServerProductRank(
+        globalCatalog.hits,
+        globalCatalog.preferences,
+      ).map((hit) => ({
+        id: hit.entityKind === 'pi_base'
+          ? `mapper:${hit.mappedIngredientId ?? hit.id}`
+          : `catalog:${hit.id}`,
         name: hit.displayName,
-        detail: hit.brand ?? hit.canonicalFamily ?? 'Produkt',
-        entityKind: 'commercial_product' as const,
+        detail: hit.productForm ?? hit.brand ?? hit.canonicalFamily ?? 'Produkt',
+        entityKind: hit.entityKind,
         status: hit.status,
         favorite: hit.favorite,
         market: hit.markets[0] ?? null,
         originalName: hit.originalName,
         catalog: hit,
         group: hit.group,
-        selectable: scope === 'BASE_FORMULATION'
-          ? hit.usableInBase
-          : labelOnlyCatalogToppingIngredient(hit) !== null,
-      }));
-      // `rankCatalogHits` is relevance-first. Do not sort by presentation group
-      // afterwards: an unrelated favourite soda must never jump above a true
-      // Strawberry Base hit. Group headings follow the ranked stream instead.
+        selectable: scope === 'BASE_FORMULATION' ? hit.usableInBase : hit.usableAsTopping,
+      })) : [];
+      // The RPC is relevance-first. Do not sort or filter by presentation group
+      // afterwards: multilingual and typo hits must retain server authority.
       // Legacy owner-private `library.products` are deliberately absent here;
       // they are neither shared-catalog UUIDs nor automatically VERIFIED.
-      const relevant = [...pinned, ...hits, ...catalog]
+      const relevant = catalog
         .filter((option) => !favoritesOnly || option.favorite);
       return [...new Map(relevant.map((option) => [option.id, option])).values()];
     }
@@ -239,7 +191,7 @@ export function ProductPickerPopover({
       group: 'pi_base' as const,
       selectable: true,
     }));
-  }, [favoritesOnly, globalCatalog.favorites, globalCatalog.hits, globalCatalog.preferences, globalCatalog.recent, library, marketFilter, pinnedBase.data, query, scope, server.hits, server.isSettled]);
+  }, [favoritesOnly, globalCatalog.hits, globalCatalog.isSettled, globalCatalog.preferences, library, query, scope]);
   const safeActiveIndex =
     options.length === 0 ? 0 : Math.min(Math.max(activeIndex, 0), options.length - 1);
 
@@ -302,7 +254,7 @@ export function ProductPickerPopover({
     if (
       !isProductPickerSelectionCurrent({
         serverSearch: library.serverSearch,
-        serverSettled: server.isSettled,
+        serverSettled: globalCatalog.isSettled,
         localOption: Boolean(option.local),
       })
     )
@@ -311,7 +263,11 @@ export function ProductPickerPopover({
     try {
       let ingredient: RecipeToppingIngredient | null = option.local ?? null;
       if (!ingredient && option.catalog) {
-        if (scope === 'POST_PROCESS_ADDON') {
+        if (option.catalog.entityKind === 'pi_base' && option.catalog.mappedIngredientId) {
+          ingredient = await getEngineApprovedIngredientById(option.catalog.mappedIngredientId).then((row) =>
+            row ? ingredientRowToEngineIngredient(row) : null,
+          );
+        } else if (scope === 'POST_PROCESS_ADDON') {
           ingredient = labelOnlyCatalogToppingIngredient(option.catalog);
         } else if (option.catalog.mappedIngredientId) {
           ingredient = await getEngineApprovedIngredientById(option.catalog.mappedIngredientId).then((row) =>
@@ -323,10 +279,18 @@ export function ProductPickerPopover({
           row ? ingredientRowToEngineIngredient(row) : null,
         );
       }
+      if (!ingredient) {
+        setUnavailableNotice(
+          'Produkt utracił aktualne zatwierdzenie PINGÜINO. Odśwież wyszukiwanie i wybierz ponownie.',
+        );
+        return;
+      }
       let behavior: ProductBehaviorSnapshot | undefined;
       if (ingredient && behaviorContext) {
         const entity = option.catalog
-          ? option.catalog.currentVersionId
+          ? option.catalog.entityKind === 'pi_base' && option.catalog.mappedIngredientId
+            ? { entityKind: 'mapper' as const, entityId: option.catalog.mappedIngredientId }
+            : option.catalog.currentVersionId
             ? { entityKind: 'catalog_product_version' as const, entityId: option.catalog.currentVersionId }
             : null
           : {
@@ -378,7 +342,12 @@ export function ProductPickerPopover({
       if (ingredient) {
         // Recent-use telemetry is private ranking metadata; an unavailable
         // backend must never turn a valid ingredient selection into an error.
-        void markCatalogProductUsed({ entityKind: option.entityKind, id: option.catalog?.id ?? option.id }).catch(() => undefined);
+        void markCatalogProductUsed({
+          entityKind: option.entityKind,
+          id: option.entityKind === 'pi_base'
+            ? (option.catalog?.mappedIngredientId ?? option.id.replace(/^mapper:/,''))
+            : (option.catalog?.id ?? option.id.replace(/^catalog:/,'')),
+        }).catch(() => undefined);
       }
       close(selection?.focusLineId);
     } finally {
@@ -525,7 +494,7 @@ export function ProductPickerPopover({
                     </div>
                     <div className="mt-1 flex min-h-7 items-center gap-1.5 overflow-x-auto 2xl:h-[18px] 2xl:min-h-0" aria-label={library.serverSearch ? 'Filtry katalogu' : undefined}>
                       <p className="mr-auto shrink-0 text-xs text-stone-600 2xl:text-[10px]" role="status" aria-live="polite">
-                        {library.serverSearch && query.trim() && (!server.isSettled || !globalCatalog.isSettled)
+                        {library.serverSearch && query.trim() && !globalCatalog.isSettled
                           ? 'Szukam…'
                           : `${options.length} wyników`}
                       </p>
@@ -613,6 +582,14 @@ export function ProductPickerPopover({
                         const top =
                           (list.scrollTop / maxScroll) * Math.max(0, list.clientHeight - height);
                         setScrollThumb({ top, height, visible: true });
+                        if (
+                          library.serverSearch
+                          && globalCatalog.hasMore
+                          && !globalCatalog.isFetching
+                          && list.scrollTop + list.clientHeight >= list.scrollHeight - 80
+                        ) {
+                          globalCatalog.loadMore();
+                        }
                       }}
                     >
                     {options.length === 0 ? (
@@ -710,7 +687,13 @@ export function ProductPickerPopover({
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
-                              globalCatalog.toggleFavorite(option.entityKind, option.catalog?.id ?? option.id, !option.favorite);
+                              globalCatalog.toggleFavorite(
+                                option.entityKind,
+                                option.entityKind === 'pi_base'
+                                  ? (option.catalog?.mappedIngredientId ?? option.id.replace(/^mapper:/,''))
+                                  : (option.catalog?.id ?? option.id.replace(/^catalog:/,'')),
+                                !option.favorite,
+                              );
                             }}
                           >
                             <span aria-hidden>{option.favorite ? '★' : '☆'}</span>
@@ -719,23 +702,9 @@ export function ProductPickerPopover({
                         </Fragment>
                       ))
                     )}
-                    {library.serverSearch && server.hasMore ? (
-                      <button
-                        type="button"
-                        className="mt-1 min-h-11 w-full rounded-xl border border-ink/10 text-xs font-semibold text-ink"
-                        onClick={server.loadMore}
-                      >
-                        Pokaż więcej
-                      </button>
-                    ) : null}
-                    {library.serverSearch && server.isError ? (
-                      <p className="px-3 py-4 text-sm text-status-error" role="alert">
-                        Nie udało się pobrać wyników. Spróbuj ponownie.
-                      </p>
-                    ) : null}
                     {library.serverSearch && globalCatalog.isError ? (
                       <p className="px-3 py-3 text-xs text-status-error" role="alert">
-                        Katalog produktów jest chwilowo niedostępny. PINGÜINO Base nadal działa.
+                        Nie udało się pobrać produktów. Spróbuj ponownie.
                       </p>
                     ) : null}
                     </div>

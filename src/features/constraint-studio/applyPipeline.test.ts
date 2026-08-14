@@ -84,6 +84,24 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     expect(result).toMatchObject({ ok: false, code: 'already_clean' });
   });
 
+  it('reports exact missing ECO prices instead of a zero-run solver failure', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    input.items[0] = {
+      ...input.items[0]!,
+      ingredient: { ...input.items[0]!.ingredient, cost_per_kg: null, cost_currency: null },
+    };
+    const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'missing_prices',
+      lineIds: [input.items[0]!.id],
+    });
+    if (!result.ok && result.code === 'missing_prices') {
+      expect(result.ingredientNames).toContain(input.items[0]!.ingredient.name);
+    }
+  });
+
   it('never proposes ADDING a parallel line of a LOCKED ingredient (§17 intent)', () => {
     // Milk locked + over-sweet sucrose: the engine's top proposals add Milk
     // 3.5 % (dilution). Those violate the lock's intent and must be skipped —

@@ -29,8 +29,8 @@ Results:
 
 - mandatory DOM anchor assertions: `64/64 PASS`
 - logo glyph assertions: `4/4 PASS`
-- closed structural difference: `0.281325%`
-- picker structural difference: `0.3279%`
+- closed structural difference: `0.248695%`
+- picker structural difference: `0.295269%`
 - required threshold: `< 0.5%`
 
 Machine-readable evidence:

@@ -29,7 +29,7 @@ import {
   isUndoAvailable,
   useConstraintStudioStore,
 } from '../constraintStudioStore';
-import { previewIssueMessagePl } from '../previewIssueMessage';
+import { customerPreviewIssueMessagePl } from '../customerConstraintStudioPresentation';
 import { BlockedApplyNotice } from './BlockedApplyNotice';
 import { ConstraintHistoryPanel } from './ConstraintHistoryPanel';
 import { ConstraintPreviewCard } from './ConstraintPreviewCard';
@@ -184,7 +184,7 @@ export function ConstraintStudioSection() {
         </div>
 
         {previewIssue ? (
-          <p className="text-sm leading-relaxed text-ivory/70">{previewIssueMessagePl(previewIssue)}</p>
+          <p className="text-sm leading-relaxed text-ivory/70">{customerPreviewIssueMessagePl(previewIssue)}</p>
         ) : null}
 
         {blocked ? <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} /> : null}

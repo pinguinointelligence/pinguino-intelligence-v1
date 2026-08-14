@@ -16,7 +16,7 @@ const langPath = join(cacheRoot, 'langs');
 const cachePath = join(cacheRoot, 'engine-cache');
 mkdirSync(langPath, { recursive: true });
 mkdirSync(cachePath, { recursive: true });
-for (const lang of ['eng', 'spa', 'deu', 'pol']) {
+for (const lang of ['eng', 'spa', 'deu', 'fra', 'pol']) {
   const src = join(ROOT, 'node_modules', '@tesseract.js-data', lang, '4.0.0_best_int', `${lang}.traineddata.gz`);
   const dst = join(langPath, `${lang}.traineddata.gz`);
   if (!existsSync(dst)) copyFileSync(src, dst);

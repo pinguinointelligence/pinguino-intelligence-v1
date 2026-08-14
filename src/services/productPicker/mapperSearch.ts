@@ -20,6 +20,7 @@
  */
 import * as backend from '@/lib/supabase/client';
 import type { ReferenceEngineValues } from '@/data/products/productEngineResolver';
+import { searchProducts } from '@/services/globalCatalog';
 
 /** The demo-safe view (0033) — searchable by anon AND authenticated. */
 export const DEMO_SEARCH_VIEW = 'mapper_basement_search_demo';
@@ -87,6 +88,56 @@ export interface MapperSearchQuery {
   limit?: number;
   offset?: number;
   signal?: AbortSignal;
+}
+
+/** Authenticated customer surfaces use the same canonical search RPC as the
+ * recipe picker and Products page. Demo remains on its deliberately public,
+ * reduced Mapper view. */
+export async function searchCanonicalMapperIngredients(
+  query: MapperSearchQuery,
+): Promise<MapperSearchOutcome> {
+  if (query.signal?.aborted) return { kind: 'aborted' };
+  try {
+    const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
+    const wanted = limit + 1;
+    const rows: SafeMapperSearchRow[] = [];
+    let cursor = query.offset ?? 0;
+    let exhausted = false;
+    while (rows.length < wanted && !exhausted) {
+      const batchLimit = Math.min(500, Math.max(1, wanted - rows.length));
+      const hits = await searchProducts({
+        query: query.text,
+        context: 'BASE',
+        marketScope: 'global',
+        selectedMarkets: [],
+        entityKind: 'pi_base',
+        limit: batchLimit,
+        cursor,
+      });
+      cursor += hits.length;
+      exhausted = hits.length < batchLimit;
+      rows.push(...hits
+        .filter((hit) => hit.entityKind === 'pi_base' && hit.mappedIngredientId && hit.usableInBase)
+        .map((hit) => ({
+          ingredient_id: hit.mappedIngredientId!,
+          ingredient_name_display: hit.displayName,
+          ingredient_name_internal: hit.originalName,
+          ingredient_category: hit.category,
+          ingredient_subcategory: hit.productForm ?? null,
+          vegan: null,
+          dairy_free: null,
+          gluten_free: null,
+          contains_alcohol: null,
+          approved_for_base: hit.usableInBase,
+          approved_for_engines: hit.usableInBase,
+          dataset_version: null,
+        })));
+    }
+    if (query.signal?.aborted) return { kind: 'aborted' };
+    return { kind: 'results', rows: rows.slice(0, limit), hasMore: rows.length > limit };
+  } catch (error) {
+    return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 /* ------------------------------------------------------------------------ *
@@ -219,7 +270,10 @@ export async function fetchIngredientEngineValues(
   let builder = client
     .from(RICH_SEARCH_VIEW)
     .select('ingredient_id,ingredient_name_display,pac_value,pod_value')
-    .eq('ingredient_id', ingredientId);
+    .eq('ingredient_id', ingredientId)
+    .eq('approved_for_base', true)
+    .eq('approved_for_engines', true)
+    .ilike('verification_status', 'Verified%');
   if (signal) builder = builder.abortSignal(signal);
 
   const { data, error } = await builder.maybeSingle();

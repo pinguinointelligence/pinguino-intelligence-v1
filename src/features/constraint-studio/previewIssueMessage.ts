@@ -10,6 +10,10 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
   switch (issue.code) {
     case 'already_clean':
       return copy.previewIssue.alreadyClean;
+    case 'practicalization_blocked':
+      return issue.messagePl;
+    case 'missing_prices':
+      return copy.previewIssue.missingPrices(issue.ingredientNames);
     case 'no_proposal':
       return copy.previewIssue.noProposal;
     case 'unsafe_proposal':

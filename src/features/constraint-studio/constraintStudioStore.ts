@@ -62,6 +62,7 @@ import {
 } from '@/features/recipe-constraints';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { constraintStudioCopy } from './constraintStudioCopy';
 
 const applyGuardCopy = constraintStudioCopy.applyGuard;
@@ -200,6 +201,11 @@ const withoutLine = (
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
 export type PreviewIssue = Exclude<BuildPreviewResult, { ok: true }>;
+export type RecalculationTerminalState =
+  | { state: 'PREVIEW_READY' }
+  | { state: 'NO_CHANGE_NEEDED' }
+  | { state: 'BEST_ACHIEVABLE' }
+  | { state: 'BLOCKED'; code: PreviewIssue['code'] };
 
 /**
  * Effective constraints for a set of recipe lines: entries whose line vanished
@@ -325,6 +331,8 @@ export interface ConstraintStudioState {
   blocked: BlockedApply | null;
   feasibility: ConstraintFeasibilityAnalysis | null;
   history: AppliedChangeRecord[];
+  /** One honest terminal state for the most recent PI recalculation run. */
+  recalculationTerminal: RecalculationTerminalState | null;
   /** Session link to the pro-core saved recipe (save→version reuse). */
   proCoreRecipeId: string | null;
   lastSavedVersion: number | null;
@@ -397,6 +405,7 @@ const INITIAL = {
   blocked: null,
   feasibility: null,
   history: [] as AppliedChangeRecord[],
+  recalculationTerminal: null as RecalculationTerminalState | null,
   proCoreRecipeId: null,
   lastSavedVersion: null,
 };
@@ -413,6 +422,7 @@ const CLEAR_STAGED = {
   directionConsent: null,
   feasibility: null,
   blocked: null,
+  recalculationTerminal: null,
 };
 
 /**
@@ -595,6 +605,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
 
       createOptimizePreview: () => {
         get().reconcile();
+        // A new run owns one terminal result. Old Preview/issue/Undo evidence
+        // cannot coexist with it or be mistaken for this run's outcome.
+        set({ history: [], ...CLEAR_STAGED });
         // THE canonical draft (owner P0 NIGHTLY FAILURE 1): recipe input + §17
         // constraints + exclusions composed by the ONE selector — the preview is
         // stamped with the draft revision it was built for.
@@ -614,6 +627,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               reasons: ['unavailable_ingredient_present'],
               messagePl: `${unavailable} jest oznaczony jako niedostępny. Wybierz zamiennik albo usuń linię.`,
             },
+            recalculationTerminal: { state: 'BLOCKED', code: 'substitution_invalid' },
           });
           return;
         }
@@ -643,6 +657,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                   substitutionAuthorization: null,
                   previewIssue: null,
                   blocked: null,
+                  recalculationTerminal: { state: 'PREVIEW_READY' },
                 }
               : {
                   preview: result.preview,
@@ -652,9 +667,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                   substitutionAuthorization: null,
                   previewIssue: null,
                   blocked: null,
+                  recalculationTerminal: { state: 'PREVIEW_READY' },
                 },
           );
         } else {
+          if (result.code === 'already_clean' || result.code === 'best_safe_result') {
+            useRecipeProfileStore.getState().acknowledgeRecalculation();
+          }
           set({
             preview: null,
             directionBestCandidate: null,
@@ -663,6 +682,12 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             substitutionAuthorization: null,
             previewIssue: result,
             blocked: null,
+            recalculationTerminal:
+              result.code === 'already_clean'
+                ? { state: 'NO_CHANGE_NEEDED' }
+                : result.code === 'best_safe_result'
+                  ? { state: 'BEST_ACHIEVABLE' }
+                  : { state: 'BLOCKED', code: result.code },
           });
         }
       },
@@ -880,6 +905,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           substitutionAuthorization: null,
           suggestedFixAuthorization: null,
           blocked: null,
+          recalculationTerminal: null,
         }),
 
       applyPreview: () => {
@@ -1051,18 +1077,68 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
  *         feasibility, blocked) is invalidated unless the staged preview
  *         already carries the new revision.
  */
+interface ProductBehaviorAuthorityIssue {
+  lineId: string;
+  lineName: string;
+  reasons: string[];
+}
+
+const productBehaviorReasonPl = (reason: string): string => ({
+  behavior_binding_missing: 'brak aktualnego powiązania zachowania produktu',
+  behavior_binding_stale: 'powiązanie zachowania produktu jest nieaktualne',
+  behavior_binding_version_stale: 'wersja powiązania zachowania produktu jest nieaktualna',
+  facts_fingerprint_stale: 'fakty produktu zmieniły się od ostatniego przeliczenia',
+  shared_facts_stale: 'wspólne fakty produktu zmieniły się od ostatniego przeliczenia',
+  taxonomy_version_stale: 'klasyfikacja produktu zmieniła się od ostatniego przeliczenia',
+  product_version_stale: 'wersja produktu zmieniła się od ostatniego przeliczenia',
+  product_identity_stale: 'tożsamość produktu zmieniła się od ostatniego przeliczenia',
+  mapper_mapping_stale: 'mapowanie PINGÜINO Base zmieniło się od ostatniego przeliczenia',
+  main_policy_stale: 'polityka Main zmieniła się od ostatniego przeliczenia',
+  private_price_stale: 'Twoja prywatna cena produktu zmieniła się od ostatniego przeliczenia',
+  main_policy_unknown: 'brak zatwierdzonej polityki Main',
+  base_technical_authority_missing: 'brak zatwierdzonych danych technicznych Base',
+  profile_not_approved: 'produkt nie jest zatwierdzony dla wybranego profilu',
+  process_evidence_missing: 'brak wymaganego dowodu procesu',
+  behavior_snapshot_missing_or_unresolved: 'brak aktualnego snapshotu zachowania',
+  behavior_server_validation_unavailable: 'walidacja serwerowa jest chwilowo niedostępna',
+  classification_pending: 'klasyfikacja produktu nadal trwa',
+  classification_failed: 'klasyfikacja produktu wymaga ponownej weryfikacji',
+  context_not_approved: 'produkt nie jest zatwierdzony dla bieżącego profilu i temperatury',
+  requested_module_not_eligible: 'produkt nie jest dostępny dla tej operacji',
+  legacy_product_reference_unresolved: 'nie udało się odnaleźć aktualnej wersji produktu',
+  catalog_version_identity_mismatch: 'wersja produktu nie pasuje do aktualnej tożsamości katalogowej',
+  mapper_entity_identity_mismatch: 'produkt nie pasuje do aktualnej tożsamości PINGÜINO Base',
+  recipe_changed_during_validation: 'receptura zmieniła się podczas sprawdzania',
+}[reason] ?? reason.replaceAll('_', ' '));
+
 function serverBehaviorPreviewIssue(
-  lineIds: readonly string[],
+  issues: readonly ProductBehaviorAuthorityIssue[],
 ): Extract<BuildPreviewResult, { ok: false; code: 'product_behavior_invalid' }> {
+  const detail = issues.map((issue) =>
+    `${issue.lineName}: ${issue.reasons.map(productBehaviorReasonPl).join(', ')}`,
+  ).join('; ');
+  const priceOnly = issues.every((issue) =>
+    issue.reasons.length > 0 && issue.reasons.every((reason) => reason === 'private_price_stale'),
+  );
+  const recipeChanged = issues.every((issue) =>
+    issue.reasons.length > 0
+      && issue.reasons.every((reason) => reason === 'recipe_changed_during_validation'),
+  );
+  const action = recipeChanged
+    ? 'Uruchom przeliczenie ponownie dla bieżącej receptury.'
+    : priceOnly
+      ? 'Odśwież prywatne ceny i uruchom przeliczenie ponownie.'
+      : 'Odśwież dane produktu albo wybierz jego aktualną, zatwierdzoną wersję.';
+  const messagePl = `Nie można przeliczyć receptury. ${detail}. ${action}`;
   return {
     ok: false,
     code: 'product_behavior_invalid',
     violations: [{
       code: 'product_behavior_missing',
-      lineIds: [...lineIds],
-      messagePl: 'Klasyfikacja produktu zmieniła się. Uruchom ponowne przeliczenie.',
+      lineIds: issues.map((issue) => issue.lineId),
+      messagePl,
     }],
-    messagePl: 'Klasyfikacja produktu zmieniła się. Uruchom ponowne przeliczenie.',
+    messagePl,
   };
 }
 
@@ -1071,7 +1147,7 @@ async function currentBaseAuthorityReady(input: {
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
 }): Promise<
   | { ready: true; snapshots: Record<string, ProductBehaviorSnapshot> }
-  | { ready: false; lineIds: string[] }
+  | { ready: false; issues: ProductBehaviorAuthorityIssue[] }
 > {
   const required = productBehaviorRequiredLineIds({ items: input.recipe.items });
   if (required.length === 0) {
@@ -1095,7 +1171,14 @@ async function currentBaseAuthorityReady(input: {
       module,
     });
     if (resolved.unresolvedLineIds.length > 0) {
-      return { ready: false, lineIds: resolved.unresolvedLineIds };
+      return {
+        ready: false,
+        issues: resolved.unresolvedLineIds.map((lineId) => ({
+          lineId,
+          lineName: input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ?? lineId,
+          reasons: ['behavior_snapshot_missing_or_unresolved'],
+        })),
+      };
     }
     const validation = await validateRecipeBehaviorOnServer({
       recipe: input.recipe,
@@ -1105,29 +1188,61 @@ async function currentBaseAuthorityReady(input: {
     });
     return validation.ready
       ? { ready: true, snapshots: resolved.snapshots }
-      : { ready: false, lineIds: validation.staleLineIds };
+      : {
+          ready: false,
+          issues: validation.staleLineIds.map((lineId) => ({
+            lineId,
+            lineName: input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ?? lineId,
+            reasons: validation.lines.find((line) => line.lineId === lineId)?.reasons
+              ?? ['behavior_snapshot_missing_or_unresolved'],
+          })),
+        };
   } catch {
-    return { ready: false, lineIds: required };
+    return {
+      ready: false,
+      issues: required.map((lineId) => ({
+        lineId,
+        lineName: input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ?? lineId,
+        reasons: ['behavior_server_validation_unavailable'],
+      })),
+    };
   }
 }
 
 /** Runtime wrapper: every customer-visible Preview rechecks current server
  * authority while pure store actions remain deterministic domain seams. */
 export async function createOptimizePreviewWithServerAuthority(): Promise<void> {
+  // The server check is part of the same recalculation run. Clear every prior
+  // terminal artefact before waiting so stale Preview/Undo can never coexist
+  // with a new result.
+  useRecipeProfileStore.getState().markRecalculationRequired();
+  useConstraintStudioStore.setState({ history: [], ...CLEAR_STAGED });
   const draft = selectCanonicalDraft();
   const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
   const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
   if (!validation.ready) {
     useConstraintStudioStore.setState({
-      preview: null,
-      directionBestCandidate: null,
-      previewIssue: serverBehaviorPreviewIssue(validation.lineIds),
-      blocked: null,
+      history: [],
+      ...CLEAR_STAGED,
+      previewIssue: serverBehaviorPreviewIssue(validation.issues),
+      recalculationTerminal: { state: 'BLOCKED', code: 'product_behavior_invalid' },
+    });
+    return;
+  }
+  if (useRecipeStore.getState().draftRevision !== draft.revision) {
+    useConstraintStudioStore.setState({
+      history: [],
+      ...CLEAR_STAGED,
+      previewIssue: serverBehaviorPreviewIssue(draft.input.items.map((item) => ({
+        lineId: item.id,
+        lineName: item.ingredient.name,
+        reasons: ['recipe_changed_during_validation'],
+      }))),
+      recalculationTerminal: { state: 'BLOCKED', code: 'product_behavior_invalid' },
     });
     return;
   }
   useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
-  if (useRecipeStore.getState().draftRevision !== draft.revision) return;
   useConstraintStudioStore.getState().createOptimizePreview();
 }
 
@@ -1140,7 +1255,7 @@ export async function createBatchRescalePreviewWithServerAuthority(
   if (!validation.ready) {
     useConstraintStudioStore.setState({
       preview: null,
-      previewIssue: serverBehaviorPreviewIssue(validation.lineIds),
+      previewIssue: serverBehaviorPreviewIssue(validation.issues),
       blocked: null,
     });
     return;
@@ -1159,7 +1274,7 @@ export async function createSuggestedFixPreviewWithServerAuthority(
   if (!validation.ready) {
     useConstraintStudioStore.setState({
       preview: null,
-      previewIssue: serverBehaviorPreviewIssue(validation.lineIds),
+      previewIssue: serverBehaviorPreviewIssue(validation.issues),
       blocked: null,
     });
     return;
@@ -1223,7 +1338,11 @@ export async function createSubstitutionPreviewWithServerAuthority(input: {
   ) {
     useConstraintStudioStore.setState({
       preview: null,
-      previewIssue: serverBehaviorPreviewIssue(resolved.unresolvedLineIds),
+      previewIssue: serverBehaviorPreviewIssue(resolved.unresolvedLineIds.map((lineId) => ({
+        lineId,
+        lineName: raw.preview.proposedInput.items.find((item) => item.id === lineId)?.ingredient.name ?? lineId,
+        reasons: ['behavior_snapshot_missing_or_unresolved'],
+      }))),
       blocked: null,
     });
     return;
@@ -1282,6 +1401,11 @@ useRecipeStore.subscribe((state, prev) => {
     return;
   }
   if (state.draftRevision !== prev.draftRevision) {
+    // One draft revision is the universal material-change signal. Ingredient
+    // add/remove, grams, locks, profile/context and product-authority changes all
+    // invalidate the previously displayed score immediately. A verified Apply
+    // acknowledges this synchronously after its own revision write.
+    useRecipeProfileStore.getState().markRecalculationRequired();
     const session = useConstraintStudioStore.getState();
     // C3 step 1 — synchronous constraint reconciliation (write-time, not only
     // read-time): a removed line's §17 entry never survives the transaction.

@@ -488,7 +488,12 @@ export function CustomerShellV1() {
       resolution: l.resolution,
     }));
   }, [flow, selectedDraft, engineResult]);
-  const resolution = useIngredientResolution(workingRecipeId, resolvableLines);
+  const resolution = useIngredientResolution(
+    workingRecipeId,
+    resolvableLines,
+    undefined,
+    { authenticated: authUserId !== null },
+  );
 
   // Speech (browser-only, optional).
   const [listening, setListening] = useState(false);

@@ -16,6 +16,7 @@ const read = (...p: string[]) => readFileSync(join(SRC, ...p), 'utf8');
 interface Captured {
   table: string;
   eq: [string, unknown][];
+  ilike: [string, string][];
   or: string[];
   order: [string, unknown][];
   range: [number, number] | null;
@@ -30,11 +31,12 @@ let backendRows: unknown[] = [];
 function fakeClient() {
   return {
     from(table: string) {
-      const cap: Captured = { table, eq: [], or: [], order: [], range: null, aborted: false, select: '' };
+      const cap: Captured = { table, eq: [], ilike: [], or: [], order: [], range: null, aborted: false, select: '' };
       captured.push(cap);
       const builder = {
         select(cols: string) { cap.select = cols; return builder; },
         eq(col: string, val: unknown) { cap.eq.push([col, val]); return builder; },
+        ilike(col: string, val: string) { cap.ilike.push([col, val]); return builder; },
         or(expr: string) { cap.or.push(expr); return builder; },
         order(col: string, opts: unknown) { cap.order.push([col, opts]); return builder; },
         range(from: number, to: number) { cap.range = [from, to]; return builder; },
@@ -62,13 +64,12 @@ describe('per-query server request (tests 3/4/5)', () => {
     await searchEngineApprovedIngredients('świeże truskawki');
     expect(captured.length).toBe(1);
     const cap = captured[0]!;
-    expect(cap.table).toBe('mapper_basement');
+    expect(cap.table).toBe('mapper_basement_search');
     expect(cap.eq).toEqual([
-      ['is_active', true],
       ['approved_for_base', true],
       ['approved_for_engines', true],
-      ['verification_status', 'verified'],
     ]);
+    expect(cap.ilike).toEqual([['verification_status', 'Verified%']]);
     expect(cap.or.length).toBe(1); // one significant token („świeże" is a stopword)
     expect(cap.or[0]).toContain('ingredient_name_display.ilike.*truskaw*');
     expect(cap.or[0]).toContain('ingredient_name_internal.ilike.*straw*');
@@ -119,11 +120,10 @@ describe('per-query server request (tests 3/4/5)', () => {
     expect(captured.length).toBe(2);
     for (const c of captured) {
       expect(c.eq).toEqual([
-        ['is_active', true],
         ['approved_for_base', true],
         ['approved_for_engines', true],
-        ['verification_status', 'verified'],
       ]);
+      expect(c.ilike).toEqual([['verification_status', 'Verified%']]);
       expect(c.or).toEqual(captured[0]!.or);
       expect(c.order.map(([col]) => col)).toEqual(['ingredient_name_display', 'ingredient_id']); // stable tiebreak
     }
@@ -149,7 +149,7 @@ describe('safe payload (test 23)', () => {
     const cols = captured[0]!.select.split(',');
     expect(cols).toEqual([
       'ingredient_id', 'ingredient_name_display', 'ingredient_name_internal',
-      'brand', 'ingredient_category', 'ingredient_subcategory',
+      'ingredient_category', 'ingredient_subcategory',
     ]);
     for (const banned of ['pac_value', 'pod_value', 'water_percent', 'total_solids_percent', 'data_confidence_percent']) {
       expect(captured[0]!.select).not.toContain(banned);
@@ -166,15 +166,15 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
   });
 
   it('the search hook is fresh-by-default: short staleTime, refetchOnMount always, query in the key', () => {
-    const hook = read('features', 'ingredient-builder', 'useIngredientSearch.ts');
+    const hook = read('features', 'global-catalog', 'useGlobalCatalogPicker.ts');
     expect(hook).toContain("refetchOnMount: 'always'");
-    expect(hook).toMatch(/SEARCH_STALE_TIME_MS = 15_000/);
-    expect(hook).toContain("['ingredient-search', norm, limit]");
+    expect(hook).toContain('staleTime: 15_000');
+    expect(hook).toContain("['product-search-v1'");
   });
 
   it('no permanent catalogue storage: the search path never touches localStorage/indexedDB', () => {
-    for (const file of ['useIngredientSearch.ts', 'ServerIngredientPicker.tsx', 'useIngredientLibrary.ts']) {
-      const src = read('features', 'ingredient-builder', file);
+    for (const [folder, file] of [['global-catalog', 'useGlobalCatalogPicker.ts'], ['ingredient-builder', 'ProductPickerPopover.tsx'], ['ingredient-builder', 'useIngredientLibrary.ts']] as const) {
+      const src = read('features', folder, file);
       expect(src).not.toMatch(/localStorage|indexedDB/i);
     }
   });
@@ -184,8 +184,9 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     expect(builder).toContain('<ProductPickerPopover');
     expect(picker).toContain('library.serverSearch');
-    expect(picker).toContain('useIngredientSearch');
-    expect(picker).toContain('getEngineApprovedIngredientById(option.id)');
+    expect(picker).toContain('useGlobalCatalogPicker');
+    expect(picker).not.toContain('useIngredientSearch');
+    expect(picker).toContain('getEngineApprovedIngredientById(option.catalog.mappedIngredientId)');
   });
 
   it('stale-add protection: the current picker rejects old server hits until the new query settles', () => {
@@ -211,9 +212,9 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
       }),
     ).toBe(true);
     const src = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
-    expect(src).toContain('server.isSettled');
+    expect(src).toContain('globalCatalog.isSettled');
     expect(src).toContain('isProductPickerSelectionCurrent');
-    expect(src).toContain('getEngineApprovedIngredientById(option.id)');
+    expect(src).toContain('getEngineApprovedIngredientById(option.catalog.mappedIngredientId)');
   });
 
   it('binds modal identity and the focus trap to the visible picker, never its backdrop', () => {
@@ -234,21 +235,21 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     expect(src).toContain('triggerRef.current?.focus()');
   });
 
-  it('debounce + per-query key + abort propagation: a stale response can never overwrite a newer query', () => {
-    const hook = read('features', 'ingredient-builder', 'useIngredientSearch.ts');
-    expect(hook).toContain('useDebouncedValue(query, SEARCH_DEBOUNCE_MS)');
-    expect(hook).toMatch(/SEARCH_DEBOUNCE_MS = 250/);
-    // react-query's AbortSignal reaches the PostgREST request builder
-    expect(hook).toContain('queryFn: ({ signal }) => searchEngineApprovedIngredients(debounced, { limit, signal })');
+  it('debounce + per-query key: a stale response can never overwrite a newer canonical query', () => {
+    const hook = read('features', 'global-catalog', 'useGlobalCatalogPicker.ts');
+    expect(hook).toContain('useDebouncedValue(input.query, 250)');
+    expect(hook).toContain("['product-search-v1'");
+    expect(hook).toContain('queryFn: async () =>');
+    expect(hook).toContain('cursor: rows.length');
   });
 
-  it('pagination correctness: window is stored WITH its query, resets on a new query, widens truthfully', () => {
-    const hook = read('features', 'ingredient-builder', 'useIngredientSearch.ts');
-    // a new settled query automatically restarts at page one (derived, no reset effect)
-    expect(hook).toContain("pagination?.norm === norm ? pagination.limit : SEARCH_PAGE_SIZE");
-    // loadMore only widens the CURRENT query's window
-    expect(hook).toContain('setPagination({ norm, limit: limit + SEARCH_PAGE_SIZE })');
-    // truthful hasMore: a completely filled window means more may exist
-    expect(hook).toContain('(result.data?.length ?? 0) >= limit');
+  it('pagination is an explicit server cursor, not a client-side catalogue snapshot', () => {
+    const service = read('services', 'globalCatalog.ts');
+    expect(service).toContain('cursor?: number');
+    expect(service).toContain('p_cursor: input.cursor ?? 0');
+    expect(service).not.toContain('listEngineApprovedIngredients()');
+    const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+    expect(picker).toContain('globalCatalog.hasMore');
+    expect(picker).toContain('globalCatalog.loadMore()');
   });
 });

@@ -3,6 +3,11 @@ import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
+import type { DuplicateCandidate } from '@/features/global-catalog/contracts';
+import {
+  customerDuplicateChoices,
+  customerDuplicateDecisionCopy,
+} from '@/features/ocr-intake/ui/customerDuplicateChoices';
 import { ProductScanPage } from './ProductScanPage';
 
 vi.mock('@/services/products', () => ({ listMyProducts: vi.fn(async () => []) }));
@@ -41,12 +46,42 @@ describe('customer OCR global-catalog entry', () => {
   it('connects local OCR review to the one persistence orchestrator', () => {
     expect(SOURCE).toContain('new TesseractOcrProvider()');
     expect(SOURCE).toContain('extractSessionFields');
-    expect(SOURCE).toContain('<EvidenceReviewPanel');
+    expect(SOURCE).toContain('<CustomerOcrSummary');
+    expect(SOURCE).not.toContain('<EvidenceReviewPanel');
+    expect(SOURCE).toContain('settleCustomerReview(next)');
+    expect(SOURCE).toContain("role: 'other'");
+    expect(SOURCE).toContain("'fra'");
     expect(SOURCE).toContain('persistSessionAndSave(ready');
     expect(SOURCE).toContain('assessDuplicate');
     expect(SOURCE).toContain('type="radio"');
+    expect(SOURCE.match(/!hasExactDuplicate/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(SOURCE).toContain('customerDuplicateChoices(duplicatePreview)');
     expect(SOURCE).toContain('duplicateProductId: selectedDuplicateProductId');
     expect(SOURCE).toContain('disabled={!selectedDuplicateProductId}');
+    expect(SOURCE).toContain('sessionForConfirmedExistingProduct(session, selectedDuplicate)');
+    expect(SOURCE).toContain('next = markFieldUnknown(next, field.fieldKey)');
+  });
+
+  it('suppresses the likely/different path when a mixed preview also contains an exact duplicate', () => {
+    const exact = { productId: 'exact', strength: 'exact', score: 1 } as DuplicateCandidate;
+    const likely = { productId: 'likely', strength: 'likely', score: 0.84 } as DuplicateCandidate;
+    expect(customerDuplicateChoices([likely, exact])).toEqual([exact]);
+    expect(customerDuplicateChoices([likely])).toEqual([likely]);
+  });
+
+  it('uses exact customer copy for exact and likely duplicate decisions', () => {
+    expect(customerDuplicateDecisionCopy(true)).toEqual({
+      title: 'Ten produkt już istnieje',
+      confirm: 'Użyj tego produktu',
+      reject: 'Nie, to inny produkt',
+    });
+    expect(customerDuplicateDecisionCopy(false)).toEqual({
+      title: 'Czy to ten sam produkt?',
+      confirm: 'Tak',
+      reject: 'Nie, to inny produkt',
+    });
+    expect(SOURCE).toContain('customerDuplicateDecisionCopy(');
+    expect(SOURCE).toContain('Nie, to inny produkt');
   });
 
   it('captures owned evidence and enters the canonical ingest transaction exactly once', () => {

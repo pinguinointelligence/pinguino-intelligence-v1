@@ -82,6 +82,35 @@ const sourceFromLegacyProduct = (source: ProductSourceType | undefined): Product
   }
 };
 
+function reviewedAuditValue(extracted: Record<string, unknown>, key: string): string | null {
+  if (!Array.isArray(extracted.fields)) return null;
+  const field = extracted.fields.find(
+    (entry): entry is Record<string, unknown> =>
+      typeof entry === 'object' && entry !== null && (entry as Record<string, unknown>).fieldKey === key,
+  );
+  if (!field || field.reviewStatus === 'marked_unknown') return null;
+  if (field.reviewStatus === 'edited') {
+    return typeof field.editedValue === 'string' && field.editedValue.trim() !== ''
+      ? field.editedValue.trim()
+      : null;
+  }
+  if (field.reviewStatus !== 'confirmed' && field.reviewStatus !== 'auto_accepted') return null;
+  if (!Array.isArray(field.candidates)) return null;
+  const selected = typeof field.chosenCandidate === 'number'
+    ? field.candidates[field.chosenCandidate]
+    : field.candidates.length === 1 ? field.candidates[0] : null;
+  if (!selected || typeof selected !== 'object') return null;
+  const candidate = selected as Record<string, unknown>;
+  const value = candidate.normalized ?? candidate.extractedRaw;
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
+function textArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string' && entry.trim() !== '')
+    : [];
+}
+
 export function canonicalIngestFromLegacyProduct(input: ProductInsert): Pick<
   ProductIngestRequest,
   'source' | 'input' | 'privateOverlay'
@@ -89,13 +118,44 @@ export function canonicalIngestFromLegacyProduct(input: ProductInsert): Pick<
   const extracted = typeof input.extracted_json === 'object' && input.extracted_json !== null
     ? input.extracted_json as Record<string, unknown>
     : {};
+  const nutritionBasis =
+    extracted.basis === 'per_100g' || extracted.basis === 'per_100ml'
+      ? extracted.basis
+      : null;
+  const nutritionValues = {
+    energyKcal: input.kcal_per_100g ?? null,
+    fat: input.fat_percent ?? null,
+    saturatedFat: input.saturated_fat_percent ?? null,
+    carbohydrate: input.carbohydrate_percent ?? null,
+    sugars: input.total_sugars_percent ?? null,
+    protein: input.protein_percent ?? null,
+    salt: input.salt_percent ?? null,
+    fibre: input.fiber_percent ?? null,
+  };
+  const nutrition = nutritionBasis !== null && Object.values(nutritionValues).some((value) => value !== null)
+    ? { basis: nutritionBasis, ...nutritionValues }
+    : null;
+  const ingredientsText =
+    typeof extracted.ingredientsText === 'string'
+      ? extracted.ingredientsText
+      : reviewedAuditValue(extracted, 'ingredients_text');
+  const allergensText =
+    input.allergens ??
+    (typeof extracted.allergensText === 'string'
+      ? extracted.allergensText
+      : reviewedAuditValue(extracted, 'allergens_text'));
+  const mayContainText =
+    typeof extracted.mayContainText === 'string'
+      ? extracted.mayContainText
+      : reviewedAuditValue(extracted, 'may_contain_text');
+  const labelLanguages = textArray(extracted.labelLanguages);
   return {
     source: sourceFromLegacyProduct(input.source_type),
     input: {
       productKind: extracted.productKind === 'internal_subproduct' ? 'internal_subproduct' : 'commercial_product',
       displayName: input.product_name_display ?? null,
       originalName: input.product_name_internal ?? null,
-      originalLanguage: extracted.originalLanguage ?? null,
+      originalLanguage: extracted.originalLanguage ?? labelLanguages[0] ?? null,
       brand: input.brand ?? null,
       explicitlyUnbranded: extracted.explicitlyUnbranded === true,
       canonicalFamily: null,
@@ -106,19 +166,13 @@ export function canonicalIngestFromLegacyProduct(input: ProductInsert): Pick<
       provenance: input.source_type ?? 'manual',
       facts: {
         packageSize: input.package_size ?? null,
-        allergensText: input.allergens ?? null,
-        ingredientsText: extracted.ingredientsText ?? null,
-        nutrition: {
-          basis: extracted.nutritionBasis ?? 'per_100g',
-          energyKcal: input.kcal_per_100g ?? null,
-          fat: input.fat_percent ?? null,
-          saturatedFat: input.saturated_fat_percent ?? null,
-          carbohydrate: input.carbohydrate_percent ?? null,
-          sugars: input.total_sugars_percent ?? null,
-          protein: input.protein_percent ?? null,
-          salt: input.salt_percent ?? null,
-          fibre: input.fiber_percent ?? null,
-        },
+        allergensText,
+        ingredientsText,
+        mayContainAllergens: mayContainText
+          ? [...new Set(mayContainText.split(/[,;/]/).map((entry) => entry.trim()).filter(Boolean))]
+          : [],
+        labelLanguages,
+        nutrition,
         technicalComposition: {
           water: input.water_percent ?? null,
           totalSolids: input.total_solids_percent ?? null,

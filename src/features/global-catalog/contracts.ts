@@ -86,12 +86,14 @@ export interface CatalogProductSearchHit {
   currentVersionId?: string | null;
   entityKind: CatalogEntityKind;
   status: CatalogStatus | 'pi_base';
+  provenance?: string | null;
   displayName: string;
   originalName: string | null;
   originalLanguage: string | null;
   brand: string | null;
   canonicalFamily: string | null;
   category: string | null;
+  productForm?: string | null;
   mappedIngredientId: string | null;
   markets: string[];
   retailers: string[];
@@ -100,7 +102,10 @@ export interface CatalogProductSearchHit {
   favorite: boolean;
   recentlyUsedAt: string | null;
   usableInBase: boolean;
+  mainAllowed?: boolean;
   usableAsTopping: boolean;
+  blockedReason?: string | null;
+  relevance?: number;
   missingFields: string[];
   invalidFields: string[];
   verificationMethod: CatalogVerificationMethod | 'pi_base';

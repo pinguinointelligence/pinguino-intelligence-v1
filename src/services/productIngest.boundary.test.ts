@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { canonicalIngestFromLegacyProduct } from './productIngest';
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
@@ -45,5 +46,26 @@ describe('canonical product ingest boundary', () => {
       'spreadsheet', 'supplier_specification', 'shop', 'franchise',
       'future_integration', 'internal_subproduct',
     ]) expect(service).toContain(`| '${source}'`);
+  });
+
+  it('preserves reviewed OCR text/languages and never invents a nutrition basis', () => {
+    const request = canonicalIngestFromLegacyProduct({
+      source_type: 'label_scan',
+      package_size: '220 g',
+      extracted_json: {
+        schema: 'pinguino.ocr_intake_evidence.v2',
+        basis: 'unknown',
+        labelLanguages: ['de', 'fr'],
+        ingredientsText: 'WEIZENMEHL, Zucker, SOJALECITHIN',
+        allergensText: 'WEIZEN, SOJA',
+        mayContainText: 'MILCH; LAIT',
+      },
+    });
+    const facts = request.input.facts as Record<string, unknown>;
+    expect(request.input.originalLanguage).toBe('de');
+    expect(facts.ingredientsText).toContain('WEIZENMEHL');
+    expect(facts.mayContainAllergens).toEqual(['MILCH', 'LAIT']);
+    expect(facts.labelLanguages).toEqual(['de', 'fr']);
+    expect(facts.nutrition).toBeNull();
   });
 });

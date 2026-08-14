@@ -11,13 +11,10 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  searchEngineApprovedIngredients,
-  type IngredientSearchRow,
-} from '@/services/ingredients';
+import type { IngredientSearchRow } from '@/services/ingredients';
+import { searchCanonicalMapperIngredients } from '@/services/productPicker/mapperSearch';
 import {
   normalizeSearchText,
-  rankSearchHits,
   type IngredientSearchHit,
 } from './ingredientSearch';
 
@@ -85,16 +82,35 @@ export function useIngredientSearch({
   const limit = pagination?.norm === norm ? pagination.limit : SEARCH_PAGE_SIZE;
 
   const result = useQuery({
-    queryKey: ['ingredient-search', norm, limit],
+    queryKey: ['product-search-v1', 'pi-base', norm, limit],
     enabled: enabled && norm !== '',
-    queryFn: ({ signal }) => searchEngineApprovedIngredients(debounced, { limit, signal }),
+    queryFn: async ({ signal }) => {
+      const outcome = await searchCanonicalMapperIngredients({ text: debounced, limit, signal });
+      if (outcome.kind === 'results') {
+        return {
+          rows: outcome.rows.map((row): IngredientSearchRow => ({
+            ingredient_id: row.ingredient_id,
+            ingredient_name_display: row.ingredient_name_display,
+            ingredient_name_internal: row.ingredient_name_internal ?? row.ingredient_name_display,
+            ingredient_category: row.ingredient_category ?? '',
+            ingredient_subcategory: row.ingredient_subcategory,
+          })),
+          hasMore: outcome.hasMore,
+        };
+      }
+      if (outcome.kind === 'aborted') throw new DOMException('Aborted', 'AbortError');
+      if (outcome.kind === 'error') throw new Error(outcome.message);
+      throw new Error(`canonical_product_search_${outcome.reason}`);
+    },
     staleTime: SEARCH_STALE_TIME_MS,
     refetchOnMount: 'always',
   });
 
   const hits = useMemo(
-    () => rankSearchHits((result.data ?? []).map(toSearchHit), debounced),
-    [result.data, debounced],
+    // The RPC is the multilingual/typo relevance authority. Preserve its order;
+    // a second client rank would discard aliases not present in display text.
+    () => (result.data?.rows ?? []).map(toSearchHit),
+    [result.data],
   );
 
   return {
@@ -103,7 +119,7 @@ export function useIngredientSearch({
     isSettled: normalizeSearchText(query) === norm && !result.isFetching,
     isFetching: result.isFetching,
     isError: result.isError,
-    hasMore: (result.data?.length ?? 0) >= limit,
+    hasMore: result.data?.hasMore ?? false,
     loadMore: () => setPagination({ norm, limit: limit + SEARCH_PAGE_SIZE }),
   };
 }
