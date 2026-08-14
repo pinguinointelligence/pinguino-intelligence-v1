@@ -16,6 +16,13 @@ const diagnostics = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const visibility = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813110700_product_behavior_fingerprint_visibility.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -39,5 +46,12 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(diagnostics).toContain('v_version_exists,v_product_exists,v_is_current');
     expect(diagnostics).toContain('classification entity not found (kind=%, id=%, version=%, product=%, current=%)');
     expect(diagnostics).toContain('public.product_behavior_authority_fingerprint_v1()');
+  });
+
+  it('uses a fresh command snapshot while ingest creates and classifies one version', () => {
+    expect(visibility).toContain(
+      'alter function public.product_behavior_entity_fingerprint_v1(text,text) volatile',
+    );
+    expect(visibility).not.toContain(' stable');
   });
 });
