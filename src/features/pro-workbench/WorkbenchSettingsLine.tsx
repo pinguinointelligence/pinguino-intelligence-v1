@@ -95,12 +95,12 @@ function LabeledSelect<T extends string>({
 
 export function WorkbenchSettingsLine({
   actualBatchG,
-  actualProteinPercent = 0,
+  actualProteinPercent = null,
   className,
   compact = false,
 }: {
   actualBatchG: number;
-  actualProteinPercent?: number;
+  actualProteinPercent?: number | null;
   className?: string;
   compact?: boolean;
 }) {
@@ -252,7 +252,13 @@ export function WorkbenchSettingsLine({
           ) : null}
           {store.visibleProductType === 'protein' ? (
             <div className={cn('mt-1', !compact && 'ml-[7.3rem]')}>
-              <ProteinTargetControl actualPercent={actualProteinPercent} />
+              {actualProteinPercent !== null && Number.isFinite(actualProteinPercent) ? (
+                <ProteinTargetControl actualPercent={actualProteinPercent} />
+              ) : (
+                <p role="status" className="text-xs text-stone-500">
+                  Białko — oczekuje na walidację produktów
+                </p>
+              )}
             </div>
           ) : null}
         </div>

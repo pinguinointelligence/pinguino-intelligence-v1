@@ -249,12 +249,21 @@ export interface RecipeState {
   setToppingGrams: (lineId: string, grams: number) => void;
   setToppingActualGrams: (lineId: string, grams: number | null) => void;
   replaceToppingIngredient: (lineId: string, ingredient: RecipeToppingIngredient) => void;
+  setIngredientPrivateCost: (
+    lineId: string,
+    pricePerKg: number | null,
+    currency: string | null,
+    source: 'reference' | 'private' | null,
+  ) => void;
   moveBaseItem: (lineId: string, direction: -1 | 1) => void;
   moveTopping: (lineId: string, direction: -1 | 1) => void;
   resolveCompositionAmbiguity: (lineId: string) => void;
-  setProductBehaviorSnapshot: (
-    lineId: string,
-    snapshot: ProductBehaviorSnapshot | null,
+  setProductBehaviorSnapshot: (lineId: string, snapshot: ProductBehaviorSnapshot | null) => void;
+  /** Replace the complete server-resolved authority set without turning the
+   * unchanged recipe into a material edit. Every entry is still bound to an
+   * existing line and its exact Base/Topping process scope. */
+  syncProductBehaviorSnapshots: (
+    snapshots: Readonly<Record<string, ProductBehaviorSnapshot>>,
   ) => void;
   /**
    * Owner FINAL CLOSURE C2/C3 — „Remove row": ONE atomic material-edit
@@ -345,8 +354,7 @@ const makeLine = (
   lock_type,
 });
 
-const sortedBaseItems = (items: readonly RecipeItem[]): RecipeItem[] =>
-  items.slice();
+const sortedBaseItems = (items: readonly RecipeItem[]): RecipeItem[] => items.slice();
 
 const orderedBaseItems = (items: readonly RecipeItem[], order: readonly string[]): RecipeItem[] => {
   if (order.length === 0) return [...items];
@@ -420,9 +428,7 @@ const fromPreset = (preset: DemoPreset) => ({
   target_batch_grams: preset.target_batch_grams,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    | 'machine'
-    | 'manual'
-    | null,
+    'machine' | 'manual' | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   target_protein_percent: PROTEIN_GELATO_TARGET.defaultPercent,
@@ -480,6 +486,20 @@ const profileFields = (
   direction_targets: { ...profile.directionTargets },
   direction_targets_active: Object.values(profile.directionTargets).some((target) => target !== 0),
 });
+
+const requireProductBehaviorRevalidation = (
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot>>,
+): Record<string, ProductBehaviorSnapshot> =>
+  Object.fromEntries(
+    Object.entries(snapshots).map(([lineId, snapshot]) => [
+      lineId,
+      {
+        ...snapshot,
+        resolutionState: 'REVALIDATION_REQUIRED' as const,
+        blockReasons: [...new Set([...snapshot.blockReasons, 'recipe_context_changed'])],
+      },
+    ]),
+  );
 
 /**
  * Persisted slice — recipe content + the preset highlight + the CANONICAL aggregate link
@@ -550,10 +570,20 @@ export const useRecipeStore = create<RecipeState>()(
         set((state) => ({ dirty: true, draftRevision: state.draftRevision + 1 })),
 
       setMode: (mode) =>
-        set((state) => ({ mode, dirty: true, draftRevision: state.draftRevision + 1 })),
+        set((state) => ({
+          mode,
+          productBehaviorSnapshots: requireProductBehaviorRevalidation(
+            state.productBehaviorSnapshots,
+          ),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
       setFormulationStrategy: (formulation_strategy) =>
         set((state) => ({
           formulation_strategy,
+          productBehaviorSnapshots: requireProductBehaviorRevalidation(
+            state.productBehaviorSnapshots,
+          ),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
@@ -562,6 +592,9 @@ export const useRecipeStore = create<RecipeState>()(
         set((state) => ({
           category,
           visibleProductType: visibleTypeOf(category),
+          productBehaviorSnapshots: requireProductBehaviorRevalidation(
+            state.productBehaviorSnapshots,
+          ),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
@@ -571,6 +604,9 @@ export const useRecipeStore = create<RecipeState>()(
           // The internal Engine policy DERIVES from the visible type + real ingredients;
           // 'protein' is honest-unsupported and keeps the previous category untouched.
           category: internalCategoryFor(visible, state.items, state.category),
+          productBehaviorSnapshots: requireProductBehaviorRevalidation(
+            state.productBehaviorSnapshots,
+          ),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
@@ -583,6 +619,9 @@ export const useRecipeStore = create<RecipeState>()(
           ...(state.machineKind === 'home'
             ? { machineKind: null, machineId: null, machineLabel: null }
             : {}),
+          productBehaviorSnapshots: requireProductBehaviorRevalidation(
+            state.productBehaviorSnapshots,
+          ),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
@@ -602,6 +641,9 @@ export const useRecipeStore = create<RecipeState>()(
             state.machine_capacity_source === 'machine' ? null : state.machine_capacity_grams,
           machine_capacity_source:
             state.machine_capacity_source === 'machine' ? null : state.machine_capacity_source,
+          productBehaviorSnapshots: requireProductBehaviorRevalidation(
+            state.productBehaviorSnapshots,
+          ),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
@@ -734,8 +776,10 @@ export const useRecipeStore = create<RecipeState>()(
                 const priorBase = prior.items.find((item) => item.id === lineId);
                 const nextBase = nextItems.find((item) => item.id === lineId);
                 if (priorBase && nextBase) {
-                  return canonicalIngredientId(priorBase.ingredient) ===
-                    canonicalIngredientId(nextBase.ingredient);
+                  return (
+                    canonicalIngredientId(priorBase.ingredient) ===
+                    canonicalIngredientId(nextBase.ingredient)
+                  );
                 }
                 return nextToppings.some((item) => item.id === lineId);
               }),
@@ -805,7 +849,10 @@ export const useRecipeStore = create<RecipeState>()(
             baseOrder:
               existingIndex >= 0
                 ? state.baseOrder
-                : [...state.baseOrder.filter((id) => orderedItems.some((item) => item.id === id)), orderedItems.at(-1)!.id],
+                : [
+                    ...state.baseOrder.filter((id) => orderedItems.some((item) => item.id === id)),
+                    orderedItems.at(-1)!.id,
+                  ],
             // Visible GELATO re-routes its INTERNAL category from the real ingredients
             // (chocolate/nut/fruit/alcohol are classifications, never visible types).
             ...(state.visibleProductType === 'gelato'
@@ -896,22 +943,23 @@ export const useRecipeStore = create<RecipeState>()(
             ? cloneToppingIngredient(ingredient)
             : normalizeIngredientIdentity(ingredient);
           const duplicate = state.toppings.find(
-            (item) => item.id !== lineId && toppingIngredientIdentity(item.ingredient) === canonicalId,
+            (item) =>
+              item.id !== lineId && toppingIngredientIdentity(item.ingredient) === canonicalId,
           );
           const toppings = duplicate
             ? state.toppings
-                .filter((item) => item.id !== lineId)
+                .filter((item) => item.id !== duplicate.id)
                 .map((item) =>
-                  item.id === duplicate.id
+                  item.id === lineId
                     ? {
                         ...item,
                         ingredient: normalized,
-                        planned_grams: item.planned_grams + current.planned_grams,
+                        planned_grams: item.planned_grams + duplicate.planned_grams,
                         actual_grams:
-                          item.actual_grams === null && current.actual_grams === null
+                          item.actual_grams === null && duplicate.actual_grams === null
                             ? null
                             : (item.actual_grams ?? item.planned_grams) +
-                              (current.actual_grams ?? current.planned_grams),
+                              (duplicate.actual_grams ?? duplicate.planned_grams),
                       }
                     : item,
                 )
@@ -922,13 +970,31 @@ export const useRecipeStore = create<RecipeState>()(
             toppings: sortedToppings(toppings),
             productBehaviorSnapshots: Object.fromEntries(
               Object.entries(state.productBehaviorSnapshots).filter(
-                ([snapshotLineId]) => snapshotLineId !== lineId,
+                ([snapshotLineId]) => snapshotLineId !== lineId && snapshotLineId !== duplicate?.id,
               ),
             ),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
         }),
+      setIngredientPrivateCost: (lineId, pricePerKg, currency, source) =>
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === lineId
+              ? {
+                  ...item,
+                  ingredient: {
+                    ...item.ingredient,
+                    cost_per_kg: pricePerKg,
+                    cost_currency: currency,
+                    cost_source: source,
+                  },
+                }
+              : item,
+          ),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
       moveBaseItem: (lineId, direction) =>
         set((state) => ({
           baseOrder: moveWithin(
@@ -969,7 +1035,8 @@ export const useRecipeStore = create<RecipeState>()(
             ((isBase && snapshot.processScope !== 'BASE_FORMULATION') ||
               (isTopping && snapshot.processScope !== 'POST_PROCESS_ADDON') ||
               snapshot.lineId !== lineId)
-          ) return {};
+          )
+            return {};
           const next = { ...state.productBehaviorSnapshots };
           if (snapshot) next[lineId] = structuredClone(snapshot);
           else delete next[lineId];
@@ -977,6 +1044,24 @@ export const useRecipeStore = create<RecipeState>()(
             productBehaviorSnapshots: next,
             dirty: true,
             draftRevision: state.draftRevision + 1,
+          };
+        }),
+      syncProductBehaviorSnapshots: (snapshots) =>
+        set((state) => {
+          const baseIds = new Set(state.items.map((item) => item.id));
+          const toppingIds = new Set(state.toppings.map((item) => item.id));
+          const entries = Object.entries(snapshots);
+          const valid = entries.every(
+            ([lineId, snapshot]) =>
+              snapshot.lineId === lineId &&
+              ((baseIds.has(lineId) && snapshot.processScope === 'BASE_FORMULATION') ||
+                (toppingIds.has(lineId) && snapshot.processScope === 'POST_PROCESS_ADDON')),
+          );
+          if (!valid) return {};
+          return {
+            productBehaviorSnapshots: Object.fromEntries(
+              entries.map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
+            ),
           };
         }),
 
@@ -1291,12 +1376,11 @@ export const useRecipeStore = create<RecipeState>()(
 
       setMainIngredient: (lineId) =>
         set((state) => {
-          const snapshotRequired = productBehaviorRequiredLineIds({ items: state.items })
-            .includes(lineId);
-          if (mainBehaviorBlockReason(
-            state.productBehaviorSnapshots[lineId],
-            snapshotRequired,
-          )) return {};
+          const snapshotRequired = productBehaviorRequiredLineIds({ items: state.items }).includes(
+            lineId,
+          );
+          if (mainBehaviorBlockReason(state.productBehaviorSnapshots[lineId], snapshotRequired))
+            return {};
           return {
             items: state.items.map((item) =>
               item.id === lineId ? { ...item, lock_type: 'main' } : item,
@@ -1362,8 +1446,7 @@ export const useRecipeStore = create<RecipeState>()(
         ].filter(
           (item, index, all) =>
             all.findIndex(
-              (candidate) =>
-                candidate.lineId === item.lineId && candidate.reason === item.reason,
+              (candidate) => candidate.lineId === item.lineId && candidate.reason === item.reason,
             ) === index,
         );
         set((state) => ({
@@ -1465,6 +1548,9 @@ export const useRecipeStore = create<RecipeState>()(
             machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
             machine_capacity_source:
               sel.kind === 'home' && sel.capacityGrams != null ? 'machine' : null,
+            productBehaviorSnapshots: requireProductBehaviorRevalidation(
+              state.productBehaviorSnapshots,
+            ),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1473,7 +1559,9 @@ export const useRecipeStore = create<RecipeState>()(
         useIngredientTableUxStore.getState().reset();
         const base = fromPreset(DEFAULT_PRESET);
         const defaults =
-          useRecipeProfileStore.getState().defaultsFor(productDefaultsKey(base.visibleProductType)) ??
+          useRecipeProfileStore
+            .getState()
+            .defaultsFor(productDefaultsKey(base.visibleProductType)) ??
           useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
         set((state) => ({
           ...base,

@@ -1,10 +1,23 @@
 import type { ProductBehaviorModule, ProductBehaviorSnapshot } from './contracts';
+import { hasCanonicalIngredientIdentity } from '@/data/ingredients/canonicalIngredientIdentity';
 
 export interface ProductBehaviorModuleGate {
   ready: boolean;
   blockedLineIds: string[];
   reason: string | null;
 }
+
+const LEGACY_READ_ONLY_MODULES = new Set<ProductBehaviorModule>([
+  'MONITOR',
+  'SUMMARY',
+  'NUTRITION',
+  'ALLERGENS',
+  'PROCESS',
+  'LABEL',
+  'MASTER_LABEL',
+  'EXPORT',
+  'COST',
+]);
 
 /**
  * Trustless recipe boundary for resolved products. Callers pass every line ID
@@ -23,6 +36,10 @@ export function productBehaviorModuleGate(
     .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
     .filter(([, snapshot]) => {
       if (snapshot.resolutionState === 'REVALIDATION_REQUIRED') return true;
+      if (
+        snapshot.resolutionState === 'LEGACY_RECONSTRUCTED' &&
+        !LEGACY_READ_ONLY_MODULES.has(module)
+      ) return true;
       const state = snapshot.moduleEligibility[module];
       return state !== 'eligible' && state !== 'label_only';
     })
@@ -38,18 +55,20 @@ export function productBehaviorModuleGate(
       };
 }
 
-/** A line created by Mapper/private/catalog product intake must carry the
- * immutable resolver snapshot. Demo/template/reference fixtures without a
- * product lineage remain outside this persistence gate. */
+/** A line created by Mapper/private/catalog intake, or by the closed exact
+ * built-in-to-Mapper bridge, must carry the immutable resolver snapshot.
+ * Only synthetic fixtures with no canonical product lineage stay outside the
+ * persistence gate. */
 export function productBehaviorRequiredLineIds(input: {
-  items: ReadonlyArray<{ id: string; ingredient: { identity_provenance?: string } }>;
+  items: ReadonlyArray<{ id: string; ingredient: { id?: string; identity_provenance?: string } }>;
   toppings?: ReadonlyArray<{
     id: string;
-    ingredient: { identity_provenance?: string; kind?: string; catalog_product_id?: string };
+    ingredient: { id?: string; identity_provenance?: string; kind?: string; catalog_product_id?: string };
   }>;
 }): string[] {
   const base = input.items
     .filter(({ ingredient }) =>
+      hasCanonicalIngredientIdentity(ingredient.id) ||
       ingredient.identity_provenance === 'mapper' ||
       ingredient.identity_provenance === 'private_product' ||
       ingredient.identity_provenance === 'reference',
@@ -59,6 +78,7 @@ export function productBehaviorRequiredLineIds(input: {
     .filter(({ ingredient }) =>
       ingredient.kind === 'catalog_label_topping' ||
       typeof ingredient.catalog_product_id === 'string' ||
+      hasCanonicalIngredientIdentity(ingredient.id) ||
       ingredient.identity_provenance === 'mapper' ||
       ingredient.identity_provenance === 'private_product' ||
       ingredient.identity_provenance === 'reference',
@@ -75,6 +95,9 @@ export function mainBehaviorBlockReason(
     return snapshotRequired
       ? 'Produkt wymaga ponownej walidacji przed ustawieniem jako Main.'
       : null;
+  }
+  if (snapshot.resolutionState !== 'RESOLVED') {
+    return 'Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.';
   }
   if (snapshot.processScope !== 'BASE_FORMULATION') {
     return 'Topping nie może pełnić roli Main.';

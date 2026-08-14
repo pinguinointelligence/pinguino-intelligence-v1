@@ -1,133 +1,6 @@
-import type { ProductCategory, RecipeInput } from '@/engine';
+import type { RecipeInput } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
-
-export type FlavourIngredientForm =
-  | 'fresh'
-  | 'frozen'
-  | 'puree'
-  | 'concentrate'
-  | 'flavour_paste'
-  | 'pure_nut_paste'
-  | 'cocoa'
-  | 'chocolate'
-  | 'coffee'
-  | 'vanilla'
-  | 'other';
-
-export interface FlavourFloorPolicy {
-  policyId: string;
-  canonicalIngredientId?: string;
-  ingredientFamily?: string;
-  ingredientForm: FlavourIngredientForm;
-  productProfiles: readonly ProductCategory[];
-  minimumGramsPerKgFinal: number | null;
-  evidenceType: 'manufacturer_dosage' | 'manufacturer_recipe' | 'verified_internal';
-  sourceUrl: string;
-  confidence: 'high' | 'medium' | 'reference_only';
-  ecoMayReduceMain: boolean;
-  note: string;
-}
-
-/**
- * Deliberately small, exact-identity registry. Reference-only evidence never
- * authorises a reduction. Unknown is a valid production state and freezes the
- * user's Main baseline instead of extrapolating a universal percentage.
- */
-export const FLAVOUR_FLOOR_REGISTRY: readonly FlavourFloorPolicy[] = [
-  {
-    policyId: 'pregel-strawberry-fortefrutto-20g-per-kg-base',
-    canonicalIngredientId: 'PI-ING-000737',
-    ingredientForm: 'concentrate',
-    productProfiles: ['milk_gelato', 'sorbet', 'vegan_gelato'],
-    minimumGramsPerKgFinal: 19.61,
-    evidenceType: 'manufacturer_dosage',
-    sourceUrl: 'https://shop.pregelamerica.com/strawberry-fortefrutto-45872',
-    confidence: 'high',
-    ecoMayReduceMain: true,
-    note: '20 g per 1 kg base converted to 19.61 g per kg final mix.',
-  },
-  {
-    policyId: 'pregel-raspberry-fortefrutto-20g-per-kg-base',
-    canonicalIngredientId: 'PI-ING-000732',
-    ingredientForm: 'concentrate',
-    productProfiles: ['milk_gelato', 'sorbet', 'vegan_gelato'],
-    minimumGramsPerKgFinal: 19.61,
-    evidenceType: 'manufacturer_dosage',
-    sourceUrl: 'https://shop.pregelamerica.com/raspberry-fortefrutto-46272',
-    confidence: 'high',
-    ecoMayReduceMain: true,
-    note: '20 g per 1 kg base converted to 19.61 g per kg final mix.',
-  },
-  {
-    policyId: 'mapper-hazelnut-pure-paste-70g-per-kg-base',
-    canonicalIngredientId: 'PI-ING-000431',
-    ingredientForm: 'pure_nut_paste',
-    productProfiles: ['nut_gelato', 'milk_gelato', 'vegan_gelato'],
-    minimumGramsPerKgFinal: 65.42,
-    evidenceType: 'manufacturer_dosage',
-    sourceUrl: 'https://pregelamerica.com/pga_collateral/PreGel_Product_Catalog.pdf',
-    confidence: 'high',
-    ecoMayReduceMain: true,
-    note: '70 g per 1 kg base converted to 65.42 g per kg final mix.',
-  },
-  {
-    policyId: 'mapper-prontociocc-100g-per-kg-base',
-    canonicalIngredientId: 'PI-ING-000757',
-    ingredientForm: 'chocolate',
-    productProfiles: ['chocolate_gelato'],
-    minimumGramsPerKgFinal: 90.91,
-    evidenceType: 'manufacturer_dosage',
-    sourceUrl: 'https://pregelamerica.com/pga_collateral/PreGel_Product_Catalog.pdf',
-    confidence: 'high',
-    ecoMayReduceMain: true,
-    note: '100 g per 1 kg base converted to 90.91 g per kg final mix.',
-  },
-  {
-    policyId: 'mapper-coffee-paste-70g-per-kg-base',
-    canonicalIngredientId: 'PI-ING-000245',
-    ingredientForm: 'coffee',
-    productProfiles: ['milk_gelato', 'vegan_gelato'],
-    minimumGramsPerKgFinal: 65.42,
-    evidenceType: 'manufacturer_dosage',
-    sourceUrl: 'https://pregelamerica.com/pga_collateral/PreGel_Product_Catalog.pdf',
-    confidence: 'high',
-    ecoMayReduceMain: true,
-    note: '70 g per 1 kg base converted to 65.42 g per kg final mix.',
-  },
-  {
-    policyId: 'fresh-fruit-reference-only',
-    ingredientFamily: 'fresh_fruit',
-    ingredientForm: 'fresh',
-    productProfiles: ['milk_gelato', 'sorbet'],
-    minimumGramsPerKgFinal: null,
-    evidenceType: 'manufacturer_recipe',
-    sourceUrl: 'https://en.fabbri1905.com/fabbri-products/nevia-crema-e-frutta-.kl',
-    confidence: 'reference_only',
-    ecoMayReduceMain: false,
-    note: 'Confirms high fresh-fruit presence but not a universal production floor.',
-  },
-] as const;
-
-export function resolveFlavourFloorPolicy(input: {
-  canonicalIngredientId: string;
-  ingredientFamily?: string;
-  productProfile: ProductCategory;
-}): FlavourFloorPolicy | null {
-  const exact = FLAVOUR_FLOOR_REGISTRY.find(
-    (policy) =>
-      policy.canonicalIngredientId === input.canonicalIngredientId &&
-      policy.productProfiles.includes(input.productProfile),
-  );
-  if (exact) return exact;
-  if (!input.ingredientFamily) return null;
-  return (
-    FLAVOUR_FLOOR_REGISTRY.find(
-      (policy) =>
-        policy.ingredientFamily === input.ingredientFamily &&
-        policy.productProfiles.includes(input.productProfile),
-    ) ?? null
-  );
-}
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 export interface EcoFlavourViolation {
   code:
@@ -148,8 +21,9 @@ export type EcoFlavourProtection =
   | { ok: false; violations: EcoFlavourViolation[] };
 
 export interface EcoFlavourVerificationContext {
-  /** Optional exact sidecar. Family policies remain inert unless this is supplied. */
-  ingredientFamilyByCanonicalId?: Readonly<Record<string, string | undefined>>;
+  /** Current UPI authority. Unmanaged/legacy rows freeze at their baseline;
+   * no client registry may independently authorize a reduction. */
+  productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
 }
 
 const FLAVOUR_DEFINING_CATEGORIES = new Set(['fruit', 'nut_paste', 'chocolate_cocoa', 'flavor']);
@@ -198,19 +72,16 @@ export function verifyEcoFlavourProtection(
       continue;
     }
 
-    const policy = resolveFlavourFloorPolicy({
-      canonicalIngredientId: canonicalId,
-      ingredientFamily: context.ingredientFamilyByCanonicalId?.[canonicalId],
-      productProfile: before.category,
-    });
-    const verified =
-      policy !== null &&
-      policy.ecoMayReduceMain &&
-      policy.minimumGramsPerKgFinal !== null &&
-      policy.confidence !== 'reference_only';
-    const minimum = verified
-      ? (policy.minimumGramsPerKgFinal! * after.target_batch_grams) / 1000
-      : main.planned_grams;
+    const snapshot = context.productBehaviorSnapshots?.[main.id];
+    const snapshotFloor = snapshot?.resolutionState === 'RESOLVED' &&
+      snapshot.moduleEligibility.ECO === 'eligible' &&
+      snapshot.ecoFloorPercent !== null && snapshot.mainEquivalentFactor !== null &&
+      snapshot.mainEquivalentFactor > 0
+      ? (snapshot.ecoFloorPercent / 100) * after.target_batch_grams /
+        snapshot.mainEquivalentFactor
+      : null;
+    const verified = snapshotFloor !== null;
+    const minimum = snapshotFloor ?? main.planned_grams;
     if (next.planned_grams + EPSILON < minimum) {
       violations.push({
         code: verified ? 'verified_floor_crossed' : 'unknown_floor_reduced',

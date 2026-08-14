@@ -4,7 +4,7 @@ import {
   type NutritionDeclaration,
 } from '@/data/label/nutritionLabel';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
-import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import { buildRecipeBehaviorAuthority, recipeBehaviorModuleGate } from '@/features/product-intelligence';
 import {
   marketProfile,
   type MarketProfileCode,
@@ -98,7 +98,6 @@ export interface BuildMasterLabelInput {
   uiLanguage: string;
   labelLanguages: string[];
   facilityDefaults?: Partial<FacilityDefaults>;
-  allergenEvidenceByCanonicalId?: Readonly<Record<string, IngredientAllergenEvidence>>;
 }
 
 const emptyFacility = (): FacilityDefaults => ({
@@ -116,10 +115,18 @@ function translated(value: string, languages: readonly string[]): MultilingualTe
 
 export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelData {
   const { snapshot } = input;
+  const behaviorAuthority = buildRecipeBehaviorAuthority({
+    items: snapshot.finalActualInput.items,
+    toppings: snapshot.productComposition.toppings,
+    snapshots: snapshot.productComposition.behaviorSnapshots ?? {},
+  });
+  const behaviorGate = recipeBehaviorModuleGate(behaviorAuthority, 'MASTER_LABEL');
+  if (!behaviorGate.ready) {
+    throw new Error(`master_label_behavior_authority_required:${behaviorGate.blockedLineIds.join(',')}`);
+  }
   const profile = marketProfile(input.market);
   const languages = input.labelLanguages.length > 0 ? [...new Set(input.labelLanguages)] : ['pl'];
   const total = snapshot.finalProduct.finalMassG;
-  const evidence = input.allergenEvidenceByCanonicalId ?? {};
   // Legal declaration order is mass-descending and independent of the manual
   // Base/Topping UI order. The same canonical product may validly exist once
   // in each scope, but it is one ingredient in the final product declaration.
@@ -133,30 +140,37 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       sourceIngredientsText: string | null;
       sourceAllergensText: string | null;
       labelEvidenceVerified: boolean;
+      allergenSourceRevision: string | null;
+      declared: string[];
+      mayContain: string[];
     }
   >();
   for (const item of snapshot.finalProduct.items.filter((row) => row.effective_grams > 0)) {
     const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null;
-    const labelIngredient = isCatalogLabelToppingIngredient(item.ingredient)
-      ? item.ingredient
-      : null;
+    const frozenAllergens = behaviorAuthority.snapshots[item.id]?.sharedFacts?.allergens ?? null;
     const key = canonicalId ? `canonical:${canonicalId}` : `line:${item.id}`;
     const existing = declarationLines.get(key);
     if (existing) {
       existing.grams += item.effective_grams;
       existing.lineId = `${existing.lineId}+${item.id}`;
-      existing.sourceIngredientsText ??= labelIngredient?.ingredients_text ?? null;
-      existing.sourceAllergensText ??= labelIngredient?.allergens_text ?? null;
-      existing.labelEvidenceVerified ||= labelIngredient?.verification_status === 'verified';
+      existing.sourceIngredientsText ??= frozenAllergens?.ingredientsText ?? null;
+      existing.sourceAllergensText ??= frozenAllergens?.allergensText ?? null;
+      existing.labelEvidenceVerified ||= frozenAllergens !== null;
+      existing.allergenSourceRevision ??= frozenAllergens?.evidenceVersion ?? null;
+      existing.declared = [...new Set([...existing.declared, ...(frozenAllergens?.declared ?? [])])];
+      existing.mayContain = [...new Set([...existing.mayContain, ...(frozenAllergens?.mayContain ?? [])])];
     } else {
       declarationLines.set(key, {
         lineId: item.id,
         canonicalId,
         name: item.ingredient.name,
         grams: item.effective_grams,
-        sourceIngredientsText: labelIngredient?.ingredients_text ?? null,
-        sourceAllergensText: labelIngredient?.allergens_text ?? null,
-        labelEvidenceVerified: labelIngredient?.verification_status === 'verified',
+        sourceIngredientsText: frozenAllergens?.ingredientsText ?? null,
+        sourceAllergensText: frozenAllergens?.allergensText ?? null,
+        labelEvidenceVerified: frozenAllergens !== null,
+        allergenSourceRevision: frozenAllergens?.evidenceVersion ?? null,
+        declared: [...(frozenAllergens?.declared ?? [])],
+        mayContain: [...(frozenAllergens?.mayContain ?? [])],
       });
     }
   }
@@ -164,7 +178,6 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     .sort((a, b) => b.grams - a.grams)
     .map((item) => {
       const canonicalId = item.canonicalId;
-      const allergenEvidence = canonicalId ? evidence[canonicalId] : undefined;
       const embeddedEvidenceStatus: IngredientAllergenEvidence['status'] = item.labelEvidenceVerified
         ? 'verified'
         : 'missing';
@@ -177,26 +190,16 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
         names: translated(declarationName, languages),
         actualGrams: item.grams,
         percent: total > 0 ? (item.grams / total) * 100 : 0,
-        allergenEvidenceStatus: allergenEvidence?.status ?? embeddedEvidenceStatus,
-        allergenSourceRevision: allergenEvidence?.sourceRevision
-          ?? (item.labelEvidenceVerified ? 'catalog-label-snapshot' : null),
+        allergenEvidenceStatus: embeddedEvidenceStatus,
+        allergenSourceRevision: item.allergenSourceRevision,
         sourceIngredientsText: item.sourceIngredientsText,
         sourceAllergensText: item.sourceAllergensText,
       };
     });
-  const allEvidence = ingredients.map((ingredient) => {
-    const external = ingredient.canonicalIngredientId
-      ? evidence[ingredient.canonicalIngredientId]
-      : undefined;
-    if (external) return external;
-    return ingredient.allergenEvidenceStatus === 'verified'
-      ? { status: 'verified' as const, allergens: [], mayContain: [] }
-      : undefined;
-  });
   const allergenComplete = ingredients.length > 0
     && ingredients.every((item) => item.allergenEvidenceStatus === 'verified');
-  const declared = [...new Set(allEvidence.flatMap((item) => item?.allergens ?? []))].sort();
-  const mayContain = [...new Set(allEvidence.flatMap((item) => item?.mayContain ?? []))].sort();
+  const declared = [...new Set([...declarationLines.values()].flatMap((item) => item.declared))].sort();
+  const mayContain = [...new Set([...declarationLines.values()].flatMap((item) => item.mayContain))].sort();
   const labelStatements = [...new Set(
     ingredients.map((item) => item.sourceAllergensText?.trim()).filter((item): item is string => Boolean(item)),
   )];

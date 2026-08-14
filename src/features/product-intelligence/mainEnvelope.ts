@@ -44,8 +44,9 @@ const baseSnapshots = (
 
 /** Product-layer Main contract. It consumes immutable resolver snapshots only;
  * it never derives families/forms/policies from ingredient names and never
- * changes Engine science. Product-lineage Main rows fail closed if their
- * authority is absent; demo/template fixtures remain outside this boundary. */
+ * changes Engine science. Product-lineage and accepted built-in Main rows fail
+ * closed if authority is absent; only synthetic non-canonical fixtures remain
+ * outside this boundary. */
 export function verifyMainEnvelope(input: {
   recipe: RecipeInput;
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
@@ -92,13 +93,16 @@ export function verifyMainEnvelope(input: {
   if (violations.length > 0) return { ok: false, violations };
 
   const first = resolved[0]!.snapshot;
+  const multi = resolved.length > 1;
   const inconsistent = resolved.some(({ snapshot }) =>
     snapshot.mainPolicyId !== first.mainPolicyId ||
     snapshot.mainPolicyVersion !== first.mainPolicyVersion ||
     snapshot.mainBasis !== first.mainBasis ||
-    snapshot.ecoFloorPercent !== first.ecoFloorPercent ||
-    snapshot.optimalCeilingPercent !== first.optimalCeilingPercent ||
-    snapshot.hardLimitPercent !== first.hardLimitPercent,
+    (multi
+      ? snapshot.multiMainHardLimitPercent !== first.multiMainHardLimitPercent
+      : snapshot.ecoFloorPercent !== first.ecoFloorPercent ||
+        snapshot.optimalCeilingPercent !== first.optimalCeilingPercent ||
+        snapshot.hardLimitPercent !== first.hardLimitPercent),
   );
   if (inconsistent) {
     return {
@@ -137,9 +141,22 @@ export function verifyMainEnvelope(input: {
   const equivalentPercent = input.recipe.target_batch_grams > 0
     ? (equivalentGrams / input.recipe.target_batch_grams) * 100
     : 0;
-  const floor = first.ecoFloorPercent!;
-  const ceiling = first.optimalCeilingPercent!;
-  const hard = first.hardLimitPercent!;
+  const floor = multi
+    ? Math.max(...resolved.map(({ snapshot }) => snapshot.ecoFloorPercent ?? Number.POSITIVE_INFINITY))
+    : first.ecoFloorPercent!;
+  const multiLimit = multi ? first.multiMainHardLimitPercent ?? null : null;
+  if (multi && multiLimit === null) {
+    return {
+      ok: false,
+      violations: [{
+        code: 'multi_main_policy_unknown',
+        lineIds: managed.map((item) => item.id),
+        messagePl: 'Brak zatwierdzonego wspÃ³lnego limitu dla tej grupy Main.',
+      }],
+    };
+  }
+  const ceiling = multi ? multiLimit! : first.optimalCeilingPercent!;
+  const hard = multi ? multiLimit! : first.hardLimitPercent!;
   if (input.enforceFloor !== false && equivalentPercent < floor - EPSILON) {
     violations.push({
       code: 'main_below_floor',
@@ -205,14 +222,20 @@ export function mainEnvelopeSearchCeilingGrams(input: {
   if (mains.length === 0 || mains.some((item) => !input.snapshots[item.id])) return null;
   const snapshots = mains.map((item) => input.snapshots[item.id]!);
   const first = snapshots[0]!;
+  const multi = snapshots.length > 1;
+  const ceilingPercent = multi
+    ? first.multiMainHardLimitPercent
+    : first.optimalCeilingPercent;
   if (
-    first.optimalCeilingPercent === null ||
+    ceilingPercent == null ||
     first.mainEquivalentFactor === null ||
     snapshots.some((snapshot) =>
       snapshot.mainPolicyId !== first.mainPolicyId ||
-      snapshot.mainEquivalentFactor !== first.mainEquivalentFactor,
+      snapshot.mainPolicyVersion !== first.mainPolicyVersion ||
+      snapshot.mainEquivalentFactor !== first.mainEquivalentFactor ||
+      (multi && snapshot.multiMainHardLimitPercent !== ceilingPercent),
     )
   ) return null;
   const equivalentFactor = first.mainEquivalentFactor;
-  return (input.recipe.target_batch_grams * first.optimalCeilingPercent / 100) / equivalentFactor;
+  return (input.recipe.target_batch_grams * ceilingPercent / 100) / equivalentFactor;
 }

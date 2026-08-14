@@ -8,10 +8,24 @@ import { ProductScanPage } from './ProductScanPage';
 vi.mock('@/services/products', () => ({ listMyProducts: vi.fn(async () => []) }));
 vi.mock('@/services/ocrIntakePersistence', () => ({ persistSessionAndSave: vi.fn() }));
 
-const render = () => renderToStaticMarkup(<MemoryRouter><ProductScanPage /></MemoryRouter>);
+const render = () =>
+  renderToStaticMarkup(
+    <MemoryRouter>
+      <ProductScanPage />
+    </MemoryRouter>,
+  );
 const SOURCE = readFileSync(join(process.cwd(), 'src/pages/products/ProductScanPage.tsx'), 'utf8');
-const EDGE = readFileSync(join(process.cwd(), 'supabase/functions/catalog-submit/index.ts'), 'utf8');
-const HARDENING = readFileSync(join(process.cwd(), 'supabase/migrations/20260813110100_global_product_catalog_trust_hardening.sql'), 'utf8');
+const EDGE = readFileSync(
+  join(process.cwd(), 'supabase/functions/catalog-submit/index.ts'),
+  'utf8',
+);
+const HARDENING = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813110100_global_product_catalog_trust_hardening.sql',
+  ),
+  'utf8',
+);
 
 describe('customer OCR global-catalog entry', () => {
   it('is a real customer surface with multi-image roles, honest privacy and no opt-in', () => {
@@ -30,6 +44,9 @@ describe('customer OCR global-catalog entry', () => {
     expect(SOURCE).toContain('<EvidenceReviewPanel');
     expect(SOURCE).toContain('persistSessionAndSave(ready');
     expect(SOURCE).toContain('assessDuplicate');
+    expect(SOURCE).toContain('type="radio"');
+    expect(SOURCE).toContain('duplicateProductId: selectedDuplicateProductId');
+    expect(SOURCE).toContain('disabled={!selectedDuplicateProductId}');
   });
 
   it('captures owned evidence and enters the canonical ingest transaction exactly once', () => {
@@ -47,7 +64,9 @@ describe('customer OCR global-catalog entry', () => {
 
   it('requires service OCR for GREEN and exact signoff for Engine mapping', () => {
     expect(HARDENING).toContain('global_catalog_server_ocr_attestations');
-    expect(HARDENING).toContain("if not v_attested and ((v_result->>'kind')='created' or v_resuming_blocked) then");
+    expect(HARDENING).toContain(
+      "if not v_attested and ((v_result->>'kind')='created' or v_resuming_blocked) then",
+    );
     expect(HARDENING).toContain('global_catalog_engine_mappings');
     expect(HARDENING).toContain('signoff does not attest this Mapper identity');
     expect(HARDENING).toContain('m.approved_for_engines');

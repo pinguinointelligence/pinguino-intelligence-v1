@@ -34,7 +34,7 @@ const snapshot = (
   formId: 'fresh',
   verificationState: 'verified',
   technicalAuthority: 'mapper_exact',
-  mapperIngredientId: lineId === 'berry' ? 'raspberry' : lineId,
+  mapperIngredientId: lineId === 'berry' ? 'PI-ING-000394' : lineId,
   mainClassification: 'MAIN_PROFILE_SPECIFIC',
   mainPolicyId: 'berry-dairy-v1',
   mainPolicyVersion: '1',
@@ -47,7 +47,9 @@ const snapshot = (
   liquidDairyCarrierFloorPercent: 30,
   approvedLiquidDairyCarrier: false,
   approvedMixedFamilyIds: [],
-  moduleEligibility: { MAIN: 'eligible', BASE_RECIPE: 'eligible' },
+  moduleEligibility: {
+    MAIN: 'eligible', BASE_RECIPE: 'eligible', OPTIMAL: 'eligible', ECO: 'eligible',
+  },
   processScope: 'BASE_FORMULATION',
   resolverVersion: 'resolver-v1',
   warnings: [],
@@ -86,7 +88,29 @@ const snapshots = (extra: Record<string, ProductBehaviorSnapshot> = {}) => ({
     requiresLiquidDairyCarrier: false,
     liquidDairyCarrierFloorPercent: null,
     approvedLiquidDairyCarrier: true,
-    moduleEligibility: { BASE_RECIPE: 'eligible', MAIN: 'blocked' },
+    moduleEligibility: {
+      BASE_RECIPE: 'eligible', MAIN: 'blocked', OPTIMAL: 'eligible', ECO: 'eligible',
+    },
+  }),
+  sugar: snapshot('sugar', {
+    mapperIngredientId: 'PI-ING-000514',
+    familyId: null,
+    subfamilyId: null,
+    formId: null,
+    mainClassification: 'STRUCTURAL_ONLY',
+    mainPolicyId: null,
+    mainPolicyVersion: null,
+    ecoFloorPercent: null,
+    optimalCeilingPercent: null,
+    hardLimitPercent: null,
+    mainEquivalentFactor: null,
+    mainBasis: null,
+    requiresLiquidDairyCarrier: false,
+    liquidDairyCarrierFloorPercent: null,
+    approvedLiquidDairyCarrier: false,
+    moduleEligibility: {
+      BASE_RECIPE: 'eligible', MAIN: 'blocked', OPTIMAL: 'eligible', ECO: 'eligible',
+    },
   }),
   ...extra,
 });
@@ -150,7 +174,7 @@ describe('versioned Main envelope', () => {
     };
     expect(bindProductBehaviorToPreview(
       buildBatchRescalePreview(input, { byLineId: {} }, 1100, '2026-08-12T00:00:00Z'),
-      { berry: snapshots().berry },
+      { berry: snapshots().berry, sugar: snapshots().sugar },
     )).toMatchObject({
       ok: false,
       code: 'product_behavior_invalid',
@@ -205,10 +229,10 @@ describe('versioned Main envelope', () => {
   });
 
   it.each([
-    [162.15, 162.15],
-    [216.2, 108.1],
+    [401, 401],
+    [550, 275],
   ])('accepts the approved Vegan same-family Multi-Main total envelope', (firstGrams, secondGrams) => {
-    const baseRecipe = recipe(firstGrams, 400);
+    const baseRecipe = recipe(firstGrams, 0);
     const sameFamily: RecipeInput = {
       ...baseRecipe,
       category: 'vegan_gelato',
@@ -230,11 +254,12 @@ describe('versioned Main envelope', () => {
         mapperIngredientId,
         familyId: 'fruit',
         subfamilyId,
-        mainPolicyId: 'main-vegan-fruit-combination-v1',
-        mainPolicyVersion: '1',
-        ecoFloorPercent: 32.43,
-        optimalCeilingPercent: 32.43,
-        hardLimitPercent: 32.43,
+        mainPolicyId: 'main-vegan-fruit-combination-v2',
+        mainPolicyVersion: '2',
+        ecoFloorPercent: 30,
+        optimalCeilingPercent: 87.6,
+        hardLimitPercent: 87.6,
+        multiMainHardLimitPercent: 82.5,
         requiresLiquidDairyCarrier: false,
         liquidDairyCarrierFloorPercent: null,
       });
@@ -248,9 +273,47 @@ describe('versioned Main envelope', () => {
     });
     expect(result).toMatchObject({
       ok: true,
-      policyId: 'main-vegan-fruit-combination-v1',
+      policyId: 'main-vegan-fruit-combination-v2',
     });
-    expect(result.ok && result.equivalentPercent).toBeCloseTo(32.43, 8);
+    expect(result.ok && result.equivalentPercent).toBeCloseTo(firstGrams + secondGrams === 802 ? 80.2 : 82.5, 8);
+  });
+
+  it('caps same-family Multi-Main search at the shared group limit regardless of the first line', () => {
+    const baseRecipe = recipe(400, 0);
+    const multiRecipe: RecipeInput = {
+      ...baseRecipe,
+      category: 'vegan_gelato',
+      items: [
+        ...baseRecipe.items.map((item) => item.id === 'sugar'
+          ? { ...item, planned_grams: 175 }
+          : item),
+        {
+          id: 'banana',
+          ingredient: ingredient('banana'),
+          planned_grams: 425,
+          actual_grams: null,
+          lock_type: 'main',
+        },
+      ],
+    };
+    const groupSnapshot = (lineId: string, ceiling: number) => snapshot(lineId, {
+      familyId: 'fruit',
+      mainPolicyId: 'main-vegan-fruit-combination-v2',
+      mainPolicyVersion: '2',
+      optimalCeilingPercent: ceiling,
+      hardLimitPercent: ceiling,
+      multiMainHardLimitPercent: 82.5,
+      requiresLiquidDairyCarrier: false,
+      liquidDairyCarrierFloorPercent: null,
+    });
+
+    expect(mainEnvelopeSearchCeilingGrams({
+      recipe: multiRecipe,
+      snapshots: {
+        berry: groupSnapshot('berry', 74.7),
+        banana: groupSnapshot('banana', 86),
+      },
+    })).toBe(825);
   });
 
   it('does not apply the ordinary dairy carrier gate to a profile policy that does not require it', () => {

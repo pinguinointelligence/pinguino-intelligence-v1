@@ -40,7 +40,11 @@ import {
   productBehaviorRequiredLineIds,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
-import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
+import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
+import {
+  resolveRecipeProposalBehaviorSnapshots,
+  validateRecipeBehaviorOnServer,
+} from '@/services/productIntelligence';
 import { useAuthStore } from '@/stores/authStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
@@ -365,6 +369,7 @@ export interface ConstraintStudioState {
     authorization: SubstituteAuthorization,
     productBehaviorSnapshot: ProductBehaviorSnapshot,
     confirmMainIdentity: boolean,
+    proposalProductBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
   ) => void;
   cancelPreview: () => void;
   /** THE apply — the only recipe write; goes through `commitPreview`. */
@@ -769,6 +774,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         authorization,
         productBehaviorSnapshot,
         confirmMainIdentity,
+        proposalProductBehaviorSnapshots,
       ) => {
         get().reconcile();
         const draft = selectCanonicalDraft();
@@ -794,6 +800,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
         const proposedSnapshots = {
           ...snapshots,
+          ...proposalProductBehaviorSnapshots,
           [lineId]: { ...productBehaviorSnapshot, lineId },
         };
         const result = bindProductBehaviorToPreview(buildSubstitutionPreview(
@@ -832,6 +839,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                 toCanonicalId: proof.toCanonicalId,
                 mapperAuthorization: authorization,
                 productBehaviorSnapshot: { ...productBehaviorSnapshot, lineId },
+                proposalProductBehaviorSnapshots: structuredClone(
+                  Object.fromEntries(
+                    Object.entries(proposedSnapshots).filter(
+                      (entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined,
+                    ),
+                  ),
+                ),
               }
             : null;
           set({
@@ -1055,18 +1069,42 @@ function serverBehaviorPreviewIssue(
 async function currentBaseAuthorityReady(input: {
   recipe: RecipeInput;
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
-}): Promise<{ ready: true } | { ready: false; lineIds: string[] }> {
+}): Promise<
+  | { ready: true; snapshots: Record<string, ProductBehaviorSnapshot> }
+  | { ready: false; lineIds: string[] }
+> {
   const required = productBehaviorRequiredLineIds({ items: input.recipe.items });
-  if (required.length === 0) return { ready: true };
+  if (required.length === 0) {
+    return {
+      ready: true,
+      snapshots: Object.fromEntries(
+        Object.entries(input.snapshots)
+          .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
+          .map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
+      ),
+    };
+  }
   try {
-    const validation = await validateRecipeBehaviorOnServer({
+    const module = normalizeFormulationStrategy(
+      input.recipe.goals?.formulation_strategy ?? input.recipe.mode,
+    ) === 'eco' ? 'ECO' : 'OPTIMAL';
+    const resolved = await resolveRecipeProposalBehaviorSnapshots({
       recipe: input.recipe,
       snapshots: input.snapshots,
-      module: 'BASE_RECIPE',
+      accountId: useAuthStore.getState().user?.id ?? null,
+      module,
+    });
+    if (resolved.unresolvedLineIds.length > 0) {
+      return { ready: false, lineIds: resolved.unresolvedLineIds };
+    }
+    const validation = await validateRecipeBehaviorOnServer({
+      recipe: input.recipe,
+      snapshots: resolved.snapshots,
+      module,
       accountId: useAuthStore.getState().user?.id ?? null,
     });
     return validation.ready
-      ? { ready: true }
+      ? { ready: true, snapshots: resolved.snapshots }
       : { ready: false, lineIds: validation.staleLineIds };
   } catch {
     return { ready: false, lineIds: required };
@@ -1088,6 +1126,7 @@ export async function createOptimizePreviewWithServerAuthority(): Promise<void> 
     });
     return;
   }
+  useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
   if (useRecipeStore.getState().draftRevision !== draft.revision) return;
   useConstraintStudioStore.getState().createOptimizePreview();
 }
@@ -1106,6 +1145,7 @@ export async function createBatchRescalePreviewWithServerAuthority(
     });
     return;
   }
+  useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
   if (useRecipeStore.getState().draftRevision !== draft.revision) return;
   useConstraintStudioStore.getState().createBatchRescalePreview(grams);
 }
@@ -1124,8 +1164,78 @@ export async function createSuggestedFixPreviewWithServerAuthority(
     });
     return;
   }
+  useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
   if (useRecipeStore.getState().draftRevision !== draft.revision) return;
   useConstraintStudioStore.getState().createSuggestedFixPreview(fix);
+}
+
+/** Substitution wrapper that resolves the replacement and every solver-added
+ * correction/toolbox line into one immutable proposed authority set. */
+export async function createSubstitutionPreviewWithServerAuthority(input: {
+  lineId: string;
+  substitute: EngineIngredient;
+  authorization: SubstituteAuthorization;
+  productBehaviorSnapshot: ProductBehaviorSnapshot;
+  confirmMainIdentity: boolean;
+}): Promise<void> {
+  const draft = selectCanonicalDraft();
+  const currentSnapshots = useRecipeStore.getState().productBehaviorSnapshots;
+  const initialSnapshots = {
+    ...currentSnapshots,
+    [input.lineId]: { ...input.productBehaviorSnapshot, lineId: input.lineId },
+  };
+  const raw = buildSubstitutionPreview(
+    draft.input,
+    draft.constraints,
+    input.lineId,
+    input.substitute,
+    input.authorization,
+    nowIso(),
+    {
+      excludedIngredientIds: draft.excludedIngredientIds,
+      unavailableMainIngredientIds: draft.unavailableMainIngredientIds.filter(
+        (id) => id !== draft.input.items.find((item) => item.id === input.lineId)
+          ?.ingredient.canonical_ingredient_id,
+      ),
+      effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+      productBehaviorSnapshots: initialSnapshots,
+    },
+  );
+  if (!raw.ok) {
+    useConstraintStudioStore.getState().createSubstitutionPreview(
+      input.lineId,
+      input.substitute,
+      input.authorization,
+      input.productBehaviorSnapshot,
+      input.confirmMainIdentity,
+    );
+    return;
+  }
+  const accountId = useAuthStore.getState().user?.id ?? null;
+  const resolved = await resolveRecipeProposalBehaviorSnapshots({
+    recipe: raw.preview.proposedInput,
+    snapshots: initialSnapshots,
+    accountId,
+  });
+  if (
+    resolved.unresolvedLineIds.length > 0 ||
+    useRecipeStore.getState().draftRevision !== draft.revision
+  ) {
+    useConstraintStudioStore.setState({
+      preview: null,
+      previewIssue: serverBehaviorPreviewIssue(resolved.unresolvedLineIds),
+      blocked: null,
+    });
+    return;
+  }
+  useConstraintStudioStore.getState().createSubstitutionPreview(
+    input.lineId,
+    input.substitute,
+    input.authorization,
+    input.productBehaviorSnapshot,
+    input.confirmMainIdentity,
+    resolved.snapshots,
+  );
 }
 
 /** Terminal Apply wrapper. Stale product authority clears the Preview before
@@ -1138,6 +1248,7 @@ export async function applyPreviewWithServerAuthority(): Promise<void> {
   const snapshots = session.substitutionAuthorization
     ? {
         ...currentSnapshots,
+        ...session.substitutionAuthorization.proposalProductBehaviorSnapshots,
         [session.substitutionAuthorization.lineId]:
           session.substitutionAuthorization.productBehaviorSnapshot,
       }
@@ -1161,6 +1272,7 @@ export async function applyPreviewWithServerAuthority(): Promise<void> {
     });
     return;
   }
+  useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
   useConstraintStudioStore.getState().applyPreview();
 }
 

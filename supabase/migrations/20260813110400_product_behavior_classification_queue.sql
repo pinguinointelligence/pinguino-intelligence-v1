@@ -59,6 +59,15 @@ on conflict do nothing;
 
 alter table public.product_behavior_policy_versions
   add column if not exists policy_evidence_status text;
+alter table public.product_behavior_policy_versions
+  add column if not exists temperature_min_c numeric,
+  add column if not exists temperature_max_c numeric;
+alter table public.product_behavior_policy_versions
+  add constraint product_behavior_policy_temperature_v2_check check (
+    (temperature_min_c is null and temperature_max_c is null)
+    or (temperature_min_c is not null and temperature_max_c is not null
+      and temperature_min_c<=temperature_max_c)
+  );
 
 update public.product_behavior_policy_versions
 set policy_evidence_status=case evidence_status
@@ -146,10 +155,24 @@ values
   ('main-pure-nut-paste-dairy',2,'pinguino-product-taxonomy-v1','published','milk_gelato','nut',null,'pure_nut_paste','MAIN_PROFILE_SPECIFIC','NUT_EQUIVALENT',8,15,15,1,true,30,'owner_provisional','OWNER_PROVISIONAL','{"ownerPrompt":"2026-08-12","profileRoute":"canonical_milk_gelato","compoundRequiresExactFactor":true}',now())
 on conflict (policy_key,version) do nothing;
 
+insert into public.product_behavior_policy_versions(
+  policy_key,version,taxonomy_version_id,status,product_profile,
+  family_id,subfamily_id,form_id,exact_mapper_ingredient_id,main_eligibility,basis,
+  eco_floor_percent,optimal_ceiling_percent,hard_limit_percent,equivalent_factor,
+  requires_liquid_dairy_carrier,liquid_dairy_carrier_floor_percent,
+  evidence_status,policy_evidence_status,evidence,published_at
+) values (
+  'main-pistachio-pure-paste-dairy-0614',1,'pinguino-product-taxonomy-v1','published','milk_gelato',
+  'nut',null,'pure_nut_paste','PI-ING-000614','MAIN_PROFILE_SPECIFIC','NUT_EQUIVALENT',
+  8,15,15,1,true,30,'owner_provisional','OWNER_PROVISIONAL',
+  '{"ownerPrompt":"2026-08-12","exactIdentityEvidence":"100_percent_pistachio_paste","scope":"exact_mapper_identity_only"}',now()
+) on conflict(policy_key,version) do nothing;
+
 -- Exact accepted profile fixtures only. These rows pin the exact formulation
 -- template point; they do not turn a whole family/form into generic science.
--- Protein flavour fixtures intentionally remain BLOCKED_SCIENCE: the accepted
--- tests calibrate protein-target feasibility, not a sensory Main envelope.
+-- Protein rows below are limited to the exact accepted calibration identities;
+-- the coffee-input row is immediately retired because its retained-mass/process
+-- relation is still unknown. No neighbouring Protein product inherits them.
 insert into public.product_behavior_policy_versions(
   policy_key,version,taxonomy_version_id,status,product_profile,
   family_id,subfamily_id,form_id,exact_mapper_ingredient_id,main_eligibility,basis,
@@ -161,11 +184,108 @@ values
   ('main-sorbet-strawberry-fresh-1553',1,'pinguino-product-taxonomy-v1','published','sorbet','fruit','berry','fresh','PI-ING-001553','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',60,60,60,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateIds":["S01","S02","S03"],"fixture":"exact_strawberry_600g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
   ('main-sorbet-lime-fresh-0369',1,'pinguino-product-taxonomy-v1','published','sorbet','fruit','citrus','fresh','PI-ING-000369','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',60,60,60,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateIds":["S01","S02","S03"],"fixture":"exact_citrus_600g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
   ('main-sorbet-mango-puree-0340',1,'pinguino-product-taxonomy-v1','published','sorbet','fruit','mango_tropical','puree','PI-ING-000340','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',60,60,60,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateIds":["S01","S02","S03"],"fixture":"exact_mango_600g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
-  ('main-vegan-strawberry-fresh-1553',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','fruit','berry','fresh','PI-ING-001553','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',32.43,32.43,32.43,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_fruit_minus13_final","fixture":"exact_strawberry_324.3g_per_1000g","scope":"exact_mapper_identity_only","multiMainGroupKey":"main-vegan-fruit-combination-v1"}',now()),
-  ('main-vegan-banana-puree-1589',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','fruit','banana','puree','PI-ING-001589','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',32.43,32.43,32.43,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_fruit_minus13_final","fixture":"exact_banana_324.3g_per_1000g","scope":"exact_mapper_identity_only","multiMainGroupKey":"main-vegan-fruit-combination-v1"}',now()),
-  ('main-vegan-pistachio-paste-0614',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','nut',null,'paste','PI-ING-000614','MAIN_PROFILE_SPECIFIC','NUT_EQUIVALENT',11.99,11.99,11.99,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_nut_minus13_final","fixture":"exact_pistachio_119.9g_per_1000g","scope":"exact_mapper_identity_only"}',now()),
-  ('main-vegan-cocoa-powder-1578',1,'pinguino-product-taxonomy-v1','published','vegan_gelato','chocolate_cocoa',null,'cocoa_powder','PI-ING-001578','MAIN_PROFILE_SPECIFIC','COCOA_SOLIDS_EQUIVALENT',5.96,5.96,5.96,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_cocoa_minus13_final","fixture":"exact_cocoa_59.6g_per_1000g","scope":"exact_mapper_identity_only"}',now())
+  ('main-vegan-strawberry-fresh-1553',2,'pinguino-product-taxonomy-v1','published','vegan_gelato','fruit','berry','fresh','PI-ING-001553','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',30,87.6,87.6,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_fruit","wholeGramSweep":{"temperatures":[-11,-12,-13],"singleMaxGrams":786,"multiMainMaxTotalGrams":825},"scope":"exact_mapper_identity_only","multiMainGroupKey":"main-vegan-fruit-combination-v2"}',now()),
+  ('main-vegan-banana-puree-1589',2,'pinguino-product-taxonomy-v1','published','vegan_gelato','fruit','banana','puree','PI-ING-001589','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',30,87.6,87.6,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_fruit","wholeGramSweep":{"temperatures":[-11,-12,-13],"singleMaxGrams":876,"multiMainMaxTotalGrams":825},"scope":"exact_mapper_identity_only","multiMainGroupKey":"main-vegan-fruit-combination-v2"}',now()),
+  ('main-vegan-pistachio-paste-0614',2,'pinguino-product-taxonomy-v1','published','vegan_gelato','nut',null,'pure_nut_paste','PI-ING-000614','MAIN_PROFILE_SPECIFIC','NUT_EQUIVALENT',12,26.6,26.6,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_nut","wholeGramSweep":{"temperatures":[-11,-12,-13],"maxGrams":266},"scope":"exact_mapper_identity_only"}',now()),
+  ('main-vegan-cocoa-powder-1578',2,'pinguino-product-taxonomy-v1','published','vegan_gelato','chocolate_cocoa',null,'cocoa_powder','PI-ING-001578','MAIN_PROFILE_SPECIFIC','COCOA_SOLIDS_EQUIVALENT',6,24,24,1,false,null,'verified','PINGUINO_CALIBRATED','{"templateId":"vegan_cocoa","wholeGramSweep":{"temperatures":[-11,-12,-13],"maxGrams":240},"scope":"exact_mapper_identity_only"}',now())
 on conflict(policy_key,version) do nothing;
+
+-- Protein flavour calibration is exact-identity and profile-specific. The
+-- accepted Protein matrix preserves these whole-gram Main inputs across dairy
+-- and plant protein routes; it does not generalise to neighbouring products.
+insert into public.product_behavior_policy_versions(
+  policy_key,version,taxonomy_version_id,status,product_profile,
+  family_id,subfamily_id,form_id,exact_mapper_ingredient_id,main_eligibility,basis,
+  eco_floor_percent,optimal_ceiling_percent,hard_limit_percent,equivalent_factor,
+  requires_liquid_dairy_carrier,liquid_dairy_carrier_floor_percent,
+  evidence_status,policy_evidence_status,evidence,published_at
+)
+values
+  ('main-protein-strawberry-1553',2,'pinguino-product-taxonomy-v1','published','protein_gelato','fruit','berry','fresh','PI-ING-001553','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',10,49.5,49.5,1,false,null,'verified','PINGUINO_CALIBRATED','{"fixtures":["target_10_to_30_minus11_minus12_minus13","fruit_multi_1_1","fruit_multi_2_1"],"wholeGramSweep":{"maxGrams":495},"routes":["dairy","plant_rice","plant_pea","selected_protein"],"multiMainGroupKey":"main-protein-fruit-combination-v2","scope":"exact_mapper_identity_only"}',now()),
+  ('main-protein-banana-0345',2,'pinguino-product-taxonomy-v1','published','protein_gelato','fruit','banana','fresh','PI-ING-000345','MAIN_PROFILE_SPECIFIC','FRUIT_EQUIVALENT',10,49.5,49.5,1,false,null,'verified','PINGUINO_CALIBRATED','{"fixtures":["banana_target20","fruit_multi_1_1","fruit_multi_2_1"],"wholeGramSweep":{"singleMaxGrams":171,"approvedGroupCeilingGrams":495},"routes":["dairy","plant"],"multiMainGroupKey":"main-protein-fruit-combination-v2","scope":"exact_mapper_identity_only"}',now()),
+  ('main-protein-vanilla-0246',2,'pinguino-product-taxonomy-v1','published','protein_gelato','vanilla',null,'flavour_paste','PI-ING-000246','MAIN_PROFILE_SPECIFIC','PERCENT_OF_BASE',0.5,4.9,4.9,1,false,null,'verified','PINGUINO_CALIBRATED','{"fixture":"vanilla_target20","wholeGramSweep":{"maxGrams":49},"scope":"exact_mapper_identity_only"}',now()),
+  ('main-protein-coffee-input-0166',2,'pinguino-product-taxonomy-v1','published','protein_gelato','coffee',null,'infusion_input','PI-ING-000166','MAIN_PROFILE_SPECIFIC','INFUSION_INPUT_PER_KG',1.5,3.1,3.1,1,false,null,'verified','PINGUINO_CALIBRATED','{"fixture":"coffee_input_target20","wholeGramSweep":{"maxInputGrams":31},"retainedMass":"not_inferred","scope":"exact_mapper_identity_only"}',now()),
+  ('main-protein-cocoa-1578',2,'pinguino-product-taxonomy-v1','published','protein_gelato','chocolate_cocoa',null,'cocoa_powder','PI-ING-001578','MAIN_PROFILE_SPECIFIC','COCOA_SOLIDS_EQUIVALENT',6,6.1,6.1,1,false,null,'verified','PINGUINO_CALIBRATED','{"fixture":"cocoa_target20","wholeGramSweep":{"maxGrams":61},"scope":"exact_mapper_identity_only"}',now()),
+  ('main-protein-pistachio-0614',1,'pinguino-product-taxonomy-v1','published','protein_gelato','nut',null,'pure_nut_paste','PI-ING-000614','MAIN_PROFILE_SPECIFIC','NUT_EQUIVALENT',10,10,10,1,false,null,'verified','PINGUINO_CALIBRATED','{"fixture":"pistachio_100g_per_1000g","scope":"exact_mapper_identity_only","compoundProducts":"blocked_without_equivalent_factor"}',now())
+on conflict(policy_key,version) do nothing;
+
+-- Ground coffee input is not the retained product mass. Until that process
+-- relationship is versioned, the exact Protein coffee envelope stays blocked.
+update public.product_behavior_policy_versions set status='retired'
+where policy_key='main-protein-coffee-input-0166' and version=2;
+
+-- Exact alcohol boundary already protected by the accepted whole-gram Main
+-- fixture. The envelope is valid only for this Mapper identity at -11 C; ABV,
+-- ethanol contribution and process evidence are read from the exact Mapper and
+-- process bindings, so no neighbouring spirit or unknown-ABV product inherits it.
+insert into public.product_behavior_policy_versions(
+  policy_key,version,taxonomy_version_id,status,product_profile,
+  family_id,subfamily_id,form_id,exact_mapper_ingredient_id,main_eligibility,basis,
+  eco_floor_percent,optimal_ceiling_percent,hard_limit_percent,equivalent_factor,
+  requires_liquid_dairy_carrier,liquid_dairy_carrier_floor_percent,
+  evidence_status,policy_evidence_status,evidence,published_at,
+  temperature_min_c,temperature_max_c
+) values (
+  'main-whisky-40-dairy-0038-minus11',1,'pinguino-product-taxonomy-v1','published','milk_gelato',
+  'alcohol',null,'alcoholic_beverage','PI-ING-000038','MAIN_PROFILE_SPECIFIC','ETHANOL_PERCENT',
+  2,4.9,4.9,1,true,30,'verified','PINGUINO_CALIBRATED',
+  '{"fixture":"mainFlavourObjective:whisky","wholeGramSweep":{"startingGrams":20,"maxGrams":49,"firstRejectedGrams":50},"abvAuthority":"exact_mapper_composition","scope":"exact_mapper_identity_minus11_only"}',now(),
+  -11,-11
+) on conflict(policy_key,version) do nothing;
+
+update public.product_behavior_policy_versions
+set temperature_min_c=-13,temperature_max_c=-11
+where status='published' and product_profile in ('sorbet','vegan_gelato','protein_gelato');
+
+-- Preserve only exact manufacturer dosage ranges that prove both ends of the
+-- envelope. Minimum-only Hazelnut/Coffee references remain review evidence in
+-- the documentation and audit; they cannot manufacture an OPTIMAL ceiling or
+-- hard limit and therefore are intentionally not published as runtime policy.
+insert into public.product_behavior_policy_versions(
+  policy_key,version,taxonomy_version_id,status,product_profile,
+  family_id,subfamily_id,form_id,exact_mapper_ingredient_id,main_eligibility,basis,
+  eco_floor_percent,optimal_ceiling_percent,hard_limit_percent,equivalent_factor,
+  requires_liquid_dairy_carrier,liquid_dairy_carrier_floor_percent,
+  evidence_status,policy_evidence_status,evidence,published_at
+)
+select
+  seed.policy_key,1,'pinguino-product-taxonomy-v1','published',seed.product_profile,
+  seed.family_id,null,seed.form_id,seed.ingredient_id,'MAIN_PROFILE_SPECIFIC','PERCENT_OF_BASE',
+  seed.floor_percent,seed.ceiling_percent,seed.ceiling_percent,1,
+  seed.requires_carrier,case when seed.requires_carrier then 30 else null end,
+  'reference_only','SOURCE_REFERENCE',jsonb_build_object(
+    'scope','exact_mapper_identity_only','manufacturerDosage',seed.dosage,
+    'sourceUrl',seed.source_url,'conversion','100*x/(1000+x)'
+  ),now()
+from (values
+  ('main-exact-strawberry-fortefrutto-0737-milk','milk_gelato','fruit','concentrate','PI-ING-000737',1.961,6.542,true,'20-70 g per 1000 g base','https://shop.pregelamerica.com/strawberry-fortefrutto-45872'),
+  ('main-exact-strawberry-fortefrutto-0737-sorbet','sorbet','fruit','concentrate','PI-ING-000737',1.961,6.542,false,'20-70 g per 1000 g base','https://shop.pregelamerica.com/strawberry-fortefrutto-45872'),
+  ('main-exact-strawberry-fortefrutto-0737-vegan','vegan_gelato','fruit','concentrate','PI-ING-000737',1.961,6.542,false,'20-70 g per 1000 g base','https://shop.pregelamerica.com/strawberry-fortefrutto-45872'),
+  ('main-exact-raspberry-fortefrutto-0732-milk','milk_gelato','fruit','concentrate','PI-ING-000732',1.961,6.542,true,'20-70 g per 1000 g base','https://shop.pregelamerica.com/raspberry-fortefrutto-46272'),
+  ('main-exact-raspberry-fortefrutto-0732-sorbet','sorbet','fruit','concentrate','PI-ING-000732',1.961,6.542,false,'20-70 g per 1000 g base','https://shop.pregelamerica.com/raspberry-fortefrutto-46272'),
+  ('main-exact-raspberry-fortefrutto-0732-vegan','vegan_gelato','fruit','concentrate','PI-ING-000732',1.961,6.542,false,'20-70 g per 1000 g base','https://shop.pregelamerica.com/raspberry-fortefrutto-46272'),
+  ('main-exact-prontociocc-0757-chocolate','chocolate_gelato','chocolate_cocoa','flavour_paste','PI-ING-000757',9.091,13.043,true,'100-150 g per 1000 g base','https://pregelamerica.com/pga_collateral/PreGel_Product_Catalog.pdf')
+) as seed(policy_key,product_profile,family_id,form_id,ingredient_id,floor_percent,ceiling_percent,requires_carrier,dosage,source_url)
+on conflict(policy_key,version) do nothing;
+
+-- Single-product limits and combination limits are distinct evidence. The
+-- conservative values below are the minimum proven across -11/-12/-13; no
+-- interpolation or new sensory science is introduced.
+update public.product_behavior_policy_versions
+set optimal_ceiling_percent=74.7,hard_limit_percent=74.7,
+    evidence=evidence||'{"multiMainHardLimitPercent":82.5,"temperaturePolicy":"conservative_minimum_across_minus11_minus12_minus13"}'::jsonb
+where policy_key='main-vegan-strawberry-fresh-1553' and version=2;
+update public.product_behavior_policy_versions
+set optimal_ceiling_percent=86,hard_limit_percent=86,
+    evidence=evidence||'{"multiMainHardLimitPercent":82.5,"temperaturePolicy":"conservative_minimum_across_minus11_minus12_minus13"}'::jsonb
+where policy_key='main-vegan-banana-puree-1589' and version=2;
+update public.product_behavior_policy_versions
+set evidence=evidence||'{"multiMainHardLimitPercent":20.7}'::jsonb
+where policy_key='main-protein-strawberry-1553' and version=2;
+update public.product_behavior_policy_versions
+set optimal_ceiling_percent=17.1,hard_limit_percent=17.1,
+    evidence=evidence||'{"multiMainHardLimitPercent":20.7}'::jsonb
+where policy_key='main-protein-banana-0345' and version=2;
 
 -- ---------------------------------------------------------------------------
 -- Deterministic evidence-only Mapper derivation. These helpers classify stable
@@ -298,10 +418,14 @@ declare
   v_canonical_version uuid;
   v_canonical_binding uuid;
   v_exact boolean;
+  v_policy_covered boolean;
   v_structural boolean;
   v_topping boolean;
   v_flavour_candidate boolean;
 begin
+  perform pg_advisory_xact_lock(hashtextextended(
+    'product-behavior:mapper:'||p_mapper_ingredient_id,0
+  ));
   select * into v_mapper from public.mapper_basement
   where ingredient_id=p_mapper_ingredient_id and is_active;
   if not found then raise exception 'active Mapper ingredient not found'; end if;
@@ -313,9 +437,29 @@ begin
   v_family := public.mapper_behavior_family_v2(v_category,v_subcategory);
   v_subfamily := public.mapper_behavior_subfamily_v2(v_mapper.ingredient_id,v_category,v_subcategory);
   v_form := public.mapper_behavior_form_v2(v_category,v_subcategory);
+  -- An exact reviewed policy may supply taxonomy that cannot be inferred from
+  -- coarse legacy category/subcategory alone (for example vanilla paste).
+  v_family:=coalesce((select p.family_id from public.product_behavior_policy_versions p
+    where p.status='published' and p.exact_mapper_ingredient_id=v_mapper.ingredient_id
+      and p.family_id is not null order by p.version desc,p.policy_key limit 1),v_family);
+  v_subfamily:=coalesce((select p.subfamily_id from public.product_behavior_policy_versions p
+    where p.status='published' and p.exact_mapper_ingredient_id=v_mapper.ingredient_id
+      and p.subfamily_id is not null order by p.version desc,p.policy_key limit 1),v_subfamily);
+  v_form:=coalesce((select p.form_id from public.product_behavior_policy_versions p
+    where p.status='published' and p.exact_mapper_ingredient_id=v_mapper.ingredient_id
+      and p.form_id is not null order by p.version desc,p.policy_key limit 1),v_form);
   v_exact := exists (
     select 1 from public.product_behavior_policy_versions p
     where p.status='published' and p.exact_mapper_ingredient_id=v_mapper.ingredient_id
+      and p.main_eligibility in ('MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC')
+  );
+  v_policy_covered := v_family is not null and v_form is not null and exists (
+    select 1 from public.product_behavior_policy_versions p
+    where p.status='published' and p.exact_catalog_product_version_id is null
+      and (p.exact_mapper_ingredient_id is null or p.exact_mapper_ingredient_id=v_mapper.ingredient_id)
+      and (p.family_id is null or p.family_id=v_family)
+      and (p.subfamily_id is null or p.subfamily_id=v_subfamily)
+      and (p.form_id is null or p.form_id=v_form)
       and p.main_eligibility in ('MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC')
   );
   v_structural := v_category in (
@@ -331,7 +475,7 @@ begin
     'coffee_tea','alcohol','beverage','confectionery_spread'
   ) or v_family in ('coconut','bakery_cookie','spice_herb','vanilla','caramel','honey','dairy_flavour');
 
-  if v_exact then
+  if v_policy_covered then
     v_role := 'MAIN_PROFILE_SPECIFIC';
     v_policy_status := 'COVERED';
     v_main_eligibility := 'MAIN_PROFILE_SPECIFIC';
@@ -340,7 +484,11 @@ begin
     from (
       select distinct p.product_profile
       from public.product_behavior_policy_versions p
-      where p.status='published' and p.exact_mapper_ingredient_id=v_mapper.ingredient_id
+      where p.status='published' and p.exact_catalog_product_version_id is null
+        and (p.exact_mapper_ingredient_id is null or p.exact_mapper_ingredient_id=v_mapper.ingredient_id)
+        and (p.family_id is null or p.family_id=v_family)
+        and (p.subfamily_id is null or p.subfamily_id=v_subfamily)
+        and (p.form_id is null or p.form_id=v_form)
         and p.main_eligibility in ('MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC')
     ) x;
   elsif v_category='protein' then
@@ -359,9 +507,12 @@ begin
     v_main_eligibility := 'NOT_MAIN';
     v_profiles := jsonb_build_object('all_existing_profiles','structural_where_mapper_approved');
   elsif v_flavour_candidate then
-    v_role := 'UNKNOWN_REQUIRES_EVIDENCE';
+    v_role := case when v_family is not null and v_form is not null
+      then 'MAIN_ALLOWED' else 'UNKNOWN_REQUIRES_EVIDENCE' end;
     v_policy_status := case
       when v_family is null or v_form is null then 'BLOCKED_DATA'
+      when v_form in ('paste','flavour_paste','concentrate','extract') and not v_exact then 'BLOCKED_DATA'
+      when v_family='alcohol' and coalesce(v_mapper.alcohol_percent,0)<=0 then 'BLOCKED_DATA'
       else 'BLOCKED_SCIENCE'
     end;
     v_main_eligibility := 'MAIN_BLOCKED_POLICY';
@@ -380,8 +531,26 @@ begin
       then 'family_evidence_missing' end,
     case when v_role='UNKNOWN_REQUIRES_EVIDENCE' and v_family is not null and v_form is null
       then 'form_or_concentration_evidence_missing' end,
-    case when v_role='UNKNOWN_REQUIRES_EVIDENCE' and v_family is not null and v_form is not null
+    case when v_policy_status in ('BLOCKED_DATA','BLOCKED_SCIENCE')
+      and v_family is not null and v_form is not null
+      and not (
+        v_policy_status='BLOCKED_DATA'
+        and v_form in ('paste','flavour_paste','concentrate','extract')
+        and not v_exact
+      )
+      and not (
+        v_policy_status='BLOCKED_DATA'
+        and v_family='alcohol'
+        and coalesce(v_mapper.alcohol_percent,0)<=0
+      )
       then 'profile_main_policy_missing' end,
+    case when v_policy_status='BLOCKED_DATA'
+      and v_family is not null and v_form is not null
+      and v_form in ('paste','flavour_paste','concentrate','extract') and not v_exact
+      then 'form_or_concentration_evidence_missing' end,
+    case when v_policy_status='BLOCKED_DATA' and v_family='alcohol'
+      and v_form is not null and coalesce(v_mapper.alcohol_percent,0)<=0
+      then 'abv_evidence_missing' end,
     case when v_role='PROTEIN_CONTRIBUTOR_ONLY' then 'protein_contributor_not_flavour_main' end,
     case when v_role='TOPPING_ONLY' then 'post_process_product_not_base_main' end,
     case when v_role='STRUCTURAL_ONLY' then 'structural_product_not_flavour_main' end,
@@ -399,8 +568,12 @@ begin
     v_mapper.ingredient_id,v_mapper.dataset_version,'pinguino-product-taxonomy-v1',
     v_family,v_subfamily,v_form,coalesce(v_form,'other'),v_main_eligibility,
     case v_mapper.vegan when 'true' then 'verified' when 'false' then 'false' else 'unknown' end,
-    case when v_category='protein' or coalesce(v_mapper.aerating_protein_percent,0)>0 then 'contributor'
-         when coalesce(v_mapper.protein_percent,0)=0 then 'neutral' else 'unknown' end,
+    -- Product protein content remains an exact technical fact. The behavior
+    -- role is narrower: only an explicit protein ingredient or aerating
+    -- protein source is a route contributor; fruit/nut/cocoa flavour products
+    -- are neutral rather than mysteriously blocking the Protein profile.
+    case when v_category='protein' or coalesce(v_mapper.aerating_protein_percent,0)>0
+      then 'contributor' else 'neutral' end,
     v_mapper.ingredient_id in ('PI-ING-000200','PI-ING-000201','PI-ING-000234','PI-ING-000235','PI-ING-000236'),
     jsonb_build_object(
       'BASE_RECIPE',v_mapper.approved_for_base and v_mapper.approved_for_engines,
@@ -520,11 +693,20 @@ declare
   v_reasons text[];
   v_profiles jsonb;
   v_mapper_process jsonb;
+  v_mapper_role text;
+  v_mapper_vegan text;
+  v_mapper_protein text;
+  v_mapper_family text;
+  v_mapper_subfamily text;
+  v_mapper_form text;
   v_base boolean := false;
   v_topping boolean := false;
   v_liquid_dairy_carrier boolean := false;
 begin
   perform set_config('app.canonical_product_ingest','v1',true);
+  perform pg_advisory_xact_lock(hashtextextended(
+    'product-behavior:catalog_product_version:'||p_catalog_product_version_id::text,0
+  ));
   select * into v_version from public.product_versions
   where id=p_catalog_product_version_id;
   if not found then raise exception 'canonical product version not found'; end if;
@@ -546,18 +728,25 @@ begin
     and m.is_active and m.approved_for_base and m.approved_for_engines
     and m.verification_status='verified'
   limit 1;
-  v_family := nullif(v_product.canonical_family,'');
-  v_subfamily := nullif(v_public_data->>'subfamilyId','');
-  v_form := nullif(v_public_data->>'formId','');
+  -- Taxonomy is server-owned. Customer/public product fields are evidence for
+  -- review only and never outrank the exact current Mapper binding.
+  v_family := null;
+  v_subfamily := null;
+  v_form := null;
   v_base := v_product.canonical_verification_status<>'blocked' and v_mapping is not null;
   v_topping := v_product.canonical_verification_status<>'blocked'
     and nullif(trim(coalesce(v_public_data->>'ingredientsText','')),'') is not null
     and nullif(trim(coalesce(v_public_data->>'allergensText','')),'') is not null
     and jsonb_typeof(v_public_data->'nutrition')='object';
-  select coalesce(b.approved_liquid_dairy_carrier,false),b.process_behavior
-  into v_liquid_dairy_carrier,v_mapper_process
+  select coalesce(b.approved_liquid_dairy_carrier,false),b.process_behavior,
+    b.behavior_role,b.family_id,b.subfamily_id,b.form_id,b.vegan_eligibility,b.protein_behavior
+  into v_liquid_dairy_carrier,v_mapper_process,v_mapper_role,
+    v_mapper_family,v_mapper_subfamily,v_mapper_form,v_mapper_vegan,v_mapper_protein
   from public.mapper_product_behavior_bindings b
   where b.mapper_ingredient_id=v_mapping and b.is_current;
+  v_family:=coalesce(v_family,v_mapper_family);
+  v_subfamily:=coalesce(v_subfamily,v_mapper_subfamily);
+  v_form:=coalesce(v_form,v_mapper_form);
 
   if v_family is not null and v_form is not null and exists (
     select 1 from public.product_behavior_policy_versions p
@@ -572,12 +761,20 @@ begin
     v_role := 'MAIN_PROFILE_SPECIFIC';
     v_policy_status := 'COVERED';
   elsif v_family is null or v_form is null then
-    v_main := case when v_mapping is null then 'UNKNOWN_REQUIRES_EVIDENCE' else 'STANDARD_ONLY' end;
-    v_role := case when v_mapping is null then 'UNKNOWN_REQUIRES_EVIDENCE' else 'STANDARD_ONLY' end;
-    v_policy_status := case when v_mapping is null then 'BLOCKED_DATA' else 'NOT_APPLICABLE' end;
+    v_role := coalesce(v_mapper_role,'UNKNOWN_REQUIRES_EVIDENCE');
+    v_main := case v_role
+      when 'STRUCTURAL_ONLY' then 'NOT_MAIN'
+      when 'STANDARD_ONLY' then 'STANDARD_ONLY'
+      when 'PROTEIN_CONTRIBUTOR_ONLY' then 'PROTEIN_CONTRIBUTOR_ONLY'
+      when 'TOPPING_ONLY' then 'TOPPING_ONLY'
+      else 'MAIN_BLOCKED_POLICY' end;
+    v_policy_status := case when v_role in (
+      'STRUCTURAL_ONLY','STANDARD_ONLY','PROTEIN_CONTRIBUTOR_ONLY','TOPPING_ONLY'
+    ) then 'NOT_APPLICABLE' else 'BLOCKED_DATA' end;
   else
     v_main := 'MAIN_BLOCKED_POLICY';
-    v_role := 'UNKNOWN_REQUIRES_EVIDENCE';
+    v_role := case when v_mapper_role in ('MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC')
+      then 'MAIN_ALLOWED' else coalesce(v_mapper_role,'UNKNOWN_REQUIRES_EVIDENCE') end;
     v_policy_status := 'BLOCKED_SCIENCE';
   end if;
 
@@ -585,17 +782,21 @@ begin
   into v_profiles
   from public.product_behavior_policy_versions p
   where p.status='published'
+    and (p.exact_catalog_product_version_id is null or p.exact_catalog_product_version_id=v_version.id)
+    and (p.exact_mapper_ingredient_id is null or p.exact_mapper_ingredient_id=v_mapping)
     and (p.family_id is null or p.family_id=v_family)
+    and (p.subfamily_id is null or p.subfamily_id=v_subfamily)
     and (p.form_id is null or p.form_id=v_form);
 
   v_reasons := array_remove(array[
-    case when v_role='UNKNOWN_REQUIRES_EVIDENCE' and v_family is null and v_form is null
+    case when v_policy_status='BLOCKED_DATA' and v_family is null and v_form is null
       then 'family_and_form_evidence_missing' end,
-    case when v_role='UNKNOWN_REQUIRES_EVIDENCE' and v_family is null and v_form is not null
+    case when v_policy_status='BLOCKED_DATA' and v_family is null and v_form is not null
       then 'family_evidence_missing' end,
-    case when v_role='UNKNOWN_REQUIRES_EVIDENCE' and v_family is not null and v_form is null
+    case when v_policy_status='BLOCKED_DATA' and v_family is not null and v_form is null
       then 'form_or_concentration_evidence_missing' end,
-    case when v_role='UNKNOWN_REQUIRES_EVIDENCE' and v_family is not null and v_form is not null
+    case when v_policy_status in ('BLOCKED_DATA','BLOCKED_SCIENCE')
+      and v_family is not null and v_form is not null
       then 'profile_main_policy_missing' end,
     case when v_mapping is null then 'base_technical_authority_missing' end
   ],null);
@@ -609,9 +810,7 @@ begin
   ) values (
     v_product.id,v_version.id,v_mapping,'pinguino-product-taxonomy-v1',
     v_family,v_subfamily,v_form,v_main,
-    case when v_public_data->>'vegan'='true' then 'verified'
-         when v_public_data->>'vegan'='false' then 'false' else 'unknown' end,
-    case when coalesce((v_public_data->'nutrition'->>'protein')::numeric,0)>0 then 'contributor' else 'unknown' end,
+    coalesce(v_mapper_vegan,'unknown'),coalesce(v_mapper_protein,'unknown'),
     coalesce(v_liquid_dairy_carrier,false),
     jsonb_build_object(
       'SEARCH',v_product.canonical_verification_status<>'blocked',
@@ -726,12 +925,15 @@ begin
     where m.ingredient_id=p_entity_id;
   elsif p_entity_kind='catalog_product_version' then
     select coalesce(to_jsonb(v)::text,'')||'|'||coalesce((to_jsonb(p)-array['current_behavior_binding_id','updated_at'])::text,'')||'|'||
-      coalesce(to_jsonb(b.mapper_ingredient_id)::text,'')
+      coalesce(b.mapper_ingredient_id,'')||'|'||
+      coalesce(to_jsonb(m)::text,'')||'|'||coalesce(to_jsonb(pm)::text,'')
     into v_local
     from public.product_versions v
     join public.products p on p.id=v.product_id
     left join public.product_behavior_bindings b on b.id=p.current_behavior_binding_id
       and b.product_id=p.id and b.product_version_id=v.id and b.is_current
+    left join public.mapper_basement m on m.ingredient_id=b.mapper_ingredient_id
+    left join public.mapper_process_metadata pm on pm.ingredient_id=b.mapper_ingredient_id
     where v.id=p_entity_id::uuid;
   else
     raise exception 'unsupported classification entity kind';
@@ -761,6 +963,9 @@ begin
   if p_entity_kind not in ('mapper','catalog_product_version') then
     raise exception 'unsupported classification entity kind';
   end if;
+  perform pg_advisory_xact_lock(hashtextextended(
+    'product-behavior:'||p_entity_kind||':'||p_entity_id,0
+  ));
   v_fingerprint := coalesce(nullif(p_source_fingerprint,''),
     public.product_behavior_entity_fingerprint_v1(p_entity_kind,p_entity_id));
   v_classifier := coalesce(nullif(p_classifier_version,''),
@@ -775,6 +980,24 @@ begin
   )
   on conflict (idempotency_key) do update set
     reason=excluded.reason,
+    status=case when product_behavior_reclassification_queue.status='running'
+      then 'running' else 'pending' end,
+    attempt_count=case when product_behavior_reclassification_queue.status='running'
+      then product_behavior_reclassification_queue.attempt_count else 0 end,
+    last_error_code=case when product_behavior_reclassification_queue.status='running'
+      then product_behavior_reclassification_queue.last_error_code else null end,
+    last_error_message=case when product_behavior_reclassification_queue.status='running'
+      then product_behavior_reclassification_queue.last_error_message else null end,
+    result_binding_id=case when product_behavior_reclassification_queue.status='running'
+      then product_behavior_reclassification_queue.result_binding_id else null end,
+    progress=case when product_behavior_reclassification_queue.status='running'
+      then product_behavior_reclassification_queue.progress else '{"stage":"queued","completed":0,"total":1}'::jsonb end,
+    queued_at=case when product_behavior_reclassification_queue.status='running'
+      then product_behavior_reclassification_queue.queued_at else now() end,
+    started_at=case when product_behavior_reclassification_queue.status='running'
+      then product_behavior_reclassification_queue.started_at else null end,
+    completed_at=case when product_behavior_reclassification_queue.status='running'
+      then product_behavior_reclassification_queue.completed_at else null end,
     updated_at=now()
   returning id into v_id;
   return v_id;
@@ -794,7 +1017,9 @@ begin
   end loop;
   for v_id in
     select current_version_id::text from public.products
-    where is_active and merged_into_product_id is null and current_version_id is not null order by id
+    where is_active and merged_into_product_id is null and current_version_id is not null
+      and product_kind<>'mapper_reference'
+    order by id
   loop
     perform public.enqueue_product_behavior_reclassification_v1('catalog_product_version',v_id,p_reason);
     v_count := v_count+1;
@@ -814,6 +1039,7 @@ declare
   v_processed integer := 0;
   v_succeeded integer := 0;
   v_failed integer := 0;
+  v_catalog_version uuid;
 begin
   if p_limit<1 or p_limit>1000 then raise exception 'classification batch limit out of range'; end if;
   for v_job in
@@ -830,8 +1056,42 @@ begin
       last_error_code=null,last_error_message=null,updated_at=now()
     where id=v_job.id;
     begin
+      -- Serialize the authority check, classifier and current-binding publish for
+      -- one immutable entity. Without this lock an older worker can validate A,
+      -- wait while a newer B job publishes, then overwrite B with A.
+      perform pg_advisory_xact_lock(hashtextextended(
+        'product-behavior:'||v_job.entity_kind||':'||v_job.entity_id,0
+      ));
+      if v_job.source_fingerprint is distinct from
+        public.product_behavior_entity_fingerprint_v1(v_job.entity_kind,v_job.entity_id) then
+        update public.product_behavior_reclassification_queue set
+          status='succeeded',result_binding_id=null,completed_at=now(),
+          progress=jsonb_build_object('stage','superseded','completed',1,'total',1),updated_at=now()
+        where id=v_job.id;
+        v_succeeded:=v_succeeded+1;
+        continue;
+      end if;
       if v_job.entity_kind='mapper' then
         v_binding := public.classify_mapper_product_behavior_v2(v_job.entity_id,v_job.classifier_version);
+        -- Catalog bindings inherit the Mapper classification. Re-enqueue every
+        -- dependent immutable version after the Mapper binding is published so
+        -- UUID queue order can never leave a catalog product on the old Mapper
+        -- or process authority.
+        for v_catalog_version in
+          select p.current_version_id
+          from public.products p
+          join public.product_behavior_bindings b
+            on b.id=p.current_behavior_binding_id and b.is_current
+          where p.is_active and p.merged_into_product_id is null
+            and p.product_kind<>'mapper_reference'
+            and p.current_version_id is not null
+            and b.mapper_ingredient_id=v_job.entity_id
+          order by p.id
+        loop
+          perform public.enqueue_product_behavior_reclassification_v1(
+            'catalog_product_version',v_catalog_version::text,'mapper_binding_published'
+          );
+        end loop;
       else
         v_binding := public.classify_catalog_product_behavior_v2(v_job.entity_id::uuid,v_job.classifier_version);
       end if;
@@ -937,6 +1197,7 @@ declare
   v_scope text := coalesce(nullif(p_context->>'processScope',''),'BASE_FORMULATION');
   v_role_request text := coalesce(nullif(p_context->>'requestedRole',''),'STANDARD');
   v_module text := coalesce(nullif(p_context->>'module',''),'SEARCH');
+  v_temperature numeric := nullif(p_context->>'temperatureC','')::numeric;
   v_product_id uuid;
   v_version_id uuid;
   v_status text;
@@ -974,15 +1235,23 @@ declare
   v_queue_status text;
   v_base_allowed boolean := false;
   v_topping_allowed boolean := false;
+  v_profile_allowed boolean := true;
   v_has_nutrition boolean := false;
   v_has_allergens boolean := false;
   v_has_process boolean := false;
   v_mapper_composition jsonb;
+  v_mapper_reference_price jsonb;
   v_allowed boolean := false;
 begin
   if auth.uid() is null then raise exception 'authentication required'; end if;
-  if v_scope not in ('BASE_FORMULATION','POST_PROCESS_ADDON')
+  if v_profile not in (
+      'milk_gelato','fruit_gelato','nut_gelato','chocolate_gelato',
+      'alcohol_gelato','sorbet','vegan_gelato','protein_gelato'
+    ) or v_scope not in ('BASE_FORMULATION','POST_PROCESS_ADDON')
     or v_role_request not in ('STANDARD','MAIN') then raise exception 'invalid behavior context'; end if;
+  if v_temperature is not null and v_temperature not in (-11,-12,-13) then
+    raise exception 'invalid behavior temperature context';
+  end if;
 
   if p_entity_kind='catalog_product_version' then
     v_version_id := p_entity_id::uuid;
@@ -1000,7 +1269,13 @@ begin
       v_warnings,v_blocks,v_status,v_source,v_version_facts
     from public.product_behavior_bindings b
     join public.products p on p.id=b.product_id and p.is_active and p.merged_into_product_id is null
-      and (p.visibility='shared' or p.owning_account_id=auth.uid() or p.owner_user_id=auth.uid())
+      and (
+        (p.visibility='shared' and p.canonical_verification_status<>'blocked')
+        or p.owning_account_id=auth.uid() or p.owner_user_id=auth.uid()
+        or p.created_by=auth.uid()
+        or exists(select 1 from public.admin_users a
+          where a.user_id=auth.uid() and a.revoked_at is null)
+      )
     join public.product_versions v on v.id=b.product_version_id
     where b.product_version_id=v_version_id and b.is_current
       and p.current_version_id=v_version_id;
@@ -1031,6 +1306,11 @@ begin
     raise exception 'unsupported entity kind';
   end if;
 
+  -- `factsFingerprint` is the complete current shared authority fingerprint,
+  -- not merely the immutable product JSON. It changes with the exact current
+  -- Mapper/process authority and policy/taxonomy registry.
+  v_facts_fingerprint:=public.product_behavior_entity_fingerprint_v1(p_entity_kind,p_entity_id);
+
   if v_binding_id is null then
     return jsonb_build_object(
       'schemaVersion',1,'entityKind',p_entity_kind,'entityId',p_entity_id,
@@ -1043,7 +1323,7 @@ begin
   select q.status into v_queue_status
   from public.product_behavior_reclassification_queue q
   where q.entity_kind=p_entity_kind and q.entity_id=p_entity_id
-    and (q.status in ('pending','running') or q.status='failed')
+    and q.status in ('pending','running','failed')
     and q.source_fingerprint=public.product_behavior_entity_fingerprint_v1(p_entity_kind,p_entity_id)
   order by q.updated_at desc,q.id desc limit 1;
   if v_queue_status is not null then
@@ -1074,6 +1354,8 @@ begin
       end as specificity
     from public.product_behavior_policy_versions p
     where p.status='published' and p.taxonomy_version_id=v_taxonomy and p.product_profile=v_profile
+      and (p.temperature_min_c is null or (v_temperature is not null and v_temperature>=p.temperature_min_c))
+      and (p.temperature_max_c is null or (v_temperature is not null and v_temperature<=p.temperature_max_c))
       and (p.exact_catalog_product_version_id is null or p.exact_catalog_product_version_id=v_version_id)
       and (p.exact_mapper_ingredient_id is null or p.exact_mapper_ingredient_id=v_mapping)
       and (p.family_id is null or p.family_id=v_family)
@@ -1140,7 +1422,11 @@ begin
       'podValue',to_jsonb(m.pod_value),
       'pacValue',to_jsonb(m.pac_value),
       'deValue',to_jsonb(m.de_value)
-    )) into v_mapper_composition
+    )),case when m.cost_per_kg is not null then jsonb_build_object(
+      'pricePerKg',m.cost_per_kg,
+      'currency',coalesce(nullif(upper(m.currency),''),'EUR'),
+      'sourceVersion',m.dataset_version||':'||m.ingredient_id
+    ) else null end into v_mapper_composition,v_mapper_reference_price
     from public.mapper_basement m
     where m.ingredient_id=v_mapping and m.is_active
       and m.approved_for_base and m.approved_for_engines;
@@ -1199,7 +1485,7 @@ begin
         when jsonb_typeof(v_public_facts->'referencePrice')='object'
           and jsonb_typeof(v_public_facts->'referencePrice'->'pricePerKg')='number'
         then v_public_facts->'referencePrice'||jsonb_build_object('sourceVersion',v_binding_version)
-        else null
+        else v_mapper_reference_price
       end
     );
 
@@ -1334,10 +1620,18 @@ begin
   from public.user_product_relations r
   where r.user_id=auth.uid() and r.product_id=v_product_id;
 
+  v_profile_allowed := case
+    when v_profile in ('vegan_gelato','sorbet') then v_vegan='verified'
+    when v_profile='protein_gelato' then v_protein<>'unknown'
+    else true
+  end;
   v_base_allowed := v_status<>'blocked'
+    and v_scope='BASE_FORMULATION'
+    and v_profile_allowed
     and coalesce((v_permissions->>'BASE_RECIPE')::boolean,false)
     and v_mapping is not null;
   v_topping_allowed := v_status<>'blocked'
+    and v_scope='POST_PROCESS_ADDON'
     and coalesce((v_permissions->>'TOPPING')::boolean,false);
   v_has_nutrition := jsonb_typeof(v_shared_facts->'nutritionPer100g')='object';
   v_has_allergens := jsonb_typeof(v_shared_facts->'allergens')='object'
@@ -1351,11 +1645,9 @@ begin
     'SEARCH',case when v_status='blocked' then 'blocked' else 'eligible' end,
     'BASE_RECIPE',case when v_base_allowed then 'eligible' else 'blocked' end,
     'MAIN',case when v_base_allowed and v_main in ('MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC')
-      and v_policy.id is not null and not v_policy_ambiguous then 'eligible' else 'blocked' end,
-    'OPTIMAL',case when v_base_allowed and v_main in ('MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC')
-      and v_policy.id is not null and not v_policy_ambiguous then 'eligible' else 'blocked' end,
-    'ECO',case when v_base_allowed and v_main in ('MAIN_ALLOWED','MAIN_PROFILE_SPECIFIC')
-      and v_policy.id is not null and not v_policy_ambiguous then 'eligible' else 'blocked' end,
+      and v_policy.id is not null and not v_policy_ambiguous and v_has_process then 'eligible' else 'blocked' end,
+    'OPTIMAL',case when v_base_allowed then 'eligible' else 'blocked' end,
+    'ECO',case when v_base_allowed then 'eligible' else 'blocked' end,
     'TOPPING',case when v_topping_allowed then case when v_mapping is null then 'label_only' else 'eligible' end else 'blocked' end,
     'SUBSTITUTION',case when v_base_allowed and coalesce((v_permissions->>'SUBSTITUTION')::boolean,false)
       then 'eligible' else 'blocked' end,
@@ -1390,6 +1682,10 @@ begin
       then case when v_base_allowed then 'eligible' else 'label_only' end else 'blocked' end
   );
   v_allowed := coalesce(v_module_eligibility->>v_module,'blocked') in ('eligible','label_only');
+  if v_role_request='MAIN' then
+    v_allowed:=v_allowed
+      and coalesce(v_module_eligibility->>'MAIN','blocked')='eligible';
+  end if;
 
   return jsonb_build_object(
     'schemaVersion',1,
@@ -1432,6 +1728,9 @@ begin
       'ecoFloorPercent',v_policy.eco_floor_percent,
       'optimalCeilingPercent',v_policy.optimal_ceiling_percent,
       'hardLimitPercent',v_policy.hard_limit_percent,
+      'multiMainHardLimitPercent',nullif(v_policy.evidence->>'multiMainHardLimitPercent','')::numeric,
+      'temperatureMinC',v_policy.temperature_min_c,
+      'temperatureMaxC',v_policy.temperature_max_c,
       'mainEquivalentFactor',v_policy.equivalent_factor,
       'requiresLiquidDairyCarrier',v_policy.requires_liquid_dairy_carrier,
       'liquidDairyCarrierFloorPercent',v_policy.liquid_dairy_carrier_floor_percent,
@@ -1469,6 +1768,9 @@ declare
   v_rows jsonb := '[]'::jsonb;
   v_stale_ids jsonb := '[]'::jsonb;
   v_ready boolean := true;
+  v_expected_price jsonb;
+  v_expected_currency text;
+  v_actual_price jsonb;
 begin
   if auth.uid() is null then raise exception 'authentication required'; end if;
   if jsonb_typeof(p_lines)<>'array' or jsonb_array_length(p_lines)=0
@@ -1531,6 +1833,10 @@ begin
     if coalesce(v_resolved->>'factsFingerprint','') is distinct from coalesce(v_line->>'factsFingerprint','') then
       v_reasons := array_append(v_reasons,'facts_fingerprint_stale');
     end if;
+    if coalesce(v_resolved->'sharedFacts','null'::jsonb)
+      is distinct from coalesce(v_line->'sharedFacts','null'::jsonb) then
+      v_reasons := array_append(v_reasons,'shared_facts_stale');
+    end if;
     if coalesce(v_resolved->>'taxonomyVersion','') is distinct from coalesce(v_line->>'taxonomyVersion','') then
       v_reasons := array_append(v_reasons,'taxonomy_version_stale');
     end if;
@@ -1542,6 +1848,32 @@ begin
       or coalesce(v_resolved->'mainPolicy'->>'policyVersion','')
       is distinct from coalesce(v_line->>'mainPolicyVersion','') then
       v_reasons := array_append(v_reasons,'main_policy_stale');
+    end if;
+    if v_line->>'entityKind'='catalog_product_version' then
+      v_expected_price:=case
+        when jsonb_typeof(v_resolved#>'{privateOverlay,privatePricePerKg}')='number'
+          then v_resolved#>'{privateOverlay,privatePricePerKg}'
+        when jsonb_typeof(v_resolved#>'{sharedFacts,referencePrice,pricePerKg}')='number'
+          then v_resolved#>'{sharedFacts,referencePrice,pricePerKg}'
+        else null
+      end;
+      v_expected_currency:=case
+        when jsonb_typeof(v_resolved#>'{privateOverlay,privatePricePerKg}')='number'
+          then nullif(v_resolved#>>'{privateOverlay,privatePriceCurrency}','')
+        when jsonb_typeof(v_resolved#>'{sharedFacts,referencePrice,pricePerKg}')='number'
+          then nullif(v_resolved#>>'{sharedFacts,referencePrice,currency}','')
+        else null
+      end;
+      v_actual_price:=v_line->'costPerKg';
+      if (v_expected_price is null or jsonb_typeof(v_expected_price)='null') then
+        if v_actual_price is not null and jsonb_typeof(v_actual_price)<>'null' then
+          v_reasons:=array_append(v_reasons,'private_price_stale');
+        end if;
+      elsif jsonb_typeof(v_actual_price)<>'number'
+        or abs((v_expected_price#>>'{}')::numeric-(v_actual_price#>>'{}')::numeric)>0.0000001
+        or v_expected_currency is distinct from nullif(v_line->>'costCurrency','') then
+        v_reasons:=array_append(v_reasons,'private_price_stale');
+      end if;
     end if;
 
     v_reasons := array(select distinct unnest(v_reasons) order by 1);
@@ -1567,6 +1899,203 @@ end $$;
 
 revoke all on function public.validate_recipe_behavior_v1(jsonb,jsonb) from public,anon;
 grant execute on function public.validate_recipe_behavior_v1(jsonb,jsonb) to authenticated,service_role;
+
+-- Transactional terminal enforcement. UI checks improve feedback, but writes to
+-- immutable recipe versions and Production runs must remain fail-closed for a
+-- direct authenticated API caller as well.
+create or replace function public.assert_recipe_behavior_authority_v1(
+  p_recipe_input jsonb,
+  p_product_composition jsonb,
+  p_module text
+) returns void
+language plpgsql security definer stable
+set search_path=public,extensions
+as $$
+declare
+  v_snapshots jsonb:=coalesce(p_product_composition->'behaviorSnapshots','{}'::jsonb);
+  v_item jsonb;
+  v_snapshot jsonb;
+  v_line_id text;
+  v_scope text;
+  v_role text;
+  v_line jsonb;
+  v_result jsonb;
+  v_technical jsonb;
+  v_nutrition jsonb;
+  v_allergens jsonb;
+  v_expected jsonb;
+  v_actual jsonb;
+  v_pair record;
+begin
+  if auth.uid() is null then raise exception 'authentication required'; end if;
+  if jsonb_typeof(p_recipe_input)<>'object' then raise exception 'invalid recipe authority payload'; end if;
+  if jsonb_typeof(v_snapshots)<>'object' then raise exception 'invalid recipe behavior snapshots'; end if;
+
+  for v_item in
+    select value||jsonb_build_object('_scope','BASE_FORMULATION')
+      from jsonb_array_elements(coalesce(p_recipe_input->'items','[]'::jsonb))
+    union all
+    select value||jsonb_build_object('_scope','POST_PROCESS_ADDON')
+      from jsonb_array_elements(coalesce(p_product_composition->'toppings','[]'::jsonb))
+  loop
+    v_line_id:=nullif(v_item->>'id','');
+    if v_line_id is null then raise exception 'invalid recipe line identity'; end if;
+    v_scope:=v_item->>'_scope';
+    -- Every persisted recipe/Production line is product-managed at the
+    -- terminal database boundary. A direct API caller must not evade the
+    -- resolver by stripping canonical/provenance marker fields. Historical
+    -- rows without snapshots remain readable, but no new version/run may be
+    -- written until every line is reconstructed and RESOLVED.
+    v_snapshot:=v_snapshots->v_line_id;
+    if jsonb_typeof(v_snapshot)<>'object' or v_snapshot->>'resolutionState'<>'RESOLVED' then
+      raise exception 'recipe product behavior snapshot missing or unresolved for %',v_line_id;
+    end if;
+    if v_snapshot->>'processScope' is distinct from v_scope then
+      raise exception 'recipe product behavior scope mismatch for %',v_line_id;
+    end if;
+
+    -- A valid snapshot reference beside caller-forged recipe facts is not
+    -- authority. Match every persisted Engine field to the exact frozen
+    -- shared projection before a recipe/version/Production write can commit.
+    if v_scope='BASE_FORMULATION'
+      or coalesce(v_item#>>'{ingredient,kind}','')<>'catalog_label_topping' then
+      v_technical:=v_snapshot#>'{sharedFacts,technicalComposition}';
+      if jsonb_typeof(v_technical)<>'object' or v_technical='{}'::jsonb then
+        raise exception 'recipe technical authority is missing for %',v_line_id;
+      end if;
+      for v_pair in
+        select * from (values
+          ('water_percent','water',false),('solids_percent','totalSolids',false),
+          ('fat_percent','fat',false),('saturated_fat_percent','saturatedFat',false),
+          ('protein_percent','protein',false),('carbohydrate_percent','carbohydrate',false),
+          ('sugar_percent','sugars',false),('sucrose_percent','sucrose',false),
+          ('glucose_percent','glucose',false),('dextrose_percent','dextrose',false),
+          ('fructose_percent','fructose',false),('lactose_percent','lactose',false),
+          ('polyol_percent','polyols',false),('fiber_percent','fibre',false),
+          ('salt_percent','salt',false),('alcohol_percent','alcohol',false),
+          ('kcal_per_100g','energyKcal',false),('pod_value','podValue',true),
+          ('pac_value','pacValue',true),('de_value','deValue',true)
+        ) as fields(ingredient_key,fact_key,is_top_level)
+      loop
+        v_expected:=v_technical->v_pair.fact_key;
+        v_actual:=case when v_pair.is_top_level
+          then v_item->'ingredient'->v_pair.ingredient_key
+          else v_item#>'{ingredient,composition}'->v_pair.ingredient_key end;
+        if v_expected is null or jsonb_typeof(v_expected)='null' then
+          if v_actual is not null and jsonb_typeof(v_actual)<>'null' then
+            raise exception 'recipe technical fact % is stale for %',v_pair.ingredient_key,v_line_id;
+          end if;
+        elsif jsonb_typeof(v_expected)<>'number' or jsonb_typeof(v_actual)<>'number'
+          or abs((v_expected#>>'{}')::numeric-(v_actual#>>'{}')::numeric)>0.0000001 then
+          raise exception 'recipe technical fact % is stale for %',v_pair.ingredient_key,v_line_id;
+        end if;
+      end loop;
+    else
+      v_nutrition:=v_snapshot#>'{sharedFacts,nutritionPer100g}';
+      v_allergens:=v_snapshot#>'{sharedFacts,allergens}';
+      if jsonb_typeof(v_nutrition)<>'object' or jsonb_typeof(v_allergens)<>'object' then
+        raise exception 'recipe label authority is missing for %',v_line_id;
+      end if;
+      for v_pair in
+        select * from (values
+          ('energyKcal'),('fat'),('saturatedFat'),('carbohydrate'),
+          ('sugars'),('protein'),('salt'),('fibre')
+        ) as fields(fact_key)
+      loop
+        v_expected:=v_nutrition->v_pair.fact_key;
+        v_actual:=v_item#>'{ingredient,label_nutrition_per_100g}'->v_pair.fact_key;
+        if v_expected is null or jsonb_typeof(v_expected)='null' then
+          if v_actual is not null and jsonb_typeof(v_actual)<>'null' then
+            raise exception 'recipe label fact % is stale for %',v_pair.fact_key,v_line_id;
+          end if;
+        elsif jsonb_typeof(v_expected)<>'number' or jsonb_typeof(v_actual)<>'number'
+          or abs((v_expected#>>'{}')::numeric-(v_actual#>>'{}')::numeric)>0.0000001 then
+          raise exception 'recipe label fact % is stale for %',v_pair.fact_key,v_line_id;
+        end if;
+      end loop;
+      if coalesce(v_allergens->>'ingredientsText','') is distinct from
+          coalesce(v_item#>>'{ingredient,ingredients_text}','')
+        or coalesce(v_allergens->>'allergensText','') is distinct from
+          coalesce(v_item#>>'{ingredient,allergens_text}','') then
+        raise exception 'recipe label evidence is stale for %',v_line_id;
+      end if;
+    end if;
+    v_role:=case when v_scope='BASE_FORMULATION' and v_item->>'lock_type'='main'
+      then 'MAIN' else 'STANDARD' end;
+    v_line:=jsonb_build_object(
+      'lineId',v_line_id,
+      'entityKind',case when v_snapshot->>'source'='mapper' then 'mapper' else 'catalog_product_version' end,
+      'entityId',case when v_snapshot->>'source'='mapper'
+        then v_snapshot->>'mapperIngredientId' else v_snapshot->>'productVersionId' end,
+      'productId',v_snapshot->>'productId',
+      'productVersionId',v_snapshot->>'productVersionId',
+      'behaviorBindingId',v_snapshot->>'behaviorBindingId',
+      'behaviorBindingVersion',v_snapshot->>'behaviorBindingVersion',
+      'factsFingerprint',v_snapshot->>'factsFingerprint',
+      'taxonomyVersion',v_snapshot->>'taxonomyVersion',
+      'mapperIngredientId',v_snapshot->>'mapperIngredientId',
+      'mainPolicyId',v_snapshot->>'mainPolicyId',
+      'mainPolicyVersion',v_snapshot->>'mainPolicyVersion',
+      'sharedFacts',v_snapshot->'sharedFacts',
+      'costPerKg',case when v_snapshot->>'source'='mapper' then null
+        else v_item#>'{ingredient,cost_per_kg}' end,
+      'costCurrency',case when v_snapshot->>'source'='mapper' then null
+        else v_item#>>'{ingredient,cost_currency}' end
+    );
+    v_result:=public.validate_recipe_behavior_v1(jsonb_build_array(v_line),jsonb_build_object(
+      'module',p_module,
+      'productProfile',p_recipe_input->>'category',
+      'temperatureC',p_recipe_input->'target_temperature_c',
+      'mode',coalesce(p_recipe_input#>>'{goals,formulation_strategy}',p_recipe_input->>'mode'),
+      'processScope',v_scope,
+      'requestedRole',v_role
+    ));
+    if not coalesce((v_result->>'ready')::boolean,false) then
+      raise exception 'recipe product behavior is stale or blocked for %',v_line_id;
+    end if;
+  end loop;
+end $$;
+
+create or replace function public.recipe_behavior_write_guard_v1()
+returns trigger
+language plpgsql security definer
+set search_path=public,extensions
+as $$
+declare v_recipe public.recipe_versions%rowtype;
+begin
+  if tg_table_name='production_runs' then
+    select * into v_recipe from public.recipe_versions
+      where id=new.recipe_version_id and owner_user_id=auth.uid();
+    if not found then raise exception 'production recipe version is unavailable'; end if;
+    perform public.assert_recipe_behavior_authority_v1(
+      v_recipe.recipe_input,v_recipe.product_composition,'PRODUCTION'
+    );
+  elsif tg_table_name='recipe_versions' then
+    perform public.assert_recipe_behavior_authority_v1(
+      new.recipe_input,new.product_composition,'RECIPE_VERSION'
+    );
+  else
+    perform public.assert_recipe_behavior_authority_v1(
+      new.recipe_input,new.product_composition,'SAVE'
+    );
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists saved_recipe_behavior_write_guard_v1 on public.saved_recipes;
+create trigger saved_recipe_behavior_write_guard_v1 before insert or update of recipe_input,product_composition
+on public.saved_recipes for each row execute function public.recipe_behavior_write_guard_v1();
+drop trigger if exists recipe_version_behavior_write_guard_v1 on public.recipe_versions;
+create trigger recipe_version_behavior_write_guard_v1 before insert
+on public.recipe_versions for each row execute function public.recipe_behavior_write_guard_v1();
+drop trigger if exists production_run_behavior_write_guard_v1 on public.production_runs;
+create trigger production_run_behavior_write_guard_v1 before insert
+on public.production_runs for each row execute function public.recipe_behavior_write_guard_v1();
+
+revoke all on function public.assert_recipe_behavior_authority_v1(jsonb,jsonb,text)
+  from public,anon,authenticated;
+revoke all on function public.recipe_behavior_write_guard_v1()
+  from public,anon,authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Automatic invalidation inputs. Statement-level authority changes enqueue all
@@ -1636,8 +2165,69 @@ create trigger product_reclassify_v2
 after update of canonical_verification_status,canonical_family,current_version_id on public.products
 for each row execute function public.enqueue_catalog_product_behavior_entity_change_v1();
 
+-- Mapper and process corrections do not mutate formulas here. They invalidate
+-- every affected immutable binding immediately, so resolver/terminal validation
+-- fail closed until the server worker publishes a new binding.
+create or replace function public.enqueue_mapper_product_behavior_authority_change_v1()
+returns trigger
+language plpgsql security definer
+set search_path=public,extensions
+as $$
+declare
+  v_ingredient_id text;
+  v_version_id uuid;
+begin
+  v_ingredient_id:=case when tg_op='DELETE' then old.ingredient_id else new.ingredient_id end;
+  if exists(select 1 from public.mapper_basement m
+    where m.ingredient_id=v_ingredient_id and m.is_active) then
+    perform public.enqueue_product_behavior_reclassification_v1(
+      'mapper',v_ingredient_id,tg_table_name||'_changed'
+    );
+  end if;
+  for v_version_id in
+    select distinct p.current_version_id
+    from public.products p
+    join public.product_behavior_bindings b on b.id=p.current_behavior_binding_id
+      and b.product_id=p.id and b.product_version_id=p.current_version_id and b.is_current
+    where p.is_active and p.merged_into_product_id is null
+      and p.current_version_id is not null and b.mapper_ingredient_id=v_ingredient_id
+  loop
+    perform public.enqueue_product_behavior_reclassification_v1(
+      'catalog_product_version',v_version_id::text,tg_table_name||'_changed'
+    );
+  end loop;
+  if tg_op='DELETE' then return old; end if;
+  return new;
+end $$;
+
+drop trigger if exists mapper_basement_behavior_reclassify_v2 on public.mapper_basement;
+create trigger mapper_basement_behavior_reclassify_v2
+after insert or update or delete on public.mapper_basement
+for each row execute function public.enqueue_mapper_product_behavior_authority_change_v1();
+
+drop trigger if exists mapper_process_behavior_reclassify_v2 on public.mapper_process_metadata;
+create trigger mapper_process_behavior_reclassify_v2
+after insert or update or delete on public.mapper_process_metadata
+for each row execute function public.enqueue_mapper_product_behavior_authority_change_v1();
+
 revoke all on function public.enqueue_all_product_behavior_authority_change_v1() from public,anon,authenticated;
 revoke all on function public.enqueue_catalog_product_behavior_entity_change_v1() from public,anon,authenticated;
+revoke all on function public.enqueue_mapper_product_behavior_authority_change_v1() from public,anon,authenticated;
+
+-- Supabase staging supports pg_cron. The bounded worker is idempotent and uses
+-- SKIP LOCKED; failures stay queryable/retryable instead of publishing partial
+-- behavior. This is the runtime continuation for policy/Mapper/process changes.
+create extension if not exists pg_cron;
+do $$
+begin
+  if not exists(select 1 from cron.job where jobname='upi-product-behavior-reclassification-v1') then
+    perform cron.schedule(
+      'upi-product-behavior-reclassification-v1',
+      '* * * * *',
+      'select public.process_product_behavior_reclassification_queue_v1(250);'
+    );
+  end if;
+end $$;
 
 -- Initial deterministic backfill. Failed jobs preserve the old current binding
 -- and remain visible with exact failure state for a later bounded retry.

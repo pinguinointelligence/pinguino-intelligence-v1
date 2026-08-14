@@ -20,6 +20,7 @@ import {
   formatGramsPl,
 } from '@/features/constraint-studio/constraintStudioCopy';
 import {
+  applyPreviewWithServerAuthority,
   isUndoAvailable,
   useConstraintStudioStore,
   type PreviewIssue,
@@ -480,11 +481,13 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
             <ConstraintPreviewCard
               preview={preview}
               onApply={() => {
-                store.applyPreview();
-                // Close ONLY on a successful apply — a verify-blocked apply keeps the
-                // overlay open so the honest BlockedApplyNotice stays in view.
-                const after = useConstraintStudioStore.getState();
-                if (after.preview === null && after.blocked === null) onClose();
+                void (async () => {
+                  await applyPreviewWithServerAuthority();
+                  // Close only after the same terminal server validation used by
+                  // Constraint Studio. A stale/blocked preview stays visible.
+                  const after = useConstraintStudioStore.getState();
+                  if (after.preview === null && after.blocked === null) onClose();
+                })();
               }}
               onCancel={() => {
                 store.cancelPreview();

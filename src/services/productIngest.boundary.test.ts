@@ -18,8 +18,14 @@ describe('canonical product ingest boundary', () => {
 
   it('makes catalog-submit an evidence adapter with exactly one product-authority RPC', () => {
     const edge = read('supabase/functions/catalog-submit/index.ts');
-    const calls = [...edge.matchAll(/service\.rpc\('([^']+)'/g)].map((match) => match[1]);
-    expect(calls).toEqual(['ingest_product_v1']);
+    const calls = [...edge.matchAll(/service\.rpc\(\s*'([^']+)'/g)].map((match) => match[1]);
+    expect(calls).toEqual(['preflight_product_ingest_v1', 'ingest_product_v1']);
+    expect(edge.indexOf("'preflight_product_ingest_v1'")).toBeLessThan(
+      edge.indexOf('evidence = await captureOwnedEvidence('),
+    );
+    expect(edge).toContain('completedResult');
+    expect(edge).toContain('stableJson({');
+    expect(edge).toContain('forwardedChain.at(-1)');
     expect(edge).not.toContain("service.rpc('begin_global_catalog_submission'");
     expect(edge).not.toContain("service.rpc('global_catalog_product_snapshot_hash'");
     expect(edge).not.toContain("service.rpc('submit_owned_product_to_global_catalog_v2'");

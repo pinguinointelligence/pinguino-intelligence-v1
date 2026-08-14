@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
+import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type {
   PrivateProductBehaviorOverlay,
   ProductBehaviorSnapshot,
@@ -9,6 +11,9 @@ import {
   buildRecipeBehaviorAuthority,
   frozenProcessEvidence,
   recipeBehaviorModuleGate,
+  recipeBehaviorLegacyInspection,
+  recipeInputFromFrozenBehavior,
+  recipeToppingsFromFrozenBehavior,
   recipeVersionBehaviorGate,
   resolveProductCostProjection,
 } from './recipeBehaviorAuthority';
@@ -113,6 +118,19 @@ describe('recipe behavior authority', () => {
     });
   });
 
+  it('distinguishes saved legacy inspection from an incomplete modern draft', () => {
+    const missing = buildRecipeBehaviorAuthority({ items: recipe().items, snapshots: {} });
+    expect(recipeBehaviorLegacyInspection(missing, null)).toBe(false);
+    expect(recipeBehaviorLegacyInspection(missing, 'saved-recipe-1')).toBe(true);
+    const reconstructed = buildRecipeBehaviorAuthority({
+      items: recipe().items,
+      snapshots: {
+        'line-1': snapshot({ resolutionState: 'LEGACY_RECONSTRUCTED' }),
+      },
+    });
+    expect(recipeBehaviorLegacyInspection(reconstructed, 'saved-recipe-1')).toBe(true);
+  });
+
   it('projects only frozen process evidence for the exact recipe snapshots', () => {
     const authority = buildRecipeBehaviorAuthority({
       items: recipe().items,
@@ -147,5 +165,61 @@ describe('recipe behavior authority', () => {
     });
     expect(resolveProductCostProjection(snapshot({ sharedFacts: { ...sharedFacts, referencePrice: null } }), null))
       .toEqual({ state: 'missing', pricePerKg: null, currency: null, source: 'missing' });
+  });
+
+  it('erases mutable Base facts that are absent from the frozen product version', () => {
+    const mutable = recipe();
+    mutable.items[0]!.ingredient.composition = {
+      ...mutable.items[0]!.ingredient.composition,
+      water_percent: 99,
+      protein_percent: 12,
+    };
+    const authority = buildRecipeBehaviorAuthority({
+      items: mutable.items,
+      snapshots: { 'line-1': snapshot() },
+    });
+    const projected = recipeInputFromFrozenBehavior(mutable, authority, 'technical');
+    expect(projected.items[0]!.ingredient.composition.water_percent).toBe(87);
+    expect(projected.items[0]!.ingredient.composition).not.toHaveProperty('protein_percent');
+  });
+
+  it('projects label Topping nutrition and allergens from the exact frozen version', () => {
+    const ingredient: CatalogLabelToppingIngredient = {
+      kind: 'catalog_label_topping',
+      id: 'catalog:sauce',
+      canonical_ingredient_id: 'catalog:sauce',
+      private_product_id: 'catalog:sauce:version:v1',
+      name: 'Mutable sauce',
+      catalog_product_id: 'sauce',
+      catalog_version_id: 'v1',
+      verification_status: 'manual_unverified',
+      label_nutrition_per_100g: {
+        basis: 'per_100g', energyKcal: 999, fat: 99, saturatedFat: 99,
+        carbohydrate: 99, sugars: 99, protein: 99, salt: 99, fibre: 99,
+      },
+      ingredients_text: 'Mutable ingredients',
+      allergens_text: 'Mutable allergens',
+      cost_per_kg: null,
+      cost_currency: null,
+    };
+    const topping: RecipeToppingItem = {
+      id: 'topping-1', ingredient, planned_grams: 50, actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
+    };
+    const toppingSnapshot = snapshot({
+      lineId: topping.id,
+      source: 'catalog_import',
+      mapperIngredientId: null,
+      processScope: 'POST_PROCESS_ADDON',
+    });
+    const authority = buildRecipeBehaviorAuthority({
+      items: [], toppings: [topping], snapshots: { [topping.id]: toppingSnapshot },
+    });
+    const [projected] = recipeToppingsFromFrozenBehavior([topping], authority, 'nutrition');
+    expect(projected?.ingredient).toMatchObject({
+      label_nutrition_per_100g: { energyKcal: 64, fat: 3.5, protein: 3.2 },
+      ingredients_text: 'Milk',
+      allergens_text: 'Milk',
+    });
   });
 });

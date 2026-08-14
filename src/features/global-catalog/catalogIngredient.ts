@@ -21,6 +21,13 @@ export function mappedCatalogIngredient(
     source_type: hit.status === 'verified' ? 'producer_label' : 'manual',
     is_verified: hit.status === 'verified',
     confidence_score: hit.status === 'verified' ? 95 : 65,
+    cost_per_kg: hit.privatePricePerKg ?? reference.cost_per_kg,
+    cost_currency: hit.privatePricePerKg === null || hit.privatePricePerKg === undefined
+      ? reference.cost_currency
+      : (hit.privatePriceCurrency ?? 'EUR'),
+    cost_source: hit.privatePricePerKg === null || hit.privatePricePerKg === undefined
+      ? 'reference'
+      : 'private',
   };
 }
 

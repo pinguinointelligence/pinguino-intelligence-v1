@@ -11,8 +11,8 @@ import {
 } from '@/data/ingredients/canonicalIngredientIdentity';
 import { useLineLockControls } from '@/features/constraint-studio/useLineLockControls';
 import {
+  createSubstitutionPreviewWithServerAuthority,
   selectCanonicalDraft,
-  useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/authStore';
 import {
   CUSTOMER_COST_CURRENCY,
   canPersistCustomerPrice,
+  catalogProductIdForIngredient,
   customerPriceCanonicalId,
   effectiveCostForIngredient,
   effectiveCostForToppingIngredient,
@@ -126,6 +127,7 @@ export function IngredientBuilder({
   const removeTopping = useRecipeStore((state) => state.removeTopping);
   const setToppingGrams = useRecipeStore((state) => state.setToppingGrams);
   const replaceToppingIngredient = useRecipeStore((state) => state.replaceToppingIngredient);
+  const setIngredientPrivateCost = useRecipeStore((state) => state.setIngredientPrivateCost);
   const moveBaseItem = useRecipeStore((state) => state.moveBaseItem);
   const moveTopping = useRecipeStore((state) => state.moveTopping);
   const draggedBaseId = useRef<string | null>(null);
@@ -279,15 +281,13 @@ export function IngredientBuilder({
         processScope: 'BASE_FORMULATION',
         resolved,
       });
-      useConstraintStudioStore
-        .getState()
-        .createSubstitutionPreview(
-          lineId,
-          candidate.ingredient,
-          candidate.authorization,
-          behavior,
-          mainIdentityConfirmed,
-        );
+      await createSubstitutionPreviewWithServerAuthority({
+        lineId,
+        substitute: candidate.ingredient,
+        authorization: candidate.authorization,
+        productBehaviorSnapshot: behavior,
+        confirmMainIdentity: mainIdentityConfirmed,
+      });
       setPickerNotice(null);
     },
     moveUp: (lineId) => {
@@ -372,13 +372,32 @@ export function IngredientBuilder({
       storeItems.find((candidate) => candidate.id === item.id)?.ingredient ?? item.ingredient;
     const cost = effectiveCostForIngredient(rawIngredient, customerPrices);
     const canonicalId = customerPriceCanonicalId(rawIngredient);
+    const catalogProductId = catalogProductIdForIngredient(rawIngredient);
+    const catalogReferencePrice = productBehaviorSnapshots[item.id]?.sharedFacts?.referencePrice ?? null;
     const priceView: IngredientPriceView = {
       cost,
       lineCost: effectiveLineCost(item.effective_grams, cost),
+      resetLabel: catalogProductId ? 'Usuń moją cenę' : undefined,
       canEdit:
-        mode === 'recipe' && customerOwnerUserId !== null && canPersistCustomerPrice(rawIngredient),
+        mode === 'recipe' && customerOwnerUserId !== null &&
+        (catalogProductId !== null || canPersistCustomerPrice(rawIngredient)),
       onSave:
-        customerOwnerUserId && canonicalId
+        customerOwnerUserId && catalogProductId
+          ? async (pricePerKg) => {
+              await savePrivateCatalogProductPrice({
+                catalogProductId,
+                pricePerKg,
+                currency: CUSTOMER_COST_CURRENCY,
+              });
+              setIngredientPrivateCost(
+                item.id,
+                pricePerKg,
+                CUSTOMER_COST_CURRENCY,
+                'private',
+              );
+              await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
+            }
+          : customerOwnerUserId && canonicalId
           ? async (pricePerKg) => {
               await saveCustomerPrice({
                 ownerUserId: customerOwnerUserId,
@@ -389,7 +408,18 @@ export function IngredientBuilder({
             }
           : undefined,
       onReset:
-        customerOwnerUserId && canonicalId
+        customerOwnerUserId && catalogProductId
+          ? async () => {
+              await resetPrivateCatalogProductPrice(catalogProductId);
+              setIngredientPrivateCost(
+                item.id,
+                catalogReferencePrice?.pricePerKg ?? null,
+                catalogReferencePrice?.currency ?? null,
+                catalogReferencePrice ? 'reference' : null,
+              );
+              await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
+            }
+          : customerOwnerUserId && canonicalId
           ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
           : undefined,
     };

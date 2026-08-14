@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { parseCsv } from '@/lib/csv';
 import type { EngineIngredient } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
+import { DEFAULT_PRESET } from '@/data/demoPresets';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import {
   substitutionIngredientFingerprint,
@@ -15,7 +16,9 @@ import type {
 } from '@/features/ingredient-builder/ingredientTableUx';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { selectCanonicalDraft, useConstraintStudioStore } from './constraintStudioStore';
+import { buildSubstitutionPreview } from './applyPipeline';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 
 const strawberry: EngineIngredient = {
   ...findDemoIngredient('raspberry')!,
@@ -116,20 +119,45 @@ const behaviorSnapshot = (
   blockReasons: [],
 });
 
-const select = (lineId: string, candidate: SubstituteCandidate, confirmMain = false) =>
-  useConstraintStudioStore
-    .getState()
-    .createSubstitutionPreview(
-      lineId,
-      candidate.ingredient!,
-      candidate.authorization!,
-      behaviorSnapshot(
-        lineId,
-        candidate.ingredient!.canonical_ingredient_id ?? candidate.ingredient!.id,
-        useRecipeStore.getState().items.find((item) => item.id === lineId)?.lock_type === 'main',
-      ),
-      confirmMain,
-    );
+const select = (lineId: string, candidate: SubstituteCandidate, confirmMain = false) => {
+  const draft = selectCanonicalDraft();
+  const replacement = behaviorSnapshot(
+    lineId,
+    candidate.ingredient!.canonical_ingredient_id ?? candidate.ingredient!.id,
+    useRecipeStore.getState().items.find((item) => item.id === lineId)?.lock_type === 'main',
+  );
+  const initialSnapshots = {
+    ...useRecipeStore.getState().productBehaviorSnapshots,
+    [lineId]: replacement,
+  };
+  const raw = buildSubstitutionPreview(
+    draft.input,
+    draft.constraints,
+    lineId,
+    candidate.ingredient!,
+    candidate.authorization!,
+    '2026-08-13T10:00:00.000Z',
+    { productBehaviorSnapshots: initialSnapshots },
+  );
+  const proposalSnapshots = raw.ok
+    ? Object.fromEntries(raw.preview.proposedInput.items.map((item) => [
+        item.id,
+        initialSnapshots[item.id] ?? behaviorSnapshot(
+          item.id,
+          canonicalIngredientId(item.ingredient),
+          item.lock_type === 'main',
+        ),
+      ]))
+    : initialSnapshots;
+  useConstraintStudioStore.getState().createSubstitutionPreview(
+    lineId,
+    candidate.ingredient!,
+    candidate.authorization!,
+    replacement,
+    confirmMain,
+    proposalSnapshots,
+  );
+};
 
 beforeEach(() => {
   useRecipeStore.setState({
@@ -148,7 +176,12 @@ beforeEach(() => {
     unavailableMainIngredientIds: [],
   });
   useConstraintStudioStore.getState().resetForTests();
-  useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
+  for (const item of DEFAULT_PRESET.items) {
+    const grams = item.ingredient.id === 'milk_3_5'
+      ? item.planned_grams - 350
+      : item.planned_grams;
+    if (grams > 0) useRecipeStore.getState().addIngredient(item.ingredient, grams);
+  }
   useRecipeStore.getState().addIngredient(strawberry, 350);
   for (const item of useRecipeStore.getState().items) {
     useRecipeStore.getState().setProductBehaviorSnapshot(
@@ -160,9 +193,13 @@ beforeEach(() => {
       ),
     );
   }
-  useConstraintStudioStore.getState().createOptimizePreview();
-  useConstraintStudioStore.getState().applyPreview();
-  expect(useConstraintStudioStore.getState().blocked).toBeNull();
+  expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots).sort()).toEqual(
+    useRecipeStore.getState().items.map((item) => item.id).sort(),
+  );
+  expect(Object.fromEntries(Object.entries(useRecipeStore.getState().productBehaviorSnapshots)
+    .map(([id, snapshot]) => [id, snapshot?.moduleEligibility.BASE_RECIPE]))).toEqual(
+      Object.fromEntries(useRecipeStore.getState().items.map((item) => [item.id, 'eligible'])),
+    );
 });
 
 describe('normal recipe substitution → Preview → Apply', () => {
@@ -175,7 +212,10 @@ describe('normal recipe substitution → Preview → Apply', () => {
 
     select(line.id, candidate);
     const preview = useConstraintStudioStore.getState().preview;
-    expect(preview?.kind).toBe('substitution');
+    expect(
+      preview?.kind,
+      JSON.stringify(useConstraintStudioStore.getState().previewIssue),
+    ).toBe('substitution');
     expect(
       useRecipeStore.getState().items.find((item) => item.id === line.id)?.ingredient
         .canonical_ingredient_id,

@@ -157,6 +157,9 @@ export interface EngineIngredient {
   cost_per_kg: number | null;
   /** ISO 4217 source currency for the reference cost. Missing means unpriceable without override. */
   cost_currency?: string | null;
+  /** Product-layer provenance for a catalog SKU price. It is pricing-only and
+   * never participates in technical composition or Engine calculations. */
+  cost_source?: 'reference' | 'private' | null;
   /** 0–100 (masterplan §16). */
   confidence_score: number;
   source_type: SourceType;

@@ -42,9 +42,13 @@ import type { ConstraintPreview } from '@/features/constraint-studio/applyPipeli
 import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { APP_NAV_ITEMS } from '@/features/shell/appNav';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useSessionStore } from '@/stores/sessionStore';
+import { useRecipeStore } from '@/stores/recipeStore';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 
 let mockPersona: ProCorePersona = 'pro';
@@ -71,6 +75,30 @@ vi.mock('@/access/useAccess', () => ({
   }),
 }));
 
+const behaviorFixtureState = vi.hoisted(() => ({
+  snapshots: {} as Record<string, ProductBehaviorSnapshot>,
+}));
+vi.mock('@/stores/recipeStore', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/stores/recipeStore')>();
+  const real = actual.useRecipeStore;
+  const mocked = Object.assign(
+    (selector?: (state: ReturnType<typeof real.getState>) => unknown) => {
+      const state = {
+        ...real.getState(),
+        productBehaviorSnapshots: behaviorFixtureState.snapshots,
+      };
+      return selector ? selector(state) : state;
+    },
+    {
+      getState: real.getState,
+      getInitialState: real.getInitialState,
+      setState: real.setState,
+      subscribe: real.subscribe,
+    },
+  );
+  return { ...actual, useRecipeStore: mocked };
+});
+
 const { ProWorkspacePage } = await import('./ProWorkspacePage');
 
 const SRC = resolve(import.meta.dirname, '..', '..');
@@ -78,6 +106,18 @@ const read = (...p: string[]) => readFileSync(join(SRC, ...p), 'utf8');
 
 const renderAt = (path: string, persona: ProCorePersona = 'pro') => {
   mockPersona = persona;
+  const state = useRecipeStore.getState();
+  const input = buildRecipeInput({
+    mode: state.mode,
+    category: state.category,
+    target_temperature_c: state.target_temperature_c,
+    target_batch_grams: state.target_batch_grams,
+    machine_capacity_grams: state.machine_capacity_grams,
+    flavor_intensity: state.flavor_intensity,
+    cost_priority: state.cost_priority,
+    items: state.items,
+  });
+  behaviorFixtureState.snapshots = productBehaviorTestSnapshots(input);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return renderToStaticMarkup(
     <QueryClientProvider client={client}>
@@ -372,6 +412,8 @@ describe('recalculation overlay', () => {
     expect(src).toContain('role="dialog"');
     // Apply closes the overlay ONLY on success (blocked apply keeps the honest notice).
     expect(src).toContain('after.preview === null && after.blocked === null');
+    expect(src).toContain('applyPreviewWithServerAuthority');
+    expect(src).not.toContain('store.applyPreview()');
   });
 
   it('keeps best-achievable consent compact, pink and ahead of the normal Preview/Apply route', () => {

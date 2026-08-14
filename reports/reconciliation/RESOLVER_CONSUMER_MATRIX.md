@@ -1,26 +1,36 @@
 # Resolver consumer matrix
 
-Canonical server entry: `resolve_product_behavior_v1(entity_kind, entity_id, context)`.
-Canonical client adapter: `resolveProductBehaviorForSelection` followed by an immutable `ProductBehaviorSnapshot`.
+Canonical server entries:
 
-Status is an audit of the current reconciliation branch, not a claim that the whole release is complete.
+- `resolve_product_behavior_v1(entity_kind, entity_id, context)` resolves one exact immutable product/Mapper version and returns shared facts plus a separate caller-private overlay.
+- `validate_recipe_behavior_v1(lines, context)` re-resolves current version, binding, taxonomy, mapping and Main policy immediately before terminal operations.
 
-| Consumer | Current authority | Snapshot/version used | Direct reinterpretation remaining | Status / required action |
-|---|---|---|---|---|
-| Picker status | server resolver is called on selection | new Base/Topping lines receive a snapshot | result-list badges originate from search projection before selection | PARTIAL - selection is authoritative; search display is explanatory only. |
-| Base recipe | server snapshot plus Mapper `EngineIngredient` | product/binding/taxonomy IDs persisted | general legacy Mapper rows without an explicit snapshot-obligation marker remain executable | BLOCK - persist `REVALIDATION_REQUIRED` per loaded recipe and pass those exact line IDs into Preview/Apply. |
-| Main crown | `mainBehaviorBlockReason(snapshot)` | policy ID/version and envelope persisted | private/catalog Main without a snapshot is blocked; legacy Mapper Main still lacks explicit loaded-recipe revalidation state | PARTIAL - safe for new catalog/private lines, legacy marker still required. |
-| OPTIMAL/ECO | `verifyMainEnvelope` in Preview/Apply | Preview fingerprint includes product behavior | missing policy resolves to `MAIN_BLOCKED_POLICY`; unmarked legacy Mapper Main can still use the accepted Engine frontier | BLOCK - bind only persisted revalidation obligations, without breaking demo/template fixtures. |
-| Substitution | existing verified Mapper authorization and recipe fingerprint | substitute composition is frozen | replacement behavior is not resolved and attached before Preview | BLOCK - resolve and snapshot the replacement before Preview. |
-| Cost | frozen Engine/topping cost plus caller-private override | label topping carries exact catalog version | Base price provenance is not explicitly joined to the behavior snapshot | PARTIAL. |
-| Monitor | Engine input plus verification badges | current recipe snapshot remains in store | Monitor does not independently call the module gate | BLOCK - consume the frozen complete Base snapshot set explicitly. |
-| Nutrition | frozen Engine input and frozen label topping facts | topping version is persisted | Base behavior completeness is inherited, not asserted locally | PARTIAL. |
-| Save/version | `productBehaviorModuleGate(..., SAVE)` | snapshots persist in composition sidecar | missing legacy snapshots are not yet represented as required IDs | BLOCK. |
-| Production | `productBehaviorModuleGate(..., PRODUCTION)` | production plan freezes composition | missing legacy snapshots are not yet represented as required IDs | BLOCK. |
-| Batch Rescue | production frozen input plus practical audit | no behavior fingerprint on rescue authorization | rescue can replan without an explicit snapshot fingerprint recheck | BLOCK. |
-| Master Label | frozen production/final-product ingredient and allergen facts | catalog topping version survives | Base snapshot completeness is inherited, not asserted locally | PARTIAL. |
-| OCR post-save | catalog version trigger classifies | exact catalog version binding | OCR first writes the legacy owner product root | BLOCK - switch to the single server ingest. |
+Canonical client authority: `ProductBehaviorSnapshot` per line plus the recipe-wide `RecipeBehaviorAuthority`. Private prices/suppliers/notes/stock are never copied into the immutable shared snapshot.
+
+| Consumer | Current authority | Exact enforcement | Status |
+|---|---|---|---|
+| Product Picker | Server resolver on every accepted Base/Topping selection, including the closed built-in-to-Mapper bridge | Blocked/unresolved selections never enter the draft; search badges are explanatory only | COMPLETE |
+| Base creation | Exact product/Mapper snapshot attached to the new line | Required canonical/private/catalog/Mapper lines without authority fail closed | COMPLETE |
+| Topping creation | Exact catalog-version snapshot; label-only facts remain outside Engine composition | Resolver TOPPING permission and immutable nutrition/allergen facts | COMPLETE |
+| Main crown | `mainBehaviorBlockReason` and exact snapshot policy | Missing, legacy-reconstructed or denied authority blocks Main | COMPLETE |
+| OPTIMAL / ECO | `verifyMainEnvelope` plus server-authority Preview/Apply wrappers | floor/ceiling/hard limit, ratio, carrier and current server binding; ECO price remains a transient private projection | COMPLETE |
+| Substitution | Replacement is resolved against the whole proposed vector | replacement snapshot is persisted in Preview; stale/forged Apply is rejected | COMPLETE |
+| Cost | Shared/reference price plus owner-private price projection | private > reference > missing; missing is never zero; private data is not part of shared snapshots | COMPLETE |
+| Monitor | Recipe-wide MONITOR gate and frozen technical composition | POST_PROCESS_ADDON excluded; modern stale authority blocks; legacy reconstruction is read-only only | COMPLETE |
+| Summary / Nutrition | SUMMARY and NUTRITION gates over frozen recipe/completion authority | completed batches use `ProductionCompletionSnapshot`, never the current draft or latest product | COMPLETE |
+| Allergens / Process Guide | Frozen shared allergen/process evidence | no latest-product or latest-Mapper reinterpretation in recipe views | COMPLETE |
+| Save / Recipe Versions | Local complete-set gate plus terminal server validation for Save; immutable sidecar for versions | required IDs, binding versions and facts fingerprints persist | COMPLETE |
+| Restore | Exact historical `RESTORE` gate before appending a new immutable version | old version is not rewritten; unresolved legacy lines remain inspection-only | COMPLETE |
+| Production | Local PRODUCTION gate plus terminal server validation | production source fingerprint freezes behavior authority | COMPLETE |
+| Batch Rescue | BATCH_RESCUE gate over the candidate plus current server validation | added/replaced managed lines require an exact snapshot | COMPLETE |
+| Master Label | MASTER_LABEL gate over completed frozen composition | actual Base + Toppings use the versioned facts frozen at completion | COMPLETE |
+| Exports | EXPORT gate on the exact saved recipe/composition | refuses missing/stale nutrition or allergen authority | COMPLETE |
+| OCR/manual/import intake | One Edge/service adapter into `ingest_product_v1` | product, version, evidence, behavior binding, relation and event commit or roll back together | COMPLETE |
+
+## Legacy rule
+
+Opening an old recipe never mutates its stored version. Resolvable lines receive in-memory `LEGACY_RECONSTRUCTED` snapshots for read-only Monitor/Summary/Nutrition/Allergens/Process/Label/Export/Cost inspection. Editing, Main, Preview, Apply, Save, Restore and new Production require fully `RESOLVED` authority; unresolved lines remain `REVALIDATION_REQUIRED` with their exact line IDs.
 
 ## Frozen trust boundary
 
-Search rows may explain status, but never grant permission. Permission begins only at the server resolver and is frozen in a `ProductBehaviorSnapshot`. Preview/Apply reject a stale snapshot whose Mapper/catalog/private identity no longer matches the line, and private/catalog Main cannot proceed without authority. The remaining legacy requirement must be represented explicitly on loaded recipes rather than inferred from generic Mapper provenance, which would regress accepted demo/template/test flows. Engine formulas continue to consume only `EngineIngredient`/`RecipeInput`; the resolver is a product orchestration and trust boundary, not a second science engine.
+Search rows may explain status but never grant permission. Engine formulas still consume `EngineIngredient`/`RecipeInput`; Unified Product Intelligence owns product identity, immutable facts, eligibility and policy. Terminal validation compares immutable IDs/fingerprints to current server authority, while historical saved and completed outputs continue to read their frozen snapshots.

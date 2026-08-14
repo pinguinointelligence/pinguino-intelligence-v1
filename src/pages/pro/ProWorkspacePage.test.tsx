@@ -94,7 +94,7 @@ describe('ProWorkspacePage (S3)', () => {
     expect(production).toContain('data-testid="pro-context-tabs"');
     expect(production).toContain('data-testid="pro-context-production"');
     expect(production).toContain('Wymaga receptury wykonawczej');
-    expect(production).toContain('Produkcja nie uruchamia niezweryfikowanego szkicu.');
+    expect(production).toContain('Brak zatwierdzonego uprawnienia PRODUCTION dla:');
     expect(production).toContain('data-testid="pro-context-summary-tab"');
 
     const history = renderAt('/pro/history', 'pro');

@@ -3,12 +3,15 @@ import type { EngineIngredient } from '@/engine';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   productBehaviorRequiredLineIds,
+  snapshotServerResolvedProductBehavior,
   type ProductBehaviorContext,
   type ProductBehaviorModule,
   type ProductBehaviorSnapshot,
   type ServerResolvedProductBehavior,
 } from '@/features/product-intelligence';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 
 export type ProductBehaviorEntity =
@@ -28,6 +31,9 @@ export interface RecipeBehaviorServerValidationLine {
   mapperIngredientId: string | null;
   mainPolicyId: string | null;
   mainPolicyVersion: string | null;
+  sharedFacts: ProductBehaviorSnapshot['sharedFacts'];
+  costPerKg: number | null;
+  costCurrency: string | null;
 }
 
 export interface RecipeBehaviorServerValidationResult {
@@ -77,7 +83,10 @@ function technicalFactsMatch(
   return TECHNICAL_FACT_FIELDS.every(([ingredientField, snapshotField]) => {
     const expected = technical[snapshotField];
     const actual = ingredientTechnicalValue(ingredient, ingredientField);
-    if (expected === undefined) return false;
+    // PostgreSQL strips JSON nulls from the immutable server projection. An
+    // omitted optional fact therefore matches only an explicitly unknown
+    // Engine value; it must never match a numeric value supplied by a caller.
+    if (expected === undefined) return actual === null || actual === undefined;
     if (expected === null || actual === null || actual === undefined) {
       return expected === null && (actual === null || actual === undefined);
     }
@@ -123,6 +132,7 @@ function readServerResolvedProductBehavior(value: unknown): ServerResolvedProduc
 function serverValidationLine(
   lineId: string,
   snapshot: ProductBehaviorSnapshot,
+  ingredient: Pick<EngineIngredient, 'cost_per_kg' | 'cost_currency'>,
 ): RecipeBehaviorServerValidationLine | null {
   const mapper = snapshot.source === 'mapper';
   const entityId = mapper ? snapshot.mapperIngredientId : snapshot.productVersionId;
@@ -140,6 +150,9 @@ function serverValidationLine(
     mapperIngredientId: snapshot.mapperIngredientId,
     mainPolicyId: snapshot.mainPolicyId,
     mainPolicyVersion: snapshot.mainPolicyVersion,
+    sharedFacts: snapshot.sharedFacts ?? null,
+    costPerKg: mapper ? null : (ingredient.cost_per_kg ?? null),
+    costCurrency: mapper ? null : (ingredient.cost_currency ?? null),
   };
 }
 
@@ -165,15 +178,19 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
   for (const lineId of requiredLineIds) {
     const snapshot = input.snapshots[lineId];
     const recipeLine = input.recipe.items.find((item) => item.id === lineId);
+    const toppingLine = input.toppings?.find((item) => item.id === lineId);
+    const expectedScope = recipeLine ? 'BASE_FORMULATION' : toppingLine ? 'POST_PROCESS_ADDON' : null;
     if (
       !snapshot ||
       snapshot.resolutionState !== 'RESOLVED' ||
+      expectedScope === null ||
+      snapshot.processScope !== expectedScope ||
       (recipeLine !== undefined && !technicalFactsMatch(recipeLine.ingredient, snapshot))
     ) {
       invalidLineIds.push(lineId);
       continue;
     }
-    const line = serverValidationLine(lineId, snapshot);
+    const line = serverValidationLine(lineId, snapshot, (recipeLine ?? toppingLine)!.ingredient);
     if (!line) {
       invalidLineIds.push(lineId);
       continue;
@@ -254,6 +271,7 @@ export async function validateRecipeBehaviorOnServer(input: {
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   module: ProductBehaviorModule;
   accountId: string | null;
+  client?: Pick<SupabaseClient, 'rpc'>;
 }): Promise<RecipeBehaviorServerValidationResult> {
   const built = buildRecipeBehaviorServerValidationGroups(input);
   if (built.invalidLineIds.length > 0) {
@@ -271,7 +289,8 @@ export async function validateRecipeBehaviorOnServer(input: {
   if (built.groups.length === 0) {
     return { ready: true, module: input.module, staleLineIds: [], lines: [] };
   }
-  if (!supabase) {
+  const client = input.client ?? supabase;
+  if (!client) {
     const lineIds = built.groups.flatMap((group) => group.lines.map((line) => line.lineId)).sort();
     return {
       ready: false,
@@ -285,7 +304,6 @@ export async function validateRecipeBehaviorOnServer(input: {
     };
   }
 
-  const client = supabase;
   const results = await Promise.all(built.groups.map(async (group) => {
     const { data, error } = await client.rpc('validate_recipe_behavior_v1', {
       p_lines: group.lines,
@@ -330,6 +348,88 @@ export async function resolveProductBehaviorForSelection(input: {
   });
   if (error) throw new Error(error.message);
   return readServerResolvedProductBehavior(data);
+}
+
+/** Resolves every newly introduced Base line in a proposed vector before the
+ * Preview is exposed. This is the shared seam for solver-added toolbox and
+ * correction lines; callers never synthesize built-in permissions locally. */
+export async function resolveRecipeProposalBehaviorSnapshots(input: {
+  recipe: RecipeInput;
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  accountId: string | null;
+  module?: ProductBehaviorModule;
+}): Promise<{
+  snapshots: Record<string, ProductBehaviorSnapshot>;
+  unresolvedLineIds: string[];
+}> {
+  const snapshots = Object.fromEntries(
+    Object.entries(input.snapshots)
+      .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
+      .map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
+  );
+  const requiredLineIds = productBehaviorRequiredLineIds({ items: input.recipe.items });
+  const requestedModule = input.module ?? 'BASE_RECIPE';
+  const mode = normalizeFormulationStrategy(
+    input.recipe.goals?.formulation_strategy ?? input.recipe.mode,
+  );
+  const needsResolution = requiredLineIds.filter((lineId) => {
+    const line = input.recipe.items.find((candidate) => candidate.id === lineId);
+    const snapshot = snapshots[lineId];
+    if (!line || !snapshot || snapshot.resolutionState !== 'RESOLVED') return true;
+    const expectedRole = line.lock_type === 'main' ? 'MAIN' : 'STANDARD';
+    const context = snapshot.resolutionContext;
+    return !context ||
+      context.accountId !== input.accountId ||
+      context.productProfile !== input.recipe.category ||
+      context.temperatureC !== input.recipe.target_temperature_c ||
+      context.mode !== mode ||
+      context.processScope !== 'BASE_FORMULATION' ||
+      context.requestedRole !== expectedRole ||
+      context.module !== requestedModule;
+  });
+  const unresolvedLineIds: string[] = [];
+
+  await Promise.all(needsResolution.map(async (lineId) => {
+    const line = input.recipe.items.find((item) => item.id === lineId);
+    if (!line) {
+      unresolvedLineIds.push(lineId);
+      return;
+    }
+    const prior = snapshots[lineId];
+    const mapperIngredientId = prior?.mapperIngredientId ?? canonicalIngredientId(line.ingredient);
+    const entity = prior?.source !== 'mapper' && prior?.productVersionId
+      ? { entityKind: 'catalog_product_version' as const, entityId: prior.productVersionId }
+      : mapperIngredientId.startsWith('PI-ING-')
+        ? { entityKind: 'mapper' as const, entityId: mapperIngredientId }
+        : null;
+    if (!entity) {
+      unresolvedLineIds.push(lineId);
+      return;
+    }
+    const resolved = await resolveProductBehaviorForSelection({
+      entity,
+      context: {
+        accountId: input.accountId,
+        productProfile: input.recipe.category,
+        temperatureC: input.recipe.target_temperature_c,
+        mode,
+        processScope: 'BASE_FORMULATION',
+        requestedRole: line.lock_type === 'main' ? 'MAIN' : 'STANDARD',
+        module: requestedModule,
+      },
+    }).catch(() => null);
+    if (!resolved || resolved.state !== 'eligible') {
+      unresolvedLineIds.push(lineId);
+      return;
+    }
+    snapshots[lineId] = snapshotServerResolvedProductBehavior({
+      lineId,
+      processScope: 'BASE_FORMULATION',
+      resolved,
+    });
+  }));
+
+  return { snapshots, unresolvedLineIds: [...new Set(unresolvedLineIds)].sort() };
 }
 
 export function productBehaviorBlockedMessage(result: ServerResolvedProductBehavior): string {

@@ -33,9 +33,17 @@ export type ProductBehaviorSnapshotState =
 export type ProductSourceKind =
   | 'mapper'
   | 'ocr'
+  | 'barcode'
   | 'manual'
+  | 'admin'
   | 'catalog_import'
+  | 'retailer_feed'
+  | 'spreadsheet'
+  | 'supplier_specification'
+  | 'shop'
+  | 'franchise'
   | 'internal_subproduct'
+  | 'future_integration'
   | 'future';
 
 export type CatalogVerificationState =
@@ -87,30 +95,11 @@ export type ProductPolicyEvidenceStatus =
 /** Stable taxonomy ids are data, not a closed TypeScript enum. */
 export type ProductFamilyId = string;
 export type ProductFormId = string;
-
-export interface ProductVersionRef {
-  productId: string;
-  productVersionId: string;
-  source: ProductSourceKind;
-  sourceIdentity: string;
-  factsFingerprint: string;
-}
-
-export interface ProductTechnicalAuthority {
-  kind: 'mapper_exact' | 'verified_profile' | 'approved_pi_calculation' | 'none';
-  mapperIngredientId: string | null;
-  technicalProfileId: string | null;
-  technicalProfileVersion: string | null;
-  engineReady: boolean;
-  reasons: string[];
-}
-
-export interface ProductVerificationAuthority {
-  state: CatalogVerificationState;
-  method: 'mapper' | 'automatic' | 'human' | 'manual_unverified' | 'blocked' | 'processing';
-  provenanceLabel: string;
-  evidenceVersion: string | null;
-}
+export type ProductTechnicalAuthorityKind =
+  | 'mapper_exact'
+  | 'verified_profile'
+  | 'approved_pi_calculation'
+  | 'none';
 
 export interface MainEnvelopePolicy {
   policyId: string;
@@ -130,6 +119,9 @@ export interface MainEnvelopePolicy {
   ecoFloorPercent: number;
   optimalCeilingPercent: number;
   hardLimitPercent: number;
+  multiMainHardLimitPercent?: number | null;
+  temperatureMinC?: number | null;
+  temperatureMaxC?: number | null;
   mainEquivalentFactor: number;
   requiresLiquidDairyCarrier: boolean;
   liquidDairyCarrierFloorPercent: number | null;
@@ -151,6 +143,7 @@ export interface ProductBehaviorBinding {
     | 'MAIN_ALLOWED'
     | 'MAIN_PROFILE_SPECIFIC'
     | 'STANDARD_ONLY'
+    | 'STRUCTURAL_ONLY'
     | 'PROTEIN_CONTRIBUTOR_ONLY'
     | 'TOPPING_ONLY'
     | 'NOT_MAIN'
@@ -218,6 +211,9 @@ export interface ServerResolvedProductBehavior {
     ecoFloorPercent: number;
     optimalCeilingPercent: number;
     hardLimitPercent: number;
+    multiMainHardLimitPercent?: number | null;
+    temperatureMinC?: number | null;
+    temperatureMaxC?: number | null;
     mainEquivalentFactor: number;
     requiresLiquidDairyCarrier: boolean;
     liquidDairyCarrierFloorPercent: number | null;
@@ -236,25 +232,6 @@ export interface ProductBehaviorContext {
   processScope: ProductProcessScope;
   requestedRole: ProductRequestedRole;
   module: ProductBehaviorModule;
-}
-
-export interface ModuleEligibility {
-  module: ProductBehaviorModule;
-  state: RuntimeEligibilityState;
-  reasons: string[];
-}
-
-export interface ResolvedProductBehavior {
-  schemaVersion: 1;
-  product: ProductVersionRef;
-  verification: ProductVerificationAuthority;
-  technical: ProductTechnicalAuthority;
-  binding: ProductBehaviorBinding;
-  mainPolicy: MainEnvelopePolicy | null;
-  moduleEligibility: Record<ProductBehaviorModule, ModuleEligibility>;
-  warnings: string[];
-  blockReasons: string[];
-  resolverVersion: string;
 }
 
 export interface ProductNutritionFactsPer100g {
@@ -326,7 +303,7 @@ export interface ProductBehaviorSnapshot {
   subfamilyId: string | null;
   formId: string | null;
   verificationState: CatalogVerificationState;
-  technicalAuthority: ProductTechnicalAuthority['kind'];
+  technicalAuthority: ProductTechnicalAuthorityKind;
   mapperIngredientId: string | null;
   mainClassification: ProductBehaviorBinding['mainClassification'];
   mainPolicyId: string | null;
@@ -334,6 +311,7 @@ export interface ProductBehaviorSnapshot {
   ecoFloorPercent: number | null;
   optimalCeilingPercent: number | null;
   hardLimitPercent: number | null;
+  multiMainHardLimitPercent?: number | null;
   mainEquivalentFactor: number | null;
   mainBasis: MainEnvelopePolicy['basis'] | null;
   requiresLiquidDairyCarrier: boolean;
@@ -342,15 +320,13 @@ export interface ProductBehaviorSnapshot {
   approvedMixedFamilyIds: string[];
   moduleEligibility: Partial<Record<ProductBehaviorModule, RuntimeEligibilityState>>;
   processScope: ProductProcessScope;
+  /** Exact context under which the server resolved this snapshot. Null is
+   * reserved for legacy/in-memory compatibility and requires revalidation. */
+  resolutionContext?: ProductBehaviorContext | null;
   resolverVersion: string;
   /** Frozen shared facts for this exact version. Optional only for schema-v1
    * compatibility; facts-dependent module gates fail closed when it is absent. */
   sharedFacts?: SharedProductBehaviorFacts | null;
   warnings: string[];
   blockReasons: string[];
-}
-
-export interface ProductBehaviorRegistry {
-  taxonomyVersion: string;
-  policies: readonly MainEnvelopePolicy[];
 }

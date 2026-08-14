@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EngineIngredient, RecipeInput } from '@/engine';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { verifyEcoFlavourProtection } from './flavourFloor';
 
 const composition = {
@@ -89,14 +90,52 @@ describe('ECO Flavour Floor', () => {
       ).toBe(true);
   });
 
-  it('allows an exact verified concentrate above its floor and blocks below it', () => {
+  it('freezes a legacy exact concentrate until the server resolver supplies its policy', () => {
     const before = input([['main', 'PI-ING-000737', 100]]);
     const atTwenty = { ...before, items: [{ ...before.items[0]!, planned_grams: 20 }] };
-    expect(verifyEcoFlavourProtection(before, atTwenty).ok).toBe(true);
-    const below = { ...before, items: [{ ...before.items[0]!, planned_grams: 19 }] };
-    expect(verifyEcoFlavourProtection(before, below)).toMatchObject({
+    expect(verifyEcoFlavourProtection(before, atTwenty)).toMatchObject({
       ok: false,
-      violations: [{ code: 'verified_floor_crossed' }],
+      violations: [{ code: 'unknown_floor_reduced', minimumGrams: 100 }],
+    });
+  });
+
+  it('uses the resolved behavior snapshot as the sole ECO floor for managed products', () => {
+    const before = input([['main', 'PI-ING-000737', 100]]);
+    const after = { ...before, items: [{ ...before.items[0]!, planned_grams: 25 }] };
+    const authority = {
+      resolutionState: 'RESOLVED',
+      moduleEligibility: { ECO: 'eligible' },
+      ecoFloorPercent: 30,
+      mainEquivalentFactor: 1,
+    } as ProductBehaviorSnapshot;
+
+    expect(
+      verifyEcoFlavourProtection(before, after, {
+        productBehaviorSnapshots: { main: authority },
+      }),
+    ).toMatchObject({
+      ok: false,
+      violations: [{ code: 'verified_floor_crossed', minimumGrams: 300 }],
+    });
+  });
+
+  it('does not fall back to the local registry when a managed snapshot blocks ECO', () => {
+    const before = input([['main', 'PI-ING-000737', 100]]);
+    const after = { ...before, items: [{ ...before.items[0]!, planned_grams: 99 }] };
+    const authority = {
+      resolutionState: 'RESOLVED',
+      moduleEligibility: { ECO: 'blocked' },
+      ecoFloorPercent: 1,
+      mainEquivalentFactor: 1,
+    } as ProductBehaviorSnapshot;
+
+    expect(
+      verifyEcoFlavourProtection(before, after, {
+        productBehaviorSnapshots: { main: authority },
+      }),
+    ).toMatchObject({
+      ok: false,
+      violations: [{ code: 'unknown_floor_reduced', minimumGrams: 100 }],
     });
   });
 

@@ -12,12 +12,33 @@ import {
   buildLabelPreflight,
   buildMasterLabelData,
   requestFieldRemoval,
-  type IngredientAllergenEvidence,
   type MasterLabelData,
 } from './masterLabel';
 import { buildMasterLabelPrintHtml } from './masterLabelPrint';
 import { MARKET_PROFILES, marketProfile } from './marketProfiles';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+
+function behaviorSnapshots(
+  input: RecipeInput,
+  toppings: readonly RecipeToppingItem[] = [],
+): Record<string, ProductBehaviorSnapshot> {
+  const snapshots = productBehaviorTestSnapshots(input, toppings);
+  for (const [lineId, snapshot] of Object.entries(snapshots)) {
+    const item =
+      input.items.find((candidate) => candidate.id === lineId) ??
+      toppings.find((candidate) => candidate.id === lineId);
+    const containsMilk =
+      item?.ingredient.name.toLowerCase().includes('milk') ||
+      item?.ingredient.name.toLowerCase().includes('cream');
+    if (snapshot.sharedFacts?.allergens) {
+      snapshot.sharedFacts.allergens.declared = containsMilk ? ['milk'] : [];
+    }
+  }
+  return snapshots;
+}
 
 function completedSnapshot(delta = 0) {
   const input: RecipeInput = {
@@ -38,11 +59,24 @@ function completedSnapshot(delta = 0) {
       recipeName: 'Gelato mleczne',
     },
     plannedInput: input,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: input.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: behaviorSnapshots(input),
+      migrationAmbiguities: [],
+    },
     startedAt: '2026-08-09T10:00:00.000Z',
   });
-  session = { ...session, customerLabelNote: 'Best served after 5 minutes.', internalProductionNote: 'Never print me.' };
+  session = {
+    ...session,
+    customerLabelNote: 'Best served after 5 minutes.',
+    internalProductionNote: 'Never print me.',
+  };
   for (const [index, line] of session.lines.entries()) {
-    if (index === 0 && delta !== 0) session = setDraftActualGrams(session, line.lineId, line.plannedGrams + delta);
+    if (index === 0 && delta !== 0)
+      session = setDraftActualGrams(session, line.lineId, line.plannedGrams + delta);
     session = confirmProductionLine(session, line.lineId, `2026-08-09T10:0${index}:00.000Z`);
   }
   const finalInput: RecipeInput = {
@@ -62,24 +96,6 @@ function completedSnapshot(delta = 0) {
   ).completionSnapshot!;
 }
 
-function evidence(snapshot = completedSnapshot()): Record<string, IngredientAllergenEvidence> {
-  return Object.fromEntries(
-    snapshot.finalProduct.items.map((item) => {
-      const id = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
-      return [
-        id,
-        {
-          canonicalIngredientId: id,
-          status: 'verified' as const,
-          allergens: item.ingredient.name.toLowerCase().includes('milk') ? ['milk'] : [],
-          mayContain: [],
-          sourceRevision: 'mapper-label-review-1',
-        },
-      ];
-    }),
-  );
-}
-
 function completedSnapshotWithToppings(sameCanonicalAsBase = false) {
   const input: RecipeInput = {
     items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
@@ -90,6 +106,36 @@ function completedSnapshotWithToppings(sameCanonicalAsBase = false) {
     machine_capacity_grams: null,
   };
   const ingredient = input.items[0]!.ingredient;
+  const toppings: RecipeToppingItem[] = [
+    {
+      id: 'sauce-topping',
+      ingredient: {
+        ...ingredient,
+        id: 'PI-ING-SAUCE',
+        canonical_ingredient_id: 'PI-ING-SAUCE',
+        name: 'Sauce',
+      },
+      planned_grams: 60,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON',
+      addon_sort_order: 0,
+    },
+    {
+      id: 'milk-topping',
+      ingredient: sameCanonicalAsBase
+        ? { ...ingredient, name: 'Milk topping' }
+        : {
+            ...ingredient,
+            id: 'PI-ING-TOP-MILK',
+            canonical_ingredient_id: 'PI-ING-TOP-MILK',
+            name: 'Milk topping',
+          },
+      planned_grams: 70,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON',
+      addon_sort_order: 1,
+    },
+  ];
   let session = createProductionSession({
     sessionId: 'run-label-toppings',
     ownerUserId: 'owner',
@@ -104,26 +150,8 @@ function completedSnapshotWithToppings(sameCanonicalAsBase = false) {
       schemaVersion: 1,
       baseScope: 'BASE_FORMULATION',
       baseOrder: [...input.items.map((item) => item.id)].reverse(),
-      toppings: [
-        {
-          id: 'sauce-topping',
-          ingredient: { ...ingredient, id: 'PI-ING-SAUCE', canonical_ingredient_id: 'PI-ING-SAUCE', name: 'Sauce' },
-          planned_grams: 60,
-          actual_grams: null,
-          process_scope: 'POST_PROCESS_ADDON',
-          addon_sort_order: 0,
-        },
-        {
-          id: 'milk-topping',
-          ingredient: sameCanonicalAsBase
-            ? { ...ingredient, name: 'Milk topping' }
-            : { ...ingredient, id: 'PI-ING-TOP-MILK', canonical_ingredient_id: 'PI-ING-TOP-MILK', name: 'Milk topping' },
-          planned_grams: 70,
-          actual_grams: null,
-          process_scope: 'POST_PROCESS_ADDON',
-          addon_sort_order: 1,
-        },
-      ],
+      toppings,
+      behaviorSnapshots: behaviorSnapshots(input, toppings),
       migrationAmbiguities: [],
     },
     startedAt: '2026-08-09T10:00:00.000Z',
@@ -168,19 +196,38 @@ function completedSnapshotWithLabelTopping() {
     catalog_version_id: 'v1',
     verification_status: 'verified',
     label_nutrition_per_100g: {
-      basis: 'per_100g', energyKcal: 210, fat: 0.5, saturatedFat: 0.1,
-      carbohydrate: 50, sugars: 44, protein: 0.7, salt: 0.02, fibre: 2,
+      basis: 'per_100g',
+      energyKcal: 210,
+      fat: 0.5,
+      saturatedFat: 0.1,
+      carbohydrate: 50,
+      sugars: 44,
+      protein: 0.7,
+      salt: 0.02,
+      fibre: 2,
     },
     ingredients_text: 'Fruit, sugar',
     allergens_text: 'None declared',
     cost_per_kg: null,
     cost_currency: null,
   };
+  const toppings: RecipeToppingItem[] = [
+    {
+      id: 'label-topping-line',
+      ingredient,
+      planned_grams: 80,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON',
+      addon_sort_order: 0,
+    },
+  ];
   let session = createProductionSession({
     sessionId: 'run-label-catalog-topping',
     ownerUserId: 'owner',
     source: {
-      recipeId: 'recipe', recipeVersionId: 'version', recipeVersionNumber: 1,
+      recipeId: 'recipe',
+      recipeVersionId: 'version',
+      recipeVersionNumber: 1,
       recipeName: 'Gelato z sosem',
     },
     plannedInput: input,
@@ -188,10 +235,8 @@ function completedSnapshotWithLabelTopping() {
       schemaVersion: 1,
       baseScope: 'BASE_FORMULATION',
       baseOrder: input.items.map((item) => item.id),
-      toppings: [{
-        id: 'label-topping-line', ingredient, planned_grams: 80, actual_grams: null,
-        process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
-      }],
+      toppings,
+      behaviorSnapshots: behaviorSnapshots(input, toppings),
       migrationAmbiguities: [],
     },
     startedAt: '2026-08-12T10:00:00.000Z',
@@ -223,8 +268,11 @@ const build = (delta = 0) => {
     market: 'EU',
     uiLanguage: 'pl',
     labelLanguages: ['es', 'en'],
-    facilityDefaults: { operatorName: 'Pinguino SL', address: 'Calle Uno 1, Madrid', countryCode: 'ES' },
-    allergenEvidenceByCanonicalId: evidence(snapshot),
+    facilityDefaults: {
+      operatorName: 'Pinguino SL',
+      address: 'Calle Uno 1, Madrid',
+      countryCode: 'ES',
+    },
   });
 };
 
@@ -266,7 +314,6 @@ describe('Master Label — one actual-batch source model', () => {
       market: 'EU',
       uiLanguage: 'pl',
       labelLanguages: ['pl'],
-      allergenEvidenceByCanonicalId: evidence(snapshot),
     });
     expect(snapshot.finalProduct.finalMassG).toBe(1135);
     expect(data.ingredients.find((item) => item.lineId === 'milk-topping')?.actualGrams).toBe(75);
@@ -284,8 +331,7 @@ describe('Master Label — one actual-batch source model', () => {
       snapshot.finalProduct.items[0]!.ingredient.id;
     const factualMass = snapshot.finalProduct.items
       .filter(
-        (item) =>
-          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === canonicalId,
+        (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === canonicalId,
       )
       .reduce((sum, item) => sum + item.effective_grams, 0);
     const data = buildMasterLabelData({
@@ -294,7 +340,6 @@ describe('Master Label — one actual-batch source model', () => {
       market: 'EU',
       uiLanguage: 'pl',
       labelLanguages: ['pl'],
-      allergenEvidenceByCanonicalId: evidence(snapshot),
     });
     const declarations = data.ingredients.filter(
       (item) => item.canonicalIngredientId === canonicalId,
@@ -314,22 +359,60 @@ describe('Master Label — one actual-batch source model', () => {
       market: 'EU',
       uiLanguage: 'pl',
       labelLanguages: ['pl'],
-      allergenEvidenceByCanonicalId: evidence(snapshot),
     });
 
     expect(snapshot.finalProduct.nutritionPer100g).toBeNull();
     expect(snapshot.finalProduct.labelNutritionPer100g).not.toBeNull();
     expect(data.nutritionSource).toEqual(snapshot.finalProduct.labelNutritionPer100g);
     expect(data.nutritionSource?.alcohol_g).toBeNull();
-    expect(data.ingredients).toContainEqual(expect.objectContaining({
-      canonicalIngredientId: 'catalog:fruit-sauce',
-      actualGrams: 80,
-      sourceIngredientsText: 'Fruit, sugar',
-      sourceAllergensText: 'None declared',
-    }));
-    expect(data.ingredients.find((item) => item.canonicalIngredientId === 'catalog:fruit-sauce')
-      ?.names.pl).toContain('Fruit, sugar');
+    expect(data.ingredients).toContainEqual(
+      expect.objectContaining({
+        canonicalIngredientId: 'catalog:fruit-sauce',
+        actualGrams: 80,
+        sourceIngredientsText: 'Fruit, sugar',
+        sourceAllergensText: 'None declared',
+      }),
+    );
+    expect(
+      data.ingredients.find((item) => item.canonicalIngredientId === 'catalog:fruit-sauce')?.names
+        .pl,
+    ).toContain('Fruit, sugar');
     expect(data.allergens.labelStatements).toContain('None declared');
+  });
+
+  it('never falls back to mutable Topping label text after frozen authority is captured', () => {
+    const snapshot = completedSnapshotWithLabelTopping();
+    const frozen = snapshot.productComposition.behaviorSnapshots!['label-topping-line']!;
+    snapshot.productComposition.behaviorSnapshots!['label-topping-line'] = {
+      ...frozen,
+      sharedFacts: frozen.sharedFacts
+        ? {
+            ...frozen.sharedFacts,
+            allergens: frozen.sharedFacts.allergens
+              ? {
+                  ...frozen.sharedFacts.allergens,
+                  ingredientsText: null,
+                  allergensText: null,
+                }
+              : null,
+          }
+        : null,
+    };
+
+    const data = buildMasterLabelData({
+      masterLabelId: 'label-frozen-only',
+      snapshot,
+      market: 'EU',
+      uiLanguage: 'pl',
+      labelLanguages: ['pl'],
+    });
+    const topping = data.ingredients.find(
+      (item) => item.canonicalIngredientId === 'catalog:fruit-sauce',
+    );
+    expect(topping?.sourceIngredientsText).toBeNull();
+    expect(topping?.sourceAllergensText).toBeNull();
+    expect(topping?.names.pl).toBe('Fruit sauce');
+    expect(data.allergens.labelStatements).toEqual([]);
   });
 
   it('keeps UI language, market and label languages independent', () => {
@@ -350,33 +433,49 @@ describe('Master Label — one actual-batch source model', () => {
       basis: 'none',
       reviewedByUser: false,
     });
-    expect(buildLabelPreflight(data).items.find((item) => item.field === 'date_mark')?.status).toBe('missing');
+    expect(buildLabelPreflight(data).items.find((item) => item.field === 'date_mark')?.status).toBe(
+      'missing',
+    );
   });
 
-  it('never claims allergen-free when canonical evidence is missing or unreviewed', () => {
+  it('blocks label construction when frozen canonical allergen evidence is missing', () => {
     const snapshot = completedSnapshot();
-    const data = buildMasterLabelData({
-      masterLabelId: 'label-gap',
-      snapshot,
-      market: 'EU',
-      uiLanguage: 'pl',
-      labelLanguages: ['pl'],
-    });
-    expect(data.allergens.status).toBe('incomplete');
-    expect(buildLabelPreflight(data).items.find((item) => item.field === 'allergens')?.message).toMatch(/WYMAGA WERYFIKACJI/);
+    const firstId = snapshot.finalActualInput.items[0]!.id;
+    const current = snapshot.productComposition.behaviorSnapshots![firstId]!;
+    snapshot.productComposition.behaviorSnapshots![firstId] = {
+      ...current,
+      sharedFacts: current.sharedFacts ? { ...current.sharedFacts, allergens: null } : null,
+    };
+    expect(() =>
+      buildMasterLabelData({
+        masterLabelId: 'label-gap',
+        snapshot,
+        market: 'EU',
+        uiLanguage: 'pl',
+        labelLanguages: ['pl'],
+      }),
+    ).toThrow(`master_label_behavior_authority_required:${firstId}`);
   });
 
   it('warns on required-field removal and supports explicit optional fields', () => {
     const data = build();
-    expect(requestFieldRemoval(data, 'ingredients').warning).toBe('To pole jest wymagane dla wybranego rynku.');
+    expect(requestFieldRemoval(data, 'ingredients').warning).toBe(
+      'To pole jest wymagane dla wybranego rynku.',
+    );
     const withOrigin = addOptionalField(data, 'origin');
     expect(withOrigin.enabledOptionalFields).toContain('origin');
-    expect(requestFieldRemoval(withOrigin, 'origin').data.enabledOptionalFields).not.toContain('origin');
+    expect(requestFieldRemoval(withOrigin, 'origin').data.enabledOptionalFields).not.toContain(
+      'origin',
+    );
   });
 
   it('changes required-field profile without changing the nutrition source math', () => {
     const data = build();
-    const us = { ...data, market: 'US' as const, marketProfileVersion: marketProfile('US').version };
+    const us = {
+      ...data,
+      market: 'US' as const,
+      marketProfileVersion: marketProfile('US').version,
+    };
     expect(us.nutritionSource).toEqual(data.nutritionSource);
     expect(marketProfile('US').status).toBe('PARTIAL');
     expect(marketProfile('CUSTOM').status).toBe('RESEARCH_REQUIRED');

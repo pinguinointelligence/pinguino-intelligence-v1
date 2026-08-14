@@ -45,6 +45,7 @@ import type {
   SavedRecipe,
 } from '@/features/pro-core/recipeContracts';
 import { recipeVersionBehaviorGate } from '@/features/product-intelligence';
+import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import type {
   CreateRecipeArgs,
   RecipesRepository,
@@ -569,7 +570,7 @@ export class SupabaseRecipes {
     caps: { canRestoreRecipeVersion: boolean },
   ): Promise<RecipeVersion> {
     if (!caps.canRestoreRecipeVersion) throw new Error('This plan cannot restore recipe versions.');
-    await this.requireUserId();
+    const accountId = await this.requireUserId();
     const meta = await this.fetchMeta(recipeId);
     if (!meta) throw new Error(`unknown recipe ${recipeId}`);
 
@@ -587,6 +588,21 @@ export class SupabaseRecipes {
       if (!behaviorGate.ready) {
         throw new Error(
           behaviorGate.reason ?? 'Recipe version requires product behavior revalidation before restore.',
+        );
+      }
+      const serverGate = await validateRecipeBehaviorOnServer({
+        recipe: target.recipeInput,
+        toppings: target.productComposition?.toppings,
+        snapshots: target.productComposition?.behaviorSnapshots ?? {},
+        module: 'RESTORE',
+        accountId,
+        client: this.client,
+      });
+      if (!serverGate.ready) {
+        throw new Error(
+          `Recipe version requires current product behavior revalidation before restore: ${
+            serverGate.staleLineIds.join(', ') || 'unknown product line'
+          }`,
         );
       }
       return restoreVersion(history, targetVersionNumber, by, new Date().toISOString(), '');

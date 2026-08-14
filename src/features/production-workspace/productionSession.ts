@@ -15,9 +15,14 @@ import {
   type ProductLabelNutritionPer100g,
 } from '@/features/recipe-composition/finalProduct';
 import {
+  buildRecipeBehaviorAuthority,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
+  recipeBehaviorModuleGate,
+  recipeInputFromFrozenBehavior,
+  recipeToppingsFromFrozenBehavior,
 } from '@/features/product-intelligence';
+import { calculateRecipe } from '@/engine';
 
 export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
 
@@ -182,8 +187,12 @@ export function productionSourceFingerprint(
 
 export function createProductionSession(input: CreateProductionSessionInput): ProductionSession {
   const plannedInput = cloneRecipeInput(input.plannedInput);
-  const plannedComposition = input.plannedComposition ??
-    recipeCompositionFromState({ items: plannedInput.items, baseOrder: plannedInput.items.map((item) => item.id) });
+  const plannedComposition =
+    input.plannedComposition ??
+    recipeCompositionFromState({
+      items: plannedInput.items,
+      baseOrder: plannedInput.items.map((item) => item.id),
+    });
   const basePosition = new Map(
     plannedComposition.baseOrder.map((lineId, index) => [lineId, index] as const),
   );
@@ -283,7 +292,8 @@ export function setDraftActualGrams(
 ): ProductionSession {
   requireActive(session);
   requireAddonStageIfNeeded(session, lineId);
-  if (!Number.isFinite(grams) || grams < 0) throw new Error('Actual grams must be finite and non-negative.');
+  if (!Number.isFinite(grams) || grams < 0)
+    throw new Error('Actual grams must be finite and non-negative.');
   return updateLine(session, lineId, (line) => {
     if (line.confirmed) throw new Error('Use record correction before editing a confirmed line.');
     if (
@@ -349,7 +359,8 @@ export function correctRecordedPhysicalGrams(
 ): ProductionSession {
   requireActive(session);
   requireAddonStageIfNeeded(session, lineId);
-  if (!Number.isFinite(grams) || grams < 0) throw new Error('Actual grams must be finite and non-negative.');
+  if (!Number.isFinite(grams) || grams < 0)
+    throw new Error('Actual grams must be finite and non-negative.');
   return updateLine(session, lineId, (line) => {
     if (line.recordCorrectionCount < 1 || line.confirmed) {
       throw new Error('Record correction must be explicitly opened first.');
@@ -478,9 +489,7 @@ export function applyVerifiedRescueInput(
     requiredRescueIds,
   );
   if (!rescueGate.ready) {
-    throw new Error(
-      rescueGate.reason ?? 'Production rescue requires verified product behavior.',
-    );
+    throw new Error(rescueGate.reason ?? 'Production rescue requires verified product behavior.');
   }
   const addedLines: ProductionLineState[] = rescueAddedItems.map((item) => ({
     lineId: item.id,
@@ -500,7 +509,7 @@ export function applyVerifiedRescueInput(
 
 export function completeProductionSession(
   session: ProductionSession,
-  finalResult: RecipeResult,
+  _finalResult: RecipeResult,
   completedAt: string,
   operatorUserId: string | null,
 ): ProductionSession {
@@ -514,19 +523,46 @@ export function completeProductionSession(
     ...item,
     actual_grams: addonById.get(item.id)?.physicalAddedGrams ?? null,
   }));
-  const finalProduct = calculateFinalProduct(finalActualInput, actualToppings, 'actual_batch');
+  const authority = buildRecipeBehaviorAuthority({
+    items: finalActualInput.items,
+    toppings: actualToppings,
+    snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+  });
+  const productionGate = recipeBehaviorModuleGate(authority, 'PRODUCTION');
+  const nutritionGate = recipeBehaviorModuleGate(authority, 'NUTRITION');
+  if (!productionGate.ready || !nutritionGate.ready) {
+    throw new Error(
+      productionGate.reason ?? nutritionGate.reason ?? 'Production facts require revalidation.',
+    );
+  }
+  const authoritativeInput = recipeInputFromFrozenBehavior(
+    finalActualInput,
+    authority,
+    'nutrition',
+  );
+  const authoritativeToppings = recipeToppingsFromFrozenBehavior(
+    actualToppings,
+    authority,
+    'nutrition',
+  );
+  const authoritativeResult = calculateRecipe(authoritativeInput);
+  const finalProduct = calculateFinalProduct(
+    authoritativeInput,
+    authoritativeToppings,
+    'actual_batch',
+  );
   const actualFinalMassG = finalProduct.finalMassG;
   const frozenComposition: RecipeCompositionMetadata = {
     ...session.plannedComposition,
-    toppings: actualToppings,
+    toppings: authoritativeToppings,
   };
   const snapshot: ProductionCompletionSnapshot = {
     sessionId: session.sessionId,
     ownerUserId: session.ownerUserId,
     source: { ...session.source },
     plannedInput: cloneRecipeInput(session.plannedInput),
-    finalActualInput,
-    finalResult,
+    finalActualInput: authoritativeInput,
+    finalResult: authoritativeResult,
     finalProduct: {
       items: finalProduct.finalItems,
       nutritionPer100g: finalProduct.finalNutritionPer100g,

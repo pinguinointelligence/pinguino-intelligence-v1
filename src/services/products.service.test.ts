@@ -5,6 +5,7 @@ const h = vi.hoisted(() => {
   const state: { data: unknown; error: unknown } = { data: null, error: null };
   const chain: Record<string, ReturnType<typeof vi.fn>> = {};
   for (const m of ['from', 'update', 'eq', 'neq', 'select']) chain[m] = vi.fn(() => chain);
+  chain.rpc = vi.fn(async () => ({ data: state.data, error: state.error }));
   chain.maybeSingle = vi.fn(async () => ({ data: state.data, error: state.error }));
   return { chain, state, ingest: vi.fn() };
 });
@@ -39,7 +40,9 @@ describe('updateProduct — structural engine-value protection', () => {
     expect(written.fat_percent).toBe(30.9);
     expect(written).not.toHaveProperty('pac_value');
     expect(written).not.toHaveProperty('pod_value');
-    expect(h.chain.from).toHaveBeenCalledWith('products'); // only the products table, ever
+    expect(h.chain.rpc).toHaveBeenCalledWith('get_canonical_product_for_account_v1', {
+      p_product_id: 'p1',
+    });
   });
 });
 

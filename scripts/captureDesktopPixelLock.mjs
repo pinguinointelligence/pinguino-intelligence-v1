@@ -116,6 +116,49 @@ function fixtureExpression() {
     const profileTab = document.querySelector('[data-testid="pro-context-profile-tab"]');
     if (profileTab?.getAttribute('aria-selected') !== 'true') profileTab?.click();
 
+    // Pixel QA runs without an authenticated staging session. Seed only the
+    // immutable authority required to render the accepted Milk-as-Main fixture;
+    // this never changes application permissions or production data.
+    const { useRecipeStore } = await import('/src/stores/recipeStore.ts');
+    const { productBehaviorTestSnapshots } = await import(
+      '/src/features/product-intelligence/productBehaviorTestFixture.ts'
+    );
+    const { buildRecipeInput } = await import('/src/features/studio/buildRecipeInput.ts');
+    const installSnapshots = () => {
+      const store = useRecipeStore.getState();
+      const snapshots = productBehaviorTestSnapshots(buildRecipeInput(store), store.toppings);
+      for (const [lineId, snapshot] of Object.entries(snapshots)) {
+        store.setProductBehaviorSnapshot(lineId, snapshot);
+      }
+      const milk = snapshots['milk-base:milk_3_5'];
+      if (!milk) throw new Error('Controlled milk authority fixture is unavailable');
+      store.setProductBehaviorSnapshot('milk-base:milk_3_5', {
+        ...milk,
+        productId: 'pixel-lock-milk',
+        productVersionId: 'pixel-lock-milk-v1',
+        factsFingerprint: 'pixel-lock-facts-v1',
+        behaviorBindingId: 'pixel-lock-binding',
+        behaviorBindingVersion: '1',
+        taxonomyVersion: 'pixel-lock-taxonomy-v1',
+        familyId: 'dairy_flavour',
+        subfamilyId: 'milk',
+        formId: 'liquid',
+        mainClassification: 'MAIN_PROFILE_SPECIFIC',
+        mainPolicyId: 'pixel-lock-main-policy',
+        mainPolicyVersion: '1',
+        ecoFloorPercent: 0,
+        optimalCeilingPercent: 100,
+        hardLimitPercent: 100,
+        mainEquivalentFactor: 1,
+        mainBasis: 'PERCENT_OF_BASE',
+        approvedLiquidDairyCarrier: true,
+        moduleEligibility: { ...milk.moduleEligibility, MAIN: 'eligible', BASE_RECIPE: 'eligible' },
+        resolverVersion: 'pixel-lock-fixture-v1',
+      });
+    };
+    installSnapshots();
+    await wait(80);
+
     const main = document.querySelector('[data-testid="row-main-toggle-milk-base:milk_3_5"]');
     if (!main) throw new Error('Controlled six-row milk fixture is unavailable');
     if (main.getAttribute('aria-pressed') !== 'true') main.click();
@@ -126,6 +169,9 @@ function fixtureExpression() {
       button.textContent?.includes('Potwierdź ustawienia')
     );
     confirm?.click();
+    // The context transition above deliberately invalidates prior authority.
+    // Reinstall a resolver-equivalent fixture for the final confirmed context.
+    installSnapshots();
     await wait(250);
 
     document.querySelector('[data-testid="design-review-toggle"]')?.click();

@@ -45,7 +45,8 @@ vi.mock('@/lib/supabase/client', () => {
       },
       maybeSingle: () => {
         h.lookupCalls.push([b._col, b._val]);
-        const data = b._col === 'id' && h.insertAttempted ? h.insertResult : h.lookup(b._col, b._val);
+        const data =
+          b._col === 'id' && h.insertAttempted ? h.insertResult : h.lookup(b._col, b._val);
         return Promise.resolve({ data, error: null });
       },
       single: () =>
@@ -55,10 +56,26 @@ vi.mock('@/lib/supabase/client', () => {
     };
     return b;
   };
-  return { supabase: { from: () => make() }, isSupabaseConfigured: true };
+  return {
+    supabase: {
+      from: () => make(),
+      rpc: async (_name: string, args: { p_product_id: string }) => ({
+        data:
+          (h.insertResult as { id?: string } | null)?.id === args.p_product_id
+            ? h.insertResult
+            : null,
+        error: null,
+      }),
+    },
+    isSupabaseConfigured: true,
+  };
 });
 vi.mock('@/services/productIngest', () => ({
-  canonicalIngestFromLegacyProduct: (input: Record<string, unknown>) => ({ source: 'manual', input, privateOverlay: {} }),
+  canonicalIngestFromLegacyProduct: (input: Record<string, unknown>) => ({
+    source: 'manual',
+    input,
+    privateOverlay: {},
+  }),
   productIngestIdempotencyKey: async () => 'product:manual:test',
   ingestProduct: async ({ input }: { input: Record<string, unknown> }) => {
     h.insertAttempted = true;
@@ -118,21 +135,36 @@ describe('findExistingProductForIdentity — owner-scoped duplicate lookup', () 
 
   it('matches by normalized barcode after an EAN miss, and does NOT reach source_url / identity hash', async () => {
     h.lookup = (col, val) => (col === 'barcode_normalized' && val === '222' ? EXISTING : null);
-    const r = await findExistingProductForIdentity({ ean_code: '111', barcode: '2-2 2', source_url: 'http://x' });
+    const r = await findExistingProductForIdentity({
+      ean_code: '111',
+      barcode: '2-2 2',
+      source_url: 'http://x',
+    });
     expect(r).toBe(EXISTING);
     expect(h.lookupCalls.map(([c]) => c)).toEqual(['ean_code_normalized', 'barcode_normalized']); // short-circuit
   });
 
   it('matches by source_url after EAN/barcode miss, and does NOT reach the identity hash', async () => {
     h.lookup = (col, val) => (col === 'source_url' && val === 'http://x' ? EXISTING : null);
-    const r = await findExistingProductForIdentity({ ean_code: '111', barcode: '222', source_url: 'http://x' });
+    const r = await findExistingProductForIdentity({
+      ean_code: '111',
+      barcode: '222',
+      source_url: 'http://x',
+    });
     expect(r).toBe(EXISTING);
-    expect(h.lookupCalls.map(([c]) => c)).toEqual(['ean_code_normalized', 'barcode_normalized', 'source_url']); // short-circuit
+    expect(h.lookupCalls.map(([c]) => c)).toEqual([
+      'ean_code_normalized',
+      'barcode_normalized',
+      'source_url',
+    ]); // short-circuit
   });
 
   it('matches by product_identity_hash as the last resort', async () => {
     h.lookup = (col) => (col === 'product_identity_hash' ? EXISTING : null);
-    const r = await findExistingProductForIdentity({ brand: 'Babbi', product_name_display: 'Crumble' });
+    const r = await findExistingProductForIdentity({
+      brand: 'Babbi',
+      product_name_display: 'Crumble',
+    });
     expect(r).toBe(EXISTING);
   });
 
@@ -145,17 +177,22 @@ describe('findExistingProductForIdentity — owner-scoped duplicate lookup', () 
 });
 
 describe('createProductWithIdentity — dedupe-then-create', () => {
-  it('returns the existing product and does NOT insert when a duplicate exists', async () => {
+  it('always traverses canonical ingest and accepts its existing-product result', async () => {
     h.lookup = (col, val) => (col === 'ean_code_normalized' && val === '111' ? EXISTING : null);
+    h.insertResult = EXISTING;
     const r = await createProductWithIdentity({ ean_code: '111', product_name_display: 'Milk' });
     expect(r).toBe(EXISTING);
-    expect(h.insertAttempted).toBe(false);
-    expect(h.insertedPayloads).toHaveLength(0);
+    expect(h.insertAttempted).toBe(true);
+    expect(h.insertedPayloads).toHaveLength(1);
   });
 
   it('creates through canonical ingest with no app-side product code', async () => {
     h.insertResult = CREATED;
-    const r = await createProductWithIdentity({ ean_code: '111', brand: 'Babbi', product_name_display: 'Crumble' });
+    const r = await createProductWithIdentity({
+      ean_code: '111',
+      brand: 'Babbi',
+      product_name_display: 'Crumble',
+    });
     expect(r).toBe(CREATED);
     expect(h.insertedPayloads).toHaveLength(1);
     const payload = h.insertedPayloads[0]!;
@@ -164,16 +201,8 @@ describe('createProductWithIdentity — dedupe-then-create', () => {
     expect('owner_user_id' in payload).toBe(false);
   });
 
-  it('is race-safe: on insert failure it re-runs the lookup and returns the concurrent row', async () => {
-    // no dup before insert; after the insert is attempted (and fails), the EAN now resolves
-    h.lookup = (col, val) => (h.insertAttempted && col === 'ean_code_normalized' && val === '111' ? RACED : null);
-    h.insertError = { message: 'duplicate key value violates unique constraint "products_owner_ean_norm_uniq"' };
-    const r = await createProductWithIdentity({ ean_code: '111', product_name_display: 'Milk' });
-    expect(r).toBe(RACED);
-  });
-
-  it('rethrows the original error when the insert fails for a non-duplicate reason', async () => {
-    h.lookup = () => null; // re-lookup also finds nothing
+  it('surfaces canonical ingest errors without a client-side duplicate fallback', async () => {
+    h.lookup = () => RACED;
     h.insertError = { message: 'network down' };
     await expect(
       createProductWithIdentity({ ean_code: '111', product_name_display: 'Milk' }),

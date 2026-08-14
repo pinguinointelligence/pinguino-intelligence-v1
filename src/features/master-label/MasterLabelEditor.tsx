@@ -36,6 +36,7 @@ export function MasterLabelEditor({
   );
 
   useEffect(() => {
+    if (!behaviorGate.ready) return;
     initialize({
       masterLabelId: masterLabelIdForSnapshot(snapshot),
       snapshot,
@@ -43,7 +44,7 @@ export function MasterLabelEditor({
       uiLanguage: 'pl',
       labelLanguages: ['pl'],
     });
-  }, [initialize, snapshot]);
+  }, [behaviorGate.ready, initialize, snapshot]);
   const active = label?.sourceCompletionSessionId === snapshot.sessionId ? label : null;
   const preflight = useMemo(() => (active ? buildLabelPreflight(active) : null), [active]);
 

@@ -1,223 +1,8 @@
-import {
-  findMainEnvelopePolicy,
-  validateProductBehaviorRegistry,
-} from './behaviorPolicyRegistry';
 import type {
-  ModuleEligibility,
-  ProductBehaviorBinding,
   ProductBehaviorContext,
-  ProductBehaviorModule,
-  ProductBehaviorRegistry,
   ProductBehaviorSnapshot,
-  ProductTechnicalAuthority,
-  ProductVerificationAuthority,
-  ProductVersionRef,
-  ResolvedProductBehavior,
-  RuntimeEligibilityState,
   ServerResolvedProductBehavior,
 } from './contracts';
-
-export const PRODUCT_BEHAVIOR_RESOLVER_VERSION = 'unified-product-behavior-v1';
-
-export interface ResolveProductBehaviorInput {
-  product: ProductVersionRef;
-  verification: ProductVerificationAuthority;
-  technical: ProductTechnicalAuthority;
-  binding: ProductBehaviorBinding;
-  context: ProductBehaviorContext;
-  registry: ProductBehaviorRegistry;
-  hasMinimumLabelFacts: boolean;
-  hasKnownCompatiblePrice: boolean;
-}
-
-const MODULES: readonly ProductBehaviorModule[] = [
-  'SEARCH', 'BASE_RECIPE', 'MAIN', 'OPTIMAL', 'ECO', 'TOPPING',
-  'SUBSTITUTION', 'COST', 'MONITOR', 'PRODUCTION', 'LABEL', 'NUTRITION',
-  'ALLERGENS', 'PROCESS', 'SUMMARY', 'BATCH_RESCUE', 'MASTER_LABEL',
-  'RECIPE_VERSION', 'RESTORE', 'EXPORT', 'SAVE',
-];
-
-function entry(
-  module: ProductBehaviorModule,
-  state: RuntimeEligibilityState,
-  ...reasons: string[]
-): ModuleEligibility {
-  return { module, state, reasons };
-}
-
-/**
- * One pure authority for product behaviour. It consumes a server-controlled,
- * versioned binding; it never classifies by display copy and never writes data.
- */
-export function resolveProductBehavior(
-  input: ResolveProductBehaviorInput,
-): ResolvedProductBehavior {
-  const registryIssues = validateProductBehaviorRegistry(input.registry);
-  const bindingMismatch = input.binding.productVersionId !== input.product.productVersionId;
-  const taxonomyMismatch = input.binding.taxonomyVersion !== input.registry.taxonomyVersion;
-  const blocked = input.verification.state === 'blocked' || input.verification.state === 'processing';
-  const mainPolicy = findMainEnvelopePolicy({
-    registry: input.registry,
-    policyId: input.binding.mainPolicyId,
-    familyId: input.binding.familyId,
-    subfamilyId: input.binding.subfamilyId,
-    formId: input.binding.formId,
-    productProfile: input.context.productProfile,
-  });
-  const systemBlocked = registryIssues.length > 0 || bindingMismatch || taxonomyMismatch;
-  const baseReady = !blocked && !systemBlocked && input.binding.baseAllowed && input.technical.engineReady;
-  const toppingReady = !blocked && !systemBlocked && input.binding.toppingAllowed && input.hasMinimumLabelFacts;
-  const mainReady = baseReady &&
-    (input.binding.mainClassification === 'MAIN_ALLOWED' ||
-      input.binding.mainClassification === 'MAIN_PROFILE_SPECIFIC') &&
-    mainPolicy !== null;
-  const substitutionReady = baseReady && input.binding.substitutionAllowed;
-  const labelReady = !blocked && input.binding.labelAllowed && input.hasMinimumLabelFacts;
-
-  const eligibility: Record<ProductBehaviorModule, ModuleEligibility> = {
-    SEARCH: blocked
-      ? entry('SEARCH', 'blocked', 'catalog_verification_blocked')
-      : entry('SEARCH', 'eligible'),
-    BASE_RECIPE: baseReady
-      ? entry('BASE_RECIPE', 'eligible')
-      : entry('BASE_RECIPE', 'blocked', input.technical.engineReady
-        ? 'base_policy_not_approved'
-        : 'technical_authority_missing'),
-    MAIN: mainReady
-      ? entry('MAIN', 'eligible')
-      : entry('MAIN', 'blocked', mainPolicy ? 'main_policy_not_approved' : 'main_policy_missing'),
-    OPTIMAL: mainReady
-      ? entry('OPTIMAL', 'eligible')
-      : entry('OPTIMAL', 'blocked', 'main_envelope_missing'),
-    ECO: mainReady
-      ? entry('ECO', input.hasKnownCompatiblePrice ? 'eligible' : 'eligible',
-          ...(input.hasKnownCompatiblePrice ? [] : ['price_unknown_not_zero']))
-      : entry('ECO', 'blocked', 'main_envelope_missing'),
-    TOPPING: toppingReady
-      ? entry('TOPPING', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('TOPPING', 'blocked', input.hasMinimumLabelFacts
-        ? 'topping_policy_not_approved'
-        : 'minimum_label_facts_missing'),
-    SUBSTITUTION: substitutionReady
-      ? entry('SUBSTITUTION', 'eligible')
-      : entry('SUBSTITUTION', 'blocked', 'substitution_not_approved'),
-    COST: !blocked && input.binding.costAllowed
-      ? entry('COST', input.hasKnownCompatiblePrice ? 'eligible' : 'unknown',
-          ...(input.hasKnownCompatiblePrice ? [] : ['price_missing']))
-      : entry('COST', 'blocked', 'cost_use_not_approved'),
-    MONITOR: entry('MONITOR', 'eligible', input.technical.engineReady
-      ? 'base_technical_behavior_available'
-      : 'summary_only_no_base_science'),
-    PRODUCTION: baseReady || toppingReady
-      ? entry('PRODUCTION', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('PRODUCTION', 'blocked', 'no_executable_process_scope'),
-    LABEL: labelReady
-      ? entry('LABEL', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('LABEL', 'blocked', 'label_facts_missing_or_not_approved'),
-    NUTRITION: labelReady
-      ? entry('NUTRITION', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('NUTRITION', 'blocked', 'nutrition_facts_missing_or_not_approved'),
-    ALLERGENS: labelReady
-      ? entry('ALLERGENS', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('ALLERGENS', 'blocked', 'allergen_facts_missing_or_not_approved'),
-    PROCESS: baseReady || toppingReady
-      ? entry('PROCESS', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('PROCESS', 'blocked', 'process_behavior_not_approved'),
-    SUMMARY: baseReady || toppingReady
-      ? entry('SUMMARY', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('SUMMARY', 'blocked', 'summary_facts_missing_or_not_approved'),
-    BATCH_RESCUE: baseReady
-      ? entry('BATCH_RESCUE', 'eligible')
-      : entry('BATCH_RESCUE', 'blocked', 'rescue_behavior_not_approved'),
-    MASTER_LABEL: labelReady
-      ? entry('MASTER_LABEL', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('MASTER_LABEL', 'blocked', 'label_facts_missing_or_not_approved'),
-    RECIPE_VERSION: baseReady || toppingReady
-      ? entry('RECIPE_VERSION', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('RECIPE_VERSION', 'blocked', 'product_behavior_not_versionable'),
-    RESTORE: baseReady || toppingReady
-      ? entry('RESTORE', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('RESTORE', 'blocked', 'product_behavior_not_restorable'),
-    EXPORT: labelReady
-      ? entry('EXPORT', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('EXPORT', 'blocked', 'export_facts_missing_or_not_approved'),
-    SAVE: baseReady || toppingReady
-      ? entry('SAVE', input.technical.engineReady ? 'eligible' : 'label_only')
-      : entry('SAVE', 'blocked', 'product_behavior_not_executable'),
-  };
-
-  const warnings = [
-    ...input.binding.warnings,
-    ...input.technical.reasons,
-    ...registryIssues,
-    ...(bindingMismatch ? ['product_behavior_binding_version_mismatch'] : []),
-    ...(taxonomyMismatch ? ['taxonomy_version_mismatch'] : []),
-  ];
-  const blockReasons = [
-    ...input.binding.blockReasons,
-    ...(blocked ? [`catalog_${input.verification.state}`] : []),
-    ...(systemBlocked ? ['resolver_contract_invalid'] : []),
-  ];
-
-  return {
-    schemaVersion: 1,
-    product: input.product,
-    verification: input.verification,
-    technical: input.technical,
-    binding: input.binding,
-    mainPolicy,
-    moduleEligibility: eligibility,
-    warnings: [...new Set(warnings)],
-    blockReasons: [...new Set(blockReasons)],
-    resolverVersion: PRODUCT_BEHAVIOR_RESOLVER_VERSION,
-  };
-}
-
-export function snapshotResolvedProductBehavior(input: {
-  lineId: string;
-  processScope: ProductBehaviorSnapshot['processScope'];
-  resolved: ResolvedProductBehavior;
-}): ProductBehaviorSnapshot {
-  const policy = input.resolved.mainPolicy;
-  return {
-    schemaVersion: 1,
-    resolutionState: 'RESOLVED',
-    lineId: input.lineId,
-    productId: input.resolved.product.productId,
-    productVersionId: input.resolved.product.productVersionId,
-    source: input.resolved.product.source,
-    factsFingerprint: input.resolved.product.factsFingerprint,
-    behaviorBindingId: input.resolved.binding.bindingId,
-    behaviorBindingVersion: input.resolved.binding.bindingVersion,
-    taxonomyVersion: input.resolved.binding.taxonomyVersion,
-    familyId: input.resolved.binding.familyId,
-    subfamilyId: input.resolved.binding.subfamilyId,
-    formId: input.resolved.binding.formId,
-    verificationState: input.resolved.verification.state,
-    technicalAuthority: input.resolved.technical.kind,
-    mapperIngredientId: input.resolved.technical.mapperIngredientId,
-    mainClassification: input.resolved.binding.mainClassification,
-    mainPolicyId: policy?.policyId ?? null,
-    mainPolicyVersion: policy?.policyVersion ?? null,
-    ecoFloorPercent: policy?.ecoFloorPercent ?? null,
-    optimalCeilingPercent: policy?.optimalCeilingPercent ?? null,
-    hardLimitPercent: policy?.hardLimitPercent ?? null,
-    mainEquivalentFactor: policy?.mainEquivalentFactor ?? null,
-    mainBasis: policy?.basis ?? null,
-    requiresLiquidDairyCarrier: policy?.requiresLiquidDairyCarrier ?? false,
-    liquidDairyCarrierFloorPercent: policy?.liquidDairyCarrierFloorPercent ?? null,
-    approvedMixedFamilyIds: [...(policy?.approvedMixedFamilyIds ?? [])],
-    moduleEligibility: Object.fromEntries(
-      Object.entries(input.resolved.moduleEligibility).map(([module, value]) => [module, value.state]),
-    ),
-    processScope: input.processScope,
-    approvedLiquidDairyCarrier: input.resolved.binding.approvedLiquidDairyCarrier,
-    resolverVersion: input.resolved.resolverVersion,
-    sharedFacts: null,
-    warnings: [...input.resolved.warnings],
-    blockReasons: [...input.resolved.blockReasons],
-  };
-}
 
 /** Converts the authenticated server result into the only recipe-side product
  * behavior snapshot. Consumers persist/read this snapshot; they do not
@@ -228,6 +13,33 @@ export function snapshotServerResolvedProductBehavior(input: {
   resolved: ServerResolvedProductBehavior;
 }): ProductBehaviorSnapshot {
   const policy = input.resolved.mainPolicy;
+  const provenance = input.resolved.provenance;
+  const catalogSource: ProductBehaviorSnapshot['source'] = (() => {
+    if (input.resolved.entityKind === 'mapper') return 'mapper';
+    if (provenance === 'label_scan' || provenance === 'ocr') return 'ocr';
+    if (provenance === 'barcode_ean' || provenance === 'barcode') return 'barcode';
+    if (provenance === 'manual') return 'manual';
+    if (provenance === 'admin') return 'admin';
+    if (provenance === 'retailer_feed' || provenance === 'mercadona') return 'retailer_feed';
+    if (provenance === 'spreadsheet' || provenance === 'customer_upload') return 'spreadsheet';
+    if (provenance === 'supplier_specification') return 'supplier_specification';
+    if (provenance === 'shop') return 'shop';
+    if (provenance === 'franchise') return 'franchise';
+    if (provenance === 'internal_subproduct') return 'internal_subproduct';
+    if (provenance === 'future_integration' || provenance === 'api') return 'future_integration';
+    return 'catalog_import';
+  })();
+  const context = input.resolved.context as Partial<ProductBehaviorContext>;
+  const resolutionContext: ProductBehaviorContext | null =
+    typeof context.accountId !== 'undefined' &&
+    typeof context.productProfile === 'string' &&
+    typeof context.temperatureC === 'number' &&
+    (context.mode === 'optimal' || context.mode === 'eco') &&
+    (context.processScope === 'BASE_FORMULATION' || context.processScope === 'POST_PROCESS_ADDON') &&
+    (context.requestedRole === 'STANDARD' || context.requestedRole === 'MAIN') &&
+    typeof context.module === 'string'
+      ? context as ProductBehaviorContext
+      : null;
   const mainEligible =
     input.processScope === 'BASE_FORMULATION' &&
     input.resolved.state === 'eligible' &&
@@ -240,7 +52,7 @@ export function snapshotServerResolvedProductBehavior(input: {
     lineId: input.lineId,
     productId: input.resolved.productId,
     productVersionId: input.resolved.productVersionId,
-    source: input.resolved.entityKind === 'mapper' ? 'mapper' : 'catalog_import',
+    source: catalogSource,
     factsFingerprint: input.resolved.factsFingerprint,
     behaviorBindingId: input.resolved.behaviorBindingId,
     behaviorBindingVersion: input.resolved.behaviorBindingVersion,
@@ -258,12 +70,14 @@ export function snapshotServerResolvedProductBehavior(input: {
     ecoFloorPercent: policy?.ecoFloorPercent ?? null,
     optimalCeilingPercent: policy?.optimalCeilingPercent ?? null,
     hardLimitPercent: policy?.hardLimitPercent ?? null,
+    multiMainHardLimitPercent: policy?.multiMainHardLimitPercent ?? null,
     mainEquivalentFactor: policy?.mainEquivalentFactor ?? null,
     mainBasis: policy?.basis ?? null,
     requiresLiquidDairyCarrier: policy?.requiresLiquidDairyCarrier ?? false,
     liquidDairyCarrierFloorPercent: policy?.liquidDairyCarrierFloorPercent ?? null,
     approvedMixedFamilyIds: [...(policy?.approvedMixedFamilyIds ?? [])],
     processScope: input.processScope,
+    resolutionContext,
     approvedLiquidDairyCarrier: input.resolved.approvedLiquidDairyCarrier,
     resolverVersion: input.resolved.resolverVersion,
     sharedFacts: input.resolved.sharedFacts
@@ -302,6 +116,7 @@ export function productBehaviorSnapshotFingerprint(
         value.ecoFloorPercent,
         value.optimalCeilingPercent,
         value.hardLimitPercent,
+        value.multiMainHardLimitPercent ?? null,
         value.mainEquivalentFactor,
         value.requiresLiquidDairyCarrier,
         value.liquidDairyCarrierFloorPercent,
@@ -309,6 +124,7 @@ export function productBehaviorSnapshotFingerprint(
         value.approvedMixedFamilyIds,
         value.moduleEligibility,
         value.processScope,
+        value.resolutionContext,
         value.sharedFacts ?? null,
       ]),
   );
@@ -342,21 +158,14 @@ export function readProductBehaviorSnapshot(value: unknown): ProductBehaviorSnap
       !Array.isArray(facts.profileEligibility)
     ) return null;
   }
-  const resolutionState = row.resolutionState ?? 'RESOLVED';
+  const resolutionContext = row.resolutionContext ?? null;
+  const resolutionState = (row.resolutionState ?? 'RESOLVED') === 'RESOLVED' && resolutionContext === null
+    ? 'REVALIDATION_REQUIRED'
+    : row.resolutionState ?? 'RESOLVED';
   if (
     resolutionState !== 'RESOLVED' &&
     resolutionState !== 'LEGACY_RECONSTRUCTED' &&
     resolutionState !== 'REVALIDATION_REQUIRED'
   ) return null;
-  return structuredClone({ ...row, resolutionState } as ProductBehaviorSnapshot);
+  return structuredClone({ ...row, resolutionState, resolutionContext } as ProductBehaviorSnapshot);
 }
-
-/** Context is resolved once; consumers only read the named module result. */
-export function moduleEligibility(
-  resolved: ResolvedProductBehavior,
-  module: ProductBehaviorModule,
-): ModuleEligibility {
-  return resolved.moduleEligibility[module];
-}
-
-export const PRODUCT_BEHAVIOR_MODULES = MODULES;

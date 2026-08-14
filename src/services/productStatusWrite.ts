@@ -1,9 +1,9 @@
 /**
- * Product lifecycle-status write service. The ONE narrow path that persists a product's
- * customer-facing lifecycle `status` (and optional review audit). It updates ONLY
+ * Product lifecycle decision adapter. It submits reviewed evidence to the
+ * admin-only canonical ingest branch. The browser does not patch
  * `products.status` + `reviewed_by` / `reviewed_at` / `review_notes` — never identity, EAN,
  * source, nutrition, composition, pac/pod, or the Mapper-result columns, and never the locked
- * `mapper_basement`. RLS-gated (own row); no privileged key; no npac_value.
+ * `mapper_basement`; the database rechecks administrator assignment and evidence.
  *
  * The STATUS itself is decided by the pure `productStatusDecision` (red flags block PI Verified;
  * reference-linked → at most PI Generated). This service only persists the chosen status.
@@ -45,9 +45,9 @@ function assertVerifiedReview(review: StatusReview | undefined): void {
 }
 
 /**
- * Narrow update of ONLY `products.status` (+ optional review audit). Throws if the row is
- * missing / not owned. Never writes any other product field. Persisting `pi_verified`
- * additionally requires the full verified review (see assertVerifiedReview).
+ * Submit an audited lifecycle decision through the administrator-only canonical
+ * ingest branch. Persisting `pi_verified` additionally requires the complete
+ * verified review below; the database rechecks both assignment and evidence.
  */
 export async function setProductLifecycleStatus(
   productId: string,

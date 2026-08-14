@@ -3,14 +3,13 @@
  * single candidate the deterministic matcher proposed for a `needs_review` product.
  *
  * Boundaries (enforced by productReview.security.test.ts):
- *   • the ONLY product write is the narrow saveProductMapperReview — it accepts a
- *     ProductMapperResultUpdate (the Mapper-result columns only), so it can never set
- *     products.status, pac_value/pod_value, composition, or identity;
+ *   • the only mutation is a canonical-ingest review event; ordinary reviewers
+ *     add candidate evidence and cannot authorize or reject a Mapper mapping;
  *   • it never reads or writes the locked reference base (no mapper_basement, no
  *     npac_value), calls no engine / AI / billing, makes no raw DB / Supabase access,
  *     and runs only when explicitly called (no auto-run / schedule / trigger).
  *
- * Neither action copies or computes pac/pod: a confirmed mapping is NOT yet engine-ready
+ * Neither action copies or computes pac/pod: a candidate review is NOT engine-ready
  * (missing_fields_json is left untouched, still [pac_value, pod_value]); sourcing those
  * values is a separate, later step.
  */
@@ -18,12 +17,9 @@ import { getProduct, saveProductMapperReview } from '@/services/products';
 import type { ProductMapperResultUpdate, ProductRow } from '@/data/products/productRow';
 
 /**
- * Confirm the single candidate as correct. Records a HUMAN decision in the Mapper-result
- * columns: status → matched, method → manual_mapping (a human action, not the matcher),
- * confidence → high (honest: confident, but not an exact EAN/name match), and clears the
- * needs_review_reason. matched_basement_id / candidate_ids / candidate_count /
- * missing_fields_json are deliberately NOT in the patch, so they are kept as-is. pac/pod
- * are never touched — "matched" here means the mapping is confirmed, NOT engine-ready.
+ * Record the reviewer choice as candidate evidence. Without an independent administrator
+ * sign-off this does not authorize a Mapper binding or Engine use; the server creates or
+ * consolidates review work and preserves the immutable candidate evidence.
  */
 export async function confirmProductMatch(productId: string): Promise<ProductRow> {
   const product = await getProduct(productId);
@@ -44,11 +40,8 @@ export async function confirmProductMatch(productId: string): Promise<ProductRow
 
 /**
  * Confirm a CHOSEN candidate for a multi-candidate (ambiguous / not-yet-persisted) product.
- * Same human-decision semantics as confirmProductMatch, but the reviewer supplies the
- * basement id they picked from the shortlist — so it sets matched_basement_id explicitly.
- * It writes ONLY the decision columns via the narrow saveProductMapperReview; it never
- * touches pac_value/pod_value (a confirmed mapping is NOT engine-ready) and never reads or
- * writes the locked reference base.
+ * Same evidence semantics as confirmProductMatch, with an explicit shortlist candidate.
+ * It never authorizes science, touches PAC/POD, or writes the locked reference base.
  */
 export async function confirmProductMatchTo(productId: string, basementId: string): Promise<ProductRow> {
   const product = await getProduct(productId);
@@ -68,11 +61,9 @@ export async function confirmProductMatchTo(productId: string, basementId: strin
 }
 
 /**
- * Reject the single candidate as a false match. Records: status → rejected, method →
- * manual_mapping, confidence → rejected, and CLEARS matched_basement_id (the wrong choice
- * is removed). candidate_ids / candidate_count are kept (not in the patch) as an audit
- * trail of what the matcher proposed, so a later reviewer can see the rejected candidate.
- * pac/pod and composition are never touched.
+ * Record a reviewer rejection as immutable candidate evidence. An ordinary DEV reviewer
+ * cannot revoke an authorized mapping; that remains an administrator decision inside the
+ * canonical ingest transaction. PAC/POD and composition are never touched.
  */
 export async function rejectProductMatch(productId: string): Promise<ProductRow> {
   const product = await getProduct(productId);

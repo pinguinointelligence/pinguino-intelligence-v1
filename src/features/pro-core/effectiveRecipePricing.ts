@@ -20,6 +20,13 @@ export type CustomerPriceIndex = Readonly<
   Record<string, CustomerIngredientPriceOverride | undefined>
 >;
 
+export function catalogProductIdForIngredient(ingredient: EngineIngredient): string | null {
+  const match = ingredient.private_product_id?.match(
+    /^catalog:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?::|$)/i,
+  );
+  return match?.[1] ?? null;
+}
+
 /** Only an explicit Mapper canonical identity may own a private customer price. */
 export function customerPriceCanonicalId(ingredient: EngineIngredient): string | null {
   const explicit = ingredient.canonical_ingredient_id?.trim();
@@ -29,13 +36,28 @@ export function customerPriceCanonicalId(ingredient: EngineIngredient): string |
 }
 
 export const canPersistCustomerPrice = (ingredient: EngineIngredient): boolean =>
-  customerPriceCanonicalId(ingredient) !== null;
+  catalogProductIdForIngredient(ingredient) === null && customerPriceCanonicalId(ingredient) !== null;
 
 export function effectiveCostForIngredient(
   ingredient: EngineIngredient,
   overrides: CustomerPriceIndex,
   currency = CUSTOMER_COST_CURRENCY,
 ): EffectiveIngredientCost {
+  const catalogProductId = catalogProductIdForIngredient(ingredient);
+  if (catalogProductId) {
+    const valid = ingredient.cost_per_kg !== null && Number.isFinite(ingredient.cost_per_kg)
+      && ingredient.cost_per_kg >= 0 && ingredient.cost_currency === currency;
+    return {
+      canonicalIngredientId: `catalog:${catalogProductId}`,
+      pricePerKg: valid ? ingredient.cost_per_kg : null,
+      currency,
+      source: valid && ingredient.cost_source === 'private' ? 'customer_override'
+        : valid ? 'mapper_reference' : 'missing',
+      mapperPricePerKg: valid && ingredient.cost_source !== 'private' ? ingredient.cost_per_kg : null,
+      customerOverridePerKg: valid && ingredient.cost_source === 'private' ? ingredient.cost_per_kg : null,
+      overrideId: null,
+    };
+  }
   const id = canonicalIngredientId(ingredient);
   return resolveEffectiveIngredientCost({
     canonicalIngredientId: id,

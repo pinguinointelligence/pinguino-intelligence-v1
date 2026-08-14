@@ -1,8 +1,18 @@
 # UPI + Global Catalog reconciliation matrix
 
-Prepared before reconciliation coding. Visual authority is `origin/staging@5f796583955fb82f5ab08ce2e0236cb48cccdc16` plus the passing 64/64 pixel-lock contract.
+Historical input prepared before reconciliation coding. The table below records
+the pre-reconciliation conflicts and is intentionally retained as recovery
+evidence; it is not the current implementation status. Current authority is
+documented by `PRODUCT_ROOT_AND_INGEST_AUDIT.md` and
+`RESOLVER_CONSUMER_MATRIX.md`. Visual authority remains
+`origin/staging@5f796583955fb82f5ab08ce2e0236cb48cccdc16` plus the passing
+64/64 pixel-lock contract.
 
-Final architectural decision: `global_catalog_products` + immutable `global_catalog_product_versions` are the canonical growing shared product identity/version root. `mapper_basement` remains separate and read-only. Legacy owner-bound `public.products` is source evidence/compatibility only and must not remain a second canonical writer. Caller-private data belongs to `account_catalog_product_data` and user relations.
+Superseding architectural decision: `public.products` is the one canonical
+identity root; `product_versions` and `product_behavior_bindings` are its
+immutable/versioned authorities. Former `global_catalog_*` roots are read-only
+compatibility views. `mapper_basement` remains separate and read-only. Caller
+private data belongs only to `user_product_relations`.
 
 | Capability | Report A implementation | Report B implementation | Conflict | Final authority | Merge action | Test | Status before reconciliation |
 |---|---|---|---|---|---|---|---|

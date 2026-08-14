@@ -15,6 +15,7 @@ import { recipeContext } from '@/features/studio/buildRecipeInput';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 
 vi.mock('@/access/useAccess', () => ({
   useAccess: () => ({
@@ -39,6 +40,7 @@ let mockRecipeState: Record<string, unknown> = {
   toppings: [],
   productBehaviorSnapshots: {},
   machineId: null,
+  savedRecipeId: null,
 };
 vi.mock('@/stores/recipeStore', () => ({
   useRecipeStore: Object.assign(
@@ -64,75 +66,13 @@ const visibleText = (html: string) =>
     .replace(/\s+/g, ' ');
 
 function renderPanel(input: RecipeInput) {
-  const productBehaviorSnapshots = Object.fromEntries(input.items.map((item) => {
-    const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
-    const snapshot: ProductBehaviorSnapshot = {
-      schemaVersion: 1,
-      resolutionState: 'RESOLVED',
-      lineId: item.id,
-      productId: canonicalId,
-      productVersionId: `mapper:${canonicalId}`,
-      source: 'mapper',
-      factsFingerprint: `facts:${canonicalId}`,
-      behaviorBindingId: `binding:${canonicalId}`,
-      behaviorBindingVersion: 'test-v1',
-      taxonomyVersion: 'test-taxonomy-v1',
-      familyId: null,
-      subfamilyId: null,
-      formId: null,
-      verificationState: 'verified',
-      technicalAuthority: 'mapper_exact',
-      mapperIngredientId: canonicalId,
-      mainClassification: 'NOT_MAIN',
-      mainPolicyId: null,
-      mainPolicyVersion: null,
-      ecoFloorPercent: null,
-      optimalCeilingPercent: null,
-      hardLimitPercent: null,
-      mainEquivalentFactor: null,
-      mainBasis: null,
-      requiresLiquidDairyCarrier: false,
-      liquidDairyCarrierFloorPercent: null,
-      approvedLiquidDairyCarrier: false,
-      approvedMixedFamilyIds: [],
-      moduleEligibility: { MONITOR: 'eligible', NUTRITION: 'eligible', PROCESS: 'eligible' },
-      processScope: 'BASE_FORMULATION',
-      resolverVersion: 'test-resolver-v1',
-      sharedFacts: {
-        schemaVersion: 1,
-        technicalComposition: { ...item.ingredient.composition },
-        nutritionPer100g: {
-          basis: 'per_100g', energyKcal: null, fat: null, saturatedFat: null,
-          carbohydrate: null, sugars: null, protein: null, salt: null, fibre: null,
-        },
-        allergens: null,
-        processEvidence: [{
-          decision: 'cold_process_approved',
-          reasonType: 'process_requirement',
-          affectedIngredientIds: [canonicalId],
-          explanation: 'Test fixture process authority.',
-          source: {
-            id: `process:${canonicalId}`,
-            label: 'Test process authority',
-            reference: 'test-process-v1',
-            verificationStatus: 'verified',
-          },
-        }],
-        profileEligibility: [input.category],
-        veganEligibility: 'unknown',
-        proteinBehavior: 'unknown',
-        referencePrice: null,
-      },
-      warnings: [],
-      blockReasons: [],
-    };
-    return [item.id, snapshot];
-  }));
+  const productBehaviorSnapshots = productBehaviorTestSnapshots(input);
   mockRecipeState = {
     items: input.items,
     toppings: [],
     productBehaviorSnapshots,
     machineId: null,
+    savedRecipeId: null,
     machineKind: 'professional',
     machineLabel: null,
     machine_capacity_grams: input.machine_capacity_grams,
@@ -160,6 +100,71 @@ function renderPanel(input: RecipeInput) {
 describe('professional Monitor acceptance contract', () => {
   const html = renderPanel(starterMilkBase());
   const text = visibleText(html);
+
+  it('keeps genuine legacy history readable but blocks a partial modern authority', () => {
+    const input = starterMilkBase();
+    renderPanel(input);
+    const completeSnapshots = mockRecipeState.productBehaviorSnapshots as Record<
+      string,
+      ProductBehaviorSnapshot
+    >;
+
+    mockRecipeState = {
+      ...mockRecipeState,
+      savedRecipeId: 'legacy-recipe',
+      productBehaviorSnapshots: {},
+    };
+    const legacyHtml = renderToStaticMarkup(
+      <MonitorPanelContent
+        result={calculateRecipe(input)}
+        servingTemperatureC={input.target_temperature_c}
+        corrections={proposeCorrections({ input, context: recipeContext(input), redact: false })}
+        input={input}
+      />,
+    );
+    expect(legacyHtml).toContain('data-testid="monitor-behavior-revalidation"');
+    expect(legacyHtml).toContain('Podgląd historyczny');
+    expect(legacyHtml).toContain('data-testid="monitor-module-freezing"');
+
+    const [firstLineId] = Object.keys(completeSnapshots);
+    mockRecipeState = {
+      ...mockRecipeState,
+      productBehaviorSnapshots: firstLineId
+        ? { [firstLineId]: completeSnapshots[firstLineId]! }
+        : {},
+    };
+    const partialHtml = renderToStaticMarkup(
+      <MonitorPanelContent
+        result={calculateRecipe(input)}
+        servingTemperatureC={input.target_temperature_c}
+        corrections={proposeCorrections({ input, context: recipeContext(input), redact: false })}
+        input={input}
+      />,
+    );
+    expect(partialHtml).toContain('data-testid="monitor-behavior-revalidation"');
+    expect(partialHtml).not.toContain('data-testid="monitor-module-freezing"');
+
+    mockRecipeState = {
+      ...mockRecipeState,
+      productBehaviorSnapshots: Object.fromEntries(
+        Object.entries(completeSnapshots).map(([lineId, productSnapshot]) => [
+          lineId,
+          { ...productSnapshot, resolutionState: 'LEGACY_RECONSTRUCTED' as const },
+        ]),
+      ),
+    };
+    const reconstructedHtml = renderToStaticMarkup(
+      <MonitorPanelContent
+        result={calculateRecipe(input)}
+        servingTemperatureC={input.target_temperature_c}
+        corrections={proposeCorrections({ input, context: recipeContext(input), redact: false })}
+        input={input}
+      />,
+    );
+    expect(reconstructedHtml).toContain('Podgląd historyczny');
+    expect(reconstructedHtml).toContain('data-testid="monitor-module-freezing"');
+    expect(reconstructedHtml).not.toContain('data-testid="monitor-correction-summary"');
+  });
 
   it('renders analysis-only Direction evidence and no duplicate score or Profile controls', () => {
     expect(html).not.toContain('data-testid="monitor-summary-score"');
@@ -269,8 +274,15 @@ describe('professional Monitor acceptance contract', () => {
       catalog_version_id: 'v1',
       verification_status: 'manual_unverified',
       label_nutrition_per_100g: {
-        basis: 'per_100g', energyKcal: 180, fat: 0.2, saturatedFat: null,
-        carbohydrate: 43, sugars: null, protein: 0.4, salt: 0.01, fibre: null,
+        basis: 'per_100g',
+        energyKcal: 180,
+        fat: 0.2,
+        saturatedFat: null,
+        carbohydrate: 43,
+        sugars: null,
+        protein: 0.4,
+        salt: 0.01,
+        fibre: null,
       },
       ingredients_text: 'Owoce, cukier',
       allergens_text: 'Brak deklaracji',
@@ -279,10 +291,16 @@ describe('professional Monitor acceptance contract', () => {
     };
     const html = renderToStaticMarkup(
       <MonitorToppingSummary
-        toppings={[{
-          id: 'topping-milk', ingredient, planned_grams: 70, actual_grams: null,
-          process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
-        }]}
+        toppings={[
+          {
+            id: 'topping-milk',
+            ingredient,
+            planned_grams: 70,
+            actual_grams: null,
+            process_scope: 'POST_PROCESS_ADDON',
+            addon_sort_order: 0,
+          },
+        ]}
         actualByLineId={new Map([['topping-milk', 75]])}
       />,
     );

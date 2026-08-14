@@ -42,18 +42,29 @@ const snapshot = (lineId: string): ProductBehaviorSnapshot => ({
 });
 
 describe('product behavior snapshot completeness', () => {
-  it('requires snapshots for Mapper/private/catalog product lines but not demo fixtures', () => {
+  it('requires snapshots for Mapper/private/catalog and exact accepted built-ins', () => {
     expect(productBehaviorRequiredLineIds({
       items: [
         { id: 'mapper', ingredient: { identity_provenance: 'mapper' } },
         { id: 'private', ingredient: { identity_provenance: 'private_product' } },
+        { id: 'built-in', ingredient: { id: 'raspberry' } },
         { id: 'demo', ingredient: {} },
       ],
       toppings: [{
         id: 'catalog-topping',
         ingredient: { kind: 'catalog_label_topping', catalog_product_id: 'catalog-1' },
       }],
-    })).toEqual(['catalog-topping', 'mapper', 'private']);
+    })).toEqual(['built-in', 'catalog-topping', 'mapper', 'private']);
+  });
+
+  it('keeps accepted built-ins fail-closed until their exact Mapper snapshot resolves', () => {
+    const required = productBehaviorRequiredLineIds({
+      items: [{ id: 'milk-line', ingredient: { id: 'milk_3_5' } }],
+    });
+    expect(productBehaviorModuleGate({}, 'BASE_RECIPE', required)).toMatchObject({
+      ready: false,
+      blockedLineIds: ['milk-line'],
+    });
   });
 
   it('fails Save/Production closed when a required legacy product snapshot is absent', () => {
@@ -74,6 +85,27 @@ describe('product behavior snapshot completeness', () => {
     expect(productBehaviorModuleGate(
       { 'legacy-line': unresolved },
       'RESTORE',
+      ['legacy-line'],
+    )).toMatchObject({ ready: false, blockedLineIds: ['legacy-line'] });
+  });
+
+  it('allows reconstructed history only in read-only projections', () => {
+    const reconstructed = {
+      ...snapshot('legacy-line'),
+      resolutionState: 'LEGACY_RECONSTRUCTED' as const,
+      moduleEligibility: {
+        ...snapshot('legacy-line').moduleEligibility,
+        MONITOR: 'eligible' as const,
+      },
+    };
+    expect(productBehaviorModuleGate(
+      { 'legacy-line': reconstructed },
+      'MONITOR',
+      ['legacy-line'],
+    ).ready).toBe(true);
+    expect(productBehaviorModuleGate(
+      { 'legacy-line': reconstructed },
+      'SAVE',
       ['legacy-line'],
     )).toMatchObject({ ready: false, blockedLineIds: ['legacy-line'] });
   });

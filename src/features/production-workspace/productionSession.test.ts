@@ -19,6 +19,7 @@ import {
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 
 function recipe(): RecipeInput {
   return {
@@ -33,6 +34,7 @@ function recipe(): RecipeInput {
 }
 
 function session() {
+  const plannedInput = recipe();
   return createProductionSession({
     sessionId: 'run-1',
     ownerUserId: 'owner-1',
@@ -42,7 +44,15 @@ function session() {
       recipeVersionNumber: 1,
       recipeName: 'Milk base',
     },
-    plannedInput: recipe(),
+    plannedInput,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: plannedInput.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: productBehaviorTestSnapshots(plannedInput),
+      migrationAmbiguities: [],
+    },
     startedAt: '2026-08-09T10:00:00.000Z',
   });
 }
@@ -108,7 +118,9 @@ describe('production session physical-reality contract', () => {
       sessionId: 'ordered-run',
       ownerUserId: 'owner-1',
       source: {
-        recipeId: 'recipe-1', recipeVersionId: 'version-1', recipeVersionNumber: 1,
+        recipeId: 'recipe-1',
+        recipeVersionId: 'version-1',
+        recipeVersionNumber: 1,
         recipeName: 'Ordered base',
       },
       plannedInput: input,
@@ -122,7 +134,9 @@ describe('production session physical-reality contract', () => {
       startedAt: '2026-08-11T00:00:00.000Z',
     });
     expect(run.lines.map((line) => line.lineId)).toEqual(reversed);
-    expect(run.plannedInput.items.map((item) => item.id)).toEqual(input.items.map((item) => item.id));
+    expect(run.plannedInput.items.map((item) => item.id)).toEqual(
+      input.items.map((item) => item.id),
+    );
   });
 
   it('defaults every editable actual to plan without marking material as added', () => {
@@ -174,7 +188,11 @@ describe('production session physical-reality contract', () => {
       '2026-08-09T10:01:00.000Z',
     );
     const illegal = buildProductionForecastInput(confirmed);
-    illegal.items[0] = { ...illegal.items[0]!, actual_grams: null, planned_grams: line.plannedGrams };
+    illegal.items[0] = {
+      ...illegal.items[0]!,
+      actual_grams: null,
+      planned_grams: line.plannedGrams,
+    };
     expect(() => applyVerifiedRescueInput(confirmed, illegal)).toThrow(/reduce physically added/);
   });
 
@@ -264,7 +282,11 @@ describe('production session physical-reality contract', () => {
       toppings: [
         {
           id: 'topping-milk',
-          ingredient: { ...toppingIngredient, id: 'PI-ING-TOP-MILK', canonical_ingredient_id: 'PI-ING-TOP-MILK' },
+          ingredient: {
+            ...toppingIngredient,
+            id: 'PI-ING-TOP-MILK',
+            canonical_ingredient_id: 'PI-ING-TOP-MILK',
+          },
           planned_grams: 70,
           actual_grams: null,
           process_scope: 'POST_PROCESS_ADDON',
@@ -272,13 +294,39 @@ describe('production session physical-reality contract', () => {
         },
         {
           id: 'topping-sauce',
-          ingredient: { ...toppingIngredient, id: 'PI-ING-TOP-SAUCE', canonical_ingredient_id: 'PI-ING-TOP-SAUCE' },
+          ingredient: {
+            ...toppingIngredient,
+            id: 'PI-ING-TOP-SAUCE',
+            canonical_ingredient_id: 'PI-ING-TOP-SAUCE',
+          },
           planned_grams: 60,
           actual_grams: null,
           process_scope: 'POST_PROCESS_ADDON',
           addon_sort_order: 1,
         },
       ],
+      behaviorSnapshots: productBehaviorTestSnapshots(plannedInput, [
+        {
+          id: 'topping-milk',
+          ingredient: toppingIngredient,
+          planned_grams: 60,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 0,
+        },
+        {
+          id: 'topping-sauce',
+          ingredient: {
+            ...toppingIngredient,
+            id: 'PI-ING-TOP-SAUCE',
+            canonical_ingredient_id: 'PI-ING-TOP-SAUCE',
+          },
+          planned_grams: 60,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 1,
+        },
+      ]),
       migrationAmbiguities: [],
     };
     let run = createProductionSession({
@@ -295,9 +343,9 @@ describe('production session physical-reality contract', () => {
       startedAt: '2026-08-09T10:00:00.000Z',
     });
     const baseBefore = calculateRecipe(plannedInput);
-    expect(() =>
-      confirmProductionLine(run, 'topping-milk', '2026-08-09T10:00:30.000Z'),
-    ).toThrow(/after every Base ingredient/);
+    expect(() => confirmProductionLine(run, 'topping-milk', '2026-08-09T10:00:30.000Z')).toThrow(
+      /after every Base ingredient/,
+    );
 
     for (const [index, line] of run.lines.entries()) {
       run = confirmProductionLine(run, line.lineId, `2026-08-09T10:${index + 1}:00.000Z`);
@@ -351,8 +399,15 @@ describe('production session physical-reality contract', () => {
       catalog_version_id: 'v1',
       verification_status: 'manual_unverified',
       label_nutrition_per_100g: {
-        basis: 'per_100g', energyKcal: 210, fat: 0.5, saturatedFat: 0.1,
-        carbohydrate: 50, sugars: 44, protein: 0.7, salt: 0.02, fibre: 2,
+        basis: 'per_100g',
+        energyKcal: 210,
+        fat: 0.5,
+        saturatedFat: 0.1,
+        carbohydrate: 50,
+        sugars: 44,
+        protein: 0.7,
+        salt: 0.02,
+        fibre: 2,
       },
       ingredients_text: 'Fruit, sugar',
       allergens_text: 'None declared',
@@ -363,24 +418,32 @@ describe('production session physical-reality contract', () => {
       sessionId: 'run-label-only-topping',
       ownerUserId: 'owner-1',
       source: {
-        recipeId: 'recipe-1', recipeVersionId: 'version-1', recipeVersionNumber: 1,
+        recipeId: 'recipe-1',
+        recipeVersionId: 'version-1',
+        recipeVersionNumber: 1,
         recipeName: 'Base plus label topping',
       },
       plannedInput,
-      plannedComposition: {
-        schemaVersion: 1,
-        baseScope: 'BASE_FORMULATION',
-        baseOrder: plannedInput.items.map((item) => item.id),
-        toppings: [{
-          id: 'label-topping-line',
-          ingredient: labelIngredient,
-          planned_grams: 80,
-          actual_grams: null,
-          process_scope: 'POST_PROCESS_ADDON',
-          addon_sort_order: 0,
-        }],
-        migrationAmbiguities: [],
-      },
+      plannedComposition: (() => {
+        const toppings = [
+          {
+            id: 'label-topping-line',
+            ingredient: labelIngredient,
+            planned_grams: 80,
+            actual_grams: null,
+            process_scope: 'POST_PROCESS_ADDON' as const,
+            addon_sort_order: 0,
+          },
+        ];
+        return {
+          schemaVersion: 1,
+          baseScope: 'BASE_FORMULATION' as const,
+          baseOrder: plannedInput.items.map((item) => item.id),
+          toppings,
+          behaviorSnapshots: productBehaviorTestSnapshots(plannedInput, toppings),
+          migrationAmbiguities: [],
+        };
+      })(),
       startedAt: '2026-08-12T10:00:00.000Z',
     });
     for (const [index, line] of run.lines.entries()) {

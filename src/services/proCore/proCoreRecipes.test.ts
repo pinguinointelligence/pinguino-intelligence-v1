@@ -54,7 +54,7 @@ const behaviorComposition = (input: RecipeInput): RecipeCompositionMetadata => (
     const canonicalId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
     const behavior: ProductBehaviorSnapshot = {
       schemaVersion: 1,
-      resolutionState: 'LEGACY_RECONSTRUCTED',
+      resolutionState: 'RESOLVED',
       lineId: item.id,
       productId: item.ingredient.private_product_id ?? canonicalId,
       productVersionId: `mapper:${canonicalId}`,

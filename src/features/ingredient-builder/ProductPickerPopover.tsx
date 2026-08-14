@@ -13,6 +13,7 @@ import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { getEngineApprovedIngredientById, listEngineApprovedIngredientsByIds } from '@/services/ingredients';
 import { markCatalogProductUsed } from '@/services/globalCatalog';
 import { cn } from '@/lib/cn';
@@ -323,12 +324,15 @@ export function ProductPickerPopover({
         );
       }
       let behavior: ProductBehaviorSnapshot | undefined;
-      if (ingredient && behaviorContext && library.serverSearch) {
+      if (ingredient && behaviorContext) {
         const entity = option.catalog
           ? option.catalog.currentVersionId
             ? { entityKind: 'catalog_product_version' as const, entityId: option.catalog.currentVersionId }
             : null
-          : { entityKind: 'mapper' as const, entityId: option.id };
+          : {
+              entityKind: 'mapper' as const,
+              entityId: canonicalIngredientId(ingredient as EngineIngredient),
+            };
         if (entity === null) {
           setUnavailableNotice('Produkt nie ma jeszcze niezmiennej wersji danych.');
           return;
@@ -351,6 +355,14 @@ export function ProductPickerPopover({
         if (resolved?.state === 'blocked') {
           setUnavailableNotice(productBehaviorBlockedMessage(resolved));
           return;
+        }
+        if (!option.catalog && !library.serverSearch) {
+          const mapperRow = await getEngineApprovedIngredientById(entity.entityId).catch(() => null);
+          if (!mapperRow) {
+            setUnavailableNotice('Składnik demonstracyjny nie ma zatwierdzonego odpowiednika PINGÜINO Base.');
+            return;
+          }
+          ingredient = ingredientRowToEngineIngredient(mapperRow);
         }
         behavior = snapshotServerResolvedProductBehavior({
           lineId: '',

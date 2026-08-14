@@ -711,8 +711,8 @@
       "element": "pickerHeader",
       "field": "height",
       "expected": 79,
-      "actual": 80,
-      "delta": 1,
+      "actual": 78,
+      "delta": -1,
       "passed": true
     },
     {

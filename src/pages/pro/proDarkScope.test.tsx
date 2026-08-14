@@ -14,6 +14,10 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { useRecipeStore } from '@/stores/recipeStore';
 
 let mockPersona: ProCorePersona = 'pro';
 vi.mock('@/features/pro-core/useProCorePersona', () => ({
@@ -38,10 +42,46 @@ vi.mock('@/access/useAccess', () => ({
   }),
 }));
 
+const behaviorFixtureState = vi.hoisted(() => ({
+  snapshots: {} as Record<string, ProductBehaviorSnapshot>,
+}));
+vi.mock('@/stores/recipeStore', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/stores/recipeStore')>();
+  const real = actual.useRecipeStore;
+  const mocked = Object.assign(
+    (selector?: (state: ReturnType<typeof real.getState>) => unknown) => {
+      const state = {
+        ...real.getState(),
+        productBehaviorSnapshots: behaviorFixtureState.snapshots,
+      };
+      return selector ? selector(state) : state;
+    },
+    {
+      getState: real.getState,
+      getInitialState: real.getInitialState,
+      setState: real.setState,
+      subscribe: real.subscribe,
+    },
+  );
+  return { ...actual, useRecipeStore: mocked };
+});
+
 const { ProWorkspacePage } = await import('./ProWorkspacePage');
 
 const renderAt = (path: string, persona: ProCorePersona) => {
   mockPersona = persona;
+  const state = useRecipeStore.getState();
+  const input = buildRecipeInput({
+    mode: state.mode,
+    category: state.category,
+    target_temperature_c: state.target_temperature_c,
+    target_batch_grams: state.target_batch_grams,
+    machine_capacity_grams: state.machine_capacity_grams,
+    flavor_intensity: state.flavor_intensity,
+    cost_priority: state.cost_priority,
+    items: state.items,
+  });
+  behaviorFixtureState.snapshots = productBehaviorTestSnapshots(input);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return renderToStaticMarkup(
     <QueryClientProvider client={client}>

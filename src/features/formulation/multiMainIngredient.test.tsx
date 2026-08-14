@@ -22,6 +22,7 @@ import {
 } from '@/features/constraint-studio/applyPipeline';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import { useRecipeStore } from '@/stores/recipeStore';
 
 const STRAWBERRIES: EngineIngredient = {
@@ -68,6 +69,42 @@ const ownerInput = (
 
 const NO = { byLineId: {} };
 
+const mainSnapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSnapshot => ({
+  schemaVersion: 1,
+  resolutionState: 'RESOLVED',
+  lineId,
+  productId: `product-${lineId}`,
+  productVersionId: `version-${lineId}`,
+  source: 'mapper',
+  factsFingerprint: `facts-${lineId}`,
+  behaviorBindingId: `binding-${lineId}`,
+  behaviorBindingVersion: '1',
+  taxonomyVersion: 'taxonomy-v1',
+  familyId: 'fruit',
+  subfamilyId: lineId.includes('banana') ? 'banana' : 'berry',
+  formId: 'fresh',
+  verificationState: 'verified',
+  technicalAuthority: 'mapper_exact',
+  mapperIngredientId,
+  mainClassification: 'MAIN_PROFILE_SPECIFIC',
+  mainPolicyId: 'main-fruit-dairy-v1',
+  mainPolicyVersion: '1',
+  ecoFloorPercent: 20,
+  optimalCeilingPercent: 35,
+  hardLimitPercent: 45,
+  mainEquivalentFactor: 1,
+  mainBasis: 'FRUIT_EQUIVALENT',
+  requiresLiquidDairyCarrier: true,
+  liquidDairyCarrierFloorPercent: 30,
+  approvedLiquidDairyCarrier: false,
+  approvedMixedFamilyIds: [],
+  moduleEligibility: { BASE_RECIPE: 'eligible', MAIN: 'eligible' },
+  processScope: 'BASE_FORMULATION',
+  resolverVersion: 'unified-product-behavior-v1',
+  warnings: [],
+  blockReasons: [],
+});
+
 beforeEach(() => {
   useConstraintStudioStore.getState().resetForTests();
   useRecipeStore.setState({
@@ -90,6 +127,10 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
   it('marking a second line Main never demotes the first; demoting one changes only that line', () => {
     useRecipeStore.setState({
       items: [line('line-banana', BANANA, 100, 'unlocked'), line('line-strawberry', STRAWBERRIES, 100, 'unlocked')],
+      productBehaviorSnapshots: {
+        'line-banana': mainSnapshot('line-banana', BANANA.id),
+        'line-strawberry': mainSnapshot('line-strawberry', STRAWBERRIES.id),
+      },
     });
 
     useRecipeStore.getState().setMainIngredient('line-banana');

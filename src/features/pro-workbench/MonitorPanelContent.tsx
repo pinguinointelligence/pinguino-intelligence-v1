@@ -31,6 +31,8 @@ import { polishPositionNoun } from './polishPositionNoun';
 import {
   buildRecipeBehaviorAuthority,
   frozenProcessEvidence,
+  recipeInputFromFrozenBehavior,
+  recipeBehaviorLegacyInspection,
   recipeBehaviorModuleGate,
 } from '@/features/product-intelligence';
 
@@ -53,11 +55,13 @@ export function MonitorToppingSummary({
           <span>
             <strong className="block text-xs text-white">Toppingi po produkcji</strong>
             <span className="mt-0.5 block text-xs text-white/58">
-              {toppings.length} {polishPositionNoun(toppings.length)}{' '}
-              · {toppingMassG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+              {toppings.length} {polishPositionNoun(toppings.length)} ·{' '}
+              {toppingMassG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
             </span>
           </span>
-          <span aria-hidden className="text-white/60">⌄</span>
+          <span aria-hidden className="text-white/60">
+            ⌄
+          </span>
         </span>
         <span className="mt-1 block text-xs text-[#c9d4c2]">Nie wpływają na bilans bazy.</span>
       </summary>
@@ -108,46 +112,80 @@ export function MonitorPanelContent({
   const setPlan = useSessionStore((state) => state.setPlan);
   const machineId = useRecipeStore((state) => state.machineId);
   const preview = useConstraintStudioStore((state) => state.preview);
+  const substitutionAuthorization = useConstraintStudioStore(
+    (state) => state.substitutionAuthorization,
+  );
   const [processGuideOpen, setProcessGuideOpen] = useState(false);
   const onUpgrade = import.meta.env.DEV ? () => setPlan('pro') : undefined;
-  const modules = useMemo(
-    () => buildProfessionalMonitorModules(result, servingTemperatureC, input),
-    [input, result, servingTemperatureC],
-  );
-  const previewModules = useMemo(() => {
-    if (!preview) return undefined;
-    const previewResult = calculateRecipe(preview.proposedInput);
-    return buildProfessionalMonitorModules(
-      previewResult,
-      preview.proposedInput.target_temperature_c,
-      preview.proposedInput,
-    );
-  }, [preview]);
   const correctionView = useMemo(() => buildCorrectionView(corrections), [corrections]);
   const recipeIncomplete = result.total_batch_g <= 0;
   const toppings = useRecipeStore((state) => state.toppings);
   const behaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
+  const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
   const behaviorAuthority = useMemo(
-    () => buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots: behaviorSnapshots }),
+    () =>
+      buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots: behaviorSnapshots }),
     [behaviorSnapshots, input.items, toppings],
   );
   const monitorGate = useMemo(
     () => recipeBehaviorModuleGate(behaviorAuthority, 'MONITOR'),
     [behaviorAuthority],
   );
-  const processFacts = useMemo(
-    () => frozenProcessEvidence(behaviorAuthority),
-    [behaviorAuthority],
+  const legacyInspection = recipeBehaviorLegacyInspection(behaviorAuthority, savedRecipeId);
+  const frozenInput = useMemo(
+    () => recipeInputFromFrozenBehavior(input, behaviorAuthority, 'technical'),
+    [behaviorAuthority, input],
   );
+  const monitorInput = legacyInspection ? input : frozenInput;
+  const frozenResult = useMemo(
+    () =>
+      legacyInspection
+        ? result
+        : behaviorAuthority.requiredLineIds.length > 0
+          ? calculateRecipe(frozenInput)
+          : result,
+    [behaviorAuthority.requiredLineIds.length, frozenInput, legacyInspection, result],
+  );
+  const modules = useMemo(
+    () => buildProfessionalMonitorModules(frozenResult, servingTemperatureC, monitorInput),
+    [frozenResult, monitorInput, servingTemperatureC],
+  );
+  const previewModules = useMemo(() => {
+    if (!preview || legacyInspection) return undefined;
+    const previewSnapshots =
+      substitutionAuthorization?.proposalProductBehaviorSnapshots ?? behaviorSnapshots;
+    const previewAuthority = buildRecipeBehaviorAuthority({
+      items: preview.proposedInput.items,
+      toppings,
+      snapshots: previewSnapshots,
+    });
+    const frozenPreviewInput = recipeInputFromFrozenBehavior(
+      preview.proposedInput,
+      previewAuthority,
+      'technical',
+    );
+    const previewResult = calculateRecipe(frozenPreviewInput);
+    return buildProfessionalMonitorModules(
+      previewResult,
+      frozenPreviewInput.target_temperature_c,
+      frozenPreviewInput,
+    );
+  }, [behaviorSnapshots, legacyInspection, preview, substitutionAuthorization, toppings]);
+  const processFacts = useMemo(() => frozenProcessEvidence(behaviorAuthority), [behaviorAuthority]);
   const processRuntime = useRecipeProcessRuntime(
-    input,
-    behaviorAuthority.requiredLineIds.length > 0 ? processFacts.evidence : undefined,
+    monitorInput,
+    behaviorAuthority.requiredLineIds.length > 0
+      ? legacyInspection
+        ? []
+        : processFacts.evidence
+      : undefined,
   );
-  // Monitor is an inspection surface. Legacy recipes without a complete UPI
-  // snapshot must remain readable even though every mutating boundary stays
-  // fail-closed. The gate is surfaced as authority state; it must not replace
-  // already calculated, read-only Engine metrics with a paywall skeleton.
-  const technicalViewAllowed = technicalView;
+  // A genuinely legacy version remains inspectable, with an explicit warning,
+  // until it is reconstructed into a new version. A partial/stale modern
+  // authority must never silently fall back to independently interpreted facts.
+  const technicalViewAllowed =
+    technicalView &&
+    (monitorGate.ready || legacyInspection || behaviorAuthority.requiredLineIds.length === 0);
   const actualToppingByLineId = new Map(
     (production?.session?.addonLines ?? [])
       .filter((line) => line.confirmed || line.physicalAddedGrams > 0)
@@ -173,8 +211,23 @@ export function MonitorPanelContent({
       data-testid="monitor-panel-content"
       data-behavior-authority={monitorGate.ready ? 'ready' : 'revalidation-required'}
     >
+      {(legacyInspection || !monitorGate.ready) && behaviorAuthority.requiredLineIds.length > 0 ? (
+        <div
+          role="status"
+          data-testid="monitor-behavior-revalidation"
+          className="rounded-lg border border-ivory/20 bg-ivory/[0.06] px-3 py-2 text-xs leading-relaxed text-ivory/80"
+        >
+          {legacyInspection
+            ? 'Podgląd historyczny. Przed edycją lub produkcją utwórz nową wersję z walidacją produktów.'
+            : monitorGate.reason}
+        </div>
+      ) : null}
       {technicalViewAllowed ? (
-        <MonitorLiveSummary result={result} input={input} onOpenProfile={onOpenProfile} />
+        <MonitorLiveSummary
+          result={frozenResult}
+          input={monitorInput}
+          onOpenProfile={onOpenProfile}
+        />
       ) : (
         <LockedPIPreview />
       )}
@@ -183,7 +236,7 @@ export function MonitorPanelContent({
         <ProfessionalMonitorModules modules={modules} previewModules={previewModules} />
       ) : null}
 
-      {correctionView.proposals.length > 0 ? (
+      {technicalViewAllowed && !legacyInspection && correctionView.proposals.length > 0 ? (
         <details
           className="overflow-hidden rounded-[20px] border border-white/9 bg-white/[0.035]"
           data-testid="monitor-correction-summary"
@@ -213,7 +266,7 @@ export function MonitorPanelContent({
         </summary>
         <div className="border-t border-white/8 bg-[#f7f5f0] p-2 text-ink">
           {technicalViewAllowed ? (
-            <NutritionCostScorePanel result={result} embedded />
+            <NutritionCostScorePanel result={frozenResult} embedded />
           ) : (
             <LockedNutritionPreview />
           )}

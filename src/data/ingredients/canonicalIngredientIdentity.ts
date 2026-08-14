@@ -48,6 +48,43 @@ export const CORE_INGREDIENT_IDENTITIES: readonly CoreIngredientIdentity[] = [
   { role: 'water', toolboxId: 'water', mapperId: 'PI-ING-001409', namePl: 'Woda' },
 ] as const;
 
+/** Exact legacy/demo identities used only to route an existing line through
+ * the server resolver. They grant no eligibility and contain no policy data. */
+export const LEGACY_BUILTIN_INGREDIENT_IDENTITIES: readonly CoreIngredientIdentity[] = [
+  { role: 'salt', toolboxId: 'salt', mapperId: 'PI-ING-000458', namePl: 'Sól' },
+  {
+    role: 'fruit_main',
+    toolboxId: 'raspberry',
+    mapperId: 'PI-ING-000394',
+    namePl: 'Maliny',
+  },
+  { role: 'fruit_main', toolboxId: 'banana', mapperId: 'PI-ING-000345', namePl: 'Banan' },
+  {
+    role: 'cocoa_main',
+    toolboxId: 'cocoa_2224',
+    mapperId: 'PI-ING-001578',
+    namePl: 'Kakao 22/24',
+  },
+  {
+    role: 'chocolate_main',
+    toolboxId: 'dark_chocolate_70',
+    mapperId: 'PI-ING-000102',
+    namePl: 'Czekolada gorzka 70%',
+  },
+  {
+    role: 'nut_main',
+    toolboxId: 'pistachio_paste',
+    mapperId: 'PI-ING-000614',
+    namePl: 'Pasta pistacjowa 100%',
+  },
+  {
+    role: 'alcohol_main',
+    toolboxId: 'whiskey_40',
+    mapperId: 'PI-ING-000038',
+    namePl: 'Whisky 40%',
+  },
+] as const;
+
 /** Protein-profile aliases share canonical deduplication without widening the frozen core toolbox. */
 export const PROTEIN_INGREDIENT_IDENTITIES: readonly CoreIngredientIdentity[] = [
   { role: 'protein_source', toolboxId: 'wpc_60', mapperId: 'PI-ING-000294', namePl: 'WPC60' },
@@ -78,6 +115,7 @@ export const PROTEIN_INGREDIENT_IDENTITIES: readonly CoreIngredientIdentity[] = 
 const ALL_INGREDIENT_IDENTITIES = [
   ...CORE_INGREDIENT_IDENTITIES,
   ...PROTEIN_INGREDIENT_IDENTITIES,
+  ...LEGACY_BUILTIN_INGREDIENT_IDENTITIES,
 ] as const;
 const BY_TOOLBOX_ID = new Map(ALL_INGREDIENT_IDENTITIES.map((entry) => [entry.toolboxId, entry]));
 const BY_MAPPER_ID = new Map(ALL_INGREDIENT_IDENTITIES.map((entry) => [entry.mapperId, entry]));
@@ -88,6 +126,14 @@ export function coreIdentityByToolboxId(toolboxId: string): CoreIngredientIdenti
 
 export function coreIdentityByMapperId(mapperId: string): CoreIngredientIdentity | null {
   return BY_MAPPER_ID.get(mapperId) ?? null;
+}
+
+/** True only for the closed, exact Mapper/toolbox bridge above. It is used to
+ * require resolver authority for accepted built-ins without inferring identity
+ * from a translated display name. */
+export function hasCanonicalIngredientIdentity(id: string | null | undefined): boolean {
+  if (!id) return false;
+  return BY_TOOLBOX_ID.has(id) || BY_MAPPER_ID.has(id);
 }
 
 export function canonicalIngredientIdFromSourceId(sourceId: string): string {

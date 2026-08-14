@@ -21,6 +21,8 @@ import {
 } from './productionSession';
 import { assessProductionRescue } from './productionRescue';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 
 const input: RecipeInput = {
   items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
@@ -31,6 +33,15 @@ const input: RecipeInput = {
   machine_capacity_grams: null,
 };
 const result = calculateRecipe(input);
+const completedBehaviorSnapshots = productBehaviorTestSnapshots(input);
+const completedComposition: RecipeCompositionMetadata = {
+  schemaVersion: 1,
+  baseScope: 'BASE_FORMULATION',
+  baseOrder: input.items.map((item) => item.id),
+  toppings: [],
+  behaviorSnapshots: completedBehaviorSnapshots,
+  migrationAmbiguities: [],
+};
 const session = createProductionSession({
   sessionId: 'ui-run',
   ownerUserId: 'owner',
@@ -41,6 +52,7 @@ const session = createProductionSession({
     recipeName: 'Milk base',
   },
   plannedInput: input,
+  plannedComposition: completedComposition,
   startedAt: '2026-08-09T10:00:00.000Z',
 });
 
@@ -151,7 +163,11 @@ describe('Production workspace touch-first UI', () => {
           actions={recipeActions}
           mode="production"
           productionLine={line}
-          productionActions={{ setDraftActual: vi.fn(), confirmLine: vi.fn(), reopenRecord: vi.fn() }}
+          productionActions={{
+            setDraftActual: vi.fn(),
+            confirmLine: vi.fn(),
+            reopenRecord: vi.fn(),
+          }}
         />,
       );
       expect(html).toContain(`data-production-difference="${state}"`);

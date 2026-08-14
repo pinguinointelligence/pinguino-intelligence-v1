@@ -1,7 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import {
+  getEngineApprovedIngredientById,
+} from '@/services/ingredients';
 import { productBehaviorRequiredLineIds } from './productBehaviorAccess';
 import { snapshotServerResolvedProductBehavior } from './productBehaviorResolver';
 import {
@@ -36,7 +41,9 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
     const required = productBehaviorRequiredLineIds({
       items: state.items,
       toppings: state.toppings,
-    }).filter((lineId) => state.productBehaviorSnapshots[lineId] === undefined);
+    })
+      .filter((lineId) => state.productBehaviorSnapshots[lineId] === undefined)
+      .sort();
     if (required.length === 0) return;
     const key = `${draftContextSeq}:${required.join(',')}`;
     if (inFlightKey.current === key) return;
@@ -57,11 +64,12 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
           : null;
       if (!entity) return;
       const processScope = base ? 'BASE_FORMULATION' as const : 'POST_PROCESS_ADDON' as const;
+      const canonicalRecipe = buildRecipeInput(current);
       const resolved = await resolveProductBehaviorForSelection({
         entity,
         context: {
           accountId: userId,
-          productProfile: current.category,
+          productProfile: canonicalRecipe.category,
           temperatureC: current.target_temperature_c,
           mode: current.formulation_strategy,
           processScope,
@@ -71,10 +79,29 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
       }).catch(() => null);
       if (cancelled || !resolved || resolved.state !== 'eligible') return;
       const snapshot = snapshotServerResolvedProductBehavior({ lineId, processScope, resolved });
-      useRecipeStore.getState().setProductBehaviorSnapshot(lineId, {
-        ...snapshot,
-        resolutionState: 'LEGACY_RECONSTRUCTED',
-      });
+      const latest = useRecipeStore.getState();
+      const historical = latest.savedRecipeId !== null;
+      if (base && !historical && entity.entityKind === 'mapper') {
+        const row = await getEngineApprovedIngredientById(entity.entityId).catch(() => null);
+        if (cancelled || !row) return;
+        const currentInput = buildRecipeInput(useRecipeStore.getState());
+        const upgraded = {
+          ...currentInput,
+          items: currentInput.items.map((item) => item.id === lineId
+            ? { ...item, ingredient: ingredientRowToEngineIngredient(row) }
+            : item),
+        };
+        const snapshots = {
+          ...useRecipeStore.getState().productBehaviorSnapshots,
+          [lineId]: snapshot,
+        };
+        useRecipeStore.getState().applyVerifiedRecipeInput(upgraded, snapshots);
+      } else {
+        useRecipeStore.getState().setProductBehaviorSnapshot(lineId, {
+          ...snapshot,
+          resolutionState: historical ? 'LEGACY_RECONSTRUCTED' : 'RESOLVED',
+        });
+      }
     })).finally(() => {
       if (inFlightKey.current === key) inFlightKey.current = null;
     });

@@ -7,6 +7,7 @@ import {
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
 import { verifyEcoFlavourProtection } from '@/features/formulation-strategy/flavourFloor';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import {
   applyEffectiveCustomerPrices,
   type CustomerPriceIndex,
@@ -74,6 +75,7 @@ export interface EcoDraftCostSweepArgs {
   normalize: (candidate: RecipeInput) => RecipeInput;
   /** Owner-private prices used only to rank this in-memory ECO search. */
   priceOverrides?: CustomerPriceIndex;
+  productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
 }
 
 /**
@@ -118,7 +120,9 @@ export function sweepEcoDraftCost(args: EcoDraftCostSweepArgs): DraftSweepResult
       const normalized = args.normalize(applied);
       const next = measure(normalized, priceOverrides);
       if (!sameTechnicalFit(next, current) || !cheaper(next, current)) continue;
-      if (!verifyEcoFlavourProtection(args.identityInput, normalized).ok) continue;
+      if (!verifyEcoFlavourProtection(args.identityInput, normalized, {
+        productBehaviorSnapshots: args.productBehaviorSnapshots,
+      }).ok) continue;
       if (best && !cheaper(next, best.measure)) continue;
       best = { input: normalized, measure: next, move };
     }

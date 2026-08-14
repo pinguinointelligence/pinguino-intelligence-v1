@@ -12,6 +12,8 @@ import { recipeContext } from '@/features/studio/buildRecipeInput';
 import { targetStepToPosition } from './recipeAxisModel';
 import { useRecipeProfileStore } from './recipeProfileStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 vi.mock('@/access/useAccess', () => ({
   useAccess: () => ({
@@ -31,6 +33,30 @@ vi.mock('@/access/useAccess', () => ({
   }),
 }));
 
+const behaviorFixtureState = vi.hoisted(() => ({
+  snapshots: {} as Record<string, ProductBehaviorSnapshot>,
+}));
+vi.mock('@/stores/recipeStore', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/stores/recipeStore')>();
+  const real = actual.useRecipeStore;
+  const mocked = Object.assign(
+    (selector?: (state: ReturnType<typeof real.getState>) => unknown) => {
+      const state = {
+        ...real.getState(),
+        productBehaviorSnapshots: behaviorFixtureState.snapshots,
+      };
+      return selector ? selector(state) : state;
+    },
+    {
+      getState: real.getState,
+      getInitialState: real.getInitialState,
+      setState: real.setState,
+      subscribe: real.subscribe,
+    },
+  );
+  return { ...actual, useRecipeStore: mocked };
+});
+
 const { MonitorPanelContent } = await import('./MonitorPanelContent');
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
@@ -38,6 +64,7 @@ const read = (...parts: string[]) => readFileSync(join(ROOT, ...parts), 'utf8');
 const textOf = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ');
 
 function renderMonitor(input: RecipeInput = starterMilkBase()) {
+  behaviorFixtureState.snapshots = productBehaviorTestSnapshots(input);
   const result = calculateRecipe(input);
   const corrections = proposeCorrections({ input, context: recipeContext(input), redact: false });
   return renderToStaticMarkup(

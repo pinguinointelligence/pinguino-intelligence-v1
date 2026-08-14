@@ -18,13 +18,13 @@ The registry is product-layer evidence. It does not modify Mapper data or Engine
 
 ## Runtime exact policies
 
-| Family     | Canonical ID  | Exact product/form                     | Minimum g/kg final | Runtime state |
-| ---------- | ------------- | -------------------------------------- | -----------------: | ------------- |
-| Strawberry | PI-ING-000737 | PreGel Strawberry Fortefrutto ST-45872 |              19.61 | Exact policy  |
-| Raspberry  | PI-ING-000732 | PreGel Raspberry Fortefrutto ST-46272  |              19.61 | Exact policy  |
-| Hazelnut   | PI-ING-000431 | PreGel Hazelnut Piemonte IGP ST-23302  |              65.42 | Exact policy  |
-| Chocolate  | PI-ING-000757 | PreGel Prontociocc ST-28322            |              90.91 | Exact policy  |
-| Coffee     | PI-ING-000245 | PreGel Coffee Costa d'Oro ST-28072     |              65.42 | Exact policy  |
+| Family     | Canonical ID  | Exact product/form                     | Minimum g/kg final | Runtime state                    |
+| ---------- | ------------- | -------------------------------------- | -----------------: | -------------------------------- |
+| Strawberry | PI-ING-000737 | PreGel Strawberry Fortefrutto ST-45872 |              19.61 | Exact policy                     |
+| Raspberry  | PI-ING-000732 | PreGel Raspberry Fortefrutto ST-46272  |              19.61 | Exact policy                     |
+| Hazelnut   | PI-ING-000431 | PreGel Hazelnut Piemonte IGP ST-23302  |              65.42 | Review evidence; baseline frozen |
+| Chocolate  | PI-ING-000757 | PreGel Prontociocc ST-28322            |              90.91 | Exact policy                     |
+| Coffee     | PI-ING-000245 | PreGel Coffee Costa d'Oro ST-28072     |              65.42 | Review evidence; baseline frozen |
 
 Fresh fruit is reference-only. It has no universal reduction authority.
 
@@ -65,7 +65,8 @@ New policies require exact canonical identity, exact form, supported product pro
 
 ## Coverage counts
 
-- Exact-product runtime floors: 5.
+- Exact-product runtime envelopes with an approved upper bound: 3.
+- Minimum-only exact review references (not runtime reduction authority): 2.
 - Approved family fallback floors: 0.
 - Reference-only registry rows: 1.
 - Audited common flavour families: 13.

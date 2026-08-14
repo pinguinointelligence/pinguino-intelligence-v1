@@ -4,7 +4,7 @@
  * columns (ENRICHABLE_FIELDS); everything else is stripped before the write.
  *
  * Safety (enforced here + by productEnrichment.security.test.ts):
- *   • writes ONLY public.products (via the RLS-gated updateProduct) — never mapper_basement;
+ *   • routes the narrow patch through canonical ingest — never writes products or Mapper directly;
  *   • the patch is re-narrowed to ENRICHABLE_FIELDS, so pac_value/pod_value, identity
  *     (EAN/barcode/product_code), and status can NEVER be written;
  *   • a PI Verified product is NOT silently overwritten — it requires an explicit override;

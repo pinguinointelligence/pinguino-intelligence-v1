@@ -254,6 +254,24 @@ export function makeClient(db: FakeDB, userId: string | null): SupabaseClient {
     },
     from: (table: string) => new FakeBuilder(db, table),
     rpc: async (name: string, params: Row) => {
+      if (name === 'validate_recipe_behavior_v1') {
+        const context = params.p_context as Row | undefined;
+        const lines = Array.isArray(params.p_lines) ? params.p_lines as Row[] : [];
+        return {
+          data: {
+            schemaVersion: 1,
+            ready: true,
+            module: context?.module,
+            lines: lines.map((line) => ({
+              lineId: line.lineId,
+              state: 'ready',
+              reasons: [],
+            })),
+            staleLineIds: [],
+          },
+          error: null,
+        };
+      }
       if (name !== 'create_recipe_with_v1' || !db.rpcEnabled) {
         // exactly what PostgREST reports for a function absent from the schema cache
         return {

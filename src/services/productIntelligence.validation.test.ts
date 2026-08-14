@@ -130,7 +130,7 @@ const snapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSn
 describe('recipe behavior server validation', () => {
   beforeEach(() => h.rpc.mockReset());
 
-  it('groups immutable lines by requested role without sending product facts', () => {
+  it('groups immutable lines by requested role and binds complete shared facts', () => {
     const built = buildRecipeBehaviorServerValidationGroups({
       recipe,
       snapshots: {
@@ -152,7 +152,65 @@ describe('recipe behavior server validation', () => {
         mainPolicyId: 'fruit-milk',
       }),
     ]));
-    expect(JSON.stringify(built.groups)).not.toContain('technicalComposition');
+    expect(JSON.stringify(built.groups)).toContain('technicalComposition');
+    expect(JSON.stringify(built.groups)).not.toContain('privateOverlay');
+  });
+
+  it('treats a stripped optional DE null as equal to the Engine null value', () => {
+    const resolved = snapshot('main-line', 'PI-ING-1');
+    const technicalComposition = { ...resolved.sharedFacts!.technicalComposition! };
+    delete technicalComposition.deValue;
+    const built = buildRecipeBehaviorServerValidationGroups({
+      recipe: { ...recipe, items: [recipe.items[0]!] },
+      snapshots: {
+        'main-line': {
+          ...resolved,
+          sharedFacts: { ...resolved.sharedFacts!, technicalComposition },
+        },
+      },
+      module: 'SAVE',
+      accountId: 'account-1',
+    });
+    expect(built.invalidLineIds).toEqual([]);
+    expect(built.groups).toHaveLength(1);
+  });
+
+  it('binds the effective catalog price without leaking it into shared facts', () => {
+    const catalogIngredient: EngineIngredient = {
+      ...recipe.items[1]!.ingredient,
+      id: 'catalog-product-1',
+      identity_provenance: 'reference',
+      private_product_id: 'catalog:catalog-product-1:version:catalog-version-1',
+      cost_per_kg: 18.75,
+      cost_currency: 'EUR',
+      cost_source: 'private',
+    };
+    const catalogSnapshot: ProductBehaviorSnapshot = {
+      ...snapshot('catalog-line', 'PI-ING-2'),
+      source: 'ocr',
+      productId: 'catalog-product-1',
+      productVersionId: 'catalog-version-1',
+    };
+    const built = buildRecipeBehaviorServerValidationGroups({
+      recipe: {
+        ...recipe,
+        items: [{
+          ...recipe.items[1]!,
+          id: 'catalog-line',
+          ingredient: catalogIngredient,
+        }],
+      },
+      snapshots: { 'catalog-line': catalogSnapshot },
+      module: 'ECO',
+      accountId: 'account-1',
+    });
+    expect(built.invalidLineIds).toEqual([]);
+    expect(built.groups[0]?.lines[0]).toMatchObject({
+      entityKind: 'catalog_product_version',
+      costPerKg: 18.75,
+      costCurrency: 'EUR',
+    });
+    expect(built.groups[0]?.lines[0]?.sharedFacts).not.toHaveProperty('privateOverlay');
   });
 
   it('fails closed when the server reports a stale binding', async () => {
@@ -234,7 +292,8 @@ describe('recipe behavior server validation', () => {
     const production = read('src/features/production-workspace/useProductionWorkspace.ts');
     expect(pro).toContain('createOptimizePreviewWithServerAuthority');
     expect(section).toContain('applyPreviewWithServerAuthority');
-    expect(studio).toContain("module: 'BASE_RECIPE'");
+    expect(studio).toContain("? 'ECO'");
+    expect(studio).toContain(": 'OPTIMAL'");
     expect(save).toContain("module: 'SAVE'");
     expect(production).toContain("module: 'PRODUCTION'");
     expect(production).toContain("module: 'BATCH_RESCUE'");

@@ -2,23 +2,21 @@
  * Catalog import service (Mapper Slice D5C2) — the unified-intake WRITE step.
  *
  * importProductCatalog takes parsed intake candidates (D5C1 productTableParser) and
- * persists them via the D5B identity-aware createProductWithIdentity. ONE pipeline for
- * every source (customer / Colin / Mercadona) — candidates already carry their
- * source_type; this service only ORCHESTRATES (it builds nothing and writes nothing
- * itself).
+ * persists them through the canonical product-ingest adapter. ONE authority serves
+ * every source (customer / Colin / Mercadona): candidates carry evidence/provenance;
+ * identity, immutable versions, duplicate decisions and behavior remain server-owned.
  *
  * Boundaries:
- *   • writes products ONLY through createProductWithIdentity (own-row, RLS-gated; the DB
- *     assigns the product code) — it never reaches the database directly, never names the
- *     locked reference base, never generates a product code, never uses a privileged key;
- *   • matching is OPT-IN: matchAndSaveProduct runs only when options.runMatch === true,
- *     never automatically; a match failure is best-effort (a per-row warning), never a
- *     product failure, and short-circuits the rest of the batch;
+ *   • writes only through createProductWithIdentity → catalog-submit → ingest_product_v1;
+ *     it never reaches the database directly, names the locked reference base, invents a
+ *     product code, or carries a privileged key;
+ *   • runMatch is a compatibility request for server-side candidate evidence, never a
+ *     browser authorization of Mapper or Engine meaning;
  *   • deterministic + honest: rows are processed SEQUENTIALLY; a per-row failure is
  *     isolated and tallied (no silent failures); in-batch duplicates are detected by the
  *     pure identity key (the same one D5B dedupes on).
  */
-import { createProductWithIdentity, findExistingProductForIdentity } from '@/services/products';
+import { createProductWithIdentityResult } from '@/services/products';
 import { productIdentityKey, productInsertToIdentityInput } from '@/data/products/productIdentity';
 import type { ProductIntakeCandidate } from '@/data/products/productTableParser';
 
@@ -72,9 +70,8 @@ function errorMessage(error: unknown): string {
 /**
  * Import parsed intake candidates into the products layer, deduped by identity. Returns an
  * honest summary (created / existing / in_batch_duplicate / skipped / failed). Sequential +
- * per-row isolated. NOTE: created counts are exact for a sequential import; under genuine
- * concurrency a race-existing row could be tallied as created (createProductWithIdentity
- * returns the same shape for both) — acceptable and documented.
+ * per-row isolated. Each row is its own all-or-nothing canonical transaction; this browser
+ * orchestrator deliberately does not pretend that the whole sheet is one DB transaction.
  */
 export async function importProductCatalog(
   candidates: ProductIntakeCandidate[],
@@ -98,7 +95,9 @@ export async function importProductCatalog(
 
   const seenKeys = new Map<string, number>(); // identity key -> the first row's rowIndex
   if (runMatch) {
-    summary.warnings.push('Legacy client-side Mapper matching is ignored; canonical ingest owns classification.');
+    summary.warnings.push(
+      'Legacy client-side Mapper matching is ignored; canonical ingest owns classification.',
+    );
   }
 
   for (const candidate of candidates) {
@@ -130,25 +129,16 @@ export async function importProductCatalog(
     seenKeys.set(key, candidate.rowIndex);
 
     try {
-      // 4-5. pre-check the DB for an already-owned product (accurate created vs existing)
-      const existing = await findExistingProductForIdentity(candidate.insert);
-      if (existing) {
-        row.outcome = 'existing';
-        row.productId = existing.id;
-        row.productCode = existing.product_code;
-        summary.existingDuplicates += 1;
-        summary.productIds.push(existing.id);
-        summary.productCodes.push(existing.product_code);
-        summary.rowResults.push(row);
-        continue;
-      }
-
-      // 6. create (the DB assigns the product code; identity hash computed inside)
-      const product = await createProductWithIdentity(candidate.insert);
-      row.outcome = 'created';
+      // Create or reuse. The DB owns product code, duplicate identity and the
+      // authoritative outcome; owner-scoped browser reads cannot classify a
+      // cross-account shared duplicate honestly.
+      const { product, ingest } = await createProductWithIdentityResult(candidate.insert);
+      const existing = ingest.kind !== 'created';
+      row.outcome = existing ? 'existing' : 'created';
       row.productId = product.id;
       row.productCode = product.product_code;
-      summary.created += 1;
+      if (existing) summary.existingDuplicates += 1;
+      else summary.created += 1;
       summary.productIds.push(product.id);
       summary.productCodes.push(product.product_code);
 

@@ -195,6 +195,74 @@ create table public.product_versions (
 );
 create index product_versions_product_idx on public.product_versions(product_id,version desc);
 
+create table public.product_variants (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete restrict,
+  ean text,
+  net_quantity numeric,
+  net_unit text check(net_unit is null or net_unit in ('g','kg','ml','l')),
+  market text not null default 'GLOBAL',
+  package_language text,
+  package_revision text,
+  original_package_name text,
+  image_phashes text[] not null default '{}',
+  is_current boolean not null default true,
+  created_at timestamptz not null default now(),
+  check(ean is null or ean ~ '^[0-9]{8,14}$'),
+  check(net_quantity is null or net_quantity>0)
+);
+create unique index product_variants_ean_uniq on public.product_variants(ean) where ean is not null;
+create index product_variants_product_market_idx on public.product_variants(product_id,market) where is_current;
+create index product_variants_phash_idx on public.product_variants using gin(image_phashes);
+
+insert into public.product_variants(
+  id,product_id,ean,net_quantity,net_unit,market,package_language,package_revision,
+  original_package_name,image_phashes,is_current,created_at
+)
+select id,product_id,ean,net_quantity,net_unit,market,package_language,package_revision,
+  original_package_name,image_phashes,is_current,created_at
+from public.global_catalog_variants;
+
+create table public.product_variant_markets (
+  variant_id uuid not null references public.product_variants(id) on delete restrict,
+  market text not null,
+  package_language text,
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  primary key(variant_id,market)
+);
+insert into public.product_variant_markets select * from public.global_catalog_variant_markets;
+
+create table public.product_aliases (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete restrict,
+  alias text not null,
+  normalized_alias text not null,
+  language text,
+  kind text not null check(kind in ('original_name','localized_name','canonical_family','synonym','ocr_variant')),
+  created_at timestamptz not null default now(),
+  unique(product_id,normalized_alias,language)
+);
+insert into public.product_aliases select * from public.global_catalog_aliases;
+
+create table public.product_retailer_offers (
+  id uuid primary key default gen_random_uuid(),
+  variant_id uuid not null references public.product_variants(id) on delete restrict,
+  retailer text not null,
+  market text not null,
+  source_url text,
+  reference_price numeric,
+  currency text,
+  observed_at timestamptz,
+  created_at timestamptz not null default now(),
+  check(reference_price is null or reference_price>=0),
+  check((reference_price is null and currency is null)
+    or (reference_price is not null and currency ~ '^[A-Z]{3}$'))
+);
+create unique index product_retailer_offer_identity_uniq
+  on public.product_retailer_offers(variant_id,market,retailer);
+insert into public.product_retailer_offers select * from public.global_catalog_retailer_offers;
+
 create table public.product_behavior_bindings (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete restrict,
@@ -460,6 +528,10 @@ alter table public.products
 -- ---------------------------------------------------------------------------
 
 alter table public.product_versions enable row level security;
+alter table public.product_variants enable row level security;
+alter table public.product_variant_markets enable row level security;
+alter table public.product_aliases enable row level security;
+alter table public.product_retailer_offers enable row level security;
 alter table public.product_behavior_bindings enable row level security;
 alter table public.product_ingest_events enable row level security;
 alter table public.product_evidence enable row level security;
@@ -472,30 +544,115 @@ drop policy if exists products_update_own on public.products;
 drop policy if exists products_delete_own on public.products;
 create policy products_canonical_read on public.products for select to authenticated using (
   merged_into_product_id is null and is_active and (
-    (visibility='shared' and canonical_verification_status<>'blocked') or owning_account_id=auth.uid()
-    or exists(select 1 from public.product_ingest_events e where e.product_id=products.id and e.actor_user_id=auth.uid())
+    owning_account_id=auth.uid() or created_by=auth.uid()
   )
 );
 create policy product_versions_canonical_read on public.product_versions for select to authenticated using (
   exists(select 1 from public.products p where p.id=product_id and p.merged_into_product_id is null and p.is_active
     and ((p.visibility='shared' and p.canonical_verification_status<>'blocked') or p.owning_account_id=auth.uid()
-      or exists(select 1 from public.product_ingest_events e where e.product_id=p.id and e.actor_user_id=auth.uid())))
+      or p.created_by=auth.uid()))
 );
 create policy product_behavior_bindings_canonical_read on public.product_behavior_bindings for select to authenticated using (
   exists(select 1 from public.products p where p.id=product_id and p.merged_into_product_id is null and p.is_active
     and ((p.visibility='shared' and p.canonical_verification_status<>'blocked') or p.owning_account_id=auth.uid()
-      or exists(select 1 from public.product_ingest_events e where e.product_id=p.id and e.actor_user_id=auth.uid())))
+      or p.created_by=auth.uid()))
+);
+create policy product_variants_canonical_read on public.product_variants for select to authenticated using (
+  exists(select 1 from public.products p where p.id=product_id and p.is_active and p.merged_into_product_id is null
+    and ((p.visibility='shared' and p.canonical_verification_status<>'blocked')
+      or p.owning_account_id=auth.uid() or p.created_by=auth.uid()
+    ))
+);
+create policy product_aliases_canonical_read on public.product_aliases for select to authenticated using (
+  exists(select 1 from public.products p where p.id=product_id and p.is_active and p.merged_into_product_id is null
+    and p.visibility='shared' and p.canonical_verification_status<>'blocked')
+);
+create policy product_variant_markets_canonical_read on public.product_variant_markets for select to authenticated using (
+  exists(select 1 from public.product_variants v join public.products p on p.id=v.product_id
+    where v.id=variant_id and p.is_active and p.merged_into_product_id is null
+      and ((p.visibility='shared' and p.canonical_verification_status<>'blocked')
+        or p.owning_account_id=auth.uid() or p.created_by=auth.uid()))
+);
+create policy product_retailer_offers_canonical_read on public.product_retailer_offers for select to authenticated using (
+  exists(select 1 from public.product_variants v join public.products p on p.id=v.product_id
+    where v.id=variant_id and p.is_active and p.merged_into_product_id is null
+      and p.visibility='shared' and p.canonical_verification_status<>'blocked')
 );
 create policy product_ingest_events_own_read on public.product_ingest_events for select to authenticated using(actor_user_id=auth.uid());
 create policy product_evidence_own_read on public.product_evidence for select to authenticated using(owner_user_id=auth.uid());
+create or replace function public.can_use_product_relation_v1(
+  p_user_id uuid,
+  p_product_id uuid
+) returns boolean
+language sql stable security definer
+set search_path=public
+as $$
+  select p_user_id is not null and exists(
+    select 1 from public.products p
+    where p.id=p_product_id and p.is_active and p.merged_into_product_id is null
+      and (
+        (p.visibility='shared' and p.canonical_verification_status<>'blocked')
+        or p.owning_account_id=p_user_id or p.created_by=p_user_id
+        or exists(select 1 from public.product_ingest_events e
+          where e.product_id=p.id and e.actor_user_id=p_user_id)
+      )
+  )
+$$;
+revoke all on function public.can_use_product_relation_v1(uuid,uuid) from public,anon,authenticated;
 create policy user_product_relations_own on public.user_product_relations for all to authenticated
-  using(user_id=auth.uid()) with check(user_id=auth.uid());
+  using(user_id=auth.uid() and public.can_use_product_relation_v1(auth.uid(),product_id))
+  with check(user_id=auth.uid() and public.can_use_product_relation_v1(auth.uid(),product_id));
 
 revoke insert,update,delete on public.products from authenticated;
 revoke insert on public.product_snapshots from authenticated;
-grant select on public.products,public.product_versions,public.product_behavior_bindings to authenticated;
+grant select on public.products,public.product_versions,public.product_behavior_bindings,
+  public.product_variants,public.product_variant_markets,public.product_aliases,
+  public.product_retailer_offers to authenticated;
 grant select on public.product_ingest_events,public.product_evidence to authenticated;
 grant select,insert,update,delete on public.user_product_relations to authenticated;
+
+-- Legacy ProductRow consumers need to hydrate an ingest result even when the
+-- canonical shared identity was created by another account. Never grant broad
+-- shared SELECT on the mixed legacy root: return an explicit account projection
+-- with raw OCR, submitter and administrator-review fields removed.
+create or replace function public.get_canonical_product_for_account_v1(
+  p_product_id uuid
+) returns jsonb
+language plpgsql stable security definer
+set search_path=public
+as $$
+declare v_row jsonb;
+begin
+  if auth.uid() is null then raise exception 'authentication required'; end if;
+  select to_jsonb(p)||jsonb_build_object(
+    'owner_user_id',auth.uid(),
+    'created_by',case when p.created_by=auth.uid() then p.created_by else null end,
+    'supplier',r.supplier,
+    'cost_per_kg',r.private_price,
+    'currency',r.currency,
+    'usage_notes',r.note,
+    'product_image_url',null,
+    'detected_text',null,
+    'extracted_json',null,
+    'reviewed_by',null,
+    'reviewed_at',null,
+    'review_notes',null,
+    'mapper_notes',null
+  ) into v_row
+  from public.products p
+  left join public.user_product_relations r
+    on r.product_id=p.id and r.user_id=auth.uid()
+  where p.id=p_product_id and p.is_active and p.merged_into_product_id is null
+    and (
+      (p.visibility='shared' and p.canonical_verification_status<>'blocked')
+      or p.owning_account_id=auth.uid() or p.created_by=auth.uid()
+      or exists(select 1 from public.product_ingest_events e
+        where e.product_id=p.id and e.actor_user_id=auth.uid())
+    );
+  return v_row;
+end $$;
+revoke all on function public.get_canonical_product_for_account_v1(uuid) from public,anon;
+grant execute on function public.get_canonical_product_for_account_v1(uuid) to authenticated,service_role;
 
 create or replace function public.canonical_product_write_guard()
 returns trigger language plpgsql set search_path=public as $$
@@ -529,6 +686,103 @@ create trigger product_versions_immutable before insert or update or delete on p
 for each row execute function public.canonical_product_immutable_guard();
 create trigger product_evidence_immutable before insert or update or delete on public.product_evidence
 for each row execute function public.canonical_product_immutable_guard();
+create trigger product_variants_write_guard before insert or update or delete on public.product_variants
+for each row execute function public.canonical_product_write_guard();
+create trigger product_variant_markets_write_guard before insert or update or delete on public.product_variant_markets
+for each row execute function public.canonical_product_write_guard();
+create trigger product_aliases_write_guard before insert or update or delete on public.product_aliases
+for each row execute function public.canonical_product_write_guard();
+create trigger product_retailer_offers_write_guard before insert or update or delete on public.product_retailer_offers
+for each row execute function public.canonical_product_write_guard();
+
+-- Durable, cheap reservation before an adapter downloads, decodes, archives or
+-- sends evidence to a paid verifier. This transaction commits independently of
+-- the later canonical ingest, so malformed retries cannot roll the quota back.
+create or replace function public.preflight_product_ingest_v1(
+  p_actor_user_id uuid,
+  p_source text,
+  p_idempotency_key text,
+  p_payload_hash text,
+  p_ip_hash text,
+  p_device_hash text,
+  p_risk_challenge_passed boolean default false,
+  p_ocr_session_id uuid default null,
+  p_duplicate_decision text default null,
+  p_review_escalation boolean default false
+) returns jsonb
+language plpgsql security definer
+set search_path=public,extensions
+as $$
+declare
+  v_action text;
+  v_result jsonb;
+  v_dispute jsonb;
+  v_review jsonb;
+  v_completed jsonb;
+  v_is_admin boolean;
+begin
+  if p_actor_user_id is null or p_source not in (
+    'ocr','barcode','manual','admin','catalog_import','retailer_feed','spreadsheet',
+    'supplier_specification','shop','franchise','internal_subproduct','future_integration'
+  ) then raise exception 'invalid product ingest preflight'; end if;
+  if p_payload_hash !~ '^[0-9a-f]{64}$' then raise exception 'invalid product ingest preflight hash'; end if;
+  select exists(select 1 from public.admin_users a
+    where a.user_id=p_actor_user_id and a.revoked_at is null) into v_is_admin;
+  if p_source in ('admin','retailer_feed','supplier_specification','shop','franchise','future_integration')
+    and not v_is_admin then
+    raise exception 'privileged product source requires an active administrator';
+  end if;
+  if p_source='ocr' and not exists(
+    select 1 from public.ocr_intake_sessions s
+    where s.id=p_ocr_session_id and s.user_id=p_actor_user_id
+      and s.state in ('ready_to_save','duplicate_blocked','saved')
+      and exists(select 1 from public.ocr_intake_images i
+        where i.session_id=s.id and i.state='ready')
+  ) then raise exception 'owned saveable OCR session not found'; end if;
+  if p_duplicate_decision is not null and p_duplicate_decision not in ('same','different') then
+    raise exception 'invalid duplicate decision';
+  end if;
+  -- A barcode label supplied by a browser is not server evidence. Until the
+  -- adapter can prove a scanner event it receives the conservative manual
+  -- candidate quota; only an owned ready OCR session earns OCR capacity.
+  v_action:=case when p_source='ocr' then 'ocr_scan' else 'manual_candidate' end;
+  v_result:=public.reserve_global_catalog_rate_slot(
+    p_actor_user_id,v_action,p_idempotency_key,p_payload_hash,
+    p_ip_hash,p_device_hash,p_risk_challenge_passed
+  );
+  if not coalesce((v_result->>'allowed')::boolean,false) then return v_result; end if;
+  select e.result_snapshot||jsonb_build_object('idempotent',true) into v_completed
+  from public.product_ingest_events e
+  where e.actor_user_id=p_actor_user_id and e.source=p_source
+    and e.idempotency_key=p_idempotency_key;
+  if found then
+    return v_result||jsonb_build_object('completedResult',v_completed);
+  end if;
+  if p_duplicate_decision='different' then
+    v_dispute:=public.reserve_global_catalog_rate_slot(
+      p_actor_user_id,'duplicate_dispute',left('duplicate:'||p_idempotency_key,160),p_payload_hash,
+      p_ip_hash,p_device_hash,p_risk_challenge_passed
+    );
+    if not coalesce((v_dispute->>'allowed')::boolean,false) then return v_dispute; end if;
+    v_result:=v_result||jsonb_build_object('disputeReservationId',v_dispute->>'reservationId');
+  end if;
+  if p_review_escalation then
+    v_review:=public.reserve_global_catalog_rate_slot(
+      p_actor_user_id,'review_escalation',left('review:'||p_idempotency_key,160),p_payload_hash,
+      p_ip_hash,p_device_hash,p_risk_challenge_passed
+    );
+    if not coalesce((v_review->>'allowed')::boolean,false) then return v_review; end if;
+    v_result:=v_result||jsonb_build_object('reviewReservationId',v_review->>'reservationId');
+  end if;
+  return v_result;
+end;
+$$;
+revoke all on function public.preflight_product_ingest_v1(
+  uuid,text,text,text,text,text,boolean,uuid,text,boolean
+) from public,anon,authenticated;
+grant execute on function public.preflight_product_ingest_v1(
+  uuid,text,text,text,text,text,boolean,uuid,text,boolean
+) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- 4. One service-role transactional authority
@@ -579,6 +833,15 @@ declare
   v_behavior_status text;
   v_duplicate_decision text:=nullif(p_input->>'duplicateDecision','');
   v_duplicate_product_id uuid;
+  v_disputed_product_id uuid;
+  v_pending_candidate_id uuid;
+  v_same_from_candidate boolean:=false;
+  v_likely_duplicate boolean:=false;
+  v_duplicate_candidates jsonb:='[]'::jsonb;
+  v_image_phashes text[]:='{}';
+  v_quantity numeric;
+  v_unit text;
+  v_variant_id uuid;
   v_operation text:=coalesce(nullif(p_input->>'operation',''),'upsert');
   v_requested_product_id uuid;
   v_expected_status_not text:=nullif(p_input->>'expectedStatusNot','');
@@ -595,6 +858,10 @@ declare
   v_mapper_candidate jsonb:=coalesce(p_input->'mapperCandidate','{}'::jsonb);
   v_mapper_ingredient_id text;
   v_review_signoff_id uuid;
+  v_rate_reservation_id uuid;
+  v_dispute_reservation_id uuid;
+  v_review_reservation_id uuid;
+  v_rate_payload_hash text:=nullif(p_risk->>'preflightPayloadHash','');
 begin
   if p_actor_user_id is null then raise exception 'authenticated actor is required'; end if;
   if p_source not in ('ocr','barcode','manual','admin','catalog_import','retailer_feed','spreadsheet',
@@ -632,9 +899,28 @@ begin
     begin v_duplicate_product_id:=(p_input->>'duplicateProductId')::uuid;
     exception when invalid_text_representation then raise exception 'invalid duplicate product id'; end;
   end if;
+  v_disputed_product_id:=coalesce(v_duplicate_product_id,v_requested_product_id);
   if v_requested_product_id is not null and v_duplicate_product_id is not null
     and v_requested_product_id<>v_duplicate_product_id then
-    raise exception 'productId and duplicateProductId conflict';
+    if v_duplicate_decision='same' then
+      select exists(
+        select 1 from public.product_review_cases r
+        where r.product_id=v_requested_product_id and r.status<>'resolved'
+          and exists(select 1 from jsonb_array_elements(r.duplicate_candidates) c
+            where c->>'productId'=v_duplicate_product_id::text)
+          and exists(select 1 from public.product_ingest_events e
+            where e.product_id=v_requested_product_id and e.actor_user_id=p_actor_user_id)
+      ) into v_same_from_candidate;
+      if not v_same_from_candidate then raise exception 'duplicate candidate decision is not bound to review evidence'; end if;
+      v_pending_candidate_id:=v_requested_product_id;
+      v_requested_product_id:=null;
+    elsif v_duplicate_decision='different' then
+      -- The requested row is the separate pending candidate; the second UUID
+      -- remains only the disputed comparison target.
+      v_duplicate_product_id:=null;
+    else
+      raise exception 'productId and duplicateProductId conflict';
+    end if;
   end if;
   if v_duplicate_product_id is not null and v_duplicate_decision is null then
     raise exception 'duplicate product id requires a duplicate decision';
@@ -642,6 +928,22 @@ begin
   if v_operation='retire' and v_requested_product_id is null then
     raise exception 'retire requires productId';
   end if;
+  select exists(select 1 from public.admin_users a
+    where a.user_id=p_actor_user_id and a.revoked_at is null) into v_is_admin;
+  if p_source in ('admin','retailer_feed','supplier_specification','shop','franchise','future_integration')
+    and not v_is_admin then
+    raise exception 'privileged product source requires an active administrator';
+  end if;
+  if p_input->>'productKind'='internal_admin' and not v_is_admin then
+    raise exception 'administrator internal product kind required';
+  end if;
+  if p_source='barcode' and (v_ean is null or not public.global_catalog_valid_gtin(v_ean)) then
+    raise exception 'barcode source requires a valid GTIN';
+  end if;
+  select coalesce(array_agg(lower(value)),'{}'::text[]) into v_image_phashes
+  from jsonb_array_elements_text(case when jsonb_typeof(p_evidence->'imagePhashes')='array'
+    then p_evidence->'imagePhashes' else '[]'::jsonb end) h(value)
+  where value ~* '^[0-9a-f]{16}$';
 
   v_payload_fingerprint:=encode(extensions.digest(convert_to(
     jsonb_build_object('source',p_source,'input',p_input,'evidence',p_evidence,'privateOverlay',p_private_overlay)::text,
@@ -654,45 +956,49 @@ begin
     return v_prior.result_snapshot||jsonb_build_object('idempotent',true);
   end if;
 
-  v_action:=case when p_source in ('ocr','barcode') then 'ocr_scan' else 'manual_candidate' end;
-  v_rate:=public.reserve_global_catalog_rate_slot(
-    p_actor_user_id,v_action,p_idempotency_key,v_payload_fingerprint,
-    nullif(p_risk->>'ipHash',''),nullif(p_risk->>'deviceHash',''),coalesce((p_risk->>'challengePassed')::boolean,false)
-  );
-  if not coalesce((v_rate->>'allowed')::boolean,false) then
-    return jsonb_build_object(
-      'schemaVersion',1,'kind','rate_limited','productId',null,'productVersionId',null,
-      'behaviorBindingId',null,'status',null,'verificationMethod',null,'autoFavorited',false,
-      'reviewCaseKey',null,'idempotent',false,'missingFields',jsonb_build_array(),
-      'invalidFields',jsonb_build_array(),'duplicateCandidates',jsonb_build_array(),
-      'retryAt',v_rate->>'retryAt','challengeRequired',coalesce((v_rate->>'challengeRequired')::boolean,false),
-      'rateReason',v_rate->>'reason'
-    );
-  end if;
+  v_action:=case when p_source='ocr' then 'ocr_scan' else 'manual_candidate' end;
+  begin v_rate_reservation_id:=(p_risk->>'rateReservationId')::uuid;
+  exception when invalid_text_representation then raise exception 'invalid preprocessing rate reservation'; end;
+  if v_rate_reservation_id is null or v_rate_payload_hash is null or not exists(
+    select 1 from public.global_catalog_rate_events e
+    where e.id=v_rate_reservation_id and e.user_id=p_actor_user_id
+      and e.action=v_action and e.idempotency_key=p_idempotency_key
+      and e.payload_hash=v_rate_payload_hash
+  ) then raise exception 'valid preprocessing rate reservation required'; end if;
+  update public.global_catalog_rate_events set consumed_at=coalesce(consumed_at,now())
+  where id=v_rate_reservation_id;
   if v_duplicate_decision='different' then
     if coalesce(p_input->'distinguishingEvidence','{}'::jsonb)='{}'::jsonb then
       raise exception 'distinguishing duplicate evidence is required';
     end if;
-    v_dispute_rate:=public.reserve_global_catalog_rate_slot(
-      p_actor_user_id,'duplicate_dispute',left('duplicate:'||p_idempotency_key,160),v_payload_fingerprint,
-      nullif(p_risk->>'ipHash',''),nullif(p_risk->>'deviceHash',''),coalesce((p_risk->>'challengePassed')::boolean,false)
-    );
-    if not coalesce((v_dispute_rate->>'allowed')::boolean,false) then
-      return jsonb_build_object(
-        'schemaVersion',1,'kind','rate_limited','productId',null,'productVersionId',null,
-        'behaviorBindingId',null,'status',null,'verificationMethod',null,'autoFavorited',false,
-        'reviewCaseKey',null,'idempotent',false,'missingFields',jsonb_build_array(),
-        'invalidFields',jsonb_build_array(),'duplicateCandidates',jsonb_build_array(),
-        'retryAt',v_dispute_rate->>'retryAt','challengeRequired',coalesce((v_dispute_rate->>'challengeRequired')::boolean,false),
-        'rateReason',v_dispute_rate->>'reason'
-      );
-    end if;
+    begin v_dispute_reservation_id:=(p_risk->>'disputeReservationId')::uuid;
+    exception when invalid_text_representation then raise exception 'invalid duplicate dispute reservation'; end;
+    if v_dispute_reservation_id is null or not exists(
+      select 1 from public.global_catalog_rate_events e
+      where e.id=v_dispute_reservation_id and e.user_id=p_actor_user_id
+        and e.action='duplicate_dispute'
+        and e.idempotency_key=left('duplicate:'||p_idempotency_key,160)
+        and e.payload_hash=v_rate_payload_hash
+    ) then raise exception 'valid duplicate dispute reservation required'; end if;
+    update public.global_catalog_rate_events set consumed_at=coalesce(consumed_at,now())
+    where id=v_dispute_reservation_id;
+  end if;
+  if v_lifecycle_decision is not null or v_mapper_decision<>'{}'::jsonb
+    or v_mapper_candidate<>'{}'::jsonb then
+    begin v_review_reservation_id:=(p_risk->>'reviewReservationId')::uuid;
+    exception when invalid_text_representation then raise exception 'invalid review escalation reservation'; end;
+    if v_review_reservation_id is null or not exists(
+      select 1 from public.global_catalog_rate_events e
+      where e.id=v_review_reservation_id and e.user_id=p_actor_user_id
+        and e.action='review_escalation'
+        and e.idempotency_key=left('review:'||p_idempotency_key,160)
+        and e.payload_hash=v_rate_payload_hash
+    ) then raise exception 'valid review escalation reservation required'; end if;
+    update public.global_catalog_rate_events set consumed_at=coalesce(consumed_at,now())
+    where id=v_review_reservation_id;
   end if;
 
   perform set_config('app.canonical_product_ingest','v1',true);
-  select exists(select 1 from public.admin_users a
-    where a.user_id=p_actor_user_id and a.revoked_at is null) into v_is_admin;
-
   -- Version-bound Mapper authorization is an administrator decision. A client
   -- match may be submitted separately as `mapperCandidate`, but it can create
   -- review evidence only and never reaches this branch.
@@ -999,28 +1305,24 @@ begin
   if v_name is null then v_missing:=array_append(v_missing,'product_name'); end if;
   if v_brand is null and not v_unbranded then v_missing:=array_append(v_missing,'brand_or_unbranded'); end if;
   if v_brand is not null and v_unbranded then v_invalid:=array_append(v_invalid,'brand_unbranded_conflict'); end if;
-  if coalesce(p_input->'facts','{}'::jsonb)='{}'::jsonb then v_missing:=array_append(v_missing,'product_facts'); end if;
-  v_status:=case when cardinality(v_missing)=0 and cardinality(v_invalid)=0 then 'manual_unverified' else 'blocked' end;
-  v_method:=case when v_status='manual_unverified' then 'manual_unverified' else 'blocked' end;
   v_identity:=case when v_ean is not null then 'ean:'||v_ean else
     'identity:'||encode(extensions.digest(convert_to(
       lower(coalesce(v_brand,''))||'|'||lower(coalesce(v_name,''))||'|'||
-      lower(coalesce(p_input->>'category',''))||'|'||lower(coalesce(p_input->>'packageSize','')),
+      lower(coalesce(p_input->>'category',''))||'|'||
+      lower(coalesce(p_input->>'packageSize',p_input#>>'{facts,packageSize}','')),
       'utf8'),'sha256'),'hex') end;
   if v_duplicate_decision='different' then
     v_identity:=v_identity||':variant:'||left(v_payload_fingerprint,16);
+    -- A confirmed distinct variant must become its own candidate. The disputed
+    -- product remains evidence for review; it is never used as the write target.
+    if v_requested_product_id is null then v_duplicate_product_id:=null; end if;
   end if;
   perform pg_advisory_xact_lock(hashtext('canonical-product-identity:'||v_identity));
 
   if v_requested_product_id is not null then
     select * into v_existing from public.products p where p.id=v_requested_product_id
       and p.is_active and p.merged_into_product_id is null
-      and (p.owning_account_id=p_actor_user_id or v_is_admin or (
-        p.visibility='shared' and p.canonical_verification_status<>'verified' and exists(
-          select 1 from public.product_ingest_events e
-          where e.product_id=p.id and e.actor_user_id=p_actor_user_id
-        )
-      ))
+      and (p.owning_account_id=p_actor_user_id or p.created_by=p_actor_user_id or v_is_admin)
     for update;
     if not found then raise exception 'product not found or update is not authorized'; end if;
   elsif v_duplicate_product_id is not null then
@@ -1043,13 +1345,45 @@ begin
     for update;
   end if;
   v_has_existing:=found;
-  v_can_mutate_existing:=v_has_existing and (
-    v_is_admin or v_existing.owning_account_id=p_actor_user_id or (
-      v_existing.visibility='shared' and v_existing.canonical_verification_status<>'verified' and exists(
-        select 1 from public.product_ingest_events e
-        where e.product_id=v_existing.id and e.actor_user_id=p_actor_user_id
-      )
+  if not v_has_existing and v_duplicate_decision is null and cardinality(v_image_phashes)>0
+    and v_visibility='shared' then
+    with distances as (
+      select pv.product_id,min(public.global_catalog_phash_distance(incoming.hash,stored.hash)) as distance
+      from public.product_variants pv
+      cross join lateral unnest(pv.image_phashes) stored(hash)
+      cross join lateral unnest(v_image_phashes) incoming(hash)
+      join public.products p on p.id=pv.product_id and p.is_active and p.merged_into_product_id is null
+        and p.visibility='shared' and p.canonical_verification_status<>'blocked'
+      where pv.is_current and public.global_catalog_phash_distance(incoming.hash,stored.hash)<=4
+      group by pv.product_id
+    ), candidates as (
+      select p.id,p.product_name_display,p.brand,d.distance,pv.ean,pv.net_quantity,pv.net_unit,pv.market
+      from distances d join public.products p on p.id=d.product_id
+      left join lateral (
+        select x.ean,x.net_quantity,x.net_unit,x.market from public.product_variants x
+        where x.product_id=p.id and x.is_current order by x.created_at desc,x.id limit 1
+      ) pv on true
+      order by d.distance,p.product_name_display,p.id limit 5
     )
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'productId',id,'displayName',product_name_display,'brand',brand,'ean',ean,
+      'netQuantity',case when net_quantity is null then null else net_quantity::text||coalesce(net_unit,'') end,
+      'market',market,'score',round(greatest(0,1-distance::numeric/64),4),
+      'reasons',jsonb_build_array('image_phash')
+    )),'[]'::jsonb) into v_duplicate_candidates from candidates;
+    if jsonb_array_length(v_duplicate_candidates)>0 then
+      v_likely_duplicate:=true;
+      v_status:='blocked';
+      v_method:='blocked';
+      if not 'duplicate_confirmation'=any(v_missing) then
+        v_missing:=array_append(v_missing,'duplicate_confirmation');
+      end if;
+      v_identity:=v_identity||':candidate:'||left(v_payload_fingerprint,16);
+      perform pg_advisory_xact_lock(hashtext('canonical-product-identity:'||v_identity));
+    end if;
+  end if;
+  v_can_mutate_existing:=v_has_existing and (
+    v_is_admin or v_existing.owning_account_id=p_actor_user_id or v_existing.created_by=p_actor_user_id
   );
   if v_has_existing and v_expected_status_not is not null and
     (v_existing.status=v_expected_status_not or v_existing.canonical_verification_status=v_expected_status_not) then
@@ -1064,21 +1398,134 @@ begin
   ) then
     raise exception 'canonical identity belongs to another product';
   end if;
-  if v_duplicate_decision='same' and v_duplicate_product_id is not null and not (
+  if v_duplicate_decision='same' and v_duplicate_product_id is not null and not v_same_from_candidate and not (
     (v_ean is not null and v_existing.ean_code_normalized=v_ean)
     or v_existing.normalized_identity=v_identity
   ) then
     raise exception 'duplicate product decision does not match canonical identity';
   end if;
 
-  -- Identity keys are DB-owned and therefore applied after adapter facts.
-  v_facts:=coalesce(p_input->'facts','{}'::jsonb)||jsonb_strip_nulls(jsonb_build_object(
+  -- Public version facts are an explicit server allowlist. The caller cannot
+  -- smuggle account-private data, prices or technical/behavior meaning into a
+  -- cross-account immutable product version through an open JSON object.
+  v_facts:=jsonb_strip_nulls(jsonb_build_object(
+    'packageSize',p_input#>'{facts,packageSize}',
+    'netQuantityText',p_input#>'{facts,netQuantityText}',
+    'ingredientsText',p_input#>'{facts,ingredientsText}',
+    'allergensText',p_input#>'{facts,allergensText}',
+    'declaredAllergens',case when jsonb_typeof(p_input#>'{facts,declaredAllergens}')='array'
+      then p_input#>'{facts,declaredAllergens}' else null end,
+    'mayContainAllergens',case when jsonb_typeof(p_input#>'{facts,mayContainAllergens}')='array'
+      then p_input#>'{facts,mayContainAllergens}' else null end,
+    'nutrition',case when jsonb_typeof(p_input#>'{facts,nutrition}')='object' then
+      jsonb_strip_nulls(jsonb_build_object(
+        'basis',p_input#>'{facts,nutrition,basis}',
+        'energyKcal',p_input#>'{facts,nutrition,energyKcal}',
+        'fat',p_input#>'{facts,nutrition,fat}',
+        'saturatedFat',p_input#>'{facts,nutrition,saturatedFat}',
+        'carbohydrate',p_input#>'{facts,nutrition,carbohydrate}',
+        'sugars',p_input#>'{facts,nutrition,sugars}',
+        'protein',p_input#>'{facts,nutrition,protein}',
+        'salt',p_input#>'{facts,nutrition,salt}',
+        'fibre',p_input#>'{facts,nutrition,fibre}'
+      )) else null end,
+    'vegan',case when jsonb_typeof(p_input#>'{facts,vegan}')='boolean'
+      then p_input#>'{facts,vegan}' else null end,
+    'dairyFree',case when jsonb_typeof(p_input#>'{facts,dairyFree}')='boolean'
+      then p_input#>'{facts,dairyFree}' else null end,
+    'glutenFree',case when jsonb_typeof(p_input#>'{facts,glutenFree}')='boolean'
+      then p_input#>'{facts,glutenFree}' else null end,
     'displayName',v_name,'originalName',nullif(trim(coalesce(p_input->>'originalName','')),''),
     'originalLanguage',nullif(trim(coalesce(p_input->>'originalLanguage','')),''),
-    'brand',v_brand,'explicitlyUnbranded',v_unbranded,'canonicalFamily',p_input->>'canonicalFamily',
+    'brand',v_brand,'explicitlyUnbranded',v_unbranded,
     'category',p_input->>'category','countryOfOrigin',p_input->>'countryOfOrigin','ean',v_ean,
     'market',p_input->>'market','retailer',p_input->>'retailer','packageLanguage',p_input->>'packageLanguage'
   ));
+
+  if not (
+    nullif(trim(coalesce(v_facts->>'packageSize','')),'') is not null
+    or nullif(trim(coalesce(v_facts->>'netQuantityText','')),'') is not null
+    or nullif(trim(coalesce(v_facts->>'ingredientsText','')),'') is not null
+    or nullif(trim(coalesce(v_facts->>'allergensText','')),'') is not null
+    or (jsonb_typeof(v_facts->'nutrition')='object' and v_facts->'nutrition'<>'{}'::jsonb)
+    or v_facts ? 'vegan' or v_facts ? 'dairyFree' or v_facts ? 'glutenFree'
+  ) then
+    v_missing:=array_append(v_missing,'product_facts');
+  end if;
+
+  -- Manual/adapter evidence is checked with the same deterministic label
+  -- coherence rules used by GREEN. Incomplete data stays RED; impossible data
+  -- can never become a shared BLUE label/Topping fact set.
+  if jsonb_typeof(v_facts->'nutrition')='object' and v_facts->'nutrition'<>'{}'::jsonb then
+    if coalesce(v_facts#>>'{nutrition,basis}','') not in ('per_100g','per_100ml') then
+      v_invalid:=array_append(v_invalid,'nutrition_basis');
+    end if;
+    if jsonb_typeof(v_facts#>'{nutrition,energyKcal}')<>'number' then v_missing:=array_append(v_missing,'nutrition_energy'); end if;
+    if jsonb_typeof(v_facts#>'{nutrition,fat}')<>'number' then v_missing:=array_append(v_missing,'nutrition_fat'); end if;
+    if jsonb_typeof(v_facts#>'{nutrition,carbohydrate}')<>'number' then v_missing:=array_append(v_missing,'nutrition_carbohydrate'); end if;
+    if jsonb_typeof(v_facts#>'{nutrition,protein}')<>'number' then v_missing:=array_append(v_missing,'nutrition_protein'); end if;
+    if jsonb_typeof(v_facts#>'{nutrition,salt}')<>'number' then v_missing:=array_append(v_missing,'nutrition_salt'); end if;
+    foreach v_unit in array array['saturatedFat','sugars','fibre'] loop
+      if v_facts->'nutrition' ? v_unit
+        and jsonb_typeof(v_facts#>array['nutrition',v_unit])<>'number' then
+        v_invalid:=array_append(v_invalid,'nutrition_'||lower(v_unit)||'_type');
+      end if;
+    end loop;
+    if jsonb_typeof(v_facts#>'{nutrition,energyKcal}')='number'
+      and (v_facts#>>'{nutrition,energyKcal}')::numeric not between 0 and 1000 then
+      v_invalid:=array_append(v_invalid,'nutrition_energy_range');
+    end if;
+    foreach v_unit in array array['fat','carbohydrate','protein','salt','saturatedFat','sugars','fibre'] loop
+      if jsonb_typeof(v_facts#>array['nutrition',v_unit])='number'
+        and (v_facts#>>array['nutrition',v_unit])::numeric not between 0 and 100 then
+        v_invalid:=array_append(v_invalid,'nutrition_'||lower(v_unit)||'_range');
+      end if;
+    end loop;
+    if jsonb_typeof(v_facts#>'{nutrition,saturatedFat}')='number'
+      and jsonb_typeof(v_facts#>'{nutrition,fat}')='number'
+      and (v_facts#>>'{nutrition,saturatedFat}')::numeric>(v_facts#>>'{nutrition,fat}')::numeric+0.01 then
+      v_invalid:=array_append(v_invalid,'nutrition_saturated_fat_conflict');
+    end if;
+    if jsonb_typeof(v_facts#>'{nutrition,sugars}')='number'
+      and jsonb_typeof(v_facts#>'{nutrition,carbohydrate}')='number'
+      and (v_facts#>>'{nutrition,sugars}')::numeric>(v_facts#>>'{nutrition,carbohydrate}')::numeric+0.01 then
+      v_invalid:=array_append(v_invalid,'nutrition_sugars_conflict');
+    end if;
+    if jsonb_typeof(v_facts#>'{nutrition,fat}')='number'
+      and jsonb_typeof(v_facts#>'{nutrition,carbohydrate}')='number'
+      and jsonb_typeof(v_facts#>'{nutrition,protein}')='number'
+      and jsonb_typeof(v_facts#>'{nutrition,salt}')='number' then
+      if (v_facts#>>'{nutrition,fat}')::numeric
+        +(v_facts#>>'{nutrition,carbohydrate}')::numeric
+        +(v_facts#>>'{nutrition,protein}')::numeric
+        +case when jsonb_typeof(v_facts#>'{nutrition,fibre}')='number'
+          then (v_facts#>>'{nutrition,fibre}')::numeric else 0 end
+        +(v_facts#>>'{nutrition,salt}')::numeric>105 then
+        v_invalid:=array_append(v_invalid,'nutrition_macro_mass_conflict');
+      end if;
+      if jsonb_typeof(v_facts#>'{nutrition,energyKcal}')='number' and abs(
+        (v_facts#>>'{nutrition,energyKcal}')::numeric-(
+          (v_facts#>>'{nutrition,fat}')::numeric*9
+          +(v_facts#>>'{nutrition,carbohydrate}')::numeric*4
+          +(v_facts#>>'{nutrition,protein}')::numeric*4
+          +case when jsonb_typeof(v_facts#>'{nutrition,fibre}')='number'
+            then (v_facts#>>'{nutrition,fibre}')::numeric*2 else 0 end
+        )
+      )>greatest(35,(
+          (v_facts#>>'{nutrition,fat}')::numeric*9
+          +(v_facts#>>'{nutrition,carbohydrate}')::numeric*4
+          +(v_facts#>>'{nutrition,protein}')::numeric*4
+          +case when jsonb_typeof(v_facts#>'{nutrition,fibre}')='number'
+            then (v_facts#>>'{nutrition,fibre}')::numeric*2 else 0 end
+        )*0.25) then
+        v_invalid:=array_append(v_invalid,'nutrition_energy_macro_conflict');
+      end if;
+    end if;
+  end if;
+  v_missing:=array(select distinct x from unnest(v_missing) x order by x);
+  v_invalid:=array(select distinct x from unnest(v_invalid) x order by x);
+  v_status:=case when cardinality(v_missing)=0 and cardinality(v_invalid)=0 then 'manual_unverified' else 'blocked' end;
+  v_method:=case when v_status='manual_unverified' then 'manual_unverified' else 'blocked' end;
 
   -- The optional external verifier can mint GREEN only when an independently
   -- stored, actor/session-bound attestation agrees with every published label
@@ -1115,6 +1562,11 @@ begin
         and not exists(select 1 from unnest(a.image_checksums) c(checksum)
           where not exists(select 1 from public.ocr_intake_images i
             where i.session_id=s.id and i.state='ready' and i.checksum_sha256=c.checksum))
+        and not exists(select 1 from public.ocr_intake_images i
+          where i.session_id=s.id and i.state='ready'
+            and (i.checksum_sha256 is null or not i.checksum_sha256=any(a.image_checksums)))
+        and cardinality(a.image_checksums)=(select count(*) from public.ocr_intake_images i
+          where i.session_id=s.id and i.state='ready')
         and (a.verified_fields-'sourceProductSnapshotSha256')=v_expected_attested_fields
         and coalesce(a.verified_fields->>'sourceProductSnapshotSha256','') ~ '^[0-9a-f]{64}$'
         and exists(select 1 from public.ocr_intake_images i where i.session_id=s.id and i.state='ready'
@@ -1230,7 +1682,7 @@ begin
       update public.products set
         brand=v_brand,ean_code=v_ean,barcode=v_ean,product_name_internal=coalesce(nullif(trim(coalesce(p_input->>'originalName','')),''),v_name),
         product_name_display=v_name,product_category=p_input->>'category',country=p_input->>'countryOfOrigin',
-        explicitly_unbranded=v_unbranded,canonical_family=p_input->>'canonicalFamily',normalized_identity=v_identity,
+        explicitly_unbranded=v_unbranded,canonical_family=null,normalized_identity=v_identity,
         search_document=trim(concat_ws(' ',v_brand,v_name,p_input->>'category',v_ean)),updated_at=now()
       where id=v_product_id;
       v_outcome:=case when v_status='blocked' then 'blocked' else 'accepted' end;
@@ -1247,13 +1699,79 @@ begin
       case when v_status='manual_unverified' then 'manual_adjusted' else 'draft' end,
       case when p_source in ('ocr','barcode') then 'label_scan' when p_source in ('catalog_import','spreadsheet','retailer_feed','supplier_specification') then 'catalog_import' when p_source='future_integration' then 'api' else 'manual' end,
       true,v_kind,v_visibility,case when v_visibility='account_private' then p_actor_user_id else null end,
-      v_status,v_method,coalesce(nullif(p_input->>'provenance',''),p_source),v_unbranded,p_input->>'canonicalFamily',v_identity,
+      v_status,v_method,coalesce(nullif(p_input->>'provenance',''),p_source),v_unbranded,null,v_identity,
       trim(concat_ws(' ',v_brand,v_name,p_input->>'category',v_ean))
     ) returning id into v_product_id;
     insert into public.product_versions(product_id,version,facts,evidence_snapshot,verification_status,verification_method,provenance,facts_fingerprint)
     values(v_product_id,1,v_facts,'{}'::jsonb,v_status,v_method,coalesce(nullif(p_input->>'provenance',''),p_source),v_facts_fingerprint)
     returning id into v_version_id;
     v_outcome:=case when v_status='blocked' then 'blocked' else 'accepted' end;
+  end if;
+  if v_likely_duplicate then
+    v_outcome:='blocked';
+    v_review_key:='product:'||v_product_id::text||':likely-duplicate';
+  end if;
+
+  begin
+    v_quantity:=nullif(substring(replace(coalesce(v_facts->>'netQuantityText',v_facts->>'packageSize',''),',','.')
+      from '([0-9]+(?:\.[0-9]+)?)'),'')::numeric;
+  exception when invalid_text_representation then v_quantity:=null; end;
+  v_unit:=lower(substring(coalesce(v_facts->>'netQuantityText',v_facts->>'packageSize','') from '(kg|ml|g|l)'));
+  if v_outcome in ('accepted','blocked') and v_version_id is not null then
+    if v_ean is not null then
+      insert into public.product_variants(
+        product_id,ean,net_quantity,net_unit,market,package_language,original_package_name,image_phashes
+      ) values(
+        v_product_id,v_ean,v_quantity,v_unit,coalesce(nullif(p_input->>'market',''),'GLOBAL'),
+        nullif(p_input->>'packageLanguage',''),v_name,v_image_phashes
+      ) on conflict(ean) where ean is not null do update set
+        net_quantity=excluded.net_quantity,net_unit=excluded.net_unit,market=excluded.market,
+        package_language=excluded.package_language,original_package_name=excluded.original_package_name,
+        image_phashes=excluded.image_phashes
+      where product_variants.product_id=excluded.product_id
+      returning id into v_variant_id;
+      if v_variant_id is null then raise exception 'EAN belongs to another canonical product'; end if;
+    elsif not exists(select 1 from public.product_variants pv where pv.product_id=v_product_id and pv.is_current
+      and pv.market=coalesce(nullif(p_input->>'market',''),'GLOBAL')
+      and pv.net_quantity is not distinct from v_quantity and pv.net_unit is not distinct from v_unit) then
+      insert into public.product_variants(
+        product_id,net_quantity,net_unit,market,package_language,original_package_name,image_phashes
+      ) values(
+        v_product_id,v_quantity,v_unit,coalesce(nullif(p_input->>'market',''),'GLOBAL'),
+        nullif(p_input->>'packageLanguage',''),v_name,v_image_phashes
+      ) returning id into v_variant_id;
+    else
+      select pv.id into v_variant_id from public.product_variants pv
+      where pv.product_id=v_product_id and pv.is_current
+        and pv.market=coalesce(nullif(p_input->>'market',''),'GLOBAL')
+        and pv.net_quantity is not distinct from v_quantity and pv.net_unit is not distinct from v_unit
+      order by pv.created_at desc,pv.id limit 1;
+    end if;
+    if v_variant_id is not null then
+      insert into public.product_variant_markets(variant_id,market,package_language)
+      values(v_variant_id,coalesce(nullif(p_input->>'market',''),'GLOBAL'),nullif(p_input->>'packageLanguage',''))
+      on conflict(variant_id,market) do update set
+        package_language=coalesce(excluded.package_language,product_variant_markets.package_language),
+        last_seen_at=now();
+      if nullif(trim(coalesce(p_input->>'retailer','')),'') is not null then
+        insert into public.product_retailer_offers(variant_id,retailer,market)
+        values(v_variant_id,trim(p_input->>'retailer'),coalesce(nullif(p_input->>'market',''),'GLOBAL'))
+        on conflict(variant_id,market,retailer) do update set observed_at=now();
+      end if;
+    end if;
+  end if;
+
+  if v_outcome='accepted' then
+    insert into public.product_aliases(product_id,alias,normalized_alias,language,kind)
+    select v_product_id,label,
+      trim(regexp_replace(extensions.unaccent(lower(label)),'[^a-z0-9]+',' ','g')),
+      nullif(p_input->>'originalLanguage',''),kind
+    from (values
+      (nullif(trim(coalesce(p_input->>'originalName','')),''),'original_name'),
+      (v_name,'localized_name')
+    ) x(label,kind)
+    where label is not null
+    on conflict(product_id,normalized_alias,language) do nothing;
   end if;
 
   if v_binding_id is null then
@@ -1283,6 +1801,23 @@ begin
     where id=v_product_id;
   end if;
 
+  -- Classification is an ingest responsibility, not eventual best effort.
+  -- 10400 is present before this service is exposed; any classifier failure
+  -- rolls the identity, version, relation and provisional binding back together.
+  if v_outcome in ('accepted','blocked') then
+    v_binding_id:=public.classify_catalog_product_behavior_v2(
+      v_version_id,'canonical-ingest-v2:'||left(v_payload_fingerprint,24)
+    );
+    update public.product_behavior_reclassification_queue set
+      status='succeeded',result_binding_id=v_binding_id,completed_at=now(),
+      progress='{"stage":"published","completed":1,"total":1}'::jsonb,updated_at=now()
+    where entity_kind='catalog_product_version' and entity_id=v_version_id::text
+      and status in ('pending','running')
+      and source_fingerprint=public.product_behavior_entity_fingerprint_v1(
+        'catalog_product_version',v_version_id::text
+      );
+  end if;
+
   if v_status='blocked' and v_review_key is null then v_review_key:='product:'||v_product_id::text||':verification'; end if;
   if v_status='manual_unverified' and v_outcome='accepted' and v_review_key is null then
     v_review_key:='product:'||v_product_id::text||':manual-verification';
@@ -1293,12 +1828,14 @@ begin
       duplicate_candidates,latest_evidence
     ) values(
       v_review_key,v_product_id,v_version_id,
-      case when v_duplicate_decision='different' then 'duplicate_dispute'
+      case when v_likely_duplicate or v_duplicate_decision='different' then 'duplicate_dispute'
         when v_outcome='review' then 'correction'
         when v_status='manual_unverified' then 'manual_unverified'
         else 'verification_failed' end,
       v_missing,v_invalid,
-      case when v_duplicate_decision='different' then jsonb_build_array(v_product_id) else '[]'::jsonb end,
+      case when v_likely_duplicate then v_duplicate_candidates
+        when v_duplicate_decision='different' and v_disputed_product_id is not null
+        then jsonb_build_array(v_disputed_product_id) else '[]'::jsonb end,
       v_evidence_record
     ) on conflict(consolidation_key) do update set
       submission_count=product_review_cases.submission_count+1,
@@ -1351,6 +1888,14 @@ begin
     encode(extensions.digest(convert_to(v_evidence_record::text,'utf8'),'sha256'),'hex')
   );
 
+  if p_source='ocr' and nullif(p_evidence->>'ocrSessionId','') is not null then
+    update public.ocr_intake_sessions
+    set saved_product_id=v_product_id::text,updated_at=now()
+    where id=(p_evidence->>'ocrSessionId')::uuid and user_id=p_actor_user_id
+      and state in ('ready_to_save','duplicate_blocked','saved');
+    if not found then raise exception 'owned OCR session link could not be persisted'; end if;
+  end if;
+
   insert into public.user_product_relations(
     user_id,product_id,favorite,private_price,currency,supplier,notes,stock
   ) values(
@@ -1368,9 +1913,18 @@ begin
     notes=coalesce(excluded.notes,user_product_relations.notes),
     stock=coalesce(excluded.stock,user_product_relations.stock),updated_at=now();
 
+  if v_same_from_candidate and v_pending_candidate_id is not null then
+    update public.products set is_active=false,merged_into_product_id=v_product_id,updated_at=now()
+    where id=v_pending_candidate_id and canonical_verification_status='blocked';
+    update public.product_review_cases set status='resolved',updated_at=now()
+    where product_id=v_pending_candidate_id and status<>'resolved';
+  end if;
+
   v_result:=jsonb_build_object(
     'schemaVersion',1,
-    'kind',case when v_outcome='duplicate' then 'existing' when v_outcome='review' then 'existing' when v_outcome='blocked' then 'blocked' when not v_has_existing then 'created' else 'updated' end,
+    'kind',case when v_likely_duplicate then 'likely_duplicate' when v_outcome='duplicate' then 'existing'
+      when v_outcome='review' then 'existing' when v_outcome='blocked' then 'blocked'
+      when not v_has_existing then 'created' else 'updated' end,
     'productId',v_product_id,'productVersionId',v_version_id,'behaviorBindingId',v_binding_id,
     'ingestEventId',v_event_id,
     'productCode',(select product_code from public.products where id=v_product_id),
@@ -1378,7 +1932,7 @@ begin
     'verificationMethod',(select canonical_verification_method from public.products where id=v_product_id),
     'autoFavorited',(select favorite from public.user_product_relations where user_id=p_actor_user_id and product_id=v_product_id),
     'reviewCaseKey',v_review_key,'idempotent',false,'missingFields',to_jsonb(v_missing),
-    'invalidFields',to_jsonb(v_invalid),'duplicateCandidates',jsonb_build_array()
+    'invalidFields',to_jsonb(v_invalid),'duplicateCandidates',v_duplicate_candidates
   );
   update public.product_ingest_events set result_snapshot=v_result where id=v_event_id;
   return v_result;
@@ -1400,12 +1954,20 @@ alter table public.global_catalog_product_versions rename to global_catalog_prod
 alter table public.catalog_product_behavior_bindings rename to catalog_product_behavior_bindings_archive_20260813;
 alter table public.unified_product_ingest_events rename to unified_product_ingest_events_archive_20260813;
 alter table public.global_catalog_review_cases rename to global_catalog_review_cases_archive_20260813;
+alter table public.global_catalog_retailer_offers rename to global_catalog_retailer_offers_archive_20260813;
+alter table public.global_catalog_variant_markets rename to global_catalog_variant_markets_archive_20260813;
+alter table public.global_catalog_aliases rename to global_catalog_aliases_archive_20260813;
+alter table public.global_catalog_variants rename to global_catalog_variants_archive_20260813;
 
 revoke all on public.global_catalog_products_archive_20260813,
   public.global_catalog_product_versions_archive_20260813,
   public.catalog_product_behavior_bindings_archive_20260813,
   public.unified_product_ingest_events_archive_20260813,
-  public.global_catalog_review_cases_archive_20260813
+  public.global_catalog_review_cases_archive_20260813,
+  public.global_catalog_retailer_offers_archive_20260813,
+  public.global_catalog_variant_markets_archive_20260813,
+  public.global_catalog_aliases_archive_20260813,
+  public.global_catalog_variants_archive_20260813
 from public,anon,authenticated,service_role;
 
 create or replace function public.canonical_product_archive_readonly_guard()
@@ -1419,8 +1981,20 @@ create trigger global_catalog_products_archive_readonly before insert or update 
 on public.global_catalog_products_archive_20260813 for each row execute function public.canonical_product_archive_readonly_guard();
 create trigger global_catalog_versions_archive_readonly before insert or update or delete
 on public.global_catalog_product_versions_archive_20260813 for each row execute function public.canonical_product_archive_readonly_guard();
+create trigger global_catalog_variants_archive_readonly before insert or update or delete
+on public.global_catalog_variants_archive_20260813 for each row execute function public.canonical_product_archive_readonly_guard();
+create trigger global_catalog_aliases_archive_readonly before insert or update or delete
+on public.global_catalog_aliases_archive_20260813 for each row execute function public.canonical_product_archive_readonly_guard();
+create trigger global_catalog_variant_markets_archive_readonly before insert or update or delete
+on public.global_catalog_variant_markets_archive_20260813 for each row execute function public.canonical_product_archive_readonly_guard();
+create trigger global_catalog_retailer_offers_archive_readonly before insert or update or delete
+on public.global_catalog_retailer_offers_archive_20260813 for each row execute function public.canonical_product_archive_readonly_guard();
 
-create view public.global_catalog_products with (security_invoker=true) as
+-- These compatibility projections intentionally run with the migration owner
+-- so the underlying mixed canonical root can keep its stricter owner/creator
+-- RLS. Every exposed row/column is an explicit non-blocked shared-data
+-- allowlist; raw OCR, submitter/admin data and evidence hashes stay hidden.
+create view public.global_catalog_products with (security_invoker=false,security_barrier=true) as
 select
   p.id,p.canonical_verification_status status,p.canonical_verification_method verification_method,
   p.canonical_provenance provenance,p.product_name_display display_name,p.product_name_internal original_name,
@@ -1437,13 +2011,34 @@ left join public.product_behavior_bindings b on b.id=p.current_behavior_binding_
 where p.visibility='shared' and p.canonical_verification_status<>'blocked'
   and p.merged_into_product_id is null;
 
-create view public.global_catalog_product_versions with (security_invoker=true) as
-select id,product_id,version,facts snapshot,evidence_snapshot,provenance,verification_method,
+create view public.global_catalog_product_versions with (security_invoker=false,security_barrier=true) as
+select id,product_id,version,facts snapshot,'{}'::jsonb evidence_snapshot,provenance,verification_method,
   effective_at,supersedes,created_at from public.product_versions v
 where exists(select 1 from public.products p where p.id=v.product_id and p.is_active
-  and p.canonical_verification_status<>'blocked');
+  and p.visibility='shared' and p.canonical_verification_status<>'blocked');
 
-create view public.catalog_product_behavior_bindings with (security_invoker=true) as
+create view public.global_catalog_variants with (security_invoker=false,security_barrier=true) as
+select id,product_id,ean,net_quantity,net_unit,market,package_language,package_revision,
+  original_package_name,'{}'::text[] image_phashes,is_current,created_at
+from public.product_variants
+where exists(select 1 from public.products p where p.id=product_id and p.is_active
+  and p.visibility='shared' and p.canonical_verification_status<>'blocked');
+create view public.global_catalog_variant_markets with (security_invoker=false,security_barrier=true) as
+select vm.* from public.product_variant_markets vm
+where exists(select 1 from public.product_variants v join public.products p on p.id=v.product_id
+  where v.id=vm.variant_id and p.is_active and p.visibility='shared'
+    and p.canonical_verification_status<>'blocked');
+create view public.global_catalog_aliases with (security_invoker=false,security_barrier=true) as
+select a.* from public.product_aliases a
+where exists(select 1 from public.products p where p.id=a.product_id and p.is_active
+  and p.visibility='shared' and p.canonical_verification_status<>'blocked');
+create view public.global_catalog_retailer_offers with (security_invoker=false,security_barrier=true) as
+select o.* from public.product_retailer_offers o
+where exists(select 1 from public.product_variants v join public.products p on p.id=v.product_id
+  where v.id=o.variant_id and p.is_active and p.visibility='shared'
+    and p.canonical_verification_status<>'blocked');
+
+create view public.catalog_product_behavior_bindings with (security_invoker=false,security_barrier=true) as
 select id,product_id catalog_product_id,product_version_id catalog_product_version_id,mapper_ingredient_id,
   taxonomy_version_id,family_id,subfamily_id,form_id,
   case when main_eligibility='UNKNOWN_REQUIRES_EVIDENCE' then 'UNKNOWN' else main_eligibility end main_eligibility,
@@ -1451,24 +2046,28 @@ select id,product_id catalog_product_id,product_version_id catalog_product_versi
   warnings,block_reasons,classifier_version,classified_at,is_current
 from public.product_behavior_bindings b
 where exists(select 1 from public.products p where p.id=b.product_id and p.is_active
-  and p.canonical_verification_status<>'blocked');
+  and p.visibility='shared' and p.canonical_verification_status<>'blocked');
 
-create view public.unified_product_ingest_events with (security_invoker=true) as
+create view public.unified_product_ingest_events with (security_invoker=true,security_barrier=true) as
 select id,source,actor_user_id,null::uuid source_product_id,product_id catalog_product_id,
   product_version_id catalog_product_version_id,payload_fingerprint,idempotency_key,
   case when status='accepted' then 'accepted' when status='duplicate' then 'duplicate' when status='blocked' then 'blocked' else 'review' end status,
   result_snapshot,created_at from public.product_ingest_events;
 
-create view public.global_catalog_review_cases with (security_invoker=true) as
+create view public.global_catalog_review_cases with (security_invoker=true,security_barrier=true) as
 select id,consolidation_key,product_id catalog_product_id,kind,status,priority,submission_count,
   '{}'::text[] markets,missing_fields,duplicate_candidates,'{}'::jsonb normalized_data,
   latest_evidence,created_at,updated_at from public.product_review_cases;
 
 revoke all on public.global_catalog_products,public.global_catalog_product_versions,
   public.catalog_product_behavior_bindings,public.unified_product_ingest_events,
-  public.global_catalog_review_cases from public,anon,authenticated,service_role;
+  public.global_catalog_review_cases,public.global_catalog_variants,
+  public.global_catalog_variant_markets,public.global_catalog_aliases,
+  public.global_catalog_retailer_offers from public,anon,authenticated,service_role;
 grant select on public.global_catalog_products,public.global_catalog_product_versions,
-  public.catalog_product_behavior_bindings to authenticated,service_role;
+  public.catalog_product_behavior_bindings,public.global_catalog_variants,
+  public.global_catalog_variant_markets,public.global_catalog_aliases,
+  public.global_catalog_retailer_offers to authenticated,service_role;
 
 -- Replace the legacy search function after the old roots become views. Search
 -- now reads the canonical version/binding and the caller's canonical private
@@ -1495,20 +2094,20 @@ create function public.search_global_catalog(
         and m.approved_for_engines and m.verification_status='verified' then b.mapper_ingredient_id end mapped_ingredient_id,
       array(select distinct x from unnest(array_remove(array[
         v.facts->>'market',v.facts#>>'{public_data,market}'
-      ]||coalesce((select array_agg(vm.market) from public.global_catalog_variants gv
-        left join public.global_catalog_variant_markets vm on vm.variant_id=gv.id
+      ]||coalesce((select array_agg(coalesce(vm.market,gv.market)) from public.product_variants gv
+        left join public.product_variant_markets vm on vm.variant_id=gv.id
         where gv.product_id=p.id and gv.is_current),'{}'::text[]),null)) x) markets,
       array(select distinct x from unnest(array_remove(array[
         v.facts->>'retailer',v.facts#>>'{public_data,retailer}'
-      ]||coalesce((select array_agg(o.retailer) from public.global_catalog_variants gv
-        join public.global_catalog_retailer_offers o on o.variant_id=gv.id
+      ]||coalesce((select array_agg(o.retailer) from public.product_variants gv
+        join public.product_retailer_offers o on o.variant_id=gv.id
         where gv.product_id=p.id and gv.is_current),'{}'::text[]),null)) x) retailers,
       array(select distinct x from unnest(array_remove(array[p.ean_code_normalized]
-        ||coalesce((select array_agg(gv.ean) from public.global_catalog_variants gv
+        ||coalesce((select array_agg(gv.ean) from public.product_variants gv
           where gv.product_id=p.id and gv.is_current),'{}'::text[]),null)) x) eans,
       array(select distinct x from unnest(array_remove(array[
         p.product_name_display,p.product_name_internal,p.canonical_family
-      ]||coalesce((select array_agg(a.alias) from public.global_catalog_aliases a
+      ]||coalesce((select array_agg(a.alias) from public.product_aliases a
         where a.product_id=p.id),'{}'::text[]),null)) x) aliases,
       coalesce((select array_agg(x.value) from jsonb_array_elements_text(
         coalesce(v.facts->'missingFields','[]'::jsonb)) x(value)),'{}') missing_fields,

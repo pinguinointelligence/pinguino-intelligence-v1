@@ -43,6 +43,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 import type { ProductCategory, RecipeInput } from '@/engine';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
 
 export type TemplateStatus = 'approved' | 'reference_derived' | 'unsupported';
@@ -489,9 +490,7 @@ export function proteinFlavorStrategyForRecipe(input: RecipeInput): ProteinFlavo
   if (role === 'fruit') return 'fruit';
   if (role === 'nut_paste') return 'nut';
   if (role === 'chocolate_cocoa') return 'cocoa';
-  const label = main.ingredient.name.toLowerCase();
-  if (label.includes('coffee') || label.includes('espresso') || label.includes('kawa'))
-    return 'coffee';
+  if (canonicalIngredientId(main.ingredient) === 'PI-ING-000166') return 'coffee';
   return 'neutral';
 }
 

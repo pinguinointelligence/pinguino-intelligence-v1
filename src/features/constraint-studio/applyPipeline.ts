@@ -240,6 +240,10 @@ export interface SubstitutionSessionAuthorization {
   mapperAuthorization: SubstituteAuthorization;
   /** Server-resolved authority for the replacement, bound to this exact line. */
   productBehaviorSnapshot: ProductBehaviorSnapshot;
+  /** Complete proposed authority, including deterministic correction/toolbox
+   * lines introduced by the substitution solver. Terminal Apply revalidates
+   * this set server-side before it reaches the trustless commit door. */
+  proposalProductBehaviorSnapshots: Record<string, ProductBehaviorSnapshot>;
 }
 
 /** Session-only consent for a native-safe candidate that misses a selected
@@ -1139,7 +1143,11 @@ export type BuildPreviewResult =
       templateStatus: TemplateStatus;
     };
 
-function mainSafePreview(input: RecipeInput, preview: ConstraintPreview): BuildPreviewResult {
+function mainSafePreview(
+  input: RecipeInput,
+  preview: ConstraintPreview,
+  productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+): BuildPreviewResult {
   if (preview.proposedInput.category === 'vegan_gelato') {
     const issues = veganRecipeEligibilityIssues(preview.proposedInput.items);
     if (issues.length > 0) {
@@ -1168,7 +1176,9 @@ function mainSafePreview(input: RecipeInput, preview: ConstraintPreview): BuildP
     }
   }
   if (normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco') {
-    const flavour = verifyEcoFlavourProtection(input, preview.proposedInput);
+    const flavour = verifyEcoFlavourProtection(input, preview.proposedInput, {
+      productBehaviorSnapshots,
+    });
     if (!flavour.ok) {
       return {
         ok: false,
@@ -1554,6 +1564,7 @@ function iterateSolverToFixedPoint(
   priceOverrides: CustomerPriceIndex = {},
   probeLowerProteinTargets = true,
   minimumProteinScore: number | null = null,
+  productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
 ): {
   working: RecipeInput;
   lastProposal: CorrectionProposal | null;
@@ -1717,6 +1728,7 @@ function iterateSolverToFixedPoint(
           constraints,
           normalize,
           priceOverrides,
+          productBehaviorSnapshots,
         });
       }
       return sweepDraftCandidateVector({
@@ -1992,7 +2004,9 @@ function maximizeMainFromStart(
     const ecoValid =
       normalizeFormulationStrategy(
         identityInput.goals?.formulation_strategy ?? identityInput.mode,
-      ) !== 'eco' || verifyEcoFlavourProtection(identityInput, executable).ok;
+      ) !== 'eco' || verifyEcoFlavourProtection(identityInput, executable, {
+        productBehaviorSnapshots: options.productBehaviorSnapshots,
+      }).ok;
     const veganValid =
       executable.category !== 'vegan_gelato' ||
       (veganRecipeEligibilityIssues(executable.items).length === 0 &&
@@ -2085,7 +2099,9 @@ function maximizeMainFromStart(
         normalizeFormulationStrategy(
           identityInput.goals?.formulation_strategy ?? identityInput.mode,
         ) === 'eco' &&
-        !verifyEcoFlavourProtection(identityInput, settled).ok
+        !verifyEcoFlavourProtection(identityInput, settled, {
+          productBehaviorSnapshots: options.productBehaviorSnapshots,
+        }).ok
       ) {
         rejection = 'main_identity';
         continue;
@@ -2172,6 +2188,9 @@ function maximizeMainFromStart(
       excludedIngredientIds,
       solverSet,
       options.effectivePriceOverrides,
+      true,
+      null,
+      options.productBehaviorSnapshots,
     ).working;
   };
   const settleIfAdmissible = (candidate: RecipeInput): RecipeInput => {
@@ -2187,7 +2206,9 @@ function maximizeMainFromStart(
     ).reachedAxisCount;
     const ecoValid =
       normalizeFormulationStrategy(identityInput.goals?.formulation_strategy ?? identityInput.mode) !==
-        'eco' || verifyEcoFlavourProtection(identityInput, settled).ok;
+        'eco' || verifyEcoFlavourProtection(identityInput, settled, {
+          productBehaviorSnapshots: options.productBehaviorSnapshots,
+        }).ok;
     const veganValid =
       settled.category !== 'vegan_gelato' ||
       (veganRecipeEligibilityIssues(settled.items).length === 0 &&
@@ -2567,7 +2588,9 @@ function maximizeMainFlavourObjective(
           preservesProteinFrontier(executable, practical.audit.executableResult) &&
           (normalizeFormulationStrategy(
             identityInput.goals?.formulation_strategy ?? identityInput.mode,
-          ) !== 'eco' || verifyEcoFlavourProtection(identityInput, executable).ok) &&
+          ) !== 'eco' || verifyEcoFlavourProtection(identityInput, executable, {
+            productBehaviorSnapshots: options.productBehaviorSnapshots,
+          }).ok) &&
           (executable.category !== 'vegan_gelato' ||
             (veganRecipeEligibilityIssues(executable.items).length === 0 &&
               veganProfileConstraintIssues(executable).length === 0));
@@ -2626,6 +2649,7 @@ function maximizeMainFlavourObjective(
           options.effectivePriceOverrides,
           false,
           baselineScore,
+          options.productBehaviorSnapshots,
         ).working;
         const practical = practicalizeRecipeCandidate(settledCandidate, set);
         if (!practical.ok) {
@@ -2665,7 +2689,9 @@ function maximizeMainFlavourObjective(
           normalizeFormulationStrategy(
             identityInput.goals?.formulation_strategy ?? identityInput.mode,
           ) === 'eco' &&
-          !verifyEcoFlavourProtection(identityInput, executable).ok
+          !verifyEcoFlavourProtection(identityInput, executable, {
+            productBehaviorSnapshots: options.productBehaviorSnapshots,
+          }).ok
         ) {
           recordRejection('main_identity');
           continue;
@@ -2976,6 +3002,9 @@ function iterateFormulationSeed(
     new Set(options.excludedIngredientIds ?? []),
     solverSet,
     options.effectivePriceOverrides,
+    true,
+    null,
+    options.productBehaviorSnapshots,
   );
 }
 
@@ -3386,7 +3415,7 @@ function buildFormulationPreviewInternal(
         : proteinResidual
           ? 'protein_target_residual'
           : undefined;
-  return mainSafePreview(input, preview);
+  return mainSafePreview(input, preview, options.productBehaviorSnapshots);
 }
 
 /**
@@ -3619,7 +3648,7 @@ export function buildOptimizePreview(
     preview.batchBeforeGrams = plannedSum(input);
     preview.hardResidualMetrics = bands.hardMetrics;
     preview.diagnosticOnly = false;
-    return mainSafePreview(input, preview);
+    return mainSafePreview(input, preview, options.productBehaviorSnapshots);
   };
 
   const solverSet = withTemplateControlledStabilizerLocks(input, set);
@@ -3695,7 +3724,7 @@ export function buildOptimizePreview(
       attachMainObjective(preview, input, cleanMainObjective.proof);
       preview.hardResidualMetrics = classifyViolationBands(cleanMainObjective.input).hardMetrics;
       preview.diagnosticOnly = false;
-      return mainSafePreview(input, preview);
+      return mainSafePreview(input, preview, options.productBehaviorSnapshots);
     }
     const practical = practicalizeRecipeCandidate(input, set);
     const needsPracticalPreview =
@@ -3721,7 +3750,7 @@ export function buildOptimizePreview(
       );
       preview.practicalizationOnly = true;
       attachMainObjective(preview, input, cleanMainObjective.proof);
-      return mainSafePreview(input, preview);
+      return mainSafePreview(input, preview, options.productBehaviorSnapshots);
     }
     return { ok: false, code: 'already_clean' };
   }
@@ -3745,6 +3774,9 @@ export function buildOptimizePreview(
     new Set(options.excludedIngredientIds ?? []),
     solverSet,
     options.effectivePriceOverrides,
+    true,
+    null,
+    options.productBehaviorSnapshots,
   );
   const mainObjective = maximizeMainFlavourObjective(input, iterated.working, set, options);
   working = mainObjective.input;
@@ -3863,7 +3895,7 @@ export function buildOptimizePreview(
         : proteinResidual
           ? 'protein_target_residual'
           : undefined;
-  return mainSafePreview(input, preview);
+  return mainSafePreview(input, preview, options.productBehaviorSnapshots);
 }
 
 /**
@@ -4386,9 +4418,13 @@ export function bindProductBehaviorToPreview(
   const requiredLineIds = productBehaviorRequiredLineIds({
     items: result.preview.proposedInput.items,
   });
+  const behaviorModule = normalizeFormulationStrategy(
+    result.preview.proposedInput.goals?.formulation_strategy ??
+      result.preview.proposedInput.mode,
+  ) === 'eco' ? 'ECO' : 'OPTIMAL';
   const moduleGate = productBehaviorModuleGate(
     snapshots,
-    'BASE_RECIPE',
+    behaviorModule,
     requiredLineIds,
   );
   if (!moduleGate.ready) {
@@ -5104,6 +5140,7 @@ export class VerifiedApply {
       }
       verifiedProductBehaviorSnapshots = {
         ...verifiedProductBehaviorSnapshots,
+        ...structuredClone(substitutionAuthorization.proposalProductBehaviorSnapshots),
         [substitution.lineId]: structuredClone(
           substitutionAuthorization.productBehaviorSnapshot,
         ),
@@ -5171,7 +5208,9 @@ export class VerifiedApply {
       }
       const behaviorGate = productBehaviorModuleGate(
         verifiedProductBehaviorSnapshots,
-        'BASE_RECIPE',
+        normalizeFormulationStrategy(
+          current.goals?.formulation_strategy ?? current.mode,
+        ) === 'eco' ? 'ECO' : 'OPTIMAL',
         productBehaviorRequiredLineIds({ items: preview.proposedInput.items }),
       );
       if (!behaviorGate.ready) {
@@ -5262,7 +5301,9 @@ export class VerifiedApply {
     if (
       normalizeFormulationStrategy(current.goals?.formulation_strategy ?? current.mode) === 'eco'
     ) {
-      const flavour = verifyEcoFlavourProtection(current, preview.proposedInput);
+      const flavour = verifyEcoFlavourProtection(current, preview.proposedInput, {
+        productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+      });
       if (!flavour.ok) {
         return {
           ok: false,
