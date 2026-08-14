@@ -70,17 +70,20 @@ describe('OCR duplicate-preview perceptual hash', () => {
     }
     const close = vi.fn();
     vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ close })));
+    const context = {
+      imageSmoothingEnabled: true,
+      drawImage: vi.fn(),
+      getImageData: () => ({ data: rgba }),
+    };
     vi.stubGlobal('OffscreenCanvas', class {
       getContext() {
-        return {
-          drawImage: vi.fn(),
-          getImageData: () => ({ data: rgba }),
-        };
+        return context;
       }
     });
 
     await expect(browserPerceptualHash(new Blob(['webp'], { type: 'image/webp' })))
       .resolves.toBe('00000000ffffffff');
+    expect(context.imageSmoothingEnabled).toBe(false);
     expect(close).toHaveBeenCalledOnce();
   });
 

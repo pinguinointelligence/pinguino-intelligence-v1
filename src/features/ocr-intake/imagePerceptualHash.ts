@@ -143,6 +143,10 @@ export async function browserPerceptualHash(image: Blob): Promise<string | null>
       const canvas = new OffscreenCanvas(HASH_SIDE, HASH_SIDE);
       const context = canvas.getContext('2d');
       if (!context) return null;
+      // ImageScript's server hash uses nearest-neighbour resize. Disable the
+      // browser's default smoothing so Preview and final archived evidence use
+      // the same 8x8 sampling contract.
+      context.imageSmoothingEnabled = false;
       context.drawImage(bitmap, 0, 0, HASH_SIDE, HASH_SIDE);
       pixels = context.getImageData(0, 0, HASH_SIDE, HASH_SIDE).data;
     } else if (typeof document !== 'undefined') {
@@ -151,6 +155,7 @@ export async function browserPerceptualHash(image: Blob): Promise<string | null>
       canvas.height = HASH_SIDE;
       const context = canvas.getContext('2d');
       if (!context) return null;
+      context.imageSmoothingEnabled = false;
       context.drawImage(bitmap, 0, 0, HASH_SIDE, HASH_SIDE);
       pixels = context.getImageData(0, 0, HASH_SIDE, HASH_SIDE).data;
     }
