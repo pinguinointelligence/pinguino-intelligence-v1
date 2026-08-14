@@ -23,6 +23,13 @@ const visibility = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const policyAndRetention = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813110800_product_relation_policy_and_actor_retention.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -53,5 +60,15 @@ describe('current-version behavior enqueue hotfix', () => {
       'alter function public.product_behavior_entity_fingerprint_v1(text,text) volatile',
     );
     expect(visibility).not.toContain(' stable');
+  });
+
+  it('lets RLS evaluate its narrow helper and anonymizes actors on account deletion', () => {
+    expect(policyAndRetention).toContain(
+      'grant execute on function public.can_use_product_relation_v1(uuid,uuid)',
+    );
+    expect(policyAndRetention).toContain('alter column actor_user_id drop not null');
+    expect(policyAndRetention).toContain(
+      'foreign key(actor_user_id) references auth.users(id) on delete set null',
+    );
   });
 });
