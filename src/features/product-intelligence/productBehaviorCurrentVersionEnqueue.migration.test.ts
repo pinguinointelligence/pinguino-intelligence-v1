@@ -111,6 +111,13 @@ const internalDiagnosticRemoval = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const registryDmlRevocation = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813112100_revoke_client_policy_taxonomy_dml.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -249,5 +256,19 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(internalDiagnosticRemoval).toContain(
       'drop function if exists public.diagnose_internal_account_delete_v1(uuid)',
     );
+  });
+
+  it('prevents zero-row customer DML from firing full registry reclassification', () => {
+    expect(registryDmlRevocation).toContain('revoke insert,update,delete on table');
+    for (const table of [
+      'product_taxonomy_versions',
+      'product_taxonomy_nodes',
+      'product_taxonomy_aliases',
+      'product_behavior_policy_versions',
+    ]) {
+      expect(registryDmlRevocation).toContain(`public.${table}`);
+    }
+    expect(registryDmlRevocation).toContain('from public,anon,authenticated');
+    expect(registryDmlRevocation).toContain('to authenticated');
   });
 });
