@@ -30,6 +30,7 @@ import {
 } from './applyPipeline';
 import { effectiveInputCostPerKg } from './ecoDraftCostSweep';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
+import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
@@ -138,6 +139,31 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     ).toBe(1000);
     expect(effectiveInputCostPerKg(result.preview.proposedInput)).toBeLessThan(beforeCost!);
     expect(input.items.map((item) => item.planned_grams)).toEqual([670, 130, 35, 130, 30, 5]);
+  });
+
+  it('never turns a native-clean ECO draft with an unmet direction target into BLOCKED', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = {
+      ...input.goals,
+      formulation_strategy: 'eco',
+      direction_targets_active: true,
+      direction_targets: { sweetness: 1, softness: 1, creaminess: 0, flavor: 0 },
+    };
+    const beforeDirection = recipeDirectionViolations(input);
+    expect(detectViolations(calculateRecipe(input))).toHaveLength(0);
+    expect(beforeDirection.length).toBeGreaterThan(0);
+
+    const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
+    if (!result.ok) {
+      expect(result.code).toBe('already_clean');
+      return;
+    }
+    const afterDirection = recipeDirectionViolations(result.preview.proposedInput);
+    expect(result.preview.violationsAfter).toBe(0);
+    expect(afterDirection.length).toBeLessThanOrEqual(beforeDirection.length);
+    expect(afterDirection.reduce((sum, violation) => sum + violation.severity_points, 0)).toBeLessThanOrEqual(
+      beforeDirection.reduce((sum, violation) => sum + violation.severity_points, 0),
+    );
   });
 
   it('never proposes ADDING a parallel line of a LOCKED ingredient (§17 intent)', () => {

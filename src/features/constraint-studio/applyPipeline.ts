@@ -3718,6 +3718,7 @@ export function buildOptimizePreview(
      */
     const currentDraftUnchanged =
       workingStateFingerprint(working, set) === workingStateFingerprint(input, set);
+    const currentNativeSafe = violationsBefore === 0;
     const currentDirectionSafe = recipeDirectionViolations(working).length === 0;
     const currentProteinSafe =
       !initialProteinTarget.applicable || initialProteinTarget.reached;
@@ -3725,7 +3726,7 @@ export function buildOptimizePreview(
       input.category !== 'vegan_gelato' || veganProfileConstraintIssues(input).length === 0;
     if (
       currentDraftUnchanged &&
-      currentDirectionSafe &&
+      currentNativeSafe &&
       !hasCritical &&
       !batchRescaled &&
       currentProteinSafe &&
@@ -3734,7 +3735,9 @@ export function buildOptimizePreview(
       // Preserve the accepted lexicographic contract: an approved Main increase
       // outranks cost pressure in ECO just as it does in OPTIMAL. Cost search is
       // entered only when there is no admissible higher Main point.
-      const ecoMainObjective = maximizeMainFlavourObjective(input, working, set, options);
+      const ecoMainObjective = currentDirectionSafe
+        ? maximizeMainFlavourObjective(input, working, set, options)
+        : { input: working, proof: null };
       if (
         ecoMainObjective.proof?.status === 'maximized' &&
         ecoMainObjective.proof.exactAcceptedMainGrams >
@@ -3795,6 +3798,16 @@ export function buildOptimizePreview(
         createdAt,
       );
       const proposedResult = calculateRecipe(preview.proposedInput);
+      const baselineDirectionViolations = recipeDirectionViolations(input);
+      const proposedDirectionViolations = recipeDirectionViolations(preview.proposedInput);
+      const baselineDirectionSeverity = baselineDirectionViolations.reduce(
+        (sum, violation) => sum + violation.severity_points,
+        0,
+      );
+      const proposedDirectionSeverity = proposedDirectionViolations.reduce(
+        (sum, violation) => sum + violation.severity_points,
+        0,
+      );
       const proposedCost = effectiveInputCostPerKg(
         applyEffectiveCustomerPrices(preview.proposedInput, priceOverrides),
       );
@@ -3805,7 +3818,8 @@ export function buildOptimizePreview(
       const proposedSafe =
         violationCount(proposedResult) === violationsBefore &&
         Math.abs(totalSeverity(preview.proposedInput) - totalSeverity(input)) <= SEVERITY_EPS &&
-        recipeDirectionViolations(preview.proposedInput).length === 0 &&
+        proposedDirectionViolations.length <= baselineDirectionViolations.length &&
+        proposedDirectionSeverity <= baselineDirectionSeverity + SEVERITY_EPS &&
         !proposedResult.warnings.some((warning) => warning.severity === 'critical') &&
         verifyConstraintsPreserved(solverSet, preview.proposedInput).ok &&
         (!proposedProtein.applicable || proposedProtein.reached) &&
