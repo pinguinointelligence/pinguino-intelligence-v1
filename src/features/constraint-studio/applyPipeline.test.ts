@@ -28,6 +28,7 @@ import {
   workingStateFingerprint,
   type ConstraintPreview,
 } from './applyPipeline';
+import { effectiveInputCostPerKg } from './ecoDraftCostSweep';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
 
 const SUCROSE = starterLine('sucrose');
@@ -100,6 +101,43 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     if (!result.ok && result.code === 'missing_prices') {
       expect(result.ingredientNames).toContain(input.items[0]!.ingredient.name);
     }
+  });
+
+  it('returns NO_CHANGE for a technically clean ECO recipe when no cheaper safe move exists', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    input.items = input.items.map((item) => ({
+      ...item,
+      ingredient: {
+        ...item.ingredient,
+        cost_per_kg: 1,
+        cost_currency: 'EUR',
+      },
+    }));
+
+    expect(buildOptimizePreview(input, NO_CONSTRAINTS, 'now')).toMatchObject({
+      ok: false,
+      code: 'already_clean',
+    });
+  });
+
+  it('builds a cheaper, still-clean ECO Preview directly from a clean current recipe', () => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: 'eco' };
+    const beforeCost = effectiveInputCostPerKg(input);
+    const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
+
+    expect(beforeCost).not.toBeNull();
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.preview.violationsBefore).toBe(0);
+    expect(result.preview.violationsAfter).toBe(0);
+    expect(result.preview.diagnosticOnly).toBe(false);
+    expect(
+      result.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
+    ).toBe(1000);
+    expect(effectiveInputCostPerKg(result.preview.proposedInput)).toBeLessThan(beforeCost!);
+    expect(input.items.map((item) => item.planned_grams)).toEqual([670, 130, 35, 130, 30, 5]);
   });
 
   it('never proposes ADDING a parallel line of a LOCKED ingredient (§17 intent)', () => {

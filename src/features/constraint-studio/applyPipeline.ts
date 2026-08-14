@@ -46,8 +46,9 @@ import {
   sweepDraftCandidateVector,
   type DraftSweepResult,
 } from './draftCandidateVector';
-import { sweepEcoDraftCost } from './ecoDraftCostSweep';
+import { effectiveInputCostPerKg, sweepEcoDraftCost } from './ecoDraftCostSweep';
 import {
+  applyEffectiveCustomerPrices,
   effectiveCostForIngredient,
   type CustomerPriceIndex,
 } from '@/features/pro-core/effectiveRecipePricing';
@@ -3704,6 +3705,120 @@ export function buildOptimizePreview(
         lineIds: missingPrices.map((item) => item.id),
         ingredientNames: missingPrices.map((item) => item.ingredient.name),
       };
+    }
+
+    /**
+     * A technically clean current recipe is already the null hypothesis for
+     * ECO. Running the technical corrector first can move it out of band before
+     * the cost sweep gets a chance to rank safe gram changes. Search the current
+     * draft directly instead: every accepted move must keep the exact technical
+     * fit, constraints, batch, Main identity and Flavour Floor. If no cheaper
+     * candidate survives the normal Preview practicalization, the honest result
+     * is NO_CHANGE_NEEDED, never an unsafe technical proposal.
+     */
+    const currentDraftUnchanged =
+      workingStateFingerprint(working, set) === workingStateFingerprint(input, set);
+    const currentDirectionSafe = recipeDirectionViolations(working).length === 0;
+    const currentProteinSafe =
+      !initialProteinTarget.applicable || initialProteinTarget.reached;
+    const currentVeganSafe =
+      input.category !== 'vegan_gelato' || veganProfileConstraintIssues(input).length === 0;
+    if (
+      currentDraftUnchanged &&
+      currentDirectionSafe &&
+      !hasCritical &&
+      !batchRescaled &&
+      currentProteinSafe &&
+      currentVeganSafe
+    ) {
+      // Preserve the accepted lexicographic contract: an approved Main increase
+      // outranks cost pressure in ECO just as it does in OPTIMAL. Cost search is
+      // entered only when there is no admissible higher Main point.
+      const ecoMainObjective = maximizeMainFlavourObjective(input, working, set, options);
+      if (
+        ecoMainObjective.proof?.status === 'maximized' &&
+        ecoMainObjective.proof.exactAcceptedMainGrams >
+          ecoMainObjective.proof.startingMainGrams + MAIN_OBJECTIVE_EPSILON_G
+      ) {
+        const preview = finishPreview(
+          'optimize',
+          copy.preview.kindLabels.optimize,
+          input,
+          set,
+          ecoMainObjective.input,
+          set,
+          violationsBefore,
+          [],
+          createdAt,
+        );
+        attachMainObjective(preview, input, ecoMainObjective.proof);
+        preview.hardResidualMetrics = classifyViolationBands(
+          preview.proposedInput,
+        ).hardMetrics;
+        preview.diagnosticOnly = false;
+        return mainSafePreview(input, preview, options.productBehaviorSnapshots);
+      }
+
+      const priceOverrides = options.effectivePriceOverrides ?? {};
+      const baselineCost = effectiveInputCostPerKg(
+        applyEffectiveCustomerPrices(input, priceOverrides),
+      );
+      const swept = sweepEcoDraftCost({
+        identityInput: input,
+        start: working,
+        set: solverSet,
+        excludedIngredientIds: new Set(options.excludedIngredientIds ?? []),
+        constraints: {
+          context: recipeContext(working),
+          mode: working.mode,
+          allow_main_ingredient_reduction: false,
+          machine_capacity_grams: null,
+        },
+        normalize: restoreBatch,
+        priceOverrides,
+        productBehaviorSnapshots: options.productBehaviorSnapshots,
+      });
+      if (swept === null) return { ok: false, code: 'already_clean' };
+
+      const lockedNames = lockedIngredientNames(input, set);
+      const preview = finishPreview(
+        'optimize',
+        copy.preview.kindLabels.optimize,
+        input,
+        set,
+        swept.input,
+        set,
+        violationsBefore,
+        lockedNames.length > 0
+          ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }]
+          : [],
+        createdAt,
+      );
+      const proposedResult = calculateRecipe(preview.proposedInput);
+      const proposedCost = effectiveInputCostPerKg(
+        applyEffectiveCustomerPrices(preview.proposedInput, priceOverrides),
+      );
+      const proposedProtein = assessProteinTarget(preview.proposedInput, proposedResult);
+      const proposedVeganSafe =
+        input.category !== 'vegan_gelato' ||
+        veganProfileConstraintIssues(preview.proposedInput).length === 0;
+      const proposedSafe =
+        violationCount(proposedResult) === violationsBefore &&
+        Math.abs(totalSeverity(preview.proposedInput) - totalSeverity(input)) <= SEVERITY_EPS &&
+        recipeDirectionViolations(preview.proposedInput).length === 0 &&
+        !proposedResult.warnings.some((warning) => warning.severity === 'critical') &&
+        verifyConstraintsPreserved(solverSet, preview.proposedInput).ok &&
+        (!proposedProtein.applicable || proposedProtein.reached) &&
+        proposedVeganSafe &&
+        baselineCost !== null &&
+        proposedCost !== null &&
+        proposedCost < baselineCost - SEVERITY_EPS;
+      if (!proposedSafe) return { ok: false, code: 'already_clean' };
+
+      preview.autoBalance = { batchRescaled: false, solverRounds: 0 };
+      preview.hardResidualMetrics = [];
+      preview.diagnosticOnly = false;
+      return mainSafePreview(input, preview, options.productBehaviorSnapshots);
     }
   }
   if (
