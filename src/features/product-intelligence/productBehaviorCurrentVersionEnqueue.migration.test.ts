@@ -97,6 +97,13 @@ const internalDeleteDiagnostic = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const orphanRetirement = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813111900_retire_orphaned_private_products.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -219,5 +226,15 @@ describe('current-version behavior enqueue hotfix', () => {
       "raise exception 'diagnostic_delete_would_succeed'",
     );
     expect(internalDeleteDiagnostic).toContain('to service_role');
+  });
+
+  it('soft-retires private products when their owning account is anonymized', () => {
+    expect(orphanRetirement).toContain(
+      "visibility='account_private' and (owning_account_id is not null or not is_active)",
+    );
+    expect(orphanRetirement).toContain("new.is_active:=false");
+    expect(orphanRetirement).toContain(
+      "v_new->'owning_account_id'='null'::jsonb",
+    );
   });
 });
