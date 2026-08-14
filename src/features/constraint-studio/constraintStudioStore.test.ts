@@ -21,8 +21,12 @@ import {
 } from '@/features/recipe-constraints/constraintFixtures';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { useConstraintStudioStore } from './constraintStudioStore';
+import {
+  optimizePreviewRequiresApply,
+  useConstraintStudioStore,
+} from './constraintStudioStore';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import type { ConstraintPreview } from './applyPipeline';
 
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
@@ -130,6 +134,33 @@ beforeEach(() => {
 });
 
 describe('Pro executable validation', () => {
+  it('classifies an all-unchanged optimize proposal as NO_CHANGE instead of Apply', () => {
+    const constraints = { byLineId: {} };
+    const input = starterMilkBase();
+    const preview = {
+      kind: 'optimize',
+      lines: [
+        {
+          lineId: 'milk',
+          name: 'Milk',
+          beforeGrams: 670,
+          afterGrams: 670,
+          kind: 'unchanged',
+          locked: false,
+        },
+      ],
+      proposedInput: input,
+      nextConstraints: constraints,
+      directionAssessment: { active: false, reached: true },
+    } as unknown as ConstraintPreview;
+
+    expect(optimizePreviewRequiresApply(preview, constraints, input)).toBe(false);
+    expect(optimizePreviewRequiresApply({
+      ...preview,
+      lines: [{ ...preview.lines[0]!, kind: 'changed', afterGrams: 671 }],
+    }, constraints, input)).toBe(true);
+  });
+
   it('returns one NO_CHANGE_NEEDED terminal when a clean recipe needs zero gram changes', () => {
     loadRecipe(starterMilkBase());
     const before = buildRecipeInput(useRecipeStore.getState());
@@ -259,7 +290,9 @@ describe('§17.1/§17.2 padlock', () => {
   });
 
   it('preserves Required plus an exact-grams lock through Preview, Apply and Undo', () => {
-    loadRecipe(overSweetStarter(130));
+    // Keep an actual correction available; the former clean 130 g fixture
+    // intentionally terminates as NO_CHANGE and therefore has nothing to Apply.
+    loadRecipe(overSweetStarter(160));
     useRecipeStore.getState().setLockType(SUCROSE, 'required');
     useConstraintStudioStore.getState().toggleLock(SUCROSE);
     const beforePreview = buildRecipeInput(useRecipeStore.getState());
@@ -269,7 +302,7 @@ describe('§17.1/§17.2 padlock', () => {
     expect(preview).not.toBeNull();
     expect(preview?.proposedInput.items.find((item) => item.id === SUCROSE)).toMatchObject({
       lock_type: 'required',
-      planned_grams: 130,
+      planned_grams: 160,
     });
 
     useConstraintStudioStore.getState().applyPreview();
@@ -278,8 +311,8 @@ describe('§17.1/§17.2 padlock', () => {
       buildRecipeInput(useRecipeStore.getState()).items.find((item) => item.id === SUCROSE),
     ).toMatchObject({
       lock_type: 'required',
-      planned_grams: 130,
-      grams_constraint: { grams: 130 },
+      planned_grams: 160,
+      grams_constraint: { grams: 160 },
     });
 
     useConstraintStudioStore.getState().undoLastApply();

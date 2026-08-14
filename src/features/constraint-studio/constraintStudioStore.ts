@@ -93,6 +93,37 @@ const nextChangeId = (): string =>
   `apply-${Date.now().toString(36)}-${(changeSeq += 1).toString(36)}`;
 const nowIso = (): string => new Date().toISOString();
 
+const constraintFingerprint = (set: ConstraintSet): string => JSON.stringify(
+  Object.entries(set.byLineId).sort(([left], [right]) => left.localeCompare(right)),
+);
+
+/** A Preview is an explicit mutation proposal, never a second spelling of
+ * NO_CHANGE. The real served Colina path exposed a full-formulation Preview
+ * whose canonical diff contained six `unchanged` rows; applying it changed no
+ * material fact and made repeated recalculation loop forever. Keep unmet
+ * Direction targets out of this shortcut because those require their own
+ * BEST_ACHIEVABLE evidence/consent path. */
+export function optimizePreviewRequiresApply(
+  preview: ConstraintPreview,
+  currentConstraints: ConstraintSet,
+  currentInput: RecipeInput,
+): boolean {
+  if (preview.kind !== 'optimize') return true;
+  if (preview.lines.some((line) => line.kind !== 'unchanged')) return true;
+  if (constraintFingerprint(preview.nextConstraints) !== constraintFingerprint(currentConstraints)) {
+    return true;
+  }
+  const proposedById = new Map(preview.proposedInput.items.map((item) => [item.id, item]));
+  if (currentInput.items.some((item) => {
+    const proposed = proposedById.get(item.id);
+    return !proposed ||
+      proposed.lock_type !== item.lock_type ||
+      JSON.stringify(proposed.grams_constraint ?? null) !== JSON.stringify(item.grams_constraint ?? null) ||
+      JSON.stringify(proposed.range_constraint ?? null) !== JSON.stringify(item.range_constraint ?? null);
+  })) return true;
+  return preview.directionAssessment?.active === true && !preview.directionAssessment.reached;
+}
+
 /* ── THE canonical current-draft selector (owner P0 NIGHTLY, FAILURE 1) ──── */
 
 /**
@@ -639,7 +670,22 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           requirePracticalPreview: true,
           productBehaviorSnapshots: snapshots,
         }), snapshots);
-        if (result.ok) {
+        if (
+          result.ok &&
+          !optimizePreviewRequiresApply(result.preview, draft.constraints, draft.input)
+        ) {
+          useRecipeProfileStore.getState().acknowledgeRecalculation();
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            previewIssue: { ok: false, code: 'already_clean' },
+            blocked: null,
+            recalculationTerminal: { state: 'NO_CHANGE_NEEDED' },
+          });
+        } else if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
           const direction = result.preview.directionAssessment;
           const needsConsent =
