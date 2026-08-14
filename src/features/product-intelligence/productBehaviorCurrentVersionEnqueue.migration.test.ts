@@ -51,6 +51,10 @@ const ingestActorAnonymization = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const deleteDiagnostic = readFileSync(
+  join(process.cwd(), 'supabase/migrations/20260813111200_account_delete_diagnostic.sql'),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -123,6 +127,15 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(ingestActorAnonymization).toContain('new.actor_user_id is null');
     expect(ingestActorAnonymization).toContain(
       "(to_jsonb(new)-'actor_user_id')=(to_jsonb(old)-'actor_user_id')",
+    );
+  });
+
+  it('keeps the temporary account-delete diagnostic service-only and rollback-bound', () => {
+    expect(deleteDiagnostic).toContain('delete from auth.users where id=p_user_id');
+    expect(deleteDiagnostic).toContain("raise exception 'diagnostic_delete_would_succeed'");
+    expect(deleteDiagnostic).toContain('get stacked diagnostics');
+    expect(deleteDiagnostic).toContain(
+      'revoke all on function public.diagnose_account_delete_v1(uuid) from public,anon,authenticated',
     );
   });
 });
