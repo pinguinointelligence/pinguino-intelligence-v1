@@ -87,6 +87,31 @@ describe('OCR duplicate-preview perceptual hash', () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it('prefers the page canvas and keeps nearest-neighbour sampling in the customer flow', async () => {
+    const rgba = new Uint8ClampedArray(8 * 8 * 4).fill(255);
+    const close = vi.fn();
+    const pageContext = {
+      imageSmoothingEnabled: true,
+      drawImage: vi.fn(),
+      getImageData: () => ({ data: rgba }),
+    };
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ close })));
+    vi.stubGlobal('document', {
+      createElement: () => ({ width: 0, height: 0, getContext: () => pageContext }),
+    });
+    vi.stubGlobal('OffscreenCanvas', class {
+      constructor() {
+        throw new Error('page flow must not select OffscreenCanvas');
+      }
+    });
+
+    await expect(browserPerceptualHash(new Blob(['png'], { type: 'image/png' })))
+      .resolves.toBe('ffffffffffffffff');
+    expect(pageContext.imageSmoothingEnabled).toBe(false);
+    expect(pageContext.drawImage).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
+  });
+
   it('normalizes WebP to PNG before checksum, OCR, archive and final server pHash', async () => {
     const close = vi.fn();
     vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 4, height: 3, close })));
