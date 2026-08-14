@@ -30,6 +30,13 @@ const policyAndRetention = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const actorAnonymization = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813110900_canonical_product_actor_anonymization.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -69,6 +76,19 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(policyAndRetention).toContain('alter column actor_user_id drop not null');
     expect(policyAndRetention).toContain(
       'foreign key(actor_user_id) references auth.users(id) on delete set null',
+    );
+  });
+
+  it('preserves product history while allowing only FK actor anonymization outside ingest', () => {
+    expect(actorAnonymization).toContain(
+      'foreign key(owner_user_id) references auth.users(id) on delete set null',
+    );
+    expect(actorAnonymization).toContain(
+      "to_jsonb(new)-array['owner_user_id','created_by','owning_account_id','updated_at']",
+    );
+    expect(actorAnonymization).toContain('new.created_by is null');
+    expect(actorAnonymization).toContain(
+      "raise exception 'canonical product writes require ingest_product_v1'",
     );
   });
 });
