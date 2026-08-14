@@ -846,6 +846,7 @@ declare
   v_duplicate_candidates jsonb:='[]'::jsonb;
   v_image_phashes text[]:='{}';
   v_quantity numeric;
+  v_fibre numeric:=0;
   v_unit text;
   v_variant_id uuid;
   v_operation text:=coalesce(nullif(p_input->>'operation',''),'upsert');
@@ -1477,6 +1478,11 @@ begin
         v_invalid:=array_append(v_invalid,'nutrition_'||lower(v_unit)||'_type');
       end if;
     end loop;
+    if jsonb_typeof(v_facts#>'{nutrition,fibre}')='number' then
+      v_fibre:=(v_facts#>>'{nutrition,fibre}')::numeric;
+    else
+      v_fibre:=0;
+    end if;
     if jsonb_typeof(v_facts#>'{nutrition,energyKcal}')='number'
       and (v_facts#>>'{nutrition,energyKcal}')::numeric not between 0 and 1000 then
       v_invalid:=array_append(v_invalid,'nutrition_energy_range');
@@ -1504,8 +1510,7 @@ begin
       if (v_facts#>>'{nutrition,fat}')::numeric
         +(v_facts#>>'{nutrition,carbohydrate}')::numeric
         +(v_facts#>>'{nutrition,protein}')::numeric
-        +case when jsonb_typeof(v_facts#>'{nutrition,fibre}')='number'
-          then (v_facts#>>'{nutrition,fibre}')::numeric else 0 end
+        +v_fibre
         +(v_facts#>>'{nutrition,salt}')::numeric>105 then
         v_invalid:=array_append(v_invalid,'nutrition_macro_mass_conflict');
       end if;
@@ -1514,15 +1519,13 @@ begin
           (v_facts#>>'{nutrition,fat}')::numeric*9
           +(v_facts#>>'{nutrition,carbohydrate}')::numeric*4
           +(v_facts#>>'{nutrition,protein}')::numeric*4
-          +case when jsonb_typeof(v_facts#>'{nutrition,fibre}')='number'
-            then (v_facts#>>'{nutrition,fibre}')::numeric*2 else 0 end
+          +v_fibre*2
         )
       )>greatest(35,(
           (v_facts#>>'{nutrition,fat}')::numeric*9
           +(v_facts#>>'{nutrition,carbohydrate}')::numeric*4
           +(v_facts#>>'{nutrition,protein}')::numeric*4
-          +case when jsonb_typeof(v_facts#>'{nutrition,fibre}')='number'
-            then (v_facts#>>'{nutrition,fibre}')::numeric*2 else 0 end
+          +v_fibre*2
         )*0.25) then
         v_invalid:=array_append(v_invalid,'nutrition_energy_macro_conflict');
       end if;

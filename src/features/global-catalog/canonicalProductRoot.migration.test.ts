@@ -26,6 +26,9 @@ describe('canonical product root forward migration', () => {
     expect(sql.indexOf('set constraints all immediate;')).toBeLessThan(
       sql.indexOf('alter table public.product_versions enable row level security;'),
     );
+    expect(sql).toContain('v_fibre numeric:=0;');
+    expect(sql).toContain("jsonb_typeof(v_facts#>'{nutrition,fibre}')='number'");
+    expect(sql).toContain("v_fibre:=(v_facts#>>'{nutrition,fibre}')::numeric;");
   });
 
   it('creates the six canonical dependent models with private overlays separated', () => {
