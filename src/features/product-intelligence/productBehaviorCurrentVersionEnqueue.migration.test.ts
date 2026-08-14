@@ -90,6 +90,13 @@ const deleteDiagnosticRemoval = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const internalDeleteDiagnostic = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813111800_internal_account_delete_diagnostic.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -204,5 +211,13 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(deleteDiagnosticRemoval).toContain(
       'drop function if exists public.diagnose_account_delete_v1(uuid)',
     );
+  });
+
+  it('keeps the internal-product account diagnostic rollback-bound and service-only', () => {
+    expect(internalDeleteDiagnostic).toContain('delete from auth.users where id=p_user_id');
+    expect(internalDeleteDiagnostic).toContain(
+      "raise exception 'diagnostic_delete_would_succeed'",
+    );
+    expect(internalDeleteDiagnostic).toContain('to service_role');
   });
 });
