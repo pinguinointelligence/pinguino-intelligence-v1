@@ -3541,7 +3541,36 @@ export function buildOptimizePreview(
         `${input.target_batch_grams.toFixed(1)} g. PI nie zmniejszyło tożsamości receptury po cichu.`,
     };
   }
-  const decision = routeFormulationMode(input, set);
+  const routedDecision = routeFormulationMode(input, set);
+  const preRouteStrategy = normalizeFormulationStrategy(
+    input.goals?.formulation_strategy ?? input.mode,
+  );
+  const preRouteResult =
+    preRouteStrategy === 'eco' && routedDecision.reasons.includes('missing_hard_role')
+      ? calculateRecipe(input)
+      : null;
+  const ecoCurrentDraftOwnsSearch =
+    preRouteResult !== null &&
+    violationCount(preRouteResult) === 0 &&
+    !preRouteResult.warnings.some((warning) => warning.severity === 'critical') &&
+    Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G &&
+    input.items.every(
+      (item) =>
+        effectiveCostForIngredient(item.ingredient, options.effectivePriceOverrides ?? {})
+          .pricePerKg !== null,
+    );
+  // A complete, technically clean and fully priced ECO draft is its own safe
+  // null hypothesis. Let the verified cost sweep inspect that exact recipe
+  // before a generic missing-role template can replace it. Incomplete,
+  // unpriced or technically unsafe drafts retain the existing formulation
+  // route and all stabilizer/template guarantees.
+  const decision: typeof routedDecision = ecoCurrentDraftOwnsSearch
+    ? {
+        mode: 'local_correction',
+        template: null,
+        reasons: ['eco_current_draft_null_hypothesis'],
+      }
+    : routedDecision;
   if (decision.mode === 'unsupported') {
     return { ok: false, code: 'unsupported_profile', reason: decision.reasons[0] ?? 'no_template' };
   }
