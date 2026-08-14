@@ -2290,6 +2290,12 @@ end $$;
 
 -- Audit views expose both axes and exact reasons without opening the underlying
 -- system tables to customer writes.
+-- 10200 published narrower signatures under these names. PostgreSQL cannot
+-- rename/reorder view columns through CREATE OR REPLACE, so replace the two
+-- read-only audit projections explicitly after the canonical backfill.
+drop view if exists public.mapper_product_behavior_audit_v1;
+drop view if exists public.catalog_product_behavior_audit_v1;
+
 create or replace view public.mapper_product_behavior_audit_v1 as
 select
   m.ingredient_id,m.ingredient_name_display,m.ingredient_category,m.ingredient_subcategory,

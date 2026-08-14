@@ -388,6 +388,13 @@ describe('product behavior classification v2 migration', () => {
       "'catalog_product_version',v_catalog_version::text,'mapper_binding_published'",
     );
   });
+
+  it('replaces the narrower legacy audit-view signatures explicitly', () => {
+    expect(migration).toContain('drop view if exists public.mapper_product_behavior_audit_v1;');
+    expect(migration).toContain('drop view if exists public.catalog_product_behavior_audit_v1;');
+    expect(migration).toContain('create or replace view public.mapper_product_behavior_audit_v1 as');
+    expect(migration).toContain('create or replace view public.catalog_product_behavior_audit_v1 as');
+  });
 });
 
 describe('exhaustive Mapper behavior audit', () => {
