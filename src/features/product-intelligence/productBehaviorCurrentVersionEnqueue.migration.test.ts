@@ -104,6 +104,13 @@ const orphanRetirement = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const internalDiagnosticRemoval = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813112000_remove_internal_account_delete_diagnostic.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -235,6 +242,12 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(orphanRetirement).toContain("new.is_active:=false");
     expect(orphanRetirement).toContain(
       "v_new->'owning_account_id'='null'::jsonb",
+    );
+  });
+
+  it('removes the internal-product deletion diagnostic after proof', () => {
+    expect(internalDiagnosticRemoval).toContain(
+      'drop function if exists public.diagnose_internal_account_delete_v1(uuid)',
     );
   });
 });
