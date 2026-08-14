@@ -570,14 +570,24 @@ export function confirmFieldReview(session: ProductIntakeSession, key: IntakeFie
 
 /* ── gates + terminal transitions (spec §4, §9) ──────────────────────────── */
 
-/** review → ready_to_save. GATE: zero needs_confirmation / conflict_unresolved fields. */
+/** review → ready_to_save. GATE: zero needs_confirmation / conflict_unresolved fields.
+ * The simple customer review is also the approval step for readable image
+ * evidence. Promote every successfully analysed `needs_review` image to
+ * `ready` with the session transition so persistence and the server evidence
+ * gate observe the same reviewed state. Failed images remain failed. */
 export function markReadyToSave(session: ProductIntakeSession): ProductIntakeSession {
   requireState(session, ['review'], 'markReadyToSave');
   const blocking = blockingFieldKeys(session.fields);
   if (blocking.length > 0) {
     refuse('unresolved_fields', `cannot mark ready_to_save — unresolved field(s): ${blocking.join(', ')}`);
   }
-  return transition(session, 'ready_to_save', 'markReadyToSave');
+  const next = transition(session, 'ready_to_save', 'markReadyToSave');
+  return {
+    ...next,
+    images: next.images.map((image) =>
+      image.state === 'needs_review' ? { ...image, state: 'ready' } : image,
+    ),
+  };
 }
 
 /** ready_to_save → review (change your mind before saving; the gate re-runs later). */

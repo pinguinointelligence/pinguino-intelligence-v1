@@ -553,7 +553,9 @@ describe('ready_to_save gate + terminal transitions', () => {
       resolvedField('salt', '0.2', 'img-1', { reviewStatus: 'needs_confirmation', chosenCandidate: null }),
     ]);
     s = confirmFieldReview(s, 'salt');
-    expect(markReadyToSave(s).state).toBe('ready_to_save');
+    const ready = markReadyToSave(s);
+    expect(ready.state).toBe('ready_to_save');
+    expect(ready.images.map((image) => image.state)).toEqual(['ready']);
   });
 
   it('reopenReview steps back: ready_to_save → review', () => {
