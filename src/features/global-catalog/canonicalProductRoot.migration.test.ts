@@ -22,6 +22,10 @@ describe('canonical product root forward migration', () => {
     expect(sql).toContain('products_canonical_write_guard');
     expect(sql).toContain("raise exception 'canonical product writes require ingest_product_v1'");
     expect(sql).toContain('revoke insert,update,delete on public.products from authenticated');
+    expect(sql.indexOf('set constraints all immediate;')).toBeGreaterThan(-1);
+    expect(sql.indexOf('set constraints all immediate;')).toBeLessThan(
+      sql.indexOf('alter table public.product_versions enable row level security;'),
+    );
   });
 
   it('creates the six canonical dependent models with private overlays separated', () => {

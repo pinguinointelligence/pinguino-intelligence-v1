@@ -527,6 +527,12 @@ alter table public.products
 -- 3. RLS and the single write boundary
 -- ---------------------------------------------------------------------------
 
+-- The version/backfill FKs are deliberately DEFERRABLE so the immutable
+-- supersedes graph and current pointers can be copied in one transaction.
+-- PostgreSQL will not ALTER a table while those constraint-trigger events are
+-- still pending, so validate/flush them before enabling RLS.
+set constraints all immediate;
+
 alter table public.product_versions enable row level security;
 alter table public.product_variants enable row level security;
 alter table public.product_variant_markets enable row level security;
