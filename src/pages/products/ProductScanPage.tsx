@@ -243,6 +243,11 @@ export function ProductScanPage() {
   const [duplicateDifference, setDuplicateDifference] = useState('');
   const [selectedDuplicateProductId, setSelectedDuplicateProductId] = useState<string | null>(null);
   const [duplicatePreview, setDuplicatePreview] = useState<DuplicateCandidate[]>([]);
+  const [previewImagePhashes, setPreviewImagePhashes] = useState<string[]>([]);
+  const exposeStagingQaDiagnostics =
+    typeof window !== 'undefined' &&
+    window.location.hostname === 'staging.pinguinoai.com' &&
+    new URLSearchParams(window.location.search).has('qa');
   const selectedDuplicate =
     duplicatePreview.find((candidate) => candidate.productId === selectedDuplicateProductId) ??
     null;
@@ -305,6 +310,7 @@ export function ProductScanPage() {
     setResult(null);
     setDuplicate(null);
     setDuplicatePreview([]);
+    setPreviewImagePhashes([]);
     setProgress('Przygotowuję zdjęcia…');
     try {
       let next = createIntakeSession(crypto.randomUUID());
@@ -341,6 +347,7 @@ export function ProductScanPage() {
       const imagePhashes = (
         await Promise.all(pending.map((item) => browserPerceptualHash(item.file)))
       ).filter((hash): hash is string => hash !== null);
+      setPreviewImagePhashes(imagePhashes);
       const previews = await previewOcrDuplicateCandidates(next, {
         explicitlyUnbranded,
         imagePhashes,
@@ -494,7 +501,13 @@ export function ProductScanPage() {
     );
   }
   return (
-    <main className="mx-auto min-h-screen max-w-5xl bg-paper px-4 py-10 text-ink sm:px-8 lg:py-16">
+    <main
+      className="mx-auto min-h-screen max-w-5xl bg-paper px-4 py-10 text-ink sm:px-8 lg:py-16"
+      data-qa-image-phash-count={exposeStagingQaDiagnostics ? previewImagePhashes.length : undefined}
+      data-qa-image-phashes={
+        exposeStagingQaDiagnostics ? previewImagePhashes.join(',') : undefined
+      }
+    >
       <Link
         to="/products"
         className="inline-flex min-h-11 items-center text-sm text-stone-600 hover:text-ink"
