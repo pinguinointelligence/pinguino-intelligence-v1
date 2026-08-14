@@ -138,28 +138,30 @@ export async function browserPerceptualHash(image: Blob): Promise<string | null>
   let bitmap: ImageBitmap | null = null;
   try {
     bitmap = await createImageBitmap(image);
-    let pixels: Uint8ClampedArray | null = null;
+    let context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
     if (typeof document !== 'undefined') {
       const canvas = document.createElement('canvas');
-      canvas.width = HASH_SIDE;
-      canvas.height = HASH_SIDE;
-      const context = canvas.getContext('2d');
-      if (!context) return null;
-      context.imageSmoothingEnabled = false;
-      context.drawImage(bitmap, 0, 0, HASH_SIDE, HASH_SIDE);
-      pixels = context.getImageData(0, 0, HASH_SIDE, HASH_SIDE).data;
+      canvas.width = 1;
+      canvas.height = 1;
+      context = canvas.getContext('2d');
     } else if (typeof OffscreenCanvas !== 'undefined') {
-      const canvas = new OffscreenCanvas(HASH_SIDE, HASH_SIDE);
-      const context = canvas.getContext('2d');
-      if (!context) return null;
-      // ImageScript's server hash uses nearest-neighbour resize. Disable the
-      // browser's default smoothing so Preview and final archived evidence use
-      // the same 8x8 sampling contract.
-      context.imageSmoothingEnabled = false;
-      context.drawImage(bitmap, 0, 0, HASH_SIDE, HASH_SIDE);
-      pixels = context.getImageData(0, 0, HASH_SIDE, HASH_SIDE).data;
+      const canvas = new OffscreenCanvas(1, 1);
+      context = canvas.getContext('2d');
     }
-    return pixels ? averageHashFromRgba(pixels) : null;
+    if (!context) return null;
+    context.imageSmoothingEnabled = false;
+    const pixels = new Uint8ClampedArray(HASH_PIXEL_COUNT * 4);
+    for (let y = 0; y < HASH_SIDE; y += 1) {
+      for (let x = 0; x < HASH_SIDE; x += 1) {
+        // ImageScript 1.2.15 nearest-neighbour resize samples
+        // floor(cell * sourceSize / 8). Read the same exact source pixel.
+        const sourceX = Math.floor((x * bitmap.width) / HASH_SIDE);
+        const sourceY = Math.floor((y * bitmap.height) / HASH_SIDE);
+        context.drawImage(bitmap, sourceX, sourceY, 1, 1, 0, 0, 1, 1);
+        pixels.set(context.getImageData(0, 0, 1, 1).data, (y * HASH_SIDE + x) * 4);
+      }
+    }
+    return averageHashFromRgba(pixels);
   } catch {
     return null;
   } finally {

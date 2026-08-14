@@ -69,11 +69,12 @@ describe('OCR duplicate-preview perceptual hash', () => {
       rgba[pixel * 4 + 3] = 255;
     }
     const close = vi.fn();
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ close })));
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 80, height: 40, close })));
+    let sample = 0;
     const context = {
       imageSmoothingEnabled: true,
       drawImage: vi.fn(),
-      getImageData: () => ({ data: rgba }),
+      getImageData: () => ({ data: rgba.slice(sample * 4, ++sample * 4) }),
     };
     vi.stubGlobal('OffscreenCanvas', class {
       getContext() {
@@ -84,18 +85,18 @@ describe('OCR duplicate-preview perceptual hash', () => {
     await expect(browserPerceptualHash(new Blob(['webp'], { type: 'image/webp' })))
       .resolves.toBe('00000000ffffffff');
     expect(context.imageSmoothingEnabled).toBe(false);
+    expect(context.drawImage).toHaveBeenCalledTimes(64);
     expect(close).toHaveBeenCalledOnce();
   });
 
   it('prefers the page canvas and keeps nearest-neighbour sampling in the customer flow', async () => {
-    const rgba = new Uint8ClampedArray(8 * 8 * 4).fill(255);
     const close = vi.fn();
     const pageContext = {
       imageSmoothingEnabled: true,
       drawImage: vi.fn(),
-      getImageData: () => ({ data: rgba }),
+      getImageData: () => ({ data: new Uint8ClampedArray([255, 255, 255, 255]) }),
     };
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ close })));
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 80, height: 40, close })));
     vi.stubGlobal('document', {
       createElement: () => ({ width: 0, height: 0, getContext: () => pageContext }),
     });
@@ -108,7 +109,31 @@ describe('OCR duplicate-preview perceptual hash', () => {
     await expect(browserPerceptualHash(new Blob(['png'], { type: 'image/png' })))
       .resolves.toBe('ffffffffffffffff');
     expect(pageContext.imageSmoothingEnabled).toBe(false);
-    expect(pageContext.drawImage).toHaveBeenCalledOnce();
+    expect(pageContext.drawImage).toHaveBeenCalledTimes(64);
+    expect(pageContext.drawImage).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+    );
+    expect(pageContext.drawImage).toHaveBeenNthCalledWith(
+      64,
+      expect.anything(),
+      70,
+      35,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+    );
     expect(close).toHaveBeenCalledOnce();
   });
 
