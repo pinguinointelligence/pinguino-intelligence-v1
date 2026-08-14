@@ -37,6 +37,13 @@ const actorAnonymization = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const evidenceAnonymization = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813111000_product_evidence_actor_anonymization.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -89,6 +96,16 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(actorAnonymization).toContain('new.created_by is null');
     expect(actorAnonymization).toContain(
       "raise exception 'canonical product writes require ingest_product_v1'",
+    );
+  });
+
+  it('anonymizes only the evidence owner while retaining immutable evidence bytes', () => {
+    expect(evidenceAnonymization).toContain("tg_table_name='product_evidence'");
+    expect(evidenceAnonymization).toContain(
+      "(to_jsonb(new)-'owner_user_id')=(to_jsonb(old)-'owner_user_id')",
+    );
+    expect(evidenceAnonymization).toContain(
+      "raise exception 'canonical product history is immutable and ingest-owned'",
     );
   });
 });
