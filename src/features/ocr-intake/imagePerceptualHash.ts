@@ -2,6 +2,10 @@ const HASH_SIDE = 8;
 const HASH_PIXEL_COUNT = HASH_SIDE * HASH_SIDE;
 const MAX_RASTER_DIMENSION = 12_000;
 const MAX_RASTER_PIXELS = 40_000_000;
+// Keep the lossless canonical PNG below the 10 MiB evidence limit even for
+// incompressible RGBA phone photos (2M * 4 bytes plus PNG framing).
+const MAX_CANONICAL_PIXELS = 2_000_000;
+const MAX_CANONICAL_EDGE = 2_200;
 
 const ascii = (bytes: Uint8Array, offset: number, length: number): string =>
   String.fromCharCode(...bytes.slice(offset, offset + length));
@@ -118,8 +122,16 @@ export function averageHashFromRgba(rgba: ArrayLike<number>): string | null {
     const red = rgba[offset];
     const green = rgba[offset + 1];
     const blue = rgba[offset + 2];
-    if (red === undefined || green === undefined || blue === undefined) return null;
-    luminance.push((red * 299 + green * 587 + blue * 114) / 1000);
+    const alpha = rgba[offset + 3];
+    if (red === undefined || green === undefined || blue === undefined || alpha === undefined) return null;
+    // Hash the visible pixel on a fixed white background. Hidden RGB below a
+    // transparent PNG pixel is decoder-specific and must not affect duplicate
+    // identity. The Edge applies the same projection.
+    const opacity = alpha / 255;
+    const visibleRed = red * opacity + 255 * (1 - opacity);
+    const visibleGreen = green * opacity + 255 * (1 - opacity);
+    const visibleBlue = blue * opacity + 255 * (1 - opacity);
+    luminance.push((visibleRed * 299 + visibleGreen * 587 + visibleBlue * 114) / 1000);
   }
   const average = luminance.reduce((sum, value) => sum + value, 0) / luminance.length;
   let hash = '';
@@ -150,6 +162,10 @@ export async function browserPerceptualHash(image: Blob): Promise<string | null>
     }
     if (!context) return null;
     context.imageSmoothingEnabled = false;
+    // Copy each source pixel instead of blending it over the previous 1x1
+    // sample. ImageScript reads independent RGBA pixels on the Edge, so the
+    // browser preview must not use Canvas' default source-over compositing.
+    context.globalCompositeOperation = 'copy';
     const pixels = new Uint8ClampedArray(HASH_PIXEL_COUNT * 4);
     for (let y = 0; y < HASH_SIDE; y += 1) {
       for (let x = 0; x < HASH_SIDE; x += 1) {
@@ -169,29 +185,37 @@ export async function browserPerceptualHash(image: Blob): Promise<string | null>
   }
 }
 
-/** ImageScript on the Edge has no stable WebP decoder. Normalize WebP once in
- * the browser before OCR, checksum, archive and pHash so preview and final
- * server verification consume byte-identical PNG evidence. A failed decode is
- * explicit (`null`) and the caller rejects the image instead of offering an
- * unverifiable duplicate preview. */
+/** Normalize formats whose browser and Edge decoders do not share one pixel
+ * orientation contract. ImageScript has no stable WebP decoder and does not
+ * apply JPEG EXIF orientation, while browsers do. Canonical PNG bytes are used
+ * for OCR, checksum, archive and both pHash stages. A failed decode is explicit
+ * (`null`) so no unverifiable duplicate preview is offered. */
 export async function normalizeEvidenceImage(image: File): Promise<File | null> {
   const dimensions = rasterDimensions(new Uint8Array(await image.arrayBuffer()), image.type);
   if (!dimensionsAllowed(dimensions)) return null;
-  if (image.type !== 'image/webp') return image;
   if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null;
   let bitmap: ImageBitmap | null = null;
   try {
-    bitmap = await createImageBitmap(image);
-    if (bitmap.width !== dimensions!.width || bitmap.height !== dimensions!.height) return null;
+    bitmap = await createImageBitmap(image, { imageOrientation: 'from-image' });
+    const directDimensions = bitmap.width === dimensions!.width && bitmap.height === dimensions!.height;
+    const exifRotatedJpeg = image.type === 'image/jpeg'
+      && bitmap.width === dimensions!.height
+      && bitmap.height === dimensions!.width;
+    if (!directDimensions && !exifRotatedJpeg) return null;
+    const edgeScale = Math.min(1, MAX_CANONICAL_EDGE / Math.max(bitmap.width, bitmap.height));
+    const pixelScale = Math.min(1, Math.sqrt(MAX_CANONICAL_PIXELS / (bitmap.width * bitmap.height)));
+    const scale = Math.min(edgeScale, pixelScale);
+    const targetWidth = Math.max(1, Math.floor(bitmap.width * scale));
+    const targetHeight = Math.max(1, Math.floor(bitmap.height * scale));
     const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
     const context = canvas.getContext('2d');
     if (!context) return null;
-    context.drawImage(bitmap, 0, 0);
+    context.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
     const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!png) return null;
-    const name = image.name.replace(/\.webp$/i, '') || 'etykieta';
+    const name = image.name.replace(/\.(?:png|webp|jpe?g)$/i, '') || 'etykieta';
     return new File([png], `${name}.png`, { type: 'image/png', lastModified: image.lastModified });
   } catch {
     return null;

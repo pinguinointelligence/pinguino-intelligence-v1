@@ -170,15 +170,21 @@ async function perceptualHash(
         let r = 0;
         let g = 0;
         let b = 0;
+        let a = 255;
         if (Array.isArray(value) || ArrayBuffer.isView(value)) {
           const channels = Array.from(value as ArrayLike<number>);
-          [r = 0, g = 0, b = 0] = channels;
+          [r = 0, g = 0, b = 0, a = 255] = channels;
         } else if (typeof value === 'number') {
           r = (value >>> 24) & 255;
           g = (value >>> 16) & 255;
           b = (value >>> 8) & 255;
+          a = value & 255;
         } else return null;
-        luminance.push((r * 299 + g * 587 + b * 114) / 1000);
+        const opacity = a / 255;
+        const visibleRed = r * opacity + 255 * (1 - opacity);
+        const visibleGreen = g * opacity + 255 * (1 - opacity);
+        const visibleBlue = b * opacity + 255 * (1 - opacity);
+        luminance.push((visibleRed * 299 + visibleGreen * 587 + visibleBlue * 114) / 1000);
       }
     }
     const average = luminance.reduce((sum, value) => sum + value, 0) / luminance.length;

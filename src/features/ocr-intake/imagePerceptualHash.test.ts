@@ -59,6 +59,17 @@ describe('OCR duplicate-preview perceptual hash', () => {
     expect(averageHashFromRgba(new Uint8ClampedArray(8))).toBeNull();
   });
 
+  it('ignores decoder-specific hidden RGB under fully transparent pixels', () => {
+    const hiddenRed = new Uint8ClampedArray(8 * 8 * 4);
+    const hiddenBlue = new Uint8ClampedArray(8 * 8 * 4);
+    for (let pixel = 0; pixel < 64; pixel += 1) {
+      const transparent = pixel < 32;
+      hiddenRed.set(transparent ? [255, 0, 0, 0] : [50, 50, 50, 255], pixel * 4);
+      hiddenBlue.set(transparent ? [0, 0, 255, 0] : [50, 50, 50, 255], pixel * 4);
+    }
+    expect(averageHashFromRgba(hiddenRed)).toBe(averageHashFromRgba(hiddenBlue));
+  });
+
   it('hashes a WebP image when the browser decoder supports it', async () => {
     const rgba = new Uint8ClampedArray(8 * 8 * 4);
     for (let pixel = 0; pixel < 64; pixel += 1) {
@@ -73,6 +84,7 @@ describe('OCR duplicate-preview perceptual hash', () => {
     let sample = 0;
     const context = {
       imageSmoothingEnabled: true,
+      globalCompositeOperation: 'source-over',
       drawImage: vi.fn(),
       getImageData: () => ({ data: rgba.slice(sample * 4, ++sample * 4) }),
     };
@@ -85,6 +97,7 @@ describe('OCR duplicate-preview perceptual hash', () => {
     await expect(browserPerceptualHash(new Blob(['webp'], { type: 'image/webp' })))
       .resolves.toBe('00000000ffffffff');
     expect(context.imageSmoothingEnabled).toBe(false);
+    expect(context.globalCompositeOperation).toBe('copy');
     expect(context.drawImage).toHaveBeenCalledTimes(64);
     expect(close).toHaveBeenCalledOnce();
   });
@@ -93,6 +106,7 @@ describe('OCR duplicate-preview perceptual hash', () => {
     const close = vi.fn();
     const pageContext = {
       imageSmoothingEnabled: true,
+      globalCompositeOperation: 'source-over',
       drawImage: vi.fn(),
       getImageData: () => ({ data: new Uint8ClampedArray([255, 255, 255, 255]) }),
     };
@@ -109,6 +123,7 @@ describe('OCR duplicate-preview perceptual hash', () => {
     await expect(browserPerceptualHash(new Blob(['png'], { type: 'image/png' })))
       .resolves.toBe('ffffffffffffffff');
     expect(pageContext.imageSmoothingEnabled).toBe(false);
+    expect(pageContext.globalCompositeOperation).toBe('copy');
     expect(pageContext.drawImage).toHaveBeenCalledTimes(64);
     expect(pageContext.drawImage).toHaveBeenNthCalledWith(
       1,
@@ -139,7 +154,8 @@ describe('OCR duplicate-preview perceptual hash', () => {
 
   it('normalizes WebP to PNG before checksum, OCR, archive and final server pHash', async () => {
     const close = vi.fn();
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 4, height: 3, close })));
+    const createBitmap = vi.fn(async () => ({ width: 4, height: 3, close }));
+    vi.stubGlobal('createImageBitmap', createBitmap);
     const drawImage = vi.fn();
     vi.stubGlobal('document', {
       createElement: () => ({
@@ -157,7 +173,97 @@ describe('OCR duplicate-preview perceptual hash', () => {
     const normalized = await normalizeEvidenceImage(source);
 
     expect(normalized).toMatchObject({ name: 'etykieta.png', type: 'image/png', lastModified: 123 });
-    expect(drawImage).toHaveBeenCalledOnce();
+    expect(createBitmap).toHaveBeenCalledWith(source, { imageOrientation: 'from-image' });
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 4, 3);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('normalizes an EXIF-oriented JPEG to the exact PNG bytes used by the Edge', async () => {
+    const jpeg = new Uint8Array([
+      0xff, 0xd8,
+      0xff, 0xc0, 0x00, 0x11, 0x08,
+      0x01, 0xe0,
+      0x02, 0x80,
+      0x03, 0x01, 0x11, 0x00,
+      0x02, 0x11, 0x00,
+      0x03, 0x11, 0x00,
+    ]);
+    const source = new File([jpeg], 'telefon.jpg', { type: 'image/jpeg', lastModified: 456 });
+    const close = vi.fn();
+    const createBitmap = vi.fn(async () => ({ width: 480, height: 640, close }));
+    vi.stubGlobal('createImageBitmap', createBitmap);
+    const drawImage = vi.fn();
+    vi.stubGlobal('document', {
+      createElement: () => ({
+        width: 0,
+        height: 0,
+        getContext: () => ({ drawImage }),
+        toBlob: (callback: (blob: Blob) => void) => callback(new Blob(['png'], { type: 'image/png' })),
+      }),
+    });
+
+    const normalized = await normalizeEvidenceImage(source);
+
+    expect(normalized).toMatchObject({ name: 'telefon.png', type: 'image/png', lastModified: 456 });
+    expect(createBitmap).toHaveBeenCalledWith(source, { imageOrientation: 'from-image' });
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 480, 640);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('rewrites PNG through canvas so hidden transparent RGB cannot diverge on the Edge', async () => {
+    const png = new Uint8Array(24);
+    png.set([137, 80, 78, 71, 13, 10, 26, 10], 0);
+    png.set(new TextEncoder().encode('IHDR'), 12);
+    new DataView(png.buffer).setUint32(16, 2);
+    new DataView(png.buffer).setUint32(20, 1);
+    const source = new File([png], 'alpha.png', { type: 'image/png', lastModified: 789 });
+    const close = vi.fn();
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 2, height: 1, close })));
+    const drawImage = vi.fn();
+    vi.stubGlobal('document', {
+      createElement: () => ({
+        width: 0,
+        height: 0,
+        getContext: () => ({ drawImage }),
+        toBlob: (callback: (blob: Blob) => void) => callback(new Blob(['canonical'], { type: 'image/png' })),
+      }),
+    });
+
+    const normalized = await normalizeEvidenceImage(source);
+
+    expect(normalized).toMatchObject({ name: 'alpha.png', type: 'image/png', lastModified: 789 });
+    expect(await normalized!.text()).toBe('canonical');
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 2, 1);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('bounds a valid large phone JPEG before lossless PNG encoding', async () => {
+    const jpeg = new Uint8Array([
+      0xff, 0xd8,
+      0xff, 0xc0, 0x00, 0x11, 0x08,
+      0x0b, 0xb8,
+      0x0f, 0xa0,
+      0x03, 0x01, 0x11, 0x00,
+      0x02, 0x11, 0x00,
+      0x03, 0x11, 0x00,
+    ]);
+    const source = new File([jpeg], 'telefon-12mp.jpg', { type: 'image/jpeg' });
+    const close = vi.fn();
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 4000, height: 3000, close })));
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => ({ drawImage: vi.fn() }),
+      toBlob: (callback: (blob: Blob) => void) => callback(new Blob(['bounded'], { type: 'image/png' })),
+    };
+    vi.stubGlobal('document', { createElement: () => canvas });
+
+    const normalized = await normalizeEvidenceImage(source);
+
+    expect(normalized).toMatchObject({ name: 'telefon-12mp.png', type: 'image/png' });
+    expect(canvas.width * canvas.height).toBeLessThanOrEqual(2_000_000);
+    expect(canvas.width).toBeLessThanOrEqual(2_200);
+    expect(canvas.height).toBeLessThanOrEqual(2_200);
     expect(close).toHaveBeenCalledOnce();
   });
 
