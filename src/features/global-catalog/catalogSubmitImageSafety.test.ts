@@ -107,4 +107,9 @@ describe('catalog-submit evidence image safety', () => {
     expect(decode).toBeGreaterThan(guard);
     expect(EDGE).toContain('ocr_evidence_image_dimensions_invalid');
   });
+
+  it('uses ImageScript\'s one-based coordinates for the final server pHash', () => {
+    expect(EDGE).toContain('resized.getRGBAAt(x + 1, y + 1)');
+    expect(EDGE).not.toContain('resized.getRGBAAt(x, y)');
+  });
 });

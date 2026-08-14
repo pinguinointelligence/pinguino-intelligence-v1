@@ -164,7 +164,9 @@ async function perceptualHash(
     const luminance: number[] = [];
     for (let y = 0; y < 8; y += 1) {
       for (let x = 0; x < 8; x += 1) {
-        const value = resized.getRGBAAt(x, y) as unknown;
+        // ImageScript uses 1-based pixel coordinates even though this loop is
+        // intentionally 0-based for the 64-bit hash layout.
+        const value = resized.getRGBAAt(x + 1, y + 1) as unknown;
         let r = 0;
         let g = 0;
         let b = 0;
