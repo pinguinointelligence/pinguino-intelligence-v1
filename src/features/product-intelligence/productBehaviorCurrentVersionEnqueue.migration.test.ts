@@ -83,6 +83,13 @@ const generatedColumns = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const deleteDiagnosticRemoval = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813111700_remove_account_delete_diagnostic.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -191,5 +198,11 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(generatedColumns).toContain("'ean_code_normalized','barcode_normalized'");
     expect(generatedColumns).toContain("v_new->'created_by'='null'::jsonb");
     expect(generatedColumns).toContain('columns=%');
+  });
+
+  it('removes the bounded account-delete diagnostic after staging proof', () => {
+    expect(deleteDiagnosticRemoval).toContain(
+      'drop function if exists public.diagnose_account_delete_v1(uuid)',
+    );
   });
 });
