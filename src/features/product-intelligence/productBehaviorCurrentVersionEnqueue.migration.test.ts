@@ -69,6 +69,13 @@ const writeGuardDiagnostics = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const writeGuardColumns = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813111500_canonical_write_guard_column_diagnostics.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -165,5 +172,11 @@ describe('current-version behavior enqueue hotfix', () => {
       'canonical product writes require ingest_product_v1 (table=%, op=%)',
     );
     expect(writeGuardDiagnostics).toContain('tg_table_name,tg_op');
+  });
+
+  it('diagnoses denied writes by column name without including values', () => {
+    expect(writeGuardColumns).toContain('from jsonb_each(v_new) e');
+    expect(writeGuardColumns).toContain('columns=%');
+    expect(writeGuardColumns).not.toContain('e.value::text');
   });
 });
