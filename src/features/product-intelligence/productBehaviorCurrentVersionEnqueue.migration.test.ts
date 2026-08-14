@@ -76,6 +76,13 @@ const writeGuardColumns = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const generatedColumns = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813111600_canonical_actor_generated_columns.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -178,5 +185,11 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(writeGuardColumns).toContain('from jsonb_each(v_new) e');
     expect(writeGuardColumns).toContain('columns=%');
     expect(writeGuardColumns).not.toContain('e.value::text');
+  });
+
+  it('permits only database-generated identity columns beside actor anonymization', () => {
+    expect(generatedColumns).toContain("'ean_code_normalized','barcode_normalized'");
+    expect(generatedColumns).toContain("v_new->'created_by'='null'::jsonb");
+    expect(generatedColumns).toContain('columns=%');
   });
 });
