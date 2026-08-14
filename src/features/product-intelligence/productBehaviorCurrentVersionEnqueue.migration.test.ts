@@ -55,6 +55,13 @@ const deleteDiagnostic = readFileSync(
   join(process.cwd(), 'supabase/migrations/20260813111200_account_delete_diagnostic.sql'),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const genericWriteGuard = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813111300_generic_write_guard_anonymization.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -137,5 +144,12 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(deleteDiagnostic).toContain(
       'revoke all on function public.diagnose_account_delete_v1(uuid) from public,anon,authenticated',
     );
+  });
+
+  it('uses table-shape-safe JSONB comparisons in the generic write guard', () => {
+    expect(genericWriteGuard).toContain('v_new:=to_jsonb(new)');
+    expect(genericWriteGuard).toContain('v_old:=to_jsonb(old)');
+    expect(genericWriteGuard).toContain("v_new->'actor_user_id'='null'::jsonb");
+    expect(genericWriteGuard).not.toMatch(/new\.actor_user_id|new\.owner_user_id/);
   });
 });
