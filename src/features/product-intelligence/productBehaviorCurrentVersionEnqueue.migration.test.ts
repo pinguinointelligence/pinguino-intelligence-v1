@@ -62,6 +62,13 @@ const genericWriteGuard = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
+const writeGuardDiagnostics = readFileSync(
+  join(
+    process.cwd(),
+    'supabase/migrations/20260813111400_canonical_write_guard_diagnostics.sql',
+  ),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 describe('current-version behavior enqueue hotfix', () => {
   it('waits for the canonical current-version pointer before fingerprinting', () => {
@@ -151,5 +158,12 @@ describe('current-version behavior enqueue hotfix', () => {
     expect(genericWriteGuard).toContain('v_old:=to_jsonb(old)');
     expect(genericWriteGuard).toContain("v_new->'actor_user_id'='null'::jsonb");
     expect(genericWriteGuard).not.toMatch(/new\.actor_user_id|new\.owner_user_id/);
+  });
+
+  it('reports fact-free trigger coordinates for any remaining denied system write', () => {
+    expect(writeGuardDiagnostics).toContain(
+      'canonical product writes require ingest_product_v1 (table=%, op=%)',
+    );
+    expect(writeGuardDiagnostics).toContain('tg_table_name,tg_op');
   });
 });
