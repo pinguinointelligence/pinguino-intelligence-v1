@@ -74,6 +74,15 @@ const render = (state: Partial<MockRecipeState>) => {
 };
 
 describe('ProWorkbar (sticky top workbar)', () => {
+  it('keeps the permanent + Nowa receptura action immediately before recipe status', () => {
+    const html = render({ savedRecipeId: null, dirty: false });
+    expect(html).toContain('data-testid="pro-workbar-new-recipe"');
+    expect(html).toContain('+ Nowa receptura');
+    expect(html.indexOf('data-testid="pro-workbar-new-recipe"')).toBeLessThan(
+      html.indexOf('data-testid="pro-workbar-status"'),
+    );
+  });
+
   it('NEW recipe: inline name field + „Zapisz recepturę" beside it + „nowa, niezapisana" status', () => {
     const html = render({ savedRecipeId: null, savedRecipeName: null, currentVersionNumber: null });
     expect(html).toContain('data-testid="pro-workbar-name"');

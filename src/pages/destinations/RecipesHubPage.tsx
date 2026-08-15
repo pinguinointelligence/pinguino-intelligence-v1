@@ -29,7 +29,11 @@ import { useReviewMode } from '@/features/design-review/useReviewMode';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
 import { MyRecipesContent } from '@/pages/recipes/MyRecipesPage';
-import { startNewProRecipe } from './startNewProRecipe';
+import {
+  hasUnsavedProRecipeChanges,
+  startNewProRecipe,
+} from './startNewProRecipe';
+import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 
 const r = copy.nav.recipes;
 const d = r.discovery;
@@ -515,6 +519,7 @@ export function RecipesHubPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [view, setView] = useState<DiscoveryView>('home');
+  const [newRecipeConfirmOpen, setNewRecipeConfirmOpen] = useState(false);
   const ownerReviewMode = useReviewMode();
   const persona = useProCorePersona();
   const requestedTab = params.get('tab');
@@ -523,6 +528,18 @@ export function RecipesHubPage() {
       ? requestedTab
       : 'pinguino';
   const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
+  const openNewRecipe = () => {
+    if (persona === 'pro') startNewProRecipe();
+    setNewRecipeConfirmOpen(false);
+    navigate(newRecipeHref);
+  };
+  const requestNewRecipe = () => {
+    if (persona === 'pro' && hasUnsavedProRecipeChanges()) {
+      setNewRecipeConfirmOpen(true);
+      return;
+    }
+    openNewRecipe();
+  };
   const selectTab = (tab: RecipeLibraryTab) => {
     const next = new URLSearchParams(params);
     if (tab === 'pinguino') next.delete('tab');
@@ -584,15 +601,18 @@ export function RecipesHubPage() {
         </div>
         <button
           type="button"
-          onClick={() => {
-            if (persona === 'pro') startNewProRecipe();
-            navigate(newRecipeHref);
-          }}
+          onClick={requestNewRecipe}
           className="mb-1 inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-ink transition-opacity hover:opacity-55"
         >
           + Nowa receptura
         </button>
       </div>
+
+      <NewRecipeConfirmationDialog
+        open={newRecipeConfirmOpen}
+        onCancel={() => setNewRecipeConfirmOpen(false)}
+        onConfirm={openNewRecipe}
+      />
 
       {activeTab === 'mine' ? (
         <div id="recipes-panel-mine" role="tabpanel" aria-labelledby="recipes-tab-mine">

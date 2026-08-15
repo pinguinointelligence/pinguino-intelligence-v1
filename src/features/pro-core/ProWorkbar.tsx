@@ -5,6 +5,11 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
 import { WorkbenchActionBar } from '@/features/pro-workbench/WorkbenchActionBar';
 import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
+import {
+  hasUnsavedProRecipeChanges,
+  startNewProRecipe,
+} from '@/pages/destinations/startNewProRecipe';
+import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
@@ -38,6 +43,7 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
   const linked = Boolean(savedRecipeId);
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [newRecipeConfirmOpen, setNewRecipeConfirmOpen] = useState(false);
   const name = nameDraft ?? savedRecipeName ?? '';
 
   const product = copy.studio.goal.productTypes[visibleProductType];
@@ -81,6 +87,22 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
 
   const blockedMsg = save.blocked ? w.blocked[save.blocked] : null;
 
+  const createNewDraft = () => {
+    startNewProRecipe();
+    setNameDraft(null);
+    setNameError(null);
+    setNewRecipeConfirmOpen(false);
+  };
+
+  const requestNewDraft = () => {
+    const nameChanged = nameDraft !== null && nameDraft.trim() !== (savedRecipeName ?? '');
+    if (hasUnsavedProRecipeChanges(nameChanged)) {
+      setNewRecipeConfirmOpen(true);
+      return;
+    }
+    createNewDraft();
+  };
+
   return (
     <section
       aria-label="PINGÜINO Pro — nazwa i zapis receptury"
@@ -89,6 +111,14 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
     >
       <div className="grid min-w-0 gap-2 lg:grid-cols-[minmax(0,1.66fr)_minmax(420px,1fr)] lg:items-center lg:gap-4 2xl:grid-cols-[1062px_635px] 2xl:gap-16">
         <div className="flex min-w-0 items-center justify-end gap-2 px-0.5 2xl:relative 2xl:h-[40px]">
+          <button
+            type="button"
+            onClick={requestNewDraft}
+            data-testid="pro-workbar-new-recipe"
+            className="h-9 shrink-0 rounded-[12px] border border-ink/15 bg-white px-3 text-xs font-semibold text-ink shadow-pro-e0 transition-colors hover:border-ink/35 hover:bg-stone-50 2xl:absolute 2xl:left-[568px] 2xl:h-[34px] 2xl:w-[146px] 2xl:px-2 2xl:text-[10px]"
+          >
+            + Nowa receptura
+          </button>
           <span
             className={cn(
               'min-w-0 truncate text-xs 2xl:absolute 2xl:left-[729px]',
@@ -185,6 +215,12 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
       ) : blockedMsg ? (
         <p className="mt-1 text-xs text-stone-600">{blockedMsg}</p>
       ) : null}
+
+      <NewRecipeConfirmationDialog
+        open={newRecipeConfirmOpen}
+        onCancel={() => setNewRecipeConfirmOpen(false)}
+        onConfirm={createNewDraft}
+      />
     </section>
   );
 }

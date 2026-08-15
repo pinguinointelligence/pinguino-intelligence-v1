@@ -58,6 +58,7 @@ import {
   type RecipeToppingItem,
   type RecipeToppingIngredient,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import {
   cloneToppingIngredient,
   isCatalogLabelToppingIngredient,
@@ -143,6 +144,8 @@ export interface RecipeState {
   unavailableMainIngredientIds: string[];
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
   activePresetId: PresetId | null;
+  /** Approved neutral scaffold attached only to an untouched explicit new draft. */
+  newRecipeStarterTemplateId: string | null;
   /**
    * The CANONICAL saved-recipe aggregate link (= `saved_recipes.id` = pro-core `recipeId`).
    * Drives the ONE save flow: null → "Zapisz recepturę" (create); set → "Zapisz nową wersję".
@@ -318,6 +321,8 @@ export interface RecipeState {
       composition?: RecipeCompositionMetadata | null;
     },
   ) => void;
+  /** Start an explicit clean Pro draft for the selected customer-visible type. */
+  startNewRecipe: (visible?: VisibleProductType) => void;
   /** Link the draft to its persisted aggregate after a create/version/restore. Clears dirty. */
   markSaved: (
     id: string,
@@ -449,6 +454,7 @@ const fromPreset = (preset: DemoPreset) => ({
   excludedIngredientIds: [] as string[],
   unavailableMainIngredientIds: [] as string[],
   activePresetId: preset.id,
+  newRecipeStarterTemplateId: null,
   savedRecipeId: null,
   savedRecipeName: null,
   currentVersionNumber: null,
@@ -542,6 +548,7 @@ export function recipePersistPartialize(state: RecipeState) {
     excludedIngredientIds: state.excludedIngredientIds,
     unavailableMainIngredientIds: state.unavailableMainIngredientIds,
     activePresetId: state.activePresetId,
+    newRecipeStarterTemplateId: state.newRecipeStarterTemplateId,
     savedRecipeId: state.savedRecipeId,
     savedRecipeName: state.savedRecipeName,
     currentVersionNumber: state.currentVersionNumber,
@@ -1505,6 +1512,7 @@ export const useRecipeStore = create<RecipeState>()(
           excludedIngredientIds: [...(input.goals?.excluded_ingredient_ids ?? [])],
           unavailableMainIngredientIds: [...(input.goals?.unavailable_main_ingredient_ids ?? [])],
           activePresetId: null,
+          newRecipeStarterTemplateId: null,
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
           currentVersionNumber: link.versionNumber ?? null,
@@ -1525,8 +1533,69 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionNumber: versionNumber,
           currentVersionDate: versionDate,
           dirty: false,
+          newRecipeStarterTemplateId: null,
           ...(practicalRecipeAudit === undefined ? {} : { practicalRecipeAudit }),
         }),
+      startNewRecipe: (requestedVisible) => {
+        useIngredientTableUxStore.getState().reset();
+        const visible = requestedVisible ?? useRecipeStore.getState().visibleProductType;
+        const specificDefaults = useRecipeProfileStore
+          .getState()
+          .defaultsFor(productDefaultsKey(visible));
+        const legacyDefaults = useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
+        const defaults =
+          specificDefaults ??
+          (legacyDefaults?.visibleProductType === visible ? legacyDefaults : null);
+        const starter = buildCanonicalNewRecipeStarter({
+          visibleProductType: visible,
+          targetTemperatureC: defaults?.targetTemperatureC,
+          targetBatchGrams: defaults?.targetBatchGrams,
+        });
+        const base = fromPreset(DEFAULT_PRESET);
+        set((state) => ({
+          ...base,
+          mode: 'classic',
+          formulation_strategy: normalizeFormulationStrategy(
+            defaults?.formulationStrategy ?? 'optimal',
+          ),
+          category: starter.category,
+          visibleProductType: starter.visibleProductType,
+          target_temperature_c: starter.targetTemperatureC,
+          target_batch_grams: starter.targetBatchGrams,
+          machine_capacity_grams:
+            defaults?.machineKind === 'home' ? defaults.machineCapacityGrams : null,
+          machine_capacity_source:
+            defaults?.machineKind === 'home' && defaults.machineCapacityGrams !== null
+              ? 'machine'
+              : null,
+          direction_targets: {
+            ...(defaults?.directionTargets ?? DEFAULT_DIRECTION_TARGETS),
+          },
+          direction_targets_active: Object.values(defaults?.directionTargets ?? {}).some(
+            (target) => target !== 0,
+          ),
+          items: starter.items,
+          baseOrder: starter.items.map((item) => item.id),
+          activePresetId: null,
+          newRecipeStarterTemplateId: starter.templateId,
+          machineKind: defaults?.machineKind ?? null,
+          servingModeId: defaults?.servingModeId ?? null,
+          machineId: defaults?.machineId ?? null,
+          machineLabel: defaults?.machineLabel ?? null,
+          dirty: false,
+          draftRevision: state.draftRevision + 1,
+          draftContextSeq: state.draftContextSeq + 1,
+        }));
+        const opened = useRecipeStore.getState();
+        useRecipeProfileStore
+          .getState()
+          .openDraft(
+            opened.draftContextSeq,
+            defaults?.directionTargets ?? DEFAULT_DIRECTION_TARGETS,
+            defaults?.directionIntents,
+          );
+        useRecipeProfileStore.getState().markRecalculationRequired();
+      },
       // OWNER CURRENT-DRAFT P0 (Phase 8) — ONE SHARED MACHINE CONTEXT. The
       // machine selection is now AUTHORITATIVE over the capacity: a
       // PROFESSIONAL selection imposes no Home capacity limit (null), a HOME

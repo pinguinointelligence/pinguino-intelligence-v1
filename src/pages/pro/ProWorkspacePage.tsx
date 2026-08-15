@@ -154,12 +154,13 @@ function RecipeWorkbench({
   onRecalculate: () => void;
   onCloseRecalc: () => void;
 }) {
+  const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="pro-viewport-region">
       <SurfaceToneContext.Provider value="paper">
         <div className="flex min-h-0 flex-1 flex-col bg-shell text-ivory">
           <StudioEngineSurface
-            key={activePanel}
+            key={`${activePanel}:${draftContextSeq}`}
             activePanel={activePanel}
             recipeBar={<ProWorkbar onOpenPreview={onOpenRecalc} />}
             recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={onCloseRecalc} />}

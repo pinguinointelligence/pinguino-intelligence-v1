@@ -159,4 +159,66 @@ describe('legacy recipe runtime resolution', () => {
     expect(JSON.stringify(saved)).toBe(savedBytes);
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
   });
+
+  it('hydrates an intentionally incomplete Sorbet starter without inventing its fruit Main', async () => {
+    useRecipeStore.getState().startNewRecipe('sorbet');
+    const starter = buildRecipeInput(useRecipeStore.getState());
+    const expected = productBehaviorTestSnapshots(starter);
+    const byMapper = new Map(starter.items.map((item) => [
+      item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+      { item, snapshot: expected[item.id]! },
+    ]));
+    mocks.resolve.mockImplementation(async ({ reference }) => {
+      const fixture = byMapper.get(reference.mapperIngredientId ?? reference.canonicalIdentity);
+      if (!fixture) return null;
+      const snapshot = fixture.snapshot;
+      return {
+        schemaVersion: 1,
+        resolverVersion: snapshot.resolverVersion,
+        entityKind: 'mapper',
+        productId: snapshot.productId,
+        productVersionId: snapshot.productVersionId,
+        factsFingerprint: snapshot.factsFingerprint,
+        catalogStatus: 'pi_base',
+        provenance: 'mapper',
+        behaviorBindingId: snapshot.behaviorBindingId,
+        behaviorBindingVersion: snapshot.behaviorBindingVersion,
+        taxonomyVersion: snapshot.taxonomyVersion,
+        mapperIngredientId: reference.mapperIngredientId,
+        familyId: null,
+        subfamilyId: null,
+        formId: null,
+        mainEligibility: 'STANDARD_ONLY',
+        veganEligibility: 'unknown',
+        proteinBehavior: 'unknown',
+        processBehavior: {},
+        sharedFacts: snapshot.sharedFacts,
+        approvedLiquidDairyCarrier: false,
+        context: {},
+        module: 'BASE_RECIPE',
+        state: 'eligible',
+        moduleEligibility: snapshot.moduleEligibility,
+        mainPolicy: null,
+        warnings: [],
+        blockReasons: [],
+      };
+    });
+    mocks.getRow.mockImplementation(async (mapperId: string) => {
+      const fixture = byMapper.get(mapperId);
+      return fixture ? rowFromEngine(fixture.item.ingredient) : null;
+    });
+
+    await act(async () => root.render(<Harness />));
+    await vi.waitFor(() => {
+      expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots)).toHaveLength(
+        starter.items.length,
+      );
+    });
+
+    const hydrated = useRecipeStore.getState();
+    expect(hydrated.visibleProductType).toBe('sorbet');
+    expect(hydrated.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(400, 6);
+    expect(hydrated.items.some((item) => item.lock_type === 'main')).toBe(false);
+    expect(hydrated.dirty).toBe(false);
+  });
 });

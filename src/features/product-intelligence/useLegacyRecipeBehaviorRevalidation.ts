@@ -4,6 +4,7 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import {
   getEngineApprovedIngredientById,
 } from '@/services/ingredients';
@@ -187,6 +188,39 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
         snapshots,
       });
       upgraded = recipeInputFromFrozenBehavior(upgraded, authority, 'technical');
+      // An explicit new-recipe scaffold may be intentionally incomplete (the
+      // Sorbet fruit/Main is chosen by the customer), so its technological
+      // lines do not yet reconcile to the target batch. Hydrate their exact
+      // current Mapper facts + snapshots atomically without mislabelling this
+      // server-owned enrichment as a user edit. Normal saved/existing recipes
+      // continue through the strict full-batch write door below.
+      if (typeof latest.newRecipeStarterTemplateId === 'string') {
+        useRecipeStore.setState((current) => {
+          if (
+            current.draftContextSeq !== draftContextSeq ||
+            current.draftRevision !== draftRevision ||
+            current.newRecipeStarterTemplateId !== latest.newRecipeStarterTemplateId
+          ) {
+            return current;
+          }
+          return {
+            items: upgraded.items.map((item) => ({
+              ...item,
+              ingredient: structuredClone(item.ingredient),
+            })),
+            productBehaviorSnapshots: structuredClone(snapshots),
+            compositionMigrationAmbiguities: current.compositionMigrationAmbiguities.filter(
+              (issue) =>
+                !required.includes(issue.lineId) ||
+                !issue.reason.startsWith('LEGACY_BEHAVIOR:'),
+            ),
+            dirty: false,
+            draftRevision: current.draftRevision + 1,
+          };
+        });
+        useRecipeProfileStore.getState().markRecalculationRequired();
+        return;
+      }
       const committed = useRecipeStore.getState().applyVerifiedRecipeInput(
         upgraded,
         snapshots,

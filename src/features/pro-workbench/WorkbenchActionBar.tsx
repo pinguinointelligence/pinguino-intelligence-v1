@@ -89,29 +89,33 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
 
   return (
     <div
-      className="flex min-w-0 items-center justify-end gap-2 2xl:absolute 2xl:left-[650px]"
+      className="flex min-w-0 items-center justify-end gap-2 2xl:absolute 2xl:left-[300px] 2xl:w-[250px]"
       data-testid="workbench-action-bar"
     >
       {preview ? (
-        <span className="flex items-center gap-2" data-testid="workbench-action-preview">
-          <span className="hidden text-xs text-stone-600 xl:inline">{a.previewReady}</span>
+        <span className="flex min-w-0 items-center gap-2" data-testid="workbench-action-preview">
+          <span className="hidden min-w-0 truncate text-xs text-stone-600 xl:inline">
+            {a.previewReady}
+          </span>
           <button
             type="button"
             onClick={onOpenPreview}
             data-testid="workbench-open-preview"
-            className="h-11 rounded-lg border border-ink/20 px-2 text-xs font-semibold text-ink transition-colors hover:border-ink/45 lg:h-8"
+            className="h-11 shrink-0 rounded-lg border border-ink/20 px-2 text-xs font-semibold text-ink transition-colors hover:border-ink/45 lg:h-8"
           >
             {a.openPreview}
           </button>
         </span>
       ) : undoAvailable ? (
-        <span className="flex items-center gap-2" data-testid="workbench-action-applied">
-          <span className="hidden text-xs text-status-ideal xl:inline">{r.applied}</span>
+        <span className="flex min-w-0 items-center gap-2" data-testid="workbench-action-applied">
+          <span className="hidden min-w-0 truncate text-xs text-status-ideal xl:inline">
+            {r.applied}
+          </span>
           <button
             type="button"
             onClick={() => useConstraintStudioStore.getState().undoLastApply()}
             data-testid="workbench-undo"
-            className="h-11 rounded-lg border border-ink/20 px-2 text-xs font-semibold text-ink transition-colors hover:border-ink/45 lg:h-8"
+            className="h-11 shrink-0 rounded-lg border border-ink/20 px-2 text-xs font-semibold text-ink transition-colors hover:border-ink/45 lg:h-8"
           >
             {r.undo}
           </button>

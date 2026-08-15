@@ -26,6 +26,11 @@ import {
   FORMULATION_STRATEGIES,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
+import {
+  requestNewRecipeProductTypeChange,
+  startNewProRecipe,
+} from '@/pages/destinations/startNewProRecipe';
+import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 
 const g = copy.studio.goal;
 const servingCopy = copy.proMachine.serving;
@@ -114,6 +119,7 @@ export function WorkbenchSettingsLine({
   const openDraft = useRecipeProfileStore((state) => state.openDraft);
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
   const [unit, setUnit] = useState<BatchUnit>('g');
+  const [pendingProductType, setPendingProductType] = useState<VisibleProductType | null>(null);
   const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
   const selectedHome =
     store.machineKind === 'home'
@@ -175,6 +181,11 @@ export function WorkbenchSettingsLine({
     if (setup.recommendedBatchGrams != null) resizeBatchGrams(setup.recommendedBatchGrams);
   };
 
+  const changeProductType = (next: VisibleProductType) => {
+    const result = requestNewRecipeProductTypeChange(next);
+    if (result === 'confirmation_required') setPendingProductType(next);
+  };
+
   return (
     <section
       className={cn(
@@ -220,7 +231,7 @@ export function WorkbenchSettingsLine({
             value={store.visibleProductType}
             options={VISIBLE_PRODUCT_TYPES}
             labelOf={(option) => g.productTypes[option]}
-            onChange={(next: VisibleProductType) => store.setVisibleProductType(next)}
+            onChange={changeProductType}
             testid="workbench-product-type"
             stacked={compact}
           />
@@ -419,6 +430,17 @@ export function WorkbenchSettingsLine({
           </span>
         )}
       </div>
+      <NewRecipeConfirmationDialog
+        open={pendingProductType !== null}
+        title="Zmiana typu produktu wymaga przebudowy składników."
+        description={null}
+        confirmLabel="Przebuduj"
+        onCancel={() => setPendingProductType(null)}
+        onConfirm={() => {
+          if (pendingProductType !== null) startNewProRecipe(pendingProductType);
+          setPendingProductType(null);
+        }}
+      />
     </section>
   );
 }
