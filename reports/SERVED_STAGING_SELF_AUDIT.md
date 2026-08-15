@@ -72,7 +72,7 @@ The following table retains every category named in the supplied prompt. `BLOCKE
 ## Quality and deployment ledger
 
 - Runtime implementation commit: `0a33d63a7b0878e088e58c3def2432c843bb5736` (`feat(recipes): add canonical new recipe starters`).
-- Staging deployment: successful; served JS `/assets/index-Ia-g1jmC.js`, CSS `/assets/index-BhNseufb.css`; bundle contains `pro-workbar-new-recipe`.
+- Staging deployment: successful; the final served asset identifier is reported in the handoff because Vercel rebuilds it after documentation-only commits; the served bundle contains `pro-workbar-new-recipe`.
 - Production: unchanged at `4dfb097d14fe91c2cc7bd67e02265e6ac41123a2`; its served bundle remained `/assets/index-BTR3SdkC.js` and did not contain the new marker.
 - Served authenticated checks: Cancel preserved rows; Confirm created a clean account-default starter; untouched Gelato/Sorbet/Vegan/Protein switches were exact; edited switch required `Przebuduj`; reload preserved the draft; opening and reloading `Colina22` preserved 402/228/52/78/66/5/169 g; console logs were empty.
 - Full suite: `npm test -- --run` → 488 files / 6222 tests PASS.
