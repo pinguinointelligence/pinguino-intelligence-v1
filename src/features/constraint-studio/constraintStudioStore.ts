@@ -238,10 +238,29 @@ const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added
 
 export type PreviewIssue = Exclude<BuildPreviewResult, { ok: true }>;
 
-/** Product-addition preflight. Legacy/template structural zeroes have no dose
- * provenance and keep their accepted semantics; only picker-owned Base lines
- * are required to provide a real amount before PI may formulate. */
+/** PI terminal preflight. Every selected Base line is a real product choice and
+ * therefore needs at least 1 g before formulation. Toppings are stored outside
+ * RecipeInput.items and deliberately never enter this Base-only gate. */
 export function missingProductDosePreviewIssue(
+  input: RecipeInput,
+): Extract<PreviewIssue, { code: 'missing_required_role' }> | null {
+  const missing = input.items.filter((item) => item.planned_grams < 1);
+  if (missing.length === 0) return null;
+  return {
+    ok: false,
+    code: 'missing_required_role',
+    role: 'product_dose',
+    lineIds: missing.map((item) => item.id),
+    messagePl: missingProductDoseMessage(missing.map((item) => item.ingredient.name)),
+  };
+}
+
+/** Internal formulation compatibility boundary. The solver may still fill
+ * structural/template zeroes that were not introduced as an unresolved picker
+ * dose. The user-facing PI authority wrapper above this layer uses
+ * `missingProductDosePreviewIssue` and therefore blocks every selected Base
+ * line below 1 g before the solver starts. */
+function missingPickerDosePreviewIssue(
   input: RecipeInput,
 ): Extract<PreviewIssue, { code: 'missing_required_role' }> | null {
   const metaByLineId = useIngredientTableUxStore.getState().metaByLineId;
@@ -259,10 +278,24 @@ export function missingProductDosePreviewIssue(
   };
 }
 export type RecalculationTerminalState =
+  | { state: 'WORKING' }
   | { state: 'PREVIEW_READY' }
   | { state: 'NO_CHANGE_NEEDED' }
   | { state: 'BEST_ACHIEVABLE' }
-  | { state: 'BLOCKED'; code: PreviewIssue['code'] };
+  | { state: 'SETTINGS_CONFIRMATION_REQUIRED' }
+  | { state: 'LOCK_CHANGE_REQUIRED'; code: 'impossible_under_constraints' }
+  | { state: 'PRODUCT_GRAMS_REQUIRED'; code: 'missing_required_role'; lineIds: string[] }
+  | {
+      state: 'PRODUCT_DATA_REQUIRED' | 'MAPPER_BINDING_REQUIRED';
+      code: 'product_behavior_invalid';
+      lineIds: string[];
+    }
+  | {
+      state: 'BLOCKED_WITH_EXACT_ACTION';
+      code: PreviewIssue['code'];
+      messagePl?: string;
+      action?: 'choose_product' | 'return_to_recipe';
+    };
 
 /**
  * Effective constraints for a set of recipe lines: entries whose line vanished
@@ -482,6 +515,25 @@ const CLEAR_STAGED = {
   recalculationTerminal: null,
 };
 
+let activePiRunGeneration = 0;
+
+const isCurrentPiRun = (generation: number): boolean =>
+  generation === activePiRunGeneration;
+
+/** One click starts one visible run and invalidates every artefact owned by the
+ * previous run. Kept outside React so every PI entry point has the same
+ * immediate WORKING semantics. */
+export function beginPiRecalculation(): number {
+  activePiRunGeneration += 1;
+  useRecipeProfileStore.getState().markRecalculationRequired();
+  useConstraintStudioStore.setState({
+    history: [],
+    ...CLEAR_STAGED,
+    recalculationTerminal: { state: 'WORKING' },
+  });
+  return activePiRunGeneration;
+}
+
 /**
  * OWNER FINAL INTEGRATION ADDENDUM (Agent C) — the persisted §17 slice: the
  * CONSTRAINT SET and nothing else. `preview` / `previewIssue` / `blocked` /
@@ -669,7 +721,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // constraints + exclusions composed by the ONE selector — the preview is
         // stamped with the draft revision it was built for.
         const draft = selectCanonicalDraft();
-        const missingProductDose = missingProductDosePreviewIssue(draft.input);
+        const missingProductDose = missingPickerDosePreviewIssue(draft.input);
         if (missingProductDose) {
           set({
             preview: null,
@@ -679,7 +731,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             substitutionAuthorization: null,
             blocked: null,
             previewIssue: missingProductDose,
-            recalculationTerminal: { state: 'BLOCKED', code: 'missing_required_role' },
+            recalculationTerminal: {
+              state: 'PRODUCT_GRAMS_REQUIRED',
+              code: 'missing_required_role',
+              lineIds: missingProductDose.lineIds ?? [],
+            },
           });
           return;
         }
@@ -698,7 +754,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               reasons: ['unavailable_ingredient_present'],
               messagePl: `${unavailable} jest oznaczony jako niedostępny. Wybierz zamiennik albo usuń linię.`,
             },
-            recalculationTerminal: { state: 'BLOCKED', code: 'substitution_invalid' },
+            recalculationTerminal: {
+              state: 'BLOCKED_WITH_EXACT_ACTION',
+              code: 'substitution_invalid',
+            },
           });
           return;
         }
@@ -773,7 +832,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                 ? { state: 'NO_CHANGE_NEEDED' }
                 : result.code === 'best_safe_result'
                   ? { state: 'BEST_ACHIEVABLE' }
-                  : { state: 'BLOCKED', code: result.code },
+                  : result.code === 'impossible_under_constraints'
+                    ? { state: 'LOCK_CHANGE_REQUIRED', code: result.code }
+                    : { state: 'BLOCKED_WITH_EXACT_ACTION', code: result.code },
           });
         }
       },
@@ -1163,7 +1224,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
  *         feasibility, blocked) is invalidated unless the staged preview
  *         already carries the new revision.
  */
-interface ProductBehaviorAuthorityIssue {
+export interface ProductBehaviorAuthorityIssue {
   lineId: string;
   lineName: string;
   reasons: string[];
@@ -1197,9 +1258,62 @@ const productBehaviorReasonPl = (reason: string): string => ({
   recipe_changed_during_validation: 'receptura zmieniła się podczas sprawdzania',
 }[reason] ?? reason.replaceAll('_', ' '));
 
-function serverBehaviorPreviewIssue(
+const productBehaviorLayerPl = (reason: string): string => {
+  const exact = ({
+    behavior_binding_missing: 'ProductBehavior binding',
+    behavior_binding_stale: 'ProductBehavior binding',
+    behavior_binding_version_stale: 'ProductBehavior binding',
+    behavior_snapshot_missing_or_unresolved: 'ProductBehavior binding',
+    product_version_stale: 'product version',
+    product_identity_stale: 'product version',
+    legacy_product_reference_unresolved: 'product version',
+    catalog_version_identity_mismatch: 'product version',
+    base_technical_authority_missing: 'composition',
+    facts_fingerprint_stale: 'composition',
+    shared_facts_stale: 'composition',
+    process_evidence_missing: 'process',
+    profile_not_approved: 'profile eligibility',
+    context_not_approved: 'profile eligibility',
+    requested_module_not_eligible: 'profile eligibility',
+    main_policy_unknown: 'profile eligibility',
+    main_policy_stale: 'profile eligibility',
+  } as Record<string, string>)[reason];
+  if (exact) return exact;
+  // Resolver reason vocabularies are versioned. Any Mapper-specific reason
+  // remains a Mapper layer instead of leaking an opaque internal code.
+  if (reason.includes('mapper')) return 'Mapper reference';
+  return productBehaviorReasonPl(reason);
+};
+
+export const productBehaviorTerminal = (
+  issues: readonly ProductBehaviorAuthorityIssue[],
+): RecalculationTerminalState => {
+  const reasons = issues.flatMap((issue) => issue.reasons);
+  if (
+    reasons.length > 0
+    && reasons.every((reason) => reason === 'behavior_server_validation_unavailable')
+  ) {
+    return { state: 'BLOCKED_WITH_EXACT_ACTION', code: 'product_behavior_invalid' };
+  }
+  if (reasons.length > 0 && reasons.every((reason) => reason === 'private_price_stale')) {
+    return { state: 'BLOCKED_WITH_EXACT_ACTION', code: 'product_behavior_invalid' };
+  }
+  if (reasons.length > 0 && reasons.every((reason) => reason === 'recipe_changed_during_validation')) {
+    return { state: 'BLOCKED_WITH_EXACT_ACTION', code: 'product_behavior_invalid' };
+  }
+  const mapperMissing = reasons.some((reason) => reason.includes('mapper'));
+  return {
+    state: mapperMissing ? 'MAPPER_BINDING_REQUIRED' : 'PRODUCT_DATA_REQUIRED',
+    code: 'product_behavior_invalid',
+    lineIds: [...new Set(issues.map((issue) => issue.lineId))],
+  };
+};
+
+export function serverBehaviorPreviewIssue(
   issues: readonly ProductBehaviorAuthorityIssue[],
 ): Extract<BuildPreviewResult, { ok: false; code: 'product_behavior_invalid' }> {
+  const names = [...new Set(issues.map((issue) => issue.lineName))];
+  const layers = [...new Set(issues.flatMap((issue) => issue.reasons.map(productBehaviorLayerPl)))];
   const detail = issues.map((issue) =>
     `${issue.lineName}: ${issue.reasons.map(productBehaviorReasonPl).join(', ')}`,
   ).join('; ');
@@ -1215,7 +1329,16 @@ function serverBehaviorPreviewIssue(
     : priceOnly
       ? 'Odśwież prywatne ceny i uruchom przeliczenie ponownie.'
       : 'Odśwież dane produktu albo wybierz jego aktualną, zatwierdzoną wersję.';
-  const messagePl = `Nie można przeliczyć receptury. ${detail}. ${action}`;
+  const serverUnavailable = issues.every((issue) =>
+    issue.reasons.length > 0
+      && issue.reasons.every((reason) => reason === 'behavior_server_validation_unavailable'));
+  const messagePl = recipeChanged
+    ? `Receptura zmieniła się podczas sprawdzania. Brakująca warstwa: bieżąca wersja receptury. ${action}`
+    : priceOnly
+      ? `Prywatna cena produktu wymaga odświeżenia. Brakująca warstwa: aktualna cena. ${detail}. ${action}`
+      : serverUnavailable
+        ? `Nie udało się potwierdzić aktualnego powiązania technicznego dla: ${names.join(', ')}. Brakująca warstwa: walidacja serwerowa. ${action}`
+        : `Produkt nie ma jeszcze zweryfikowanego powiązania technicznego:\n${names.join(', ')}.\nBrakująca warstwa: ${layers.join(', ')}. ${detail}. ${action}`;
   return {
     ok: false,
     code: 'product_behavior_invalid',
@@ -1297,12 +1420,14 @@ async function currentBaseAuthorityReady(input: {
 
 /** Runtime wrapper: every customer-visible Preview rechecks current server
  * authority while pure store actions remain deterministic domain seams. */
-export async function createOptimizePreviewWithServerAuthority(): Promise<void> {
+export async function createOptimizePreviewWithServerAuthority(
+  generation?: number,
+): Promise<void> {
   // The server check is part of the same recalculation run. Clear every prior
   // terminal artefact before waiting so stale Preview/Undo can never coexist
   // with a new result.
-  useRecipeProfileStore.getState().markRecalculationRequired();
-  useConstraintStudioStore.setState({ history: [], ...CLEAR_STAGED });
+  const ownedGeneration = generation ?? beginPiRecalculation();
+  if (!isCurrentPiRun(ownedGeneration)) return;
   const draft = selectCanonicalDraft();
   const missingProductDose = missingProductDosePreviewIssue(draft.input);
   if (missingProductDose) {
@@ -1310,18 +1435,23 @@ export async function createOptimizePreviewWithServerAuthority(): Promise<void> 
       history: [],
       ...CLEAR_STAGED,
       previewIssue: missingProductDose,
-      recalculationTerminal: { state: 'BLOCKED', code: 'missing_required_role' },
+      recalculationTerminal: {
+        state: 'PRODUCT_GRAMS_REQUIRED',
+        code: 'missing_required_role',
+        lineIds: missingProductDose.lineIds ?? [],
+      },
     });
     return;
   }
   const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
   const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
+  if (!isCurrentPiRun(ownedGeneration)) return;
   if (!validation.ready) {
     useConstraintStudioStore.setState({
       history: [],
       ...CLEAR_STAGED,
       previewIssue: serverBehaviorPreviewIssue(validation.issues),
-      recalculationTerminal: { state: 'BLOCKED', code: 'product_behavior_invalid' },
+      recalculationTerminal: productBehaviorTerminal(validation.issues),
     });
     return;
   }
@@ -1334,12 +1464,57 @@ export async function createOptimizePreviewWithServerAuthority(): Promise<void> 
         lineName: item.ingredient.name,
         reasons: ['recipe_changed_during_validation'],
       }))),
-      recalculationTerminal: { state: 'BLOCKED', code: 'product_behavior_invalid' },
+      recalculationTerminal: productBehaviorTerminal(draft.input.items.map((item) => ({
+        lineId: item.id,
+        lineName: item.ingredient.name,
+        reasons: ['recipe_changed_during_validation'],
+      }))),
     });
     return;
   }
   useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
+  if (!isCurrentPiRun(ownedGeneration)) return;
   useConstraintStudioStore.getState().createOptimizePreview();
+}
+
+/** React-facing no-stranded-WORKING boundary. Unexpected network/runtime
+ * failures become one visible terminal with an exact recovery action. The
+ * injectable runner is a test seam; production always uses the authority
+ * wrapper above. */
+export async function runPiRecalculationWithTerminal(
+  run?: () => Promise<void>,
+  generation?: number,
+): Promise<void> {
+  const ownedGeneration = generation ?? beginPiRecalculation();
+  const execute = run ?? (() => createOptimizePreviewWithServerAuthority(ownedGeneration));
+  try {
+    await execute();
+    if (!isCurrentPiRun(ownedGeneration)) return;
+    if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
+      useConstraintStudioStore.setState({
+        recalculationTerminal: {
+          state: 'BLOCKED_WITH_EXACT_ACTION',
+          code: 'apply_failed',
+          messagePl: 'PI zakończyło przeliczenie bez wyniku. Wróć do receptury i spróbuj ponownie.',
+          action: 'return_to_recipe',
+        },
+      });
+    }
+  } catch {
+    if (!isCurrentPiRun(ownedGeneration)) return;
+    useConstraintStudioStore.setState({
+      preview: null,
+      previewIssue: null,
+      directionBestCandidate: null,
+      blocked: null,
+      recalculationTerminal: {
+        state: 'BLOCKED_WITH_EXACT_ACTION',
+        code: 'apply_failed',
+        messagePl: 'PI nie mogło dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
+        action: 'return_to_recipe',
+      },
+    });
+  }
 }
 
 export async function createBatchRescalePreviewWithServerAuthority(

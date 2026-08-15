@@ -196,7 +196,7 @@ describe('Pro executable validation', () => {
       ingredientNames: [input.items[0]!.ingredient.name],
     });
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
-      state: 'BLOCKED', code: 'missing_prices',
+      state: 'BLOCKED_WITH_EXACT_ACTION', code: 'missing_prices',
     });
     expect(useConstraintStudioStore.getState().history).toEqual([]);
   });

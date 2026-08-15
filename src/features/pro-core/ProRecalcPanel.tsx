@@ -24,6 +24,7 @@ import {
   isUndoAvailable,
   useConstraintStudioStore,
   type PreviewIssue,
+  type RecalculationTerminalState,
 } from '@/features/constraint-studio/constraintStudioStore';
 import {
   diagnoseRecalcFailure,
@@ -159,12 +160,18 @@ function RecalcDiagnosisView({
   constraints,
   servingModeId,
   onReturnToRecipe,
+  onChooseOtherProduct,
+  onCompleteProductData,
+  terminal,
 }: {
   issue: PreviewIssue;
   input: RecipeInput;
   constraints: ConstraintSet;
   servingModeId: string | null;
   onReturnToRecipe: (lineId: string | null) => void;
+  onChooseOtherProduct: () => void;
+  onCompleteProductData: () => void;
+  terminal: RecalculationTerminalState;
 }) {
   // "Already in band" is not a failure — keep the friendly note, no diagnosis table.
   if (issue.code === 'already_clean') {
@@ -186,6 +193,10 @@ function RecalcDiagnosisView({
   // messages — no lock table (locks are not the cause). Owner Agent 3:
   // `impossible_under_constraints` carries its complete message (conflicting
   // constraint + engine-verified nearest feasible value) the same way.
+  const productBehaviorNeedsProductActions =
+    issue.code === 'product_behavior_invalid'
+    && (terminal.state === 'PRODUCT_DATA_REQUIRED' || terminal.state === 'MAPPER_BINDING_REQUIRED');
+
   if (
     issue.code === 'unsupported_profile' ||
     issue.code === 'practicalization_blocked' ||
@@ -193,7 +204,8 @@ function RecalcDiagnosisView({
     issue.code === 'missing_required_role' ||
     issue.code === 'vegan_ingredient_conflict' ||
     issue.code === 'vegan_profile_constraint' ||
-    issue.code === 'impossible_under_constraints'
+    issue.code === 'impossible_under_constraints' ||
+    issue.code === 'product_behavior_invalid'
   ) {
     return (
       <div className="space-y-2" data-testid="pro-recalc-diagnosis" data-code={issue.code}>
@@ -207,6 +219,55 @@ function RecalcDiagnosisView({
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
             data-testid="pro-recalc-return-to-product-dose"
             onClick={() => onReturnToRecipe(issue.lineIds?.[0] ?? null)}
+          >
+            Wróć do receptury
+          </button>
+        ) : null}
+        {issue.code === 'impossible_under_constraints' ? (
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            data-testid="pro-recalc-return-to-locks"
+            onClick={() => onReturnToRecipe(issue.conflict?.lineId ?? null)}
+          >
+            Wróć do blokad receptury
+          </button>
+        ) : null}
+        {productBehaviorNeedsProductActions ? (
+          <div className="flex flex-wrap gap-2" data-testid="pro-recalc-product-data-actions">
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={onChooseOtherProduct}
+            >
+              Wybierz inny produkt
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={onCompleteProductData}
+            >
+              Uzupełnij dane produktu
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              onClick={() => onReturnToRecipe(issue.violations[0]?.lineIds[0] ?? null)}
+            >
+              Wróć do receptury
+            </button>
+          </div>
+        ) : null}
+        {!(
+          (issue.code === 'missing_required_role' && issue.role === 'product_dose') ||
+          issue.code === 'impossible_under_constraints' ||
+          productBehaviorNeedsProductActions
+        ) ? (
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            data-testid="pro-recalc-return-to-recipe"
+            onClick={() => onReturnToRecipe(null)}
           >
             Wróć do receptury
           </button>
@@ -259,6 +320,14 @@ function RecalcDiagnosisView({
       <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
         {d.unchanged}
       </p>
+      <button
+        type="button"
+        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+        data-testid="pro-recalc-return-to-recipe"
+        onClick={() => onReturnToRecipe(null)}
+      >
+        Wróć do receptury
+      </button>
     </div>
   );
 }
@@ -346,6 +415,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
+        if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') return;
         onCloseRef.current();
         return;
       }
@@ -440,6 +510,28 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
     });
   };
 
+  const openBaseProductPicker = () => {
+    onClose();
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-picker-scope="BASE_FORMULATION"] button[aria-haspopup="dialog"]',
+        )
+        ?.click();
+    });
+  };
+
+  const goToProductData = () => {
+    window.location.assign('/products/scan');
+  };
+
+  const goToSettings = () => {
+    onClose();
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('pinguino:profile-settings-required'));
+    });
+  };
+
   if (!open) return null;
 
   // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
@@ -451,7 +543,8 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
       <button
         type="button"
         aria-label={r.close}
-        onClick={onClose}
+        onClick={recalculationTerminal?.state === 'WORKING' ? undefined : onClose}
+        disabled={recalculationTerminal?.state === 'WORKING'}
         className="absolute inset-0 h-full w-full bg-black/60 motion-safe:animate-[appFadeIn_150ms_ease-out]"
       />
       <section
@@ -461,6 +554,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
         aria-modal="true"
         aria-label={r.title}
         data-testid="pro-recalc-panel"
+        data-terminal-state={recalculationTerminal?.state ?? 'IDLE'}
         className="absolute left-1/2 top-1/2 max-h-[88vh] w-[min(680px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-shell px-4 py-4 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#efe9dc] [--color-shell:#191a1d] [color-scheme:dark] sm:px-5 sm:py-5"
       >
         <div className="flex items-center justify-between gap-3">
@@ -468,14 +562,63 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
           <button
             type="button"
             onClick={onClose}
+            disabled={recalculationTerminal?.state === 'WORKING'}
             data-testid="pro-recalc-close"
-            className="min-h-11 rounded-lg border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40"
+            className="min-h-11 rounded-lg border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-wait disabled:opacity-50"
           >
             {r.close}
           </button>
         </div>
 
         <div className="mt-3 space-y-3">
+          {recalculationTerminal?.state === 'WORKING' ? (
+            <p
+              className="text-sm leading-relaxed text-ivory/80"
+              role="status"
+              aria-live="polite"
+              data-testid="pro-recalc-working"
+            >
+              PI przelicza recepturę…
+            </p>
+          ) : null}
+
+          {recalculationTerminal?.state === 'SETTINGS_CONFIRMATION_REQUIRED' ? (
+            <div className="space-y-2" data-testid="pro-recalc-settings-required">
+              <p className="text-sm leading-relaxed text-ivory/85" role="alert">
+                Najpierw potwierdź ustawienia receptury.
+              </p>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                onClick={goToSettings}
+              >
+                Przejdź do ustawień
+              </button>
+            </div>
+          ) : null}
+
+          {recalculationTerminal?.state === 'BLOCKED_WITH_EXACT_ACTION' &&
+          recalculationTerminal.messagePl && !previewIssue ? (
+            <div className="space-y-2" data-testid="pro-recalc-exact-action-block">
+              <p className="text-sm leading-relaxed text-ivory/85" role="alert">
+                {recalculationTerminal.messagePl}
+              </p>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                onClick={
+                  recalculationTerminal.action === 'choose_product'
+                    ? openBaseProductPicker
+                    : onClose
+                }
+              >
+                {recalculationTerminal.action === 'choose_product'
+                  ? 'Wybierz produkt'
+                  : 'Wróć do receptury'}
+              </button>
+            </div>
+          ) : null}
+
           {blocked ? (
             <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} />
           ) : null}
@@ -487,6 +630,9 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               constraints={constraints}
               servingModeId={servingModeId}
               onReturnToRecipe={returnToProductDose}
+              onChooseOtherProduct={openBaseProductPicker}
+              onCompleteProductData={goToProductData}
+              terminal={recalculationTerminal}
             />
           ) : null}
 

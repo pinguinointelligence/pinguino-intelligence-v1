@@ -242,9 +242,10 @@ describe('one canonical state', () => {
 
 /* ---------------------------------------------- recalculation entry (proofs 9–10) -- */
 describe('recalculation entry', () => {
-  it('9. the top Przelicz z PI uses the canonical pipeline (createOptimizePreview)', () => {
+  it('9. the top Przelicz z PI uses the canonical visible-terminal pipeline', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
-    expect(page).toContain('createOptimizePreview');
+    expect(page).toContain('beginPiRecalculation');
+    expect(page).toContain('runPiRecalculationWithTerminal');
     expect(page).toContain('ProRecalcPanel');
   });
 

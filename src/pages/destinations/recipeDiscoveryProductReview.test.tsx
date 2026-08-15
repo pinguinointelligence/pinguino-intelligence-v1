@@ -63,7 +63,9 @@ describe('recipe discovery product review', () => {
       }),
     ).toBe(true);
     expect(isReviewModeEnabled({ isDev: false, envFlag: undefined, persona: 'pro' })).toBe(false);
-    expect(source).toContain('const ownerReviewMode = useReviewMode()');
+    expect(source).toContain('const reviewModeEnabled = useReviewMode()');
+    expect(source).toContain('const ownerReviewAccess = useOwnerReviewAccess()');
+    expect(source).toContain('reviewModeEnabled && ownerReviewAccess && persona');
     expect(source).toContain('<OwnerReviewFrame enabled={ownerReviewMode}>');
   });
 

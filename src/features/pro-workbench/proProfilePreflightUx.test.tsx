@@ -74,7 +74,10 @@ describe('canonical Pro header contract', () => {
     const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
     expect(builder).toContain('data-testid="pro-recalc-state"');
     expect(builder).toContain('Oczekuje na przeliczenie');
-    expect(page).toContain("pinguino:profile-settings-required");
+    expect(page).toContain("state: 'SETTINGS_CONFIRMATION_REQUIRED'");
+    expect(read('features', 'pro-core', 'ProRecalcPanel.tsx')).toContain(
+      "pinguino:profile-settings-required",
+    );
     expect(page).toContain('profile.isConfirmed(signature, recipe.draftContextSeq)');
     expect(page).not.toContain('copy.proWorkbar.pendingRecalc');
   });

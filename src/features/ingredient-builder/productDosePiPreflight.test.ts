@@ -41,16 +41,21 @@ describe('PI product-dose preflight', () => {
       messagePl: `Podaj gramaturę dla:\n${tracked.ingredient.name}.\n\nMinimalna ilość to 1 g.`,
     });
     expect(after.recalculationTerminal).toEqual({
-      state: 'BLOCKED',
+      state: 'PRODUCT_GRAMS_REQUIRED',
       code: 'missing_required_role',
+      lineIds: [tracked.id],
     });
     expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
   });
 
-  it('does not reinterpret a legacy/template structural zero as a new product dose', () => {
+  it('blocks a legacy/template Base zero too — a selected Base product is never silent', () => {
     const input = structuredClone(starterMilkBase());
     input.items[0] = { ...input.items[0]!, planned_grams: 0 };
-    expect(missingProductDosePreviewIssue(input)).toBeNull();
+    expect(missingProductDosePreviewIssue(input)).toMatchObject({
+      code: 'missing_required_role',
+      role: 'product_dose',
+      lineIds: [input.items[0]!.id],
+    });
   });
 });
 

@@ -426,9 +426,9 @@ describe('recalculation overlay', () => {
     expect(src).toContain('<ConstraintPreviewCard');
   });
 
-  it('the workbar Przelicz drives the ONE canonical pipeline (createOptimizePreview)', () => {
+  it('the workbar Przelicz drives the ONE canonical pipeline with a terminal catch boundary', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
-    expect(page).toContain('createOptimizePreview');
+    expect(page).toContain('runPiRecalculationWithTerminal');
     expect(page).toContain('ProRecalcPanel');
   });
 });

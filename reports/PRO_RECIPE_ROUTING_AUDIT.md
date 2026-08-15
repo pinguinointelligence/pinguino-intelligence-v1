@@ -20,9 +20,9 @@ The Pro workbench consumes `libraryTemplate` exactly once. After a successful at
 | Receptury → PINGÜINO curated candidate | Previously `/start`; now Pro-aware `/pro/recipe` | `/pro/recipe` | Current curated candidates carry intent only, not an exact versioned recipe | ROUTE PASS / EXECUTABLE DATA BLOCKED |
 | Receptury → Inspiracje | Previously `/start`; now Pro-aware `/pro/recipe` | `/pro/recipe` | Inspiration intent; governed template mapping only where one exists | ROUTE PASS / MOST ENTRIES DATA BLOCKED |
 | Lost & Legendary customer card | `/start` for non-Pro; `/pro/recipe` for Pro | `/pro/recipe` | Curated intent only | ROUTE PASS / DATA BLOCKED |
-| Lost & Legendary Owner Review Batch 1 | Disabled while exact process/product evidence is missing | `/pro/recipe` after gate closes | Versioned template ID → canonical materializer | BLOCKED_EXACT_PRODUCT_DATA |
-| Fantasy Owner Review cards | Disabled while exact product/process/Topping evidence is missing | `/pro/recipe` after gate closes | Versioned template ID → canonical materializer | BLOCKED_EXACT_PRODUCT_DATA |
-| Direct executable template deep link | `/pro/recipe?source=executable_template&libraryTemplate=…` | `/pro/recipe` | Exact template ID; current auth/plan gate remains authoritative | ROUTE PASS / TEMPLATES BLOCKED |
+| Lost & Legendary Poland Owner Review | Disabled while the exact Starter Pack egg-yolk powder/dose is missing | `/pro/recipe` only after that product gate closes | Versioned blocked template; no fresh-yolk fallback | BLOCKED_EXACT_PRODUCT_DATA |
+| Fantasy Owner Review cards | Admin-authorized Pro → `/pro/recipe` | `/pro/recipe` | Five exact zero-violation Base vectors; unresolved Toppings omitted; Production/Label remain blocked | OWNER_REVIEW_EDITABLE / PRODUCTION_BLOCKED / LABEL_BLOCKED |
+| Direct executable template deep link | `/pro/recipe?source=executable_template&libraryTemplate=…` | `/pro/recipe` | Exact template ID; Pro plus active `admin_users` self-row required; unsaved drafts fail closed | ROUTE PASS / OWNER AUTH REQUIRED |
 | Saved recipe version | Remains in the canonical Pro Versions section | `/pro/versions` / current Pro workbench | Immutable saved version → new working version via repository | PASS |
 | Production source recipe | Remains inside canonical Pro Production context | `/pro/production` | Frozen exact recipe/version/composition snapshot | PASS |
 | Recipe search result | No executable recipe-search opening action exists in this codebase | N/A | N/A | NOT IMPLEMENTED / NO BYPASS FOUND |
@@ -35,6 +35,11 @@ The Pro workbench consumes `libraryTemplate` exactly once. After a successful at
 - `inspirationStartHref(intent)` remains byte-for-byte `/start?...` for non-Pro callers.
 - Even if a non-Pro caller supplies Pro-only `libraryTemplate` or `returnTo` parameters, the helper drops them.
 
-## Remaining routing evidence gap
+## Served evidence boundary
 
-The route defect is repaired in code, but PR-01/02/03 cannot satisfy “exact recipe loaded” because the current existing Inspiration/PINGÜINO/Lost records do not contain executable gram vectors, and all six Batch 1 vectors correctly remain blocked by exact product/process evidence. Served authenticated PR-01–PR-07 must therefore wait; staging deployment is not authorized from this candidate.
+The route and guarded handoff are implemented locally. Generic Inspiration and
+curated records still carry intent only, so they route correctly but do not
+invent an executable vector. Five Fantasy Base templates are editable only on
+the admin-authorized Pro Owner Review surface; Poland remains blocked by one
+exact external product requirement. Final PR-01–PR-07 status must be recorded
+against the deployed staging SHA; no local test is presented as served proof.

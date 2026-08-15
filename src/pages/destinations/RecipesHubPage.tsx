@@ -33,6 +33,7 @@ import {
 } from '@/data/recipes/executableRecipeLibrary';
 import { NonProductionMarker } from '@/features/design-review/NonProductionMarker';
 import { useReviewMode } from '@/features/design-review/useReviewMode';
+import { useOwnerReviewAccess } from '@/features/design-review/useOwnerReviewAccess';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
 import { MyRecipesContent } from '@/pages/recipes/MyRecipesPage';
@@ -439,9 +440,11 @@ function InspirationView({ persona }: { persona: RecipePersona }) {
 function ExecutableOwnerReviewView({
   library,
   persona,
+  onOpenTemplate,
 }: {
   library: ExecutableRecipeLibrary;
   persona: RecipePersona;
+  onOpenTemplate: (href: string) => void;
 }) {
   const templates = EXECUTABLE_RECIPE_TEMPLATES.filter((template) => template.library === library);
   const title = library === 'lost_legendary' ? 'Polska · Lost & Legendary' : 'Fantasy · Batch 1';
@@ -457,8 +460,9 @@ function ExecutableOwnerReviewView({
         {title}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-600">
-        Dokładne wektory Base są zapisane wersjonowo. Otwarcie pozostaje zablokowane, dopóki
-        wskazane produkty, polityki Main, Toppingi i procesy nie przejdą bieżącej walidacji.
+        Owner Review Base jest oddzielony od gotowości produkcyjnej i etykietowej. Kompletna
+        technicznie baza może być otwierana i edytowana w Pro, a brak procesu lub Toppingu nadal
+        blokuje Produkcję, Master Label i publikację.
       </p>
       <OwnerReviewFrame enabled>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -480,26 +484,52 @@ function ExecutableOwnerReviewView({
                     Gelato · −11°C · v{card.version}
                   </p>
                   <dl className="mt-5 grid grid-cols-3 gap-2 text-xs">
-                    <div><dt className="text-stone-400">Base</dt><dd className="font-mono">{card.baseGrams} g</dd></div>
+                    <div><dt className="text-stone-400">Base</dt><dd className="font-mono">{card.baseGrams === null ? '—' : `${card.baseGrams} g`}</dd></div>
                     <div><dt className="text-stone-400">Topping</dt><dd className="font-mono">{card.toppingGrams} g</dd></div>
-                    <div><dt className="text-stone-400">Razem</dt><dd className="font-mono">{card.finalMassGrams} g</dd></div>
+                    <div><dt className="text-stone-400">Razem</dt><dd className="font-mono">{card.finalMassGrams === null ? '—' : `${card.finalMassGrams} g`}</dd></div>
                   </dl>
                   <p className="mt-4 text-xs text-stone-500">
-                    Score techniczny: <span className="font-mono">{card.technicalScore.toFixed(2)}</span>
+                    Score techniczny:{' '}
+                    <span className="font-mono">
+                      {card.technicalScore === null ? 'oczekuje na dokładny produkt' : card.technicalScore.toFixed(2)}
+                    </span>
                     {' · '}Proces: {card.processId ?? 'brak zatwierdzonej wersji'}
                     {' · '}Znane alergeny: {card.knownAllergens.join(', ')}
                     {card.finalAllergensComplete ? '' : ' · lista finalna niepełna'}
                   </p>
+                  <dl className="mt-5 space-y-2 border-y border-stone-200 py-3 text-[11px]">
+                    <div className="flex items-center justify-between gap-3" data-testid={`${template.id}-owner-review-gate`}>
+                      <dt className="tracking-[0.08em] text-stone-500 uppercase">Owner Review</dt>
+                      <dd className="font-mono text-right text-ink">{card.ownerReviewStatus}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3" data-testid={`${template.id}-production-gate`}>
+                      <dt className="tracking-[0.08em] text-stone-500 uppercase">Production</dt>
+                      <dd className="font-mono text-right text-stone-600">{card.productionStatus}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3" data-testid={`${template.id}-label-gate`}>
+                      <dt className="tracking-[0.08em] text-stone-500 uppercase">Label</dt>
+                      <dd className="font-mono text-right text-stone-600">{card.labelStatus}</dd>
+                    </div>
+                  </dl>
                   <p className="mt-5 text-xs leading-relaxed text-nonprod">
-                    {card.blockers[0] ?? 'Wymaga zamknięcia bieżących bramek danych.'}
+                    {card.blockers[0] ?? card.productionBlockers[0] ?? 'Wymaga zamknięcia bieżących bramek danych.'}
                   </p>
-                  {template.status === 'EXECUTABLE_OWNER_REVIEW' ? (
-                    <Link
+                  {card.toppingGrams > 0 && template.status === 'OWNER_REVIEW_EDITABLE' ? (
+                    <p className="mt-3 text-[11px] leading-relaxed text-stone-500" data-testid={`${template.id}-owner-review-base-only`}>
+                      Owner Review otwiera wyłącznie Base. Toppingi ({card.toppingGrams} g) pozostają
+                      jawnie pominięte do czasu zamknięcia bramek Production i Label.
+                    </p>
+                  ) : null}
+                  {template.status === 'OWNER_REVIEW_EDITABLE' ? (
+                    <button
+                      type="button"
                       className={cn(buttonClasses('primary', 'sm'), 'mt-5 w-full')}
-                      to={executableRecipeStartHref(template.id, persona, '/recipes')}
+                      onClick={() => onOpenTemplate(
+                        executableRecipeStartHref(template.id, persona, '/recipes'),
+                      )}
                     >
                       Otwórz w Pro
-                    </Link>
+                    </button>
                   ) : (
                     <button
                       type="button"
@@ -627,8 +657,13 @@ export function RecipesHubPage() {
   const [params, setParams] = useSearchParams();
   const [view, setView] = useState<DiscoveryView>('home');
   const [newRecipeConfirmOpen, setNewRecipeConfirmOpen] = useState(false);
-  const ownerReviewMode = useReviewMode();
+  const [pendingExecutableHref, setPendingExecutableHref] = useState<string | null>(null);
+  const reviewModeEnabled = useReviewMode();
+  const ownerReviewAccess = useOwnerReviewAccess();
   const persona = useProCorePersona();
+  // Defence in depth: the review hook already requires Pro, but the page also
+  // refuses to mount executable Owner Review cards for Demo/Home personas.
+  const ownerReviewMode = reviewModeEnabled && ownerReviewAccess && persona === 'pro';
   const requestedTab = params.get('tab');
   const activeTab: RecipeLibraryTab =
     requestedTab === 'mine' || requestedTab === 'inspiration' || requestedTab === 'pinguino'
@@ -637,15 +672,26 @@ export function RecipesHubPage() {
   const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
   const openNewRecipe = () => {
     if (persona === 'pro') startNewProRecipe();
+    const destination = pendingExecutableHref ?? newRecipeHref;
+    setPendingExecutableHref(null);
     setNewRecipeConfirmOpen(false);
-    navigate(newRecipeHref);
+    navigate(destination);
   };
   const requestNewRecipe = () => {
+    setPendingExecutableHref(null);
     if (persona === 'pro' && hasUnsavedProRecipeChanges()) {
       setNewRecipeConfirmOpen(true);
       return;
     }
     openNewRecipe();
+  };
+  const requestExecutableOpen = (href: string) => {
+    if (persona === 'pro' && hasUnsavedProRecipeChanges()) {
+      setPendingExecutableHref(href);
+      setNewRecipeConfirmOpen(true);
+      return;
+    }
+    navigate(href);
   };
   const selectTab = (tab: RecipeLibraryTab) => {
     const next = new URLSearchParams(params);
@@ -717,7 +763,10 @@ export function RecipesHubPage() {
 
       <NewRecipeConfirmationDialog
         open={newRecipeConfirmOpen}
-        onCancel={() => setNewRecipeConfirmOpen(false)}
+        onCancel={() => {
+          setPendingExecutableHref(null);
+          setNewRecipeConfirmOpen(false);
+        }}
         onConfirm={openNewRecipe}
       />
 
@@ -759,7 +808,7 @@ export function RecipesHubPage() {
                       <ActionCard
                         icon={<Icon name="sparkles" className="h-5 w-5" />}
                         title="Fantasy"
-                        body="Sześć wersjonowanych kierunków Batch 1 do audytu Owner Review."
+                        body="Pięć wersjonowanych kierunków Batch 1 do audytu Owner Review."
                         onClick={() => setView('fantasy')}
                       />
                     ) : null}
@@ -790,7 +839,11 @@ export function RecipesHubPage() {
             ) : null}
             {view === 'lost' ? (
               ownerReviewMode ? (
-                <ExecutableOwnerReviewView library="lost_legendary" persona={persona} />
+                <ExecutableOwnerReviewView
+                  library="lost_legendary"
+                  persona={persona}
+                  onOpenTemplate={requestExecutableOpen}
+                />
               ) : (
                 <CuratedCollectionView
                   collection="lost_legendary"
@@ -807,7 +860,11 @@ export function RecipesHubPage() {
               />
             ) : null}
             {view === 'fantasy' && ownerReviewMode ? (
-              <ExecutableOwnerReviewView library="fantasy" persona={persona} />
+              <ExecutableOwnerReviewView
+                library="fantasy"
+                persona={persona}
+                onOpenTemplate={requestExecutableOpen}
+              />
             ) : null}
             {view === 'countries' ? (
               <CountriesView ownerReviewMode={ownerReviewMode} persona={persona} />

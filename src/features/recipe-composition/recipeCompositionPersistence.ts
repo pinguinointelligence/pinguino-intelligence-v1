@@ -29,6 +29,13 @@ export interface RecipeToppingItem {
   notes?: string;
 }
 
+export interface OwnerReviewRecipeGate {
+  status: 'OWNER_REVIEW_EDITABLE';
+  productionStatus: 'PRODUCTION_BLOCKED';
+  labelStatus: 'LABEL_BLOCKED';
+  omittedToppingLineIds: string[];
+}
+
 export interface RecipeCompositionMetadata {
   schemaVersion: 1;
   baseScope: 'BASE_FORMULATION';
@@ -37,6 +44,10 @@ export interface RecipeCompositionMetadata {
   /** Immutable per-line product/version/policy authority consumed by every
    * downstream module. Optional on legacy payloads; absent never grants Main. */
   behaviorSnapshots?: Record<string, ProductBehaviorSnapshot>;
+  /** Durable recipe-level boundary. Unlike a per-product warning this remains
+   * true when Owner Review replaces Base products or refreshes their server
+   * snapshots; only a future explicit completion workflow may remove it. */
+  ownerReviewGate?: OwnerReviewRecipeGate;
   migrationAmbiguities: Array<{ lineId: string; reason: string }>;
 }
 
@@ -155,6 +166,21 @@ export function readRecipeCompositionMetadata(
           !!item && typeof item.lineId === 'string' && typeof item.reason === 'string',
       )
     : [];
+  const rawOwnerReviewGate = raw.ownerReviewGate;
+  const ownerReviewGate: OwnerReviewRecipeGate | undefined =
+    rawOwnerReviewGate?.status === 'OWNER_REVIEW_EDITABLE' &&
+    rawOwnerReviewGate.productionStatus === 'PRODUCTION_BLOCKED' &&
+    rawOwnerReviewGate.labelStatus === 'LABEL_BLOCKED' &&
+    Array.isArray(rawOwnerReviewGate.omittedToppingLineIds) &&
+    rawOwnerReviewGate.omittedToppingLineIds.every((lineId) =>
+      typeof lineId === 'string' && lineId.trim().length > 0)
+      ? {
+          status: rawOwnerReviewGate.status,
+          productionStatus: rawOwnerReviewGate.productionStatus,
+          labelStatus: rawOwnerReviewGate.labelStatus,
+          omittedToppingLineIds: [...new Set(rawOwnerReviewGate.omittedToppingLineIds)],
+        }
+      : undefined;
   const seenCanonicalIds = new Set<string>();
   const seenLineIds = new Set<string>();
   const baseIds = new Set(baseLineIds);
@@ -237,6 +263,7 @@ export function readRecipeCompositionMetadata(
     baseOrder,
     toppings: toppings.map((item, index) => ({ ...item, addon_sort_order: index })),
     ...(Object.keys(behaviorSnapshots).length > 0 ? { behaviorSnapshots } : {}),
+    ...(ownerReviewGate ? { ownerReviewGate } : {}),
     migrationAmbiguities,
   };
 }
@@ -247,6 +274,7 @@ export function recipeCompositionFromState(state: {
   toppings?: readonly RecipeToppingItem[];
   compositionMigrationAmbiguities?: readonly { lineId: string; reason: string }[];
   productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  ownerReviewGate?: OwnerReviewRecipeGate | null;
 }): RecipeCompositionMetadata {
   const itemIds = new Set(state.items.map((item) => item.id));
   const baseOrder = [
@@ -268,6 +296,12 @@ export function recipeCompositionFromState(state: {
       addon_sort_order: index,
     })),
     ...(Object.keys(behaviorSnapshots).length > 0 ? { behaviorSnapshots } : {}),
+    ...(state.ownerReviewGate ? {
+      ownerReviewGate: {
+        ...state.ownerReviewGate,
+        omittedToppingLineIds: [...state.ownerReviewGate.omittedToppingLineIds],
+      },
+    } : {}),
     migrationAmbiguities: (state.compositionMigrationAmbiguities ?? []).map((item) => ({ ...item })),
   };
 }

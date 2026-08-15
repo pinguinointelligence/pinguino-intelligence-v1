@@ -12,20 +12,22 @@ Publication: Owner Review / testowe / nieprodukcyjne
 
 ## Strict result
 
-All six Base vectors are exact, whole-gram, 1000 g and produce zero current native Engine violations. None is currently eligible to open as an executable Owner Review template because exact ProductBehavior Main/process evidence or mandatory Topping product data is missing. The registry therefore publishes no false process, no fake product identity and no customer-visible Owner reference.
+Five Fantasy Base vectors are exact, whole-gram, 1000 g and produce zero current native Engine violations. They are `OWNER_REVIEW_EDITABLE` in Pro as Base-only drafts. Missing process, ProductBehavior or Topping authority remains separately fail-closed for PI where applicable, Production, Label and publication.
 
-| Recipe | Pro route | Status | Base g | Topping g | Final g | Technical | Overall | Cost/kg | Process | Template ID |
-|---|---|---|---:|---:|---:|---:|---:|---:|---|---|
-| Śmietankowe na żółtkach | ROUTE_ONLY_PASS / EXECUTION_BLOCKED | BLOCKED_EXACT_PRODUCT_DATA | 1000 | 0 | 1000 | 97.5000 | 84.6667 | incomplete | not published | `lost-pl-smietankowe-z-zoltkami-v1` |
-| Rocero | ROUTE_ONLY_PASS / EXECUTION_BLOCKED | BLOCKED_EXACT_PRODUCT_DATA | 1000 | 100 | 1100 | 89.1667 | 83.3022 | incomplete | not published | `fantasy-rocero-v1` |
-| Raphaello | ROUTE_ONLY_PASS / EXECUTION_BLOCKED | BLOCKED_EXACT_PRODUCT_DATA | 1000 | 100 | 1100 | 89.1667 | 83.9556 | incomplete | not published | `fantasy-raphaello-v1` |
-| Kidi Bueno | ROUTE_ONLY_PASS / EXECUTION_BLOCKED | BLOCKED_EXACT_PRODUCT_DATA | 1000 | 90 | 1090 | 89.1667 | 83.2980 | €3.6696 Base | not published | `fantasy-kidi-bueno-v1` |
-| Oreyo | ROUTE_ONLY_PASS / EXECUTION_BLOCKED | BLOCKED_EXACT_PRODUCT_DATA | 1000 | 100 | 1100 | 97.5000 | 84.6667 | incomplete | not published | `fantasy-oreyo-v1` |
-| Knickers | ROUTE_ONLY_PASS / EXECUTION_BLOCKED | BLOCKED_EXACT_PRODUCT_DATA | 1000 | 120 | 1120 | 88.3333 | 84.6990 | €3.5903 Base | not published | `fantasy-knickers-v1` |
+The Polish vector is no longer claimed as exact. The final Owner decision requires egg-yolk powder, and no exact Starter Pack product/dose/equivalence exists. Fresh yolk `PI-ING-001646` is not a fallback.
+
+| Recipe | Owner Review | Production | Label | Base g | Topping g | Final g | Technical | Overall | Cost/kg | Template ID |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| Śmietankowe na żółtkach | BLOCKED_EXACT_PRODUCT_DATA | PRODUCTION_BLOCKED | LABEL_BLOCKED | — | 0 | — | — | — | incomplete | `lost-pl-smietankowe-z-zoltkami-v1` |
+| Rocero | OWNER_REVIEW_EDITABLE | PRODUCTION_BLOCKED | LABEL_BLOCKED | 1000 | 100 | 1100 | 89.1667 | 83.3022 | incomplete | `fantasy-rocero-v1` |
+| Raphaello | OWNER_REVIEW_EDITABLE | PRODUCTION_BLOCKED | LABEL_BLOCKED | 1000 | 100 | 1100 | 89.1667 | 83.9556 | incomplete | `fantasy-raphaello-v1` |
+| Kidi Bueno | OWNER_REVIEW_EDITABLE | PRODUCTION_BLOCKED | LABEL_BLOCKED | 1000 | 90 | 1090 | 89.1667 | 83.2980 | €3.6696 Base | `fantasy-kidi-bueno-v1` |
+| Oreyo | OWNER_REVIEW_EDITABLE | PRODUCTION_BLOCKED | LABEL_BLOCKED | 1000 | 100 | 1100 | 97.5000 | 84.6667 | incomplete | `fantasy-oreyo-v1` |
+| Knickers | OWNER_REVIEW_EDITABLE | PRODUCTION_BLOCKED | LABEL_BLOCKED | 1000 | 120 | 1120 | 88.3333 | 84.6990 | €3.5903 Base | `fantasy-knickers-v1` |
 
 Costs above are Base-only Engine truth. Final cost/nutrition/label is incomplete whenever a required Topping product is unresolved.
 
-Provenance for every Base result: Owner seed in the 2026-08-15 Batch 1 authorization; immutable Mapper validation file `docs/ingredients/validation/mapper_basement.csv`; Engine `0.4.0`; configuration `0.7.0`; profile `milk_gelato`; −11°C; whole-gram recalculation. Current ProductBehavior bindings and process metadata remain authoritative for execution and are the reason these technically coherent vectors stay fail-closed.
+Provenance for the five exact Base results: Owner seed in the 2026-08-15 Batch 1 authorization; immutable Mapper validation file `docs/ingredients/validation/mapper_basement.csv`; Engine `0.4.0`; configuration `0.7.0`; profile `milk_gelato`; −11°C; whole-gram recalculation. Current ProductBehavior bindings remain authoritative for PI/Apply and process metadata remains authoritative for Production.
 
 ## Exact vectors and Engine truth
 
@@ -33,18 +35,9 @@ Provenance for every Base result: Owner seed in the 2026-08-15 Batch 1 authoriza
 
 Owner-only research reference: Polish traditional cream-and-yolk ice cream.
 
-| Canonical ID | Ingredient | Owner seed g | Final g | Change |
-|---|---|---:|---:|---|
-| PI-ING-000236 | Milk 3.5% | 550 | 555 | +5; mass reconciliation |
-| PI-ING-000180 | Cream 30% | 180 | 180 | — |
-| PI-ING-001646 | Fresh egg yolk | 80 | 80 | — |
-| PI-ING-000270 | Skimmed milk powder | 35 | 30 | −5; smallest Engine correction |
-| PI-ING-000514 | Sucrose | 90 | 90 | — |
-| PI-ING-000494 | Dextrose | 50 | 50 | — |
-| PI-ING-000456 | Inulin | 13 | 13 | — |
-| PI-ING-000492 | Tara gum | 2 | 2 | — |
+The former fresh-yolk row has been removed. The remaining research seed is not an executable 1000 g Base until the exact PINGÜINO Starter Pack powder provides dosage, reconstitution ratio and fresh-yolk equivalence, and the Engine reconciles the removed/reintroduced water. `PI-ING-001645` is a generic dried-yolk Mapper reference with verified composition but insufficient product identity/process authority; it is not silently substituted. No POD, PAC, NPAC, ice, score, cost or exact final grams are claimed for this version.
 
-POD 13.4483; PAC 23.2260; NPAC 35.2638; ice 52.1105%; water 65.8637%; solids 34.1363%; fat 9.5275%; protein 4.4340%; lactose 4.7145%; dairy carrier 76.5%. Known allergens: milk, egg. Cost incomplete: PI-ING-001646. Blocker: the current process authority has no exact versioned fresh-yolk heat process; no process ID is claimed.
+Exact priority-1 intake: `reports/RECIPE_LIBRARY_REQUIRED_PRODUCTS.md` and `.csv`.
 
 ### Rocero
 
@@ -116,8 +109,10 @@ For every unresolved Topping line, cost, nutrition, complete allergen list, labe
 
 ## Publication and privacy
 
-- All six remain `BLOCKED_EXACT_PRODUCT_DATA`, Owner Review, non-production.
-- No branded reference is compiled into the customer app registry or card projection.
+- Five Fantasy templates are `OWNER_REVIEW_EDITABLE` as Base-only drafts; ProductBehavior may still block PI/Apply with an exact reason.
+- Poland remains `BLOCKED_EXACT_PRODUCT_DATA` until the exact egg-yolk powder conversion exists.
+- All six remain `PRODUCTION_BLOCKED` and `LABEL_BLOCKED`.
+- Exact Owner-only research reference text and seed provenance remain report-only. The working names Rocero, Raphaello, Kidi Bueno, Oreyo and Knickers are compiled only on the Pro Owner Review surface and remain `TRADEMARK_REVIEW_REQUIRED`.
 - Working names remain `TRADEMARK_REVIEW_REQUIRED` where applicable.
 - Technical Engine validity does not imply sensory or process approval.
 - No Base Engine formula and no Mapper row was changed.

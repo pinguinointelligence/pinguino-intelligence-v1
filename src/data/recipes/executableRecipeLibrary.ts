@@ -1,14 +1,21 @@
 export type ExecutableRecipeLibrary = 'lost_legendary' | 'fantasy';
 export type ExecutableRecipeTemplateStatus =
-  | 'EXECUTABLE_OWNER_REVIEW'
+  | 'OWNER_REVIEW_EDITABLE'
   | 'BLOCKED_EXACT_PRODUCT_DATA';
+
+export type ExecutableRecipeProductionStatus = 'PRODUCTION_READY' | 'PRODUCTION_BLOCKED';
+export type ExecutableRecipeLabelStatus = 'LABEL_READY' | 'LABEL_BLOCKED';
 
 export interface ExecutableRecipeLineSeed {
   lineId: string;
   mapperIngredientId: string | null;
   requiredProductForm: string | null;
-  grams: number;
-  ownerSeedGrams: number;
+  /** Null means that an exact product dose/conversion has not been supplied.
+   * It is never projected to Engine as zero. */
+  grams: number | null;
+  /** Null when an unresolved required product has no approved dose or
+   * equivalence. A dose from another product form must never be reused. */
+  ownerSeedGrams: number | null;
   role: 'standard' | 'main';
   processScope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
   note: string;
@@ -24,7 +31,11 @@ export interface ExecutableRecipeTemplate {
   trademarkReviewRequired: boolean;
   publicationStage: 'owner_review';
   status: ExecutableRecipeTemplateStatus;
+  productionStatus: ExecutableRecipeProductionStatus;
+  labelStatus: ExecutableRecipeLabelStatus;
   blockers: readonly string[];
+  productionBlockers: readonly string[];
+  labelBlockers: readonly string[];
   profile: 'milk_gelato';
   servingModeId: 'temp_minus_11';
   targetTemperatureC: -11;
@@ -32,7 +43,7 @@ export interface ExecutableRecipeTemplate {
   baseTargetGrams: 1000;
   /** Null until the current process authority publishes an exact versioned process. */
   processId: string | null;
-  technicalScore: number;
+  technicalScore: number | null;
   baseCostPerKg: number | null;
   knownAllergens: readonly string[];
   finalAllergensComplete: boolean;
@@ -93,6 +104,22 @@ const toppingLine = (
   note,
 });
 
+const unresolvedBaseLine = (
+  templateId: string,
+  order: number,
+  requiredProductForm: string,
+  note: string,
+): ExecutableRecipeLineSeed => ({
+  lineId: `${templateId}-base-${order}`,
+  mapperIngredientId: null,
+  requiredProductForm,
+  grams: null,
+  ownerSeedGrams: null,
+  role: 'standard',
+  processScope: 'BASE_FORMULATION',
+  note,
+});
+
 const id = {
   poland: 'lost-pl-smietankowe-z-zoltkami-v1',
   rocero: 'fantasy-rocero-v1',
@@ -113,8 +140,16 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     trademarkReviewRequired: false,
     publicationStage: 'owner_review',
     status: 'BLOCKED_EXACT_PRODUCT_DATA',
+    productionStatus: 'PRODUCTION_BLOCKED',
+    labelStatus: 'LABEL_BLOCKED',
     blockers: [
-      'Brak wersjonowanego dowodu procesu dla świeżego żółtka; Process Guide musi pozostać fail-closed.',
+      'Brak dokładnego produktu Starter Pack: żółtko jaja w proszku z dawkowaniem i równoważnością świeżego żółtka.',
+    ],
+    productionBlockers: [
+      'Brak wersjonowanego produktu żółtka w proszku, przeliczenia wody i zatwierdzonego procesu.',
+    ],
+    labelBlockers: [
+      'Brak etykiety/specyfikacji produktu żółtka w proszku i finalnego przeliczenia receptury.',
     ],
     profile: 'milk_gelato',
     servingModeId: 'temp_minus_11',
@@ -122,14 +157,19 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     formulationStrategy: 'optimal',
     baseTargetGrams: 1000,
     processId: null,
-    technicalScore: 97.5,
+    technicalScore: null,
     baseCostPerKg: null,
     knownAllergens: ['milk', 'egg'],
-    finalAllergensComplete: true,
+    finalAllergensComplete: false,
     base: [
       baseLine(id.poland, 1, core.milk, 555, 'Mleko 3,5%', 'standard', 550),
       baseLine(id.poland, 2, core.cream, 180, 'Śmietanka 30%'),
-      baseLine(id.poland, 3, 'PI-ING-001646', 80, 'Świeże żółtko'),
+      unresolvedBaseLine(
+        id.poland,
+        3,
+        'egg_yolk_powder_starter_pack',
+        'Żółtko jaja w proszku Starter Pack; dawka i korekta wody oczekują na dokładną równoważność.',
+      ),
       baseLine(id.poland, 4, core.smp, 30, 'Odtłuszczone mleko w proszku', 'standard', 35),
       baseLine(id.poland, 5, core.sucrose, 90, 'Sacharoza'),
       baseLine(id.poland, 6, core.dextrose, 50, 'Dekstroza'),
@@ -147,11 +187,17 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     displayName: 'Rocero',
     trademarkReviewRequired: true,
     publicationStage: 'owner_review',
-    status: 'BLOCKED_EXACT_PRODUCT_DATA',
-    blockers: [
+    status: 'OWNER_REVIEW_EDITABLE',
+    productionStatus: 'PRODUCTION_BLOCKED',
+    labelStatus: 'LABEL_BLOCKED',
+    blockers: [],
+    productionBlockers: [
       'Pasta z orzechów laskowych PI-ING-000419 ma MAIN_BLOCKED_POLICY i brak dowodu procesu.',
       'PI-ING-000829 nie jest udowodnioną własną kruszonką waflową; wymagany jest wersjonowany subprodukt Topping.',
       'Czekolada mleczna PI-ING-000118 nie ma udowodnionego zakresu post-process coating.',
+    ],
+    labelBlockers: [
+      'Brak finalnych etykiet i deklaracji alergenów dla kruszonki waflowej, prażonych orzechów i polewy czekoladowej.',
     ],
     profile: 'milk_gelato',
     servingModeId: 'temp_minus_11',
@@ -190,11 +236,17 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     displayName: 'Raphaello',
     trademarkReviewRequired: true,
     publicationStage: 'owner_review',
-    status: 'BLOCKED_EXACT_PRODUCT_DATA',
-    blockers: [
+    status: 'OWNER_REVIEW_EDITABLE',
+    productionStatus: 'PRODUCTION_BLOCKED',
+    labelStatus: 'LABEL_BLOCKED',
+    blockers: [],
+    productionBlockers: [
       'Pasty kokosowa PI-ING-000151 i migdałowa PI-ING-001512 mają MAIN_BLOCKED_POLICY oraz brak dowodu procesu.',
       'PI-ING-000829 nie jest udowodnioną własną lekką kruszonką waflową.',
       'Brak udowodnionego procesu prażenia dla Toppingu migdałowego.',
+    ],
+    labelBlockers: [
+      'Brak finalnych etykiet i deklaracji alergenów dla wafla oraz prażonych migdałów; wiórki kokosowe wymagają dowodu producenta.',
     ],
     profile: 'milk_gelato',
     servingModeId: 'temp_minus_11',
@@ -233,11 +285,17 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     displayName: 'Kidi Bueno',
     trademarkReviewRequired: true,
     publicationStage: 'owner_review',
-    status: 'BLOCKED_EXACT_PRODUCT_DATA',
-    blockers: [
+    status: 'OWNER_REVIEW_EDITABLE',
+    productionStatus: 'PRODUCTION_BLOCKED',
+    labelStatus: 'LABEL_BLOCKED',
+    blockers: [],
+    productionBlockers: [
       'Pasta z orzechów laskowych PI-ING-000419 ma MAIN_BLOCKED_POLICY i brak dowodu procesu.',
       'PI-ING-000829 nie jest udowodnioną własną cienką kruszonką waflową.',
       'Czekolada mleczna PI-ING-000118 nie ma udowodnionego zakresu post-process coating.',
+    ],
+    labelBlockers: [
+      'Brak finalnych etykiet i deklaracji alergenów dla wafla, prażonych orzechów i polewy czekoladowej.',
     ],
     profile: 'milk_gelato',
     servingModeId: 'temp_minus_11',
@@ -276,11 +334,17 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     displayName: 'Oreyo',
     trademarkReviewRequired: true,
     publicationStage: 'owner_review',
-    status: 'BLOCKED_EXACT_PRODUCT_DATA',
-    blockers: [
+    status: 'OWNER_REVIEW_EDITABLE',
+    productionStatus: 'PRODUCTION_BLOCKED',
+    labelStatus: 'LABEL_BLOCKED',
+    blockers: [],
+    productionBlockers: [
       'Brak wersjonowanego wewnętrznego subproduktu: ciemna kruszonka kakaowa.',
       'Brak wersjonowanego wewnętrznego subproduktu: ripple waniliowo-śmietankowy.',
       'Kakao PI-ING-001579 i wanilia PI-ING-001705 nie mają kompletnej polityki Main/process dla milk_gelato.',
+    ],
+    labelBlockers: [
+      'Brak finalnych etykiet kruszonki kakaowej i ripple waniliowo-śmietankowego oraz dowodów alergenowych kakao i wanilii.',
     ],
     profile: 'milk_gelato',
     servingModeId: 'temp_minus_11',
@@ -318,11 +382,17 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     displayName: 'Knickers',
     trademarkReviewRequired: true,
     publicationStage: 'owner_review',
-    status: 'BLOCKED_EXACT_PRODUCT_DATA',
-    blockers: [
+    status: 'OWNER_REVIEW_EDITABLE',
+    productionStatus: 'PRODUCTION_BLOCKED',
+    labelStatus: 'LABEL_BLOCKED',
+    blockers: [],
+    productionBlockers: [
       'Pasta z orzeszków ziemnych PI-ING-000437 ma MAIN_BLOCKED_POLICY i brak dowodu procesu.',
       'Brak udowodnionego procesu prażenia dla Toppingu orzeszków ziemnych.',
       'Czekolada mleczna PI-ING-000118 nie ma udowodnionego zakresu post-process coating.',
+    ],
+    labelBlockers: [
+      'Brak finalnych etykiet i deklaracji alergenów dla prażonych orzeszków oraz czekoladowej polewy/kawałków.',
     ],
     profile: 'milk_gelato',
     servingModeId: 'temp_minus_11',
@@ -388,12 +458,13 @@ export function executableRecipeStartHref(
   return `${persona === 'pro' ? '/pro/recipe' : '/start'}?${params.toString()}`;
 }
 
-export function recipeTemplateBaseTotal(template: ExecutableRecipeTemplate): number {
-  return template.base.reduce((total, line) => total + line.grams, 0);
+export function recipeTemplateBaseTotal(template: ExecutableRecipeTemplate): number | null {
+  if (template.base.some((line) => line.grams === null)) return null;
+  return template.base.reduce((total, line) => total + (line.grams ?? 0), 0);
 }
 
 export function recipeTemplateToppingTotal(template: ExecutableRecipeTemplate): number {
-  return template.toppings.reduce((total, line) => total + line.grams, 0);
+  return template.toppings.reduce((total, line) => total + (line.grams ?? 0), 0);
 }
 
 /** Safe owner-review card projection. Branded Owner references are report-only
@@ -410,12 +481,19 @@ export function executableRecipeCard(template: ExecutableRecipeTemplate) {
     blockers: [...template.blockers],
     baseGrams: recipeTemplateBaseTotal(template),
     toppingGrams: recipeTemplateToppingTotal(template),
-    finalMassGrams: recipeTemplateBaseTotal(template) + recipeTemplateToppingTotal(template),
+    finalMassGrams: recipeTemplateBaseTotal(template) === null
+      ? null
+      : recipeTemplateBaseTotal(template)! + recipeTemplateToppingTotal(template),
     publicationStage: template.publicationStage,
     trademarkReviewRequired: template.trademarkReviewRequired,
     technicalScore: template.technicalScore,
     baseCostPerKg: template.baseCostPerKg,
     processId: template.processId,
+    ownerReviewStatus: template.status,
+    productionStatus: template.productionStatus,
+    productionBlockers: [...template.productionBlockers],
+    labelStatus: template.labelStatus,
+    labelBlockers: [...template.labelBlockers],
     knownAllergens: [...template.knownAllergens],
     finalAllergensComplete: template.finalAllergensComplete,
   };

@@ -22,7 +22,6 @@ import {
 import { DEFAULT_DIRECTION_TARGETS } from '@/features/pro-workbench/recipeProfileStore';
 import type {
   RecipeCompositionMetadata,
-  RecipeToppingItem,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import {
@@ -33,6 +32,8 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
+import { currentUserHasOwnerReviewAccess } from '@/services/ownerReviewAccess';
+import { hasUnsavedProRecipeChanges } from '@/pages/destinations/startNewProRecipe';
 
 export type ExecutableRecipeHandoffFailureCode =
   | 'template_not_found'
@@ -40,7 +41,9 @@ export type ExecutableRecipeHandoffFailureCode =
   | 'ingredient_unavailable'
   | 'behavior_unavailable'
   | 'behavior_blocked'
-  | 'engine_gate_failed';
+  | 'engine_gate_failed'
+  | 'owner_review_forbidden'
+  | 'unsaved_changes';
 
 export class ExecutableRecipeHandoffError extends Error {
   constructor(
@@ -57,6 +60,9 @@ export interface MaterializedExecutableRecipe {
   template: ExecutableRecipeTemplate;
   input: RecipeInput;
   composition: RecipeCompositionMetadata;
+  /** Toppings are intentionally outside editable Base review until the
+   * production and label gates are complete. */
+  omittedOwnerReviewToppingLineIds: readonly string[];
 }
 
 export interface MaterializeDependencies {
@@ -67,10 +73,47 @@ export interface MaterializeDependencies {
   }) => Promise<ServerResolvedProductBehavior | null>;
 }
 
+export interface OpenExecutableRecipeDependencies {
+  authorizeOwnerReview: (accountId: string) => Promise<boolean>;
+  hasUnsavedChanges: () => boolean;
+}
+
+const runtimeOpenDependencies: OpenExecutableRecipeDependencies = {
+  authorizeOwnerReview: currentUserHasOwnerReviewAccess,
+  hasUnsavedChanges: hasUnsavedProRecipeChanges,
+};
+
 const runtimeDependencies: MaterializeDependencies = {
   getIngredient: getEngineApprovedIngredientById,
   resolveBehavior: resolveProductBehaviorForSelection,
 };
+
+const REQUIRED_OWNER_REVIEW_COMPOSITION_FIELDS = [
+  'water_percent',
+  'total_solids_percent',
+  'fat_percent',
+  'protein_percent',
+  'carbohydrate_percent',
+  'total_sugars_percent',
+  'sucrose_percent',
+  'glucose_percent',
+  'dextrose_percent',
+  'fructose_percent',
+  'lactose_percent',
+  'polyol_percent',
+  'fiber_percent',
+  'salt_percent',
+  'alcohol_percent',
+  'kcal_per_100g',
+  'pod_value',
+  'pac_value',
+] as const satisfies readonly (keyof IngredientRow)[];
+
+const ownerReviewCompositionMissing = (row: IngredientRow): string[] =>
+  REQUIRED_OWNER_REVIEW_COMPOSITION_FIELDS.filter((field) => {
+    const value = row[field];
+    return typeof value !== 'number' || !Number.isFinite(value);
+  });
 
 const effectiveIngredientCost = (
   ingredient: EngineIngredient,
@@ -125,6 +168,20 @@ async function resolveLine(
       line.lineId,
     );
   }
+  const missingComposition = ownerReviewCompositionMissing(row);
+  if (
+    !row.approved_for_base ||
+    !row.approved_for_engines ||
+    !row.verification_status.startsWith('Verified') ||
+    missingComposition.length > 0
+  ) {
+    throw new ExecutableRecipeHandoffError(
+      'behavior_blocked',
+      `Niepełna kompozycja techniczna Base ${line.mapperIngredientId}: ` +
+        `${missingComposition.join(', ') || 'brak zatwierdzenia Mapper/Engine'}.`,
+      line.lineId,
+    );
+  }
   const resolved = await dependencies.resolveBehavior({
     entity: { entityKind: 'mapper', entityId: line.mapperIngredientId },
     context: {
@@ -144,51 +201,31 @@ async function resolveLine(
       line.lineId,
     );
   }
-  if (resolved.state !== 'eligible') {
-    throw new ExecutableRecipeHandoffError(
-      'behavior_blocked',
-      resolved.blockReasons.join(', ') || `Produkt ${line.mapperIngredientId} jest zablokowany.`,
-      line.lineId,
-    );
-  }
-  const snapshot = snapshotServerResolvedProductBehavior({
+  const resolvedSnapshot = snapshotServerResolvedProductBehavior({
     lineId: line.lineId,
     processScope: line.processScope,
     resolved,
   });
-  if (line.role === 'main' && snapshot.moduleEligibility.MAIN !== 'eligible') {
-    throw new ExecutableRecipeHandoffError(
-      'behavior_blocked',
-      `Brak aktualnej polityki Main dla ${line.mapperIngredientId}.`,
-      line.lineId,
-    );
-  }
-  const sharedFacts = snapshot.sharedFacts;
-  const requiredFactModules = ['NUTRITION', 'ALLERGENS', 'PROCESS', 'SAVE', 'PRODUCTION'] as const;
-  const missingFactModules = requiredFactModules.filter(
-    (module) => snapshot.moduleEligibility[module] !== 'eligible',
-  );
-  const hasExactProcessEvidence = sharedFacts?.processEvidence.some((evidence) => (
-    evidence.source.verificationStatus === 'verified' &&
-    evidence.source.reference.trim().length > 0 &&
-    evidence.affectedIngredientIds.includes(line.mapperIngredientId!)
-  )) ?? false;
-  if (
-    missingFactModules.length > 0 ||
-    sharedFacts?.nutritionPer100g == null ||
-    sharedFacts.allergens == null ||
-    !hasExactProcessEvidence
-  ) {
-    throw new ExecutableRecipeHandoffError(
-      'behavior_blocked',
-      `Niepełna wersjonowana authority produktu ${line.mapperIngredientId}: ` +
-        `moduły ${missingFactModules.join(', ') || 'OK'}, ` +
-        `żywienie ${sharedFacts?.nutritionPer100g ? 'OK' : 'brak'}, ` +
-        `alergeny ${sharedFacts?.allergens ? 'OK' : 'brak'}, ` +
-        `proces ${hasExactProcessEvidence ? 'OK' : 'brak'}.`,
-      line.lineId,
-    );
-  }
+  // Owner Review never elevates resolver eligibility. It adds a restrictive
+  // overlay for the downstream modules that require the omitted Toppings,
+  // final process and legal facts; Base/PI eligibility remains exactly as the
+  // server resolved it.
+  const snapshot: ProductBehaviorSnapshot = {
+    ...resolvedSnapshot,
+    moduleEligibility: {
+      ...resolvedSnapshot.moduleEligibility,
+      PRODUCTION: 'blocked',
+      PROCESS: 'blocked',
+      LABEL: 'blocked',
+      MASTER_LABEL: 'blocked',
+      EXPORT: 'blocked',
+    },
+    warnings: [...resolvedSnapshot.warnings, 'owner_review_only'],
+    blockReasons: [
+      ...resolvedSnapshot.blockReasons,
+      'owner_review_production_label_gate',
+    ],
+  };
   return {
     ingredient: effectiveIngredientCost(ingredientRowToEngineIngredient(row), resolved),
     snapshot,
@@ -214,30 +251,27 @@ export async function materializeExecutableRecipeDefinition(
   accountId: string,
   dependencies: MaterializeDependencies = runtimeDependencies,
 ): Promise<MaterializedExecutableRecipe> {
-  if (template.status !== 'EXECUTABLE_OWNER_REVIEW') {
+  if (template.status !== 'OWNER_REVIEW_EDITABLE') {
     throw new ExecutableRecipeHandoffError(
       'template_blocked',
       template.blockers.join(' '),
     );
   }
-  if (template.processId?.trim() === '') {
+  if (template.base.some((line) => line.mapperIngredientId === null || line.grams === null)) {
     throw new ExecutableRecipeHandoffError(
       'template_blocked',
-      'Szablon nie ma dokładnego wersjonowanego procesu.',
+      'Szablon nie ma kompletnego dokładnego wektora Base.',
     );
   }
-  if (template.processId === null) {
-    throw new ExecutableRecipeHandoffError(
-      'template_blocked',
-      'Szablon nie ma dokładnego wersjonowanego procesu.',
-    );
-  }
-  const allLines = [...template.base, ...template.toppings];
+  const exactBase = template.base as readonly (ExecutableRecipeLineSeed & {
+    mapperIngredientId: string;
+    grams: number;
+  })[];
   const resolvedEntries = await Promise.all(
-    allLines.map(async (line) => [line.lineId, await resolveLine(template, line, accountId, dependencies)] as const),
+    exactBase.map(async (line) => [line.lineId, await resolveLine(template, line, accountId, dependencies)] as const),
   );
   const resolvedByLine = new Map(resolvedEntries);
-  const baseItems = template.base.map((line) => {
+  const baseItems = exactBase.map((line) => {
     const resolved = resolvedByLine.get(line.lineId)!;
     return {
       id: line.lineId,
@@ -282,15 +316,6 @@ export async function materializeExecutableRecipeDefinition(
       `Szablon nie przeszedł Engine: ${violations.map((violation) => violation.reason).join(', ') || 'masa Base'}.`,
     );
   }
-  const toppings: RecipeToppingItem[] = template.toppings.map((line, index) => ({
-    id: line.lineId,
-    ingredient: resolvedByLine.get(line.lineId)!.ingredient,
-    planned_grams: line.grams,
-    actual_grams: null,
-    process_scope: 'POST_PROCESS_ADDON',
-    addon_sort_order: index,
-    notes: line.note,
-  }));
   const behaviorSnapshots = Object.fromEntries(
     resolvedEntries.map(([lineId, value]) => [lineId, value.snapshot]),
   );
@@ -300,11 +325,18 @@ export async function materializeExecutableRecipeDefinition(
     composition: {
       schemaVersion: 1,
       baseScope: 'BASE_FORMULATION',
-      baseOrder: template.base.map((line) => line.lineId),
-      toppings,
+      baseOrder: exactBase.map((line) => line.lineId),
+      toppings: [],
       behaviorSnapshots,
+      ownerReviewGate: {
+        status: 'OWNER_REVIEW_EDITABLE',
+        productionStatus: 'PRODUCTION_BLOCKED',
+        labelStatus: 'LABEL_BLOCKED',
+        omittedToppingLineIds: template.toppings.map((line) => line.lineId),
+      },
       migrationAmbiguities: [],
     },
+    omittedOwnerReviewToppingLineIds: template.toppings.map((line) => line.lineId),
   };
 }
 
@@ -313,7 +345,20 @@ export async function materializeExecutableRecipeDefinition(
 export async function openExecutableRecipeTemplate(
   templateId: string,
   accountId: string,
+  openDependencies: OpenExecutableRecipeDependencies = runtimeOpenDependencies,
 ): Promise<MaterializedExecutableRecipe> {
+  if (!await openDependencies.authorizeOwnerReview(accountId)) {
+    throw new ExecutableRecipeHandoffError(
+      'owner_review_forbidden',
+      'Owner Review wymaga aktywnego uprawnienia administratora.',
+    );
+  }
+  if (openDependencies.hasUnsavedChanges()) {
+    throw new ExecutableRecipeHandoffError(
+      'unsaved_changes',
+      'Bieżąca receptura ma niezapisane zmiany. Potwierdź ich odrzucenie przed otwarciem szablonu.',
+    );
+  }
   const materialized = await materializeExecutableRecipeTemplate(templateId, accountId);
   useRecipeStore.getState().loadRecipeInput(materialized.input, {
     savedId: null,

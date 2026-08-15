@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { calculateRecipe, detectViolations } from '@/engine';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { ExecutableRecipeTemplate } from '@/data/recipes/executableRecipeLibrary';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import type { ServerResolvedProductBehavior } from '@/features/product-intelligence';
 import { parseCsv } from '@/lib/csv';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   ExecutableRecipeHandoffError,
   materializeExecutableRecipeDefinition,
@@ -67,7 +69,11 @@ ServerResolvedProductBehavior => ({
   mainPolicy: null,
   sharedFacts: {
     schemaVersion: 1,
-    technicalComposition: {},
+    technicalComposition: {
+      water: 0, totalSolids: 100, fat: 0, protein: 0, carbohydrate: 0, sugars: 0,
+      sucrose: 0, glucose: 0, dextrose: 0, fructose: 0, lactose: 0, polyols: 0,
+      fibre: 0, salt: 0, alcohol: 0, energyKcal: 0, podValue: 0, pacValue: 0,
+    },
     nutritionPer100g: {
       basis: 'per_100g', energyKcal: 100, fat: 1, saturatedFat: 0, carbohydrate: 20,
       sugars: 10, protein: 2, salt: 0.1, fibre: 1,
@@ -109,11 +115,11 @@ describe('executable Recipe Library handoff', () => {
     useConstraintStudioStore.getState().resetDraftSession();
   });
 
-  it('fails before product resolution when exact product/process data is blocked', async () => {
+  it('fails before product resolution when the exact Starter Pack powder/dose is blocked', async () => {
     const getIngredient = vi.fn();
     const resolveBehavior = vi.fn();
     await expect(materializeExecutableRecipeTemplate(
-      'fantasy-rocero-v1',
+      'lost-pl-smietankowe-z-zoltkami-v1',
       'owner-a',
       { getIngredient, resolveBehavior },
     )).rejects.toMatchObject({ code: 'template_blocked' });
@@ -125,7 +131,11 @@ describe('executable Recipe Library handoff', () => {
     const before = structuredClone(useRecipeStore.getState().items);
     useConstraintStudioStore.setState({ proCoreRecipeId: 'keep-me', lastSavedVersion: 7 });
 
-    await expect(openExecutableRecipeTemplate('lost-pl-smietankowe-z-zoltkami-v1', 'owner-a'))
+    await expect(openExecutableRecipeTemplate(
+      'lost-pl-smietankowe-z-zoltkami-v1',
+      'owner-a',
+      { authorizeOwnerReview: async () => true, hasUnsavedChanges: () => false },
+    ))
       .rejects.toBeInstanceOf(ExecutableRecipeHandoffError);
 
     expect(useRecipeStore.getState().items).toEqual(before);
@@ -133,14 +143,27 @@ describe('executable Recipe Library handoff', () => {
     expect(useConstraintStudioStore.getState().lastSavedVersion).toBe(7);
   });
 
-  it('materializes a synthetic eligible definition with exact snapshots, private price and Topping separation', async () => {
-    const blocked = (await import('@/data/recipes/executableRecipeLibrary'))
-      .executableRecipeTemplateById('lost-pl-smietankowe-z-zoltkami-v1')!;
+  it('rejects a direct template handoff without active owner/admin authorization', async () => {
+    await expect(openExecutableRecipeTemplate(
+      'fantasy-rocero-v1',
+      'ordinary-pro',
+      { authorizeOwnerReview: async () => false, hasUnsavedChanges: () => false },
+    )).rejects.toMatchObject({ code: 'owner_review_forbidden' });
+  });
+
+  it('rejects direct handoff over an unsaved draft until the user confirms replacement', async () => {
+    await expect(openExecutableRecipeTemplate(
+      'fantasy-rocero-v1',
+      'owner-a',
+      { authorizeOwnerReview: async () => true, hasUnsavedChanges: () => true },
+    )).rejects.toMatchObject({ code: 'unsaved_changes' });
+  });
+
+  it('materializes exact Base for Owner Review without granting Production/Label or silently loading Toppings', async () => {
+    const editable = (await import('@/data/recipes/executableRecipeLibrary'))
+      .executableRecipeTemplateById('fantasy-rocero-v1')!;
     const definition: ExecutableRecipeTemplate = {
-      ...blocked,
-      status: 'EXECUTABLE_OWNER_REVIEW',
-      blockers: [],
-      processId: 'test-heated-process-v1',
+      ...editable,
       toppings: [{
         lineId: 'synthetic-topping', mapperIngredientId: 'PI-ING-000514',
         requiredProductForm: null, grams: 10, ownerSeedGrams: 10, role: 'standard',
@@ -154,64 +177,117 @@ describe('executable Recipe Library handoff', () => {
 
     expect(materialized.input.items).toHaveLength(definition.base.length);
     expect(materialized.input.items).not.toContainEqual(expect.objectContaining({ id: 'synthetic-topping' }));
-    expect(materialized.composition.toppings).toHaveLength(1);
+    expect(materialized.composition.toppings).toHaveLength(0);
+    expect(materialized.omittedOwnerReviewToppingLineIds).toEqual(['synthetic-topping']);
+    expect(materialized.composition.ownerReviewGate).toEqual({
+      status: 'OWNER_REVIEW_EDITABLE',
+      productionStatus: 'PRODUCTION_BLOCKED',
+      labelStatus: 'LABEL_BLOCKED',
+      omittedToppingLineIds: ['synthetic-topping'],
+    });
     const snapshots = materialized.composition.behaviorSnapshots;
     expect(snapshots).toBeDefined();
-    expect(Object.keys(snapshots!)).toHaveLength(
-      definition.base.length + 1,
-    );
+    expect(Object.keys(snapshots!)).toHaveLength(definition.base.length);
     expect(materialized.input.items[0]?.ingredient).toMatchObject({
       cost_per_kg: 1.25, cost_currency: 'EUR', cost_source: 'private',
     });
-    expect(snapshots!['synthetic-topping']).toMatchObject({
-      productVersionId: 'version-PI-ING-000514', processScope: 'POST_PROCESS_ADDON',
+    expect(snapshots!['synthetic-topping']).toBeUndefined();
+    const mainLine = definition.base.find((line) => line.role === 'main')!;
+    expect(snapshots![mainLine.lineId]?.moduleEligibility.MAIN).toBe('blocked');
+    expect(Object.values(snapshots!).every((snapshot) => (
+      snapshot.moduleEligibility.PRODUCTION === 'blocked' &&
+      snapshot.moduleEligibility.LABEL === 'blocked' &&
+      snapshot.moduleEligibility.MASTER_LABEL === 'blocked' &&
+      snapshot.blockReasons.includes('owner_review_production_label_gate')
+    ))).toBe(true);
+    expect(materialized.template.productionStatus).toBe('PRODUCTION_BLOCKED');
+    expect(materialized.template.labelStatus).toBe('LABEL_BLOCKED');
+    expect(detectViolations(calculateRecipe(materialized.input))).toEqual([]);
+
+    useRecipeStore.getState().loadRecipeInput(materialized.input, {
+      composition: materialized.composition,
     });
+    const refreshed = Object.fromEntries(Object.entries(
+      useRecipeStore.getState().productBehaviorSnapshots,
+    ).map(([lineId, snapshot]) => [lineId, {
+      ...snapshot,
+      moduleEligibility: {
+        ...snapshot.moduleEligibility,
+        PRODUCTION: 'eligible' as const,
+        PROCESS: 'eligible' as const,
+        LABEL: 'eligible' as const,
+        MASTER_LABEL: 'eligible' as const,
+        EXPORT: 'eligible' as const,
+      },
+      warnings: [],
+      blockReasons: [],
+    }]));
+    useRecipeStore.getState().syncProductBehaviorSnapshots(refreshed);
+    expect(Object.values(useRecipeStore.getState().productBehaviorSnapshots).every(
+      (snapshot) => snapshot.moduleEligibility.PRODUCTION === 'blocked' &&
+        snapshot.moduleEligibility.LABEL === 'blocked' &&
+        snapshot.warnings.includes('owner_review_only') &&
+        snapshot.blockReasons.includes('owner_review_production_label_gate'),
+    )).toBe(true);
+
+    const persisted = recipeCompositionFromState(useRecipeStore.getState());
+    expect(persisted.ownerReviewGate?.omittedToppingLineIds).toEqual(['synthetic-topping']);
+    useRecipeStore.getState().resetToDemo();
+    useRecipeStore.getState().loadRecipeInput(materialized.input, { composition: persisted });
+    expect(useRecipeStore.getState().ownerReviewGate).toEqual(persisted.ownerReviewGate);
+    expect(Object.values(useRecipeStore.getState().productBehaviorSnapshots).every(
+      (snapshot) => snapshot.moduleEligibility.PRODUCTION === 'blocked' &&
+        snapshot.warnings.includes('owner_review_only'),
+    )).toBe(true);
   });
 
-  it('fails closed when an executable definition has no exact process ID', async () => {
-    const blocked = (await import('@/data/recipes/executableRecipeLibrary'))
-      .executableRecipeTemplateById('lost-pl-smietankowe-z-zoltkami-v1')!;
-    const definition: ExecutableRecipeTemplate = {
-      ...blocked,
-      status: 'EXECUTABLE_OWNER_REVIEW',
-      blockers: [],
-      processId: null,
-    };
-    const getIngredient = vi.fn();
-    const resolveBehavior = vi.fn();
+  it('fails closed when a raw Mapper row has incomplete Base composition', async () => {
+    const definition = (await import('@/data/recipes/executableRecipeLibrary'))
+      .executableRecipeTemplateById('fantasy-rocero-v1')!;
+    const firstId = definition.base[0]!.mapperIngredientId!;
 
     await expect(materializeExecutableRecipeDefinition(definition, 'owner-a', {
-      getIngredient,
-      resolveBehavior,
-    })).rejects.toMatchObject({ code: 'template_blocked' });
-    expect(getIngredient).not.toHaveBeenCalled();
-    expect(resolveBehavior).not.toHaveBeenCalled();
+      getIngredient: async (id) => {
+        const row = mapperRows.get(id) ?? null;
+        return id === firstId && row ? { ...row, water_percent: null } : row;
+      },
+      resolveBehavior: async ({ entity, context }) => eligible(entity.entityId, context.processScope),
+    })).rejects.toMatchObject({ code: 'behavior_blocked' });
   });
 
-  it('fails closed when exact nutrition, allergens or verified process evidence is missing', async () => {
-    const blocked = (await import('@/data/recipes/executableRecipeLibrary'))
-      .executableRecipeTemplateById('lost-pl-smietankowe-z-zoltkami-v1')!;
-    const definition: ExecutableRecipeTemplate = {
-      ...blocked,
-      status: 'EXECUTABLE_OWNER_REVIEW',
-      blockers: [],
-      processId: 'test-heated-process-v1',
-    };
-
-    await expect(materializeExecutableRecipeDefinition(definition, 'owner-a', {
+  it('keeps missing process/allergen facts fail-closed in snapshots while Owner Review Base opens', async () => {
+    const definition = (await import('@/data/recipes/executableRecipeLibrary'))
+      .executableRecipeTemplateById('fantasy-rocero-v1')!;
+    const materialized = await materializeExecutableRecipeDefinition(definition, 'owner-a', {
       getIngredient: async (id) => mapperRows.get(id) ?? null,
       resolveBehavior: async ({ entity, context }) => {
         const resolved = eligible(entity.entityId, context.processScope);
         return {
           ...resolved,
+          moduleEligibility: {
+            ...resolved.moduleEligibility,
+            PRODUCTION: 'blocked', PROCESS: 'blocked', ALLERGENS: 'blocked',
+          },
           sharedFacts: {
             ...resolved.sharedFacts!,
-            nutritionPer100g: null,
             allergens: null,
             processEvidence: [],
           },
+          warnings: ['production_data_incomplete'],
+          blockReasons: ['process_and_allergens_missing'],
         };
       },
-    })).rejects.toMatchObject({ code: 'behavior_blocked' });
+    });
+
+    expect(Object.values(materialized.composition.behaviorSnapshots ?? {}).every(
+      (snapshot) => snapshot.moduleEligibility.PRODUCTION === 'blocked' &&
+        snapshot.moduleEligibility.PROCESS === 'blocked' &&
+        snapshot.moduleEligibility.ALLERGENS === 'blocked' &&
+        snapshot.moduleEligibility.LABEL === 'blocked' &&
+        snapshot.moduleEligibility.MASTER_LABEL === 'blocked',
+    )).toBe(true);
+    expect(materialized.template.productionStatus).toBe('PRODUCTION_BLOCKED');
+    expect(materialized.template.labelStatus).toBe('LABEL_BLOCKED');
+    expect(detectViolations(calculateRecipe(materialized.input))).toEqual([]);
   });
 });

@@ -13,6 +13,7 @@ import { useLineLockControls } from '@/features/constraint-studio/useLineLockCon
 import {
   createSubstitutionPreviewWithServerAuthority,
   selectCanonicalDraft,
+  useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -100,6 +101,9 @@ export function IngredientBuilder({
   production?: ProductionWorkspaceView;
   onRecalculate?: () => void;
 }) {
+  const piWorking = useConstraintStudioStore(
+    (state) => state.recalculationTerminal?.state === 'WORKING',
+  );
   const queryClient = useQueryClient();
   const authUserId = useAuthStore((state) =>
     state.status === 'authed' ? (state.user?.id ?? null) : null,
@@ -800,8 +804,10 @@ export function IngredientBuilder({
                 <button
                   type="button"
                   onClick={onRecalculate}
+                  disabled={piWorking}
+                  aria-busy={piWorking}
                   aria-label="Przelicz z PI"
-                  className="pro-focus-ring relative grid size-11 place-items-center rounded-xl border border-gold/35 bg-ink font-mono text-sm font-semibold text-white shadow-pro-e1 hover:bg-graphite 2xl:-mt-px 2xl:size-auto 2xl:h-[52px] 2xl:w-[54px] 2xl:border-transparent 2xl:bg-transparent 2xl:shadow-none 2xl:hover:bg-transparent"
+                  className="pro-focus-ring relative grid size-11 place-items-center rounded-xl border border-gold/35 bg-ink font-mono text-sm font-semibold text-white shadow-pro-e1 hover:bg-graphite disabled:cursor-wait disabled:opacity-65 2xl:-mt-px 2xl:size-auto 2xl:h-[52px] 2xl:w-[54px] 2xl:border-transparent 2xl:bg-transparent 2xl:shadow-none 2xl:hover:bg-transparent"
                   data-testid="pro-workbar-recalc"
                 >
                   <span

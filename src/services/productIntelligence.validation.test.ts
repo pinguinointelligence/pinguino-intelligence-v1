@@ -290,7 +290,8 @@ describe('recipe behavior server validation', () => {
     const section = read('src/features/constraint-studio/ui/ConstraintStudioSection.tsx');
     const save = read('src/features/recipes/useCanonicalRecipeSave.ts');
     const production = read('src/features/production-workspace/useProductionWorkspace.ts');
-    expect(pro).toContain('createOptimizePreviewWithServerAuthority');
+    expect(pro).toContain('runPiRecalculationWithTerminal');
+    expect(studio).toContain('createOptimizePreviewWithServerAuthority');
     expect(section).toContain('applyPreviewWithServerAuthority');
     expect(studio).toContain("? 'ECO'");
     expect(studio).toContain(": 'OPTIMAL'");

@@ -186,7 +186,8 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
 
   it('14. the main recalculation is not bottom-only: the TOP button initiates the real preview pipeline', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
-    expect(page).toContain('createOptimizePreview'); // the ONE canonical pipeline
+    expect(page).toContain('beginPiRecalculation');
+    expect(page).toContain('runPiRecalculationWithTerminal'); // the ONE visible-terminal pipeline
     expect(page).toContain('ProRecalcPanel');
     const panel = read('features', 'pro-core', 'ProRecalcPanel.tsx');
     // Preview → Zastosuj/Anuluj → Cofnij all drive the constraint-studio store (no second optimizer).

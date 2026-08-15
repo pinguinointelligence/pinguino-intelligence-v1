@@ -38,7 +38,9 @@ import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
 import { ProRecalcPanel } from '@/features/pro-core/ProRecalcPanel';
 import { ProMachineSelector } from '@/features/pro-core/ProMachineSelector';
 import {
-  createOptimizePreviewWithServerAuthority,
+  beginPiRecalculation,
+  runPiRecalculationWithTerminal,
+  useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import { RecipeVersionsSection } from '@/features/pro-core/RecipeVersionsSection';
 import { ProSliceBackendState } from '@/features/pro-core/ProSliceBackendState';
@@ -295,6 +297,7 @@ export function ProWorkspacePage() {
   const { section } = useParams<{ section?: string }>();
   const [searchParams] = useSearchParams();
   const userId = useAuthStore((state) => state.user?.id ?? null);
+  const ownerReviewGate = useRecipeStore((state) => state.ownerReviewGate);
   const [libraryHandoff, setLibraryHandoff] = useState<
     | { state: 'idle' }
     | { state: 'loading'; templateId: string }
@@ -368,23 +371,50 @@ export function ProWorkspacePage() {
   const workbenchTab = isWorkbenchSection(activeTab) ? activeTab : null;
   const workbench = isPro && workbenchTab !== null;
   const startRecalc = async () => {
-    if (Object.keys(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).length > 0) {
-      return;
-    }
-    const recipe = useRecipeStore.getState();
-    const profile = useRecipeProfileStore.getState();
-    const snapshot = profileSnapshotFromState(
-      recipe,
-      recipe.direction_targets,
-      profile.directionIntents,
-    );
-    const signature = profileSettingsSignature(snapshot, recipe.draftContextSeq);
-    if (!profile.isConfirmed(signature, recipe.draftContextSeq)) {
-      window.dispatchEvent(new CustomEvent('pinguino:profile-settings-required'));
-      return;
-    }
-    await createOptimizePreviewWithServerAuthority();
+    // Every accepted click owns a fresh visible run. Open first and clear any
+    // stale Preview/Undo evidence before an async server authority check.
     setRecalcOpen(true);
+    const piRunGeneration = beginPiRecalculation();
+    try {
+      const recipe = useRecipeStore.getState();
+      const profile = useRecipeProfileStore.getState();
+      const snapshot = profileSnapshotFromState(
+        recipe,
+        recipe.direction_targets,
+        profile.directionIntents,
+      );
+      const signature = profileSettingsSignature(snapshot, recipe.draftContextSeq);
+      if (!profile.isConfirmed(signature, recipe.draftContextSeq)) {
+        useConstraintStudioStore.setState({
+          recalculationTerminal: { state: 'SETTINGS_CONFIRMATION_REQUIRED' },
+        });
+        return;
+      }
+      const unresolvedRequired = Object.values(
+        useIngredientTableUxStore.getState().unresolvedRequiredByLineId,
+      );
+      if (unresolvedRequired.length > 0) {
+        useConstraintStudioStore.setState({
+          recalculationTerminal: {
+            state: 'BLOCKED_WITH_EXACT_ACTION',
+            code: 'missing_required_role',
+            messagePl: `Brakuje wymaganego składnika: ${unresolvedRequired.map((item) => item.name).join(', ')}. Wybierz produkt, aby PI mogło przeliczyć recepturę.`,
+            action: 'choose_product',
+          },
+        });
+        return;
+      }
+      await runPiRecalculationWithTerminal(undefined, piRunGeneration);
+    } catch {
+      useConstraintStudioStore.setState({
+        recalculationTerminal: {
+          state: 'BLOCKED_WITH_EXACT_ACTION',
+          code: 'apply_failed',
+          messagePl: 'PI nie mogło dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
+          action: 'return_to_recipe',
+        },
+      });
+    }
   };
 
   return (
@@ -441,7 +471,7 @@ export function ProWorkspacePage() {
               </div>
             ) : (
               <>
-              {activeLibraryHandoff.state === 'blocked' ? (
+               {activeLibraryHandoff.state === 'blocked' ? (
               <p
                 className="shrink-0 border-b border-nonprod/25 bg-nonprod/[0.06] px-4 py-2 text-xs font-medium text-nonprod"
                 role="alert"
@@ -449,8 +479,17 @@ export function ProWorkspacePage() {
               >
                 {activeLibraryHandoff.message}
               </p>
-              ) : null}
-              <RecipeWorkbench
+               ) : null}
+               {ownerReviewGate ? (
+                 <p
+                   className="shrink-0 border-b border-attention/25 bg-attention/[0.06] px-4 py-2 text-xs font-medium text-attention"
+                   role="status"
+                   data-testid="pro-owner-review-base-only"
+                 >
+                   OWNER_REVIEW_EDITABLE · otwarty jest wyłącznie Base. Produkcja i etykieta pozostają zablokowane; pominięte Toppingi: {ownerReviewGate.omittedToppingLineIds.length}.
+                 </p>
+               ) : null}
+               <RecipeWorkbench
                 activePanel={workbenchTab!}
                 recalcOpen={recalcOpen}
                 onOpenRecalc={() => setRecalcOpen(true)}

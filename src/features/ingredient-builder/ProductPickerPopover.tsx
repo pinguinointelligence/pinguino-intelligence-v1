@@ -33,8 +33,11 @@ import {
 import { filterIngredients, type IngredientLibrary } from './ingredientLibrary';
 import {
   isProductPickerSelectionCurrent,
+  productPickerVerificationView,
   productPickerUnavailableReason,
+  type ProductPickerVerificationView,
 } from './productPickerModel';
+import { closeProductPickerForPointer } from './productPickerBackdrop';
 
 export type ProductPickerScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
 
@@ -54,6 +57,7 @@ interface PickerOption {
   market: string | null;
   originalName: string | null;
   catalog?: CatalogProductSearchHit;
+  verification: ProductPickerVerificationView;
   group: 'favorites_recent' | 'pi_base' | 'verified_markets' | 'manual' | 'global' | 'blocked';
   selectable: boolean;
 }
@@ -167,6 +171,7 @@ export function ProductPickerPopover({
         market: hit.markets[0] ?? null,
         originalName: hit.originalName,
         catalog: hit,
+        verification: productPickerVerificationView(hit, scope),
         group: hit.group,
         selectable: scope === 'BASE_FORMULATION' ? hit.usableInBase : hit.usableAsTopping,
       })) : [];
@@ -190,6 +195,7 @@ export function ProductPickerPopover({
       originalName: null,
       group: 'pi_base' as const,
       selectable: true,
+      verification: { status: 'PINGÜINO VERIFIED' as const, reason: null },
     }));
   }, [favoritesOnly, globalCatalog.hits, globalCatalog.isSettled, globalCatalog.preferences, library, query, scope]);
   const safeActiveIndex =
@@ -404,7 +410,14 @@ export function ProductPickerPopover({
               <div
                 className="fixed inset-0 z-[89] bg-black/10 lg:bg-transparent"
                 aria-hidden="true"
-                onPointerDown={() => close()}
+                onPointerDown={(event) => {
+                  // The anchored picker visually overlaps the workbench but PI
+                  // remains a valid terminal action. If the pointer is exactly
+                  // over the underlying PI control, close this dialog first and
+                  // replay the single user action; every other backdrop click
+                  // keeps the accepted close-only behavior.
+                  closeProductPickerForPointer(event, close);
+                }}
               />
               <div
                 id={dialogId}
@@ -624,7 +637,7 @@ export function ProductPickerPopover({
                             aria-selected={index === safeActiveIndex}
                             aria-disabled={!option.selectable}
                             aria-label={
-                              `${option.name}. ${
+                              `${option.name}. ${option.verification.status}. ${
                                 option.status === 'pi_base'
                                   ? 'PINGÜINO Base'
                                   : option.status === 'verified'
@@ -637,6 +650,11 @@ export function ProductPickerPopover({
                                 : ''}`
                             }
                             data-option-index={index}
+                            data-entity-kind={option.catalog?.entityKind}
+                            data-product-id={option.catalog?.id}
+                            data-product-version-id={option.catalog?.currentVersionId ?? undefined}
+                            data-mapper-id={option.catalog?.mappedIngredientId ?? undefined}
+                            data-product-form={option.catalog?.productForm ?? undefined}
                             title={
                               !option.selectable && option.catalog
                                 ? productPickerUnavailableReason(scope, option.catalog)
@@ -677,7 +695,18 @@ export function ProductPickerPopover({
                               <span className="block truncate text-[10px] text-stone-500">oryg. {option.originalName}</span>
                             ) : null}
                           </span>
-                          <span className="shrink-0 text-[10px] text-stone-600">{option.market ?? option.detail}</span>
+                          <span className="flex max-w-[148px] shrink-0 flex-col items-end text-right">
+                            <span className="max-w-full truncate text-[10px] text-stone-600">
+                              {option.market ?? option.detail}
+                            </span>
+                            <span
+                              className="max-w-full truncate font-mono text-[8px] font-semibold tracking-[0.04em] text-stone-500"
+                              data-picker-verification-status={option.verification.status}
+                              title={option.verification.reason ?? option.verification.status}
+                            >
+                              {option.verification.status}
+                            </span>
+                          </span>
                           </button>
                           {option.status !== 'blocked' ? <button
                             type="button"

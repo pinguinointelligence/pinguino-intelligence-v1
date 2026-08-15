@@ -54,6 +54,7 @@ import {
 } from '@/features/practical-recipe/practicalRecipe';
 import {
   readRecipeCompositionMetadata,
+  type OwnerReviewRecipeGate,
   type RecipeCompositionMetadata,
   type RecipeToppingItem,
   type RecipeToppingIngredient,
@@ -78,6 +79,34 @@ import {
 } from '@/features/product-intelligence';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
+
+const OWNER_REVIEW_GATE_REASON = 'owner_review_production_label_gate';
+const OWNER_REVIEW_GATE_WARNING = 'owner_review_only';
+
+/** Server re-resolution may refresh product truth, but it must never erase a
+ * recipe-level Owner Review boundary. That boundary belongs to the opened
+ * template (omitted Toppings/final legal process), not to the product
+ * classifier, so it is re-applied after every snapshot refresh and survives
+ * save/reload through the ordinary composition sidecar. */
+const preserveOwnerReviewGate = (
+  gate: OwnerReviewRecipeGate | null,
+  current: ProductBehaviorSnapshot,
+): ProductBehaviorSnapshot => {
+  if (!gate) return structuredClone(current);
+  return {
+    ...structuredClone(current),
+    moduleEligibility: {
+      ...current.moduleEligibility,
+      PRODUCTION: 'blocked',
+      PROCESS: 'blocked',
+      LABEL: 'blocked',
+      MASTER_LABEL: 'blocked',
+      EXPORT: 'blocked',
+    },
+    warnings: [...new Set([...current.warnings, OWNER_REVIEW_GATE_WARNING])],
+    blockReasons: [...new Set([...current.blockReasons, OWNER_REVIEW_GATE_REASON])],
+  };
+};
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
 const normalizeProteinTarget = (value: number): number => {
   const finite = Number.isFinite(value) ? value : PROTEIN_GELATO_TARGET.defaultPercent;
@@ -125,6 +154,9 @@ export interface RecipeState {
   toppings: RecipeToppingItem[];
   /** Immutable product/version/policy authority per Base/Topping line. */
   productBehaviorSnapshots: Record<string, ProductBehaviorSnapshot>;
+  /** Durable recipe-level Owner Review boundary. It cannot disappear when a
+   * product snapshot is re-resolved or a Base line is replaced. */
+  ownerReviewGate: OwnerReviewRecipeGate | null;
   compositionMigrationAmbiguities: Array<{ lineId: string; reason: string }>;
   /**
    * Canonical ingredient ids the user EXPLICITLY marked unavailable/excluded —
@@ -462,6 +494,7 @@ const fromPreset = (preset: DemoPreset) => ({
   baseOrder: preset.items.map((item) => item.id),
   toppings: [] as RecipeToppingItem[],
   productBehaviorSnapshots: {} as Record<string, ProductBehaviorSnapshot>,
+  ownerReviewGate: null as OwnerReviewRecipeGate | null,
   compositionMigrationAmbiguities: [] as Array<{ lineId: string; reason: string }>,
   // Owner P0 NIGHTLY (exclusion lifecycle): exclusions are DRAFT-SCOPED — a
   // fresh preset load / reset starts a fresh exclusion context. An ingredient
@@ -560,6 +593,7 @@ export function recipePersistPartialize(state: RecipeState) {
     baseOrder: state.baseOrder,
     toppings: state.toppings,
     productBehaviorSnapshots: state.productBehaviorSnapshots,
+    ownerReviewGate: state.ownerReviewGate,
     compositionMigrationAmbiguities: state.compositionMigrationAmbiguities,
     // Agent C (owner addendum): draft-material — see the field doc above.
     excludedIngredientIds: state.excludedIngredientIds,
@@ -797,7 +831,10 @@ export const useRecipeStore = create<RecipeState>()(
           return { ok: false, code: 'write_verification_failed' };
         }
         const nextProductBehaviorSnapshots = productBehaviorSnapshots
-          ? structuredClone(productBehaviorSnapshots)
+          ? Object.fromEntries(Object.entries(productBehaviorSnapshots).map(([lineId, snapshot]) => [
+              lineId,
+              preserveOwnerReviewGate(prior.ownerReviewGate, snapshot),
+            ]))
           : Object.fromEntries(
               Object.entries(prior.productBehaviorSnapshots).filter(([lineId]) => {
                 const priorBase = prior.items.find((item) => item.id === lineId);
@@ -1069,7 +1106,9 @@ export const useRecipeStore = create<RecipeState>()(
           )
             return {};
           const next = { ...state.productBehaviorSnapshots };
-          if (snapshot) next[lineId] = structuredClone(snapshot);
+          if (snapshot) {
+            next[lineId] = preserveOwnerReviewGate(state.ownerReviewGate, snapshot);
+          }
           else delete next[lineId];
           return {
             productBehaviorSnapshots: next,
@@ -1091,7 +1130,10 @@ export const useRecipeStore = create<RecipeState>()(
           if (!valid) return {};
           return {
             productBehaviorSnapshots: Object.fromEntries(
-              entries.map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
+              entries.map(([lineId, snapshot]) => [
+                lineId,
+                preserveOwnerReviewGate(state.ownerReviewGate, snapshot),
+              ]),
             ),
           };
         }),
@@ -1527,6 +1569,9 @@ export const useRecipeStore = create<RecipeState>()(
           ).map((item) => item.id),
           toppings: sortedToppings(loadedToppings),
           productBehaviorSnapshots: structuredClone(compositionMetadata?.behaviorSnapshots ?? {}),
+          ownerReviewGate: compositionMetadata?.ownerReviewGate
+            ? structuredClone(compositionMetadata.ownerReviewGate)
+            : null,
           compositionMigrationAmbiguities: migrationAmbiguities,
           excludedIngredientIds: [...(input.goals?.excluded_ingredient_ids ?? [])],
           unavailableMainIngredientIds: [...(input.goals?.unavailable_main_ingredient_ids ?? [])],
@@ -1663,6 +1708,7 @@ export const useRecipeStore = create<RecipeState>()(
             baseOrder: starter.items.map((item) => item.id),
             toppings: [],
             productBehaviorSnapshots: {},
+            ownerReviewGate: null,
             compositionMigrationAmbiguities: [],
             excludedIngredientIds: [],
             unavailableMainIngredientIds: [],

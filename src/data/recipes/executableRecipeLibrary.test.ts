@@ -44,7 +44,7 @@ const recipeInput = (template: (typeof EXECUTABLE_RECIPE_TEMPLATES)[number]): Re
   machine_capacity_grams: null,
   goals: { formulation_strategy: template.formulationStrategy },
   items: template.base.map((line) => {
-    if (line.mapperIngredientId === null) {
+    if (line.mapperIngredientId === null || line.grams === null) {
       throw new Error(`unresolved Base line ${line.lineId}`);
     }
     const row = mapperRows.get(line.mapperIngredientId);
@@ -77,10 +77,25 @@ describe('executable Recipe Library Batch 1 registry', () => {
     expect(EXECUTABLE_RECIPE_TEMPLATES.every((template) => template.publicationStage === 'owner_review')).toBe(true);
   });
 
-  it.each(EXECUTABLE_RECIPE_TEMPLATES)('$displayName has an exact whole-gram 1000 g Base', (template) => {
+  it.each(EXECUTABLE_RECIPE_TEMPLATES.filter(
+    (template) => template.status === 'OWNER_REVIEW_EDITABLE',
+  ))('$displayName has an exact whole-gram 1000 g Base', (template) => {
     expect(recipeTemplateBaseTotal(template)).toBe(1000);
-    expect(template.base.every((line) => Number.isInteger(line.grams))).toBe(true);
+    expect(template.base.every((line) => line.grams !== null && Number.isInteger(line.grams))).toBe(true);
     expect(new Set(template.base.map((line) => line.mapperIngredientId)).size).toBe(template.base.length);
+  });
+
+  it('uses no fresh-yolk fallback while exact Starter Pack powder data are unavailable', () => {
+    const poland = executableRecipeTemplateById('lost-pl-smietankowe-z-zoltkami-v1')!;
+    expect(JSON.stringify(poland)).not.toContain('PI-ING-001646');
+    expect(recipeTemplateBaseTotal(poland)).toBeNull();
+    expect(poland.status).toBe('BLOCKED_EXACT_PRODUCT_DATA');
+    expect(poland.base).toContainEqual(expect.objectContaining({
+      mapperIngredientId: null,
+      requiredProductForm: 'egg_yolk_powder_starter_pack',
+      grams: null,
+      ownerSeedGrams: null,
+    }));
   });
 
   it('preserves the authorized Topping totals outside the Base', () => {
@@ -112,7 +127,7 @@ describe('executable Recipe Library Batch 1 registry', () => {
     }
   });
 
-  it('keeps branded Owner-only references out of the client registry and card projection', () => {
+  it('keeps exact branded Owner-only research references out of the client registry and card projection', () => {
     const serializedRegistry = JSON.stringify(EXECUTABLE_RECIPE_TEMPLATES);
     expect(serializedRegistry).not.toMatch(/Ferrero|Raffaello|Kinder|Oreo|Snickers/i);
     for (const template of EXECUTABLE_RECIPE_TEMPLATES) {
@@ -131,11 +146,19 @@ describe('executable Recipe Library Batch 1 registry', () => {
     }
   });
 
-  it('does not claim an exact process while the ProductBehavior/process gate is incomplete', () => {
+  it('separates editable Owner Review from Production and Label gates', () => {
     expect(EXECUTABLE_RECIPE_TEMPLATES.every((template) => template.processId === null)).toBe(true);
-    expect(EXECUTABLE_RECIPE_TEMPLATES.every(
-      (template) => template.status === 'BLOCKED_EXACT_PRODUCT_DATA' && template.blockers.length > 0,
-    )).toBe(true);
+    const editable = EXECUTABLE_RECIPE_TEMPLATES.filter(
+      (template) => template.status === 'OWNER_REVIEW_EDITABLE',
+    );
+    expect(editable).toHaveLength(5);
+    expect(editable.every((template) => template.blockers.length === 0)).toBe(true);
+    expect(editable.every((template) => (
+      template.productionStatus === 'PRODUCTION_BLOCKED' && template.productionBlockers.length > 0
+    ))).toBe(true);
+    expect(editable.every((template) => (
+      template.labelStatus === 'LABEL_BLOCKED' && template.labelBlockers.length > 0
+    ))).toBe(true);
   });
 
   it('returns immutable clones when a working draft resolves a template', () => {
@@ -148,12 +171,15 @@ describe('executable Recipe Library Batch 1 registry', () => {
   });
 
   it('records the current Engine truth for every Engine-corrected Owner vector without calling it sensory approval', () => {
-    const audit = EXECUTABLE_RECIPE_TEMPLATES.map((template) => {
+    const audit = EXECUTABLE_RECIPE_TEMPLATES
+      .filter((template) => template.status === 'OWNER_REVIEW_EDITABLE')
+      .map((template) => {
       const result = calculateRecipe(recipeInput(template));
       const dairyCarrier = template.base
         .filter((line) => ['PI-ING-000236', 'PI-ING-000180', 'PI-ING-000270'].includes(line.mapperIngredientId ?? ''))
-        .reduce((total, line) => total + line.grams, 0) / template.baseTargetGrams * 100;
-      expect(result.scores?.technical).toBeCloseTo(template.technicalScore, 8);
+        .reduce((total, line) => total + (line.grams ?? 0), 0) / template.baseTargetGrams * 100;
+      expect(template.technicalScore).not.toBeNull();
+      expect(result.scores?.technical).toBeCloseTo(template.technicalScore!, 8);
       return {
         id: template.id,
         engineVersion: result.engine_version,
