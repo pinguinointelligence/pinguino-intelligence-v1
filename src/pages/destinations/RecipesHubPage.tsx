@@ -24,6 +24,13 @@ import {
   flavorInspirationStartIntent,
   inspirationStartHref,
 } from '@/data/recipes/inspirationHandoff';
+import {
+  EXECUTABLE_RECIPE_TEMPLATES,
+  executableRecipeCard,
+  executableRecipeStartHref,
+  executableTemplateIdForInspiration,
+  type ExecutableRecipeLibrary,
+} from '@/data/recipes/executableRecipeLibrary';
 import { NonProductionMarker } from '@/features/design-review/NonProductionMarker';
 import { useReviewMode } from '@/features/design-review/useReviewMode';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
@@ -39,7 +46,7 @@ const r = copy.nav.recipes;
 const d = r.discovery;
 const MAX_FEATURED = 6;
 
-type DiscoveryView = 'home' | 'lost' | 'natural' | 'inspiration' | 'countries';
+type DiscoveryView = 'home' | 'lost' | 'natural' | 'fantasy' | 'inspiration' | 'countries';
 type RecipeLibraryTab = 'mine' | 'pinguino' | 'inspiration';
 type IconName = 'left' | 'right' | 'book' | 'globe' | 'leaf' | 'search' | 'sparkles';
 
@@ -180,7 +187,9 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function CandidateCard({ entry }: { entry: CuratedRecipeCandidate }) {
+type RecipePersona = ReturnType<typeof useProCorePersona>;
+
+function CandidateCard({ entry, persona }: { entry: CuratedRecipeCandidate; persona: RecipePersona }) {
   const intent = candidateStartIntent(entry);
   return (
     <Card
@@ -226,7 +235,10 @@ function CandidateCard({ entry }: { entry: CuratedRecipeCandidate }) {
         {intent ? (
           <Link
             className={cn(buttonClasses('primary', 'sm'), 'mt-5 w-full')}
-            to={inspirationStartHref(intent)}
+            to={inspirationStartHref(intent, {
+              persona,
+              returnTo: '/recipes',
+            })}
           >
             {entry.status === 'adaptable' ? 'Użyj adaptacji' : d.openRecipe}
           </Link>
@@ -243,9 +255,11 @@ function CandidateCard({ entry }: { entry: CuratedRecipeCandidate }) {
 function CuratedCollectionView({
   collection,
   ownerReviewMode,
+  persona,
 }: {
   collection: CuratedCollection;
   ownerReviewMode: boolean;
+  persona: RecipePersona;
 }) {
   const entries = visibleCuratedCandidates({
     visibility: ownerReviewMode ? 'owner_review' : 'customer',
@@ -274,7 +288,7 @@ function CuratedCollectionView({
           <OwnerReviewFrame enabled={ownerReviewMode}>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {entries.slice(0, MAX_FEATURED).map((entry) => (
-                <CandidateCard key={entry.id} entry={entry} />
+                <CandidateCard key={entry.id} entry={entry} persona={persona} />
               ))}
             </div>
           </OwnerReviewFrame>
@@ -305,7 +319,7 @@ function FamilyCard({ family, onClick }: { family: InspirationFamily; onClick: (
   );
 }
 
-function InspirationView() {
+function InspirationView({ persona }: { persona: RecipePersona }) {
   const [productType, setProductType] = useState<InspirationProductFilter>('all');
   const allFamilies = useMemo(() => customerFacingInspirationFamilies(productType), [productType]);
   const [query, setQuery] = useState('');
@@ -342,7 +356,11 @@ function InspirationView() {
                 return (
                   <Link
                     key={direction.id}
-                    to={inspirationStartHref(flavorInspirationStartIntent(entry))}
+                    to={inspirationStartHref(flavorInspirationStartIntent(entry), {
+                      persona,
+                      executableTemplateId: executableTemplateIdForInspiration(entry.flavorCode),
+                      returnTo: '/recipes?tab=inspiration',
+                    })}
                     className="group rounded-md border border-ink/10 bg-paper p-5 hover:border-ink/30"
                   >
                     <span className="text-xs text-stone-400">{direction.count} pomysłów</span>
@@ -418,7 +436,96 @@ function InspirationView() {
   );
 }
 
-function CountriesView({ ownerReviewMode }: { ownerReviewMode: boolean }) {
+function ExecutableOwnerReviewView({
+  library,
+  persona,
+}: {
+  library: ExecutableRecipeLibrary;
+  persona: RecipePersona;
+}) {
+  const templates = EXECUTABLE_RECIPE_TEMPLATES.filter((template) => template.library === library);
+  const title = library === 'lost_legendary' ? 'Polska · Lost & Legendary' : 'Fantasy · Batch 1';
+  return (
+    <section aria-labelledby={`${library}-executable-heading`}>
+      <p className="text-xs font-semibold tracking-[0.14em] text-stone-500 uppercase">
+        Owner Review · testowe / nieprodukcyjne
+      </p>
+      <h2
+        id={`${library}-executable-heading`}
+        className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-ink"
+      >
+        {title}
+      </h2>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-600">
+        Dokładne wektory Base są zapisane wersjonowo. Otwarcie pozostaje zablokowane, dopóki
+        wskazane produkty, polityki Main, Toppingi i procesy nie przejdą bieżącej walidacji.
+      </p>
+      <OwnerReviewFrame enabled>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {templates.map((template) => {
+            const card = executableRecipeCard(template);
+            return (
+              <Card key={template.id} padding="none" className="overflow-hidden">
+                <div className="p-5" data-testid={`executable-template-${template.id}`}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <PinkReadiness>WYMAGA TESTU SMAKOWEGO</PinkReadiness>
+                    {template.trademarkReviewRequired ? (
+                      <PinkReadiness>TRADEMARK REVIEW</PinkReadiness>
+                    ) : null}
+                  </div>
+                  <h3 className="mt-5 text-xl font-semibold tracking-[-0.025em] text-ink">
+                    {card.displayName}
+                  </h3>
+                  <p className="mt-2 text-xs text-stone-500">
+                    Gelato · −11°C · v{card.version}
+                  </p>
+                  <dl className="mt-5 grid grid-cols-3 gap-2 text-xs">
+                    <div><dt className="text-stone-400">Base</dt><dd className="font-mono">{card.baseGrams} g</dd></div>
+                    <div><dt className="text-stone-400">Topping</dt><dd className="font-mono">{card.toppingGrams} g</dd></div>
+                    <div><dt className="text-stone-400">Razem</dt><dd className="font-mono">{card.finalMassGrams} g</dd></div>
+                  </dl>
+                  <p className="mt-4 text-xs text-stone-500">
+                    Score techniczny: <span className="font-mono">{card.technicalScore.toFixed(2)}</span>
+                    {' · '}Proces: {card.processId ?? 'brak zatwierdzonej wersji'}
+                    {' · '}Znane alergeny: {card.knownAllergens.join(', ')}
+                    {card.finalAllergensComplete ? '' : ' · lista finalna niepełna'}
+                  </p>
+                  <p className="mt-5 text-xs leading-relaxed text-nonprod">
+                    {card.blockers[0] ?? 'Wymaga zamknięcia bieżących bramek danych.'}
+                  </p>
+                  {template.status === 'EXECUTABLE_OWNER_REVIEW' ? (
+                    <Link
+                      className={cn(buttonClasses('primary', 'sm'), 'mt-5 w-full')}
+                      to={executableRecipeStartHref(template.id, persona, '/recipes')}
+                    >
+                      Otwórz w Pro
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-full opacity-55')}
+                    >
+                      Zablokowane danymi produktu
+                    </button>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </OwnerReviewFrame>
+    </section>
+  );
+}
+
+function CountriesView({
+  ownerReviewMode,
+  persona,
+}: {
+  ownerReviewMode: boolean;
+  persona: RecipePersona;
+}) {
   const [query, setQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const publicCountries = publicCountryNavigation();
@@ -456,14 +563,14 @@ function CountriesView({ ownerReviewMode }: { ownerReviewMode: boolean }) {
             <NonProductionMarker itemId="recipes-hub-tiles" title={d.developmentPreview}>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {countryEntries.slice(0, MAX_FEATURED).map((entry) => (
-                  <CandidateCard key={entry.id} entry={entry} />
+                  <CandidateCard key={entry.id} entry={entry} persona={persona} />
                 ))}
               </div>
             </NonProductionMarker>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {countryEntries.map((entry) => (
-                <CandidateCard key={entry.id} entry={entry} />
+                <CandidateCard key={entry.id} entry={entry} persona={persona} />
               ))}
             </div>
           )}
@@ -625,7 +732,7 @@ export function RecipesHubPage() {
           role="tabpanel"
           aria-labelledby="recipes-tab-inspiration"
         >
-          <InspirationView />
+          <InspirationView persona={persona} />
         </div>
       ) : null}
       {activeTab === 'pinguino' ? (
@@ -635,7 +742,7 @@ export function RecipesHubPage() {
             {view === 'home' ? (
               <>
                 <OwnerReviewFrame enabled={ownerReviewMode}>
-                  <div className="grid gap-x-8 md:grid-cols-2">
+                  <div className={cn('grid gap-x-8 md:grid-cols-2', ownerReviewMode && 'xl:grid-cols-3')}>
                     <ActionCard
                       icon={<Icon name="book" className="h-5 w-5" />}
                       title={d.lostTitle}
@@ -648,6 +755,14 @@ export function RecipesHubPage() {
                       body={d.naturalBody}
                       onClick={() => setView('natural')}
                     />
+                    {ownerReviewMode ? (
+                      <ActionCard
+                        icon={<Icon name="sparkles" className="h-5 w-5" />}
+                        title="Fantasy"
+                        body="Sześć wersjonowanych kierunków Batch 1 do audytu Owner Review."
+                        onClick={() => setView('fantasy')}
+                      />
+                    ) : null}
                   </div>
                 </OwnerReviewFrame>
                 <div className="mt-10 grid gap-3 sm:grid-cols-2">
@@ -674,15 +789,29 @@ export function RecipesHubPage() {
               </>
             ) : null}
             {view === 'lost' ? (
-              <CuratedCollectionView
-                collection="lost_legendary"
-                ownerReviewMode={ownerReviewMode}
-              />
+              ownerReviewMode ? (
+                <ExecutableOwnerReviewView library="lost_legendary" persona={persona} />
+              ) : (
+                <CuratedCollectionView
+                  collection="lost_legendary"
+                  ownerReviewMode={ownerReviewMode}
+                  persona={persona}
+                />
+              )
             ) : null}
             {view === 'natural' ? (
-              <CuratedCollectionView collection="natural_icon" ownerReviewMode={ownerReviewMode} />
+              <CuratedCollectionView
+                collection="natural_icon"
+                ownerReviewMode={ownerReviewMode}
+                persona={persona}
+              />
             ) : null}
-            {view === 'countries' ? <CountriesView ownerReviewMode={ownerReviewMode} /> : null}
+            {view === 'fantasy' && ownerReviewMode ? (
+              <ExecutableOwnerReviewView library="fantasy" persona={persona} />
+            ) : null}
+            {view === 'countries' ? (
+              <CountriesView ownerReviewMode={ownerReviewMode} persona={persona} />
+            ) : null}
           </div>
         </div>
       ) : null}

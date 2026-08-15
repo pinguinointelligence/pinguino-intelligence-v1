@@ -31,6 +31,31 @@ describe('inspiration → current workbench handoff', () => {
     });
   });
 
+  it('routes an authenticated Pro executable mapping directly to the canonical Pro workbench', () => {
+    const intent = flavorInspirationStartIntent(entry);
+    const href = inspirationStartHref(intent, {
+      persona: 'pro',
+      executableTemplateId: 'fantasy-rocero-v1',
+      returnTo: '/recipes?tab=inspiration',
+    });
+    expect(href.startsWith('/pro/recipe?')).toBe(true);
+    expect(href).not.toMatch(/^\/(home|start)(?:\?|$)/);
+    const params = new URLSearchParams(href.split('?')[1]);
+    expect(params.get('libraryTemplate')).toBe('fantasy-rocero-v1');
+    expect(params.get('returnTo')).toBe('/recipes?tab=inspiration');
+  });
+
+  it('does not change the accepted non-Pro destination', () => {
+    const intent = flavorInspirationStartIntent(entry);
+    expect(inspirationStartHref(intent, { persona: 'home' })).toBe(inspirationStartHref(intent));
+    expect(inspirationStartHref(intent, { persona: 'demo' })).toBe(inspirationStartHref(intent));
+    expect(inspirationStartHref(intent, {
+      persona: 'home',
+      executableTemplateId: 'fantasy-rocero-v1',
+      returnTo: '/recipes?tab=inspiration',
+    })).toBe(inspirationStartHref(intent));
+  });
+
   it('rejects malformed or foreign query strings', () => {
     expect(parseInspirationStartIntent(new URLSearchParams('source=other&idea=x'))).toBeNull();
     expect(

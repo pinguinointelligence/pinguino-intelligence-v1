@@ -21,8 +21,8 @@
  * never a fake screen. Non-Pro personas see an honest PINGÜINO Pro gate; a DEV-only
  * persona switch lets acceptance exercise pro/home/demo without a login.
  */
-import { useState } from 'react';
-import { Link, Navigate, useParams, useSearchParams } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
 import { SurfaceToneContext } from '@/components/ui/surface';
@@ -55,6 +55,10 @@ import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileSto
 import { profileSettingsSignature } from '@/features/pro-workbench/recipeProfileStore';
 import { profileSnapshotFromState } from '@/features/pro-workbench/recipeProfilePersistence';
 import { useLegacyRecipeBehaviorRevalidation } from '@/features/product-intelligence';
+import {
+  ExecutableRecipeHandoffError,
+  openExecutableRecipeTemplate,
+} from '@/services/executableRecipeHandoff';
 
 const w = copy.proWorkspace;
 
@@ -286,11 +290,69 @@ function SectionPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona })
 
 export function ProWorkspacePage() {
   const [recalcOpen, setRecalcOpen] = useState(false);
+  const navigate = useNavigate();
   const persona = useProCorePersona();
   const { section } = useParams<{ section?: string }>();
   const [searchParams] = useSearchParams();
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const [libraryHandoff, setLibraryHandoff] = useState<
+    | { state: 'idle' }
+    | { state: 'loading'; templateId: string }
+    | { state: 'ready'; templateId: string; recipeName: string }
+    | { state: 'blocked'; templateId: string | null; message: string }
+  >({ state: 'idle' });
+  const lastLibraryHandoff = useRef<string | null>(null);
   const isPro = persona === 'pro';
   useLegacyRecipeBehaviorRevalidation(isPro);
+  const libraryTemplateId = searchParams.get('libraryTemplate')?.trim() || null;
+  const libraryIntent = searchParams.get('source') === 'flavor_inspiration'
+    || searchParams.get('source') === 'curated_collection'
+    || searchParams.get('source') === 'executable_template';
+  const activeLibraryHandoff = isPro && libraryIntent && !libraryTemplateId
+    ? {
+        state: 'blocked' as const,
+        templateId: null,
+        message: 'Ta inspiracja nie ma jeszcze dokładnego, wykonawczego szablonu. Bieżąca receptura nie została zmieniona.',
+      }
+    : libraryHandoff;
+
+  useEffect(() => {
+    if (!isPro || !libraryIntent) return;
+    if (!libraryTemplateId) return;
+    if (!userId) return;
+    const handoffKey = `${userId}:${libraryTemplateId}`;
+    if (lastLibraryHandoff.current === handoffKey) return;
+    lastLibraryHandoff.current = handoffKey;
+    let cancelled = false;
+    setLibraryHandoff({ state: 'loading', templateId: libraryTemplateId });
+    void openExecutableRecipeTemplate(libraryTemplateId, userId)
+      .then((materialized) => {
+        if (cancelled) return;
+        setLibraryHandoff({
+          state: 'ready',
+          templateId: libraryTemplateId,
+          recipeName: materialized.template.displayName,
+        });
+        // Consume the one-shot handoff URL. Keeping libraryTemplate in the
+        // address would rematerialize the pristine template after a reload and
+        // overwrite the Owner's edited working draft.
+        navigate('/pro/recipe', { replace: true });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        lastLibraryHandoff.current = null;
+        setLibraryHandoff({
+          state: 'blocked',
+          templateId: libraryTemplateId,
+          message: error instanceof ExecutableRecipeHandoffError
+            ? error.message
+            : 'Nie udało się otworzyć dokładnej wersji szablonu.',
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPro, libraryIntent, libraryTemplateId, navigate, userId]);
 
   // Legacy `/pro?tab=<id>` deep-links → the stable `/pro/<id>` path (replace keeps history clean).
   const legacyTab = searchParams.get('tab');
@@ -368,16 +430,35 @@ export function ProWorkspacePage() {
           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
           // viewport belongs to the edit loop; every destination lives in the hamburger.
           <div
-            className="lg:mx-auto lg:h-full lg:min-h-0 lg:w-[calc(100%-4rem)] lg:max-w-[1776px]"
+            className="lg:mx-auto lg:flex lg:h-full lg:min-h-0 lg:w-[calc(100%-4rem)] lg:max-w-[1776px] lg:flex-col"
             data-testid={`pro-panel-${activeTab}`}
           >
-            <RecipeWorkbench
-              activePanel={workbenchTab!}
-              recalcOpen={recalcOpen}
-              onOpenRecalc={() => setRecalcOpen(true)}
-              onRecalculate={startRecalc}
-              onCloseRecalc={() => setRecalcOpen(false)}
-            />
+            {activeLibraryHandoff.state === 'loading' ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center bg-paper px-6 py-12">
+                <p className="text-sm text-stone-600" role="status">
+                  Otwieramy dokładną wersję receptury…
+                </p>
+              </div>
+            ) : (
+              <>
+              {activeLibraryHandoff.state === 'blocked' ? (
+              <p
+                className="shrink-0 border-b border-nonprod/25 bg-nonprod/[0.06] px-4 py-2 text-xs font-medium text-nonprod"
+                role="alert"
+                data-testid="pro-library-handoff-blocked"
+              >
+                {activeLibraryHandoff.message}
+              </p>
+              ) : null}
+              <RecipeWorkbench
+                activePanel={workbenchTab!}
+                recalcOpen={recalcOpen}
+                onOpenRecalc={() => setRecalcOpen(true)}
+                onRecalculate={startRecalc}
+                onCloseRecalc={() => setRecalcOpen(false)}
+              />
+              </>
+            )}
           </div>
         ) : (
           // Plain titled sections (versions/production/history/costs/exports/settings/machine).

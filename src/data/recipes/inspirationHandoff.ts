@@ -41,7 +41,18 @@ export function flavorInspirationStartIntent(entry: FlavorCatalogueEntry): Inspi
   };
 }
 
-export function inspirationStartHref(intent: InspirationStartIntent): string {
+export interface InspirationDestination {
+  persona?: 'demo' | 'home' | 'pro';
+  /** Exact executable template selected by a governed library mapping. */
+  executableTemplateId?: string | null;
+  /** Browser history already owns Back; this value only restores the tab on a direct reload. */
+  returnTo?: string | null;
+}
+
+export function inspirationStartHref(
+  intent: InspirationStartIntent,
+  destination: InspirationDestination = {},
+): string {
   const params = new URLSearchParams({
     source: intent.source,
     inspiration: intent.sourceId,
@@ -52,7 +63,16 @@ export function inspirationStartHref(intent: InspirationStartIntent): string {
     params.set('canonical', intent.canonicalIngredientIds.join(','));
   }
   if (intent.adaptationWarning !== null) params.set('adaptation', intent.adaptationWarning);
-  return `/start?${params.toString()}`;
+  if (destination.persona === 'pro' && destination.executableTemplateId) {
+    params.set('libraryTemplate', destination.executableTemplateId);
+  }
+  if (destination.persona === 'pro' && destination.returnTo) {
+    params.set('returnTo', destination.returnTo);
+  }
+  // The entitlement authority is evaluated by the caller through
+  // useProCorePersona. Non-Pro destinations stay byte-for-byte on the accepted
+  // customer handoff; no Home implementation or entitlement gate is bypassed.
+  return `${destination.persona === 'pro' ? '/pro/recipe' : '/start'}?${params.toString()}`;
 }
 
 const PRODUCT_TYPES: ReadonlySet<string> = new Set(['gelato', 'sorbet', 'vegan', 'protein']);
