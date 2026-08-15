@@ -119,7 +119,8 @@ describe('global catalog RLS and trust boundaries', () => {
     expect(hardening).toContain('revoke all on public.global_catalog_server_ocr_attestations');
     expect(ingredientService).toContain('getEngineApprovedIngredientById');
     expect(ingredientService).toContain(".eq('approved_for_engines', true)");
-    expect(ingredientService).toContain(".ilike('verification_status', 'Verified%')");
+    expect(ingredientService).toContain(".eq('approved_for_base', true)");
+    expect(ingredientService).not.toContain(".ilike('verification_status', 'Verified%')");
     expect(ingredientService).toContain("const AUTHENTICATED_SELECTION_VIEW = 'mapper_basement_search'");
   });
 

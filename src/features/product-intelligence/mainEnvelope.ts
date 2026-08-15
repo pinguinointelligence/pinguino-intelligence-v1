@@ -52,8 +52,14 @@ export function verifyMainEnvelope(input: {
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   mode: 'optimal' | 'eco';
   enforceFloor?: boolean;
+  /** Owner Review keeps these rows visibly locked as Main, but they remain
+   * technical-only seeds until an exact sensory Main policy is approved. */
+  technicalOnlyMainLineIds?: readonly string[];
 }): MainEnvelopeVerification {
-  const mains = input.recipe.items.filter((item) => item.lock_type === 'main');
+  const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
+  const mains = input.recipe.items.filter(
+    (item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id),
+  );
   if (mains.length === 0) {
     return { ok: true, equivalentPercent: null, targetPercent: null, hardLimitPercent: null, policyId: null };
   }

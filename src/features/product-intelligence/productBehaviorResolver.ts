@@ -61,7 +61,13 @@ export function snapshotServerResolvedProductBehavior(input: {
     subfamilyId: input.resolved.subfamilyId,
     formId: input.resolved.formId,
     verificationState:
-      input.resolved.catalogStatus === 'pi_base' ? 'verified' : input.resolved.catalogStatus,
+      // Legacy server builds returned only `pi_base` and therefore cannot prove
+      // a Verified provenance state. Keep that fallback honestly unverified;
+      // the forward resolver returns exact normalized Mapper provenance.
+      input.resolved.catalogStatus === 'pi_base'
+        ? 'manual_unverified'
+        : input.resolved.catalogStatus,
+    mapperVerificationStatus: input.resolved.mapperVerificationStatus ?? null,
     technicalAuthority: input.resolved.mapperIngredientId ? 'mapper_exact' : 'none',
     mapperIngredientId: input.resolved.mapperIngredientId,
     mainClassification: input.resolved.mainEligibility,
@@ -110,6 +116,7 @@ export function productBehaviorSnapshotFingerprint(
         value.behaviorBindingId,
         value.behaviorBindingVersion,
         value.taxonomyVersion,
+        value.mapperVerificationStatus ?? null,
         value.mainPolicyId,
         value.mainPolicyVersion,
         value.mainBasis,

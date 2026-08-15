@@ -12,7 +12,6 @@ type Evidence = Parameters<typeof assessMapperVeganEligibility>[0];
 
 const evidence = (over: Partial<Evidence> = {}): Evidence => ({
   approved_for_engines: true,
-  verification_status: 'Verified',
   vegan: 'true',
   dairy_free: 'true',
   allergens: '',
@@ -42,7 +41,6 @@ const tri = (value: string): 'true' | 'false' | 'unknown' => {
 };
 const evidenceFromCsv = (row: string[]): Evidence => ({
   approved_for_engines: boolean(at(row, 'approved_for_engines')),
-  verification_status: at(row, 'verification_status') as Evidence['verification_status'],
   vegan: tri(at(row, 'vegan')),
   dairy_free: tri(at(row, 'dairy_free')),
   allergens: at(row, 'allergens'),
@@ -71,13 +69,13 @@ describe('Vegan eligibility — fail closed', () => {
     });
   });
 
-  it('accepts only positive verified Engine-approved evidence', () => {
+  it('uses the explicit Vegan flag and Engine approval, not provenance status', () => {
     expect(assessMapperVeganEligibility(evidence()).status).toBe('VEGAN_VERIFIED');
     expect(
       assessMapperVeganEligibility(
-        evidence({ verification_status: 'Estimated', dairy_free: 'true' }),
+        evidence({ dairy_free: 'true' }),
       ).status,
-    ).toBe('VEGAN_UNKNOWN');
+    ).toBe('VEGAN_VERIFIED');
     expect(
       assessMapperVeganEligibility(evidence({ approved_for_engines: false })).status,
     ).toBe('VEGAN_UNKNOWN');
@@ -183,12 +181,12 @@ describe('Vegan eligibility — fail closed', () => {
     }
     expect(rows).toHaveLength(2088);
     expect(counts).toEqual({
-      VEGAN_VERIFIED: 1005,
-      VEGAN_FALSE: 791,
-      VEGAN_UNKNOWN: 281,
-      VEGAN_CONFLICT: 11,
+      VEGAN_VERIFIED: 1275,
+      VEGAN_FALSE: 784,
+      VEGAN_UNKNOWN: 11,
+      VEGAN_CONFLICT: 18,
     });
-    expect(conflicts.map((entry) => entry.split(':')[0])).toEqual([
+    expect(conflicts.map((entry) => entry.split(':')[0])).toEqual(expect.arrayContaining([
       'PI-ING-000045',
       'PI-ING-000333',
       'PI-ING-000606',
@@ -200,6 +198,7 @@ describe('Vegan eligibility — fail closed', () => {
       'PI-ING-001778',
       'PI-ING-002012',
       'PI-ING-002014',
-    ]);
+    ]));
+    expect(conflicts).toHaveLength(18);
   });
 });

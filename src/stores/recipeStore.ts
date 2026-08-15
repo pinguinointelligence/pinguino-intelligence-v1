@@ -1488,6 +1488,7 @@ export const useRecipeStore = create<RecipeState>()(
         const compositionMetadata = readRecipeCompositionMetadata(
           link.composition,
           input.items.map((item) => item.id),
+          input.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
         );
         const practicalRecipeAudit = readPracticalRecipeAudit(input);
         const savedRecipe = link.savedId != null || link.savedName != null;

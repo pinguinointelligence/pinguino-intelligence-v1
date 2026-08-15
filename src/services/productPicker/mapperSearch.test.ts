@@ -24,9 +24,16 @@ const h = vi.hoisted(() => {
     configured: true,
     result: { data: [], error: null } as FakeResult,
     calls: [] as { method: string; args: unknown[] }[],
+    catalogHits: [] as Array<Record<string, unknown>>,
+    catalogSearch: null as null | ((query: { cursor?: number; limit?: number }) => Array<Record<string, unknown>>),
   };
   return state;
 });
+
+vi.mock('@/services/globalCatalog', () => ({
+  searchProducts: vi.fn(async (query: { cursor?: number; limit?: number }) =>
+    h.catalogSearch ? h.catalogSearch(query) : h.catalogHits),
+}));
 
 vi.mock('@/lib/supabase/client', () => {
   const record = (method: string, args: unknown[]) => h.calls.push({ method, args });
@@ -69,6 +76,8 @@ import {
   fetchIngredientEngineValues,
   ilikeOrFilter,
   searchMapperIngredients,
+  searchCanonicalMapperIngredients,
+  searchCanonicalProMapperIngredients,
   toSafeMapperSearchRow,
   type SafeMapperSearchRow,
 } from './mapperSearch';
@@ -95,6 +104,84 @@ beforeEach(() => {
   h.configured = true;
   h.result = { data: [], error: null };
   h.calls.length = 0;
+  h.catalogHits = [];
+  h.catalogSearch = null;
+});
+
+describe('canonical authenticated Mapper visibility', () => {
+  it('keeps an active Engine-ineligible row visible while preserving both approval flags', async () => {
+    h.catalogHits = [{
+      entityKind: 'pi_base', mappedIngredientId: 'PI-ING-002113',
+      usableInBase: true, displayName: 'Technical incomplete row', originalName: null,
+      category: 'other', productForm: null,
+      publicData: { approvedForBase: true, approvedForEngines: false },
+    }];
+    const outcome = await searchCanonicalProMapperIngredients({ text: 'technical', limit: 20 });
+    expect(outcome).toEqual({
+      kind: 'results',
+      hasMore: false,
+      rows: [expect.objectContaining({
+        ingredient_id: 'PI-ING-002113',
+        approved_for_base: true,
+        approved_for_engines: false,
+      })],
+    });
+  });
+
+  it('preserves the frozen Home Verified + Base + Engine result set', async () => {
+    h.catalogHits = [{
+      entityKind: 'pi_base', mappedIngredientId: 'PI-ING-000405',
+      usableInBase: true, displayName: 'Fresh Watermelon', originalName: null,
+      category: 'fruit', productForm: 'fresh',
+      publicData: {
+        approvedForBase: true, approvedForEngines: true,
+        verificationStatus: 'Estimated',
+      },
+    }, {
+      entityKind: 'pi_base', mappedIngredientId: 'PI-ING-001553',
+      usableInBase: true, displayName: 'Strawberries', originalName: null,
+      category: 'fruit', productForm: 'fresh',
+      publicData: {
+        approvedForBase: true, approvedForEngines: true,
+        verificationStatus: 'Verified',
+      },
+    }];
+    const outcome = await searchCanonicalMapperIngredients({ text: 'fruit', limit: 20 });
+    expect(outcome).toMatchObject({
+      kind: 'results',
+      rows: [{ ingredient_id: 'PI-ING-001553' }],
+    });
+  });
+
+  it('applies frozen Home pagination after filtering the broader canonical RPC set', async () => {
+    const raw = Array.from({ length: 12 }, (_, index) => ({
+      entityKind: 'pi_base',
+      mappedIngredientId: `PI-ING-${String(index + 1).padStart(6, '0')}`,
+      usableInBase: true,
+      displayName: `Ingredient ${index + 1}`,
+      originalName: null,
+      category: 'other',
+      productForm: null,
+      publicData: {
+        approvedForBase: true,
+        approvedForEngines: true,
+        verificationStatus: index % 2 === 0 ? 'Estimated' : 'Verified',
+      },
+    }));
+    h.catalogSearch = ({ cursor = 0, limit = 100 }) => raw.slice(cursor, cursor + limit);
+
+    const first = await searchCanonicalMapperIngredients({ text: 'ingredient', limit: 2, offset: 0 });
+    const second = await searchCanonicalMapperIngredients({ text: 'ingredient', limit: 2, offset: 2 });
+
+    expect(first).toMatchObject({
+      kind: 'results', hasMore: true,
+      rows: [{ ingredient_id: 'PI-ING-000002' }, { ingredient_id: 'PI-ING-000004' }],
+    });
+    expect(second).toMatchObject({
+      kind: 'results', hasMore: true,
+      rows: [{ ingredient_id: 'PI-ING-000006' }, { ingredient_id: 'PI-ING-000008' }],
+    });
+  });
 });
 
 /* ------------------------------------------------------- closed safe contract */
@@ -251,6 +338,7 @@ describe('fetchIngredientEngineValues (rich 0032 view)', () => {
     const outcome = await fetchIngredientEngineValues('PI-ING-000123');
     expect(calls('from')[0]?.args).toEqual([RICH_SEARCH_VIEW]);
     expect(calls('eq')[0]?.args).toEqual(['ingredient_id', 'PI-ING-000123']);
+    expect(calls('ilike')[0]?.args).toEqual(['verification_status', 'Verified%']);
     expect(outcome).toEqual({
       kind: 'values',
       reference: {

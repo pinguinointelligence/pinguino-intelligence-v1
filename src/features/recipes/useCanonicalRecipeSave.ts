@@ -268,6 +268,7 @@ export function useCanonicalRecipeSave(
       snapshots: state.productBehaviorSnapshots,
       module: 'SAVE',
       accountId: authUserId,
+      technicalOnlyMainLineIds: productComposition?.ownerReviewGate?.technicalOnlyMainLineIds,
     });
     if (!validation.ready) {
       throw new Error(

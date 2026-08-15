@@ -114,7 +114,7 @@ describe('executable Recipe Library Batch 1 registry', () => {
       .every((line) => line.processScope === 'POST_PROCESS_ADDON')).toBe(true);
   });
 
-  it('uses only current, verified, Base+Engine-approved Mapper identities', () => {
+  it('uses only current, Base+Engine-approved Mapper identities; provenance stays informational', () => {
     for (const template of EXECUTABLE_RECIPE_TEMPLATES) {
       for (const line of [...template.base, ...template.toppings]) {
         if (line.mapperIngredientId === null) continue;
@@ -122,7 +122,7 @@ describe('executable Recipe Library Batch 1 registry', () => {
         expect(row, `${template.id}:${line.mapperIngredientId}`).toBeDefined();
         expect(row?.approved_for_base).toBe(true);
         expect(row?.approved_for_engines).toBe(true);
-        expect(row?.verification_status.startsWith('Verified')).toBe(true);
+        expect(row?.verification_status.trim().length).toBeGreaterThan(0);
       }
     }
   });
@@ -152,6 +152,8 @@ describe('executable Recipe Library Batch 1 registry', () => {
       (template) => template.status === 'OWNER_REVIEW_EDITABLE',
     );
     expect(editable).toHaveLength(5);
+    expect(editable.every((template) => template.base.some((line) => line.role === 'main')))
+      .toBe(true);
     expect(editable.every((template) => template.blockers.length === 0)).toBe(true);
     expect(editable.every((template) => (
       template.productionStatus === 'PRODUCTION_BLOCKED' && template.productionBlockers.length > 0

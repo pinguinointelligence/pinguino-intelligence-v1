@@ -1,0 +1,46 @@
+# Mapper 2088 runtime usability audit
+
+Generated deterministically by `scripts/auditMapperRuntimeUsability.mjs`. The source Mapper CSV is read-only and its SHA is pinned.
+
+| Metric | Before | After | Explanation |
+|---|---:|---:|---|
+| Active Mapper rows | 2088 | 2088 | Immutable SHA-256 B13F5DB4AFFD9C3BE5CCBE59B40920053197A3697A3FA1BD4A859406E8BAED38 |
+| Searchable rows | 2088 | 2088 | Every active direct Mapper reference remains visible |
+| Selectable Base rows | 1712 | 2075 | After = active + approved_for_base |
+| Engine-calculable rows | 1712 | 2074 | After = Engine approval + 9 required numerical fields + grams > 0 |
+| Blocked solely by provenance | 355 | 0 | Badge/tooltip only after repair |
+| Blocked solely by confidence | 0 | 0 | No direct confidence predicate is authorized |
+| Blocked solely by process UNKNOWN for technical PI | 46 | 0 | Process remains a Process/Production concern |
+| Missing dosage | 1835 | 1835 | Informational; initial dose 0 g |
+| Missing price | 1543 | 1543 | Cost incomplete only |
+| Actual technical-data blockers | 14 | 14 | Unique Engine-ineligible set; technical missing overlaps it |
+| approved_for_base=false | 13 | 13 | Real Base block |
+| approved_for_engines=false | 14 | 14 | Real PI block |
+| Missing bindings | 2088 | 2088 | Requires authenticated staging authority export for final zero proof |
+| Verified status | 1713 | 1713 | Informational |
+| Estimated status | 350 | 350 | Informational |
+| Needs Label Review | 273 | 273 | Informational for technical use |
+
+## Additional exact census
+
+- Approved for Base: **2075**.
+- Approved for Engine: **2074**.
+- Technical composition incomplete under the 9-field contract: **1** (PI-ING-002113: POD/PAC).
+- ProductBehavior UNKNOWN_REQUIRES_EVIDENCE: **832**.
+- Process UNKNOWN: **1389**.
+- Dosage UNKNOWN: **1835**.
+- Price missing: **1543**.
+- Customer-added Mapper references: **0**.
+- System-matched Mapper references: **0**.
+- Product version IDs pending authenticated served capture: **2088**.
+- Binding IDs pending authenticated served capture: **2088**.
+
+## Real remaining gates
+
+1. `approved_for_base=false` blocks Base only.
+2. `approved_for_engines=false` or one of the nine missing numerical fields blocks technical PI.
+3. Zero grams blocks the PI click until the user enters at least 1 g; unknown dosage itself does not block selection.
+4. Process UNKNOWN is preserved for Process/Production warnings and does not block technical PI.
+5. Missing price leaves cost incomplete and prevents an honest cheapest-result claim; technical calculation remains available.
+
+The exhaustive CSV preserves every simultaneous module-scoped reason instead of collapsing it into a single status.

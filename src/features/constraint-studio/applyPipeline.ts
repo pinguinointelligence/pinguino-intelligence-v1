@@ -4602,6 +4602,7 @@ export function bindProductBehaviorToPreview(
   result: BuildPreviewResult,
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
   baseSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>> = snapshots,
+  technicalOnlyMainLineIds: readonly string[] = [],
 ): BuildPreviewResult {
   if (!result.ok) return result;
   // This function is also the deterministic formulation seam used by Engine
@@ -4657,6 +4658,7 @@ export function bindProductBehaviorToPreview(
     mode: normalizeFormulationStrategy(
       result.preview.proposedInput.goals?.formulation_strategy ?? result.preview.proposedInput.mode,
     ),
+    technicalOnlyMainLineIds,
   });
   if (!verification.ok) {
     return {
@@ -4816,6 +4818,7 @@ export class VerifiedApply {
     currentProductBehaviorSnapshots: Readonly<
       Record<string, ProductBehaviorSnapshot | undefined>
     > = {},
+    technicalOnlyMainLineIds: readonly string[] = [],
   ): CommitPreviewResult {
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
     // never applies, whatever the fingerprint says.
@@ -5392,6 +5395,7 @@ export class VerifiedApply {
         mode: normalizeFormulationStrategy(
           current.goals?.formulation_strategy ?? current.mode,
         ),
+        technicalOnlyMainLineIds,
       });
       if (!mainEnvelope.ok) {
         return {

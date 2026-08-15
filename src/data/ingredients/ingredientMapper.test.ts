@@ -75,6 +75,15 @@ const baseRow: IngredientRow = {
 const makeRow = (overrides: Partial<IngredientRow>): IngredientRow => ({ ...baseRow, ...overrides });
 
 describe('ingredientRowToEngineIngredient', () => {
+  it('preserves Estimated provenance without changing the numerical composition', () => {
+    const eng = ingredientRowToEngineIngredient(makeRow({
+      verification_status: 'Estimated',
+      water_percent: 60,
+    }));
+    expect(eng.is_verified).toBe(false);
+    expect(eng.source_type).toBe('ai_estimated');
+    expect(eng.composition.water_percent).toBe(60);
+  });
   it('maps a fully-populated row correctly', () => {
     const eng = ingredientRowToEngineIngredient(
       makeRow({

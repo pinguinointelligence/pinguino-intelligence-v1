@@ -93,15 +93,20 @@ export interface MapperSearchQuery {
 /** Authenticated customer surfaces use the same canonical search RPC as the
  * recipe picker and Products page. Demo remains on its deliberately public,
  * reduced Mapper view. */
-export async function searchCanonicalMapperIngredients(
+async function searchCanonicalMapperIngredientsWithPolicy(
   query: MapperSearchQuery,
+  preserveHomeBaseline: boolean,
 ): Promise<MapperSearchOutcome> {
   if (query.signal?.aborted) return { kind: 'aborted' };
   try {
     const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
-    const wanted = limit + 1;
+    const requestedOffset = query.offset ?? 0;
+    // Home retains its frozen Verified+Base+Engine projection. The RPC now
+    // returns a broader raw set, so Home offsets must be applied after that
+    // projection; applying them to raw rows would omit/duplicate page results.
+    const wanted = (preserveHomeBaseline ? requestedOffset : 0) + limit + 1;
     const rows: SafeMapperSearchRow[] = [];
-    let cursor = query.offset ?? 0;
+    let cursor = preserveHomeBaseline ? 0 : requestedOffset;
     let exhausted = false;
     while (rows.length < wanted && !exhausted) {
       const batchLimit = Math.min(500, Math.max(1, wanted - rows.length));
@@ -117,8 +122,17 @@ export async function searchCanonicalMapperIngredients(
       cursor += hits.length;
       exhausted = hits.length < batchLimit;
       rows.push(...hits
-        .filter((hit) => hit.entityKind === 'pi_base' && hit.mappedIngredientId && hit.usableInBase)
-        .map((hit) => ({
+        .filter((hit) => {
+          if (hit.entityKind !== 'pi_base' || !hit.mappedIngredientId) return false;
+          if (!preserveHomeBaseline) return true;
+          const verificationStatus = hit.publicData.verificationStatus;
+          return hit.usableInBase && hit.publicData.approvedForEngines === true &&
+            typeof verificationStatus === 'string' &&
+            verificationStatus.toLocaleLowerCase('en').startsWith('verified');
+        })
+        .map((hit) => {
+          const approvedForEngines = hit.publicData.approvedForEngines;
+          return ({
           ingredient_id: hit.mappedIngredientId!,
           ingredient_name_display: hit.displayName,
           ingredient_name_internal: hit.originalName,
@@ -129,15 +143,36 @@ export async function searchCanonicalMapperIngredients(
           gluten_free: null,
           contains_alcohol: null,
           approved_for_base: hit.usableInBase,
-          approved_for_engines: hit.usableInBase,
+          approved_for_engines: approvedForEngines === true,
           dataset_version: null,
-        })));
+          });
+        }));
     }
     if (query.signal?.aborted) return { kind: 'aborted' };
-    return { kind: 'results', rows: rows.slice(0, limit), hasMore: rows.length > limit };
+    const sliceOffset = preserveHomeBaseline ? requestedOffset : 0;
+    return {
+      kind: 'results',
+      rows: rows.slice(sliceOffset, sliceOffset + limit),
+      hasMore: rows.length > sliceOffset + limit,
+    };
   } catch (error) {
     return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/** Frozen Home search retains its previously accepted Verified + Base + Engine
+ * result set even though the shared RPC now exposes all 2,088 active rows. */
+export async function searchCanonicalMapperIngredients(
+  query: MapperSearchQuery,
+): Promise<MapperSearchOutcome> {
+  return searchCanonicalMapperIngredientsWithPolicy(query, true);
+}
+
+/** Pro search shows all active Mapper rows and preserves exact approval flags. */
+export async function searchCanonicalProMapperIngredients(
+  query: MapperSearchQuery,
+): Promise<MapperSearchOutcome> {
+  return searchCanonicalMapperIngredientsWithPolicy(query, false);
 }
 
 /* ------------------------------------------------------------------------ *
@@ -273,6 +308,8 @@ export async function fetchIngredientEngineValues(
     .eq('ingredient_id', ingredientId)
     .eq('approved_for_base', true)
     .eq('approved_for_engines', true)
+    // Frozen Home exact-id hydration keeps the previously accepted
+    // Verified-only contract. Pro uses the canonical product resolver instead.
     .ilike('verification_status', 'Verified%');
   if (signal) builder = builder.abortSignal(signal);
 

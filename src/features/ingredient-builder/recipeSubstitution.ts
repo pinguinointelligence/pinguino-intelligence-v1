@@ -4,35 +4,20 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { assessMapperVeganEligibility } from '@/data/ingredients/veganEligibility';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
+import { mapperEngineMissingFields } from '@/features/product-intelligence/mapperRuntimeUsability';
 import type { SubstituteAuthorization, SubstituteCandidate } from './ingredientTableUx';
 
 const REQUIRED_COMPOSITION_FIELDS = [
-  'water_percent',
-  'total_solids_percent',
-  'fat_percent',
-  'protein_percent',
-  'carbohydrate_percent',
-  'total_sugars_percent',
-  'sucrose_percent',
-  'glucose_percent',
-  'dextrose_percent',
-  'fructose_percent',
-  'lactose_percent',
-  'polyol_percent',
-  'fiber_percent',
-  'salt_percent',
-  'alcohol_percent',
-  'kcal_per_100g',
+  'water_percent', 'total_solids_percent', 'fat_percent', 'protein_percent',
+  'carbohydrate_percent', 'total_sugars_percent', 'salt_percent',
+  'pod_value', 'pac_value',
 ] as const satisfies readonly (keyof IngredientRow)[];
 
 const VERIFIED_MAPPER_AUTHORITY = Symbol('verified-mapper-substitution-authority');
 const VERIFIED_MAPPER_AUTHORIZATIONS = new WeakSet<object>();
 
 const completeComposition = (row: IngredientRow): boolean =>
-  REQUIRED_COMPOSITION_FIELDS.every((field) => {
-    const value = row[field];
-    return typeof value === 'number' && Number.isFinite(value) && value >= 0;
-  }) &&
+  mapperEngineMissingFields(row).length === 0 &&
   Math.abs(
     (row.water_percent ?? 0) + (row.total_solids_percent ?? 0) + (row.alcohol_percent ?? 0) - 100,
   ) <= 0.5;
@@ -119,16 +104,15 @@ export function hasVerifiedMapperSubstitutionAuthorization(
   );
 }
 
-const verifiedMapperReference = (row: IngredientRow): boolean =>
+const technicallyUsableMapperReference = (row: IngredientRow): boolean =>
   row.is_active &&
   row.approved_for_engines &&
-  row.verification_status.startsWith('Verified') &&
   completeComposition(row);
 
 /**
- * Build the normal RECIPE substitute list from the current verified Mapper
- * reference catalogue. This never mutates Mapper and never promotes private or
- * PI-calculated products to verified substitutes. Candidates are deliberately
+ * Build the normal RECIPE substitute list from the current technical Mapper
+ * reference catalogue. Provenance remains visible metadata and never becomes
+ * a numerical eligibility gate. Candidates are deliberately
  * same-functional-role only; cross-family substitution needs separate science.
  */
 export function verifiedRecipeSubstituteCandidates(
@@ -155,7 +139,7 @@ export function verifiedRecipeSubstituteCandidates(
   const isMain = original.lock_type === 'main';
 
   return rows
-    .filter(verifiedMapperReference)
+    .filter(technicallyUsableMapperReference)
     .map((row) => ({ row, ingredient: ingredientRowToEngineIngredient(row) }))
     .filter(({ row, ingredient }) => {
       if (row.ingredient_id === originalCanonicalId) return false;
@@ -182,8 +166,8 @@ export function verifiedRecipeSubstituteCandidates(
       expectedImpact: 'Ta sama rola technologiczna; PI przeliczy całą recepturę przed Apply.',
       compatibility:
         input.category === 'vegan_gelato'
-          ? 'Zweryfikowana zgodność Vegan i pełny profil Engine.'
-          : 'Zweryfikowany profil Engine; znane alergeny bez zmiany.',
+          ? 'Potwierdzona zgodność Vegan i pełny profil Engine.'
+          : 'Kompletny profil Engine; znane alergeny bez zmiany.',
       requiresMainConfirmation: isMain,
     }));
 }
@@ -191,9 +175,9 @@ export function verifiedRecipeSubstituteCandidates(
 export function isVerifiedRuntimeSubstitute(ingredient: EngineIngredient): boolean {
   return (
     ingredient.identity_provenance === 'mapper' &&
-    ingredient.source_type === 'verified_db' &&
-    ingredient.is_verified === true &&
     typeof ingredient.canonical_ingredient_id === 'string' &&
-    ingredient.canonical_ingredient_id.length > 0
+    ingredient.canonical_ingredient_id.length > 0 &&
+    typeof ingredient.pod_value === 'number' && Number.isFinite(ingredient.pod_value) &&
+    typeof ingredient.pac_value === 'number' && Number.isFinite(ingredient.pac_value)
   );
 }

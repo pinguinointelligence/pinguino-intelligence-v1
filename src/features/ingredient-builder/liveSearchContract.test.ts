@@ -65,11 +65,8 @@ describe('per-query server request (tests 3/4/5)', () => {
     expect(captured.length).toBe(1);
     const cap = captured[0]!;
     expect(cap.table).toBe('mapper_basement_search');
-    expect(cap.eq).toEqual([
-      ['approved_for_base', true],
-      ['approved_for_engines', true],
-    ]);
-    expect(cap.ilike).toEqual([['verification_status', 'Verified%']]);
+    expect(cap.eq).toEqual([['approved_for_base', true]]);
+    expect(cap.ilike).toEqual([]);
     expect(cap.or.length).toBe(1); // one significant token („świeże" is a stopword)
     expect(cap.or[0]).toContain('ingredient_name_display.ilike.*truskaw*');
     expect(cap.or[0]).toContain('ingredient_name_internal.ilike.*straw*');
@@ -119,11 +116,8 @@ describe('per-query server request (tests 3/4/5)', () => {
     await searchEngineApprovedIngredients('milk', { limit: 700 });
     expect(captured.length).toBe(2);
     for (const c of captured) {
-      expect(c.eq).toEqual([
-        ['approved_for_base', true],
-        ['approved_for_engines', true],
-      ]);
-      expect(c.ilike).toEqual([['verification_status', 'Verified%']]);
+      expect(c.eq).toEqual([['approved_for_base', true]]);
+      expect(c.ilike).toEqual([]);
       expect(c.or).toEqual(captured[0]!.or);
       expect(c.order.map(([col]) => col)).toEqual(['ingredient_name_display', 'ingredient_id']); // stable tiebreak
     }
@@ -150,6 +144,7 @@ describe('safe payload (test 23)', () => {
     expect(cols).toEqual([
       'ingredient_id', 'ingredient_name_display', 'ingredient_name_internal',
       'ingredient_category', 'ingredient_subcategory',
+      'approved_for_base', 'approved_for_engines',
     ]);
     for (const banned of ['pac_value', 'pod_value', 'water_percent', 'total_solids_percent', 'data_confidence_percent']) {
       expect(captured[0]!.select).not.toContain(banned);

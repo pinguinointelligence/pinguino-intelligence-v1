@@ -30,11 +30,10 @@ const finiteNonNegative = (value: number | null): value is number =>
   value !== null && Number.isFinite(value) && value >= 0;
 
 /**
- * Resolve the picker-time dose exclusively from the immutable, server-resolved
- * policy snapshot. The policy expresses an equivalent share, so the exact
- * product share is divided by its approved equivalent factor just like the
- * existing Main-envelope verifier. Missing/incomplete authority stays unknown;
- * neither names nor catalog families are used to guess a dose.
+ * Resolve the picker-time dose exclusively from the product-specific Mapper
+ * dosage frozen in the server snapshot. Main-envelope percentages are sensory
+ * strategy authority, not a product dose, and are deliberately ignored here.
+ * Missing/incomplete dosage stays unknown; names and families are never used.
  */
 export function verifiedProductDoseSuggestion(input: {
   snapshot: ProductBehaviorSnapshot | null | undefined;
@@ -47,24 +46,18 @@ export function verifiedProductDoseSuggestion(input: {
     snapshot.resolutionState !== 'RESOLVED' ||
     snapshot.processScope !== 'BASE_FORMULATION' ||
     snapshot.moduleEligibility.BASE_RECIPE !== 'eligible' ||
-    snapshot.mainClassification !== 'MAIN_ALLOWED' ||
-    !snapshot.mainPolicyId ||
-    !snapshot.mainPolicyVersion ||
-    !snapshot.mainBasis ||
-    !finiteNonNegative(snapshot.ecoFloorPercent) ||
-    !finiteNonNegative(snapshot.optimalCeilingPercent) ||
-    snapshot.mainEquivalentFactor === null ||
-    !Number.isFinite(snapshot.mainEquivalentFactor) ||
-    snapshot.mainEquivalentFactor <= 0 ||
+    !snapshot.sharedFacts?.recommendedDose ||
     !Number.isFinite(input.targetBaseGrams) ||
     input.targetBaseGrams <= 0
   ) {
     return null;
   }
 
-  const equivalentPercent =
-    input.strategy === 'eco' ? snapshot.ecoFloorPercent : snapshot.optimalCeilingPercent;
-  const suggestedPercent = equivalentPercent / snapshot.mainEquivalentFactor;
+  const dose = snapshot.sharedFacts.recommendedDose;
+  const minPercent = finiteNonNegative(dose.minPercent) ? dose.minPercent : dose.maxPercent;
+  const maxPercent = finiteNonNegative(dose.maxPercent) ? dose.maxPercent : dose.minPercent;
+  if (!finiteNonNegative(minPercent) || !finiteNonNegative(maxPercent)) return null;
+  const suggestedPercent = input.strategy === 'eco' ? minPercent : maxPercent;
   if (!Number.isFinite(suggestedPercent) || suggestedPercent < 0 || suggestedPercent > 100) {
     return null;
   }
@@ -76,15 +69,14 @@ export function verifiedProductDoseSuggestion(input: {
 
   return {
     groupId: [
-      snapshot.mainPolicyId,
-      snapshot.mainPolicyVersion,
-      snapshot.mainBasis,
-      snapshot.mainEquivalentFactor,
+      'mapper-dose',
+      snapshot.mapperIngredientId,
+      dose.sourceVersion,
     ].join(':'),
     suggestedPercent,
     suggestedTotalGrams,
-    policyId: snapshot.mainPolicyId,
-    policyVersion: snapshot.mainPolicyVersion,
+    policyId: `mapper-dose:${snapshot.mapperIngredientId ?? 'unmapped'}`,
+    policyVersion: dose.sourceVersion,
   };
 }
 

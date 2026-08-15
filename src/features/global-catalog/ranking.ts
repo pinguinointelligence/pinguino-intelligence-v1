@@ -36,7 +36,7 @@ function relevanceFor(hit: CatalogProductSearchHit, query: string, context: Cata
 }
 
 export function catalogGroupFor(hit: CatalogProductSearchHit, preferences: CatalogMarketPreferences): RankedCatalogHit['group'] {
-  if (hit.status === 'blocked') return 'blocked';
+  if (hit.status === 'blocked' && !hit.usableInBase && !hit.usableAsTopping) return 'blocked';
   if (hit.favorite || hit.recentlyUsedAt) return 'favorites_recent';
   if (hit.entityKind === 'pi_base') return 'pi_base';
   const markets = new Set([preferences.primaryMarket, ...preferences.additionalMarkets].filter(Boolean));

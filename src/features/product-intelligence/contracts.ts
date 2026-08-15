@@ -48,6 +48,10 @@ export type ProductSourceKind =
 
 export type CatalogVerificationState =
   | 'verified'
+  | 'estimated'
+  | 'needs_label_review'
+  | 'system_matched'
+  | 'customer_added'
   | 'manual_unverified'
   | 'blocked'
   | 'processing';
@@ -174,6 +178,9 @@ export interface ServerResolvedProductBehavior {
   productVersionId: string;
   factsFingerprint: string;
   catalogStatus: CatalogVerificationState | 'pi_base';
+  /** Exact immutable Mapper provenance label (for example `Estimated`). It is
+   * presentation-only and is never an eligibility predicate. */
+  mapperVerificationStatus?: string | null;
   provenance: string;
   behaviorBindingId: string;
   behaviorBindingVersion: string;
@@ -260,6 +267,12 @@ export interface SharedProductReferencePrice {
   sourceVersion: string;
 }
 
+export interface SharedProductRecommendedDose {
+  minPercent: number | null;
+  maxPercent: number | null;
+  sourceVersion: string;
+}
+
 /** Facts that application modules may project without independently reading a
  * mutable product/catalog table. The payload belongs to one exact product
  * version and participates in the recipe behavior fingerprint. */
@@ -273,6 +286,9 @@ export interface SharedProductBehaviorFacts {
   veganEligibility: ProductBehaviorBinding['veganEligibility'];
   proteinBehavior: ProductBehaviorBinding['proteinBehavior'];
   referencePrice: SharedProductReferencePrice | null;
+  /** Product-specific Mapper dosage authority. Main-envelope percentages are
+   * intentionally separate and must never be used as a picker-time dose. */
+  recommendedDose?: SharedProductRecommendedDose | null;
 }
 
 /** Request-account data returned separately by the server resolver. It must
@@ -303,6 +319,9 @@ export interface ProductBehaviorSnapshot {
   subfamilyId: string | null;
   formId: string | null;
   verificationState: CatalogVerificationState;
+  /** Frozen exact Mapper provenance label. Optional only for legacy schema-v1
+   * snapshots created before the information-only status contract. */
+  mapperVerificationStatus?: string | null;
   technicalAuthority: ProductTechnicalAuthorityKind;
   mapperIngredientId: string | null;
   mainClassification: ProductBehaviorBinding['mainClassification'];

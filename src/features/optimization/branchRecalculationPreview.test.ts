@@ -328,13 +328,13 @@ describe('IF10 exact preview — deterministic scale-down, verified or nothing',
             correctionFamily: 'fruit' as const,
             requiredG: 600,
             availableG: 0,
-            substitute: { ingredientName: 'Mystery puree', available: true, hasVerifiedIngredientData: false, correctionFamily: 'fruit' as const },
+            substitute: { ingredientName: 'Mystery puree', available: true, hasCompleteTechnicalData: false, correctionFamily: 'fruit' as const },
           },
         ],
       },
     };
     const r = previewStockShortageRecalculation({ shortageIntent: unverified, plannedRecipe: s.plannedRecipe });
-    expect(r.exactStatus).toBe('unsafe'); // substitute_data_not_verified is a safety block
+    expect(r.exactStatus).toBe('unsafe'); // incomplete technical data is a safety block
     expect(r.proposedRecipeSnapshot).toBeNull();
   });
 
@@ -350,7 +350,7 @@ describe('IF10 exact preview — deterministic scale-down, verified or nothing',
             correctionFamily: 'fruit' as const,
             requiredG: 600,
             availableG: 0,
-            substitute: { ingredientName: 'Raspberry puree', available: true, hasVerifiedIngredientData: true, correctionFamily: 'fruit' as const },
+            substitute: { ingredientName: 'Raspberry puree', available: true, hasCompleteTechnicalData: true, correctionFamily: 'fruit' as const },
           },
         ],
       },

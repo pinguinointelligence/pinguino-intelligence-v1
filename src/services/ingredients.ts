@@ -76,10 +76,12 @@ export interface IngredientSearchRow {
   brand?: string | null;
   ingredient_category: string;
   ingredient_subcategory: string | null;
+  approved_for_base?: boolean | null;
+  approved_for_engines?: boolean | null;
 }
 
 export const SEARCH_RESULT_COLUMNS =
-  'ingredient_id,ingredient_name_display,ingredient_name_internal,ingredient_category,ingredient_subcategory';
+  'ingredient_id,ingredient_name_display,ingredient_name_internal,ingredient_category,ingredient_subcategory,approved_for_base,approved_for_engines';
 
 /** Rows fetched per `.range` window — strictly below the PostgREST `max-rows`
  * cap (1,000 on Supabase), so no single request can ever be silently truncated
@@ -104,9 +106,7 @@ export async function searchEngineApprovedIngredients(
     let query = supabase
       .from(AUTHENTICATED_SELECTION_VIEW)
       .select(SEARCH_RESULT_COLUMNS)
-      .eq('approved_for_base', true)
-      .eq('approved_for_engines', true)
-      .ilike('verification_status', 'Verified%');
+      .eq('approved_for_base', true);
     // One AND-group per token; OR across (alias term × safe column) within it.
     for (const terms of groups) {
       query = query.or(
@@ -141,8 +141,8 @@ export async function listIngredientsByIds(ids: readonly string[]): Promise<Ingr
   return (data ?? []) as IngredientRow[];
 }
 
-/** Exact-id list with the same current trust gate as Base selection. Used for
- * private Favorites/Recent so a later Mapper revocation disappears immediately. */
+/** Exact-id list with the current Base-selection gate. Provenance is display
+ * metadata; only active + approved_for_base may remove a row from selection. */
 export async function listEngineApprovedIngredientsByIds(ids: readonly string[]): Promise<IngredientRow[]> {
   if (ids.length === 0) return [];
   if (!supabase) return emptyUnconfiguredRead('ingredients.listEngineApprovedIngredientsByIds', []);
@@ -150,9 +150,7 @@ export async function listEngineApprovedIngredientsByIds(ids: readonly string[])
     .from(AUTHENTICATED_SELECTION_VIEW)
     .select('*')
     .in('ingredient_id', [...ids])
-    .eq('approved_for_base', true)
-    .eq('approved_for_engines', true)
-    .ilike('verification_status', 'Verified%');
+    .eq('approved_for_base', true);
   if (error) throw new Error(error.message);
   return (data ?? []) as IngredientRow[];
 }
@@ -169,8 +167,8 @@ export async function getIngredientById(id: string): Promise<IngredientRow | nul
   return (data as IngredientRow | null) ?? null;
 }
 
-/** Selection-time trust gate for catalog-to-Base mapping. Search results can
- * become stale; this rechecks every current Mapper eligibility flag at click. */
+/** Selection-time Base gate. Technical PI separately checks Engine approval
+ * and numerical composition after grams are entered. */
 export async function getEngineApprovedIngredientById(id: string): Promise<IngredientRow | null> {
   if (!supabase) return emptyUnconfiguredRead('ingredients.getEngineApprovedIngredientById', null);
   const { data, error } = await supabase
@@ -178,8 +176,6 @@ export async function getEngineApprovedIngredientById(id: string): Promise<Ingre
     .select('*')
     .eq('ingredient_id', id)
     .eq('approved_for_base', true)
-    .eq('approved_for_engines', true)
-    .ilike('verification_status', 'Verified%')
     .maybeSingle();
   if (error) throw new Error(error.message);
   return (data as IngredientRow | null) ?? null;

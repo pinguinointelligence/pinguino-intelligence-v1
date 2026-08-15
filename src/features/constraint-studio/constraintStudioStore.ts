@@ -761,14 +761,16 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
           return;
         }
-        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const recipeState = useRecipeStore.getState();
+        const snapshots = recipeState.productBehaviorSnapshots;
+        const technicalOnlyMainLineIds = recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
         const result = bindProductBehaviorToPreview(buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
           excludedIngredientIds: draft.excludedIngredientIds,
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
           requirePracticalPreview: true,
           productBehaviorSnapshots: snapshots,
-        }), snapshots);
+        }), snapshots, snapshots, technicalOnlyMainLineIds);
         if (
           result.ok &&
           !optimizePreviewRequiresApply(result.preview, draft.constraints, draft.input)
@@ -868,13 +870,14 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       createBatchRescalePreview: (newBatchGrams) => {
         get().reconcile();
         const draft = selectCanonicalDraft();
-        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const recipeState = useRecipeStore.getState();
+        const snapshots = recipeState.productBehaviorSnapshots;
         const result = bindProductBehaviorToPreview(buildBatchRescalePreview(
           draft.input,
           draft.constraints,
           newBatchGrams,
           nowIso(),
-        ), snapshots);
+        ), snapshots, snapshots, recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? []);
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
           set({
@@ -904,10 +907,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       createSuggestedFixPreview: (fix) => {
         get().reconcile();
         const draft = selectCanonicalDraft();
-        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const recipeState = useRecipeStore.getState();
+        const snapshots = recipeState.productBehaviorSnapshots;
         const result = bindProductBehaviorToPreview(
           buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso()),
           snapshots,
+          snapshots,
+          recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
         );
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
@@ -969,7 +975,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
           return;
         }
-        const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        const recipeState = useRecipeStore.getState();
+        const snapshots = recipeState.productBehaviorSnapshots;
         const proposedSnapshots = {
           ...snapshots,
           ...proposalProductBehaviorSnapshots,
@@ -990,7 +997,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
             productBehaviorSnapshots: proposedSnapshots,
           },
-        ), proposedSnapshots, snapshots);
+        ), proposedSnapshots, snapshots, recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? []);
         if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
           const proof = result.preview.substitution;
@@ -1082,6 +1089,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           directionConsent,
           suggestedFixAuthorization,
           useRecipeStore.getState().productBehaviorSnapshots,
+          useRecipeStore.getState().ownerReviewGate?.technicalOnlyMainLineIds ?? [],
         );
         if (!outcome.ok) {
           // The owner-mandated block: recipe untouched, clear Polish message.
@@ -1230,7 +1238,84 @@ export interface ProductBehaviorAuthorityIssue {
   reasons: string[];
 }
 
-const productBehaviorReasonPl = (reason: string): string => ({
+const productBehaviorReasonPl = (reason: string): string => {
+  const [rawCode, ...parts] = reason.split(':');
+  const code = rawCode ?? reason;
+  const parsed = (() => {
+    if (code === 'missing_technical_fields') {
+      if (parts.length >= 6) {
+        const [detail, productId, mapperId, versionId, module, action] = parts;
+        return { detail, productId, mapperId, versionId, module, action };
+      }
+      const [detail, mapperId, versionId, module] = parts;
+      return { detail, productId: 'produkt', mapperId, versionId, module, action: '' };
+    }
+    if (parts.length >= 5) {
+      const [productId, mapperId, versionId, module, action] = parts;
+      return { detail: '', productId, mapperId, versionId, module, action };
+    }
+    const [mapperId, versionId, module] = parts;
+    return { detail: '', productId: 'produkt', mapperId, versionId, module, action: '' };
+  })();
+  const exactSubject = `${parsed.productId || 'produkt'} · Mapper ${parsed.mapperId && parsed.mapperId !== 'none' ? parsed.mapperId : 'brak'}${parsed.versionId && parsed.versionId !== 'none' ? ` · wersja ${parsed.versionId}` : ''}${parsed.module ? ` · moduł ${parsed.module}` : ''}`;
+  if (code === 'product_rejected') return `jawnie odrzucony ${exactSubject}; skontaktuj się z Ownerem`;
+  if (code === 'behavior_binding_missing') return `brak ProductBehavior binding dla ${exactSubject}; odśwież dane produktu`;
+  if (code === 'classification_pending') return `klasyfikacja trwa dla ${exactSubject}; poczekaj i kliknij PI ponownie`;
+  if (code === 'classification_failed') return `klasyfikacja nie powiodła się dla ${exactSubject}; ponów klasyfikację`;
+  if (code === 'approved_for_base_false') {
+    return `approved_for_base=false dla ${exactSubject}; wybierz produkt zatwierdzony dla Base`;
+  }
+  if (code === 'approved_for_engines_false') {
+    return `approved_for_engines=false dla ${exactSubject}; wybierz produkt zatwierdzony dla Engine`;
+  }
+  if (code === 'missing_technical_fields') {
+    return `brak pól technicznych ${parsed.detail || 'bez listy'} dla ${exactSubject}; uzupełnij wskazane pola`;
+  }
+  if (code === 'process_evidence_unknown') {
+    return `brak dowodu procesu dla ${exactSubject}; dodaj dowód przed Process/Production`;
+  }
+  if (code === 'mapper_mapping_missing') {
+    return `brak dokładnego mapowania Mapper dla ${exactSubject}; wybierz dokładne powiązanie`;
+  }
+  if (code === 'profile_not_approved') {
+    return `profil nie jest zatwierdzony dla ${exactSubject}; zmień profil lub produkt`;
+  }
+  if (code === 'main_policy_not_approved') {
+    return `brak polityki Main dla ${exactSubject}; użyj Standard lub zatwierdzonego Main`;
+  }
+  if (code === 'module_permission_missing') {
+    return `brak uprawnienia modułu dla ${exactSubject}; wybierz kwalifikowaną wersję`;
+  }
+  if (code === 'nutrition_facts_missing' || code === 'allergen_facts_missing') {
+    const facts = code === 'nutrition_facts_missing' ? 'wartości odżywczych' : 'składników i alergenów';
+    return `brak ${facts} dla ${exactSubject}; uzupełnij dane etykiety`;
+  }
+  if (code === 'module_not_eligible') {
+    return `${exactSubject} nie jest dostępny; wróć do receptury i wybierz kwalifikowany produkt`;
+  }
+  if (code === 'behavior_binding_stale' || code === 'behavior_binding_version_stale') {
+    return `powiązanie ProductBehavior jest nieaktualne dla ${exactSubject}; odśwież dane produktu`;
+  }
+  if (code === 'behavior_snapshot_missing_or_unresolved') {
+    return `brak aktualnego snapshotu ProductBehavior dla ${exactSubject}; odśwież dane produktu`;
+  }
+  if (code === 'facts_fingerprint_stale' || code === 'shared_facts_stale') {
+    return `fakty produktu zmieniły się dla ${exactSubject}; odśwież dane produktu`;
+  }
+  if (code === 'taxonomy_version_stale') {
+    return `taksonomia produktu zmieniła się dla ${exactSubject}; odśwież dane produktu`;
+  }
+  if (code === 'product_version_stale' || code === 'product_identity_stale'
+      || code === 'catalog_version_identity_mismatch') {
+    return `wersja lub tożsamość produktu zmieniła się dla ${exactSubject}; wybierz aktualną wersję produktu`;
+  }
+  if (code === 'mapper_mapping_stale' || code === 'mapper_entity_identity_mismatch') {
+    return `mapowanie Mapper zmieniło się dla ${exactSubject}; odśwież dokładne powiązanie Mapper`;
+  }
+  if (code === 'main_policy_stale') {
+    return `polityka Main zmieniła się dla ${exactSubject}; odśwież dane produktu i uruchom PI ponownie`;
+  }
+  return ({
   behavior_binding_missing: 'brak aktualnego powiązania zachowania produktu',
   behavior_binding_stale: 'powiązanie zachowania produktu jest nieaktualne',
   behavior_binding_version_stale: 'wersja powiązania zachowania produktu jest nieaktualna',
@@ -1256,9 +1341,18 @@ const productBehaviorReasonPl = (reason: string): string => ({
   catalog_version_identity_mismatch: 'wersja produktu nie pasuje do aktualnej tożsamości katalogowej',
   mapper_entity_identity_mismatch: 'produkt nie pasuje do aktualnej tożsamości PINGÜINO Base',
   recipe_changed_during_validation: 'receptura zmieniła się podczas sprawdzania',
-}[reason] ?? reason.replaceAll('_', ' '));
+  }[code] ?? reason.replaceAll('_', ' '));
+};
 
 const productBehaviorLayerPl = (reason: string): string => {
+  const code = reason.split(':')[0] ?? reason;
+  if (code === 'approved_for_base_false' || code === 'approved_for_engines_false') return 'Mapper approval';
+  if (code === 'mapper_mapping_missing') return 'Mapper reference';
+  if (code === 'missing_technical_fields') return 'composition';
+  if (code === 'process_evidence_unknown') return 'process';
+  if (code === 'nutrition_facts_missing' || code === 'allergen_facts_missing') return 'label facts';
+  if (code === 'profile_not_approved' || code === 'main_policy_not_approved' ||
+      code === 'module_permission_missing' || code === 'module_not_eligible') return 'profile eligibility';
   const exact = ({
     behavior_binding_missing: 'ProductBehavior binding',
     behavior_binding_stale: 'ProductBehavior binding',
@@ -1277,7 +1371,7 @@ const productBehaviorLayerPl = (reason: string): string => {
     requested_module_not_eligible: 'profile eligibility',
     main_policy_unknown: 'profile eligibility',
     main_policy_stale: 'profile eligibility',
-  } as Record<string, string>)[reason];
+  } as Record<string, string>)[code];
   if (exact) return exact;
   // Resolver reason vocabularies are versioned. Any Mapper-specific reason
   // remains a Mapper layer instead of leaking an opaque internal code.
@@ -1328,7 +1422,7 @@ export function serverBehaviorPreviewIssue(
     ? 'Uruchom przeliczenie ponownie dla bieżącej receptury.'
     : priceOnly
       ? 'Odśwież prywatne ceny i uruchom przeliczenie ponownie.'
-      : 'Odśwież dane produktu albo wybierz jego aktualną, zatwierdzoną wersję.';
+      : 'Odśwież dane produktu albo wybierz jego aktualną wersję.';
   const serverUnavailable = issues.every((issue) =>
     issue.reasons.length > 0
       && issue.reasons.every((reason) => reason === 'behavior_server_validation_unavailable'));
@@ -1338,7 +1432,7 @@ export function serverBehaviorPreviewIssue(
       ? `Prywatna cena produktu wymaga odświeżenia. Brakująca warstwa: aktualna cena. ${detail}. ${action}`
       : serverUnavailable
         ? `Nie udało się potwierdzić aktualnego powiązania technicznego dla: ${names.join(', ')}. Brakująca warstwa: walidacja serwerowa. ${action}`
-        : `Produkt nie ma jeszcze zweryfikowanego powiązania technicznego:\n${names.join(', ')}.\nBrakująca warstwa: ${layers.join(', ')}. ${detail}. ${action}`;
+        : `Produkt nie spełnia jeszcze bieżącej bramki technicznej:\n${names.join(', ')}.\nWarstwa: ${layers.join(', ')}. ${detail}. ${action}`;
   return {
     ok: false,
     code: 'product_behavior_invalid',
@@ -1354,6 +1448,7 @@ export function serverBehaviorPreviewIssue(
 async function currentBaseAuthorityReady(input: {
   recipe: RecipeInput;
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  technicalOnlyMainLineIds?: readonly string[];
 }): Promise<
   | { ready: true; snapshots: Record<string, ProductBehaviorSnapshot> }
   | { ready: false; issues: ProductBehaviorAuthorityIssue[] }
@@ -1378,6 +1473,7 @@ async function currentBaseAuthorityReady(input: {
       snapshots: input.snapshots,
       accountId: useAuthStore.getState().user?.id ?? null,
       module,
+      technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
     });
     if (resolved.unresolvedLineIds.length > 0) {
       return {
@@ -1394,6 +1490,7 @@ async function currentBaseAuthorityReady(input: {
       snapshots: resolved.snapshots,
       module,
       accountId: useAuthStore.getState().user?.id ?? null,
+      technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
     });
     return validation.ready
       ? { ready: true, snapshots: resolved.snapshots }
@@ -1443,8 +1540,13 @@ export async function createOptimizePreviewWithServerAuthority(
     });
     return;
   }
-  const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
-  const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
+  const recipeState = useRecipeStore.getState();
+  const snapshots = recipeState.productBehaviorSnapshots;
+  const validation = await currentBaseAuthorityReady({
+    recipe: draft.input,
+    snapshots,
+    technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
   if (!isCurrentPiRun(ownedGeneration)) return;
   if (!validation.ready) {
     useConstraintStudioStore.setState({
@@ -1521,8 +1623,13 @@ export async function createBatchRescalePreviewWithServerAuthority(
   grams: number,
 ): Promise<void> {
   const draft = selectCanonicalDraft();
-  const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
-  const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
+  const recipeState = useRecipeStore.getState();
+  const snapshots = recipeState.productBehaviorSnapshots;
+  const validation = await currentBaseAuthorityReady({
+    recipe: draft.input,
+    snapshots,
+    technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
   if (!validation.ready) {
     useConstraintStudioStore.setState({
       preview: null,
@@ -1540,8 +1647,13 @@ export async function createSuggestedFixPreviewWithServerAuthority(
   fix: SuggestedBoundFix,
 ): Promise<void> {
   const draft = selectCanonicalDraft();
-  const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
-  const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
+  const recipeState = useRecipeStore.getState();
+  const snapshots = recipeState.productBehaviorSnapshots;
+  const validation = await currentBaseAuthorityReady({
+    recipe: draft.input,
+    snapshots,
+    technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
   if (!validation.ready) {
     useConstraintStudioStore.setState({
       preview: null,
@@ -1602,6 +1714,8 @@ export async function createSubstitutionPreviewWithServerAuthority(input: {
     recipe: raw.preview.proposedInput,
     snapshots: initialSnapshots,
     accountId,
+    technicalOnlyMainLineIds:
+      useRecipeStore.getState().ownerReviewGate?.technicalOnlyMainLineIds,
   });
   if (
     resolved.unresolvedLineIds.length > 0 ||
@@ -1647,6 +1761,8 @@ export async function applyPreviewWithServerAuthority(): Promise<void> {
   const validation = await currentBaseAuthorityReady({
     recipe: preview.proposedInput,
     snapshots,
+    technicalOnlyMainLineIds:
+      useRecipeStore.getState().ownerReviewGate?.technicalOnlyMainLineIds,
   });
   if (
     !validation.ready ||

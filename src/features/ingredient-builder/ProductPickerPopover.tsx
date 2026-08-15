@@ -32,6 +32,7 @@ import {
 } from '@/services/productIntelligence';
 import { filterIngredients, type IngredientLibrary } from './ingredientLibrary';
 import {
+  exactProductPickerTechnicalReason,
   isProductPickerSelectionCurrent,
   productPickerVerificationView,
   productPickerUnavailableReason,
@@ -195,7 +196,7 @@ export function ProductPickerPopover({
       originalName: null,
       group: 'pi_base' as const,
       selectable: true,
-      verification: { status: 'PINGÜINO VERIFIED' as const, reason: null },
+      verification: { status: 'PINGÜINO — SPRAWDZONY' as const, reason: null },
     }));
   }, [favoritesOnly, globalCatalog.hits, globalCatalog.isSettled, globalCatalog.preferences, library, query, scope]);
   const safeActiveIndex =
@@ -252,7 +253,7 @@ export function ProductPickerPopover({
       setUnavailableNotice(
         option.catalog
           ? productPickerUnavailableReason(scope, option.catalog)
-          : 'Ten produkt nie jest dostępny w wybranym zakresie.',
+          : `Produkt ${option.name} · ID ${option.id} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'} · pole technical eligibility. Wybierz kwalifikowany produkt albo odśwież dane.`,
       );
       return;
     }
@@ -269,16 +270,16 @@ export function ProductPickerPopover({
     try {
       let ingredient: RecipeToppingIngredient | null = option.local ?? null;
       if (!ingredient && option.catalog) {
-        if (option.catalog.entityKind === 'pi_base' && option.catalog.mappedIngredientId) {
+        if (option.catalog.mappedIngredientId) {
           ingredient = await getEngineApprovedIngredientById(option.catalog.mappedIngredientId).then((row) =>
-            row ? ingredientRowToEngineIngredient(row) : null,
+            row
+              ? option.catalog?.entityKind === 'pi_base'
+                ? ingredientRowToEngineIngredient(row)
+                : mappedCatalogIngredient(option.catalog!, row)
+              : null,
           );
         } else if (scope === 'POST_PROCESS_ADDON') {
           ingredient = labelOnlyCatalogToppingIngredient(option.catalog);
-        } else if (option.catalog.mappedIngredientId) {
-          ingredient = await getEngineApprovedIngredientById(option.catalog.mappedIngredientId).then((row) =>
-            row ? mappedCatalogIngredient(option.catalog!, row) : null,
-          );
         }
       } else if (!ingredient) {
         ingredient = await getEngineApprovedIngredientById(option.id).then((row) =>
@@ -287,7 +288,14 @@ export function ProductPickerPopover({
       }
       if (!ingredient) {
         setUnavailableNotice(
-          'Produkt utracił aktualne zatwierdzenie PINGÜINO. Odśwież wyszukiwanie i wybierz ponownie.',
+          option.catalog
+            ? exactProductPickerTechnicalReason(
+              option.catalog,
+              scope,
+              'current Base selection authority',
+              'Odśwież wyszukiwanie i wybierz aktualną wersję produktu ponownie.',
+            )
+            : `Produkt ${option.name} · ID ${option.id} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'} · pole current Base selection authority. Odśwież wyszukiwanie i wybierz ponownie.`,
         );
         return;
       }
@@ -304,7 +312,14 @@ export function ProductPickerPopover({
               entityId: canonicalIngredientId(ingredient as EngineIngredient),
             };
         if (entity === null) {
-          setUnavailableNotice('Produkt nie ma jeszcze niezmiennej wersji danych.');
+          setUnavailableNotice(option.catalog
+            ? exactProductPickerTechnicalReason(
+              option.catalog,
+              scope,
+              'currentVersionId',
+              'Odśwież produkt i utwórz aktualną niezmienną wersję danych.',
+            )
+            : `Produkt ${option.name} · ID ${option.id} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'} · pole currentVersionId. Odśwież produkt.`);
           return;
         }
         const resolved = await resolveProductBehaviorForSelection({
@@ -318,7 +333,14 @@ export function ProductPickerPopover({
         }).catch(() => null);
         if (!resolved) {
           setUnavailableNotice(
-            'Nie udało się potwierdzić aktualnego zachowania produktu. Spróbuj ponownie.',
+            option.catalog
+              ? exactProductPickerTechnicalReason(
+                option.catalog,
+                scope,
+                'ProductBehavior server authority',
+                'Spróbuj ponownie; jeśli błąd się powtarza, wróć do receptury.',
+              )
+              : `Produkt ${option.name} · ID ${option.id} · Mapper ${entity.entityId} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'} · pole ProductBehavior server authority. Spróbuj ponownie.`,
           );
           return;
         }
@@ -329,7 +351,7 @@ export function ProductPickerPopover({
         if (!option.catalog && !library.serverSearch) {
           const mapperRow = await getEngineApprovedIngredientById(entity.entityId).catch(() => null);
           if (!mapperRow) {
-            setUnavailableNotice('Składnik demonstracyjny nie ma zatwierdzonego odpowiednika PINGÜINO Base.');
+            setUnavailableNotice('Składnik demonstracyjny nie ma aktualnie dostępnego odpowiednika PINGÜINO Base.');
             return;
           }
           ingredient = ingredientRowToEngineIngredient(mapperRow);
@@ -638,13 +660,7 @@ export function ProductPickerPopover({
                             aria-disabled={!option.selectable}
                             aria-label={
                               `${option.name}. ${option.verification.status}. ${
-                                option.status === 'pi_base'
-                                  ? 'PINGÜINO Base'
-                                  : option.status === 'verified'
-                                    ? 'GREEN, zweryfikowany'
-                                    : option.status === 'manual_unverified'
-                                      ? 'BLUE, manualny i niezweryfikowany'
-                                      : 'RED, wymaga uzupełnienia'
+                                option.selectable ? 'Dostępny w wybranym zakresie' : 'RED, wymaga uzupełnienia'
                               }${!option.selectable && option.catalog
                                 ? `. Niedostępny. ${productPickerUnavailableReason(scope, option.catalog)}`
                                 : ''}`
@@ -656,7 +672,9 @@ export function ProductPickerPopover({
                             data-mapper-id={option.catalog?.mappedIngredientId ?? undefined}
                             data-product-form={option.catalog?.productForm ?? undefined}
                             title={
-                              !option.selectable && option.catalog
+                              option.verification.reason
+                                ? option.verification.reason
+                              : !option.selectable && option.catalog
                                 ? productPickerUnavailableReason(scope, option.catalog)
                               : option.status === 'pi_base'
                                 ? 'PINGÜINO Base'
@@ -671,23 +689,18 @@ export function ProductPickerPopover({
                           >
                      <span
                             aria-label={
-                              option.status === 'pi_base'
-                                ? 'PINGÜINO Base'
-                                : option.status === 'verified'
-                                  ? 'Zweryfikowany'
-                                  : option.status === 'manual_unverified'
-                                    ? 'Dodany manualnie, niezweryfikowany'
-                                    : 'Nie można zweryfikować'
+                              option.verification.status
                             }
                             className={cn(
                               'grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold',
-                              option.status === 'pi_base' ? 'bg-gold/16 text-gold' :
-                                option.status === 'verified' ? 'bg-status-ideal/12 text-status-ideal' :
-                                  option.status === 'manual_unverified' ? 'bg-slate-200 text-slate-700' :
-                                    'bg-red-100 text-red-700',
+                              !option.selectable ? 'bg-red-100 text-red-700' :
+                                option.verification.status === 'PINGÜINO — SPRAWDZONY'
+                                  ? 'bg-status-ideal/12 text-status-ideal' :
+                                  option.entityKind === 'pi_base' ? 'bg-gold/16 text-gold' :
+                                    'bg-slate-200 text-slate-700',
                             )}
                           >
-                            <span aria-hidden>{option.status === 'pi_base' ? 'PI' : option.status === 'verified' ? '✓' : option.status === 'manual_unverified' ? '✎' : '!'}</span>
+                            <span aria-hidden>{!option.selectable ? '!' : option.entityKind === 'pi_base' ? 'PI' : option.verification.status === 'PINGÜINO — SPRAWDZONY' ? '✓' : '✎'}</span>
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-semibold">{option.name}</span>
@@ -708,7 +721,7 @@ export function ProductPickerPopover({
                             </span>
                           </span>
                           </button>
-                          {option.status !== 'blocked' ? <button
+                          <button
                             type="button"
                             aria-label={option.favorite ? `Usuń ${option.name} z Ulubionych` : `Dodaj ${option.name} do Ulubionych`}
                             aria-pressed={option.favorite}
@@ -726,7 +739,7 @@ export function ProductPickerPopover({
                             }}
                           >
                             <span aria-hidden>{option.favorite ? '★' : '☆'}</span>
-                          </button> : <span className="px-2 text-[9px] font-semibold text-red-700">Uzupełnij</span>}
+                          </button>
                         </div>
                         </Fragment>
                       ))

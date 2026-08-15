@@ -70,6 +70,7 @@ export function MyRecipesContent() {
               composition: readRecipeCompositionMetadata(
                 row.product_composition,
                 input.items.map((item) => item.id),
+                input.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
               ),
             }
           : {
@@ -80,6 +81,7 @@ export function MyRecipesContent() {
               composition: readRecipeCompositionMetadata(
                 row.product_composition,
                 input.items.map((item) => item.id),
+                input.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
               ),
             },
       );

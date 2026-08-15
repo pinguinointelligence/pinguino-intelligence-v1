@@ -19,7 +19,8 @@
     "recipes:import": "node scripts/importFlavorCatalogue.mjs",
     "recipes:validate": "node scripts/importFlavorCatalogue.mjs --check",
     "process:validate": "node scripts/buildProcessMetadataSeed.mjs --check",
-    "products:audit": "node scripts/auditUnifiedProductIntelligence.mjs"
+    "products:audit": "node scripts/auditUnifiedProductIntelligence.mjs",
+    "mapper:runtime-audit": "node scripts/auditMapperRuntimeUsability.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.2.8",

@@ -177,6 +177,9 @@ function rowToVersion(row: RecipeVersionRow): RecipeVersion {
     productComposition: readRecipeCompositionMetadata(
       row.product_composition,
       (row.recipe_input as RecipeInput).items.map((item) => item.id),
+      (row.recipe_input as RecipeInput).items
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => item.id),
     ),
     totalBatchG: num(row.total_batch_g),
     productProfile: row.product_profile ?? null,
@@ -596,6 +599,8 @@ export class SupabaseRecipes {
         snapshots: target.productComposition?.behaviorSnapshots ?? {},
         module: 'RESTORE',
         accountId,
+        technicalOnlyMainLineIds:
+          target.productComposition?.ownerReviewGate?.technicalOnlyMainLineIds,
         client: this.client,
       });
       if (!serverGate.ready) {

@@ -91,16 +91,7 @@ const REQUIRED_TECHNICAL_FACTS = [
   'protein',
   'carbohydrate',
   'sugars',
-  'sucrose',
-  'glucose',
-  'dextrose',
-  'fructose',
-  'lactose',
-  'polyols',
-  'fibre',
   'salt',
-  'alcohol',
-  'energyKcal',
 ] as const;
 
 const REQUIRED_NUTRITION_FACTS = ['energyKcal', 'fat', 'carbohydrate', 'protein', 'salt'] as const;

@@ -56,30 +56,31 @@ describe('validateVerifiedSubstitute — the gate for exact substitution', () =>
     expect(v.warnings).toContain('hero_ingredient_substitution_changes_product_identity');
   });
 
-  it('rejects an unverified product', () => {
+  it('keeps an unverified provenance label informational', () => {
     const v = validateVerifiedSubstitute(unverifiedSubstituteContract(), sorbetCtx());
-    expect(v.valid).toBe(false);
-    expect(v.blockedReasons).toContain('unverified_substitute');
+    expect(v.valid).toBe(true);
+    expect(v.warnings).toContain('substitute_verification_informational');
   });
 
-  it('rejects a PI Calculated product — calculated is never verified', () => {
+  it('keeps a PI Calculated provenance label informational', () => {
     const v = validateVerifiedSubstitute(piCalculatedSubstituteContract(), sorbetCtx());
-    expect(v.valid).toBe(false);
-    expect(v.blockedReasons).toContain('pi_calculated_never_verified_substitute');
+    expect(v.valid).toBe(true);
+    expect(v.warnings).toContain('substitute_provenance_unreviewed');
   });
 
-  it('rejects a Mapper product candidate — match candidates are never calibrated references', () => {
+  it('keeps a Mapper source label informational', () => {
     const v = validateVerifiedSubstitute(mapperSourcedSubstituteContract(), sorbetCtx());
-    expect(v.valid).toBe(false);
-    expect(v.blockedReasons).toContain('mapper_products_never_calibrated_substitutes');
+    expect(v.valid).toBe(true);
+    expect(v.warnings).toContain('substitute_provenance_unreviewed');
   });
 
-  it('rejects an unknown source even when flagged verified', () => {
+  it('keeps an unknown source informational when technical facts are valid', () => {
     const v = validateVerifiedSubstitute(
       raspberrySubstituteContract({ provenance: { source: 'random_website', verification: 'verified_reference' } }),
       sorbetCtx(),
     );
-    expect(v.blockedReasons).toContain('substitute_source_not_allowed');
+    expect(v.valid).toBe(true);
+    expect(v.warnings).toContain('substitute_provenance_unreviewed');
   });
 
   it('rejects missing / invalid composition', () => {
@@ -169,11 +170,11 @@ describe('validateVerifiedSubstitute — the gate for exact substitution', () =>
 
   it('substituteToShortageLine derives flags from the VALIDATION result, never independently', () => {
     const contract = mapperSourcedSubstituteContract();
-    const failed = validateVerifiedSubstitute(contract, sorbetCtx());
-    expect(substituteToShortageLine(contract, failed).hasVerifiedIngredientData).toBe(false);
+    const informational = validateVerifiedSubstitute(contract, sorbetCtx());
+    expect(substituteToShortageLine(contract, informational).hasCompleteTechnicalData).toBe(true);
     const ok = raspberrySubstituteContract();
     const passed = validateVerifiedSubstitute(ok, sorbetCtx());
-    expect(substituteToShortageLine(ok, passed).hasVerifiedIngredientData).toBe(true);
+    expect(substituteToShortageLine(ok, passed).hasCompleteTechnicalData).toBe(true);
   });
 });
 
@@ -223,12 +224,17 @@ describe('previewVerifiedSubstituteRecalculation — engine + regulator verified
     expect(r.proposedRecipeSnapshot).toBeNull();
   });
 
-  it('unverified / Mapper / PI Calculated contracts never calculate', () => {
+  it('unverified / Mapper / PI Calculated provenance remains informational', () => {
     for (const contract of [unverifiedSubstituteContract(), mapperSourcedSubstituteContract(), piCalculatedSubstituteContract()]) {
       const r = runSubstitute({ contract });
-      expect(r.exactStatus).toBe('not_supported');
-      expect(r.exactActions).toEqual([]);
-      expect(r.proposedRecipeSnapshot).toBeNull();
+      expect(r.exactStatus).toBe('calculated');
+      expect(r.exactActions.length).toBeGreaterThan(0);
+      expect(r.proposedRecipeSnapshot).not.toBeNull();
+      expect(r.warnings.some((warning) => [
+        'substitute_provenance_unreviewed',
+        'substitute_provenance_missing',
+        'substitute_verification_informational',
+      ].includes(warning))).toBe(true);
     }
   });
 

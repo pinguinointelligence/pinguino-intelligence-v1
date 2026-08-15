@@ -6,7 +6,7 @@
  * Stale-selection protection (Phase 10): a selection is remembered TOGETHER
  * with the normalized query it was made in — a query change invalidates it,
  * `Dodaj składnik` is disabled until the CURRENT response settles, and the
- * added ingredient is resolved fresh by the current verified exact-id gate,
+ * added ingredient is resolved fresh by the current Base-approved exact-id gate,
  * so an older response can never inject a stale candidate.
  */
 import { useState } from 'react';
@@ -53,9 +53,11 @@ export function ServerIngredientPicker({
     (search.hits.some((hit) => hit.id === pickedId) ||
       filteredProducts.some((p) => p.id === pickedId))
       ? pickedId
-      : (search.hits[0]?.id ?? filteredProducts[0]?.id ?? '');
+      : (search.hits.find((hit) => hit.baseSelectable)?.id ?? filteredProducts[0]?.id ?? '');
   const count = search.hits.length + filteredProducts.length;
-  const canAdd = effectiveId !== '' && !adding && (!hasQuery || search.isSettled);
+  const selectedSearchHit = search.hits.find((hit) => hit.id === effectiveId);
+  const canAdd = effectiveId !== '' && !adding && (!hasQuery || search.isSettled)
+    && (selectedSearchHit?.baseSelectable ?? true);
   const selectedProvenance = library.productProvenance.get(effectiveId);
 
   const add = async () => {
@@ -65,7 +67,7 @@ export function ServerIngredientPicker({
       onAdd(product);
       return;
     }
-    // Resolve the FULL approved scientific row fresh, by exact stable id.
+    // Resolve the full active Base-approved row fresh, by exact stable id.
     setAdding(true);
     try {
       const row = await getEngineApprovedIngredientById(effectiveId);
@@ -98,8 +100,8 @@ export function ServerIngredientPicker({
           }
         >
           {search.hits.map((hit) => (
-            <option key={hit.id} value={hit.id}>
-              {resultRowTextPl(hit)}
+            <option key={hit.id} value={hit.id} disabled={!hit.baseSelectable}>
+              {resultRowTextPl(hit)}{hit.baseSelectable ? '' : ' · approved_for_base=false'}
             </option>
           ))}
           {filteredProducts.map((product) => (
@@ -196,8 +198,8 @@ export function ServerIngredientPicker({
               {groupHitsByForm(search.hits).map((group) => (
                 <optgroup key={group.group} label={group.headingPl}>
                   {group.hits.map((hit) => (
-                    <option key={hit.id} value={hit.id}>
-                      {resultRowTextPl(hit)}
+                    <option key={hit.id} value={hit.id} disabled={!hit.baseSelectable}>
+                      {resultRowTextPl(hit)}{hit.baseSelectable ? '' : ' · approved_for_base=false'}
                     </option>
                   ))}
                 </optgroup>

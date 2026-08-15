@@ -258,7 +258,7 @@ export const BRANCH_RECALCULATION_SCENARIOS: readonly BranchRecalculationScenari
             correctionFamily: 'fruit',
             requiredG: 600,
             availableG: 0,
-            substitute: { ingredientName: 'Cream 30%', available: true, hasVerifiedIngredientData: true, correctionFamily: 'cream', isDairy: true },
+            substitute: { ingredientName: 'Cream 30%', available: true, hasCompleteTechnicalData: true, correctionFamily: 'cream', isDairy: true },
           },
         ],
       },

@@ -118,6 +118,38 @@ describe('recipe behavior authority', () => {
     });
   });
 
+  it('requires the frozen core composition but leaves Mapper nine-field eligibility to the resolver', () => {
+    const exactTechnicalFacts = {
+      water: 87, totalSolids: 13, fat: 3.5, protein: 3.2,
+      carbohydrate: 4.8, sugars: 4.8, salt: 0.1, podValue: 4.8, pacValue: 4.8,
+    };
+    const complete = buildRecipeBehaviorAuthority({
+      items: recipe().items,
+      snapshots: {
+        'line-1': snapshot({
+          sharedFacts: { ...sharedFacts, technicalComposition: exactTechnicalFacts },
+        }),
+      },
+    });
+    expect(recipeBehaviorModuleGate(complete, 'MONITOR').ready).toBe(true);
+
+    const missingWater = buildRecipeBehaviorAuthority({
+      items: recipe().items,
+      snapshots: {
+        'line-1': snapshot({
+          sharedFacts: {
+            ...sharedFacts,
+            technicalComposition: { ...exactTechnicalFacts, water: null },
+          },
+        }),
+      },
+    });
+    expect(recipeBehaviorModuleGate(missingWater, 'MONITOR')).toMatchObject({
+      ready: false,
+      blockedLineIds: ['line-1'],
+    });
+  });
+
   it('distinguishes saved legacy inspection from an incomplete modern draft', () => {
     const missing = buildRecipeBehaviorAuthority({ items: recipe().items, snapshots: {} });
     expect(recipeBehaviorLegacyInspection(missing, null)).toBe(false);

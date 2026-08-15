@@ -157,7 +157,8 @@ describe('global catalog normalization and deterministic verification', () => {
   it('keeps catalog verification separate from Engine approval', () => {
     expect(catalogEngineEligibility({ status: 'verified', mappedIngredientId: null })).toEqual({ base: false, topping: true });
     expect(catalogEngineEligibility({ status: 'manual_unverified', mappedIngredientId: 'PI-1' })).toEqual({ base: true, topping: true });
-    expect(catalogEngineEligibility({ status: 'blocked', mappedIngredientId: 'PI-1' })).toEqual({ base: false, topping: false });
+    expect(catalogEngineEligibility({ status: 'blocked', mappedIngredientId: 'PI-1' })).toEqual({ base: true, topping: true });
+    expect(catalogEngineEligibility({ status: 'blocked', mappedIngredientId: null })).toEqual({ base: false, topping: false });
   });
 });
 

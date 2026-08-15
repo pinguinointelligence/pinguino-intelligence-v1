@@ -64,6 +64,9 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
     let cancelled = false;
 
     const initial = useRecipeStore.getState();
+    const technicalOnlyMainLineIds = new Set(
+      initial.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+    );
     const lines = required.map((lineId) => ({
       lineId,
       base: initial.items.find((item) => item.id === lineId),
@@ -96,7 +99,10 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
             temperatureC: initial.target_temperature_c,
             mode: initial.formulation_strategy,
             processScope,
-            requestedRole: base?.lock_type === 'main' ? 'MAIN' : 'STANDARD',
+            requestedRole:
+              base?.lock_type === 'main' && !technicalOnlyMainLineIds.has(lineId)
+                ? 'MAIN'
+                : 'STANDARD',
             module: base ? 'BASE_RECIPE' : 'TOPPING',
           },
         })

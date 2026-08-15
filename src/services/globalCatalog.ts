@@ -32,7 +32,16 @@ interface SearchRow {
   current_version_id: string | null;
   entity_kind: 'pi_base' | 'commercial_product';
   status: 'pi_base' | 'verified' | 'manual_unverified' | 'blocked';
-  verification_method: 'pi_base' | 'automatic' | 'human' | 'manual_unverified' | 'blocked';
+  verification_method:
+    | 'pi_base'
+    | 'mapper_verified'
+    | 'mapper_estimated'
+    | 'mapper_needs_label_review'
+    | 'mapper_other'
+    | 'automatic'
+    | 'human'
+    | 'manual_unverified'
+    | 'blocked';
   provenance: string | null;
   display_name: string;
   original_name: string | null;
@@ -118,7 +127,7 @@ function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
     mainAllowed: row.main_allowed,
     // Label-only additions stay outside Base/Engine. Declared nutrition can
     // still feed product mass, cost and final-label preflight.
-    usableAsTopping: row.entity_kind === 'pi_base'
+    usableAsTopping: row.entity_kind === 'pi_base' || row.mapped_ingredient_id
       ? row.usable_as_topping
       : row.usable_as_topping && hasCompleteLabelOnlyToppingFacts(row.public_data),
     blockedReason: row.blocked_reason,

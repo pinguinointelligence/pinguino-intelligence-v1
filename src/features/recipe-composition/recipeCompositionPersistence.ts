@@ -33,7 +33,14 @@ export interface OwnerReviewRecipeGate {
   status: 'OWNER_REVIEW_EDITABLE';
   productionStatus: 'PRODUCTION_BLOCKED';
   labelStatus: 'LABEL_BLOCKED';
+  /** Server-owned authority registry key. Legacy in-memory fixtures may omit
+   * it, but terminal database writes require a current registered authority. */
+  authorityId?: string;
+  authorityVersion?: number;
   omittedToppingLineIds: string[];
+  /** Main-labelled Owner seed lines whose fixed grams may participate in the
+   * technical Owner Review. Automatic Main policy remains blocked. */
+  technicalOnlyMainLineIds: string[];
 }
 
 export interface RecipeCompositionMetadata {
@@ -155,6 +162,7 @@ const validTopping = (value: unknown): value is RecipeToppingItem => {
 export function readRecipeCompositionMetadata(
   value: unknown,
   baseLineIds: readonly string[] = [],
+  baseMainLineIds: readonly string[] = [],
 ): RecipeCompositionMetadata | null {
   const raw = value as RecipeCompositionMetadata | null | undefined;
   if (!raw || raw.schemaVersion !== 1 || raw.baseScope !== 'BASE_FORMULATION') return null;
@@ -167,18 +175,41 @@ export function readRecipeCompositionMetadata(
       )
     : [];
   const rawOwnerReviewGate = raw.ownerReviewGate;
+  const rawTechnicalMainIds = rawOwnerReviewGate?.technicalOnlyMainLineIds;
+  const technicalMainIdsValid = rawTechnicalMainIds === undefined || (
+    Array.isArray(rawTechnicalMainIds) && rawTechnicalMainIds.every((lineId) =>
+      typeof lineId === 'string' && lineId.trim().length > 0)
+  );
+  // Schema-v1 Owner Review payloads created before technicalOnlyMainLineIds was
+  // introduced already carried the durable Production/Label gate. Preserve it
+  // and derive the technical-only set from the saved visible Main locks.
+  const technicalMainLineIds = rawTechnicalMainIds === undefined
+    ? baseMainLineIds
+    : rawTechnicalMainIds;
   const ownerReviewGate: OwnerReviewRecipeGate | undefined =
     rawOwnerReviewGate?.status === 'OWNER_REVIEW_EDITABLE' &&
     rawOwnerReviewGate.productionStatus === 'PRODUCTION_BLOCKED' &&
     rawOwnerReviewGate.labelStatus === 'LABEL_BLOCKED' &&
     Array.isArray(rawOwnerReviewGate.omittedToppingLineIds) &&
     rawOwnerReviewGate.omittedToppingLineIds.every((lineId) =>
-      typeof lineId === 'string' && lineId.trim().length > 0)
+      typeof lineId === 'string' && lineId.trim().length > 0) &&
+    technicalMainIdsValid
       ? {
           status: rawOwnerReviewGate.status,
           productionStatus: rawOwnerReviewGate.productionStatus,
           labelStatus: rawOwnerReviewGate.labelStatus,
+          ...(typeof rawOwnerReviewGate.authorityId === 'string'
+            && rawOwnerReviewGate.authorityId.trim().length > 0
+            && typeof rawOwnerReviewGate.authorityVersion === 'number'
+            && Number.isInteger(rawOwnerReviewGate.authorityVersion)
+            && rawOwnerReviewGate.authorityVersion > 0
+            ? {
+                authorityId: rawOwnerReviewGate.authorityId,
+                authorityVersion: rawOwnerReviewGate.authorityVersion,
+              }
+            : {}),
           omittedToppingLineIds: [...new Set(rawOwnerReviewGate.omittedToppingLineIds)],
+          technicalOnlyMainLineIds: [...new Set(technicalMainLineIds)],
         }
       : undefined;
   const seenCanonicalIds = new Set<string>();
@@ -300,6 +331,7 @@ export function recipeCompositionFromState(state: {
       ownerReviewGate: {
         ...state.ownerReviewGate,
         omittedToppingLineIds: [...state.ownerReviewGate.omittedToppingLineIds],
+        technicalOnlyMainLineIds: [...state.ownerReviewGate.technicalOnlyMainLineIds],
       },
     } : {}),
     migrationAmbiguities: (state.compositionMigrationAmbiguities ?? []).map((item) => ({ ...item })),

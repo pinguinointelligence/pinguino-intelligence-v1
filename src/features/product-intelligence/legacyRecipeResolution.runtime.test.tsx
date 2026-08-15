@@ -210,6 +210,40 @@ describe('legacy recipe runtime resolution', () => {
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
   });
 
+  it('re-resolves persisted Owner Review Main seeds as technical STANDARD without changing the visible lock', async () => {
+    const saved = starterMilkBase();
+    saved.items[0] = { ...saved.items[0]!, lock_type: 'main' };
+    mockResolvedBehaviorFor(saved);
+    useRecipeStore.getState().loadRecipeInput(saved, { savedId: 'owner-review', savedName: 'Owner' });
+    useRecipeStore.setState({
+      ownerReviewGate: {
+        status: 'OWNER_REVIEW_EDITABLE',
+        productionStatus: 'PRODUCTION_BLOCKED',
+        labelStatus: 'LABEL_BLOCKED',
+        omittedToppingLineIds: [],
+        technicalOnlyMainLineIds: [saved.items[0]!.id],
+      },
+    });
+
+    await act(async () => root.render(<Harness />));
+    await vi.waitFor(() => {
+      expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots)).toHaveLength(
+        saved.items.length,
+      );
+    });
+
+    const mainCall = mocks.resolve.mock.calls.find(
+      ([input]) => input.reference.mapperIngredientId === saved.items[0]!.ingredient.canonical_ingredient_id,
+    );
+    expect(mainCall?.[0].context.requestedRole).toBe('STANDARD');
+    expect(useRecipeStore.getState().items[0]?.lock_type).toBe('main');
+    expect(useRecipeStore.getState().ownerReviewGate).toMatchObject({
+      technicalOnlyMainLineIds: [saved.items[0]!.id],
+      productionStatus: 'PRODUCTION_BLOCKED',
+      labelStatus: 'LABEL_BLOCKED',
+    });
+  });
+
   it('hydrates an intentionally incomplete Sorbet starter without inventing its fruit Main', async () => {
     useRecipeStore.getState().startNewRecipe('sorbet');
     const starter = buildRecipeInput(useRecipeStore.getState());

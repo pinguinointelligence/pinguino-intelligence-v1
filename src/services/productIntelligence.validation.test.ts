@@ -12,6 +12,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 import {
   buildRecipeBehaviorServerValidationGroups,
+  resolveProductBehaviorForSelection,
   validateRecipeBehaviorOnServer,
 } from './productIntelligence';
 
@@ -156,6 +157,25 @@ describe('recipe behavior server validation', () => {
     expect(JSON.stringify(built.groups)).not.toContain('privateOverlay');
   });
 
+  it('keeps an Owner Review Main lock visible while validating its technical-only line as STANDARD', () => {
+    const built = buildRecipeBehaviorServerValidationGroups({
+      recipe,
+      snapshots: {
+        'main-line': snapshot('main-line', 'PI-ING-1'),
+        'standard-line': snapshot('standard-line', 'PI-ING-2'),
+      },
+      module: 'OPTIMAL',
+      accountId: 'owner-1',
+      technicalOnlyMainLineIds: ['main-line'],
+    });
+    expect(recipe.items[0]?.lock_type).toBe('main');
+    expect(built.invalidLineIds).toEqual([]);
+    expect(built.groups).toHaveLength(1);
+    expect(built.groups[0]?.context.requestedRole).toBe('STANDARD');
+    expect(built.groups[0]?.lines.map((line) => line.lineId).sort())
+      .toEqual(['main-line', 'standard-line']);
+  });
+
   it('treats a stripped optional DE null as equal to the Engine null value', () => {
     const resolved = snapshot('main-line', 'PI-ING-1');
     const technicalComposition = { ...resolved.sharedFacts!.technicalComposition! };
@@ -173,6 +193,39 @@ describe('recipe behavior server validation', () => {
     });
     expect(built.invalidLineIds).toEqual([]);
     expect(built.groups).toHaveLength(1);
+  });
+
+  it('matches a stripped optional Mapper component to the Engine zero seam without weakening core facts', () => {
+    const resolved = snapshot('main-line', 'PI-ING-1');
+    const optionalTechnical = { ...resolved.sharedFacts!.technicalComposition! };
+    delete optionalTechnical.polyols;
+    const optional = buildRecipeBehaviorServerValidationGroups({
+      recipe: { ...recipe, items: [recipe.items[0]!] },
+      snapshots: {
+        'main-line': {
+          ...resolved,
+          sharedFacts: { ...resolved.sharedFacts!, technicalComposition: optionalTechnical },
+        },
+      },
+      module: 'SAVE',
+      accountId: 'account-1',
+    });
+    expect(optional.invalidLineIds).toEqual([]);
+
+    const missingCoreTechnical = { ...resolved.sharedFacts!.technicalComposition! };
+    delete missingCoreTechnical.water;
+    const missingCore = buildRecipeBehaviorServerValidationGroups({
+      recipe: { ...recipe, items: [recipe.items[0]!] },
+      snapshots: {
+        'main-line': {
+          ...resolved,
+          sharedFacts: { ...resolved.sharedFacts!, technicalComposition: missingCoreTechnical },
+        },
+      },
+      module: 'SAVE',
+      accountId: 'account-1',
+    });
+    expect(missingCore.invalidLineIds).toEqual(['main-line']);
   });
 
   it('binds the effective catalog price without leaking it into shared facts', () => {
@@ -237,10 +290,55 @@ describe('recipe behavior server validation', () => {
     })).resolves.toMatchObject({
       ready: false,
       staleLineIds: ['main-line'],
+      lines: [{
+        lineId: 'main-line',
+        reasons: [
+          'behavior_binding_stale:product-main-line:PI-ING-1:version-main-line:SAVE:refresh_product_data',
+        ],
+      }],
     });
     expect(h.rpc).toHaveBeenCalledWith('validate_recipe_behavior_v1', expect.objectContaining({
       p_context: expect.objectContaining({ module: 'SAVE', productProfile: 'milk_gelato' }),
     }));
+  });
+
+  it('preserves an exact blocked resolver envelope instead of collapsing it to null', async () => {
+    h.rpc.mockResolvedValue({
+      data: {
+        schemaVersion: 1,
+        entityKind: 'catalog_product_version',
+        entityId: 'version-1',
+        productId: 'product-1',
+        productVersionId: 'version-1',
+        mapperIngredientId: 'PI-ING-000405',
+        state: 'blocked',
+        module: 'BASE_RECIPE',
+        blockReasons: [
+          'behavior_binding_missing:product-1:PI-ING-000405:version-1:BASE_RECIPE:refresh_product_data',
+        ],
+      },
+      error: null,
+    });
+    await expect(resolveProductBehaviorForSelection({
+      entity: { entityKind: 'catalog_product_version', entityId: 'version-1' },
+      context: {
+        accountId: 'account-1',
+        productProfile: 'milk_gelato',
+        temperatureC: -12,
+        mode: 'optimal',
+        processScope: 'BASE_FORMULATION',
+        requestedRole: 'STANDARD',
+        module: 'BASE_RECIPE',
+      },
+    })).resolves.toMatchObject({
+      state: 'blocked',
+      productId: 'product-1',
+      productVersionId: 'version-1',
+      mapperIngredientId: 'PI-ING-000405',
+      blockReasons: [
+        'behavior_binding_missing:product-1:PI-ING-000405:version-1:BASE_RECIPE:refresh_product_data',
+      ],
+    });
   });
 
   it('fails before RPC when recipe science differs from the frozen Mapper facts', async () => {

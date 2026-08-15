@@ -18,7 +18,6 @@ const PRIVATE_PRODUCT_VEGAN_REASON_PREFIX = 'private_product_vegan_';
 type MapperVeganEvidence = Pick<
   IngredientRow,
   | 'approved_for_engines'
-  | 'verification_status'
   | 'vegan'
   | 'dairy_free'
   | 'allergens'
@@ -56,7 +55,6 @@ const meaningfulPositive = (value: number | null | undefined): boolean =>
 const reliablePositiveVeganEvidence = (row: MapperVeganEvidence): boolean =>
   row.vegan === 'true' &&
   row.approved_for_engines === true &&
-  row.verification_status.startsWith('Verified') &&
   row.is_active !== false;
 
 const animalEvidence = (row: MapperVeganEvidence): string[] => {
@@ -101,8 +99,8 @@ export function assessMapperVeganEligibility(
   }
   if (positive) return { status: 'VEGAN_VERIFIED', reasons: ['verified_mapper_vegan_true'] };
 
-  const reasons = ['insufficient_verified_vegan_evidence'];
-  if (row.vegan === 'true') reasons.push('vegan_true_without_verified_engine_approval');
+  const reasons = ['insufficient_vegan_technical_evidence'];
+  if (row.vegan === 'true') reasons.push('vegan_true_without_engine_approval');
   if (row.vegan === 'unknown') reasons.push('mapper_vegan_unknown');
   if (row.dairy_free === 'true') reasons.push('dairy_free_is_not_vegan_evidence');
   return { status: 'VEGAN_UNKNOWN', reasons };

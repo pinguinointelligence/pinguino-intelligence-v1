@@ -201,28 +201,37 @@ describe('PI visible terminal contract', () => {
 
   it('names the missing technical layer and exposes all product recovery actions', async () => {
     const line = useRecipeStore.getState().items[0]!;
+    const exactReasons = [
+      'behavior_binding_missing:product-405:PI-ING-000405:version-405:OPTIMAL:refresh_product_data',
+      'process_evidence_unknown:product-405:PI-ING-000405:version-405:OPTIMAL:add_process_evidence',
+      'profile_not_approved:product-405:PI-ING-000405:version-405:OPTIMAL:change_profile_or_product',
+    ];
     const issue = serverBehaviorPreviewIssue([{
       lineId: line.id,
       lineName: line.ingredient.name,
-      reasons: ['behavior_binding_missing', 'process_evidence_missing', 'profile_not_approved'],
+      reasons: exactReasons,
     }]);
     useConstraintStudioStore.setState({
       previewIssue: issue,
       recalculationTerminal: productBehaviorTerminal([{
         lineId: line.id,
         lineName: line.ingredient.name,
-        reasons: ['behavior_binding_missing', 'process_evidence_missing', 'profile_not_approved'],
+        reasons: exactReasons,
       }]),
     });
     await renderPanel();
 
     expect(document.body.textContent).toContain(
-      'Produkt nie ma jeszcze zweryfikowanego powiązania technicznego:',
+      'Produkt nie spełnia jeszcze bieżącej bramki technicznej:',
     );
     expect(document.body.textContent).toContain(line.ingredient.name);
     expect(document.body.textContent).toContain('ProductBehavior binding');
     expect(document.body.textContent).toContain('process');
     expect(document.body.textContent).toContain('profile eligibility');
+    expect(document.body.textContent).toContain('product-405');
+    expect(document.body.textContent).toContain('version-405');
+    expect(document.body.textContent).toContain('PI-ING-000405');
+    expect(document.body.textContent).toContain('OPTIMAL');
     for (const action of ['Wybierz inny produkt', 'Uzupełnij dane produktu', 'Wróć do receptury']) {
       expect(document.body.textContent).toContain(action);
     }

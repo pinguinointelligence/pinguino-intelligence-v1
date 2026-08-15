@@ -25,6 +25,7 @@ const num = (value: number | null | undefined): number => value ?? 0;
 
 export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngredient {
   const { category } = mapDatasetCategory(row.ingredient_category);
+  const isVerified = row.verification_status.startsWith('Verified');
 
   const composition: IngredientComponentProfile = {
     water_percent: num(row.water_percent),
@@ -75,11 +76,11 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
     cost_per_kg: row.cost_per_kg,
     cost_currency: row.currency || null,
     confidence_score: row.data_confidence_percent ?? 0,
-    source_type: 'verified_db',
+    source_type: isVerified ? 'verified_db' : 'ai_estimated',
     // v1.0 vocabulary: every 'Verified*' status family counts as verified
     // ('Verified', 'Verified / Basis Check Needed', 'Verified / PI Calculated',
     // 'Verified / Public Label').
-    is_verified: row.verification_status.startsWith('Verified'),
+    is_verified: isVerified,
     ...(Object.keys(flags).length > 0 ? { flags } : {}),
   };
 }

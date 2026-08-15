@@ -48,6 +48,31 @@ interface RecipeBehaviorServerValidationGroup {
   context: ProductBehaviorContext;
 }
 
+const EXACT_SERVER_AUTHORITY_REASON_CODES = new Set([
+  'behavior_binding_stale',
+  'behavior_binding_version_stale',
+  'facts_fingerprint_stale',
+  'shared_facts_stale',
+  'taxonomy_version_stale',
+  'product_version_stale',
+  'product_identity_stale',
+  'mapper_mapping_stale',
+  'main_policy_stale',
+  'catalog_version_identity_mismatch',
+  'mapper_entity_identity_mismatch',
+]);
+
+function exactServerAuthorityReason(
+  reason: string,
+  snapshot: ProductBehaviorSnapshot | undefined,
+  module: ProductBehaviorModule,
+): string {
+  if (reason.includes(':') || !snapshot || !EXACT_SERVER_AUTHORITY_REASON_CODES.has(reason)) {
+    return reason;
+  }
+  return `${reason}:${snapshot.productId}:${snapshot.mapperIngredientId ?? 'none'}:${snapshot.productVersionId}:${module}:refresh_product_data`;
+}
+
 const TECHNICAL_FACT_FIELDS: ReadonlyArray<[
   keyof EngineIngredient['composition'] | 'pod_value' | 'pac_value' | 'de_value',
   string,
@@ -63,6 +88,14 @@ const TECHNICAL_FACT_FIELDS: ReadonlyArray<[
   ['kcal_per_100g', 'energyKcal'], ['pod_value', 'podValue'],
   ['pac_value', 'pacValue'], ['de_value', 'deValue'],
 ];
+
+// The Engine's documented Mapper seam treats absent optional component
+// contributions as zero. Core composition plus POD/PAC are deliberately not
+// listed here: an absent core fact must remain a hard technical mismatch.
+const OPTIONAL_ZERO_DEFAULT_FACTS = new Set<string>([
+  'sucrose', 'glucose', 'dextrose', 'fructose', 'lactose', 'polyols',
+  'fibre', 'alcohol', 'energyKcal',
+]);
 
 function ingredientTechnicalValue(
   ingredient: EngineIngredient,
@@ -86,7 +119,10 @@ function technicalFactsMatch(
     // PostgreSQL strips JSON nulls from the immutable server projection. An
     // omitted optional fact therefore matches only an explicitly unknown
     // Engine value; it must never match a numeric value supplied by a caller.
-    if (expected === undefined) return actual === null || actual === undefined;
+    if (expected === undefined) {
+      return actual === null || actual === undefined
+        || (OPTIONAL_ZERO_DEFAULT_FACTS.has(snapshotField) && actual === 0);
+    }
     if (expected === null || actual === null || actual === undefined) {
       return expected === null && (actual === null || actual === undefined);
     }
@@ -100,6 +136,58 @@ const asStringArray = (value: unknown): string[] =>
 function readServerResolvedProductBehavior(value: unknown): ServerResolvedProductBehavior | null {
   if (!value || typeof value !== 'object') return null;
   const row = value as Record<string, unknown>;
+  if (
+    row.schemaVersion === 1 && row.state === 'blocked' && typeof row.module === 'string'
+    && (row.entityKind === 'mapper' || row.entityKind === 'catalog_product_version')
+  ) {
+    const entityId = typeof row.entityId === 'string' ? row.entityId : 'unresolved';
+    const productId = typeof row.productId === 'string' ? row.productId : entityId;
+    const productVersionId = typeof row.productVersionId === 'string'
+      ? row.productVersionId
+      : entityId;
+    const exactReasons = [...new Set([
+      ...asStringArray(row.reasons),
+      ...asStringArray(row.blockReasons),
+    ])];
+    return {
+      schemaVersion: 1,
+      resolverVersion: typeof row.resolverVersion === 'string'
+        ? row.resolverVersion
+        : 'blocked-authority-envelope-v1',
+      entityKind: row.entityKind,
+      productId,
+      productVersionId,
+      factsFingerprint: typeof row.factsFingerprint === 'string' ? row.factsFingerprint : 'unresolved',
+      catalogStatus: 'blocked',
+      mapperVerificationStatus: null,
+      provenance: typeof row.provenance === 'string' ? row.provenance : 'server_authority',
+      behaviorBindingId: typeof row.behaviorBindingId === 'string' ? row.behaviorBindingId : 'unresolved',
+      behaviorBindingVersion: typeof row.behaviorBindingVersion === 'string'
+        ? row.behaviorBindingVersion
+        : 'unresolved',
+      taxonomyVersion: typeof row.taxonomyVersion === 'string' ? row.taxonomyVersion : 'unresolved',
+      mapperIngredientId: typeof row.mapperIngredientId === 'string' ? row.mapperIngredientId : null,
+      familyId: null,
+      subfamilyId: null,
+      formId: null,
+      mainEligibility: 'UNKNOWN',
+      veganEligibility: 'unknown',
+      proteinBehavior: 'unknown',
+      processBehavior: {},
+      sharedFacts: null,
+      privateOverlay: null,
+      approvedLiquidDairyCarrier: false,
+      context: row.context && typeof row.context === 'object'
+        ? row.context as Record<string, unknown>
+        : {},
+      module: row.module as ProductBehaviorModule,
+      state: 'blocked',
+      moduleEligibility: { [row.module as ProductBehaviorModule]: 'blocked' },
+      mainPolicy: null,
+      warnings: asStringArray(row.warnings),
+      blockReasons: exactReasons,
+    };
+  }
   if (
     row.schemaVersion !== 1 ||
     typeof row.resolverVersion !== 'string' ||
@@ -164,6 +252,7 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   module: ProductBehaviorModule;
   accountId: string | null;
+  technicalOnlyMainLineIds?: readonly string[];
 }): { groups: RecipeBehaviorServerValidationGroup[]; invalidLineIds: string[] } {
   const requiredLineIds = productBehaviorRequiredLineIds({
     items: input.recipe.items,
@@ -172,6 +261,7 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
   const mainLineIds = new Set(
     input.recipe.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
   );
+  const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
   const invalidLineIds: string[] = [];
   const byContext = new Map<string, RecipeBehaviorServerValidationGroup>();
 
@@ -195,7 +285,9 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
       invalidLineIds.push(lineId);
       continue;
     }
-    const requestedRole = mainLineIds.has(lineId) ? 'MAIN' : 'STANDARD';
+    const requestedRole = mainLineIds.has(lineId) && !technicalOnlyMainLineIds.has(lineId)
+      ? 'MAIN'
+      : 'STANDARD';
     const key = `${snapshot.processScope}:${requestedRole}`;
     const existing = byContext.get(key);
     if (existing) {
@@ -271,6 +363,7 @@ export async function validateRecipeBehaviorOnServer(input: {
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   module: ProductBehaviorModule;
   accountId: string | null;
+  technicalOnlyMainLineIds?: readonly string[];
   client?: Pick<SupabaseClient, 'rpc'>;
 }): Promise<RecipeBehaviorServerValidationResult> {
   const built = buildRecipeBehaviorServerValidationGroups(input);
@@ -282,7 +375,12 @@ export async function validateRecipeBehaviorOnServer(input: {
       lines: built.invalidLineIds.map((lineId) => ({
         lineId,
         state: 'stale',
-        reasons: ['behavior_snapshot_missing_or_unresolved'],
+        reasons: [(() => {
+          const snapshot = input.snapshots[lineId];
+          const line = input.recipe.items.find((item) => item.id === lineId);
+          const fallbackIdentity = line ? canonicalIngredientId(line.ingredient) : lineId;
+          return `behavior_snapshot_missing_or_unresolved:${snapshot?.productId ?? fallbackIdentity}:${snapshot?.mapperIngredientId ?? (fallbackIdentity.startsWith('PI-ING-') ? fallbackIdentity : 'none')}:${snapshot?.productVersionId ?? 'none'}:${input.module}:refresh_product_data`;
+        })()],
       })),
     };
   }
@@ -315,6 +413,14 @@ export async function validateRecipeBehaviorOnServer(input: {
     return parsed;
   }));
   const lines = results.flatMap((result) => result.lines)
+    .map((line) => ({
+      ...line,
+      reasons: line.reasons.map((reason) => exactServerAuthorityReason(
+        reason,
+        input.snapshots[line.lineId],
+        input.module,
+      )),
+    }))
     .sort((left, right) => left.lineId.localeCompare(right.lineId));
   const staleLineIds = [...new Set(results.flatMap((result) => result.staleLineIds))].sort();
   return {
@@ -381,6 +487,7 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   accountId: string | null;
   module?: ProductBehaviorModule;
+  technicalOnlyMainLineIds?: readonly string[];
 }): Promise<{
   snapshots: Record<string, ProductBehaviorSnapshot>;
   unresolvedLineIds: string[];
@@ -399,7 +506,8 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
     const line = input.recipe.items.find((candidate) => candidate.id === lineId);
     const snapshot = snapshots[lineId];
     if (!line || !snapshot || snapshot.resolutionState !== 'RESOLVED') return true;
-    const expectedRole = line.lock_type === 'main' ? 'MAIN' : 'STANDARD';
+    const expectedRole = line.lock_type === 'main' &&
+      !(input.technicalOnlyMainLineIds ?? []).includes(lineId) ? 'MAIN' : 'STANDARD';
     const context = snapshot.resolutionContext;
     return !context ||
       context.accountId !== input.accountId ||
@@ -437,7 +545,8 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
         temperatureC: input.recipe.target_temperature_c,
         mode,
         processScope: 'BASE_FORMULATION',
-        requestedRole: line.lock_type === 'main' ? 'MAIN' : 'STANDARD',
+        requestedRole: line.lock_type === 'main' &&
+          !(input.technicalOnlyMainLineIds ?? []).includes(lineId) ? 'MAIN' : 'STANDARD',
         module: requestedModule,
       },
     }).catch(() => null);
@@ -456,12 +565,119 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
 }
 
 export function productBehaviorBlockedMessage(result: ServerResolvedProductBehavior): string {
-  const reason = result.blockReasons[0] ?? 'context_not_approved';
-  const messages: Record<string, string> = {
-    behavior_binding_missing: 'Produkt nie ma jeszcze zatwierdzonej klasyfikacji technologicznej.',
-    main_policy_unknown: 'Brak zatwierdzonego zakresu Main dla tego produktu i profilu.',
-    base_technical_authority_missing: 'Brak bezpiecznego mapowania technicznego do Bazy.',
-    context_not_approved: 'Produkt nie jest zatwierdzony w tym miejscu receptury.',
-  };
-  return messages[reason] ?? 'Produkt nie jest zatwierdzony w tym miejscu receptury.';
+  const exactPrefixes = [
+    'product_rejected:', 'behavior_binding_missing:',
+    'classification_pending:', 'classification_failed:',
+    'approved_for_base_false:', 'approved_for_engines_false:',
+    'missing_technical_fields:', 'process_evidence_unknown:',
+    'mapper_mapping_missing:', 'profile_not_approved:',
+    'main_policy_not_approved:', 'module_permission_missing:',
+    'nutrition_facts_missing:', 'allergen_facts_missing:',
+    'module_not_eligible:', 'legacy_product_reference_unresolved:',
+    'behavior_snapshot_missing_or_unresolved:',
+    'behavior_binding_stale:', 'behavior_binding_version_stale:',
+    'facts_fingerprint_stale:', 'shared_facts_stale:',
+    'taxonomy_version_stale:', 'product_version_stale:',
+    'product_identity_stale:', 'mapper_mapping_stale:',
+    'main_policy_stale:', 'catalog_version_identity_mismatch:',
+    'mapper_entity_identity_mismatch:',
+  ];
+  const reason = result.blockReasons.find((entry) =>
+    exactPrefixes.some((prefix) => entry.startsWith(prefix)),
+  ) ?? `module_not_eligible:${result.productId}:${result.mapperIngredientId ?? 'none'}:${result.productVersionId}:${result.module}:return_to_recipe`;
+  const [code, ...parts] = reason.split(':');
+  const parsed = (() => {
+    if (code === 'missing_technical_fields') {
+      if (parts.length >= 6) {
+        const [details, productId, mapperId, versionId, module, action] = parts;
+        return { details, productId, mapperId, versionId, module, action };
+      }
+      const [details, mapperId, versionId, module] = parts;
+      return { details, productId: result.productId, mapperId, versionId, module, action: 'complete_technical_fields' };
+    }
+    if (parts.length >= 5) {
+      const [productId, mapperId, versionId, module, action] = parts;
+      return { details: '', productId, mapperId, versionId, module, action };
+    }
+    const [mapperId, versionId, module] = parts;
+    return { details: '', productId: result.productId, mapperId, versionId, module, action: 'return_to_recipe' };
+  })();
+  const productId = parsed.productId || result.productId;
+  const mapperId = parsed.mapperId && parsed.mapperId !== 'none'
+    ? parsed.mapperId
+    : (result.mapperIngredientId ?? 'brak');
+  const versionId = parsed.versionId && parsed.versionId !== 'none'
+    ? parsed.versionId
+    : result.productVersionId;
+  const module = parsed.module || result.module;
+  const exact = `produkt ${productId} · wersja ${versionId} · Mapper ${mapperId} · moduł ${module}`;
+  if (code === 'product_rejected') {
+    return `Dokładny ${exact} został jawnie odrzucony przez Ownera. Skontaktuj się z Ownerem przed ponownym użyciem.`;
+  }
+  if (code === 'behavior_binding_missing') {
+    return `Dla ${exact} brakuje aktualnego ProductBehavior binding. Odśwież dane produktu i uruchom klasyfikację ponownie.`;
+  }
+  if (code === 'behavior_snapshot_missing_or_unresolved') {
+    return `Dla ${exact} brakuje aktualnego snapshotu ProductBehavior. Odśwież dane produktu i uruchom PI ponownie.`;
+  }
+  if (code === 'legacy_product_reference_unresolved') {
+    return `Nie udało się odtworzyć ${exact} z zapisanej referencji. Napraw referencję produktu albo wybierz jego aktualną wersję.`;
+  }
+  if (code === 'behavior_binding_stale' || code === 'behavior_binding_version_stale') {
+    return `ProductBehavior binding dla ${exact} jest nieaktualny. Odśwież dane produktu i uruchom PI ponownie.`;
+  }
+  if (code === 'facts_fingerprint_stale' || code === 'shared_facts_stale') {
+    return `Fakty dla ${exact} zmieniły się od ostatniego przeliczenia. Odśwież produkt i uruchom PI ponownie.`;
+  }
+  if (code === 'taxonomy_version_stale') {
+    return `Taksonomia dla ${exact} zmieniła się od ostatniego przeliczenia. Odśwież produkt i uruchom PI ponownie.`;
+  }
+  if (code === 'product_version_stale' || code === 'product_identity_stale'
+      || code === 'catalog_version_identity_mismatch') {
+    return `Wersja lub tożsamość ${exact} jest nieaktualna. Wybierz aktualną wersję produktu.`;
+  }
+  if (code === 'mapper_mapping_stale' || code === 'mapper_entity_identity_mismatch') {
+    return `Mapowanie Mapper dla ${exact} jest nieaktualne. Odśwież dokładne powiązanie Mapper.`;
+  }
+  if (code === 'main_policy_stale') {
+    return `Polityka Main dla ${exact} jest nieaktualna. Odśwież produkt i uruchom PI ponownie.`;
+  }
+  if (code === 'classification_pending') {
+    return `Klasyfikacja dla ${exact} nadal trwa. Poczekaj na zakończenie i kliknij PI ponownie.`;
+  }
+  if (code === 'classification_failed') {
+    return `Klasyfikacja dla ${exact} zakończyła się błędem. Uruchom klasyfikację ponownie albo wróć do receptury.`;
+  }
+  if (code === 'approved_for_base_false') {
+    return `Dokładny ${exact} ma approved_for_base=false. Wybierz produkt zatwierdzony dla Base.`;
+  }
+  if (code === 'approved_for_engines_false') {
+    return `Dokładny ${exact} ma approved_for_engines=false. Może pozostać w Base, ale PI nie wykona obliczeń; wybierz produkt zatwierdzony dla Engine.`;
+  }
+  if (code === 'missing_technical_fields') {
+    return `Dokładny ${exact} nie ma wymaganych pól technicznych: ${parsed.details || 'brak listy pól'}. Uzupełnij wskazane pola i przelicz ponownie.`;
+  }
+  if (code === 'process_evidence_unknown') {
+    return `Dokładny ${exact} nie ma dowodu procesu. Obliczenia techniczne pozostają dostępne; dodaj dowód procesu przed Process/Production.`;
+  }
+  if (code === 'mapper_mapping_missing') {
+    return `Dokładny ${exact} nie ma powiązania Mapper. Wybierz inną wersję produktu albo ustaw dokładne mapowanie.`;
+  }
+  if (code === 'profile_not_approved') {
+    return `Dokładny ${exact} nie jest zgodny z bieżącym profilem. Zmień profil albo wybierz zgodny produkt.`;
+  }
+  if (code === 'main_policy_not_approved') {
+    return `Dokładny ${exact} nie ma zatwierdzonej polityki Main. Użyj go jako Standard albo wybierz produkt z dokładną polityką Main.`;
+  }
+  if (code === 'module_permission_missing') {
+    return `Dokładny ${exact} nie ma uprawnienia ProductBehavior do tego modułu. Wybierz wersję kwalifikowaną dla modułu albo uzupełnij jego wymagane dane.`;
+  }
+  if (code === 'nutrition_facts_missing' || code === 'allergen_facts_missing') {
+    const facts = code === 'nutrition_facts_missing' ? 'wartości odżywczych' : 'składników i alergenów';
+    return `Dokładny ${exact} nie ma kompletnych danych ${facts}. Uzupełnij etykietę produktu i przelicz ponownie.`;
+  }
+  if (code === 'module_not_eligible') {
+    return `Dokładny ${exact} pozostaje niedostępny z powodu rzeczywistej bramki modułu. Wróć do receptury i wybierz produkt kwalifikowany dla ${module}.`;
+  }
+  return `Dokładny ${exact} jest zablokowany przez ${code}. Wróć do receptury, odśwież dane produktu i wybierz kwalifikowaną wersję.`;
 }

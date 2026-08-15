@@ -25,6 +25,7 @@ import type {
 } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import {
+  productBehaviorBlockedMessage,
   resolveProductBehaviorForSelection,
   type ProductBehaviorEntity,
 } from '@/services/productIntelligence';
@@ -95,16 +96,7 @@ const REQUIRED_OWNER_REVIEW_COMPOSITION_FIELDS = [
   'protein_percent',
   'carbohydrate_percent',
   'total_sugars_percent',
-  'sucrose_percent',
-  'glucose_percent',
-  'dextrose_percent',
-  'fructose_percent',
-  'lactose_percent',
-  'polyol_percent',
-  'fiber_percent',
   'salt_percent',
-  'alcohol_percent',
-  'kcal_per_100g',
   'pod_value',
   'pac_value',
 ] as const satisfies readonly (keyof IngredientRow)[];
@@ -164,7 +156,7 @@ async function resolveLine(
   if (!row) {
     throw new ExecutableRecipeHandoffError(
       'ingredient_unavailable',
-      `Brak aktualnego zatwierdzonego produktu ${line.mapperIngredientId}.`,
+      `Brak aktualnego produktu ${line.mapperIngredientId}.`,
       line.lineId,
     );
   }
@@ -172,13 +164,14 @@ async function resolveLine(
   if (
     !row.approved_for_base ||
     !row.approved_for_engines ||
-    !row.verification_status.startsWith('Verified') ||
     missingComposition.length > 0
   ) {
     throw new ExecutableRecipeHandoffError(
       'behavior_blocked',
       `Niepełna kompozycja techniczna Base ${line.mapperIngredientId}: ` +
-        `${missingComposition.join(', ') || 'brak zatwierdzenia Mapper/Engine'}.`,
+        `${missingComposition.join(', ') || (!row.approved_for_base
+          ? 'approved_for_base=false'
+          : 'approved_for_engines=false')}.`,
       line.lineId,
     );
   }
@@ -190,7 +183,10 @@ async function resolveLine(
       temperatureC: template.targetTemperatureC,
       mode: template.formulationStrategy,
       processScope: line.processScope,
-      requestedRole: line.role === 'main' ? 'MAIN' : 'STANDARD',
+      // Owner Review preserves the visible Main lock but checks only the fixed
+      // technical Base vector. Automatic Main authority remains unavailable
+      // until an exact policy is published.
+      requestedRole: 'STANDARD',
       module: line.processScope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
     },
   });
@@ -198,6 +194,15 @@ async function resolveLine(
     throw new ExecutableRecipeHandoffError(
       'behavior_unavailable',
       `Resolver nie zwrócił wersji produktu ${line.mapperIngredientId}.`,
+      line.lineId,
+    );
+  }
+  const requiredModule = line.processScope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING';
+  if (resolved.state === 'blocked' || resolved.moduleEligibility[requiredModule] === 'blocked') {
+    throw new ExecutableRecipeHandoffError(
+      'behavior_blocked',
+      `ProductBehavior zablokował ${line.mapperIngredientId} w module ${requiredModule}: ` +
+        productBehaviorBlockedMessage(resolved),
       line.lineId,
     );
   }
@@ -332,7 +337,12 @@ export async function materializeExecutableRecipeDefinition(
         status: 'OWNER_REVIEW_EDITABLE',
         productionStatus: 'PRODUCTION_BLOCKED',
         labelStatus: 'LABEL_BLOCKED',
+        authorityId: template.id,
+        authorityVersion: template.version,
         omittedToppingLineIds: template.toppings.map((line) => line.lineId),
+        technicalOnlyMainLineIds: template.base
+          .filter((line) => line.role === 'main')
+          .map((line) => line.lineId),
       },
       migrationAmbiguities: [],
     },

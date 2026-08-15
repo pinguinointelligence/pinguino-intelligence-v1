@@ -14,7 +14,7 @@ import {
 const substitute = (over: Partial<StockShortageSubstitute> = {}): StockShortageSubstitute => ({
   ingredientName: 'Raspberry puree',
   available: true,
-  hasVerifiedIngredientData: true,
+  hasCompleteTechnicalData: true,
   correctionFamily: 'fruit',
   ...over,
 });
@@ -188,10 +188,10 @@ describe('routeStockShortage — substitution safety gates (never silent)', () =
 
   it('replacement requires VERIFIED ingredient data (locked acceptance 28)', () => {
     const r = routeStockShortage(
-      intent({ observation: { shortages: [line({ availableG: 0, substitute: substitute({ hasVerifiedIngredientData: false }) })] } }),
+      intent({ observation: { shortages: [line({ availableG: 0, substitute: substitute({ hasCompleteTechnicalData: false }) })] } }),
     );
     expect(r.decision).not.toBe('substitution_possible');
-    expect(r.trace.lineAssessments[0]!.substitutionBlockedReasons).toContain('substitute_data_not_verified');
+    expect(r.trace.lineAssessments[0]!.substitutionBlockedReasons).toContain('substitute_technical_data_incomplete');
   });
 
   it('an unknown / unlisted substitute family is blocked, never remapped', () => {
@@ -235,7 +235,7 @@ describe('routeStockShortage — blocks and honest reporting', () => {
         observation: {
           shortages: [
             line({ lineId: 'x', requiredG: 100, availableG: 50, substitute: substitute() }),
-            line({ lineId: 'x', ingredientName: 'Cream line', requiredG: 100, availableG: 100, substitute: substitute({ ingredientName: 'Heavy cream 35%', correctionFamily: 'cream', isDairy: true, hasVerifiedIngredientData: false }) }),
+            line({ lineId: 'x', ingredientName: 'Cream line', requiredG: 100, availableG: 100, substitute: substitute({ ingredientName: 'Heavy cream 35%', correctionFamily: 'cream', isDairy: true, hasCompleteTechnicalData: false }) }),
           ],
         },
         constraints: { canScaleBatchDown: false, canReformulate: false, purchaseOrWaitPossible: false },

@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { cn } from '@/lib/cn';
+import { productPickerVerificationView } from '@/features/ingredient-builder/productPickerModel';
 import { preserveServerProductRank } from './ranking';
 import { useGlobalCatalogPicker } from './useGlobalCatalogPicker';
 
-const statusLabel = {
-  verified: 'Zweryfikowany',
-  manual_unverified: 'Dodany manualnie · Niezweryfikowany',
-  blocked: 'Nie można zweryfikować',
-  pi_base: 'PINGÜINO Base',
-} as const;
+const badgeTone = (status: string, blocked: boolean, directMapper: boolean): string => {
+  if (blocked) return 'bg-red-100 text-red-700';
+  if (status === 'WYMAGA SPRAWDZENIA ETYKIETY') return 'bg-amber-100 text-amber-700';
+  if (status === 'PINGÜINO — SPRAWDZONY') {
+    return directMapper ? 'bg-gold/12 text-gold-ink' : 'bg-status-ideal/12 text-status-ideal';
+  }
+  return 'bg-slate-200 text-slate-700';
+};
 
 export function GlobalCatalogSearchPanel() {
   const [query, setQuery] = useState('');
@@ -107,29 +110,67 @@ export function GlobalCatalogSearchPanel() {
         {baseHits.slice(0, visibleLimit).map((hit) => {
           const mapperId = hit.mappedIngredientId ?? hit.id;
           const favorite = catalog.favorites.has(`pi_base:${mapperId}`);
+          const verification = productPickerVerificationView(hit, 'POST_PROCESS_ADDON');
+          const technicallyBlocked = !hit.usableAsTopping;
           return (
             <div key={`pi:${hit.id}`} className="flex min-h-14 items-center gap-3 py-2">
-              <span aria-label="PINGÜINO Base" className="grid size-6 shrink-0 place-items-center rounded-full bg-gold/12 text-[10px] font-bold text-gold-ink">PI</span>
+              <span
+                aria-label={verification.status}
+                title={verification.reason ?? verification.status}
+                data-catalog-verification-status={verification.status}
+                className={cn(
+                  'grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold',
+                  badgeTone(verification.status, technicallyBlocked, true),
+                )}
+              >
+                <span aria-hidden>{technicallyBlocked ? '!' : verification.status === 'PINGÜINO — SPRAWDZONY' ? 'PI' : '✎'}</span>
+              </span>
               <span className="min-w-0 flex-1">
                 <strong className="block truncate text-sm font-semibold text-ink">{hit.displayName}</strong>
-                <span className="block truncate text-xs text-stone-600">{hit.productForm ?? hit.category ?? 'Składnik PINGÜINO Base'}</span>
+                <span
+                  className={cn('block truncate text-xs', technicallyBlocked ? 'text-status-error' : 'text-stone-600')}
+                  data-catalog-block-reason={technicallyBlocked ? verification.reason ?? undefined : undefined}
+                  title={technicallyBlocked ? verification.reason ?? undefined : undefined}
+                >
+                  {technicallyBlocked
+                    ? verification.reason
+                    : hit.productForm ?? hit.category ?? 'Składnik PINGÜINO Base'}
+                </span>
               </span>
               <button type="button" aria-pressed={favorite} aria-label={favorite ? `Usuń ${hit.displayName} z Ulubionych` : `Dodaj ${hit.displayName} do Ulubionych`} onClick={() => catalog.toggleFavorite('pi_base', mapperId, !favorite)} className={cn('pro-focus-ring grid size-11 shrink-0 place-items-center rounded-xl text-lg', favorite ? 'text-gold' : 'text-stone-500')}><span aria-hidden>{favorite ? '★' : '☆'}</span></button>
             </div>
           );
         })}
         {commercialHits.length > 0 ? <p className="py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-600">Produkty komercyjne</p> : null}
-        {commercialHits.slice(0, visibleLimit).map((hit) => (
-          <div key={hit.id} className="flex min-h-14 items-center gap-3 py-2">
-            <span aria-label={statusLabel[hit.status]} title={[statusLabel[hit.status], ...hit.missingFields, ...hit.invalidFields].join(' · ')} className={cn('grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold', hit.status === 'verified' ? 'bg-status-ideal/12 text-status-ideal' : hit.status === 'manual_unverified' ? 'bg-slate-200 text-slate-700' : 'bg-red-100 text-red-700')}>
-              <span aria-hidden>{hit.status === 'verified' ? '✓' : hit.status === 'manual_unverified' ? '✎' : '!'}</span>
+        {commercialHits.slice(0, visibleLimit).map((hit) => {
+          const verification = productPickerVerificationView(hit, 'POST_PROCESS_ADDON');
+          const technicallyBlocked = !hit.usableAsTopping;
+          return <div key={hit.id} className="flex min-h-14 items-center gap-3 py-2">
+            <span
+              aria-label={verification.status}
+              title={verification.reason ?? verification.status}
+              data-catalog-verification-status={verification.status}
+              className={cn(
+                'grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold',
+                badgeTone(verification.status, technicallyBlocked, false),
+              )}
+            >
+              <span aria-hidden>{technicallyBlocked ? '!' : verification.status === 'PINGÜINO — SPRAWDZONY' ? '✓' : '✎'}</span>
             </span>
             <span className="min-w-0 flex-1">
               <strong className="block truncate text-sm font-semibold text-ink">{hit.displayName}</strong>
-              <span className="block truncate text-xs text-stone-600">{hit.brand ?? hit.canonicalFamily ?? hit.category ?? 'Produkt'}{hit.markets[0] ? ` · ${hit.markets[0]}` : ''}</span>
+              <span
+                className={cn('block truncate text-xs', technicallyBlocked ? 'text-status-error' : 'text-stone-600')}
+                data-catalog-block-reason={technicallyBlocked ? verification.reason ?? undefined : undefined}
+                title={technicallyBlocked ? verification.reason ?? undefined : undefined}
+              >
+                {technicallyBlocked
+                  ? verification.reason
+                  : <>{hit.brand ?? hit.canonicalFamily ?? hit.category ?? 'Produkt'}{hit.markets[0] ? ` · ${hit.markets[0]}` : ''}</>}
+              </span>
               {hit.originalName && hit.originalName !== hit.displayName ? <span className="block truncate text-[10px] text-stone-600">oryg. {hit.originalName}</span> : null}
             </span>
-            {hit.status !== 'blocked' ? <button
+            <button
               type="button"
               aria-pressed={hit.favorite}
               aria-label={hit.favorite ? `Usuń ${hit.displayName} z Ulubionych` : `Dodaj ${hit.displayName} do Ulubionych`}
@@ -137,9 +178,9 @@ export function GlobalCatalogSearchPanel() {
               className={cn('pro-focus-ring grid size-11 shrink-0 place-items-center rounded-xl text-lg', hit.favorite ? 'text-gold' : 'text-stone-500')}
             >
               <span aria-hidden>{hit.favorite ? '★' : '☆'}</span>
-            </button> : <span className="px-2 text-[10px] font-semibold text-red-700">Uzupełnij dane</span>}
+            </button>
           </div>
-        ))}
+        })}
         {catalog.isSettled && resultCount === 0 ? <p className="py-5 text-sm text-stone-600">Brak pasujących produktów.</p> : null}
       </div>
       {hits.length > visibleLimit || catalog.hasMore ? (

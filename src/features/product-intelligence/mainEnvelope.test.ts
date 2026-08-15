@@ -356,4 +356,47 @@ describe('versioned Main envelope', () => {
       changedAuthority,
     )).toMatchObject({ ok: false, code: 'stale_preview' });
   });
+
+  it('keeps an Owner Review Main lock visible while Preview and Apply validate it as technical-only', () => {
+    const input = recipe(300, 400);
+    const authority = snapshots({
+      berry: snapshot('berry', {
+        mainClassification: 'MAIN_BLOCKED_POLICY',
+        mainPolicyId: null,
+        mainPolicyVersion: null,
+        ecoFloorPercent: null,
+        optimalCeilingPercent: null,
+        hardLimitPercent: null,
+        moduleEligibility: {
+          MAIN: 'blocked', BASE_RECIPE: 'eligible', OPTIMAL: 'eligible', ECO: 'eligible',
+        },
+        blockReasons: ['profile_main_policy_missing'],
+      }),
+    });
+    const built = bindProductBehaviorToPreview(
+      buildBatchRescalePreview(input, { byLineId: {} }, 1100, '2026-08-12T00:00:00Z'),
+      authority,
+      authority,
+      ['berry'],
+    );
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.preview.proposedInput.items.find((item) => item.id === 'berry')?.lock_type)
+      .toBe('main');
+    expect(commitPreview(
+      input,
+      { byLineId: {} },
+      built.preview,
+      '2026-08-12T00:01:00Z',
+      'apply-owner-review-technical-main',
+      [],
+      undefined,
+      null,
+      null,
+      null,
+      null,
+      authority,
+      ['berry'],
+    )).toMatchObject({ ok: true });
+  });
 });

@@ -130,8 +130,10 @@ describe('SKU-only matches never outrank semantic matches', () => {
 });
 
 describe('safe payload', () => {
-  it('a search hit exposes only identity/name/category/form — no PAC/POD/composition', () => {
+  it('a search hit exposes only safe presentation and approval flags — no PAC/POD/composition', () => {
     const hit = toSearchHit(MILK_ROWS[0]!) as unknown as Record<string, unknown>;
-    expect(Object.keys(hit).sort()).toEqual(['category', 'form', 'id', 'internal', 'name', 'nameNorm']);
+    expect(Object.keys(hit).sort()).toEqual([
+      'baseSelectable', 'category', 'engineApproved', 'form', 'id', 'internal', 'name', 'nameNorm',
+    ]);
   });
 });

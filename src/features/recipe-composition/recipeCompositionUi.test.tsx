@@ -140,14 +140,17 @@ describe('Base/Topping owner entry points', () => {
       invalidFields: ['nutrition_basis_per_100ml_requires_density_for_gram_topping'],
       verificationMethod: 'manual_unverified', publicData: {},
     };
-    expect(productPickerUnavailableReason('BASE_FORMULATION', hit)).toContain('PINGÜINO Base');
+    expect(productPickerUnavailableReason('BASE_FORMULATION', hit)).toContain('pole currentVersionId');
+    expect(productPickerUnavailableReason('BASE_FORMULATION', hit)).toContain('ID catalog-ml');
     expect(productPickerUnavailableReason('POST_PROCESS_ADDON', hit)).toContain('100 ml');
     expect(productPickerUnavailableReason('POST_PROCESS_ADDON', hit)).toContain('gęstość');
     const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     expect(picker).toContain('aria-disabled={!option.selectable}');
     expect(picker).not.toMatch(/data-option-index=\{index\}\s+disabled=/);
     expect(picker).toContain('data-testid="product-picker-unavailable-reason"');
-    expect(picker).toContain("? 'GREEN, zweryfikowany'");
-    expect(picker).toContain("? 'BLUE, manualny i niezweryfikowany'");
+    expect(picker).toContain('option.verification.status');
+    expect(picker).toContain("option.selectable ? 'Dostępny w wybranym zakresie' : 'RED, wymaga uzupełnienia'");
+    expect(picker).toContain('data-picker-verification-status={option.verification.status}');
+    expect(picker).toContain("!option.selectable ? 'bg-red-100 text-red-700'");
   });
 });

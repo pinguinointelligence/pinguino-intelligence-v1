@@ -135,6 +135,35 @@ describe('Base/Topping composition sidecar', () => {
     });
   });
 
+  it('preserves a schema-v1 Owner Review gate and derives technical Main ids from saved locks', () => {
+    const parsed = readRecipeCompositionMetadata(
+      {
+        schemaVersion: 1,
+        baseScope: 'BASE_FORMULATION',
+        baseOrder: ['main-seed', 'standard-seed'],
+        toppings: [],
+        ownerReviewGate: {
+          status: 'OWNER_REVIEW_EDITABLE',
+          productionStatus: 'PRODUCTION_BLOCKED',
+          labelStatus: 'LABEL_BLOCKED',
+          omittedToppingLineIds: ['missing-topping'],
+          // Legacy schema-v1 payload: technicalOnlyMainLineIds did not exist.
+        },
+        migrationAmbiguities: [],
+      },
+      ['main-seed', 'standard-seed'],
+      ['main-seed'],
+    );
+
+    expect(parsed?.ownerReviewGate).toEqual({
+      status: 'OWNER_REVIEW_EDITABLE',
+      productionStatus: 'PRODUCTION_BLOCKED',
+      labelStatus: 'LABEL_BLOCKED',
+      omittedToppingLineIds: ['missing-topping'],
+      technicalOnlyMainLineIds: ['main-seed'],
+    });
+  });
+
   it('fails closed on malformed or non-canonical persisted ingredient snapshots', () => {
     const valid = topping('valid', 70, 'PI-ING-TOPPING');
     const malformed = {

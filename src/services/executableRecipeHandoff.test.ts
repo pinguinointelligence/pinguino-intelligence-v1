@@ -3,7 +3,15 @@ import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateRecipe, detectViolations } from '@/engine';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
-import type { ExecutableRecipeTemplate } from '@/data/recipes/executableRecipeLibrary';
+import {
+  executableRecipeTemplateById,
+  type ExecutableRecipeTemplate,
+} from '@/data/recipes/executableRecipeLibrary';
+import {
+  bindProductBehaviorToPreview,
+  buildBatchRescalePreview,
+  commitPreview,
+} from '@/features/constraint-studio/applyPipeline';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import type { ServerResolvedProductBehavior } from '@/features/product-intelligence';
 import { parseCsv } from '@/lib/csv';
@@ -65,6 +73,7 @@ ServerResolvedProductBehavior => ({
   moduleEligibility: {
     BASE_RECIPE: 'eligible', TOPPING: 'eligible', SAVE: 'eligible', PRODUCTION: 'eligible',
     NUTRITION: 'eligible', ALLERGENS: 'eligible', PROCESS: 'eligible',
+    MAIN: 'blocked', OPTIMAL: 'eligible', ECO: 'eligible',
   },
   mainPolicy: null,
   sharedFacts: {
@@ -183,7 +192,12 @@ describe('executable Recipe Library handoff', () => {
       status: 'OWNER_REVIEW_EDITABLE',
       productionStatus: 'PRODUCTION_BLOCKED',
       labelStatus: 'LABEL_BLOCKED',
+      authorityId: definition.id,
+      authorityVersion: definition.version,
       omittedToppingLineIds: ['synthetic-topping'],
+      technicalOnlyMainLineIds: definition.base
+        .filter((line) => line.role === 'main')
+        .map((line) => line.lineId),
     });
     const snapshots = materialized.composition.behaviorSnapshots;
     expect(snapshots).toBeDefined();
@@ -241,6 +255,112 @@ describe('executable Recipe Library handoff', () => {
     )).toBe(true);
   });
 
+  it('keeps all five real Owner Review Main seeds technical-only through Preview and terminal Apply', async () => {
+    for (const templateId of [
+      'fantasy-rocero-v1',
+      'fantasy-raphaello-v1',
+      'fantasy-kidi-bueno-v1',
+      'fantasy-oreyo-v1',
+      'fantasy-knickers-v1',
+    ]) {
+      const definition = executableRecipeTemplateById(templateId)!;
+      const materialized = await materializeExecutableRecipeDefinition(
+        definition,
+        'owner-a',
+        {
+          getIngredient: async (id) => mapperRows.get(id) ?? null,
+          resolveBehavior: async ({ entity, context }) => eligible(
+            entity.entityId,
+            context.processScope,
+          ),
+        },
+      );
+      const snapshots = materialized.composition.behaviorSnapshots!;
+      const technicalOnlyMainLineIds =
+        materialized.composition.ownerReviewGate!.technicalOnlyMainLineIds;
+      const preview = bindProductBehaviorToPreview(
+        buildBatchRescalePreview(
+          materialized.input,
+          { byLineId: {} },
+          materialized.input.target_batch_grams,
+          '2026-08-15T20:00:00Z',
+        ),
+        snapshots,
+        snapshots,
+        technicalOnlyMainLineIds,
+      );
+      expect(preview.ok, templateId).toBe(true);
+      if (!preview.ok) continue;
+      expect(preview.preview.proposedInput.items.filter(
+        (item) => technicalOnlyMainLineIds.includes(item.id),
+      ).every((item) => item.lock_type === 'main'), templateId).toBe(true);
+      const committed = commitPreview(
+        materialized.input,
+        { byLineId: {} },
+        preview.preview,
+        '2026-08-15T20:01:00Z',
+        `apply-${templateId}`,
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        snapshots,
+        technicalOnlyMainLineIds,
+      );
+      expect(committed, `${templateId}: ${JSON.stringify(committed)}`).toMatchObject({ ok: true });
+
+      useRecipeStore.getState().loadRecipeInput(materialized.input, {
+        composition: materialized.composition,
+      });
+      const persisted = recipeCompositionFromState(useRecipeStore.getState());
+      useRecipeStore.getState().resetToDemo();
+      useRecipeStore.getState().loadRecipeInput(materialized.input, { composition: persisted });
+      expect(useRecipeStore.getState().ownerReviewGate, templateId).toEqual(
+        materialized.composition.ownerReviewGate,
+      );
+      expect(useRecipeStore.getState().items.filter(
+        (item) => technicalOnlyMainLineIds.includes(item.id),
+      ).every((item) => item.lock_type === 'main'), templateId).toBe(true);
+      expect(Object.values(useRecipeStore.getState().productBehaviorSnapshots).every(
+        (snapshot) => snapshot.moduleEligibility.PRODUCTION === 'blocked'
+          && snapshot.moduleEligibility.LABEL === 'blocked'
+          && snapshot.blockReasons.includes('owner_review_production_label_gate'),
+      ), templateId).toBe(true);
+    }
+  });
+
+  it('keeps Estimated Mapper provenance informational for a technically complete Owner Review Base', async () => {
+    const definition = (await import('@/data/recipes/executableRecipeLibrary'))
+      .executableRecipeTemplateById('fantasy-rocero-v1')!;
+    const estimatedId = definition.base[0]!.mapperIngredientId!;
+    const materialized = await materializeExecutableRecipeDefinition(definition, 'owner-a', {
+      getIngredient: async (id) => {
+        const row = mapperRows.get(id);
+        return row && id === estimatedId
+          ? { ...row, verification_status: 'Estimated', data_confidence_percent: 72 }
+          : row ?? null;
+      },
+      resolveBehavior: async ({ entity, context }) => ({
+        ...eligible(entity.entityId, context.processScope),
+        catalogStatus: entity.entityId === estimatedId ? 'estimated' : 'pi_base',
+        mapperVerificationStatus: entity.entityId === estimatedId ? 'Estimated' : 'Verified',
+      }),
+    });
+    const estimatedLine = materialized.input.items.find(
+      (line) => line.ingredient.canonical_ingredient_id === estimatedId,
+    );
+    expect(estimatedLine?.ingredient).toMatchObject({
+      source_type: 'ai_estimated',
+      is_verified: false,
+    });
+    expect(materialized.composition.behaviorSnapshots?.[estimatedLine!.id]).toMatchObject({
+      verificationState: 'estimated',
+      mapperVerificationStatus: 'Estimated',
+    });
+  });
+
   it('fails closed when a raw Mapper row has incomplete Base composition', async () => {
     const definition = (await import('@/data/recipes/executableRecipeLibrary'))
       .executableRecipeTemplateById('fantasy-rocero-v1')!;
@@ -253,6 +373,26 @@ describe('executable Recipe Library handoff', () => {
       },
       resolveBehavior: async ({ entity, context }) => eligible(entity.entityId, context.processScope),
     })).rejects.toMatchObject({ code: 'behavior_blocked' });
+  });
+
+  it('fails closed when the current resolver blocks the required Base module', async () => {
+    const definition = (await import('@/data/recipes/executableRecipeLibrary'))
+      .executableRecipeTemplateById('fantasy-rocero-v1')!;
+    await expect(materializeExecutableRecipeDefinition(definition, 'owner-a', {
+      getIngredient: async (id) => mapperRows.get(id) ?? null,
+      resolveBehavior: async ({ entity, context }) => {
+        const resolved = eligible(entity.entityId, context.processScope);
+        return {
+          ...resolved,
+          state: 'blocked' as const,
+          moduleEligibility: { ...resolved.moduleEligibility, BASE_RECIPE: 'blocked' as const },
+          blockReasons: ['profile_not_approved'],
+        };
+      },
+    })).rejects.toMatchObject({
+      code: 'behavior_blocked',
+      message: expect.stringContaining('BASE_RECIPE'),
+    });
   });
 
   it('keeps missing process/allergen facts fail-closed in snapshots while Owner Review Base opens', async () => {

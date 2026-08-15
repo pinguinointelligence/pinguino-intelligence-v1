@@ -10,6 +10,12 @@ export type CatalogProvenance =
 
 export type CatalogVerificationMethod = 'automatic' | 'human' | 'manual_unverified' | 'blocked';
 
+export type MapperVerificationPresentationMethod =
+  | 'mapper_verified'
+  | 'mapper_estimated'
+  | 'mapper_needs_label_review'
+  | 'mapper_other';
+
 export type CatalogEntityKind = 'pi_base' | 'commercial_product';
 
 export interface CatalogNutrition {
@@ -108,7 +114,7 @@ export interface CatalogProductSearchHit {
   relevance?: number;
   missingFields: string[];
   invalidFields: string[];
-  verificationMethod: CatalogVerificationMethod | 'pi_base';
+  verificationMethod: CatalogVerificationMethod | MapperVerificationPresentationMethod | 'pi_base';
   /** Public label facts only. Never contains private price/supplier/notes/stock. */
   publicData: Record<string, unknown>;
   /** Caller-private projection from owner-RLS data; never part of shared facts. */

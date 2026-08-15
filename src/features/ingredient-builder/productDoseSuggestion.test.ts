@@ -53,7 +53,18 @@ const snapshot = (
     module: 'BASE_RECIPE',
   },
   resolverVersion: 'resolver-v1',
-  sharedFacts: null,
+  sharedFacts: {
+    schemaVersion: 1,
+    technicalComposition: null,
+    nutritionPer100g: null,
+    allergens: null,
+    processEvidence: [],
+    profileEligibility: [],
+    veganEligibility: 'unknown',
+    proteinBehavior: 'neutral',
+    referencePrice: null,
+    recommendedDose: { minPercent: 20, maxPercent: 30, sourceVersion: 'mapper-v1' },
+  },
   warnings: [],
   blockReasons: [],
   ...overrides,
@@ -74,7 +85,7 @@ const member = (
 ): DoseGroupMember => ({ lineId, plannedGrams, dose, lockType, actualGrams: null });
 
 describe('verified picker-time product dose', () => {
-  it('uses the approved lower ECO and upper OPTIMAL amount and scales from Base mass', () => {
+  it('uses the product-specific lower ECO and upper OPTIMAL dose and scales from Base mass', () => {
     expect(
       verifiedProductDoseSuggestion({ snapshot: snapshot(), strategy: 'eco', targetBaseGrams: 1_000 }),
     ).toMatchObject({ suggestedPercent: 20, suggestedTotalGrams: 200 });
@@ -87,15 +98,15 @@ describe('verified picker-time product dose', () => {
     ).toMatchObject({ suggestedPercent: 30, suggestedTotalGrams: 1_500 });
   });
 
-  it('uses the existing policy-equivalent factor instead of treating equivalent percent as grams', () => {
+  it('does not reinterpret a Main equivalent factor as a product dose', () => {
     const halfStrength =
       verifiedProductDoseSuggestion({
         snapshot: snapshot({ mainEquivalentFactor: 0.5 }),
         strategy: 'eco',
         targetBaseGrams: 1_000,
       });
-    expect(halfStrength).toMatchObject({ suggestedPercent: 40, suggestedTotalGrams: 400 });
-    expect(halfStrength?.groupId).not.toBe(
+    expect(halfStrength).toMatchObject({ suggestedPercent: 20, suggestedTotalGrams: 200 });
+    expect(halfStrength?.groupId).toBe(
       verifiedProductDoseSuggestion({
         snapshot: snapshot({ mainEquivalentFactor: 1 }),
         strategy: 'eco',
@@ -104,13 +115,17 @@ describe('verified picker-time product dose', () => {
     );
   });
 
-  it('returns unknown for incomplete, ineligible or non-Base authority instead of guessing', () => {
+  it('returns unknown for missing product dosage, ineligible or non-Base authority instead of guessing', () => {
     for (const candidate of [
       undefined,
-      snapshot({ mainPolicyId: null }),
-      snapshot({ mainEquivalentFactor: null }),
+      snapshot({ sharedFacts: null }),
+      snapshot({
+        sharedFacts: {
+          ...snapshot().sharedFacts!,
+          recommendedDose: { minPercent: null, maxPercent: null, sourceVersion: 'mapper-v1' },
+        },
+      }),
       snapshot({ moduleEligibility: { BASE_RECIPE: 'blocked' } }),
-      snapshot({ mainClassification: 'MAIN_BLOCKED_POLICY' }),
       snapshot({ processScope: 'POST_PROCESS_ADDON' }),
     ]) {
       expect(
@@ -126,11 +141,30 @@ describe('verified picker-time product dose', () => {
   it('does not describe a sub-gram rounded zero as an automatic approved dose', () => {
     expect(
       verifiedProductDoseSuggestion({
-        snapshot: snapshot({ ecoFloorPercent: 1 }),
+        snapshot: snapshot({
+          sharedFacts: {
+            ...snapshot().sharedFacts!,
+            recommendedDose: { minPercent: 1, maxPercent: 1, sourceVersion: 'mapper-v1' },
+          },
+        }),
         strategy: 'eco',
         targetBaseGrams: 10,
       }),
     ).toBeNull();
+  });
+
+  it('keeps dosage-unknown Fresh Watermelon at 0 g even when Main policy is covered', () => {
+    expect(verifiedProductDoseSuggestion({
+      snapshot: snapshot({
+        mapperIngredientId: 'PI-ING-000405',
+        mainClassification: 'MAIN_PROFILE_SPECIFIC',
+        mainPolicyId: 'fresh-fruit-main-policy',
+        mainPolicyVersion: '1',
+        sharedFacts: { ...snapshot().sharedFacts!, recommendedDose: null },
+      }),
+      strategy: 'optimal',
+      targetBaseGrams: 1_000,
+    })).toBeNull();
   });
 });
 

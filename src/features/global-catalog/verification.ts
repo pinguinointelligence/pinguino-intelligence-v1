@@ -77,8 +77,8 @@ export function catalogEngineEligibility(input: {
   status: 'verified' | 'manual_unverified' | 'blocked';
   mappedIngredientId: string | null;
 }): { base: boolean; topping: boolean } {
-  if (input.status === 'blocked') return { base: false, topping: false };
-  return { base: Boolean(input.mappedIngredientId), topping: true };
+  const mapped = Boolean(input.mappedIngredientId);
+  return { base: mapped, topping: mapped || input.status !== 'blocked' };
 }
 
 export function normalizedCandidateEan(candidate: CatalogCandidateInput): string | null {

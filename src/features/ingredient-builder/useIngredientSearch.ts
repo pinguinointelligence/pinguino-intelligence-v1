@@ -12,14 +12,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { IngredientSearchRow } from '@/services/ingredients';
-import { searchCanonicalMapperIngredients } from '@/services/productPicker/mapperSearch';
+import { searchCanonicalProMapperIngredients } from '@/services/productPicker/mapperSearch';
 import {
   normalizeSearchText,
   type IngredientSearchHit,
 } from './ingredientSearch';
 
 export const SEARCH_DEBOUNCE_MS = 250;
-/** First page must cover real concept candidate sets whole (largest verified
+/** First page must cover real concept candidate sets whole (largest active
  * family: „milk" = 95 rows) so client ranking sees every candidate — the page
  * is server-ordered alphabetically, and a natural-first hit (WHOLE MILK, W…)
  * must never fall off the page before ranking. Payload stays tiny (6 columns). */
@@ -39,6 +39,8 @@ export function useDebouncedValue<T>(value: T, delayMs: number): T {
 /** Search hit shaped for ranking + rendering (safe fields only). */
 export interface RankedSearchHit extends IngredientSearchHit {
   internal: string;
+  baseSelectable: boolean;
+  engineApproved: boolean;
 }
 
 export const toSearchHit = (row: IngredientSearchRow): RankedSearchHit => ({
@@ -52,6 +54,8 @@ export const toSearchHit = (row: IngredientSearchRow): RankedSearchHit => ({
   category: row.ingredient_category,
   form: row.ingredient_subcategory ?? '',
   internal: row.ingredient_name_internal,
+  baseSelectable: row.approved_for_base === true,
+  engineApproved: row.approved_for_engines === true,
 });
 
 export interface IngredientSearchState {
@@ -85,7 +89,7 @@ export function useIngredientSearch({
     queryKey: ['product-search-v1', 'pi-base', norm, limit],
     enabled: enabled && norm !== '',
     queryFn: async ({ signal }) => {
-      const outcome = await searchCanonicalMapperIngredients({ text: debounced, limit, signal });
+      const outcome = await searchCanonicalProMapperIngredients({ text: debounced, limit, signal });
       if (outcome.kind === 'results') {
         return {
           rows: outcome.rows.map((row): IngredientSearchRow => ({
@@ -94,6 +98,8 @@ export function useIngredientSearch({
             ingredient_name_internal: row.ingredient_name_internal ?? row.ingredient_name_display,
             ingredient_category: row.ingredient_category ?? '',
             ingredient_subcategory: row.ingredient_subcategory,
+            approved_for_base: row.approved_for_base,
+            approved_for_engines: row.approved_for_engines,
           })),
           hasMore: outcome.hasMore,
         };
