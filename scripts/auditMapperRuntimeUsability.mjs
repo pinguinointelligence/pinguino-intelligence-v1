@@ -333,7 +333,7 @@ const countTable = `| Metric | Before | After | Explanation |\n|---|---:|---:|--
   + `| Actual technical-data blockers | ${counts.engineFalse} | ${counts.engineFalse} | Unique Engine-ineligible set; technical missing overlaps it |\n`
   + `| approved_for_base=false | ${counts.baseFalse} | ${counts.baseFalse} | Real Base block |\n`
   + `| approved_for_engines=false | ${counts.engineFalse} | ${counts.engineFalse} | Real PI block |\n`
-  + `| Missing bindings | ${counts.missingBinding} | ${counts.missingBinding} | Requires authenticated staging authority export for final zero proof |\n`
+  + `| Missing bindings | ${counts.missingBinding} | ${counts.missingBinding} | ${authorityPath ? 'Authenticated staging authority export complete' : 'Requires authenticated staging authority export for final zero proof'} |\n`
   + `| Verified status | ${counts.verified} | ${counts.verified} | Informational |\n`
   + `| Estimated status | ${counts.estimated} | ${counts.estimated} | Informational |\n`
   + `| Needs Label Review | ${counts.needsLabel} | ${counts.needsLabel} | Informational for technical use |`;

@@ -16,7 +16,7 @@ Generated deterministically by `scripts/auditMapperRuntimeUsability.mjs`. The so
 | Actual technical-data blockers | 14 | 14 | Unique Engine-ineligible set; technical missing overlaps it |
 | approved_for_base=false | 13 | 13 | Real Base block |
 | approved_for_engines=false | 14 | 14 | Real PI block |
-| Missing bindings | 2088 | 2088 | Requires authenticated staging authority export for final zero proof |
+| Missing bindings | 0 | 0 | Authenticated staging authority export complete |
 | Verified status | 1713 | 1713 | Informational |
 | Estimated status | 350 | 350 | Informational |
 | Needs Label Review | 273 | 273 | Informational for technical use |
@@ -32,8 +32,8 @@ Generated deterministically by `scripts/auditMapperRuntimeUsability.mjs`. The so
 - Price missing: **1543**.
 - Customer-added Mapper references: **0**.
 - System-matched Mapper references: **0**.
-- Product version IDs pending authenticated served capture: **2088**.
-- Binding IDs pending authenticated served capture: **2088**.
+- Product version IDs pending authenticated served capture: **0**.
+- Binding IDs pending authenticated served capture: **0**.
 
 ## Real remaining gates
 

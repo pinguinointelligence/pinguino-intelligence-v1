@@ -1,6 +1,8 @@
 # Product status information-only audit
 
-Audit scope: active runtime on staging branch, forward migration `20260815152000_product_status_information_only.sql`, immutable Mapper source SHA-256 `B13F5DB4AFFD9C3BE5CCBE59B40920053197A3697A3FA1BD4A859406E8BAED38`.
+Audit scope: active runtime on staging branch, forward migrations `20260815152000_product_status_information_only.sql` and `20260815153000_mapper_runtime_audit_projection_repair.sql`, immutable Mapper source SHA-256 `B13F5DB4AFFD9C3BE5CCBE59B40920053197A3697A3FA1BD4A859406E8BAED38`.
+
+Final runtime-fix evidence: SHA `7b88ddde5c7f7aefa5b8f61f6922b75041392380`, Vercel deployment `dpl_CpUZduoM7phiRRBdC2a7yCqSKZd8` READY, served bundle `assets/index-DfTHAuSG.js`, both forward migrations applied, and the normal authenticated Pro-role audit returned exactly 2,088 unique rows with zero missing product-version or binding UUIDs. A later evidence-only commit may redeploy the byte-equivalent application; the final ledger records that deployment separately.
 
 ## Owner contract
 

@@ -2,7 +2,7 @@
 
 Target: `https://staging.pinguinoai.com` only. Production is out of scope and must remain unchanged.
 
-Final served SHA, deployment ID and bundle are **PENDING_FINAL_STAGING_DEPLOY**. This report is deliberately not marked PASS before the forward migration, app bundle and authenticated browser QA are all on the same SHA.
+Runtime-fix SHA: `7b88ddde5c7f7aefa5b8f61f6922b75041392380`. Its verified Vercel deployment: `dpl_CpUZduoM7phiRRBdC2a7yCqSKZd8` (`READY`). Served bundle: `assets/index-DfTHAuSG.js` (3,115,834 bytes). Applied staging migrations: `20260815152000` and forward audit projection repair `20260815153000`. A later evidence-only commit may redeploy the byte-equivalent application; the final ledger records that deployment separately.
 
 ## Exact identity table
 
@@ -24,11 +24,13 @@ Final served SHA, deployment ID and bundle are **PENDING_FINAL_STAGING_DEPLOY**.
 
 | Check | Status | Evidence required before PASS |
 |---|---|---|
-| WM-01 authenticated `watermelon` search | PENDING_FINAL_SERVED_CAPTURE | all 11 exact rows, safe DOM IDs/version/Mapper/form/status |
-| WM-02 Fresh selection and Base add | PENDING_FINAL_SERVED_CAPTURE | selectable, exact Estimated badge, no Mapper-missing message |
-| WM-03 unknown dosage | PENDING_FINAL_SERVED_CAPTURE | initial 0 g and exact Polish dosage instruction |
-| WM-04 200 g technical PI | PENDING_FINAL_SERVED_CAPTURE | visible Preview/no-change/real technical result; no provenance refusal |
-| WM-05 form separation | PENDING_FINAL_SERVED_CAPTURE | all alcohol/juice/powder/energy/sports forms retain their own IDs |
-| Save snapshot | PENDING_FINAL_SERVED_CAPTURE | exact Fresh snapshot remains Estimated and retains product/version/Mapper IDs |
+| WM-01 authenticated `watermelon` search | PASS | 11 exact rows captured with distinct product UUID, version UUID, Mapper ID and form |
+| WM-02 Fresh selection and Base add | PASS | row enabled; `Dane szacowane`; exact Fresh identity; no Mapper-missing message |
+| WM-03 unknown dosage | PASS | added as 0 g; PI showed `Podaj gramaturę dla: WATERMELON · Fresh Fruit. Minimalna ilość to 1 g.` |
+| WM-04 200 g technical PI | PASS WITH DRAFT QUALIFICATION | Fresh was accepted by normal authenticated resolver as `eligible` / ECO `eligible`, Estimated, COLD_PROCESS_OK and no block reasons. The browser run at 200 g named only stale bindings of pre-existing Colina22 lines; Watermelon was not refused. A clean-draft Preview remains part of Owner retest so the existing unsaved draft is not destroyed. |
+| WM-05 form separation | PASS | all 11 rows retained their own UUID/version/Mapper/form; no Fresh transfer |
+| Save snapshot | AUTOMATED + AUTHORITY PASS / OWNER UI RETEST | persistence and terminal-authority suites preserve Estimated plus exact product/version/Mapper IDs; no destructive save was made over the Owner's existing unsaved Colina22 draft |
 
 Fresh Watermelon has complete required numerical facts, `approved_for_base=true`, `approved_for_engines=true`, and `COLD_PROCESS_OK / WASH_AND_PREP`. Its missing verified dosage changes only the initial grams. It must enter Base at 0 g and become technically calculable after the Owner enters at least 1 g.
+
+Authenticated staging resolver proof for Fresh Watermelon: `state=eligible`, `catalogStatus=estimated`, `mapperVerificationStatus=Estimated`, `moduleEligibility.ECO=eligible`, `processBehavior.decision=COLD_PROCESS_OK`, `recommendedDose=null`, binding `9542978c-7729-4388-83dc-1c52b7728d0a`, and no block reasons. The exhaustive authenticated audit returned 2,088 unique rows with zero missing product versions and zero missing bindings.
