@@ -15,7 +15,7 @@ The evidence phase is complete for the supplied lists, but the repository and su
 | Area | Requested | Completed | Executable result | Exact blocker |
 |---|---:|---:|---:|---|
 | Lost & Legendary | recover 19 selected rows plus mandatory Poland proof | 19/19 reconciled; Poland searched across refs and recoverable objects | 0 new templates | Existing 19 are research candidates without grams; `Śmietankowe na żółtkach` vector is absent |
-| New Recipe toolboxes | Gelato/Sorbet/Vegan/Protein neutral starters | 4/4 implemented from accepted canonical templates | 4 explicit new-draft starters | Served staging QA pending until deployment |
+| New Recipe toolboxes | Gelato/Sorbet/Vegan/Protein neutral starters | 4/4 implemented from accepted canonical templates | 4 explicit new-draft starters | Served staging QA PASS; research-library publication remains separately blocked |
 | Cocktails | 22 research and executable templates | 22/22 research rows and 22/22 architecture-gap rows | 0/22 | No approved canonical vectors, products, grams, process, alcohol frontier or sensory proof |
 | Spirit Signatures | 15 | 15/15 research rows | 0/15 | Actual product ABV/sugar/water/density, vector, process and alcohol frontier absent |
 | Fantasy research | 50 | 50/50 official-source research rows | 0/50 | No approved vectors; trademark/product decisions and several exact sources remain blocked |
@@ -57,4 +57,4 @@ Focused recovery evidence: `npm test -- --run src/data/recipes/curatedCollection
 
 ## Git / deployment
 
-The exact final commit and staging deployment are reported after the shared New Recipe candidate is deployed. The Recipe Library research reports themselves create no runtime cards and require no database write. Customer production remains unchanged.
+The New Recipe runtime implementation was committed as `0a33d63a7b0878e088e58c3def2432c843bb5736`, pushed to staging and verified through the authenticated served UI. The Recipe Library research reports create no runtime cards and required no database write. No incomplete research concept was deployed as a selectable recipe. Customer production remains unchanged at `4dfb097d14fe91c2cc7bd67e02265e6ac41123a2`.
