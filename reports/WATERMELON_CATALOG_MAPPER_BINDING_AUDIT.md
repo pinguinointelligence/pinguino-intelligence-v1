@@ -9,10 +9,9 @@ Mapper SHA-256: `B13F5DB4AFFD9C3BE5CCBE59B40920053197A3697A3FA1BD4A859406E8BAED3
 ## Served identity finding
 
 The starting served picker did not expose canonical product/version UUIDs in
-its DOM. The rows below therefore identify the observed Mapper entities without
-inventing the missing root/version identity. `PENDING FINAL SERVED CAPTURE` is
-an explicit evidence boundary, not a product ID. The final post-deploy audit
-must replace both pending columns from the new safe DOM attributes.
+its DOM. The final staging deployment exposes only safe audit attributes on
+each result row. The UUIDs below were captured from authenticated served
+staging after migration and deployment; no private relation data is exposed.
 
 The rows are distinct exact identities. Search/display form is not used to
 transfer a binding: Fresh Fruit, frozen juice, alcohol, energy drink, sports
@@ -20,17 +19,17 @@ drink and powder remain separate.
 
 | Product ID | Product version | Product / form | Mapper ID | ProductBehavior binding | Picker status | Exact reason |
 |---|---|---|---|---|---|---|
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | WATERMELON · Fresh Fruit / `fresh` | `PI-ING-000405` | Bound; Base behavior eligible; cold-process evidence present | `PRODUCT DATA INCOMPLETE` | Immutable Mapper status is `Estimated`, not `Verified`. The row must remain fail-closed. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | MALIBU WATERMELON · Flavoured Rum Liqueur · 21% Vol / `alcoholic_beverage` | `PI-ING-001764` | Bound; alcohol behavior; cold-process exact-product evidence; Main is `BLOCKED_SCIENCE` | `PINGÜINO VERIFIED` | Mapper composition is `Verified / PI Calculated`; 16.6% alcohol and the liqueur form remain distinct from fruit. Main still requires profile policy. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | RED BULL RED EDITION WATERMELON / `liquid` (`energy_drink`) | `PI-ING-001787` | Bound; beverage behavior; cold-process exact-product evidence; Main is `BLOCKED_DATA` | `PINGÜINO VERIFIED` | Mapper composition is `Verified / PI Calculated`; family evidence is still missing for Main. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | RED BULL RED EDITION WATERMELON SUGARFREE / `liquid` (`energy_drink`) | `PI-ING-001788` | Bound; beverage behavior; cold-process exact-product evidence; Main is `BLOCKED_DATA` | `PINGÜINO VERIFIED` | Separate sugar-free beverage identity; family evidence is still missing for Main. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | SIMPLE WATERMELON · Fabbri Base Mix / `powder` | `PI-ING-000676` | Bound; Standard-only; process evidence missing | `PINGÜINO VERIFIED` | Verified technical Mapper composition; not a fresh-fruit identity and not Main. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | WATERMELON · Campisi Citrus Juice · Frozen / `juice` | `PI-ING-000360` | Bound; Base eligible; Main `BLOCKED_SCIENCE`; process evidence missing | `PINGÜINO VERIFIED` | Verified frozen juice is not form-compatible with Fresh Fruit and must not replace it automatically. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | WATERMELON · Master Martini Powder Mix / `powder` | `PI-ING-001630` | Bound; Base eligible; Main `BLOCKED_DATA`; process evidence missing | `PINGÜINO VERIFIED` | Verified technical composition; family/process evidence remains incomplete for broader use. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | EFFECT WATERMELON SPLASH / `liquid` (`energy_drink`) | `PI-ING-001818` | Bound; Base behavior exists; Main/process evidence missing | `PRODUCT DATA INCOMPLETE` | Mapper status is `Estimated / Needs Label Review`. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | MONSTER ULTRA WATERMELON / `liquid` (`energy_drink`) | `PI-ING-001927` | Bound; Base behavior exists; Main/process evidence missing | `PRODUCT DATA INCOMPLETE` | Mapper status is `Estimated / Needs Label Review`. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | ROCKSTAR PUNCHED WATERMELON KIWI ZERO / `liquid` (`energy_drink`) | `PI-ING-001973` | Bound; Base behavior exists; Main/process evidence missing | `PRODUCT DATA INCOMPLETE` | Mapper status is `Estimated / Needs Label Review`. |
-| `PENDING FINAL SERVED CAPTURE` | `PENDING FINAL SERVED CAPTURE` | PRIME HYDRATION STRAWBERRY WATERMELON / `liquid` (`sports_drink`) | `PI-ING-002082` | Bound; Base behavior exists; Main/process evidence missing | `PRODUCT DATA INCOMPLETE` | Mapper status is `Estimated / Needs Label Review`. |
+| `e3264816-1050-d2a6-cc55-149e0d363bbf` | `009d5b8a-f0bd-4c19-958b-3feec2f045f9` | WATERMELON · Fresh Fruit / `fresh` | `PI-ING-000405` | Bound; Base behavior eligible; cold-process evidence present | `PRODUCT DATA INCOMPLETE` | Immutable Mapper status is `Estimated`, not `Verified`. The row must remain fail-closed. |
+| `54188c6b-c1c7-332d-5c60-ed30b6c4d89d` | `18894ccb-76d0-410f-8619-8e7567dee5b2` | MALIBU WATERMELON · Flavoured Rum Liqueur · 21% Vol / `alcoholic_beverage` | `PI-ING-001764` | Bound; alcohol behavior; cold-process exact-product evidence; Main is `BLOCKED_SCIENCE` | `PINGÜINO VERIFIED` | Mapper composition is `Verified / PI Calculated`; 16.6% alcohol and the liqueur form remain distinct from fruit. Main still requires profile policy. |
+| `f94ca5c0-181e-fc85-3547-cb2a7e126d62` | `10c7fe54-54fa-4292-bf94-9844bfc9c32e` | RED BULL RED EDITION WATERMELON / `liquid` (`energy_drink`) | `PI-ING-001787` | Bound; beverage behavior; cold-process exact-product evidence; Main is `BLOCKED_DATA` | `PINGÜINO VERIFIED` | Mapper composition is `Verified / PI Calculated`; family evidence is still missing for Main. |
+| `48e9321f-55c5-65ff-d44e-54a5cf1dfacd` | `7ea539af-5a7d-4660-8c13-8a4e3ccdb266` | RED BULL RED EDITION WATERMELON SUGARFREE / `liquid` (`energy_drink`) | `PI-ING-001788` | Bound; beverage behavior; cold-process exact-product evidence; Main is `BLOCKED_DATA` | `PINGÜINO VERIFIED` | Separate sugar-free beverage identity; family evidence is still missing for Main. |
+| `c02d67da-6a60-d79d-2409-04ad28512f19` | `c4a2183c-9464-42b4-bfd8-07f151a11ed9` | SIMPLE WATERMELON · Fabbri Base Mix / `powder` | `PI-ING-000676` | Bound; Standard-only; process evidence missing | `PINGÜINO VERIFIED` | Verified technical Mapper composition; not a fresh-fruit identity and not Main. |
+| `c6eda2c3-6654-90bc-71e1-36f91b6e1513` | `6437a281-10d1-4eb3-86d5-fa51bf6ac72b` | WATERMELON · Campisi Citrus Juice · Frozen / `juice` | `PI-ING-000360` | Bound; Base eligible; Main `BLOCKED_SCIENCE`; process evidence missing | `PINGÜINO VERIFIED` | Verified frozen juice is not form-compatible with Fresh Fruit and must not replace it automatically. |
+| `826369d8-6a65-8e1c-ce72-f65142dc45e8` | `36fcc7dd-0f8b-47bd-a060-57a13eeb3f01` | WATERMELON · Master Martini Powder Mix / `powder` | `PI-ING-001630` | Bound; Base eligible; Main `BLOCKED_DATA`; process evidence missing | `PINGÜINO VERIFIED` | Verified technical composition; family/process evidence remains incomplete for broader use. |
+| `576d8597-757c-858c-8093-b511be5df8fd` | `929a7b5b-738c-4f87-ba32-9775487143fa` | EFFECT WATERMELON SPLASH / `liquid` (`energy_drink`) | `PI-ING-001818` | Bound; Base behavior exists; Main/process evidence missing | `PRODUCT DATA INCOMPLETE` | Mapper status is `Estimated / Needs Label Review`. |
+| `437fea0a-e6a3-24ef-357c-a8d847bcbe52` | `635689d6-1607-4d53-99ea-b6e6318e0385` | MONSTER ULTRA WATERMELON / `liquid` (`energy_drink`) | `PI-ING-001927` | Bound; Base behavior exists; Main/process evidence missing | `PRODUCT DATA INCOMPLETE` | Mapper status is `Estimated / Needs Label Review`. |
+| `c124a6c2-d85a-71e4-e3ec-02e9e0073aab` | `422c9dca-ac02-4ee6-ac30-43ee096efe2c` | ROCKSTAR PUNCHED WATERMELON KIWI ZERO / `liquid` (`energy_drink`) | `PI-ING-001973` | Bound; Base behavior exists; Main/process evidence missing | `PRODUCT DATA INCOMPLETE` | Mapper status is `Estimated / Needs Label Review`. |
+| `bb0b2840-67a9-3d5b-9bb2-b664918c9528` | `e985b999-377c-437c-b2c9-4d55e7871284` | PRIME HYDRATION STRAWBERRY WATERMELON / `liquid` (`sports_drink`) | `PI-ING-002082` | Bound; Base behavior exists; Main/process evidence missing | `PRODUCT DATA INCOMPLETE` | Mapper status is `Estimated / Needs Label Review`. |
 
 ## Fresh Watermelon decision
 
