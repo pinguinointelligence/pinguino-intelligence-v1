@@ -617,6 +617,15 @@ function RecipeRow({
                   : `Gramy · ${lock.lockedGramsLabel ?? ''}`}
             </span>
           ) : null}
+          {meta.dose.provenance === 'UNKNOWN' && item.planned_grams < 1 ? (
+            <span
+              className="mt-1 block text-xs leading-relaxed text-attention"
+              data-testid={`row-dose-missing-${item.id}`}
+            >
+              <strong className="block font-semibold">Brak zweryfikowanej dawki.</strong>
+              Podaj ilość zgodnie z zaleceniem producenta lub własną recepturą.
+            </span>
+          ) : null}
         </div>
 
         <div>

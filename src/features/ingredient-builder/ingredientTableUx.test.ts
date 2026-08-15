@@ -83,6 +83,46 @@ describe('ingredient table UX contracts', () => {
     expect(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).toEqual({});
   });
 
+  it('tracks automatic, unknown and USER_SET dose ownership without creating an Engine lock', () => {
+    const store = useIngredientTableUxStore.getState();
+    store.setDoseMeta('fruit', {
+      provenance: 'AUTO_SUGGESTED',
+      groupId: 'fresh-fruit-v1',
+      suggestedPercent: 30,
+      suggestedTotalGrams: 300,
+    });
+    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose)
+      .toMatchObject({ provenance: 'AUTO_SUGGESTED', groupId: 'fresh-fruit-v1' });
+
+    store.markDoseUserSet('fruit');
+    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose.provenance)
+      .toBe('USER_SET');
+  });
+
+  it('hydrates saved dose ownership without resetting USER_SET', () => {
+    const dose = {
+      provenance: 'USER_SET' as const,
+      groupId: 'fruit-dose',
+      suggestedPercent: 30,
+      suggestedTotalGrams: 300,
+    };
+    useIngredientTableUxStore.getState().hydrateRecipeMeta({
+      fruit: { role: 'standard', required: false, dose },
+    });
+    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose)
+      .toEqual(dose);
+  });
+
+  it('normalizes legacy persisted row metadata without a dose sidecar', () => {
+    useIngredientTableUxStore.setState({
+      metaByLineId: {
+        legacy: { role: 'standard', required: false, unavailable: false } as never,
+      },
+    });
+    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'legacy').dose)
+      .toEqual(DEFAULT_INGREDIENT_ROW_META.dose);
+  });
+
   it('returns quiet standard defaults for rows without metadata', () => {
     expect(ingredientRowMeta({}, 'new-line')).toEqual(DEFAULT_INGREDIENT_ROW_META);
   });

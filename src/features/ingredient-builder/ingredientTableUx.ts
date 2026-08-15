@@ -1,4 +1,8 @@
 import type { EngineIngredient, LockType } from '@/engine';
+import {
+  EMPTY_PRODUCT_DOSE_META,
+  type ProductDoseMeta,
+} from './productDoseSuggestion';
 
 /** Customer vocabulary only. Engine lock enums are deliberately not exposed here. */
 export type IngredientCustomerRole = 'standard' | 'addition';
@@ -8,6 +12,9 @@ export interface IngredientRowMeta {
   role: IngredientCustomerRole;
   required: boolean;
   unavailable: boolean;
+  /** Picker-time suggestion ownership. It is product-layer UI state only and
+   * never participates in Engine math or creates an invisible lock. */
+  dose: ProductDoseMeta;
 }
 
 export interface SubstituteCandidate {
@@ -35,6 +42,7 @@ export const DEFAULT_INGREDIENT_ROW_META: IngredientRowMeta = {
   role: 'standard',
   required: false,
   unavailable: false,
+  dose: EMPTY_PRODUCT_DOSE_META,
 };
 
 /** Presentation conversion only. RecipeInput remains gram-canonical. */

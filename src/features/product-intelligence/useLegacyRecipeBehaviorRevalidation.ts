@@ -4,7 +4,6 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import {
   getEngineApprovedIngredientById,
 } from '@/services/ingredients';
@@ -17,6 +16,7 @@ import {
   buildRecipeBehaviorAuthority,
   recipeInputFromFrozenBehavior,
 } from './recipeBehaviorAuthority';
+import { newRecipeStarterMaterialFingerprint } from '@/features/recipes/newRecipeStarter';
 
 const catalogReferenceFromPrivateId = (value: string | undefined): {
   productId: string | null;
@@ -203,22 +203,46 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
           ) {
             return current;
           }
+          const materialBeforeHydration = newRecipeStarterMaterialFingerprint({
+            items: current.items,
+            toppings: current.toppings,
+            excludedIngredientIds: current.excludedIngredientIds,
+            unavailableMainIngredientIds: current.unavailableMainIngredientIds,
+          });
+          const wasUntouched =
+            current.newRecipeStarterMaterialFingerprint !== null &&
+            materialBeforeHydration === current.newRecipeStarterMaterialFingerprint;
+          const hydratedItems = upgraded.items.map((item) => ({
+            ...item,
+            ingredient: structuredClone(item.ingredient),
+          }));
           return {
-            items: upgraded.items.map((item) => ({
-              ...item,
-              ingredient: structuredClone(item.ingredient),
-            })),
+            items: hydratedItems,
             productBehaviorSnapshots: structuredClone(snapshots),
             compositionMigrationAmbiguities: current.compositionMigrationAmbiguities.filter(
               (issue) =>
                 !required.includes(issue.lineId) ||
                 !issue.reason.startsWith('LEGACY_BEHAVIOR:'),
             ),
-            dirty: false,
+            // Server-owned hydration never decides whether the user edited the
+            // recipe. Preserve the generic dirty flag and advance the starter
+            // baseline only when material state was untouched before hydration.
+            ...(wasUntouched
+              ? {
+                  newRecipeStarterMaterialFingerprint: newRecipeStarterMaterialFingerprint({
+                    items: hydratedItems,
+                    toppings: current.toppings,
+                    excludedIngredientIds: current.excludedIngredientIds,
+                    unavailableMainIngredientIds: current.unavailableMainIngredientIds,
+                  }),
+                }
+              : {}),
             draftRevision: current.draftRevision + 1,
           };
         });
-        useRecipeProfileStore.getState().markRecalculationRequired();
+        // Hydration is automatic authority enrichment, not a user recipe
+        // change. The live Engine already evaluates the hydrated starter; do
+        // not falsely require a PI click to initialize it.
         return;
       }
       const committed = useRecipeStore.getState().applyVerifiedRecipeInput(

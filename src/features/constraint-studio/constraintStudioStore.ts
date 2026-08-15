@@ -37,6 +37,11 @@ import { persist } from 'zustand/middleware';
 import type { EngineIngredient, LockType, RecipeInput, RecipeItem } from '@/engine';
 import type { SubstituteAuthorization } from '@/features/ingredient-builder/ingredientTableUx';
 import {
+  ingredientRowMeta,
+  useIngredientTableUxStore,
+} from '@/features/ingredient-builder/ingredientTableUxStore';
+import { missingProductDoseMessage } from '@/features/ingredient-builder/productDoseSuggestion';
+import {
   productBehaviorRequiredLineIds,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
@@ -232,6 +237,27 @@ const withoutLine = (
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
 export type PreviewIssue = Exclude<BuildPreviewResult, { ok: true }>;
+
+/** Product-addition preflight. Legacy/template structural zeroes have no dose
+ * provenance and keep their accepted semantics; only picker-owned Base lines
+ * are required to provide a real amount before PI may formulate. */
+export function missingProductDosePreviewIssue(
+  input: RecipeInput,
+): Extract<PreviewIssue, { code: 'missing_required_role' }> | null {
+  const metaByLineId = useIngredientTableUxStore.getState().metaByLineId;
+  const missing = input.items.filter((item) => {
+    const dose = ingredientRowMeta(metaByLineId, item.id).dose;
+    return dose.provenance !== 'NONE' && item.planned_grams < 1;
+  });
+  if (missing.length === 0) return null;
+  return {
+    ok: false,
+    code: 'missing_required_role',
+    role: 'product_dose',
+    lineIds: missing.map((item) => item.id),
+    messagePl: missingProductDoseMessage(missing.map((item) => item.ingredient.name)),
+  };
+}
 export type RecalculationTerminalState =
   | { state: 'PREVIEW_READY' }
   | { state: 'NO_CHANGE_NEEDED' }
@@ -643,6 +669,20 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // constraints + exclusions composed by the ONE selector — the preview is
         // stamped with the draft revision it was built for.
         const draft = selectCanonicalDraft();
+        const missingProductDose = missingProductDosePreviewIssue(draft.input);
+        if (missingProductDose) {
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            blocked: null,
+            previewIssue: missingProductDose,
+            recalculationTerminal: { state: 'BLOCKED', code: 'missing_required_role' },
+          });
+          return;
+        }
         const unavailable = unavailableLineName(draft);
         if (unavailable) {
           set({
@@ -1264,6 +1304,16 @@ export async function createOptimizePreviewWithServerAuthority(): Promise<void> 
   useRecipeProfileStore.getState().markRecalculationRequired();
   useConstraintStudioStore.setState({ history: [], ...CLEAR_STAGED });
   const draft = selectCanonicalDraft();
+  const missingProductDose = missingProductDosePreviewIssue(draft.input);
+  if (missingProductDose) {
+    useConstraintStudioStore.setState({
+      history: [],
+      ...CLEAR_STAGED,
+      previewIssue: missingProductDose,
+      recalculationTerminal: { state: 'BLOCKED', code: 'missing_required_role' },
+    });
+    return;
+  }
   const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
   const validation = await currentBaseAuthorityReady({ recipe: draft.input, snapshots });
   if (!validation.ready) {

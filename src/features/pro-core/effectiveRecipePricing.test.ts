@@ -81,7 +81,7 @@ describe('effective customer pricing', () => {
     expect(effectiveLineCost(100, missing)).toBeNull();
   });
 
-  it('fails closed on a stored override with wrong identity or currency', () => {
+  it('ignores an invalid private override and falls back to a valid Mapper reference', () => {
     const mismatch = resolveEffectiveIngredientCost({
       canonicalIngredientId: 'PI-ING-000236',
       mapperPricePerKg: 0.97,
@@ -89,8 +89,27 @@ describe('effective customer pricing', () => {
       customerOverride: { ...override(), currency: 'USD' },
       targetCurrency: 'EUR',
     });
-    expect(mismatch.source).toBe('missing');
-    expect(mismatch.pricePerKg).toBeNull();
+    expect(mismatch.source).toBe('mapper_reference');
+    expect(mismatch.pricePerKg).toBe(0.97);
+  });
+
+  it.each([
+    { canonicalIngredientId: 'PI-ING-999999', pricePerKg: 1.12, currency: 'EUR' },
+    { canonicalIngredientId: 'PI-ING-000236', pricePerKg: -1, currency: 'EUR' },
+    { canonicalIngredientId: 'PI-ING-000236', pricePerKg: 1.12, currency: 'USD' },
+  ])('never lets an invalid private price shadow a valid reference: %j', (invalid) => {
+    const resolved = resolveEffectiveIngredientCost({
+      canonicalIngredientId: 'PI-ING-000236',
+      mapperPricePerKg: 0.97,
+      mapperCurrency: 'EUR',
+      customerOverride: { ...override(), ...invalid },
+      targetCurrency: 'EUR',
+    });
+    expect(resolved).toMatchObject({
+      source: 'mapper_reference',
+      pricePerKg: 0.97,
+      customerOverridePerKg: null,
+    });
   });
 
   it('accepts only explicit Mapper canonical identity for persistence', () => {

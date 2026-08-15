@@ -5,9 +5,11 @@ import type { RecipeState } from '@/stores/recipeStore';
 import type {
   DirectionIntents,
   DirectionTargets,
+  PersistedIngredientUxMeta,
   ProfileSettingsSnapshot,
 } from './recipeProfileStore';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
+import type { ProductDoseMeta } from '@/features/ingredient-builder/productDoseSuggestion';
 
 const PROFILE_METADATA_KEY = 'pinguino_profile_v1' as const;
 
@@ -71,7 +73,7 @@ export function attachRecipeProfileMetadata(
   input: RecipeInput,
   settings: ProfileSettingsSnapshot,
   ingredientUxByLineId: Readonly<
-    Record<string, { role: 'standard' | 'addition'; required: boolean }>
+    Record<string, PersistedIngredientUxMeta>
   > = {},
 ): RecipeInput {
   return {
@@ -135,16 +137,66 @@ const normalizedDirectionIntents = (value: unknown): DirectionIntents | undefine
 
 const normalizedIngredientUx = (
   value: unknown,
-): Readonly<Record<string, { role: 'standard' | 'addition'; required: boolean }>> | undefined => {
+): Readonly<Record<string, PersistedIngredientUxMeta>> | undefined => {
   if (!value || typeof value !== 'object') return undefined;
-  const result: Record<string, { role: 'standard' | 'addition'; required: boolean }> = {};
+  const result: Record<string, PersistedIngredientUxMeta> = {};
   for (const [lineId, raw] of Object.entries(value as Record<string, unknown>)) {
     if (!lineId || !raw || typeof raw !== 'object') continue;
     const row = raw as Record<string, unknown>;
     if (row.role !== 'standard' && row.role !== 'addition') continue;
-    result[lineId] = { role: row.role, required: row.required === true };
+    const dose = normalizedProductDose(row.dose);
+    result[lineId] = {
+      role: row.role,
+      required: row.required === true,
+      ...(dose ? { dose } : {}),
+    };
   }
   return result;
+};
+
+const normalizedProductDose = (value: unknown): ProductDoseMeta | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const row = value as Record<string, unknown>;
+  if (
+    row.provenance !== 'NONE' &&
+    row.provenance !== 'AUTO_SUGGESTED' &&
+    row.provenance !== 'USER_SET' &&
+    row.provenance !== 'UNKNOWN'
+  ) {
+    return undefined;
+  }
+  if (row.groupId !== null && typeof row.groupId !== 'string') return undefined;
+  const optionalNumber = (candidate: unknown): candidate is number | null =>
+    candidate === null ||
+    (typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0);
+  if (!optionalNumber(row.suggestedPercent) || !optionalNumber(row.suggestedTotalGrams)) {
+    return undefined;
+  }
+  const groupId = typeof row.groupId === 'string' ? row.groupId.trim() : row.groupId;
+  const hasSuggestionEvidence =
+    typeof groupId === 'string' &&
+    groupId.length > 0 &&
+    typeof row.suggestedPercent === 'number' &&
+    row.suggestedPercent <= 100 &&
+    typeof row.suggestedTotalGrams === 'number';
+  const hasNoSuggestionEvidence =
+    groupId === null && row.suggestedPercent === null && row.suggestedTotalGrams === null;
+  if (
+    (row.provenance === 'AUTO_SUGGESTED' && !hasSuggestionEvidence) ||
+    ((row.provenance === 'NONE' || row.provenance === 'UNKNOWN') &&
+      !hasNoSuggestionEvidence) ||
+    (row.provenance === 'USER_SET' &&
+      !hasSuggestionEvidence &&
+      !hasNoSuggestionEvidence)
+  ) {
+    return undefined;
+  }
+  return {
+    provenance: row.provenance,
+    groupId,
+    suggestedPercent: row.suggestedPercent,
+    suggestedTotalGrams: row.suggestedTotalGrams,
+  };
 };
 
 export { PROFILE_METADATA_KEY };

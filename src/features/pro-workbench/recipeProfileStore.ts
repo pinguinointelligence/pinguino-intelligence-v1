@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { ProductMode, RecipeDirectionTarget, RecipeDirectionTargets } from '@/engine';
 import type { VisibleProductType } from '@/features/studio/productType';
+import type { ProductDoseMeta } from '@/features/ingredient-builder/productDoseSuggestion';
 import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
@@ -29,6 +30,14 @@ export const DEFAULT_DIRECTION_INTENTS: DirectionIntents = Object.freeze({
 export const showsProfessionalServing = (machineKind: 'professional' | 'home' | null): boolean =>
   machineKind !== 'home';
 
+export interface PersistedIngredientUxMeta {
+  role: 'standard' | 'addition';
+  required: boolean;
+  /** Optional for backward compatibility with every recipe saved before
+   * picker-dose ownership existed. */
+  dose?: ProductDoseMeta;
+}
+
 export interface ProfileSettingsSnapshot {
   visibleProductType: VisibleProductType;
   mode: ProductMode;
@@ -43,7 +52,7 @@ export interface ProfileSettingsSnapshot {
   directionTargets: DirectionTargets;
   directionIntents?: DirectionIntents;
   ingredientUxByLineId?: Readonly<
-    Record<string, { role: 'standard' | 'addition'; required: boolean }>
+    Record<string, PersistedIngredientUxMeta>
   >;
 }
 

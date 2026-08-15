@@ -58,7 +58,14 @@ import {
   type RecipeToppingItem,
   type RecipeToppingIngredient,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
-import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
+import {
+  buildCanonicalNewRecipeStarter,
+  DEFAULT_NEW_RECIPE_PROFILE,
+  isNewRecipeServingModeId,
+  newRecipeStarterMaterialFingerprint,
+  starterServingModeForTemperature,
+  type NewRecipeStarterKey,
+} from '@/features/recipes/newRecipeStarter';
 import {
   cloneToppingIngredient,
   isCatalogLabelToppingIngredient,
@@ -146,6 +153,11 @@ export interface RecipeState {
   activePresetId: PresetId | null;
   /** Approved neutral scaffold attached only to an untouched explicit new draft. */
   newRecipeStarterTemplateId: string | null;
+  /** Complete profile × serving × strategy × mass identity of an explicit starter. */
+  newRecipeStarterKey: NewRecipeStarterKey | null;
+  /** Material baseline used to distinguish server hydration/account-price dirtiness
+   * from an actual user edit without relying on the generic `dirty` flag. */
+  newRecipeStarterMaterialFingerprint: string | null;
   /**
    * The CANONICAL saved-recipe aggregate link (= `saved_recipes.id` = pro-core `recipeId`).
    * Drives the ONE save flow: null → "Zapisz recepturę" (create); set → "Zapisz nową wersję".
@@ -323,6 +335,9 @@ export interface RecipeState {
   ) => void;
   /** Start an explicit clean Pro draft for the selected customer-visible type. */
   startNewRecipe: (visible?: VisibleProductType) => void;
+  /** Rebuild only the current explicit starter. Keeps this draft identity/name,
+   * while replacing all recipe-formulation state with the confirmed key. */
+  rebuildNewRecipeStarter: (key: NewRecipeStarterKey) => void;
   /** Link the draft to its persisted aggregate after a create/version/restore. Clears dirty. */
   markSaved: (
     id: string,
@@ -455,6 +470,8 @@ const fromPreset = (preset: DemoPreset) => ({
   unavailableMainIngredientIds: [] as string[],
   activePresetId: preset.id,
   newRecipeStarterTemplateId: null,
+  newRecipeStarterKey: null,
+  newRecipeStarterMaterialFingerprint: null,
   savedRecipeId: null,
   savedRecipeName: null,
   currentVersionNumber: null,
@@ -549,6 +566,8 @@ export function recipePersistPartialize(state: RecipeState) {
     unavailableMainIngredientIds: state.unavailableMainIngredientIds,
     activePresetId: state.activePresetId,
     newRecipeStarterTemplateId: state.newRecipeStarterTemplateId,
+    newRecipeStarterKey: state.newRecipeStarterKey,
+    newRecipeStarterMaterialFingerprint: state.newRecipeStarterMaterialFingerprint,
     savedRecipeId: state.savedRecipeId,
     savedRecipeName: state.savedRecipeName,
     currentVersionNumber: state.currentVersionNumber,
@@ -1513,6 +1532,8 @@ export const useRecipeStore = create<RecipeState>()(
           unavailableMainIngredientIds: [...(input.goals?.unavailable_main_ingredient_ids ?? [])],
           activePresetId: null,
           newRecipeStarterTemplateId: null,
+          newRecipeStarterKey: null,
+          newRecipeStarterMaterialFingerprint: null,
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
           currentVersionNumber: link.versionNumber ?? null,
@@ -1534,30 +1555,44 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionDate: versionDate,
           dirty: false,
           newRecipeStarterTemplateId: null,
+          newRecipeStarterKey: null,
+          newRecipeStarterMaterialFingerprint: null,
           ...(practicalRecipeAudit === undefined ? {} : { practicalRecipeAudit }),
         }),
       startNewRecipe: (requestedVisible) => {
         useIngredientTableUxStore.getState().reset();
-        const visible = requestedVisible ?? useRecipeStore.getState().visibleProductType;
+        // The legacy owner-level snapshot is the only current account-default
+        // source that can designate a preferred product profile. Never infer
+        // that profile from whichever unrelated recipe happens to be open.
+        const legacyDefaults = useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
+        const visible =
+          requestedVisible ?? legacyDefaults?.visibleProductType ?? DEFAULT_NEW_RECIPE_PROFILE;
         const specificDefaults = useRecipeProfileStore
           .getState()
           .defaultsFor(productDefaultsKey(visible));
-        const legacyDefaults = useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
         const defaults =
           specificDefaults ??
           (legacyDefaults?.visibleProductType === visible ? legacyDefaults : null);
+        const formulationStrategy = normalizeFormulationStrategy(
+          defaults?.formulationStrategy ?? 'optimal',
+        );
+        const starterServingMode = isNewRecipeServingModeId(defaults?.servingModeId)
+          ? defaults.servingModeId
+          : starterServingModeForTemperature(defaults?.targetTemperatureC);
         const starter = buildCanonicalNewRecipeStarter({
           visibleProductType: visible,
-          targetTemperatureC: defaults?.targetTemperatureC,
+          servingModeId: starterServingMode,
+          formulationStrategy,
           targetBatchGrams: defaults?.targetBatchGrams,
+        });
+        const starterMaterialFingerprint = newRecipeStarterMaterialFingerprint({
+          items: starter.items,
         });
         const base = fromPreset(DEFAULT_PRESET);
         set((state) => ({
           ...base,
           mode: 'classic',
-          formulation_strategy: normalizeFormulationStrategy(
-            defaults?.formulationStrategy ?? 'optimal',
-          ),
+          formulation_strategy: formulationStrategy,
           category: starter.category,
           visibleProductType: starter.visibleProductType,
           target_temperature_c: starter.targetTemperatureC,
@@ -1578,8 +1613,15 @@ export const useRecipeStore = create<RecipeState>()(
           baseOrder: starter.items.map((item) => item.id),
           activePresetId: null,
           newRecipeStarterTemplateId: starter.templateId,
+          newRecipeStarterKey: {
+            visibleProductType: starter.visibleProductType,
+            servingModeId: starter.servingModeId,
+            formulationStrategy: starter.formulationStrategy,
+            targetBatchGrams: starter.targetBatchGrams,
+          },
+          newRecipeStarterMaterialFingerprint: starterMaterialFingerprint,
           machineKind: defaults?.machineKind ?? null,
-          servingModeId: defaults?.servingModeId ?? null,
+          servingModeId: defaults?.servingModeId ?? starter.servingModeId,
           machineId: defaults?.machineId ?? null,
           machineLabel: defaults?.machineLabel ?? null,
           dirty: false,
@@ -1594,7 +1636,64 @@ export const useRecipeStore = create<RecipeState>()(
             defaults?.directionTargets ?? DEFAULT_DIRECTION_TARGETS,
             defaults?.directionIntents,
           );
-        useRecipeProfileStore.getState().markRecalculationRequired();
+      },
+      rebuildNewRecipeStarter: (key) => {
+        useIngredientTableUxStore.getState().reset();
+        const starter = buildCanonicalNewRecipeStarter({
+          visibleProductType: key.visibleProductType,
+          servingModeId: key.servingModeId,
+          formulationStrategy: key.formulationStrategy,
+          targetBatchGrams: key.targetBatchGrams,
+        });
+        const starterMaterialFingerprint = newRecipeStarterMaterialFingerprint({
+          items: starter.items,
+        });
+        set((state) => {
+          const preserveHomeMachine =
+            state.machineKind === 'home' &&
+            state.target_temperature_c === starter.targetTemperatureC;
+          return {
+            mode: 'classic',
+            formulation_strategy: starter.formulationStrategy,
+            category: starter.category,
+            visibleProductType: starter.visibleProductType,
+            target_temperature_c: starter.targetTemperatureC,
+            target_batch_grams: starter.targetBatchGrams,
+            items: starter.items,
+            baseOrder: starter.items.map((item) => item.id),
+            toppings: [],
+            productBehaviorSnapshots: {},
+            compositionMigrationAmbiguities: [],
+            excludedIngredientIds: [],
+            unavailableMainIngredientIds: [],
+            activePresetId: null,
+            newRecipeStarterTemplateId: starter.templateId,
+            newRecipeStarterKey: {
+              visibleProductType: starter.visibleProductType,
+              servingModeId: starter.servingModeId,
+              formulationStrategy: starter.formulationStrategy,
+              targetBatchGrams: starter.targetBatchGrams,
+            },
+            newRecipeStarterMaterialFingerprint: starterMaterialFingerprint,
+            practicalRecipeAudit: null,
+            ...(preserveHomeMachine
+              ? {}
+              : {
+                  machineKind: 'professional' as const,
+                  servingModeId: starter.servingModeId,
+                  machineId: null,
+                  machineLabel: null,
+                  machine_capacity_grams: null,
+                  machine_capacity_source: null,
+                }),
+            dirty: false,
+            draftRevision: state.draftRevision + 1,
+          };
+        });
+        // A confirmed starter rebuild is already materialized and evaluated by
+        // the frozen Engine. PI becomes pending only after a subsequent user
+        // edit; it is not an initialization step for this fresh scaffold.
+        useRecipeProfileStore.getState().acknowledgeRecalculation();
       },
       // OWNER CURRENT-DRAFT P0 (Phase 8) — ONE SHARED MACHINE CONTEXT. The
       // machine selection is now AUTHORITATIVE over the capacity: a

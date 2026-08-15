@@ -31,7 +31,10 @@ import {
   readPracticalRecipeAudit,
 } from '@/features/practical-recipe/practicalRecipe';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
-import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
+import {
+  ingredientRowMeta,
+  useIngredientTableUxStore,
+} from '@/features/ingredient-builder/ingredientTableUxStore';
 import {
   attachRecipeProfileMetadata,
   profileSnapshotFromState,
@@ -62,9 +65,18 @@ const buildRecipeInputFromStore = (): RecipeInput => {
     ),
     Object.fromEntries(
       state.items.flatMap((item) => {
-        const meta = useIngredientTableUxStore.getState().metaByLineId[item.id];
-        return meta && (meta.role === 'addition' || meta.required)
-          ? [[item.id, { role: meta.role, required: meta.required }] as const]
+        const metaByLineId = useIngredientTableUxStore.getState().metaByLineId;
+        const meta = ingredientRowMeta(metaByLineId, item.id);
+        const ownsDose = meta.dose.provenance !== 'NONE';
+        return meta.role === 'addition' || meta.required || ownsDose
+          ? [[
+              item.id,
+              {
+                role: meta.role,
+                required: meta.required,
+                ...(ownsDose ? { dose: { ...meta.dose } } : {}),
+              },
+            ] as const]
           : [];
       }),
     ),

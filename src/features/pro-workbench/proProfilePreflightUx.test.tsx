@@ -145,6 +145,17 @@ describe('profile hierarchy and compact preflight', () => {
     );
   });
 
+  it('routes starter strategy, serving and batch changes through one protected rebuild flow', () => {
+    const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+    expect(card).toContain('requestNewRecipeStarterSettingsChange');
+    expect(card).toContain('starterSettingsPatch.serving');
+    expect(card).toContain('starterSettingsPatch.strategy');
+    expect(card).toContain('starterSettingsPatch.batch');
+    expect(card).toContain('Zmiana ustawień wymaga przebudowy składników.');
+    expect(card).toContain('rebuildNewProRecipeStarter(pendingStarterChange.patch)');
+    expect(card).not.toContain('startNewProRecipe(pendingProductType)');
+  });
+
   it('renders serving immediately for Professional and capacity instead for a Home machine', () => {
     useRecipeStore.getState().setMachineSelection({
       kind: 'professional',

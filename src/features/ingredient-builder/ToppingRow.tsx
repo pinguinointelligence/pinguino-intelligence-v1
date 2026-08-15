@@ -114,6 +114,14 @@ export function ToppingRow({
             onChange={(value) => onChange(Math.max(0, value))}
             testId={`topping-grams-${item.id}`}
           />
+          {item.planned_grams < 1 ? (
+            <p
+              className="mt-1 text-xs leading-relaxed text-attention"
+              data-testid={`topping-dose-missing-${item.id}`}
+            >
+              Podaj ilość toppingu.
+            </p>
+          ) : null}
         </div>
 
         <IngredientPriceCell view={priceView} />

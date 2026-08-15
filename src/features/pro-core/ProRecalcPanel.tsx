@@ -158,11 +158,13 @@ function RecalcDiagnosisView({
   input,
   constraints,
   servingModeId,
+  onReturnToRecipe,
 }: {
   issue: PreviewIssue;
   input: RecipeInput;
   constraints: ConstraintSet;
   servingModeId: string | null;
+  onReturnToRecipe: (lineId: string | null) => void;
 }) {
   // "Already in band" is not a failure — keep the friendly note, no diagnosis table.
   if (issue.code === 'already_clean') {
@@ -199,6 +201,16 @@ function RecalcDiagnosisView({
         <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
           {d.unchanged}
         </p>
+        {issue.code === 'missing_required_role' && issue.role === 'product_dose' ? (
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            data-testid="pro-recalc-return-to-product-dose"
+            onClick={() => onReturnToRecipe(issue.lineIds?.[0] ?? null)}
+          >
+            Wróć do receptury
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -417,6 +429,17 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
 
   const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
 
+  const returnToProductDose = (lineId: string | null) => {
+    onClose();
+    if (!lineId) return;
+    window.requestAnimationFrame(() => {
+      const control = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-testid^="row-grams-control-"]'),
+      ).find((element) => element.dataset.testid === `row-grams-control-${lineId}`);
+      control?.querySelector<HTMLElement>('[role="spinbutton"]')?.focus();
+    });
+  };
+
   if (!open) return null;
 
   // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
@@ -463,6 +486,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               input={currentInput}
               constraints={constraints}
               servingModeId={servingModeId}
+              onReturnToRecipe={returnToProductDose}
             />
           ) : null}
 

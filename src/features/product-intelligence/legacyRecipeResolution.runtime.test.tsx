@@ -3,8 +3,9 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
-import type { EngineIngredient } from '@/engine';
+import type { EngineIngredient, RecipeInput } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
+import { newRecipeStarterMaterialFingerprint } from '@/features/recipes/newRecipeStarter';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -70,6 +71,55 @@ function Harness() {
   useLegacyRecipeBehaviorRevalidation();
   return null;
 }
+
+const mockResolvedBehaviorFor = (recipe: RecipeInput): void => {
+  const expected = productBehaviorTestSnapshots(recipe);
+  const byMapper = new Map(
+    recipe.items.map((item) => [
+      item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+      { item, snapshot: expected[item.id]! },
+    ]),
+  );
+  mocks.resolve.mockImplementation(async ({ reference }) => {
+    const fixture = byMapper.get(reference.mapperIngredientId ?? reference.canonicalIdentity);
+    if (!fixture) return null;
+    const snapshot = fixture.snapshot;
+    return {
+      schemaVersion: 1,
+      resolverVersion: snapshot.resolverVersion,
+      entityKind: 'mapper',
+      productId: snapshot.productId,
+      productVersionId: snapshot.productVersionId,
+      factsFingerprint: snapshot.factsFingerprint,
+      catalogStatus: 'pi_base',
+      provenance: 'mapper',
+      behaviorBindingId: snapshot.behaviorBindingId,
+      behaviorBindingVersion: snapshot.behaviorBindingVersion,
+      taxonomyVersion: snapshot.taxonomyVersion,
+      mapperIngredientId: reference.mapperIngredientId,
+      familyId: null,
+      subfamilyId: null,
+      formId: null,
+      mainEligibility: 'STANDARD_ONLY',
+      veganEligibility: 'unknown',
+      proteinBehavior: 'unknown',
+      processBehavior: {},
+      sharedFacts: snapshot.sharedFacts,
+      approvedLiquidDairyCarrier: false,
+      context: {},
+      module: 'BASE_RECIPE',
+      state: 'eligible',
+      moduleEligibility: snapshot.moduleEligibility,
+      mainPolicy: null,
+      warnings: [],
+      blockReasons: [],
+    };
+  });
+  mocks.getRow.mockImplementation(async (mapperId: string) => {
+    const fixture = byMapper.get(mapperId);
+    return fixture ? rowFromEngine(fixture.item.ingredient) : null;
+  });
+};
 
 describe('legacy recipe runtime resolution', () => {
   let host: HTMLDivElement;
@@ -220,5 +270,34 @@ describe('legacy recipe runtime resolution', () => {
     expect(hydrated.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(400, 6);
     expect(hydrated.items.some((item) => item.lock_type === 'main')).toBe(false);
     expect(hydrated.dirty).toBe(false);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+  });
+
+  it('preserves an edited starter and its dirty/material state across asynchronous hydration', async () => {
+    useRecipeStore.getState().startNewRecipe('gelato');
+    const first = useRecipeStore.getState().items[0]!;
+    const editedGrams = first.planned_grams + 17;
+    useRecipeStore.getState().setPlannedGrams(first.id, editedGrams);
+    const edited = buildRecipeInput(useRecipeStore.getState());
+    mockResolvedBehaviorFor(edited);
+
+    await act(async () => root.render(<Harness />));
+    await vi.waitFor(() => {
+      expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots)).toHaveLength(
+        edited.items.length,
+      );
+    });
+
+    const hydrated = useRecipeStore.getState();
+    expect(hydrated.items.find((item) => item.id === first.id)?.planned_grams).toBe(editedGrams);
+    expect(hydrated.dirty).toBe(true);
+    expect(
+      newRecipeStarterMaterialFingerprint({
+        items: hydrated.items,
+        toppings: hydrated.toppings,
+        excludedIngredientIds: hydrated.excludedIngredientIds,
+        unavailableMainIngredientIds: hydrated.unavailableMainIngredientIds,
+      }),
+    ).not.toBe(hydrated.newRecipeStarterMaterialFingerprint);
   });
 });

@@ -69,6 +69,7 @@ function scienceToppingItem(
 ): RecipeItem | null {
   if (isCatalogLabelToppingIngredient(item.ingredient)) return null;
   const grams = toppingEffectiveGrams(item, context);
+  if (grams <= 0) return null;
   return {
     id: item.id,
     ingredient: item.ingredient,
@@ -86,6 +87,7 @@ function labelToppingItem(
 ): EffectiveCatalogLabelToppingItem | null {
   if (!isCatalogLabelToppingIngredient(item.ingredient)) return null;
   const grams = toppingEffectiveGrams(item, context);
+  if (grams <= 0) return null;
   return {
     id: item.id,
     ingredient: item.ingredient,

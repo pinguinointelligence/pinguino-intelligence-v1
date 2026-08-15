@@ -77,6 +77,30 @@ describe('final product composition', () => {
     expect(calculateFinalProduct(base, [item], 'actual_batch').toppingMassG).toBe(65);
   });
 
+  it('keeps a 0 g Topping outside final mass, science, nutrition and cost', () => {
+    const before = calculateFinalProduct(base);
+    const result = calculateFinalProduct(base, [topping('zero-science', 0)]);
+
+    expect(result.baseResult).toEqual(before.baseResult);
+    expect(result.finalItems).toEqual(before.finalItems);
+    expect(result.finalNutritionPer100g).toEqual(before.finalNutritionPer100g);
+    expect(result.finalLabelNutritionPer100g).toEqual(before.finalLabelNutritionPer100g);
+    expect(result.finalCosts).toEqual(before.finalCosts);
+    expect(result.toppingMassG).toBe(0);
+    expect(result.finalMassG).toBe(before.finalMassG);
+  });
+
+  it('does not let a 0 g label-only Topping suppress nutrition or make cost incomplete', () => {
+    const before = calculateFinalProduct(base);
+    const result = calculateFinalProduct(base, [labelTopping(0)]);
+
+    expect(result.finalItems).toEqual(before.finalItems);
+    expect(result.finalNutritionPer100g).toEqual(before.finalNutritionPer100g);
+    expect(result.finalLabelNutritionPer100g).toEqual(before.finalLabelNutritionPer100g);
+    expect(result.finalCosts).toEqual(before.finalCosts);
+    expect(result.finalMassG).toBe(before.finalMassG);
+  });
+
   it('uses declared label nutrition without changing Base Engine science', () => {
     const before = calculateRecipe(base);
     const item = labelTopping(100);

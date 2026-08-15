@@ -1075,6 +1075,9 @@ export type BuildPreviewResult =
       code: 'missing_required_role';
       role: string;
       messagePl: string;
+      /** Picker-owned Base products that still require a real dose. Kept out
+       * of Engine input semantics; the UI uses this only to return focus. */
+      lineIds?: string[];
       /** Phase-1 role trace (QA) — how far the resolution got, per role. */
       roleTrace?: FormulationRoleTraceRow[];
     }

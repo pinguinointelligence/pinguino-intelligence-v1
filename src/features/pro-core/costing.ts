@@ -33,9 +33,11 @@ export const isCustomerPriceCanonicalIngredientId = (value: string): boolean =>
 /**
  * THE ONE price-precedence resolver.
  *
- * Customer override wins only when it belongs to this canonical ingredient and
- * has the requested currency. Otherwise the Mapper reference is used. Missing
- * never becomes zero and currencies are never converted.
+ * A VALID customer override wins only when it belongs to this canonical
+ * ingredient and has the requested currency. An invalid/stale override cannot
+ * shadow a valid Mapper reference: precedence is valid private → valid shared
+ * reference → missing. Missing never becomes zero and currencies are never
+ * converted.
  */
 export function resolveEffectiveIngredientCost(input: EffectiveCostInput): EffectiveIngredientCost {
   const override = input.customerOverride ?? null;
@@ -50,21 +52,6 @@ export function resolveEffectiveIngredientCost(input: EffectiveCostInput): Effec
     input.mapperPricePerKg !== null &&
     Number.isFinite(input.mapperPricePerKg) &&
     input.mapperPricePerKg >= 0;
-
-  if (override !== null && !validOverride) {
-    return {
-      canonicalIngredientId: input.canonicalIngredientId,
-      pricePerKg: null,
-      currency: input.targetCurrency,
-      source: 'missing',
-      mapperPricePerKg: validMapper ? input.mapperPricePerKg : null,
-      customerOverridePerKg:
-        Number.isFinite(override.pricePerKg) && override.pricePerKg >= 0
-          ? override.pricePerKg
-          : null,
-      overrideId: override.overrideId,
-    };
-  }
 
   if (validOverride) {
     return {

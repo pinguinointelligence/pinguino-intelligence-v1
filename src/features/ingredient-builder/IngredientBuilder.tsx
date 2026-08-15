@@ -68,6 +68,11 @@ import {
   productBehaviorBlockedMessage,
   resolveProductBehaviorForSelection,
 } from '@/services/productIntelligence';
+import {
+  allocateAutomaticDoseGroup,
+  verifiedProductDoseSuggestion,
+  type ProductDoseMeta,
+} from './productDoseSuggestion';
 
 const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
@@ -162,6 +167,8 @@ export function IngredientBuilder({
   const setRoleMeta = useIngredientTableUxStore((state) => state.setRole);
   const toggleRequired = useIngredientTableUxStore((state) => state.toggleRequired);
   const setUnavailable = useIngredientTableUxStore((state) => state.setUnavailable);
+  const setDoseMeta = useIngredientTableUxStore((state) => state.setDoseMeta);
+  const markDoseUserSet = useIngredientTableUxStore((state) => state.markDoseUserSet);
   const clearLineMeta = useIngredientTableUxStore((state) => state.clearLine);
   const markRequiredRemoved = useIngredientTableUxStore((state) => state.markRequiredRemoved);
   const metaByLineId = useIngredientTableUxStore((state) => state.metaByLineId);
@@ -169,7 +176,7 @@ export function IngredientBuilder({
 
   const removeItem = useRecipeStore((state) => state.removeItem);
   const setCanonicalUnavailable = useRecipeStore((state) => state.setIngredientUnavailable);
-  const coreActions: IngredientRowActions = wrapActions({
+  const lockAwareCoreActions: IngredientRowActions = wrapActions({
     setPlannedGrams: useRecipeStore((state) => state.setPlannedGrams),
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
     setLockType: useRecipeStore((state) => state.setLockType),
@@ -179,6 +186,13 @@ export function IngredientBuilder({
       clearLineMeta(lineId);
     },
   });
+  const coreActions: IngredientRowActions = {
+    ...lockAwareCoreActions,
+    setPlannedGrams: (lineId, grams) => {
+      lockAwareCoreActions.setPlannedGrams(lineId, grams);
+      markDoseUserSet(lineId);
+    },
+  };
 
   const setPlannedGramsVector = useRecipeStore((state) => state.setPlannedGramsVector);
 
@@ -193,7 +207,10 @@ export function IngredientBuilder({
         percent,
         draft.excludedIngredientIds,
       );
-      if (next.ok) setPlannedGramsVector(next.gramsByLineId);
+      if (next.ok) {
+        setPlannedGramsVector(next.gramsByLineId);
+        markDoseUserSet(lineId);
+      }
     },
     setCustomerRole: (lineId, role) => {
       if (role === 'main') {
@@ -537,11 +554,48 @@ export function IngredientBuilder({
       );
       return { focusLineId: existing.id };
     }
-    addIngredient(ingredient);
+    const doseSuggestion = verifiedProductDoseSuggestion({
+      snapshot: behavior,
+      strategy: behaviorMode,
+      targetBaseGrams: useRecipeStore.getState().target_batch_grams,
+    });
+    addIngredient(ingredient, doseSuggestion?.suggestedTotalGrams ?? 0);
     const added = useRecipeStore
       .getState()
       .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
     if (added && behavior) setProductBehaviorSnapshot(added.id, { ...behavior, lineId: added.id });
+    if (added) {
+      const dose: ProductDoseMeta = doseSuggestion
+        ? {
+            provenance: 'AUTO_SUGGESTED',
+            groupId: doseSuggestion.groupId,
+            suggestedPercent: doseSuggestion.suggestedPercent,
+            suggestedTotalGrams: doseSuggestion.suggestedTotalGrams,
+          }
+        : {
+            provenance: 'UNKNOWN',
+            groupId: null,
+            suggestedPercent: null,
+            suggestedTotalGrams: null,
+          };
+      setDoseMeta(added.id, dose);
+      if (doseSuggestion) {
+        const current = useRecipeStore.getState();
+        const currentMeta = useIngredientTableUxStore.getState().metaByLineId;
+        const allocation = allocateAutomaticDoseGroup({
+          groupId: doseSuggestion.groupId,
+          suggestedTotalGrams: doseSuggestion.suggestedTotalGrams,
+          members: current.items.map((item) => ({
+            lineId: item.id,
+            plannedGrams: item.planned_grams,
+            lockType: item.lock_type,
+            actualGrams: item.actual_grams,
+            dose: ingredientRowMeta(currentMeta, item.id).dose,
+          })),
+        });
+        current.setPlannedGramsVector(allocation);
+      }
+    }
     setPickerNotice(null);
     const normalizedName = ingredient.name.trim().toLocaleLowerCase('pl');
     for (const unresolvedEntry of Object.values(unresolvedByLineId)) {
