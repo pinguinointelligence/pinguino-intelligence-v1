@@ -290,7 +290,9 @@ export function IngredientBuilder({
         },
       }).catch(() => null);
       if (!resolved) {
-        setPickerNotice('Nie udało się potwierdzić aktualnego zachowania zamiennika. Spróbuj ponownie.');
+        setPickerNotice(
+          'Nie udało się potwierdzić aktualnego zachowania zamiennika. Spróbuj ponownie.',
+        );
         return;
       }
       if (resolved.state === 'blocked') {
@@ -321,10 +323,12 @@ export function IngredientBuilder({
     },
   };
 
-  const behaviorRequiredLineIds = new Set(productBehaviorRequiredLineIds({
-    items: useRecipeStore.getState().items,
-    toppings,
-  }));
+  const behaviorRequiredLineIds = new Set(
+    productBehaviorRequiredLineIds({
+      items: useRecipeStore.getState().items,
+      toppings,
+    }),
+  );
 
   const offTarget = Math.abs(totalBatchG - targetBatchG) > 0.1;
 
@@ -394,13 +398,15 @@ export function IngredientBuilder({
     const cost = effectiveCostForIngredient(rawIngredient, customerPrices);
     const canonicalId = customerPriceCanonicalId(rawIngredient);
     const catalogProductId = catalogProductIdForIngredient(rawIngredient);
-    const catalogReferencePrice = productBehaviorSnapshots[item.id]?.sharedFacts?.referencePrice ?? null;
+    const catalogReferencePrice =
+      productBehaviorSnapshots[item.id]?.sharedFacts?.referencePrice ?? null;
     const priceView: IngredientPriceView = {
       cost,
       lineCost: effectiveLineCost(item.effective_grams, cost),
       resetLabel: catalogProductId ? 'Usuń moją cenę' : undefined,
       canEdit:
-        mode === 'recipe' && customerOwnerUserId !== null &&
+        mode === 'recipe' &&
+        customerOwnerUserId !== null &&
         (catalogProductId !== null || canPersistCustomerPrice(rawIngredient)),
       onSave:
         customerOwnerUserId && catalogProductId
@@ -410,24 +416,19 @@ export function IngredientBuilder({
                 pricePerKg,
                 currency: CUSTOMER_COST_CURRENCY,
               });
-              setIngredientPrivateCost(
-                item.id,
-                pricePerKg,
-                CUSTOMER_COST_CURRENCY,
-                'private',
-              );
+              setIngredientPrivateCost(item.id, pricePerKg, CUSTOMER_COST_CURRENCY, 'private');
               await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
             }
           : customerOwnerUserId && canonicalId
-          ? async (pricePerKg) => {
-              await saveCustomerPrice({
-                ownerUserId: customerOwnerUserId,
-                canonicalIngredientId: canonicalId,
-                pricePerKg,
-                currency: CUSTOMER_COST_CURRENCY,
-              });
-            }
-          : undefined,
+            ? async (pricePerKg) => {
+                await saveCustomerPrice({
+                  ownerUserId: customerOwnerUserId,
+                  canonicalIngredientId: canonicalId,
+                  pricePerKg,
+                  currency: CUSTOMER_COST_CURRENCY,
+                });
+              }
+            : undefined,
       onReset:
         customerOwnerUserId && catalogProductId
           ? async () => {
@@ -441,8 +442,8 @@ export function IngredientBuilder({
               await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
             }
           : customerOwnerUserId && canonicalId
-          ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
-          : undefined,
+            ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
+            : undefined,
     };
     const productionLine =
       production?.session?.lines.find((line) => line.lineId === item.id) ??
@@ -622,7 +623,8 @@ export function IngredientBuilder({
     const selected = useRecipeStore
       .getState()
       .toppings.find((item) => toppingIngredientIdentity(item.ingredient) === canonicalId);
-    if (selected && behavior) setProductBehaviorSnapshot(selected.id, { ...behavior, lineId: selected.id });
+    if (selected && behavior)
+      setProductBehaviorSnapshot(selected.id, { ...behavior, lineId: selected.id });
     setPickerNotice(
       existing
         ? `${ingredient.name} już jest toppingiem. Zachowano jeden wiersz i przeniesiono do niego fokus.`
@@ -663,20 +665,17 @@ export function IngredientBuilder({
   const finalTotalG = totalBatchG + toppingTotalG;
   const toppingRows = toppings.map((item, index) => {
     const cost = effectiveCostForToppingIngredient(item.ingredient, customerPrices);
-    const labelTopping = isCatalogLabelToppingIngredient(item.ingredient)
-      ? item.ingredient
-      : null;
-    const engineTopping = isCatalogLabelToppingIngredient(item.ingredient)
-      ? null
-      : item.ingredient;
+    const labelTopping = isCatalogLabelToppingIngredient(item.ingredient) ? item.ingredient : null;
+    const engineTopping = isCatalogLabelToppingIngredient(item.ingredient) ? null : item.ingredient;
     const canonicalId = engineTopping ? customerPriceCanonicalId(engineTopping) : null;
     const priceView: IngredientPriceView = {
       cost,
       lineCost: effectiveLineCost(item.planned_grams, cost),
       resetLabel: labelTopping ? 'Usuń moją cenę' : undefined,
-      canEdit: customerOwnerUserId !== null && (
-        labelTopping !== null || (engineTopping !== null && canPersistCustomerPrice(engineTopping))
-      ),
+      canEdit:
+        customerOwnerUserId !== null &&
+        (labelTopping !== null ||
+          (engineTopping !== null && canPersistCustomerPrice(engineTopping))),
       onSave:
         customerOwnerUserId && labelTopping
           ? async (pricePerKg) => {
@@ -693,15 +692,15 @@ export function IngredientBuilder({
               await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
             }
           : customerOwnerUserId && canonicalId
-          ? async (pricePerKg) => {
-              await saveCustomerPrice({
-                ownerUserId: customerOwnerUserId,
-                canonicalIngredientId: canonicalId,
-                pricePerKg,
-                currency: CUSTOMER_COST_CURRENCY,
-              });
-            }
-          : undefined,
+            ? async (pricePerKg) => {
+                await saveCustomerPrice({
+                  ownerUserId: customerOwnerUserId,
+                  canonicalIngredientId: canonicalId,
+                  pricePerKg,
+                  currency: CUSTOMER_COST_CURRENCY,
+                });
+              }
+            : undefined,
       onReset:
         customerOwnerUserId && labelTopping
           ? async () => {
@@ -714,8 +713,8 @@ export function IngredientBuilder({
               await queryClient.invalidateQueries({ queryKey: ['global-catalog-search'] });
             }
           : customerOwnerUserId && canonicalId
-          ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
-          : undefined,
+            ? async () => resetCustomerPrice(customerOwnerUserId, canonicalId)
+            : undefined,
     };
     return (
       <ToppingRow
@@ -765,7 +764,7 @@ export function IngredientBuilder({
   if (layout === 'workbench') {
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
-        <div className="shrink-0 border-b border-ink/10 px-3 py-2 2xl:pb-[27px] 2xl:pt-[21px]">
+        <div className="shrink-0 border-b border-ink/10 px-3 py-2 xl:py-3">
           <div
             className={mode === 'recipe' ? 'sr-only' : 'flex items-center justify-between gap-3'}
           >
@@ -776,14 +775,11 @@ export function IngredientBuilder({
           </div>
           {mode === 'recipe' ? (
             <div
-              className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-2 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,.85fr)_minmax(202px,1fr)_96px_44px] 2xl:grid-cols-[minmax(300px,1fr)_222px_260px_76px_44px]"
+              className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-2 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,.85fr)_minmax(202px,1fr)_96px_44px]"
               data-testid="ingredient-add-toolbar"
             >
               <span className="hidden min-w-0 md:block" aria-hidden />
-              <div
-                className="justify-self-start 2xl:-ml-[11px] 2xl:self-start"
-                data-testid="ingredient-add-slot"
-              >
+              <div className="justify-self-start" data-testid="ingredient-add-slot">
                 {picker}
               </div>
               <span
@@ -870,7 +866,11 @@ export function IngredientBuilder({
                   const reason = issue.reason.startsWith('LEGACY_BEHAVIOR:')
                     ? issue.reason.slice('LEGACY_BEHAVIOR:'.length)
                     : 'Wybierz dla tej linii rolę Główny lub Standardowy.';
-                  return <li key={`${issue.lineId}:${issue.reason}`}>{line?.ingredient.name ?? issue.lineId}: {reason}</li>;
+                  return (
+                    <li key={`${issue.lineId}:${issue.reason}`}>
+                      {line?.ingredient.name ?? issue.lineId}: {reason}
+                    </li>
+                  );
                 })}
               </ul>
             </div>

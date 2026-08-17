@@ -16,7 +16,10 @@ import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIde
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { markCatalogProductUsed } from '@/services/globalCatalog';
 import { cn } from '@/lib/cn';
-import { mappedCatalogIngredient, labelOnlyCatalogToppingIngredient } from '@/features/global-catalog/catalogIngredient';
+import {
+  mappedCatalogIngredient,
+  labelOnlyCatalogToppingIngredient,
+} from '@/features/global-catalog/catalogIngredient';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
@@ -39,6 +42,7 @@ import {
   type ProductPickerVerificationView,
 } from './productPickerModel';
 import { closeProductPickerForPointer } from './productPickerBackdrop';
+import { mobileProductPickerRect } from './productPickerViewport';
 
 export type ProductPickerScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
 
@@ -81,6 +85,7 @@ interface PickerPosition {
   top: number;
   width: number;
   height: number;
+  bottom?: number;
 }
 
 type ProductPickerPopoverProps = {
@@ -89,8 +94,20 @@ type ProductPickerPopoverProps = {
   className?: string;
   behaviorContext?: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
 } & (
-  | { scope: 'BASE_FORMULATION'; onAdd: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => ProductPickerSelectionResult | void }
-  | { scope: 'POST_PROCESS_ADDON'; onAdd: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => ProductPickerSelectionResult | void }
+  | {
+      scope: 'BASE_FORMULATION';
+      onAdd: (
+        ingredient: EngineIngredient,
+        behavior?: ProductBehaviorSnapshot,
+      ) => ProductPickerSelectionResult | void;
+    }
+  | {
+      scope: 'POST_PROCESS_ADDON';
+      onAdd: (
+        ingredient: RecipeToppingIngredient,
+        behavior?: ProductBehaviorSnapshot,
+      ) => ProductPickerSelectionResult | void;
+    }
 );
 
 export function ProductPickerPopover({
@@ -130,9 +147,20 @@ export function ProductPickerPopover({
     const updatePosition = () => {
       const trigger = triggerRef.current?.getBoundingClientRect();
       if (!trigger) return;
-      const desktop = window.matchMedia('(min-width: 1024px)').matches;
+      const desktop = window.matchMedia('(min-width: 1280px)').matches;
       if (!desktop) {
-        setPosition({ desktop: false, left: 0, top: 0, width: 0, height: 0 });
+        const visualViewport = window.visualViewport;
+        setPosition({
+          desktop: false,
+          ...mobileProductPickerRect({
+            innerWidth: window.innerWidth,
+            innerHeight: window.innerHeight,
+            visualWidth: visualViewport?.width ?? window.innerWidth,
+            visualHeight: visualViewport?.height ?? window.innerHeight,
+            visualOffsetLeft: visualViewport?.offsetLeft ?? 0,
+            visualOffsetTop: visualViewport?.offsetTop ?? 0,
+          }),
+        });
         return;
       }
       const monitorLeft = document
@@ -147,9 +175,13 @@ export function ProductPickerPopover({
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
+    window.visualViewport?.addEventListener('resize', updatePosition);
+    window.visualViewport?.addEventListener('scroll', updatePosition);
     return () => {
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
+      window.visualViewport?.removeEventListener('resize', updatePosition);
+      window.visualViewport?.removeEventListener('scroll', updatePosition);
     };
   }, [open]);
 
@@ -157,31 +189,30 @@ export function ProductPickerPopover({
     if (library.serverSearch) {
       // Never expose hits belonging to the previous debounced query. A quick
       // type -> Enter must not add a stale canonical ingredient.
-      const catalog = globalCatalog.isSettled ? preserveServerProductRank(
-        globalCatalog.hits,
-        globalCatalog.preferences,
-      ).map((hit) => ({
-        id: hit.entityKind === 'pi_base'
-          ? `mapper:${hit.mappedIngredientId ?? hit.id}`
-          : `catalog:${hit.id}`,
-        name: hit.displayName,
-        detail: hit.productForm ?? hit.brand ?? hit.canonicalFamily ?? 'Produkt',
-        entityKind: hit.entityKind,
-        status: hit.status,
-        favorite: hit.favorite,
-        market: hit.markets[0] ?? null,
-        originalName: hit.originalName,
-        catalog: hit,
-        verification: productPickerVerificationView(hit, scope),
-        group: hit.group,
-        selectable: scope === 'BASE_FORMULATION' ? hit.usableInBase : hit.usableAsTopping,
-      })) : [];
+      const catalog = globalCatalog.isSettled
+        ? preserveServerProductRank(globalCatalog.hits, globalCatalog.preferences).map((hit) => ({
+            id:
+              hit.entityKind === 'pi_base'
+                ? `mapper:${hit.mappedIngredientId ?? hit.id}`
+                : `catalog:${hit.id}`,
+            name: hit.displayName,
+            detail: hit.productForm ?? hit.brand ?? hit.canonicalFamily ?? 'Produkt',
+            entityKind: hit.entityKind,
+            status: hit.status,
+            favorite: hit.favorite,
+            market: hit.markets[0] ?? null,
+            originalName: hit.originalName,
+            catalog: hit,
+            verification: productPickerVerificationView(hit, scope),
+            group: hit.group,
+            selectable: scope === 'BASE_FORMULATION' ? hit.usableInBase : hit.usableAsTopping,
+          }))
+        : [];
       // The RPC is relevance-first. Do not sort or filter by presentation group
       // afterwards: multilingual and typo hits must retain server authority.
       // Legacy owner-private `library.products` are deliberately absent here;
       // they are neither shared-catalog UUIDs nor automatically VERIFIED.
-      const relevant = catalog
-        .filter((option) => !favoritesOnly || option.favorite);
+      const relevant = catalog.filter((option) => !favoritesOnly || option.favorite);
       return [...new Map(relevant.map((option) => [option.id, option])).values()];
     }
     return filterIngredients(library.ingredients, query, library.searchIndex).map((item) => ({
@@ -198,7 +229,15 @@ export function ProductPickerPopover({
       selectable: true,
       verification: { status: 'PINGÜINO — SPRAWDZONY' as const, reason: null },
     }));
-  }, [favoritesOnly, globalCatalog.hits, globalCatalog.isSettled, globalCatalog.preferences, library, query, scope]);
+  }, [
+    favoritesOnly,
+    globalCatalog.hits,
+    globalCatalog.isSettled,
+    globalCatalog.preferences,
+    library,
+    query,
+    scope,
+  ]);
   const safeActiveIndex =
     options.length === 0 ? 0 : Math.min(Math.max(activeIndex, 0), options.length - 1);
 
@@ -271,7 +310,9 @@ export function ProductPickerPopover({
       let ingredient: RecipeToppingIngredient | null = option.local ?? null;
       if (!ingredient && option.catalog) {
         if (option.catalog.mappedIngredientId) {
-          ingredient = await getEngineApprovedIngredientById(option.catalog.mappedIngredientId).then((row) =>
+          ingredient = await getEngineApprovedIngredientById(
+            option.catalog.mappedIngredientId,
+          ).then((row) =>
             row
               ? option.catalog?.entityKind === 'pi_base'
                 ? ingredientRowToEngineIngredient(row)
@@ -290,11 +331,11 @@ export function ProductPickerPopover({
         setUnavailableNotice(
           option.catalog
             ? exactProductPickerTechnicalReason(
-              option.catalog,
-              scope,
-              'current Base selection authority',
-              'Odśwież wyszukiwanie i wybierz aktualną wersję produktu ponownie.',
-            )
+                option.catalog,
+                scope,
+                'current Base selection authority',
+                'Odśwież wyszukiwanie i wybierz aktualną wersję produktu ponownie.',
+              )
             : `Produkt ${option.name} · ID ${option.id} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'} · pole current Base selection authority. Odśwież wyszukiwanie i wybierz ponownie.`,
         );
         return;
@@ -305,21 +346,26 @@ export function ProductPickerPopover({
           ? option.catalog.entityKind === 'pi_base' && option.catalog.mappedIngredientId
             ? { entityKind: 'mapper' as const, entityId: option.catalog.mappedIngredientId }
             : option.catalog.currentVersionId
-            ? { entityKind: 'catalog_product_version' as const, entityId: option.catalog.currentVersionId }
-            : null
+              ? {
+                  entityKind: 'catalog_product_version' as const,
+                  entityId: option.catalog.currentVersionId,
+                }
+              : null
           : {
               entityKind: 'mapper' as const,
               entityId: canonicalIngredientId(ingredient as EngineIngredient),
             };
         if (entity === null) {
-          setUnavailableNotice(option.catalog
-            ? exactProductPickerTechnicalReason(
-              option.catalog,
-              scope,
-              'currentVersionId',
-              'Odśwież produkt i utwórz aktualną niezmienną wersję danych.',
-            )
-            : `Produkt ${option.name} · ID ${option.id} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'} · pole currentVersionId. Odśwież produkt.`);
+          setUnavailableNotice(
+            option.catalog
+              ? exactProductPickerTechnicalReason(
+                  option.catalog,
+                  scope,
+                  'currentVersionId',
+                  'Odśwież produkt i utwórz aktualną niezmienną wersję danych.',
+                )
+              : `Produkt ${option.name} · ID ${option.id} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'} · pole currentVersionId. Odśwież produkt.`,
+          );
           return;
         }
         const resolved = await resolveProductBehaviorForSelection({
@@ -335,11 +381,11 @@ export function ProductPickerPopover({
           setUnavailableNotice(
             option.catalog
               ? exactProductPickerTechnicalReason(
-                option.catalog,
-                scope,
-                'ProductBehavior server authority',
-                'Spróbuj ponownie; jeśli błąd się powtarza, wróć do receptury.',
-              )
+                  option.catalog,
+                  scope,
+                  'ProductBehavior server authority',
+                  'Spróbuj ponownie; jeśli błąd się powtarza, wróć do receptury.',
+                )
               : `Produkt ${option.name} · ID ${option.id} · Mapper ${entity.entityId} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'} · pole ProductBehavior server authority. Spróbuj ponownie.`,
           );
           return;
@@ -349,9 +395,13 @@ export function ProductPickerPopover({
           return;
         }
         if (!option.catalog && !library.serverSearch) {
-          const mapperRow = await getEngineApprovedIngredientById(entity.entityId).catch(() => null);
+          const mapperRow = await getEngineApprovedIngredientById(entity.entityId).catch(
+            () => null,
+          );
           if (!mapperRow) {
-            setUnavailableNotice('Składnik demonstracyjny nie ma aktualnie dostępnego odpowiednika PINGÜINO Base.');
+            setUnavailableNotice(
+              'Składnik demonstracyjny nie ma aktualnie dostępnego odpowiednika PINGÜINO Base.',
+            );
             return;
           }
           ingredient = ingredientRowToEngineIngredient(mapperRow);
@@ -372,9 +422,10 @@ export function ProductPickerPopover({
         // backend must never turn a valid ingredient selection into an error.
         void markCatalogProductUsed({
           entityKind: option.entityKind,
-          id: option.entityKind === 'pi_base'
-            ? (option.catalog?.mappedIngredientId ?? option.id.replace(/^mapper:/,''))
-            : (option.catalog?.id ?? option.id.replace(/^catalog:/,'')),
+          id:
+            option.entityKind === 'pi_base'
+              ? (option.catalog?.mappedIngredientId ?? option.id.replace(/^mapper:/, ''))
+              : (option.catalog?.id ?? option.id.replace(/^catalog:/, '')),
         }).catch(() => undefined);
       }
       close(selection?.focusLineId);
@@ -387,17 +438,24 @@ export function ProductPickerPopover({
   const listId = `product-picker-${scope.toLowerCase()}-${pickerInstanceId}`;
   const dialogId = `${listId}-dialog`;
   const anchored = position?.desktop === true;
-  const dialogStyle: CSSProperties | undefined = anchored
-    ? {
-        left: position.left,
-        top: position.top,
-        width: position.width,
-        height: position.height,
-      }
+  const dialogStyle: CSSProperties | undefined = position
+    ? anchored
+      ? {
+          left: position.left,
+          top: position.top,
+          width: position.width,
+          height: position.height,
+        }
+      : {
+          left: position.left,
+          bottom: position.bottom,
+          width: position.width,
+          height: position.height,
+        }
     : undefined;
   return (
     <div className={cn('relative', className)} data-picker-scope={scope}>
-                         <button
+      <button
         ref={triggerRef}
         type="button"
         className={cn(
@@ -430,7 +488,7 @@ export function ProductPickerPopover({
         ? createPortal(
             <>
               <div
-                className="fixed inset-0 z-[89] bg-black/10 lg:bg-transparent"
+                className="fixed inset-0 z-[89] bg-black/10 xl:bg-transparent"
                 aria-hidden="true"
                 onPointerDown={(event) => {
                   // The anchored picker visually overlaps the workbench but PI
@@ -448,10 +506,10 @@ export function ProductPickerPopover({
                   'shadow-pro-e3 fixed z-[90] flex flex-col overflow-hidden rounded-2xl border border-ink/12 bg-white 2xl:border-[3px] 2xl:!border-transparent 2xl:bg-transparent 2xl:!shadow-none',
                   anchored
                     ? 'translate-x-0 translate-y-0'
-                    : 'left-1/2 top-1/2 h-[min(29.75rem,calc(100dvh-2rem))] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2',
+                    : 'inset-x-2 bottom-2 h-[calc(100dvh-1rem)] rounded-b-none rounded-t-[22px] pb-[env(safe-area-inset-bottom)] [padding-left:env(safe-area-inset-left)] [padding-right:env(safe-area-inset-right)] [overscroll-behavior:contain]',
                 )}
                 style={dialogStyle}
-                data-picker-position={anchored ? 'anchored' : 'modal'}
+                data-picker-position={anchored ? 'anchored' : 'keyboard-safe-sheet'}
                 role="dialog"
                 aria-modal="true"
                 aria-label={label}
@@ -499,14 +557,18 @@ export function ProductPickerPopover({
                         aria-autocomplete="list"
                         aria-expanded="true"
                         aria-controls={listId}
-                        aria-activedescendant={options.length > 0 ? `${listId}-${options[safeActiveIndex]?.id}` : undefined}
+                        aria-activedescendant={
+                          options.length > 0
+                            ? `${listId}-${options[safeActiveIndex]?.id}`
+                            : undefined
+                        }
                         aria-label={`Szukaj produktu — ${label}`}
                         placeholder="Szukaj produktu, marki lub ID…"
                         value={query}
-                         onChange={(event) => {
-                           setQuery(event.currentTarget.value);
-                           setActiveIndex(0);
-                           setUnavailableNotice(null);
+                        onChange={(event) => {
+                          setQuery(event.currentTarget.value);
+                          setActiveIndex(0);
+                          setUnavailableNotice(null);
                         }}
                         className="h-11 w-full rounded-xl border border-ink/15 bg-stone-50 px-3 pr-11 text-sm text-ink outline-none focus:border-gold focus:ring-2 focus:ring-gold/18 2xl:h-[38px] 2xl:border-gold/55 2xl:ring-1 2xl:ring-gold/18"
                       />
@@ -515,10 +577,10 @@ export function ProductPickerPopover({
                           type="button"
                           aria-label="Wyczyść wyszukiwanie"
                           data-testid="product-picker-clear"
-                           onClick={() => {
-                             setQuery('');
-                             setActiveIndex(0);
-                             setUnavailableNotice(null);
+                          onClick={() => {
+                            setQuery('');
+                            setActiveIndex(0);
+                            setUnavailableNotice(null);
                             inputRef.current?.focus();
                           }}
                           className="pro-focus-ring absolute right-1 top-1 grid size-9 place-items-center rounded-lg text-base font-semibold text-stone-600 hover:bg-stone-100 hover:text-ink"
@@ -527,69 +589,87 @@ export function ProductPickerPopover({
                         </button>
                       ) : null}
                     </div>
-                    <div className="mt-1 flex min-h-7 items-center gap-1.5 overflow-x-auto 2xl:h-[18px] 2xl:min-h-0" aria-label={library.serverSearch ? 'Filtry katalogu' : undefined}>
-                      <p className="mr-auto shrink-0 text-xs text-stone-600 2xl:text-[10px]" role="status" aria-live="polite">
+                    <div
+                      className="mt-1 flex min-h-7 items-center gap-1.5 overflow-x-auto 2xl:h-[18px] 2xl:min-h-0"
+                      aria-label={library.serverSearch ? 'Filtry katalogu' : undefined}
+                    >
+                      <p
+                        className="mr-auto shrink-0 text-xs text-stone-600 2xl:text-[10px]"
+                        role="status"
+                        aria-live="polite"
+                      >
                         {library.serverSearch && query.trim() && !globalCatalog.isSettled
                           ? 'Szukam…'
                           : `${options.length} wyników`}
                       </p>
                       {library.serverSearch ? (
                         <>
-                        <button
-                          type="button"
-                          aria-pressed={favoritesOnly}
-                          onClick={() => {
-                            setFavoritesOnly((value) => !value);
-                            setUnavailableNotice(null);
-                          }}
-                          className={cn(
-                            "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2.5 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:px-2 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
-                            favoritesOnly ? 'border-gold bg-gold/12 text-ink' : 'border-ink/12 text-stone-600',
-                          )}
-                        >
-                          <span aria-hidden>★</span> Ulubione
-                        </button>
-                        {[globalCatalog.preferences.primaryMarket, ...globalCatalog.preferences.additionalMarkets]
-                          .filter((value): value is string => Boolean(value))
-                          .slice(0, 2)
-                          .map((market) => (
-                            <button
-                              key={market}
-                              type="button"
-                              aria-pressed={marketFilter === market}
-                              onClick={() => {
-                                setMarketFilter((value) => value === market ? null : market);
-                                setUnavailableNotice(null);
-                              }}
-                              className={cn(
-                                "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2.5 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:px-2 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
-                                marketFilter === market ? 'border-gold bg-gold/12 text-ink' : 'border-ink/12 text-stone-600',
-                              )}
-                            >
-                              {market}
-                            </button>
-                          ))}
-                        <Link
-                          to="/account#product-markets-heading"
-                          className="pro-focus-ring min-h-11 shrink-0 rounded-full px-2 text-[10px] font-semibold text-stone-600 2xl:relative 2xl:min-h-[18px] 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']"
-                          onClick={() => close()}
-                        >
-                          + Rynek
-                        </Link>
-                        <button
-                          type="button"
-                          aria-pressed={marketFilter === '__GLOBAL__'}
-                          onClick={() => {
-                            setMarketFilter((value) => value === '__GLOBAL__' ? null : '__GLOBAL__');
-                            setUnavailableNotice(null);
-                          }}
-                          className={cn(
-                            "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
-                            marketFilter === '__GLOBAL__' ? 'border-gold bg-gold/12 text-ink' : 'border-ink/12 text-stone-600',
-                          )}
-                        >
-                          Cały świat
-                        </button>
+                          <button
+                            type="button"
+                            aria-pressed={favoritesOnly}
+                            onClick={() => {
+                              setFavoritesOnly((value) => !value);
+                              setUnavailableNotice(null);
+                            }}
+                            className={cn(
+                              "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2.5 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:px-2 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
+                              favoritesOnly
+                                ? 'border-gold bg-gold/12 text-ink'
+                                : 'border-ink/12 text-stone-600',
+                            )}
+                          >
+                            <span aria-hidden>★</span> Ulubione
+                          </button>
+                          {[
+                            globalCatalog.preferences.primaryMarket,
+                            ...globalCatalog.preferences.additionalMarkets,
+                          ]
+                            .filter((value): value is string => Boolean(value))
+                            .slice(0, 2)
+                            .map((market) => (
+                              <button
+                                key={market}
+                                type="button"
+                                aria-pressed={marketFilter === market}
+                                onClick={() => {
+                                  setMarketFilter((value) => (value === market ? null : market));
+                                  setUnavailableNotice(null);
+                                }}
+                                className={cn(
+                                  "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2.5 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:px-2 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
+                                  marketFilter === market
+                                    ? 'border-gold bg-gold/12 text-ink'
+                                    : 'border-ink/12 text-stone-600',
+                                )}
+                              >
+                                {market}
+                              </button>
+                            ))}
+                          <Link
+                            to="/account#product-markets-heading"
+                            className="pro-focus-ring min-h-11 shrink-0 rounded-full px-2 text-[10px] font-semibold text-stone-600 2xl:relative 2xl:min-h-[18px] 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']"
+                            onClick={() => close()}
+                          >
+                            + Rynek
+                          </Link>
+                          <button
+                            type="button"
+                            aria-pressed={marketFilter === '__GLOBAL__'}
+                            onClick={() => {
+                              setMarketFilter((value) =>
+                                value === '__GLOBAL__' ? null : '__GLOBAL__',
+                              );
+                              setUnavailableNotice(null);
+                            }}
+                            className={cn(
+                              "pro-focus-ring min-h-11 shrink-0 rounded-full border px-2 text-[10px] font-semibold 2xl:relative 2xl:min-h-[18px] 2xl:text-[9px] 2xl:after:absolute 2xl:after:-inset-y-[3px] 2xl:after:inset-x-0 2xl:after:content-['']",
+                              marketFilter === '__GLOBAL__'
+                                ? 'border-gold bg-gold/12 text-ink'
+                                : 'border-ink/12 text-stone-600',
+                            )}
+                          >
+                            Cały świat
+                          </button>
                         </>
                       ) : null}
                     </div>
@@ -618,137 +698,164 @@ export function ProductPickerPopover({
                           (list.scrollTop / maxScroll) * Math.max(0, list.clientHeight - height);
                         setScrollThumb({ top, height, visible: true });
                         if (
-                          library.serverSearch
-                          && globalCatalog.hasMore
-                          && !globalCatalog.isFetching
-                          && list.scrollTop + list.clientHeight >= list.scrollHeight - 80
+                          library.serverSearch &&
+                          globalCatalog.hasMore &&
+                          !globalCatalog.isFetching &&
+                          list.scrollTop + list.clientHeight >= list.scrollHeight - 80
                         ) {
                           globalCatalog.loadMore();
                         }
                       }}
                     >
-                    {options.length === 0 ? (
-                      <p className="px-3 py-5 text-sm text-stone-600">
-                        {query.trim()
-                          ? 'Brak wyników. Zmień wyszukiwanie.'
-                          : 'Zacznij wpisywać nazwę produktu.'}
-                      </p>
-                    ) : (
-                      options.map((option, index) => (
-                        <Fragment key={option.id}>
-                        {index === 0 || options[index - 1]?.group !== option.group ? (
-                          <p role="presentation" className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-                            {GROUP_LABELS[option.group]}
-                          </p>
-                        ) : null}
-                        <div
-                          role="presentation"
-                          className={cn(
-                            'flex min-h-11 w-full items-center rounded-xl lg:min-h-[38px] lg:rounded-lg',
-                            index === safeActiveIndex
-                              ? 'bg-education-ivory text-ink'
-                              : 'hover:bg-stone-50',
-                            !option.selectable ? 'cursor-not-allowed opacity-60' : '',
-                          )}
-                          onMouseEnter={() => setActiveIndex(index)}
-                        >
-                          <button
-                            id={`${listId}-${option.id}`}
-                            type="button"
-                            role="option"
-                            aria-selected={index === safeActiveIndex}
-                            aria-disabled={!option.selectable}
-                            aria-label={
-                              `${option.name}. ${option.verification.status}. ${
-                                option.selectable ? 'Dostępny w wybranym zakresie' : 'RED, wymaga uzupełnienia'
-                              }${!option.selectable && option.catalog
-                                ? `. Niedostępny. ${productPickerUnavailableReason(scope, option.catalog)}`
-                                : ''}`
-                            }
-                            data-option-index={index}
-                            data-entity-kind={option.catalog?.entityKind}
-                            data-product-id={option.catalog?.id}
-                            data-product-version-id={option.catalog?.currentVersionId ?? undefined}
-                            data-mapper-id={option.catalog?.mappedIngredientId ?? undefined}
-                            data-product-form={option.catalog?.productForm ?? undefined}
-                            title={
-                              option.verification.reason
-                                ? option.verification.reason
-                              : !option.selectable && option.catalog
-                                ? productPickerUnavailableReason(scope, option.catalog)
-                              : option.status === 'pi_base'
-                                ? 'PINGÜINO Base'
-                                : option.status === 'verified'
-                                  ? 'Zweryfikowany — dane etykiety potwierdzone'
-                                  : option.status === 'manual_unverified'
-                                    ? 'Dodany manualnie · Niezweryfikowany'
-                                    : `Nie można zweryfikować${option.catalog && (option.catalog.missingFields.length + option.catalog.invalidFields.length) > 0 ? `: ${[...option.catalog.missingFields, ...option.catalog.invalidFields].join(', ')}` : ''}`
-                            }
-                            className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left lg:py-1.5 2xl:pl-[11px] 2xl:pr-1"
-                            onClick={() => void choose(option)}
-                          >
-                     <span
-                            aria-label={
-                              option.verification.status
-                            }
-                            className={cn(
-                              'grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold',
-                              !option.selectable ? 'bg-red-100 text-red-700' :
-                                option.verification.status === 'PINGÜINO — SPRAWDZONY'
-                                  ? 'bg-status-ideal/12 text-status-ideal' :
-                                  option.entityKind === 'pi_base' ? 'bg-gold/16 text-gold' :
-                                    'bg-slate-200 text-slate-700',
-                            )}
-                          >
-                            <span aria-hidden>{!option.selectable ? '!' : option.entityKind === 'pi_base' ? 'PI' : option.verification.status === 'PINGÜINO — SPRAWDZONY' ? '✓' : '✎'}</span>
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-semibold">{option.name}</span>
-                            {option.originalName && option.originalName !== option.name ? (
-                              <span className="block truncate text-[10px] text-stone-500">oryg. {option.originalName}</span>
+                      {options.length === 0 ? (
+                        <p className="px-3 py-5 text-sm text-stone-600">
+                          {query.trim()
+                            ? 'Brak wyników. Zmień wyszukiwanie.'
+                            : 'Zacznij wpisywać nazwę produktu.'}
+                        </p>
+                      ) : (
+                        options.map((option, index) => (
+                          <Fragment key={option.id}>
+                            {index === 0 || options[index - 1]?.group !== option.group ? (
+                              <p
+                                role="presentation"
+                                className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500"
+                              >
+                                {GROUP_LABELS[option.group]}
+                              </p>
                             ) : null}
-                          </span>
-                          <span className="flex max-w-[148px] shrink-0 flex-col items-end text-right">
-                            <span className="max-w-full truncate text-[10px] text-stone-600">
-                              {option.market ?? option.detail}
-                            </span>
-                            <span
-                              className="max-w-full truncate font-mono text-[8px] font-semibold tracking-[0.04em] text-stone-500"
-                              data-picker-verification-status={option.verification.status}
-                              title={option.verification.reason ?? option.verification.status}
+                            <div
+                              role="presentation"
+                              className={cn(
+                                'flex min-h-11 w-full items-center rounded-xl xl:min-h-[38px] xl:rounded-lg',
+                                index === safeActiveIndex
+                                  ? 'bg-education-ivory text-ink'
+                                  : 'hover:bg-stone-50',
+                                !option.selectable ? 'cursor-not-allowed opacity-60' : '',
+                              )}
+                              onMouseEnter={() => setActiveIndex(index)}
                             >
-                              {option.verification.status}
-                            </span>
-                          </span>
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={option.favorite ? `Usuń ${option.name} z Ulubionych` : `Dodaj ${option.name} do Ulubionych`}
-                            aria-pressed={option.favorite}
-                            className={cn('pro-focus-ring grid size-11 shrink-0 place-items-center rounded-lg text-base 2xl:size-8', option.favorite ? 'text-gold' : 'text-stone-500')}
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              globalCatalog.toggleFavorite(
-                                option.entityKind,
-                                option.entityKind === 'pi_base'
-                                  ? (option.catalog?.mappedIngredientId ?? option.id.replace(/^mapper:/,''))
-                                  : (option.catalog?.id ?? option.id.replace(/^catalog:/,'')),
-                                !option.favorite,
-                              );
-                            }}
-                          >
-                            <span aria-hidden>{option.favorite ? '★' : '☆'}</span>
-                          </button>
-                        </div>
-                        </Fragment>
-                      ))
-                    )}
-                    {library.serverSearch && globalCatalog.isError ? (
-                      <p className="px-3 py-3 text-xs text-status-error" role="alert">
-                        Nie udało się pobrać produktów. Spróbuj ponownie.
-                      </p>
-                    ) : null}
+                              <button
+                                id={`${listId}-${option.id}`}
+                                type="button"
+                                role="option"
+                                aria-selected={index === safeActiveIndex}
+                                aria-disabled={!option.selectable}
+                                aria-label={`${option.name}. ${option.verification.status}. ${
+                                  option.selectable
+                                    ? 'Dostępny w wybranym zakresie'
+                                    : 'RED, wymaga uzupełnienia'
+                                }${
+                                  !option.selectable && option.catalog
+                                    ? `. Niedostępny. ${productPickerUnavailableReason(scope, option.catalog)}`
+                                    : ''
+                                }`}
+                                data-option-index={index}
+                                data-entity-kind={option.catalog?.entityKind}
+                                data-product-id={option.catalog?.id}
+                                data-product-version-id={
+                                  option.catalog?.currentVersionId ?? undefined
+                                }
+                                data-mapper-id={option.catalog?.mappedIngredientId ?? undefined}
+                                data-product-form={option.catalog?.productForm ?? undefined}
+                                title={
+                                  option.verification.reason
+                                    ? option.verification.reason
+                                    : !option.selectable && option.catalog
+                                      ? productPickerUnavailableReason(scope, option.catalog)
+                                      : option.status === 'pi_base'
+                                        ? 'PINGÜINO Base'
+                                        : option.status === 'verified'
+                                          ? 'Zweryfikowany — dane etykiety potwierdzone'
+                                          : option.status === 'manual_unverified'
+                                            ? 'Dodany manualnie · Niezweryfikowany'
+                                            : `Nie można zweryfikować${option.catalog && option.catalog.missingFields.length + option.catalog.invalidFields.length > 0 ? `: ${[...option.catalog.missingFields, ...option.catalog.invalidFields].join(', ')}` : ''}`
+                                }
+                                className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left xl:py-1.5 2xl:pl-[11px] 2xl:pr-1"
+                                onClick={() => void choose(option)}
+                              >
+                                <span
+                                  aria-label={option.verification.status}
+                                  className={cn(
+                                    'grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold',
+                                    !option.selectable
+                                      ? 'bg-red-100 text-red-700'
+                                      : option.verification.status === 'PINGÜINO — SPRAWDZONY'
+                                        ? 'bg-status-ideal/12 text-status-ideal'
+                                        : option.entityKind === 'pi_base'
+                                          ? 'bg-gold/16 text-gold'
+                                          : 'bg-slate-200 text-slate-700',
+                                  )}
+                                >
+                                  <span aria-hidden>
+                                    {!option.selectable
+                                      ? '!'
+                                      : option.entityKind === 'pi_base'
+                                        ? 'PI'
+                                        : option.verification.status === 'PINGÜINO — SPRAWDZONY'
+                                          ? '✓'
+                                          : '✎'}
+                                  </span>
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-semibold">
+                                    {option.name}
+                                  </span>
+                                  {option.originalName && option.originalName !== option.name ? (
+                                    <span className="block truncate text-[10px] text-stone-500">
+                                      oryg. {option.originalName}
+                                    </span>
+                                  ) : null}
+                                </span>
+                                <span className="flex max-w-[148px] shrink-0 flex-col items-end text-right">
+                                  <span className="max-w-full truncate text-[10px] text-stone-600">
+                                    {option.market ?? option.detail}
+                                  </span>
+                                  <span
+                                    className="max-w-full truncate font-mono text-[8px] font-semibold tracking-[0.04em] text-stone-500"
+                                    data-picker-verification-status={option.verification.status}
+                                    title={option.verification.reason ?? option.verification.status}
+                                  >
+                                    {option.verification.status}
+                                  </span>
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={
+                                  option.favorite
+                                    ? `Usuń ${option.name} z Ulubionych`
+                                    : `Dodaj ${option.name} do Ulubionych`
+                                }
+                                aria-pressed={option.favorite}
+                                className={cn(
+                                  'pro-focus-ring grid size-11 shrink-0 place-items-center rounded-lg text-base 2xl:size-8',
+                                  option.favorite ? 'text-gold' : 'text-stone-500',
+                                )}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  globalCatalog.toggleFavorite(
+                                    option.entityKind,
+                                    option.entityKind === 'pi_base'
+                                      ? (option.catalog?.mappedIngredientId ??
+                                          option.id.replace(/^mapper:/, ''))
+                                      : (option.catalog?.id ?? option.id.replace(/^catalog:/, '')),
+                                    !option.favorite,
+                                  );
+                                }}
+                              >
+                                <span aria-hidden>{option.favorite ? '★' : '☆'}</span>
+                              </button>
+                            </div>
+                          </Fragment>
+                        ))
+                      )}
+                      {library.serverSearch && globalCatalog.isError ? (
+                        <p className="px-3 py-3 text-xs text-status-error" role="alert">
+                          Nie udało się pobrać produktów. Spróbuj ponownie.
+                        </p>
+                      ) : null}
                     </div>
                     <span
                       aria-hidden="true"
@@ -761,8 +868,8 @@ export function ProductPickerPopover({
                         height: scrollThumb.height,
                         transform: `translateY(${scrollThumb.top}px)`,
                       }}
-                     />
-                   </div>
+                    />
+                  </div>
                   {unavailableNotice ? (
                     <p
                       className="shrink-0 border-t border-attention/25 bg-pro-amber/35 px-3 py-2 text-xs leading-relaxed text-stone-700"

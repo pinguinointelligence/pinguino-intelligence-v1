@@ -32,6 +32,8 @@ export type IngredientTableMode = 'recipe' | 'production';
 /** Recipe mode only: Ingredient | % + lock | quantity + lock/unit | price | menu. */
 export const ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(202px,1fr)_96px_44px] 2xl:grid-cols-[minmax(300px,1fr)_222px_260px_76px_44px]';
+export const COMPACT_ROW_GRID =
+  'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(202px,1fr)_96px_44px]';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 
@@ -433,6 +435,7 @@ function RecipeRow({
   onDragStart,
   onDrop,
   mainUnavailableReason,
+  compact,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
@@ -446,6 +449,7 @@ function RecipeRow({
   onDragStart?: (lineId: string) => void;
   onDrop?: (lineId: string) => void;
   mainUnavailableReason?: string | null;
+  compact: boolean;
 }) {
   const unit = 'g' as const;
   const [rowMenuOpen, setRowMenuOpen] = useState(false);
@@ -502,7 +506,7 @@ function RecipeRow({
   return (
     <>
       <div
-        className={ROW_GRID}
+        className={compact ? COMPACT_ROW_GRID : ROW_GRID}
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
           event.preventDefault();
@@ -1049,6 +1053,7 @@ export function IngredientRow({
   onDragStart,
   onDrop,
   mainUnavailableReason,
+  compact = false,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
@@ -1107,6 +1112,7 @@ export function IngredientRow({
           onDragStart={onDragStart}
           onDrop={onDrop}
           mainUnavailableReason={mainUnavailableReason}
+          compact={compact}
         />
       )}
     </div>

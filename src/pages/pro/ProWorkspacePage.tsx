@@ -113,11 +113,7 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
   );
 }
 
-function ProTopActions({
-  persona,
-}: {
-  persona: ProCorePersona;
-}) {
+function ProTopActions({ persona }: { persona: ProCorePersona }) {
   const unresolvedRequiredCount = useIngredientTableUxStore(
     (state) => Object.keys(state.unresolvedRequiredByLineId).length,
   );
@@ -194,7 +190,9 @@ function SettingsTab({ persona }: { persona: ProCorePersona }) {
       <div className="flex items-center justify-between gap-4 border-b border-ink/5 pb-3">
         <dt className="text-xs tracking-label text-stone-600 uppercase">{w.settings.access}</dt>
         <dd>
-          <span className="text-sm font-medium text-ink">{persona === 'pro' ? 'Pełny dostęp' : persona}</span>
+          <span className="text-sm font-medium text-ink">
+            {persona === 'pro' ? 'Pełny dostęp' : persona}
+          </span>
         </dd>
       </div>
       <div className="flex items-center justify-between gap-4 border-b border-ink/5 pb-3">
@@ -308,16 +306,19 @@ export function ProWorkspacePage() {
   const isPro = persona === 'pro';
   useLegacyRecipeBehaviorRevalidation(isPro);
   const libraryTemplateId = searchParams.get('libraryTemplate')?.trim() || null;
-  const libraryIntent = searchParams.get('source') === 'flavor_inspiration'
-    || searchParams.get('source') === 'curated_collection'
-    || searchParams.get('source') === 'executable_template';
-  const activeLibraryHandoff = isPro && libraryIntent && !libraryTemplateId
-    ? {
-        state: 'blocked' as const,
-        templateId: null,
-        message: 'Ta inspiracja nie ma jeszcze dokładnego, wykonawczego szablonu. Bieżąca receptura nie została zmieniona.',
-      }
-    : libraryHandoff;
+  const libraryIntent =
+    searchParams.get('source') === 'flavor_inspiration' ||
+    searchParams.get('source') === 'curated_collection' ||
+    searchParams.get('source') === 'executable_template';
+  const activeLibraryHandoff =
+    isPro && libraryIntent && !libraryTemplateId
+      ? {
+          state: 'blocked' as const,
+          templateId: null,
+          message:
+            'Ta inspiracja nie ma jeszcze dokładnego, wykonawczego szablonu. Bieżąca receptura nie została zmieniona.',
+        }
+      : libraryHandoff;
 
   useEffect(() => {
     if (!isPro || !libraryIntent) return;
@@ -347,9 +348,10 @@ export function ProWorkspacePage() {
         setLibraryHandoff({
           state: 'blocked',
           templateId: libraryTemplateId,
-          message: error instanceof ExecutableRecipeHandoffError
-            ? error.message
-            : 'Nie udało się otworzyć dokładnej wersji szablonu.',
+          message:
+            error instanceof ExecutableRecipeHandoffError
+              ? error.message
+              : 'Nie udało się otworzyć dokładnej wersji szablonu.',
         });
       });
     return () => {
@@ -421,7 +423,7 @@ export function ProWorkspacePage() {
     // White precision workspace: presentation-only token remap. The same components,
     // values, content, actions and below-fold review zone remain intact.
     <div
-      className={workbench ? 'theme-pro-light lg:h-dvh' : 'theme-pro-light'}
+      className={workbench ? 'theme-pro-light xl:h-dvh' : 'theme-pro-light'}
       data-testid="pro-light-scope"
     >
       <AppShell
@@ -460,7 +462,7 @@ export function ProWorkspacePage() {
           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
           // viewport belongs to the edit loop; every destination lives in the hamburger.
           <div
-            className="lg:mx-auto lg:flex lg:h-full lg:min-h-0 lg:w-[calc(100%-4rem)] lg:max-w-[1776px] lg:flex-col"
+            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1776px] xl:flex-col"
             data-testid={`pro-panel-${activeTab}`}
           >
             {activeLibraryHandoff.state === 'loading' ? (
@@ -471,31 +473,33 @@ export function ProWorkspacePage() {
               </div>
             ) : (
               <>
-               {activeLibraryHandoff.state === 'blocked' ? (
-              <p
-                className="shrink-0 border-b border-nonprod/25 bg-nonprod/[0.06] px-4 py-2 text-xs font-medium text-nonprod"
-                role="alert"
-                data-testid="pro-library-handoff-blocked"
-              >
-                {activeLibraryHandoff.message}
-              </p>
-               ) : null}
-               {ownerReviewGate ? (
-                 <p
-                   className="shrink-0 border-b border-attention/25 bg-attention/[0.06] px-4 py-2 text-xs font-medium text-attention"
-                   role="status"
-                   data-testid="pro-owner-review-base-only"
-                 >
-                   OWNER_REVIEW_EDITABLE · otwarty jest wyłącznie Base. Produkcja i etykieta pozostają zablokowane; pominięte Toppingi: {ownerReviewGate.omittedToppingLineIds.length}.
-                 </p>
-               ) : null}
-               <RecipeWorkbench
-                activePanel={workbenchTab!}
-                recalcOpen={recalcOpen}
-                onOpenRecalc={() => setRecalcOpen(true)}
-                onRecalculate={startRecalc}
-                onCloseRecalc={() => setRecalcOpen(false)}
-              />
+                {activeLibraryHandoff.state === 'blocked' ? (
+                  <p
+                    className="shrink-0 border-b border-nonprod/25 bg-nonprod/[0.06] px-4 py-2 text-xs font-medium text-nonprod"
+                    role="alert"
+                    data-testid="pro-library-handoff-blocked"
+                  >
+                    {activeLibraryHandoff.message}
+                  </p>
+                ) : null}
+                {ownerReviewGate ? (
+                  <p
+                    className="shrink-0 border-b border-attention/25 bg-attention/[0.06] px-4 py-2 text-xs font-medium text-attention"
+                    role="status"
+                    data-testid="pro-owner-review-base-only"
+                  >
+                    OWNER_REVIEW_EDITABLE · otwarty jest wyłącznie Base. Produkcja i etykieta
+                    pozostają zablokowane; pominięte Toppingi:{' '}
+                    {ownerReviewGate.omittedToppingLineIds.length}.
+                  </p>
+                ) : null}
+                <RecipeWorkbench
+                  activePanel={workbenchTab!}
+                  recalcOpen={recalcOpen}
+                  onOpenRecalc={() => setRecalcOpen(true)}
+                  onRecalculate={startRecalc}
+                  onCloseRecalc={() => setRecalcOpen(false)}
+                />
               </>
             )}
           </div>

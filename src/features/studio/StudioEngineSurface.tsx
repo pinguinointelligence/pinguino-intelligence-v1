@@ -97,7 +97,7 @@ const REVIEW_INVENTORY: readonly ReviewInventoryRow[] = [
 /**
  * StudioEngineSurface — THE one-screen Pro workbench (owner architecture, 2026-07-24).
  *
- * Desktop (lg+): a viewport-filling column that NEVER page-scrolls during normal
+ * Desktop (xl+): a viewport-filling column that NEVER page-scrolls during normal
  * editing — compact settings line (row 2) → editor pane (60–65 %, internal row scroll)
  * beside the LIVE always-visible Monitor PI panel (35–40 %, internal scroll) → compact
  * bottom action bar. The recalculation preview is a compact OVERLAY (`recalcSlot`),
@@ -227,15 +227,15 @@ export function StudioEngineSurface({
       {/* ── ONE-SCREEN WORKBENCH — fills the remaining viewport height on desktop; every
           edit-loop control lives INSIDE this section (owner zero-page-scroll rule). ── */}
       <section
-        className="flex min-h-0 flex-col lg:flex-1 lg:overflow-hidden"
+        className="flex min-h-0 flex-col xl:flex-1 xl:overflow-hidden"
         data-testid="pro-workbench"
       >
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
-        <div className="min-h-0 flex-1 lg:grid lg:h-[min(742px,calc(100dvh-210px))] lg:flex-none lg:grid-cols-[minmax(0,1.66fr)_minmax(420px,1fr)] lg:gap-4 2xl:relative 2xl:ml-0.5 2xl:-mt-0.5 2xl:w-[1761px] 2xl:grid-cols-[1062px_635px] 2xl:gap-16">
+        <div className="min-h-0 flex-1 xl:grid xl:max-h-[var(--pro-workbench-body-max)] xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)] xl:gap-[var(--pro-workbench-gap)]">
           <span
             aria-hidden
             data-testid="workbench-divider-rail"
-            className="pointer-events-none absolute left-[1076px] top-[100px] hidden h-[640px] w-[11px] rounded-full border border-ink/45 bg-white 2xl:block"
+            className="pointer-events-none hidden"
           >
             <span
               className="absolute inset-x-0 top-0 h-8 rounded-full bg-ink"
@@ -243,7 +243,7 @@ export function StudioEngineSurface({
             />
           </span>
           <div
-            className="min-h-0 lg:flex lg:min-w-0 lg:flex-col"
+            className="min-h-0 xl:flex xl:min-w-0 xl:flex-col"
             data-testid="workbench-editor-pane"
           >
             {fullFormula && cockpitTab === 'production' && !productionReady ? (
@@ -266,7 +266,7 @@ export function StudioEngineSurface({
                 </div>
               </section>
             ) : fullFormula ? (
-              <div className="min-h-0 flex-1 lg:overflow-hidden">
+              <div className="min-h-0 flex-1 xl:overflow-hidden">
                 <IngredientBuilder
                   items={result.items}
                   totalBatchG={result.total_batch_g}
@@ -289,7 +289,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
-            className="hidden min-h-0 border-t border-pro-line bg-pro-warm lg:block lg:min-w-0 lg:overflow-hidden lg:border-t-0"
+            className="hidden min-h-0 border-t border-pro-line bg-pro-warm xl:block xl:min-w-0 xl:overflow-hidden xl:border-t-0"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
           >
@@ -306,7 +306,7 @@ export function StudioEngineSurface({
             />
           </aside>
         </div>
-        <div className="shrink-0 border-t border-ink/10 bg-white px-3 py-2 lg:hidden">
+        <div className="shrink-0 border-t border-ink/10 bg-white px-3 py-2 xl:hidden">
           <button
             ref={cockpitTriggerRef}
             type="button"
@@ -321,12 +321,10 @@ export function StudioEngineSurface({
             <span className="font-mono tabular-nums text-gold-soft">{scoreDisplay}</span>
           </button>
         </div>
-        <div className="shrink-0 border-t border-ink/10 lg:mt-2 lg:border-0 2xl:ml-0.5 2xl:mt-9 2xl:w-[1761px]">
-          {recipeBar}
-        </div>
+        <div className="shrink-0 border-t border-ink/10 xl:mt-2 xl:border-0">{recipeBar}</div>
 
         {mobileCockpitOpen ? (
-          <div className="fixed inset-0 z-50 lg:hidden" data-testid="mobile-cockpit-sheet">
+          <div className="fixed inset-0 z-50 xl:hidden" data-testid="mobile-cockpit-sheet">
             <button
               type="button"
               aria-label="Zamknij kokpit"
@@ -339,7 +337,7 @@ export function StudioEngineSurface({
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-cockpit-title"
-              className="absolute inset-x-0 bottom-0 flex max-h-[88dvh] flex-col overflow-hidden rounded-t-[26px] border-t border-white/10 bg-[#17191d] pb-[env(safe-area-inset-bottom)] shadow-pro-e3"
+              className="absolute inset-x-0 bottom-0 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-none flex-col overflow-hidden rounded-t-[26px] border-t border-white/10 bg-[#17191d] pb-[env(safe-area-inset-bottom)] shadow-pro-e3 [overscroll-behavior:contain]"
             >
               <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-3">
                 <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-white">
