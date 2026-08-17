@@ -149,8 +149,10 @@ describe('Base/Topping owner entry points', () => {
     expect(picker).not.toMatch(/data-option-index=\{index\}\s+disabled=/);
     expect(picker).toContain('data-testid="product-picker-unavailable-reason"');
     expect(picker).toContain('option.verification.status');
-    expect(picker).toContain("option.selectable ? 'Dostępny w wybranym zakresie' : 'RED, wymaga uzupełnienia'");
+    expect(picker).toMatch(
+      /option\.selectable\s*\?\s*'Dostępny w wybranym zakresie'\s*:\s*'RED, wymaga uzupełnienia'/,
+    );
     expect(picker).toContain('data-picker-verification-status={option.verification.status}');
-    expect(picker).toContain("!option.selectable ? 'bg-red-100 text-red-700'");
+    expect(picker).toMatch(/!option\.selectable\s*\?\s*'bg-red-100 text-red-700'/);
   });
 });
