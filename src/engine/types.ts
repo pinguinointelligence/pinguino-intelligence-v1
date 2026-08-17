@@ -176,6 +176,10 @@ export interface RecipeItem {
   /** Real production amount (Actual Batch Mode, spec §15). */
   actual_grams: number | null;
   lock_type: LockType;
+  /** Product-layer Main-group ratio authority. Missing means the approved
+   * default equal share; starting grams are never interpreted as a ratio.
+   * Base Engine formulas do not consume this field. */
+  main_ratio_weight?: number;
   /** Product-layer persisted Pro range. Base Engine still sees the conservative
    * grams/Main lock; orchestration rehydrates and verifies these bounds. */
   range_constraint?: { min_grams: number; max_grams: number };

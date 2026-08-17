@@ -8,6 +8,7 @@ import {
   productBehaviorTerminal,
   runPiRecalculationWithTerminal,
   serverBehaviorPreviewIssue,
+  unlockConstraintAndRecalculate,
   useConstraintStudioStore,
   type PreviewIssue,
 } from '@/features/constraint-studio/constraintStudioStore';
@@ -128,16 +129,22 @@ describe('PI visible terminal contract', () => {
     expect(document.body.textContent).toContain('Przejdź do ustawień');
   });
 
-  it('renders an impossible result as a lock-change terminal with a recovery action', async () => {
+  it('renders an impossible result with exact lock facts and both recovery actions', async () => {
+    const line = useRecipeStore.getState().items[0]!;
     useConstraintStudioStore.setState({
       previewIssue: {
         ok: false,
         code: 'impossible_under_constraints',
-        conflict: null,
-        hardViolatedMetrics: [],
-        residualViolatedMetrics: [],
+        conflict: {
+          lineId: line.id,
+          ingredientName: line.ingredient.name,
+          kind: 'locked',
+          grams: 900,
+        },
+        hardViolatedMetrics: ['ice_fraction'],
+        residualViolatedMetrics: ['ice_fraction'],
         capReached: false,
-        nearestFeasibleGrams: null,
+        nearestFeasibleGrams: 639,
         alternativeProductType: null,
         solverInvocations: 1,
         iteration: {} as never,
@@ -151,8 +158,29 @@ describe('PI visible terminal contract', () => {
     });
     await renderPanel();
 
-    expect(document.body.textContent).toContain('Przy obecnych ograniczeniach');
-    expect(document.body.textContent).toContain('Wróć do blokad receptury');
+    expect(document.body.textContent).toContain(line.ingredient.name);
+    expect(document.body.textContent).toContain('900 g');
+    expect(document.body.textContent).toContain('639 g');
+    expect(document.body.textContent).toContain('udział lodu');
+    expect(document.body.textContent).toContain('Odblokuj i pokaż podgląd');
+    expect(document.body.textContent).toContain('Wróć do receptury');
+  });
+
+  it('releases only the chosen quantity lock before rerunning PI', async () => {
+    const line = useRecipeStore.getState().items[0]!;
+    useConstraintStudioStore.getState().toggleLock(line.id);
+    expect(useConstraintStudioStore.getState().constraints.byLineId[line.id]?.mode).toBe('locked');
+
+    await unlockConstraintAndRecalculate(line.id, async () => {
+      useConstraintStudioStore.setState({ recalculationTerminal: { state: 'NO_CHANGE_NEEDED' } });
+    });
+
+    expect(useConstraintStudioStore.getState().constraints.byLineId[line.id]).toBeUndefined();
+    expect(useRecipeStore.getState().items.find((item) => item.id === line.id)?.grams_constraint)
+      .toBeUndefined();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
   });
 
   it('renders a return action for generic optimizer failures', async () => {

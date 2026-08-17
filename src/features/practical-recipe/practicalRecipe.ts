@@ -289,7 +289,11 @@ function protectionFor(
   return 'editable';
 }
 
-function mainIntegerCandidates(exactInput: RecipeInput, rounded: RecipeInput): RecipeInput | null {
+function mainIntegerCandidates(
+  exactInput: RecipeInput,
+  rounded: RecipeInput,
+  set: ConstraintSet,
+): RecipeInput | null {
   const mainIndexes = exactInput.items
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => item.lock_type === 'main' && item.planned_grams > 0);
@@ -334,7 +338,7 @@ function mainIntegerCandidates(exactInput: RecipeInput, rounded: RecipeInput): R
     mainIndexes.forEach(({ index }, position) => {
       candidate.items[index] = { ...candidate.items[index]!, planned_grams: chosen[position]! };
     });
-    if (!verifyMainIngredientIdentity(exactInput, candidate).ok) return;
+    if (!verifyMainIngredientIdentity(exactInput, candidate, set.byLineId).ok) return;
     const error = mainIndexes.reduce(
       (sum, { item }, position) => sum + Math.abs(chosen[position]! - item.planned_grams),
       0,
@@ -623,7 +627,7 @@ export function practicalizeRecipeCandidate(
     };
   }
 
-  const withMain = mainIntegerCandidates(exact, rounded);
+  const withMain = mainIntegerCandidates(exact, rounded, set);
   if (withMain === null) {
     const mainIds = exact.items.filter((item) => item.lock_type === 'main').map((item) => item.id);
     return block(
@@ -664,7 +668,7 @@ export function practicalizeRecipeCandidate(
     );
   }
 
-  const main = verifyMainIngredientIdentity(exact, executable);
+  const main = verifyMainIngredientIdentity(exact, executable, set.byLineId);
   if (!main.ok) {
     return block(
       exact,

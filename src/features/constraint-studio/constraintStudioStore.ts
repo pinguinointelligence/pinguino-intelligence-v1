@@ -1619,6 +1619,18 @@ export async function runPiRecalculationWithTerminal(
   }
 }
 
+/** Explicit operator-authorized lock release. The action clears only the
+ * selected §17 quantity constraint (the Main crown/identity is preserved by
+ * `clearConstraint`) and then enters the same server-authority PI pipeline as
+ * the normal button. The injectable runner is a focused-test seam. */
+export async function unlockConstraintAndRecalculate(
+  lineId: string,
+  run?: () => Promise<void>,
+): Promise<void> {
+  useConstraintStudioStore.getState().clearConstraint(lineId);
+  await runPiRecalculationWithTerminal(run);
+}
+
 export async function createBatchRescalePreviewWithServerAuthority(
   grams: number,
 ): Promise<void> {

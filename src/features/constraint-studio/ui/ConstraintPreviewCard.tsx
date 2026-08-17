@@ -10,6 +10,7 @@ import {
   formatGramsDeltaPl,
   formatGramsPl,
 } from '../constraintStudioCopy';
+import { mainObjectiveSummaryPl } from '../mainObjectivePresentation';
 import {
   customerFormulationSourcePl,
   customerSolverSourcePl,
@@ -122,6 +123,7 @@ export function ConstraintPreviewCard({
   // Owner addendum item 4 — the trustless outcome classification.
   const outcome = preview.outcomeClassification;
   const selectedDirection = directionSummary(preview);
+  const mainObjectiveSummary = mainObjectiveSummaryPl(preview);
   const protectedFacts = [
     [
       'Blokady',
@@ -170,6 +172,15 @@ export function ConstraintPreviewCard({
           {preview.substitution.changesMainIdentity
             ? ' Zmienia tożsamość składnika Głównego i wymaga jawnej zgody przed Apply.'
             : ' Rola technologiczna i reguły bezpieczeństwa pozostają sprawdzane przez Apply.'}
+        </div>
+      ) : null}
+
+      {mainObjectiveSummary ? (
+        <div
+          className="mt-3 rounded-lg border border-gold-soft/25 bg-gold-soft/[0.055] px-3 py-2.5 text-xs leading-relaxed text-ivory/80"
+          data-testid="preview-main-technical-maximum"
+        >
+          {mainObjectiveSummary}
         </div>
       ) : null}
 

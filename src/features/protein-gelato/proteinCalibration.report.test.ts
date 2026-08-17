@@ -226,7 +226,10 @@ const fixtures: readonly {
   },
   {
     name: 'Strawberry + Banana 2:1 −13',
-    input: recipe(-13, [main('main-strawberry', RASPBERRY, 120), main('main-banana', BANANA, 60)]),
+    input: recipe(-13, [
+      { ...main('main-strawberry', RASPBERRY, 120), main_ratio_weight: 2 },
+      { ...main('main-banana', BANANA, 60), main_ratio_weight: 1 },
+    ]),
     expectedMain: [
       ['main-strawberry', 120],
       ['main-banana', 60],
@@ -248,12 +251,17 @@ describe('Protein Gelato calibration report', () => {
       const exact10 = target.hardSafe && target.reached;
       if (target.hardSafe) expect(violations).toEqual([]);
       else expect(violations.length).toBeGreaterThan(0);
-      const mainScales = fixture.expectedMain.map(([id, grams]) => {
+      const proposedMain = fixture.expectedMain.map(([id, grams]) => {
         const proposedGrams = proposed.items.find((item) => item.id === id)?.planned_grams;
         expect(proposedGrams).toBeGreaterThanOrEqual(grams);
-        return proposedGrams! / grams;
+        return { grams, proposedGrams: proposedGrams! };
       });
-      for (const scale of mainScales.slice(1)) expect(scale).toBeCloseTo(mainScales[0]!, 7);
+      const expectedMainTotal = proposedMain.reduce((sum, item) => sum + item.grams, 0);
+      const proposedMainTotal = proposedMain.reduce((sum, item) => sum + item.proposedGrams, 0);
+      for (const item of proposedMain) {
+        const exactShare = proposedMainTotal * (item.grams / expectedMainTotal);
+        expect(Math.abs(item.proposedGrams - exactShare)).toBeLessThanOrEqual(1);
+      }
       if (fixture.expectedMain.length > 0) {
         expect(built.preview.mainObjective).toMatchObject({
           startingMainGrams: fixture.expectedMain.reduce((sum, [, grams]) => sum + grams, 0),

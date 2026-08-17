@@ -34,7 +34,16 @@ export function customerPreviewIssueMessagePl(issue: PreviewIssue): string {
     const nearestPart = issue.nearestFeasibleGrams !== null && issue.conflict
       ? ` Najbliższa wykonalna wartość dla „${issue.conflict.ingredientName}”: ${formatGramsPl(issue.nearestFeasibleGrams)}.`
       : '';
-    return `${conflictPart}${searchPart}${nearestPart}`;
+    const metrics = [...new Set([
+      ...issue.hardViolatedMetrics,
+      ...issue.residualViolatedMetrics,
+    ])];
+    const metricPart = metrics.length > 0
+      ? ` Parametry techniczne poza zakresem: ${metrics.map(
+          (metric) => constraintStudioCopy.diagnosis.metricLabels[metric] ?? metric,
+        ).join(', ')}.`
+      : '';
+    return `${conflictPart}${searchPart}${nearestPart}${metricPart}`;
   }
   return previewIssueMessagePl(issue);
 }

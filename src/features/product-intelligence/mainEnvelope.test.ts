@@ -190,23 +190,23 @@ describe('versioned Main envelope', () => {
     expect(verifyMainEnvelope({ recipe: recipe(300, 301), snapshots: snapshots(), mode: 'optimal' }).ok).toBe(true);
   });
 
-  it('blocks below floor, above OPTIMAL ceiling and above the hard limit', () => {
-    expect(verifyMainEnvelope({ recipe: recipe(249, 400), snapshots: snapshots(), mode: 'eco' })).toMatchObject({ ok: false, violations: [expect.objectContaining({ code: 'main_below_floor' })] });
-    expect(verifyMainEnvelope({ recipe: recipe(351, 400), snapshots: snapshots(), mode: 'optimal' })).toMatchObject({ ok: false, violations: expect.arrayContaining([expect.objectContaining({ code: 'main_above_optimal_ceiling' })]) });
-    expect(verifyMainEnvelope({ recipe: recipe(451, 400), snapshots: snapshots(), mode: 'eco' })).toMatchObject({ ok: false, violations: expect.arrayContaining([expect.objectContaining({ code: 'main_above_hard_limit' })]) });
+  it('does not use historical sensory floor/ceiling/hard values as technical eligibility gates', () => {
+    expect(verifyMainEnvelope({ recipe: recipe(249, 400), snapshots: snapshots(), mode: 'eco' }).ok).toBe(true);
+    expect(verifyMainEnvelope({ recipe: recipe(351, 400), snapshots: snapshots(), mode: 'optimal' }).ok).toBe(true);
+    expect(verifyMainEnvelope({ recipe: recipe(451, 400), snapshots: snapshots(), mode: 'eco' }).ok).toBe(true);
   });
 
-  it('caps the OPTIMAL search at the policy ceiling rather than the Engine frontier', () => {
-    expect(mainEnvelopeSearchCeilingGrams({ recipe: recipe(250, 400), snapshots: snapshots() })).toBe(350);
+  it('leaves the Main search ceiling to technical feasibility rather than a sensory policy', () => {
+    expect(mainEnvelopeSearchCeilingGrams({ recipe: recipe(250, 400), snapshots: snapshots() })).toBeNull();
   });
 
-  it('uses concentration-equivalent mass and refuses an unapproved mixed family', () => {
+  it('does not turn concentration factors or mixed-family policy metadata into technical gates', () => {
     const compoundRecipe = recipe(500, 300);
     expect(verifyMainEnvelope({
       recipe: compoundRecipe,
       snapshots: snapshots({ berry: snapshot('berry', { mainEquivalentFactor: 0.3 }) }),
       mode: 'optimal',
-    })).toMatchObject({ ok: false, violations: [expect.objectContaining({ code: 'main_below_floor' })] });
+    }).ok).toBe(true);
 
     const mixed: RecipeInput = {
       ...recipe(200, 400),
@@ -225,7 +225,7 @@ describe('versioned Main envelope', () => {
         }),
       }),
       mode: 'optimal',
-    })).toMatchObject({ ok: false, violations: [expect.objectContaining({ code: 'multi_main_policy_unknown' })] });
+    }).ok).toBe(true);
   });
 
   it.each([
@@ -271,14 +271,10 @@ describe('versioned Main envelope', () => {
       },
       mode: 'optimal',
     });
-    expect(result).toMatchObject({
-      ok: true,
-      policyId: 'main-vegan-fruit-combination-v2',
-    });
-    expect(result.ok && result.equivalentPercent).toBeCloseTo(firstGrams + secondGrams === 802 ? 80.2 : 82.5, 8);
+    expect(result).toMatchObject({ ok: true, policyId: null, equivalentPercent: null });
   });
 
-  it('caps same-family Multi-Main search at the shared group limit regardless of the first line', () => {
+  it('does not cap same-family Multi-Main search at a historical shared sensory limit', () => {
     const baseRecipe = recipe(400, 0);
     const multiRecipe: RecipeInput = {
       ...baseRecipe,
@@ -313,7 +309,7 @@ describe('versioned Main envelope', () => {
         berry: groupSnapshot('berry', 74.7),
         banana: groupSnapshot('banana', 86),
       },
-    })).toBe(825);
+    })).toBeNull();
   });
 
   it('does not apply the ordinary dairy carrier gate to a profile policy that does not require it', () => {

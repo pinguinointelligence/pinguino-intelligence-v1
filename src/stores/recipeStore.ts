@@ -351,6 +351,12 @@ export interface RecipeState {
   clearRangeLock: (lineId: string) => void;
   /** Adds one line to the Main ingredient set; existing Main lines stay Main. */
   setMainIngredient: (lineId: string) => void;
+  /** Removes only the Main crown. Independent gram/percent/range constraints
+   * remain exact and become the line's visible lock type. */
+  setStandardIngredient: (lineId: string) => void;
+  /** Persist an explicit positive Main-group ratio weight. `null` restores the
+   * deterministic equal-share default and never derives a ratio from grams. */
+  setMainRatioWeight: (lineId: string, weight: number | null) => void;
   /** Atomically replace goal + ingredients with a curated demo scenario. */
   loadPreset: (preset: DemoPreset) => void;
   /** Atomically load a saved recipe's RecipeInput (the stored source of truth) and LINK it to
@@ -1346,6 +1352,7 @@ export const useRecipeStore = create<RecipeState>()(
                   delete withoutRange.range_constraint;
                   delete withoutRange.percent_constraint;
                   delete withoutRange.grams_constraint;
+                  if (lockType !== 'main') delete withoutRange.main_ratio_weight;
                   return { ...withoutRange, lock_type: lockType };
                 })()
               : item,
@@ -1462,6 +1469,40 @@ export const useRecipeStore = create<RecipeState>()(
             draftRevision: state.draftRevision + 1,
           };
         }),
+
+      setStandardIngredient: (lineId) =>
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.id !== lineId || item.lock_type !== 'main') return item;
+            const next = { ...item };
+            delete next.main_ratio_weight;
+            return {
+              ...next,
+              lock_type: item.range_constraint || item.grams_constraint
+                ? ('grams' as const)
+                : item.percent_constraint
+                  ? ('percent' as const)
+                  : ('unlocked' as const),
+            };
+          }),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        })),
+
+      setMainRatioWeight: (lineId, weight) => {
+        if (weight !== null && (!Number.isFinite(weight) || weight <= 0)) return;
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.id !== lineId || item.lock_type !== 'main') return item;
+            const next = { ...item };
+            if (weight === null) delete next.main_ratio_weight;
+            else next.main_ratio_weight = weight;
+            return next;
+          }),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        }));
+      },
 
       // Owner P0 NIGHTLY (live FAILURE 1): a preset load / recipe load / reset
       // starts a WHOLE NEW draft context — `draftContextSeq` bumps so the

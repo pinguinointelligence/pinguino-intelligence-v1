@@ -8,6 +8,7 @@ import { IngredientBuilder } from './IngredientBuilder';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
 import {
   IngredientRow,
+  MainRatioEditor,
   RequiredRemovalDialog,
   SubstituteDialog,
   type IngredientRowActions,
@@ -29,6 +30,8 @@ const actions = (): IngredientRowActions => ({
   setActualGrams: vi.fn(),
   setLockType: vi.fn(),
   setMainIngredient: vi.fn(),
+  setStandardIngredient: vi.fn(),
+  setMainRatioWeight: vi.fn(),
   removeItem: vi.fn(),
   setCustomerRole: vi.fn(),
   toggleRequired: vi.fn(),
@@ -264,6 +267,28 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(gramButton).toContain('<span aria-hidden="true">g</span>');
     expect(gramButton).not.toContain('status-error');
     expect(html).toMatch(/<input[^>]*disabled/);
+  });
+
+  it('keeps the Main crown independent from the exact-gram lock and exposes an explicit ratio weight', () => {
+    const html = renderRow({ ...baseItem, lock_type: 'main', main_ratio_weight: 2 });
+    const gramButton =
+      html.match(/<button[^>]*data-testid="row-lock-grams-[\s\S]*?<\/button>/)?.[0] ?? '';
+    expect(gramButton).not.toContain('disabled');
+    expect(gramButton).toContain('Zablokuj gramy');
+    const ratio = renderToStaticMarkup(
+      <MainRatioEditor
+        item={{ ...baseItem, lock_type: 'main', main_ratio_weight: 2 }}
+        actions={actions()}
+      />,
+    );
+    expect(ratio).toContain('waga proporcji Main');
+    expect(ratio).toContain('value="2"');
+    expect(text(ratio)).toContain('Gramy startowe nie ustalają proporcji');
+
+    const lockedStandard = renderRow(baseItem, DEFAULT_INGREDIENT_ROW_META, true);
+    const crown =
+      lockedStandard.match(/<button[^>]*data-testid="row-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
+    expect(crown).not.toMatch(/\sdisabled(?:=|>)/);
   });
 
   it('keeps executable quantity in canonical grams without an invisible unit focus stop', () => {

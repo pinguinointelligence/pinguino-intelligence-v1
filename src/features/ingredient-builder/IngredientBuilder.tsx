@@ -185,6 +185,8 @@ export function IngredientBuilder({
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
     setLockType: useRecipeStore((state) => state.setLockType),
     setMainIngredient: useRecipeStore((state) => state.setMainIngredient),
+    setStandardIngredient: useRecipeStore((state) => state.setStandardIngredient),
+    setMainRatioWeight: useRecipeStore((state) => state.setMainRatioWeight),
     removeItem: (lineId) => {
       removeItem(lineId);
       clearLineMeta(lineId);
@@ -225,7 +227,7 @@ export function IngredientBuilder({
       }
       const current = useRecipeStore.getState().items.find((item) => item.id === lineId);
       const previousRole = ingredientRowMeta(metaByLineId, lineId).role;
-      if (current?.lock_type === 'main') coreActions.setLockType(lineId, 'unlocked');
+      if (current?.lock_type === 'main') coreActions.setStandardIngredient?.(lineId);
       setRoleMeta(lineId, role);
       if (current?.lock_type !== 'main' && previousRole !== role) {
         useRecipeStore.getState().markProfileTargetChanged();
@@ -285,7 +287,10 @@ export function IngredientBuilder({
           temperatureC: behaviorTemperatureC,
           mode: behaviorMode,
           processScope: 'BASE_FORMULATION',
-          requestedRole: currentLine.lock_type === 'main' ? 'MAIN' : 'STANDARD',
+          // The crown remains visible and is preserved by the substitution
+          // proof. ProductBehavior validates the replacement as a technical
+          // Base product, never against a sensory Main envelope.
+          requestedRole: 'STANDARD',
           module: 'SUBSTITUTION',
         },
       }).catch(() => null);
