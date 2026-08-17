@@ -124,7 +124,7 @@ describe('one global menu and four local contexts', () => {
   it('switches Summary to the frozen actual Base and Toppings after Production completion', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     expect(panel).toContain('production?.session?.completionSnapshot');
-    expect(panel).toContain("completed?.productComposition.toppings ?? toppings");
+    expect(panel).toContain('completed?.productComposition.toppings ?? toppings');
     expect(panel).toContain("completed ? 'Faktyczna zakończona partia'");
     expect(panel).toContain('item.actual_grams ?? item.planned_grams');
     expect(panel).toContain('Masa całej partii produktu finalnego');
@@ -244,7 +244,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const summary = read('features', 'pi-panel', 'NutritionCostScorePanel.tsx');
     const proCopy = read('copy', 'pro.pl.ts');
     expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
-    expect(axes).toContain('role={readOnly ? \'img\' : \'slider\'}');
+    expect(axes).toContain("role={readOnly ? 'img' : 'slider'}");
     expect(axes).toContain('aria-valuemin={!readOnly ? -2 : undefined}');
     expect(axes).toContain('aria-valuemax={!readOnly ? 2 : undefined}');
     expect(axes).not.toContain('Wybrano:');
@@ -290,13 +290,13 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('locks the desktop body and provides a mobile cockpit bottom sheet without horizontal scrolling', () => {
     const shell = read('features', 'shell', 'AppShell.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(shell).toContain('lg:h-dvh');
-    expect(shell).toContain('lg:overflow-hidden');
+    expect(shell).toContain('xl:h-dvh');
+    expect(shell).toContain('xl:overflow-hidden');
     expect(shell).toContain('max-sm:grid-cols-1');
     expect(shell).toContain('max-sm:flex-nowrap');
     expect(surface).toContain('mobile-cockpit-trigger');
     expect(surface).toContain('mobile-cockpit-sheet');
-    expect(surface).toContain('max-h-[88dvh]');
+    expect(surface).toContain('h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))]');
     expect(surface).not.toContain('overflow-x-auto');
   });
 

@@ -76,7 +76,7 @@ describe('canonical Pro header contract', () => {
     expect(builder).toContain('Oczekuje na przeliczenie');
     expect(page).toContain("state: 'SETTINGS_CONFIRMATION_REQUIRED'");
     expect(read('features', 'pro-core', 'ProRecalcPanel.tsx')).toContain(
-      "pinguino:profile-settings-required",
+      'pinguino:profile-settings-required',
     );
     expect(page).toContain('profile.isConfirmed(signature, recipe.draftContextSeq)');
     expect(page).not.toContain('copy.proWorkbar.pendingRecalc');
@@ -93,7 +93,7 @@ describe('profile hierarchy and compact preflight', () => {
     expect(settingsAt).toBeGreaterThan(-1);
     expect(directionAt).toBeLessThan(settingsAt);
     expect(panel).toContain('data-testid="profile-desktop-grid"');
-    expect(panel).toContain('xl:grid-cols-[1.08fr_0.92fr]');
+    expect(panel).toContain('2xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]');
     expect(panel).not.toContain('<NutritionAndCost');
     expect(panel).toContain('data-testid="profile-learning-entry"');
     expect(panel).toContain('setEducationOpen(true)');
@@ -106,7 +106,7 @@ describe('profile hierarchy and compact preflight', () => {
   it('uses one inset shell and one desktop body scroller for every cockpit tab', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(surface).toContain('lg:min-w-0 lg:overflow-hidden lg:border-t-0');
+    expect(surface).toContain('xl:min-w-0 xl:overflow-hidden xl:border-t-0');
     expect(panel).toContain('lg:rounded-[28px]');
     expect(panel).toContain('lg:shadow-pro-e2');
     expect(panel).toContain('lg:flex-1 lg:overflow-y-auto');
@@ -262,15 +262,19 @@ describe('preflight and recipe-specific persistence', () => {
   it('atomically replaces authenticated-owner defaults and removes stale product rows', () => {
     useRecipeProfileStore.getState().saveDefaults('owner-a:gelato', settings());
     useRecipeProfileStore.getState().saveDefaults('owner-a:sorbet', {
-      ...settings(), visibleProductType: 'sorbet',
+      ...settings(),
+      visibleProductType: 'sorbet',
     });
     useRecipeProfileStore.getState().saveDefaults('owner-b:gelato', settings());
-    useRecipeProfileStore.getState().replaceDefaultsForOwner('owner-a', [{
-      productContextKey: 'gelato',
-      settings: { ...settings(), targetBatchGrams: 1_400 },
-    }]);
-    expect(useRecipeProfileStore.getState().defaultsFor('owner-a:gelato')?.targetBatchGrams)
-      .toBe(1_400);
+    useRecipeProfileStore.getState().replaceDefaultsForOwner('owner-a', [
+      {
+        productContextKey: 'gelato',
+        settings: { ...settings(), targetBatchGrams: 1_400 },
+      },
+    ]);
+    expect(useRecipeProfileStore.getState().defaultsFor('owner-a:gelato')?.targetBatchGrams).toBe(
+      1_400,
+    );
     expect(useRecipeProfileStore.getState().defaultsFor('owner-a:sorbet')).toBeNull();
     expect(useRecipeProfileStore.getState().defaultsFor('owner-b:gelato')).not.toBeNull();
   });
@@ -348,10 +352,10 @@ describe('five-detent direction language', () => {
     expect(axes).toContain('Bardzo stabilna');
     expect(axes).toContain('profile-regulator-');
     expect(axes).toContain("role={readOnly ? 'img' : 'slider'}");
-    expect(axes).toContain("id=\"creaminess\"");
-    expect(axes).toContain("id=\"intensity\"");
-    expect(axes).toContain("id=\"structure\"");
-    expect(axes).toContain("id=\"stability\"");
+    expect(axes).toContain('id="creaminess"');
+    expect(axes).toContain('id="intensity"');
+    expect(axes).toContain('id="structure"');
+    expect(axes).toContain('id="stability"');
     expect(axes).not.toContain('Teraz</');
     expect(axes).not.toContain('Cel</');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).not.toContain(

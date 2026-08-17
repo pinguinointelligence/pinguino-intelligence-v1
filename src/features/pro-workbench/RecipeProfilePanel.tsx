@@ -78,7 +78,7 @@ function NutritionCostProfileGrid({ result, ready }: { result: RecipeResult; rea
   return (
     <>
       <section
-        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1 2xl:mt-px 2xl:h-[204px]"
+        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1"
         data-testid="profile-nutrition-card"
       >
         <h3 className="mb-1 text-center text-xs font-semibold text-ink">Wartości odżywcze</h3>
@@ -101,7 +101,7 @@ function NutritionCostProfileGrid({ result, ready }: { result: RecipeResult; rea
         </dl>
       </section>
       <section
-        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1 2xl:h-[206px]"
+        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1"
         data-testid="profile-cost-card"
       >
         <h3 className="mb-1 text-center text-xs font-semibold text-ink">Koszt</h3>
@@ -153,7 +153,7 @@ function ProfileContent({
   );
   const profileReadable = factsReady || legacyInspection || authority.requiredLineIds.length === 0;
   return (
-    <div className="p-2.5 2xl:w-[635px] 2xl:pr-[9px]" data-testid="pro-context-recipe">
+    <div className="w-full min-w-0 p-2.5" data-testid="pro-context-recipe">
       {legacyInspection ? (
         <p
           role="status"
@@ -163,17 +163,14 @@ function ProfileContent({
         </p>
       ) : null}
       <div
-        className="grid min-w-0 items-start gap-2.5 xl:grid-cols-[1.08fr_0.92fr] 2xl:grid-cols-[331px_273px] 2xl:gap-x-3 2xl:gap-y-2.5"
+        className="grid min-w-0 items-start gap-2.5 2xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]"
         data-testid="profile-desktop-grid"
         data-profile-layout="2x2"
       >
         {profileReadable ? (
-          <ProfileDirectionAxes
-            result={frozenNutritionResult}
-            className="min-w-0 2xl:mt-px 2xl:h-[369px]"
-          />
+          <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
         ) : (
-          <div className="min-w-0 2xl:mt-px 2xl:h-[369px]">
+          <div className="min-w-0">
             <LockedPIPreview />
           </div>
         )}
@@ -182,7 +179,7 @@ function ProfileContent({
           actualProteinPercent={
             profileReadable ? frozenNutritionResult.percentages.protein_percent : null
           }
-          className="min-w-0 2xl:h-[371px]"
+          className="min-w-0"
           compact
         />
         <NutritionCostProfileGrid result={frozenNutritionResult} ready={profileReadable} />
@@ -363,7 +360,8 @@ function SummaryPanel({
             {dirty ? 'niezapisane zmiany' : 'zapisana'}
           </span>
         </div>
-        {summaryReadable && (completed || legacyInspection || (practicalCurrent && practical.ok)) ? (
+        {summaryReadable &&
+        (completed || legacyInspection || (practicalCurrent && practical.ok)) ? (
           <SummaryBaseRecipeList items={summaryInput.items} completed={completed !== null} />
         ) : (
           <div

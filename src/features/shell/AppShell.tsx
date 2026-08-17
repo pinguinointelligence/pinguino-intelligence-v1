@@ -55,7 +55,7 @@ export function AppShell({
     <div
       className={cn(
         'min-h-screen bg-paper text-ink',
-        viewportLock && 'lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-hidden',
+        viewportLock && 'xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-hidden',
       )}
     >
       <header
@@ -63,7 +63,7 @@ export function AppShell({
           'mx-auto flex items-center justify-between gap-4 px-6 py-4 2xl:px-0',
           maxWidthClass,
           viewportLock &&
-            'max-sm:grid max-sm:grid-cols-1 max-sm:items-stretch max-sm:gap-2 max-sm:px-3 max-sm:py-2 lg:h-[136px] lg:w-full lg:shrink-0 lg:items-start lg:overflow-visible lg:py-0',
+            'max-sm:grid max-sm:grid-cols-1 max-sm:items-stretch max-sm:gap-2 max-sm:px-3 max-sm:py-2 xl:h-[136px] xl:w-full xl:shrink-0 xl:items-start xl:overflow-visible xl:py-0',
         )}
         style={{
           paddingTop: viewportLock
@@ -76,7 +76,7 @@ export function AppShell({
           aria-label={copy.shell.brand}
           className={cn(
             'flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
-            viewportLock && 'lg:z-20 lg:mt-7 2xl:mt-[46px] 2xl:ml-[3px]',
+            viewportLock && 'xl:z-20 xl:mt-7 2xl:mt-[46px] 2xl:ml-[3px]',
           )}
         >
           {brand ?? (
@@ -91,7 +91,7 @@ export function AppShell({
         <div
           className={cn(
             'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-            viewportLock && 'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between lg:mt-6',
+            viewportLock && 'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between xl:mt-6',
           )}
         >
           {actions}
@@ -102,7 +102,7 @@ export function AppShell({
         </div>
       </header>
       <main
-        className={cn(contentClassName, viewportLock && 'lg:min-h-0 lg:flex-1 lg:overflow-hidden')}
+        className={cn(contentClassName, viewportLock && 'xl:min-h-0 xl:flex-1 xl:overflow-hidden')}
       >
         {children}
       </main>

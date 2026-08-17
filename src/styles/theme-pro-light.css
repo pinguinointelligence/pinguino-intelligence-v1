@@ -18,6 +18,13 @@
   --color-ivory-soft: #686962;
   --color-shell-line: #1011131f;
   --color-status-ideal: #56624e;
+
+  /* Fluid geometry for the professional workbench. These are presentation
+     tokens only; all formula values and engine authority remain untouched. */
+  --pro-page-gutter: clamp(2rem, 4vw, 4rem);
+  --pro-workbench-gap: clamp(0.75rem, 1.4vw, 1.5rem);
+  --pro-workbench-body-max: 46.375rem;
+  --pro-dialog-gutter: max(0.5rem, env(safe-area-inset-left));
 }
 
 /* A deliberate dark intelligence card is part of the canonical Pro hierarchy.
@@ -39,11 +46,18 @@
 
 .theme-pro-light [data-testid='workbench-editor-pane'] {
   background: var(--color-paper);
+  min-inline-size: 0;
 }
 
 .theme-pro-light [data-testid='pro-monitor-panel'] {
   background: var(--color-pro-warm);
   border-color: var(--color-pro-line);
+  min-inline-size: 0;
+}
+
+.theme-pro-light [data-testid='pro-workbench'] {
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
 .theme-pro-light [data-testid='app-nav-drawer'] {

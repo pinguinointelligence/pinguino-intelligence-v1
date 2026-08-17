@@ -186,10 +186,11 @@ describe.each([['1366×768'], ['1440×900'], ['1920×1080']])(
     it(`body never scrolls during normal editing — ${label}`, () => {
       const html = renderAt('/pro/recipe');
       // The shell root locks to the viewport on desktop; main is the one scroll surface.
-      expect(html).toContain('lg:h-dvh');
-      expect(html).toContain('lg:overflow-hidden');
-      expect(html).toContain('lg:overflow-hidden');
-      // The viewport region fills main exactly; the workbench section is height-locked.
+      expect(html).toContain('xl:h-dvh');
+      expect(html).toContain('xl:overflow-hidden');
+      expect(html).toContain('xl:overflow-hidden');
+      // The viewport region fills main exactly; the split consumes the space left by the
+      // workbar instead of relying on a brittle viewport subtraction.
       expect(html).toContain('data-testid="pro-viewport-region"');
       expect(html).toContain('flex h-full min-h-0 flex-col');
       expect(html).toContain('data-testid="pro-workbench"');
@@ -472,7 +473,7 @@ describe('no unrelated module removal across the split surface files', () => {
     expect(actionBar).toContain('excludedIngredientIds');
     expect(actionBar).toContain('machine_capacity_source: machineCapacitySource');
     // Desktop aside + mobile sheet are intentional responsive variants.
-    expect(surface).toContain('lg:hidden');
+    expect(surface).toContain('xl:hidden');
     expect(surface).toContain('hidden min-h-0');
   });
 

@@ -181,7 +181,9 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     expect(picker).toContain('library.serverSearch');
     expect(picker).toContain('useGlobalCatalogPicker');
     expect(picker).not.toContain('useIngredientSearch');
-    expect(picker).toContain('getEngineApprovedIngredientById(option.catalog.mappedIngredientId)');
+    expect(picker).toMatch(
+      /getEngineApprovedIngredientById\(\s*option\.catalog\.mappedIngredientId,?\s*\)/,
+    );
   });
 
   it('stale-add protection: the current picker rejects old server hits until the new query settles', () => {
@@ -209,7 +211,9 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     const src = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     expect(src).toContain('globalCatalog.isSettled');
     expect(src).toContain('isProductPickerSelectionCurrent');
-    expect(src).toContain('getEngineApprovedIngredientById(option.catalog.mappedIngredientId)');
+    expect(src).toMatch(
+      /getEngineApprovedIngredientById\(\s*option\.catalog\.mappedIngredientId,?\s*\)/,
+    );
   });
 
   it('binds modal identity and the focus trap to the visible picker, never its backdrop', () => {
