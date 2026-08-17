@@ -284,6 +284,7 @@ export async function materializeExecutableRecipeDefinition(
       planned_grams: line.grams,
       actual_grams: null,
       lock_type: line.role === 'main' ? 'main' as const : 'unlocked' as const,
+      ...(line.mainRatioWeight === null ? {} : { main_ratio_weight: line.mainRatioWeight }),
       notes: line.note,
     };
   });

@@ -17,6 +17,9 @@ export interface ExecutableRecipeLineSeed {
    * equivalence. A dose from another product form must never be reused. */
   ownerSeedGrams: number | null;
   role: 'standard' | 'main';
+  /** Explicit relative share within a multi-Main group. Null never means
+   * "infer from current grams"; unresolved groups use the global equal split. */
+  mainRatioWeight: number | null;
   processScope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
   note: string;
 }
@@ -75,6 +78,7 @@ const baseLine = (
   note: string,
   role: ExecutableRecipeLineSeed['role'] = 'standard',
   ownerSeedGrams = grams,
+  mainRatioWeight: number | null = null,
 ): ExecutableRecipeLineSeed => ({
   lineId: `${templateId}-base-${order}`,
   mapperIngredientId,
@@ -82,6 +86,7 @@ const baseLine = (
   grams,
   ownerSeedGrams,
   role,
+  mainRatioWeight,
   processScope: 'BASE_FORMULATION',
   note,
 });
@@ -100,6 +105,7 @@ const toppingLine = (
   grams,
   ownerSeedGrams: grams,
   role: 'standard',
+  mainRatioWeight: null,
   processScope: 'POST_PROCESS_ADDON',
   note,
 });
@@ -116,6 +122,7 @@ const unresolvedBaseLine = (
   grams: null,
   ownerSeedGrams: null,
   role: 'standard',
+  mainRatioWeight: null,
   processScope: 'BASE_FORMULATION',
   note,
 });
@@ -265,8 +272,8 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
       baseLine(id.raphaello, 4, core.sucrose, 80, 'Sacharoza'),
       baseLine(id.raphaello, 5, core.dextrose, 44, 'Dekstroza', 'standard', 45),
       baseLine(id.raphaello, 6, core.inulin, 45, 'Inulina'),
-      baseLine(id.raphaello, 7, 'PI-ING-000151', 60, 'Pasta kokosowa 100%', 'main', 70),
-      baseLine(id.raphaello, 8, 'PI-ING-001512', 30, 'Pasta migdałowa 100%', 'main', 40),
+      baseLine(id.raphaello, 7, 'PI-ING-000151', 60, 'Pasta kokosowa 100%', 'main', 70, 2),
+      baseLine(id.raphaello, 8, 'PI-ING-001512', 30, 'Pasta migdałowa 100%', 'main', 40, 1),
       baseLine(id.raphaello, 9, 'PI-ING-000142', 50, 'Biała czekolada', 'standard', 73),
       baseLine(id.raphaello, 10, core.tara, 2, 'Guma tara'),
     ],

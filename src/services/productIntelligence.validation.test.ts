@@ -131,7 +131,7 @@ const snapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSn
 describe('recipe behavior server validation', () => {
   beforeEach(() => h.rpc.mockReset());
 
-  it('groups immutable lines by requested role and binds complete shared facts', () => {
+  it('validates Main and Standard as one technical Base group without sensory policy', () => {
     const built = buildRecipeBehaviorServerValidationGroups({
       recipe,
       snapshots: {
@@ -142,9 +142,8 @@ describe('recipe behavior server validation', () => {
       accountId: 'account-1',
     });
     expect(built.invalidLineIds).toEqual([]);
-    expect(built.groups).toHaveLength(2);
-    expect(built.groups.map((group) => group.context.requestedRole).sort())
-      .toEqual(['MAIN', 'STANDARD']);
+    expect(built.groups).toHaveLength(1);
+    expect(built.groups[0]?.context.requestedRole).toBe('STANDARD');
     expect(built.groups.flatMap((group) => group.lines)).toEqual(expect.arrayContaining([
       expect.objectContaining({
         lineId: 'main-line',
@@ -155,6 +154,29 @@ describe('recipe behavior server validation', () => {
     ]));
     expect(JSON.stringify(built.groups)).toContain('technicalComposition');
     expect(JSON.stringify(built.groups)).not.toContain('privateOverlay');
+  });
+
+  it('preserves the existing Production role authority outside this solver repair', () => {
+    const built = buildRecipeBehaviorServerValidationGroups({
+      recipe: { ...recipe, items: [recipe.items[0]!] },
+      snapshots: { 'main-line': snapshot('main-line', 'PI-ING-1') },
+      module: 'PRODUCTION',
+      accountId: 'account-1',
+    });
+    expect(built.invalidLineIds).toEqual([]);
+    expect(built.groups[0]?.context.requestedRole).toBe('MAIN');
+  });
+
+  it('keeps an authorized Owner Review technical Main STANDARD even in Production validation', () => {
+    const built = buildRecipeBehaviorServerValidationGroups({
+      recipe: { ...recipe, items: [recipe.items[0]!] },
+      snapshots: { 'main-line': snapshot('main-line', 'PI-ING-1') },
+      module: 'PRODUCTION',
+      accountId: 'owner-1',
+      technicalOnlyMainLineIds: ['main-line'],
+    });
+    expect(built.invalidLineIds).toEqual([]);
+    expect(built.groups[0]?.context.requestedRole).toBe('STANDARD');
   });
 
   it('keeps an Owner Review Main lock visible while validating its technical-only line as STANDARD', () => {

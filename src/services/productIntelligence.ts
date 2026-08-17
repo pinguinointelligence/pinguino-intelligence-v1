@@ -261,7 +261,6 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
   const mainLineIds = new Set(
     input.recipe.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
   );
-  const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
   const invalidLineIds: string[] = [];
   const byContext = new Map<string, RecipeBehaviorServerValidationGroup>();
 
@@ -285,9 +284,11 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
       invalidLineIds.push(lineId);
       continue;
     }
-    const requestedRole = mainLineIds.has(lineId) && !technicalOnlyMainLineIds.has(lineId)
-      ? 'MAIN'
-      : 'STANDARD';
+    const requestedRole = recipeAuthorityRequestedRole(
+      input.module,
+      mainLineIds.has(lineId),
+      (input.technicalOnlyMainLineIds ?? []).includes(lineId),
+    );
     const key = `${snapshot.processScope}:${requestedRole}`;
     const existing = byContext.get(key);
     if (existing) {
@@ -317,6 +318,24 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
     })),
     invalidLineIds: [...invalidLineIds].sort(),
   };
+}
+
+/**
+ * The Main crown is a formulation objective. Historical sensory MAIN policy
+ * is not an eligibility gate for Preview/Apply/Save/restore. Production and
+ * label/process operations retain their existing authority contract; this
+ * narrow solver repair does not change Production architecture.
+ */
+export function recipeAuthorityRequestedRole(
+  module: ProductBehaviorModule,
+  main: boolean,
+  technicalOnlyMain = false,
+): 'STANDARD' | 'MAIN' {
+  if (!main || technicalOnlyMain) return 'STANDARD';
+  return new Set<ProductBehaviorModule>([
+    'BASE_RECIPE', 'MAIN', 'OPTIMAL', 'ECO', 'SUBSTITUTION', 'MONITOR',
+    'SAVE', 'RECIPE_VERSION', 'RESTORE',
+  ]).has(module) ? 'STANDARD' : 'MAIN';
 }
 
 function readRecipeBehaviorServerValidation(
@@ -506,8 +525,11 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
     const line = input.recipe.items.find((candidate) => candidate.id === lineId);
     const snapshot = snapshots[lineId];
     if (!line || !snapshot || snapshot.resolutionState !== 'RESOLVED') return true;
-    const expectedRole = line.lock_type === 'main' &&
-      !(input.technicalOnlyMainLineIds ?? []).includes(lineId) ? 'MAIN' : 'STANDARD';
+    const expectedRole = recipeAuthorityRequestedRole(
+      requestedModule,
+      line.lock_type === 'main',
+      (input.technicalOnlyMainLineIds ?? []).includes(lineId),
+    );
     const context = snapshot.resolutionContext;
     return !context ||
       context.accountId !== input.accountId ||
@@ -545,8 +567,11 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
         temperatureC: input.recipe.target_temperature_c,
         mode,
         processScope: 'BASE_FORMULATION',
-        requestedRole: line.lock_type === 'main' &&
-          !(input.technicalOnlyMainLineIds ?? []).includes(lineId) ? 'MAIN' : 'STANDARD',
+        requestedRole: recipeAuthorityRequestedRole(
+          requestedModule,
+          line.lock_type === 'main',
+          (input.technicalOnlyMainLineIds ?? []).includes(lineId),
+        ),
         module: requestedModule,
       },
     }).catch(() => null);

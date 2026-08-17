@@ -5,6 +5,7 @@ import { findDemoIngredient } from '@/data/demoIngredients';
 import { APPENDIX_A_ITEMS } from '@/engine/__fixtures__/golden/composition';
 import { verifyEcoFlavourProtection } from '@/features/formulation-strategy/flavourFloor';
 import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { buildOptimizePreview, commitPreview } from './applyPipeline';
 
 const NO = { byLineId: {} };
@@ -81,23 +82,57 @@ const strawberryInput = (): RecipeInput => {
     ),
   };
 };
-const mainLine = (id: string, ingredient: EngineIngredient, grams: number) => ({
+const mainLine = (
+  id: string,
+  ingredient: EngineIngredient,
+  grams: number,
+  mainRatioWeight?: number,
+) => ({
   id, ingredient, planned_grams: grams, actual_grams: null, lock_type: 'main' as const,
+  ...(mainRatioWeight === undefined ? {} : { main_ratio_weight: mainRatioWeight }),
 });
-const multiMain = (ratio: '1:1' | '2:1'): RecipeInput => ({
-  mode: 'classic', category: 'milk_gelato', target_temperature_c: -13,
-  target_batch_grams: 1000, machine_capacity_grams: null,
-  items: ratio === '1:1'
-    ? [mainLine('banana', BANANA, 100), mainLine('strawberry', STRAWBERRY, 100)]
-    : [mainLine('banana', BANANA, 200), mainLine('strawberry', STRAWBERRY, 100)],
-  goals: { formulation_strategy: 'optimal' },
-});
+const multiMain = (ratio: '1:1' | '2:1'): RecipeInput => {
+  const base = clone(DEFAULT_PRESET.items);
+  const initialMain = ratio === '1:1' ? 200 : 300;
+  return {
+    mode: 'classic', category: 'milk_gelato', target_temperature_c: -13,
+    target_batch_grams: 1000, machine_capacity_grams: null,
+    items: [
+      ...base.map((item) => item.ingredient.id === 'milk_3_5'
+        ? { ...item, planned_grams: item.planned_grams - initialMain }
+        : item),
+      ...(ratio === '1:1'
+        ? [mainLine('banana', BANANA, 100), mainLine('strawberry', STRAWBERRY, 100)]
+        : [mainLine('banana', BANANA, 200, 2), mainLine('strawberry', STRAWBERRY, 100, 1)]),
+    ],
+    goals: { formulation_strategy: 'optimal' },
+  };
+};
 
 const mainTotal = (input: RecipeInput) =>
   input.items.filter((item) => item.lock_type === 'main').reduce((sum, item) => sum + item.planned_grams, 0);
 
+const solverSnapshots = (input: RecipeInput) => Object.fromEntries(
+  Object.entries(productBehaviorTestSnapshots(input)).map(([lineId, snapshot]) => [
+    lineId,
+    {
+      ...snapshot,
+      // These legacy Engine fixtures predate canonical Mapper identities and
+      // may swap equivalent golden ingredients while correcting the vector.
+      // Keep complete module/composition authority, but do not invent an exact
+      // Mapper binding for a synthetic line. Real exact binding + Apply is
+      // covered by mainTechnicalMaximum.test.ts (Fresh Watermelon).
+      mapperIngredientId: null,
+      technicalAuthority: 'none' as const,
+    },
+  ]),
+);
+
 function expectMaximized(input: RecipeInput) {
-  const result = buildOptimizePreview(input, NO, '2026-08-11T12:00:00.000Z');
+  const snapshots = solverSnapshots(input);
+  const result = buildOptimizePreview(input, NO, '2026-08-11T12:00:00.000Z', {
+    productBehaviorSnapshots: snapshots,
+  });
   expect(result.ok, JSON.stringify(result)).toBe(true);
   if (!result.ok) return null;
   const proof = result.preview.mainObjective;
@@ -109,6 +144,7 @@ function expectMaximized(input: RecipeInput) {
   expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
   const committed = commitPreview(
     input, NO, result.preview, '2026-08-11T12:01:00.000Z', `main-${input.items[0]!.id}`,
+    [], undefined, null, null, null, null, snapshots,
   );
   expect(committed.ok, JSON.stringify(committed)).toBe(true);
   return result.preview;
@@ -117,7 +153,7 @@ function expectMaximized(input: RecipeInput) {
 describe('Main flavour priority lexicographic objective', () => {
   it.each([
     ['Strawberry', strawberryInput, 677, 678],
-    ['Whisky', whiskyInput, 49, 50],
+    ['Whisky', whiskyInput, 48, 49],
     ['Pistachio', pistachioInput, 140, 141],
   ] as const)('reports and trustlessly applies the maximum accepted %s carrier', (_name, fixture, maximum, firstRejected) => {
     const preview = expectMaximized(fixture());
@@ -144,12 +180,31 @@ describe('Main flavour priority lexicographic objective', () => {
     expect(preview.mainObjective!.executableMainGrams).toBe(140);
     expect(pistachio.planned_grams).toBe(140);
     expect(preview.mainObjective!.firstHigherRejectedGrams).toBe(141);
-    expect(preview.mainObjective!.firstHigherRejectedReason).toBe('hard_gate');
+    expect(preview.mainObjective!.firstHigherRejectedReason).toBe('certified_upper_bound');
+  });
+
+  it('limits an actual-ABV Main product by the native alcohol frontier, not flavour metadata', () => {
+    const input = whiskyInput();
+    expect(input.items.find((item) => item.id === 'whisky-main')?.ingredient.composition.alcohol_percent)
+      .toBe(31.6);
+    const preview = expectMaximized(input);
+    if (!preview) return;
+    expect(preview.mainObjective).toMatchObject({
+      executableMainGrams: 48,
+      firstHigherRejectedGrams: 49,
+      firstHigherRejectedReason: 'certified_upper_bound',
+    });
+    // This spirit's real ethanol contributes PAC/NPAC freezing depression; in
+    // the current profile the NPAC ceiling binds before the direct ABV band.
+    expect(preview.mainObjective?.limitingTechnicalRules).toContain('npac_max');
   });
 
   it('trustless Apply rejects a self-consistent but non-maximal Main proof', () => {
     const input = pistachioInput();
-    const built = buildOptimizePreview(input, NO, '2026-08-11T12:00:00.000Z');
+    const snapshots = solverSnapshots(input);
+    const built = buildOptimizePreview(input, NO, '2026-08-11T12:00:00.000Z', {
+      productBehaviorSnapshots: snapshots,
+    });
     expect(built.ok).toBe(true);
     if (!built.ok || built.preview.practicalization?.status !== 'ready') return;
     const forged = clone(built.preview);
@@ -185,21 +240,31 @@ describe('Main flavour priority lexicographic objective', () => {
       forged,
       '2026-08-11T12:01:00.000Z',
       'forged-under-max',
+      [],
+      undefined,
+      null,
+      null,
+      null,
+      null,
+      snapshots,
     );
     expect(committed).toMatchObject({ ok: false, code: 'main_identity_violated' });
-    if (!committed.ok) expect(committed.messagePl).toMatch(/maksymalnym wykonalnym/i);
+    if (!committed.ok) expect(committed.messagePl).toMatch(/maksymalizac/i);
   });
 
   it.each([
-    ['1:1', 1, 670, 672],
-    ['2:1', 2, 687, 690],
-  ] as const)('maximizes Multi-Main %s as one group without changing the ratio', (ratio, expected, maximum, firstRejected) => {
+    ['1:1', 1],
+    ['2:1', 2],
+  ] as const)('maximizes Multi-Main %s as one group without changing the ratio', (ratio, expected) => {
     const preview = expectMaximized(multiMain(ratio));
     if (!preview) return;
     const [banana, strawberry] = preview.proposedInput.items.filter((item) => item.lock_type === 'main');
-    expect(banana!.planned_grams / strawberry!.planned_grams).toBeCloseTo(expected, 7);
-    expect(preview.mainObjective!.executableMainGrams).toBe(maximum);
-    expect(preview.mainObjective!.firstHigherRejectedGrams).toBe(firstRejected);
+    expect(Math.abs(banana!.planned_grams - expected * strawberry!.planned_grams))
+      .toBeLessThanOrEqual(1);
+    expect(preview.mainObjective!.status).toBe('maximized');
+    expect(preview.mainObjective!.provenMaximum).toBe(true);
+    expect(preview.mainObjective!.firstHigherRejectedGrams)
+      .toBe(preview.mainObjective!.executableMainGrams + 1);
   });
 
   it('lets Main flavour priority override ECO pressure while ECO may settle the other lines', () => {

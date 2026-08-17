@@ -87,6 +87,8 @@ export {
 } from './statuses';
 
 export { calculateRecipe } from './calculateRecipe';
+export type { TechnicalLinearIngredientFactors } from './technicalLinearFactors';
+export { technicalLinearIngredientFactors } from './technicalLinearFactors';
 
 export { ATWATER_KCAL_PER_G, computeNutritionPer100g, ingredientKcalContribution } from './nutrition';
 export { computeRecipeCosts } from './cost';

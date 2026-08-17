@@ -275,13 +275,19 @@ describe('Protein Gelato target orchestration', () => {
   it('maximizes the Main group without changing either identity or the 2:1 ratio', () => {
     const input = proteinDraft(-12, 20);
     input.items = [
-      { ...input.items[0]!, id: 'main-raspberry', planned_grams: 120 },
+      {
+        ...input.items[0]!,
+        id: 'main-raspberry',
+        planned_grams: 120,
+        main_ratio_weight: 2,
+      },
       {
         id: 'main-banana',
         ingredient: findDemoIngredient('banana')!,
         planned_grams: 60,
         actual_grams: null,
         lock_type: 'main',
+        main_ratio_weight: 1,
       },
     ];
     const built = buildOptimizePreview(input, EMPTY, '2026-08-09T10:00:00.000Z');

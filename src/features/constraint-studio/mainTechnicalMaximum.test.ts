@@ -1,0 +1,611 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
+import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
+import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import { parseCsv } from '@/lib/csv';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { useConstraintStudioStore } from './constraintStudioStore';
+import {
+  buildOptimizePreview,
+  commitPreview,
+  MAIN_TECHNICAL_PROBE_BUDGET,
+  workingStateFingerprint,
+} from './applyPipeline';
+import { mainObjectiveSummaryPl } from './mainObjectivePresentation';
+import {
+  MAIN_TECHNICAL_INTEGER_NODE_BUDGET,
+  mainTechnicalLinearUpperBound,
+} from './mainTechnicalLinearBound';
+
+const MAPPER_SOURCE = readFileSync(
+  resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
+  'utf8',
+);
+const [HEADER = [], ...RECORDS] = parseCsv(MAPPER_SOURCE);
+const INDEX = new Map(HEADER.map((name, position) => [name, position]));
+const NUMERIC_FIELDS = new Set([
+  'data_confidence_percent', 'water_percent', 'total_solids_percent', 'fat_percent',
+  'saturated_fat_percent', 'milk_fat_percent', 'non_fat_milk_solids_percent',
+  'protein_percent', 'aerating_protein_percent', 'carbohydrate_percent',
+  'total_sugars_percent', 'sucrose_percent', 'dextrose_percent', 'glucose_percent',
+  'fructose_percent', 'lactose_percent', 'polyol_percent', 'fiber_percent',
+  'salt_percent', 'alcohol_percent', 'ash_percent', 'acidity_percent', 'brix',
+  'dry_matter_percent', 'pod_value', 'pac_value', 'de_value', 'sweetness_factor',
+  'freezing_factor', 'stabilizer_activity', 'recommended_dosage_percent_min',
+  'recommended_dosage_percent_max', 'kcal_per_100g', 'cost_per_kg', 'shelf_life_days',
+]);
+
+const mapperRow = (ingredientId: string): IngredientRow => {
+  const record = RECORDS.find((row) => row[INDEX.get('ingredient_id')!] === ingredientId);
+  if (!record) throw new Error(`Missing Mapper fixture ${ingredientId}`);
+  const values = Object.fromEntries(HEADER.map((field, position) => {
+    const raw = record[position]?.trim() ?? '';
+    if (NUMERIC_FIELDS.has(field)) return [field, raw === '' ? null : Number(raw)];
+    if (field === 'approved_for_base' || field === 'approved_for_engines' || field === 'is_active') {
+      return [field, raw.toLocaleLowerCase('en') === 'true'];
+    }
+    if (field === 'verification_date' || field === 'last_reviewed_at') {
+      return [field, raw || null];
+    }
+    return [field, raw];
+  }));
+  return values as unknown as IngredientRow;
+};
+
+const ingredient = (id: string) => ({
+  ...ingredientRowToEngineIngredient(mapperRow(id)),
+  // Strategy/cost ranking is not under test. Keep ECO fully priced so it reaches
+  // the same technical Main objective as OPTIMAL.
+  cost_per_kg: 1,
+  cost_currency: 'EUR',
+});
+
+const IDS = {
+  milk: 'PI-ING-000236',
+  cream: 'PI-ING-000180',
+  smp: 'PI-ING-000270',
+  sucrose: 'PI-ING-000514',
+  dextrose: 'PI-ING-000494',
+  tara: 'PI-ING-000492',
+  inulin: 'PI-ING-000455',
+  watermelon: 'PI-ING-000405',
+  strawberry: 'PI-ING-001553',
+  banana: 'PI-ING-000345',
+  kiwi: 'PI-ING-000366',
+  coffee: 'PI-ING-000166',
+} as const;
+
+const line = (
+  id: string,
+  ingredientId: string,
+  grams: number,
+  lockType: RecipeInput['items'][number]['lock_type'] = 'unlocked',
+  mainRatioWeight?: number,
+): RecipeInput['items'][number] => ({
+  id,
+  ingredient: ingredient(ingredientId),
+  planned_grams: grams,
+  actual_grams: null,
+  lock_type: lockType,
+  ...(mainRatioWeight === undefined ? {} : { main_ratio_weight: mainRatioWeight }),
+} as RecipeInput['items'][number]);
+
+const structuralLines = () => [
+  line('milk', IDS.milk, 670),
+  line('cream', IDS.cream, 130),
+  line('smp', IDS.smp, 35),
+  line('sucrose', IDS.sucrose, 130),
+  line('dextrose', IDS.dextrose, 30),
+  line('tara', IDS.tara, 5),
+  line('inulin', IDS.inulin, 5),
+];
+
+const watermelonFixture = (
+  grams: number,
+  strategy: 'eco' | 'optimal' = 'eco',
+  role: 'main' | 'unlocked' = 'main',
+): RecipeInput => ({
+  mode: 'classic',
+  category: 'milk_gelato',
+  target_temperature_c: -11,
+  target_batch_grams: 1000,
+  machine_capacity_grams: null,
+  goals: { formulation_strategy: strategy },
+  items: [...structuralLines(), line('watermelon', IDS.watermelon, grams, role)],
+});
+
+const snapshotsWithObsoleteEnvelope = (input: RecipeInput) => {
+  const snapshots = productBehaviorTestSnapshots(input);
+  if (snapshots.watermelon) snapshots.watermelon = {
+    ...snapshots.watermelon!,
+    productId: 'e3264816-1050-d2a6-cc55-149e0d363bbf',
+    productVersionId: '009d5b8a-f0bd-4c19-958b-3feec2f045f9',
+    mapperIngredientId: IDS.watermelon,
+    verificationState: 'estimated',
+    mainClassification: 'MAIN_PROFILE_SPECIFIC',
+    mainPolicyId: 'historical-watermelon-dose',
+    mainPolicyVersion: 'historical-v1',
+    ecoFloorPercent: 30,
+    optimalCeilingPercent: 40,
+    hardLimitPercent: 45,
+    mainEquivalentFactor: 1,
+    mainBasis: 'FRUIT_EQUIVALENT',
+  };
+  return snapshots;
+};
+
+const build = (input: RecipeInput, byLineId: Record<string, { mode: 'locked'; grams: number }> = {}) => {
+  const result = buildOptimizePreview(input, { byLineId }, '2026-08-16T12:00:00.000Z', {
+    productBehaviorSnapshots: snapshotsWithObsoleteEnvelope(input),
+  });
+  expect(result.ok, JSON.stringify(result)).toBe(true);
+  if (!result.ok) throw new Error(JSON.stringify(result));
+  return result.preview;
+};
+
+const mainLines = (input: RecipeInput) => input.items.filter((item) => item.lock_type === 'main');
+const mainTotal = (input: RecipeInput) => mainLines(input).reduce((sum, item) => sum + item.planned_grams, 0);
+
+const singleMainFixture = (ingredientId: string, grams = 80): RecipeInput => ({
+  ...watermelonFixture(0, 'optimal'),
+  items: [...structuralLines(), line('single-main', ingredientId, grams, 'main')],
+});
+
+const expectExactApplyUndo = (
+  input: RecipeInput,
+  constraints: { byLineId: Record<string, { mode: 'locked'; grams: number }> },
+): void => {
+  const priorRecipe = useRecipeStore.getState();
+  const priorStudio = useConstraintStudioStore.getState();
+  try {
+    const snapshots = snapshotsWithObsoleteEnvelope(input);
+    useRecipeStore.getState().loadRecipeInput(input);
+    useRecipeStore.setState({ productBehaviorSnapshots: structuredClone(snapshots) });
+    useConstraintStudioStore.getState().resetForTests();
+    const before = structuredClone(buildRecipeInput(useRecipeStore.getState()));
+    const built = buildOptimizePreview(before, constraints, '2026-08-16T12:00:00.000Z', {
+      productBehaviorSnapshots: snapshots,
+    });
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    useConstraintStudioStore.setState({
+      preview: built.preview,
+      constraints,
+      history: [],
+      blocked: null,
+    });
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+    expect(useConstraintStudioStore.getState().history).toHaveLength(0);
+  } finally {
+    useRecipeStore.setState(priorRecipe, true);
+    useConstraintStudioStore.setState(priorStudio, true);
+  }
+};
+
+describe('Main technical maximum — exact Watermelon authority', () => {
+  it('certifies the exact whole-gram upper bound independently of the starting grams', () => {
+    const input = watermelonFixture(300, 'optimal');
+    const bound = mainTechnicalLinearUpperBound({
+      recipe: input,
+      constraints: { byLineId: { tara: { mode: 'locked', grams: 5 } } },
+      snapshots: snapshotsWithObsoleteEnvelope(input),
+    });
+    expect(bound).toMatchObject({
+      status: 'certified',
+      wholeGramUpperBound: 639,
+      integerSolutionCertified: true,
+    });
+    expect(bound.integerSearchNodes).toBeGreaterThan(0);
+    expect(bound.integerSearchNodes).toBeLessThanOrEqual(MAIN_TECHNICAL_INTEGER_NODE_BUDGET);
+    expect(bound.certificate).not.toContain('alcohol_min');
+    expect(bound.certificate.some((rule) => /_(?:min|max)$/.test(rule))).toBe(true);
+    expect(bound.continuousUpperBoundGrams).toBeGreaterThan(639);
+    const certifiedInput: RecipeInput = {
+      ...input,
+      items: input.items.map((item, index) => ({
+        ...item,
+        planned_grams: bound.continuousSolutionGrams![index]!,
+      })),
+    };
+    expect(certifiedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1000);
+    expect(detectViolations(calculateRecipe(certifiedInput))).toEqual([]);
+  });
+  it('converges from every required starting point to one proven whole-gram maximum', () => {
+    const outcomes = [1, 80, 200, 300, 400, 500, 900].map((start) => {
+      const input = watermelonFixture(start);
+      const preview = build(input);
+      const watermelon = preview.proposedInput.items.find((item) => item.id === 'watermelon')!;
+      expect(preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1000);
+      expect(Number.isInteger(watermelon.planned_grams)).toBe(true);
+      expect(watermelon.lock_type).toBe('main');
+      expect(detectViolations(calculateRecipe(preview.proposedInput))).toEqual([]);
+      expect(preview.mainObjective, JSON.stringify(preview.mainObjective)).toMatchObject({
+        status: 'maximized',
+        executableMainGrams: watermelon.planned_grams,
+        firstHigherRejectedGrams: watermelon.planned_grams + 1,
+      });
+      expect((preview.mainObjective?.limitingTechnicalRules ?? []).some(
+        (rule) => /_(?:min|max)$/.test(rule),
+      )).toBe(true);
+      return watermelon.planned_grams;
+    });
+    expect(new Set(outcomes).size).toBe(1);
+    expect(outcomes[0]).toBe(639);
+    expect(outcomes[0]).toBeGreaterThan(0);
+  });
+
+  it('uses the same technical maximum in ECO and OPTIMAL and ignores the historical 45% envelope', () => {
+    const eco = build(watermelonFixture(300, 'eco'));
+    const optimal = build(watermelonFixture(300, 'optimal'));
+    expect(mainTotal(eco.proposedInput)).toBe(mainTotal(optimal.proposedInput));
+    expect(mainTotal(eco.proposedInput)).toBeGreaterThan(450);
+  });
+
+  it('keeps Standard unlocked as a soft anchor instead of activating Main maximization', () => {
+    const main = build(watermelonFixture(300));
+    const standard = build(watermelonFixture(300, 'optimal', 'unlocked'));
+    expect(standard.mainObjective).toBeUndefined();
+    expect(standard.proposedInput.items.find((item) => item.id === 'watermelon')!.planned_grams)
+      .toBeLessThan(mainTotal(main.proposedInput));
+  });
+
+  it('keeps Standard locked exact without activating Main maximization', () => {
+    const standard = watermelonFixture(300, 'optimal', 'unlocked');
+    const preview = build(standard, { watermelon: { mode: 'locked', grams: 300 } });
+    expect(preview.mainObjective).toBeUndefined();
+    expect(preview.proposedInput.items.find((item) => item.id === 'watermelon'))
+      .toMatchObject({ planned_grams: 300, lock_type: 'unlocked' });
+  });
+
+  it('keeps a Main gram lock exact and trustlessly applies the unlocked maximum', () => {
+    const lockedInput = watermelonFixture(200, 'optimal');
+    const locked = build(lockedInput, { watermelon: { mode: 'locked', grams: 200 } });
+    expect(locked.proposedInput.items.find((item) => item.id === 'watermelon')!.planned_grams).toBe(200);
+
+    const input = watermelonFixture(300, 'optimal');
+    const preview = build(input);
+    const committed = commitPreview(
+      input,
+      { byLineId: {} },
+      preview,
+      '2026-08-16T12:01:00.000Z',
+      'watermelon-main-maximum',
+      [],
+      undefined,
+      null,
+      null,
+      null,
+      null,
+      snapshotsWithObsoleteEnvelope(input),
+    );
+    expect(committed.ok, JSON.stringify(committed)).toBe(true);
+  });
+
+  it('names an impossible locked Main amount and the nearest technical correction', () => {
+    const input = watermelonFixture(900, 'optimal');
+    const result = buildOptimizePreview(
+      input,
+      { byLineId: { watermelon: { mode: 'locked', grams: 900 } } },
+      '2026-08-16T12:00:00.000Z',
+      { productBehaviorSnapshots: snapshotsWithObsoleteEnvelope(input) },
+    );
+    expect(result.ok, JSON.stringify(result)).toBe(false);
+    if (result.ok) return;
+    expect(result).toMatchObject({
+      code: 'impossible_under_constraints',
+      conflict: {
+        lineId: 'watermelon',
+        ingredientName: expect.stringContaining('WATERMELON'),
+        grams: 900,
+      },
+    });
+    if (result.code === 'impossible_under_constraints') {
+      expect(result.nearestFeasibleGrams).toBe(639);
+      expect([
+        ...result.hardViolatedMetrics,
+        ...result.residualViolatedMetrics,
+      ].length).toBeGreaterThan(0);
+    }
+  });
+
+  it('shows exact increase and automatic-reduction copy without a flavour ceiling', () => {
+    const increased = build(watermelonFixture(80, 'optimal'));
+    const reduced = build(watermelonFixture(900, 'optimal'));
+    expect(mainObjectiveSummaryPl(increased)).toBe(
+      'Maksymalizacja składnika Głównego: PI zmienia grupę Główną z 80 g na 639 g i ponownie bilansuje całą recepturę.',
+    );
+    expect(mainObjectiveSummaryPl(reduced)).toBe(
+      'Automatyczna korekta składnika Głównego: PI zmienia grupę Główną z 900 g na 639 g, czyli najwyższą technicznie wykonalną ilość, i ponownie bilansuje całą recepturę.',
+    );
+    expect(`${mainObjectiveSummaryPl(increased)} ${mainObjectiveSummaryPl(reduced)}`)
+      .not.toMatch(/flavour|limit procent/i);
+
+    const boundedBest = structuredClone(increased);
+    boundedBest.mainObjective = {
+      ...boundedBest.mainObjective!,
+      status: 'best_achievable',
+      provenMaximum: false,
+      executableMainGrams: 600,
+      exactAcceptedMainGrams: 600,
+      certifiedUpperBoundGrams: 639,
+    };
+    expect(mainObjectiveSummaryPl(boundedBest)).toBe(
+      'BEST_ACHIEVABLE: PI zmienia grupę Główną z 80 g na 600 g i ponownie bilansuje całą recepturę. To nie jest udowodnione maksimum. Certyfikowana górna granica: 639 g.',
+    );
+  });
+
+  it('rejects a forged maximum proof and a ratio changed after Preview', () => {
+    const input = watermelonFixture(300, 'optimal');
+    const preview = build(input);
+    const forged = structuredClone(preview);
+    if (!forged.mainObjective) throw new Error('missing Main proof');
+    forged.mainObjective.provenMaximum = false;
+    const forgedResult = commitPreview(
+      input, { byLineId: {} }, forged, '2026-08-16T12:02:00.000Z', 'forged',
+      [], undefined, null, null, null, null, snapshotsWithObsoleteEnvelope(input),
+    );
+    expect(forgedResult).toMatchObject({ ok: false, code: 'main_identity_violated' });
+
+    const multi = fixtureForRatioChange();
+    const multiPreview = build(multi);
+    const changedRatio: RecipeInput = {
+      ...multi,
+      items: multi.items.map((item) => item.id === 'main-0'
+        ? { ...item, main_ratio_weight: 2 }
+        : item),
+    };
+    const stale = commitPreview(
+      changedRatio, { byLineId: {} }, multiPreview,
+      '2026-08-16T12:03:00.000Z', 'stale-ratio', [],
+    );
+    expect(stale).toMatchObject({ ok: false, code: 'stale_preview' });
+  });
+
+  it('requires the rebuilt maximum proof even when Main already starts at X', () => {
+    const input = watermelonFixture(639, 'optimal');
+    const preview = build(input);
+    expect(preview.mainObjective).toMatchObject({
+      status: 'maximized',
+      executableMainGrams: 639,
+      provenMaximum: true,
+    });
+    const forged = structuredClone(preview);
+    delete forged.mainObjective;
+    const result = commitPreview(
+      input, { byLineId: {} }, forged,
+      '2026-08-16T12:02:30.000Z', 'forged-proof-at-x', [],
+      undefined, null, null, null, null, snapshotsWithObsoleteEnvelope(input),
+    );
+    expect(result).toMatchObject({ ok: false, code: 'main_identity_violated' });
+  });
+
+  it('keeps every Required line exact in the bound and executable candidate', () => {
+    const input = watermelonFixture(300, 'optimal');
+    input.items = input.items.map((item) => item.id === 'inulin'
+      ? { ...item, lock_type: 'required' as const, grams_constraint: { grams: item.planned_grams } }
+      : item);
+    const bound = mainTechnicalLinearUpperBound({
+      recipe: input,
+      constraints: { byLineId: {} },
+      snapshots: snapshotsWithObsoleteEnvelope(input),
+    });
+    const inulinIndex = input.items.findIndex((item) => item.id === 'inulin');
+    expect(bound.continuousSolutionGrams?.[inulinIndex]).toBe(5);
+    const preview = build(input);
+    expect(preview.proposedInput.items.find((item) => item.id === 'inulin')).toMatchObject({
+      planned_grams: 5,
+      lock_type: 'required',
+    });
+  });
+
+  it('keeps the same liquid-dairy carrier floor in every candidate and the final Preview', () => {
+    const input = watermelonFixture(300, 'optimal');
+    const snapshots = snapshotsWithObsoleteEnvelope(input);
+    snapshots.watermelon = {
+      ...snapshots.watermelon!,
+      requiresLiquidDairyCarrier: true,
+      liquidDairyCarrierFloorPercent: 50,
+    };
+    snapshots.milk = {
+      ...snapshots.milk!,
+      approvedLiquidDairyCarrier: true,
+    };
+    const result = buildOptimizePreview(
+      input,
+      { byLineId: {} },
+      '2026-08-16T12:00:00.000Z',
+      { productBehaviorSnapshots: snapshots },
+    );
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    expect(result.preview.proposedInput.items.find((item) => item.id === 'milk')!.planned_grams)
+      .toBeGreaterThanOrEqual(500);
+    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+    expect(result.preview.mainObjective?.executableMainGrams).toBeGreaterThan(0);
+  });
+
+  it('is deterministic within the bounded proof budget', () => {
+    const input = watermelonFixture(300, 'optimal');
+    const first = build(input);
+    const second = build(input);
+    expect(second.proposedInput.items.map((item) => [item.id, item.planned_grams]))
+      .toEqual(first.proposedInput.items.map((item) => [item.id, item.planned_grams]));
+    expect(second.mainObjective).toEqual(first.mainObjective);
+    expect(second.baseFingerprint).toBe(first.baseFingerprint);
+    expect(workingStateFingerprint(second.proposedInput, second.nextConstraints))
+      .toBe(workingStateFingerprint(first.proposedInput, first.nextConstraints));
+    expect(first.mainObjective?.attempts).toBeLessThanOrEqual(MAIN_TECHNICAL_PROBE_BUDGET);
+  });
+
+  it.each([
+    ['Banana Fresh Fruit', IDS.banana],
+    ['Kiwi Fresh Fruit', IDS.kiwi],
+    ['Coffee with complete composition', IDS.coffee],
+  ] as const)('maximizes another complete single-Main fixture: %s', (_name, ingredientId) => {
+    const input = singleMainFixture(ingredientId);
+    const preview = build(input);
+    expect(['maximized', 'best_achievable']).toContain(preview.mainObjective?.status);
+    expect(mainTotal(preview.proposedInput)).toBeGreaterThan(0);
+    expect(preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0))
+      .toBe(1000);
+    expect(detectViolations(calculateRecipe(preview.proposedInput))).toEqual([]);
+  });
+
+  it('keeps Estimated, Verified and customer/manual provenance informational', () => {
+    const outcomes = [
+      'estimated',
+      'verified',
+      'customer_added',
+      'manual_unverified',
+    ] as const;
+    const maxima = outcomes.map((verificationState) => {
+      const input = watermelonFixture(300, 'optimal');
+      const snapshots = snapshotsWithObsoleteEnvelope(input);
+      snapshots.watermelon = { ...snapshots.watermelon!, verificationState };
+      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-16T12:00:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+      });
+      expect(result.ok, `${verificationState}: ${JSON.stringify(result)}`).toBe(true);
+      if (!result.ok) return null;
+      return result.preview.mainObjective?.executableMainGrams ?? null;
+    });
+    expect(maxima).toEqual([639, 639, 639, 639]);
+  });
+
+  it('maximizes a customer/manual product with complete technical composition', () => {
+    const productId = 'customer-watermelon-complete';
+    const input = watermelonFixture(300, 'optimal');
+    input.items = input.items.map((item) => item.id === 'watermelon'
+      ? {
+          ...item,
+          ingredient: {
+            ...item.ingredient,
+            id: 'customer-watermelon',
+            canonical_ingredient_id: undefined,
+            identity_provenance: 'private_product',
+            private_product_id: productId,
+          },
+        }
+      : item);
+    const snapshots = snapshotsWithObsoleteEnvelope(input);
+    snapshots.watermelon = {
+      ...snapshots.watermelon!,
+      productId,
+      productVersionId: 'customer-watermelon-version-1',
+      source: 'manual',
+      verificationState: 'customer_added',
+      mapperIngredientId: null,
+      technicalAuthority: 'approved_pi_calculation',
+    };
+    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-16T12:00:00.000Z', {
+      productBehaviorSnapshots: snapshots,
+    });
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    expect(result.preview.mainObjective?.executableMainGrams).toBe(639);
+    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+  });
+
+  it.each([
+    ['Watermelon 300 g', 300, false],
+    ['Watermelon 500 g', 500, false],
+    ['locked Watermelon 200 g', 200, true],
+  ] as const)('Apply then Undo restores the exact %s draft', (_name, grams, locked) => {
+    expectExactApplyUndo(
+      watermelonFixture(grams, 'optimal'),
+      {
+        byLineId: locked
+          ? { watermelon: { mode: 'locked', grams } }
+          : {},
+      },
+    );
+  });
+});
+
+describe('Multi-Main ratio contract', () => {
+  const fixture = (
+    starts: readonly number[],
+    ingredientIds: readonly string[],
+    explicitWeights?: readonly number[],
+  ): RecipeInput => ({
+    ...watermelonFixture(0, 'optimal'),
+    items: [
+      ...structuralLines(),
+      ...ingredientIds.map((ingredientId, index) =>
+        line(`main-${index}`, ingredientId, starts[index]!, 'main', explicitWeights?.[index]),
+      ),
+    ],
+  });
+
+  it('defaults two unlocked Main products to 50/50 independent of input grams', () => {
+    const first = build(fixture([10, 100], [IDS.strawberry, IDS.banana]));
+    const second = build(fixture([300, 1], [IDS.strawberry, IDS.banana]));
+    for (const preview of [first, second]) {
+      const grams = mainLines(preview.proposedInput).map((item) => item.planned_grams);
+      expect(Math.abs(grams[0]! - grams[1]!)).toBeLessThanOrEqual(1);
+    }
+    expect(mainTotal(first.proposedInput)).toBe(mainTotal(second.proposedInput));
+  });
+
+  it('preserves an explicit 2:1 ratio and equal thirds after whole-gram reconciliation', () => {
+    const twoToOne = build(fixture([10, 100], [IDS.strawberry, IDS.banana], [2, 1]));
+    const pair = mainLines(twoToOne.proposedInput).map((item) => item.planned_grams);
+    expect(Math.abs(pair[0]! - pair[1]! * 2)).toBeLessThanOrEqual(1);
+
+    const thirds = build(fixture([10, 100, 300], [IDS.strawberry, IDS.banana, IDS.kiwi]));
+    const grams = mainLines(thirds.proposedInput).map((item) => item.planned_grams);
+    expect(Math.max(...grams) - Math.min(...grams)).toBeLessThanOrEqual(1);
+    expect(grams).toEqual([237, 236, 236]);
+    expect(thirds.mainObjective).toMatchObject({
+      status: 'maximized',
+      executableMainGrams: 709,
+      certifiedUpperBoundGrams: 709,
+      firstHigherRejectedGrams: 710,
+      provenMaximum: true,
+    });
+  });
+
+  it('keeps one locked Main exact and maximizes the remaining unlocked portion', () => {
+    const input = fixture([200, 10], [IDS.strawberry, IDS.banana]);
+    const preview = build(input, { 'main-0': { mode: 'locked', grams: 200 } });
+    expect(preview.proposedInput.items.find((item) => item.id === 'main-0')!.planned_grams).toBe(200);
+    expect(preview.proposedInput.items.find((item) => item.id === 'main-1')!.planned_grams).toBe(541);
+    expect(preview.mainObjective).toMatchObject({
+      status: 'maximized',
+      executableMainGrams: 741,
+      certifiedUpperBoundGrams: 741,
+      provenMaximum: true,
+    });
+    expect(mainObjectiveSummaryPl(preview)).toContain(
+      'Blokada Main zmienia proporcję grupy:',
+    );
+    expect(mainObjectiveSummaryPl(preview)).toContain('200 g / 541 g');
+    expect(mainObjectiveSummaryPl(preview)).toContain('proporcji 1:1');
+  });
+
+  it('Apply then Undo restores the exact 10/100 Multi-Main draft', () => {
+    expectExactApplyUndo(
+      fixture([10, 100], [IDS.strawberry, IDS.banana]),
+      { byLineId: {} },
+    );
+  });
+});
+
+function fixtureForRatioChange(): RecipeInput {
+  return {
+    ...watermelonFixture(0, 'optimal'),
+    items: [
+      ...structuralLines(),
+      line('main-0', IDS.strawberry, 10, 'main'),
+      line('main-1', IDS.banana, 100, 'main'),
+    ],
+  };
+}

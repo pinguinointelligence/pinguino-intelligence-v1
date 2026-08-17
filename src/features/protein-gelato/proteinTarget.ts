@@ -59,6 +59,21 @@ const finiteTarget = (input: RecipeInput): number => {
   );
 };
 
+/** Linear target band used by technical candidate generators. The final
+ * acceptance check remains `assessProteinTarget`; this helper only prevents a
+ * relaxation from proposing vectors that are known to miss the same product
+ * target before the complete Engine is run. */
+export function proteinTargetPercentBand(
+  input: RecipeInput,
+): { minPercent: number; maxPercent: number } | null {
+  if (input.category !== 'protein_gelato') return null;
+  const targetPercent = finiteTarget(input);
+  return {
+    minPercent: Math.max(0, targetPercent - PROTEIN_GELATO_TARGET.tolerancePercent),
+    maxPercent: targetPercent + PROTEIN_GELATO_TARGET.tolerancePercent,
+  };
+}
+
 const hardSafeResult = (result: RecipeResult): boolean =>
   detectViolations(result).length === 0 &&
   !result.warnings.some((warning) => warning.severity === 'critical');

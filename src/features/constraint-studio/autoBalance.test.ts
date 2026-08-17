@@ -77,11 +77,14 @@ beforeEach(() => seedStore(MUTILATED()));
 describe('owner Test 2 — the 1 g recipe produces a REAL calculated Preview (tests 1/2/3/7/8)', () => {
   it.each([-11, -12, -13])('temperature %d: complete preview, total 1000 g, solver really invoked (tests 16/17)', (temp) => {
     const result = buildOptimizePreview(input(MUTILATED(), temp), NO, 'now');
-    expect(result.ok).toBe(true);
+    expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
     // the auto-balance PROOF: batch reconciled + the solver pipeline engaged
     expect(result.preview.autoBalance?.batchRescaled).toBe(true);
-    expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+    expect(
+      Math.abs(plannedSum(result.preview.proposedInput) - 1000),
+      JSON.stringify(result.preview),
+    ).toBeLessThanOrEqual(0.1);
     // real proposed gram values — the mutilated rows genuinely move
     const milk = result.preview.proposedInput.items.find((i) => i.id === 'l-milk')!;
     expect(milk.planned_grams).toBeGreaterThan(1);
@@ -188,9 +191,12 @@ describe('owner Test 2 — the 1 g recipe produces a REAL calculated Preview (te
     const items = MUTILATED();
     items[0] = line('l-milk', 'milk_3_5', 1, 'main');
     const result = buildOptimizePreview(input(items), NO, 'now');
-    expect(result.ok).toBe(true);
+    expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
-    expect(Math.abs(plannedSum(result.preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
+    expect(
+      Math.abs(plannedSum(result.preview.proposedInput) - 1000),
+      JSON.stringify(result.preview),
+    ).toBeLessThanOrEqual(0.1);
   });
 });
 

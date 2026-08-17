@@ -133,7 +133,7 @@ describe('bounded ECO current-draft sweep', () => {
     expect(result!.input.items.find((item) => item.id === 'b')!.ingredient.cost_per_kg).toBe(1);
   });
 
-  it('runs the real ECO sweep and freezes an expensive uncalibrated Pistachio Main', () => {
+  it('runs the real ECO sweep without inventing a Pistachio sensory floor', () => {
     const pistachio = recipe(80, 1);
     pistachio.items[0] = {
       ...pistachio.items[0]!,
@@ -160,9 +160,7 @@ describe('bounded ECO current-draft sweep', () => {
       ],
     };
     expect(effectiveInputCostPerKg(cheaper)).toBeCloseTo(8.9, 9);
-    expect(verifyEcoFlavourProtection(pistachio, cheaper)).toMatchObject({
-      ok: false,
-      violations: [{ code: 'unknown_floor_reduced', minimumGrams: 150, actualGrams: 100 }],
-    });
+    expect(verifyEcoFlavourProtection(pistachio, cheaper))
+      .toEqual({ ok: true, violations: [] });
   });
 });

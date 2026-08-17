@@ -191,7 +191,10 @@ describe('Direction operational acceptance matrix', () => {
             `matrix-${category}-${temperature}-${axis}-${requested}`,
           );
           const alreadyReached = !built.ok && built.code === 'already_clean';
-          expect(built.ok || alreadyReached, built.ok ? '' : JSON.stringify(built)).toBe(true);
+          expect(
+            built.ok || alreadyReached,
+            built.ok ? '' : JSON.stringify({ category, temperature, axis, requested, built }),
+          ).toBe(true);
           if (!built.ok && !alreadyReached) continue;
 
           const output = built.ok ? built.preview.proposedInput : input;
@@ -223,7 +226,17 @@ describe('Direction operational acceptance matrix', () => {
               `matrix-${category}-${temperature}-${axis}-${requested}`,
             );
             if (assessment.reached) {
-              expect(withoutConsent.ok).toBe(true);
+              expect(
+                withoutConsent.ok,
+                JSON.stringify({
+                  category,
+                  temperature,
+                  axis,
+                  requested,
+                  mainObjective: built.preview.mainObjective,
+                  withoutConsent,
+                }),
+              ).toBe(true);
             } else {
               expect(withoutConsent).toMatchObject({
                 ok: false,

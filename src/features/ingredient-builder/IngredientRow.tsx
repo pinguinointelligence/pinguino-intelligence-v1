@@ -41,6 +41,8 @@ export interface IngredientRowActions {
   setActualGrams: (lineId: string, grams: number | null) => void;
   setLockType: (lineId: string, lockType: LockType) => void;
   setMainIngredient: (lineId: string) => void;
+  setStandardIngredient?: (lineId: string) => void;
+  setMainRatioWeight?: (lineId: string, weight: number | null) => void;
   removeItem: (lineId: string) => void;
   setCustomerRole?: (lineId: string, role: 'main' | IngredientCustomerRole) => void;
   toggleRequired?: (lineId: string) => void;
@@ -56,6 +58,38 @@ export interface IngredientRowActions {
   markIngredientUnavailable?: (lineId: string) => void;
   moveUp?: (lineId: string) => void;
   moveDown?: (lineId: string) => void;
+}
+
+export function MainRatioEditor({
+  item,
+  actions,
+}: {
+  item: EffectiveRecipeItem;
+  actions: IngredientRowActions;
+}) {
+  return (
+    <label className="block px-2 pb-2 text-xs text-stone-600">
+      Waga proporcji
+      <input
+        type="number"
+        min="0.1"
+        step="0.1"
+        inputMode="decimal"
+        value={item.main_ratio_weight ?? 1}
+        aria-label={`${item.ingredient.name} — waga proporcji Main`}
+        onChange={(event) => {
+          const value = Number(event.currentTarget.value);
+          if (Number.isFinite(value) && value > 0) {
+            actions.setMainRatioWeight?.(item.id, value);
+          }
+        }}
+        className="pro-focus-ring mt-1 h-11 w-full rounded-lg border border-ink/12 bg-white px-3 font-mono text-sm text-ink"
+      />
+      <span className="mt-1 block leading-relaxed text-stone-500">
+        Brak własnej wagi oznacza równy podział. Gramy startowe nie ustalają proporcji.
+      </span>
+    </label>
+  );
 }
 
 export interface ProductionRowActions {
@@ -475,7 +509,10 @@ function RecipeRow({
   const setRole = (nextRole: 'main' | IngredientCustomerRole) => {
     if (actions.setCustomerRole) actions.setCustomerRole(item.id, nextRole);
     else if (nextRole === 'main') actions.setMainIngredient(item.id);
-    else if (isMain) actions.setLockType(item.id, 'unlocked');
+    else if (isMain) {
+      if (actions.setStandardIngredient) actions.setStandardIngredient(item.id);
+      else actions.setLockType(item.id, 'unlocked');
+    }
   };
 
   const requestRemove = () => {
@@ -526,7 +563,7 @@ function RecipeRow({
               aria-label={isMain ? 'Zmień na składnik standardowy' : 'Ustaw jako składnik główny'}
               aria-pressed={isMain}
               title={isMain ? 'Główny — kliknij, aby ustawić Standardowy' : t.role.mainHint}
-              disabled={!isMain && gramsLocked}
+              disabled={!isMain && Boolean(mainUnavailableReason)}
               onClick={() => setRole(isMain ? 'standard' : 'main')}
               data-testid={`row-main-toggle-${item.id}`}
               className={cn(
@@ -696,7 +733,7 @@ function RecipeRow({
               aria-pressed={gramsLocked}
               aria-label={`${item.ingredient.name} — ${gramsLocked ? 'Gramatura zablokowana. Odblokuj' : 'Zablokuj gramy'}`}
               title={lock?.title ?? b.lockTypes.grams}
-              disabled={lock?.toggleDisabled || isMain}
+              disabled={lock?.toggleDisabled}
               data-testid={`row-lock-grams-${item.id}`}
               onClick={() =>
                 lock?.onToggle() ?? actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams')
@@ -706,7 +743,7 @@ function RecipeRow({
                 gramsLocked
                   ? 'border-ink bg-ink text-white'
                   : 'border-ink/15 bg-white text-stone-500 hover:border-ink/40 hover:text-ink',
-                (lock?.toggleDisabled || isMain) && 'cursor-not-allowed opacity-35',
+                lock?.toggleDisabled && 'cursor-not-allowed opacity-35',
               )}
             >
               <LockGlyph locked={gramsLocked} />
@@ -751,7 +788,7 @@ function RecipeRow({
                 <MenuHeading>{t.role.heading}</MenuHeading>
                 <MenuButton
                   selected={role === 'main'}
-                  disabled={gramsLocked || Boolean(mainUnavailableReason)}
+                  disabled={Boolean(mainUnavailableReason)}
                   onClick={() => {
                     setRole('main');
                     setRowMenuOpen(false);
@@ -773,6 +810,14 @@ function RecipeRow({
                 >
                   {t.role.standard}
                 </MenuButton>
+
+                {isMain ? (
+                  <>
+                    <MenuDivider />
+                    <MenuHeading>Proporcja grupy Głównej</MenuHeading>
+                    <MainRatioEditor item={item} actions={actions} />
+                  </>
+                ) : null}
 
                 <MenuDivider />
                 <MenuHeading>Kolejność</MenuHeading>

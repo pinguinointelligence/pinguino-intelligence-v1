@@ -120,6 +120,7 @@ import {
   productBehaviorRequiredLineIds,
   productBehaviorSnapshotFingerprint,
   verifyMainEnvelope,
+  verifyMainTechnicalCarrier,
   type MainEnvelopeViolation,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
@@ -155,6 +156,7 @@ import {
   type PracticalRecipeAudit,
   type PracticalRecipeResult,
 } from '@/features/practical-recipe/practicalRecipe';
+import { mainTechnicalLinearUpperBound } from './mainTechnicalLinearBound';
 
 /** Build-only commercial inputs. They rank ECO candidates in memory and are
  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
@@ -187,6 +189,7 @@ export function workingStateFingerprint(input: RecipeInput, set: ConstraintSet):
       item.planned_grams,
       item.actual_grams,
       item.lock_type,
+      item.main_ratio_weight ?? null,
     ]),
     batch: input.target_batch_grams,
     mode: input.mode,
@@ -590,7 +593,7 @@ export interface ConstraintPreview {
 }
 
 export interface MainFlavourObjectiveProof {
-  status: 'maximized' | 'held_by_contract' | 'no_admissible_increase';
+  status: 'maximized' | 'best_achievable' | 'held_by_contract' | 'no_admissible_increase';
   startingMainGrams: number;
   exactAcceptedMainGrams: number;
   executableMainGrams: number;
@@ -600,9 +603,21 @@ export interface MainFlavourObjectiveProof {
     | 'hard_gate'
     | 'technical_score_class'
     | 'main_identity'
+    | 'certified_upper_bound'
     | null;
   technicalScore: number | null;
   attempts: number;
+  /** Complete descending whole-gram search evidence. Optional on legacy
+   * previews only; new Main technical-maximum previews always populate it. */
+  searchUpperBoundGrams?: number;
+  provenMaximum?: boolean;
+  testedHigherCandidateCount?: number;
+  limitingTechnicalRules?: string[];
+  /** A safe mathematical upper bound. When the executable whole-gram point
+   * equals this number, no larger real-valued (therefore no larger integer)
+   * Main total can satisfy the relaxation's necessary technical conditions. */
+  certifiedUpperBoundGrams?: number;
+  proofKind?: 'linear_relaxation' | 'exact_contract' | 'heuristic_search';
 }
 
 const mainObjectiveCache = new WeakMap<
@@ -1197,11 +1212,15 @@ function mainSafePreview(
           ...new Set(flavour.violations.map((violation) => violation.ingredientName)),
         ],
         messagePl:
-          'ECO zablokowane: propozycja narusza tożsamość smaku, Flavour Floor lub proporcję Main.',
+          'ECO zablokowane: propozycja narusza tożsamość składnika smakowego lub proporcję grupy Głównej.',
       };
     }
   }
-  const identity = verifyMainIngredientIdentity(input, preview.proposedInput);
+  const identity = verifyMainIngredientIdentity(
+    input,
+    preview.proposedInput,
+    preview.nextConstraints.byLineId,
+  );
   if (identity.ok) return { ok: true, preview };
   return {
     ok: false,
@@ -1915,6 +1934,34 @@ const mainGroupTotal = (identityInput: RecipeInput, candidate: RecipeInput): num
   );
 };
 
+const hasAdjustablePositiveMainIntent = (
+  input: RecipeInput,
+  set: ConstraintSet,
+): boolean => captureMainIngredientIntent(input).some((main) => {
+  const item = input.items.find((candidate) => candidate.id === main.lineId);
+  const constraint = set.byLineId[main.lineId];
+  return item?.actual_grams === null &&
+    constraint?.mode !== 'locked' &&
+    constraint?.mode !== 'percent';
+});
+
+const requiredLineContractViolations = (
+  before: RecipeInput,
+  after: RecipeInput,
+): string[] => {
+  const afterByLineId = new Map(after.items.map((item) => [item.id, item] as const));
+  return before.items
+    .filter((item) => item.lock_type === 'required')
+    .filter((required) => {
+      const proposed = afterByLineId.get(required.id);
+      return proposed === undefined ||
+        proposed.lock_type !== 'required' ||
+        canonicalIngredientId(proposed.ingredient) !== canonicalIngredientId(required.ingredient) ||
+        !Object.is(proposed.planned_grams, required.planned_grams);
+    })
+    .map((item) => item.id);
+};
+
 /**
  * Owner final Main semantics. This is deliberately product orchestration, not
  * Engine science: all candidate amounts are proposed outside Engine, every
@@ -2038,12 +2085,9 @@ function maximizeMainFromStart(
     if (!ratio.ok) {
       return { ok: false, mainGrams: desiredMainGrams, reason: 'batch_or_constraints' };
     }
-    const requestedMainGrams = ratio.mains.reduce(
-      (sum, main) => sum + main.grams * ratio.scaleFactor,
-      0,
-    );
+    const requestedMainGrams = ratio.allocatedMainTotal;
     const mainByLineId = new Map(
-      ratio.mains.map((main) => [main.lineId, main.grams * ratio.scaleFactor] as const),
+      ratio.allocations.map((allocation) => [allocation.lineId, allocation.grams] as const),
     );
     const staged: RecipeInput = {
       ...start,
@@ -2325,12 +2369,610 @@ function maximizeMainFromStart(
   };
 }
 
+const MAIN_TECHNICAL_MAXIMUM_ENABLED = true;
+export const MAIN_TECHNICAL_PROBE_BUDGET = 1;
+
+type MainTechnicalProbe =
+  | { ok: true; input: RecipeInput; mainGrams: number; score: number | null }
+  | {
+      ok: false;
+      mainGrams: number;
+      reason: Exclude<MainFlavourObjectiveProof['firstHigherRejectedReason'], null>;
+      rules: string[];
+    };
+
+/**
+ * Deterministic Main frontier. A whole-gram maximum is reported only when the
+ * real Engine accepts the certified integer-linear upper bound. If that one
+ * exact frontier vector is not executable, the bounded search may return only
+ * an honestly labelled BEST_ACHIEVABLE lower bound; it never promotes a local
+ * failure to a global maximum. Starting Main grams and ECO/OPTIMAL are absent
+ * from the bound/allocation contract.
+ */
+function maximizeMainTechnicalObjective(
+  identityInput: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions,
+  seedCandidates: readonly RecipeInput[] = [],
+): { input: RecipeInput; proof: MainFlavourObjectiveProof | null } {
+  const presentationInput = identityInput;
+  // Strategy is deliberately removed from the technical objective. It may
+  // have shaped the starting recipe, but it cannot change the frontier of this
+  // exact current vector. Restore the user's mode/goals on the returned recipe.
+  identityInput = {
+    ...identityInput,
+    goals: { ...identityInput.goals, formulation_strategy: 'optimal' },
+  };
+  const mains = captureMainIngredientIntent(identityInput);
+  if (mains.length === 0 || identityInput.items.some((item) => item.actual_grams !== null)) {
+    return { input: presentationInput, proof: null };
+  }
+
+  const startingMainGrams = mainGroupTotal(identityInput, identityInput);
+  const startingProteinTarget = assessProteinTarget(identityInput);
+  if (startingProteinTarget.applicable && !startingProteinTarget.reached) {
+    return {
+      input: presentationInput,
+      proof: {
+        status: 'best_achievable',
+        startingMainGrams,
+        exactAcceptedMainGrams: startingMainGrams,
+        executableMainGrams: startingMainGrams,
+        firstHigherRejectedGrams: null,
+        firstHigherRejectedReason: 'hard_gate',
+        technicalScore: recipeFitForInput(identityInput, calculateRecipe(identityInput)).score,
+        attempts: 0,
+        searchUpperBoundGrams: Math.max(1, Math.floor(identityInput.target_batch_grams)),
+        provenMaximum: false,
+        testedHigherCandidateCount: 0,
+        limitingTechnicalRules: ['protein_target'],
+        proofKind: 'heuristic_search',
+      },
+    };
+  }
+  const linearConstraintSet = withTemplateControlledStabilizerLocks(identityInput, set);
+  const linearBound = mainTechnicalLinearUpperBound({
+    recipe: identityInput,
+    constraints: linearConstraintSet,
+    snapshots: options.productBehaviorSnapshots ?? {},
+    excludedIngredientIds: options.excludedIngredientIds,
+  });
+  const batchUpperBound = Math.max(1, Math.floor(identityInput.target_batch_grams));
+  const upperBound = linearBound.status === 'certified'
+    ? Math.max(1, Math.min(batchUpperBound, linearBound.wholeGramUpperBound ?? batchUpperBound))
+    : batchUpperBound;
+  const upperAllocation = resolveMainRatioScale(identityInput, set.byLineId, upperBound);
+  if (!upperAllocation.ok) {
+    return {
+      input: presentationInput,
+      proof: {
+        status: 'held_by_contract',
+        startingMainGrams,
+        exactAcceptedMainGrams: startingMainGrams,
+        executableMainGrams: startingMainGrams,
+        firstHigherRejectedGrams: null,
+        firstHigherRejectedReason: 'batch_or_constraints',
+        technicalScore: recipeFitForInput(identityInput, calculateRecipe(identityInput)).score,
+        attempts: 0,
+        searchUpperBoundGrams: upperBound,
+        provenMaximum: false,
+        testedHigherCandidateCount: 0,
+        limitingTechnicalRules: ['main_ratio_or_constraint_conflict'],
+        ...(linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null
+          ? {
+              certifiedUpperBoundGrams: linearBound.wholeGramUpperBound,
+              proofKind: 'linear_relaxation' as const,
+            }
+          : { proofKind: 'heuristic_search' as const }),
+      },
+    };
+  }
+
+  const excluded = new Set(options.excludedIngredientIds ?? []);
+  const requiredLineIds = productBehaviorRequiredLineIds({ items: identityInput.items });
+  const behaviorModule = normalizeFormulationStrategy(
+    identityInput.goals?.formulation_strategy ?? identityInput.mode,
+  ) === 'eco' ? 'ECO' : 'OPTIMAL';
+  const managedBehavior = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0;
+
+  const assess = (
+    candidate: RecipeInput,
+    candidateSet: ConstraintSet,
+    requestedMainGrams: number,
+  ): MainTechnicalProbe => {
+    const practical = practicalizeRecipeCandidate(candidate, candidateSet);
+    if (!practical.ok) {
+      return {
+        ok: false,
+        mainGrams: requestedMainGrams,
+        reason: 'batch_or_constraints',
+        rules: ['whole_gram_batch_reconciliation'],
+      };
+    }
+    const executable = practical.audit.executableInput;
+    const executableMainGrams = mainGroupTotal(identityInput, executable);
+    const constraintCheck = verifyConstraintsPreserved(set, executable);
+    if (!constraintCheck.ok) {
+      return {
+        ok: false,
+        mainGrams: requestedMainGrams,
+        reason: 'batch_or_constraints',
+        rules: constraintCheck.violations.map((violation) => violation.code),
+      };
+    }
+    const identity = verifyMainIngredientIdentity(identityInput, executable, set.byLineId);
+    if (!identity.ok) {
+      return {
+        ok: false,
+        mainGrams: requestedMainGrams,
+        reason: 'main_identity',
+        rules: identity.violations.map((violation) => violation.code),
+      };
+    }
+    const changedRequiredLineIds = requiredLineContractViolations(identityInput, executable);
+    if (changedRequiredLineIds.length > 0) {
+      return {
+        ok: false,
+        mainGrams: requestedMainGrams,
+        reason: 'batch_or_constraints',
+        rules: changedRequiredLineIds.map((lineId) => `required_line_changed:${lineId}`),
+      };
+    }
+    if (
+      Math.abs(plannedSum(executable) - identityInput.target_batch_grams) > BATCH_SUM_TOLERANCE_G ||
+      executable.items.some((item) =>
+        !Number.isInteger(item.planned_grams) || item.planned_grams < 0,
+      )
+    ) {
+      return {
+        ok: false,
+        mainGrams: requestedMainGrams,
+        reason: 'batch_or_constraints',
+        rules: ['exact_target_or_whole_gram'],
+      };
+    }
+    // Technical Main maximization is intentionally independent from the
+    // sensory Main envelope. ProductBehavior remains authoritative for its
+    // own modules (and for managed-product readiness below), but historical
+    // floors/ceilings and missing sensory evidence cannot cap the physical
+    // Engine frontier.
+    if (managedBehavior) {
+      const gate = productBehaviorModuleGate(
+        options.productBehaviorSnapshots ?? {},
+        behaviorModule,
+        requiredLineIds,
+      );
+      if (!gate.ready) {
+        return {
+          ok: false,
+          mainGrams: requestedMainGrams,
+          reason: 'hard_gate',
+          rules: [gate.reason ?? `product_behavior_${behaviorModule.toLocaleLowerCase('en')}`],
+        };
+      }
+      const carrierViolations = verifyMainTechnicalCarrier({
+        recipe: executable,
+        snapshots: options.productBehaviorSnapshots ?? {},
+      });
+      if (carrierViolations.length > 0) {
+        return {
+          ok: false,
+          mainGrams: requestedMainGrams,
+          reason: 'hard_gate',
+          rules: carrierViolations.map((violation) => violation.code),
+        };
+      }
+    }
+    const result = practical.audit.executableResult;
+    const violations = detectViolations(result);
+    const criticalWarnings = result.warnings
+      .filter((warning) => warning.severity === 'critical')
+      .map((warning) => warning.code);
+    const protein = assessProteinTarget(executable, result);
+    const veganIssues = executable.category === 'vegan_gelato'
+      ? [
+          ...veganRecipeEligibilityIssues(executable.items).map(
+            (issue) => `vegan_eligibility:${issue.ingredientName}`,
+          ),
+          ...veganProfileConstraintIssues(executable).map((issue) => issue.code),
+        ]
+      : [];
+    const technicalRules = [
+      ...new Set([
+        ...violations.map((violation) => violation.metric),
+        ...recipeDirectionViolations(executable).map(
+          (violation) => `direction:${violation.metric}`,
+        ),
+        ...criticalWarnings,
+        ...(protein.applicable && !protein.reached ? ['protein_target'] : []),
+        ...veganIssues,
+      ]),
+    ];
+    if (technicalRules.length > 0) {
+      return {
+        ok: false,
+        mainGrams: requestedMainGrams,
+        reason: 'hard_gate',
+        rules: technicalRules,
+      };
+    }
+    return {
+      ok: true,
+      input: executable,
+      mainGrams: executableMainGrams,
+      score: recipeFitForInput(executable, result).score,
+    };
+  };
+
+  const probe = (desiredMainGrams: number): MainTechnicalProbe => {
+    const allocation = resolveMainRatioScale(identityInput, set.byLineId, desiredMainGrams);
+    if (!allocation.ok) {
+      return {
+        ok: false,
+        mainGrams: desiredMainGrams,
+        reason: 'batch_or_constraints',
+        rules: ['main_ratio_or_constraint_conflict'],
+      };
+    }
+    const mainByLineId = new Map(
+      allocation.allocations.map((row) => [row.lineId, row.grams] as const),
+    );
+    const staged: RecipeInput = {
+      ...identityInput,
+      items: identityInput.items.map((item) => {
+        const grams = mainByLineId.get(item.id);
+        return grams === undefined ? item : { ...item, planned_grams: grams };
+      }),
+    };
+    const candidateSet: ConstraintSet = {
+      byLineId: {
+        ...set.byLineId,
+        ...Object.fromEntries(
+          allocation.allocations.map(({ lineId, grams }) =>
+            [lineId, { mode: 'locked', grams }] as const,
+          ),
+        ),
+      },
+    };
+    const solverSet = withTemplateControlledStabilizerLocks(staged, candidateSet);
+    const candidates: RecipeInput[] = seedCandidates.filter(
+      (candidate) =>
+        Math.abs(
+          mainGroupTotal(identityInput, candidate) - allocation.allocatedMainTotal,
+        ) <= MAIN_OBJECTIVE_EPSILON_G,
+    );
+    // Re-solve the complete linear relaxation for this exact Main allocation.
+    // Reusing only the maximum-bound vector would miss technically valid lower
+    // frontiers whose non-Main balance is materially different (Vegan,
+    // Protein and mixed forms are common examples).
+    const candidateRelaxation = mainTechnicalLinearUpperBound({
+      recipe: staged,
+      constraints: solverSet,
+      snapshots: options.productBehaviorSnapshots ?? {},
+      excludedIngredientIds: options.excludedIngredientIds,
+      integerNodeBudget: 256,
+    });
+    if (
+      candidateRelaxation.status === 'certified' &&
+      candidateRelaxation.continuousSolutionGrams?.length === staged.items.length
+    ) {
+      const solution = candidateRelaxation.continuousSolutionGrams;
+      // Try the exact relaxation vector first. Product-profile fitters can
+      // then make a mass-neutral adjustment before practicalization; this is
+      // both more complete and dramatically cheaper than enumerating every
+      // floor/ceil permutation up front.
+      candidates.push({
+        ...staged,
+        items: staged.items.map((item, index) =>
+          mainByLineId.has(item.id) ? item : { ...item, planned_grams: solution[index]! },
+        ),
+      });
+      const optionsByIndex = staged.items.map((item, index): readonly number[] => {
+        if (mainByLineId.has(item.id)) return [item.planned_grams];
+        const value = Math.max(0, solution[index]!);
+        const floor = Math.floor(value + MAIN_OBJECTIVE_EPSILON_G);
+        const ceil = Math.ceil(value - MAIN_OBJECTIVE_EPSILON_G);
+        return floor === ceil ? [floor] : [floor, ceil];
+      });
+      const rounded: number[] = Array.from({ length: staged.items.length }, () => 0);
+      let generated = 0;
+      const enumerateRoundedSolutions = (index: number, sum: number): void => {
+        if (generated >= 32 || sum > identityInput.target_batch_grams) return;
+        if (index === staged.items.length) {
+          if (Math.abs(sum - identityInput.target_batch_grams) > MAIN_OBJECTIVE_EPSILON_G) return;
+          generated += 1;
+          candidates.push({
+            ...staged,
+            items: staged.items.map((item, itemIndex) => ({
+              ...item,
+              planned_grams: rounded[itemIndex]!,
+            })),
+          });
+          return;
+        }
+        for (const grams of optionsByIndex[index]!) {
+          rounded[index] = grams;
+          enumerateRoundedSolutions(index + 1, sum + grams);
+        }
+      };
+      enumerateRoundedSolutions(0, 0);
+    }
+    const proportional = rescaleBatchToTarget(staged, solverSet, identityInput.target_batch_grams);
+    if (proportional.ok) candidates.push(proportional.input);
+    const batchDelta = plannedSum(staged) - identityInput.target_batch_grams;
+    for (const donor of staged.items) {
+      if (
+        mainByLineId.has(donor.id) || donor.actual_grams !== null ||
+        isConstrained(solverSet, donor.id) ||
+        excluded.has(canonicalIngredientId(donor.ingredient))
+      ) continue;
+      const nextGrams = donor.planned_grams - batchDelta;
+      if (!Number.isFinite(nextGrams) || nextGrams < 0) continue;
+      candidates.push({
+        ...staged,
+        items: staged.items.map((item) =>
+          item.id === donor.id ? { ...item, planned_grams: nextGrams } : item,
+        ),
+      });
+    }
+    const unique = new Map<string, RecipeInput>();
+    for (const candidate of candidates) {
+      const key = candidate.items.map((item) => `${item.id}:${item.planned_grams}`).join('|');
+      if (!unique.has(key)) unique.set(key, candidate);
+    }
+    let best: Extract<MainTechnicalProbe, { ok: true }> | null = null;
+    let failure: Extract<MainTechnicalProbe, { ok: false }> = {
+      ok: false,
+      mainGrams: allocation.allocatedMainTotal,
+      reason: 'batch_or_constraints',
+      rules: ['complete_recipe_rebalance'],
+    };
+    for (const candidate of unique.values()) {
+      const fittedCandidate = candidate.category === 'protein_gelato'
+        ? fitProteinTarget(
+            candidate,
+            solverSet,
+            options.excludedIngredientIds ?? [],
+          ).input
+        : candidate;
+      const outcome = assess(fittedCandidate, candidateSet, allocation.allocatedMainTotal);
+      if (!outcome.ok) {
+        if (outcome.reason === 'hard_gate' || failure.reason !== 'hard_gate') failure = outcome;
+        continue;
+      }
+      best = outcome;
+      // Main mass is the lexicographic objective. Once a deterministic vector
+      // at this exact mass passes every complete technical gate, alternative
+      // vectors at the same mass cannot improve the Main frontier.
+      break;
+    }
+    if (best === null) {
+      const rankedSeeds = [...unique.values()]
+        .map((candidate, index) => ({
+          candidate,
+          index,
+          violations: detectViolations(calculateRecipe(candidate)).length,
+          severity: totalSeverity(candidate),
+        }))
+        .sort((left, right) =>
+          left.violations - right.violations || left.severity - right.severity || left.index - right.index,
+        );
+      for (const { candidate } of rankedSeeds.slice(0, 1)) {
+        const constrainedIngredientIds = new Set(
+          candidate.items
+            .filter((item) => isConstrained(solverSet, item.id))
+            .map((item) => canonicalIngredientId(item.ingredient)),
+        );
+        const restore = (next: RecipeInput): RecipeInput => {
+          const restored = rescalePreservingMainGroup(
+            identityInput,
+            next,
+            solverSet,
+            identityInput.target_batch_grams,
+          );
+          return restored.ok ? restored.input : next;
+        };
+        const settled = iterateSolverToFixedPoint(
+          identityInput,
+          candidate,
+          constrainedIngredientIds,
+          restore,
+          excluded,
+          solverSet,
+          options.effectivePriceOverrides,
+          true,
+          null,
+          options.productBehaviorSnapshots,
+        ).working;
+        const originalIds = identityInput.items.map((item) => item.id).sort();
+        const settledIds = settled.items.map((item) => item.id).sort();
+        if (JSON.stringify(originalIds) !== JSON.stringify(settledIds)) continue;
+        const outcome = assess(settled, candidateSet, allocation.allocatedMainTotal);
+        if (!outcome.ok) {
+          if (outcome.reason === 'hard_gate' || failure.reason !== 'hard_gate') failure = outcome;
+          continue;
+        }
+        if (best === null || (outcome.score ?? -Infinity) > (best.score ?? -Infinity)) best = outcome;
+      }
+    }
+    return best ?? failure;
+  };
+
+  const exactOnly = upperAllocation.heldEntirelyByExactConstraints;
+  // A Main range can certify a stricter objective bound than batch mass. Use
+  // the reachable allocation returned by the ratio/constraint contract so a
+  // capped first probe is not mislabeled as thousands of untested candidates.
+  const searchStart = Math.round(upperAllocation.allocatedMainTotal);
+  let attempts = 0;
+  const rejected = new Map<number, Extract<MainTechnicalProbe, { ok: false }>>();
+  let accepted: Extract<MainTechnicalProbe, { ok: true }> | null = null;
+  let fallbackAccepted: Extract<MainTechnicalProbe, { ok: true }> | null = null;
+  const seedTotals = [...new Set(seedCandidates.map((candidate) =>
+    Math.round(mainGroupTotal(identityInput, candidate)),
+  ))].filter((total) => total >= 1 && total <= searchStart).sort((left, right) => right - left);
+  for (const total of seedTotals) {
+    const outcome = probe(total);
+    attempts += 1;
+    if (outcome.ok && (fallbackAccepted === null || outcome.mainGrams > fallbackAccepted.mainGrams)) {
+      fallbackAccepted = outcome;
+    }
+  }
+  let frontierAttempts = 0;
+  for (let total = searchStart; total >= 1; total -= 1) {
+    if (frontierAttempts >= MAIN_TECHNICAL_PROBE_BUDGET) break;
+    frontierAttempts += 1;
+    attempts += 1;
+    const outcome = probe(total);
+    if (outcome.ok) {
+      accepted = outcome;
+      break;
+    }
+    rejected.set(total, outcome);
+    // Product authority/identity failures do not depend on grams. Descending
+    // through the whole batch cannot turn a missing binding/snapshot into a
+    // valid product, so stop deterministically after the first proof instead
+    // of spending hundreds of identical Engine probes.
+    const invariantAuthorityFailure =
+      outcome.reason === 'main_identity' ||
+      outcome.rules.some((rule) =>
+        rule === 'main_behavior_missing' ||
+        rule === 'main_identity_changed' ||
+        rule.startsWith('product_behavior_'),
+      );
+    if (exactOnly || invariantAuthorityFailure) break;
+  }
+  if (accepted === null) {
+    if (fallbackAccepted !== null) {
+      const fallbackMainGrams = Math.round(fallbackAccepted.mainGrams);
+      return {
+        input: {
+          ...fallbackAccepted.input,
+          mode: presentationInput.mode,
+          goals: presentationInput.goals,
+        },
+        proof: {
+          status: 'best_achievable',
+          startingMainGrams,
+          exactAcceptedMainGrams: fallbackMainGrams,
+          executableMainGrams: fallbackMainGrams,
+          firstHigherRejectedGrams: null,
+          firstHigherRejectedReason: null,
+          technicalScore: fallbackAccepted.score,
+          attempts,
+          searchUpperBoundGrams: searchStart,
+          provenMaximum: false,
+          testedHigherCandidateCount: rejected.size,
+          limitingTechnicalRules: ['deterministic_probe_budget'],
+          ...(linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null
+            ? {
+                certifiedUpperBoundGrams: linearBound.wholeGramUpperBound,
+                proofKind: 'linear_relaxation' as const,
+              }
+            : { proofKind: 'heuristic_search' as const }),
+        },
+      };
+    }
+    const failure = rejected.get(searchStart);
+    return {
+      input: presentationInput,
+      proof: {
+        status: exactOnly ? 'held_by_contract' : 'no_admissible_increase',
+        startingMainGrams,
+        exactAcceptedMainGrams: startingMainGrams,
+        executableMainGrams: startingMainGrams,
+        firstHigherRejectedGrams: failure?.mainGrams ?? null,
+        firstHigherRejectedReason: failure?.reason ?? null,
+        technicalScore: recipeFitForInput(identityInput, calculateRecipe(identityInput)).score,
+        attempts,
+        searchUpperBoundGrams: searchStart,
+        provenMaximum: false,
+        testedHigherCandidateCount: rejected.size,
+        limitingTechnicalRules: failure?.rules ?? ['no_technically_valid_main_candidate'],
+        ...(linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null
+          ? {
+              certifiedUpperBoundGrams: linearBound.wholeGramUpperBound,
+              proofKind: 'linear_relaxation' as const,
+            }
+          : { proofKind: 'heuristic_search' as const }),
+      },
+    };
+  }
+
+  const maximum = Math.round(accepted.mainGrams);
+  const nextFailure = rejected.get(maximum + 1) ?? null;
+  const mathematicallyCertified =
+    linearBound.status === 'certified' &&
+    linearBound.wholeGramUpperBound !== null &&
+    maximum === linearBound.wholeGramUpperBound;
+  return {
+    input: {
+      ...accepted.input,
+      mode: presentationInput.mode,
+      goals: presentationInput.goals,
+    },
+    proof: {
+      status: exactOnly
+        ? 'held_by_contract'
+        : mathematicallyCertified
+          ? 'maximized'
+          : 'best_achievable',
+      startingMainGrams,
+      exactAcceptedMainGrams: maximum,
+      executableMainGrams: maximum,
+      firstHigherRejectedGrams: mathematicallyCertified ? maximum + 1 : maximum < searchStart ? maximum + 1 : null,
+      firstHigherRejectedReason: mathematicallyCertified
+        ? 'certified_upper_bound'
+        : maximum < searchStart
+          ? nextFailure?.reason ?? 'batch_or_constraints'
+          : null,
+      technicalScore: accepted.score,
+      attempts,
+      searchUpperBoundGrams: searchStart,
+      provenMaximum: exactOnly || mathematicallyCertified,
+      testedHigherCandidateCount: rejected.size,
+      limitingTechnicalRules: mathematicallyCertified
+        ? linearBound.certificate
+        : nextFailure?.rules ?? ['heuristic_search_limit'],
+      ...(linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null
+        ? {
+            certifiedUpperBoundGrams: linearBound.wholeGramUpperBound,
+            proofKind: 'linear_relaxation' as const,
+          }
+        : { proofKind: exactOnly ? 'exact_contract' as const : 'heuristic_search' as const }),
+    },
+  };
+}
+
 function maximizeMainFlavourObjective(
   identityInput: RecipeInput,
   start: RecipeInput,
   set: ConstraintSet,
   options: OptimizePreviewOptions,
 ): { input: RecipeInput; proof: MainFlavourObjectiveProof | null } {
+  if (MAIN_TECHNICAL_MAXIMUM_ENABLED) {
+    const intendedMains = captureMainIngredientIntent(identityInput);
+    if (intendedMains.length === 0) {
+      return { input: start, proof: null };
+    }
+    // Formulation may have added the technical toolbox (dairy, sugars,
+    // stabilizer) before the Main frontier runs. Search the COMPLETE current
+    // candidate, not the sparse user draft.
+    // Server-bound products carry complete immutable behavior snapshots, so
+    // their exact current vector is the authority. Pure Engine/demo drafts do
+    // not; for those, use the already-built technical toolbox rather than the
+    // sparse/off-batch seed.
+    const technicalStart = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0
+      ? identityInput
+      : start;
+    // The accepted bounded corrector is retained only as a deterministic,
+    // fully revalidated lower-bound seed. It can improve BEST_ACHIEVABLE when
+    // the exact frontier budget is exhausted, but it can never certify a
+    // maximum or impose its former sensory ceiling.
+    const lowerBoundSeeds = technicalStart === start
+      ? [maximizeMainFromStart(identityInput, start, set, options).input]
+      : [];
+    return maximizeMainTechnicalObjective(technicalStart, set, options, lowerBoundSeeds);
+  }
   const cacheKey = JSON.stringify([
     workingStateFingerprint(start, set),
     options.excludedIngredientIds ?? [],
@@ -2468,7 +3110,7 @@ function maximizeMainFlavourObjective(
       for (let total = first; total <= last; total += 1) {
         const ratio = resolveMainRatioScale(identityInput, set.byLineId, total);
         if (!ratio.ok) continue;
-        const grams = ratio.mains.map((main) => main.grams * ratio.scaleFactor);
+        const grams = ratio.allocations.map((allocation) => allocation.grams);
         if (grams.every((value) => Math.abs(value - Math.round(value)) <= 1e-7)) {
           return grams.reduce((sum, value) => sum + Math.round(value), 0);
         }
@@ -2510,7 +3152,7 @@ function maximizeMainFlavourObjective(
         break;
       }
       const mainByLineId = new Map(
-        ratio.mains.map((main) => [main.lineId, main.grams * ratio.scaleFactor] as const),
+        ratio.allocations.map((allocation) => [allocation.lineId, allocation.grams] as const),
       );
       const mainSet: ConstraintSet = {
         byLineId: {
@@ -2573,6 +3215,7 @@ function maximizeMainFlavourObjective(
         technical_score_class: 1,
         main_identity: 2,
         hard_gate: 3,
+        certified_upper_bound: 4,
       };
       const recordRejection = (
         reason: Exclude<MainFlavourObjectiveProof['firstHigherRejectedReason'], null>,
@@ -3228,6 +3871,57 @@ function buildFormulationPreviewInternal(
   const solverRounds = iterated.diagnostics.solverInvocations;
   const lastProposal = iterated.lastProposal;
 
+  // An exact Main lock can make the whole recipe technically impossible even
+  // when the generic fixed-point loop stops without exhausting its iteration
+  // budget. The Main frontier already proved that contract infeasible; never
+  // turn the unchanged, off-batch diagnostic vector into a Preview. Relax only
+  // the conflicting quantity constraint and rerun the same certified frontier
+  // to report the nearest executable Main amount without inventing a value.
+  const heldMainProof = mainObjective.proof;
+  const heldMainConflict =
+    mode === 'constrained_reformulation' &&
+    heldMainProof?.status === 'held_by_contract' &&
+    !heldMainProof.provenMaximum
+      ? dominantHeldConstraint(input, set)
+      : null;
+  if (heldMainConflict !== null) {
+    const relaxedSet: ConstraintSet = {
+      byLineId: Object.fromEntries(
+        Object.entries(set.byLineId).filter(([lineId]) => lineId !== heldMainConflict.lineId),
+      ),
+    };
+    const relaxedMain = maximizeMainTechnicalObjective(input, relaxedSet, options);
+    const nearestFeasibleGrams =
+      relaxedMain.proof?.provenMaximum === true
+        ? relaxedMain.input.items.find((item) => item.id === heldMainConflict.lineId)
+            ?.planned_grams ?? null
+        : null;
+    const residualViolations = detectViolations(calculateRecipe(working));
+    const conflictLine = input.items.find((item) => item.id === heldMainConflict.lineId);
+    const fruitConflict =
+      conflictLine !== undefined && resolveFunctionalRole(conflictLine.ingredient) === 'fruit';
+    const sorbetTemplate =
+      fruitConflict && input.category !== 'sorbet'
+        ? selectFormulationTemplate('sorbet', input.target_temperature_c).template
+        : null;
+    return {
+      ok: false,
+      code: 'impossible_under_constraints',
+      conflict: heldMainConflict,
+      hardViolatedMetrics: classifyViolationBands(working).hardMetrics,
+      residualViolatedMetrics: [
+        ...new Set(residualViolations.map((violation) => violation.metric)),
+      ],
+      capReached: false,
+      nearestFeasibleGrams,
+      alternativeProductType: sorbetTemplate ? 'sorbet' : null,
+      solverInvocations: solverRounds,
+      iteration: iterated.diagnostics,
+      templateId: template.templateId,
+      templateStatus: template.status,
+    };
+  }
+
   // Acceptance: an UNCONSTRAINED formulation must BEAT the draft's null
   // hypothesis (never merely equal a proportional projection — the 8 × 125 g
   // rule). A CONSTRAINED reformulation is different (owner P0): with exact
@@ -3533,7 +4227,11 @@ export function buildOptimizePreview(
   // the correction path keeps the strict §17 current-grams validation.
   const mainIntent = captureMainIngredientIntent(input);
   const mainTotal = mainIntent.reduce((sum, line) => sum + line.grams, 0);
-  if (mainTotal > input.target_batch_grams + BATCH_SUM_TOLERANCE_G) {
+  const allMainExact = mainIntent.length > 0 && mainIntent.every((line) => {
+    const constraint = set.byLineId[line.lineId];
+    return constraint?.mode === 'locked' || constraint?.mode === 'percent';
+  });
+  if (allMainExact && mainTotal > input.target_batch_grams + BATCH_SUM_TOLERANCE_G) {
     return {
       ok: false,
       code: 'main_ratio_conflict',
@@ -3744,7 +4442,7 @@ export function buildOptimizePreview(
      * ECO. Running the technical corrector first can move it out of band before
      * the cost sweep gets a chance to rank safe gram changes. Search the current
      * draft directly instead: every accepted move must keep the exact technical
-     * fit, constraints, batch, Main identity and Flavour Floor. If no cheaper
+     * fit, constraints, batch and Main identity/ratio contract. If no cheaper
      * candidate survives the normal Preview practicalization, the honest result
      * is NO_CHANGE_NEEDED, never an unsafe technical proposal.
      */
@@ -3772,8 +4470,10 @@ export function buildOptimizePreview(
         : { input: working, proof: null };
       if (
         ecoMainObjective.proof?.status === 'maximized' &&
-        ecoMainObjective.proof.exactAcceptedMainGrams >
-          ecoMainObjective.proof.startingMainGrams + MAIN_OBJECTIVE_EPSILON_G
+        Math.abs(
+          ecoMainObjective.proof.exactAcceptedMainGrams -
+            ecoMainObjective.proof.startingMainGrams,
+        ) > MAIN_OBJECTIVE_EPSILON_G
       ) {
         const preview = finishPreview(
           'optimize',
@@ -3889,8 +4589,10 @@ export function buildOptimizePreview(
     const cleanMainObjective = maximizeMainFlavourObjective(input, working, set, options);
     if (
       cleanMainObjective.proof?.status === 'maximized' &&
-      cleanMainObjective.proof.exactAcceptedMainGrams >
-        cleanMainObjective.proof.startingMainGrams + MAIN_OBJECTIVE_EPSILON_G
+      Math.abs(
+        cleanMainObjective.proof.exactAcceptedMainGrams -
+          cleanMainObjective.proof.startingMainGrams,
+      ) > MAIN_OBJECTIVE_EPSILON_G
     ) {
       const preview = finishPreview(
         'optimize',
@@ -4030,8 +4732,10 @@ export function buildOptimizePreview(
     violationsAfter < violationsBefore ||
     (lastProposal !== null && severityAfter < severityBefore - SEVERITY_EPS) ||
     (mainObjective.proof?.status === 'maximized' &&
-      mainObjective.proof.exactAcceptedMainGrams >
-        mainObjective.proof.startingMainGrams + MAIN_OBJECTIVE_EPSILON_G);
+      Math.abs(
+        mainObjective.proof.exactAcceptedMainGrams -
+          mainObjective.proof.startingMainGrams,
+      ) > MAIN_OBJECTIVE_EPSILON_G);
   if (!improved) {
     // Owner Phase 6: same fallback door — a produced-but-rejected local
     // candidate on a complete unconstrained draft tries the template seed;
@@ -5378,7 +6082,11 @@ export class VerifiedApply {
     ) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
-    const mainIdentity = verifyMainIngredientIdentity(mainIdentityBase, preview.proposedInput);
+    const mainIdentity = verifyMainIngredientIdentity(
+      mainIdentityBase,
+      preview.proposedInput,
+      currentConstraints.byLineId,
+    );
     if (!mainIdentity.ok) {
       return {
         ok: false,
@@ -5445,55 +6153,93 @@ export class VerifiedApply {
     const currentMainGrams = mainGroupTotal(mainIdentityBase, mainIdentityBase);
     const exactMainGrams = mainGroupTotal(mainIdentityBase, exactCandidate);
     const executableMainGrams = mainGroupTotal(mainIdentityBase, preview.proposedInput);
-    if (executableMainGrams < currentMainGrams - MAIN_OBJECTIVE_EPSILON_G) {
-      return {
-        ok: false,
-        code: 'main_identity_violated',
-        messagePl:
-          'Apply zablokowany: propozycja zmniejsza grupę Główną mimo aktywnego priorytetu smaku.',
-        violations: [],
-      };
-    }
-    const mainMoved = executableMainGrams > currentMainGrams + MAIN_OBJECTIVE_EPSILON_G;
-    if (preview.kind === 'optimize' && mainMoved) {
+    const requiresMainProof = preview.kind === 'optimize' &&
+      hasAdjustablePositiveMainIntent(mainIdentityBase, currentConstraints);
+    if (requiresMainProof) {
       const proof = preview.mainObjective;
       const exactScore = recipeFitForInput(exactCandidate, calculateRecipe(exactCandidate)).score;
-      const proofValid =
+      const exactMaximumProof =
         proof?.status === 'maximized' &&
+        proof.provenMaximum === true &&
+        proof.proofKind === 'linear_relaxation' &&
+        Number.isInteger(proof.certifiedUpperBoundGrams) &&
+        (proof.certifiedUpperBoundGrams ?? 0) >= proof.executableMainGrams &&
+        Number.isInteger(proof.searchUpperBoundGrams) &&
+        (proof.searchUpperBoundGrams ?? 0) >= proof.executableMainGrams &&
+        proof.testedHigherCandidateCount ===
+          (proof.searchUpperBoundGrams ?? proof.executableMainGrams) -
+            proof.executableMainGrams &&
         Math.abs(proof.startingMainGrams - currentMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
         Math.abs(proof.exactAcceptedMainGrams - exactMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
         Math.abs(proof.executableMainGrams - executableMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
         proof.technicalScore === exactScore &&
-        (proof.firstHigherRejectedGrams === null ||
-          proof.firstHigherRejectedGrams >
-            proof.exactAcceptedMainGrams + MAIN_OBJECTIVE_EPSILON_G / 10);
+        proof.firstHigherRejectedGrams === proof.executableMainGrams + 1 &&
+        proof.firstHigherRejectedReason !== null &&
+        (proof.limitingTechnicalRules?.length ?? 0) > 0;
+      const boundedBestProof =
+        proof?.status === 'best_achievable' &&
+        proof.provenMaximum === false &&
+        (proof.proofKind === 'linear_relaxation' || proof.proofKind === 'heuristic_search') &&
+        Number.isInteger(proof.searchUpperBoundGrams) &&
+        (proof.searchUpperBoundGrams ?? 0) >= proof.executableMainGrams &&
+        typeof proof.testedHigherCandidateCount === 'number' &&
+        Number.isInteger(proof.testedHigherCandidateCount) &&
+        proof.testedHigherCandidateCount >= 0 &&
+        proof.testedHigherCandidateCount <=
+          (proof.searchUpperBoundGrams ?? proof.executableMainGrams) -
+            proof.executableMainGrams &&
+        Math.abs(proof.startingMainGrams - currentMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
+        Math.abs(proof.exactAcceptedMainGrams - exactMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
+        Math.abs(proof.executableMainGrams - executableMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
+        proof.technicalScore === exactScore &&
+        (proof.limitingTechnicalRules?.length ?? 0) > 0;
+      const proofValid = exactMaximumProof || boundedBestProof;
       if (!proofValid) {
         return {
           ok: false,
           code: 'main_identity_violated',
           messagePl:
-            'Apply zablokowany: nie udało się ponownie potwierdzić dowodu maksymalizacji składnika Głównego.',
+            'Apply zablokowany: nie udało się ponownie potwierdzić dowodu maksymalizacji lub ograniczonego wyniku BEST składnika Głównego.',
           violations: [],
         };
       }
       // A self-consistent proof is not enough: rebuild the deterministic Main
       // frontier from the current trusted draft. This closes forged or stale
-      // "maximized" proofs that stop below an executable whole-gram candidate.
+      // exact proofs and also prevents an honest BEST_ACHIEVABLE preview from
+      // being replaced by a different, attacker-selected lower-bound vector.
       const rebuilt = buildOptimizePreview(
         current,
         currentConstraints,
         preview.createdAt,
-        { excludedIngredientIds },
+        {
+          excludedIngredientIds,
+          productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+        },
       );
+      const rebuiltProof = rebuilt.ok ? rebuilt.preview.mainObjective : undefined;
       const recomputedExecutableMainGrams = rebuilt.ok
         ? mainGroupTotal(mainIdentityBase, rebuilt.preview.proposedInput)
         : currentMainGrams;
-      if (recomputedExecutableMainGrams > executableMainGrams + MAIN_OBJECTIVE_EPSILON_G) {
+      const rebuiltMatches = rebuilt.ok &&
+        rebuiltProof?.status === proof?.status &&
+        rebuiltProof.provenMaximum === proof?.provenMaximum &&
+        rebuiltProof.proofKind === proof?.proofKind &&
+        rebuiltProof.certifiedUpperBoundGrams === proof?.certifiedUpperBoundGrams &&
+        Math.abs(recomputedExecutableMainGrams - executableMainGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
+        rebuiltProof.searchUpperBoundGrams === proof?.searchUpperBoundGrams &&
+        rebuiltProof.testedHigherCandidateCount === proof?.testedHigherCandidateCount &&
+        rebuiltProof.firstHigherRejectedGrams === proof?.firstHigherRejectedGrams &&
+        rebuiltProof.firstHigherRejectedReason === proof?.firstHigherRejectedReason &&
+        JSON.stringify(rebuiltProof.limitingTechnicalRules ?? []) ===
+          JSON.stringify(proof?.limitingTechnicalRules ?? []) &&
+        workingStateFingerprint(rebuilt.preview.proposedInput, rebuilt.preview.nextConstraints) ===
+          workingStateFingerprint(preview.proposedInput, preview.nextConstraints);
+      if (!rebuiltMatches) {
         return {
           ok: false,
           code: 'main_identity_violated',
           messagePl:
-            'Apply zablokowany: propozycja nie jest maksymalnym wykonalnym poziomem składnika Głównego.',
+            'Apply zablokowany: propozycja nie odtwarza dokładnie zweryfikowanego poziomu składnika Głównego.',
           violations: [],
         };
       }
@@ -5509,7 +6255,7 @@ export class VerifiedApply {
           ok: false,
           code: 'eco_flavour_floor_violated',
           messagePl:
-            'Apply zablokowany: propozycja ECO narusza tożsamość smaku, Flavour Floor lub proporcję Main.',
+            'Apply zablokowany: propozycja ECO narusza tożsamość składnika smakowego lub proporcję grupy Głównej.',
           violations: flavour.violations,
         };
       }

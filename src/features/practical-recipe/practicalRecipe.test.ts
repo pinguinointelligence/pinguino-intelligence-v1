@@ -161,13 +161,15 @@ describe('Pro practical whole-gram recipe', () => {
     });
   });
 
-  it('finds a whole-gram 2:1 Multi-Main quantum and keeps the exact ratio', () => {
+  it('keeps an explicit 2:1 Multi-Main ratio within the one-gram whole-mass allocation', () => {
     const exact = structuredClone(ownerSameInputRecipe());
     const milk = exact.items.find((item) => item.id === 'owner:milk_3_5')!;
     const cream = exact.items.find((item) => item.id === 'owner:cream_30')!;
     const inulin = exact.items.find((item) => item.id === 'owner:inulin')!;
     milk.lock_type = 'main';
     cream.lock_type = 'main';
+    milk.main_ratio_weight = 2;
+    cream.main_ratio_weight = 1;
     milk.planned_grams = 333.4;
     cream.planned_grams = 166.7;
     inulin.planned_grams = 289;
@@ -181,7 +183,7 @@ describe('Pro practical whole-gram recipe', () => {
     const practicalCream = result.audit.executableInput.items.find(
       (item) => item.id === 'owner:cream_30',
     )!.planned_grams;
-    expect(practicalMilk / practicalCream).toBe(2);
+    expect(Math.abs(practicalMilk - practicalCream * 2)).toBeLessThanOrEqual(1);
     expect(result.audit.executableTotalGrams).toBe(1000);
   });
 

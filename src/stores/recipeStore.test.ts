@@ -355,7 +355,7 @@ describe('saved percentage lock contract', () => {
     },
   );
 
-  it.each(['required', 'already_added'] as const)(
+  it.each(['main', 'required', 'already_added'] as const)(
     'atomically replaces a %% lock with durable exact grams on a %s role',
     (role) => {
       const priorRecipe = useRecipeStore.getState();
@@ -430,7 +430,7 @@ describe('saved percentage lock contract', () => {
     },
   );
 
-  it.each(['required', 'already_added'] as const)(
+  it.each(['main', 'required', 'already_added'] as const)(
     'persists a direct exact-grams lock on a %s role after reopen',
     (role) => {
       const priorRecipe = useRecipeStore.getState();
@@ -462,6 +462,58 @@ describe('saved percentage lock contract', () => {
       }
     },
   );
+
+  it('persists an explicit Multi-Main ratio independently from grams and exact locks', () => {
+    const priorRecipe = useRecipeStore.getState();
+    const priorConstraint = useConstraintStudioStore.getState();
+    try {
+      useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
+      useConstraintStudioStore.getState().resetForTests();
+      useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 200);
+      const line = useRecipeStore.getState().items[0]!;
+      useRecipeStore.getState().setLockType(line.id, 'main');
+      useRecipeStore.getState().setMainRatioWeight(line.id, 2);
+      useConstraintStudioStore.getState().toggleLock(line.id);
+
+      const saved = savedToRecipeInput(
+        JSON.parse(JSON.stringify(buildRecipeInput(useRecipeStore.getState()))) as unknown,
+      );
+      expect(saved.items[0]).toMatchObject({
+        lock_type: 'main',
+        main_ratio_weight: 2,
+        grams_constraint: { grams: 200 },
+      });
+
+      useRecipeStore.getState().loadRecipeInput(saved);
+      expect(useRecipeStore.getState().items[0]).toMatchObject({
+        lock_type: 'main',
+        main_ratio_weight: 2,
+        grams_constraint: { grams: 200 },
+      });
+      expect(selectCanonicalDraft().constraints.byLineId[line.id]).toEqual({
+        mode: 'locked',
+        grams: 200,
+      });
+
+      useRecipeStore.getState().setStandardIngredient(line.id);
+      expect(useRecipeStore.getState().items[0]).toMatchObject({
+        lock_type: 'grams',
+        grams_constraint: { grams: 200 },
+      });
+      expect(useRecipeStore.getState().items[0]?.main_ratio_weight).toBeUndefined();
+      expect(selectCanonicalDraft().constraints.byLineId[line.id]).toEqual({
+        mode: 'locked',
+        grams: 200,
+      });
+
+      // Removing the crown is deliberately independent from the exact grams
+      // lock. It also retires the Main-only ratio metadata.
+      expect(useRecipeStore.getState().items[0]?.main_ratio_weight).toBeUndefined();
+    } finally {
+      useRecipeStore.setState(priorRecipe, true);
+      useConstraintStudioStore.setState(priorConstraint, true);
+    }
+  });
 
   it('restores canonical percentage grams after the batch field is cleared and re-entered', () => {
     const priorRecipe = useRecipeStore.getState();

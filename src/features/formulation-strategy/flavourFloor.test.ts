@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EngineIngredient, RecipeInput } from '@/engine';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { verifyMainIngredientIdentity } from '@/features/formulation/mainIngredientContract';
 import { verifyEcoFlavourProtection } from './flavourFloor';
 
 const composition = {
@@ -62,14 +63,11 @@ const input = (
   goals: { formulation_strategy: 'eco' },
 });
 
-describe('ECO Flavour Floor', () => {
-  it('freezes unknown Main at the user baseline', () => {
+describe('ECO flavour identity', () => {
+  it('keeps an unknown Main quantity informational instead of freezing the baseline', () => {
     const before = input([['main', 'PI-ING-009999', 300]]);
     const after = { ...before, items: [{ ...before.items[0]!, planned_grams: 299 }] };
-    expect(verifyEcoFlavourProtection(before, after)).toMatchObject({
-      ok: false,
-      violations: [{ code: 'unknown_floor_reduced' }],
-    });
+    expect(verifyEcoFlavourProtection(before, after)).toEqual({ ok: true, violations: [] });
   });
 
   it('fails closed when Main is missing or relabeled', () => {
@@ -90,16 +88,13 @@ describe('ECO Flavour Floor', () => {
       ).toBe(true);
   });
 
-  it('freezes a legacy exact concentrate until the server resolver supplies its policy', () => {
+  it('does not turn a legacy sensory amount into a technical minimum', () => {
     const before = input([['main', 'PI-ING-000737', 100]]);
     const atTwenty = { ...before, items: [{ ...before.items[0]!, planned_grams: 20 }] };
-    expect(verifyEcoFlavourProtection(before, atTwenty)).toMatchObject({
-      ok: false,
-      violations: [{ code: 'unknown_floor_reduced', minimumGrams: 100 }],
-    });
+    expect(verifyEcoFlavourProtection(before, atTwenty)).toEqual({ ok: true, violations: [] });
   });
 
-  it('uses the resolved behavior snapshot as the sole ECO floor for managed products', () => {
+  it('keeps a resolved sensory floor informational for technical Main maximization', () => {
     const before = input([['main', 'PI-ING-000737', 100]]);
     const after = { ...before, items: [{ ...before.items[0]!, planned_grams: 25 }] };
     const authority = {
@@ -113,13 +108,10 @@ describe('ECO Flavour Floor', () => {
       verifyEcoFlavourProtection(before, after, {
         productBehaviorSnapshots: { main: authority },
       }),
-    ).toMatchObject({
-      ok: false,
-      violations: [{ code: 'verified_floor_crossed', minimumGrams: 300 }],
-    });
+    ).toEqual({ ok: true, violations: [] });
   });
 
-  it('does not fall back to the local registry when a managed snapshot blocks ECO', () => {
+  it('does not reinterpret a blocked sensory snapshot as a gram lock', () => {
     const before = input([['main', 'PI-ING-000737', 100]]);
     const after = { ...before, items: [{ ...before.items[0]!, planned_grams: 99 }] };
     const authority = {
@@ -133,10 +125,7 @@ describe('ECO Flavour Floor', () => {
       verifyEcoFlavourProtection(before, after, {
         productBehaviorSnapshots: { main: authority },
       }),
-    ).toMatchObject({
-      ok: false,
-      violations: [{ code: 'unknown_floor_reduced', minimumGrams: 100 }],
-    });
+    ).toEqual({ ok: true, violations: [] });
   });
 
   it('rejects automatic flavour-defining rows without relying on one legacy flag', () => {
@@ -156,22 +145,22 @@ describe('ECO Flavour Floor', () => {
     });
   });
 
-  it('preserves exact Multi-Main ratio', () => {
+  it('delegates Multi-Main ratio authority to the Main identity contract', () => {
     const before = input([
       ['a', 'PI-ING-009991', 200],
       ['b', 'PI-ING-009992', 100],
     ]);
     const after = {
       ...before,
-      items: before.items.map((item) => ({ ...item, planned_grams: item.id === 'a' ? 200 : 200 })),
+      // Starting grams are not a ratio. With no explicit metadata, the
+      // product contract is equal shares, so 200/100 remains invalid there.
+      items: before.items.map((item) => ({ ...item })),
     };
-    const outcome = verifyEcoFlavourProtection(before, after);
-    expect(outcome.ok).toBe(false);
-    if (!outcome.ok)
-      expect(outcome.violations.some((v) => v.code === 'multi_main_ratio_changed')).toBe(true);
+    expect(verifyEcoFlavourProtection(before, after)).toEqual({ ok: true, violations: [] });
+    expect(verifyMainIngredientIdentity(before, after).ok).toBe(false);
   });
 
-  it('fails closed for an expensive Pistachio Main without a calibrated floor — numeric ECO proof', () => {
+  it('does not freeze an expensive Pistachio Main without technical evidence — numeric ECO proof', () => {
     const pistachio = ingredient('PI-ING-PISTACHIO-UNMAPPED-FLOOR', 'Pistachio paste', 'nut_paste');
     pistachio.cost_per_kg = 80;
     const cheap = ingredient('PI-ING-CHEAP-BASE', 'Cheap balancing base', 'water');
@@ -211,19 +200,10 @@ describe('ECO Flavour Floor', () => {
 
     expect(cost(before)).toBeCloseTo(12.85, 9);
     expect(cost(unsafeCheaper)).toBeCloseTo(8.9, 9);
-    expect(verifyEcoFlavourProtection(before, unsafeCheaper)).toMatchObject({
-      ok: false,
-      violations: [
-        {
-          code: 'unknown_floor_reduced',
-          lineId: 'pistachio-main',
-          minimumGrams: 150,
-          actualGrams: 100,
-        },
-      ],
-    });
-    // Accepted ECO state freezes the flavour identity instead of inventing a
-    // potency minimum: grams and therefore cost remain the user's baseline.
+    expect(verifyEcoFlavourProtection(before, unsafeCheaper))
+      .toEqual({ ok: true, violations: [] });
+    // This gate proves identity only. Engine/constraints decide whether the
+    // cheaper vector is technically valid; no potency minimum is invented.
     expect(verifyEcoFlavourProtection(before, before).ok).toBe(true);
     expect(cost(before)).toBeCloseTo(12.85, 9);
   });

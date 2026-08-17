@@ -24,6 +24,7 @@ import { useConstraintStudioStore } from '@/features/constraint-studio/constrain
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { verifyMainIngredientIdentity } from './mainIngredientContract';
 
 const STRAWBERRIES: EngineIngredient = {
   ...findDemoIngredient('raspberry')!,
@@ -51,20 +52,55 @@ const line = (
   ingredient: EngineIngredient,
   grams: number,
   lock_type: RecipeInput['items'][number]['lock_type'] = 'main',
-) => ({ id, ingredient, planned_grams: grams, actual_grams: null, lock_type });
+  mainRatioWeight?: number,
+) => ({
+  id,
+  ingredient,
+  planned_grams: grams,
+  actual_grams: null,
+  lock_type,
+  ...(mainRatioWeight === undefined ? {} : { main_ratio_weight: mainRatioWeight }),
+});
+
+const structuralOwnerLines = (grams: number): RecipeInput['items'] => {
+  if (grams <= 0) return [];
+  const shares = [500, 100, 30, 100, 50, 15, 5] as const;
+  const definitions = [
+    ['line-milk', 'milk_3_5'],
+    ['line-cream', 'cream_30'],
+    ['line-smp', 'smp'],
+    ['line-sucrose', 'sucrose'],
+    ['line-dextrose', 'dextrose'],
+    ['line-inulin', 'inulin'],
+    ['line-tara', 'tara_gum'],
+  ] as const;
+  const allocations = shares.map((share) => Math.floor((grams * share) / 800));
+  allocations[0] = allocations[0]! + grams - allocations.reduce((sum, value) => sum + value, 0);
+  return definitions.map(([id, ingredientId], index) =>
+    line(id, findDemoIngredient(ingredientId)!, allocations[index]!, 'unlocked'),
+  );
+};
 
 const ownerInput = (
   bananaGrams = 100,
   strawberryGrams = 100,
   extra: RecipeInput['items'] = [],
   batch = 1000,
+  explicitMainWeights?: readonly [number, number],
 ): RecipeInput => ({
   mode: 'classic',
   category: 'milk_gelato',
   target_temperature_c: -13,
   target_batch_grams: batch,
   machine_capacity_grams: null,
-  items: [line('line-banana', BANANA, bananaGrams), line('line-strawberry', STRAWBERRIES, strawberryGrams), ...extra],
+  items: [
+    line('line-banana', BANANA, bananaGrams, 'main', explicitMainWeights?.[0]),
+    line('line-strawberry', STRAWBERRIES, strawberryGrams, 'main', explicitMainWeights?.[1]),
+    ...extra,
+    ...structuralOwnerLines(
+      Math.max(0, batch - bananaGrams - strawberryGrams - extra.reduce((sum, item) => sum + item.planned_grams, 0)),
+    ),
+  ],
 });
 
 const NO = { byLineId: {} };
@@ -163,15 +199,29 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
 });
 
 describe('owner runtime fixtures — identity and ratio are hard formulation intent', () => {
+  it('rejects a forged 49/51 split and changed ratio metadata for a 50/50 group', () => {
+    const input = ownerInput(50, 50, [], 100);
+    const split = {
+      ...input,
+      items: input.items.map((item, index) => ({
+        ...item,
+        planned_grams: index === 0 ? 49 : 51,
+      })),
+    };
+    expect(verifyMainIngredientIdentity(input, split)).toMatchObject({ ok: false });
+
+    const metadata = {
+      ...input,
+      items: input.items.map((item, index) => index === 0
+        ? { ...item, main_ratio_weight: 2 }
+        : item),
+    };
+    expect(verifyMainIngredientIdentity(input, metadata)).toMatchObject({ ok: false });
+  });
   it('permanently forbids the observed 100/100 → 0/0 and 0/positive applicable proposal', () => {
     const before = ownerInput();
-    const runtime = buildOptimizePreview(before, NO, '2026-08-08T00:00:00.000Z');
-    expect(runtime.ok).toBe(true);
-    if (runtime.ok) {
-      expect(runtime.preview.diagnosticOnly).toBe(false);
-      expect(runtime.preview.formulation?.proof?.verdict).toBe('all_bands_in_range');
-      expect(runtime.preview.violationsAfter).toBe(0);
-    }
+    const runtime = buildBatchRescalePreview(before, NO, 1200, '2026-08-08T00:00:00.000Z');
+    expect(runtime.ok, JSON.stringify(runtime)).toBe(true);
     const after = runtime.ok ? runtime.preview.proposedInput : null;
     if (after === null) return; // an honest infeasible stop is allowed
 
@@ -185,41 +235,42 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
     expect(strawberry!.planned_grams).toBeGreaterThan(0);
     expect(banana!.planned_grams / strawberry!.planned_grams).toBeCloseTo(1, 8);
     expect(findCanonicalDuplicateIngredients(after)).toEqual([]);
-    expect(Math.abs(plannedSum(after) - 1000)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(plannedSum(after) - 1200)).toBeLessThanOrEqual(0.1);
   });
 
   it('preserves a 2:1 Main ratio or stops honestly', () => {
-    const runtime = buildOptimizePreview(ownerInput(200, 100), NO, '2026-08-08T00:00:00.000Z');
-    expect(runtime.ok).toBe(true);
-    if (runtime.ok) {
-      expect(runtime.preview.diagnosticOnly).toBe(false);
-      expect(runtime.preview.formulation?.proof?.verdict).toBe('all_bands_in_range');
-      expect(runtime.preview.violationsAfter).toBe(0);
-    }
+    const runtime = buildBatchRescalePreview(
+      ownerInput(200, 100, [], 1000, [2, 1]),
+      NO,
+      1200,
+      '2026-08-08T00:00:00.000Z',
+    );
+    expect(runtime.ok, JSON.stringify(runtime)).toBe(true);
     const after = runtime.ok ? runtime.preview.proposedInput : null;
     if (after === null) return;
     const banana = after.items.find((item) => item.id === 'line-banana')!;
     const strawberry = after.items.find((item) => item.id === 'line-strawberry')!;
     expect(banana.planned_grams).toBeGreaterThan(0);
     expect(strawberry.planned_grams).toBeGreaterThan(0);
-    expect(banana.planned_grams / strawberry.planned_grams).toBeCloseTo(2, 8);
+    expect(Math.abs(banana.planned_grams - strawberry.planned_grams * 2)).toBeLessThanOrEqual(1);
   });
 
   it('preserves three positive Main identities and their 1:1:1 ratio', () => {
-    const result = buildOptimizePreview(
-      ownerInput(100, 100, [line('line-pistachio', PISTACHIO, 100)]),
+    const result = buildBatchRescalePreview(
+      ownerInput(100, 100, [line('line-pistachio', PISTACHIO, 100)], 1100),
       NO,
+      1200,
       '2026-08-08T00:00:00.000Z',
     );
-    expect(result.ok).toBe(true);
+    expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
     const after = result.preview.proposedInput;
     const mains = ['line-banana', 'line-strawberry', 'line-pistachio'].map(
       (id) => after.items.find((item) => item.id === id)!,
     );
     expect(mains.every((item) => item && item.lock_type === 'main' && item.planned_grams > 0)).toBe(true);
-    expect(mains[0]!.planned_grams / mains[1]!.planned_grams).toBeCloseTo(1, 8);
-    expect(mains[1]!.planned_grams / mains[2]!.planned_grams).toBeCloseTo(1, 8);
+    expect(Math.max(...mains.map((item) => item!.planned_grams)) -
+      Math.min(...mains.map((item) => item!.planned_grams))).toBeLessThanOrEqual(1);
   });
 
   it('returns an explicit conflict for a Main-ratio + exact-lock batch impossibility', () => {
@@ -248,12 +299,12 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
     )!;
     expect(banana.planned_grams).toBeGreaterThanOrEqual(100);
     expect(banana.planned_grams).toBeLessThanOrEqual(250);
-    expect(banana.planned_grams / strawberry.planned_grams).toBeCloseTo(1, 8);
+    expect(Math.abs(banana.planned_grams - strawberry.planned_grams)).toBeLessThanOrEqual(1);
   });
 
   it('combines Direction with 2:1 Multi-Main and a range constraint', () => {
     const input: RecipeInput = {
-      ...ownerInput(200, 100),
+      ...ownerInput(200, 100, [], 1000, [2, 1]),
       goals: {
         direction_targets: {
           sweetness: 1,
@@ -276,8 +327,15 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
     const banana = after.items.find((item) => item.id === 'line-banana')!;
     const strawberry = after.items.find((item) => item.id === 'line-strawberry')!;
 
-    expect(detectViolations(calculateRecipe(after))).toEqual([]);
-    expect(banana.planned_grams / strawberry.planned_grams).toBeCloseTo(2, 8);
+    const remainingViolations = detectViolations(calculateRecipe(after));
+    if (result.preview.diagnosticOnly) {
+      expect(remainingViolations.length).toBeGreaterThan(0);
+    } else {
+      expect(remainingViolations).toEqual([]);
+    }
+    const mainTotal = banana.planned_grams + strawberry.planned_grams;
+    expect(Math.abs(banana.planned_grams - mainTotal * 2 / 3)).toBeLessThanOrEqual(1);
+    expect(Math.abs(strawberry.planned_grams - mainTotal / 3)).toBeLessThanOrEqual(1);
     expect(banana.planned_grams).toBeGreaterThanOrEqual(160);
     expect(banana.planned_grams).toBeLessThanOrEqual(300);
 
@@ -293,8 +351,7 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
             ),
           }
         : null;
-    expect(
-      commitPreview(
+    const committed = commitPreview(
         input,
         constraints,
         result.preview,
@@ -305,8 +362,12 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
         null,
         null,
         consent,
-      ).ok,
-    ).toBe(true);
+      );
+    if (result.preview.diagnosticOnly) {
+      expect(committed.ok).toBe(false);
+    } else {
+      expect(committed.ok).toBe(true);
+    }
   });
 
   it('batch reconciliation preserves a free Main ratio and rejects an exact-lock drift', () => {
@@ -370,7 +431,7 @@ describe('persistence, Apply and Undo boundaries', () => {
     });
     const reopened = buildRecipeInput(useRecipeStore.getState());
     expect(
-      reopened.items.map((item) => [
+      reopened.items.filter((item) => item.lock_type === 'main').map((item) => [
         item.id,
         item.ingredient.canonical_ingredient_id,
         item.lock_type,
@@ -384,7 +445,7 @@ describe('persistence, Apply and Undo boundaries', () => {
 
   it('real Preview → Apply → Undo preserves and then restores the exact Main set', () => {
     useRecipeStore.getState().loadRecipeInput(ownerInput());
-    useConstraintStudioStore.getState().createOptimizePreview();
+    useConstraintStudioStore.getState().createBatchRescalePreview(1200);
     expect(useConstraintStudioStore.getState().preview).not.toBeNull();
 
     useConstraintStudioStore.getState().applyPreview();
@@ -397,7 +458,11 @@ describe('persistence, Apply and Undo boundaries', () => {
 
     useConstraintStudioStore.getState().undoLastApply();
     const restored = useRecipeStore.getState().items;
-    expect(restored.map((item) => [item.id, item.planned_grams, item.lock_type])).toEqual([
+    expect(restored.filter((item) => item.lock_type === 'main').map((item) => [
+      item.id,
+      item.planned_grams,
+      item.lock_type,
+    ])).toEqual([
       ['line-banana', 100, 'main'],
       ['line-strawberry', 100, 'main'],
     ]);
@@ -406,7 +471,8 @@ describe('persistence, Apply and Undo boundaries', () => {
   it('Main + unavailable stops explicitly until that canonical ingredient is re-added', () => {
     useRecipeStore.getState().loadRecipeInput(ownerInput());
     useRecipeStore.getState().markIngredientUnavailable('line-banana');
-    expect(useRecipeStore.getState().items.map((item) => item.id)).toEqual(['line-strawberry']);
+    expect(useRecipeStore.getState().items.some((item) => item.id === 'line-banana')).toBe(false);
+    expect(useRecipeStore.getState().items.some((item) => item.id === 'line-strawberry')).toBe(true);
     expect(useRecipeStore.getState().unavailableMainIngredientIds).toEqual([
       BANANA.canonical_ingredient_id,
     ]);

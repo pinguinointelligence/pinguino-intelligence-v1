@@ -55,6 +55,7 @@ const recipeInput = (template: (typeof EXECUTABLE_RECIPE_TEMPLATES)[number]): Re
       planned_grams: line.grams,
       actual_grams: null,
       lock_type: line.role === 'main' ? 'main' as const : 'unlocked' as const,
+      ...(line.mainRatioWeight === null ? {} : { main_ratio_weight: line.mainRatioWeight }),
     };
   }),
 });
@@ -112,6 +113,17 @@ describe('executable Recipe Library Batch 1 registry', () => {
     });
     expect(EXECUTABLE_RECIPE_TEMPLATES.flatMap((template) => template.toppings)
       .every((line) => line.processScope === 'POST_PROCESS_ADDON')).toBe(true);
+  });
+
+  it('publishes the Raphaello multi-Main ratio explicitly instead of inferring it from grams', () => {
+    const raphaello = executableRecipeTemplateById('fantasy-raphaello-v1')!;
+    expect(raphaello.base.filter((line) => line.role === 'main').map((line) => ({
+      mapperIngredientId: line.mapperIngredientId,
+      mainRatioWeight: line.mainRatioWeight,
+    }))).toEqual([
+      { mapperIngredientId: 'PI-ING-000151', mainRatioWeight: 2 },
+      { mapperIngredientId: 'PI-ING-001512', mainRatioWeight: 1 },
+    ]);
   });
 
   it('uses only current, Base+Engine-approved Mapper identities; provenance stays informational', () => {

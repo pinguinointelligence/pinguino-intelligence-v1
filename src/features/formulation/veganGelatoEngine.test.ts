@@ -161,12 +161,14 @@ const line = (
   ingredient: EngineIngredient,
   grams: number,
   lockType: 'unlocked' | 'main' | 'grams' = 'unlocked',
+  mainRatioWeight?: number,
 ) => ({
   id,
   ingredient,
   planned_grams: grams,
   actual_grams: null,
   lock_type: lockType,
+  ...(mainRatioWeight === undefined ? {} : { main_ratio_weight: mainRatioWeight }),
 });
 
 const recipe = (items: ReturnType<typeof line>[], temperature = -13): RecipeInput => ({
@@ -240,6 +242,10 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     const summaries: Array<ReturnType<typeof proof> & { temperature: number }> = [];
     for (const temperature of [-11, -12, -13]) {
       const preview = formulate(recipe([...items], temperature));
+      if (name !== 'neutral' && name !== 'almond') {
+        expect(['maximized', 'best_achievable']).toContain(preview.mainObjective?.status);
+        expect(preview.mainObjective?.technicalScore).toBe(10);
+      }
       expect(preview.formulation?.templateId).toContain(
         strategy === 'neutral' && temperature === -13 ? 'V02' : `vegan_${strategy}`,
       );
@@ -334,15 +340,17 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     'preserves the Strawberry/Banana %s Multi-Main contract',
     (_label, bananaG, strawberryG, ratio) => {
       const source = recipe([
-        line('banana', BANANA, bananaG, 'main'),
-        line('strawberry', STRAWBERRY, strawberryG, 'main'),
+        line('banana', BANANA, bananaG, 'main', ratio),
+        line('strawberry', STRAWBERRY, strawberryG, 'main', 1),
       ]);
       const preview = formulate(source);
       const banana = preview.proposedInput.items.find((item) => item.id === 'banana')!;
       const strawberry = preview.proposedInput.items.find((item) => item.id === 'strawberry')!;
       expect(banana.lock_type).toBe('main');
       expect(strawberry.lock_type).toBe('main');
-      expect(banana.planned_grams / strawberry.planned_grams).toBeCloseTo(ratio, 6);
+      expect(
+        Math.abs(banana.planned_grams - ratio * strawberry.planned_grams),
+      ).toBeLessThanOrEqual(1);
       expect(new Set(canonicalIds(preview.proposedInput)).size).toBe(
         preview.proposedInput.items.length,
       );

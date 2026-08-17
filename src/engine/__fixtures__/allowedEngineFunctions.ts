@@ -33,6 +33,8 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   'selectTargetBand',
   // pipeline assembly (4H)
   'calculateRecipe',
+  // exact read-only factors for certified mathematical relaxations
+  'technicalLinearIngredientFactors',
   // nutrition / cost / scoring (4I)
   'ingredientKcalContribution',
   'computeNutritionPer100g',

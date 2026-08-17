@@ -22,6 +22,7 @@ import {
 import {
   applyPreviewWithServerAuthority,
   isUndoAvailable,
+  unlockConstraintAndRecalculate,
   useConstraintStudioStore,
   type PreviewIssue,
   type RecalculationTerminalState,
@@ -162,6 +163,7 @@ function RecalcDiagnosisView({
   onReturnToRecipe,
   onChooseOtherProduct,
   onCompleteProductData,
+  onUnlockAndPreview,
   terminal,
 }: {
   issue: PreviewIssue;
@@ -171,6 +173,7 @@ function RecalcDiagnosisView({
   onReturnToRecipe: (lineId: string | null) => void;
   onChooseOtherProduct: () => void;
   onCompleteProductData: () => void;
+  onUnlockAndPreview: (lineId: string) => void;
   terminal: RecalculationTerminalState;
 }) {
   // "Already in band" is not a failure — keep the friendly note, no diagnosis table.
@@ -224,14 +227,26 @@ function RecalcDiagnosisView({
           </button>
         ) : null}
         {issue.code === 'impossible_under_constraints' ? (
-          <button
-            type="button"
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
-            data-testid="pro-recalc-return-to-locks"
-            onClick={() => onReturnToRecipe(issue.conflict?.lineId ?? null)}
-          >
-            Wróć do blokad receptury
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {issue.conflict ? (
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90"
+                data-testid="pro-recalc-unlock-and-preview"
+                onClick={() => onUnlockAndPreview(issue.conflict!.lineId)}
+              >
+                Odblokuj i pokaż podgląd
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+              data-testid="pro-recalc-return-to-locks"
+              onClick={() => onReturnToRecipe(issue.conflict?.lineId ?? null)}
+            >
+              Wróć do receptury
+            </button>
+          </div>
         ) : null}
         {productBehaviorNeedsProductActions ? (
           <div className="flex flex-wrap gap-2" data-testid="pro-recalc-product-data-actions">
@@ -532,6 +547,10 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
     });
   };
 
+  const unlockAndPreview = (lineId: string) => {
+    void unlockConstraintAndRecalculate(lineId);
+  };
+
   if (!open) return null;
 
   // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
@@ -632,6 +651,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               onReturnToRecipe={returnToProductDose}
               onChooseOtherProduct={openBaseProductPicker}
               onCompleteProductData={goToProductData}
+              onUnlockAndPreview={unlockAndPreview}
               terminal={recalculationTerminal}
             />
           ) : null}

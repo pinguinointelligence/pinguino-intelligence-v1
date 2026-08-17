@@ -176,6 +176,7 @@ describe('executable Recipe Library handoff', () => {
       toppings: [{
         lineId: 'synthetic-topping', mapperIngredientId: 'PI-ING-000514',
         requiredProductForm: null, grams: 10, ownerSeedGrams: 10, role: 'standard',
+        mainRatioWeight: null,
         processScope: 'POST_PROCESS_ADDON', note: 'Synthetic contract topping',
       }],
     };
@@ -278,6 +279,11 @@ describe('executable Recipe Library handoff', () => {
       const snapshots = materialized.composition.behaviorSnapshots!;
       const technicalOnlyMainLineIds =
         materialized.composition.ownerReviewGate!.technicalOnlyMainLineIds;
+      if (templateId === 'fantasy-raphaello-v1') {
+        expect(materialized.input.items.filter((item) => item.lock_type === 'main').map(
+          (item) => item.main_ratio_weight,
+        )).toEqual([2, 1]);
+      }
       const preview = bindProductBehaviorToPreview(
         buildBatchRescalePreview(
           materialized.input,
@@ -289,7 +295,7 @@ describe('executable Recipe Library handoff', () => {
         snapshots,
         technicalOnlyMainLineIds,
       );
-      expect(preview.ok, templateId).toBe(true);
+      expect(preview.ok, `${templateId}: ${JSON.stringify(preview)}`).toBe(true);
       if (!preview.ok) continue;
       expect(preview.preview.proposedInput.items.filter(
         (item) => technicalOnlyMainLineIds.includes(item.id),
