@@ -739,9 +739,13 @@ function RecipeRow({
               title={lock?.title ?? b.lockTypes.grams}
               disabled={lock?.toggleDisabled}
               data-testid={`row-lock-grams-${item.id}`}
-              onClick={() =>
-                lock?.onToggle() ?? actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams')
-              }
+              onClick={() => {
+                if (lock) {
+                  lock.onToggle();
+                  return;
+                }
+                actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams');
+              }}
               className={cn(
                 'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
                 gramsLocked

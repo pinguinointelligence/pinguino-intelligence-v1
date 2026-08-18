@@ -12,6 +12,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
+import { findDemoIngredient } from '@/data/demoIngredients';
 import {
   alcoholAndSugarHeavyJimBeam,
   overSweetStarter,
@@ -21,10 +22,7 @@ import {
 } from '@/features/recipe-constraints/constraintFixtures';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import {
-  optimizePreviewRequiresApply,
-  useConstraintStudioStore,
-} from './constraintStudioStore';
+import { optimizePreviewRequiresApply, useConstraintStudioStore } from './constraintStudioStore';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import type { ConstraintPreview } from './applyPipeline';
 
@@ -32,10 +30,7 @@ const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
 const MILK = starterLine('milk_3_5');
 
-const behaviorSnapshot = (
-  lineId: string,
-  mapperIngredientId: string,
-): ProductBehaviorSnapshot => ({
+const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
   resolutionState: 'RESOLVED',
   lineId,
@@ -82,10 +77,9 @@ const loadRecipe = (input: RecipeInput) => {
   useRecipeStore.getState().loadRecipeInput(input);
   for (const item of useRecipeStore.getState().items) {
     const mapperIngredientId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
-    useRecipeStore.getState().setProductBehaviorSnapshot(
-      item.id,
-      behaviorSnapshot(item.id, mapperIngredientId),
-    );
+    useRecipeStore
+      .getState()
+      .setProductBehaviorSnapshot(item.id, behaviorSnapshot(item.id, mapperIngredientId));
   }
 };
 const recipeItems = () => useRecipeStore.getState().items;
@@ -155,10 +149,16 @@ describe('Pro executable validation', () => {
     } as unknown as ConstraintPreview;
 
     expect(optimizePreviewRequiresApply(preview, constraints, input)).toBe(false);
-    expect(optimizePreviewRequiresApply({
-      ...preview,
-      lines: [{ ...preview.lines[0]!, kind: 'changed', afterGrams: 671 }],
-    }, constraints, input)).toBe(true);
+    expect(
+      optimizePreviewRequiresApply(
+        {
+          ...preview,
+          lines: [{ ...preview.lines[0]!, kind: 'changed', afterGrams: 671 }],
+        },
+        constraints,
+        input,
+      ),
+    ).toBe(true);
   });
 
   it('returns one NO_CHANGE_NEEDED terminal when a clean recipe needs zero gram changes', () => {
@@ -196,8 +196,54 @@ describe('Pro executable validation', () => {
       ingredientNames: [input.items[0]!.ingredient.name],
     });
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
-      state: 'BLOCKED_WITH_EXACT_ACTION', code: 'missing_prices',
+      state: 'BLOCKED_WITH_EXACT_ACTION',
+      code: 'missing_prices',
     });
+    expect(useConstraintStudioStore.getState().history).toEqual([]);
+  });
+
+  it('requires session consent before removing a positive Standard line, then Apply and Undo are exact', () => {
+    const base = starterMilkBase();
+    const inulin = findDemoIngredient('inulin')!;
+    const input: RecipeInput = {
+      ...base,
+      items: [
+        ...base.items,
+        {
+          id: 'user-inulin',
+          ingredient: inulin,
+          planned_grams: 10,
+          actual_grams: null,
+          lock_type: 'unlocked',
+          user_intent_anchor_grams: 10,
+        },
+      ],
+    };
+    loadRecipe(input);
+    const before = structuredClone(buildRecipeInput(useRecipeStore.getState()));
+
+    useConstraintStudioStore.getState().createExplicitStandardRemovalPreview('user-inulin');
+    const staged = useConstraintStudioStore.getState().preview;
+    expect(staged?.explicitStandardRemoval).toMatchObject({
+      lineId: 'user-inulin',
+      beforeGrams: 10,
+    });
+    expect(staged?.proposedInput.items.some((item) => item.id === 'user-inulin')).toBe(false);
+
+    useConstraintStudioStore.setState({ explicitStandardRemovalConsent: null });
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked?.code).toBe('stale_preview');
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+    expect(useConstraintStudioStore.getState().history).toEqual([]);
+
+    useConstraintStudioStore.getState().createExplicitStandardRemovalPreview('user-inulin');
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useRecipeStore.getState().items.some((item) => item.id === 'user-inulin')).toBe(false);
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
     expect(useConstraintStudioStore.getState().history).toEqual([]);
   });
 });

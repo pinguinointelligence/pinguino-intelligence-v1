@@ -487,7 +487,9 @@ const fromPreset = (preset: DemoPreset) => ({
   target_batch_grams: preset.target_batch_grams,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    'machine' | 'manual' | null,
+    | 'machine'
+    | 'manual'
+    | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   target_protein_percent: PROTEIN_GELATO_TARGET.defaultPercent,
@@ -837,10 +839,12 @@ export const useRecipeStore = create<RecipeState>()(
           return { ok: false, code: 'write_verification_failed' };
         }
         const nextProductBehaviorSnapshots = productBehaviorSnapshots
-          ? Object.fromEntries(Object.entries(productBehaviorSnapshots).map(([lineId, snapshot]) => [
-              lineId,
-              preserveOwnerReviewGate(prior.ownerReviewGate, snapshot),
-            ]))
+          ? Object.fromEntries(
+              Object.entries(productBehaviorSnapshots).map(([lineId, snapshot]) => [
+                lineId,
+                preserveOwnerReviewGate(prior.ownerReviewGate, snapshot),
+              ]),
+            )
           : Object.fromEntries(
               Object.entries(prior.productBehaviorSnapshots).filter(([lineId]) => {
                 const priorBase = prior.items.find((item) => item.id === lineId);
@@ -915,6 +919,7 @@ export const useRecipeStore = create<RecipeState>()(
                   {
                     ...makeLine(normalizedIngredient, grams),
                     lock_type: restoresUnavailableMain ? ('main' as const) : ('unlocked' as const),
+                    ...(grams > 0 ? { user_intent_anchor_grams: grams } : {}),
                   },
                 ];
           const orderedItems = sortedBaseItems(items);
@@ -1114,8 +1119,7 @@ export const useRecipeStore = create<RecipeState>()(
           const next = { ...state.productBehaviorSnapshots };
           if (snapshot) {
             next[lineId] = preserveOwnerReviewGate(state.ownerReviewGate, snapshot);
-          }
-          else delete next[lineId];
+          } else delete next[lineId];
           return {
             productBehaviorSnapshots: next,
             dirty: true,
@@ -1478,11 +1482,13 @@ export const useRecipeStore = create<RecipeState>()(
             delete next.main_ratio_weight;
             return {
               ...next,
-              lock_type: item.range_constraint || item.grams_constraint
-                ? ('grams' as const)
-                : item.percent_constraint
-                  ? ('percent' as const)
-                  : ('unlocked' as const),
+              ...(item.planned_grams > 0 ? { user_intent_anchor_grams: item.planned_grams } : {}),
+              lock_type:
+                item.range_constraint || item.grams_constraint
+                  ? ('grams' as const)
+                  : item.percent_constraint
+                    ? ('percent' as const)
+                    : ('unlocked' as const),
             };
           }),
           dirty: true,

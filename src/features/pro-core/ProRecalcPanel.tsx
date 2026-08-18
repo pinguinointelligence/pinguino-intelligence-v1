@@ -164,6 +164,7 @@ function RecalcDiagnosisView({
   onChooseOtherProduct,
   onCompleteProductData,
   onUnlockAndPreview,
+  onRemoveStandardAndPreview,
   terminal,
 }: {
   issue: PreviewIssue;
@@ -174,6 +175,7 @@ function RecalcDiagnosisView({
   onChooseOtherProduct: () => void;
   onCompleteProductData: () => void;
   onUnlockAndPreview: (lineId: string) => void;
+  onRemoveStandardAndPreview: (lineId: string) => void;
   terminal: RecalculationTerminalState;
 }) {
   // "Already in band" is not a failure — keep the friendly note, no diagnosis table.
@@ -192,13 +194,62 @@ function RecalcDiagnosisView({
     return <BestSafeResultView issue={issue} input={input} />;
   }
 
+  if (issue.code === 'standard_presence_removal_required') {
+    const metricLabel =
+      constraintStudioCopy.diagnosis.metricLabels[issue.limitingMetric] ?? issue.limitingMetric;
+    return (
+      <div className="space-y-3" data-testid="pro-recalc-standard-removal-required">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-ivory">
+            Ten składnik trzeba usunąć albo zmienić.
+          </p>
+          <p className="text-sm leading-relaxed text-ivory/85">{issue.messagePl}</p>
+        </div>
+        <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-xs text-ivory/70">
+          <dt>Aktualna ilość</dt>
+          <dd className="font-mono tabular-nums">{formatGramsPl(issue.currentGrams)}</dd>
+          <dt>Najlepsza próba bez usuwania</dt>
+          <dd className="font-mono tabular-nums">
+            {formatGramsPl(issue.bestAttemptedNonZeroGrams)}
+          </dd>
+          <dt>Ograniczający parametr</dt>
+          <dd>{metricLabel}</dd>
+          <dt>Akceptowany zakres</dt>
+          <dd className="font-mono tabular-nums">
+            {issue.acceptedMin === null || issue.acceptedMax === null
+              ? '—'
+              : `${issue.acceptedMin}–${issue.acceptedMax}`}
+          </dd>
+        </dl>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90"
+            data-testid="pro-recalc-remove-standard-preview"
+            onClick={() => onRemoveStandardAndPreview(issue.lineId)}
+          >
+            Usuń składnik i pokaż podgląd
+          </button>
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+            data-testid="pro-recalc-return-from-standard-removal"
+            onClick={() => onReturnToRecipe(issue.lineId)}
+          >
+            Wróć do receptury
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Owner P0 (full formulation): honest structured states with their exact
   // messages — no lock table (locks are not the cause). Owner Agent 3:
   // `impossible_under_constraints` carries its complete message (conflicting
   // constraint + engine-verified nearest feasible value) the same way.
   const productBehaviorNeedsProductActions =
-    issue.code === 'product_behavior_invalid'
-    && (terminal.state === 'PRODUCT_DATA_REQUIRED' || terminal.state === 'MAPPER_BINDING_REQUIRED');
+    issue.code === 'product_behavior_invalid' &&
+    (terminal.state === 'PRODUCT_DATA_REQUIRED' || terminal.state === 'MAPPER_BINDING_REQUIRED');
 
   if (
     issue.code === 'unsupported_profile' ||
@@ -212,7 +263,9 @@ function RecalcDiagnosisView({
   ) {
     return (
       <div className="space-y-2" data-testid="pro-recalc-diagnosis" data-code={issue.code}>
-        <p className="text-sm leading-relaxed text-ivory/85">{customerPreviewIssueMessagePl(issue)}</p>
+        <p className="text-sm leading-relaxed text-ivory/85">
+          {customerPreviewIssueMessagePl(issue)}
+        </p>
         <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
           {d.unchanged}
         </p>
@@ -617,7 +670,8 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
           ) : null}
 
           {recalculationTerminal?.state === 'BLOCKED_WITH_EXACT_ACTION' &&
-          recalculationTerminal.messagePl && !previewIssue ? (
+          recalculationTerminal.messagePl &&
+          !previewIssue ? (
             <div className="space-y-2" data-testid="pro-recalc-exact-action-block">
               <p className="text-sm leading-relaxed text-ivory/85" role="alert">
                 {recalculationTerminal.messagePl}
@@ -652,6 +706,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               onChooseOtherProduct={openBaseProductPicker}
               onCompleteProductData={goToProductData}
               onUnlockAndPreview={unlockAndPreview}
+              onRemoveStandardAndPreview={store.createExplicitStandardRemovalPreview}
               terminal={recalculationTerminal}
             />
           ) : null}

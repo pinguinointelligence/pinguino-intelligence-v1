@@ -54,19 +54,21 @@ describe('IngredientBuilder Main role integration', () => {
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
-    act(() => root.render(
-      <QueryClientProvider client={client}>
-        <SurfaceToneContext.Provider value="paper">
-          <IngredientBuilder
-            items={calculated.items}
-            totalBatchG={calculated.total_batch_g}
-            targetBatchG={state.target_batch_grams}
-            demo
-            layout="workbench"
-          />
-        </SurfaceToneContext.Provider>
-      </QueryClientProvider>,
-    ));
+    act(() =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <SurfaceToneContext.Provider value="paper">
+            <IngredientBuilder
+              items={calculated.items}
+              totalBatchG={calculated.total_batch_g}
+              targetBatchG={state.target_batch_grams}
+              demo
+              layout="workbench"
+            />
+          </SurfaceToneContext.Provider>
+        </QueryClientProvider>,
+      ),
+    );
 
     const crown = container.querySelector<HTMLButtonElement>(
       `[data-testid="row-main-toggle-${main.id}"]`,
@@ -82,6 +84,73 @@ describe('IngredientBuilder Main role integration', () => {
       mode: 'locked',
       grams: main.planned_grams,
     });
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('keeps Main and its grams when the real row padlock is toggled on and off', () => {
+    const state = useRecipeStore.getState();
+    const main = state.items.find((item) => item.lock_type === 'main')!;
+    useRecipeStore.setState({
+      items: state.items.map((item) =>
+        item.id === main.id ? { ...item, grams_constraint: undefined } : item,
+      ),
+    });
+    useConstraintStudioStore.setState({ constraints: { byLineId: {} } });
+    const beforeGrams = main.planned_grams;
+    const beforeTotal = state.items.reduce((sum, item) => sum + item.planned_grams, 0);
+    const current = useRecipeStore.getState();
+    const calculated = calculateRecipe({
+      mode: current.mode,
+      category: current.category,
+      target_temperature_c: current.target_temperature_c,
+      target_batch_grams: current.target_batch_grams,
+      machine_capacity_grams: current.machine_capacity_grams,
+      goals: { formulation_strategy: current.formulation_strategy },
+      items: current.items,
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    act(() =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <SurfaceToneContext.Provider value="paper">
+            <IngredientBuilder
+              items={calculated.items}
+              totalBatchG={calculated.total_batch_g}
+              targetBatchG={current.target_batch_grams}
+              demo
+              layout="workbench"
+            />
+          </SurfaceToneContext.Provider>
+        </QueryClientProvider>,
+      ),
+    );
+    const padlock = container.querySelector<HTMLButtonElement>(
+      `[data-testid="row-lock-grams-${main.id}"]`,
+    );
+    expect(padlock).not.toBeNull();
+
+    act(() => padlock!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(useRecipeStore.getState().items.find((item) => item.id === main.id)).toMatchObject({
+      lock_type: 'main',
+      planned_grams: beforeGrams,
+      grams_constraint: { grams: beforeGrams },
+    });
+    expect(useRecipeStore.getState().items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
+      beforeTotal,
+    );
+
+    act(() => padlock!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(useRecipeStore.getState().items.find((item) => item.id === main.id)).toMatchObject({
+      lock_type: 'main',
+      planned_grams: beforeGrams,
+    });
+    expect(
+      useRecipeStore.getState().items.find((item) => item.id === main.id)?.grams_constraint,
+    ).toBeUndefined();
     act(() => root.unmount());
     container.remove();
   });

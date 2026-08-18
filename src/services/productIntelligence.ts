@@ -73,28 +73,44 @@ function exactServerAuthorityReason(
   return `${reason}:${snapshot.productId}:${snapshot.mapperIngredientId ?? 'none'}:${snapshot.productVersionId}:${module}:refresh_product_data`;
 }
 
-const TECHNICAL_FACT_FIELDS: ReadonlyArray<[
-  keyof EngineIngredient['composition'] | 'pod_value' | 'pac_value' | 'de_value',
-  string,
-]> = [
-  ['water_percent', 'water'], ['solids_percent', 'totalSolids'],
-  ['fat_percent', 'fat'], ['saturated_fat_percent', 'saturatedFat'],
-  ['protein_percent', 'protein'], ['carbohydrate_percent', 'carbohydrate'],
-  ['sugar_percent', 'sugars'], ['sucrose_percent', 'sucrose'],
-  ['glucose_percent', 'glucose'], ['dextrose_percent', 'dextrose'],
-  ['fructose_percent', 'fructose'], ['lactose_percent', 'lactose'],
-  ['polyol_percent', 'polyols'], ['fiber_percent', 'fibre'],
-  ['salt_percent', 'salt'], ['alcohol_percent', 'alcohol'],
-  ['kcal_per_100g', 'energyKcal'], ['pod_value', 'podValue'],
-  ['pac_value', 'pacValue'], ['de_value', 'deValue'],
+const TECHNICAL_FACT_FIELDS: ReadonlyArray<
+  [keyof EngineIngredient['composition'] | 'pod_value' | 'pac_value' | 'de_value', string]
+> = [
+  ['water_percent', 'water'],
+  ['solids_percent', 'totalSolids'],
+  ['fat_percent', 'fat'],
+  ['saturated_fat_percent', 'saturatedFat'],
+  ['protein_percent', 'protein'],
+  ['carbohydrate_percent', 'carbohydrate'],
+  ['sugar_percent', 'sugars'],
+  ['sucrose_percent', 'sucrose'],
+  ['glucose_percent', 'glucose'],
+  ['dextrose_percent', 'dextrose'],
+  ['fructose_percent', 'fructose'],
+  ['lactose_percent', 'lactose'],
+  ['polyol_percent', 'polyols'],
+  ['fiber_percent', 'fibre'],
+  ['salt_percent', 'salt'],
+  ['alcohol_percent', 'alcohol'],
+  ['kcal_per_100g', 'energyKcal'],
+  ['pod_value', 'podValue'],
+  ['pac_value', 'pacValue'],
+  ['de_value', 'deValue'],
 ];
 
 // The Engine's documented Mapper seam treats absent optional component
 // contributions as zero. Core composition plus POD/PAC are deliberately not
 // listed here: an absent core fact must remain a hard technical mismatch.
 const OPTIONAL_ZERO_DEFAULT_FACTS = new Set<string>([
-  'sucrose', 'glucose', 'dextrose', 'fructose', 'lactose', 'polyols',
-  'fibre', 'alcohol', 'energyKcal',
+  'sucrose',
+  'glucose',
+  'dextrose',
+  'fructose',
+  'lactose',
+  'polyols',
+  'fibre',
+  'alcohol',
+  'energyKcal',
 ]);
 
 function ingredientTechnicalValue(
@@ -120,13 +136,18 @@ function technicalFactsMatch(
     // omitted optional fact therefore matches only an explicitly unknown
     // Engine value; it must never match a numeric value supplied by a caller.
     if (expected === undefined) {
-      return actual === null || actual === undefined
-        || (OPTIONAL_ZERO_DEFAULT_FACTS.has(snapshotField) && actual === 0);
+      return (
+        actual === null ||
+        actual === undefined ||
+        (OPTIONAL_ZERO_DEFAULT_FACTS.has(snapshotField) && actual === 0)
+      );
     }
     if (expected === null || actual === null || actual === undefined) {
       return expected === null && (actual === null || actual === undefined);
     }
-    return Number.isFinite(expected) && Number.isFinite(actual) && Math.abs(expected - actual) <= 1e-7;
+    return (
+      Number.isFinite(expected) && Number.isFinite(actual) && Math.abs(expected - actual) <= 1e-7
+    );
   });
 }
 
@@ -137,36 +158,39 @@ function readServerResolvedProductBehavior(value: unknown): ServerResolvedProduc
   if (!value || typeof value !== 'object') return null;
   const row = value as Record<string, unknown>;
   if (
-    row.schemaVersion === 1 && row.state === 'blocked' && typeof row.module === 'string'
-    && (row.entityKind === 'mapper' || row.entityKind === 'catalog_product_version')
+    row.schemaVersion === 1 &&
+    row.state === 'blocked' &&
+    typeof row.module === 'string' &&
+    (row.entityKind === 'mapper' || row.entityKind === 'catalog_product_version')
   ) {
     const entityId = typeof row.entityId === 'string' ? row.entityId : 'unresolved';
     const productId = typeof row.productId === 'string' ? row.productId : entityId;
-    const productVersionId = typeof row.productVersionId === 'string'
-      ? row.productVersionId
-      : entityId;
-    const exactReasons = [...new Set([
-      ...asStringArray(row.reasons),
-      ...asStringArray(row.blockReasons),
-    ])];
+    const productVersionId =
+      typeof row.productVersionId === 'string' ? row.productVersionId : entityId;
+    const exactReasons = [
+      ...new Set([...asStringArray(row.reasons), ...asStringArray(row.blockReasons)]),
+    ];
     return {
       schemaVersion: 1,
-      resolverVersion: typeof row.resolverVersion === 'string'
-        ? row.resolverVersion
-        : 'blocked-authority-envelope-v1',
+      resolverVersion:
+        typeof row.resolverVersion === 'string'
+          ? row.resolverVersion
+          : 'blocked-authority-envelope-v1',
       entityKind: row.entityKind,
       productId,
       productVersionId,
-      factsFingerprint: typeof row.factsFingerprint === 'string' ? row.factsFingerprint : 'unresolved',
+      factsFingerprint:
+        typeof row.factsFingerprint === 'string' ? row.factsFingerprint : 'unresolved',
       catalogStatus: 'blocked',
       mapperVerificationStatus: null,
       provenance: typeof row.provenance === 'string' ? row.provenance : 'server_authority',
-      behaviorBindingId: typeof row.behaviorBindingId === 'string' ? row.behaviorBindingId : 'unresolved',
-      behaviorBindingVersion: typeof row.behaviorBindingVersion === 'string'
-        ? row.behaviorBindingVersion
-        : 'unresolved',
+      behaviorBindingId:
+        typeof row.behaviorBindingId === 'string' ? row.behaviorBindingId : 'unresolved',
+      behaviorBindingVersion:
+        typeof row.behaviorBindingVersion === 'string' ? row.behaviorBindingVersion : 'unresolved',
       taxonomyVersion: typeof row.taxonomyVersion === 'string' ? row.taxonomyVersion : 'unresolved',
-      mapperIngredientId: typeof row.mapperIngredientId === 'string' ? row.mapperIngredientId : null,
+      mapperIngredientId:
+        typeof row.mapperIngredientId === 'string' ? row.mapperIngredientId : null,
       familyId: null,
       subfamilyId: null,
       formId: null,
@@ -177,9 +201,10 @@ function readServerResolvedProductBehavior(value: unknown): ServerResolvedProduc
       sharedFacts: null,
       privateOverlay: null,
       approvedLiquidDairyCarrier: false,
-      context: row.context && typeof row.context === 'object'
-        ? row.context as Record<string, unknown>
-        : {},
+      context:
+        row.context && typeof row.context === 'object'
+          ? (row.context as Record<string, unknown>)
+          : {},
       module: row.module as ProductBehaviorModule,
       state: 'blocked',
       moduleEligibility: { [row.module as ProductBehaviorModule]: 'blocked' },
@@ -199,19 +224,22 @@ function readServerResolvedProductBehavior(value: unknown): ServerResolvedProduc
     typeof row.behaviorBindingVersion !== 'string' ||
     typeof row.taxonomyVersion !== 'string' ||
     typeof row.approvedLiquidDairyCarrier !== 'boolean' ||
-    !row.moduleEligibility || typeof row.moduleEligibility !== 'object' ||
+    !row.moduleEligibility ||
+    typeof row.moduleEligibility !== 'object' ||
     typeof row.module !== 'string' ||
     (row.state !== 'eligible' && row.state !== 'blocked')
-  ) return null;
+  )
+    return null;
   return {
     ...(row as unknown as ServerResolvedProductBehavior),
     mapperIngredientId: typeof row.mapperIngredientId === 'string' ? row.mapperIngredientId : null,
     familyId: typeof row.familyId === 'string' ? row.familyId : null,
     subfamilyId: typeof row.subfamilyId === 'string' ? row.subfamilyId : null,
     formId: typeof row.formId === 'string' ? row.formId : null,
-    mainPolicy: row.mainPolicy && typeof row.mainPolicy === 'object'
-      ? row.mainPolicy as ServerResolvedProductBehavior['mainPolicy']
-      : null,
+    mainPolicy:
+      row.mainPolicy && typeof row.mainPolicy === 'object'
+        ? (row.mainPolicy as ServerResolvedProductBehavior['mainPolicy'])
+        : null,
     warnings: asStringArray(row.warnings),
     blockReasons: asStringArray(row.blockReasons),
   };
@@ -268,7 +296,11 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
     const snapshot = input.snapshots[lineId];
     const recipeLine = input.recipe.items.find((item) => item.id === lineId);
     const toppingLine = input.toppings?.find((item) => item.id === lineId);
-    const expectedScope = recipeLine ? 'BASE_FORMULATION' : toppingLine ? 'POST_PROCESS_ADDON' : null;
+    const expectedScope = recipeLine
+      ? 'BASE_FORMULATION'
+      : toppingLine
+        ? 'POST_PROCESS_ADDON'
+        : null;
     if (
       !snapshot ||
       snapshot.resolutionState !== 'RESOLVED' ||
@@ -333,9 +365,18 @@ export function recipeAuthorityRequestedRole(
 ): 'STANDARD' | 'MAIN' {
   if (!main || technicalOnlyMain) return 'STANDARD';
   return new Set<ProductBehaviorModule>([
-    'BASE_RECIPE', 'MAIN', 'OPTIMAL', 'ECO', 'SUBSTITUTION', 'MONITOR',
-    'SAVE', 'RECIPE_VERSION', 'RESTORE',
-  ]).has(module) ? 'STANDARD' : 'MAIN';
+    'BASE_RECIPE',
+    'MAIN',
+    'OPTIMAL',
+    'ECO',
+    'SUBSTITUTION',
+    'MONITOR',
+    'SAVE',
+    'RECIPE_VERSION',
+    'RESTORE',
+  ]).has(module)
+    ? 'STANDARD'
+    : 'MAIN';
 }
 
 function readRecipeBehaviorServerValidation(
@@ -350,7 +391,8 @@ function readRecipeBehaviorServerValidation(
     row.module !== expectedModule ||
     !Array.isArray(row.lines) ||
     !Array.isArray(row.staleLineIds)
-  ) return null;
+  )
+    return null;
   const lines = row.lines.flatMap((entry) => {
     if (!entry || typeof entry !== 'object') return [];
     const line = entry as Record<string, unknown>;
@@ -358,12 +400,15 @@ function readRecipeBehaviorServerValidation(
       typeof line.lineId !== 'string' ||
       (line.state !== 'ready' && line.state !== 'stale') ||
       !Array.isArray(line.reasons)
-    ) return [];
-    return [{
-      lineId: line.lineId,
-      state: line.state as 'ready' | 'stale',
-      reasons: asStringArray(line.reasons),
-    }];
+    )
+      return [];
+    return [
+      {
+        lineId: line.lineId,
+        state: line.state as 'ready' | 'stale',
+        reasons: asStringArray(line.reasons),
+      },
+    ];
   });
   if (lines.length !== row.lines.length) return null;
   return {
@@ -394,12 +439,14 @@ export async function validateRecipeBehaviorOnServer(input: {
       lines: built.invalidLineIds.map((lineId) => ({
         lineId,
         state: 'stale',
-        reasons: [(() => {
-          const snapshot = input.snapshots[lineId];
-          const line = input.recipe.items.find((item) => item.id === lineId);
-          const fallbackIdentity = line ? canonicalIngredientId(line.ingredient) : lineId;
-          return `behavior_snapshot_missing_or_unresolved:${snapshot?.productId ?? fallbackIdentity}:${snapshot?.mapperIngredientId ?? (fallbackIdentity.startsWith('PI-ING-') ? fallbackIdentity : 'none')}:${snapshot?.productVersionId ?? 'none'}:${input.module}:refresh_product_data`;
-        })()],
+        reasons: [
+          (() => {
+            const snapshot = input.snapshots[lineId];
+            const line = input.recipe.items.find((item) => item.id === lineId);
+            const fallbackIdentity = line ? canonicalIngredientId(line.ingredient) : lineId;
+            return `behavior_snapshot_missing_or_unresolved:${snapshot?.productId ?? fallbackIdentity}:${snapshot?.mapperIngredientId ?? (fallbackIdentity.startsWith('PI-ING-') ? fallbackIdentity : 'none')}:${snapshot?.productVersionId ?? 'none'}:${input.module}:refresh_product_data`;
+          })(),
+        ],
       })),
     };
   }
@@ -421,24 +468,25 @@ export async function validateRecipeBehaviorOnServer(input: {
     };
   }
 
-  const results = await Promise.all(built.groups.map(async (group) => {
-    const { data, error } = await client.rpc('validate_recipe_behavior_v1', {
-      p_lines: group.lines,
-      p_context: group.context,
-    });
-    if (error) throw new Error(error.message);
-    const parsed = readRecipeBehaviorServerValidation(data, input.module);
-    if (!parsed) throw new Error('Nieprawidłowa odpowiedź walidacji zachowania produktu.');
-    return parsed;
-  }));
-  const lines = results.flatMap((result) => result.lines)
+  const results = await Promise.all(
+    built.groups.map(async (group) => {
+      const { data, error } = await client.rpc('validate_recipe_behavior_v1', {
+        p_lines: group.lines,
+        p_context: group.context,
+      });
+      if (error) throw new Error(error.message);
+      const parsed = readRecipeBehaviorServerValidation(data, input.module);
+      if (!parsed) throw new Error('Nieprawidłowa odpowiedź walidacji zachowania produktu.');
+      return parsed;
+    }),
+  );
+  const lines = results
+    .flatMap((result) => result.lines)
     .map((line) => ({
       ...line,
-      reasons: line.reasons.map((reason) => exactServerAuthorityReason(
-        reason,
-        input.snapshots[line.lineId],
-        input.module,
-      )),
+      reasons: line.reasons.map((reason) =>
+        exactServerAuthorityReason(reason, input.snapshots[line.lineId], input.module),
+      ),
     }))
     .sort((left, right) => left.lineId.localeCompare(right.lineId));
   const staleLineIds = [...new Set(results.flatMap((result) => result.staleLineIds))].sort();
@@ -507,6 +555,8 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
   accountId: string | null;
   module?: ProductBehaviorModule;
   technicalOnlyMainLineIds?: readonly string[];
+  /** Runtime callers omit this and use the canonical server resolver. */
+  resolveSelection?: typeof resolveProductBehaviorForSelection;
 }): Promise<{
   snapshots: Record<string, ProductBehaviorSnapshot>;
   unresolvedLineIds: string[];
@@ -531,85 +581,104 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
       (input.technicalOnlyMainLineIds ?? []).includes(lineId),
     );
     const context = snapshot.resolutionContext;
-    return !context ||
+    return (
+      !context ||
       context.accountId !== input.accountId ||
       context.productProfile !== input.recipe.category ||
       context.temperatureC !== input.recipe.target_temperature_c ||
       context.mode !== mode ||
       context.processScope !== 'BASE_FORMULATION' ||
       context.requestedRole !== expectedRole ||
-      context.module !== requestedModule;
+      context.module !== requestedModule
+    );
   });
   const unresolvedLineIds: string[] = [];
 
-  await Promise.all(needsResolution.map(async (lineId) => {
-    const line = input.recipe.items.find((item) => item.id === lineId);
-    if (!line) {
-      unresolvedLineIds.push(lineId);
-      return;
-    }
-    const prior = snapshots[lineId];
-    const mapperIngredientId = prior?.mapperIngredientId ?? canonicalIngredientId(line.ingredient);
-    const entity = prior?.source !== 'mapper' && prior?.productVersionId
-      ? { entityKind: 'catalog_product_version' as const, entityId: prior.productVersionId }
-      : mapperIngredientId.startsWith('PI-ING-')
-        ? { entityKind: 'mapper' as const, entityId: mapperIngredientId }
-        : null;
-    if (!entity) {
-      unresolvedLineIds.push(lineId);
-      return;
-    }
-    const resolved = await resolveProductBehaviorForSelection({
-      entity,
-      context: {
-        accountId: input.accountId,
-        productProfile: input.recipe.category,
-        temperatureC: input.recipe.target_temperature_c,
-        mode,
+  await Promise.all(
+    needsResolution.map(async (lineId) => {
+      const line = input.recipe.items.find((item) => item.id === lineId);
+      if (!line) {
+        unresolvedLineIds.push(lineId);
+        return;
+      }
+      const prior = snapshots[lineId];
+      const mapperIngredientId =
+        prior?.mapperIngredientId ?? canonicalIngredientId(line.ingredient);
+      const entity =
+        prior?.source !== 'mapper' && prior?.productVersionId
+          ? { entityKind: 'catalog_product_version' as const, entityId: prior.productVersionId }
+          : mapperIngredientId.startsWith('PI-ING-')
+            ? { entityKind: 'mapper' as const, entityId: mapperIngredientId }
+            : null;
+      if (!entity) {
+        unresolvedLineIds.push(lineId);
+        return;
+      }
+      const resolved = await (input.resolveSelection ?? resolveProductBehaviorForSelection)({
+        entity,
+        context: {
+          accountId: input.accountId,
+          productProfile: input.recipe.category,
+          temperatureC: input.recipe.target_temperature_c,
+          mode,
+          processScope: 'BASE_FORMULATION',
+          requestedRole: recipeAuthorityRequestedRole(
+            requestedModule,
+            line.lock_type === 'main',
+            (input.technicalOnlyMainLineIds ?? []).includes(lineId),
+          ),
+          module: requestedModule,
+        },
+      }).catch(() => null);
+      if (!resolved || resolved.state !== 'eligible') {
+        unresolvedLineIds.push(lineId);
+        return;
+      }
+      snapshots[lineId] = snapshotServerResolvedProductBehavior({
+        lineId,
         processScope: 'BASE_FORMULATION',
-        requestedRole: recipeAuthorityRequestedRole(
-          requestedModule,
-          line.lock_type === 'main',
-          (input.technicalOnlyMainLineIds ?? []).includes(lineId),
-        ),
-        module: requestedModule,
-      },
-    }).catch(() => null);
-    if (!resolved || resolved.state !== 'eligible') {
-      unresolvedLineIds.push(lineId);
-      return;
-    }
-    snapshots[lineId] = snapshotServerResolvedProductBehavior({
-      lineId,
-      processScope: 'BASE_FORMULATION',
-      resolved,
-    });
-  }));
+        resolved,
+      });
+    }),
+  );
 
   return { snapshots, unresolvedLineIds: [...new Set(unresolvedLineIds)].sort() };
 }
 
 export function productBehaviorBlockedMessage(result: ServerResolvedProductBehavior): string {
   const exactPrefixes = [
-    'product_rejected:', 'behavior_binding_missing:',
-    'classification_pending:', 'classification_failed:',
-    'approved_for_base_false:', 'approved_for_engines_false:',
-    'missing_technical_fields:', 'process_evidence_unknown:',
-    'mapper_mapping_missing:', 'profile_not_approved:',
-    'main_policy_not_approved:', 'module_permission_missing:',
-    'nutrition_facts_missing:', 'allergen_facts_missing:',
-    'module_not_eligible:', 'legacy_product_reference_unresolved:',
+    'product_rejected:',
+    'behavior_binding_missing:',
+    'classification_pending:',
+    'classification_failed:',
+    'approved_for_base_false:',
+    'approved_for_engines_false:',
+    'missing_technical_fields:',
+    'process_evidence_unknown:',
+    'mapper_mapping_missing:',
+    'profile_not_approved:',
+    'main_policy_not_approved:',
+    'module_permission_missing:',
+    'nutrition_facts_missing:',
+    'allergen_facts_missing:',
+    'module_not_eligible:',
+    'legacy_product_reference_unresolved:',
     'behavior_snapshot_missing_or_unresolved:',
-    'behavior_binding_stale:', 'behavior_binding_version_stale:',
-    'facts_fingerprint_stale:', 'shared_facts_stale:',
-    'taxonomy_version_stale:', 'product_version_stale:',
-    'product_identity_stale:', 'mapper_mapping_stale:',
-    'main_policy_stale:', 'catalog_version_identity_mismatch:',
+    'behavior_binding_stale:',
+    'behavior_binding_version_stale:',
+    'facts_fingerprint_stale:',
+    'shared_facts_stale:',
+    'taxonomy_version_stale:',
+    'product_version_stale:',
+    'product_identity_stale:',
+    'mapper_mapping_stale:',
+    'main_policy_stale:',
+    'catalog_version_identity_mismatch:',
     'mapper_entity_identity_mismatch:',
   ];
-  const reason = result.blockReasons.find((entry) =>
-    exactPrefixes.some((prefix) => entry.startsWith(prefix)),
-  ) ?? `module_not_eligible:${result.productId}:${result.mapperIngredientId ?? 'none'}:${result.productVersionId}:${result.module}:return_to_recipe`;
+  const reason =
+    result.blockReasons.find((entry) => exactPrefixes.some((prefix) => entry.startsWith(prefix))) ??
+    `module_not_eligible:${result.productId}:${result.mapperIngredientId ?? 'none'}:${result.productVersionId}:${result.module}:return_to_recipe`;
   const [code, ...parts] = reason.split(':');
   const parsed = (() => {
     if (code === 'missing_technical_fields') {
@@ -618,22 +687,36 @@ export function productBehaviorBlockedMessage(result: ServerResolvedProductBehav
         return { details, productId, mapperId, versionId, module, action };
       }
       const [details, mapperId, versionId, module] = parts;
-      return { details, productId: result.productId, mapperId, versionId, module, action: 'complete_technical_fields' };
+      return {
+        details,
+        productId: result.productId,
+        mapperId,
+        versionId,
+        module,
+        action: 'complete_technical_fields',
+      };
     }
     if (parts.length >= 5) {
       const [productId, mapperId, versionId, module, action] = parts;
       return { details: '', productId, mapperId, versionId, module, action };
     }
     const [mapperId, versionId, module] = parts;
-    return { details: '', productId: result.productId, mapperId, versionId, module, action: 'return_to_recipe' };
+    return {
+      details: '',
+      productId: result.productId,
+      mapperId,
+      versionId,
+      module,
+      action: 'return_to_recipe',
+    };
   })();
   const productId = parsed.productId || result.productId;
-  const mapperId = parsed.mapperId && parsed.mapperId !== 'none'
-    ? parsed.mapperId
-    : (result.mapperIngredientId ?? 'brak');
-  const versionId = parsed.versionId && parsed.versionId !== 'none'
-    ? parsed.versionId
-    : result.productVersionId;
+  const mapperId =
+    parsed.mapperId && parsed.mapperId !== 'none'
+      ? parsed.mapperId
+      : (result.mapperIngredientId ?? 'brak');
+  const versionId =
+    parsed.versionId && parsed.versionId !== 'none' ? parsed.versionId : result.productVersionId;
   const module = parsed.module || result.module;
   const exact = `produkt ${productId} · wersja ${versionId} · Mapper ${mapperId} · moduł ${module}`;
   if (code === 'product_rejected') {
@@ -657,8 +740,11 @@ export function productBehaviorBlockedMessage(result: ServerResolvedProductBehav
   if (code === 'taxonomy_version_stale') {
     return `Taksonomia dla ${exact} zmieniła się od ostatniego przeliczenia. Odśwież produkt i uruchom PI ponownie.`;
   }
-  if (code === 'product_version_stale' || code === 'product_identity_stale'
-      || code === 'catalog_version_identity_mismatch') {
+  if (
+    code === 'product_version_stale' ||
+    code === 'product_identity_stale' ||
+    code === 'catalog_version_identity_mismatch'
+  ) {
     return `Wersja lub tożsamość ${exact} jest nieaktualna. Wybierz aktualną wersję produktu.`;
   }
   if (code === 'mapper_mapping_stale' || code === 'mapper_entity_identity_mismatch') {
@@ -698,7 +784,8 @@ export function productBehaviorBlockedMessage(result: ServerResolvedProductBehav
     return `Dokładny ${exact} nie ma uprawnienia ProductBehavior do tego modułu. Wybierz wersję kwalifikowaną dla modułu albo uzupełnij jego wymagane dane.`;
   }
   if (code === 'nutrition_facts_missing' || code === 'allergen_facts_missing') {
-    const facts = code === 'nutrition_facts_missing' ? 'wartości odżywczych' : 'składników i alergenów';
+    const facts =
+      code === 'nutrition_facts_missing' ? 'wartości odżywczych' : 'składników i alergenów';
     return `Dokładny ${exact} nie ma kompletnych danych ${facts}. Uzupełnij etykietę produktu i przelicz ponownie.`;
   }
   if (code === 'module_not_eligible') {

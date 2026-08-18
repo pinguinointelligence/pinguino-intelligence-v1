@@ -65,12 +65,7 @@ import type { FormulationStrategy } from '@/features/formulation-strategy/strate
  * alone decides whether any resulting state is better.
  */
 export const DRAFT_ADJUSTMENT_STEP_FRACTIONS: readonly number[] = [
-  0.001,
-  0.005,
-  0.01,
-  0.02,
-  0.05,
-  0.1,
+  0.001, 0.005, 0.01, 0.02, 0.05, 0.1,
 ];
 
 /** Smallest move worth proposing (the engine rejects `grams <= EPSILON`). */
@@ -83,6 +78,9 @@ export interface DraftAdjustmentCandidate {
   ingredientName: string;
   ingredientCategory: IngredientCategory;
   currentGrams: number;
+  /** Original user-entered positive Standard amount. It remains stable while
+   * candidate sweeps move currentGrams and is used only as a ranking tie-break. */
+  anchorGrams: number | null;
   /** May this line receive MORE grams? (false ⇒ excluded ingredient.) */
   increasable: boolean;
   /** Absolute gram values this line is tested at, ascending, current excluded. */
@@ -150,7 +148,13 @@ export function buildDraftCandidateVector(
     // NEVER-REINTRODUCE: an excluded ingredient may shrink, never grow.
     const increasable = !isToolboxCandidateExcluded(item.ingredient.id, excludedIngredientIds);
     const current = item.planned_grams;
-    const emptiable = !isSoleHardRoleCarrier(item);
+    const anchorGrams =
+      item.user_intent_anchor_grams !== undefined &&
+      item.user_intent_anchor_grams > 0 &&
+      item.planned_grams > 0
+        ? item.user_intent_anchor_grams
+        : null;
+    const emptiable = anchorGrams === null && !isSoleHardRoleCarrier(item);
     const tested = new Set<number>();
 
     for (const fraction of DRAFT_ADJUSTMENT_STEP_FRACTIONS) {
@@ -163,6 +167,7 @@ export function buildDraftCandidateVector(
     // The explicit „to zero" move — a selected line may be optimized away,
     // unless it is the last carrier of a hard technological role.
     if (current > MIN_MOVE_GRAMS && emptiable) tested.add(0);
+    if (anchorGrams !== null && Math.abs(current - 1) >= MIN_MOVE_GRAMS) tested.add(1);
 
     const testedGrams = [...tested]
       .filter((g) => Math.abs(g - current) >= MIN_MOVE_GRAMS)
@@ -175,6 +180,7 @@ export function buildDraftCandidateVector(
       ingredientName: item.ingredient.name,
       ingredientCategory: item.ingredient.category,
       currentGrams: current,
+      anchorGrams,
       increasable,
       testedGrams,
     });
@@ -306,6 +312,15 @@ const strictlyBetter = (next: DraftStateMeasure, current: DraftStateMeasure): bo
   (next.violations < current.violations ||
     next.severityPoints < current.severityPoints - SEVERITY_EPS);
 
+const sameMeasure = (left: DraftStateMeasure, right: DraftStateMeasure): boolean =>
+  left.violations === right.violations &&
+  Math.abs(left.severityPoints - right.severityPoints) <= SEVERITY_EPS &&
+  (left.costPerKg === undefined ||
+    right.costPerKg === undefined ||
+    left.costPerKg === null ||
+    right.costPerKg === null ||
+    Math.abs(left.costPerKg - right.costPerKg) <= SEVERITY_EPS);
+
 /**
  * Is the WHOLE sweep worth another round?
  *
@@ -380,7 +395,14 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
       const normalized = normalize(applied);
       const next = measure(normalized);
       if (!strictlyBetter(next, best)) continue;
-      if (bestForLine !== null && !strictlyBetter(next, bestForLine.measure)) continue;
+      if (bestForLine !== null && !strictlyBetter(next, bestForLine.measure)) {
+        const anchor = candidate.anchorGrams;
+        const closerToAnchor =
+          anchor !== null &&
+          sameMeasure(next, bestForLine.measure) &&
+          Math.abs(toGrams - anchor) < Math.abs(bestForLine.move.toGrams - anchor);
+        if (!closerToAnchor) continue;
+      }
       bestForLine = { input: normalized, measure: next, move };
     }
 

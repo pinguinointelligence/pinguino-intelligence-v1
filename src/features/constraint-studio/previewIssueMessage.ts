@@ -10,6 +10,8 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
   switch (issue.code) {
     case 'already_clean':
       return copy.previewIssue.alreadyClean;
+    case 'standard_presence_removal_required':
+      return issue.messagePl;
     case 'practicalization_blocked':
       return issue.messagePl;
     case 'missing_prices':

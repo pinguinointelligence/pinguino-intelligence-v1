@@ -299,6 +299,85 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(directedHtml).toContain('miększe');
     expect(directedHtml).not.toContain('targetBand');
   });
+
+  it.each([
+    [2, 0, 2],
+    [2, 1, 2],
+    [2, 2, 2],
+    [3, 1, 3],
+  ])(
+    'counts every Main row independently from locks (%i Main / %i locked)',
+    (mainRows, lockedRows, expected) => {
+      const preview = syntheticPreview();
+      const template = preview.proposedInput.items[0]!;
+      preview.proposedInput = {
+        ...preview.proposedInput,
+        items: Array.from({ length: mainRows }, (_, index) => ({
+          ...template,
+          id: `main-${index}`,
+          lock_type: 'main' as const,
+          planned_grams: 100,
+          ...(index < lockedRows ? { grams_constraint: { grams: 100 } } : {}),
+        })),
+      };
+      const rendered = render(
+        <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+      );
+      expect(rendered).toContain(
+        `Główne: <strong class="font-mono tabular-nums text-ivory">${expected}</strong>`,
+      );
+      expect(rendered).toContain(
+        `Blokady: <strong class="font-mono tabular-nums text-ivory">${lockedRows}</strong>`,
+      );
+    },
+  );
+
+  it('renders exact residual values, range, distance movement and Apply blocker', () => {
+    const preview = syntheticPreview();
+    preview.diagnosticOnly = true;
+    preview.diagnosticReason = 'hard_residual';
+    preview.hardResidualMetrics = ['ice_fraction'];
+    preview.violationsBefore = 1;
+    preview.violationsAfter = 1;
+    preview.outcomeClassification = {
+      ...preview.outcomeClassification,
+      outcome: 'engine_optimization',
+      engineImproved: true,
+      violationsBefore: 1,
+      violationsAfter: 1,
+    };
+    preview.residualMetricDiagnostics = [
+      {
+        metric: 'ice_fraction',
+        labelPl: 'Udział lodu',
+        valueUnit: '%',
+        distanceUnit: 'pp',
+        beforeValue: 43.2,
+        proposedValue: 44.4,
+        acceptedMin: 45,
+        acceptedMax: 58,
+        distanceBefore: 1.8,
+        distanceAfter: 0.6,
+        movement: 'improved',
+        status: 'hard_block',
+        bandStatus: 'seeded',
+        categoryFallback: false,
+        temperatureFallback: false,
+        applyDisabledReasonPl:
+          'Wynik nadal pozostaje poza zatwierdzonym zakresem. Zastosowanie jest wyłączone.',
+      },
+    ];
+    const rendered = render(
+      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+    );
+    expect(rendered).toContain('Udział lodu');
+    expect(rendered).toContain('Przed: 43.2%');
+    expect(rendered).toContain('Po: 44.4%');
+    expect(rendered).toContain('Zakres: 45.0–58.0%');
+    expect(rendered).toContain('Dystans: 1.8 pp → 0.6 pp');
+    expect(rendered).toContain('Wynik jest bliżej zakresu');
+    expect(rendered).not.toContain('Engine potwierdził poprawę techniczną: 1 → 1');
+  });
 });
 
 /* ── blocked notice (the owner-mandated block) ───────────────────────────── */

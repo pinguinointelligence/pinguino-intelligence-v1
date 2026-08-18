@@ -193,6 +193,10 @@ export interface RecipeItem {
    * contract. Base Engine formulas do not consume it; Pro orchestration
    * rehydrates and verifies the exact constraint. */
   grams_constraint?: { grams: number };
+  /** Product-layer user-intent anchor. A positive value means this visible
+   * Standard line must remain present (>= 1 g) unless the user explicitly
+   * zeroes/removes/excludes it. Engine formulas do not consume this field. */
+  user_intent_anchor_grams?: number;
   production_step?: number;
   notes?: string;
 }

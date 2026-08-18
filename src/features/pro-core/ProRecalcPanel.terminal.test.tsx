@@ -15,8 +15,8 @@ import {
 import { useRecipeStore } from '@/stores/recipeStore';
 import { ProRecalcPanel } from './ProRecalcPanel';
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
+  true;
 
 let host: HTMLDivElement;
 let root: Root;
@@ -70,7 +70,9 @@ describe('PI visible terminal contract', () => {
     await renderPanel();
     expect(document.querySelector('[data-terminal-state="WORKING"]')).not.toBeNull();
     expect(document.body.textContent).toContain('PI przelicza recepturę…');
-    expect(document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')?.disabled).toBe(true);
+    expect(
+      document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')?.disabled,
+    ).toBe(true);
 
     await act(async () => {
       await runPiRecalculationWithTerminal(async () => undefined, generation);
@@ -176,8 +178,9 @@ describe('PI visible terminal contract', () => {
     });
 
     expect(useConstraintStudioStore.getState().constraints.byLineId[line.id]).toBeUndefined();
-    expect(useRecipeStore.getState().items.find((item) => item.id === line.id)?.grams_constraint)
-      .toBeUndefined();
+    expect(
+      useRecipeStore.getState().items.find((item) => item.id === line.id)?.grams_constraint,
+    ).toBeUndefined();
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
       state: 'NO_CHANGE_NEEDED',
     });
@@ -227,6 +230,43 @@ describe('PI visible terminal contract', () => {
     expect(document.body.textContent).toContain('Wróć do receptury');
   });
 
+  it('requires an explicit removal action when no valid result preserves a positive Standard line', async () => {
+    const line = useRecipeStore.getState().items[0]!;
+    useConstraintStudioStore.setState({
+      previewIssue: {
+        ok: false,
+        code: 'standard_presence_removal_required',
+        lineId: line.id,
+        productName: line.ingredient.name,
+        currentGrams: 180,
+        bestAttemptedNonZeroGrams: 1,
+        limitingMetric: 'ice_fraction',
+        acceptedMin: 45,
+        acceptedMax: 58,
+        messagePl:
+          `Ten składnik trzeba usunąć albo zmienić. PINGÜINO nie znalazło ` +
+          `poprawnej receptury z zachowaniem składnika ${line.ingredient.name} ` +
+          'w ilości co najmniej 1 g.',
+      },
+      recalculationTerminal: {
+        state: 'BLOCKED_WITH_EXACT_ACTION',
+        code: 'standard_presence_removal_required',
+      },
+    });
+    await renderPanel();
+
+    expect(document.body.textContent).toContain('Ten składnik trzeba usunąć albo zmienić.');
+    expect(document.body.textContent).toContain(line.ingredient.name);
+    expect(document.body.textContent).toContain('180 g');
+    expect(document.body.textContent).toContain('1 g');
+    expect(document.body.textContent).toContain('45–58');
+    expect(document.body.textContent).toContain('Usuń składnik i pokaż podgląd');
+    expect(document.body.textContent).toContain('Wróć do receptury');
+    expect(
+      document.querySelector('[data-testid="pro-recalc-remove-standard-preview"]'),
+    ).not.toBeNull();
+  });
+
   it('names the missing technical layer and exposes all product recovery actions', async () => {
     const line = useRecipeStore.getState().items[0]!;
     const exactReasons = [
@@ -234,18 +274,22 @@ describe('PI visible terminal contract', () => {
       'process_evidence_unknown:product-405:PI-ING-000405:version-405:OPTIMAL:add_process_evidence',
       'profile_not_approved:product-405:PI-ING-000405:version-405:OPTIMAL:change_profile_or_product',
     ];
-    const issue = serverBehaviorPreviewIssue([{
-      lineId: line.id,
-      lineName: line.ingredient.name,
-      reasons: exactReasons,
-    }]);
-    useConstraintStudioStore.setState({
-      previewIssue: issue,
-      recalculationTerminal: productBehaviorTerminal([{
+    const issue = serverBehaviorPreviewIssue([
+      {
         lineId: line.id,
         lineName: line.ingredient.name,
         reasons: exactReasons,
-      }]),
+      },
+    ]);
+    useConstraintStudioStore.setState({
+      previewIssue: issue,
+      recalculationTerminal: productBehaviorTerminal([
+        {
+          lineId: line.id,
+          lineName: line.ingredient.name,
+          reasons: exactReasons,
+        },
+      ]),
     });
     await renderPanel();
 
@@ -268,28 +312,38 @@ describe('PI visible terminal contract', () => {
 
 describe('technical authority terminal classification', () => {
   it('separates Mapper binding from other product-data failures', () => {
-    expect(productBehaviorTerminal([{
-      lineId: 'watermelon',
-      lineName: 'WATERMELON · Fresh Fruit',
-      reasons: ['mapper_entity_identity_mismatch'],
-    }])).toEqual({
+    expect(
+      productBehaviorTerminal([
+        {
+          lineId: 'watermelon',
+          lineName: 'WATERMELON · Fresh Fruit',
+          reasons: ['mapper_entity_identity_mismatch'],
+        },
+      ]),
+    ).toEqual({
       state: 'MAPPER_BINDING_REQUIRED',
       code: 'product_behavior_invalid',
       lineIds: ['watermelon'],
     });
-    expect(productBehaviorTerminal([{
-      lineId: 'watermelon',
-      lineName: 'WATERMELON · Fresh Fruit',
-      reasons: ['base_technical_authority_missing'],
-    }]).state).toBe('PRODUCT_DATA_REQUIRED');
+    expect(
+      productBehaviorTerminal([
+        {
+          lineId: 'watermelon',
+          lineName: 'WATERMELON · Fresh Fruit',
+          reasons: ['base_technical_authority_missing'],
+        },
+      ]).state,
+    ).toBe('PRODUCT_DATA_REQUIRED');
   });
 
   it('does not blame a product binding when only server validation is unavailable', () => {
-    const authorityIssues = [{
-      lineId: 'watermelon',
-      lineName: 'WATERMELON · Fresh Fruit',
-      reasons: ['behavior_server_validation_unavailable'],
-    }];
+    const authorityIssues = [
+      {
+        lineId: 'watermelon',
+        lineName: 'WATERMELON · Fresh Fruit',
+        reasons: ['behavior_server_validation_unavailable'],
+      },
+    ];
     const issue = serverBehaviorPreviewIssue(authorityIssues);
     expect(issue.messagePl).toContain('walidacja serwerowa');
     expect(issue.messagePl).not.toContain('Produkt nie ma jeszcze zweryfikowanego');
@@ -301,11 +355,13 @@ describe('technical authority terminal classification', () => {
 
   it('offers a return action instead of product replacement during a server outage', async () => {
     const line = useRecipeStore.getState().items[0]!;
-    const authorityIssues = [{
-      lineId: line.id,
-      lineName: line.ingredient.name,
-      reasons: ['behavior_server_validation_unavailable'],
-    }];
+    const authorityIssues = [
+      {
+        lineId: line.id,
+        lineName: line.ingredient.name,
+        reasons: ['behavior_server_validation_unavailable'],
+      },
+    ];
     useConstraintStudioStore.setState({
       previewIssue: serverBehaviorPreviewIssue(authorityIssues),
       recalculationTerminal: productBehaviorTerminal(authorityIssues),

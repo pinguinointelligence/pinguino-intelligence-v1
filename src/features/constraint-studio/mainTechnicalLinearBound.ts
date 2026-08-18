@@ -42,7 +42,11 @@ const largestRemainderPairBounds = (
 ): Array<{ left: number; right: number; bound: number; integerWeights: number[] }> => {
   const precision = 1_000_000;
   const scaled = weights.map((weight) => Math.round(weight * precision));
-  if (scaled.some((weight, index) => weight <= 0 || Math.abs(weight / precision - weights[index]!) > 1e-9)) {
+  if (
+    scaled.some(
+      (weight, index) => weight <= 0 || Math.abs(weight / precision - weights[index]!) > 1e-9,
+    )
+  ) {
     return [];
   }
   const divisor = scaled.reduce(greatestCommonDivisor);
@@ -52,7 +56,7 @@ const largestRemainderPairBounds = (
   const bounds = new Map<string, number>();
   for (let total = 0; total < period; total += 1) {
     const rows = integerWeights.map((weight, index) => {
-      const exact = total * weight / period;
+      const exact = (total * weight) / period;
       return { index, grams: Math.floor(exact), fraction: exact - Math.floor(exact) };
     });
     let remainder = total - rows.reduce((sum, row) => sum + row.grams, 0);
@@ -66,8 +70,7 @@ const largestRemainderPairBounds = (
     for (let left = 0; left < rows.length; left += 1) {
       for (let right = left + 1; right < rows.length; right += 1) {
         const determinant = Math.abs(
-          integerWeights[right]! * rows[left]!.grams -
-          integerWeights[left]! * rows[right]!.grams,
+          integerWeights[right]! * rows[left]!.grams - integerWeights[left]! * rows[right]!.grams,
         );
         const key = `${left}:${right}`;
         bounds.set(key, Math.max(bounds.get(key) ?? 0, determinant));
@@ -116,8 +119,8 @@ class LinearProgram {
       for (let otherColumn = 0; otherColumn < this.n + 2; otherColumn += 1) {
         if (otherColumn === column) continue;
         const current = this.tableau[otherRow]![otherColumn]!;
-        this.tableau[otherRow]![otherColumn] = current -
-          this.tableau[row]![otherColumn]! * this.tableau[otherRow]![column]! * inverse;
+        this.tableau[otherRow]![otherColumn] =
+          current - this.tableau[row]![otherColumn]! * this.tableau[otherRow]![column]! * inverse;
       }
     }
     for (let columnIndex = 0; columnIndex < this.n + 2; columnIndex += 1) {
@@ -142,12 +145,13 @@ class LinearProgram {
         if (phase === 2 && this.nonBasic[column] === -1) continue;
         if (
           entering === -1 ||
-          this.tableau[objectiveRow]![column]! <
-            this.tableau[objectiveRow]![entering]! - EPSILON ||
+          this.tableau[objectiveRow]![column]! < this.tableau[objectiveRow]![entering]! - EPSILON ||
           (Math.abs(
             this.tableau[objectiveRow]![column]! - this.tableau[objectiveRow]![entering]!,
-          ) <= EPSILON && this.nonBasic[column]! < this.nonBasic[entering]!)
-        ) entering = column;
+          ) <= EPSILON &&
+            this.nonBasic[column]! < this.nonBasic[entering]!)
+        )
+          entering = column;
       }
       if (entering === -1 || this.tableau[objectiveRow]![entering]! >= -EPSILON) return true;
 
@@ -161,15 +165,19 @@ class LinearProgram {
           (Math.abs(
             this.tableau[row]![this.n + 1]! / this.tableau[row]![entering]! -
               this.tableau[leaving]![this.n + 1]! / this.tableau[leaving]![entering]!,
-          ) <= EPSILON && this.basic[row]! < this.basic[leaving]!)
-        ) leaving = row;
+          ) <= EPSILON &&
+            this.basic[row]! < this.basic[leaving]!)
+        )
+          leaving = row;
       }
       if (leaving === -1) return false;
       this.pivot(leaving, entering);
     }
   }
 
-  solve(): { status: 'optimal'; value: number; solution: number[] } | { status: 'infeasible' | 'unbounded' } {
+  solve():
+    | { status: 'optimal'; value: number; solution: number[] }
+    | { status: 'infeasible' | 'unbounded' } {
     if (this.m === 0) return { status: 'unbounded' };
     let row = 0;
     for (let candidate = 1; candidate < this.m; candidate += 1) {
@@ -188,11 +196,14 @@ class LinearProgram {
         let entering = 0;
         for (let column = 1; column <= this.n; column += 1) {
           if (
-            this.tableau[artificialRow]![column]! < this.tableau[artificialRow]![entering]! - EPSILON ||
+            this.tableau[artificialRow]![column]! <
+              this.tableau[artificialRow]![entering]! - EPSILON ||
             (Math.abs(
               this.tableau[artificialRow]![column]! - this.tableau[artificialRow]![entering]!,
-            ) <= EPSILON && this.nonBasic[column]! < this.nonBasic[entering]!)
-          ) entering = column;
+            ) <= EPSILON &&
+              this.nonBasic[column]! < this.nonBasic[entering]!)
+          )
+            entering = column;
         }
         this.pivot(artificialRow, entering);
       }
@@ -286,13 +297,20 @@ const solveIntegerLinearMaximum = (
 const componentPercent = (ingredient: EngineIngredient, metric: TargetMetric): number => {
   const factors = technicalLinearIngredientFactors(ingredient);
   switch (metric) {
-    case 'water': return factors.waterPercent;
-    case 'total_solids': return factors.solidsPercent;
-    case 'fat': return factors.fatPercent;
-    case 'aerating_protein': return factors.proteinPercent;
-    case 'lactose': return factors.lactosePercent;
-    case 'alcohol': return factors.alcoholPercent;
-    default: return 0;
+    case 'water':
+      return factors.waterPercent;
+    case 'total_solids':
+      return factors.solidsPercent;
+    case 'fat':
+      return factors.fatPercent;
+    case 'aerating_protein':
+      return factors.proteinPercent;
+    case 'lactose':
+      return factors.lactosePercent;
+    case 'alcohol':
+      return factors.alcoholPercent;
+    default:
+      return 0;
   }
 };
 
@@ -322,13 +340,25 @@ export function mainTechnicalLinearUpperBound(input: {
   const size = recipe.items.length;
   const mains = captureMainIngredientIntent(recipe);
   if (size === 0 || mains.length === 0 || !(recipe.target_batch_grams > 0)) {
-    return { status: 'unavailable', continuousUpperBoundGrams: null, wholeGramUpperBound: null, continuousSolutionGrams: null, integerSolutionCertified: false, integerSearchNodes: 0, certificate: [] };
+    return {
+      status: 'unavailable',
+      continuousUpperBoundGrams: null,
+      wholeGramUpperBound: null,
+      continuousSolutionGrams: null,
+      integerSolutionCertified: false,
+      integerSearchNodes: 0,
+      certificate: [],
+    };
   }
 
   const rows: number[][] = [];
   const bounds: number[] = [];
   const rowLabels: string[] = [];
-  const addUpper = (coefficients: number[], bound: number, label = 'technical_constraint'): void => {
+  const addUpper = (
+    coefficients: number[],
+    bound: number,
+    label = 'technical_constraint',
+  ): void => {
     if (!Number.isFinite(bound) || coefficients.some((value) => !Number.isFinite(value))) return;
     // Do not report a zero-coefficient, non-negative inequality as an active
     // technical limiter (for example alcohol_min = 0 in an alcohol-free
@@ -339,7 +369,11 @@ export function mainTechnicalLinearUpperBound(input: {
     rowLabels.push(label);
   };
   const addLower = (coefficients: number[], bound: number, label = 'technical_constraint'): void =>
-    addUpper(coefficients.map((value) => -value), -bound, label);
+    addUpper(
+      coefficients.map((value) => -value),
+      -bound,
+      label,
+    );
   const addEquality = (coefficients: number[], value: number, label: string): void => {
     addUpper(coefficients, value, label);
     addLower(coefficients, value, label);
@@ -347,19 +381,30 @@ export function mainTechnicalLinearUpperBound(input: {
   const coefficients = (value: (ingredient: EngineIngredient) => number): number[] =>
     recipe.items.map((item) => value(item.ingredient));
 
-  addEquality(Array.from({ length: size }, () => 1), recipe.target_batch_grams, 'exact_batch');
+  addEquality(
+    Array.from({ length: size }, () => 1),
+    recipe.target_batch_grams,
+    'exact_batch',
+  );
   const excluded = new Set(input.excludedIngredientIds ?? []);
   recipe.items.forEach((item, index) => {
     const constraint = constraints.byLineId[item.id];
-    const exact = item.lock_type === 'required'
-      ? item.planned_grams
-      : constraint?.mode === 'locked'
-      ? constraint.grams
-      : constraint?.mode === 'percent'
-        ? recipe.target_batch_grams * constraint.percent / 100
-        : excluded.has(canonicalIngredientId(item.ingredient))
-          ? 0
-          : null;
+    const preservesVisibleStandard =
+      item.lock_type === 'unlocked' &&
+      item.actual_grams === null &&
+      item.planned_grams > 0 &&
+      (item.user_intent_anchor_grams ?? 0) > 0 &&
+      !excluded.has(canonicalIngredientId(item.ingredient));
+    const exact =
+      item.lock_type === 'required'
+        ? item.planned_grams
+        : constraint?.mode === 'locked'
+          ? constraint.grams
+          : constraint?.mode === 'percent'
+            ? (recipe.target_batch_grams * constraint.percent) / 100
+            : excluded.has(canonicalIngredientId(item.ingredient))
+              ? 0
+              : null;
     if (exact !== null && exact !== undefined) {
       const row = Array.from({ length: size }, () => 0);
       row[index] = 1;
@@ -367,8 +412,16 @@ export function mainTechnicalLinearUpperBound(input: {
     } else if (constraint?.mode === 'range') {
       const row = Array.from({ length: size }, () => 0);
       row[index] = 1;
-      addLower(row, constraint.minGrams, `range_min:${item.id}`);
+      addLower(
+        row,
+        preservesVisibleStandard ? Math.max(1, constraint.minGrams) : constraint.minGrams,
+        `range_min:${item.id}`,
+      );
       addUpper(row, constraint.maxGrams, `range_max:${item.id}`);
+    } else if (preservesVisibleStandard) {
+      const row = Array.from({ length: size }, () => 0);
+      row[index] = 1;
+      addLower(row, 1, `standard_presence_min:${item.id}`);
     }
   });
 
@@ -402,8 +455,12 @@ export function mainTechnicalLinearUpperBound(input: {
     }
     for (const pair of largestRemainderPairBounds(variableMains.map((main) => main.ratioWeight))) {
       const row = Array.from({ length: size }, () => 0);
-      const leftIndex = recipe.items.findIndex((item) => item.id === variableMains[pair.left]!.lineId);
-      const rightIndex = recipe.items.findIndex((item) => item.id === variableMains[pair.right]!.lineId);
+      const leftIndex = recipe.items.findIndex(
+        (item) => item.id === variableMains[pair.left]!.lineId,
+      );
+      const rightIndex = recipe.items.findIndex(
+        (item) => item.id === variableMains[pair.right]!.lineId,
+      );
       row[leftIndex] = pair.integerWeights[pair.right]!;
       row[rightIndex] = -pair.integerWeights[pair.left]!;
       addUpper(row, pair.bound, 'main_ratio_rounding');
@@ -425,8 +482,8 @@ export function mainTechnicalLinearUpperBound(input: {
       const row = coefficients(
         (ingredient) => technicalLinearIngredientFactors(ingredient).podPointGramsPerGram,
       );
-      addLower(row, band.min * recipe.target_batch_grams / 100, 'pod_min');
-      addUpper(row, band.max * recipe.target_batch_grams / 100, 'pod_max');
+      addLower(row, (band.min * recipe.target_batch_grams) / 100, 'pod_min');
+      addUpper(row, (band.max * recipe.target_batch_grams) / 100, 'pod_max');
       continue;
     }
     if (indicator.key === 'npac') {
@@ -435,44 +492,56 @@ export function mainTechnicalLinearUpperBound(input: {
       );
       const water = coefficients((ingredient) => ingredient.composition.water_percent / 100);
       addLower(
-        depression.map((value, index) => value - band.min / 100 * water[index]!),
+        depression.map((value, index) => value - (band.min / 100) * water[index]!),
         0,
         'npac_min',
       );
       addUpper(
-        depression.map((value, index) => value - band.max / 100 * water[index]!),
+        depression.map((value, index) => value - (band.max / 100) * water[index]!),
         0,
         'npac_max',
       );
       continue;
     }
     if (indicator.key === 'protein_in_solids') {
-      const row = coefficients((ingredient) => ingredient.composition.protein_percent -
-        band.min / 100 * ingredient.composition.solids_percent);
+      const row = coefficients(
+        (ingredient) =>
+          ingredient.composition.protein_percent -
+          (band.min / 100) * ingredient.composition.solids_percent,
+      );
       addLower(row, 0, 'protein_in_solids_min');
-      const upper = coefficients((ingredient) => ingredient.composition.protein_percent -
-        band.max / 100 * ingredient.composition.solids_percent);
+      const upper = coefficients(
+        (ingredient) =>
+          ingredient.composition.protein_percent -
+          (band.max / 100) * ingredient.composition.solids_percent,
+      );
       addUpper(upper, 0, 'protein_in_solids_max');
       continue;
     }
     if (indicator.key === 'lactose_sandiness_risk') {
-      const lower = coefficients((ingredient) => ingredient.composition.lactose_percent -
-        band.min / 100 * ingredient.composition.water_percent);
+      const lower = coefficients(
+        (ingredient) =>
+          ingredient.composition.lactose_percent -
+          (band.min / 100) * ingredient.composition.water_percent,
+      );
       addLower(lower, 0, 'lactose_sandiness_risk_min');
-      const upper = coefficients((ingredient) => ingredient.composition.lactose_percent -
-        band.max / 100 * ingredient.composition.water_percent);
+      const upper = coefficients(
+        (ingredient) =>
+          ingredient.composition.lactose_percent -
+          (band.max / 100) * ingredient.composition.water_percent,
+      );
       addUpper(upper, 0, 'lactose_sandiness_risk_max');
       continue;
     }
-    if (![
-      'water',
-      'total_solids',
-      'fat',
-      'aerating_protein',
-      'lactose',
-      'alcohol',
-    ].includes(indicator.key)) continue;
-    const row = coefficients((ingredient) => componentPercent(ingredient, indicator.key as TargetMetric));
+    if (
+      !['water', 'total_solids', 'fat', 'aerating_protein', 'lactose', 'alcohol'].includes(
+        indicator.key,
+      )
+    )
+      continue;
+    const row = coefficients((ingredient) =>
+      componentPercent(ingredient, indicator.key as TargetMetric),
+    );
     addLower(row, band.min * recipe.target_batch_grams, `${indicator.key}_min`);
     addUpper(row, band.max * recipe.target_batch_grams, `${indicator.key}_max`);
   }
@@ -496,52 +565,71 @@ export function mainTechnicalLinearUpperBound(input: {
     .map((main) => snapshots[main.lineId])
     .filter((snapshot): snapshot is ProductBehaviorSnapshot => snapshot !== undefined);
   const carrierFloor = mainSnapshots
-    .filter((snapshot) => snapshot.requiresLiquidDairyCarrier && snapshot.liquidDairyCarrierFloorPercent !== null)
+    .filter(
+      (snapshot) =>
+        snapshot.requiresLiquidDairyCarrier && snapshot.liquidDairyCarrierFloorPercent !== null,
+    )
     .reduce((maximum, snapshot) => Math.max(maximum, snapshot.liquidDairyCarrierFloorPercent!), 0);
   if (carrierFloor > 0) {
-    const carrierLineIds = new Set(Object.values(snapshots)
-      .filter((snapshot): snapshot is ProductBehaviorSnapshot => snapshot?.approvedLiquidDairyCarrier === true)
-      .map((snapshot) => snapshot.lineId));
+    const carrierLineIds = new Set(
+      Object.values(snapshots)
+        .filter(
+          (snapshot): snapshot is ProductBehaviorSnapshot =>
+            snapshot?.approvedLiquidDairyCarrier === true,
+        )
+        .map((snapshot) => snapshot.lineId),
+    );
     addLower(
-      recipe.items.map((item) => carrierLineIds.has(item.id) ? 1 : 0),
-      carrierFloor * recipe.target_batch_grams / 100,
+      recipe.items.map((item) => (carrierLineIds.has(item.id) ? 1 : 0)),
+      (carrierFloor * recipe.target_batch_grams) / 100,
       'liquid_dairy_carrier_min',
     );
   }
 
-  const objective = recipe.items.map((item) => mains.some((main) => main.lineId === item.id) ? 1 : 0);
+  const objective = recipe.items.map((item) =>
+    mains.some((main) => main.lineId === item.id) ? 1 : 0,
+  );
   const solved = new LinearProgram(rows, bounds, objective).solve();
   if (solved.status !== 'optimal' || !Number.isFinite(solved.value)) {
-    return { status: 'unavailable', continuousUpperBoundGrams: null, wholeGramUpperBound: null, continuousSolutionGrams: null, integerSolutionCertified: false, integerSearchNodes: 0, certificate: [] };
+    return {
+      status: 'unavailable',
+      continuousUpperBoundGrams: null,
+      wholeGramUpperBound: null,
+      continuousSolutionGrams: null,
+      integerSolutionCertified: false,
+      integerSearchNodes: 0,
+      certificate: [],
+    };
   }
   const continuous = Math.max(0, solved.value);
-  const integer = input.certifyWholeGram === false
-    ? { status: 'unavailable' as const, value: null, solution: null, nodes: 0 }
-    : solveIntegerLinearMaximum(rows, bounds, objective, input.integerNodeBudget);
+  const integer =
+    input.certifyWholeGram === false
+      ? { status: 'unavailable' as const, value: null, solution: null, nodes: 0 }
+      : solveIntegerLinearMaximum(rows, bounds, objective, input.integerNodeBudget);
   const activeRules = [
-    ...new Set(rows.flatMap((row, index) => {
-      const left = row.reduce(
-        (sum, coefficient, variable) => sum + coefficient * solved.solution[variable]!,
-        0,
-      );
-      return Math.abs(left - bounds[index]!) <= 1e-5 ? [rowLabels[index]!] : [];
-    })),
+    ...new Set(
+      rows.flatMap((row, index) => {
+        const left = row.reduce(
+          (sum, coefficient, variable) => sum + coefficient * solved.solution[variable]!,
+          0,
+        );
+        return Math.abs(left - bounds[index]!) <= 1e-5 ? [rowLabels[index]!] : [];
+      }),
+    ),
   ];
   return {
     status: 'certified',
     continuousUpperBoundGrams: continuous,
-    wholeGramUpperBound: integer.status === 'optimal'
-      ? integer.value
-      : Math.floor(continuous + 1e-7),
-    continuousSolutionGrams: integer.status === 'optimal'
-      ? integer.solution
-      : solved.solution.map((grams) => Math.max(0, grams)),
+    wholeGramUpperBound:
+      integer.status === 'optimal' ? integer.value : Math.floor(continuous + 1e-7),
+    continuousSolutionGrams:
+      integer.status === 'optimal'
+        ? integer.solution
+        : solved.solution.map((grams) => Math.max(0, grams)),
     integerSolutionCertified: integer.status === 'optimal',
     integerSearchNodes: integer.nodes,
     certificate: [
-      integer.status === 'optimal'
-        ? 'integer_linear_relaxation'
-        : 'linear_relaxation_native_bands',
+      integer.status === 'optimal' ? 'integer_linear_relaxation' : 'linear_relaxation_native_bands',
       ...activeRules,
     ],
   };

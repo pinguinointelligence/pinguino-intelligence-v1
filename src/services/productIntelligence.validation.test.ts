@@ -12,6 +12,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 import {
   buildRecipeBehaviorServerValidationGroups,
+  resolveRecipeProposalBehaviorSnapshots,
   resolveProductBehaviorForSelection,
   validateRecipeBehaviorOnServer,
 } from './productIntelligence';
@@ -111,10 +112,26 @@ const snapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSn
   sharedFacts: {
     schemaVersion: 1,
     technicalComposition: {
-      water: 100, totalSolids: 0, fat: 0, saturatedFat: null, protein: 0,
-      carbohydrate: 0, sugars: 0, sucrose: 0, glucose: 0, dextrose: 0,
-      fructose: 0, lactose: 0, polyols: 0, fibre: 0, salt: 0, alcohol: 0,
-      energyKcal: 0, podValue: 0, pacValue: 0, deValue: null,
+      water: 100,
+      totalSolids: 0,
+      fat: 0,
+      saturatedFat: null,
+      protein: 0,
+      carbohydrate: 0,
+      sugars: 0,
+      sucrose: 0,
+      glucose: 0,
+      dextrose: 0,
+      fructose: 0,
+      lactose: 0,
+      polyols: 0,
+      fibre: 0,
+      salt: 0,
+      alcohol: 0,
+      energyKcal: 0,
+      podValue: 0,
+      pacValue: 0,
+      deValue: null,
     },
     nutritionPer100g: null,
     allergens: null,
@@ -144,14 +161,16 @@ describe('recipe behavior server validation', () => {
     expect(built.invalidLineIds).toEqual([]);
     expect(built.groups).toHaveLength(1);
     expect(built.groups[0]?.context.requestedRole).toBe('STANDARD');
-    expect(built.groups.flatMap((group) => group.lines)).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        lineId: 'main-line',
-        entityKind: 'mapper',
-        entityId: 'PI-ING-1',
-        mainPolicyId: 'fruit-milk',
-      }),
-    ]));
+    expect(built.groups.flatMap((group) => group.lines)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lineId: 'main-line',
+          entityKind: 'mapper',
+          entityId: 'PI-ING-1',
+          mainPolicyId: 'fruit-milk',
+        }),
+      ]),
+    );
     expect(JSON.stringify(built.groups)).toContain('technicalComposition');
     expect(JSON.stringify(built.groups)).not.toContain('privateOverlay');
   });
@@ -194,8 +213,10 @@ describe('recipe behavior server validation', () => {
     expect(built.invalidLineIds).toEqual([]);
     expect(built.groups).toHaveLength(1);
     expect(built.groups[0]?.context.requestedRole).toBe('STANDARD');
-    expect(built.groups[0]?.lines.map((line) => line.lineId).sort())
-      .toEqual(['main-line', 'standard-line']);
+    expect(built.groups[0]?.lines.map((line) => line.lineId).sort()).toEqual([
+      'main-line',
+      'standard-line',
+    ]);
   });
 
   it('treats a stripped optional DE null as equal to the Engine null value', () => {
@@ -269,11 +290,13 @@ describe('recipe behavior server validation', () => {
     const built = buildRecipeBehaviorServerValidationGroups({
       recipe: {
         ...recipe,
-        items: [{
-          ...recipe.items[1]!,
-          id: 'catalog-line',
-          ingredient: catalogIngredient,
-        }],
+        items: [
+          {
+            ...recipe.items[1]!,
+            id: 'catalog-line',
+            ingredient: catalogIngredient,
+          },
+        ],
       },
       snapshots: { 'catalog-line': catalogSnapshot },
       module: 'ECO',
@@ -294,34 +317,43 @@ describe('recipe behavior server validation', () => {
         schemaVersion: 1,
         ready: false,
         module: 'SAVE',
-        lines: [{
-          lineId: 'main-line',
-          state: 'stale',
-          reasons: ['behavior_binding_stale'],
-        }],
+        lines: [
+          {
+            lineId: 'main-line',
+            state: 'stale',
+            reasons: ['behavior_binding_stale'],
+          },
+        ],
         staleLineIds: ['main-line'],
       },
       error: null,
     });
     const single = { ...recipe, items: [recipe.items[0]!] };
-    await expect(validateRecipeBehaviorOnServer({
-      recipe: single,
-      snapshots: { 'main-line': snapshot('main-line', 'PI-ING-1') },
-      module: 'SAVE',
-      accountId: 'account-1',
-    })).resolves.toMatchObject({
+    await expect(
+      validateRecipeBehaviorOnServer({
+        recipe: single,
+        snapshots: { 'main-line': snapshot('main-line', 'PI-ING-1') },
+        module: 'SAVE',
+        accountId: 'account-1',
+      }),
+    ).resolves.toMatchObject({
       ready: false,
       staleLineIds: ['main-line'],
-      lines: [{
-        lineId: 'main-line',
-        reasons: [
-          'behavior_binding_stale:product-main-line:PI-ING-1:version-main-line:SAVE:refresh_product_data',
-        ],
-      }],
+      lines: [
+        {
+          lineId: 'main-line',
+          reasons: [
+            'behavior_binding_stale:product-main-line:PI-ING-1:version-main-line:SAVE:refresh_product_data',
+          ],
+        },
+      ],
     });
-    expect(h.rpc).toHaveBeenCalledWith('validate_recipe_behavior_v1', expect.objectContaining({
-      p_context: expect.objectContaining({ module: 'SAVE', productProfile: 'milk_gelato' }),
-    }));
+    expect(h.rpc).toHaveBeenCalledWith(
+      'validate_recipe_behavior_v1',
+      expect.objectContaining({
+        p_context: expect.objectContaining({ module: 'SAVE', productProfile: 'milk_gelato' }),
+      }),
+    );
   });
 
   it('preserves an exact blocked resolver envelope instead of collapsing it to null', async () => {
@@ -341,18 +373,20 @@ describe('recipe behavior server validation', () => {
       },
       error: null,
     });
-    await expect(resolveProductBehaviorForSelection({
-      entity: { entityKind: 'catalog_product_version', entityId: 'version-1' },
-      context: {
-        accountId: 'account-1',
-        productProfile: 'milk_gelato',
-        temperatureC: -12,
-        mode: 'optimal',
-        processScope: 'BASE_FORMULATION',
-        requestedRole: 'STANDARD',
-        module: 'BASE_RECIPE',
-      },
-    })).resolves.toMatchObject({
+    await expect(
+      resolveProductBehaviorForSelection({
+        entity: { entityKind: 'catalog_product_version', entityId: 'version-1' },
+        context: {
+          accountId: 'account-1',
+          productProfile: 'milk_gelato',
+          temperatureC: -12,
+          mode: 'optimal',
+          processScope: 'BASE_FORMULATION',
+          requestedRole: 'STANDARD',
+          module: 'BASE_RECIPE',
+        },
+      }),
+    ).resolves.toMatchObject({
       state: 'blocked',
       productId: 'product-1',
       productVersionId: 'version-1',
@@ -366,20 +400,24 @@ describe('recipe behavior server validation', () => {
   it('fails before RPC when recipe science differs from the frozen Mapper facts', async () => {
     const forged = {
       ...recipe,
-      items: [{
-        ...recipe.items[0]!,
-        ingredient: {
-          ...recipe.items[0]!.ingredient,
-          composition: { ...recipe.items[0]!.ingredient.composition, water_percent: 99 },
+      items: [
+        {
+          ...recipe.items[0]!,
+          ingredient: {
+            ...recipe.items[0]!.ingredient,
+            composition: { ...recipe.items[0]!.ingredient.composition, water_percent: 99 },
+          },
         },
-      }],
+      ],
     };
-    await expect(validateRecipeBehaviorOnServer({
-      recipe: forged,
-      snapshots: { 'main-line': snapshot('main-line', 'PI-ING-1') },
-      module: 'SAVE',
-      accountId: 'account-1',
-    })).resolves.toMatchObject({
+    await expect(
+      validateRecipeBehaviorOnServer({
+        recipe: forged,
+        snapshots: { 'main-line': snapshot('main-line', 'PI-ING-1') },
+        module: 'SAVE',
+        accountId: 'account-1',
+      }),
+    ).resolves.toMatchObject({
       ready: false,
       staleLineIds: ['main-line'],
     });
@@ -394,13 +432,109 @@ describe('recipe behavior server validation', () => {
         ingredient: ingredient(item.ingredient.id, 'demo'),
       })),
     };
-    await expect(validateRecipeBehaviorOnServer({
-      recipe: unmanaged,
-      snapshots: {},
-      module: 'PRODUCTION',
-      accountId: null,
-    })).resolves.toMatchObject({ ready: true, lines: [] });
+    await expect(
+      validateRecipeBehaviorOnServer({
+        recipe: unmanaged,
+        snapshots: {},
+        module: 'PRODUCTION',
+        accountId: null,
+      }),
+    ).resolves.toMatchObject({ ready: true, lines: [] });
     expect(h.rpc).not.toHaveBeenCalled();
+  });
+
+  it('resolves a solver-added Inulin line by canonical Mapper identity, never by its local correction id', async () => {
+    const addedLineId = 'correction-inulin-0';
+    const proposed: RecipeInput = {
+      ...recipe,
+      items: [
+        {
+          ...recipe.items[1]!,
+          id: addedLineId,
+          ingredient: {
+            ...recipe.items[1]!.ingredient,
+            id: 'inulin',
+            canonical_ingredient_id: 'PI-ING-000456',
+            name: 'INULIN · Specialty',
+          },
+          planned_grams: 10,
+        },
+      ],
+    };
+    const resolveSelection = vi.fn().mockResolvedValue({
+      ...snapshot(addedLineId, 'PI-ING-000456'),
+      state: 'eligible',
+      entityKind: 'mapper',
+      entityId: 'PI-ING-000456',
+      module: 'OPTIMAL',
+      context: {
+        accountId: 'account-1',
+        productProfile: 'milk_gelato',
+        temperatureC: -12,
+        mode: 'optimal',
+        processScope: 'BASE_FORMULATION',
+        requestedRole: 'STANDARD',
+        module: 'OPTIMAL',
+      },
+    });
+
+    const result = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: proposed,
+      snapshots: {},
+      accountId: 'account-1',
+      module: 'OPTIMAL',
+      resolveSelection,
+    });
+
+    expect(resolveSelection).toHaveBeenCalledTimes(1);
+    expect(resolveSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entity: { entityKind: 'mapper', entityId: 'PI-ING-000456' },
+      }),
+    );
+    expect(JSON.stringify(resolveSelection.mock.calls)).not.toContain(addedLineId);
+    expect(result.unresolvedLineIds).toEqual([]);
+    expect(result.snapshots[addedLineId]).toMatchObject({
+      lineId: addedLineId,
+      mapperIngredientId: 'PI-ING-000456',
+      productVersionId: `version-${addedLineId}`,
+      behaviorBindingId: `binding-${addedLineId}`,
+      factsFingerprint: `facts-${addedLineId}`,
+    });
+  });
+
+  it('fails closed and creates no synthetic authority when a solver-added line cannot resolve', async () => {
+    const addedLineId = 'correction-inulin-0';
+    const proposed: RecipeInput = {
+      ...recipe,
+      items: [
+        {
+          ...recipe.items[1]!,
+          id: addedLineId,
+          ingredient: {
+            ...recipe.items[1]!.ingredient,
+            id: 'inulin',
+            canonical_ingredient_id: 'PI-ING-000456',
+          },
+        },
+      ],
+    };
+    const resolveSelection = vi.fn().mockResolvedValue(null);
+
+    const result = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: proposed,
+      snapshots: {},
+      accountId: 'account-1',
+      module: 'OPTIMAL',
+      resolveSelection,
+    });
+
+    expect(result).toEqual({ snapshots: {}, unresolvedLineIds: [addedLineId] });
+    expect(resolveSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entity: { entityKind: 'mapper', entityId: 'PI-ING-000456' },
+      }),
+    );
   });
 
   it('pins every terminal Pro runtime surface to the server-validation wrapper', () => {

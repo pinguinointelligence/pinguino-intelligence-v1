@@ -119,6 +119,7 @@ export function ConstraintPreviewCard({
   // the Apply control honestly (never a clickable button that fails later).
   const diagnostic = preview.diagnosticOnly === true || integrityDiagnostic;
   const hardResiduals = preview.hardResidualMetrics ?? [];
+  const residualDiagnostics = preview.residualMetricDiagnostics ?? [];
   const diagnosticReason = preview.diagnosticReason;
   // Owner addendum item 4 — the trustless outcome classification.
   const outcome = preview.outcomeClassification;
@@ -305,6 +306,59 @@ export function ConstraintPreviewCard({
                       ? copy.preview.diagnosticHardResiduals(hardResiduals)
                       : copy.preview.diagnosticIterationCap}
           </p>
+          {residualDiagnostics.length > 0 ? (
+            <div className="mt-3 space-y-2" data-testid="preview-residual-metric-diagnostics">
+              {residualDiagnostics.map((metric) => (
+                <div
+                  key={metric.metric}
+                  className="rounded-lg border border-ivory/12 bg-black/15 px-3 py-2.5"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <strong className="text-xs text-ivory">{metric.labelPl}</strong>
+                    <span className="text-[0.625rem] font-medium tracking-[0.08em] text-status-risky uppercase">
+                      {metric.status === 'hard_block' ? 'Twarda blokada' : 'Wskazówka'}
+                    </span>
+                  </div>
+                  <p className="mt-1 font-mono text-xs tabular-nums text-ivory/80">
+                    Przed:{' '}
+                    {metric.beforeValue === null
+                      ? '—'
+                      : `${metric.beforeValue.toFixed(1)}${metric.valueUnit === '%' ? '%' : ' pkt'}`}{' '}
+                    · Po: {metric.proposedValue.toFixed(1)}
+                    {metric.valueUnit === '%' ? '%' : ' pkt'} · Zakres:{' '}
+                    {metric.acceptedMin.toFixed(1)}–{metric.acceptedMax.toFixed(1)}
+                    {metric.valueUnit === '%' ? '%' : ' pkt'}
+                  </p>
+                  <p className="mt-1 font-mono text-xs tabular-nums text-ivory/70">
+                    Dystans: {metric.distanceBefore.toFixed(1)} {metric.distanceUnit} →{' '}
+                    {metric.distanceAfter.toFixed(1)} {metric.distanceUnit}
+                  </p>
+                  {metric.bandStatus !== null ||
+                  metric.categoryFallback ||
+                  metric.temperatureFallback ? (
+                    <p className="mt-1 text-[0.625rem] text-ivory/55">
+                      Zakres:{' '}
+                      {metric.bandStatus === 'seeded'
+                        ? 'zatwierdzony'
+                        : metric.bandStatus === 'estimated'
+                          ? 'szacowany'
+                          : 'bez oznaczenia'}
+                      {metric.categoryFallback ? ' · profil zastępczy' : ''}
+                      {metric.temperatureFallback ? ' · temperatura zastępcza' : ''}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-xs leading-relaxed text-ivory/75">
+                    {metric.movement === 'improved'
+                      ? 'Wynik jest bliżej zakresu, ale nadal go nie osiąga.'
+                      : metric.movement === 'worsened'
+                        ? 'Wynik oddalił się od zatwierdzonego zakresu.'
+                        : 'Odległość od zatwierdzonego zakresu nie zmieniła się.'}{' '}
+                    {metric.applyDisabledReasonPl}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -366,7 +420,10 @@ export function ConstraintPreviewCard({
                   )}
             </p>
           ) : null}
-          {outcome.engineImproved ? (
+          {outcome.engineImproved &&
+          !(
+            outcome.violationsBefore === outcome.violationsAfter && residualDiagnostics.length > 0
+          ) ? (
             <p
               className="mt-1 text-xs leading-relaxed text-ivory/80"
               data-testid="preview-engine-improved"

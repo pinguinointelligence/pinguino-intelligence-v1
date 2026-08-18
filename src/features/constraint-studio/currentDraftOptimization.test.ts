@@ -43,10 +43,7 @@ import {
   type ConstraintPreview,
 } from './applyPipeline';
 import { buildDraftCandidateVector } from './draftCandidateVector';
-import {
-  selectCanonicalDraft,
-  useConstraintStudioStore,
-} from './constraintStudioStore';
+import { selectCanonicalDraft, useConstraintStudioStore } from './constraintStudioStore';
 
 /* ── the owner's exact draft ──────────────────────────────────────────────── */
 
@@ -157,9 +154,9 @@ describe('the optimizer receives the CURRENT draft (owner Phase 1, tests 1–3)'
     expect(inulin!.testedGrams.length).toBeGreaterThan(0);
     // …and the run itself records it (the QA-visible proof).
     const preview = previewOf(buildOptimizePreview(rec, NO, AT));
-    expect(
-      preview.iteration!.candidateVector.map((candidate) => candidate.lineId),
-    ).toContain('l-inulin');
+    expect(preview.iteration!.candidateVector.map((candidate) => candidate.lineId)).toContain(
+      'l-inulin',
+    );
   });
 
   it('test 2: the CURRENT amount reaches the optimizer — never a stale/reference value', () => {
@@ -177,10 +174,7 @@ describe('the optimizer receives the CURRENT draft (owner Phase 1, tests 1–3)'
       // template-controlled Tara dose stays byte-exact).
       const seen = iteration.candidateVector.find((c) => c.lineId === 'l-inulin');
       expect(seen, `inulin ${grams} g must be offered`).toBeDefined();
-      expect(seen!.currentGrams).toBeCloseTo(
-        grams * ((TARGET - 4) / (plannedSum(rec) - 4)),
-        6,
-      );
+      expect(seen!.currentGrams).toBeCloseTo(grams * ((TARGET - 4) / (plannedSum(rec) - 4)), 6);
       expect(iteration.startPlannedSumGrams).toBeCloseTo(TARGET, 6);
       expect(iteration.targetBatchGrams).toBe(TARGET);
     }
@@ -216,7 +210,7 @@ describe('target-batch equality is a REQUIRED outcome (tests 4–6)', () => {
     expect(Math.abs(plannedSum(preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
   });
 
-  it('test 6: an UNLOCKED Inulin line may really be changed (up, down or to zero)', () => {
+  it('test 6: an UNLOCKED Inulin line may really be changed without silently removing user intent', () => {
     const changed = [0, 10, 100, 500].map((grams) => {
       const preview = previewOf(buildOptimizePreview(draft(withInulin(grams)), NO, AT));
       return inulinGrams(preview.proposedInput) !== grams;
@@ -226,6 +220,26 @@ describe('target-batch equality is a REQUIRED outcome (tests 4–6)', () => {
     const zeroVector = buildDraftCandidateVector(draft(withInulin(0)), NO, new Set());
     const zeroInulin = zeroVector.find((c) => c.lineId === 'l-inulin')!;
     expect(Math.max(...zeroInulin.testedGrams)).toBeGreaterThan(0);
+  });
+
+  it('keeps a positive user-intent Standard line present and anchors ranking to the entered grams', () => {
+    const rec: RecipeInput = {
+      ...draft(withInulin(100)),
+      items: draft(withInulin(100)).items.map((item) =>
+        item.id === 'l-inulin' ? { ...item, user_intent_anchor_grams: 100 } : item,
+      ),
+    };
+    const vector = buildDraftCandidateVector(rec, NO, new Set());
+    const inulin = vector.find((candidate) => candidate.lineId === 'l-inulin')!;
+    expect(inulin.testedGrams).toContain(1);
+    expect(inulin.testedGrams).not.toContain(0);
+    expect(inulin.anchorGrams).toBe(100);
+
+    const preview = previewOf(buildOptimizePreview(rec, NO, AT));
+    expect(inulinGrams(preview.proposedInput)).toBeGreaterThanOrEqual(1);
+    expect(preview.proposedInput.items.find((item) => item.id === 'l-inulin')).toMatchObject({
+      user_intent_anchor_grams: 100,
+    });
   });
 });
 
@@ -238,11 +252,13 @@ describe('locks and exclusions bound the optimizer (tests 7–8)', () => {
       const set: ConstraintSet = { byLineId: { 'l-inulin': { mode: 'locked', grams } } };
       const result = buildOptimizePreview(rec, set, AT);
       if (!result.ok) continue; // an honest structured stop is acceptable
-      expect(Object.is(inulinGrams(result.preview.proposedInput), grams), `inulin ${grams}`).toBe(true);
+      expect(Object.is(inulinGrams(result.preview.proposedInput), grams), `inulin ${grams}`).toBe(
+        true,
+      );
       // The vector never even offers a held line.
-      expect(
-        buildDraftCandidateVector(rec, set, new Set()).map((c) => c.lineId),
-      ).not.toContain('l-inulin');
+      expect(buildDraftCandidateVector(rec, set, new Set()).map((c) => c.lineId)).not.toContain(
+        'l-inulin',
+      );
     }
   });
 
@@ -372,9 +388,9 @@ describe('the live draft lifecycle (tests 14–18)', () => {
     expect(useConstraintStudioStore.getState().preview).not.toBeNull();
     useConstraintStudioStore.getState().cancelPreview();
     expect(useConstraintStudioStore.getState().preview).toBeNull();
-    expect(JSON.stringify(useRecipeStore.getState().items.map((i) => [i.id, i.planned_grams]))).toBe(
-      before,
-    );
+    expect(
+      JSON.stringify(useRecipeStore.getState().items.map((i) => [i.id, i.planned_grams])),
+    ).toBe(before);
   });
 
   it('test 16: Apply writes EXACTLY the previewed grams', () => {
@@ -455,9 +471,9 @@ describe('machine context and the science freeze (tests 19–20)', () => {
     });
     const home = buildRecipeInput(useRecipeStore.getState());
     expect(home.machine_capacity_grams).toBe(500);
-    expect(
-      calculateRecipe(home).warnings.some((w) => w.code === 'machine_capacity_exceeded'),
-    ).toBe(true);
+    expect(calculateRecipe(home).warnings.some((w) => w.code === 'machine_capacity_exceeded')).toBe(
+      true,
+    );
   });
 
   it('test 20: engine science is UNCHANGED (0.4.0 / 0.7.0 pinned)', () => {
@@ -477,7 +493,10 @@ describe('owner fixtures A–F (complete fruit-gelato family, real pipeline runs
     expect(Math.abs(plannedSum(preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     // The user's own identities survive — nothing was replaced wholesale.
     for (const item of draft(withInulin(0)).items) {
-      expect(preview.proposedInput.items.some((row) => row.id === item.id), item.id).toBe(true);
+      expect(
+        preview.proposedInput.items.some((row) => row.id === item.id),
+        item.id,
+      ).toBe(true);
     }
   });
 
@@ -565,7 +584,10 @@ describe('batch reconciliation never re-opens the 8 × 125 g door', () => {
     const uniform = draft(BASE_945().map((item) => ({ ...item, planned_grams: 140 })));
     const projected: RecipeInput = {
       ...uniform,
-      items: uniform.items.map((item) => ({ ...item, planned_grams: TARGET / uniform.items.length })),
+      items: uniform.items.map((item) => ({
+        ...item,
+        planned_grams: TARGET / uniform.items.length,
+      })),
     };
     expect(isBatchReconciliation(uniform, projected)).toBe(false);
   });
