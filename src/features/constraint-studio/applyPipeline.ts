@@ -2573,9 +2573,11 @@ function maximizeMainFromStart(
 const MAIN_TECHNICAL_MAXIMUM_ENABLED = true;
 // A certified maximum may still sit below the linear upper bound because the
 // final Engine contains discrete/non-linear gates. Search every reachable
-// whole gram downward; a one-probe budget made an unlocked 1200 g Main draft
-// fail before PI ever reached its valid 1000 g region.
-export const MAIN_TECHNICAL_PROBE_BUDGET = Number.MAX_SAFE_INTEGER;
+// whole gram downward for normal Pro/Home batches, but keep a finite guard so
+// a malformed or unusually large target cannot synchronously monopolise the
+// UI thread. When the guard is reached the proof remains honestly bounded
+// BEST_ACHIEVABLE; it is never promoted to a certified maximum.
+export const MAIN_TECHNICAL_PROBE_BUDGET = 2_000;
 
 type MainTechnicalProbe =
   | { ok: true; input: RecipeInput; mainGrams: number; score: number | null }
@@ -3202,7 +3204,10 @@ function maximizeMainFlavourObjective(
     // not; for those, use the already-built technical toolbox rather than the
     // sparse/off-batch seed.
     const technicalStart =
-      Object.keys(options.productBehaviorSnapshots ?? {}).length > 0 ? identityInput : start;
+      identityInput.category === 'protein_gelato' ||
+      Object.keys(options.productBehaviorSnapshots ?? {}).length === 0
+        ? start
+        : identityInput;
     // The accepted bounded corrector is retained only as a deterministic,
     // fully revalidated lower-bound seed. It can improve BEST_ACHIEVABLE when
     // the exact frontier budget is exhausted, but it can never certify a
@@ -4986,14 +4991,35 @@ export function buildOptimizePreview(
     if (violated.length === 0) {
       violated = [...new Set(recipeDirectionViolations(working).map((v) => v.metric))];
     }
-    const anchoredStandard = input.items.find(
+    const fallback = withBatchReconciliation(
+      withTemplateFallback({
+        ok: false,
+        code: 'no_proposal',
+        violatedMetrics: violated,
+        solverInvocations: solverRounds,
+        iteration: iterated.diagnostics,
+      }),
+      working,
+      iterated.diagnostics,
+      violationsBefore,
+    );
+    // A template/current-batch recovery is more authoritative than a removal
+    // suggestion. Never pre-empt a valid fallback with the first positive
+    // Standard row merely because it happens to appear first in the draft.
+    if (fallback.ok || fallback.code !== 'no_proposal') return fallback;
+    const anchoredStandards = input.items.filter(
       (item) =>
         item.lock_type === 'unlocked' &&
         item.actual_grams === null &&
         item.planned_grams > 0 &&
         (item.user_intent_anchor_grams ?? 0) > 0,
     );
-    if (anchoredStandard) {
+    // With several positive Standard anchors the failed search proves only
+    // that the complete vector is infeasible; it does not identify which one
+    // ingredient must be removed. Preserve the generic proven stop instead of
+    // offering an arbitrary destructive action for the first row.
+    if (anchoredStandards.length === 1) {
+      const anchoredStandard = anchoredStandards[0]!;
       const vector = iterated.diagnostics.candidateVector.find(
         (candidate) => candidate.lineId === anchoredStandard.id,
       );
@@ -5017,21 +5043,7 @@ export function buildOptimizePreview(
           `${anchoredStandard.ingredient.name} w ilości co najmniej 1 g.`,
       };
     }
-    // Owner Phase 6: a complete unconstrained draft gets the template-seeded
-    // fallback before the failure is final (never a bare one-line stop); the
-    // CURRENT-DRAFT batch-reconciliation door is the last word (owner P0).
-    return withBatchReconciliation(
-      withTemplateFallback({
-        ok: false,
-        code: 'no_proposal',
-        violatedMetrics: violated,
-        solverInvocations: solverRounds,
-        iteration: iterated.diagnostics,
-      }),
-      working,
-      iterated.diagnostics,
-      violationsBefore,
-    );
+    return fallback;
   }
 
   // OWNER P0 ACCEPTANCE GATE (definitive-fail repair): a changed candidate is a
@@ -5345,6 +5357,13 @@ export function buildExplicitStandardRemovalPreview(
     productName: original.ingredient.name,
     beforeGrams: original.planned_grams,
   };
+  // Explicit removal reuses the canonical optimizer. Preserve its Main
+  // frontier proof so Apply can independently re-derive the exact same
+  // Main-bearing proposal instead of rejecting every consented removal as an
+  // unauthorised Main vector.
+  if (optimized.ok && optimized.preview.mainObjective) {
+    preview.mainObjective = structuredClone(optimized.preview.mainObjective);
+  }
   preview.hardResidualMetrics = [];
   preview.diagnosticOnly = false;
   return { ok: true, preview };
@@ -5418,6 +5437,28 @@ export function buildBatchRescalePreview(
         ...new Set(mainIdentity.violations.flatMap((violation) => violation.ingredientNames)),
       ],
       messagePl: mainIdentityViolationMessage(mainIdentity),
+    };
+  }
+
+  const subMinimumPositiveStandards = input.items.filter((item) => {
+    if (
+      item.lock_type !== 'unlocked' ||
+      item.actual_grams !== null ||
+      item.planned_grams <= 0 ||
+      (item.user_intent_anchor_grams ?? 0) <= 0
+    ) {
+      return false;
+    }
+    const proposed = rescaled.input.items.find((candidate) => candidate.id === item.id);
+    return proposed === undefined || proposed.planned_grams < 1;
+  });
+  if (subMinimumPositiveStandards.length > 0) {
+    return {
+      ok: false,
+      code: 'practicalization_blocked',
+      lineIds: subMinimumPositiveStandards.map((item) => item.id),
+      messagePl:
+        'Przeskalowanie obniżyłoby dodatni składnik Standard poniżej 1 g. Zwiększ partię albo usuń składnik jawnie.',
     };
   }
 
@@ -6728,10 +6769,21 @@ export class VerifiedApply {
       // frontier from the current trusted draft. This closes forged or stale
       // exact proofs and also prevents an honest BEST_ACHIEVABLE preview from
       // being replaced by a different, attacker-selected lower-bound vector.
-      const rebuilt = buildOptimizePreview(current, currentConstraints, preview.createdAt, {
-        excludedIngredientIds,
-        productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
-      });
+      const rebuilt = authorizedRemovalLineId
+        ? buildExplicitStandardRemovalPreview(
+            current,
+            currentConstraints,
+            authorizedRemovalLineId,
+            preview.createdAt,
+            {
+              excludedIngredientIds,
+              productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+            },
+          )
+        : buildOptimizePreview(current, currentConstraints, preview.createdAt, {
+            excludedIngredientIds,
+            productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+          });
       const rebuiltProof = rebuilt.ok ? rebuilt.preview.mainObjective : undefined;
       const recomputedExecutableMainGrams = rebuilt.ok
         ? mainGroupTotal(mainIdentityBase, rebuilt.preview.proposedInput)

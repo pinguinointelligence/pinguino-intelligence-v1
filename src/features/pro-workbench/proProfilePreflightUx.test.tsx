@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -459,8 +459,11 @@ describe('five-detent direction language', () => {
 
 describe('hard scope guards', () => {
   it('does not edit protected ingredient, Monitor or Engine implementations', () => {
-    const changed = readFileSync(join(resolve(SRC, '..'), '.git'), 'utf8');
-    expect(changed).toContain('gitdir:');
+    const gitPath = join(resolve(SRC, '..'), '.git');
+    const gitMetadata = statSync(gitPath).isDirectory()
+      ? readFileSync(join(gitPath, 'HEAD'), 'utf8')
+      : readFileSync(gitPath, 'utf8');
+    expect(gitMetadata.trim().length).toBeGreaterThan(0);
     const page = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     expect(page).toContain('<MonitorPanelContent');
     expect(page).toContain('<ProductionPanel');

@@ -546,6 +546,11 @@ describe('recipe behavior server validation', () => {
     const production = read('src/features/production-workspace/useProductionWorkspace.ts');
     expect(pro).toContain('runPiRecalculationWithTerminal');
     expect(studio).toContain('createOptimizePreviewWithServerAuthority');
+    expect(studio).toContain('createExplicitStandardRemovalPreviewWithServerAuthority');
+    expect(studio).toContain('.createExplicitStandardRemovalPreview(lineId, proposedSnapshots)');
+    expect(read('src/features/pro-core/ProRecalcPanel.tsx')).toContain(
+      'createExplicitStandardRemovalPreviewWithServerAuthority(lineId)',
+    );
     expect(section).toContain('applyPreviewWithServerAuthority');
     expect(studio).toContain("? 'ECO'");
     expect(studio).toContain(": 'OPTIMAL'");

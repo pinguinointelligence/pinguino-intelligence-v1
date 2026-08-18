@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { findVerifiedProteinFormulationCandidate } from '@/data/ingredients/verifiedProteinToolbox';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import {
   buildOptimizePreview,
   commitPreview,
@@ -35,6 +36,23 @@ const proteinDraft = (temperatureC: -11 | -12 | -13, targetPercent: number): Rec
 });
 
 describe('Protein Gelato target orchestration', () => {
+  it('keeps the reached Protein candidate when ProductBehavior snapshots make the draft managed', () => {
+    const input = proteinDraft(-12, 20);
+    const built = buildOptimizePreview(input, EMPTY, '2026-08-09T10:00:00.000Z', {
+      productBehaviorSnapshots: productBehaviorTestSnapshots(input),
+    });
+    expect(built.ok, built.ok ? '' : JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    expect(assessProteinTarget(built.preview.proposedInput)).toMatchObject({
+      applicable: true,
+      targetPercent: 20,
+      reached: true,
+      hardSafe: true,
+      score: 10,
+    });
+    expect(built.preview.mainObjective?.technicalScore).toBe(10);
+  });
+
   for (const temperatureC of [-11, -12, -13] as const) {
     for (const targetPercent of [19, 20, 21] as const) {
       it(`builds native-safe Preview at ${temperatureC}°C for ${targetPercent}%`, () => {

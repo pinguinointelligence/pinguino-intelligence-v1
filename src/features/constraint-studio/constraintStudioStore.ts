@@ -477,7 +477,10 @@ export interface ConstraintStudioState {
     proposalSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
   ) => void;
   acceptBestDirectionCandidate: () => void;
-  createExplicitStandardRemovalPreview: (lineId: string) => void;
+  createExplicitStandardRemovalPreview: (
+    lineId: string,
+    proposalSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+  ) => void;
   createBatchRescalePreview: (newBatchGrams: number) => void;
   createSuggestedFixPreview: (fix: SuggestedBoundFix) => void;
   createSubstitutionPreview: (
@@ -922,23 +925,25 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         });
       },
 
-      createExplicitStandardRemovalPreview: (lineId) => {
+      createExplicitStandardRemovalPreview: (lineId, proposalSnapshots) => {
         get().reconcile();
         const draft = selectCanonicalDraft();
         const recipeState = useRecipeStore.getState();
         const snapshots = recipeState.productBehaviorSnapshots;
-        const proposedSnapshots = Object.fromEntries(
-          Object.entries(snapshots).filter(([snapshotLineId]) => snapshotLineId !== lineId),
-        );
+        const proposedAuthority =
+          proposalSnapshots ??
+          Object.fromEntries(
+            Object.entries(snapshots).filter(([snapshotLineId]) => snapshotLineId !== lineId),
+          );
         const result = bindProductBehaviorToPreview(
           buildExplicitStandardRemovalPreview(draft.input, draft.constraints, lineId, nowIso(), {
             excludedIngredientIds: draft.excludedIngredientIds,
             unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
             effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
             requirePracticalPreview: true,
-            productBehaviorSnapshots: proposedSnapshots,
+            productBehaviorSnapshots: proposedAuthority,
           }),
-          proposedSnapshots,
+          proposedAuthority,
           snapshots,
           recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
         );
@@ -969,8 +974,14 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             proposedFingerprint,
             baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(snapshots),
             proposedProductBehaviorFingerprint:
-              productBehaviorSnapshotFingerprint(proposedSnapshots),
-            snapshots: structuredClone(proposedSnapshots),
+              productBehaviorSnapshotFingerprint(proposedAuthority),
+            snapshots: structuredClone(
+              Object.fromEntries(
+                Object.entries(proposedAuthority).filter(
+                  (entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined,
+                ),
+              ),
+            ),
           },
           explicitStandardRemovalConsent: {
             baseFingerprint: result.preview.baseFingerprint,
@@ -1784,6 +1795,74 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
   useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
   if (!isCurrentPiRun(ownedGeneration)) return;
   useConstraintStudioStore.getState().createOptimizePreview(proposedSnapshots);
+}
+
+/** Explicit Standard removal uses the same two-phase authority protocol as
+ * ordinary optimization: validate the current draft, build the consented
+ * candidate, then resolve and validate every retained or solver-added line
+ * before exposing Preview. */
+export async function createExplicitStandardRemovalPreviewWithServerAuthority(
+  lineId: string,
+): Promise<void> {
+  const draft = selectCanonicalDraft();
+  const recipeState = useRecipeStore.getState();
+  const technicalOnlyMainLineIds = recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
+  const baseValidation = await currentBaseAuthorityReady({
+    recipe: draft.input,
+    snapshots: recipeState.productBehaviorSnapshots,
+    technicalOnlyMainLineIds,
+  });
+  if (!baseValidation.ready) {
+    useConstraintStudioStore.setState({
+      ...CLEAR_STAGED,
+      previewIssue: serverBehaviorPreviewIssue(baseValidation.issues),
+      recalculationTerminal: productBehaviorTerminal(baseValidation.issues),
+    });
+    return;
+  }
+  if (useRecipeStore.getState().draftRevision !== draft.revision) return;
+
+  const initialSnapshots = Object.fromEntries(
+    Object.entries(baseValidation.snapshots).filter(
+      ([snapshotLineId]) => snapshotLineId !== lineId,
+    ),
+  );
+  const raw = buildExplicitStandardRemovalPreview(
+    draft.input,
+    draft.constraints,
+    lineId,
+    nowIso(),
+    {
+      excludedIngredientIds: draft.excludedIngredientIds,
+      unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
+      effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+      requirePracticalPreview: true,
+      productBehaviorSnapshots: initialSnapshots,
+    },
+  );
+  let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
+  if (raw.ok) {
+    const proposedValidation = await currentBaseAuthorityReady({
+      recipe: raw.preview.proposedInput,
+      snapshots: initialSnapshots,
+      technicalOnlyMainLineIds,
+    });
+    if (!proposedValidation.ready) {
+      useConstraintStudioStore.setState({
+        ...CLEAR_STAGED,
+        previewIssue: serverBehaviorPreviewIssue(proposedValidation.issues),
+        recalculationTerminal: productBehaviorTerminal(proposedValidation.issues),
+      });
+      return;
+    }
+    proposedSnapshots = proposedValidation.snapshots;
+  }
+  if (useRecipeStore.getState().draftRevision !== draft.revision) return;
+  useRecipeStore.getState().syncProductBehaviorSnapshots(baseValidation.snapshots);
+  if (useRecipeStore.getState().draftRevision !== draft.revision) return;
+  useConstraintStudioStore
+    .getState()
+    .createExplicitStandardRemovalPreview(lineId, proposedSnapshots);
 }
 
 /** React-facing no-stranded-WORKING boundary. Unexpected network/runtime

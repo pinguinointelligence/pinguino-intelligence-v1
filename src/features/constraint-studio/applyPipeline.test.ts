@@ -12,6 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
+import { findDemoIngredient } from '@/data/demoIngredients';
 import { analyzeConstraintFeasibility, type ConstraintSet } from '@/features/recipe-constraints';
 import {
   overSweetStarter,
@@ -161,7 +162,9 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     const afterDirection = recipeDirectionViolations(result.preview.proposedInput);
     expect(result.preview.violationsAfter).toBe(0);
     expect(afterDirection.length).toBeLessThanOrEqual(beforeDirection.length);
-    expect(afterDirection.reduce((sum, violation) => sum + violation.severity_points, 0)).toBeLessThanOrEqual(
+    expect(
+      afterDirection.reduce((sum, violation) => sum + violation.severity_points, 0),
+    ).toBeLessThanOrEqual(
       beforeDirection.reduce((sum, violation) => sum + violation.severity_points, 0),
     );
   });
@@ -437,6 +440,32 @@ describe('batch rescale preview (§17.4)', () => {
     // Milk + sucrose are user-locked (1100 g) and the 5 g established Tara
     // dose is internally template-controlled, so the real minimum is 1105 g.
     expect(built).toMatchObject({ ok: false, code: 'rescale_locked_sum', minimumBatchGrams: 1105 });
+  });
+
+  it('blocks before Preview when scaling would erase a positive Standard anchor below 1 g', () => {
+    const base = starterMilkBase();
+    const input: RecipeInput = {
+      ...base,
+      items: [
+        ...base.items.map((item, index) =>
+          index === 0 ? { ...item, planned_grams: item.planned_grams - 10 } : item,
+        ),
+        {
+          id: 'positive-standard',
+          ingredient: findDemoIngredient('inulin')!,
+          planned_grams: 10,
+          actual_grams: null,
+          lock_type: 'unlocked',
+          user_intent_anchor_grams: 10,
+        },
+      ],
+    };
+
+    expect(buildBatchRescalePreview(input, NO_CONSTRAINTS, 50, 'now')).toMatchObject({
+      ok: false,
+      code: 'practicalization_blocked',
+      lineIds: ['positive-standard'],
+    });
   });
 });
 

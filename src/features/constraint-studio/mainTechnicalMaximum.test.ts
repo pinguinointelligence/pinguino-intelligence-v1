@@ -693,6 +693,8 @@ describe('Main technical maximum — exact Watermelon authority', () => {
   });
 
   it('is deterministic within the bounded proof budget', () => {
+    expect(Number.isFinite(MAIN_TECHNICAL_PROBE_BUDGET)).toBe(true);
+    expect(MAIN_TECHNICAL_PROBE_BUDGET).toBeGreaterThanOrEqual(1200);
     const input = watermelonFixture(300, 'optimal');
     const first = build(input);
     const second = build(input);

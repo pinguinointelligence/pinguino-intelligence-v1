@@ -246,6 +246,45 @@ describe('Pro executable validation', () => {
     expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
     expect(useConstraintStudioStore.getState().history).toEqual([]);
   });
+
+  it('applies and undoes a consented Standard removal without losing the adjustable Main proof', () => {
+    const base = starterMilkBase();
+    const inulin = findDemoIngredient('inulin')!;
+    const input: RecipeInput = {
+      ...base,
+      items: [
+        ...base.items.map((item, index) =>
+          index === 0 ? { ...item, lock_type: 'main' as const } : item,
+        ),
+        {
+          id: 'user-inulin-with-main',
+          ingredient: inulin,
+          planned_grams: 10,
+          actual_grams: null,
+          lock_type: 'unlocked',
+          user_intent_anchor_grams: 10,
+        },
+      ],
+    };
+    loadRecipe(input);
+    const before = structuredClone(buildRecipeInput(useRecipeStore.getState()));
+
+    useConstraintStudioStore
+      .getState()
+      .createExplicitStandardRemovalPreview('user-inulin-with-main');
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview?.explicitStandardRemoval?.lineId).toBe('user-inulin-with-main');
+    expect(preview?.mainObjective).toBeDefined();
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(
+      useRecipeStore.getState().items.some((item) => item.id === 'user-inulin-with-main'),
+    ).toBe(false);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+  });
 });
 
 describe('§17.1/§17.2 padlock', () => {

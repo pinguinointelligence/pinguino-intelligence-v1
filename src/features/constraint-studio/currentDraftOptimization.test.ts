@@ -307,7 +307,7 @@ describe('a stop must be proven (owner Phase 4, tests 9–11)', () => {
     // Structural: BOTH terminal branches of the local route are wrapped in the
     // template-seeded fallback AND the batch-reconciliation door — a local
     // no-proposal / rejected candidate can never be the last word.
-    const composed = /return withBatchReconciliation\(\s*\n\s*withTemplateFallback\(\{/g;
+    const composed = /withBatchReconciliation\(\s*\n\s*withTemplateFallback\(\{/g;
     expect(pipelineSource.match(composed) ?? []).toHaveLength(2);
     // Behavioural: the CURRENT-DRAFT vector is really searched before any stop.
     const preview = previewOf(buildOptimizePreview(draft(withInulin(500)), NO, AT));

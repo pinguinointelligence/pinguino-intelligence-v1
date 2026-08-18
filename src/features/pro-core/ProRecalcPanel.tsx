@@ -21,6 +21,7 @@ import {
 } from '@/features/constraint-studio/constraintStudioCopy';
 import {
   applyPreviewWithServerAuthority,
+  createExplicitStandardRemovalPreviewWithServerAuthority,
   isUndoAvailable,
   unlockConstraintAndRecalculate,
   useConstraintStudioStore,
@@ -706,7 +707,9 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               onChooseOtherProduct={openBaseProductPicker}
               onCompleteProductData={goToProductData}
               onUnlockAndPreview={unlockAndPreview}
-              onRemoveStandardAndPreview={store.createExplicitStandardRemovalPreview}
+              onRemoveStandardAndPreview={(lineId) => {
+                void createExplicitStandardRemovalPreviewWithServerAuthority(lineId);
+              }}
               terminal={recalculationTerminal}
             />
           ) : null}
