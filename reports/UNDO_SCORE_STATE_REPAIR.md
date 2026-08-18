@@ -62,13 +62,34 @@ Focused combined checkpoint: 14 files, 212 tests, all passed. The dedicated P2 f
 
 ## Served staging QA
 
-To be completed after the staging-only deployment:
+- Final implementation SHA: `8021e97f572bb79be4b1bca8df54b4b08f33847a`.
+- Staging code deployment: `dpl_7NSjiMwS3GXgrXotp7R3qRt2D2h8`, `READY`, aliased to `https://staging.pinguinoai.com`.
+- Served bundles: `assets/index-CFRWtAyt.js`, `assets/index-Ri54JWO6.css`.
+- Vercel build log confirms branch `staging`, commit `8021e97`.
 
-- QA-01 demoted positive Standard
-- QA-02 locked Multi-Main
-- QA-03 stale Preview rejection
-- score/source before Apply, after Apply and after Undo
-- Preview fingerprint
-- browser console/network
-- deployment ID and served bundles
-- production no-change proof
+QA-01 — demoted positive Standard:
+
+- Before Apply: Strawberry Main 120 g, Banana Standard 180 g, Kiwi Main 240 g; all four relevant gram/percent locks false; `PREVIEW`; `10/10 · Podgląd`.
+- After Apply: `APPLIED_RECIPE`; `10/10`.
+- After Undo: exact grams, roles and lock vector restored; `PREVIEW`; `10/10 · Podgląd`; `Otwórz podgląd` available.
+
+QA-02 — locked Multi-Main:
+
+- Before Apply: Strawberry Main 100 g with gram lock true; Banana Main 10 g with both locks false; `PREVIEW`; `10/10 · Podgląd`.
+- After Apply: `APPLIED_RECIPE`; `10/10`.
+- After Undo: exact grams, both Main roles and the complete lock vector restored; `PREVIEW`; `10/10 · Podgląd`; `Otwórz podgląd` available.
+
+QA-03 — stale Preview:
+
+- The safely restored Preview reopened with `Zastosuj zmiany` enabled, proving re-Apply eligibility after the monotonic revision restamp.
+- Editing the restored current recipe by 1 g immediately removed `Otwórz podgląd`, changed the source to `AWAITING_CALCULATION` and did not expose the old score.
+
+The automated suite independently asserts equality of the restored working-state and ProductBehavior fingerprints, revision restamping, ProductBehavior-version invalidation, lock invalidation and Main-role invalidation.
+
+Browser console: 0 captured entries/errors. Network: the staging document, logo and served JS/CSS returned successfully; catalogue and ProductBehavior-backed Preview/Apply/Undo interactions completed without a visible failed request or error state.
+
+Public production remained unchanged: deployment `dpl_H141PZ7nuY6TCAxXkHdp1QEDQrgB`, bundles `assets/index-BTR3SdkC.js` and `assets/index-Cp5fjceK.css`.
+
+## Status
+
+UNDO SCORE-STATE RESTORATION — READY FOR OWNER RETEST
