@@ -239,6 +239,7 @@ describe('profile semantics and readiness', () => {
 describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('protects internal bands while using the approved centered green scale and staged Preview', () => {
     const monitor = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
+    const theme = read('styles', 'theme-pro-light.css');
     const model = read('features', 'pro-workbench', 'professionalMonitorModel.ts');
     const diagnostic = read('features', 'studio', 'OwnerDiagnosticPanel.tsx');
     expect(monitor).toContain('monitor-summary-grid');
@@ -250,6 +251,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(monitor).not.toContain('bg-[#b98555]/68');
     expect(monitor).not.toContain('band.bandMin.toFixed');
     expect(monitor).not.toContain('band.bandMax.toFixed');
+    expect(theme).toContain('minmax(8rem, 1.25fr) 6.75rem');
+    expect(theme).not.toContain('minmax(5.5rem, auto)');
     expect(model).toContain('bandPosition');
     expect(diagnostic).not.toContain('a.window.minPercentOfTotalMix');
     expect(diagnostic).not.toContain('a.window.maxPercentOfTotalMix');
