@@ -231,7 +231,7 @@ export function StudioEngineSurface({
         data-testid="pro-workbench"
       >
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
-        <div className="min-h-0 flex-1 xl:grid xl:max-h-[var(--pro-workbench-body-max)] xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)] xl:gap-[var(--pro-workbench-gap)]">
+        <div className="min-h-0 flex-1 xl:grid xl:max-h-[var(--pro-workbench-body-max)] xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:py-3">
           <span
             aria-hidden
             data-testid="workbench-divider-rail"
@@ -243,7 +243,7 @@ export function StudioEngineSurface({
             />
           </span>
           <div
-            className="min-h-0 xl:flex xl:min-w-0 xl:flex-col"
+            className="min-h-0 xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden xl:rounded-[18px] xl:border xl:border-ink/10 xl:bg-white xl:shadow-pro-e1"
             data-testid="workbench-editor-pane"
           >
             {fullFormula && cockpitTab === 'production' && !productionReady ? (
@@ -289,7 +289,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
-            className="hidden min-h-0 border-t border-pro-line bg-pro-warm xl:block xl:min-w-0 xl:overflow-hidden xl:border-t-0"
+            className="hidden min-h-0 xl:block xl:min-w-0 xl:overflow-hidden"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
           >
@@ -303,6 +303,7 @@ export function StudioEngineSurface({
               canonicalResult={planning.result}
               canonicalInput={planning.input}
               production={production}
+              recipeBar={recipeBar}
             />
           </aside>
         </div>
@@ -321,8 +322,6 @@ export function StudioEngineSurface({
             <span className="font-mono tabular-nums text-gold-soft">{scoreDisplay}</span>
           </button>
         </div>
-        <div className="shrink-0 border-t border-ink/10 xl:mt-2 xl:border-0">{recipeBar}</div>
-
         {mobileCockpitOpen ? (
           <div className="fixed inset-0 z-50 xl:hidden" data-testid="mobile-cockpit-sheet">
             <button
@@ -337,17 +336,17 @@ export function StudioEngineSurface({
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-cockpit-title"
-              className="absolute inset-x-0 bottom-0 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-none flex-col overflow-hidden rounded-t-[26px] border-t border-white/10 bg-[#17191d] pb-[env(safe-area-inset-bottom)] shadow-pro-e3 [overscroll-behavior:contain]"
+              className="absolute inset-x-0 bottom-0 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-none flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-pro-e3 [overscroll-behavior:contain]"
             >
-              <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-white/10 bg-[#17191d] px-4 py-3">
-                <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-white">
+              <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-ink/10 bg-white px-4 py-3">
+                <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-ink">
                   Kokpit aktualnej receptury
                 </h2>
                 <button
                   type="button"
                   aria-label="Zamknij kokpit"
                   onClick={() => setMobileCockpitOpen(false)}
-                  className="grid size-11 place-items-center rounded-full border border-white/15 text-lg text-white"
+                  className="grid size-11 place-items-center rounded-full border border-ink/15 text-lg text-ink"
                 >
                   ×
                 </button>
@@ -363,6 +362,7 @@ export function StudioEngineSurface({
                   canonicalResult={planning.result}
                   canonicalInput={planning.input}
                   production={production}
+                  recipeBar={recipeBar}
                 />
               </div>
             </section>

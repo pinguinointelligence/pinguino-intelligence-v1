@@ -119,10 +119,7 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
   );
 
   return (
-    <div
-      className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-4"
-      data-testid="pro-top-workbar"
-    >
+    <div className="flex min-w-0 items-center gap-2" data-testid="pro-top-workbar">
       {unresolvedRequiredCount > 0 ? (
         <span
           className="hidden text-xs font-semibold tracking-[0.04em] text-status-error uppercase xl:inline"
@@ -133,7 +130,7 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
       ) : null}
       <DevPersonaSwitch persona={persona} />
       <span
-        className="rounded-lg border border-ink/15 px-2.5 py-1.5 text-[10px] font-semibold tracking-[0.08em] text-ink"
+        className="rounded-lg border border-ink/12 bg-white px-2.5 py-1.5 text-[10px] font-semibold tracking-[0.08em] text-ink"
         data-testid="pro-plan-indicator"
       >
         PRO
@@ -164,7 +161,7 @@ function RecipeWorkbench({
           <StudioEngineSurface
             key={`${activePanel}:${draftContextSeq}`}
             activePanel={activePanel}
-            recipeBar={<ProWorkbar onOpenPreview={onOpenRecalc} />}
+            recipeBar={<ProWorkbar onOpenPreview={onOpenRecalc} variant="panel" />}
             recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={onCloseRecalc} />}
             onRecalculate={onRecalculate}
           />

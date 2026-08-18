@@ -88,7 +88,7 @@ describe('professional Monitor — final owner-approved information architecture
     expect(html).toContain('data-testid="monitor-direction-evidence"');
     expect(html).not.toContain('data-testid="profile-direction-axes"');
     expect(html).not.toContain('jeden poziom');
-    expect(textOf(html)).toContain('Kierunek ustawiasz w Profilu');
+    expect(textOf(html)).toContain('Bieżący wynik dla wybranych ustawień');
   });
 
   it('reads the shared target state without exposing any mutation control', () => {
@@ -123,53 +123,58 @@ describe('professional Monitor — final owner-approved information architecture
     }
   });
 
-  it('renders six compact technological modules with their core metrics visible immediately', () => {
+  it('renders exactly the seven approved compact Monitor modules', () => {
     const html = renderMonitor();
     const text = textOf(html);
     const modules = [
-      ['freezing', 'Zamrożenie', ['Frakcja lodu', 'PAC', 'NPAC']],
-      ['sugars', 'Słodycz i cukry', ['POD', 'Cukry ogółem']],
-      ['water-solids', 'Woda i ciała stałe', ['Woda', 'Ciała stałe']],
-      ['fat', 'Tłuszcz i kremowość', ['Tłuszcz']],
-      ['protein', 'Białko i struktura', ['Białko napowietrzające', 'Białko w suchej masie']],
-      ['stability', 'Stabilność i ryzyka', ['Ryzyko krystalizacji laktozy']],
+      ['sweetness', 'Słodycz'],
+      ['hardness', 'Twardość'],
+      ['freezing', 'Zamrożenie'],
+      ['water-solids', 'Woda i ciała stałe'],
+      ['fat', 'Tłuszcz i kremowość'],
+      ['protein', 'Białko i struktura'],
+      ['stability', 'Stabilność i ryzyka'],
     ] as const;
-    for (const [id, title, metrics] of modules) {
+    for (const [id, title] of modules) {
       expect(html).toContain(`data-testid="monitor-module-${id}"`);
       expect(text).toContain(title);
-      for (const metric of metrics) expect(text).toContain(metric);
     }
+    expect(html).not.toContain('data-testid="monitor-module-sugars"');
+    expect(text).toContain('POD');
+    expect(text).toContain('NPAC');
+    expect(text).toContain('PAC');
     expect(html).not.toContain('data-testid="user-monitor-module-expert"');
     expect(text).not.toContain('Tryb Expert');
     expect(text).not.toContain('Przypnij');
   });
 
-  it('renders every canonical raw metric once and never exposes proprietary min/max ranges', () => {
+  it('keeps canonical detail metrics behind independently expandable cards and hides numeric ranges', () => {
     const html = renderMonitor();
-    for (const metric of ['ice_fraction', 'pac', 'npac', 'pod', 'water']) {
-      expect((html.match(new RegExp(`data-raw-metric="${metric}"`, 'g')) ?? []).length).toBe(1);
-    }
+    const source = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
+    expect(source).toContain('data-raw-metric={metric.rawMetric}');
+    expect(source).toContain('const [expanded, setExpanded]');
+    expect(source).toContain('window.localStorage.setItem(STORAGE_KEY');
+    expect(source).toContain('current.includes(module.id)');
     expect(html).not.toMatch(/data-(min|max|range)=/);
     expect(textOf(html)).not.toMatch(/zakres\s+\d+[.,]?\d*\s*[–-]\s*\d/i);
   });
 
-  it('uses compact grey no-evaluation treatment and concise metric tooltips', () => {
+  it('uses neutral no-evaluation scales without inventing a result', () => {
     const html = renderMonitor({ ...starterMilkBase(), items: [] });
-    expect(html).toContain('data-evaluation="none"');
-    for (const metric of ['ice_fraction', 'npac', 'pod', 'water', 'total_solids', 'fat']) {
-      expect(html).toContain(`data-raw-metric="${metric}" data-evaluation="none"`);
-      expect(html).not.toContain(`data-testid="monitor-actual-${metric}"`);
-    }
-    expect(textOf(html)).not.toContain('Brak oceny');
-    expect(html).toContain('data-testid="monitor-metric-info-');
-    expect(html).toContain('title="');
+    expect(html).toContain('aria-label="Słodycz: Brak oceny"');
+    expect(html).toContain('data-testid="monitor-scale-pod-actual"');
+    expect(textOf(html)).not.toContain('Poza zakresem');
+    expect(textOf(html)).not.toContain('W ZAKRESIE');
   });
 
-  it('auto-expands a problematic module enough to expose its secondary cause rows', () => {
+  it('shows an out-of-range segment only between the accepted band and actual point', () => {
     const problematic = withGrams(starterMilkBase(), starterLine('sucrose'), 10);
     const html = renderMonitor(problematic);
     expect(html).toMatch(/data-problem="true"/);
-    expect(html).toMatch(/<details[^>]*open=""[^>]*data-testid="monitor-module-details-/);
+    const source = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
+    expect(source).toContain('data-testid={`${testId}-outside-segment`}');
+    expect(source).toContain('position < start ? position : end');
+    expect(source).toContain('position > end ? position - end : 0');
   });
 
   it('shows only a compact amber preflight reminder and keeps Monitor as the daily workspace', () => {
@@ -179,17 +184,17 @@ describe('professional Monitor — final owner-approved information architecture
     expect(html).not.toContain('data-testid="workbench-settings-line"');
   });
 
-  it('keeps corrections and nutrition/cost compact and hides QA diagnostics from customer mode', () => {
+  it('keeps corrections compact and removes nutrition/process content from Monitor', () => {
     const html = renderMonitor();
     expect(html).not.toContain('monitor-detail-score');
-    expect(html).toContain('data-testid="monitor-secondary-nutrition"');
-    expect(textOf(html)).toContain('DO PRZEGLĄDU');
-    expect(html).toContain('data-testid="monitor-process-guide-entry"');
-    expect(textOf(html)).toContain('Jak je przygotować?');
+    expect(html).not.toContain('data-testid="monitor-secondary-nutrition"');
+    expect(html).not.toContain('data-testid="monitor-process-guide-entry"');
+    expect(textOf(html)).not.toContain('Jak je przygotować?');
     expect(html).not.toContain('data-testid="monitor-owner-diagnostics"');
     expect(textOf(html)).not.toContain('Diagnostyka właściciela');
     const source = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
-    expect(source.indexOf('<ProcessGuideEntry')).toBeLessThan(source.indexOf('ownerReviewMode ?'));
+    expect(source).not.toContain('ProcessGuideEntry');
+    expect(source).not.toContain('NutritionCostScorePanel');
   });
 
   it('preserves pin/layout contracts without mounting their noisy presentation in normal Monitor', () => {

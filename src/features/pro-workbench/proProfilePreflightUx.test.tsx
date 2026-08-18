@@ -65,8 +65,9 @@ describe('canonical Pro header contract', () => {
       page.indexOf('function RecipeWorkbench'),
     );
     expect(topActions).not.toContain('Dopasowanie techniczne receptury');
-    expect(logo).toContain("'/logo/PI-logo-blackwhite-web.png'");
-    expect(logo).toContain('data-logo-source="/logo/PI-logo-blackwhite.pdf"');
+    expect(logo).toContain("'/logo/gellattiLOGO.png'");
+    expect(logo).toContain('data-logo-source="/logo/gellattiLOGO.png"');
+    expect(logo).toContain('w-[178px]');
   });
 
   it('integrates pending state into the recalculation control', () => {
@@ -93,7 +94,7 @@ describe('profile hierarchy and compact preflight', () => {
     expect(settingsAt).toBeGreaterThan(-1);
     expect(directionAt).toBeLessThan(settingsAt);
     expect(panel).toContain('data-testid="profile-desktop-grid"');
-    expect(panel).toContain('2xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]');
+    expect(panel).toContain('data-profile-layout="stacked"');
     expect(panel).not.toContain('<NutritionAndCost');
     expect(panel).toContain('data-testid="profile-learning-entry"');
     expect(panel).toContain('setEducationOpen(true)');
@@ -106,9 +107,9 @@ describe('profile hierarchy and compact preflight', () => {
   it('uses one inset shell and one desktop body scroller for every cockpit tab', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
-    expect(surface).toContain('xl:min-w-0 xl:overflow-hidden xl:border-t-0');
-    expect(panel).toContain('lg:rounded-[28px]');
-    expect(panel).toContain('lg:shadow-pro-e2');
+    expect(surface).toContain('xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden');
+    expect(panel).toContain('lg:rounded-[18px]');
+    expect(panel).toContain('lg:shadow-pro-e1');
     expect(panel).toContain('lg:flex-1 lg:overflow-y-auto');
     expect(panel).toContain("activeTab === 'profile'");
     expect(panel).toContain("activeTab === 'monitor'");
@@ -119,15 +120,15 @@ describe('profile hierarchy and compact preflight', () => {
   it('keeps canonical field order and removes legacy advanced settings', () => {
     const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     const productAt = card.indexOf('workbench-product-type');
+    const strategyAt = card.indexOf('workbench-strategy');
     const machineAt = card.indexOf('workbench-machine');
     const conditionalAt = card.indexOf('machine-conditional-settings');
     const batchAt = card.indexOf('workbench-batch');
-    const strategyAt = card.indexOf('workbench-strategy');
     expect(productAt).toBeGreaterThan(-1);
-    expect(machineAt).toBeGreaterThan(productAt);
+    expect(strategyAt).toBeGreaterThan(productAt);
+    expect(machineAt).toBeGreaterThan(strategyAt);
     expect(conditionalAt).toBeGreaterThan(machineAt);
     expect(batchAt).toBeGreaterThan(conditionalAt);
-    expect(strategyAt).toBeGreaterThan(batchAt);
     expect(card).not.toContain('workbench-quality');
     expect(card).not.toContain('Więcej ustawień');
     expect(card).not.toContain('setCostPriority');
@@ -338,24 +339,23 @@ describe('preflight and recipe-specific persistence', () => {
 });
 
 describe('five-detent direction language', () => {
-  it('renders exactly one six-row regulator family without Direction text clutter', () => {
+  it('renders only the two approved five-detent customer controls', () => {
     const axes = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     expect(axes).toContain("['sweetness'");
     expect(axes).toContain("['softness'");
     expect(axes).toContain('[-2, -1, 0, 1, 2]');
     expect(axes).not.toContain('Wybrano:');
-    expect(axes).not.toContain('Mniej słodkie');
-    expect(axes).not.toContain('Bardziej słodkie');
-    expect(axes).toContain('unavailable="Kalibracja"');
-    expect(axes).toContain('unavailable="Brak danych"');
-    expect(axes).toContain('Zbalansowana');
-    expect(axes).toContain('Bardzo stabilna');
+    expect(axes).toContain('Mniej słodkie');
+    expect(axes).toContain('Bardziej słodkie');
+    expect(axes).toContain('Bardziej miękkie');
+    expect(axes).toContain('Bardziej twarde');
     expect(axes).toContain('profile-regulator-');
-    expect(axes).toContain("role={readOnly ? 'img' : 'slider'}");
-    expect(axes).toContain('id="creaminess"');
-    expect(axes).toContain('id="intensity"');
-    expect(axes).toContain('id="structure"');
-    expect(axes).toContain('id="stability"');
+    expect(axes).toContain('role="radiogroup"');
+    expect(axes).toContain('role="radio"');
+    expect(axes).not.toContain('id="creaminess"');
+    expect(axes).not.toContain('id="intensity"');
+    expect(axes).not.toContain('id="structure"');
+    expect(axes).not.toContain('id="stability"');
     expect(axes).not.toContain('Teraz</');
     expect(axes).not.toContain('Cel</');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).not.toContain(
@@ -363,20 +363,15 @@ describe('five-detent direction language', () => {
     );
   });
 
-  it('renders Structure and Stability as accessible read-only visual scales, never controls', () => {
+  it('does not render solver-result axes as duplicate customer controls', () => {
     const html = renderToStaticMarkup(
       <ProfileDirectionAxes result={calculateRecipe(starterMilkBase())} />,
     );
-    for (const id of ['structure', 'stability']) {
-      const start = html.indexOf(`data-testid="profile-regulator-${id}"`);
-      expect(start).toBeGreaterThan(-1);
-      const end = html.indexOf('</article>', start);
-      const card = html.slice(start, end);
-      expect(card).toContain('role="img"');
-      expect(card).toContain('data-regulator-state="readonly"');
-      expect(card).not.toContain('<button');
-      expect(card).not.toContain('<input');
-    }
+    expect(html).toContain('data-testid="profile-regulator-sweetness"');
+    expect(html).toContain('data-testid="profile-regulator-softness"');
+    expect(html).not.toContain('data-testid="profile-regulator-structure"');
+    expect(html).not.toContain('data-testid="profile-regulator-stability"');
+    expect(html.match(/role="radiogroup"/g)).toHaveLength(2);
   });
 
   it('moves only the desired target and marks recalculation pending', () => {
@@ -450,7 +445,7 @@ describe('five-detent direction language', () => {
     expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain(
       'else recipe.markProfileTargetChanged()',
     );
-    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('min-h-11');
+    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-9');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).toContain(
       'profileSnapshotFromState(store, directionTargets, directionIntents)',
     );

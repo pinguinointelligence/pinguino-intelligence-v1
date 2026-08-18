@@ -394,12 +394,21 @@ describe('global catalog RLS and trust boundaries', () => {
 });
 
 describe('catalog picker scope and visual lock', () => {
-  it('keeps favorites and market filters inside the existing picker geometry', () => {
-    expect(picker).toContain('DESKTOP_PICKER_WIDTH = 499');
-    expect(picker).toContain('DESKTOP_PICKER_HEIGHT = 480');
-    expect(picker).toContain('DESKTOP_PICKER_GAP = 12');
-    expect(picker).toContain('★</span> Ulubione');
-    expect(picker).toContain('+ Rynek');
+  it('keeps favorites and approved category filters inside the full editor-pane picker', () => {
+    expect(picker).toContain("'[data-testid=\"workbench-editor-pane\"]'");
+    for (const label of [
+      'Wszystkie',
+      'Ulubione',
+      'Świeże',
+      'Mleczne',
+      'Suche',
+      'Czekolada',
+      'Owoce',
+      'Orzechy',
+      'Pasty',
+    ]) {
+      expect(picker).toContain(`label: '${label}'`);
+    }
     expect(picker).toContain('product-picker-scroll-thumb');
     expect(picker).toContain('role="listbox"');
     expect(picker).toContain('aria-activedescendant');
@@ -412,10 +421,11 @@ describe('catalog picker scope and visual lock', () => {
   });
 
   it('preserves gold/green/blue/red labels and blocked usability', () => {
-    expect(picker).toContain('PINGÜINO Base');
-    expect(picker).toContain('Zweryfikowany');
-    expect(picker).toContain('Dodany manualnie · Niezweryfikowany');
-    expect(picker).toContain('Nie można zweryfikować');
+    expect(picker).toContain("'bg-[#e8f7eb] text-[#1a9b3d]'");
+    expect(picker).toContain("'bg-[#fff4e2] text-[#f58a07]'");
+    expect(picker).toContain("'bg-slate-200 text-slate-700'");
+    expect(picker).toContain("'bg-red-100 text-red-700'");
+    expect(picker).toContain('data-picker-verification-status');
     expect(picker).toContain('disabled={!option.selectable}');
   });
 });

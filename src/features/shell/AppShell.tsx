@@ -63,7 +63,7 @@ export function AppShell({
           'mx-auto flex items-center justify-between gap-4 px-6 py-4 2xl:px-0',
           maxWidthClass,
           viewportLock &&
-            'max-sm:grid max-sm:grid-cols-1 max-sm:items-stretch max-sm:gap-2 max-sm:px-3 max-sm:py-2 xl:h-[136px] xl:w-full xl:shrink-0 xl:items-start xl:overflow-visible xl:py-0',
+            'w-full shrink-0 border-b border-ink/8 bg-white max-sm:px-3 max-sm:py-2 xl:h-[82px] xl:py-0',
         )}
         style={{
           paddingTop: viewportLock
@@ -71,21 +71,22 @@ export function AppShell({
             : 'max(env(safe-area-inset-top), 1rem)',
         }}
       >
-        <Link
-          to={brandDestination}
-          aria-label={copy.shell.brand}
-          className={cn(
-            'flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
-            viewportLock && 'xl:z-20 xl:mt-7 2xl:mt-[46px] 2xl:ml-[3px]',
-          )}
-        >
-          {brand ?? (
-            <>
-              <IvoryLogoMark size={22} tone="ink" />
-              <span className="text-sm font-light tracking-wordmark">{copy.shell.brand}</span>
-            </>
-          )}
-        </Link>
+        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+          {viewportLock ? <AppNavDrawer /> : null}
+          <Link
+            to={brandDestination}
+            aria-label={copy.shell.brand}
+            className="flex min-w-0 items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+          >
+            {brand ?? (
+              <>
+                <IvoryLogoMark size={22} tone="ink" />
+                <span className="text-sm font-light tracking-wordmark">{copy.shell.brand}</span>
+              </>
+            )}
+          </Link>
+          {viewportLock ? actions : null}
+        </div>
         {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
             never force horizontal page overflow (owner P0 responsive rule). */}
         <div
@@ -94,11 +95,11 @@ export function AppShell({
             viewportLock && 'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between xl:mt-6',
           )}
         >
-          {actions}
+          {!viewportLock ? actions : null}
           {/* Owner/QA only. Kept in normal header flow so review tooling can
               never cover an ingredient control or another primary action. */}
           <DesignReviewOverlay />
-          <AppNavDrawer />
+          {!viewportLock ? <AppNavDrawer /> : null}
         </div>
       </header>
       <main

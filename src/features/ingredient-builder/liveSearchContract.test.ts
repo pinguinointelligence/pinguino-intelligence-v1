@@ -231,7 +231,7 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     expect(dialog).toContain('ref={dialogRef}');
     expect(dialog).toContain('aria-modal="true"');
     expect(src).toContain("dialogRef.current?.querySelectorAll<HTMLElement>");
-    expect(src).toContain('triggerRef.current?.focus()');
+    expect(src).toContain('triggerRef.current?.focus({ preventScroll: true })');
   });
 
   it('debounce + per-query key: a stale response can never overwrite a newer canonical query', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
 import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
 import {
@@ -41,7 +41,7 @@ export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary';
 
 const TABS: readonly { id: CockpitTab; label: string }[] = [
-  { id: 'profile', label: 'Profil receptury' },
+  { id: 'profile', label: 'Receptura' },
   { id: 'monitor', label: 'Monitor' },
   { id: 'production', label: 'Produkcja' },
   { id: 'summary', label: 'Etykieta' },
@@ -76,45 +76,80 @@ function NutritionCostProfileGrid({ result, ready }: { result: RecipeResult; rea
   const euro = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : `${value.toFixed(2)} €`;
   return (
-    <>
-      <section
-        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1"
-        data-testid="profile-nutrition-card"
-      >
-        <h3 className="mb-1 text-center text-xs font-semibold text-ink">Wartości odżywcze</h3>
-        <dl>
-          <CompactMetricRow
-            label="Energia"
-            value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
-          />
-          <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
-          <CompactMetricRow
-            label="w tym kwasy nasycone"
-            value={grams(nutrition?.saturated_fat_g)}
-            muted
-          />
-          <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
-          <CompactMetricRow label="w tym cukry" value={grams(nutrition?.sugars_g)} muted />
-          <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
-          <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
-          <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
-        </dl>
-      </section>
-      <section
-        className="min-w-0 rounded-[22px] border border-white/55 bg-[#f7f5f0] px-2 py-1.5 shadow-pro-e1"
-        data-testid="profile-cost-card"
-      >
-        <h3 className="mb-1 text-center text-xs font-semibold text-ink">Koszt</h3>
-        <dl>
-          <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
-          <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
-          <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
-          <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
-          <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
-        </dl>
-        <p className="mt-4 text-center text-[10px] text-stone-500">Aktualizuj ceny w produktach</p>
-      </section>
-    </>
+    <details
+      className="group min-w-0 overflow-hidden rounded-[16px] border border-ink/10 bg-white shadow-pro-e1"
+      data-testid="profile-nutrition-cost-summary"
+    >
+      <summary className="pro-focus-ring flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
+        <span className="flex min-w-0 flex-1 items-center gap-3">
+          <span aria-hidden className="text-xl text-[#18a83a]">
+            ♧
+          </span>
+          <span>
+            <strong className="block font-mono text-sm tabular-nums text-ink">
+              {nutrition ? `${nutrition.kcal.toFixed(0)} kcal / 100 g` : '— kcal / 100 g'}
+            </strong>
+            <span className="block text-[10px] text-stone-600">Wartości odżywcze</span>
+          </span>
+        </span>
+        <span className="h-9 w-px bg-ink/8" aria-hidden />
+        <span className="flex min-w-0 flex-1 items-center gap-3">
+          <span aria-hidden className="text-xl text-[#18a83a]">
+            ◎
+          </span>
+          <span>
+            <strong className="block font-mono text-sm tabular-nums text-ink">
+              {costs?.cost_per_kg == null ? '— / kg' : `${costs.cost_per_kg.toFixed(2)} € / kg`}
+            </strong>
+            <span className="block text-[10px] text-stone-600">Koszt receptury</span>
+          </span>
+        </span>
+        <span className="text-lg text-ink transition-transform group-open:rotate-180" aria-hidden>
+          ⌄
+        </span>
+      </summary>
+      <div className="profile-nutrition-details grid gap-2 border-t border-ink/8 bg-stone-50/60 p-2 min-[520px]:grid-cols-2">
+        <section
+          className="min-w-0 rounded-[12px] border border-ink/8 bg-white px-2 py-1.5"
+          data-testid="profile-nutrition-card"
+        >
+          <h3 className="mb-1 text-center text-xs font-semibold text-ink">Wartości odżywcze</h3>
+          <dl>
+            <CompactMetricRow
+              label="Energia"
+              value={nutrition ? `${nutrition.kcal.toFixed(0)} kcal` : '—'}
+            />
+            <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
+            <CompactMetricRow
+              label="w tym kwasy nasycone"
+              value={grams(nutrition?.saturated_fat_g)}
+              muted
+            />
+            <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
+            <CompactMetricRow label="w tym cukry" value={grams(nutrition?.sugars_g)} muted />
+            <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
+            <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
+            <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
+          </dl>
+        </section>
+        <section
+          className="min-w-0 rounded-[12px] border border-ink/8 bg-white px-2 py-1.5"
+          data-testid="profile-cost-card"
+        >
+          <h3 className="mb-1 text-center text-xs font-semibold text-ink">Koszt</h3>
+          <dl>
+            <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
+            <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
+            <CompactMetricRow label="Porcja 60 g" value={euro(costs?.cost_per_serving_60g)} />
+            <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
+            <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
+          </dl>
+          <p className="mt-4 text-center text-[10px] text-stone-500">
+            Aktualizuj ceny w produktach
+          </p>
+        </section>
+      </div>
+    </details>
   );
 }
 
@@ -122,10 +157,12 @@ function ProfileContent({
   result,
   input,
   onOpenEducation,
+  recipeBar,
 }: {
   result: RecipeResult;
   input: RecipeInput;
   onOpenEducation: () => void;
+  recipeBar?: ReactNode;
 }) {
   const toppings = useRecipeStore((state) => state.toppings);
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
@@ -153,19 +190,19 @@ function ProfileContent({
   );
   const profileReadable = factsReady || legacyInspection || authority.requiredLineIds.length === 0;
   return (
-    <div className="w-full min-w-0 p-2.5" data-testid="pro-context-recipe">
+    <div className="w-full min-w-0 p-3" data-testid="pro-context-recipe">
       {legacyInspection ? (
         <p
           role="status"
-          className="mb-2 rounded-lg border border-ivory/20 bg-ivory/[0.06] px-3 py-2 text-xs text-ivory/80"
+          className="mb-2 rounded-lg border border-ink/10 bg-stone-50 px-3 py-2 text-xs text-stone-700"
         >
           Podgląd historyczny. Przed edycją, zapisem lub produkcją utwórz zweryfikowaną wersję.
         </p>
       ) : null}
       <div
-        className="grid min-w-0 items-start gap-2.5 2xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]"
+        className="grid min-w-0 items-start gap-3"
         data-testid="profile-desktop-grid"
-        data-profile-layout="2x2"
+        data-profile-layout="stacked"
       >
         {profileReadable ? (
           <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
@@ -182,12 +219,13 @@ function ProfileContent({
           className="min-w-0"
           compact
         />
+        {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
         <NutritionCostProfileGrid result={frozenNutritionResult} ready={profileReadable} />
       </div>
       <button
         type="button"
         onClick={onOpenEducation}
-        className="pro-focus-ring mt-2.5 flex min-h-11 w-full items-center justify-between rounded-[16px] border border-white/20 bg-white/6 px-4 text-left text-xs font-semibold text-white/82 shadow-pro-e0"
+        className="pro-focus-ring mt-2.5 flex min-h-11 w-full items-center justify-between rounded-[16px] border border-ink/10 bg-white px-4 text-left text-xs font-semibold text-ink shadow-pro-e0"
         data-testid="profile-learning-entry"
       >
         <span>Dlaczego taki wynik i jak przygotować recepturę?</span>
@@ -338,24 +376,24 @@ function SummaryPanel({
     costs: finalProduct?.finalCosts ?? null,
   };
   return (
-    <div className="pro-scroll-safe space-y-3 p-3 text-white" data-testid="pro-context-summary">
+    <div className="pro-scroll-safe space-y-3 p-3 text-ink" data-testid="pro-context-summary">
       {legacyInspection ? (
         <p
           role="status"
           data-testid="summary-legacy-inspection"
-          className="rounded-lg border border-ivory/20 bg-ivory/[0.06] px-3 py-2 text-xs leading-relaxed text-ivory/80"
+          className="rounded-lg border border-ink/10 bg-stone-50 px-3 py-2 text-xs leading-relaxed text-stone-700"
         >
           Podgląd historyczny korzysta z zapisanych danych receptury. Przed edycją, przeliczeniem,
           zapisem lub produkcją utwórz nową wersję z aktualną walidacją produktów.
         </p>
       ) : null}
-      <section className="rounded-[22px] border border-white/10 bg-white/[0.045] p-4 shadow-pro-e0">
+      <section className="rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
         <p className="text-xs font-semibold text-[#d7b768]">
           {completed ? 'Faktyczna zakończona partia' : 'Finalna bieżąca wersja'}
         </p>
         <div className="mt-2 flex items-baseline justify-between gap-3">
-          <h3 className="text-lg font-semibold text-white">Receptura wykonawcza</h3>
-          <span className="text-xs text-white/55">
+          <h3 className="text-lg font-semibold text-ink">Receptura wykonawcza</h3>
+          <span className="text-xs text-stone-600">
             {version ? `v${version}` : 'wersja robocza'} ·{' '}
             {dirty ? 'niezapisane zmiany' : 'zapisana'}
           </span>
@@ -371,7 +409,7 @@ function SummaryPanel({
             <strong className="text-sm text-[#f0dca7]">
               Najpierw przygotuj recepturę wykonawczą w Preview
             </strong>
-            <p className="mt-1 text-xs leading-relaxed text-white/62">
+            <p className="mt-1 text-xs leading-relaxed text-stone-600">
               Summary nie zaokrągla liczb tylko do wyświetlenia. Zastosuj zweryfikowany kandydat
               pełnogramowy, aby lista była fizycznie wykonalna.
             </p>
@@ -379,24 +417,24 @@ function SummaryPanel({
         )}
       </section>
       <section
-        className="rounded-[22px] border border-white/10 bg-white/[0.045] p-4 shadow-pro-e0"
+        className="rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0"
         data-testid="summary-base-final-mass"
       >
-        <h3 className="text-sm font-semibold text-white">Baza i produkt finalny</h3>
+        <h3 className="text-sm font-semibold text-ink">Baza i produkt finalny</h3>
         <dl className="mt-3 space-y-2 text-xs">
-          <div className="flex items-center justify-between gap-3 text-white/65">
+          <div className="flex items-center justify-between gap-3 text-stone-600">
             <dt>Baza lodowa</dt>
-            <dd className="font-mono tabular-nums text-white">
+            <dd className="font-mono tabular-nums text-ink">
               {finalProduct ? `${finalProduct.baseMassG.toFixed(0)} g` : '—'}
             </dd>
           </div>
-          <div className="flex items-center justify-between gap-3 text-white/65">
+          <div className="flex items-center justify-between gap-3 text-stone-600">
             <dt>Toppingi · {finalProduct?.toppingCount ?? '—'}</dt>
-            <dd className="font-mono tabular-nums text-white">
+            <dd className="font-mono tabular-nums text-ink">
               {finalProduct ? `+${finalProduct.toppingMassG.toFixed(0)} g` : '—'}
             </dd>
           </div>
-          <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-2 text-white">
+          <div className="flex items-center justify-between gap-3 border-t border-ink/10 pt-2 text-ink">
             <dt className="font-semibold">Produkt finalny</dt>
             <dd className="font-mono text-base font-semibold tabular-nums">
               {finalProduct ? `${finalProduct.finalMassG.toFixed(0)} g` : '—'}
@@ -404,9 +442,9 @@ function SummaryPanel({
           </div>
         </dl>
         {summaryReadable && summaryToppings.length > 0 ? (
-          <div className="mt-3 divide-y divide-white/8 border-t border-white/8">
+          <div className="mt-3 divide-y divide-ink/8 border-t border-ink/8">
             {summaryToppings.map((item) => (
-              <div key={item.id} className="flex justify-between gap-3 py-2 text-xs text-white/72">
+              <div key={item.id} className="flex justify-between gap-3 py-2 text-xs text-stone-600">
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="truncate">Topping · {item.ingredient.name}</span>
                   {isCatalogLabelToppingIngredient(item.ingredient) ? (
@@ -416,7 +454,7 @@ function SummaryPanel({
                     />
                   ) : null}
                 </span>
-                <span className="font-mono tabular-nums text-white">
+                <span className="font-mono tabular-nums text-ink">
                   {(completed
                     ? (item.actual_grams ?? item.planned_grams)
                     : item.planned_grams
@@ -430,9 +468,9 @@ function SummaryPanel({
       </section>
       {summaryReadable ? (
         <section className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-          <div className="rounded-[20px] border border-white/9 bg-white/[0.035] p-4">
-            <h3 className="text-sm font-semibold text-white">Baza · analiza techniczna</h3>
-            <dl className="mt-3 space-y-2 text-xs text-white/65">
+          <div className="rounded-[18px] border border-ink/9 bg-stone-50 p-4">
+            <h3 className="text-sm font-semibold text-ink">Baza · analiza techniczna</h3>
+            <dl className="mt-3 space-y-2 text-xs text-stone-600">
               {[
                 ['Woda', summaryBaseResult.percentages.water_percent],
                 ['Ciała stałe', summaryBaseResult.percentages.solids_percent],
@@ -442,25 +480,25 @@ function SummaryPanel({
               ].map(([label, value]) => (
                 <div key={label as string} className="flex justify-between gap-3">
                   <dt>{label}</dt>
-                  <dd className="font-mono tabular-nums text-white">
+                  <dd className="font-mono tabular-nums text-ink">
                     {typeof value === 'number' ? `${value.toFixed(1)}%` : '—'}
                   </dd>
                 </div>
               ))}
             </dl>
           </div>
-          <div className="rounded-[20px] border border-white/9 bg-white/[0.035] p-4">
-            <h3 className="text-sm font-semibold text-white">Proces i gotowość</h3>
-            <dl className="mt-3 space-y-2 text-xs text-white/65">
+          <div className="rounded-[18px] border border-ink/9 bg-stone-50 p-4">
+            <h3 className="text-sm font-semibold text-ink">Proces i gotowość</h3>
+            <dl className="mt-3 space-y-2 text-xs text-stone-600">
               <div className="flex justify-between gap-3">
                 <dt>Proces</dt>
-                <dd className="text-right text-white">
+                <dd className="text-right text-ink">
                   {process.loading ? 'Sprawdzam…' : PROCESS_LABEL[process.classification.status]}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt>Masa całej partii produktu finalnego</dt>
-                <dd className="font-mono text-white">{finalProduct?.finalMassG.toFixed(0)} g</dd>
+                <dd className="font-mono text-ink">{finalProduct?.finalMassG.toFixed(0)} g</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt>Etykieta</dt>
@@ -494,7 +532,7 @@ function SummaryPanel({
           remaining: 'Uzupełnić dane i przejść Master Label preflight.',
         }}
       >
-        <p className="text-xs text-white/72">
+        <p className="text-xs text-stone-600">
           Nie deklarujemy claimów ani gotowości druku bez danych źródłowych.
         </p>
       </ReadinessFrame>
@@ -512,6 +550,7 @@ export function RecipeProfilePanel({
   canonicalResult,
   canonicalInput,
   production,
+  recipeBar,
 }: {
   activeTab: CockpitTab;
   onTabChange: (tab: CockpitTab) => void;
@@ -522,6 +561,7 @@ export function RecipeProfilePanel({
   canonicalResult?: RecipeResult;
   canonicalInput?: RecipeInput;
   production?: ProductionWorkspaceView;
+  recipeBar?: ReactNode;
 }) {
   const [educationOpen, setEducationOpen] = useState(false);
   const tabPanelRef = useRef<HTMLDivElement>(null);
@@ -533,9 +573,9 @@ export function RecipeProfilePanel({
     <div
       data-testid="pro-profile-panel"
       data-testid-shell="pro-intelligence-shell"
-      className="min-h-full bg-[#17191d] text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/10 lg:shadow-pro-e2"
+      className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[18px] lg:border lg:border-ink/10 lg:shadow-pro-e1"
     >
-      <div className="sticky top-0 z-30 bg-[#17191d]" data-testid="workbench-sticky-chrome">
+      <div className="sticky top-0 z-30 bg-white" data-testid="workbench-sticky-chrome">
         <WorkbenchIntelligenceHeader
           result={canonicalResult ?? result}
           input={canonicalInput ?? input}
@@ -565,7 +605,7 @@ export function RecipeProfilePanel({
             const tabs = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
             tabs[nextIndex]?.focus();
           }}
-          className="grid grid-cols-4 border-b border-white/10 bg-[#17191d]/95 px-2 pt-2 backdrop-blur 2xl:h-[48px] 2xl:p-0"
+          className="grid grid-cols-4 border-b border-ink/8 bg-white px-2"
           data-testid="pro-context-tabs"
         >
           {TABS.map((tab) => (
@@ -582,7 +622,7 @@ export function RecipeProfilePanel({
                 setEducationOpen(false);
                 onTabChange(tab.id);
               }}
-              className={`pro-focus-ring min-h-11 min-w-0 rounded-t-[12px] border-b-2 px-1 py-2 text-xs font-semibold transition-colors 2xl:h-[48px] 2xl:min-h-0 2xl:py-0 ${activeTab === tab.id ? 'border-[#d7b768] bg-white/10 text-white' : 'border-transparent text-white/65 hover:bg-white/5 hover:text-white'}`}
+              className={`pro-focus-ring min-h-12 min-w-0 border-b-2 px-1 py-2 text-[11px] font-semibold transition-colors ${activeTab === tab.id ? 'border-[#f58a07] bg-stone-50/70 text-ink' : 'border-transparent text-stone-600 hover:bg-stone-50 hover:text-ink'}`}
             >
               {tab.label}
             </button>
@@ -611,10 +651,11 @@ export function RecipeProfilePanel({
             result={result}
             input={input}
             onOpenEducation={() => setEducationOpen(true)}
+            recipeBar={recipeBar}
           />
         ) : null}
         {activeTab === 'monitor' ? (
-          <div className="pro-scroll-safe p-3 text-white" data-testid="pro-context-monitor">
+          <div className="pro-scroll-safe p-3 text-ink" data-testid="pro-context-monitor">
             <MonitorPanelContent
               result={result}
               servingTemperatureC={servingTemperatureC}

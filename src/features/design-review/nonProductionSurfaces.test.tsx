@@ -145,17 +145,17 @@ describe('markers are wired into the heavy shells (source-level proof)', () => {
     expect(src).toContain(`itemId="start-ready-draft"`);
   });
 
-  it('/pro/recipe — final controls use the canonical pink readiness system', () => {
+  it('/pro/recipe — locks retain readiness markers while approved axes use the light control system', () => {
     const row = source('src/features/ingredient-builder/IngredientRow.tsx');
     const profile = source('src/features/pro-workbench/RecipeProfilePanel.tsx');
     const direction = source('src/features/pro-workbench/ProfileDirectionAxes.tsx');
     expect(row).toContain('row-lock-percent-');
     expect(row).toContain('border-nonprod/30');
     expect(profile).toContain('ProfileDirectionAxes');
-    expect(direction).toContain('border-nonprod/28');
-    expect(direction).toContain("data-regulator-state={unavailable ? 'unavailable'");
-    expect(direction).toContain('unavailable="Kalibracja"');
-    expect(direction).toContain('unavailable="Brak danych"');
+    expect(direction).not.toContain('border-nonprod/28');
+    expect(direction).toContain("data-regulator-state={disabled ? 'unavailable'");
+    expect(direction).toContain('aria-disabled={disabled || undefined}');
+    expect(direction).toContain('border-[#f58a07] bg-[#f58a07]');
   });
 });
 

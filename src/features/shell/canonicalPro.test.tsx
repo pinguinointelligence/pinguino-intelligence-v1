@@ -165,7 +165,7 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     const save = html.indexOf('data-testid="pro-workbar-save"');
     expect(name).toBeGreaterThan(-1);
     expect(save).toBeLessThan(name);
-    expect(html).toContain(copy.proWorkbar.saveNew); // Zapisz recepturę
+    expect(html).toContain('ZAPISZ');
   });
 
   it('11. Monitor is visible in the top context tabs', () => {

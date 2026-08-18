@@ -9,6 +9,7 @@ import {
 } from '@/features/product-intelligence';
 import { monitorScoreView } from './monitorSummaryView';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { scorePresentationSource } from './scorePresentationSource';
 
 export function WorkbenchIntelligenceHeader({
   result,
@@ -26,6 +27,7 @@ export function WorkbenchIntelligenceHeader({
   const preview = useConstraintStudioStore((state) => state.preview);
   const directionBestCandidate = useConstraintStudioStore((state) => state.directionBestCandidate);
   const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
+  const appliedHistoryCount = useConstraintStudioStore((state) => state.history.length);
   const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
   const authority = useMemo(
     () => buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots }),
@@ -34,64 +36,63 @@ export function WorkbenchIntelligenceHeader({
   const monitorGate = useMemo(() => recipeBehaviorModuleGate(authority, 'MONITOR'), [authority]);
   const legacyInspection = recipeBehaviorLegacyInspection(authority, savedRecipeId);
   const hasRecipe = result.total_batch_g > 0;
-  const previewInput = recalculationTerminal?.state === 'PREVIEW_READY'
-    ? preview?.proposedInput ?? directionBestCandidate?.proposedInput ?? null
-    : null;
+  const previewInput =
+    recalculationTerminal?.state === 'PREVIEW_READY'
+      ? (preview?.proposedInput ?? directionBestCandidate?.proposedInput ?? null)
+      : null;
   const previewMatch = useMemo(
-    () => previewInput ? monitorScoreView(calculateRecipe(previewInput), previewInput).match : null,
+    () =>
+      previewInput ? monitorScoreView(calculateRecipe(previewInput), previewInput).match : null,
     [previewInput],
   );
   const current = hasRecipe && !awaitingRecalculation && monitorGate.ready && !legacyInspection;
   const displayedMatch = previewMatch ?? (current ? match : null);
+  const scoreSource = scorePresentationSource({
+    previewReady: previewMatch !== null,
+    currentReady: current,
+    hasAppliedHistory: appliedHistoryCount > 0,
+  });
 
   return (
     <header
-      className="border-b border-white/10 bg-[#17191d]/95 px-4 py-4 text-white shadow-pro-e2 backdrop-blur-xl 2xl:h-[86px] 2xl:px-[64px] 2xl:py-[18px]"
+      className="border-b border-ink/8 bg-white px-3 py-2 text-ink"
       data-testid="workbench-intelligence-header"
+      data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
       aria-label={`Dopasowanie techniczne receptury: ${displayedMatch ? displayedMatch.display : 'oczekuje na przeliczenie'}`}
     >
       <button
         type="button"
         onClick={onOpenLearning}
         disabled={!onOpenLearning}
-        className="pro-focus-ring flex min-h-14 w-full items-center gap-4 rounded-[18px] text-left disabled:cursor-default 2xl:h-[50px] 2xl:min-h-0"
+        className="pro-focus-ring flex min-h-14 w-full items-center justify-end gap-3 rounded-[12px] text-right disabled:cursor-default"
       >
-        <span className="grid size-14 shrink-0 place-items-center rounded-[18px] border border-[#d7b768]/45 bg-white/[0.055] font-mono text-xl font-semibold tabular-nums text-[#f6efe0] shadow-pro-e0 2xl:size-[50px] 2xl:rounded-[16px] 2xl:text-base">
-          {displayedMatch ? displayedMatch.display : '—/10'}
-        </span>
-        <span className="min-w-0 flex-1 2xl:flex 2xl:items-start 2xl:gap-2">
-          <span
-            aria-hidden
-            className="mt-[9px] hidden size-1.5 shrink-0 rounded-full bg-[#d7b768] 2xl:block"
-          />
-          <span className="min-w-0">
-            <span className="block text-[12px] font-medium text-[#d7b768] 2xl:hidden">
-              Dopasowanie techniczne receptury
-            </span>
-            <strong className="mt-0.5 block text-base font-semibold text-white 2xl:mt-1 2xl:text-xs">
+        <span className="min-w-0">
+          <span className="flex items-center justify-end gap-2">
+            <span
+              aria-hidden
+              className={`size-2 shrink-0 rounded-full ${current || previewMatch ? 'bg-[#18a83a]' : 'bg-[#f58a07]'}`}
+            />
+            <strong className="block truncate text-xs font-semibold text-ink">
               {previewMatch
-                ? `Podgląd · ${previewMatch.label}`
+                ? 'Podgląd gotowy'
                 : current
-                  ? match.label
+                  ? 'Obliczenia zakończone'
                   : legacyInspection
-                  ? 'Podgląd historyczny'
-                  : hasRecipe
-                    ? 'Oczekuje na przeliczenie'
-                    : 'Brak danych'}
+                    ? 'Podgląd historyczny'
+                    : hasRecipe
+                      ? 'Oczekuje na przeliczenie'
+                      : 'Brak danych'}
             </strong>
-            <span className="mt-1 block text-xs leading-relaxed text-white/62 2xl:hidden">
-              Bieżąca receptura · wynik nie zmienia miejsca między zakładkami
-            </span>
-            <span className="mt-1 hidden text-[9px] leading-none text-white/40 2xl:block">
-              Dlaczego ?
-            </span>
+          </span>
+          <span className="mt-0.5 block truncate text-[10px] text-stone-600">
+            {displayedMatch
+              ? `${displayedMatch.display} · ${previewMatch ? previewMatch.label : displayedMatch.label}`
+              : 'Wynik pojawi się po przeliczeniu'}
           </span>
         </span>
-        {onOpenLearning ? (
-          <span className="text-xl text-white/45" aria-hidden>
-            ›
-          </span>
-        ) : null}
+        <span className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-[#101113] font-mono text-lg font-semibold text-white shadow-pro-e1">
+          AI
+        </span>
       </button>
     </header>
   );

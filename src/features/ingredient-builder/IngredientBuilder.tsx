@@ -780,18 +780,14 @@ export function IngredientBuilder({
           </div>
           {mode === 'recipe' ? (
             <div
-              className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-2 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,.85fr)_minmax(202px,1fr)_96px_44px]"
+              className="flex items-center justify-end gap-2"
               data-testid="ingredient-add-toolbar"
             >
-              <span className="hidden min-w-0 md:block" aria-hidden />
-              <div className="justify-self-start" data-testid="ingredient-add-slot">
-                {picker}
-              </div>
               <span
                 className={
                   recalcPending
-                    ? 'hidden text-right text-xs text-attention md:col-span-2 md:block'
-                    : 'hidden text-right text-xs text-status-ideal md:col-span-2 md:block'
+                    ? 'hidden text-right text-xs text-attention md:block'
+                    : 'hidden text-right text-xs text-status-ideal md:block'
                 }
                 data-testid="pro-recalc-state"
                 data-state={recalcPending ? 'pending' : 'current'}
@@ -934,17 +930,23 @@ export function IngredientBuilder({
                             Nie zmieniają bilansu ani wyniku technicznego bazy.
                           </p>
                         </div>
-                        <ProductPickerPopover
-                          library={library}
-                          scope="POST_PROCESS_ADDON"
-                          behaviorContext={{
-                            accountId: authUserId,
-                            productProfile: behaviorProfile,
-                            temperatureC: behaviorTemperatureC,
-                            mode: behaviorMode,
-                          }}
-                          onAdd={addOrFocusTopping}
-                        />
+                        <div
+                          className="flex flex-wrap items-center gap-2"
+                          data-testid="ingredient-add-slot"
+                        >
+                          {picker}
+                          <ProductPickerPopover
+                            library={library}
+                            scope="POST_PROCESS_ADDON"
+                            behaviorContext={{
+                              accountId: authUserId,
+                              productProfile: behaviorProfile,
+                              temperatureC: behaviorTemperatureC,
+                              mode: behaviorMode,
+                            }}
+                            onAdd={addOrFocusTopping}
+                          />
+                        </div>
                       </div>
                       {toppings.length > 0 ? (
                         <>

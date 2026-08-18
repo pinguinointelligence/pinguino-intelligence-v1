@@ -67,17 +67,17 @@ describe('final Pro visual system', () => {
   });
 
   it('uses the exact owner-provided logo and removes the retired ice-circle tutorial', () => {
-    expect(sha256('public', 'logo', 'PI-logo-blackwhite.pdf')).toBe(
-      'b9c77cc5dfe399b1a558a0b3d33d1f3c3f434fd0322f87145e3fd5f59cac6cf9',
+    expect(sha256('public', 'logo', 'gellattiLOGO.png')).toBe(
+      'b1c85e5a47fb25ab296668e17a04f33df56d6701aba4525d2fd9ee6fd72b7721',
     );
-    expect(existsSync(join(ROOT, 'public', 'logo', 'PI-logo-blackwhite-web.png'))).toBe(true);
+    expect(existsSync(join(ROOT, 'public', 'logo', 'gellattiLOGO.png'))).toBe(true);
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const education = read('features', 'education', 'ContextualEducationView.tsx');
     expect(page).toContain('brand={<OfficialProLogo />}');
-    expect(logo).toContain("'/logo/PI-logo-blackwhite-web.png'");
-    expect(logo).toContain('data-logo-source="/logo/PI-logo-blackwhite.pdf"');
+    expect(logo).toContain("'/logo/gellattiLOGO.png'");
+    expect(logo).toContain('data-logo-source="/logo/gellattiLOGO.png"');
     expect(panel).toContain('<ContextualEducationView');
     expect(education).not.toContain('ice-cockpit-bg.png');
     expect(education).not.toContain('education-ice-cockpit');
@@ -113,7 +113,7 @@ describe('one global menu and four local contexts', () => {
 
   it('renders Profile, Monitor, Production and Summary as contextual controls', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    for (const label of ['Profil receptury', 'Monitor', 'Produkcja', 'Etykieta']) {
+    for (const label of ['Receptura', 'Monitor', 'Produkcja', 'Etykieta']) {
       expect(panel).toContain(`label: '${label}'`);
     }
     expect(panel).toContain('onTabChange(tab.id)');
@@ -163,31 +163,49 @@ describe('recipe and production table modes', () => {
     expect(price).toContain('Moja cena');
     expect(price).toContain('Moja cena za kg');
   });
+
+  it('uses one opaque, metadata-filtered picker for Base and Toppings without visible technical ids', () => {
+    const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+    const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
+    for (const label of [
+      'Wszystkie',
+      'Ulubione',
+      'Świeże',
+      'Mleczne',
+      'Suche',
+      'Czekolada',
+      'Owoce',
+      'Orzechy',
+      'Pasty',
+    ]) {
+      expect(picker).toContain(`label: '${label}'`);
+    }
+    expect(picker).toContain('matchesPickerFilter');
+    expect(picker).toContain('Nr art.');
+    expect(picker).toContain('Informacje o');
+    expect(picker).toContain('Dodaj własny składnik ręcznie');
+    expect(picker).toContain('event.stopPropagation()');
+    expect(picker).not.toMatch(/`Produkt \$\{option\.name\} · ID/);
+    expect(picker).not.toContain('Mapper ${entity.entityId}');
+    expect(builder).toContain('data-testid="ingredient-add-slot"');
+    expect(builder).toContain('scope="BASE_FORMULATION"');
+    expect(builder).toContain('scope="POST_PROCESS_ADDON"');
+  });
 });
 
 describe('profile semantics and readiness', () => {
-  it('provides two calibrated target axes, two honest blockers and two editorial readings', () => {
+  it('provides only the two approved direct recipe controls', () => {
     const panel = read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx');
     for (const id of ['sweetness', 'softness']) {
       expect(panel).toContain(`['${id}',`);
     }
-    for (const label of [
-      'Słodycz',
-      'Miękkość',
-      'Kremowość',
-      'Intensywność smaku',
-      'Struktura',
-      'Stabilność',
-    ])
+    for (const label of ['Słodycz', 'Twardość', 'Mniej słodkie', 'Bardziej twarde'])
       expect(panel).toContain(label);
     expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
-    expect(panel).toContain('id="creaminess"');
-    expect(panel).toContain('unavailable="Kalibracja"');
-    expect(panel).toContain('id="intensity"');
-    expect(panel).toContain('unavailable="Brak danych"');
-    expect(panel).toContain('data-regulator-state');
-    expect(panel).toContain("'Zbalansowana'");
-    expect(panel).toContain("'Bardzo stabilna'");
+    expect(panel).not.toContain('creaminess');
+    expect(panel).not.toContain('intensity');
+    expect(panel).not.toContain("['structure',");
+    expect(panel).not.toContain("['stability',");
   });
 
   it('marks Sorbet, Vegan, Protein and quality behavior honestly', () => {
@@ -219,18 +237,17 @@ describe('profile semantics and readiness', () => {
 });
 
 describe('Monitor, overlay, responsiveness and truthfulness', () => {
-  it('protects internal bands while using one current marker, a gold optimum and staged Preview', () => {
+  it('protects internal bands while using the approved centered green scale and staged Preview', () => {
     const monitor = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
     const model = read('features', 'pro-workbench', 'professionalMonitorModel.ts');
     const diagnostic = read('features', 'studio', 'OwnerDiagnosticPanel.tsx');
-    expect(monitor).toContain('monitor-actual-');
-    expect(monitor).toContain('monitor-preview-');
-    expect(monitor).toContain('grid-cols-[18fr_18fr_28fr_18fr_18fr]');
-    expect(monitor).toContain('bg-[#8f5e4d]/72');
-    expect(monitor).toContain('bg-[#b98555]/68');
-    expect(monitor).toContain('bg-[#d7b768]');
-    expect(monitor).toContain('złoty środek optimum');
-    expect(monitor).not.toContain('rotate-45');
+    expect(monitor).toContain('monitor-summary-grid');
+    expect(monitor).toContain('data-scale-center="50"');
+    expect(monitor).toContain('bg-[#a8dfb1]');
+    expect(monitor).toContain('bg-[#101113]');
+    expect(monitor).toContain('outside-segment');
+    expect(monitor).not.toContain('bg-[#8f5e4d]/72');
+    expect(monitor).not.toContain('bg-[#b98555]/68');
     expect(monitor).not.toContain('band.bandMin.toFixed');
     expect(monitor).not.toContain('band.bandMax.toFixed');
     expect(model).toContain('bandPosition');
@@ -244,10 +261,10 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const summary = read('features', 'pi-panel', 'NutritionCostScorePanel.tsx');
     const proCopy = read('copy', 'pro.pl.ts');
     expect(axes).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
-    expect(axes).toContain("role={readOnly ? 'img' : 'slider'}");
-    expect(axes).toContain('aria-valuemin={!readOnly ? -2 : undefined}');
-    expect(axes).toContain('aria-valuemax={!readOnly ? 2 : undefined}');
-    expect(axes).not.toContain('Wybrano:');
+    expect(axes).toContain('role="radio"');
+    expect(axes).toContain('aria-checked={position === detent}');
+    expect(axes).toContain("event.key === 'ArrowRight'");
+    expect(axes).toContain("'border-[#f58a07] bg-[#f58a07] text-white shadow-pro-e1'");
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {
@@ -274,12 +291,13 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const panel = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     for (const component of [
       'ProfessionalMonitorModules',
-      'NutritionCostScorePanel',
       'CorrectionPanel',
       'OwnerDiagnosticPanel',
     ]) {
       expect(panel).toContain(component);
     }
+    expect(panel).not.toContain('NutritionCostScorePanel');
+    expect(panel).not.toContain('ProcessGuideEntry');
     expect(panel).not.toContain('UserMonitorPro');
     expect(panel).not.toContain('OverallScoreCard');
     const preview = read('features', 'pro-core', 'ProRecalcPanel.tsx');
@@ -292,8 +310,13 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     expect(shell).toContain('xl:h-dvh');
     expect(shell).toContain('xl:overflow-hidden');
-    expect(shell).toContain('max-sm:grid-cols-1');
     expect(shell).toContain('max-sm:flex-nowrap');
+    expect(read('styles', 'theme-pro-light.css')).toContain(
+      '@container right-pane (max-width: 540px)',
+    );
+    expect(read('styles', 'theme-pro-light.css')).toContain(
+      'grid-template-columns: minmax(0, 1fr)',
+    );
     expect(surface).toContain('mobile-cockpit-trigger');
     expect(surface).toContain('mobile-cockpit-sheet');
     expect(surface).toContain('h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))]');

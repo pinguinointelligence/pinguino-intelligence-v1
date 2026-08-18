@@ -5598,6 +5598,49 @@ export function buildSuggestedFixPreview(
 
 /* ── §20.1 history record ────────────────────────────────────────────────── */
 
+export type ScorePresentationSource = 'CURRENT_RECIPE' | 'PREVIEW' | 'APPLIED_RECIPE';
+
+export type RecalculationTerminalState =
+  | { state: 'WORKING' }
+  | { state: 'PREVIEW_READY' }
+  | { state: 'NO_CHANGE_NEEDED' }
+  | { state: 'BEST_ACHIEVABLE' }
+  | { state: 'SETTINGS_CONFIRMATION_REQUIRED' }
+  | { state: 'LOCK_CHANGE_REQUIRED'; code: 'impossible_under_constraints' }
+  | { state: 'PRODUCT_GRAMS_REQUIRED'; code: 'missing_required_role'; lineIds: string[] }
+  | {
+      state: 'PRODUCT_DATA_REQUIRED' | 'MAPPER_BINDING_REQUIRED';
+      code: 'product_behavior_invalid';
+      lineIds: string[];
+    }
+  | {
+      state: 'BLOCKED_WITH_EXACT_ACTION';
+      code: Exclude<BuildPreviewResult, { ok: true }>['code'];
+      messagePl?: string;
+      action?: 'choose_product' | 'return_to_recipe';
+    };
+
+/** Session-only presentation state captured immediately before Apply. It
+ * stores the Preview input and its provenance, never a copied score number.
+ * Undo may restore it only after revalidating both working-state and
+ * ProductBehavior fingerprints against the restored recipe. */
+export interface AppliedPresentationSnapshot {
+  scoreSource: ScorePresentationSource;
+  preview: ConstraintPreview;
+  terminal: RecalculationTerminalState;
+  awaitingRecalculation: boolean;
+  baseFingerprint: string;
+  proposedFingerprint: string;
+  baseProductBehaviorFingerprint: string;
+  proposedProductBehaviorFingerprint: string;
+  substitutionConsent: SubstitutionConsent | null;
+  substitutionAuthorization: SubstitutionSessionAuthorization | null;
+  proposalProductBehaviorAuthorization: ProposalProductBehaviorAuthorization | null;
+  explicitStandardRemovalConsent: ExplicitStandardRemovalConsent | null;
+  directionConsent: DirectionBestAchievableConsent | null;
+  suggestedFixAuthorization: SuggestedFixSessionAuthorization | null;
+}
+
 export interface AppliedChangeRecord {
   id: string;
   at: string;
@@ -5613,6 +5656,8 @@ export interface AppliedChangeRecord {
     constraints: ConstraintSet;
     excludedIngredientIds: readonly string[];
     productBehaviorSnapshots?: Record<string, ProductBehaviorSnapshot>;
+    /** Session-only score/Preview provenance. Omitted for legacy history. */
+    presentation?: AppliedPresentationSnapshot;
   };
   after: {
     input: RecipeInput;

@@ -23,8 +23,8 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
     : undefined;
   return (
     <div className="min-w-0 text-right" title={title} data-testid="ingredient-effective-price">
-      <span className="flex items-center justify-end gap-1 font-mono text-xs tabular-nums text-ink">
-        {cost.pricePerKg === null ? '—' : `${money(cost.pricePerKg)} ${cost.currency}/kg`}
+      <span className="flex items-center justify-end gap-1 font-mono text-xs font-semibold tabular-nums text-ink">
+        {lineCost === null ? 'Koszt niepełny' : `${money(lineCost)} ${cost.currency}`}
         {own ? (
           <span className="rounded-md bg-stone-200 px-1.5 py-px font-sans text-xs font-semibold text-stone-700">
             Moja
@@ -32,7 +32,7 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
         ) : null}
       </span>
       <span className="block truncate text-xs text-stone-600">
-        {lineCost === null ? 'Koszt niepełny' : `${money(lineCost)} ${cost.currency}`}
+        {cost.pricePerKg === null ? '—' : `${money(cost.pricePerKg)} ${cost.currency}/kg`}
       </span>
     </div>
   );

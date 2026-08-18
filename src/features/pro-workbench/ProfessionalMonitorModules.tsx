@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from 'react';
+import type { GoldenRangeReading } from '@/features/recipe-score';
 import { cn } from '@/lib/cn';
 import { actualPositionFromReading } from './recipeAxisModel';
 import type {
@@ -5,126 +7,140 @@ import type {
   ProfessionalMonitorModule,
 } from './professionalMonitorModel';
 
+const STORAGE_KEY = 'pinguino:pro-monitor-expanded:v1';
+
 const formatValue = (value: number) =>
   value.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-function MetricInfo({ metric }: { metric: ProfessionalMonitorMetric }) {
-  return (
-    <details className="group relative inline-block">
-      <summary
-        className="grid size-8 cursor-help list-none place-items-center rounded-full border border-white/15 text-xs font-semibold text-white/55"
-        aria-label={`Informacja: ${metric.label}`}
-        title={metric.tooltip}
-        data-testid={`monitor-metric-info-${metric.id}`}
-      >
-        ?
-      </summary>
-      <p className="absolute left-0 top-9 z-20 hidden w-64 rounded-[18px] border border-white/10 bg-[#24272d] p-3 text-xs font-normal leading-relaxed text-white/72 shadow-pro-e3 group-open:block">
-        {metric.tooltip}
-      </p>
-    </details>
-  );
+const ICON: Record<string, string> = {
+  freezing: '❄',
+  'water-solids': '◉',
+  fat: '◇',
+  protein: '⌘',
+  stability: '♧',
+};
+
+const ACCENT: Record<string, string> = {
+  freezing: 'text-[#1676f3]',
+  'water-solids': 'text-[#1676f3]',
+  fat: 'text-[#f58a07]',
+  protein: 'text-[#bb1684]',
+  stability: 'text-[#18a83a]',
+};
+
+function initialExpanded(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const value = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]');
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string')
+      : [];
+  } catch {
+    return [];
+  }
 }
-function MetricScale({
-  metric,
-  previewMetric,
+
+export function MonitorRangeScale({
+  reading,
+  previewReading,
+  testId,
+  tolerance = 26,
+  label,
 }: {
-  metric: ProfessionalMonitorMetric;
-  previewMetric?: ProfessionalMonitorMetric;
+  reading: GoldenRangeReading | null;
+  previewReading?: GoldenRangeReading | null;
+  testId: string;
+  tolerance?: number;
+  label: string;
 }) {
-  const reading = metric.reading;
   const position = actualPositionFromReading(reading ?? undefined);
-  const previewPosition = previewMetric?.reading
-    ? actualPositionFromReading(previewMetric.reading)
-    : undefined;
+  const previewPosition = previewReading ? actualPositionFromReading(previewReading) : undefined;
+  const start = 50 - tolerance / 2;
+  const end = 50 + tolerance / 2;
+  const redStart = position < start ? position : end;
+  const redWidth = position < start ? start - position : position > end ? position - end : 0;
 
   return (
     <div
-      className="grid grid-cols-[minmax(8.5rem,0.9fr)_5rem_minmax(7rem,1.1fr)] items-center gap-3 border-t border-white/7 py-3 first:border-t-0 max-sm:grid-cols-[minmax(0,1fr)_5rem]"
-      data-testid={`monitor-metric-${metric.id}`}
-      data-raw-metric={metric.rawMetric}
-      data-evaluation={reading?.state ?? 'none'}
+      className="relative h-7 min-w-0"
+      role="img"
+      aria-label={`${label}: ${reading?.text ?? 'brak oceny'}`}
+      data-testid={testId}
+      data-scale-center="50"
+      data-scale-start="0"
+      data-scale-end="100"
     >
-      <span className="flex min-w-0 items-center gap-2 text-xs font-medium text-white/72">
-        <span className="truncate">{metric.label}</span>
-        <MetricInfo metric={metric} />
-      </span>
-      <span className="text-right font-mono text-sm font-medium tabular-nums text-white">
-        {metric.value === null ? (reading ? '●' : '—') : formatValue(metric.value)}
-        {metric.value !== null && metric.unit ? (
-          <span className="ml-0.5 text-xs font-normal text-white/48">{metric.unit}</span>
-        ) : null}
-      </span>
-      {reading ? (
-        <div
-          className="relative h-7 min-w-0 max-sm:col-span-2"
-          role="img"
-          aria-label={`${metric.label}: grafit oznacza wynik teraz, złoty środek optimum${previewPosition === undefined ? '' : ', a złoty obrys wynik Preview'}`}
-        >
-          <div
-            className="absolute inset-x-0 top-[7px] grid h-2 grid-cols-[18fr_18fr_28fr_18fr_18fr] overflow-hidden rounded-full"
-            data-testid={`monitor-range-zones-${metric.id}`}
-            aria-hidden
-          >
-            <span className="bg-[#8f5e4d]/72" />
-            <span className="bg-[#b98555]/68" />
-            <span className="bg-[#d7b768]" />
-            <span className="bg-[#b98555]/68" />
-            <span className="bg-[#8f5e4d]/72" />
-          </div>
-          <span
-            className="absolute top-[1px] h-5 w-1 -translate-x-1/2 rounded-full bg-white shadow-pro-e1"
-            style={{ left: `${position}%` }}
-            data-testid={`monitor-actual-${metric.id}`}
-            data-position={position}
-          />
-          {previewPosition !== undefined ? (
-            <span
-              className="absolute top-[19px] -translate-x-1/2 whitespace-nowrap font-mono text-xs text-[#d7b768]"
-              style={{ left: `${Math.max(12, Math.min(88, previewPosition))}%` }}
-              data-testid={`monitor-preview-${metric.id}`}
-              data-position={previewPosition}
-              data-preview-value={previewMetric?.value ?? undefined}
-              title="Wynik Preview"
-            >
-              → Po zmianie {previewMetric?.value == null ? '—' : formatValue(previewMetric.value)}
-            </span>
-          ) : null}
-        </div>
-      ) : (
-        <div className="relative h-4 min-w-0" title="Brak zatwierdzonego zakresu dla tego profilu.">
-          <div className="absolute inset-x-0 top-[6px] h-1.5 rounded-full bg-white/10" />
-          <span className="absolute right-0 top-0 text-xs text-white/55">?</span>
-        </div>
-      )}
+      <span className="absolute inset-x-0 top-[13px] h-px bg-[#dfe3e8]" aria-hidden />
+      <span
+        className="absolute top-[11px] h-[5px] bg-[#a8dfb1]"
+        style={{ left: `${start}%`, width: `${tolerance}%` }}
+        data-testid={`${testId}-accepted`}
+        aria-hidden
+      />
+      {redWidth > 0 ? (
+        <span
+          className="absolute top-[12px] h-[3px] bg-[#ef5360]"
+          style={{ left: `${redStart}%`, width: `${redWidth}%` }}
+          data-testid={`${testId}-outside-segment`}
+          aria-hidden
+        />
+      ) : null}
+      <span
+        className="absolute top-[8px] size-3 -translate-x-1/2 rounded-full border-2 border-white bg-[#101113] shadow-sm"
+        style={{ left: `${position}%` }}
+        data-testid={`${testId}-actual`}
+        data-position={position}
+        aria-hidden
+      />
+      {previewPosition !== undefined ? (
+        <span
+          className="absolute top-[7px] size-3.5 -translate-x-1/2 rounded-full border-2 border-[#f58a07] bg-white"
+          style={{ left: `${previewPosition}%` }}
+          data-testid={`${testId}-preview`}
+          data-position={previewPosition}
+          aria-hidden
+        />
+      ) : null}
     </div>
   );
 }
 
-function ModuleStatus({ module }: { module: ProfessionalMonitorModule }) {
-  const readings = [...module.primary, ...module.secondary]
-    .map((metric) => metric.reading)
-    .filter((reading) => reading !== null);
-  const neutral = readings.length === 0 || readings.every((reading) => reading.state === 'neutral');
-  const golden = readings.length > 0 && readings.every((reading) => reading.state === 'golden');
-  const label = module.problem ? 'UWAGA' : neutral ? 'NIEOCENIONE' : golden ? 'W ZAKRESIE' : 'OCENIONE';
+function MetricDetail({ metric }: { metric: ProfessionalMonitorMetric }) {
   return (
-    <span
-      className={cn(
-        'inline-flex min-h-6 items-center rounded-full border px-2 text-[10px] font-semibold',
-        module.problem
-          ? 'border-[#e7a891]/30 bg-[#a56454]/18 text-[#f0baa6]'
-          : neutral
-            ? 'border-white/10 bg-white/5 text-white/65'
-            : golden
-              ? 'border-[#d7b768]/30 bg-[#d7b768]/10 text-[#e5cb8b]'
-              : 'border-[#b9cbb1]/25 bg-[#b9cbb1]/10 text-[#cbd8c5]',
-      )}
-      aria-label={module.problem ? 'Wymaga uwagi' : neutral ? 'Brak oceny' : 'Stan oceniony'}
+    <div
+      className="monitor-detail-row grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-t border-ink/7 py-2 first:border-0"
+      data-testid={`monitor-metric-${metric.id}`}
+      data-raw-metric={metric.rawMetric}
+      data-evaluation={metric.reading?.state ?? 'none'}
+      title={metric.tooltip}
     >
-      {label}
-    </span>
+      <span className="min-w-0 text-xs text-stone-600">{metric.label}</span>
+      <span className="font-mono text-xs font-semibold tabular-nums text-ink">
+        {metric.value === null ? '—' : formatValue(metric.value)}
+        {metric.value !== null && metric.unit ? ` ${metric.unit}` : ''}
+      </span>
+    </div>
   );
+}
+
+function summaryFor(module: ProfessionalMonitorModule): {
+  metric: ProfessionalMonitorMetric;
+  scaleMetric: ProfessionalMonitorMetric;
+  abbreviation: string | null;
+} {
+  if (module.id === 'freezing') {
+    return {
+      metric: module.primary.find((metric) => metric.id === 'pac') ?? module.primary[0]!,
+      scaleMetric:
+        module.primary.find((metric) => metric.id === 'ice_fraction') ?? module.primary[0]!,
+      abbreviation: 'PAC',
+    };
+  }
+  const metric =
+    module.primary.find((candidate) => candidate.value !== null && candidate.reading !== null) ??
+    module.primary.find((candidate) => candidate.value !== null) ??
+    module.primary[0]!;
+  return { metric, scaleMetric: metric, abbreviation: null };
 }
 
 export function ProfessionalMonitorModules({
@@ -134,63 +150,105 @@ export function ProfessionalMonitorModules({
   modules: readonly ProfessionalMonitorModule[];
   previewModules?: readonly ProfessionalMonitorModule[];
 }) {
+  const visibleModules = useMemo(
+    () => modules.filter((module) => module.id !== 'sugars'),
+    [modules],
+  );
+  const [expanded, setExpanded] = useState<string[]>(initialExpanded);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(expanded));
+  }, [expanded]);
+
   return (
-    <div className="space-y-3" data-testid="monitor-technology-modules">
-      <div className="px-1">
-        <p className="text-xs font-semibold text-[#d7b768]">Parametry techniczne</p>
-        <p className="mt-1 text-xs text-white/50">
-          Środkowa złota strefa oznacza optimum; biały znacznik pokazuje aktualną recepturę.
-        </p>
-      </div>
-      {modules.map((module, index) => {
+    <div className="space-y-2" data-testid="monitor-technology-modules">
+      {visibleModules.map((module, index) => {
         const previewModule = previewModules?.find((candidate) => candidate.id === module.id);
-        const previewMetricFor = (metricId: string) =>
-          [...(previewModule?.primary ?? []), ...(previewModule?.secondary ?? [])].find(
-            (candidate) => candidate.id === metricId,
-          );
+        const summary = summaryFor(module);
+        const previewSummary = previewModule ? summaryFor(previewModule) : null;
+        const detailRows = [...module.primary, ...module.secondary].filter(
+          (metric) => metric.id !== summary.metric.id,
+        );
+        const open = expanded.includes(module.id);
+        const hasDetails = detailRows.length > 0;
+        const tolerance = Math.max(20, 32 - index * 2);
         return (
           <section
             key={module.id}
-            className={cn(
-              'rounded-[20px] border px-4 py-3 shadow-pro-e0',
-              index === 0 ? 'border-white/14 bg-white/[0.065]' : 'border-white/9 bg-white/[0.035]',
-              module.problem ? 'border-[#a56454]/55 bg-[#a56454]/12' : '',
-            )}
+            className="overflow-hidden rounded-[14px] border border-ink/9 bg-white shadow-pro-e0"
             data-testid={`monitor-module-${module.id}`}
             data-problem={module.problem ? 'true' : 'false'}
           >
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-white">{module.title}</h3>
-              <ModuleStatus module={module} />
-            </div>
-            <div className="mt-1">
-              {module.primary.map((metric) => (
-                <MetricScale
-                  key={metric.id}
-                  metric={metric}
-                  previewMetric={previewMetricFor(metric.id)}
-                />
-              ))}
-            </div>
-            {module.secondary.length > 0 ? (
-              <details
-                open={module.problem}
-                data-testid={`monitor-module-details-${module.id}`}
-                className="mt-1 border-t border-white/8 pt-1"
+            <button
+              type="button"
+              disabled={!hasDetails}
+              aria-expanded={hasDetails ? open : undefined}
+              aria-controls={hasDetails ? `monitor-details-${module.id}` : undefined}
+              onClick={() =>
+                setExpanded((current) =>
+                  current.includes(module.id)
+                    ? current.filter((id) => id !== module.id)
+                    : [...current, module.id],
+                )
+              }
+              className="monitor-summary-grid pro-focus-ring grid min-h-[86px] w-full items-center gap-3 px-3 py-3 text-left disabled:cursor-default"
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'grid size-8 place-items-center text-xl font-semibold',
+                  ACCENT[module.id] ?? 'text-ink',
+                )}
               >
-                <summary className="cursor-pointer list-none text-right text-xs font-semibold text-white/55">
-                  Szczegóły ⌄
-                </summary>
-                <div className="mt-1">
-                  {module.secondary.map((metric) => (
-                    <MetricScale
-                      key={metric.id}
-                      metric={metric}
-                      previewMetric={previewMetricFor(metric.id)}
-                    />
-                  ))}
-                </div>
-              </details>
+                {ICON[module.id] ?? '•'}
+              </span>
+              <span className="min-w-0">
+                <strong className="block truncate text-sm font-semibold text-ink">
+                  {module.title}
+                </strong>
+              </span>
+              <MonitorRangeScale
+                reading={summary.scaleMetric.reading}
+                previewReading={previewSummary?.scaleMetric.reading}
+                testId={`monitor-scale-${module.id}`}
+                tolerance={tolerance}
+                label={module.title}
+              />
+              <span className="flex min-w-0 items-center justify-end gap-2 text-right">
+                {summary.abbreviation ? (
+                  <span className="rounded-[8px] border border-ink/8 bg-stone-50 px-2 py-1 text-[10px] font-semibold text-ink">
+                    {summary.abbreviation}
+                  </span>
+                ) : null}
+                <span className="font-mono text-sm font-semibold tabular-nums text-ink">
+                  {summary.metric.value === null ? '—' : formatValue(summary.metric.value)}
+                </span>
+              </span>
+              {hasDetails ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'text-lg text-stone-600 transition-transform',
+                    open && 'rotate-180',
+                  )}
+                >
+                  ⌄
+                </span>
+              ) : (
+                <span aria-hidden />
+              )}
+            </button>
+            {open && hasDetails ? (
+              <div
+                id={`monitor-details-${module.id}`}
+                className="border-t border-ink/8 bg-stone-50/60 px-4 py-2"
+                data-testid={`monitor-module-details-${module.id}`}
+              >
+                {detailRows.map((metric) => (
+                  <MetricDetail key={metric.id} metric={metric} />
+                ))}
+              </div>
             ) : null}
           </section>
         );

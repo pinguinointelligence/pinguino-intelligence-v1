@@ -7,6 +7,7 @@
  * result.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
+import { readFileSync } from 'node:fs';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
@@ -94,7 +95,7 @@ function renderWorkbench(path = '/pro/monitor'): string {
 function monitorPanelOf(pageHtml: string): string {
   const start = pageHtml.indexOf('data-testid="pro-monitor-panel"');
   expect(start, 'the real /pro/monitor route must mount the desktop Monitor').toBeGreaterThan(-1);
-  const end = pageHtml.indexOf('data-testid="pro-workbar"', start);
+  const end = pageHtml.indexOf('</aside>', start);
   return pageHtml.slice(start, end > start ? end : pageHtml.length);
 }
 
@@ -137,27 +138,36 @@ describe('real Pro Monitor route', () => {
     expect(PANEL).toContain('data-testid="monitor-technology-modules"');
   });
 
-  it('mounts all six compact modules and no historical module stack', () => {
-    for (const id of ['freezing', 'sugars', 'water-solids', 'fat', 'protein', 'stability']) {
+  it('mounts all seven approved cards and no historical module stack', () => {
+    for (const id of [
+      'sweetness',
+      'hardness',
+      'freezing',
+      'water-solids',
+      'fat',
+      'protein',
+      'stability',
+    ]) {
       expect(PANEL).toContain(`data-testid="monitor-module-${id}"`);
     }
     expect(PANEL).not.toContain('data-testid="user-monitor-module-');
   });
 
-  it('shows current Engine PAC, NPAC, ice, POD and water values rather than a fixture', () => {
+  it('shows current Engine POD, NPAC and PAC values and keeps ice/water in canonical detail data', () => {
     const pod = RESULT.indicators.find((indicator) => indicator.key === 'pod')?.value ?? null;
-    const water = RESULT.indicators.find((indicator) => indicator.key === 'water')?.value ?? null;
-    for (const [metric, value] of [
-      ['pac', RESULT.pac_points],
-      ['npac', RESULT.npac_points],
-      ['ice_fraction', RESULT.ice_fraction_percent],
-      ['pod', pod],
-      ['water', water],
-    ] as const) {
-      const anchor = PANEL.indexOf(`data-raw-metric="${metric}"`);
-      expect(anchor, metric).toBeGreaterThan(-1);
-      expect(visibleText(PANEL.slice(anchor, anchor + 1200)), metric).toContain(format(value));
-    }
+    expect(TEXT).toContain(pod?.toFixed(2) ?? '—');
+    expect(TEXT).toContain(RESULT.npac_points?.toFixed(2) ?? '—');
+    const freezing = PANEL.slice(
+      PANEL.indexOf('data-testid="monitor-module-freezing"'),
+      PANEL.indexOf('data-testid="monitor-module-water-solids"'),
+    );
+    expect(visibleText(freezing)).toContain(format(RESULT.pac_points));
+    const model = readFileSync(
+      new URL('./professionalMonitorModel.ts', import.meta.url),
+      'utf8',
+    );
+    expect(model).toContain("classified(result, 'ice_fraction'");
+    expect(model).toContain("classified(result, 'water'");
   });
 
   it('has analysis-only Direction evidence and no duplicate Profile controls', () => {
@@ -193,9 +203,9 @@ describe('real Pro Monitor route', () => {
     expect(PANEL.slice(advanced)).toContain('data-testid="owner-identity-diagnostics"');
   });
 
-  it('keeps Nutrition/Cost secondary and visibly marked for review', () => {
-    expect(PANEL).toContain('data-testid="monitor-secondary-nutrition"');
-    expect(TEXT).toContain('DO PRZEGLĄDU');
+  it('keeps Nutrition/Cost and Process outside the customer Monitor', () => {
+    expect(PANEL).not.toContain('data-testid="monitor-secondary-nutrition"');
+    expect(TEXT).not.toContain('Jak je przygotować?');
   });
 });
 

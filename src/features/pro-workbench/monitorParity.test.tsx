@@ -2,7 +2,7 @@
  * Focused acceptance contract for the professional Monitor.
  *
  * The former parity suite protected the historical, text-heavy Monitor. The owner
- * explicitly replaced that contract with six compact technology modules, one score,
+ * explicitly replaced that contract with seven aligned result cards, one score,
  * the shared Profile axes and a separate ADVANCED owner-diagnostics area. Engine
  * values and the single desktop/mobile content source remain protected here.
  */
@@ -173,20 +173,27 @@ describe('professional Monitor acceptance contract', () => {
     expect(html).not.toContain('jeden poziom');
   });
 
-  it('renders the six approved technology modules and keeps core metrics visible', () => {
-    for (const id of ['freezing', 'sugars', 'water-solids', 'fat', 'protein', 'stability']) {
+  it('renders the seven approved result cards and keeps core metrics reachable', () => {
+    for (const id of [
+      'sweetness',
+      'hardness',
+      'freezing',
+      'water-solids',
+      'fat',
+      'protein',
+      'stability',
+    ]) {
       expect(html).toContain(`data-testid="monitor-module-${id}"`);
     }
     for (const label of [
-      'Frakcja lodu',
+      'Słodycz',
+      'Twardość',
       'PAC',
       'NPAC',
       'POD',
-      'Woda',
-      'Ciała stałe',
       'Tłuszcz',
-      'Białko napowietrzające',
-      'Stabilizator',
+      'Białko i struktura',
+      'Stabilność i ryzyka',
     ]) {
       expect(text).toContain(label);
     }
@@ -206,27 +213,27 @@ describe('professional Monitor acceptance contract', () => {
     expect(html).not.toContain('user-monitor-module-');
   });
 
-  it('keeps Nutrition/Cost secondary, Process reachable, and customer Monitor free of QA chrome', () => {
-    expect(html).toContain('data-testid="monitor-secondary-nutrition"');
-    expect(text).toContain('DO PRZEGLĄDU');
-    expect(html).toContain('data-testid="monitor-process-guide-entry"');
-    expect(text).toContain('Jak je przygotować?');
+  it('removes Nutrition/Cost and Process from customer Monitor and keeps QA chrome owner-only', () => {
+    expect(html).not.toContain('data-testid="monitor-secondary-nutrition"');
+    expect(html).not.toContain('data-testid="monitor-process-guide-entry"');
+    expect(text).not.toContain('Jak je przygotować?');
     expect(html).not.toContain('data-testid="monitor-owner-diagnostics"');
     expect(html).not.toContain('data-testid="review-marked-monitor-owner-diagnostic"');
     const source = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
-    expect(source.indexOf('<ProcessGuideEntry')).toBeLessThan(source.indexOf('ownerReviewMode ?'));
+    expect(source).not.toContain('<ProcessGuideEntry');
+    expect(source).not.toContain('<NutritionAndCost');
   });
 
   it('uses protected position scales without exposing proprietary min/max ranges', () => {
-    expect(html).toContain('data-testid="monitor-range-zones-');
-    expect(html).toContain('grid-cols-[18fr_18fr_28fr_18fr_18fr]');
-    expect(html).toContain('bg-[#d7b768]');
-    expect(html).toContain('Środkowa złota strefa');
+    expect(html).toContain('data-scale-center="50"');
+    expect(html).toContain('data-testid="monitor-scale-freezing-accepted"');
+    expect(html).toContain('bg-[#a8dfb1]');
+    expect(html).toContain('bg-[#101113]');
     expect(html).not.toContain('rotate-45');
     expect(text).not.toMatch(/zakres\s+-?\d+[.,]?\d*\s*[–-]\s*-?\d+/i);
   });
 
-  it('renders a distinct gold Preview marker for every evaluated technical metric', () => {
+  it('renders a distinct orange Preview marker on the aligned scales', () => {
     const input = starterMilkBase();
     const previewInput = {
       ...input,
@@ -247,18 +254,25 @@ describe('professional Monitor acceptance contract', () => {
     const previewHtml = renderToStaticMarkup(
       <ProfessionalMonitorModules modules={current} previewModules={preview} />,
     );
-    expect(previewHtml).toContain('data-testid="monitor-preview-pod"');
-    expect(previewHtml).toContain('text-[#d7b768]');
-    expect(visibleText(previewHtml)).toContain('Po zmianie');
+    expect(previewHtml).toContain('data-testid="monitor-scale-freezing-preview"');
+    expect(previewHtml).toContain('border-[#f58a07]');
   });
 
   it('renders honest no-evaluation scales for incomplete input without hiding modules', () => {
     const empty = renderPanel({ ...starterMilkBase(), items: [] });
-    for (const id of ['freezing', 'sugars', 'water-solids', 'fat', 'protein', 'stability']) {
+    for (const id of [
+      'sweetness',
+      'hardness',
+      'freezing',
+      'water-solids',
+      'fat',
+      'protein',
+      'stability',
+    ]) {
       expect(empty).toContain(`data-testid="monitor-module-${id}"`);
     }
-    expect(empty).toContain('data-evaluation="none"');
-    expect(empty).toContain('bg-white/10');
+    expect(empty).toContain('brak oceny');
+    expect(empty).toContain('data-position="50"');
   });
 
   it('keeps topping facts collapsed and informational without changing Base metrics', () => {
@@ -332,8 +346,8 @@ describe('Monitor layout and integration seams', () => {
     const content = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     expect(drawer).toContain('<MonitorPanelContent');
     expect(profile).toContain('<MonitorPanelContent');
-    expect(content).toContain('setProcessGuideOpen(true)');
-    expect(content).toContain('initialLesson="process"');
+    expect(content).not.toContain('setProcessGuideOpen(true)');
+    expect(content).not.toContain('initialLesson="process"');
     expect(content).toContain('previewModules={previewModules}');
   });
 
@@ -344,7 +358,8 @@ describe('Monitor layout and integration seams', () => {
     expect(header).toContain('monitorScoreView');
     expect(header).toContain('recalculationTerminal');
     expect(header).toContain('previewMatch');
-    expect(header).toContain('Podgląd ·');
+    expect(header).toContain("? 'Podgląd gotowy'");
+    expect(header).toContain('data-score-source');
     expect(header).toContain('workbench-intelligence-header');
     expect(header).toContain('Podgląd historyczny');
     expect(header).not.toContain('PodglÄ…d historyczny');

@@ -271,8 +271,9 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     expect(html.match(/aria-controls="row-menu-dialog-/g)?.length ?? 0).toBe(
       ACCEPTANCE_NAMES.length,
     );
-    // The compact add slot stays above the row scroll and the total stays below it.
-    expect(html.indexOf('data-testid="ingredient-add-slot"')).toBeLessThan(rowsStart);
+    // The approved Base/Topping actions stay together directly below the ingredient rows.
+    expect(html.indexOf('data-testid="ingredient-add-slot"')).toBeGreaterThan(rowsStart);
+    expect(html.indexOf('data-testid="ingredient-add-slot"')).toBeLessThan(html.length);
   });
 
   it('the LIVE Monitor renders the canonical header, analysis evidence and technical modules', () => {
@@ -457,7 +458,7 @@ describe('no unrelated module removal across the split surface files', () => {
     const panel = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     for (const module of [
       '<ProfessionalMonitorModules',
-      '<NutritionCostScorePanel',
+      '<MonitorLiveSummary',
       '<CorrectionPanel',
       '<OwnerDiagnosticPanel',
     ]) {
@@ -477,11 +478,12 @@ describe('no unrelated module removal across the split surface files', () => {
     expect(surface).toContain('hidden min-h-0');
   });
 
-  it('only genuinely uncalibrated directions remain explicit and visibly unavailable', () => {
+  it('shows only the two approved direct directions and no solver-result controls', () => {
     const html = renderAt('/pro/recipe');
-    const at = html.indexOf('Kalibracja');
-    expect(at).toBeGreaterThan(-1);
-    expect(at).toBeLessThan(html.indexOf('</main>'));
+    expect(html).toContain('data-testid="profile-regulator-sweetness"');
+    expect(html).toContain('data-testid="profile-regulator-softness"');
+    expect(html).not.toContain('data-testid="profile-regulator-structure"');
+    expect(html).not.toContain('data-testid="profile-regulator-stability"');
   });
 });
 

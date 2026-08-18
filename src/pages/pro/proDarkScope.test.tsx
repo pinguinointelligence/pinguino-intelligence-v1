@@ -123,24 +123,27 @@ describe('Pro workspace — white precision scope', () => {
     }
   });
 
-  it('the editor stays light while the Intelligence pane is unmistakably graphite', () => {
+  it('keeps the editor and Intelligence pane in one coherent light shell', () => {
     const html = renderAt('/pro/recipe', 'pro');
-    expect(html).toContain('border-pro-line');
+    expect(html).toContain('border-ink/10');
+    expect(html).toContain('bg-white');
     expect(html).toContain('bg-paper');
-    expect(html).toContain('bg-[#17191d]');
+    expect(html).not.toContain('bg-[#17191d]');
     expect(html).toContain('data-testid="workbench-intelligence-header"');
     expect(html).toContain('data-testid="workbench-editor-pane"');
     expect(html).toContain('data-testid="pro-monitor-panel"');
-    expect(html).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)]');
+    expect(html).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
     expect(html).toContain('xl:gap-[var(--pro-workbench-gap)]');
   });
 
-  it('keeps explicit Direction choices, honest blocked axes and the review tools route', () => {
+  it('keeps the two explicit five-detent choices and the review tools route', () => {
     const html = renderAt('/pro/recipe', 'pro');
-    expect(html).toContain('aria-valuemin="-2"');
-    expect(html).toContain('aria-valuemax="2"');
-    expect(html).toContain('Kalibracja');
-    expect(html).toContain('Brak danych');
+    expect(html).toContain('data-testid="profile-regulator-sweetness"');
+    expect(html).toContain('data-testid="profile-regulator-softness"');
+    expect(html.match(/role="radiogroup"/g)).toHaveLength(2);
+    expect(html).toContain('Słodycz: -2');
+    expect(html).toContain('Twardość: +2');
+    expect(html).not.toContain('profile-regulator-structure');
     expect(html).not.toContain('Wybrano:');
     expect(html).not.toContain('aria-label="Legenda kierunku"');
     expect(renderAt('/pro/tools', 'pro')).toContain('data-testid="pro-review-zone"');

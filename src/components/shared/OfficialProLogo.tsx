@@ -1,29 +1,23 @@
 import { cn } from '@/lib/cn';
 
-const OFFICIAL_PRO_LOGO = '/logo/PI-logo-blackwhite-web.png';
+const OFFICIAL_PRO_LOGO = '/logo/gellattiLOGO.png';
 
 /**
- * Exact frontend rendering of the owner-supplied PI-logo-blackwhite.pdf.
- *
- * The PNG is a technical crop of a 300 dpi Poppler render: the artwork,
- * proportions, typography and black/white palette are unchanged. This component
- * only controls proportional placement and whitespace in the compact Pro header.
+ * Exact frontend rendering of the owner-supplied Gellatti AI lockup.
+ * The source PNG stays untouched and keeps its exact proportions.
  */
 export function OfficialProLogo({ className }: { className?: string }) {
   return (
-    <span className="flex items-center">
+    <span className="flex h-12 w-[178px] shrink-0 items-center sm:w-[202px]">
       <img
         src={OFFICIAL_PRO_LOGO}
         alt=""
-        width={2755}
-        height={2187}
+        width={1000}
+        height={350}
         aria-hidden
         data-logo-asset={OFFICIAL_PRO_LOGO}
-        data-logo-source="/logo/PI-logo-blackwhite.pdf"
-        className={cn(
-          'h-11 w-auto shrink-0 object-contain sm:h-12 lg:h-[146px] 2xl:h-[141px] 2xl:w-[182px] 2xl:object-fill',
-          className,
-        )}
+        data-logo-source="/logo/gellattiLOGO.png"
+        className={cn('h-auto w-full shrink-0 object-contain', className)}
       />
     </span>
   );

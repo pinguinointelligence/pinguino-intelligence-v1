@@ -15,7 +15,7 @@ describe('responsive Pro workbench structure', () => {
     expect(page).toContain('max-w-[1776px]');
     expect(page).toContain('data-testid="pro-plan-indicator"');
     expect(page).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
-    expect(surface).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)]');
+    expect(surface).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
     expect(surface).toContain('xl:gap-[var(--pro-workbench-gap)]');
     expect(surface).toContain('xl:max-h-[var(--pro-workbench-body-max)]');
     expect(surface).not.toContain('xl:flex-none');
@@ -28,24 +28,23 @@ describe('responsive Pro workbench structure', () => {
     expect(builder).toContain('data-testid="ingredient-add-toolbar"');
     expect(builder).toContain('data-testid="pro-recalc-state"');
     expect(builder).toContain('data-testid="pro-workbar-recalc"');
-    expect(builder).toContain(
-      'md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,.85fr)_minmax(202px,1fr)_96px_44px]',
-    );
+    expect(builder).toContain('className="flex items-center justify-end gap-2"');
+    expect(builder).toContain('data-testid="ingredient-add-slot"');
     expect(builder).not.toContain('2xl:grid-cols-[minmax(300px,1fr)_222px_260px_76px_44px]');
     expect(builder).not.toContain('placeholder="Szukaj skÅ‚adnikÃ³w');
   });
 
-  it('uses the exact anchored 499 by 480 picker with a fixed search/footer and internal results scroll', () => {
+  it('uses the full opaque editor-pane picker with fixed search/footer and internal results scroll', () => {
     const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     expect(picker).toContain('useLayoutEffect');
     expect(picker).toContain('data-picker-position');
-    expect(picker).toContain('DESKTOP_PICKER_WIDTH = 499');
-    expect(picker).toContain('DESKTOP_PICKER_HEIGHT = 480');
-    expect(picker).toContain('DESKTOP_PICKER_GAP = 12');
+    expect(picker).toContain("'[data-testid=\"workbench-editor-pane\"]'");
     expect(picker).toContain('data-testid="product-picker-clear"');
     expect(picker).toContain('product-picker-results h-full overflow-y-auto');
-    expect(picker).toContain('left: trigger.left');
-    expect(picker).toContain('const top = trigger.bottom + DESKTOP_PICKER_GAP');
+    expect(picker).toContain('left: editor.left');
+    expect(picker).toContain('const top = Math.max(84, editor.top)');
+    expect(picker).toContain('width: editor.width');
+    expect(picker).toContain('height,');
     expect(picker).toContain("window.matchMedia('(min-width: 1280px)')");
     expect(picker).toContain(
       "data-picker-position={anchored ? 'anchored' : 'keyboard-safe-sheet'}",
@@ -90,12 +89,12 @@ describe('responsive Pro workbench structure', () => {
     ).toEqual({ left: 8, top: 208, width: 374, height: 104, bottom: 532 });
   });
 
-  it('keeps the six Direction rows and Settings above aligned Nutrition and Cost cards', () => {
+  it('keeps two approved Direction rows and Settings above the collapsed Nutrition/Cost summary', () => {
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    expect(profile).toContain('data-profile-layout="2x2"');
+    expect(profile).toContain('data-profile-layout="stacked"');
     expect(profile).toContain('data-testid="profile-nutrition-card"');
     expect(profile).toContain('data-testid="profile-cost-card"');
-    expect(profile).toContain('2xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]');
+    expect(profile).toContain('data-testid="profile-nutrition-cost-summary"');
     expect(profile).not.toContain('2xl:grid-cols-[331px_273px]');
     expect(profile).not.toContain('2xl:h-[369px]');
     expect(profile).not.toContain('2xl:h-[371px]');

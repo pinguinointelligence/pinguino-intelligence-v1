@@ -1,4 +1,5 @@
 import { calculateRecipe, type RecipeInput, type RecipeResult } from '@/engine';
+import { bandPosition } from '@/features/recipe-score';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { profileSnapshotFromState } from './recipeProfilePersistence';
@@ -7,6 +8,7 @@ import {
   useRecipeProfileStore,
   type DirectionIntent,
 } from './recipeProfileStore';
+import { MonitorRangeScale } from './ProfessionalMonitorModules';
 
 const INTENT: Record<DirectionIntent, string> = {
   [-2]: 'zdecydowanie mniej',
@@ -17,7 +19,7 @@ const INTENT: Record<DirectionIntent, string> = {
 };
 
 const metric = (result: RecipeResult | null, key: 'pod' | 'npac') =>
-  result?.indicators.find((indicator) => indicator.key === key)?.value;
+  result?.indicators.find((indicator) => indicator.key === key);
 
 export function MonitorLiveSummary({
   result,
@@ -46,7 +48,7 @@ export function MonitorLiveSummary({
         <button
           type="button"
           onClick={onOpenProfile}
-          className="mb-3 flex min-h-11 w-full items-center gap-2 rounded-[16px] border border-[#d7b768]/35 bg-[#d7b768]/10 px-3 py-2 text-left text-xs font-semibold text-[#f0dca7]"
+          className="mb-3 flex min-h-11 w-full items-center gap-2 rounded-[16px] border border-[#d7b768]/35 bg-[#fff8e8] px-3 py-2 text-left text-xs font-semibold text-stone-700"
           data-testid="monitor-preflight-reminder"
         >
           <span aria-hidden>⚠</span>
@@ -54,36 +56,56 @@ export function MonitorLiveSummary({
           <span aria-hidden>›</span>
         </button>
       ) : null}
-      <div
-        className="rounded-[20px] border border-white/9 bg-white/[0.045] p-4 text-white shadow-pro-e0"
-        data-testid="monitor-direction-evidence"
-      >
-        <p className="text-xs font-semibold text-[#d7b768]">Kierunek · analiza</p>
-        <p className="mt-1 text-xs leading-relaxed text-white/58">
-          Kierunek ustawiasz w Profilu. Monitor pokazuje tylko bieżący i przygotowany wynik.
-        </p>
-        <div className="mt-3 grid gap-2">
+      <div data-testid="monitor-direction-evidence">
+        <div className="mb-3 px-1">
+          <h2 className="text-base font-semibold text-ink">Monitor receptury</h2>
+          <p className="mt-0.5 text-xs text-stone-600">Bieżący wynik dla wybranych ustawień.</p>
+        </div>
+        <div className="grid gap-2">
           {(
             [
               ['Słodycz', 'pod', intents.sweetness],
-              ['Miękkość', 'npac', intents.softness],
+              ['Twardość', 'npac', intents.softness],
             ] as const
           ).map(([label, key, intent]) => {
             const before = metric(result, key);
             const after = metric(previewResult, key);
+            const beforeReading = before?.band ? bandPosition(before.value, before.band) : null;
+            const afterReading = after?.band ? bandPosition(after.value, after.band) : null;
             return (
               <div
                 key={key}
-                className="rounded-[16px] border border-white/8 bg-white/[0.035] px-3 py-3"
+                className="monitor-summary-grid grid min-h-[86px] items-center gap-3 rounded-[14px] border border-ink/9 bg-white px-3 py-3"
+                data-testid={`monitor-module-${key === 'pod' ? 'sweetness' : 'hardness'}`}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <strong className="text-sm text-white">{label}</strong>
-                  <span className="text-xs text-white/65">Wybrano: {INTENT[intent]}</span>
-                </div>
-                <p className="mt-1 font-mono text-xs tabular-nums text-white/72">
-                  Teraz {key.toUpperCase()} {before?.toFixed(2) ?? '—'}
-                  {after != null ? ` → Po zmianie ${key.toUpperCase()} ${after.toFixed(2)}` : ''}
-                </p>
+                <span
+                  aria-hidden
+                  className={`grid size-8 place-items-center text-xl ${key === 'pod' ? 'text-[#ef3249]' : 'text-[#1676f3]'}`}
+                >
+                  {key === 'pod' ? '✣' : '◇'}
+                </span>
+                <span className="min-w-0">
+                  <strong className="block text-sm font-semibold text-ink">{label}</strong>
+                  <span className="mt-0.5 block truncate text-[10px] text-stone-600">
+                    Wybrano: {INTENT[intent]}
+                  </span>
+                </span>
+                <MonitorRangeScale
+                  reading={beforeReading}
+                  previewReading={afterReading}
+                  testId={`monitor-scale-${key}`}
+                  tolerance={28}
+                  label={label}
+                />
+                <span className="flex items-center justify-end gap-2 text-right">
+                  <span className="rounded-[8px] border border-ink/8 bg-stone-50 px-2 py-1 text-[10px] font-semibold text-ink">
+                    {key.toUpperCase()}
+                  </span>
+                  <span className="font-mono text-sm font-semibold tabular-nums text-ink">
+                    {before?.value == null ? '—' : before.value.toFixed(2)}
+                  </span>
+                </span>
+                <span aria-hidden />
               </div>
             );
           })}

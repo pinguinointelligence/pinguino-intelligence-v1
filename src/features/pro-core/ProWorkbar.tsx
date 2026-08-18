@@ -26,7 +26,13 @@ const SERVING_LABEL: Record<string, string> = {
 
 /** One persistent recipe bar. It combines recipe identity, save, working context,
  * preview/undo state and owner-review entry without introducing a second workflow. */
-export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () => void }) {
+export function ProWorkbar({
+  onOpenPreview = () => {},
+  variant = 'bar',
+}: {
+  onOpenPreview?: () => void;
+  variant?: 'bar' | 'panel';
+}) {
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
@@ -107,10 +113,27 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
     <section
       aria-label="PINGÜINO Pro — nazwa i zapis receptury"
       data-testid="pro-workbar"
-      className="rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none"
+      data-workbar-variant={variant}
+      className={cn(
+        variant === 'panel'
+          ? 'rounded-[16px] border border-ink/10 bg-white p-3 shadow-pro-e1'
+          : 'rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none',
+      )}
     >
-      <div className="grid min-w-0 gap-2 xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)] xl:items-center xl:gap-[var(--pro-workbench-gap)]">
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 px-0.5 xl:flex-nowrap">
+      <div
+        className={cn(
+          'grid min-w-0 gap-2',
+          variant === 'panel'
+            ? 'grid-cols-1'
+            : 'xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)] xl:items-center xl:gap-[var(--pro-workbench-gap)]',
+        )}
+      >
+        <div
+          className={cn(
+            'flex min-w-0 flex-wrap items-center gap-2 px-0.5',
+            variant === 'panel' ? 'order-2 justify-start' : 'justify-end xl:flex-nowrap',
+          )}
+        >
           <button
             type="button"
             onClick={requestNewDraft}
@@ -140,11 +163,17 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
             data-testid="pro-workbar-save"
             className="h-11 shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {save.busy ? w.status.saving : linked ? 'Zapisz nową wersję' : w.saveNew}
+            {save.busy
+              ? w.status.saving
+              : variant === 'panel'
+                ? 'ZAPISZ'
+                : linked
+                  ? 'Zapisz nową wersję'
+                  : w.saveNew}
           </button>
           <details className="relative shrink-0">
             <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-sm text-stone-600">
-              •••
+              …
             </summary>
             <div className="absolute bottom-12 left-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
               <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
@@ -169,7 +198,7 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
             {context}
           </span>
         </div>
-        <div className="flex min-w-0 items-center gap-3">
+        <div className={cn('flex min-w-0 items-center gap-3', variant === 'panel' && 'order-1')}>
           <label className="min-w-28 flex-1">
             <span className="sr-only">{w.nameLabel}</span>
             <input
@@ -184,7 +213,10 @@ export function ProWorkbar({ onOpenPreview = () => {} }: { onOpenPreview?: () =>
             />
           </label>
           <span
-            className="hidden max-w-56 shrink-0 truncate text-xs text-stone-600 xl:block"
+            className={cn(
+              'max-w-56 shrink-0 truncate text-xs text-stone-600',
+              variant === 'panel' ? 'sr-only' : 'hidden xl:block',
+            )}
             data-testid="pro-workbar-context"
           >
             {context}

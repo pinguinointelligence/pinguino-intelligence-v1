@@ -1,0 +1,421 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { calculateRecipe, type EngineIngredient, type RecipeInput } from '@/engine';
+import { findDemoIngredient } from '@/data/demoIngredients';
+import { DEFAULT_PRESET } from '@/data/demoPresets';
+import {
+  overSweetStarter,
+  starterLine,
+  withGrams,
+} from '@/features/recipe-constraints/constraintFixtures';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
+import { scorePresentationSource } from '@/features/pro-workbench/scorePresentationSource';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { workingStateFingerprint } from './applyPipeline';
+import { selectCanonicalDraft, useConstraintStudioStore } from './constraintStudioStore';
+
+const authority = vi.hoisted(() => ({ version: null as string | null }));
+
+vi.mock('@/services/productIntelligence', () => ({
+  resolveRecipeProposalBehaviorSnapshots: async (input: {
+    snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  }) => ({
+    snapshots: Object.fromEntries(
+      Object.entries(input.snapshots)
+        .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
+        .map(([lineId, snapshot]) => [
+          lineId,
+          authority.version
+            ? {
+                ...structuredClone(snapshot),
+                productVersionId: `${snapshot.productVersionId}:${authority.version}`,
+                factsFingerprint: `${snapshot.factsFingerprint}:${authority.version}`,
+              }
+            : structuredClone(snapshot),
+        ]),
+    ),
+    unresolvedLineIds: [],
+  }),
+  validateRecipeBehaviorOnServer: async (input: { module: string }) => ({
+    ready: true,
+    module: input.module,
+    staleLineIds: [],
+    lines: [],
+  }),
+}));
+
+const DEXTROSE = starterLine('dextrose');
+
+const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSnapshot => ({
+  schemaVersion: 1,
+  resolutionState: 'RESOLVED',
+  lineId,
+  productId: `mapper:${mapperIngredientId}`,
+  productVersionId: `mapper:${mapperIngredientId}:version:1`,
+  source: 'mapper',
+  factsFingerprint: `facts:${mapperIngredientId}`,
+  behaviorBindingId: `binding:${mapperIngredientId}`,
+  behaviorBindingVersion: '1',
+  taxonomyVersion: 'test-v1',
+  familyId: 'family:test-main-compatible',
+  subfamilyId: null,
+  formId: 'test-form',
+  verificationState: 'verified',
+  technicalAuthority: 'mapper_exact',
+  mapperIngredientId,
+  mainClassification: 'MAIN_ALLOWED',
+  mainPolicyId: `policy:${mapperIngredientId}`,
+  mainPolicyVersion: '1',
+  ecoFloorPercent: 0,
+  optimalCeilingPercent: 100,
+  hardLimitPercent: 100,
+  mainEquivalentFactor: 1,
+  mainBasis: 'PERCENT_OF_BASE',
+  requiresLiquidDairyCarrier: false,
+  liquidDairyCarrierFloorPercent: null,
+  approvedLiquidDairyCarrier: true,
+  approvedMixedFamilyIds: [],
+  moduleEligibility: {
+    BASE_RECIPE: 'eligible',
+    MAIN: 'eligible',
+    OPTIMAL: 'eligible',
+    ECO: 'eligible',
+    SAVE: 'eligible',
+    PRODUCTION: 'eligible',
+  },
+  processScope: 'BASE_FORMULATION',
+  resolverVersion: 'test-v1',
+  warnings: [],
+  blockReasons: [],
+});
+
+function loadRecipe(input: RecipeInput) {
+  useRecipeStore.getState().loadRecipeInput(input);
+  for (const item of useRecipeStore.getState().items) {
+    const mapperId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
+    useRecipeStore
+      .getState()
+      .setProductBehaviorSnapshot(item.id, behaviorSnapshot(item.id, mapperId));
+  }
+}
+
+function loadApplyScenario() {
+  loadRecipe(withGrams(overSweetStarter(160), DEXTROSE, 40));
+  useConstraintStudioStore.getState().toggleLock(DEXTROSE);
+}
+
+const STRAWBERRY: EngineIngredient = {
+  ...findDemoIngredient('raspberry')!,
+  id: 'PI-ING-001553',
+  canonical_ingredient_id: 'PI-ING-001553',
+  name: 'Strawberry',
+};
+const BANANA: EngineIngredient = {
+  ...findDemoIngredient('banana')!,
+  id: 'PI-ING-000345',
+  canonical_ingredient_id: 'PI-ING-000345',
+  name: 'Banana',
+};
+const KIWI: EngineIngredient = {
+  ...findDemoIngredient('raspberry')!,
+  id: 'PI-ING-000366',
+  canonical_ingredient_id: 'PI-ING-000366',
+  name: 'Kiwi',
+};
+
+const mainLine = (
+  id: string,
+  ingredient: EngineIngredient,
+  grams: number,
+  role: 'main' | 'unlocked' = 'main',
+) => ({
+  id,
+  ingredient,
+  planned_grams: grams,
+  actual_grams: null,
+  lock_type: role,
+  ...(role === 'unlocked' ? { user_intent_anchor_grams: grams } : {}),
+});
+
+function roleFixture(kind: 'demoted-standard' | 'locked-multi-main'): RecipeInput {
+  const additions =
+    kind === 'demoted-standard'
+      ? [
+          mainLine('strawberry', STRAWBERRY, 120),
+          mainLine('banana', BANANA, 180, 'unlocked'),
+          mainLine('kiwi', KIWI, 240),
+        ]
+      : [mainLine('strawberry', STRAWBERRY, 100), mainLine('banana', BANANA, 10)];
+  const additionGrams = additions.reduce((sum, item) => sum + item.planned_grams, 0);
+  return {
+    mode: 'classic',
+    category: 'milk_gelato',
+    target_temperature_c: -11,
+    target_batch_grams: DEFAULT_PRESET.target_batch_grams,
+    machine_capacity_grams: DEFAULT_PRESET.machine_capacity_grams,
+    goals: { formulation_strategy: 'optimal' },
+    items: [
+      ...structuredClone(DEFAULT_PRESET.items).map((item) =>
+        item.ingredient.id === 'milk_3_5'
+          ? { ...item, planned_grams: item.planned_grams - additionGrams }
+          : item,
+      ),
+      ...additions,
+    ],
+  };
+}
+
+async function expectUndoFinished() {
+  await vi.waitFor(() => {
+    expect(useConstraintStudioStore.getState().recalculationTerminal?.state).not.toBe('WORKING');
+  });
+}
+
+beforeEach(() => {
+  authority.version = null;
+  useRecipeStore.getState().resetToDemo();
+  useRecipeProfileStore.getState().resetForTests();
+  useConstraintStudioStore.getState().resetForTests();
+});
+
+describe('Apply → Undo score-state restoration', () => {
+  it('restores the exact Preview, PREVIEW source, score, fingerprint and prior awaiting state', async () => {
+    loadApplyScenario();
+    useRecipeProfileStore.getState().moveAxisIntent('sweetness', 1);
+    useRecipeProfileStore.getState().moveAxisIntent('softness', -1);
+    const before = structuredClone(buildRecipeInput(useRecipeStore.getState()));
+    const beforeDirections = structuredClone(useRecipeStore.getState().direction_targets);
+    const beforeIntents = structuredClone(useRecipeProfileStore.getState().directionIntents);
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const staged = structuredClone(useConstraintStudioStore.getState().preview);
+    expect(
+      staged,
+      JSON.stringify({
+        blocked: useConstraintStudioStore.getState().blocked,
+        terminal: useConstraintStudioStore.getState().recalculationTerminal,
+      }),
+    ).not.toBeNull();
+    if (!staged) return;
+    const previewScore = monitorScoreView(
+      calculateRecipe(staged.proposedInput),
+      staged.proposedInput,
+    ).match;
+
+    useConstraintStudioStore.getState().applyPreview();
+    const appliedScore = monitorScoreView(
+      calculateRecipe(buildRecipeInput(useRecipeStore.getState())),
+      buildRecipeInput(useRecipeStore.getState()),
+    ).match;
+    const record = useConstraintStudioStore.getState().history.at(-1);
+    expect(record?.before.presentation).toMatchObject({
+      scoreSource: 'PREVIEW',
+      awaitingRecalculation: true,
+      terminal: { state: 'PREVIEW_READY' },
+    });
+    expect(appliedScore.score).toBe(previewScore.score);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({ state: 'WORKING' });
+    await expectUndoFinished();
+
+    const restoredDraft = selectCanonicalDraft();
+    const restoredPreview = useConstraintStudioStore.getState().preview;
+    expect(restoredDraft.input).toEqual(before);
+    expect(useRecipeStore.getState().direction_targets).toEqual(beforeDirections);
+    expect(useRecipeProfileStore.getState().directionIntents).toEqual(beforeIntents);
+    expect(restoredPreview?.proposedInput).toEqual(staged.proposedInput);
+    expect(restoredPreview?.baseDraftRevision).toBe(restoredDraft.revision);
+    expect(restoredPreview?.baseFingerprint).toBe(
+      workingStateFingerprint(restoredDraft.input, restoredDraft.constraints),
+    );
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'PREVIEW_READY',
+    });
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+    const restoredScore = monitorScoreView(
+      calculateRecipe(restoredPreview!.proposedInput),
+      restoredPreview!.proposedInput,
+    ).match;
+    expect(restoredScore).toEqual(previewScore);
+    expect(
+      scorePresentationSource({
+        previewReady: true,
+        currentReady: false,
+        hasAppliedHistory: false,
+      }),
+    ).toBe('PREVIEW');
+
+    // The restored Preview is not merely cosmetic: its monotonic revision is
+    // rebound to the restored draft, so the normal trustless Apply door can
+    // validate and commit it again without manufacturing new authorization.
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+  });
+
+  it('does not invent a Preview score when the prior presentation was awaiting calculation', async () => {
+    loadApplyScenario();
+    useConstraintStudioStore.getState().createOptimizePreview();
+    useConstraintStudioStore.setState({ recalculationTerminal: null });
+    useRecipeProfileStore.getState().markRecalculationRequired();
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().history[0]?.before.presentation).toBeUndefined();
+    useConstraintStudioStore.getState().undoLastApply();
+    await expectUndoFinished();
+
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+    expect(
+      scorePresentationSource({
+        previewReady: false,
+        currentReady: true,
+        hasAppliedHistory: false,
+      }),
+    ).toBe('CURRENT_RECIPE');
+  });
+
+  it('invalidates the old Preview when the product version changes and finishes with current score', async () => {
+    loadApplyScenario();
+    useConstraintStudioStore.getState().createOptimizePreview();
+    useConstraintStudioStore.getState().applyPreview();
+    authority.version = 'version:2';
+
+    useConstraintStudioStore.getState().undoLastApply();
+    await expectUndoFinished();
+
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+    expect(
+      Object.values(useRecipeStore.getState().productBehaviorSnapshots).every((snapshot) =>
+        snapshot.productVersionId.endsWith(':version:2'),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      'lock',
+      (preview: NonNullable<ReturnType<typeof useConstraintStudioStore.getState>['preview']>) => {
+        preview.proposedInput.items[0]!.lock_type = 'grams';
+      },
+    ],
+    [
+      'Main role',
+      (preview: NonNullable<ReturnType<typeof useConstraintStudioStore.getState>['preview']>) => {
+        preview.proposedInput.items[0]!.lock_type = 'main';
+      },
+    ],
+  ])(
+    'rejects a restored Preview whose %s fingerprint no longer matches',
+    async (_label, mutate) => {
+      loadApplyScenario();
+      useConstraintStudioStore.getState().createOptimizePreview();
+      useConstraintStudioStore.getState().applyPreview();
+      const record = useConstraintStudioStore.getState().history[0]!;
+      mutate(record.before.presentation!.preview);
+
+      useConstraintStudioStore.getState().undoLastApply();
+      await expectUndoFinished();
+
+      expect(useConstraintStudioStore.getState().preview).toBeNull();
+      expect(useConstraintStudioStore.getState().recalculationTerminal?.state).toBe(
+        'NO_CHANGE_NEEDED',
+      );
+    },
+  );
+
+  it('supports repeated Apply → Undo without accumulating stale presentation states', async () => {
+    loadApplyScenario();
+    useConstraintStudioStore.getState().createOptimizePreview();
+
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      useConstraintStudioStore.getState().applyPreview();
+      expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+      expect(useConstraintStudioStore.getState().preview).toBeNull();
+      useConstraintStudioStore.getState().undoLastApply();
+      await expectUndoFinished();
+      expect(useConstraintStudioStore.getState().history).toHaveLength(0);
+      expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+      expect(useConstraintStudioStore.getState().recalculationTerminal?.state).toBe(
+        'PREVIEW_READY',
+      );
+    }
+  });
+
+  it('restores Preview presentation for a positive demoted Standard fixture', async () => {
+    const input = roleFixture('demoted-standard');
+    loadRecipe(input);
+    useConstraintStudioStore.getState().toggleLock(DEXTROSE);
+    const before = structuredClone(selectCanonicalDraft().input);
+    const demotedLine = before.items.find((item) => item.id === 'banana')!;
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const staged = structuredClone(useConstraintStudioStore.getState().preview);
+    expect(
+      staged,
+      JSON.stringify({
+        blocked: useConstraintStudioStore.getState().blocked,
+        terminal: useConstraintStudioStore.getState().recalculationTerminal,
+      }),
+    ).not.toBeNull();
+    useConstraintStudioStore.getState().applyPreview();
+    useConstraintStudioStore.getState().undoLastApply();
+    await expectUndoFinished();
+
+    expect(selectCanonicalDraft().input).toEqual(before);
+    expect(selectCanonicalDraft().input.items.find((item) => item.id === 'banana')).toMatchObject({
+      id: demotedLine.id,
+      planned_grams: demotedLine.planned_grams,
+      lock_type: 'unlocked',
+      user_intent_anchor_grams: demotedLine.planned_grams,
+    });
+    expect(useConstraintStudioStore.getState().preview?.proposedInput).toEqual(
+      staged?.proposedInput,
+    );
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'PREVIEW_READY',
+    });
+  });
+
+  it('restores Preview presentation for a locked Multi-Main fixture', async () => {
+    const input = roleFixture('locked-multi-main');
+    loadRecipe(input);
+    const lockedMain = input.items.find((item) => item.id === 'strawberry')!;
+    useConstraintStudioStore.getState().toggleLock(lockedMain.id);
+    useConstraintStudioStore.getState().toggleLock(DEXTROSE);
+    const before = structuredClone(selectCanonicalDraft());
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const staged = structuredClone(useConstraintStudioStore.getState().preview);
+    expect(staged).not.toBeNull();
+    useConstraintStudioStore.getState().applyPreview();
+    useConstraintStudioStore.getState().undoLastApply();
+    await expectUndoFinished();
+
+    const restored = selectCanonicalDraft();
+    expect(restored.input).toEqual(before.input);
+    expect(restored.constraints).toEqual(before.constraints);
+    expect(restored.input.items.filter((item) => item.lock_type === 'main')).toHaveLength(2);
+    expect(restored.constraints.byLineId[lockedMain.id]).toEqual({
+      mode: 'locked',
+      grams: lockedMain.planned_grams,
+    });
+    expect(useConstraintStudioStore.getState().preview?.proposedInput).toEqual(
+      staged?.proposedInput,
+    );
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'PREVIEW_READY',
+    });
+  });
+});

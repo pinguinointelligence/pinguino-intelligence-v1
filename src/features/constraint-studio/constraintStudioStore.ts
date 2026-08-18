@@ -34,7 +34,13 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { EngineIngredient, LockType, RecipeInput, RecipeItem } from '@/engine';
+import {
+  calculateRecipe,
+  type EngineIngredient,
+  type LockType,
+  type RecipeInput,
+  type RecipeItem,
+} from '@/engine';
 import type { SubstituteAuthorization } from '@/features/ingredient-builder/ingredientTableUx';
 import {
   ingredientRowMeta,
@@ -83,17 +89,21 @@ import {
   directionTargetFingerprint,
   workingStateFingerprint,
   type AppliedChangeRecord,
+  type AppliedPresentationSnapshot,
   type BlockedApply,
   type BuildPreviewResult,
   type ConstraintPreview,
   type DirectionBestAchievableConsent,
   type ExplicitStandardRemovalConsent,
   type ProposalProductBehaviorAuthorization,
+  type RecalculationTerminalState as PipelineRecalculationTerminalState,
   type SuggestedBoundFix,
   type SuggestedFixSessionAuthorization,
   type SubstitutionConsent,
   type SubstitutionSessionAuthorization,
 } from './applyPipeline';
+
+export type RecalculationTerminalState = PipelineRecalculationTerminalState;
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -289,26 +299,6 @@ function missingPickerDosePreviewIssue(
     messagePl: missingProductDoseMessage(missing.map((item) => item.ingredient.name)),
   };
 }
-export type RecalculationTerminalState =
-  | { state: 'WORKING' }
-  | { state: 'PREVIEW_READY' }
-  | { state: 'NO_CHANGE_NEEDED' }
-  | { state: 'BEST_ACHIEVABLE' }
-  | { state: 'SETTINGS_CONFIRMATION_REQUIRED' }
-  | { state: 'LOCK_CHANGE_REQUIRED'; code: 'impossible_under_constraints' }
-  | { state: 'PRODUCT_GRAMS_REQUIRED'; code: 'missing_required_role'; lineIds: string[] }
-  | {
-      state: 'PRODUCT_DATA_REQUIRED' | 'MAPPER_BINDING_REQUIRED';
-      code: 'product_behavior_invalid';
-      lineIds: string[];
-    }
-  | {
-      state: 'BLOCKED_WITH_EXACT_ACTION';
-      code: PreviewIssue['code'];
-      messagePl?: string;
-      action?: 'choose_product' | 'return_to_recipe';
-    };
-
 /**
  * Effective constraints for a set of recipe lines: entries whose line vanished
  * are dropped, and a locked/range entry whose engine lock was manually changed
@@ -1224,6 +1214,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           suggestedFixAuthorization,
         } = get();
         if (!preview) return;
+        const terminalBeforeApply = get().recalculationTerminal;
+        const awaitingBeforeApply = useRecipeProfileStore.getState().awaitingRecalculation;
         // The Apply gate consumes the SAME canonical draft selector (FAILURE 1) +
         // the monotonic revision (Phase 3) — the door itself re-checks both.
         const draft = selectCanonicalDraft();
@@ -1279,9 +1271,46 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
           return;
         }
+        const presentation: AppliedPresentationSnapshot | undefined =
+          terminalBeforeApply?.state === 'PREVIEW_READY'
+            ? {
+                scoreSource: 'PREVIEW',
+                preview: structuredClone(preview),
+                terminal: structuredClone(terminalBeforeApply),
+                awaitingRecalculation: awaitingBeforeApply,
+                baseFingerprint: workingStateFingerprint(
+                  outcome.verified.record.before.input,
+                  outcome.verified.record.before.constraints,
+                ),
+                proposedFingerprint: workingStateFingerprint(
+                  outcome.verified.record.after.input,
+                  outcome.verified.record.after.constraints,
+                ),
+                baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(
+                  outcome.verified.record.before.productBehaviorSnapshots ?? {},
+                ),
+                proposedProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(
+                  outcome.verified.record.after.productBehaviorSnapshots ?? {},
+                ),
+                substitutionConsent: structuredClone(substitutionConsent),
+                substitutionAuthorization: structuredClone(substitutionAuthorization),
+                proposalProductBehaviorAuthorization: structuredClone(
+                  proposalProductBehaviorAuthorization,
+                ),
+                explicitStandardRemovalConsent: structuredClone(explicitStandardRemovalConsent),
+                directionConsent: structuredClone(directionConsent),
+                suggestedFixAuthorization: structuredClone(suggestedFixAuthorization),
+              }
+            : undefined;
+        const record: AppliedChangeRecord = presentation
+          ? {
+              ...outcome.verified.record,
+              before: { ...outcome.verified.record.before, presentation },
+            }
+          : outcome.verified.record;
         set({
           constraints: outcome.verified.constraints,
-          history: [...history, outcome.verified.record],
+          history: [...history, record],
           ...CLEAR_STAGED,
         });
       },
@@ -1313,11 +1342,14 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           // Phase 3: the undo restore is itself a material edit (monotonic).
           draftRevision: state.draftRevision + 1,
         }));
+        const generation = (activePiRunGeneration += 1);
         set({
           constraints: last.before.constraints,
           history: history.slice(0, -1),
           ...CLEAR_STAGED,
+          recalculationTerminal: { state: 'WORKING' },
         });
+        void restoreScorePresentationAfterUndo(last, generation);
       },
 
       runFeasibility: () => {
@@ -1701,6 +1733,143 @@ async function currentBaseAuthorityReady(input: {
         reasons: ['behavior_server_validation_unavailable'],
       })),
     };
+  }
+}
+
+const finishUndoWithCurrentRecipeScore = (
+  snapshots: Record<string, ProductBehaviorSnapshot>,
+  generation: number,
+  revision: number,
+) => {
+  if (!isCurrentPiRun(generation) || useRecipeStore.getState().draftRevision !== revision) return;
+  useRecipeStore.getState().syncProductBehaviorSnapshots(snapshots);
+  const current = selectCanonicalDraft();
+  if (!isCurrentPiRun(generation) || current.revision !== revision) return;
+  // The score remains derived from the restored canonical input. This call is
+  // intentionally not stored; it proves the Engine can finish the current
+  // recipe calculation before presentation is marked ready.
+  calculateRecipe(current.input);
+  useRecipeProfileStore.getState().acknowledgeRecalculation();
+  useConstraintStudioStore.setState({
+    ...CLEAR_STAGED,
+    recalculationTerminal: { state: 'NO_CHANGE_NEEDED' },
+  });
+};
+
+/** Restore the pre-Apply score presentation only when its Preview is still
+ * bound to the exact restored input and current server ProductBehavior. A
+ * stale Preview is discarded and the real current-recipe score is completed
+ * instead; no score number is ever copied between vectors. */
+async function restoreScorePresentationAfterUndo(
+  record: AppliedChangeRecord,
+  generation: number,
+): Promise<void> {
+  const revision = useRecipeStore.getState().draftRevision;
+  const restored = selectCanonicalDraft();
+  const presentation = record.before.presentation;
+  const recipeState = useRecipeStore.getState();
+  const baseValidation = await currentBaseAuthorityReady({
+    recipe: restored.input,
+    snapshots: recipeState.productBehaviorSnapshots,
+    technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+  if (!isCurrentPiRun(generation)) return;
+  if (useRecipeStore.getState().draftRevision !== revision) {
+    useConstraintStudioStore.setState({
+      ...CLEAR_STAGED,
+      recalculationTerminal: {
+        state: 'BLOCKED_WITH_EXACT_ACTION',
+        code: 'product_behavior_invalid',
+        messagePl: 'Receptura zmieniła się podczas przywracania wyniku. Przelicz ją ponownie.',
+        action: 'return_to_recipe',
+      },
+    });
+    return;
+  }
+  if (!baseValidation.ready) {
+    useConstraintStudioStore.setState({
+      ...CLEAR_STAGED,
+      recalculationTerminal: productBehaviorTerminal(baseValidation.issues),
+    });
+    return;
+  }
+
+  const restoredFingerprint = workingStateFingerprint(restored.input, restored.constraints);
+  const baseBehaviorFingerprint = productBehaviorSnapshotFingerprint(baseValidation.snapshots);
+  const previewStructurallyCurrent =
+    presentation?.scoreSource === 'PREVIEW' &&
+    presentation.terminal.state === 'PREVIEW_READY' &&
+    presentation.baseFingerprint === restoredFingerprint &&
+    presentation.preview.baseFingerprint === restoredFingerprint &&
+    presentation.baseProductBehaviorFingerprint === baseBehaviorFingerprint &&
+    workingStateFingerprint(
+      presentation.preview.proposedInput,
+      presentation.preview.nextConstraints,
+    ) === presentation.proposedFingerprint;
+
+  if (!presentation || !previewStructurallyCurrent) {
+    finishUndoWithCurrentRecipeScore(baseValidation.snapshots, generation, revision);
+    return;
+  }
+
+  const proposedValidation = await currentBaseAuthorityReady({
+    recipe: presentation.preview.proposedInput,
+    snapshots: record.after.productBehaviorSnapshots ?? {},
+    technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+  if (!isCurrentPiRun(generation)) return;
+  if (useRecipeStore.getState().draftRevision !== revision) {
+    useConstraintStudioStore.setState({
+      ...CLEAR_STAGED,
+      recalculationTerminal: {
+        state: 'BLOCKED_WITH_EXACT_ACTION',
+        code: 'product_behavior_invalid',
+        messagePl: 'Receptura zmieniła się podczas przywracania Preview. Przelicz ją ponownie.',
+        action: 'return_to_recipe',
+      },
+    });
+    return;
+  }
+  if (
+    !proposedValidation.ready ||
+    productBehaviorSnapshotFingerprint(proposedValidation.snapshots) !==
+      presentation.proposedProductBehaviorFingerprint
+  ) {
+    finishUndoWithCurrentRecipeScore(baseValidation.snapshots, generation, revision);
+    return;
+  }
+
+  useRecipeStore.getState().syncProductBehaviorSnapshots(baseValidation.snapshots);
+  const current = selectCanonicalDraft();
+  if (
+    !isCurrentPiRun(generation) ||
+    current.revision !== revision ||
+    workingStateFingerprint(current.input, current.constraints) !== presentation.baseFingerprint
+  ) {
+    return;
+  }
+  useConstraintStudioStore.setState({
+    ...CLEAR_STAGED,
+    preview: {
+      ...structuredClone(presentation.preview),
+      baseDraftRevision: revision,
+      baseFingerprint: presentation.baseFingerprint,
+      baseProductBehaviorFingerprint: presentation.baseProductBehaviorFingerprint,
+    },
+    substitutionConsent: structuredClone(presentation.substitutionConsent),
+    substitutionAuthorization: structuredClone(presentation.substitutionAuthorization),
+    proposalProductBehaviorAuthorization: structuredClone(
+      presentation.proposalProductBehaviorAuthorization,
+    ),
+    explicitStandardRemovalConsent: structuredClone(presentation.explicitStandardRemovalConsent),
+    directionConsent: structuredClone(presentation.directionConsent),
+    suggestedFixAuthorization: structuredClone(presentation.suggestedFixAuthorization),
+    recalculationTerminal: structuredClone(presentation.terminal),
+  });
+  if (presentation.awaitingRecalculation) {
+    useRecipeProfileStore.getState().markRecalculationRequired();
+  } else {
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
   }
 }
 
