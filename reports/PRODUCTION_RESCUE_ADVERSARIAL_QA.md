@@ -2,29 +2,37 @@
 
 Date: 2026-08-19
 
-## Local contract matrix
+## Contract matrix
 
-| Attack / race                                                      | Expected result                  | Local status                            |
-| ------------------------------------------------------------------ | -------------------------------- | --------------------------------------- |
-| Browser adds `recipeInput` or candidate grams to authorize request | Reject unexpected field          | PASS                                    |
-| Browser supplies candidate fingerprint/user ID                     | Reject unexpected field          | PASS                                    |
-| Unknown stable option                                              | Reject                           | PASS                                    |
-| Stale actual revision                                              | No authorization                 | PASS                                    |
-| Stale Rescue revision                                              | No authorization                 | PASS                                    |
-| Cross-owner run                                                    | No authorization/data projection | PASS                                    |
-| Missing/inactive run                                               | No authorization                 | PASS                                    |
-| Engine/config drift                                                | No authorization                 | PASS                                    |
-| Candidate not emitted by canonical Engine                          | No authorization                 | PASS                                    |
-| ProductBehavior failure/timeout                                    | No authorization                 | PASS                                    |
-| Automatic Fructose addition                                        | Reject                           | PASS                                    |
-| Direct authenticated `production_apply_rescue_v1`                  | Privilege revoked                | PASS by migration contract              |
-| Other account consumes proof                                       | Reject                           | PASS by migration contract              |
-| Expired/tampered proof                                             | Reject                           | PASS by migration contract              |
-| Exact authorize retry                                              | Same proof                       | PASS                                    |
-| Exact consume replay                                               | Same run, no second write        | PASS                                    |
-| Changed actual/Rescue after Preview                                | CAS reject and refresh required  | PASS                                    |
-| Event or Rescue write fails                                        | Whole transaction rolls back     | PASS by transactional fake/SQL contract |
+| Attack / race | Expected | Result |
+|---|---|---|
+| Browser adds recipe input, grams, fingerprint or user ID to authorize | Reject unexpected field | PASS |
+| Unknown stable option | Reject | PASS |
+| Stale actual or Rescue revision | No authorization/consume | PASS |
+| Cross-owner, missing or inactive run | No data projection | PASS |
+| Engine/config/model/bundle drift | No authorization | PASS |
+| Candidate not emitted by canonical Engine | No authorization | PASS |
+| ProductBehavior failure or timeout | No authorization | PASS |
+| Automatic Fructose insertion | Never | PASS |
+| Direct authenticated `production_apply_rescue_v1` | Privilege revoked | PASS |
+| Other account consumes proof | Reject | PASS |
+| Expired/tampered proof | Reject | PASS |
+| Exact authorize retry | Same proof | PASS in executable logic tests |
+| Exact consume replay | Same run, no second write | PASS in executable repository/RPC tests |
+| Changed actual/Rescue after Preview | CAS reject and refresh | PASS |
+| Event/Rescue write failure | Whole transaction rolls back | PASS; observed rollback on historical trigger mismatch |
+| `rescue_applied` with non-active run | SQLSTATE 23514 | PASS by exact trigger allowlist test |
 
-## Staging adversarial evidence
+## Staging evidence
 
-Pending final green-gate deployment. The served run IDs, authorization IDs and sanitized HTTP/RPC outcomes will be added here without tokens, secrets or private recipe payloads.
+- The first live consume exposed the historical trigger mismatch and returned HTTP 400 / SQLSTATE `23514`. The run remained at Rescue revision 0 and the UI explicitly reported that the plan was unchanged: rollback PASS.
+- `20260819031000_production_rescue_event_state.sql` was dry-run, applied only to staging and independently reviewed. It adds only the `rescue_applied` + `in_progress` lifecycle pair.
+- A fresh authorization then returned HTTP 200 and atomic consume returned HTTP 200.
+- The durable server record moved from Rescue revision 0 to 1 and contains exactly one `rescue_applied` event.
+- Reopening the exact RecipeVersion recovered the authorized 837 g target and 10/10 result.
+- The QA run was archived/cancelled through the owner UI; it was not deleted.
+- The successful retest produced no console exception, failed network load or HTTP >=400 response.
+
+## Evidence boundary
+
+Raw CDP XHR replay is not supported by the connected browser. No JWT or session token was read to work around that limitation. Replay/idempotency is therefore attributed to executable code/RPC tests, while the served claim is limited to the successful 200 authorize, 200 consume, one durable revision and one event.

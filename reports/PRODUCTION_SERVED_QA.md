@@ -1,27 +1,30 @@
 # Production served QA
 
-## Status
+Date: 2026-08-19
 
-**NOT EXECUTED.** The local candidate has one unresolved P1: Rescue lacks trusted server-side Engine authorization. Under the Owner's rule, a remaining P1 requires `NOT READY`, so no migration, push or staging deployment was performed.
+## Verdict
 
-## Local evidence
+Authenticated staging Production and trusted Rescue are operational. The original blank/contradictory prerequisite state is gone; ProductBehavior blocks are readable and actionable, and a server-authorized Rescue Preview can be consumed atomically and recovered after reopening the saved version.
 
-- Original served defect: contradictory Production prerequisites, raw internal IDs and a nearly blank recipe area.
-- Current local implementation: one readable prerequisite/CTA, recipe retained, explicit start, exact version authority, server hydration and fail-closed recovery.
-- Responsive/a11y audit passed at 1920×1080, 1600×900, 1440×900, 1366×768, 1280×720, 1024×768 and 390×844 with no overflow, duplicate IDs or collisions.
-- Production/Monitor/Kiwi/deadline/Fructose focused tests: 18/18 files, 240/240 PASS.
-- Full tests: 516/516 files, 6536/6536 PASS.
+## Served evidence
 
-## Served values
-
-| Field | Result |
+| Check | Result |
 |---|---|
-| Final served staging SHA | N/A — not deployed |
-| Vercel deployment ID | N/A — not created |
-| Supabase migration | N/A — dry-run only |
-| Staging QA run ID | N/A — no database write |
-| Public production | Unchanged and untouched |
+| Exact staging domain | `https://staging.pinguinoai.com` |
+| Supabase staging | `pinguino-staging` / `tunabqqrwabacxjcxxkz` |
+| Edge function | `production-rescue-authorize`, ACTIVE, JWT required |
+| Production run | `3ebbfe29-e4a3-4141-9225-ca47625f0d5e` |
+| Trusted Preview | HTTP 200, `leave_as_is`, 999 g, 10/10 |
+| Atomic consume | HTTP 200, returned the same run ID |
+| Durable Rescue | revision 1, Strawberry target 837 g |
+| Audit | exactly one `rescue_applied` event |
+| Recovery | exact run and target recovered after reopening version 4 |
+| Cleanup | archived/cancelled, not deleted |
+| Successful retest console/network | no exception, HTTP >=400 or loading failure |
+| Public production | unchanged and untouched |
 
-## Required next authorization and QA
+## Honest blocking behavior
 
-The trusted Edge/runtime closure is implemented and locally green. Staging function, migrations, Vercel deployment and authenticated S-01–S-07 QA remain pending and must be recorded before the release verdict is final.
+The separate Milk Base QA recipe remained blocked because its milk, cream and SMP ProductBehavior process evidence is unknown. This is correct fail-closed behavior; the QA did not invent or bypass process evidence.
+
+The connected browser does not support raw CDP replay of an already completed XHR. Therefore served replay is not overstated: exact-authorize retry and exact-consume replay are covered by executable repository/RPC tests, while the live staging evidence proves one successful authorization, one successful atomic consume and one durable audit event.
