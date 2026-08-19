@@ -141,11 +141,11 @@ describe('trusted Production Rescue authorization migration', () => {
     ]) {
       expect(CODE).toContain(`'${key}'`);
     }
-    expect(create.indexOf('where authorization.account_id = p_account_id')).toBeLessThan(
+    expect(create.indexOf('where authz.account_id = p_account_id')).toBeLessThan(
       create.indexOf('select * into v_run from public.production_runs'),
     );
     const earlyRetry = create.slice(
-      create.indexOf('where authorization.account_id = p_account_id'),
+      create.indexOf('where authz.account_id = p_account_id'),
       create.indexOf('if p_expires_at is null'),
     );
     expect(earlyRetry).not.toContain('v_authorization.expires_at is distinct from p_expires_at');

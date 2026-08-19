@@ -254,28 +254,28 @@ language sql stable security definer
 set search_path = pg_catalog, private, public
 as $$
   select jsonb_build_object(
-    'authorizationId', authorization.id,
-    'runId', authorization.run_id,
-    'candidateFingerprint', authorization.candidate_fingerprint,
-    'authorizedAt', authorization.authorized_at,
-    'expiresAt', authorization.expires_at,
-    'stableOptionId', authorization.stable_option_id,
-    'expectedActualRevision', authorization.source_actual_revision,
-    'expectedRescueRevision', authorization.source_rescue_revision,
-    'recipeInput', authorization.recipe_input,
-    'productComposition', authorization.product_composition,
-    'safeMetadata', authorization.safe_metadata,
-    'engineVersion', authorization.engine_version,
-    'configVersion', authorization.config_version,
-    'practicalRecipeVersion', authorization.practical_recipe_version,
-    'rescueModelVersion', authorization.rescue_model_version,
-    'engineBundleSha256', authorization.engine_bundle_sha256,
-    'sourceClosureSha256', authorization.source_closure_sha256,
-    'bundlerVersion', authorization.bundler_version,
-    'requestFingerprint', authorization.request_fingerprint
+    'authorizationId', authz.id,
+    'runId', authz.run_id,
+    'candidateFingerprint', authz.candidate_fingerprint,
+    'authorizedAt', authz.authorized_at,
+    'expiresAt', authz.expires_at,
+    'stableOptionId', authz.stable_option_id,
+    'expectedActualRevision', authz.source_actual_revision,
+    'expectedRescueRevision', authz.source_rescue_revision,
+    'recipeInput', authz.recipe_input,
+    'productComposition', authz.product_composition,
+    'safeMetadata', authz.safe_metadata,
+    'engineVersion', authz.engine_version,
+    'configVersion', authz.config_version,
+    'practicalRecipeVersion', authz.practical_recipe_version,
+    'rescueModelVersion', authz.rescue_model_version,
+    'engineBundleSha256', authz.engine_bundle_sha256,
+    'sourceClosureSha256', authz.source_closure_sha256,
+    'bundlerVersion', authz.bundler_version,
+    'requestFingerprint', authz.request_fingerprint
   )
-  from private.production_rescue_authorizations authorization
-  where authorization.id = p_authorization_id
+  from private.production_rescue_authorizations authz
+  where authz.id = p_authorization_id
 $$;
 
 revoke all on function private.production_rescue_source_fingerprint_v1(uuid)
@@ -375,9 +375,9 @@ begin
   -- Return the exact stored proof before re-reading mutable source state. This makes a lost
   -- service response safely retryable even if the owner consumed the proof in the meantime.
   select * into v_authorization
-  from private.production_rescue_authorizations authorization
-  where authorization.account_id = p_account_id
-    and authorization.idempotency_key = p_idempotency_key
+  from private.production_rescue_authorizations authz
+  where authz.account_id = p_account_id
+    and authz.idempotency_key = p_idempotency_key
   for share;
   if found then
     if v_authorization.owner_user_id is distinct from p_owner_user_id
@@ -534,9 +534,9 @@ begin
   end if;
 
   select * into v_authorization
-  from private.production_rescue_authorizations authorization
-  where authorization.account_id = p_account_id
-    and authorization.idempotency_key = p_idempotency_key
+  from private.production_rescue_authorizations authz
+  where authz.account_id = p_account_id
+    and authz.idempotency_key = p_idempotency_key
   for share;
   if not found
     or v_authorization.owner_user_id is distinct from p_owner_user_id
@@ -604,8 +604,8 @@ begin
   end if;
 
   select * into v_authorization
-  from private.production_rescue_authorizations authorization
-  where authorization.id = p_authorization_id
+  from private.production_rescue_authorizations authz
+  where authz.id = p_authorization_id
   for update;
   if not found or v_authorization.owner_user_id is distinct from v_uid
     or v_authorization.account_id is distinct from v_uid then
