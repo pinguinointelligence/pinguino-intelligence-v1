@@ -507,9 +507,9 @@ export function ProductPickerPopover({
         ref={triggerRef}
         type="button"
         className={cn(
-          'pro-focus-ring relative inline-flex h-11 items-center justify-center rounded-xl px-4 text-xs font-semibold whitespace-nowrap transition-colors 2xl:h-[46px] 2xl:w-[125px] 2xl:p-0 2xl:text-[11px]',
+          'pro-focus-ring relative inline-flex h-11 items-center justify-center rounded-xl px-4 text-xs font-semibold whitespace-nowrap transition-colors',
           scope === 'BASE_FORMULATION'
-            ? 'bg-ink text-white hover:bg-graphite 2xl:bg-transparent 2xl:shadow-none 2xl:hover:bg-transparent'
+            ? 'bg-ink text-white shadow-pro-e1 hover:bg-graphite'
             : 'border border-status-ideal/30 bg-pro-sage text-ink hover:border-status-ideal/55',
         )}
         aria-haspopup="dialog"
@@ -520,9 +520,7 @@ export function ProductPickerPopover({
         <span
           className={cn(
             'inline-flex items-center justify-center',
-            scope === 'BASE_FORMULATION'
-              ? '2xl:absolute 2xl:inset-1 2xl:rounded-lg 2xl:bg-ink 2xl:text-white 2xl:shadow-pro-e1'
-              : '',
+            scope === 'BASE_FORMULATION' ? 'text-white' : '',
           )}
           data-testid={scope === 'BASE_FORMULATION' ? 'ingredient-add-core' : undefined}
         >

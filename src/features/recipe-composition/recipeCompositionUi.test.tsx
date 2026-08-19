@@ -80,21 +80,25 @@ describe('Base/Topping owner entry points', () => {
             targetBatchG={input.target_batch_grams}
             demo
             layout="workbench"
+            recipeActionDock={<div data-testid="test-recipe-action-dock">Dock</div>}
           />
         </SurfaceToneContext.Provider>
       </QueryClientProvider>,
     );
     const baseIndex = html.indexOf('data-testid="base-mass-total"');
+    const actionsIndex = html.indexOf('data-testid="ingredient-action-toolbar"');
     const toppingIndex = html.indexOf('id="topping-section-heading"');
     const finalIndex = html.indexOf('data-testid="composition-mass-summary"');
     expect(baseIndex).toBeGreaterThan(-1);
-    expect(toppingIndex).toBeGreaterThan(baseIndex);
+    expect(actionsIndex).toBeGreaterThan(baseIndex);
+    expect(toppingIndex).toBeGreaterThan(actionsIndex);
     expect(finalIndex).toBeGreaterThan(toppingIndex);
+    expect(html.match(/Toppingi po produkcji/g)).toHaveLength(1);
+    expect(html).toContain('data-testid="topping-mass-total"');
     const totals = renderToStaticMarkup(
       <CompositionMassSummary baseMassG={1000} toppingMassG={130} />,
     );
-    expect(totals).toContain('Toppingi');
-    expect(totals).toContain('+130');
+    expect(totals).not.toContain('Toppingi');
     expect(totals).toContain('Produkt finalny');
     expect(totals).toContain('1130');
   });
@@ -131,16 +135,32 @@ describe('Base/Topping owner entry points', () => {
 
   it('explains unavailable products for the selected scope and keeps the reason focusable', () => {
     const hit: CatalogProductSearchHit = {
-      id: 'catalog-ml', entityKind: 'commercial_product', status: 'manual_unverified',
-      displayName: 'Sos', originalName: null, originalLanguage: null, brand: 'Marka',
-      canonicalFamily: null, category: null, mappedIngredientId: null,
-      markets: ['PL'], retailers: [], eans: [], aliases: [], favorite: false,
-      recentlyUsedAt: null, usableInBase: false, usableAsTopping: false,
+      id: 'catalog-ml',
+      entityKind: 'commercial_product',
+      status: 'manual_unverified',
+      displayName: 'Sos',
+      originalName: null,
+      originalLanguage: null,
+      brand: 'Marka',
+      canonicalFamily: null,
+      category: null,
+      mappedIngredientId: null,
+      markets: ['PL'],
+      retailers: [],
+      eans: [],
+      aliases: [],
+      favorite: false,
+      recentlyUsedAt: null,
+      usableInBase: false,
+      usableAsTopping: false,
       missingFields: [],
       invalidFields: ['nutrition_basis_per_100ml_requires_density_for_gram_topping'],
-      verificationMethod: 'manual_unverified', publicData: {},
+      verificationMethod: 'manual_unverified',
+      publicData: {},
     };
-    expect(productPickerUnavailableReason('BASE_FORMULATION', hit)).toContain('pole currentVersionId');
+    expect(productPickerUnavailableReason('BASE_FORMULATION', hit)).toContain(
+      'pole currentVersionId',
+    );
     expect(productPickerUnavailableReason('BASE_FORMULATION', hit)).toContain('ID catalog-ml');
     expect(productPickerUnavailableReason('POST_PROCESS_ADDON', hit)).toContain('100 ml');
     expect(productPickerUnavailableReason('POST_PROCESS_ADDON', hit)).toContain('gęstość');

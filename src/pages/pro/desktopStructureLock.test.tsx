@@ -10,11 +10,15 @@ describe('responsive Pro workbench structure', () => {
   it('keeps the premium desktop composition fluid instead of locking it to one raster', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
+    const shell = read('features', 'shell', 'AppShell.tsx');
 
     expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('max-w-[1776px]');
     expect(page).toContain('data-testid="pro-plan-indicator"');
     expect(page).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    expect(page).toContain('xl:w-[calc((100%-var(--pro-workbench-gap))/2.62)]');
+    expect(shell).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    expect(shell).toContain('xl:px-0');
     expect(surface).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
     expect(surface).toContain('xl:gap-[var(--pro-workbench-gap)]');
     expect(surface).toContain('xl:grid xl:h-full');

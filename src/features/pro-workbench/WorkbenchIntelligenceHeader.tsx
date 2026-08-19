@@ -74,7 +74,7 @@ export function WorkbenchIntelligenceHeader({
             disabled={!onRecalculate || working}
             aria-busy={working}
             data-testid="pro-workbar-recalc"
-            className="pro-focus-ring flex min-h-11 shrink-0 items-center gap-2 rounded-[14px] bg-[#f58a07] px-3 text-left text-white shadow-pro-e1 disabled:cursor-wait disabled:opacity-70"
+            className="pro-focus-ring flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#f58a07] px-4 text-left text-white shadow-pro-e1 disabled:cursor-wait disabled:opacity-70"
           >
             <span aria-hidden className={working ? 'animate-spin text-xl' : 'text-xl'}>
               ↻
@@ -93,7 +93,7 @@ export function WorkbenchIntelligenceHeader({
             type="button"
             onClick={onOpenLearning}
             disabled={!onOpenLearning}
-            className="pro-focus-ring flex min-h-11 shrink-0 items-center gap-2 rounded-[14px] border border-ink/10 bg-white px-2.5 text-left shadow-pro-e0 disabled:cursor-default"
+            className="pro-focus-ring flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ink/10 bg-white px-3 text-left shadow-pro-e0 disabled:cursor-default"
           >
             <span
               className="grid size-9 shrink-0 place-items-center rounded-full border-[3px] border-[#63bd32] font-mono text-xs font-semibold tabular-nums text-ink"

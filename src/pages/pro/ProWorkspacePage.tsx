@@ -132,7 +132,7 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
       ) : null}
       <DevPersonaSwitch persona={persona} />
       <span
-        className="rounded-lg border border-ink/12 bg-white px-2.5 py-1.5 text-[10px] font-semibold tracking-[0.08em] text-ink"
+        className="rounded-md border border-ink/12 bg-white px-1.5 py-1 text-[8px] font-semibold tracking-[0.06em] text-ink"
         data-testid="pro-plan-indicator"
       >
         PRO
@@ -150,14 +150,14 @@ function ProWorkbenchHeaderChrome({
 }) {
   return (
     <div
-      className="flex min-w-0 flex-1 items-center justify-end gap-4 max-sm:flex-none max-sm:shrink-0"
+      className="hidden min-w-0 shrink-0 xl:block xl:w-[calc((100%-var(--pro-workbench-gap))/2.62)]"
       data-testid="pro-global-workbench-chrome"
     >
       <WorkbenchModuleTabs
         activeTab={activeTab}
         onTabChange={onTabChange}
         idPrefix="pro-context"
-        className="hidden w-[min(42vw,660px)] border-b-0 xl:grid"
+        className="w-full border-b-0"
       />
     </div>
   );

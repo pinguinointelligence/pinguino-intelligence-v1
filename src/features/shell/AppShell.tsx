@@ -66,7 +66,7 @@ export function AppShell({
           'mx-auto flex items-center justify-between gap-4 px-6 py-4 2xl:px-0',
           maxWidthClass,
           viewportLock &&
-            'w-full shrink-0 border-b border-ink/8 bg-white max-sm:px-3 max-sm:py-2 xl:h-[82px] xl:py-0',
+            'w-full shrink-0 border-b border-ink/8 bg-white max-sm:px-3 max-sm:py-2 xl:h-[82px] xl:w-[calc(100%-var(--pro-page-gutter))] xl:px-0 xl:py-0',
         )}
         style={{
           paddingTop: viewportLock

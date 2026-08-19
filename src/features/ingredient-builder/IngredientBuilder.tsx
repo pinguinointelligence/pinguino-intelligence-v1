@@ -40,7 +40,7 @@ import {
   type ProductionRowActions,
 } from './IngredientRow';
 import { ProductPickerPopover } from './ProductPickerPopover';
-import { ToppingRow, TOPPING_ROW_GRID } from './ToppingRow';
+import { ToppingRow } from './ToppingRow';
 import {
   ingredientRowMeta,
   unresolvedRequiredIngredients,
@@ -869,11 +869,38 @@ export function IngredientBuilder({
                         {totalBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
                       </strong>
                     </div>
+                    <div
+                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-ink/10 bg-white px-3 py-3"
+                      data-testid="ingredient-action-toolbar"
+                    >
+                      <div
+                        className="flex min-w-0 flex-wrap items-center gap-2"
+                        data-testid="ingredient-add-slot"
+                      >
+                        {picker}
+                        <ProductPickerPopover
+                          library={library}
+                          scope="POST_PROCESS_ADDON"
+                          behaviorContext={{
+                            accountId: authUserId,
+                            productProfile: behaviorProfile,
+                            temperatureC: behaviorTemperatureC,
+                            mode: behaviorMode,
+                          }}
+                          onAdd={addOrFocusTopping}
+                        />
+                      </div>
+                      {recipeActionDock ? (
+                        <div className="ml-auto min-w-0" data-testid="ingredient-action-slot">
+                          {recipeActionDock}
+                        </div>
+                      ) : null}
+                    </div>
                     <section
                       className="border-t border-status-ideal/15"
                       aria-labelledby="topping-section-heading"
                     >
-                      <div className="bg-pro-sage/22 px-3 py-3">
+                      <div className="flex min-w-0 items-center justify-between gap-3 bg-pro-sage/22 px-4 py-3">
                         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                           <h3
                             id="topping-section-heading"
@@ -885,45 +912,14 @@ export function IngredientBuilder({
                             Nie zmieniają bilansu ani wyniku technicznego bazy.
                           </p>
                         </div>
-                        <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
-                          <div
-                            className="flex flex-wrap items-center gap-2"
-                            data-testid="ingredient-add-slot"
-                          >
-                            {picker}
-                            <ProductPickerPopover
-                              library={library}
-                              scope="POST_PROCESS_ADDON"
-                              behaviorContext={{
-                                accountId: authUserId,
-                                productProfile: behaviorProfile,
-                                temperatureC: behaviorTemperatureC,
-                                mode: behaviorMode,
-                              }}
-                              onAdd={addOrFocusTopping}
-                            />
-                          </div>
-                          {recipeActionDock ? (
-                            <div className="min-w-0" data-testid="ingredient-action-slot">
-                              {recipeActionDock}
-                            </div>
-                          ) : null}
-                        </div>
+                        <strong
+                          className="shrink-0 font-mono text-sm tabular-nums text-ink"
+                          data-testid="topping-mass-total"
+                        >
+                          +{toppingTotalG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+                        </strong>
                       </div>
-                      {toppings.length > 0 ? (
-                        <>
-                          <div
-                            className={`${TOPPING_ROW_GRID} hidden border-y border-status-ideal/12 bg-pro-sage/12 px-3 py-2 md:grid`}
-                          >
-                            {['Topping', 'Ilość', 'Cena/kg', ''].map((label) => (
-                              <span key={label || 'menu'} className={headCell}>
-                                {label || '\u00a0'}
-                              </span>
-                            ))}
-                          </div>
-                          {toppingRows}
-                        </>
-                      ) : null}
+                      {toppings.length > 0 ? toppingRows : null}
                     </section>
                     <CompositionMassSummary baseMassG={totalBatchG} toppingMassG={toppingTotalG} />
                   </>
@@ -987,16 +983,10 @@ export function CompositionMassSummary({
 }) {
   return (
     <div
-      className="space-y-2 border-t border-ink/10 bg-white px-4 py-3"
+      className="border-t border-ink/10 bg-white px-4 py-3"
       data-testid="composition-mass-summary"
     >
-      <div className="flex items-center justify-between text-xs text-stone-600">
-        <span>Toppingi</span>
-        <strong className="font-mono tabular-nums text-ink">
-          +{toppingMassG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
-        </strong>
-      </div>
-      <div className="flex items-center justify-between border-t border-ink/10 pt-2">
+      <div className="flex items-center justify-between">
         <span className="text-xs font-semibold tracking-[0.04em] text-ink uppercase">
           Produkt finalny
         </span>

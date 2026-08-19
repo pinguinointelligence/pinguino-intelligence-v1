@@ -109,8 +109,23 @@ describe('one global menu and four local contexts', () => {
   it('keeps the four workspace modules in one horizontal header row', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(page).toContain('<WorkbenchModuleTabs');
-    expect(page).toContain('w-[min(42vw,660px)]');
+    expect(page).toContain('xl:w-[calc((100%-var(--pro-workbench-gap))/2.62)]');
+    expect(page).toContain('className="w-full border-b-0"');
     expect(page).toContain('AppShell');
+  });
+
+  it('keeps the compact PRO badge and all circular overflow menus on one geometry', () => {
+    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+    const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
+    const ingredient = read('features', 'ingredient-builder', 'IngredientRow.tsx');
+    const topping = read('features', 'ingredient-builder', 'ToppingRow.tsx');
+    expect(page).toContain('data-testid="pro-plan-indicator"');
+    expect(page).toContain('px-1.5 py-1 text-[8px]');
+    for (const source of [workbar, ingredient, topping]) {
+      expect(source).toContain('grid size-11');
+      expect(source).toContain('rounded-full border border-ink/10');
+      expect(source).toContain('•••');
+    }
   });
 
   it('renders Profile, Monitor, Production and Summary as contextual controls', () => {

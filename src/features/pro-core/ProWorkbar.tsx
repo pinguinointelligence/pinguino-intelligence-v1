@@ -165,8 +165,8 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
                   : w.saveNew}
           </button>
           <details className="relative shrink-0">
-            <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-sm text-stone-600">
-              …
+            <summary className="pro-focus-ring grid size-11 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink">
+              •••
             </summary>
             <div className="absolute bottom-12 left-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
               <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">

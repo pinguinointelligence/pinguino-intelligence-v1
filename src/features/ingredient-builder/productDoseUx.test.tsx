@@ -68,9 +68,7 @@ describe('missing product-dose copy', () => {
       />,
     );
     expect(zero).toContain('Brak zweryfikowanej dawki.');
-    expect(zero).toContain(
-      'Podaj ilość zgodnie z zaleceniem producenta lub własną recepturą.',
-    );
+    expect(zero).toContain('Podaj ilość zgodnie z zaleceniem producenta lub własną recepturą.');
 
     const entered = renderToStaticMarkup(
       <IngredientRow
@@ -119,8 +117,15 @@ describe('Topping zero-dose copy', () => {
       </QueryClientProvider>,
     );
 
-  it('shows the exact instruction at 0 g and clears it once grams are entered', () => {
-    expect(renderTopping(0)).toContain('Podaj ilość toppingu.');
-    expect(renderTopping(1)).not.toContain('Podaj ilość toppingu.');
+  it('keeps the topping row as quiet as an ingredient row at both 0 g and a positive dose', () => {
+    for (const html of [renderTopping(0), renderTopping(1)]) {
+      expect(html).not.toContain('Dodatek po produkcji');
+      expect(html).not.toContain('Podaj ilość toppingu.');
+      expect(html).not.toContain('>Topping<');
+      expect(html).not.toContain('>Ilość<');
+      expect(html).toContain('data-testid="topping-grams-topping-product"');
+      expect(html).toContain('class="pro-focus-ring grid size-11 place-items-center rounded-full');
+      expect(html).toContain('•••');
+    }
   });
 });
