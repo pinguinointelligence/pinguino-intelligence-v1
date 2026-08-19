@@ -388,6 +388,9 @@ export interface RecipeState {
     practicalRecipeAudit?: PracticalRecipeSavedAudit | null,
     versionId?: string | null,
   ) => void;
+  /** Record a server-authorized, whole-gram audit for an unchanged recipe.
+   * This does not mutate the formulation or its saved/dirty identity. */
+  acknowledgePracticalRecipeAudit: (audit: PracticalRecipeSavedAudit) => void;
   /** Select a Pro machine/serving mode (S4): sets the routing temperature + context + optional batch. */
   setMachineSelection: (sel: {
     kind: 'professional' | 'home';
@@ -1667,6 +1670,8 @@ export const useRecipeStore = create<RecipeState>()(
           newRecipeStarterMaterialFingerprint: null,
           ...(practicalRecipeAudit === undefined ? {} : { practicalRecipeAudit }),
         }),
+      acknowledgePracticalRecipeAudit: (practicalRecipeAudit) =>
+        set({ practicalRecipeAudit: structuredClone(practicalRecipeAudit) }),
       startNewRecipe: (requestedVisible) => {
         useIngredientTableUxStore.getState().reset();
         // The legacy owner-level snapshot is the only current account-default

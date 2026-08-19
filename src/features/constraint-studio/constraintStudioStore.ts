@@ -75,6 +75,12 @@ import {
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import {
+  attachPracticalRecipeAudit,
+  practicalRecipeInputFingerprint,
+  practicalizeRecipeCandidate,
+  readPracticalRecipeAudit,
+} from '@/features/practical-recipe/practicalRecipe';
 import { constraintStudioCopy } from './constraintStudioCopy';
 
 const applyGuardCopy = constraintStudioCopy.applyGuard;
@@ -1965,6 +1971,37 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
   useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
   if (!isCurrentPiRun(ownedGeneration)) return;
   useConstraintStudioStore.getState().createOptimizePreview(proposedSnapshots);
+  if (useConstraintStudioStore.getState().recalculationTerminal?.state !== 'NO_CHANGE_NEEDED') {
+    return;
+  }
+  if (
+    !isCurrentPiRun(ownedGeneration) ||
+    useRecipeStore.getState().draftRevision !== draft.revision
+  ) {
+    return;
+  }
+
+  // A no-change result has no Apply button, so it cannot inherit the normal
+  // Apply pipeline's practical-recipe audit. Recreate that authority only at
+  // this server-validated seam and only when the physical whole-gram transform
+  // proves that it would leave the current recipe byte-for-byte equivalent.
+  const practical = practicalizeRecipeCandidate(draft.input, draft.constraints);
+  if (
+    !practical.ok ||
+    practicalRecipeInputFingerprint(practical.audit.executableInput) !==
+      practicalRecipeInputFingerprint(draft.input)
+  ) {
+    return;
+  }
+  const acknowledgedInput = attachPracticalRecipeAudit(
+    practical.audit.executableInput,
+    practical.audit.exactInput,
+    nowIso(),
+  );
+  const audit = readPracticalRecipeAudit(acknowledgedInput);
+  if (!audit || !isCurrentPiRun(ownedGeneration)) return;
+  if (useRecipeStore.getState().draftRevision !== draft.revision) return;
+  useRecipeStore.getState().acknowledgePracticalRecipeAudit(audit);
 }
 
 /** Explicit Standard removal uses the same two-phase authority protocol as

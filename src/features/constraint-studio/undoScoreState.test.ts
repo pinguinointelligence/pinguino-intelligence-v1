@@ -4,6 +4,7 @@ import { findDemoIngredient } from '@/data/demoIngredients';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import {
   overSweetStarter,
+  starterMilkBase,
   starterLine,
   withGrams,
 } from '@/features/recipe-constraints/constraintFixtures';
@@ -13,8 +14,13 @@ import { scorePresentationSource } from '@/features/pro-workbench/scorePresentat
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { practicalRecipeAuditMatchesInput } from '@/features/practical-recipe/practicalRecipe';
 import { workingStateFingerprint } from './applyPipeline';
-import { selectCanonicalDraft, useConstraintStudioStore } from './constraintStudioStore';
+import {
+  createOptimizePreviewWithServerAuthority,
+  selectCanonicalDraft,
+  useConstraintStudioStore,
+} from './constraintStudioStore';
 
 const authority = vi.hoisted(() => ({ version: null as string | null }));
 
@@ -181,6 +187,33 @@ beforeEach(() => {
 });
 
 describe('Apply → Undo score-state restoration', () => {
+  it('attests an unchanged whole-gram recipe only through the server-authorized PI seam', async () => {
+    loadRecipe(starterMilkBase());
+    const input = selectCanonicalDraft().input;
+    const dirty = useRecipeStore.getState().dirty;
+    expect(useRecipeStore.getState().practicalRecipeAudit).toBeNull();
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
+    expect(useRecipeStore.getState().practicalRecipeAudit).toBeNull();
+
+    await createOptimizePreviewWithServerAuthority();
+
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
+    expect(
+      practicalRecipeAuditMatchesInput(
+        selectCanonicalDraft().input,
+        useRecipeStore.getState().practicalRecipeAudit,
+      ),
+    ).toBe(true);
+    expect(selectCanonicalDraft().input).toEqual(input);
+    expect(useRecipeStore.getState().dirty).toBe(dirty);
+  });
+
   it('restores the exact Preview, PREVIEW source, score, fingerprint and prior awaiting state', async () => {
     loadApplyScenario();
     useRecipeProfileStore.getState().moveAxisIntent('sweetness', 1);
