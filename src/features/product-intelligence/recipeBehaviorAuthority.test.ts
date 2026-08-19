@@ -35,11 +35,21 @@ const sharedFacts: SharedProductBehaviorFacts = {
   schemaVersion: 1,
   technicalComposition: { water: 87, fat: 3.5 },
   nutritionPer100g: {
-    basis: 'per_100g', energyKcal: 64, fat: 3.5, saturatedFat: 2.2,
-    carbohydrate: 4.8, sugars: 4.8, protein: 3.2, salt: 0.1, fibre: 0,
+    basis: 'per_100g',
+    energyKcal: 64,
+    fat: 3.5,
+    saturatedFat: 2.2,
+    carbohydrate: 4.8,
+    sugars: 4.8,
+    protein: 3.2,
+    salt: 0.1,
+    fibre: 0,
   },
   allergens: {
-    ingredientsText: 'Milk', allergensText: 'Milk', declared: ['milk'], mayContain: [],
+    ingredientsText: 'Milk',
+    allergensText: 'Milk',
+    declared: ['milk'],
+    mayContain: [],
     evidenceVersion: 'allergen-v1',
   },
   processEvidence: [processEvidence],
@@ -79,9 +89,15 @@ const snapshot = (overrides: Partial<ProductBehaviorSnapshot> = {}): ProductBeha
   approvedLiquidDairyCarrier: false,
   approvedMixedFamilyIds: [],
   moduleEligibility: {
-    MONITOR: 'eligible', SUMMARY: 'eligible', NUTRITION: 'eligible',
-    ALLERGENS: 'eligible', PROCESS: 'eligible', MASTER_LABEL: 'eligible',
-    EXPORT: 'eligible', RECIPE_VERSION: 'eligible', RESTORE: 'eligible',
+    MONITOR: 'eligible',
+    SUMMARY: 'eligible',
+    NUTRITION: 'eligible',
+    ALLERGENS: 'eligible',
+    PROCESS: 'eligible',
+    MASTER_LABEL: 'eligible',
+    EXPORT: 'eligible',
+    RECIPE_VERSION: 'eligible',
+    RESTORE: 'eligible',
   },
   processScope: 'BASE_FORMULATION',
   resolverVersion: 'resolver-v1',
@@ -91,23 +107,29 @@ const snapshot = (overrides: Partial<ProductBehaviorSnapshot> = {}): ProductBeha
   ...overrides,
 });
 
-const recipe = (): RecipeInput => ({
-  category: 'milk_gelato',
-  mode: 'optimal',
-  target_temperature_c: -12,
-  target_batch_grams: 1000,
-  machine_capacity_grams: null,
-  items: [{
-    id: 'line-1',
-    ingredient: {
-      id: 'PI-ING-1', name: 'Milk', canonical_ingredient_id: 'PI-ING-1',
-      identity_provenance: 'mapper', composition: {},
-    },
-    planned_grams: 1000,
-    actual_grams: null,
-    lock_type: 'unlocked',
-  }],
-} as unknown as RecipeInput);
+const recipe = (): RecipeInput =>
+  ({
+    category: 'milk_gelato',
+    mode: 'optimal',
+    target_temperature_c: -12,
+    target_batch_grams: 1000,
+    machine_capacity_grams: null,
+    items: [
+      {
+        id: 'line-1',
+        ingredient: {
+          id: 'PI-ING-1',
+          name: 'Milk',
+          canonical_ingredient_id: 'PI-ING-1',
+          identity_provenance: 'mapper',
+          composition: {},
+        },
+        planned_grams: 1000,
+        actual_grams: null,
+        lock_type: 'unlocked',
+      },
+    ],
+  }) as unknown as RecipeInput;
 
 describe('recipe behavior authority', () => {
   it('fails facts-dependent modules closed for a required line without a snapshot', () => {
@@ -120,8 +142,15 @@ describe('recipe behavior authority', () => {
 
   it('requires the frozen core composition but leaves Mapper nine-field eligibility to the resolver', () => {
     const exactTechnicalFacts = {
-      water: 87, totalSolids: 13, fat: 3.5, protein: 3.2,
-      carbohydrate: 4.8, sugars: 4.8, salt: 0.1, podValue: 4.8, pacValue: 4.8,
+      water: 87,
+      totalSolids: 13,
+      fat: 3.5,
+      protein: 3.2,
+      carbohydrate: 4.8,
+      sugars: 4.8,
+      salt: 0.1,
+      podValue: 4.8,
+      pacValue: 4.8,
     };
     const complete = buildRecipeBehaviorAuthority({
       items: recipe().items,
@@ -169,34 +198,56 @@ describe('recipe behavior authority', () => {
       snapshots: { 'line-1': snapshot() },
     });
     expect(recipeBehaviorModuleGate(authority, 'PROCESS').ready).toBe(true);
-    expect(frozenProcessEvidence(authority)).toEqual({ complete: true, evidence: [processEvidence] });
+    expect(frozenProcessEvidence(authority)).toEqual({
+      complete: true,
+      evidence: [processEvidence],
+    });
   });
 
   it('blocks historical restore when required authority is absent and permits a complete version', () => {
     expect(recipeVersionBehaviorGate(recipe(), null, 'RESTORE').ready).toBe(false);
-    expect(recipeVersionBehaviorGate(recipe(), {
-      schemaVersion: 1,
-      baseScope: 'BASE_FORMULATION',
-      baseOrder: ['line-1'],
-      toppings: [],
-      behaviorSnapshots: { 'line-1': snapshot() },
-      migrationAmbiguities: [],
-    }, 'RESTORE').ready).toBe(true);
+    expect(
+      recipeVersionBehaviorGate(
+        recipe(),
+        {
+          schemaVersion: 1,
+          baseScope: 'BASE_FORMULATION',
+          baseOrder: ['line-1'],
+          toppings: [],
+          behaviorSnapshots: { 'line-1': snapshot() },
+          migrationAmbiguities: [],
+        },
+        'RESTORE',
+      ).ready,
+    ).toBe(true);
   });
 
   it('keeps private price separate and uses private > reference > missing precedence', () => {
     const privateOverlay: PrivateProductBehaviorOverlay = {
-      favorite: true, recentAt: null, privatePricePerKg: 3, privatePriceCurrency: 'EUR',
-      supplier: 'Private supplier', note: null, stock: null,
+      favorite: true,
+      recentAt: null,
+      privatePricePerKg: 3,
+      privatePriceCurrency: 'EUR',
+      supplier: 'Private supplier',
+      note: null,
+      stock: null,
     };
     expect(resolveProductCostProjection(snapshot(), privateOverlay)).toMatchObject({
-      state: 'known', pricePerKg: 3, source: 'private',
+      state: 'known',
+      pricePerKg: 3,
+      source: 'private',
     });
     expect(resolveProductCostProjection(snapshot(), null)).toMatchObject({
-      state: 'known', pricePerKg: 4, source: 'reference',
+      state: 'known',
+      pricePerKg: 4,
+      source: 'reference',
     });
-    expect(resolveProductCostProjection(snapshot({ sharedFacts: { ...sharedFacts, referencePrice: null } }), null))
-      .toEqual({ state: 'missing', pricePerKg: null, currency: null, source: 'missing' });
+    expect(
+      resolveProductCostProjection(
+        snapshot({ sharedFacts: { ...sharedFacts, referencePrice: null } }),
+        null,
+      ),
+    ).toEqual({ state: 'missing', pricePerKg: null, currency: null, source: 'missing' });
   });
 
   it('erases mutable Base facts that are absent from the frozen product version', () => {
@@ -226,8 +277,15 @@ describe('recipe behavior authority', () => {
       catalog_version_id: 'v1',
       verification_status: 'manual_unverified',
       label_nutrition_per_100g: {
-        basis: 'per_100g', energyKcal: 999, fat: 99, saturatedFat: 99,
-        carbohydrate: 99, sugars: 99, protein: 99, salt: 99, fibre: 99,
+        basis: 'per_100g',
+        energyKcal: 999,
+        fat: 99,
+        saturatedFat: 99,
+        carbohydrate: 99,
+        sugars: 99,
+        protein: 99,
+        salt: 99,
+        fibre: 99,
       },
       ingredients_text: 'Mutable ingredients',
       allergens_text: 'Mutable allergens',
@@ -235,8 +293,12 @@ describe('recipe behavior authority', () => {
       cost_currency: null,
     };
     const topping: RecipeToppingItem = {
-      id: 'topping-1', ingredient, planned_grams: 50, actual_grams: null,
-      process_scope: 'POST_PROCESS_ADDON', addon_sort_order: 0,
+      id: 'topping-1',
+      ingredient,
+      planned_grams: 50,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON',
+      addon_sort_order: 0,
     };
     const toppingSnapshot = snapshot({
       lineId: topping.id,
@@ -245,7 +307,9 @@ describe('recipe behavior authority', () => {
       processScope: 'POST_PROCESS_ADDON',
     });
     const authority = buildRecipeBehaviorAuthority({
-      items: [], toppings: [topping], snapshots: { [topping.id]: toppingSnapshot },
+      items: [],
+      toppings: [topping],
+      snapshots: { [topping.id]: toppingSnapshot },
     });
     const [projected] = recipeToppingsFromFrozenBehavior([topping], authority, 'nutrition');
     expect(projected?.ingredient).toMatchObject({
@@ -253,5 +317,78 @@ describe('recipe behavior authority', () => {
       ingredients_text: 'Milk',
       allergens_text: 'Milk',
     });
+  });
+
+  it('does not project or require frozen facts for physically absent toppings', () => {
+    const ingredient: CatalogLabelToppingIngredient = {
+      kind: 'catalog_label_topping',
+      id: 'catalog:absent-sauce',
+      canonical_ingredient_id: 'catalog:absent-sauce',
+      private_product_id: 'catalog:absent-sauce:version:v1',
+      name: 'Absent sauce',
+      catalog_product_id: 'absent-sauce',
+      catalog_version_id: 'v1',
+      verification_status: 'manual_unverified',
+      label_nutrition_per_100g: {
+        basis: 'per_100g',
+        energyKcal: 1,
+        fat: 1,
+        saturatedFat: 1,
+        carbohydrate: 1,
+        sugars: 1,
+        protein: 1,
+        salt: 1,
+        fibre: 1,
+      },
+      ingredients_text: 'Historical ingredients',
+      allergens_text: 'Historical allergens',
+      cost_per_kg: null,
+      cost_currency: null,
+    };
+    const zeroPlanned: RecipeToppingItem = {
+      id: 'zero-planned',
+      ingredient,
+      planned_grams: 0,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON',
+      addon_sort_order: 0,
+    };
+    const zeroActual: RecipeToppingItem = {
+      ...zeroPlanned,
+      id: 'zero-actual',
+      planned_grams: 50,
+      actual_grams: 0,
+      addon_sort_order: 1,
+    };
+    const incomplete = (lineId: string) =>
+      snapshot({
+        lineId,
+        source: 'catalog_import',
+        mapperIngredientId: null,
+        processScope: 'POST_PROCESS_ADDON',
+        sharedFacts: {
+          ...sharedFacts,
+          nutritionPer100g: null,
+          allergens: null,
+        },
+      });
+    const authority = buildRecipeBehaviorAuthority({
+      items: [],
+      toppings: [zeroPlanned, zeroActual],
+      snapshots: {
+        [zeroPlanned.id]: incomplete(zeroPlanned.id),
+        [zeroActual.id]: incomplete(zeroActual.id),
+      },
+    });
+
+    expect(authority.requiredLineIds).toEqual([]);
+    expect(recipeBehaviorModuleGate(authority, 'SUMMARY')).toEqual({
+      ready: true,
+      blockedLineIds: [],
+      reason: null,
+    });
+    expect(
+      recipeToppingsFromFrozenBehavior([zeroPlanned, zeroActual], authority, 'nutrition'),
+    ).toEqual([zeroPlanned, zeroActual]);
   });
 });

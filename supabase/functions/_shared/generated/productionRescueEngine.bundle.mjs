@@ -4712,8 +4712,9 @@ const LEGACY_READ_ONLY_MODULES = new Set([
 * missing snapshot and a denied module permission fail through the same gate.
 */
 function productBehaviorModuleGate(snapshots, module, requiredLineIds) {
+	const required = new Set(requiredLineIds);
 	const missingLineIds = requiredLineIds.filter((lineId) => snapshots[lineId] === void 0);
-	const blockedLineIds = [...new Set([...missingLineIds, ...Object.entries(snapshots).filter((entry) => entry[1] !== void 0).filter(([, snapshot]) => {
+	const blockedLineIds = [...new Set([...missingLineIds, ...Object.entries(snapshots).filter((entry) => entry[1] !== void 0).filter(([lineId]) => required.has(lineId)).filter(([, snapshot]) => {
 		if (snapshot.resolutionState === "REVALIDATION_REQUIRED") return true;
 		if (snapshot.resolutionState === "LEGACY_RECONSTRUCTED" && !LEGACY_READ_ONLY_MODULES.has(module)) return true;
 		const state = snapshot.moduleEligibility[module];
@@ -4734,8 +4735,8 @@ function productBehaviorModuleGate(snapshots, module, requiredLineIds) {
 * Only synthetic fixtures with no canonical product lineage stay outside the
 * persistence gate. */
 function productBehaviorRequiredLineIds(input) {
-	const base = input.items.filter(({ ingredient }) => hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference").map(({ id }) => id);
-	const toppings = (input.toppings ?? []).filter(({ ingredient }) => ingredient.kind === "catalog_label_topping" || typeof ingredient.catalog_product_id === "string" || hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference").map(({ id }) => id);
+	const base = input.items.filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
+	const toppings = (input.toppings ?? []).filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (ingredient.kind === "catalog_label_topping" || typeof ingredient.catalog_product_id === "string" || hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
 	return [...new Set([...base, ...toppings])].sort();
 }
 
@@ -4840,9 +4841,11 @@ const projectCompositionValue = (composition, key, value) => {
 * objects after the exact version was resolved. Missing/null frozen values
 * explicitly erase old mutable values instead of inheriting them. */
 function recipeInputFromFrozenBehavior(input, authority, projection) {
+	const required = new Set(authority.requiredLineIds);
 	return {
 		...input,
 		items: input.items.map((item) => {
+			if (!required.has(item.id)) return item;
 			const snapshot = authority.snapshots[item.id];
 			if (!snapshot || snapshot.processScope !== "BASE_FORMULATION") return item;
 			const ingredient = structuredClone(item.ingredient);
@@ -4878,7 +4881,9 @@ function recipeInputFromFrozenBehavior(input, authority, projection) {
 * by Base consumers. This prevents Summary/Production/Master Label from
 * accepting a valid snapshot while calculating from a mutable topping object. */
 function recipeToppingsFromFrozenBehavior(toppings, authority, projection) {
+	const required = new Set(authority.requiredLineIds);
 	return toppings.map((item) => {
+		if (!required.has(item.id)) return item;
 		const snapshot = authority.snapshots[item.id];
 		if (!snapshot || snapshot.processScope !== "POST_PROCESS_ADDON") return item;
 		const ingredient = structuredClone(item.ingredient);

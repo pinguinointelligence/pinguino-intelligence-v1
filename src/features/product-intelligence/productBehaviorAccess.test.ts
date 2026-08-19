@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProductBehaviorSnapshot } from './contracts';
-import {
-  productBehaviorModuleGate,
-  productBehaviorRequiredLineIds,
-} from './productBehaviorAccess';
+import { productBehaviorModuleGate, productBehaviorRequiredLineIds } from './productBehaviorAccess';
 
 const snapshot = (lineId: string): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
@@ -43,18 +40,85 @@ const snapshot = (lineId: string): ProductBehaviorSnapshot => ({
 
 describe('product behavior snapshot completeness', () => {
   it('requires snapshots for Mapper/private/catalog and exact accepted built-ins', () => {
-    expect(productBehaviorRequiredLineIds({
-      items: [
-        { id: 'mapper', ingredient: { identity_provenance: 'mapper' } },
-        { id: 'private', ingredient: { identity_provenance: 'private_product' } },
-        { id: 'built-in', ingredient: { id: 'raspberry' } },
-        { id: 'demo', ingredient: {} },
-      ],
-      toppings: [{
-        id: 'catalog-topping',
-        ingredient: { kind: 'catalog_label_topping', catalog_product_id: 'catalog-1' },
-      }],
-    })).toEqual(['built-in', 'catalog-topping', 'mapper', 'private']);
+    expect(
+      productBehaviorRequiredLineIds({
+        items: [
+          { id: 'mapper', ingredient: { identity_provenance: 'mapper' } },
+          { id: 'private', ingredient: { identity_provenance: 'private_product' } },
+          { id: 'built-in', ingredient: { id: 'raspberry' } },
+          { id: 'demo', ingredient: {} },
+        ],
+        toppings: [
+          {
+            id: 'catalog-topping',
+            ingredient: { kind: 'catalog_label_topping', catalog_product_id: 'catalog-1' },
+          },
+        ],
+      }),
+    ).toEqual(['built-in', 'catalog-topping', 'mapper', 'private']);
+  });
+
+  it('requires authority only for physically present positive-gram lines', () => {
+    expect(
+      productBehaviorRequiredLineIds({
+        items: [
+          {
+            id: 'present',
+            planned_grams: 1,
+            actual_grams: null,
+            ingredient: { identity_provenance: 'mapper' },
+          },
+          {
+            id: 'zero',
+            planned_grams: 0,
+            actual_grams: null,
+            ingredient: { identity_provenance: 'mapper' },
+          },
+          {
+            id: 'actual-zero',
+            planned_grams: 10,
+            actual_grams: 0,
+            ingredient: { identity_provenance: 'mapper' },
+          },
+          {
+            id: 'actual-present',
+            planned_grams: 0,
+            actual_grams: 1,
+            ingredient: { identity_provenance: 'mapper' },
+          },
+        ],
+        toppings: [
+          {
+            id: 'present-topping',
+            planned_grams: 1,
+            actual_grams: null,
+            ingredient: { kind: 'catalog_label_topping' },
+          },
+          {
+            id: 'zero-topping',
+            planned_grams: 0,
+            actual_grams: null,
+            ingredient: { kind: 'catalog_label_topping' },
+          },
+        ],
+      }),
+    ).toEqual(['actual-present', 'present', 'present-topping']);
+  });
+
+  it('does not let stale snapshots outside the positive-presence set block a module', () => {
+    expect(
+      productBehaviorModuleGate(
+        {
+          present: snapshot('present'),
+          zero: {
+            ...snapshot('zero'),
+            resolutionState: 'REVALIDATION_REQUIRED',
+          },
+        },
+        'PRODUCTION',
+        ['present'],
+      ),
+    ).toEqual({ ready: true, blockedLineIds: [], reason: null });
   });
 
   it('keeps accepted built-ins fail-closed until their exact Mapper snapshot resolves', () => {
@@ -73,8 +137,9 @@ describe('product behavior snapshot completeness', () => {
       blockedLineIds: ['legacy-line'],
       reason: 'Brak zatwierdzonego uprawnienia SAVE dla: legacy-line.',
     });
-    expect(productBehaviorModuleGate({ line: snapshot('line') }, 'PRODUCTION', ['line']).ready)
-      .toBe(true);
+    expect(
+      productBehaviorModuleGate({ line: snapshot('line') }, 'PRODUCTION', ['line']).ready,
+    ).toBe(true);
   });
 
   it('keeps an unresolved reconstructed line fail-closed in every module', () => {
@@ -82,11 +147,9 @@ describe('product behavior snapshot completeness', () => {
       ...snapshot('legacy-line'),
       resolutionState: 'REVALIDATION_REQUIRED' as const,
     };
-    expect(productBehaviorModuleGate(
-      { 'legacy-line': unresolved },
-      'RESTORE',
-      ['legacy-line'],
-    )).toMatchObject({ ready: false, blockedLineIds: ['legacy-line'] });
+    expect(
+      productBehaviorModuleGate({ 'legacy-line': unresolved }, 'RESTORE', ['legacy-line']),
+    ).toMatchObject({ ready: false, blockedLineIds: ['legacy-line'] });
   });
 
   it('allows reconstructed history only in read-only projections', () => {
@@ -98,15 +161,11 @@ describe('product behavior snapshot completeness', () => {
         MONITOR: 'eligible' as const,
       },
     };
-    expect(productBehaviorModuleGate(
-      { 'legacy-line': reconstructed },
-      'MONITOR',
-      ['legacy-line'],
-    ).ready).toBe(true);
-    expect(productBehaviorModuleGate(
-      { 'legacy-line': reconstructed },
-      'SAVE',
-      ['legacy-line'],
-    )).toMatchObject({ ready: false, blockedLineIds: ['legacy-line'] });
+    expect(
+      productBehaviorModuleGate({ 'legacy-line': reconstructed }, 'MONITOR', ['legacy-line']).ready,
+    ).toBe(true);
+    expect(
+      productBehaviorModuleGate({ 'legacy-line': reconstructed }, 'SAVE', ['legacy-line']),
+    ).toMatchObject({ ready: false, blockedLineIds: ['legacy-line'] });
   });
 });

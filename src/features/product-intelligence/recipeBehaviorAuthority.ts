@@ -240,9 +240,11 @@ export function recipeInputFromFrozenBehavior(
   authority: RecipeBehaviorAuthority,
   projection: 'technical' | 'nutrition',
 ): RecipeInput {
+  const required = new Set(authority.requiredLineIds);
   return {
     ...input,
     items: input.items.map((item) => {
+      if (!required.has(item.id)) return item;
       const snapshot = authority.snapshots[item.id];
       if (!snapshot || snapshot.processScope !== 'BASE_FORMULATION') return item;
       const ingredient = structuredClone(item.ingredient);
@@ -304,7 +306,9 @@ export function recipeToppingsFromFrozenBehavior(
   authority: RecipeBehaviorAuthority,
   projection: 'technical' | 'nutrition',
 ): RecipeToppingItem[] {
+  const required = new Set(authority.requiredLineIds);
   return toppings.map((item) => {
+    if (!required.has(item.id)) return item;
     const snapshot = authority.snapshots[item.id];
     if (!snapshot || snapshot.processScope !== 'POST_PROCESS_ADDON') return item;
     const ingredient = structuredClone(item.ingredient);
