@@ -73,6 +73,7 @@ import { constraintStudioCopy as copy } from './constraintStudioCopy';
 import {
   approvedFormulationToolboxIngredients,
   buildFormulationProposal,
+  HARD_ROLES,
   routeFormulationMode,
   type FormulationAddedLine,
   type FormulationMode,
@@ -940,6 +941,7 @@ function rescalePreservingMainGroup(
   set: ConstraintSet,
   targetBatchGrams: number,
   preserveCandidateMain = true,
+  preserveUserTarget = true,
 ): ReturnType<typeof rescaleBatchToTarget> {
   const originalMainByLineId = new Map(
     candidate.items
@@ -991,6 +993,26 @@ function rescalePreservingMainGroup(
       );
       if (!current || !(current.planned_grams > 0)) continue;
       byLineId[main.lineId] = { mode: 'locked', grams: current.planned_grams };
+    }
+  }
+  if (preserveUserTarget) {
+    for (const target of identityInput.items) {
+      if (
+        target.lock_type !== 'unlocked' ||
+        target.actual_grams !== null ||
+        target.user_target_grams === undefined ||
+        !Number.isFinite(target.user_target_grams) ||
+        target.user_target_grams < 0 ||
+        isConstrained(set, target.id)
+      ) {
+        continue;
+      }
+      const current = constrainedCandidate.items.find((item) => item.id === target.id);
+      if (!current || current.lock_type !== 'unlocked' || current.actual_grams !== null) continue;
+      // Temporary normalization hold only. The item remains Standard/unlocked
+      // in the returned recipe; hard locks and the Engine still decide whether
+      // this exact candidate is feasible.
+      byLineId[target.id] = { mode: 'locked', grams: current.planned_grams };
     }
   }
   const rescaled = rescaleBatchToTarget(constrainedCandidate, { byLineId }, targetBatchGrams);
@@ -2159,6 +2181,247 @@ const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput)
     })
     .map((item) => item.id);
 };
+
+export interface ManualIngredientTargetProof {
+  lineId: string;
+  requestedGrams: number;
+  selectedGrams: number;
+  firstCloserRejectedGrams: number | null;
+  provenNearest: boolean;
+  attempts: number;
+}
+
+/**
+ * Product-layer projection of the latest direct Standard gram edit. The
+ * existing exact whole-gram linear relaxation proposes complete batch vectors;
+ * every proposed vector is then independently accepted by the unchanged
+ * Engine and all existing Apply gates. The relaxation can reject impossible
+ * mass/band points, but it can never accept one by itself.
+ */
+export function projectManualIngredientTarget(
+  identityInput: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions = {},
+  technicalStart: RecipeInput = identityInput,
+): { input: RecipeInput; proof: ManualIngredientTargetProof | null } {
+  let targetLine: RecipeInput['items'][number] | null = null;
+  for (const item of identityInput.items) {
+    if (
+      item.lock_type === 'unlocked' &&
+      item.actual_grams === null &&
+      item.user_target_grams !== undefined &&
+      Number.isFinite(item.user_target_grams) &&
+      item.user_target_grams >= 0 &&
+      !isConstrained(set, item.id)
+    ) {
+      targetLine = item;
+    }
+  }
+  if (!targetLine) return { input: technicalStart, proof: null };
+  if (!technicalStart.items.some((item) => item.id === targetLine.id)) {
+    return { input: technicalStart, proof: null };
+  }
+
+  const requestedGrams = Math.max(0, Math.round(targetLine.user_target_grams!));
+  const minimumGrams = requestedGrams > 0 ? 1 : 0;
+  const batchMaximumGrams = Math.max(minimumGrams, Math.floor(identityInput.target_batch_grams));
+  const excluded = new Set(options.excludedIngredientIds ?? []);
+  const targetCanonicalId = canonicalIngredientId(targetLine.ingredient);
+  if (excluded.has(targetCanonicalId) && requestedGrams > 0) {
+    return { input: technicalStart, proof: null };
+  }
+
+  const requiredLineIds = productBehaviorRequiredLineIds({ items: identityInput.items });
+  const behaviorModule =
+    normalizeFormulationStrategy(
+      identityInput.goals?.formulation_strategy ?? identityInput.mode,
+    ) === 'eco'
+      ? 'ECO'
+      : 'OPTIMAL';
+  const managedBehavior = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0;
+  const cache = new Map<number, RecipeInput | null>();
+  let attempts = 0;
+
+  const objectiveBound = mainTechnicalLinearUpperBound({
+    recipe: technicalStart,
+    constraints: withTemplateControlledStabilizerLocks(technicalStart, set),
+    snapshots: options.productBehaviorSnapshots ?? {},
+    excludedIngredientIds: options.excludedIngredientIds,
+    objectiveLineIds: [targetLine.id],
+  });
+  const certifiedMaximum =
+    objectiveBound.status === 'certified' &&
+    objectiveBound.integerSolutionCertified &&
+    objectiveBound.wholeGramUpperBound !== null
+      ? Math.floor(objectiveBound.wholeGramUpperBound)
+      : null;
+  const maximumGrams =
+    certifiedMaximum === null
+      ? batchMaximumGrams
+      : Math.max(minimumGrams, Math.min(batchMaximumGrams, certifiedMaximum));
+
+  const assess = (candidate: RecipeInput, grams: number): RecipeInput | null => {
+    const practical = practicalizeRecipeCandidate(candidate, set);
+    if (!practical.ok) return null;
+    const executable = practical.audit.executableInput;
+    const target = executable.items.find((item) => item.id === targetLine.id);
+    if (!target || !Object.is(target.planned_grams, grams) || target.lock_type !== 'unlocked') {
+      return null;
+    }
+    if (
+      Math.abs(plannedSum(executable) - identityInput.target_batch_grams) > BATCH_SUM_TOLERANCE_G ||
+      executable.items.some(
+        (item) => !Number.isInteger(item.planned_grams) || item.planned_grams < 0,
+      ) ||
+      !verifyConstraintsPreserved(set, executable).ok ||
+      !verifyMainIngredientIdentity(identityInput, executable, set.byLineId).ok ||
+      requiredLineContractViolations(identityInput, executable).length > 0
+    ) {
+      return null;
+    }
+    const requiredHardRoles = new Set(
+      technicalStart.items
+        .filter((item) => item.planned_grams > 0)
+        .map((item) => resolveFunctionalRole(item.ingredient))
+        .filter((role) => HARD_ROLES.has(role)),
+    );
+    if (
+      [...requiredHardRoles].some(
+        (role) =>
+          !executable.items.some(
+            (item) => item.planned_grams > 0 && resolveFunctionalRole(item.ingredient) === role,
+          ),
+      )
+    ) {
+      return null;
+    }
+    const result = practical.audit.executableResult;
+    if (
+      detectViolations(result).length > 0 ||
+      recipeDirectionViolations(executable).length > 0 ||
+      result.warnings.some((warning) => warning.severity === 'critical')
+    ) {
+      return null;
+    }
+    const protein = assessProteinTarget(executable, result);
+    if (protein.applicable && !protein.reached) return null;
+    if (
+      executable.category === 'vegan_gelato' &&
+      (veganRecipeEligibilityIssues(executable.items).length > 0 ||
+        veganProfileConstraintIssues(executable).length > 0)
+    ) {
+      return null;
+    }
+    if (
+      normalizeFormulationStrategy(
+        identityInput.goals?.formulation_strategy ?? identityInput.mode,
+      ) === 'eco' &&
+      !verifyEcoFlavourProtection(identityInput, executable, {
+        productBehaviorSnapshots: options.productBehaviorSnapshots,
+      }).ok
+    ) {
+      return null;
+    }
+    if (managedBehavior) {
+      const gate = productBehaviorModuleGate(
+        options.productBehaviorSnapshots ?? {},
+        behaviorModule,
+        requiredLineIds,
+      );
+      if (!gate.ready) return null;
+    }
+    return executable;
+  };
+
+  const probe = (grams: number): RecipeInput | null => {
+    const cached = cache.get(grams);
+    if (cached !== undefined || cache.has(grams)) return cached ?? null;
+    attempts += 1;
+    const probeSet: ConstraintSet = {
+      byLineId: { ...set.byLineId, [targetLine.id]: { mode: 'locked', grams } },
+    };
+    const bound = mainTechnicalLinearUpperBound({
+      recipe: technicalStart,
+      constraints: withTemplateControlledStabilizerLocks(technicalStart, probeSet),
+      snapshots: options.productBehaviorSnapshots ?? {},
+      excludedIngredientIds: options.excludedIngredientIds,
+      objectiveLineIds: [targetLine.id],
+    });
+    const solution =
+      bound.status === 'certified' && bound.integerSolutionCertified
+        ? bound.continuousSolutionGrams
+        : null;
+    if (!solution || solution.length !== technicalStart.items.length) {
+      cache.set(grams, null);
+      return null;
+    }
+    const candidate: RecipeInput = {
+      ...technicalStart,
+      items: technicalStart.items.map((item, index) => ({
+        ...item,
+        planned_grams: Math.round(solution[index]!),
+      })),
+    };
+    const assessed = assess(candidate, grams);
+    cache.set(grams, assessed);
+    return assessed;
+  };
+
+  const exactRequested =
+    requestedGrams >= minimumGrams && requestedGrams <= maximumGrams ? probe(requestedGrams) : null;
+  if (exactRequested) {
+    return {
+      input: exactRequested,
+      proof: {
+        lineId: targetLine.id,
+        requestedGrams,
+        selectedGrams: requestedGrams,
+        firstCloserRejectedGrams: null,
+        provenNearest: true,
+        attempts,
+      },
+    };
+  }
+
+  const ordered = Array.from(
+    { length: maximumGrams - minimumGrams + 1 },
+    (_, index) => minimumGrams + index,
+  ).sort(
+    (left, right) =>
+      Math.abs(left - requestedGrams) - Math.abs(right - requestedGrams) || left - right,
+  );
+  for (const grams of ordered) {
+    if (grams === requestedGrams) continue;
+    const feasible = probe(grams);
+    if (!feasible) continue;
+    const firstCloserRejectedGrams = ordered.find(
+      (candidate) =>
+        Math.abs(candidate - requestedGrams) < Math.abs(grams - requestedGrams) &&
+        cache.get(candidate) === null,
+    );
+    return {
+      input: feasible,
+      proof: {
+        lineId: targetLine.id,
+        requestedGrams,
+        selectedGrams: grams,
+        firstCloserRejectedGrams:
+          firstCloserRejectedGrams ??
+          (certifiedMaximum !== null && requestedGrams > maximumGrams ? maximumGrams + 1 : null),
+        provenNearest:
+          (requestedGrams <= maximumGrams || certifiedMaximum !== null) &&
+          ordered
+            .filter(
+              (candidate) =>
+                Math.abs(candidate - requestedGrams) < Math.abs(grams - requestedGrams),
+            )
+            .every((candidate) => cache.get(candidate) === null),
+        attempts,
+      },
+    };
+  }
+  return { input: technicalStart, proof: null };
+}
 
 /**
  * Owner final Main semantics. This is deliberately product orchestration, not
@@ -4115,7 +4378,9 @@ function buildFormulationPreviewInternal(
   // provisional profiles is kept unchanged.
   const solverSet = withTemplateControlledStabilizerLocks(built.proposal.proposedInput, set);
   const iterated = iterateFormulationSeed(input, solverSet, built.proposal.proposedInput, options);
-  const mainObjective = maximizeMainFlavourObjective(input, iterated.working, set, options);
+  const manualTarget = projectManualIngredientTarget(input, set, options, iterated.working);
+  const manualTargetInput = manualTarget.proof ? manualTarget.input : iterated.working;
+  const mainObjective = maximizeMainFlavourObjective(input, manualTargetInput, set, options);
   const working = mainObjective.input;
   const solverRounds = iterated.diagnostics.solverInvocations;
   const lastProposal = iterated.lastProposal;
@@ -4689,6 +4954,7 @@ export function buildOptimizePreview(
       solverSet,
       input.target_batch_grams,
       preserveCandidateMain,
+      preserveCandidateMain,
     );
     return restored.ok ? restored.input : candidate;
   };
@@ -4944,7 +5210,9 @@ export function buildOptimizePreview(
     null,
     options.productBehaviorSnapshots,
   );
-  const mainObjective = maximizeMainFlavourObjective(input, iterated.working, set, options);
+  const manualTarget = projectManualIngredientTarget(input, set, options, iterated.working);
+  const manualTargetInput = manualTarget.proof ? manualTarget.input : iterated.working;
+  const mainObjective = maximizeMainFlavourObjective(input, manualTargetInput, set, options);
   working = mainObjective.input;
   const hardSafeDirection = bestHardSafeDirectionSegment(
     constrained.input,

@@ -197,6 +197,11 @@ export interface RecipeItem {
    * Standard line must remain present (>= 1 g) unless the user explicitly
    * zeroes/removes/excludes it. Engine formulas do not consume this field. */
   user_intent_anchor_grams?: number;
+  /** Product-layer soft target from the latest direct gram edit. Unlike a
+   * grams constraint this is not a lock: orchestration preserves it when the
+   * complete recipe is feasible, otherwise it selects the nearest feasible
+   * whole-gram amount. Base Engine formulas do not consume this field. */
+  user_target_grams?: number;
   production_step?: number;
   notes?: string;
 }

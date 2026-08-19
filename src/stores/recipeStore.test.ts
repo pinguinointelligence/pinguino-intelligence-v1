@@ -70,6 +70,57 @@ describe('recipePersistPartialize', () => {
   });
 });
 
+describe('manual ingredient target contract', () => {
+  it('records the latest direct gram edit as the one soft user target and keeps presence anchors', () => {
+    const prior = useRecipeStore.getState();
+    try {
+      const recipe = ownerSameInputRecipe();
+      useRecipeStore.getState().loadRecipeInput({
+        ...recipe,
+        items: recipe.items.map((item) => ({
+          ...item,
+          user_intent_anchor_grams: item.planned_grams,
+        })),
+      });
+      const first = useRecipeStore.getState().items[0]!;
+      const second = useRecipeStore.getState().items[1]!;
+
+      useRecipeStore.getState().setPlannedGrams(first.id, 500);
+      expect(useRecipeStore.getState().items.find((item) => item.id === first.id)).toMatchObject({
+        planned_grams: 500,
+        user_intent_anchor_grams: 500,
+        user_target_grams: 500,
+      });
+
+      useRecipeStore.getState().setPlannedGrams(second.id, 50);
+      const after = useRecipeStore.getState().items;
+      expect(after.find((item) => item.id === first.id)?.user_target_grams).toBeUndefined();
+      expect(after.find((item) => item.id === first.id)?.user_intent_anchor_grams).toBe(500);
+      expect(after.find((item) => item.id === second.id)).toMatchObject({
+        planned_grams: 50,
+        user_intent_anchor_grams: 50,
+        user_target_grams: 50,
+      });
+    } finally {
+      useRecipeStore.setState(prior, true);
+    }
+  });
+
+  it('keeps an explicit manual zero as the current target without a positive-presence anchor', () => {
+    const prior = useRecipeStore.getState();
+    try {
+      useRecipeStore.getState().loadRecipeInput(ownerSameInputRecipe());
+      const lineId = useRecipeStore.getState().items[0]!.id;
+      useRecipeStore.getState().setPlannedGrams(lineId, 0);
+      const line = useRecipeStore.getState().items.find((item) => item.id === lineId);
+      expect(line).toMatchObject({ planned_grams: 0, user_target_grams: 0 });
+      expect(line?.user_intent_anchor_grams).toBeUndefined();
+    } finally {
+      useRecipeStore.setState(prior, true);
+    }
+  });
+});
+
 describe('saved practical recipe provenance', () => {
   it('rehydrates a matching verified whole-gram fingerprint and invalidates it after an edit', () => {
     const prior = useRecipeStore.getState();

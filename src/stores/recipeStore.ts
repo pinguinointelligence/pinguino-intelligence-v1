@@ -1302,13 +1302,23 @@ export const useRecipeStore = create<RecipeState>()(
         }),
 
       setPlannedGrams: (lineId, grams) =>
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.id === lineId ? { ...item, planned_grams: Math.max(0, grams) } : item,
-          ),
-          dirty: true,
-          draftRevision: state.draftRevision + 1,
-        })),
+        set((state) => {
+          const targetGrams = Math.max(0, grams);
+          return {
+            items: state.items.map((item) => {
+              const next = { ...item };
+              delete next.user_target_grams;
+              if (item.id !== lineId) return next;
+              next.planned_grams = targetGrams;
+              next.user_target_grams = targetGrams;
+              if (targetGrams > 0) next.user_intent_anchor_grams = targetGrams;
+              else delete next.user_intent_anchor_grams;
+              return next;
+            }),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
       setDirectionTarget: (axis, target) =>
         set((state) => {
           if (state.direction_targets[axis] === target) return {};

@@ -723,8 +723,14 @@ export function buildFormulationProposal(
         : line.locked && constraint?.mode === 'locked'
           ? constraint.grams
           : Math.max(0, line.item.planned_grams);
-    planned.push({ item: line.item, grams, fixed: true });
-    keptFixed.push(line.item.ingredient.name);
+    const hasSoftUserTarget =
+      line.item.lock_type === 'unlocked' &&
+      line.item.actual_grams === null &&
+      line.item.user_target_grams !== undefined &&
+      Number.isFinite(line.item.user_target_grams) &&
+      line.item.user_target_grams >= 0;
+    planned.push({ item: line.item, grams, fixed: !hasSoftUserTarget });
+    if (!hasSoftUserTarget) keptFixed.push(line.item.ingredient.name);
     if (grams <= 0 && !explicitZero) {
       unfillableSelections.push({ name: line.item.ingredient.name, role: line.role });
     }

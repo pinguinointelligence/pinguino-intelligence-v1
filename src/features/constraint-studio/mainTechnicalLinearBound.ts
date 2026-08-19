@@ -329,6 +329,10 @@ export function mainTechnicalLinearUpperBound(input: {
   constraints: ConstraintSet;
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   excludedIngredientIds?: readonly string[];
+  /** Optional product-layer objective. Omitted preserves the canonical Main
+   * group objective; a caller may name another visible line only to obtain a
+   * necessary bound/candidate that the real Engine must still accept. */
+  objectiveLineIds?: readonly string[];
   /** Candidate rebalances only need a safe continuous vector. The frontier
    * call leaves this enabled to obtain the whole-gram maximum certificate. */
   certifyWholeGram?: boolean;
@@ -339,7 +343,13 @@ export function mainTechnicalLinearUpperBound(input: {
   const { recipe, constraints, snapshots } = input;
   const size = recipe.items.length;
   const mains = captureMainIngredientIntent(recipe);
-  if (size === 0 || mains.length === 0 || !(recipe.target_batch_grams > 0)) {
+  const objectiveLineIds = new Set(input.objectiveLineIds ?? mains.map((main) => main.lineId));
+  if (
+    size === 0 ||
+    objectiveLineIds.size === 0 ||
+    !recipe.items.some((item) => objectiveLineIds.has(item.id)) ||
+    !(recipe.target_batch_grams > 0)
+  ) {
     return {
       status: 'unavailable',
       continuousUpperBoundGrams: null,
@@ -586,9 +596,7 @@ export function mainTechnicalLinearUpperBound(input: {
     );
   }
 
-  const objective = recipe.items.map((item) =>
-    mains.some((main) => main.lineId === item.id) ? 1 : 0,
-  );
+  const objective = recipe.items.map((item) => (objectiveLineIds.has(item.id) ? 1 : 0));
   const solved = new LinearProgram(rows, bounds, objective).solve();
   if (solved.status !== 'optimal' || !Number.isFinite(solved.value)) {
     return {
