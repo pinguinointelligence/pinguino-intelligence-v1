@@ -54,7 +54,7 @@ describe('Watermelon form identity remains fail-closed and form-aware', () => {
       'data-product-version-id',
       'data-mapper-id',
       'data-product-form',
-      'data-picker-verification-status',
+      'data-picker-data-confidence',
     ]) {
       expect(picker).toContain(attribute);
     }

@@ -214,8 +214,10 @@ describe('recipe and production table modes', () => {
       expect(picker).toContain(`label: '${label}'`);
     }
     expect(picker).toContain('matchesPickerFilter');
-    expect(picker).toContain('Nr art.');
-    expect(picker).toContain('Informacje o');
+    expect(picker).toContain('Status danych ·');
+    expect(picker).toContain('Pokaż status danych produktu:');
+    expect(picker).toContain('data-testid="product-data-status-dialog"');
+    expect(picker).not.toContain('Nr art.');
     expect(picker).toContain('Dodaj własny składnik ręcznie');
     expect(picker).toContain('event.stopPropagation()');
     expect(picker).not.toMatch(/`Produkt \$\{option\.name\} · ID/);

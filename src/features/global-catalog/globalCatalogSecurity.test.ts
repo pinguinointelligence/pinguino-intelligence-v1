@@ -420,12 +420,15 @@ describe('catalog picker scope and visual lock', () => {
     );
   });
 
-  it('preserves gold/green/blue/red labels and blocked usability', () => {
+  it('preserves category and blocked icons with neutral data status and blocked usability', () => {
     expect(picker).toContain("'bg-[#e8f7eb] text-[#1a9b3d]'");
     expect(picker).toContain("'bg-[#fff4e2] text-[#f58a07]'");
     expect(picker).toContain("'bg-slate-200 text-slate-700'");
     expect(picker).toContain("'bg-red-100 text-red-700'");
-    expect(picker).toContain('data-picker-verification-status');
+    expect(picker).toContain('data-picker-data-confidence');
+    expect(picker).toContain('Status danych ·');
+    expect(picker).toContain('data-testid="product-data-status-dialog"');
+    expect(picker).not.toContain('data-picker-verification-status');
     expect(picker).toContain('disabled={!option.selectable}');
   });
 });
