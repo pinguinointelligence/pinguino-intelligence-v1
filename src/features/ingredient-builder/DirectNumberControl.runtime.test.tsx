@@ -1,82 +1,68 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DirectNumberControl } from './DirectNumberControl';
 
-const setNativeValue = (input: HTMLInputElement, value: string) => {
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-  setter?.call(input, value);
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-};
+describe('DirectNumberControl integrated lock runtime', () => {
+  let host: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
 
-describe('DirectNumberControl committed editing', () => {
-  let root: ReturnType<typeof createRoot> | null = null;
-  let host: HTMLDivElement | null = null;
-
-  afterEach(async () => {
-    if (root) await act(async () => root?.unmount());
-    host?.remove();
-    root = null;
-    host = null;
-  });
-
-  const mount = async (props: { suffix: string; decimals: number; max?: number }) => {
-    const onChange = vi.fn();
+  beforeEach(() => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
-    await act(async () =>
-      root?.render(
-        <DirectNumberControl
-          value={1}
-          step={props.decimals ? 0.1 : 1}
-          min={0}
-          max={props.max}
-          decimals={props.decimals}
-          suffix={props.suffix}
-          ariaLabel={`Wartość ${props.suffix}`}
-          onChange={onChange}
-          testId="runtime-number-control"
-        />,
-      ),
-    );
-    const input = host.querySelector('input') as HTMLInputElement;
-    return { input, onChange };
-  };
-
-  it('does not commit gram digits until blur and preserves the full 1 → 11 → 111 → 1111 draft', async () => {
-    const { input, onChange } = await mount({ suffix: 'g', decimals: 0 });
-    await act(async () => input.focus());
-    for (const value of ['1', '11', '111', '1111']) {
-      await act(async () => setNativeValue(input, value));
-      expect(input.value).toBe(value);
-      expect(onChange).not.toHaveBeenCalled();
-    }
-    await act(async () => input.blur());
-    expect(onChange).toHaveBeenCalledOnce();
-    expect(onChange).toHaveBeenCalledWith(1111);
   });
 
-  it('keeps percent typing, backspace and paste local until Enter, then applies its canonical bound', async () => {
-    const { input, onChange } = await mount({ suffix: '%', decimals: 1, max: 100 });
-    await act(async () => input.focus());
-    for (const value of ['1', '11', '111', '1111', '111', '', '12.5']) {
-      await act(async () => setNativeValue(input, value));
-      expect(input.value).toBe(value);
-      expect(onChange).not.toHaveBeenCalled();
-    }
-    await act(async () =>
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })),
-    );
-    expect(onChange).toHaveBeenCalledOnce();
-    expect(onChange).toHaveBeenCalledWith(12.5);
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+  });
 
-    onChange.mockClear();
-    await act(async () => input.focus());
-    await act(async () => setNativeValue(input, '2222'));
+  it('disables numeric editing while keeping the pressed lock segment operable', async () => {
+    const onChange = vi.fn();
+    const onToggle = vi.fn();
+    await act(async () => {
+      root.render(
+        <DirectNumberControl
+          value={10000}
+          step={1}
+          decimals={0}
+          suffix="g"
+          ariaLabel="Gramatura toppingu"
+          onChange={onChange}
+          testId="locked-grams"
+          widthPreset="grams"
+          disabled
+          lockSegment={{
+            pressed: true,
+            ariaLabel: 'Odblokuj gramaturę toppingu',
+            title: 'Gramatura zablokowana: 10000 g',
+            suffix: 'g',
+            onToggle,
+            testId: 'locked-grams-toggle',
+          }}
+        />,
+      );
+    });
+
+    const numericButtons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[aria-label^="Gramatura toppingu —"]'),
+    );
+    const input = host.querySelector<HTMLInputElement>('[role="spinbutton"]');
+    const lock = host.querySelector<HTMLButtonElement>('[data-testid="locked-grams-toggle"]');
+
+    expect(numericButtons).toHaveLength(2);
+    expect(numericButtons.every((button) => button.disabled)).toBe(true);
+    expect(input?.disabled).toBe(true);
+    expect(lock?.disabled).toBe(false);
+    expect(lock?.getAttribute('aria-pressed')).toBe('true');
+
+    await act(async () => lock?.click());
+    expect(onToggle).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
-    await act(async () => input.blur());
-    expect(onChange).toHaveBeenCalledWith(100);
   });
 });

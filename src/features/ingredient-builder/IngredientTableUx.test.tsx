@@ -158,6 +158,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
 
   it('exposes Role editing through one contextual dialog trigger without row noise', () => {
     const row = renderRow();
+    expect(row).toContain('data-category-symbol="dairy"');
     expect(row).toContain('aria-haspopup="dialog"');
     expect(row).toContain(`aria-controls="row-menu-dialog-${baseItem.id}"`);
     expect(row).toContain('aria-expanded="false"');
@@ -257,16 +258,18 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(html.toLowerCase()).not.toContain('blokada procentowa w przygotowaniu');
   });
 
-  it('makes an active exact gram lock obvious in charcoal, never red', () => {
+  it('makes an active exact gram lock obvious with a quiet gray grouped state, never red', () => {
     const html = renderRow({ ...baseItem, lock_type: 'grams' }, DEFAULT_INGREDIENT_ROW_META, false);
     const gramButton =
       html.match(/<button[^>]*data-testid="row-lock-grams-[\s\S]*?<\/button>/)?.[0] ?? '';
-    expect(gramButton).toContain('bg-ink');
-    expect(gramButton).toContain('text-white');
+    expect(gramButton).toContain('bg-stone-200');
+    expect(gramButton).toContain('text-ink');
     expect(gramButton).toContain('Gramatura zablokowana');
     expect(gramButton).toContain('<span aria-hidden="true">g</span>');
     expect(gramButton).not.toContain('status-error');
     expect(html).toMatch(/<input[^>]*disabled/);
+    expect(html).toContain('data-control-locked="true"');
+    expect(html).toContain('data-control-capacity="10000g"');
   });
 
   it('keeps the Main crown independent from the exact-gram lock and exposes an explicit ratio weight', () => {

@@ -51,6 +51,7 @@ import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { CockpitTab, ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
+import { WorkbenchIntelligenceHeader } from '@/features/pro-workbench/WorkbenchIntelligenceHeader';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
@@ -63,6 +64,7 @@ import {
   ExecutableRecipeHandoffError,
   openExecutableRecipeTemplate,
 } from '@/services/executableRecipeHandoff';
+import { useStudioResult } from '@/features/studio/useStudioResult';
 
 const w = copy.proWorkspace;
 
@@ -115,13 +117,22 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
   );
 }
 
-function ProTopActions({ persona }: { persona: ProCorePersona }) {
+function ProTopActions({
+  persona,
+  onRecalculate,
+  onOpenLearning,
+}: {
+  persona: ProCorePersona;
+  onRecalculate: () => void;
+  onOpenLearning: () => void;
+}) {
   const unresolvedRequiredCount = useIngredientTableUxStore(
     (state) => Object.keys(state.unresolvedRequiredByLineId).length,
   );
+  const planning = useStudioResult('planning');
 
   return (
-    <div className="flex min-w-0 items-center gap-2" data-testid="pro-top-workbar">
+    <div className="flex min-w-0 flex-1 items-center gap-2" data-testid="pro-top-workbar">
       {unresolvedRequiredCount > 0 ? (
         <span
           className="hidden text-xs font-semibold tracking-[0.04em] text-status-error uppercase xl:inline"
@@ -137,6 +148,15 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
       >
         PRO
       </span>
+      <div className="ml-auto min-w-0">
+        <WorkbenchIntelligenceHeader
+          result={planning.result}
+          input={planning.input}
+          variant="global"
+          onRecalculate={onRecalculate}
+          onOpenLearning={onOpenLearning}
+        />
+      </div>
     </div>
   );
 }
@@ -150,7 +170,7 @@ function ProWorkbenchHeaderChrome({
 }) {
   return (
     <div
-      className="hidden min-w-0 shrink-0 xl:block xl:w-[calc((100%-var(--pro-workbench-gap))/2.62)]"
+      className="hidden min-w-0 xl:col-start-2 xl:row-start-1 xl:block xl:w-full"
       data-testid="pro-global-workbench-chrome"
     >
       <WorkbenchModuleTabs
@@ -466,7 +486,16 @@ export function ProWorkspacePage() {
         }
         actions={
           workbench ? (
-            <ProTopActions persona={persona} />
+            <ProTopActions
+              persona={persona}
+              onRecalculate={startRecalc}
+              onOpenLearning={() => {
+                changeCockpitTab('profile');
+                queueMicrotask(() =>
+                  window.dispatchEvent(new Event('pinguino:open-learning')),
+                );
+              }}
+            />
           ) : (
             <>
               <DevPersonaSwitch persona={persona} />

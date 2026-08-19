@@ -87,10 +87,7 @@ import {
   substitutionIngredientFingerprint,
 } from '@/features/ingredient-builder/recipeSubstitution';
 import type { SubstituteAuthorization } from '@/features/ingredient-builder/ingredientTableUx';
-import {
-  detectProportionalScaling,
-  type ProportionalScalingReport,
-} from '@/features/formulation/proportionalScaling';
+import { detectProportionalScaling } from '@/features/formulation/proportionalScaling';
 import {
   isTemplateControlledStabilizer,
   templateControlledStabilizerViolations,
@@ -4196,26 +4193,15 @@ function buildFormulationPreviewInternal(
 
   /* ── AUTHENTICITY VERDICT (owner Agent 3 contract) ─────────────────────── */
 
-  // Scaling detector: is the FINAL state a shared-factor projection of the
-  // pre-normalization seed baseline? (Held lines prove nothing — excluded.)
+  // Held lines prove nothing in the proportional-scaling detector. The actual
+  // verdict is computed below, once practicalization has established the
+  // canonical whole-gram proposal.
   const heldLineIds = new Set(
     working.items
       .filter((item) => isConstrained(solverSet, item.id) || item.lock_type !== 'unlocked')
       .map((item) => item.id),
   );
-  const scaling: ProportionalScalingReport = detectProportionalScaling(
-    built.proposal.seedBaselineGrams,
-    working,
-    heldLineIds,
-  );
   const appliedMoves = iterated.diagnostics.rounds.length - 1;
-  const violationsAfterCount = afterViolationList.length;
-  const verdict: FormulationProofVerdict =
-    violationsAfterCount === 0
-      ? 'all_bands_in_range'
-      : scaling.proportional || appliedMoves === 0
-        ? 'no_feasible_improvement'
-        : 'engine_improved';
   const bands = classifyViolationBands(working);
 
   // DOMINANT-LOCK INFEASIBILITY (owner Agent 3) + ACCEPTANCE ADDENDUM (1) —
@@ -4264,21 +4250,8 @@ function buildFormulationPreviewInternal(
     };
   }
 
-  // Best-effort labelling (owner Agent 3 + addendum): provisional/fallback
-  // bands or a reference-derived template NEVER claim optimality; a capped
-  // iteration never claims a proven fixed point; a proven-unfixable residual
-  // is named as such. The stabilizer-dose note appears exactly when the FINAL
-  // dose is still the template-inherited value (owner addendum 3).
-  const provisionalBands = bands.bandSource !== 'native' || bands.temperatureFallback;
-  const bestEffortReasons: FormulationProof['bestEffortReasons'] = [];
-  if (provisionalBands) bestEffortReasons.push('provisional_bands');
-  if (template.status !== 'approved') bestEffortReasons.push('reference_derived_template');
-  if (iterated.diagnostics.capped) bestEffortReasons.push('iteration_capped');
-  // A VERIFIED fixed point (never the cap) proves the residual violations are
-  // unfixable by any permitted move — the accept-with-explanation label.
-  if (violationsAfterCount > 0 && !iterated.diagnostics.capped) {
-    bestEffortReasons.push('residual_violations_proven_unfixable');
-  }
+  // The stabilizer-dose note appears exactly when the FINAL exact-search dose
+  // is still the template-inherited value (owner addendum 3).
   const stabilizer = built.proposal.stabilizerDose;
   const stabilizerLine = stabilizer
     ? working.items.find((item) => item.id === stabilizer.lineId)
@@ -4290,17 +4263,6 @@ function buildFormulationPreviewInternal(
     Math.abs(stabilizerLine.planned_grams - stabilizer.scaledTemplateGrams) <= 0.05
       ? STABILIZER_TEMPLATE_DOSE_NOTE_PL
       : null;
-  const proof: FormulationProof = {
-    verdict,
-    improvingMoves: appliedMoves,
-    solverInvocations: solverRounds,
-    proportionalProjection: scaling.proportional,
-    sharedScaleFactor: scaling.sharedFactor,
-    bestEffort: bestEffortReasons.length > 0,
-    bestEffortReasons,
-    stabilizerDoseNotePl,
-  };
-
   // Agent 1 §5.2 repair: `added[].grams` must report the FINAL post-iteration
   // truth (the diff rows already do) — one Preview, one set of numbers.
   const finalAdded = built.proposal.added.map((addedLine) => {
@@ -4332,6 +4294,46 @@ function buildFormulationPreviewInternal(
     explanation,
     createdAt,
   );
+  // `finishPreview` practicalizes the exact solver candidate and makes the
+  // whole-gram recipe the canonical proposal.  From this point onward every
+  // operator-facing verdict must use that same executable input.  Reusing
+  // `working` here can otherwise leave a fractional boundary violation in the
+  // diagnostic flags even though the presented/applied whole-gram recipe is
+  // fully in range.
+  const executableBands = classifyViolationBands(preview.proposedInput);
+  const executableViolationsAfter = preview.violationsAfter;
+  const executableScaling = detectProportionalScaling(
+    built.proposal.seedBaselineGrams,
+    preview.proposedInput,
+    heldLineIds,
+  );
+  const executableVerdict: FormulationProofVerdict =
+    executableViolationsAfter === 0
+      ? 'all_bands_in_range'
+      : executableScaling.proportional || appliedMoves === 0
+        ? 'no_feasible_improvement'
+        : 'engine_improved';
+  const executableBestEffortReasons: FormulationProof['bestEffortReasons'] = [];
+  if (executableBands.bandSource !== 'native' || executableBands.temperatureFallback) {
+    executableBestEffortReasons.push('provisional_bands');
+  }
+  if (template.status !== 'approved') {
+    executableBestEffortReasons.push('reference_derived_template');
+  }
+  if (iterated.diagnostics.capped) executableBestEffortReasons.push('iteration_capped');
+  if (executableViolationsAfter > 0 && !iterated.diagnostics.capped) {
+    executableBestEffortReasons.push('residual_violations_proven_unfixable');
+  }
+  const proof: FormulationProof = {
+    verdict: executableVerdict,
+    improvingMoves: appliedMoves,
+    solverInvocations: solverRounds,
+    proportionalProjection: executableScaling.proportional,
+    sharedScaleFactor: executableScaling.sharedFactor,
+    bestEffort: executableBestEffortReasons.length > 0,
+    bestEffortReasons: executableBestEffortReasons,
+    stabilizerDoseNotePl,
+  };
   attachMainObjective(preview, input, mainObjective.proof);
   preview.autoBalance = { batchRescaled: true, solverRounds };
   preview.iteration = iterated.diagnostics;
@@ -4350,26 +4352,30 @@ function buildFormulationPreviewInternal(
   // ACCEPTANCE ADDENDUM (1+3): diagnostic classification of the preview —
   // hard-NATIVE residuals or a capped iteration make it DIAGNOSTIC ONLY (the
   // door re-derives both trustlessly; this marks the presentation honestly).
-  preview.hardResidualMetrics = bands.hardMetrics;
+  preview.hardResidualMetrics = executableBands.hardMetrics;
   // Owner addendum item 2: a non-approved formulation seed is DIAGNOSTIC ONLY,
   // whatever the score — the door refuses it independently.
   const referenceDerived = !isApprovedTemplateId(built.proposal.templateId);
   const proteinResidual =
     preview.proteinTarget?.applicable === true && !preview.proteinTarget.reached;
+  const practicalizationBlocked = preview.practicalization?.status === 'blocked';
   preview.diagnosticOnly =
-    bands.hardMetrics.length > 0 ||
+    practicalizationBlocked ||
+    executableBands.hardMetrics.length > 0 ||
     iterated.diagnostics.capped ||
     referenceDerived ||
     proteinResidual;
-  preview.diagnosticReason = referenceDerived
-    ? 'reference_derived'
-    : bands.hardMetrics.length > 0
-      ? 'hard_residual'
-      : iterated.diagnostics.capped
-        ? 'iteration_cap'
-        : proteinResidual
-          ? 'protein_target_residual'
-          : undefined;
+  preview.diagnosticReason = practicalizationBlocked
+    ? 'practicalization_blocked'
+    : referenceDerived
+      ? 'reference_derived'
+      : executableBands.hardMetrics.length > 0
+        ? 'hard_residual'
+        : iterated.diagnostics.capped
+          ? 'iteration_cap'
+          : proteinResidual
+            ? 'protein_target_residual'
+            : undefined;
   return mainSafePreview(input, preview, options.productBehaviorSnapshots);
 }
 
@@ -5109,15 +5115,22 @@ export function buildOptimizePreview(
   preview.autoBalance = { batchRescaled, solverRounds };
   preview.iteration = iterated.diagnostics;
   // ACCEPTANCE ADDENDUM (1+3): the local-correction preview carries the same
-  // honest diagnostic classification as the formulation path.
-  const localBands = classifyViolationBands(working);
+  // honest diagnostic classification as the formulation path. `finishPreview`
+  // may have continued the candidate into a different whole-gram recipe, so
+  // this final classification follows the canonical executable input.
+  const localBands = classifyViolationBands(preview.proposedInput);
   preview.hardResidualMetrics = localBands.hardMetrics;
   const proteinResidual =
     preview.proteinTarget?.applicable === true && !preview.proteinTarget.reached;
+  const practicalizationBlocked = preview.practicalization?.status === 'blocked';
   preview.diagnosticOnly =
-    localBands.hardMetrics.length > 0 || iterated.diagnostics.capped || proteinResidual;
-  preview.diagnosticReason =
-    localBands.hardMetrics.length > 0
+    practicalizationBlocked ||
+    localBands.hardMetrics.length > 0 ||
+    iterated.diagnostics.capped ||
+    proteinResidual;
+  preview.diagnosticReason = practicalizationBlocked
+    ? 'practicalization_blocked'
+    : localBands.hardMetrics.length > 0
       ? 'hard_residual'
       : iterated.diagnostics.capped
         ? 'iteration_cap'

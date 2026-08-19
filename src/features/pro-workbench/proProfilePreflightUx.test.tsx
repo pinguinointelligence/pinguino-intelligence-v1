@@ -51,7 +51,7 @@ beforeEach(() => {
 });
 
 describe('canonical Pro header contract', () => {
-  it('keeps the approved logo left-aligned and moves score authority to the editor dock', () => {
+  it('keeps the approved logo left-aligned and exposes one global status plus AI before the tabs', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const dock = read('features', 'pro-workbench', 'WorkbenchRecipeActionDock.tsx');
@@ -62,13 +62,17 @@ describe('canonical Pro header contract', () => {
     expect(header).toContain('data-testid="workbench-intelligence-header"');
     expect(header).toContain('monitorScoreView(result, input).match');
     expect(dock).toContain('<WorkbenchIntelligenceHeader');
+    expect(dock).toContain('className="xl:hidden"');
     expect(dock).toContain('<WorkbenchActionBar');
-    expect(page).not.toContain('<WorkbenchIntelligenceHeader');
+    expect(page).toContain('<WorkbenchIntelligenceHeader');
+    expect(page).toContain('variant="global"');
     const topActions = page.slice(
       page.indexOf('function ProTopActions'),
       page.indexOf('function RecipeWorkbench'),
     );
-    expect(topActions).not.toContain('Dopasowanie techniczne receptury');
+    expect(topActions.indexOf('data-testid="pro-plan-indicator"')).toBeLessThan(
+      topActions.indexOf('<WorkbenchIntelligenceHeader'),
+    );
     expect(logo).toContain("'/logo/gellattiLOGO.png'");
     expect(logo).toContain('data-logo-source="/logo/gellattiLOGO.png"');
     expect(logo).toContain('w-[136px]');

@@ -19,6 +19,38 @@ interface DirectNumberControlProps {
   testId: string;
   ariaDescribedBy?: string;
   preservePrecision?: boolean;
+  /** Fixed recipe-table capacity. `percent` fits 100.0%; `grams` fits 10000 g. */
+  widthPreset?: 'fluid' | 'percent' | 'grams';
+  /** Optional fourth segment. It stays operable while the numeric segments are locked. */
+  lockSegment?: {
+    pressed: boolean;
+    disabled?: boolean;
+    ariaLabel: string;
+    title: string;
+    suffix: '%' | 'g';
+    onToggle: () => void;
+    testId: string;
+  };
+}
+
+function LockGlyph({ locked }: { locked: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      width="13"
+      height="13"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <rect x="3" y="7" width="10" height="7" rx="2" />
+      <path
+        d={locked ? 'M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2' : 'M10.75 7V5a2.75 2.75 0 0 0-5.5 0'}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 export function DirectNumberControl({
@@ -34,6 +66,8 @@ export function DirectNumberControl({
   testId,
   ariaDescribedBy,
   preservePrecision = false,
+  widthPreset = 'fluid',
+  lockSegment,
 }: DirectNumberControlProps) {
   const accessibleValue = Number(value.toFixed(decimals));
   const valueRef = useRef(value);
@@ -120,11 +154,27 @@ export function DirectNumberControl({
   return (
     <div
       className={cn(
-        'grid min-w-0 grid-cols-[44px_minmax(68px,1fr)_44px] items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-shadow focus-within:border-ink/30 focus-within:shadow-pro-md',
-        disabled && 'bg-stone-100 opacity-55',
+        'grid min-w-0 max-w-full items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-ink/30 focus-within:shadow-pro-md',
+        widthPreset === 'percent' &&
+          (lockSegment
+            ? 'w-[192px] grid-cols-[44px_60px_44px_44px]'
+            : 'w-[148px] grid-cols-[44px_60px_44px]'),
+        widthPreset === 'grams' &&
+          (lockSegment
+            ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
+            : 'w-[160px] grid-cols-[44px_72px_44px]'),
+        widthPreset === 'fluid' &&
+          (lockSegment
+            ? 'w-full grid-cols-[44px_minmax(68px,1fr)_44px_44px]'
+            : 'w-full grid-cols-[44px_minmax(68px,1fr)_44px]'),
+        lockSegment?.pressed
+          ? 'border-stone-400/70 bg-stone-100 shadow-[inset_0_1px_2px_rgb(16_17_19_/_0.06)]'
+          : disabled && 'bg-stone-50',
       )}
       data-testid={testId}
       data-preserve-precision={preservePrecision ? 'true' : undefined}
+      data-control-capacity={widthPreset === 'percent' ? '100.0%' : widthPreset === 'grams' ? '10000g' : 'fluid'}
+      data-control-locked={lockSegment?.pressed ? 'true' : 'false'}
     >
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {ariaLabel}: {value.toFixed(decimals)} {suffix}
@@ -147,7 +197,7 @@ export function DirectNumberControl({
             nudge(direction);
           }}
           className={cn(
-            'row-start-1 grid size-11 place-items-center text-xl font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold disabled:cursor-not-allowed',
+            'row-start-1 grid size-11 place-items-center text-xl font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold disabled:cursor-not-allowed disabled:text-stone-400',
             direction > 0 && 'col-start-3',
           )}
         >
@@ -212,6 +262,27 @@ export function DirectNumberControl({
           {suffix}
         </span>
       </label>
+      {lockSegment ? (
+        <button
+          type="button"
+          disabled={lockSegment.disabled}
+          aria-label={lockSegment.ariaLabel}
+          aria-pressed={lockSegment.pressed}
+          title={lockSegment.title}
+          data-testid={lockSegment.testId}
+          onClick={lockSegment.onToggle}
+          className={cn(
+            'col-start-4 row-start-1 inline-flex size-11 items-center justify-center gap-0.5 border-l border-ink/18 font-mono text-[11px] font-semibold transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold',
+            lockSegment.pressed
+              ? 'bg-stone-200 text-ink'
+              : 'bg-white text-stone-500 hover:bg-stone-100 hover:text-ink',
+            lockSegment.disabled && 'cursor-not-allowed opacity-35',
+          )}
+        >
+          <LockGlyph locked={lockSegment.pressed} />
+          <span aria-hidden>{lockSegment.suffix}</span>
+        </button>
+      ) : null}
     </div>
   );
 }

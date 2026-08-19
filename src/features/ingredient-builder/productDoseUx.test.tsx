@@ -124,7 +124,10 @@ describe('Topping zero-dose copy', () => {
       expect(html).not.toContain('>Topping<');
       expect(html).not.toContain('>Ilość<');
       expect(html).toContain('data-testid="topping-grams-topping-product"');
+      expect(html).toContain('data-control-capacity="10000g"');
+      expect(html).toContain('data-category-symbol="dairy"');
       expect(html).toContain('class="pro-focus-ring grid size-11 place-items-center rounded-full');
+      expect(html).toContain('aria-label="Opcje toppingu');
       expect(html).toContain('•••');
     }
   });

@@ -41,6 +41,12 @@ import {
 } from './productPickerModel';
 import { closeProductPickerForPointer } from './productPickerBackdrop';
 import { mobileProductPickerRect } from './productPickerViewport';
+import { IngredientCategoryIcon } from './IngredientCategoryIcon';
+import {
+  ingredientCategoryMatchesFilter,
+  ingredientCategorySymbolFor,
+  type IngredientCategoryFilterId,
+} from './ingredientCategorySymbols';
 
 export type ProductPickerScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
 
@@ -77,31 +83,17 @@ const GROUP_LABELS: Record<PickerOption['group'], string> = {
   blocked: 'Wymagają uzupełnienia',
 };
 
-type PickerFilter =
-  | 'all'
-  | 'favorites'
-  | 'fresh'
-  | 'dairy'
-  | 'dry'
-  | 'chocolate'
-  | 'fruit'
-  | 'nuts'
-  | 'paste';
-
-const PICKER_FILTERS: readonly { id: PickerFilter; label: string; icon: string }[] = [
-  { id: 'all', label: 'Wszystkie', icon: '•' },
-  { id: 'favorites', label: 'Ulubione', icon: '☆' },
-  { id: 'fresh', label: 'Świeże', icon: '♧' },
-  { id: 'dairy', label: 'Mleczne', icon: '▱' },
-  { id: 'dry', label: 'Suche', icon: '▦' },
-  { id: 'chocolate', label: 'Czekolada', icon: '◆' },
-  { id: 'fruit', label: 'Owoce', icon: '●' },
-  { id: 'nuts', label: 'Orzechy', icon: '◉' },
-  { id: 'paste', label: 'Pasty', icon: '◖' },
+const PICKER_FILTERS: ReadonlyArray<{ id: IngredientCategoryFilterId; label: string }> = [
+  { id: 'all', label: 'Wszystkie' },
+  { id: 'favorites', label: 'Ulubione' },
+  { id: 'fresh', label: 'Świeże' },
+  { id: 'dairy', label: 'Mleczne' },
+  { id: 'dry', label: 'Suche' },
+  { id: 'chocolate', label: 'Czekolada' },
+  { id: 'fruit', label: 'Owoce' },
+  { id: 'nuts', label: 'Orzechy' },
+  { id: 'paste', label: 'Pasty' },
 ];
-
-const pickerMetadata = (option: PickerOption) =>
-  `${option.category ?? ''} ${option.detail}`.toLocaleLowerCase('en-US');
 
 const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   dairy: 'Mleczne',
@@ -126,21 +118,11 @@ const publicPickerUnavailableReason = (option: PickerOption, scope: ProductPicke
     ? `${option.name} nie ma obecnie kompletnego zatwierdzenia do bazy receptury. Odśwież dane lub wybierz inny produkt.`
     : `${option.name} nie ma obecnie kompletnych danych do użycia jako topping. Uzupełnij dane lub wybierz inny produkt.`;
 
-const matchesPickerFilter = (option: PickerOption, filter: PickerFilter): boolean => {
-  if (filter === 'all') return true;
-  if (filter === 'favorites') return option.favorite;
-  const metadata = pickerMetadata(option);
-  const keywords: Record<Exclude<PickerFilter, 'all' | 'favorites'>, readonly string[]> = {
-    fresh: ['fresh', 'chilled', 'śwież'],
-    dairy: ['dairy', 'milk', 'cream', 'mlecz'],
-    dry: ['dry', 'powder', 'suche'],
-    chocolate: ['chocolate', 'cocoa', 'czekolad'],
-    fruit: ['fruit', 'owoc'],
-    nuts: ['nut', 'orzech'],
-    paste: ['paste', 'puree', 'pasta', 'purée'],
-  };
-  return keywords[filter].some((keyword) => metadata.includes(keyword));
-};
+const matchesPickerFilter = (option: PickerOption, filter: IngredientCategoryFilterId): boolean =>
+  ingredientCategoryMatchesFilter(
+    { category: option.category, form: option.detail, favorite: option.favorite },
+    filter,
+  );
 
 interface PickerPosition {
   desktop: boolean;
@@ -186,7 +168,7 @@ export function ProductPickerPopover({
   const [activeIndex, setActiveIndex] = useState(0);
   const [adding, setAdding] = useState(false);
   const [unavailableNotice, setUnavailableNotice] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<PickerFilter>('all');
+  const [activeFilter, setActiveFilter] = useState<IngredientCategoryFilterId>('all');
   const [scrollThumb, setScrollThumb] = useState({ top: 0, height: 50, visible: false });
   const [position, setPosition] = useState<PickerPosition | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -291,7 +273,7 @@ export function ProductPickerPopover({
         name: item.name,
         detail: library.formIndex.get(item.id) ?? '',
         brand: null,
-        category: library.formIndex.get(item.id) ?? null,
+        category: item.category,
         articleNumber: null,
         local: item,
         entityKind: 'pi_base' as const,
@@ -656,7 +638,7 @@ export function ProductPickerPopover({
                               : 'border-ink/10 bg-white text-stone-600 hover:border-ink/25 hover:text-ink',
                           )}
                         >
-                          <span aria-hidden>{filter.icon}</span>
+                          <IngredientCategoryIcon symbol={filter.id} />
                           {filter.label}
                         </button>
                       ))}
@@ -768,13 +750,17 @@ export function ProductPickerPopover({
                                           : 'bg-slate-200 text-slate-700',
                                   )}
                                 >
-                                  <span aria-hidden>
-                                    {!option.selectable
-                                      ? '!'
-                                      : (option.category ?? option.detail)
-                                          .slice(0, 1)
-                                          .toUpperCase()}
-                                  </span>
+                                  {option.selectable ? (
+                                    <IngredientCategoryIcon
+                                      symbol={ingredientCategorySymbolFor({
+                                        category: option.category,
+                                        form: option.detail,
+                                      })}
+                                      className="size-[18px]"
+                                    />
+                                  ) : (
+                                    <span aria-hidden>!</span>
+                                  )}
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block truncate text-sm font-semibold">

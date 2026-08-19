@@ -66,7 +66,7 @@ export function AppShell({
           'mx-auto flex items-center justify-between gap-4 px-6 py-4 2xl:px-0',
           maxWidthClass,
           viewportLock &&
-            'w-full shrink-0 border-b border-ink/8 bg-white max-sm:px-3 max-sm:py-2 xl:h-[82px] xl:w-[calc(100%-var(--pro-page-gutter))] xl:px-0 xl:py-0',
+            'w-full shrink-0 border-b border-ink/8 bg-white max-sm:px-3 max-sm:py-2 xl:grid xl:h-[82px] xl:w-[calc(100%-var(--pro-page-gutter))] xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:px-0 xl:py-0',
         )}
         style={{
           paddingTop: viewportLock
@@ -74,7 +74,12 @@ export function AppShell({
             : 'max(env(safe-area-inset-top), 1rem)',
         }}
       >
-        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+        <div
+          className={cn(
+            'flex min-w-0 items-center gap-3 sm:gap-5',
+            viewportLock && 'xl:col-start-1 xl:row-start-1',
+          )}
+        >
           {viewportLock ? <AppNavDrawer /> : null}
           <Link
             to={brandDestination}
@@ -89,6 +94,7 @@ export function AppShell({
             )}
           </Link>
           {viewportLock ? actions : null}
+          {viewportLock ? <DesignReviewOverlay /> : null}
         </div>
         {viewportLock ? workbenchChrome : null}
         {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
@@ -96,13 +102,13 @@ export function AppShell({
         <div
           className={cn(
             'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-            viewportLock && 'max-sm:w-auto max-sm:shrink-0 max-sm:flex-nowrap xl:mt-6',
+            viewportLock && 'hidden',
           )}
         >
           {!viewportLock ? actions : null}
           {/* Owner/QA only. Kept in normal header flow so review tooling can
               never cover an ingredient control or another primary action. */}
-          <DesignReviewOverlay />
+          {!viewportLock ? <DesignReviewOverlay /> : null}
           {!viewportLock ? <AppNavDrawer /> : null}
         </div>
       </header>

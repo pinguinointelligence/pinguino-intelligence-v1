@@ -32,6 +32,8 @@ import {
 import { effectiveInputCostPerKg } from './ecoDraftCostSweep';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
 import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
+import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import { classifyViolationBands } from '@/features/formulation/violationBands';
 
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
@@ -39,6 +41,18 @@ const MILK = starterLine('milk_3_5');
 const TARA = starterLine('tara_gum');
 
 const NO_CONSTRAINTS: ConstraintSet = { byLineId: {} };
+
+const unlockedWholeGramBoundaryRecipe = (): RecipeInput => {
+  const input = ownerSameInputRecipe();
+  return {
+    ...input,
+    target_temperature_c: -11,
+    target_batch_grams: 206,
+    items: input.items.map((item) =>
+      item.id === 'owner:smp' ? { ...item, planned_grams: 501 } : item,
+    ),
+  };
+};
 
 const lineGrams = (input: RecipeInput, lineId: string): number => {
   const line = input.items.find((item) => item.id === lineId);
@@ -192,6 +206,47 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
       (item) => item.id !== MILK && item.ingredient.id === milkIngredientId,
     );
     expect(addedMilk).toEqual([]);
+  });
+
+  it('uses the continued whole-gram recipe as the single final violation and Apply authority', () => {
+    const input = unlockedWholeGramBoundaryRecipe();
+    const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.preview.practicalization?.status).toBe('ready');
+    if (result.preview.practicalization?.status !== 'ready') return;
+    const exactCandidate = result.preview.practicalization.audit.exactInput;
+
+    // The deterministic exact solver candidate sits fractionally beyond two
+    // native boundaries. The existing whole-gram continuation finds the
+    // executable 206 g recipe with every final band in range.
+    expect(classifyViolationBands(exactCandidate).hardMetrics).toEqual([
+      'fat',
+      'lactose_sandiness_risk',
+    ]);
+    expect(
+      result.preview.proposedInput.items.every((item) => Number.isInteger(item.planned_grams)),
+    ).toBe(true);
+    expect(
+      result.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
+    ).toBe(206);
+    expect(classifyViolationBands(result.preview.proposedInput).hardMetrics).toEqual([]);
+    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+
+    expect(result.preview.violationsAfter).toBe(0);
+    expect(result.preview.hardResidualMetrics).toEqual([]);
+    expect(result.preview.diagnosticOnly).toBe(false);
+    expect(result.preview.diagnosticReason).toBeUndefined();
+    expect(result.preview.formulation?.proof).toMatchObject({
+      verdict: 'all_bands_in_range',
+      bestEffort: false,
+      bestEffortReasons: [],
+    });
+
+    expect(
+      commitPreview(input, NO_CONSTRAINTS, result.preview, 'now', 'apply-whole-boundary').ok,
+    ).toBe(true);
   });
 });
 

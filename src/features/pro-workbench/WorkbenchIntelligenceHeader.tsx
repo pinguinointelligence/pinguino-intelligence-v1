@@ -56,10 +56,10 @@ export function WorkbenchIntelligenceHeader({
     currentReady: current,
     hasAppliedHistory: appliedHistoryCount > 0,
   });
+  const working = recalculationTerminal?.state === 'WORKING';
+  const pending = !displayedMatch || awaitingRecalculation;
 
   if (variant === 'dock') {
-    const working = recalculationTerminal?.state === 'WORKING';
-    const pending = !displayedMatch || awaitingRecalculation;
     return (
       <div
         className="flex min-w-0 items-center gap-2"
@@ -130,8 +130,9 @@ export function WorkbenchIntelligenceHeader({
     >
       <button
         type="button"
-        onClick={onOpenLearning}
-        disabled={!onOpenLearning}
+        onClick={pending || working ? onRecalculate : onOpenLearning}
+        disabled={working || (pending ? !onRecalculate : !onOpenLearning)}
+        aria-busy={working}
         className={`pro-focus-ring flex items-center justify-end gap-3 rounded-[12px] text-right disabled:cursor-default ${variant === 'global' ? 'min-h-12 sm:min-w-[210px]' : 'min-h-14 w-full'}`}
       >
         <span className={variant === 'global' ? 'hidden min-w-0 sm:block' : 'min-w-0'}>
@@ -145,6 +146,8 @@ export function WorkbenchIntelligenceHeader({
                 ? 'Podgląd gotowy'
                 : current
                   ? 'Obliczenia zakończone'
+                  : working
+                    ? 'Przeliczanie…'
                   : legacyInspection
                     ? 'Podgląd historyczny'
                     : hasRecipe

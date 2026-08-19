@@ -9,6 +9,7 @@ import {
   readPracticalRecipeAudit,
 } from '@/features/practical-recipe/practicalRecipe';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import type {
@@ -369,5 +370,176 @@ describe('Production trusted Rescue runtime races', () => {
       expect.objectContaining({ module: 'PRODUCTION' }),
     );
     expect(view?.prerequisite?.code).not.toBe('product_authority_required');
+  });
+
+  it('preserves and detaches only an orphaned local session before starting the saved immutable version', async () => {
+    useProductionSessionStore.getState().clear();
+    const loadedInput = buildRecipeInput(useRecipeStore.getState(), 'planning');
+    const practicalAudit = readPracticalRecipeAudit(
+      attachPracticalRecipeAudit(
+        loadedInput,
+        loadedInput,
+        '2026-08-19T10:00:00.000Z',
+      ),
+    );
+    useRecipeStore.getState().markSaved(
+      'recipe-saved-after-preview',
+      'Saved after Preview and Apply',
+      2,
+      '2026-08-19T10:04:00.000Z',
+      practicalAudit,
+      '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
+    );
+    useProductionSessionStore.getState().startNewSession({
+      ownerUserId: 'owner-runtime',
+      source: {
+        recipeId: 'recipe-before-durable-production',
+        recipeVersionId: 'version-before-durable-production',
+        recipeVersionNumber: 1,
+        recipeName: 'Local pre-durable session',
+      },
+      plannedInput: loadedInput,
+      plannedComposition: recipeCompositionFromState(useRecipeStore.getState()),
+      now: '2026-08-19T09:00:00.000Z',
+      sessionId: 'local-run-without-remote-row',
+    });
+    const orphaned = useProductionSessionStore.getState().session!;
+    const startedRun: ProductionRun = {
+      ...durableRescuedRun(orphaned),
+      runId: 'durable-run-after-save',
+      recipeId: 'recipe-saved-after-preview',
+      recipeVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
+      recipeVersionNumber: 2,
+      actual: null,
+      rescue: null,
+      events: [],
+    };
+    const repository = {
+      getRun: vi.fn(async (runId: string) =>
+        runId === startedRun.runId ? startedRun : null,
+      ),
+      listRuns: vi.fn(async () => ({ items: [], nextCursor: null })),
+      startRun: vi.fn(async () => startedRun),
+      transition: vi.fn(async () => {
+        throw new Error('An orphaned local run must never be mutated remotely.');
+      }),
+    } as unknown as ProductionRepository;
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+    mocks.validateRecipeBehaviorOnServer.mockResolvedValue({
+      ready: true,
+      module: 'PRODUCTION',
+      staleLineIds: [],
+      lines: [],
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(view?.prerequisite).toMatchObject({
+      code: 'repository_recovery',
+      action: 'archive_stale_session',
+      actionLabel: 'Zachowaj i odłącz lokalną sesję',
+    });
+
+    await act(async () => view!.archiveStaleSession());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(repository.transition).not.toHaveBeenCalled();
+    expect(useProductionSessionStore.getState().archivedSessions).toContainEqual(orphaned);
+    expect(view?.prerequisite).toBeNull();
+
+    await act(async () => view!.startNewSession());
+
+    expect(repository.startRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        version: expect.objectContaining({
+          versionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
+          versionNumber: 2,
+        }),
+      }),
+    );
+    expect(useProductionSessionStore.getState().session?.sessionId).toBe(
+      'durable-run-after-save',
+    );
+  });
+
+  it('keeps the local session attached when durable recovery fails for a repository error', async () => {
+    useProductionSessionStore.getState().clear();
+    const loadedInput = buildRecipeInput(useRecipeStore.getState(), 'planning');
+    useRecipeStore.getState().markSaved(
+      'recipe-repository-error',
+      'Repository error QA',
+      3,
+      '2026-08-19T10:05:00.000Z',
+      readPracticalRecipeAudit(
+        attachPracticalRecipeAudit(
+          loadedInput,
+          loadedInput,
+          '2026-08-19T10:00:00.000Z',
+        ),
+      ),
+      'a0e77f7e-a858-4d5a-ae39-f0dfd60a8cbf',
+    );
+    useProductionSessionStore.getState().startNewSession({
+      ownerUserId: 'owner-runtime',
+      source: {
+        recipeId: 'recipe-repository-error',
+        recipeVersionId: 'a0e77f7e-a858-4d5a-ae39-f0dfd60a8cbf',
+        recipeVersionNumber: 3,
+        recipeName: 'Repository error QA',
+      },
+      plannedInput: loadedInput,
+      plannedComposition: recipeCompositionFromState(useRecipeStore.getState()),
+      now: '2026-08-19T10:05:00.000Z',
+      sessionId: 'local-run-during-repository-error',
+    });
+    const attached = useProductionSessionStore.getState().session!;
+    const repository = {
+      getRun: vi.fn(async () => {
+        throw new Error('network unavailable');
+      }),
+      transition: vi.fn(),
+    } as unknown as ProductionRepository;
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+    mocks.validateRecipeBehaviorOnServer.mockResolvedValue({
+      ready: true,
+      module: 'PRODUCTION',
+      staleLineIds: [],
+      lines: [],
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(view?.prerequisite).toMatchObject({
+      code: 'repository_recovery',
+      action: 'return_to_recipe',
+    });
+    await act(async () => view!.archiveStaleSession());
+    expect(useProductionSessionStore.getState().session).toEqual(attached);
+    expect(useProductionSessionStore.getState().archivedSessions).toEqual([]);
+    expect(repository.transition).not.toHaveBeenCalled();
   });
 });

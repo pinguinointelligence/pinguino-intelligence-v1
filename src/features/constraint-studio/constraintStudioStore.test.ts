@@ -25,6 +25,7 @@ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { optimizePreviewRequiresApply, useConstraintStudioStore } from './constraintStudioStore';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import type { ConstraintPreview } from './applyPipeline';
+import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
@@ -440,6 +441,49 @@ describe('§17.1/§17.2 padlock', () => {
     const movedDiff = unlockedState.preview?.lines.find((line) => line.lineId === SUCROSE);
     expect(movedDiff?.kind).toBe('changed');
     expect((movedDiff?.afterGrams ?? Number.NaN) < 150).toBe(true);
+  });
+
+  it('lock → unlock clears stale state and exposes the executable whole-gram Preview for Apply', () => {
+    const input = ownerSameInputRecipe();
+    input.target_temperature_c = -11;
+    input.target_batch_grams = 206;
+    input.items = input.items.map((item) =>
+      item.id === 'owner:smp' ? { ...item, planned_grams: 501 } : item,
+    );
+    loadRecipe(input);
+
+    useConstraintStudioStore.getState().toggleLock('owner:smp');
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).not.toBeNull();
+
+    useConstraintStudioStore.getState().toggleLock('owner:smp');
+    expect(lineLockType('owner:smp')).toBe('unlocked');
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).toBeNull();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toBeNull();
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    expect(preview?.violationsAfter).toBe(0);
+    expect(preview?.hardResidualMetrics).toEqual([]);
+    expect(preview?.diagnosticOnly).toBe(false);
+    expect(preview?.proposedInput.items.every((item) => Number.isInteger(item.planned_grams))).toBe(
+      true,
+    );
+
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+    expect(lineGrams('owner:smp')).not.toBe(501);
+    expect(Number.isInteger(lineGrams('owner:smp'))).toBe(true);
+    expect(
+      buildRecipeInput(useRecipeStore.getState()).items.reduce(
+        (sum, item) => sum + item.planned_grams,
+        0,
+      ),
+    ).toBe(206);
   });
 
   it('padlock is inert on a line with actual grams (poured material, spec §15)', () => {

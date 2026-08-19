@@ -22,6 +22,8 @@ import {
   type SubstituteCandidate,
 } from './ingredientTableUx';
 import { DirectNumberControl } from './DirectNumberControl';
+import { IngredientCategoryIcon } from './IngredientCategoryIcon';
+import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import { ProductionActualControl } from '@/features/production-workspace/ProductionActualControl';
 
 const b = copy.studio.builder;
@@ -31,9 +33,9 @@ export type IngredientTableMode = 'recipe' | 'production';
 
 /** Recipe mode only: Ingredient | % + lock | quantity + lock/unit | price | menu. */
 export const ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(202px,1fr)_96px_44px] 2xl:grid-cols-[minmax(300px,1fr)_222px_260px_76px_44px]';
+  'grid grid-cols-1 items-center gap-x-2.5 gap-y-3 md:grid-cols-[minmax(164px,1fr)_192px_204px_72px_44px] 2xl:grid-cols-[minmax(260px,1fr)_192px_204px_72px_44px]';
 export const COMPACT_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-3 gap-y-3 md:grid-cols-[minmax(180px,1.5fr)_minmax(174px,0.85fr)_minmax(202px,1fr)_96px_44px]';
+  'grid grid-cols-1 items-center gap-x-2.5 gap-y-3 md:grid-cols-[minmax(164px,1fr)_192px_204px_72px_44px]';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 
@@ -139,26 +141,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
     <span className="mb-1 block text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase md:hidden">
       {children}
     </span>
-  );
-}
-
-function LockGlyph({ locked }: { locked: boolean }) {
-  return (
-    <svg
-      aria-hidden
-      width="11"
-      height="11"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    >
-      <rect x="3" y="7" width="10" height="7" rx="2" />
-      <path
-        d={locked ? 'M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2' : 'M10.75 7V5a2.75 2.75 0 0 0-5.5 0'}
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }
 
@@ -614,7 +596,17 @@ function RecipeRow({
               </span>
             ) : null}
             <span
-              className="truncate text-[13px] font-semibold text-ink 2xl:order-2"
+              aria-hidden
+              className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 2xl:order-2 2xl:size-6"
+            >
+              <IngredientCategoryIcon
+                symbol={ingredientCategorySymbolFor({
+                  category: item.ingredient.category,
+                })}
+              />
+            </span>
+            <span
+              className="truncate text-[13px] font-semibold text-ink 2xl:order-3"
               title={item.ingredient.name}
             >
               {item.ingredient.name}
@@ -623,7 +615,7 @@ function RecipeRow({
               <span
                 aria-label={t.data.estimatedHint}
                 title={t.data.estimatedHint}
-                className="mr-auto size-1.5 shrink-0 rounded-full bg-status-risky 2xl:order-3"
+                className="mr-auto size-1.5 shrink-0 rounded-full bg-status-risky 2xl:order-4"
                 data-testid={`row-estimated-${item.id}`}
               />
             ) : null}
@@ -672,7 +664,7 @@ function RecipeRow({
 
         <div>
           <FieldLabel>{t.columns.percent}</FieldLabel>
-          <div className="flex items-center justify-end gap-1.5">
+          <div className="flex items-center justify-start">
             <DirectNumberControl
               value={share ?? 0}
               step={0.1}
@@ -690,35 +682,25 @@ function RecipeRow({
               }
               onChange={(percent) => actions.setPlannedPercent?.(item.id, percent)}
               testId={`row-percent-control-${item.id}`}
-            />
-            <button
-              type="button"
-              disabled={lock?.percentToggleDisabled ?? true}
-              onClick={lock?.onTogglePercent}
-              aria-label={`${item.ingredient.name} — ${lock?.percentLocked ? '% partii zablokowany. Odblokuj' : 'Zablokuj % partii'}`}
-              aria-pressed={lock?.percentLocked ?? false}
-              title={
-                lock?.percentLocked
+              widthPreset="percent"
+              lockSegment={{
+                pressed: lock?.percentLocked ?? false,
+                disabled: lock?.percentToggleDisabled ?? true,
+                ariaLabel: `${item.ingredient.name} — ${lock?.percentLocked ? '% partii zablokowany. Odblokuj' : 'Zablokuj % partii'}`,
+                title: lock?.percentLocked
                   ? `Udział zablokowany: ${lock.percentLabel ?? ''}`
-                  : 'Zablokuj procent finalnej partii'
-              }
-              data-testid={`row-lock-percent-${item.id}`}
-              className={cn(
-                'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold',
-                lock?.percentLocked
-                  ? 'border-ink bg-ink text-white shadow-pro-sm'
-                  : 'border-ink/15 bg-white text-stone-500 hover:border-gold/50 hover:text-gold',
-              )}
-            >
-              <LockGlyph locked={lock?.percentLocked ?? false} />
-              <span aria-hidden>%</span>
-            </button>
+                  : 'Zablokuj procent finalnej partii',
+                suffix: '%',
+                onToggle: lock?.onTogglePercent ?? (() => undefined),
+                testId: `row-lock-percent-${item.id}`,
+              }}
+            />
           </div>
         </div>
 
         <div>
           <FieldLabel>{t.columns.quantity}</FieldLabel>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center">
             <DirectNumberControl
               value={displayQuantity}
               step={1}
@@ -732,33 +714,23 @@ function RecipeRow({
               }
               onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
               testId={`row-grams-control-${item.id}`}
-            />
-            <button
-              type="button"
-              aria-pressed={gramsLocked}
-              aria-label={`${item.ingredient.name} — ${gramsLocked ? 'Gramatura zablokowana. Odblokuj' : 'Zablokuj gramy'}`}
-              title={lock?.title ?? b.lockTypes.grams}
-              disabled={lock?.toggleDisabled}
-              data-testid={`row-lock-grams-${item.id}`}
-              onClick={() => {
-                if (lock) {
-                  lock.onToggle();
-                  return;
-                }
-                actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams');
+              widthPreset="grams"
+              lockSegment={{
+                pressed: gramsLocked,
+                disabled: lock?.toggleDisabled,
+                ariaLabel: `${item.ingredient.name} — ${gramsLocked ? 'Gramatura zablokowana. Odblokuj' : 'Zablokuj gramy'}`,
+                title: lock?.title ?? b.lockTypes.grams,
+                suffix: 'g',
+                onToggle: () => {
+                  if (lock) {
+                    lock.onToggle();
+                    return;
+                  }
+                  actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams');
+                },
+                testId: `row-lock-grams-${item.id}`,
               }}
-              className={cn(
-                'inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full border px-2 font-mono text-xs font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink',
-                gramsLocked
-                  ? 'border-ink bg-ink text-white'
-                  : 'border-ink/15 bg-white text-stone-500 hover:border-ink/40 hover:text-ink',
-                lock?.toggleDisabled && 'cursor-not-allowed opacity-35',
-              )}
-            >
-              <LockGlyph locked={gramsLocked} />
-              <span aria-hidden>g</span>
-              {gramsLocked ? <span className="sr-only">Zablokowana</span> : null}
-            </button>
+            />
           </div>
         </div>
 

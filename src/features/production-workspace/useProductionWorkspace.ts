@@ -184,6 +184,13 @@ export type DurableProductionRecoveryRelation =
   | 'new_actual'
   | 'same';
 
+class MissingDurableProductionRunError extends Error {
+  constructor() {
+    super('Local Production session has no matching durable run.');
+    this.name = 'MissingDurableProductionRunError';
+  }
+}
+
 export const durableProductionRecoveryRelation = (
   local: Pick<ProductionSession, 'durableRescueRevision' | 'durableActualRevision'> | null,
   remote: Pick<ProductionRun, 'rescue' | 'actual'> | null,
@@ -287,7 +294,8 @@ export function useProductionWorkspace(enabled: boolean) {
     key: string | null;
     busy: boolean;
     error: string | null;
-  }>({ key: null, busy: false, error: null });
+    orphanedLocal: boolean;
+  }>({ key: null, busy: false, error: null, orphanedLocal: false });
   const [rescueAuthorization, setRescueAuthorization] =
     useState<ProductionRescueAuthorizationState>({ status: 'idle' });
   const rescueAuthorizationRef = useRef<ProductionRescueAuthorizationState>({ status: 'idle' });
@@ -446,14 +454,14 @@ export function useProductionWorkspace(enabled: boolean) {
       return;
     let cancelled = false;
     const reconcile = async () => {
-      setRecovery({ key: recoveryKey, busy: true, error: null });
+      setRecovery({ key: recoveryKey, busy: true, error: null, orphanedLocal: false });
       try {
         const localSession = sessionRef.current;
         let remote = localSession
           ? await repositoryState.repository!.getRun(localSession.sessionId, ownerUserId)
           : null;
         if (durableProductionRecoveryRelation(localSession, remote) === 'missing_remote') {
-          throw new Error('Local Production session has no matching durable run.');
+          throw new MissingDurableProductionRunError();
         }
         if (!remote) {
           const active = await repositoryState.repository!.listRuns(ownerUserId, {
@@ -491,13 +499,14 @@ export function useProductionWorkspace(enabled: boolean) {
               : hydrated,
           );
         }
-      } catch {
+      } catch (caught) {
         if (!cancelled) {
           setRecovery({
             key: recoveryKey,
             busy: false,
             error:
               'Nie udało się uzgodnić lokalnej sesji z trwałym zapisem Produkcji. Wróć do receptury i spróbuj ponownie.',
+            orphanedLocal: caught instanceof MissingDurableProductionRunError,
           });
         }
         return;
@@ -532,6 +541,8 @@ export function useProductionWorkspace(enabled: boolean) {
     Boolean(repositoryState.repository && ownerUserId && source.recipeVersionId) &&
     (recovery.key !== recoveryKey || recovery.busy);
   const recoveryError = recovery.key === recoveryKey ? recovery.error : null;
+  const recoveryOrphanedLocal =
+    recovery.key === recoveryKey && recovery.orphanedLocal && recoveryError !== null;
 
   useEffect(() => {
     if (!enabled || !practicalGate.ready || plannedInput.items.length === 0) return;
@@ -632,11 +643,17 @@ export function useProductionWorkspace(enabled: boolean) {
           (practicalGate.ready && (recoveryPending || recoveryError)
             ? prerequisite(
                 'repository_recovery',
-                recoveryError ? 'Nie udało się odzyskać partii' : 'Odzyskujemy partię',
-                recoveryError ??
-                  'Sprawdzamy trwały zapis, aby nie uruchomić drugi raz tej samej partii.',
-                'return_to_recipe',
-                'Wróć do receptury',
+                recoveryOrphanedLocal
+                  ? 'Lokalna sesja nie ma trwałego runu'
+                  : recoveryError
+                    ? 'Nie udało się odzyskać partii'
+                    : 'Odzyskujemy partię',
+                recoveryOrphanedLocal
+                  ? 'Zachowaj osieroconą sesję w lokalnej historii i odłącz ją, aby bezpiecznie sprawdzić lub rozpocząć partię dla zapisanej wersji.'
+                  : (recoveryError ??
+                    'Sprawdzamy trwały zapis, aby nie uruchomić drugi raz tej samej partii.'),
+                recoveryOrphanedLocal ? 'archive_stale_session' : 'return_to_recipe',
+                recoveryOrphanedLocal ? 'Zachowaj i odłącz lokalną sesję' : 'Wróć do receptury',
               )
             : null));
 
@@ -853,7 +870,17 @@ export function useProductionWorkspace(enabled: boolean) {
     persistenceError: persistence.error,
     currentSourceFingerprint,
     archiveStaleSession: async () => {
-      if (!staleSource || !session || !repositoryState.repository || persistence.busy) return;
+      if (!session || persistence.busy) return;
+      if (recoveryOrphanedLocal) {
+        archiveCurrentSession();
+        setRecovery((current) => ({
+          ...current,
+          error: null,
+          orphanedLocal: false,
+        }));
+        return;
+      }
+      if (!staleSource || !repositoryState.repository) return;
       setPersistence({ busy: true, error: null });
       try {
         await repositoryState.repository.transition(

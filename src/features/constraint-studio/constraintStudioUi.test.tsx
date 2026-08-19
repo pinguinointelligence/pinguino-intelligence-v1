@@ -125,7 +125,7 @@ describe('IngredientRow padlock', () => {
     removeItem: noop,
   };
 
-  it('locked state: Polish aria, badge with the protected grams, disabled input', () => {
+  it('locked state: Polish aria, integrated lock segment and disabled input', () => {
     const html = render(
       <IngredientRow
         item={item}
@@ -144,7 +144,8 @@ describe('IngredientRow padlock', () => {
       />,
     );
     expect(html).toContain('Sucrose — Gramatura zablokowana. Odblokuj');
-    expect(html).toContain('Zablokowana');
+    expect(html).toContain('Gramatura zablokowana: 130 g');
+    expect(html).toContain('data-control-locked="true"');
     expect(html).toContain('disabled');
     expect(html).toContain('aria-pressed="true"');
   });

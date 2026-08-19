@@ -275,8 +275,10 @@ describe('new Pro profile layout', () => {
     expect(row).toContain('row-lock-grams-');
     expect(row).toContain('row-lock-percent-');
     expect(row).toContain("gramsLocked ? 'unlocked' : 'grams'");
-    expect(row).toContain('onClick={lock?.onTogglePercent}');
-    expect(row).toContain('aria-pressed={lock?.percentLocked ?? false}');
+    expect(row).toContain('onToggle: lock?.onTogglePercent');
+    expect(row).toContain('pressed: lock?.percentLocked ?? false');
+    expect(row).toContain('widthPreset="percent"');
+    expect(row).toContain('widthPreset="grams"');
     expect(row).not.toContain('nie jest jeszcze podłączona do solvera');
   });
 });

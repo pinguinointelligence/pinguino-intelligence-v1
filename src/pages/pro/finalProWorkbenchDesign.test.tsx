@@ -109,7 +109,7 @@ describe('one global menu and four local contexts', () => {
   it('keeps the four workspace modules in one horizontal header row', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(page).toContain('<WorkbenchModuleTabs');
-    expect(page).toContain('xl:w-[calc((100%-var(--pro-workbench-gap))/2.62)]');
+    expect(page).toContain('xl:col-start-2 xl:row-start-1 xl:block xl:w-full');
     expect(page).toContain('className="w-full border-b-0"');
     expect(page).toContain('AppShell');
   });
@@ -331,7 +331,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     expect(shell).toContain('xl:h-dvh');
     expect(shell).toContain('xl:overflow-hidden');
-    expect(shell).toContain('max-sm:flex-nowrap');
+    expect(shell).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
+    expect(shell).toContain("viewportLock && 'xl:col-start-1 xl:row-start-1'");
     expect(read('styles', 'theme-pro-light.css')).toContain(
       '@container right-pane (max-width: 540px)',
     );

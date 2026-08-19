@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { DirectNumberControl } from './DirectNumberControl';
+import { IngredientCategoryIcon } from './IngredientCategoryIcon';
+import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import {
   CustomerPriceEditor,
   IngredientPriceCell,
@@ -73,6 +75,18 @@ export function ToppingRow({
             >
               ⠿
             </span>
+            <span
+              aria-hidden
+              className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-stone-600 md:size-6"
+            >
+              <IngredientCategoryIcon
+                symbol={ingredientCategorySymbolFor({
+                  category: isCatalogLabelToppingIngredient(item.ingredient)
+                    ? null
+                    : item.ingredient.category,
+                })}
+              />
+            </span>
             <strong
               className="truncate text-[13px] font-semibold text-ink"
               title={item.ingredient.name}
@@ -99,7 +113,7 @@ export function ToppingRow({
 
         <div aria-hidden className="hidden md:block" />
 
-        <div>
+        <div className="justify-self-end">
           <DirectNumberControl
             value={item.planned_grams}
             min={0}
@@ -109,6 +123,7 @@ export function ToppingRow({
             ariaLabel={`${item.ingredient.name} — ilość toppingu`}
             onChange={(value) => onChange(Math.max(0, value))}
             testId={`topping-grams-${item.id}`}
+            widthPreset="grams"
           />
         </div>
 

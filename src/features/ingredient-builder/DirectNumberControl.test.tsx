@@ -95,4 +95,53 @@ describe('DirectNumberControl', () => {
     expect(html).toContain('aria-valuenow="13.6"');
     expect(html).not.toContain('13.600000000000001');
   });
+
+  it('pins recipe capacities and integrates the active lock as one quiet fourth segment', () => {
+    const html = renderToStaticMarkup(
+      <DirectNumberControl
+        value={100}
+        step={0.1}
+        decimals={1}
+        suffix="%"
+        ariaLabel="Udział"
+        onChange={() => {}}
+        testId="compact-percent"
+        widthPreset="percent"
+        disabled
+        lockSegment={{
+          pressed: true,
+          ariaLabel: 'Odblokuj udział',
+          title: 'Udział zablokowany',
+          suffix: '%',
+          onToggle: () => {},
+          testId: 'compact-percent-lock',
+        }}
+      />,
+    );
+    expect(html).toContain('data-control-capacity="100.0%"');
+    expect(html).toContain('data-control-locked="true"');
+    expect(html).toContain('grid-cols-[44px_60px_44px_44px]');
+    expect(html).toContain('bg-stone-100');
+    expect(html).toContain('data-testid="compact-percent-lock"');
+    expect(html).toContain('aria-pressed="true"');
+  });
+
+  it('reserves exactly five whole-gram digits without expanding the topping control', () => {
+    const html = renderToStaticMarkup(
+      <DirectNumberControl
+        value={10000}
+        step={1}
+        decimals={0}
+        suffix="g"
+        ariaLabel="Gramatura"
+        onChange={() => {}}
+        testId="compact-grams"
+        widthPreset="grams"
+      />,
+    );
+    expect(html).toContain('data-control-capacity="10000g"');
+    expect(html).toContain('w-[160px]');
+    expect(html).toContain('grid-cols-[44px_72px_44px]');
+    expect(html).toContain('value="10000"');
+  });
 });
