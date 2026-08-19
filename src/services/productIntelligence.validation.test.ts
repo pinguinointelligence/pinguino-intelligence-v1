@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { EngineIngredient, RecipeInput } from '@/engine';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 
 const h = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock('@/lib/supabase/client', () => ({
@@ -143,6 +144,25 @@ const snapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSn
   },
   warnings: [],
   blockReasons: [],
+});
+
+const topping = (lineId: string, mapperIngredientId: string, grams: number): RecipeToppingItem => ({
+  id: lineId,
+  ingredient: ingredient(mapperIngredientId),
+  planned_grams: grams,
+  actual_grams: null,
+  process_scope: 'POST_PROCESS_ADDON',
+  addon_sort_order: 0,
+});
+
+const staleToppingSnapshot = (
+  lineId: string,
+  mapperIngredientId: string,
+): ProductBehaviorSnapshot => ({
+  ...snapshot(lineId, mapperIngredientId),
+  resolutionState: 'REVALIDATION_REQUIRED',
+  processScope: 'POST_PROCESS_ADDON',
+  blockReasons: ['recipe_context_changed'],
 });
 
 describe('recipe behavior server validation', () => {
@@ -537,6 +557,88 @@ describe('recipe behavior server validation', () => {
     );
   });
 
+  it('refreshes a positive Mapper topping as TOPPING after an ECO switch and ignores a zero topping', async () => {
+    const basil = topping('basil-line', 'PI-ING-001654', 1);
+    const strawberry = topping('strawberry-line', 'PI-ING-001553', 0);
+    const resolveSelection = vi.fn().mockImplementation(async ({ entity, context }) => ({
+      ...snapshot('basil-line', entity.entityId),
+      schemaVersion: 1,
+      resolverVersion: 'unified-product-behavior-v2',
+      entityKind: entity.entityKind,
+      entityId: entity.entityId,
+      catalogStatus: 'pi_base',
+      provenance: 'mapper',
+      processBehavior: {},
+      privateOverlay: null,
+      context,
+      module: context.module,
+      state: 'eligible',
+      moduleEligibility: {
+        TOPPING: 'eligible',
+        SAVE: 'label_only',
+        PRODUCTION: 'label_only',
+      },
+      mainPolicy: null,
+    }));
+
+    const result = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: {
+        ...recipe,
+        items: [],
+        goals: { formulation_strategy: 'eco' },
+      },
+      toppings: [basil, strawberry],
+      snapshots: {
+        'basil-line': staleToppingSnapshot('basil-line', 'PI-ING-001654'),
+        'strawberry-line': staleToppingSnapshot('strawberry-line', 'PI-ING-001553'),
+      },
+      accountId: 'account-1',
+      module: 'ECO',
+      resolveSelection,
+    });
+
+    expect(resolveSelection).toHaveBeenCalledTimes(1);
+    expect(resolveSelection).toHaveBeenCalledWith({
+      entity: { entityKind: 'mapper', entityId: 'PI-ING-001654' },
+      context: {
+        accountId: 'account-1',
+        productProfile: 'milk_gelato',
+        temperatureC: -12,
+        mode: 'eco',
+        processScope: 'POST_PROCESS_ADDON',
+        requestedRole: 'STANDARD',
+        module: 'TOPPING',
+      },
+    });
+    expect(result.unresolvedLineIds).toEqual([]);
+    expect(result.snapshots['basil-line']).toMatchObject({
+      resolutionState: 'RESOLVED',
+      processScope: 'POST_PROCESS_ADDON',
+      resolutionContext: { mode: 'eco', module: 'TOPPING' },
+    });
+    expect(result.snapshots['strawberry-line']?.resolutionState).toBe('REVALIDATION_REQUIRED');
+  });
+
+  it('fails closed when a positive topping cannot refresh', async () => {
+    const basil = topping('basil-line', 'PI-ING-001654', 1);
+    const resolveSelection = vi.fn().mockResolvedValue(null);
+
+    const result = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: { ...recipe, items: [], goals: { formulation_strategy: 'eco' } },
+      toppings: [basil],
+      snapshots: {
+        'basil-line': staleToppingSnapshot('basil-line', 'PI-ING-001654'),
+      },
+      accountId: 'account-1',
+      module: 'ECO',
+      resolveSelection,
+    });
+
+    expect(resolveSelection).toHaveBeenCalledTimes(1);
+    expect(result.unresolvedLineIds).toEqual(['basil-line']);
+    expect(result.snapshots['basil-line']?.resolutionState).toBe('REVALIDATION_REQUIRED');
+  });
+
   it('pins every terminal Pro runtime surface to the server-validation wrapper', () => {
     const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
     const studio = read('src/features/constraint-studio/constraintStudioStore.ts');
@@ -561,7 +663,7 @@ describe('recipe behavior server validation', () => {
     expect(production).toContain("module: 'PRODUCTION'");
     expect(productionRescueAuthorization).toContain("'BATCH_RESCUE'");
     expect(studio.indexOf('markRecalculationRequired()')).toBeLessThan(
-      studio.indexOf('await currentBaseAuthorityReady'),
+      studio.indexOf('await currentRecipeAuthorityReady'),
     );
     expect(studio).toContain('recipe_changed_during_validation:');
     expect(studio).toContain('Uruchom przeliczenie ponownie dla bieżącej receptury.');

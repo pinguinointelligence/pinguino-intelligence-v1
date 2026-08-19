@@ -29,6 +29,7 @@ import {
   recipeInputFromFrozenBehavior,
   recipeBehaviorLegacyInspection,
   recipeBehaviorModuleGate,
+  useMonitorRecipeBehaviorRefresh,
 } from '@/features/product-intelligence';
 
 export function MonitorToppingSummary({
@@ -125,6 +126,14 @@ export function MonitorPanelContent({
     [behaviorAuthority],
   );
   const legacyInspection = recipeBehaviorLegacyInspection(behaviorAuthority, savedRecipeId);
+  useMonitorRecipeBehaviorRefresh({
+    enabled:
+      technicalView &&
+      !legacyInspection &&
+      !monitorGate.ready &&
+      behaviorAuthority.requiredLineIds.length > 0,
+    blockedLineIds: monitorGate.blockedLineIds,
+  });
   const frozenInput = useMemo(
     () => recipeInputFromFrozenBehavior(input, behaviorAuthority, 'technical'),
     [behaviorAuthority, input],

@@ -51,7 +51,6 @@ import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { CockpitTab, ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
-import { WorkbenchIntelligenceHeader } from '@/features/pro-workbench/WorkbenchIntelligenceHeader';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
@@ -64,7 +63,6 @@ import {
   ExecutableRecipeHandoffError,
   openExecutableRecipeTemplate,
 } from '@/services/executableRecipeHandoff';
-import { useStudioResult } from '@/features/studio/useStudioResult';
 
 const w = copy.proWorkspace;
 
@@ -117,20 +115,10 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
   );
 }
 
-function ProTopActions({
-  persona,
-  onRecalculate,
-  onOpenLearning,
-}: {
-  persona: ProCorePersona;
-  onRecalculate: () => void;
-  onOpenLearning: () => void;
-}) {
+function ProTopActions({ persona }: { persona: ProCorePersona }) {
   const unresolvedRequiredCount = useIngredientTableUxStore(
     (state) => Object.keys(state.unresolvedRequiredByLineId).length,
   );
-  const planning = useStudioResult('planning');
-
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2" data-testid="pro-top-workbar">
       {unresolvedRequiredCount > 0 ? (
@@ -148,15 +136,6 @@ function ProTopActions({
       >
         PRO
       </span>
-      <div className="ml-auto min-w-0">
-        <WorkbenchIntelligenceHeader
-          result={planning.result}
-          input={planning.input}
-          variant="global"
-          onRecalculate={onRecalculate}
-          onOpenLearning={onOpenLearning}
-        />
-      </div>
     </div>
   );
 }
@@ -472,7 +451,7 @@ export function ProWorkspacePage() {
     // White precision workspace: presentation-only token remap. The same components,
     // values, content, actions and below-fold review zone remain intact.
     <div
-      className={workbench ? 'theme-pro-light xl:h-dvh' : 'theme-pro-light'}
+      className={`pro-studio-radius-system theme-pro-light${workbench ? ' xl:h-dvh' : ''}`}
       data-testid="pro-light-scope"
     >
       <AppShell
@@ -486,16 +465,7 @@ export function ProWorkspacePage() {
         }
         actions={
           workbench ? (
-            <ProTopActions
-              persona={persona}
-              onRecalculate={startRecalc}
-              onOpenLearning={() => {
-                changeCockpitTab('profile');
-                queueMicrotask(() =>
-                  window.dispatchEvent(new Event('pinguino:open-learning')),
-                );
-              }}
-            />
+            <ProTopActions persona={persona} />
           ) : (
             <>
               <DevPersonaSwitch persona={persona} />

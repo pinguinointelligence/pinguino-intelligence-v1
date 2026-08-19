@@ -75,6 +75,7 @@ import {
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   attachPracticalRecipeAudit,
   practicalRecipeInputFingerprint,
@@ -1667,15 +1668,21 @@ export function serverBehaviorPreviewIssue(
   };
 }
 
-async function currentBaseAuthorityReady(input: {
+async function currentRecipeAuthorityReady(input: {
   recipe: RecipeInput;
+  toppings: readonly RecipeToppingItem[];
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   technicalOnlyMainLineIds?: readonly string[];
 }): Promise<
   | { ready: true; snapshots: Record<string, ProductBehaviorSnapshot> }
   | { ready: false; issues: ProductBehaviorAuthorityIssue[] }
 > {
-  const required = productBehaviorRequiredLineIds({ items: input.recipe.items });
+  const baseRequired = productBehaviorRequiredLineIds({ items: input.recipe.items });
+  const toppingRequired = productBehaviorRequiredLineIds({
+    items: [],
+    toppings: input.toppings,
+  });
+  const required = [...new Set([...baseRequired, ...toppingRequired])].sort();
   if (required.length === 0) {
     return {
       ready: true,
@@ -1695,6 +1702,7 @@ async function currentBaseAuthorityReady(input: {
         : 'OPTIMAL';
     const resolved = await resolveRecipeProposalBehaviorSnapshots({
       recipe: input.recipe,
+      toppings: input.toppings,
       snapshots: input.snapshots,
       accountId: useAuthStore.getState().user?.id ?? null,
       module,
@@ -1706,27 +1714,49 @@ async function currentBaseAuthorityReady(input: {
         issues: resolved.unresolvedLineIds.map((lineId) => ({
           lineId,
           lineName:
-            input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ?? lineId,
+            input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ??
+            input.toppings.find((item) => item.id === lineId)?.ingredient.name ??
+            lineId,
           reasons: ['behavior_snapshot_missing_or_unresolved'],
         })),
       };
     }
-    const validation = await validateRecipeBehaviorOnServer({
-      recipe: input.recipe,
-      snapshots: resolved.snapshots,
-      module,
-      accountId: useAuthStore.getState().user?.id ?? null,
-      technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
-    });
-    return validation.ready
+    const accountId = useAuthStore.getState().user?.id ?? null;
+    const baseValidation =
+      baseRequired.length === 0
+        ? { ready: true, staleLineIds: [] as string[], lines: [] as const }
+        : await validateRecipeBehaviorOnServer({
+            recipe: input.recipe,
+            snapshots: resolved.snapshots,
+            module,
+            accountId,
+            technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
+          });
+    const toppingValidation =
+      toppingRequired.length === 0
+        ? { ready: true, staleLineIds: [] as string[], lines: [] as const }
+        : await validateRecipeBehaviorOnServer({
+            recipe: { ...input.recipe, items: [] },
+            toppings: input.toppings,
+            snapshots: resolved.snapshots,
+            module: 'TOPPING',
+            accountId,
+          });
+    const staleLineIds = [
+      ...new Set([...baseValidation.staleLineIds, ...toppingValidation.staleLineIds]),
+    ].sort();
+    const validationLines = [...baseValidation.lines, ...toppingValidation.lines];
+    return baseValidation.ready && toppingValidation.ready && staleLineIds.length === 0
       ? { ready: true, snapshots: resolved.snapshots }
       : {
           ready: false,
-          issues: validation.staleLineIds.map((lineId) => ({
+          issues: staleLineIds.map((lineId) => ({
             lineId,
             lineName:
-              input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ?? lineId,
-            reasons: validation.lines.find((line) => line.lineId === lineId)?.reasons ?? [
+              input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ??
+              input.toppings.find((item) => item.id === lineId)?.ingredient.name ??
+              lineId,
+            reasons: validationLines.find((line) => line.lineId === lineId)?.reasons ?? [
               'behavior_snapshot_missing_or_unresolved',
             ],
           })),
@@ -1736,7 +1766,10 @@ async function currentBaseAuthorityReady(input: {
       ready: false,
       issues: required.map((lineId) => ({
         lineId,
-        lineName: input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ?? lineId,
+        lineName:
+          input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ??
+          input.toppings.find((item) => item.id === lineId)?.ingredient.name ??
+          lineId,
         reasons: ['behavior_server_validation_unavailable'],
       })),
     };
@@ -1775,8 +1808,9 @@ async function restoreScorePresentationAfterUndo(
   const restored = selectCanonicalDraft();
   const presentation = record.before.presentation;
   const recipeState = useRecipeStore.getState();
-  const baseValidation = await currentBaseAuthorityReady({
+  const baseValidation = await currentRecipeAuthorityReady({
     recipe: restored.input,
+    toppings: recipeState.toppings,
     snapshots: recipeState.productBehaviorSnapshots,
     technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
   });
@@ -1819,8 +1853,9 @@ async function restoreScorePresentationAfterUndo(
     return;
   }
 
-  const proposedValidation = await currentBaseAuthorityReady({
+  const proposedValidation = await currentRecipeAuthorityReady({
     recipe: presentation.preview.proposedInput,
+    toppings: recipeState.toppings,
     snapshots: record.after.productBehaviorSnapshots ?? {},
     technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
   });
@@ -1905,8 +1940,9 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
   }
   const recipeState = useRecipeStore.getState();
   const snapshots = recipeState.productBehaviorSnapshots;
-  const validation = await currentBaseAuthorityReady({
+  const validation = await currentRecipeAuthorityReady({
     recipe: draft.input,
+    toppings: recipeState.toppings,
     snapshots,
     technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
   });
@@ -1951,8 +1987,9 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
   });
   let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
   if (rawProposal.ok) {
-    const proposedAuthority = await currentBaseAuthorityReady({
+    const proposedAuthority = await currentRecipeAuthorityReady({
       recipe: rawProposal.preview.proposedInput,
+      toppings: recipeState.toppings,
       snapshots: validation.snapshots,
       technicalOnlyMainLineIds,
     });
@@ -2014,8 +2051,9 @@ export async function createExplicitStandardRemovalPreviewWithServerAuthority(
   const draft = selectCanonicalDraft();
   const recipeState = useRecipeStore.getState();
   const technicalOnlyMainLineIds = recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
-  const baseValidation = await currentBaseAuthorityReady({
+  const baseValidation = await currentRecipeAuthorityReady({
     recipe: draft.input,
+    toppings: recipeState.toppings,
     snapshots: recipeState.productBehaviorSnapshots,
     technicalOnlyMainLineIds,
   });
@@ -2049,8 +2087,9 @@ export async function createExplicitStandardRemovalPreviewWithServerAuthority(
   );
   let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
   if (raw.ok) {
-    const proposedValidation = await currentBaseAuthorityReady({
+    const proposedValidation = await currentRecipeAuthorityReady({
       recipe: raw.preview.proposedInput,
+      toppings: recipeState.toppings,
       snapshots: initialSnapshots,
       technicalOnlyMainLineIds,
     });
@@ -2163,8 +2202,9 @@ export async function createBatchRescalePreviewWithServerAuthority(grams: number
   const draft = selectCanonicalDraft();
   const recipeState = useRecipeStore.getState();
   const snapshots = recipeState.productBehaviorSnapshots;
-  const validation = await currentBaseAuthorityReady({
+  const validation = await currentRecipeAuthorityReady({
     recipe: draft.input,
+    toppings: recipeState.toppings,
     snapshots,
     technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
   });
@@ -2187,8 +2227,9 @@ export async function createSuggestedFixPreviewWithServerAuthority(
   const draft = selectCanonicalDraft();
   const recipeState = useRecipeStore.getState();
   const snapshots = recipeState.productBehaviorSnapshots;
-  const validation = await currentBaseAuthorityReady({
+  const validation = await currentRecipeAuthorityReady({
     recipe: draft.input,
+    toppings: recipeState.toppings,
     snapshots,
     technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
   });
@@ -2307,8 +2348,9 @@ export async function applyPreviewWithServerAuthority(): Promise<void> {
         }
       : currentSnapshots;
   const revision = useRecipeStore.getState().draftRevision;
-  const validation = await currentBaseAuthorityReady({
+  const validation = await currentRecipeAuthorityReady({
     recipe: preview.proposedInput,
+    toppings: useRecipeStore.getState().toppings,
     snapshots,
     technicalOnlyMainLineIds: useRecipeStore.getState().ownerReviewGate?.technicalOnlyMainLineIds,
   });

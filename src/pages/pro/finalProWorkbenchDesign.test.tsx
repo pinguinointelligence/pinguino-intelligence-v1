@@ -85,6 +85,21 @@ describe('final Pro visual system', () => {
     expect(education).not.toContain('education-ice-cockpit');
     expect(education).toContain('contextual-learning-hub');
   });
+
+  it('uses one moderate rectangular corner contract while preserving functional circles', () => {
+    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+    const styles = read('styles', 'index.css');
+    const tokens = read('styles', 'tokens.css');
+
+    expect(page).toContain("className={`pro-studio-radius-system theme-pro-light");
+    expect(tokens).toContain('--radius-pro-studio: 0.75rem');
+    expect(styles).toContain('.pro-studio-radius-system');
+    expect(styles).toContain(".rounded:not(input[type='checkbox'])");
+    expect(styles).toContain('.rounded-t,');
+    expect(styles).toContain('.rounded-b,');
+    expect(styles).toContain('.rounded-3xl');
+    expect(styles).toContain('`rounded-full` is excluded');
+  });
 });
 
 describe('one global menu and four local contexts', () => {

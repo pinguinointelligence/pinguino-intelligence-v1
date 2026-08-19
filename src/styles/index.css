@@ -54,3 +54,36 @@
     }
   }
 }
+
+/*
+ * PINGÜINO Pro Studio corner contract.
+ *
+ * Historical screens mixed 8–24 px radii, which made cards and controls look
+ * as if they belonged to different generations of the product. The workbench
+ * scope deliberately normalises every rectangular Tailwind radius to the
+ * single Pro token. `rounded-full` is excluded so locks, score rings, menu
+ * dots and other genuinely circular controls remain circles. Native checkbox
+ * geometry is also preserved as a compact form-control exception.
+ */
+.pro-studio-radius-system :where(
+    .rounded:not(input[type='checkbox']),
+    .rounded-sm,
+    .rounded-md,
+    .rounded-lg,
+    .rounded-xl,
+    .rounded-2xl,
+    .rounded-3xl,
+    [class*='rounded-[']
+  ) {
+  border-radius: var(--radius-pro-studio) !important;
+}
+
+.pro-studio-radius-system :where(.rounded-t, .rounded-t-xl, .rounded-t-2xl, [class*='rounded-t-[']) {
+  border-top-left-radius: var(--radius-pro-studio) !important;
+  border-top-right-radius: var(--radius-pro-studio) !important;
+}
+
+.pro-studio-radius-system :where(.rounded-b, .rounded-b-xl, .rounded-b-2xl, [class*='rounded-b-[']) {
+  border-bottom-left-radius: var(--radius-pro-studio) !important;
+  border-bottom-right-radius: var(--radius-pro-studio) !important;
+}

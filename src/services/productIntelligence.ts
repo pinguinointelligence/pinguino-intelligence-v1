@@ -2,6 +2,10 @@ import type { RecipeInput } from '@/engine';
 import type { EngineIngredient } from '@/engine';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
+  isCatalogLabelToppingIngredient,
+  toppingIngredientIdentity,
+} from '@/features/recipe-composition/labelTopping';
+import {
   productBehaviorRequiredLineIds,
   snapshotServerResolvedProductBehavior,
   type ProductBehaviorContext,
@@ -546,11 +550,13 @@ export async function resolveLegacyRecipeBehaviorForSelection(input: {
   return readServerResolvedProductBehavior(data);
 }
 
-/** Resolves every newly introduced Base line in a proposed vector before the
- * Preview is exposed. This is the shared seam for solver-added toolbox and
- * correction lines; callers never synthesize built-in permissions locally. */
+/** Resolves every required recipe line before a terminal action is exposed.
+ * Solver callers remain Base-only by omitting `toppings`; Save/Production
+ * orchestration can include positive post-process additions without ever
+ * moving those additions into Engine formulation. */
 export async function resolveRecipeProposalBehaviorSnapshots(input: {
   recipe: RecipeInput;
+  toppings?: readonly RecipeToppingItem[];
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   accountId: string | null;
   module?: ProductBehaviorModule;
@@ -566,19 +572,26 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
       .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
       .map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
   );
-  const requiredLineIds = productBehaviorRequiredLineIds({ items: input.recipe.items });
+  const toppings = input.toppings ?? [];
+  const requiredLineIds = productBehaviorRequiredLineIds({
+    items: input.recipe.items,
+    toppings,
+  });
   const requestedModule = input.module ?? 'BASE_RECIPE';
   const mode = normalizeFormulationStrategy(
     input.recipe.goals?.formulation_strategy ?? input.recipe.mode,
   );
   const needsResolution = requiredLineIds.filter((lineId) => {
     const line = input.recipe.items.find((candidate) => candidate.id === lineId);
+    const topping = toppings.find((candidate) => candidate.id === lineId);
     const snapshot = snapshots[lineId];
-    if (!line || !snapshot || snapshot.resolutionState !== 'RESOLVED') return true;
+    if ((!line && !topping) || !snapshot || snapshot.resolutionState !== 'RESOLVED') return true;
+    const processScope = line ? 'BASE_FORMULATION' : 'POST_PROCESS_ADDON';
+    const effectiveModule = line ? requestedModule : 'TOPPING';
     const expectedRole = recipeAuthorityRequestedRole(
-      requestedModule,
-      line.lock_type === 'main',
-      (input.technicalOnlyMainLineIds ?? []).includes(lineId),
+      effectiveModule,
+      line?.lock_type === 'main',
+      line ? (input.technicalOnlyMainLineIds ?? []).includes(lineId) : false,
     );
     const context = snapshot.resolutionContext;
     return (
@@ -587,9 +600,9 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
       context.productProfile !== input.recipe.category ||
       context.temperatureC !== input.recipe.target_temperature_c ||
       context.mode !== mode ||
-      context.processScope !== 'BASE_FORMULATION' ||
+      context.processScope !== processScope ||
       context.requestedRole !== expectedRole ||
-      context.module !== requestedModule
+      context.module !== effectiveModule
     );
   });
   const unresolvedLineIds: string[] = [];
@@ -597,16 +610,32 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
   await Promise.all(
     needsResolution.map(async (lineId) => {
       const line = input.recipe.items.find((item) => item.id === lineId);
-      if (!line) {
+      const topping = toppings.find((item) => item.id === lineId);
+      if (!line && !topping) {
         unresolvedLineIds.push(lineId);
         return;
       }
+      const ingredient = line?.ingredient ?? topping!.ingredient;
+      const processScope = line ? 'BASE_FORMULATION' : 'POST_PROCESS_ADDON';
+      const effectiveModule = line ? requestedModule : 'TOPPING';
       const prior = snapshots[lineId];
       const mapperIngredientId =
-        prior?.mapperIngredientId ?? canonicalIngredientId(line.ingredient);
+        prior?.mapperIngredientId ??
+        (line
+          ? canonicalIngredientId(ingredient as EngineIngredient)
+          : toppingIngredientIdentity(ingredient));
+      const catalogProductVersionId =
+        topping && isCatalogLabelToppingIngredient(topping.ingredient)
+          ? topping.ingredient.catalog_version_id
+          : null;
       const entity =
         prior?.source !== 'mapper' && prior?.productVersionId
           ? { entityKind: 'catalog_product_version' as const, entityId: prior.productVersionId }
+          : catalogProductVersionId
+            ? {
+                entityKind: 'catalog_product_version' as const,
+                entityId: catalogProductVersionId,
+              }
           : mapperIngredientId.startsWith('PI-ING-')
             ? { entityKind: 'mapper' as const, entityId: mapperIngredientId }
             : null;
@@ -621,13 +650,13 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
           productProfile: input.recipe.category,
           temperatureC: input.recipe.target_temperature_c,
           mode,
-          processScope: 'BASE_FORMULATION',
+          processScope,
           requestedRole: recipeAuthorityRequestedRole(
-            requestedModule,
-            line.lock_type === 'main',
-            (input.technicalOnlyMainLineIds ?? []).includes(lineId),
+            effectiveModule,
+            line?.lock_type === 'main',
+            line ? (input.technicalOnlyMainLineIds ?? []).includes(lineId) : false,
           ),
-          module: requestedModule,
+          module: effectiveModule,
         },
       }).catch(() => null);
       if (!resolved || resolved.state !== 'eligible') {
@@ -636,7 +665,7 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
       }
       snapshots[lineId] = snapshotServerResolvedProductBehavior({
         lineId,
-        processScope: 'BASE_FORMULATION',
+        processScope,
         resolved,
       });
     }),

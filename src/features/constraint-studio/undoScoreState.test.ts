@@ -12,38 +12,79 @@ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import { scorePresentationSource } from '@/features/pro-workbench/scorePresentationSource';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
-import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import {
+  productBehaviorModuleGate,
+  productBehaviorRequiredLineIds,
+  type ProductBehaviorSnapshot,
+} from '@/features/product-intelligence';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { practicalRecipeAuditMatchesInput } from '@/features/practical-recipe/practicalRecipe';
 import { workingStateFingerprint } from './applyPipeline';
 import {
+  applyPreviewWithServerAuthority,
   createOptimizePreviewWithServerAuthority,
   selectCanonicalDraft,
   useConstraintStudioStore,
 } from './constraintStudioStore';
 
-const authority = vi.hoisted(() => ({ version: null as string | null }));
+const authority = vi.hoisted(() => ({
+  version: null as string | null,
+  blockedLineId: null as string | null,
+  resolveInputs: [] as Array<{ module?: string; toppingLineIds: string[] }>,
+}));
 
 vi.mock('@/services/productIntelligence', () => ({
   resolveRecipeProposalBehaviorSnapshots: async (input: {
+    recipe: RecipeInput;
+    toppings?: ReadonlyArray<{
+      id: string;
+      planned_grams: number;
+      actual_grams: number | null;
+    }>;
     snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
-  }) => ({
-    snapshots: Object.fromEntries(
-      Object.entries(input.snapshots)
-        .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
-        .map(([lineId, snapshot]) => [
-          lineId,
-          authority.version
-            ? {
-                ...structuredClone(snapshot),
-                productVersionId: `${snapshot.productVersionId}:${authority.version}`,
-                factsFingerprint: `${snapshot.factsFingerprint}:${authority.version}`,
-              }
-            : structuredClone(snapshot),
-        ]),
-    ),
-    unresolvedLineIds: [],
-  }),
+    module?: string;
+  }) => {
+    const toppings = input.toppings ?? [];
+    authority.resolveInputs.push({
+      module: input.module,
+      toppingLineIds: toppings.map((item) => item.id),
+    });
+    const requiredLineIds = new Set([
+      ...input.recipe.items
+        .filter((item) => (item.actual_grams ?? item.planned_grams) > 0)
+        .map((item) => item.id),
+      ...toppings
+        .filter((item) => (item.actual_grams ?? item.planned_grams) > 0)
+        .map((item) => item.id),
+    ]);
+    const unresolvedLineIds = authority.blockedLineId
+      ? [...requiredLineIds].filter((lineId) => lineId === authority.blockedLineId)
+      : [];
+    return {
+      snapshots: Object.fromEntries(
+        Object.entries(input.snapshots)
+          .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
+          .map(([lineId, snapshot]) => {
+            const cloned = structuredClone(snapshot);
+            const refresh = requiredLineIds.has(lineId) && lineId !== authority.blockedLineId;
+            return [
+              lineId,
+              {
+                ...cloned,
+                ...(refresh ? { resolutionState: 'RESOLVED' as const } : {}),
+                ...(authority.version
+                  ? {
+                      productVersionId: `${snapshot.productVersionId}:${authority.version}`,
+                      factsFingerprint: `${snapshot.factsFingerprint}:${authority.version}`,
+                    }
+                  : {}),
+              },
+            ];
+          }),
+      ),
+      unresolvedLineIds,
+    };
+  },
   validateRecipeBehaviorOnServer: async (input: { module: string }) => ({
     ready: true,
     module: input.module,
@@ -97,6 +138,18 @@ const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBe
   blockReasons: [],
 });
 
+const toppingBehaviorSnapshot = (
+  lineId: string,
+  mapperIngredientId: string,
+): ProductBehaviorSnapshot => ({
+  ...behaviorSnapshot(lineId, mapperIngredientId),
+  processScope: 'POST_PROCESS_ADDON',
+  moduleEligibility: {
+    ...behaviorSnapshot(lineId, mapperIngredientId).moduleEligibility,
+    TOPPING: 'eligible',
+  },
+});
+
 function loadRecipe(input: RecipeInput) {
   useRecipeStore.getState().loadRecipeInput(input);
   for (const item of useRecipeStore.getState().items) {
@@ -129,6 +182,12 @@ const KIWI: EngineIngredient = {
   id: 'PI-ING-000366',
   canonical_ingredient_id: 'PI-ING-000366',
   name: 'Kiwi',
+};
+const BASIL: EngineIngredient = {
+  ...findDemoIngredient('raspberry')!,
+  id: 'PI-ING-001654',
+  canonical_ingredient_id: 'PI-ING-001654',
+  name: 'Basil',
 };
 
 const mainLine = (
@@ -181,12 +240,104 @@ async function expectUndoFinished() {
 
 beforeEach(() => {
   authority.version = null;
+  authority.blockedLineId = null;
+  authority.resolveInputs = [];
   useRecipeStore.getState().resetToDemo();
   useRecipeProfileStore.getState().resetForTests();
   useConstraintStudioStore.getState().resetForTests();
 });
 
 describe('Apply → Undo score-state restoration', () => {
+  it('refreshes positive Base and topping authority after ECO, then opens Save and Production', async () => {
+    loadRecipe(starterMilkBase());
+    useRecipeStore.getState().addTopping(BASIL, 1);
+    useRecipeStore.getState().addTopping(STRAWBERRY, 0);
+    const [basil, strawberry] = useRecipeStore.getState().toppings;
+    expect(basil?.ingredient.name).toBe('Basil');
+    expect(strawberry?.ingredient.name).toBe('Strawberry');
+    if (!basil || !strawberry) return;
+    useRecipeStore
+      .getState()
+      .setProductBehaviorSnapshot(basil.id, toppingBehaviorSnapshot(basil.id, 'PI-ING-001654'));
+    useRecipeStore
+      .getState()
+      .setProductBehaviorSnapshot(
+        strawberry.id,
+        toppingBehaviorSnapshot(strawberry.id, 'PI-ING-001553'),
+      );
+
+    useRecipeStore.getState().setFormulationStrategy('eco');
+    expect(useRecipeStore.getState().productBehaviorSnapshots[basil.id]?.resolutionState).toBe(
+      'REVALIDATION_REQUIRED',
+    );
+    await createOptimizePreviewWithServerAuthority();
+    if (useConstraintStudioStore.getState().preview) {
+      await applyPreviewWithServerAuthority();
+      expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    } else {
+      expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+        state: 'NO_CHANGE_NEEDED',
+      });
+      expect(
+        practicalRecipeAuditMatchesInput(
+          selectCanonicalDraft().input,
+          useRecipeStore.getState().practicalRecipeAudit,
+        ),
+      ).toBe(true);
+    }
+
+    const recipeState = useRecipeStore.getState();
+    const requiredLineIds = productBehaviorRequiredLineIds({
+      items: recipeState.items,
+      toppings: recipeState.toppings,
+    });
+    expect(requiredLineIds).toContain(basil.id);
+    expect(requiredLineIds).not.toContain(strawberry.id);
+    expect(recipeState.productBehaviorSnapshots[basil.id]).toMatchObject({
+      resolutionState: 'RESOLVED',
+      processScope: 'POST_PROCESS_ADDON',
+    });
+    expect(recipeState.productBehaviorSnapshots[strawberry.id]?.resolutionState).toBe(
+      'REVALIDATION_REQUIRED',
+    );
+    expect(
+      productBehaviorModuleGate(recipeState.productBehaviorSnapshots, 'SAVE', requiredLineIds).ready,
+    ).toBe(true);
+    expect(
+      productBehaviorModuleGate(
+        recipeState.productBehaviorSnapshots,
+        'PRODUCTION',
+        requiredLineIds,
+      ).ready,
+    ).toBe(true);
+    expect(authority.resolveInputs.some((input) => input.toppingLineIds.includes(basil.id))).toBe(
+      true,
+    );
+  });
+
+  it('fails closed when a positive topping cannot refresh at the terminal PI seam', async () => {
+    loadRecipe(starterMilkBase());
+    useRecipeStore.getState().addTopping(BASIL, 1);
+    const basil = useRecipeStore.getState().toppings[0];
+    if (!basil) return;
+    useRecipeStore
+      .getState()
+      .setProductBehaviorSnapshot(basil.id, toppingBehaviorSnapshot(basil.id, 'PI-ING-001654'));
+    useRecipeStore.getState().setFormulationStrategy('eco');
+    authority.blockedLineId = basil.id;
+
+    await createOptimizePreviewWithServerAuthority();
+
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toMatchObject({
+      state: 'PRODUCT_DATA_REQUIRED',
+      code: 'product_behavior_invalid',
+    });
+    expect(useRecipeStore.getState().productBehaviorSnapshots[basil.id]?.resolutionState).toBe(
+      'REVALIDATION_REQUIRED',
+    );
+  });
+
   it('attests an unchanged whole-gram recipe only through the server-authorized PI seam', async () => {
     loadRecipe(starterMilkBase());
     const input = selectCanonicalDraft().input;
