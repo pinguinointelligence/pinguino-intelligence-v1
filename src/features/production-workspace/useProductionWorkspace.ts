@@ -27,10 +27,7 @@ import {
   practicalizeRecipeCandidate,
 } from '@/features/practical-recipe/practicalRecipe';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
-import {
-  productBehaviorModuleGate,
-  productBehaviorRequiredLineIds,
-} from '@/features/product-intelligence';
+import { productBehaviorRequiredLineIds } from '@/features/product-intelligence';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import { buildRecipeVersion } from '@/features/pro-core/recipeVersioning';
 import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
@@ -367,26 +364,6 @@ export function useProductionWorkspace(enabled: boolean) {
               ),
       };
     }
-    const behaviorGate = productBehaviorModuleGate(
-      recipe.productBehaviorSnapshots,
-      'PRODUCTION',
-      productBehaviorRequiredLineIds({
-        items: recipe.items,
-        toppings: recipe.toppings,
-      }),
-    );
-    if (!behaviorGate.ready) {
-      return {
-        ready: false,
-        prerequisite: prerequisite(
-          'product_authority_required',
-          'Odśwież weryfikację produktów',
-          'Co najmniej jeden produkt wymaga ponownej weryfikacji przed użyciem w Produkcji.',
-          'recalculate',
-          'Przelicz recepturę',
-        ),
-      };
-    }
     const result = practicalizeRecipeCandidate(plannedInput, constraints);
     if (!result.ok) {
       return {
@@ -418,10 +395,7 @@ export function useProductionWorkspace(enabled: boolean) {
     plannedInput,
     preview,
     recalculationTerminal,
-    recipe.items,
     recipe.practicalRecipeAudit,
-    recipe.productBehaviorSnapshots,
-    recipe.toppings,
   ]);
 
   const source = useMemo(() => productionSourceForRecipe(recipe), [recipe]);

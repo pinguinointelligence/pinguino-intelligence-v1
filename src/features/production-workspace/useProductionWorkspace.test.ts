@@ -238,4 +238,15 @@ describe('trusted Production Rescue authorization basis', () => {
     ).toBeNull();
     expect(reusableRescueAuthorizeKey(state, exact, 'keep_original_batch')).toBeNull();
   });
+
+  it('does not deadlock server Production validation behind a stale local module flag', () => {
+    const hookSource = readFileSync(
+      new URL('./useProductionWorkspace.ts', import.meta.url),
+      'utf8',
+    );
+    expect(hookSource).not.toContain('productBehaviorModuleGate(');
+    expect(hookSource).toContain("module: 'PRODUCTION'");
+    expect(hookSource).toContain('validateRecipeBehaviorOnServer({');
+    expect(hookSource).toContain('practicalGate.ready && !behaviorServerReady');
+  });
 });

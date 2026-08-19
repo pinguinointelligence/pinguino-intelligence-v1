@@ -3,6 +3,12 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import {
+  attachPracticalRecipeAudit,
+  readPracticalRecipeAudit,
+} from '@/features/practical-recipe/practicalRecipe';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import type {
@@ -21,10 +27,15 @@ import {
 
 const mocks = vi.hoisted(() => ({
   resolveProductionRepository: vi.fn(),
+  validateRecipeBehaviorOnServer: vi.fn(),
 }));
 
 vi.mock('@/features/pro-core/proCoreProductionRepo', () => ({
   resolveProductionRepository: mocks.resolveProductionRepository,
+}));
+
+vi.mock('@/services/productIntelligence', () => ({
+  validateRecipeBehaviorOnServer: mocks.validateRecipeBehaviorOnServer,
 }));
 
 import { useProductionWorkspace, type ProductionWorkspaceView } from './useProductionWorkspace';
@@ -162,6 +173,11 @@ describe('Production trusted Rescue runtime races', () => {
     return null;
   }
 
+  function EnabledHarness() {
+    view = useProductionWorkspace(true);
+    return null;
+  }
+
   beforeEach(() => {
     (
       globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -195,6 +211,7 @@ describe('Production trusted Rescue runtime races', () => {
     host.remove();
     useProductionSessionStore.getState().clear();
     mocks.resolveProductionRepository.mockReset();
+    mocks.validateRecipeBehaviorOnServer.mockReset();
   });
 
   it('blocks operator edits while authorizing and ignores a late response after invalidation', async () => {
@@ -289,5 +306,68 @@ describe('Production trusted Rescue runtime races', () => {
         .session!.lines.find((line) => line.lineId === pending.lineId)?.draftActualGrams,
     ).toBe(latestDraft);
     expect(view?.rescueAuthorization.status).toBe('idle');
+  });
+
+  it('runs server PRODUCTION validation even when a cached local module flag is stale', async () => {
+    const executable = attachPracticalRecipeAudit(
+      DEFAULT_PRESET,
+      DEFAULT_PRESET,
+      '2026-08-19T10:00:00.000Z',
+    );
+    const snapshots = productBehaviorTestSnapshots(executable);
+    const firstLineId = executable.items[0]!.id;
+    snapshots[firstLineId] = {
+      ...snapshots[firstLineId]!,
+      moduleEligibility: {
+        ...snapshots[firstLineId]!.moduleEligibility,
+        PRODUCTION: 'blocked',
+      },
+    };
+    useProductionSessionStore.getState().clear();
+    useRecipeStore.getState().loadRecipeInput(executable, {
+      savedId: 'recipe-production-authority',
+      savedName: 'Production authority QA',
+      versionNumber: 1,
+      versionId: 'version-production-authority',
+      versionDate: '2026-08-19T10:00:00.000Z',
+    });
+    const loadedExecutable = buildRecipeInput(useRecipeStore.getState(), 'planning');
+    useRecipeStore.setState({
+      productBehaviorSnapshots: snapshots,
+      practicalRecipeAudit: readPracticalRecipeAudit(
+        attachPracticalRecipeAudit(
+          loadedExecutable,
+          loadedExecutable,
+          '2026-08-19T10:00:00.000Z',
+        ),
+      ),
+      dirty: false,
+    });
+    const repository = {
+      listRuns: vi.fn(async () => ({ items: [], nextCursor: null })),
+    } as unknown as ProductionRepository;
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+    mocks.validateRecipeBehaviorOnServer.mockResolvedValue({
+      ready: true,
+      module: 'PRODUCTION',
+      staleLineIds: [],
+      lines: [],
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.validateRecipeBehaviorOnServer).toHaveBeenCalledWith(
+      expect.objectContaining({ module: 'PRODUCTION' }),
+    );
+    expect(view?.prerequisite?.code).not.toBe('product_authority_required');
   });
 });
