@@ -62,6 +62,7 @@ export function RecipeVersionsSection() {
           savedId: recipeId,
           savedName: recipeName,
           versionNumber: created.versionNumber,
+          versionId: created.versionId,
           versionDate: created.createdAt,
           composition: created.productComposition,
         });

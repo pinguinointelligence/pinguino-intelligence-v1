@@ -1150,8 +1150,11 @@ export const copy = {
         risk: 'Risk',
       },
       fallbackCategory:
-        'Targets estimated from milk-gelato bands — calibration pending for this category.',
-      fallbackTemperature: 'Targets approximated from the nearest calibrated temperature.',
+        'Zakresy oszacowano z kalibracji gelato mlecznego — ta kategoria czeka na własną kalibrację.',
+      fallbackTemperature:
+        'Zakresy pochodzą z najbliższej skalibrowanej temperatury.',
+      fallbackEstimated:
+        'Co najmniej jeden zakres jest oszacowany i wymaga potwierdzenia kalibracji.',
       indicators: {
         pod: 'Sweetness · POD',
         npac: 'Freezing stability · NPAC',

@@ -23,6 +23,7 @@ import {
   recipeToppingsFromFrozenBehavior,
 } from '@/features/product-intelligence';
 import { calculateRecipe } from '@/engine';
+import type { ProductionRun } from '@/features/pro-core/productionContracts';
 
 export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
 
@@ -108,6 +109,12 @@ export interface ProductionSession {
   completedAt: string | null;
   plannedInput: RecipeInput;
   plannedComposition: RecipeCompositionMetadata;
+  /** Timestamp of the latest Rescue snapshot durably accepted by the server. */
+  durableRescueAcceptedAt: string | null;
+  /** Monotonic durable Rescue revision used for lost-response reconciliation. */
+  durableRescueRevision: number;
+  /** Monotonic durable actual revision used for lost-response reconciliation. */
+  durableActualRevision: number;
   /** Solver-verified additions required after production starts. The frozen plan remains untouched. */
   rescueAddedItems: RecipeItem[];
   lines: ProductionLineState[];
@@ -215,6 +222,9 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
     completedAt: null,
     plannedInput,
     plannedComposition,
+    durableRescueAcceptedAt: null,
+    durableRescueRevision: 0,
+    durableActualRevision: 0,
     rescueAddedItems: [],
     lines: orderedBaseItems.map((item) => ({
       lineId: item.id,
@@ -472,15 +482,20 @@ export function applyVerifiedRescueInput(
     return {
       ...line,
       targetGrams: candidateFinalGrams,
-      draftActualGrams: Math.max(line.draftActualGrams, candidateFinalGrams),
+      draftActualGrams:
+        line.confirmed && !needsTopUp ? line.physicalAddedGrams : candidateFinalGrams,
       confirmed: line.confirmed && !needsTopUp,
       confirmedAt: line.confirmed && !needsTopUp ? line.confirmedAt : null,
       confirmationOrder: line.confirmed && !needsTopUp ? line.confirmationOrder : null,
     };
   });
-  const knownIds = new Set(session.lines.map((line) => line.lineId));
+  // Rescue is cumulative. Compare with the immutable source plan, not the
+  // current physical lines, so a second Rescue keeps every earlier addition
+  // in the Engine/forecast vector.
+  const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
+  const existingLineIds = new Set(session.lines.map((line) => line.lineId));
   const rescueAddedItems = candidate.items
-    .filter((item) => !knownIds.has(item.id))
+    .filter((item) => !originalIds.has(item.id))
     .map((item) => ({ ...item, actual_grams: null }));
   const requiredRescueIds = productBehaviorRequiredLineIds({ items: rescueAddedItems });
   const rescueGate = productBehaviorModuleGate(
@@ -491,19 +506,21 @@ export function applyVerifiedRescueInput(
   if (!rescueGate.ready) {
     throw new Error(rescueGate.reason ?? 'Production rescue requires verified product behavior.');
   }
-  const addedLines: ProductionLineState[] = rescueAddedItems.map((item) => ({
-    lineId: item.id,
-    canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
-    name: item.ingredient.name,
-    plannedGrams: 0,
-    targetGrams: item.planned_grams,
-    draftActualGrams: item.planned_grams,
-    physicalAddedGrams: 0,
-    confirmed: false,
-    confirmedAt: null,
-    confirmationOrder: null,
-    recordCorrectionCount: 0,
-  }));
+  const addedLines: ProductionLineState[] = rescueAddedItems
+    .filter((item) => !existingLineIds.has(item.id))
+    .map((item) => ({
+      lineId: item.id,
+      canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+      name: item.ingredient.name,
+      plannedGrams: 0,
+      targetGrams: item.planned_grams,
+      draftActualGrams: item.planned_grams,
+      physicalAddedGrams: 0,
+      confirmed: false,
+      confirmedAt: null,
+      confirmationOrder: null,
+      recordCorrectionCount: 0,
+    }));
   return { ...session, rescueAddedItems, lines: [...lines, ...addedLines] };
 }
 
@@ -601,6 +618,164 @@ export function completeProductionSession(
     status: 'completed',
     completedAt,
     completionSnapshot: snapshot,
+  };
+}
+
+/**
+ * Rebuild the physical workspace from the server-authoritative run. The exact
+ * immutable recipe version remains the source of ingredient facts; the run
+ * contributes only its frozen scaled plan, validated Rescue snapshot and
+ * recorded actuals. Any mismatch fails closed instead of guessing.
+ */
+export function hydrateProductionSessionFromRun(
+  run: ProductionRun,
+  source: ProductionSource,
+  plannedInput: RecipeInput,
+  plannedComposition: RecipeCompositionMetadata,
+): ProductionSession {
+  if (run.status === 'draft' || run.status === 'planned' || run.status === 'cancelled') {
+    throw new Error(`Cannot hydrate a non-active Production run (${run.status}).`);
+  }
+  if (
+    source.recipeId !== run.recipeId ||
+    source.recipeVersionId !== run.recipeVersionId ||
+    source.recipeVersionNumber !== run.recipeVersionNumber
+  ) {
+    throw new Error('Durable Production run does not match the exact recipe version.');
+  }
+  const expectedIds = [
+    ...plannedComposition.baseOrder,
+    ...plannedComposition.toppings
+      .slice()
+      .sort((a, b) => a.addon_sort_order - b.addon_sort_order)
+      .map((item) => item.id),
+  ];
+  if (
+    run.plannedItems.length !== expectedIds.length ||
+    run.plannedItems.some(
+      (line, index) =>
+        line.id !== expectedIds[index] ||
+        Math.abs(
+          line.plannedGrams -
+            (plannedInput.items.find((item) => item.id === line.id)?.planned_grams ??
+              plannedComposition.toppings.find((item) => item.id === line.id)?.planned_grams ??
+              Number.NaN),
+        ) > PRODUCTION_GRAMS_EPSILON,
+    )
+  ) {
+    throw new Error('Durable Production plan differs from the exact local recipe version.');
+  }
+
+  let session = createProductionSession({
+    sessionId: run.runId,
+    ownerUserId: run.ownerUserId,
+    source,
+    plannedInput,
+    plannedComposition,
+    startedAt: run.events.find((event) => event.type === 'started')?.at ?? run.createdAt,
+  });
+  if (run.rescue) {
+    session = {
+      ...session,
+      plannedComposition: {
+        ...session.plannedComposition,
+        behaviorSnapshots: run.rescue.productComposition.behaviorSnapshots,
+      },
+    };
+    session = applyVerifiedRescueInput(session, run.rescue.recipeInput);
+    session = {
+      ...session,
+      durableRescueAcceptedAt: run.rescue.acceptedAt,
+      durableRescueRevision: run.rescue.revision,
+    };
+  }
+
+  if (run.actual) {
+    const actualById = new Map(run.actual.items.map((item, index) => [item.id, { item, index }]));
+    const restoreLine = (line: ProductionLineState): ProductionLineState => {
+      const recorded = actualById.get(line.lineId);
+      const grams = recorded?.item.actualGrams;
+      if (!recorded || grams === null || grams === undefined) return line;
+      return {
+        ...line,
+        draftActualGrams: grams,
+        physicalAddedGrams: grams,
+        confirmed: true,
+        confirmedAt: recorded.item.confirmedAt ?? run.actual!.recordedAt,
+        confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1,
+      };
+    };
+    session = {
+      ...session,
+      durableActualRevision: run.actual.revision,
+      lines: session.lines.map(restoreLine),
+      addonLines: session.addonLines.map(restoreLine),
+      stage:
+        session.lines.every((line) => actualById.get(line.lineId)?.item.actualGrams != null) &&
+        session.addonLines.length > 0
+          ? 'addons'
+          : 'base',
+      substitutions: run.actual.substitutions.map((item) => ({
+        originalLineId: item.originalIngredientId,
+        originalCanonicalIngredientId: item.originalIngredientId,
+        substituteCanonicalIngredientId: null,
+        substituteName: item.substituteName,
+        grams: item.grams ?? 0,
+        reason: item.reason,
+      })),
+      internalProductionNote: run.actual.operatorNotes ?? '',
+    };
+  }
+
+  return run.status === 'completed'
+    ? completeProductionSession(
+        session,
+        calculateRecipe(buildFinalActualInput(session)),
+        run.completedAt ?? run.updatedAt,
+        run.actual?.recordedBy ?? run.ownerUserId,
+      )
+    : session;
+}
+
+/**
+ * Server state owns physical facts and durable revisions. Pending stepper edits
+ * are local drafts only, so they may be carried over after hydration when the
+ * same line is still unconfirmed and the draft does not cross the physical floor.
+ */
+export function mergePendingProductionDrafts(
+  durable: ProductionSession,
+  local: ProductionSession,
+): ProductionSession {
+  if (durable.sessionId !== local.sessionId) {
+    throw new Error('Cannot merge drafts from a different Production run.');
+  }
+  const localById = new Map(
+    [...local.lines, ...local.addonLines].map((line) => [line.lineId, line] as const),
+  );
+  const merge = (line: ProductionLineState): ProductionLineState => {
+    if (line.confirmed) return line;
+    const draft = localById.get(line.lineId);
+    const draftWasEdited =
+      draft &&
+      (Math.abs(draft.draftActualGrams - draft.targetGrams) > PRODUCTION_GRAMS_EPSILON ||
+        draft.recordCorrectionCount > line.recordCorrectionCount);
+    if (
+      !draft ||
+      !draftWasEdited ||
+      draft.draftActualGrams + PRODUCTION_GRAMS_EPSILON < line.physicalAddedGrams
+    ) {
+      return line;
+    }
+    return {
+      ...line,
+      draftActualGrams: draft.draftActualGrams,
+      recordCorrectionCount: Math.max(line.recordCorrectionCount, draft.recordCorrectionCount),
+    };
+  };
+  return {
+    ...durable,
+    lines: durable.lines.map(merge),
+    addonLines: durable.addonLines.map(merge),
   };
 }
 

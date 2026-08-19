@@ -161,8 +161,8 @@ describe('professional Monitor — final owner-approved information architecture
 
   it('uses neutral no-evaluation scales without inventing a result', () => {
     const html = renderMonitor({ ...starterMilkBase(), items: [] });
-    expect(html).toContain('aria-label="Słodycz: Brak oceny"');
-    expect(html).toContain('data-testid="monitor-scale-pod-actual"');
+    expect(html).toContain('aria-label="Słodycz: brak danych"');
+    expect(html).not.toContain('data-testid="monitor-scale-pod-actual"');
     expect(textOf(html)).not.toContain('Poza zakresem');
     expect(textOf(html)).not.toContain('W ZAKRESIE');
   });
@@ -172,9 +172,10 @@ describe('professional Monitor — final owner-approved information architecture
     const html = renderMonitor(problematic);
     expect(html).toMatch(/data-problem="true"/);
     const source = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
+    const geometry = read('features', 'pro-workbench', 'monitorScaleModel.ts');
     expect(source).toContain('data-testid={`${testId}-outside-segment`}');
-    expect(source).toContain('position < start ? position : end');
-    expect(source).toContain('position > end ? position - end : 0');
+    expect(geometry).toContain('redLeftPercent: markerPercent');
+    expect(geometry).toContain('redLeftPercent: acceptedRightPercent');
   });
 
   it('shows only a compact amber preflight reminder and keeps Monitor as the daily workspace', () => {

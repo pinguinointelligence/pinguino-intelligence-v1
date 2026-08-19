@@ -10,6 +10,7 @@ interface ProductionActualControlProps {
   step: number;
   confirmed: boolean;
   correctionMode: boolean;
+  disabled?: boolean;
   onChange: (value: number) => void;
   onConfirm: () => void;
   describedBy?: string;
@@ -28,6 +29,7 @@ export function ProductionActualControl({
   step,
   confirmed,
   correctionMode,
+  disabled = false,
   onChange,
   onConfirm,
   describedBy,
@@ -54,7 +56,7 @@ export function ProductionActualControl({
         decimals={productionControlDecimals(value, step)}
         suffix="g"
         ariaLabel={`${ingredientName} — faktyczna gramatura`}
-        disabled={confirmed}
+        disabled={confirmed || disabled}
         onChange={onChange}
         testId={`production-stepper-${lineId}`}
         ariaDescribedBy={describedBy}
@@ -63,9 +65,7 @@ export function ProductionActualControl({
       <button
         type="button"
         aria-label={
-          confirmed
-            ? `${ingredientName} — popraw zapis`
-            : `${ingredientName} — potwierdź dodanie`
+          confirmed ? `${ingredientName} — popraw zapis` : `${ingredientName} — potwierdź dodanie`
         }
         title={
           confirmed
@@ -74,6 +74,7 @@ export function ProductionActualControl({
         }
         aria-describedby={describedBy}
         onClick={onConfirm}
+        disabled={disabled}
         className={cn(
           'pro-focus-ring grid min-h-11 place-items-center rounded-[14px] border text-base font-semibold shadow-pro-e1 transition-transform enabled:hover:-translate-y-px',
           confirmed

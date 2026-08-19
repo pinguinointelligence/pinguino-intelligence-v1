@@ -22,14 +22,15 @@ import type {
 } from './productionContracts';
 
 /** The canonical transition policy. An empty list = terminal state. */
-export const PRODUCTION_TRANSITIONS: Readonly<Record<ProductionStatus, readonly ProductionStatus[]>> =
-  Object.freeze({
-    draft: ['planned', 'cancelled'],
-    planned: ['in_progress', 'cancelled'],
-    in_progress: ['completed', 'cancelled'],
-    completed: [],
-    cancelled: [],
-  });
+export const PRODUCTION_TRANSITIONS: Readonly<
+  Record<ProductionStatus, readonly ProductionStatus[]>
+> = Object.freeze({
+  draft: ['planned', 'cancelled'],
+  planned: ['in_progress', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
+  completed: [],
+  cancelled: [],
+});
 
 /** Metadata that may be edited before a run is completed/cancelled (never the planned snapshot). */
 export interface ProductionMeta {
@@ -51,23 +52,25 @@ export interface BuildRunInput {
 }
 
 function plannedFromScale(scaled: ExactScaleResult): PlannedIngredient[] {
-  const base = scaled.lines.slice().sort((a, b) => a.scopePosition - b.scopePosition).map((l) => ({
-    id: l.id,
-    name: l.name,
-    canonicalIngredientId: l.canonicalIngredientId,
-    processScope: l.processScope,
-    scopePosition: l.scopePosition,
-    plannedGrams: l.grams,
-    displayGrams: l.displayGrams,
-  }));
+  const base = scaled.lines
+    .slice()
+    .sort((a, b) => a.scopePosition - b.scopePosition)
+    .map((l) => ({
+      id: l.id,
+      name: l.name,
+      canonicalIngredientId: l.canonicalIngredientId,
+      processScope: l.processScope,
+      scopePosition: l.scopePosition,
+      plannedGrams: l.grams,
+      displayGrams: l.displayGrams,
+    }));
   const toppings = (scaled.productComposition?.toppings ?? [])
     .slice()
     .sort((a, b) => a.addon_sort_order - b.addon_sort_order)
     .map((item, index) => ({
       id: item.id,
       name: item.ingredient.name,
-      canonicalIngredientId:
-        item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+      canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
       processScope: 'POST_PROCESS_ADDON' as const,
       scopePosition: index,
       plannedGrams: Number((item.planned_grams * scaled.factor).toFixed(scaled.canonicalDecimals)),
@@ -110,6 +113,7 @@ export function buildProductionRun(input: BuildRunInput): ProductionRun {
     createdAt: input.createdAt,
     updatedAt: input.createdAt,
     actual: null,
+    rescue: null,
     completedAt: null,
     cancelledAt: null,
     events: [created],
@@ -216,6 +220,7 @@ export function recordActual(run: ProductionRun, input: RecordActualInput): Prod
     deviationReason: input.deviationReason ?? null,
     recordedBy: input.by,
     recordedAt: input.at,
+    revision: (run.actual?.revision ?? 0) + 1,
   };
   const event: ProductionEvent = {
     eventId: input.eventId,
@@ -317,7 +322,16 @@ export function queryProductionRuns(
 
   const sort = query.sort ?? 'newest';
   filtered.sort((a, b) => {
-    const cmp = a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.runId < b.runId ? -1 : a.runId > b.runId ? 1 : 0;
+    const cmp =
+      a.createdAt < b.createdAt
+        ? -1
+        : a.createdAt > b.createdAt
+          ? 1
+          : a.runId < b.runId
+            ? -1
+            : a.runId > b.runId
+              ? 1
+              : 0;
     return sort === 'newest' ? -cmp : cmp;
   });
 

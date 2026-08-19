@@ -49,7 +49,13 @@ import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { resolveProductionRepository } from '@/features/pro-core/proCoreProductionRepo';
 import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
-import type { ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
+import type {
+  CockpitTab,
+  ProContextTab,
+} from '@/features/pro-workbench/RecipeProfilePanel';
+import { WorkbenchIntelligenceHeader } from '@/features/pro-workbench/WorkbenchIntelligenceHeader';
+import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
+import { useStudioResult } from '@/features/studio/useStudioResult';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
@@ -57,6 +63,7 @@ import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileSto
 import { profileSettingsSignature } from '@/features/pro-workbench/recipeProfileStore';
 import { profileSnapshotFromState } from '@/features/pro-workbench/recipeProfilePersistence';
 import { useLegacyRecipeBehaviorRevalidation } from '@/features/product-intelligence';
+import { cockpitTabFromRoute, routeForCockpitTab } from './workbenchRoute';
 import {
   ExecutableRecipeHandoffError,
   openExecutableRecipeTemplate,
@@ -93,7 +100,7 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
   const setSessionPlan = useSessionStore((s) => s.setPlan);
   if (!import.meta.env.DEV) return null;
   return (
-    <label className="flex items-center gap-2 text-xs text-stone-500">
+    <label className="hidden items-center gap-2 text-xs text-stone-500 sm:flex">
       <span className="hidden sm:inline">{w.devPersona}</span>
       <select
         className="rounded border border-ink/15 px-2 py-1"
@@ -139,17 +146,53 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
   );
 }
 
+function ProWorkbenchHeaderChrome({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: CockpitTab;
+  onTabChange: (tab: CockpitTab) => void;
+}) {
+  const planning = useStudioResult('planning');
+  return (
+    <div
+      className="flex min-w-0 flex-1 items-center justify-end gap-4 max-sm:flex-none max-sm:shrink-0"
+      data-testid="pro-global-workbench-chrome"
+    >
+      <WorkbenchIntelligenceHeader
+        result={planning.result}
+        input={planning.input}
+        variant="global"
+        onOpenLearning={() => {
+          onTabChange('profile');
+          queueMicrotask(() => window.dispatchEvent(new Event('pinguino:open-learning')));
+        }}
+      />
+      <WorkbenchModuleTabs
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        idPrefix="pro-context"
+        className="hidden w-[460px] border-b-0 xl:grid"
+      />
+    </div>
+  );
+}
+
 /** The ONE-SCREEN recipe workbench (also serves /pro/monitor with the panel focused). */
 function RecipeWorkbench({
-  activePanel,
+  activeTab,
+  onTabChange,
   recalcOpen,
   onOpenRecalc,
+  onOpenExistingPreview,
   onRecalculate,
   onCloseRecalc,
 }: {
-  activePanel: ProContextTab;
+  activeTab: CockpitTab;
+  onTabChange: (tab: CockpitTab) => void;
   recalcOpen: boolean;
   onOpenRecalc: () => void;
+  onOpenExistingPreview: () => void;
   onRecalculate: () => void;
   onCloseRecalc: () => void;
 }) {
@@ -159,11 +202,13 @@ function RecipeWorkbench({
       <SurfaceToneContext.Provider value="paper">
         <div className="flex min-h-0 flex-1 flex-col bg-shell text-ivory">
           <StudioEngineSurface
-            key={`${activePanel}:${draftContextSeq}`}
-            activePanel={activePanel}
+            key={draftContextSeq}
+            activeTab={activeTab}
+            onTabChange={onTabChange}
             recipeBar={<ProWorkbar onOpenPreview={onOpenRecalc} variant="panel" />}
             recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={onCloseRecalc} />}
             onRecalculate={onRecalculate}
+            onOpenExistingPreview={onOpenExistingPreview}
           />
         </div>
       </SurfaceToneContext.Provider>
@@ -369,6 +414,10 @@ export function ProWorkspacePage() {
   const activeTab: TabId = isTabId(section ?? null) ? (section as TabId) : 'recipe';
   const workbenchTab = isWorkbenchSection(activeTab) ? activeTab : null;
   const workbench = isPro && workbenchTab !== null;
+  const activeCockpitTab = cockpitTabFromRoute(section, searchParams.get('panel'));
+  const changeCockpitTab = (next: CockpitTab) => {
+    navigate(routeForCockpitTab(next));
+  };
   const startRecalc = async () => {
     // Every accepted click owns a fresh visible run. Open first and clear any
     // stale Preview/Undo evidence before an async server authority check.
@@ -427,6 +476,14 @@ export function ProWorkspacePage() {
         viewportLock={workbench}
         maxWidthClass="max-w-[1776px]"
         brand={<OfficialProLogo />}
+        workbenchChrome={
+          workbench ? (
+            <ProWorkbenchHeaderChrome
+              activeTab={activeCockpitTab}
+              onTabChange={changeCockpitTab}
+            />
+          ) : undefined
+        }
         actions={
           workbench ? (
             <ProTopActions persona={persona} />
@@ -491,9 +548,11 @@ export function ProWorkspacePage() {
                   </p>
                 ) : null}
                 <RecipeWorkbench
-                  activePanel={workbenchTab!}
+                  activeTab={activeCockpitTab}
+                  onTabChange={changeCockpitTab}
                   recalcOpen={recalcOpen}
                   onOpenRecalc={() => setRecalcOpen(true)}
+                  onOpenExistingPreview={() => setRecalcOpen(true)}
                   onRecalculate={startRecalc}
                   onCloseRecalc={() => setRecalcOpen(false)}
                 />

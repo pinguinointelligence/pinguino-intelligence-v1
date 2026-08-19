@@ -2,12 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { calculateRecipe, type RecipeInput } from '@/engine';
 import {
-  applyVerifiedRescueInput,
   completeProductionSession,
   confirmProductionLine,
   correctRecordedPhysicalGrams,
   createProductionSession,
-  productionSourceFingerprint,
   reopenProductionRecord,
   setDraftActualGrams,
   type ProductionSession,
@@ -17,18 +15,11 @@ import {
   recipeCompositionFromState,
   type RecipeCompositionMetadata,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
-import { assessProductionRescue, productionRescueCandidateFingerprint } from './productionRescue';
 
 export interface ProductionSessionStoreState {
   session: ProductionSession | null;
-  ensureSession: (input: {
-    ownerUserId: string | null;
-    source: ProductionSource;
-    plannedInput: RecipeInput;
-    plannedComposition?: RecipeCompositionMetadata;
-    now: string;
-    sessionId: string;
-  }) => void;
+  /** Recoverable local history until the durable ProductionRepository/RPC becomes authoritative. */
+  archivedSessions: ProductionSession[];
   startNewSession: (input: {
     ownerUserId: string | null;
     source: ProductionSource;
@@ -41,9 +32,13 @@ export interface ProductionSessionStoreState {
   confirmLine: (lineId: string, at: string) => void;
   reopenRecord: (lineId: string) => void;
   correctRecordedPhysical: (lineId: string, grams: number) => void;
-  applyVerifiedRescue: (candidate: RecipeInput) => void;
   setNotes: (notes: { customerLabelNote?: string; internalProductionNote?: string }) => void;
   complete: (completedAt: string, operatorUserId: string | null) => void;
+  archiveCurrentSession: () => void;
+  /** Commit a server-confirmed candidate for the same durable run. */
+  replaceSession: (session: ProductionSession) => void;
+  /** Reconcile a server-authoritative run after reload or a lost HTTP response. */
+  restoreDurableSession: (session: ProductionSession) => void;
   clear: () => void;
 }
 
@@ -69,29 +64,60 @@ function requireSession(session: ProductionSession | null): ProductionSession {
   return session;
 }
 
+export function migrateProductionSessionStore(
+  persisted: unknown,
+  version: number,
+): ProductionSessionStoreState {
+  if (version >= 5) return persisted as ProductionSessionStoreState;
+  const state = persisted as {
+    session?: ProductionSession | null;
+    archivedSessions?: ProductionSession[];
+  };
+  const normalize = (value: ProductionSession): ProductionSession => {
+    const legacy = value as ProductionSession & {
+      addonLines?: ProductionSession['addonLines'];
+      plannedComposition?: RecipeCompositionMetadata;
+      stage?: ProductionSession['stage'];
+      durableRescueAcceptedAt?: string | null;
+      durableRescueRevision?: number;
+      durableActualRevision?: number;
+    };
+    const plannedComposition =
+      legacy.plannedComposition ??
+      recipeCompositionFromState({
+        items: legacy.plannedInput.items,
+        baseOrder: legacy.plannedInput.items.map((item) => item.id),
+      });
+    return {
+      ...legacy,
+      schemaVersion: 2,
+      plannedComposition,
+      addonLines: legacy.addonLines ?? [],
+      stage: legacy.stage ?? 'base',
+      durableRescueAcceptedAt: legacy.durableRescueAcceptedAt ?? null,
+      durableRescueRevision: legacy.durableRescueRevision ?? 0,
+      durableActualRevision: legacy.durableActualRevision ?? 0,
+    };
+  };
+  return {
+    ...state,
+    archivedSessions: (state.archivedSessions ?? []).map(normalize),
+    session: state.session ? normalize(state.session) : null,
+  } as ProductionSessionStoreState;
+}
+
 export const useProductionSessionStore = create<ProductionSessionStoreState>()(
   persist(
     (set) => ({
       session: null,
-      ensureSession: (input) =>
-        set((state) => {
-          if (
-            state.session?.status === 'in_progress' &&
-            state.session.ownerUserId === input.ownerUserId
-          ) {
-            return state;
-          }
-          const fingerprint = productionSourceFingerprint(input.plannedInput, input.plannedComposition);
-          if (
-            state.session?.status === 'completed' &&
-            state.session.sourceFingerprint === fingerprint &&
-            state.session.ownerUserId === input.ownerUserId
-          ) {
-            return state;
-          }
-          return { session: buildSession(input) };
-        }),
-      startNewSession: (input) => set({ session: buildSession(input) }),
+      archivedSessions: [],
+      startNewSession: (input) =>
+        set((state) => ({
+          archivedSessions: state.session
+            ? [...state.archivedSessions, state.session]
+            : state.archivedSessions,
+          session: buildSession(input),
+        })),
       setDraftActual: (lineId, grams) =>
         set((state) => ({
           session: setDraftActualGrams(requireSession(state.session), lineId, grams),
@@ -108,20 +134,6 @@ export const useProductionSessionStore = create<ProductionSessionStoreState>()(
         set((state) => ({
           session: correctRecordedPhysicalGrams(requireSession(state.session), lineId, grams),
         })),
-      applyVerifiedRescue: (candidate) =>
-        set((state) => {
-          const session = requireSession(state.session);
-          const fingerprint = productionRescueCandidateFingerprint(candidate);
-          const verified = assessProductionRescue(session).options.find(
-            (option) => productionRescueCandidateFingerprint(option.candidateInput) === fingerprint,
-          );
-          if (!verified) {
-            throw new Error(
-              'Production rescue candidate is stale or was not verified for this session.',
-            );
-          }
-          return { session: applyVerifiedRescueInput(session, verified.candidateInput) };
-        }),
       setNotes: (notes) =>
         set((state) => {
           const session = requireSession(state.session);
@@ -161,37 +173,39 @@ export const useProductionSessionStore = create<ProductionSessionStoreState>()(
             ),
           };
         }),
-      clear: () => set({ session: null }),
+      archiveCurrentSession: () =>
+        set((state) => ({
+          archivedSessions: state.session
+            ? [...state.archivedSessions, state.session]
+            : state.archivedSessions,
+          session: null,
+        })),
+      replaceSession: (candidate) =>
+        set((state) => {
+          const current = requireSession(state.session);
+          if (current.sessionId !== candidate.sessionId) {
+            throw new Error('Cannot replace a different Production run.');
+          }
+          return { session: candidate };
+        }),
+      restoreDurableSession: (candidate) =>
+        set((state) => ({
+          archivedSessions:
+            state.session && state.session.sessionId !== candidate.sessionId
+              ? [...state.archivedSessions, state.session]
+              : state.archivedSessions,
+          session: candidate,
+        })),
+      clear: () => set({ session: null, archivedSessions: [] }),
     }),
     {
       name: 'pinguino-production-session',
-      version: 2,
-      migrate: (persisted, version) => {
-        if (version >= 2) return persisted as ProductionSessionStoreState;
-        const state = persisted as { session?: ProductionSession | null };
-        if (!state.session) return state as ProductionSessionStoreState;
-        const legacy = state.session as ProductionSession & {
-          addonLines?: ProductionSession['addonLines'];
-          plannedComposition?: RecipeCompositionMetadata;
-          stage?: ProductionSession['stage'];
-        };
-        const plannedComposition = legacy.plannedComposition ??
-          recipeCompositionFromState({
-            items: legacy.plannedInput.items,
-            baseOrder: legacy.plannedInput.items.map((item) => item.id),
-          });
-        return {
-          ...state,
-          session: {
-            ...legacy,
-            schemaVersion: 2,
-            plannedComposition,
-            addonLines: legacy.addonLines ?? [],
-            stage: legacy.stage ?? 'base',
-          },
-        } as ProductionSessionStoreState;
-      },
-      partialize: (state) => ({ session: state.session }),
+      version: 5,
+      migrate: migrateProductionSessionStore,
+      partialize: (state) => ({
+        session: state.session,
+        archivedSessions: state.archivedSessions,
+      }),
     },
   ),
 );

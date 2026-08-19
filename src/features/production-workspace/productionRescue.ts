@@ -15,13 +15,21 @@ import {
 } from '@/features/practical-recipe/practicalRecipe';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
 import type { ConstraintSet, IngredientConstraint } from '@/features/recipe-constraints';
+import type { ProductionRescueStableOptionId } from '@/features/pro-core/productionContracts';
 import {
   PRODUCTION_GRAMS_EPSILON,
   buildProductionForecastInput,
   type ProductionSession,
 } from './productionSession';
 
-export type ProductionRescueOptionId = 'keep_original_batch' | 'enlarge_batch' | 'leave_as_is';
+export type ProductionRescueOptionId = ProductionRescueStableOptionId;
+
+/**
+ * Production-specific Rescue orchestration contract. Engine/config versions
+ * continue to identify the formulas and calibrated data; this stamp identifies
+ * the option-selection and practicalization layer authorized by the server.
+ */
+export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v1' as const;
 
 export interface ProductionRescueInstruction {
   lineId: string | null;

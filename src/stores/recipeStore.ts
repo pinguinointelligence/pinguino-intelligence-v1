@@ -201,6 +201,8 @@ export interface RecipeState {
   savedRecipeName: string | null;
   /** The linked aggregate's latest persisted version number (display only; DB is authoritative). */
   currentVersionNumber: number | null;
+  /** Exact immutable `recipe_versions.id` UUID for the currently loaded/saved vector. */
+  currentVersionId: string | null;
   /** ISO date of the current version (drives the `DD.MM.YYYY · vN` label; persisted). */
   currentVersionDate: string | null;
   /**
@@ -367,6 +369,7 @@ export interface RecipeState {
       savedId?: string | null;
       savedName?: string | null;
       versionNumber?: number | null;
+      versionId?: string | null;
       versionDate?: string | null;
       composition?: RecipeCompositionMetadata | null;
     },
@@ -383,6 +386,7 @@ export interface RecipeState {
     versionNumber: number,
     versionDate?: string | null,
     practicalRecipeAudit?: PracticalRecipeSavedAudit | null,
+    versionId?: string | null,
   ) => void;
   /** Select a Pro machine/serving mode (S4): sets the routing temperature + context + optional batch. */
   setMachineSelection: (sel: {
@@ -516,6 +520,7 @@ const fromPreset = (preset: DemoPreset) => ({
   savedRecipeId: null,
   savedRecipeName: null,
   currentVersionNumber: null,
+  currentVersionId: null,
   currentVersionDate: null,
   machineKind: null,
   servingModeId: null,
@@ -613,6 +618,7 @@ export function recipePersistPartialize(state: RecipeState) {
     savedRecipeId: state.savedRecipeId,
     savedRecipeName: state.savedRecipeName,
     currentVersionNumber: state.currentVersionNumber,
+    currentVersionId: state.currentVersionId,
     currentVersionDate: state.currentVersionDate,
     machineKind: state.machineKind,
     servingModeId: state.servingModeId,
@@ -1630,6 +1636,7 @@ export const useRecipeStore = create<RecipeState>()(
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
           currentVersionNumber: link.versionNumber ?? null,
+          currentVersionId: link.versionId ?? null,
           currentVersionDate: link.versionDate ?? null,
           dirty: false,
           practicalRecipeAudit,
@@ -1640,11 +1647,19 @@ export const useRecipeStore = create<RecipeState>()(
           .getState()
           .openDraft(opened.draftContextSeq, opened.direction_targets, profile?.directionIntents);
       },
-      markSaved: (id, name, versionNumber, versionDate = null, practicalRecipeAudit) =>
+      markSaved: (
+        id,
+        name,
+        versionNumber,
+        versionDate = null,
+        practicalRecipeAudit,
+        versionId = null,
+      ) =>
         set({
           savedRecipeId: id,
           savedRecipeName: name,
           currentVersionNumber: versionNumber,
+          currentVersionId: versionId,
           currentVersionDate: versionDate,
           dirty: false,
           newRecipeStarterTemplateId: null,

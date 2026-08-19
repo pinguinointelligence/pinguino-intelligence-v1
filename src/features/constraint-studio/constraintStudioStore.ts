@@ -534,6 +534,7 @@ const CLEAR_STAGED = {
 };
 
 let activePiRunGeneration = 0;
+export const PI_RECALCULATION_DEADLINE_MS = 15_000;
 
 const isCurrentPiRun = (generation: number): boolean => generation === activePiRunGeneration;
 
@@ -2041,11 +2042,18 @@ export async function createExplicitStandardRemovalPreviewWithServerAuthority(
 export async function runPiRecalculationWithTerminal(
   run?: () => Promise<void>,
   generation?: number,
+  deadlineMs = PI_RECALCULATION_DEADLINE_MS,
 ): Promise<void> {
   const ownedGeneration = generation ?? beginPiRecalculation();
   const execute = run ?? (() => createOptimizePreviewWithServerAuthority(ownedGeneration));
+  let deadline: ReturnType<typeof setTimeout> | undefined;
   try {
-    await execute();
+    await Promise.race([
+      execute(),
+      new Promise<never>((_, reject) => {
+        deadline = setTimeout(() => reject(new PiRecalculationDeadlineError()), deadlineMs);
+      }),
+    ]);
     if (!isCurrentPiRun(ownedGeneration)) return;
     if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
       useConstraintStudioStore.setState({
@@ -2057,8 +2065,27 @@ export async function runPiRecalculationWithTerminal(
         },
       });
     }
-  } catch {
+  } catch (error) {
     if (!isCurrentPiRun(ownedGeneration)) return;
+    if (error instanceof PiRecalculationDeadlineError) {
+      // Invalidate this generation without starting another visible run. A late
+      // ProductBehavior response can no longer publish into the timed-out UI.
+      activePiRunGeneration += 1;
+      useConstraintStudioStore.setState({
+        preview: null,
+        previewIssue: null,
+        directionBestCandidate: null,
+        blocked: null,
+        recalculationTerminal: {
+          state: 'BLOCKED_WITH_EXACT_ACTION',
+          code: 'apply_failed',
+          messagePl:
+            'Serwer nie odpowiedział w bezpiecznym czasie. Receptura nie została zmieniona. Wróć do receptury i spróbuj ponownie.',
+          action: 'return_to_recipe',
+        },
+      });
+      return;
+    }
     useConstraintStudioStore.setState({
       preview: null,
       previewIssue: null,
@@ -2071,6 +2098,15 @@ export async function runPiRecalculationWithTerminal(
         action: 'return_to_recipe',
       },
     });
+  } finally {
+    if (deadline !== undefined) clearTimeout(deadline);
+  }
+}
+
+class PiRecalculationDeadlineError extends Error {
+  constructor() {
+    super('PI recalculation deadline exceeded.');
+    this.name = 'PiRecalculationDeadlineError';
   }
 }
 

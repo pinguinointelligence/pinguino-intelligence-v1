@@ -259,12 +259,12 @@ describe('recalculation entry', () => {
 describe('new Pro profile layout', () => {
   it('exposes four stable right-panel contexts and keeps actual batch in the profile', () => {
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const tabs = read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx');
     for (const label of ['Receptura', 'Monitor', 'Produkcja', 'Etykieta']) {
-      expect(profile).toContain(label);
+      expect(tabs).toContain(label);
     }
-    expect(profile).toContain(
-      "export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary'",
-    );
+    expect(tabs).toContain("export type WorkbenchModuleTab = 'profile' | 'monitor' | 'production' | 'summary'");
+    expect(profile).toContain('export type CockpitTab = WorkbenchModuleTab');
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     expect(settings).toContain('profile-batch-combined');
     expect(settings).toContain('actualBatchG.toLocaleString');

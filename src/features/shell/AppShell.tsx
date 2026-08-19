@@ -22,6 +22,7 @@ import { navigationAudience } from './appNav';
 export function AppShell({
   actions,
   brand,
+  workbenchChrome,
   children,
   maxWidthClass = 'max-w-6xl',
   contentClassName,
@@ -31,6 +32,8 @@ export function AppShell({
   /** Optional page-owned official lockup. The default shell mark remains unchanged
    * for routes outside an explicitly approved redesign scope. */
   brand?: ReactNode;
+  /** Route-controlled intelligence status and module tabs for the Pro workbench. */
+  workbenchChrome?: ReactNode;
   children: ReactNode;
   maxWidthClass?: string;
   contentClassName?: string;
@@ -87,12 +90,13 @@ export function AppShell({
           </Link>
           {viewportLock ? actions : null}
         </div>
+        {viewportLock ? workbenchChrome : null}
         {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
             never force horizontal page overflow (owner P0 responsive rule). */}
         <div
           className={cn(
             'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-            viewportLock && 'max-sm:w-full max-sm:flex-nowrap max-sm:justify-between xl:mt-6',
+            viewportLock && 'max-sm:w-auto max-sm:shrink-0 max-sm:flex-nowrap xl:mt-6',
           )}
         >
           {!viewportLock ? actions : null}

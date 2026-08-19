@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "generator": "scripts/buildProductionRescueEdgeBundle.mjs",
+  "bundler": {
+    "name": "rolldown",
+    "version": "1.0.3"
+  },
+  "canonicalEntry": "src/features/production-workspace/productionRescue.ts",
+  "exportedRuntime": [
+    "assessProductionRescue",
+    "productionRescueCandidateFingerprint",
+    "hydrateProductionSessionFromRun",
+    "scaleRecipeVersion",
+    "scaledRecipeInput"
+  ],
+  "versions": {
+    "engine": "0.4.0",
+    "config": "0.7.0",
+    "practicalRecipe": "pro-whole-gram-v1",
+    "productionRescue": "production-rescue-v1",
+    "productionSessionSchema": 2
+  },
+  "bundle": {
+    "bytes": 209992,
+    "sha256": "1072f345fc5dbe24de6a2ef1e340db831192bf049b4e8a890a3a559488b8e1e7",
+    "externalImports": 0,
+    "dynamicImports": 0
+  },
+  "sourceClosure": [
+    {
+      "path": "src/data/ingredients/canonicalIngredientIdentity.ts",
+      "sha256": "94836fb6be7422a25568bb2f50ce3f3a02179edc3b448e1dc22e44b74bd16618"
+    },
+    {
+      "path": "src/engine/calculateRecipe.ts",
+      "sha256": "edccc9334184aa4bc0421f2fa51461a010ecbd8b74a381e3030c5b7fec69534b"
+    },
+    {
+      "path": "src/engine/composition.ts",
+      "sha256": "5aa49a2fbb4d504a23fb2799dbbdf8981f92baecb86ebf91e8d9074c224c251e"
+    },
+    {
+      "path": "src/engine/config/coefficients.ts",
+      "sha256": "6e1c513fae23b7b69de5b0c0a29cec14e4cfc42a5d5b54c8cf1b4e1f33ed3637"
+    },
+    {
+      "path": "src/engine/config/iceAnchors.ts",
+      "sha256": "7f86af032c80525184de39225a8424ba74eaf1d366a990a57347185f201ba1fb"
+    },
+    {
+      "path": "src/engine/config/modes.ts",
+      "sha256": "f40ffd8396c70cb67cb2740437a08e2f1cad49cafdee62c8124b0bd7d36c9bf1"
+    },
+    {
+      "path": "src/engine/config/priorities.ts",
+      "sha256": "3e0f6b49e210315dce329a9365fcf08eff889edcec09d8aeecf9aa48c6127516"
+    },
+    {
+      "path": "src/engine/config/scoring.ts",
+      "sha256": "f2f31825c82f1a10d5e25905714c2b9bcca6f1c0e6ecf181c5bfaac02e8e69f0"
+    },
+    {
+      "path": "src/engine/config/targets.ts",
+      "sha256": "625316abe0262c1e6650a12787cce0bd0ef5a17577d46880bb7745b60a25f2bf"
+    },
+    {
+      "path": "src/engine/config/version.ts",
+      "sha256": "8d293d80676c23386d38944a64b775696f58f92fbd1d11e6bf65ae8d20fcd409"
+    },
+    {
+      "path": "src/engine/corrections/apply.ts",
+      "sha256": "a44a0004f26a62629eb6930b6197e1ee0318b41a220ce5b3228ede70508a2355"
+    },
+    {
+      "path": "src/engine/corrections/candidates.ts",
+      "sha256": "29433bd7f4269baf1001734b6f8c3b12ee44473ccab01288320f9d82fa1b0592"
+    },
+    {
+      "path": "src/engine/corrections/redact.ts",
+      "sha256": "198e8533f1dd7466fd32b572ffc6422cbbb0368e30ddefc4af543cb20bebe0b9"
+    },
+    {
+      "path": "src/engine/corrections/solver.ts",
+      "sha256": "d5dcdc4eb30cc2759e5ef575a6c5c1842e0fdd0783e6f8262a43aecc4cadaea0"
+    },
+    {
+      "path": "src/engine/corrections/verify.ts",
+      "sha256": "8a58230a0bf714c7092cdfb864ce40ddb3cf7ec2162cf5a0454385f8c9bae297"
+    },
+    {
+      "path": "src/engine/cost.ts",
+      "sha256": "0783a91bee213457e5e3373c0f6a8f12434b3ceef3ee496a53880e1a82a023c0"
+    },
+    {
+      "path": "src/engine/iceFraction.ts",
+      "sha256": "afe1278b7d65611926598bc5c3716214a202391c403aa2de190e739e3b5732c7"
+    },
+    {
+      "path": "src/engine/nutrition.ts",
+      "sha256": "1f0d4c16c9b679c5f4fed5eb7e6f5268c6643d93fdd2edad65f8b9ef3ffc82d9"
+    },
+    {
+      "path": "src/engine/pac.ts",
+      "sha256": "55eb25804569baa3c4b357f32d2a3edb73a727f63e8040c95e85e94dad471e91"
+    },
+    {
+      "path": "src/engine/pod.ts",
+      "sha256": "02e2a0b6239e9116b8e70d21e4f819d871c7ce78bfd064f1a95126d17faada33"
+    },
+    {
+      "path": "src/engine/scoring.ts",
+      "sha256": "e10737e3430b398ba9a3a1066f8e0b0fc1d75b1144206279efa58cb42b464985"
+    },
+    {
+      "path": "src/engine/statuses.ts",
+      "sha256": "e84f73b943ed9f4675673f412e5e93b014d6e383229ee5db3df770408c220f4e"
+    },
+    {
+      "path": "src/features/formulation/ingredientRoles.ts",
+      "sha256": "fd4e097139e2b5f61637893d5ca4cde13191ea6af621ea6818e87b9fe4feaa5a"
+    },
+    {
+      "path": "src/features/formulation/mainIngredientContract.ts",
+      "sha256": "7c86a976ff1bc4ab0481996e58ab8f6449e637c7b1eb93f3076a8c0171921a96"
+    },
+    {
+      "path": "src/features/formulation/stabilizerDosage.ts",
+      "sha256": "f3e3da0f3e9d31fe42c2100eb39f7b124cdb748b38aa936323d8b39f47fd2ce6"
+    },
+    {
+      "path": "src/features/formulation/violationBands.ts",
+      "sha256": "d1502528049eb5f86302903fb50ddb4e1b22384d7507f726b85a4fcf0efc4e3c"
+    },
+    {
+      "path": "src/features/practical-recipe/practicalRecipe.ts",
+      "sha256": "cf33e5cbab3adad76fa00ad1e7396c98702d65cd0bbc990b49c7450ae7c700a2"
+    },
+    {
+      "path": "src/features/pro-core/recipeScaling.ts",
+      "sha256": "727b9c03c1c912c2913fc065e47a593184947534221d0303aef5d7dd4adbce96"
+    },
+    {
+      "path": "src/features/product-intelligence/productBehaviorAccess.ts",
+      "sha256": "d57a727f503a549b496905714a888097fca59a0266ac8d19f685d8eb3df0ae75"
+    },
+    {
+      "path": "src/features/product-intelligence/productBehaviorResolver.ts",
+      "sha256": "5720af8de80531eb519ed5b6e63adb9d8cbe9a9c45bf92e0767a4d78e71fecac"
+    },
+    {
+      "path": "src/features/product-intelligence/recipeBehaviorAuthority.ts",
+      "sha256": "d87e3cd0591b6dec08b504608f9c5abe645ec4f3d3a2944d538cd2a38026557d"
+    },
+    {
+      "path": "src/features/production-workspace/productionRescue.ts",
+      "sha256": "e26f1d16bb790cf7100c811b696da6f7e31b0ca396c1f15497e630ec2e7b1e77"
+    },
+    {
+      "path": "src/features/production-workspace/productionSession.ts",
+      "sha256": "3e8fc11fdc2cacf931c10e539634d0b5e415e034e7fafd85ce7af2927f13a3ac"
+    },
+    {
+      "path": "src/features/protein-gelato/proteinTarget.ts",
+      "sha256": "80a90859fb76b4d5269633d4139eb14b9a1d90f9754e377410360dd60c8ebd31"
+    },
+    {
+      "path": "src/features/recipe-composition/finalProduct.ts",
+      "sha256": "a48cc291d2281d1aac4f5eeded7d7ac40420ddb79c71ddb570ad0447c3e98cae"
+    },
+    {
+      "path": "src/features/recipe-composition/labelTopping.ts",
+      "sha256": "1e7b975926ecea7fedff13fe4c0b45efe31d019aadd48818c291b8081a14efe6"
+    },
+    {
+      "path": "src/features/recipe-composition/recipeCompositionPersistence.ts",
+      "sha256": "e9496461f128be5f7f54c9ef3bf8a756c496862e2608bee52b3c1ff6c1ebcfe3"
+    },
+    {
+      "path": "src/features/recipe-constraints/constraintSet.ts",
+      "sha256": "d034c715f20c0bc878ced05c913b74aca8ee4627ad850c2d333e376f4ac64ffc"
+    },
+    {
+      "path": "src/features/recipe-direction/recipeDirectionAssessment.ts",
+      "sha256": "f24b4328880b5b087d1caf4e11f72d3cdb5795f616cb3fc5d914d30364b715c6"
+    },
+    {
+      "path": "src/features/recipe-direction/recipeDirectionTargets.ts",
+      "sha256": "e613a4d10cd69a2609002afe160456efd696b30439b33f6df82295458be028b4"
+    },
+    {
+      "path": "src/features/recipe-score/recipeMatchScore.ts",
+      "sha256": "753c3614953633949916f8d3a94eff264991b38cdbcee1c8ab4ada3375069f0f"
+    },
+    {
+      "path": "src/features/recipe-score/technicalFit.ts",
+      "sha256": "95ae22ff69f66f6e9236f85a2d1ef9f7158a285ddd7cdbc6c614d227a538087a"
+    },
+    {
+      "path": "src/spine/temperatureRegulator.ts",
+      "sha256": "ceb1e7b33ddb1448a584c84aafdfdb86d0b33dded9a35acee064178a3a90fc53"
+    }
+  ],
+  "sourceClosureSha256": "170e07b896430a1c6fc8c1055f898b54c3fe88d1f8479f21a2573dfeb39e7d69"
+}

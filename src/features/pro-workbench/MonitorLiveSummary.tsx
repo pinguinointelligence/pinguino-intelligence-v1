@@ -1,6 +1,4 @@
-import { calculateRecipe, type RecipeInput, type RecipeResult } from '@/engine';
-import { bandPosition } from '@/features/recipe-score';
-import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import type { RecipeResult } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { profileSnapshotFromState } from './recipeProfilePersistence';
 import {
@@ -9,6 +7,7 @@ import {
   type DirectionIntent,
 } from './recipeProfileStore';
 import { MonitorRangeScale } from './ProfessionalMonitorModules';
+import { buildMonitorScaleModel } from './monitorScaleModel';
 
 const INTENT: Record<DirectionIntent, string> = {
   [-2]: 'zdecydowanie mniej',
@@ -23,16 +22,15 @@ const metric = (result: RecipeResult | null, key: 'pod' | 'npac') =>
 
 export function MonitorLiveSummary({
   result,
+  previewResult = null,
   onOpenProfile,
 }: {
   result: RecipeResult;
-  input: RecipeInput;
+  previewResult?: RecipeResult | null;
   onOpenProfile?: () => void;
 }) {
   const recipe = useRecipeStore();
   const intents = useRecipeProfileStore((state) => state.directionIntents);
-  const preview = useConstraintStudioStore((state) => state.preview);
-  const previewResult = preview ? calculateRecipe(preview.proposedInput) : null;
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
   const currentSignature = profileSettingsSignature(
@@ -70,8 +68,8 @@ export function MonitorLiveSummary({
           ).map(([label, key, intent]) => {
             const before = metric(result, key);
             const after = metric(previewResult, key);
-            const beforeReading = before?.band ? bandPosition(before.value, before.band) : null;
-            const afterReading = after?.band ? bandPosition(after.value, after.band) : null;
+            const beforeScale = buildMonitorScaleModel(key, before?.value, before?.band);
+            const afterScale = buildMonitorScaleModel(key, after?.value, after?.band);
             return (
               <div
                 key={key}
@@ -91,10 +89,9 @@ export function MonitorLiveSummary({
                   </span>
                 </span>
                 <MonitorRangeScale
-                  reading={beforeReading}
-                  previewReading={afterReading}
+                  model={beforeScale}
+                  previewModel={afterScale}
                   testId={`monitor-scale-${key}`}
-                  tolerance={28}
                   label={label}
                 />
                 <span className="flex items-center justify-end gap-2 text-right">

@@ -42,6 +42,7 @@ import { BlockedApplyNotice } from '@/features/constraint-studio/ui/BlockedApply
 import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import type { RecipeInput } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
+import { maySuggestVerifiedFructose } from '@/features/recipe-direction/sweetnessFallback';
 
 const r = copy.proWorkbar.recalcPanel;
 const d = constraintStudioCopy.diagnosis;
@@ -401,7 +402,7 @@ function RecalcDiagnosisView({
   );
 }
 
-function DirectionBestDecision({
+export function DirectionBestDecision({
   candidate,
   onAccept,
   onBack,
@@ -418,6 +419,7 @@ function DirectionBestDecision({
     flavor: 'Intensywność smaku',
   };
   const missed = assessment?.residuals.filter((residual) => !residual.reached) ?? [];
+  const suggestFructose = maySuggestVerifiedFructose(candidate);
   return (
     <div
       className="space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4"
@@ -443,6 +445,19 @@ function DirectionBestDecision({
       <p className="text-xs text-ivory/65">
         Wszystkie natywne wymagania technologiczne pozostają ważne.
       </p>
+      {suggestFructose ? (
+        <div
+          className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+          data-testid="direction-best-fructose-suggestion"
+        >
+          <p className="text-xs font-medium text-ivory">Możliwy kolejny krok: fruktoza</p>
+          <p className="mt-1 text-xs leading-relaxed text-ivory/70">
+            Wróć do receptury, wybierz „Dodaj składnik”, wyszukaj zweryfikowaną Fruktozę i uruchom
+            PI ponownie. PI nie doda jej automatycznie — nowy Preview musi nadal potwierdzić
+            twardość, zamrożenie, ciała stałe oraz wszystkie bezpieczne zakresy.
+          </p>
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"

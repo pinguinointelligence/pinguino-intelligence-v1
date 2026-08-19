@@ -206,8 +206,7 @@ export function useCanonicalRecipeSave(
       return {
         blocked: true,
         message:
-          behaviorGate.reason ??
-          'Receptura zawiera produkt bez zatwierdzonego uprawnienia do zapisu.',
+          'Receptura zawiera produkt wymagający ponownej walidacji przed zapisem. Przelicz recepturę.',
       };
     }
     const last = useConstraintStudioStore.getState().history.at(-1);
@@ -272,7 +271,7 @@ export function useCanonicalRecipeSave(
     });
     if (!validation.ready) {
       throw new Error(
-        `Zapis zablokowany: klasyfikacja produktu wymaga ponownego przeliczenia (${validation.staleLineIds.join(', ')}).`,
+        'Zapis zablokowany: klasyfikacja produktu wymaga ponownego przeliczenia.',
       );
     }
   };
@@ -333,6 +332,7 @@ export function useCanonicalRecipeSave(
             version.versionNumber,
             version.createdAt,
             readPracticalRecipeAudit(recipeInput),
+            version.versionId,
           );
         }
         return recipe.recipeId;
@@ -363,6 +363,7 @@ export function useCanonicalRecipeSave(
             version.versionNumber,
             version.createdAt,
             readPracticalRecipeAudit(recipeInput),
+            version.versionId,
           );
         }
         return savedRecipeId;

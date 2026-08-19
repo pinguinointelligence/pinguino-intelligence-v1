@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { calculateRecipe, proposeCorrections } from '@/engine';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CONFIG_VERSION, ENGINE_VERSION, calculateRecipe, proposeCorrections } from '@/engine';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore, type RecipeState } from '@/stores/recipeStore';
 import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeInput';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
-import { assessProductionRescue } from './productionRescue';
 import {
   buildProductionForecastInput,
+  confirmProductionLine,
+  hydrateProductionSessionFromRun,
+  mergePendingProductionDrafts,
   productionProgress,
+  productionSourceFingerprint,
+  reopenProductionRecord,
   toppingProductionProgress,
+  type ProductionSession,
 } from './productionSession';
 import { useProductionSessionStore } from './productionSessionStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
@@ -27,45 +32,298 @@ import {
   productBehaviorRequiredLineIds,
 } from '@/features/product-intelligence';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
+import { buildRecipeVersion } from '@/features/pro-core/recipeVersioning';
+import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import { resolveProductionRepository } from '@/features/pro-core/proCoreProductionRepo';
+import type {
+  ProductionRescueAuthorization,
+  RecordActualArgs,
+} from '@/services/proCore/productionRepository';
+import { isProductionRescueAuthorizationRefreshError } from '@/services/proCore/supabaseProduction';
+import type {
+  ProductionRescueStableOptionId,
+  ProductionRun,
+} from '@/features/pro-core/productionContracts';
 
-const newSessionId = (): string =>
-  typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `production-${Date.now().toString(36)}`;
+export type ProductionRescueAuthorizationInvalidation = 'expired' | 'revision_mismatch' | null;
+
+export type ProductionRescueAuthorizationState =
+  | { status: 'idle' }
+  | {
+      status: 'authorizing';
+      runId: string;
+      stableOptionId: ProductionRescueStableOptionId;
+      expectedActualRevision: number;
+      expectedRescueRevision: number;
+      authorizeIdempotencyKey: string;
+    }
+  | {
+      status: 'preview';
+      authorization: ProductionRescueAuthorization;
+      consumeIdempotencyKey: string;
+      refreshRequired: boolean;
+      error: string | null;
+    }
+  | {
+      status: 'error';
+      runId: string;
+      stableOptionId: ProductionRescueStableOptionId;
+      expectedActualRevision: number;
+      expectedRescueRevision: number;
+      authorizeIdempotencyKey: string;
+      message: string;
+    };
+
+export const productionRescueAuthorizationInvalidation = (
+  authorization: Pick<
+    ProductionRescueAuthorization,
+    'expectedActualRevision' | 'expectedRescueRevision' | 'expiresAt'
+  >,
+  basis: Pick<ProductionSession, 'durableActualRevision' | 'durableRescueRevision'> | null,
+  nowMs = Date.now(),
+): ProductionRescueAuthorizationInvalidation => {
+  if (
+    !basis ||
+    authorization.expectedActualRevision !== basis.durableActualRevision ||
+    authorization.expectedRescueRevision !== basis.durableRescueRevision
+  ) {
+    return 'revision_mismatch';
+  }
+  const expiresAtMs = Date.parse(authorization.expiresAt);
+  return !Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs ? 'expired' : null;
+};
+
+const productionRescueIdempotencyKey = (): string =>
+  globalThis.crypto?.randomUUID?.() ??
+  `production-rescue-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const productionRescueChoices = [
+  {
+    id: 'keep_original_batch',
+    title: 'Zachowaj pierwotną partię',
+    explanation: 'Serwer sprawdzi, czy pozostały plan można bezpiecznie skorygować.',
+  },
+  {
+    id: 'enlarge_batch',
+    title: 'Powiększ partię',
+    explanation: 'Serwer sprawdzi bezpieczne uzupełnienie partii po odchyleniu.',
+  },
+  {
+    id: 'leave_as_is',
+    title: 'Pozostaw bez zmian',
+    explanation: 'Serwer potwierdzi, czy bieżąca partia nadal mieści się w bezpiecznym zakresie.',
+  },
+] as const satisfies ReadonlyArray<{
+  id: ProductionRescueStableOptionId;
+  title: string;
+  explanation: string;
+}>;
+
+export const browserProductionRescueDecision = (session: ProductionSession | null) => {
+  const hasConfirmedDeviation = Boolean(
+    session?.status === 'in_progress' &&
+    session.lines.some(
+      (line) => line.confirmed && Math.abs(line.physicalAddedGrams - line.plannedGrams) > 0.000001,
+    ),
+  );
+  return hasConfirmedDeviation
+    ? { state: 'options' as const, options: productionRescueChoices }
+    : { state: 'not_needed' as const, options: [] as const };
+};
+
+export const reusableRescueAuthorizeKey = (
+  state: ProductionRescueAuthorizationState,
+  session: Pick<ProductionSession, 'sessionId' | 'durableActualRevision' | 'durableRescueRevision'>,
+  stableOptionId: ProductionRescueStableOptionId,
+): string | null =>
+  state.status === 'error' &&
+  state.runId === session.sessionId &&
+  state.stableOptionId === stableOptionId &&
+  state.expectedActualRevision === session.durableActualRevision &&
+  state.expectedRescueRevision === session.durableRescueRevision
+    ? state.authorizeIdempotencyKey
+    : null;
+
+export function durableActual(session: ProductionSession, by: string): RecordActualArgs {
+  const durableLines = [...session.lines, ...session.addonLines];
+  const baseComplete = session.lines.every((line) => line.confirmed);
+  return {
+    by,
+    expectedActualRevision: session.durableActualRevision,
+    expectedRescueRevision: session.durableRescueRevision,
+    items: durableLines.map((line) => ({
+      id: line.lineId,
+      name: line.name,
+      actualGrams: line.confirmed ? line.physicalAddedGrams : null,
+      confirmedAt: line.confirmed ? line.confirmedAt : null,
+      confirmationOrder: line.confirmed ? line.confirmationOrder : null,
+    })),
+    actualTotalMixG: baseComplete
+      ? session.lines.reduce((sum, line) => sum + line.physicalAddedGrams, 0)
+      : null,
+    substitutions: [
+      ...session.substitutions.map((item) => ({
+        originalIngredientId: item.originalLineId,
+        originalName: item.originalCanonicalIngredientId ?? item.originalLineId,
+        substituteName: item.substituteName,
+        grams: item.grams,
+        reason: item.reason,
+      })),
+    ],
+    operatorNotes: session.internalProductionNote || null,
+  };
+}
+
+export const durableRescueRequiresReconciliation = (
+  remote: Pick<ProductionRun, 'rescue'>,
+  local: Pick<ProductionSession, 'durableRescueRevision'> | null,
+): boolean =>
+  Boolean(remote.rescue && local && remote.rescue.revision !== local.durableRescueRevision);
+
+export type DurableProductionRecoveryRelation =
+  | 'missing_remote'
+  | 'new_rescue'
+  | 'new_actual'
+  | 'same';
+
+export const durableProductionRecoveryRelation = (
+  local: Pick<ProductionSession, 'durableRescueRevision' | 'durableActualRevision'> | null,
+  remote: Pick<ProductionRun, 'rescue' | 'actual'> | null,
+): DurableProductionRecoveryRelation => {
+  if (local && !remote) return 'missing_remote';
+  if (!local || !remote) return 'same';
+  if (durableRescueRequiresReconciliation(remote, local)) return 'new_rescue';
+  if (remote.actual && remote.actual.revision !== local.durableActualRevision) return 'new_actual';
+  return 'same';
+};
 
 export const productionSourceForRecipe = (
-  recipe: Pick<RecipeState, 'dirty' | 'savedRecipeId' | 'savedRecipeName' | 'currentVersionNumber'>,
+  recipe: Pick<
+    RecipeState,
+    'dirty' | 'savedRecipeId' | 'savedRecipeName' | 'currentVersionId' | 'currentVersionNumber'
+  >,
 ) => ({
   recipeId: recipe.savedRecipeId,
   recipeVersionId:
-    !recipe.dirty && recipe.savedRecipeId && recipe.currentVersionNumber
-      ? `${recipe.savedRecipeId}:v${recipe.currentVersionNumber}`
+    !recipe.dirty && recipe.savedRecipeId && recipe.currentVersionId
+      ? recipe.currentVersionId
       : null,
   recipeVersionNumber: recipe.dirty ? null : recipe.currentVersionNumber,
   recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
 });
 
+export type ProductionPrerequisiteCode =
+  | 'preview_required'
+  | 'preview_not_applied'
+  | 'saved_version_required'
+  | 'product_authority_required'
+  | 'whole_grams_required'
+  | 'server_validation_pending'
+  | 'server_validation_failed'
+  | 'repository_unavailable'
+  | 'repository_recovery'
+  | 'stale_source'
+  | 'owner_mismatch';
+
+export type ProductionPrerequisiteAction =
+  | 'open_preview'
+  | 'recalculate'
+  | 'return_to_recipe'
+  | 'archive_stale_session';
+
+export type ProductionPrerequisite = {
+  code: ProductionPrerequisiteCode;
+  eyebrow: string;
+  title: string;
+  message: string;
+  action: ProductionPrerequisiteAction;
+  actionLabel: string;
+};
+
+const prerequisite = (
+  code: ProductionPrerequisiteCode,
+  title: string,
+  message: string,
+  action: ProductionPrerequisiteAction,
+  actionLabel: string,
+): ProductionPrerequisite => ({
+  code,
+  eyebrow: 'Wymaga receptury wykonawczej',
+  title,
+  message,
+  action,
+  actionLabel,
+});
+
 export function useProductionWorkspace(enabled: boolean) {
   const recipe = useRecipeStore();
+  const persona = useProCorePersona();
+  const repositoryState = useMemo(() => resolveProductionRepository(), []);
   const ownerUserId = useAuthStore((state) =>
     state.status === 'authed' ? (state.user?.id ?? null) : null,
   );
   const session = useProductionSessionStore((state) => state.session);
-  const ensureSession = useProductionSessionStore((state) => state.ensureSession);
   const setDraftActual = useProductionSessionStore((state) => state.setDraftActual);
-  const confirmLine = useProductionSessionStore((state) => state.confirmLine);
-  const reopenRecord = useProductionSessionStore((state) => state.reopenRecord);
-  const applyVerifiedRescue = useProductionSessionStore((state) => state.applyVerifiedRescue);
-  const complete = useProductionSessionStore((state) => state.complete);
-  const startNewSession = useProductionSessionStore((state) => state.startNewSession);
+  const archiveCurrentSession = useProductionSessionStore((state) => state.archiveCurrentSession);
+  const replaceSession = useProductionSessionStore((state) => state.replaceSession);
+  const restoreDurableSession = useProductionSessionStore((state) => state.restoreDurableSession);
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const lastApplied = useConstraintStudioStore((state) => state.history.at(-1));
+  const preview = useConstraintStudioStore((state) => state.preview);
+  const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
   const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
   const [behaviorServerGate, setBehaviorServerGate] = useState<{
     key: string | null;
     ready: boolean;
     message: string | null;
   }>({ key: null, ready: false, message: null });
+  const [sessionStart, setSessionStart] = useState<{
+    busy: boolean;
+    error: string | null;
+  }>({ busy: false, error: null });
+  const [persistence, setPersistence] = useState<{
+    busy: boolean;
+    error: string | null;
+  }>({ busy: false, error: null });
+  const [recovery, setRecovery] = useState<{
+    key: string | null;
+    busy: boolean;
+    error: string | null;
+  }>({ key: null, busy: false, error: null });
+  const [rescueAuthorization, setRescueAuthorization] =
+    useState<ProductionRescueAuthorizationState>({ status: 'idle' });
+  const rescueAuthorizationRef = useRef<ProductionRescueAuthorizationState>({ status: 'idle' });
+  const updateRescueAuthorization = useCallback(
+    (
+      next:
+        | ProductionRescueAuthorizationState
+        | ((current: ProductionRescueAuthorizationState) => ProductionRescueAuthorizationState),
+    ) => {
+      const resolved = typeof next === 'function' ? next(rescueAuthorizationRef.current) : next;
+      rescueAuthorizationRef.current = resolved;
+      setRescueAuthorization(resolved);
+    },
+    [],
+  );
+  const [rescueAuthorizationClock, setRescueAuthorizationClock] = useState(() => Date.now());
+  const [reconcileRevision, setReconcileRevision] = useState(0);
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    if (rescueAuthorization.status !== 'preview') return;
+    const expiresAtMs = Date.parse(rescueAuthorization.authorization.expiresAt);
+    const delay = expiresAtMs - Date.now();
+    if (!Number.isFinite(delay) || delay <= 0) return;
+    const timeout = globalThis.setTimeout(
+      () => setRescueAuthorizationClock(Date.now()),
+      Math.min(delay + 1, 2_147_483_647),
+    );
+    return () => globalThis.clearTimeout(timeout);
+  }, [rescueAuthorization]);
 
   const plannedInput = useMemo(
     () => applyEffectiveCustomerPrices(buildRecipeInput(recipe, 'planning'), customerPrices),
@@ -81,6 +339,34 @@ export function useProductionWorkspace(enabled: boolean) {
   );
 
   const practicalGate = useMemo(() => {
+    const currentWasApplied =
+      lastApplied?.practicalization !== undefined &&
+      JSON.stringify(lastApplied.after.input) === JSON.stringify(plannedInput);
+    const restoredVerified = practicalRecipeAuditMatchesInput(
+      plannedInput,
+      recipe.practicalRecipeAudit,
+    );
+    if (!currentWasApplied && !restoredVerified) {
+      return {
+        ready: false,
+        prerequisite:
+          recalculationTerminal?.state === 'PREVIEW_READY' && preview
+            ? prerequisite(
+                'preview_not_applied',
+                'Zastosuj recepturę wykonawczą',
+                'Preview jest gotowy, ale nie został jeszcze zastosowany. Produkcja nie uruchomi się z samego podglądu.',
+                'open_preview',
+                'Otwórz podgląd',
+              )
+            : prerequisite(
+                'preview_required',
+                'Najpierw przelicz recepturę',
+                'Produkcja korzysta wyłącznie ze zweryfikowanej receptury wykonawczej w pełnych gramach.',
+                'recalculate',
+                'Przelicz recepturę',
+              ),
+      };
+    }
     const behaviorGate = productBehaviorModuleGate(
       recipe.productBehaviorSnapshots,
       'PRODUCTION',
@@ -92,38 +378,46 @@ export function useProductionWorkspace(enabled: boolean) {
     if (!behaviorGate.ready) {
       return {
         ready: false,
-        message:
-          behaviorGate.reason ??
-          'Receptura zawiera produkt bez zatwierdzonego uprawnienia do Produkcji.',
-      };
-    }
-    const currentWasApplied =
-      lastApplied?.practicalization !== undefined &&
-      JSON.stringify(lastApplied.after.input) === JSON.stringify(plannedInput);
-    const restoredVerified = practicalRecipeAuditMatchesInput(
-      plannedInput,
-      recipe.practicalRecipeAudit,
-    );
-    if (!currentWasApplied && !restoredVerified) {
-      return {
-        ready: false,
-        message:
-          'Zastosuj najpierw zweryfikowane Preview receptury wykonawczej. Produkcja nie uruchamia niezweryfikowanego szkicu.',
+        prerequisite: prerequisite(
+          'product_authority_required',
+          'Odśwież weryfikację produktów',
+          'Co najmniej jeden produkt wymaga ponownej weryfikacji przed użyciem w Produkcji.',
+          'recalculate',
+          'Przelicz recepturę',
+        ),
       };
     }
     const result = practicalizeRecipeCandidate(plannedInput, constraints);
-    if (!result.ok) return { ready: false, message: result.messagePl };
+    if (!result.ok) {
+      return {
+        ready: false,
+        prerequisite: prerequisite(
+          'whole_grams_required',
+          'Zastosuj pełne gramy',
+          result.messagePl,
+          'recalculate',
+          'Otwórz podgląd',
+        ),
+      };
+    }
     return JSON.stringify(result.audit.executableInput) === JSON.stringify(plannedInput)
-      ? { ready: true, message: null }
+      ? { ready: true, prerequisite: null }
       : {
           ready: false,
-          message:
-            'Zastosuj najpierw zweryfikowane Preview w pełnych gramach. Produkcja nie uruchomi ułamkowego szkicu.',
+          prerequisite: prerequisite(
+            'whole_grams_required',
+            'Zastosuj pełne gramy',
+            'Bieżący szkic nie jest jeszcze wykonawczą recepturą pełnogramową.',
+            'recalculate',
+            'Otwórz podgląd',
+          ),
         };
   }, [
     constraints,
     lastApplied,
     plannedInput,
+    preview,
+    recalculationTerminal,
     recipe.items,
     recipe.practicalRecipeAudit,
     recipe.productBehaviorSnapshots,
@@ -131,91 +425,276 @@ export function useProductionWorkspace(enabled: boolean) {
   ]);
 
   const source = useMemo(() => productionSourceForRecipe(recipe), [recipe]);
+  const recoveryKey = `${ownerUserId ?? 'anon'}:${source.recipeVersionId ?? 'unsaved'}`;
+  const currentSourceFingerprint = useMemo(
+    () => productionSourceFingerprint(plannedInput, plannedComposition),
+    [plannedComposition, plannedInput],
+  );
+  const sessionOwnerMismatch = Boolean(session && session.ownerUserId !== ownerUserId);
+  const staleSource = Boolean(
+    session &&
+    !sessionOwnerMismatch &&
+    session.status === 'in_progress' &&
+    session.sourceFingerprint !== currentSourceFingerprint,
+  );
   const requiredBehaviorLineIds = useMemo(
-    () => productBehaviorRequiredLineIds({
-      items: plannedInput.items,
-      toppings: plannedComposition.toppings,
-    }),
+    () =>
+      productBehaviorRequiredLineIds({
+        items: plannedInput.items,
+        toppings: plannedComposition.toppings,
+      }),
     [plannedComposition.toppings, plannedInput.items],
   );
   const behaviorValidationKey = useMemo(
-    () => JSON.stringify({
-      ownerUserId,
-      recipe: plannedInput,
-      toppings: plannedComposition.toppings,
-      snapshots: plannedComposition.behaviorSnapshots ?? {},
-    }),
+    () =>
+      JSON.stringify({
+        ownerUserId,
+        recipe: plannedInput,
+        toppings: plannedComposition.toppings,
+        snapshots: plannedComposition.behaviorSnapshots ?? {},
+      }),
     [ownerUserId, plannedComposition, plannedInput],
   );
-  const behaviorServerReady = requiredBehaviorLineIds.length === 0 || (
-    behaviorServerGate.key === behaviorValidationKey && behaviorServerGate.ready
-  );
-  const behaviorServerMessage = behaviorServerGate.key === behaviorValidationKey
-    ? behaviorServerGate.message
-    : null;
+  const behaviorServerReady =
+    requiredBehaviorLineIds.length === 0 ||
+    (behaviorServerGate.key === behaviorValidationKey && behaviorServerGate.ready);
+  const behaviorServerMessage =
+    behaviorServerGate.key === behaviorValidationKey ? behaviorServerGate.message : null;
+
+  useEffect(() => {
+    if (
+      !enabled ||
+      !repositoryState.repository ||
+      !ownerUserId ||
+      !source.recipeVersionId ||
+      !practicalGate.ready
+    )
+      return;
+    let cancelled = false;
+    const reconcile = async () => {
+      setRecovery({ key: recoveryKey, busy: true, error: null });
+      try {
+        const localSession = sessionRef.current;
+        let remote = localSession
+          ? await repositoryState.repository!.getRun(localSession.sessionId, ownerUserId)
+          : null;
+        if (durableProductionRecoveryRelation(localSession, remote) === 'missing_remote') {
+          throw new Error('Local Production session has no matching durable run.');
+        }
+        if (!remote) {
+          const active = await repositoryState.repository!.listRuns(ownerUserId, {
+            recipeVersionId: source.recipeVersionId!,
+            status: 'in_progress',
+            sort: 'newest',
+            limit: 2,
+          });
+          if (active.items.length > 1) {
+            throw new Error('Multiple active Production runs require owner review.');
+          }
+          remote = active.items[0] ?? null;
+        }
+        if (cancelled || !remote) return;
+        if (remote.status === 'cancelled') {
+          if (localSession?.sessionId === remote.runId) archiveCurrentSession();
+          return;
+        }
+        const recoveryRelation = durableProductionRecoveryRelation(localSession, remote);
+        if (
+          !localSession ||
+          remote.status === 'completed' ||
+          recoveryRelation === 'new_rescue' ||
+          recoveryRelation === 'new_actual'
+        ) {
+          const hydrated = hydrateProductionSessionFromRun(
+            remote,
+            source,
+            plannedInput,
+            plannedComposition,
+          );
+          restoreDurableSession(
+            localSession && remote.status !== 'completed'
+              ? mergePendingProductionDrafts(hydrated, localSession)
+              : hydrated,
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setRecovery({
+            key: recoveryKey,
+            busy: false,
+            error:
+              'Nie udało się uzgodnić lokalnej sesji z trwałym zapisem Produkcji. Wróć do receptury i spróbuj ponownie.',
+          });
+        }
+        return;
+      } finally {
+        if (!cancelled) setRecovery((current) => ({ ...current, busy: false }));
+      }
+    };
+    void reconcile();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    archiveCurrentSession,
+    enabled,
+    ownerUserId,
+    plannedComposition,
+    plannedInput,
+    practicalGate.ready,
+    recoveryKey,
+    reconcileRevision,
+    repositoryState.repository,
+    restoreDurableSession,
+    session?.sessionId,
+    session?.status,
+    session?.rescueAddedItems.length,
+    source,
+  ]);
+
+  const recoveryPending =
+    enabled &&
+    practicalGate.ready &&
+    Boolean(repositoryState.repository && ownerUserId && source.recipeVersionId) &&
+    (recovery.key !== recoveryKey || recovery.busy);
+  const recoveryError = recovery.key === recoveryKey ? recovery.error : null;
 
   useEffect(() => {
     if (!enabled || !practicalGate.ready || plannedInput.items.length === 0) return;
     let cancelled = false;
-    const validationPromise = requiredBehaviorLineIds.length === 0
-      ? Promise.resolve({ ready: true, staleLineIds: [] as string[] })
-      : validateRecipeBehaviorOnServer({
-          recipe: plannedInput,
-          toppings: plannedComposition.toppings,
-          snapshots: plannedComposition.behaviorSnapshots ?? {},
-          module: 'PRODUCTION',
-          accountId: ownerUserId,
-        });
-    void validationPromise.then((validation) => {
-      if (cancelled) return;
-      if (!validation.ready) {
-        setBehaviorServerGate({
-          key: behaviorValidationKey,
-          ready: false,
-          message: `Produkcja zablokowana: klasyfikacja produktu wymaga ponownego przeliczenia (${validation.staleLineIds.join(', ')}).`,
-        });
-        return;
-      }
-      setBehaviorServerGate({ key: behaviorValidationKey, ready: true, message: null });
-      ensureSession({
-        ownerUserId,
-        source,
-        plannedInput,
-        plannedComposition,
-        now: new Date().toISOString(),
-        sessionId: newSessionId(),
+    const validationPromise =
+      requiredBehaviorLineIds.length === 0
+        ? Promise.resolve({ ready: true, staleLineIds: [] as string[] })
+        : validateRecipeBehaviorOnServer({
+            recipe: plannedInput,
+            toppings: plannedComposition.toppings,
+            snapshots: plannedComposition.behaviorSnapshots ?? {},
+            module: 'PRODUCTION',
+            accountId: ownerUserId,
+          });
+    void validationPromise
+      .then((validation) => {
+        if (cancelled) return;
+        if (!validation.ready) {
+          setBehaviorServerGate({
+            key: behaviorValidationKey,
+            ready: false,
+            message:
+              'Produkcja jest zablokowana, ponieważ klasyfikacja produktu wymaga ponownego przeliczenia.',
+          });
+          return;
+        }
+        setBehaviorServerGate({ key: behaviorValidationKey, ready: true, message: null });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBehaviorServerGate({
+            key: behaviorValidationKey,
+            ready: false,
+            message:
+              'Produkcja zablokowana: nie udało się potwierdzić aktualnej klasyfikacji produktu.',
+          });
+        }
       });
-    }).catch(() => {
-      if (!cancelled) {
-        setBehaviorServerGate({
-          key: behaviorValidationKey,
-          ready: false,
-          message: 'Produkcja zablokowana: nie udało się potwierdzić aktualnej klasyfikacji produktu.',
-        });
-      }
-    });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [
     behaviorValidationKey,
     enabled,
-    ensureSession,
     ownerUserId,
     plannedComposition,
     plannedInput,
     practicalGate.ready,
     requiredBehaviorLineIds.length,
-    source,
   ]);
 
+  const productionPrerequisite = sessionOwnerMismatch
+    ? prerequisite(
+        'owner_mismatch',
+        'Otwórz własną sesję',
+        'Zapisana sesja należy do innego konta i nie może zostać otwarta.',
+        'return_to_recipe',
+        'Wróć do receptury',
+      )
+    : repositoryState.unavailable
+      ? prerequisite(
+          'repository_unavailable',
+          'Produkcja chwilowo niedostępna',
+          'Nie udało się połączyć z bezpiecznym repozytorium Produkcji. Receptura nie została zmieniona.',
+          'return_to_recipe',
+          'Wróć do receptury',
+        )
+      : staleSource
+        ? prerequisite(
+            'stale_source',
+            'Źródło Produkcji jest nieaktualne',
+            'Receptura zmieniła się po przygotowaniu tej sesji. Zarchiwizuj starą sesję, aby zachować jej zapis i przygotować nową partię.',
+            'archive_stale_session',
+            'Zarchiwizuj starą sesję',
+          )
+        : (practicalGate.prerequisite ??
+          (practicalGate.ready && source.recipeVersionId === null
+            ? prerequisite(
+                'saved_version_required',
+                'Zapisz wersję wykonawczą',
+                'Produkcja wymaga dokładnej, niezmiennej wersji receptury. Zapisz zastosowaną recepturę przed rozpoczęciem partii.',
+                'return_to_recipe',
+                'Wróć i zapisz recepturę',
+              )
+            : null) ??
+          (practicalGate.ready && !behaviorServerReady
+            ? prerequisite(
+                behaviorServerMessage ? 'server_validation_failed' : 'server_validation_pending',
+                behaviorServerMessage
+                  ? 'Nie udało się potwierdzić produktów'
+                  : 'Potwierdzamy aktualną recepturę',
+                behaviorServerMessage ??
+                  'Trwa bezpieczna weryfikacja produktów dla bieżącej receptury wykonawczej.',
+                behaviorServerMessage ? 'recalculate' : 'return_to_recipe',
+                behaviorServerMessage ? 'Przelicz recepturę' : 'Wróć do receptury',
+              )
+            : null) ??
+          (practicalGate.ready && (recoveryPending || recoveryError)
+            ? prerequisite(
+                'repository_recovery',
+                recoveryError ? 'Nie udało się odzyskać partii' : 'Odzyskujemy partię',
+                recoveryError ??
+                  'Sprawdzamy trwały zapis, aby nie uruchomić drugi raz tej samej partii.',
+                'return_to_recipe',
+                'Wróć do receptury',
+              )
+            : null));
+
   const forecastInput = useMemo(
-    () => (session ? buildProductionForecastInput(session) : plannedInput),
-    [plannedInput, session],
+    () =>
+      session && !staleSource && !sessionOwnerMismatch
+        ? buildProductionForecastInput(session)
+        : plannedInput,
+    [plannedInput, session, sessionOwnerMismatch, staleSource],
   );
   const forecastResult = useMemo(() => calculateRecipe(forecastInput), [forecastInput]);
-  const rescue = useMemo(
-    () => (session?.status === 'in_progress' ? assessProductionRescue(session) : null),
-    [session],
-  );
+  const rescue = useMemo(() => browserProductionRescueDecision(session), [session]);
+  const rescueAuthorizationRunId =
+    rescueAuthorization.status === 'preview'
+      ? rescueAuthorization.authorization.runId
+      : rescueAuthorization.status === 'authorizing' || rescueAuthorization.status === 'error'
+        ? rescueAuthorization.runId
+        : null;
+  const activeRescueAuthorization: ProductionRescueAuthorizationState =
+    rescueAuthorization.status === 'idle' || rescueAuthorizationRunId === session?.sessionId
+      ? rescueAuthorization
+      : { status: 'idle' };
+  const rescueAuthorizationInvalidation =
+    activeRescueAuthorization.status === 'preview'
+      ? activeRescueAuthorization.refreshRequired
+        ? 'revision_mismatch'
+        : productionRescueAuthorizationInvalidation(
+            activeRescueAuthorization.authorization,
+            session,
+            rescueAuthorizationClock,
+          )
+      : null;
   const progress = useMemo(() => (session ? productionProgress(session) : null), [session]);
   const toppingProgress = useMemo(
     () => (session ? toppingProductionProgress(session) : null),
@@ -232,6 +711,153 @@ export function useProductionWorkspace(enabled: boolean) {
     [forecastInput],
   );
 
+  const requestRescueAuthorization = async (
+    stableOptionId: ProductionRescueStableOptionId,
+  ): Promise<void> => {
+    const currentSession = sessionRef.current;
+    if (!currentSession || !repositoryState.repository || persistence.busy) return;
+    if (
+      rescue?.state !== 'options' ||
+      !rescue.options.some((option) => option.id === stableOptionId)
+    ) {
+      return;
+    }
+    const authorizeIdempotencyKey =
+      reusableRescueAuthorizeKey(rescueAuthorization, currentSession, stableOptionId) ??
+      productionRescueIdempotencyKey();
+    updateRescueAuthorization({
+      status: 'authorizing',
+      runId: currentSession.sessionId,
+      stableOptionId,
+      expectedActualRevision: currentSession.durableActualRevision,
+      expectedRescueRevision: currentSession.durableRescueRevision,
+      authorizeIdempotencyKey,
+    });
+    setPersistence({ busy: true, error: null });
+    try {
+      const authorization = await repositoryState.repository.authorizeRescue({
+        runId: currentSession.sessionId,
+        stableOptionId,
+        expectedActualRevision: currentSession.durableActualRevision,
+        expectedRescueRevision: currentSession.durableRescueRevision,
+        idempotencyKey: authorizeIdempotencyKey,
+      });
+      const pending = rescueAuthorizationRef.current;
+      const latestSession = sessionRef.current;
+      if (
+        pending.status !== 'authorizing' ||
+        pending.authorizeIdempotencyKey !== authorizeIdempotencyKey ||
+        pending.runId !== currentSession.sessionId ||
+        pending.stableOptionId !== stableOptionId ||
+        pending.expectedActualRevision !== currentSession.durableActualRevision ||
+        pending.expectedRescueRevision !== currentSession.durableRescueRevision ||
+        latestSession?.sessionId !== currentSession.sessionId ||
+        latestSession.durableActualRevision !== currentSession.durableActualRevision ||
+        latestSession.durableRescueRevision !== currentSession.durableRescueRevision
+      ) {
+        return;
+      }
+      setRescueAuthorizationClock(Date.now());
+      updateRescueAuthorization({
+        status: 'preview',
+        authorization,
+        consumeIdempotencyKey: productionRescueIdempotencyKey(),
+        refreshRequired: false,
+        error: null,
+      });
+    } catch {
+      const pending = rescueAuthorizationRef.current;
+      if (
+        pending.status !== 'authorizing' ||
+        pending.authorizeIdempotencyKey !== authorizeIdempotencyKey
+      ) {
+        return;
+      }
+      updateRescueAuthorization({
+        status: 'error',
+        runId: currentSession.sessionId,
+        stableOptionId,
+        expectedActualRevision: currentSession.durableActualRevision,
+        expectedRescueRevision: currentSession.durableRescueRevision,
+        authorizeIdempotencyKey,
+        message: 'Nie udało się pobrać autoryzowanego Preview Rescue.',
+      });
+      setPersistence({
+        busy: false,
+        error: 'Nie zmieniono partii. Odśwież propozycję Rescue i spróbuj ponownie.',
+      });
+    } finally {
+      setPersistence((current) => ({ ...current, busy: false }));
+    }
+  };
+
+  const refreshRescueAuthorization = async (): Promise<void> => {
+    if (activeRescueAuthorization.status === 'preview') {
+      await requestRescueAuthorization(activeRescueAuthorization.authorization.stableOptionId);
+      return;
+    }
+    if (activeRescueAuthorization.status === 'error') {
+      await requestRescueAuthorization(activeRescueAuthorization.stableOptionId);
+    }
+  };
+
+  const consumeAuthorizedRescue = async (): Promise<void> => {
+    if (
+      activeRescueAuthorization.status !== 'preview' ||
+      rescueAuthorizationInvalidation ||
+      !repositoryState.repository ||
+      persistence.busy
+    ) {
+      return;
+    }
+    const currentSession = sessionRef.current;
+    if (!currentSession) return;
+    setPersistence({ busy: true, error: null });
+    try {
+      const consumed = await repositoryState.repository.consumeRescue({
+        authorizationId: activeRescueAuthorization.authorization.authorizationId,
+        expectedActualRevision: activeRescueAuthorization.authorization.expectedActualRevision,
+        expectedRescueRevision: activeRescueAuthorization.authorization.expectedRescueRevision,
+        idempotencyKey: activeRescueAuthorization.consumeIdempotencyKey,
+      });
+      const durableRun = await repositoryState.repository.getRun(consumed.runId, ownerUserId ?? '');
+      if (!durableRun?.rescue) {
+        throw new Error('Durable Production Rescue authority was not returned.');
+      }
+      const latestSession = sessionRef.current;
+      if (!latestSession || latestSession.sessionId !== consumed.runId) {
+        throw new Error('The active Production run changed while Rescue was being applied.');
+      }
+      replaceSession(
+        mergePendingProductionDrafts(
+          hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+          latestSession,
+        ),
+      );
+      updateRescueAuthorization({ status: 'idle' });
+    } catch (error) {
+      if (isProductionRescueAuthorizationRefreshError(error)) {
+        updateRescueAuthorization((current) =>
+          current.status === 'preview'
+            ? {
+                ...current,
+                refreshRequired: true,
+                error: 'Stan partii zmienił się od chwili autoryzacji Preview.',
+              }
+            : current,
+        );
+      } else {
+        setPersistence({
+          busy: false,
+          error: 'Nie zastosowano Rescue. Plan partii pozostaje bez zmian.',
+        });
+      }
+      setReconcileRevision((current) => current + 1);
+    } finally {
+      setPersistence((current) => ({ ...current, busy: false }));
+    }
+  };
+
   return {
     session,
     source,
@@ -239,60 +865,195 @@ export function useProductionWorkspace(enabled: boolean) {
     forecastInput,
     forecastResult,
     rescue,
+    rescueAuthorization: activeRescueAuthorization,
+    rescueAuthorizationInvalidation,
     progress,
     toppingProgress,
     score,
     corrections,
-    practicalReady: practicalGate.ready && behaviorServerReady,
-    practicalBlockMessage: practicalGate.message ?? behaviorServerMessage,
-    setDraftActual,
-    confirmLine: (lineId: string) => confirmLine(lineId, new Date().toISOString()),
-    reopenRecord,
-    applyVerifiedRescue: async (candidate: typeof plannedInput) => {
-      const validation = await validateRecipeBehaviorOnServer({
-        recipe: candidate,
-        toppings: plannedComposition.toppings,
-        snapshots: plannedComposition.behaviorSnapshots ?? {},
-        module: 'BATCH_RESCUE',
-        accountId: ownerUserId,
-      });
-      if (!validation.ready) {
-        setBehaviorServerGate({
-          key: behaviorValidationKey,
-          ready: false,
-          message: `Ratowanie partii zablokowane: klasyfikacja produktu wymaga ponownego przeliczenia (${validation.staleLineIds.join(', ')}).`,
+    practicalReady: productionPrerequisite === null,
+    prerequisite: productionPrerequisite,
+    sessionStarting: sessionStart.busy || recoveryPending,
+    sessionStartError: sessionStart.error,
+    persistenceBusy: persistence.busy,
+    persistenceError: persistence.error,
+    currentSourceFingerprint,
+    archiveStaleSession: async () => {
+      if (!staleSource || !session || !repositoryState.repository || persistence.busy) return;
+      setPersistence({ busy: true, error: null });
+      try {
+        await repositoryState.repository.transition(
+          session.sessionId,
+          'cancelled',
+          ownerUserId ?? '',
+        );
+        archiveCurrentSession();
+      } catch {
+        setPersistence({
+          busy: false,
+          error: 'Nie udało się bezpiecznie zarchiwizować trwałego runu Produkcji.',
         });
+        setReconcileRevision((current) => current + 1);
         return;
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
       }
-      applyVerifiedRescue(candidate);
     },
-    complete: () => complete(new Date().toISOString(), ownerUserId),
-    startNewSession: async () => {
-      if (requiredBehaviorLineIds.length > 0) {
-        const validation = await validateRecipeBehaviorOnServer({
-          recipe: plannedInput,
-          toppings: plannedComposition.toppings,
-          snapshots: plannedComposition.behaviorSnapshots ?? {},
-          module: 'PRODUCTION',
-          accountId: ownerUserId,
+    requestRescueAuthorization,
+    refreshRescueAuthorization,
+    consumeAuthorizedRescue,
+    dismissRescueAuthorization: () => updateRescueAuthorization({ status: 'idle' }),
+    setDraftActual: (lineId: string, grams: number) => {
+      if (persistence.busy) return;
+      updateRescueAuthorization({ status: 'idle' });
+      setDraftActual(lineId, grams);
+    },
+    confirmLine: async (lineId: string) => {
+      if (!session || !repositoryState.repository || persistence.busy) return;
+      const candidate = confirmProductionLine(session, lineId, new Date().toISOString());
+      setPersistence({ busy: true, error: null });
+      try {
+        const durableRun = await repositoryState.repository.recordActual(
+          session.sessionId,
+          durableActual(candidate, ownerUserId ?? ''),
+        );
+        replaceSession(
+          mergePendingProductionDrafts(
+            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+            candidate,
+          ),
+        );
+      } catch {
+        setPersistence({
+          busy: false,
+          error:
+            'Nie zapisano potwierdzenia. Wartość pozostaje szkicem i można spróbować ponownie.',
         });
-        if (!validation.ready) {
-          setBehaviorServerGate({
-            key: behaviorValidationKey,
-            ready: false,
-            message: `Produkcja zablokowana: klasyfikacja produktu wymaga ponownego przeliczenia (${validation.staleLineIds.join(', ')}).`,
-          });
-          return;
-        }
+        setReconcileRevision((current) => current + 1);
+        return;
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
       }
-      startNewSession({
-        ownerUserId,
-        source,
-        plannedInput,
-        plannedComposition,
-        now: new Date().toISOString(),
-        sessionId: newSessionId(),
-      });
+    },
+    reopenRecord: async (lineId: string) => {
+      if (!session || !repositoryState.repository || persistence.busy) return;
+      const candidate = reopenProductionRecord(session, lineId);
+      setPersistence({ busy: true, error: null });
+      try {
+        const durableRun = await repositoryState.repository.recordActual(
+          session.sessionId,
+          durableActual(candidate, ownerUserId ?? ''),
+        );
+        replaceSession(
+          mergePendingProductionDrafts(
+            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+            candidate,
+          ),
+        );
+      } catch {
+        setPersistence({
+          busy: false,
+          error: 'Nie udało się trwale otworzyć korekty zapisu. Spróbuj ponownie.',
+        });
+        setReconcileRevision((current) => current + 1);
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
+      }
+    },
+    complete: async () => {
+      if (!session || !repositoryState.repository || persistence.busy) return;
+      setPersistence({ busy: true, error: null });
+      try {
+        const durableRun = await repositoryState.repository.completeRun(
+          session.sessionId,
+          durableActual(session, ownerUserId ?? ''),
+        );
+        replaceSession(
+          hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+        );
+      } catch {
+        setPersistence({
+          busy: false,
+          error: 'Nie udało się trwale zakończyć partii. Sesja pozostaje otwarta.',
+        });
+        setReconcileRevision((current) => current + 1);
+        return;
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
+      }
+    },
+    startNewSession: async () => {
+      if (productionPrerequisite || sessionStart.busy) return;
+      setSessionStart({ busy: true, error: null });
+      try {
+        if (requiredBehaviorLineIds.length > 0) {
+          const validation = await validateRecipeBehaviorOnServer({
+            recipe: plannedInput,
+            toppings: plannedComposition.toppings,
+            snapshots: plannedComposition.behaviorSnapshots ?? {},
+            module: 'PRODUCTION',
+            accountId: ownerUserId,
+          });
+          if (!validation.ready) {
+            setBehaviorServerGate({
+              key: behaviorValidationKey,
+              ready: false,
+              message:
+                'Produkcja jest zablokowana, ponieważ klasyfikacja produktu wymaga ponownego przeliczenia.',
+            });
+            return;
+          }
+        }
+        if (
+          !repositoryState.repository ||
+          !source.recipeId ||
+          !source.recipeVersionId ||
+          !source.recipeVersionNumber ||
+          !ownerUserId
+        ) {
+          throw new Error('Durable Production source is unavailable.');
+        }
+        const createdAt = recipe.currentVersionDate ?? new Date().toISOString();
+        const version = buildRecipeVersion(
+          {
+            recipeId: source.recipeId,
+            ownerUserId,
+            versionNumber: source.recipeVersionNumber,
+            recipeInput: plannedInput,
+            productComposition: plannedComposition,
+            trace: {
+              engineVersion: ENGINE_VERSION,
+              configVersion: CONFIG_VERSION,
+              mapperDatasetVersion: null,
+            },
+            source: 'manual',
+            createdBy: ownerUserId,
+            createdAt,
+            productProfile: plannedInput.category,
+            temperatureC: plannedInput.target_temperature_c,
+          },
+          source.recipeVersionId,
+        );
+        const activeRun = await repositoryState.repository.startRun({
+          ownerUserId,
+          version,
+          target: { kind: 'weight_g', grams: plannedInput.target_batch_grams },
+          capabilities: productionCapabilitiesFor(persona),
+          by: ownerUserId,
+        });
+        restoreDurableSession(
+          hydrateProductionSessionFromRun(activeRun, source, plannedInput, plannedComposition),
+        );
+      } catch {
+        setSessionStart({
+          busy: false,
+          error: 'Nie udało się bezpiecznie rozpocząć partii. Plan nie został uruchomiony.',
+        });
+        setReconcileRevision((current) => current + 1);
+        return;
+      } finally {
+        setSessionStart((current) => ({ ...current, busy: false }));
+      }
     },
   };
 }

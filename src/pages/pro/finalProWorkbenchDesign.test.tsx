@@ -113,10 +113,11 @@ describe('one global menu and four local contexts', () => {
 
   it('renders Profile, Monitor, Production and Summary as contextual controls', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const tabs = read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx');
     for (const label of ['Receptura', 'Monitor', 'Produkcja', 'Etykieta']) {
-      expect(panel).toContain(`label: '${label}'`);
+      expect(tabs).toContain(`label: '${label}'`);
     }
-    expect(panel).toContain('onTabChange(tab.id)');
+    expect(tabs).toContain('onTabChange(tab.id)');
     expect(panel).toContain('setEducationOpen(true)');
     expect(panel).not.toContain('navigate(');
   });
@@ -237,13 +238,14 @@ describe('profile semantics and readiness', () => {
 });
 
 describe('Monitor, overlay, responsiveness and truthfulness', () => {
-  it('protects internal bands while using the approved centered green scale and staged Preview', () => {
+  it('protects internal bands while using an Engine-driven green scale and staged Preview', () => {
     const monitor = read('features', 'pro-workbench', 'ProfessionalMonitorModules.tsx');
     const theme = read('styles', 'theme-pro-light.css');
     const model = read('features', 'pro-workbench', 'professionalMonitorModel.ts');
     const diagnostic = read('features', 'studio', 'OwnerDiagnosticPanel.tsx');
     expect(monitor).toContain('monitor-summary-grid');
-    expect(monitor).toContain('data-scale-center="50"');
+    expect(monitor).toContain('data-scale-metric');
+    expect(monitor).toContain('geometry.acceptedWidthPercent');
     expect(monitor).toContain('bg-[#a8dfb1]');
     expect(monitor).toContain('bg-[#101113]');
     expect(monitor).toContain('outside-segment');
@@ -277,12 +279,11 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
   });
 
   it('names score concepts and provides shared keyboard/reduced-motion treatment', () => {
-    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const theme = read('styles', 'theme-pro-light.css');
-    expect(profile).toContain('WorkbenchIntelligenceHeader');
+    expect(page).toContain('WorkbenchIntelligenceHeader');
     expect(header).toContain('Dopasowanie techniczne receptury');
     expect(page).not.toContain('production.score');
     expect(production).toContain('Przewidywane dopasowanie partii');

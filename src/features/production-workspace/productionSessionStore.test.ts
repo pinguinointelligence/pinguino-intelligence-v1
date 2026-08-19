@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
-import { useProductionSessionStore } from './productionSessionStore';
-import { assessProductionRescue } from './productionRescue';
+import { migrateProductionSessionStore, useProductionSessionStore } from './productionSessionStore';
 
 const recipe = (): RecipeInput => ({
   items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
@@ -14,7 +13,7 @@ const recipe = (): RecipeInput => ({
 });
 
 const start = () =>
-  useProductionSessionStore.getState().ensureSession({
+  useProductionSessionStore.getState().startNewSession({
     ownerUserId: 'owner-a',
     source: {
       recipeId: 'recipe-a',
@@ -30,20 +29,15 @@ const start = () =>
 describe('production session store', () => {
   beforeEach(() => useProductionSessionStore.getState().clear());
 
-  it('survives component/tab remounts and refuses to replace an active run', () => {
+  it('survives component/tab remounts without implicitly replacing an active run', () => {
     start();
     const first = useProductionSessionStore.getState().session!;
     const line = first.lines[0]!;
     useProductionSessionStore.getState().setDraftActual(line.lineId, line.plannedGrams + 2);
     useProductionSessionStore.getState().confirmLine(line.lineId, '2026-08-09T10:01:00.000Z');
 
-    useProductionSessionStore.getState().ensureSession({
-      ownerUserId: 'owner-a',
-      source: { ...first.source, recipeName: 'changed draft' },
-      plannedInput: { ...recipe(), target_batch_grams: 2000 },
-      now: '2026-08-09T10:02:00.000Z',
-      sessionId: 'must-not-replace',
-    });
+    // A render/remount does not call any store mutation. Only the explicit start action
+    // may replace this session; the workspace separately blocks a stale fingerprint.
     const restored = useProductionSessionStore.getState().session!;
     expect(restored.sessionId).toBe('run-a');
     expect(restored.lines[0]!.physicalAddedGrams).toBe(line.plannedGrams + 2);
@@ -56,9 +50,22 @@ describe('production session store', () => {
     expect(useProductionSessionStore.getState().session).toBeNull();
   });
 
-  it('never reuses an in-progress session owned by another account', () => {
+  it('restores one server-authoritative run without archiving the same local identity', () => {
     start();
-    useProductionSessionStore.getState().ensureSession({
+    const durable = {
+      ...structuredClone(useProductionSessionStore.getState().session!),
+      startedAt: '2026-08-09T09:59:00.000Z',
+    };
+    useProductionSessionStore.getState().restoreDurableSession(durable);
+    expect(useProductionSessionStore.getState().session?.startedAt).toBe(
+      '2026-08-09T09:59:00.000Z',
+    );
+    expect(useProductionSessionStore.getState().archivedSessions).toHaveLength(0);
+  });
+
+  it('starts a different owner session only after an explicit start action', () => {
+    start();
+    useProductionSessionStore.getState().startNewSession({
       ownerUserId: 'owner-b',
       source: {
         recipeId: 'recipe-b',
@@ -75,33 +82,62 @@ describe('production session store', () => {
       sessionId: 'run-b',
       ownerUserId: 'owner-b',
     });
+    expect(useProductionSessionStore.getState().archivedSessions).toHaveLength(1);
+    expect(useProductionSessionStore.getState().archivedSessions[0]?.sessionId).toBe('run-a');
   });
 
-  it('re-derives the whole-gram rescue and rejects a forged or stale candidate', () => {
+  it('archives a stale session without destroying its frozen physical record', () => {
     start();
-    const sucrose = useProductionSessionStore
-      .getState()
-      .session!.lines.find((line) => line.name.toLowerCase().includes('sucrose'))!;
-    useProductionSessionStore.getState().setDraftActual(sucrose.lineId, 180);
-    useProductionSessionStore.getState().confirmLine(sucrose.lineId, '2026-08-11T10:01:00.000Z');
-    const option = assessProductionRescue(
-      useProductionSessionStore.getState().session!,
-    ).options.find((candidate) => candidate.id === 'enlarge_batch')!;
-    expect(option).toBeDefined();
-    expect(option.candidateInput.items.every((item) => Number.isInteger(item.planned_grams))).toBe(
-      true,
-    );
+    const original = structuredClone(useProductionSessionStore.getState().session!);
+    useProductionSessionStore.getState().archiveCurrentSession();
 
-    const forged = structuredClone(option.candidateInput);
-    forged.items[0] = {
-      ...forged.items[0]!,
-      planned_grams: forged.items[0]!.planned_grams + 1,
-    };
-    expect(() => useProductionSessionStore.getState().applyVerifiedRescue(forged)).toThrow(
-      /stale or was not verified/,
+    expect(useProductionSessionStore.getState().session).toBeNull();
+    expect(useProductionSessionStore.getState().archivedSessions).toEqual([original]);
+  });
+
+  it('accepts only a server-confirmed replacement for the same durable run', () => {
+    start();
+    const current = useProductionSessionStore.getState().session!;
+    useProductionSessionStore.getState().replaceSession({
+      ...current,
+      internalProductionNote: 'server-confirmed',
+    });
+    expect(useProductionSessionStore.getState().session?.internalProductionNote).toBe(
+      'server-confirmed',
     );
     expect(() =>
-      useProductionSessionStore.getState().applyVerifiedRescue(option.candidateInput),
-    ).not.toThrow();
+      useProductionSessionStore.getState().replaceSession({
+        ...current,
+        sessionId: 'different-run',
+      }),
+    ).toThrow(/different Production run/);
+  });
+
+  it('upgrades a persisted v4 session with zeroed durable revision bases', () => {
+    start();
+    const current = structuredClone(useProductionSessionStore.getState().session!);
+    const legacy = structuredClone(current) as Omit<
+      typeof current,
+      'durableRescueRevision' | 'durableActualRevision'
+    > &
+      Partial<Pick<typeof current, 'durableRescueRevision' | 'durableActualRevision'>>;
+    delete legacy.durableRescueRevision;
+    delete legacy.durableActualRevision;
+    const migrated = migrateProductionSessionStore(
+      { session: legacy, archivedSessions: [] },
+      4,
+    ) as {
+      session: typeof current;
+    };
+
+    expect(migrated.session).toMatchObject({
+      durableRescueRevision: 0,
+      durableActualRevision: 0,
+    });
+  });
+
+  it('does not expose a browser action that can apply a local Rescue candidate', () => {
+    start();
+    expect('applyVerifiedRescue' in useProductionSessionStore.getState()).toBe(false);
   });
 });

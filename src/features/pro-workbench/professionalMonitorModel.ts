@@ -5,6 +5,7 @@ import {
   type GoldenRangeReading,
 } from '@/features/recipe-score';
 import { assessStabilizerDosage } from '@/features/formulation/stabilizerDosage';
+import { buildMonitorScaleModel, type MonitorScaleModel } from './monitorScaleModel';
 
 export type ProfessionalMonitorModuleId =
   | 'freezing'
@@ -34,6 +35,7 @@ export interface ProfessionalMonitorMetric {
   value: number | null;
   unit: string;
   reading: GoldenRangeReading | null;
+  scaleModel: MonitorScaleModel | null;
   tooltip: string;
 }
 
@@ -57,7 +59,8 @@ const TOOLTIP = {
   aeratingProtein: 'Część białek wspierająca napowietrzenie i utrzymanie struktury.',
   proteinInSolids: 'Udział białka w suchej części mieszanki.',
   lactoseRisk: 'Wskaźnik ryzyka wyczuwalnej krystalizacji laktozy podczas przechowywania.',
-  stabilizer: 'Ilość stabilizatora w bieżącej recepturze względem zatwierdzonego profilu składnika.',
+  stabilizer:
+    'Ilość stabilizatora w bieżącej recepturze względem zatwierdzonego profilu składnika.',
   stability: 'Semantyczny stan zachowania przy zamrażaniu, bez powtarzania surowej wartości NPAC.',
   serving: 'Temperatura użyta przez Engine do bieżącej oceny technologicznej.',
   fiber: 'Łączna ilość błonnika w całej partii.',
@@ -75,7 +78,13 @@ const indicator = (result: RecipeResult, metric: TargetMetric) =>
 const readingFor = (result: RecipeResult, metric: TargetMetric): GoldenRangeReading | null => {
   const source = indicator(result, metric);
   if (source?.value == null || source.band == null) return null;
-  return bandPosition(source?.value, source?.band ?? null);
+  const safeDirection =
+    source.status === 'good' && source.value < source.band.min
+      ? { below: 'safe' as const }
+      : source.status === 'good' && source.value > source.band.max
+        ? { above: 'safe' as const }
+        : undefined;
+  return bandPosition(source.value, source.band, { direction: safeDirection });
 };
 
 const metric = (
@@ -86,7 +95,17 @@ const metric = (
   tooltip: string,
   reading: GoldenRangeReading | null = null,
   rawMetric?: ProfessionalRawMetricKey,
-): ProfessionalMonitorMetric => ({ id, rawMetric, label, value, unit, reading, tooltip });
+  scaleModel: MonitorScaleModel | null = null,
+): ProfessionalMonitorMetric => ({
+  id,
+  rawMetric,
+  label,
+  value,
+  unit,
+  reading,
+  scaleModel,
+  tooltip,
+});
 
 const classified = (
   result: RecipeResult,
@@ -94,19 +113,28 @@ const classified = (
   label: string,
   tooltip: string,
   rawMetric: ProfessionalRawMetricKey,
-): ProfessionalMonitorMetric =>
-  metric(
+): ProfessionalMonitorMetric => {
+  const source = indicator(result, target);
+  const value = source?.value ?? null;
+  return metric(
     target,
     label,
-    indicator(result, target)?.value ?? null,
-    target === 'ice_fraction' || target === 'water' || target === 'total_solids' || target === 'fat' ||
-      target === 'aerating_protein' || target === 'protein_in_solids' || target === 'lactose'
+    value,
+    target === 'ice_fraction' ||
+      target === 'water' ||
+      target === 'total_solids' ||
+      target === 'fat' ||
+      target === 'aerating_protein' ||
+      target === 'protein_in_solids' ||
+      target === 'lactose'
       ? '%'
       : '',
     tooltip,
     readingFor(result, target),
     rawMetric,
+    buildMonitorScaleModel(target, value, source?.band),
   );
+};
 
 const stabilizerReading = (
   status: ReturnType<typeof assessStabilizerDosage>[number]['status'],
@@ -157,7 +185,13 @@ export function buildProfessionalMonitorModules(
         classified(result, 'npac', 'NPAC', TOOLTIP.npac, 'npac'),
       ],
       secondary: [
-        metric('serving-temperature', 'Temperatura serwowania', servingTemperatureC, '°C', TOOLTIP.serving),
+        metric(
+          'serving-temperature',
+          'Temperatura serwowania',
+          servingTemperatureC,
+          '°C',
+          TOOLTIP.serving,
+        ),
       ],
     },
     {
@@ -193,7 +227,9 @@ export function buildProfessionalMonitorModules(
       id: 'fat',
       title: 'Tłuszcz i kremowość',
       primary: [classified(result, 'fat', 'Tłuszcz', TOOLTIP.fat, 'fat')],
-      secondary: [metric('fat-total', 'Tłuszcz w partii', result.totals.fat_g, 'g', TOOLTIP.totalFat)],
+      secondary: [
+        metric('fat-total', 'Tłuszcz w partii', result.totals.fat_g, 'g', TOOLTIP.totalFat),
+      ],
     },
     {
       id: 'protein',
@@ -215,14 +251,27 @@ export function buildProfessionalMonitorModules(
         ),
       ],
       secondary: [
-        metric('protein-total', 'Białko w partii', result.totals.protein_g, 'g', TOOLTIP.totalProtein),
+        metric(
+          'protein-total',
+          'Białko w partii',
+          result.totals.protein_g,
+          'g',
+          TOOLTIP.totalProtein,
+        ),
       ],
     },
     {
       id: 'stability',
       title: 'Stabilność i ryzyka',
       primary: [
-        metric('freezing-stability', 'Stabilność zamrażania', null, '', TOOLTIP.stability, npacReading),
+        metric(
+          'freezing-stability',
+          'Stabilność zamrażania',
+          null,
+          '',
+          TOOLTIP.stability,
+          npacReading,
+        ),
         classified(
           result,
           'lactose_sandiness_risk',

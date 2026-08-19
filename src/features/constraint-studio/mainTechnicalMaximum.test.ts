@@ -296,7 +296,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
   });
 
   it('searches down from every required Kiwi start to one deterministic result', () => {
-    const proofs = [1, 80, 300, 700, 1000, 1200].map((start) => {
+    const proofs = [1, 80, 300, 700, 1000, 1200, 8000].map((start) => {
       const input = singleMainFixture(IDS.kiwi, start);
       const preview = build(input);
       const kiwi = preview.proposedInput.items.find((item) => item.id === 'single-main')!;
@@ -326,6 +326,34 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       'fat_min',
       'total_solids_min',
     ]);
+  });
+
+  it('certifies the practical Kiwi frontier from an 8000 g request without scanning from 8000', () => {
+    const input = singleMainFixture(IDS.kiwi, 8000);
+    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-19T00:00:00.000Z', {
+      productBehaviorSnapshots: snapshotsWithObsoleteEnvelope(input),
+      requirePracticalPreview: true,
+    });
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) throw new Error(JSON.stringify(result));
+    const kiwi = result.preview.proposedInput.items.find((item) => item.id === 'single-main')!;
+    expect(kiwi.planned_grams).toBe(706);
+    expect(
+      result.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
+    ).toBe(1000);
+    expect(result.preview.mainObjective).toMatchObject({
+      status: 'maximized',
+      executableMainGrams: 706,
+      firstHigherRejectedGrams: 707,
+      provenMaximum: true,
+    });
+    expect(result.preview.mainObjective).toMatchObject({
+      attempts: 1,
+      searchUpperBoundGrams: 706,
+      certifiedUpperBoundGrams: 706,
+      proofKind: 'linear_relaxation',
+    });
+    expect(result.preview.mainObjective?.attempts).toBeLessThanOrEqual(MAIN_TECHNICAL_PROBE_BUDGET);
   });
 
   it('uses the same technical maximum in ECO and OPTIMAL and ignores the historical 45% envelope', () => {

@@ -9,6 +9,8 @@ import {
   confirmProductionLine,
   correctRecordedPhysicalGrams,
   createProductionSession,
+  hydrateProductionSessionFromRun,
+  mergePendingProductionDrafts,
   productionProgress,
   productionSourceFingerprint,
   toppingProductionProgress,
@@ -20,6 +22,7 @@ import type { RecipeCompositionMetadata } from '@/features/recipe-composition/re
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import type { ProductionRun } from '@/features/pro-core/productionContracts';
 
 function recipe(): RecipeInput {
   return {
@@ -58,6 +61,167 @@ function session() {
 }
 
 describe('production session physical-reality contract', () => {
+  it('rehydrates confirmed actuals from the exact durable run without inventing pending grams', () => {
+    const local = session();
+    const first = local.lines[0]!;
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: 'owner-1',
+      recipeId: 'recipe-1',
+      recipeVersionId: 'version-1',
+      recipeVersionNumber: 1,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: local.lines.map((line, index) => ({
+        id: line.lineId,
+        name: line.name,
+        canonicalIngredientId: line.canonicalIngredientId,
+        processScope: 'BASE_FORMULATION',
+        scopePosition: index,
+        plannedGrams: line.plannedGrams,
+        displayGrams: line.plannedGrams,
+      })),
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: 'owner-1',
+      createdAt: '2026-08-19T00:00:00.000Z',
+      updatedAt: '2026-08-19T00:01:00.000Z',
+      actual: {
+        items: local.lines.map((line) => ({
+          id: line.lineId,
+          name: line.name,
+          actualGrams: line.lineId === first.lineId ? line.plannedGrams + 2 : null,
+          confirmedAt: line.lineId === first.lineId ? '2026-08-19T00:00:30.000Z' : null,
+          confirmationOrder: line.lineId === first.lineId ? 7 : null,
+        })),
+        actualTotalMixG: null,
+        actualYieldG: null,
+        wasteG: null,
+        substitutions: [],
+        operatorNotes: null,
+        deviationReason: null,
+        recordedBy: 'owner-1',
+        recordedAt: '2026-08-19T00:01:00.000Z',
+        revision: 1,
+      },
+      rescue: null,
+      completedAt: null,
+      cancelledAt: null,
+      events: [
+        {
+          eventId: 'started-1',
+          type: 'started',
+          at: '2026-08-19T00:00:00.000Z',
+          by: 'owner-1',
+          detail: null,
+          amendment: null,
+        },
+      ],
+    };
+    const recovered = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      local.plannedComposition,
+    );
+    expect(recovered.lines[0]).toMatchObject({
+      confirmed: true,
+      physicalAddedGrams: first.plannedGrams + 2,
+      confirmedAt: '2026-08-19T00:00:30.000Z',
+      confirmationOrder: 7,
+    });
+    expect(recovered.lines.slice(1).every((line) => !line.confirmed)).toBe(true);
+  });
+
+  it('keeps server physical authority while preserving only compatible pending drafts', () => {
+    const local = session();
+    const [first, second] = local.lines;
+    const withDraft = setDraftActualGrams(local, second!.lineId, second!.plannedGrams + 3);
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: 'owner-1',
+      recipeId: 'recipe-1',
+      recipeVersionId: 'version-1',
+      recipeVersionNumber: 1,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: local.lines.map((line, index) => ({
+        id: line.lineId,
+        name: line.name,
+        canonicalIngredientId: line.canonicalIngredientId,
+        processScope: 'BASE_FORMULATION',
+        scopePosition: index,
+        plannedGrams: line.plannedGrams,
+        displayGrams: line.plannedGrams,
+      })),
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: 'owner-1',
+      createdAt: '2026-08-19T00:00:00.000Z',
+      updatedAt: '2026-08-19T00:02:00.000Z',
+      actual: {
+        items: local.lines.map((line) => ({
+          id: line.lineId,
+          name: line.name,
+          actualGrams: line.lineId === first!.lineId ? line.plannedGrams + 4 : null,
+          confirmedAt: line.lineId === first!.lineId ? '2026-08-19T00:01:00.000Z' : null,
+          confirmationOrder: line.lineId === first!.lineId ? 1 : null,
+        })),
+        actualTotalMixG: null,
+        actualYieldG: null,
+        wasteG: null,
+        substitutions: [],
+        operatorNotes: null,
+        deviationReason: null,
+        recordedBy: 'owner-1',
+        recordedAt: '2026-08-19T00:02:00.000Z',
+        revision: 9,
+      },
+      rescue: null,
+      completedAt: null,
+      cancelledAt: null,
+      events: [],
+    };
+    const hydrated = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      local.plannedComposition,
+    );
+    const merged = mergePendingProductionDrafts(hydrated, withDraft);
+
+    expect(merged.durableActualRevision).toBe(9);
+    expect(merged.lines[0]).toMatchObject({
+      confirmed: true,
+      physicalAddedGrams: first!.plannedGrams + 4,
+      draftActualGrams: first!.plannedGrams + 4,
+    });
+    expect(merged.lines[1]).toMatchObject({
+      confirmed: false,
+      physicalAddedGrams: 0,
+      draftActualGrams: second!.plannedGrams + 3,
+    });
+    expect(() =>
+      mergePendingProductionDrafts({ ...hydrated, sessionId: 'different-run' }, withDraft),
+    ).toThrow(/different Production run/);
+  });
+
   it('binds the production source to immutable product behavior authority', () => {
     const input = recipe();
     const lineId = input.items[0]!.id;
@@ -196,6 +360,51 @@ describe('production session physical-reality contract', () => {
     expect(() => applyVerifiedRescueInput(confirmed, illegal)).toThrow(/reduce physically added/);
   });
 
+  it('keeps every prior Rescue addition in the Engine vector after a second Rescue', () => {
+    const initial = session();
+    const source = initial.plannedInput.items[0]!;
+    const rescueA = {
+      ...source,
+      id: 'rescue-a',
+      ingredient: { ...source.ingredient, id: 'rescue-ingredient-a' },
+      planned_grams: 5,
+      actual_grams: null,
+    };
+    const rescueB = {
+      ...source,
+      id: 'rescue-b',
+      ingredient: { ...source.ingredient, id: 'rescue-ingredient-b' },
+      planned_grams: 7,
+      actual_grams: null,
+    };
+    const secondCandidate: RecipeInput = {
+      ...initial.plannedInput,
+      target_batch_grams: initial.plannedInput.target_batch_grams + 12,
+      items: [...initial.plannedInput.items, rescueA, rescueB],
+    };
+    const authorized = {
+      ...initial,
+      plannedComposition: {
+        ...initial.plannedComposition,
+        behaviorSnapshots: productBehaviorTestSnapshots(secondCandidate),
+      },
+    };
+    const firstCandidate: RecipeInput = {
+      ...secondCandidate,
+      target_batch_grams: initial.plannedInput.target_batch_grams + 5,
+      items: [...initial.plannedInput.items, rescueA],
+    };
+    const once = applyVerifiedRescueInput(authorized, firstCandidate);
+    const twice = applyVerifiedRescueInput(once, secondCandidate);
+
+    expect(twice.rescueAddedItems.map((item) => item.id)).toEqual(['rescue-a', 'rescue-b']);
+    expect(twice.lines.filter((line) => line.lineId === 'rescue-a')).toHaveLength(1);
+    expect(twice.lines.filter((line) => line.lineId === 'rescue-b')).toHaveLength(1);
+    expect(buildProductionForecastInput(twice).items.map((item) => item.id)).toEqual(
+      expect.arrayContaining(['rescue-a', 'rescue-b']),
+    );
+  });
+
   it('turns a verified top-up into a pending confirmation while retaining the physical floor', () => {
     const run = session();
     const line = run.lines[0]!;
@@ -220,6 +429,48 @@ describe('production session physical-reality contract', () => {
     expect(() => setDraftActualGrams(rescued, line.lineId, line.plannedGrams - 1)).toThrow(
       /cannot remove physically added/,
     );
+  });
+
+  it('projects an authorized pending-plan reduction into the operator target and draft', () => {
+    const run = session();
+    const line = run.lines[0]!;
+    const target = buildProductionForecastInput(run);
+    target.items[0] = {
+      ...target.items[0]!,
+      actual_grams: null,
+      planned_grams: line.plannedGrams - 3,
+    };
+
+    const rescued = applyVerifiedRescueInput(run, target);
+
+    expect(rescued.lines[0]).toMatchObject({
+      plannedGrams: line.plannedGrams,
+      targetGrams: line.plannedGrams - 3,
+      draftActualGrams: line.plannedGrams - 3,
+      confirmed: false,
+    });
+  });
+
+  it('does not let an untouched pre-Rescue default overwrite a durable reduced target', () => {
+    const local = session();
+    const target = buildProductionForecastInput(local);
+    target.items[0] = {
+      ...target.items[0]!,
+      actual_grams: null,
+      planned_grams: local.lines[0]!.plannedGrams - 3,
+    };
+    const durable = applyVerifiedRescueInput(local, target);
+
+    const untouched = mergePendingProductionDrafts(durable, local);
+    expect(untouched.lines[0]!.draftActualGrams).toBe(durable.lines[0]!.targetGrams);
+
+    const edited = setDraftActualGrams(
+      local,
+      local.lines[0]!.lineId,
+      local.lines[0]!.plannedGrams - 1,
+    );
+    const preserved = mergePendingProductionDrafts(durable, edited);
+    expect(preserved.lines[0]!.draftActualGrams).toBe(local.lines[0]!.plannedGrams - 1);
   });
 
   it('requires an explicit record-correction path for a human entry mistake', () => {

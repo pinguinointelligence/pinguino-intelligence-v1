@@ -8,7 +8,7 @@ const OFFICIAL_PRO_LOGO = '/logo/gellattiLOGO.png';
  */
 export function OfficialProLogo({ className }: { className?: string }) {
   return (
-    <span className="flex h-12 w-[178px] shrink-0 items-center sm:w-[202px]">
+    <span className="flex h-12 w-[136px] shrink-0 items-center sm:w-[146px]">
       <img
         src={OFFICIAL_PRO_LOGO}
         alt=""
@@ -17,7 +17,7 @@ export function OfficialProLogo({ className }: { className?: string }) {
         aria-hidden
         data-logo-asset={OFFICIAL_PRO_LOGO}
         data-logo-source="/logo/gellattiLOGO.png"
-        className={cn('h-auto w-full shrink-0 object-contain', className)}
+        className={cn('max-h-12 w-full shrink-0 object-contain', className)}
       />
     </span>
   );

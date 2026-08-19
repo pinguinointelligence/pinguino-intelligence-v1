@@ -11,6 +11,10 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { readRecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type {
+  RecipeVersion,
+  SavedRecipe as SavedRecipeAggregate,
+} from '@/features/pro-core/recipeContracts';
 
 const r = copy.recipes;
 
@@ -52,26 +56,38 @@ export function MyRecipesContent() {
       const input = savedToRecipeInput(row.recipe_input);
       // Link to the aggregate so the next save appends a NEW VERSION (not a copy). A legacy orphan
       // row (no aggregate/meta) links only its name → the next save creates a fresh aggregate.
-      let aggregate = null;
+      let aggregate: SavedRecipeAggregate | null = null;
+      let latestVersion: RecipeVersion | null = null;
       try {
         const repo = resolveRecipesRepository().repository;
         aggregate = repo ? await repo.getRecipe(row.id) : null;
+        latestVersion =
+          repo && aggregate
+            ? await repo.getVersion(row.id, aggregate.latestVersionNumber)
+            : null;
       } catch {
         aggregate = null;
+        latestVersion = null;
       }
+      const openedInput = latestVersion?.recipeInput ?? input;
       loadRecipeInput(
-        input,
+        openedInput,
         aggregate
           ? {
               savedId: row.id,
               savedName: row.name,
               versionNumber: aggregate.latestVersionNumber,
-              versionDate: aggregate.updatedAt,
-              composition: readRecipeCompositionMetadata(
-                row.product_composition,
-                input.items.map((item) => item.id),
-                input.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
-              ),
+              versionId: latestVersion?.versionId ?? null,
+              versionDate: latestVersion?.createdAt ?? aggregate.updatedAt,
+              composition:
+                latestVersion?.productComposition ??
+                readRecipeCompositionMetadata(
+                  row.product_composition,
+                  openedInput.items.map((item) => item.id),
+                  openedInput.items
+                    .filter((item) => item.lock_type === 'main')
+                    .map((item) => item.id),
+                ),
             }
           : {
               savedId: null,
@@ -80,8 +96,10 @@ export function MyRecipesContent() {
               versionDate: null,
               composition: readRecipeCompositionMetadata(
                 row.product_composition,
-                input.items.map((item) => item.id),
-                input.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
+                openedInput.items.map((item) => item.id),
+                openedInput.items
+                  .filter((item) => item.lock_type === 'main')
+                  .map((item) => item.id),
               ),
             },
       );

@@ -23,6 +23,7 @@ import type { RecipeToppingItem } from '@/features/recipe-composition/recipeComp
 import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 import { polishPositionNoun } from './polishPositionNoun';
+import { buildFallbackNotes } from '@/features/pi-panel/indicatorView';
 import {
   buildRecipeBehaviorAuthority,
   recipeInputFromFrozenBehavior,
@@ -142,7 +143,8 @@ export function MonitorPanelContent({
     () => buildProfessionalMonitorModules(frozenResult, servingTemperatureC, monitorInput),
     [frozenResult, monitorInput, servingTemperatureC],
   );
-  const previewModules = useMemo(() => {
+  const fallbackNotes = useMemo(() => buildFallbackNotes(frozenResult), [frozenResult]);
+  const previewProjection = useMemo(() => {
     if (!preview || legacyInspection) return undefined;
     const previewSnapshots =
       substitutionAuthorization?.proposalProductBehaviorSnapshots ?? behaviorSnapshots;
@@ -157,11 +159,14 @@ export function MonitorPanelContent({
       'technical',
     );
     const previewResult = calculateRecipe(frozenPreviewInput);
-    return buildProfessionalMonitorModules(
-      previewResult,
-      frozenPreviewInput.target_temperature_c,
-      frozenPreviewInput,
-    );
+    return {
+      result: previewResult,
+      modules: buildProfessionalMonitorModules(
+        previewResult,
+        frozenPreviewInput.target_temperature_c,
+        frozenPreviewInput,
+      ),
+    };
   }, [behaviorSnapshots, legacyInspection, preview, substitutionAuthorization, toppings]);
   // A genuinely legacy version remains inspectable, with an explicit warning,
   // until it is reconstructed into a new version. A partial/stale modern
@@ -187,23 +192,47 @@ export function MonitorPanelContent({
           data-testid="monitor-behavior-revalidation"
           className="rounded-lg border border-attention/20 bg-attention/[0.05] px-3 py-2 text-xs leading-relaxed text-stone-700"
         >
-          {legacyInspection
-            ? 'Podgląd historyczny. Przed edycją lub produkcją utwórz nową wersję z walidacją produktów.'
-            : monitorGate.reason}
+          <p>
+            {legacyInspection
+              ? 'Podgląd historyczny. Przed edycją lub produkcją utwórz nową wersję z walidacją produktów.'
+              : 'Monitor wymaga ponownej walidacji danych produktów użytych w tej recepturze.'}
+          </p>
+          {!legacyInspection && onOpenProfile ? (
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="pro-focus-ring mt-2 min-h-10 rounded-lg border border-ink/12 bg-white px-3 py-2 font-semibold text-ink"
+            >
+              Wróć do receptury
+            </button>
+          ) : null}
         </div>
       ) : null}
       {technicalViewAllowed ? (
         <MonitorLiveSummary
           result={frozenResult}
-          input={monitorInput}
+          previewResult={previewProjection?.result}
           onOpenProfile={onOpenProfile}
         />
       ) : (
         <LockedPIPreview />
       )}
 
+      {technicalViewAllowed && fallbackNotes.length > 0 ? (
+        <div
+          className="rounded-[12px] border border-attention/20 bg-[#fff8e8] px-3 py-2 text-xs leading-relaxed text-stone-700"
+          role="status"
+          data-testid="monitor-calibration-fallback"
+        >
+          {fallbackNotes.join(' ')}
+        </div>
+      ) : null}
+
       {technicalViewAllowed ? (
-        <ProfessionalMonitorModules modules={modules} previewModules={previewModules} />
+        <ProfessionalMonitorModules
+          modules={modules}
+          previewModules={previewProjection?.modules}
+        />
       ) : null}
 
       {technicalViewAllowed && !legacyInspection && correctionView.proposals.length > 0 ? (

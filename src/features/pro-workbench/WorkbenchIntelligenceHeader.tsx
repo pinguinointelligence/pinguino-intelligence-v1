@@ -15,10 +15,12 @@ export function WorkbenchIntelligenceHeader({
   result,
   input,
   onOpenLearning,
+  variant = 'panel',
 }: {
   result: RecipeResult;
   input: RecipeInput;
   onOpenLearning?: () => void;
+  variant?: 'panel' | 'global';
 }) {
   const match = monitorScoreView(result, input).match;
   const toppings = useRecipeStore((state) => state.toppings);
@@ -54,8 +56,12 @@ export function WorkbenchIntelligenceHeader({
   });
 
   return (
-    <header
-      className="border-b border-ink/8 bg-white px-3 py-2 text-ink"
+    <div
+      className={
+        variant === 'global'
+          ? 'min-w-0 bg-white text-ink'
+          : 'border-b border-ink/8 bg-white px-3 py-2 text-ink'
+      }
       data-testid="workbench-intelligence-header"
       data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
       aria-label={`Dopasowanie techniczne receptury: ${displayedMatch ? displayedMatch.display : 'oczekuje na przeliczenie'}`}
@@ -64,9 +70,9 @@ export function WorkbenchIntelligenceHeader({
         type="button"
         onClick={onOpenLearning}
         disabled={!onOpenLearning}
-        className="pro-focus-ring flex min-h-14 w-full items-center justify-end gap-3 rounded-[12px] text-right disabled:cursor-default"
+        className={`pro-focus-ring flex items-center justify-end gap-3 rounded-[12px] text-right disabled:cursor-default ${variant === 'global' ? 'min-h-12 sm:min-w-[210px]' : 'min-h-14 w-full'}`}
       >
-        <span className="min-w-0">
+        <span className={variant === 'global' ? 'hidden min-w-0 sm:block' : 'min-w-0'}>
           <span className="flex items-center justify-end gap-2">
             <span
               aria-hidden
@@ -90,10 +96,13 @@ export function WorkbenchIntelligenceHeader({
               : 'Wynik pojawi się po przeliczeniu'}
           </span>
         </span>
-        <span className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-[#101113] font-mono text-lg font-semibold text-white shadow-pro-e1">
+        <span
+          className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-[#101113] font-mono text-lg font-semibold text-white shadow-pro-e1"
+          data-testid="workbench-ai-mark"
+        >
           AI
         </span>
       </button>
-    </header>
+    </div>
   );
 }

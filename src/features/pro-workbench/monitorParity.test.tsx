@@ -142,6 +142,13 @@ describe('professional Monitor acceptance contract', () => {
       />,
     );
     expect(partialHtml).toContain('data-testid="monitor-behavior-revalidation"');
+    expect(partialHtml).toContain(
+      'Monitor wymaga ponownej walidacji danych produktów użytych w tej recepturze.',
+    );
+    expect(partialHtml).not.toContain('Brak zatwierdzonego uprawnienia MONITOR dla:');
+    for (const lineId of Object.keys(completeSnapshots)) {
+      expect(partialHtml).not.toContain(lineId);
+    }
     expect(partialHtml).not.toContain('data-testid="monitor-module-freezing"');
 
     mockRecipeState = {
@@ -171,6 +178,22 @@ describe('professional Monitor acceptance contract', () => {
     expect(html).toContain('data-testid="monitor-direction-evidence"');
     expect(html).not.toContain('data-testid="profile-direction-axes"');
     expect(html).not.toContain('jeden poziom');
+  });
+
+  it('uses the parent-frozen ProductBehavior projection for Preview in all seven modules', () => {
+    const summarySource = readFileSync(
+      resolve(import.meta.dirname, 'MonitorLiveSummary.tsx'),
+      'utf8',
+    );
+    const panelSource = readFileSync(
+      resolve(import.meta.dirname, 'MonitorPanelContent.tsx'),
+      'utf8',
+    );
+    expect(summarySource).not.toContain('calculateRecipe(preview.proposedInput)');
+    expect(summarySource).toContain('previewResult?: RecipeResult | null');
+    expect(panelSource).toContain('recipeInputFromFrozenBehavior(');
+    expect(panelSource).toContain('previewResult={previewProjection?.result}');
+    expect(panelSource).toContain('previewModules={previewProjection?.modules}');
   });
 
   it('renders the seven approved result cards and keeps core metrics reachable', () => {
@@ -225,7 +248,7 @@ describe('professional Monitor acceptance contract', () => {
   });
 
   it('uses protected position scales without exposing proprietary min/max ranges', () => {
-    expect(html).toContain('data-scale-center="50"');
+    expect(html).toContain('data-scale-metric="ice_fraction"');
     expect(html).toContain('data-testid="monitor-scale-freezing-accepted"');
     expect(html).toContain('bg-[#a8dfb1]');
     expect(html).toContain('bg-[#101113]');
@@ -271,8 +294,9 @@ describe('professional Monitor acceptance contract', () => {
     ]) {
       expect(empty).toContain(`data-testid="monitor-module-${id}"`);
     }
-    expect(empty).toContain('brak oceny');
-    expect(empty).toContain('data-position="50"');
+    expect(empty).toContain('brak danych');
+    expect(empty).not.toContain('data-position="50"');
+    expect(empty).not.toContain('monitor-scale-pod-actual');
   });
 
   it('keeps topping facts collapsed and informational without changing Base metrics', () => {
@@ -348,7 +372,7 @@ describe('Monitor layout and integration seams', () => {
     expect(profile).toContain('<MonitorPanelContent');
     expect(content).not.toContain('setProcessGuideOpen(true)');
     expect(content).not.toContain('initialLesson="process"');
-    expect(content).toContain('previewModules={previewModules}');
+    expect(content).toContain('previewModules={previewProjection?.modules}');
   });
 
   it('keeps the canonical score behind the persistent workbench header seam', () => {

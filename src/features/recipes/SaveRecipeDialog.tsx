@@ -77,12 +77,26 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
           by: ownerId,
           capabilities: caps,
         });
-        markSaved(recipe.recipeId, recipe.title, version.versionNumber);
+        markSaved(
+          recipe.recipeId,
+          recipe.title,
+          version.versionNumber,
+          version.createdAt,
+          undefined,
+          version.versionId,
+        );
       } else {
         const version = await repository.saveNewVersion(savedRecipeId, recipeInput, TRACE, ownerId, {
           note: note.trim() || undefined,
         });
-        markSaved(savedRecipeId, savedRecipeName ?? name.trim(), version.versionNumber);
+        markSaved(
+          savedRecipeId,
+          savedRecipeName ?? name.trim(),
+          version.versionNumber,
+          version.createdAt,
+          undefined,
+          version.versionId,
+        );
       }
       // Refresh the lists/history so the save appears WITHOUT a page reload (pro-core + legacy).
       const savedId = useRecipeStore.getState().savedRecipeId;

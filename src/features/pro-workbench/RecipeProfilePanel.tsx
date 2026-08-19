@@ -14,7 +14,10 @@ import { ProfileDirectionAxes } from './ProfileDirectionAxes';
 import { MonitorPanelContent } from './MonitorPanelContent';
 import { ProductionCockpit } from '@/features/production-workspace/ProductionCockpit';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
-import { WorkbenchIntelligenceHeader } from './WorkbenchIntelligenceHeader';
+import {
+  WorkbenchModuleTabs,
+  type WorkbenchModuleTab,
+} from './WorkbenchModuleTabs';
 import { LockedPIPreview } from '@/features/studio/locked/LockedPIPreview';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import {
@@ -38,14 +41,7 @@ import {
 } from '@/features/product-intelligence';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
-export type CockpitTab = 'profile' | 'monitor' | 'production' | 'summary';
-
-const TABS: readonly { id: CockpitTab; label: string }[] = [
-  { id: 'profile', label: 'Receptura' },
-  { id: 'monitor', label: 'Monitor' },
-  { id: 'production', label: 'Produkcja' },
-  { id: 'summary', label: 'Etykieta' },
-];
+export type CockpitTab = WorkbenchModuleTab;
 
 function CompactMetricRow({
   label,
@@ -235,11 +231,26 @@ function ProfileContent({
   );
 }
 
-function ProductionPanel({ production }: { production?: ProductionWorkspaceView }) {
+function ProductionPanel({
+  production,
+  onOpenPreview,
+  onRecalculate,
+  onReturnToRecipe,
+}: {
+  production?: ProductionWorkspaceView;
+  onOpenPreview: () => void;
+  onRecalculate: () => void;
+  onReturnToRecipe: () => void;
+}) {
   if (production) {
     return (
       <div data-testid="pro-context-production">
-        <ProductionCockpit production={production} />
+        <ProductionCockpit
+          production={production}
+          onOpenPreview={onOpenPreview}
+          onRecalculate={onRecalculate}
+          onReturnToRecipe={onReturnToRecipe}
+        />
       </div>
     );
   }
@@ -547,10 +558,12 @@ export function RecipeProfilePanel({
   servingTemperatureC,
   corrections,
   input,
-  canonicalResult,
-  canonicalInput,
   production,
   recipeBar,
+  idPrefix,
+  showTabs,
+  onOpenPreview,
+  onRecalculate,
 }: {
   activeTab: CockpitTab;
   onTabChange: (tab: CockpitTab) => void;
@@ -558,10 +571,12 @@ export function RecipeProfilePanel({
   servingTemperatureC: number;
   corrections: CorrectionResult;
   input: RecipeInput;
-  canonicalResult?: RecipeResult;
-  canonicalInput?: RecipeInput;
   production?: ProductionWorkspaceView;
   recipeBar?: ReactNode;
+  idPrefix: string;
+  showTabs: boolean;
+  onOpenPreview: () => void;
+  onRecalculate: () => void;
 }) {
   const [educationOpen, setEducationOpen] = useState(false);
   const tabPanelRef = useRef<HTMLDivElement>(null);
@@ -569,72 +584,39 @@ export function RecipeProfilePanel({
   useEffect(() => {
     if (tabPanelRef.current) tabPanelRef.current.scrollTop = 0;
   }, [activeTab, educationOpen]);
+  useEffect(() => {
+    const openLearning = () => {
+      onTabChange('profile');
+      setEducationOpen(true);
+    };
+    window.addEventListener('pinguino:open-learning', openLearning);
+    return () => window.removeEventListener('pinguino:open-learning', openLearning);
+  }, [onTabChange]);
   return (
     <div
       data-testid="pro-profile-panel"
       data-testid-shell="pro-intelligence-shell"
       className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[18px] lg:border lg:border-ink/10 lg:shadow-pro-e1"
     >
-      <div className="sticky top-0 z-30 bg-white" data-testid="workbench-sticky-chrome">
-        <WorkbenchIntelligenceHeader
-          result={canonicalResult ?? result}
-          input={canonicalInput ?? input}
-          onOpenLearning={() => {
-            onTabChange('profile');
-            setEducationOpen(true);
-          }}
-        />
-        <nav
-          aria-label="Kokpit aktualnej receptury"
-          role="tablist"
-          aria-orientation="horizontal"
-          onKeyDown={(event) => {
-            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-            event.preventDefault();
-            const currentIndex = TABS.findIndex((tab) => tab.id === activeTab);
-            const nextIndex =
-              event.key === 'Home'
-                ? 0
-                : event.key === 'End'
-                  ? TABS.length - 1
-                  : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) %
-                    TABS.length;
-            const next = TABS[nextIndex]!;
-            setEducationOpen(false);
-            onTabChange(next.id);
-            const tabs = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
-            tabs[nextIndex]?.focus();
-          }}
-          className="grid grid-cols-4 border-b border-ink/8 bg-white px-2"
-          data-testid="pro-context-tabs"
-        >
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              id={`pro-context-${tab.id}-tab-control`}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              aria-controls={`pro-context-${tab.id}-tabpanel`}
-              tabIndex={activeTab === tab.id ? 0 : -1}
-              data-testid={`pro-context-${tab.id}-tab`}
-              onClick={() => {
-                setEducationOpen(false);
-                onTabChange(tab.id);
-              }}
-              className={`pro-focus-ring min-h-12 min-w-0 border-b-2 px-1 py-2 text-[11px] font-semibold transition-colors ${activeTab === tab.id ? 'border-[#f58a07] bg-stone-50/70 text-ink' : 'border-transparent text-stone-600 hover:bg-stone-50 hover:text-ink'}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      {showTabs ? (
+        <div className="sticky top-0 z-30 bg-white" data-testid="workbench-sticky-chrome">
+          <WorkbenchModuleTabs
+            activeTab={activeTab}
+            onTabChange={(tab) => {
+              setEducationOpen(false);
+              onTabChange(tab);
+            }}
+            idPrefix={idPrefix}
+            className="px-2"
+          />
+        </div>
+      ) : null}
 
       <div
         ref={tabPanelRef}
-        id={`pro-context-${activeTab}-tabpanel`}
+        id={`${idPrefix}-${activeTab}-tabpanel`}
         role="tabpanel"
-        aria-labelledby={`pro-context-${activeTab}-tab-control`}
+        aria-labelledby={`${idPrefix}-${activeTab}-tab-control`}
         tabIndex={0}
         className="intelligence-tabpanel-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:[scrollbar-gutter:stable] 2xl:[scrollbar-gutter:auto]"
       >
@@ -666,7 +648,14 @@ export function RecipeProfilePanel({
             />
           </div>
         ) : null}
-        {activeTab === 'production' ? <ProductionPanel production={production} /> : null}
+        {activeTab === 'production' ? (
+          <ProductionPanel
+            production={production}
+            onOpenPreview={onOpenPreview}
+            onRecalculate={onRecalculate}
+            onReturnToRecipe={() => onTabChange('profile')}
+          />
+        ) : null}
         {activeTab === 'summary' ? (
           <SummaryPanel result={result} input={input} production={production} />
         ) : null}

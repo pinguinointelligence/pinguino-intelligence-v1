@@ -98,6 +98,7 @@ export interface ProductionRowActions {
   setDraftActual: (lineId: string, grams: number) => void;
   confirmLine: (lineId: string) => void;
   reopenRecord: (lineId: string) => void;
+  disabled?: boolean;
 }
 
 export interface IngredientRowLockView {
@@ -984,7 +985,7 @@ function ProductionRow({
   actions: ProductionRowActions;
 }) {
   const value = line.confirmed ? line.physicalAddedGrams : line.draftActualGrams;
-  const difference = value - line.plannedGrams;
+  const difference = value - line.targetGrams;
   const exact = Math.abs(difference) <= 0.05;
   const step = productionStepForGrams(line.targetGrams);
   const correctionMode = !line.confirmed && line.recordCorrectionCount > 0;
@@ -1025,7 +1026,7 @@ function ProductionRow({
       <div className="rounded-[14px] border border-ink/8 bg-stone-50 px-3 py-2 text-left md:text-right">
         <span className="block text-[10px] font-semibold text-stone-600 md:block">Plan</span>
         <strong className="font-mono text-sm tabular-nums text-ink">
-          {formatProductionMassG(line.plannedGrams)} g
+          {formatProductionMassG(line.targetGrams)} g
         </strong>
       </div>
       <div>
@@ -1038,6 +1039,7 @@ function ProductionRow({
           step={step}
           confirmed={line.confirmed}
           correctionMode={correctionMode}
+          disabled={actions.disabled}
           onChange={setValue}
           onConfirm={() =>
             line.confirmed ? actions.reopenRecord(line.lineId) : actions.confirmLine(line.lineId)

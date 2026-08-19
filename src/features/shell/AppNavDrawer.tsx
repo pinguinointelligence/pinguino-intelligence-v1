@@ -19,7 +19,7 @@ const s = copy.shell;
 const FOCUSABLE =
   'a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])';
 const iconButton =
-  'grid h-11 w-11 place-items-center rounded-full text-ink transition-colors hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
+  'grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
 /** The one shallow, plan-aware destination drawer used by every shell. */
 export function AppNavDrawer() {

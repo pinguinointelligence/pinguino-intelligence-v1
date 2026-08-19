@@ -9,6 +9,9 @@
  */
 
 /** Production Mode capability (Pro-only — see proCoreCapabilities). */
+import type { RecipeInput } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+
 export interface ProductionCapabilities {
   canUseProductionMode: boolean;
   canViewExactGrams: boolean;
@@ -45,6 +48,9 @@ export interface ActualIngredient {
   id: string;
   name: string;
   actualGrams: number | null;
+  /** Exact operator chronology when this line was physically confirmed. */
+  confirmedAt?: string | null;
+  confirmationOrder?: number | null;
 }
 
 /** The recorded actual production — explicit, separate from the immutable plan. */
@@ -58,13 +64,32 @@ export interface ProductionActual {
   deviationReason: string | null;
   recordedBy: string;
   recordedAt: string;
+  /** Monotonic durable revision incremented by each server actual write. */
+  revision: number;
 }
+
+/** Server-validated candidate accepted while a physical batch is already in progress. */
+export interface ProductionRescueSnapshot {
+  recipeInput: RecipeInput;
+  productComposition: RecipeCompositionMetadata;
+  acceptedBy: string;
+  acceptedAt: string;
+  /** Monotonic durable revision; unlike timestamps it cannot alias two accepted Rescues. */
+  revision: number;
+}
+
+/** Stable public option ids accepted by the trusted Rescue authorization endpoint. */
+export type ProductionRescueStableOptionId =
+  | 'keep_original_batch'
+  | 'enlarge_batch'
+  | 'leave_as_is';
 
 export type ProductionEventType =
   | 'created'
   | 'planned'
   | 'started'
   | 'actual_recorded'
+  | 'rescue_applied'
   | 'completed'
   | 'cancelled'
   | 'amended'
@@ -78,7 +103,7 @@ export interface ProductionEvent {
   by: string;
   detail: string | null;
   /** Optional structured amendment payload (append-only; the plan/actual stay frozen). */
-  amendment: Record<string, string | number | boolean | null> | null;
+  amendment: Record<string, unknown> | null;
 }
 
 /** A production run: immutable planned snapshot + mutable-until-complete metadata + actuals. */
@@ -109,6 +134,8 @@ export interface ProductionRun {
   updatedAt: string;
   /** Recorded actuals (null until recorded); never replaces `plannedItems`. */
   actual: ProductionActual | null;
+  /** Latest server-authoritative rescue candidate; every acceptance also has an event. */
+  rescue: ProductionRescueSnapshot | null;
   completedAt: string | null;
   cancelledAt: string | null;
   /** Append-only history (lifecycle transitions + post-completion amendments). */

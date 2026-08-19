@@ -21,9 +21,9 @@ import { ProRecalcPanel } from './ProRecalcPanel';
 let host: HTMLDivElement;
 let root: Root;
 
-const renderPanel = async () => {
+const renderPanel = async (onClose = vi.fn()) => {
   await act(async () => {
-    root.render(<ProRecalcPanel open onClose={vi.fn()} />);
+    root.render(<ProRecalcPanel open onClose={onClose} />);
   });
 };
 
@@ -36,6 +36,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
   await act(async () => root.unmount());
   host.remove();
 });
@@ -103,6 +104,47 @@ describe('PI visible terminal contract', () => {
     await renderPanel();
     expect(document.body.textContent).toContain('PI nie mogło dokończyć przeliczenia.');
     expect(document.body.textContent).toContain('Wróć do receptury');
+  });
+
+  it('times out a never-settling ProductBehavior call and ignores its late response', async () => {
+    vi.useFakeTimers();
+    const generation = beginPiRecalculation();
+    let resolveLate!: () => void;
+    const late = new Promise<void>((resolve) => {
+      resolveLate = resolve;
+    });
+    const pending = runPiRecalculationWithTerminal(() => late, generation, 1_000);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await pending;
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'BLOCKED_WITH_EXACT_ACTION',
+      code: 'apply_failed',
+      messagePl:
+        'Serwer nie odpowiedział w bezpiecznym czasie. Receptura nie została zmieniona. Wróć do receptury i spróbuj ponownie.',
+      action: 'return_to_recipe',
+    });
+
+    const onClose = vi.fn();
+    await renderPanel(onClose);
+    expect(document.body.textContent).toContain('Serwer nie odpowiedział w bezpiecznym czasie.');
+    const close = document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')!;
+    expect(close.disabled).toBe(false);
+    await act(async () => close.click());
+    expect(onClose).toHaveBeenCalledOnce();
+
+    const newerGeneration = beginPiRecalculation();
+    resolveLate();
+    await Promise.resolve();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({ state: 'WORKING' });
+
+    await runPiRecalculationWithTerminal(async () => {
+      throw new Error('newer run failed');
+    }, newerGeneration);
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toMatchObject({
+      state: 'BLOCKED_WITH_EXACT_ACTION',
+      code: 'apply_failed',
+    });
   });
 
   it('never lets an older async run overwrite the newest visible WORKING state', async () => {

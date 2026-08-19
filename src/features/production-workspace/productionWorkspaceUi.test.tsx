@@ -251,6 +251,93 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('aria-valuenow="2"');
   });
 
+  it('renders one readable prerequisite with one working next action and no raw line ids', () => {
+    const view = {
+      session: null,
+      progress: null,
+      prerequisite: {
+        code: 'product_authority_required',
+        eyebrow: 'Wymaga receptury wykonawczej',
+        title: 'Odśwież weryfikację produktów',
+        message: 'Co najmniej jeden produkt wymaga ponownej weryfikacji.',
+        action: 'recalculate',
+        actionLabel: 'Przelicz recepturę',
+      },
+    } as unknown as ProductionWorkspaceView;
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={view}
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(html).toContain('data-testid="production-prerequisite-action"');
+    expect(html).toContain('text-stone-700');
+    expect(html).not.toContain('new-recipe-');
+    expect(html.match(/production-prerequisite-action/g) ?? []).toHaveLength(1);
+  });
+
+  it('requires an explicit start click before actual-entry controls exist', () => {
+    const view = {
+      session: null,
+      progress: null,
+      prerequisite: null,
+      practicalReady: true,
+      source: session.source,
+      plannedInput: input,
+      startNewSession: vi.fn(),
+    } as unknown as ProductionWorkspaceView;
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={view}
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(html).toContain('data-testid="production-start-ready"');
+    expect(html).toContain('data-testid="start-production-session"');
+    expect(html).not.toContain('data-testid="production-actual-control"');
+    const surface = readFileSync(
+      resolve(import.meta.dirname, '..', 'studio', 'StudioEngineSurface.tsx'),
+      'utf8',
+    );
+    expect(surface).toContain('production.session !== null');
+    expect(surface).toContain("mode={productionActive ? 'production' : 'recipe'}");
+  });
+
+  it('opens an existing Preview without starting a new recalculation', () => {
+    const hook = readFileSync(resolve(import.meta.dirname, 'useProductionWorkspace.ts'), 'utf8');
+    const cockpit = readFileSync(resolve(import.meta.dirname, 'ProductionCockpit.tsx'), 'utf8');
+    const surface = readFileSync(
+      resolve(import.meta.dirname, '..', 'studio', 'StudioEngineSurface.tsx'),
+      'utf8',
+    );
+    expect(hook).toContain("'preview_not_applied'");
+    expect(hook).toContain("'open_preview'");
+    expect(hook).toContain("'preview_required'");
+    expect(hook).toContain("'recalculate'");
+    expect(cockpit).toContain("prerequisite.action === 'open_preview'");
+    expect(cockpit).toContain("prerequisite.action === 'recalculate'");
+    expect(surface).toContain('onOpenPreview={onOpenExistingPreview');
+    expect(surface).toContain('onRecalculate={onRecalculate');
+  });
+
+  it('uses durable reconciliation, server Rescue authority, and atomic start/completion', () => {
+    const hook = readFileSync(resolve(import.meta.dirname, 'useProductionWorkspace.ts'), 'utf8');
+    expect(hook).toContain('.getRun(localSession.sessionId');
+    expect(hook).toContain('.listRuns(ownerUserId');
+    expect(hook).toContain('hydrateProductionSessionFromRun');
+    expect(hook).toContain('.startRun({');
+    expect(hook).toContain('.authorizeRescue({');
+    expect(hook).toContain('.consumeRescue({');
+    expect(hook).not.toContain('.applyRescue(');
+    expect(hook).not.toContain('applyVerifiedRescueInput');
+    expect(hook).toContain('.completeRun(');
+    expect(hook).not.toContain("transition(\n          session.sessionId,\n          'completed'");
+  });
+
   it('shows forecast progress, not Nutrition or a duplicated full Monitor', () => {
     const forecast = assessProductionRescue(session);
     const view = {
@@ -266,11 +353,23 @@ describe('Production workspace touch-first UI', () => {
       setDraftActual: vi.fn(),
       confirmLine: vi.fn(),
       reopenRecord: vi.fn(),
-      applyVerifiedRescue: vi.fn(),
+      rescueAuthorization: { status: 'idle' },
+      rescueAuthorizationInvalidation: null,
+      requestRescueAuthorization: vi.fn(),
+      refreshRescueAuthorization: vi.fn(),
+      consumeAuthorizedRescue: vi.fn(),
+      dismissRescueAuthorization: vi.fn(),
       complete: vi.fn(),
       startNewSession: vi.fn(),
     } as unknown as ProductionWorkspaceView;
-    const html = renderToStaticMarkup(<ProductionCockpit production={view} />);
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={view}
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
     expect(html).toContain('Przewidywane dopasowanie partii');
     expect(html).toContain('Ocena dotyczy przewidywanego składu');
     expect(html).toContain('0 / 6 składników');
@@ -280,7 +379,149 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('disabled=""');
   });
 
-  it('hosts completed Master Label on a readable light sheet inside the dark Intelligence shell', () => {
+  it('renders the current authorized Rescue target as the operator plan', () => {
+    const reduced = {
+      ...session.lines[0]!,
+      plannedGrams: 400,
+      targetGrams: 350,
+      draftActualGrams: 350,
+    };
+    const item = {
+      ...result.items[0]!,
+      planned_grams: 400,
+    };
+    const html = renderToStaticMarkup(
+      <IngredientRow
+        item={item}
+        totalBatchG={result.total_batch_g}
+        actions={{} as IngredientRowActions}
+        mode="production"
+        productionLine={reduced}
+        productionActions={{
+          setDraftActual: vi.fn(),
+          confirmLine: vi.fn(),
+          reopenRecord: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(html).toContain('350 g');
+    expect(html).not.toContain('>400 g</strong>');
+    expect(html).toContain('data-production-difference="exact"');
+    expect(html).toContain('Różnica względem planu: 0 gramów, zgodnie z planem');
+    expect(html).not.toContain('-50 g');
+  });
+
+  it('renders only the server-authorized Rescue Preview as applicable', () => {
+    const first = session.lines[0]!;
+    const deviated = confirmProductionLine(
+      setDraftActualGrams(session, first.lineId, first.plannedGrams + 50),
+      first.lineId,
+      '2026-08-19T10:01:00.000Z',
+    );
+    const rescue = assessProductionRescue(deviated);
+    expect(rescue.state).toBe('options');
+    const view = {
+      session: deviated,
+      progress: productionProgress(deviated),
+      toppingProgress: null,
+      rescue,
+      score: monitorScoreView(rescue.forecastResult, rescue.forecastInput).match,
+      forecastInput: rescue.forecastInput,
+      forecastResult: rescue.forecastResult,
+      plannedInput: input,
+      source: session.source,
+      corrections: proposeCorrections({ input, context: 'planning', redact: false }),
+      persistenceBusy: false,
+      rescueAuthorizationInvalidation: null,
+      rescueAuthorization: {
+        status: 'preview',
+        consumeIdempotencyKey: 'consume-once',
+        refreshRequired: false,
+        error: null,
+        authorization: {
+          authorizationId: 'authorization-1',
+          candidateFingerprint: 'trusted-fingerprint-1',
+          runId: deviated.sessionId,
+          stableOptionId: 'enlarge_batch',
+          expectedActualRevision: deviated.durableActualRevision,
+          expectedRescueRevision: deviated.durableRescueRevision,
+          authorizedAt: '2026-08-19T10:02:00.000Z',
+          expiresAt: '2026-08-19T10:07:00.000Z',
+          preview: {
+            title: 'Powiększ partię',
+            explanation: 'Autoryzowana korekta bez zmiany potwierdzonych gramów.',
+            finalMassG: 1050,
+            scoreDisplay: '94%',
+            instructions: [
+              {
+                lineId: 'sugar',
+                ingredientName: 'Sugar',
+                kind: 'add',
+                grams: 50,
+                finalTargetGrams: 450,
+              },
+              {
+                lineId: 'cream',
+                ingredientName: 'Cream',
+                kind: 'reduce_pending_plan',
+                grams: 50,
+                finalTargetGrams: 350,
+              },
+            ],
+          },
+        },
+      },
+      setDraftActual: vi.fn(),
+      confirmLine: vi.fn(),
+      reopenRecord: vi.fn(),
+      requestRescueAuthorization: vi.fn(),
+      refreshRescueAuthorization: vi.fn(),
+      consumeAuthorizedRescue: vi.fn(),
+      dismissRescueAuthorization: vi.fn(),
+      complete: vi.fn(),
+    } as unknown as ProductionWorkspaceView;
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={view}
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(html).toContain('Preview autoryzowany przez serwer');
+    expect(html).toContain('data-candidate-fingerprint="trusted-fingerprint-1"');
+    expect(html).toContain('data-testid="apply-authorized-production-rescue"');
+    expect(html).toContain('tabindex="-1"');
+    expect(html).toContain('Nowy plan · Cream');
+    expect(html).toContain('→ 350 g');
+    expect(html).not.toMatch(
+      /<button(?=[^>]*data-testid="apply-authorized-production-rescue")[^>]* disabled=""/,
+    );
+    expect(html).not.toContain('data-testid="production-rescue-options"');
+
+    const staleHtml = renderToStaticMarkup(
+      <ProductionCockpit
+        production={
+          {
+            ...view,
+            rescueAuthorizationInvalidation: 'expired',
+          } as unknown as ProductionWorkspaceView
+        }
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(staleHtml).toMatch(
+      /<button(?=[^>]*data-testid="apply-authorized-production-rescue")[^>]*disabled=""/,
+    );
+    expect(staleHtml).toContain('Odśwież propozycję Rescue');
+    expect(staleHtml).toContain('data-testid="refresh-production-rescue-authorization"');
+    expect(staleHtml).toContain('Autoryzacja Preview wygasła');
+  });
+
+  it('hosts completed Master Label on a readable light sheet', () => {
     let confirmed = session;
     for (const [index, line] of confirmed.lines.entries()) {
       confirmed = confirmProductionLine(
@@ -305,12 +546,43 @@ describe('Production workspace touch-first UI', () => {
       startNewSession: vi.fn(),
     } as unknown as ProductionWorkspaceView;
 
-    const html = renderToStaticMarkup(<ProductionCockpit production={view} />);
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={view}
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
     expect(html).toContain('data-testid="production-completed"');
     expect(html).toContain('Przygotowywanie Master Label');
     expect(html).toContain('bg-[#f7f5f0]');
     expect(html).toContain('text-stone-600');
     expect(html).not.toContain('class="p-3 text-xs text-stone-500"');
+    const staleCompletedHtml = renderToStaticMarkup(
+      <ProductionCockpit
+        production={
+          {
+            ...view,
+            prerequisite: {
+              code: 'stale_source',
+              eyebrow: 'Źródło nieaktualne',
+              title: 'Źródło Produkcji jest nieaktualne',
+              message: 'Zachowaj zakończony zapis i przygotuj nowe źródło.',
+              action: 'archive_stale_session',
+              actionLabel: 'Zarchiwizuj starą sesję',
+            },
+            archiveStaleSession: vi.fn(),
+          } as unknown as ProductionWorkspaceView
+        }
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(staleCompletedHtml).toContain('data-testid="production-completed"');
+    expect(staleCompletedHtml).toContain('Zarchiwizuj starą sesję');
+    expect(staleCompletedHtml).toContain('Zachowaj zakończony zapis');
     expect(
       readFileSync(
         resolve(import.meta.dirname, '..', 'master-label', 'MasterLabelEditor.tsx'),

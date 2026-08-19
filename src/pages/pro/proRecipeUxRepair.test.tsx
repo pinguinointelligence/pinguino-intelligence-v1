@@ -282,8 +282,8 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
       html.indexOf('data-testid="pro-monitor-panel"'),
       html.indexOf('data-testid="pro-review-zone"'),
     );
-    expect(panel).toContain('data-testid="workbench-intelligence-header"');
-    expect(panel).toMatch(/\d{1,2}\/10/);
+    expect(html).toContain('data-testid="workbench-intelligence-header"');
+    expect(html).toMatch(/\d{1,2}\/10/);
     expect(panel).toContain('data-testid="monitor-direction-evidence"');
     expect(panel).not.toContain('data-testid="profile-direction-axes"');
     expect(panel).toContain('data-testid="monitor-module-freezing"');
@@ -300,11 +300,12 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     expect(html).toContain('aria-selected="true"');
   });
 
-  it('blocks both Production panes until one verified practical Preview has been applied', () => {
+  it('keeps the editor visible and exposes one actionable Production prerequisite', () => {
     const html = renderAt('/pro/production');
-    expect(html).toContain('data-testid="production-editor-practical-block"');
+    expect(html).not.toContain('data-testid="production-editor-practical-block"');
+    expect(html).toContain('data-testid="ingredient-editor-pane"');
     expect(html).toContain('data-testid="production-practical-block"');
-    expect(html).toContain('Najpierw zweryfikuj Preview');
+    expect(html).toContain('data-testid="production-prerequisite-action"');
     expect(html).not.toContain('data-testid="production-stepper-');
   });
 });

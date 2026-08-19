@@ -35,6 +35,8 @@ import type {
   ProductionRun,
   ProductionStatus,
 } from '@/features/pro-core/productionContracts';
+import type { RecipeInput } from '@/engine';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 
 export interface CreateRunInput {
   ownerUserId: string;
@@ -100,13 +102,58 @@ export class InMemoryProduction {
   }
 
   recordActual(runId: string, input: Omit<RecordActualInput, 'at' | 'eventId'>): ProductionRun {
-    const next = recordActual(this.require(runId), { ...input, at: this.now(), eventId: this.nextId() });
+    const next = recordActual(this.require(runId), {
+      ...input,
+      at: this.now(),
+      eventId: this.nextId(),
+    });
+    this.runs.set(runId, next);
+    return next;
+  }
+
+  applyRescue(
+    runId: string,
+    recipeInput: RecipeInput,
+    productComposition: RecipeCompositionMetadata,
+  ): ProductionRun {
+    const run = this.require(runId);
+    if (run.status !== 'in_progress') {
+      throw new Error('Production rescue requires an in-progress run.');
+    }
+    const at = this.now();
+    const revision = (run.rescue?.revision ?? 0) + 1;
+    const next: ProductionRun = {
+      ...run,
+      updatedAt: at,
+      rescue: {
+        recipeInput,
+        productComposition,
+        acceptedBy: run.ownerUserId,
+        acceptedAt: at,
+        revision,
+      },
+      events: [
+        ...run.events,
+        {
+          eventId: this.nextId(),
+          type: 'rescue_applied',
+          at,
+          by: run.ownerUserId,
+          detail: 'In-memory BATCH_RESCUE candidate accepted',
+          amendment: { recipeInput, productComposition, acceptedAt: at, revision },
+        },
+      ],
+    };
     this.runs.set(runId, next);
     return next;
   }
 
   amend(runId: string, input: Omit<AmendInput, 'at' | 'eventId'>): ProductionRun {
-    const next = amendRun(this.require(runId), { ...input, at: this.now(), eventId: this.nextId() });
+    const next = amendRun(this.require(runId), {
+      ...input,
+      at: this.now(),
+      eventId: this.nextId(),
+    });
     this.runs.set(runId, next);
     return next;
   }

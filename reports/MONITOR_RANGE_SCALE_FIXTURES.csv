@@ -1,0 +1,8 @@
+module,headline_metric,current_value,display_domain_min,display_domain_max,accepted_min,accepted_max,expected_green_left_percent,expected_green_width_percent,actual_after_width_percent,marker_percent,red_segment,status
+Slodycz,pod,15.98,12,25,12,17,0.00,38.46,38.46,30.62,none,PASS
+Twardosc,npac,35.49,33,64,33,42,0.00,29.03,29.03,8.03,none,PASS
+Zamrozenie,ice_fraction,50.00,45,61,45,54.5,0.00,59.38,59.38,31.25,none,PASS
+Woda_i_ciala_stale,water,62.18,50,75,57,70,28.00,52.00,52.00,48.72,none,PASS
+Tluszcz_i_kremowosc,fat,8.76,0,12,5,12,41.67,58.33,58.33,73.00,none,PASS
+Bialko_i_struktura,aerating_protein,4.20,3,6,3,6,0.00,100.00,100.00,40.00,none,PASS_WHERE_ENGINE_BAND_EXISTS
+Stabilnosc_i_ryzyka,lactose_sandiness_risk,7.10,BLOCKED,BLOCKED,5,9,BLOCKED,BLOCKED,NO_FABRICATED_SCALE,NO_MARKER,none,BLOCKER_ONE_SIDED_AUTHORITY

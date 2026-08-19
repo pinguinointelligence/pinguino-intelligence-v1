@@ -544,6 +544,9 @@ describe('recipe behavior server validation', () => {
     const section = read('src/features/constraint-studio/ui/ConstraintStudioSection.tsx');
     const save = read('src/features/recipes/useCanonicalRecipeSave.ts');
     const production = read('src/features/production-workspace/useProductionWorkspace.ts');
+    const productionRescueAuthorization = read(
+      'supabase/migrations/20260819024500_production_rescue_authorization.sql',
+    );
     expect(pro).toContain('runPiRecalculationWithTerminal');
     expect(studio).toContain('createOptimizePreviewWithServerAuthority');
     expect(studio).toContain('createExplicitStandardRemovalPreviewWithServerAuthority');
@@ -556,7 +559,7 @@ describe('recipe behavior server validation', () => {
     expect(studio).toContain(": 'OPTIMAL'");
     expect(save).toContain("module: 'SAVE'");
     expect(production).toContain("module: 'PRODUCTION'");
-    expect(production).toContain("module: 'BATCH_RESCUE'");
+    expect(productionRescueAuthorization).toContain("'BATCH_RESCUE'");
     expect(studio.indexOf('markRecalculationRequired()')).toBeLessThan(
       studio.indexOf('await currentBaseAuthorityReady'),
     );

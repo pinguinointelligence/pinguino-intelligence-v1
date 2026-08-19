@@ -67,7 +67,8 @@ describe('canonical Pro header contract', () => {
     expect(topActions).not.toContain('Dopasowanie techniczne receptury');
     expect(logo).toContain("'/logo/gellattiLOGO.png'");
     expect(logo).toContain('data-logo-source="/logo/gellattiLOGO.png"');
-    expect(logo).toContain('w-[178px]');
+    expect(logo).toContain('w-[136px]');
+    expect(logo).toContain('max-h-12');
   });
 
   it('integrates pending state into the recalculation control', () => {
@@ -85,12 +86,13 @@ describe('canonical Pro header contract', () => {
 });
 
 describe('profile hierarchy and compact preflight', () => {
-  it('renders one persistent score header, then Profile inputs without Summary duplication', () => {
+  it('renders one global score header, then Profile inputs without Summary duplication', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    const scoreAt = panel.indexOf('<WorkbenchIntelligenceHeader');
+    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const settingsAt = panel.indexOf('<WorkbenchSettingsLine');
     const directionAt = panel.indexOf('<ProfileDirectionAxes');
-    expect(scoreAt).toBeGreaterThan(-1);
+    expect(page).toContain('<WorkbenchIntelligenceHeader');
+    expect(panel).not.toContain('<WorkbenchIntelligenceHeader');
     expect(settingsAt).toBeGreaterThan(-1);
     expect(directionAt).toBeLessThan(settingsAt);
     expect(panel).toContain('data-testid="profile-desktop-grid"');

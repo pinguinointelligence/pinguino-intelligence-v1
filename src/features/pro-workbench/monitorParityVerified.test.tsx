@@ -153,7 +153,7 @@ describe('real Pro Monitor route', () => {
     expect(PANEL).not.toContain('data-testid="user-monitor-module-');
   });
 
-  it('shows current Engine POD, NPAC and PAC values and keeps ice/water in canonical detail data', () => {
+  it('shows one authoritative Engine value per headline and keeps ice/water canonical', () => {
     const pod = RESULT.indicators.find((indicator) => indicator.key === 'pod')?.value ?? null;
     expect(TEXT).toContain(pod?.toFixed(2) ?? '—');
     expect(TEXT).toContain(RESULT.npac_points?.toFixed(2) ?? '—');
@@ -161,7 +161,9 @@ describe('real Pro Monitor route', () => {
       PANEL.indexOf('data-testid="monitor-module-freezing"'),
       PANEL.indexOf('data-testid="monitor-module-water-solids"'),
     );
-    expect(visibleText(freezing)).toContain(format(RESULT.pac_points));
+    const ice = RESULT.indicators.find((indicator) => indicator.key === 'ice_fraction')?.value ?? null;
+    expect(visibleText(freezing)).toContain(format(ice));
+    expect(visibleText(freezing)).not.toContain(format(RESULT.pac_points));
     const model = readFileSync(
       new URL('./professionalMonitorModel.ts', import.meta.url),
       'utf8',

@@ -22,8 +22,22 @@ vi.mock('@/features/pro-core/useProCorePersona', () => ({
 }));
 
 const { ProWorkspacePage } = await import('./ProWorkspacePage');
+const { cockpitTabFromRoute, routeForCockpitTab } = await import('./workbenchRoute');
 
 const w = copy.proWorkspace;
+
+describe('workbench URL authority', () => {
+  it('round-trips all four modules through stable routes', () => {
+    expect(cockpitTabFromRoute('recipe', null)).toBe('profile');
+    expect(cockpitTabFromRoute('monitor', null)).toBe('monitor');
+    expect(cockpitTabFromRoute('production', null)).toBe('production');
+    expect(cockpitTabFromRoute('recipe', 'summary')).toBe('summary');
+    expect(routeForCockpitTab('profile')).toBe('/pro/recipe');
+    expect(routeForCockpitTab('monitor')).toBe('/pro/monitor');
+    expect(routeForCockpitTab('production')).toBe('/pro/production');
+    expect(routeForCockpitTab('summary')).toBe('/pro/recipe?panel=summary');
+  });
+});
 
 const renderAt = (path: string, persona: ProCorePersona) => {
   mockPersona = persona;
@@ -94,7 +108,8 @@ describe('ProWorkspacePage (S3)', () => {
     expect(production).toContain('data-testid="pro-context-tabs"');
     expect(production).toContain('data-testid="pro-context-production"');
     expect(production).toContain('Wymaga receptury wykonawczej');
-    expect(production).toContain('Brak zatwierdzonego uprawnienia PRODUCTION dla:');
+    expect(production).not.toContain('Brak zatwierdzonego uprawnienia PRODUCTION dla:');
+    expect(production).not.toContain('new-recipe-0-');
     expect(production).toContain('data-testid="pro-context-summary-tab"');
 
     const history = renderAt('/pro/history', 'pro');

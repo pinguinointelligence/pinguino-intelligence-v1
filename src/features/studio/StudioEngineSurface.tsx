@@ -24,7 +24,6 @@ import { ProReviewZone, type ReviewInventoryRow } from '@/features/pro-workbench
 import {
   RecipeProfilePanel,
   type CockpitTab,
-  type ProContextTab,
 } from '@/features/pro-workbench/RecipeProfilePanel';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
@@ -113,31 +112,35 @@ const REVIEW_INVENTORY: readonly ReviewInventoryRow[] = [
 export function StudioEngineSurface({
   forceDemo = false,
   recalcSlot,
-  activePanel = 'recipe',
+  activeTab = 'profile',
+  onTabChange,
   recipeBar,
   onRecalculate,
+  onOpenExistingPreview,
 }: {
   forceDemo?: boolean;
   /** The Przelicz z PI overlay (Preview → Zastosuj/Anuluj → Cofnij), host-wired. */
   recalcSlot?: ReactNode;
-  /** Stable right-panel route: Profile / Monitor / Production / History. */
-  activePanel?: ProContextTab;
+  /** Route-controlled module. Click, refresh and browser history share this authority. */
+  activeTab?: CockpitTab;
+  onTabChange: (tab: CockpitTab) => void;
   /** The one recipe name/save bar, mounted at the bottom-left of the editor. */
   recipeBar?: ReactNode;
   onRecalculate?: () => void;
+  onOpenExistingPreview?: () => void;
 }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
   const { fullFormula } = useAccess();
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
-  const initialCockpit: CockpitTab =
-    activePanel === 'monitor' ? 'monitor' : activePanel === 'production' ? 'production' : 'profile';
-  const [cockpitTab, setCockpitTab] = useState<CockpitTab>(initialCockpit);
   const planning = useStudioResult('planning');
-  const production = useProductionWorkspace(cockpitTab === 'production');
-  const productionReady = cockpitTab === 'production' && production.practicalReady !== false;
-  const { result, corrections, input } = productionReady
+  const production = useProductionWorkspace(activeTab === 'production');
+  const productionActive =
+    activeTab === 'production' &&
+    production.practicalReady !== false &&
+    production.session !== null;
+  const { result, corrections, input } = productionActive
     ? {
         result: production.forecastResult,
         corrections: production.corrections,
@@ -145,7 +148,14 @@ export function StudioEngineSurface({
       }
     : planning;
   const scoreDisplay = monitorScoreView(planning.result, planning.input).match.display;
-  const [mobileCockpitOpen, setMobileCockpitOpen] = useState(activePanel === 'monitor');
+  const [mobileCockpitState, setMobileCockpitState] = useState({
+    activeTab,
+    open: activeTab !== 'profile',
+  });
+  if (mobileCockpitState.activeTab !== activeTab) {
+    setMobileCockpitState({ activeTab, open: activeTab !== 'profile' });
+  }
+  const mobileCockpitOpen = mobileCockpitState.open;
   const [mobileViewport, setMobileViewport] = useState(false);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cockpitPanelRef = useRef<HTMLElement | null>(null);
@@ -161,8 +171,8 @@ export function StudioEngineSurface({
 
   useEffect(() => {
     const showProfileSettings = () => {
-      setCockpitTab('profile');
-      setMobileCockpitOpen(true);
+      onTabChange('profile');
+      setMobileCockpitState({ activeTab: 'profile', open: true });
       queueMicrotask(() =>
         document.querySelector<HTMLElement>('[data-testid="workbench-settings-line"]')?.focus(),
       );
@@ -170,7 +180,7 @@ export function StudioEngineSurface({
     window.addEventListener('pinguino:profile-settings-required', showProfileSettings);
     return () =>
       window.removeEventListener('pinguino:profile-settings-required', showProfileSettings);
-  }, []);
+  }, [onTabChange]);
 
   useEffect(() => {
     const query = window.matchMedia(MOBILE_COCKPIT_QUERY);
@@ -195,7 +205,7 @@ export function StudioEngineSurface({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setMobileCockpitOpen(false);
+        setMobileCockpitState({ activeTab, open: false });
         return;
       }
       if (e.key !== 'Tab') return;
@@ -220,7 +230,7 @@ export function StudioEngineSurface({
       body.style.overflow = previousOverflow;
       trigger?.focus();
     };
-  }, [mobileCockpitOpen, mobileViewport]);
+  }, [activeTab, mobileCockpitOpen, mobileViewport]);
 
   return (
     <>
@@ -246,26 +256,7 @@ export function StudioEngineSurface({
             className="min-h-0 xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden xl:rounded-[18px] xl:border xl:border-ink/10 xl:bg-white xl:shadow-pro-e1"
             data-testid="workbench-editor-pane"
           >
-            {fullFormula && cockpitTab === 'production' && !productionReady ? (
-              <section
-                className="grid h-full min-h-[24rem] place-items-center bg-paper p-6"
-                data-testid="production-editor-practical-block"
-              >
-                <div className="max-w-md rounded-[22px] border border-attention/25 bg-pro-amber/35 p-6 text-center shadow-pro-sm">
-                  <p className="text-xs font-semibold tracking-[0.08em] text-attention uppercase">
-                    Wymaga receptury wykonawczej
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold text-ink">
-                    Najpierw zweryfikuj Preview
-                  </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-stone-600">
-                    Produkcja nie pokazuje ani nie przyjmuje gramatur ze szkicu. Zastosuj praktyczną
-                    recepturę pełnogramową, a ten obszar przełączy się na plan, faktyczną masę i
-                    potwierdzenia.
-                  </p>
-                </div>
-              </section>
-            ) : fullFormula ? (
+            {fullFormula ? (
               <div className="min-h-0 flex-1 xl:overflow-hidden">
                 <IngredientBuilder
                   items={result.items}
@@ -273,7 +264,7 @@ export function StudioEngineSurface({
                   targetBatchG={batchGrams}
                   demo={forceDemo}
                   layout="workbench"
-                  mode={productionReady ? 'production' : 'recipe'}
+                  mode={productionActive ? 'production' : 'recipe'}
                   production={production}
                   onRecalculate={onRecalculate}
                 />
@@ -294,16 +285,18 @@ export function StudioEngineSurface({
             aria-label={copy.proWorkbench.profile.title}
           >
             <RecipeProfilePanel
-              activeTab={cockpitTab}
-              onTabChange={setCockpitTab}
+              activeTab={activeTab}
+              onTabChange={onTabChange}
               result={result}
               servingTemperatureC={temperatureC}
               corrections={corrections}
               input={input}
-              canonicalResult={planning.result}
-              canonicalInput={planning.input}
               production={production}
               recipeBar={recipeBar}
+              idPrefix="pro-context"
+              showTabs={false}
+              onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
+              onRecalculate={onRecalculate ?? (() => undefined)}
             />
           </aside>
         </div>
@@ -314,7 +307,7 @@ export function StudioEngineSurface({
             aria-haspopup="dialog"
             aria-expanded={mobileCockpitOpen}
             aria-controls="mobile-cockpit-dialog"
-            onClick={() => setMobileCockpitOpen(true)}
+            onClick={() => setMobileCockpitState({ activeTab, open: true })}
             className="pro-focus-ring flex min-h-11 w-full items-center justify-between rounded-[14px] border border-ink/12 bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-e1"
             data-testid="mobile-cockpit-trigger"
           >
@@ -322,12 +315,12 @@ export function StudioEngineSurface({
             <span className="font-mono tabular-nums text-gold-soft">{scoreDisplay}</span>
           </button>
         </div>
-        {mobileCockpitOpen ? (
+        {mobileCockpitOpen && mobileViewport ? (
           <div className="fixed inset-0 z-50 xl:hidden" data-testid="mobile-cockpit-sheet">
             <button
               type="button"
               aria-label="Zamknij kokpit"
-              onClick={() => setMobileCockpitOpen(false)}
+              onClick={() => setMobileCockpitState({ activeTab, open: false })}
               className="absolute inset-0 bg-black/35"
             />
             <section
@@ -345,7 +338,7 @@ export function StudioEngineSurface({
                 <button
                   type="button"
                   aria-label="Zamknij kokpit"
-                  onClick={() => setMobileCockpitOpen(false)}
+                  onClick={() => setMobileCockpitState({ activeTab, open: false })}
                   className="grid size-11 place-items-center rounded-full border border-ink/15 text-lg text-ink"
                 >
                   ×
@@ -353,16 +346,18 @@ export function StudioEngineSurface({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <RecipeProfilePanel
-                  activeTab={cockpitTab}
-                  onTabChange={setCockpitTab}
+                  activeTab={activeTab}
+                  onTabChange={onTabChange}
                   result={result}
                   servingTemperatureC={temperatureC}
                   corrections={corrections}
                   input={input}
-                  canonicalResult={planning.result}
-                  canonicalInput={planning.input}
                   production={production}
                   recipeBar={recipeBar}
+                  idPrefix="mobile-pro-context"
+                  showTabs
+                  onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
+                  onRecalculate={onRecalculate ?? (() => undefined)}
                 />
               </div>
             </section>
