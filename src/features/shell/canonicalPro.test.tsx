@@ -174,9 +174,9 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     expect(html).toContain(copy.proWorkbench.profile.tabs.monitor);
   });
 
-  it('12. Przelicz z PI is visible at the top', () => {
+  it('12. Przelicz z PI is visible in the bottom editor action dock', () => {
     expect(html).toContain('data-testid="pro-workbar-recalc"');
-    expect(html).toContain(copy.proWorkbar.recalc);
+    expect(html).toContain('data-testid="workbench-recipe-action-dock"');
   });
 
   it('13. version/date and dirty state are visible (status line)', () => {
@@ -184,7 +184,7 @@ describe('canonical PINGÜINO Pro — workbar (proofs 7–15)', () => {
     expect(html).toContain(copy.proWorkbar.status.newUnsaved);
   });
 
-  it('14. the main recalculation is not bottom-only: the TOP button initiates the real preview pipeline', () => {
+  it('14. the dock action initiates the one real preview pipeline', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(page).toContain('beginPiRecalculation');
     expect(page).toContain('runPiRecalculationWithTerminal'); // the ONE visible-terminal pipeline

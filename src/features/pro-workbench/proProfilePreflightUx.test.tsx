@@ -51,15 +51,19 @@ beforeEach(() => {
 });
 
 describe('canonical Pro header contract', () => {
-  it('keeps the approved logo left-aligned and owns score in one persistent right header', () => {
+  it('keeps the approved logo left-aligned and moves score authority to the editor dock', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
+    const dock = read('features', 'pro-workbench', 'WorkbenchRecipeActionDock.tsx');
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
     expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('brand={<OfficialProLogo />}');
     expect(page).not.toContain('data-testid="pro-top-score"');
     expect(header).toContain('data-testid="workbench-intelligence-header"');
     expect(header).toContain('monitorScoreView(result, input).match');
+    expect(dock).toContain('<WorkbenchIntelligenceHeader');
+    expect(dock).toContain('<WorkbenchActionBar');
+    expect(page).not.toContain('<WorkbenchIntelligenceHeader');
     const topActions = page.slice(
       page.indexOf('function ProTopActions'),
       page.indexOf('function RecipeWorkbench'),
@@ -73,9 +77,9 @@ describe('canonical Pro header contract', () => {
 
   it('integrates pending state into the recalculation control', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
-    const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
-    expect(builder).toContain('data-testid="pro-recalc-state"');
-    expect(builder).toContain('Oczekuje na przeliczenie');
+    const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
+    expect(header).toContain('data-testid="pro-workbar-recalc"');
+    expect(header).toContain("working ? 'Przeliczanie…' : 'Przelicz'");
     expect(page).toContain("state: 'SETTINGS_CONFIRMATION_REQUIRED'");
     expect(read('features', 'pro-core', 'ProRecalcPanel.tsx')).toContain(
       'pinguino:profile-settings-required',
@@ -86,12 +90,12 @@ describe('canonical Pro header contract', () => {
 });
 
 describe('profile hierarchy and compact preflight', () => {
-  it('renders one global score header, then Profile inputs without Summary duplication', () => {
+  it('renders one editor-dock score, then Profile inputs without Summary duplication', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+    const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const settingsAt = panel.indexOf('<WorkbenchSettingsLine');
     const directionAt = panel.indexOf('<ProfileDirectionAxes');
-    expect(page).toContain('<WorkbenchIntelligenceHeader');
+    expect(surface).toContain('<WorkbenchRecipeActionDock');
     expect(panel).not.toContain('<WorkbenchIntelligenceHeader');
     expect(settingsAt).toBeGreaterThan(-1);
     expect(directionAt).toBeLessThan(settingsAt);

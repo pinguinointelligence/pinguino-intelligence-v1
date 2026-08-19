@@ -10,7 +10,6 @@ export function ProteinTargetControl({
   tone?: 'paper' | 'dark';
 }) {
   const target = useRecipeStore((state) => state.target_protein_percent);
-  const setTarget = useRecipeStore((state) => state.setTargetProteinPercent);
   const residual = actualPercent - target;
   const reached = Math.abs(residual) <= PROTEIN_GELATO_TARGET.tolerancePercent + 1e-9;
   const dark = tone === 'dark';
@@ -23,7 +22,7 @@ export function ProteinTargetControl({
       )}
       data-testid="protein-target-control"
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-end gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
         <div>
           <p
             className={cn(
@@ -31,57 +30,15 @@ export function ProteinTargetControl({
               dark ? 'text-ivory/65' : 'text-stone-500',
             )}
           >
-            Cel białka
+            Białko w recepturze
           </p>
           <p className={cn('mt-0.5 text-[11px]', dark ? 'text-ivory/65' : 'text-stone-600')}>
-            Domyślnie 20,0% · wykonalność ocenia PI
+            Wynik obliczony z aktualnego składu · cel PI {target.toFixed(1)}%
           </p>
         </div>
-        <div className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] border border-current/15">
-          <button
-            type="button"
-            onClick={() => setTarget(target - PROTEIN_GELATO_TARGET.controlStepPercent)}
-            className="h-8 border-r border-current/15 text-sm"
-            aria-label="Zmniejsz cel białka o 1 punkt procentowy"
-          >
-            −
-          </button>
-          <label className="flex items-center px-1">
-            <input
-              type="number"
-              min={0}
-              step={PROTEIN_GELATO_TARGET.inputStepPercent}
-              value={target}
-              onChange={(event) => setTarget(event.currentTarget.valueAsNumber)}
-              className={cn(
-                'h-8 min-w-0 flex-1 bg-transparent text-right font-mono text-sm font-semibold tabular-nums outline-none',
-                dark ? 'text-ivory' : 'text-ink',
-              )}
-              aria-label="Cel białka w procentach"
-              data-testid="protein-target-input"
-            />
-            <span className={cn('ml-1 text-xs', dark ? 'text-ivory/60' : 'text-stone-500')}>%</span>
-          </label>
-          <button
-            type="button"
-            onClick={() => setTarget(target + PROTEIN_GELATO_TARGET.controlStepPercent)}
-            className="h-8 border-l border-current/15 text-sm"
-            aria-label="Zwiększ cel białka o 1 punkt procentowy"
-          >
-            +
-          </button>
-        </div>
-      </div>
-      <div
-        className={cn(
-          'mt-2 flex items-center justify-between border-t pt-2 text-[11px]',
-          dark ? 'border-ivory/10 text-ivory/75' : 'border-ink/10 text-stone-600',
-        )}
-      >
-        <span>Wynik aktualnej receptury</span>
         <strong
           className={cn(
-            'font-mono tabular-nums',
+            'font-mono text-lg font-semibold tabular-nums',
             reached ? 'text-status-ideal' : dark ? 'text-status-risky' : 'text-amber-700',
           )}
           data-testid="protein-target-actual"
@@ -89,10 +46,24 @@ export function ProteinTargetControl({
           {actualPercent.toFixed(1)}%
         </strong>
       </div>
+      <div
+        className={cn(
+          'mt-2 flex items-center justify-between border-t pt-2 text-[11px]',
+          dark ? 'border-ivory/10 text-ivory/75' : 'border-ink/10 text-stone-600',
+        )}
+      >
+        <span>
+          {reached ? 'Cel osiągnięty' : residual < 0 ? 'Poniżej celu PI' : 'Powyżej celu PI'}
+        </span>
+        <strong className="font-mono tabular-nums">
+          {residual >= 0 ? '+' : ''}
+          {residual.toFixed(1)} pp
+        </strong>
+      </div>
       <p
         className={cn('mt-1.5 text-[10px] leading-snug', dark ? 'text-ivory/55' : 'text-stone-500')}
       >
-        Zmiana celu nie zmienia gramatur. Nową recepturę zobaczysz dopiero po „Przelicz z PI” i w
+        To metryka wyniku, nie sterownik gramatur. Bezpieczne zmiany składu wykonuje wyłącznie PI w
         Podglądzie.
       </p>
     </section>

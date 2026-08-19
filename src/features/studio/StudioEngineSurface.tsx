@@ -21,12 +21,10 @@ import { useStudioResult } from '@/features/studio/useStudioResult';
 import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculatorPreview';
 import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule';
 import { ProReviewZone, type ReviewInventoryRow } from '@/features/pro-workbench/ProReviewZone';
-import {
-  RecipeProfilePanel,
-  type CockpitTab,
-} from '@/features/pro-workbench/RecipeProfilePanel';
+import { RecipeProfilePanel, type CockpitTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
+import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
 import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
 import {
   MOBILE_COCKPIT_QUERY,
@@ -241,7 +239,7 @@ export function StudioEngineSurface({
         data-testid="pro-workbench"
       >
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
-        <div className="min-h-0 flex-1 xl:grid xl:max-h-[var(--pro-workbench-body-max)] xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:py-3">
+        <div className="min-h-0 flex-1 xl:grid xl:h-full xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:py-3">
           <span
             aria-hidden
             data-testid="workbench-divider-rail"
@@ -266,7 +264,22 @@ export function StudioEngineSurface({
                   layout="workbench"
                   mode={productionActive ? 'production' : 'recipe'}
                   production={production}
-                  onRecalculate={onRecalculate}
+                  recipeActionDock={
+                    !productionActive && onRecalculate ? (
+                      <WorkbenchRecipeActionDock
+                        result={planning.result}
+                        input={planning.input}
+                        onRecalculate={onRecalculate}
+                        onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
+                        onOpenLearning={() => {
+                          onTabChange('profile');
+                          queueMicrotask(() =>
+                            window.dispatchEvent(new Event('pinguino:open-learning')),
+                          );
+                        }}
+                      />
+                    ) : undefined
+                  }
                 />
               </div>
             ) : (

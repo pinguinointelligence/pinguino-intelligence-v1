@@ -180,9 +180,7 @@ describe('ProWorkbar wiring (no duplicate save; workbar mounted in /pro Receptur
   it('the /pro recipe workbench mounts the ProWorkbar inside the editor area', () => {
     const pro = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(pro).toContain('ProWorkbar');
-    expect(pro).toContain(
-      'recipeBar={<ProWorkbar onOpenPreview={onOpenRecalc} variant="panel" />',
-    );
+    expect(pro).toContain('recipeBar={<ProWorkbar variant="panel" />}');
   });
 
   it('the workbar delegates to the ONE canonical save handler (no second handler)', () => {

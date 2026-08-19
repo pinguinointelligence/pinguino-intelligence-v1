@@ -14,10 +14,7 @@ import { ProfileDirectionAxes } from './ProfileDirectionAxes';
 import { MonitorPanelContent } from './MonitorPanelContent';
 import { ProductionCockpit } from '@/features/production-workspace/ProductionCockpit';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
-import {
-  WorkbenchModuleTabs,
-  type WorkbenchModuleTab,
-} from './WorkbenchModuleTabs';
+import { WorkbenchModuleTabs, type WorkbenchModuleTab } from './WorkbenchModuleTabs';
 import { LockedPIPreview } from '@/features/studio/locked/LockedPIPreview';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import {
@@ -637,7 +634,7 @@ export function RecipeProfilePanel({
           />
         ) : null}
         {activeTab === 'monitor' ? (
-          <div className="pro-scroll-safe p-3 text-ink" data-testid="pro-context-monitor">
+          <div className="pro-scroll-safe p-2 text-ink" data-testid="pro-context-monitor">
             <MonitorPanelContent
               result={result}
               servingTemperatureC={servingTemperatureC}

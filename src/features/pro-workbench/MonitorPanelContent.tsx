@@ -182,7 +182,7 @@ export function MonitorPanelContent({
 
   return (
     <div
-      className="pro-scroll-safe space-y-2 text-ink"
+      className="pro-scroll-safe space-y-1.5 text-ink"
       data-testid="monitor-panel-content"
       data-behavior-authority={monitorGate.ready ? 'ready' : 'revalidation-required'}
     >
@@ -229,10 +229,7 @@ export function MonitorPanelContent({
       ) : null}
 
       {technicalViewAllowed ? (
-        <ProfessionalMonitorModules
-          modules={modules}
-          previewModules={previewProjection?.modules}
-        />
+        <ProfessionalMonitorModules modules={modules} previewModules={previewProjection?.modules} />
       ) : null}
 
       {technicalViewAllowed && !legacyInspection && correctionView.proposals.length > 0 ? (

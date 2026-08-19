@@ -199,7 +199,10 @@ export function ProfessionalMonitorModules({
   }, [expanded]);
 
   return (
-    <div className="space-y-2" data-testid="monitor-technology-modules">
+    <div
+      className="divide-y divide-ink/8 overflow-hidden rounded-[14px] border border-ink/9 bg-white"
+      data-testid="monitor-technology-modules"
+    >
       {visibleModules.map((module) => {
         const previewModule = previewModules?.find((candidate) => candidate.id === module.id);
         const summary = summaryFor(module);
@@ -212,7 +215,7 @@ export function ProfessionalMonitorModules({
         return (
           <section
             key={module.id}
-            className="overflow-hidden rounded-[14px] border border-ink/9 bg-white shadow-pro-e0"
+            className="overflow-hidden bg-white"
             data-testid={`monitor-module-${module.id}`}
             data-problem={module.problem ? 'true' : 'false'}
             data-headline-metric={summary.metric.id}
@@ -229,7 +232,7 @@ export function ProfessionalMonitorModules({
                     : [...current, module.id],
                 )
               }
-              className="monitor-summary-grid pro-focus-ring grid min-h-[86px] w-full items-center gap-3 px-3 py-3 text-left disabled:cursor-default"
+              className="monitor-module-row monitor-summary-grid pro-focus-ring grid w-full items-center gap-3 px-3 py-2 text-left disabled:cursor-default"
             >
               <span
                 aria-hidden
@@ -278,7 +281,7 @@ export function ProfessionalMonitorModules({
             {open && hasDetails ? (
               <div
                 id={`monitor-details-${module.id}`}
-                className="border-t border-ink/8 bg-stone-50/60 px-4 py-2"
+                className="border-t border-ink/8 bg-stone-50/55 px-4 py-1"
                 data-testid={`monitor-module-details-${module.id}`}
               >
                 {detailRows.map((metric) => (

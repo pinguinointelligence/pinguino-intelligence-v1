@@ -59,7 +59,7 @@ export function MonitorLiveSummary({
           <h2 className="text-base font-semibold text-ink">Monitor receptury</h2>
           <p className="mt-0.5 text-xs text-stone-600">Bieżący wynik dla wybranych ustawień.</p>
         </div>
-        <div className="grid gap-2">
+        <div className="divide-y divide-ink/8 overflow-hidden rounded-[14px] border border-ink/9 bg-white">
           {(
             [
               ['Słodycz', 'pod', intents.sweetness],
@@ -73,7 +73,7 @@ export function MonitorLiveSummary({
             return (
               <div
                 key={key}
-                className="monitor-summary-grid grid min-h-[86px] items-center gap-3 rounded-[14px] border border-ink/9 bg-white px-3 py-3"
+                className="monitor-module-row monitor-summary-grid grid items-center gap-3 bg-white px-3 py-2"
                 data-testid={`monitor-module-${key === 'pod' ? 'sweetness' : 'hardness'}`}
               >
                 <span

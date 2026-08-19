@@ -232,7 +232,7 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     inViewport('data-testid="workbench-batch"');
     inViewport('data-testid="ingredient-rows-scroll"');
     inViewport('data-testid="ingredient-add-slot"');
-    inViewport('data-testid="pro-workbar-recalc"');
+    inViewport('data-testid="ingredient-action-slot"');
     inViewport('data-testid="pro-monitor-panel"');
     inViewport('data-testid="workbench-intelligence-header"');
     inViewport('data-testid="pro-context-tabs"');
@@ -468,8 +468,8 @@ describe('no unrelated module removal across the split surface files', () => {
     expect(panel).not.toContain('<UserMonitorPro');
     expect(panel).not.toContain('<OverallScoreCard');
     expect(surface.includes('display: none')).toBe(false);
-    const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
-    expect(workbar).toContain('<WorkbenchActionBar');
+    const dock = read('features', 'pro-workbench', 'WorkbenchRecipeActionDock.tsx');
+    expect(dock).toContain('<WorkbenchActionBar');
     const actionBar = read('features', 'pro-workbench', 'WorkbenchActionBar.tsx');
     expect(actionBar).toContain('direction_targets: directionTargets');
     expect(actionBar).toContain('excludedIngredientIds');

@@ -15,12 +15,14 @@ export function WorkbenchIntelligenceHeader({
   result,
   input,
   onOpenLearning,
+  onRecalculate,
   variant = 'panel',
 }: {
   result: RecipeResult;
   input: RecipeInput;
   onOpenLearning?: () => void;
-  variant?: 'panel' | 'global';
+  onRecalculate?: () => void;
+  variant?: 'panel' | 'global' | 'dock';
 }) {
   const match = monitorScoreView(result, input).match;
   const toppings = useRecipeStore((state) => state.toppings);
@@ -54,6 +56,66 @@ export function WorkbenchIntelligenceHeader({
     currentReady: current,
     hasAppliedHistory: appliedHistoryCount > 0,
   });
+
+  if (variant === 'dock') {
+    const working = recalculationTerminal?.state === 'WORKING';
+    const pending = !displayedMatch || awaitingRecalculation;
+    return (
+      <div
+        className="flex min-w-0 items-center gap-2"
+        data-testid="workbench-intelligence-header"
+        data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
+        aria-label={`Dopasowanie techniczne receptury: ${displayedMatch ? displayedMatch.display : 'oczekuje na przeliczenie'}`}
+      >
+        {pending || working ? (
+          <button
+            type="button"
+            onClick={onRecalculate}
+            disabled={!onRecalculate || working}
+            aria-busy={working}
+            data-testid="pro-workbar-recalc"
+            className="pro-focus-ring flex min-h-11 shrink-0 items-center gap-2 rounded-[14px] bg-[#f58a07] px-3 text-left text-white shadow-pro-e1 disabled:cursor-wait disabled:opacity-70"
+          >
+            <span aria-hidden className={working ? 'animate-spin text-xl' : 'text-xl'}>
+              ↻
+            </span>
+            <span>
+              <strong className="block text-xs font-semibold">
+                {working ? 'Przeliczanie…' : 'Przelicz'}
+              </strong>
+              <span className="block text-[10px] text-white/85">
+                {working ? 'PI przygotowuje wynik' : 'Zaktualizuj wynik receptury'}
+              </span>
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenLearning}
+            disabled={!onOpenLearning}
+            className="pro-focus-ring flex min-h-11 shrink-0 items-center gap-2 rounded-[14px] border border-ink/10 bg-white px-2.5 text-left shadow-pro-e0 disabled:cursor-default"
+          >
+            <span
+              className="grid size-9 shrink-0 place-items-center rounded-full border-[3px] border-[#63bd32] font-mono text-xs font-semibold tabular-nums text-ink"
+              data-testid="workbench-score-ring"
+            >
+              {displayedMatch?.score ?? '—'}
+            </span>
+            <span className="hidden min-w-0 sm:block">
+              <strong className="block text-xs font-semibold text-ink">
+                {previewMatch ? 'Podgląd gotowy' : 'Wynik aktualny'}
+              </strong>
+              <span className="block text-[10px] text-stone-600">
+                {displayedMatch
+                  ? `${displayedMatch.display} · ${displayedMatch.label}`
+                  : 'Brak danych'}
+              </span>
+            </span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

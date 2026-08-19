@@ -58,9 +58,11 @@ describe('final Pro visual system', () => {
 
   it('keeps primary actions black with white text and semantic colors purposeful', () => {
     const editor = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
+    const scoreDock = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
-    expect(editor).toMatch(/bg-ink[^"']*text-white/);
-    expect(editor).toContain('data-testid="pro-workbar-recalc"');
+    expect(editor).toContain('data-testid="ingredient-action-slot"');
+    expect(scoreDock).toContain('data-testid="pro-workbar-recalc"');
+    expect(scoreDock).toMatch(/bg-\[#f58a07\][^"']*text-left text-white/);
     expect(workbar).toMatch(/bg-ink[^"']*text-white/);
     const tokens = read('styles', 'tokens.css');
     expect(tokens).toContain('--color-nonproduction-pink');
@@ -104,10 +106,10 @@ describe('one global menu and four local contexts', () => {
     expect(new Set(APP_NAV_ITEMS.map((item) => item.id)).size).toBe(APP_NAV_ITEMS.length);
   });
 
-  it('does not restore a horizontal global tab bar', () => {
+  it('keeps the four workspace modules in one horizontal header row', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
-    expect(page).not.toContain('role="tablist"');
-    expect(page).not.toContain('pro-tab-recipe');
+    expect(page).toContain('<WorkbenchModuleTabs');
+    expect(page).toContain('w-[min(42vw,660px)]');
     expect(page).toContain('AppShell');
   });
 
@@ -281,11 +283,11 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('names score concepts and provides shared keyboard/reduced-motion treatment', () => {
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
-    const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
+    const dock = read('features', 'pro-workbench', 'WorkbenchRecipeActionDock.tsx');
     const theme = read('styles', 'theme-pro-light.css');
-    expect(page).toContain('WorkbenchIntelligenceHeader');
+    expect(dock).toContain('WorkbenchIntelligenceHeader');
     expect(header).toContain('Dopasowanie techniczne receptury');
-    expect(page).not.toContain('production.score');
+    expect(dock).not.toContain('production.score');
     expect(production).toContain('Przewidywane dopasowanie partii');
     expect(theme).toContain(':focus-visible');
     expect(theme).toContain('prefers-reduced-motion: reduce');

@@ -36,8 +36,15 @@ const labelIngredient: CatalogLabelToppingIngredient = {
   catalog_version_id: 'v1',
   verification_status: 'verified',
   label_nutrition_per_100g: {
-    basis: 'per_100g', energyKcal: 180, fat: 1, saturatedFat: 0.2,
-    carbohydrate: 42, sugars: 38, protein: 1, salt: 0.04, fibre: 2,
+    basis: 'per_100g',
+    energyKcal: 180,
+    fat: 1,
+    saturatedFat: 0.2,
+    carbohydrate: 42,
+    sugars: 38,
+    protein: 1,
+    salt: 0.04,
+    fibre: 2,
   },
   ingredients_text: 'Fruit, sugar',
   allergens_text: 'None declared',
@@ -196,8 +203,9 @@ describe('Base/Topping composition sidecar', () => {
       migrationAmbiguities: [],
     });
     expect(parsed?.toppings).toEqual([{ ...valid, addon_sort_order: 0 }]);
-    expect(parsed?.migrationAmbiguities.filter((item) => item.reason === 'INVALID_TOPPING_RECORD'))
-      .toHaveLength(3);
+    expect(
+      parsed?.migrationAmbiguities.filter((item) => item.reason === 'INVALID_TOPPING_RECORD'),
+    ).toHaveLength(3);
   });
 
   it('serializes two independent orders with factual topping snapshots', () => {
@@ -251,6 +259,38 @@ describe('Base/Topping composition sidecar', () => {
       canonicalIngredientId(sugar!),
     );
     expect(state.items).toHaveLength(DEFAULT_PRESET.items.length);
+  });
+
+  it('removes only the selected topping and round-trips the remaining topping scope through reload', () => {
+    const initial = useRecipeStore.getState();
+    const [milk, sugar] = initial.items.map((item) => item.ingredient);
+    const baseBefore = structuredClone(initial.items);
+    useRecipeStore.getState().addTopping(milk!, 70);
+    useRecipeStore.getState().addTopping(sugar!, 60);
+    const [removed, remaining] = useRecipeStore.getState().toppings;
+
+    useRecipeStore.getState().removeTopping(removed!.id);
+    const afterRemoval = useRecipeStore.getState();
+    expect(afterRemoval.items).toEqual(baseBefore);
+    expect(afterRemoval.toppings).toEqual([
+      expect.objectContaining({
+        id: remaining!.id,
+        planned_grams: 60,
+        process_scope: 'POST_PROCESS_ADDON',
+      }),
+    ]);
+
+    const savedInput = buildRecipeInput(afterRemoval);
+    const savedComposition = recipeCompositionFromState(afterRemoval);
+    useRecipeStore.getState().loadPreset(DEFAULT_PRESET);
+    useRecipeStore.getState().loadRecipeInput(savedInput, { composition: savedComposition });
+
+    const reloaded = useRecipeStore.getState();
+    expect(reloaded.items).toEqual(afterRemoval.items);
+    expect(reloaded.toppings).toEqual(afterRemoval.toppings);
+    expect(calculateRecipe(buildRecipeInput(reloaded))).toEqual(
+      calculateRecipe(buildRecipeInput(afterRemoval)),
+    );
   });
 
   it('preserves both manual orders and topping vector through Preview Apply and Undo', () => {

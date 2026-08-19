@@ -17,19 +17,19 @@ describe('responsive Pro workbench structure', () => {
     expect(page).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
     expect(surface).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
     expect(surface).toContain('xl:gap-[var(--pro-workbench-gap)]');
-    expect(surface).toContain('xl:max-h-[var(--pro-workbench-body-max)]');
+    expect(surface).toContain('xl:grid xl:h-full');
+    expect(surface).not.toContain('pro-workbench-body-max');
     expect(surface).not.toContain('xl:flex-none');
     expect(surface).not.toContain('2xl:w-[1761px]');
     expect(surface).not.toContain('2xl:grid-cols-[1062px_635px]');
   });
 
-  it('anchors the compact Base action to the table controls without a permanent search field', () => {
+  it('anchors one recipe action dock beside the Base and Topping pickers', () => {
     const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
-    expect(builder).toContain('data-testid="ingredient-add-toolbar"');
-    expect(builder).toContain('data-testid="pro-recalc-state"');
-    expect(builder).toContain('data-testid="pro-workbar-recalc"');
-    expect(builder).toContain('className="flex items-center justify-end gap-2"');
     expect(builder).toContain('data-testid="ingredient-add-slot"');
+    expect(builder).toContain('data-testid="ingredient-action-slot"');
+    expect(builder).toContain('{recipeActionDock}');
+    expect(builder).not.toContain('data-testid="ingredient-add-toolbar"');
     expect(builder).not.toContain('2xl:grid-cols-[minmax(300px,1fr)_222px_260px_76px_44px]');
     expect(builder).not.toContain('placeholder="Szukaj skÅ‚adnikÃ³w');
   });
@@ -38,7 +38,7 @@ describe('responsive Pro workbench structure', () => {
     const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     expect(picker).toContain('useLayoutEffect');
     expect(picker).toContain('data-picker-position');
-    expect(picker).toContain("'[data-testid=\"workbench-editor-pane\"]'");
+    expect(picker).toContain('\'[data-testid="workbench-editor-pane"]\'');
     expect(picker).toContain('data-testid="product-picker-clear"');
     expect(picker).toContain('product-picker-results h-full overflow-y-auto');
     expect(picker).toContain('left: editor.left');

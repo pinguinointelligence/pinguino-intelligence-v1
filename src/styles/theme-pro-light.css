@@ -23,7 +23,6 @@
      tokens only; all formula values and engine authority remain untouched. */
   --pro-page-gutter: clamp(2rem, 4vw, 4rem);
   --pro-workbench-gap: clamp(0.75rem, 1.4vw, 1.5rem);
-  --pro-workbench-body-max: 46.375rem;
   --pro-dialog-gutter: max(0.5rem, env(safe-area-inset-left));
 }
 
@@ -64,6 +63,20 @@
   grid-template-columns:
     2rem minmax(7.5rem, 0.9fr) minmax(8rem, 1.25fr) 6.75rem
     1.25rem;
+}
+
+.monitor-module-row {
+  min-height: 4rem;
+}
+
+@media (min-width: 1280px) and (max-height: 900px) {
+  .monitor-module-row {
+    min-height: 3.5rem;
+  }
+
+  .monitor-module-row :where(.text-xl) {
+    font-size: 1.05rem;
+  }
 }
 
 .theme-pro-light [data-testid='pro-workbench'] {

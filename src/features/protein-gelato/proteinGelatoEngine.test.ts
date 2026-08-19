@@ -107,6 +107,38 @@ describe('Protein Gelato target orchestration', () => {
     }
   }
 
+  it.each([
+    { batchG: 750, strategy: 'optimal' as const },
+    { batchG: 750, strategy: 'eco' as const },
+    { batchG: 1000, strategy: 'optimal' as const },
+    { batchG: 1000, strategy: 'eco' as const },
+    { batchG: 2000, strategy: 'optimal' as const },
+    { batchG: 2000, strategy: 'eco' as const },
+  ])('keeps a $batchG g $strategy Protein recipe executable', ({ batchG, strategy }) => {
+    const input = proteinDraft(-12, 20);
+    input.target_batch_grams = batchG;
+    input.goals = { ...input.goals, formulation_strategy: strategy };
+    const built = buildOptimizePreview(input, EMPTY, '2026-08-19T16:00:00.000Z', {
+      productBehaviorSnapshots: productBehaviorTestSnapshots(input),
+    });
+    expect(built.ok, built.ok ? '' : JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const result = calculateRecipe(built.preview.proposedInput);
+    expect(detectViolations(result)).toEqual([]);
+    expect(result.total_batch_g).toBe(batchG);
+    expect(assessProteinTarget(built.preview.proposedInput, result)).toMatchObject({
+      applicable: true,
+      targetPercent: 20,
+      reached: true,
+      hardSafe: true,
+      score: 10,
+    });
+    expect(built.preview.proposedInput.goals?.formulation_strategy).toBe(strategy);
+    expect(
+      built.preview.proposedInput.items.every((item) => Number.isInteger(item.planned_grams)),
+    ).toBe(true);
+  });
+
   for (const temperatureC of [-11, -12, -13] as const) {
     it(`builds a dairy-free plant Protein Preview at ${temperatureC}°C for 20%`, () => {
       const input = proteinDraft(temperatureC, 20);

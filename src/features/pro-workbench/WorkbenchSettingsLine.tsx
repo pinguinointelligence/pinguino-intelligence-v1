@@ -36,6 +36,7 @@ import {
   type NewRecipeStarterSettingsPatch,
 } from '@/pages/destinations/startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
+import { DeferredNumberInput } from '@/components/forms/DeferredNumberInput';
 import {
   isNewRecipeServingModeId,
   starterServingModeForTemperature,
@@ -447,20 +448,18 @@ export function WorkbenchSettingsLine({
               {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
             </strong>
             <span className="text-[10px] text-stone-400">/</span>
-            <input
-              type="number"
-              min={1}
+            <DeferredNumberInput
               className={cn(compactSelect, 'w-20 text-right font-mono tabular-nums')}
               value={
                 Number.isFinite(batchDisplay)
                   ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3))
                   : 0
               }
+              min={fromGrams(1, unit, store.category)}
+              decimals={unit === 'g' ? 0 : 3}
               data-testid="workbench-batch"
               aria-label="Docelowa partia"
-              onChange={(event) =>
-                changeBatch(toGrams(event.currentTarget.valueAsNumber || 0, unit, store.category))
-              }
+              onCommit={(next) => changeBatch(toGrams(next, unit, store.category))}
             />
             <select
               className={cn(compactSelect, 'w-14')}

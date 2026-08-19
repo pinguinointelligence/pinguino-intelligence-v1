@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
@@ -13,7 +13,6 @@ import { useLineLockControls } from '@/features/constraint-studio/useLineLockCon
 import {
   createSubstitutionPreviewWithServerAuthority,
   selectCanonicalDraft,
-  useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -54,7 +53,6 @@ import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
 import { listEngineApprovedIngredients } from '@/services/ingredients';
 import { verifiedRecipeSubstituteCandidates } from './recipeSubstitution';
 import { buildDirectPercentEdit } from './directPercentEdit';
-import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import {
   resetPrivateCatalogProductPrice,
   savePrivateCatalogProductPrice,
@@ -90,7 +88,7 @@ export function IngredientBuilder({
   layout = 'card',
   mode = 'recipe',
   production,
-  onRecalculate,
+  recipeActionDock,
 }: {
   items: EffectiveRecipeItem[];
   totalBatchG: number;
@@ -99,11 +97,8 @@ export function IngredientBuilder({
   layout?: 'card' | 'workbench';
   mode?: IngredientTableMode;
   production?: ProductionWorkspaceView;
-  onRecalculate?: () => void;
+  recipeActionDock?: ReactNode;
 }) {
-  const piWorking = useConstraintStudioStore(
-    (state) => state.recalculationTerminal?.state === 'WORKING',
-  );
   const queryClient = useQueryClient();
   const authUserId = useAuthStore((state) =>
     state.status === 'authed' ? (state.user?.id ?? null) : null,
@@ -143,9 +138,6 @@ export function IngredientBuilder({
   const draggedToppingId = useRef<string | null>(null);
   const [pickerNotice, setPickerNotice] = useState<string | null>(null);
   const [reorderNotice, setReorderNotice] = useState('');
-  const dirty = useRecipeStore((state) => state.dirty);
-  const directionPending = useRecipeProfileStore((state) => state.awaitingRecalculation);
-  const recalcPending = dirty || directionPending;
   const library = useIngredientLibrary({ demo });
   const { lockFor, wrapActions } = useLineLockControls();
 
@@ -779,45 +771,7 @@ export function IngredientBuilder({
               <NonProductionBadge itemId="pro-demo-library" />
             ) : null}
           </div>
-          {mode === 'recipe' ? (
-            <div
-              className="flex items-center justify-end gap-2"
-              data-testid="ingredient-add-toolbar"
-            >
-              <span
-                className={
-                  recalcPending
-                    ? 'hidden text-right text-xs text-attention md:block'
-                    : 'hidden text-right text-xs text-status-ideal md:block'
-                }
-                data-testid="pro-recalc-state"
-                data-state={recalcPending ? 'pending' : 'current'}
-              >
-                <span aria-hidden className="mr-1.5">
-                  •
-                </span>
-                {recalcPending ? 'Oczekuje na przeliczenie' : 'Obliczenie aktualne'}
-              </span>
-              {onRecalculate ? (
-                <button
-                  type="button"
-                  onClick={onRecalculate}
-                  disabled={piWorking}
-                  aria-busy={piWorking}
-                  aria-label="Przelicz z PI"
-                  className="pro-focus-ring relative grid size-11 place-items-center rounded-xl border border-gold/35 bg-ink font-mono text-sm font-semibold text-white shadow-pro-e1 hover:bg-graphite disabled:cursor-wait disabled:opacity-65 2xl:-mt-px 2xl:size-auto 2xl:h-[52px] 2xl:w-[54px] 2xl:border-transparent 2xl:bg-transparent 2xl:shadow-none 2xl:hover:bg-transparent"
-                  data-testid="pro-workbar-recalc"
-                >
-                  <span
-                    className="text-gold-soft 2xl:absolute 2xl:left-2 2xl:top-[7px] 2xl:grid 2xl:h-[38px] 2xl:w-[39px] 2xl:place-items-center 2xl:rounded-xl 2xl:border 2xl:border-gold/35 2xl:bg-ink 2xl:shadow-pro-e1"
-                    data-testid="pi-control-core"
-                  >
-                    PI<sup className="text-[9px]">+</sup>
-                  </span>
-                </button>
-              ) : null}
-            </div>
-          ) : (
+          {mode === 'production' ? (
             <div className="mt-2 flex items-center justify-between gap-3 border border-ink/10 bg-stone-50 px-3 py-2">
               <p className="text-xs text-stone-600">
                 Odważ · skoryguj −/+ · potwierdź ✓. Potwierdzonego materiału PI nigdy nie odejmuje.
@@ -833,7 +787,7 @@ export function IngredientBuilder({
                 </span>
               ) : null}
             </div>
-          )}
+          ) : null}
           {mode === 'recipe' && pickerNotice ? (
             <p
               className="mt-2 rounded-xl border border-gold/25 bg-education-ivory px-3 py-2 text-xs text-stone-700"
@@ -919,34 +873,41 @@ export function IngredientBuilder({
                       className="border-t border-status-ideal/15"
                       aria-labelledby="topping-section-heading"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-3 bg-pro-sage/18 px-3 py-3">
-                        <div>
+                      <div className="bg-pro-sage/22 px-3 py-3">
+                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                           <h3
                             id="topping-section-heading"
                             className="text-xs font-semibold tracking-[0.05em] text-ink uppercase"
                           >
                             Toppingi po produkcji
                           </h3>
-                          <p className="mt-0.5 text-xs text-stone-600">
+                          <p className="text-xs text-stone-600">
                             Nie zmieniają bilansu ani wyniku technicznego bazy.
                           </p>
                         </div>
-                        <div
-                          className="flex flex-wrap items-center gap-2"
-                          data-testid="ingredient-add-slot"
-                        >
-                          {picker}
-                          <ProductPickerPopover
-                            library={library}
-                            scope="POST_PROCESS_ADDON"
-                            behaviorContext={{
-                              accountId: authUserId,
-                              productProfile: behaviorProfile,
-                              temperatureC: behaviorTemperatureC,
-                              mode: behaviorMode,
-                            }}
-                            onAdd={addOrFocusTopping}
-                          />
+                        <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                          <div
+                            className="flex flex-wrap items-center gap-2"
+                            data-testid="ingredient-add-slot"
+                          >
+                            {picker}
+                            <ProductPickerPopover
+                              library={library}
+                              scope="POST_PROCESS_ADDON"
+                              behaviorContext={{
+                                accountId: authUserId,
+                                productProfile: behaviorProfile,
+                                temperatureC: behaviorTemperatureC,
+                                mode: behaviorMode,
+                              }}
+                              onAdd={addOrFocusTopping}
+                            />
+                          </div>
+                          {recipeActionDock ? (
+                            <div className="min-w-0" data-testid="ingredient-action-slot">
+                              {recipeActionDock}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                       {toppings.length > 0 ? (

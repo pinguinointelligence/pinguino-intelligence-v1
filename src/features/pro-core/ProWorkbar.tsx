@@ -3,7 +3,6 @@ import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
-import { WorkbenchActionBar } from '@/features/pro-workbench/WorkbenchActionBar';
 import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
 import {
   hasUnsavedProRecipeChanges,
@@ -26,13 +25,7 @@ const SERVING_LABEL: Record<string, string> = {
 
 /** One persistent recipe bar. It combines recipe identity, save, working context,
  * preview/undo state and owner-review entry without introducing a second workflow. */
-export function ProWorkbar({
-  onOpenPreview = () => {},
-  variant = 'bar',
-}: {
-  onOpenPreview?: () => void;
-  variant?: 'bar' | 'panel';
-}) {
+export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
@@ -193,7 +186,6 @@ export function ProWorkbar({
               </a>
             </div>
           </details>
-          <WorkbenchActionBar onOpenPreview={onOpenPreview} />
           <span className="sr-only" data-testid="pro-workbar-profile-summary">
             {context}
           </span>
