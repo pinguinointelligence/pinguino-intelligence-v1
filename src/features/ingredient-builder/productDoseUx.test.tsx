@@ -67,8 +67,10 @@ describe('missing product-dose copy', () => {
         meta={meta}
       />,
     );
-    expect(zero).toContain('Brak zweryfikowanej dawki.');
-    expect(zero).toContain('Podaj ilość zgodnie z zaleceniem producenta lub własną recepturą.');
+    expect(zero).toContain('Brak zweryfikowanej ilości.');
+    expect(zero).toContain('Ustaw ilość odpowiednią dla swojej receptury.');
+    expect(zero).not.toContain('Brak zweryfikowanej dawki.');
+    expect(zero).not.toContain('Podaj ilość zgodnie z zaleceniem producenta lub własną recepturą.');
 
     const entered = renderToStaticMarkup(
       <IngredientRow
@@ -78,7 +80,7 @@ describe('missing product-dose copy', () => {
         meta={meta}
       />,
     );
-    expect(entered).not.toContain('Brak zweryfikowanej dawki.');
+    expect(entered).not.toContain('Brak zweryfikowanej ilości.');
   });
 });
 

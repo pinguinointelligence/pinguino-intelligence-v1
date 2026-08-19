@@ -15,7 +15,7 @@ import {
   selectCanonicalDraft,
 } from '@/features/constraint-studio/constraintStudioStore';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
-import { useRecipeStore } from '@/stores/recipeStore';
+import { firstCanonicalBaseItem, useRecipeStore } from '@/stores/recipeStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -546,26 +546,19 @@ export function IngredientBuilder({
     ingredient: Parameters<typeof addIngredient>[0],
     behavior?: ProductBehaviorSnapshot,
   ) => {
-    const canonicalId = toppingIngredientIdentity(ingredient);
-    const existing = useRecipeStore
-      .getState()
-      .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
-    if (existing) {
-      if (behavior) setProductBehaviorSnapshot(existing.id, { ...behavior, lineId: existing.id });
-      setPickerNotice(
-        `${ingredient.name} już znajduje się w Bazie. Przeniesiono fokus do istniejącego wiersza.`,
-      );
-      return { focusLineId: existing.id };
-    }
     const doseSuggestion = verifiedProductDoseSuggestion({
       snapshot: behavior,
       strategy: behaviorMode,
       targetBaseGrams: useRecipeStore.getState().target_batch_grams,
     });
-    addIngredient(ingredient, doseSuggestion?.suggestedTotalGrams ?? 0);
-    const added = useRecipeStore
-      .getState()
-      .items.find((item) => canonicalIngredientId(item.ingredient) === canonicalId);
+    const selection = addIngredient(ingredient, doseSuggestion?.suggestedTotalGrams ?? 0);
+    if (selection.status === 'duplicate') {
+      setPickerNotice(
+        `${ingredient.name} już znajduje się w Bazie. Przeniesiono fokus do istniejącego wiersza.`,
+      );
+      return { focusLineId: selection.lineId };
+    }
+    const added = useRecipeStore.getState().items.find((item) => item.id === selection.lineId);
     if (added && behavior) setProductBehaviorSnapshot(added.id, { ...behavior, lineId: added.id });
     if (added) {
       const dose: ProductDoseMeta = doseSuggestion
@@ -607,6 +600,16 @@ export function IngredientBuilder({
       }
     }
     return added ? { focusLineId: added.id } : undefined;
+  };
+
+  const preflightDuplicateBaseIngredient = (ingredient: Parameters<typeof addIngredient>[0]) => {
+    const state = useRecipeStore.getState();
+    const existing = firstCanonicalBaseItem(state.items, state.baseOrder, ingredient);
+    if (!existing) return undefined;
+    setPickerNotice(
+      `${ingredient.name} już znajduje się w Bazie. Przeniesiono fokus do istniejącego wiersza.`,
+    );
+    return { focusLineId: existing.id };
   };
 
   const addOrFocusTopping = (
@@ -655,6 +658,7 @@ export function IngredientBuilder({
         temperatureC: behaviorTemperatureC,
         mode: behaviorMode,
       }}
+      onPreflightDuplicate={preflightDuplicateBaseIngredient}
       onAdd={addIngredientAndResolveRequiredRole}
     />
   );

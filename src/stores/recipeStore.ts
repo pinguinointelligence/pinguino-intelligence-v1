@@ -108,6 +108,11 @@ const preserveOwnerReviewGate = (
   };
 };
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
+
+export type AddIngredientResult =
+  | { status: 'added'; lineId: string; canonicalId: string }
+  | { status: 'duplicate'; lineId: string; canonicalId: string };
+
 const normalizeProteinTarget = (value: number): number => {
   const finite = Number.isFinite(value) ? value : PROTEIN_GELATO_TARGET.defaultPercent;
   return (
@@ -293,7 +298,12 @@ export interface RecipeState {
     | { ok: false; code: 'duplicate_ingredient'; canonicalIds: string[] }
     | { ok: false; code: 'batch_mismatch'; sum: number; target: number }
     | { ok: false; code: 'write_verification_failed' };
-  addIngredient: (ingredient: EngineIngredient, grams?: number) => void;
+  /**
+   * Atomically adds a Base ingredient or returns the first existing row with
+   * the same canonical identity. A duplicate is a strict no-op: it must not
+   * dirty the draft, refresh product data or invalidate Preview/Undo state.
+   */
+  addIngredient: (ingredient: EngineIngredient, grams?: number) => AddIngredientResult;
   addTopping: (ingredient: RecipeToppingIngredient, grams?: number) => void;
   removeTopping: (lineId: string) => void;
   setToppingGrams: (lineId: string, grams: number) => void;
@@ -429,6 +439,18 @@ const orderedBaseItems = (items: readonly RecipeItem[], order: readonly string[]
     .map((item, index) => ({ item, rank: rank.get(item.id) ?? order.length + index }))
     .sort((a, b) => a.rank - b.rank)
     .map(({ item }) => item);
+};
+
+/** First matching Base row in the same deterministic order the editor renders. */
+export const firstCanonicalBaseItem = (
+  items: readonly RecipeItem[],
+  order: readonly string[],
+  ingredient: EngineIngredient,
+): RecipeItem | undefined => {
+  const canonicalId = canonicalIngredientId(ingredient);
+  return orderedBaseItems(items, order).find(
+    (item) => canonicalIngredientId(item.ingredient) === canonicalId,
+  );
 };
 
 const sortedToppings = (items: readonly RecipeToppingItem[]): RecipeToppingItem[] =>
@@ -635,7 +657,7 @@ export function recipePersistPartialize(state: RecipeState) {
 
 export const useRecipeStore = create<RecipeState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...fromPreset(DEFAULT_PRESET),
       excludedIngredientIds: [],
       unavailableMainIngredientIds: [],
@@ -908,39 +930,32 @@ export const useRecipeStore = create<RecipeState>()(
         return { ok: true };
       },
 
-      addIngredient: (ingredient, grams = 100) =>
-        set((state) => {
-          const canonicalId = canonicalIngredientId(ingredient);
-          const restoresUnavailableMain = state.unavailableMainIngredientIds.some(
+      addIngredient: (ingredient, grams = 100) => {
+        const canonicalId = canonicalIngredientId(ingredient);
+        const current = get();
+        const existing = firstCanonicalBaseItem(current.items, current.baseOrder, ingredient);
+        if (existing) {
+          return { status: 'duplicate', lineId: existing.id, canonicalId };
+        }
+
+        const normalizedIngredient = normalizeIngredientIdentity(ingredient);
+        const added = {
+          ...makeLine(normalizedIngredient, grams),
+          lock_type: current.unavailableMainIngredientIds.some(
             (id) => canonicalIngredientIdFromSourceId(id) === canonicalId,
-          );
-          const existingIndex = state.items.findIndex(
-            (item) => canonicalIngredientId(item.ingredient) === canonicalId,
-          );
-          const normalizedIngredient = normalizeIngredientIdentity(ingredient);
-          const items =
-            existingIndex >= 0
-              ? state.items.map((item, index) =>
-                  index === existingIndex ? { ...item, ingredient: normalizedIngredient } : item,
-                )
-              : [
-                  ...state.items,
-                  {
-                    ...makeLine(normalizedIngredient, grams),
-                    lock_type: restoresUnavailableMain ? ('main' as const) : ('unlocked' as const),
-                    ...(grams > 0 ? { user_intent_anchor_grams: grams } : {}),
-                  },
-                ];
-          const orderedItems = sortedBaseItems(items);
+          )
+            ? ('main' as const)
+            : ('unlocked' as const),
+          ...(grams > 0 ? { user_intent_anchor_grams: grams } : {}),
+        };
+        set((state) => {
+          const orderedItems = sortedBaseItems([...state.items, added]);
           return {
             items: orderedItems,
-            baseOrder:
-              existingIndex >= 0
-                ? state.baseOrder
-                : [
-                    ...state.baseOrder.filter((id) => orderedItems.some((item) => item.id === id)),
-                    orderedItems.at(-1)!.id,
-                  ],
+            baseOrder: [
+              ...state.baseOrder.filter((id) => orderedItems.some((item) => item.id === id)),
+              added.id,
+            ],
             // Visible GELATO re-routes its INTERNAL category from the real ingredients
             // (chocolate/nut/fruit/alcohol are classifications, never visible types).
             ...(state.visibleProductType === 'gelato'
@@ -958,7 +973,9 @@ export const useRecipeStore = create<RecipeState>()(
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
-        }),
+        });
+        return { status: 'added', lineId: added.id, canonicalId };
+      },
 
       addTopping: (ingredient, grams = 0) =>
         set((state) => {

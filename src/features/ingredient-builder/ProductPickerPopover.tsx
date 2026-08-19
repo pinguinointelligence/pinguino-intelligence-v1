@@ -138,6 +138,9 @@ type ProductPickerPopoverProps = {
   triggerLabel?: string;
   className?: string;
   behaviorContext?: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
+  /** Read-only Base duplicate check before ProductBehavior/network work. The
+   * store's atomic add remains the final race-safe authority. */
+  onPreflightDuplicate?: (ingredient: EngineIngredient) => ProductPickerSelectionResult | void;
 } & (
   | {
       scope: 'BASE_FORMULATION';
@@ -162,6 +165,7 @@ export function ProductPickerPopover({
   triggerLabel,
   className,
   behaviorContext,
+  onPreflightDuplicate,
 }: ProductPickerPopoverProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -385,6 +389,13 @@ export function ProductPickerPopover({
           `${option.name} nie jest już dostępny w aktualnych wynikach. Odśwież wyszukiwanie i wybierz produkt ponownie.`,
         );
         return;
+      }
+      if (scope === 'BASE_FORMULATION' && onPreflightDuplicate) {
+        const duplicate = onPreflightDuplicate(ingredient as EngineIngredient);
+        if (duplicate?.focusLineId) {
+          close(duplicate.focusLineId);
+          return;
+        }
       }
       let behavior: ProductBehaviorSnapshot | undefined;
       if (ingredient && behaviorContext) {

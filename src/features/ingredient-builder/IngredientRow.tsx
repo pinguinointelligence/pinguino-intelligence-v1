@@ -656,8 +656,8 @@ function RecipeRow({
               className="mt-1 block text-xs leading-relaxed text-attention"
               data-testid={`row-dose-missing-${item.id}`}
             >
-              <strong className="block font-semibold">Brak zweryfikowanej dawki.</strong>
-              Podaj ilość zgodnie z zaleceniem producenta lub własną recepturą.
+              <strong className="block font-semibold">Brak zweryfikowanej ilości.</strong>
+              Ustaw ilość odpowiednią dla swojej receptury.
             </span>
           ) : null}
         </div>
