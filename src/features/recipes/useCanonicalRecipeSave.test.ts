@@ -81,4 +81,14 @@ describe('handler invariants', () => {
     expect(SRC.includes('useCreateRecipe')).toBe(false);
     expect(SRC.includes('useUpdateRecipe')).toBe(false);
   });
+
+  it('reacts when server-authorized no-change PI restores the practical audit', () => {
+    expect(SRC).toContain(
+      'const practicalRecipeAudit = useRecipeStore((s) => s.practicalRecipeAudit);',
+    );
+    expect(SRC).toContain(
+      '[constraints, draftRevision, options.buildInput, practicalRecipeAudit]',
+    );
+    expect(SRC).toContain('practicalRecipeAuditMatchesInput(');
+  });
 });

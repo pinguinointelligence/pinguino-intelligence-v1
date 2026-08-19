@@ -170,6 +170,7 @@ export function useCanonicalRecipeSave(
   const storeSavedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const markSaved = useRecipeStore((s) => s.markSaved);
   const draftRevision = useRecipeStore((s) => s.draftRevision);
+  const practicalRecipeAudit = useRecipeStore((s) => s.practicalRecipeAudit);
   const constraints = useConstraintStudioStore((s) => s.constraints);
 
   const linkStoreDraft = options.linkStoreDraft ?? true;
@@ -215,7 +216,7 @@ export function useCanonicalRecipeSave(
       JSON.stringify(last.after.input) === JSON.stringify(buildRecipeInput(state));
     const restoredVerified = practicalRecipeAuditMatchesInput(
       buildRecipeInput(state),
-      state.practicalRecipeAudit,
+      practicalRecipeAudit,
     );
     if (!currentWasApplied && !restoredVerified) {
       return {
@@ -233,7 +234,7 @@ export function useCanonicalRecipeSave(
           message:
             'Przed zapisem otwórz Preview i zastosuj zweryfikowaną recepturę w pełnych gramach.',
         };
-  }, [constraints, draftRevision, options.buildInput]);
+  }, [constraints, draftRevision, options.buildInput, practicalRecipeAudit]);
 
   const blocked: SaveBlockedReason = !authed
     ? 'signin'
