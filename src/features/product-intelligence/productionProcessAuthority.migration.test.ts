@@ -9,6 +9,16 @@ const SQL = readFileSync(
   'utf8',
 );
 const CODE = SQL.replace(/--.*$/gm, '');
+const CORRECTION_SQL = readFileSync(
+  join(
+    REPO,
+    'supabase',
+    'migrations',
+    '20260820152500_production_process_freshness_boundary_fix.sql',
+  ),
+  'utf8',
+);
+const CORRECTION_CODE = CORRECTION_SQL.replace(/--.*$/gm, '');
 
 describe('bounded Production process authority migration', () => {
   it('allows advisories for exactly the three Owner-approved Mapper identities', () => {
@@ -34,6 +44,14 @@ describe('bounded Production process authority migration', () => {
     expect(validation).toContain("<@ jsonb_build_array('process_readiness_blocked')");
     expect(validation).toContain("? 'process_readiness_blocked'");
     expect(validation).not.toContain('v_base_resolved');
+
+    expect(CORRECTION_CODE).toContain("where reason.value#>>'{}' <> 'process_readiness_blocked'");
+    expect(CORRECTION_CODE).toContain("v_line := jsonb_set(v_line, '{reasons}', v_reasons, true)");
+    expect(CORRECTION_CODE).toContain(
+      "case when jsonb_array_length(v_reasons) = 0 then 'ready' else 'stale' end",
+    );
+    expect(CORRECTION_CODE).toContain("'{ready}'");
+    expect(CORRECTION_CODE).not.toContain("'{processReadiness}'");
   });
 
   it('requires a valid explicit thermal route and keeps verified heat conflicts fail-closed', () => {
