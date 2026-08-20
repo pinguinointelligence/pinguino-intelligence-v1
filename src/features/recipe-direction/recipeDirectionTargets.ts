@@ -59,7 +59,19 @@ const profileForCategory = (category: ProductCategory): ProductProfile | null =>
   }
 };
 
-const targetThird = (
+const targetFifth = (
+  band: readonly [number, number],
+  target: RecipeDirectionTarget,
+): TargetRange => {
+  const [min, max] = band;
+  const fifth = (max - min) / 5;
+  const index = target + 2;
+  return { min: min + index * fifth, max: min + (index + 1) * fifth };
+};
+
+/** Scope guard: profiles outside this Gelato-only change retain their accepted
+ * three-zone calibration even though the stored target is now lossless. */
+const legacyTargetThird = (
   band: readonly [number, number],
   target: RecipeDirectionTarget,
 ): TargetRange => {
@@ -75,22 +87,25 @@ const softnessBand = (
   cleanCenter: readonly [number, number],
   target: RecipeDirectionTarget,
 ): TargetRange => {
-  if (target < 0) return { min: band[0], max: cleanCenter[0] };
-  if (target > 0) return { min: cleanCenter[1], max: band[1] };
+  const firmSpanMidpoint = (band[0] + cleanCenter[0]) / 2;
+  const softSpanMidpoint = (cleanCenter[1] + band[1]) / 2;
+  // The persisted field predates the visible label and is still named
+  // `softness`, but its sign follows the customer-facing Twardość control:
+  // -2 = more soft (higher NPAC), +2 = more firm (lower NPAC).
+  if (target === -2) return { min: softSpanMidpoint, max: band[1] };
+  if (target === -1) return { min: cleanCenter[1], max: softSpanMidpoint };
+  if (target === 1) return { min: firmSpanMidpoint, max: cleanCenter[0] };
+  if (target === 2) return { min: band[0], max: firmSpanMidpoint };
   return { min: cleanCenter[0], max: cleanCenter[1] };
 };
 
 export function normalizeRecipeDirectionTargets(
   value: Partial<Record<keyof RecipeDirectionTargets, number>> | null | undefined,
 ): RecipeDirectionTargets {
-  const normalize = (candidate: number | undefined): RecipeDirectionTarget =>
-    candidate == null || !Number.isFinite(candidate)
-      ? 0
-      : candidate < 0
-        ? -1
-        : candidate > 0
-          ? 1
-          : 0;
+  const normalize = (candidate: number | undefined): RecipeDirectionTarget => {
+    if (candidate == null || !Number.isFinite(candidate)) return 0;
+    return Math.max(-2, Math.min(2, Math.round(candidate))) as RecipeDirectionTarget;
+  };
   return {
     sweetness: normalize(value?.sweetness),
     softness: normalize(value?.softness),
@@ -113,7 +128,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
   const axes: DirectionAxisPlan[] = [];
   const bands: Partial<Record<TargetMetric, TargetRange>> = {};
 
-  // Operational means the COMPLETE -1/0/+1 matrix has produced a native-safe,
+  // Operational means the COMPLETE -2/-1/0/+1/+2 matrix has produced a native-safe,
   // applicable Preview (or an already-reached state) for this exact profile ×
   // temperature. A POD band alone is not proof that the current formulation
   // route can honor it.
@@ -125,7 +140,10 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
   const softnessOperational = profile === 'standard_gelato';
 
   if (regulator?.pod && sweetnessOperational) {
-    const targetBand = targetThird(regulator.pod.band, targets.sweetness);
+    const targetBand =
+      profile === 'standard_gelato'
+        ? targetFifth(regulator.pod.band, targets.sweetness)
+        : legacyTargetThird(regulator.pod.band, targets.sweetness);
     if (enabled) bands.pod = targetBand;
     axes.push({
       axis: 'sweetness',

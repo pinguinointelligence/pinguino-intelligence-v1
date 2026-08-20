@@ -229,10 +229,12 @@ export interface RecipeGoals {
   target_protein_percent?: number;
   /**
    * Canonical customer direction intent. These are product-layer preferences,
-   * not Base Engine chemistry: -1 = lower/firmer, 0 = approved clean middle,
-   * +1 = higher/softer. Unsupported sensory axes remain recorded so save and
-   * reopen never lose the owner's intent, but they are not fabricated into
-   * Engine targets.
+   * not Base Engine chemistry. The exact five-step value is preserved because
+   * the Pro control exposes five distinct targets. For sweetness, negative is
+   * lower and positive is higher. The historical `softness` field follows the
+   * visible Twardość control: negative is softer and positive is firmer.
+   * Unsupported sensory axes remain recorded so save and reopen never lose
+   * the owner's intent, but they are not fabricated into Engine targets.
    */
   direction_targets?: RecipeDirectionTargets;
   /** True only after the user explicitly changes/accepts Direction. */
@@ -243,7 +245,7 @@ export interface RecipeGoals {
   unavailable_main_ingredient_ids?: string[];
 }
 
-export type RecipeDirectionTarget = -1 | 0 | 1;
+export type RecipeDirectionTarget = -2 | -1 | 0 | 1 | 2;
 
 export interface RecipeDirectionTargets {
   sweetness: RecipeDirectionTarget;

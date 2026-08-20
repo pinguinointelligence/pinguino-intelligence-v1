@@ -307,8 +307,8 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
       ...ownerInput(200, 100, [], 1000, [2, 1]),
       goals: {
         direction_targets: {
-          sweetness: 1,
-          softness: 1,
+          sweetness: 2,
+          softness: -2,
           creaminess: 0,
           flavor: 0,
         },

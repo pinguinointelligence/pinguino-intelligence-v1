@@ -1,10 +1,10 @@
-import type { TargetRange } from '@/engine';
+import type { RecipeDirectionTarget, TargetRange } from '@/engine';
 import type { GoldenRangeReading } from '@/features/recipe-score';
 
 export type AxisRelation = 'gold' | 'acceptable' | 'outside';
 
-export function targetStepToPosition(step: -1 | 0 | 1): number {
-  return (step + 1) * 50;
+export function targetStepToPosition(step: RecipeDirectionTarget): number {
+  return (step + 2) * 25;
 }
 
 export function axisRelation(actualPosition: number, targetPosition: number): AxisRelation {

@@ -24,6 +24,16 @@ export function customerPreviewIssueMessagePl(issue: PreviewIssue): string {
   if (issue.code === 'best_safe_result') {
     return `${constraintStudioCopy.previewIssue.bestSafeResult} ${customerStopReasonPl(issue.stopReason)}`;
   }
+  if (issue.code === 'no_proposal' && issue.directionTargetUnreached === true) {
+    const labels = (issue.violatedMetrics ?? []).map(
+      (metric) => constraintStudioCopy.diagnosis.metricLabels[metric] ?? metric,
+    );
+    return (
+      'To najbliższy osiągalny wynik dla wybranego kierunku. PI nie znalazło legalnej ' +
+      'korekty, która poprawia ten cel bez naruszenia twardych ograniczeń.' +
+      (labels.length > 0 ? ` Parametry kierunku: ${labels.join(', ')}.` : '')
+    );
+  }
   if (issue.code === 'impossible_under_constraints') {
     const conflictPart = issue.conflict
       ? `Przy ograniczeniu „${issue.conflict.ingredientName}” = ${formatGramsPl(issue.conflict.grams)} `

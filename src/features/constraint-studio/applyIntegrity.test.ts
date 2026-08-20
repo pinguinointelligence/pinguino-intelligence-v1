@@ -112,7 +112,7 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
   });
 
   it('keeps canonical Undo available after a Direction Apply', () => {
-    useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
+    useRecipeStore.getState().setDirectionTarget('sweetness', 2);
     useConstraintStudioStore.getState().createOptimizePreview();
     expect(useConstraintStudioStore.getState().preview).not.toBeNull();
     useConstraintStudioStore.getState().applyPreview();

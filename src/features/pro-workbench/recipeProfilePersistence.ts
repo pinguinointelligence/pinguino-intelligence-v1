@@ -63,7 +63,7 @@ const normalizedLegacyTargets = (value: unknown): DirectionTargets | null => {
   return Object.fromEntries(
     axes.map((axis) => [
       axis,
-      (record[axis] as number) < 0 ? -1 : (record[axis] as number) > 0 ? 1 : 0,
+      Math.max(-2, Math.min(2, Math.round(record[axis] as number))),
     ]),
   ) as unknown as DirectionTargets;
 };
@@ -110,12 +110,13 @@ export function readRecipeProfileMetadata(input: RecipeInput): ProfileSettingsSn
   ) {
     return null;
   }
+  const canonicalTargets =
+    normalizedDirectionIntents(record.directionIntents) ??
+    normalizedDirectionIntents(record.directionTargets)!;
   return {
     ...(record as unknown as ProfileSettingsSnapshot),
-    directionTargets: normalizedLegacyTargets(record.directionTargets)!,
-    directionIntents:
-      normalizedDirectionIntents(record.directionIntents) ??
-      normalizedDirectionIntents(record.directionTargets),
+    directionTargets: canonicalTargets,
+    directionIntents: canonicalTargets,
     ingredientUxByLineId: normalizedIngredientUx(record.ingredientUxByLineId),
     formulationStrategy: normalizeFormulationStrategy(
       (record.formulationStrategy as string | undefined) ?? (record.mode as string),

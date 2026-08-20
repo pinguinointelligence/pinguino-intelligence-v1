@@ -30,7 +30,7 @@ function isProfileSettingsSnapshot(value: unknown): value is ProfileSettingsSnap
     !!targets &&
     ['sweetness', 'softness', 'creaminess', 'flavor'].every(
       (axis) =>
-        isFiniteNumber(targets[axis]) && Number(targets[axis]) >= -1 && Number(targets[axis]) <= 1,
+        isFiniteNumber(targets[axis]) && Number(targets[axis]) >= -2 && Number(targets[axis]) <= 2,
     )
   );
 }

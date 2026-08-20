@@ -11,7 +11,7 @@ import {
 export type AdjustableAxisId = 'sweetness' | 'softness' | 'creaminess' | 'flavor';
 export type DirectionTarget = RecipeDirectionTarget;
 export type DirectionTargets = Readonly<RecipeDirectionTargets>;
-export type DirectionIntent = -2 | -1 | 0 | 1 | 2;
+export type DirectionIntent = RecipeDirectionTarget;
 export type DirectionIntents = Readonly<Record<AdjustableAxisId, DirectionIntent>>;
 
 export const DEFAULT_DIRECTION_TARGETS: DirectionTargets = Object.freeze({
@@ -101,7 +101,7 @@ export interface RecipeProfileState {
 }
 
 const clampTarget = (value: number): DirectionTarget =>
-  Math.max(-1, Math.min(1, value)) as DirectionTarget;
+  Math.max(-2, Math.min(2, Math.round(value))) as DirectionTarget;
 const clampIntent = (value: number): DirectionIntent =>
   Math.max(-2, Math.min(2, value)) as DirectionIntent;
 const intentsFromTargets = (targets: DirectionTargets): DirectionIntents => ({
@@ -127,13 +127,19 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
         targets = DEFAULT_DIRECTION_TARGETS,
         intents = intentsFromTargets(targets),
       ) =>
-        set({
-          directionTargets: { ...targets },
-          directionIntents: { ...intents },
-          awaitingRecalculation: false,
-          openedContextSeq,
-          confirmedSignature: null,
-          confirmedContextSeq: null,
+        set(() => {
+          // Before five-step targets became canonical, saved/default metadata
+          // could contain sign-only targets plus an exact five-detent mirror.
+          // Prefer that exact mirror once, then keep both fields identical.
+          const canonical = { ...intents };
+          return {
+            directionTargets: canonical,
+            directionIntents: canonical,
+            awaitingRecalculation: false,
+            openedContextSeq,
+            confirmedSignature: null,
+            confirmedContextSeq: null,
+          };
         }),
 
       moveAxisTarget: (axis, delta) =>
@@ -142,11 +148,19 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
             ...state.directionTargets,
             [axis]: clampTarget(state.directionTargets[axis] + delta),
           },
+          directionIntents: {
+            ...state.directionIntents,
+            [axis]: clampTarget(state.directionTargets[axis] + delta),
+          },
           awaitingRecalculation: true,
         })),
 
       moveAxisIntent: (axis, delta) =>
         set((state) => ({
+          directionTargets: {
+            ...state.directionTargets,
+            [axis]: clampTarget(state.directionIntents[axis] + delta),
+          },
           directionIntents: {
             ...state.directionIntents,
             [axis]: clampIntent(state.directionIntents[axis] + delta),
@@ -154,7 +168,11 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
           awaitingRecalculation: true,
         })),
 
-      setDirectionTargets: (directionTargets) => set({ directionTargets: { ...directionTargets } }),
+      setDirectionTargets: (directionTargets) =>
+        set({
+          directionTargets: { ...directionTargets },
+          directionIntents: { ...directionTargets },
+        }),
 
       markRecalculationRequired: () => set({ awaitingRecalculation: true }),
 
@@ -172,14 +190,15 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
         set((state) => ({
           defaultsByOwner: {
             ...state.defaultsByOwner,
-            [ownerKey]: {
+            [ownerKey]: (() => {
+              const canonical = settings.directionIntents ?? settings.directionTargets;
+              return {
               ...settings,
               formulationStrategy: normalizeFormulationStrategy(settings.formulationStrategy),
-              directionTargets: { ...settings.directionTargets },
-              directionIntents: settings.directionIntents
-                ? { ...settings.directionIntents }
-                : undefined,
-            },
+                directionTargets: { ...canonical },
+                directionIntents: { ...canonical },
+              };
+            })(),
           },
         })),
 
@@ -190,15 +209,14 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
             Object.entries(state.defaultsByOwner).filter(([key]) => !key.startsWith(prefix)),
           );
           for (const row of rows) {
+            const canonical = row.settings.directionIntents ?? row.settings.directionTargets;
             defaultsByOwner[`${prefix}${row.productContextKey}`] = {
               ...row.settings,
               formulationStrategy: normalizeFormulationStrategy(
                 row.settings.formulationStrategy ?? row.settings.mode,
               ),
-              directionTargets: { ...row.settings.directionTargets },
-              directionIntents: row.settings.directionIntents
-                ? { ...row.settings.directionIntents }
-                : undefined,
+              directionTargets: { ...canonical },
+              directionIntents: { ...canonical },
             };
           }
           return { defaultsByOwner };
@@ -206,15 +224,15 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
 
       defaultsFor: (ownerKey) => {
         const stored = get().defaultsByOwner[ownerKey];
+        const canonical = stored?.directionIntents ?? stored?.directionTargets;
         return stored
           ? {
               ...stored,
               formulationStrategy: normalizeFormulationStrategy(
                 stored.formulationStrategy ?? stored.mode,
               ),
-              directionIntents: stored.directionIntents
-                ? { ...stored.directionIntents }
-                : undefined,
+              directionTargets: { ...canonical! },
+              directionIntents: { ...canonical! },
             }
           : null;
       },
@@ -240,8 +258,8 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
 
 /**
  * Keep the five-detent owner intent bound to the same persisted draft context.
- * Engine still owns the canonical three-state target; these fields only retain
- * the richer presentation intent across an ambient browser refresh.
+ * `directionIntents` is a backward-compatible presentation mirror; the exact
+ * canonical five-step target also lives in RecipeInput and drives Score/PI.
  */
 export function recipeProfilePersistPartialize(state: RecipeProfileState) {
   return {

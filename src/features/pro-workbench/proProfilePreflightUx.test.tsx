@@ -10,6 +10,7 @@ import { starterMilkBase } from '@/features/recipe-constraints/constraintFixture
 import { recipeContext } from '@/features/studio/buildRecipeInput';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
 import {
   MACHINE_CATALOG,
   deriveMachineSetup,
@@ -137,40 +138,62 @@ describe('profile hierarchy and compact preflight', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
     const root = createRoot(host);
+    const panel = (activeTab: 'profile' | 'summary') => (
+      <RecipeProfilePanel
+        activeTab={activeTab}
+        onTabChange={() => undefined}
+        result={result}
+        servingTemperatureC={input.target_temperature_c}
+        corrections={proposeCorrections({
+          input,
+          context: recipeContext(input),
+          redact: false,
+        })}
+        input={input}
+        idPrefix="profile-topping-regression"
+        showTabs={false}
+        onOpenPreview={() => undefined}
+        onRecalculate={() => undefined}
+      />
+    );
     try {
-      await act(async () =>
-        root.render(
-          <RecipeProfilePanel
-            activeTab="profile"
-            onTabChange={() => undefined}
-            result={result}
-            servingTemperatureC={input.target_temperature_c}
-            corrections={proposeCorrections({
-              input,
-              context: recipeContext(input),
-              redact: false,
-            })}
-            input={input}
-            idPrefix="profile-topping-regression"
-            showTabs={false}
-            onOpenPreview={() => undefined}
-            onRecalculate={() => undefined}
-          />,
-        ),
-      );
+      await act(async () => root.render(panel('profile')));
       const initialProfile = host.querySelector('[data-testid="profile-direction-axes"]');
       expect(initialProfile).not.toBeNull();
       const initialValues = initialProfile?.textContent;
 
-      for (const toppingGrams of [1, 51, 73, 0]) {
+      for (const toppingGrams of [0, 1, 20, 51, 0]) {
+        const activeToppings =
+          toppingGrams === 0 ? [] : [{ ...topping, planned_grams: toppingGrams }];
         await act(async () => {
           useRecipeStore.setState({
-            toppings: toppingGrams === 0 ? [] : [{ ...topping, planned_grams: toppingGrams }],
+            toppings: activeToppings,
+            productBehaviorSnapshots: productBehaviorTestSnapshots(input, activeToppings),
           });
+          root.render(panel('profile'));
         });
         const currentProfile = host.querySelector('[data-testid="profile-direction-axes"]');
         expect(currentProfile).not.toBeNull();
         expect(currentProfile?.textContent).toBe(initialValues);
+
+        const expectedFinal = calculateFinalProduct(input, activeToppings);
+        const expectedNutrition = expectedFinal.finalLabelNutritionPer100g;
+        const recipeSummary = host.querySelector(
+          '[data-testid="profile-nutrition-cost-summary"]',
+        );
+        expect(recipeSummary?.textContent).toContain(
+          `${expectedNutrition?.kcal.toFixed(0)} kcal / 100 g`,
+        );
+        expect(recipeSummary?.textContent).toContain(
+          `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+        );
+
+        await act(async () => root.render(panel('summary')));
+        const labelSummary = host.querySelector('[data-testid="summary-final-nutrition-cost"]');
+        expect(labelSummary?.textContent).toContain(expectedNutrition?.kcal.toFixed(0));
+        expect(labelSummary?.textContent).toContain(
+          expectedFinal.finalCosts?.cost_per_kg?.toFixed(2),
+        );
       }
     } finally {
       await act(async () => root.unmount());
@@ -327,6 +350,7 @@ describe('preflight and recipe-specific persistence', () => {
     expect(attached.target_batch_grams).toBe(input.target_batch_grams);
     expect(readRecipeProfileMetadata(attached)).toEqual({
       ...settings(),
+      directionTargets: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
       directionIntents: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
       ingredientUxByLineId: { [input.items[0]!.id]: { role: 'addition', required: true } },
     });
@@ -345,8 +369,8 @@ describe('preflight and recipe-specific persistence', () => {
     delete metadata.directionIntents;
     const restored = readRecipeProfileMetadata(legacy);
     expect(restored?.directionTargets).toEqual({
-      sweetness: -1,
-      softness: 1,
+      sweetness: -2,
+      softness: 2,
       creaminess: 0,
       flavor: 0,
     });
@@ -490,12 +514,19 @@ describe('five-detent direction language', () => {
     expect(JSON.stringify(useRecipeStore.getState().items)).toBe(beforeItems);
   });
 
-  it('keeps five-step owner intent separate from three-state Engine target', () => {
+  it('keeps the exact five-step owner intent as the canonical Recipe target', () => {
     useRecipeProfileStore.getState().moveAxisIntent('sweetness', 1);
     useRecipeProfileStore.getState().moveAxisIntent('sweetness', 1);
     expect(useRecipeProfileStore.getState().directionIntents.sweetness).toBe(2);
-    useRecipeStore.getState().setDirectionTarget('sweetness', 1);
-    expect(useRecipeStore.getState().direction_targets.sweetness).toBe(1);
+    useRecipeStore.getState().setDirectionTarget('sweetness', 2);
+    expect(useRecipeStore.getState().direction_targets.sweetness).toBe(2);
+    expect(useRecipeProfileStore.getState().directionIntents.sweetness).toBe(2);
+  });
+
+  it('keeps account defaults on the same exact five-step target authority', () => {
+    const source = read('features', 'pro-workbench', 'AccountRecipeDefaults.tsx');
+    expect(source).toContain('[axis]: intent');
+    expect(source).not.toContain('Math.sign(intent)');
   });
 
   it('persists the open five-detent intent with its draft context across ambient refresh', () => {
@@ -551,7 +582,7 @@ describe('five-detent direction language', () => {
 
   it('wires the Profile detent and settings snapshot to the durable intent contract', () => {
     expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain(
-      'else recipe.markProfileTargetChanged()',
+      'recipe.setDirectionTarget(axis, next)',
     );
     expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-9');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).toContain(

@@ -4,7 +4,9 @@ import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScoreP
 import {
   calculateRecipe,
   type CorrectionResult,
+  type NutritionPer100g,
   type RecipeInput,
+  type RecipeCosts,
   type RecipeResult,
 } from '@/engine';
 import { ContextualEducationView } from '@/features/education/ContextualEducationView';
@@ -22,7 +24,10 @@ import {
   practicalizeRecipeCandidate,
 } from '@/features/practical-recipe/practicalRecipe';
 import { useRecipeProcessRuntime } from '@/features/education/useRecipeProcessRuntime';
-import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
+import {
+  calculateFinalProduct,
+  type ProductLabelNutritionPer100g,
+} from '@/features/recipe-composition/finalProduct';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { applyEffectiveCustomerPricesToToppings } from '@/features/pro-core/effectiveRecipePricing';
 import { SummaryBaseRecipeList } from './SummaryBaseRecipeList';
@@ -61,9 +66,27 @@ function CompactMetricRow({
   );
 }
 
-function NutritionCostProfileGrid({ result, ready }: { result: RecipeResult; ready: boolean }) {
-  const nutrition = ready ? result.nutrition_per_100g : null;
-  const costs = ready ? result.costs : null;
+function NutritionCostProfileGrid({
+  result,
+  ready,
+  nutritionOverride,
+  costsOverride,
+}: {
+  result: RecipeResult;
+  ready: boolean;
+  nutritionOverride?: NutritionPer100g | ProductLabelNutritionPer100g | null;
+  costsOverride?: RecipeCosts | null;
+}) {
+  const nutrition = ready
+    ? nutritionOverride === undefined
+      ? result.nutrition_per_100g
+      : nutritionOverride
+    : null;
+  const costs = ready
+    ? costsOverride === undefined
+      ? result.costs
+      : costsOverride
+    : null;
   const grams = (value: number | null | undefined, precision = 1) =>
     value === null || value === undefined ? '—' : `${value.toFixed(precision)} g`;
   const euro = (value: number | null | undefined) =>
@@ -158,7 +181,9 @@ function ProfileContent({
   recipeBar?: ReactNode;
 }) {
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
+  const toppings = useRecipeStore((state) => state.toppings);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
+  const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
   // Recipe profile indicators describe the technical BASE. Post-production
   // toppings intentionally affect final-product Label facts, but they are not
   // ProductBehavior prerequisites for this base-only panel.
@@ -185,6 +210,35 @@ function ProfileContent({
   );
   const profileReadable =
     factsReady || legacyInspection || baseAuthority.requiredLineIds.length === 0;
+  const finalAuthority = useMemo(
+    () => buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots }),
+    [input.items, snapshots, toppings],
+  );
+  const finalSummaryReady = useMemo(
+    () =>
+      recipeBehaviorModuleGate(finalAuthority, 'SUMMARY').ready &&
+      recipeBehaviorModuleGate(finalAuthority, 'NUTRITION').ready &&
+      !recipeBehaviorLegacyInspection(finalAuthority, savedRecipeId),
+    [finalAuthority, savedRecipeId],
+  );
+  const finalSummaryReadable =
+    finalSummaryReady ||
+    recipeBehaviorLegacyInspection(finalAuthority, savedRecipeId) ||
+    finalAuthority.requiredLineIds.length === 0;
+  const finalProduct = useMemo(() => {
+    if (!finalSummaryReadable) return null;
+    const finalInput = finalSummaryReady
+      ? recipeInputFromFrozenBehavior(input, finalAuthority, 'nutrition')
+      : input;
+    const finalToppings = finalSummaryReady
+      ? recipeToppingsFromFrozenBehavior(toppings, finalAuthority, 'nutrition')
+      : toppings;
+    return calculateFinalProduct(
+      finalInput,
+      applyEffectiveCustomerPricesToToppings(finalToppings, customerPrices),
+      'planning',
+    );
+  }, [customerPrices, finalAuthority, finalSummaryReadable, finalSummaryReady, input, toppings]);
   return (
     <div className="w-full min-w-0 p-3" data-testid="pro-context-recipe">
       {legacyInspection ? (
@@ -216,7 +270,12 @@ function ProfileContent({
           compact
         />
         {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
-        <NutritionCostProfileGrid result={frozenNutritionResult} ready={profileReadable} />
+        <NutritionCostProfileGrid
+          result={frozenNutritionResult}
+          ready={finalSummaryReadable}
+          nutritionOverride={finalProduct?.finalLabelNutritionPer100g}
+          costsOverride={finalProduct?.finalCosts}
+        />
       </div>
       <button
         type="button"

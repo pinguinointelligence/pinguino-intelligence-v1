@@ -97,7 +97,7 @@ describe('professional Monitor — final owner-approved information architecture
     useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
     const after = renderMonitor(input);
     expect(textOf(after)).toContain('Słodycz');
-    expect(targetStepToPosition(useRecipeStore.getState().direction_targets.sweetness)).toBe(100);
+    expect(targetStepToPosition(useRecipeStore.getState().direction_targets.sweetness)).toBe(75);
     expect(useRecipeStore.getState().dirty).toBe(true);
     expect(input.items.map((item) => item.planned_grams)).toEqual(gramsBefore);
 

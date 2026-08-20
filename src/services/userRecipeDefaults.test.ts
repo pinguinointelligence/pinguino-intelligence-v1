@@ -32,8 +32,8 @@ const settings = (batch = 1000): ProfileSettingsSnapshot => ({
   targetBatchGrams: batch, machineKind: 'professional', machineId: null,
   machineLabel: 'Maszyna profesjonalna', servingModeId: 'temp_minus_11',
   targetTemperatureC: -11, machineCapacityGrams: null,
-  directionTargets: DEFAULT_DIRECTION_TARGETS,
-  directionIntents: { sweetness: -2, softness: 1, creaminess: 0, flavor: 0 },
+  directionTargets: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
+  directionIntents: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
 });
 
 describe('account-owned recipe defaults persistence', () => {
@@ -51,6 +51,7 @@ describe('account-owned recipe defaults persistence', () => {
     }];
     const rows = await listUserRecipeDefaults('owner-a');
     expect(rows[0]?.settings.targetBatchGrams).toBe(1400);
+    expect(rows[0]?.settings.directionTargets).toMatchObject({ sweetness: -2, softness: 2 });
     expect(mock.builder.eq).toHaveBeenCalledWith('owner_user_id', 'owner-a');
   });
 
@@ -77,6 +78,14 @@ describe('account-owned recipe defaults persistence', () => {
       settings: { ...settings(), targetBatchGrams: -1 }, updated_at: '2026-08-11T00:00:00.000Z',
     }];
     await expect(listUserRecipeDefaults('owner-a')).rejects.toThrow(/failed validation/i);
+  });
+
+  it('rejects a direction outside the exact five-step range', async () => {
+    const invalid = settings();
+    invalid.directionTargets = { ...invalid.directionTargets, sweetness: 3 } as never;
+    await expect(upsertUserRecipeDefault('owner-a', 'gelato', invalid)).rejects.toThrow(
+      /failed validation/i,
+    );
   });
 
   it('rejects a stored or submitted context that disagrees with the settings product', async () => {

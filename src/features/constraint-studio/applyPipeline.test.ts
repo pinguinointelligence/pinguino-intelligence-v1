@@ -162,7 +162,7 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
       ...input.goals,
       formulation_strategy: 'eco',
       direction_targets_active: true,
-      direction_targets: { sweetness: 1, softness: 1, creaminess: 0, flavor: 0 },
+      direction_targets: { sweetness: 2, softness: 2, creaminess: 0, flavor: 0 },
     };
     const beforeDirection = recipeDirectionViolations(input);
     expect(detectViolations(calculateRecipe(input))).toHaveLength(0);

@@ -5,7 +5,11 @@ import {
   ownerSameInputRecipe,
 } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import type { ConstraintSet } from '@/features/recipe-constraints';
+import { assessGelatoStabilizerSystem } from '@/features/recipe-constraints';
 import { overSweetStarter, starterLine } from '@/features/recipe-constraints/constraintFixtures';
+import { assessProductDosages } from '@/features/product-intelligence';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import {
   buildBatchRescalePreview,
   buildOptimizePreview,
@@ -19,8 +23,8 @@ const NO_CONSTRAINTS: ConstraintSet = { byLineId: {} };
 const AT = '2026-08-10T20:00:00.000Z';
 
 function ownerDirectionFixture(
-  sweetness: -1 | 0 | 1,
-  softness: -1 | 0 | 1 = 0,
+  sweetness: -2 | -1 | 0 | 1 | 2,
+  softness: -2 | -1 | 0 | 1 | 2 = 0,
   strategy: 'optimal' | 'eco' = 'optimal',
 ): RecipeInput {
   const input = ownerSameInputRecipe();
@@ -163,10 +167,10 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
   });
 
   it.each([
-    ['Sweetness LESS', -1, 0],
-    ['Sweetness MORE', 1, 0],
-    ['Softness firm', 0, -1],
-    ['Softness soft', 0, 1],
+    ['Sweetness LESS', -2, 0],
+    ['Sweetness MORE', 2, 0],
+    ['Hardness softer', 0, -2],
+    ['Hardness firmer', 0, 2],
   ] as const)(
     '%s corrects fractional Tara to whole-gram authority',
     (_label, sweetness, softness) => {
@@ -182,6 +186,76 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
         );
         expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
       }
+    },
+  );
+
+  it.each([0, 20, 40, 80])(
+    'keeps owner Inulin %i g inside 0-or-2-to-8-percent authority under strong Direction',
+    (inulinGrams) => {
+      const input = ownerDirectionFixture(2, -2);
+      const currentTotal = input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+      const inulin = input.items.find(
+        (item) =>
+          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+          OWNER_MAPPER_INGREDIENTS.inulin.id,
+      )!;
+      const tara = input.items.find(
+        (item) =>
+          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+          OWNER_MAPPER_INGREDIENTS.tara_gum.id,
+      )!;
+      const milk = input.items.find(
+        (item) =>
+          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+          OWNER_MAPPER_INGREDIENTS.milk_3_5.id,
+      )!;
+      inulin.planned_grams = inulinGrams;
+      tara.planned_grams = 3;
+      milk.planned_grams -=
+        input.items.reduce((sum, item) => sum + item.planned_grams, 0) - currentTotal;
+
+      const snapshots = productBehaviorTestSnapshots(input);
+      const inulinSnapshot = snapshots[inulin.id]!;
+      if (!inulinSnapshot.sharedFacts) throw new Error('missing Inulin shared facts fixture');
+      snapshots[inulin.id] = {
+        ...inulinSnapshot,
+        sharedFacts: {
+          ...inulinSnapshot.sharedFacts,
+          recommendedDose: {
+            minPercent: 2,
+            preferredPercent: 4,
+            maxPercent: 8,
+            presenceSemantics: 'optional_zero_or_range',
+            provenance: 'owner-approved Gellatti formulation policy',
+            policyId: 'gellatti-generic-inulin',
+            policyVersion: 1,
+            sourceVersion: 'owner-gellatti-inulin-v1',
+          },
+        },
+      };
+      expect(assessProductDosages(input, snapshots)).toEqual([]);
+      expect(assessGelatoStabilizerSystem(input).issues).toEqual([]);
+
+      const result = buildOptimizePreview(input, NO_CONSTRAINTS, AT, {
+        productBehaviorSnapshots: snapshots,
+      });
+      if (!result.ok) {
+        if (result.code === 'already_clean') {
+          expect(detectViolations(calculateRecipe(input))).toEqual([]);
+          expect(recipeDirectionViolations(input)).toEqual([]);
+        } else {
+          expect(['no_proposal', 'unsafe_proposal']).toContain(result.code);
+        }
+        return;
+      }
+
+      const proposed = result.preview.proposedInput;
+      const proposedInulin = gramsOf(proposed, OWNER_MAPPER_INGREDIENTS.inulin.id);
+      expect(assessProductDosages(proposed, snapshots)).toEqual([]);
+      expect(assessGelatoStabilizerSystem(proposed).issues).toEqual([]);
+      expect(detectViolations(calculateRecipe(proposed))).toEqual([]);
+      expect(proposedInulin === 0 || (proposedInulin >= 20 && proposedInulin <= 80)).toBe(true);
+      if (inulinGrams === 0) expect(proposedInulin).toBe(0);
     },
   );
 

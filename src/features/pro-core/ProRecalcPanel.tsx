@@ -78,6 +78,9 @@ function diagnosisMessage(diagnosis: RecalcDiagnosis, issue: PreviewIssue): stri
     case 'no_active_locks':
       return d.noActiveLocks;
     case 'optimizer_no_solution': {
+      if (issue.code === 'no_proposal' && issue.directionTargetUnreached === true) {
+        return customerPreviewIssueMessagePl(issue);
+      }
       // The PROVEN failure: solver invocation count + the exact violated metrics.
       const labels = (diagnosis.violatedMetrics ?? []).map(
         (metric) => d.metricLabels[metric] ?? metric,

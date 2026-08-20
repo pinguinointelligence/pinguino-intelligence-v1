@@ -4,15 +4,9 @@ import { cn } from '@/lib/cn';
 import { buildRecipeDirectionPlan } from '@/features/recipe-direction/recipeDirectionTargets';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
-import {
-  useRecipeProfileStore,
-  type AdjustableAxisId,
-  type DirectionIntent,
-} from './recipeProfileStore';
+import type { AdjustableAxisId, DirectionIntent } from './recipeProfileStore';
 
 const DETENTS = [-2, -1, 0, 1, 2] as const;
-
-const signTarget = (value: DirectionIntent): -1 | 0 | 1 => (value < 0 ? -1 : value > 0 ? 1 : 0);
 
 function RegulatorRow({
   id,
@@ -94,8 +88,7 @@ export function ProfileDirectionAxes({
   className?: string;
 }) {
   const recipe = useRecipeStore();
-  const intents = useRecipeProfileStore((state) => state.directionIntents);
-  const moveIntent = useRecipeProfileStore((state) => state.moveAxisIntent);
+  const intents = recipe.direction_targets;
   const directionPlan = buildRecipeDirectionPlan(buildRecipeInput(recipe));
   const statusByAxis = useMemo(
     () => new Map(directionPlan.axes.map((axis) => [axis.axis, axis])),
@@ -105,10 +98,7 @@ export function ProfileDirectionAxes({
 
   const set = (axis: AdjustableAxisId, next: DirectionIntent) => {
     if (next === intents[axis]) return;
-    moveIntent(axis, next - intents[axis]);
-    const canonical = signTarget(next);
-    if (recipe.direction_targets[axis] !== canonical) recipe.setDirectionTarget(axis, canonical);
-    else recipe.markProfileTargetChanged();
+    recipe.setDirectionTarget(axis, next);
   };
 
   return (

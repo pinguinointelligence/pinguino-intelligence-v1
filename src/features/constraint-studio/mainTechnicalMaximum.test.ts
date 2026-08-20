@@ -17,6 +17,7 @@ import {
   workingStateFingerprint,
 } from './applyPipeline';
 import { mainObjectiveSummaryPl } from './mainObjectivePresentation';
+import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import {
   MAIN_TECHNICAL_INTEGER_NODE_BUDGET,
   mainTechnicalLinearUpperBound,
@@ -413,6 +414,96 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       provenMaximum: true,
     });
     expect(eco.mainObjective?.limitingTechnicalRules).toContain('liquid_dairy_carrier_min');
+  });
+
+  it.each([
+    [-2, -2],
+    [-2, 2],
+    [2, -2],
+    [2, 2],
+  ] as const)(
+    'keeps a 45 percent fruit Main inside the approved envelope under Direction %i/%i',
+    (sweetness, softness) => {
+      const seedInput = watermelonFixture(300, 'eco');
+      const snapshots = snapshotsWithApprovedEnvelope(seedInput);
+      const seeded = buildOptimizePreview(seedInput, { byLineId: {} }, '2026-08-20T00:00:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+      });
+      expect(seeded.ok, JSON.stringify(seeded)).toBe(true);
+      if (!seeded.ok) return;
+      expect(mainTotal(seeded.preview.proposedInput)).toBe(450);
+
+      const input: RecipeInput = {
+        ...seeded.preview.proposedInput,
+        goals: {
+          ...seeded.preview.proposedInput.goals,
+          formulation_strategy: 'eco',
+          direction_targets_active: true,
+          direction_targets: { sweetness, softness, creaminess: 0, flavor: 0 },
+        },
+      };
+      const beforeDirection = recipeDirectionViolations(input);
+      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-20T00:01:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+      });
+      if (!result.ok) {
+        if (result.code === 'already_clean') expect(beforeDirection).toEqual([]);
+        else if (result.code === 'no_proposal' && beforeDirection.length > 0) {
+          expect(result.directionTargetUnreached).toBe(true);
+          expect(result.solverInvocations ?? 0).toBeGreaterThan(0);
+        } else {
+          throw new Error(JSON.stringify(result));
+        }
+        return;
+      }
+
+      const after = result.preview.proposedInput;
+      expect(detectViolations(calculateRecipe(after))).toEqual([]);
+      expect(mainTotal(after)).toBeGreaterThanOrEqual(200);
+      expect(mainTotal(after)).toBeLessThanOrEqual(450);
+      expect(after.goals?.direction_targets).toEqual(input.goals?.direction_targets);
+    },
+  );
+
+  it('does not cross the 20% ECO Main floor to chase an extreme Direction target', () => {
+    const seedInput = watermelonFixture(300, 'eco');
+    const snapshots = snapshotsWithApprovedEnvelope(seedInput);
+    const seeded = buildOptimizePreview(seedInput, { byLineId: {} }, '2026-08-20T00:02:00.000Z', {
+      productBehaviorSnapshots: snapshots,
+    });
+    expect(seeded.ok, JSON.stringify(seeded)).toBe(true);
+    if (!seeded.ok) return;
+    const atFloor: RecipeInput = {
+      ...seeded.preview.proposedInput,
+      items: seeded.preview.proposedInput.items.map((item) =>
+        item.id === 'watermelon'
+          ? { ...item, planned_grams: 200 }
+          : item.id === 'milk'
+            ? { ...item, planned_grams: item.planned_grams + 250 }
+            : item,
+      ),
+      goals: {
+        ...seeded.preview.proposedInput.goals,
+        formulation_strategy: 'eco',
+        direction_targets_active: true,
+        direction_targets: { sweetness: -2, softness: -2, creaminess: 0, flavor: 0 },
+      },
+    };
+    const result = buildOptimizePreview(atFloor, { byLineId: {} }, '2026-08-20T00:03:00.000Z', {
+      productBehaviorSnapshots: snapshots,
+    });
+    if (!result.ok) {
+      expect(['no_proposal', 'already_clean', 'unsafe_proposal']).toContain(result.code);
+      if (result.code === 'no_proposal') expect(result.directionTargetUnreached).toBe(true);
+      // The manually constructed floor fixture may itself be physically
+      // invalid. Safety rejection is preferable to a Direction-driven Preview.
+      if (result.code === 'unsafe_proposal') {
+        expect(detectViolations(calculateRecipe(atFloor)).length).toBeGreaterThan(0);
+      }
+      return;
+    }
+    expect(mainTotal(result.preview.proposedInput)).toBeGreaterThanOrEqual(200);
+    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
   });
 
   it('keeps Standard unlocked as a soft anchor instead of activating Main maximization', () => {

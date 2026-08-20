@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   customerFormulationSourcePl,
   customerOptimizerNoSolutionPl,
+  customerPreviewIssueMessagePl,
   customerSolverSourcePl,
   customerStopReasonPl,
 } from './customerConstraintStudioPresentation';
@@ -33,5 +34,21 @@ describe('customer PI copy boundary', () => {
     expect(pro).toContain('customerStopReasonPl');
     expect(preview).toContain('customerSolverSourcePl');
     expect(preview).toContain('customerFormulationSourcePl');
+  });
+
+  it('reports an exact Direction fixed point truthfully instead of claiming no changes are needed', () => {
+    const copy = customerPreviewIssueMessagePl({
+      ok: false,
+      code: 'no_proposal',
+      directionTargetUnreached: true,
+      violatedMetrics: ['pod', 'npac'],
+      solverInvocations: 3,
+    });
+
+    expect(copy).toContain('najbliższy osiągalny wynik');
+    expect(copy).toContain('twardych ograniczeń');
+    expect(copy).toContain('POD');
+    expect(copy).toContain('NPAC');
+    expect(copy).not.toContain('Nie są potrzebne żadne zmiany');
   });
 });

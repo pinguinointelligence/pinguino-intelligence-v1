@@ -94,7 +94,7 @@ export function AccountRecipeDefaults() {
       },
       directionTargets: {
         ...draft.directionTargets,
-        [axis]: Math.sign(intent) as -1 | 0 | 1,
+        [axis]: intent,
       },
     });
   };

@@ -5025,7 +5025,18 @@ const profileForCategory = (category) => {
 		case "protein_gelato": return "protein_gelato";
 	}
 };
-const targetThird = (band, target) => {
+const targetFifth = (band, target) => {
+	const [min, max] = band;
+	const fifth = (max - min) / 5;
+	const index = target + 2;
+	return {
+		min: min + index * fifth,
+		max: min + (index + 1) * fifth
+	};
+};
+/** Scope guard: profiles outside this Gelato-only change retain their accepted
+* three-zone calibration even though the stored target is now lossless. */
+const legacyTargetThird = (band, target) => {
 	const [min, max] = band;
 	const third = (max - min) / 3;
 	if (target < 0) return {
@@ -5042,13 +5053,23 @@ const targetThird = (band, target) => {
 	};
 };
 const softnessBand = (band, cleanCenter, target) => {
-	if (target < 0) return {
-		min: band[0],
+	const firmSpanMidpoint = (band[0] + cleanCenter[0]) / 2;
+	const softSpanMidpoint = (cleanCenter[1] + band[1]) / 2;
+	if (target === -2) return {
+		min: softSpanMidpoint,
+		max: band[1]
+	};
+	if (target === -1) return {
+		min: cleanCenter[1],
+		max: softSpanMidpoint
+	};
+	if (target === 1) return {
+		min: firmSpanMidpoint,
 		max: cleanCenter[0]
 	};
-	if (target > 0) return {
-		min: cleanCenter[1],
-		max: band[1]
+	if (target === 2) return {
+		min: band[0],
+		max: firmSpanMidpoint
 	};
 	return {
 		min: cleanCenter[0],
@@ -5056,7 +5077,10 @@ const softnessBand = (band, cleanCenter, target) => {
 	};
 };
 function normalizeRecipeDirectionTargets(value) {
-	const normalize = (candidate) => candidate == null || !Number.isFinite(candidate) ? 0 : candidate < 0 ? -1 : candidate > 0 ? 1 : 0;
+	const normalize = (candidate) => {
+		if (candidate == null || !Number.isFinite(candidate)) return 0;
+		return Math.max(-2, Math.min(2, Math.round(candidate)));
+	};
 	return {
 		sweetness: normalize(value?.sweetness),
 		softness: normalize(value?.softness),
@@ -5074,7 +5098,7 @@ function buildRecipeDirectionPlan(input) {
 	const sweetnessOperational = profile === "standard_gelato" || profile === "sorbet" && input.target_temperature_c === -11 || profile === "chocolate_gelato" && (input.target_temperature_c === -11 || input.target_temperature_c === -12);
 	const softnessOperational = profile === "standard_gelato";
 	if (regulator?.pod && sweetnessOperational) {
-		const targetBand = targetThird(regulator.pod.band, targets.sweetness);
+		const targetBand = profile === "standard_gelato" ? targetFifth(regulator.pod.band, targets.sweetness) : legacyTargetThird(regulator.pod.band, targets.sweetness);
 		if (enabled) bands.pod = targetBand;
 		axes.push({
 			axis: "sweetness",

@@ -16,8 +16,8 @@ const directed = () => {
       ...base.goals,
       direction_targets_active: true,
       direction_targets: {
-        sweetness: 1 as const,
-        softness: 1 as const,
+        sweetness: 2 as const,
+        softness: 2 as const,
         creaminess: 0 as const,
         flavor: 0 as const,
       },

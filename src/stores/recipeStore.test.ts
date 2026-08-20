@@ -218,7 +218,7 @@ describe('saved practical recipe provenance', () => {
 });
 
 describe('recipe direction target store contract', () => {
-  it('uses exact three-state targets and invalidates Preview material state once per move', () => {
+  it('uses exact five-step targets and invalidates Preview material state once per move', () => {
     const prior = useRecipeStore.getState();
     try {
       useRecipeStore.setState({
@@ -235,8 +235,11 @@ describe('recipe direction target store contract', () => {
         draftRevision: 71,
       });
       useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
-      expect(useRecipeStore.getState().direction_targets.sweetness).toBe(1);
-      expect(useRecipeStore.getState().draftRevision).toBe(71);
+      expect(useRecipeStore.getState().direction_targets.sweetness).toBe(2);
+      expect(useRecipeStore.getState().draftRevision).toBe(72);
+      useRecipeStore.getState().moveDirectionTarget('sweetness', 1);
+      expect(useRecipeStore.getState().direction_targets.sweetness).toBe(2);
+      expect(useRecipeStore.getState().draftRevision).toBe(72);
     } finally {
       useRecipeStore.setState(prior, true);
     }

@@ -293,7 +293,7 @@ export interface RecipeState {
   setCostPriority: (value: CostPriority) => void;
   setTargetProteinPercent: (value: number) => void;
   moveDirectionTarget: (axis: keyof RecipeDirectionTargets, delta: -1 | 1) => void;
-  setDirectionTarget: (axis: keyof RecipeDirectionTargets, target: -1 | 0 | 1) => void;
+  setDirectionTarget: (axis: keyof RecipeDirectionTargets, target: RecipeDirectionTarget) => void;
 
   /**
    * Owner P0 (Apply data integrity) — the ONLY sanctioned write for a verified
@@ -811,7 +811,7 @@ export const useRecipeStore = create<RecipeState>()(
       moveDirectionTarget: (axis, delta) =>
         set((state) => {
           const current = state.direction_targets[axis];
-          const next = Math.max(-1, Math.min(1, current + delta)) as RecipeDirectionTarget;
+          const next = Math.max(-2, Math.min(2, current + delta)) as RecipeDirectionTarget;
           if (next === current) return {};
           const direction_targets = { ...state.direction_targets, [axis]: next };
           useRecipeProfileStore.getState().setDirectionTargets(direction_targets);
@@ -1432,8 +1432,10 @@ export const useRecipeStore = create<RecipeState>()(
       setDirectionTarget: (axis, target) =>
         set((state) => {
           if (state.direction_targets[axis] === target) return {};
+          const direction_targets = { ...state.direction_targets, [axis]: target };
+          useRecipeProfileStore.getState().setDirectionTargets(direction_targets);
           return {
-            direction_targets: { ...state.direction_targets, [axis]: target },
+            direction_targets,
             direction_targets_active:
               target !== 0 ||
               Object.entries(state.direction_targets).some(

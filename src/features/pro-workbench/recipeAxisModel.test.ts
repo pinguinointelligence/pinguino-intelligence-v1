@@ -3,12 +3,18 @@ import {
   directionAxisRelation,
   metricPositionInNativeBand,
   targetBandPosition,
+  targetStepToPosition,
 } from './recipeAxisModel';
 
 describe('Direction axis presentation uses the selected preference band', () => {
   const native = { min: 12, max: 17 };
   const low = { min: 12, max: 12 + 5 / 3 };
   const high = { min: 17 - 5 / 3, max: 17 };
+
+  it('positions all five exact target detents without sign collapse', () => {
+    expect([-2, -1, 0, 1, 2].map((step) => targetStepToPosition(step as -2 | -1 | 0 | 1 | 2)))
+      .toEqual([0, 25, 50, 75, 100]);
+  });
 
   it('shows an achieved lower or upper third as gold at its real position', () => {
     expect(targetBandPosition(low, native)).toBeCloseTo(16.6666667, 5);

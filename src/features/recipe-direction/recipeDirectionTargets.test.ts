@@ -3,6 +3,7 @@ import {
   calculateRecipe,
   detectViolations,
   type ProductCategory,
+  type RecipeDirectionTarget,
   type RecipeInput,
 } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
@@ -19,7 +20,7 @@ import {
 } from './recipeDirectionTargets';
 
 const NO_CONSTRAINTS = { byLineId: {} };
-const targets = (sweetness: -1 | 0 | 1, softness: -1 | 0 | 1) => ({
+const targets = (sweetness: RecipeDirectionTarget, softness: RecipeDirectionTarget) => ({
   sweetness,
   softness,
   creaminess: 0 as const,
@@ -28,8 +29,8 @@ const targets = (sweetness: -1 | 0 | 1, softness: -1 | 0 | 1) => ({
 
 const withDirection = (
   input: RecipeInput,
-  sweetness: -1 | 0 | 1,
-  softness: -1 | 0 | 1,
+  sweetness: RecipeDirectionTarget,
+  softness: RecipeDirectionTarget,
 ): RecipeInput => ({
   ...input,
   goals: {
@@ -63,6 +64,12 @@ const SWEETNESS_CELLS = CELLS.filter(
     (category === 'sorbet' && temperature === -11) ||
     (category === 'chocolate_gelato' && (temperature === -11 || temperature === -12)),
 );
+const GELATO_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
+  ([category]) => category === 'milk_gelato',
+);
+const LEGACY_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
+  ([category]) => category !== 'milk_gelato',
+);
 const SOFTNESS_CELLS = CELLS.filter(([category]) => category === 'milk_gelato');
 const NON_MILK_CELLS = CELLS.filter(([category]) => category !== 'milk_gelato');
 const BLOCKED_SWEETNESS_CELLS = CELLS.filter(
@@ -73,10 +80,10 @@ const BLOCKED_SWEETNESS_CELLS = CELLS.filter(
 );
 
 describe('canonical recipe Direction target contract', () => {
-  it.each(SWEETNESS_CELLS)(
-    '%s @ %d exposes operational lower/middle/upper POD zones inside the approved band',
+  it.each(GELATO_SWEETNESS_CELLS)(
+    '%s @ %d exposes five ordered POD zones inside the approved band',
     (category, temperature, approved) => {
-      for (const target of [-1, 0, 1] as const) {
+      const zones = ([-2, -1, 0, 1, 2] as const).map((target) => {
         const input = withDirection(
           { ...starterMilkBase(), category, target_temperature_c: temperature },
           target,
@@ -86,14 +93,39 @@ describe('canonical recipe Direction target contract', () => {
         expect(band.min).toBeGreaterThanOrEqual(approved[0]);
         expect(band.max).toBeLessThanOrEqual(approved[1]);
         expect(band.min).toBeLessThan(band.max);
+        return band;
+      });
+      for (let index = 1; index < zones.length; index += 1) {
+        expect(zones[index - 1]!.max).toBeCloseTo(zones[index]!.min, 9);
+      }
+    },
+  );
+
+  it.each(LEGACY_SWEETNESS_CELLS)(
+    '%s @ %d retains its accepted three-zone POD mapping outside Gelato scope',
+    (category, temperature, approved) => {
+      const bandFor = (target: -2 | -1 | 0 | 1 | 2) =>
+        buildRecipeDirectionPlan(
+          withDirection(
+            { ...starterMilkBase(), category, target_temperature_c: temperature },
+            target,
+            0,
+          ),
+        ).bands.pod!;
+      expect(bandFor(-2)).toEqual(bandFor(-1));
+      expect(bandFor(2)).toEqual(bandFor(1));
+      for (const target of [-1, 0, 1] as const) {
+        const band = bandFor(target);
+        expect(band.min).toBeGreaterThanOrEqual(approved[0]);
+        expect(band.max).toBeLessThanOrEqual(approved[1]);
       }
     },
   );
 
   it.each(SOFTNESS_CELLS)(
-    '%s @ %d exposes operational firm/clean/soft NPAC targets',
+    '%s @ %d maps visible Hardness -2 (soft) through +2 (firm) monotonically',
     (category, temperature) => {
-      const zones = ([-1, 0, 1] as const).map(
+      const zones = ([-2, -1, 0, 1, 2] as const).map(
         (target) =>
           buildRecipeDirectionPlan(
             withDirection(
@@ -103,8 +135,9 @@ describe('canonical recipe Direction target contract', () => {
             ),
           ).bands.npac!,
       );
-      expect(zones[0]!.max).toBeLessThanOrEqual(zones[1]!.min);
-      expect(zones[1]!.max).toBeLessThanOrEqual(zones[2]!.min);
+      for (let index = 1; index < zones.length; index += 1) {
+        expect(zones[index]!.max).toBeLessThanOrEqual(zones[index - 1]!.min);
+      }
     },
   );
 
@@ -146,8 +179,8 @@ describe('canonical recipe Direction target contract', () => {
     expect(recipeDirectionViolations(input)).toEqual(detectViolations(calculateRecipe(input)));
   });
 
-  it('a supported +1 request goes through the normal Preview and remains native-safe', () => {
-    const input = withDirection(starterMilkBase(), 1, 1);
+  it('a supported +2 request goes through the normal Preview and remains native-safe', () => {
+    const input = withDirection(starterMilkBase(), 2, 2);
     const before = recipeDirectionViolations(input);
     expect(before.length).toBeGreaterThan(0);
     const built = buildOptimizePreview(input, NO_CONSTRAINTS, '2026-08-10T00:00:00.000Z');
@@ -229,7 +262,7 @@ describe('canonical recipe Direction target contract', () => {
   });
 
   it('keeps exact, percent and range constraints through a supported Direction Preview and Apply', () => {
-    const input = withDirection(starterMilkBase(), 1, 1);
+    const input = withDirection(starterMilkBase(), 2, 2);
     const constraints = {
       byLineId: {
         'milk-base:milk_3_5': { mode: 'locked' as const, grams: 670 },

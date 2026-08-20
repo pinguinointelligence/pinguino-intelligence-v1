@@ -37,7 +37,7 @@ export function MonitorLiveSummary({
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
   const currentSignature = profileSettingsSignature(
-    profileSnapshotFromState(recipe, recipe.direction_targets),
+    profileSnapshotFromState(recipe, recipe.direction_targets, intents),
     recipe.draftContextSeq,
   );
   const confirmed =
