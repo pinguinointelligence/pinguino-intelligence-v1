@@ -578,6 +578,79 @@ const CLEAR_STAGED = {
   recalculationTerminal: null,
 };
 
+interface LockedConstraintFixStageArgs extends ImpossibleConstraintLockRecovery {
+  draft: CanonicalDraft;
+  boundary: 'minimum' | 'maximum';
+  reason: 'product_dosage' | 'constraint_feasibility';
+  baseSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  proposedSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  technicalOnlyMainLineIds: readonly string[];
+  prebuilt?: BuildPreviewResult;
+}
+
+/** Stages one disclosed, Engine-derived lock transition. Runtime may pass the
+ * exact proposal that already crossed server authority; the deterministic
+ * store path builds the same proposal locally for tests and dosage recovery. */
+function stageLockedConstraintFixPreview(args: LockedConstraintFixStageArgs): boolean {
+  const proposedAuthority = args.proposedSnapshots ?? args.baseSnapshots;
+  const recovered = bindProductBehaviorToPreview(
+    args.prebuilt ??
+      buildSuggestedFixPreview(args.draft.input, args.draft.constraints, args.fix, nowIso()),
+    proposedAuthority,
+    args.baseSnapshots,
+    args.technicalOnlyMainLineIds,
+  );
+  if (!recovered.ok || recovered.preview.diagnosticOnly === true) return false;
+
+  recovered.preview.baseDraftRevision = args.draft.revision;
+  const proposalProductBehaviorAuthorization = args.proposedSnapshots
+    ? {
+        baseFingerprint: recovered.preview.baseFingerprint,
+        proposedFingerprint: workingStateFingerprint(
+          recovered.preview.proposedInput,
+          recovered.preview.nextConstraints,
+        ),
+        baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(args.baseSnapshots),
+        proposedProductBehaviorFingerprint:
+          productBehaviorSnapshotFingerprint(proposedAuthority),
+        snapshots: structuredClone(
+          Object.fromEntries(
+            Object.entries(proposedAuthority).filter(
+              (entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined,
+            ),
+          ),
+        ),
+      }
+    : null;
+  recovered.preview.safetyLockConflict = {
+    lineId: args.fix.lineId,
+    ingredientName: args.ingredientName,
+    beforeGrams: args.beforeGrams,
+    requiredGrams: args.fix.grams,
+    boundary: args.boundary,
+    reason: args.reason,
+  };
+  useConstraintStudioStore.setState({
+    preview: recovered.preview,
+    directionBestCandidate: null,
+    directionConsent: null,
+    substitutionConsent: null,
+    substitutionAuthorization: null,
+    proposalProductBehaviorAuthorization,
+    explicitStandardRemovalConsent: null,
+    suggestedFixAuthorization: {
+      baseFingerprint: recovered.preview.baseFingerprint,
+      type: args.fix.type,
+      lineId: args.fix.lineId,
+      grams: args.fix.grams,
+    },
+    previewIssue: null,
+    blocked: null,
+    recalculationTerminal: { state: 'PREVIEW_READY' },
+  });
+  return true;
+}
+
 let activePiRunGeneration = 0;
 export const PI_RECALCULATION_DEADLINE_MS = 15_000;
 
@@ -785,72 +858,6 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // stamped with the draft revision it was built for.
         const draft = selectCanonicalDraft();
         const recipeState = useRecipeStore.getState();
-        const stageLockedConstraintFix = (args: {
-          fix: SuggestedBoundFix;
-          ingredientName: string;
-          beforeGrams: number;
-          boundary: 'minimum' | 'maximum';
-          reason: 'product_dosage' | 'constraint_feasibility';
-        }): boolean => {
-          const snapshots = recipeState.productBehaviorSnapshots;
-          const proposedAuthority = proposalSnapshots ?? snapshots;
-          const recovered = bindProductBehaviorToPreview(
-            buildSuggestedFixPreview(draft.input, draft.constraints, args.fix, nowIso()),
-            proposedAuthority,
-            snapshots,
-            recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
-          );
-          if (!recovered.ok || recovered.preview.diagnosticOnly === true) return false;
-
-          recovered.preview.baseDraftRevision = draft.revision;
-          const proposalProductBehaviorAuthorization = proposalSnapshots
-            ? {
-                baseFingerprint: recovered.preview.baseFingerprint,
-                proposedFingerprint: workingStateFingerprint(
-                  recovered.preview.proposedInput,
-                  recovered.preview.nextConstraints,
-                ),
-                baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(snapshots),
-                proposedProductBehaviorFingerprint:
-                  productBehaviorSnapshotFingerprint(proposedAuthority),
-                snapshots: structuredClone(
-                  Object.fromEntries(
-                    Object.entries(proposedAuthority).filter(
-                      (entry): entry is [string, ProductBehaviorSnapshot] =>
-                        entry[1] !== undefined,
-                    ),
-                  ),
-                ),
-              }
-            : null;
-          recovered.preview.safetyLockConflict = {
-            lineId: args.fix.lineId,
-            ingredientName: args.ingredientName,
-            beforeGrams: args.beforeGrams,
-            requiredGrams: args.fix.grams,
-            boundary: args.boundary,
-            reason: args.reason,
-          };
-          set({
-            preview: recovered.preview,
-            directionBestCandidate: null,
-            directionConsent: null,
-            substitutionConsent: null,
-            substitutionAuthorization: null,
-            proposalProductBehaviorAuthorization,
-            explicitStandardRemovalConsent: null,
-            suggestedFixAuthorization: {
-              baseFingerprint: recovered.preview.baseFingerprint,
-              type: args.fix.type,
-              lineId: args.fix.lineId,
-              grams: args.fix.grams,
-            },
-            previewIssue: null,
-            blocked: null,
-            recalculationTerminal: { state: 'PREVIEW_READY' },
-          });
-          return true;
-        };
         const dosageViolations = assessProductDosages(
           draft.input,
           recipeState.productBehaviorSnapshots,
@@ -882,12 +889,17 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               grams: boundary.grams,
             };
             if (
-              stageLockedConstraintFix({
+              stageLockedConstraintFixPreview({
+                draft,
                 fix,
                 ingredientName: violation.ingredientName,
                 beforeGrams: violation.enteredGrams,
                 boundary: boundary.label,
                 reason: 'product_dosage',
+                baseSnapshots: recipeState.productBehaviorSnapshots,
+                proposedSnapshots: proposalSnapshots,
+                technicalOnlyMainLineIds:
+                  recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
               })
             )
               return;
@@ -1003,10 +1015,15 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         );
         if (
           lockRecovery !== null &&
-          stageLockedConstraintFix({
+          stageLockedConstraintFixPreview({
+            draft,
             ...lockRecovery,
             boundary: 'maximum',
             reason: 'constraint_feasibility',
+            baseSnapshots: recipeState.productBehaviorSnapshots,
+            proposedSnapshots: proposalSnapshots,
+            technicalOnlyMainLineIds:
+              recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
           })
         )
           return;
@@ -2229,6 +2246,23 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
         return;
       }
       proposedSnapshots = proposedAuthority.snapshots;
+      useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
+      if (!isCurrentPiRun(ownedGeneration)) return;
+      if (
+        lockRecovery !== null &&
+        stageLockedConstraintFixPreview({
+          draft,
+          ...lockRecovery,
+          boundary: 'maximum',
+          reason: 'constraint_feasibility',
+          baseSnapshots: validation.snapshots,
+          proposedSnapshots: proposedAuthority.snapshots,
+          technicalOnlyMainLineIds,
+          prebuilt: recoveredProposal,
+        })
+      ) {
+        return;
+      }
     }
   }
   useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
