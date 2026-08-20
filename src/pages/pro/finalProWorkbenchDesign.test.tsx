@@ -129,15 +129,18 @@ describe('one global menu and four local contexts', () => {
     expect(page).toContain('AppShell');
   });
 
-  it('keeps the compact PRO badge and all circular overflow menus on one geometry', () => {
+  it('keeps the compact PRO badge and makes only the recipe-save overflow menu smaller', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
     const ingredient = read('features', 'ingredient-builder', 'IngredientRow.tsx');
     const topping = read('features', 'ingredient-builder', 'ToppingRow.tsx');
     expect(page).toContain('data-testid="pro-plan-indicator"');
     expect(page).toContain('px-1.5 py-1 text-[8px]');
-    for (const source of [workbar, ingredient, topping]) {
+    expect(workbar).toContain('grid size-9');
+    for (const source of [ingredient, topping]) {
       expect(source).toContain('grid size-11');
+    }
+    for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain('rounded-full border border-ink/10');
       expect(source).toContain('•••');
     }
@@ -218,7 +221,9 @@ describe('recipe and production table modes', () => {
     expect(picker).toContain('Pokaż status danych produktu:');
     expect(picker).toContain('data-testid="product-data-status-dialog"');
     expect(picker).not.toContain('Nr art.');
-    expect(picker).not.toContain('Dodaj własny składnik ręcznie');
+    expect(picker).toContain('Nie znalazłeś produktu?');
+    expect(picker).toContain('Dodaj produkt');
+    expect(picker).toContain('to="/products/scan"');
     expect(picker).toContain('mapperOnly: true');
     expect(picker).toContain('resolveCurrentMapperCatalogSelection');
     expect(picker).toContain('event.stopPropagation()');

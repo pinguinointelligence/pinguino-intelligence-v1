@@ -358,6 +358,36 @@ describe('production session physical-reality contract', () => {
       /Brak zatwierdzonego uprawnienia PRODUCTION/,
     );
   });
+
+  it('rejects a Rescue candidate that exceeds the frozen ProductBehavior dose', () => {
+    const run = session();
+    const tara = run.plannedInput.items.find((item) => item.ingredient.id === 'tara_gum')!;
+    const snapshots = structuredClone(run.plannedComposition.behaviorSnapshots!);
+    snapshots[tara.id] = {
+      ...snapshots[tara.id]!,
+      sharedFacts: {
+        ...snapshots[tara.id]!.sharedFacts!,
+        recommendedDose: {
+          minPercent: 0.2,
+          maxPercent: 1,
+          sourceVersion: 'mapper-v1.0:PI-ING-000492',
+        },
+      },
+    };
+    const authorized = {
+      ...run,
+      plannedComposition: { ...run.plannedComposition, behaviorSnapshots: snapshots },
+    };
+    const candidate = buildProductionForecastInput(authorized);
+    candidate.items = candidate.items.map((item) =>
+      item.id === tara.id ? { ...item, planned_grams: 55 } : item,
+    );
+    candidate.target_batch_grams += 50;
+
+    expect(() => applyVerifiedRescueInput(authorized, candidate)).toThrow(
+      /Tara gum: wpisano 55 g, zatwierdzony zakres to 0.2%–1%/,
+    );
+  });
   it('uses persisted Base order for the operator without reordering Engine input', () => {
     const input = recipe();
     const reversed = input.items.map((item) => item.id).reverse();

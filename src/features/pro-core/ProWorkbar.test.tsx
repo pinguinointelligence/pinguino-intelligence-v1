@@ -45,6 +45,7 @@ let mockState: MockRecipeState = {
   servingModeId: null,
   machineLabel: null,
 };
+let mockHistoryLength = 0;
 const mockSave = {
   blocked: null,
   busy: false,
@@ -64,6 +65,10 @@ vi.mock('@/stores/recipeStore', () => ({
 vi.mock('@/features/recipes/useCanonicalRecipeSave', () => ({
   useCanonicalRecipeSave: () => mockSave,
 }));
+vi.mock('@/features/constraint-studio/constraintStudioStore', () => ({
+  useConstraintStudioStore: (selector: (state: { history: unknown[] }) => unknown) =>
+    selector({ history: Array.from({ length: mockHistoryLength }) }),
+}));
 
 const { ProWorkbar } = await import('./ProWorkbar');
 const w = copy.proWorkbar;
@@ -74,13 +79,19 @@ const render = (state: Partial<MockRecipeState>) => {
 };
 
 describe('ProWorkbar (sticky top workbar)', () => {
-  it('keeps the permanent + Nowa receptura action immediately before recipe status', () => {
+  it('orders New, Save, compact menu, then right-aligned recipe status', () => {
     const html = render({ savedRecipeId: null, dirty: false });
     expect(html).toContain('data-testid="pro-workbar-new-recipe"');
     expect(html).toContain('+ Nowa receptura');
-    expect(html.indexOf('data-testid="pro-workbar-new-recipe"')).toBeLessThan(
-      html.indexOf('data-testid="pro-workbar-status"'),
-    );
+    const newAt = html.indexOf('data-testid="pro-workbar-new-recipe"');
+    const saveAt = html.indexOf('data-testid="pro-workbar-save"');
+    const menuAt = html.indexOf('data-testid="pro-workbar-menu"');
+    const statusAt = html.indexOf('data-testid="pro-workbar-status"');
+    expect(newAt).toBeLessThan(saveAt);
+    expect(saveAt).toBeLessThan(menuAt);
+    expect(menuAt).toBeLessThan(statusAt);
+    expect(html).toContain('data-workbar-action-size="primary"');
+    expect(html).toContain('data-workbar-action-size="compact"');
   });
 
   it('NEW recipe: inline name field + „Zapisz recepturę" beside it + „nowa, niezapisana" status', () => {
@@ -122,6 +133,18 @@ describe('ProWorkbar (sticky top workbar)', () => {
     });
     expect(html).toContain('Gelato');
     expect(html).toContain('ECO');
+  });
+
+  it('shows the applied-unsaved warning beside Save and clears it after save', () => {
+    mockHistoryLength = 1;
+    const dirty = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: true });
+    expect(dirty).toContain('data-testid="pro-workbar-applied-unsaved"');
+    expect(dirty).toContain(copy.proWorkbar.recalcPanel.applied);
+    expect(dirty).toContain('bg-pro-amber');
+
+    const saved = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: false });
+    expect(saved).not.toContain('data-testid="pro-workbar-applied-unsaved"');
+    mockHistoryLength = 0;
   });
 });
 
@@ -189,5 +212,11 @@ describe('ProWorkbar wiring (no duplicate save; workbar mounted in /pro Receptur
     // it must NOT call the repository/create directly (that lives only in the shared hook)
     expect(/\.createRecipe\(/.test(bar)).toBe(false);
     expect(/\.saveNewVersion\(/.test(bar)).toBe(false);
+  });
+
+  it('keeps the applied-unsaved message out of the score/current-result action bar', () => {
+    const actionBar = read('features', 'pro-workbench', 'WorkbenchActionBar.tsx');
+    expect(actionBar).not.toContain('{r.applied}');
+    expect(actionBar).toContain('data-testid="workbench-undo"');
   });
 });

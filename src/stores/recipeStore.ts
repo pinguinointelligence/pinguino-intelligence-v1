@@ -74,7 +74,10 @@ import {
 } from '@/features/recipe-composition/labelTopping';
 import {
   mainBehaviorBlockReason,
+  assessProductDosages,
+  clampProductDosageGrams,
   productBehaviorRequiredLineIds,
+  type ProductDosageViolation,
   type ProductBehaviorSnapshot,
   type ProductionThermalMode,
 } from '@/features/product-intelligence';
@@ -301,6 +304,11 @@ export interface RecipeState {
     | { ok: false; code: 'invalid_line'; lineName: string }
     | { ok: false; code: 'duplicate_ingredient'; canonicalIds: string[] }
     | { ok: false; code: 'batch_mismatch'; sum: number; target: number }
+    | {
+        ok: false;
+        code: 'product_dosage_violation';
+        violations: ProductDosageViolation[];
+      }
     | { ok: false; code: 'write_verification_failed' };
   /**
    * Atomically adds a Base ingredient or returns the first existing row with
@@ -834,6 +842,13 @@ export const useRecipeStore = create<RecipeState>()(
             canonicalIds: duplicateCanonicalIds,
           };
         }
+        const dosageViolations = assessProductDosages(
+          input,
+          productBehaviorSnapshots ?? get().productBehaviorSnapshots,
+        );
+        if (dosageViolations.length > 0) {
+          return { ok: false, code: 'product_dosage_violation', violations: dosageViolations };
+        }
         // Phase 6 — the door of last resort recomputes the total ITSELF.
         const hasActuals = input.items.some((item) => item.actual_grams !== null);
         const sum = input.items.reduce((total, item) => total + item.planned_grams, 0);
@@ -1325,7 +1340,17 @@ export const useRecipeStore = create<RecipeState>()(
 
       setPlannedGrams: (lineId, grams) =>
         set((state) => {
-          const targetGrams = Math.max(0, grams);
+          const requestedGrams = Math.max(0, grams);
+          const clamped = clampProductDosageGrams(
+            requestedGrams,
+            state.target_batch_grams,
+            state.productBehaviorSnapshots[lineId],
+          );
+          // Malformed server evidence is never permission to accept a new
+          // amount. The server-authority recalculation path will surface the
+          // exact revalidation blocker.
+          if (!clamped.ok) return {};
+          const targetGrams = clamped.grams;
           return {
             items: state.items.map((item) => {
               const next = { ...item };

@@ -146,6 +146,14 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card).toContain('data-testid="home-machine-capacity"');
     expect(card).toContain('Pojemność jednego cyklu');
     expect(card).toContain('data-testid="profile-batch-combined"');
+    expect(card).toContain('data-testid="settings-header-status"');
+    expect(card.indexOf('data-testid="settings-header-status"')).toBeLessThan(
+      card.indexOf('data-settings-cell="product-type"'),
+    );
+    expect(card).toContain('Baza lodowa bez toppingu');
+    expect(card).not.toContain('BAZA LODOWA BEZ TOPPINGU');
+    expect(card).toContain("compactSelect, 'w-16'");
+    expect(card).not.toContain('2xl:h-[63px]');
     expect(card).not.toContain('Ustaw jako domyślne');
     expect(read('features', 'pro-workbench', 'AccountRecipeDefaults.tsx')).toContain(
       'Domyślne ustawienia receptury',

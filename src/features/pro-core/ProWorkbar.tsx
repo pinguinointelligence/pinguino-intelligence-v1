@@ -9,6 +9,7 @@ import {
   startNewProRecipe,
 } from '@/pages/destinations/startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
@@ -37,6 +38,7 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
   const machineKind = useRecipeStore((s) => s.machineKind);
   const servingModeId = useRecipeStore((s) => s.servingModeId);
   const machineLabel = useRecipeStore((s) => s.machineLabel);
+  const appliedHistoryLength = useConstraintStudioStore((s) => s.history.length);
 
   const save = useCanonicalRecipeSave();
   const linked = Boolean(savedRecipeId);
@@ -131,29 +133,17 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
             type="button"
             onClick={requestNewDraft}
             data-testid="pro-workbar-new-recipe"
-            className="h-9 shrink-0 rounded-[12px] border border-ink/15 bg-white px-3 text-xs font-semibold text-ink shadow-pro-e0 transition-colors hover:border-ink/35 hover:bg-stone-50"
+            data-workbar-action-size="primary"
+            className="h-11 shrink-0 rounded-[14px] border border-ink/15 bg-white px-3 text-xs font-semibold text-ink shadow-pro-e0 transition-colors hover:border-ink/35 hover:bg-stone-50"
           >
             + Nowa receptura
           </button>
-          <span
-            className={cn(
-              'min-w-0 flex-1 truncate text-xs xl:max-w-48',
-              statusKey === 'error'
-                ? 'text-status-error'
-                : statusKey === 'dirty' || statusKey === 'newUnsaved'
-                  ? 'text-attention'
-                  : 'text-stone-500',
-            )}
-            data-testid="pro-workbar-status"
-          >
-            <span aria-hidden>● </span>
-            {w.status[statusKey]}
-          </span>
           <button
             type="button"
             onClick={() => void doSave()}
             disabled={save.busy || save.blocked !== null || save.practicalBlocked}
             data-testid="pro-workbar-save"
+            data-workbar-action-size="primary"
             className="h-11 shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45"
           >
             {save.busy
@@ -164,11 +154,14 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
                   ? 'Zapisz nową wersję'
                   : w.saveNew}
           </button>
-          <details className="relative shrink-0">
-            <summary className="pro-focus-ring grid size-11 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink">
+          <details className="relative shrink-0" data-testid="pro-workbar-menu">
+            <summary
+              className="pro-focus-ring grid size-9 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-xs text-stone-500 hover:border-ink/35 hover:text-ink"
+              data-workbar-action-size="compact"
+            >
               •••
             </summary>
-            <div className="absolute bottom-12 left-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
+            <div className="absolute bottom-10 left-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
               <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
                 Receptura
               </p>
@@ -186,6 +179,20 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
               </a>
             </div>
           </details>
+          <span
+            className={cn(
+              'ml-auto min-w-[7rem] flex-1 truncate text-right text-xs xl:max-w-48',
+              statusKey === 'error'
+                ? 'text-status-error'
+                : statusKey === 'dirty' || statusKey === 'newUnsaved'
+                  ? 'text-attention'
+                  : 'text-stone-500',
+            )}
+            data-testid="pro-workbar-status"
+          >
+            <span aria-hidden>● </span>
+            {w.status[statusKey]}
+          </span>
           <span className="sr-only" data-testid="pro-workbar-profile-summary">
             {context}
           </span>
@@ -223,6 +230,14 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
           data-testid="pro-workbar-name-error"
         >
           {nameError}
+        </p>
+      ) : null}
+      {dirty && appliedHistoryLength > 0 ? (
+        <p
+          className="mt-2 rounded-[12px] border border-attention/25 bg-pro-amber/35 px-3 py-2 text-xs leading-relaxed text-stone-700"
+          data-testid="pro-workbar-applied-unsaved"
+        >
+          {w.recalcPanel.applied}
         </p>
       ) : null}
       {save.error ? (

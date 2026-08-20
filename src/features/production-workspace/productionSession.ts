@@ -17,6 +17,7 @@ import {
 } from '@/features/recipe-composition/finalProduct';
 import {
   buildRecipeBehaviorAuthority,
+  assessProductDosages,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   recipeBehaviorModuleGate,
@@ -483,6 +484,13 @@ export function applyVerifiedRescueInput(
   candidate: RecipeInput,
 ): ProductionSession {
   requireActive(session);
+  const dosageViolations = assessProductDosages(
+    candidate,
+    session.plannedComposition.behaviorSnapshots ?? {},
+  );
+  if (dosageViolations.length > 0) {
+    throw new Error(dosageViolations[0]!.messagePl);
+  }
   const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
   const lines = session.lines.map((line) => {
     const item = candidateById.get(line.lineId);

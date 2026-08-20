@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import { buildDirectPercentEdit } from './directPercentEdit';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 const NONE = { byLineId: {} } as const;
+
+const taraDoseSnapshot = (): ProductBehaviorSnapshot =>
+  ({
+    schemaVersion: 1,
+    resolutionState: 'RESOLVED',
+    lineId: 'owner:tara_gum',
+    mapperIngredientId: 'PI-ING-000492',
+    processScope: 'BASE_FORMULATION',
+    moduleEligibility: { BASE_RECIPE: 'eligible' },
+    sharedFacts: {
+      recommendedDose: { minPercent: 0.2, maxPercent: 1, sourceVersion: 'mapper-v1.0' },
+    },
+  }) as ProductBehaviorSnapshot;
 
 describe('direct percentage editing', () => {
   it('changes the selected share and keeps the batch coherent without moving Tara', () => {
@@ -73,6 +87,27 @@ describe('direct percentage editing', () => {
     ).toMatchObject({ ok: false, code: 'protected_line' });
     input.items.find((item) => item.id === 'owner:milk_3_5')!.actual_grams = 10;
     expect(buildDirectPercentEdit(input, NONE, 'owner:milk_3_5', 59)).toMatchObject({
+      ok: false,
+      code: 'protected_line',
+    });
+  });
+
+  it('allows an evidenced manual Tara percentage but clamps an excessive request to 1%', () => {
+    const input = ownerSameInputRecipe();
+    const result = buildDirectPercentEdit(input, NONE, 'owner:tara_gum', 5.5, [], {
+      'owner:tara_gum': taraDoseSnapshot(),
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.gramsByLineId['owner:tara_gum']).toBe(10);
+    expect(Object.values(result.gramsByLineId).reduce((sum, grams) => sum + grams, 0)).toBeCloseTo(
+      1_000,
+      10,
+    );
+  });
+
+  it('keeps a stabilizer percent edit fail-closed when no exact dosage evidence exists', () => {
+    expect(buildDirectPercentEdit(ownerSameInputRecipe(), NONE, 'owner:tara_gum', 0.5)).toEqual({
       ok: false,
       code: 'protected_line',
     });

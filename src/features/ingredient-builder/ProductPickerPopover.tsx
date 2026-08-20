@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router';
 import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
@@ -998,9 +999,14 @@ export function ProductPickerPopover({
                     </p>
                   ) : null}
                   <div className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-ink/10 bg-white px-4 py-2 text-xs">
-                    <span className="text-stone-600">
-                      Katalog zawiera wyłącznie aktualne produkty Mappera.
-                    </span>
+                    <span className="text-stone-600">Nie znalazłeś produktu?</span>
+                    <Link
+                      to="/products/scan"
+                      className="pro-focus-ring rounded-lg px-2 py-1 font-semibold text-ink hover:bg-stone-100"
+                      onClick={() => close()}
+                    >
+                      Dodaj produkt →
+                    </Link>
                     <button
                       type="button"
                       className="pro-focus-ring rounded-lg px-2 py-1 font-semibold text-stone-600 hover:bg-stone-100"

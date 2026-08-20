@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { RecipeResult } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { profileSnapshotFromState } from './recipeProfilePersistence';
@@ -24,10 +25,12 @@ export function MonitorLiveSummary({
   result,
   previewResult = null,
   onOpenProfile,
+  children,
 }: {
   result: RecipeResult;
   previewResult?: RecipeResult | null;
   onOpenProfile?: () => void;
+  children?: ReactNode;
 }) {
   const recipe = useRecipeStore();
   const intents = useRecipeProfileStore((state) => state.directionIntents);
@@ -59,7 +62,10 @@ export function MonitorLiveSummary({
           <h2 className="text-base font-semibold text-ink">Monitor receptury</h2>
           <p className="mt-0.5 text-xs text-stone-600">Bieżący wynik dla wybranych ustawień.</p>
         </div>
-        <div className="divide-y divide-ink/8 overflow-hidden rounded-[14px] border border-ink/9 bg-white">
+        <div
+          className="divide-y divide-ink/8 overflow-hidden rounded-[14px] border border-ink/9 bg-white"
+          data-testid="monitor-unified-block"
+        >
           {(
             [
               ['Słodycz', 'pod', intents.sweetness],
@@ -106,6 +112,7 @@ export function MonitorLiveSummary({
               </div>
             );
           })}
+          {children}
         </div>
       </div>
     </section>

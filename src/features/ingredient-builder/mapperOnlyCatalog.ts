@@ -87,7 +87,6 @@ export async function resolveCurrentMapperCatalogSelection(
   if (
     !row ||
     row.ingredient_id !== mapperId ||
-    row.is_active !== true ||
     row.dataset_version !== 'v1.0' ||
     row.approved_for_base !== true
   )

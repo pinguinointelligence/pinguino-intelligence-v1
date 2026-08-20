@@ -48,6 +48,7 @@ import {
 } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { missingProductDoseMessage } from '@/features/ingredient-builder/productDoseSuggestion';
 import {
+  assessProductDosages,
   productBehaviorSnapshotFingerprint,
   productBehaviorRequiredLineIds,
   type ProductBehaviorSnapshot,
@@ -746,6 +747,40 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // constraints + exclusions composed by the ONE selector — the preview is
         // stamped with the draft revision it was built for.
         const draft = selectCanonicalDraft();
+        const recipeState = useRecipeStore.getState();
+        const dosageViolations = assessProductDosages(
+          draft.input,
+          recipeState.productBehaviorSnapshots,
+        );
+        if (dosageViolations.length > 0) {
+          const messagePl = dosageViolations[0]!.messagePl;
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            proposalProductBehaviorAuthorization: null,
+            blocked: null,
+            previewIssue: {
+              ok: false,
+              code: 'product_behavior_invalid',
+              violations: dosageViolations.map((violation) => ({
+                code: 'product_dosage_violation',
+                lineIds: [violation.lineId],
+                messagePl: violation.messagePl,
+              })),
+              messagePl,
+            },
+            recalculationTerminal: {
+              state: 'BLOCKED_WITH_EXACT_ACTION',
+              code: 'product_behavior_invalid',
+              messagePl,
+              action: 'return_to_recipe',
+            },
+          });
+          return;
+        }
         const missingProductDose = missingPickerDosePreviewIssue(draft.input);
         if (missingProductDose) {
           set({
@@ -786,7 +821,6 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
           return;
         }
-        const recipeState = useRecipeStore.getState();
         const snapshots = recipeState.productBehaviorSnapshots;
         const technicalOnlyMainLineIds =
           recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
@@ -825,6 +859,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             : null;
         if (
           result.ok &&
+          result.preview.diagnosticOnly !== true &&
           !optimizePreviewRequiresApply(result.preview, draft.constraints, draft.input)
         ) {
           useRecipeProfileStore.getState().acknowledgeRecalculation();
@@ -1271,7 +1306,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                   ? applyGuardCopy.invalidLine(written.lineName)
                   : written.code === 'batch_mismatch'
                     ? applyGuardCopy.batchMismatch(written.sum, written.target)
-                    : applyGuardCopy.writeFailed,
+                    : written.code === 'product_dosage_violation'
+                      ? (written.violations[0]?.messagePl ?? applyGuardCopy.writeFailed)
+                      : applyGuardCopy.writeFailed,
               violationsBefore: 0,
               violationsAfter: 0,
             },
@@ -1347,6 +1384,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           ...(last.before.productBehaviorSnapshots
             ? { productBehaviorSnapshots: structuredClone(last.before.productBehaviorSnapshots) }
             : {}),
+          dirty: true,
           // Phase 3: the undo restore is itself a material edit (monotonic).
           draftRevision: state.draftRevision + 1,
         }));

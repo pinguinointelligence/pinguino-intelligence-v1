@@ -176,16 +176,18 @@ function summaryFor(module: ProfessionalMonitorModule): {
   return {
     metric,
     scaleMetric: metric,
-    abbreviation: module.id === 'freezing' ? 'LÓD' : null,
+    abbreviation: module.id === 'freezing' ? 'PAC' : null,
   };
 }
 
 export function ProfessionalMonitorModules({
   modules,
   previewModules,
+  embedded = false,
 }: {
   modules: readonly ProfessionalMonitorModule[];
   previewModules?: readonly ProfessionalMonitorModule[];
+  embedded?: boolean;
 }) {
   const visibleModules = useMemo(
     () => modules.filter((module) => module.id !== 'sugars'),
@@ -200,8 +202,12 @@ export function ProfessionalMonitorModules({
 
   return (
     <div
-      className="divide-y divide-ink/8 overflow-hidden rounded-[14px] border border-ink/9 bg-white"
+      className={cn(
+        'divide-y divide-ink/8 bg-white',
+        !embedded && 'overflow-hidden rounded-[14px] border border-ink/9',
+      )}
       data-testid="monitor-technology-modules"
+      data-monitor-embedded={embedded ? 'true' : 'false'}
     >
       {visibleModules.map((module) => {
         const previewModule = previewModules?.find((candidate) => candidate.id === module.id);

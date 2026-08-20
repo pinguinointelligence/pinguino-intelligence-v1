@@ -271,24 +271,50 @@ export function WorkbenchSettingsLine({
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
     >
-      <div className="mb-3 flex items-center gap-2">
-        <h3 className="text-sm font-semibold text-ink">Ustawienia</h3>
-        <span
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className={cn(
-            'sr-only text-xs font-semibold',
-            hardConflict ? 'text-status-error' : confirmed ? 'text-status-ideal' : 'text-attention',
+      <div className="mb-3 flex min-h-8 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <h3 className="text-sm font-semibold text-ink">Ustawienia</h3>
+          <span
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className={cn(
+              'sr-only text-xs font-semibold',
+              hardConflict
+                ? 'text-status-error'
+                : confirmed
+                  ? 'text-status-ideal'
+                  : 'text-attention',
+            )}
+            data-testid="profile-preflight-status"
+          >
+            {hardConflict
+              ? 'Konflikt ustawień'
+              : confirmed
+                ? '✓ Potwierdzone'
+                : 'Zmiany niepotwierdzone'}
+          </span>
+        </div>
+        <div className="shrink-0" data-testid="settings-header-status">
+          {!confirmed || hardConflict ? (
+            <button
+              type="button"
+              disabled={hardConflict}
+              onClick={() => confirmSettings(signature, store.draftContextSeq)}
+              data-testid="profile-settings-confirm"
+              className="pro-focus-ring min-h-8 rounded-[10px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              Potwierdź ustawienia
+            </button>
+          ) : (
+            <span
+              className="inline-flex min-h-8 items-center rounded-[10px] border border-status-ideal/40 bg-status-ideal/[0.04] px-3 text-xs font-semibold text-status-ideal"
+              data-testid="profile-settings-confirmed"
+            >
+              ✓ Ustawienia sprawdzone
+            </span>
           )}
-          data-testid="profile-preflight-status"
-        >
-          {hardConflict
-            ? 'Konflikt ustawień'
-            : confirmed
-              ? '✓ Potwierdzone'
-              : 'Zmiany niepotwierdzone'}
-        </span>
+        </div>
       </div>
 
       <div className={cn(compact ? 'profile-settings-grid grid grid-cols-2 gap-2' : 'space-y-3')}>
@@ -428,7 +454,7 @@ export function WorkbenchSettingsLine({
           className={cn(
             'grid items-center gap-2 rounded-[12px] border px-3 py-2',
             compact
-              ? 'relative min-h-[64px] grid-cols-1 pt-5 lg:min-h-[54px] lg:py-1 lg:pt-4 2xl:h-[63px] 2xl:min-h-[63px]'
+              ? 'relative min-h-[76px] grid-cols-1 pt-5 lg:min-h-[70px] lg:py-1.5 lg:pt-4'
               : 'grid-cols-[6.8rem_minmax(0,1fr)]',
             batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
           )}
@@ -462,7 +488,7 @@ export function WorkbenchSettingsLine({
               onCommit={(next) => changeBatch(toGrams(next, unit, store.category))}
             />
             <select
-              className={cn(compactSelect, 'w-14')}
+              className={cn(compactSelect, 'w-16')}
               value={unit}
               aria-label="Jednostka partii"
               onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
@@ -472,28 +498,10 @@ export function WorkbenchSettingsLine({
               ))}
             </select>
           </div>
+          <p className="col-span-full text-[10px] leading-relaxed text-stone-600">
+            Baza lodowa bez toppingu
+          </p>
         </div>
-      </div>
-
-      <div className="mt-2 flex items-center gap-2 2xl:mt-1">
-        {!confirmed || hardConflict ? (
-          <button
-            type="button"
-            disabled={hardConflict}
-            onClick={() => confirmSettings(signature, store.draftContextSeq)}
-            data-testid="profile-settings-confirm"
-            className="pro-focus-ring h-11 flex-1 rounded-[14px] bg-ink px-3 text-sm font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35 lg:h-9 lg:rounded-[12px] lg:text-xs"
-          >
-            Potwierdź ustawienia
-          </button>
-        ) : (
-          <span
-            className="flex-1 text-xs text-status-ideal"
-            data-testid="profile-settings-confirmed"
-          >
-            ✓ Ustawienia sprawdzone
-          </span>
-        )}
       </div>
       <NewRecipeConfirmationDialog
         open={pendingStarterChange !== null}

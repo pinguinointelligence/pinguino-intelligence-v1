@@ -222,7 +222,13 @@ export function MonitorPanelContent({
           result={frozenResult}
           previewResult={previewProjection?.result}
           onOpenProfile={onOpenProfile}
-        />
+        >
+          <ProfessionalMonitorModules
+            modules={modules}
+            previewModules={previewProjection?.modules}
+            embedded
+          />
+        </MonitorLiveSummary>
       ) : (
         <LockedPIPreview />
       )}
@@ -235,10 +241,6 @@ export function MonitorPanelContent({
         >
           {fallbackNotes.join(' ')}
         </div>
-      ) : null}
-
-      {technicalViewAllowed ? (
-        <ProfessionalMonitorModules modules={modules} previewModules={previewProjection?.modules} />
       ) : null}
 
       {technicalViewAllowed && !legacyInspection && correctionView.proposals.length > 0 ? (

@@ -204,6 +204,7 @@ export function IngredientBuilder({
         lineId,
         percent,
         draft.excludedIngredientIds,
+        productBehaviorSnapshots,
       );
       if (next.ok) {
         setPlannedGramsVector(next.gramsByLineId);

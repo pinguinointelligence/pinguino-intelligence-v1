@@ -229,9 +229,12 @@ describe('Mapper-only product catalog', () => {
 
   it('K/L resolves Base and Topping only from the fresh server Mapper row', async () => {
     for (const context of ['BASE', 'TOPPING'] as const) {
-      const load = vi.fn(async () => row());
+      // The sanctioned view deliberately filters `is_active` but does not
+      // project that administrative column into its read model.
+      const currentViewRow = { ...row(), is_active: undefined } as unknown as IngredientRow;
+      const load = vi.fn(async () => currentViewRow);
       const outcome = await resolveCurrentMapperCatalogSelection(hit(), context, load);
-      expect(outcome).toEqual({ ok: true, mapperId: 'PI-ING-000001', row: row() });
+      expect(outcome).toEqual({ ok: true, mapperId: 'PI-ING-000001', row: currentViewRow });
       expect(load).toHaveBeenCalledWith('PI-ING-000001');
     }
   });
@@ -259,11 +262,23 @@ describe('Mapper-only picker source and UI contract', () => {
     expect(hook).not.toMatch(/localStorage|indexedDB/i);
   });
 
-  it('I removes manual-product creation from both active picker scopes', () => {
+  it('I keeps the picker Mapper-only while restoring the modern add-product CTA', () => {
     const picker = read('src/features/ingredient-builder/ProductPickerPopover.tsx');
-    expect(picker).not.toContain('Dodaj własny składnik ręcznie');
-    expect(picker).not.toContain('to="/products/scan"');
+    expect(picker).toContain('Nie znalazłeś produktu?');
+    expect(picker).toContain('Dodaj produkt');
+    expect(picker).toContain('to="/products/scan"');
+    expect(picker).not.toContain('Katalog zawiera wyłącznie aktualne produkty Mappera.');
     expect(picker).toContain('mapperOnly: true');
+  });
+
+  it('pins the sanctioned selection view as the current/active authority', () => {
+    const migration = read('supabase/migrations/20260814110000_product_search_v1.sql');
+    const view = migration.slice(
+      migration.indexOf('create or replace view public.mapper_basement_search'),
+      migration.indexOf('revoke all on public.mapper_basement_search'),
+    );
+    expect(view).toContain('where is_active and approved_for_base');
+    expect(view).not.toMatch(/^\s*is_active\s*,?$/m);
   });
 
   it('detaches owner products from the active Pro ingredient library', () => {

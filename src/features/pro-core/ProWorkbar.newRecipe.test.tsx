@@ -46,6 +46,10 @@ vi.mock('@/features/pro-workbench/WorkbenchActionBar', () => ({
 vi.mock('@/features/design-review/ReviewBadge', () => ({
   ReviewDecisionLabel: () => null,
 }));
+vi.mock('@/features/constraint-studio/constraintStudioStore', () => ({
+  useConstraintStudioStore: (selector: (state: { history: unknown[] }) => unknown) =>
+    selector({ history: [] }),
+}));
 vi.mock('@/pages/destinations/startNewProRecipe', () => ({
   hasUnsavedProRecipeChanges: mocks.hasUnsaved,
   startNewProRecipe: mocks.start,

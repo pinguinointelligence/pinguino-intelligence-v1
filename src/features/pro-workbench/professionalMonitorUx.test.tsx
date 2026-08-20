@@ -143,9 +143,31 @@ describe('professional Monitor — final owner-approved information architecture
     expect(text).toContain('POD');
     expect(text).toContain('NPAC');
     expect(text).toContain('PAC');
+    expect(text).not.toContain('LÓD');
     expect(html).not.toContain('data-testid="user-monitor-module-expert"');
     expect(text).not.toContain('Tryb Expert');
     expect(text).not.toContain('Przypnij');
+  });
+
+  it('renders all seven rows inside one continuous Monitor block', () => {
+    const html = renderMonitor();
+    expect(html.match(/data-testid="monitor-unified-block"/g)).toHaveLength(1);
+    const unifiedAt = html.indexOf('data-testid="monitor-unified-block"');
+    expect(unifiedAt).toBeGreaterThan(-1);
+    for (const id of [
+      'sweetness',
+      'hardness',
+      'freezing',
+      'water-solids',
+      'fat',
+      'protein',
+      'stability',
+    ]) {
+      expect(html.indexOf(`data-testid="monitor-module-${id}"`)).toBeGreaterThan(unifiedAt);
+    }
+    const panel = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
+    expect(panel).toContain('<ProfessionalMonitorModules');
+    expect(panel).toContain('embedded');
   });
 
   it('keeps canonical detail metrics behind independently expandable cards and hides numeric ranges', () => {

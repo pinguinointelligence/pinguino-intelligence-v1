@@ -105,9 +105,6 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
         </span>
       ) : undoAvailable ? (
         <span className="flex min-w-0 items-center gap-2" data-testid="workbench-action-applied">
-          <span className="hidden min-w-0 truncate text-xs text-status-ideal xl:inline">
-            {r.applied}
-          </span>
           <button
             type="button"
             onClick={() => useConstraintStudioStore.getState().undoLastApply()}

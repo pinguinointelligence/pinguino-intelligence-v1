@@ -10,6 +10,7 @@ const EPSILON = 1e-7;
 export type MainEnvelopeViolationCode =
   | 'product_behavior_missing'
   | 'product_behavior_identity_mismatch'
+  | 'product_dosage_violation'
   | 'main_behavior_missing'
   | 'main_behavior_blocked'
   | 'main_policy_inconsistent'
