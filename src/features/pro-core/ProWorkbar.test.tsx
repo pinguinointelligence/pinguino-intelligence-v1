@@ -73,9 +73,9 @@ vi.mock('@/features/constraint-studio/constraintStudioStore', () => ({
 const { ProWorkbar } = await import('./ProWorkbar');
 const w = copy.proWorkbar;
 
-const render = (state: Partial<MockRecipeState>) => {
+const render = (state: Partial<MockRecipeState>, variant: 'bar' | 'panel' = 'bar') => {
   mockState = { ...mockState, ...state };
-  return renderToStaticMarkup(<ProWorkbar />);
+  return renderToStaticMarkup(<ProWorkbar variant={variant} />);
 };
 
 describe('ProWorkbar (sticky top workbar)', () => {
@@ -92,6 +92,14 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(menuAt).toBeLessThan(statusAt);
     expect(html).toContain('data-workbar-action-size="primary"');
     expect(html).toContain('data-workbar-action-size="compact"');
+  });
+
+  it('uses equal compact primary buttons and keeps status directly after the menu in the panel', () => {
+    const html = render({ savedRecipeId: null, dirty: false }, 'panel');
+    expect(html.match(/data-workbar-action-width="equal"/g)).toHaveLength(2);
+    expect(html).toContain('data-workbar-status-placement="inline-after-menu"');
+    expect(html.match(/h-9 w-\[136px\]/g)).toHaveLength(2);
+    expect(html).not.toContain('data-workbar-status-placement="inline-after-menu" class="ml-auto');
   });
 
   it('NEW recipe: inline name field + „Zapisz recepturę" beside it + „nowa, niezapisana" status', () => {

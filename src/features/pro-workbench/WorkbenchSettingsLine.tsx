@@ -271,7 +271,7 @@ export function WorkbenchSettingsLine({
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
     >
-      <div className="mb-3 flex min-h-8 items-center justify-between gap-3">
+      <div className="mb-3 flex min-h-8 items-center">
         <div className="flex min-w-0 items-center gap-2">
           <h3 className="text-sm font-semibold text-ink">Ustawienia</h3>
           <span
@@ -294,26 +294,6 @@ export function WorkbenchSettingsLine({
                 ? '✓ Potwierdzone'
                 : 'Zmiany niepotwierdzone'}
           </span>
-        </div>
-        <div className="shrink-0" data-testid="settings-header-status">
-          {!confirmed || hardConflict ? (
-            <button
-              type="button"
-              disabled={hardConflict}
-              onClick={() => confirmSettings(signature, store.draftContextSeq)}
-              data-testid="profile-settings-confirm"
-              className="pro-focus-ring min-h-8 rounded-[10px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35"
-            >
-              Potwierdź ustawienia
-            </button>
-          ) : (
-            <span
-              className="inline-flex min-h-8 items-center rounded-[10px] border border-status-ideal/40 bg-status-ideal/[0.04] px-3 text-xs font-semibold text-status-ideal"
-              data-testid="profile-settings-confirmed"
-            >
-              ✓ Ustawienia sprawdzone
-            </span>
-          )}
         </div>
       </div>
 
@@ -368,21 +348,34 @@ export function WorkbenchSettingsLine({
         </div>
 
         <div
-          className="rounded-[12px] border border-ink/8 bg-stone-50/70 p-1.5"
-          data-settings-cell="strategy"
+          className={cn('flex min-w-0 items-stretch', !compact && 'ml-[7.3rem]')}
+          data-testid="settings-grid-status"
+          data-settings-cell="confirmation"
         >
-          <LabeledSelect
-            label="Tryb"
-            value={store.formulation_strategy}
-            options={FORMULATION_STRATEGIES}
-            labelOf={(strategy) => STRATEGY_COPY[strategy].label}
-            onChange={changeStrategy}
-            testid="workbench-strategy"
-            stacked={compact}
-          />
-          <p className="mt-1 px-1 text-[10px] leading-relaxed text-stone-600">
-            {STRATEGY_COPY[store.formulation_strategy].description}
-          </p>
+          {!confirmed || hardConflict ? (
+            <button
+              type="button"
+              disabled={hardConflict}
+              onClick={() => confirmSettings(signature, store.draftContextSeq)}
+              data-testid="profile-settings-confirm"
+              className={cn(
+                'pro-focus-ring w-full rounded-[10px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35',
+                compact ? 'h-[52px] lg:h-10 2xl:h-[43px]' : 'min-h-11',
+              )}
+            >
+              Potwierdź ustawienia
+            </button>
+          ) : (
+            <span
+              className={cn(
+                'inline-flex w-full items-center justify-center rounded-[10px] border border-status-ideal/40 bg-status-ideal/[0.04] px-3 text-xs font-semibold text-status-ideal',
+                compact ? 'h-[52px] lg:h-10 2xl:h-[43px]' : 'min-h-11',
+              )}
+              data-testid="profile-settings-confirmed"
+            >
+              ✓ Ustawienia sprawdzone
+            </span>
+          )}
         </div>
 
         <div data-settings-cell="machine">
@@ -500,6 +493,24 @@ export function WorkbenchSettingsLine({
           </div>
           <p className="col-span-full text-[10px] leading-relaxed text-stone-600">
             Baza lodowa bez toppingu
+          </p>
+        </div>
+
+        <div
+          className="rounded-[12px] border border-ink/8 bg-stone-50/70 p-1.5"
+          data-settings-cell="strategy"
+        >
+          <LabeledSelect
+            label="Tryb"
+            value={store.formulation_strategy}
+            options={FORMULATION_STRATEGIES}
+            labelOf={(strategy) => STRATEGY_COPY[strategy].label}
+            onChange={changeStrategy}
+            testid="workbench-strategy"
+            stacked={compact}
+          />
+          <p className="mt-1 px-1 text-[10px] leading-relaxed text-stone-600">
+            {STRATEGY_COPY[store.formulation_strategy].description}
           </p>
         </div>
       </div>

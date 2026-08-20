@@ -123,15 +123,17 @@ describe('profile hierarchy and compact preflight', () => {
   it('keeps canonical field order and removes legacy advanced settings', () => {
     const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     const productAt = card.indexOf('workbench-product-type');
-    const strategyAt = card.indexOf('workbench-strategy');
+    const confirmationAt = card.indexOf('data-settings-cell="confirmation"');
     const machineAt = card.indexOf('workbench-machine');
     const conditionalAt = card.indexOf('machine-conditional-settings');
     const batchAt = card.indexOf('workbench-batch');
+    const strategyAt = card.indexOf('workbench-strategy');
     expect(productAt).toBeGreaterThan(-1);
-    expect(strategyAt).toBeGreaterThan(productAt);
-    expect(machineAt).toBeGreaterThan(strategyAt);
+    expect(confirmationAt).toBeGreaterThan(productAt);
+    expect(machineAt).toBeGreaterThan(confirmationAt);
     expect(conditionalAt).toBeGreaterThan(machineAt);
     expect(batchAt).toBeGreaterThan(conditionalAt);
+    expect(strategyAt).toBeGreaterThan(batchAt);
     expect(card).not.toContain('workbench-quality');
     expect(card).not.toContain('Więcej ustawień');
     expect(card).not.toContain('setCostPriority');
@@ -146,9 +148,13 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card).toContain('data-testid="home-machine-capacity"');
     expect(card).toContain('Pojemność jednego cyklu');
     expect(card).toContain('data-testid="profile-batch-combined"');
-    expect(card).toContain('data-testid="settings-header-status"');
-    expect(card.indexOf('data-testid="settings-header-status"')).toBeLessThan(
-      card.indexOf('data-settings-cell="product-type"'),
+    expect(card).toContain('data-testid="settings-grid-status"');
+    expect(card).not.toContain('data-testid="settings-header-status"');
+    expect(card.indexOf('data-settings-cell="product-type"')).toBeLessThan(
+      card.indexOf('data-settings-cell="confirmation"'),
+    );
+    expect(card.indexOf('data-settings-cell="confirmation"')).toBeLessThan(
+      card.indexOf('data-settings-cell="machine"'),
     );
     expect(card).toContain('Baza lodowa bez toppingu');
     expect(card).not.toContain('BAZA LODOWA BEZ TOPPINGU');

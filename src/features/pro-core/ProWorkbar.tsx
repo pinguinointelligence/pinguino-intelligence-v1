@@ -125,8 +125,10 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
       >
         <div
           className={cn(
-            'flex min-w-0 flex-wrap items-center gap-2 px-0.5',
-            variant === 'panel' ? 'order-2 justify-start' : 'justify-end xl:flex-nowrap',
+            'flex min-w-0 flex-wrap items-center px-0.5',
+            variant === 'panel'
+              ? 'order-2 justify-start gap-2.5 sm:flex-nowrap'
+              : 'justify-end gap-2 xl:flex-nowrap',
           )}
         >
           <button
@@ -134,7 +136,11 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
             onClick={requestNewDraft}
             data-testid="pro-workbar-new-recipe"
             data-workbar-action-size="primary"
-            className="h-11 shrink-0 rounded-[14px] border border-ink/15 bg-white px-3 text-xs font-semibold text-ink shadow-pro-e0 transition-colors hover:border-ink/35 hover:bg-stone-50"
+            data-workbar-action-width={variant === 'panel' ? 'equal' : 'content'}
+            className={cn(
+              'shrink-0 rounded-[14px] border border-ink/15 bg-white px-3 text-xs font-semibold text-ink shadow-pro-e0 transition-colors hover:border-ink/35 hover:bg-stone-50',
+              variant === 'panel' ? 'h-9 w-[136px]' : 'h-11',
+            )}
           >
             + Nowa receptura
           </button>
@@ -144,7 +150,11 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
             disabled={save.busy || save.blocked !== null || save.practicalBlocked}
             data-testid="pro-workbar-save"
             data-workbar-action-size="primary"
-            className="h-11 shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45"
+            data-workbar-action-width={variant === 'panel' ? 'equal' : 'content'}
+            className={cn(
+              'shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45',
+              variant === 'panel' ? 'h-9 w-[136px]' : 'h-11',
+            )}
           >
             {save.busy
               ? w.status.saving
@@ -181,7 +191,10 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
           </details>
           <span
             className={cn(
-              'ml-auto min-w-[7rem] flex-1 truncate text-right text-xs xl:max-w-48',
+              'min-w-0 truncate text-xs',
+              variant === 'panel'
+                ? 'max-w-[13rem] flex-none text-left'
+                : 'ml-auto min-w-[7rem] flex-1 text-right xl:max-w-48',
               statusKey === 'error'
                 ? 'text-status-error'
                 : statusKey === 'dirty' || statusKey === 'newUnsaved'
@@ -189,6 +202,9 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
                   : 'text-stone-500',
             )}
             data-testid="pro-workbar-status"
+            data-workbar-status-placement={
+              variant === 'panel' ? 'inline-after-menu' : 'right-aligned'
+            }
           >
             <span aria-hidden>● </span>
             {w.status[statusKey]}
@@ -208,7 +224,10 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
                 if (nameError) setNameError(null);
               }}
               data-testid="pro-workbar-name"
-              className="h-11 w-full min-w-0 rounded-[14px] border border-ink/15 bg-white px-3 text-sm font-semibold text-ink shadow-pro-e0 placeholder:text-stone-600 focus:border-ink/45 focus:outline-none"
+              className={cn(
+                'w-full min-w-0 rounded-[14px] border border-ink/15 bg-white px-3 text-sm font-semibold text-ink shadow-pro-e0 placeholder:text-stone-600 focus:border-ink/45 focus:outline-none',
+                variant === 'panel' ? 'h-10' : 'h-11',
+              )}
             />
           </label>
           <span
