@@ -118,8 +118,11 @@ export function MonitorPanelContent({
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
   const behaviorAuthority = useMemo(
     () =>
-      buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots: behaviorSnapshots }),
-    [behaviorSnapshots, input.items, toppings],
+      // The professional Monitor is the technical view of the Base. A
+      // post-production topping has its own label/cost authority below, but
+      // must never invalidate or recalculate the frozen Base result.
+      buildRecipeBehaviorAuthority({ items: input.items, snapshots: behaviorSnapshots }),
+    [behaviorSnapshots, input.items],
   );
   const monitorGate = useMemo(
     () => recipeBehaviorModuleGate(behaviorAuthority, 'MONITOR'),
@@ -159,7 +162,6 @@ export function MonitorPanelContent({
       substitutionAuthorization?.proposalProductBehaviorSnapshots ?? behaviorSnapshots;
     const previewAuthority = buildRecipeBehaviorAuthority({
       items: preview.proposedInput.items,
-      toppings,
       snapshots: previewSnapshots,
     });
     const frozenPreviewInput = recipeInputFromFrozenBehavior(
@@ -176,7 +178,7 @@ export function MonitorPanelContent({
         frozenPreviewInput,
       ),
     };
-  }, [behaviorSnapshots, legacyInspection, preview, substitutionAuthorization, toppings]);
+  }, [behaviorSnapshots, legacyInspection, preview, substitutionAuthorization]);
   // A genuinely legacy version remains inspectable, with an explicit warning,
   // until it is reconstructed into a new version. A partial/stale modern
   // authority must never silently fall back to independently interpreted facts.

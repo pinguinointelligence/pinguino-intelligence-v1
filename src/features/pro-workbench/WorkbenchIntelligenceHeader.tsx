@@ -25,7 +25,6 @@ export function WorkbenchIntelligenceHeader({
   variant?: 'panel' | 'global' | 'dock';
 }) {
   const match = monitorScoreView(result, input).match;
-  const toppings = useRecipeStore((state) => state.toppings);
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
   const preview = useConstraintStudioStore((state) => state.preview);
@@ -34,8 +33,10 @@ export function WorkbenchIntelligenceHeader({
   const appliedHistoryCount = useConstraintStudioStore((state) => state.history.length);
   const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
   const authority = useMemo(
-    () => buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots }),
-    [input.items, snapshots, toppings],
+    // Score currentness belongs to the technical Base. Post-production
+    // toppings change final mass/cost only and cannot stale this authority.
+    () => buildRecipeBehaviorAuthority({ items: input.items, snapshots }),
+    [input.items, snapshots],
   );
   const monitorGate = useMemo(() => recipeBehaviorModuleGate(authority, 'MONITOR'), [authority]);
   const legacyInspection = recipeBehaviorLegacyInspection(authority, savedRecipeId);

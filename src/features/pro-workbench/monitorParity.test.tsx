@@ -173,6 +173,63 @@ describe('professional Monitor acceptance contract', () => {
     expect(reconstructedHtml).not.toContain('data-testid="monitor-correction-summary"');
   });
 
+  it('keeps the technical Base Monitor current when a topping has no Base snapshot', () => {
+    const input = starterMilkBase();
+    renderPanel(input);
+    const ingredient: CatalogLabelToppingIngredient = {
+      kind: 'catalog_label_topping',
+      id: 'catalog:post-process-only',
+      canonical_ingredient_id: 'catalog:post-process-only',
+      private_product_id: 'catalog:post-process-only:v1',
+      name: 'Post-process only',
+      catalog_product_id: 'post-process-only',
+      catalog_version_id: 'v1',
+      verification_status: 'verified',
+      label_nutrition_per_100g: {
+        basis: 'per_100g',
+        energyKcal: 120,
+        fat: 0,
+        saturatedFat: null,
+        carbohydrate: 30,
+        sugars: 28,
+        protein: 0,
+        salt: 0,
+        fibre: null,
+      },
+      ingredients_text: 'Owoce, cukier',
+      allergens_text: '',
+      cost_per_kg: 12,
+      cost_currency: 'EUR',
+    };
+    mockRecipeState = {
+      ...mockRecipeState,
+      toppings: [
+        {
+          id: 'topping-without-base-snapshot',
+          ingredient,
+          planned_grams: 25,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON' as const,
+          addon_sort_order: 0,
+        },
+      ],
+    };
+
+    const panel = renderToStaticMarkup(
+      <MonitorPanelContent
+        result={calculateRecipe(input)}
+        servingTemperatureC={input.target_temperature_c}
+        corrections={proposeCorrections({ input, context: recipeContext(input), redact: false })}
+        input={input}
+      />,
+    );
+
+    expect(panel).not.toContain('data-testid="monitor-behavior-revalidation"');
+    expect(panel).toContain('data-testid="monitor-module-freezing"');
+    expect(visibleText(panel)).toContain('1 pozycja · 25 g');
+    expect(visibleText(panel)).toContain('Nie wpływają na bilans bazy.');
+  });
+
   it('renders analysis-only Direction evidence and no duplicate score or Profile controls', () => {
     expect(html).not.toContain('data-testid="monitor-summary-score"');
     expect(html).toContain('data-testid="monitor-direction-evidence"');
