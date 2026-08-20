@@ -6,9 +6,9 @@ import { starterMilkBase } from './constraintFixtures';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
   assessGelatoStabilizerSystem,
-  capGelatoStabilizerSystemAtWholeGramMaximum,
   GELATO_STABILIZER_SYSTEM_POLICY,
   gelatoStabilizerWholeGramBand,
+  projectGelatoStabilizerSystemToWholeGramPreferred,
 } from './gelatoStabilizerSystemAuthority';
 
 const line = (id: string, grams: number) => ({
@@ -62,10 +62,15 @@ describe('owner-approved Gelato aggregate stabilizer-system authority', () => {
     expect(assessGelatoStabilizerSystem(recipe(1_000, [grams])).issues).toEqual([]);
   });
 
-  it('caps generated Gelato vectors inward without erasing smaller gum components', () => {
-    const capped = capGelatoStabilizerSystemAtWholeGramMaximum(recipe(1_000, [1, 1, 5]));
-    expect(capped.map((item) => item.planned_grams)).toEqual([1, 1, 3]);
-    expect(capped.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(5);
+  it('projects an existing generated system to the preferred whole-gram total', () => {
+    const projected = projectGelatoStabilizerSystemToWholeGramPreferred(
+      recipe(1_000, [1, 1, 5]),
+    );
+    expect(projected.map((item) => item.planned_grams)).toEqual([1, 1, 1]);
+    expect(projected.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(3);
+
+    const raised = projectGelatoStabilizerSystemToWholeGramPreferred(recipe(1_000, [1.9]));
+    expect(raised.map((item) => item.planned_grams)).toEqual([3]);
   });
 
   it('accepts individual 1 g gums in a legal blend and rejects total 6 g', () => {

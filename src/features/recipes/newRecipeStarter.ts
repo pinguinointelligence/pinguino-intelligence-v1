@@ -12,7 +12,10 @@ import {
   selectFormulationTemplate,
   type FormulationTemplate,
 } from '@/features/formulation/templateRegistry';
-import type { FunctionalRole } from '@/features/formulation/ingredientRoles';
+import {
+  resolveFunctionalRole,
+  type FunctionalRole,
+} from '@/features/formulation/ingredientRoles';
 import {
   approvedStabilizerDosage,
   stabilizerDosageWindowGrams,
@@ -24,7 +27,7 @@ import {
   type CustomerPriceIndex,
 } from '@/features/pro-core/effectiveRecipePricing';
 import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
-import { capGelatoStabilizerSystemAtWholeGramMaximum } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
+import { projectGelatoStabilizerSystemToWholeGramPreferred } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
 import { recipeTechnicalFit } from '@/features/recipe-score/technicalFit';
 import type { VisibleProductType } from '@/features/studio/productType';
 
@@ -243,9 +246,38 @@ const practicalizeStarter = (
       };
     }),
   };
+  const preferredStabilizerItems =
+    projectGelatoStabilizerSystemToWholeGramPreferred(productDosageSeed);
+  const massBeforePreference = productDosageSeed.items.reduce(
+    (sum, item) => sum + item.planned_grams,
+    0,
+  );
+  const massAfterPreference = preferredStabilizerItems.reduce(
+    (sum, item) => sum + item.planned_grams,
+    0,
+  );
+  const preferenceMassTransfer = massBeforePreference - massAfterPreference;
+  const carrierIndex = preferredStabilizerItems.findIndex(
+    (item) => resolveFunctionalRole(item.ingredient) === 'primary_liquid',
+  );
+  // A starter policy change reallocates mass; it must not silently shrink or
+  // grow the requested batch. Keep the exact pre-policy mass by transferring
+  // the difference to the existing primary liquid, then let the shared
+  // practicalizer and Engine revalidate the complete vector.
+  if (
+    Math.abs(preferenceMassTransfer) > 1e-9 &&
+    carrierIndex >= 0 &&
+    preferredStabilizerItems[carrierIndex]!.planned_grams + preferenceMassTransfer >= 0
+  ) {
+    const carrier = preferredStabilizerItems[carrierIndex]!;
+    preferredStabilizerItems[carrierIndex] = {
+      ...carrier,
+      planned_grams: carrier.planned_grams + preferenceMassTransfer,
+    };
+  }
   const executableSeed: RecipeInput = {
     ...productDosageSeed,
-    items: capGelatoStabilizerSystemAtWholeGramMaximum(productDosageSeed),
+    items: preferredStabilizerItems,
   };
   const practical = practicalizeRecipeCandidate(executableSeed, { byLineId: {} });
   if (!practical.ok) {
