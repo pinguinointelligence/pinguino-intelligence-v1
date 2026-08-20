@@ -5214,6 +5214,8 @@ function evaluateRecipeConstraintAuthority(input) {
 	});
 	const requiredLineIds = productBehaviorRequiredLineIds({ items: recipe.items });
 	if (requireProductBehavior && requiredLineIds.length > 0) {
+		const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
+		const sensoryMainLineIds = new Set(recipe.items.filter((item) => item.lock_type === "main" && !technicalOnlyMainLineIds.has(item.id)).map((item) => item.id));
 		const behavior = productBehaviorModuleGate(snapshots, input.module ?? (normalizeFormulationStrategy(recipe.goals?.formulation_strategy ?? recipe.mode) === "eco" ? "ECO" : "OPTIMAL"), requiredLineIds);
 		if (!behavior.ready) issues.push({
 			source: "product_behavior",
@@ -5222,6 +5224,7 @@ function evaluateRecipeConstraintAuthority(input) {
 			messagePl: behavior.reason ?? "Brak aktualnego ProductBehavior dla receptury."
 		});
 		for (const lineId of requiredLineIds) {
+			if (!sensoryMainLineIds.has(lineId)) continue;
 			const snapshot = snapshots[lineId];
 			if (!snapshot || snapshot.resolutionState !== "RESOLVED") continue;
 			const eligible = snapshot.sharedFacts?.profileEligibility;

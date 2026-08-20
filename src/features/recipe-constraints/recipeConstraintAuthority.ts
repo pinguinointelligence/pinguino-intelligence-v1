@@ -129,6 +129,14 @@ export function evaluateRecipeConstraintAuthority(
 
   const requiredLineIds = productBehaviorRequiredLineIds({ items: recipe.items });
   if (requireProductBehavior && requiredLineIds.length > 0) {
+    const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
+    const sensoryMainLineIds = new Set(
+      recipe.items
+        .filter(
+          (item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id),
+        )
+        .map((item) => item.id),
+    );
     const module = input.module ??
       (normalizeFormulationStrategy(recipe.goals?.formulation_strategy ?? recipe.mode) === 'eco'
         ? 'ECO'
@@ -143,6 +151,11 @@ export function evaluateRecipeConstraintAuthority(
       });
     }
     for (const lineId of requiredLineIds) {
+      // profileEligibility is derived from published sensory Main policies.
+      // Standard/structural products legitimately have an empty list, so it
+      // is not a recipe-wide ingredient allow-list. Vegan/Protein ingredient
+      // eligibility remains owned by their canonical profile authorities.
+      if (!sensoryMainLineIds.has(lineId)) continue;
       const snapshot = snapshots[lineId];
       if (!snapshot || snapshot.resolutionState !== 'RESOLVED') continue;
       const eligible = snapshot.sharedFacts?.profileEligibility;

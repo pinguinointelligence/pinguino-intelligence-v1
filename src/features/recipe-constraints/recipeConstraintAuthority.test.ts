@@ -46,7 +46,13 @@ describe('canonical exact-candidate constraint authority', () => {
   });
 
   it('rejects frozen profile evidence that does not include the selected profile', () => {
-    const recipe = starterMilkBase();
+    const starter = starterMilkBase();
+    const recipe = {
+      ...starter,
+      items: starter.items.map((item, index) =>
+        index === 0 ? { ...item, lock_type: 'main' as const } : item,
+      ),
+    };
     const snapshots = productBehaviorTestSnapshots(recipe);
     const lineId = recipe.items[0]!.id;
     snapshots[lineId] = {
@@ -61,5 +67,21 @@ describe('canonical exact-candidate constraint authority', () => {
         expect.objectContaining({ source: 'profile', code: 'profile_not_eligible' }),
       ]),
     );
+  });
+
+  it('does not treat sensory Main policy coverage as a profile allow-list for standard lines', () => {
+    const recipe = starterMilkBase();
+    const snapshots = productBehaviorTestSnapshots(recipe);
+    for (const lineId of Object.keys(snapshots)) {
+      snapshots[lineId] = {
+        ...snapshots[lineId]!,
+        sharedFacts: {
+          ...snapshots[lineId]!.sharedFacts!,
+          profileEligibility: [],
+        },
+      };
+    }
+
+    expect(evaluateRecipeConstraintAuthority({ recipe, snapshots }).valid).toBe(true);
   });
 });
