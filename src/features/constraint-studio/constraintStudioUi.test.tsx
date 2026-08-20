@@ -309,6 +309,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
       beforeGrams: 55,
       requiredGrams: 10,
       boundary: 'maximum',
+      reason: 'product_dosage',
     };
     const rendered = render(
       <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
@@ -317,6 +318,26 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(rendered).toContain('Blokada przekracza bezpieczną dawkę');
     expect(rendered).toContain('55 g');
     expect(rendered).toContain('10 g');
+    expect(rendered).toContain('Nic nie zmieni się bez Apply');
+  });
+
+  it('discloses an Engine-verified hard-constraint lock transition without calling it dosage', () => {
+    const preview = syntheticPreview();
+    preview.safetyLockConflict = {
+      lineId: 'watermelon',
+      ingredientName: 'Watermelon',
+      beforeGrams: 600,
+      requiredGrams: 368,
+      boundary: 'maximum',
+      reason: 'constraint_feasibility',
+    };
+    const rendered = render(
+      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+    );
+    expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
+    expect(rendered).toContain('Blokada wymusza twardo nieprawidłową recepturę');
+    expect(rendered).toContain('kanoniczne reguły i Engine');
+    expect(rendered).not.toContain('przekracza bezpieczną dawkę');
     expect(rendered).toContain('Nic nie zmieni się bez Apply');
   });
 

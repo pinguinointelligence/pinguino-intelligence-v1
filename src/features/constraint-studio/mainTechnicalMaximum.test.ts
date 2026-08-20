@@ -11,6 +11,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from './constraintStudioStore';
 import {
   buildOptimizePreview,
+  buildSuggestedFixPreview,
   commitPreview,
   MAIN_TECHNICAL_PROBE_BUDGET,
   workingStateFingerprint,
@@ -608,6 +609,79 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       expect(
         [...result.hardViolatedMetrics, ...result.residualViolatedMetrics].length,
       ).toBeGreaterThan(0);
+    }
+  });
+
+  it('stages and explicitly applies the Engine-verified correction for a hard-invalid Main lock', () => {
+    const priorRecipe = useRecipeStore.getState();
+    const priorStudio = useConstraintStudioStore.getState();
+    try {
+      const input = watermelonFixture(600, 'optimal');
+      const snapshots = snapshotsWithApprovedEnvelope(input);
+      useRecipeStore.getState().loadRecipeInput(input);
+      useRecipeStore.setState({
+        productBehaviorSnapshots: structuredClone(snapshots),
+        ownerReviewGate: {
+          status: 'OWNER_REVIEW_EDITABLE',
+          productionStatus: 'PRODUCTION_BLOCKED',
+          labelStatus: 'LABEL_BLOCKED',
+          omittedToppingLineIds: [],
+          technicalOnlyMainLineIds: [],
+        },
+      });
+      useConstraintStudioStore.getState().resetForTests();
+      useConstraintStudioStore.getState().toggleLock('watermelon');
+
+      const constraints = useConstraintStudioStore.getState().constraints;
+      const impossible = buildOptimizePreview(input, constraints, '2026-08-16T12:00:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+        technicalOnlyMainLineIds: [],
+      });
+      expect(impossible).toMatchObject({ ok: false, code: 'impossible_under_constraints' });
+      if (impossible.ok || impossible.code !== 'impossible_under_constraints') return;
+      expect(impossible.nearestFeasibleGrams).not.toBeNull();
+      const recovered = buildSuggestedFixPreview(
+        input,
+        constraints,
+        {
+          type: 'set_max',
+          lineId: 'watermelon',
+          grams: impossible.nearestFeasibleGrams!,
+        },
+        '2026-08-16T12:00:00.000Z',
+      );
+      expect(recovered.ok, JSON.stringify(recovered)).toBe(true);
+      if (!recovered.ok) return;
+      const proposalSnapshots = snapshotsWithApprovedEnvelope(recovered.preview.proposedInput);
+
+      useConstraintStudioStore.getState().createOptimizePreview(proposalSnapshots);
+      const staged = useConstraintStudioStore.getState();
+      expect(staged.previewIssue).toBeNull();
+      expect(staged.recalculationTerminal).toEqual({ state: 'PREVIEW_READY' });
+      expect(staged.preview?.kind).toBe('suggested_fix');
+      expect(staged.preview?.safetyLockConflict).toMatchObject({
+        lineId: 'watermelon',
+        beforeGrams: 600,
+        boundary: 'maximum',
+        reason: 'constraint_feasibility',
+      });
+      const requiredGrams = staged.preview!.safetyLockConflict!.requiredGrams;
+      expect(requiredGrams).toBeGreaterThan(0);
+      expect(requiredGrams).toBeLessThan(600);
+
+      useConstraintStudioStore.getState().applyPreview();
+      expect(useConstraintStudioStore.getState().blocked).toBeNull();
+      expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+      expect(
+        useRecipeStore.getState().items.find((item) => item.id === 'watermelon')?.planned_grams,
+      ).toBe(requiredGrams);
+      expect(useConstraintStudioStore.getState().constraints.byLineId.watermelon).toEqual({
+        mode: 'locked',
+        grams: requiredGrams,
+      });
+    } finally {
+      useRecipeStore.setState(priorRecipe, true);
+      useConstraintStudioStore.setState(priorStudio, true);
     }
   });
 

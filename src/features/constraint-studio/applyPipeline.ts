@@ -514,15 +514,16 @@ export interface ResidualMetricDiagnostic {
 export interface ConstraintPreview {
   kind: PreviewKind;
   titlePl: string;
-  /** A current user lock fixes a dosage-controlled product outside its exact
-   * server-approved range. The only legal transition is this disclosed,
-   * separately authorized Suggested Fix Preview. */
+  /** A current user lock fixes a value outside an authoritative hard boundary.
+   * The only legal transition is this disclosed, separately authorized
+   * Suggested Fix Preview. */
   safetyLockConflict?: {
     lineId: string;
     ingredientName: string;
     beforeGrams: number;
     requiredGrams: number;
     boundary: 'minimum' | 'maximum';
+    reason: 'product_dosage' | 'constraint_feasibility';
   };
   /** Exact identity swap; the Apply door re-derives every field. */
   substitution?: SubstitutionPreviewProof;
