@@ -297,7 +297,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(directedHtml).toContain('Mleko B');
     expect(directedHtml).toContain('data-testid="preview-direction-reason"');
     expect(directedHtml).toContain('mniej słodkie');
-    expect(directedHtml).toContain('miększe');
+    expect(directedHtml).toContain('twardsze');
     expect(directedHtml).not.toContain('targetBand');
   });
 

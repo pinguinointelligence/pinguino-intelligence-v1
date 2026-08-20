@@ -28,7 +28,9 @@ function directionSummary(preview: ConstraintPreview): string | null {
   if (!targets) return null;
   const labels = [
     targets.sweetness < 0 ? 'mniej słodkie' : targets.sweetness > 0 ? 'bardziej słodkie' : null,
-    targets.softness < 0 ? 'twardsze' : targets.softness > 0 ? 'miększe' : null,
+    // Historical field name; the sign follows the visible Twardość control:
+    // negative = softer, positive = firmer.
+    targets.softness < 0 ? 'miększe' : targets.softness > 0 ? 'twardsze' : null,
   ].filter((label): label is string => label !== null);
   return labels.length > 0 ? labels.join(' · ') : 'środek wybranego profilu';
 }
