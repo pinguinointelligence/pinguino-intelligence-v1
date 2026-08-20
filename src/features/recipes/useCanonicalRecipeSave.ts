@@ -31,6 +31,7 @@ import {
   readPracticalRecipeAudit,
 } from '@/features/practical-recipe/practicalRecipe';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
 import {
   ingredientRowMeta,
   useIngredientTableUxStore,
@@ -262,6 +263,18 @@ export function useCanonicalRecipeSave(
     // the Pro recipe behavior snapshot map.
     if (options.buildInput !== undefined) return;
     const state = useRecipeStore.getState();
+    const localAuthority = evaluateRecipeConstraintAuthority({
+      recipe: recipeInput,
+      snapshots: state.productBehaviorSnapshots,
+      module: 'SAVE',
+      technicalOnlyMainLineIds: productComposition?.ownerReviewGate?.technicalOnlyMainLineIds,
+    });
+    if (!localAuthority.valid) {
+      throw new Error(
+        localAuthority.issues[0]?.messagePl ??
+          'Zapis zablokowany: receptura nie spełnia pełnej weryfikacji profilu.',
+      );
+    }
     const validation = await validateRecipeBehaviorOnServer({
       recipe: recipeInput,
       toppings: productComposition?.toppings ?? [],

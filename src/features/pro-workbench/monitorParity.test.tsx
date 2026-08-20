@@ -390,8 +390,10 @@ describe('Monitor layout and integration seams', () => {
     expect(header).not.toContain('recipeMatchScore(');
     expect(profile).toContain('Podgląd historyczny');
     expect(profile).not.toMatch(/PodglÄ|edycjÄ|utwÃ|produktÃ/);
-    expect(mainEnvelope).toContain('Sensory dose/envelope metadata is intentionally not an eligibility gate');
-    expect(mainEnvelope).not.toContain('wspólnego limitu');
+    expect(mainEnvelope).toContain('Product-layer Main contract');
+    expect(mainEnvelope).toContain('mainBehaviorBlockReason(snapshot)');
+    expect(mainEnvelope).toContain("code: 'main_above_optimal_ceiling'");
+    expect(mainEnvelope).toContain('Brak zatwierdzonego wspólnego limitu dla tej grupy Main.');
     expect(mainEnvelope).not.toContain('wspÃ³lnego');
   });
 

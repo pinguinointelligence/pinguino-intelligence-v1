@@ -76,11 +76,14 @@ import {
   mainBehaviorBlockReason,
   assessProductDosages,
   clampProductDosageGrams,
+  productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   type ProductDosageViolation,
   type ProductBehaviorSnapshot,
   type ProductionThermalMode,
 } from '@/features/product-intelligence';
+import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 
@@ -309,6 +312,7 @@ export interface RecipeState {
         code: 'product_dosage_violation';
         violations: ProductDosageViolation[];
       }
+    | { ok: false; code: 'recipe_constraint_invalid'; messagePl: string }
     | { ok: false; code: 'write_verification_failed' };
   /**
    * Atomically adds a Base ingredient or returns the first existing row with
@@ -842,12 +846,34 @@ export const useRecipeStore = create<RecipeState>()(
             canonicalIds: duplicateCanonicalIds,
           };
         }
-        const dosageViolations = assessProductDosages(
-          input,
-          productBehaviorSnapshots ?? get().productBehaviorSnapshots,
-        );
+        const verifiedSnapshots = productBehaviorSnapshots ?? get().productBehaviorSnapshots;
+        const dosageViolations = assessProductDosages(input, verifiedSnapshots);
         if (dosageViolations.length > 0) {
           return { ok: false, code: 'product_dosage_violation', violations: dosageViolations };
+        }
+        // Runtime Apply supplies immutable authority. Empty maps exist only at
+        // the pure Engine/store test seam; user-reachable Apply, Save and
+        // Production paths resolve snapshots before reaching this write.
+        if (Object.keys(verifiedSnapshots).length > 0) {
+          const authority = evaluateRecipeConstraintAuthority({
+            recipe: input,
+            snapshots: verifiedSnapshots,
+            module:
+              normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) ===
+              'eco'
+                ? 'ECO'
+                : 'OPTIMAL',
+            technicalOnlyMainLineIds: get().ownerReviewGate?.technicalOnlyMainLineIds,
+          });
+          if (!authority.valid) {
+            return {
+              ok: false,
+              code: 'recipe_constraint_invalid',
+              messagePl:
+                authority.issues[0]?.messagePl ??
+                'Receptura nie spełnia pełnej weryfikacji profilu.',
+            };
+          }
         }
         // Phase 6 — the door of last resort recomputes the total ITSELF.
         const hasActuals = input.items.some((item) => item.actual_grams !== null);
@@ -1340,7 +1366,21 @@ export const useRecipeStore = create<RecipeState>()(
 
       setPlannedGrams: (lineId, grams) =>
         set((state) => {
+          const line = state.items.find((item) => item.id === lineId);
+          if (!line) return {};
           const requestedGrams = Math.max(0, grams);
+          const required = productBehaviorRequiredLineIds({
+            items: [{ ...line, planned_grams: requestedGrams }],
+          });
+          if (
+            Object.keys(state.productBehaviorSnapshots).length > 0 &&
+            required.length > 0 &&
+            !productBehaviorModuleGate(
+              state.productBehaviorSnapshots,
+              'BASE_RECIPE',
+              required,
+            ).ready
+          ) return {};
           const clamped = clampProductDosageGrams(
             requestedGrams,
             state.target_batch_grams,
@@ -1390,13 +1430,26 @@ export const useRecipeStore = create<RecipeState>()(
               !Object.is(item.planned_grams, gramsByLineId[item.id]),
           );
           if (!touched) return {};
-          return {
-            items: state.items.map((item) => {
-              const grams = gramsByLineId[item.id];
-              return grams !== undefined && Number.isFinite(grams)
-                ? { ...item, planned_grams: Math.max(0, grams) }
+          const proposedItems = state.items.map((item) => {
+              const next = gramsByLineId[item.id];
+              return next !== undefined && Number.isFinite(next)
+                ? { ...item, planned_grams: Math.max(0, next) }
                 : item;
-            }),
+            });
+          const proposed = buildRecipeInput({ ...state, items: proposedItems });
+          const required = productBehaviorRequiredLineIds({ items: proposed.items });
+          if (
+            Object.keys(state.productBehaviorSnapshots).length > 0 &&
+            required.length > 0 &&
+            !productBehaviorModuleGate(
+              state.productBehaviorSnapshots,
+              'BASE_RECIPE',
+              required,
+            ).ready
+          ) return {};
+          if (assessProductDosages(proposed, state.productBehaviorSnapshots).length > 0) return {};
+          return {
+            items: proposedItems,
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };

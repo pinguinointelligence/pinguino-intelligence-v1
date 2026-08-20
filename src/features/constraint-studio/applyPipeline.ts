@@ -61,6 +61,7 @@ import {
   applyConstraintsToRecipe,
   buildProposalExplanation,
   BATCH_SUM_TOLERANCE_G,
+  evaluateRecipeConstraintAuthority,
   rescaleBatchToTarget,
   verifyConstraintsPreserved,
   type ConstraintExplanationEntry,
@@ -118,7 +119,6 @@ import {
   productBehaviorRequiredLineIds,
   productBehaviorSnapshotFingerprint,
   verifyMainEnvelope,
-  verifyMainTechnicalCarrier,
   assessProductDosages,
   type MainEnvelopeViolation,
   type ProductDosageViolation,
@@ -167,6 +167,9 @@ export interface OptimizePreviewOptions extends FormulationOptions {
   /** Immutable per-line product/version/policy authority. Engine formulas do
    * not read it; product orchestration and the Apply trust door do. */
   productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  /** Owner Review rows remain visibly Main but do not claim an approved
+   * sensory Main policy. They are still subject to Engine and dosage gates. */
+  technicalOnlyMainLineIds?: readonly string[];
   /** Pro workbench provenance gate: even a clean, already-integer recipe must
    * pass through the canonical Preview → Apply door before Save/Production. */
   requirePracticalPreview?: boolean;
@@ -511,6 +514,16 @@ export interface ResidualMetricDiagnostic {
 export interface ConstraintPreview {
   kind: PreviewKind;
   titlePl: string;
+  /** A current user lock fixes a dosage-controlled product outside its exact
+   * server-approved range. The only legal transition is this disclosed,
+   * separately authorized Suggested Fix Preview. */
+  safetyLockConflict?: {
+    lineId: string;
+    ingredientName: string;
+    beforeGrams: number;
+    requiredGrams: number;
+    boundary: 'minimum' | 'maximum';
+  };
   /** Exact identity swap; the Apply door re-derives every field. */
   substitution?: SubstitutionPreviewProof;
   /** Explicit user-requested removal; never created by normal optimization. */
@@ -2793,6 +2806,12 @@ function maximizeMainFromStart(
   const behaviorCeiling = mainEnvelopeSearchCeilingGrams({
     recipe: identityInput,
     snapshots: options.productBehaviorSnapshots ?? {},
+    technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+    mode:
+      normalizeFormulationStrategy(identityInput.goals?.formulation_strategy ?? identityInput.mode) ===
+      'eco'
+        ? 'eco'
+        : 'optimal',
   });
   const upper = probe(behaviorCeiling ?? identityInput.target_batch_grams);
   if (upper.ok && upper.mainGrams <= searchStartingMainGrams + MAIN_OBJECTIVE_EPSILON_G) {
@@ -2910,6 +2929,11 @@ function maximizeMainTechnicalObjective(
 ): { input: RecipeInput; proof: MainFlavourObjectiveProof | null } {
   const presentationInput = identityInput;
   const contractInput = identityInput;
+  const behaviorMode =
+    normalizeFormulationStrategy(contractInput.goals?.formulation_strategy ?? contractInput.mode) ===
+    'eco'
+      ? 'eco'
+      : 'optimal';
   // Strategy is deliberately removed from the technical objective. It may
   // have shaped the starting recipe, but it cannot change the frontier of this
   // exact current vector. Restore the user's mode/goals on the returned recipe.
@@ -2966,10 +2990,25 @@ function maximizeMainTechnicalObjective(
     excludedIngredientIds: options.excludedIngredientIds,
   });
   const batchUpperBound = Math.max(1, Math.floor(identityInput.target_batch_grams));
-  const upperBound =
+  const behaviorCeiling = mainEnvelopeSearchCeilingGrams({
+    recipe: identityInput,
+    snapshots: options.productBehaviorSnapshots ?? {},
+    technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+    mode: behaviorMode,
+  });
+  const linearUpperBound =
     linearBound.status === 'certified'
-      ? Math.max(1, Math.min(batchUpperBound, linearBound.wholeGramUpperBound ?? batchUpperBound))
+      ? (linearBound.wholeGramUpperBound ?? batchUpperBound)
       : batchUpperBound;
+  const behaviorUpperBound = behaviorCeiling === null
+    ? batchUpperBound
+    : Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G);
+  const upperBound = Math.max(
+    1,
+    Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound),
+  );
+  const behaviorCeilingIsLimiting =
+    behaviorCeiling !== null && behaviorUpperBound <= Math.min(linearUpperBound, batchUpperBound);
   const upperAllocation = resolveMainRatioScale(identityInput, set.byLineId, upperBound);
   if (!upperAllocation.ok) {
     return {
@@ -2999,12 +3038,7 @@ function maximizeMainTechnicalObjective(
 
   const excluded = new Set(options.excludedIngredientIds ?? []);
   const requiredLineIds = productBehaviorRequiredLineIds({ items: contractInput.items });
-  const behaviorModule =
-    normalizeFormulationStrategy(
-      identityInput.goals?.formulation_strategy ?? identityInput.mode,
-    ) === 'eco'
-      ? 'ECO'
-      : 'OPTIMAL';
+  const behaviorModule = behaviorMode === 'eco' ? 'ECO' : 'OPTIMAL';
   const managedBehavior = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0;
 
   const assess = (
@@ -3063,11 +3097,6 @@ function maximizeMainTechnicalObjective(
         rules: ['exact_target_or_whole_gram'],
       };
     }
-    // Technical Main maximization is intentionally independent from the
-    // sensory Main envelope. ProductBehavior remains authoritative for its
-    // own modules (and for managed-product readiness below), but historical
-    // floors/ceilings and missing sensory evidence cannot cap the physical
-    // Engine frontier.
     if (managedBehavior) {
       const gate = productBehaviorModuleGate(
         options.productBehaviorSnapshots ?? {},
@@ -3082,16 +3111,18 @@ function maximizeMainTechnicalObjective(
           rules: [gate.reason ?? `product_behavior_${behaviorModule.toLocaleLowerCase('en')}`],
         };
       }
-      const carrierViolations = verifyMainTechnicalCarrier({
+      const mainEnvelope = verifyMainEnvelope({
         recipe: executable,
         snapshots: options.productBehaviorSnapshots ?? {},
+        mode: behaviorModule === 'ECO' ? 'eco' : 'optimal',
+        technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
       });
-      if (carrierViolations.length > 0) {
+      if (!mainEnvelope.ok) {
         return {
           ok: false,
           mainGrams: requestedMainGrams,
           reason: 'hard_gate',
-          rules: carrierViolations.map((violation) => violation.code),
+          rules: mainEnvelope.violations.map((violation) => violation.code),
         };
       }
       const productDosageViolations = assessProductDosages(
@@ -3457,10 +3488,13 @@ function maximizeMainTechnicalObjective(
 
   const maximum = Math.round(accepted.mainGrams);
   const nextFailure = rejected.get(maximum + 1) ?? null;
-  const mathematicallyCertified =
-    linearBound.status === 'certified' &&
-    linearBound.wholeGramUpperBound !== null &&
-    maximum === linearBound.wholeGramUpperBound;
+  const mathematicallyCertified = maximum === upperBound && (
+    behaviorCeilingIsLimiting ||
+    (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null)
+  );
+  const limitingCertifiedRules = behaviorCeilingIsLimiting
+    ? ['main_policy_ceiling']
+    : linearBound.certificate;
   return {
     input: {
       ...accepted.input,
@@ -3492,11 +3526,12 @@ function maximizeMainTechnicalObjective(
       provenMaximum: exactOnly || mathematicallyCertified,
       testedHigherCandidateCount: rejected.size,
       limitingTechnicalRules: mathematicallyCertified
-        ? linearBound.certificate
+        ? limitingCertifiedRules
         : (nextFailure?.rules ?? ['heuristic_search_limit']),
-      ...(linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null
+      ...((behaviorCeilingIsLimiting ||
+        (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null))
         ? {
-            certifiedUpperBoundGrams: linearBound.wholeGramUpperBound,
+            certifiedUpperBoundGrams: upperBound,
             proofKind: 'linear_relaxation' as const,
           }
         : { proofKind: exactOnly ? ('exact_contract' as const) : ('heuristic_search' as const) }),
@@ -6161,33 +6196,12 @@ export function bindProductBehaviorToPreview(
   // dependent on session/database state.
   const managed = Object.keys(snapshots).length > 0;
   if (!managed) return result;
-  const requiredLineIds = productBehaviorRequiredLineIds({
-    items: result.preview.proposedInput.items,
-  });
   const behaviorModule =
     normalizeFormulationStrategy(
       result.preview.proposedInput.goals?.formulation_strategy ?? result.preview.proposedInput.mode,
     ) === 'eco'
       ? 'ECO'
       : 'OPTIMAL';
-  const moduleGate = productBehaviorModuleGate(snapshots, behaviorModule, requiredLineIds);
-  if (!moduleGate.ready) {
-    return {
-      ok: false,
-      code: 'product_behavior_invalid',
-      violations: [
-        {
-          code: 'product_behavior_missing',
-          lineIds: moduleGate.blockedLineIds,
-          messagePl:
-            moduleGate.reason ??
-            'Receptura wymaga ponownej walidacji danych produktu przed Preview.',
-        },
-      ],
-      messagePl:
-        moduleGate.reason ?? 'Receptura wymaga ponownej walidacji danych produktu przed Preview.',
-    };
-  }
   const identityViolation = productBehaviorIdentityViolation(
     result.preview.proposedInput,
     snapshots,
@@ -6200,25 +6214,40 @@ export function bindProductBehaviorToPreview(
       messagePl: identityViolation.messagePl,
     };
   }
-  const verification = verifyMainEnvelope({
+  const authority = evaluateRecipeConstraintAuthority({
     recipe: result.preview.proposedInput,
     snapshots,
-    mode: normalizeFormulationStrategy(
-      result.preview.proposedInput.goals?.formulation_strategy ?? result.preview.proposedInput.mode,
-    ),
+    module: behaviorModule,
     technicalOnlyMainLineIds,
   });
-  if (!verification.ok) {
+  const dosageIssues = authority.issues.filter(
+    (issue) => issue.code === 'product_dosage_invalid',
+  );
+  const authorityBlocking = authority.issues.filter(
+    (issue) =>
+      issue.source === 'main' ||
+      issue.source === 'product_behavior' && issue.code !== 'product_dosage_invalid' ||
+      issue.source === 'profile' &&
+        (issue.code === 'profile_evidence_missing' || issue.code === 'profile_not_eligible'),
+  );
+  if (authorityBlocking.length > 0) {
+    const violations: MainEnvelopeViolation[] = authorityBlocking.map((issue) => ({
+      code: issue.source === 'main' ? issue.code : 'product_behavior_missing',
+      lineIds: issue.lineIds,
+      messagePl: issue.messagePl,
+    }));
     return {
       ok: false,
       code: 'product_behavior_invalid',
-      violations: verification.violations,
+      violations,
       messagePl:
-        verification.violations[0]?.messagePl ??
+        violations[0]?.messagePl ??
         'Nie udało się potwierdzić zachowania produktu w tej recepturze.',
     };
   }
-  const productDosageDiagnostics = assessProductDosages(result.preview.proposedInput, snapshots);
+  const productDosageDiagnostics = dosageIssues.flatMap((issue) =>
+    'violation' in issue ? [issue.violation] : [],
+  );
   if (productDosageDiagnostics.length > 0) {
     result.preview.productDosageDiagnostics = productDosageDiagnostics;
     result.preview.diagnosticOnly = true;
@@ -7050,47 +7079,16 @@ export class VerifiedApply {
     }
     const managedProductBehavior = Object.keys(verifiedProductBehaviorSnapshots).length > 0;
     if (managedProductBehavior) {
-      const mainEnvelope = verifyMainEnvelope({
+      const authority = evaluateRecipeConstraintAuthority({
         recipe: preview.proposedInput,
         snapshots: verifiedProductBehaviorSnapshots,
-        mode: normalizeFormulationStrategy(current.goals?.formulation_strategy ?? current.mode),
+        module:
+          normalizeFormulationStrategy(current.goals?.formulation_strategy ?? current.mode) ===
+          'eco'
+            ? 'ECO'
+            : 'OPTIMAL',
         technicalOnlyMainLineIds,
       });
-      if (!mainEnvelope.ok) {
-        return {
-          ok: false,
-          code: 'product_behavior_invalid',
-          violations: mainEnvelope.violations,
-          messagePl:
-            mainEnvelope.violations[0]?.messagePl ??
-            'Apply zablokowany: zachowanie produktu nie jest zatwierdzone.',
-        };
-      }
-      const behaviorGate = productBehaviorModuleGate(
-        verifiedProductBehaviorSnapshots,
-        normalizeFormulationStrategy(current.goals?.formulation_strategy ?? current.mode) === 'eco'
-          ? 'ECO'
-          : 'OPTIMAL',
-        productBehaviorRequiredLineIds({ items: preview.proposedInput.items }),
-      );
-      if (!behaviorGate.ready) {
-        return {
-          ok: false,
-          code: 'product_behavior_invalid',
-          violations: [
-            {
-              code: 'product_behavior_missing',
-              lineIds: behaviorGate.blockedLineIds,
-              messagePl:
-                behaviorGate.reason ??
-                'Apply zablokowany: receptura wymaga ponownej walidacji danych produktu.',
-            },
-          ],
-          messagePl:
-            behaviorGate.reason ??
-            'Apply zablokowany: receptura wymaga ponownej walidacji danych produktu.',
-        };
-      }
       const identityViolation = productBehaviorIdentityViolation(
         preview.proposedInput,
         verifiedProductBehaviorSnapshots,
@@ -7103,20 +7101,27 @@ export class VerifiedApply {
           messagePl: identityViolation.messagePl,
         };
       }
-      const dosageViolations = assessProductDosages(
-        preview.proposedInput,
-        verifiedProductBehaviorSnapshots,
+      const terminalIssues = authority.issues.filter(
+        (issue) => issue.source === 'main' || issue.source === 'product_behavior' ||
+          issue.source === 'profile',
       );
-      if (dosageViolations.length > 0) {
+      if (terminalIssues.length > 0) {
+        const violations: MainEnvelopeViolation[] = terminalIssues.map((issue) => ({
+          code:
+            issue.code === 'product_dosage_invalid'
+              ? 'product_dosage_violation'
+              : issue.source === 'main'
+                ? issue.code
+                : 'product_behavior_missing',
+          lineIds: issue.lineIds,
+          messagePl: issue.messagePl,
+        }));
         return {
           ok: false,
           code: 'product_behavior_invalid',
-          violations: dosageViolations.map((violation) => ({
-            code: 'product_dosage_violation' as const,
-            lineIds: [violation.lineId],
-            messagePl: violation.messagePl,
-          })),
-          messagePl: dosageViolations[0]!.messagePl,
+          violations,
+          messagePl: violations[0]?.messagePl ??
+            'Apply zablokowany: receptura nie spełnia pełnej weryfikacji profilu.',
         };
       }
     }
@@ -7185,11 +7190,13 @@ export class VerifiedApply {
             {
               excludedIngredientIds,
               productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+              technicalOnlyMainLineIds,
             },
           )
         : buildOptimizePreview(current, currentConstraints, preview.createdAt, {
             excludedIngredientIds,
             productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+            technicalOnlyMainLineIds,
           });
       const rebuiltProof = rebuilt.ok ? rebuilt.preview.mainObjective : undefined;
       const recomputedExecutableMainGrams = rebuilt.ok

@@ -152,7 +152,7 @@ const watermelonFixture = (
   items: [...structuralLines(), line('watermelon', IDS.watermelon, grams, role)],
 });
 
-const snapshotsWithObsoleteEnvelope = (input: RecipeInput) => {
+const snapshotsWithApprovedEnvelope = (input: RecipeInput) => {
   const snapshots = productBehaviorTestSnapshots(input);
   if (snapshots.watermelon)
     snapshots.watermelon = {
@@ -162,10 +162,10 @@ const snapshotsWithObsoleteEnvelope = (input: RecipeInput) => {
       mapperIngredientId: IDS.watermelon,
       verificationState: 'estimated',
       mainClassification: 'MAIN_PROFILE_SPECIFIC',
-      mainPolicyId: 'historical-watermelon-dose',
-      mainPolicyVersion: 'historical-v1',
-      ecoFloorPercent: 30,
-      optimalCeilingPercent: 40,
+      mainPolicyId: 'main-fruit-fresh-dairy',
+      mainPolicyVersion: 'v2',
+      ecoFloorPercent: 20,
+      optimalCeilingPercent: 35,
       hardLimitPercent: 45,
       mainEquivalentFactor: 1,
       mainBasis: 'FRUIT_EQUIVALENT',
@@ -173,12 +173,16 @@ const snapshotsWithObsoleteEnvelope = (input: RecipeInput) => {
   return snapshots;
 };
 
+const technicalOnlyMainLineIds = (input: RecipeInput) =>
+  input.items.filter((item) => item.lock_type === 'main').map((item) => item.id);
+
 const build = (
   input: RecipeInput,
   byLineId: Record<string, { mode: 'locked'; grams: number }> = {},
 ) => {
   const result = buildOptimizePreview(input, { byLineId }, '2026-08-16T12:00:00.000Z', {
-    productBehaviorSnapshots: snapshotsWithObsoleteEnvelope(input),
+    productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+    technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
   });
   expect(result.ok, JSON.stringify(result)).toBe(true);
   if (!result.ok) throw new Error(JSON.stringify(result));
@@ -201,13 +205,23 @@ const expectExactApplyUndo = (
   const priorRecipe = useRecipeStore.getState();
   const priorStudio = useConstraintStudioStore.getState();
   try {
-    const snapshots = snapshotsWithObsoleteEnvelope(input);
+    const snapshots = snapshotsWithApprovedEnvelope(input);
     useRecipeStore.getState().loadRecipeInput(input);
-    useRecipeStore.setState({ productBehaviorSnapshots: structuredClone(snapshots) });
+    useRecipeStore.setState({
+      productBehaviorSnapshots: structuredClone(snapshots),
+      ownerReviewGate: {
+        status: 'OWNER_REVIEW_EDITABLE',
+        productionStatus: 'PRODUCTION_BLOCKED',
+        labelStatus: 'LABEL_BLOCKED',
+        omittedToppingLineIds: [],
+        technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
+      },
+    });
     useConstraintStudioStore.getState().resetForTests();
     const before = structuredClone(buildRecipeInput(useRecipeStore.getState()));
     const built = buildOptimizePreview(before, constraints, '2026-08-16T12:00:00.000Z', {
       productBehaviorSnapshots: snapshots,
+      technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
     });
     expect(built.ok, JSON.stringify(built)).toBe(true);
     if (!built.ok) return;
@@ -235,7 +249,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     const bound = mainTechnicalLinearUpperBound({
       recipe: input,
       constraints: { byLineId: { tara: { mode: 'locked', grams: 5 } } },
-      snapshots: snapshotsWithObsoleteEnvelope(input),
+      snapshots: snapshotsWithApprovedEnvelope(input),
     });
     expect(bound).toMatchObject({
       status: 'certified',
@@ -331,7 +345,8 @@ describe('Main technical maximum — exact Watermelon authority', () => {
   it('certifies the practical Kiwi frontier from an 8000 g request without scanning from 8000', () => {
     const input = singleMainFixture(IDS.kiwi, 8000);
     const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-19T00:00:00.000Z', {
-      productBehaviorSnapshots: snapshotsWithObsoleteEnvelope(input),
+      productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+      technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
       requirePracticalPreview: true,
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
@@ -356,11 +371,47 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     expect(result.preview.mainObjective?.attempts).toBeLessThanOrEqual(MAIN_TECHNICAL_PROBE_BUDGET);
   });
 
-  it('uses the same technical maximum in ECO and OPTIMAL and ignores the historical 45% envelope', () => {
+  it('keeps the Engine-only Owner Review frontier independent of the sensory Main envelope', () => {
     const eco = build(watermelonFixture(300, 'eco'));
     const optimal = build(watermelonFixture(300, 'optimal'));
     expect(mainTotal(eco.proposedInput)).toBe(mainTotal(optimal.proposedInput));
     expect(mainTotal(eco.proposedInput)).toBeGreaterThan(450);
+  });
+
+  it('caps normal Preview at the approved OPTIMAL ceiling and ECO hard limit', () => {
+    const evaluate = (strategy: 'eco' | 'optimal') => {
+      const input = watermelonFixture(300, strategy);
+      const snapshots = snapshotsWithApprovedEnvelope(input);
+      snapshots.watermelon = {
+        ...snapshots.watermelon!,
+        requiresLiquidDairyCarrier: true,
+        liquidDairyCarrierFloorPercent: 30,
+      };
+      snapshots.milk = {
+        ...snapshots.milk!,
+        approvedLiquidDairyCarrier: true,
+      };
+      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-19T00:00:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+      });
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+      if (!result.ok) throw new Error(JSON.stringify(result));
+      return result.preview;
+    };
+    const optimal = evaluate('optimal');
+    const eco = evaluate('eco');
+    expect(optimal.mainObjective).toMatchObject({
+      executableMainGrams: 350,
+      certifiedUpperBoundGrams: 350,
+      provenMaximum: true,
+      limitingTechnicalRules: ['main_policy_ceiling'],
+    });
+    expect(eco.mainObjective).toMatchObject({
+      executableMainGrams: 370,
+      certifiedUpperBoundGrams: 370,
+      provenMaximum: true,
+    });
+    expect(eco.mainObjective?.limitingTechnicalRules).toContain('liquid_dairy_carrier_min');
   });
 
   it('keeps Standard unlocked as a soft anchor instead of activating Main maximization', () => {
@@ -464,7 +515,8 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       ],
     };
     const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-18T10:00:00Z', {
-      productBehaviorSnapshots: snapshotsWithObsoleteEnvelope(input),
+      productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+      technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
@@ -524,7 +576,8 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       null,
       null,
       null,
-      snapshotsWithObsoleteEnvelope(input),
+      snapshotsWithApprovedEnvelope(input),
+      technicalOnlyMainLineIds(input),
     );
     expect(committed.ok, JSON.stringify(committed)).toBe(true);
   });
@@ -535,7 +588,10 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       input,
       { byLineId: { watermelon: { mode: 'locked', grams: 900 } } },
       '2026-08-16T12:00:00.000Z',
-      { productBehaviorSnapshots: snapshotsWithObsoleteEnvelope(input) },
+      {
+        productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+        technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
+      },
     );
     expect(result.ok, JSON.stringify(result)).toBe(false);
     if (result.ok) return;
@@ -561,7 +617,10 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       input,
       { byLineId: { watermelon: { mode: 'locked', grams: 1200 } } },
       '2026-08-16T12:00:00.000Z',
-      { productBehaviorSnapshots: snapshotsWithObsoleteEnvelope(input) },
+      {
+        productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+        technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
+      },
     );
     expect(result).toMatchObject({
       ok: false,
@@ -621,7 +680,8 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       null,
       null,
       null,
-      snapshotsWithObsoleteEnvelope(input),
+      snapshotsWithApprovedEnvelope(input),
+      technicalOnlyMainLineIds(input),
     );
     expect(forgedResult).toMatchObject({ ok: false, code: 'main_identity_violated' });
 
@@ -666,7 +726,8 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       null,
       null,
       null,
-      snapshotsWithObsoleteEnvelope(input),
+      snapshotsWithApprovedEnvelope(input),
+      technicalOnlyMainLineIds(input),
     );
     expect(result).toMatchObject({ ok: false, code: 'main_identity_violated' });
   });
@@ -685,7 +746,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     const bound = mainTechnicalLinearUpperBound({
       recipe: input,
       constraints: { byLineId: {} },
-      snapshots: snapshotsWithObsoleteEnvelope(input),
+      snapshots: snapshotsWithApprovedEnvelope(input),
     });
     const inulinIndex = input.items.findIndex((item) => item.id === 'inulin');
     expect(bound.continuousSolutionGrams?.[inulinIndex]).toBe(5);
@@ -698,11 +759,11 @@ describe('Main technical maximum — exact Watermelon authority', () => {
 
   it('keeps the same liquid-dairy carrier floor in every candidate and the final Preview', () => {
     const input = watermelonFixture(300, 'optimal');
-    const snapshots = snapshotsWithObsoleteEnvelope(input);
+    const snapshots = snapshotsWithApprovedEnvelope(input);
     snapshots.watermelon = {
       ...snapshots.watermelon!,
       requiresLiquidDairyCarrier: true,
-      liquidDairyCarrierFloorPercent: 50,
+      liquidDairyCarrierFloorPercent: 30,
     };
     snapshots.milk = {
       ...snapshots.milk!,
@@ -715,7 +776,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     if (!result.ok) return;
     expect(
       result.preview.proposedInput.items.find((item) => item.id === 'milk')!.planned_grams,
-    ).toBeGreaterThanOrEqual(500);
+    ).toBeGreaterThanOrEqual(300);
     expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
     expect(result.preview.mainObjective?.executableMainGrams).toBeGreaterThan(0);
   });
@@ -756,7 +817,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     const outcomes = ['estimated', 'verified', 'customer_added', 'manual_unverified'] as const;
     const maxima = outcomes.map((verificationState) => {
       const input = watermelonFixture(300, 'optimal');
-      const snapshots = snapshotsWithObsoleteEnvelope(input);
+      const snapshots = snapshotsWithApprovedEnvelope(input);
       snapshots.watermelon = { ...snapshots.watermelon!, verificationState };
       const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-16T12:00:00.000Z', {
         productBehaviorSnapshots: snapshots,
@@ -765,7 +826,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
       if (!result.ok) return null;
       return result.preview.mainObjective?.executableMainGrams ?? null;
     });
-    expect(maxima).toEqual([639, 639, 639, 639]);
+    expect(maxima).toEqual([350, 350, 350, 350]);
   });
 
   it('maximizes a customer/manual product with complete technical composition', () => {
@@ -785,7 +846,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
           }
         : item,
     );
-    const snapshots = snapshotsWithObsoleteEnvelope(input);
+    const snapshots = snapshotsWithApprovedEnvelope(input);
     snapshots.watermelon = {
       ...snapshots.watermelon!,
       productId,
@@ -800,7 +861,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
-    expect(result.preview.mainObjective?.executableMainGrams).toBe(639);
+    expect(result.preview.mainObjective?.executableMainGrams).toBe(350);
     expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
   });
 

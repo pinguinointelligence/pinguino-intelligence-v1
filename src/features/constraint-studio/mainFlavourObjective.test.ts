@@ -111,6 +111,8 @@ const multiMain = (ratio: '1:1' | '2:1'): RecipeInput => {
 
 const mainTotal = (input: RecipeInput) =>
   input.items.filter((item) => item.lock_type === 'main').reduce((sum, item) => sum + item.planned_grams, 0);
+const technicalOnlyMainLineIds = (input: RecipeInput) =>
+  input.items.filter((item) => item.lock_type === 'main').map((item) => item.id);
 
 const solverSnapshots = (input: RecipeInput) => Object.fromEntries(
   Object.entries(productBehaviorTestSnapshots(input)).map(([lineId, snapshot]) => [
@@ -132,6 +134,7 @@ function expectMaximized(input: RecipeInput) {
   const snapshots = solverSnapshots(input);
   const result = buildOptimizePreview(input, NO, '2026-08-11T12:00:00.000Z', {
     productBehaviorSnapshots: snapshots,
+    technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
   });
   expect(result.ok, JSON.stringify(result)).toBe(true);
   if (!result.ok) return null;
@@ -144,7 +147,7 @@ function expectMaximized(input: RecipeInput) {
   expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
   const committed = commitPreview(
     input, NO, result.preview, '2026-08-11T12:01:00.000Z', `main-${input.items[0]!.id}`,
-    [], undefined, null, null, null, null, snapshots,
+    [], undefined, null, null, null, null, snapshots, technicalOnlyMainLineIds(input),
   );
   expect(committed.ok, JSON.stringify(committed)).toBe(true);
   return result.preview;
@@ -204,6 +207,7 @@ describe('Main flavour priority lexicographic objective', () => {
     const snapshots = solverSnapshots(input);
     const built = buildOptimizePreview(input, NO, '2026-08-11T12:00:00.000Z', {
       productBehaviorSnapshots: snapshots,
+      technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
     });
     expect(built.ok).toBe(true);
     if (!built.ok || built.preview.practicalization?.status !== 'ready') return;
@@ -247,6 +251,7 @@ describe('Main flavour priority lexicographic objective', () => {
       null,
       null,
       snapshots,
+      technicalOnlyMainLineIds(input),
     );
     expect(committed).toMatchObject({ ok: false, code: 'main_identity_violated' });
     if (!committed.ok) expect(committed.messagePl).toMatch(/maksymalizac/i);

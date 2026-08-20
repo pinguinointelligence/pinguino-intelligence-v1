@@ -301,6 +301,25 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(directedHtml).not.toContain('targetBand');
   });
 
+  it('discloses an unsafe dosage lock transition and says Apply is required', () => {
+    const preview = syntheticPreview();
+    preview.safetyLockConflict = {
+      lineId: 'tara',
+      ingredientName: 'Tara Gum',
+      beforeGrams: 55,
+      requiredGrams: 10,
+      boundary: 'maximum',
+    };
+    const rendered = render(
+      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+    );
+    expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
+    expect(rendered).toContain('Blokada przekracza bezpieczną dawkę');
+    expect(rendered).toContain('55 g');
+    expect(rendered).toContain('10 g');
+    expect(rendered).toContain('Nic nie zmieni się bez Apply');
+  });
+
   it.each([
     [2, 0, 2],
     [2, 1, 2],

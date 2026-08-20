@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 215584,
-    "sha256": "86210c53c683f68bd642826a9a4f2c1032b9ef690b68be7416eb116cb5dd27e5",
+    "bytes": 239042,
+    "sha256": "0327acd656eeaf5d6972013698b16ec5c35abc00a383aecc4b8fc9c93dfb06b1",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -30,6 +30,14 @@
     {
       "path": "src/data/ingredients/canonicalIngredientIdentity.ts",
       "sha256": "94836fb6be7422a25568bb2f50ce3f3a02179edc3b448e1dc22e44b74bd16618"
+    },
+    {
+      "path": "src/data/ingredients/veganEligibility.ts",
+      "sha256": "1926d508c2191516c7d6dc95ae4bbde4da38c5463b7fe114990c7866ff4d6645"
+    },
+    {
+      "path": "src/data/ingredients/verifiedVeganToolbox.ts",
+      "sha256": "c11ffada3b870598ddb99241363f37a1582d1cba34612c8fe080697683ed434d"
     },
     {
       "path": "src/engine/calculateRecipe.ts",
@@ -116,6 +124,10 @@
       "sha256": "e84f73b943ed9f4675673f412e5e93b014d6e383229ee5db3df770408c220f4e"
     },
     {
+      "path": "src/features/formulation-strategy/strategy.ts",
+      "sha256": "dce9a6443fe3182192fb504247f77561797c0a980f2d9a91b28be17fbdccb4e7"
+    },
+    {
       "path": "src/features/formulation/ingredientRoles.ts",
       "sha256": "fd4e097139e2b5f61637893d5ca4cde13191ea6af621ea6818e87b9fe4feaa5a"
     },
@@ -126,6 +138,10 @@
     {
       "path": "src/features/formulation/stabilizerDosage.ts",
       "sha256": "f3e3da0f3e9d31fe42c2100eb39f7b124cdb748b38aa936323d8b39f47fd2ce6"
+    },
+    {
+      "path": "src/features/formulation/veganProfileConstraints.ts",
+      "sha256": "05da9c51793e945aaba7ed6fc3a8603acdbc4b758ddc6200c888f767d1bc9964"
     },
     {
       "path": "src/features/formulation/violationBands.ts",
@@ -140,8 +156,12 @@
       "sha256": "727b9c03c1c912c2913fc065e47a593184947534221d0303aef5d7dd4adbce96"
     },
     {
+      "path": "src/features/product-intelligence/mainEnvelope.ts",
+      "sha256": "979b6c5e0eca6196f182d0543c3f316fc8982cd98750c85364fdd50b039b3db0"
+    },
+    {
       "path": "src/features/product-intelligence/productBehaviorAccess.ts",
-      "sha256": "0f2dc42b465de8ff41b147bbb8bfcea3642fee6f714b5a98a4a5a679295b8e47"
+      "sha256": "492f0e3d9cd25b0cf0f7855c067d134590abf77812d1aa366cd19a9b4d89e147"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorResolver.ts",
@@ -149,7 +169,7 @@
     },
     {
       "path": "src/features/product-intelligence/productDosageAuthority.ts",
-      "sha256": "cc501b989277a0cd44e364e1dc7450820edb30e12479b954df97ec254cb9a958"
+      "sha256": "08249e23a003c9938ccbea69c40bc2f06fed71cad4872b8e99abfff933d0ab15"
     },
     {
       "path": "src/features/product-intelligence/recipeBehaviorAuthority.ts",
@@ -161,7 +181,7 @@
     },
     {
       "path": "src/features/production-workspace/productionSession.ts",
-      "sha256": "be8029e7f7902a0e447cd4983ee92c687da903b87c5648fd7971b0595b49ade4"
+      "sha256": "42a0f94c92e22c30892b26f2105125cacd0a28d667fb0f99f0449f2849262fb0"
     },
     {
       "path": "src/features/protein-gelato/proteinTarget.ts",
@@ -184,6 +204,10 @@
       "sha256": "d034c715f20c0bc878ced05c913b74aca8ee4627ad850c2d333e376f4ac64ffc"
     },
     {
+      "path": "src/features/recipe-constraints/recipeConstraintAuthority.ts",
+      "sha256": "cdc2b1782b43ea413d9a682d93029c0502b837b2cfd3bea2adfad743a22f68e7"
+    },
+    {
       "path": "src/features/recipe-direction/recipeDirectionAssessment.ts",
       "sha256": "f24b4328880b5b087d1caf4e11f72d3cdb5795f616cb3fc5d914d30364b715c6"
     },
@@ -204,5 +228,5 @@
       "sha256": "ceb1e7b33ddb1448a584c84aafdfdb86d0b33dded9a35acee064178a3a90fc53"
     }
   ],
-  "sourceClosureSha256": "e455dc2437c9d339ca3b14d6bd87985ba72b7bda8b1b243fccdc010d496983cf"
+  "sourceClosureSha256": "1349827a4dd16374cd22d490e31970c55a8583f1562a21ea6867cc9a862c3a18"
 }

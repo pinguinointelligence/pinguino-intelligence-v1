@@ -177,6 +177,22 @@ export function ConstraintPreviewCard({
         </div>
       ) : null}
 
+      {preview.safetyLockConflict ? (
+        <div
+          className="mt-3 rounded-lg border border-status-risky/40 bg-status-risky/10 px-3 py-2.5 text-xs leading-relaxed text-ivory/80"
+          data-testid="preview-safety-lock-conflict"
+        >
+          <span className="font-semibold text-status-risky">Blokada przekracza bezpieczną dawkę:</span>{' '}
+          {preview.safetyLockConflict.ingredientName} ma blokadę{' '}
+          {formatGramsPl(preview.safetyLockConflict.beforeGrams)}. Ten Preview proponuje jawnie zmianę
+          blokady na {formatGramsPl(preview.safetyLockConflict.requiredGrams)} —{' '}
+          {preview.safetyLockConflict.boundary === 'maximum'
+            ? 'zatwierdzone maksimum'
+            : 'zatwierdzone minimum'}
+          . Nic nie zmieni się bez Apply.
+        </div>
+      ) : null}
+
       {mainObjectiveSummary ? (
         <div
           className="mt-3 rounded-lg border border-gold-soft/25 bg-gold-soft/[0.055] px-3 py-2.5 text-xs leading-relaxed text-ivory/80"

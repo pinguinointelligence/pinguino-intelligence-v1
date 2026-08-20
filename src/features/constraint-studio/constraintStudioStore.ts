@@ -753,6 +753,68 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           recipeState.productBehaviorSnapshots,
         );
         if (dosageViolations.length > 0) {
+          const violation = dosageViolations.length === 1 ? dosageViolations[0]! : null;
+          const currentConstraint = violation
+            ? draft.constraints.byLineId[violation.lineId]
+            : undefined;
+          const boundary =
+            violation?.code === 'above_maximum' && violation.maxGrams !== null
+              ? { type: 'set_max' as const, grams: violation.maxGrams, label: 'maximum' as const }
+              : violation?.code === 'below_minimum' && violation.minGrams !== null
+                ? { type: 'set_min' as const, grams: violation.minGrams, label: 'minimum' as const }
+                : null;
+          const lockedLine = violation
+            ? draft.input.items.find((item) => item.id === violation.lineId)
+            : undefined;
+          if (
+            violation &&
+            boundary &&
+            lockedLine?.actual_grams === null &&
+            currentConstraint !== undefined &&
+            currentConstraint.mode !== 'ai'
+          ) {
+            const fix: SuggestedBoundFix = {
+              type: boundary.type,
+              lineId: violation.lineId,
+              grams: boundary.grams,
+            };
+            const snapshots = recipeState.productBehaviorSnapshots;
+            const recovered = bindProductBehaviorToPreview(
+              buildSuggestedFixPreview(draft.input, draft.constraints, fix, nowIso()),
+              snapshots,
+              snapshots,
+              recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+            );
+            if (recovered.ok && recovered.preview.diagnosticOnly !== true) {
+              recovered.preview.baseDraftRevision = draft.revision;
+              recovered.preview.safetyLockConflict = {
+                lineId: violation.lineId,
+                ingredientName: violation.ingredientName,
+                beforeGrams: violation.enteredGrams,
+                requiredGrams: boundary.grams,
+                boundary: boundary.label,
+              };
+              set({
+                preview: recovered.preview,
+                directionBestCandidate: null,
+                directionConsent: null,
+                substitutionConsent: null,
+                substitutionAuthorization: null,
+                proposalProductBehaviorAuthorization: null,
+                explicitStandardRemovalConsent: null,
+                suggestedFixAuthorization: {
+                  baseFingerprint: recovered.preview.baseFingerprint,
+                  type: fix.type,
+                  lineId: fix.lineId,
+                  grams: fix.grams,
+                },
+                previewIssue: null,
+                blocked: null,
+                recalculationTerminal: { state: 'PREVIEW_READY' },
+              });
+              return;
+            }
+          }
           const messagePl = dosageViolations[0]!.messagePl;
           set({
             preview: null,
@@ -832,6 +894,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
             requirePracticalPreview: true,
             productBehaviorSnapshots: snapshots,
+            technicalOnlyMainLineIds,
           }),
           proposedAuthority,
           snapshots,
@@ -1308,6 +1371,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                     ? applyGuardCopy.batchMismatch(written.sum, written.target)
                     : written.code === 'product_dosage_violation'
                       ? (written.violations[0]?.messagePl ?? applyGuardCopy.writeFailed)
+                      : written.code === 'recipe_constraint_invalid'
+                        ? written.messagePl
                       : applyGuardCopy.writeFailed,
               violationsBefore: 0,
               violationsAfter: 0,
@@ -2022,6 +2087,7 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
     effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
     requirePracticalPreview: true,
     productBehaviorSnapshots: validation.snapshots,
+    technicalOnlyMainLineIds,
   });
   let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
   if (rawProposal.ok) {
@@ -2435,11 +2501,6 @@ useRecipeStore.subscribe((state, prev) => {
     return;
   }
   if (state.draftRevision !== prev.draftRevision) {
-    // One draft revision is the universal material-change signal. Ingredient
-    // add/remove, grams, locks, profile/context and product-authority changes all
-    // invalidate the previously displayed score immediately. A verified Apply
-    // acknowledges this synchronously after its own revision write.
-    useRecipeProfileStore.getState().markRecalculationRequired();
     const session = useConstraintStudioStore.getState();
     // C3 step 1 — synchronous constraint reconciliation (write-time, not only
     // read-time): a removed line's §17 entry never survives the transaction.
@@ -2449,9 +2510,31 @@ useRecipeStore.subscribe((state, prev) => {
       state.target_batch_grams,
     );
     const constraintsPatch = reconciled !== session.constraints ? { constraints: reconciled } : {};
-    // C3 step 2 — staged-state invalidation (unchanged semantics).
+    const baseInputChanged =
+      workingStateFingerprint(buildRecipeInput(state), reconciled) !==
+      workingStateFingerprint(buildRecipeInput(prev), session.constraints);
+    const baseIds = new Set(state.items.map((item) => item.id));
+    const previousBaseIds = new Set(prev.items.map((item) => item.id));
+    const baseBehaviorFingerprint = (source: typeof state, ids: ReadonlySet<string>) =>
+      productBehaviorSnapshotFingerprint(
+        Object.fromEntries(
+          Object.entries(source.productBehaviorSnapshots).filter(([lineId]) => ids.has(lineId)),
+        ),
+      );
+    const baseAuthorityChanged =
+      baseBehaviorFingerprint(state, baseIds) !==
+      baseBehaviorFingerprint(prev, previousBaseIds);
+    const baseTechnicalChanged = baseInputChanged || baseAuthorityChanged;
+    // A topping revision is material for Save/final composition, but it is not
+    // a Base Engine edit. Score/Monitor currentness belongs only to the Base
+    // technical fingerprint and its Base ProductBehavior authority.
+    if (baseTechnicalChanged) {
+      useRecipeProfileStore.getState().markRecalculationRequired();
+    }
+    // C3 step 2 — only a Base technical change invalidates Base Preview/score.
     const previewCurrent = session.preview?.baseDraftRevision === state.draftRevision;
     const stagedPatch =
+      baseTechnicalChanged &&
       !previewCurrent &&
       (session.preview !== null ||
         session.directionBestCandidate !== null ||

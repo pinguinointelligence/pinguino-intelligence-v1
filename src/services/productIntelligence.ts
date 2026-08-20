@@ -408,31 +408,16 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
   };
 }
 
-/**
- * The Main crown is a formulation objective. Historical sensory MAIN policy
- * is not an eligibility gate for Preview/Apply/Save/restore. Production and
- * label/process operations retain their existing authority contract; this
- * narrow solver repair does not change Production architecture.
- */
+/** Main lines are resolved with the exact profile policy they are validated
+ * against. Owner-Review technical-only lines remain STANDARD until their Main
+ * policy is approved; every other crown must fail closed without MAIN evidence. */
 export function recipeAuthorityRequestedRole(
   module: ProductBehaviorModule,
   main: boolean,
   technicalOnlyMain = false,
 ): 'STANDARD' | 'MAIN' {
-  if (!main || technicalOnlyMain) return 'STANDARD';
-  return new Set<ProductBehaviorModule>([
-    'BASE_RECIPE',
-    'MAIN',
-    'OPTIMAL',
-    'ECO',
-    'SUBSTITUTION',
-    'MONITOR',
-    'SAVE',
-    'RECIPE_VERSION',
-    'RESTORE',
-  ]).has(module)
-    ? 'STANDARD'
-    : 'MAIN';
+  void module;
+  return main && !technicalOnlyMain ? 'MAIN' : 'STANDARD';
 }
 
 function readRecipeBehaviorServerValidation(

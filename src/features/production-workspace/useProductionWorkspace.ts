@@ -28,6 +28,7 @@ import {
 } from '@/features/practical-recipe/practicalRecipe';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { productBehaviorRequiredLineIds } from '@/features/product-intelligence';
+import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import { buildRecipeVersion } from '@/features/pro-core/recipeVersioning';
 import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
@@ -1055,6 +1056,22 @@ export function useProductionWorkspace(enabled: boolean) {
       if (!canStartProduction || sessionStart.busy || !recipe.productionThermalMode) return;
       setSessionStart({ busy: true, error: null });
       try {
+        const localAuthority = evaluateRecipeConstraintAuthority({
+          recipe: plannedInput,
+          snapshots: plannedComposition.behaviorSnapshots ?? {},
+          module: 'PRODUCTION',
+          technicalOnlyMainLineIds:
+            plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
+        });
+        if (!localAuthority.valid) {
+          setSessionStart({
+            busy: false,
+            error:
+              localAuthority.issues[0]?.messagePl ??
+              'Produkcja zablokowana: receptura nie spełnia pełnej weryfikacji profilu.',
+          });
+          return;
+        }
         if (requiredBehaviorLineIds.length > 0) {
           const validation = await validateRecipeBehaviorOnServer({
             recipe: plannedInput,

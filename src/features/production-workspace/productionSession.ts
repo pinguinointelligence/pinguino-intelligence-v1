@@ -17,7 +17,6 @@ import {
 } from '@/features/recipe-composition/finalProduct';
 import {
   buildRecipeBehaviorAuthority,
-  assessProductDosages,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   recipeBehaviorModuleGate,
@@ -27,6 +26,7 @@ import {
   type ProductionThermalMode,
 } from '@/features/product-intelligence';
 import type { ProductionRun } from '@/features/pro-core/productionContracts';
+import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
 
 export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
 
@@ -484,12 +484,25 @@ export function applyVerifiedRescueInput(
   candidate: RecipeInput,
 ): ProductionSession {
   requireActive(session);
-  const dosageViolations = assessProductDosages(
-    candidate,
-    session.plannedComposition.behaviorSnapshots ?? {},
+  const candidateBatchGrams = candidate.items.reduce(
+    (sum, item) => sum + item.planned_grams,
+    0,
   );
-  if (dosageViolations.length > 0) {
-    throw new Error(dosageViolations[0]!.messagePl);
+  const authority = evaluateRecipeConstraintAuthority({
+    // Rescue is authorized precisely because the future plan may increase or
+    // reduce the original target. Validate the exact new composition against
+    // its actual candidate mass without rewriting the frozen source target.
+    recipe: { ...candidate, target_batch_grams: candidateBatchGrams },
+    snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+    module: 'BATCH_RESCUE',
+    technicalOnlyMainLineIds:
+      session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+  if (!authority.valid) {
+    throw new Error(
+      authority.issues[0]?.messagePl ??
+        'Production Rescue requires a fully verified recipe candidate.',
+    );
   }
   const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
   const lines = session.lines.map((line) => {

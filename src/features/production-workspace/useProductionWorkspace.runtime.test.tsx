@@ -57,6 +57,26 @@ const productionSessionWithDeviation = () => {
     items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
     machine_capacity_grams: null,
   };
+  const snapshots = productBehaviorTestSnapshots(plannedInput);
+  for (const [lineId, snapshot] of Object.entries(snapshots)) {
+    snapshots[lineId] = {
+      ...snapshot,
+      resolutionContext: {
+        accountId: 'owner-runtime',
+        productProfile: plannedInput.category,
+        temperatureC: plannedInput.target_temperature_c,
+        mode: 'optimal',
+        processScope: 'BASE_FORMULATION',
+        requestedRole: 'STANDARD',
+        module: 'BASE_RECIPE',
+      },
+    };
+  }
+  const plannedComposition = recipeCompositionFromState({
+    items: plannedInput.items,
+    baseOrder: plannedInput.items.map((item) => item.id),
+    productBehaviorSnapshots: snapshots,
+  });
   const started = createProductionSession({
     sessionId: 'run-runtime-1',
     ownerUserId: 'owner-runtime',
@@ -67,6 +87,7 @@ const productionSessionWithDeviation = () => {
       recipeName: 'Runtime QA',
     },
     plannedInput,
+    plannedComposition,
     startedAt: '2026-08-19T10:00:00.000Z',
   });
   const first = started.lines[0]!;
@@ -559,6 +580,9 @@ describe('Production trusted Rescue runtime races', () => {
         '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
       );
     useRecipeStore.getState().setProductionThermalMode('HEAT_CAPABLE');
+    expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots)).toHaveLength(
+      loadedInput.items.length,
+    );
     useProductionSessionStore.getState().startNewSession({
       ownerUserId: 'owner-runtime',
       source: {
@@ -631,6 +655,7 @@ describe('Production trusted Rescue runtime races', () => {
 
     await act(async () => view!.startNewSession());
 
+    expect(view?.sessionStartError).toBeNull();
     expect(repository.startRun).toHaveBeenCalledWith(
       expect.objectContaining({
         version: expect.objectContaining({

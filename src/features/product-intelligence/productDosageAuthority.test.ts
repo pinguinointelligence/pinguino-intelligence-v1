@@ -75,7 +75,7 @@ const snapshot = (
       nutritionPer100g: null,
       allergens: null,
       processEvidence: [],
-      profileEligibility: [],
+      profileEligibility: ['milk_gelato'],
       veganEligibility: 'unknown',
       proteinBehavior: 'neutral',
       referencePrice: null,
@@ -147,6 +147,8 @@ describe('ProductBehavior dosage authority', () => {
 
     expect([row('PI-ING-000492')[minIndex], row('PI-ING-000492')[maxIndex]]).toEqual(['0.2', '1']);
     expect([row('PI-ING-000472')[minIndex], row('PI-ING-000472')[maxIndex]]).toEqual(['0.2', '1']);
+    expect([row('PI-ING-000475')[minIndex], row('PI-ING-000475')[maxIndex]]).toEqual(['0.2', '1']);
+    expect([row('PI-ING-000490')[minIndex], row('PI-ING-000490')[maxIndex]]).toEqual(['0.2', '1']);
     expect([row('PI-ING-000456')[minIndex], row('PI-ING-000456')[maxIndex]]).toEqual(['', '']);
   });
 
@@ -184,6 +186,54 @@ describe('ProductBehavior dosage authority', () => {
     expect(assessProductDosages(recipe('guar', 'PI-ING-000472', 25), { guar })).toEqual([
       expect.objectContaining({ code: 'above_maximum', enteredGrams: 25, maxGrams: 10 }),
     ]);
+  });
+
+  it('accepts Tara, Guar, LBG and Solmix together when every exact product dose is legal', () => {
+    const products = [
+      ['tara', 'PI-ING-000492'],
+      ['guar', 'PI-ING-000472'],
+      ['lbg', 'PI-ING-000475'],
+      ['solmix', 'PI-ING-000490'],
+    ] as const;
+    const multi: RecipeInput = {
+      ...recipe('tara', 'PI-ING-000492', 5),
+      items: products.map(([lineId, mapperId]) => ({
+        ...recipe(lineId, mapperId, 5).items[0]!,
+        id: lineId,
+        planned_grams: 5,
+      })),
+    };
+    const authorities = Object.fromEntries(
+      products.map(([lineId, mapperId]) => [
+        lineId,
+        snapshot(lineId, mapperId, {
+          minPercent: 0.2,
+          maxPercent: 1,
+          sourceVersion: `mapper-v1.0:${mapperId}`,
+        }),
+      ]),
+    );
+    expect(assessProductDosages(multi, authorities)).toEqual([]);
+  });
+
+  it('scales every exact product boundary with the batch and returns to the original limit', () => {
+    const tara = snapshot('tara', 'PI-ING-000492', {
+      minPercent: 0.2,
+      maxPercent: 1,
+      sourceVersion: 'mapper-v1.0:PI-ING-000492',
+    });
+    expect(productDosageAuthority(tara, 1_000)).toMatchObject({
+      status: 'defined',
+      authority: { minGrams: 2, maxGrams: 10 },
+    });
+    expect(productDosageAuthority(tara, 2_000)).toMatchObject({
+      status: 'defined',
+      authority: { minGrams: 4, maxGrams: 20 },
+    });
+    expect(productDosageAuthority(tara, 1_000)).toMatchObject({
+      status: 'defined',
+      authority: { minGrams: 2, maxGrams: 10 },
+    });
   });
 
   it('clamps a manual excessive amount to the nearest approved boundary', () => {
@@ -252,6 +302,41 @@ describe('ProductBehavior dosage authority', () => {
       expect(
         useRecipeStore.getState().items.find((item) => item.id === 'owner:tara_gum'),
       ).toMatchObject({ planned_grams: 10, user_target_grams: 10 });
+    } finally {
+      useRecipeStore.setState(before, true);
+    }
+  });
+
+  it('keeps manual grams and bulk grams closed without required ProductBehavior', () => {
+    const before = useRecipeStore.getState();
+    const input = ownerSameInputRecipe();
+    const managedPeer = input.items.find((item) => item.id !== 'owner:tara_gum')!;
+    try {
+      useRecipeStore.setState({
+        items: input.items,
+        target_batch_grams: input.target_batch_grams,
+        // A managed recipe context exists, but Tara's exact snapshot is
+        // absent. Completely snapshot-free local starter drafts retain their
+        // accepted offline edit path; partial authority must fail closed.
+        productBehaviorSnapshots: {
+          [managedPeer.id]: snapshot(
+            managedPeer.id,
+            managedPeer.ingredient.canonical_ingredient_id ?? managedPeer.ingredient.id,
+            null,
+          ),
+        },
+      });
+      const originalTara = input.items.find((item) => item.id === 'owner:tara_gum')!.planned_grams;
+      useRecipeStore.getState().setPlannedGrams('owner:tara_gum', 5);
+      expect(
+        useRecipeStore.getState().items.find((item) => item.id === 'owner:tara_gum')?.planned_grams,
+      ).toBe(originalTara);
+
+      useRecipeStore.getState().setPlannedGramsVector({ 'owner:tara_gum': 5 });
+      expect(
+        useRecipeStore.getState().items.find((item) => item.id === 'owner:tara_gum')?.planned_grams,
+      ).toBe(originalTara);
+
     } finally {
       useRecipeStore.setState(before, true);
     }
@@ -363,6 +448,77 @@ describe('ProductBehavior dosage authority', () => {
           code: 'product_behavior_invalid',
         },
       });
+    } finally {
+      useRecipeStore.setState(beforeRecipe, true);
+      useConstraintStudioStore.setState(beforeStudio, true);
+    }
+  });
+
+  it('turns a locked excessive dose into an explicit safe lock-change Preview', () => {
+    const beforeRecipe = useRecipeStore.getState();
+    const beforeStudio = useConstraintStudioStore.getState();
+    const input = ownerSameInputRecipe();
+    input.items = input.items.map((item) =>
+      item.id === 'owner:tara_gum'
+        ? {
+            ...item,
+            planned_grams: 55,
+            lock_type: 'grams',
+            grams_constraint: { grams: 55 },
+          }
+        : item.id === 'owner:milk_3_5'
+          ? { ...item, planned_grams: item.planned_grams - 53.1 }
+          : item,
+    );
+    const snapshots = Object.fromEntries(
+      input.items.map((item) => [
+        item.id,
+        snapshot(
+          item.id,
+          item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+          item.id === 'owner:tara_gum'
+            ? {
+                minPercent: 0.2,
+                maxPercent: 1,
+                sourceVersion: 'mapper-v1.0:PI-ING-000492',
+              }
+            : null,
+        ),
+      ]),
+    );
+    try {
+      useRecipeStore.setState({
+        items: input.items,
+        target_batch_grams: input.target_batch_grams,
+        productBehaviorSnapshots: snapshots,
+      });
+      useConstraintStudioStore.setState({
+        constraints: { byLineId: { 'owner:tara_gum': { mode: 'locked', grams: 55 } } },
+      });
+
+      useConstraintStudioStore.getState().createOptimizePreview();
+
+      expect(useConstraintStudioStore.getState()).toMatchObject({
+        preview: {
+          kind: 'suggested_fix',
+          safetyLockConflict: {
+            lineId: 'owner:tara_gum',
+            beforeGrams: 55,
+            requiredGrams: 10,
+            boundary: 'maximum',
+          },
+        },
+        suggestedFixAuthorization: {
+          type: 'set_max',
+          lineId: 'owner:tara_gum',
+          grams: 10,
+        },
+        previewIssue: null,
+        recalculationTerminal: { state: 'PREVIEW_READY' },
+      });
+      expect(
+        useRecipeStore.getState().items.find((item) => item.id === 'owner:tara_gum'),
+      ).toMatchObject({ planned_grams: 55, grams_constraint: { grams: 55 } });
     } finally {
       useRecipeStore.setState(beforeRecipe, true);
       useConstraintStudioStore.setState(beforeStudio, true);

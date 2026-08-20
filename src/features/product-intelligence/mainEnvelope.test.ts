@@ -52,6 +52,18 @@ const snapshot = (
   },
   processScope: 'BASE_FORMULATION',
   resolverVersion: 'resolver-v1',
+  sharedFacts: {
+    schemaVersion: 1,
+    technicalComposition: null,
+    nutritionPer100g: null,
+    allergens: null,
+    processEvidence: [],
+    profileEligibility: ['fruit_gelato', 'protein_gelato'],
+    veganEligibility: 'unknown',
+    proteinBehavior: 'neutral',
+    referencePrice: null,
+    recommendedDose: null,
+  },
   warnings: [],
   blockReasons: [],
   ...overrides,
@@ -190,23 +202,26 @@ describe('versioned Main envelope', () => {
     expect(verifyMainEnvelope({ recipe: recipe(300, 301), snapshots: snapshots(), mode: 'optimal' }).ok).toBe(true);
   });
 
-  it('does not use historical sensory floor/ceiling/hard values as technical eligibility gates', () => {
-    expect(verifyMainEnvelope({ recipe: recipe(249, 400), snapshots: snapshots(), mode: 'eco' }).ok).toBe(true);
-    expect(verifyMainEnvelope({ recipe: recipe(351, 400), snapshots: snapshots(), mode: 'optimal' }).ok).toBe(true);
-    expect(verifyMainEnvelope({ recipe: recipe(451, 400), snapshots: snapshots(), mode: 'eco' }).ok).toBe(true);
+  it('enforces the approved Main floor, OPTIMAL ceiling and hard limit', () => {
+    expect(verifyMainEnvelope({ recipe: recipe(249, 400), snapshots: snapshots(), mode: 'eco' }))
+      .toMatchObject({ ok: false, violations: [expect.objectContaining({ code: 'main_below_floor' })] });
+    expect(verifyMainEnvelope({ recipe: recipe(351, 400), snapshots: snapshots(), mode: 'optimal' }))
+      .toMatchObject({ ok: false, violations: expect.arrayContaining([expect.objectContaining({ code: 'main_above_optimal_ceiling' })]) });
+    expect(verifyMainEnvelope({ recipe: recipe(451, 400), snapshots: snapshots(), mode: 'eco' }))
+      .toMatchObject({ ok: false, violations: expect.arrayContaining([expect.objectContaining({ code: 'main_above_hard_limit' })]) });
   });
 
-  it('leaves the Main search ceiling to technical feasibility rather than a sensory policy', () => {
-    expect(mainEnvelopeSearchCeilingGrams({ recipe: recipe(250, 400), snapshots: snapshots() })).toBeNull();
+  it('feeds the approved Main ceiling into candidate search', () => {
+    expect(mainEnvelopeSearchCeilingGrams({ recipe: recipe(250, 400), snapshots: snapshots() })).toBe(350);
   });
 
-  it('does not turn concentration factors or mixed-family policy metadata into technical gates', () => {
+  it('uses concentration-equivalent mass and refuses an unapproved mixed family', () => {
     const compoundRecipe = recipe(500, 300);
     expect(verifyMainEnvelope({
       recipe: compoundRecipe,
       snapshots: snapshots({ berry: snapshot('berry', { mainEquivalentFactor: 0.3 }) }),
       mode: 'optimal',
-    }).ok).toBe(true);
+    })).toMatchObject({ ok: false, violations: [expect.objectContaining({ code: 'main_below_floor' })] });
 
     const mixed: RecipeInput = {
       ...recipe(200, 400),
@@ -225,7 +240,7 @@ describe('versioned Main envelope', () => {
         }),
       }),
       mode: 'optimal',
-    }).ok).toBe(true);
+    })).toMatchObject({ ok: false, violations: [expect.objectContaining({ code: 'multi_main_policy_unknown' })] });
   });
 
   it.each([
@@ -271,10 +286,17 @@ describe('versioned Main envelope', () => {
       },
       mode: 'optimal',
     });
-    expect(result).toMatchObject({ ok: true, policyId: null, equivalentPercent: null });
+    expect(result).toMatchObject({
+      ok: true,
+      policyId: 'main-vegan-fruit-combination-v2',
+    });
+    expect(result.ok && result.equivalentPercent).toBeCloseTo(
+      firstGrams + secondGrams === 802 ? 80.2 : 82.5,
+      8,
+    );
   });
 
-  it('does not cap same-family Multi-Main search at a historical shared sensory limit', () => {
+  it('caps same-family Multi-Main search at the approved shared group limit', () => {
     const baseRecipe = recipe(400, 0);
     const multiRecipe: RecipeInput = {
       ...baseRecipe,
@@ -309,7 +331,7 @@ describe('versioned Main envelope', () => {
         berry: groupSnapshot('berry', 74.7),
         banana: groupSnapshot('banana', 86),
       },
-    })).toBeNull();
+    })).toBe(825);
   });
 
   it('does not apply the ordinary dairy carrier gate to a profile policy that does not require it', () => {

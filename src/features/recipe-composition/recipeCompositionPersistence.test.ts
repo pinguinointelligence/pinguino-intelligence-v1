@@ -5,6 +5,8 @@ import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { workingStateFingerprint } from '@/features/constraint-studio/applyPipeline';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import {
   readRecipeCompositionMetadata,
   recipeCompositionFromState,
@@ -78,6 +80,36 @@ describe('Base/Topping composition sidecar', () => {
     ).toHaveLength(1);
     expect(state.toppings[0]!.planned_grams).toBe(70);
     expect(calculateRecipe(buildRecipeInput(state))).toEqual(engineBefore);
+  });
+
+  it('keeps Base Engine currentness and fingerprint stable across topping add/change/remove', () => {
+    const baseInput = buildRecipeInput(useRecipeStore.getState());
+    const baseResult = calculateRecipe(baseInput);
+    const constraints = useConstraintStudioStore.getState().constraints;
+    const baseFingerprint = workingStateFingerprint(baseInput, constraints);
+    useRecipeProfileStore.setState({ awaitingRecalculation: false });
+    const toppingIngredient = useRecipeStore.getState().items[0]!.ingredient;
+
+    useRecipeStore.getState().addTopping(toppingIngredient, 25);
+    const toppingId = useRecipeStore.getState().toppings[0]!.id;
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+    expect(workingStateFingerprint(buildRecipeInput(useRecipeStore.getState()), constraints)).toBe(
+      baseFingerprint,
+    );
+    expect(calculateRecipe(buildRecipeInput(useRecipeStore.getState()))).toEqual(baseResult);
+
+    useRecipeStore.getState().setToppingGrams(toppingId, 70);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+    expect(workingStateFingerprint(buildRecipeInput(useRecipeStore.getState()), constraints)).toBe(
+      baseFingerprint,
+    );
+
+    useRecipeStore.getState().removeTopping(toppingId);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+    expect(workingStateFingerprint(buildRecipeInput(useRecipeStore.getState()), constraints)).toBe(
+      baseFingerprint,
+    );
+    expect(calculateRecipe(buildRecipeInput(useRecipeStore.getState()))).toEqual(baseResult);
   });
 
   it('keeps manual Base order outside RecipeInput and therefore outside Engine science', () => {

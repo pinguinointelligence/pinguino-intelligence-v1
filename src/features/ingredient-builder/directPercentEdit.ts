@@ -6,11 +6,16 @@ import {
   assessProductDosages,
   clampProductDosageGrams,
   productDosageAuthority,
+  productDosageClampMessagePl,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
 
 export type DirectPercentEditResult =
-  | { ok: true; gramsByLineId: Readonly<Record<string, number>> }
+  | {
+      ok: true;
+      gramsByLineId: Readonly<Record<string, number>>;
+      doseClampNoticePl?: string;
+    }
   | {
       ok: false;
       code:
@@ -153,5 +158,13 @@ export function buildDirectPercentEdit(
     productBehaviorSnapshots,
   );
   if (dosageViolations.length > 0) return { ok: false, code: 'product_dosage_conflict' };
-  return { ok: true, gramsByLineId };
+  const doseClampNoticePl =
+    clampedTarget.clamped && clampedTarget.authority
+      ? productDosageClampMessagePl(
+          selected.ingredient.name,
+          clampedTarget.authority,
+          requestedTarget > selectedTarget ? 'maximum' : 'minimum',
+        )
+      : undefined;
+  return { ok: true, gramsByLineId, ...(doseClampNoticePl ? { doseClampNoticePl } : {}) };
 }

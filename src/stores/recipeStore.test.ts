@@ -10,6 +10,7 @@ import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredi
 import { buildRecipeVersion, restoreVersion } from '@/features/pro-core/recipeVersioning';
 import { savedToRecipeInput } from '@/features/recipes/recipePayload';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import {
   attachPracticalRecipeAudit,
   practicalRecipeAuditMatchesInput,
@@ -101,6 +102,11 @@ describe('manual ingredient target contract', () => {
           user_intent_anchor_grams: item.planned_grams,
         })),
       });
+      useRecipeStore.setState({
+        productBehaviorSnapshots: productBehaviorTestSnapshots(
+          buildRecipeInput(useRecipeStore.getState()),
+        ),
+      });
       const first = useRecipeStore.getState().items[0]!;
       const second = useRecipeStore.getState().items[1]!;
 
@@ -157,6 +163,11 @@ describe('saved practical recipe provenance', () => {
         '2026-08-11T12:00:00.000Z',
       );
       useRecipeStore.getState().loadRecipeInput(saved, { savedId: 'recipe-practical' });
+      useRecipeStore.setState({
+        productBehaviorSnapshots: productBehaviorTestSnapshots(
+          buildRecipeInput(useRecipeStore.getState()),
+        ),
+      });
       const loaded = useRecipeStore.getState();
       const loadedInput = buildRecipeInput(loaded);
       expect(practicalRecipeAuditMatchesInput(loadedInput, loaded.practicalRecipeAudit)).toBe(true);

@@ -168,7 +168,7 @@ const staleToppingSnapshot = (
 describe('recipe behavior server validation', () => {
   beforeEach(() => h.rpc.mockReset());
 
-  it('validates Main and Standard as one technical Base group without sensory policy', () => {
+  it('validates Main and Standard through their exact server-authority roles', () => {
     const built = buildRecipeBehaviorServerValidationGroups({
       recipe,
       snapshots: {
@@ -179,8 +179,21 @@ describe('recipe behavior server validation', () => {
       accountId: 'account-1',
     });
     expect(built.invalidLineIds).toEqual([]);
-    expect(built.groups).toHaveLength(1);
-    expect(built.groups[0]?.context.requestedRole).toBe('STANDARD');
+    expect(built.groups).toHaveLength(2);
+    expect(built.groups.map((group) => group.context.requestedRole).sort()).toEqual([
+      'MAIN',
+      'STANDARD',
+    ]);
+    expect(
+      built.groups.find((group) => group.context.requestedRole === 'MAIN')?.lines,
+    ).toEqual([
+      expect.objectContaining({
+        lineId: 'main-line',
+        entityKind: 'mapper',
+        entityId: 'PI-ING-1',
+        mainPolicyId: 'fruit-milk',
+      }),
+    ]);
     expect(built.groups.flatMap((group) => group.lines)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

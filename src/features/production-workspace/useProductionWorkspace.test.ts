@@ -245,6 +245,7 @@ describe('trusted Production Rescue authorization basis', () => {
       'utf8',
     );
     expect(hookSource).not.toContain('productBehaviorModuleGate(');
+    expect(hookSource).toContain('evaluateRecipeConstraintAuthority({');
     expect(hookSource).toContain("module: 'PRODUCTION'");
     expect(hookSource).toContain('validateRecipeBehaviorOnServer({');
     expect(hookSource).toContain('practicalGate.ready && !behaviorServerReady');

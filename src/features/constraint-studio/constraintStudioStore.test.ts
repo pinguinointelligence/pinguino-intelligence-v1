@@ -31,7 +31,11 @@ const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
 const MILK = starterLine('milk_3_5');
 
-const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSnapshot => ({
+const behaviorSnapshot = (
+  lineId: string,
+  mapperIngredientId: string,
+  category: RecipeInput['category'],
+): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
   resolutionState: 'RESOLVED',
   lineId,
@@ -70,6 +74,17 @@ const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBe
   },
   processScope: 'BASE_FORMULATION',
   resolverVersion: 'test-v1',
+  sharedFacts: {
+    schemaVersion: 1,
+    technicalComposition: null,
+    nutritionPer100g: null,
+    allergens: null,
+    processEvidence: [],
+    profileEligibility: [category],
+    veganEligibility: 'unknown',
+    proteinBehavior: 'unknown',
+    referencePrice: null,
+  },
   warnings: [],
   blockReasons: [],
 });
@@ -80,7 +95,10 @@ const loadRecipe = (input: RecipeInput) => {
     const mapperIngredientId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
     useRecipeStore
       .getState()
-      .setProductBehaviorSnapshot(item.id, behaviorSnapshot(item.id, mapperIngredientId));
+      .setProductBehaviorSnapshot(
+        item.id,
+        behaviorSnapshot(item.id, mapperIngredientId, input.category),
+      );
   }
 };
 const recipeItems = () => useRecipeStore.getState().items;
@@ -617,17 +635,17 @@ describe('§19 apply through the store', () => {
   });
 
   it('batch rescale through the store: locked grams preserved byte-for-byte (§17.4)', () => {
-    loadRecipe(overSweetStarter(160));
+    loadRecipe(starterMilkBase());
     useConstraintStudioStore.getState().toggleLock(SUCROSE);
 
-    useConstraintStudioStore.getState().createBatchRescalePreview(2000);
+    useConstraintStudioStore.getState().createBatchRescalePreview(1200);
     useConstraintStudioStore.getState().applyPreview();
 
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
-    expect(Object.is(lineGrams(SUCROSE), 160)).toBe(true);
-    expect(useRecipeStore.getState().target_batch_grams).toBe(2000);
+    expect(Object.is(lineGrams(SUCROSE), 130)).toBe(true);
+    expect(useRecipeStore.getState().target_batch_grams).toBe(1200);
     const total = recipeItems().reduce((sum, item) => sum + item.planned_grams, 0);
-    expect(Math.abs(total - 2000)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(total - 1200)).toBeLessThanOrEqual(0.1);
   });
 });
 

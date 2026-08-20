@@ -355,7 +355,7 @@ describe('production session physical-reality contract', () => {
       actual_grams: null,
     });
     expect(() => applyVerifiedRescueInput(run, candidate)).toThrow(
-      /Brak zatwierdzonego uprawnienia PRODUCTION/,
+      /Brak zatwierdzonego uprawnienia BATCH_RESCUE/,
     );
   });
 

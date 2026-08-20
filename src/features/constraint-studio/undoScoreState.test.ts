@@ -95,7 +95,12 @@ vi.mock('@/services/productIntelligence', () => ({
 
 const DEXTROSE = starterLine('dextrose');
 
-const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSnapshot => ({
+const behaviorSnapshot = (
+  lineId: string,
+  mapperIngredientId: string,
+  category: RecipeInput['category'],
+  isMain = false,
+): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
   resolutionState: 'RESOLVED',
   lineId,
@@ -112,14 +117,15 @@ const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBe
   verificationState: 'verified',
   technicalAuthority: 'mapper_exact',
   mapperIngredientId,
-  mainClassification: 'MAIN_ALLOWED',
-  mainPolicyId: `policy:${mapperIngredientId}`,
-  mainPolicyVersion: '1',
-  ecoFloorPercent: 0,
-  optimalCeilingPercent: 100,
-  hardLimitPercent: 100,
-  mainEquivalentFactor: 1,
-  mainBasis: 'PERCENT_OF_BASE',
+  mainClassification: isMain ? 'MAIN_ALLOWED' : 'NOT_MAIN',
+  mainPolicyId: isMain ? 'policy:test-main-compatible' : null,
+  mainPolicyVersion: isMain ? '1' : null,
+  ecoFloorPercent: isMain ? 0 : null,
+  optimalCeilingPercent: isMain ? 100 : null,
+  hardLimitPercent: isMain ? 100 : null,
+  multiMainHardLimitPercent: isMain ? 100 : null,
+  mainEquivalentFactor: isMain ? 1 : null,
+  mainBasis: isMain ? 'PERCENT_OF_BASE' : null,
   requiresLiquidDairyCarrier: false,
   liquidDairyCarrierFloorPercent: null,
   approvedLiquidDairyCarrier: true,
@@ -134,6 +140,17 @@ const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBe
   },
   processScope: 'BASE_FORMULATION',
   resolverVersion: 'test-v1',
+  sharedFacts: {
+    schemaVersion: 1,
+    technicalComposition: null,
+    nutritionPer100g: null,
+    allergens: null,
+    processEvidence: [],
+    profileEligibility: [category],
+    veganEligibility: 'unknown',
+    proteinBehavior: 'unknown',
+    referencePrice: null,
+  },
   warnings: [],
   blockReasons: [],
 });
@@ -141,11 +158,12 @@ const behaviorSnapshot = (lineId: string, mapperIngredientId: string): ProductBe
 const toppingBehaviorSnapshot = (
   lineId: string,
   mapperIngredientId: string,
+  category: RecipeInput['category'],
 ): ProductBehaviorSnapshot => ({
-  ...behaviorSnapshot(lineId, mapperIngredientId),
+  ...behaviorSnapshot(lineId, mapperIngredientId, category),
   processScope: 'POST_PROCESS_ADDON',
   moduleEligibility: {
-    ...behaviorSnapshot(lineId, mapperIngredientId).moduleEligibility,
+    ...behaviorSnapshot(lineId, mapperIngredientId, category).moduleEligibility,
     TOPPING: 'eligible',
   },
 });
@@ -156,7 +174,10 @@ function loadRecipe(input: RecipeInput) {
     const mapperId = item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
     useRecipeStore
       .getState()
-      .setProductBehaviorSnapshot(item.id, behaviorSnapshot(item.id, mapperId));
+      .setProductBehaviorSnapshot(
+        item.id,
+        behaviorSnapshot(item.id, mapperId, input.category, item.lock_type === 'main'),
+      );
   }
 }
 
@@ -258,12 +279,15 @@ describe('Apply → Undo score-state restoration', () => {
     if (!basil || !strawberry) return;
     useRecipeStore
       .getState()
-      .setProductBehaviorSnapshot(basil.id, toppingBehaviorSnapshot(basil.id, 'PI-ING-001654'));
+      .setProductBehaviorSnapshot(
+        basil.id,
+        toppingBehaviorSnapshot(basil.id, 'PI-ING-001654', 'milk_gelato'),
+      );
     useRecipeStore
       .getState()
       .setProductBehaviorSnapshot(
         strawberry.id,
-        toppingBehaviorSnapshot(strawberry.id, 'PI-ING-001553'),
+        toppingBehaviorSnapshot(strawberry.id, 'PI-ING-001553', 'milk_gelato'),
       );
 
     useRecipeStore.getState().setFormulationStrategy('eco');
@@ -322,7 +346,10 @@ describe('Apply → Undo score-state restoration', () => {
     if (!basil) return;
     useRecipeStore
       .getState()
-      .setProductBehaviorSnapshot(basil.id, toppingBehaviorSnapshot(basil.id, 'PI-ING-001654'));
+      .setProductBehaviorSnapshot(
+        basil.id,
+        toppingBehaviorSnapshot(basil.id, 'PI-ING-001654', 'milk_gelato'),
+      );
     useRecipeStore.getState().setFormulationStrategy('eco');
     authority.blockedLineId = basil.id;
 

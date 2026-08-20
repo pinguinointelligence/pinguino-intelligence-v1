@@ -115,6 +115,17 @@ const behaviorSnapshot = (
   },
   processScope: 'BASE_FORMULATION',
   resolverVersion: 'test-v1',
+  sharedFacts: {
+    schemaVersion: 1,
+    technicalComposition: null,
+    nutritionPer100g: null,
+    allergens: null,
+    processEvidence: [],
+    profileEligibility: ['milk_gelato'],
+    veganEligibility: 'unknown',
+    proteinBehavior: 'unknown',
+    referencePrice: null,
+  },
   warnings: [],
   blockReasons: [],
 });

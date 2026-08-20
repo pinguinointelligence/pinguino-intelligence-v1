@@ -12,6 +12,7 @@ import type { EngineIngredient, RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import {
   isUndoAvailable,
   selectCanonicalDraft,
@@ -45,6 +46,7 @@ const seedOwnerDraft = () => {
     items: [],
     excludedIngredientIds: [],
     unavailableMainIngredientIds: [],
+    productBehaviorSnapshots: {},
   });
   useConstraintStudioStore.getState().resetForTests();
   useRecipeStore.getState().setVisibleProductType('gelato');
@@ -125,6 +127,10 @@ describe('PHASE 10 — the exact owner fixture: Preview grams reach the store by
     useConstraintStudioStore.getState().createOptimizePreview();
     const staged = useConstraintStudioStore.getState().preview;
     expect(staged).not.toBeNull();
+    const editableInput = buildRecipeInput(useRecipeStore.getState());
+    useRecipeStore.setState({
+      productBehaviorSnapshots: productBehaviorTestSnapshots(editableInput),
+    });
     // the user edits AFTER preview → source revision no longer matches
     const first = useRecipeStore.getState().items[0]!;
     const untouchedSum = useRecipeStore
@@ -374,7 +380,15 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
 describe('PHASE 11 — all apply result types still work through the guarded write', () => {
   it('constrained formulation with an exact lock (500 g milk) applies byte-exact', () => {
     const milkLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'milk_3_5')!;
+    useRecipeStore.setState({
+      productBehaviorSnapshots: productBehaviorTestSnapshots(
+        buildRecipeInput(useRecipeStore.getState()),
+      ),
+    });
     useRecipeStore.getState().setPlannedGrams(milkLine.id, 500);
+    // The remaining test exercises the pure solver/Apply lock contract. Runtime
+    // proposal snapshots are supplied by the server-authority wrapper.
+    useRecipeStore.setState({ productBehaviorSnapshots: {} });
     useConstraintStudioStore.getState().toggleLock(milkLine.id);
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();

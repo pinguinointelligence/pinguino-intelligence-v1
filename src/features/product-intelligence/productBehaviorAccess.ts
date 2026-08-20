@@ -123,11 +123,29 @@ export function mainBehaviorBlockReason(
   if (snapshot.processScope !== 'BASE_FORMULATION') {
     return 'Topping nie może pełnić roli Main.';
   }
-  // Main is a formulation objective, not a sensory-policy entitlement. The
-  // historical MAIN classification/envelope remains recommendation metadata;
-  // technical Base eligibility is the runtime authority for the crown.
-  if (snapshot.moduleEligibility.BASE_RECIPE !== 'eligible') {
-    return 'Produkt nie jest technicznie dostępny w bazie tej receptury.';
+  if (snapshot.moduleEligibility.MAIN !== 'eligible') {
+    return snapshot.mainClassification === 'MAIN_BLOCKED_POLICY' ||
+      snapshot.blockReasons.includes('main_policy_missing')
+      ? 'Brak zatwierdzonego zakresu Main dla tego produktu i profilu.'
+      : 'Produkt nie jest zatwierdzony jako Main w tym profilu.';
+  }
+  if (
+    snapshot.mainClassification !== 'MAIN_ALLOWED' &&
+    snapshot.mainClassification !== 'MAIN_PROFILE_SPECIFIC'
+  ) {
+    return snapshot.mainClassification === 'PROTEIN_CONTRIBUTOR_ONLY'
+      ? 'Składnik białkowy nie jest automatycznie smakiem Main.'
+      : 'Produkt nie jest składnikiem smakowym Main.';
+  }
+  if (
+    !snapshot.mainPolicyId ||
+    !snapshot.mainPolicyVersion ||
+    snapshot.ecoFloorPercent === null ||
+    snapshot.optimalCeilingPercent === null ||
+    snapshot.hardLimitPercent === null ||
+    snapshot.mainEquivalentFactor === null
+  ) {
+    return 'Brak zatwierdzonego zakresu Main dla tego produktu i profilu.';
   }
   return null;
 }

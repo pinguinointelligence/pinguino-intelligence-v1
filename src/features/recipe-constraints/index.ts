@@ -51,3 +51,11 @@ export {
   renderConstraintExplanationEn,
   type ConstraintExplanationEntry,
 } from './constraintExplain';
+
+export {
+  evaluateRecipeConstraintAuthority,
+  recipeCandidateIsHardValid,
+  type RecipeConstraintAuthorityInput,
+  type RecipeConstraintAuthorityIssue,
+  type RecipeConstraintAuthorityResult,
+} from './recipeConstraintAuthority';

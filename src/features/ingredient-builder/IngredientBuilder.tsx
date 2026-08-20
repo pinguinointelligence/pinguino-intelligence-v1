@@ -60,6 +60,9 @@ import {
 import {
   mainBehaviorBlockReason,
   productBehaviorRequiredLineIds,
+  productBehaviorModuleGate,
+  productDosageAuthority,
+  productDosageClampMessagePl,
   snapshotServerResolvedProductBehavior,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
@@ -187,7 +190,51 @@ export function IngredientBuilder({
   const coreActions: IngredientRowActions = {
     ...lockAwareCoreActions,
     setPlannedGrams: (lineId, grams) => {
+      const state = useRecipeStore.getState();
+      const line = state.items.find((item) => item.id === lineId);
+      if (!line) return;
+      const requestedGrams = Math.max(0, grams);
+      const requiredLineIds = productBehaviorRequiredLineIds({
+        items: [{ ...line, planned_grams: requestedGrams }],
+      });
+      const behaviorGate = productBehaviorModuleGate(
+        state.productBehaviorSnapshots,
+        'BASE_RECIPE',
+        requiredLineIds,
+      );
+      if (!behaviorGate.ready) {
+        setPickerNotice(
+          behaviorGate.reason ??
+            `${line.ingredient.name}: wymagane jest ponowne zatwierdzenie ProductBehavior.`,
+        );
+        return;
+      }
+      const dosage = productDosageAuthority(
+        state.productBehaviorSnapshots[lineId],
+        state.target_batch_grams,
+      );
+      if (dosage.status === 'invalid_evidence') {
+        setPickerNotice(
+          `${line.ingredient.name}: dane zatwierdzonej dawki są niespójne. Odśwież ProductBehavior.`,
+        );
+        return;
+      }
       lockAwareCoreActions.setPlannedGrams(lineId, grams);
+      if (dosage.status === 'defined') {
+        const boundary =
+          dosage.authority.maxGrams !== null && requestedGrams > dosage.authority.maxGrams
+            ? 'maximum'
+            : dosage.authority.minGrams !== null &&
+                requestedGrams > 0 &&
+                requestedGrams < dosage.authority.minGrams
+              ? 'minimum'
+              : null;
+        if (boundary) {
+          setPickerNotice(
+            productDosageClampMessagePl(line.ingredient.name, dosage.authority, boundary),
+          );
+        }
+      }
       markDoseUserSet(lineId);
     },
   };
@@ -209,6 +256,12 @@ export function IngredientBuilder({
       if (next.ok) {
         setPlannedGramsVector(next.gramsByLineId);
         markDoseUserSet(lineId);
+        if (next.doseClampNoticePl) setPickerNotice(next.doseClampNoticePl);
+      } else if (
+        next.code === 'product_dosage_invalid' ||
+        next.code === 'product_dosage_conflict'
+      ) {
+        setPickerNotice('Dawka produktu wymaga ponownego zatwierdzenia przed zmianą procentu.');
       }
     },
     setCustomerRole: (lineId, role) => {

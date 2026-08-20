@@ -142,26 +142,146 @@ export function verifyMainEnvelope(input: {
   }
   if (violations.length > 0) return { ok: false, violations };
 
-  // Sensory dose/envelope metadata is intentionally not an eligibility gate.
-  // The only legacy policy field that remains technical is an explicitly
-  // approved minimum liquid-dairy carrier, checked for every candidate.
-  violations.push(...verifyMainTechnicalCarrier({ recipe: input.recipe, snapshots: input.snapshots }));
+  const first = resolved[0]!.snapshot;
+  const multi = resolved.length > 1;
+  const inconsistent = resolved.some(({ snapshot }) =>
+    snapshot.mainPolicyId !== first.mainPolicyId ||
+    snapshot.mainPolicyVersion !== first.mainPolicyVersion ||
+    snapshot.mainBasis !== first.mainBasis ||
+    (multi
+      ? snapshot.multiMainHardLimitPercent !== first.multiMainHardLimitPercent
+      : snapshot.ecoFloorPercent !== first.ecoFloorPercent ||
+        snapshot.optimalCeilingPercent !== first.optimalCeilingPercent ||
+        snapshot.hardLimitPercent !== first.hardLimitPercent),
+  );
+  if (inconsistent) {
+    return {
+      ok: false,
+      violations: [{
+        code: 'main_policy_inconsistent',
+        lineIds: managed.map((item) => item.id),
+        messagePl: 'Grupa Main nie ma jednego zgodnego zatwierdzonego zakresu.',
+      }],
+    };
+  }
+
+  const families = [
+    ...new Set(resolved.map(({ snapshot }) => snapshot.familyId).filter(Boolean)),
+  ] as string[];
+  if (families.length > 1) {
+    const approved = families.every((family) =>
+      resolved.every(({ snapshot }) =>
+        snapshot.familyId === family || snapshot.approvedMixedFamilyIds.includes(family),
+      ),
+    );
+    if (!approved) {
+      return {
+        ok: false,
+        violations: [{
+          code: 'multi_main_policy_unknown',
+          lineIds: managed.map((item) => item.id),
+          messagePl: 'Brak zatwierdzonej polityki dla tej mieszanej grupy Main.',
+        }],
+      };
+    }
+  }
+
+  const equivalentGrams = resolved.reduce(
+    (sum, { item, snapshot }) => sum + item.planned_grams * (snapshot.mainEquivalentFactor ?? 0),
+    0,
+  );
+  const equivalentPercent = input.recipe.target_batch_grams > 0
+    ? (equivalentGrams / input.recipe.target_batch_grams) * 100
+    : 0;
+  const floor = multi
+    ? Math.max(
+        ...resolved.map(({ snapshot }) => snapshot.ecoFloorPercent ?? Number.POSITIVE_INFINITY),
+      )
+    : first.ecoFloorPercent!;
+  const multiLimit = multi ? first.multiMainHardLimitPercent ?? null : null;
+  if (multi && multiLimit === null) {
+    return {
+      ok: false,
+      violations: [{
+        code: 'multi_main_policy_unknown',
+        lineIds: managed.map((item) => item.id),
+        messagePl: 'Brak zatwierdzonego wspólnego limitu dla tej grupy Main.',
+      }],
+    };
+  }
+  const ceiling = multi ? multiLimit! : first.optimalCeilingPercent!;
+  const hard = multi ? multiLimit! : first.hardLimitPercent!;
+  if (input.enforceFloor !== false && equivalentPercent < floor - EPSILON) {
+    violations.push({
+      code: 'main_below_floor',
+      lineIds: managed.map((item) => item.id),
+      messagePl:
+        `Grupa Main ma ${equivalentPercent.toFixed(1)}%; ` +
+        `wymagane minimum to ${floor.toFixed(1)}%.`,
+    });
+  }
+  if (input.mode === 'optimal' && equivalentPercent > ceiling + EPSILON) {
+    violations.push({
+      code: 'main_above_optimal_ceiling',
+      lineIds: managed.map((item) => item.id),
+      messagePl:
+        `Grupa Main przekracza zatwierdzony poziom OPTIMAL ${ceiling.toFixed(1)}%.`,
+    });
+  }
+  if (equivalentPercent > hard + EPSILON) {
+    violations.push({
+      code: 'main_above_hard_limit',
+      lineIds: managed.map((item) => item.id),
+      messagePl: `Grupa Main przekracza twardy limit ${hard.toFixed(1)}%.`,
+    });
+  }
+  violations.push(
+    ...verifyMainTechnicalCarrier({ recipe: input.recipe, snapshots: input.snapshots }),
+  );
 
   return violations.length > 0
     ? { ok: false, violations }
     : {
         ok: true,
-        equivalentPercent: null,
-        targetPercent: null,
-        hardLimitPercent: null,
-        policyId: null,
+        equivalentPercent,
+        targetPercent: input.mode === 'optimal' ? ceiling : floor,
+        hardLimitPercent: hard,
+        policyId: first.mainPolicyId,
       };
 }
 
 export function mainEnvelopeSearchCeilingGrams(input: {
   recipe: RecipeInput;
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  technicalOnlyMainLineIds?: readonly string[];
+  mode?: 'optimal' | 'eco';
 }): number | null {
-  void input;
-  return null;
+  const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
+  const mains = input.recipe.items.filter(
+    (item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id),
+  );
+  if (mains.length === 0 || mains.some((item) => !input.snapshots[item.id])) return null;
+  const snapshots = mains.map((item) => input.snapshots[item.id]!);
+  const first = snapshots[0]!;
+  const multi = snapshots.length > 1;
+  const ceilingPercent = multi
+    ? first.multiMainHardLimitPercent
+    : input.mode === 'eco'
+      ? first.hardLimitPercent
+      : first.optimalCeilingPercent;
+  if (
+    ceilingPercent == null ||
+    first.mainEquivalentFactor === null ||
+    snapshots.some((snapshot) =>
+      snapshot.mainPolicyId !== first.mainPolicyId ||
+      snapshot.mainPolicyVersion !== first.mainPolicyVersion ||
+      snapshot.mainEquivalentFactor !== first.mainEquivalentFactor ||
+      (multi && snapshot.multiMainHardLimitPercent !== ceilingPercent),
+    )
+  ) return null;
+  return (
+    (input.recipe.target_batch_grams * ceilingPercent) /
+    100 /
+    first.mainEquivalentFactor
+  );
 }

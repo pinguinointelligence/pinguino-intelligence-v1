@@ -100,6 +100,9 @@ describe('direct percentage editing', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.gramsByLineId['owner:tara_gum']).toBe(10);
+    expect(result.doseClampNoticePl).toBe(
+      'TARA GUM · Stabilizer: maksymalna ilość dla tej partii to 10 g.',
+    );
     expect(Object.values(result.gramsByLineId).reduce((sum, grams) => sum + grams, 0)).toBeCloseTo(
       1_000,
       10,

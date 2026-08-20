@@ -111,6 +111,17 @@ export function productDosageViolationMessagePl(
   );
 }
 
+export function productDosageClampMessagePl(
+  ingredientName: string,
+  authority: ProductDosageAuthority,
+  boundary: 'minimum' | 'maximum',
+): string {
+  const grams = boundary === 'maximum' ? authority.maxGrams : authority.minGrams;
+  return grams === null
+    ? `${ingredientName}: brak zatwierdzonej granicy dawki.`
+    : `${ingredientName}: ${boundary === 'maximum' ? 'maksymalna' : 'minimalna'} ilość dla tej partii to ${amount(grams, 'g')}.`;
+}
+
 /** Hard product-dose assessment shared by Preview, Apply and guarded writes. */
 export function assessProductDosages(
   input: RecipeInput,

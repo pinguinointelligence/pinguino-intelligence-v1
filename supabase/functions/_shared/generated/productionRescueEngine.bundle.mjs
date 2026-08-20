@@ -2172,7 +2172,7 @@ function redactProposal(proposal, index = 0) {
 * ECO/CLASSIC — only when context is planning, the line has no actuals, and
 * allow_main_ingredient_reduction is explicitly true (default false).
 */
-const EPSILON$1 = 1e-9;
+const EPSILON$2 = 1e-9;
 /** May this line be reduced under the given constraints? */
 function isReductionAllowed(line, constraints) {
 	if (constraints.context === "actual_batch") return false;
@@ -2188,7 +2188,7 @@ function isReductionAllowed(line, constraints) {
 function applyCorrectionActions(input, actions, constraints, candidates) {
 	const items = input.items.map((item) => ({ ...item }));
 	for (const [index, action] of actions.entries()) {
-		if (!(action.grams > EPSILON$1) || !Number.isFinite(action.grams)) return null;
+		if (!(action.grams > EPSILON$2) || !Number.isFinite(action.grams)) return null;
 		if (action.type === "add") {
 			const existing = action.target_line_id !== void 0 ? items.find((item) => item.id === action.target_line_id) : void 0;
 			if (existing) {
@@ -2210,7 +2210,7 @@ function applyCorrectionActions(input, actions, constraints, candidates) {
 			const line = items.find((item) => item.id === action.target_line_id);
 			if (!line) return null;
 			if (!isReductionAllowed(line, constraints)) return null;
-			if (action.grams > line.planned_grams + EPSILON$1) return null;
+			if (action.grams > line.planned_grams + EPSILON$2) return null;
 			line.planned_grams = Math.max(0, line.planned_grams - action.grams);
 		}
 	}
@@ -2233,7 +2233,7 @@ function verifyCorrectionProposal(args) {
 	});
 	if (!hypothetical) return fail("apply_failed");
 	const after = calculateRecipe(hypothetical);
-	if (constraints.machine_capacity_grams !== null && after.total_batch_g > constraints.machine_capacity_grams + EPSILON$1) return {
+	if (constraints.machine_capacity_grams !== null && after.total_batch_g > constraints.machine_capacity_grams + EPSILON$2) return {
 		...fail("capacity"),
 		after
 	};
@@ -2244,14 +2244,14 @@ function verifyCorrectionProposal(args) {
 	for (const v of [...beforeViolations, ...afterViolations]) metricRank.set(v.metric, v.priority_rank);
 	for (const target of targets) {
 		const before = beforeBadness.get(target.metric) ?? 0;
-		if (!((afterBadness.get(target.metric) ?? 0) < before - EPSILON$1)) return {
+		if (!((afterBadness.get(target.metric) ?? 0) < before - EPSILON$2)) return {
 			...fail("no_improvement"),
 			after,
 			afterViolations
 		};
 	}
 	const minTargetRank = Math.min(...targets.map((t) => t.priority_rank));
-	for (const [metric, afterB] of afterBadness) if ((metricRank.get(metric) ?? Number.POSITIVE_INFINITY) < minTargetRank && afterB > (beforeBadness.get(metric) ?? 0) + EPSILON$1) return {
+	for (const [metric, afterB] of afterBadness) if ((metricRank.get(metric) ?? Number.POSITIVE_INFINITY) < minTargetRank && afterB > (beforeBadness.get(metric) ?? 0) + EPSILON$2) return {
 		...fail("higher_priority_break"),
 		after,
 		afterViolations
@@ -2295,7 +2295,7 @@ const MIN_ACTION_GRAMS = .05;
 const MAX_ADDITION_FACTOR = 2;
 const CANDIDATES_PER_VIOLATION = 3;
 const DEFAULT_MAX_PROPOSALS = 3;
-const EPSILON = 1e-9;
+const EPSILON$1 = 1e-9;
 const METRIC_PRIORITY_KEY = {
 	alcohol: "feasibility_safety",
 	ice_fraction: "freezing_stability",
@@ -2437,7 +2437,7 @@ function modelFor(result, metric) {
 /** Solve (N + n·m)/(D + d·m) = t for the added mass m. */
 function solveAddition(model, ingredient) {
 	const denominator = model.n(ingredient) - model.t * model.d(ingredient);
-	if (Math.abs(denominator) < EPSILON) return null;
+	if (Math.abs(denominator) < EPSILON$1) return null;
 	const m = (model.t * model.D - model.N) / denominator;
 	if (!Number.isFinite(m) || m < MIN_ACTION_GRAMS) return null;
 	if (m > model.D * MAX_ADDITION_FACTOR) return null;
@@ -2574,12 +2574,12 @@ function buildReduceAction(before, violation, constraints) {
 	let dominantShare = 0;
 	for (const item of before.items) {
 		const share = model.n(item.ingredient) * item.effective_grams;
-		if (share > dominantShare + EPSILON) {
+		if (share > dominantShare + EPSILON$1) {
 			dominantShare = share;
 			dominant = item;
 		}
 	}
-	if (!dominant || dominantShare <= EPSILON) return {
+	if (!dominant || dominantShare <= EPSILON$1) return {
 		action: null,
 		blocking: null
 	};
@@ -2594,7 +2594,7 @@ function buildReduceAction(before, violation, constraints) {
 	const n = model.n(dominant.ingredient);
 	const d = model.d(dominant.ingredient);
 	const denominator = n - model.t * d;
-	if (denominator <= EPSILON) return {
+	if (denominator <= EPSILON$1) return {
 		action: null,
 		blocking: null
 	};
@@ -2658,7 +2658,7 @@ function solvePair(m1, m2, ca, cb) {
 	const b1 = m1.t * m1.D - m1.N;
 	const b2 = m2.t * m2.D - m2.N;
 	const det = a11 * a22 - a12 * a21;
-	if (Math.abs(det) < EPSILON) return null;
+	if (Math.abs(det) < EPSILON$1) return null;
 	const mA = (b1 * a22 - a12 * b2) / det;
 	const mB = (a11 * b2 - b1 * a21) / det;
 	if (!Number.isFinite(mA) || !Number.isFinite(mB)) return null;
@@ -2894,6 +2894,9 @@ function canonicalIngredientId(ingredient) {
 
 //#endregion
 //#region src/features/recipe-constraints/constraintSet.ts
+/** Spec §6 display precision — the same tolerance the engine's batch-mismatch
+* warning uses. Used ONLY for sum-vs-batch sanity, never for lock precision. */
+const BATCH_SUM_TOLERANCE_G = .1;
 /** Numeric equality for a percentage share (percentage points). */
 const PERCENT_LOCK_TOLERANCE = 1e-9;
 /**
@@ -3528,6 +3531,728 @@ const isSupportedTemperature = (value) => value === -11 || value === -12 || valu
 const getTemperatureRegulatorSettingsOrNull = (productProfile, servingTemperatureC) => isActiveProfile(productProfile) && isSupportedTemperature(servingTemperatureC) ? REGISTRY[productProfile][servingTemperatureC] : null;
 
 //#endregion
+//#region src/features/formulation-strategy/strategy.ts
+/** Frozen migration: only historical ECO remains ECO; every old quality tier becomes OPTIMAL. */
+function normalizeFormulationStrategy(value) {
+	return value === "eco" ? "eco" : "optimal";
+}
+
+//#endregion
+//#region src/data/ingredients/verifiedVeganToolbox.ts
+/**
+* Small role-filtered Vegan formulation pool mirrored from the canonical
+* mapper_basement.csv v1.0 rows. It is deliberately NOT a replacement Mapper:
+* exact ids/compositions are pinned against the CSV by tests and the full
+* catalogue remains backend-owned. Mapper 2088 adds four verified,
+* engine-approved soy products; those exact canonical rows are mirrored here.
+*/
+const ZERO = {
+	water_percent: 0,
+	solids_percent: 0,
+	fat_percent: 0,
+	protein_percent: 0,
+	carbohydrate_percent: 0,
+	sugar_percent: 0,
+	sucrose_percent: 0,
+	glucose_percent: 0,
+	dextrose_percent: 0,
+	fructose_percent: 0,
+	lactose_percent: 0,
+	polyol_percent: 0,
+	fiber_percent: 0,
+	salt_percent: 0,
+	alcohol_percent: 0,
+	kcal_per_100g: 0
+};
+const verified = (id, name, composition, pod, pac, costPerKg) => ({
+	id,
+	canonical_ingredient_id: id,
+	private_product_id: null,
+	identity_provenance: "mapper",
+	name,
+	category: "other",
+	composition: {
+		...ZERO,
+		...composition
+	},
+	pod_value: pod,
+	pac_value: pac,
+	npac_value: null,
+	de_value: null,
+	cost_per_kg: costPerKg,
+	confidence_score: 95,
+	source_type: "verified_db",
+	is_verified: true,
+	flags: {
+		vegan_eligibility: "VEGAN_VERIFIED",
+		vegan_eligibility_reasons: ["verified_mapper_vegan_true"]
+	}
+});
+const VERIFIED_VEGAN_FORMULATION_CANDIDATES = [
+	verified("PI-ING-001565", "OAT DRINK · Beverage · Chilled · BIO", {
+		water_percent: 92.18,
+		solids_percent: 7.82,
+		fat_percent: 1.3,
+		protein_percent: .4,
+		carbohydrate_percent: 6,
+		sugar_percent: 4.1,
+		sucrose_percent: 4.1,
+		salt_percent: .12,
+		kcal_per_100g: 37
+	}, 4.1, 4.802, null),
+	verified("PI-ING-001566", "RICE DRINK · Beverage · Chilled", {
+		water_percent: 88.6,
+		solids_percent: 11.4,
+		fat_percent: .9,
+		protein_percent: .1,
+		carbohydrate_percent: 10.3,
+		sugar_percent: 4.47,
+		sucrose_percent: .03,
+		salt_percent: .1,
+		kcal_per_100g: 50
+	}, 4.47, 5.055, null),
+	verified("PI-ING-002109", "SOY DRINK 0% ADDED SUGAR · Carrefour · UHT", {
+		water_percent: 93.94,
+		solids_percent: 6.06,
+		fat_percent: 1.8,
+		protein_percent: 3.2,
+		carbohydrate_percent: 1,
+		sugar_percent: .7,
+		sucrose_percent: .7,
+		fiber_percent: 0,
+		salt_percent: .06,
+		kcal_per_100g: 33
+	}, .7, .7, 1.71),
+	verified("PI-ING-002110", "HIGH-PROTEIN SOY DRINK · EcoCesta · BIO", {
+		water_percent: 88.1,
+		solids_percent: 11.9,
+		fat_percent: 2.6,
+		protein_percent: 5.2,
+		carbohydrate_percent: 2.7,
+		sugar_percent: 2.4,
+		sucrose_percent: 2.4,
+		fiber_percent: 1.3,
+		salt_percent: .1,
+		kcal_per_100g: 58
+	}, 2.4, 2.4, 3.25),
+	verified("PI-ING-002111", "SOY SKYR HIGH PROTEIN NATURAL · Alpro · Chilled", {
+		water_percent: 86.47,
+		solids_percent: 13.53,
+		fat_percent: 3.3,
+		protein_percent: 6,
+		carbohydrate_percent: 2.6,
+		sugar_percent: 2.5,
+		sucrose_percent: 2.5,
+		fiber_percent: 1.3,
+		salt_percent: .33,
+		kcal_per_100g: 68
+	}, 2.5, 2.5, 6.97),
+	verified("PI-ING-002112", "SOY PLUS LIGHT 0% SUGAR · Vivesoy · UHT", {
+		water_percent: 94.48,
+		solids_percent: 5.52,
+		fat_percent: 1.4,
+		protein_percent: 2.7,
+		carbohydrate_percent: .5,
+		sugar_percent: 0,
+		sucrose_percent: 0,
+		fiber_percent: .8,
+		salt_percent: .12,
+		kcal_per_100g: 27
+	}, 0, 0, null),
+	verified("PI-ING-001587", "ALMOND DRINK · Beverage · Chilled", {
+		water_percent: 90.7,
+		solids_percent: 9.3,
+		fat_percent: 2.2,
+		protein_percent: .7,
+		carbohydrate_percent: 5.9,
+		sugar_percent: 3.28,
+		sucrose_percent: .56,
+		glucose_percent: .05,
+		fructose_percent: 2.6,
+		fiber_percent: .3,
+		salt_percent: .2,
+		kcal_per_100g: 47
+	}, 5.089, 6.835, null),
+	verified("PI-ING-000163", "REFINED COCONUT OIL · Elstar Fats Coconut · Dry", {
+		solids_percent: 100,
+		fat_percent: 100,
+		kcal_per_100g: 900
+	}, 0, 0, 5),
+	verified("PI-ING-000305", "SUNFLOWER OIL · Fat", {
+		solids_percent: 100,
+		fat_percent: 100,
+		kcal_per_100g: 900
+	}, 0, 0, 4),
+	verified("PI-ING-000451", "PEA PROTEIN · Protein · Dry", {
+		water_percent: 2.2,
+		solids_percent: 97.8,
+		fat_percent: 9,
+		protein_percent: 81.7,
+		carbohydrate_percent: .7,
+		fiber_percent: 1.4,
+		salt_percent: 5,
+		kcal_per_100g: 413
+	}, 0, 29.25, 12),
+	verified("PI-ING-000452", "RICE PROTEIN · Protein · Dry", {
+		water_percent: 1,
+		solids_percent: 99,
+		fat_percent: 5,
+		protein_percent: 84,
+		carbohydrate_percent: 5,
+		fiber_percent: 5,
+		kcal_per_100g: 429
+	}, 0, 0, 12)
+];
+const VEGAN_VERIFIED_CANONICAL_IDS = new Set([
+	"PI-ING-000163",
+	"PI-ING-000305",
+	"PI-ING-000451",
+	"PI-ING-000452",
+	"PI-ING-001565",
+	"PI-ING-001566",
+	"PI-ING-001587",
+	"PI-ING-002109",
+	"PI-ING-002110",
+	"PI-ING-002111",
+	"PI-ING-002112",
+	"PI-ING-000514",
+	"PI-ING-000494",
+	"PI-ING-000492",
+	"PI-ING-000456",
+	"PI-ING-001409",
+	"sucrose",
+	"dextrose",
+	"tara_gum",
+	"inulin",
+	"water"
+]);
+
+//#endregion
+//#region src/data/ingredients/veganEligibility.ts
+const PRIVATE_PRODUCT_VEGAN_REASON_PREFIX = "private_product_vegan_";
+/** Runtime assessment for an already-mapped Engine ingredient. Mapper-derived
+* ingredients carry the canonical assessment in flags. Legacy/manual rows with
+* no proof remain UNKNOWN; explicit animal flags remain FALSE. */
+function assessEngineIngredientVeganEligibility(ingredient) {
+	const flaggedStatus = ingredient.flags?.vegan_eligibility;
+	const flaggedReasons = [...ingredient.flags?.vegan_eligibility_reasons ?? []];
+	const hasAnimalFlag = ingredient.flags?.is_animal_origin === true || ingredient.flags?.is_dairy === true;
+	if (flaggedStatus === "VEGAN_VERIFIED" && hasAnimalFlag) return {
+		status: "VEGAN_CONFLICT",
+		reasons: ["verified_vegan_vs_engine_animal_flag", ...flaggedReasons]
+	};
+	if (ingredient.identity_provenance === "private_product") {
+		if (flaggedStatus && flaggedReasons.some((reason) => reason.startsWith(PRIVATE_PRODUCT_VEGAN_REASON_PREFIX))) return {
+			status: flaggedStatus,
+			reasons: flaggedReasons
+		};
+		if (hasAnimalFlag) return {
+			status: "VEGAN_FALSE",
+			reasons: ["engine_animal_origin_flag"]
+		};
+		return {
+			status: "VEGAN_UNKNOWN",
+			reasons: ["private_product_has_no_own_verified_vegan_evidence"]
+		};
+	}
+	if (ingredient.flags?.vegan_eligibility) return {
+		status: ingredient.flags.vegan_eligibility,
+		reasons: flaggedReasons
+	};
+	if (hasAnimalFlag) return {
+		status: "VEGAN_FALSE",
+		reasons: ["engine_animal_origin_flag"]
+	};
+	const canonicalId = ingredient.canonical_ingredient_id ?? ingredient.id;
+	if (VEGAN_VERIFIED_CANONICAL_IDS.has(canonicalId)) return {
+		status: "VEGAN_VERIFIED",
+		reasons: ["verified_canonical_mapper_identity"]
+	};
+	return {
+		status: "VEGAN_UNKNOWN",
+		reasons: ["engine_ingredient_has_no_verified_vegan_evidence"]
+	};
+}
+function veganRecipeEligibilityIssues(items) {
+	return items.filter((item) => item.planned_grams > 0).flatMap((item) => {
+		const assessment = assessEngineIngredientVeganEligibility(item.ingredient);
+		if (assessment.status === "VEGAN_VERIFIED") return [];
+		return [{
+			lineId: item.id,
+			ingredientId: item.ingredient.id,
+			ingredientName: item.ingredient.name,
+			status: assessment.status,
+			reasons: assessment.reasons
+		}];
+	});
+}
+
+//#endregion
+//#region src/features/formulation/ingredientRoles.ts
+/** Deterministic functional-role resolution from existing engine data only. */
+function resolveFunctionalRole(ingredient) {
+	const c = ingredient.composition;
+	const id = ingredient.id.toLowerCase();
+	const name = ingredient.name.toLowerCase();
+	if (ingredient.category === "water" || id === "water" || name === "water") return "water";
+	if (id.includes("inulin") || name.includes("inulin") || name.includes("inulina")) return "fiber_body";
+	if (ingredient.category === "stabilizer") return "stabilizer";
+	if (c.salt_percent >= 50) return "salt_modifier";
+	if (ingredient.category === "fruit") return "fruit";
+	if (ingredient.category === "chocolate_cocoa") return "chocolate_cocoa";
+	if (ingredient.category === "nut_paste") return "nut_paste";
+	if (ingredient.category === "alcohol" || c.alcohol_percent >= 5) return "alcohol";
+	if (ingredient.category === "egg") return "egg";
+	if (ingredient.category === "sugar") {
+		const controlSugars = c.dextrose_percent + c.fructose_percent + c.glucose_percent;
+		const pac = ingredient.pac_value;
+		if (controlSugars > c.sucrose_percent || pac !== null && pac >= 1.3) return "sugar_freezing_control";
+		return "sweetener_sucrose";
+	}
+	if (c.fiber_percent >= 50) return "fiber_body";
+	if (ingredient.category === "dairy") {
+		if (c.fat_percent >= 20) return "dairy_fat";
+		if (c.protein_percent >= 50) return "protein_source";
+		if (c.solids_percent >= 85) return c.protein_percent >= 25 ? "milk_solids" : "milk_solids";
+		if (c.protein_percent >= 25) return "protein_source";
+		return "primary_liquid";
+	}
+	const animal = ingredient.flags?.is_animal_origin === true;
+	if (!animal && (name.includes("coconut") || name.includes("kokos")) && c.fat_percent >= 10) return "plant_fat";
+	if (!animal && c.water_percent >= 75 && (name.includes("drink") || name.includes("oat") || name.includes("soy") || name.includes("napój"))) return "plant_liquid";
+	if (c.protein_percent >= 30) return "protein_source";
+	return "flavor_other";
+}
+
+//#endregion
+//#region src/features/formulation/stabilizerDosage.ts
+const APPROVED_STABILIZER_DOSAGES = [{
+	mapperId: "PI-ING-000492",
+	toolboxId: "tara_gum",
+	namePl: "Guma tara",
+	kind: "pure_gum",
+	minPercentOfTotalMix: .2,
+	maxPercentOfTotalMix: 1,
+	unit: "percent_of_total_mix",
+	provenance: "mapper_basement v1.0 PI-ING-000492 recommended_dosage_percent_min/max (percent of total mix; staging-verified read-only 2026-07-24)"
+}, {
+	mapperId: "PI-ING-000490",
+	toolboxId: null,
+	namePl: "IC · Solmix Stabilizer",
+	kind: "stabilizer_blend",
+	minPercentOfTotalMix: .2,
+	maxPercentOfTotalMix: 1,
+	unit: "percent_of_total_mix",
+	provenance: "mapper_basement v1.0 PI-ING-000490 recommended_dosage_percent_min/max (percent of total mix; staging-verified read-only 2026-07-24)"
+}];
+/** EXACT-identity lookup (engine toolbox id OR stable Mapper id). No fallback
+* of any kind — an unregistered ingredient has no approved window. */
+function approvedStabilizerDosage(ingredientId) {
+	return APPROVED_STABILIZER_DOSAGES.find((entry) => entry.mapperId === ingredientId || entry.toolboxId === ingredientId) ?? null;
+}
+const sumPlanned = (input) => input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+const DOSAGE_EPS = 1e-9;
+/**
+* A stabilizer carrier has an approved identity/dose contract, but no approved
+* Engine activity gradient. Its dosage window is a safety clamp only: it is
+* never permission for PI to move the dose while chasing POD, NPAC or a
+* Direction preference. Inulin resolves to `fiber_body`, so it deliberately
+* remains an adjustable solids/body lever.
+*/
+const isTemplateControlledStabilizer = (ingredient) => resolveFunctionalRole(ingredient) === "stabilizer";
+/**
+* Assess every stabilizer-role line of the recipe against its OWN approved
+* dosage window (exact identity, explicit units). PURE, diagnostic — never
+* mutates and never blocks; consumers decide (QA rows, solver-action clamp).
+*/
+function assessStabilizerDosage(input) {
+	const totalMix = sumPlanned(input);
+	const assessments = [];
+	for (const item of input.items) {
+		if (resolveFunctionalRole(item.ingredient) !== "stabilizer") continue;
+		const window = approvedStabilizerDosage(canonicalIngredientId(item.ingredient));
+		const percent = totalMix > 0 ? item.planned_grams / totalMix * 100 : null;
+		let status = "no_approved_window";
+		if (window !== null && percent !== null) status = percent < window.minPercentOfTotalMix - DOSAGE_EPS ? "below_window" : percent > window.maxPercentOfTotalMix + DOSAGE_EPS ? "above_window" : "within_window";
+		assessments.push({
+			lineId: item.id,
+			ingredientId: item.ingredient.id,
+			ingredientName: item.ingredient.name,
+			kind: window?.kind ?? null,
+			grams: item.planned_grams,
+			unitGrams: "grams",
+			percentOfTotalMix: percent,
+			unitPercent: "percent_of_total_mix",
+			window,
+			status
+		});
+	}
+	return assessments;
+}
+
+//#endregion
+//#region src/features/formulation/veganProfileConstraints.ts
+/** Highest owner-supplied external Vegan body reference (83.1 g / 1000 g).
+* This is a fail-closed calibration envelope, NOT a universal dosage claim. */
+const VEGAN_INULIN_CALIBRATION_MAX_PERCENT = 8.31;
+/** Exact pure-inulin Mapper identities covered by the owner calibration envelope. */
+const PURE_INULIN_CANONICAL_IDS = new Set(["PI-ING-000455", "PI-ING-000456"]);
+const plannedSum = (input) => input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+function veganProfileConstraintIssues(input) {
+	if (input.category !== "vegan_gelato") return [];
+	const total = plannedSum(input);
+	const issues = [];
+	const stabilizers = assessStabilizerDosage(input);
+	if (stabilizers.length === 0) issues.push({
+		code: "stabilizer_missing",
+		lineId: null,
+		ingredientName: "Stabilizator",
+		grams: 0,
+		minGrams: null,
+		maxGrams: null,
+		provenance: "Vegan final task §32: 0 g requires an explicitly verified process profile"
+	});
+	for (const assessment of stabilizers) {
+		const minGrams = assessment.window ? assessment.window.minPercentOfTotalMix / 100 * total : null;
+		const maxGrams = assessment.window ? assessment.window.maxPercentOfTotalMix / 100 * total : null;
+		if (assessment.status === "within_window") continue;
+		issues.push({
+			code: assessment.status === "below_window" ? "stabilizer_below_approved_window" : assessment.status === "above_window" ? "stabilizer_above_approved_window" : "stabilizer_window_unknown",
+			lineId: assessment.lineId,
+			ingredientName: assessment.ingredientName,
+			grams: assessment.grams,
+			minGrams,
+			maxGrams,
+			provenance: assessment.window?.provenance ?? "No approved exact-identity dosage window in the current Mapper contract"
+		});
+	}
+	const inulinLines = input.items.filter((item) => {
+		const id = canonicalIngredientId(item.ingredient);
+		return PURE_INULIN_CANONICAL_IDS.has(id) || item.ingredient.id === "inulin";
+	});
+	const inulinGrams = inulinLines.reduce((sum, item) => sum + item.planned_grams, 0);
+	const inulinMax = VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100 * total;
+	if (total > 0 && inulinGrams > inulinMax + 1e-9) issues.push({
+		code: "inulin_above_calibration_envelope",
+		lineId: inulinLines[0]?.id ?? null,
+		ingredientName: inulinLines[0]?.ingredient.name ?? "Inulina",
+		grams: inulinGrams,
+		minGrams: null,
+		maxGrams: inulinMax,
+		provenance: "Owner external Vegan high-inulin reference: 83.1 g per 1000 g; Mapper has no approved inulin dosage window"
+	});
+	return issues;
+}
+
+//#endregion
+//#region src/features/formulation/violationBands.ts
+/**
+* HARD vs SOFT violation classification by BAND PROVENANCE (owner P0 Phase 8,
+* NIGHTLY, Agent A). PURE — reads the engine's own indicator provenance flags;
+* no band value is touched or invented (science freeze).
+*
+* Binding rule: a violation measured against a PROVISIONAL band — a
+* `category_fallback` cell (an unseeded profile scored with milk_gelato
+* bands), a `temperature_fallback` cell (nearest-temperature band) or an
+* `estimated` band — may inform diagnostics, score and guidance, but must
+* NEVER alone hard-reject a formulation or classify it unsafe. Violations on
+* NATIVE approved bands stay hard: the beat-the-null gate for unconstrained
+* proposals on native-band profiles is absolute (the 8 × 125 g rule).
+*/
+/** Classify the CURRENT recipe's out-of-band metrics by band provenance. */
+function classifyViolationBands(input) {
+	const result = calculateRecipe(input);
+	const violations = detectViolations(result);
+	const indicatorByKey = new Map(result.indicators.map((indicator) => [indicator.key, indicator]));
+	const hard = /* @__PURE__ */ new Set();
+	const soft = /* @__PURE__ */ new Set();
+	for (const violation of violations) {
+		const indicator = indicatorByKey.get(violation.metric);
+		if (indicator?.category_fallback === true || indicator?.temperature_fallback === true || indicator?.band_status === "estimated") soft.add(violation.metric);
+		else hard.add(violation.metric);
+	}
+	const categoryFallback = result.indicators.some((i) => i.category_fallback === true);
+	const temperatureFallback = result.indicators.some((i) => i.temperature_fallback === true);
+	return {
+		hardMetrics: [...hard],
+		softMetrics: [...soft],
+		bandSource: categoryFallback ? "category_fallback" : "native",
+		temperatureFallback
+	};
+}
+
+//#endregion
+//#region src/features/product-intelligence/productBehaviorResolver.ts
+function productBehaviorSnapshotFingerprint(snapshots) {
+	return JSON.stringify(Object.entries(snapshots).filter((entry) => entry[1] !== void 0).sort(([left], [right]) => left.localeCompare(right)).map(([lineId, value]) => [
+		lineId,
+		value.productVersionId,
+		value.resolutionState,
+		value.factsFingerprint,
+		value.behaviorBindingId,
+		value.behaviorBindingVersion,
+		value.taxonomyVersion,
+		value.mapperVerificationStatus ?? null,
+		value.mainPolicyId,
+		value.mainPolicyVersion,
+		value.mainBasis,
+		value.ecoFloorPercent,
+		value.optimalCeilingPercent,
+		value.hardLimitPercent,
+		value.multiMainHardLimitPercent ?? null,
+		value.mainEquivalentFactor,
+		value.requiresLiquidDairyCarrier,
+		value.liquidDairyCarrierFloorPercent,
+		value.approvedLiquidDairyCarrier,
+		value.approvedMixedFamilyIds,
+		value.moduleEligibility,
+		value.processScope,
+		value.resolutionContext,
+		value.sharedFacts ?? null
+	]));
+}
+
+//#endregion
+//#region src/features/product-intelligence/productBehaviorAccess.ts
+const LEGACY_READ_ONLY_MODULES = new Set([
+	"MONITOR",
+	"SUMMARY",
+	"NUTRITION",
+	"ALLERGENS",
+	"PROCESS",
+	"LABEL",
+	"MASTER_LABEL",
+	"EXPORT",
+	"COST"
+]);
+/**
+* Trustless recipe boundary for resolved products. Callers pass every line ID
+* whose product lineage requires a Unified Product Intelligence snapshot; a
+* missing snapshot and a denied module permission fail through the same gate.
+*/
+function productBehaviorModuleGate(snapshots, module, requiredLineIds) {
+	const required = new Set(requiredLineIds);
+	const missingLineIds = requiredLineIds.filter((lineId) => snapshots[lineId] === void 0);
+	const blockedLineIds = [...new Set([...missingLineIds, ...Object.entries(snapshots).filter((entry) => entry[1] !== void 0).filter(([lineId]) => required.has(lineId)).filter(([, snapshot]) => {
+		if (snapshot.resolutionState === "REVALIDATION_REQUIRED") return true;
+		if (snapshot.resolutionState === "LEGACY_RECONSTRUCTED" && !LEGACY_READ_ONLY_MODULES.has(module)) return true;
+		const state = snapshot.moduleEligibility[module];
+		return state !== "eligible" && state !== "label_only";
+	}).map(([lineId]) => lineId)])].sort();
+	return blockedLineIds.length === 0 ? {
+		ready: true,
+		blockedLineIds: [],
+		reason: null
+	} : {
+		ready: false,
+		blockedLineIds,
+		reason: `Brak zatwierdzonego uprawnienia ${module} dla: ${blockedLineIds.join(", ")}.`
+	};
+}
+/** A line created by Mapper/private/catalog intake, or by the closed exact
+* built-in-to-Mapper bridge, must carry the immutable resolver snapshot.
+* Only synthetic fixtures with no canonical product lineage stay outside the
+* persistence gate. */
+function productBehaviorRequiredLineIds(input) {
+	const base = input.items.filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
+	const toppings = (input.toppings ?? []).filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (ingredient.kind === "catalog_label_topping" || typeof ingredient.catalog_product_id === "string" || hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
+	return [...new Set([...base, ...toppings])].sort();
+}
+function mainBehaviorBlockReason(snapshot, snapshotRequired = false) {
+	if (!snapshot) return snapshotRequired ? "Produkt wymaga ponownej walidacji przed ustawieniem jako Main." : null;
+	if (snapshot.resolutionState !== "RESOLVED") return "Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.";
+	if (snapshot.processScope !== "BASE_FORMULATION") return "Topping nie może pełnić roli Main.";
+	if (snapshot.moduleEligibility.MAIN !== "eligible") return snapshot.mainClassification === "MAIN_BLOCKED_POLICY" || snapshot.blockReasons.includes("main_policy_missing") ? "Brak zatwierdzonego zakresu Main dla tego produktu i profilu." : "Produkt nie jest zatwierdzony jako Main w tym profilu.";
+	if (snapshot.mainClassification !== "MAIN_ALLOWED" && snapshot.mainClassification !== "MAIN_PROFILE_SPECIFIC") return snapshot.mainClassification === "PROTEIN_CONTRIBUTOR_ONLY" ? "Składnik białkowy nie jest automatycznie smakiem Main." : "Produkt nie jest składnikiem smakowym Main.";
+	if (!snapshot.mainPolicyId || !snapshot.mainPolicyVersion || snapshot.ecoFloorPercent === null || snapshot.optimalCeilingPercent === null || snapshot.hardLimitPercent === null || snapshot.mainEquivalentFactor === null) return "Brak zatwierdzonego zakresu Main dla tego produktu i profilu.";
+	return null;
+}
+
+//#endregion
+//#region src/features/product-intelligence/mainEnvelope.ts
+const EPSILON = 1e-7;
+const baseSnapshots = (snapshots) => Object.values(snapshots).filter((snapshot) => snapshot !== void 0 && snapshot.processScope === "BASE_FORMULATION");
+/** Technical product constraint shared by the LP, candidate generator and
+* final Preview/Apply gates. It deliberately ignores sensory Main policy
+* readiness: only the approved liquid-dairy carrier minimum is checked. */
+function verifyMainTechnicalCarrier(input) {
+	const managedMains = input.recipe.items.filter((item) => item.lock_type === "main" && input.snapshots[item.id] !== void 0);
+	const dairyPolicies = managedMains.map((item) => input.snapshots[item.id]).filter((snapshot) => snapshot.requiresLiquidDairyCarrier && snapshot.liquidDairyCarrierFloorPercent !== null);
+	const dairyFloor = dairyPolicies.length > 0 ? Math.max(...dairyPolicies.map((snapshot) => snapshot.liquidDairyCarrierFloorPercent)) : null;
+	if (dairyFloor === null) return [];
+	const carrierIds = new Set(baseSnapshots(input.snapshots).filter((snapshot) => snapshot.approvedLiquidDairyCarrier).map((snapshot) => snapshot.lineId));
+	const carrierGrams = input.recipe.items.reduce((sum, item) => sum + (carrierIds.has(item.id) ? item.planned_grams : 0), 0);
+	const carrierPercent = input.recipe.target_batch_grams > 0 ? carrierGrams / input.recipe.target_batch_grams * 100 : 0;
+	return carrierPercent < dairyFloor - EPSILON ? [{
+		code: "liquid_dairy_carrier_below_floor",
+		lineIds: managedMains.map((item) => item.id),
+		messagePl: `Zatwierdzony płynny nośnik mleczny ma ${carrierPercent.toFixed(1)}%; wymagane minimum to ${dairyFloor.toFixed(1)}%.`
+	}] : [];
+}
+/** Product-layer Main contract. It consumes immutable resolver snapshots only;
+* it never derives families/forms/policies from ingredient names and never
+* changes Engine science. Product-lineage and accepted built-in Main rows fail
+* closed if authority is absent; only synthetic non-canonical fixtures remain
+* outside this boundary. */
+function verifyMainEnvelope(input) {
+	const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
+	const mains = input.recipe.items.filter((item) => item.lock_type === "main" && !technicalOnlyMainLineIds.has(item.id));
+	if (mains.length === 0) return {
+		ok: true,
+		equivalentPercent: null,
+		targetPercent: null,
+		hardLimitPercent: null,
+		policyId: null
+	};
+	const managed = mains.filter((item) => input.snapshots[item.id] !== void 0);
+	const requiredLineIds = new Set(productBehaviorRequiredLineIds({ items: input.recipe.items }));
+	const missingRequired = mains.filter((item) => input.snapshots[item.id] === void 0 && requiredLineIds.has(item.id));
+	if (missingRequired.length > 0) return {
+		ok: false,
+		violations: [{
+			code: "main_behavior_missing",
+			lineIds: missingRequired.map((item) => item.id),
+			messagePl: "Składnik Główny wymaga ponownej walidacji technicznej produktu."
+		}]
+	};
+	if (managed.length === 0) return {
+		ok: true,
+		equivalentPercent: null,
+		targetPercent: null,
+		hardLimitPercent: null,
+		policyId: null
+	};
+	const violations = [];
+	if (managed.length !== mains.length) violations.push({
+		code: "main_behavior_missing",
+		lineIds: mains.filter((item) => input.snapshots[item.id] === void 0).map((item) => item.id),
+		messagePl: "Nie wszystkie składniki Główne mają aktualny snapshot techniczny produktu."
+	});
+	const resolved = managed.map((item) => ({
+		item,
+		snapshot: input.snapshots[item.id]
+	}));
+	for (const { item, snapshot } of resolved) {
+		const reason = mainBehaviorBlockReason(snapshot);
+		if (reason) violations.push({
+			code: "main_behavior_blocked",
+			lineIds: [item.id],
+			messagePl: reason
+		});
+	}
+	if (violations.length > 0) return {
+		ok: false,
+		violations
+	};
+	const first = resolved[0].snapshot;
+	const multi = resolved.length > 1;
+	if (resolved.some(({ snapshot }) => snapshot.mainPolicyId !== first.mainPolicyId || snapshot.mainPolicyVersion !== first.mainPolicyVersion || snapshot.mainBasis !== first.mainBasis || (multi ? snapshot.multiMainHardLimitPercent !== first.multiMainHardLimitPercent : snapshot.ecoFloorPercent !== first.ecoFloorPercent || snapshot.optimalCeilingPercent !== first.optimalCeilingPercent || snapshot.hardLimitPercent !== first.hardLimitPercent))) return {
+		ok: false,
+		violations: [{
+			code: "main_policy_inconsistent",
+			lineIds: managed.map((item) => item.id),
+			messagePl: "Grupa Main nie ma jednego zgodnego zatwierdzonego zakresu."
+		}]
+	};
+	const families = [...new Set(resolved.map(({ snapshot }) => snapshot.familyId).filter(Boolean))];
+	if (families.length > 1) {
+		if (!families.every((family) => resolved.every(({ snapshot }) => snapshot.familyId === family || snapshot.approvedMixedFamilyIds.includes(family)))) return {
+			ok: false,
+			violations: [{
+				code: "multi_main_policy_unknown",
+				lineIds: managed.map((item) => item.id),
+				messagePl: "Brak zatwierdzonej polityki dla tej mieszanej grupy Main."
+			}]
+		};
+	}
+	const equivalentGrams = resolved.reduce((sum, { item, snapshot }) => sum + item.planned_grams * (snapshot.mainEquivalentFactor ?? 0), 0);
+	const equivalentPercent = input.recipe.target_batch_grams > 0 ? equivalentGrams / input.recipe.target_batch_grams * 100 : 0;
+	const floor = multi ? Math.max(...resolved.map(({ snapshot }) => snapshot.ecoFloorPercent ?? Number.POSITIVE_INFINITY)) : first.ecoFloorPercent;
+	const multiLimit = multi ? first.multiMainHardLimitPercent ?? null : null;
+	if (multi && multiLimit === null) return {
+		ok: false,
+		violations: [{
+			code: "multi_main_policy_unknown",
+			lineIds: managed.map((item) => item.id),
+			messagePl: "Brak zatwierdzonego wspólnego limitu dla tej grupy Main."
+		}]
+	};
+	const ceiling = multi ? multiLimit : first.optimalCeilingPercent;
+	const hard = multi ? multiLimit : first.hardLimitPercent;
+	if (input.enforceFloor !== false && equivalentPercent < floor - EPSILON) violations.push({
+		code: "main_below_floor",
+		lineIds: managed.map((item) => item.id),
+		messagePl: `Grupa Main ma ${equivalentPercent.toFixed(1)}%; wymagane minimum to ${floor.toFixed(1)}%.`
+	});
+	if (input.mode === "optimal" && equivalentPercent > ceiling + EPSILON) violations.push({
+		code: "main_above_optimal_ceiling",
+		lineIds: managed.map((item) => item.id),
+		messagePl: `Grupa Main przekracza zatwierdzony poziom OPTIMAL ${ceiling.toFixed(1)}%.`
+	});
+	if (equivalentPercent > hard + EPSILON) violations.push({
+		code: "main_above_hard_limit",
+		lineIds: managed.map((item) => item.id),
+		messagePl: `Grupa Main przekracza twardy limit ${hard.toFixed(1)}%.`
+	});
+	violations.push(...verifyMainTechnicalCarrier({
+		recipe: input.recipe,
+		snapshots: input.snapshots
+	}));
+	return violations.length > 0 ? {
+		ok: false,
+		violations
+	} : {
+		ok: true,
+		equivalentPercent,
+		targetPercent: input.mode === "optimal" ? ceiling : floor,
+		hardLimitPercent: hard,
+		policyId: first.mainPolicyId
+	};
+}
+
+//#endregion
+//#region src/features/recipe-composition/labelTopping.ts
+function isCatalogLabelToppingIngredient(ingredient) {
+	return "kind" in ingredient && ingredient.kind === "catalog_label_topping";
+}
+function cloneToppingIngredient(ingredient) {
+	if (isCatalogLabelToppingIngredient(ingredient)) return {
+		...ingredient,
+		label_nutrition_per_100g: { ...ingredient.label_nutrition_per_100g }
+	};
+	return {
+		...ingredient,
+		composition: { ...ingredient.composition },
+		flags: ingredient.flags ? { ...ingredient.flags } : void 0
+	};
+}
+
+//#endregion
+//#region src/features/recipe-composition/recipeCompositionPersistence.ts
+function recipeCompositionFromState(state) {
+	const itemIds = new Set(state.items.map((item) => item.id));
+	const baseOrder = [...(state.baseOrder ?? []).filter((id) => itemIds.has(id)), ...state.items.map((item) => item.id).filter((id) => !(state.baseOrder ?? []).includes(id))];
+	const behaviorSnapshots = Object.fromEntries(Object.entries(state.productBehaviorSnapshots ?? {}).filter((entry) => entry[1] !== void 0).map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]));
+	return {
+		schemaVersion: 1,
+		baseScope: "BASE_FORMULATION",
+		baseOrder,
+		toppings: (state.toppings ?? []).map((item, index) => ({
+			...item,
+			ingredient: cloneToppingIngredient(item.ingredient),
+			addon_sort_order: index
+		})),
+		...Object.keys(behaviorSnapshots).length > 0 ? { behaviorSnapshots } : {},
+		...state.ownerReviewGate ? { ownerReviewGate: {
+			...state.ownerReviewGate,
+			omittedToppingLineIds: [...state.ownerReviewGate.omittedToppingLineIds],
+			technicalOnlyMainLineIds: [...state.ownerReviewGate.technicalOnlyMainLineIds]
+		} } : {},
+		migrationAmbiguities: (state.compositionMigrationAmbiguities ?? []).map((item) => ({ ...item }))
+	};
+}
+
+//#endregion
 //#region src/features/formulation/mainIngredientContract.ts
 const MAIN_RATIO_TOLERANCE = 1e-7;
 const POSITIVE_GRAMS_EPSILON = 1e-9;
@@ -3793,142 +4518,753 @@ function resolveMainRatioScale(input, byLineId, desiredMainTotal) {
 }
 
 //#endregion
-//#region src/features/formulation/ingredientRoles.ts
-/** Deterministic functional-role resolution from existing engine data only. */
-function resolveFunctionalRole(ingredient) {
-	const c = ingredient.composition;
-	const id = ingredient.id.toLowerCase();
-	const name = ingredient.name.toLowerCase();
-	if (ingredient.category === "water" || id === "water" || name === "water") return "water";
-	if (id.includes("inulin") || name.includes("inulin") || name.includes("inulina")) return "fiber_body";
-	if (ingredient.category === "stabilizer") return "stabilizer";
-	if (c.salt_percent >= 50) return "salt_modifier";
-	if (ingredient.category === "fruit") return "fruit";
-	if (ingredient.category === "chocolate_cocoa") return "chocolate_cocoa";
-	if (ingredient.category === "nut_paste") return "nut_paste";
-	if (ingredient.category === "alcohol" || c.alcohol_percent >= 5) return "alcohol";
-	if (ingredient.category === "egg") return "egg";
-	if (ingredient.category === "sugar") {
-		const controlSugars = c.dextrose_percent + c.fructose_percent + c.glucose_percent;
-		const pac = ingredient.pac_value;
-		if (controlSugars > c.sucrose_percent || pac !== null && pac >= 1.3) return "sugar_freezing_control";
-		return "sweetener_sucrose";
-	}
-	if (c.fiber_percent >= 50) return "fiber_body";
-	if (ingredient.category === "dairy") {
-		if (c.fat_percent >= 20) return "dairy_fat";
-		if (c.protein_percent >= 50) return "protein_source";
-		if (c.solids_percent >= 85) return c.protein_percent >= 25 ? "milk_solids" : "milk_solids";
-		if (c.protein_percent >= 25) return "protein_source";
-		return "primary_liquid";
-	}
-	const animal = ingredient.flags?.is_animal_origin === true;
-	if (!animal && (name.includes("coconut") || name.includes("kokos")) && c.fat_percent >= 10) return "plant_fat";
-	if (!animal && c.water_percent >= 75 && (name.includes("drink") || name.includes("oat") || name.includes("soy") || name.includes("napój"))) return "plant_liquid";
-	if (c.protein_percent >= 30) return "protein_source";
-	return "flavor_other";
+//#region src/features/recipe-score/recipeMatchScore.ts
+/** The exact §15.1 label table (3–4 share one row, 1–2 share one row). */
+const MATCH_SCORE_LABELS = Object.freeze({
+	10: "Wyjątkowo dobrze dopasowana",
+	9: "Świetnie dopasowana",
+	8: "Bardzo dobrze dopasowana",
+	7: "Dobrze dopasowana",
+	6: "Blisko optimum",
+	5: "Wymaga korekty",
+	4: "Wyraźnie niezbalansowana",
+	3: "Wyraźnie niezbalansowana",
+	2: "Wymaga przebudowy",
+	1: "Wymaga przebudowy"
+});
+/** The exact §15.1 „Brak danych" label. */
+const MATCH_SCORE_NO_DATA_LABEL = "Brak wystarczających danych do oceny";
+/** Tooltip contract (§15.2): 10/10 is honest fit-to-goal, NOT a laboratory guarantee. */
+const MATCH_SCORE_TOOLTIPS = Object.freeze({
+	"recipe-score.match.tooltip": "Dopasowanie receptury ocenia, jak dobrze wynik odpowiada produktowi, trybowi i założeniom. 10/10 oznacza bardzo dobre dopasowanie do celu — nie jest gwarancją laboratoryjną.",
+	"recipe-score.match.tooltip.no-data": "Za mało danych, aby ocenić dopasowanie receptury. Uzupełnij składniki i gramatury, aby otrzymać ocenę."
+});
+
+//#endregion
+//#region src/features/recipe-score/technicalFit.ts
+/**
+* „Dopasowanie techniczne" — the PUBLIC headline recipe-fit integer
+* (ACCEPTANCE ADDENDUM 2, owner decision 2026-07-24; supersedes the §15.1
+* no-sub-dimensions rule for the headline).
+*
+* PUBLIC CONTRACT (adapter layer ONLY — the engine is untouched, science
+* freeze respected):
+*  - the headline integer is TECHNICAL recipe-fit, derived from the engine's
+*    band/technical dimension — NEVER from the mode-weighted `overall` blend
+*    (which mixes flavor/cost sub-scores and made T17 — all native bands in
+*    range, 0 violations — present as 9/10);
+*  - when ALL native approved technological bands are in range (0 violations,
+*    no provisional/fallback banding) the technical fit shows EXACTLY 10/10;
+*  - with violations the score degrades HONESTLY from the engine's own
+*    `scores.technical` dimension (clamped, integer-only, capped at 9 so a
+*    10/10 can only ever mean „all native bands in range");
+*  - provisional/fallback profiles (category_fallback / temperature_fallback /
+*    estimated bands) keep „Ocena częściowa / prowizoryczna" and can NEVER
+*    show a validated native 10/10 (structural cap at 9 + provisional flag);
+*  - cost and subjective flavor are SEPARATE labeled dimensions
+*    (`commercialDimensions`) — never mixed into the technical integer, still
+*    integer-only (no fake precision), honest „Brak danych" for unknown cost.
+*
+* The former `recipeMatchScore` (overall-based) remains available for QA
+* recorders/diagnostics; public headline surfaces (OverallScoreCard, Monitor
+* readouts) consume THIS adapter.
+*/
+/** Binding public name of the headline technical dimension. */
+const TECHNICAL_FIT_DISPLAY_NAME = "Dopasowanie techniczne";
+/** The exact provisional-profile qualifier (kept from the frozen contract). */
+const TECHNICAL_FIT_PROVISIONAL_LABEL = "Ocena częściowa / prowizoryczna";
+const TECHNICAL_FIT_TOOLTIPS = Object.freeze({
+	"recipe-score.technical.tooltip": "Dopasowanie techniczne ocenia wyłącznie zgodność receptury z zatwierdzonymi zakresami technologicznymi. 10/10 oznacza, że wszystkie natywne zatwierdzone zakresy są w normie. Koszt i profil smakowy są osobnymi wymiarami i nigdy nie wpływają na tę ocenę. Nie jest to gwarancja laboratoryjna.",
+	"recipe-score.technical.tooltip.no-data": "Za mało danych, aby ocenić dopasowanie techniczne. Uzupełnij składniki i gramatury, aby otrzymać ocenę."
+});
+const clampToScale = (value) => Math.min(10, Math.max(1, value));
+/**
+* Derive the public „Dopasowanie techniczne" from an engine result. PURE:
+* reads the engine's own violations/provenance/`scores.technical`; never
+* re-derives any band value, never mutates its input.
+*/
+function recipeTechnicalFit(result) {
+	const technical = result?.scores?.technical;
+	if (result == null || result.scores == null || technical === void 0 || technical === null || !Number.isFinite(technical)) return {
+		score: null,
+		label: MATCH_SCORE_NO_DATA_LABEL,
+		display: "—",
+		ariaText: `${TECHNICAL_FIT_DISPLAY_NAME}: ${MATCH_SCORE_NO_DATA_LABEL}`,
+		tooltipKey: "recipe-score.technical.tooltip.no-data",
+		validatedNative: false,
+		provisional: false,
+		violationCount: 0
+	};
+	const violations = detectViolations(result);
+	const provisional = result.indicators.some((indicator) => indicator.category_fallback === true || indicator.temperature_fallback === true || indicator.band_status === "estimated");
+	const validatedNative = violations.length === 0 && !provisional;
+	const score = validatedNative ? 10 : Math.min(9, clampToScale(Math.round(technical / 10)));
+	const label = MATCH_SCORE_LABELS[score];
+	const provisionalSuffix = provisional ? ` — ${TECHNICAL_FIT_PROVISIONAL_LABEL}` : "";
+	return {
+		score,
+		label,
+		display: `${score}/10`,
+		ariaText: `${TECHNICAL_FIT_DISPLAY_NAME}: ${score} na 10 — ${label}${provisionalSuffix}`,
+		tooltipKey: "recipe-score.technical.tooltip",
+		validatedNative,
+		provisional,
+		violationCount: violations.length
+	};
 }
 
 //#endregion
-//#region src/features/formulation/stabilizerDosage.ts
-const APPROVED_STABILIZER_DOSAGES = [{
-	mapperId: "PI-ING-000492",
-	toolboxId: "tara_gum",
-	namePl: "Guma tara",
-	kind: "pure_gum",
-	minPercentOfTotalMix: .2,
-	maxPercentOfTotalMix: 1,
-	unit: "percent_of_total_mix",
-	provenance: "mapper_basement v1.0 PI-ING-000492 recommended_dosage_percent_min/max (percent of total mix; staging-verified read-only 2026-07-24)"
-}, {
-	mapperId: "PI-ING-000490",
-	toolboxId: null,
-	namePl: "IC · Solmix Stabilizer",
-	kind: "stabilizer_blend",
-	minPercentOfTotalMix: .2,
-	maxPercentOfTotalMix: 1,
-	unit: "percent_of_total_mix",
-	provenance: "mapper_basement v1.0 PI-ING-000490 recommended_dosage_percent_min/max (percent of total mix; staging-verified read-only 2026-07-24)"
-}];
-/** EXACT-identity lookup (engine toolbox id OR stable Mapper id). No fallback
-* of any kind — an unregistered ingredient has no approved window. */
-function approvedStabilizerDosage(ingredientId) {
-	return APPROVED_STABILIZER_DOSAGES.find((entry) => entry.mapperId === ingredientId || entry.toolboxId === ingredientId) ?? null;
+//#region src/features/product-intelligence/recipeBehaviorAuthority.ts
+function buildRecipeBehaviorAuthority(input) {
+	const requiredLineIds = productBehaviorRequiredLineIds({
+		items: input.items,
+		toppings: input.toppings
+	});
+	return {
+		requiredLineIds,
+		snapshots: input.snapshots,
+		missingLineIds: requiredLineIds.filter((lineId) => input.snapshots[lineId] === void 0),
+		revalidationRequiredLineIds: requiredLineIds.filter((lineId) => input.snapshots[lineId]?.resolutionState === "REVALIDATION_REQUIRED"),
+		fingerprint: productBehaviorSnapshotFingerprint(input.snapshots)
+	};
 }
-const sumPlanned = (input) => input.items.reduce((sum, item) => sum + item.planned_grams, 0);
-const DOSAGE_EPS = 1e-9;
+const FACT_REQUIREMENTS = {
+	MONITOR: ["technical"],
+	SUMMARY: ["technical", "nutrition"],
+	NUTRITION: ["nutrition"],
+	ALLERGENS: ["allergens"],
+	PROCESS: ["process"],
+	LABEL: ["nutrition", "allergens"],
+	MASTER_LABEL: ["nutrition", "allergens"],
+	EXPORT: ["nutrition", "allergens"]
+};
+const REQUIRED_TECHNICAL_FACTS = [
+	"water",
+	"totalSolids",
+	"fat",
+	"protein",
+	"carbohydrate",
+	"sugars",
+	"salt"
+];
+const REQUIRED_NUTRITION_FACTS = [
+	"energyKcal",
+	"fat",
+	"carbohydrate",
+	"protein",
+	"salt"
+];
+const hasFiniteRequiredFacts = (facts, keys) => keys.every((key) => {
+	const value = facts[key];
+	return typeof value === "number" && Number.isFinite(value);
+});
+function missingFacts(facts, requirement) {
+	if (!facts) return true;
+	switch (requirement) {
+		case "technical": return facts.technicalComposition === null || !hasFiniteRequiredFacts(facts.technicalComposition, REQUIRED_TECHNICAL_FACTS);
+		case "nutrition": return facts.nutritionPer100g === null || !hasFiniteRequiredFacts(facts.nutritionPer100g, REQUIRED_NUTRITION_FACTS);
+		case "allergens": return facts.allergens === null;
+		case "process": return facts.processEvidence.length === 0;
+	}
+}
+/** Recipe-wide module boundary. Besides eligibility, modules that render
+* product facts require those facts to be frozen in the exact version snapshot.
+* Technical composition belongs only to BASE_FORMULATION. Label-only toppings
+* remain eligible for Summary/Nutrition without invented Engine composition. */
+function recipeBehaviorModuleGate(authority, module) {
+	const eligibility = productBehaviorModuleGate(authority.snapshots, module, authority.requiredLineIds);
+	const requirements = FACT_REQUIREMENTS[module] ?? [];
+	if (!eligibility.ready || requirements.length === 0) return eligibility;
+	const missing = authority.requiredLineIds.filter((lineId) => {
+		const snapshot = authority.snapshots[lineId];
+		if (!snapshot) return true;
+		return requirements.some((requirement) => requirement === "technical" && snapshot.processScope === "POST_PROCESS_ADDON" ? false : missingFacts(snapshot.sharedFacts, requirement));
+	});
+	return missing.length === 0 ? eligibility : {
+		ready: false,
+		blockedLineIds: missing,
+		reason: `Brak zamrożonych danych ${module} dla: ${missing.join(", ")}.`
+	};
+}
+const TECHNICAL_TO_INGREDIENT = {
+	water: "water_percent",
+	totalSolids: "solids_percent",
+	fat: "fat_percent",
+	saturatedFat: "saturated_fat_percent",
+	protein: "protein_percent",
+	carbohydrate: "carbohydrate_percent",
+	sugars: "sugar_percent",
+	sucrose: "sucrose_percent",
+	glucose: "glucose_percent",
+	dextrose: "dextrose_percent",
+	fructose: "fructose_percent",
+	lactose: "lactose_percent",
+	polyols: "polyol_percent",
+	fibre: "fiber_percent",
+	salt: "salt_percent",
+	alcohol: "alcohol_percent",
+	energyKcal: "kcal_per_100g"
+};
+const projectCompositionValue = (composition, key, value) => {
+	if (typeof value === "number" && Number.isFinite(value)) composition[key] = value;
+	else Reflect.deleteProperty(composition, key);
+};
+/** Rebuilds the module input from immutable shared facts. It changes no Engine
+* formula; it only prevents downstream views from re-reading mutable product
+* objects after the exact version was resolved. Missing/null frozen values
+* explicitly erase old mutable values instead of inheriting them. */
+function recipeInputFromFrozenBehavior(input, authority, projection) {
+	const required = new Set(authority.requiredLineIds);
+	return {
+		...input,
+		items: input.items.map((item) => {
+			if (!required.has(item.id)) return item;
+			const snapshot = authority.snapshots[item.id];
+			if (!snapshot || snapshot.processScope !== "BASE_FORMULATION") return item;
+			const ingredient = structuredClone(item.ingredient);
+			const technical = snapshot.sharedFacts?.technicalComposition;
+			if (technical) {
+				for (const [source, target] of Object.entries(TECHNICAL_TO_INGREDIENT)) projectCompositionValue(ingredient.composition, target, technical[source]);
+				ingredient.pod_value = typeof technical.podValue === "number" && Number.isFinite(technical.podValue) ? technical.podValue : null;
+				ingredient.pac_value = typeof technical.pacValue === "number" && Number.isFinite(technical.pacValue) ? technical.pacValue : null;
+				ingredient.de_value = typeof technical.deValue === "number" && Number.isFinite(technical.deValue) ? technical.deValue : null;
+			}
+			if (projection === "nutrition") {
+				const nutrition = snapshot.sharedFacts?.nutritionPer100g;
+				const nutritionProjection = {
+					kcal_per_100g: nutrition?.energyKcal,
+					fat_percent: nutrition?.fat,
+					saturated_fat_percent: nutrition?.saturatedFat,
+					carbohydrate_percent: nutrition?.carbohydrate,
+					sugar_percent: nutrition?.sugars,
+					protein_percent: nutrition?.protein,
+					salt_percent: nutrition?.salt,
+					fiber_percent: nutrition?.fibre
+				};
+				for (const [target, value] of Object.entries(nutritionProjection)) projectCompositionValue(ingredient.composition, target, value);
+			}
+			return {
+				...item,
+				ingredient
+			};
+		})
+	};
+}
+/** Projects POST_PROCESS_ADDON rows from the same immutable version facts used
+* by Base consumers. This prevents Summary/Production/Master Label from
+* accepting a valid snapshot while calculating from a mutable topping object. */
+function recipeToppingsFromFrozenBehavior(toppings, authority, projection) {
+	const required = new Set(authority.requiredLineIds);
+	return toppings.map((item) => {
+		if (!required.has(item.id)) return item;
+		const snapshot = authority.snapshots[item.id];
+		if (!snapshot || snapshot.processScope !== "POST_PROCESS_ADDON") return item;
+		const ingredient = structuredClone(item.ingredient);
+		if (isCatalogLabelToppingIngredient(ingredient)) {
+			const nutrition = snapshot.sharedFacts?.nutritionPer100g;
+			const allergens = snapshot.sharedFacts?.allergens;
+			if (!nutrition || !allergens || nutrition.energyKcal === null || nutrition.fat === null || nutrition.carbohydrate === null || nutrition.protein === null || nutrition.salt === null) throw new Error(`Frozen label authority is incomplete for ${item.id}.`);
+			ingredient.label_nutrition_per_100g = {
+				basis: "per_100g",
+				energyKcal: nutrition.energyKcal,
+				fat: nutrition.fat,
+				saturatedFat: nutrition.saturatedFat,
+				carbohydrate: nutrition.carbohydrate,
+				sugars: nutrition.sugars,
+				protein: nutrition.protein,
+				salt: nutrition.salt,
+				fibre: nutrition.fibre
+			};
+			ingredient.ingredients_text = allergens.ingredientsText ?? "";
+			ingredient.allergens_text = allergens.allergensText ?? "";
+			return {
+				...item,
+				ingredient
+			};
+		}
+		const technical = snapshot.sharedFacts?.technicalComposition;
+		if (technical) {
+			for (const [source, target] of Object.entries(TECHNICAL_TO_INGREDIENT)) projectCompositionValue(ingredient.composition, target, technical[source]);
+			ingredient.pod_value = typeof technical.podValue === "number" ? technical.podValue : null;
+			ingredient.pac_value = typeof technical.pacValue === "number" ? technical.pacValue : null;
+			ingredient.de_value = typeof technical.deValue === "number" ? technical.deValue : null;
+		}
+		if (projection === "nutrition") {
+			const nutrition = snapshot.sharedFacts?.nutritionPer100g;
+			const nutritionProjection = {
+				kcal_per_100g: nutrition?.energyKcal,
+				fat_percent: nutrition?.fat,
+				saturated_fat_percent: nutrition?.saturatedFat,
+				carbohydrate_percent: nutrition?.carbohydrate,
+				sugar_percent: nutrition?.sugars,
+				protein_percent: nutrition?.protein,
+				salt_percent: nutrition?.salt,
+				fiber_percent: nutrition?.fibre
+			};
+			for (const [target, value] of Object.entries(nutritionProjection)) projectCompositionValue(ingredient.composition, target, value);
+		}
+		return {
+			...item,
+			ingredient
+		};
+	});
+}
+
+//#endregion
+//#region src/features/product-intelligence/productDosageAuthority.ts
+const DOSAGE_EPSILON_G = .1000001;
+const validPercent = (value) => value !== null && Number.isFinite(value) && value >= 0 && value <= 100;
+const invalidDoseReason = (dose, targetBatchGrams) => {
+	if (!Number.isFinite(targetBatchGrams) || targetBatchGrams <= 0) return "invalid_target_batch";
+	if (!dose.sourceVersion?.trim()) return "missing_source_version";
+	if (dose.minPercent !== null && !validPercent(dose.minPercent)) return "invalid_minimum";
+	if (dose.maxPercent !== null && !validPercent(dose.maxPercent)) return "invalid_maximum";
+	if (dose.minPercent !== null && dose.maxPercent !== null && dose.minPercent > dose.maxPercent) return "minimum_above_maximum";
+	return null;
+};
 /**
-* A stabilizer carrier has an approved identity/dose contract, but no approved
-* Engine activity gradient. Its dosage window is a safety clamp only: it is
-* never permission for PI to move the dose while chasing POD, NPAC or a
-* Direction preference. Inulin resolves to `fiber_body`, so it deliberately
-* remains an adjustable solids/body lever.
+* Resolves only the exact server-frozen ProductBehavior dosage. There is no
+* family, role or ingredient-name fallback: absent Mapper evidence stays
+* absent, while malformed evidence fails closed.
 */
-const isTemplateControlledStabilizer = (ingredient) => resolveFunctionalRole(ingredient) === "stabilizer";
-/**
-* Assess every stabilizer-role line of the recipe against its OWN approved
-* dosage window (exact identity, explicit units). PURE, diagnostic — never
-* mutates and never blocks; consumers decide (QA rows, solver-action clamp).
-*/
-function assessStabilizerDosage(input) {
-	const totalMix = sumPlanned(input);
-	const assessments = [];
+function productDosageAuthority(snapshot, targetBatchGrams) {
+	const dose = snapshot?.sharedFacts?.recommendedDose;
+	if (!snapshot || snapshot.resolutionState !== "RESOLVED" || snapshot.processScope !== "BASE_FORMULATION" || snapshot.moduleEligibility.BASE_RECIPE !== "eligible" || !dose || dose.minPercent === null && dose.maxPercent === null) return { status: "not_defined" };
+	const invalid = invalidDoseReason(dose, targetBatchGrams);
+	if (invalid) return {
+		status: "invalid_evidence",
+		reason: invalid
+	};
+	return {
+		status: "defined",
+		authority: {
+			minPercent: dose.minPercent,
+			maxPercent: dose.maxPercent,
+			minGrams: dose.minPercent === null ? null : targetBatchGrams * dose.minPercent / 100,
+			maxGrams: dose.maxPercent === null ? null : targetBatchGrams * dose.maxPercent / 100,
+			sourceVersion: dose.sourceVersion
+		}
+	};
+}
+const amount = (value, unit) => `${Math.round(value * 10) / 10}${unit === "%" ? "%" : " g"}`;
+const rangePl = (authority) => {
+	if (authority.minPercent !== null && authority.maxPercent !== null) return `${amount(authority.minPercent, "%")}–${amount(authority.maxPercent, "%")} (${amount(authority.minGrams, "g")}–${amount(authority.maxGrams, "g")})`;
+	if (authority.maxPercent !== null) return `maks. ${amount(authority.maxPercent, "%")} (${amount(authority.maxGrams, "g")})`;
+	return `min. ${amount(authority.minPercent, "%")} (${amount(authority.minGrams, "g")})`;
+};
+function productDosageViolationMessagePl(ingredientName, enteredGrams, authority) {
+	return `${ingredientName}: wpisano ${amount(enteredGrams, "g")}, zatwierdzony zakres to ${rangePl(authority)}. Nie znaleziono bezpiecznej korekty, która zachowuje tę granicę; propozycja pozostaje zablokowana.`;
+}
+/** Hard product-dose assessment shared by Preview, Apply and guarded writes. */
+function assessProductDosages(input, snapshots) {
+	const violations = [];
 	for (const item of input.items) {
-		if (resolveFunctionalRole(item.ingredient) !== "stabilizer") continue;
-		const window = approvedStabilizerDosage(canonicalIngredientId(item.ingredient));
-		const percent = totalMix > 0 ? item.planned_grams / totalMix * 100 : null;
-		let status = "no_approved_window";
-		if (window !== null && percent !== null) status = percent < window.minPercentOfTotalMix - DOSAGE_EPS ? "below_window" : percent > window.maxPercentOfTotalMix + DOSAGE_EPS ? "above_window" : "within_window";
-		assessments.push({
+		const result = productDosageAuthority(snapshots[item.id], input.target_batch_grams);
+		if (result.status === "not_defined") continue;
+		const enteredPercent = input.target_batch_grams > 0 ? item.planned_grams / input.target_batch_grams * 100 : null;
+		if (result.status === "invalid_evidence") {
+			violations.push({
+				code: "invalid_evidence",
+				lineId: item.id,
+				ingredientName: item.ingredient.name,
+				enteredGrams: item.planned_grams,
+				enteredPercent,
+				minPercent: null,
+				maxPercent: null,
+				minGrams: null,
+				maxGrams: null,
+				sourceVersion: item.id === snapshots[item.id]?.lineId ? snapshots[item.id]?.sharedFacts?.recommendedDose?.sourceVersion ?? null : null,
+				messagePl: `${item.ingredient.name}: zatwierdzone dane dawki są niespójne (${result.reason}). Receptura pozostaje zablokowana do ponownej walidacji produktu.`
+			});
+			continue;
+		}
+		const { authority } = result;
+		if (item.planned_grams <= 0) continue;
+		const below = authority.minGrams !== null && item.planned_grams < authority.minGrams - DOSAGE_EPSILON_G;
+		const above = authority.maxGrams !== null && item.planned_grams > authority.maxGrams + DOSAGE_EPSILON_G;
+		if (!below && !above) continue;
+		violations.push({
+			code: below ? "below_minimum" : "above_maximum",
 			lineId: item.id,
-			ingredientId: item.ingredient.id,
 			ingredientName: item.ingredient.name,
-			kind: window?.kind ?? null,
-			grams: item.planned_grams,
-			unitGrams: "grams",
-			percentOfTotalMix: percent,
-			unitPercent: "percent_of_total_mix",
-			window,
-			status
+			enteredGrams: item.planned_grams,
+			enteredPercent,
+			minPercent: authority.minPercent,
+			maxPercent: authority.maxPercent,
+			minGrams: authority.minGrams,
+			maxGrams: authority.maxGrams,
+			sourceVersion: authority.sourceVersion,
+			messagePl: productDosageViolationMessagePl(item.ingredient.name, item.planned_grams, authority)
 		});
 	}
-	return assessments;
+	return violations;
 }
 
 //#endregion
-//#region src/features/formulation/violationBands.ts
-/**
-* HARD vs SOFT violation classification by BAND PROVENANCE (owner P0 Phase 8,
-* NIGHTLY, Agent A). PURE — reads the engine's own indicator provenance flags;
-* no band value is touched or invented (science freeze).
-*
-* Binding rule: a violation measured against a PROVISIONAL band — a
-* `category_fallback` cell (an unseeded profile scored with milk_gelato
-* bands), a `temperature_fallback` cell (nearest-temperature band) or an
-* `estimated` band — may inform diagnostics, score and guidance, but must
-* NEVER alone hard-reject a formulation or classify it unsafe. Violations on
-* NATIVE approved bands stay hard: the beat-the-null gate for unconstrained
-* proposals on native-band profiles is absolute (the 8 × 125 g rule).
-*/
-/** Classify the CURRENT recipe's out-of-band metrics by band provenance. */
-function classifyViolationBands(input) {
-	const result = calculateRecipe(input);
-	const violations = detectViolations(result);
-	const indicatorByKey = new Map(result.indicators.map((indicator) => [indicator.key, indicator]));
-	const hard = /* @__PURE__ */ new Set();
-	const soft = /* @__PURE__ */ new Set();
-	for (const violation of violations) {
-		const indicator = indicatorByKey.get(violation.metric);
-		if (indicator?.category_fallback === true || indicator?.temperature_fallback === true || indicator?.band_status === "estimated") soft.add(violation.metric);
-		else hard.add(violation.metric);
+//#region src/features/recipe-direction/recipeDirectionTargets.ts
+const DEFAULT_RECIPE_DIRECTION_TARGETS = Object.freeze({
+	sweetness: 0,
+	softness: 0,
+	creaminess: 0,
+	flavor: 0
+});
+const profileForCategory = (category) => {
+	switch (category) {
+		case "milk_gelato":
+		case "fruit_gelato":
+		case "nut_gelato":
+		case "alcohol_gelato":
+		case "custom": return "standard_gelato";
+		case "chocolate_gelato": return "chocolate_gelato";
+		case "sorbet": return "sorbet";
+		case "vegan_gelato": return "vegan_gelato";
+		case "protein_gelato": return "protein_gelato";
 	}
-	const categoryFallback = result.indicators.some((i) => i.category_fallback === true);
-	const temperatureFallback = result.indicators.some((i) => i.temperature_fallback === true);
+};
+const targetThird = (band, target) => {
+	const [min, max] = band;
+	const third = (max - min) / 3;
+	if (target < 0) return {
+		min,
+		max: min + third
+	};
+	if (target > 0) return {
+		min: max - third,
+		max
+	};
 	return {
-		hardMetrics: [...hard],
-		softMetrics: [...soft],
-		bandSource: categoryFallback ? "category_fallback" : "native",
-		temperatureFallback
+		min: min + third,
+		max: max - third
+	};
+};
+const softnessBand = (band, cleanCenter, target) => {
+	if (target < 0) return {
+		min: band[0],
+		max: cleanCenter[0]
+	};
+	if (target > 0) return {
+		min: cleanCenter[1],
+		max: band[1]
+	};
+	return {
+		min: cleanCenter[0],
+		max: cleanCenter[1]
+	};
+};
+function normalizeRecipeDirectionTargets(value) {
+	const normalize = (candidate) => candidate == null || !Number.isFinite(candidate) ? 0 : candidate < 0 ? -1 : candidate > 0 ? 1 : 0;
+	return {
+		sweetness: normalize(value?.sweetness),
+		softness: normalize(value?.softness),
+		creaminess: normalize(value?.creaminess),
+		flavor: normalize(value?.flavor)
+	};
+}
+function buildRecipeDirectionPlan(input) {
+	const targets = normalizeRecipeDirectionTargets(input.goals?.direction_targets);
+	const enabled = input.goals?.direction_targets_active === true;
+	const profile = profileForCategory(input.category);
+	const regulator = profile ? getTemperatureRegulatorSettingsOrNull(profile, input.target_temperature_c) : null;
+	const axes = [];
+	const bands = {};
+	const sweetnessOperational = profile === "standard_gelato" || profile === "sorbet" && input.target_temperature_c === -11 || profile === "chocolate_gelato" && (input.target_temperature_c === -11 || input.target_temperature_c === -12);
+	const softnessOperational = profile === "standard_gelato";
+	if (regulator?.pod && sweetnessOperational) {
+		const targetBand = targetThird(regulator.pod.band, targets.sweetness);
+		if (enabled) bands.pod = targetBand;
+		axes.push({
+			axis: "sweetness",
+			target: targets.sweetness,
+			status: "working",
+			metric: "pod",
+			targetBand,
+			reason: null
+		});
+	} else if (!sweetnessOperational && regulator?.pod) axes.push({
+		axis: "sweetness",
+		target: targets.sweetness,
+		status: "blocked_runtime",
+		metric: "pod",
+		targetBand: null,
+		reason: "Pełna ścieżka −1/0/+1 dla tego profilu i temperatury nie ma jeszcze zweryfikowanego, bezpiecznego Preview/Apply."
+	});
+	else axes.push({
+		axis: "sweetness",
+		target: targets.sweetness,
+		status: "blocked_data",
+		metric: "pod",
+		targetBand: null,
+		reason: "Brak zatwierdzonego zakresu POD dla tego profilu i temperatury."
+	});
+	if (regulator?.npac?.cleanCenter && softnessOperational) {
+		const targetBand = softnessBand(regulator.npac.band, regulator.npac.cleanCenter, targets.softness);
+		if (enabled) bands.npac = targetBand;
+		axes.push({
+			axis: "softness",
+			target: targets.softness,
+			status: "working",
+			metric: "npac",
+			targetBand,
+			reason: null
+		});
+	} else if (!softnessOperational && regulator?.npac?.cleanCenter) axes.push({
+		axis: "softness",
+		target: targets.softness,
+		status: "blocked_science",
+		metric: "npac",
+		targetBand: null,
+		reason: "Brak zweryfikowanej, profilowej kalibracji miękkości dla tej kategorii; PI nie używa zastępczej krzywej mlecznej."
+	});
+	else axes.push({
+		axis: "softness",
+		target: targets.softness,
+		status: "blocked_data",
+		metric: "npac",
+		targetBand: null,
+		reason: "Brak zatwierdzonego czystego centrum NPAC dla tego profilu i temperatury."
+	});
+	axes.push({
+		axis: "creaminess",
+		target: targets.creaminess,
+		status: "blocked_science",
+		metric: null,
+		targetBand: null,
+		reason: "Brak zatwierdzonego modelu sensorycznej kremowości; sam tłuszcz nie jest kremowością."
+	}, {
+		axis: "flavor",
+		target: targets.flavor,
+		status: "blocked_data",
+		metric: null,
+		targetBand: null,
+		reason: "Brak zweryfikowanych profili mocy smaku dla poszczególnych klas składników."
+	});
+	return {
+		profile,
+		servingTemperatureC: input.target_temperature_c,
+		bands,
+		axes
+	};
+}
+
+//#endregion
+//#region src/features/recipe-direction/recipeDirectionAssessment.ts
+/**
+* Product-layer target fit only. Native Engine bands remain the sole safety
+* authority; this function merely asks whether the already-computed result is
+* inside the immutable Sweetness/Softness preference zones selected by the
+* owner. No Engine constants or Mapper values are changed.
+*/
+function assessRecipeDirection(input, result) {
+	const plan = buildRecipeDirectionPlan(input);
+	const active = input.goals?.direction_targets_active === true;
+	const indicators = new Map(result.indicators.map((indicator) => [indicator.key, indicator]));
+	const residuals = [];
+	if (active) for (const axis of plan.axes) {
+		if (axis.status !== "working" || axis.metric === null || axis.targetBand === null) continue;
+		const value = indicators.get(axis.metric)?.value;
+		if (value === null || value === void 0 || !Number.isFinite(value)) continue;
+		const side = value < axis.targetBand.min ? "below" : value > axis.targetBand.max ? "above" : "inside";
+		residuals.push({
+			axis: axis.axis,
+			metric: axis.metric,
+			reached: side === "inside",
+			side
+		});
+	}
+	const reachedAxisCount = residuals.filter((residual) => residual.reached).length;
+	const supportedAxisCount = residuals.length;
+	const missedAxisCount = supportedAxisCount - reachedAxisCount;
+	const score = !active || supportedAxisCount === 0 ? null : Math.max(1, 10 - missedAxisCount);
+	return {
+		active,
+		reached: active && supportedAxisCount > 0 && missedAxisCount === 0,
+		supportedAxisCount,
+		reachedAxisCount,
+		score,
+		residuals,
+		blockedAxes: active ? plan.axes.filter((axis) => axis.status !== "working").map((axis) => ({
+			axis: axis.axis,
+			reason: axis.reason ?? "Brak kalibracji."
+		})) : []
+	};
+}
+
+//#endregion
+//#region src/features/protein-gelato/proteinTarget.ts
+const finiteTarget = (input) => {
+	const raw = input.goals?.target_protein_percent ?? PROTEIN_GELATO_TARGET.defaultPercent;
+	const finite = Number.isFinite(raw) ? raw : PROTEIN_GELATO_TARGET.defaultPercent;
+	return Math.round(Math.max(0, finite) / PROTEIN_GELATO_TARGET.inputStepPercent) * PROTEIN_GELATO_TARGET.inputStepPercent;
+};
+const hardSafeResult = (result) => detectViolations(result).length === 0 && !result.warnings.some((warning) => warning.severity === "critical");
+function assessProteinTarget(input, result = calculateRecipe(input)) {
+	if (input.category !== "protein_gelato") return {
+		applicable: false,
+		targetPercent: null,
+		actualPercent: null,
+		tolerancePercent: PROTEIN_GELATO_TARGET.tolerancePercent,
+		residualPp: null,
+		absoluteResidualPp: null,
+		reached: false,
+		hardSafe: hardSafeResult(result),
+		score: null
+	};
+	const targetPercent = finiteTarget(input);
+	const actualPercent = result.percentages.protein_percent;
+	const residualPp = actualPercent - targetPercent;
+	const absoluteResidualPp = Math.abs(residualPp);
+	const reached = absoluteResidualPp <= PROTEIN_GELATO_TARGET.tolerancePercent + 1e-9;
+	const hardSafe = hardSafeResult(result);
+	const score = hardSafe ? reached ? 10 : Math.max(1, 9 - Math.floor(Math.max(0, absoluteResidualPp - PROTEIN_GELATO_TARGET.tolerancePercent) / .5)) : Math.min(9, Math.max(1, Math.round((result.scores?.technical ?? 10) / 10)));
+	return {
+		applicable: true,
+		targetPercent,
+		actualPercent,
+		tolerancePercent: PROTEIN_GELATO_TARGET.tolerancePercent,
+		residualPp,
+		absoluteResidualPp,
+		reached,
+		hardSafe,
+		score
+	};
+}
+/**
+* Canonical public score seam for a concrete RecipeInput. Non-Protein behavior
+* remains byte-for-byte the existing technical-fit adapter. Protein tightens
+* the 10/10 contract: native safety AND the persisted protein target are met.
+*/
+function recipeFitForInput(input, result = calculateRecipe(input)) {
+	const base = recipeTechnicalFit(result);
+	const direction = assessRecipeDirection(input, result);
+	const target = assessProteinTarget(input, result);
+	if (base.score === null) return base;
+	if (!target.applicable && direction.score === null) return base;
+	const score = Math.min(base.score, direction.score ?? 10, target.applicable && target.score !== null ? target.score : 10);
+	const label = MATCH_SCORE_LABELS[score];
+	const directionAria = direction.active ? ` Kierunek receptury: ${direction.reachedAxisCount} z ${direction.supportedAxisCount} obsługiwanych osi w celu.` : "";
+	const proteinAria = target.applicable ? ` Cel białka ${target.targetPercent?.toFixed(1)}%, wynik ${target.actualPercent?.toFixed(1)}%.` : "";
+	return {
+		...base,
+		score,
+		label,
+		display: `${score}/10`,
+		ariaText: `Dopasowanie receptury: ${score} na 10 — ${label}.${directionAria}${proteinAria}`,
+		validatedNative: base.validatedNative && (!target.applicable || target.reached)
+	};
+}
+
+//#endregion
+//#region src/features/recipe-constraints/recipeConstraintAuthority.ts
+/**
+* One exact-candidate hard gate. It composes existing Engine bands, profile
+* rules and immutable ProductBehavior/Main authorities without copying a
+* scientific constant. Solver code may use the same underlying bounds early;
+* this independent final evaluation is the terminal truth for the vector.
+*/
+function evaluateRecipeConstraintAuthority(input) {
+	const { recipe } = input;
+	const snapshots = input.snapshots ?? {};
+	const requireProductBehavior = input.requireProductBehavior ?? true;
+	const result = calculateRecipe(recipe);
+	const issues = [];
+	const plannedTotal = recipe.items.reduce((sum, item) => sum + item.planned_grams, 0);
+	if (Math.abs(plannedTotal - recipe.target_batch_grams) > .1) issues.push({
+		source: "batch",
+		code: "batch_total_mismatch",
+		lineIds: recipe.items.map((item) => item.id),
+		messagePl: `Suma receptury ${plannedTotal.toFixed(1)} g nie odpowiada partii ${recipe.target_batch_grams.toFixed(1)} g.`
+	});
+	const native = classifyViolationBands(recipe);
+	for (const metric of native.hardMetrics) issues.push({
+		source: "engine",
+		code: "native_band_violation",
+		lineIds: recipe.items.map((item) => item.id),
+		metric,
+		messagePl: `Parametr ${metric} jest poza zatwierdzonym zakresem profilu.`
+	});
+	for (const warning of result.warnings.filter((entry) => entry.severity === "critical")) issues.push({
+		source: "engine",
+		code: "critical_warning",
+		lineIds: recipe.items.map((item) => item.id),
+		metric: warning.code,
+		messagePl: `Krytyczne ostrzeżenie Engine: ${warning.code}.`
+	});
+	if (recipe.category === "vegan_gelato") {
+		const eligibility = veganRecipeEligibilityIssues(recipe.items);
+		if (eligibility.length > 0) issues.push({
+			source: "profile",
+			code: "vegan_ingredient_invalid",
+			lineIds: eligibility.map((issue) => issue.lineId),
+			messagePl: "Profil Wegański zawiera składniki bez zatwierdzonej zgodności Vegan: " + eligibility.map((issue) => issue.ingredientName).join(", ")
+		});
+		const profile = veganProfileConstraintIssues(recipe);
+		if (profile.length > 0) issues.push({
+			source: "profile",
+			code: "vegan_profile_invalid",
+			lineIds: profile.flatMap((issue) => issue.lineId ? [issue.lineId] : []),
+			messagePl: "Receptura przekracza zatwierdzoną kopertę profilu Wegańskiego."
+		});
+	}
+	const protein = assessProteinTarget(recipe, result);
+	if (protein.applicable && !protein.reached) issues.push({
+		source: "profile",
+		code: "protein_target_unmet",
+		lineIds: recipe.items.map((item) => item.id),
+		messagePl: `Profil Protein wymaga celu ${protein.targetPercent?.toFixed(1)}%; kandydat ma ${protein.actualPercent?.toFixed(1)}%.`
+	});
+	const requiredLineIds = productBehaviorRequiredLineIds({ items: recipe.items });
+	if (requireProductBehavior && requiredLineIds.length > 0) {
+		const behavior = productBehaviorModuleGate(snapshots, input.module ?? (normalizeFormulationStrategy(recipe.goals?.formulation_strategy ?? recipe.mode) === "eco" ? "ECO" : "OPTIMAL"), requiredLineIds);
+		if (!behavior.ready) issues.push({
+			source: "product_behavior",
+			code: "product_behavior_invalid",
+			lineIds: behavior.blockedLineIds,
+			messagePl: behavior.reason ?? "Brak aktualnego ProductBehavior dla receptury."
+		});
+		for (const lineId of requiredLineIds) {
+			const snapshot = snapshots[lineId];
+			if (!snapshot || snapshot.resolutionState !== "RESOLVED") continue;
+			const eligible = snapshot.sharedFacts?.profileEligibility;
+			if (!Array.isArray(eligible)) issues.push({
+				source: "profile",
+				code: "profile_evidence_missing",
+				lineIds: [lineId],
+				messagePl: "Brak zamrożonej zgodności produktu z wybranym profilem."
+			});
+			else if (!eligible.includes(recipe.category)) issues.push({
+				source: "profile",
+				code: "profile_not_eligible",
+				lineIds: [lineId],
+				messagePl: "Produkt nie jest zatwierdzony dla wybranego profilu receptury."
+			});
+		}
+		for (const violation of assessProductDosages(recipe, snapshots)) issues.push({
+			source: "product_behavior",
+			code: "product_dosage_invalid",
+			lineIds: [violation.lineId],
+			messagePl: violation.messagePl,
+			violation
+		});
+		if (behavior.ready) {
+			const main = verifyMainEnvelope({
+				recipe,
+				snapshots,
+				mode: normalizeFormulationStrategy(recipe.goals?.formulation_strategy ?? recipe.mode),
+				enforceFloor: input.enforceMainFloor,
+				technicalOnlyMainLineIds: input.technicalOnlyMainLineIds
+			});
+			if (!main.ok) issues.push(...main.violations.map((violation) => ({
+				source: "main",
+				code: violation.code,
+				lineIds: violation.lineIds,
+				messagePl: violation.messagePl
+			})));
+		}
+	}
+	return {
+		valid: issues.length === 0,
+		result,
+		issues
 	};
 }
 
@@ -4297,762 +5633,6 @@ function practicalizeRecipeCandidate(exactInput, set) {
 }
 
 //#endregion
-//#region src/features/recipe-score/recipeMatchScore.ts
-/** The exact §15.1 label table (3–4 share one row, 1–2 share one row). */
-const MATCH_SCORE_LABELS = Object.freeze({
-	10: "Wyjątkowo dobrze dopasowana",
-	9: "Świetnie dopasowana",
-	8: "Bardzo dobrze dopasowana",
-	7: "Dobrze dopasowana",
-	6: "Blisko optimum",
-	5: "Wymaga korekty",
-	4: "Wyraźnie niezbalansowana",
-	3: "Wyraźnie niezbalansowana",
-	2: "Wymaga przebudowy",
-	1: "Wymaga przebudowy"
-});
-/** The exact §15.1 „Brak danych" label. */
-const MATCH_SCORE_NO_DATA_LABEL = "Brak wystarczających danych do oceny";
-/** Tooltip contract (§15.2): 10/10 is honest fit-to-goal, NOT a laboratory guarantee. */
-const MATCH_SCORE_TOOLTIPS = Object.freeze({
-	"recipe-score.match.tooltip": "Dopasowanie receptury ocenia, jak dobrze wynik odpowiada produktowi, trybowi i założeniom. 10/10 oznacza bardzo dobre dopasowanie do celu — nie jest gwarancją laboratoryjną.",
-	"recipe-score.match.tooltip.no-data": "Za mało danych, aby ocenić dopasowanie receptury. Uzupełnij składniki i gramatury, aby otrzymać ocenę."
-});
-
-//#endregion
-//#region src/features/recipe-score/technicalFit.ts
-/**
-* „Dopasowanie techniczne" — the PUBLIC headline recipe-fit integer
-* (ACCEPTANCE ADDENDUM 2, owner decision 2026-07-24; supersedes the §15.1
-* no-sub-dimensions rule for the headline).
-*
-* PUBLIC CONTRACT (adapter layer ONLY — the engine is untouched, science
-* freeze respected):
-*  - the headline integer is TECHNICAL recipe-fit, derived from the engine's
-*    band/technical dimension — NEVER from the mode-weighted `overall` blend
-*    (which mixes flavor/cost sub-scores and made T17 — all native bands in
-*    range, 0 violations — present as 9/10);
-*  - when ALL native approved technological bands are in range (0 violations,
-*    no provisional/fallback banding) the technical fit shows EXACTLY 10/10;
-*  - with violations the score degrades HONESTLY from the engine's own
-*    `scores.technical` dimension (clamped, integer-only, capped at 9 so a
-*    10/10 can only ever mean „all native bands in range");
-*  - provisional/fallback profiles (category_fallback / temperature_fallback /
-*    estimated bands) keep „Ocena częściowa / prowizoryczna" and can NEVER
-*    show a validated native 10/10 (structural cap at 9 + provisional flag);
-*  - cost and subjective flavor are SEPARATE labeled dimensions
-*    (`commercialDimensions`) — never mixed into the technical integer, still
-*    integer-only (no fake precision), honest „Brak danych" for unknown cost.
-*
-* The former `recipeMatchScore` (overall-based) remains available for QA
-* recorders/diagnostics; public headline surfaces (OverallScoreCard, Monitor
-* readouts) consume THIS adapter.
-*/
-/** Binding public name of the headline technical dimension. */
-const TECHNICAL_FIT_DISPLAY_NAME = "Dopasowanie techniczne";
-/** The exact provisional-profile qualifier (kept from the frozen contract). */
-const TECHNICAL_FIT_PROVISIONAL_LABEL = "Ocena częściowa / prowizoryczna";
-const TECHNICAL_FIT_TOOLTIPS = Object.freeze({
-	"recipe-score.technical.tooltip": "Dopasowanie techniczne ocenia wyłącznie zgodność receptury z zatwierdzonymi zakresami technologicznymi. 10/10 oznacza, że wszystkie natywne zatwierdzone zakresy są w normie. Koszt i profil smakowy są osobnymi wymiarami i nigdy nie wpływają na tę ocenę. Nie jest to gwarancja laboratoryjna.",
-	"recipe-score.technical.tooltip.no-data": "Za mało danych, aby ocenić dopasowanie techniczne. Uzupełnij składniki i gramatury, aby otrzymać ocenę."
-});
-const clampToScale = (value) => Math.min(10, Math.max(1, value));
-/**
-* Derive the public „Dopasowanie techniczne" from an engine result. PURE:
-* reads the engine's own violations/provenance/`scores.technical`; never
-* re-derives any band value, never mutates its input.
-*/
-function recipeTechnicalFit(result) {
-	const technical = result?.scores?.technical;
-	if (result == null || result.scores == null || technical === void 0 || technical === null || !Number.isFinite(technical)) return {
-		score: null,
-		label: MATCH_SCORE_NO_DATA_LABEL,
-		display: "—",
-		ariaText: `${TECHNICAL_FIT_DISPLAY_NAME}: ${MATCH_SCORE_NO_DATA_LABEL}`,
-		tooltipKey: "recipe-score.technical.tooltip.no-data",
-		validatedNative: false,
-		provisional: false,
-		violationCount: 0
-	};
-	const violations = detectViolations(result);
-	const provisional = result.indicators.some((indicator) => indicator.category_fallback === true || indicator.temperature_fallback === true || indicator.band_status === "estimated");
-	const validatedNative = violations.length === 0 && !provisional;
-	const score = validatedNative ? 10 : Math.min(9, clampToScale(Math.round(technical / 10)));
-	const label = MATCH_SCORE_LABELS[score];
-	const provisionalSuffix = provisional ? ` — ${TECHNICAL_FIT_PROVISIONAL_LABEL}` : "";
-	return {
-		score,
-		label,
-		display: `${score}/10`,
-		ariaText: `${TECHNICAL_FIT_DISPLAY_NAME}: ${score} na 10 — ${label}${provisionalSuffix}`,
-		tooltipKey: "recipe-score.technical.tooltip",
-		validatedNative,
-		provisional,
-		violationCount: violations.length
-	};
-}
-
-//#endregion
-//#region src/features/recipe-direction/recipeDirectionTargets.ts
-const DEFAULT_RECIPE_DIRECTION_TARGETS = Object.freeze({
-	sweetness: 0,
-	softness: 0,
-	creaminess: 0,
-	flavor: 0
-});
-const profileForCategory = (category) => {
-	switch (category) {
-		case "milk_gelato":
-		case "fruit_gelato":
-		case "nut_gelato":
-		case "alcohol_gelato":
-		case "custom": return "standard_gelato";
-		case "chocolate_gelato": return "chocolate_gelato";
-		case "sorbet": return "sorbet";
-		case "vegan_gelato": return "vegan_gelato";
-		case "protein_gelato": return "protein_gelato";
-	}
-};
-const targetThird = (band, target) => {
-	const [min, max] = band;
-	const third = (max - min) / 3;
-	if (target < 0) return {
-		min,
-		max: min + third
-	};
-	if (target > 0) return {
-		min: max - third,
-		max
-	};
-	return {
-		min: min + third,
-		max: max - third
-	};
-};
-const softnessBand = (band, cleanCenter, target) => {
-	if (target < 0) return {
-		min: band[0],
-		max: cleanCenter[0]
-	};
-	if (target > 0) return {
-		min: cleanCenter[1],
-		max: band[1]
-	};
-	return {
-		min: cleanCenter[0],
-		max: cleanCenter[1]
-	};
-};
-function normalizeRecipeDirectionTargets(value) {
-	const normalize = (candidate) => candidate == null || !Number.isFinite(candidate) ? 0 : candidate < 0 ? -1 : candidate > 0 ? 1 : 0;
-	return {
-		sweetness: normalize(value?.sweetness),
-		softness: normalize(value?.softness),
-		creaminess: normalize(value?.creaminess),
-		flavor: normalize(value?.flavor)
-	};
-}
-function buildRecipeDirectionPlan(input) {
-	const targets = normalizeRecipeDirectionTargets(input.goals?.direction_targets);
-	const enabled = input.goals?.direction_targets_active === true;
-	const profile = profileForCategory(input.category);
-	const regulator = profile ? getTemperatureRegulatorSettingsOrNull(profile, input.target_temperature_c) : null;
-	const axes = [];
-	const bands = {};
-	const sweetnessOperational = profile === "standard_gelato" || profile === "sorbet" && input.target_temperature_c === -11 || profile === "chocolate_gelato" && (input.target_temperature_c === -11 || input.target_temperature_c === -12);
-	const softnessOperational = profile === "standard_gelato";
-	if (regulator?.pod && sweetnessOperational) {
-		const targetBand = targetThird(regulator.pod.band, targets.sweetness);
-		if (enabled) bands.pod = targetBand;
-		axes.push({
-			axis: "sweetness",
-			target: targets.sweetness,
-			status: "working",
-			metric: "pod",
-			targetBand,
-			reason: null
-		});
-	} else if (!sweetnessOperational && regulator?.pod) axes.push({
-		axis: "sweetness",
-		target: targets.sweetness,
-		status: "blocked_runtime",
-		metric: "pod",
-		targetBand: null,
-		reason: "Pełna ścieżka −1/0/+1 dla tego profilu i temperatury nie ma jeszcze zweryfikowanego, bezpiecznego Preview/Apply."
-	});
-	else axes.push({
-		axis: "sweetness",
-		target: targets.sweetness,
-		status: "blocked_data",
-		metric: "pod",
-		targetBand: null,
-		reason: "Brak zatwierdzonego zakresu POD dla tego profilu i temperatury."
-	});
-	if (regulator?.npac?.cleanCenter && softnessOperational) {
-		const targetBand = softnessBand(regulator.npac.band, regulator.npac.cleanCenter, targets.softness);
-		if (enabled) bands.npac = targetBand;
-		axes.push({
-			axis: "softness",
-			target: targets.softness,
-			status: "working",
-			metric: "npac",
-			targetBand,
-			reason: null
-		});
-	} else if (!softnessOperational && regulator?.npac?.cleanCenter) axes.push({
-		axis: "softness",
-		target: targets.softness,
-		status: "blocked_science",
-		metric: "npac",
-		targetBand: null,
-		reason: "Brak zweryfikowanej, profilowej kalibracji miękkości dla tej kategorii; PI nie używa zastępczej krzywej mlecznej."
-	});
-	else axes.push({
-		axis: "softness",
-		target: targets.softness,
-		status: "blocked_data",
-		metric: "npac",
-		targetBand: null,
-		reason: "Brak zatwierdzonego czystego centrum NPAC dla tego profilu i temperatury."
-	});
-	axes.push({
-		axis: "creaminess",
-		target: targets.creaminess,
-		status: "blocked_science",
-		metric: null,
-		targetBand: null,
-		reason: "Brak zatwierdzonego modelu sensorycznej kremowości; sam tłuszcz nie jest kremowością."
-	}, {
-		axis: "flavor",
-		target: targets.flavor,
-		status: "blocked_data",
-		metric: null,
-		targetBand: null,
-		reason: "Brak zweryfikowanych profili mocy smaku dla poszczególnych klas składników."
-	});
-	return {
-		profile,
-		servingTemperatureC: input.target_temperature_c,
-		bands,
-		axes
-	};
-}
-
-//#endregion
-//#region src/features/recipe-direction/recipeDirectionAssessment.ts
-/**
-* Product-layer target fit only. Native Engine bands remain the sole safety
-* authority; this function merely asks whether the already-computed result is
-* inside the immutable Sweetness/Softness preference zones selected by the
-* owner. No Engine constants or Mapper values are changed.
-*/
-function assessRecipeDirection(input, result) {
-	const plan = buildRecipeDirectionPlan(input);
-	const active = input.goals?.direction_targets_active === true;
-	const indicators = new Map(result.indicators.map((indicator) => [indicator.key, indicator]));
-	const residuals = [];
-	if (active) for (const axis of plan.axes) {
-		if (axis.status !== "working" || axis.metric === null || axis.targetBand === null) continue;
-		const value = indicators.get(axis.metric)?.value;
-		if (value === null || value === void 0 || !Number.isFinite(value)) continue;
-		const side = value < axis.targetBand.min ? "below" : value > axis.targetBand.max ? "above" : "inside";
-		residuals.push({
-			axis: axis.axis,
-			metric: axis.metric,
-			reached: side === "inside",
-			side
-		});
-	}
-	const reachedAxisCount = residuals.filter((residual) => residual.reached).length;
-	const supportedAxisCount = residuals.length;
-	const missedAxisCount = supportedAxisCount - reachedAxisCount;
-	const score = !active || supportedAxisCount === 0 ? null : Math.max(1, 10 - missedAxisCount);
-	return {
-		active,
-		reached: active && supportedAxisCount > 0 && missedAxisCount === 0,
-		supportedAxisCount,
-		reachedAxisCount,
-		score,
-		residuals,
-		blockedAxes: active ? plan.axes.filter((axis) => axis.status !== "working").map((axis) => ({
-			axis: axis.axis,
-			reason: axis.reason ?? "Brak kalibracji."
-		})) : []
-	};
-}
-
-//#endregion
-//#region src/features/protein-gelato/proteinTarget.ts
-const finiteTarget = (input) => {
-	const raw = input.goals?.target_protein_percent ?? PROTEIN_GELATO_TARGET.defaultPercent;
-	const finite = Number.isFinite(raw) ? raw : PROTEIN_GELATO_TARGET.defaultPercent;
-	return Math.round(Math.max(0, finite) / PROTEIN_GELATO_TARGET.inputStepPercent) * PROTEIN_GELATO_TARGET.inputStepPercent;
-};
-const hardSafeResult = (result) => detectViolations(result).length === 0 && !result.warnings.some((warning) => warning.severity === "critical");
-function assessProteinTarget(input, result = calculateRecipe(input)) {
-	if (input.category !== "protein_gelato") return {
-		applicable: false,
-		targetPercent: null,
-		actualPercent: null,
-		tolerancePercent: PROTEIN_GELATO_TARGET.tolerancePercent,
-		residualPp: null,
-		absoluteResidualPp: null,
-		reached: false,
-		hardSafe: hardSafeResult(result),
-		score: null
-	};
-	const targetPercent = finiteTarget(input);
-	const actualPercent = result.percentages.protein_percent;
-	const residualPp = actualPercent - targetPercent;
-	const absoluteResidualPp = Math.abs(residualPp);
-	const reached = absoluteResidualPp <= PROTEIN_GELATO_TARGET.tolerancePercent + 1e-9;
-	const hardSafe = hardSafeResult(result);
-	const score = hardSafe ? reached ? 10 : Math.max(1, 9 - Math.floor(Math.max(0, absoluteResidualPp - PROTEIN_GELATO_TARGET.tolerancePercent) / .5)) : Math.min(9, Math.max(1, Math.round((result.scores?.technical ?? 10) / 10)));
-	return {
-		applicable: true,
-		targetPercent,
-		actualPercent,
-		tolerancePercent: PROTEIN_GELATO_TARGET.tolerancePercent,
-		residualPp,
-		absoluteResidualPp,
-		reached,
-		hardSafe,
-		score
-	};
-}
-/**
-* Canonical public score seam for a concrete RecipeInput. Non-Protein behavior
-* remains byte-for-byte the existing technical-fit adapter. Protein tightens
-* the 10/10 contract: native safety AND the persisted protein target are met.
-*/
-function recipeFitForInput(input, result = calculateRecipe(input)) {
-	const base = recipeTechnicalFit(result);
-	const direction = assessRecipeDirection(input, result);
-	const target = assessProteinTarget(input, result);
-	if (base.score === null) return base;
-	if (!target.applicable && direction.score === null) return base;
-	const score = Math.min(base.score, direction.score ?? 10, target.applicable && target.score !== null ? target.score : 10);
-	const label = MATCH_SCORE_LABELS[score];
-	const directionAria = direction.active ? ` Kierunek receptury: ${direction.reachedAxisCount} z ${direction.supportedAxisCount} obsługiwanych osi w celu.` : "";
-	const proteinAria = target.applicable ? ` Cel białka ${target.targetPercent?.toFixed(1)}%, wynik ${target.actualPercent?.toFixed(1)}%.` : "";
-	return {
-		...base,
-		score,
-		label,
-		display: `${score}/10`,
-		ariaText: `Dopasowanie receptury: ${score} na 10 — ${label}.${directionAria}${proteinAria}`,
-		validatedNative: base.validatedNative && (!target.applicable || target.reached)
-	};
-}
-
-//#endregion
-//#region src/features/recipe-composition/labelTopping.ts
-function isCatalogLabelToppingIngredient(ingredient) {
-	return "kind" in ingredient && ingredient.kind === "catalog_label_topping";
-}
-function cloneToppingIngredient(ingredient) {
-	if (isCatalogLabelToppingIngredient(ingredient)) return {
-		...ingredient,
-		label_nutrition_per_100g: { ...ingredient.label_nutrition_per_100g }
-	};
-	return {
-		...ingredient,
-		composition: { ...ingredient.composition },
-		flags: ingredient.flags ? { ...ingredient.flags } : void 0
-	};
-}
-
-//#endregion
-//#region src/features/product-intelligence/productBehaviorResolver.ts
-function productBehaviorSnapshotFingerprint(snapshots) {
-	return JSON.stringify(Object.entries(snapshots).filter((entry) => entry[1] !== void 0).sort(([left], [right]) => left.localeCompare(right)).map(([lineId, value]) => [
-		lineId,
-		value.productVersionId,
-		value.resolutionState,
-		value.factsFingerprint,
-		value.behaviorBindingId,
-		value.behaviorBindingVersion,
-		value.taxonomyVersion,
-		value.mapperVerificationStatus ?? null,
-		value.mainPolicyId,
-		value.mainPolicyVersion,
-		value.mainBasis,
-		value.ecoFloorPercent,
-		value.optimalCeilingPercent,
-		value.hardLimitPercent,
-		value.multiMainHardLimitPercent ?? null,
-		value.mainEquivalentFactor,
-		value.requiresLiquidDairyCarrier,
-		value.liquidDairyCarrierFloorPercent,
-		value.approvedLiquidDairyCarrier,
-		value.approvedMixedFamilyIds,
-		value.moduleEligibility,
-		value.processScope,
-		value.resolutionContext,
-		value.sharedFacts ?? null
-	]));
-}
-
-//#endregion
-//#region src/features/product-intelligence/productBehaviorAccess.ts
-const LEGACY_READ_ONLY_MODULES = new Set([
-	"MONITOR",
-	"SUMMARY",
-	"NUTRITION",
-	"ALLERGENS",
-	"PROCESS",
-	"LABEL",
-	"MASTER_LABEL",
-	"EXPORT",
-	"COST"
-]);
-/**
-* Trustless recipe boundary for resolved products. Callers pass every line ID
-* whose product lineage requires a Unified Product Intelligence snapshot; a
-* missing snapshot and a denied module permission fail through the same gate.
-*/
-function productBehaviorModuleGate(snapshots, module, requiredLineIds) {
-	const required = new Set(requiredLineIds);
-	const missingLineIds = requiredLineIds.filter((lineId) => snapshots[lineId] === void 0);
-	const blockedLineIds = [...new Set([...missingLineIds, ...Object.entries(snapshots).filter((entry) => entry[1] !== void 0).filter(([lineId]) => required.has(lineId)).filter(([, snapshot]) => {
-		if (snapshot.resolutionState === "REVALIDATION_REQUIRED") return true;
-		if (snapshot.resolutionState === "LEGACY_RECONSTRUCTED" && !LEGACY_READ_ONLY_MODULES.has(module)) return true;
-		const state = snapshot.moduleEligibility[module];
-		return state !== "eligible" && state !== "label_only";
-	}).map(([lineId]) => lineId)])].sort();
-	return blockedLineIds.length === 0 ? {
-		ready: true,
-		blockedLineIds: [],
-		reason: null
-	} : {
-		ready: false,
-		blockedLineIds,
-		reason: `Brak zatwierdzonego uprawnienia ${module} dla: ${blockedLineIds.join(", ")}.`
-	};
-}
-/** A line created by Mapper/private/catalog intake, or by the closed exact
-* built-in-to-Mapper bridge, must carry the immutable resolver snapshot.
-* Only synthetic fixtures with no canonical product lineage stay outside the
-* persistence gate. */
-function productBehaviorRequiredLineIds(input) {
-	const base = input.items.filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
-	const toppings = (input.toppings ?? []).filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (ingredient.kind === "catalog_label_topping" || typeof ingredient.catalog_product_id === "string" || hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
-	return [...new Set([...base, ...toppings])].sort();
-}
-
-//#endregion
-//#region src/features/product-intelligence/recipeBehaviorAuthority.ts
-function buildRecipeBehaviorAuthority(input) {
-	const requiredLineIds = productBehaviorRequiredLineIds({
-		items: input.items,
-		toppings: input.toppings
-	});
-	return {
-		requiredLineIds,
-		snapshots: input.snapshots,
-		missingLineIds: requiredLineIds.filter((lineId) => input.snapshots[lineId] === void 0),
-		revalidationRequiredLineIds: requiredLineIds.filter((lineId) => input.snapshots[lineId]?.resolutionState === "REVALIDATION_REQUIRED"),
-		fingerprint: productBehaviorSnapshotFingerprint(input.snapshots)
-	};
-}
-const FACT_REQUIREMENTS = {
-	MONITOR: ["technical"],
-	SUMMARY: ["technical", "nutrition"],
-	NUTRITION: ["nutrition"],
-	ALLERGENS: ["allergens"],
-	PROCESS: ["process"],
-	LABEL: ["nutrition", "allergens"],
-	MASTER_LABEL: ["nutrition", "allergens"],
-	EXPORT: ["nutrition", "allergens"]
-};
-const REQUIRED_TECHNICAL_FACTS = [
-	"water",
-	"totalSolids",
-	"fat",
-	"protein",
-	"carbohydrate",
-	"sugars",
-	"salt"
-];
-const REQUIRED_NUTRITION_FACTS = [
-	"energyKcal",
-	"fat",
-	"carbohydrate",
-	"protein",
-	"salt"
-];
-const hasFiniteRequiredFacts = (facts, keys) => keys.every((key) => {
-	const value = facts[key];
-	return typeof value === "number" && Number.isFinite(value);
-});
-function missingFacts(facts, requirement) {
-	if (!facts) return true;
-	switch (requirement) {
-		case "technical": return facts.technicalComposition === null || !hasFiniteRequiredFacts(facts.technicalComposition, REQUIRED_TECHNICAL_FACTS);
-		case "nutrition": return facts.nutritionPer100g === null || !hasFiniteRequiredFacts(facts.nutritionPer100g, REQUIRED_NUTRITION_FACTS);
-		case "allergens": return facts.allergens === null;
-		case "process": return facts.processEvidence.length === 0;
-	}
-}
-/** Recipe-wide module boundary. Besides eligibility, modules that render
-* product facts require those facts to be frozen in the exact version snapshot.
-* Technical composition belongs only to BASE_FORMULATION. Label-only toppings
-* remain eligible for Summary/Nutrition without invented Engine composition. */
-function recipeBehaviorModuleGate(authority, module) {
-	const eligibility = productBehaviorModuleGate(authority.snapshots, module, authority.requiredLineIds);
-	const requirements = FACT_REQUIREMENTS[module] ?? [];
-	if (!eligibility.ready || requirements.length === 0) return eligibility;
-	const missing = authority.requiredLineIds.filter((lineId) => {
-		const snapshot = authority.snapshots[lineId];
-		if (!snapshot) return true;
-		return requirements.some((requirement) => requirement === "technical" && snapshot.processScope === "POST_PROCESS_ADDON" ? false : missingFacts(snapshot.sharedFacts, requirement));
-	});
-	return missing.length === 0 ? eligibility : {
-		ready: false,
-		blockedLineIds: missing,
-		reason: `Brak zamrożonych danych ${module} dla: ${missing.join(", ")}.`
-	};
-}
-const TECHNICAL_TO_INGREDIENT = {
-	water: "water_percent",
-	totalSolids: "solids_percent",
-	fat: "fat_percent",
-	saturatedFat: "saturated_fat_percent",
-	protein: "protein_percent",
-	carbohydrate: "carbohydrate_percent",
-	sugars: "sugar_percent",
-	sucrose: "sucrose_percent",
-	glucose: "glucose_percent",
-	dextrose: "dextrose_percent",
-	fructose: "fructose_percent",
-	lactose: "lactose_percent",
-	polyols: "polyol_percent",
-	fibre: "fiber_percent",
-	salt: "salt_percent",
-	alcohol: "alcohol_percent",
-	energyKcal: "kcal_per_100g"
-};
-const projectCompositionValue = (composition, key, value) => {
-	if (typeof value === "number" && Number.isFinite(value)) composition[key] = value;
-	else Reflect.deleteProperty(composition, key);
-};
-/** Rebuilds the module input from immutable shared facts. It changes no Engine
-* formula; it only prevents downstream views from re-reading mutable product
-* objects after the exact version was resolved. Missing/null frozen values
-* explicitly erase old mutable values instead of inheriting them. */
-function recipeInputFromFrozenBehavior(input, authority, projection) {
-	const required = new Set(authority.requiredLineIds);
-	return {
-		...input,
-		items: input.items.map((item) => {
-			if (!required.has(item.id)) return item;
-			const snapshot = authority.snapshots[item.id];
-			if (!snapshot || snapshot.processScope !== "BASE_FORMULATION") return item;
-			const ingredient = structuredClone(item.ingredient);
-			const technical = snapshot.sharedFacts?.technicalComposition;
-			if (technical) {
-				for (const [source, target] of Object.entries(TECHNICAL_TO_INGREDIENT)) projectCompositionValue(ingredient.composition, target, technical[source]);
-				ingredient.pod_value = typeof technical.podValue === "number" && Number.isFinite(technical.podValue) ? technical.podValue : null;
-				ingredient.pac_value = typeof technical.pacValue === "number" && Number.isFinite(technical.pacValue) ? technical.pacValue : null;
-				ingredient.de_value = typeof technical.deValue === "number" && Number.isFinite(technical.deValue) ? technical.deValue : null;
-			}
-			if (projection === "nutrition") {
-				const nutrition = snapshot.sharedFacts?.nutritionPer100g;
-				const nutritionProjection = {
-					kcal_per_100g: nutrition?.energyKcal,
-					fat_percent: nutrition?.fat,
-					saturated_fat_percent: nutrition?.saturatedFat,
-					carbohydrate_percent: nutrition?.carbohydrate,
-					sugar_percent: nutrition?.sugars,
-					protein_percent: nutrition?.protein,
-					salt_percent: nutrition?.salt,
-					fiber_percent: nutrition?.fibre
-				};
-				for (const [target, value] of Object.entries(nutritionProjection)) projectCompositionValue(ingredient.composition, target, value);
-			}
-			return {
-				...item,
-				ingredient
-			};
-		})
-	};
-}
-/** Projects POST_PROCESS_ADDON rows from the same immutable version facts used
-* by Base consumers. This prevents Summary/Production/Master Label from
-* accepting a valid snapshot while calculating from a mutable topping object. */
-function recipeToppingsFromFrozenBehavior(toppings, authority, projection) {
-	const required = new Set(authority.requiredLineIds);
-	return toppings.map((item) => {
-		if (!required.has(item.id)) return item;
-		const snapshot = authority.snapshots[item.id];
-		if (!snapshot || snapshot.processScope !== "POST_PROCESS_ADDON") return item;
-		const ingredient = structuredClone(item.ingredient);
-		if (isCatalogLabelToppingIngredient(ingredient)) {
-			const nutrition = snapshot.sharedFacts?.nutritionPer100g;
-			const allergens = snapshot.sharedFacts?.allergens;
-			if (!nutrition || !allergens || nutrition.energyKcal === null || nutrition.fat === null || nutrition.carbohydrate === null || nutrition.protein === null || nutrition.salt === null) throw new Error(`Frozen label authority is incomplete for ${item.id}.`);
-			ingredient.label_nutrition_per_100g = {
-				basis: "per_100g",
-				energyKcal: nutrition.energyKcal,
-				fat: nutrition.fat,
-				saturatedFat: nutrition.saturatedFat,
-				carbohydrate: nutrition.carbohydrate,
-				sugars: nutrition.sugars,
-				protein: nutrition.protein,
-				salt: nutrition.salt,
-				fibre: nutrition.fibre
-			};
-			ingredient.ingredients_text = allergens.ingredientsText ?? "";
-			ingredient.allergens_text = allergens.allergensText ?? "";
-			return {
-				...item,
-				ingredient
-			};
-		}
-		const technical = snapshot.sharedFacts?.technicalComposition;
-		if (technical) {
-			for (const [source, target] of Object.entries(TECHNICAL_TO_INGREDIENT)) projectCompositionValue(ingredient.composition, target, technical[source]);
-			ingredient.pod_value = typeof technical.podValue === "number" ? technical.podValue : null;
-			ingredient.pac_value = typeof technical.pacValue === "number" ? technical.pacValue : null;
-			ingredient.de_value = typeof technical.deValue === "number" ? technical.deValue : null;
-		}
-		if (projection === "nutrition") {
-			const nutrition = snapshot.sharedFacts?.nutritionPer100g;
-			const nutritionProjection = {
-				kcal_per_100g: nutrition?.energyKcal,
-				fat_percent: nutrition?.fat,
-				saturated_fat_percent: nutrition?.saturatedFat,
-				carbohydrate_percent: nutrition?.carbohydrate,
-				sugar_percent: nutrition?.sugars,
-				protein_percent: nutrition?.protein,
-				salt_percent: nutrition?.salt,
-				fiber_percent: nutrition?.fibre
-			};
-			for (const [target, value] of Object.entries(nutritionProjection)) projectCompositionValue(ingredient.composition, target, value);
-		}
-		return {
-			...item,
-			ingredient
-		};
-	});
-}
-
-//#endregion
-//#region src/features/product-intelligence/productDosageAuthority.ts
-const DOSAGE_EPSILON_G = .1000001;
-const validPercent = (value) => value !== null && Number.isFinite(value) && value >= 0 && value <= 100;
-const invalidDoseReason = (dose, targetBatchGrams) => {
-	if (!Number.isFinite(targetBatchGrams) || targetBatchGrams <= 0) return "invalid_target_batch";
-	if (!dose.sourceVersion?.trim()) return "missing_source_version";
-	if (dose.minPercent !== null && !validPercent(dose.minPercent)) return "invalid_minimum";
-	if (dose.maxPercent !== null && !validPercent(dose.maxPercent)) return "invalid_maximum";
-	if (dose.minPercent !== null && dose.maxPercent !== null && dose.minPercent > dose.maxPercent) return "minimum_above_maximum";
-	return null;
-};
-/**
-* Resolves only the exact server-frozen ProductBehavior dosage. There is no
-* family, role or ingredient-name fallback: absent Mapper evidence stays
-* absent, while malformed evidence fails closed.
-*/
-function productDosageAuthority(snapshot, targetBatchGrams) {
-	const dose = snapshot?.sharedFacts?.recommendedDose;
-	if (!snapshot || snapshot.resolutionState !== "RESOLVED" || snapshot.processScope !== "BASE_FORMULATION" || snapshot.moduleEligibility.BASE_RECIPE !== "eligible" || !dose || dose.minPercent === null && dose.maxPercent === null) return { status: "not_defined" };
-	const invalid = invalidDoseReason(dose, targetBatchGrams);
-	if (invalid) return {
-		status: "invalid_evidence",
-		reason: invalid
-	};
-	return {
-		status: "defined",
-		authority: {
-			minPercent: dose.minPercent,
-			maxPercent: dose.maxPercent,
-			minGrams: dose.minPercent === null ? null : targetBatchGrams * dose.minPercent / 100,
-			maxGrams: dose.maxPercent === null ? null : targetBatchGrams * dose.maxPercent / 100,
-			sourceVersion: dose.sourceVersion
-		}
-	};
-}
-const amount = (value, unit) => `${Math.round(value * 10) / 10}${unit === "%" ? "%" : " g"}`;
-const rangePl = (authority) => {
-	if (authority.minPercent !== null && authority.maxPercent !== null) return `${amount(authority.minPercent, "%")}–${amount(authority.maxPercent, "%")} (${amount(authority.minGrams, "g")}–${amount(authority.maxGrams, "g")})`;
-	if (authority.maxPercent !== null) return `maks. ${amount(authority.maxPercent, "%")} (${amount(authority.maxGrams, "g")})`;
-	return `min. ${amount(authority.minPercent, "%")} (${amount(authority.minGrams, "g")})`;
-};
-function productDosageViolationMessagePl(ingredientName, enteredGrams, authority) {
-	return `${ingredientName}: wpisano ${amount(enteredGrams, "g")}, zatwierdzony zakres to ${rangePl(authority)}. Nie znaleziono bezpiecznej korekty, która zachowuje tę granicę; propozycja pozostaje zablokowana.`;
-}
-/** Hard product-dose assessment shared by Preview, Apply and guarded writes. */
-function assessProductDosages(input, snapshots) {
-	const violations = [];
-	for (const item of input.items) {
-		const result = productDosageAuthority(snapshots[item.id], input.target_batch_grams);
-		if (result.status === "not_defined") continue;
-		const enteredPercent = input.target_batch_grams > 0 ? item.planned_grams / input.target_batch_grams * 100 : null;
-		if (result.status === "invalid_evidence") {
-			violations.push({
-				code: "invalid_evidence",
-				lineId: item.id,
-				ingredientName: item.ingredient.name,
-				enteredGrams: item.planned_grams,
-				enteredPercent,
-				minPercent: null,
-				maxPercent: null,
-				minGrams: null,
-				maxGrams: null,
-				sourceVersion: item.id === snapshots[item.id]?.lineId ? snapshots[item.id]?.sharedFacts?.recommendedDose?.sourceVersion ?? null : null,
-				messagePl: `${item.ingredient.name}: zatwierdzone dane dawki są niespójne (${result.reason}). Receptura pozostaje zablokowana do ponownej walidacji produktu.`
-			});
-			continue;
-		}
-		const { authority } = result;
-		if (item.planned_grams <= 0) continue;
-		const below = authority.minGrams !== null && item.planned_grams < authority.minGrams - DOSAGE_EPSILON_G;
-		const above = authority.maxGrams !== null && item.planned_grams > authority.maxGrams + DOSAGE_EPSILON_G;
-		if (!below && !above) continue;
-		violations.push({
-			code: below ? "below_minimum" : "above_maximum",
-			lineId: item.id,
-			ingredientName: item.ingredient.name,
-			enteredGrams: item.planned_grams,
-			enteredPercent,
-			minPercent: authority.minPercent,
-			maxPercent: authority.maxPercent,
-			minGrams: authority.minGrams,
-			maxGrams: authority.maxGrams,
-			sourceVersion: authority.sourceVersion,
-			messagePl: productDosageViolationMessagePl(item.ingredient.name, item.planned_grams, authority)
-		});
-	}
-	return violations;
-}
-
-//#endregion
-//#region src/features/recipe-composition/recipeCompositionPersistence.ts
-function recipeCompositionFromState(state) {
-	const itemIds = new Set(state.items.map((item) => item.id));
-	const baseOrder = [...(state.baseOrder ?? []).filter((id) => itemIds.has(id)), ...state.items.map((item) => item.id).filter((id) => !(state.baseOrder ?? []).includes(id))];
-	const behaviorSnapshots = Object.fromEntries(Object.entries(state.productBehaviorSnapshots ?? {}).filter((entry) => entry[1] !== void 0).map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]));
-	return {
-		schemaVersion: 1,
-		baseScope: "BASE_FORMULATION",
-		baseOrder,
-		toppings: (state.toppings ?? []).map((item, index) => ({
-			...item,
-			ingredient: cloneToppingIngredient(item.ingredient),
-			addon_sort_order: index
-		})),
-		...Object.keys(behaviorSnapshots).length > 0 ? { behaviorSnapshots } : {},
-		...state.ownerReviewGate ? { ownerReviewGate: {
-			...state.ownerReviewGate,
-			omittedToppingLineIds: [...state.ownerReviewGate.omittedToppingLineIds],
-			technicalOnlyMainLineIds: [...state.ownerReviewGate.technicalOnlyMainLineIds]
-		} } : {},
-		migrationAmbiguities: (state.compositionMigrationAmbiguities ?? []).map((item) => ({ ...item }))
-	};
-}
-
-//#endregion
 //#region src/features/recipe-composition/finalProduct.ts
 const toppingEffectiveGrams = (item, context) => context === "actual_batch" ? item.actual_grams ?? item.planned_grams : item.planned_grams;
 function scienceToppingItem(item, context) {
@@ -5338,8 +5918,17 @@ function buildFinalActualInput(session) {
 }
 function applyVerifiedRescueInput(session, candidate) {
 	requireActive(session);
-	const dosageViolations = assessProductDosages(candidate, session.plannedComposition.behaviorSnapshots ?? {});
-	if (dosageViolations.length > 0) throw new Error(dosageViolations[0].messagePl);
+	const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
+	const authority = evaluateRecipeConstraintAuthority({
+		recipe: {
+			...candidate,
+			target_batch_grams: candidateBatchGrams
+		},
+		snapshots: session.plannedComposition.behaviorSnapshots ?? {},
+		module: "BATCH_RESCUE",
+		technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds
+	});
+	if (!authority.valid) throw new Error(authority.issues[0]?.messagePl ?? "Production Rescue requires a fully verified recipe candidate.");
 	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
 	const lines = session.lines.map((line) => {
 		const item = candidateById.get(line.lineId);
