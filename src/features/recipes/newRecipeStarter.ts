@@ -24,6 +24,7 @@ import {
   type CustomerPriceIndex,
 } from '@/features/pro-core/effectiveRecipePricing';
 import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
+import { capGelatoStabilizerSystemAtWholeGramMaximum } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
 import { recipeTechnicalFit } from '@/features/recipe-score/technicalFit';
 import type { VisibleProductType } from '@/features/studio/productType';
 
@@ -221,7 +222,7 @@ const practicalizeStarter = (
   // rejected. Seed only that registered line at the closest executable gram
   // inside the existing approved window, then let the shared practicalizer
   // reconcile the batch residual and re-run every Engine gate.
-  const executableSeed: RecipeInput = {
+  const productDosageSeed: RecipeInput = {
     ...practicalizationInput,
     items: practicalizationInput.items.map((item) => {
       const dosage = approvedStabilizerDosage(canonicalIngredientId(item.ingredient));
@@ -241,6 +242,10 @@ const practicalizeStarter = (
         ),
       };
     }),
+  };
+  const executableSeed: RecipeInput = {
+    ...productDosageSeed,
+    items: capGelatoStabilizerSystemAtWholeGramMaximum(productDosageSeed),
   };
   const practical = practicalizeRecipeCandidate(executableSeed, { byLineId: {} });
   if (!practical.ok) {

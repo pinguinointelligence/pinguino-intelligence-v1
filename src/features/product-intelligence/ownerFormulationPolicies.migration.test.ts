@@ -6,6 +6,13 @@ const SQL = readFileSync(
   resolve(process.cwd(), 'supabase/migrations/20260820213000_owner_formulation_policies.sql'),
   'utf8',
 );
+const RUNTIME_PROJECTION_SQL = readFileSync(
+  resolve(
+    process.cwd(),
+    'supabase/migrations/20260820223000_owner_formulation_policy_runtime_projection.sql',
+  ),
+  'utf8',
+);
 
 describe('owner formulation policy migration', () => {
   it('publishes exact Inulin authority without rewriting canonical Mapper source data', () => {
@@ -23,5 +30,17 @@ describe('owner formulation policy migration', () => {
     expect(SQL).toContain('enable row level security');
     expect(SQL).toContain('revoke all on table public.owner_product_dosage_policy_versions');
     expect(SQL).toContain("classify_mapper_product_behavior_v2('PI-ING-000456'");
+  });
+
+  it('projects the selected Owner dose into the resolver sharedFacts envelope', () => {
+    expect(RUNTIME_PROJECTION_SQL).toContain(
+      'v_mapper_recommended_dose:=coalesce(v_owner_recommended_dose,v_mapper_recommended_dose);',
+    );
+    expect(RUNTIME_PROJECTION_SQL).toContain("'{recommendedDose}'");
+    expect(RUNTIME_PROJECTION_SQL).toContain(
+      "coalesce(v_mapper_recommended_dose,''null''::jsonb)",
+    );
+    expect(RUNTIME_PROJECTION_SQL).not.toMatch(/update\s+public\.mapper_basement/i);
+    expect(RUNTIME_PROJECTION_SQL).not.toMatch(/insert\s+into\s+public\.mapper_basement/i);
   });
 });

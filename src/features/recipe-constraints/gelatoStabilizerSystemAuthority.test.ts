@@ -6,6 +6,7 @@ import { starterMilkBase } from './constraintFixtures';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
   assessGelatoStabilizerSystem,
+  capGelatoStabilizerSystemAtWholeGramMaximum,
   GELATO_STABILIZER_SYSTEM_POLICY,
   gelatoStabilizerWholeGramBand,
 } from './gelatoStabilizerSystemAuthority';
@@ -59,6 +60,12 @@ describe('owner-approved Gelato aggregate stabilizer-system authority', () => {
 
   it.each([2, 3, 4, 5])('accepts %s g total for a 1000 g Gelato base', (grams) => {
     expect(assessGelatoStabilizerSystem(recipe(1_000, [grams])).issues).toEqual([]);
+  });
+
+  it('caps generated Gelato vectors inward without erasing smaller gum components', () => {
+    const capped = capGelatoStabilizerSystemAtWholeGramMaximum(recipe(1_000, [1, 1, 5]));
+    expect(capped.map((item) => item.planned_grams)).toEqual([1, 1, 3]);
+    expect(capped.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(5);
   });
 
   it('accepts individual 1 g gums in a legal blend and rejects total 6 g', () => {

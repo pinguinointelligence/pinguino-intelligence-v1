@@ -141,6 +141,24 @@ describe('mode- and temperature-aware new recipe starters', () => {
     },
   );
 
+  it('never rounds the Gelato starter stabilizer system above the inward hard maximum', () => {
+    const cases = [
+      { target: 1_000, expected: 5 },
+      { target: 1_500, expected: 7 },
+      { target: 10_000, expected: 50 },
+    ];
+
+    for (const { target, expected } of cases) {
+      const starter = build('gelato', 'temp_minus_11', 'optimal', target);
+      const stabilizerTotal = starter.lines
+        .filter((line) => line.role === 'stabilizer')
+        .reduce((sum, line) => sum + line.grams, 0);
+      expect(stabilizerTotal).toBe(expected);
+      expect(Number.isInteger(stabilizerTotal)).toBe(true);
+      expect(starter.metrics.actualBaseMassGrams).toBe(target);
+    }
+  });
+
   it('keeps Sorbet dairy-free and truthfully blocked on the user-supplied fruit/Main', () => {
     for (const target of [1_000, 5_000, 1_275]) {
       const starter = build('sorbet', 'temp_minus_12', 'optimal', target);

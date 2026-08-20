@@ -72,6 +72,50 @@ export function gelatoStabilizerWholeGramBand(baseGrams: number): GelatoStabiliz
 export const gelatoStabilizerSystemItems = (items: readonly RecipeItem[]): RecipeItem[] =>
   items.filter((item) => resolveFunctionalRole(item.ingredient) === 'stabilizer');
 
+/** Canonical whole-gram hard-ceiling projection for generated Gelato vectors.
+ * It never inserts a stabilizer or raises an existing system toward the
+ * minimum/preferred target. When rounding an existing generated component
+ * would exceed 0.50%, the excess is removed from the largest components first
+ * so a multi-gum blend keeps its smaller participating lines where possible. */
+export function capGelatoStabilizerSystemAtWholeGramMaximum(
+  input: Pick<RecipeInput, 'category' | 'target_batch_grams' | 'items'>,
+): RecipeItem[] {
+  if (!gelatoStabilizerSystemApplies(input.category)) return [...input.items];
+
+  const stabilizerIds = new Set(gelatoStabilizerSystemItems(input.items).map((item) => item.id));
+  if (stabilizerIds.size === 0) return [...input.items];
+
+  const next = input.items.map((item) =>
+    stabilizerIds.has(item.id)
+      ? { ...item, planned_grams: Math.max(0, Math.round(item.planned_grams)) }
+      : item,
+  );
+  const maximumGrams = gelatoStabilizerWholeGramBand(input.target_batch_grams).maxGrams;
+  let excess = Math.max(
+    0,
+    next
+      .filter((item) => stabilizerIds.has(item.id))
+      .reduce((sum, item) => sum + item.planned_grams, 0) - maximumGrams,
+  );
+  if (excess === 0) return next;
+
+  const candidates = next
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => stabilizerIds.has(item.id) && item.planned_grams > 0)
+    .sort(
+      (a, b) =>
+        b.item.planned_grams - a.item.planned_grams || a.item.id.localeCompare(b.item.id),
+    );
+  for (const { index } of candidates) {
+    if (excess === 0) break;
+    const item = next[index]!;
+    const reduction = Math.min(excess, item.planned_grams);
+    next[index] = { ...item, planned_grams: item.planned_grams - reduction };
+    excess -= reduction;
+  }
+  return next;
+}
+
 /** Canonical aggregate assessment used by terminal recipe authority. Individual
  * products may impose a tighter ProductBehavior ceiling in parallel. */
 export function assessGelatoStabilizerSystem(
