@@ -68,7 +68,7 @@ const PLANNED = 'production_run_planned_items';
 const ACTUALS = 'production_run_actuals';
 const EVENTS = 'production_run_events';
 const CREATE_RUN_RPC = 'production_create_run_v1';
-const START_RUN_RPC = 'production_start_run_v1';
+const START_RUN_RPC = 'production_start_run_v2';
 const TRANSITION_RUN_RPC = 'production_transition_run_v1';
 const UPDATE_META_RPC = 'production_update_meta_v1';
 const RECORD_ACTUAL_RPC = 'production_record_actual_v1';
@@ -98,6 +98,10 @@ interface RunRow {
   engine_version: string;
   config_version: string;
   mapper_dataset_version: string | null;
+  thermal_mode?: import('@/features/product-intelligence').ProductionThermalMode | null;
+  process_readiness?: 'READY' | 'READY_WITH_INFO' | null;
+  process_advisories?:
+    import('@/features/product-intelligence').ProductProcessReadinessDetail[] | null;
   planned_date: string | null;
   machine: string | null;
   location: string | null;
@@ -229,6 +233,9 @@ function assembleRun(
     engineVersion: run.engine_version,
     configVersion: run.config_version,
     mapperDatasetVersion: run.mapper_dataset_version,
+    thermalMode: run.thermal_mode ?? null,
+    processReadiness: run.process_readiness ?? null,
+    processAdvisories: structuredClone(run.process_advisories ?? []),
     plannedDate: run.planned_date,
     machine: run.machine,
     location: run.location,
@@ -336,7 +343,8 @@ const edgeFunctionError = async (error: unknown): Promise<ProductionPersistenceE
   } catch {
     payload = null;
   }
-  const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : null;
+  const record =
+    payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : null;
   const message = [record?.error, record?.code, record?.message, candidate.message]
     .filter((value): value is string => typeof value === 'string')
     .join(': ');
@@ -603,6 +611,7 @@ export function supabaseProductionRepository(
         p_created_event_id: run.events[0]!.eventId,
         p_planned_event_id: newId(),
         p_started_event_id: newId(),
+        p_thermal_mode: run.thermalMode,
       };
       try {
         const startedRunId = await mutate(START_RUN_RPC, argsForRpc);

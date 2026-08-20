@@ -336,11 +336,7 @@ describe('Production trusted Rescue runtime races', () => {
     useRecipeStore.setState({
       productBehaviorSnapshots: snapshots,
       practicalRecipeAudit: readPracticalRecipeAudit(
-        attachPracticalRecipeAudit(
-          loadedExecutable,
-          loadedExecutable,
-          '2026-08-19T10:00:00.000Z',
-        ),
+        attachPracticalRecipeAudit(loadedExecutable, loadedExecutable, '2026-08-19T10:00:00.000Z'),
       ),
       dirty: false,
     });
@@ -358,6 +354,7 @@ describe('Production trusted Rescue runtime races', () => {
       module: 'PRODUCTION',
       staleLineIds: [],
       lines: [],
+      processReadiness: { schemaVersion: 1, status: 'READY', blockers: [], advisories: [] },
     });
 
     await act(async () => root.render(<EnabledHarness />));
@@ -372,24 +369,196 @@ describe('Production trusted Rescue runtime races', () => {
     expect(view?.prerequisite?.code).not.toBe('product_authority_required');
   });
 
+  it('shows bounded process advice without a recalculate loop or automatic start', async () => {
+    const executable = attachPracticalRecipeAudit(
+      DEFAULT_PRESET,
+      DEFAULT_PRESET,
+      '2026-08-19T10:00:00.000Z',
+    );
+    const snapshots = productBehaviorTestSnapshots(executable);
+    useProductionSessionStore.getState().clear();
+    useRecipeStore.getState().loadRecipeInput(executable, {
+      savedId: 'recipe-advisory-authority',
+      savedName: 'Advisory authority QA',
+      versionNumber: 1,
+      versionId: 'version-advisory-authority',
+      versionDate: '2026-08-19T10:00:00.000Z',
+    });
+    const loadedExecutable = buildRecipeInput(useRecipeStore.getState(), 'planning');
+    useRecipeStore.setState({
+      productBehaviorSnapshots: snapshots,
+      practicalRecipeAudit: readPracticalRecipeAudit(
+        attachPracticalRecipeAudit(loadedExecutable, loadedExecutable, '2026-08-19T10:00:00.000Z'),
+      ),
+      productionThermalMode: 'COLD_ONLY',
+      dirty: false,
+    });
+    const advisory = {
+      code: 'PROCESS_DATA_INSUFFICIENT',
+      lineId: executable.items[0]!.id,
+      productId: 'approved-product-1',
+      mapperIngredientId: 'PI-ING-000236',
+      decision: 'UNKNOWN',
+      verificationStatus: 'unverified',
+    };
+    const startedRun: ProductionRun = {
+      ...durableRescuedRun(productionSessionWithDeviation()),
+      runId: 'run-advisory-authority',
+      recipeId: 'recipe-advisory-authority',
+      recipeVersionId: 'version-advisory-authority',
+      thermalMode: 'COLD_ONLY',
+      processReadiness: 'READY_WITH_INFO',
+      processAdvisories: [advisory],
+      actual: null,
+      rescue: null,
+    };
+    const repository = {
+      listRuns: vi.fn(async () => ({ items: [], nextCursor: null })),
+      startRun: vi.fn(async (input: Parameters<ProductionRepository['startRun']>[0]) => ({
+        ...startedRun,
+        thermalMode: input.meta?.thermalMode ?? null,
+      })),
+    } as unknown as ProductionRepository;
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+    mocks.validateRecipeBehaviorOnServer.mockResolvedValue({
+      ready: true,
+      module: 'PRODUCTION',
+      staleLineIds: [],
+      lines: [],
+      processReadiness: {
+        schemaVersion: 1,
+        status: 'READY_WITH_INFO',
+        blockers: [],
+        advisories: [advisory],
+      },
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(repository.startRun).not.toHaveBeenCalled();
+    expect(view?.prerequisite).toBeNull();
+    expect(view?.processReadiness.status).toBe('READY_WITH_INFO');
+    expect(view?.practicalReady).toBe(true);
+    expect(mocks.validateRecipeBehaviorOnServer).toHaveBeenCalledWith(
+      expect.objectContaining({ thermalMode: 'COLD_ONLY' }),
+    );
+
+    act(() => view!.setThermalMode('HEAT_CAPABLE'));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(useRecipeStore.getState().productionThermalMode).toBe('HEAT_CAPABLE');
+    expect(mocks.validateRecipeBehaviorOnServer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ thermalMode: 'HEAT_CAPABLE' }),
+    );
+
+    await act(async () => view!.startNewSession());
+
+    expect(repository.startRun).toHaveBeenCalledTimes(1);
+    expect(repository.startRun).toHaveBeenCalledWith(
+      expect.objectContaining({ meta: { thermalMode: 'HEAT_CAPABLE' } }),
+    );
+    expect(view?.processReadiness.status).toBe('READY_WITH_INFO');
+  });
+
+  it('keeps a current recipe out of the recalculate loop when process authority blocks Start', async () => {
+    const executable = attachPracticalRecipeAudit(
+      DEFAULT_PRESET,
+      DEFAULT_PRESET,
+      '2026-08-19T10:00:00.000Z',
+    );
+    const snapshots = productBehaviorTestSnapshots(executable);
+    useProductionSessionStore.getState().clear();
+    useRecipeStore.getState().loadRecipeInput(executable, {
+      savedId: 'recipe-process-blocked',
+      savedName: 'Process blocked QA',
+      versionNumber: 1,
+      versionId: 'version-process-blocked',
+      versionDate: '2026-08-19T10:00:00.000Z',
+    });
+    const loadedExecutable = buildRecipeInput(useRecipeStore.getState(), 'planning');
+    useRecipeStore.setState({
+      productBehaviorSnapshots: snapshots,
+      practicalRecipeAudit: readPracticalRecipeAudit(
+        attachPracticalRecipeAudit(loadedExecutable, loadedExecutable, '2026-08-19T10:00:00.000Z'),
+      ),
+      productionThermalMode: 'COLD_ONLY',
+      dirty: false,
+    });
+    const repository = {
+      listRuns: vi.fn(async () => ({ items: [], nextCursor: null })),
+      startRun: vi.fn(),
+    } as unknown as ProductionRepository;
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+    mocks.validateRecipeBehaviorOnServer.mockResolvedValue({
+      ready: true,
+      module: 'PRODUCTION',
+      staleLineIds: [],
+      lines: [],
+      processReadiness: {
+        schemaVersion: 1,
+        status: 'BLOCKED',
+        blockers: [
+          {
+            code: 'PROCESS_ADVISORY_AUTHORITY_MISSING',
+            lineId: executable.items[0]!.id,
+            productId: 'unregistered-product',
+            mapperIngredientId: 'PI-ING-UNREGISTERED',
+            decision: 'UNKNOWN',
+            verificationStatus: 'unverified',
+          },
+        ],
+        advisories: [],
+      },
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(view?.prerequisite).toBeNull();
+    expect(view?.processReadiness.status).toBe('BLOCKED');
+    expect(view?.practicalReady).toBe(false);
+    await act(async () => view!.startNewSession());
+    expect(repository.startRun).not.toHaveBeenCalled();
+  });
+
   it('preserves and detaches only an orphaned local session before starting the saved immutable version', async () => {
     useProductionSessionStore.getState().clear();
     const loadedInput = buildRecipeInput(useRecipeStore.getState(), 'planning');
     const practicalAudit = readPracticalRecipeAudit(
-      attachPracticalRecipeAudit(
-        loadedInput,
-        loadedInput,
-        '2026-08-19T10:00:00.000Z',
-      ),
+      attachPracticalRecipeAudit(loadedInput, loadedInput, '2026-08-19T10:00:00.000Z'),
     );
-    useRecipeStore.getState().markSaved(
-      'recipe-saved-after-preview',
-      'Saved after Preview and Apply',
-      2,
-      '2026-08-19T10:04:00.000Z',
-      practicalAudit,
-      '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
-    );
+    useRecipeStore
+      .getState()
+      .markSaved(
+        'recipe-saved-after-preview',
+        'Saved after Preview and Apply',
+        2,
+        '2026-08-19T10:04:00.000Z',
+        practicalAudit,
+        '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
+      );
+    useRecipeStore.getState().setProductionThermalMode('HEAT_CAPABLE');
     useProductionSessionStore.getState().startNewSession({
       ownerUserId: 'owner-runtime',
       source: {
@@ -415,9 +584,7 @@ describe('Production trusted Rescue runtime races', () => {
       events: [],
     };
     const repository = {
-      getRun: vi.fn(async (runId: string) =>
-        runId === startedRun.runId ? startedRun : null,
-      ),
+      getRun: vi.fn(async (runId: string) => (runId === startedRun.runId ? startedRun : null)),
       listRuns: vi.fn(async () => ({ items: [], nextCursor: null })),
       startRun: vi.fn(async () => startedRun),
       transition: vi.fn(async () => {
@@ -435,6 +602,7 @@ describe('Production trusted Rescue runtime races', () => {
       module: 'PRODUCTION',
       staleLineIds: [],
       lines: [],
+      processReadiness: { schemaVersion: 1, status: 'READY', blockers: [], advisories: [] },
     });
 
     await act(async () => root.render(<EnabledHarness />));
@@ -471,28 +639,24 @@ describe('Production trusted Rescue runtime races', () => {
         }),
       }),
     );
-    expect(useProductionSessionStore.getState().session?.sessionId).toBe(
-      'durable-run-after-save',
-    );
+    expect(useProductionSessionStore.getState().session?.sessionId).toBe('durable-run-after-save');
   });
 
   it('keeps the local session attached when durable recovery fails for a repository error', async () => {
     useProductionSessionStore.getState().clear();
     const loadedInput = buildRecipeInput(useRecipeStore.getState(), 'planning');
-    useRecipeStore.getState().markSaved(
-      'recipe-repository-error',
-      'Repository error QA',
-      3,
-      '2026-08-19T10:05:00.000Z',
-      readPracticalRecipeAudit(
-        attachPracticalRecipeAudit(
-          loadedInput,
-          loadedInput,
-          '2026-08-19T10:00:00.000Z',
+    useRecipeStore
+      .getState()
+      .markSaved(
+        'recipe-repository-error',
+        'Repository error QA',
+        3,
+        '2026-08-19T10:05:00.000Z',
+        readPracticalRecipeAudit(
+          attachPracticalRecipeAudit(loadedInput, loadedInput, '2026-08-19T10:00:00.000Z'),
         ),
-      ),
-      'a0e77f7e-a858-4d5a-ae39-f0dfd60a8cbf',
-    );
+        'a0e77f7e-a858-4d5a-ae39-f0dfd60a8cbf',
+      );
     useProductionSessionStore.getState().startNewSession({
       ownerUserId: 'owner-runtime',
       source: {
@@ -524,6 +688,7 @@ describe('Production trusted Rescue runtime races', () => {
       module: 'PRODUCTION',
       staleLineIds: [],
       lines: [],
+      processReadiness: { schemaVersion: 1, status: 'READY', blockers: [], advisories: [] },
     });
 
     await act(async () => root.render(<EnabledHarness />));

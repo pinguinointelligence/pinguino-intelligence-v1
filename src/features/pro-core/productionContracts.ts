@@ -11,6 +11,11 @@
 /** Production Mode capability (Pro-only — see proCoreCapabilities). */
 import type { RecipeInput } from '@/engine';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type {
+  ProductProcessReadinessDetail,
+  ProductionProcessReadinessStatus,
+  ProductionThermalMode,
+} from '@/features/product-intelligence';
 
 export interface ProductionCapabilities {
   canUseProductionMode: boolean;
@@ -80,9 +85,7 @@ export interface ProductionRescueSnapshot {
 
 /** Stable public option ids accepted by the trusted Rescue authorization endpoint. */
 export type ProductionRescueStableOptionId =
-  | 'keep_original_batch'
-  | 'enlarge_batch'
-  | 'leave_as_is';
+  'keep_original_batch' | 'enlarge_batch' | 'leave_as_is';
 
 export type ProductionEventType =
   | 'created'
@@ -124,6 +127,11 @@ export interface ProductionRun {
   engineVersion: string;
   configVersion: string;
   mapperDatasetVersion: string | null;
+  /** Durable operator route and server-frozen authority. Null is legacy
+   * history, never implicit permission to start. */
+  thermalMode?: ProductionThermalMode | null;
+  processReadiness?: Exclude<ProductionProcessReadinessStatus, 'BLOCKED'> | null;
+  processAdvisories?: ProductProcessReadinessDetail[];
   plannedDate: string | null;
   machine: string | null;
   location: string | null;

@@ -20,6 +20,7 @@ import type {
   ProductionStatus,
   SubstitutionRecord,
 } from './productionContracts';
+import type { ProductionThermalMode } from '@/features/product-intelligence';
 
 /** The canonical transition policy. An empty list = terminal state. */
 export const PRODUCTION_TRANSITIONS: Readonly<
@@ -39,6 +40,7 @@ export interface ProductionMeta {
   location: string | null;
   batchReference: string | null;
   notes: string | null;
+  thermalMode: ProductionThermalMode | null;
 }
 
 export interface BuildRunInput {
@@ -104,6 +106,9 @@ export function buildProductionRun(input: BuildRunInput): ProductionRun {
     engineVersion: scaled.engineVersion,
     configVersion: scaled.configVersion,
     mapperDatasetVersion: scaled.mapperDatasetVersion,
+    thermalMode: meta?.thermalMode ?? null,
+    processReadiness: null,
+    processAdvisories: [],
     plannedDate: meta?.plannedDate ?? null,
     machine: meta?.machine ?? null,
     location: meta?.location ?? null,

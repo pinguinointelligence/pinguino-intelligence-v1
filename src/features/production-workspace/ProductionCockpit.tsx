@@ -9,6 +9,153 @@ import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerif
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
 
+function ProcessReadinessNotice({
+  readiness,
+  phase = 'before_start',
+}: {
+  readiness: ProductionWorkspaceView['processReadiness'] | undefined;
+  phase?: 'before_start' | 'active' | 'completed';
+}) {
+  if (!readiness) return null;
+  if (readiness.status === 'READY') {
+    const title =
+      phase === 'active'
+        ? 'Proces uruchomiony z potwierdzoną gotowością'
+        : phase === 'completed'
+          ? 'Proces zakończony z potwierdzoną gotowością'
+          : 'Proces gotowy do uruchomienia';
+    return (
+      <section
+        className="rounded-[12px] border border-status-ideal/25 bg-status-ideal/[0.07] px-3 py-3 text-ink"
+        role="status"
+        data-testid="production-process-ready"
+      >
+        <p className="text-xs font-semibold text-[#2f6f3c]">{title}</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
+          {phase === 'before_start'
+            ? 'Wybrana droga przygotowania jest zgodna z potwierdzonymi danymi produktów.'
+            : 'To zamrożona, serwerowa gotowość zapisana dla tej partii.'}
+        </p>
+      </section>
+    );
+  }
+  const details = readiness.status === 'BLOCKED' ? readiness.blockers : readiness.advisories;
+  const products = [
+    ...new Set(
+      details
+        .map((detail) => detail.productName?.trim())
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ];
+  if (readiness.status === 'READY_WITH_INFO') {
+    const title =
+      phase === 'active'
+        ? 'Proces uruchomiony z informacją'
+        : phase === 'completed'
+          ? 'Proces zakończony z informacją'
+          : 'Proces gotowy z informacją';
+    return (
+      <section
+        className="rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-3 text-ink"
+        role="status"
+        aria-label="Informacje o gotowości procesu"
+        data-testid="production-process-advisory"
+      >
+        <p className="text-xs font-semibold leading-relaxed">{title}</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
+          Dla wskazanych produktów brak zweryfikowanej instrukcji obróbki. Użyj etykiety, karty
+          technicznej lub instrukcji producenta.
+        </p>
+        {products.length > 0 ? (
+          <ul className="mt-2 space-y-1 text-xs text-stone-700">
+            {products.map((productName) => (
+              <li key={productName}>{productName}</li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+    );
+  }
+  const thermalRequired = details.some((detail) => detail.code === 'PROCESS_THERMAL_MODE_REQUIRED');
+  const heatConflict = details.some((detail) => detail.code === 'PROCESS_HEAT_REQUIRED_CONFLICT');
+  const legacyAuthorityMissing = details.some(
+    (detail) => detail.code === 'LEGACY_PROCESS_AUTHORITY_MISSING',
+  );
+  return (
+    <section
+      className="rounded-[12px] border border-status-error/25 bg-status-error/[0.04] px-3 py-3 text-ink"
+      role="alert"
+      data-testid="production-process-blocked"
+    >
+      <p className="text-xs font-semibold text-status-error">
+        {legacyAuthorityMissing
+          ? 'Brak historycznego zapisu gotowości procesu'
+          : thermalRequired
+            ? 'Wybierz sposób przygotowania bazy'
+            : heatConflict
+              ? 'Wybrana droga na zimno nie jest zgodna z produktem'
+              : 'Proces nie jest gotowy do uruchomienia'}
+      </p>
+      <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
+        {legacyAuthorityMissing
+          ? 'Ten starszy run nie zawiera zamrożonej gotowości procesu. PINGÜINO nie przypisuje mu historycznego statusu READY.'
+          : thermalRequired
+            ? 'Wskaż, czy ta partia będzie przygotowana wyłącznie na zimno, czy z możliwością obróbki cieplnej.'
+            : heatConflict
+              ? 'Co najmniej jeden produkt ma potwierdzony wymóg obróbki cieplnej. Wybierz zgodną drogę albo wróć do receptury.'
+              : 'Brakuje aktualnej, zatwierdzonej podstawy procesowej. Obliczenie receptury nie zastępuje tej weryfikacji.'}
+      </p>
+      {products.length > 0 ? (
+        <ul className="mt-2 space-y-1 text-xs text-stone-700">
+          {products.map((productName) => (
+            <li key={productName}>{productName}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+function ThermalModeSelector({ production }: { production: ProductionWorkspaceView }) {
+  return (
+    <fieldset
+      className="mt-4 rounded-[14px] border border-ink/10 bg-[#f7f5f0] p-3"
+      data-testid="production-thermal-mode"
+    >
+      <legend className="px-1 text-xs font-semibold text-ink">Sposób przygotowania bazy</legend>
+      <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
+        Wybór jest zapisywany dla bieżącego kontekstu Produkcji i zamrażany na runie po starcie.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {[
+          ['COLD_ONLY', 'Tylko na zimno', 'Bez etapu obróbki cieplnej.'],
+          ['HEAT_CAPABLE', 'Możliwa obróbka cieplna', 'Proces może zawierać etap na ciepło.'],
+        ].map(([value, label, description]) => (
+          <label
+            key={value}
+            className="flex min-h-11 cursor-pointer items-start gap-2 rounded-[12px] border border-ink/10 bg-white px-3 py-2 text-xs"
+          >
+            <input
+              type="radio"
+              name="production-thermal-mode"
+              value={value}
+              checked={production.thermalMode === value}
+              onChange={() => production.setThermalMode(value as 'COLD_ONLY' | 'HEAT_CAPABLE')}
+              className="mt-0.5 size-4 accent-ink"
+            />
+            <span>
+              <span className="block font-semibold text-ink">{label}</span>
+              <span className="mt-0.5 block text-[11px] leading-relaxed text-stone-500">
+                {description}
+              </span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export function ProductionCockpit({
   production,
   onOpenPreview,
@@ -68,6 +215,14 @@ export function ProductionCockpit({
         </p>
         <h2 className="mt-2 text-base font-semibold text-ink">{prerequisite.title}</h2>
         <p className="mt-2 text-xs leading-relaxed text-stone-700">{prerequisite.message}</p>
+        {session ? (
+          <div className="mt-3">
+            <ProcessReadinessNotice
+              readiness={production.processReadiness}
+              phase={session.status === 'completed' ? 'completed' : 'active'}
+            />
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={prerequisiteAction}
@@ -120,10 +275,14 @@ export function ProductionCockpit({
             </dd>
           </div>
         </dl>
+        <ThermalModeSelector production={production} />
+        <div className="mt-4">
+          <ProcessReadinessNotice readiness={production.processReadiness} />
+        </div>
         <button
           type="button"
           onClick={() => void production.startNewSession()}
-          disabled={production.sessionStarting}
+          disabled={production.sessionStarting || !production.practicalReady}
           className="pro-focus-ring mt-4 min-h-11 w-full rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
           data-testid="start-production-session"
         >
@@ -174,6 +333,9 @@ export function ProductionCockpit({
               )}
             </div>
           ) : null}
+          <div className="mt-3">
+            <ProcessReadinessNotice readiness={production.processReadiness} phase="completed" />
+          </div>
           <button
             type="button"
             onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
@@ -203,6 +365,7 @@ export function ProductionCockpit({
           {production.persistenceError}
         </p>
       ) : null}
+      <ProcessReadinessNotice readiness={production.processReadiness} phase="active" />
       <section className="overflow-hidden rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
         <div className="flex items-start justify-between gap-3">
           <div>

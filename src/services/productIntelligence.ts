@@ -11,6 +11,9 @@ import {
   type ProductBehaviorContext,
   type ProductBehaviorModule,
   type ProductBehaviorSnapshot,
+  type ProductProcessReadiness,
+  type ProductProcessReadinessDetail,
+  type ProductionThermalMode,
   type ServerResolvedProductBehavior,
 } from '@/features/product-intelligence';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
@@ -45,6 +48,7 @@ export interface RecipeBehaviorServerValidationResult {
   module: ProductBehaviorModule;
   lines: Array<{ lineId: string; state: 'ready' | 'stale'; reasons: string[] }>;
   staleLineIds: string[];
+  processReadiness?: ProductProcessReadiness;
 }
 
 interface RecipeBehaviorServerValidationGroup {
@@ -157,6 +161,52 @@ function technicalFactsMatch(
 
 const asStringArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+
+const readProcessReadinessDetail = (value: unknown): ProductProcessReadinessDetail | null => {
+  if (!value || typeof value !== 'object') return null;
+  const detail = value as Record<string, unknown>;
+  if (
+    typeof detail.code !== 'string' ||
+    !(detail.lineId === undefined || typeof detail.lineId === 'string') ||
+    !(detail.productId === null || typeof detail.productId === 'string') ||
+    !(detail.mapperIngredientId === null || typeof detail.mapperIngredientId === 'string') ||
+    typeof detail.decision !== 'string' ||
+    typeof detail.verificationStatus !== 'string'
+  ) {
+    return null;
+  }
+  return detail as unknown as ProductProcessReadinessDetail;
+};
+
+export const readProductProcessReadiness = (value: unknown): ProductProcessReadiness | null => {
+  if (!value || typeof value !== 'object') return null;
+  const readiness = value as Record<string, unknown>;
+  if (
+    readiness.schemaVersion !== 1 ||
+    (readiness.status !== 'READY' &&
+      readiness.status !== 'READY_WITH_INFO' &&
+      readiness.status !== 'BLOCKED') ||
+    !Array.isArray(readiness.blockers) ||
+    !Array.isArray(readiness.advisories)
+  ) {
+    return null;
+  }
+  const blockers = readiness.blockers.map(readProcessReadinessDetail);
+  const advisories = readiness.advisories.map(readProcessReadinessDetail);
+  if (blockers.some((item) => item === null) || advisories.some((item) => item === null))
+    return null;
+  if (readiness.status === 'BLOCKED' && blockers.length === 0) return null;
+  if (readiness.status === 'READY_WITH_INFO' && (blockers.length > 0 || advisories.length === 0)) {
+    return null;
+  }
+  if (readiness.status === 'READY' && (blockers.length > 0 || advisories.length > 0)) return null;
+  return {
+    schemaVersion: 1,
+    status: readiness.status,
+    blockers: blockers as ProductProcessReadinessDetail[],
+    advisories: advisories as ProductProcessReadinessDetail[],
+  };
+};
 
 function readServerResolvedProductBehavior(value: unknown): ServerResolvedProductBehavior | null {
   if (!value || typeof value !== 'object') return null;
@@ -285,6 +335,7 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
   module: ProductBehaviorModule;
   accountId: string | null;
   technicalOnlyMainLineIds?: readonly string[];
+  thermalMode?: ProductionThermalMode;
 }): { groups: RecipeBehaviorServerValidationGroup[]; invalidLineIds: string[] } {
   const requiredLineIds = productBehaviorRequiredLineIds({
     items: input.recipe.items,
@@ -343,6 +394,7 @@ export function buildRecipeBehaviorServerValidationGroups(input: {
         processScope: snapshot.processScope,
         requestedRole,
         module: input.module,
+        ...(input.thermalMode ? { thermalMode: input.thermalMode } : {}),
       },
     });
   }
@@ -415,11 +467,14 @@ function readRecipeBehaviorServerValidation(
     ];
   });
   if (lines.length !== row.lines.length) return null;
+  const processReadiness = readProductProcessReadiness(row.processReadiness);
+  if (expectedModule === 'PRODUCTION' && !processReadiness) return null;
   return {
     ready: row.ready,
     module: expectedModule,
     lines,
     staleLineIds: asStringArray(row.staleLineIds),
+    ...(processReadiness ? { processReadiness } : {}),
   };
 }
 
@@ -432,6 +487,7 @@ export async function validateRecipeBehaviorOnServer(input: {
   module: ProductBehaviorModule;
   accountId: string | null;
   technicalOnlyMainLineIds?: readonly string[];
+  thermalMode?: ProductionThermalMode;
   client?: Pick<SupabaseClient, 'rpc'>;
 }): Promise<RecipeBehaviorServerValidationResult> {
   const built = buildRecipeBehaviorServerValidationGroups(input);
@@ -452,10 +508,52 @@ export async function validateRecipeBehaviorOnServer(input: {
           })(),
         ],
       })),
+      ...(input.module === 'PRODUCTION'
+        ? {
+            processReadiness: {
+              schemaVersion: 1 as const,
+              status: 'BLOCKED' as const,
+              blockers: built.invalidLineIds.map((lineId) => ({
+                code: 'PRODUCT_AUTHORITY_REQUIRED',
+                lineId,
+                productId: input.snapshots[lineId]?.productId ?? null,
+                mapperIngredientId: input.snapshots[lineId]?.mapperIngredientId ?? null,
+                decision: 'UNKNOWN',
+                verificationStatus: 'unknown',
+              })),
+              advisories: [],
+            },
+          }
+        : {}),
     };
   }
   if (built.groups.length === 0) {
-    return { ready: true, module: input.module, staleLineIds: [], lines: [] };
+    return {
+      ready: true,
+      module: input.module,
+      staleLineIds: [],
+      lines: [],
+      ...(input.module === 'PRODUCTION'
+        ? {
+            processReadiness: {
+              schemaVersion: 1 as const,
+              status: input.thermalMode ? ('READY' as const) : ('BLOCKED' as const),
+              blockers: input.thermalMode
+                ? []
+                : [
+                    {
+                      code: 'PROCESS_THERMAL_MODE_REQUIRED',
+                      productId: null,
+                      mapperIngredientId: null,
+                      decision: 'UNKNOWN',
+                      verificationStatus: 'unknown',
+                    },
+                  ],
+              advisories: [],
+            },
+          }
+        : {}),
+    };
   }
   const client = input.client ?? supabase;
   if (!client) {
@@ -469,6 +567,23 @@ export async function validateRecipeBehaviorOnServer(input: {
         state: 'stale',
         reasons: ['behavior_server_validation_unavailable'],
       })),
+      ...(input.module === 'PRODUCTION'
+        ? {
+            processReadiness: {
+              schemaVersion: 1 as const,
+              status: 'BLOCKED' as const,
+              blockers: lineIds.map((lineId) => ({
+                code: 'PROCESS_AUTHORITY_UNAVAILABLE',
+                lineId,
+                productId: input.snapshots[lineId]?.productId ?? null,
+                mapperIngredientId: input.snapshots[lineId]?.mapperIngredientId ?? null,
+                decision: 'UNKNOWN',
+                verificationStatus: 'unknown',
+              })),
+              advisories: [],
+            },
+          }
+        : {}),
     };
   }
 
@@ -494,11 +609,42 @@ export async function validateRecipeBehaviorOnServer(input: {
     }))
     .sort((left, right) => left.lineId.localeCompare(right.lineId));
   const staleLineIds = [...new Set(results.flatMap((result) => result.staleLineIds))].sort();
+  const readinessResults = results.flatMap((result) =>
+    result.processReadiness ? [result.processReadiness] : [],
+  );
+  const withProductName = (detail: ProductProcessReadinessDetail) => {
+    const line = detail.lineId
+      ? (input.recipe.items.find((item) => item.id === detail.lineId) ??
+        input.toppings?.find((item) => item.id === detail.lineId))
+      : undefined;
+    return { ...detail, ...(line ? { productName: line.ingredient.name } : {}) };
+  };
+  const processBlockers = readinessResults
+    .flatMap((result) => result.blockers)
+    .map(withProductName);
+  const processAdvisories = readinessResults
+    .flatMap((result) => result.advisories)
+    .map(withProductName);
+  const processReadiness: ProductProcessReadiness | undefined =
+    input.module === 'PRODUCTION'
+      ? {
+          schemaVersion: 1,
+          status:
+            processBlockers.length > 0
+              ? 'BLOCKED'
+              : processAdvisories.length > 0
+                ? 'READY_WITH_INFO'
+                : 'READY',
+          blockers: processBlockers,
+          advisories: processAdvisories,
+        }
+      : undefined;
   return {
     ready: results.every((result) => result.ready) && staleLineIds.length === 0,
     module: input.module,
     lines,
     staleLineIds,
+    ...(processReadiness ? { processReadiness } : {}),
   };
 }
 
@@ -521,6 +667,7 @@ export async function resolveProductBehaviorForSelection(input: {
       processScope: input.context.processScope,
       requestedRole: input.context.requestedRole,
       module: input.context.module,
+      ...(input.context.thermalMode ? { thermalMode: input.context.thermalMode } : {}),
     },
   });
   if (error) throw new Error(error.message);
@@ -636,9 +783,9 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
                 entityKind: 'catalog_product_version' as const,
                 entityId: catalogProductVersionId,
               }
-          : mapperIngredientId.startsWith('PI-ING-')
-            ? { entityKind: 'mapper' as const, entityId: mapperIngredientId }
-            : null;
+            : mapperIngredientId.startsWith('PI-ING-')
+              ? { entityKind: 'mapper' as const, entityId: mapperIngredientId }
+              : null;
       if (!entity) {
         unresolvedLineIds.push(lineId);
         return;

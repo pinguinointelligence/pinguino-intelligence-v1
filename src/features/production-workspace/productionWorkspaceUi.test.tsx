@@ -284,9 +284,12 @@ describe('Production workspace touch-first UI', () => {
       progress: null,
       prerequisite: null,
       practicalReady: true,
+      thermalMode: 'HEAT_CAPABLE',
+      processReadiness: { status: 'READY', blockers: [], advisories: [] },
       source: session.source,
       plannedInput: input,
       startNewSession: vi.fn(),
+      setThermalMode: vi.fn(),
     } as unknown as ProductionWorkspaceView;
     const html = renderToStaticMarkup(
       <ProductionCockpit
@@ -305,6 +308,144 @@ describe('Production workspace touch-first UI', () => {
     );
     expect(surface).toContain('production.session !== null');
     expect(surface).toContain("mode={productionActive ? 'production' : 'recipe'}");
+  });
+
+  it('renders a real persisted thermal selector and blocks Start while it is missing', () => {
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={
+          {
+            session: null,
+            progress: null,
+            prerequisite: null,
+            practicalReady: false,
+            thermalMode: null,
+            processReadiness: {
+              status: 'BLOCKED',
+              blockers: [
+                {
+                  code: 'PROCESS_THERMAL_MODE_REQUIRED',
+                  lineId: input.items[0]!.id,
+                  productId: null,
+                  mapperIngredientId: input.items[0]!.ingredient.canonical_ingredient_id ?? null,
+                  decision: 'UNKNOWN',
+                  verificationStatus: 'unknown',
+                  productName: input.items[0]!.ingredient.name,
+                },
+              ],
+              advisories: [],
+            },
+            source: session.source,
+            plannedInput: input,
+            startNewSession: vi.fn(),
+            setThermalMode: vi.fn(),
+          } as unknown as ProductionWorkspaceView
+        }
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(html).toContain('data-testid="production-thermal-mode"');
+    expect(html).toContain('value="COLD_ONLY"');
+    expect(html).toContain('value="HEAT_CAPABLE"');
+    expect(html).toMatch(
+      /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*disabled)[^>]*>/,
+    );
+    expect(html).toContain('Wybierz sposób przygotowania bazy');
+  });
+
+  it('shows bounded READY_WITH_INFO guidance without auto-starting', () => {
+    const start = vi.fn();
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={
+          {
+            session: null,
+            progress: null,
+            prerequisite: null,
+            practicalReady: true,
+            thermalMode: 'COLD_ONLY',
+            processReadiness: {
+              status: 'READY_WITH_INFO',
+              blockers: [],
+              advisories: [
+                {
+                  code: 'PROCESS_DATA_INSUFFICIENT',
+                  lineId: input.items[0]!.id,
+                  productId: 'product-approved',
+                  mapperIngredientId: 'PI-ING-000236',
+                  decision: 'UNKNOWN',
+                  verificationStatus: 'unknown',
+                  productName: input.items[0]!.ingredient.name,
+                },
+              ],
+            },
+            source: session.source,
+            plannedInput: input,
+            startNewSession: start,
+            setThermalMode: vi.fn(),
+          } as unknown as ProductionWorkspaceView
+        }
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(start).not.toHaveBeenCalled();
+    expect(html).toContain('data-testid="production-process-advisory"');
+    expect(html).toContain(input.items[0]!.ingredient.name);
+    expect(html).toContain('data-testid="start-production-session"');
+    expect(html).not.toMatch(/data-testid="start-production-session"[^>]*disabled/);
+  });
+
+  it('labels an active run advisory as frozen run authority, not a new start decision', () => {
+    const forecast = assessProductionRescue(session);
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={
+          {
+            session,
+            progress: productionProgress(session),
+            toppingProgress: null,
+            rescue: forecast,
+            score: monitorScoreView(forecast.forecastResult, forecast.forecastInput).match,
+            plannedInput: input,
+            source: session.source,
+            processReadiness: {
+              status: 'READY_WITH_INFO',
+              blockers: [],
+              advisories: [
+                {
+                  code: 'PROCESS_DATA_INSUFFICIENT',
+                  lineId: input.items[0]!.id,
+                  productId: 'product-approved',
+                  mapperIngredientId: 'PI-ING-000236',
+                  decision: 'UNKNOWN',
+                  verificationStatus: 'unknown',
+                  productName: input.items[0]!.ingredient.name,
+                },
+              ],
+            },
+            setDraftActual: vi.fn(),
+            confirmLine: vi.fn(),
+            reopenRecord: vi.fn(),
+            rescueAuthorization: { status: 'idle' },
+            requestRescueAuthorization: vi.fn(),
+            refreshRescueAuthorization: vi.fn(),
+            consumeAuthorizedRescue: vi.fn(),
+            dismissRescueAuthorization: vi.fn(),
+            complete: vi.fn(),
+          } as unknown as ProductionWorkspaceView
+        }
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('Proces uruchomiony z informacją');
+    expect(html).not.toContain('Proces gotowy z informacją');
   });
 
   it('opens an existing Preview without starting a new recalculation', () => {

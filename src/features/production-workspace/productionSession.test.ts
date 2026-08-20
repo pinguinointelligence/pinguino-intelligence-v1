@@ -86,6 +86,18 @@ describe('production session physical-reality contract', () => {
       engineVersion: 'test',
       configVersion: 'test',
       mapperDatasetVersion: null,
+      thermalMode: 'HEAT_CAPABLE',
+      processReadiness: 'READY_WITH_INFO',
+      processAdvisories: [
+        {
+          code: 'PROCESS_DATA_INSUFFICIENT',
+          lineId: local.lines[0]!.lineId,
+          productId: 'product-1',
+          mapperIngredientId: 'PI-ING-000236',
+          decision: 'UNKNOWN',
+          verificationStatus: 'unknown',
+        },
+      ],
       plannedDate: null,
       machine: null,
       location: null,
@@ -139,6 +151,77 @@ describe('production session physical-reality contract', () => {
       confirmationOrder: 7,
     });
     expect(recovered.lines.slice(1).every((line) => !line.confirmed)).toBe(true);
+    expect(recovered).toMatchObject({
+      thermalMode: 'HEAT_CAPABLE',
+      processReadiness: 'READY_WITH_INFO',
+      processAdvisories: [{ code: 'PROCESS_DATA_INSUFFICIENT' }],
+    });
+  });
+
+  it('keeps durable run readiness when the current recipe authority changes later', () => {
+    const local = session();
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: 'owner-1',
+      recipeId: 'recipe-1',
+      recipeVersionId: 'version-1',
+      recipeVersionNumber: 1,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: local.lines.map((line, index) => ({
+        id: line.lineId,
+        name: line.name,
+        canonicalIngredientId: line.canonicalIngredientId,
+        processScope: 'BASE_FORMULATION',
+        scopePosition: index,
+        plannedGrams: line.plannedGrams,
+        displayGrams: line.plannedGrams,
+      })),
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      thermalMode: 'COLD_ONLY',
+      processReadiness: 'READY_WITH_INFO',
+      processAdvisories: [
+        {
+          code: 'PROCESS_DATA_INSUFFICIENT',
+          lineId: local.lines[0]!.lineId,
+          productId: 'product-1',
+          mapperIngredientId: 'PI-ING-000236',
+          decision: 'UNKNOWN',
+          verificationStatus: 'unknown',
+        },
+      ],
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: 'owner-1',
+      createdAt: '2026-08-19T00:00:00.000Z',
+      updatedAt: '2026-08-19T00:01:00.000Z',
+      actual: null,
+      rescue: null,
+      completedAt: null,
+      cancelledAt: null,
+      events: [],
+    };
+    const changedComposition = {
+      ...local.plannedComposition,
+      behaviorSnapshots: {},
+    };
+
+    const recovered = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      changedComposition,
+    );
+
+    expect(recovered.processReadiness).toBe('READY_WITH_INFO');
+    expect(recovered.processAdvisories).toEqual(durable.processAdvisories);
   });
 
   it('keeps server physical authority while preserving only compatible pending drafts', () => {

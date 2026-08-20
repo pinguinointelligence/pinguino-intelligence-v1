@@ -376,6 +376,68 @@ describe('recipe behavior server validation', () => {
     );
   });
 
+  it('keeps recipe authority ready while returning bounded Production process information', async () => {
+    h.rpc.mockResolvedValue({
+      data: {
+        schemaVersion: 1,
+        ready: true,
+        module: 'PRODUCTION',
+        lines: [{ lineId: 'main-line', state: 'ready', reasons: [] }],
+        staleLineIds: [],
+        processReadiness: {
+          schemaVersion: 1,
+          status: 'READY_WITH_INFO',
+          blockers: [],
+          advisories: [
+            {
+              code: 'PROCESS_DATA_INSUFFICIENT',
+              lineId: 'main-line',
+              productId: 'product-main-line',
+              mapperIngredientId: 'PI-ING-000236',
+              decision: 'UNKNOWN',
+              verificationStatus: 'unknown',
+            },
+          ],
+        },
+      },
+      error: null,
+    });
+    const single = { ...recipe, items: [recipe.items[0]!] };
+    const approved = snapshot('main-line', 'PI-ING-000236');
+
+    await expect(
+      validateRecipeBehaviorOnServer({
+        recipe: single,
+        snapshots: { 'main-line': approved },
+        module: 'PRODUCTION',
+        accountId: 'account-1',
+        thermalMode: 'COLD_ONLY',
+      }),
+    ).resolves.toMatchObject({
+      ready: true,
+      staleLineIds: [],
+      processReadiness: {
+        status: 'READY_WITH_INFO',
+        advisories: [
+          {
+            lineId: 'main-line',
+            mapperIngredientId: 'PI-ING-000236',
+            productName: 'PI-ING-1',
+          },
+        ],
+      },
+    });
+    expect(h.rpc).toHaveBeenCalledWith(
+      'validate_recipe_behavior_v1',
+      expect.objectContaining({
+        p_context: expect.objectContaining({
+          module: 'PRODUCTION',
+          thermalMode: 'COLD_ONLY',
+        }),
+      }),
+    );
+  });
+
   it('preserves an exact blocked resolver envelope instead of collapsing it to null', async () => {
     h.rpc.mockResolvedValue({
       data: {
@@ -459,8 +521,37 @@ describe('recipe behavior server validation', () => {
         module: 'PRODUCTION',
         accountId: null,
       }),
-    ).resolves.toMatchObject({ ready: true, lines: [] });
+    ).resolves.toMatchObject({
+      ready: true,
+      lines: [],
+      processReadiness: {
+        status: 'BLOCKED',
+        blockers: [{ code: 'PROCESS_THERMAL_MODE_REQUIRED' }],
+      },
+    });
     expect(h.rpc).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when Production validation omits the server process envelope', async () => {
+    h.rpc.mockResolvedValue({
+      data: {
+        schemaVersion: 1,
+        ready: true,
+        module: 'PRODUCTION',
+        lines: [{ lineId: 'main-line', state: 'ready', reasons: [] }],
+        staleLineIds: [],
+      },
+      error: null,
+    });
+    await expect(
+      validateRecipeBehaviorOnServer({
+        recipe: { ...recipe, items: [recipe.items[0]!] },
+        snapshots: { 'main-line': snapshot('main-line', 'PI-ING-1') },
+        module: 'PRODUCTION',
+        accountId: 'account-1',
+        thermalMode: 'HEAT_CAPABLE',
+      }),
+    ).rejects.toThrow('Nieprawidłowa odpowiedź walidacji zachowania produktu.');
   });
 
   it('resolves a solver-added Inulin line by canonical Mapper identity, never by its local correction id', async () => {

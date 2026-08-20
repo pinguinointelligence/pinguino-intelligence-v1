@@ -26,9 +26,7 @@ export type ProductBehaviorModule =
   | 'SAVE';
 
 export type ProductBehaviorSnapshotState =
-  | 'RESOLVED'
-  | 'LEGACY_RECONSTRUCTED'
-  | 'REVALIDATION_REQUIRED';
+  'RESOLVED' | 'LEGACY_RECONSTRUCTED' | 'REVALIDATION_REQUIRED';
 
 export type ProductSourceKind =
   | 'mapper'
@@ -56,15 +54,36 @@ export type CatalogVerificationState =
   | 'blocked'
   | 'processing';
 
-export type RuntimeEligibilityState =
-  | 'eligible'
-  | 'label_only'
-  | 'blocked'
-  | 'unknown';
+export type RuntimeEligibilityState = 'eligible' | 'label_only' | 'blocked' | 'unknown';
 
 export type ProductProcessScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
 export type ProductRequestedRole = 'STANDARD' | 'MAIN';
 export type ProductFormulationMode = 'optimal' | 'eco';
+
+export type ProductionThermalMode = 'COLD_ONLY' | 'HEAT_CAPABLE';
+export type ProductionProcessReadinessStatus = 'READY' | 'READY_WITH_INFO' | 'BLOCKED';
+
+/** Stable server-owned Production process result. Product names are added only
+ * for display; identity, decision and reason code remain server authority. */
+export interface ProductProcessReadinessDetail {
+  code: string;
+  lineId?: string;
+  productId: string | null;
+  mapperIngredientId: string | null;
+  decision: string;
+  verificationStatus: string;
+  sourceProcessStatus?: string;
+  coldProcessEligibility?: string;
+  hydrationMode?: string;
+  productName?: string;
+}
+
+export interface ProductProcessReadiness {
+  schemaVersion: 1;
+  status: ProductionProcessReadinessStatus;
+  blockers: ProductProcessReadinessDetail[];
+  advisories: ProductProcessReadinessDetail[];
+}
 
 export type ProductBehaviorRole =
   | 'MAIN_ALLOWED'
@@ -77,11 +96,7 @@ export type ProductBehaviorRole =
   | 'UNKNOWN_REQUIRES_EVIDENCE';
 
 export type MainPolicyStatus =
-  | 'COVERED'
-  | 'NOT_APPLICABLE'
-  | 'BLOCKED_DATA'
-  | 'BLOCKED_SCIENCE'
-  | 'UNKNOWN_REQUIRES_EVIDENCE';
+  'COVERED' | 'NOT_APPLICABLE' | 'BLOCKED_DATA' | 'BLOCKED_SCIENCE' | 'UNKNOWN_REQUIRES_EVIDENCE';
 
 export type ProductPolicyEvidenceStatus =
   | 'PRODUCTION_VALIDATED'
@@ -100,10 +115,7 @@ export type ProductPolicyEvidenceStatus =
 export type ProductFamilyId = string;
 export type ProductFormId = string;
 export type ProductTechnicalAuthorityKind =
-  | 'mapper_exact'
-  | 'verified_profile'
-  | 'approved_pi_calculation'
-  | 'none';
+  'mapper_exact' | 'verified_profile' | 'approved_pi_calculation' | 'none';
 
 export interface MainEnvelopePolicy {
   policyId: string;
@@ -197,6 +209,9 @@ export interface ServerResolvedProductBehavior {
   veganEligibility: ProductBehaviorBinding['veganEligibility'];
   proteinBehavior: ProductBehaviorBinding['proteinBehavior'];
   processBehavior: Record<string, unknown>;
+  /** Route-dependent server result. It is deliberately not copied into the
+   * immutable shared-facts snapshot because the route is selected at start. */
+  processReadiness?: ProductProcessReadiness;
   /** Immutable shared facts for this exact product version. Account-private
    * price/supplier/note/stock data is deliberately excluded. */
   sharedFacts?: SharedProductBehaviorFacts | null;
@@ -239,6 +254,9 @@ export interface ProductBehaviorContext {
   processScope: ProductProcessScope;
   requestedRole: ProductRequestedRole;
   module: ProductBehaviorModule;
+  /** Explicit Production route. Absence stays UNSPECIFIED and fails closed at
+   * Production readiness/start boundaries. */
+  thermalMode?: ProductionThermalMode;
 }
 
 export interface ProductNutritionFactsPer100g {

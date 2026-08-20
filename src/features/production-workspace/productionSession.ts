@@ -1,9 +1,10 @@
-import type {
-  NutritionPer100g,
-  RecipeCosts,
-  RecipeInput,
-  RecipeItem,
-  RecipeResult,
+import {
+  calculateRecipe,
+  type NutritionPer100g,
+  type RecipeCosts,
+  type RecipeInput,
+  type RecipeItem,
+  type RecipeResult,
 } from '@/engine';
 import {
   recipeCompositionFromState,
@@ -21,8 +22,9 @@ import {
   recipeBehaviorModuleGate,
   recipeInputFromFrozenBehavior,
   recipeToppingsFromFrozenBehavior,
+  type ProductProcessReadinessDetail,
+  type ProductionThermalMode,
 } from '@/features/product-intelligence';
-import { calculateRecipe } from '@/engine';
 import type { ProductionRun } from '@/features/pro-core/productionContracts';
 
 export const PRODUCTION_GRAMS_EPSILON = 0.000_001;
@@ -109,6 +111,11 @@ export interface ProductionSession {
   completedAt: string | null;
   plannedInput: RecipeInput;
   plannedComposition: RecipeCompositionMetadata;
+  /** Durable server-owned authority for this physical run. Null is legacy
+   * unknown, never implicit READY. */
+  thermalMode: ProductionThermalMode | null;
+  processReadiness: 'READY' | 'READY_WITH_INFO' | null;
+  processAdvisories: ProductProcessReadinessDetail[];
   /** Timestamp of the latest Rescue snapshot durably accepted by the server. */
   durableRescueAcceptedAt: string | null;
   /** Monotonic durable Rescue revision used for lost-response reconciliation. */
@@ -132,6 +139,9 @@ export interface CreateProductionSessionInput {
   source: ProductionSource;
   plannedInput: RecipeInput;
   plannedComposition?: RecipeCompositionMetadata;
+  thermalMode?: ProductionThermalMode | null;
+  processReadiness?: 'READY' | 'READY_WITH_INFO' | null;
+  processAdvisories?: ProductProcessReadinessDetail[];
   startedAt: string;
 }
 
@@ -222,6 +232,9 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
     completedAt: null,
     plannedInput,
     plannedComposition,
+    thermalMode: input.thermalMode ?? null,
+    processReadiness: input.processReadiness ?? null,
+    processAdvisories: structuredClone(input.processAdvisories ?? []),
     durableRescueAcceptedAt: null,
     durableRescueRevision: 0,
     durableActualRevision: 0,
@@ -672,6 +685,9 @@ export function hydrateProductionSessionFromRun(
     source,
     plannedInput,
     plannedComposition,
+    thermalMode: run.thermalMode ?? null,
+    processReadiness: run.processReadiness ?? null,
+    processAdvisories: run.processAdvisories ?? [],
     startedAt: run.events.find((event) => event.type === 'started')?.at ?? run.createdAt,
   });
   if (run.rescue) {

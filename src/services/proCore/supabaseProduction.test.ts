@@ -223,7 +223,10 @@ function fakeClient(store: FakeStore, userId: string | null) {
       const fail = (table: string, op: string) => store.fail.has(`${table}:${op}`);
       const error = (table: string) => ({ data: null, error: { message: `boom ${table}` } });
 
-      if (name === 'production_start_run_v1') {
+      if (name === 'production_start_run_v2') {
+        if (args.p_thermal_mode !== 'COLD_ONLY' && args.p_thermal_mode !== 'HEAT_CAPABLE') {
+          return { data: null, error: { message: 'invalid Production thermal mode' } };
+        }
         const existing = next.production_runs!.find(
           (row) =>
             row.owner_user_id === userId &&
@@ -253,6 +256,9 @@ function fakeClient(store: FakeStore, userId: string | null) {
           engine_version: 'e1',
           config_version: 'c1',
           mapper_dataset_version: null,
+          thermal_mode: args.p_thermal_mode,
+          process_readiness: 'READY',
+          process_advisories: [],
           planned_date: meta.planned_date ?? null,
           machine: meta.machine ?? null,
           location: meta.location ?? null,
@@ -523,8 +529,8 @@ function fakeClient(store: FakeStore, userId: string | null) {
         ) {
           return { data: null, error: { message: 'authorization_basis_mismatch' } };
         }
-        const plannedItems = next.production_run_planned_items!
-          .filter((row) => row.run_id === runId)
+        const plannedItems = next
+          .production_run_planned_items!.filter((row) => row.run_id === runId)
           .map((row) => ({
             id: row.line_id,
             ingredient: { name: row.name },
@@ -533,7 +539,9 @@ function fakeClient(store: FakeStore, userId: string | null) {
           }));
         run.rescue_recipe_input = input(
           Number(run.planned_batch_g),
-          plannedItems.map((line) => item(String(line.id), String(line.ingredient.name), Number(line.planned_grams))),
+          plannedItems.map((line) =>
+            item(String(line.id), String(line.ingredient.name), Number(line.planned_grams)),
+          ),
         );
         run.rescue_product_composition = {
           schemaVersion: 1,
@@ -840,6 +848,7 @@ describe('supabaseProduction — createRun persists the frozen plan from an EXAC
       target: { kind: 'weight_g', grams: 5000 },
       capabilities: PRO,
       by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' as const },
     });
 
     expect(run.recipeVersionId).toBe('ver-1');
@@ -912,6 +921,7 @@ describe('supabaseProduction — createRun persists the frozen plan from an EXAC
         target: { kind: 'volume_ml', ml: 5000 },
         capabilities: PRO,
         by: U1,
+        meta: { thermalMode: 'HEAT_CAPABLE' },
       }),
     ).rejects.toThrow(/density/i);
     expect(store.tables.production_runs).toHaveLength(0);
@@ -946,6 +956,7 @@ describe('supabaseProduction — lifecycle appends events; the plan stays immuta
       target: { kind: 'weight_g', grams: 5000 },
       capabilities: PRO,
       by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
     });
     return { repo, run };
   };
@@ -1019,9 +1030,19 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       target: { kind: 'weight_g', grams: 1000 },
       capabilities: PRO,
       by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
     });
     expect(run.status).toBe('in_progress');
+    expect(run).toMatchObject({
+      thermalMode: 'HEAT_CAPABLE',
+      processReadiness: 'READY',
+      processAdvisories: [],
+    });
     expect(run.events.map((event) => event.type)).toEqual(['created', 'planned', 'started']);
+    expect(store.rpcCalls[0]).toMatchObject({
+      name: 'production_start_run_v2',
+      args: { p_thermal_mode: 'HEAT_CAPABLE' },
+    });
 
     const failedStore = new FakeStore();
     failedStore.fail.add('production_run_events:insert');
@@ -1032,10 +1053,29 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
         target: { kind: 'weight_g', grams: 1000 },
         capabilities: PRO,
         by: U1,
+        meta: { thermalMode: 'HEAT_CAPABLE' },
       }),
     ).rejects.toThrow(/production_run_events/);
     expect(failedStore.tables.production_runs).toHaveLength(0);
     expect(failedStore.tables.production_run_planned_items).toHaveLength(0);
+  });
+
+  it('does not default or bypass a missing thermal route at the start boundary', async () => {
+    const repo = repoFor(store);
+    await expect(
+      repo.startRun({
+        ownerUserId: U1,
+        version: makeVersion('ver-1'),
+        target: { kind: 'weight_g', grams: 1000 },
+        capabilities: PRO,
+        by: U1,
+      }),
+    ).rejects.toThrow(/invalid Production thermal mode/);
+    expect(store.rpcCalls[0]).toMatchObject({
+      name: 'production_start_run_v2',
+      args: { p_thermal_mode: null },
+    });
+    expect(store.tables.production_runs).toHaveLength(0);
   });
 
   it('returns the existing exact active batch when two starts race for one version', async () => {
@@ -1046,6 +1086,7 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       target: { kind: 'weight_g' as const, grams: 1000 },
       capabilities: PRO,
       by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' as const },
     };
     const first = await repo.startRun(args);
     const second = await repo.startRun(args);
@@ -1062,6 +1103,7 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       target: { kind: 'weight_g', grams: 1000 },
       capabilities: PRO,
       by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
     });
     const authorization = await repo.authorizeRescue({
       runId: run.runId,
@@ -1124,6 +1166,7 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       target: { kind: 'weight_g', grams: 1000 },
       capabilities: PRO,
       by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
     });
     store.rescueAuthorizationResponsePatch = { expectedActualRevision: 1 };
     await expect(
@@ -1146,6 +1189,7 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       target: { kind: 'weight_g', grams: 1000 },
       capabilities: PRO,
       by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
     });
     const authorization = await repo.authorizeRescue({
       runId: run.runId,
@@ -1178,6 +1222,7 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       target: { kind: 'weight_g', grams: 1000 },
       capabilities: PRO,
       by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
     });
     await expect(
       repo.completeRun(run.runId, {

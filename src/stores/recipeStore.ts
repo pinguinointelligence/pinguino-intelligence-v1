@@ -76,6 +76,7 @@ import {
   mainBehaviorBlockReason,
   productBehaviorRequiredLineIds,
   type ProductBehaviorSnapshot,
+  type ProductionThermalMode,
 } from '@/features/product-intelligence';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
@@ -162,6 +163,9 @@ export interface RecipeState {
   /** Durable recipe-level Owner Review boundary. It cannot disappear when a
    * product snapshot is re-resolved or a Base line is replaced. */
   ownerReviewGate: OwnerReviewRecipeGate | null;
+  /** Persisted operator preference for the current Production context. It is
+   * not recipe math and does not dirty the immutable recipe version. */
+  productionThermalMode: ProductionThermalMode | null;
   compositionMigrationAmbiguities: Array<{ lineId: string; reason: string }>;
   /**
    * Canonical ingredient ids the user EXPLICITLY marked unavailable/excluded —
@@ -412,6 +416,7 @@ export interface RecipeState {
     /** Home machines only: the machine's real usable capacity in grams. */
     capacityGrams?: number | null;
   }) => void;
+  setProductionThermalMode: (mode: ProductionThermalMode | null) => void;
   resetToDemo: () => void;
 }
 
@@ -516,9 +521,7 @@ const fromPreset = (preset: DemoPreset) => ({
   target_batch_grams: preset.target_batch_grams,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    | 'machine'
-    | 'manual'
-    | null,
+    'machine' | 'manual' | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   target_protein_percent: PROTEIN_GELATO_TARGET.defaultPercent,
@@ -532,6 +535,7 @@ const fromPreset = (preset: DemoPreset) => ({
   toppings: [] as RecipeToppingItem[],
   productBehaviorSnapshots: {} as Record<string, ProductBehaviorSnapshot>,
   ownerReviewGate: null as OwnerReviewRecipeGate | null,
+  productionThermalMode: null as ProductionThermalMode | null,
   compositionMigrationAmbiguities: [] as Array<{ lineId: string; reason: string }>,
   // Owner P0 NIGHTLY (exclusion lifecycle): exclusions are DRAFT-SCOPED — a
   // fresh preset load / reset starts a fresh exclusion context. An ingredient
@@ -632,6 +636,7 @@ export function recipePersistPartialize(state: RecipeState) {
     toppings: state.toppings,
     productBehaviorSnapshots: state.productBehaviorSnapshots,
     ownerReviewGate: state.ownerReviewGate,
+    productionThermalMode: state.productionThermalMode,
     compositionMigrationAmbiguities: state.compositionMigrationAmbiguities,
     // Agent C (owner addendum): draft-material — see the field doc above.
     excludedIngredientIds: state.excludedIngredientIds,
@@ -1656,6 +1661,7 @@ export const useRecipeStore = create<RecipeState>()(
           ownerReviewGate: compositionMetadata?.ownerReviewGate
             ? structuredClone(compositionMetadata.ownerReviewGate)
             : null,
+          productionThermalMode: null,
           compositionMigrationAmbiguities: migrationAmbiguities,
           excludedIngredientIds: [...(input.goals?.excluded_ingredient_ids ?? [])],
           unavailableMainIngredientIds: [...(input.goals?.unavailable_main_ingredient_ids ?? [])],
@@ -1804,6 +1810,7 @@ export const useRecipeStore = create<RecipeState>()(
             toppings: [],
             productBehaviorSnapshots: {},
             ownerReviewGate: null,
+            productionThermalMode: null,
             compositionMigrationAmbiguities: [],
             excludedIngredientIds: [],
             unavailableMainIngredientIds: [],
@@ -1869,6 +1876,7 @@ export const useRecipeStore = create<RecipeState>()(
             draftRevision: state.draftRevision + 1,
           };
         }),
+      setProductionThermalMode: (mode) => set({ productionThermalMode: mode }),
       resetToDemo: () => {
         useIngredientTableUxStore.getState().reset();
         const base = fromPreset(DEFAULT_PRESET);

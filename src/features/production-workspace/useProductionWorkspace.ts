@@ -42,6 +42,11 @@ import type {
   ProductionRescueStableOptionId,
   ProductionRun,
 } from '@/features/pro-core/productionContracts';
+import type {
+  ProductProcessReadiness,
+  ProductProcessReadinessDetail,
+  ProductionThermalMode,
+} from '@/features/product-intelligence';
 
 export type ProductionRescueAuthorizationInvalidation = 'expired' | 'revision_mismatch' | null;
 
@@ -179,10 +184,7 @@ export const durableRescueRequiresReconciliation = (
   Boolean(remote.rescue && local && remote.rescue.revision !== local.durableRescueRevision);
 
 export type DurableProductionRecoveryRelation =
-  | 'missing_remote'
-  | 'new_rescue'
-  | 'new_actual'
-  | 'same';
+  'missing_remote' | 'new_rescue' | 'new_actual' | 'same';
 
 class MissingDurableProductionRunError extends Error {
   constructor() {
@@ -231,10 +233,7 @@ export type ProductionPrerequisiteCode =
   | 'owner_mismatch';
 
 export type ProductionPrerequisiteAction =
-  | 'open_preview'
-  | 'recalculate'
-  | 'return_to_recipe'
-  | 'archive_stale_session';
+  'open_preview' | 'recalculate' | 'return_to_recipe' | 'archive_stale_session';
 
 export type ProductionPrerequisite = {
   code: ProductionPrerequisiteCode;
@@ -281,7 +280,8 @@ export function useProductionWorkspace(enabled: boolean) {
     key: string | null;
     ready: boolean;
     message: string | null;
-  }>({ key: null, ready: false, message: null });
+    processReadiness: ProductProcessReadiness | null;
+  }>({ key: null, ready: false, message: null, processReadiness: null });
   const [sessionStart, setSessionStart] = useState<{
     busy: boolean;
     error: string | null;
@@ -434,8 +434,9 @@ export function useProductionWorkspace(enabled: boolean) {
         recipe: plannedInput,
         toppings: plannedComposition.toppings,
         snapshots: plannedComposition.behaviorSnapshots ?? {},
+        thermalMode: recipe.productionThermalMode,
       }),
-    [ownerUserId, plannedComposition, plannedInput],
+    [ownerUserId, plannedComposition, plannedInput, recipe.productionThermalMode],
   );
   const behaviorServerReady =
     requiredBehaviorLineIds.length === 0 ||
@@ -547,16 +548,14 @@ export function useProductionWorkspace(enabled: boolean) {
   useEffect(() => {
     if (!enabled || !practicalGate.ready || plannedInput.items.length === 0) return;
     let cancelled = false;
-    const validationPromise =
-      requiredBehaviorLineIds.length === 0
-        ? Promise.resolve({ ready: true, staleLineIds: [] as string[] })
-        : validateRecipeBehaviorOnServer({
-            recipe: plannedInput,
-            toppings: plannedComposition.toppings,
-            snapshots: plannedComposition.behaviorSnapshots ?? {},
-            module: 'PRODUCTION',
-            accountId: ownerUserId,
-          });
+    const validationPromise = validateRecipeBehaviorOnServer({
+      recipe: plannedInput,
+      toppings: plannedComposition.toppings,
+      snapshots: plannedComposition.behaviorSnapshots ?? {},
+      module: 'PRODUCTION',
+      accountId: ownerUserId,
+      ...(recipe.productionThermalMode ? { thermalMode: recipe.productionThermalMode } : {}),
+    });
     void validationPromise
       .then((validation) => {
         if (cancelled) return;
@@ -565,11 +564,17 @@ export function useProductionWorkspace(enabled: boolean) {
             key: behaviorValidationKey,
             ready: false,
             message:
-              'Produkcja jest zablokowana, ponieważ klasyfikacja produktu wymaga ponownego przeliczenia.',
+              'Produkcja wymaga odświeżenia bieżącej weryfikacji produktów. Obliczenie receptury pozostaje bez zmian.',
+            processReadiness: validation.processReadiness ?? null,
           });
           return;
         }
-        setBehaviorServerGate({ key: behaviorValidationKey, ready: true, message: null });
+        setBehaviorServerGate({
+          key: behaviorValidationKey,
+          ready: true,
+          message: null,
+          processReadiness: validation.processReadiness ?? null,
+        });
       })
       .catch(() => {
         if (!cancelled) {
@@ -578,6 +583,7 @@ export function useProductionWorkspace(enabled: boolean) {
             ready: false,
             message:
               'Produkcja zablokowana: nie udało się potwierdzić aktualnej klasyfikacji produktu.',
+            processReadiness: null,
           });
         }
       });
@@ -592,6 +598,7 @@ export function useProductionWorkspace(enabled: boolean) {
     plannedInput,
     practicalGate.ready,
     requiredBehaviorLineIds.length,
+    recipe.productionThermalMode,
   ]);
 
   const productionPrerequisite = sessionOwnerMismatch
@@ -630,14 +637,14 @@ export function useProductionWorkspace(enabled: boolean) {
             : null) ??
           (practicalGate.ready && !behaviorServerReady
             ? prerequisite(
-                behaviorServerMessage ? 'server_validation_failed' : 'server_validation_pending',
+                behaviorServerMessage ? 'product_authority_required' : 'server_validation_pending',
                 behaviorServerMessage
                   ? 'Nie udało się potwierdzić produktów'
                   : 'Potwierdzamy aktualną recepturę',
                 behaviorServerMessage ??
                   'Trwa bezpieczna weryfikacja produktów dla bieżącej receptury wykonawczej.',
-                behaviorServerMessage ? 'recalculate' : 'return_to_recipe',
-                behaviorServerMessage ? 'Przelicz recepturę' : 'Wróć do receptury',
+                'return_to_recipe',
+                'Wróć do receptury',
               )
             : null) ??
           (practicalGate.ready && (recoveryPending || recoveryError)
@@ -651,7 +658,7 @@ export function useProductionWorkspace(enabled: boolean) {
                 recoveryOrphanedLocal
                   ? 'Zachowaj osieroconą sesję w lokalnej historii i odłącz ją, aby bezpiecznie sprawdzić lub rozpocząć partię dla zapisanej wersji.'
                   : (recoveryError ??
-                    'Sprawdzamy trwały zapis, aby nie uruchomić drugi raz tej samej partii.'),
+                      'Sprawdzamy trwały zapis, aby nie uruchomić drugi raz tej samej partii.'),
                 recoveryOrphanedLocal ? 'archive_stale_session' : 'return_to_recipe',
                 recoveryOrphanedLocal ? 'Zachowaj i odłącz lokalną sesję' : 'Wróć do receptury',
               )
@@ -692,6 +699,62 @@ export function useProductionWorkspace(enabled: boolean) {
     [session],
   );
   const score = monitorScoreView(forecastResult, forecastInput).match;
+  const nameProcessDetails = (details: ProductProcessReadinessDetail[]) =>
+    details.map((detail) => {
+      const line = detail.lineId
+        ? (forecastInput.items.find((item) => item.id === detail.lineId) ??
+          plannedComposition.toppings.find((item) => item.id === detail.lineId))
+        : undefined;
+      return { ...detail, ...(line ? { productName: line.ingredient.name } : {}) };
+    });
+  const processReadiness: ProductProcessReadiness = session
+    ? session.processReadiness
+      ? {
+          schemaVersion: 1,
+          status: session.processReadiness,
+          blockers: [],
+          advisories: nameProcessDetails(session.processAdvisories),
+        }
+      : {
+          schemaVersion: 1,
+          status: 'BLOCKED',
+          blockers: [
+            {
+              code: 'LEGACY_PROCESS_AUTHORITY_MISSING',
+              productId: null,
+              mapperIngredientId: null,
+              decision: 'UNKNOWN',
+              verificationStatus: 'unknown',
+            },
+          ],
+          advisories: [],
+        }
+    : behaviorServerGate.key === behaviorValidationKey && behaviorServerGate.processReadiness
+      ? {
+          ...behaviorServerGate.processReadiness,
+          blockers: nameProcessDetails(behaviorServerGate.processReadiness.blockers),
+          advisories: nameProcessDetails(behaviorServerGate.processReadiness.advisories),
+        }
+      : {
+          schemaVersion: 1,
+          status: 'BLOCKED',
+          blockers: [
+            {
+              code: recipe.productionThermalMode
+                ? 'PROCESS_AUTHORITY_PENDING'
+                : 'PROCESS_THERMAL_MODE_REQUIRED',
+              productId: null,
+              mapperIngredientId: null,
+              decision: 'UNKNOWN',
+              verificationStatus: 'unknown',
+            },
+          ],
+          advisories: [],
+        };
+  const canStartProduction =
+    productionPrerequisite === null &&
+    recipe.productionThermalMode !== null &&
+    processReadiness.status !== 'BLOCKED';
   const corrections = useMemo(
     () =>
       proposeCorrections({
@@ -861,14 +924,19 @@ export function useProductionWorkspace(enabled: boolean) {
     progress,
     toppingProgress,
     score,
+    thermalMode: session?.thermalMode ?? recipe.productionThermalMode,
     corrections,
-    practicalReady: productionPrerequisite === null,
+    processReadiness,
+    practicalReady: canStartProduction,
     prerequisite: productionPrerequisite,
     sessionStarting: sessionStart.busy || recoveryPending,
     sessionStartError: sessionStart.error,
     persistenceBusy: persistence.busy,
     persistenceError: persistence.error,
     currentSourceFingerprint,
+    setThermalMode: (mode: ProductionThermalMode) => {
+      if (!session) recipe.setProductionThermalMode(mode);
+    },
     archiveStaleSession: async () => {
       if (!session || persistence.busy) return;
       if (recoveryOrphanedLocal) {
@@ -984,7 +1052,7 @@ export function useProductionWorkspace(enabled: boolean) {
       }
     },
     startNewSession: async () => {
-      if (productionPrerequisite || sessionStart.busy) return;
+      if (!canStartProduction || sessionStart.busy || !recipe.productionThermalMode) return;
       setSessionStart({ busy: true, error: null });
       try {
         if (requiredBehaviorLineIds.length > 0) {
@@ -994,13 +1062,16 @@ export function useProductionWorkspace(enabled: boolean) {
             snapshots: plannedComposition.behaviorSnapshots ?? {},
             module: 'PRODUCTION',
             accountId: ownerUserId,
+            thermalMode: recipe.productionThermalMode,
           });
-          if (!validation.ready) {
+          if (!validation.ready || validation.processReadiness?.status === 'BLOCKED') {
             setBehaviorServerGate({
               key: behaviorValidationKey,
-              ready: false,
-              message:
-                'Produkcja jest zablokowana, ponieważ klasyfikacja produktu wymaga ponownego przeliczenia.',
+              ready: validation.ready,
+              message: validation.ready
+                ? null
+                : 'Produkcja wymaga odświeżenia bieżącej weryfikacji produktów. Obliczenie receptury pozostaje bez zmian.',
+              processReadiness: validation.processReadiness ?? null,
             });
             return;
           }
@@ -1041,6 +1112,7 @@ export function useProductionWorkspace(enabled: boolean) {
           target: { kind: 'weight_g', grams: plannedInput.target_batch_grams },
           capabilities: productionCapabilitiesFor(persona),
           by: ownerUserId,
+          meta: { thermalMode: recipe.productionThermalMode },
         });
         restoreDurableSession(
           hydrateProductionSessionFromRun(activeRun, source, plannedInput, plannedComposition),
