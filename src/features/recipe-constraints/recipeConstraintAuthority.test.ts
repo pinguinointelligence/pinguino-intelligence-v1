@@ -6,9 +6,9 @@ import { evaluateRecipeConstraintAuthority } from './recipeConstraintAuthority';
 describe('canonical exact-candidate constraint authority', () => {
   it('accepts the existing native-safe starter through the synthetic fixture seam', () => {
     const recipe = starterMilkBase();
-    expect(
-      evaluateRecipeConstraintAuthority({ recipe, requireProductBehavior: false }).valid,
-    ).toBe(true);
+    expect(evaluateRecipeConstraintAuthority({ recipe, requireProductBehavior: false }).valid).toBe(
+      true,
+    );
   });
 
   it('rejects a native Engine violation independently of ProductBehavior', () => {
@@ -24,9 +24,32 @@ describe('canonical exact-candidate constraint authority', () => {
       target_batch_grams: items.reduce((sum, item) => sum + item.planned_grams, 0),
     };
     expect(
-      evaluateRecipeConstraintAuthority({ recipe: invalid, requireProductBehavior: false })
-        .issues,
+      evaluateRecipeConstraintAuthority({ recipe: invalid, requireProductBehavior: false }).issues,
     ).toEqual(expect.arrayContaining([expect.objectContaining({ source: 'engine' })]));
+  });
+
+  it('routes the Gelato aggregate stabilizer ceiling through unified authority', () => {
+    const recipe = starterMilkBase();
+    const invalid = {
+      ...recipe,
+      items: recipe.items.map((item) =>
+        item.id === starterLine('tara_gum')
+          ? { ...item, planned_grams: 6 }
+          : item.id === starterLine('milk_3_5')
+            ? { ...item, planned_grams: item.planned_grams - 1 }
+            : item,
+      ),
+    };
+    expect(
+      evaluateRecipeConstraintAuthority({ recipe: invalid, requireProductBehavior: false }).issues,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'owner_policy',
+          code: 'aggregate_above_maximum',
+        }),
+      ]),
+    );
   });
 
   it('fails closed when a managed technical line has no current ProductBehavior', () => {

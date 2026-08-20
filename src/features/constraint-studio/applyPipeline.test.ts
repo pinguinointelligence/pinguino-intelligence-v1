@@ -218,13 +218,9 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     if (result.preview.practicalization?.status !== 'ready') return;
     const exactCandidate = result.preview.practicalization.audit.exactInput;
 
-    // The deterministic exact solver candidate sits fractionally beyond two
-    // native boundaries. The existing whole-gram continuation finds the
-    // executable 206 g recipe with every final band in range.
-    expect(classifyViolationBands(exactCandidate).hardMetrics).toEqual([
-      'fat',
-      'lactose_sandiness_risk',
-    ]);
+    // The owner whole-gram authority now keeps both the exact and presented
+    // candidate inside the native boundaries.
+    expect(classifyViolationBands(exactCandidate).hardMetrics).toEqual([]);
     expect(
       result.preview.proposedInput.items.every((item) => Number.isInteger(item.planned_grams)),
     ).toBe(true);

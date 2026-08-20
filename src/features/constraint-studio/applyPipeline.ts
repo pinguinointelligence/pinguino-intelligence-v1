@@ -1624,9 +1624,7 @@ function solveOneRound(
   excludedIngredientIds: ReadonlySet<string>,
   /** §17-held LINE ids — the padlock layer the engine's own rules cannot see. */
   heldLineIds: ReadonlySet<string> = new Set(),
-  productBehaviorSnapshots: Readonly<
-    Record<string, ProductBehaviorSnapshot | undefined>
-  > = {},
+  productBehaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>> = {},
 ):
   | {
       applied: RecipeInput;
@@ -1731,9 +1729,9 @@ function solveOneRound(
           ? 'excluded_add_blocked'
           : productDosageBlocked
             ? 'product_behavior_dosage_clamp'
-          : heldLineBlocked
-            ? 'constrained_line_blocked'
-            : 'stabilizer_dosage_clamp',
+            : heldLineBlocked
+              ? 'constrained_line_blocked'
+              : 'stabilizer_dosage_clamp',
     });
   }
   if (!proposal) {
@@ -2091,8 +2089,7 @@ function iterateSolverToFixedPoint(
       ensureUniqueLineIds(base, mergeByCanonicalIdentity(base, outcome.applied)),
     );
     const next = measure(candidate);
-    const dosageSafe =
-      assessProductDosages(candidate, productBehaviorSnapshots ?? {}).length === 0;
+    const dosageSafe = assessProductDosages(candidate, productBehaviorSnapshots ?? {}).length === 0;
     const improved =
       dosageSafe &&
       (next.violations < current.violations ||
@@ -2809,8 +2806,9 @@ function maximizeMainFromStart(
     snapshots: options.productBehaviorSnapshots ?? {},
     technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
     mode:
-      normalizeFormulationStrategy(identityInput.goals?.formulation_strategy ?? identityInput.mode) ===
-      'eco'
+      normalizeFormulationStrategy(
+        identityInput.goals?.formulation_strategy ?? identityInput.mode,
+      ) === 'eco'
         ? 'eco'
         : 'optimal',
   });
@@ -2931,8 +2929,9 @@ function maximizeMainTechnicalObjective(
   const presentationInput = identityInput;
   const contractInput = identityInput;
   const behaviorMode =
-    normalizeFormulationStrategy(contractInput.goals?.formulation_strategy ?? contractInput.mode) ===
-    'eco'
+    normalizeFormulationStrategy(
+      contractInput.goals?.formulation_strategy ?? contractInput.mode,
+    ) === 'eco'
       ? 'eco'
       : 'optimal';
   // Strategy is deliberately removed from the technical objective. It may
@@ -3001,13 +3000,11 @@ function maximizeMainTechnicalObjective(
     linearBound.status === 'certified'
       ? (linearBound.wholeGramUpperBound ?? batchUpperBound)
       : batchUpperBound;
-  const behaviorUpperBound = behaviorCeiling === null
-    ? batchUpperBound
-    : Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G);
-  const upperBound = Math.max(
-    1,
-    Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound),
-  );
+  const behaviorUpperBound =
+    behaviorCeiling === null
+      ? batchUpperBound
+      : Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G);
+  const upperBound = Math.max(1, Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound));
   const behaviorCeilingIsLimiting =
     behaviorCeiling !== null && behaviorUpperBound <= Math.min(linearUpperBound, batchUpperBound);
   const upperAllocation = resolveMainRatioScale(identityInput, set.byLineId, upperBound);
@@ -3489,10 +3486,10 @@ function maximizeMainTechnicalObjective(
 
   const maximum = Math.round(accepted.mainGrams);
   const nextFailure = rejected.get(maximum + 1) ?? null;
-  const mathematicallyCertified = maximum === upperBound && (
-    behaviorCeilingIsLimiting ||
-    (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null)
-  );
+  const mathematicallyCertified =
+    maximum === upperBound &&
+    (behaviorCeilingIsLimiting ||
+      (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null));
   const limitingCertifiedRules = behaviorCeilingIsLimiting
     ? ['main_policy_ceiling']
     : linearBound.certificate;
@@ -3529,8 +3526,8 @@ function maximizeMainTechnicalObjective(
       limitingTechnicalRules: mathematicallyCertified
         ? limitingCertifiedRules
         : (nextFailure?.rules ?? ['heuristic_search_limit']),
-      ...((behaviorCeilingIsLimiting ||
-        (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null))
+      ...(behaviorCeilingIsLimiting ||
+      (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null)
         ? {
             certifiedUpperBoundGrams: upperBound,
             proofKind: 'linear_relaxation' as const,
@@ -4471,11 +4468,43 @@ function buildFormulationPreviewInternal(
   // WHILE verified improvement exists; never 1 round by construction).
   // Fallback bands guide the iteration; the honest partial score labelling for
   // provisional profiles is kept unchanged.
-  const solverSet = withTemplateControlledStabilizerLocks(built.proposal.proposedInput, set);
-  const iterated = iterateFormulationSeed(input, solverSet, built.proposal.proposedInput, options);
-  const manualTarget = projectManualIngredientTarget(input, set, options, iterated.working);
+  const ownerInulinAbsent = !built.proposal.proposedInput.items.some(
+    (item) => canonicalIngredientId(item.ingredient) === 'PI-ING-000456' && item.planned_grams > 0,
+  );
+  const baseSolverSet = withTemplateControlledStabilizerLocks(built.proposal.proposedInput, set);
+  const solverSet: ConstraintSet = ownerInulinAbsent
+    ? {
+        byLineId: {
+          ...baseSolverSet.byLineId,
+          ...Object.fromEntries(
+            built.proposal.proposedInput.items
+              .filter(
+                (item) =>
+                  canonicalIngredientId(item.ingredient) === 'PI-ING-000456' &&
+                  item.planned_grams <= 0,
+              )
+              .map((item) => [item.id, { mode: 'locked' as const, grams: 0 }]),
+          ),
+        },
+      }
+    : baseSolverSet;
+  const solverOptions: OptimizePreviewOptions = ownerInulinAbsent
+    ? {
+        ...options,
+        excludedIngredientIds: [
+          ...new Set([...(options.excludedIngredientIds ?? []), 'inulin', 'PI-ING-000456']),
+        ],
+      }
+    : options;
+  const iterated = iterateFormulationSeed(
+    input,
+    solverSet,
+    built.proposal.proposedInput,
+    solverOptions,
+  );
+  const manualTarget = projectManualIngredientTarget(input, set, solverOptions, iterated.working);
   const manualTargetInput = manualTarget.proof ? manualTarget.input : iterated.working;
-  const mainObjective = maximizeMainFlavourObjective(input, manualTargetInput, set, options);
+  const mainObjective = maximizeMainFlavourObjective(input, manualTargetInput, set, solverOptions);
   const working = mainObjective.input;
   const solverRounds = iterated.diagnostics.solverInvocations;
   const lastProposal = iterated.lastProposal;
@@ -6221,15 +6250,14 @@ export function bindProductBehaviorToPreview(
     module: behaviorModule,
     technicalOnlyMainLineIds,
   });
-  const dosageIssues = authority.issues.filter(
-    (issue) => issue.code === 'product_dosage_invalid',
-  );
+  const dosageIssues = authority.issues.filter((issue) => issue.code === 'product_dosage_invalid');
   const authorityBlocking = authority.issues.filter(
     (issue) =>
+      issue.source === 'owner_policy' ||
       issue.source === 'main' ||
-      issue.source === 'product_behavior' && issue.code !== 'product_dosage_invalid' ||
-      issue.source === 'profile' &&
-        (issue.code === 'profile_evidence_missing' || issue.code === 'profile_not_eligible'),
+      (issue.source === 'product_behavior' && issue.code !== 'product_dosage_invalid') ||
+      (issue.source === 'profile' &&
+        (issue.code === 'profile_evidence_missing' || issue.code === 'profile_not_eligible')),
   );
   if (authorityBlocking.length > 0) {
     const violations: MainEnvelopeViolation[] = authorityBlocking.map((issue) => ({
@@ -7103,8 +7131,11 @@ export class VerifiedApply {
         };
       }
       const terminalIssues = authority.issues.filter(
-        (issue) => issue.source === 'main' || issue.source === 'product_behavior' ||
-          issue.source === 'profile',
+        (issue) =>
+          issue.source === 'main' ||
+          issue.source === 'product_behavior' ||
+          issue.source === 'profile' ||
+          issue.source === 'owner_policy',
       );
       if (terminalIssues.length > 0) {
         const violations: MainEnvelopeViolation[] = terminalIssues.map((issue) => ({
@@ -7121,7 +7152,8 @@ export class VerifiedApply {
           ok: false,
           code: 'product_behavior_invalid',
           violations,
-          messagePl: violations[0]?.messagePl ??
+          messagePl:
+            violations[0]?.messagePl ??
             'Apply zablokowany: receptura nie spełnia pełnej weryfikacji profilu.',
         };
       }

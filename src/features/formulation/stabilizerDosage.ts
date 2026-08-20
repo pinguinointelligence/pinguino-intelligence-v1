@@ -38,6 +38,7 @@ import type { CorrectionAction, RecipeInput } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { resolveFunctionalRole } from './ingredientRoles';
+import { gelatoStabilizerSystemApplies } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
 
 export type StabilizerIdentityKind = 'pure_gum' | 'stabilizer_blend';
 
@@ -167,9 +168,7 @@ export function withTemplateControlledStabilizerLocks(
   input: RecipeInput,
   set: ConstraintSet,
 ): ConstraintSet {
-  const stabilizers = input.items.filter((item) =>
-    isTemplateControlledStabilizer(item.ingredient),
-  );
+  const stabilizers = input.items.filter((item) => isTemplateControlledStabilizer(item.ingredient));
   if (stabilizers.length === 0) return set;
   const byLineId = { ...set.byLineId };
   for (const item of stabilizers) {
@@ -181,11 +180,7 @@ export function withTemplateControlledStabilizerLocks(
       byLineId[item.id] = visible;
       continue;
     }
-    if (
-      visible === undefined &&
-      item.lock_type === 'percent' &&
-      input.target_batch_grams > 0
-    ) {
+    if (visible === undefined && item.lock_type === 'percent' && input.target_batch_grams > 0) {
       byLineId[item.id] = {
         mode: 'percent',
         percent: (item.planned_grams / input.target_batch_grams) * 100,
@@ -234,6 +229,7 @@ export function templateControlledStabilizerViolations(
   proposed: RecipeInput,
   options: TemplateControlledStabilizerComparisonOptions = {},
 ): TemplateControlledStabilizerViolation[] {
+  if (gelatoStabilizerSystemApplies(current.category)) return [];
   const proposedByLineId = new Map(proposed.items.map((item) => [item.id, item]));
   const violations: TemplateControlledStabilizerViolation[] = [];
   const currentStabilizers = current.items.filter((item) =>
@@ -267,8 +263,7 @@ export function templateControlledStabilizerViolations(
     }
     if (seedIsExact && seed?.allowedLineIds.has(item.id)) continue;
     const mayScale =
-      options.proportionalBatchRatio !== undefined &&
-      !options.fixedLineIds?.has(item.id);
+      options.proportionalBatchRatio !== undefined && !options.fixedLineIds?.has(item.id);
     const expectedGrams = mayScale
       ? item.planned_grams * options.proportionalBatchRatio!
       : item.planned_grams;
@@ -356,7 +351,8 @@ export function violatesApprovedStabilizerDosage(
     .filter(
       (item) =>
         item.ingredient.id === action.ingredient_id ||
-        approvedStabilizerDosage(canonicalIngredientId(item.ingredient))?.mapperId === entry.mapperId,
+        approvedStabilizerDosage(canonicalIngredientId(item.ingredient))?.mapperId ===
+          entry.mapperId,
     )
     .reduce((sum, item) => sum + item.planned_grams, 0);
   if (action.type === 'add') {

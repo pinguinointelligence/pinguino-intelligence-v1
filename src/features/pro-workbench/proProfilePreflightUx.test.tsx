@@ -1,9 +1,15 @@
+/** @vitest-environment jsdom */
 import { readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createRoot } from 'react-dom/client';
+import { act } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { calculateRecipe, type RecipeInput } from '@/engine';
+import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
+import { recipeContext } from '@/features/studio/buildRecipeInput';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import {
   MACHINE_CATALOG,
   deriveMachineSetup,
@@ -26,6 +32,7 @@ import {
 } from './recipeProfilePersistence';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 import { ProfileDirectionAxes } from './ProfileDirectionAxes';
+import { RecipeProfilePanel } from './RecipeProfilePanel';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -87,6 +94,90 @@ describe('canonical Pro header contract', () => {
 });
 
 describe('profile hierarchy and compact preflight', () => {
+  it('keeps Recipe profile indicators populated when only a post-production topping changes', async () => {
+    const input = starterMilkBase();
+    const result = calculateRecipe(input);
+    const topping = {
+      id: 'post-process-topping',
+      ingredient: {
+        kind: 'catalog_label_topping',
+        id: 'catalog:cranberry',
+        canonical_ingredient_id: 'catalog:cranberry',
+        private_product_id: 'catalog:cranberry:v1',
+        name: 'Cranberry',
+        catalog_product_id: 'cranberry',
+        catalog_version_id: 'v1',
+        verification_status: 'verified',
+        label_nutrition_per_100g: {
+          basis: 'per_100g',
+          energyKcal: 120,
+          fat: 0,
+          saturatedFat: null,
+          carbohydrate: 30,
+          sugars: 28,
+          protein: 0,
+          salt: 0,
+          fibre: null,
+        },
+        ingredients_text: 'Żurawina, cukier',
+        allergens_text: '',
+        cost_per_kg: 12,
+        cost_currency: 'EUR',
+      } satisfies CatalogLabelToppingIngredient,
+      planned_grams: 1,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON',
+      addon_sort_order: 0,
+    } as const;
+    useRecipeStore.setState({
+      productBehaviorSnapshots: productBehaviorTestSnapshots(input),
+      toppings: [],
+    });
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          <RecipeProfilePanel
+            activeTab="profile"
+            onTabChange={() => undefined}
+            result={result}
+            servingTemperatureC={input.target_temperature_c}
+            corrections={proposeCorrections({
+              input,
+              context: recipeContext(input),
+              redact: false,
+            })}
+            input={input}
+            idPrefix="profile-topping-regression"
+            showTabs={false}
+            onOpenPreview={() => undefined}
+            onRecalculate={() => undefined}
+          />,
+        ),
+      );
+      const initialProfile = host.querySelector('[data-testid="profile-direction-axes"]');
+      expect(initialProfile).not.toBeNull();
+      const initialValues = initialProfile?.textContent;
+
+      for (const toppingGrams of [1, 51, 73, 0]) {
+        await act(async () => {
+          useRecipeStore.setState({
+            toppings: toppingGrams === 0 ? [] : [{ ...topping, planned_grams: toppingGrams }],
+          });
+        });
+        const currentProfile = host.querySelector('[data-testid="profile-direction-axes"]');
+        expect(currentProfile).not.toBeNull();
+        expect(currentProfile?.textContent).toBe(initialValues);
+      }
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
+  });
+
   it('renders one editor-dock score, then Profile inputs without Summary duplication', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');

@@ -23,8 +23,13 @@ const snapshot = (
   mapperIngredientId: string,
   recommendedDose: {
     minPercent: number | null;
+    preferredPercent?: number | null;
     maxPercent: number | null;
     sourceVersion: string;
+    presenceSemantics?: 'optional_zero_or_range';
+    provenance?: string;
+    policyId?: string;
+    policyVersion?: number;
   } | null,
 ): ProductBehaviorSnapshot =>
   ({
@@ -98,7 +103,7 @@ const recipe = (lineId: string, mapperIngredientId: string, grams: number): Reci
         id: mapperIngredientId,
         canonical_ingredient_id: mapperIngredientId,
         identity_provenance: 'mapper',
-        name: mapperIngredientId,
+        name: mapperIngredientId === 'PI-ING-000456' ? 'Inulin' : mapperIngredientId,
         category: 'stabilizer',
         composition: {
           water_percent: 0,
@@ -254,15 +259,43 @@ describe('ProductBehavior dosage authority', () => {
     });
   });
 
-  it('does not invent an Inulin limit when its Mapper dosage evidence is blank', () => {
-    const inulin = snapshot('inulin', 'PI-ING-000456', null);
-    expect(productDosageAuthority(inulin, 1_000)).toEqual({ status: 'not_defined' });
-    expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', 555), { inulin })).toEqual([]);
-    expect(clampProductDosageGrams(555, 1_000, inulin)).toEqual({
+  it('enforces owner-approved optional Inulin as 0% or 2–8%, preferring 4%', () => {
+    const inulin = snapshot('inulin', 'PI-ING-000456', {
+      minPercent: 2,
+      preferredPercent: 4,
+      maxPercent: 8,
+      presenceSemantics: 'optional_zero_or_range',
+      provenance: 'owner-approved Gellatti formulation policy',
+      policyId: 'gellatti-generic-inulin',
+      policyVersion: 1,
+      sourceVersion: 'owner-gellatti-inulin-v1',
+    });
+    expect(productDosageAuthority(inulin, 1_000)).toMatchObject({
+      status: 'defined',
+      authority: {
+        minGrams: 20,
+        preferredPercent: 4,
+        maxGrams: 80,
+        presenceSemantics: 'optional_zero_or_range',
+        provenance: 'owner-approved Gellatti formulation policy',
+      },
+    });
+    expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', 0), { inulin })).toEqual([]);
+    expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', 10), { inulin })).toEqual([
+      expect.objectContaining({ code: 'below_minimum', minGrams: 20 }),
+    ]);
+    for (const grams of [20, 40, 80]) {
+      expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', grams), { inulin })).toEqual(
+        [],
+      );
+    }
+    expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', 81), { inulin })).toEqual([
+      expect.objectContaining({ code: 'above_maximum', maxGrams: 80 }),
+    ]);
+    expect(clampProductDosageGrams(81, 1_000, inulin)).toMatchObject({
       ok: true,
-      grams: 555,
-      clamped: false,
-      authority: null,
+      grams: 80,
+      clamped: true,
     });
   });
 
@@ -301,7 +334,39 @@ describe('ProductBehavior dosage authority', () => {
       useRecipeStore.getState().setPlannedGrams('owner:tara_gum', 55);
       expect(
         useRecipeStore.getState().items.find((item) => item.id === 'owner:tara_gum'),
-      ).toMatchObject({ planned_grams: 10, user_target_grams: 10 });
+      ).toMatchObject({ planned_grams: 5, user_target_grams: 5 });
+    } finally {
+      useRecipeStore.setState(before, true);
+    }
+  });
+
+  it('clamps a newly added gum against the existing Gelato aggregate and preserves legal 1 g components', () => {
+    const before = useRecipeStore.getState();
+    const input = ownerSameInputRecipe();
+    const tara = input.items.find((item) => item.id === 'owner:tara_gum')!;
+    const guar = {
+      ...tara.ingredient,
+      id: 'PI-ING-TEST-GUAR',
+      canonical_ingredient_id: 'PI-ING-TEST-GUAR',
+      name: 'Guar Gum',
+    };
+    try {
+      useRecipeStore.setState({
+        category: input.category,
+        items: input.items.map((item) =>
+          item.id === tara.id ? { ...item, planned_grams: 4 } : item,
+        ),
+        target_batch_grams: input.target_batch_grams,
+        productBehaviorSnapshots: {},
+      });
+      const added = useRecipeStore.getState().addIngredient(guar, 10);
+      expect(added.status).toBe('added');
+      expect(
+        useRecipeStore.getState().items.find((item) => item.id === added.lineId),
+      ).toMatchObject({
+        planned_grams: 1,
+        user_intent_anchor_grams: 1,
+      });
     } finally {
       useRecipeStore.setState(before, true);
     }
@@ -336,7 +401,6 @@ describe('ProductBehavior dosage authority', () => {
       expect(
         useRecipeStore.getState().items.find((item) => item.id === 'owner:tara_gum')?.planned_grams,
       ).toBe(originalTara);
-
     } finally {
       useRecipeStore.setState(before, true);
     }
@@ -344,6 +408,7 @@ describe('ProductBehavior dosage authority', () => {
 
   it('marks an excessive generated candidate diagnostic and blocks forged Apply trustlessly', () => {
     const input = ownerSameInputRecipe();
+    input.category = 'sorbet';
     input.items = input.items.map((item) =>
       item.id === 'owner:tara_gum'
         ? { ...item, planned_grams: 55 }
@@ -504,14 +569,14 @@ describe('ProductBehavior dosage authority', () => {
           safetyLockConflict: {
             lineId: 'owner:tara_gum',
             beforeGrams: 55,
-            requiredGrams: 10,
+            requiredGrams: 5,
             boundary: 'maximum',
           },
         },
         suggestedFixAuthorization: {
           type: 'set_max',
           lineId: 'owner:tara_gum',
-          grams: 10,
+          grams: 5,
         },
         previewIssue: null,
         recalculationTerminal: { state: 'PREVIEW_READY' },

@@ -29,6 +29,11 @@ import {
 } from '@/engine';
 import type { ConstraintSet, IngredientConstraint } from '@/features/recipe-constraints';
 import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
+import {
+  assessGelatoStabilizerSystem,
+  gelatoStabilizerSystemApplies,
+  gelatoStabilizerWholeGramBand,
+} from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
 import { selectFormulationTemplateForRecipe, type FormulationTemplate } from './templateRegistry';
 import { canonicalToolboxIdentity, isToolboxCandidateExcluded } from './toolboxCanonical';
 import { findVerifiedVeganFormulationCandidate } from '@/data/ingredients/verifiedVeganToolbox';
@@ -37,6 +42,11 @@ import {
   canonicalIngredientId,
   normalizeIngredientIdentity,
 } from '@/data/ingredients/canonicalIngredientIdentity';
+import {
+  OWNER_INULIN_POLICY,
+  ownerInulinGramBand,
+  ownerInulinPresentDoseIsValid,
+} from '@/features/product-intelligence/ownerInulinPolicy';
 import { resolveMainRatioScale } from './mainIngredientContract';
 
 /* ────────────────────────────────────────────────────────────── routing ── */
@@ -360,9 +370,7 @@ const toolboxIngredient = (id: string) =>
  * canonical Mapper registry binding; verified Vegan/Protein candidates carry
  * their Mapper id directly.
  */
-export function approvedFormulationToolboxIngredients(
-  id: string,
-): readonly EngineIngredient[] {
+export function approvedFormulationToolboxIngredients(id: string): readonly EngineIngredient[] {
   const ingredient = toolboxIngredient(id);
   if (!ingredient) return [];
   const canonical = canonicalToolboxIdentity(id);
@@ -441,6 +449,11 @@ export function buildFormulationProposal(
   const excluded = new Set(options.excludedIngredientIds ?? []);
   const batch = input.target_batch_grams;
   const scale = batch / template.baseBatchG;
+  const ownerStabilizerAssessment = assessGelatoStabilizerSystem(input);
+  const ownerStabilizerSystemAlreadyValid =
+    ownerStabilizerAssessment.applicable &&
+    ownerStabilizerAssessment.present &&
+    ownerStabilizerAssessment.issues.length === 0;
 
   // 1. Resolve every selected line's functional role.
   const lines = input.items.map((item) => ({
@@ -451,6 +464,17 @@ export function buildFormulationProposal(
     // a selected-UNFILLED line — fillable, never a deliberate zero.
     locked: isEffectivelyLockedLine(item, lockOf(set, item.id)),
   }));
+  const positiveInulinLines = lines.filter(
+    (line) =>
+      canonicalIngredientId(line.item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId &&
+      line.item.planned_grams > 0,
+  );
+  const positiveInulinTotal = positiveInulinLines.reduce(
+    (sum, line) => sum + line.item.planned_grams,
+    0,
+  );
+  const ownerInulinAlreadyValid = ownerInulinPresentDoseIsValid(batch, positiveInulinTotal);
+  const ownerInulinBand = ownerInulinGramBand(batch);
 
   // 2. Map template roles → selected lines (role grams split equally when the
   //    user selected several ingredients of one role).
@@ -480,6 +504,67 @@ export function buildFormulationProposal(
    * role target for — reported honestly, never silently left empty. */
   const unfillableSelections: { name: string; role: FunctionalRole }[] = [];
 
+  // Some approved Gelato templates predate the owner Inulin policy and have
+  // no fibre/body row. A positively selected exact Inulin line is still an
+  // explicit request: seed it at the owner-preferred 4% and let the existing
+  // correction search move it only when the rest of the recipe justifies it.
+  if (!template.roles.some((target) => target.toolboxId === 'inulin')) {
+    const selectedInulin = lines.filter(
+      (line) =>
+        canonicalIngredientId(line.item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId &&
+        line.item.planned_grams > 0,
+    );
+    if (selectedInulin.length > 0) {
+      const target = ownerInulinBand.preferredGrams;
+      selectedInulin.forEach((line, index) => {
+        const preferredShare = target / selectedInulin.length;
+        const ownerMinimumShare = ownerInulinBand.minGrams / selectedInulin.length;
+        const ownerMaximumShare = ownerInulinBand.maxGrams / selectedInulin.length;
+        const constrainedShare =
+          line.constraint?.mode === 'range'
+            ? Math.min(Math.max(preferredShare, line.constraint.minGrams), line.constraint.maxGrams)
+            : preferredShare;
+        const grams = line.locked ? line.item.planned_grams : constrainedShare;
+        mappedLineIds.add(line.item.id);
+        planned.push({
+          item: line.item,
+          grams,
+          fixed: line.locked,
+          min: line.locked
+            ? undefined
+            : Math.max(
+                ownerMinimumShare,
+                line.constraint?.mode === 'range' ? line.constraint.minGrams : 0,
+              ),
+          max: line.locked
+            ? undefined
+            : Math.min(
+                ownerMaximumShare,
+                line.constraint?.mode === 'range'
+                  ? line.constraint.maxGrams
+                  : Number.POSITIVE_INFINITY,
+              ),
+        });
+        roleTrace.push({
+          role: 'fiber_body',
+          hard: false,
+          templateGrams: target,
+          userLineIds: selectedInulin.map((entry) => entry.item.id),
+          toolboxId: 'inulin',
+          mapperId: 'PI-ING-000456',
+          existingLineReused: true,
+          candidateFound: true,
+          excluded: false,
+          outcome: 'user_filled',
+          reason:
+            index === 0
+              ? 'owner_optional_inulin_preferred_target'
+              : 'owner_optional_inulin_preferred_target_shared',
+        });
+      });
+    }
+  }
+
   // ORDER (owner Phase 3): resolve user roles → identify missing template
   // roles → resolve approved toolbox candidates by EXACT canonical identity →
   // auto-add allowed candidates → resolve Engine rows → compute amounts —
@@ -487,11 +572,22 @@ export function buildFormulationProposal(
   // A role is "missing" only if no approved, template-allowed, Engine-ready,
   // not-explicitly-excluded candidate exists.
   for (const roleTarget of template.roles) {
-    const targetGrams = roleTarget.grams * scale;
+    const ownerInulinRole = roleTarget.toolboxId === 'inulin';
+    const ownerGelatoStabilizerRole =
+      roleTarget.role === 'stabilizer' && gelatoStabilizerSystemApplies(input.category);
     const canonical = roleTarget.toolboxId ? canonicalToolboxIdentity(roleTarget.toolboxId) : null;
-    const exactCanonicalMatches = canonical
+    const exactCanonicalMatchesUnfiltered = canonical
       ? lines.filter((line) => canonicalIngredientId(line.item.ingredient) === canonical.mapperId)
       : [];
+    const exactCanonicalMatches = ownerInulinRole
+      ? exactCanonicalMatchesUnfiltered.filter((line) => line.item.planned_grams > 0)
+      : exactCanonicalMatchesUnfiltered;
+    const ownerInulinPolicyMatch = ownerInulinRole && exactCanonicalMatches.length > 0;
+    const targetGrams = ownerInulinPolicyMatch
+      ? ownerInulinBand.preferredGrams
+      : ownerGelatoStabilizerRole
+        ? gelatoStabilizerWholeGramBand(batch).preferredGrams
+        : roleTarget.grams * scale;
     const roleMatches = byRole.get(roleTarget.role) ?? [];
     // Protein Main is recipe identity, not a broad structural-role fallback.
     // A Main vanilla dairy paste, for example, must not become the 460 g milk
@@ -508,11 +604,15 @@ export function buildFormulationProposal(
     // is added. A positive user-selected stabilizer is established intent and
     // remains byte-held by the branch below.
     const templateEligibleFallbackMatches =
-      roleTarget.role === 'stabilizer'
+      roleTarget.role === 'stabilizer' || ownerInulinRole
         ? fallbackRoleMatches.filter((line) => line.item.planned_grams > 0)
         : fallbackRoleMatches;
     const matches =
-      exactCanonicalMatches.length > 0 ? exactCanonicalMatches : templateEligibleFallbackMatches;
+      ownerGelatoStabilizerRole && templateEligibleFallbackMatches.length > 0
+        ? templateEligibleFallbackMatches
+        : exactCanonicalMatches.length > 0
+          ? exactCanonicalMatches
+          : templateEligibleFallbackMatches;
     const traceBase = {
       role: roleTarget.role,
       hard: HARD_ROLES.has(roleTarget.role),
@@ -523,8 +623,17 @@ export function buildFormulationProposal(
       existingLineReused: matches.length > 0,
     };
     if (matches.length > 0) {
-      const share = targetGrams / matches.length;
-      for (const match of matches) {
+      const wholeShare = ownerGelatoStabilizerRole ? Math.floor(targetGrams / matches.length) : 0;
+      const wholeRemainder = ownerGelatoStabilizerRole ? targetGrams % matches.length : 0;
+      for (const [matchIndex, match] of matches.entries()) {
+        const share =
+          ownerInulinPolicyMatch && ownerInulinAlreadyValid
+            ? match.item.planned_grams
+            : ownerGelatoStabilizerRole && ownerStabilizerSystemAlreadyValid
+              ? match.item.planned_grams
+              : ownerGelatoStabilizerRole
+                ? wholeShare + (matchIndex < wholeRemainder ? 1 : 0)
+                : targetGrams / matches.length;
         mappedLineIds.add(match.item.id);
         const constraint = match.constraint;
         // Stabilizer windows are safety clamps, not an approved activity
@@ -533,7 +642,11 @@ export function buildFormulationProposal(
         // instead of silently replacing it with a batch-scaled template share.
         // A missing/zero carrier may still be seeded from the approved
         // template; explicit batch rescale is handled by its dedicated route.
-        if (roleTarget.role === 'stabilizer' && match.item.planned_grams > 0) {
+        if (
+          roleTarget.role === 'stabilizer' &&
+          !ownerGelatoStabilizerRole &&
+          match.item.planned_grams > 0
+        ) {
           const heldGrams =
             constraint?.mode === 'locked'
               ? constraint.grams
@@ -572,7 +685,13 @@ export function buildFormulationProposal(
         } else if (match.locked) {
           planned.push({ item: match.item, grams: match.item.planned_grams, fixed: true });
         } else {
-          planned.push({ item: match.item, grams: share, fixed: !roleTarget.adjustable });
+          planned.push({
+            item: match.item,
+            grams: share,
+            fixed: ownerGelatoStabilizerRole || !roleTarget.adjustable,
+            min: ownerInulinPolicyMatch ? ownerInulinBand.minGrams : undefined,
+            max: ownerInulinPolicyMatch ? ownerInulinBand.maxGrams : undefined,
+          });
         }
       }
       roleTrace.push({
@@ -581,6 +700,22 @@ export function buildFormulationProposal(
         excluded: false,
         outcome: 'user_filled',
         reason: 'user_selected_ingredient_carries_role',
+      });
+      continue;
+    }
+
+    if (ownerInulinRole) {
+      missingRoles.push(roleTarget.role);
+      recommendations.push({
+        role: roleTarget.role,
+        messagePl: 'Dodanie inuliny może pomóc osiągnąć poprawny balans receptury.',
+      });
+      roleTrace.push({
+        ...traceBase,
+        candidateFound: true,
+        excluded: false,
+        outcome: 'missing_soft',
+        reason: 'owner_optional_inulin_requires_explicit_user_add',
       });
       continue;
     }
@@ -599,9 +734,7 @@ export function buildFormulationProposal(
         (ingredient !== null && excluded.has(ingredient.id));
       if (!candidateExcluded) {
         if (ingredient) {
-          const approvedIngredient = approvedFormulationToolboxIngredients(
-            roleTarget.toolboxId,
-          )[1];
+          const approvedIngredient = approvedFormulationToolboxIngredients(roleTarget.toolboxId)[1];
           if (!approvedIngredient) {
             missingRoles.push(roleTarget.role);
             if (HARD_ROLES.has(roleTarget.role)) missingHardRoles.push(roleTarget.role);

@@ -59,3 +59,17 @@ export {
   type RecipeConstraintAuthorityIssue,
   type RecipeConstraintAuthorityResult,
 } from './recipeConstraintAuthority';
+
+export {
+  GELATO_STABILIZER_SYSTEM_POLICY,
+  assessGelatoStabilizerSystem,
+  clampGelatoStabilizerComponentGrams,
+  gelatoStabilizerSystemApplies,
+  gelatoStabilizerSystemItems,
+  gelatoStabilizerWholeGramBand,
+  type ClampGelatoStabilizerComponentResult,
+  type GelatoStabilizerSystemAssessment,
+  type GelatoStabilizerSystemIssue,
+  type GelatoStabilizerSystemIssueCode,
+  type GelatoStabilizerWholeGramBand,
+} from './gelatoStabilizerSystemAuthority';

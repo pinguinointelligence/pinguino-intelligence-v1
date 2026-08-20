@@ -3825,6 +3825,102 @@ function resolveFunctionalRole(ingredient) {
 }
 
 //#endregion
+//#region src/features/recipe-constraints/gelatoStabilizerSystemAuthority.ts
+const GELATO_STABILIZER_SYSTEM_POLICY = Object.freeze({
+	policyId: "gellatti-gelato-stabilizer-system",
+	version: 1,
+	provenance: "owner-approved Gellatti formulation policy",
+	minPercent: .2,
+	preferredPercent: .3,
+	maxPercent: .5,
+	gramSemantics: "whole_grams"
+});
+const GELATO_CATEGORIES = new Set([
+	"milk_gelato",
+	"fruit_gelato",
+	"nut_gelato",
+	"chocolate_gelato",
+	"alcohol_gelato"
+]);
+const gelatoStabilizerSystemApplies = (category) => GELATO_CATEGORIES.has(category);
+/** Owner-approved integer feasibility conversion. Hard bounds are rounded
+* inward, so rounding can never broaden the percentage authority. */
+function gelatoStabilizerWholeGramBand(baseGrams) {
+	if (!Number.isFinite(baseGrams) || baseGrams <= 0) return {
+		minGrams: 0,
+		preferredGrams: 0,
+		maxGrams: 0
+	};
+	const minimumGrams = Math.ceil(baseGrams * GELATO_STABILIZER_SYSTEM_POLICY.minPercent / 100);
+	const maximumGrams = Math.floor(baseGrams * GELATO_STABILIZER_SYSTEM_POLICY.maxPercent / 100);
+	const rawPreferred = Math.round(baseGrams * GELATO_STABILIZER_SYSTEM_POLICY.preferredPercent / 100);
+	return {
+		minGrams: minimumGrams,
+		preferredGrams: Math.min(maximumGrams, Math.max(minimumGrams, rawPreferred)),
+		maxGrams: maximumGrams
+	};
+}
+const gelatoStabilizerSystemItems = (items) => items.filter((item) => resolveFunctionalRole(item.ingredient) === "stabilizer");
+/** Canonical aggregate assessment used by terminal recipe authority. Individual
+* products may impose a tighter ProductBehavior ceiling in parallel. */
+function assessGelatoStabilizerSystem(input) {
+	if (!gelatoStabilizerSystemApplies(input.category)) return {
+		applicable: false,
+		present: false,
+		totalGrams: 0,
+		lineIds: [],
+		band: null,
+		issues: []
+	};
+	const positive = gelatoStabilizerSystemItems(input.items).filter((item) => item.planned_grams > 0);
+	const lineIds = positive.map((item) => item.id);
+	const totalGrams = positive.reduce((sum, item) => sum + item.planned_grams, 0);
+	const band = gelatoStabilizerWholeGramBand(input.target_batch_grams);
+	const issues = [];
+	if (positive.length === 0) return {
+		applicable: true,
+		present: false,
+		totalGrams: 0,
+		lineIds: [],
+		band,
+		issues: []
+	};
+	const fractional = positive.filter((item) => !Number.isInteger(item.planned_grams));
+	if (fractional.length > 0) issues.push({
+		code: "component_not_whole_grams",
+		lineIds: fractional.map((item) => item.id),
+		messagePl: "Składniki systemu stabilizującego Gelato muszą mieć pełne gramy.",
+		totalGrams,
+		minGrams: band.minGrams,
+		maxGrams: band.maxGrams
+	});
+	if (totalGrams < band.minGrams) issues.push({
+		code: "aggregate_below_minimum",
+		lineIds,
+		messagePl: `Łączny system stabilizujący dla tej partii wymaga co najmniej ${band.minGrams} g.`,
+		totalGrams,
+		minGrams: band.minGrams,
+		maxGrams: band.maxGrams
+	});
+	else if (totalGrams > band.maxGrams) issues.push({
+		code: "aggregate_above_maximum",
+		lineIds,
+		messagePl: `Łączny limit systemu stabilizującego dla tej partii został osiągnięty: ${band.maxGrams} g.`,
+		totalGrams,
+		minGrams: band.minGrams,
+		maxGrams: band.maxGrams
+	});
+	return {
+		applicable: true,
+		present: positive.length > 0,
+		totalGrams,
+		lineIds,
+		band,
+		issues
+	};
+}
+
+//#endregion
 //#region src/features/formulation/stabilizerDosage.ts
 const APPROVED_STABILIZER_DOSAGES = [{
 	mapperId: "PI-ING-000492",
@@ -4819,7 +4915,10 @@ const invalidDoseReason = (dose, targetBatchGrams) => {
 	if (!dose.sourceVersion?.trim()) return "missing_source_version";
 	if (dose.minPercent !== null && !validPercent(dose.minPercent)) return "invalid_minimum";
 	if (dose.maxPercent !== null && !validPercent(dose.maxPercent)) return "invalid_maximum";
+	if (dose.preferredPercent !== void 0 && dose.preferredPercent !== null && !validPercent(dose.preferredPercent)) return "invalid_preferred";
 	if (dose.minPercent !== null && dose.maxPercent !== null && dose.minPercent > dose.maxPercent) return "minimum_above_maximum";
+	if (dose.preferredPercent !== void 0 && dose.preferredPercent !== null && (dose.minPercent !== null && dose.preferredPercent < dose.minPercent || dose.maxPercent !== null && dose.preferredPercent > dose.maxPercent)) return "preferred_outside_range";
+	if (dose.presenceSemantics !== void 0 && dose.presenceSemantics !== "optional_zero_or_range") return "invalid_presence_semantics";
 	return null;
 };
 /**
@@ -4839,10 +4938,15 @@ function productDosageAuthority(snapshot, targetBatchGrams) {
 		status: "defined",
 		authority: {
 			minPercent: dose.minPercent,
+			preferredPercent: dose.preferredPercent ?? null,
 			maxPercent: dose.maxPercent,
 			minGrams: dose.minPercent === null ? null : targetBatchGrams * dose.minPercent / 100,
 			maxGrams: dose.maxPercent === null ? null : targetBatchGrams * dose.maxPercent / 100,
-			sourceVersion: dose.sourceVersion
+			sourceVersion: dose.sourceVersion,
+			presenceSemantics: dose.presenceSemantics ?? null,
+			provenance: dose.provenance?.trim() || null,
+			policyId: dose.policyId?.trim() || null,
+			policyVersion: typeof dose.policyVersion === "number" && Number.isInteger(dose.policyVersion) ? dose.policyVersion : null
 		}
 	};
 }
@@ -4880,7 +4984,7 @@ function assessProductDosages(input, snapshots) {
 		}
 		const { authority } = result;
 		if (item.planned_grams <= 0) continue;
-		const below = authority.minGrams !== null && item.planned_grams < authority.minGrams - DOSAGE_EPSILON_G;
+		const below = !(gelatoStabilizerSystemApplies(input.category) && resolveFunctionalRole(item.ingredient) === "stabilizer") && authority.minGrams !== null && item.planned_grams < authority.minGrams - DOSAGE_EPSILON_G;
 		const above = authority.maxGrams !== null && item.planned_grams > authority.maxGrams + DOSAGE_EPSILON_G;
 		if (!below && !above) continue;
 		violations.push({
@@ -5212,6 +5316,13 @@ function evaluateRecipeConstraintAuthority(input) {
 		lineIds: recipe.items.map((item) => item.id),
 		messagePl: `Profil Protein wymaga celu ${protein.targetPercent?.toFixed(1)}%; kandydat ma ${protein.actualPercent?.toFixed(1)}%.`
 	});
+	const stabilizerSystem = assessGelatoStabilizerSystem(recipe);
+	issues.push(...stabilizerSystem.issues.map((issue) => ({
+		source: "owner_policy",
+		code: issue.code,
+		lineIds: issue.lineIds,
+		messagePl: issue.messagePl
+	})));
 	const requiredLineIds = productBehaviorRequiredLineIds({ items: recipe.items });
 	if (requireProductBehavior && requiredLineIds.length > 0) {
 		const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);

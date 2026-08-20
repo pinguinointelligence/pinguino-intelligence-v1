@@ -57,7 +57,11 @@ export function verifiedProductDoseSuggestion(input: {
   const minPercent = finiteNonNegative(dose.minPercent) ? dose.minPercent : dose.maxPercent;
   const maxPercent = finiteNonNegative(dose.maxPercent) ? dose.maxPercent : dose.minPercent;
   if (!finiteNonNegative(minPercent) || !finiteNonNegative(maxPercent)) return null;
-  const suggestedPercent = input.strategy === 'eco' ? minPercent : maxPercent;
+  const suggestedPercent = finiteNonNegative(dose.preferredPercent ?? null)
+    ? dose.preferredPercent!
+    : input.strategy === 'eco'
+      ? minPercent
+      : maxPercent;
   if (!Number.isFinite(suggestedPercent) || suggestedPercent < 0 || suggestedPercent > 100) {
     return null;
   }
@@ -68,15 +72,12 @@ export function verifiedProductDoseSuggestion(input: {
   if (suggestedTotalGrams < 1) return null;
 
   return {
-    groupId: [
-      'mapper-dose',
-      snapshot.mapperIngredientId,
-      dose.sourceVersion,
-    ].join(':'),
+    groupId: ['mapper-dose', snapshot.mapperIngredientId, dose.sourceVersion].join(':'),
     suggestedPercent,
     suggestedTotalGrams,
-    policyId: `mapper-dose:${snapshot.mapperIngredientId ?? 'unmapped'}`,
-    policyVersion: dose.sourceVersion,
+    policyId: dose.policyId ?? `mapper-dose:${snapshot.mapperIngredientId ?? 'unmapped'}`,
+    policyVersion:
+      dose.policyVersion === undefined ? dose.sourceVersion : String(dose.policyVersion),
   };
 }
 

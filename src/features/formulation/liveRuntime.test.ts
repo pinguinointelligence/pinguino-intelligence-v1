@@ -131,9 +131,9 @@ describe('owner case B — Sorbet + Strawberry, no grams (Phase 6)', () => {
     expect(preview.formulation?.templateId).toBe('S01');
     expect(Math.abs(plannedSum(preview.proposedInput) - 1000)).toBeLessThanOrEqual(0.1);
     const addedIds = preview.formulation!.added.map((a) => a.ingredientId);
-    expect(addedIds).toEqual(
-      expect.arrayContaining(['water', 'sucrose', 'dextrose', 'inulin', 'tara_gum']),
-    );
+    expect(addedIds).toEqual(expect.arrayContaining(['water', 'sucrose', 'dextrose', 'tara_gum']));
+    expect(addedIds).not.toContain('inulin');
+    expect(preview.formulation?.recommendations.some((r) => r.role === 'fiber_body')).toBe(true);
     expect(preview.proposedInput.items.some((i) => i.ingredient.id === 'milk_3_5')).toBe(false); // no dairy
     const straw = preview.proposedInput.items.find((i) => i.ingredient.id === 'PI-ING-001553')!;
     expect(straw.planned_grams).toBeGreaterThan(300);
@@ -177,14 +177,15 @@ describe('owner case B — Sorbet + Strawberry, no grams (Phase 6)', () => {
 // action is now the ONLY exclusion source; the frozen never-reintroduce and
 // explicit-add-clears pins below are unchanged.
 describe('exclusion semantics (EXPLICIT unavailable ≠ removed ≠ never-selected)', () => {
-  it('an EXPLICITLY unavailable toolbox ingredient is never reintroduced; a fresh draft still gets full auto-fill', () => {
-    // Fresh draft: inulin never selected → G17 (−12) auto-fills it (approved toolbox).
+  it('optional Inulin is recommendation-only and explicit unavailable remains respected', () => {
+    // Fresh draft: owner policy keeps absent Inulin at 0 and recommends it.
     resetStore('gelato');
     useRecipeStore.setState({ target_temperature_c: -12, category: 'milk_gelato' });
     useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
     useConstraintStudioStore.getState().createOptimizePreview();
     const fresh = useConstraintStudioStore.getState().preview;
-    expect(fresh?.formulation?.added.some((a) => a.ingredientId === 'inulin')).toBe(true);
+    expect(fresh?.formulation?.added.some((a) => a.ingredientId === 'inulin')).toBe(false);
+    expect(fresh?.formulation?.recommendations.some((r) => r.role === 'fiber_body')).toBe(true);
 
     // Now the user marks inulin EXPLICITLY unavailable → excluded → never re-added.
     useConstraintStudioStore.getState().cancelPreview();
@@ -205,7 +206,7 @@ describe('exclusion semantics (EXPLICIT unavailable ≠ removed ≠ never-select
     expect(useRecipeStore.getState().excludedIngredientIds).not.toContain('PI-ING-000456');
   });
 
-  it('a merely REMOVED toolbox ingredient MAY be refilled (FINAL CLOSURE C2)', () => {
+  it('a merely removed optional Inulin stays absent and is recommended', () => {
     resetStore('gelato');
     useRecipeStore.setState({ target_temperature_c: -12, category: 'milk_gelato' });
     useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
@@ -216,8 +217,8 @@ describe('exclusion semantics (EXPLICIT unavailable ≠ removed ≠ never-select
     useConstraintStudioStore.getState().createOptimizePreview();
     const after = useConstraintStudioStore.getState().preview;
     expect(after).not.toBeNull();
-    // removal is not a scientific statement — the approved toolbox refills the role
-    expect(after?.formulation?.added.some((a) => a.ingredientId === 'inulin')).toBe(true);
+    expect(after?.formulation?.added.some((a) => a.ingredientId === 'inulin')).toBe(false);
+    expect(after?.formulation?.recommendations.some((r) => r.role === 'fiber_body')).toBe(true);
   });
 });
 

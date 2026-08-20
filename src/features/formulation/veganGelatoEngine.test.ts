@@ -227,6 +227,12 @@ const canonicalIds = (input: RecipeInput): string[] =>
 const WATER = DEFAULT_CORRECTION_CANDIDATES.find(
   (candidate) => candidate.id === 'water',
 )!.ingredient;
+const INULIN: EngineIngredient = {
+  ...findDemoIngredient('inulin')!,
+  id: 'PI-ING-000456',
+  canonical_ingredient_id: 'PI-ING-000456',
+  identity_provenance: 'mapper',
+};
 
 describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
   const cases = [
@@ -348,9 +354,9 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
       const strawberry = preview.proposedInput.items.find((item) => item.id === 'strawberry')!;
       expect(banana.lock_type).toBe('main');
       expect(strawberry.lock_type).toBe('main');
-      expect(
-        Math.abs(banana.planned_grams - ratio * strawberry.planned_grams),
-      ).toBeLessThanOrEqual(1);
+      expect(Math.abs(banana.planned_grams - ratio * strawberry.planned_grams)).toBeLessThanOrEqual(
+        1,
+      );
       expect(new Set(canonicalIds(preview.proposedInput)).size).toBe(
         preview.proposedInput.items.length,
       );
@@ -367,7 +373,9 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
   );
 
   it('calculates verified pea/rice proteins without any dairy gate', () => {
-    const neutral = formulate(recipe([line('oat', OAT, 0)])).proposedInput;
+    const neutral = formulate(
+      recipe([line('oat', OAT, 0), line('explicit-inulin', INULIN, 40)]),
+    ).proposedInput;
     const water = neutral.items.find((item) => item.ingredient.id === 'water')!;
     const structural: RecipeInput = {
       ...neutral,
@@ -408,7 +416,7 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
       }
     }
 
-    const source = recipe([line('oat', OAT, 0)]);
+    const source = recipe([line('oat', OAT, 0), line('explicit-inulin', INULIN, 40)]);
     const validPreview = formulate(source);
     const forged = structuredClone(validPreview);
     const inulin = forged.proposedInput.items.find(
@@ -417,8 +425,8 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     const water = forged.proposedInput.items.find(
       (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'PI-ING-001409',
     )!;
-    inulin.planned_grams += 40;
-    water.planned_grams -= 40;
+    inulin.planned_grams += 50;
+    water.planned_grams -= 50;
     const forgedApply = commitPreview(
       source,
       NO,

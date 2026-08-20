@@ -18,16 +18,21 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
   useGlobalCatalogPicker: (input: { query: string; favoritesOnly: boolean }) => {
     const query = input.query.trim().toLocaleLowerCase('pl');
-    const hits = mocks.hits.filter((hit) =>
-      (!input.favoritesOnly || hit.favorite) &&
-      (!query || hit.displayName.toLocaleLowerCase('pl').includes(query)));
+    const hits = mocks.hits.filter(
+      (hit) =>
+        (!input.favoritesOnly || hit.favorite) &&
+        (!query || hit.displayName.toLocaleLowerCase('pl').includes(query)),
+    );
     return {
       hits,
       favorites: new Set<string>(),
       recent: new Set(
         hits
           .filter((hit) => hit.recentlyUsedAt)
-          .map((hit) => `${hit.entityKind}:${hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id}`),
+          .map(
+            (hit) =>
+              `${hit.entityKind}:${hit.entityKind === 'pi_base' ? hit.mappedIngredientId : hit.id}`,
+          ),
       ),
       preferences: {
         primaryMarket: null,
@@ -60,9 +65,7 @@ vi.mock('@/data/ingredients/ingredientMapper', () => ({
 import { ProductPickerPopover } from './ProductPickerPopover';
 import { serverSearchLibrary } from './ingredientLibrary';
 
-const catalogHit = (
-  overrides: Partial<CatalogProductSearchHit> = {},
-): CatalogProductSearchHit => ({
+const catalogHit = (overrides: Partial<CatalogProductSearchHit> = {}): CatalogProductSearchHit => ({
   id: 'catalog-root',
   currentVersionId: 'version-1',
   entityKind: 'pi_base',
@@ -205,23 +208,19 @@ describe('ProductPickerPopover catalog presentation', () => {
         </MemoryRouter>,
       );
     });
-    const trigger = document.querySelector<HTMLButtonElement>(
-      'button[aria-haspopup="dialog"]',
-    );
+    const trigger = document.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]');
     await act(async () => trigger?.click());
     return onAdd;
   };
 
-  it('A/B/D/F/J shows neutral metadata, unique count, and stable headings', async () => {
+  it('A/B/D/F/J hides technical metadata in browsing rows and keeps stable headings', async () => {
     await renderPicker();
     const text = document.body.textContent ?? '';
 
-    expect(text).toContain('PI-ING-000180');
-    expect(text).toContain('Status danych · 98%');
-    expect(text).toContain('PI-ING-000345');
-    expect(text).toContain('Status danych · 92%');
-    expect(text).toContain('PI-ING-000520');
-    expect(text).toContain('Status danych · —');
+    expect(text).not.toContain('PI-ING-000180');
+    expect(text).not.toContain('PI-ING-000345');
+    expect(text).not.toContain('PI-ING-000520');
+    expect(text).not.toContain('Status danych ·');
     expect(text).toContain('Znaleziono 3 składników');
     expect(document.querySelectorAll('[data-picker-segment="featured"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-picker-segment="remaining"]')).toHaveLength(1);
@@ -234,6 +233,9 @@ describe('ProductPickerPopover catalog presentation', () => {
       'PINGÜINO Base',
     ]) {
       expect(document.body.innerHTML).not.toContain(forbidden);
+    }
+    for (const option of document.querySelectorAll<HTMLElement>('[role="option"]')) {
+      expect(option.getAttribute('aria-label')).not.toMatch(/PI-ING-|Status danych/);
     }
   });
 
@@ -283,17 +285,14 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(document.body.textContent).not.toContain('BANANA · Fresh Fruit');
     expect(document.querySelectorAll('[data-picker-segment]')).toHaveLength(1);
 
-    const all = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-      (button) => button.textContent?.includes('Wszystkie'),
+    const all = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
+      button.textContent?.includes('Wszystkie'),
     );
     await act(async () => all?.click());
     const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
     await act(async () => {
       if (search) {
-        const setter = Object.getOwnPropertyDescriptor(
-          HTMLInputElement.prototype,
-          'value',
-        )?.set;
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
         setter?.call(search, 'banana');
         search.dispatchEvent(new Event('input', { bubbles: true }));
       }
@@ -304,10 +303,7 @@ describe('ProductPickerPopover catalog presentation', () => {
 
     await act(async () => {
       if (search) {
-        const setter = Object.getOwnPropertyDescriptor(
-          HTMLInputElement.prototype,
-          'value',
-        )?.set;
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
         setter?.call(search, '');
         search.dispatchEvent(new Event('input', { bubbles: true }));
       }

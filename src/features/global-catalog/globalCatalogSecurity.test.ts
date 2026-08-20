@@ -121,7 +121,9 @@ describe('global catalog RLS and trust boundaries', () => {
     expect(ingredientService).toContain(".eq('approved_for_engines', true)");
     expect(ingredientService).toContain(".eq('approved_for_base', true)");
     expect(ingredientService).not.toContain(".ilike('verification_status', 'Verified%')");
-    expect(ingredientService).toContain("const AUTHENTICATED_SELECTION_VIEW = 'mapper_basement_search'");
+    expect(ingredientService).toContain(
+      "const AUTHENTICATED_SELECTION_VIEW = 'mapper_basement_search'",
+    );
   });
 
   it('requires field-bound immutable server OCR evidence before automatic GREEN', () => {
@@ -395,7 +397,7 @@ describe('global catalog RLS and trust boundaries', () => {
 
 describe('catalog picker scope and visual lock', () => {
   it('keeps favorites and approved category filters inside the full editor-pane picker', () => {
-    expect(picker).toContain("'[data-testid=\"workbench-editor-pane\"]'");
+    expect(picker).toContain('\'[data-testid="workbench-editor-pane"]\'');
     for (const label of [
       'Wszystkie',
       'Ulubione',
@@ -426,7 +428,7 @@ describe('catalog picker scope and visual lock', () => {
     expect(picker).toContain("'bg-slate-200 text-slate-700'");
     expect(picker).toContain("'bg-red-100 text-red-700'");
     expect(picker).toContain('data-picker-data-confidence');
-    expect(picker).toContain('Status danych ·');
+    expect(picker).not.toContain('Status danych ·');
     expect(picker).toContain('data-testid="product-data-status-dialog"');
     expect(picker).not.toContain('data-picker-verification-status');
     expect(picker).toContain('disabled={!option.selectable}');

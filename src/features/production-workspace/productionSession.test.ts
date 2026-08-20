@@ -25,8 +25,18 @@ import { productBehaviorTestSnapshots } from '@/features/product-intelligence/pr
 import type { ProductionRun } from '@/features/pro-core/productionContracts';
 
 function recipe(): RecipeInput {
+  const items = DEFAULT_PRESET.items.map((item, index) => ({
+    ...item,
+    actual_grams: null,
+    planned_grams:
+      item.ingredient.id === 'tara_gum'
+        ? 3
+        : index === 0
+          ? item.planned_grams + 2
+          : item.planned_grams,
+  }));
   return {
-    items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+    items,
     mode: 'classic',
     category: DEFAULT_PRESET.category,
     target_temperature_c: DEFAULT_PRESET.target_temperature_c,
@@ -369,7 +379,7 @@ describe('production session physical-reality contract', () => {
         ...snapshots[tara.id]!.sharedFacts!,
         recommendedDose: {
           minPercent: 0.2,
-          maxPercent: 1,
+          maxPercent: 0.3,
           sourceVersion: 'mapper-v1.0:PI-ING-000492',
         },
       },
@@ -380,12 +390,12 @@ describe('production session physical-reality contract', () => {
     };
     const candidate = buildProductionForecastInput(authorized);
     candidate.items = candidate.items.map((item) =>
-      item.id === tara.id ? { ...item, planned_grams: 55 } : item,
+      item.id === tara.id ? { ...item, planned_grams: 4 } : item,
     );
-    candidate.target_batch_grams += 50;
+    candidate.target_batch_grams += 1;
 
     expect(() => applyVerifiedRescueInput(authorized, candidate)).toThrow(
-      /Tara gum: wpisano 55 g, zatwierdzony zakres to 0.2%–1%/,
+      /Tara gum: wpisano 4 g, zatwierdzony zakres to 0.2%–0.3%/,
     );
   });
   it('uses persisted Base order for the operator without reordering Engine input', () => {

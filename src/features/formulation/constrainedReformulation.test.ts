@@ -225,11 +225,14 @@ describe('FIXTURE D — complete Undo restores exclusions (tests 14/15)', () => 
       machine_capacity_grams: null,
       flavor_intensity: 'balanced',
       cost_priority: 'balanced',
-      items: [line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+      items: [
+        line('l-milk', findDemoIngredient('milk_3_5')!, 0),
+        line('l-inulin', findDemoIngredient('inulin')!, 40),
+      ],
       excludedIngredientIds: [],
     });
     useConstraintStudioStore.getState().resetForTests();
-    // 1. formulate + apply (G17 auto-fills inulin among others)
+    // 1. formulate + apply with explicitly selected, valid Inulin.
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();
     const firstApplied = JSON.stringify(

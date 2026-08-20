@@ -460,7 +460,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     },
   );
 
-  it('adds absent Inulin only with its canonical Mapper identity', () => {
+  it('does not silently add absent canonical Inulin and recommends explicit selection', () => {
     const input: RecipeInput = {
       ...watermelonFixture(700, 'optimal', 'unlocked'),
       items: watermelonFixture(700, 'optimal', 'unlocked')
@@ -474,15 +474,12 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
-    const added = result.preview.proposedInput.items.find((item) =>
-      item.id.startsWith('correction-inulin-'),
-    );
-    expect(added).toBeDefined();
-    expect(added?.ingredient).toMatchObject({
-      id: 'inulin',
-      canonical_ingredient_id: 'PI-ING-000456',
-      identity_provenance: 'reference',
-    });
+    expect(
+      result.preview.proposedInput.items.some(
+        (item) =>
+          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'PI-ING-000456',
+      ),
+    ).toBe(false);
   });
 
   it('keeps Standard locked exact without activating Main maximization', () => {

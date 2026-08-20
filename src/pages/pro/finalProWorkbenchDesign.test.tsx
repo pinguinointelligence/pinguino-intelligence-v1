@@ -91,7 +91,7 @@ describe('final Pro visual system', () => {
     const styles = read('styles', 'index.css');
     const tokens = read('styles', 'tokens.css');
 
-    expect(page).toContain("className={`pro-studio-radius-system theme-pro-light");
+    expect(page).toContain('className={`pro-studio-radius-system theme-pro-light');
     expect(tokens).toContain('--radius-pro-studio: 0.75rem');
     expect(styles).toContain('.pro-studio-radius-system');
     expect(styles).toContain(".rounded:not(input[type='checkbox'])");
@@ -217,7 +217,7 @@ describe('recipe and production table modes', () => {
       expect(picker).toContain(`label: '${label}'`);
     }
     expect(picker).toContain('matchesPickerFilter');
-    expect(picker).toContain('Status danych ·');
+    expect(picker).not.toContain('Status danych ·');
     expect(picker).toContain('Pokaż status danych produktu:');
     expect(picker).toContain('data-testid="product-data-status-dialog"');
     expect(picker).not.toContain('Nr art.');

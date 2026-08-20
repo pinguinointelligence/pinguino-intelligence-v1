@@ -380,6 +380,9 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
 describe('PHASE 11 — all apply result types still work through the guarded write', () => {
   it('constrained formulation with an exact lock (500 g milk) applies byte-exact', () => {
     const milkLine = useRecipeStore.getState().items.find((i) => i.ingredient.id === 'milk_3_5')!;
+    // Inulin is optional and no longer silently inserted. This lock-path test
+    // selects it explicitly so its former solids contribution remains present.
+    useRecipeStore.getState().addIngredient(findDemoIngredient('inulin')!, 20);
     useRecipeStore.setState({
       productBehaviorSnapshots: productBehaviorTestSnapshots(
         buildRecipeInput(useRecipeStore.getState()),

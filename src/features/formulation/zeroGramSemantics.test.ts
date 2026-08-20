@@ -50,9 +50,9 @@ describe('isEffectivelyLockedLine — the binding predicate', () => {
     expect(isEffectivelyLockedLine(line('l', MILK, 500, 'grams'), undefined)).toBe(true);
   });
   it('explicit §17 zero constraint stays a hard lock', () => {
-    expect(
-      isEffectivelyLockedLine(line('l', MILK, 0, 'grams'), { mode: 'locked', grams: 0 }),
-    ).toBe(true);
+    expect(isEffectivelyLockedLine(line('l', MILK, 0, 'grams'), { mode: 'locked', grams: 0 })).toBe(
+      true,
+    );
   });
 });
 
@@ -115,7 +115,7 @@ describe('OWNER TEST A — Gelato from 0 g selected lines (artifact-locked fruit
 });
 
 describe('OWNER TEST B — Sorbet from 0 g selected fruit', () => {
-  it('strawberries > 0; water/sucrose/dextrose/inulin/tara added; NO dairy; 1000 g', () => {
+  it('strawberries > 0; required support added, optional Inulin absent; NO dairy; 1000 g', () => {
     const rec = input([line('l-straw', STRAWBERRIES, 0, 'grams')], 'sorbet');
     const result = buildOptimizePreview(rec, NO, 'now');
     expect(result.ok).toBe(true);
@@ -124,9 +124,11 @@ describe('OWNER TEST B — Sorbet from 0 g selected fruit', () => {
     expect(p.proposedInput.items.find((i) => i.id === 'l-straw')!.planned_grams).toBeGreaterThan(0);
     const byIng = (ing: string) =>
       p.proposedInput.items.find((i) => i.ingredient.id === ing)?.planned_grams ?? 0;
-    for (const support of ['water', 'sucrose', 'dextrose', 'inulin', 'tara_gum']) {
+    for (const support of ['water', 'sucrose', 'dextrose', 'tara_gum']) {
       expect(byIng(support)).toBeGreaterThan(0);
     }
+    expect(byIng('inulin')).toBe(0);
+    expect(p.formulation?.recommendations.some((r) => r.role === 'fiber_body')).toBe(true);
     for (const dairy of ['milk_3_5', 'cream_30', 'smp']) {
       expect(byIng(dairy)).toBe(0);
     }
@@ -174,9 +176,14 @@ describe('OWNER TEST C — explicit zero lock / exclusion still respected', () =
 
 describe('load healing — stored artifact locks become unlocked on open', () => {
   it('loadRecipeInput normalizes grams-lock@0 to unlocked (UI shows the truth)', () => {
-    useRecipeStore.getState().loadRecipeInput(
-      input([line('l-straw', STRAWBERRIES, 0, 'grams'), line('l-milk', MILK, 380, 'grams')], 'milk_gelato'),
-    );
+    useRecipeStore
+      .getState()
+      .loadRecipeInput(
+        input(
+          [line('l-straw', STRAWBERRIES, 0, 'grams'), line('l-milk', MILK, 380, 'grams')],
+          'milk_gelato',
+        ),
+      );
     const items = useRecipeStore.getState().items;
     expect(items.find((i) => i.id === 'l-straw')!.lock_type).toBe('unlocked'); // healed
     expect(items.find((i) => i.id === 'l-milk')!.lock_type).toBe('grams'); // real lock kept

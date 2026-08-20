@@ -9,9 +9,7 @@ import {
   type ProductDoseMeta,
 } from './productDoseSuggestion';
 
-const snapshot = (
-  overrides: Partial<ProductBehaviorSnapshot> = {},
-): ProductBehaviorSnapshot => ({
+const snapshot = (overrides: Partial<ProductBehaviorSnapshot> = {}): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
   resolutionState: 'RESOLVED',
   lineId: '',
@@ -87,7 +85,11 @@ const member = (
 describe('verified picker-time product dose', () => {
   it('uses the product-specific lower ECO and upper OPTIMAL dose and scales from Base mass', () => {
     expect(
-      verifiedProductDoseSuggestion({ snapshot: snapshot(), strategy: 'eco', targetBaseGrams: 1_000 }),
+      verifiedProductDoseSuggestion({
+        snapshot: snapshot(),
+        strategy: 'eco',
+        targetBaseGrams: 1_000,
+      }),
     ).toMatchObject({ suggestedPercent: 20, suggestedTotalGrams: 200 });
     expect(
       verifiedProductDoseSuggestion({
@@ -99,12 +101,11 @@ describe('verified picker-time product dose', () => {
   });
 
   it('does not reinterpret a Main equivalent factor as a product dose', () => {
-    const halfStrength =
-      verifiedProductDoseSuggestion({
-        snapshot: snapshot({ mainEquivalentFactor: 0.5 }),
-        strategy: 'eco',
-        targetBaseGrams: 1_000,
-      });
+    const halfStrength = verifiedProductDoseSuggestion({
+      snapshot: snapshot({ mainEquivalentFactor: 0.5 }),
+      strategy: 'eco',
+      targetBaseGrams: 1_000,
+    });
     expect(halfStrength).toMatchObject({ suggestedPercent: 20, suggestedTotalGrams: 200 });
     expect(halfStrength?.groupId).toBe(
       verifiedProductDoseSuggestion({
@@ -113,6 +114,33 @@ describe('verified picker-time product dose', () => {
         targetBaseGrams: 1_000,
       })?.groupId,
     );
+  });
+
+  it('uses the owner-approved Inulin preferred 4% target after explicit selection', () => {
+    const inulin = snapshot({
+      mapperIngredientId: 'PI-ING-000456',
+      sharedFacts: {
+        ...snapshot().sharedFacts!,
+        recommendedDose: {
+          minPercent: 2,
+          preferredPercent: 4,
+          maxPercent: 8,
+          presenceSemantics: 'optional_zero_or_range',
+          provenance: 'owner-approved Gellatti formulation policy',
+          policyId: 'gellatti-generic-inulin',
+          policyVersion: 1,
+          sourceVersion: 'owner-gellatti-inulin-v1',
+        },
+      },
+    });
+    expect(
+      verifiedProductDoseSuggestion({ snapshot: inulin, strategy: 'eco', targetBaseGrams: 1_000 }),
+    ).toMatchObject({
+      suggestedPercent: 4,
+      suggestedTotalGrams: 40,
+      policyId: 'gellatti-generic-inulin',
+      policyVersion: '1',
+    });
   });
 
   it('returns unknown for missing product dosage, ineligible or non-Base authority instead of guessing', () => {
@@ -154,17 +182,19 @@ describe('verified picker-time product dose', () => {
   });
 
   it('keeps dosage-unknown Fresh Watermelon at 0 g even when Main policy is covered', () => {
-    expect(verifiedProductDoseSuggestion({
-      snapshot: snapshot({
-        mapperIngredientId: 'PI-ING-000405',
-        mainClassification: 'MAIN_PROFILE_SPECIFIC',
-        mainPolicyId: 'fresh-fruit-main-policy',
-        mainPolicyVersion: '1',
-        sharedFacts: { ...snapshot().sharedFacts!, recommendedDose: null },
+    expect(
+      verifiedProductDoseSuggestion({
+        snapshot: snapshot({
+          mapperIngredientId: 'PI-ING-000405',
+          mainClassification: 'MAIN_PROFILE_SPECIFIC',
+          mainPolicyId: 'fresh-fruit-main-policy',
+          mainPolicyVersion: '1',
+          sharedFacts: { ...snapshot().sharedFacts!, recommendedDose: null },
+        }),
+        strategy: 'optimal',
+        targetBaseGrams: 1_000,
       }),
-      strategy: 'optimal',
-      targetBaseGrams: 1_000,
-    })).toBeNull();
+    ).toBeNull();
   });
 });
 

@@ -157,31 +157,34 @@ function ProfileContent({
   onOpenEducation: () => void;
   recipeBar?: ReactNode;
 }) {
-  const toppings = useRecipeStore((state) => state.toppings);
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
-  const authority = useMemo(
-    () => buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots }),
-    [input.items, snapshots, toppings],
+  // Recipe profile indicators describe the technical BASE. Post-production
+  // toppings intentionally affect final-product Label facts, but they are not
+  // ProductBehavior prerequisites for this base-only panel.
+  const baseAuthority = useMemo(
+    () => buildRecipeBehaviorAuthority({ items: input.items, snapshots }),
+    [input.items, snapshots],
   );
-  const legacyInspection = recipeBehaviorLegacyInspection(authority, savedRecipeId);
+  const legacyInspection = recipeBehaviorLegacyInspection(baseAuthority, savedRecipeId);
   const factsReady = useMemo(
     () =>
-      recipeBehaviorModuleGate(authority, 'NUTRITION').ready &&
-      recipeBehaviorModuleGate(authority, 'COST').ready &&
-      recipeBehaviorModuleGate(authority, 'MONITOR').ready,
-    [authority],
+      recipeBehaviorModuleGate(baseAuthority, 'NUTRITION').ready &&
+      recipeBehaviorModuleGate(baseAuthority, 'COST').ready &&
+      recipeBehaviorModuleGate(baseAuthority, 'MONITOR').ready,
+    [baseAuthority],
   );
   const frozenNutritionResult = useMemo(
     () =>
       legacyInspection
         ? result
         : factsReady
-          ? calculateRecipe(recipeInputFromFrozenBehavior(input, authority, 'nutrition'))
+          ? calculateRecipe(recipeInputFromFrozenBehavior(input, baseAuthority, 'nutrition'))
           : result,
-    [authority, factsReady, input, legacyInspection, result],
+    [baseAuthority, factsReady, input, legacyInspection, result],
   );
-  const profileReadable = factsReady || legacyInspection || authority.requiredLineIds.length === 0;
+  const profileReadable =
+    factsReady || legacyInspection || baseAuthority.requiredLineIds.length === 0;
   return (
     <div className="w-full min-w-0 p-3" data-testid="pro-context-recipe">
       {legacyInspection ? (

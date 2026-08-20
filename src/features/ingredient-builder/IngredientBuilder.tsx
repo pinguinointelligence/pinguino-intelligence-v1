@@ -75,6 +75,11 @@ import {
   verifiedProductDoseSuggestion,
   type ProductDoseMeta,
 } from './productDoseSuggestion';
+import {
+  assessGelatoStabilizerSystem,
+  clampGelatoStabilizerComponentGrams,
+  gelatoStabilizerSystemItems,
+} from '@/features/recipe-constraints';
 
 const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
@@ -213,6 +218,11 @@ export function IngredientBuilder({
         state.productBehaviorSnapshots[lineId],
         state.target_batch_grams,
       );
+      const draft = selectCanonicalDraft();
+      const isGelatoStabilizer =
+        assessGelatoStabilizerSystem(draft.input).applicable &&
+        gelatoStabilizerSystemItems([line]).length === 1;
+      const aggregate = clampGelatoStabilizerComponentGrams(draft.input, lineId, requestedGrams);
       if (dosage.status === 'invalid_evidence') {
         setPickerNotice(
           `${line.ingredient.name}: dane zatwierdzonej dawki są niespójne. Odśwież ProductBehavior.`,
@@ -221,19 +231,30 @@ export function IngredientBuilder({
       }
       lockAwareCoreActions.setPlannedGrams(lineId, grams);
       if (dosage.status === 'defined') {
+        const aggregateBand = assessGelatoStabilizerSystem(draft.input).band;
+        const specificMaximumIsTighter =
+          isGelatoStabilizer &&
+          dosage.authority.maxGrams !== null &&
+          aggregateBand !== null &&
+          dosage.authority.maxGrams < aggregateBand.maxGrams;
         const boundary =
           dosage.authority.maxGrams !== null && requestedGrams > dosage.authority.maxGrams
             ? 'maximum'
-            : dosage.authority.minGrams !== null &&
+            : !isGelatoStabilizer &&
+                dosage.authority.minGrams !== null &&
                 requestedGrams > 0 &&
                 requestedGrams < dosage.authority.minGrams
               ? 'minimum'
               : null;
-        if (boundary) {
+        if (boundary && (!isGelatoStabilizer || specificMaximumIsTighter)) {
           setPickerNotice(
             productDosageClampMessagePl(line.ingredient.name, dosage.authority, boundary),
           );
+        } else if (aggregate.messagePl) {
+          setPickerNotice(aggregate.messagePl);
         }
+      } else if (aggregate.messagePl) {
+        setPickerNotice(aggregate.messagePl);
       }
       markDoseUserSet(lineId);
     },
@@ -646,7 +667,21 @@ export function IngredientBuilder({
         current.setPlannedGramsVector(allocation);
       }
     }
-    setPickerNotice(null);
+    const persistedAdded = added
+      ? useRecipeStore.getState().items.find((item) => item.id === added.id)
+      : undefined;
+    const aggregateAfterAdd = persistedAdded
+      ? assessGelatoStabilizerSystem(selectCanonicalDraft().input)
+      : null;
+    const aggregateAdditionWasClamped =
+      doseSuggestion !== null &&
+      persistedAdded !== undefined &&
+      persistedAdded.planned_grams < doseSuggestion.suggestedTotalGrams;
+    setPickerNotice(
+      aggregateAdditionWasClamped && aggregateAfterAdd?.band
+        ? `Łączny limit systemu stabilizującego dla tej partii został osiągnięty: ${aggregateAfterAdd.band.maxGrams} g.`
+        : null,
+    );
     const normalizedName = ingredient.name.trim().toLocaleLowerCase('pl');
     for (const unresolvedEntry of Object.values(unresolvedByLineId)) {
       if (unresolvedEntry.name.trim().toLocaleLowerCase('pl') === normalizedName) {

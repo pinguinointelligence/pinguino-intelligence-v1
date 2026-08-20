@@ -26,7 +26,9 @@ export type ProductBehaviorModule =
   | 'SAVE';
 
 export type ProductBehaviorSnapshotState =
-  'RESOLVED' | 'LEGACY_RECONSTRUCTED' | 'REVALIDATION_REQUIRED';
+  | 'RESOLVED'
+  | 'LEGACY_RECONSTRUCTED'
+  | 'REVALIDATION_REQUIRED';
 
 export type ProductSourceKind =
   | 'mapper'
@@ -96,7 +98,11 @@ export type ProductBehaviorRole =
   | 'UNKNOWN_REQUIRES_EVIDENCE';
 
 export type MainPolicyStatus =
-  'COVERED' | 'NOT_APPLICABLE' | 'BLOCKED_DATA' | 'BLOCKED_SCIENCE' | 'UNKNOWN_REQUIRES_EVIDENCE';
+  | 'COVERED'
+  | 'NOT_APPLICABLE'
+  | 'BLOCKED_DATA'
+  | 'BLOCKED_SCIENCE'
+  | 'UNKNOWN_REQUIRES_EVIDENCE';
 
 export type ProductPolicyEvidenceStatus =
   | 'PRODUCTION_VALIDATED'
@@ -115,7 +121,10 @@ export type ProductPolicyEvidenceStatus =
 export type ProductFamilyId = string;
 export type ProductFormId = string;
 export type ProductTechnicalAuthorityKind =
-  'mapper_exact' | 'verified_profile' | 'approved_pi_calculation' | 'none';
+  | 'mapper_exact'
+  | 'verified_profile'
+  | 'approved_pi_calculation'
+  | 'none';
 
 export interface MainEnvelopePolicy {
   policyId: string;
@@ -287,8 +296,13 @@ export interface SharedProductReferencePrice {
 
 export interface SharedProductRecommendedDose {
   minPercent: number | null;
+  preferredPercent?: number | null;
   maxPercent: number | null;
   sourceVersion: string;
+  presenceSemantics?: 'optional_zero_or_range';
+  provenance?: string;
+  policyId?: string;
+  policyVersion?: number;
 }
 
 /** Facts that application modules may project without independently reading a

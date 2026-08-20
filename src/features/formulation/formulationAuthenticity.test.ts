@@ -79,7 +79,10 @@ const input = (
  */
 const strawberryLocked = (grams: number) => ({
   input: input(
-    [line('l-straw', STRAWBERRIES, grams, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+    [
+      line('l-straw', STRAWBERRIES, grams, 'grams'),
+      line('l-milk', findDemoIngredient('milk_3_5')!, 0),
+    ],
     'milk_gelato',
   ),
   set: { byLineId: { 'l-straw': { mode: 'locked' as const, grams } } },
@@ -200,7 +203,11 @@ describe('strawberry-900 (owner failure) — bare scaling is never presented as 
     // shipped the raw seed with 1 invocation. Post-fix both runs do the same
     // real move search (capacity re-established by the batch restore).
     const invocations = (r: typeof capped): number =>
-      r.ok ? r.preview.iteration!.solverInvocations : (r.code === 'impossible_under_constraints' ? r.solverInvocations : 0);
+      r.ok
+        ? r.preview.iteration!.solverInvocations
+        : r.code === 'impossible_under_constraints'
+          ? r.solverInvocations
+          : 0;
     expect(invocations(capped)).toBe(invocations(uncapped));
     expect(invocations(capped)).toBeGreaterThan(1);
     if (capped.ok) {
@@ -213,7 +220,9 @@ describe('strawberry-900 (owner failure) — bare scaling is never presented as 
     const { input: rec, set } = strawberryLocked(900);
     const result = buildOptimizePreview(rec, set, 'now');
     if (!result.ok) return; // impossible/best-safe carry no added[] display
-    const byId = new Map(result.preview.proposedInput.items.map((i) => [i.ingredient.id, i.planned_grams]));
+    const byId = new Map(
+      result.preview.proposedInput.items.map((i) => [i.ingredient.id, i.planned_grams]),
+    );
     for (const added of result.preview.formulation!.added) {
       expect(added.grams).toBeCloseTo(byId.get(added.ingredientId)!, 6);
     }
@@ -294,10 +303,15 @@ describe('constraint fidelity + determinism', () => {
   it('a max/range constraint is respected in the final formulation', () => {
     // Canonical GELATO family (owner addendum item 1): milk selected at 0 g.
     const rec = input(
-      [line('l-straw', STRAWBERRIES, 350, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+      [
+        line('l-straw', STRAWBERRIES, 350, 'grams'),
+        line('l-milk', findDemoIngredient('milk_3_5')!, 0),
+      ],
       'milk_gelato',
     );
-    const set = { byLineId: { 'l-straw': { mode: 'range' as const, minGrams: 300, maxGrams: 400 } } };
+    const set = {
+      byLineId: { 'l-straw': { mode: 'range' as const, minGrams: 300, maxGrams: 400 } },
+    };
     const result = buildOptimizePreview(rec, set, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -316,12 +330,20 @@ describe('constraint fidelity + determinism', () => {
 
   it('prior recipe state cannot contaminate a later result (pure pipeline)', () => {
     const { input: rec, set } = strawberryLocked(600);
-    const before = serialize(buildOptimizePreview(structuredClone(rec), structuredClone(set), 'now'));
+    const before = serialize(
+      buildOptimizePreview(structuredClone(rec), structuredClone(set), 'now'),
+    );
     // Interleave a completely different formulation…
     buildOptimizePreview(milkLocked900().input, milkLocked900().set, 'now');
-    buildOptimizePreview(input([line('l-m', findDemoIngredient('milk_3_5')!, 0)], 'milk_gelato', -12), { byLineId: {} }, 'now');
+    buildOptimizePreview(
+      input([line('l-m', findDemoIngredient('milk_3_5')!, 0)], 'milk_gelato', -12),
+      { byLineId: {} },
+      'now',
+    );
     // …and the original case must reproduce exactly.
-    const after = serialize(buildOptimizePreview(structuredClone(rec), structuredClone(set), 'now'));
+    const after = serialize(
+      buildOptimizePreview(structuredClone(rec), structuredClone(set), 'now'),
+    );
     expect(after).toBe(before);
   });
 });
@@ -329,7 +351,13 @@ describe('constraint fidelity + determinism', () => {
 /* ── addendum: Engine evaluation after EVERY projection; structural ≠ quality ── */
 
 describe('every constraint projection is Engine-evaluated and carries the proof', () => {
-  const cases: [string, () => { input: RecipeInput; set: { byLineId: Record<string, { mode: 'locked'; grams: number }> } }][] = [
+  const cases: [
+    string,
+    () => {
+      input: RecipeInput;
+      set: { byLineId: Record<string, { mode: 'locked'; grams: number }> };
+    },
+  ][] = [
     ['strawberry-900', () => strawberryLocked(900)],
     ['strawberry-600', () => strawberryLocked(600)],
     ['strawberry-350', () => strawberryLocked(350)],
@@ -376,15 +404,13 @@ describe('every constraint projection is Engine-evaluated and carries the proof'
     expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toHaveLength(0);
   });
 
-  it('an established stabilizer dose is never reworked by the solver', () => {
+  it('seeds a missing Gelato stabilizer at the owner-preferred whole-gram total', () => {
     const { input: rec, set } = strawberryLocked(600);
     const result = buildOptimizePreview(rec, set, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const tara = result.preview.proposedInput.items.find((i) => i.ingredient.id === 'tara_gum')!;
-    const proof = result.preview.formulation!.proof!;
-    expect(tara.planned_grams).toBe(5);
-    expect(proof.stabilizerDoseNotePl).toContain('Engine');
+    expect(tara.planned_grams).toBe(3);
   });
 });
 
@@ -392,22 +418,24 @@ describe('every constraint projection is Engine-evaluated and carries the proof'
 
 describe('category purity and role completeness', () => {
   it('Sorbet cannot receive dairy (template, toolbox and solver candidates)', () => {
-    const rec = input(
-      [line('l-straw', STRAWBERRIES, 600, 'grams')],
-      'sorbet',
-    );
+    const rec = input([line('l-straw', STRAWBERRIES, 600, 'grams')], 'sorbet');
     const set = { byLineId: { 'l-straw': { mode: 'locked' as const, grams: 600 } } };
     const result = buildOptimizePreview(rec, set, 'now');
     if (!result.ok) return; // an honest failure state also contains no dairy
     for (const item of result.preview.proposedInput.items) {
-      expect(item.ingredient.category, `${item.ingredient.name} must not be dairy`).not.toBe('dairy');
+      expect(item.ingredient.category, `${item.ingredient.name} must not be dairy`).not.toBe(
+        'dairy',
+      );
     }
   });
 
   it('Gelato cannot silently lose a required hard role (excluded milk → honest stop)', () => {
     // Canonical GELATO family (owner addendum item 1): milk selected at 0 g.
     const rec = input(
-      [line('l-straw', STRAWBERRIES, 350, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+      [
+        line('l-straw', STRAWBERRIES, 350, 'grams'),
+        line('l-milk', findDemoIngredient('milk_3_5')!, 0),
+      ],
       'milk_gelato',
     );
     const set = { byLineId: { 'l-straw': { mode: 'locked' as const, grams: 350 } } };
@@ -462,7 +490,10 @@ describe('Apply/Undo preserve the verified Engine output (constrained case)', ()
       machine_capacity_grams: null,
       flavor_intensity: 'balanced',
       cost_priority: 'balanced',
-      items: [line('l-straw', STRAWBERRIES, 600, 'grams'), line('l-milk', findDemoIngredient('milk_3_5')!, 0)],
+      items: [
+        line('l-straw', STRAWBERRIES, 600, 'grams'),
+        line('l-milk', findDemoIngredient('milk_3_5')!, 0),
+      ],
       excludedIngredientIds: [],
     });
     useConstraintStudioStore.getState().resetForTests();
@@ -525,8 +556,8 @@ describe('explicit batch scaling is never a formulation result', () => {
       'now',
     );
     if (!result.ok) return;
-    expect(
-      result.preview.proposedInput.items.some((i) => i.ingredient.id === WATER.id),
-    ).toBe(false);
+    expect(result.preview.proposedInput.items.some((i) => i.ingredient.id === WATER.id)).toBe(
+      false,
+    );
   });
 });

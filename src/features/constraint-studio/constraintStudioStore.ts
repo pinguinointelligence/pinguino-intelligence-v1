@@ -67,6 +67,7 @@ import {
 } from '@/data/ingredients/canonicalIngredientIdentity';
 import {
   analyzeConstraintFeasibility,
+  assessGelatoStabilizerSystem,
   validateConstraintSet,
   type ConstraintFeasibilityAnalysis,
   type ConstraintSet,
@@ -611,8 +612,7 @@ function stageLockedConstraintFixPreview(args: LockedConstraintFixStageArgs): bo
           recovered.preview.nextConstraints,
         ),
         baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(args.baseSnapshots),
-        proposedProductBehaviorFingerprint:
-          productBehaviorSnapshotFingerprint(proposedAuthority),
+        proposedProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(proposedAuthority),
         snapshots: structuredClone(
           Object.fromEntries(
             Object.entries(proposedAuthority).filter(
@@ -858,6 +858,84 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // stamped with the draft revision it was built for.
         const draft = selectCanonicalDraft();
         const recipeState = useRecipeStore.getState();
+        const stabilizerSystem = assessGelatoStabilizerSystem(draft.input);
+        const stabilizerIssue = stabilizerSystem.issues[0];
+        if (
+          stabilizerIssue &&
+          stabilizerIssue.lineIds.some((lineId) => {
+            const constraint = draft.constraints.byLineId[lineId];
+            return constraint !== undefined && constraint.mode !== 'ai';
+          })
+        ) {
+          const onlyLineId =
+            stabilizerSystem.lineIds.length === 1 ? stabilizerSystem.lineIds[0]! : null;
+          const onlyLine = onlyLineId
+            ? draft.input.items.find((item) => item.id === onlyLineId)
+            : undefined;
+          const currentConstraint = onlyLineId ? draft.constraints.byLineId[onlyLineId] : undefined;
+          const boundary =
+            stabilizerIssue.code === 'aggregate_above_maximum'
+              ? {
+                  type: 'set_max' as const,
+                  grams: stabilizerIssue.maxGrams,
+                  label: 'maximum' as const,
+                }
+              : stabilizerIssue.code === 'aggregate_below_minimum'
+                ? {
+                    type: 'set_min' as const,
+                    grams: stabilizerIssue.minGrams,
+                    label: 'minimum' as const,
+                  }
+                : null;
+          if (
+            boundary &&
+            onlyLineId &&
+            onlyLine?.actual_grams === null &&
+            currentConstraint !== undefined &&
+            currentConstraint.mode !== 'ai' &&
+            stageLockedConstraintFixPreview({
+              draft,
+              fix: { type: boundary.type, lineId: onlyLineId, grams: boundary.grams },
+              ingredientName: onlyLine.ingredient.name,
+              beforeGrams: onlyLine.planned_grams,
+              boundary: boundary.label,
+              reason: 'product_dosage',
+              baseSnapshots: recipeState.productBehaviorSnapshots,
+              proposedSnapshots: proposalSnapshots,
+              technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+            })
+          ) {
+            return;
+          }
+          set({
+            preview: null,
+            directionBestCandidate: null,
+            directionConsent: null,
+            substitutionConsent: null,
+            substitutionAuthorization: null,
+            proposalProductBehaviorAuthorization: null,
+            blocked: null,
+            previewIssue: {
+              ok: false,
+              code: 'product_behavior_invalid',
+              violations: [
+                {
+                  code: 'product_dosage_violation',
+                  lineIds: stabilizerIssue.lineIds,
+                  messagePl: stabilizerIssue.messagePl,
+                },
+              ],
+              messagePl: stabilizerIssue.messagePl,
+            },
+            recalculationTerminal: {
+              state: 'BLOCKED_WITH_EXACT_ACTION',
+              code: 'product_behavior_invalid',
+              messagePl: stabilizerIssue.messagePl,
+              action: 'return_to_recipe',
+            },
+          });
+          return;
+        }
         const dosageViolations = assessProductDosages(
           draft.input,
           recipeState.productBehaviorSnapshots,
@@ -1009,10 +1087,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                 ),
               }
             : null;
-        const lockRecovery = impossibleConstraintLockRecovery(
-          result,
-          draft.input,
-        );
+        const lockRecovery = impossibleConstraintLockRecovery(result, draft.input);
         if (
           lockRecovery !== null &&
           stageLockedConstraintFixPreview({
@@ -1022,8 +1097,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             reason: 'constraint_feasibility',
             baseSnapshots: recipeState.productBehaviorSnapshots,
             proposedSnapshots: proposalSnapshots,
-            technicalOnlyMainLineIds:
-              recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+            technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
           })
         )
           return;
@@ -1480,7 +1554,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                       ? (written.violations[0]?.messagePl ?? applyGuardCopy.writeFailed)
                       : written.code === 'recipe_constraint_invalid'
                         ? written.messagePl
-                      : applyGuardCopy.writeFailed,
+                        : applyGuardCopy.writeFailed,
               violationsBefore: 0,
               violationsAfter: 0,
             },
@@ -2216,17 +2290,9 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
     }
     proposedSnapshots = proposedAuthority.snapshots;
   } else {
-    const lockRecovery = impossibleConstraintLockRecovery(
-      rawProposal,
-      draft.input,
-    );
+    const lockRecovery = impossibleConstraintLockRecovery(rawProposal, draft.input);
     const recoveredProposal = lockRecovery
-      ? buildSuggestedFixPreview(
-          draft.input,
-          draft.constraints,
-          lockRecovery.fix,
-          nowIso(),
-        )
+      ? buildSuggestedFixPreview(draft.input, draft.constraints, lockRecovery.fix, nowIso())
       : null;
     if (recoveredProposal?.ok) {
       const proposedAuthority = await currentRecipeAuthorityReady({
@@ -2678,8 +2744,7 @@ useRecipeStore.subscribe((state, prev) => {
         ),
       );
     const baseAuthorityChanged =
-      baseBehaviorFingerprint(state, baseIds) !==
-      baseBehaviorFingerprint(prev, previousBaseIds);
+      baseBehaviorFingerprint(state, baseIds) !== baseBehaviorFingerprint(prev, previousBaseIds);
     const baseTechnicalChanged = baseInputChanged || baseAuthorityChanged;
     // A topping revision is material for Save/final composition, but it is not
     // a Base Engine edit. Score/Monitor currentness belongs only to the Base

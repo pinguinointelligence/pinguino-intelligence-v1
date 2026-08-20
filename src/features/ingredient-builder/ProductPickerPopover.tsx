@@ -308,9 +308,7 @@ export function ProductPickerPopover({
         // The Engine seam collapses unknown Mapper confidence to zero. Do not
         // present that fallback as a real 0% result in the local preview path.
         confidencePercent:
-          item.confidence_score > 0
-            ? normalizeDataConfidencePercent(item.confidence_score)
-            : null,
+          item.confidence_score > 0 ? normalizeDataConfidencePercent(item.confidence_score) : null,
         selectable: true,
         verification: { status: 'PINGÜINO — SPRAWDZONY' as const, reason: null },
       }))
@@ -326,15 +324,10 @@ export function ProductPickerPopover({
     scope,
   ]);
   const segments = useMemo(() => buildProductPickerSegments(options), [options]);
-  const visibleOptions = useMemo(
-    () => segments.flatMap((segment) => segment.items),
-    [segments],
-  );
+  const visibleOptions = useMemo(() => segments.flatMap((segment) => segment.items), [segments]);
   const uniqueOptionCount = uniqueCatalogProductCount(segments);
   const safeActiveIndex =
-    visibleOptions.length === 0
-      ? 0
-      : Math.min(Math.max(activeIndex, 0), visibleOptions.length - 1);
+    visibleOptions.length === 0 ? 0 : Math.min(Math.max(activeIndex, 0), visibleOptions.length - 1);
 
   useEffect(() => {
     const option = listRef.current?.querySelector<HTMLElement>(
@@ -763,9 +756,6 @@ export function ProductPickerPopover({
                               </p>
                               {segment.items.map((option, itemIndex) => {
                                 const index = segmentOffset + itemIndex;
-                                const confidence = formatDataConfidencePercent(
-                                  option.confidencePercent,
-                                );
                                 return (
                                   <div
                                     key={option.canonicalId}
@@ -785,7 +775,7 @@ export function ProductPickerPopover({
                                       role="option"
                                       aria-selected={index === safeActiveIndex}
                                       aria-disabled={!option.selectable}
-                                      aria-label={`${option.name}. ID ${option.canonicalId}. Status danych: ${confidence}. ${
+                                      aria-label={`${option.name}. ${
                                         option.selectable
                                           ? 'Dostępny w wybranym zakresie'
                                           : 'Wymaga uzupełnienia'
@@ -803,6 +793,9 @@ export function ProductPickerPopover({
                                       data-mapper-id={
                                         option.catalog?.mappedIngredientId ?? undefined
                                       }
+                                      data-picker-data-confidence={
+                                        option.confidencePercent ?? undefined
+                                      }
                                       data-product-form={option.catalog?.productForm ?? undefined}
                                       className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"
                                       onClick={() => void choose(option)}
@@ -813,8 +806,7 @@ export function ProductPickerPopover({
                                           'grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold',
                                           !option.selectable
                                             ? 'bg-red-100 text-red-700'
-                                            : option.verification.status ===
-                                                'PINGÜINO — SPRAWDZONY'
+                                            : option.verification.status === 'PINGÜINO — SPRAWDZONY'
                                               ? 'bg-[#e8f7eb] text-[#1a9b3d]'
                                               : option.entityKind === 'pi_base'
                                                 ? 'bg-[#fff4e2] text-[#f58a07]'
@@ -843,19 +835,6 @@ export function ProductPickerPopover({
                                             .join(' · ')}
                                         </span>
                                       </span>
-                                      <span className="flex max-w-[164px] shrink-0 flex-col items-end text-right max-sm:max-w-[104px]">
-                                        <span className="max-w-full truncate font-mono text-[11px] font-semibold text-ink">
-                                          {option.canonicalId}
-                                        </span>
-                                        <span
-                                          className="max-w-full truncate text-[9px] font-semibold tracking-[0.03em] text-stone-500"
-                                          data-picker-data-confidence={
-                                            option.confidencePercent ?? undefined
-                                          }
-                                        >
-                                          Status danych · {confidence}
-                                        </span>
-                                      </span>
                                     </button>
                                     <button
                                       type="button"
@@ -880,9 +859,7 @@ export function ProductPickerPopover({
                                       aria-pressed={option.favorite}
                                       className={cn(
                                         'pro-focus-ring grid size-10 shrink-0 place-items-center rounded-lg text-base max-sm:size-9',
-                                        option.favorite
-                                          ? 'text-[#f58a07]'
-                                          : 'text-stone-500',
+                                        option.favorite ? 'text-[#f58a07]' : 'text-stone-500',
                                       )}
                                       onClick={(event) => {
                                         event.preventDefault();
@@ -958,9 +935,7 @@ export function ProductPickerPopover({
                                 Status danych
                               </dt>
                               <dd className="mt-1 font-mono text-sm font-semibold">
-                                {formatDataConfidencePercent(
-                                  informationOption.confidencePercent,
-                                )}
+                                {formatDataConfidencePercent(informationOption.confidencePercent)}
                               </dd>
                             </div>
                           </dl>

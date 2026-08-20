@@ -82,8 +82,14 @@ import {
   type ProductBehaviorSnapshot,
   type ProductionThermalMode,
 } from '@/features/product-intelligence';
-import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
+import {
+  assessGelatoStabilizerSystem,
+  clampGelatoStabilizerComponentGrams,
+  gelatoStabilizerSystemApplies,
+  evaluateRecipeConstraintAuthority,
+} from '@/features/recipe-constraints';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 
@@ -533,7 +539,9 @@ const fromPreset = (preset: DemoPreset) => ({
   target_batch_grams: preset.target_batch_grams,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    'machine' | 'manual' | null,
+    | 'machine'
+    | 'manual'
+    | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   target_protein_percent: PROTEIN_GELATO_TARGET.defaultPercent,
@@ -985,14 +993,21 @@ export const useRecipeStore = create<RecipeState>()(
         }
 
         const normalizedIngredient = normalizeIngredientIdentity(ingredient);
+        const candidate = makeLine(normalizedIngredient, grams);
+        const aggregate = clampGelatoStabilizerComponentGrams(
+          buildRecipeInput({ ...current, items: [...current.items, candidate] }),
+          candidate.id,
+          grams,
+        );
         const added = {
-          ...makeLine(normalizedIngredient, grams),
+          ...candidate,
+          planned_grams: aggregate.grams,
           lock_type: current.unavailableMainIngredientIds.some(
             (id) => canonicalIngredientIdFromSourceId(id) === canonicalId,
           )
             ? ('main' as const)
             : ('unlocked' as const),
-          ...(grams > 0 ? { user_intent_anchor_grams: grams } : {}),
+          ...(aggregate.grams > 0 ? { user_intent_anchor_grams: aggregate.grams } : {}),
         };
         set((state) => {
           const orderedItems = sortedBaseItems([...state.items, added]);
@@ -1375,22 +1390,30 @@ export const useRecipeStore = create<RecipeState>()(
           if (
             Object.keys(state.productBehaviorSnapshots).length > 0 &&
             required.length > 0 &&
-            !productBehaviorModuleGate(
-              state.productBehaviorSnapshots,
-              'BASE_RECIPE',
-              required,
-            ).ready
-          ) return {};
+            !productBehaviorModuleGate(state.productBehaviorSnapshots, 'BASE_RECIPE', required)
+              .ready
+          )
+            return {};
           const clamped = clampProductDosageGrams(
             requestedGrams,
             state.target_batch_grams,
             state.productBehaviorSnapshots[lineId],
+            {
+              ignoreMinimum:
+                gelatoStabilizerSystemApplies(state.category) &&
+                resolveFunctionalRole(line.ingredient) === 'stabilizer',
+            },
           );
           // Malformed server evidence is never permission to accept a new
           // amount. The server-authority recalculation path will surface the
           // exact revalidation blocker.
           if (!clamped.ok) return {};
-          const targetGrams = clamped.grams;
+          const aggregate = clampGelatoStabilizerComponentGrams(
+            buildRecipeInput(state),
+            lineId,
+            clamped.grams,
+          );
+          const targetGrams = aggregate.grams;
           return {
             items: state.items.map((item) => {
               const next = { ...item };
@@ -1431,23 +1454,22 @@ export const useRecipeStore = create<RecipeState>()(
           );
           if (!touched) return {};
           const proposedItems = state.items.map((item) => {
-              const next = gramsByLineId[item.id];
-              return next !== undefined && Number.isFinite(next)
-                ? { ...item, planned_grams: Math.max(0, next) }
-                : item;
-            });
+            const next = gramsByLineId[item.id];
+            return next !== undefined && Number.isFinite(next)
+              ? { ...item, planned_grams: Math.max(0, next) }
+              : item;
+          });
           const proposed = buildRecipeInput({ ...state, items: proposedItems });
           const required = productBehaviorRequiredLineIds({ items: proposed.items });
           if (
             Object.keys(state.productBehaviorSnapshots).length > 0 &&
             required.length > 0 &&
-            !productBehaviorModuleGate(
-              state.productBehaviorSnapshots,
-              'BASE_RECIPE',
-              required,
-            ).ready
-          ) return {};
+            !productBehaviorModuleGate(state.productBehaviorSnapshots, 'BASE_RECIPE', required)
+              .ready
+          )
+            return {};
           if (assessProductDosages(proposed, state.productBehaviorSnapshots).length > 0) return {};
+          if (assessGelatoStabilizerSystem(proposed).issues.length > 0) return {};
           return {
             items: proposedItems,
             dirty: true,

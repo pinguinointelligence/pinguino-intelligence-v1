@@ -1,8 +1,4 @@
-import {
-  calculateRecipe,
-  type RecipeInput,
-  type RecipeResult,
-} from '@/engine';
+import { calculateRecipe, type RecipeInput, type RecipeResult } from '@/engine';
 import { veganRecipeEligibilityIssues } from '@/data/ingredients/veganEligibility';
 import { veganProfileConstraintIssues } from '@/features/formulation/veganProfileConstraints';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
@@ -19,15 +15,58 @@ import {
 } from '@/features/product-intelligence';
 import { assessProteinTarget } from '@/features/protein-gelato/proteinTarget';
 import { BATCH_SUM_TOLERANCE_G } from './constraintSet';
+import {
+  assessGelatoStabilizerSystem,
+  type GelatoStabilizerSystemIssue,
+} from './gelatoStabilizerSystemAuthority';
 
 export type RecipeConstraintAuthorityIssue =
   | { source: 'batch'; code: 'batch_total_mismatch'; lineIds: string[]; messagePl: string }
-  | { source: 'engine'; code: 'native_band_violation'; lineIds: string[]; metric: string; messagePl: string }
-  | { source: 'engine'; code: 'critical_warning'; lineIds: string[]; metric: string; messagePl: string }
-  | { source: 'profile'; code: 'profile_evidence_missing' | 'profile_not_eligible'; lineIds: string[]; messagePl: string }
-  | { source: 'profile'; code: 'vegan_ingredient_invalid' | 'vegan_profile_invalid' | 'protein_target_unmet'; lineIds: string[]; messagePl: string }
-  | { source: 'product_behavior'; code: 'product_behavior_invalid'; lineIds: string[]; messagePl: string }
-  | { source: 'product_behavior'; code: 'product_dosage_invalid'; lineIds: string[]; messagePl: string; violation: ProductDosageViolation }
+  | {
+      source: 'engine';
+      code: 'native_band_violation';
+      lineIds: string[];
+      metric: string;
+      messagePl: string;
+    }
+  | {
+      source: 'engine';
+      code: 'critical_warning';
+      lineIds: string[];
+      metric: string;
+      messagePl: string;
+    }
+  | {
+      source: 'profile';
+      code: 'profile_evidence_missing' | 'profile_not_eligible';
+      lineIds: string[];
+      messagePl: string;
+    }
+  | {
+      source: 'profile';
+      code: 'vegan_ingredient_invalid' | 'vegan_profile_invalid' | 'protein_target_unmet';
+      lineIds: string[];
+      messagePl: string;
+    }
+  | {
+      source: 'owner_policy';
+      code: GelatoStabilizerSystemIssue['code'];
+      lineIds: string[];
+      messagePl: string;
+    }
+  | {
+      source: 'product_behavior';
+      code: 'product_behavior_invalid';
+      lineIds: string[];
+      messagePl: string;
+    }
+  | {
+      source: 'product_behavior';
+      code: 'product_dosage_invalid';
+      lineIds: string[];
+      messagePl: string;
+      violation: ProductDosageViolation;
+    }
   | { source: 'main'; code: MainEnvelopeViolation['code']; lineIds: string[]; messagePl: string };
 
 export interface RecipeConstraintAuthorityResult {
@@ -110,7 +149,7 @@ export function evaluateRecipeConstraintAuthority(
       issues.push({
         source: 'profile',
         code: 'vegan_profile_invalid',
-        lineIds: profile.flatMap((issue) => issue.lineId ? [issue.lineId] : []),
+        lineIds: profile.flatMap((issue) => (issue.lineId ? [issue.lineId] : [])),
         messagePl: 'Receptura przekracza zatwierdzoną kopertę profilu Wegańskiego.',
       });
     }
@@ -127,17 +166,26 @@ export function evaluateRecipeConstraintAuthority(
     });
   }
 
+  const stabilizerSystem = assessGelatoStabilizerSystem(recipe);
+  issues.push(
+    ...stabilizerSystem.issues.map((issue) => ({
+      source: 'owner_policy' as const,
+      code: issue.code,
+      lineIds: issue.lineIds,
+      messagePl: issue.messagePl,
+    })),
+  );
+
   const requiredLineIds = productBehaviorRequiredLineIds({ items: recipe.items });
   if (requireProductBehavior && requiredLineIds.length > 0) {
     const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
     const sensoryMainLineIds = new Set(
       recipe.items
-        .filter(
-          (item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id),
-        )
+        .filter((item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id))
         .map((item) => item.id),
     );
-    const module = input.module ??
+    const module =
+      input.module ??
       (normalizeFormulationStrategy(recipe.goals?.formulation_strategy ?? recipe.mode) === 'eco'
         ? 'ECO'
         : 'OPTIMAL');
