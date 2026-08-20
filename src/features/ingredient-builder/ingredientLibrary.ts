@@ -98,6 +98,16 @@ export function serverSearchLibrary(): IngredientLibrary {
   };
 }
 
+/** Fail-closed Pro state when current Mapper authority is unavailable. Demo
+ * ingredients remain available only in Demo/non-Pro; they never substitute for
+ * the authenticated production catalog. */
+export function unavailableMapperLibrary(): IngredientLibrary {
+  return {
+    ingredients: [], searchIndex: new Map(), nameIndex: new Map(), formIndex: new Map(),
+    source: 'pi_base', status: 'fallback', serverSearch: false, ...NO_PRODUCTS,
+  };
+}
+
 export interface SelectLibraryArgs {
   demo: boolean;
   isPro: boolean;
@@ -118,7 +128,7 @@ export function selectIngredientLibrary({
   isError,
 }: SelectLibraryArgs): IngredientLibrary {
   if (demo || !isPro) return demoLibrary('demo');
-  if (isError) return demoLibrary('fallback');
+  if (isError) return unavailableMapperLibrary();
   if (rows === undefined) {
     // Pro, fetching — show a loading state, never a demo flash.
     return {
@@ -128,7 +138,7 @@ export function selectIngredientLibrary({
   }
   if (rows.length === 0) {
     // RLS returned nothing / not seeded / backend unavailable.
-    return demoLibrary('fallback');
+    return unavailableMapperLibrary();
   }
 
   const ingredients: EngineIngredient[] = [];

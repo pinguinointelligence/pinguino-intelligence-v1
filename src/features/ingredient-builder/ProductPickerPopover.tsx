@@ -9,17 +9,12 @@ import {
   type CSSProperties,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router';
 import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
-import { markCatalogProductUsed } from '@/services/globalCatalog';
+import { markCurrentMapperCatalogProductUsed } from '@/services/globalCatalog';
 import { cn } from '@/lib/cn';
-import {
-  mappedCatalogIngredient,
-  labelOnlyCatalogToppingIngredient,
-} from '@/features/global-catalog/catalogIngredient';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
@@ -55,6 +50,10 @@ import {
   normalizeDataConfidencePercent,
   uniqueCatalogProductCount,
 } from './productPickerCatalogPresentation';
+import {
+  filterCurrentMapperCatalogHits,
+  resolveCurrentMapperCatalogSelection,
+} from './mapperOnlyCatalog';
 
 export type ProductPickerScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
 
@@ -192,6 +191,7 @@ export function ProductPickerPopover({
     selectedMarkets: [],
     forceGlobal: false,
     limit: 500,
+    mapperOnly: true,
   });
   useLayoutEffect(() => {
     if (!open || typeof window === 'undefined') return;
@@ -246,7 +246,13 @@ export function ProductPickerPopover({
       // Never expose hits belonging to the previous debounced query. A quick
       // type -> Enter must not add a stale canonical ingredient.
       const catalog = globalCatalog.isSettled
-        ? preserveServerProductRank(globalCatalog.hits, globalCatalog.preferences).map((hit) => ({
+        ? preserveServerProductRank(
+            filterCurrentMapperCatalogHits(
+              globalCatalog.hits,
+              scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING',
+            ),
+            globalCatalog.preferences,
+          ).map((hit) => ({
             id:
               hit.entityKind === 'pi_base'
                 ? `mapper:${hit.mappedIngredientId ?? hit.id}`
@@ -412,19 +418,16 @@ export function ProductPickerPopover({
     try {
       let ingredient: RecipeToppingIngredient | null = option.local ?? null;
       if (!ingredient && option.catalog) {
-        if (option.catalog.mappedIngredientId) {
-          ingredient = await getEngineApprovedIngredientById(
-            option.catalog.mappedIngredientId,
-          ).then((row) =>
-            row
-              ? option.catalog?.entityKind === 'pi_base'
-                ? ingredientRowToEngineIngredient(row)
-                : mappedCatalogIngredient(option.catalog!, row)
-              : null,
-          );
-        } else if (scope === 'POST_PROCESS_ADDON') {
-          ingredient = labelOnlyCatalogToppingIngredient(option.catalog);
+        const resolvedSelection = await resolveCurrentMapperCatalogSelection(
+          option.catalog,
+          scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING',
+          getEngineApprovedIngredientById,
+        );
+        if (!resolvedSelection.ok) {
+          setUnavailableNotice(resolvedSelection.message);
+          return;
         }
+        ingredient = ingredientRowToEngineIngredient(resolvedSelection.row);
       } else if (!ingredient) {
         ingredient = await getEngineApprovedIngredientById(option.id).then((row) =>
           row ? ingredientRowToEngineIngredient(row) : null,
@@ -507,13 +510,8 @@ export function ProductPickerPopover({
       if (ingredient) {
         // Recent-use telemetry is private ranking metadata; an unavailable
         // backend must never turn a valid ingredient selection into an error.
-        void markCatalogProductUsed({
-          entityKind: option.entityKind,
-          id:
-            option.entityKind === 'pi_base'
-              ? (option.catalog?.mappedIngredientId ?? option.id.replace(/^mapper:/, ''))
-              : (option.catalog?.id ?? option.id.replace(/^catalog:/, '')),
-        }).catch(() => undefined);
+        const mapperId = option.catalog?.mappedIngredientId ?? option.id.replace(/^mapper:/, '');
+        void markCurrentMapperCatalogProductUsed(mapperId).catch(() => undefined);
       }
       close(selection?.focusLineId);
     } finally {
@@ -1000,14 +998,9 @@ export function ProductPickerPopover({
                     </p>
                   ) : null}
                   <div className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-ink/10 bg-white px-4 py-2 text-xs">
-                    <span className="text-stone-600">Nie znalazłeś składnika?</span>
-                    <Link
-                      to="/products/scan"
-                      className="pro-focus-ring font-semibold text-[#169238] hover:text-[#0f762b] hover:underline"
-                      onClick={() => close()}
-                    >
-                      Dodaj własny składnik ręcznie →
-                    </Link>
+                    <span className="text-stone-600">
+                      Katalog zawiera wyłącznie aktualne produkty Mappera.
+                    </span>
                     <button
                       type="button"
                       className="pro-focus-ring rounded-lg px-2 py-1 font-semibold text-stone-600 hover:bg-stone-100"

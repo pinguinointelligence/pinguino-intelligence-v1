@@ -6,9 +6,17 @@ import {
   getCatalogMarketPreferences,
   listCatalogFavorites,
   listCatalogRecent,
+  listCurrentMapperCatalogFavorites,
+  listCurrentMapperCatalogRecent,
   searchProducts,
   setCatalogFavorite,
+  setCurrentMapperCatalogFavorite,
 } from '@/services/globalCatalog';
+import {
+  CURRENT_MAPPER_CATALOG_CACHE_KEY,
+  filterCurrentMapperCatalogHits,
+  filterCurrentMapperCatalogRelations,
+} from '@/features/ingredient-builder/mapperOnlyCatalog';
 import type { CatalogMarketPreferences, CatalogProductSearchHit } from './contracts';
 
 export function resolveCatalogMarketScope(input: {
@@ -45,6 +53,8 @@ export function useGlobalCatalogPicker(input: {
   selectedMarkets: readonly string[];
   forceGlobal?: boolean;
   limit?: number;
+  /** Recipe ingredient/topping catalog: current Mapper identities only. */
+  mapperOnly?: boolean;
 }): GlobalCatalogPickerState {
   const queryClient = useQueryClient();
   const settledQuery = useDebouncedValue(input.query, 250);
@@ -55,14 +65,20 @@ export function useGlobalCatalogPicker(input: {
     staleTime: 5 * 60 * 1000,
   });
   const favorites = useQuery({
-    queryKey: ['global-catalog-favorites'],
-    queryFn: listCatalogFavorites,
+    queryKey: [
+      'global-catalog-favorites',
+      input.mapperOnly ? CURRENT_MAPPER_CATALOG_CACHE_KEY : 'all-products',
+    ],
+    queryFn: input.mapperOnly ? listCurrentMapperCatalogFavorites : listCatalogFavorites,
     enabled: input.enabled,
     staleTime: 15_000,
   });
   const recent = useQuery({
-    queryKey: ['global-catalog-recent'],
-    queryFn: listCatalogRecent,
+    queryKey: [
+      'global-catalog-recent',
+      input.mapperOnly ? CURRENT_MAPPER_CATALOG_CACHE_KEY : 'all-products',
+    ],
+    queryFn: input.mapperOnly ? listCurrentMapperCatalogRecent : listCatalogRecent,
     enabled: input.enabled,
     staleTime: 15_000,
   });
@@ -80,7 +96,8 @@ export function useGlobalCatalogPicker(input: {
     defaultScope: resolvedPreferences.defaultScope,
   });
   const pageSize = Math.min(500, Math.max(1, input.limit ?? 100));
-  const pageSignature = [settledQuery, input.context, input.productProfile ?? '', marketScope,
+  const pageSignature = [input.mapperOnly ? CURRENT_MAPPER_CATALOG_CACHE_KEY : 'all-products',
+    settledQuery, input.context, input.productProfile ?? '', marketScope,
     [...effectiveMarkets].sort().join(','), input.favoritesOnly].join('|');
   const [pagination, setPagination] = useState<{ signature: string; limit: number } | null>(null);
   const requestedLimit = pagination?.signature === pageSignature ? pagination.limit : pageSize;
@@ -89,6 +106,7 @@ export function useGlobalCatalogPicker(input: {
     queryFn: async () => {
       const wanted = requestedLimit + 1;
       const rows: CatalogProductSearchHit[] = [];
+      let cursor = 0;
       while (rows.length < wanted) {
         const batchLimit = Math.min(500, wanted - rows.length);
         const batch = await searchProducts({
@@ -98,10 +116,14 @@ export function useGlobalCatalogPicker(input: {
           selectedMarkets: effectiveMarkets,
           favoritesOnly: input.favoritesOnly,
           productProfile: input.productProfile,
+          entityKind: input.mapperOnly ? 'pi_base' : null,
           limit: batchLimit,
-          cursor: rows.length,
+          cursor,
         });
-        rows.push(...batch);
+        cursor += batch.length;
+        rows.push(...(input.mapperOnly
+          ? filterCurrentMapperCatalogHits(batch, input.context)
+          : batch));
         if (batch.length < batchLimit) break;
       }
       return rows;
@@ -110,14 +132,22 @@ export function useGlobalCatalogPicker(input: {
     staleTime: 15_000,
     refetchOnMount: 'always',
   });
+  const favoritesQueryKey = [
+    'global-catalog-favorites',
+    input.mapperOnly ? CURRENT_MAPPER_CATALOG_CACHE_KEY : 'all-products',
+  ] as const;
   const mutation = useMutation({
     mutationFn: (args: { entityKind: 'pi_base' | 'commercial_product'; id: string; next: boolean }) =>
-      setCatalogFavorite({ entityKind: args.entityKind, id: args.id, favorite: args.next }),
+      input.mapperOnly
+        ? args.entityKind === 'pi_base'
+          ? setCurrentMapperCatalogFavorite({ id: args.id, favorite: args.next })
+          : Promise.reject(new Error('Only current Mapper products can be favorited here.'))
+        : setCatalogFavorite({ entityKind: args.entityKind, id: args.id, favorite: args.next }),
     onMutate: async (args) => {
-      await queryClient.cancelQueries({ queryKey: ['global-catalog-favorites'] });
-      const previous = queryClient.getQueryData<Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>>(['global-catalog-favorites']) ?? [];
+      await queryClient.cancelQueries({ queryKey: favoritesQueryKey });
+      const previous = queryClient.getQueryData<Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>>(favoritesQueryKey) ?? [];
       queryClient.setQueryData(
-        ['global-catalog-favorites'],
+        favoritesQueryKey,
         args.next
           ? [...previous.filter((item) => !(item.entityKind === args.entityKind && item.id === args.id)), { entityKind: args.entityKind, id: args.id }]
           : previous.filter((item) => !(item.entityKind === args.entityKind && item.id === args.id)),
@@ -125,15 +155,24 @@ export function useGlobalCatalogPicker(input: {
       return { previous };
     },
     onError: (_error, _args, context) => {
-      if (context?.previous) queryClient.setQueryData(['global-catalog-favorites'], context.previous);
+      if (context?.previous) queryClient.setQueryData(favoritesQueryKey, context.previous);
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['global-catalog-favorites'] });
+      void queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
       void queryClient.invalidateQueries({ queryKey: ['product-search-v1'] });
     },
   });
-  const favoriteKeys = new Set((favorites.data ?? []).map((item) => `${item.entityKind}:${item.id}`));
-  const recentKeys = new Set((recent.data ?? []).map((item) => `${item.entityKind}:${item.id}`));
+  const accessibleMapperIds = new Set(
+    (search.data ?? []).flatMap((hit) => hit.mappedIngredientId ? [hit.mappedIngredientId] : []),
+  );
+  const favoriteRelations = input.mapperOnly
+    ? filterCurrentMapperCatalogRelations(favorites.data ?? [], accessibleMapperIds)
+    : (favorites.data ?? []);
+  const recentRelations = input.mapperOnly
+    ? filterCurrentMapperCatalogRelations(recent.data ?? [], accessibleMapperIds)
+    : (recent.data ?? []);
+  const favoriteKeys = new Set(favoriteRelations.map((item) => `${item.entityKind}:${item.id}`));
+  const recentKeys = new Set(recentRelations.map((item) => `${item.entityKind}:${item.id}`));
   return {
     hits: (search.data ?? []).slice(0, requestedLimit).map((hit) => ({
       ...hit,

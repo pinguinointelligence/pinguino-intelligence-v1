@@ -157,7 +157,8 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     const hook = read('features', 'ingredient-builder', 'useIngredientLibrary.ts');
     expect(hook).not.toContain('listEngineApprovedIngredients');
     expect(hook).toContain('serverSearchLibrary');
-    expect(hook).toContain('listIngredientsByIds'); // only the exact matched reference rows
+    expect(hook).not.toContain('listIngredientsByIds');
+    expect(hook).not.toContain('listMyProducts');
   });
 
   it('the search hook is fresh-by-default: short staleTime, refetchOnMount always, query in the key', () => {
@@ -181,9 +182,8 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     expect(picker).toContain('library.serverSearch');
     expect(picker).toContain('useGlobalCatalogPicker');
     expect(picker).not.toContain('useIngredientSearch');
-    expect(picker).toMatch(
-      /getEngineApprovedIngredientById\(\s*option\.catalog\.mappedIngredientId,?\s*\)/,
-    );
+    expect(picker).toContain('resolveCurrentMapperCatalogSelection');
+    expect(picker).toContain('getEngineApprovedIngredientById');
   });
 
   it('stale-add protection: the current picker rejects old server hits until the new query settles', () => {
@@ -211,9 +211,8 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     const src = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
     expect(src).toContain('globalCatalog.isSettled');
     expect(src).toContain('isProductPickerSelectionCurrent');
-    expect(src).toMatch(
-      /getEngineApprovedIngredientById\(\s*option\.catalog\.mappedIngredientId,?\s*\)/,
-    );
+    expect(src).toContain('resolveCurrentMapperCatalogSelection');
+    expect(src).toContain('getEngineApprovedIngredientById');
   });
 
   it('binds modal identity and the focus trap to the visible picker, never its backdrop', () => {
@@ -239,7 +238,8 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     expect(hook).toContain('useDebouncedValue(input.query, 250)');
     expect(hook).toContain("['product-search-v1'");
     expect(hook).toContain('queryFn: async () =>');
-    expect(hook).toContain('cursor: rows.length');
+    expect(hook).toContain('let cursor = 0');
+    expect(hook).toContain('cursor += batch.length');
   });
 
   it('pagination is an explicit server cursor, not a client-side catalogue snapshot', () => {

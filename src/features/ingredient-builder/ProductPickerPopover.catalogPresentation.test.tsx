@@ -50,7 +50,7 @@ vi.mock('@/services/ingredients', () => ({
 }));
 
 vi.mock('@/services/globalCatalog', () => ({
-  markCatalogProductUsed: mocks.markUsed,
+  markCurrentMapperCatalogProductUsed: mocks.markUsed,
 }));
 
 vi.mock('@/data/ingredients/ingredientMapper', () => ({
@@ -168,7 +168,12 @@ describe('ProductPickerPopover catalog presentation', () => {
     document.body.append(host);
     root = createRoot(host);
     mocks.hits = [banana, cream, { ...banana, id: 'duplicate-page-edge' }, paste];
-    mocks.getRow.mockResolvedValue({});
+    mocks.getRow.mockImplementation(async (ingredientId: string) => ({
+      ingredient_id: ingredientId,
+      is_active: true,
+      dataset_version: 'v1.0',
+      approved_for_base: true,
+    }));
     mocks.toEngine.mockReturnValue(engineIngredient);
     mocks.markUsed.mockResolvedValue(undefined);
     Object.defineProperty(window, 'matchMedia', {

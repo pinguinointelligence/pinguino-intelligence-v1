@@ -253,6 +253,23 @@ export async function listCatalogFavorites(): Promise<Array<{ entityKind: 'pi_ba
   ];
 }
 
+/** Recipe-picker relation source. It deliberately never reads commercial
+ * product relations, so an old owner/custom favorite cannot become a product
+ * record in the active ingredient catalog. */
+export async function listCurrentMapperCatalogFavorites(): Promise<Array<{ entityKind: 'pi_base'; id: string }>> {
+  if (!supabase) return emptyUnconfiguredRead('globalCatalog.mapperFavorites', []);
+  const { data, error } = await supabase
+    .from('global_catalog_favorites')
+    .select('mapper_ingredient_id')
+    .eq('entity_kind', 'pi_base');
+  if (error) throw new Error(error.message);
+  return (data ?? []).flatMap((row) =>
+    typeof row.mapper_ingredient_id === 'string'
+      ? [{ entityKind: 'pi_base' as const, id: row.mapper_ingredient_id }]
+      : [],
+  );
+}
+
 export async function listCatalogRecent(): Promise<Array<{ entityKind: 'pi_base' | 'commercial_product'; id: string }>> {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.recent', []);
   const { data, error } = await supabase
@@ -278,6 +295,24 @@ export async function listCatalogRecent(): Promise<Array<{ entityKind: 'pi_base'
     ...pi,
     ...(commercial ?? []).map((row) => ({ entityKind: 'commercial_product' as const, id: row.product_id })),
   ];
+}
+
+/** Same fail-closed source rule as favorites: recents rank current Mapper rows;
+ * they never carry or hydrate a historical product snapshot. */
+export async function listCurrentMapperCatalogRecent(): Promise<Array<{ entityKind: 'pi_base'; id: string }>> {
+  if (!supabase) return emptyUnconfiguredRead('globalCatalog.mapperRecent', []);
+  const { data, error } = await supabase
+    .from('global_catalog_recent_usage')
+    .select('mapper_ingredient_id')
+    .eq('entity_kind', 'pi_base')
+    .order('last_used_at', { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return (data ?? []).flatMap((row) =>
+    typeof row.mapper_ingredient_id === 'string'
+      ? [{ entityKind: 'pi_base' as const, id: row.mapper_ingredient_id }]
+      : [],
+  );
 }
 
 export async function setCatalogFavorite(input: {
@@ -321,6 +356,13 @@ export async function setCatalogFavorite(input: {
   if (error) throw new Error(error.message);
 }
 
+export async function setCurrentMapperCatalogFavorite(input: {
+  id: string;
+  favorite: boolean;
+}): Promise<void> {
+  return setCatalogFavorite({ entityKind: 'pi_base', ...input });
+}
+
 export async function markCatalogProductUsed(input: {
   entityKind: 'pi_base' | 'commercial_product';
   id: string;
@@ -351,6 +393,10 @@ export async function markCatalogProductUsed(input: {
     { onConflict: 'user_id,entity_key' },
   );
   if (error) throw new Error(error.message);
+}
+
+export async function markCurrentMapperCatalogProductUsed(id: string): Promise<void> {
+  return markCatalogProductUsed({ entityKind: 'pi_base', id });
 }
 
 export const DEFAULT_CATALOG_MARKET_PREFERENCES: CatalogMarketPreferences = {

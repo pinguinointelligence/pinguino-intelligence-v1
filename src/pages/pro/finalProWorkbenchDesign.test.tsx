@@ -218,7 +218,9 @@ describe('recipe and production table modes', () => {
     expect(picker).toContain('Pokaż status danych produktu:');
     expect(picker).toContain('data-testid="product-data-status-dialog"');
     expect(picker).not.toContain('Nr art.');
-    expect(picker).toContain('Dodaj własny składnik ręcznie');
+    expect(picker).not.toContain('Dodaj własny składnik ręcznie');
+    expect(picker).toContain('mapperOnly: true');
+    expect(picker).toContain('resolveCurrentMapperCatalogSelection');
     expect(picker).toContain('event.stopPropagation()');
     expect(picker).not.toMatch(/`Produkt \$\{option\.name\} · ID/);
     expect(picker).not.toContain('Mapper ${entity.entityId}');

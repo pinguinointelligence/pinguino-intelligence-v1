@@ -21,6 +21,7 @@
     "process:validate": "node scripts/buildProcessMetadataSeed.mjs --check",
     "products:audit": "node scripts/auditUnifiedProductIntelligence.mjs",
     "mapper:runtime-audit": "node scripts/auditMapperRuntimeUsability.mjs",
+    "catalog:mapper-only:validate": "node scripts/validateMapperOnlyCatalog.mjs",
     "production-rescue:bundle": "node scripts/buildProductionRescueEdgeBundle.mjs",
     "production-rescue:bundle-check": "node scripts/buildProductionRescueEdgeBundle.mjs --check"
   },

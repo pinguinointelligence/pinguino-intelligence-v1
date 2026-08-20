@@ -11,7 +11,7 @@ import { ProductPickerPopover } from './ProductPickerPopover';
 
 vi.mock('@/services/globalCatalog', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/globalCatalog')>()),
-  markCatalogProductUsed: vi.fn().mockResolvedValue(undefined),
+  markCurrentMapperCatalogProductUsed: vi.fn().mockResolvedValue(undefined),
 }));
 
 const milk = findDemoIngredient('milk_3_5')!;
