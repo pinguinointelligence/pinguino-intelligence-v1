@@ -617,6 +617,21 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     const priorStudio = useConstraintStudioStore.getState();
     try {
       const input = watermelonFixture(600, 'optimal');
+      input.items = input.items
+        .filter((item) => item.id !== 'inulin')
+        .map((item) => ({
+          ...item,
+          planned_grams:
+            {
+              milk: 70,
+              cream: 130,
+              smp: 35,
+              sucrose: 130,
+              dextrose: 30,
+              tara: 5,
+              watermelon: 600,
+            }[item.id] ?? item.planned_grams,
+        }));
       const snapshots = snapshotsWithApprovedEnvelope(input);
       useRecipeStore.getState().loadRecipeInput(input);
       useRecipeStore.setState({

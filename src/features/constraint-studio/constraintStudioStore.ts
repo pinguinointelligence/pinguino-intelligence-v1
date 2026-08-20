@@ -132,7 +132,6 @@ interface ImpossibleConstraintLockRecovery {
 function impossibleConstraintLockRecovery(
   result: BuildPreviewResult,
   input: RecipeInput,
-  constraints: ConstraintSet,
 ): ImpossibleConstraintLockRecovery | null {
   if (
     result.ok ||
@@ -141,13 +140,11 @@ function impossibleConstraintLockRecovery(
     result.nearestFeasibleGrams === null
   )
     return null;
-  const constraint = constraints.byLineId[result.conflict.lineId];
   const line = input.items.find((item) => item.id === result.conflict?.lineId);
   const nearest = result.nearestFeasibleGrams;
   if (
-    constraint === undefined ||
-    constraint.mode === 'ai' ||
-    line?.actual_grams !== null ||
+    line === undefined ||
+    line.actual_grams !== null ||
     !Number.isFinite(nearest) ||
     nearest < 0 ||
     nearest >= result.conflict.grams
@@ -1003,7 +1000,6 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         const lockRecovery = impossibleConstraintLockRecovery(
           result,
           draft.input,
-          draft.constraints,
         );
         if (
           lockRecovery !== null &&
@@ -2206,7 +2202,6 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
     const lockRecovery = impossibleConstraintLockRecovery(
       rawProposal,
       draft.input,
-      draft.constraints,
     );
     const recoveredProposal = lockRecovery
       ? buildSuggestedFixPreview(
