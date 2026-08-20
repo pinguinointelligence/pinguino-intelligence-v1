@@ -15,6 +15,7 @@ import {
 } from '@/features/constraint-studio/applyPipeline';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
 import { assessGelatoStabilizerSystem } from '@/features/recipe-constraints';
+import { OWNER_MAPPER_INGREDIENTS } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 
 import { assessRecipeDirection } from './recipeDirectionAssessment';
 import {
@@ -86,6 +87,35 @@ const directed = (
   },
 });
 
+const stagingStarter = (hardness: RecipeDirectionTarget): RecipeInput => ({
+  mode: 'classic',
+  category: 'milk_gelato',
+  target_temperature_c: -11,
+  target_batch_grams: 1000,
+  machine_capacity_grams: null,
+  items: [
+    ['milk', OWNER_MAPPER_INGREDIENTS.milk_3_5, 672],
+    ['cream', OWNER_MAPPER_INGREDIENTS.cream_30, 130],
+    ['smp', OWNER_MAPPER_INGREDIENTS.smp, 35],
+    ['dextrose', OWNER_MAPPER_INGREDIENTS.dextrose, 30],
+    ['sucrose', OWNER_MAPPER_INGREDIENTS.sucrose, 130],
+    ['tara', OWNER_MAPPER_INGREDIENTS.tara_gum, 3],
+  ].map(([id, ingredient, grams]) => ({
+    id: String(id),
+    ingredient: ingredient as (typeof OWNER_MAPPER_INGREDIENTS)[keyof typeof OWNER_MAPPER_INGREDIENTS],
+    planned_grams: Number(grams),
+    actual_grams: null,
+    lock_type: 'unlocked' as const,
+  })),
+  goals: {
+    flavor_intensity: 'balanced',
+    cost_priority: 'balanced',
+    formulation_strategy: 'optimal',
+    direction_targets_active: true,
+    direction_targets: { sweetness: 0, softness: hardness, creaminess: 0, flavor: 0 },
+  },
+});
+
 const severity = (input: RecipeInput): number =>
   recipeDirectionViolations(input).reduce(
     (sum, violation) => sum + violation.severity_points,
@@ -93,6 +123,22 @@ const severity = (input: RecipeInput): number =>
   );
 
 describe('Gelato exact five-step Direction source of truth', () => {
+  it('keeps the deployed six-line starter fail-closed and truthful at Hardness -2', () => {
+    const input = stagingStarter(-2);
+    expect(detectViolations(calculateRecipe(input))).toEqual([]);
+    expect(recipeDirectionViolations(input).length).toBeGreaterThan(0);
+
+    const built = buildOptimizePreview(input, EMPTY, 'staging-starter-hardness-minus-2');
+    if (built.ok) {
+      expect(detectViolations(calculateRecipe(built.preview.proposedInput))).toEqual([]);
+      return;
+    }
+    expect(built.code).toBe('no_proposal');
+    if (built.code !== 'no_proposal') return;
+    expect(built.directionTargetUnreached).toBe(true);
+    expect(built.violatedMetrics).toContain('npac');
+  });
+
   it('preserves all five values in the canonical fingerprint and ordered approved bands', () => {
     const base = canonicalBase(-12);
     const fingerprints = TARGETS.map((target) =>

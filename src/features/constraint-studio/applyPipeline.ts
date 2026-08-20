@@ -4603,6 +4603,35 @@ function buildFormulationPreviewInternal(
   // real engine moves becomes the honest `impossible_under_constraints`.
   const afterViolationList = detectViolations(calculateRecipe(working));
   if (mode !== 'constrained_reformulation' && !beatsBaseline(input, working)) {
+    const exactGelatoDirectionActive =
+      input.category === 'milk_gelato' &&
+      input.goals?.direction_targets_active === true &&
+      Object.keys(buildRecipeDirectionPlan(input).bands).length > 0;
+    const baselineDirectionViolations = exactGelatoDirectionActive
+      ? recipeDirectionViolations(input)
+      : [];
+    const nativeSafeDirectionFixedPoint =
+      exactGelatoDirectionActive &&
+      baselineDirectionViolations.length > 0 &&
+      detectViolations(calculateRecipe(input)).length === 0;
+    if (nativeSafeDirectionFixedPoint) {
+      // A complete native-safe draft can route through the approved template
+      // when the local exact-Direction search reaches a fixed point (notably
+      // the six-line 1000 g starter without Inulin). If that seeded vector is
+      // still native-unsafe, this is proof of NO applicable formulation — not
+      // an unsafe recipe proposal. Preserve the unchanged safe draft and let
+      // the surface report the exact target as nearest-achievable.
+      return {
+        ok: false,
+        code: 'no_proposal',
+        violatedMetrics: [
+          ...new Set(baselineDirectionViolations.map((violation) => violation.metric)),
+        ],
+        solverInvocations: solverRounds,
+        directionTargetUnreached: true,
+        iteration: iterated.diagnostics,
+      };
+    }
     return {
       ok: false,
       code: 'unsafe_proposal',
