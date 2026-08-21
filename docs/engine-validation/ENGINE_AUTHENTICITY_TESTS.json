@@ -5182,34 +5182,34 @@
       "targetBandSource": "native seeded bands",
       "initialSeed": "template S01 (approved) mapped onto the user's selected identities",
       "solverMode": "constrained_reformulation",
-      "iterations": 1,
+      "iterations": 0,
       "stopReason": "all_bands_in_range",
       "outcome": "preview",
-      "outcomeDetail": "verified preview; violations 1 → 0",
+      "outcomeDetail": "verified preview; violations 0 → 0",
       "finalLines": [
         {
           "id": "l-straw",
           "ingredientId": "PI-ING-001553",
           "name": "STRAWBERRIES · Fresh Fruit",
-          "grams": 636.7915
+          "grams": 633.185
         },
         {
           "id": "l-water",
           "ingredientId": "water",
           "name": "Water",
-          "grams": 189.1121
+          "grams": 191.0108
         },
         {
           "id": "l-suc",
           "ingredientId": "sucrose",
           "name": "Sucrose",
-          "grams": 108.4521
+          "grams": 109.541
         },
         {
           "id": "l-dex",
           "ingredientId": "dextrose",
           "name": "Dextrose",
-          "grams": 61.6443
+          "grams": 62.2632
         },
         {
           "id": "l-tara",
@@ -5226,14 +5226,14 @@
       ],
       "batchTotalG": 1000,
       "metrics": {
-        "podPoints": 18.6284,
-        "pacPoints": 26.9442,
-        "npacPoints": 36.3049,
-        "iceFractionPercent": 51.0115,
-        "waterPercent": 74.2164,
-        "totalSolidsPercent": 25.7836,
-        "fatPercent": 0.191,
-        "proteinPercent": 0.7641,
+        "podPoints": 18.7591,
+        "pacPoints": 27.1311,
+        "npacPoints": 36.6137,
+        "iceFractionPercent": 57.36,
+        "waterPercent": 74.1011,
+        "totalSolidsPercent": 25.8989,
+        "fatPercent": 0.19,
+        "proteinPercent": 0.7598,
         "lactosePercent": 0
       },
       "stabilizer": {
@@ -5246,7 +5246,7 @@
         "notePl": "Dawka systemu stabilizującego Sorbet pochodzi z owner-approved Gellatti Sorbet formulation policy i nie została zoptymalizowana przez Engine."
       },
       "score": {
-        "overall0to100": 73.7097,
+        "overall0to100": 74.7705,
         "tenPoint": 7,
         "label": "Dobrze dopasowana",
         "provisionalBands": false
@@ -5260,22 +5260,22 @@
           {
             "lineId": "l-straw",
             "name": "STRAWBERRIES · Fresh Fruit",
-            "factor": 1.0613
+            "factor": 1.0553
           },
           {
             "lineId": "l-water",
             "name": "Water",
-            "factor": 1.0448
+            "factor": 1.0553
           },
           {
             "lineId": "l-suc",
             "name": "Sucrose",
-            "factor": 1.0448
+            "factor": 1.0553
           },
           {
             "lineId": "l-dex",
             "name": "Dextrose",
-            "factor": 1.0448
+            "factor": 1.0553
           },
           {
             "lineId": "l-tara",
@@ -5283,18 +5283,18 @@
             "factor": 5
           }
         ],
-        "sharedFactor": null,
-        "matchedLines": 3,
-        "detected": false
+        "sharedFactor": 1.0553,
+        "matchedLines": 4,
+        "detected": true
       },
-      "bestFoundProof": "solver invoked 1×; trajectory r0:v1/s0.1 → r1:v0/s0; stop=all_bands_in_range",
+      "bestFoundProof": "solver invoked 0×; trajectory r0:v0/s0; stop=all_bands_in_range",
       "runtimeReferenceData": [
         "src/data/demoIngredients.ts (canonical literature compositions; strawberry = documented raspberry surrogate PI-ING-001553)",
         "src/features/formulation/templateRegistry.ts → S01 (approved)",
         "src/engine/config/targets.ts → TARGET_BANDS cell for sorbet @ -11 °C"
       ],
       "verdict": "AUTHENTIC-OPTIMAL",
-      "verdictReason": "0 violations on NATIVE approved bands — verified optimum.",
+      "verdictReason": "PROPORTIONAL SCALING DETECTED (factor 1.0553 on 4/5 unlocked lines) — legitimate HERE because explicit constraints bind and the solver verified no admissible improving move (the constrained optimum may equal the proportional projection; per-100 g composition is invariant under it). | 0 violations on NATIVE approved bands — verified optimum.",
       "engineVersion": "0.4.0",
       "configVersion": "0.7.0",
       "engineRecord": {
@@ -5305,25 +5305,25 @@
             "line": "l-straw",
             "ingredient_id": "PI-ING-001553",
             "name": "STRAWBERRIES · Fresh Fruit",
-            "grams": 636.791507787351
+            "grams": 633.1849968213605
           },
           {
             "line": "l-water",
             "ingredient_id": "water",
             "name": "Water",
-            "grams": 189.11209159537373
+            "grams": 191.01080737444374
           },
           {
             "line": "l-suc",
             "ingredient_id": "sucrose",
             "name": "Sucrose",
-            "grams": 108.45212766629719
+            "grams": 109.54100445009536
           },
           {
             "line": "l-dex",
             "ingredient_id": "dextrose",
             "name": "Dextrose",
-            "grams": 61.64427295097818
+            "grams": 62.26319135410045
           },
           {
             "line": "l-tara",
@@ -5340,52 +5340,52 @@
         ],
         "total_batch_g": 1000,
         "totals": {
-          "water_g": 742.1643,
-          "solids_g": 257.8357,
-          "fat_g": 1.9104,
-          "protein_g": 7.6415,
+          "water_g": 741.011,
+          "solids_g": 258.989,
+          "fat_g": 1.8996,
+          "protein_g": 7.5982,
           "lactose_g": 0,
-          "sucrose_g": 108.4521,
-          "glucose_g": 12.7358,
-          "dextrose_g": 56.7127,
-          "fructose_g": 15.283,
+          "sucrose_g": 109.541,
+          "glucose_g": 12.6637,
+          "dextrose_g": 57.2821,
+          "fructose_g": 15.1964,
           "polyol_g": 0,
-          "fiber_g": 44.5914,
+          "fiber_g": 44.357,
           "salt_g": 0,
           "alcohol_g": 0
         },
         "percentages": {
-          "water_percent": 74.2164,
-          "solids_percent": 25.7836,
-          "fat_percent": 0.191,
-          "protein_percent": 0.7641,
+          "water_percent": 74.1011,
+          "solids_percent": 25.8989,
+          "fat_percent": 0.19,
+          "protein_percent": 0.7598,
           "lactose_percent": 0,
-          "sucrose_percent": 10.8452,
-          "glucose_percent": 1.2736,
-          "dextrose_percent": 5.6713,
-          "fructose_percent": 1.5283,
+          "sucrose_percent": 10.9541,
+          "glucose_percent": 1.2664,
+          "dextrose_percent": 5.7282,
+          "fructose_percent": 1.5196,
           "polyol_percent": 0,
-          "fiber_percent": 4.4591,
+          "fiber_percent": 4.4357,
           "salt_percent": 0,
           "alcohol_percent": 0
         },
         "sugar": {
-          "sucrose_g": 108.4521,
-          "glucose_g": 12.7358,
-          "dextrose_g": 56.7127,
-          "fructose_g": 15.283,
+          "sucrose_g": 109.541,
+          "glucose_g": 12.6637,
+          "dextrose_g": 57.2821,
+          "fructose_g": 15.1964,
           "lactose_g": 0,
           "polyol_g": 0,
           "other_sugar_g": 0
         },
-        "pod_points": 18.6284,
-        "pac_points": 26.9442,
-        "npac_points": 36.3049,
-        "ice_fraction_percent": 51.0115,
+        "pod_points": 18.7591,
+        "pac_points": 27.1311,
+        "npac_points": 36.6137,
+        "ice_fraction_percent": 57.36,
         "indicators": [
           {
             "key": "pod",
-            "value": 18.6284,
+            "value": 18.7591,
             "status": "ideal",
             "band": {
               "min": 15,
@@ -5397,7 +5397,7 @@
           },
           {
             "key": "npac",
-            "value": 36.3049,
+            "value": 36.6137,
             "status": "ideal",
             "band": {
               "min": 35,
@@ -5409,8 +5409,8 @@
           },
           {
             "key": "ice_fraction",
-            "value": 51.0115,
-            "status": "good",
+            "value": 57.36,
+            "status": "ideal",
             "band": {
               "min": 51,
               "max": 59
@@ -5439,7 +5439,7 @@
           },
           {
             "key": "fat",
-            "value": 0.191,
+            "value": 0.19,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -5448,7 +5448,7 @@
           },
           {
             "key": "aerating_protein",
-            "value": 0.7641,
+            "value": 0.7598,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -5457,7 +5457,7 @@
           },
           {
             "key": "protein_in_solids",
-            "value": 2.9637,
+            "value": 2.9338,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -5466,7 +5466,7 @@
           },
           {
             "key": "total_solids",
-            "value": 25.7836,
+            "value": 25.8989,
             "status": "good",
             "band": {
               "min": 25,
@@ -5478,7 +5478,7 @@
           },
           {
             "key": "water",
-            "value": 74.2164,
+            "value": 74.1011,
             "status": "good",
             "band": {
               "min": 67,
@@ -5503,16 +5503,16 @@
           }
         ],
         "scores": {
-          "technical": 73.8889,
+          "technical": 76.3889,
           "flavor": 70,
-          "cost": 78.6165,
-          "overall": 73.7097
+          "cost": 78.8597,
+          "overall": 74.7705
         },
         "verdict": {
           "score": 7,
           "label": "Dobrze dopasowana"
         },
-        "cost_per_kg": 4.1107,
+        "cost_per_kg": 4.0912,
         "cost_complete": true,
         "warnings": []
       }
@@ -7130,7 +7130,7 @@
       "targetBandSource": "native seeded bands",
       "initialSeed": "template S01 (approved) mapped onto the user's selected identities",
       "solverMode": "full_formulation",
-      "iterations": 1,
+      "iterations": 0,
       "stopReason": "all_bands_in_range",
       "outcome": "preview",
       "outcomeDetail": "verified preview; violations 0 → 0",
@@ -7139,25 +7139,25 @@
           "id": "l-straw",
           "ingredientId": "PI-ING-001553",
           "name": "STRAWBERRIES · Fresh Fruit",
-          "grams": 636.7915
+          "grams": 633.185
         },
         {
           "id": "formulation-water",
           "ingredientId": "water",
           "name": "Water",
-          "grams": 189.1121
+          "grams": 191.0108
         },
         {
           "id": "formulation-sucrose",
           "ingredientId": "sucrose",
           "name": "Sucrose",
-          "grams": 108.4521
+          "grams": 109.541
         },
         {
           "id": "formulation-dextrose",
           "ingredientId": "dextrose",
           "name": "Dextrose (monohydrate)",
-          "grams": 61.6443
+          "grams": 62.2632
         },
         {
           "id": "formulation-tara_gum",
@@ -7168,14 +7168,14 @@
       ],
       "batchTotalG": 1000,
       "metrics": {
-        "podPoints": 18.6284,
-        "pacPoints": 26.9442,
-        "npacPoints": 36.3049,
-        "iceFractionPercent": 51.0115,
-        "waterPercent": 74.2164,
-        "totalSolidsPercent": 25.7836,
-        "fatPercent": 0.191,
-        "proteinPercent": 0.7641,
+        "podPoints": 18.7591,
+        "pacPoints": 27.1311,
+        "npacPoints": 36.6137,
+        "iceFractionPercent": 57.36,
+        "waterPercent": 74.1011,
+        "totalSolidsPercent": 25.8989,
+        "fatPercent": 0.19,
+        "proteinPercent": 0.7598,
         "lactosePercent": 0
       },
       "stabilizer": {
@@ -7188,7 +7188,7 @@
         "notePl": "Dawka systemu stabilizującego Sorbet pochodzi z owner-approved Gellatti Sorbet formulation policy i nie została zoptymalizowana przez Engine."
       },
       "score": {
-        "overall0to100": 73.7097,
+        "overall0to100": 74.7705,
         "tenPoint": 7,
         "label": "Dobrze dopasowana",
         "provisionalBands": false
@@ -7203,7 +7203,7 @@
         "matchedLines": 0,
         "detected": false
       },
-      "bestFoundProof": "solver invoked 1×; trajectory r0:v1/s0.1 → r1:v0/s0; stop=all_bands_in_range",
+      "bestFoundProof": "solver invoked 0×; trajectory r0:v0/s0; stop=all_bands_in_range",
       "runtimeReferenceData": [
         "src/data/demoIngredients.ts (canonical literature compositions; strawberry = documented raspberry surrogate PI-ING-001553)",
         "src/features/formulation/templateRegistry.ts → S01 (approved)",
@@ -7221,25 +7221,25 @@
             "line": "l-straw",
             "ingredient_id": "PI-ING-001553",
             "name": "STRAWBERRIES · Fresh Fruit",
-            "grams": 636.791507787351
+            "grams": 633.1849968213605
           },
           {
             "line": "formulation-water",
             "ingredient_id": "water",
             "name": "Water",
-            "grams": 189.11209159537373
+            "grams": 191.01080737444374
           },
           {
             "line": "formulation-sucrose",
             "ingredient_id": "sucrose",
             "name": "Sucrose",
-            "grams": 108.45212766629719
+            "grams": 109.54100445009536
           },
           {
             "line": "formulation-dextrose",
             "ingredient_id": "dextrose",
             "name": "Dextrose (monohydrate)",
-            "grams": 61.64427295097818
+            "grams": 62.26319135410045
           },
           {
             "line": "formulation-tara_gum",
@@ -7250,52 +7250,52 @@
         ],
         "total_batch_g": 1000,
         "totals": {
-          "water_g": 742.1643,
-          "solids_g": 257.8357,
-          "fat_g": 1.9104,
-          "protein_g": 7.6415,
+          "water_g": 741.011,
+          "solids_g": 258.989,
+          "fat_g": 1.8996,
+          "protein_g": 7.5982,
           "lactose_g": 0,
-          "sucrose_g": 108.4521,
-          "glucose_g": 12.7358,
-          "dextrose_g": 56.7127,
-          "fructose_g": 15.283,
+          "sucrose_g": 109.541,
+          "glucose_g": 12.6637,
+          "dextrose_g": 57.2821,
+          "fructose_g": 15.1964,
           "polyol_g": 0,
-          "fiber_g": 44.5914,
+          "fiber_g": 44.357,
           "salt_g": 0,
           "alcohol_g": 0
         },
         "percentages": {
-          "water_percent": 74.2164,
-          "solids_percent": 25.7836,
-          "fat_percent": 0.191,
-          "protein_percent": 0.7641,
+          "water_percent": 74.1011,
+          "solids_percent": 25.8989,
+          "fat_percent": 0.19,
+          "protein_percent": 0.7598,
           "lactose_percent": 0,
-          "sucrose_percent": 10.8452,
-          "glucose_percent": 1.2736,
-          "dextrose_percent": 5.6713,
-          "fructose_percent": 1.5283,
+          "sucrose_percent": 10.9541,
+          "glucose_percent": 1.2664,
+          "dextrose_percent": 5.7282,
+          "fructose_percent": 1.5196,
           "polyol_percent": 0,
-          "fiber_percent": 4.4591,
+          "fiber_percent": 4.4357,
           "salt_percent": 0,
           "alcohol_percent": 0
         },
         "sugar": {
-          "sucrose_g": 108.4521,
-          "glucose_g": 12.7358,
-          "dextrose_g": 56.7127,
-          "fructose_g": 15.283,
+          "sucrose_g": 109.541,
+          "glucose_g": 12.6637,
+          "dextrose_g": 57.2821,
+          "fructose_g": 15.1964,
           "lactose_g": 0,
           "polyol_g": 0,
           "other_sugar_g": 0
         },
-        "pod_points": 18.6284,
-        "pac_points": 26.9442,
-        "npac_points": 36.3049,
-        "ice_fraction_percent": 51.0115,
+        "pod_points": 18.7591,
+        "pac_points": 27.1311,
+        "npac_points": 36.6137,
+        "ice_fraction_percent": 57.36,
         "indicators": [
           {
             "key": "pod",
-            "value": 18.6284,
+            "value": 18.7591,
             "status": "ideal",
             "band": {
               "min": 15,
@@ -7307,7 +7307,7 @@
           },
           {
             "key": "npac",
-            "value": 36.3049,
+            "value": 36.6137,
             "status": "ideal",
             "band": {
               "min": 35,
@@ -7319,8 +7319,8 @@
           },
           {
             "key": "ice_fraction",
-            "value": 51.0115,
-            "status": "good",
+            "value": 57.36,
+            "status": "ideal",
             "band": {
               "min": 51,
               "max": 59
@@ -7349,7 +7349,7 @@
           },
           {
             "key": "fat",
-            "value": 0.191,
+            "value": 0.19,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -7358,7 +7358,7 @@
           },
           {
             "key": "aerating_protein",
-            "value": 0.7641,
+            "value": 0.7598,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -7367,7 +7367,7 @@
           },
           {
             "key": "protein_in_solids",
-            "value": 2.9637,
+            "value": 2.9338,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -7376,7 +7376,7 @@
           },
           {
             "key": "total_solids",
-            "value": 25.7836,
+            "value": 25.8989,
             "status": "good",
             "band": {
               "min": 25,
@@ -7388,7 +7388,7 @@
           },
           {
             "key": "water",
-            "value": 74.2164,
+            "value": 74.1011,
             "status": "good",
             "band": {
               "min": 67,
@@ -7413,16 +7413,16 @@
           }
         ],
         "scores": {
-          "technical": 73.8889,
+          "technical": 76.3889,
           "flavor": 70,
-          "cost": 78.6165,
-          "overall": 73.7097
+          "cost": 78.8597,
+          "overall": 74.7705
         },
         "verdict": {
           "score": 7,
           "label": "Dobrze dopasowana"
         },
-        "cost_per_kg": 4.1107,
+        "cost_per_kg": 4.0912,
         "cost_complete": true,
         "warnings": []
       }

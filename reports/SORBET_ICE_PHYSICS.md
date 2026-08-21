@@ -6,7 +6,7 @@ Scientific branch: `codex/sorbet-ice-physics`
 
 Safety base: `703d992be482d2534707f6787370f021258f1068`
 
-Runtime integration status: **not integrated**
+Runtime integration status: **composition-sensitive candidate integrated on this branch; staging pending**
 
 ## Executive decision
 
@@ -29,9 +29,10 @@ mixtures.
   extension. Extrapolating those coefficients into arbitrary mixtures would invent
   authority.
 
-Decision: **SORBET ICE MODEL NEEDS MORE SCIENTIFIC DATA**. The research harness is
-retained locally; `calculateRecipe`, target bands, Score, Monitor and Production are
-unchanged.
+This interim decision is superseded by the finalization in §14: the subsequently
+recovered UASLP primary thesis contains the exact composition regressions that the
+initial audit could not access. The original audit is retained below as a provenance
+record rather than silently rewritten.
 
 ## 1. Current source-of-truth matrix
 
@@ -341,14 +342,8 @@ non-authoritative ideal baseline, a fail-closed published binary model, mass con
 bounded bisection, explicit denominators, convergence diagnostics and the lemon DSC
 validation oracle.
 
-Because the final model is not scientifically established:
-
-- Sorbet milk fallback was **not** removed from runtime (doing so without replacing it
-  would be a separate behavioral change); the WIP remains honestly authority-blocked.
-- The 150-cell matrix is expected to retain 100 `authority_blocked` cells at −12/−13;
-  the preserved test pins that fact.
-- Gelato and Protein code paths are untouched.
-- No staging/deployment/database/Mapper action belongs to this scientific branch.
+The statements below describe the original audit checkpoint. See §14–§19 for the
+completed model, runtime integration and current acceptance results.
 
 ## 13. Local validation ledger
 
@@ -369,3 +364,158 @@ Because the final model is not scientifically established:
 
 The full suite includes the existing Gelato 150-cell matrix and Protein regressions;
 both passed after the research files were added. No accepted runtime behavior changed.
+
+## 14. Final recovered composition model
+
+The missing table/equations were recovered from the UASLP primary research thesis
+underlying the Grajales-Lagunes publication route. Its design fixes citric acid and
+pectin at 0.025 dry-mass fraction each and varies fructose/glucose/sucrose on a
+simplex with `XF+XG+XS=0.95` (Table 6.1). Chen Eq. 7 is:
+
+```text
+Tm = Tw + (beta/lambda_w) * ln(
+  (xw - B*xs) / (xw - B*xs + E*xs)
+)
+```
+
+with `beta=1860 kg °C/kmol`, `lambda_w=18.01528 kg/kmol`, `xs` dry-solids mass
+fraction and `xw=1-xs`. Published Scheffé regressions (Eqs. 9–10) are:
+
+```text
+E = 0.081 XF + 0.071 XG + 0.064 XS
+  + 0.039 XF XG - 0.002 XF XS + 0.074 XG XS
+  + 0.545 XF XG XS
+
+B = 0.172 XF + 0.223 XG + 0.114 XS
+  + 0.144 XF XG + 0.243 XF XS - 0.106 XG XS
+  - 5.175 XF XG XS
+```
+
+`XF/XG/XS` are fractions of **all dry solids**, not a re-normalized sugar-only
+simplex. Dextrose uses its actual dry D-glucose mass and therefore contributes to
+`XG`; its declared product water remains water. This exact interpretation reproduces
+the paper's modeled real-juice E/B rows for tuna, orange, mango, strawberry and
+pineapple.
+
+Main publication: Grajales-Lagunes et al., Journal of Food Engineering (2018), DOI
+[10.1016/j.jfoodeng.2018.02.025](https://doi.org/10.1016/j.jfoodeng.2018.02.025).
+The exact accessible equation/table source is Mendoza Cardoso, UASLP (2017),
+Tables 6.1/7.1/7.2/7.6 and Eqs. 7/9/10.
+
+## 15. Solver and validity contract
+
+- Production code: `src/engine/sorbetFreezingPhysics.ts`.
+- Chen Eq. 7 is inverted algebraically for the equilibrium `xs`; the result is
+  checked against the initial composition and the physical `xw-B*xs>0` bound.
+- No rounding occurs inside thermodynamics; whole grams remain a formulation-layer
+  execution rule.
+- Supported runtime temperature is exactly −11..−13°C.
+- The model is bounded to the published combined source domain: modeled F/G/S are
+  0.571..0.95 of dry solids (the five real juices through the simplex design).
+- Fibre, Inulin, pectin-like/stabilizer dry matter and other non-freezing dry matter
+  stay in total dry solids and total-mix mass. They receive no invented colligative
+  coefficient.
+- Any significant lactose, polyol, alcohol, salt or unnamed sugar returns
+  `unavailable` for that recipe. Canonical trace declarations below 0.05% of
+  total mix are treated as composition precision and receive no coefficient;
+  at or above 0.05% the model fails closed. This produces a null ice result and
+  explicit `composition_invalid` evidence rather than false readiness.
+
+Canonical mass balance:
+
+```text
+initial total mix = initial water + total dry solids
+equilibrium serum = remaining liquid water + total dry solids
+ice mass = initial water - remaining liquid water
+iceMassFractionOfMix = ice mass / initial total mix
+frozenFractionOfInitialWater = ice mass / initial water
+```
+
+Only the first percentage enters the existing `ice_fraction_percent` hard bands.
+
+## 16. Source validation and independent holdout
+
+The exact E/B regressions are pinned for all seven source design shapes: three pure,
+three binary and the ternary centroid. They also reproduce the modeled E/B values of
+all five real juices to the source table's precision.
+
+Residuals against the individually fitted Table 7.1 Chen parameters are reported
+honestly (the composition regression is not an exact interpolation):
+
+| Validation class          | E absolute error | B absolute error |
+| ------------------------- | ---------------: | ---------------: |
+| Pure fructose             |          0.00195 |          0.05150 |
+| Binary maximum (FG/FS/GS) |          0.00912 |          0.08624 |
+| Ternary centroid          |          0.00029 |          0.00006 |
+
+The source itself reports weaker regression evidence for B (Table 7.2: `R²=0.599`,
+adjusted `R²≈-0.0036`, overall `p=0.527`, CV `49.65%`) than E (`R²=0.840`,
+adjusted `R²=0.599`, `p=0.123`, CV `9.87%`). The implementation therefore keeps a
+strict composition domain and fails closed for unmodeled freeze-active solutes.
+
+Independent lemon Sorbet holdout (not fitted):
+
+| Metric                 | Published DSC | New model | Signed error |
+| ---------------------- | ------------: | --------: | -----------: |
+| Initial freezing point | about −2.63°C | −2.3316°C |    +0.2984°C |
+| Ice / mix at −11°C     |      50.6908% |  55.5769% |   +4.8861 pp |
+| Ice / mix at −12°C     |      51.9107% |  56.8216% |   +4.9109 pp |
+| Ice / mix at −13°C     |      52.0286% |  57.8747% |   +5.8460 pp |
+
+The new composition model is materially closer than the rejected ideal baseline and
+keeps all three predictions within the existing Sorbet hard bands. The holdout error
+is retained; no coefficient was fitted to lemon or MyGelato.
+
+## 17. Runtime integration and historic fixtures
+
+`calculateRecipe` now routes only `category='sorbet'` through the composition model.
+`estimateIceFraction` explicitly returns null for unseeded Sorbet, so the old
+`milk_gelato` fallback cannot become Sorbet truth. Gelato and Protein retain their
+accepted anchor implementation unchanged.
+
+Current-composition S01/S02/S03 recalculation:
+
+| Fixture | Temperature | New ice / total mix | Existing hard band | Result |
+| ------- | ----------: | ------------------: | -----------------: | ------ |
+| S01     |       −11°C |            54.8958% |             51–59% | inside |
+| S02     |       −12°C |            52.9930% |             51–59% | inside |
+| S03     |       −13°C |            50.6712% |             50–58% | inside |
+
+The historic locked values remain provenance records; the runtime result now follows
+the actual current composition.
+
+## 18. Direction matrix and performance
+
+All 150 cells (3 temperatures × 2 strategies × 5 Sweetness × 5 Hardness) are
+evaluated without any `authority_blocked` state:
+
+| Temperature | LEGAL exact physical target | NEAREST_ACHIEVABLE | Total |
+| ----------- | --------------------------: | -----------------: | ----: |
+| −11°C       |                          38 |                 12 |    50 |
+| −12°C       |                          32 |                 18 |    50 |
+| −13°C       |                          24 |                 26 |    50 |
+| Total       |                          94 |                 56 |   150 |
+
+`NEAREST_ACHIEVABLE` means the exact POD/NPAC point is incompatible with an
+independent hard gate (often ice fraction) or a non-negative canonical
+water/sucrose/dextrose solution while Main, optional Inulin and stabilizer remain
+unchanged. No hard gate is loosened.
+
+The exact three-role feasibility evaluation takes about 25 ms for all 150 cells in
+the focused test. Six real representative Preview paths (three temperatures × two
+strategies) take about 4.2–5.2 seconds each on this development machine and retain
+the generic hard-safety/whole-gram/constraints/Main/Apply gates.
+
+## 19. Final branch gate (integration/deployment pending)
+
+The scientific/runtime candidate now has composition-sensitive fructose,
+glucose/dextrose, sucrose and interaction authority; explicit total-mix denominator;
+−11/−12/−13 support; no milk fallback; fail-closed unsupported solutes; and a truthful
+150-cell Direction classification. Full repository validation, staging integration,
+deployment and served browser QA are recorded only after they actually run.
+
+The completed local candidate passed 547 test files / 6857 tests, typecheck, lint
+(zero errors; two pre-existing Fast Refresh warnings), build, products audit,
+Mapper runtime audit, process validation, Mapper-only catalog validation, Production
+Rescue bundle check and `git diff --check`. The generated Rescue bundle SHA-256 is
+`09df43be7d5c03f9aac3759816c19f2e76b70f9f6ed1a5dc83164edc193dca44`.

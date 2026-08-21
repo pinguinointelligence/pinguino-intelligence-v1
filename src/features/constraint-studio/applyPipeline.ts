@@ -41,6 +41,7 @@ import {
   assessRecipeDirection,
   type RecipeDirectionAssessment,
 } from '@/features/recipe-direction/recipeDirectionAssessment';
+import { projectSorbetExactDirectionCandidate } from '@/features/recipe-direction/sorbetDirectionProjection';
 import {
   buildDraftCandidateVector,
   describeDraftAdjustment,
@@ -5186,6 +5187,55 @@ export function buildOptimizePreview(
   const beforeResult = calculateRecipe(constrained.input);
   const violationsBefore = violationCount(beforeResult);
   const hasCritical = beforeResult.warnings.some((warning) => warning.severity === 'critical');
+  // Sorbet exact Direction has three canonical adjustable roles and two exact
+  // owner metrics. Solve that small linear system first instead of sending
+  // every one of the 150 cells through the generic multi-vector search. The
+  // result still crosses every normal whole-gram, hard-band, constraint,
+  // identity and Apply gate below; a non-feasible projection simply falls
+  // through to the established optimizer.
+  const exactSorbetCandidate = projectSorbetExactDirectionCandidate(working);
+  if (
+    exactSorbetCandidate !== null &&
+    verifyConstraintsPreserved(solverSet, exactSorbetCandidate).ok
+  ) {
+    const changed = exactSorbetCandidate.items.some(
+      (item, index) =>
+        Math.abs(item.planned_grams - (input.items[index]?.planned_grams ?? Number.NaN)) > 1e-9,
+    );
+    if (changed) {
+      const preview = finishPreview(
+        'optimize',
+        copy.preview.kindLabels.optimize,
+        input,
+        set,
+        exactSorbetCandidate,
+        set,
+        violationsBefore,
+        [],
+        createdAt,
+      );
+      const executableResult = calculateRecipe(preview.proposedInput);
+      const beforeDirection = recipeDirectionViolations(input);
+      const afterDirection = recipeDirectionViolations(preview.proposedInput);
+      const directionSeverity = (candidate: ReturnType<typeof recipeDirectionViolations>) =>
+        candidate.reduce((sum, violation) => sum + violation.severity_points, 0);
+      const improvesDirection =
+        afterDirection.length < beforeDirection.length ||
+        (afterDirection.length === beforeDirection.length &&
+          directionSeverity(afterDirection) < directionSeverity(beforeDirection) - SEVERITY_EPS);
+      if (
+        detectViolations(executableResult).length === 0 &&
+        !executableResult.warnings.some((warning) => warning.severity === 'critical') &&
+        verifyConstraintsPreserved(solverSet, preview.proposedInput).ok &&
+        improvesDirection
+      ) {
+        preview.autoBalance = { batchRescaled, solverRounds: 0 };
+        preview.hardResidualMetrics = [];
+        preview.diagnosticOnly = false;
+        return mainSafePreview(input, preview, options.productBehaviorSnapshots);
+      }
+    }
+  }
   const initialProteinTarget = assessProteinTarget(working);
   const strategy = normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode);
   if (strategy === 'eco') {
@@ -5573,8 +5623,7 @@ export function buildOptimizePreview(
     return withBatchReconciliation(
       withTemplateFallback({
         ok: false,
-        code:
-          currentNativeSafe && currentDirectionUnreached ? 'no_proposal' : 'unsafe_proposal',
+        code: currentNativeSafe && currentDirectionUnreached ? 'no_proposal' : 'unsafe_proposal',
         violatedMetrics: [
           ...new Set(
             (currentNativeSafe && currentDirectionUnreached

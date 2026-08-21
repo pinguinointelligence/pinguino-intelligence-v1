@@ -152,6 +152,34 @@ const t14 = () => ({
   set: { byLineId: { 'l-inulin': { mode: 'locked' as const, grams: 0 } } } satisfies ConstraintSet,
 });
 
+/**
+ * Deliberate native hard-residual fixture for the trustless Apply door. The
+ * composition-sensitive model makes the owner T14 draft valid, so the old
+ * accidental 50.67% residual no longer exists. This keeps total mass fixed and
+ * transfers 40 g from water to sucrose, producing a real Engine-derived
+ * ice_fraction below the approved native band without inventing a metric.
+ */
+const hardIceResidualAtTargetBatch = (rec: RecipeInput): RecipeInput => {
+  const stabilizerMass = rec.items
+    .filter((item) => isTemplateControlledStabilizer(item.ingredient))
+    .reduce((sum, item) => sum + item.planned_grams, 0);
+  const adjustableMass = rec.items
+    .filter((item) => !isTemplateControlledStabilizer(item.ingredient))
+    .reduce((sum, item) => sum + item.planned_grams, 0);
+  const factor = (rec.target_batch_grams - stabilizerMass) / adjustableMass;
+  return {
+    ...rec,
+    items: rec.items.map((item) => {
+      const normalized = isTemplateControlledStabilizer(item.ingredient)
+        ? item.planned_grams
+        : item.planned_grams * factor;
+      if (item.id === 'l-suc') return { ...item, planned_grams: normalized + 40 };
+      if (item.id === 'l-water') return { ...item, planned_grams: normalized - 40 };
+      return { ...item, planned_grams: normalized };
+    }),
+  };
+};
+
 /** T17 — Gelato −12 unconstrained (native milk_gelato profile). */
 const t17 = () => ({
   input: input([line('l-milk', findDemoIngredient('milk_3_5')!, 0)], 'milk_gelato', -12),
@@ -352,12 +380,9 @@ describe('addendum2 — technical fit is the headline; flavor/cost are separate 
     expect(canonicalInternalCategory('fruit_gelato', provisionalState.items)).toBe('milk_gelato');
   });
 
-  it('native profile with residual violations degrades honestly below 10 (T14 DRAFT state)', () => {
-    // CURRENT-DRAFT P0: the OPTIMIZED T14 now reaches every band; the honest
-    // degrade contract is therefore pinned on the state that still HAS
-    // residual violations — the user's un-optimized draft.
+  it('native profile with a real hard residual degrades honestly below 10', () => {
     const { input: rec } = t14();
-    const result = calculateRecipe(rec);
+    const result = calculateRecipe(hardIceResidualAtTargetBatch(rec));
     expect(detectViolations(result).length).toBeGreaterThan(0);
     const fit = recipeTechnicalFit(result);
     expect(fit.score).not.toBeNull();
@@ -368,40 +393,14 @@ describe('addendum2 — technical fit is the headline; flavor/cost are separate 
 
 /* ═══ addendum3 — HARD RESIDUALS ⇒ DIAGNOSTIC PREVIEW ONLY (T14/T19) ═════ */
 
-describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)', () => {
+describe('addendum3 — hard-native residuals block Apply at the door', () => {
   /**
    * CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25) — DELIBERATE update.
-   * The T14/T19 sorbet drafts USED to survive optimization with a hard-native
-   * `ice_fraction` residual; with the current-draft candidate vector the
-   * optimizer now REPAIRS them (0 violations), so the natural fixtures can no
-   * longer demonstrate the door. The addendum-3 guarantee is therefore pinned
-   * where it actually lives: the door re-derives band provenance TRUSTLESSLY
-   * from `proposedInput`, so a proposal carrying a hard-native residual is
-   * refused whatever the preview claims. The proposal below is the user's own
-   * un-optimized draft, proportionally normalized to the target batch (the
-   * per-100 g composition — and therefore the ice violation — is invariant
-   * under that scaling, so nothing is fabricated).
+   * The old T14 residual came from the removed milk-anchor fallback. The
+   * addendum-3 guarantee is now pinned to a deliberate mass-preserving Sorbet
+   * composition that the real Engine places outside native ice authority. The
+   * door re-derives that provenance TRUSTLESSLY from `proposedInput`.
    */
-  const draftAtTargetBatch = (rec: RecipeInput): RecipeInput => {
-    // The hard-residual fixture must forge only the native-band state under
-    // test. Stabilizer mass is template-controlled and therefore held exactly
-    // while the remaining formulation is normalized to the target batch.
-    const stabilizerMass = rec.items
-      .filter((item) => isTemplateControlledStabilizer(item.ingredient))
-      .reduce((sum, item) => sum + item.planned_grams, 0);
-    const adjustableMass = rec.items
-      .filter((item) => !isTemplateControlledStabilizer(item.ingredient))
-      .reduce((sum, item) => sum + item.planned_grams, 0);
-    const factor = (rec.target_batch_grams - stabilizerMass) / adjustableMass;
-    return {
-      ...rec,
-      items: rec.items.map((item) =>
-        isTemplateControlledStabilizer(item.ingredient)
-          ? item
-          : { ...item, planned_grams: item.planned_grams * factor },
-      ),
-    };
-  };
 
   /** A preview carrying the hard-residual proposal, with a proof that is
    * SELF-CONSISTENT with it (so the door's earlier proof gate cannot pre-empt
@@ -411,7 +410,7 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
     rec: RecipeInput,
   ): ConstraintPreview => {
     const forged = structuredClone(preview);
-    const hardResidual = draftAtTargetBatch(rec);
+    const hardResidual = hardIceResidualAtTargetBatch(rec);
     const currentTara = rec.items.find((item) => item.id === 'l-tara');
     const residualTara = hardResidual.items.find((item) => item.id === 'l-tara');
     const residualWater = hardResidual.items.find((item) => item.id === 'l-water');
@@ -432,9 +431,9 @@ describe('addendum3 — hard-native residuals block Apply at the door (T14/T19)'
     return forged;
   };
 
-  it('T14 (sorbet inulin-0, native ice 50.67 < 51): hard residual ⇒ Apply blocked at the door', () => {
+  it('a Sorbet native ice residual is blocked at the Apply door', () => {
     const { input: rec, set } = t14();
-    const proposal = draftAtTargetBatch(rec);
+    const proposal = hardIceResidualAtTargetBatch(rec);
     // The residual is HARD by the SAME provenance classifier the door uses.
     expect(classifyViolationBands(proposal).hardMetrics).toContain('ice_fraction');
 

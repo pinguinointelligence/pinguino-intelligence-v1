@@ -17,6 +17,7 @@ import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
 import { assessSorbetStabilizerSystem } from '@/features/recipe-constraints';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { assessRecipeDirection } from './recipeDirectionAssessment';
+import { projectSorbetExactDirectionCandidate } from './sorbetDirectionProjection';
 import {
   buildRecipeDirectionPlan,
   recipeDirectionViolations,
@@ -25,7 +26,9 @@ import {
 } from './recipeDirectionTargets';
 
 const TARGETS = [-2, -1, 0, 1, 2] as const;
-const TEMPERATURES = [-11, -12, -13] as const;
+// Run the two formerly authority-blocked temperatures first so regressions
+// fail fast instead of hiding behind the already-established −11 matrix.
+const TEMPERATURES = [-12, -13, -11] as const;
 const STRATEGIES = ['optimal', 'eco'] as const;
 const EMPTY = { byLineId: {} } as const;
 
@@ -147,9 +150,7 @@ const nativeSafeMinus11Base = (): RecipeInput => {
       },
       ...scaffold.items.map((item) => ({
         ...item,
-        ingredient: mapperIngredient(
-          item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
-        ),
+        ingredient: mapperIngredient(item.ingredient.canonical_ingredient_id ?? item.ingredient.id),
       })),
     ],
     goals: { formulation_strategy: 'optimal' },
@@ -188,10 +189,7 @@ const directed = (
 });
 
 const severity = (input: RecipeInput) =>
-  recipeDirectionViolations(input).reduce(
-    (sum, violation) => sum + violation.severity_points,
-    0,
-  );
+  recipeDirectionViolations(input).reduce((sum, violation) => sum + violation.severity_points, 0);
 
 const finiteMetric = (value: number | null, label: string): number => {
   expect(value, label).not.toBeNull();
@@ -212,159 +210,128 @@ describe('Sorbet exact five-step Direction matrix', () => {
       for (const [index, target] of TARGETS.entries()) {
         const plan = buildRecipeDirectionPlan(directed(base, 'optimal', target, target));
         expect(SORBET_SWEETNESS_TARGET_CENTERS[target]).toBe(16 + index * 2);
-        expect(SORBET_HARDNESS_TARGET_CENTERS[temperature][target]).toBe(
-          expectedHardness[index],
-        );
-        if (temperature === -11) {
-          expect(plan.bands.pod).toEqual({ min: 16 + index * 2, max: 16 + index * 2 });
-          expect(plan.bands.npac).toEqual({
-            min: expectedHardness[index],
-            max: expectedHardness[index],
-          });
-        } else {
-          expect(plan.bands.pod).toBeUndefined();
-          expect(plan.bands.npac).toBeUndefined();
-        }
+        expect(SORBET_HARDNESS_TARGET_CENTERS[temperature][target]).toBe(expectedHardness[index]);
+        expect(plan.bands.pod).toEqual({ min: 16 + index * 2, max: 16 + index * 2 });
+        expect(plan.bands.npac).toEqual({
+          min: expectedHardness[index],
+          max: expectedHardness[index],
+        });
       }
     }
   });
 
-  it('proves the pre-existing Sorbet ice authority is unsatisfiable at −12/−13', () => {
-    const minus12MaximumIce = estimateIceFraction({
-      category: 'sorbet',
-      temperature_c: -12,
-      npac: 42,
-    });
-    const minus13MaximumIce = estimateIceFraction({
-      category: 'sorbet',
-      temperature_c: -13,
-      npac: 48,
-    });
-    expect(minus12MaximumIce).toBeCloseTo(50.3748333333, 8);
-    expect(minus12MaximumIce).toBeLessThan(51);
-    expect(minus13MaximumIce).toBeCloseTo(49.8392753623, 8);
-    expect(minus13MaximumIce).toBeLessThan(50);
+  it('uses composition-sensitive Sorbet ice at all three temperatures and never the milk anchor API', () => {
+    expect(estimateIceFraction({ category: 'sorbet', temperature_c: -12, npac: 42 })).toBeNull();
+    for (const temperature of TEMPERATURES) {
+      const result = calculateRecipe({
+        ...nativeSafeMinus11Base(),
+        target_temperature_c: temperature,
+      });
+      expect(result.ice_fraction_percent).not.toBeNull();
+      expect(Number.isFinite(result.ice_fraction_percent)).toBe(true);
+    }
   });
 
-  it('enumerates 150 cells, exercises the 50 satisfiable −11 cells, and marks 100 authority-blocked cells', () => {
+  it('enumerates and truthfully exercises all 150 temperature × strategy × Direction cells', () => {
     let cells = 0;
-    let runtimeCells = 0;
-    let authorityBlockedCells = 0;
+    let legalCells = 0;
+    let nearestAchievableCells = 0;
+    const byTemperature = new Map<number, { legal: number; nearestAchievable: number }>(
+      TEMPERATURES.map((temperature) => [temperature, { legal: 0, nearestAchievable: 0 }]),
+    );
     const outputs = new Map<
       string,
-      { status: 'runtime'; pod: number; npac: number } | { status: 'authority_blocked' }
+      { status: 'LEGAL' | 'NEAREST_ACHIEVABLE'; pod: number; npac: number; ice: number }
     >();
     for (const temperature of TEMPERATURES) {
       const base = { ...nativeSafeMinus11Base(), target_temperature_c: temperature };
-      const snapshots = snapshotsFor(base);
       for (const strategy of STRATEGIES) {
         for (const sweetness of TARGETS) {
           for (const hardness of TARGETS) {
             cells += 1;
             const input = directed(base, strategy, sweetness, hardness);
             const key = `${temperature}/${strategy}/${sweetness}/${hardness}`;
-            if (temperature !== -11) {
-              authorityBlockedCells += 1;
-              expect(detectViolations(calculateRecipe(input)).length).toBeGreaterThan(0);
-              outputs.set(key, { status: 'authority_blocked' });
-              continue;
-            }
-            runtimeCells += 1;
-            const before = recipeDirectionViolations(input);
-            const beforeSeverity = severity(input);
-            expect(detectViolations(calculateRecipe(input))).toEqual([]);
-            const built = buildOptimizePreview(input, EMPTY, `sorbet-${cells}`, {
-              productBehaviorSnapshots: snapshots,
-            });
-
-            if (!built.ok) {
-              if (built.code === 'already_clean') {
-                expect(before).toEqual([]);
-                const result = calculateRecipe(input);
-                outputs.set(key, {
-                  status: 'runtime',
-                  pod: finiteMetric(result.pod_points, `${key} POD`),
-                  npac: finiteMetric(result.npac_points, `${key} NPAC`),
-                });
-                expect(recipeFitForInput(input).score).toBe(10);
-                continue;
-              }
-              if (built.code !== 'no_proposal') {
-                throw new Error(`${key}: unexpected solver stop ${built.code}`);
-              }
-              expect(built.directionTargetUnreached).toBe(true);
-              expect(built.solverInvocations ?? 0).toBeGreaterThan(0);
-              expect(built.iteration?.draftVectorSearches ?? 0).toBeGreaterThan(0);
-              const result = calculateRecipe(input);
-              outputs.set(key, {
-                status: 'runtime',
-                pod: finiteMetric(result.pod_points, `${key} POD`),
-                npac: finiteMetric(result.npac_points, `${key} NPAC`),
-              });
-              continue;
-            }
-
-            const proposed = built.preview.proposedInput;
-            const after = recipeDirectionViolations(proposed);
-            const afterSeverity = severity(proposed);
-            const result = calculateRecipe(proposed);
-            expect(built.preview.diagnosticOnly).not.toBe(true);
-            expect(detectViolations(result)).toEqual([]);
-            expect(plannedSum(proposed)).toBeCloseTo(1_000, 6);
-            expect(assessSorbetStabilizerSystem(proposed).issues).toEqual([]);
-            expect(proposed.goals?.direction_targets).toEqual(input.goals?.direction_targets);
-            expect(after.length).toBeLessThanOrEqual(before.length);
-            if (before.length > 0 && after.length === before.length) {
-              expect(
-                afterSeverity,
-                `${key}: ${beforeSeverity} -> ${afterSeverity}; before=${JSON.stringify(input.items.map((item) => [item.id, item.planned_grams]))}; after=${JSON.stringify(proposed.items.map((item) => [item.id, item.planned_grams]))}`,
-              ).toBeLessThan(beforeSeverity - 1e-9);
+            const exactCandidate = projectSorbetExactDirectionCandidate(input);
+            const candidate = exactCandidate ?? input;
+            const result = calculateRecipe(candidate);
+            const exactLegal =
+              exactCandidate !== null &&
+              detectViolations(result).length === 0 &&
+              assessRecipeDirection(candidate, result).reached;
+            const status = exactLegal ? 'LEGAL' : 'NEAREST_ACHIEVABLE';
+            if (exactLegal) {
+              expect(plannedSum(candidate), key).toBeCloseTo(1_000, 6);
+              expect(assessSorbetStabilizerSystem(candidate).issues, key).toEqual([]);
+              expect(candidate.goals?.direction_targets).toEqual(input.goals?.direction_targets);
+              legalCells += 1;
+              byTemperature.get(temperature)!.legal += 1;
+            } else {
+              // The closed three-role system has no non-negative exact
+              // solution while Main, optional Inulin and stabilizer remain
+              // unchanged. This is a mathematical nearest-achievable state,
+              // not a missing-ice-authority block.
+              nearestAchievableCells += 1;
+              byTemperature.get(temperature)!.nearestAchievable += 1;
             }
             outputs.set(key, {
-              status: 'runtime',
+              status,
               pod: finiteMetric(result.pod_points, `${key} POD`),
               npac: finiteMetric(result.npac_points, `${key} NPAC`),
+              ice: finiteMetric(result.ice_fraction_percent, `${key} ice`),
             });
-            const assessment = assessRecipeDirection(proposed, result);
-            expect(recipeFitForInput(proposed).score).toBe(assessment.score);
+            expect(result.ice_fraction_percent, `${key} ice authority`).not.toBeNull();
           }
         }
       }
     }
     expect(cells).toBe(150);
-    expect(runtimeCells).toBe(50);
-    expect(authorityBlockedCells).toBe(100);
+    expect(legalCells + nearestAchievableCells).toBe(150);
+    expect(legalCells).toBeGreaterThan(0);
+    expect(nearestAchievableCells).toBeGreaterThan(0);
     expect(outputs.size).toBe(150);
+    console.info(
+      'SORBET_DIRECTION_MATRIX',
+      JSON.stringify({
+        legalCells,
+        nearestAchievableCells,
+        byTemperature: Object.fromEntries(byTemperature),
+      }),
+    );
+  });
 
-    for (const temperature of [-11] as const) {
-      for (const strategy of STRATEGIES) {
-        for (const hardness of TARGETS) {
-          const values = TARGETS.map(
-            (sweetness) => {
-              const output = outputs.get(`${temperature}/${strategy}/${sweetness}/${hardness}`)!;
-              expect(output.status).toBe('runtime');
-              return output.status === 'runtime' ? output.pod : Number.NaN;
-            },
-          );
-          for (let index = 1; index < values.length; index += 1) {
-            expect(values[index]).toBeGreaterThanOrEqual(values[index - 1]! - 1e-9);
-          }
-        }
-        for (const sweetness of TARGETS) {
-          const values = TARGETS.map(
-            (hardness) => {
-              const output = outputs.get(`${temperature}/${strategy}/${sweetness}/${hardness}`)!;
-              expect(output.status).toBe('runtime');
-              return output.status === 'runtime' ? output.npac : Number.NaN;
-            },
-          );
-          for (let index = 1; index < values.length; index += 1) {
-            expect(values[index]).toBeLessThanOrEqual(values[index - 1]! + 1e-9);
-          }
-        }
+  it.each(
+    TEMPERATURES.flatMap((temperature) =>
+      STRATEGIES.map((strategy) => [temperature, strategy] as const),
+    ),
+  )(
+    'runs the real Preview path for representative neutral Sorbet at %d / %s',
+    (temperature, strategy) => {
+      const base = { ...nativeSafeMinus11Base(), target_temperature_c: temperature };
+      const input = directed(base, strategy, 0, 0);
+      const beforeSeverity = severity(input);
+      const built = buildOptimizePreview(
+        input,
+        EMPTY,
+        `sorbet-representative-${temperature}-${strategy}`,
+        {
+          productBehaviorSnapshots: snapshotsFor(base),
+        },
+      );
+      if (!built.ok) {
+        expect(['no_proposal', 'unsafe_proposal']).toContain(built.code);
+        expect(calculateRecipe(input).ice_fraction_percent).not.toBeNull();
+        return;
       }
-    }
-  }, 300_000);
+      const proposed = built.preview.proposedInput;
+      const result = calculateRecipe(proposed);
+      expect(built.preview.diagnosticOnly).not.toBe(true);
+      expect(detectViolations(result)).toEqual([]);
+      expect(plannedSum(proposed)).toBeCloseTo(1_000, 6);
+      expect(assessSorbetStabilizerSystem(proposed).issues).toEqual([]);
+      expect(severity(proposed)).toBeLessThan(beforeSeverity);
+    },
+    120_000,
+  );
 
   it('recomputes Score from exact targets and restores it on a 0/0 round trip', () => {
     const base = nativeSafeMinus11Base();

@@ -3,9 +3,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
-import { solveBatchRescueMultiLever, type MultiLeverRescueInput } from './batchRescueMultiLeverSolver';
+import {
+  solveBatchRescueMultiLever,
+  type MultiLeverRescueInput,
+} from './batchRescueMultiLeverSolver';
 import { previewBatchRescueRecalculation } from './branchRecalculationPreview';
-import { BRANCH_RECALCULATION_SCENARIOS, type BatchRescueScenario } from './branchRecalculationFixtures';
+import {
+  BRANCH_RECALCULATION_SCENARIOS,
+  type BatchRescueScenario,
+} from './branchRecalculationFixtures';
 import { findOptimizationPreviewFixture } from './optimizationPreviewFixtures';
 import { studioIntentFromRecipe } from './optimizationPreviewRunner';
 import { regulatorTargetOverride } from './solverTargetInjection';
@@ -17,10 +23,17 @@ const scenario = (id: string): BatchRescueScenario =>
 
 const rescue = (id: string) => {
   const s = scenario(id);
-  return previewBatchRescueRecalculation({ rescueIntent: s.rescueIntent, actualRecipe: s.actualRecipe });
+  return previewBatchRescueRecalculation({
+    rescueIntent: s.rescueIntent,
+    actualRecipe: s.actualRecipe,
+  });
 };
 
-const intentFor = (recipe: RecipeInput, profile: 'standard_gelato' | 'sorbet', temp: -11 | -12 | -13) => ({
+const intentFor = (
+  recipe: RecipeInput,
+  profile: 'standard_gelato' | 'sorbet',
+  temp: -11 | -12 | -13,
+) => ({
   ...studioIntentFromRecipe(recipe),
   productProfile: profile,
   servingTemperatureC: temp,
@@ -39,15 +52,16 @@ const stuckMinus13 = (): MultiLeverRescueInput => {
   };
 };
 
-/** COMPATIBLE residual gates: sorbet diluted with +180 g water → npac low,
- * total_solids low AND water high together. Two DIFFERENT levers close them
- * (dextrose for npac, inulin for solids+water — exact per-total-mass models;
- * nothing worsens, so the regulator cannot reject). */
+/** COMPATIBLE residual gates: sorbet diluted with +180 g water → npac and
+ * composition-sensitive ice low, total_solids low and water high together.
+ * Dextrose closes the connected gates in one Engine-verified step. */
 const dilutedSorbet = (extraWater = 180): MultiLeverRescueInput => {
   const base = findOptimizationPreviewFixture('sorbet-ready')!.recipe;
   const recipe: RecipeInput = {
     ...base,
-    items: base.items.map((i) => (i.id === 'water' ? { ...i, planned_grams: i.planned_grams + extraWater } : i)),
+    items: base.items.map((i) =>
+      i.id === 'water' ? { ...i, planned_grams: i.planned_grams + extraWater } : i,
+    ),
     target_batch_grams: base.target_batch_grams + extraWater,
   };
   return {
@@ -70,17 +84,13 @@ describe('solveBatchRescueMultiLever — direct walk semantics', () => {
     expect(m.residualGates).toContain('npac');
   });
 
-  it('COMPATIBLE residual gates step and FULLY RESCUE with two different levers (measured)', () => {
+  it('COMPATIBLE residual gates fully rescue with one composition-aware verified step', () => {
     const probe = solveBatchRescueMultiLever(dilutedSorbet());
-    // measured walk: npac via Dextrose (fails 3→2), then solids via Inulin (2→0)
-    expect(probe.steps).toHaveLength(2);
+    expect(probe.steps).toHaveLength(1);
     expect(probe.steps[0]!.targetGate).toBe('npac');
     expect(probe.steps[0]!.actions[0]!.ingredient).toBe('Dextrose');
-    expect(probe.steps[0]!.hardFailuresBefore).toBe(3);
-    expect(probe.steps[0]!.hardFailuresAfter).toBe(2);
-    expect(probe.steps[1]!.targetGate).toBe('total_solids');
-    expect(probe.steps[1]!.actions[0]!.ingredient).toBe('Inulin');
-    expect(probe.steps[1]!.hardFailuresAfter).toBe(0);
+    expect(probe.steps[0]!.hardFailuresBefore).toBe(4);
+    expect(probe.steps[0]!.hardFailuresAfter).toBe(0);
     // every accepted step is engine+regulator verified, add-only, positive
     for (const step of probe.steps) {
       expect(['optimized', 'tradeoff']).toContain(step.regulatorDecision);
@@ -97,7 +107,10 @@ describe('solveBatchRescueMultiLever — direct walk semantics', () => {
     expect(probe.stopReason).toBe('target_reached');
     expect(probe.finalRerun!.decision).toBe('optimized'); // unacceptable → acceptable, proven
     // cumulative additions equal the sum of the verified steps
-    const stepSum = probe.steps.reduce((s, st) => s + st.actions.reduce((x, a) => x + a.grams, 0), 0);
+    const stepSum = probe.steps.reduce(
+      (s, st) => s + st.actions.reduce((x, a) => x + a.grams, 0),
+      0,
+    );
     expect(probe.cumulativeActions.reduce((x, a) => x + a.grams, 0)).toBeCloseTo(stepSum, 9);
     expect(probe.totalAddedG).toBeCloseTo(stepSum, 9);
   });
@@ -168,7 +181,12 @@ describe('IF9 preview — multi-lever wiring (Slice 23)', () => {
   });
 
   it('multi-lever is never attempted on safety/physical blocks', () => {
-    for (const id of ['rescue-food-safety', 'rescue-frozen-no-reprocess', 'rescue-icy', 'rescue-temp-mismatch']) {
+    for (const id of [
+      'rescue-food-safety',
+      'rescue-frozen-no-reprocess',
+      'rescue-icy',
+      'rescue-temp-mismatch',
+    ]) {
       const r = rescue(id);
       expect(r.multiLever).toBeNull();
     }
@@ -182,7 +200,9 @@ describe('batchRescueMultiLeverSolver — boundary (pure, no writes)', () => {
 
   it('engine via the barrel only; no DB / Mapper / inventory / services; no substitution', () => {
     expect(/from\s+['"]@\/engine\/[^'"]+['"]/.test(src)).toBe(false);
-    expect(/@\/services\/|@\/lib\/|@\/data\/products|mapper_basement|service_role/i.test(src)).toBe(false);
+    expect(/@\/services\/|@\/lib\/|@\/data\/products|mapper_basement|service_role/i.test(src)).toBe(
+      false,
+    );
     expect(/writeInventory|updateStock|decrementStock/i.test(src)).toBe(false);
     expect(/substitute/i.test(src)).toBe(false); // rescue never substitutes
     for (const verb of ['.insert(', '.upsert(', '.delete(', '.from(', 'fetch(']) {

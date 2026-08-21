@@ -290,12 +290,12 @@ const PINS: Pin[] = [
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 7,
-    overall: 73.7097,
-    iter: 1,
+    overall: 74.7705,
+    iter: 0,
     stop: 'all_bands_in_range',
-    npac: 36.3049,
-    ice: 51.0115,
-    pod: 18.6284,
+    npac: 36.6137,
+    ice: 57.36,
+    pod: 18.7591,
     viol: 0,
     hardSafe: true,
     batch: 1000,
@@ -365,12 +365,12 @@ const PINS: Pin[] = [
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 7,
-    overall: 73.7097,
-    iter: 1,
+    overall: 74.7705,
+    iter: 0,
     stop: 'all_bands_in_range',
-    npac: 36.3049,
-    ice: 51.0115,
-    pod: 18.6284,
+    npac: 36.6137,
+    ice: 57.36,
+    pod: 18.7591,
     viol: 0,
     hardSafe: true,
     batch: 1000,
@@ -476,17 +476,15 @@ describe('structural invariants — locks, batch, identity (no fixture can fake 
     expect(straw.grams).toBeLessThanOrEqual(400);
   });
 
-  it('T14: inulin stays EXACTLY 0 (never re-added) and the result is NOT a projection', () => {
+  it('T14: inulin stays EXACTLY 0 and truthful batch normalization is reported', () => {
     const record = byId('T14');
     const inulin = record.finalLines!.find((row) => row.ingredientId === 'inulin')!;
     expect(Object.is(inulin.grams, 0)).toBe(true);
     expect(record.finalLines!.filter((row) => row.ingredientId === 'inulin')).toHaveLength(1);
-    // CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25) — DELIBERATE update:
-    // T14 used to END on the proportional projection of the template seed
-    // (nothing the engine could move). With the current-draft candidate vector
-    // the draft's own unlocked lines really move, so the presented state is a
-    // worked engine result — the projection detector must now read FALSE.
-    expect(record.proportionalScaling.detected).toBe(false);
+    // The composition-sensitive Sorbet model places the normalized draft
+    // inside every native band. Only batch normalization is required, so the
+    // detector must report that proportional transformation truthfully.
+    expect(record.proportionalScaling.detected).toBe(true);
     expect(record.violations).toHaveLength(0);
   });
 
