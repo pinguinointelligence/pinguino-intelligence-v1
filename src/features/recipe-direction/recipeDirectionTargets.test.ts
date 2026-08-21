@@ -63,18 +63,16 @@ const CELLS: readonly [ProductCategory, number, [number, number]][] = [
 const SWEETNESS_CELLS = CELLS.filter(
   ([category, temperature]) =>
     category === 'milk_gelato' ||
-    (category === 'sorbet' && temperature === -11) ||
+    (category === 'sorbet' && [-11, -12, -13].includes(temperature)) ||
     (category === 'chocolate_gelato' && (temperature === -11 || temperature === -12)),
 );
-const GELATO_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
-  ([category]) => category === 'milk_gelato',
-);
+const GELATO_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(([category]) => category === 'milk_gelato');
 const LEGACY_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
   ([category]) => category === 'chocolate_gelato',
 );
 const SOFTNESS_CELLS = CELLS.filter(
   ([category, temperature]) =>
-    category === 'milk_gelato' || (category === 'sorbet' && temperature === -11),
+    category === 'milk_gelato' || (category === 'sorbet' && [-11, -12, -13].includes(temperature)),
 );
 const NON_EXACT_SOFTNESS_CELLS = CELLS.filter(
   (cell) =>
@@ -148,31 +146,20 @@ describe('canonical recipe Direction target contract', () => {
           ),
         );
         expect(SORBET_SWEETNESS_TARGET_CENTERS[target]).toBe(16 + index * 2);
-        expect(SORBET_HARDNESS_TARGET_CENTERS[temperature][target]).toBe(
-          hardnessCenters[index],
-        );
-        if (temperature === -11) {
-          expect(plan.axes.find((axis) => axis.axis === 'sweetness')).toMatchObject({
-            status: 'working',
-            targetCenter: 16 + index * 2,
-          });
-          expect(plan.bands.pod).toEqual({ min: 16 + index * 2, max: 16 + index * 2 });
-          expect(plan.axes.find((axis) => axis.axis === 'softness')).toMatchObject({
-            status: 'working',
-            targetCenter: hardnessCenters[index],
-          });
-          expect(plan.bands.npac).toEqual({
-            min: hardnessCenters[index],
-            max: hardnessCenters[index],
-          });
-        } else {
-          expect(plan.axes.find((axis) => axis.axis === 'sweetness')?.status).toBe(
-            'blocked_runtime',
-          );
-          expect(plan.axes.find((axis) => axis.axis === 'softness')?.status).toBe(
-            'blocked_science',
-          );
-        }
+        expect(SORBET_HARDNESS_TARGET_CENTERS[temperature][target]).toBe(hardnessCenters[index]);
+        expect(plan.axes.find((axis) => axis.axis === 'sweetness')).toMatchObject({
+          status: 'working',
+          targetCenter: 16 + index * 2,
+        });
+        expect(plan.bands.pod).toEqual({ min: 16 + index * 2, max: 16 + index * 2 });
+        expect(plan.axes.find((axis) => axis.axis === 'softness')).toMatchObject({
+          status: 'working',
+          targetCenter: hardnessCenters[index],
+        });
+        expect(plan.bands.npac).toEqual({
+          min: hardnessCenters[index],
+          max: hardnessCenters[index],
+        });
       }
     },
   );

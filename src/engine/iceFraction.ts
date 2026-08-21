@@ -11,9 +11,10 @@
  *    → null. The function never throws in normal recipe use.
  * 2. temperature ≥ 0 °C → 0 (physical bound: nothing freezes at or above 0).
  * 3. Row selection is CATEGORY-FIRST: anchors are filtered by the input
- *    category; an unseeded category falls back to the milk_gelato rows —
- *    explicitly a calibration-pending fallback, not category truth — and
- *    null if even those are absent. Within the rows: exact temperature match,
+ *    category. Sorbet never falls back because its production path is the
+ *    composition-sensitive solver in calculateRecipe. Other unseeded
+ *    categories retain the documented milk_gelato fallback, and return null
+ *    if even those rows are absent. Within the rows: exact temperature match,
  *    otherwise nearest by |Δtemp| (tie → the colder row).
  * 4. NPAC inside the band: linear between (npac_low → ice_at_npac_low) and
  *    (npac_high → ice_at_npac_high). Outside the band: linear extrapolation on
@@ -28,7 +29,11 @@
  * Only active external reference fixtures may calibrate anchors or slope (spec §16).
  * Pure and deterministic; inputs are never mutated.
  */
-import { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C, type IceAnchorRow } from './config/iceAnchors';
+import {
+  ICE_ANCHOR_ROWS,
+  ICE_TEMPERATURE_SLOPE_PER_C,
+  type IceAnchorRow,
+} from './config/iceAnchors';
 import type { ProductCategory } from './types';
 
 export interface IceFractionInput {
@@ -77,9 +82,10 @@ export function estimateIceFraction(
   // 2. physical bound
   if (temperature_c >= 0) return 0;
 
-  // 3. category-first selection with documented calibration-pending fallback
+  // 3. category-first selection; Sorbet must never receive milk-gelato truth.
   let rows = anchors.filter((row) => row.category === category);
   if (rows.length === 0) {
+    if (category === 'sorbet') return null;
     rows = anchors.filter((row) => row.category === CATEGORY_FALLBACK);
   }
   if (rows.length === 0) return null;
@@ -88,8 +94,7 @@ export function estimateIceFraction(
   if (row.npac_high === row.npac_low) return null; // degenerate anchor row
 
   // 4. inverse-linear within the band; extrapolation continues the band slope
-  const bandSlope =
-    (row.ice_at_npac_high - row.ice_at_npac_low) / (row.npac_high - row.npac_low);
+  const bandSlope = (row.ice_at_npac_high - row.ice_at_npac_low) / (row.npac_high - row.npac_low);
   const iceAtRowTemperature = row.ice_at_npac_low + (npac - row.npac_low) * bandSlope;
 
   // 5. temperature shift for non-anchored temperatures (calibration-pending)

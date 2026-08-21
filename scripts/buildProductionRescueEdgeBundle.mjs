@@ -39,6 +39,7 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/engine/pod.ts',
   'src/engine/scoring.ts',
   'src/engine/statuses.ts',
+  'src/engine/sorbetFreezingPhysics.ts',
   'src/features/formulation-strategy/strategy.ts',
   'src/features/formulation/ingredientRoles.ts',
   'src/features/formulation/mainIngredientContract.ts',

@@ -176,6 +176,68 @@ describe('calculateRecipe — end-to-end (spec §12/§18)', () => {
       }),
     );
   });
+
+  it('routes Sorbet through composition-sensitive total-mix ice authority', () => {
+    const input: RecipeInput = {
+      items: [
+        makeItem(
+          'sorbet-system',
+          {
+            water_percent: 70,
+            solids_percent: 30,
+            carbohydrate_percent: 28.5,
+            sugar_percent: 28.5,
+            sucrose_percent: 28.5,
+          },
+          1_000,
+        ),
+      ],
+      mode: 'classic',
+      category: 'sorbet',
+      target_temperature_c: -12,
+      target_batch_grams: 1_000,
+      machine_capacity_grams: null,
+    };
+    const result = calculateRecipe(input);
+    expect(result.ice_fraction_percent).not.toBeNull();
+    expect(result.ice_fraction_percent).toBeGreaterThan(0);
+    expect(result.ice_fraction_percent).toBeLessThan(result.percentages.water_percent);
+    expect(result.warnings).not.toContainEqual(
+      expect.objectContaining({ code: 'composition_invalid' }),
+    );
+  });
+
+  it('fails Sorbet ice closed for an unsupported freeze-active solute', () => {
+    const input: RecipeInput = {
+      items: [
+        makeItem(
+          'unsupported-sorbet-system',
+          {
+            water_percent: 69.8,
+            solids_percent: 30.2,
+            carbohydrate_percent: 28.5,
+            sugar_percent: 28.5,
+            sucrose_percent: 28.5,
+            salt_percent: 0.2,
+          },
+          1_000,
+        ),
+      ],
+      mode: 'classic',
+      category: 'sorbet',
+      target_temperature_c: -12,
+      target_batch_grams: 1_000,
+      machine_capacity_grams: null,
+    };
+    const result = calculateRecipe(input);
+    expect(result.ice_fraction_percent).toBeNull();
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'composition_invalid',
+        context: { reason: 'sorbet_freezing_unsupported_freeze_active_solute' },
+      }),
+    );
+  });
 });
 
 /* ── effective grams / production state (spec §6, §15) ───────────────────── */
@@ -184,7 +246,12 @@ describe('actual grams override planned grams', () => {
   it('reflects actual amounts in totals and item state', () => {
     const input: RecipeInput = {
       items: [
-        makeItem('sucrose', { solids_percent: 100, sugar_percent: 100, sucrose_percent: 100 }, 130, 150),
+        makeItem(
+          'sucrose',
+          { solids_percent: 100, sugar_percent: 100, sucrose_percent: 100 },
+          130,
+          150,
+        ),
         makeItem('water', { water_percent: 100 }, 870),
       ],
       mode: 'classic',
@@ -232,7 +299,7 @@ describe('separation guarantees', () => {
     expect(result.totals.water_g).toBeCloseTo(960, 9); // 60 + 900 — alcohol not included
     expect(result.totals.solids_g).toBe(0);
     // NPAC includes the alcohol term (40 g × 7.4), normalized per water mass (canonical)
-    expect(result.npac_points).toBeCloseTo((40 * 7.4) / result.totals.water_g * 100, 6);
+    expect(result.npac_points).toBeCloseTo(((40 * 7.4) / result.totals.water_g) * 100, 6);
     expect(result.pac_points).toBe(0); // alcohol is not part of the PAC sugar spectrum
   });
 });
@@ -330,10 +397,7 @@ describe('warnings', () => {
 
   it('emits low_confidence_ingredient below the masterplan §16 boundary of 80', () => {
     const input = appendixInput();
-    input.items = [
-      ...input.items,
-      makeItem('scanned-label', { water_percent: 100 }, 0, null, 72),
-    ];
+    input.items = [...input.items, makeItem('scanned-label', { water_percent: 100 }, 0, null, 72)];
     const warning = calculateRecipe(input).warnings.find(
       (w) => w.code === 'low_confidence_ingredient',
     );

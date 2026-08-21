@@ -102,15 +102,14 @@ const softnessBand = (
   return { min: cleanCenter[0], max: cleanCenter[1] };
 };
 
-export const SORBET_SWEETNESS_TARGET_CENTERS: Readonly<
-  Record<RecipeDirectionTarget, number>
-> = Object.freeze({
-  [-2]: 16,
-  [-1]: 18,
-  0: 20,
-  1: 22,
-  2: 24,
-});
+export const SORBET_SWEETNESS_TARGET_CENTERS: Readonly<Record<RecipeDirectionTarget, number>> =
+  Object.freeze({
+    [-2]: 16,
+    [-1]: 18,
+    0: 20,
+    1: 22,
+    2: 24,
+  });
 
 export const SORBET_HARDNESS_TARGET_CENTERS: Readonly<
   Record<-11 | -12 | -13, Readonly<Record<RecipeDirectionTarget, number>>>
@@ -157,12 +156,18 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
   // route can honor it.
   const sweetnessOperational =
     profile === 'standard_gelato' ||
-    (profile === 'sorbet' && input.target_temperature_c === -11) ||
+    (profile === 'sorbet' &&
+      (input.target_temperature_c === -11 ||
+        input.target_temperature_c === -12 ||
+        input.target_temperature_c === -13)) ||
     (profile === 'chocolate_gelato' &&
       (input.target_temperature_c === -11 || input.target_temperature_c === -12));
   const softnessOperational =
     profile === 'standard_gelato' ||
-    (profile === 'sorbet' && input.target_temperature_c === -11);
+    (profile === 'sorbet' &&
+      (input.target_temperature_c === -11 ||
+        input.target_temperature_c === -12 ||
+        input.target_temperature_c === -13));
 
   if (regulator?.pod && sweetnessOperational) {
     const targetCenter =
@@ -210,7 +215,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
     const sorbetTemperature = input.target_temperature_c as -11 | -12 | -13;
     const targetCenter =
       profile === 'sorbet'
-        ? SORBET_HARDNESS_TARGET_CENTERS[sorbetTemperature]?.[targets.softness] ?? null
+        ? (SORBET_HARDNESS_TARGET_CENTERS[sorbetTemperature]?.[targets.softness] ?? null)
         : null;
     const targetBand =
       targetCenter !== null

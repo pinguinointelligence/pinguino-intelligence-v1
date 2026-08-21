@@ -583,7 +583,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     });
   });
 
-  it('derives truthful 1→1 diagnostic evidence for the served Sorbet vector', () => {
+  it('accepts the served Sorbet vector when composition-sensitive ice is inside its native band', () => {
     const input: RecipeInput = {
       mode: 'classic',
       category: 'sorbet',
@@ -610,38 +610,18 @@ describe('Main technical maximum — exact Watermelon authority', () => {
     expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
     expect(result.preview).toMatchObject({
-      diagnosticOnly: true,
-      violationsBefore: 1,
-      violationsAfter: 1,
-      hardResidualMetrics: ['ice_fraction'],
+      diagnosticOnly: false,
+      violationsBefore: 0,
+      violationsAfter: 0,
+      hardResidualMetrics: [],
     });
     const diagnostic = result.preview.residualMetricDiagnostics?.find(
       (metric) => metric.metric === 'ice_fraction',
     );
-    expect(diagnostic).toMatchObject({
-      metric: 'ice_fraction',
-      labelPl: 'Udział lodu',
-      acceptedMin: 51,
-      acceptedMax: 59,
-      movement: 'improved',
-      status: 'hard_block',
-      applyDisabledReasonPl:
-        'Wynik nadal pozostaje poza zatwierdzonym zakresem. Zastosowanie jest wyłączone.',
-    });
-    expect(diagnostic?.beforeValue).toBeCloseTo(47.842109570872665, 9);
-    expect(diagnostic?.proposedValue).toBeCloseTo(50.46021603218234, 9);
-    expect(diagnostic?.distanceBefore).toBeCloseTo(3.1578904291273346, 9);
-    expect(diagnostic?.distanceAfter).toBeCloseTo(0.5397839678176624, 9);
-    expect(result.preview.proposedInput.items.map((item) => [item.id, item.planned_grams])).toEqual(
-      [
-        ['watermelon', 572],
-        ['water', 218],
-        ['sucrose', 99],
-        ['dextrose', 56],
-        ['inulin', 53],
-        ['tara', 2],
-      ],
-    );
+    expect(diagnostic).toBeUndefined();
+    const calculated = calculateRecipe(result.preview.proposedInput);
+    expect(calculated.ice_fraction_percent).toBeGreaterThanOrEqual(51);
+    expect(calculated.ice_fraction_percent).toBeLessThanOrEqual(59);
   });
 
   it('keeps a Main gram lock exact and trustlessly applies the unlocked maximum', () => {

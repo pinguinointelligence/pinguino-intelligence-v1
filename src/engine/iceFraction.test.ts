@@ -161,9 +161,9 @@ describe('category awareness', () => {
     expect(milkResult).toBeCloseTo(49.75, 9); // milk band untouched
   });
 
-  it('unseeded category falls back to milk_gelato rows (calibration-pending fallback)', () => {
+  it('unseeded Sorbet never falls back to milk_gelato rows', () => {
     const viaSorbet = estimateIceFraction({ npac: 37.5, temperature_c: -11, category: 'sorbet' });
-    expect(viaSorbet).toBeCloseTo(estimateIceFraction(milk(37.5))!, 12);
+    expect(viaSorbet).toBeNull();
   });
 
   it('returns null when neither category nor milk_gelato rows exist', () => {
@@ -193,7 +193,9 @@ describe('category awareness', () => {
     expect(ICE_ANCHOR_ROWS.filter((r) => r.category === 'milk_gelato')).toHaveLength(3);
     expect(ICE_ANCHOR_ROWS.filter((r) => r.category === 'protein_gelato')).toHaveLength(3);
     expect(
-      ICE_ANCHOR_ROWS.slice(3).every((r) => (r.source ?? '').includes('owner_approved_standard_physics')),
+      ICE_ANCHOR_ROWS.slice(3).every((r) =>
+        (r.source ?? '').includes('owner_approved_standard_physics'),
+      ),
     ).toBe(true);
     // −11 verbatim from the locked spec (unchanged).
     expect(ICE_ANCHOR_ROWS[0]).toMatchObject({

@@ -430,6 +430,8 @@ export interface RecipeResult {
   pod_points: number | null;
   pac_points: number | null;
   npac_points: number | null;
+  /** Sorbet: equilibrium ice mass / initial total mix mass × 100. Other
+   * profiles retain their accepted category-anchor semantics. */
   ice_fraction_percent: number | null;
   indicators: Indicator[];
   scores: RecipeScores | null;

@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 249338,
-    "sha256": "1913daac6392069e109c6fd20d2b04d456d271cad96e8cf6a0017f5ef672d588",
+    "bytes": 257798,
+    "sha256": "09df43be7d5c03f9aac3759816c19f2e76b70f9f6ed1a5dc83164edc193dca44",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -41,7 +41,7 @@
     },
     {
       "path": "src/engine/calculateRecipe.ts",
-      "sha256": "edccc9334184aa4bc0421f2fa51461a010ecbd8b74a381e3030c5b7fec69534b"
+      "sha256": "cf24261114ac015ed7b7e2c3e862bff13292fad6a469068f5dd02338f0bdcc2f"
     },
     {
       "path": "src/engine/composition.ts",
@@ -101,7 +101,7 @@
     },
     {
       "path": "src/engine/iceFraction.ts",
-      "sha256": "afe1278b7d65611926598bc5c3716214a202391c403aa2de190e739e3b5732c7"
+      "sha256": "c87bbb8752c659c788eba7119a6cab856507e2fe225ee903581c1c7090dd2f99"
     },
     {
       "path": "src/engine/nutrition.ts",
@@ -118,6 +118,10 @@
     {
       "path": "src/engine/scoring.ts",
       "sha256": "e10737e3430b398ba9a3a1066f8e0b0fc1d75b1144206279efa58cb42b464985"
+    },
+    {
+      "path": "src/engine/sorbetFreezingPhysics.ts",
+      "sha256": "68ecc2a09deecfa8797ec790ff99dc6d4842d6b85ab3994685a5c81785f710fb"
     },
     {
       "path": "src/engine/statuses.ts",
@@ -221,7 +225,7 @@
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionTargets.ts",
-      "sha256": "c055dde698b36e1615f03dea16d12f63365c2ad70002fdf89dfdbbbbe5034659"
+      "sha256": "d34fa59ca71268dd72eead2e8ceec2a0e448ae5a543bd4d9b5a96abd4282574c"
     },
     {
       "path": "src/features/recipe-score/recipeMatchScore.ts",
@@ -236,5 +240,5 @@
       "sha256": "ceb1e7b33ddb1448a584c84aafdfdb86d0b33dded9a35acee064178a3a90fc53"
     }
   ],
-  "sourceClosureSha256": "0308e62d437ce8fdf59a0704fa480403a8af322d89caedc1a6f89d63bf2a496c"
+  "sourceClosureSha256": "c40bbbeeede15baa71b0734acab45770a2c366b68de81f7bc3cb277b040b4977"
 }
