@@ -10,6 +10,7 @@ import {
 import { monitorScoreView } from './monitorSummaryView';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { scorePresentationSource } from './scorePresentationSource';
+import { WorkbenchScoreDisplay } from './WorkbenchScoreDisplay';
 
 export function WorkbenchIntelligenceHeader({
   result,
@@ -66,7 +67,6 @@ export function WorkbenchIntelligenceHeader({
         className="flex min-w-0 items-center gap-2"
         data-testid="workbench-intelligence-header"
         data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
-        aria-label={`Dopasowanie techniczne receptury: ${displayedMatch ? displayedMatch.display : 'oczekuje na przeliczenie'}`}
       >
         {pending || working ? (
           <button
@@ -90,29 +90,12 @@ export function WorkbenchIntelligenceHeader({
             </span>
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={onOpenLearning}
-            disabled={!onOpenLearning}
-            className="pro-focus-ring flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ink/10 bg-white px-3 text-left shadow-pro-e0 disabled:cursor-default"
-          >
-            <span
-              className="grid size-9 shrink-0 place-items-center rounded-full border-[3px] border-[#63bd32] font-mono text-xs font-semibold tabular-nums text-ink"
-              data-testid="workbench-score-ring"
-            >
-              {displayedMatch?.score ?? '—'}
-            </span>
-            <span className="hidden min-w-0 sm:block">
-              <strong className="block text-xs font-semibold text-ink">
-                {previewMatch ? 'Podgląd gotowy' : 'Wynik aktualny'}
-              </strong>
-              <span className="block text-[10px] text-stone-600">
-                {displayedMatch
-                  ? `${displayedMatch.display} · ${displayedMatch.label}`
-                  : 'Brak danych'}
-              </span>
-            </span>
-          </button>
+          <WorkbenchScoreDisplay
+            score={displayedMatch.score}
+            label={displayedMatch.label}
+            preview={previewMatch !== null}
+            onOpenLearning={onOpenLearning}
+          />
         )}
       </div>
     );
