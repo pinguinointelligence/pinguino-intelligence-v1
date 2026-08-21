@@ -120,14 +120,72 @@ Deno.serve(async (request) => {
       .maybeSingle();
     return json({ kind: 'idempotent', ...overlay });
   }
+  const validation = objectValue(session.validation_json);
+  const missingCriticalFields = Array.isArray(validation.missingCriticalFields)
+    ? validation.missingCriticalFields.filter((item): item is string => typeof item === 'string')
+    : [];
+  const confirmations = objectValue(body.confirmations);
+  const confirmedNoAdditionalAllergenStatement =
+    confirmations.noAdditionalAllergenStatementVisible === true;
+  const allergenConfirmationPath =
+    session.state === 'analyzed' &&
+    session.overlay_state === 'SCAN_DRAFT' &&
+    missingCriticalFields.length === 1 &&
+    missingCriticalFields[0] === 'allergen_confirmation' &&
+    validation.highRiskAuthorityRequired !== true &&
+    confirmedNoAdditionalAllergenStatement;
+  const scanResult = objectValue(session.result_json);
+  const confirmedAt = new Date().toISOString();
+  const allergenConfirmation = {
+    kind: 'no_additional_statement_visible',
+    confirmedBy: auth.user.id,
+    confirmedAt,
+  };
+  const effectiveValidation = allergenConfirmationPath
+    ? {
+        ...validation,
+        missingCriticalFields: [],
+        allergenConfirmation,
+      }
+    : validation;
+  if (allergenConfirmationPath && !text(scanResult.allergensText)) {
+    scanResult.allergensText =
+      'Osobna deklaracja alergenów niewidoczna na dostarczonej etykiecie — potwierdzone przez użytkownika; nie oznacza to automatycznie braku alergenów.';
+    scanResult.warnings = [
+      ...new Set([
+        ...(Array.isArray(scanResult.warnings) ? scanResult.warnings.filter((item): item is string => typeof item === 'string') : []),
+        'allergen_statement_absence_owner_confirmed',
+      ]),
+    ];
+  }
   if (
     session.state !== 'analyzed' ||
-    !['USABLE_FOR_OWNER', 'PENDING_PUBLICATION'].includes(session.overlay_state)
+    (!['USABLE_FOR_OWNER', 'PENDING_PUBLICATION'].includes(session.overlay_state) &&
+      !allergenConfirmationPath)
   ) {
     return json({ error: 'scan_not_ready_for_creation' }, 409);
   }
   if (new Date(session.expires_at).getTime() <= Date.now())
     return json({ error: 'scan_session_expired' }, 409);
+
+  if (allergenConfirmationPath) {
+    const { data: confirmedSession, error: confirmationError } = await service
+      .from('product_scan_sessions')
+      .update({
+        overlay_state: 'USABLE_FOR_OWNER',
+        result_json: scanResult,
+        validation_json: effectiveValidation,
+        updated_at: confirmedAt,
+      })
+      .eq('id', sessionId)
+      .eq('user_id', auth.user.id)
+      .eq('state', 'analyzed')
+      .eq('overlay_state', 'SCAN_DRAFT')
+      .select('id')
+      .maybeSingle();
+    if (confirmationError || !confirmedSession)
+      return json({ error: 'allergen_confirmation_persistence_failed' }, 503);
+  }
 
   const { data: quota, error: quotaError } = await service.rpc('reserve_product_scan_creation_v1', {
     p_actor_user_id: auth.user.id,
@@ -162,7 +220,6 @@ Deno.serve(async (request) => {
     });
   };
 
-  const scanResult = objectValue(session.result_json);
   const input = canonicalInput(scanResult);
   const privateValue = objectValue(body.privateOverlay);
   const privateOverlay = {
@@ -213,8 +270,14 @@ Deno.serve(async (request) => {
     p_evidence: {
       scannerSessionId: sessionId,
       scannerSchema: 'gellatti_product_scan_v1',
-      modelValidation: session.validation_json,
+      modelValidation: effectiveValidation,
       conflicts: scanResult.conflicts ?? [],
+      ownerConfirmations: allergenConfirmationPath
+        ? {
+            noAdditionalAllergenStatementVisible: true,
+            warning: 'absence_of_statement_is_not_no_allergens',
+          }
+        : {},
       // Raw image bytes and private overlay are deliberately absent.
     },
     p_private_overlay: privateOverlay,

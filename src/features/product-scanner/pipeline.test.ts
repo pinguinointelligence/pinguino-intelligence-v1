@@ -79,5 +79,6 @@ describe('Product Scan Session routing', () => {
     expect(nextEvidencePrompt(['nutrition_salt'])).toContain('tabeli odżywczej');
     expect(nextEvidencePrompt(['ingredientsText'])).toContain('składu i alergenów');
     expect(nextEvidencePrompt(['product_identity'])).toContain('przodu opakowania');
+    expect(nextEvidencePrompt(['allergen_confirmation'])).toContain('osobnej deklaracji alergenów');
   });
 });

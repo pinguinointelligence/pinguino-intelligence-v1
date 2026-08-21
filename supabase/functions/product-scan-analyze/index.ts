@@ -3,6 +3,7 @@ import {
   PRODUCT_SCAN_RESPONSE_SCHEMA,
   SYSTEM_PROMPT,
   extractResponseText,
+  mergeProductScanResults,
   normalizeValidatedBarcode,
   sha256Text,
   stableJson,
@@ -135,22 +136,27 @@ Deno.serve(async (request) => {
   if (totalEncodedBytes > 42_000_000) return json({ error: 'scan_payload_too_large' }, 413);
 
   const suppliedBarcode = objectValue(body.barcode);
-  const barcode = normalizeValidatedBarcode(
+  const incomingBarcode = normalizeValidatedBarcode(
     typeof suppliedBarcode.lookupValue === 'string'
       ? suppliedBarcode.lookupValue
       : typeof suppliedBarcode.value === 'string'
         ? suppliedBarcode.value
         : null,
   );
-  const exact = await exactProductForBarcode(service, barcode);
   const { data: existingSession } = await service
     .from('product_scan_sessions')
-    .select('user_id')
+    .select('user_id,result_json,barcode,vision_calls')
     .eq('id', sessionId)
     .maybeSingle();
   if (existingSession && existingSession.user_id !== auth.user.id) {
     return json({ error: 'scan_session_ownership_mismatch' }, 403);
   }
+  const establishedBarcode = normalizeValidatedBarcode(existingSession?.barcode);
+  if (establishedBarcode && incomingBarcode && establishedBarcode !== incomingBarcode) {
+    return json({ error: 'scan_session_barcode_conflict' }, 409);
+  }
+  const barcode = establishedBarcode ?? incomingBarcode;
+  const exact = await exactProductForBarcode(service, barcode);
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
       id: sessionId,
@@ -172,6 +178,13 @@ Deno.serve(async (request) => {
       })
       .eq('id', sessionId)
       .eq('user_id', auth.user.id);
+  } else if (!establishedBarcode && barcode) {
+    await service
+      .from('product_scan_sessions')
+      .update({ barcode, updated_at: new Date().toISOString() })
+      .eq('id', sessionId)
+      .eq('user_id', auth.user.id)
+      .is('barcode', null);
   }
   const assetRows = [];
   try {
@@ -232,6 +245,13 @@ Deno.serve(async (request) => {
     ignoreDuplicates: true,
   });
   if (assetError) return json({ error: 'scan_asset_metadata_failed' }, 503);
+  const { data: sessionAssets, error: sessionAssetsError } = await service
+    .from('product_scan_assets')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('user_id', auth.user.id);
+  if (sessionAssetsError) return json({ error: 'scan_asset_metadata_failed' }, 503);
+  const sessionAssetIds = (sessionAssets ?? []).map((asset) => String(asset.id));
   if (exact)
     return json({
       sessionId,
@@ -262,6 +282,10 @@ Deno.serve(async (request) => {
   const accurateRetry = body.accurateRetry === true;
   const callKind = accurateRetry ? 'accurate' : 'fast';
   const maxVisionCalls = Math.min(2, nonNegativeIntegerEnv('PRODUCT_SCANNER_MAX_VISION_CALLS', 2));
+  const priorVisionCalls = Number(existingSession?.vision_calls ?? 0);
+  if (accurateRetry && priorVisionCalls < 1) {
+    return json({ error: 'accurate_retry_requires_fast_evidence' }, 409);
+  }
   if ((accurateRetry ? 2 : 1) > maxVisionCalls) {
     return json({ error: 'session_vision_limit' }, 429);
   }
@@ -448,18 +472,19 @@ Deno.serve(async (request) => {
     (inputTokens / 1_000_000) * pricing.input +
     (outputTokens / 1_000_000) * pricing.output +
     webCalls * 0.01;
-  const validation = validateServerResult(
-    result,
+  const currentCallResult = mergeProductScanResults(null, result, barcode);
+  const currentCallValidation = validateServerResult(
+    currentCallResult,
     images.map((image) => String(image.assetId)),
   );
-  if (!validation.ok) {
+  if (!currentCallValidation.ok) {
     await service.rpc('complete_product_scan_analysis_v1', {
       p_actor_user_id: auth.user.id,
       p_session_id: sessionId,
       p_reservation_id: reserved.reservationId,
       p_status: 'failed',
-      p_result: result,
-      p_validation: validation,
+      p_result: currentCallResult,
+      p_validation: currentCallValidation,
       p_overlay_state: 'BLOCKED',
       p_input_tokens: inputTokens,
       p_output_tokens: outputTokens,
@@ -475,12 +500,41 @@ Deno.serve(async (request) => {
       422,
     );
   }
+  const cumulativeResult = mergeProductScanResults(
+    existingSession?.result_json,
+    currentCallResult,
+    barcode,
+  );
+  const validation = validateServerResult(cumulativeResult, sessionAssetIds);
+  if (!validation.ok) {
+    await service.rpc('complete_product_scan_analysis_v1', {
+      p_actor_user_id: auth.user.id,
+      p_session_id: sessionId,
+      p_reservation_id: reserved.reservationId,
+      p_status: 'failed',
+      p_result: cumulativeResult,
+      p_validation: validation,
+      p_overlay_state: 'BLOCKED',
+      p_input_tokens: inputTokens,
+      p_output_tokens: outputTokens,
+      p_web_calls: webCalls,
+      p_latency_ms: latencyMs,
+      p_actual_cost_usd: actualCost,
+    });
+    return json(
+      {
+        error: 'scanner_cumulative_validation_failed',
+        usage: { visionCalls: accurateRetry ? 2 : 1, webCalls, estimatedCostUsd: actualCost },
+      },
+      422,
+    );
+  }
   const { error: completeError } = await service.rpc('complete_product_scan_analysis_v1', {
     p_actor_user_id: auth.user.id,
     p_session_id: sessionId,
     p_reservation_id: reserved.reservationId,
     p_status: 'completed',
-    p_result: result,
+    p_result: cumulativeResult,
     p_validation: {
       missingCriticalFields: validation.missingCriticalFields,
       highRiskAuthorityRequired: validation.highRiskAuthorityRequired,
@@ -502,7 +556,7 @@ Deno.serve(async (request) => {
     );
   return json({
     sessionId,
-    result,
+    result: cumulativeResult,
     overlayState: validation.overlayState,
     missingCriticalFields: validation.missingCriticalFields,
     usage: { visionCalls: accurateRetry ? 2 : 1, webCalls, estimatedCostUsd: actualCost },

@@ -4,15 +4,18 @@
     {
       "id": "la-chocolatera",
       "product": "La Chocolatera",
-      "files": [],
-      "status": "awaiting_owner_images"
+      "files": [
+        "Zrzut ekranu 2026-08-20 o 09.51.12.png",
+        "Zrzut ekranu 2026-08-20 o 09.51.26.png"
+      ],
+      "status": "owner_local_verified_not_committed"
     },
     {
       "id": "haribo-quaxi",
       "product": "HARIBO Quaxi",
-      "files": [],
-      "status": "awaiting_owner_images"
+      "files": ["Zrzut ekranu 2026-08-20 o 09.49.20.png"],
+      "status": "owner_local_verified_not_committed"
     }
   ],
-  "note": "No exact owner-provided La Chocolatera or HARIBO Quaxi image set was present during local implementation. Do not claim real-image E2E until files and expected label facts are reviewed into this manifest."
+  "note": "Exact owner-provided images were visually reviewed from the owner's local Desktop and are intentionally not copied into the repository. Real-image E2E claims still require the staging runtime ledger and database evidence from an actual rerun."
 }

@@ -90,6 +90,8 @@ export function ProductScannerV1Page() {
   const [saved, setSaved] = useState<Record<string, unknown> | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [noAdditionalAllergenStatementVisible, setNoAdditionalAllergenStatementVisible] =
+    useState(false);
 
   const stopCamera = useCallback(() => {
     if (frameLoopRef.current !== null) cancelAnimationFrame(frameLoopRef.current);
@@ -134,6 +136,7 @@ export function ProductScannerV1Page() {
       }
       setAssets((current) => [...current, ...prepared].slice(0, MAX_IMAGES));
       setAnalysis(null);
+      setNoAdditionalAllergenStatementVisible(false);
       setSaved(null);
       setBusy(null);
     },
@@ -165,6 +168,7 @@ export function ProductScannerV1Page() {
       }),
     );
     setAnalysis(null);
+    setNoAdditionalAllergenStatementVisible(false);
     setSaved(null);
     setBusy(null);
   }, []);
@@ -383,6 +387,7 @@ export function ProductScannerV1Page() {
         return;
       }
       setAnalysis(response);
+      setNoAdditionalAllergenStatementVisible(false);
       setVisionCallsUsed(response.usage.visionCalls);
     } catch (caught) {
       if (caught instanceof ProductScannerServiceError && caught.visionCalls > 0) {
@@ -402,6 +407,9 @@ export function ProductScannerV1Page() {
       const result = await finalizeProductScan({
         sessionId,
         idempotencyKey: `${sessionId}:create-v1`,
+        confirmations: {
+          noAdditionalAllergenStatementVisible,
+        },
         privateOverlay: {},
       });
       setSaved(result);
@@ -419,6 +427,10 @@ export function ProductScannerV1Page() {
         : null,
     [analysis],
   );
+  const needsAllergenConfirmation =
+    analysis?.missingCriticalFields.includes('allergen_confirmation') === true;
+  const allergenConfirmationIsOnlyBlocker =
+    analysis?.missingCriticalFields.length === 1 && needsAllergenConfirmation;
 
   if (authStatus !== 'authed' && !import.meta.env.DEV) {
     return (
@@ -724,8 +736,26 @@ export function ProductScannerV1Page() {
           </dl>
           {missingPrompt && (
             <div className="mt-5 rounded-xl border border-gold/40 bg-gold/10 p-4 text-sm">
-              <p className="font-semibold">Potrzebne dodatkowe ujęcie</p>
+              <p className="font-semibold">
+                {needsAllergenConfirmation ? 'Sprawdź jedną rzecz' : 'Potrzebne dodatkowe ujęcie'}
+              </p>
               <p className="mt-1 text-stone-600">{missingPrompt}</p>
+              {needsAllergenConfirmation && (
+                <label className="mt-3 flex items-start gap-3 text-stone-700">
+                  <input
+                    type="checkbox"
+                    checked={noAdditionalAllergenStatementVisible}
+                    onChange={(event) =>
+                      setNoAdditionalAllergenStatementVisible(event.currentTarget.checked)
+                    }
+                    className="mt-1 size-4 accent-stone-900"
+                  />
+                  <span>
+                    Potwierdzam, że na dostarczonej etykiecie nie widzę dodatkowej deklaracji
+                    alergenów. To nie oznacza automatycznie „braku alergenów”.
+                  </span>
+                </label>
+              )}
             </div>
           )}
           {analysis.result.conflicts.length > 0 && (
@@ -738,7 +768,11 @@ export function ProductScannerV1Page() {
             <button
               type="button"
               className={primaryButton}
-              disabled={Boolean(busy) || analysis.overlayState === 'SCAN_DRAFT'}
+              disabled={
+                Boolean(busy) ||
+                (analysis.overlayState === 'SCAN_DRAFT' &&
+                  !(allergenConfirmationIsOnlyBlocker && noAdditionalAllergenStatementVisible))
+              }
               onClick={() => void save()}
             >
               Zapisz produkt

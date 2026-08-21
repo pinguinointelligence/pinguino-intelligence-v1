@@ -97,6 +97,9 @@ export async function analyzeProductImages(input: {
 export async function finalizeProductScan(input: {
   sessionId: string;
   idempotencyKey: string;
+  confirmations?: {
+    noAdditionalAllergenStatementVisible?: boolean;
+  };
   privateOverlay: {
     price?: number | null;
     currency?: string | null;
