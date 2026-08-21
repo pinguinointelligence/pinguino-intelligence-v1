@@ -1523,6 +1523,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           useRecipeStore.getState().ownerReviewGate?.technicalOnlyMainLineIds ?? [],
           proposalProductBehaviorAuthorization,
           explicitStandardRemovalConsent,
+          // The door rebuilds the frontier with the same build-only inputs the
+          // preview was staged with (see createOptimizePreview).
+          {
+            effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+            unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
+            requirePracticalPreview: true,
+          },
         );
         if (!outcome.ok) {
           // The owner-mandated block: recipe untouched, clear Polish message.

@@ -5374,6 +5374,14 @@ export function buildOptimizePreview(
         proposedCost < baselineCost - SEVERITY_EPS;
       if (!proposedSafe) return { ok: false, code: 'already_clean' };
 
+      // The verified cost sweep never moves the Main group (identity/ratio
+      // contract), so the Main frontier proof established above still
+      // describes this proposal. Carry it: the Apply door requires a
+      // re-verifiable Main proof on every 'optimize' preview with adjustable
+      // Mains, and a proof-less swept preview would be refused at Apply even
+      // though the Mains are untouched (e.g. an exact-policy Sorbet Multi-Main
+      // at its 60 % ceiling in a fully priced ECO draft).
+      attachMainObjective(preview, input, ecoMainObjective.proof);
       preview.autoBalance = { batchRescaled: false, solverRounds: 0 };
       preview.hardResidualMetrics = [];
       preview.diagnosticOnly = false;
@@ -6638,6 +6646,15 @@ export class VerifiedApply {
     technicalOnlyMainLineIds: readonly string[] = [],
     proposalAuthorization?: ProposalProductBehaviorAuthorization | null,
     explicitRemovalConsent?: ExplicitStandardRemovalConsent | null,
+    /** Build-only pipeline inputs the staged preview was built with (owner
+     * price index for ECO ranking, unavailable-Main declarations, the Pro
+     * practical-preview gate). The Apply door rebuilds the deterministic Main
+     * frontier with the SAME inputs; otherwise an honest ECO preview ranked
+     * with the owner's prices can never be reproduced and is refused. */
+    rebuildOptions: Pick<
+      OptimizePreviewOptions,
+      'effectivePriceOverrides' | 'unavailableMainIngredientIds' | 'requirePracticalPreview'
+    > = {},
   ): CommitPreviewResult {
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
     // never applies, whatever the fingerprint says.
@@ -7423,12 +7440,14 @@ export class VerifiedApply {
             authorizedRemovalLineId,
             preview.createdAt,
             {
+              ...rebuildOptions,
               excludedIngredientIds,
               productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
               technicalOnlyMainLineIds,
             },
           )
         : buildOptimizePreview(current, currentConstraints, preview.createdAt, {
+            ...rebuildOptions,
             excludedIngredientIds,
             productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
             technicalOnlyMainLineIds,
