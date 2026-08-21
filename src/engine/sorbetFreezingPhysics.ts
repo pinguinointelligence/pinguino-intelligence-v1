@@ -13,6 +13,7 @@
  * returns frozen initial water separately so the two quantities cannot be
  * confused.
  */
+import type { EngineWarning } from './types';
 
 export interface SorbetFreezingPhysicsInput {
   totalMixtureGrams: number;
@@ -86,8 +87,64 @@ const WATER_MOLECULAR_WEIGHT_KG_PER_KMOL = 18.01528;
 const CHEN_TEMPERATURE_FACTOR_C = CHEN_BETA_KG_C_PER_KMOL / WATER_MOLECULAR_WEIGHT_KG_PER_KMOL;
 
 /** Runtime authority requested and validated for the three serving temperatures. */
-const MIN_SUPPORTED_TEMPERATURE_C = -13;
-const MAX_SUPPORTED_TEMPERATURE_C = -11;
+export const SORBET_FREEZING_SUPPORTED_TEMPERATURE_C = Object.freeze({ min: -13, max: -11 });
+
+/**
+ * True when the composition-sensitive Sorbet solver is the DIRECT ice authority
+ * at `temperatureCelsius` (−13 … −11 °C). Outside this range Sorbet has no ice
+ * authority at all: it never inherits milk-gelato anchor rows, so callers must
+ * fail closed rather than substitute another category's curve.
+ */
+export function isSorbetFreezingTemperatureSupported(temperatureCelsius: number): boolean {
+  return (
+    Number.isFinite(temperatureCelsius) &&
+    temperatureCelsius >= SORBET_FREEZING_SUPPORTED_TEMPERATURE_C.min &&
+    temperatureCelsius <= SORBET_FREEZING_SUPPORTED_TEMPERATURE_C.max
+  );
+}
+
+/**
+ * `calculateRecipe` reports an unavailable Sorbet solver as a
+ * `composition_invalid` warning whose `context.reason` is this prefix followed
+ * by the `SorbetFreezingUnavailableReason`. Consumers (Monitor status, QA)
+ * must read that contract through `sorbetFreezingUnavailableReasonFromWarnings`
+ * instead of ad-hoc string matching.
+ */
+export const SORBET_FREEZING_WARNING_REASON_PREFIX = 'sorbet_freezing_';
+
+/** Compile-time exhaustive: adding a reason to the union without listing it here fails typecheck. */
+const SORBET_FREEZING_UNAVAILABLE_REASONS = {
+  invalid_input: true,
+  mass_balance_mismatch: true,
+  unsupported_temperature: true,
+  unsupported_freeze_active_solute: true,
+  sugar_share_outside_validated_domain: true,
+  invalid_composition_regression: true,
+  equilibrium_not_reachable: true,
+} as const satisfies Record<SorbetFreezingUnavailableReason, true>;
+
+/**
+ * The Sorbet solver-unavailable reason carried by an Engine result's warnings,
+ * or null when no such warning exists (i.e. the composition authority was
+ * available, or the recipe is not a Sorbet). An unrecognised suffix still
+ * reports `'unknown'` so a future reason can never be mistaken for authority.
+ */
+export function sorbetFreezingUnavailableReasonFromWarnings(
+  warnings: readonly EngineWarning[],
+): SorbetFreezingUnavailableReason | 'unknown' | null {
+  for (const warning of warnings) {
+    if (warning.code !== 'composition_invalid') continue;
+    const reason = warning.context?.reason;
+    if (typeof reason !== 'string' || !reason.startsWith(SORBET_FREEZING_WARNING_REASON_PREFIX)) {
+      continue;
+    }
+    const suffix = reason.slice(SORBET_FREEZING_WARNING_REASON_PREFIX.length);
+    return Object.hasOwn(SORBET_FREEZING_UNAVAILABLE_REASONS, suffix)
+      ? (suffix as SorbetFreezingUnavailableReason)
+      : 'unknown';
+  }
+  return null;
+}
 
 /**
  * The source design has F+G+S=0.95 of dry solids. Its five real-fruit
@@ -212,10 +269,7 @@ export function solveSorbetFreezingPhysics(
   ) {
     return unavailable('mass_balance_mismatch');
   }
-  if (
-    input.temperatureCelsius < MIN_SUPPORTED_TEMPERATURE_C ||
-    input.temperatureCelsius > MAX_SUPPORTED_TEMPERATURE_C
-  ) {
+  if (!isSorbetFreezingTemperatureSupported(input.temperatureCelsius)) {
     return unavailable('unsupported_temperature');
   }
   const unsupportedTraceToleranceGrams = Math.max(

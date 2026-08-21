@@ -3,6 +3,8 @@ import { ALLOWED_ENGINE_FUNCTIONS } from './__fixtures__/allowedEngineFunctions'
 import {
   ICE_ANCHOR_ROWS,
   ICE_TEMPERATURE_SLOPE_PER_C,
+  hasDirectIceAuthorityAtTemperature,
+  hasSeededIceAnchorAtTemperature,
   type IceAnchorRow,
 } from './config/iceAnchors';
 import { estimateIceFraction, type IceFractionInput } from './iceFraction';
@@ -164,6 +166,27 @@ describe('category awareness', () => {
   it('unseeded Sorbet never falls back to milk_gelato rows', () => {
     const viaSorbet = estimateIceFraction({ npac: 37.5, temperature_c: -11, category: 'sorbet' });
     expect(viaSorbet).toBeNull();
+  });
+
+  it('Sorbet has no seeded anchor at any temperature and never borrows the milk_gelato gate', () => {
+    expect(ICE_ANCHOR_ROWS.some((row) => row.category === 'sorbet')).toBe(false);
+    for (const temperature of [-11, -12, -13, -14]) {
+      expect(hasSeededIceAnchorAtTemperature('sorbet', temperature)).toBe(false);
+    }
+  });
+
+  it('direct ice authority: Sorbet → composition solver (−13…−11), others → seeded anchors', () => {
+    for (const temperature of [-11, -12, -13]) {
+      expect(hasDirectIceAuthorityAtTemperature('sorbet', temperature)).toBe(true);
+      expect(hasDirectIceAuthorityAtTemperature('milk_gelato', temperature)).toBe(true);
+      expect(hasDirectIceAuthorityAtTemperature('protein_gelato', temperature)).toBe(true);
+      // Documented milk_gelato fallback for other anchor-calibrated categories is unchanged.
+      expect(hasDirectIceAuthorityAtTemperature('vegan_gelato', temperature)).toBe(
+        hasSeededIceAnchorAtTemperature('vegan_gelato', temperature),
+      );
+    }
+    expect(hasDirectIceAuthorityAtTemperature('sorbet', -14)).toBe(false);
+    expect(hasDirectIceAuthorityAtTemperature('milk_gelato', -14)).toBe(false);
   });
 
   it('returns null when neither category nor milk_gelato rows exist', () => {

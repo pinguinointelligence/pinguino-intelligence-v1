@@ -26,6 +26,10 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   'estimateIceFraction',
   'projectSorbetDirectionCandidate',
   'hasSeededIceAnchorAtTemperature',
+  // Sorbet composition-freezing authority (direct ice authority, no milk fallback)
+  'hasDirectIceAuthorityAtTemperature',
+  'isSorbetFreezingTemperatureSupported',
+  'sorbetFreezingUnavailableReasonFromWarnings',
   // statuses (4G)
   'classifyIndicator',
   'classifyRecipeIndicators',

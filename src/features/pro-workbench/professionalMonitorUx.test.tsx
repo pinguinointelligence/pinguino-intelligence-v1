@@ -13,6 +13,11 @@ import { targetStepToPosition } from './recipeAxisModel';
 import { useRecipeProfileStore } from './recipeProfileStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import {
+  sorbetAuthoritySnapshots,
+  sorbetMultiMainBase,
+  unsupportedSorbet,
+} from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { ProfessionalMonitorModules } from './ProfessionalMonitorModules';
 import { buildProfessionalMonitorModules } from './professionalMonitorModel';
@@ -64,6 +69,24 @@ const { MonitorPanelContent } = await import('./MonitorPanelContent');
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(ROOT, ...parts), 'utf8');
 const textOf = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ');
+
+function renderSorbetMonitor(input: RecipeInput) {
+  behaviorFixtureState.snapshots = sorbetAuthoritySnapshots(
+    input,
+    useRecipeStore.getState().toppings,
+  );
+  const result = calculateRecipe(input);
+  const corrections = proposeCorrections({ input, context: recipeContext(input), redact: false });
+  return renderToStaticMarkup(
+    <MonitorPanelContent
+      result={result}
+      servingTemperatureC={input.target_temperature_c}
+      corrections={corrections}
+      input={input}
+      onOpenProfile={() => undefined}
+    />,
+  );
+}
 
 function renderMonitor(input: RecipeInput = starterMilkBase()) {
   behaviorFixtureState.snapshots = productBehaviorTestSnapshots(input);
@@ -315,5 +338,114 @@ describe('professional Monitor — final owner-approved information architecture
     expect(source).toContain('export function unpinMetric');
     expect(source).toContain('export function movePinned');
     expect(renderMonitor()).not.toContain('aria-label="Przypnij:');
+  });
+});
+
+describe('professional Monitor — Sorbet uses the composition-freezing authority', () => {
+  beforeEach(() => {
+    useRecipeProfileStore.getState().resetForTests();
+    useRecipeStore.setState({ toppings: [] });
+  });
+
+  const stabilityRow = (html: string) =>
+    html.match(/<div[^>]*data-testid="monitor-metric-freezing-stability"[\s\S]*?<\/div>/)?.[0] ??
+    '';
+
+  it.each([-11, -12, -13] as const)(
+    'shows a truthful "Dobra" for a valid supported Sorbet at %i°C',
+    (temperature) => {
+      vi.stubGlobal('window', {
+        location: { hostname: 'localhost' },
+        localStorage: { getItem: () => JSON.stringify(['stability']), setItem: () => undefined },
+      });
+      try {
+        const html = renderSorbetMonitor(sorbetMultiMainBase(temperature));
+        const row = stabilityRow(html);
+        expect(row).toContain('data-domain-status="GOOD"');
+        expect(textOf(row)).toContain('Dobra');
+        expect(textOf(row)).not.toContain('Brak danych');
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+
+  it('maps a stale Sorbet BASE to "Oczekuje na przeliczenie" and a current one back to "Dobra"', () => {
+    // The static-markup harness reads the profile store's initial snapshot, so the
+    // STALE/CURRENT transition is asserted at the canonical evaluator
+    // (freezingStabilityStatus.test.ts) and at the adapter boundary here.
+    const input = sorbetMultiMainBase(-12);
+    const row = (status: 'STALE' | 'GOOD') =>
+      buildProfessionalMonitorModules(
+        calculateRecipe(input),
+        input.target_temperature_c,
+        input,
+        status,
+      )
+        .find((module) => module.id === 'stability')
+        ?.primary.find((metric) => metric.id === 'freezing-stability');
+    expect(row('STALE')).toMatchObject({
+      displayText: 'Oczekuje na przeliczenie',
+      domainStatus: 'STALE',
+    });
+    expect(row('GOOD')).toMatchObject({ displayText: 'Dobra', domainStatus: 'GOOD' });
+  });
+
+  it('shows "Brak danych" — never "Dobra" — for an unsupported Sorbet composition', () => {
+    vi.stubGlobal('window', {
+      location: { hostname: 'localhost' },
+      localStorage: { getItem: () => JSON.stringify(['stability']), setItem: () => undefined },
+    });
+    try {
+      const row = stabilityRow(renderSorbetMonitor(unsupportedSorbet(sorbetMultiMainBase(-12))));
+      expect(row).toContain('data-domain-status="UNAVAILABLE"');
+      expect(textOf(row)).toContain('Brak danych');
+      expect(textOf(row)).not.toContain('Dobra');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps the Sorbet BASE freezing status unchanged through topping 0 → 1 → 20 → 0 g and removal', () => {
+    const input = sorbetMultiMainBase(-11);
+    vi.stubGlobal('window', {
+      location: { hostname: 'localhost' },
+      localStorage: { getItem: () => JSON.stringify(['stability']), setItem: () => undefined },
+    });
+    try {
+      useRecipeStore.getState().addTopping(input.items[0]!.ingredient, 0);
+      const toppingId = useRecipeStore.getState().toppings[0]!.id;
+      for (const grams of [0, 1, 20, 0]) {
+        useRecipeStore.getState().setToppingGrams(toppingId, grams);
+        const row = stabilityRow(renderSorbetMonitor(input));
+        expect(row).toContain('data-domain-status="GOOD"');
+        expect(textOf(row)).toContain('Dobra');
+        expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+      }
+      useRecipeStore.getState().removeTopping(toppingId);
+      expect(stabilityRow(renderSorbetMonitor(input))).toContain('data-domain-status="GOOD"');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('describes Sorbet ice as ice mass / total mix mass and leaves the Gelato tooltip unchanged', () => {
+    const iceRow = (input: RecipeInput) =>
+      buildProfessionalMonitorModules(
+        calculateRecipe(input),
+        input.target_temperature_c,
+        input,
+        'GOOD',
+      )
+        .find((module) => module.id === 'freezing')
+        ?.primary.find((metric) => metric.id === 'ice_fraction');
+    const sorbet = iceRow(sorbetMultiMainBase(-12));
+    expect(sorbet?.tooltip).toContain('Udział masy lodu w całej mieszance');
+    expect(sorbet?.tooltip).toContain('masa lodu / masa całej mieszanki');
+    expect(sorbet?.tooltip).not.toContain('zamrożonej wody');
+    const gelato = iceRow(starterMilkBase());
+    expect(gelato?.tooltip).toBe(
+      'Udział zamrożonej wody. Wpływa na twardość i odczucie lodu w temperaturze serwowania.',
+    );
   });
 });

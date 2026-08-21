@@ -1,8 +1,13 @@
 /**
  * Ice fraction — anchor-matrix MVP estimation (spec §9).
  *
- * Estimates the share of frozen water at the target serving temperature from
- * (category, temperature, NPAC). Inverse-linear inside the calibrated band:
+ * Estimates the category-anchored ice-fraction percentage at the target serving
+ * temperature from (category, temperature, NPAC) for the anchor-calibrated
+ * categories (milk / protein gelato and the documented milk fallback). It is NOT
+ * a Sorbet authority: Sorbet ice is ice mass / total mix mass from the
+ * composition-sensitive solver (`sorbetFreezingPhysics.ts`); this function
+ * returns null for Sorbet whenever no Sorbet anchor rows exist (none are seeded
+ * and none may be invented). Inverse-linear inside the calibrated band:
  * higher NPAC ⇒ more freezing depression ⇒ SOFTER gelato ⇒ lower ice fraction;
  * lower NPAC ⇒ harder ⇒ higher ice fraction.
  *

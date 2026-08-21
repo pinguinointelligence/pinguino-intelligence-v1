@@ -39,7 +39,10 @@ import { computeNutritionPer100g } from './nutrition';
 import { computeRecipeNpac, computeRecipePac } from './pac';
 import { computeRecipePod } from './pod';
 import { computeScores } from './scoring';
-import { solveSorbetFreezingPhysics } from './sorbetFreezingPhysics';
+import {
+  SORBET_FREEZING_WARNING_REASON_PREFIX,
+  solveSorbetFreezingPhysics,
+} from './sorbetFreezingPhysics';
 import {
   classifyRecipeIndicators,
   computeLactoseSandinessRisk,
@@ -203,7 +206,7 @@ export function calculateRecipe(input: RecipeInput): RecipeResult {
     warnings.push({
       code: 'composition_invalid',
       severity: 'warning',
-      context: { reason: `sorbet_freezing_${sorbetFreezing.reason}` },
+      context: { reason: `${SORBET_FREEZING_WARNING_REASON_PREFIX}${sorbetFreezing.reason}` },
     });
   }
   if (costs && !costs.complete) {

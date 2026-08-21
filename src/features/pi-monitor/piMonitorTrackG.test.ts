@@ -12,7 +12,7 @@
  * seeded anchor (all of −11/−12/−13), so refusals come only from a real solve.
  */
 import { describe, expect, it } from 'vitest';
-import type { RecipeGoals, RecipeInput } from '@/engine';
+import { hasSeededIceAnchorAtTemperature, type RecipeGoals, type RecipeInput } from '@/engine';
 import { buildStarterRecipeFromIntent } from '@/features/studioFlow/intentRecipeDraft';
 import {
   previewOptimization,
@@ -84,6 +84,14 @@ describe('Track G — every serving mode has a connected ice anchor (tuning appr
 
   it('a temperature with no seeded ice anchor is NOT approved (honest boundary)', () => {
     expect(isMonitorTuningApproved('milk_gelato', -14)).toBe(false);
+  });
+
+  it('Sorbet tuning approval comes from the composition freezing authority, never milk anchors', () => {
+    for (const temperature of [-11, -12, -13]) {
+      expect(isMonitorTuningApproved('sorbet', temperature)).toBe(true);
+      expect(hasSeededIceAnchorAtTemperature('sorbet', temperature)).toBe(false);
+    }
+    expect(isMonitorTuningApproved('sorbet', -14)).toBe(false);
   });
 });
 

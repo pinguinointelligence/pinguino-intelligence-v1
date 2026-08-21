@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  SORBET_FREEZING_SUPPORTED_TEMPERATURE_C,
+  SORBET_FREEZING_WARNING_REASON_PREFIX,
+  isSorbetFreezingTemperatureSupported,
   solveSorbetFreezingPhysics,
   sorbetChenCompositionParameters,
   sorbetChenFreezingPointCelsius,
+  sorbetFreezingUnavailableReasonFromWarnings,
   type SorbetFreezingPhysicsInput,
 } from './sorbetFreezingPhysics';
 
@@ -217,5 +221,54 @@ describe('Sorbet composition-sensitive Chen freezing physics', () => {
 
     const withNeutralDryMatter = solveSorbetFreezingPhysics(sourceSystem({ sucroseGrams: 240 }));
     expect(withNeutralDryMatter.status).toBe('available');
+  });
+});
+
+describe('Sorbet composition-freezing authority contract', () => {
+  it('declares exactly the three served temperatures as direct Sorbet ice authority', () => {
+    expect(SORBET_FREEZING_SUPPORTED_TEMPERATURE_C).toEqual({ min: -13, max: -11 });
+    for (const temperature of [-11, -12, -13]) {
+      expect(isSorbetFreezingTemperatureSupported(temperature)).toBe(true);
+    }
+    for (const temperature of [-10.99, -13.01, -14, 0, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(isSorbetFreezingTemperatureSupported(temperature)).toBe(false);
+    }
+    expect(solveSorbetFreezingPhysics(sourceSystem({ temperatureCelsius: -13 })).status).toBe(
+      'available',
+    );
+    expect(solveSorbetFreezingPhysics(sourceSystem({ temperatureCelsius: -13.01 }))).toMatchObject({
+      status: 'unavailable',
+      reason: 'unsupported_temperature',
+    });
+  });
+
+  it('reads the solver-unavailable reason only from the canonical warning contract', () => {
+    expect(sorbetFreezingUnavailableReasonFromWarnings([])).toBeNull();
+    expect(
+      sorbetFreezingUnavailableReasonFromWarnings([
+        { code: 'cost_incomplete', severity: 'info', context: { missing_count: 1 } },
+        { code: 'composition_invalid', severity: 'warning', context: { reason: 'lactose_gap' } },
+      ]),
+    ).toBeNull();
+    expect(
+      sorbetFreezingUnavailableReasonFromWarnings([
+        {
+          code: 'composition_invalid',
+          severity: 'warning',
+          context: {
+            reason: `${SORBET_FREEZING_WARNING_REASON_PREFIX}unsupported_freeze_active_solute`,
+          },
+        },
+      ]),
+    ).toBe('unsupported_freeze_active_solute');
+    expect(
+      sorbetFreezingUnavailableReasonFromWarnings([
+        {
+          code: 'composition_invalid',
+          severity: 'warning',
+          context: { reason: `${SORBET_FREEZING_WARNING_REASON_PREFIX}some_future_reason` },
+        },
+      ]),
+    ).toBe('unknown');
   });
 });

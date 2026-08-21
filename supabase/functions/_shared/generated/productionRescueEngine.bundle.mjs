@@ -1134,6 +1134,149 @@ function computeRecipeNpac(items, totalBatchG, options = {}) {
 }
 
 //#endregion
+//#region src/engine/sorbetFreezingPhysics.ts
+const CHEN_TEMPERATURE_FACTOR_C = 1860 / 18.01528;
+/** Runtime authority requested and validated for the three serving temperatures. */
+const SORBET_FREEZING_SUPPORTED_TEMPERATURE_C = Object.freeze({
+	min: -13,
+	max: -11
+});
+/**
+* True when the composition-sensitive Sorbet solver is the DIRECT ice authority
+* at `temperatureCelsius` (−13 … −11 °C). Outside this range Sorbet has no ice
+* authority at all: it never inherits milk-gelato anchor rows, so callers must
+* fail closed rather than substitute another category's curve.
+*/
+function isSorbetFreezingTemperatureSupported(temperatureCelsius) {
+	return Number.isFinite(temperatureCelsius) && temperatureCelsius >= SORBET_FREEZING_SUPPORTED_TEMPERATURE_C.min && temperatureCelsius <= SORBET_FREEZING_SUPPORTED_TEMPERATURE_C.max;
+}
+/**
+* `calculateRecipe` reports an unavailable Sorbet solver as a
+* `composition_invalid` warning whose `context.reason` is this prefix followed
+* by the `SorbetFreezingUnavailableReason`. Consumers (Monitor status, QA)
+* must read that contract through `sorbetFreezingUnavailableReasonFromWarnings`
+* instead of ad-hoc string matching.
+*/
+const SORBET_FREEZING_WARNING_REASON_PREFIX = "sorbet_freezing_";
+/**
+* The source design has F+G+S=0.95 of dry solids. Its five real-fruit
+* validation systems span 0.571..0.917. We permit exactly their combined
+* published domain and do not extrapolate to low-sugar solids or >95% sugar.
+*/
+const MIN_MODELED_SUGAR_DRY_SOLIDS_FRACTION = .571;
+/**
+* Canonical composition rows can carry trace mineral/salt rounding (for
+* example a mineral declaration on fruit/fibre). Below 0.05% of the mix the source data cannot
+* resolve that trace separately, so it is treated as composition precision,
+* not assigned an antifreeze coefficient. At or above this threshold the
+* unsupported solute fails closed.
+*/
+const UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION = 5e-4;
+const FRACTION_TOLERANCE = 1e-12;
+const finiteNonNegative = (value) => Number.isFinite(value) && value >= 0;
+const unavailable = (reason, parameters = null) => ({
+	status: "unavailable",
+	authority: "grajales_lagunes_composition_chen",
+	reason,
+	parameters
+});
+/** Published Scheffe regressions, Eqs. 9 and 10. */
+function sorbetChenCompositionParameters(input) {
+	const xF = input.fructoseDrySolidsFraction;
+	const xG = input.glucoseDrySolidsFraction;
+	const xS = input.sucroseDrySolidsFraction;
+	if (![
+		xF,
+		xG,
+		xS
+	].every(finiteNonNegative)) return null;
+	const modeledSugarDrySolidsFraction = xF + xG + xS;
+	const chenE = .081 * xF + .071 * xG + .064 * xS + .039 * xF * xG - .002 * xF * xS + .074 * xG * xS + .545 * xF * xG * xS;
+	const chenB = .172 * xF + .223 * xG + .114 * xS + .144 * xF * xG + .243 * xF * xS - .106 * xG * xS - 5.175 * xF * xG * xS;
+	if (!Number.isFinite(chenE) || !Number.isFinite(chenB)) return null;
+	return {
+		fructoseDrySolidsFraction: xF,
+		glucoseDrySolidsFraction: xG,
+		sucroseDrySolidsFraction: xS,
+		modeledSugarDrySolidsFraction,
+		chenE,
+		chenB
+	};
+}
+/** Source Eq. 7, returning the equilibrium melting/freezing point in Celsius. */
+function sorbetChenFreezingPointCelsius(drySolidsMassFraction, parameters) {
+	if (!Number.isFinite(drySolidsMassFraction) || drySolidsMassFraction <= 0 || drySolidsMassFraction >= 1 || !Number.isFinite(parameters.chenE) || parameters.chenE <= 0 || !Number.isFinite(parameters.chenB) || parameters.chenB < 0) return null;
+	const unboundWaterTerm = 1 - drySolidsMassFraction - parameters.chenB * drySolidsMassFraction;
+	const denominator = unboundWaterTerm + parameters.chenE * drySolidsMassFraction;
+	if (unboundWaterTerm <= 0 || denominator <= 0) return null;
+	const value = CHEN_TEMPERATURE_FACTOR_C * Math.log(unboundWaterTerm / denominator);
+	return Number.isFinite(value) ? value : null;
+}
+function solveSorbetFreezingPhysics(input) {
+	if (![
+		input.totalMixtureGrams,
+		input.initialWaterGrams,
+		input.totalDrySolidsGrams,
+		input.sucroseGrams,
+		input.glucoseGrams,
+		input.dextroseGrams,
+		input.fructoseGrams,
+		input.unsupportedFreezeActiveSolidsGrams
+	].every(finiteNonNegative) || input.totalMixtureGrams <= 0 || input.initialWaterGrams <= 0 || input.totalDrySolidsGrams <= 0 || !Number.isFinite(input.temperatureCelsius)) return unavailable("invalid_input");
+	const massToleranceGrams = Math.max(1e-9, input.totalMixtureGrams * 1e-9);
+	if (Math.abs(input.initialWaterGrams + input.totalDrySolidsGrams - input.totalMixtureGrams) > massToleranceGrams) return unavailable("mass_balance_mismatch");
+	if (!isSorbetFreezingTemperatureSupported(input.temperatureCelsius)) return unavailable("unsupported_temperature");
+	const unsupportedTraceToleranceGrams = Math.max(massToleranceGrams, input.totalMixtureGrams * UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION);
+	if (input.unsupportedFreezeActiveSolidsGrams >= unsupportedTraceToleranceGrams) return unavailable("unsupported_freeze_active_solute");
+	const glucoseEquivalentGrams = input.glucoseGrams + input.dextroseGrams;
+	if (input.fructoseGrams + glucoseEquivalentGrams + input.sucroseGrams > input.totalDrySolidsGrams + massToleranceGrams) return unavailable("invalid_input");
+	const parameters = sorbetChenCompositionParameters({
+		fructoseDrySolidsFraction: input.fructoseGrams / input.totalDrySolidsGrams,
+		glucoseDrySolidsFraction: glucoseEquivalentGrams / input.totalDrySolidsGrams,
+		sucroseDrySolidsFraction: input.sucroseGrams / input.totalDrySolidsGrams
+	});
+	if (!parameters || parameters.chenE <= 0 || parameters.chenB < 0) return unavailable("invalid_composition_regression", parameters);
+	if (parameters.modeledSugarDrySolidsFraction < MIN_MODELED_SUGAR_DRY_SOLIDS_FRACTION - FRACTION_TOLERANCE || parameters.modeledSugarDrySolidsFraction > .9500000000009999) return unavailable("sugar_share_outside_validated_domain", parameters);
+	const initialDrySolidsFraction = input.totalDrySolidsGrams / input.totalMixtureGrams;
+	const initialFreezingPointCelsius = sorbetChenFreezingPointCelsius(initialDrySolidsFraction, parameters);
+	if (initialFreezingPointCelsius === null) return unavailable("invalid_composition_regression", parameters);
+	let equilibriumDrySolidsFraction = initialDrySolidsFraction;
+	if (input.temperatureCelsius < initialFreezingPointCelsius) {
+		const q = Math.exp(input.temperatureCelsius / CHEN_TEMPERATURE_FACTOR_C);
+		const a = 1 + parameters.chenB;
+		const denominator = a - q * (a - parameters.chenE);
+		const solved = (1 - q) / denominator;
+		const physicalUpper = Math.min(1 - FRACTION_TOLERANCE, 1 / (1 + parameters.chenB) - FRACTION_TOLERANCE);
+		if (!Number.isFinite(solved) || solved < initialDrySolidsFraction - FRACTION_TOLERANCE || solved > physicalUpper) return unavailable("equilibrium_not_reachable", parameters);
+		equilibriumDrySolidsFraction = Math.max(initialDrySolidsFraction, solved);
+	}
+	const liquidWaterGrams = input.totalDrySolidsGrams * (1 - equilibriumDrySolidsFraction) / equilibriumDrySolidsFraction;
+	const iceMassGrams = input.initialWaterGrams - liquidWaterGrams;
+	if (!Number.isFinite(liquidWaterGrams) || !Number.isFinite(iceMassGrams) || liquidWaterGrams < -massToleranceGrams || iceMassGrams < -massToleranceGrams || iceMassGrams > input.initialWaterGrams + massToleranceGrams) return unavailable("equilibrium_not_reachable", parameters);
+	const boundedLiquidWaterGrams = Math.max(0, Math.min(input.initialWaterGrams, liquidWaterGrams));
+	const boundedIceMassGrams = input.initialWaterGrams - boundedLiquidWaterGrams;
+	const totalSerumGrams = boundedLiquidWaterGrams + input.totalDrySolidsGrams;
+	return {
+		status: "available",
+		authority: "grajales_lagunes_composition_chen",
+		parameters,
+		initialFreezingPointCelsius,
+		equilibriumSerum: {
+			liquidWaterGrams: boundedLiquidWaterGrams,
+			dissolvedDrySolidsGrams: input.totalDrySolidsGrams,
+			totalSerumGrams,
+			waterMassFraction: boundedLiquidWaterGrams / totalSerumGrams,
+			drySolidsMassFraction: input.totalDrySolidsGrams / totalSerumGrams
+		},
+		iceMassGrams: boundedIceMassGrams,
+		iceMassFractionOfMix: boundedIceMassGrams / input.totalMixtureGrams,
+		frozenFractionOfInitialWater: boundedIceMassGrams / input.initialWaterGrams,
+		massConservationResidualGrams: boundedIceMassGrams + totalSerumGrams - input.totalMixtureGrams,
+		iterations: 0
+	};
+}
+
+//#endregion
 //#region src/engine/config/iceAnchors.ts
 /**
 * Seeded milk_gelato anchor rows, all transcribed from ALREADY-APPROVED reference
@@ -1160,7 +1303,10 @@ function computeRecipeNpac(items, totalBatchG, options = {}) {
 * production-grade slope would need additional approved validation points spread
 * across the band. No such points exist in the approved records, so none are
 * invented. Unseeded categories still fall back to the milk_gelato rows at the
-* same temperature (a pre-existing, documented category-fallback approximation).
+* same temperature (a pre-existing, documented category-fallback approximation) —
+* EXCEPT Sorbet, whose ice authority is the composition-sensitive solver in
+* `src/engine/sorbetFreezingPhysics.ts` and which therefore never reads these
+* rows (see `estimateIceFraction` and `hasDirectIceAuthorityAtTemperature`).
 */
 const ICE_ANCHOR_ROWS = [
 	{
@@ -1230,8 +1376,13 @@ const ICE_ANCHOR_ROWS = [
 /**
 * Ice fraction — anchor-matrix MVP estimation (spec §9).
 *
-* Estimates the share of frozen water at the target serving temperature from
-* (category, temperature, NPAC). Inverse-linear inside the calibrated band:
+* Estimates the category-anchored ice-fraction percentage at the target serving
+* temperature from (category, temperature, NPAC) for the anchor-calibrated
+* categories (milk / protein gelato and the documented milk fallback). It is NOT
+* a Sorbet authority: Sorbet ice is ice mass / total mix mass from the
+* composition-sensitive solver (`sorbetFreezingPhysics.ts`); this function
+* returns null for Sorbet whenever no Sorbet anchor rows exist (none are seeded
+* and none may be invented). Inverse-linear inside the calibrated band:
 * higher NPAC ⇒ more freezing depression ⇒ SOFTER gelato ⇒ lower ice fraction;
 * lower NPAC ⇒ harder ⇒ higher ice fraction.
 *
@@ -1759,130 +1910,6 @@ function computeScores(input) {
 }
 
 //#endregion
-//#region src/engine/sorbetFreezingPhysics.ts
-const CHEN_TEMPERATURE_FACTOR_C = 1860 / 18.01528;
-/** Runtime authority requested and validated for the three serving temperatures. */
-const MIN_SUPPORTED_TEMPERATURE_C = -13;
-const MAX_SUPPORTED_TEMPERATURE_C = -11;
-/**
-* The source design has F+G+S=0.95 of dry solids. Its five real-fruit
-* validation systems span 0.571..0.917. We permit exactly their combined
-* published domain and do not extrapolate to low-sugar solids or >95% sugar.
-*/
-const MIN_MODELED_SUGAR_DRY_SOLIDS_FRACTION = .571;
-/**
-* Canonical composition rows can carry trace mineral/salt rounding (for
-* example a mineral declaration on fruit/fibre). Below 0.05% of the mix the source data cannot
-* resolve that trace separately, so it is treated as composition precision,
-* not assigned an antifreeze coefficient. At or above this threshold the
-* unsupported solute fails closed.
-*/
-const UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION = 5e-4;
-const FRACTION_TOLERANCE = 1e-12;
-const finiteNonNegative = (value) => Number.isFinite(value) && value >= 0;
-const unavailable = (reason, parameters = null) => ({
-	status: "unavailable",
-	authority: "grajales_lagunes_composition_chen",
-	reason,
-	parameters
-});
-/** Published Scheffe regressions, Eqs. 9 and 10. */
-function sorbetChenCompositionParameters(input) {
-	const xF = input.fructoseDrySolidsFraction;
-	const xG = input.glucoseDrySolidsFraction;
-	const xS = input.sucroseDrySolidsFraction;
-	if (![
-		xF,
-		xG,
-		xS
-	].every(finiteNonNegative)) return null;
-	const modeledSugarDrySolidsFraction = xF + xG + xS;
-	const chenE = .081 * xF + .071 * xG + .064 * xS + .039 * xF * xG - .002 * xF * xS + .074 * xG * xS + .545 * xF * xG * xS;
-	const chenB = .172 * xF + .223 * xG + .114 * xS + .144 * xF * xG + .243 * xF * xS - .106 * xG * xS - 5.175 * xF * xG * xS;
-	if (!Number.isFinite(chenE) || !Number.isFinite(chenB)) return null;
-	return {
-		fructoseDrySolidsFraction: xF,
-		glucoseDrySolidsFraction: xG,
-		sucroseDrySolidsFraction: xS,
-		modeledSugarDrySolidsFraction,
-		chenE,
-		chenB
-	};
-}
-/** Source Eq. 7, returning the equilibrium melting/freezing point in Celsius. */
-function sorbetChenFreezingPointCelsius(drySolidsMassFraction, parameters) {
-	if (!Number.isFinite(drySolidsMassFraction) || drySolidsMassFraction <= 0 || drySolidsMassFraction >= 1 || !Number.isFinite(parameters.chenE) || parameters.chenE <= 0 || !Number.isFinite(parameters.chenB) || parameters.chenB < 0) return null;
-	const unboundWaterTerm = 1 - drySolidsMassFraction - parameters.chenB * drySolidsMassFraction;
-	const denominator = unboundWaterTerm + parameters.chenE * drySolidsMassFraction;
-	if (unboundWaterTerm <= 0 || denominator <= 0) return null;
-	const value = CHEN_TEMPERATURE_FACTOR_C * Math.log(unboundWaterTerm / denominator);
-	return Number.isFinite(value) ? value : null;
-}
-function solveSorbetFreezingPhysics(input) {
-	if (![
-		input.totalMixtureGrams,
-		input.initialWaterGrams,
-		input.totalDrySolidsGrams,
-		input.sucroseGrams,
-		input.glucoseGrams,
-		input.dextroseGrams,
-		input.fructoseGrams,
-		input.unsupportedFreezeActiveSolidsGrams
-	].every(finiteNonNegative) || input.totalMixtureGrams <= 0 || input.initialWaterGrams <= 0 || input.totalDrySolidsGrams <= 0 || !Number.isFinite(input.temperatureCelsius)) return unavailable("invalid_input");
-	const massToleranceGrams = Math.max(1e-9, input.totalMixtureGrams * 1e-9);
-	if (Math.abs(input.initialWaterGrams + input.totalDrySolidsGrams - input.totalMixtureGrams) > massToleranceGrams) return unavailable("mass_balance_mismatch");
-	if (input.temperatureCelsius < MIN_SUPPORTED_TEMPERATURE_C || input.temperatureCelsius > MAX_SUPPORTED_TEMPERATURE_C) return unavailable("unsupported_temperature");
-	const unsupportedTraceToleranceGrams = Math.max(massToleranceGrams, input.totalMixtureGrams * UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION);
-	if (input.unsupportedFreezeActiveSolidsGrams >= unsupportedTraceToleranceGrams) return unavailable("unsupported_freeze_active_solute");
-	const glucoseEquivalentGrams = input.glucoseGrams + input.dextroseGrams;
-	if (input.fructoseGrams + glucoseEquivalentGrams + input.sucroseGrams > input.totalDrySolidsGrams + massToleranceGrams) return unavailable("invalid_input");
-	const parameters = sorbetChenCompositionParameters({
-		fructoseDrySolidsFraction: input.fructoseGrams / input.totalDrySolidsGrams,
-		glucoseDrySolidsFraction: glucoseEquivalentGrams / input.totalDrySolidsGrams,
-		sucroseDrySolidsFraction: input.sucroseGrams / input.totalDrySolidsGrams
-	});
-	if (!parameters || parameters.chenE <= 0 || parameters.chenB < 0) return unavailable("invalid_composition_regression", parameters);
-	if (parameters.modeledSugarDrySolidsFraction < MIN_MODELED_SUGAR_DRY_SOLIDS_FRACTION - FRACTION_TOLERANCE || parameters.modeledSugarDrySolidsFraction > .9500000000009999) return unavailable("sugar_share_outside_validated_domain", parameters);
-	const initialDrySolidsFraction = input.totalDrySolidsGrams / input.totalMixtureGrams;
-	const initialFreezingPointCelsius = sorbetChenFreezingPointCelsius(initialDrySolidsFraction, parameters);
-	if (initialFreezingPointCelsius === null) return unavailable("invalid_composition_regression", parameters);
-	let equilibriumDrySolidsFraction = initialDrySolidsFraction;
-	if (input.temperatureCelsius < initialFreezingPointCelsius) {
-		const q = Math.exp(input.temperatureCelsius / CHEN_TEMPERATURE_FACTOR_C);
-		const a = 1 + parameters.chenB;
-		const denominator = a - q * (a - parameters.chenE);
-		const solved = (1 - q) / denominator;
-		const physicalUpper = Math.min(1 - FRACTION_TOLERANCE, 1 / (1 + parameters.chenB) - FRACTION_TOLERANCE);
-		if (!Number.isFinite(solved) || solved < initialDrySolidsFraction - FRACTION_TOLERANCE || solved > physicalUpper) return unavailable("equilibrium_not_reachable", parameters);
-		equilibriumDrySolidsFraction = Math.max(initialDrySolidsFraction, solved);
-	}
-	const liquidWaterGrams = input.totalDrySolidsGrams * (1 - equilibriumDrySolidsFraction) / equilibriumDrySolidsFraction;
-	const iceMassGrams = input.initialWaterGrams - liquidWaterGrams;
-	if (!Number.isFinite(liquidWaterGrams) || !Number.isFinite(iceMassGrams) || liquidWaterGrams < -massToleranceGrams || iceMassGrams < -massToleranceGrams || iceMassGrams > input.initialWaterGrams + massToleranceGrams) return unavailable("equilibrium_not_reachable", parameters);
-	const boundedLiquidWaterGrams = Math.max(0, Math.min(input.initialWaterGrams, liquidWaterGrams));
-	const boundedIceMassGrams = input.initialWaterGrams - boundedLiquidWaterGrams;
-	const totalSerumGrams = boundedLiquidWaterGrams + input.totalDrySolidsGrams;
-	return {
-		status: "available",
-		authority: "grajales_lagunes_composition_chen",
-		parameters,
-		initialFreezingPointCelsius,
-		equilibriumSerum: {
-			liquidWaterGrams: boundedLiquidWaterGrams,
-			dissolvedDrySolidsGrams: input.totalDrySolidsGrams,
-			totalSerumGrams,
-			waterMassFraction: boundedLiquidWaterGrams / totalSerumGrams,
-			drySolidsMassFraction: input.totalDrySolidsGrams / totalSerumGrams
-		},
-		iceMassGrams: boundedIceMassGrams,
-		iceMassFractionOfMix: boundedIceMassGrams / input.totalMixtureGrams,
-		frozenFractionOfInitialWater: boundedIceMassGrams / input.initialWaterGrams,
-		massConservationResidualGrams: boundedIceMassGrams + totalSerumGrams - input.totalMixtureGrams,
-		iterations: 0
-	};
-}
-
-//#endregion
 //#region src/engine/calculateRecipe.ts
 /**
 * calculateRecipe — the deterministic pipeline entry point (spec §12/§18).
@@ -2012,7 +2039,7 @@ function calculateRecipe(input) {
 	if (sorbetFreezing?.status === "unavailable") warnings.push({
 		code: "composition_invalid",
 		severity: "warning",
-		context: { reason: `sorbet_freezing_${sorbetFreezing.reason}` }
+		context: { reason: `${SORBET_FREEZING_WARNING_REASON_PREFIX}${sorbetFreezing.reason}` }
 	});
 	if (costs && !costs.complete) warnings.push({
 		code: "cost_incomplete",

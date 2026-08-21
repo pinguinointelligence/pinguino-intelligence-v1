@@ -1,13 +1,17 @@
 /**
  * PINGÜINO PI Monitor — data-driven interactive-tuning approval (Track G).
  *
- * Interactive tuning is offered ONLY where the canonical ice-fraction model has a
- * SEEDED anchor at the recipe's serving temperature (its own category row, or the
- * milk_gelato fallback at that temperature) — i.e. the ice estimate needs no
- * cross-temperature extrapolation. This delegates to the engine's
- * `hasSeededIceAnchorAtTemperature`, so it is NOT a hand-maintained list: when new
- * approved anchors are wired into `src/engine/config/iceAnchors.ts`, the cells they
- * cover become tunable automatically, with no change here.
+ * Interactive tuning is offered ONLY where the Engine owns a DIRECT ice authority
+ * at the recipe's serving temperature — i.e. the ice result needs no
+ * cross-temperature or cross-category substitution:
+ *  - anchor-calibrated categories: a SEEDED anchor at that temperature (its own
+ *    category row, or the documented milk_gelato fallback);
+ *  - Sorbet: the composition-sensitive freezing solver (−13 … −11 °C), never the
+ *    milk_gelato anchor rows.
+ * This delegates to the engine's `hasDirectIceAuthorityAtTemperature`, so it is NOT
+ * a hand-maintained list: when new approved anchors are wired into
+ * `src/engine/config/iceAnchors.ts`, the cells they cover become tunable
+ * automatically, with no change here.
  *
  * HISTORY: before CONFIG 0.7.0 only milk_gelato @ −11 had a seeded anchor, so
  * −12/−13 (and Ninja Gelato → −13) fell back to the −11 anchor + a temperature
@@ -18,17 +22,18 @@
  * unavailable rather than endorsing gram changes from a temperature-extrapolated
  * ice curve. See docs/engine/TRACK_G_ICE_ANCHOR_WIRING.md.
  */
-import { hasSeededIceAnchorAtTemperature, type RecipeInput } from '@/engine';
+import { hasDirectIceAuthorityAtTemperature, type RecipeInput } from '@/engine';
 
 /**
  * True when interactive Monitor tuning is scientifically grounded for this recipe's
- * category × serving temperature (a same-temperature seeded ice anchor exists).
+ * category × serving temperature (a direct same-temperature ice authority exists:
+ * a seeded anchor row, or the Sorbet composition solver).
  */
 export function isMonitorTuningApproved(
   category: RecipeInput['category'],
   servingTemperatureC: number,
 ): boolean {
-  return hasSeededIceAnchorAtTemperature(category, servingTemperatureC);
+  return hasDirectIceAuthorityAtTemperature(category, servingTemperatureC);
 }
 
 /**

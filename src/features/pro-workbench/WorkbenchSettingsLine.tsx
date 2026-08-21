@@ -308,18 +308,6 @@ export function WorkbenchSettingsLine({
             testid="workbench-product-type"
             stacked={compact}
           />
-          {store.visibleProductType === 'sorbet' ? (
-            <ReadinessBadge
-              className={cn('mt-1', !compact && 'ml-[7.3rem]')}
-              state="W PRZYGOTOWANIU"
-              details={{
-                limitation: 'Sorbet nie blokuje istniejącego nabiału.',
-                calculationImpact:
-                  'Profil zakresów działa, lecz zgodność składników nie jest gwarantowana.',
-                remaining: 'Dodać walidację nabiału.',
-              }}
-            />
-          ) : null}
           {store.visibleProductType === 'vegan' ? (
             <ReadinessBadge
               className={cn('mt-1', !compact && 'ml-[7.3rem]')}

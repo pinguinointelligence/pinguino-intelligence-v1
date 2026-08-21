@@ -1,4 +1,11 @@
-import { ICE_ANCHOR_ROWS, type RecipeInput, type RecipeResult, type TargetMetric } from '@/engine';
+import {
+  ICE_ANCHOR_ROWS,
+  isSorbetFreezingTemperatureSupported,
+  sorbetFreezingUnavailableReasonFromWarnings,
+  type RecipeInput,
+  type RecipeResult,
+  type TargetMetric,
+} from '@/engine';
 import {
   buildRecipeBehaviorAuthority,
   recipeBehaviorModuleGate,
@@ -18,6 +25,7 @@ export type FreezingStabilityReason =
   | 'product_behavior_unavailable'
   | 'profile_evidence_unavailable'
   | 'direct_ice_authority_unavailable'
+  | 'sorbet_freezing_authority_unavailable'
   | 'alcohol_safety_violation'
   | 'canonical_constraint_violation'
   | 'canonical_constraint_passed';
@@ -40,6 +48,11 @@ const FREEZING_INDICATORS: readonly TargetMetric[] = ['npac', 'ice_fraction'];
 const finite = (value: number | null | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+/**
+ * Anchor-calibrated categories (Gelato / Protein) certify freezing only from a
+ * same-temperature seeded row of their OWN category — the milk_gelato category
+ * fallback is deliberately insufficient for GOOD. Unchanged by the Sorbet path.
+ */
 const hasDirectSeededIceAuthority = (recipe: RecipeInput): boolean =>
   ICE_ANCHOR_ROWS.some(
     (row) =>
@@ -47,6 +60,37 @@ const hasDirectSeededIceAuthority = (recipe: RecipeInput): boolean =>
       row.temperature_c === recipe.target_temperature_c &&
       row.status === 'seeded',
   );
+
+/**
+ * Sorbet never uses seeded ice anchors. Its direct freezing authority is the
+ * composition-sensitive solver in `calculateRecipe`: an authoritative result has
+ * a finite total-mix ice fraction, carries no `sorbet_freezing_*` unavailable
+ * warning and sits at a supported serving temperature. Anything else fails
+ * closed — unsupported compositions are never turned green.
+ */
+const hasSorbetCompositionFreezingAuthority = (
+  recipe: RecipeInput,
+  result: RecipeResult,
+): boolean =>
+  recipe.category === 'sorbet' &&
+  isSorbetFreezingTemperatureSupported(recipe.target_temperature_c) &&
+  finite(result.ice_fraction_percent) &&
+  sorbetFreezingUnavailableReasonFromWarnings(result.warnings) === null;
+
+/**
+ * Monitor-status ice authority. Deliberately stricter than the engine's
+ * `hasDirectIceAuthorityAtTemperature` (which accepts the documented milk_gelato
+ * fallback for tuning approval): status GOOD needs own-category direct authority.
+ */
+const hasMonitorStatusIceAuthority = (recipe: RecipeInput, result: RecipeResult): boolean =>
+  recipe.category === 'sorbet'
+    ? hasSorbetCompositionFreezingAuthority(recipe, result)
+    : hasDirectSeededIceAuthority(recipe);
+
+const directIceAuthorityReason = (recipe: RecipeInput): FreezingStabilityReason =>
+  recipe.category === 'sorbet'
+    ? 'sorbet_freezing_authority_unavailable'
+    : 'direct_ice_authority_unavailable';
 
 const hasCompleteFreezingResult = (result: RecipeResult): boolean => {
   if (
@@ -75,7 +119,8 @@ const hasCompleteFreezingResult = (result: RecipeResult): boolean => {
  * Canonical qualitative truth for the professional Monitor row. It evaluates
  * the exact supplied BASE through the existing unified constraint authority;
  * React only translates the returned state. Category fallback ice curves are
- * deliberately insufficient for GOOD.
+ * deliberately insufficient for GOOD; Sorbet is certified only by its own
+ * composition-sensitive freezing authority (never by milk_gelato anchors).
  */
 export function evaluateFreezingStabilityStatus(
   input: FreezingStabilityAssessmentInput,
@@ -113,7 +158,11 @@ export function evaluateFreezingStabilityStatus(
   if (!hasCompleteFreezingResult(result)) {
     return {
       status: 'UNAVAILABLE',
-      reasons: ['calculation_unavailable'],
+      reasons:
+        input.recipe.category === 'sorbet' &&
+        sorbetFreezingUnavailableReasonFromWarnings(result.warnings) !== null
+          ? ['sorbet_freezing_authority_unavailable']
+          : ['calculation_unavailable'],
       result,
       constraintAuthority,
     };
@@ -141,10 +190,10 @@ export function evaluateFreezingStabilityStatus(
     };
   }
 
-  if (!hasDirectSeededIceAuthority(input.recipe)) {
+  if (!hasMonitorStatusIceAuthority(input.recipe, result)) {
     return {
       status: 'UNAVAILABLE',
-      reasons: ['direct_ice_authority_unavailable'],
+      reasons: [directIceAuthorityReason(input.recipe)],
       result,
       constraintAuthority,
     };

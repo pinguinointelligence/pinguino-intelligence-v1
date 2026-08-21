@@ -66,11 +66,23 @@ export {
 } from './pac';
 
 export type { IceAnchorRow } from './config/iceAnchors';
-export { ICE_ANCHOR_ROWS, ICE_TEMPERATURE_SLOPE_PER_C, hasSeededIceAnchorAtTemperature } from './config/iceAnchors';
+export {
+  ICE_ANCHOR_ROWS,
+  ICE_TEMPERATURE_SLOPE_PER_C,
+  hasDirectIceAuthorityAtTemperature,
+  hasSeededIceAnchorAtTemperature,
+} from './config/iceAnchors';
 export type { IceFractionInput, IceFractionOptions } from './iceFraction';
 export { estimateIceFraction } from './iceFraction';
 export type { SorbetDirectionProjectionTarget } from './sorbetDirectionProjection';
 export { projectSorbetDirectionCandidate } from './sorbetDirectionProjection';
+export type { SorbetFreezingUnavailableReason } from './sorbetFreezingPhysics';
+export {
+  SORBET_FREEZING_SUPPORTED_TEMPERATURE_C,
+  SORBET_FREEZING_WARNING_REASON_PREFIX,
+  isSorbetFreezingTemperatureSupported,
+  sorbetFreezingUnavailableReasonFromWarnings,
+} from './sorbetFreezingPhysics';
 
 export { IDEAL_ZONE_FRACTION } from './config/targets';
 export type {

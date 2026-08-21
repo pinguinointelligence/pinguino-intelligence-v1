@@ -1,4 +1,4 @@
-import type { RecipeInput, RecipeResult, TargetMetric } from '@/engine';
+import type { ProductCategory, RecipeInput, RecipeResult, TargetMetric } from '@/engine';
 import {
   GOLDEN_RANGE_STATE_TEXT,
   bandPosition,
@@ -74,6 +74,17 @@ const TOOLTIP = {
   salt: 'Łączna masa soli w aktualnej partii.',
   alcohol: 'Udział alkoholu w całej mieszance.',
 } as const;
+
+/**
+ * Sorbet ice is an explicit total-mix quantity (ice mass / total mix mass) from
+ * the composition-sensitive solver — never "frozen water share" and never a
+ * milk-anchor estimate. Anchor-calibrated profiles keep their accepted wording.
+ */
+const SORBET_ICE_TOOLTIP =
+  'Udział masy lodu w całej mieszance (masa lodu / masa całej mieszanki) w temperaturze serwowania. Wpływa na twardość i odczucie lodu.';
+
+const iceTooltip = (category: ProductCategory): string =>
+  category === 'sorbet' ? SORBET_ICE_TOOLTIP : TOOLTIP.ice;
 
 const indicator = (result: RecipeResult, metric: TargetMetric) =>
   result.indicators.find((candidate) => candidate.key === metric);
@@ -209,13 +220,14 @@ export function buildProfessionalMonitorModules(
 ): ProfessionalMonitorModule[] {
   const stabilizers = assessStabilizerDosage(input);
   const stabilizer = stabilizers[0] ?? null;
+  const iceTip = iceTooltip(input.category);
 
   const definitions: Omit<ProfessionalMonitorModule, 'problem'>[] = [
     {
       id: 'freezing',
       title: 'Zamrożenie',
       primary: [
-        classified(result, 'ice_fraction', 'Frakcja lodu', TOOLTIP.ice, 'ice_fraction'),
+        classified(result, 'ice_fraction', 'Frakcja lodu', iceTip, 'ice_fraction'),
         metric('pac', 'PAC', result.pac_points, '', TOOLTIP.pac, null, 'pac'),
         classified(result, 'npac', 'NPAC', TOOLTIP.npac, 'npac'),
       ],

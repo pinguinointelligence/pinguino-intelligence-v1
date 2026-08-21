@@ -254,9 +254,11 @@ describe('profile semantics and readiness', () => {
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     expect(settings).toContain('role="status"');
     expect(settings).toContain('aria-live="polite"');
-    for (const type of ["visibleProductType === 'sorbet'", "visibleProductType === 'vegan'"]) {
-      expect(settings).toContain(type);
-    }
+    // Sorbet is a fully supported product type: no readiness marker, no
+    // preparation gate and no Sorbet-only branch in the settings line.
+    expect(settings).not.toContain("visibleProductType === 'sorbet'");
+    expect(settings).not.toContain('Sorbet nie blokuje');
+    expect(settings).toContain("visibleProductType === 'vegan'");
     expect(settings).toContain('<ProteinTargetControl');
     expect(settings).toContain('Mapper 2088');
     expect(settings).not.toContain('testid="workbench-quality"');
