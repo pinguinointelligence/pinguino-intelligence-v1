@@ -5,6 +5,7 @@ import {
   type GoldenRangeReading,
 } from '@/features/recipe-score';
 import { assessStabilizerDosage } from '@/features/formulation/stabilizerDosage';
+import type { FreezingStabilityStatus } from '@/features/recipe-constraints';
 import { buildMonitorScaleModel, type MonitorScaleModel } from './monitorScaleModel';
 
 export type ProfessionalMonitorModuleId =
@@ -37,6 +38,8 @@ export interface ProfessionalMonitorMetric {
   reading: GoldenRangeReading | null;
   scaleModel: MonitorScaleModel | null;
   tooltip: string;
+  displayText?: string;
+  domainStatus?: FreezingStabilityStatus;
 }
 
 export interface ProfessionalMonitorModule {
@@ -166,14 +169,46 @@ const stabilizerReading = (
 const hasProblem = (rows: readonly ProfessionalMonitorMetric[]) =>
   rows.some((row) => row.reading?.state === 'red');
 
+const FREEZING_STABILITY_COPY: Readonly<Record<FreezingStabilityStatus, string>> = {
+  GOOD: 'Dobra',
+  ATTENTION: 'Wymaga uwagi',
+  UNAVAILABLE: 'Brak danych',
+  STALE: 'Oczekuje na przeliczenie',
+};
+
+const freezingStabilityReading = (status: FreezingStabilityStatus): GoldenRangeReading => {
+  if (status === 'GOOD') {
+    return {
+      state: 'golden',
+      textKey: GOLDEN_RANGE_STATE_TEXT.golden.textKey,
+      text: GOLDEN_RANGE_STATE_TEXT.golden.text,
+      side: 'inside',
+    };
+  }
+  if (status === 'ATTENTION') {
+    return {
+      state: 'red',
+      textKey: GOLDEN_RANGE_STATE_TEXT.red.textKey,
+      text: GOLDEN_RANGE_STATE_TEXT.red.text,
+      side: null,
+    };
+  }
+  return {
+    state: 'neutral',
+    textKey: GOLDEN_RANGE_STATE_TEXT.neutral.textKey,
+    text: GOLDEN_RANGE_STATE_TEXT.neutral.text,
+    side: null,
+  };
+};
+
 export function buildProfessionalMonitorModules(
   result: RecipeResult,
   servingTemperatureC: number,
   input: RecipeInput,
+  freezingStabilityStatus: FreezingStabilityStatus = 'UNAVAILABLE',
 ): ProfessionalMonitorModule[] {
   const stabilizers = assessStabilizerDosage(input);
   const stabilizer = stabilizers[0] ?? null;
-  const npacReading = readingFor(result, 'npac');
 
   const definitions: Omit<ProfessionalMonitorModule, 'problem'>[] = [
     {
@@ -270,7 +305,7 @@ export function buildProfessionalMonitorModules(
           null,
           '',
           TOOLTIP.stability,
-          npacReading,
+          freezingStabilityReading(freezingStabilityStatus),
         ),
         classified(
           result,
@@ -302,6 +337,14 @@ export function buildProfessionalMonitorModules(
       ],
     },
   ];
+
+  const freezingStability = definitions
+    .find((module) => module.id === 'stability')
+    ?.primary.find((row) => row.id === 'freezing-stability');
+  if (freezingStability) {
+    freezingStability.displayText = FREEZING_STABILITY_COPY[freezingStabilityStatus];
+    freezingStability.domainStatus = freezingStabilityStatus;
+  }
 
   return definitions.map((module) => ({
     ...module,

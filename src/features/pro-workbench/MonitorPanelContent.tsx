@@ -24,6 +24,8 @@ import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/l
 import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 import { polishPositionNoun } from './polishPositionNoun';
 import { buildFallbackNotes } from '@/features/pi-panel/indicatorView';
+import { evaluateFreezingStabilityStatus } from '@/features/recipe-constraints';
+import { useRecipeProfileStore } from './recipeProfileStore';
 import {
   buildRecipeBehaviorAuthority,
   recipeInputFromFrozenBehavior,
@@ -116,6 +118,7 @@ export function MonitorPanelContent({
   const toppings = useRecipeStore((state) => state.toppings);
   const behaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
+  const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
   const behaviorAuthority = useMemo(
     () =>
       // The professional Monitor is the technical view of the Base. A
@@ -151,9 +154,24 @@ export function MonitorPanelContent({
           : result,
     [behaviorAuthority.requiredLineIds.length, frozenInput, legacyInspection, result],
   );
+  const freezingStability = useMemo(
+    () =>
+      evaluateFreezingStabilityStatus({
+        recipe: monitorInput,
+        snapshots: behaviorSnapshots,
+        calculationState: awaitingRecalculation ? 'STALE' : 'CURRENT',
+      }),
+    [awaitingRecalculation, behaviorSnapshots, monitorInput],
+  );
   const modules = useMemo(
-    () => buildProfessionalMonitorModules(frozenResult, servingTemperatureC, monitorInput),
-    [frozenResult, monitorInput, servingTemperatureC],
+    () =>
+      buildProfessionalMonitorModules(
+        frozenResult,
+        servingTemperatureC,
+        monitorInput,
+        freezingStability.status,
+      ),
+    [freezingStability.status, frozenResult, monitorInput, servingTemperatureC],
   );
   const fallbackNotes = useMemo(() => buildFallbackNotes(frozenResult), [frozenResult]);
   const previewProjection = useMemo(() => {
@@ -170,12 +188,18 @@ export function MonitorPanelContent({
       'technical',
     );
     const previewResult = calculateRecipe(frozenPreviewInput);
+    const previewFreezingStability = evaluateFreezingStabilityStatus({
+      recipe: frozenPreviewInput,
+      snapshots: previewSnapshots,
+      calculationState: 'CURRENT',
+    });
     return {
       result: previewResult,
       modules: buildProfessionalMonitorModules(
         previewResult,
         frozenPreviewInput.target_temperature_c,
         frozenPreviewInput,
+        previewFreezingStability.status,
       ),
     };
   }, [behaviorSnapshots, legacyInspection, preview, substitutionAuthorization]);

@@ -143,12 +143,20 @@ function MetricDetail({ metric }: { metric: ProfessionalMonitorMetric }) {
       data-testid={`monitor-metric-${metric.id}`}
       data-raw-metric={metric.rawMetric}
       data-evaluation={metric.reading?.state ?? 'none'}
+      data-domain-status={metric.domainStatus}
       title={metric.tooltip}
     >
       <span className="min-w-0 text-xs text-stone-600">{metric.label}</span>
-      <span className="font-mono text-xs font-semibold tabular-nums text-ink">
-        {metric.value === null ? '—' : formatValue(metric.value)}
-        {metric.value !== null && metric.unit ? ` ${metric.unit}` : ''}
+      <span
+        className={cn(
+          'max-w-[14rem] text-right text-xs font-semibold leading-tight text-ink',
+          metric.displayText === undefined && 'font-mono tabular-nums',
+        )}
+      >
+        {metric.displayText ?? (metric.value === null ? '—' : formatValue(metric.value))}
+        {metric.displayText === undefined && metric.value !== null && metric.unit
+          ? ` ${metric.unit}`
+          : ''}
       </span>
     </div>
   );

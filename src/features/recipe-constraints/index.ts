@@ -61,6 +61,15 @@ export {
 } from './recipeConstraintAuthority';
 
 export {
+  evaluateFreezingStabilityStatus,
+  type FreezingStabilityAssessment,
+  type FreezingStabilityAssessmentInput,
+  type FreezingStabilityCalculationState,
+  type FreezingStabilityReason,
+  type FreezingStabilityStatus,
+} from './freezingStabilityStatus';
+
+export {
   GELATO_STABILIZER_SYSTEM_POLICY,
   assessGelatoStabilizerSystem,
   clampGelatoStabilizerComponentGrams,

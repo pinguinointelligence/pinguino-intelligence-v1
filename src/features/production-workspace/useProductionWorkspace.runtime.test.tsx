@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import {
   attachPracticalRecipeAudit,
@@ -10,6 +11,7 @@ import {
 } from '@/features/practical-recipe/practicalRecipe';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import type {
@@ -49,6 +51,24 @@ const deferred = <T,>() => {
     reject = onReject;
   });
   return { promise, resolve, reject };
+};
+
+const canonicalGelatoStarterInput = () => {
+  const starter = buildCanonicalNewRecipeStarter({
+    visibleProductType: 'gelato',
+    servingModeId: 'temp_minus_11',
+    formulationStrategy: 'optimal',
+    targetBatchGrams: 1_000,
+  });
+  return {
+    items: starter.items,
+    mode: 'classic' as const,
+    category: starter.category,
+    target_temperature_c: starter.targetTemperatureC,
+    target_batch_grams: starter.targetBatchGrams,
+    machine_capacity_grams: null,
+    goals: { formulation_strategy: starter.formulationStrategy },
+  };
 };
 
 const productionSessionWithDeviation = () => {
@@ -330,12 +350,18 @@ describe('Production trusted Rescue runtime races', () => {
     expect(view?.rescueAuthorization.status).toBe('idle');
   });
 
-  it('runs server PRODUCTION validation even when a cached local module flag is stale', async () => {
+  it('starts from fresh server PRODUCTION authority even when a cached local module flag is stale', async () => {
+    const starterInput = canonicalGelatoStarterInput();
     const executable = attachPracticalRecipeAudit(
-      DEFAULT_PRESET,
-      DEFAULT_PRESET,
+      starterInput,
+      starterInput,
       '2026-08-19T10:00:00.000Z',
     );
+    expect(executable.items).toHaveLength(6);
+    expect(executable.items.every((item) => item.id.startsWith('new-recipe-'))).toBe(true);
+    expect(
+      executable.items.every((item) => canonicalIngredientId(item.ingredient).startsWith('PI-ING-')),
+    ).toBe(true);
     const snapshots = productBehaviorTestSnapshots(executable);
     const firstLineId = executable.items[0]!.id;
     snapshots[firstLineId] = {
@@ -359,10 +385,37 @@ describe('Production trusted Rescue runtime races', () => {
       practicalRecipeAudit: readPracticalRecipeAudit(
         attachPracticalRecipeAudit(loadedExecutable, loadedExecutable, '2026-08-19T10:00:00.000Z'),
       ),
+      productionThermalMode: 'HEAT_CAPABLE',
       dirty: false,
     });
+    const startedRun: ProductionRun = {
+      ...durableRescuedRun(productionSessionWithDeviation()),
+      runId: 'run-production-authority',
+      recipeId: 'recipe-production-authority',
+      recipeVersionId: 'version-production-authority',
+      recipeVersionNumber: 1,
+      plannedBatchG: executable.target_batch_grams,
+      plannedItems: executable.items.map((item, index) => ({
+        id: item.id,
+        name: item.ingredient.name,
+        canonicalIngredientId: canonicalIngredientId(item.ingredient),
+        processScope: 'BASE_FORMULATION' as const,
+        scopePosition: index,
+        plannedGrams: item.planned_grams,
+        displayGrams: item.planned_grams,
+      })),
+      productProfile: executable.category,
+      temperatureC: executable.target_temperature_c,
+      thermalMode: 'HEAT_CAPABLE',
+      processReadiness: 'READY',
+      processAdvisories: [],
+      actual: null,
+      rescue: null,
+      events: [],
+    };
     const repository = {
       listRuns: vi.fn(async () => ({ items: [], nextCursor: null })),
+      startRun: vi.fn(async () => startedRun),
     } as unknown as ProductionRepository;
     mocks.resolveProductionRepository.mockReturnValue({
       repository,
@@ -388,6 +441,31 @@ describe('Production trusted Rescue runtime races', () => {
       expect.objectContaining({ module: 'PRODUCTION' }),
     );
     expect(view?.prerequisite?.code).not.toBe('product_authority_required');
+
+    await act(async () => view!.startNewSession());
+
+    expect(repository.startRun).toHaveBeenCalledTimes(1);
+    const startArgs = vi.mocked(repository.startRun).mock.calls[0]![0];
+    expect(
+      startArgs.version.recipeInput.items.map((item) => ({
+        lineId: item.id,
+        canonicalId: canonicalIngredientId(item.ingredient),
+      })),
+    ).toEqual(
+      executable.items.map((item) => ({
+        lineId: item.id,
+        canonicalId: canonicalIngredientId(item.ingredient),
+      })),
+    );
+    expect(
+      Object.values(startArgs.version.productComposition!.behaviorSnapshots ?? {}).map(
+        (snapshot) => snapshot?.mapperIngredientId,
+      ),
+    ).toEqual(executable.items.map((item) => canonicalIngredientId(item.ingredient)));
+    expect(view?.sessionStartError).toBeNull();
+    expect(useProductionSessionStore.getState().session?.sessionId).toBe(
+      'run-production-authority',
+    );
   });
 
   it('shows bounded process advice without a recalculate loop or automatic start', async () => {

@@ -1086,7 +1086,13 @@ export function useProductionWorkspace(enabled: boolean) {
         const localAuthority = evaluateRecipeConstraintAuthority({
           recipe: plannedInput,
           snapshots: plannedComposition.behaviorSnapshots ?? {},
-          module: 'PRODUCTION',
+          // The persisted snapshot belongs to the immutable recipe version.
+          // Its cached PRODUCTION bit can therefore be older than the fresh
+          // server decision (notably for advisory-only process evidence). Keep
+          // this local exact-candidate gate on immutable RECIPE_VERSION authority,
+          // then require canonical server PRODUCTION validation immediately
+          // below and again in production_start_run_v2.
+          module: 'RECIPE_VERSION',
           technicalOnlyMainLineIds:
             plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
         });
