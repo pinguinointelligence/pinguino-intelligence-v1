@@ -149,7 +149,7 @@
     },
     {
       "path": "src/features/practical-recipe/practicalRecipe.ts",
-      "sha256": "cf33e5cbab3adad76fa00ad1e7396c98702d65cd0bbc990b49c7450ae7c700a2"
+      "sha256": "88e65c9715bad163027242bf39d910ea8ef354d89372791e52e5f44d5d07d544"
     },
     {
       "path": "src/features/pro-core/recipeScaling.ts",
@@ -232,5 +232,5 @@
       "sha256": "ceb1e7b33ddb1448a584c84aafdfdb86d0b33dded9a35acee064178a3a90fc53"
     }
   ],
-  "sourceClosureSha256": "d61e9e55db2104dd393a79284a28600f2fb1f1502f02839ed5719db295fcec61"
+  "sourceClosureSha256": "92208f9f99b2a2041abe48ce396ae42e3fc1bf0759297dacda477b05bc2d9ef5"
 }

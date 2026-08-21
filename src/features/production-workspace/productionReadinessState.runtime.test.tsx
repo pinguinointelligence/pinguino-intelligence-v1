@@ -6,8 +6,14 @@ import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import {
   attachPracticalRecipeAudit,
+  attachSavedPracticalRecipeAudit,
+  practicalRecipeAuditMatchesInput,
   readPracticalRecipeAudit,
 } from '@/features/practical-recipe/practicalRecipe';
+import {
+  attachRecipeProfileMetadata,
+  profileSnapshotFromState,
+} from '@/features/pro-workbench/recipeProfilePersistence';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
@@ -113,6 +119,21 @@ describe('Production readiness runtime state machine', () => {
       `readiness-version-${version}`,
       productionVersionFingerprint(input, composition),
     );
+  };
+
+  const jsonbStyleRoundTrip = <T,>(value: T): T => {
+    const reorder = (candidate: unknown): unknown => {
+      if (Array.isArray(candidate)) return candidate.map(reorder);
+      if (candidate !== null && typeof candidate === 'object') {
+        return Object.fromEntries(
+          Object.entries(candidate as Record<string, unknown>)
+            .sort(([left], [right]) => right.localeCompare(left))
+            .map(([key, child]) => [key, reorder(child)]),
+        );
+      }
+      return candidate;
+    };
+    return JSON.parse(JSON.stringify(reorder(value))) as T;
   };
 
   beforeEach(() => {
@@ -238,5 +259,49 @@ describe('Production readiness runtime state machine', () => {
         title: 'Zapisz wersję wykonawczą',
       });
     }
+  });
+
+  it('rehydrates an exact saved executable version as ready after a JSON round-trip', async () => {
+    await render();
+    await vi.waitFor(() => expect(view?.prerequisite).toBeNull());
+
+    const beforeSave = useRecipeStore.getState();
+    const canonical = buildRecipeInput(beforeSave, 'planning');
+    const persisted = attachSavedPracticalRecipeAudit(
+      attachRecipeProfileMetadata(
+        canonical,
+        profileSnapshotFromState(
+          beforeSave,
+          beforeSave.direction_targets,
+          useRecipeProfileStore.getState().directionIntents,
+        ),
+      ),
+      beforeSave.practicalRecipeAudit!,
+    );
+    const composition = recipeCompositionFromState(beforeSave);
+    const roundTripped = jsonbStyleRoundTrip(persisted);
+    const roundTrippedComposition = jsonbStyleRoundTrip(composition);
+
+    act(() => {
+      useRecipeStore.getState().loadRecipeInput(roundTripped, {
+        savedId: 'readiness-recipe',
+        savedName: 'Readiness QA',
+        versionNumber: 2,
+        versionId: 'readiness-version-2',
+        versionDate: '2026-08-21T12:02:00.000Z',
+        composition: roundTrippedComposition,
+      });
+    });
+
+    const reopened = useRecipeStore.getState();
+    expect(
+      practicalRecipeAuditMatchesInput(
+        buildRecipeInput(reopened, 'planning'),
+        reopened.practicalRecipeAudit,
+      ),
+    ).toBe(true);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+    await render();
+    await vi.waitFor(() => expect(view?.prerequisite).toBeNull());
   });
 });

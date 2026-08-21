@@ -96,8 +96,24 @@ type PracticalPersistedInput = RecipeInput & {
   [PRACTICAL_RECIPE_METADATA_KEY]?: PracticalRecipeSavedAudit;
 };
 
+const canonicalFingerprintValue = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonicalFingerprintValue);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, child]) => child !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, canonicalFingerprintValue(child)]),
+    );
+  }
+  return value;
+};
+
+const canonicalFingerprintJson = (value: unknown): string =>
+  JSON.stringify(canonicalFingerprintValue(value));
+
 export function practicalRecipeInputFingerprint(input: RecipeInput): string {
-  return JSON.stringify({
+  return canonicalFingerprintJson({
     mode: input.mode,
     category: input.category,
     temperature: input.target_temperature_c,
@@ -127,9 +143,21 @@ export function practicalRecipeInputFingerprint(input: RecipeInput): string {
 export const practicalRecipeAuditMatchesInput = (
   input: RecipeInput,
   audit: PracticalRecipeSavedAudit | null | undefined,
-): boolean =>
-  audit?.modelVersion === PRACTICAL_RECIPE_MODEL_VERSION &&
-  audit.executableFingerprint === practicalRecipeInputFingerprint(input);
+): boolean => {
+  if (audit?.modelVersion !== PRACTICAL_RECIPE_MODEL_VERSION) return false;
+  const currentFingerprint = practicalRecipeInputFingerprint(input);
+  if (audit.executableFingerprint === currentFingerprint) return true;
+  try {
+    // Fingerprints saved before canonical key ordering may have passed through
+    // PostgreSQL jsonb, which reorders nested object keys without changing any
+    // technical value. Canonicalize that historical JSON once on comparison;
+    // every value still has to match exactly, so this never converts stale
+    // evidence into current evidence.
+    return canonicalFingerprintJson(JSON.parse(audit.executableFingerprint)) === currentFingerprint;
+  } catch {
+    return false;
+  }
+};
 
 export function attachSavedPracticalRecipeAudit(
   input: RecipeInput,
