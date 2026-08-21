@@ -23,9 +23,10 @@ import {
   applyEffectiveCustomerPricesToToppings,
 } from '@/features/pro-core/effectiveRecipePricing';
 import {
-  practicalRecipeAuditMatchesInput,
+  practicalRecipeInputFingerprint,
   practicalizeRecipeCandidate,
 } from '@/features/practical-recipe/practicalRecipe';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { productBehaviorRequiredLineIds } from '@/features/product-intelligence';
 import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
@@ -48,6 +49,10 @@ import type {
   ProductProcessReadinessDetail,
   ProductionThermalMode,
 } from '@/features/product-intelligence';
+import {
+  productionRecipeLifecycleState,
+  productionVersionFingerprint,
+} from './productionReadinessState';
 
 export type ProductionRescueAuthorizationInvalidation = 'expired' | 'revision_mismatch' | null;
 
@@ -208,15 +213,16 @@ export const durableProductionRecoveryRelation = (
 export const productionSourceForRecipe = (
   recipe: Pick<
     RecipeState,
-    'dirty' | 'savedRecipeId' | 'savedRecipeName' | 'currentVersionId' | 'currentVersionNumber'
+    'savedRecipeId' | 'savedRecipeName' | 'currentVersionId' | 'currentVersionNumber'
   >,
+  executableVersionMatchesCurrent: boolean,
 ) => ({
   recipeId: recipe.savedRecipeId,
   recipeVersionId:
-    !recipe.dirty && recipe.savedRecipeId && recipe.currentVersionId
+    executableVersionMatchesCurrent && recipe.savedRecipeId && recipe.currentVersionId
       ? recipe.currentVersionId
       : null,
-  recipeVersionNumber: recipe.dirty ? null : recipe.currentVersionNumber,
+  recipeVersionNumber: executableVersionMatchesCurrent ? recipe.currentVersionNumber : null,
   recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
 });
 
@@ -273,9 +279,9 @@ export function useProductionWorkspace(enabled: boolean) {
   const replaceSession = useProductionSessionStore((state) => state.replaceSession);
   const restoreDurableSession = useProductionSessionStore((state) => state.restoreDurableSession);
   const constraints = useConstraintStudioStore((state) => state.constraints);
-  const lastApplied = useConstraintStudioStore((state) => state.history.at(-1));
   const preview = useConstraintStudioStore((state) => state.preview);
   const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
+  const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
   const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
   const [behaviorServerGate, setBehaviorServerGate] = useState<{
     key: string | null;
@@ -343,16 +349,34 @@ export function useProductionWorkspace(enabled: boolean) {
       }),
     [customerPrices, recipe],
   );
+  const currentProductionVersionFingerprint = useMemo(
+    () => productionVersionFingerprint(plannedInput, plannedComposition),
+    [plannedComposition, plannedInput],
+  );
+  const recipeLifecycle = useMemo(
+    () =>
+      productionRecipeLifecycleState({
+        workingInput: plannedInput,
+        practicalAudit: recipe.practicalRecipeAudit,
+        calculationStale: awaitingRecalculation,
+        currentProductionFingerprint: currentProductionVersionFingerprint,
+        savedProductionFingerprint: recipe.savedProductionFingerprint,
+        savedVersionId: recipe.currentVersionId,
+        legacySavedStateClean: !recipe.dirty,
+      }),
+    [
+      awaitingRecalculation,
+      currentProductionVersionFingerprint,
+      plannedInput,
+      recipe.currentVersionId,
+      recipe.dirty,
+      recipe.practicalRecipeAudit,
+      recipe.savedProductionFingerprint,
+    ],
+  );
 
   const practicalGate = useMemo(() => {
-    const currentWasApplied =
-      lastApplied?.practicalization !== undefined &&
-      JSON.stringify(lastApplied.after.input) === JSON.stringify(plannedInput);
-    const restoredVerified = practicalRecipeAuditMatchesInput(
-      plannedInput,
-      recipe.practicalRecipeAudit,
-    );
-    if (!currentWasApplied && !restoredVerified) {
+    if (recipeLifecycle === 'TECHNICALLY_STALE') {
       return {
         ready: false,
         prerequisite:
@@ -386,7 +410,8 @@ export function useProductionWorkspace(enabled: boolean) {
         ),
       };
     }
-    return JSON.stringify(result.audit.executableInput) === JSON.stringify(plannedInput)
+    return practicalRecipeInputFingerprint(result.audit.executableInput) ===
+      practicalRecipeInputFingerprint(plannedInput)
       ? { ready: true, prerequisite: null }
       : {
           ready: false,
@@ -400,14 +425,16 @@ export function useProductionWorkspace(enabled: boolean) {
         };
   }, [
     constraints,
-    lastApplied,
     plannedInput,
     preview,
     recalculationTerminal,
-    recipe.practicalRecipeAudit,
+    recipeLifecycle,
   ]);
 
-  const source = useMemo(() => productionSourceForRecipe(recipe), [recipe]);
+  const source = useMemo(
+    () => productionSourceForRecipe(recipe, recipeLifecycle === 'READY'),
+    [recipe, recipeLifecycle],
+  );
   const recoveryKey = `${ownerUserId ?? 'anon'}:${source.recipeVersionId ?? 'unsaved'}`;
   const currentSourceFingerprint = useMemo(
     () => productionSourceFingerprint(plannedInput, plannedComposition),
@@ -883,13 +910,13 @@ export function useProductionWorkspace(enabled: boolean) {
       if (!latestSession || latestSession.sessionId !== consumed.runId) {
         throw new Error('The active Production run changed while Rescue was being applied.');
       }
+      updateRescueAuthorization({ status: 'idle' });
       replaceSession(
         mergePendingProductionDrafts(
           hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
           latestSession,
         ),
       );
-      updateRescueAuthorization({ status: 'idle' });
     } catch (error) {
       if (isProductionRescueAuthorizationRefreshError(error)) {
         updateRescueAuthorization((current) =>

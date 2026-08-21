@@ -54,11 +54,13 @@ import {
 } from '@/features/practical-recipe/practicalRecipe';
 import {
   readRecipeCompositionMetadata,
+  recipeCompositionFromState,
   type OwnerReviewRecipeGate,
   type RecipeCompositionMetadata,
   type RecipeToppingItem,
   type RecipeToppingIngredient,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
 import {
   buildCanonicalNewRecipeStarter,
   DEFAULT_NEW_RECIPE_PROFILE,
@@ -244,6 +246,9 @@ export interface RecipeState {
   /** Verified whole-gram provenance restored from a saved recipe/version. It
    * never grants Apply consent; every consumer matches its material fingerprint. */
   practicalRecipeAudit: PracticalRecipeSavedAudit | null;
+  /** Exact immutable recipe-version identity last persisted for Production.
+   * Kept separate from `dirty` and from the current technical calculation. */
+  savedProductionFingerprint: string | null;
   /**
    * Owner P0 NIGHTLY (live FAILURE 1, Phase 3) — MONOTONIC DRAFT REVISION.
    * Incremented on EVERY material edit (gram, add/remove, lock change, §17
@@ -419,6 +424,7 @@ export interface RecipeState {
     versionDate?: string | null,
     practicalRecipeAudit?: PracticalRecipeSavedAudit | null,
     versionId?: string | null,
+    savedProductionFingerprint?: string | null,
   ) => void;
   /** Record a server-authorized, whole-gram audit for an unchanged recipe.
    * This does not mutate the formulation or its saved/dirty identity. */
@@ -577,6 +583,7 @@ const fromPreset = (preset: DemoPreset) => ({
   machineLabel: null,
   dirty: false,
   practicalRecipeAudit: null,
+  savedProductionFingerprint: null,
 });
 
 const profileOwnerKey = (): string => useAuthStore.getState().user?.id ?? 'local-device';
@@ -676,6 +683,7 @@ export function recipePersistPartialize(state: RecipeState) {
     machineLabel: state.machineLabel,
     dirty: state.dirty,
     practicalRecipeAudit: state.practicalRecipeAudit,
+    savedProductionFingerprint: state.savedProductionFingerprint,
     draftContextSeq: state.draftContextSeq,
   };
 }
@@ -1778,8 +1786,17 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionDate: link.versionDate ?? null,
           dirty: false,
           practicalRecipeAudit,
+          savedProductionFingerprint: null,
         }));
         const opened = useRecipeStore.getState();
+        if (link.versionId && compositionMetadata) {
+          set({
+            savedProductionFingerprint: productionVersionFingerprint(
+              buildRecipeInput(opened),
+              recipeCompositionFromState(opened),
+            ),
+          });
+        }
         useIngredientTableUxStore.getState().hydrateRecipeMeta(profile?.ingredientUxByLineId ?? {});
         useRecipeProfileStore
           .getState()
@@ -1792,6 +1809,7 @@ export const useRecipeStore = create<RecipeState>()(
         versionDate = null,
         practicalRecipeAudit,
         versionId = null,
+        savedProductionFingerprint = null,
       ) =>
         set({
           savedRecipeId: id,
@@ -1804,6 +1822,7 @@ export const useRecipeStore = create<RecipeState>()(
           newRecipeStarterKey: null,
           newRecipeStarterMaterialFingerprint: null,
           ...(practicalRecipeAudit === undefined ? {} : { practicalRecipeAudit }),
+          savedProductionFingerprint,
         }),
       acknowledgePracticalRecipeAudit: (practicalRecipeAudit) =>
         set({ practicalRecipeAudit: structuredClone(practicalRecipeAudit) }),
@@ -1926,6 +1945,7 @@ export const useRecipeStore = create<RecipeState>()(
             },
             newRecipeStarterMaterialFingerprint: starterMaterialFingerprint,
             practicalRecipeAudit: null,
+            savedProductionFingerprint: null,
             ...(preserveHomeMachine
               ? {}
               : {

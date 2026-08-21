@@ -90,5 +90,7 @@ describe('handler invariants', () => {
       '[constraints, draftRevision, options.buildInput, practicalRecipeAudit]',
     );
     expect(SRC).toContain('practicalRecipeAuditMatchesInput(');
+    expect(SRC).not.toContain('JSON.stringify(last.after.input)');
+    expect(SRC).toContain('productionVersionFingerprint(recipeInput, productComposition)');
   });
 });

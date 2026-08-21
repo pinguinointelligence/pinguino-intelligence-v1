@@ -20,12 +20,11 @@ describe('production source integrity', () => {
   it('uses the immutable version id only while the current vector is still saved', () => {
     expect(
       productionSourceForRecipe({
-        dirty: false,
         savedRecipeId: 'recipe-1',
         savedRecipeName: 'Pistacja',
         currentVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
         currentVersionNumber: 3,
-      }),
+      }, true),
     ).toEqual({
       recipeId: 'recipe-1',
       recipeVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
@@ -35,12 +34,11 @@ describe('production source integrity', () => {
 
     expect(
       productionSourceForRecipe({
-        dirty: true,
         savedRecipeId: 'recipe-1',
         savedRecipeName: 'Pistacja',
         currentVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
         currentVersionNumber: 3,
-      }),
+      }, false),
     ).toEqual({
       recipeId: 'recipe-1',
       recipeVersionId: null,

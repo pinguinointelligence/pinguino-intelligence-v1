@@ -1503,6 +1503,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         if (!preview) return;
         const terminalBeforeApply = get().recalculationTerminal;
         const awaitingBeforeApply = useRecipeProfileStore.getState().awaitingRecalculation;
+        const practicalAuditBeforeApply = useRecipeStore.getState().practicalRecipeAudit;
         // The Apply gate consumes the SAME canonical draft selector (FAILURE 1) +
         // the monotonic revision (Phase 3) — the door itself re-checks both.
         const draft = selectCanonicalDraft();
@@ -1593,12 +1594,29 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                 suggestedFixAuthorization: structuredClone(suggestedFixAuthorization),
               }
             : undefined;
+        const appliedInput = selectCanonicalDraft().input;
+        const appliedPracticalization = outcome.verified.record.practicalization!;
+        const appliedPracticalAudit = readPracticalRecipeAudit(
+          attachPracticalRecipeAudit(
+            appliedInput,
+            appliedPracticalization.exactInput,
+            outcome.verified.record.at,
+          ),
+        )!;
+        useRecipeStore.getState().acknowledgePracticalRecipeAudit(appliedPracticalAudit);
+        const recordBase: AppliedChangeRecord = {
+          ...outcome.verified.record,
+          before: {
+            ...outcome.verified.record.before,
+            practicalRecipeAudit: structuredClone(practicalAuditBeforeApply),
+          },
+        };
         const record: AppliedChangeRecord = presentation
           ? {
-              ...outcome.verified.record,
-              before: { ...outcome.verified.record.before, presentation },
+              ...recordBase,
+              before: { ...recordBase.before, presentation },
             }
-          : outcome.verified.record;
+          : recordBase;
         set({
           constraints: outcome.verified.constraints,
           history: [...history, record],
@@ -1630,6 +1648,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           ...(last.before.productBehaviorSnapshots
             ? { productBehaviorSnapshots: structuredClone(last.before.productBehaviorSnapshots) }
             : {}),
+          practicalRecipeAudit: structuredClone(last.before.practicalRecipeAudit ?? null),
           dirty: true,
           // Phase 3: the undo restore is itself a material edit (monotonic).
           draftRevision: state.draftRevision + 1,

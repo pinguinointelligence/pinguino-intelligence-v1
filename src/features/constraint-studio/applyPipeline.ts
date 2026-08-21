@@ -157,6 +157,7 @@ import {
   PRACTICAL_RECIPE_MODEL_VERSION,
   type PracticalRecipeAudit,
   type PracticalRecipeResult,
+  type PracticalRecipeSavedAudit,
 } from '@/features/practical-recipe/practicalRecipe';
 import { mainTechnicalLinearUpperBound } from './mainTechnicalLinearBound';
 
@@ -6183,6 +6184,9 @@ export interface AppliedChangeRecord {
     constraints: ConstraintSet;
     excludedIngredientIds: readonly string[];
     productBehaviorSnapshots?: Record<string, ProductBehaviorSnapshot>;
+    /** Current whole-gram authority before Apply. Undo restores this exact
+     * evidence so readiness derives from the restored fingerprint. */
+    practicalRecipeAudit?: PracticalRecipeSavedAudit | null;
     /** Session-only score/Preview provenance. Omitted for legacy history. */
     presentation?: AppliedPresentationSnapshot;
   };

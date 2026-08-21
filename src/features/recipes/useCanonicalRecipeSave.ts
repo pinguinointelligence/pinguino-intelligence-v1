@@ -24,9 +24,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import {
-  attachPracticalRecipeAudit,
   attachSavedPracticalRecipeAudit,
   practicalRecipeAuditMatchesInput,
+  practicalRecipeInputFingerprint,
   practicalizeRecipeCandidate,
   readPracticalRecipeAudit,
 } from '@/features/practical-recipe/practicalRecipe';
@@ -46,6 +46,7 @@ import {
   productBehaviorRequiredLineIds,
 } from '@/features/product-intelligence';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
+import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
@@ -82,13 +83,6 @@ const buildRecipeInputFromStore = (): RecipeInput => {
       }),
     ),
   );
-  const last = useConstraintStudioStore.getState().history.at(-1);
-  const currentWasApplied =
-    last?.practicalization !== undefined &&
-    JSON.stringify(last.after.input) === JSON.stringify(input);
-  if (currentWasApplied) {
-    return attachPracticalRecipeAudit(withProfile, last.practicalization!.exactInput, last!.at);
-  }
   return practicalRecipeAuditMatchesInput(input, state.practicalRecipeAudit)
     ? attachSavedPracticalRecipeAudit(withProfile, state.practicalRecipeAudit!)
     : withProfile;
@@ -211,15 +205,11 @@ export function useCanonicalRecipeSave(
           'Receptura zawiera produkt wymagający ponownej walidacji przed zapisem. Przelicz recepturę.',
       };
     }
-    const last = useConstraintStudioStore.getState().history.at(-1);
-    const currentWasApplied =
-      last?.practicalization !== undefined &&
-      JSON.stringify(last.after.input) === JSON.stringify(buildRecipeInput(state));
     const restoredVerified = practicalRecipeAuditMatchesInput(
       buildRecipeInput(state),
       practicalRecipeAudit,
     );
-    if (!currentWasApplied && !restoredVerified) {
+    if (!restoredVerified) {
       return {
         blocked: true,
         message: 'Przed zapisem otwórz Preview i zastosuj zweryfikowaną recepturę wykonawczą.',
@@ -227,7 +217,9 @@ export function useCanonicalRecipeSave(
     }
     const result = practicalizeRecipeCandidate(input, constraints);
     if (!result.ok) return { blocked: true, message: result.messagePl };
-    const exactAsWritten = JSON.stringify(result.audit.executableInput) === JSON.stringify(input);
+    const exactAsWritten =
+      practicalRecipeInputFingerprint(result.audit.executableInput) ===
+      practicalRecipeInputFingerprint(input);
     return exactAsWritten
       ? { blocked: false, message: null }
       : {
@@ -347,6 +339,9 @@ export function useCanonicalRecipeSave(
             version.createdAt,
             readPracticalRecipeAudit(recipeInput),
             version.versionId,
+            productComposition
+              ? productionVersionFingerprint(recipeInput, productComposition)
+              : null,
           );
         }
         return recipe.recipeId;
@@ -378,6 +373,9 @@ export function useCanonicalRecipeSave(
             version.createdAt,
             readPracticalRecipeAudit(recipeInput),
             version.versionId,
+            productComposition
+              ? productionVersionFingerprint(recipeInput, productComposition)
+              : null,
           );
         }
         return savedRecipeId;

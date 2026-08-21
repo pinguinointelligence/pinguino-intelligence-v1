@@ -416,6 +416,12 @@ describe('Apply → Undo score-state restoration', () => {
     ).match;
 
     useConstraintStudioStore.getState().applyPreview();
+    expect(
+      practicalRecipeAuditMatchesInput(
+        selectCanonicalDraft().input,
+        useRecipeStore.getState().practicalRecipeAudit,
+      ),
+    ).toBe(true);
     const appliedScore = monitorScoreView(
       calculateRecipe(buildRecipeInput(useRecipeStore.getState())),
       buildRecipeInput(useRecipeStore.getState()),
@@ -446,6 +452,7 @@ describe('Apply → Undo score-state restoration', () => {
       state: 'PREVIEW_READY',
     });
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+    expect(useRecipeStore.getState().practicalRecipeAudit).toBeNull();
     const restoredScore = monitorScoreView(
       calculateRecipe(restoredPreview!.proposedInput),
       restoredPreview!.proposedInput,
@@ -466,6 +473,12 @@ describe('Apply → Undo score-state restoration', () => {
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
     expect(useConstraintStudioStore.getState().preview).toBeNull();
     expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+    expect(
+      practicalRecipeAuditMatchesInput(
+        selectCanonicalDraft().input,
+        useRecipeStore.getState().practicalRecipeAudit,
+      ),
+    ).toBe(true);
   });
 
   it('does not invent a Preview score when the prior presentation was awaiting calculation', async () => {
