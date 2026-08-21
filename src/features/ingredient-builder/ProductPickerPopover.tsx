@@ -980,7 +980,7 @@ export function ProductPickerPopover({
                       className="pro-focus-ring rounded-lg px-2 py-1 font-semibold text-ink hover:bg-stone-100"
                       onClick={() => close()}
                     >
-                      Dodaj produkt →
+                      Skanuj produkt →
                     </Link>
                     <button
                       type="button"

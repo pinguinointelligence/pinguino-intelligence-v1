@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "la-chocolatera",
+      "product": "La Chocolatera",
+      "files": [],
+      "status": "awaiting_owner_images"
+    },
+    {
+      "id": "haribo-quaxi",
+      "product": "HARIBO Quaxi",
+      "files": [],
+      "status": "awaiting_owner_images"
+    }
+  ],
+  "note": "No exact owner-provided La Chocolatera or HARIBO Quaxi image set was present during local implementation. Do not claim real-image E2E until files and expected label facts are reviewed into this manifest."
+}

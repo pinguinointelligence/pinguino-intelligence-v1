@@ -1,0 +1,121 @@
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ProductScannerV1Page } from '@/pages/products/ProductScannerV1Page';
+
+describe('Product Scanner camera fallback', () => {
+  let host: HTMLDivElement;
+  let root: Root;
+  const originalMediaDevices = navigator.mediaDevices;
+
+  beforeEach(async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn(() => 1),
+    );
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ProductScannerV1Page />
+        </MemoryRouter>,
+      );
+    });
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: originalMediaDevices,
+      configurable: true,
+    });
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const cameraButton = () =>
+    [...host.querySelectorAll('button')].find((button) => button.textContent === 'Skanuj kamerą')!;
+
+  it('offers upload fallback when getUserMedia is unavailable', async () => {
+    Object.defineProperty(navigator, 'mediaDevices', { value: undefined, configurable: true });
+    await act(async () => cameraButton().click());
+    expect(host.textContent).toContain(
+      'Kamera nie jest dostępna w tej przeglądarce. Dodaj zdjęcia z urządzenia.',
+    );
+  });
+
+  it('reports denied camera permission without losing the upload path', async () => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    });
+    await act(async () => {
+      cameraButton().click();
+      await Promise.resolve();
+    });
+    expect(host.textContent).toContain(
+      'Nie udało się uruchomić kamery. Sprawdź uprawnienia lub dodaj zdjęcia.',
+    );
+    expect(host.textContent).toContain('Dodaj zdjęcia');
+  });
+
+  it('requests the rear camera without audio and exposes manual capture', async () => {
+    const stop = vi.fn();
+    const getUserMedia = vi.fn().mockResolvedValue({ getTracks: () => [{ stop }] });
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia },
+      configurable: true,
+    });
+    await act(async () => {
+      cameraButton().click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(getUserMedia).toHaveBeenCalledWith({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+      audio: false,
+    });
+    expect(host.textContent).toContain('Zrób zdjęcie');
+  });
+
+  it('switches from rear to front camera in the same capture session', async () => {
+    const getUserMedia = vi.fn().mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia },
+      configurable: true,
+    });
+    await act(async () => {
+      cameraButton().click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const rotate = [...host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Obróć',
+    )!;
+    await act(async () => {
+      rotate.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(getUserMedia).toHaveBeenLastCalledWith({
+      video: {
+        facingMode: { ideal: 'user' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+      audio: false,
+    });
+  });
+});
