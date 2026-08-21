@@ -47,7 +47,7 @@ describe('canonical global destination hubs', () => {
     expect(html).toContain('Katalog produktów');
     expect(html).toContain('href="/products/scan"');
     expect(html).toContain('href="/products/import"');
-    expect(html).toContain('+ Dodaj produkt');
+    expect(html).toContain('Skanuj produkt');
     expect(html).toContain('Katalog PINGÜINO');
     expect(html).toContain('★ Ulubione');
   });

@@ -222,7 +222,7 @@ describe('recipe and production table modes', () => {
     expect(picker).toContain('data-testid="product-data-status-dialog"');
     expect(picker).not.toContain('Nr art.');
     expect(picker).toContain('Nie znalazłeś produktu?');
-    expect(picker).toContain('Dodaj produkt');
+    expect(picker).toContain('Skanuj produkt');
     expect(picker).toContain('to="/products/scan"');
     expect(picker).toContain('mapperOnly: true');
     expect(picker).toContain('resolveCurrentMapperCatalogSelection');

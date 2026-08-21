@@ -3,6 +3,7 @@ export { CreateIngredientPage } from './CreateIngredientPage';
 export { CreateLabelPage } from './CreateLabelPage';
 export { ProductImportPage } from './ProductImportPage';
 export { ProductScanPage } from '../products/ProductScanPage';
+export { ProductScannerV1Page } from '../products/ProductScannerV1Page';
 export { RecipesHubPage } from './RecipesHubPage';
 export { SubscriptionPage } from './SubscriptionPage';
 export { WorkWithUsPage } from './WorkWithUsPage';

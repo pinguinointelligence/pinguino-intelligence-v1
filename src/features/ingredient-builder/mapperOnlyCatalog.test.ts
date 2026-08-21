@@ -265,7 +265,7 @@ describe('Mapper-only picker source and UI contract', () => {
   it('I keeps the picker Mapper-only while restoring the modern add-product CTA', () => {
     const picker = read('src/features/ingredient-builder/ProductPickerPopover.tsx');
     expect(picker).toContain('Nie znalazłeś produktu?');
-    expect(picker).toContain('Dodaj produkt');
+    expect(picker).toContain('Skanuj produkt');
     expect(picker).toContain('to="/products/scan"');
     expect(picker).not.toContain('Katalog zawiera wyłącznie aktualne produkty Mappera.');
     expect(picker).toContain('mapperOnly: true');

@@ -111,15 +111,15 @@ export function ProductsHubPage() {
               to="/products/scan"
               className="min-h-11 px-2 py-3 text-xs font-medium tracking-label text-ink uppercase transition-opacity hover:opacity-55"
             >
-              + Dodaj produkt
+              Skanuj produkt
             </Link>
           </div>
           <div className="mt-2">
             <Link to="/products/scan" className={quietLink}>
               <span>
-                <strong className="block font-medium">Ręcznie lub ze zdjęcia etykiety</strong>
+                <strong className="block font-medium">Skanuj produkt</strong>
                 <span className="mt-1 block text-xs text-stone-500">
-                  Formularz produktu i istniejąca ścieżka OCR
+                  Kamera, zdjęcia, kod kreskowy i bezpieczne uzupełnianie danych
                 </span>
               </span>
               <span aria-hidden>→</span>
