@@ -19,6 +19,10 @@ import {
   assessGelatoStabilizerSystem,
   type GelatoStabilizerSystemIssue,
 } from './gelatoStabilizerSystemAuthority';
+import {
+  assessSorbetStabilizerSystem,
+  type SorbetStabilizerSystemIssue,
+} from './sorbetStabilizerSystemAuthority';
 
 export type RecipeConstraintAuthorityIssue =
   | { source: 'batch'; code: 'batch_total_mismatch'; lineIds: string[]; messagePl: string }
@@ -50,7 +54,7 @@ export type RecipeConstraintAuthorityIssue =
     }
   | {
       source: 'owner_policy';
-      code: GelatoStabilizerSystemIssue['code'];
+      code: GelatoStabilizerSystemIssue['code'] | SorbetStabilizerSystemIssue['code'];
       lineIds: string[];
       messagePl: string;
     }
@@ -167,8 +171,9 @@ export function evaluateRecipeConstraintAuthority(
   }
 
   const stabilizerSystem = assessGelatoStabilizerSystem(recipe);
+  const sorbetStabilizerSystem = assessSorbetStabilizerSystem(recipe);
   issues.push(
-    ...stabilizerSystem.issues.map((issue) => ({
+    ...[...stabilizerSystem.issues, ...sorbetStabilizerSystem.issues].map((issue) => ({
       source: 'owner_policy' as const,
       code: issue.code,
       lineIds: issue.lineIds,

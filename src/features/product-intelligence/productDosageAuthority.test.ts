@@ -406,7 +406,7 @@ describe('ProductBehavior dosage authority', () => {
     }
   });
 
-  it('marks an excessive generated candidate diagnostic and blocks forged Apply trustlessly', () => {
+  it('blocks an excessive Sorbet aggregate before Preview and at forged Apply', () => {
     const input = ownerSameInputRecipe();
     input.category = 'sorbet';
     input.items = input.items.map((item) =>
@@ -437,25 +437,21 @@ describe('ProductBehavior dosage authority', () => {
     if (!built.ok) return;
 
     const bound = bindProductBehaviorToPreview(built, snapshots);
-    expect(bound.ok).toBe(true);
-    if (!bound.ok) return;
-    expect(bound.preview).toMatchObject({
-      diagnosticOnly: true,
-      diagnosticReason: 'product_dosage',
-      productDosageDiagnostics: [
+    expect(bound).toMatchObject({
+      ok: false,
+      code: 'product_behavior_invalid',
+      violations: expect.arrayContaining([
         expect.objectContaining({
-          code: 'above_maximum',
-          ingredientName: 'TARA GUM · Stabilizer',
-          enteredGrams: 110,
-          maxGrams: 20,
+          code: 'product_behavior_missing',
+          lineIds: ['owner:tara_gum'],
         }),
-      ],
+      ]),
     });
 
     const applied = commitPreview(
       input,
       { byLineId: {} },
-      bound.preview,
+      built.preview,
       'now',
       'dosage-apply',
       [],
@@ -469,12 +465,12 @@ describe('ProductBehavior dosage authority', () => {
     expect(applied).toMatchObject({
       ok: false,
       code: 'product_behavior_invalid',
-      violations: [
+      violations: expect.arrayContaining([
         expect.objectContaining({
-          code: 'product_dosage_violation',
+          code: 'product_behavior_missing',
           lineIds: ['owner:tara_gum'],
         }),
-      ],
+      ]),
     });
   });
 

@@ -176,6 +176,25 @@ describe('mode- and temperature-aware new recipe starters', () => {
     }
   });
 
+  it.each(
+    (['temp_minus_11', 'temp_minus_12', 'temp_minus_13'] as const).flatMap((serving) => [
+      [serving, 1_000, 4] as const,
+      [serving, 1_500, 6] as const,
+      [serving, 1_237, 5] as const,
+      [serving, 10_000, 40] as const,
+    ]),
+  )(
+    'rebuilds historical Sorbet %s / %i g starter at the Owner-preferred %i g total',
+    (serving, target, expected) => {
+      const starter = build('sorbet', serving, 'optimal', target);
+      const stabilizers = starter.lines.filter((line) => line.role === 'stabilizer');
+      expect(stabilizers.reduce((sum, line) => sum + line.grams, 0)).toBe(expected);
+      expect(stabilizers.every((line) => Number.isInteger(line.grams))).toBe(true);
+      expect(starter.validationStatus).toBe('blocked_missing_user_main');
+      expect(starter.metrics.actualBaseMassGrams).toBe(Math.round(target * 0.4));
+    },
+  );
+
   it('keeps a recipe-level cost unknown when any positive starter line has no valid price', () => {
     const starter = build('gelato', 'temp_minus_12', 'optimal');
     const missing = starter.lines.filter((line) => line.priceSource === 'missing');

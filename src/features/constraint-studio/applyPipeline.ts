@@ -34,6 +34,7 @@ import {
 import { recipeContext } from '@/features/studio/buildRecipeInput';
 import {
   buildRecipeDirectionPlan,
+  hasActiveExactDirectionObjective,
   recipeDirectionViolations,
 } from '@/features/recipe-direction/recipeDirectionTargets';
 import {
@@ -70,6 +71,7 @@ import {
   type ConstraintValidationIssue,
   type IngredientConstraint,
 } from '@/features/recipe-constraints';
+import { sorbetStabilizerWholeGramBand } from '@/features/recipe-constraints/sorbetStabilizerSystemAuthority';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
 import {
   approvedFormulationToolboxIngredients,
@@ -2022,14 +2024,10 @@ function iterateSolverToFixedPoint(
           : normalized;
       };
 
-      const directionPlan = buildRecipeDirectionPlan(base);
-      const hasActiveGelatoDirectionObjective =
-        base.category === 'milk_gelato' &&
-        base.goals?.direction_targets_active === true &&
-        Object.keys(directionPlan.bands).length > 0;
+      const hasExactDirectionObjective = hasActiveExactDirectionObjective(base);
       if (
         normalizeFormulationStrategy(base.goals?.formulation_strategy ?? base.mode) === 'eco' &&
-        !hasActiveGelatoDirectionObjective
+        !hasExactDirectionObjective
       ) {
         return sweepEcoDraftCost({
           identityInput: base,
@@ -2105,11 +2103,10 @@ function iterateSolverToFixedPoint(
     );
     const next = measure(candidate);
     const dosageSafe = assessProductDosages(candidate, productBehaviorSnapshots ?? {}).length === 0;
-    const exactGelatoDirectionActive =
-      base.category === 'milk_gelato' && base.goals?.direction_targets_active === true;
+    const exactDirectionActive = hasActiveExactDirectionObjective(base);
     const improved =
       dosageSafe &&
-      (!exactGelatoDirectionActive || next.violations <= current.violations) &&
+      (!exactDirectionActive || next.violations <= current.violations) &&
       (next.violations < current.violations ||
         next.severityPoints < current.severityPoints - SEVERITY_EPS);
     attemptedMoves.push({
@@ -4163,7 +4160,7 @@ function bestHardSafeDirectionSegment(
     0,
   );
   const identityDirectionViolationCount = recipeDirectionViolations(identityInput).length;
-  const exactGelatoDirection = identityInput.category === 'milk_gelato';
+  const exactDirection = hasActiveExactDirectionObjective(identityInput);
   const admissible = (candidate: RecipeInput): boolean => {
     if (
       Math.abs(plannedSum(candidate) - identityInput.target_batch_grams) > BATCH_SUM_TOLERANCE_G ||
@@ -4221,7 +4218,7 @@ function bestHardSafeDirectionSegment(
       (sum, violation) => sum + violation.severity_points,
       0,
     );
-    const improvesIdentity = exactGelatoDirection
+    const improvesIdentity = exactDirection
       ? violations < identityDirectionViolationCount ||
         (violations === identityDirectionViolationCount &&
           severity < identityDirectionSeverity - SEVERITY_EPS)
@@ -4229,7 +4226,7 @@ function bestHardSafeDirectionSegment(
     if (
       improvesIdentity &&
       (best === null ||
-        (exactGelatoDirection
+        (exactDirection
           ? violations < best.violations ||
             (violations === best.violations && severity < best.severity - SEVERITY_EPS) ||
             (violations === best.violations &&
@@ -4604,15 +4601,12 @@ function buildFormulationPreviewInternal(
   // real engine moves becomes the honest `impossible_under_constraints`.
   const afterViolationList = detectViolations(calculateRecipe(working));
   if (mode !== 'constrained_reformulation' && !beatsBaseline(input, working)) {
-    const exactGelatoDirectionActive =
-      input.category === 'milk_gelato' &&
-      input.goals?.direction_targets_active === true &&
-      Object.keys(buildRecipeDirectionPlan(input).bands).length > 0;
-    const baselineDirectionViolations = exactGelatoDirectionActive
+    const exactDirectionActive = hasActiveExactDirectionObjective(input);
+    const baselineDirectionViolations = exactDirectionActive
       ? recipeDirectionViolations(input)
       : [];
     const nativeSafeDirectionFixedPoint =
-      exactGelatoDirectionActive &&
+      exactDirectionActive &&
       baselineDirectionViolations.length > 0 &&
       detectViolations(calculateRecipe(input)).length === 0;
     if (nativeSafeDirectionFixedPoint) {
@@ -4828,6 +4822,41 @@ function buildFormulationPreviewInternal(
           : proteinResidual
             ? 'protein_target_residual'
             : undefined;
+  // The full-formulation route must enforce the same executable Direction
+  // null-hypothesis as local correction. A native-safe recipe cannot surface
+  // an unchanged (or worse) whole-gram Preview merely because the router used
+  // an approved template before returning to the exact Direction objective.
+  const baselineDirection = recipeDirectionViolations(input);
+  if (
+    input.category === 'sorbet' &&
+    hasActiveExactDirectionObjective(input) &&
+    detectViolations(calculateRecipe(input)).length === 0 &&
+    baselineDirection.length > 0
+  ) {
+    const executableDirection = recipeDirectionViolations(preview.proposedInput);
+    const baselineSeverity = baselineDirection.reduce(
+      (sum, violation) => sum + violation.severity_points,
+      0,
+    );
+    const executableSeverity = executableDirection.reduce(
+      (sum, violation) => sum + violation.severity_points,
+      0,
+    );
+    const executableImproves =
+      executableDirection.length < baselineDirection.length ||
+      (executableDirection.length === baselineDirection.length &&
+        executableSeverity < baselineSeverity - SEVERITY_EPS);
+    if (!executableImproves) {
+      return {
+        ok: false,
+        code: 'no_proposal',
+        violatedMetrics: [...new Set(baselineDirection.map((violation) => violation.metric))],
+        solverInvocations: solverRounds,
+        directionTargetUnreached: true,
+        iteration: iterated.diagnostics,
+      };
+    }
+  }
   return mainSafePreview(input, preview, options.productBehaviorSnapshots);
 }
 
@@ -5186,12 +5215,9 @@ export function buildOptimizePreview(
     const currentDraftUnchanged =
       workingStateFingerprint(working, set) === workingStateFingerprint(input, set);
     const currentNativeSafe = violationsBefore === 0;
-    const exactGelatoDirectionActive =
-      input.category === 'milk_gelato' &&
-      input.goals?.direction_targets_active === true &&
-      Object.keys(buildRecipeDirectionPlan(input).bands).length > 0;
+    const exactDirectionActive = hasActiveExactDirectionObjective(input);
     const currentDirectionSafe =
-      !exactGelatoDirectionActive || recipeDirectionViolations(working).length === 0;
+      !exactDirectionActive || recipeDirectionViolations(working).length === 0;
     const currentProteinSafe = !initialProteinTarget.applicable || initialProteinTarget.reached;
     const currentVeganSafe =
       input.category !== 'vegan_gelato' || veganProfileConstraintIssues(input).length === 0;
@@ -5464,7 +5490,7 @@ export function buildOptimizePreview(
         code: 'no_proposal',
         violatedMetrics: violated,
         solverInvocations: solverRounds,
-        ...(input.category === 'milk_gelato' && currentHardSafe && !currentDirectionSafe
+        ...(hasActiveExactDirectionObjective(input) && currentHardSafe && !currentDirectionSafe
           ? { directionTargetUnreached: true }
           : {}),
         iteration: iterated.diagnostics,
@@ -5543,7 +5569,7 @@ export function buildOptimizePreview(
     const currentNativeSafe = detectViolations(calculateRecipe(input)).length === 0;
     const currentDirectionViolations = recipeDirectionViolations(input);
     const currentDirectionUnreached =
-      input.category === 'milk_gelato' && currentDirectionViolations.length > 0;
+      hasActiveExactDirectionObjective(input) && currentDirectionViolations.length > 0;
     return withBatchReconciliation(
       withTemplateFallback({
         ok: false,
@@ -5623,8 +5649,7 @@ export function buildOptimizePreview(
   // lexicographic target objective.
   const baselineDirection = recipeDirectionViolations(input);
   if (
-    input.category === 'milk_gelato' &&
-    input.goals?.direction_targets_active === true &&
+    hasActiveExactDirectionObjective(input) &&
     detectViolations(calculateRecipe(input)).length === 0 &&
     baselineDirection.length > 0
   ) {
@@ -6862,7 +6887,9 @@ export class VerifiedApply {
         .map((item) => item.id);
       return {
         totalGrams:
-          stabilizerRole.grams * (exactCandidate.target_batch_grams / template.baseBatchG),
+          exactCandidate.category === 'sorbet'
+            ? sorbetStabilizerWholeGramBand(exactCandidate.target_batch_grams).preferredGrams
+            : stabilizerRole.grams * (exactCandidate.target_batch_grams / template.baseBatchG),
         allowedLineIds: new Set([...currentStabilizerLineIds, ...approvedAddedLineIds]),
       };
     })();

@@ -76,9 +76,9 @@ import {
   type ProductDoseMeta,
 } from './productDoseSuggestion';
 import {
-  assessGelatoStabilizerSystem,
-  clampGelatoStabilizerComponentGrams,
-  gelatoStabilizerSystemItems,
+  assessOwnerStabilizerSystem,
+  clampOwnerStabilizerComponentGrams,
+  ownerStabilizerSystemItems,
 } from '@/features/recipe-constraints';
 
 const b = copy.studio.builder;
@@ -219,34 +219,42 @@ export function IngredientBuilder({
         state.target_batch_grams,
       );
       const draft = selectCanonicalDraft();
-      const isGelatoStabilizer =
-        assessGelatoStabilizerSystem(draft.input).applicable &&
-        gelatoStabilizerSystemItems([line]).length === 1;
-      const aggregate = clampGelatoStabilizerComponentGrams(draft.input, lineId, requestedGrams);
+      const isOwnerStabilizer =
+        assessOwnerStabilizerSystem(draft.input).applicable &&
+        ownerStabilizerSystemItems([line]).length === 1;
+      const ignoreIndividualMinimum = isOwnerStabilizer && draft.input.category !== 'sorbet';
+      const aggregate = clampOwnerStabilizerComponentGrams(
+        draft.input,
+        lineId,
+        requestedGrams,
+      );
       if (dosage.status === 'invalid_evidence') {
         setPickerNotice(
           `${line.ingredient.name}: dane zatwierdzonej dawki są niespójne. Odśwież ProductBehavior.`,
         );
         return;
       }
-      lockAwareCoreActions.setPlannedGrams(lineId, grams);
+      lockAwareCoreActions.setPlannedGrams(lineId, aggregate.grams);
       if (dosage.status === 'defined') {
-        const aggregateBand = assessGelatoStabilizerSystem(draft.input).band;
+        const aggregateBand = assessOwnerStabilizerSystem(draft.input).band;
         const specificMaximumIsTighter =
-          isGelatoStabilizer &&
+          isOwnerStabilizer &&
           dosage.authority.maxGrams !== null &&
           aggregateBand !== null &&
           dosage.authority.maxGrams < aggregateBand.maxGrams;
         const boundary =
           dosage.authority.maxGrams !== null && requestedGrams > dosage.authority.maxGrams
             ? 'maximum'
-            : !isGelatoStabilizer &&
+            : !ignoreIndividualMinimum &&
                 dosage.authority.minGrams !== null &&
                 requestedGrams > 0 &&
                 requestedGrams < dosage.authority.minGrams
               ? 'minimum'
               : null;
-        if (boundary && (!isGelatoStabilizer || specificMaximumIsTighter)) {
+        if (
+          boundary &&
+          (boundary === 'minimum' || !isOwnerStabilizer || specificMaximumIsTighter)
+        ) {
           setPickerNotice(
             productDosageClampMessagePl(line.ingredient.name, dosage.authority, boundary),
           );
@@ -671,7 +679,7 @@ export function IngredientBuilder({
       ? useRecipeStore.getState().items.find((item) => item.id === added.id)
       : undefined;
     const aggregateAfterAdd = persistedAdded
-      ? assessGelatoStabilizerSystem(selectCanonicalDraft().input)
+      ? assessOwnerStabilizerSystem(selectCanonicalDraft().input)
       : null;
     const aggregateAdditionWasClamped =
       doseSuggestion !== null &&

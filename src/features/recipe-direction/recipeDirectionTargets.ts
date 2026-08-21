@@ -30,6 +30,9 @@ export interface DirectionAxisPlan {
   status: DirectionAxisStatus;
   metric: TargetMetric | null;
   targetBand: TargetRange | null;
+  /** Exact owner preference center. This is an optimization objective only;
+   * native Engine bands remain the hard safety authority. */
+  targetCenter: number | null;
   reason: string | null;
 }
 
@@ -99,6 +102,26 @@ const softnessBand = (
   return { min: cleanCenter[0], max: cleanCenter[1] };
 };
 
+export const SORBET_SWEETNESS_TARGET_CENTERS: Readonly<
+  Record<RecipeDirectionTarget, number>
+> = Object.freeze({
+  [-2]: 16,
+  [-1]: 18,
+  0: 20,
+  1: 22,
+  2: 24,
+});
+
+export const SORBET_HARDNESS_TARGET_CENTERS: Readonly<
+  Record<-11 | -12 | -13, Readonly<Record<RecipeDirectionTarget, number>>>
+> = Object.freeze({
+  [-11]: Object.freeze({ [-2]: 39.5, [-1]: 38.5, 0: 37.5, 1: 36.5, 2: 35.5 }),
+  [-12]: Object.freeze({ [-2]: 48.3, [-1]: 46.9, 0: 45.5, 1: 44.1, 2: 42.7 }),
+  [-13]: Object.freeze({ [-2]: 54.3, [-1]: 52.9, 0: 51.5, 1: 50.1, 2: 48.7 }),
+});
+
+const exactPreferencePoint = (center: number): TargetRange => ({ min: center, max: center });
+
 export function normalizeRecipeDirectionTargets(
   value: Partial<Record<keyof RecipeDirectionTargets, number>> | null | undefined,
 ): RecipeDirectionTargets {
@@ -137,13 +160,19 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
     (profile === 'sorbet' && input.target_temperature_c === -11) ||
     (profile === 'chocolate_gelato' &&
       (input.target_temperature_c === -11 || input.target_temperature_c === -12));
-  const softnessOperational = profile === 'standard_gelato';
+  const softnessOperational =
+    profile === 'standard_gelato' ||
+    (profile === 'sorbet' && input.target_temperature_c === -11);
 
   if (regulator?.pod && sweetnessOperational) {
+    const targetCenter =
+      profile === 'sorbet' ? SORBET_SWEETNESS_TARGET_CENTERS[targets.sweetness] : null;
     const targetBand =
-      profile === 'standard_gelato'
-        ? targetFifth(regulator.pod.band, targets.sweetness)
-        : legacyTargetThird(regulator.pod.band, targets.sweetness);
+      targetCenter !== null
+        ? exactPreferencePoint(targetCenter)
+        : profile === 'standard_gelato'
+          ? targetFifth(regulator.pod.band, targets.sweetness)
+          : legacyTargetThird(regulator.pod.band, targets.sweetness);
     if (enabled) bands.pod = targetBand;
     axes.push({
       axis: 'sweetness',
@@ -151,6 +180,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
       status: 'working',
       metric: 'pod',
       targetBand,
+      targetCenter,
       reason: null,
     });
   } else if (!sweetnessOperational && regulator?.pod) {
@@ -160,6 +190,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
       status: 'blocked_runtime',
       metric: 'pod',
       targetBand: null,
+      targetCenter: null,
       reason:
         'Pełna ścieżka −1/0/+1 dla tego profilu i temperatury nie ma jeszcze zweryfikowanego, bezpiecznego Preview/Apply.',
     });
@@ -170,16 +201,21 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
       status: 'blocked_data',
       metric: 'pod',
       targetBand: null,
+      targetCenter: null,
       reason: 'Brak zatwierdzonego zakresu POD dla tego profilu i temperatury.',
     });
   }
 
   if (regulator?.npac?.cleanCenter && softnessOperational) {
-    const targetBand = softnessBand(
-      regulator.npac.band,
-      regulator.npac.cleanCenter,
-      targets.softness,
-    );
+    const sorbetTemperature = input.target_temperature_c as -11 | -12 | -13;
+    const targetCenter =
+      profile === 'sorbet'
+        ? SORBET_HARDNESS_TARGET_CENTERS[sorbetTemperature]?.[targets.softness] ?? null
+        : null;
+    const targetBand =
+      targetCenter !== null
+        ? exactPreferencePoint(targetCenter)
+        : softnessBand(regulator.npac.band, regulator.npac.cleanCenter, targets.softness);
     if (enabled) bands.npac = targetBand;
     axes.push({
       axis: 'softness',
@@ -187,6 +223,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
       status: 'working',
       metric: 'npac',
       targetBand,
+      targetCenter,
       reason: null,
     });
   } else if (!softnessOperational && regulator?.npac?.cleanCenter) {
@@ -196,6 +233,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
       status: 'blocked_science',
       metric: 'npac',
       targetBand: null,
+      targetCenter: null,
       reason:
         'Brak zweryfikowanej, profilowej kalibracji miękkości dla tej kategorii; PI nie używa zastępczej krzywej mlecznej.',
     });
@@ -206,6 +244,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
       status: 'blocked_data',
       metric: 'npac',
       targetBand: null,
+      targetCenter: null,
       reason: 'Brak zatwierdzonego czystego centrum NPAC dla tego profilu i temperatury.',
     });
   }
@@ -217,6 +256,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
       status: 'blocked_science',
       metric: null,
       targetBand: null,
+      targetCenter: null,
       reason:
         'Brak zatwierdzonego modelu sensorycznej kremowości; sam tłuszcz nie jest kremowością.',
     },
@@ -226,6 +266,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
       status: 'blocked_data',
       metric: null,
       targetBand: null,
+      targetCenter: null,
       reason: 'Brak zweryfikowanych profili mocy smaku dla poszczególnych klas składników.',
     },
   );
@@ -250,4 +291,17 @@ export function resultWithRecipeDirectionTargets(
 export function recipeDirectionViolations(input: RecipeInput) {
   const plan = buildRecipeDirectionPlan(input);
   return detectViolations(resultWithRecipeDirectionTargets(calculateRecipe(input), plan));
+}
+
+/** Exact five-step routes use lexicographic distance-to-target ranking in the
+ * optimizer. This deliberately excludes legacy three-zone profiles. */
+export function hasActiveExactDirectionObjective(input: RecipeInput): boolean {
+  if (input.goals?.direction_targets_active !== true) return false;
+  const plan = buildRecipeDirectionPlan(input);
+  return plan.axes.some(
+    (axis) =>
+      axis.status === 'working' &&
+      axis.targetBand !== null &&
+      (plan.profile === 'standard_gelato' || axis.targetCenter !== null),
+  );
 }

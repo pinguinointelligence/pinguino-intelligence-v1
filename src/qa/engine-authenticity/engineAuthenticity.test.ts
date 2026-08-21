@@ -290,12 +290,12 @@ const PINS: Pin[] = [
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 7,
-    overall: 73.7897,
+    overall: 73.7097,
     iter: 1,
     stop: 'all_bands_in_range',
-    npac: 36.0237,
-    ice: 51.3083,
-    pod: 18.5605,
+    npac: 36.3049,
+    ice: 51.0115,
+    pod: 18.6284,
     viol: 0,
     hardSafe: true,
     batch: 1000,
@@ -365,12 +365,12 @@ const PINS: Pin[] = [
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 7,
-    overall: 73.7897,
+    overall: 73.7097,
     iter: 1,
     stop: 'all_bands_in_range',
-    npac: 36.0237,
-    ice: 51.3083,
-    pod: 18.5605,
+    npac: 36.3049,
+    ice: 51.0115,
+    pod: 18.6284,
     viol: 0,
     hardSafe: true,
     batch: 1000,
@@ -537,7 +537,9 @@ describe('tara / stabilizer provenance (owner requirement c)', () => {
       if (!record.stabilizer.present) continue;
       expect(record.stabilizer.optimizedByEngine).toBe(false);
       expect(record.stabilizer.notePl).toBe(
-        'Dawka stabilizatora pochodzi z szablonu referencyjnego i nie została zoptymalizowana przez Engine.',
+        record.input.category === 'sorbet'
+          ? 'Dawka systemu stabilizującego Sorbet pochodzi z owner-approved Gellatti Sorbet formulation policy i nie została zoptymalizowana przez Engine.'
+          : 'Dawka stabilizatora pochodzi z szablonu referencyjnego i nie została zoptymalizowana przez Engine.',
       );
       expect(record.stabilizer.grams).not.toBeNull();
       expect(record.stabilizer.percentOfMix).not.toBeNull();

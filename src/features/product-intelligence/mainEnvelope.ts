@@ -158,9 +158,11 @@ export function verifyMainEnvelope(input: {
     return {
       ok: false,
       violations: [{
-        code: 'main_policy_inconsistent',
+        code: multi ? 'multi_main_policy_unknown' : 'main_policy_inconsistent',
         lineIds: managed.map((item) => item.id),
-        messagePl: 'Grupa Main nie ma jednego zgodnego zatwierdzonego zakresu.',
+        messagePl: multi
+          ? 'Brak zatwierdzonej wspólnej polityki dla tej grupy Main.'
+          : 'Grupa Main nie ma jednego zgodnego zatwierdzonego zakresu.',
       }],
     };
   }
