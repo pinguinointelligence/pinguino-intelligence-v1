@@ -51,6 +51,8 @@ export function nextProductScanStep(input: {
 
 export function nextEvidencePrompt(missing: readonly string[]): string {
   const fields = new Set(missing);
+  if (fields.has('allergen_confirmation'))
+    return 'Nie udało się potwierdzić osobnej deklaracji alergenów.';
   if ([...fields].some((field) => field.startsWith('nutrition')))
     return 'Dodaj wyraźne zdjęcie tabeli odżywczej.';
   if (fields.has('ingredientsText') || fields.has('allergensText'))

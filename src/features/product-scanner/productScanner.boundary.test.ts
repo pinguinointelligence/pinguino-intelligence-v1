@@ -92,6 +92,28 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(analyze).toContain("numberEnv('PRODUCT_SCANNER_MAX_IMAGES', 4)");
     expect(analyze).toContain('PRODUCT_SCANNER_MAX_VISION_CALLS');
     expect(analyze).toContain('PRODUCT_SCANNER_MAX_WEB_CALLS');
+    expect(analyze).toContain('accurate_retry_requires_fast_evidence');
+    expect(migration).toContain('vision_calls smallint not null default 0 check (vision_calls between 0 and 2)');
+  });
+
+  it('merges each call into cumulative server-owned session evidence before readiness', () => {
+    expect(analyze).toContain('mergeProductScanResults');
+    expect(analyze).toContain('existingSession?.result_json');
+    expect(analyze).toContain('sessionAssetIds');
+    expect(analyze.indexOf('mergeProductScanResults')).toBeLessThan(
+      analyze.lastIndexOf('validateServerResult'),
+    );
+    expect(analyze).toContain('p_result: cumulativeResult');
+  });
+
+  it('keeps ordinary missing allergen declaration behind one truthful owner confirmation', () => {
+    expect(finalize).toContain('noAdditionalAllergenStatementVisible');
+    expect(finalize).toContain("missingCriticalFields[0] === 'allergen_confirmation'");
+    expect(finalize).toContain('absence_of_statement_is_not_no_allergens');
+    expect(finalize).toContain('validation.highRiskAuthorityRequired !== true');
+    expect(finalize).toContain('result_json: scanResult');
+    expect(finalize).toContain('modelValidation: effectiveValidation');
+    expect(finalize).toContain('.select(\'id\')');
   });
 
   it('records safe cost/rate diagnostics without raw IPs or images', () => {

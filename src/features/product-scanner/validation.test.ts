@@ -36,7 +36,14 @@ const complete = (overrides: Partial<ProductScanResult> = {}): ProductScanResult
   manufacturer: null,
   externalSources: [],
   evidence: [
-    { assetId: 'front-1', field: 'identity.displayName', source: 'label', confidence: 'high' },
+    {
+      assetId: 'front-1',
+      field: 'identity.displayName',
+      source: 'label',
+      confidence: 'high',
+      region: 'front',
+      directVisibility: true,
+    },
   ],
   missingFields: [],
   conflicts: [],
@@ -84,15 +91,65 @@ describe('deterministic Product Scanner validation', () => {
     );
   });
 
-  it('fails high-risk additives closed from shared readiness without dosage evidence', () => {
+  it('fails high-risk additives closed without dosage evidence', () => {
     const result = validateProductScanResult(
       complete({
         ingredientsText: 'Mleko, cukier, guma tara, karagen.',
       }),
     );
     expect(result.ok).toBe(true);
-    expect(result.overlayState).toBe('USABLE_FOR_OWNER');
+    expect(result.overlayState).toBe('SCAN_DRAFT');
     expect(result.warnings).toContain('high_risk_additive_requires_behavior_and_dosage_evidence');
+  });
+
+  it('accepts may-contain wording as allergen evidence only when directly visible', () => {
+    const indirect = complete({
+      allergensText: null,
+      evidence: [
+        {
+          assetId: 'front-1',
+          field: 'mayContainAllergens',
+          source: 'label',
+          confidence: 'high',
+          region: 'allergen_statement',
+          directVisibility: false,
+        },
+      ],
+    });
+    expect(validateProductScanResult(indirect).overlayState).toBe('SCAN_DRAFT');
+    expect(
+      validateProductScanResult({
+        ...indirect,
+        evidence: [{ ...indirect.evidence[0]!, directVisibility: true }],
+      }).overlayState,
+    ).toBe('PENDING_PUBLICATION');
+  });
+
+  it('blocks unresolved critical conflicts but retains non-critical conflicts for review', () => {
+    const nonCritical = complete({
+      conflicts: [
+        {
+          field: 'identity.category',
+          labelValue: 'Cacao en polvo',
+          externalValue: 'Cocoa powder',
+          retainedSource: null,
+        },
+      ],
+    });
+    expect(validateProductScanResult(nonCritical).overlayState).toBe('PENDING_PUBLICATION');
+    expect(
+      validateProductScanResult({
+        ...nonCritical,
+        conflicts: [
+          {
+            field: 'nutrition.protein',
+            labelValue: 7,
+            externalValue: 7.5,
+            retainedSource: null,
+          },
+        ],
+      }).overlayState,
+    ).toBe('SCAN_DRAFT');
   });
 
   it('retains label facts and records conflicts with external data', () => {

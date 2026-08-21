@@ -14,13 +14,25 @@ export interface ProductScanEvidenceRef {
   field: string;
   source: ProductScanSource;
   confidence: ProductScanConfidence;
+  region:
+    | 'front'
+    | 'package'
+    | 'nutrition_table'
+    | 'ingredients'
+    | 'allergen_statement'
+    | 'barcode'
+    | 'storage'
+    | 'manufacturer'
+    | 'other'
+    | null;
+  directVisibility: boolean;
 }
 
 export interface ProductScanConflict {
   field: string;
   labelValue: string | number | null;
   externalValue: string | number | null;
-  retainedSource: ProductScanSource;
+  retainedSource: ProductScanSource | null;
 }
 
 export interface ProductScanExternalSource {
@@ -219,12 +231,27 @@ export const PRODUCT_SCAN_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['assetId', 'field', 'source', 'confidence'],
+        required: ['assetId', 'field', 'source', 'confidence', 'region', 'directVisibility'],
         properties: {
           assetId: { type: 'string' },
           field: { type: 'string' },
           source: { enum: ['label', 'barcode_registry', 'manufacturer', 'retailer'] },
           confidence: { enum: ['high', 'medium', 'low'] },
+          region: {
+            enum: [
+              'front',
+              'package',
+              'nutrition_table',
+              'ingredients',
+              'allergen_statement',
+              'barcode',
+              'storage',
+              'manufacturer',
+              'other',
+              null,
+            ],
+          },
+          directVisibility: { type: 'boolean' },
         },
       },
     },
@@ -240,7 +267,7 @@ export const PRODUCT_SCAN_JSON_SCHEMA = {
           labelValue: { type: ['string', 'number', 'null'] },
           externalValue: { type: ['string', 'number', 'null'] },
           retainedSource: {
-            enum: ['label', 'barcode_registry', 'manufacturer', 'retailer'],
+            enum: ['label', 'barcode_registry', 'manufacturer', 'retailer', null],
           },
         },
       },

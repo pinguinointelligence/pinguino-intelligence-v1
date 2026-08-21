@@ -210,15 +210,12 @@ export function validateProductScanResult(value: unknown): ProductScanValidation
         if (
           !row ||
           typeof row.field !== 'string' ||
-          !['label', 'barcode_registry', 'manufacturer', 'retailer'].includes(
-            String(row.retainedSource),
+          !['label', 'barcode_registry', 'manufacturer', 'retailer', null].includes(
+            (row.retainedSource ?? null) as string | null,
           )
         ) {
           errors.push('conflict_contract_invalid');
           return [];
-        }
-        if (row.retainedSource !== 'label' && row.labelValue !== null) {
-          errors.push('label_must_win_conflict');
         }
         return [row as unknown as ProductScanConflict];
       })
@@ -233,7 +230,20 @@ export function validateProductScanResult(value: unknown): ProductScanValidation
           typeof row.assetId !== 'string' ||
           typeof row.field !== 'string' ||
           !['label', 'barcode_registry', 'manufacturer', 'retailer'].includes(String(row.source)) ||
-          !['high', 'medium', 'low'].includes(String(row.confidence))
+          !['high', 'medium', 'low'].includes(String(row.confidence)) ||
+          ![
+            'front',
+            'package',
+            'nutrition_table',
+            'ingredients',
+            'allergen_statement',
+            'barcode',
+            'storage',
+            'manufacturer',
+            'other',
+            null,
+          ].includes((row.region ?? null) as string | null) ||
+          typeof row.directVisibility !== 'boolean'
         ) {
           errors.push('evidence_contract_invalid');
           return [];
@@ -305,28 +315,57 @@ export function validateProductScanResult(value: unknown): ProductScanValidation
     warnings: [...new Set([...(resultWarnings ?? []), ...warnings])],
   };
 
+  const hasDirectMayContainEvidence = normalized.evidence.some(
+    (item) => item.field === 'mayContainAllergens' && item.directVisibility,
+  );
+  const unresolvedCriticalConflict = normalized.conflicts.some((conflict) => {
+    if (conflict.retainedSource !== null) return false;
+    if (
+      conflict.field === 'identity.displayName' ||
+      conflict.field === 'identity.originalName'
+    ) {
+      return !normalized.identity.displayName && !normalized.identity.originalName;
+    }
+    return new Set([
+      'identity.brand',
+      'package.netQuantity',
+      'package.unit',
+      'barcodes',
+      'barcodes[0].value',
+      'nutrition.basis',
+      'nutrition.energyKcal',
+      'nutrition.fat',
+      'nutrition.carbohydrate',
+      'nutrition.protein',
+      'nutrition.salt',
+      'ingredientsText',
+      'allergensText',
+    ]).has(conflict.field);
+  });
+
   const criticalMissing = [
     normalized.identity.displayName ?? normalized.identity.originalName,
     normalized.identity.brand ?? (normalized.identity.explicitlyUnbranded ? 'unbranded' : null),
     normalized.package.netQuantity,
     normalized.package.unit,
     normalized.ingredientsText,
-    normalized.allergensText,
+    normalized.allergensText ??
+      (normalized.mayContainAllergens.length > 0 && hasDirectMayContainEvidence
+        ? 'direct_may_contain_evidence'
+        : null),
     normalized.nutrition.basis,
     normalized.nutrition.energyKcal,
     normalized.nutrition.fat,
     normalized.nutrition.carbohydrate,
     normalized.nutrition.protein,
     normalized.nutrition.salt,
-  ].some((item) => item === null);
+  ].some((item) => item === null) || unresolvedCriticalConflict;
   const highRisk = needsHighRiskDosageEvidence(normalized);
   if (highRisk) warnings.push('high_risk_additive_requires_behavior_and_dosage_evidence');
   const overlayState: ProductScanOverlayState =
-    errors.length > 0 || criticalMissing
+    errors.length > 0 || criticalMissing || highRisk
       ? 'SCAN_DRAFT'
-      : highRisk
-        ? 'USABLE_FOR_OWNER'
-        : 'PENDING_PUBLICATION';
+      : 'PENDING_PUBLICATION';
   return {
     ok: errors.length === 0,
     normalized,
