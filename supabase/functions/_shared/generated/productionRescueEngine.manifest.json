@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 244591,
-    "sha256": "3d94c37257cd0a53c7cbf508f78d743b6c3caf93a1c6a69a9b9b22cfc990c793",
+    "bytes": 249338,
+    "sha256": "1913daac6392069e109c6fd20d2b04d456d271cad96e8cf6a0017f5ef672d588",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -137,7 +137,7 @@
     },
     {
       "path": "src/features/formulation/stabilizerDosage.ts",
-      "sha256": "8a6dba8473a56eb64747ab5e4b7afb45e69be556e5c017c30f536bd8472a2ca4"
+      "sha256": "a76272378c5cb7b77046b34588a0adf0dc5aadfe9fa7ba5623699e330047d7d4"
     },
     {
       "path": "src/features/formulation/veganProfileConstraints.ts",
@@ -157,7 +157,7 @@
     },
     {
       "path": "src/features/product-intelligence/mainEnvelope.ts",
-      "sha256": "979b6c5e0eca6196f182d0543c3f316fc8982cd98750c85364fdd50b039b3db0"
+      "sha256": "85885ae65af6dc57e5dea0143bb43ae84b205e4bc639288fbeb5836c73528c6b"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorAccess.ts",
@@ -209,15 +209,19 @@
     },
     {
       "path": "src/features/recipe-constraints/recipeConstraintAuthority.ts",
-      "sha256": "b5a0aab14f0841ec436d70fd873d55674d95faff26814df0238a1dbcd002972a"
+      "sha256": "0b217386d2481096e93137a68ad8c7a5b25211343de73f7c234e67c902fe40c9"
+    },
+    {
+      "path": "src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts",
+      "sha256": "2ec0ba3dad8d937f466920a391589fe970b6b9e649723f7924e200fade55bb40"
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionAssessment.ts",
-      "sha256": "f24b4328880b5b087d1caf4e11f72d3cdb5795f616cb3fc5d914d30364b715c6"
+      "sha256": "3de47ff1bc860387c37810ca2345eecb025593546150d4967fc30dbdb3e2eb08"
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionTargets.ts",
-      "sha256": "2660269f2a911ce6e8804d10215425fd7f1a63cd0399b38cfa55b9497f205cd1"
+      "sha256": "c055dde698b36e1615f03dea16d12f63365c2ad70002fdf89dfdbbbbe5034659"
     },
     {
       "path": "src/features/recipe-score/recipeMatchScore.ts",
@@ -232,5 +236,5 @@
       "sha256": "ceb1e7b33ddb1448a584c84aafdfdb86d0b33dded9a35acee064178a3a90fc53"
     }
   ],
-  "sourceClosureSha256": "d61e9e55db2104dd393a79284a28600f2fb1f1502f02839ed5719db295fcec61"
+  "sourceClosureSha256": "0308e62d437ce8fdf59a0704fa480403a8af322d89caedc1a6f89d63bf2a496c"
 }

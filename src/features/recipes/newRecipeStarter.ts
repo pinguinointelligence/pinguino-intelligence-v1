@@ -28,6 +28,7 @@ import {
 } from '@/features/pro-core/effectiveRecipePricing';
 import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
 import { projectGelatoStabilizerSystemToWholeGramPreferred } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
+import { projectSorbetStabilizerSystemToWholeGramPreferred } from '@/features/recipe-constraints/sorbetStabilizerSystemAuthority';
 import { recipeTechnicalFit } from '@/features/recipe-score/technicalFit';
 import type { VisibleProductType } from '@/features/studio/productType';
 
@@ -232,7 +233,7 @@ const practicalizeStarter = (
       if (!dosage || Number.isInteger(item.planned_grams)) return item;
       const window = stabilizerDosageWindowGrams(
         dosage,
-        practicalizationInput.target_batch_grams,
+        exactInput.target_batch_grams,
       );
       const minimumWhole = Math.ceil(window.minGrams);
       const maximumWhole = Math.floor(window.maxGrams);
@@ -246,8 +247,14 @@ const practicalizeStarter = (
       };
     }),
   };
-  const preferredStabilizerItems =
-    projectGelatoStabilizerSystemToWholeGramPreferred(productDosageSeed);
+  const preferredStabilizerItems = projectSorbetStabilizerSystemToWholeGramPreferred({
+    ...productDosageSeed,
+    target_batch_grams: exactInput.target_batch_grams,
+    items: projectGelatoStabilizerSystemToWholeGramPreferred({
+      ...productDosageSeed,
+      target_batch_grams: exactInput.target_batch_grams,
+    }),
+  });
   const massBeforePreference = productDosageSeed.items.reduce(
     (sum, item) => sum + item.planned_grams,
     0,
@@ -258,7 +265,10 @@ const practicalizeStarter = (
   );
   const preferenceMassTransfer = massBeforePreference - massAfterPreference;
   const carrierIndex = preferredStabilizerItems.findIndex(
-    (item) => resolveFunctionalRole(item.ingredient) === 'primary_liquid',
+    (item) => {
+      const role = resolveFunctionalRole(item.ingredient);
+      return role === 'primary_liquid' || role === 'water';
+    },
   );
   // A starter policy change reallocates mass; it must not silently shrink or
   // grow the requested batch. Keep the exact pre-policy mass by transferring

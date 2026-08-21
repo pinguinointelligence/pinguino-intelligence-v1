@@ -402,6 +402,8 @@ export const engineHasStabilizerMetric = (): boolean =>
 
 const TARA_TEMPLATE_NOTE_PL =
   'Dawka stabilizatora pochodzi z szablonu referencyjnego i nie została zoptymalizowana przez Engine.';
+const SORBET_OWNER_STABILIZER_NOTE_PL =
+  'Dawka systemu stabilizującego Sorbet pochodzi z owner-approved Gellatti Sorbet formulation policy i nie została zoptymalizowana przez Engine.';
 
 function buildTaraReport(
   finalInput: RecipeInput | null,
@@ -439,7 +441,10 @@ function buildTaraReport(
     // No stabilizer target metric exists, so the engine can never have
     // OPTIMIZED the dose against a band — template/inherited by construction.
     optimizedByEngine: false,
-    notePl: TARA_TEMPLATE_NOTE_PL,
+    notePl:
+      assessed.category === 'sorbet'
+        ? SORBET_OWNER_STABILIZER_NOTE_PL
+        : TARA_TEMPLATE_NOTE_PL,
   };
 }
 

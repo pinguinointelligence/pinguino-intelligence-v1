@@ -191,16 +191,16 @@ describe('Direction operational acceptance matrix', () => {
             `matrix-${category}-${temperature}-${axis}-${requested}`,
           );
           const alreadyReached = !built.ok && built.code === 'already_clean';
-          const nearestGelatoFixedPoint =
+          const nearestExactDirectionFixedPoint =
             !built.ok &&
             built.code === 'no_proposal' &&
-            category === 'milk_gelato' &&
+            (category === 'milk_gelato' || category === 'sorbet') &&
             built.directionTargetUnreached === true;
           expect(
-            built.ok || alreadyReached || nearestGelatoFixedPoint,
+            built.ok || alreadyReached || nearestExactDirectionFixedPoint,
             built.ok ? '' : JSON.stringify({ category, temperature, axis, requested, built }),
           ).toBe(true);
-          if (nearestGelatoFixedPoint && !built.ok && built.code === 'no_proposal') {
+          if (nearestExactDirectionFixedPoint && !built.ok && built.code === 'no_proposal') {
             expect(detectViolations(before)).toEqual([]);
             expect(built.solverInvocations ?? 0).toBeGreaterThan(0);
             console.info(

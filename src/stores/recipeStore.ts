@@ -83,8 +83,8 @@ import {
   type ProductionThermalMode,
 } from '@/features/product-intelligence';
 import {
-  assessGelatoStabilizerSystem,
-  clampGelatoStabilizerComponentGrams,
+  assessOwnerStabilizerSystem,
+  clampOwnerStabilizerComponentGrams,
   gelatoStabilizerSystemApplies,
   evaluateRecipeConstraintAuthority,
 } from '@/features/recipe-constraints';
@@ -994,7 +994,7 @@ export const useRecipeStore = create<RecipeState>()(
 
         const normalizedIngredient = normalizeIngredientIdentity(ingredient);
         const candidate = makeLine(normalizedIngredient, grams);
-        const aggregate = clampGelatoStabilizerComponentGrams(
+        const aggregate = clampOwnerStabilizerComponentGrams(
           buildRecipeInput({ ...current, items: [...current.items, candidate] }),
           candidate.id,
           grams,
@@ -1408,7 +1408,7 @@ export const useRecipeStore = create<RecipeState>()(
           // amount. The server-authority recalculation path will surface the
           // exact revalidation blocker.
           if (!clamped.ok) return {};
-          const aggregate = clampGelatoStabilizerComponentGrams(
+          const aggregate = clampOwnerStabilizerComponentGrams(
             buildRecipeInput(state),
             lineId,
             clamped.grams,
@@ -1471,7 +1471,7 @@ export const useRecipeStore = create<RecipeState>()(
           )
             return {};
           if (assessProductDosages(proposed, state.productBehaviorSnapshots).length > 0) return {};
-          if (assessGelatoStabilizerSystem(proposed).issues.length > 0) return {};
+          if (assessOwnerStabilizerSystem(proposed).issues.length > 0) return {};
           return {
             items: proposedItems,
             dirty: true,

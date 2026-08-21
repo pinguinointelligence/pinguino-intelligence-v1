@@ -39,6 +39,7 @@ import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIde
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { resolveFunctionalRole } from './ingredientRoles';
 import { gelatoStabilizerSystemApplies } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
+import { assessSorbetStabilizerSystem } from '@/features/recipe-constraints/sorbetStabilizerSystemAuthority';
 
 export type StabilizerIdentityKind = 'pure_gum' | 'stabilizer_blend';
 
@@ -239,7 +240,17 @@ export function templateControlledStabilizerViolations(
     isTemplateControlledStabilizer(item.ingredient),
   );
   const hasEstablishedPositiveDose = currentStabilizers.some((item) => item.planned_grams > 0);
-  const seed = !hasEstablishedPositiveDose ? options.approvedFormulationSeed : undefined;
+  // A legacy Sorbet dose (notably S01–S03 at 0.8 g) is historical evidence,
+  // not executable intent under the owner whole-gram aggregate policy. Permit
+  // only the approved formulation seed to rebuild that invalid dose. Once the
+  // current Sorbet system is valid, the established-dose invariant resumes and
+  // a forged in-window mutation remains blocked.
+  const sorbetLegacyRebuild =
+    current.category === 'sorbet' && assessSorbetStabilizerSystem(current).issues.length > 0;
+  const seed =
+    !hasEstablishedPositiveDose || sorbetLegacyRebuild
+      ? options.approvedFormulationSeed
+      : undefined;
   const positiveProposedStabilizers = proposedStabilizers.filter(
     (item) => item.planned_grams > DOSAGE_EPS,
   );

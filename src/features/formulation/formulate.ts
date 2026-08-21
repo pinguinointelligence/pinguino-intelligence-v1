@@ -34,6 +34,11 @@ import {
   gelatoStabilizerSystemApplies,
   gelatoStabilizerWholeGramBand,
 } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
+import {
+  assessSorbetStabilizerSystem,
+  sorbetStabilizerSystemApplies,
+  sorbetStabilizerWholeGramBand,
+} from '@/features/recipe-constraints/sorbetStabilizerSystemAuthority';
 import { selectFormulationTemplateForRecipe, type FormulationTemplate } from './templateRegistry';
 import { canonicalToolboxIdentity, isToolboxCandidateExcluded } from './toolboxCanonical';
 import { findVerifiedVeganFormulationCandidate } from '@/data/ingredients/verifiedVeganToolbox';
@@ -449,7 +454,11 @@ export function buildFormulationProposal(
   const excluded = new Set(options.excludedIngredientIds ?? []);
   const batch = input.target_batch_grams;
   const scale = batch / template.baseBatchG;
-  const ownerStabilizerAssessment = assessGelatoStabilizerSystem(input);
+  const gelatoStabilizerAssessment = assessGelatoStabilizerSystem(input);
+  const sorbetStabilizerAssessment = assessSorbetStabilizerSystem(input);
+  const ownerStabilizerAssessment = gelatoStabilizerAssessment.applicable
+    ? gelatoStabilizerAssessment
+    : sorbetStabilizerAssessment;
   const ownerStabilizerSystemAlreadyValid =
     ownerStabilizerAssessment.applicable &&
     ownerStabilizerAssessment.present &&
@@ -573,8 +582,10 @@ export function buildFormulationProposal(
   // not-explicitly-excluded candidate exists.
   for (const roleTarget of template.roles) {
     const ownerInulinRole = roleTarget.toolboxId === 'inulin';
-    const ownerGelatoStabilizerRole =
-      roleTarget.role === 'stabilizer' && gelatoStabilizerSystemApplies(input.category);
+    const ownerStabilizerRole =
+      roleTarget.role === 'stabilizer' &&
+      (gelatoStabilizerSystemApplies(input.category) ||
+        sorbetStabilizerSystemApplies(input.category));
     const canonical = roleTarget.toolboxId ? canonicalToolboxIdentity(roleTarget.toolboxId) : null;
     const exactCanonicalMatchesUnfiltered = canonical
       ? lines.filter((line) => canonicalIngredientId(line.item.ingredient) === canonical.mapperId)
@@ -585,8 +596,10 @@ export function buildFormulationProposal(
     const ownerInulinPolicyMatch = ownerInulinRole && exactCanonicalMatches.length > 0;
     const targetGrams = ownerInulinPolicyMatch
       ? ownerInulinBand.preferredGrams
-      : ownerGelatoStabilizerRole
-        ? gelatoStabilizerWholeGramBand(batch).preferredGrams
+      : ownerStabilizerRole
+        ? sorbetStabilizerSystemApplies(input.category)
+          ? sorbetStabilizerWholeGramBand(batch).preferredGrams
+          : gelatoStabilizerWholeGramBand(batch).preferredGrams
         : roleTarget.grams * scale;
     const roleMatches = byRole.get(roleTarget.role) ?? [];
     // Protein Main is recipe identity, not a broad structural-role fallback.
@@ -608,7 +621,7 @@ export function buildFormulationProposal(
         ? fallbackRoleMatches.filter((line) => line.item.planned_grams > 0)
         : fallbackRoleMatches;
     const matches =
-      ownerGelatoStabilizerRole && templateEligibleFallbackMatches.length > 0
+      ownerStabilizerRole && templateEligibleFallbackMatches.length > 0
         ? templateEligibleFallbackMatches
         : exactCanonicalMatches.length > 0
           ? exactCanonicalMatches
@@ -623,15 +636,15 @@ export function buildFormulationProposal(
       existingLineReused: matches.length > 0,
     };
     if (matches.length > 0) {
-      const wholeShare = ownerGelatoStabilizerRole ? Math.floor(targetGrams / matches.length) : 0;
-      const wholeRemainder = ownerGelatoStabilizerRole ? targetGrams % matches.length : 0;
+      const wholeShare = ownerStabilizerRole ? Math.floor(targetGrams / matches.length) : 0;
+      const wholeRemainder = ownerStabilizerRole ? targetGrams % matches.length : 0;
       for (const [matchIndex, match] of matches.entries()) {
         const share =
           ownerInulinPolicyMatch && ownerInulinAlreadyValid
             ? match.item.planned_grams
-            : ownerGelatoStabilizerRole && ownerStabilizerSystemAlreadyValid
+            : ownerStabilizerRole && ownerStabilizerSystemAlreadyValid
               ? match.item.planned_grams
-              : ownerGelatoStabilizerRole
+              : ownerStabilizerRole
                 ? wholeShare + (matchIndex < wholeRemainder ? 1 : 0)
                 : targetGrams / matches.length;
         mappedLineIds.add(match.item.id);
@@ -644,7 +657,7 @@ export function buildFormulationProposal(
         // template; explicit batch rescale is handled by its dedicated route.
         if (
           roleTarget.role === 'stabilizer' &&
-          !ownerGelatoStabilizerRole &&
+          !ownerStabilizerRole &&
           match.item.planned_grams > 0
         ) {
           const heldGrams =
@@ -688,7 +701,7 @@ export function buildFormulationProposal(
           planned.push({
             item: match.item,
             grams: share,
-            fixed: ownerGelatoStabilizerRole || !roleTarget.adjustable,
+            fixed: ownerStabilizerRole || !roleTarget.adjustable,
             min: ownerInulinPolicyMatch ? ownerInulinBand.minGrams : undefined,
             max: ownerInulinPolicyMatch ? ownerInulinBand.maxGrams : undefined,
           });

@@ -8,6 +8,9 @@ export interface RecipeDirectionResidual {
   metric: TargetMetric;
   reached: boolean;
   side: 'below' | 'inside' | 'above';
+  value?: number;
+  targetCenter?: number | null;
+  absoluteDistance?: number;
 }
 
 export interface RecipeDirectionAssessment {
@@ -43,13 +46,30 @@ export function assessRecipeDirection(
       if (axis.status !== 'working' || axis.metric === null || axis.targetBand === null) continue;
       const value = indicators.get(axis.metric)?.value;
       if (value === null || value === undefined || !Number.isFinite(value)) continue;
-      const side =
-        value < axis.targetBand.min ? 'below' : value > axis.targetBand.max ? 'above' : 'inside';
+      const absoluteDistance =
+        axis.targetCenter === null
+          ? value < axis.targetBand.min
+            ? axis.targetBand.min - value
+            : value > axis.targetBand.max
+              ? value - axis.targetBand.max
+              : 0
+          : Math.abs(value - axis.targetCenter);
+      const exactCenterReached = axis.targetCenter !== null && absoluteDistance <= 1e-9;
+      const side = exactCenterReached
+        ? 'inside'
+        : value < axis.targetBand.min
+          ? 'below'
+          : value > axis.targetBand.max
+            ? 'above'
+            : 'inside';
       residuals.push({
         axis: axis.axis,
         metric: axis.metric,
-        reached: side === 'inside',
+        reached: axis.targetCenter === null ? side === 'inside' : exactCenterReached,
         side,
+        value,
+        targetCenter: axis.targetCenter,
+        absoluteDistance,
       });
     }
   }

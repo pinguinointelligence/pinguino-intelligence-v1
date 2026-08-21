@@ -5191,31 +5191,31 @@
           "id": "l-straw",
           "ingredientId": "PI-ING-001553",
           "name": "STRAWBERRIES · Fresh Fruit",
-          "grams": 642.3618
+          "grams": 636.7915
         },
         {
           "id": "l-water",
           "ingredientId": "water",
           "name": "Water",
-          "grams": 187.8642
+          "grams": 189.1121
         },
         {
           "id": "l-suc",
           "ingredientId": "sucrose",
           "name": "Sucrose",
-          "grams": 107.7365
+          "grams": 108.4521
         },
         {
           "id": "l-dex",
           "ingredientId": "dextrose",
           "name": "Dextrose",
-          "grams": 61.2375
+          "grams": 61.6443
         },
         {
           "id": "l-tara",
           "ingredientId": "tara_gum",
           "name": "Tara gum",
-          "grams": 0.8
+          "grams": 4
         },
         {
           "id": "l-inulin",
@@ -5226,27 +5226,27 @@
       ],
       "batchTotalG": 1000,
       "metrics": {
-        "podPoints": 18.5605,
-        "pacPoints": 26.8481,
-        "npacPoints": 36.0237,
-        "iceFractionPercent": 51.3083,
-        "waterPercent": 74.529,
-        "totalSolidsPercent": 25.471,
-        "fatPercent": 0.1927,
-        "proteinPercent": 0.7708,
+        "podPoints": 18.6284,
+        "pacPoints": 26.9442,
+        "npacPoints": 36.3049,
+        "iceFractionPercent": 51.0115,
+        "waterPercent": 74.2164,
+        "totalSolidsPercent": 25.7836,
+        "fatPercent": 0.191,
+        "proteinPercent": 0.7641,
         "lactosePercent": 0
       },
       "stabilizer": {
         "present": true,
-        "grams": 0.8,
-        "percentOfMix": 0.08,
-        "source": "user_line_template_dose (odziedziczona, niezmieniona)",
+        "grams": 4,
+        "percentOfMix": 0.4,
+        "source": "user_line_solver_or_lock (zmieniona względem draftu)",
         "engineHasStabilizerMetric": false,
         "optimizedByEngine": false,
-        "notePl": "Dawka stabilizatora pochodzi z szablonu referencyjnego i nie została zoptymalizowana przez Engine."
+        "notePl": "Dawka systemu stabilizującego Sorbet pochodzi z owner-approved Gellatti Sorbet formulation policy i nie została zoptymalizowana przez Engine."
       },
       "score": {
-        "overall0to100": 73.7897,
+        "overall0to100": 73.7097,
         "tenPoint": 7,
         "label": "Dobrze dopasowana",
         "provisionalBands": false
@@ -5260,27 +5260,27 @@
           {
             "lineId": "l-straw",
             "name": "STRAWBERRIES · Fresh Fruit",
-            "factor": 1.0706
+            "factor": 1.0613
           },
           {
             "lineId": "l-water",
             "name": "Water",
-            "factor": 1.0379
+            "factor": 1.0448
           },
           {
             "lineId": "l-suc",
             "name": "Sucrose",
-            "factor": 1.0379
+            "factor": 1.0448
           },
           {
             "lineId": "l-dex",
             "name": "Dextrose",
-            "factor": 1.0379
+            "factor": 1.0448
           },
           {
             "lineId": "l-tara",
             "name": "Tara gum",
-            "factor": 1
+            "factor": 5
           }
         ],
         "sharedFactor": null,
@@ -5305,31 +5305,31 @@
             "line": "l-straw",
             "ingredient_id": "PI-ING-001553",
             "name": "STRAWBERRIES · Fresh Fruit",
-            "grams": 642.3618040301358
+            "grams": 636.791507787351
           },
           {
             "line": "l-water",
             "ingredient_id": "water",
             "name": "Water",
-            "grams": 187.86420439367492
+            "grams": 189.11209159537373
           },
           {
             "line": "l-suc",
             "ingredient_id": "sucrose",
             "name": "Sucrose",
-            "grams": 107.73648848653843
+            "grams": 108.45212766629719
           },
           {
             "line": "l-dex",
             "ingredient_id": "dextrose",
             "name": "Dextrose",
-            "grams": 61.23750308965095
+            "grams": 61.64427295097818
           },
           {
             "line": "l-tara",
             "ingredient_id": "tara_gum",
             "name": "Tara gum",
-            "grams": 0.8
+            "grams": 4
           },
           {
             "line": "l-inulin",
@@ -5340,52 +5340,52 @@
         ],
         "total_batch_g": 1000,
         "totals": {
-          "water_g": 745.2904,
-          "solids_g": 254.7096,
-          "fat_g": 1.9271,
-          "protein_g": 7.7083,
+          "water_g": 742.1643,
+          "solids_g": 257.8357,
+          "fat_g": 1.9104,
+          "protein_g": 7.6415,
           "lactose_g": 0,
-          "sucrose_g": 107.7365,
-          "glucose_g": 12.8472,
-          "dextrose_g": 56.3385,
-          "fructose_g": 15.4167,
+          "sucrose_g": 108.4521,
+          "glucose_g": 12.7358,
+          "dextrose_g": 56.7127,
+          "fructose_g": 15.283,
           "polyol_g": 0,
-          "fiber_g": 42.3935,
+          "fiber_g": 44.5914,
           "salt_g": 0,
           "alcohol_g": 0
         },
         "percentages": {
-          "water_percent": 74.529,
-          "solids_percent": 25.471,
-          "fat_percent": 0.1927,
-          "protein_percent": 0.7708,
+          "water_percent": 74.2164,
+          "solids_percent": 25.7836,
+          "fat_percent": 0.191,
+          "protein_percent": 0.7641,
           "lactose_percent": 0,
-          "sucrose_percent": 10.7736,
-          "glucose_percent": 1.2847,
-          "dextrose_percent": 5.6339,
-          "fructose_percent": 1.5417,
+          "sucrose_percent": 10.8452,
+          "glucose_percent": 1.2736,
+          "dextrose_percent": 5.6713,
+          "fructose_percent": 1.5283,
           "polyol_percent": 0,
-          "fiber_percent": 4.2394,
+          "fiber_percent": 4.4591,
           "salt_percent": 0,
           "alcohol_percent": 0
         },
         "sugar": {
-          "sucrose_g": 107.7365,
-          "glucose_g": 12.8472,
-          "dextrose_g": 56.3385,
-          "fructose_g": 15.4167,
+          "sucrose_g": 108.4521,
+          "glucose_g": 12.7358,
+          "dextrose_g": 56.7127,
+          "fructose_g": 15.283,
           "lactose_g": 0,
           "polyol_g": 0,
           "other_sugar_g": 0
         },
-        "pod_points": 18.5605,
-        "pac_points": 26.8481,
-        "npac_points": 36.0237,
-        "ice_fraction_percent": 51.3083,
+        "pod_points": 18.6284,
+        "pac_points": 26.9442,
+        "npac_points": 36.3049,
+        "ice_fraction_percent": 51.0115,
         "indicators": [
           {
             "key": "pod",
-            "value": 18.5605,
+            "value": 18.6284,
             "status": "ideal",
             "band": {
               "min": 15,
@@ -5397,7 +5397,7 @@
           },
           {
             "key": "npac",
-            "value": 36.0237,
+            "value": 36.3049,
             "status": "ideal",
             "band": {
               "min": 35,
@@ -5409,7 +5409,7 @@
           },
           {
             "key": "ice_fraction",
-            "value": 51.3083,
+            "value": 51.0115,
             "status": "good",
             "band": {
               "min": 51,
@@ -5439,7 +5439,7 @@
           },
           {
             "key": "fat",
-            "value": 0.1927,
+            "value": 0.191,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -5448,7 +5448,7 @@
           },
           {
             "key": "aerating_protein",
-            "value": 0.7708,
+            "value": 0.7641,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -5457,7 +5457,7 @@
           },
           {
             "key": "protein_in_solids",
-            "value": 3.0263,
+            "value": 2.9637,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -5466,7 +5466,7 @@
           },
           {
             "key": "total_solids",
-            "value": 25.471,
+            "value": 25.7836,
             "status": "good",
             "band": {
               "min": 25,
@@ -5478,7 +5478,7 @@
           },
           {
             "key": "water",
-            "value": 74.529,
+            "value": 74.2164,
             "status": "good",
             "band": {
               "min": 67,
@@ -5505,14 +5505,14 @@
         "scores": {
           "technical": 73.8889,
           "flavor": 70,
-          "cost": 78.9367,
-          "overall": 73.7897
+          "cost": 78.6165,
+          "overall": 73.7097
         },
         "verdict": {
           "score": 7,
           "label": "Dobrze dopasowana"
         },
-        "cost_per_kg": 4.0851,
+        "cost_per_kg": 4.1107,
         "cost_complete": true,
         "warnings": []
       }
@@ -7139,56 +7139,56 @@
           "id": "l-straw",
           "ingredientId": "PI-ING-001553",
           "name": "STRAWBERRIES · Fresh Fruit",
-          "grams": 642.3618
+          "grams": 636.7915
         },
         {
           "id": "formulation-water",
           "ingredientId": "water",
           "name": "Water",
-          "grams": 187.8642
+          "grams": 189.1121
         },
         {
           "id": "formulation-sucrose",
           "ingredientId": "sucrose",
           "name": "Sucrose",
-          "grams": 107.7365
+          "grams": 108.4521
         },
         {
           "id": "formulation-dextrose",
           "ingredientId": "dextrose",
           "name": "Dextrose (monohydrate)",
-          "grams": 61.2375
+          "grams": 61.6443
         },
         {
           "id": "formulation-tara_gum",
           "ingredientId": "tara_gum",
           "name": "Tara gum",
-          "grams": 0.8
+          "grams": 4
         }
       ],
       "batchTotalG": 1000,
       "metrics": {
-        "podPoints": 18.5605,
-        "pacPoints": 26.8481,
-        "npacPoints": 36.0237,
-        "iceFractionPercent": 51.3083,
-        "waterPercent": 74.529,
-        "totalSolidsPercent": 25.471,
-        "fatPercent": 0.1927,
-        "proteinPercent": 0.7708,
+        "podPoints": 18.6284,
+        "pacPoints": 26.9442,
+        "npacPoints": 36.3049,
+        "iceFractionPercent": 51.0115,
+        "waterPercent": 74.2164,
+        "totalSolidsPercent": 25.7836,
+        "fatPercent": 0.191,
+        "proteinPercent": 0.7641,
         "lactosePercent": 0
       },
       "stabilizer": {
         "present": true,
-        "grams": 0.8,
-        "percentOfMix": 0.08,
+        "grams": 4,
+        "percentOfMix": 0.4,
         "source": "template_seed_auto_added (dawka kontrolowana przez szablon, adjustable=false)",
         "engineHasStabilizerMetric": false,
         "optimizedByEngine": false,
-        "notePl": "Dawka stabilizatora pochodzi z szablonu referencyjnego i nie została zoptymalizowana przez Engine."
+        "notePl": "Dawka systemu stabilizującego Sorbet pochodzi z owner-approved Gellatti Sorbet formulation policy i nie została zoptymalizowana przez Engine."
       },
       "score": {
-        "overall0to100": 73.7897,
+        "overall0to100": 73.7097,
         "tenPoint": 7,
         "label": "Dobrze dopasowana",
         "provisionalBands": false
@@ -7221,81 +7221,81 @@
             "line": "l-straw",
             "ingredient_id": "PI-ING-001553",
             "name": "STRAWBERRIES · Fresh Fruit",
-            "grams": 642.3618040301358
+            "grams": 636.791507787351
           },
           {
             "line": "formulation-water",
             "ingredient_id": "water",
             "name": "Water",
-            "grams": 187.86420439367492
+            "grams": 189.11209159537373
           },
           {
             "line": "formulation-sucrose",
             "ingredient_id": "sucrose",
             "name": "Sucrose",
-            "grams": 107.73648848653843
+            "grams": 108.45212766629719
           },
           {
             "line": "formulation-dextrose",
             "ingredient_id": "dextrose",
             "name": "Dextrose (monohydrate)",
-            "grams": 61.23750308965095
+            "grams": 61.64427295097818
           },
           {
             "line": "formulation-tara_gum",
             "ingredient_id": "tara_gum",
             "name": "Tara gum",
-            "grams": 0.8
+            "grams": 4
           }
         ],
         "total_batch_g": 1000,
         "totals": {
-          "water_g": 745.2904,
-          "solids_g": 254.7096,
-          "fat_g": 1.9271,
-          "protein_g": 7.7083,
+          "water_g": 742.1643,
+          "solids_g": 257.8357,
+          "fat_g": 1.9104,
+          "protein_g": 7.6415,
           "lactose_g": 0,
-          "sucrose_g": 107.7365,
-          "glucose_g": 12.8472,
-          "dextrose_g": 56.3385,
-          "fructose_g": 15.4167,
+          "sucrose_g": 108.4521,
+          "glucose_g": 12.7358,
+          "dextrose_g": 56.7127,
+          "fructose_g": 15.283,
           "polyol_g": 0,
-          "fiber_g": 42.3935,
+          "fiber_g": 44.5914,
           "salt_g": 0,
           "alcohol_g": 0
         },
         "percentages": {
-          "water_percent": 74.529,
-          "solids_percent": 25.471,
-          "fat_percent": 0.1927,
-          "protein_percent": 0.7708,
+          "water_percent": 74.2164,
+          "solids_percent": 25.7836,
+          "fat_percent": 0.191,
+          "protein_percent": 0.7641,
           "lactose_percent": 0,
-          "sucrose_percent": 10.7736,
-          "glucose_percent": 1.2847,
-          "dextrose_percent": 5.6339,
-          "fructose_percent": 1.5417,
+          "sucrose_percent": 10.8452,
+          "glucose_percent": 1.2736,
+          "dextrose_percent": 5.6713,
+          "fructose_percent": 1.5283,
           "polyol_percent": 0,
-          "fiber_percent": 4.2394,
+          "fiber_percent": 4.4591,
           "salt_percent": 0,
           "alcohol_percent": 0
         },
         "sugar": {
-          "sucrose_g": 107.7365,
-          "glucose_g": 12.8472,
-          "dextrose_g": 56.3385,
-          "fructose_g": 15.4167,
+          "sucrose_g": 108.4521,
+          "glucose_g": 12.7358,
+          "dextrose_g": 56.7127,
+          "fructose_g": 15.283,
           "lactose_g": 0,
           "polyol_g": 0,
           "other_sugar_g": 0
         },
-        "pod_points": 18.5605,
-        "pac_points": 26.8481,
-        "npac_points": 36.0237,
-        "ice_fraction_percent": 51.3083,
+        "pod_points": 18.6284,
+        "pac_points": 26.9442,
+        "npac_points": 36.3049,
+        "ice_fraction_percent": 51.0115,
         "indicators": [
           {
             "key": "pod",
-            "value": 18.5605,
+            "value": 18.6284,
             "status": "ideal",
             "band": {
               "min": 15,
@@ -7307,7 +7307,7 @@
           },
           {
             "key": "npac",
-            "value": 36.0237,
+            "value": 36.3049,
             "status": "ideal",
             "band": {
               "min": 35,
@@ -7319,7 +7319,7 @@
           },
           {
             "key": "ice_fraction",
-            "value": 51.3083,
+            "value": 51.0115,
             "status": "good",
             "band": {
               "min": 51,
@@ -7349,7 +7349,7 @@
           },
           {
             "key": "fat",
-            "value": 0.1927,
+            "value": 0.191,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -7358,7 +7358,7 @@
           },
           {
             "key": "aerating_protein",
-            "value": 0.7708,
+            "value": 0.7641,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -7367,7 +7367,7 @@
           },
           {
             "key": "protein_in_solids",
-            "value": 3.0263,
+            "value": 2.9637,
             "status": "needs_correction",
             "band": null,
             "band_status": "seeded",
@@ -7376,7 +7376,7 @@
           },
           {
             "key": "total_solids",
-            "value": 25.471,
+            "value": 25.7836,
             "status": "good",
             "band": {
               "min": 25,
@@ -7388,7 +7388,7 @@
           },
           {
             "key": "water",
-            "value": 74.529,
+            "value": 74.2164,
             "status": "good",
             "band": {
               "min": 67,
@@ -7415,14 +7415,14 @@
         "scores": {
           "technical": 73.8889,
           "flavor": 70,
-          "cost": 78.9367,
-          "overall": 73.7897
+          "cost": 78.6165,
+          "overall": 73.7097
         },
         "verdict": {
           "score": 7,
           "label": "Dobrze dopasowana"
         },
-        "cost_per_kg": 4.0851,
+        "cost_per_kg": 4.1107,
         "cost_complete": true,
         "warnings": []
       }

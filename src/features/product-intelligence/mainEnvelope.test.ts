@@ -296,6 +296,105 @@ describe('versioned Main envelope', () => {
     );
   });
 
+  it.each([
+    [300, 300],
+    [400, 200],
+  ])('accepts exact-authority Sorbet Multi-Main at 60%% (%i + %i g)', (first, second) => {
+    const base = recipe(first, 0);
+    const sorbetRecipe: RecipeInput = {
+      ...base,
+      category: 'sorbet',
+      items: [
+        { ...base.items[0]!, planned_grams: first, main_ratio_weight: first / 200 },
+        {
+          id: 'lime',
+          ingredient: ingredient('raspberry'),
+          planned_grams: second,
+          actual_grams: null,
+          lock_type: 'main',
+          main_ratio_weight: second / 200,
+        },
+        { ...base.items[2]!, planned_grams: 1_000 - first - second },
+      ],
+    };
+    const exactSorbetSnapshot = (lineId: string, mapperIngredientId: string) =>
+      snapshot(lineId, {
+        mapperIngredientId,
+        familyId: 'fruit',
+        mainPolicyId: 'main-sorbet-exact-fruit-60-v1',
+        mainPolicyVersion: '1',
+        ecoFloorPercent: 60,
+        optimalCeilingPercent: 60,
+        hardLimitPercent: 60,
+        multiMainHardLimitPercent: 60,
+        mainEquivalentFactor: 1,
+        requiresLiquidDairyCarrier: false,
+        liquidDairyCarrierFloorPercent: null,
+      });
+    const result = verifyMainEnvelope({
+      recipe: sorbetRecipe,
+      snapshots: {
+        berry: exactSorbetSnapshot('berry', 'PI-ING-001553'),
+        lime: exactSorbetSnapshot('lime', 'PI-ING-000369'),
+      },
+      mode: 'optimal',
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      equivalentPercent: 60,
+      targetPercent: 60,
+      hardLimitPercent: 60,
+      policyId: 'main-sorbet-exact-fruit-60-v1',
+    });
+  });
+
+  it('fails closed when one Sorbet Main lacks the shared exact authority', () => {
+    const base = recipe(300, 0);
+    const sorbetRecipe: RecipeInput = {
+      ...base,
+      category: 'sorbet',
+      items: [
+        base.items[0]!,
+        {
+          id: 'unknown',
+          ingredient: ingredient('raspberry'),
+          planned_grams: 300,
+          actual_grams: null,
+          lock_type: 'main',
+        },
+        { ...base.items[2]!, planned_grams: 400 },
+      ],
+    };
+    const approved = snapshot('berry', {
+      mainPolicyId: 'main-sorbet-exact-fruit-60-v1',
+      ecoFloorPercent: 60,
+      optimalCeilingPercent: 60,
+      hardLimitPercent: 60,
+      multiMainHardLimitPercent: 60,
+      requiresLiquidDairyCarrier: false,
+      liquidDairyCarrierFloorPercent: null,
+    });
+    const unknown = snapshot('unknown', {
+      mainPolicyId: 'unapproved-sorbet-main',
+      ecoFloorPercent: 60,
+      optimalCeilingPercent: 60,
+      hardLimitPercent: 60,
+      multiMainHardLimitPercent: null,
+      requiresLiquidDairyCarrier: false,
+      liquidDairyCarrierFloorPercent: null,
+    });
+    expect(
+      verifyMainEnvelope({
+        recipe: sorbetRecipe,
+        snapshots: { berry: approved, unknown },
+        mode: 'optimal',
+      }),
+    ).toMatchObject({
+      ok: false,
+      violations: [expect.objectContaining({ code: 'multi_main_policy_unknown' })],
+    });
+  });
+
   it('caps same-family Multi-Main search at the approved shared group limit', () => {
     const baseRecipe = recipe(400, 0);
     const multiRecipe: RecipeInput = {

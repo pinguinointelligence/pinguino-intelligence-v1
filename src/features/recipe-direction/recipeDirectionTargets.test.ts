@@ -17,6 +17,8 @@ import {
   buildRecipeDirectionPlan,
   recipeDirectionViolations,
   resultWithRecipeDirectionTargets,
+  SORBET_HARDNESS_TARGET_CENTERS,
+  SORBET_SWEETNESS_TARGET_CENTERS,
 } from './recipeDirectionTargets';
 
 const NO_CONSTRAINTS = { byLineId: {} };
@@ -68,10 +70,18 @@ const GELATO_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
   ([category]) => category === 'milk_gelato',
 );
 const LEGACY_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
-  ([category]) => category !== 'milk_gelato',
+  ([category]) => category === 'chocolate_gelato',
 );
-const SOFTNESS_CELLS = CELLS.filter(([category]) => category === 'milk_gelato');
-const NON_MILK_CELLS = CELLS.filter(([category]) => category !== 'milk_gelato');
+const SOFTNESS_CELLS = CELLS.filter(
+  ([category, temperature]) =>
+    category === 'milk_gelato' || (category === 'sorbet' && temperature === -11),
+);
+const NON_EXACT_SOFTNESS_CELLS = CELLS.filter(
+  (cell) =>
+    !SOFTNESS_CELLS.some(
+      ([category, temperature]) => category === cell[0] && temperature === cell[1],
+    ),
+);
 const BLOCKED_SWEETNESS_CELLS = CELLS.filter(
   (cell) =>
     !SWEETNESS_CELLS.some(
@@ -122,6 +132,51 @@ describe('canonical recipe Direction target contract', () => {
     },
   );
 
+  it.each([
+    [-11, [39.5, 38.5, 37.5, 36.5, 35.5]],
+    [-12, [48.3, 46.9, 45.5, 44.1, 42.7]],
+    [-13, [54.3, 52.9, 51.5, 50.1, 48.7]],
+  ] as const)(
+    'sorbet @ %d retains the owner exact POD and NPAC target-center authority',
+    (temperature, hardnessCenters) => {
+      for (const [index, target] of ([-2, -1, 0, 1, 2] as const).entries()) {
+        const plan = buildRecipeDirectionPlan(
+          withDirection(
+            { ...starterMilkBase(), category: 'sorbet', target_temperature_c: temperature },
+            target,
+            target,
+          ),
+        );
+        expect(SORBET_SWEETNESS_TARGET_CENTERS[target]).toBe(16 + index * 2);
+        expect(SORBET_HARDNESS_TARGET_CENTERS[temperature][target]).toBe(
+          hardnessCenters[index],
+        );
+        if (temperature === -11) {
+          expect(plan.axes.find((axis) => axis.axis === 'sweetness')).toMatchObject({
+            status: 'working',
+            targetCenter: 16 + index * 2,
+          });
+          expect(plan.bands.pod).toEqual({ min: 16 + index * 2, max: 16 + index * 2 });
+          expect(plan.axes.find((axis) => axis.axis === 'softness')).toMatchObject({
+            status: 'working',
+            targetCenter: hardnessCenters[index],
+          });
+          expect(plan.bands.npac).toEqual({
+            min: hardnessCenters[index],
+            max: hardnessCenters[index],
+          });
+        } else {
+          expect(plan.axes.find((axis) => axis.axis === 'sweetness')?.status).toBe(
+            'blocked_runtime',
+          );
+          expect(plan.axes.find((axis) => axis.axis === 'softness')?.status).toBe(
+            'blocked_science',
+          );
+        }
+      }
+    },
+  );
+
   it.each(SOFTNESS_CELLS)(
     '%s @ %d maps visible Hardness -2 (soft) through +2 (firm) monotonically',
     (category, temperature) => {
@@ -152,7 +207,7 @@ describe('canonical recipe Direction target contract', () => {
     },
   );
 
-  it.each(NON_MILK_CELLS)(
+  it.each(NON_EXACT_SOFTNESS_CELLS)(
     '%s @ %d blocks softness without using the fallback milk calibration',
     (category, temperature) => {
       const plan = buildRecipeDirectionPlan(

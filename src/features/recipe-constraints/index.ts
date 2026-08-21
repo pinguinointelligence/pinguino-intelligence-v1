@@ -73,3 +73,24 @@ export {
   type GelatoStabilizerSystemIssueCode,
   type GelatoStabilizerWholeGramBand,
 } from './gelatoStabilizerSystemAuthority';
+
+export {
+  SORBET_STABILIZER_SYSTEM_POLICY,
+  assessSorbetStabilizerSystem,
+  clampSorbetStabilizerComponentGrams,
+  projectSorbetStabilizerSystemToWholeGramPreferred,
+  sorbetStabilizerSystemApplies,
+  sorbetStabilizerSystemItems,
+  sorbetStabilizerWholeGramBand,
+  type SorbetStabilizerSystemAssessment,
+  type SorbetStabilizerSystemIssue,
+  type SorbetStabilizerSystemIssueCode,
+  type SorbetStabilizerWholeGramBand,
+} from './sorbetStabilizerSystemAuthority';
+
+export {
+  assessOwnerStabilizerSystem,
+  clampOwnerStabilizerComponentGrams,
+  ownerStabilizerSystemApplies,
+  ownerStabilizerSystemItems,
+} from './ownerStabilizerSystemAuthority';

@@ -61,6 +61,7 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/features/recipe-constraints/constraintSet.ts',
   'src/features/recipe-constraints/gelatoStabilizerSystemAuthority.ts',
   'src/features/recipe-constraints/recipeConstraintAuthority.ts',
+  'src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts',
   'src/features/recipe-direction/recipeDirectionAssessment.ts',
   'src/features/recipe-direction/recipeDirectionTargets.ts',
   'src/features/recipe-score/recipeMatchScore.ts',

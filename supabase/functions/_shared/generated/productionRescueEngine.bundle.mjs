@@ -3921,6 +3921,94 @@ function assessGelatoStabilizerSystem(input) {
 }
 
 //#endregion
+//#region src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts
+const SORBET_STABILIZER_SYSTEM_POLICY = Object.freeze({
+	policyId: "gellatti-sorbet-stabilizer-system",
+	version: 1,
+	provenance: "owner-approved Gellatti Sorbet formulation policy",
+	minPercent: .2,
+	preferredPercent: .4,
+	maxPercent: .5,
+	gramSemantics: "whole_grams",
+	optionalWhenAbsent: true
+});
+const sorbetStabilizerSystemApplies = (category) => category === "sorbet";
+/** Hard limits round inward, so whole-gram execution cannot broaden the
+* owner-approved percentage envelope. */
+function sorbetStabilizerWholeGramBand(baseGrams) {
+	if (!Number.isFinite(baseGrams) || baseGrams <= 0) return {
+		minGrams: 0,
+		preferredGrams: 0,
+		maxGrams: 0
+	};
+	const minGrams = Math.ceil(baseGrams * SORBET_STABILIZER_SYSTEM_POLICY.minPercent / 100);
+	const maxGrams = Math.floor(baseGrams * SORBET_STABILIZER_SYSTEM_POLICY.maxPercent / 100);
+	const rawPreferred = Math.round(baseGrams * SORBET_STABILIZER_SYSTEM_POLICY.preferredPercent / 100);
+	return {
+		minGrams,
+		preferredGrams: Math.min(maxGrams, Math.max(minGrams, rawPreferred)),
+		maxGrams
+	};
+}
+const sorbetStabilizerSystemItems = (items) => items.filter((item) => resolveFunctionalRole(item.ingredient) === "stabilizer");
+function assessSorbetStabilizerSystem(input) {
+	if (!sorbetStabilizerSystemApplies(input.category)) return {
+		applicable: false,
+		present: false,
+		totalGrams: 0,
+		lineIds: [],
+		band: null,
+		issues: []
+	};
+	const positive = sorbetStabilizerSystemItems(input.items).filter((item) => item.planned_grams > 0);
+	const lineIds = positive.map((item) => item.id);
+	const totalGrams = positive.reduce((sum, item) => sum + item.planned_grams, 0);
+	const band = sorbetStabilizerWholeGramBand(input.target_batch_grams);
+	const issues = [];
+	if (positive.length === 0) return {
+		applicable: true,
+		present: false,
+		totalGrams: 0,
+		lineIds: [],
+		band,
+		issues
+	};
+	const fractional = positive.filter((item) => !Number.isInteger(item.planned_grams));
+	if (fractional.length > 0) issues.push({
+		code: "component_not_whole_grams",
+		lineIds: fractional.map((item) => item.id),
+		messagePl: "Składniki systemu stabilizującego Sorbet muszą mieć pełne gramy.",
+		totalGrams,
+		minGrams: band.minGrams,
+		maxGrams: band.maxGrams
+	});
+	if (totalGrams < band.minGrams) issues.push({
+		code: "aggregate_below_minimum",
+		lineIds,
+		messagePl: `Łączny system stabilizujący Sorbet wymaga co najmniej ${band.minGrams} g.`,
+		totalGrams,
+		minGrams: band.minGrams,
+		maxGrams: band.maxGrams
+	});
+	else if (totalGrams > band.maxGrams) issues.push({
+		code: "aggregate_above_maximum",
+		lineIds,
+		messagePl: `Łączny limit systemu stabilizującego Sorbet wynosi ${band.maxGrams} g.`,
+		totalGrams,
+		minGrams: band.minGrams,
+		maxGrams: band.maxGrams
+	});
+	return {
+		applicable: true,
+		present: positive.length > 0,
+		totalGrams,
+		lineIds,
+		band,
+		issues
+	};
+}
+
+//#endregion
 //#region src/features/formulation/stabilizerDosage.ts
 const APPROVED_STABILIZER_DOSAGES = [{
 	mapperId: "PI-ING-000492",
@@ -4245,9 +4333,9 @@ function verifyMainEnvelope(input) {
 	if (resolved.some(({ snapshot }) => snapshot.mainPolicyId !== first.mainPolicyId || snapshot.mainPolicyVersion !== first.mainPolicyVersion || snapshot.mainBasis !== first.mainBasis || (multi ? snapshot.multiMainHardLimitPercent !== first.multiMainHardLimitPercent : snapshot.ecoFloorPercent !== first.ecoFloorPercent || snapshot.optimalCeilingPercent !== first.optimalCeilingPercent || snapshot.hardLimitPercent !== first.hardLimitPercent))) return {
 		ok: false,
 		violations: [{
-			code: "main_policy_inconsistent",
+			code: multi ? "multi_main_policy_unknown" : "main_policy_inconsistent",
 			lineIds: managed.map((item) => item.id),
-			messagePl: "Grupa Main nie ma jednego zgodnego zatwierdzonego zakresu."
+			messagePl: multi ? "Brak zatwierdzonej wspólnej polityki dla tej grupy Main." : "Grupa Main nie ma jednego zgodnego zatwierdzonego zakresu."
 		}]
 	};
 	const families = [...new Set(resolved.map(({ snapshot }) => snapshot.familyId).filter(Boolean))];
@@ -5076,6 +5164,40 @@ const softnessBand = (band, cleanCenter, target) => {
 		max: cleanCenter[1]
 	};
 };
+const SORBET_SWEETNESS_TARGET_CENTERS = Object.freeze({
+	[-2]: 16,
+	[-1]: 18,
+	0: 20,
+	1: 22,
+	2: 24
+});
+const SORBET_HARDNESS_TARGET_CENTERS = Object.freeze({
+	[-11]: Object.freeze({
+		[-2]: 39.5,
+		[-1]: 38.5,
+		0: 37.5,
+		1: 36.5,
+		2: 35.5
+	}),
+	[-12]: Object.freeze({
+		[-2]: 48.3,
+		[-1]: 46.9,
+		0: 45.5,
+		1: 44.1,
+		2: 42.7
+	}),
+	[-13]: Object.freeze({
+		[-2]: 54.3,
+		[-1]: 52.9,
+		0: 51.5,
+		1: 50.1,
+		2: 48.7
+	})
+});
+const exactPreferencePoint = (center) => ({
+	min: center,
+	max: center
+});
 function normalizeRecipeDirectionTargets(value) {
 	const normalize = (candidate) => {
 		if (candidate == null || !Number.isFinite(candidate)) return 0;
@@ -5096,9 +5218,10 @@ function buildRecipeDirectionPlan(input) {
 	const axes = [];
 	const bands = {};
 	const sweetnessOperational = profile === "standard_gelato" || profile === "sorbet" && input.target_temperature_c === -11 || profile === "chocolate_gelato" && (input.target_temperature_c === -11 || input.target_temperature_c === -12);
-	const softnessOperational = profile === "standard_gelato";
+	const softnessOperational = profile === "standard_gelato" || profile === "sorbet" && input.target_temperature_c === -11;
 	if (regulator?.pod && sweetnessOperational) {
-		const targetBand = profile === "standard_gelato" ? targetFifth(regulator.pod.band, targets.sweetness) : legacyTargetThird(regulator.pod.band, targets.sweetness);
+		const targetCenter = profile === "sorbet" ? SORBET_SWEETNESS_TARGET_CENTERS[targets.sweetness] : null;
+		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : profile === "standard_gelato" ? targetFifth(regulator.pod.band, targets.sweetness) : legacyTargetThird(regulator.pod.band, targets.sweetness);
 		if (enabled) bands.pod = targetBand;
 		axes.push({
 			axis: "sweetness",
@@ -5106,6 +5229,7 @@ function buildRecipeDirectionPlan(input) {
 			status: "working",
 			metric: "pod",
 			targetBand,
+			targetCenter,
 			reason: null
 		});
 	} else if (!sweetnessOperational && regulator?.pod) axes.push({
@@ -5114,6 +5238,7 @@ function buildRecipeDirectionPlan(input) {
 		status: "blocked_runtime",
 		metric: "pod",
 		targetBand: null,
+		targetCenter: null,
 		reason: "Pełna ścieżka −1/0/+1 dla tego profilu i temperatury nie ma jeszcze zweryfikowanego, bezpiecznego Preview/Apply."
 	});
 	else axes.push({
@@ -5122,10 +5247,13 @@ function buildRecipeDirectionPlan(input) {
 		status: "blocked_data",
 		metric: "pod",
 		targetBand: null,
+		targetCenter: null,
 		reason: "Brak zatwierdzonego zakresu POD dla tego profilu i temperatury."
 	});
 	if (regulator?.npac?.cleanCenter && softnessOperational) {
-		const targetBand = softnessBand(regulator.npac.band, regulator.npac.cleanCenter, targets.softness);
+		const sorbetTemperature = input.target_temperature_c;
+		const targetCenter = profile === "sorbet" ? SORBET_HARDNESS_TARGET_CENTERS[sorbetTemperature]?.[targets.softness] ?? null : null;
+		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : softnessBand(regulator.npac.band, regulator.npac.cleanCenter, targets.softness);
 		if (enabled) bands.npac = targetBand;
 		axes.push({
 			axis: "softness",
@@ -5133,6 +5261,7 @@ function buildRecipeDirectionPlan(input) {
 			status: "working",
 			metric: "npac",
 			targetBand,
+			targetCenter,
 			reason: null
 		});
 	} else if (!softnessOperational && regulator?.npac?.cleanCenter) axes.push({
@@ -5141,6 +5270,7 @@ function buildRecipeDirectionPlan(input) {
 		status: "blocked_science",
 		metric: "npac",
 		targetBand: null,
+		targetCenter: null,
 		reason: "Brak zweryfikowanej, profilowej kalibracji miękkości dla tej kategorii; PI nie używa zastępczej krzywej mlecznej."
 	});
 	else axes.push({
@@ -5149,6 +5279,7 @@ function buildRecipeDirectionPlan(input) {
 		status: "blocked_data",
 		metric: "npac",
 		targetBand: null,
+		targetCenter: null,
 		reason: "Brak zatwierdzonego czystego centrum NPAC dla tego profilu i temperatury."
 	});
 	axes.push({
@@ -5157,6 +5288,7 @@ function buildRecipeDirectionPlan(input) {
 		status: "blocked_science",
 		metric: null,
 		targetBand: null,
+		targetCenter: null,
 		reason: "Brak zatwierdzonego modelu sensorycznej kremowości; sam tłuszcz nie jest kremowością."
 	}, {
 		axis: "flavor",
@@ -5164,6 +5296,7 @@ function buildRecipeDirectionPlan(input) {
 		status: "blocked_data",
 		metric: null,
 		targetBand: null,
+		targetCenter: null,
 		reason: "Brak zweryfikowanych profili mocy smaku dla poszczególnych klas składników."
 	});
 	return {
@@ -5191,12 +5324,17 @@ function assessRecipeDirection(input, result) {
 		if (axis.status !== "working" || axis.metric === null || axis.targetBand === null) continue;
 		const value = indicators.get(axis.metric)?.value;
 		if (value === null || value === void 0 || !Number.isFinite(value)) continue;
-		const side = value < axis.targetBand.min ? "below" : value > axis.targetBand.max ? "above" : "inside";
+		const absoluteDistance = axis.targetCenter === null ? value < axis.targetBand.min ? axis.targetBand.min - value : value > axis.targetBand.max ? value - axis.targetBand.max : 0 : Math.abs(value - axis.targetCenter);
+		const exactCenterReached = axis.targetCenter !== null && absoluteDistance <= 1e-9;
+		const side = exactCenterReached ? "inside" : value < axis.targetBand.min ? "below" : value > axis.targetBand.max ? "above" : "inside";
 		residuals.push({
 			axis: axis.axis,
 			metric: axis.metric,
-			reached: side === "inside",
-			side
+			reached: axis.targetCenter === null ? side === "inside" : exactCenterReached,
+			side,
+			value,
+			targetCenter: axis.targetCenter,
+			absoluteDistance
 		});
 	}
 	const reachedAxisCount = residuals.filter((residual) => residual.reached).length;
@@ -5341,7 +5479,8 @@ function evaluateRecipeConstraintAuthority(input) {
 		messagePl: `Profil Protein wymaga celu ${protein.targetPercent?.toFixed(1)}%; kandydat ma ${protein.actualPercent?.toFixed(1)}%.`
 	});
 	const stabilizerSystem = assessGelatoStabilizerSystem(recipe);
-	issues.push(...stabilizerSystem.issues.map((issue) => ({
+	const sorbetStabilizerSystem = assessSorbetStabilizerSystem(recipe);
+	issues.push(...[...stabilizerSystem.issues, ...sorbetStabilizerSystem.issues].map((issue) => ({
 		source: "owner_policy",
 		code: issue.code,
 		lineIds: issue.lineIds,

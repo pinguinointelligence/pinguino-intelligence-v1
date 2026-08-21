@@ -67,7 +67,7 @@ import {
 } from '@/data/ingredients/canonicalIngredientIdentity';
 import {
   analyzeConstraintFeasibility,
-  assessGelatoStabilizerSystem,
+  assessOwnerStabilizerSystem,
   validateConstraintSet,
   type ConstraintFeasibilityAnalysis,
   type ConstraintSet,
@@ -858,7 +858,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // stamped with the draft revision it was built for.
         const draft = selectCanonicalDraft();
         const recipeState = useRecipeStore.getState();
-        const stabilizerSystem = assessGelatoStabilizerSystem(draft.input);
+        const stabilizerSystem = assessOwnerStabilizerSystem(draft.input);
         const stabilizerIssue = stabilizerSystem.issues[0];
         if (
           stabilizerIssue &&
