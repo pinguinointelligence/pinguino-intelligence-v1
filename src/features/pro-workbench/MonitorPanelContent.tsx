@@ -109,9 +109,18 @@ export function MonitorPanelContent({
   const ownerReviewMode = useReviewMode();
   const setPlan = useSessionStore((state) => state.setPlan);
   const preview = useConstraintStudioStore((state) => state.preview);
+  const directionBestCandidate = useConstraintStudioStore((state) => state.directionBestCandidate);
+  const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
   const substitutionAuthorization = useConstraintStudioStore(
     (state) => state.substitutionAuthorization,
   );
+  // Resolve the proposal candidate exactly as the recipe dock does, so the
+  // Monitor's before/after can never disagree with the dock about whether a
+  // Gellatti proposal exists.
+  const proposedInput =
+    recalculationTerminal?.state === 'PREVIEW_READY'
+      ? (preview?.proposedInput ?? directionBestCandidate?.proposedInput ?? null)
+      : null;
   const onUpgrade = import.meta.env.DEV ? () => setPlan('pro') : undefined;
   const correctionView = useMemo(() => buildCorrectionView(corrections), [corrections]);
   const recipeIncomplete = result.total_batch_g <= 0;
@@ -175,15 +184,15 @@ export function MonitorPanelContent({
   );
   const fallbackNotes = useMemo(() => buildFallbackNotes(frozenResult), [frozenResult]);
   const previewProjection = useMemo(() => {
-    if (!preview || legacyInspection) return undefined;
+    if (!proposedInput || legacyInspection) return undefined;
     const previewSnapshots =
       substitutionAuthorization?.proposalProductBehaviorSnapshots ?? behaviorSnapshots;
     const previewAuthority = buildRecipeBehaviorAuthority({
-      items: preview.proposedInput.items,
+      items: proposedInput.items,
       snapshots: previewSnapshots,
     });
     const frozenPreviewInput = recipeInputFromFrozenBehavior(
-      preview.proposedInput,
+      proposedInput,
       previewAuthority,
       'technical',
     );
@@ -203,7 +212,7 @@ export function MonitorPanelContent({
         previewFreezingStability.status,
       ),
     };
-  }, [behaviorSnapshots, legacyInspection, preview, substitutionAuthorization]);
+  }, [behaviorSnapshots, legacyInspection, proposedInput, substitutionAuthorization]);
   // A genuinely legacy version remains inspectable, with an explicit warning,
   // until it is reconstructed into a new version. A partial/stale modern
   // authority must never silently fall back to independently interpreted facts.

@@ -27,7 +27,8 @@ describe('WorkbenchScoreDisplay owner-reference ring', () => {
 
     expect(html).toContain(`data-score="${score}"`);
     expect(html).toContain(`data-score-tone="${tone.token}"`);
-    expect(html).toContain(`border-color:${tone.color}`);
+    // The ring paints its progress arc in the approved tone (SVG stroke).
+    expect(html).toContain(`stroke="${tone.color}"`);
   });
 
   it('keeps the current heading and verbal state while removing visual /10', () => {
@@ -72,7 +73,10 @@ describe('WorkbenchScoreDisplay owner-reference ring', () => {
     );
 
     expect(html).toMatch(/class="[^"]*h-11[^"]*max-w-full[^"]*shrink-0/);
-    expect(html).toMatch(/class="[^"]*size-9[^"]*shrink-0[^"]*rounded-full[^"]*border-2/);
+    // The ring is now an SVG progress arc, still 36 px with a 2 px stroke.
+    expect(html).toMatch(/class="[^"]*\bsize-9\b/);
+    expect(html).toContain('viewBox="0 0 36 36"');
+    expect(html).toContain('stroke-width="2"');
     expect(html).toContain('class="hidden min-w-0 sm:block"');
     expect(html).toContain('block truncate text-[10px]');
     expect(html).not.toMatch(/min-h-|h-(?:12|14|16|20)/);

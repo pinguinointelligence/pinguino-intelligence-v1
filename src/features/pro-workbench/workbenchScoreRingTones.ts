@@ -29,3 +29,19 @@ export const SCORE_RING_NO_DATA_TONE: WorkbenchScoreRingTone = Object.freeze({
   token: 'no-data',
   color: '#dcd8cf',
 });
+
+/**
+ * Ring geometry — the owner-accepted 36 px box with a 2 px stroke. The radius and
+ * circumference are derived so the progress arc can be expressed as an exact
+ * fraction of the circle.
+ */
+const RING_SIZE = 36;
+const RING_STROKE = 2;
+const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+
+export const SCORE_RING_GEOMETRY = Object.freeze({
+  size: RING_SIZE,
+  stroke: RING_STROKE,
+  radius: RING_RADIUS,
+  circumference: 2 * Math.PI * RING_RADIUS,
+});

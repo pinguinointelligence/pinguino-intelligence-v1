@@ -51,23 +51,19 @@ export function WorkbenchIntelligenceHeader({
       previewInput ? monitorScoreView(calculateRecipe(previewInput), previewInput).match : null,
     [previewInput],
   );
-  // The live score is EVALUATIVE: it describes the recipe as currently written.
-  // Only genuine domain authority (behaviour gate, legacy inspection, no recipe)
-  // may withhold it — calculation freshness must not, or a manual edit would keep
-  // showing the previous score as though nothing had changed.
-  const scorable = hasRecipe && monitorGate.ready && !legacyInspection;
-  const displayedMatch = previewMatch ?? (scorable ? match : null);
-  const current = scorable && !awaitingRecalculation;
+  // This dock is the FORMAL CALCULATION STATE, not a live diagnostic. It shows
+  // the authoritative calculated score, or `Przelicz` — never both. The live
+  // as-written evaluation belongs to the Monitor alone; binding this control to
+  // it would duplicate the score and destroy the designed state semantics.
+  const current = hasRecipe && !awaitingRecalculation && monitorGate.ready && !legacyInspection;
+  const displayedMatch = previewMatch ?? (current ? match : null);
   const scoreSource = scorePresentationSource({
     previewReady: previewMatch !== null,
-    currentReady: scorable,
+    currentReady: current,
     hasAppliedHistory: appliedHistoryCount > 0,
   });
   const working = recalculationTerminal?.state === 'WORKING';
-  // Freshness is reported separately from the score, and the two may honestly
-  // disagree: a live 7 alongside "Oczekuje na przeliczenie" is a correct state.
-  const stale = awaitingRecalculation && previewMatch === null;
-  const pending = !displayedMatch;
+  const pending = !displayedMatch || awaitingRecalculation;
 
   if (variant === 'dock') {
     return (
@@ -76,22 +72,13 @@ export function WorkbenchIntelligenceHeader({
         data-testid="workbench-intelligence-header"
         data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
       >
-        {displayedMatch && !working ? (
-          <WorkbenchScoreDisplay
-            score={displayedMatch.score}
-            label={displayedMatch.label}
-            preview={previewMatch !== null}
-            onOpenLearning={onOpenLearning}
-          />
-        ) : null}
-        {pending || working || stale ? (
+        {pending || working ? (
           <button
             type="button"
             onClick={onRecalculate}
             disabled={!onRecalculate || working}
             aria-busy={working}
             data-testid="pro-workbar-recalc"
-            data-recalc-alongside-score={stale && displayedMatch ? 'true' : 'false'}
             className="pro-focus-ring flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#f58a07] px-4 text-left text-white shadow-pro-e1 disabled:cursor-wait disabled:opacity-70"
           >
             <span aria-hidden className={working ? 'animate-spin text-xl' : 'text-xl'}>
@@ -106,7 +93,14 @@ export function WorkbenchIntelligenceHeader({
               </span>
             </span>
           </button>
-        ) : null}
+        ) : (
+          <WorkbenchScoreDisplay
+            score={displayedMatch.score}
+            label={displayedMatch.label}
+            preview={previewMatch !== null}
+            onOpenLearning={onOpenLearning}
+          />
+        )}
       </div>
     );
   }

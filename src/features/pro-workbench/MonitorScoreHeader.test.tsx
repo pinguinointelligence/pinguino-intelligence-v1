@@ -47,14 +47,16 @@ describe('Monitor score header — current recipe', () => {
     }
   });
 
-  it('keeps the accepted 36 px / 2 px ring contract', () => {
+  it('keeps the accepted 36 px / 2 px ring contract with real progress', () => {
     const html = render(broken(), starterMilkBase());
     const rings = html.match(/data-testid="monitor-score-ring-(current|proposed)"/g) ?? [];
     expect(rings).toHaveLength(2);
     expect(html).toMatch(/class="[^"]*\bsize-9\b/);
-    expect(html).toMatch(/class="[^"]*\bborder-2\b/);
-    expect(html).toMatch(/class="[^"]*\brounded-full\b/);
-    expect(html).not.toMatch(/border-\[3px\]/);
+    expect(html).toContain('viewBox="0 0 36 36"');
+    expect(html).toContain('stroke-width="2"');
+    // Current is 3/10 and the proposal is 10/10 — the arcs must differ.
+    expect(html).toContain('data-score-progress="0.30"');
+    expect(html).toContain('data-score-progress="1.00"');
   });
 
   it('reports the score it is showing for the served QA ledger', () => {
