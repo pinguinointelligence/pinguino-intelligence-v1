@@ -140,39 +140,53 @@ function evidenceFields(
   return fields;
 }
 
-/** Fields the outside world could realistically resolve, in usefulness order. */
-const SEARCHABLE: readonly ProductEvidenceField[] = [
-  'ingredients',
-  'energyKcal',
-  'fat',
-  'carbohydrate',
-  'protein',
-  'salt',
-  'barcode',
-  'allergens',
-  'manufacturer',
-  'netQuantity',
-  'dosage',
-  'technicalParameters',
-  'technicalSource',
-  'countryOfOrigin',
-];
+/**
+ * Fields the outside world could realistically resolve, in usefulness order —
+ * scoped by product kind. Researching a dosage or a technical parameter for a
+ * packet of biscuits is wasted money and a nonsense question; researching label
+ * nutrition for a professional paste is not what makes it usable.
+ */
+const SEARCHABLE_BY_KIND: Readonly<Record<ProductKind, readonly ProductEvidenceField[]>> =
+  Object.freeze({
+    normal_food: [
+      'ingredients',
+      'energyKcal',
+      'fat',
+      'carbohydrate',
+      'protein',
+      'salt',
+      'allergens',
+      'barcode',
+      'manufacturer',
+      'netQuantity',
+    ],
+    technical: [
+      'dosage',
+      'technicalParameters',
+      'technicalSource',
+      'ingredients',
+      'manufacturer',
+      'barcode',
+      'netQuantity',
+      'energyKcal',
+    ],
+  });
 
 /**
  * Only missing fields that MATERIALLY affect readiness are worth a call.
  * A missing optional Notes/origin never justifies spending money.
  */
 function enrichmentTargets(
+  kind: ProductKind,
   assessment: ProductConfidenceAssessment,
   fields: Partial<Record<ProductEvidenceField, EvidenceSource>>,
 ): ProductEvidenceField[] {
   const missingCritical = new Set<ProductEvidenceField>(assessment.missingCritical);
-  return SEARCHABLE.filter((field) => {
+  return SEARCHABLE_BY_KIND[kind].filter((field) => {
     if (fields[field]) return false;
-    // Critical gaps always justify a targeted lookup.
-    if (missingCritical.has(field)) return true;
-    // Otherwise only fields that can still move an under-90 product over the line.
-    return field !== 'countryOfOrigin';
+    // Critical gaps always justify a targeted lookup; the rest are ordered so the
+    // most useful missing field is asked for first within the per-product cap.
+    return missingCritical.has(field) || true;
   });
 }
 
@@ -256,9 +270,10 @@ export function assessIntimportProduct(
     },
     evidence,
     route,
-    enrichmentTargets: route === 'EXISTING' || route === 'READY_LOCAL'
-      ? []
-      : enrichmentTargets(assessment, fields),
+    enrichmentTargets:
+      route === 'EXISTING' || route === 'READY_LOCAL'
+        ? []
+        : enrichmentTargets(kind, assessment, fields),
   };
 }
 
