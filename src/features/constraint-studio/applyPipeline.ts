@@ -42,6 +42,7 @@ import {
   type RecipeDirectionAssessment,
 } from '@/features/recipe-direction/recipeDirectionAssessment';
 import { projectSorbetExactDirectionCandidate } from '@/features/recipe-direction/sorbetDirectionProjection';
+import { searchSorbetNearestDirectionCandidate } from '@/features/recipe-direction/sorbetNearestDirectionSearch';
 import {
   buildDraftCandidateVector,
   describeDraftAdjustment,
@@ -178,6 +179,11 @@ export interface OptimizePreviewOptions extends FormulationOptions {
   /** Pro workbench provenance gate: even a clean, already-integer recipe must
    * pass through the canonical Preview → Apply door before Save/Production. */
   requirePracticalPreview?: boolean;
+  /** Rescue-advisor SIMULATION only (owner 2026-08-22): ids of the ONE
+   * candidate line the advisor appended to the draft. The Sorbet
+   * Main-constrained search treats them as free dimensions; nothing else
+   * changes and such a line is never written by Apply. */
+  rescueSimulationLineIds?: readonly string[];
 }
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
@@ -620,6 +626,10 @@ export interface ConstraintPreview {
    * the same exact candidate from the trusted draft instead.
    */
   mainHeldByExactDirection?: boolean;
+  /** Owner 2026-08-22: which Sorbet Direction candidate generator produced the
+   * executable proposal — the closed-form exact projection or the bounded
+   * Main-constrained NEAREST search. Provenance only; the door re-derives it. */
+  directionCandidateSource?: 'sorbet_exact_projection' | 'sorbet_nearest_search';
   iteration?: IterationDiagnostics;
   /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
    * the PROPOSED state (classified by `classifyViolationBands` provenance).
@@ -4947,6 +4957,104 @@ function buildBestSafeEvidence(
  *      metrics — never one generic sentence for every input.
  * Never mutates, never persists; §17 locks respected structurally throughout.
  */
+/**
+ * SORBET EXACT FIVE-STEP DIRECTION — the SHARED candidate boundary (owner
+ * 2026-08-22, Main-constrained NEAREST).
+ *
+ * Order of authority for an active exact Direction objective:
+ *   1. the closed-form exact projection (Main, Inulin, stabilizer byte-exact);
+ *   2. when it has no admissible/executable solution, the bounded
+ *      Main-constrained NEAREST search over the same adjustable roles;
+ *   3. only when neither yields a legal improvement, the regular optimizer
+ *      paths continue and may report an honest no-correction.
+ * A fixed Main is an equality constraint that reduces the search space — it
+ * never disables the search. Every candidate still crosses the normal
+ * whole-gram, hard-band, constraint, identity and Apply gates; the door
+ * re-derives the same deterministic candidate from the trusted draft.
+ */
+function buildSorbetDirectionCandidatePreview(params: {
+  input: RecipeInput;
+  working: RecipeInput;
+  set: ConstraintSet;
+  solverSet: ConstraintSet;
+  createdAt: string;
+  options: OptimizePreviewOptions;
+  violationsBefore: number;
+  batchRescaled: boolean;
+}): BuildPreviewResult | null {
+  const { input, working, set, solverSet, createdAt, options, violationsBefore, batchRescaled } =
+    params;
+  if (input.category !== 'sorbet' || !hasActiveExactDirectionObjective(input)) return null;
+  const directionSeverity = (candidate: ReturnType<typeof recipeDirectionViolations>) =>
+    candidate.reduce((sum, violation) => sum + violation.severity_points, 0);
+  const beforeDirection = recipeDirectionViolations(input);
+  const isAdjustable = (item: RecipeInput['items'][number]): boolean =>
+    item.lock_type === 'unlocked' &&
+    item.actual_grams === null &&
+    (solverSet.byLineId[item.id] === undefined || solverSet.byLineId[item.id]?.mode === 'ai');
+  const generators: ReadonlyArray<{
+    source: NonNullable<ConstraintPreview['directionCandidateSource']>;
+    generate: () => RecipeInput | null;
+  }> = [
+    {
+      source: 'sorbet_exact_projection',
+      generate: () => projectSorbetExactDirectionCandidate(working),
+    },
+    {
+      source: 'sorbet_nearest_search',
+      generate: () =>
+        searchSorbetNearestDirectionCandidate({
+          input: working,
+          isAdjustable,
+          extraAdjustableLineIds: options.rescueSimulationLineIds,
+        })?.candidate ?? null,
+    },
+  ];
+  for (const generator of generators) {
+    const candidate = generator.generate();
+    if (candidate === null || !verifyConstraintsPreserved(solverSet, candidate).ok) continue;
+    const changed = candidate.items.some(
+      (item, index) =>
+        Math.abs(item.planned_grams - (input.items[index]?.planned_grams ?? Number.NaN)) > 1e-9,
+    );
+    if (!changed) continue;
+    const preview = finishPreview(
+      'optimize',
+      copy.preview.kindLabels.optimize,
+      input,
+      set,
+      candidate,
+      set,
+      violationsBefore,
+      [],
+      createdAt,
+    );
+    const executableResult = calculateRecipe(preview.proposedInput);
+    const afterDirection = recipeDirectionViolations(preview.proposedInput);
+    const improvesDirection =
+      afterDirection.length < beforeDirection.length ||
+      (afterDirection.length === beforeDirection.length &&
+        directionSeverity(afterDirection) < directionSeverity(beforeDirection) - SEVERITY_EPS);
+    if (
+      detectViolations(executableResult).length === 0 &&
+      !executableResult.warnings.some((warning) => warning.severity === 'critical') &&
+      verifyConstraintsPreserved(solverSet, preview.proposedInput).ok &&
+      improvesDirection
+    ) {
+      preview.autoBalance = { batchRescaled, solverRounds: 0 };
+      preview.hardResidualMetrics = [];
+      preview.diagnosticOnly = false;
+      // Both generators keep Main, optional Inulin and stabilizer byte-exact
+      // (see sorbetDirectionProjection / sorbetNearestDirectionSearch); the
+      // Apply door verifies exactly that and re-derives the candidate.
+      preview.mainHeldByExactDirection = true;
+      preview.directionCandidateSource = generator.source;
+      return mainSafePreview(input, preview, options.productBehaviorSnapshots);
+    }
+  }
+  return null;
+}
+
 export function buildOptimizePreview(
   input: RecipeInput,
   set: ConstraintSet,
@@ -5018,6 +5126,34 @@ export function buildOptimizePreview(
         `Składniki Główne ważą ${mainTotal.toFixed(1)} g, więcej niż docelowa partia ` +
         `${input.target_batch_grams.toFixed(1)} g. PI nie zmniejszyło tożsamości receptury po cichu.`,
     };
+  }
+  // Owner 2026-08-22 (Main-constrained NEAREST): a COMPLETE on-batch Sorbet
+  // draft with an active exact Direction objective is solved on the SHARED
+  // boundary BEFORE the mode router. The served Mapper scaffold routes through
+  // the template path (its WATER/SUCROSE rows resolve to other functional
+  // roles), which never reached the closed-form projection; a held Main then
+  // turned "nearest" into a premature no-correction. Exact projection first,
+  // Main-constrained NEAREST second, regular optimizer third.
+  if (
+    input.category === 'sorbet' &&
+    hasActiveExactDirectionObjective(input) &&
+    !input.items.some((item) => item.actual_grams !== null) &&
+    Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G
+  ) {
+    const preConstrained = applyConstraintsToRecipe(input, set);
+    if (preConstrained.ok) {
+      const sorbetDirectionPreview = buildSorbetDirectionCandidatePreview({
+        input,
+        working: preConstrained.input,
+        set,
+        solverSet: withTemplateControlledStabilizerLocks(input, set),
+        createdAt,
+        options,
+        violationsBefore: violationCount(calculateRecipe(preConstrained.input)),
+        batchRescaled: false,
+      });
+      if (sorbetDirectionPreview !== null) return sorbetDirectionPreview;
+    }
   }
   const routedDecision = routeFormulationMode(input, set);
   const preRouteStrategy = normalizeFormulationStrategy(
@@ -5211,58 +5347,21 @@ export function buildOptimizePreview(
   const beforeResult = calculateRecipe(constrained.input);
   const violationsBefore = violationCount(beforeResult);
   const hasCritical = beforeResult.warnings.some((warning) => warning.severity === 'critical');
-  // Sorbet exact Direction has three canonical adjustable roles and two exact
-  // owner metrics. Solve that small linear system first instead of sending
-  // every one of the 150 cells through the generic multi-vector search. The
-  // result still crosses every normal whole-gram, hard-band, constraint,
-  // identity and Apply gate below; a non-feasible projection simply falls
-  // through to the established optimizer.
-  const exactSorbetCandidate = projectSorbetExactDirectionCandidate(working);
-  if (
-    exactSorbetCandidate !== null &&
-    verifyConstraintsPreserved(solverSet, exactSorbetCandidate).ok
-  ) {
-    const changed = exactSorbetCandidate.items.some(
-      (item, index) =>
-        Math.abs(item.planned_grams - (input.items[index]?.planned_grams ?? Number.NaN)) > 1e-9,
-    );
-    if (changed) {
-      const preview = finishPreview(
-        'optimize',
-        copy.preview.kindLabels.optimize,
-        input,
-        set,
-        exactSorbetCandidate,
-        set,
-        violationsBefore,
-        [],
-        createdAt,
-      );
-      const executableResult = calculateRecipe(preview.proposedInput);
-      const beforeDirection = recipeDirectionViolations(input);
-      const afterDirection = recipeDirectionViolations(preview.proposedInput);
-      const directionSeverity = (candidate: ReturnType<typeof recipeDirectionViolations>) =>
-        candidate.reduce((sum, violation) => sum + violation.severity_points, 0);
-      const improvesDirection =
-        afterDirection.length < beforeDirection.length ||
-        (afterDirection.length === beforeDirection.length &&
-          directionSeverity(afterDirection) < directionSeverity(beforeDirection) - SEVERITY_EPS);
-      if (
-        detectViolations(executableResult).length === 0 &&
-        !executableResult.warnings.some((warning) => warning.severity === 'critical') &&
-        verifyConstraintsPreserved(solverSet, preview.proposedInput).ok &&
-        improvesDirection
-      ) {
-        preview.autoBalance = { batchRescaled, solverRounds: 0 };
-        preview.hardResidualMetrics = [];
-        preview.diagnosticOnly = false;
-        // The projection keeps Main, optional Inulin and stabilizer byte-exact
-        // (see sorbetDirectionProjection); the Apply door verifies exactly that.
-        preview.mainHeldByExactDirection = true;
-        return mainSafePreview(input, preview, options.productBehaviorSnapshots);
-      }
-    }
-  }
+  // Sorbet exact Direction: the SHARED candidate boundary (exact projection,
+  // then the Main-constrained NEAREST search) — see
+  // buildSorbetDirectionCandidatePreview. A non-feasible candidate simply
+  // falls through to the established optimizer.
+  const sorbetDirectionPreview = buildSorbetDirectionCandidatePreview({
+    input,
+    working,
+    set,
+    solverSet,
+    createdAt,
+    options,
+    violationsBefore,
+    batchRescaled,
+  });
+  if (sorbetDirectionPreview !== null) return sorbetDirectionPreview;
   const initialProteinTarget = assessProteinTarget(working);
   const strategy = normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode);
   if (strategy === 'eco') {

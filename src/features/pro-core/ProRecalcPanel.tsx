@@ -42,7 +42,7 @@ import { BlockedApplyNotice } from '@/features/constraint-studio/ui/BlockedApply
 import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import type { RecipeInput } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
-import { maySuggestVerifiedFructose } from '@/features/recipe-direction/sweetnessFallback';
+import type { RescueIngredientAdvice } from '@/features/constraint-studio/rescueIngredientAdvisor';
 
 const r = copy.proWorkbar.recalcPanel;
 const d = constraintStudioCopy.diagnosis;
@@ -171,6 +171,8 @@ function RecalcDiagnosisView({
   onUnlockAndPreview,
   onRemoveStandardAndPreview,
   terminal,
+  rescueAdvice = null,
+  onAddRescueIngredient,
 }: {
   issue: PreviewIssue;
   input: RecipeInput;
@@ -182,6 +184,8 @@ function RecalcDiagnosisView({
   onUnlockAndPreview: (lineId: string) => void;
   onRemoveStandardAndPreview: (lineId: string) => void;
   terminal: RecalculationTerminalState;
+  rescueAdvice?: RescueIngredientAdvice | null;
+  onAddRescueIngredient?: () => void;
 }) {
   // "Already in band" is not a failure — keep the friendly note, no diagnosis table.
   if (issue.code === 'already_clean') {
@@ -390,6 +394,9 @@ function RecalcDiagnosisView({
         </div>
       ) : null}
 
+      {issue.code === 'no_proposal' && issue.directionTargetUnreached === true ? (
+        <RescueAdviceHint advice={rescueAdvice ?? null} onAddIngredient={onAddRescueIngredient} />
+      ) : null}
       <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
         {d.unchanged}
       </p>
@@ -405,14 +412,61 @@ function RecalcDiagnosisView({
   );
 }
 
+/**
+ * Owner 2026-08-22 — simulation-proven rescue ingredient hint. Rendered ONLY
+ * when the advisor proved that adding ONE approved ingredient materially
+ * improves the legal result. PI never adds it: the user adds it through the
+ * normal "Dodaj składnik" flow and runs a NEW Preview.
+ */
+export function RescueAdviceHint({
+  advice,
+  onAddIngredient,
+}: {
+  advice: RescueIngredientAdvice | null;
+  onAddIngredient?: () => void;
+}) {
+  if (!advice) return null;
+  return (
+    <div
+      className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+      data-testid="direction-rescue-advice"
+      data-ingredient={advice.candidate.canonicalIngredientId}
+    >
+      <p className="text-xs font-medium text-ivory">
+        Możliwy kolejny krok: {advice.candidate.namePl}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-ivory/70">{advice.reasonPl}</p>
+      <p className="mt-1 text-xs leading-relaxed text-ivory/70">
+        PI nie doda tego składnika automatycznie. Wróć do receptury, wybierz „Dodaj składnik”, dodaj
+        zweryfikowany produkt i uruchom PI ponownie — nowy Preview musi nadal potwierdzić twardość,
+        zamrożenie, ciała stałe oraz wszystkie bezpieczne zakresy.
+      </p>
+      {onAddIngredient ? (
+        <button
+          type="button"
+          onClick={onAddIngredient}
+          data-testid="direction-rescue-add-ingredient"
+          className="mt-2 min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory"
+        >
+          Wróć i dodaj składnik
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function DirectionBestDecision({
   candidate,
   onAccept,
   onBack,
+  rescueAdvice = null,
+  onAddRescueIngredient,
 }: {
   candidate: import('@/features/constraint-studio/applyPipeline').ConstraintPreview;
   onAccept: () => void;
   onBack: () => void;
+  rescueAdvice?: RescueIngredientAdvice | null;
+  onAddRescueIngredient?: () => void;
 }) {
   const assessment = candidate.directionAssessment;
   const labels: Record<string, string> = {
@@ -422,7 +476,6 @@ export function DirectionBestDecision({
     flavor: 'Intensywność smaku',
   };
   const missed = assessment?.residuals.filter((residual) => !residual.reached) ?? [];
-  const suggestFructose = maySuggestVerifiedFructose(candidate);
   return (
     <div
       className="space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4"
@@ -448,19 +501,7 @@ export function DirectionBestDecision({
       <p className="text-xs text-ivory/65">
         Wszystkie natywne wymagania technologiczne pozostają ważne.
       </p>
-      {suggestFructose ? (
-        <div
-          className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
-          data-testid="direction-best-fructose-suggestion"
-        >
-          <p className="text-xs font-medium text-ivory">Możliwy kolejny krok: fruktoza</p>
-          <p className="mt-1 text-xs leading-relaxed text-ivory/70">
-            Wróć do receptury, wybierz „Dodaj składnik”, wyszukaj zweryfikowaną Fruktozę i uruchom
-            PI ponownie. PI nie doda jej automatycznie — nowy Preview musi nadal potwierdzić
-            twardość, zamrożenie, ciała stałe oraz wszystkie bezpieczne zakresy.
-          </p>
-        </div>
-      ) : null}
+      <RescueAdviceHint advice={rescueAdvice} onAddIngredient={onAddRescueIngredient} />
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -533,6 +574,7 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
 
   const preview = useConstraintStudioStore((s) => s.preview);
   const directionBestCandidate = useConstraintStudioStore((s) => s.directionBestCandidate);
+  const rescueAdvice = useConstraintStudioStore((s) => s.rescueAdvice);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const history = useConstraintStudioStore((s) => s.history);
@@ -729,6 +771,11 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
                 void createExplicitStandardRemovalPreviewWithServerAuthority(lineId);
               }}
               terminal={recalculationTerminal}
+              rescueAdvice={rescueAdvice}
+              onAddRescueIngredient={() => {
+                store.cancelPreview();
+                openBaseProductPicker();
+              }}
             />
           ) : null}
 
@@ -739,6 +786,11 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               onBack={() => {
                 store.cancelPreview();
                 onClose();
+              }}
+              rescueAdvice={rescueAdvice}
+              onAddRescueIngredient={() => {
+                store.cancelPreview();
+                openBaseProductPicker();
               }}
             />
           ) : null}

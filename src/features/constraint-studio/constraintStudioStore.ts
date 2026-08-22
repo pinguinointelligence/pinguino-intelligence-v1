@@ -111,6 +111,10 @@ import {
   type SubstitutionConsent,
   type SubstitutionSessionAuthorization,
 } from './applyPipeline';
+import {
+  assessRescueIngredientAdvice,
+  type RescueIngredientAdvice,
+} from './rescueIngredientAdvisor';
 
 export type RecalculationTerminalState = PipelineRecalculationTerminalState;
 
@@ -469,6 +473,10 @@ export interface ConstraintStudioState {
   suggestedFixAuthorization: SuggestedFixSessionAuthorization | null;
   /** Candidate is hidden until the user explicitly chooses the compromise. */
   directionBestCandidate: ConstraintPreview | null;
+  /** Owner 2026-08-22 — simulation-proven rescue ingredient hint (never an
+   * auto-add): present only when the exact Direction target is not reached
+   * with the current ingredients AND one approved candidate materially helps. */
+  rescueAdvice: RescueIngredientAdvice | null;
   directionConsent: DirectionBestAchievableConsent | null;
   blocked: BlockedApply | null;
   feasibility: ConstraintFeasibilityAnalysis | null;
@@ -553,6 +561,7 @@ const INITIAL = {
   explicitStandardRemovalConsent: null,
   suggestedFixAuthorization: null,
   directionBestCandidate: null,
+  rescueAdvice: null as RescueIngredientAdvice | null,
   directionConsent: null,
   blocked: null,
   feasibility: null,
@@ -573,6 +582,7 @@ const CLEAR_STAGED = {
   explicitStandardRemovalConsent: null,
   suggestedFixAuthorization: null,
   directionBestCandidate: null,
+  rescueAdvice: null,
   directionConsent: null,
   feasibility: null,
   blocked: null,
@@ -1054,19 +1064,33 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         const technicalOnlyMainLineIds =
           recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
         const proposedAuthority = proposalSnapshots ?? snapshots;
+        const optimizeOptions = {
+          excludedIngredientIds: draft.excludedIngredientIds,
+          unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
+          effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+          requirePracticalPreview: true,
+          productBehaviorSnapshots: snapshots,
+          technicalOnlyMainLineIds,
+        };
+        const optimizeCreatedAt = nowIso();
         const result = bindProductBehaviorToPreview(
-          buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
-            excludedIngredientIds: draft.excludedIngredientIds,
-            unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
-            effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
-            requirePracticalPreview: true,
-            productBehaviorSnapshots: snapshots,
-            technicalOnlyMainLineIds,
-          }),
+          buildOptimizePreview(draft.input, draft.constraints, optimizeCreatedAt, optimizeOptions),
           proposedAuthority,
           snapshots,
           technicalOnlyMainLineIds,
         );
+        // Owner 2026-08-22 — rescue ingredient advisor: only when the exact
+        // Direction target is NOT reached with the current ingredients (a
+        // nearest-achievable candidate or an honest no-correction). Pure
+        // simulation; it never adds an ingredient to the draft.
+        const rescueAdviceFor = (bestCurrent: ConstraintPreview | null) =>
+          assessRescueIngredientAdvice({
+            input: draft.input,
+            set: draft.constraints,
+            createdAt: optimizeCreatedAt,
+            options: optimizeOptions,
+            bestCurrent,
+          });
         const proposalProductBehaviorAuthorization =
           proposalSnapshots && result.ok
             ? {
@@ -1110,6 +1134,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           set({
             preview: null,
             directionBestCandidate: null,
+            rescueAdvice: null,
             directionConsent: null,
             substitutionConsent: null,
             substitutionAuthorization: null,
@@ -1131,6 +1156,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               ? {
                   preview: null,
                   directionBestCandidate: result.preview,
+                  rescueAdvice: rescueAdviceFor(result.preview),
                   directionConsent: null,
                   substitutionConsent: null,
                   substitutionAuthorization: null,
@@ -1142,6 +1168,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               : {
                   preview: result.preview,
                   directionBestCandidate: null,
+                  rescueAdvice: null,
                   directionConsent: null,
                   substitutionConsent: null,
                   substitutionAuthorization: null,
@@ -1158,6 +1185,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           set({
             preview: null,
             directionBestCandidate: null,
+            rescueAdvice:
+              result.code === 'no_proposal' && result.directionTargetUnreached === true
+                ? rescueAdviceFor(null)
+                : null,
             directionConsent: null,
             substitutionConsent: null,
             substitutionAuthorization: null,
