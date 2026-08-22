@@ -427,6 +427,32 @@ const conflictKey = (conflict: ProductScanConflict) =>
     conflict.retainedSource,
   ]);
 
+/**
+ * A withheld field leaves an unresolved conflict (retainedSource null) that
+ * blocks readiness on purpose. When the owner then supplies the targeted image
+ * the scanner asked for, a directly visible reading that corroborates one of
+ * the two disputed values breaks the tie. The disagreement stays on record —
+ * only the retained source is filled in — so the session can finalize instead
+ * of staying draft forever.
+ */
+function resolveCorroboratedConflicts(
+  conflicts: ProductScanConflict[],
+  field: string,
+  value: unknown,
+  evidence: ProductScanEvidence | null,
+): void {
+  if (!evidence || !isDirectEvidence(evidence)) return;
+  for (const conflict of conflicts) {
+    if (conflict.field !== field || conflict.retainedSource !== null) continue;
+    if (
+      materiallyEqual(field, conflict.labelValue, value) ||
+      materiallyEqual(field, conflict.externalValue, value)
+    ) {
+      conflict.retainedSource = evidence.source;
+    }
+  }
+}
+
 function appendConflict(
   conflicts: ProductScanConflict[],
   field: string,
@@ -506,9 +532,11 @@ export function mergeProductScanResults(
   const prior = objectValue(priorValue);
   const incoming = objectValue(incomingValue);
   const merged = structuredClone(Object.keys(prior).length ? prior : incoming);
-  const conflicts = mergeUnique(prior.conflicts, incoming.conflicts).map(
-    (item) => item as ProductScanConflict,
-  );
+  // Copied, never aliased: resolving a conflict below must not reach back into
+  // the caller's prior session state.
+  const conflicts = mergeUnique(prior.conflicts, incoming.conflicts).map((item) => ({
+    ...(item as ProductScanConflict),
+  }));
   const scalarFields = [
     'identity.displayName',
     'identity.originalName',
@@ -544,6 +572,7 @@ export function mergeProductScanResults(
     }
     if (priorFact === null || priorFact === undefined) {
       setPath(merged, field, incomingFact);
+      resolveCorroboratedConflicts(conflicts, field, incomingFact, bestEvidence(incoming, field));
       continue;
     }
     if (materiallyEqual(field, priorFact, incomingFact)) {
