@@ -1256,6 +1256,7 @@ export const copy = {
       generic: 'Generic catalog',
       mercadona: 'Mercadona catalog',
       colin: 'Colin / internal catalog',
+      intimport: 'INTIMPORT',
     },
     inputLabel: 'Paste or upload CSV',
     pastePlaceholder: 'Paste CSV rows here — the first line is the header…',

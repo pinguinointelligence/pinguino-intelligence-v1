@@ -24,7 +24,7 @@ import type { ProductBooleanOrUnknown, ProductInsert, ProductSourceType } from '
 
 /** Which intake channel a table arrived through. Selects source_type (and, later,
  * vendor-specific header aliases). NOT a separate system — one parser, many sources. */
-export type ProductIntakeSource = 'generic' | 'mercadona' | 'colin';
+export type ProductIntakeSource = 'generic' | 'mercadona' | 'colin' | 'intimport';
 
 export type ProductIntakeStatus = 'valid' | 'warning' | 'skip';
 
@@ -50,6 +50,9 @@ const SOURCE_TYPE_BY_PROFILE: Record<ProductIntakeSource, ProductSourceType> = {
   generic: 'catalog_import',
   mercadona: 'mercadona',
   colin: 'colin_catalog',
+  // INTIMPORT is an official Gellatti bulk format, not a separate product system: it
+  // lands in the same catalog intake channel and is identified by catalog_source.
+  intimport: 'catalog_import',
 };
 
 /** Only fields that exist on ProductInsert can be a mapping target — `keyof ProductInsert`

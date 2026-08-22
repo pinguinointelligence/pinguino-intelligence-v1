@@ -17,9 +17,24 @@ import { cn } from '@/lib/cn';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { ProductIntakeResult, ProductIntakeSource } from '@/data/products/productTableParser';
-import { canImport, canParse, DEFAULT_SOURCE, parseIntake, readCsvFile } from './productImportController';
+import type { IntimportResult } from '@/data/products/intimport';
+import {
+  canImport,
+  canParse,
+  DEFAULT_SOURCE,
+  intimportToIntakeResult,
+  parseIntake,
+  parseIntimport,
+  readCsvFile,
+} from './productImportController';
 import { runProductImport, type RunImportResult } from './runProductImport';
-import { ImportActionBar, ImportSummaryView, ParsePreview, SourceSelect } from './productImportView';
+import {
+  ImportActionBar,
+  ImportSummaryView,
+  IntimportPreview,
+  ParsePreview,
+  SourceSelect,
+} from './productImportView';
 
 const c = copy.productsImport;
 
@@ -34,11 +49,13 @@ export function ProductImportPage() {
   const [source, setSource] = useState<ProductIntakeSource>(DEFAULT_SOURCE);
   const [csvText, setCsvText] = useState('');
   const [result, setResult] = useState<ProductIntakeResult | null>(null);
+  const [intimport, setIntimport] = useState<IntimportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [importResult, setImportResult] = useState<RunImportResult | null>(null);
 
   const reset = () => {
     setResult(null);
+    setIntimport(null);
     setImportResult(null);
   };
 
@@ -48,8 +65,17 @@ export function ProductImportPage() {
     reset();
   };
 
+  // Parse is deterministic and free for every source: header validation, field parsing,
+  // normalization, identity and dedupe only. No enrichment, no paid call.
   const onParse = () => {
-    setResult(parseIntake(csvText, source));
+    if (source === 'intimport') {
+      const parsed = parseIntimport(csvText);
+      setIntimport(parsed);
+      setResult(intimportToIntakeResult(parsed));
+    } else {
+      setIntimport(null);
+      setResult(parseIntake(csvText, source));
+    }
     setImportResult(null);
   };
 
@@ -109,7 +135,13 @@ export function ProductImportPage() {
         </DestinationSection>
 
         <DestinationSection label={c.previewLabel}>
-          {result ? <ParsePreview result={result} /> : <EmptyState title={c.emptyPreview} />}
+          {intimport ? (
+            <IntimportPreview result={intimport} />
+          ) : result ? (
+            <ParsePreview result={result} />
+          ) : (
+            <EmptyState title={c.emptyPreview} />
+          )}
         </DestinationSection>
 
         <DestinationSection label={c.resultLabel}>

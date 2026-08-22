@@ -15,6 +15,7 @@ import type {
   ProductIntakeSource,
 } from '@/data/products/productTableParser';
 import type { ImportRowResult, ProductImportSummary } from '@/services/productCatalogImport';
+import type { IntimportResult, IntimportRowState } from '@/data/products/intimport';
 import { importPreviewRedFlags, SOURCE_OPTIONS, type IntakeRedFlagRow } from './productImportController';
 
 const c = copy.productsImport;
@@ -219,5 +220,104 @@ export function ImportActionBar({
     >
       {c.import}
     </button>
+  );
+}
+
+/** Aggregate repeated messages into "message · ×N" so a big file cannot spam the preview. */
+function aggregate(lines: readonly string[]): string[] {
+  const counts = new Map<string, number>();
+  for (const line of lines) counts.set(line, (counts.get(line) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .map(([line, count]) => (count > 1 ? `${line} · ×${count}` : line));
+}
+
+/** Message with the row-specific parts generalized, so repeats actually collapse. */
+function messageShape(message: string): string {
+  return message.replace(/row \d+/g, 'another row').replace(/"[^"]*"/g, '"…"');
+}
+
+const ROW_STATE_LABEL: Record<IntimportRowState, string> = {
+  EXISTING: 'Existing',
+  READY: 'Ready',
+  ENRICHMENT_REQUIRED: 'Need enrichment',
+  REVIEW_REQUIRED: 'Need review',
+  INVALID: 'Invalid',
+  DUPLICATE: 'Duplicates',
+};
+
+/**
+ * INTIMPORT parse preview — the compact, honest summary of one official 36-column file.
+ * Counts are exact; repeated messages are aggregated with a count rather than listed
+ * hundreds of times. Nothing here performs or implies a paid call.
+ */
+export function IntimportPreview({ result }: { result: IntimportResult }) {
+  const s = result.summary;
+  const headerProblems = [
+    ...result.missingColumns.map((column) => `missing official column "${column}"`),
+    ...result.unexpectedColumns.map((column) => `unknown column "${column}" ignored`),
+  ];
+  const warningLines = aggregate(
+    result.candidates.flatMap((candidate) => candidate.warnings.map(messageShape)),
+  );
+  const reasonLines = aggregate(
+    result.candidates
+      .filter((candidate) => candidate.state !== 'READY')
+      .flatMap((candidate) => candidate.reasons.map(messageShape)),
+  );
+  const attention = result.candidates.filter(
+    (candidate) => candidate.state === 'REVIEW_REQUIRED' || candidate.state === 'INVALID',
+  );
+
+  return (
+    <div className="space-y-10">
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm text-ivory/60">
+        <span className="tracking-label text-ivory uppercase">Format: {result.format}</span>
+        <span>Country: {s.countries.length > 0 ? s.countries.join(', ') : '—'}</span>
+        <span className={result.headerOk ? 'text-ivory/60' : 'text-status-risky'}>
+          {result.headerOk ? 'All 36 official columns recognized' : 'Header does not match the official contract'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+        <CountStat label="Rows" value={s.rows} />
+        <CountStat label="Unique products" value={s.uniqueProducts} />
+        <CountStat label={ROW_STATE_LABEL.EXISTING} value={s.existing} />
+        <CountStat label={ROW_STATE_LABEL.DUPLICATE} value={s.duplicates} />
+        <CountStat label={ROW_STATE_LABEL.READY} value={s.ready} />
+        <CountStat label={ROW_STATE_LABEL.ENRICHMENT_REQUIRED} value={s.enrichmentRequired} />
+        <CountStat label={ROW_STATE_LABEL.REVIEW_REQUIRED} value={s.reviewRequired} />
+        <CountStat label={ROW_STATE_LABEL.INVALID} value={s.invalid} />
+      </div>
+
+      {headerProblems.length > 0 ? (
+        <WarningList label="Header" items={headerProblems} empty="" />
+      ) : null}
+
+      <WarningList
+        label="Why rows are not ready"
+        items={reasonLines}
+        empty="Every row is ready."
+      />
+      <WarningList label="Warnings" items={warningLines} empty="No warnings." />
+
+      <div>
+        <SectionLabel tone="ivory">Rows needing a decision</SectionLabel>
+        {attention.length === 0 ? (
+          <p className="mt-3 text-sm text-ivory/40">None — no row needs a human decision.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-ivory/10">
+            {attention.map((candidate) => (
+              <li key={candidate.rowIndex} className="py-2 text-sm leading-relaxed text-ivory/70">
+                <span className="font-mono text-ivory/40">#{candidate.rowIndex}</span>{' '}
+                <span className="text-ivory/80">{candidate.displayName ?? '—'}</span>{' '}
+                <span className="text-status-risky">{ROW_STATE_LABEL[candidate.state]}</span>
+                <span className="block text-ivory/50">{candidate.reasons.join(' · ')}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
