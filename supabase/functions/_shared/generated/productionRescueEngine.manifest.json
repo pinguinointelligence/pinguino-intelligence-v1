@@ -21,13 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-<<<<<<< HEAD
-    "bytes": 261846,
-    "sha256": "ca0d47f47c8467b7a73c7a8641ae738b1c90f24c17ce68e2f04261fcafb15eca",
-=======
-    "bytes": 295478,
-    "sha256": "63f664c0f5f38ea816139abfc01353f2557647fbf1bc9e693a72028ca4e413b1",
->>>>>>> b261219 (feat(protein): port Protein v2 output into the current Score architecture)
+    "bytes": 296199,
+    "sha256": "b0f31c48bd3465153759f4b2bc29f540126187d1766e1959c5005c3678a0d13c",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -186,17 +181,13 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "e26f1d16bb790cf7100c811b696da6f7e31b0ca396c1f15497e630ec2e7b1e77"
+      "sha256": "26112d0b7c54971e04ed9760e12aa47ba88b784453ad7765f3ba5544c8295c56"
     },
     {
       "path": "src/features/production-workspace/productionSession.ts",
       "sha256": "42a0f94c92e22c30892b26f2105125cacd0a28d667fb0f99f0449f2849262fb0"
     },
     {
-<<<<<<< HEAD
-      "path": "src/features/protein-gelato/proteinTarget.ts",
-      "sha256": "80a90859fb76b4d5269633d4139eb14b9a1d90f9754e377410360dd60c8ebd31"
-=======
       "path": "src/features/protein-gelato/proteinAuthority.ts",
       "sha256": "0df88df23b17a26afcde6720f33f57907b5fcf36e1fa28cdc3221a3057f3a2d7"
     },
@@ -215,7 +206,6 @@
     {
       "path": "src/features/protein-gelato/proteinStructureQuality.ts",
       "sha256": "cf67887384ac73b06a6b8268ba19a936c9f161db1bb69ca4de952416f388b58f"
->>>>>>> b261219 (feat(protein): port Protein v2 output into the current Score architecture)
     },
     {
       "path": "src/features/recipe-composition/finalProduct.ts",
@@ -239,7 +229,7 @@
     },
     {
       "path": "src/features/recipe-constraints/recipeConstraintAuthority.ts",
-      "sha256": "0b217386d2481096e93137a68ad8c7a5b25211343de73f7c234e67c902fe40c9"
+      "sha256": "1b9fdfbeff0ba40072070b3676e94b11b63ab4c2824ce1013db297d992062346"
     },
     {
       "path": "src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts",
@@ -263,12 +253,8 @@
     },
     {
       "path": "src/spine/temperatureRegulator.ts",
-      "sha256": "ceb1e7b33ddb1448a584c84aafdfdb86d0b33dded9a35acee064178a3a90fc53"
+      "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-<<<<<<< HEAD
-  "sourceClosureSha256": "2691a601ddbb7050dd1cbffc69d2039901cd5ed6465d729ff6dcb454d3f79396"
-=======
-  "sourceClosureSha256": "b8de09a4ebe76b30dcd1e8fc72e08e52399b34e30411259eca2ba95e43e96818"
->>>>>>> b261219 (feat(protein): port Protein v2 output into the current Score architecture)
+  "sourceClosureSha256": "888fad29bece482f18e7ef6235237ac48a8ec0622d8be54111a75fa3123d779e"
 }
