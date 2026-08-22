@@ -612,6 +612,13 @@ export interface ConstraintPreview {
    * eligible lines.
    */
   mainObjective?: MainFlavourObjectiveProof;
+  /**
+   * Sorbet exact five-step Direction: the closed-form projection moved only
+   * the canonical adjustable roles and kept every Main line byte-exact, so no
+   * Main frontier proof exists for this proposal. The Apply door re-derives
+   * the same exact candidate from the trusted draft instead.
+   */
+  mainHeldByExactDirection?: boolean;
   iteration?: IterationDiagnostics;
   /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
    * the PROPOSED state (classified by `classifyViolationBands` provenance).
@@ -2231,6 +2238,22 @@ const hasAdjustablePositiveMainIntent = (input: RecipeInput, set: ConstraintSet)
       item?.actual_grams === null && constraint?.mode !== 'locked' && constraint?.mode !== 'percent'
     );
   });
+
+/** Every Main line of the trusted draft is present in the proposal with byte-identical grams. */
+const mainGroupLinesByteIdentical = (base: RecipeInput, proposed: RecipeInput): boolean => {
+  const proposedByLineId = new Map(proposed.items.map((item) => [item.id, item] as const));
+  return captureMainIngredientIntent(base).every((main) => {
+    const current = base.items.find((item) => item.id === main.lineId);
+    const next = proposedByLineId.get(main.lineId);
+    return (
+      current !== undefined &&
+      next !== undefined &&
+      next.lock_type === current.lock_type &&
+      canonicalIngredientId(next.ingredient) === canonicalIngredientId(current.ingredient) &&
+      Object.is(next.planned_grams, current.planned_grams)
+    );
+  });
+};
 
 const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput): string[] => {
   const afterByLineId = new Map(after.items.map((item) => [item.id, item] as const));
@@ -5232,6 +5255,9 @@ export function buildOptimizePreview(
         preview.autoBalance = { batchRescaled, solverRounds: 0 };
         preview.hardResidualMetrics = [];
         preview.diagnosticOnly = false;
+        // The projection keeps Main, optional Inulin and stabilizer byte-exact
+        // (see sorbetDirectionProjection); the Apply door verifies exactly that.
+        preview.mainHeldByExactDirection = true;
         return mainSafePreview(input, preview, options.productBehaviorSnapshots);
       }
     }
@@ -7380,9 +7406,46 @@ export class VerifiedApply {
     const currentMainGrams = mainGroupTotal(mainIdentityBase, mainIdentityBase);
     const exactMainGrams = mainGroupTotal(mainIdentityBase, exactCandidate);
     const executableMainGrams = mainGroupTotal(mainIdentityBase, preview.proposedInput);
-    const requiresMainProof =
+    const adjustableMainIntent = hasAdjustablePositiveMainIntent(
+      mainIdentityBase,
+      currentConstraints,
+    );
+    // Sorbet exact five-step Direction (served QA 2026-08-22): the closed-form
+    // projection moves only the canonical adjustable roles and keeps every Main
+    // line byte-exact, so there is no Main frontier to certify — the Main
+    // maximisation frontier treats an unreached exact Direction target as a
+    // hard gate and could never issue a proof for an honest nearest-achievable
+    // Preview. The door instead requires the byte-exact Main group AND a
+    // deterministic reproduction of the same exact candidate from the trusted
+    // current draft. Any other optimize Preview keeps the full proof contract.
+    const mainHeldByExactDirection =
       preview.kind === 'optimize' &&
-      hasAdjustablePositiveMainIntent(mainIdentityBase, currentConstraints);
+      preview.mainHeldByExactDirection === true &&
+      mainGroupLinesByteIdentical(mainIdentityBase, preview.proposedInput);
+    const requiresMainProof =
+      preview.kind === 'optimize' && adjustableMainIntent && !mainHeldByExactDirection;
+    if (mainHeldByExactDirection && adjustableMainIntent) {
+      const rebuilt = buildOptimizePreview(current, currentConstraints, preview.createdAt, {
+        ...rebuildOptions,
+        excludedIngredientIds,
+        productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+        technicalOnlyMainLineIds,
+      });
+      const rebuiltMatches =
+        rebuilt.ok &&
+        rebuilt.preview.mainHeldByExactDirection === true &&
+        workingStateFingerprint(rebuilt.preview.proposedInput, rebuilt.preview.nextConstraints) ===
+          workingStateFingerprint(preview.proposedInput, preview.nextConstraints);
+      if (!rebuiltMatches) {
+        return {
+          ok: false,
+          code: 'main_identity_violated',
+          messagePl:
+            'Apply zablokowany: propozycja nie odtwarza dokładnie zweryfikowanego poziomu składnika Głównego.',
+          violations: [],
+        };
+      }
+    }
     if (requiresMainProof) {
       const proof = preview.mainObjective;
       const exactScore = recipeFitForInput(exactCandidate, calculateRecipe(exactCandidate)).score;
