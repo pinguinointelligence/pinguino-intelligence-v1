@@ -108,7 +108,7 @@ omits the emptied cream/cocoa donors — accepted by the door), Production Rescu
 ## Ledger
 
 - Full `npx vitest run` (final tree, after bundle regeneration): 555 files passed, 6949 tests passed, 0 failed (run #2 before the bundle refresh: 6948/6949, only the stale bundle-manifest hash; run #1 before pin adaptation drove the test changes above).
-- Final staging SHA: __STAGING_SHA__ · Vercel `pinguino-staging` deployment: __DEPLOYMENT__ · served bundle: __BUNDLE__
-- Served smoke (TEST PRO): __SERVED__
+- Final staging SHA: code `d3530cc` (`fix(recipe): global zero-gram executable invariant`) pushed to `origin/staging`, this ledger commit on top · Vercel `pinguino-staging` deployment of `d3530cc`: `dpl_2YHER1bNSycLqaEJdGfRX6KqZkGb` READY (alias staging.pinguinoai.com, ready 2026-08-22) · served bundle: `assets/index-BIS8_bSg.js` (previously `index-ByECNNeA.js` from a06fbb3).
+- Served smoke: unauthenticated deployment verification done (served bundle switched, deployment READY, commit SHA bound). The AUTHENTICATED TEST PRO smoke of the ECO Apply (Inulin omitted, next Przelicz without `PRODUCT_GRAMS_REQUIRED`) is PENDING owner sign-in in the Browser pane — Claude never types credentials; the behaviour is pinned by the invariant suite (cases 4/5/9) on the exact served SHA.
 - Production: `main` 4dfb097 untouched (www.pinguinoai.com still serves `assets/index-BTR3SdkC.js`).
 - Mapper Base unchanged.
