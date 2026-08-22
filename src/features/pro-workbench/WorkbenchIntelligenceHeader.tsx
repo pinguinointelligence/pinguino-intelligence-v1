@@ -10,6 +10,7 @@ import {
 import { monitorScoreView } from './monitorSummaryView';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { scorePresentationSource } from './scorePresentationSource';
+import { proteinContentLabelPl } from '@/features/protein-gelato/proteinReadout';
 import { WorkbenchScoreDisplay } from './WorkbenchScoreDisplay';
 
 export function WorkbenchIntelligenceHeader({
@@ -57,6 +58,14 @@ export function WorkbenchIntelligenceHeader({
   // it would duplicate the score and destroy the designed state semantics.
   const current = hasRecipe && !awaitingRecalculation && monitorGate.ready && !legacyInspection;
   const displayedMatch = previewMatch ?? (current ? match : null);
+  // Protein v2: measured content of the SAME candidate the ring is describing,
+  // so a preview that lowers protein while raising the score renders exactly
+  // that. Never a target, never an input to the score.
+  const displayedProteinPercent = useMemo(() => {
+    if (input.category !== 'protein_gelato') return null;
+    if (previewInput !== null) return calculateRecipe(previewInput).percentages.protein_percent;
+    return current ? result.percentages.protein_percent : null;
+  }, [current, input.category, previewInput, result]);
   const scoreSource = scorePresentationSource({
     previewReady: previewMatch !== null,
     currentReady: current,
@@ -97,6 +106,7 @@ export function WorkbenchIntelligenceHeader({
           <WorkbenchScoreDisplay
             score={displayedMatch.score}
             label={displayedMatch.label}
+            proteinPercent={displayedProteinPercent}
             preview={previewMatch !== null}
             onOpenLearning={onOpenLearning}
           />
@@ -148,6 +158,16 @@ export function WorkbenchIntelligenceHeader({
               ? `${displayedMatch.score ?? '—'} · ${previewMatch ? previewMatch.label : displayedMatch.label}`
               : 'Wynik pojawi się po przeliczeniu'}
           </span>
+          {/* Protein v2: measured content, never a target and never a control. */}
+          {displayedProteinPercent === null ? null : (
+            <span
+              className="mt-0.5 block truncate font-mono text-[10px] font-semibold tabular-nums text-ink"
+              data-testid="workbench-header-protein"
+              data-protein-percent={displayedProteinPercent}
+            >
+              {proteinContentLabelPl(displayedProteinPercent)}
+            </span>
+          )}
         </span>
         <span
           className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-[#101113] font-mono text-lg font-semibold text-white shadow-pro-e1"

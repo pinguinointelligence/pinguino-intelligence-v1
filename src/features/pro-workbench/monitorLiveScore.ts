@@ -17,6 +17,7 @@
  */
 import type { RecipeInput, RecipeResult } from '@/engine';
 import type { TenPointScore } from '@/features/recipe-score';
+import { formatProteinPercentPl } from '@/features/protein-gelato/proteinReadout';
 import { monitorScoreView } from './monitorSummaryView';
 
 export type MonitorLiveScoreState =
@@ -33,6 +34,16 @@ export interface MonitorLiveScoreView {
   /** The canonical §15.1 verdict, or the honest reason there is no score. */
   label: string;
   ariaText: string;
+  /**
+   * Protein Engine v2: the ACTUAL protein content of this exact BASE recipe,
+   * mass %. Null outside Protein mode.
+   *
+   * It is a separate fact from `score`, never an input to it. A candidate with
+   * MORE protein routinely scores LOWER, which is the whole point of the v2
+   * product philosophy — so these two fields must never be conflated or
+   * derived from one another.
+   */
+  proteinPercent: number | null;
 }
 
 export interface MonitorScoreComparisonView {
@@ -59,12 +70,28 @@ const view = (
   state: MonitorLiveScoreState,
   score: TenPointScore | null,
   label: string,
+  proteinPercent: number | null = null,
 ): MonitorLiveScoreView => ({
   state,
   score,
   label,
-  ariaText: score === null ? `${subject}: ${label}` : `${subject}: ${score} na 10 — ${label}`,
+  proteinPercent,
+  ariaText:
+    (score === null ? `${subject}: ${label}` : `${subject}: ${score} na 10 — ${label}`) +
+    (proteinPercent === null ? '' : ` Białko ${formatProteinPercentPl(proteinPercent)}.`),
 });
+
+/**
+ * Actual protein of the BASE recipe. Read straight from the engine result the
+ * caller already computed — the same canonical composition every other surface
+ * reads, so a manual gram edit moves it live exactly as it moves the score.
+ * Toppings are post-production and never enter this result.
+ */
+const proteinOutputPercent = (
+  input: RecipeInput,
+  result: RecipeResult,
+): number | null =>
+  input.category === 'protein_gelato' ? result.percentages.protein_percent : null;
 
 function evaluate(
   subject: string,
@@ -78,9 +105,10 @@ function evaluate(
   if (hasPlaceholderLine(input)) {
     return view(subject, 'awaiting_grams', null, AWAITING_GRAMS_LABEL);
   }
+  const proteinPercent = proteinOutputPercent(input, result);
   const match = monitorScoreView(result, input).match;
-  if (match.score === null) return view(subject, 'no_data', null, match.label);
-  return view(subject, 'scored', match.score, match.label);
+  if (match.score === null) return view(subject, 'no_data', null, match.label, proteinPercent);
+  return view(subject, 'scored', match.score, match.label, proteinPercent);
 }
 
 /**

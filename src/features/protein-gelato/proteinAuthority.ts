@@ -479,6 +479,22 @@ function solveForProteinPercent(
 const PROTEIN_LADDER_SPAN_PP = 3;
 /** Ladder resolution, pp. */
 const PROTEIN_LADDER_STEP_PP = 0.5;
+/**
+ * The lowest rung must CLEAR the qualification requirement, not sit on it.
+ *
+ * Two effects conspire at the boundary. The exact solver returns the closest
+ * hard-safe candidate rather than the requested percentage exactly — its
+ * residual is bounded by whole-gram granularity, roughly 0.06-0.08 pp for a
+ * 60-80 % protein source in a 1 kg batch. And the requirement itself RISES as
+ * protein rises, because protein adds energy to its own denominator. A rung
+ * placed exactly at the requirement can therefore settle a hundredth of a point
+ * low and lose the claim: a measured case landed at 8.489 % protein against a
+ * requirement of 8.4896 %, i.e. an energy share of 19.9988 %.
+ *
+ * Half a ladder step is comfortably above the solver residual and still far
+ * inside the controlled-evidence window.
+ */
+const PROTEIN_QUALIFICATION_MARGIN_PP = PROTEIN_LADDER_STEP_PP / 2;
 
 export type ProteinFitReason =
   | 'not_protein_profile'
@@ -561,8 +577,14 @@ export function fitProteinFormulation(
   if (required === null || !Number.isFinite(required)) return unchanged('best_achievable');
 
   // Ladder: from the claim requirement upward. Snapped to the step grid so the
-  // same recipe always probes the same levels.
-  const start = Math.ceil(Math.max(0, required) / PROTEIN_LADDER_STEP_PP) * PROTEIN_LADDER_STEP_PP;
+  // same recipe always probes the same levels, then lifted by one further step
+  // whenever the snapped rung would sit inside the boundary margin.
+  const snapped =
+    Math.ceil(Math.max(0, required) / PROTEIN_LADDER_STEP_PP) * PROTEIN_LADDER_STEP_PP;
+  const start =
+    snapped - required < PROTEIN_QUALIFICATION_MARGIN_PP
+      ? snapped + PROTEIN_LADDER_STEP_PP
+      : snapped;
   const probedPercents: number[] = [];
   for (
     let percent = start;

@@ -6374,6 +6374,24 @@ function assessProteinFormulation(input, result = calculateRecipe(input)) {
 		score
 	};
 }
+/** Ladder resolution, pp. */
+const PROTEIN_LADDER_STEP_PP = .5;
+/**
+* The lowest rung must CLEAR the qualification requirement, not sit on it.
+*
+* Two effects conspire at the boundary. The exact solver returns the closest
+* hard-safe candidate rather than the requested percentage exactly — its
+* residual is bounded by whole-gram granularity, roughly 0.06-0.08 pp for a
+* 60-80 % protein source in a 1 kg batch. And the requirement itself RISES as
+* protein rises, because protein adds energy to its own denominator. A rung
+* placed exactly at the requirement can therefore settle a hundredth of a point
+* low and lose the claim: a measured case landed at 8.489 % protein against a
+* requirement of 8.4896 %, i.e. an energy share of 19.9988 %.
+*
+* Half a ladder step is comfortably above the solver residual and still far
+* inside the controlled-evidence window.
+*/
+const PROTEIN_QUALIFICATION_MARGIN_PP = PROTEIN_LADDER_STEP_PP / 2;
 /**
 * Canonical public score seam for a concrete RecipeInput. Non-Protein behaviour
 * is byte-for-byte the existing technical-fit adapter.

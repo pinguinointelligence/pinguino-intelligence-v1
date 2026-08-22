@@ -1462,8 +1462,44 @@ const finishPreview = (
   createdAt: string,
 ): ConstraintPreview => {
   const beforeResult = calculateRecipe(baseInput);
-  const practical = practicalizeRecipeCandidate(proposedInput, nextConstraints);
-  const executableInput = practical.ok ? practical.audit.executableInput : proposedInput;
+  // Protein Engine v2: EVERY preview route converges here, so this is the one
+  // place that can guarantee a Protein candidate still earns its claim after
+  // Main maximisation and the Direction segment have moved grams.
+  // `baseSet` — the user's OWN locks — is the right authority here. The
+  // post-preview `nextConstraints` marks solver-owned lines as non-AI, which
+  // would leave the ladder with no adjustable pair at all.
+  proposedInput = refineProteinFormulation(baseInput, proposedInput, baseSet);
+  let practical = practicalizeRecipeCandidate(proposedInput, nextConstraints);
+  let executableInput = practical.ok ? practical.audit.executableInput : proposedInput;
+  // Protein Engine v2 — the boundary defect this repair exists for.
+  //
+  // Practicalization rounds the exact solver candidate to the whole grams the
+  // user will physically weigh. Near the HIGH PROTEIN boundary that rounding is
+  // large enough to cross it: a measured case entered practicalization
+  // qualified and left it at 8.489 % protein against a requirement of
+  // 8.4896 %, i.e. an energy share of 19.9988 %.
+  //
+  // The EXECUTABLE recipe is the one the user makes, so the claim has to hold
+  // THERE. Re-run the ladder from the executable candidate and re-practicalize;
+  // accept only if the round trip genuinely restores the frontier.
+  if (baseInput.category === 'protein_gelato') {
+    const beforeRounding = proteinFrontierRank(proposedInput) ?? 0;
+    const afterRounding = proteinFrontierRank(executableInput) ?? 0;
+    if (afterRounding < beforeRounding - 1e-9) {
+      const repaired = refineProteinFormulation(baseInput, executableInput, baseSet);
+      if (repaired !== executableInput) {
+        const repracticalized = practicalizeRecipeCandidate(repaired, nextConstraints);
+        const repairedExecutable = repracticalized.ok
+          ? repracticalized.audit.executableInput
+          : repaired;
+        if ((proteinFrontierRank(repairedExecutable) ?? 0) > afterRounding + 1e-9) {
+          practical = repracticalized;
+          executableInput = repairedExecutable;
+          proposedInput = repaired;
+        }
+      }
+    }
+  }
   const afterResult = practical.ok
     ? practical.audit.executableResult
     : calculateRecipe(proposedInput);
@@ -2239,6 +2275,58 @@ type MainObjectiveProbe =
       mainGrams: number;
       reason: 'batch_or_constraints' | 'hard_gate' | 'technical_score_class' | 'main_identity';
     };
+
+/**
+ * FINAL Protein refinement (Protein Engine v2).
+ *
+ * The solver applies `fitProteinFormulation` mid-loop, but Main maximisation and
+ * the hard-safe Direction segment run AFTERWARDS and move grams. Those stages
+ * only promise to PRESERVE the protein frontier rank they were handed, so a
+ * candidate that was a hundredth of a point short of the HIGH PROTEIN claim
+ * stayed short all the way to the Preview.
+ *
+ * Measured case: 8.489 % protein against a requirement of 8.4896 %, i.e. an
+ * energy share of 19.9988 % — natively hard-safe, Direction-clean, and not a
+ * Protein product. Re-running the ladder on the FINAL candidate lifts it to
+ * 9.0 % / 21.2 % of energy.
+ *
+ * Strictly additive and fail-closed: the refinement is accepted only when it
+ * improves the protein frontier rank AND preserves everything the later stages
+ * had already won — Main grams, native hard-safety and Direction.
+ */
+function refineProteinFormulation(
+  identityInput: RecipeInput,
+  candidate: RecipeInput,
+  set: ConstraintSet,
+): RecipeInput {
+  if (candidate.category !== 'protein_gelato') return candidate;
+  if (candidate.items.some((item) => item.actual_grams !== null)) return candidate;
+
+  const baselineRank = proteinFrontierRank(candidate);
+  if (baselineRank === null) return candidate;
+
+  // No exclusion list is needed: the ladder only exchanges grams between lines
+  // that are ALREADY in the candidate and never introduces an ingredient, so an
+  // excluded product can never enter through this pass.
+  const fit = fitProteinFormulation(candidate, set, []);
+  if (!fit.changed) return candidate;
+
+  const refined = fit.input;
+  const refinedRank = proteinFrontierRank(refined);
+  if (refinedRank === null || refinedRank <= baselineRank + 1e-9) return candidate;
+  if (classifyViolationBands(refined).hardMetrics.length > 0) return candidate;
+  if (
+    mainGroupTotal(identityInput, refined) <
+    mainGroupTotal(identityInput, candidate) - MAIN_OBJECTIVE_EPSILON_G
+  ) {
+    return candidate;
+  }
+  if (recipeDirectionViolations(refined).length > recipeDirectionViolations(candidate).length) {
+    return candidate;
+  }
+  if (!verifyConstraintsPreserved(set, refined).ok) return candidate;
+  return refined;
+}
 
 const mainGroupTotal = (identityInput: RecipeInput, candidate: RecipeInput): number => {
   const byLineId = new Map(candidate.items.map((item) => [item.id, item] as const));

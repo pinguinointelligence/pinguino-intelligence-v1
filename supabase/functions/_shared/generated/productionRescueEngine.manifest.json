@@ -21,8 +21,13 @@
     "productionSessionSchema": 2
   },
   "bundle": {
+<<<<<<< HEAD
     "bytes": 261846,
     "sha256": "ca0d47f47c8467b7a73c7a8641ae738b1c90f24c17ce68e2f04261fcafb15eca",
+=======
+    "bytes": 295478,
+    "sha256": "63f664c0f5f38ea816139abfc01353f2557647fbf1bc9e693a72028ca4e413b1",
+>>>>>>> b261219 (feat(protein): port Protein v2 output into the current Score architecture)
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -188,8 +193,29 @@
       "sha256": "42a0f94c92e22c30892b26f2105125cacd0a28d667fb0f99f0449f2849262fb0"
     },
     {
+<<<<<<< HEAD
       "path": "src/features/protein-gelato/proteinTarget.ts",
       "sha256": "80a90859fb76b4d5269633d4139eb14b9a1d90f9754e377410360dd60c8ebd31"
+=======
+      "path": "src/features/protein-gelato/proteinAuthority.ts",
+      "sha256": "0df88df23b17a26afcde6720f33f57907b5fcf36e1fa28cdc3221a3057f3a2d7"
+    },
+    {
+      "path": "src/features/protein-gelato/proteinBehavior.ts",
+      "sha256": "1a93b89061969614e3e486b7cd4e379e7190ca8627a97e8f7f826b08db10a913"
+    },
+    {
+      "path": "src/features/protein-gelato/proteinQualification.ts",
+      "sha256": "e6534f96b013372d086e49794045932f949595ad4a8f9d66bf40db946246e522"
+    },
+    {
+      "path": "src/features/protein-gelato/proteinScienceAuthority.ts",
+      "sha256": "f3ec7fa4a3efbc8432f2ac5a0da2d24db6eb906c529e2031799fa0a04070158f"
+    },
+    {
+      "path": "src/features/protein-gelato/proteinStructureQuality.ts",
+      "sha256": "cf67887384ac73b06a6b8268ba19a936c9f161db1bb69ca4de952416f388b58f"
+>>>>>>> b261219 (feat(protein): port Protein v2 output into the current Score architecture)
     },
     {
       "path": "src/features/recipe-composition/finalProduct.ts",
@@ -240,5 +266,9 @@
       "sha256": "ceb1e7b33ddb1448a584c84aafdfdb86d0b33dded9a35acee064178a3a90fc53"
     }
   ],
+<<<<<<< HEAD
   "sourceClosureSha256": "2691a601ddbb7050dd1cbffc69d2039901cd5ed6465d729ff6dcb454d3f79396"
+=======
+  "sourceClosureSha256": "b8de09a4ebe76b30dcd1e8fc72e08e52399b34e30411259eca2ba95e43e96818"
+>>>>>>> b261219 (feat(protein): port Protein v2 output into the current Score architecture)
 }

@@ -1,5 +1,24 @@
+import { proteinContentLabelPl } from '@/features/protein-gelato/proteinReadout';
 import { ScoreRing } from './ScoreRing';
-import type { MonitorScoreComparisonView } from './monitorLiveScore';
+import type { MonitorLiveScoreView, MonitorScoreComparisonView } from './monitorLiveScore';
+
+/**
+ * Protein Engine v2: the ACTUAL protein content of that exact candidate, shown
+ * beside — never inside — the ring. Read-only text: no button, no slider, no
+ * target. Rendered only in Protein mode.
+ */
+function ProteinOutput({ view, testId }: { view: MonitorLiveScoreView; testId: string }) {
+  if (view.proteinPercent === null || !Number.isFinite(view.proteinPercent)) return null;
+  return (
+    <span
+      className="mt-0.5 block font-mono text-[10px] font-semibold tabular-nums text-ink"
+      data-testid={testId}
+      data-protein-percent={view.proteinPercent}
+    >
+      {proteinContentLabelPl(view.proteinPercent)}
+    </span>
+  );
+}
 
 /**
  * The Monitor's score header: how Gellatti scores the recipe AS CURRENTLY
@@ -25,6 +44,8 @@ export function MonitorScoreHeader({
       data-testid="monitor-score-header"
       data-current-score={current.score ?? current.state}
       data-proposed-score={showComparison ? (proposed?.score ?? null) : null}
+      data-current-protein={current.proteinPercent ?? null}
+      data-proposed-protein={showComparison ? (proposed?.proteinPercent ?? null) : null}
       data-stale={stale ? 'true' : 'false'}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -35,6 +56,7 @@ export function MonitorScoreHeader({
             <span className="mt-0.5 block text-[10px] leading-snug text-stone-600">
               {current.label}
             </span>
+            <ProteinOutput view={current} testId="monitor-score-protein-current" />
           </span>
         </div>
 
@@ -59,6 +81,7 @@ export function MonitorScoreHeader({
                 <span className="mt-0.5 block text-[10px] leading-snug text-stone-600">
                   {proposed.label}
                 </span>
+                <ProteinOutput view={proposed} testId="monitor-score-protein-proposed" />
               </span>
             </div>
           </>
