@@ -166,15 +166,24 @@ Deno.serve(async (request) => {
   const maxPerImport = numberEnv('INTIMPORT_MAX_EXTERNAL_CALLS_PER_IMPORT', 40);
   const model = Deno.env.get('INTIMPORT_ENRICHMENT_MODEL') || 'gpt-5.6-luna';
 
-  // Import-wide cap, counted SERVER-SIDE. A client-supplied counter would be
-  // worthless as a spend control.
-  const { count: usedSoFar, error: countError } = await service
+  // Import-wide cap, counted SERVER-SIDE on ACTUAL provider web searches.
+  //
+  // Counting rows here would have been wrong: the first live run showed the
+  // provider ignoring `max_tool_calls` and making up to 3 searches for a single
+  // job (25 searches across 10 jobs). A row count would therefore have allowed
+  // roughly three times the ceiling it advertises. A client-supplied counter
+  // would be worthless as a spend control either way.
+  const { data: usageRows, error: countError } = await service
     .from('intimport_enrichment_usage')
-    .select('id', { count: 'exact', head: true })
+    .select('web_calls')
     .eq('user_id', auth.user.id)
     .eq('import_id', importId);
   if (countError) return json({ error: 'enrichment_usage_unavailable' }, 503);
-  if ((usedSoFar ?? 0) >= maxPerImport) {
+  const usedSoFar = (usageRows ?? []).reduce(
+    (sum, row) => sum + Number((row as { web_calls: number }).web_calls ?? 0),
+    0,
+  );
+  if (usedSoFar >= maxPerImport) {
     return json(
       { error: 'intimport_import_call_cap_reached', callsUsed: usedSoFar, cap: maxPerImport },
       429,
@@ -195,8 +204,12 @@ Deno.serve(async (request) => {
       typeof product.knownSourceUrl === 'string' ? product.knownSourceUrl.slice(0, 400) : null,
   };
 
+  // Cache key deliberately EXCLUDES importId: one canonical product is one
+  // research job, however many imports or rows ask for it. Including the import
+  // id meant a second run re-researched everything at full price — observed live
+  // as 25 fresh searches and zero cache hits on an identical subset.
   const idempotencyKey = await sha256Text(
-    stableJson({ importId, identity, fields: [...requestedFields].sort() }),
+    stableJson({ identity, fields: [...requestedFields].sort() }),
   );
 
   const { data: cached } = await service
@@ -324,7 +337,10 @@ Deno.serve(async (request) => {
     facts,
     sources: [...sourceByUrl.values()],
     notFound: Array.isArray(parsed.notFound) ? parsed.notFound.map(String) : [],
-    calls: Math.max(1, Math.min(maxPerProduct, webCalls)),
+    // Report what the provider ACTUALLY did. Clamping this to the intended
+    // per-product ceiling under-reported real usage by 28% on the first live
+    // run (18 reported vs 25 actual) and would quietly understate spend.
+    calls: Math.max(1, webCalls),
     webCalls,
     latencyMs,
     inputTokens: Number(usage.input_tokens ?? 0),

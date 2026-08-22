@@ -261,6 +261,31 @@ describe('provider runs server-side only', () => {
     expect(edgeSource).toContain("from('intimport_enrichment_usage')");
   });
 
+  it('caps the import on ACTUAL provider searches, not on job count', () => {
+    // The first live run showed the provider ignoring max_tool_calls and making
+    // up to 3 searches for one job (25 across 10 jobs). Counting rows would have
+    // allowed roughly three times the advertised ceiling.
+    expect(edgeSource).toContain("select('web_calls')");
+    expect(edgeSource).not.toMatch(/select\('id', \{ count: 'exact'/);
+    expect(edgeSource).toContain('const usedSoFar = (usageRows ?? []).reduce(');
+  });
+
+  it('reports the real number of searches, never a clamped one', () => {
+    expect(edgeSource).toContain('calls: Math.max(1, webCalls)');
+    expect(edgeSource).not.toContain('Math.min(maxPerProduct, webCalls)');
+  });
+
+  it('caches by product identity, not by import run', () => {
+    // Including importId meant a second import re-researched everything at full
+    // price — observed live as 25 fresh searches and zero cache hits.
+    const keyBlock = edgeSource.slice(
+      edgeSource.indexOf('const idempotencyKey'),
+      edgeSource.indexOf('const { data: cached }'),
+    );
+    expect(keyBlock).toContain('stableJson({ identity, fields:');
+    expect(keyBlock).not.toMatch(/stableJson\(\{ importId/);
+  });
+
   it('bounds tool calls per product', () => {
     expect(edgeSource).toContain('max_tool_calls: maxPerProduct');
     expect(edgeSource).toContain("Math.min(2, numberEnv('INTIMPORT_MAX_CALLS_PER_PRODUCT', 2))");
