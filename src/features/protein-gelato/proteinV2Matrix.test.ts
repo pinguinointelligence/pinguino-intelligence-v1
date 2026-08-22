@@ -317,3 +317,77 @@ describe('§22 — Rescue never trades the claim or recommends protein for its o
     expect(Array.isArray(report.simulations)).toBe(true);
   }, 120_000);
 });
+
+/* ── §31 v1 vs v2 proof ─────────────────────────────────────────────────── */
+
+describe('§31 — the retired 20 %-by-mass formula versus the v2 optimum', () => {
+  /**
+   * The exact shape the v1 engine produced at −11 °C chasing 20 % protein BY
+   * MASS, scored 10/10 by v1: a quarter-kilo of whey concentrate in half a
+   * litre of water. It is reconstructed here ONLY as evidence — it is not
+   * preserved for compatibility, because it exists solely as an artefact of the
+   * invalid target.
+   */
+  const v1Overloaded = (): RecipeInput => ({
+    items: [
+      line('cream', findDemoIngredient('cream_30')!, 110),
+      {
+        id: 'wpc',
+        ingredient: findVerifiedProteinFormulationCandidate('PI-ING-000264')!,
+        planned_grams: 247,
+        actual_grams: null,
+        lock_type: 'unlocked',
+      },
+      line('sucrose', findDemoIngredient('sucrose')!, 80),
+      line('dextrose', findDemoIngredient('dextrose')!, 56),
+      line('tara', findDemoIngredient('tara_gum')!, 2),
+      line('water', { ...findDemoIngredient('milk_3_5')!, id: 'water', name: 'Water', composition: { ...findDemoIngredient('milk_3_5')!.composition, water_percent: 100, solids_percent: 0, fat_percent: 0, protein_percent: 0, carbohydrate_percent: 0, sugar_percent: 0, lactose_percent: 0, salt_percent: 0, kcal_per_100g: 0 } }, 505),
+    ],
+    mode: 'signature',
+    category: 'protein_gelato',
+    target_temperature_c: -11,
+    target_batch_grams: 1000,
+    machine_capacity_grams: null,
+    goals: { flavor_intensity: 'balanced', cost_priority: 'balanced' },
+  });
+
+  it('v2 scores the overloaded formula BELOW a leaner qualified one', () => {
+    const overloaded = assessProteinFormulation(v1Overloaded());
+
+    const built = buildOptimizePreview(draft(-11), EMPTY, AT);
+    expect(built.ok, built.ok ? '' : JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const optimum = assessProteinFormulation(built.preview.proposedInput);
+
+    // Both are Protein products — the overloaded one is not illegal, just worse.
+    expect(overloaded.qualification.qualified).toBe(true);
+    expect(optimum.qualification.qualified).toBe(true);
+
+    // Roughly 20 % by mass versus roughly 8–10 %.
+    expect(overloaded.actualPercent!).toBeGreaterThan(18);
+    expect(optimum.actualPercent!).toBeLessThan(11);
+
+    // …and v2 ranks the leaner recipe strictly higher. Under v1 this was exactly
+    // inverted: hitting 20 % by mass was the only way to score 10.
+    expect(optimum.structure.score!).toBeGreaterThan(overloaded.structure.score!);
+    expect(overloaded.structure.penalties.proteinExcess).toBeGreaterThan(0);
+    expect(overloaded.structure.penalties.beyondEvidence).toBeGreaterThan(0);
+
+    console.info(
+      JSON.stringify({
+        v1Overloaded: {
+          proteinPercent: Number(overloaded.actualPercent?.toFixed(2)),
+          energySharePercent: Number(overloaded.qualification.energySharePercent?.toFixed(1)),
+          structureScore: overloaded.structure.score,
+          penalties: overloaded.structure.penalties,
+        },
+        v2Optimum: {
+          proteinPercent: Number(optimum.actualPercent?.toFixed(2)),
+          energySharePercent: Number(optimum.qualification.energySharePercent?.toFixed(1)),
+          structureScore: optimum.structure.score,
+          penalties: optimum.structure.penalties,
+        },
+      }),
+    );
+  }, 60_000);
+});
