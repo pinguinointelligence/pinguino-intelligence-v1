@@ -26,6 +26,11 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   'estimateIceFraction',
   'projectSorbetDirectionCandidate',
   'hasSeededIceAnchorAtTemperature',
+  // Vegan freezing-authority provenance boundary (Vegan Engine v2 §14/§15).
+  // Documentation + replacement seam only — no numeric behaviour of its own.
+  'resolveIceAuthorityProvenance',
+  'hasOwnPlantValidatedVeganIceAuthority',
+  'veganTemperatureBandProvenance',
   // Sorbet composition-freezing authority (direct ice authority, no milk fallback)
   'hasDirectIceAuthorityAtTemperature',
   'isSorbetFreezingTemperatureSupported',

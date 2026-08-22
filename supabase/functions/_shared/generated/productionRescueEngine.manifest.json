@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 261125,
-    "sha256": "0fd4f0c7f255a5f37e0d74d732f33b1f92eda50f1b7e3fb317361c6e6f97e480",
+    "bytes": 261846,
+    "sha256": "ca0d47f47c8467b7a73c7a8641ae738b1c90f24c17ce68e2f04261fcafb15eca",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -53,7 +53,7 @@
     },
     {
       "path": "src/engine/config/iceAnchors.ts",
-      "sha256": "bd9b2c15f989d8f0c99e8893a79fd5376031855c7667765411260487f408e4a2"
+      "sha256": "7a0df274c56d90c221ecd472caeec1653e0c0cc524ba5c1fde9cb650d8966825"
     },
     {
       "path": "src/engine/config/modes.ts",
@@ -101,7 +101,7 @@
     },
     {
       "path": "src/engine/iceFraction.ts",
-      "sha256": "a2f8f8ffce372a65724eb3ae9603217d28cb7aef8bde1ba3b8ce3cd989b5c914"
+      "sha256": "de6ade2ea5a2e6ad966398ece78dcf008419e1df2e57dcd6bd2ec18d19f53da1"
     },
     {
       "path": "src/engine/nutrition.ts",
@@ -240,5 +240,5 @@
       "sha256": "ceb1e7b33ddb1448a584c84aafdfdb86d0b33dded9a35acee064178a3a90fc53"
     }
   ],
-  "sourceClosureSha256": "a08de0c9c6a9b178aec255c87a7ee62a447848bc39eda74193183833ad4cde05"
+  "sourceClosureSha256": "2691a601ddbb7050dd1cbffc69d2039901cd5ed6465d729ff6dcb454d3f79396"
 }

@@ -151,6 +151,7 @@ import {
   veganSubstitutionRecommendations,
   type VeganSubstitutionRecommendation,
 } from '@/features/formulation/veganSubstitutions';
+import { compareVeganStructuralCandidates } from '@/features/vegan-structure';
 import {
   assessProteinTarget,
   fitProteinTarget,
@@ -4026,7 +4027,17 @@ function maximizeMainFlavourObjective(
         firstHigherRejectedReason = rejection;
         break;
       }
-      accepted.sort((left, right) => right.score - left.score);
+      // VEGAN v2 (additive): among candidates that are already accepted at the
+      // SAME Main allocation and score identically, prefer the structurally
+      // stronger plant system. Pure tie-break — it never rejects a candidate,
+      // never changes Main grams or Multi-Main ratios (they are locked for this
+      // step), and returns 0 for every non-Vegan profile and for any candidate
+      // whose structural evidence is UNKNOWN.
+      accepted.sort(
+        (left, right) =>
+          right.score - left.score ||
+          compareVeganStructuralCandidates(left.executableInput, right.executableInput),
+      );
       const winner = accepted[0]!;
       // Once the search is on the discrete executable frontier, its accepted
       // proof must reference the same Engine-verified whole-gram vector that

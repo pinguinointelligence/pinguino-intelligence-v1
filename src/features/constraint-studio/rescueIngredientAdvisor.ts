@@ -19,6 +19,7 @@ import {
 } from '@/features/recipe-direction/recipeDirectionAssessment';
 import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import type { ConstraintSet } from '@/features/recipe-constraints';
+import { compareVeganStructuralCandidates } from '@/features/vegan-structure';
 import {
   buildOptimizePreview,
   type ConstraintPreview,
@@ -321,6 +322,9 @@ export function simulateRescueCandidates(args: RescueAdvisorArgs): RescueAdvisor
       rescue,
     });
   let best: RescueIngredientAdvice | null = null;
+  /** Executable projection behind `best` — the Vegan v2 structural tie-break
+   * needs the recipe, not only its Direction measure. */
+  let bestInput: RecipeInput | null = null;
   for (const candidate of simulated) {
     const lineId = `${RESCUE_LINE_PREFIX}${candidate.canonicalIngredientId}`;
     // The simulated line enters as a 0 g unlocked placeholder: the optimizer
@@ -383,11 +387,23 @@ export function simulateRescueCandidates(args: RescueAdvisorArgs): RescueAdvisor
       continue;
     }
     record(candidate, 'recommended', simulatedGrams, rescue);
+    // VEGAN v2 (additive): when two rescue candidates reach the SAME Direction
+    // axes at the SAME remaining distance, prefer the one whose executable
+    // projection has the structurally stronger plant system. Ranking only —
+    // eligibility is untouched (the family is already VEGAN_VERIFIED-only), no
+    // ingredient is auto-added, and an UNKNOWN structural side never loses.
+    const structurallyBetter =
+      best !== null &&
+      bestInput !== null &&
+      rescue.reachedAxisCount === best.rescue.reachedAxisCount &&
+      Math.abs(rescue.severityPoints - best.rescue.severityPoints) <= 1e-9 &&
+      compareVeganStructuralCandidates(preview.proposedInput, bestInput) < 0;
     const better =
       best === null ||
       rescue.reachedAxisCount > best.rescue.reachedAxisCount ||
       (rescue.reachedAxisCount === best.rescue.reachedAxisCount &&
-        rescue.severityPoints < best.rescue.severityPoints - 1e-9);
+        rescue.severityPoints < best.rescue.severityPoints - 1e-9) ||
+      structurallyBetter;
     if (!better) continue;
     const reasonPl =
       rescue.reachedAxisCount > current.reachedAxisCount
@@ -400,6 +416,7 @@ export function simulateRescueCandidates(args: RescueAdvisorArgs): RescueAdvisor
           `(dystans ${rescue.severityPoints.toFixed(2)}, symulacja ${simulatedGrams} g) ` +
           `przy zachowaniu wszystkich twardych zakresów.`;
     best = { candidate, current, rescue, simulatedGrams, reasonPl, simulatedCandidateIds };
+    bestInput = preview.proposedInput;
   }
   return { advice: best, current, simulations };
 }

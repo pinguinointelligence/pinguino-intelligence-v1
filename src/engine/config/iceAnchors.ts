@@ -121,6 +121,32 @@ export const ICE_ANCHOR_ROWS: readonly IceAnchorRow[] = [
 ];
 
 /**
+ * The dairy category every unseeded, non-Sorbet category currently borrows.
+ * Vegan is one of them — see `config/veganFreezingAuthority.ts`.
+ */
+export const ICE_ANCHOR_CATEGORY_FALLBACK: ProductCategory = 'milk_gelato';
+
+/**
+ * SINGLE SEAM for anchor-row selection, used by `estimateIceFraction`.
+ *
+ * Category-first; Sorbet never borrows (its authority is the composition
+ * solver); every other unseeded category falls back to the documented
+ * `milk_gelato` rows. Behaviour is byte-for-byte the historical inline rule.
+ *
+ * This is the ONE place the borrowed-dairy dependency is expressed, so a future
+ * Vegan freezing authority replaces it here and nowhere else.
+ */
+export function resolveIceAnchorRows(
+  anchors: readonly IceAnchorRow[],
+  category: ProductCategory,
+): readonly IceAnchorRow[] {
+  const own = anchors.filter((row) => row.category === category);
+  if (own.length > 0) return own;
+  if (category === 'sorbet') return [];
+  return anchors.filter((row) => row.category === ICE_ANCHOR_CATEGORY_FALLBACK);
+}
+
+/**
  * True when the anchor-matrix ice model has a SEEDED anchor at exactly
  * `temperatureC` for `category` (its own, or the milk_gelato fallback at that
  * temperature) — i.e. the estimate needs NO cross-temperature extrapolation.

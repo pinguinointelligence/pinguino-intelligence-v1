@@ -37,6 +37,7 @@
 import {
   ICE_ANCHOR_ROWS,
   ICE_TEMPERATURE_SLOPE_PER_C,
+  resolveIceAnchorRows,
   type IceAnchorRow,
 } from './config/iceAnchors';
 import type { ProductCategory } from './types';
@@ -52,8 +53,6 @@ export interface IceFractionOptions {
   /** Ice-points per °C colder for non-anchored temperatures (calibration-pending). */
   temperature_slope?: number;
 }
-
-const CATEGORY_FALLBACK: ProductCategory = 'milk_gelato';
 
 /** Nearest row by |Δtemperature|; ties resolve to the colder row (deterministic). */
 function selectNearestRow(rows: readonly IceAnchorRow[], temperatureC: number): IceAnchorRow {
@@ -88,11 +87,10 @@ export function estimateIceFraction(
   if (temperature_c >= 0) return 0;
 
   // 3. category-first selection; Sorbet must never receive milk-gelato truth.
-  let rows = anchors.filter((row) => row.category === category);
-  if (rows.length === 0) {
-    if (category === 'sorbet') return null;
-    rows = anchors.filter((row) => row.category === CATEGORY_FALLBACK);
-  }
+  //    The rule lives in ONE named seam so the documented dairy fallback (which
+  //    is what today answers for Vegan) can be replaced in a single place —
+  //    `resolveIceAnchorRows`. Behaviour here is unchanged.
+  const rows = resolveIceAnchorRows(anchors, category);
   if (rows.length === 0) return null;
 
   const row = selectNearestRow(rows, temperature_c);

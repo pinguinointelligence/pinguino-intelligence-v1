@@ -1370,6 +1370,27 @@ const ICE_ANCHOR_ROWS = [
 		source: "owner_approved_standard_physics:G11,G18"
 	}
 ];
+/**
+* The dairy category every unseeded, non-Sorbet category currently borrows.
+* Vegan is one of them — see `config/veganFreezingAuthority.ts`.
+*/
+const ICE_ANCHOR_CATEGORY_FALLBACK = "milk_gelato";
+/**
+* SINGLE SEAM for anchor-row selection, used by `estimateIceFraction`.
+*
+* Category-first; Sorbet never borrows (its authority is the composition
+* solver); every other unseeded category falls back to the documented
+* `milk_gelato` rows. Behaviour is byte-for-byte the historical inline rule.
+*
+* This is the ONE place the borrowed-dairy dependency is expressed, so a future
+* Vegan freezing authority replaces it here and nowhere else.
+*/
+function resolveIceAnchorRows(anchors, category) {
+	const own = anchors.filter((row) => row.category === category);
+	if (own.length > 0) return own;
+	if (category === "sorbet") return [];
+	return anchors.filter((row) => row.category === ICE_ANCHOR_CATEGORY_FALLBACK);
+}
 
 //#endregion
 //#region src/engine/iceFraction.ts
@@ -1409,7 +1430,6 @@ const ICE_ANCHOR_ROWS = [
 * Only active external reference fixtures may calibrate anchors or slope (spec §16).
 * Pure and deterministic; inputs are never mutated.
 */
-const CATEGORY_FALLBACK$1 = "milk_gelato";
 /** Nearest row by |Δtemperature|; ties resolve to the colder row (deterministic). */
 function selectNearestRow(rows, temperatureC) {
 	let selected = rows[0];
@@ -1430,11 +1450,7 @@ function estimateIceFraction(input, options = {}) {
 	if (Number.isNaN(temperature_c)) return null;
 	if (anchors.length === 0) return null;
 	if (temperature_c >= 0) return 0;
-	let rows = anchors.filter((row) => row.category === category);
-	if (rows.length === 0) {
-		if (category === "sorbet") return null;
-		rows = anchors.filter((row) => row.category === CATEGORY_FALLBACK$1);
-	}
+	const rows = resolveIceAnchorRows(anchors, category);
 	if (rows.length === 0) return null;
 	const row = selectNearestRow(rows, temperature_c);
 	if (row.npac_high === row.npac_low) return null;

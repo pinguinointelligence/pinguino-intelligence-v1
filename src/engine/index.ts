@@ -67,11 +67,25 @@ export {
 
 export type { IceAnchorRow } from './config/iceAnchors';
 export {
+  ICE_ANCHOR_CATEGORY_FALLBACK,
   ICE_ANCHOR_ROWS,
   ICE_TEMPERATURE_SLOPE_PER_C,
   hasDirectIceAuthorityAtTemperature,
   hasSeededIceAnchorAtTemperature,
 } from './config/iceAnchors';
+export type {
+  IceAuthorityKind,
+  IceAuthorityLabel,
+  IceAuthorityProvenance,
+  VeganBandCalibration,
+  VeganTemperatureBandProvenance,
+} from './config/veganFreezingAuthority';
+export {
+  VEGAN_TEMPERATURE_BAND_PROVENANCE,
+  hasOwnPlantValidatedVeganIceAuthority,
+  resolveIceAuthorityProvenance,
+  veganTemperatureBandProvenance,
+} from './config/veganFreezingAuthority';
 export type { IceFractionInput, IceFractionOptions } from './iceFraction';
 export { estimateIceFraction } from './iceFraction';
 export type { SorbetDirectionProjectionTarget } from './sorbetDirectionProjection';
@@ -104,10 +118,19 @@ export { calculateRecipe } from './calculateRecipe';
 export type { TechnicalLinearIngredientFactors } from './technicalLinearFactors';
 export { technicalLinearIngredientFactors } from './technicalLinearFactors';
 
-export { ATWATER_KCAL_PER_G, computeNutritionPer100g, ingredientKcalContribution } from './nutrition';
+export {
+  ATWATER_KCAL_PER_G,
+  computeNutritionPer100g,
+  ingredientKcalContribution,
+} from './nutrition';
 export { computeRecipeCosts } from './cost';
 export type { ScoresInput } from './scoring';
-export { computeCostScore, computeFlavorScore, computeScores, computeTechnicalScore } from './scoring';
+export {
+  computeCostScore,
+  computeFlavorScore,
+  computeScores,
+  computeTechnicalScore,
+} from './scoring';
 export type { CostScoreAnchor } from './config/scoring';
 export {
   COST_PRIORITY_PENALTY,
