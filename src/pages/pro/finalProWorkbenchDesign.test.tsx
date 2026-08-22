@@ -259,7 +259,10 @@ describe('profile semantics and readiness', () => {
     expect(settings).not.toContain("visibleProductType === 'sorbet'");
     expect(settings).not.toContain('Sorbet nie blokuje');
     expect(settings).toContain("visibleProductType === 'vegan'");
-    expect(settings).toContain('<ProteinTargetControl');
+    // Protein Engine v2 (owner decision 2026-08-22): the Protein branch renders
+    // a READ-ONLY content read-out, never a target control.
+    expect(settings).toContain('<ProteinContentReadout');
+    expect(settings).not.toContain('ProteinTargetControl');
     expect(settings).toContain('Mapper 2088');
     expect(settings).not.toContain('testid="workbench-quality"');
     expect(settings).toContain('testid="workbench-strategy"');

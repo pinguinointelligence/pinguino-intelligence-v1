@@ -21,7 +21,8 @@ import {
   useRecipeProfileStore,
 } from './recipeProfileStore';
 import { profileSnapshotFromState } from './recipeProfilePersistence';
-import { ProteinTargetControl } from '@/features/protein-gelato/ProteinTargetControl';
+import { ProteinContentReadout } from '@/features/protein-gelato/ProteinContentReadout';
+import type { ProteinFormulationAssessment } from '@/features/protein-gelato/proteinAuthority';
 import {
   FORMULATION_STRATEGIES,
   type FormulationStrategy,
@@ -117,12 +118,12 @@ function LabeledSelect<T extends string>({
 
 export function WorkbenchSettingsLine({
   actualBatchG,
-  actualProteinPercent = null,
+  proteinFormulation = null,
   className,
   compact = false,
 }: {
   actualBatchG: number;
-  actualProteinPercent?: number | null;
+  proteinFormulation?: ProteinFormulationAssessment | null;
   className?: string;
   compact?: boolean;
 }) {
@@ -324,8 +325,8 @@ export function WorkbenchSettingsLine({
           ) : null}
           {store.visibleProductType === 'protein' ? (
             <div className={cn('mt-1', !compact && 'ml-[7.3rem]')}>
-              {actualProteinPercent !== null && Number.isFinite(actualProteinPercent) ? (
-                <ProteinTargetControl actualPercent={actualProteinPercent} />
+              {proteinFormulation !== null && proteinFormulation.applicable ? (
+                <ProteinContentReadout assessment={proteinFormulation} />
               ) : (
                 <p role="status" className="text-xs text-stone-500">
                   Białko — oczekuje na walidację produktów

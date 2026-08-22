@@ -128,7 +128,7 @@ import {
   type ProductDosageViolation,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
-import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   canonicalDuplicateIds,
   canonicalIngredientId,
@@ -153,10 +153,11 @@ import {
 } from '@/features/formulation/veganSubstitutions';
 import { compareVeganStructuralCandidates } from '@/features/vegan-structure';
 import {
-  assessProteinTarget,
-  fitProteinTarget,
-  type ProteinTargetAssessment,
-} from '@/features/protein-gelato/proteinTarget';
+  assessProteinFormulation,
+  fitProteinFormulation,
+  proteinFrontierRank,
+  type ProteinFormulationAssessment,
+} from '@/features/protein-gelato/proteinAuthority';
 import {
   practicalizeRecipeCandidate,
   PRACTICAL_RECIPE_MODEL_VERSION,
@@ -360,8 +361,8 @@ export interface PreviewOutcomeClassification {
   compositionUnchanged: boolean;
   /** The engine verified fewer violations OR lower weighted severity. */
   engineImproved: boolean;
-  /** The native-safe Protein candidate moved closer to the persisted target. */
-  proteinTargetImproved?: boolean;
+  /** The native-safe Protein candidate improved its structural quality or won back the claim. */
+  proteinQualityImproved?: boolean;
   beforeGrams: number;
   afterGrams: number;
   targetBatchGrams: number;
@@ -411,17 +412,21 @@ export function classifyPreviewOutcome(
   const nativeImproved =
     violationsAfter < violationsBefore ||
     totalSeverity(after) < totalSeverity(before) - SEVERITY_EPS;
-  const beforeProtein = assessProteinTarget(before);
-  const afterProtein = assessProteinTarget(after);
-  const proteinTargetImproved =
+  // Protein v2: "improved" means the candidate earns the HIGH PROTEIN claim it
+  // did not earn before, or keeps the claim at strictly better structural
+  // quality. Moving the protein NUMBER is never, on its own, an improvement.
+  const beforeProtein = assessProteinFormulation(before);
+  const afterProtein = assessProteinFormulation(after);
+  const proteinQualityImproved =
     beforeProtein.applicable &&
     afterProtein.applicable &&
-    beforeProtein.targetPercent === afterProtein.targetPercent &&
-    beforeProtein.absoluteResidualPp !== null &&
-    afterProtein.absoluteResidualPp !== null &&
     afterProtein.hardSafe &&
-    afterProtein.absoluteResidualPp < beforeProtein.absoluteResidualPp - 1e-9;
-  const engineImproved = nativeImproved || proteinTargetImproved;
+    (afterProtein.qualification.qualified && !beforeProtein.qualification.qualified
+      ? true
+      : afterProtein.qualification.qualified &&
+        beforeProtein.qualification.qualified &&
+        (afterProtein.structure.score ?? 0) > (beforeProtein.structure.score ?? 0) + 1e-9);
+  const engineImproved = nativeImproved || proteinQualityImproved;
 
   const outcome: PreviewOutcome = engineImproved
     ? batchReconciled
@@ -438,7 +443,7 @@ export function classifyPreviewOutcome(
     engineImproved,
     beforeGrams,
     afterGrams,
-    proteinTargetImproved,
+    proteinQualityImproved,
     targetBatchGrams,
     violationsBefore,
     violationsAfter,
@@ -608,8 +613,9 @@ export interface ConstraintPreview {
   baseDraftRevision?: number;
   /** Owner P0 NIGHTLY (FAILURE 2): honest iteration diagnostics — count,
    * per-round violation/severity trajectory and the exact stop reason. */
-  /** Protein product-layer target vs actual on the staged candidate. */
-  proteinTarget?: ProteinTargetAssessment;
+  /** Protein v2 verdict on the staged candidate: claim qualification (HARD)
+   *  and structural quality (QUALITY), plus the actual protein % to display. */
+  proteinFormulation?: ProteinFormulationAssessment;
   /** One product-layer target-fit truth for Profile/Monitor/Preview/Production. */
   directionAssessment?: RecipeDirectionAssessment;
   /**
@@ -653,7 +659,7 @@ export interface ConstraintPreview {
     | 'hard_residual'
     | 'iteration_cap'
     | 'reference_derived'
-    | 'protein_target_residual'
+    | 'protein_claim_residual'
     | 'product_dosage'
     | 'practicalization_blocked';
   /** Owner 2026-08-11: exact Engine candidate and the independently
@@ -1530,7 +1536,7 @@ const finishPreview = (
     baseFingerprint: workingStateFingerprint(baseInput, baseSet),
     proposedInput: executableInput,
     nextConstraints,
-    proteinTarget: assessProteinTarget(executableInput, afterResult),
+    proteinFormulation: assessProteinFormulation(executableInput, afterResult),
     directionAssessment: assessRecipeDirection(executableInput, afterResult),
     lines: buildLineDiffs(baseInput, executableInput, nextConstraints),
     violationsBefore,
@@ -1802,7 +1808,7 @@ export type IterationStopReason =
   | 'all_bands_in_range' // 10/10 — nothing left out of band
   | 'fixed_point_no_proposal' // solver returned no admissible move (see detail)
   | 'no_improving_move' // a move existed but verifiably improved nothing — reverted
-  | 'protein_target_reached'
+  | 'protein_best_formulation'
   | 'protein_best_achievable'
   | 'iteration_cap'; // deterministic guard hit — deterministic guard, reported honestly
 
@@ -1850,7 +1856,7 @@ export interface IterationDiagnostics {
   stopDetail: NoProposalDetail | null;
   /** TRUE only when the cap fired while improvement was still in progress. */
   /** Product target assessment at the exact final candidate. */
-  proteinTarget?: ProteinTargetAssessment;
+  proteinFormulation?: ProteinFormulationAssessment;
   capped: boolean;
   /** Owner Agent 3 — the per-move QA evidence log: every move the engine
    * offered, filtered, applied or reverted, with metric deltas and the exact
@@ -1880,7 +1886,10 @@ function iterateSolverToFixedPoint(
    * line becomes an adjustable candidate for the optimizer. */
   set: ConstraintSet = { byLineId: {} },
   priceOverrides: CustomerPriceIndex = {},
-  probeLowerProteinTargets = true,
+  // Protein v2 removed the `probeLowerProteinTargets` parameter that used to
+  // sit here. The v1 solver bisected DOWNWARD from an infeasible USER-REQUESTED
+  // protein target; there is no user target any more, and
+  // `fitProteinFormulation` sweeps its own bounded ladder instead.
   minimumProteinScore: number | null = null,
   productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
 ): {
@@ -1937,19 +1946,16 @@ function iterateSolverToFixedPoint(
   for (let round = 1; ; round += 1) {
     if (current.violations === 0) {
       if (working.category === 'protein_gelato') {
-        const targetFit = fitProteinTarget(
-          working,
-          solverSet,
-          [...excludedIngredientIds],
-          probeLowerProteinTargets,
-        );
+        const targetFit = fitProteinFormulation(working, solverSet, [
+          ...excludedIngredientIds,
+        ]);
         if (targetFit.changed) {
           // The Main frontier only needs to prove preservation of the already
-          // selected Protein score class. `fitProteinTarget` has already run
-          // its complete product-layer search from this candidate; once that
-          // result reaches the required class, repeating the same search from
-          // successive partial states cannot improve the lexicographic Main
-          // decision. Normal Protein formulation keeps the historical
+          // selected Protein score class. `fitProteinFormulation` has already
+          // run its complete product-layer ladder from this candidate; once
+          // that result reaches the required class, repeating the same search
+          // from successive partial states cannot improve the lexicographic
+          // Main decision. Normal Protein formulation keeps the historical
           // progressive-fit behaviour through the default `null` threshold.
           if (
             minimumProteinScore !== null &&
@@ -1961,7 +1967,7 @@ function iterateSolverToFixedPoint(
           const next = measure(targetFit.input);
           attemptedMoves.push({
             round,
-            move: `protein-target ${targetFit.sourceLineId ?? 'source'} ↔ ${targetFit.balancingLineId ?? 'balance'}`,
+            move: `protein-formulation ${targetFit.sourceLineId ?? 'source'} ↔ ${targetFit.balancingLineId ?? 'balance'}`,
             outcome: 'applied',
             rejectionReason: null,
             violationsBefore: current.violations,
@@ -1973,15 +1979,15 @@ function iterateSolverToFixedPoint(
           current = next;
           rounds.push({ round, ...next });
           if (minimumProteinScore !== null) {
-            stopReason = targetFit.assessment.reached
-              ? 'protein_target_reached'
+            stopReason = targetFit.assessment.qualification.qualified
+              ? 'protein_best_formulation'
               : 'protein_best_achievable';
             break;
           }
           continue;
         }
-        stopReason = targetFit.assessment.reached
-          ? 'protein_target_reached'
+        stopReason = targetFit.assessment.qualification.qualified
+          ? 'protein_best_formulation'
           : 'protein_best_achievable';
         break;
       }
@@ -2215,7 +2221,7 @@ function iterateSolverToFixedPoint(
       targetBatchGrams: start.target_batch_grams,
       rounds,
       stopReason,
-      proteinTarget: assessProteinTarget(working),
+      proteinFormulation: assessProteinFormulation(working),
       stopDetail,
       capped,
       attemptedMoves,
@@ -2407,8 +2413,8 @@ export function projectManualIngredientTarget(
     if (assessProductDosages(executable, options.productBehaviorSnapshots ?? {}).length > 0) {
       return null;
     }
-    const protein = assessProteinTarget(executable, result);
-    if (protein.applicable && !protein.reached) return null;
+    const protein = assessProteinFormulation(executable, result);
+    if (protein.applicable && !protein.qualification.qualified) return null;
     if (
       executable.category === 'vegan_gelato' &&
       (veganRecipeEligibilityIssues(executable.items).length > 0 ||
@@ -2555,22 +2561,21 @@ function maximizeMainFromStart(
   const searchStartingMainGrams = mainGroupTotal(identityInput, start);
   const baselineResult = calculateRecipe(start);
   const identityResult = calculateRecipe(identityInput);
-  const startProtein = assessProteinTarget(start, baselineResult);
-  const identityProtein = assessProteinTarget(identityInput, identityResult);
-  const baselineProteinResidual =
+  // Protein v2 frontier: preserve the CLAIM and the structural QUALITY, never
+  // a distance to a requested protein number.
+  const startProteinRank = proteinFrontierRank(start, baselineResult);
+  const identityProteinRank = proteinFrontierRank(identityInput, identityResult);
+  const baselineProteinRank =
     start.category !== 'protein_gelato'
       ? null
-      : Math.min(
-          startProtein.absoluteResidualPp ?? Infinity,
-          identityProtein.absoluteResidualPp ?? Infinity,
-        );
+      : Math.max(startProteinRank ?? -Infinity, identityProteinRank ?? -Infinity);
   const preservesProteinFrontier = (
     candidate: RecipeInput,
     result = calculateRecipe(candidate),
   ): boolean => {
-    if (candidate.category !== 'protein_gelato' || baselineProteinResidual === null) return true;
-    const residual = assessProteinTarget(candidate, result).absoluteResidualPp;
-    return residual !== null && residual <= baselineProteinResidual + 1e-9;
+    if (candidate.category !== 'protein_gelato' || baselineProteinRank === null) return true;
+    const rank = proteinFrontierRank(candidate, result);
+    return rank !== null && rank >= baselineProteinRank - 1e-9;
   };
   const startScore = recipeFitForInput(start, baselineResult).score;
   const identityScore = recipeFitForInput(identityInput, identityResult).score;
@@ -2810,7 +2815,6 @@ function maximizeMainFromStart(
       excludedIngredientIds,
       solverSet,
       options.effectivePriceOverrides,
-      true,
       null,
       options.productBehaviorSnapshots,
     ).working;
@@ -2998,7 +3002,7 @@ function maximizeMainTechnicalObjective(
   }
 
   const startingMainGrams = mainGroupTotal(contractInput, contractInput);
-  const startingProteinTarget = assessProteinTarget(identityInput);
+  const startingProteinTarget = assessProteinFormulation(identityInput);
   if (startingProteinTarget.applicable) {
     // Protein has its own bounded formulation target. `technicalStart` is the
     // complete Engine-checked toolbox candidate produced by that route;
@@ -3019,7 +3023,7 @@ function maximizeMainTechnicalObjective(
         exactAcceptedMainGrams: executableMainGrams,
         executableMainGrams,
         firstHigherRejectedGrams: null,
-        firstHigherRejectedReason: startingProteinTarget.reached ? null : 'hard_gate',
+        firstHigherRejectedReason: startingProteinTarget.qualification.qualified ? null : 'hard_gate',
         technicalScore: recipeFitForInput(
           technicalPresentationInput,
           calculateRecipe(technicalPresentationInput),
@@ -3028,7 +3032,7 @@ function maximizeMainTechnicalObjective(
         searchUpperBoundGrams: Math.max(1, Math.floor(identityInput.target_batch_grams)),
         provenMaximum: false,
         testedHigherCandidateCount: 0,
-        limitingTechnicalRules: ['protein_target_precedence'],
+        limitingTechnicalRules: ['protein_claim_precedence'],
         proofKind: 'heuristic_search',
       },
     };
@@ -3194,7 +3198,7 @@ function maximizeMainTechnicalObjective(
     const criticalWarnings = result.warnings
       .filter((warning) => warning.severity === 'critical')
       .map((warning) => warning.code);
-    const protein = assessProteinTarget(executable, result);
+    const protein = assessProteinFormulation(executable, result);
     const veganIssues =
       executable.category === 'vegan_gelato'
         ? [
@@ -3211,7 +3215,7 @@ function maximizeMainTechnicalObjective(
           (violation) => `direction:${violation.metric}`,
         ),
         ...criticalWarnings,
-        ...(protein.applicable && !protein.reached ? ['protein_target'] : []),
+        ...(protein.applicable && !protein.qualification.qualified ? ['protein_claim'] : []),
         ...veganIssues,
       ]),
     ];
@@ -3358,7 +3362,7 @@ function maximizeMainTechnicalObjective(
     for (const candidate of unique.values()) {
       const fittedCandidate =
         candidate.category === 'protein_gelato'
-          ? fitProteinTarget(candidate, solverSet, options.excludedIngredientIds ?? []).input
+          ? fitProteinFormulation(candidate, solverSet, options.excludedIngredientIds ?? []).input
           : candidate;
       const outcome = assess(fittedCandidate, candidateSet, allocation.allocatedMainTotal);
       if (!outcome.ok) {
@@ -3408,7 +3412,6 @@ function maximizeMainTechnicalObjective(
           excluded,
           solverSet,
           options.effectivePriceOverrides,
-          true,
           null,
           options.productBehaviorSnapshots,
         ).working;
@@ -3659,7 +3662,7 @@ function maximizeMainFlavourObjective(
       mainGrams: mainGroupTotal(identityInput, input),
       hardCount: classifyViolationBands(input).hardMetrics.length,
       score: recipeFitForInput(input, result).score,
-      proteinResidual: assessProteinTarget(input, result).absoluteResidualPp,
+      proteinRank: proteinFrontierRank(input, result),
     };
   };
   const betterCandidate = (
@@ -3674,9 +3677,9 @@ function maximizeMainFlavourObjective(
       currentOutcome.score !== null &&
       candidateOutcome.score >= currentOutcome.score &&
       (identityInput.category !== 'protein_gelato' ||
-        (candidateOutcome.proteinResidual !== null &&
-          currentOutcome.proteinResidual !== null &&
-          candidateOutcome.proteinResidual <= currentOutcome.proteinResidual + 1e-9));
+        (candidateOutcome.proteinRank !== null &&
+          currentOutcome.proteinRank !== null &&
+          candidateOutcome.proteinRank >= currentOutcome.proteinRank - 1e-9));
     return keepsBestClass &&
       candidateOutcome.mainGrams > currentOutcome.mainGrams + MAIN_OBJECTIVE_EPSILON_G
       ? candidate
@@ -3716,19 +3719,19 @@ function maximizeMainFlavourObjective(
     // that residual, not merely remain inside the same coarse public score
     // bucket.  Otherwise a higher requested protein target can paradoxically
     // finish with less actual protein while Main keeps increasing.
-    const baselineProteinResidual =
+    const baselineProteinRank =
       identityInput.category === 'protein_gelato'
-        ? assessProteinTarget(selectedExecutable, selectedResult).absoluteResidualPp
+        ? proteinFrontierRank(selectedExecutable, selectedResult)
         : null;
     const preservesProteinFrontier = (
       candidate: RecipeInput,
       result = calculateRecipe(candidate),
     ): boolean => {
-      if (candidate.category !== 'protein_gelato' || baselineProteinResidual === null) {
+      if (candidate.category !== 'protein_gelato' || baselineProteinRank === null) {
         return true;
       }
-      const residual = assessProteinTarget(candidate, result).absoluteResidualPp;
-      return residual !== null && residual <= baselineProteinResidual + 1e-9;
+      const rank = proteinFrontierRank(candidate, result);
+      return rank !== null && rank >= baselineProteinRank - 1e-9;
     };
     const baselineHardCount = Math.min(
       classifyViolationBands(selectedExecutable).hardMetrics.length,
@@ -3955,7 +3958,6 @@ function maximizeMainFlavourObjective(
           excludedIngredientIds,
           solverSet,
           options.effectivePriceOverrides,
-          false,
           baselineScore,
           options.productBehaviorSnapshots,
         ).working;
@@ -4335,7 +4337,6 @@ function iterateFormulationSeed(
     new Set(options.excludedIngredientIds ?? []),
     solverSet,
     options.effectivePriceOverrides,
-    true,
     null,
     options.productBehaviorSnapshots,
   );
@@ -4849,7 +4850,8 @@ function buildFormulationPreviewInternal(
   // whatever the score — the door refuses it independently.
   const referenceDerived = !isApprovedTemplateId(built.proposal.templateId);
   const proteinResidual =
-    preview.proteinTarget?.applicable === true && !preview.proteinTarget.reached;
+    preview.proteinFormulation?.applicable === true &&
+    !preview.proteinFormulation.qualification.qualified;
   const practicalizationBlocked = preview.practicalization?.status === 'blocked';
   preview.diagnosticOnly =
     practicalizationBlocked ||
@@ -4866,7 +4868,7 @@ function buildFormulationPreviewInternal(
         : iterated.diagnostics.capped
           ? 'iteration_cap'
           : proteinResidual
-            ? 'protein_target_residual'
+            ? 'protein_claim_residual'
             : undefined;
   // The full-formulation route must enforce the same executable Direction
   // null-hypothesis as local correction. A native-safe recipe cannot surface
@@ -5373,7 +5375,7 @@ export function buildOptimizePreview(
     batchRescaled,
   });
   if (sorbetDirectionPreview !== null) return sorbetDirectionPreview;
-  const initialProteinTarget = assessProteinTarget(working);
+  const initialProteinTarget = assessProteinFormulation(working);
   const strategy = normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode);
   if (strategy === 'eco') {
     const missingPrices = input.items.filter(
@@ -5405,7 +5407,8 @@ export function buildOptimizePreview(
     const exactDirectionActive = hasActiveExactDirectionObjective(input);
     const currentDirectionSafe =
       !exactDirectionActive || recipeDirectionViolations(working).length === 0;
-    const currentProteinSafe = !initialProteinTarget.applicable || initialProteinTarget.reached;
+    const currentProteinSafe =
+      !initialProteinTarget.applicable || initialProteinTarget.qualification.qualified;
     const currentVeganSafe =
       input.category !== 'vegan_gelato' || veganProfileConstraintIssues(input).length === 0;
     if (
@@ -5493,7 +5496,7 @@ export function buildOptimizePreview(
       const proposedCost = effectiveInputCostPerKg(
         applyEffectiveCustomerPrices(preview.proposedInput, priceOverrides),
       );
-      const proposedProtein = assessProteinTarget(preview.proposedInput, proposedResult);
+      const proposedProtein = assessProteinFormulation(preview.proposedInput, proposedResult);
       const proposedVeganSafe =
         input.category !== 'vegan_gelato' ||
         veganProfileConstraintIssues(preview.proposedInput).length === 0;
@@ -5504,7 +5507,7 @@ export function buildOptimizePreview(
         proposedDirectionSeverity <= baselineDirectionSeverity + SEVERITY_EPS &&
         !proposedResult.warnings.some((warning) => warning.severity === 'critical') &&
         verifyConstraintsPreserved(solverSet, preview.proposedInput).ok &&
-        (!proposedProtein.applicable || proposedProtein.reached) &&
+        (!proposedProtein.applicable || proposedProtein.qualification.qualified) &&
         proposedVeganSafe &&
         baselineCost !== null &&
         proposedCost !== null &&
@@ -5530,7 +5533,7 @@ export function buildOptimizePreview(
     recipeDirectionViolations(working).length === 0 &&
     !hasCritical &&
     !batchRescaled &&
-    (!initialProteinTarget.applicable || initialProteinTarget.reached)
+    (!initialProteinTarget.applicable || initialProteinTarget.qualification.qualified)
   ) {
     if (input.category === 'vegan_gelato') {
       const profileIssues = veganProfileConstraintIssues(input);
@@ -5620,7 +5623,6 @@ export function buildOptimizePreview(
     new Set(options.excludedIngredientIds ?? []),
     solverSet,
     options.effectivePriceOverrides,
-    true,
     null,
     options.productBehaviorSnapshots,
   );
@@ -5666,11 +5668,11 @@ export function buildOptimizePreview(
     }
     const currentHardSafe = classifyViolationBands(working).hardMetrics.length === 0;
     const currentDirectionSafe = recipeDirectionViolations(working).length === 0;
-    const currentProtein = assessProteinTarget(working);
+    const currentProtein = assessProteinFormulation(working);
     if (
       currentHardSafe &&
       currentDirectionSafe &&
-      (!currentProtein.applicable || currentProtein.reached)
+      (!currentProtein.applicable || currentProtein.qualification.qualified)
     ) {
       return { ok: false, code: 'already_clean' };
     }
@@ -5819,7 +5821,8 @@ export function buildOptimizePreview(
   const localBands = classifyViolationBands(preview.proposedInput);
   preview.hardResidualMetrics = localBands.hardMetrics;
   const proteinResidual =
-    preview.proteinTarget?.applicable === true && !preview.proteinTarget.reached;
+    preview.proteinFormulation?.applicable === true &&
+    !preview.proteinFormulation.qualification.qualified;
   const practicalizationBlocked = preview.practicalization?.status === 'blocked';
   preview.diagnosticOnly =
     practicalizationBlocked ||
@@ -5833,7 +5836,7 @@ export function buildOptimizePreview(
       : iterated.diagnostics.capped
         ? 'iteration_cap'
         : proteinResidual
-          ? 'protein_target_residual'
+          ? 'protein_claim_residual'
           : undefined;
   // `finishPreview` practicalizes the exact solver vector. Rounding may move
   // a candidate across a narrow five-step target boundary, so re-rank the
@@ -5959,12 +5962,12 @@ export function buildSubstitutionPreview(
 
   const nativeResidual = detectViolations(calculateRecipe(proposed));
   const directionResidual = recipeDirectionViolations(proposed);
-  const protein = assessProteinTarget(proposed);
+  const protein = assessProteinFormulation(proposed);
   const preserved = verifyConstraintsPreserved(set, proposed);
   if (
     nativeResidual.length > 0 ||
     directionResidual.length > 0 ||
-    (protein.applicable && !protein.reached) ||
+    (protein.applicable && !protein.qualification.qualified) ||
     !preserved.ok
   ) {
     return {
@@ -5973,7 +5976,7 @@ export function buildSubstitutionPreview(
       reasons: [
         ...nativeResidual.map((violation) => `hard:${violation.metric}`),
         ...directionResidual.map((violation) => `direction:${violation.metric}`),
-        ...(protein.applicable && !protein.reached ? ['protein_target'] : []),
+        ...(protein.applicable && !protein.qualification.qualified ? ['protein_claim'] : []),
         ...(!preserved.ok ? ['constraint_not_preserved'] : []),
       ],
       messagePl: 'Brak bezpiecznego zamiennika dla bieżących blokad i profilu receptury.',
@@ -6062,12 +6065,12 @@ export function buildExplicitStandardRemovalPreview(
 
   const nativeResidual = detectViolations(calculateRecipe(proposed));
   const directionResidual = recipeDirectionViolations(proposed);
-  const protein = assessProteinTarget(proposed);
+  const protein = assessProteinFormulation(proposed);
   const preserved = verifyConstraintsPreserved(nextSet, proposed);
   if (
     nativeResidual.length > 0 ||
     directionResidual.length > 0 ||
-    (protein.applicable && !protein.reached) ||
+    (protein.applicable && !protein.qualification.qualified) ||
     !preserved.ok ||
     Math.abs(plannedSum(proposed) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G
   ) {
@@ -6077,7 +6080,7 @@ export function buildExplicitStandardRemovalPreview(
       violatedMetrics: [
         ...nativeResidual.map((violation) => violation.metric),
         ...directionResidual.map((violation) => violation.metric),
-        ...(protein.applicable && !protein.reached ? ['protein_target'] : []),
+        ...(protein.applicable && !protein.qualification.qualified ? ['protein_claim'] : []),
         ...(!preserved.ok ? ['constraint_not_preserved'] : []),
         ...(Math.abs(plannedSum(proposed) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G
           ? ['batch_mass_mismatch']
@@ -7907,17 +7910,21 @@ export class VerifiedApply {
       (preview.kind === 'optimize' || preview.kind === 'substitution') &&
       current.category === 'protein_gelato'
     ) {
-      const currentTarget = assessProteinTarget(current);
-      const proposedTarget = assessProteinTarget(preview.proposedInput);
-      const targetIdentityPreserved =
-        preview.proposedInput.category === 'protein_gelato' &&
-        proposedTarget.targetPercent === currentTarget.targetPercent;
-      if (!targetIdentityPreserved || !proposedTarget.hardSafe || !proposedTarget.reached) {
+      // Protein v2 Apply door: there is no user-selected target to preserve.
+      // The candidate must remain a Protein product — natively hard-safe AND
+      // still earning the HIGH PROTEIN claim.
+      const proposedTarget = assessProteinFormulation(preview.proposedInput);
+      const profilePreserved = preview.proposedInput.category === 'protein_gelato';
+      if (
+        !profilePreserved ||
+        !proposedTarget.hardSafe ||
+        !proposedTarget.qualification.qualified
+      ) {
         return {
           ok: false,
           code: 'unsafe_proposal',
           messagePl:
-            'Apply zablokowany: kandydat Protein nie osiąga wybranego celu białka w natywnie bezpiecznej recepturze.',
+            'Apply zablokowany: kandydat Protein nie spełnia deklaracji „wysoka zawartość białka” w natywnie bezpiecznej recepturze.',
           violationsBefore: detectViolations(calculateRecipe(current)).length,
           violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
         };

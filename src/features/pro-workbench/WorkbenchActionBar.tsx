@@ -37,7 +37,6 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
   const machineCapacitySource = useRecipeStore((s) => s.machine_capacity_source);
   const flavorIntensity = useRecipeStore((s) => s.flavor_intensity);
   const costPriority = useRecipeStore((s) => s.cost_priority);
-  const targetProteinPercent = useRecipeStore((s) => s.target_protein_percent);
   const formulationStrategy = useRecipeStore((s) => s.formulation_strategy);
   const directionTargets = useRecipeStore((s) => s.direction_targets);
   const directionTargetsActive = useRecipeStore((s) => s.direction_targets_active);
@@ -58,7 +57,6 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
         machine_capacity_source: machineCapacitySource,
         flavor_intensity: flavorIntensity,
         cost_priority: costPriority,
-        target_protein_percent: targetProteinPercent,
         formulation_strategy: formulationStrategy,
         direction_targets: directionTargets,
         direction_targets_active: directionTargetsActive,
@@ -75,7 +73,6 @@ export function WorkbenchActionBar({ onOpenPreview }: { onOpenPreview: () => voi
       machineCapacitySource,
       flavorIntensity,
       costPriority,
-      targetProteinPercent,
       formulationStrategy,
       directionTargets,
       directionTargetsActive,

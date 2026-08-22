@@ -43,7 +43,6 @@ import {
   type ProfileSettingsSnapshot,
   useRecipeProfileStore,
 } from '@/features/pro-workbench/recipeProfileStore';
-import { PROTEIN_GELATO_TARGET } from '@/spine';
 import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
@@ -129,14 +128,6 @@ export type AddIngredientResult =
   | { status: 'added'; lineId: string; canonicalId: string }
   | { status: 'duplicate'; lineId: string; canonicalId: string };
 
-const normalizeProteinTarget = (value: number): number => {
-  const finite = Number.isFinite(value) ? value : PROTEIN_GELATO_TARGET.defaultPercent;
-  return (
-    Math.round(Math.max(0, finite) / PROTEIN_GELATO_TARGET.inputStepPercent) *
-    PROTEIN_GELATO_TARGET.inputStepPercent
-  );
-};
-
 export interface RecipeState {
   mode: ProductMode;
   formulation_strategy: FormulationStrategy;
@@ -164,7 +155,6 @@ export interface RecipeState {
   machine_capacity_source: 'machine' | 'manual' | null;
   flavor_intensity: FlavorIntensity;
   cost_priority: CostPriority;
-  target_protein_percent: number;
   /** Canonical persisted direction intent used by Preview formulation. */
   direction_targets: RecipeDirectionTargets;
   direction_targets_active: boolean;
@@ -297,7 +287,6 @@ export interface RecipeState {
   setMachineCapacity: (grams: number | null) => void;
   setFlavorIntensity: (value: FlavorIntensity) => void;
   setCostPriority: (value: CostPriority) => void;
-  setTargetProteinPercent: (value: number) => void;
   moveDirectionTarget: (axis: keyof RecipeDirectionTargets, delta: -1 | 1) => void;
   setDirectionTarget: (axis: keyof RecipeDirectionTargets, target: RecipeDirectionTarget) => void;
 
@@ -551,7 +540,6 @@ const fromPreset = (preset: DemoPreset) => ({
     | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
-  target_protein_percent: PROTEIN_GELATO_TARGET.defaultPercent,
   direction_targets: { ...DEFAULT_DIRECTION_TARGETS },
   direction_targets_active: false,
   items: preset.items.map((item) => ({
@@ -656,7 +644,6 @@ export function recipePersistPartialize(state: RecipeState) {
     machine_capacity_source: state.machine_capacity_source,
     flavor_intensity: state.flavor_intensity,
     cost_priority: state.cost_priority,
-    target_protein_percent: state.target_protein_percent,
     direction_targets: state.direction_targets,
     direction_targets_active: state.direction_targets_active,
     items: state.items,
@@ -811,12 +798,6 @@ export const useRecipeStore = create<RecipeState>()(
         set((state) => ({ flavor_intensity, dirty: true, draftRevision: state.draftRevision + 1 })),
       setCostPriority: (cost_priority) =>
         set((state) => ({ cost_priority, dirty: true, draftRevision: state.draftRevision + 1 })),
-      setTargetProteinPercent: (value) =>
-        set((state) => ({
-          target_protein_percent: normalizeProteinTarget(value),
-          dirty: true,
-          draftRevision: state.draftRevision + 1,
-        })),
       moveDirectionTarget: (axis, delta) =>
         set((state) => {
           const current = state.direction_targets[axis];
@@ -1759,9 +1740,6 @@ export const useRecipeStore = create<RecipeState>()(
           ),
           flavor_intensity: input.goals?.flavor_intensity ?? 'balanced',
           cost_priority: input.goals?.cost_priority ?? 'balanced',
-          target_protein_percent: normalizeProteinTarget(
-            input.goals?.target_protein_percent ?? PROTEIN_GELATO_TARGET.defaultPercent,
-          ),
           direction_targets: {
             ...(profile?.directionTargets ??
               input.goals?.direction_targets ??

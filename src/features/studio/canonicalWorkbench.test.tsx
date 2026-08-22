@@ -171,13 +171,17 @@ describe('visible product types', () => {
     expect(useRecipeStore.getState().visibleProductType).toBe('gelato'); // visible stays Gelato
   });
 
-  it('Protein uses its dedicated seeded category and renders the real target control', () => {
+  it('Protein uses its dedicated seeded category and exposes NO protein target control', () => {
     useRecipeStore.getState().setCategory('milk_gelato');
     useRecipeStore.getState().setVisibleProductType('protein');
     expect(useRecipeStore.getState().visibleProductType).toBe('protein');
     expect(useRecipeStore.getState().category).toBe('protein_gelato');
     expect(internalCategoryFor('protein', [], 'sorbet')).toBe('protein_gelato');
-    expect(useRecipeStore.getState().target_protein_percent).toBe(20);
+    // Protein Engine v2 (owner decision 2026-08-22): protein % is an OUTPUT.
+    // The store must expose neither a persisted target nor a setter for one.
+    const store = useRecipeStore.getState() as unknown as Record<string, unknown>;
+    expect('target_protein_percent' in store).toBe(false);
+    expect('setTargetProteinPercent' in store).toBe(false);
   });
 });
 

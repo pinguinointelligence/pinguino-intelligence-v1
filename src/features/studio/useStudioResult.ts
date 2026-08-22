@@ -29,7 +29,6 @@ export function useStudioResult(context: RecipeExecutionContext = 'planning'): S
   const machine_capacity_source = useRecipeStore((state) => state.machine_capacity_source);
   const flavor_intensity = useRecipeStore((state) => state.flavor_intensity);
   const cost_priority = useRecipeStore((state) => state.cost_priority);
-  const target_protein_percent = useRecipeStore((state) => state.target_protein_percent);
   const direction_targets = useRecipeStore((state) => state.direction_targets);
   const direction_targets_active = useRecipeStore((state) => state.direction_targets_active);
   const items = useRecipeStore((state) => state.items);
@@ -48,7 +47,6 @@ export function useStudioResult(context: RecipeExecutionContext = 'planning'): S
         machine_capacity_source,
         flavor_intensity,
         cost_priority,
-        target_protein_percent,
         direction_targets,
         direction_targets_active,
         items,
@@ -66,7 +64,6 @@ export function useStudioResult(context: RecipeExecutionContext = 'planning'): S
     machine_capacity_source,
     flavor_intensity,
     cost_priority,
-    target_protein_percent,
     direction_targets,
     direction_targets_active,
     items,

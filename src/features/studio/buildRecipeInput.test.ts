@@ -51,7 +51,6 @@ describe('buildRecipeInput', () => {
       formulation_strategy: 'eco',
       flavor_intensity: 'maximum',
       cost_priority: 'low',
-      target_protein_percent: 20,
       direction_targets: {
         sweetness: 0,
         softness: 0,

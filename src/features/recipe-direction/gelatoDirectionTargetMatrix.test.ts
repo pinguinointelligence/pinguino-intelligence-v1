@@ -13,7 +13,7 @@ import {
   plannedSum,
   workingStateFingerprint,
 } from '@/features/constraint-studio/applyPipeline';
-import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { assessGelatoStabilizerSystem } from '@/features/recipe-constraints';
 import { OWNER_MAPPER_INGREDIENTS } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 

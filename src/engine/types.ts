@@ -224,8 +224,12 @@ export interface RecipeGoals {
   formulation_strategy?: 'optimal' | 'eco';
   main_priority?: 'normal' | 'high' | 'maximum';
   dietary?: DietaryFlag[];
-  /** Desired total protein in the final batch. Product-level preference only;
-   * Base Engine composition still calculates the actual value from every line. */
+  /**
+   * @deprecated Protein Engine v2 (owner decision 2026-08-22): the user never
+   * selects a protein percentage. Protein % is an OUTPUT of the formulation.
+   * The field is retained so persisted recipes and legacy fixtures still
+   * type-check; NOTHING in the Engine or the product layer reads it.
+   */
   target_protein_percent?: number;
   /**
    * Canonical customer direction intent. These are product-layer preferences,

@@ -10,7 +10,8 @@ import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { VISIBLE_PRODUCT_TYPES, type VisibleProductType } from '@/features/studio/productType';
 import { useStudioResult } from '@/features/studio/useStudioResult';
-import { ProteinTargetControl } from '@/features/protein-gelato/ProteinTargetControl';
+import { ProteinContentReadout } from '@/features/protein-gelato/ProteinContentReadout';
+import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 
 const g = copy.studio.goal;
 const servingCopy = copy.proMachine.serving;
@@ -85,7 +86,7 @@ export function GoalSetup() {
   const store = useRecipeStore();
   const resizeBatchGrams = useConstraintStudioStore((state) => state.resizeBatchGrams);
   const [unit, setUnit] = useState<BatchUnit>('g');
-  const { result } = useStudioResult();
+  const { input, result } = useStudioResult();
 
   const batchDisplay = fromGrams(store.target_batch_grams, unit, store.category);
 
@@ -124,7 +125,7 @@ export function GoalSetup() {
             testidOf={(option) => `product-type-${option}`}
           />
           {store.visibleProductType === 'protein' ? (
-            <ProteinTargetControl actualPercent={result.percentages.protein_percent} tone="dark" />
+            <ProteinContentReadout assessment={assessProteinFormulation(input, result)} tone="dark" />
           ) : null}
         </div>
 

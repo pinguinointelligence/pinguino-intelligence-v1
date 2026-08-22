@@ -28,7 +28,7 @@ import {
   recipeTechnicalFit,
 } from '@/features/recipe-score';
 
-import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 const o = copy.studio.overall;
 
 export function OverallScoreCard({

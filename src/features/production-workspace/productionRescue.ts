@@ -13,7 +13,7 @@ import {
   practicalizeRecipeCandidate,
   type PracticalRecipeAudit,
 } from '@/features/practical-recipe/practicalRecipe';
-import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import type { ConstraintSet, IngredientConstraint } from '@/features/recipe-constraints';
 import type { ProductionRescueStableOptionId } from '@/features/pro-core/productionContracts';
 import {

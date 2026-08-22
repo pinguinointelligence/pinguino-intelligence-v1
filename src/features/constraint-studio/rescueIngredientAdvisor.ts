@@ -12,7 +12,7 @@ import {
 import { VERIFIED_PROTEIN_FORMULATION_CANDIDATES } from '@/data/ingredients/verifiedProteinToolbox';
 import { approvedFormulationToolboxIngredients } from '@/features/formulation/formulate';
 import { canonicalToolboxIdentity } from '@/features/formulation/toolboxCanonical';
-import { assessProteinTarget } from '@/features/protein-gelato/proteinTarget';
+import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import {
   assessRecipeDirection,
   type RecipeDirectionAssessment,
@@ -293,7 +293,7 @@ export function simulateRescueCandidates(args: RescueAdvisorArgs): RescueAdvisor
   const current = measureRescueOutcome(currentInput);
   // Current ingredients already achieve the target → nothing to rescue.
   if (currentAssessment.reached) return none(current);
-  const currentProtein = assessProteinTarget(currentInput);
+  const currentProtein = assessProteinFormulation(currentInput);
 
   const excluded = new Set(options.excludedIngredientIds ?? []);
   const family = (args.candidates ?? rescueCandidateFamily(input, currentAssessment)).filter(
@@ -370,17 +370,22 @@ export function simulateRescueCandidates(args: RescueAdvisorArgs): RescueAdvisor
       continue; // the optimizer did not use it → no claim
     }
     const rescue = measureRescueOutcome(preview.proposedInput);
-    // PROTEIN: a rescue may never break the Protein target / hard authority.
-    const rescueProtein = assessProteinTarget(preview.proposedInput);
-    if (
-      rescueProtein.applicable &&
-      !rescueProtein.reached &&
-      (currentProtein.reached ||
-        (rescueProtein.absoluteResidualPp ?? Infinity) >
-          (currentProtein.absoluteResidualPp ?? Infinity) + 1e-9)
-    ) {
-      record(candidate, 'protein_authority', simulatedGrams, rescue);
-      continue;
+    // PROTEIN v2: a rescue may never cost the product its HIGH PROTEIN claim,
+    // and — the owner's rule — may never be recommended merely because it
+    // raises protein. A candidate that keeps the claim but WORSENS structural
+    // quality is rejected even when it delivers more protein.
+    const rescueProtein = assessProteinFormulation(preview.proposedInput);
+    if (rescueProtein.applicable) {
+      const losesClaim =
+        !rescueProtein.qualification.qualified && currentProtein.qualification.qualified;
+      const worseStructure =
+        rescueProtein.qualification.qualified &&
+        currentProtein.qualification.qualified &&
+        (rescueProtein.structure.score ?? 0) < (currentProtein.structure.score ?? 0) - 1e-9;
+      if (losesClaim || worseStructure) {
+        record(candidate, 'protein_authority', simulatedGrams, rescue);
+        continue;
+      }
     }
     if (!isMaterialRescueImprovement(current, rescue)) {
       record(candidate, 'not_material', simulatedGrams, rescue);

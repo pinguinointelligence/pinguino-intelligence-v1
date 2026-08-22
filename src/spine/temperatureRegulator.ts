@@ -41,11 +41,29 @@ export interface MetricBand {
   notes?: readonly string[];
 }
 
-export const PROTEIN_GELATO_TARGET = {
-  defaultPercent: 20,
-  controlStepPercent: 1,
-  inputStepPercent: 0.1,
-  tolerancePercent: 0.1,
+/**
+ * Protein product qualification carried by the Protein regulator rows.
+ *
+ * REPLACES `PROTEIN_GELATO_TARGET` (Protein Engine v2, owner decision
+ * 2026-08-22). The old constant declared a 20 % protein BY MASS target with a
+ * 0.1 pp tolerance and a user-facing 1 pp control step. It had no provenance —
+ * no controlled frozen-dessert study exceeds 10 % protein — and it is almost
+ * certainly a unit confusion with the EU claim threshold, which is 20 % of
+ * ENERGY, not of mass.
+ *
+ * There is no target and no control step any more: protein % is an OUTPUT.
+ * What the profile still asserts is that a Protein product must be able to
+ * carry its own claim — Regulation (EC) No 1924/2006, Annex, "HIGH PROTEIN":
+ * at least 20 % of the energy value of the food provided by protein.
+ *
+ * The runtime authority lives in
+ * `src/features/protein-gelato/proteinQualification.ts`; this entry records it
+ * in the regulator registry so every Protein temperature row states the rule
+ * it is evaluated under.
+ */
+export const PROTEIN_GELATO_QUALIFICATION = {
+  highProteinEnergySharePercent: 20,
+  source: 'EU Regulation (EC) No 1924/2006, Annex — HIGH PROTEIN',
 } as const;
 
 export interface TemperatureRegulatorSettings {
@@ -66,7 +84,7 @@ export interface TemperatureRegulatorSettings {
   aeratingProtein?: MetricBand;
   proteinShareInSolids?: MetricBand;
   stabilizer: { required: true };
-  proteinTarget?: typeof PROTEIN_GELATO_TARGET;
+  proteinQualification?: typeof PROTEIN_GELATO_QUALIFICATION;
 
   disabledGates: readonly string[];
   advisoryGates: readonly string[];
@@ -175,13 +193,13 @@ const proteinGelatoMinus11: TemperatureRegulatorSettings = {
   fat: { band: [5, 12] },
   solids: { band: [31, 45] },
   water: { band: [57, 70] },
-  proteinTarget: PROTEIN_GELATO_TARGET,
+  proteinQualification: PROTEIN_GELATO_QUALIFICATION,
   stabilizer: { required: true },
   disabledGates: PROTEIN_DISABLED_GATES,
   advisoryGates: [],
   notes: [
     'separate Protein Gelato profile; Standard Gelato serving physics reused by owner decision',
-    'total protein target is recipe-specific and never replaces Main flavor identity',
+    'protein % is an OUTPUT of the formulation; the profile only requires the recipe to earn the HIGH PROTEIN claim, and never replaces Main flavor identity',
   ],
 };
 
@@ -203,7 +221,7 @@ const proteinGelatoMinus12: TemperatureRegulatorSettings = {
   fat: { band: [5, 12], lockedReference: 6.19 },
   solids: { band: [31, 44], lockedReference: 36.82 },
   water: { band: [56, 70], lockedReference: 63.18 },
-  proteinTarget: PROTEIN_GELATO_TARGET,
+  proteinQualification: PROTEIN_GELATO_QUALIFICATION,
   stabilizer: { required: true },
   disabledGates: PROTEIN_DISABLED_GATES,
   advisoryGates: [],
@@ -227,7 +245,7 @@ const proteinGelatoMinus13: TemperatureRegulatorSettings = {
   fat: { band: [5, 12], lockedReference: 5.89 },
   solids: { band: [35, 45], lockedReference: 37.22 },
   water: { band: [55, 65], lockedReference: 62.78 },
-  proteinTarget: PROTEIN_GELATO_TARGET,
+  proteinQualification: PROTEIN_GELATO_QUALIFICATION,
   stabilizer: { required: true },
   disabledGates: PROTEIN_DISABLED_GATES,
   advisoryGates: [],

@@ -11,6 +11,7 @@ import {
 } from '@/engine';
 import { ContextualEducationView } from '@/features/education/ContextualEducationView';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 import { ProfileDirectionAxes } from './ProfileDirectionAxes';
 import { MonitorPanelContent } from './MonitorPanelContent';
@@ -263,8 +264,8 @@ function ProfileContent({
         )}
         <WorkbenchSettingsLine
           actualBatchG={result.total_batch_g}
-          actualProteinPercent={
-            profileReadable ? frozenNutritionResult.percentages.protein_percent : null
+          proteinFormulation={
+            profileReadable ? assessProteinFormulation(input, frozenNutritionResult) : null
           }
           className="min-w-0"
           compact

@@ -14,7 +14,7 @@ import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   constraintStudioCopy,
   formatGramsPl,
@@ -590,7 +590,6 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
   const machineCapacityGrams = useRecipeStore((s) => s.machine_capacity_grams);
   const flavorIntensity = useRecipeStore((s) => s.flavor_intensity);
   const costPriority = useRecipeStore((s) => s.cost_priority);
-  const targetProteinPercent = useRecipeStore((s) => s.target_protein_percent);
   const directionTargets = useRecipeStore((s) => s.direction_targets);
   const directionTargetsActive = useRecipeStore((s) => s.direction_targets_active);
   const items = useRecipeStore((s) => s.items);
@@ -607,7 +606,6 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
         flavor_intensity: flavorIntensity,
         cost_priority: costPriority,
         items,
-        target_protein_percent: targetProteinPercent,
         direction_targets: directionTargets,
         direction_targets_active: directionTargetsActive,
       }),
@@ -619,7 +617,6 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
       machineCapacityGrams,
       flavorIntensity,
       costPriority,
-      targetProteinPercent,
       directionTargets,
       directionTargetsActive,
       items,

@@ -18,7 +18,7 @@ import {
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { captureMainIngredientIntent } from '@/features/formulation/mainIngredientContract';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
-import { proteinTargetPercentBand } from '@/features/protein-gelato/proteinTarget';
+import { proteinQualificationPercentBand } from '@/features/protein-gelato/proteinAuthority';
 import { buildRecipeDirectionPlan } from '@/features/recipe-direction/recipeDirectionTargets';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 
@@ -556,18 +556,22 @@ export function mainTechnicalLinearUpperBound(input: {
     addUpper(row, band.max * recipe.target_batch_grams, `${indicator.key}_max`);
   }
 
-  const proteinTargetBand = proteinTargetPercentBand(recipe);
-  if (proteinTargetBand) {
+  // Protein v2: the linear pre-filter now brackets the CLAIM QUALIFICATION
+  // window (EU 1924/2006 HIGH PROTEIN at the low edge, the top of the
+  // controlled-evidence window at the high edge) instead of a user-selected
+  // target. Final acceptance stays with `assessProteinFormulation`.
+  const proteinBand = proteinQualificationPercentBand(recipe);
+  if (proteinBand) {
     const protein = coefficients((ingredient) => ingredient.composition.protein_percent);
     addLower(
       protein,
-      proteinTargetBand.minPercent * recipe.target_batch_grams,
-      'protein_target_min',
+      proteinBand.minPercent * recipe.target_batch_grams,
+      'protein_qualification_min',
     );
     addUpper(
       protein,
-      proteinTargetBand.maxPercent * recipe.target_batch_grams,
-      'protein_target_max',
+      proteinBand.maxPercent * recipe.target_batch_grams,
+      'protein_qualification_max',
     );
   }
 

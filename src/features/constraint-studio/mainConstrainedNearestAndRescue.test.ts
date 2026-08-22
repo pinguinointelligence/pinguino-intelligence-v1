@@ -5,7 +5,7 @@ import { findDemoIngredient } from '@/data/demoIngredients';
 import { VEGAN_VERIFIED_CANONICAL_IDS } from '@/data/ingredients/verifiedVeganToolbox';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
-import { assessProteinTarget } from '@/features/protein-gelato/proteinTarget';
+import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { assessSorbetStabilizerSystem } from '@/features/recipe-constraints';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import {
@@ -593,7 +593,7 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
     });
     expect(advice).toBeNull();
     expect(JSON.stringify(protein)).toBe(before);
-    expect(assessProteinTarget(protein).applicable).toBe(true);
+    expect(assessProteinFormulation(protein).applicable).toBe(true);
   });
 
   it('13. rescue never auto-adds: the store draft keeps its lines and the staged candidate carries no simulated line', () => {

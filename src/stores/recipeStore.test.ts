@@ -28,7 +28,6 @@ const state = {
   flavor_intensity: 'balanced',
   cost_priority: 'balanced',
   items: [{ id: 'line-1' }],
-  target_protein_percent: 22.4,
   direction_targets: { sweetness: -1, softness: 1, creaminess: 0, flavor: 0 },
   direction_targets_active: true,
   activePresetId: 'milk-base',
@@ -60,7 +59,10 @@ describe('recipePersistPartialize', () => {
     expect(persisted.items).toBe(state.items);
     expect(persisted.activePresetId).toBe('milk-base');
     expect(persisted.target_batch_grams).toBe(1000);
-    expect(persisted.target_protein_percent).toBe(22.4);
+    // Protein Engine v2 (owner decision 2026-08-22): there is no user-selected
+    // protein target left to persist. Protein % is an OUTPUT recomputed from the
+    // recipe, so persisting a target would re-create the removed concept.
+    expect('target_protein_percent' in persisted).toBe(false);
     expect(persisted.direction_targets).toEqual({
       sweetness: -1,
       softness: 1,

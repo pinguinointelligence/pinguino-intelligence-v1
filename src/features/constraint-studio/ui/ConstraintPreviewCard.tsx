@@ -325,8 +325,8 @@ export function ConstraintPreviewCard({
                   )
                 : diagnosticReason === 'reference_derived'
                   ? copy.preview.diagnosticReferenceDerived(preview.formulation?.templateId ?? '—')
-                  : diagnosticReason === 'protein_target_residual'
-                    ? 'Kandydat jest natywnie bezpieczny, ale nie osiąga wybranego celu białka. Apply pozostaje zablokowany.'
+                  : diagnosticReason === 'protein_claim_residual'
+                    ? 'Kandydat jest natywnie bezpieczny, ale nie spełnia deklaracji „wysoka zawartość białka”. Apply pozostaje zablokowany.'
                     : diagnosticReason === 'product_dosage'
                       ? copy.preview.diagnosticProductDosage
                       : hardResiduals.length > 0
@@ -414,25 +414,33 @@ export function ConstraintPreviewCard({
         </div>
       ) : null}
 
-      {preview.proteinTarget?.applicable ? (
+      {/* Protein v2: protein % is an OUTPUT. There is no target column any
+          more — the card reports what the candidate actually contains and
+          whether that still earns the product's claim. */}
+      {preview.proteinFormulation?.applicable ? (
         <div
           className="mt-3 grid grid-cols-2 gap-3 border border-ivory/15 px-3 py-2.5"
-          data-testid="preview-protein-target"
+          data-testid="preview-protein-content"
         >
           <div>
-            <p className="text-[0.65rem] tracking-[0.08em] text-ivory/60 uppercase">Cel białka</p>
-            <p className="mt-1 font-mono text-sm tabular-nums text-ivory">
-              {preview.proteinTarget.targetPercent?.toFixed(1)}%
+            <p className="text-[0.65rem] tracking-[0.08em] text-ivory/60 uppercase">
+              Białko po zmianie
+            </p>
+            <p
+              className="mt-1 font-mono text-sm tabular-nums text-ivory"
+              data-testid="preview-protein-actual"
+            >
+              {preview.proteinFormulation.actualPercent?.toFixed(1)}%
             </p>
           </div>
           <div>
             <p className="text-[0.65rem] tracking-[0.08em] text-ivory/60 uppercase">
-              Wynik po zmianie
+              Wysoka zawartość białka
             </p>
             <p
-              className={`mt-1 font-mono text-sm tabular-nums ${preview.proteinTarget.reached ? 'text-status-ideal' : 'text-status-risky'}`}
+              className={`mt-1 font-mono text-sm tabular-nums ${preview.proteinFormulation.qualification.qualified ? 'text-status-ideal' : 'text-status-risky'}`}
             >
-              {preview.proteinTarget.actualPercent?.toFixed(1)}%
+              {preview.proteinFormulation.qualification.energySharePercent?.toFixed(0)}% energii
             </p>
           </div>
         </div>

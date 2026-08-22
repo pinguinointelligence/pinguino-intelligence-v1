@@ -29,7 +29,7 @@ import { buildWarnings, metricLabel, metricUnit } from '@/features/pi-panel/indi
 import type { TargetMetric } from '@/engine';
 import { recipeTechnicalFit, type TechnicalFitPresentation } from '@/features/recipe-score';
 import { assessStabilizerDosage } from '@/features/formulation/stabilizerDosage';
-import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 
 const m = copy.monitorPi.summary;
 

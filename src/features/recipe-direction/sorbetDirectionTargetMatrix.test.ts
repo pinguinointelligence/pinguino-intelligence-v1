@@ -13,7 +13,7 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { parseCsv } from '@/lib/csv';
 import { buildOptimizePreview, plannedSum } from '@/features/constraint-studio/applyPipeline';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
-import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { assessSorbetStabilizerSystem } from '@/features/recipe-constraints';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { assessRecipeDirection } from './recipeDirectionAssessment';

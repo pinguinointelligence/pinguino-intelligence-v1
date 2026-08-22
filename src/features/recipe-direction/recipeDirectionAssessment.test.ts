@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { calculateRecipe } from '@/engine';
 import { buildOptimizePreview } from '@/features/constraint-studio/applyPipeline';
-import { recipeFitForInput } from '@/features/protein-gelato/proteinTarget';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { recipeTechnicalFit } from '@/features/recipe-score';
 

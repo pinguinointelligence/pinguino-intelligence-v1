@@ -2,7 +2,6 @@ import type { CorrectionContext, RecipeInput } from '@/engine';
 import { normalizeRecipeItemIdentity } from '@/data/ingredients/canonicalIngredientIdentity';
 import { canonicalInternalCategory } from '@/features/studio/productType';
 import type { RecipeState } from '@/stores/recipeStore';
-import { PROTEIN_GELATO_TARGET } from '@/spine';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
 
 export type RecipeInputState = Pick<
@@ -20,7 +19,6 @@ export type RecipeInputState = Pick<
     Pick<
       RecipeState,
       | 'machine_capacity_source'
-      | 'target_protein_percent'
       | 'formulation_strategy'
       | 'direction_targets'
       | 'direction_targets_active'
@@ -58,7 +56,6 @@ export function buildRecipeInput(
       formulation_strategy: normalizeFormulationStrategy(state.formulation_strategy ?? state.mode),
       flavor_intensity: state.flavor_intensity,
       cost_priority: state.cost_priority,
-      target_protein_percent: state.target_protein_percent ?? PROTEIN_GELATO_TARGET.defaultPercent,
       direction_targets: {
         sweetness: state.direction_targets?.sweetness ?? 0,
         softness: state.direction_targets?.softness ?? 0,

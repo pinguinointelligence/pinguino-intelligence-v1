@@ -13,7 +13,7 @@ import {
   type ProductBehaviorSnapshot,
   type ProductDosageViolation,
 } from '@/features/product-intelligence';
-import { assessProteinTarget } from '@/features/protein-gelato/proteinTarget';
+import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { BATCH_SUM_TOLERANCE_G } from './constraintSet';
 import {
   assessGelatoStabilizerSystem,
@@ -48,7 +48,7 @@ export type RecipeConstraintAuthorityIssue =
     }
   | {
       source: 'profile';
-      code: 'vegan_ingredient_invalid' | 'vegan_profile_invalid' | 'protein_target_unmet';
+      code: 'vegan_ingredient_invalid' | 'vegan_profile_invalid' | 'protein_claim_unmet';
       lineIds: string[];
       messagePl: string;
     }
@@ -158,15 +158,21 @@ export function evaluateRecipeConstraintAuthority(
       });
     }
   }
-  const protein = assessProteinTarget(recipe, result);
-  if (protein.applicable && !protein.reached) {
+  // Protein v2: the profile no longer carries a user-selected protein target.
+  // The one hard Protein rule is that the product must actually earn the claim
+  // its profile name makes — EU 1924/2006 HIGH PROTEIN, at least 20 % of the
+  // recipe's energy from protein. Protein % itself is an OUTPUT and is never
+  // compared against a requested number.
+  const protein = assessProteinFormulation(recipe, result);
+  if (protein.applicable && !protein.qualification.qualified) {
     issues.push({
       source: 'profile',
-      code: 'protein_target_unmet',
+      code: 'protein_claim_unmet',
       lineIds: recipe.items.map((item) => item.id),
       messagePl:
-        `Profil Protein wymaga celu ${protein.targetPercent?.toFixed(1)}%; ` +
-        `kandydat ma ${protein.actualPercent?.toFixed(1)}%.`,
+        `Profil Protein wymaga deklaracji „wysoka zawartość białka” (min. 20% energii z białka); ` +
+        `kandydat ma ${protein.qualification.energySharePercent?.toFixed(0)}% energii z białka ` +
+        `przy ${protein.actualPercent?.toFixed(1)}% białka w masie.`,
     });
   }
 

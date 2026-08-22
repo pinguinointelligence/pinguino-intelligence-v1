@@ -1839,7 +1839,7 @@ const COST_PRIORITY_PENALTY = {
 *
 * Pure, deterministic, non-mutating.
 */
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const clamp$1 = (value, min, max) => Math.min(max, Math.max(min, value));
 /** Status base score refined by distance beyond the band edge (floor 0). */
 function indicatorScore(indicator) {
 	const base = STATUS_SCORES[indicator.status];
@@ -1874,7 +1874,7 @@ function computeFlavorScore(items, totalBatchG, mode, goals) {
 	const mainPercent = mainGrams / totalBatchG * 100;
 	const multiplier = GOAL_INTENSITY_MULTIPLIER[goals?.flavor_intensity ?? "balanced"];
 	const rewarded = 60 + mainPercent * MODE_FLAVOR_SLOPE[mode] * multiplier;
-	return clamp(Math.max(70, rewarded), 0, 100);
+	return clamp$1(Math.max(70, rewarded), 0, 100);
 }
 /** Anchor-interpolated cost score; UNKNOWN cost (null) stays null. */
 function computeCostScore(costPerKg, goals) {
@@ -1898,7 +1898,7 @@ function computeCostScore(costPerKg, goals) {
 		}
 	}
 	const penalty = COST_PRIORITY_PENALTY[goals?.cost_priority ?? "balanced"];
-	return clamp(100 - penalty * (100 - base), 0, 100);
+	return clamp$1(100 - penalty * (100 - base), 0, 100);
 }
 /**
 * Overall = mode-weighted blend of technical/flavor/cost (config/modes.ts
@@ -3126,596 +3126,6 @@ function verifyConstraintsPreserved(set, after) {
 		violations
 	};
 }
-
-//#endregion
-//#region src/spine/temperatureRegulator.ts
-const TEMPERATURE_REGULATOR_CONFIG_VERSION = "0.1.0";
-const PROTEIN_GELATO_TARGET = {
-	defaultPercent: 20,
-	controlStepPercent: 1,
-	inputStepPercent: .1,
-	tolerancePercent: .1
-};
-const standardGelatoMinus11 = {
-	productProfile: "standard_gelato",
-	servingTemperatureC: -11,
-	status: "locked_base_reference_zero_delta",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [33, 43],
-		cleanCenter: [39, 41],
-		overlapNext: [42, 43]
-	},
-	iceFraction: { band: [45, 54.5] },
-	pod: { band: [12, 17] },
-	lactose: { band: [4, 6] },
-	lactoseSanding: { band: [5, 9] },
-	fat: { band: [5, 12] },
-	aeratingProtein: { band: [3, 6] },
-	proteinShareInSolids: { band: [9, 13] },
-	solids: { band: [31, 45] },
-	water: { band: [57, 70] },
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: [],
-	notes: ["−11 °C = base reference / zero delta — the current Base Engine is already calibrated for −11 °C", "NPAC alone is not enough: lactose, sanding, ice fraction, protein, solids, water and stabilizer still gate"]
-};
-const standardGelatoMinus12 = {
-	productProfile: "standard_gelato",
-	servingTemperatureC: -12,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [42, 50],
-		cleanCenter: [45, 46.2],
-		lockedReference: 46.18,
-		lowerCleanAnchor: 44.98,
-		overlapPrevious: [42, 43],
-		overlapNext: [48, 50]
-	},
-	iceFraction: {
-		band: [46, 54],
-		lockedReference: 50.34
-	},
-	pod: {
-		band: [12, 17],
-		lockedReference: 15.57
-	},
-	lactose: {
-		band: [4, 6],
-		lockedReference: 5.44
-	},
-	lactoseSanding: {
-		band: [5, 9],
-		lockedReference: 8.62
-	},
-	fat: {
-		band: [5, 12],
-		lockedReference: 6.19
-	},
-	aeratingProtein: {
-		band: [3, 6],
-		lockedReference: 3.65
-	},
-	proteinShareInSolids: {
-		band: [9, 13],
-		lockedReference: 9.9
-	},
-	solids: {
-		band: [31, 44],
-		lockedReference: 36.82
-	},
-	water: {
-		band: [56, 70],
-		lockedReference: 63.18
-	},
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: [],
-	notes: ["main locked reference: G17", "lower clean anchor: G15"]
-};
-const standardGelatoMinus13 = {
-	productProfile: "standard_gelato",
-	servingTemperatureC: -13,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [48, 55],
-		cleanCenter: [51.5, 53.2],
-		lockedReference: 53.15,
-		lowerCleanAnchor: 51.77,
-		overlapPrevious: [48, 50]
-	},
-	iceFraction: {
-		band: [46, 52],
-		lockedReference: 49.69
-	},
-	pod: {
-		band: [12, 17],
-		lockedReference: 16.37
-	},
-	lactose: {
-		band: [4, 6],
-		lockedReference: 5.51
-	},
-	lactoseSanding: {
-		band: [5, 9],
-		lockedReference: 8.78
-	},
-	fat: {
-		band: [5, 12],
-		lockedReference: 5.89
-	},
-	aeratingProtein: {
-		band: [3, 6],
-		lockedReference: 3.69
-	},
-	proteinShareInSolids: {
-		band: [9, 13],
-		lockedReference: 9.93
-	},
-	solids: {
-		band: [35, 45],
-		lockedReference: 37.22
-	},
-	water: {
-		band: [55, 65],
-		lockedReference: 62.78
-	},
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: [],
-	notes: ["main locked reference: G18", "lower clean anchor: G11"]
-};
-const PROTEIN_DISABLED_GATES = [
-	"lactose",
-	"lactose_sanding",
-	"aerating_protein",
-	"protein_share_in_solids"
-];
-const proteinGelatoMinus11 = {
-	productProfile: "protein_gelato",
-	servingTemperatureC: -11,
-	status: "owner_approved_standard_physics_protein_v1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [33, 42],
-		cleanCenter: [39, 41],
-		overlapNext: [42, 42]
-	},
-	iceFraction: { band: [45, 54.5] },
-	pod: { band: [12, 17] },
-	fat: { band: [5, 12] },
-	solids: { band: [31, 45] },
-	water: { band: [57, 70] },
-	proteinTarget: PROTEIN_GELATO_TARGET,
-	stabilizer: { required: true },
-	disabledGates: PROTEIN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["separate Protein Gelato profile; Standard Gelato serving physics reused by owner decision", "total protein target is recipe-specific and never replaces Main flavor identity"]
-};
-const proteinGelatoMinus12 = {
-	productProfile: "protein_gelato",
-	servingTemperatureC: -12,
-	status: "owner_approved_standard_physics_protein_v1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [42, 50],
-		cleanCenter: [45, 46.2],
-		lockedReference: 46.18,
-		lowerCleanAnchor: 44.98,
-		overlapPrevious: [42, 43],
-		overlapNext: [48, 50]
-	},
-	iceFraction: {
-		band: [46, 54],
-		lockedReference: 50.34
-	},
-	pod: {
-		band: [12, 17],
-		lockedReference: 15.57
-	},
-	fat: {
-		band: [5, 12],
-		lockedReference: 6.19
-	},
-	solids: {
-		band: [31, 44],
-		lockedReference: 36.82
-	},
-	water: {
-		band: [56, 70],
-		lockedReference: 63.18
-	},
-	proteinTarget: PROTEIN_GELATO_TARGET,
-	stabilizer: { required: true },
-	disabledGates: PROTEIN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["separate Protein Gelato profile; G17/G15 physical calibration reused by owner decision"]
-};
-const proteinGelatoMinus13 = {
-	productProfile: "protein_gelato",
-	servingTemperatureC: -13,
-	status: "owner_approved_standard_physics_protein_v1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [48, 55],
-		cleanCenter: [51.5, 53.2],
-		lockedReference: 53.15,
-		lowerCleanAnchor: 51.77,
-		overlapPrevious: [48, 50]
-	},
-	iceFraction: {
-		band: [46, 52],
-		lockedReference: 49.69
-	},
-	pod: {
-		band: [12, 17],
-		lockedReference: 16.37
-	},
-	fat: {
-		band: [5, 12],
-		lockedReference: 5.89
-	},
-	solids: {
-		band: [35, 45],
-		lockedReference: 37.22
-	},
-	water: {
-		band: [55, 65],
-		lockedReference: 62.78
-	},
-	proteinTarget: PROTEIN_GELATO_TARGET,
-	stabilizer: { required: true },
-	disabledGates: PROTEIN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["separate Protein Gelato profile; G18/G11 physical calibration reused by owner decision"]
-};
-const SORBET_DISABLED_GATES = [
-	"dairy_fat_logic",
-	"lactose",
-	"lactose_sanding",
-	"aerating_dairy_protein",
-	"dairy_protein_share_in_solids",
-	"msnf_required_gate"
-];
-const sorbetMinus11 = {
-	productProfile: "sorbet",
-	servingTemperatureC: -11,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [15, 25],
-		lockedReference: 19.16
-	},
-	npac: {
-		band: [35, 40],
-		cleanCenter: [37, 38],
-		lockedReference: 37.71,
-		overlapNext: [39, 40]
-	},
-	iceFraction: {
-		band: [51, 59],
-		lockedReference: 57.43
-	},
-	solids: {
-		band: [25, 33],
-		lockedReference: 27.85
-	},
-	water: {
-		band: [67, 75],
-		lockedReference: 72.15
-	},
-	stabilizer: { required: true },
-	disabledGates: SORBET_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["main locked reference: S01", "never evaluated with Standard Gelato dairy gates"]
-};
-const sorbetMinus12 = {
-	productProfile: "sorbet",
-	servingTemperatureC: -12,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [15, 25],
-		lockedReference: 19.97
-	},
-	npac: {
-		band: [42, 49],
-		cleanCenter: [44, 45],
-		lockedReference: 44.18,
-		overlapPrevious: [39, 40],
-		overlapNext: [48, 49]
-	},
-	iceFraction: {
-		band: [51, 59],
-		lockedReference: 55.95
-	},
-	solids: {
-		band: [25, 33],
-		lockedReference: 29.29
-	},
-	water: {
-		band: [67, 73],
-		lockedReference: 70.71
-	},
-	stabilizer: { required: true },
-	disabledGates: SORBET_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["main locked reference: S02"]
-};
-const sorbetMinus13 = {
-	productProfile: "sorbet",
-	servingTemperatureC: -13,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [15, 25],
-		lockedReference: 21.21
-	},
-	npac: {
-		band: [48, 55],
-		cleanCenter: [51, 52.5],
-		lockedReference: 52.22,
-		overlapPrevious: [48, 49]
-	},
-	iceFraction: {
-		band: [50, 58],
-		lockedReference: 54.28
-	},
-	solids: {
-		band: [25, 33],
-		lockedReference: 30.82
-	},
-	water: {
-		band: [67, 73],
-		lockedReference: 69.18
-	},
-	stabilizer: { required: true },
-	disabledGates: SORBET_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["main locked reference: S03"]
-};
-const VEGAN_DISABLED_GATES = [
-	"lactose",
-	"lactose_sanding",
-	"aerating_dairy_protein",
-	"dairy_protein_share_in_solids",
-	"msnf_required_gate"
-];
-const veganGelatoMinus11 = {
-	productProfile: "vegan_gelato",
-	servingTemperatureC: -11,
-	status: "locked_pinguino_internal_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: { band: [13, 25] },
-	npac: {
-		band: [35, 52],
-		cleanCenter: [40, 47],
-		overlapNext: [47, 52]
-	},
-	iceFraction: { band: [45, 61] },
-	fat: { band: [0, 12] },
-	solids: { band: [30, 43] },
-	water: { band: [54, 72] },
-	stabilizer: { required: true },
-	disabledGates: VEGAN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed", "never fails because lactose or dairy protein is 0"]
-};
-const veganGelatoMinus12 = {
-	productProfile: "vegan_gelato",
-	servingTemperatureC: -12,
-	status: "locked_pinguino_internal_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: { band: [13, 25] },
-	npac: {
-		band: [44, 59],
-		cleanCenter: [48, 54],
-		overlapPrevious: [44, 52],
-		overlapNext: [54, 59]
-	},
-	iceFraction: { band: [46, 60] },
-	fat: { band: [0, 12] },
-	solids: { band: [30, 43] },
-	water: { band: [52, 70] },
-	stabilizer: { required: true },
-	disabledGates: VEGAN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed"]
-};
-const veganGelatoMinus13 = {
-	productProfile: "vegan_gelato",
-	servingTemperatureC: -13,
-	status: "locked_pinguino_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [13, 25],
-		lockedReference: 22.08,
-		mediumEvidence: 20.58
-	},
-	npac: {
-		band: [50, 64],
-		cleanCenter: [53.5, 60],
-		lockedReference: 59.47,
-		mediumEvidence: 53.75
-	},
-	iceFraction: {
-		band: [46, 58],
-		lockedReference: 51.06,
-		mediumEvidence: 51.35
-	},
-	fat: {
-		band: [0, 12],
-		lockedReference: 5.08,
-		mediumEvidence: 4.21
-	},
-	solids: {
-		band: [30, 43],
-		lockedReference: 36.24,
-		mediumEvidence: 36.17
-	},
-	water: {
-		band: [50, 67],
-		lockedReference: 63.76,
-		mediumEvidence: 63.83
-	},
-	stabilizer: { required: true },
-	disabledGates: VEGAN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["observed calibration anchor — external calibration data directly exposed Vegan −13 °C", "main clean reference: V02 fixed; medium evidence: V02-AUTO"]
-};
-const CHOCOLATE_PROTEIN_SHARE = {
-	band: [8, 13],
-	visibleBenchmark: [9, 13],
-	hardMinimum: 7,
-	notes: ["soft/advisory gate — never a standard-gelato hard fail when chocolate structure is good"]
-};
-const chocolateGelatoMinus11 = {
-	productProfile: "chocolate_gelato",
-	servingTemperatureC: -11,
-	status: "locked_pinguino_internal_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: { band: [12, 20] },
-	npac: {
-		band: [34, 45],
-		cleanCenter: [40, 42],
-		overlapNext: [43, 45]
-	},
-	iceFraction: { band: [45, 54.5] },
-	lactose: { band: [4, 6] },
-	lactoseSanding: { band: [5, 9] },
-	fat: { band: [5, 12] },
-	aeratingProtein: { band: [3, 6] },
-	proteinShareInSolids: CHOCOLATE_PROTEIN_SHARE,
-	solids: { band: [31, 45] },
-	water: { band: [57, 70] },
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: ["protein_share_in_solids"],
-	notes: ["derived from Standard Gelato temperature logic with chocolate-specific overrides", "chocolate/cocoa solids dilute protein share — do not overcorrect with skimmed milk powder if lactose sanding worsens"]
-};
-const chocolateGelatoMinus12 = {
-	productProfile: "chocolate_gelato",
-	servingTemperatureC: -12,
-	status: "locked_pinguino_internal_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: { band: [12, 20] },
-	npac: {
-		band: [43, 52],
-		cleanCenter: [47, 49.5],
-		overlapPrevious: [43, 45],
-		overlapNext: [49, 52]
-	},
-	iceFraction: { band: [46, 54] },
-	lactose: { band: [4, 6] },
-	lactoseSanding: { band: [5, 9] },
-	fat: { band: [5, 12] },
-	aeratingProtein: { band: [3, 6] },
-	proteinShareInSolids: CHOCOLATE_PROTEIN_SHARE,
-	solids: { band: [31, 45] },
-	water: { band: [56, 70] },
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: ["protein_share_in_solids"],
-	notes: ["derived from Standard Gelato temperature logic with chocolate-specific overrides", "higher/wider than typical Standard Gelato — cocoa bitterness and cocoa solids change product tolerance"]
-};
-const chocolateGelatoMinus13 = {
-	productProfile: "chocolate_gelato",
-	servingTemperatureC: -13,
-	status: "locked_pinguino_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [12, 20],
-		fixedReference: 18.43,
-		optimizedEvidence: 15.8
-	},
-	npac: {
-		band: [49, 57],
-		cleanCenter: [49.8, 54.1],
-		fixedReference: 54.08,
-		lowerEvidence: 49.8,
-		overlapPrevious: [49, 52]
-	},
-	iceFraction: {
-		band: [46, 52],
-		fixedReference: 43.97,
-		optimizedEvidence: 46.11
-	},
-	lactose: {
-		band: [4, 6],
-		fixedReference: 4.61,
-		optimizedEvidence: 5.37
-	},
-	lactoseSanding: {
-		band: [5, 9],
-		fixedReference: 8.41,
-		optimizedEvidence: 9.37
-	},
-	fat: {
-		band: [5, 12],
-		fixedReference: 10.37,
-		optimizedEvidence: 8.95
-	},
-	aeratingProtein: {
-		band: [3, 6],
-		fixedReference: 3.09,
-		optimizedEvidence: 3.59
-	},
-	proteinShareInSolids: {
-		...CHOCOLATE_PROTEIN_SHARE,
-		fixedReference: 6.84,
-		optimizedEvidence: 8.42
-	},
-	solids: {
-		band: [35, 45],
-		fixedReference: 45.12,
-		optimizedEvidence: 42.62
-	},
-	water: {
-		band: [55, 65],
-		fixedReference: 54.88,
-		optimizedEvidence: 57.38
-	},
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: ["protein_share_in_solids"],
-	notes: ["main observed chocolate setting — C01 fixed is stress/reference evidence, C01 optimized is optimizer behavior evidence", "chocolate tolerates POD up to 20 — cocoa bitterness reduces perceived sweetness"]
-};
-const REGISTRY = {
-	standard_gelato: {
-		[-11]: standardGelatoMinus11,
-		[-12]: standardGelatoMinus12,
-		[-13]: standardGelatoMinus13
-	},
-	sorbet: {
-		[-11]: sorbetMinus11,
-		[-12]: sorbetMinus12,
-		[-13]: sorbetMinus13
-	},
-	vegan_gelato: {
-		[-11]: veganGelatoMinus11,
-		[-12]: veganGelatoMinus12,
-		[-13]: veganGelatoMinus13
-	},
-	chocolate_gelato: {
-		[-11]: chocolateGelatoMinus11,
-		[-12]: chocolateGelatoMinus12,
-		[-13]: chocolateGelatoMinus13
-	},
-	protein_gelato: {
-		[-11]: proteinGelatoMinus11,
-		[-12]: proteinGelatoMinus12,
-		[-13]: proteinGelatoMinus13
-	}
-};
-const isActiveProfile = (value) => value === "standard_gelato" || value === "sorbet" || value === "vegan_gelato" || value === "chocolate_gelato" || value === "protein_gelato";
-const isSupportedTemperature = (value) => value === -11 || value === -12 || value === -13;
-/**
-* Untrusted lookup: unsupported product or temperature returns null —
-* NEVER a fallback to another product or another temperature.
-*/
-const getTemperatureRegulatorSettingsOrNull = (productProfile, servingTemperatureC) => isActiveProfile(productProfile) && isSupportedTemperature(servingTemperatureC) ? REGISTRY[productProfile][servingTemperatureC] : null;
 
 //#endregion
 //#region src/features/formulation-strategy/strategy.ts
@@ -5280,6 +4690,614 @@ function assessProductDosages(input, snapshots) {
 }
 
 //#endregion
+//#region src/spine/temperatureRegulator.ts
+const TEMPERATURE_REGULATOR_CONFIG_VERSION = "0.1.0";
+/**
+* Protein product qualification carried by the Protein regulator rows.
+*
+* REPLACES `PROTEIN_GELATO_TARGET` (Protein Engine v2, owner decision
+* 2026-08-22). The old constant declared a 20 % protein BY MASS target with a
+* 0.1 pp tolerance and a user-facing 1 pp control step. It had no provenance —
+* no controlled frozen-dessert study exceeds 10 % protein — and it is almost
+* certainly a unit confusion with the EU claim threshold, which is 20 % of
+* ENERGY, not of mass.
+*
+* There is no target and no control step any more: protein % is an OUTPUT.
+* What the profile still asserts is that a Protein product must be able to
+* carry its own claim — Regulation (EC) No 1924/2006, Annex, "HIGH PROTEIN":
+* at least 20 % of the energy value of the food provided by protein.
+*
+* The runtime authority lives in
+* `src/features/protein-gelato/proteinQualification.ts`; this entry records it
+* in the regulator registry so every Protein temperature row states the rule
+* it is evaluated under.
+*/
+const PROTEIN_GELATO_QUALIFICATION = {
+	highProteinEnergySharePercent: 20,
+	source: "EU Regulation (EC) No 1924/2006, Annex — HIGH PROTEIN"
+};
+const standardGelatoMinus11 = {
+	productProfile: "standard_gelato",
+	servingTemperatureC: -11,
+	status: "locked_base_reference_zero_delta",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [33, 43],
+		cleanCenter: [39, 41],
+		overlapNext: [42, 43]
+	},
+	iceFraction: { band: [45, 54.5] },
+	pod: { band: [12, 17] },
+	lactose: { band: [4, 6] },
+	lactoseSanding: { band: [5, 9] },
+	fat: { band: [5, 12] },
+	aeratingProtein: { band: [3, 6] },
+	proteinShareInSolids: { band: [9, 13] },
+	solids: { band: [31, 45] },
+	water: { band: [57, 70] },
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: [],
+	notes: ["−11 °C = base reference / zero delta — the current Base Engine is already calibrated for −11 °C", "NPAC alone is not enough: lactose, sanding, ice fraction, protein, solids, water and stabilizer still gate"]
+};
+const standardGelatoMinus12 = {
+	productProfile: "standard_gelato",
+	servingTemperatureC: -12,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [42, 50],
+		cleanCenter: [45, 46.2],
+		lockedReference: 46.18,
+		lowerCleanAnchor: 44.98,
+		overlapPrevious: [42, 43],
+		overlapNext: [48, 50]
+	},
+	iceFraction: {
+		band: [46, 54],
+		lockedReference: 50.34
+	},
+	pod: {
+		band: [12, 17],
+		lockedReference: 15.57
+	},
+	lactose: {
+		band: [4, 6],
+		lockedReference: 5.44
+	},
+	lactoseSanding: {
+		band: [5, 9],
+		lockedReference: 8.62
+	},
+	fat: {
+		band: [5, 12],
+		lockedReference: 6.19
+	},
+	aeratingProtein: {
+		band: [3, 6],
+		lockedReference: 3.65
+	},
+	proteinShareInSolids: {
+		band: [9, 13],
+		lockedReference: 9.9
+	},
+	solids: {
+		band: [31, 44],
+		lockedReference: 36.82
+	},
+	water: {
+		band: [56, 70],
+		lockedReference: 63.18
+	},
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: [],
+	notes: ["main locked reference: G17", "lower clean anchor: G15"]
+};
+const standardGelatoMinus13 = {
+	productProfile: "standard_gelato",
+	servingTemperatureC: -13,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [48, 55],
+		cleanCenter: [51.5, 53.2],
+		lockedReference: 53.15,
+		lowerCleanAnchor: 51.77,
+		overlapPrevious: [48, 50]
+	},
+	iceFraction: {
+		band: [46, 52],
+		lockedReference: 49.69
+	},
+	pod: {
+		band: [12, 17],
+		lockedReference: 16.37
+	},
+	lactose: {
+		band: [4, 6],
+		lockedReference: 5.51
+	},
+	lactoseSanding: {
+		band: [5, 9],
+		lockedReference: 8.78
+	},
+	fat: {
+		band: [5, 12],
+		lockedReference: 5.89
+	},
+	aeratingProtein: {
+		band: [3, 6],
+		lockedReference: 3.69
+	},
+	proteinShareInSolids: {
+		band: [9, 13],
+		lockedReference: 9.93
+	},
+	solids: {
+		band: [35, 45],
+		lockedReference: 37.22
+	},
+	water: {
+		band: [55, 65],
+		lockedReference: 62.78
+	},
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: [],
+	notes: ["main locked reference: G18", "lower clean anchor: G11"]
+};
+const PROTEIN_DISABLED_GATES = [
+	"lactose",
+	"lactose_sanding",
+	"aerating_protein",
+	"protein_share_in_solids"
+];
+const proteinGelatoMinus11 = {
+	productProfile: "protein_gelato",
+	servingTemperatureC: -11,
+	status: "owner_approved_standard_physics_protein_v1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [33, 42],
+		cleanCenter: [39, 41],
+		overlapNext: [42, 42]
+	},
+	iceFraction: { band: [45, 54.5] },
+	pod: { band: [12, 17] },
+	fat: { band: [5, 12] },
+	solids: { band: [31, 45] },
+	water: { band: [57, 70] },
+	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
+	stabilizer: { required: true },
+	disabledGates: PROTEIN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["separate Protein Gelato profile; Standard Gelato serving physics reused by owner decision", "protein % is an OUTPUT of the formulation; the profile only requires the recipe to earn the HIGH PROTEIN claim, and never replaces Main flavor identity"]
+};
+const proteinGelatoMinus12 = {
+	productProfile: "protein_gelato",
+	servingTemperatureC: -12,
+	status: "owner_approved_standard_physics_protein_v1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [42, 50],
+		cleanCenter: [45, 46.2],
+		lockedReference: 46.18,
+		lowerCleanAnchor: 44.98,
+		overlapPrevious: [42, 43],
+		overlapNext: [48, 50]
+	},
+	iceFraction: {
+		band: [46, 54],
+		lockedReference: 50.34
+	},
+	pod: {
+		band: [12, 17],
+		lockedReference: 15.57
+	},
+	fat: {
+		band: [5, 12],
+		lockedReference: 6.19
+	},
+	solids: {
+		band: [31, 44],
+		lockedReference: 36.82
+	},
+	water: {
+		band: [56, 70],
+		lockedReference: 63.18
+	},
+	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
+	stabilizer: { required: true },
+	disabledGates: PROTEIN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["separate Protein Gelato profile; G17/G15 physical calibration reused by owner decision"]
+};
+const proteinGelatoMinus13 = {
+	productProfile: "protein_gelato",
+	servingTemperatureC: -13,
+	status: "owner_approved_standard_physics_protein_v1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [48, 55],
+		cleanCenter: [51.5, 53.2],
+		lockedReference: 53.15,
+		lowerCleanAnchor: 51.77,
+		overlapPrevious: [48, 50]
+	},
+	iceFraction: {
+		band: [46, 52],
+		lockedReference: 49.69
+	},
+	pod: {
+		band: [12, 17],
+		lockedReference: 16.37
+	},
+	fat: {
+		band: [5, 12],
+		lockedReference: 5.89
+	},
+	solids: {
+		band: [35, 45],
+		lockedReference: 37.22
+	},
+	water: {
+		band: [55, 65],
+		lockedReference: 62.78
+	},
+	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
+	stabilizer: { required: true },
+	disabledGates: PROTEIN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["separate Protein Gelato profile; G18/G11 physical calibration reused by owner decision"]
+};
+const SORBET_DISABLED_GATES = [
+	"dairy_fat_logic",
+	"lactose",
+	"lactose_sanding",
+	"aerating_dairy_protein",
+	"dairy_protein_share_in_solids",
+	"msnf_required_gate"
+];
+const sorbetMinus11 = {
+	productProfile: "sorbet",
+	servingTemperatureC: -11,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [15, 25],
+		lockedReference: 19.16
+	},
+	npac: {
+		band: [35, 40],
+		cleanCenter: [37, 38],
+		lockedReference: 37.71,
+		overlapNext: [39, 40]
+	},
+	iceFraction: {
+		band: [51, 59],
+		lockedReference: 57.43
+	},
+	solids: {
+		band: [25, 33],
+		lockedReference: 27.85
+	},
+	water: {
+		band: [67, 75],
+		lockedReference: 72.15
+	},
+	stabilizer: { required: true },
+	disabledGates: SORBET_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["main locked reference: S01", "never evaluated with Standard Gelato dairy gates"]
+};
+const sorbetMinus12 = {
+	productProfile: "sorbet",
+	servingTemperatureC: -12,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [15, 25],
+		lockedReference: 19.97
+	},
+	npac: {
+		band: [42, 49],
+		cleanCenter: [44, 45],
+		lockedReference: 44.18,
+		overlapPrevious: [39, 40],
+		overlapNext: [48, 49]
+	},
+	iceFraction: {
+		band: [51, 59],
+		lockedReference: 55.95
+	},
+	solids: {
+		band: [25, 33],
+		lockedReference: 29.29
+	},
+	water: {
+		band: [67, 73],
+		lockedReference: 70.71
+	},
+	stabilizer: { required: true },
+	disabledGates: SORBET_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["main locked reference: S02"]
+};
+const sorbetMinus13 = {
+	productProfile: "sorbet",
+	servingTemperatureC: -13,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [15, 25],
+		lockedReference: 21.21
+	},
+	npac: {
+		band: [48, 55],
+		cleanCenter: [51, 52.5],
+		lockedReference: 52.22,
+		overlapPrevious: [48, 49]
+	},
+	iceFraction: {
+		band: [50, 58],
+		lockedReference: 54.28
+	},
+	solids: {
+		band: [25, 33],
+		lockedReference: 30.82
+	},
+	water: {
+		band: [67, 73],
+		lockedReference: 69.18
+	},
+	stabilizer: { required: true },
+	disabledGates: SORBET_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["main locked reference: S03"]
+};
+const VEGAN_DISABLED_GATES = [
+	"lactose",
+	"lactose_sanding",
+	"aerating_dairy_protein",
+	"dairy_protein_share_in_solids",
+	"msnf_required_gate"
+];
+const veganGelatoMinus11 = {
+	productProfile: "vegan_gelato",
+	servingTemperatureC: -11,
+	status: "locked_pinguino_internal_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: { band: [13, 25] },
+	npac: {
+		band: [35, 52],
+		cleanCenter: [40, 47],
+		overlapNext: [47, 52]
+	},
+	iceFraction: { band: [45, 61] },
+	fat: { band: [0, 12] },
+	solids: { band: [30, 43] },
+	water: { band: [54, 72] },
+	stabilizer: { required: true },
+	disabledGates: VEGAN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed", "never fails because lactose or dairy protein is 0"]
+};
+const veganGelatoMinus12 = {
+	productProfile: "vegan_gelato",
+	servingTemperatureC: -12,
+	status: "locked_pinguino_internal_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: { band: [13, 25] },
+	npac: {
+		band: [44, 59],
+		cleanCenter: [48, 54],
+		overlapPrevious: [44, 52],
+		overlapNext: [54, 59]
+	},
+	iceFraction: { band: [46, 60] },
+	fat: { band: [0, 12] },
+	solids: { band: [30, 43] },
+	water: { band: [52, 70] },
+	stabilizer: { required: true },
+	disabledGates: VEGAN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed"]
+};
+const veganGelatoMinus13 = {
+	productProfile: "vegan_gelato",
+	servingTemperatureC: -13,
+	status: "locked_pinguino_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [13, 25],
+		lockedReference: 22.08,
+		mediumEvidence: 20.58
+	},
+	npac: {
+		band: [50, 64],
+		cleanCenter: [53.5, 60],
+		lockedReference: 59.47,
+		mediumEvidence: 53.75
+	},
+	iceFraction: {
+		band: [46, 58],
+		lockedReference: 51.06,
+		mediumEvidence: 51.35
+	},
+	fat: {
+		band: [0, 12],
+		lockedReference: 5.08,
+		mediumEvidence: 4.21
+	},
+	solids: {
+		band: [30, 43],
+		lockedReference: 36.24,
+		mediumEvidence: 36.17
+	},
+	water: {
+		band: [50, 67],
+		lockedReference: 63.76,
+		mediumEvidence: 63.83
+	},
+	stabilizer: { required: true },
+	disabledGates: VEGAN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["observed calibration anchor — external calibration data directly exposed Vegan −13 °C", "main clean reference: V02 fixed; medium evidence: V02-AUTO"]
+};
+const CHOCOLATE_PROTEIN_SHARE = {
+	band: [8, 13],
+	visibleBenchmark: [9, 13],
+	hardMinimum: 7,
+	notes: ["soft/advisory gate — never a standard-gelato hard fail when chocolate structure is good"]
+};
+const chocolateGelatoMinus11 = {
+	productProfile: "chocolate_gelato",
+	servingTemperatureC: -11,
+	status: "locked_pinguino_internal_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: { band: [12, 20] },
+	npac: {
+		band: [34, 45],
+		cleanCenter: [40, 42],
+		overlapNext: [43, 45]
+	},
+	iceFraction: { band: [45, 54.5] },
+	lactose: { band: [4, 6] },
+	lactoseSanding: { band: [5, 9] },
+	fat: { band: [5, 12] },
+	aeratingProtein: { band: [3, 6] },
+	proteinShareInSolids: CHOCOLATE_PROTEIN_SHARE,
+	solids: { band: [31, 45] },
+	water: { band: [57, 70] },
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: ["protein_share_in_solids"],
+	notes: ["derived from Standard Gelato temperature logic with chocolate-specific overrides", "chocolate/cocoa solids dilute protein share — do not overcorrect with skimmed milk powder if lactose sanding worsens"]
+};
+const chocolateGelatoMinus12 = {
+	productProfile: "chocolate_gelato",
+	servingTemperatureC: -12,
+	status: "locked_pinguino_internal_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: { band: [12, 20] },
+	npac: {
+		band: [43, 52],
+		cleanCenter: [47, 49.5],
+		overlapPrevious: [43, 45],
+		overlapNext: [49, 52]
+	},
+	iceFraction: { band: [46, 54] },
+	lactose: { band: [4, 6] },
+	lactoseSanding: { band: [5, 9] },
+	fat: { band: [5, 12] },
+	aeratingProtein: { band: [3, 6] },
+	proteinShareInSolids: CHOCOLATE_PROTEIN_SHARE,
+	solids: { band: [31, 45] },
+	water: { band: [56, 70] },
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: ["protein_share_in_solids"],
+	notes: ["derived from Standard Gelato temperature logic with chocolate-specific overrides", "higher/wider than typical Standard Gelato — cocoa bitterness and cocoa solids change product tolerance"]
+};
+const chocolateGelatoMinus13 = {
+	productProfile: "chocolate_gelato",
+	servingTemperatureC: -13,
+	status: "locked_pinguino_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [12, 20],
+		fixedReference: 18.43,
+		optimizedEvidence: 15.8
+	},
+	npac: {
+		band: [49, 57],
+		cleanCenter: [49.8, 54.1],
+		fixedReference: 54.08,
+		lowerEvidence: 49.8,
+		overlapPrevious: [49, 52]
+	},
+	iceFraction: {
+		band: [46, 52],
+		fixedReference: 43.97,
+		optimizedEvidence: 46.11
+	},
+	lactose: {
+		band: [4, 6],
+		fixedReference: 4.61,
+		optimizedEvidence: 5.37
+	},
+	lactoseSanding: {
+		band: [5, 9],
+		fixedReference: 8.41,
+		optimizedEvidence: 9.37
+	},
+	fat: {
+		band: [5, 12],
+		fixedReference: 10.37,
+		optimizedEvidence: 8.95
+	},
+	aeratingProtein: {
+		band: [3, 6],
+		fixedReference: 3.09,
+		optimizedEvidence: 3.59
+	},
+	proteinShareInSolids: {
+		...CHOCOLATE_PROTEIN_SHARE,
+		fixedReference: 6.84,
+		optimizedEvidence: 8.42
+	},
+	solids: {
+		band: [35, 45],
+		fixedReference: 45.12,
+		optimizedEvidence: 42.62
+	},
+	water: {
+		band: [55, 65],
+		fixedReference: 54.88,
+		optimizedEvidence: 57.38
+	},
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: ["protein_share_in_solids"],
+	notes: ["main observed chocolate setting — C01 fixed is stress/reference evidence, C01 optimized is optimizer behavior evidence", "chocolate tolerates POD up to 20 — cocoa bitterness reduces perceived sweetness"]
+};
+const REGISTRY = {
+	standard_gelato: {
+		[-11]: standardGelatoMinus11,
+		[-12]: standardGelatoMinus12,
+		[-13]: standardGelatoMinus13
+	},
+	sorbet: {
+		[-11]: sorbetMinus11,
+		[-12]: sorbetMinus12,
+		[-13]: sorbetMinus13
+	},
+	vegan_gelato: {
+		[-11]: veganGelatoMinus11,
+		[-12]: veganGelatoMinus12,
+		[-13]: veganGelatoMinus13
+	},
+	chocolate_gelato: {
+		[-11]: chocolateGelatoMinus11,
+		[-12]: chocolateGelatoMinus12,
+		[-13]: chocolateGelatoMinus13
+	},
+	protein_gelato: {
+		[-11]: proteinGelatoMinus11,
+		[-12]: proteinGelatoMinus12,
+		[-13]: proteinGelatoMinus13
+	}
+};
+const isActiveProfile = (value) => value === "standard_gelato" || value === "sorbet" || value === "vegan_gelato" || value === "chocolate_gelato" || value === "protein_gelato";
+const isSupportedTemperature = (value) => value === -11 || value === -12 || value === -13;
+/**
+* Untrusted lookup: unsupported product or temperature returns null —
+* NEVER a fallback to another product or another temperature.
+*/
+const getTemperatureRegulatorSettingsOrNull = (productProfile, servingTemperatureC) => isActiveProfile(productProfile) && isSupportedTemperature(servingTemperatureC) ? REGISTRY[productProfile][servingTemperatureC] : null;
+
+//#endregion
 //#region src/features/recipe-direction/recipeDirectionTargets.ts
 const DEFAULT_RECIPE_DIRECTION_TARGETS = Object.freeze({
 	sweetness: 0,
@@ -5543,66 +5561,843 @@ function assessRecipeDirection(input, result) {
 }
 
 //#endregion
-//#region src/features/protein-gelato/proteinTarget.ts
-const finiteTarget = (input) => {
-	const raw = input.goals?.target_protein_percent ?? PROTEIN_GELATO_TARGET.defaultPercent;
-	const finite = Number.isFinite(raw) ? raw : PROTEIN_GELATO_TARGET.defaultPercent;
-	return Math.round(Math.max(0, finite) / PROTEIN_GELATO_TARGET.inputStepPercent) * PROTEIN_GELATO_TARGET.inputStepPercent;
+//#region src/features/protein-gelato/proteinScienceAuthority.ts
+/**
+* The ONLY hard Protein-specific qualification in v2.
+*
+* Protein Gelato is a protein PRODUCT, so it must legally be able to carry the
+* claim its profile name makes. Regulation (EC) 1924/2006 defines that on an
+* ENERGY-SHARE basis, not a mass basis: HIGH PROTEIN requires at least 20 % of
+* the food's energy to come from protein.
+*
+* This replaces the pre-v2 `protein_target` gate (20 % protein BY MASS, no
+* provenance). Inside the Protein profile's own fat band (5-12 %) the energy
+* rule is strictly weaker than the mass rule it replaces, so no recipe that was
+* legal before becomes illegal now — the change is a relaxation plus a quality
+* layer, never a new restriction.
+*/
+const PROTEIN_QUALIFICATION = {
+	authority: "HARD",
+	/** kcal per gram of protein used for the claim arithmetic (Atwater, EU Annex XIV 1169/2011). */
+	kcalPerProteinGram: 4,
+	/** HIGH PROTEIN — the claim the "Protein" profile name makes. */
+	highProteinEnergySharePercent: 20,
+	/** SOURCE OF PROTEIN — reported for context only, never a gate. */
+	sourceOfProteinEnergySharePercent: 12,
+	source: "EU_1924_2006_PROTEIN_CLAIM"
 };
-const hardSafeResult = (result) => detectViolations(result).length === 0 && !result.warnings.some((warning) => warning.severity === "critical");
-function assessProteinTarget(input, result = calculateRecipe(input)) {
-	if (input.category !== "protein_gelato") return {
-		applicable: false,
-		targetPercent: null,
-		actualPercent: null,
-		tolerancePercent: PROTEIN_GELATO_TARGET.tolerancePercent,
-		residualPp: null,
-		absoluteResidualPp: null,
-		reached: false,
-		hardSafe: hardSafeResult(result),
-		score: null
-	};
-	const targetPercent = finiteTarget(input);
+/**
+* AFR 2022 Table 1 + Figs. 2/3/5 — the only controlled protein-concentration
+* series that reports aeration, firmness, melting AND sensory across the range.
+*
+* Formulation held constant: 10 % milk fat, 15 % sugar, 0.15 % stabiliser-
+* emulsifier blend, buffalo milk base. The 4 % control took its protein from
+* SMP; the 6/8/10 % samples replaced the SMP entirely with WPI (87 % protein,
+* 0.8 % fat, 2.0 % ash). Pasteurised 80 degC/1 min, homogenised 140 kg/cm2,
+* aged overnight, batch-frozen to -5 degC, hardened at -20 degC.
+*
+* The series is MONOTONE AND ADVERSE in every structural dimension: overrun
+* falls 94.9 -> 33.9 %, hardness rises 13.60 -> 47.66 N, melting rate rises
+* 0.26 -> 0.74 g/min, and both the body-and-texture and meltdown sensory
+* scores fall. There is NO protein level in this dataset at which more protein
+* improved the product.
+*
+* CRITICAL BREAKPOINT (the authors' own statistics, p < 0.05): 6 % protein was
+* NOT significantly different from the 4 % control for hardness, body-and-
+* texture or meltdown. 8 % and 10 % were significantly worse on all of them,
+* and 8/10 % also lost flavour score to the characteristic whey note. This is
+* the single most important quantitative fact for Protein v2: quality is
+* preserved to about 6 % protein and measurably degrades at and beyond 8 %.
+*
+* The authors also record that reaching 8 % protein with SMP instead of WPI
+* produced "an unacceptable product with very low overrun and too hard body" —
+* direct evidence that the protein SOURCE, not the protein number, decides
+* whether a given protein level is achievable at all.
+*
+* HONEST LIMITATION: one buffalo-milk WPI system on one batch freezer with one
+* fixed dasher speed. Absolute values are NOT transferable to a Gellatti batch.
+* Only the SHAPE is used, and only to rank candidates — never to accept or
+* reject one.
+*/
+const PROTEIN_CONCENTRATION_EVIDENCE = {
+	authority: "QUALITY",
+	fixtureFatPercent: 10,
+	fixtureSugarPercent: 15,
+	fixtureStabilizerEmulsifierPercent: .15,
+	/** Measured series, ascending by protein. `qualityLoss` records the authors' significance finding. */
+	series: [
+		{
+			proteinPercent: 4,
+			overrunPercent: 94.9,
+			flowBehaviourIndex: .86,
+			consistencyCoefficientPaSn: .18,
+			meltingRateGPerMin: .26,
+			qualityLoss: "control"
+		},
+		{
+			proteinPercent: 6,
+			overrunPercent: 60.5,
+			flowBehaviourIndex: .752,
+			consistencyCoefficientPaSn: .37,
+			meltingRateGPerMin: .24,
+			qualityLoss: "not_significant_vs_control"
+		},
+		{
+			proteinPercent: 8,
+			overrunPercent: 44.3,
+			flowBehaviourIndex: .68,
+			consistencyCoefficientPaSn: 1.61,
+			meltingRateGPerMin: .54,
+			qualityLoss: "significant"
+		},
+		{
+			proteinPercent: 10,
+			overrunPercent: 33.9,
+			flowBehaviourIndex: .57,
+			consistencyCoefficientPaSn: 4.22,
+			meltingRateGPerMin: .74,
+			qualityLoss: "significant"
+		}
+	],
+	hardnessAtLowProteinNewton: 13.6,
+	hardnessAtHighProteinNewton: 47.66,
+	lossModulus100HzLowPa: 10.9,
+	lossModulus100HzHighPa: 34.3,
+	storageModulus100HzLowPa: 7.25,
+	storageModulus100HzHighPa: 32.7,
+	/**
+	* Highest protein level with NO statistically significant quality loss versus
+	* a conventional ice cream. Not a gate — the reference point the quality
+	* model measures degradation from.
+	*/
+	qualityPreservedMaxPercent: 6,
+	/** Lowest level at which the study measured significant structural and sensory loss. */
+	significantQualityLossFromPercent: 8,
+	source: "AFR_2022_WPI_CONCENTRATION"
+};
+/**
+* The protein window actually covered by controlled frozen-dessert evidence.
+* 4.5 % (IJFP 2025) … 10 % (AFR 2022 / LWT 2021), with JFS 2026 at 6 %.
+* Above `evidenceCeilingPercent` NO controlled dataset exists, so v2 keeps
+* formulating but flags the candidate as beyond-evidence and ranks it lower.
+*/
+const PROTEIN_EVIDENCE_WINDOW = {
+	authority: "QUALITY",
+	evidenceFloorPercent: 4.5,
+	evidenceCeilingPercent: 10,
+	sources: [
+		"IJFP_2025_WHEY_CASEIN_RATIO",
+		"JFS_2026_PROTEIN_SOURCE",
+		"AFR_2022_WPI_CONCENTRATION",
+		"LWT_2021_PROTEIN_EMULSIFIER"
+	]
+};
+/**
+* Fat window shared by every controlled fixture: 6 % (AFR buffalo milk) …
+* 13 % (IJFP 2025), with JFS 2026 and JDS 2005 at 12 %. A Protein candidate
+* outside this fat window, or outside the resulting protein:fat envelope, is
+* ADVISORY-flagged as beyond evidence. There is no controlled protein:fat
+* series, so no optimum is asserted and no score is deducted for it.
+*/
+const PROTEIN_FAT_EVIDENCE_ENVELOPE = {
+	authority: "ADVISORY",
+	fatFloorPercent: 6,
+	fatCeilingPercent: 13,
+	/** 4.5/13 rounded down … 10/6 rounded up, from the fixture set above. */
+	proteinToFatFloor: .34,
+	proteinToFatCeiling: 1.67,
+	sources: [
+		"IJFP_2025_WHEY_CASEIN_RATIO",
+		"JFS_2026_PROTEIN_SOURCE",
+		"AFR_2022_WPI_CONCENTRATION"
+	]
+};
+/**
+* The Protein profile disables the standard-gelato `lactose` and
+* `lactose_sanding` HARD gates by owner decision. v2 does NOT re-enable them.
+* It reuses the SAME already-approved sanding band as a QUALITY signal only, so
+* a protein source that drags a large lactose load into the mix (WPC 60 at
+* 28 % lactose) is ranked below one that does not (WPI-grade at ~1 %), without
+* any recipe becoming invalid.
+*
+* Band provenance: src/engine/config/targets.ts lactose_sandiness_risk 5-9 %,
+* unchanged. Mechanism: lactose crystallises out of the freeze-concentrated
+* serum phase during storage; stabiliser gums suppress nucleation.
+*/
+const PROTEIN_LACTOSE_QUALITY = {
+	authority: "QUALITY",
+	approvedSandingRiskMaxPercent: 9,
+	reusedFrom: "src/engine/config/targets.ts::lactose_sandiness_risk"
+};
+
+//#endregion
+//#region src/features/protein-gelato/proteinQualification.ts
+/**
+* PINGÜINO — Protein product qualification (Protein Engine v2, HARD authority).
+*
+* WHAT REPLACED WHAT
+* ------------------
+* v1 gated Protein Gelato on `target_protein_percent`, defaulting to 20 %
+* protein BY MASS of the mix, with a 0.1 pp tolerance. That number has no
+* provenance anywhere in the repository or in the frozen-dessert literature —
+* no controlled study goes above 10 % protein — and it is almost certainly a
+* unit confusion with the EU "HIGH PROTEIN" claim, which is 20 % of ENERGY.
+*
+* v2 keeps a hard qualification, because a product profile called "Protein"
+* must be able to carry the claim its name makes, but sources it correctly:
+*
+*   Regulation (EC) No 1924/2006, Annex:
+*     SOURCE OF PROTEIN — at least 12 % of the energy value from protein
+*     HIGH PROTEIN      — at least 20 % of the energy value from protein
+*
+* The user never selects this. It is not a target, it has no tolerance band,
+* and the optimizer does not try to exceed it — exceeding it costs measured
+* structure and buys nothing (see proteinStructureQuality.ts).
+*
+* RELAXATION PROOF (why this cannot invalidate an existing recipe): the energy
+* rule requires protein >= 0.5625 x fat + 0.25 x carbohydrate. Inside the
+* Protein profile's own fat band (5-12 %), a recipe at the old 20 %-by-mass
+* gate would need more than 35 % fat to fail the energy rule, which the profile
+* forbids. Every recipe legal under the old gate is legal under the new one.
+*/
+const NOT_APPLICABLE$1 = {
+	applicable: false,
+	actualPercent: null,
+	energySharePercent: null,
+	requiredPercent: null,
+	excessPp: null,
+	claim: "none",
+	qualified: false
+};
+/**
+* Minimum protein mass % that earns the claim for a given non-protein energy
+* load. Solving `4P / (4P + nonProteinKcal) = share` for P gives
+* `P = nonProteinKcal x share / (4 x (1 - share))`; at share = 0.20 that is
+* `nonProteinKcal / 16`.
+*/
+function requiredProteinPercentFor(nonProteinKcalPer100g, energySharePercent = PROTEIN_QUALIFICATION.highProteinEnergySharePercent) {
+	const share = energySharePercent / 100;
+	if (share <= 0) return 0;
+	if (share >= 1) return Number.POSITIVE_INFINITY;
+	return nonProteinKcalPer100g * share / (PROTEIN_QUALIFICATION.kcalPerProteinGram * (1 - share));
+}
+/**
+* Pure, deterministic. Reads only values the Base Engine already computes —
+* no new science, no new coefficient, no Mapper dependency.
+*/
+function assessProteinQualification(input, result = calculateRecipe(input)) {
+	if (input.category !== "protein_gelato") return NOT_APPLICABLE$1;
+	const nutrition = result.nutrition_per_100g;
 	const actualPercent = result.percentages.protein_percent;
-	const residualPp = actualPercent - targetPercent;
-	const absoluteResidualPp = Math.abs(residualPp);
-	const reached = absoluteResidualPp <= PROTEIN_GELATO_TARGET.tolerancePercent + 1e-9;
-	const hardSafe = hardSafeResult(result);
-	const score = hardSafe ? reached ? 10 : Math.max(1, 9 - Math.floor(Math.max(0, absoluteResidualPp - PROTEIN_GELATO_TARGET.tolerancePercent) / .5)) : Math.min(9, Math.max(1, Math.round((result.scores?.technical ?? 10) / 10)));
+	if (nutrition === null || !(nutrition.kcal > 0)) return {
+		applicable: true,
+		actualPercent,
+		energySharePercent: null,
+		requiredPercent: null,
+		excessPp: null,
+		claim: "none",
+		qualified: false
+	};
+	const proteinKcal = nutrition.protein_g * PROTEIN_QUALIFICATION.kcalPerProteinGram;
+	const energySharePercent = proteinKcal / nutrition.kcal * 100;
+	const requiredPercent = requiredProteinPercentFor(Math.max(0, nutrition.kcal - proteinKcal));
+	const claim = energySharePercent >= PROTEIN_QUALIFICATION.highProteinEnergySharePercent - 1e-9 ? "high_protein" : energySharePercent >= PROTEIN_QUALIFICATION.sourceOfProteinEnergySharePercent - 1e-9 ? "source_of_protein" : "none";
 	return {
 		applicable: true,
-		targetPercent,
 		actualPercent,
-		tolerancePercent: PROTEIN_GELATO_TARGET.tolerancePercent,
-		residualPp,
-		absoluteResidualPp,
-		reached,
+		energySharePercent,
+		requiredPercent,
+		excessPp: actualPercent - requiredPercent,
+		claim,
+		qualified: claim === "high_protein"
+	};
+}
+
+//#endregion
+//#region src/features/protein-gelato/proteinBehavior.ts
+/** Protein density below which a line is a flavour/base ingredient, not a protein source. */
+const PROTEIN_SOURCE_MIN_PERCENT = 10;
+/** Isolate-grade protein density (WPI/MPI conventionally sit at or above this). */
+const ISOLATE_MIN_PROTEIN_PERCENT = 88;
+/** Above this lactose density a "milk protein" powder is really a milk powder. */
+const MILK_POWDER_MIN_LACTOSE_PERCENT = 30;
+/** At or below this moisture the product is a powder, whatever its name says. */
+const POWDER_MAX_WATER_PERCENT = 15;
+/** Protein density that only a concentrated protein fraction reaches. */
+const CONCENTRATED_PROTEIN_MIN_PERCENT = 50;
+/** Skim/whole milk powders sit in this protein window. */
+const MILK_POWDER_MIN_PROTEIN_PERCENT = 20;
+/** Fat share separating whole milk powder from skimmed. */
+const WHOLE_MILK_POWDER_MIN_FAT_PERCENT = 15;
+/** Fluid dairy is a protein-relevant base from roughly milk strength upward. */
+const FLUID_DAIRY_MIN_PROTEIN_PERCENT = 2.5;
+const normalize = (value) => value.toLowerCase().replace(/[·•]/g, " ").replace(/[^a-z0-9%]+/g, " ").replace(/\s+/g, " ").trim();
+/**
+* Short acronyms ("wpc", "smp", "mpi") must match a WHOLE WORD — a substring
+* test would classify unrelated products by accident. Multi-word phrases are
+* matched as substrings of the normalised name.
+*/
+const hasAny = (haystack, needles) => {
+	const words = new Set(haystack.split(" "));
+	return needles.some((needle) => needle.includes(" ") ? haystack.includes(needle) : words.has(needle));
+};
+/** Name tokens per class. Order of evaluation is fixed and total. */
+const TOKENS = {
+	wpi: [
+		"whey protein isolate",
+		"wpi",
+		"izolat bialka serwatkowego",
+		"izolat serwatki"
+	],
+	wpc: [
+		"whey protein concentrate",
+		"wpc",
+		"koncentrat bialka serwatkowego"
+	],
+	mpc: [
+		"milk protein concentrate",
+		"mpc",
+		"milk protein isolate",
+		"mpi"
+	],
+	micellarCasein: [
+		"micellar casein",
+		"kazeina micelarna",
+		"micellar milk protein"
+	],
+	caseinate: [
+		"caseinate",
+		"kazeinian",
+		"sodium casein",
+		"calcium casein",
+		"casein"
+	],
+	skimMilkPowder: [
+		"skimmed milk powder",
+		"skim milk powder",
+		"smp",
+		"mleko w proszku odtluszczone"
+	],
+	milkPowder: [
+		"milk powder",
+		"whole milk powder",
+		"mleko w proszku"
+	],
+	fermented: [
+		"skyr",
+		"yoghurt",
+		"yogurt",
+		"jogurt",
+		"quark",
+		"twarog",
+		"kefir",
+		"fromage frais"
+	],
+	plant: [
+		"pea protein",
+		"rice protein",
+		"soy protein",
+		"soya protein",
+		"hemp protein",
+		"bialko grochu",
+		"bialko ryzu",
+		"bialko sojowe"
+	],
+	egg: [
+		"egg white",
+		"egg albumen",
+		"bialko jaja",
+		"dried egg"
+	],
+	fluidDairy: [
+		"milk 3",
+		"milk 1",
+		"cream",
+		"mleko",
+		"smietana",
+		"fluid milk"
+	]
+};
+/**
+* Deterministic classification. Explicit name evidence wins; where two protein
+* classes are named at once the product contradicts itself and is honestly
+* demoted to `mixed_dairy_protein` rather than guessed at.
+*/
+function classifySource(ingredient) {
+	const name = normalize(ingredient.name);
+	const composition = ingredient.composition;
+	const protein = composition.protein_percent;
+	const lactose = composition.lactose_percent;
+	const dairy = ingredient.flags?.is_dairy === true || ingredient.category === "dairy";
+	const namedWhey = hasAny(name, TOKENS.wpi) || hasAny(name, TOKENS.wpc);
+	const namedMilkProtein = hasAny(name, TOKENS.mpc);
+	if ([
+		namedWhey,
+		namedMilkProtein,
+		hasAny(name, TOKENS.micellarCasein) || hasAny(name, TOKENS.caseinate)
+	].filter(Boolean).length > 1) return {
+		sourceClass: "mixed_dairy_protein",
+		sourceEvidence: "DETERMINISTICALLY_INFERRED",
+		rationale: "product name asserts more than one dairy protein class; no single class is inferable without invention"
+	};
+	if (hasAny(name, TOKENS.wpi)) return {
+		sourceClass: "whey_protein_isolate",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states whey protein isolate"
+	};
+	if (hasAny(name, TOKENS.wpc)) return {
+		sourceClass: "whey_protein_concentrate",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states whey protein concentrate"
+	};
+	if (hasAny(name, TOKENS.micellarCasein)) return {
+		sourceClass: "micellar_casein",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states micellar casein"
+	};
+	if (hasAny(name, TOKENS.caseinate)) return {
+		sourceClass: "caseinate",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states a caseinate"
+	};
+	if (namedMilkProtein) {
+		if (lactose >= MILK_POWDER_MIN_LACTOSE_PERCENT) return {
+			sourceClass: "skim_milk_powder",
+			sourceEvidence: "DETERMINISTICALLY_INFERRED",
+			rationale: `named as milk protein but carries ${lactose.toFixed(1)} % lactose, which is milk-powder composition`
+		};
+		return {
+			sourceClass: "milk_protein_concentrate",
+			sourceEvidence: "EXPLICIT",
+			rationale: "product name states milk protein concentrate/isolate"
+		};
+	}
+	if (hasAny(name, TOKENS.plant)) return {
+		sourceClass: "plant_protein",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states a named plant protein"
+	};
+	if (hasAny(name, TOKENS.egg)) return {
+		sourceClass: "egg_protein",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states an egg protein"
+	};
+	if (hasAny(name, TOKENS.skimMilkPowder)) return {
+		sourceClass: "skim_milk_powder",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states skimmed milk powder"
+	};
+	if (hasAny(name, TOKENS.milkPowder)) return {
+		sourceClass: "milk_powder",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states a milk powder"
+	};
+	if (hasAny(name, TOKENS.fermented) && dairy) return {
+		sourceClass: "fermented_dairy",
+		sourceEvidence: "EXPLICIT",
+		rationale: "product name states a fermented dairy product"
+	};
+	if (ingredient.category === "egg" && protein >= PROTEIN_SOURCE_MIN_PERCENT) return {
+		sourceClass: "egg_protein",
+		sourceEvidence: "DETERMINISTICALLY_INFERRED",
+		rationale: "egg category with protein-source density"
+	};
+	if (dairy) {
+		const powder = composition.water_percent <= POWDER_MAX_WATER_PERCENT;
+		if (powder && protein >= CONCENTRATED_PROTEIN_MIN_PERCENT && lactose <= 10) return {
+			sourceClass: "mixed_dairy_protein",
+			sourceEvidence: "DETERMINISTICALLY_INFERRED",
+			rationale: `dry dairy protein fraction (${protein.toFixed(1)} % protein, ${lactose.toFixed(1)} % lactose) whose whey/casein fraction is not derivable from the available evidence`
+		};
+		if (powder && protein >= MILK_POWDER_MIN_PROTEIN_PERCENT && lactose >= MILK_POWDER_MIN_LACTOSE_PERCENT) return composition.fat_percent >= WHOLE_MILK_POWDER_MIN_FAT_PERCENT ? {
+			sourceClass: "milk_powder",
+			sourceEvidence: "DETERMINISTICALLY_INFERRED",
+			rationale: `dry milk matrix with ${composition.fat_percent.toFixed(1)} % fat — whole milk powder composition`
+		} : {
+			sourceClass: "skim_milk_powder",
+			sourceEvidence: "DETERMINISTICALLY_INFERRED",
+			rationale: `dry milk matrix with ${lactose.toFixed(1)} % lactose and ${composition.fat_percent.toFixed(1)} % fat — skimmed milk powder composition`
+		};
+		if (powder && protein >= PROTEIN_SOURCE_MIN_PERCENT) return {
+			sourceClass: "mixed_dairy_protein",
+			sourceEvidence: "DETERMINISTICALLY_INFERRED",
+			rationale: "dry dairy protein source without a derivable protein fraction"
+		};
+		if (!powder && protein >= FLUID_DAIRY_MIN_PROTEIN_PERCENT) return {
+			sourceClass: "fluid_dairy",
+			sourceEvidence: "DETERMINISTICALLY_INFERRED",
+			rationale: `fluid dairy base (${composition.water_percent.toFixed(1)} % water) carrying the native milk protein matrix`
+		};
+		if (protein >= PROTEIN_SOURCE_MIN_PERCENT) return {
+			sourceClass: "mixed_dairy_protein",
+			sourceEvidence: "DETERMINISTICALLY_INFERRED",
+			rationale: "verified dairy protein source without an explicit fraction in its name"
+		};
+	}
+	if (protein >= PROTEIN_SOURCE_MIN_PERCENT) return {
+		sourceClass: "unknown",
+		sourceEvidence: "UNKNOWN",
+		rationale: "protein-dense product with no derivable protein class — baseline behaviour applies"
+	};
+	return {
+		sourceClass: "unknown",
+		sourceEvidence: "UNKNOWN",
+		rationale: "not a protein source"
+	};
+}
+/**
+* Class-level whey:casein only. Bovine milk protein is approximately
+* 80 % casein / 20 % whey, so every product that retains the intact milk
+* protein matrix (MPC, milk powders, fluid and fermented dairy) inherits that
+* split by definition. Whey fractions are whey-only, caseinates and micellar
+* casein are casein-only. Anything else returns UNKNOWN rather than a number.
+*/
+function classifyWheyCasein(sourceClass) {
+	switch (sourceClass) {
+		case "whey_protein_isolate":
+		case "whey_protein_concentrate": return {
+			wheyCaseinClass: "whey_dominant",
+			wheyCaseinEvidence: "DETERMINISTICALLY_INFERRED",
+			caseinSharePercent: 0
+		};
+		case "micellar_casein":
+		case "caseinate": return {
+			wheyCaseinClass: "casein_dominant",
+			wheyCaseinEvidence: "DETERMINISTICALLY_INFERRED",
+			caseinSharePercent: 100
+		};
+		case "milk_protein_concentrate":
+		case "skim_milk_powder":
+		case "milk_powder":
+		case "fluid_dairy":
+		case "fermented_dairy": return {
+			wheyCaseinClass: "mixed_milk_protein",
+			wheyCaseinEvidence: "DETERMINISTICALLY_INFERRED",
+			caseinSharePercent: 80
+		};
+		default: return {
+			wheyCaseinClass: "unknown",
+			wheyCaseinEvidence: "UNKNOWN",
+			caseinSharePercent: null
+		};
+	}
+}
+function classifyForm(sourceClass, proteinPercent) {
+	switch (sourceClass) {
+		case "whey_protein_isolate": return "isolate";
+		case "whey_protein_concentrate": return proteinPercent >= ISOLATE_MIN_PROTEIN_PERCENT ? "isolate" : "concentrate";
+		case "milk_protein_concentrate":
+		case "micellar_casein":
+		case "caseinate": return proteinPercent >= ISOLATE_MIN_PROTEIN_PERCENT ? "isolate" : "concentrate";
+		case "skim_milk_powder":
+		case "milk_powder":
+		case "fluid_dairy":
+		case "fermented_dairy": return "whole_matrix";
+		case "plant_protein":
+		case "egg_protein": return proteinPercent >= ISOLATE_MIN_PROTEIN_PERCENT ? "isolate" : "concentrate";
+		default: return "unknown";
+	}
+}
+/** Pure, deterministic, non-mutating. Same ingredient in, same behaviour out. */
+function deriveProteinBehavior(ingredient) {
+	const composition = ingredient.composition;
+	const proteinPercent = composition.protein_percent;
+	const decision = classifySource(ingredient);
+	const wheyCasein = classifyWheyCasein(decision.sourceClass);
+	return {
+		sourceClass: decision.sourceClass,
+		sourceEvidence: decision.sourceEvidence,
+		wheyCaseinClass: wheyCasein.wheyCaseinClass,
+		wheyCaseinEvidence: wheyCasein.wheyCaseinEvidence,
+		caseinSharePercent: wheyCasein.caseinSharePercent,
+		form: classifyForm(decision.sourceClass, proteinPercent),
+		proteinPercent,
+		lactosePerProteinGram: proteinPercent > 0 ? composition.lactose_percent / proteinPercent : null,
+		fatPerProteinGram: proteinPercent > 0 ? composition.fat_percent / proteinPercent : null,
+		isProteinContributor: proteinPercent > 0,
+		rationale: decision.rationale
+	};
+}
+/**
+* Aggregate the derived behaviour of an executable recipe. Weighting is by
+* PROTEIN GRAMS DELIVERED, not by line mass — a 2 g line of isolate and a
+* 400 g line of milk are compared on what they actually contribute.
+*/
+function recipeProteinSourceProfile(items) {
+	const byClass = /* @__PURE__ */ new Map();
+	let totalProteinG = 0;
+	let unknownProteinG = 0;
+	let caseinWeightedG = 0;
+	let caseinKnownProteinG = 0;
+	for (const item of items) {
+		if (item.grams <= 0) continue;
+		const behavior = deriveProteinBehavior(item.ingredient);
+		const proteinG = item.grams * behavior.proteinPercent / 100;
+		if (proteinG <= 0) continue;
+		totalProteinG += proteinG;
+		byClass.set(behavior.sourceClass, (byClass.get(behavior.sourceClass) ?? 0) + proteinG);
+		if (behavior.sourceClass === "unknown") unknownProteinG += proteinG;
+		if (behavior.caseinSharePercent !== null) {
+			caseinWeightedG += proteinG * behavior.caseinSharePercent / 100;
+			caseinKnownProteinG += proteinG;
+		}
+	}
+	let dominantClass = null;
+	let dominantGrams = 0;
+	for (const key of [...byClass.keys()].sort()) {
+		const grams = byClass.get(key);
+		if (grams > dominantGrams + 1e-9) {
+			dominantGrams = grams;
+			dominantClass = key;
+		}
+	}
+	const caseinSharePercent = caseinKnownProteinG > 0 ? caseinWeightedG / caseinKnownProteinG * 100 : null;
+	const wheyCaseinClass = caseinSharePercent === null ? "unknown" : caseinSharePercent >= 65 ? "casein_dominant" : caseinSharePercent <= 35 ? "whey_dominant" : "mixed_milk_protein";
+	return {
+		classifiedProteinG: totalProteinG - unknownProteinG,
+		unknownProteinG,
+		totalProteinG,
+		dominantClass,
+		dominantShare: totalProteinG > 0 ? dominantGrams / totalProteinG * 100 : 0,
+		caseinSharePercent,
+		wheyCaseinClass,
+		fullyClassified: totalProteinG > 0 && unknownProteinG <= 1e-9,
+		byClass
+	};
+}
+
+//#endregion
+//#region src/features/protein-gelato/proteinStructureQuality.ts
+/**
+* PINGÜINO — Protein structural quality (Protein Engine v2, QUALITY authority).
+*
+* NOTHING IN THIS FILE CAN INVALIDATE A RECIPE. It produces a 1-10 structural
+* quality score, a set of Polish warnings and a deterministic tie-break signal.
+* Hard safety stays entirely with the unchanged Base Engine bands, and the only
+* Protein-specific hard rule stays in proteinQualification.ts.
+*
+* THE CENTRAL FINDING THIS LAYER ENCODES
+* --------------------------------------
+* Every controlled dataset points the same way: in a frozen dessert, protein
+* above what the product needs is structurally EXPENSIVE, never free.
+*
+*   AFR 2022, Table 1 (10 % fat, 15 % sugar, WPI, constant dasher speed):
+*     4 % protein -> overrun 94.9 %   hardness 13.60 N   melting 0.26 g/min
+*     6 % protein -> overrun 60.5 %                      melting 0.24 g/min
+*     8 % protein -> overrun 44.3 %                      melting 0.54 g/min
+*    10 % protein -> overrun 33.9 %   hardness 47.66 N   melting 0.74 g/min
+*
+*   The authors' own statistics: 6 % was NOT significantly different from the
+*   4 % control for hardness, body-and-texture or meltdown. 8 % and 10 % were
+*   significantly worse on all of them and also lost flavour score.
+*
+* There is no protein level in any of the cited work at which MORE protein made
+* a better frozen dessert. So the quality model never rewards protein. It
+* measures protein bought BEYOND the claim requirement and charges for it,
+* which is exactly the owner's product philosophy: the Engine should find the
+* best legal Protein recipe, not the highest possible protein number.
+*/
+const NOT_APPLICABLE = {
+	applicable: false,
+	score: null,
+	overrunProxyPercent: null,
+	penalties: {
+		proteinExcess: 0,
+		beyondEvidence: 0,
+		lactoseLoad: 0
+	},
+	beyondControlledEvidence: false,
+	sourceProfile: null,
+	warnings: []
+};
+/**
+* One quality point per this many percentage points of protein bought above the
+* claim requirement.
+*
+* PROVENANCE, not a preference: AFR 2022 measured its series in exactly 2 pp
+* steps (4 -> 6 -> 8 -> 10 %) and every step from 6 % upward produced a further
+* statistically significant loss of overrun and of sensory body-and-texture.
+* 2 pp is therefore the smallest protein increment the literature demonstrates
+* a real structural cost for.
+*/
+const PROTEIN_EXCESS_PENALTY_STEP_PP = 2;
+/** Ceiling on the excess penalty so a single dimension can never zero a score. */
+const MAX_EXCESS_PENALTY = 6;
+/** Flat charge for leaving the controlled-evidence window entirely. */
+const BEYOND_EVIDENCE_PENALTY = 1;
+/** Lactose above the approved sanding band, per this many pp, capped. */
+const LACTOSE_PENALTY_STEP_PP = 3;
+const MAX_LACTOSE_PENALTY = 2;
+/**
+* Overrun the AFR 2022 series measured at `proteinPercent`, by piecewise-linear
+* interpolation between the four measured points. Outside the measured range it
+* holds the end value rather than extrapolating a number nobody measured.
+*
+* PRESENTATION AND RANKING ONLY. This is one buffalo-milk WPI system on one
+* batch freezer; it is not a prediction of a Gellatti batch's overrun and is
+* never compared against a band.
+*/
+function overrunProxyAtProteinPercent(proteinPercent) {
+	const series = PROTEIN_CONCENTRATION_EVIDENCE.series;
+	const first = series[0];
+	const last = series[series.length - 1];
+	if (proteinPercent <= first.proteinPercent) return first.overrunPercent;
+	if (proteinPercent >= last.proteinPercent) return last.overrunPercent;
+	for (let index = 1; index < series.length; index += 1) {
+		const low = series[index - 1];
+		const high = series[index];
+		if (proteinPercent <= high.proteinPercent) {
+			const span = high.proteinPercent - low.proteinPercent;
+			const ratio = span === 0 ? 0 : (proteinPercent - low.proteinPercent) / span;
+			return low.overrunPercent + ratio * (high.overrunPercent - low.overrunPercent);
+		}
+	}
+	return last.overrunPercent;
+}
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+function assessProteinStructure(input, result = calculateRecipe(input), qualification = assessProteinQualification(input, result)) {
+	if (!qualification.applicable) return NOT_APPLICABLE;
+	const warnings = [];
+	const proteinPercent = result.percentages.protein_percent;
+	const fatPercent = result.percentages.fat_percent;
+	const lactosePercent = result.percentages.lactose_percent;
+	const sourceProfile = recipeProteinSourceProfile(result.items.map((item) => ({
+		ingredient: item.ingredient,
+		grams: item.effective_grams
+	})));
+	const excessPp = qualification.excessPp ?? 0;
+	const proteinExcess = clamp(Math.floor(Math.max(0, excessPp) / 2), 0, MAX_EXCESS_PENALTY);
+	if (proteinExcess > 0) warnings.push({
+		code: "protein_excess_over_claim",
+		scored: true,
+		messagePl: `Receptura ma ${proteinPercent.toFixed(1)}% białka, a do deklaracji „wysoka zawartość białka” wystarcza ${(qualification.requiredPercent ?? 0).toFixed(1)}%. Nadmiar ${excessPp.toFixed(1)} pp nie poprawia produktu — w badaniach obniża napowietrzenie i zwiększa twardość.`
+	});
+	const beyondControlledEvidence = proteinPercent > PROTEIN_EVIDENCE_WINDOW.evidenceCeilingPercent + 1e-9;
+	const beyondEvidence = beyondControlledEvidence ? BEYOND_EVIDENCE_PENALTY : 0;
+	if (beyondControlledEvidence) warnings.push({
+		code: "protein_beyond_controlled_evidence",
+		scored: true,
+		messagePl: `${proteinPercent.toFixed(1)}% białka wykracza poza wszystkie kontrolowane badania mrożonych deserów (maksimum ${PROTEIN_EVIDENCE_WINDOW.evidenceCeilingPercent}%). Zachowanie struktury w tym zakresie nie jest zweryfikowane.`
+	});
+	const lactoseOver = Math.max(0, lactosePercent - PROTEIN_LACTOSE_QUALITY.approvedSandingRiskMaxPercent);
+	const lactoseLoad = lactoseOver > 1e-9 ? clamp(1 + Math.floor(lactoseOver / LACTOSE_PENALTY_STEP_PP), 1, MAX_LACTOSE_PENALTY) : 0;
+	if (lactoseLoad > 0) warnings.push({
+		code: "lactose_load_over_approved_sanding_band",
+		scored: true,
+		messagePl: `Laktoza ${lactosePercent.toFixed(1)}% przekracza zatwierdzony zakres ryzyka piaszczystości (maks. ${PROTEIN_LACTOSE_QUALITY.approvedSandingRiskMaxPercent}%). Źródło białka wnosi dużo laktozy — źródło o wyższej czystości dostarczy to samo białko przy mniejszym ryzyku.`
+	});
+	if (fatPercent < PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent || fatPercent > PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent) warnings.push({
+		code: "fat_outside_evidence_envelope",
+		scored: false,
+		messagePl: `Tłuszcz ${fatPercent.toFixed(1)}% leży poza oknem ${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent}-${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent}%, w którym badano receptury wysokobiałkowe. Koperta fizyczna Engine pozostaje nadrzędna.`
+	});
+	const proteinToFat = fatPercent > 0 ? proteinPercent / fatPercent : null;
+	if (proteinToFat !== null && (proteinToFat < PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatFloor || proteinToFat > PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatCeiling)) warnings.push({
+		code: "protein_to_fat_outside_evidence_envelope",
+		scored: false,
+		messagePl: `Stosunek białko:tłuszcz ${proteinToFat.toFixed(2)} leży poza zakresem badanych receptur (${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatFloor}-${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatCeiling}). Brak kontrolowanej serii białko:tłuszcz, więc jest to wyłącznie informacja.`
+	});
+	if (sourceProfile.wheyCaseinClass === "whey_dominant" && proteinPercent > 6) warnings.push({
+		code: "whey_dominant_aeration_risk",
+		scored: false,
+		messagePl: "Białko pochodzi głównie z serwatki. Przy tym poziomie białka badania notują niższe napowietrzenie i twardszą strukturę niż dla białka kazeinowego."
+	});
+	if (sourceProfile.wheyCaseinClass === "casein_dominant" && proteinPercent > 6) warnings.push({
+		code: "casein_dominant_ice_coarsening_risk",
+		scored: false,
+		messagePl: "Białko pochodzi głównie z kazeiny. Badania notują lepsze napowietrzenie, ale grubsze kryształy lodu niż dla izolatu serwatkowego."
+	});
+	if (!sourceProfile.fullyClassified && sourceProfile.totalProteinG > 0) warnings.push({
+		code: "protein_source_class_unknown",
+		scored: false,
+		messagePl: "Część białka pochodzi ze źródła bez rozpoznanej klasy. Receptura pozostaje w pełni ważna — ocena strukturalna korzysta wtedy z zachowania bazowego."
+	});
+	return {
+		applicable: true,
+		score: clamp(10 - (proteinExcess + beyondEvidence + lactoseLoad), 1, 10),
+		overrunProxyPercent: overrunProxyAtProteinPercent(proteinPercent),
+		penalties: {
+			proteinExcess,
+			beyondEvidence,
+			lactoseLoad
+		},
+		beyondControlledEvidence,
+		sourceProfile,
+		warnings
+	};
+}
+
+//#endregion
+//#region src/features/protein-gelato/proteinAuthority.ts
+/**
+* PINGÜINO — Protein Engine v2 authority seam.
+*
+* OWNER DECISION IMPLEMENTED HERE (binding): the user never selects a protein
+* percentage. Protein % is an OUTPUT of the formulation. The Engine looks for
+* the best legal Protein recipe and reports what protein that recipe actually
+* contains.
+*
+* The optimizer objective changed accordingly:
+*
+*   v1  minimise |actual protein - 20 % by mass|   (no provenance, monotone
+*       "more protein is better" up to the target, score 10 only on the target)
+*
+*   v2  among hard-safe candidates that EARN the EU HIGH PROTEIN claim, take
+*       the one with the best measured structural quality; break ties toward
+*       LESS protein, because no controlled dataset shows more protein
+*       improving a frozen dessert.
+*
+* Nothing here changes Base Engine science. Every candidate is still validated
+* by the unchanged native Engine, Main and locks are never variables, and the
+* Mapper base is untouched.
+*/
+const hardSafeResult = (result) => detectViolations(result).length === 0 && !result.warnings.some((warning) => warning.severity === "critical");
+function assessProteinFormulation(input, result = calculateRecipe(input)) {
+	const qualification = assessProteinQualification(input, result);
+	const hardSafe = hardSafeResult(result);
+	if (!qualification.applicable) return {
+		applicable: false,
+		actualPercent: null,
+		qualification,
+		structure: assessProteinStructure(input, result, qualification),
+		hardSafe,
+		score: null
+	};
+	const structure = assessProteinStructure(input, result, qualification);
+	const score = !hardSafe ? Math.min(9, Math.max(1, Math.round((result.scores?.technical ?? 10) / 10))) : qualification.qualified ? structure.score ?? 10 : Math.min(5, structure.score ?? 5);
+	return {
+		applicable: true,
+		actualPercent: qualification.actualPercent,
+		qualification,
+		structure,
 		hardSafe,
 		score
 	};
 }
 /**
-* Canonical public score seam for a concrete RecipeInput. Non-Protein behavior
-* remains byte-for-byte the existing technical-fit adapter. Protein tightens
-* the 10/10 contract: native safety AND the persisted protein target are met.
+* Canonical public score seam for a concrete RecipeInput. Non-Protein behaviour
+* is byte-for-byte the existing technical-fit adapter.
+*
+* For Protein the score is the QUALITY of the formulation — never its protein
+* number. A recipe with more protein can, and routinely does, score lower.
 */
 function recipeFitForInput(input, result = calculateRecipe(input)) {
 	const base = recipeTechnicalFit(result);
 	const direction = assessRecipeDirection(input, result);
-	const target = assessProteinTarget(input, result);
+	const protein = assessProteinFormulation(input, result);
 	if (base.score === null) return base;
-	if (!target.applicable && direction.score === null) return base;
-	const score = Math.min(base.score, direction.score ?? 10, target.applicable && target.score !== null ? target.score : 10);
+	if (!protein.applicable && direction.score === null) return base;
+	const score = Math.min(base.score, direction.score ?? 10, protein.applicable && protein.score !== null ? protein.score : 10);
 	const label = MATCH_SCORE_LABELS[score];
 	const directionAria = direction.active ? ` Kierunek receptury: ${direction.reachedAxisCount} z ${direction.supportedAxisCount} obsługiwanych osi w celu.` : "";
-	const proteinAria = target.applicable ? ` Cel białka ${target.targetPercent?.toFixed(1)}%, wynik ${target.actualPercent?.toFixed(1)}%.` : "";
+	const proteinAria = protein.applicable ? ` Białko ${protein.actualPercent?.toFixed(1)}% masy, ${protein.qualification.energySharePercent?.toFixed(0)}% energii.` : "";
 	return {
 		...base,
 		score,
 		label,
 		display: `${score}/10`,
 		ariaText: `Dopasowanie receptury: ${score} na 10 — ${label}.${directionAria}${proteinAria}`,
-		validatedNative: base.validatedNative && (!target.applicable || target.reached)
+		validatedNative: base.validatedNative && (!protein.applicable || protein.qualification.qualified)
 	};
 }
 
@@ -5658,12 +6453,12 @@ function evaluateRecipeConstraintAuthority(input) {
 			messagePl: "Receptura przekracza zatwierdzoną kopertę profilu Wegańskiego."
 		});
 	}
-	const protein = assessProteinTarget(recipe, result);
-	if (protein.applicable && !protein.reached) issues.push({
+	const protein = assessProteinFormulation(recipe, result);
+	if (protein.applicable && !protein.qualification.qualified) issues.push({
 		source: "profile",
-		code: "protein_target_unmet",
+		code: "protein_claim_unmet",
 		lineIds: recipe.items.map((item) => item.id),
-		messagePl: `Profil Protein wymaga celu ${protein.targetPercent?.toFixed(1)}%; kandydat ma ${protein.actualPercent?.toFixed(1)}%.`
+		messagePl: `Profil Protein wymaga deklaracji „wysoka zawartość białka” (min. 20% energii z białka); kandydat ma ${protein.qualification.energySharePercent?.toFixed(0)}% energii z białka przy ${protein.actualPercent?.toFixed(1)}% białka w masie.`
 	});
 	const stabilizerSystem = assessGelatoStabilizerSystem(recipe);
 	const sorbetStabilizerSystem = assessSorbetStabilizerSystem(recipe);
