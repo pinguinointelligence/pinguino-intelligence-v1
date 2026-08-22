@@ -29,6 +29,7 @@ import {
 } from '@/engine';
 import type { ConstraintSet, IngredientConstraint } from '@/features/recipe-constraints';
 import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
+import { flavourHeldLineIds, isFlavourSensitiveRole } from './flavourMutationAuthority';
 import {
   assessGelatoStabilizerSystem,
   gelatoStabilizerSystemApplies,
@@ -580,6 +581,9 @@ export function buildFormulationProposal(
   // hard-role completeness is evaluated by the CALLER only after all of this.
   // A role is "missing" only if no approved, template-allowed, Engine-ready,
   // not-explicitly-excluded candidate exists.
+  // Flavour accents the optimizer has no authority to raise (owner P1-B).
+  const flavourHeld = flavourHeldLineIds(input);
+
   for (const roleTarget of template.roles) {
     const ownerInulinRole = roleTarget.toolboxId === 'inulin';
     const ownerStabilizerRole =
@@ -638,7 +642,29 @@ export function buildFormulationProposal(
     if (matches.length > 0) {
       const wholeShare = ownerStabilizerRole ? Math.floor(targetGrams / matches.length) : 0;
       const wholeRemainder = ownerStabilizerRole ? targetGrams % matches.length : 0;
+      // FLAVOUR MUTATION AUTHORITY (owner P1-B): a template role target is
+      // technological structure, never permission to inflate a secondary
+      // flavour accent to co-equal status. When one flavour role has several
+      // carriers, the accents keep exactly the grams the user supplied and only
+      // the primary carrier (Main, else the largest) absorbs the template
+      // target. Single-carrier roles are untouched, so accepted flows keep
+      // byte-identical behaviour.
+      const flavourRole = isFlavourSensitiveRole(roleTarget.role);
+      const heldFlavourMatches = flavourRole
+        ? matches.filter((candidate) => flavourHeld.has(candidate.item.id))
+        : [];
+      const flavourAuthorityApplies = heldFlavourMatches.length > 0;
+      const heldFlavourGrams = heldFlavourMatches.reduce(
+        (sum, candidate) => sum + candidate.item.planned_grams,
+        0,
+      );
+      const primaryFlavourCarriers = matches.length - heldFlavourMatches.length;
+      const primaryFlavourShare =
+        primaryFlavourCarriers > 0
+          ? Math.max(0, targetGrams - heldFlavourGrams) / primaryFlavourCarriers
+          : 0;
       for (const [matchIndex, match] of matches.entries()) {
+        const heldFlavourAccent = flavourAuthorityApplies && flavourHeld.has(match.item.id);
         const share =
           ownerInulinPolicyMatch && ownerInulinAlreadyValid
             ? match.item.planned_grams
@@ -646,7 +672,11 @@ export function buildFormulationProposal(
               ? match.item.planned_grams
               : ownerStabilizerRole
                 ? wholeShare + (matchIndex < wholeRemainder ? 1 : 0)
-                : targetGrams / matches.length;
+                : heldFlavourAccent
+                  ? match.item.planned_grams
+                  : flavourAuthorityApplies
+                    ? primaryFlavourShare
+                    : targetGrams / matches.length;
         mappedLineIds.add(match.item.id);
         const constraint = match.constraint;
         // Stabilizer windows are safety clamps, not an approved activity
@@ -701,7 +731,9 @@ export function buildFormulationProposal(
           planned.push({
             item: match.item,
             grams: share,
-            fixed: ownerStabilizerRole || !roleTarget.adjustable,
+            // A held flavour accent is fixed so the downstream proportional
+            // normalization cannot re-inflate it into the free envelope.
+            fixed: ownerStabilizerRole || !roleTarget.adjustable || heldFlavourAccent,
             min: ownerInulinPolicyMatch ? ownerInulinBand.minGrams : undefined,
             max: ownerInulinPolicyMatch ? ownerInulinBand.maxGrams : undefined,
           });

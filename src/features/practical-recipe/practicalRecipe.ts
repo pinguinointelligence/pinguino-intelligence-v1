@@ -420,6 +420,7 @@ function reconcileResidual(
   exactInput: RecipeInput,
   roundedInput: RecipeInput,
   set: ConstraintSet,
+  nonIncreasableLineIds: ReadonlySet<string>,
 ): { input: RecipeInput; adjustedLineIds: Set<string>; residualBefore: number } | null {
   const target = Math.round(exactInput.target_batch_grams);
   const residualBefore = target - totalPlanned(roundedInput);
@@ -429,11 +430,19 @@ function reconcileResidual(
 
   const direction = residualBefore > 0 ? 1 : -1;
   const unavailable = unavailableCanonicalIds(exactInput);
+  // FLAVOUR MUTATION AUTHORITY (owner P1-B): whole-gram reconciliation is a
+  // rounding device, not a licence to park missing batch mass in a flavour
+  // accent. A held accent may still give mass back (direction < 0); it may
+  // never be topped up to close the batch. The declaration is supplied by the
+  // product layer so this module stays dependency-free for the deployed
+  // Production Rescue Edge bundle.
+  const flavourHeld = nonIncreasableLineIds;
   const candidates = exactInput.items
     .map((item, index) => ({ item, index, practical: roundedInput.items[index]! }))
     .filter(({ item, practical }) => {
       if (item.actual_grams !== null || item.lock_type !== 'unlocked') return false;
       if (set.byLineId[item.id] !== undefined) return false;
+      if (direction > 0 && flavourHeld.has(item.id)) return false;
       if (item.percent_constraint !== undefined || item.grams_constraint !== undefined)
         return false;
       if (isTemplateControlledStabilizer(item.ingredient)) return false;
@@ -580,6 +589,13 @@ function repairIntroducedHardGate(
 export function practicalizeRecipeCandidate(
   exactInput: RecipeInput,
   set: ConstraintSet,
+  /**
+   * Owner P1-B: line ids the PRODUCT layer declares non-increasable (flavour
+   * accents). Supplied by the caller so this module keeps its reviewed
+   * Production Rescue Edge source closure unchanged. Absent → previous
+   * behaviour exactly.
+   */
+  nonIncreasableLineIds: ReadonlySet<string> = new Set(),
 ): PracticalRecipeResult {
   const exact = cloneInput(exactInput);
   const exactResult = calculateRecipe(exact);
@@ -699,7 +715,7 @@ export function practicalizeRecipeCandidate(
     );
   }
 
-  const reconciled = reconcileResidual(exact, withMain, set);
+  const reconciled = reconcileResidual(exact, withMain, set, nonIncreasableLineIds);
   if (reconciled === null) {
     return block(
       exact,

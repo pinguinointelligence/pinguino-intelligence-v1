@@ -56,6 +56,7 @@ import {
 } from '@/features/formulation/stabilizerDosage';
 import { HARD_ROLES } from '@/features/formulation/formulate';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
+import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
 import type { FormulationStrategy } from '@/features/formulation-strategy/strategy';
 
 /**
@@ -134,6 +135,7 @@ export function buildDraftCandidateVector(
     const role = resolveFunctionalRole(item.ingredient);
     return HARD_ROLES.has(role) && (hardRoleCarriers.get(role) ?? 0) <= 1;
   };
+  const flavourHeld = flavourHeldLineIds(input);
 
   for (const item of input.items) {
     if (item.lock_type !== 'unlocked') continue;
@@ -146,7 +148,13 @@ export function buildDraftCandidateVector(
     if (isTemplateControlledStabilizer(item.ingredient)) continue;
 
     // NEVER-REINTRODUCE: an excluded ingredient may shrink, never grow.
-    const increasable = !isToolboxCandidateExcluded(item.ingredient.id, excludedIngredientIds);
+    // FLAVOUR MUTATION AUTHORITY (owner P1-B): a secondary flavour accent may
+    // shrink, but nothing in the recipe authorises the optimizer to RAISE it —
+    // residual batch mass must never be parked in lemon juice, an extract or a
+    // liqueur just because the row happens to be unlocked.
+    const increasable =
+      !isToolboxCandidateExcluded(item.ingredient.id, excludedIngredientIds) &&
+      !flavourHeld.has(item.id);
     const current = item.planned_grams;
     const anchorGrams =
       item.user_intent_anchor_grams !== undefined &&

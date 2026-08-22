@@ -87,6 +87,7 @@ import {
   type FormulationRoleTraceRow,
 } from '@/features/formulation/formulate';
 import { resolveFunctionalRole, type FunctionalRole } from '@/features/formulation/ingredientRoles';
+import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
 import {
   isVerifiedRuntimeSubstitute,
   hasVerifiedMapperSubstitutionAuthorization,
@@ -1469,7 +1470,12 @@ const finishPreview = (
   // post-preview `nextConstraints` marks solver-owned lines as non-AI, which
   // would leave the ladder with no adjustable pair at all.
   proposedInput = refineProteinFormulation(baseInput, proposedInput, baseSet);
-  let practical = practicalizeRecipeCandidate(proposedInput, nextConstraints);
+  // Owner P1-B: whole-gram reconciliation may not top up a flavour accent.
+  let practical = practicalizeRecipeCandidate(
+    proposedInput,
+    nextConstraints,
+    flavourHeldLineIds(proposedInput),
+  );
   let executableInput = practical.ok ? practical.audit.executableInput : proposedInput;
   // Protein Engine v2 — the boundary defect this repair exists for.
   //
@@ -1488,7 +1494,11 @@ const finishPreview = (
     if (afterRounding < beforeRounding - 1e-9) {
       const repaired = refineProteinFormulation(baseInput, executableInput, baseSet);
       if (repaired !== executableInput) {
-        const repracticalized = practicalizeRecipeCandidate(repaired, nextConstraints);
+        const repracticalized = practicalizeRecipeCandidate(
+          repaired,
+          nextConstraints,
+          flavourHeldLineIds(repaired),
+        );
         const repairedExecutable = repracticalized.ok
           ? repracticalized.audit.executableInput
           : repaired;
@@ -2456,7 +2466,7 @@ export function projectManualIngredientTarget(
       : Math.max(minimumGrams, Math.min(batchMaximumGrams, certifiedMaximum));
 
   const assess = (candidate: RecipeInput, grams: number): RecipeInput | null => {
-    const practical = practicalizeRecipeCandidate(candidate, set);
+    const practical = practicalizeRecipeCandidate(candidate, set, flavourHeldLineIds(candidate));
     if (!practical.ok) return null;
     const executable = practical.audit.executableInput;
     const target = executable.items.find((item) => item.id === targetLine.id);
@@ -2704,7 +2714,7 @@ function maximizeMainFromStart(
   const excludedIngredientIds = new Set(options.excludedIngredientIds ?? []);
   let attempts = 0;
   const practicalScoreIfAdmissible = (candidate: RecipeInput): number | null => {
-    const practical = practicalizeRecipeCandidate(candidate, set);
+    const practical = practicalizeRecipeCandidate(candidate, set, flavourHeldLineIds(candidate));
     if (!practical.ok) return null;
     const executable = practical.audit.executableInput;
     const identity = verifyMainIngredientIdentity(identityInput, executable);
@@ -3187,7 +3197,7 @@ function maximizeMainTechnicalObjective(
     candidateSet: ConstraintSet,
     requestedMainGrams: number,
   ): MainTechnicalProbe => {
-    const practical = practicalizeRecipeCandidate(candidate, candidateSet);
+    const practical = practicalizeRecipeCandidate(candidate, candidateSet, flavourHeldLineIds(candidate));
     if (!practical.ok) {
       return {
         ok: false,
@@ -3742,7 +3752,7 @@ function maximizeMainFlavourObjective(
     ? primary
     : maximizeMainFromStart(identityInput, identityInput, set, options);
   const executableOutcome = (candidate: { input: RecipeInput }) => {
-    const practical = practicalizeRecipeCandidate(candidate.input, set);
+    const practical = practicalizeRecipeCandidate(candidate.input, set, flavourHeldLineIds(candidate.input));
     const input = practical.ok ? practical.audit.executableInput : candidate.input;
     const result = practical.ok ? practical.audit.executableResult : calculateRecipe(input);
     return {
@@ -3796,7 +3806,7 @@ function maximizeMainFlavourObjective(
     selected = advanced;
   }
 
-  const practicalSelected = practicalizeRecipeCandidate(selected.input, set);
+  const practicalSelected = practicalizeRecipeCandidate(selected.input, set, flavourHeldLineIds(selected.input));
   const selectedMains = captureMainIngredientIntent(identityInput);
   if (selected.proof && practicalSelected.ok && selectedMains.length > 0) {
     const selectedExecutable = practicalSelected.audit.executableInput;
@@ -3970,7 +3980,7 @@ function maximizeMainFlavourObjective(
       const directlyAccepted =
         identityInput.category === 'protein_gelato'
           ? candidates.flatMap(({ input: candidate }) => {
-              const practical = practicalizeRecipeCandidate(candidate, set);
+              const practical = practicalizeRecipeCandidate(candidate, set, flavourHeldLineIds(candidate));
               if (!practical.ok) return [];
               const executable = practical.audit.executableInput;
               const score = recipeFitForInput(executable, practical.audit.executableResult).score;
@@ -4049,7 +4059,7 @@ function maximizeMainFlavourObjective(
           baselineScore,
           options.productBehaviorSnapshots,
         ).working;
-        const practical = practicalizeRecipeCandidate(settledCandidate, set);
+        const practical = practicalizeRecipeCandidate(settledCandidate, set, flavourHeldLineIds(settledCandidate));
         if (!practical.ok) {
           recordRejection('batch_or_constraints');
           continue;
@@ -4308,7 +4318,7 @@ function bestHardSafeDirectionSegment(
     ) {
       return false;
     }
-    const practical = practicalizeRecipeCandidate(candidate, set);
+    const practical = practicalizeRecipeCandidate(candidate, set, flavourHeldLineIds(candidate));
     if (!practical.ok) return false;
     const executable = practical.audit.executableInput;
     return (
@@ -5659,7 +5669,7 @@ export function buildOptimizePreview(
       preview.diagnosticOnly = false;
       return mainSafePreview(input, preview, options.productBehaviorSnapshots);
     }
-    const practical = practicalizeRecipeCandidate(input, set);
+    const practical = practicalizeRecipeCandidate(input, set, flavourHeldLineIds(input));
     if (!practical.ok) {
       return {
         ok: false,
@@ -7003,7 +7013,7 @@ export class VerifiedApply {
             'Apply zablokowany: kandydat pełnych gramów nie odpowiada bieżącej recepturze.',
         };
       }
-      const rederived = practicalizeRecipeCandidate(audit.exactInput, verifiedNextConstraints);
+      const rederived = practicalizeRecipeCandidate(audit.exactInput, verifiedNextConstraints, flavourHeldLineIds(audit.exactInput));
       if (
         !rederived.ok ||
         JSON.stringify(rederived.audit.executableInput) !== JSON.stringify(preview.proposedInput) ||

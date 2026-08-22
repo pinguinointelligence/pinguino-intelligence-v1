@@ -32,6 +32,7 @@
  * respects the lock, because the engine solver never touches a non-'unlocked'
  * line. Unlocking restores 'unlocked' and returns the line to the solver.
  */
+import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
@@ -2405,7 +2406,7 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
   // Apply pipeline's practical-recipe audit. Recreate that authority only at
   // this server-validated seam and only when the physical whole-gram transform
   // proves that it would leave the current recipe byte-for-byte equivalent.
-  const practical = practicalizeRecipeCandidate(draft.input, draft.constraints);
+  const practical = practicalizeRecipeCandidate(draft.input, draft.constraints, flavourHeldLineIds(draft.input));
   if (
     !practical.ok ||
     practicalRecipeInputFingerprint(practical.audit.executableInput) !==

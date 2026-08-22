@@ -6679,7 +6679,7 @@ function mainIntegerCandidates(exactInput, rounded, set) {
 	visit(0);
 	return bestInput;
 }
-function reconcileResidual(exactInput, roundedInput, set) {
+function reconcileResidual(exactInput, roundedInput, set, nonIncreasableLineIds) {
 	const residualBefore = Math.round(exactInput.target_batch_grams) - totalPlanned(roundedInput);
 	if (Math.abs(residualBefore) <= INTEGER_EPSILON) return {
 		input: roundedInput,
@@ -6688,6 +6688,7 @@ function reconcileResidual(exactInput, roundedInput, set) {
 	};
 	const direction = residualBefore > 0 ? 1 : -1;
 	const unavailable = unavailableCanonicalIds(exactInput);
+	const flavourHeld = nonIncreasableLineIds;
 	const candidates = exactInput.items.map((item, index) => ({
 		item,
 		index,
@@ -6695,6 +6696,7 @@ function reconcileResidual(exactInput, roundedInput, set) {
 	})).filter(({ item, practical }) => {
 		if (item.actual_grams !== null || item.lock_type !== "unlocked") return false;
 		if (set.byLineId[item.id] !== void 0) return false;
+		if (direction > 0 && flavourHeld.has(item.id)) return false;
 		if (item.percent_constraint !== void 0 || item.grams_constraint !== void 0) return false;
 		if (isTemplateControlledStabilizer(item.ingredient)) return false;
 		if (unavailable.has(canonicalIngredientId(item.ingredient))) return false;
@@ -6797,7 +6799,7 @@ function repairIntroducedHardGate(exactInput, initial, set, exactHardMetrics) {
 * the frozen Engine is called before and after, and remains the sole source of
 * every scientific metric and hard-band verdict.
 */
-function practicalizeRecipeCandidate(exactInput, set) {
+function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /* @__PURE__ */ new Set()) {
 	const exact = cloneInput(exactInput);
 	const exactResult = calculateRecipe(exact);
 	const exactHardMetrics = classifyViolationBands(exact).hardMetrics;
@@ -6851,7 +6853,7 @@ function practicalizeRecipeCandidate(exactInput, set) {
 	}
 	const withMain = mainIntegerCandidates(exact, rounded, set);
 	if (withMain === null) return block(exact, exactResult, exactHardMetrics, "main_ratio_not_whole_gram_representable", exact.items.filter((item) => item.lock_type === "main").map((item) => item.id), "Proporcji składników Głównych nie da się zachować w pełnych gramach dla tej partii.", rounded);
-	const reconciled = reconcileResidual(exact, withMain, set);
+	const reconciled = reconcileResidual(exact, withMain, set, nonIncreasableLineIds);
 	if (reconciled === null) return block(exact, exactResult, exactHardMetrics, "batch_residual_unresolved", [], "Po zaokrągleniu pozostaje różnica partii, której nie można przypisać bez naruszenia blokad, Main, stabilizatora lub dostępności.", withMain);
 	let executable = reconciled.input;
 	const constraints = verifyConstraintsPreserved(set, executable);
