@@ -473,5 +473,57 @@ self-contained. If that branch is integrated first, the file merges without conf
 
 ---
 
-**NO MAPPER BASE CHANGE · NO STAGING PUSH · NO STAGING DEPLOY · NO PRODUCTION DEPLOY**
+**NO MAPPER BASE CHANGE · NO PRODUCTION DEPLOY**
 **NO VEGAN_VERIFIED PRODUCT BLOCKED DUE TO MISSING ENHANCED METADATA**
+
+---
+
+## Addendum — final landing on staging (2026-08-23)
+
+Vegan v2 was landed on the **actual current** staging head. Staging had advanced
+twice while this work was prepared (`8c55143` → `ec67843` → `b9c4b04`), so the
+landing was rebuilt from scratch against the real head rather than merging stale
+history.
+
+| Item | Value |
+| --- | --- |
+| Landing base | `origin/staging` **`b9c4b04597fecb219997bdf55297edb0d67fe4f0`** |
+| Landing branch / worktree | `claude/vegan-v2-landing` — `~/Developer/pinguino-intelligence-v1-vegan-v2-landing` |
+| Vegan source commits | `b3cca98` → **`f15b977`**, `8055ec2` → **`8fba8b0`** |
+| Patch equivalence | both **PATCH-IDENTICAL** to the source commits (`git patch-id --stable`) |
+| Conflicts | **NONE** |
+| Files changed vs `b9c4b04` | **24** |
+
+### Newer staging work preserved
+
+Eight commits landed on staging after this branch's original base: live
+current-recipe score (`d9fafd4`, `a7cc71f`, `fe64e40`) and INTIMPORT Mapper-first
++ targeted web enrichment (`5e088d2`, `ec67843`, `7230114`, `ddac4c1`, `b9c4b04`),
+including a new migration `20260822190000_intimport_enrichment_usage.sql` and a
+new `intimport-enrich` Edge function.
+
+`git diff --name-only b9c4b04..HEAD` contains **no** Sorbet, Gelato, Protein,
+Score, Live-Score, Monitor, Direction, Scanner or INTIMPORT file, nothing under
+`docs/ingredients/`, no migration and no Edge function source other than the
+regenerated Production Rescue bundle artifacts. The only Rescue file touched is
+`rescueIngredientAdvisor.ts` (the Vegan-only tie-break). Nothing was resolved
+"ours"/"theirs": there was nothing to resolve.
+
+### Re-verified against current staging data
+
+| Check | Result |
+| --- | --- |
+| VEGAN_VERIFIED / FALSE / UNKNOWN / CONFLICT | **1275 / 784 / 11 / 18** (recomputed, not hardcoded) |
+| FULL / PARTIAL / BASELINE_FALLBACK | **263 / 315 / 697** |
+| Blocked by unknown enhanced metadata | **0** |
+| Fat class known / protein class known / β-glucan | 49.0 % / 31.2 % / 0 |
+| Mapper rows / SHA-256 | 2088 / `b13f5db4…` — unchanged; 0 files under `docs/` changed |
+| Focused Vegan + Main/Multi-Main + Rescue + zero-gram + freezing + bands | **16 files / 222 PASS** |
+| Full suite | **582 files / 7337 PASS** |
+| typecheck / lint / build | 0 / 0 errors (2 pre-existing warnings) / 0 |
+| products:audit · mapper:runtime-audit · process:validate · catalog:mapper-only:validate | all exit 0 |
+| `production-rescue:bundle-check` | **verified `ca0d47f4…` — closure 53 files, 0 mismatched, no regeneration needed** |
+| `git diff --check` | clean |
+
+Production (`main`, `4dfb097`) was not touched, and no Edge function other than
+Production Rescue on the **staging** Supabase project was redeployed.
