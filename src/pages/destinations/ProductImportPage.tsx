@@ -19,6 +19,10 @@ import { useAuthStore } from '@/stores/authStore';
 import type { ProductIntakeResult, ProductIntakeSource } from '@/data/products/productTableParser';
 import type { IntimportResult } from '@/data/products/intimport';
 import {
+  runIntimportLocalIntelligence,
+  type IntimportLocalSummary,
+} from '@/features/product-intelligence/intimportIntelligence';
+import {
   canImport,
   canParse,
   DEFAULT_SOURCE,
@@ -31,6 +35,7 @@ import { runProductImport, type RunImportResult } from './runProductImport';
 import {
   ImportActionBar,
   ImportSummaryView,
+  IntimportLocalIntelligenceView,
   IntimportPreview,
   ParsePreview,
   SourceSelect,
@@ -50,12 +55,14 @@ export function ProductImportPage() {
   const [csvText, setCsvText] = useState('');
   const [result, setResult] = useState<ProductIntakeResult | null>(null);
   const [intimport, setIntimport] = useState<IntimportResult | null>(null);
+  const [localIntelligence, setLocalIntelligence] = useState<IntimportLocalSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const [importResult, setImportResult] = useState<RunImportResult | null>(null);
 
   const reset = () => {
     setResult(null);
     setIntimport(null);
+    setLocalIntelligence(null);
     setImportResult(null);
   };
 
@@ -72,8 +79,12 @@ export function ProductImportPage() {
       const parsed = parseIntimport(csvText);
       setIntimport(parsed);
       setResult(intimportToIntakeResult(parsed));
+      // Local, Mapper-first intelligence. Deterministic and free — it decides
+      // which products would ever justify an external call, before spending one.
+      setLocalIntelligence(runIntimportLocalIntelligence(parsed.candidates).summary);
     } else {
       setIntimport(null);
+      setLocalIntelligence(null);
       setResult(parseIntake(csvText, source));
     }
     setImportResult(null);
@@ -136,7 +147,12 @@ export function ProductImportPage() {
 
         <DestinationSection label={c.previewLabel}>
           {intimport ? (
-            <IntimportPreview result={intimport} />
+            <div className="space-y-10">
+              <IntimportPreview result={intimport} />
+              {localIntelligence ? (
+                <IntimportLocalIntelligenceView summary={localIntelligence} />
+              ) : null}
+            </div>
           ) : result ? (
             <ParsePreview result={result} />
           ) : (

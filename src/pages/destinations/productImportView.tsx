@@ -321,3 +321,70 @@ export function IntimportPreview({ result }: { result: IntimportResult }) {
     </div>
   );
 }
+
+/**
+ * INTIMPORT local-intelligence result (§15) — what Gellatti worked out from its
+ * own knowledge, BEFORE any external call. This is the screen the owner reads to
+ * decide whether to spend anything at all.
+ */
+export function IntimportLocalIntelligenceView({
+  summary,
+  onEnrich,
+  busy = false,
+  progress,
+}: {
+  summary: {
+    products: number;
+    existingExact: number;
+    readyLocalNoWeb: number;
+    webRecommended: number;
+    webRequired: number;
+    reviewRequired: number;
+    familyMatches: number;
+    estimatedMaxExternalCalls: number;
+  };
+  onEnrich?: () => void;
+  busy?: boolean;
+  progress?: { processed: number; total: number; callsUsed: number } | null;
+}) {
+  const needsWeb = summary.webRecommended + summary.webRequired;
+  return (
+    <div className="space-y-6" data-testid="intimport-local-intelligence">
+      <SectionLabel tone="ivory">Local intelligence result</SectionLabel>
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+        <CountStat label="Products" value={summary.products} />
+        <CountStat label="Existing exact" value={summary.existingExact} />
+        <CountStat label="Ready ≥90% — no web" value={summary.readyLocalNoWeb} />
+        <CountStat label="85–89.99% — web recommended" value={summary.webRecommended} />
+        <CountStat label="<85% — web required" value={summary.webRequired} />
+        <CountStat label="Review required" value={summary.reviewRequired} />
+        <CountStat label="Mapper family matches" value={summary.familyMatches} />
+        <CountStat label="Max external calls" value={summary.estimatedMaxExternalCalls} />
+      </div>
+
+      <p className="text-sm leading-relaxed text-ivory/60">
+        {summary.readyLocalNoWeb} product(s) already reach the no-web threshold and will be
+        skipped entirely. Enrichment would look at {needsWeb} product(s), only for the fields
+        that are actually missing.
+      </p>
+
+      {progress ? (
+        <p className="text-sm text-ivory/70" data-testid="intimport-enrichment-progress">
+          Enrichment {progress.processed} / {progress.total} · {progress.callsUsed} external call(s)
+        </p>
+      ) : null}
+
+      {onEnrich ? (
+        <button
+          type="button"
+          disabled={busy || needsWeb === 0}
+          onClick={onEnrich}
+          data-testid="intimport-enrich-action"
+          className={cn(buttonClasses('ivory', 'md'), (busy || needsWeb === 0) && 'opacity-50')}
+        >
+          {busy ? 'Wzbogacanie…' : 'Wzbogać i przygotuj import'}
+        </button>
+      ) : null}
+    </div>
+  );
+}
