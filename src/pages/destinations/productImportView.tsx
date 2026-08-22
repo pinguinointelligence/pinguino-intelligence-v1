@@ -332,6 +332,8 @@ export function IntimportLocalIntelligenceView({
   onEnrich,
   busy = false,
   progress,
+  runSummary = null,
+  error = null,
 }: {
   summary: {
     products: number;
@@ -346,6 +348,16 @@ export function IntimportLocalIntelligenceView({
   onEnrich?: () => void;
   busy?: boolean;
   progress?: { processed: number; total: number; callsUsed: number } | null;
+  runSummary?: {
+    webAttempted: number;
+    webSkippedHighConfidence: number;
+    cacheHits: number;
+    callsUsed: number;
+    capReached: boolean;
+    importEligible: number;
+    finalReviewRequired: number;
+  } | null;
+  error?: string | null;
 }) {
   const needsWeb = summary.webRecommended + summary.webRequired;
   return (
@@ -371,6 +383,31 @@ export function IntimportLocalIntelligenceView({
       {progress ? (
         <p className="text-sm text-ivory/70" data-testid="intimport-enrichment-progress">
           Enrichment {progress.processed} / {progress.total} · {progress.callsUsed} external call(s)
+        </p>
+      ) : null}
+
+      {runSummary ? (
+        <div className="space-y-2" data-testid="intimport-enrichment-result">
+          <SectionLabel tone="ivory">Internet research result</SectionLabel>
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            <CountStat label="Researched" value={runSummary.webAttempted} />
+            <CountStat label="Skipped ≥90%" value={runSummary.webSkippedHighConfidence} />
+            <CountStat label="Cache hits" value={runSummary.cacheHits} />
+            <CountStat label="External calls" value={runSummary.callsUsed} />
+            <CountStat label="Import eligible" value={runSummary.importEligible} />
+            <CountStat label="Needs review" value={runSummary.finalReviewRequired} />
+          </div>
+          {runSummary.capReached ? (
+            <p className="text-sm text-status-risky">
+              Osiągnięto limit wywołań importu — pozostałe produkty czekają na decyzję.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {error ? (
+        <p className="text-sm leading-relaxed text-status-risky" data-testid="intimport-enrichment-error">
+          {error}
         </p>
       ) : null}
 

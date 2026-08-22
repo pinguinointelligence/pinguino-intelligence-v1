@@ -21,11 +21,19 @@ import type { IntimportResult } from '@/data/products/intimport';
 import {
   runIntimportLocalIntelligence,
   type IntimportLocalSummary,
+  type IntimportProductIntelligence,
 } from '@/features/product-intelligence/intimportIntelligence';
+import {
+  runIntimportEnrichment,
+  type EnrichmentProgress,
+  type EnrichmentRunSummary,
+} from '@/features/product-intelligence/intimportEnrichment';
+import { createIntimportWebProvider } from '@/services/intimportEnrichment';
 import {
   canImport,
   canParse,
   DEFAULT_SOURCE,
+  errorMessage,
   intimportToIntakeResult,
   parseIntake,
   parseIntimport,
@@ -56,6 +64,11 @@ export function ProductImportPage() {
   const [result, setResult] = useState<ProductIntakeResult | null>(null);
   const [intimport, setIntimport] = useState<IntimportResult | null>(null);
   const [localIntelligence, setLocalIntelligence] = useState<IntimportLocalSummary | null>(null);
+  const [localRows, setLocalRows] = useState<IntimportProductIntelligence[]>([]);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState<EnrichmentProgress | null>(null);
+  const [enrichSummary, setEnrichSummary] = useState<EnrichmentRunSummary | null>(null);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [importResult, setImportResult] = useState<RunImportResult | null>(null);
 
@@ -63,6 +76,10 @@ export function ProductImportPage() {
     setResult(null);
     setIntimport(null);
     setLocalIntelligence(null);
+    setLocalRows([]);
+    setEnrichProgress(null);
+    setEnrichSummary(null);
+    setEnrichError(null);
     setImportResult(null);
   };
 
@@ -81,13 +98,58 @@ export function ProductImportPage() {
       setResult(intimportToIntakeResult(parsed));
       // Local, Mapper-first intelligence. Deterministic and free — it decides
       // which products would ever justify an external call, before spending one.
-      setLocalIntelligence(runIntimportLocalIntelligence(parsed.candidates).summary);
+      const analysed = runIntimportLocalIntelligence(parsed.candidates);
+      setLocalIntelligence(analysed.summary);
+      setLocalRows(analysed.rows);
     } else {
       setIntimport(null);
       setLocalIntelligence(null);
       setResult(parseIntake(csvText, source));
     }
     setImportResult(null);
+  };
+
+  /**
+   * Explicit owner action. Research starts only here — never from Parse — and
+   * only for products the local stage could not settle. Every ≥90 % product is
+   * skipped by the pipeline without a call.
+   */
+  const onEnrich = async () => {
+    if (localRows.length === 0) return;
+    setEnriching(true);
+    setEnrichError(null);
+    const importId = `intimport-${Date.now().toString(36)}`;
+    const identityByKey = new Map(
+      localRows.map((row) => [row.rowIndex, row.researchIdentity] as const),
+    );
+    try {
+      const outcome = await runIntimportEnrichment(
+        localRows.map((intelligence) => ({
+          intelligence,
+          barcode: intelligence.researchIdentity.barcode,
+        })),
+        createIntimportWebProvider({
+          importId,
+          identityFor: (request) =>
+            identityByKey.get(request.rowIndex) ?? {
+              brand: null,
+              manufacturer: null,
+              name: request.displayName,
+              variant: null,
+              barcode: request.barcode,
+              netQuantity: null,
+              knownSourceUrl: null,
+            },
+        }),
+        undefined,
+        setEnrichProgress,
+      );
+      setEnrichSummary(outcome.summary);
+    } catch (error) {
+      setEnrichError(errorMessage(error));
+    } finally {
+      setEnriching(false);
+    }
   };
 
   const onImport = async () => {
@@ -150,7 +212,24 @@ export function ProductImportPage() {
             <div className="space-y-10">
               <IntimportPreview result={intimport} />
               {localIntelligence ? (
-                <IntimportLocalIntelligenceView summary={localIntelligence} />
+                <IntimportLocalIntelligenceView
+                  summary={localIntelligence}
+                  onEnrich={() => {
+                    void onEnrich();
+                  }}
+                  busy={enriching}
+                  progress={
+                    enrichProgress
+                      ? {
+                          processed: enrichProgress.processed,
+                          total: enrichProgress.total,
+                          callsUsed: enrichProgress.callsUsed,
+                        }
+                      : null
+                  }
+                  runSummary={enrichSummary}
+                  error={enrichError}
+                />
               ) : null}
             </div>
           ) : result ? (

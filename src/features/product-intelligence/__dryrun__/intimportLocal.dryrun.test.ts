@@ -19,6 +19,11 @@ describe.runIf(existsSync(FILE))('INTIMPORT Phase A — local-only intelligence'
       else if (c >= 85) buckets['85-89.99'] += 1;
       else buckets['<85'] += 1;
     }
+    const authorities: Record<string, number> = {};
+    for (const row of rows) {
+      const k = row.sourceAuthority.authority;
+      authorities[k] = (authorities[k] ?? 0) + 1;
+    }
     const families: Record<string, number> = {};
     for (const row of rows) {
       if (!row.familyApplied || !row.family) continue;
@@ -35,6 +40,7 @@ describe.runIf(existsSync(FILE))('INTIMPORT Phase A — local-only intelligence'
             technical: rows.filter((r) => r.kind === 'technical').length,
             technicalBlocked: rows.filter((r) => r.assessment.technicalBlocked).length,
             familyBreakdown: families,
+            sourceAuthorities: authorities,
             confidenceMin: confidences[0],
             confidenceMedian: confidences[Math.floor(confidences.length / 2)],
             confidenceMax: confidences.at(-1),

@@ -42,7 +42,7 @@ const row = (overrides: Partial<Record<IntimportColumn, string>> = {}): Record<s
 /** A fully specified normal retail food — the shape that should skip the web. */
 const completeRow = (overrides: Partial<Record<IntimportColumn, string>> = {}) =>
   row({
-    Manufacturer: 'ACME Sp. z o.o.',
+    Manufacturer: 'Acmefoods Sp. z o.o.',
     'Variant Original': 'Wariant A',
     'Ingredients Original': 'Cukier, kakao.',
     Allergens: 'Może zawierać mleko.',
@@ -56,7 +56,8 @@ const completeRow = (overrides: Partial<Record<IntimportColumn, string>> = {}) =
     'Salt g': '0.2',
     'EAN / GTIN': '5902425088609',
     'Country of Origin': 'PL',
-    'Primary Source URL': 'https://example.test/p',
+    // Official manufacturer domain — this is what earns manufacturer tier (§9).
+    'Primary Source URL': 'https://acmefoods.com/produkty/testowy',
     'Product Status': 'complete',
     'Checked At': '2026-08-20',
     ...overrides,
@@ -366,13 +367,35 @@ describe('targeted enrichment pipeline', () => {
     expect(summary.webSkippedExisting).toBe(1);
   });
 
-  it('enriches a thin product and lifts it over the import floor', async () => {
+  it('materially raises confidence on a thin product', async () => {
     const call = provider();
     const rows = toEnrichmentRows([row()]);
     const { products, summary } = await runIntimportEnrichment(rows, call);
     expect(call).toHaveBeenCalledTimes(1);
     expect(summary.webAttempted).toBe(1);
-    expect(products[0]!.postWebConfidence).toBeGreaterThan(products[0]!.preWebConfidence);
+    expect(products[0]!.postWebConfidence).toBeGreaterThan(products[0]!.preWebConfidence + 40);
+    // Critical fields are now satisfied by manufacturer-grade research …
+    expect(products[0]!.assessment.criticalReadiness).toBe(true);
+    // … but a row whose OWN identity rests on no verifiable source still falls
+    // short of the floor. Research fills gaps; it does not launder provenance.
+    expect(products[0]!.postWebConfidence).toBeLessThan(AUTO_IMPORT_FLOOR);
+    expect(products[0]!.autoImportEligible).toBe(false);
+  });
+
+  it('lifts a properly sourced product over the import floor', async () => {
+    const call = provider();
+    // Same missing data, but the row cites its manufacturer's own domain.
+    const rows = toEnrichmentRows([
+      row({
+        Manufacturer: 'Acmefoods Sp. z o.o.',
+        'Primary Source URL': 'https://acmefoods.com/produkty/testowy',
+        'Country of Origin': 'PL',
+        'Variant Original': 'Wariant A',
+      }),
+    ]);
+    const { products } = await runIntimportEnrichment(rows, call);
+    expect(products[0]!.postWebConfidence).toBeGreaterThanOrEqual(AUTO_IMPORT_FLOOR);
+    expect(products[0]!.assessment.criticalReadiness).toBe(true);
     expect(products[0]!.autoImportEligible).toBe(true);
   });
 

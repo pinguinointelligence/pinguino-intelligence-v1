@@ -14,9 +14,10 @@ describe.runIf(existsSync(FILE))('INTIMPORT Phase B — controlled subset', () =
     const { rows } = runIntimportLocalIntelligence(parsed.candidates);
 
     // A representative controlled subset: 10 sub-90 rows + 5 that already clear 90.
+    const highConfidence = rows.filter((r) => r.assessment.confidence >= 90).slice(0, 5);
     const subset = [
       ...rows.filter((r) => r.assessment.confidence < 90).slice(0, 10),
-      ...rows.filter((r) => r.assessment.confidence >= 90).slice(0, 5),
+      ...highConfidence,
     ].map((intelligence) => ({ intelligence, barcode: null }));
 
     let providerCalls = 0;
@@ -58,8 +59,8 @@ describe.runIf(existsSync(FILE))('INTIMPORT Phase B — controlled subset', () =
           2,
         ),
     );
-    // The five ≥90 products must never have been researched.
-    expect(summary.webSkippedHighConfidence).toBe(5);
+    // Every ≥90 product in the subset must be skipped without a call.
+    expect(summary.webSkippedHighConfidence).toBe(highConfidence.length);
     expect(providerCalls).toBeLessThanOrEqual(10);
   });
 });

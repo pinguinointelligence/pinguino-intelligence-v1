@@ -37,6 +37,8 @@ export interface EnrichmentFact {
 export interface EnrichmentRequest {
   /** Stable identity for caching — validated GTIN when present, else identity key. */
   cacheKey: string;
+  /** The parsed row this request came from, so the caller can supply identity. */
+  rowIndex: number;
   displayName: string | null;
   brand: string | null;
   barcode: string | null;
@@ -240,8 +242,9 @@ export async function runIntimportEnrichment(
           cached ??
           (await provider({
             cacheKey: key,
+            rowIndex: intelligence.rowIndex,
             displayName: intelligence.displayName,
-            brand: intelligence.family ? null : null,
+            brand: intelligence.researchIdentity.brand,
             barcode: row.barcode,
             fields: intelligence.enrichmentTargets.slice(0, MAX_CALLS_PER_PRODUCT),
           }));
