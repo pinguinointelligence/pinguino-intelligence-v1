@@ -194,6 +194,7 @@ export function MonitorPanelContent({
       calculationState: 'CURRENT',
     });
     return {
+      input: frozenPreviewInput,
       result: previewResult,
       modules: buildProfessionalMonitorModules(
         previewResult,
@@ -246,7 +247,9 @@ export function MonitorPanelContent({
       {technicalViewAllowed ? (
         <MonitorLiveSummary
           result={frozenResult}
+          input={monitorInput}
           previewResult={previewProjection?.result}
+          previewInput={previewProjection?.input}
           onOpenProfile={onOpenProfile}
         >
           <ProfessionalMonitorModules

@@ -283,7 +283,10 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
       html.indexOf('data-testid="pro-review-zone"'),
     );
     expect(html).toContain('data-testid="workbench-intelligence-header"');
-    expect(html).toMatch(/\d{1,2}\/10/);
+    // Owner Score contract: the score is a bare numeral — no visible "/10".
+    // The Monitor carries its own live current-recipe score header.
+    expect(panel).toContain('data-testid="monitor-score-header"');
+    expect(panel).toMatch(/data-current-score="(\d{1,2}|no_data|awaiting_grams)"/);
     expect(panel).toContain('data-testid="monitor-direction-evidence"');
     expect(panel).not.toContain('data-testid="profile-direction-axes"');
     expect(panel).toContain('data-testid="monitor-module-freezing"');

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { RecipeResult } from '@/engine';
+import type { RecipeInput, RecipeResult } from '@/engine';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { profileSnapshotFromState } from './recipeProfilePersistence';
 import {
@@ -9,6 +9,8 @@ import {
 } from './recipeProfileStore';
 import { MonitorRangeScale } from './ProfessionalMonitorModules';
 import { buildMonitorScaleModel } from './monitorScaleModel';
+import { MonitorScoreHeader } from './MonitorScoreHeader';
+import { monitorScoreComparison } from './monitorLiveScore';
 
 const INTENT: Record<DirectionIntent, string> = {
   [-2]: 'zdecydowanie mniej',
@@ -23,17 +25,24 @@ const metric = (result: RecipeResult | null, key: 'pod' | 'npac') =>
 
 export function MonitorLiveSummary({
   result,
+  input,
   previewResult = null,
+  previewInput = null,
   onOpenProfile,
   children,
 }: {
   result: RecipeResult;
+  /** The recipe AS CURRENTLY WRITTEN — the live score is evaluated against it. */
+  input?: RecipeInput | null;
   previewResult?: RecipeResult | null;
+  /** The EXACT Preview candidate the proposed score is derived from. */
+  previewInput?: RecipeInput | null;
   onOpenProfile?: () => void;
   children?: ReactNode;
 }) {
   const recipe = useRecipeStore();
   const intents = useRecipeProfileStore((state) => state.directionIntents);
+  const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
   const currentSignature = profileSettingsSignature(
@@ -62,6 +71,10 @@ export function MonitorLiveSummary({
           <h2 className="text-base font-semibold text-ink">Monitor receptury</h2>
           <p className="mt-0.5 text-xs text-stone-600">Bieżący wynik dla wybranych ustawień.</p>
         </div>
+        <MonitorScoreHeader
+          comparison={monitorScoreComparison({ input, result, previewInput, previewResult })}
+          stale={awaitingRecalculation}
+        />
         <div
           className="divide-y divide-ink/8 overflow-hidden rounded-[14px] border border-ink/9 bg-white"
           data-testid="monitor-unified-block"

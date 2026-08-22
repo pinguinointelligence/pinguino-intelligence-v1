@@ -145,7 +145,8 @@ export function StudioEngineSurface({
         input: production.forecastInput,
       }
     : planning;
-  const scoreDisplay = monitorScoreView(planning.result, planning.input).match.display;
+  // Bare numeral only — the accepted Score contract shows no visible "/10".
+  const scoreDisplay = monitorScoreView(planning.result, planning.input).match.score ?? '—';
   const [mobileCockpitState, setMobileCockpitState] = useState({
     activeTab,
     open: activeTab !== 'profile',
