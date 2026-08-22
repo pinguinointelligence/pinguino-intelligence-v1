@@ -317,6 +317,36 @@ function protectionFor(
   return 'editable';
 }
 
+/**
+ * Owner zero-gram executable invariant (2026-08-22). A recipe line is
+ * "optional" when it is an unlocked Standard line with no physical mass, no
+ * gram/percent/range contract, no Main/required role and no template-controlled
+ * stabilizer contract (an unavailable/excluded Standard line counts as optional:
+ * driven to 0 g it is simply not used, and its exclusion record lives in the
+ * recipe goals, not in the row). When the Engine resolves such a line to exactly
+ * 0 g, the executable recipe OMITS the row: "not used" is the absence of the
+ * ingredient, never an explicit 0 g ingredient row. Every protected line keeps
+ * its contract (a 0 g contract line is an unfinished editor placeholder that
+ * the PI guard refuses before any candidate exists).
+ */
+export const isOmittableUnusedLine = (
+  input: RecipeInput,
+  set: ConstraintSet,
+  item: RecipeInput['items'][number],
+): boolean =>
+  item.actual_grams === null &&
+  item.lock_type === 'unlocked' &&
+  exactGramsLockFor(set, item) === null &&
+  percentFor(input, set, item) === null &&
+  rangeFor(set, item) === null &&
+  !isTemplateControlledStabilizer(item.ingredient);
+
+/** Line ids of optional lines that currently weigh exactly 0 g. */
+export const unusedZeroGramLineIds = (input: RecipeInput, set: ConstraintSet): string[] =>
+  input.items
+    .filter((item) => item.planned_grams === 0 && isOmittableUnusedLine(input, set, item))
+    .map((item) => item.id);
+
 function mainIntegerCandidates(
   exactInput: RecipeInput,
   rounded: RecipeInput,
@@ -818,16 +848,30 @@ export function practicalizeRecipeCandidate(
     );
   }
 
+  // Owner zero-gram executable invariant: optional lines the Engine resolved
+  // to exactly 0 g are OMITTED from the executable recipe. Every verdict above
+  // was computed with those rows weighing 0 g, so metrics, hard bands, locks,
+  // Main identity, stabilizer contracts and the batch total are unchanged —
+  // only the explicit 0 g rows disappear (absence ≠ explicit 0 g row).
+  const omittedLineIds = new Set(unusedZeroGramLineIds(executable, set));
+  const executableInput: RecipeInput =
+    omittedLineIds.size === 0
+      ? executable
+      : { ...executable, items: executable.items.filter((item) => !omittedLineIds.has(item.id)) };
+  const executableById = new Map(executable.items.map((item) => [item.id, item] as const));
+  const reconciledById = new Map(reconciled.input.items.map((item) => [item.id, item] as const));
+
   return {
     ok: true,
     audit: {
       modelVersion: PRACTICAL_RECIPE_MODEL_VERSION,
       exactInput: exact,
       exactResult,
-      executableInput: executable,
-      executableResult,
-      lines: exact.items.map((item, index) => {
-        const practical = executable.items[index]!.planned_grams;
+      executableInput,
+      executableResult:
+        omittedLineIds.size === 0 ? executableResult : calculateRecipe(executableInput),
+      lines: exact.items.map((item) => {
+        const practical = executableById.get(item.id)?.planned_grams ?? 0;
         return {
           lineId: item.id,
           ingredientName: item.ingredient.name,
@@ -836,7 +880,7 @@ export function practicalizeRecipeCandidate(
           deltaGrams: practical - item.planned_grams,
           residualAdjusted:
             reconciled.adjustedLineIds.has(item.id) ||
-            practical !== reconciled.input.items[index]!.planned_grams,
+            practical !== (reconciledById.get(item.id)?.planned_grams ?? 0),
           protection: protectionFor(exact, set, item),
         };
       }),

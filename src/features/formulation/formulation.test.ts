@@ -152,7 +152,9 @@ describe('Phase 15 — no-gram new recipe (tests 1/13/18)', () => {
     const result = buildOptimizePreview(input(NO_GRAM_GELATO(), 'milk_gelato', -12), NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(gramsOf(result.preview.proposedInput, 'l-inulin')).toBe(0);
+    // Owner zero-gram executable invariant: the unused optional Inulin is
+    // literally absent from the executable proposal (no explicit 0 g row).
+    expect(gramsOf(result.preview.proposedInput, 'l-inulin')).toBeUndefined();
     expect(
       result.preview.formulation?.recommendations.some(
         (recommendation) =>

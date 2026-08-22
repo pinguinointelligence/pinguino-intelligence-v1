@@ -273,10 +273,11 @@ describe('locks and exclusions bound the optimizer (tests 7–8)', () => {
 
     const result = buildOptimizePreview(rec, NO, AT, { excludedIngredientIds: ['inulin'] });
     if (result.ok) {
-      expect(Object.is(inulinGrams(result.preview.proposedInput), 0)).toBe(true);
+      // Owner zero-gram executable invariant: an unused (0 g) excluded line is
+      // OMITTED from the executable proposal — never raised, never a 0 g row.
       expect(
         result.preview.proposedInput.items.filter((i) => i.ingredient.id === 'inulin'),
-      ).toHaveLength(1);
+      ).toHaveLength(0);
     }
   });
 });
@@ -491,13 +492,15 @@ describe('owner fixtures A–F (complete fruit-gelato family, real pipeline runs
   it('A — Inulin 0 g unlocked: total exactly 1000 g, no silent template reset', () => {
     const preview = previewOf(buildOptimizePreview(draft(withInulin(0)), NO, AT));
     expect(Math.abs(plannedSum(preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
-    // The user's own identities survive — nothing was replaced wholesale.
+    // The user's own identities survive — nothing was replaced wholesale. The
+    // one 0 g optional row (unused Inulin) is OMITTED by the zero-gram
+    // executable invariant (absence, never an explicit 0 g row).
     for (const item of draft(withInulin(0)).items) {
-      expect(
-        preview.proposedInput.items.some((row) => row.id === item.id),
-        item.id,
-      ).toBe(true);
+      const present = preview.proposedInput.items.some((row) => row.id === item.id);
+      if (item.planned_grams > 0) expect(present, item.id).toBe(true);
+      else expect(present, `${item.id} must be omitted, never a 0 g row`).toBe(false);
     }
+    expect(preview.proposedInput.items.every((row) => row.planned_grams > 0)).toBe(true);
   });
 
   it('B — Inulin 10 g (955 g): evaluated, batch → exactly 1000 g, canonical score before/after', () => {
@@ -559,10 +562,11 @@ describe('owner fixtures A–F (complete fruit-gelato family, real pipeline runs
     const rec = draft(withInulin(0));
     const result = buildOptimizePreview(rec, NO, AT, { excludedIngredientIds: ['inulin'] });
     if (result.ok) {
-      expect(Object.is(inulinGrams(result.preview.proposedInput), 0)).toBe(true);
+      // Owner zero-gram executable invariant: "stays absent" is literal — the
+      // unused excluded line is omitted from the executable proposal.
       expect(
         result.preview.proposedInput.items.filter((i) => i.ingredient.id === 'inulin'),
-      ).toHaveLength(1);
+      ).toHaveLength(0);
       expect(Math.abs(plannedSum(result.preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     }
   });

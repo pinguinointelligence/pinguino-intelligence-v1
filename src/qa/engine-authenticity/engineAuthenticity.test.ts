@@ -661,11 +661,27 @@ describe('T20 — repeatability / anti-fixture', () => {
     // save the DRAFT and reload it through the real store action, then re-preview
     const savedDraft = buildRecipeInput(useRecipeStore.getState());
     useRecipeStore.getState().loadRecipeInput(savedDraft, { savedId: 'r-t20', savedName: 'T20' });
+    // Owner zero-gram executable invariant (2026-08-22): a SAVED version never
+    // reopens with the legacy explicit 0 g milk row ("not used" = absence), so
+    // the formulation supplies the milk as its own approved line. The Engine
+    // grams per ingredient are identical before and after the reload — no
+    // contamination — while the line id of that legacy row is legitimately gone.
+    expect(useRecipeStore.getState().items.some((item) => item.planned_grams === 0)).toBe(false);
     useConstraintStudioStore.getState().resetForTests();
     useConstraintStudioStore.getState().createOptimizePreview();
     const second = useConstraintStudioStore.getState().preview;
     expect(second).not.toBeNull();
-    expect(gramsSignature(second!.proposedInput)).toBe(beforeReload);
+    const ingredientSignature = (input: RecipeInput): string =>
+      JSON.stringify(
+        input.items
+          .map((item) => [item.ingredient.id, Math.round(item.planned_grams * 1e4) / 1e4])
+          .sort((left, right) => String(left[0]).localeCompare(String(right[0]))),
+      );
+    expect(ingredientSignature(second!.proposedInput)).toBe(
+      ingredientSignature(first!.proposedInput),
+    );
+    expect(second!.proposedInput.items.some((item) => item.planned_grams === 0)).toBe(false);
+    void beforeReload;
 
     // The store path agrees with the pure direct executable Preview
     // line-for-line. Authenticity pins intentionally retain the exact Engine

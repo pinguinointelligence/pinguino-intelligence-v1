@@ -182,28 +182,10 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > banana routes 
         "name": "BANANA · Puree",
       },
       {
-        "grams": 0,
-        "id": "PI-ING-001409",
-        "main": false,
-        "name": "Water",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001565",
-        "main": false,
-        "name": "OAT DRINK · Beverage · Chilled · BIO",
-      },
-      {
         "grams": 78,
         "id": "PI-ING-000163",
         "main": false,
         "name": "REFINED COCONUT OIL · Elstar Fats Coconut · Dry",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-000514",
-        "main": false,
-        "name": "Sucrose",
       },
       {
         "grams": 6,
@@ -240,18 +222,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > banana routes 
         "id": "PI-ING-001589",
         "main": true,
         "name": "BANANA · Puree",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001409",
-        "main": false,
-        "name": "Water",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001565",
-        "main": false,
-        "name": "OAT DRINK · Beverage · Chilled · BIO",
       },
       {
         "grams": 36,
@@ -300,18 +270,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > banana routes 
         "id": "PI-ING-001589",
         "main": true,
         "name": "BANANA · Puree",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001409",
-        "main": false,
-        "name": "Water",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001565",
-        "main": false,
-        "name": "OAT DRINK · Beverage · Chilled · BIO",
       },
       {
         "grams": 44,
@@ -447,18 +405,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > cocoa routes d
         "name": "Water",
       },
       {
-        "grams": 0,
-        "id": "PI-ING-001565",
-        "main": false,
-        "name": "OAT DRINK · Beverage · Chilled · BIO",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-000163",
-        "main": false,
-        "name": "REFINED COCONUT OIL · Elstar Fats Coconut · Dry",
-      },
-      {
         "grams": 85,
         "id": "PI-ING-000514",
         "main": false,
@@ -505,18 +451,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > cocoa routes d
         "id": "PI-ING-001409",
         "main": false,
         "name": "Water",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001565",
-        "main": false,
-        "name": "OAT DRINK · Beverage · Chilled · BIO",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-000163",
-        "main": false,
-        "name": "REFINED COCONUT OIL · Elstar Fats Coconut · Dry",
       },
       {
         "grams": 52,
@@ -571,12 +505,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > cocoa routes d
         "id": "PI-ING-001565",
         "main": false,
         "name": "OAT DRINK · Beverage · Chilled · BIO",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-000163",
-        "main": false,
-        "name": "REFINED COCONUT OIL · Elstar Fats Coconut · Dry",
       },
       {
         "grams": 30,
@@ -933,12 +861,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > pistachio rout
         "name": "OAT DRINK · Beverage · Chilled · BIO",
       },
       {
-        "grams": 0,
-        "id": "PI-ING-000163",
-        "main": false,
-        "name": "REFINED COCONUT OIL · Elstar Fats Coconut · Dry",
-      },
-      {
         "grams": 124,
         "id": "PI-ING-000514",
         "main": false,
@@ -991,12 +913,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > pistachio rout
         "id": "PI-ING-001565",
         "main": false,
         "name": "OAT DRINK · Beverage · Chilled · BIO",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-000163",
-        "main": false,
-        "name": "REFINED COCONUT OIL · Elstar Fats Coconut · Dry",
       },
       {
         "grams": 128,
@@ -1053,12 +969,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > pistachio rout
         "name": "OAT DRINK · Beverage · Chilled · BIO",
       },
       {
-        "grams": 0,
-        "id": "PI-ING-000163",
-        "main": false,
-        "name": "REFINED COCONUT OIL · Elstar Fats Coconut · Dry",
-      },
-      {
         "grams": 23,
         "id": "PI-ING-000514",
         "main": false,
@@ -1109,18 +1019,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > preserves the 
       "id": "PI-ING-001553",
       "main": true,
       "name": "STRAWBERRIES · Fresh Fruit",
-    },
-    {
-      "grams": 0,
-      "id": "PI-ING-001409",
-      "main": false,
-      "name": "Water",
-    },
-    {
-      "grams": 0,
-      "id": "PI-ING-001565",
-      "main": false,
-      "name": "OAT DRINK · Beverage · Chilled · BIO",
     },
     {
       "grams": 45,
@@ -1179,18 +1077,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > preserves the 
       "name": "STRAWBERRIES · Fresh Fruit",
     },
     {
-      "grams": 0,
-      "id": "PI-ING-001409",
-      "main": false,
-      "name": "Water",
-    },
-    {
-      "grams": 0,
-      "id": "PI-ING-001565",
-      "main": false,
-      "name": "OAT DRINK · Beverage · Chilled · BIO",
-    },
-    {
       "grams": 42,
       "id": "PI-ING-000163",
       "main": false,
@@ -1242,18 +1128,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > strawberry rou
         "name": "STRAWBERRIES · Fresh Fruit",
       },
       {
-        "grams": 0,
-        "id": "PI-ING-001409",
-        "main": false,
-        "name": "Water",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001565",
-        "main": false,
-        "name": "OAT DRINK · Beverage · Chilled · BIO",
-      },
-      {
         "grams": 44,
         "id": "PI-ING-000163",
         "main": false,
@@ -1302,18 +1176,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > strawberry rou
         "name": "STRAWBERRIES · Fresh Fruit",
       },
       {
-        "grams": 0,
-        "id": "PI-ING-001409",
-        "main": false,
-        "name": "Water",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001565",
-        "main": false,
-        "name": "OAT DRINK · Beverage · Chilled · BIO",
-      },
-      {
         "grams": 13,
         "id": "PI-ING-000163",
         "main": false,
@@ -1360,18 +1222,6 @@ exports[`Vegan Gelato Engine — real Mapper formulation matrix > strawberry rou
         "id": "PI-ING-001553",
         "main": true,
         "name": "STRAWBERRIES · Fresh Fruit",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001409",
-        "main": false,
-        "name": "Water",
-      },
-      {
-        "grams": 0,
-        "id": "PI-ING-001565",
-        "main": false,
-        "name": "OAT DRINK · Beverage · Chilled · BIO",
       },
       {
         "grams": 37,

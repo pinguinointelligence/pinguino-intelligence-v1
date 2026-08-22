@@ -51,6 +51,7 @@ import {
 import {
   readPracticalRecipeAudit,
   type PracticalRecipeSavedAudit,
+  unusedZeroGramLineIds,
 } from '@/features/practical-recipe/practicalRecipe';
 import {
   readRecipeCompositionMetadata,
@@ -1696,12 +1697,25 @@ export const useRecipeStore = create<RecipeState>()(
           : (useRecipeProfileStore.getState().defaultsFor(productDefaultsKey(visibleForDefaults)) ??
             useRecipeProfileStore.getState().defaultsFor(profileOwnerKey()));
         const profile = metadata ?? defaults;
-        const normalizedItems = input.items.map((item) => {
+        const healedItems = input.items.map((item) => {
           const normalized = normalizeRecipeItemIdentity({ ...item });
           return normalized.lock_type === 'grams' && normalized.planned_grams === 0
             ? { ...normalized, lock_type: 'unlocked' as const }
             : normalized;
         });
+        // Owner zero-gram executable invariant (2026-08-22): a SAVED version is a
+        // canonical executable state and must never reopen with an explicit 0 g
+        // optional row. Legacy versions persisted before the invariant may still
+        // carry one ("not used" written as 0 g); drop that row on reopen — the
+        // absence is the truth — and require a fresh recalculation so the
+        // practical audit is re-established. Unsaved drafts keep every 0 g row:
+        // there it is the temporary editor placeholder the PI guard handles.
+        const legacyUnusedLineIds = new Set(
+          savedRecipe
+            ? unusedZeroGramLineIds({ ...input, items: healedItems }, { byLineId: {} })
+            : [],
+        );
+        const normalizedItems = healedItems.filter((item) => !legacyUnusedLineIds.has(item.id));
         const legacyAdditionItems = normalizedItems.filter(
           (item) => metadata?.ingredientUxByLineId?.[item.id]?.role === 'addition',
         );
@@ -1767,7 +1781,13 @@ export const useRecipeStore = create<RecipeState>()(
             compositionMetadata?.baseOrder ?? normalizedItems.map((item) => item.id),
           ).map((item) => item.id),
           toppings: sortedToppings(loadedToppings),
-          productBehaviorSnapshots: structuredClone(compositionMetadata?.behaviorSnapshots ?? {}),
+          productBehaviorSnapshots: structuredClone(
+            Object.fromEntries(
+              Object.entries(compositionMetadata?.behaviorSnapshots ?? {}).filter(
+                ([lineId]) => !legacyUnusedLineIds.has(lineId),
+              ),
+            ),
+          ),
           ownerReviewGate: compositionMetadata?.ownerReviewGate
             ? structuredClone(compositionMetadata.ownerReviewGate)
             : null,
@@ -1801,6 +1821,9 @@ export const useRecipeStore = create<RecipeState>()(
         useRecipeProfileStore
           .getState()
           .openDraft(opened.draftContextSeq, opened.direction_targets, profile?.directionIntents);
+        if (legacyUnusedLineIds.size > 0) {
+          useRecipeProfileStore.getState().markRecalculationRequired();
+        }
       },
       markSaved: (
         id,

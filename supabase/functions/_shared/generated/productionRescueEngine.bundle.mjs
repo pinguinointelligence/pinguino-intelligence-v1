@@ -5785,6 +5785,21 @@ function protectionFor(input, set, item) {
 	if (set.byLineId[item.id]?.mode === "range") return "range";
 	return "editable";
 }
+/**
+* Owner zero-gram executable invariant (2026-08-22). A recipe line is
+* "optional" when it is an unlocked Standard line with no physical mass, no
+* gram/percent/range contract, no Main/required role and no template-controlled
+* stabilizer contract (an unavailable/excluded Standard line counts as optional:
+* driven to 0 g it is simply not used, and its exclusion record lives in the
+* recipe goals, not in the row). When the Engine resolves such a line to exactly
+* 0 g, the executable recipe OMITS the row: "not used" is the absence of the
+* ingredient, never an explicit 0 g ingredient row. Every protected line keeps
+* its contract (a 0 g contract line is an unfinished editor placeholder that
+* the PI guard refuses before any candidate exists).
+*/
+const isOmittableUnusedLine = (input, set, item) => item.actual_grams === null && item.lock_type === "unlocked" && exactGramsLockFor(set, item) === null && percentFor(input, set, item) === null && rangeFor(set, item) === null && !isTemplateControlledStabilizer(item.ingredient);
+/** Line ids of optional lines that currently weigh exactly 0 g. */
+const unusedZeroGramLineIds = (input, set) => input.items.filter((item) => item.planned_grams === 0 && isOmittableUnusedLine(input, set, item)).map((item) => item.id);
 function mainIntegerCandidates(exactInput, rounded, set) {
 	const mainIndexes = exactInput.items.map((item, index) => ({
 		item,
@@ -6048,23 +6063,30 @@ function practicalizeRecipeCandidate(exactInput, set) {
 	if (newHardMetrics.length > 0) return block(exact, exactResult, exactHardMetrics, "post_rounding_hard_gate", [], `Pełne gramy wprowadzają problem technologiczny: ${newHardMetrics.join(", ")}. PI nie zastosowało tej wersji.`, executable, executableHardMetrics);
 	const executableTotalGrams = totalPlanned(executable);
 	if (Math.abs(executableTotalGrams - exact.target_batch_grams) > INTEGER_EPSILON) return block(exact, exactResult, exactHardMetrics, "batch_residual_unresolved", [], "Suma pełnych gramów nie zgadza się z docelową partią.", executable, executableHardMetrics);
+	const omittedLineIds = new Set(unusedZeroGramLineIds(executable, set));
+	const executableInput = omittedLineIds.size === 0 ? executable : {
+		...executable,
+		items: executable.items.filter((item) => !omittedLineIds.has(item.id))
+	};
+	const executableById = new Map(executable.items.map((item) => [item.id, item]));
+	const reconciledById = new Map(reconciled.input.items.map((item) => [item.id, item]));
 	return {
 		ok: true,
 		audit: {
 			modelVersion: PRACTICAL_RECIPE_MODEL_VERSION,
 			exactInput: exact,
 			exactResult,
-			executableInput: executable,
-			executableResult,
-			lines: exact.items.map((item, index) => {
-				const practical = executable.items[index].planned_grams;
+			executableInput,
+			executableResult: omittedLineIds.size === 0 ? executableResult : calculateRecipe(executableInput),
+			lines: exact.items.map((item) => {
+				const practical = executableById.get(item.id)?.planned_grams ?? 0;
 				return {
 					lineId: item.id,
 					ingredientName: item.ingredient.name,
 					exactGrams: item.planned_grams,
 					practicalGrams: practical,
 					deltaGrams: practical - item.planned_grams,
-					residualAdjusted: reconciled.adjustedLineIds.has(item.id) || practical !== reconciled.input.items[index].planned_grams,
+					residualAdjusted: reconciled.adjustedLineIds.has(item.id) || practical !== (reconciledById.get(item.id)?.planned_grams ?? 0),
 					protection: protectionFor(exact, set, item)
 				};
 			}),

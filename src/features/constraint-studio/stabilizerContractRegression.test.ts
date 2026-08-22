@@ -250,12 +250,20 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
       }
 
       const proposed = result.preview.proposedInput;
-      const proposedInulin = gramsOf(proposed, OWNER_MAPPER_INGREDIENTS.inulin.id);
+      // Owner zero-gram executable invariant: an unused optional Inulin is
+      // OMITTED from the executable proposal (absence), never a 0 g row.
+      const proposedInulinLine = proposed.items.find(
+        (item) =>
+          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+          OWNER_MAPPER_INGREDIENTS.inulin.id,
+      );
+      const proposedInulin = proposedInulinLine?.planned_grams ?? 0;
       expect(assessProductDosages(proposed, snapshots)).toEqual([]);
       expect(assessGelatoStabilizerSystem(proposed).issues).toEqual([]);
       expect(detectViolations(calculateRecipe(proposed))).toEqual([]);
       expect(proposedInulin === 0 || (proposedInulin >= 20 && proposedInulin <= 80)).toBe(true);
-      if (inulinGrams === 0) expect(proposedInulin).toBe(0);
+      expect(proposed.items.every((item) => item.planned_grams > 0)).toBe(true);
+      if (inulinGrams === 0) expect(proposedInulinLine).toBeUndefined();
     },
   );
 

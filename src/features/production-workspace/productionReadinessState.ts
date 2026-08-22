@@ -5,6 +5,7 @@ import {
   practicalRecipeAuditMatchesInput,
   practicalRecipeInputFingerprint,
   type PracticalRecipeSavedAudit,
+  unusedZeroGramLineIds,
 } from '@/features/practical-recipe/practicalRecipe';
 
 export type ProductionRecipeLifecycleState =
@@ -59,15 +60,17 @@ export function productionRecipeLifecycleState(input: {
 }): ProductionRecipeLifecycleState {
   if (
     input.calculationStale ||
-    !practicalRecipeAuditMatchesInput(input.workingInput, input.practicalAudit)
+    !practicalRecipeAuditMatchesInput(input.workingInput, input.practicalAudit) ||
+    // Owner zero-gram executable invariant: an explicit 0 g optional row is
+    // never an executable recipe state — it must be recalculated (omitted) first.
+    unusedZeroGramLineIds(input.workingInput, { byLineId: {} }).length > 0
   ) {
     return 'TECHNICALLY_STALE';
   }
 
   const savedVersionMatches =
     input.savedVersionId !== null &&
-    (input.savedProductionFingerprint !== null &&
-    input.savedProductionFingerprint !== undefined
+    (input.savedProductionFingerprint !== null && input.savedProductionFingerprint !== undefined
       ? input.savedProductionFingerprint === input.currentProductionFingerprint
       : input.legacySavedStateClean === true);
 

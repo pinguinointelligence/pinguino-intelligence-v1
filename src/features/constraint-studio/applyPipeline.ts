@@ -161,6 +161,7 @@ import {
   type PracticalRecipeAudit,
   type PracticalRecipeResult,
   type PracticalRecipeSavedAudit,
+  isOmittableUnusedLine,
 } from '@/features/practical-recipe/practicalRecipe';
 import { mainTechnicalLinearUpperBound } from './mainTechnicalLinearBound';
 
@@ -6556,6 +6557,7 @@ function ingredientIdentityIntegrityViolations(
   current: RecipeInput,
   preview: ConstraintPreview,
   authorizedRemovalLineId?: string,
+  omittedUnusedLineIds: ReadonlySet<string> = new Set(),
 ): string[] {
   const proposedByLineId = new Map(preview.proposedInput.items.map((item) => [item.id, item]));
   const currentIds = new Set(current.items.map((item) => item.id));
@@ -6566,7 +6568,9 @@ function ingredientIdentityIntegrityViolations(
   for (const existing of current.items) {
     const proposed = proposedByLineId.get(existing.id);
     if (!proposed) {
-      if (existing.id === authorizedRemovalLineId) continue;
+      if (existing.id === authorizedRemovalLineId || omittedUnusedLineIds.has(existing.id)) {
+        continue;
+      }
       violations.push(existing.ingredient.name);
       continue;
     }
@@ -6839,10 +6843,33 @@ export class VerifiedApply {
         lineNames: invalidLineNames,
       };
     }
+    // Owner zero-gram executable invariant: an optional line the Engine
+    // resolved to 0 g is OMITTED from the executable recipe (practicalization
+    // never keeps an explicit 0 g optional row, and the Main frontier works on
+    // that executable vector). Such an absence is not a removal. The door
+    // accepts it ONLY for a CURRENT line that is an optional unlocked Standard
+    // line — no lock, role, physical mass or unavailability tombstone (the
+    // anchored-presence gate below still refuses any positively anchored line)
+    // — and only on a Preview whose whole-gram projection is rechecked below.
+    // Trust-wise this equals the 0 g proposal the door always accepted for
+    // exactly these lines; every protected line keeps the identity contract.
+    const proposedLineIds = new Set(preview.proposedInput.items.map((item) => item.id));
+    const omittedUnusedLineIds = new Set(
+      preview.practicalization?.status === 'ready'
+        ? current.items
+            .filter(
+              (item) =>
+                !proposedLineIds.has(item.id) &&
+                isOmittableUnusedLine(current, currentConstraints, item),
+            )
+            .map((item) => item.id)
+        : [],
+    );
     const identityViolations = ingredientIdentityIntegrityViolations(
       current,
       preview,
       authorizedRemovalLineId,
+      omittedUnusedLineIds,
     );
     if (identityViolations.length > 0) {
       return {
@@ -7843,6 +7870,19 @@ export class VerifiedApply {
       };
     }
 
+    // Omitted unused lines leave the executable recipe together with their
+    // product-behavior snapshot: the APPLIED authority set binds only to lines
+    // that still exist (Base lines of the proposal plus post-process toppings).
+    // Every verification above ran on the complete verified set.
+    const appliedProductBehaviorSnapshots: Record<string, ProductBehaviorSnapshot> =
+      omittedUnusedLineIds.size === 0
+        ? verifiedProductBehaviorSnapshots
+        : Object.fromEntries(
+            Object.entries(verifiedProductBehaviorSnapshots).filter(
+              ([lineId, snapshot]) =>
+                !omittedUnusedLineIds.has(lineId) || snapshot.processScope === 'POST_PROCESS_ADDON',
+            ),
+          );
     const record: AppliedChangeRecord = {
       id,
       at,
@@ -7868,7 +7908,7 @@ export class VerifiedApply {
         input: structuredClone(preview.proposedInput),
         constraints: verifiedNextConstraints,
         excludedIngredientIds: [...excludedIngredientIds],
-        productBehaviorSnapshots: structuredClone(verifiedProductBehaviorSnapshots),
+        productBehaviorSnapshots: structuredClone(appliedProductBehaviorSnapshots),
       },
       lines: preview.lines,
       explanation: preview.explanation,
@@ -7901,7 +7941,7 @@ export class VerifiedApply {
         structuredClone(preview.proposedInput),
         verifiedNextConstraints,
         record,
-        structuredClone(verifiedProductBehaviorSnapshots),
+        structuredClone(appliedProductBehaviorSnapshots),
       ),
     };
   }
