@@ -13,7 +13,8 @@ recorded here with the evidence that settled them.
 |---|---|
 | Starting `origin/staging` | `92edb67` |
 | Rebased twice during the task | `0ab80ed` (rescue advisor), `778fef8` (reports only) |
-| Final `origin/staging` | `4c38fd4` |
+| Last code commit | `4c38fd4` |
+| Final `origin/staging` | `5fb778d` and later — docs only after `4c38fd4` |
 | Production `main` | `4dfb097` — untouched, not merged, not deployed |
 | DB migration level at start | `20260822190000_intimport_enrichment_usage` |
 | Worktree | `~/Developer/pinguino-intelligence-v1-persistence`, branch `claude/persistence-scanner-v14` |
@@ -187,7 +188,12 @@ observed" never becomes „no allergens".
 
 Deployment `dpl_HqpcRnSRUXtqrP9cVZNuyfUcdAa2` (SHA `c4bb217`, bundle `index-DVuwoB0F.js`); the
 retry fix then deployed as `dpl_FCSKDRZxLGPJDN8Xt1wALb2GN5vm` (SHA `4c38fd4`, bundle
-`index-Cm1rtq4Z.js`, READY) — SQL + tests only, and the leak proof below was re-verified on it.
+`index-Cm1rtq4Z.js`, READY) — SQL + tests only.
+
+`4c38fd4` is the **last code commit**. The docs commits after it, plus a parallel Vegan docs commit
+`aef376e`, redeployed staging again, so what is serving **now** is
+`dpl_ingycYdEhoqZnvJHq69AaSxvYNt8` (SHA `5fb778d`, bundle `index-B9E3ROpG.js`, READY). No source
+changed after `4c38fd4`; the leak proof below was re-verified on `index-B9E3ROpG.js`.
 
 ### Recipe E2E — the owner's own recipe
 
@@ -238,7 +244,7 @@ POST identical (retry 2)                                        → 200  kind=id
 
 ### Raw-message leak
 
-`index-Cm1rtq4Z.js` (and `index-DVuwoB0F.js` before it) contains the string „non-2xx status code" exactly twice, and neither is
+`index-B9E3ROpG.js` (and `index-Cm1rtq4Z.js` / `index-DVuwoB0F.js` before it) contains the string „non-2xx status code" exactly twice, and neither is
 reachable as user copy:
 
 1. inside the vendor SDK's own `FunctionsHttpError` constructor;
