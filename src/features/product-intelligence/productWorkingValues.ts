@@ -17,11 +17,16 @@
  * Pure and deterministic: no DB, no network, no AI, no clock.
  */
 import { MAPPER_ENGINE_REQUIRED_FIELDS } from './mapperRuntimeUsability';
+import {
+  REQUIRED_COMPOSITION_FIELDS,
+  SUGAR_SPECTRUM_FIELDS,
+} from './engineFieldContract';
 import { validatePlausibility, type PlausibilityViolation } from './productPlausibility';
 import type { CardContribution } from './productSourceCard';
 import {
   CONSENSUS_BANDS,
   inferMapperValues,
+  residualSolidsEstimate,
   type MapperInferenceInput,
   type MapperInferenceTier,
   type MapperKnowledge,
@@ -58,14 +63,21 @@ export const ENGINE_COMPOSITION_FIELDS = [
   'salt_percent',
 ] as const satisfies readonly WorkingNumericField[];
 
-/** The sweetening/freezing pair. Optional to the Engine, but not free to omit. */
+/**
+ * The sweetening/freezing pair. The Engine DERIVES both when they are absent
+ * through its own sweetening and freezing paths, so they are not
+ * required of a commercial product — what readiness checks is that the
+ * derivation can actually resolve. See `sweetnessPathOf` below.
+ */
 export const ENGINE_POWER_FIELDS = ['pod_value', 'pac_value'] as const satisfies
   readonly WorkingNumericField[];
 
-/** Everything readiness is judged on. */
+/**
+ * Fields readiness reports on. Water and solids appear once each for reporting,
+ * but count as ONE unknown when the verdict is taken — they are complements.
+ */
 export const ENGINE_REQUIRED_WORKING_FIELDS: readonly WorkingNumericField[] = [
   ...ENGINE_COMPOSITION_FIELDS,
-  ...ENGINE_POWER_FIELDS,
 ];
 
 /** The Mapper's stricter curation standard, kept for comparison and reporting. */
@@ -150,6 +162,8 @@ export interface ProductWorkingValues {
   engineReady: boolean;
   /** Engine-required fields still holding no value. */
   missingEngineFields: WorkingNumericField[];
+  /** How POD/PAC can be resolved for this product — Engine-derived, not stored. */
+  sweetnessPath: SweetnessPath;
   /** Engine-required fields whose value is an estimate. */
   estimatedEngineFields: WorkingNumericField[];
   mapperTiersUsed: MapperInferenceTier[];
@@ -165,6 +179,76 @@ export interface ProductWorkingValues {
   contradictedByDeclaration: boolean;
   trace: string[];
 }
+
+export type SweetnessPathKind = 'stored' | 'sugar_spectrum' | 'trivially_zero' | 'unresolved';
+
+export interface SweetnessPath {
+  kind: SweetnessPathKind;
+  resolved: boolean;
+  reason: string;
+}
+
+/**
+ * How this product's sweetening and freezing power can be established.
+ *
+ * The Engine derives both from the typed sugar breakdown when they are not
+ * stored, so a commercial product need not carry them. But that fallback
+ * contributes ZERO for an unknown spectrum, so a sugary product with no spectrum
+ * would formulate as if its sugars did nothing — which is the case this refuses.
+ *
+ * No POD/PAC arithmetic happens here. This only reports whether the Engine's own
+ * calculation has what it needs.
+ */
+export function sweetnessPathOf(fields: ProductFieldTruthMap): SweetnessPath {
+  if (fields.pod_value.value !== null && fields.pac_value.value !== null) {
+    return { kind: 'stored', resolved: true, reason: 'produkt niesie POD i PAC' };
+  }
+  const sugars = fields.total_sugars_percent.value;
+  const alcohol = fields.alcohol_percent.value ?? 0;
+  const polyol = fields.polyol_percent.value ?? 0;
+  if (sugars === 0 && alcohol === 0 && polyol === 0) {
+    return {
+      kind: 'trivially_zero',
+      resolved: true,
+      reason: 'brak cukrow, alkoholu i polioli — obie moce sa dokladnie zerowe',
+    };
+  }
+  if (polyol > 0) {
+    // The Engine's typed breakdown contributes zero for polyols; their only
+    // correct path is a stored value or one of the five named polyols.
+    return {
+      kind: 'unresolved',
+      resolved: false,
+      reason: 'produkt zawiera poliole — Engine nie wyprowadzi dla nich POD/PAC bez wartosci zapisanej',
+    };
+  }
+  const spectrum = SUGAR_SPECTRUM_FIELDS.map(
+    (field) => (fields as Record<string, { value: number | null } | undefined>)[field]?.value ?? null,
+  ).filter((entry): entry is number => entry !== null);
+  if (sugars !== null && spectrum.length > 0) {
+    const named = spectrum.reduce((total, entry) => total + entry, 0);
+    if (named >= sugars - SUGAR_SPECTRUM_TOLERANCE) {
+      return {
+        kind: 'sugar_spectrum',
+        resolved: true,
+        reason: `widmo cukrow pokrywa ${named.toFixed(1)} z ${sugars.toFixed(1)} g`,
+      };
+    }
+    return {
+      kind: 'unresolved',
+      resolved: false,
+      reason: `widmo cukrow pokrywa tylko ${named.toFixed(1)} z ${sugars.toFixed(1)} g`,
+    };
+  }
+  return {
+    kind: 'unresolved',
+    resolved: false,
+    reason: 'produkt ma cukry, ale ich rodzaj jest nieznany — Engine policzylby zero',
+  };
+}
+
+/** How much of the declared sugars may stay unattributed and still resolve. */
+export const SUGAR_SPECTRUM_TOLERANCE = 0.5;
 
 const numeric = (value: number | null | undefined): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
@@ -227,6 +311,50 @@ export function resolveProductWorkingValues(
   /* 4. arithmetic closure over what is now known */
   fields = closeArithmetic(fields, trace);
 
+  /* 4b. solids from THIS product's own macros plus the cohort's unnamed residual */
+  if (
+    fields.total_solids_percent.value === null &&
+    fields.water_percent.value === null &&
+    inference.bestCohort
+  ) {
+    const named = (['fat_percent', 'protein_percent', 'carbohydrate_percent', 'fiber_percent',
+      'salt_percent'] as const).map((field) => fields[field].value);
+    // Only when the three that dominate dry matter are actually known.
+    if (named[0] !== null && named[1] !== null && named[2] !== null) {
+      const namedSolids = named.reduce((total, entry) => total + (entry ?? 0), 0);
+      const estimate = residualSolidsEstimate(
+        inference.bestCohort.rows,
+        namedSolids,
+        inference.bestCohort.minCohort,
+      );
+      if (estimate) {
+        const weakest = (['fat_percent', 'protein_percent', 'carbohydrate_percent'] as const).reduce(
+          (min, field) => Math.min(min, fields[field].provenance.confidence),
+          1,
+        );
+        fields = applyFieldTruth(
+          fields,
+          'total_solids_percent',
+          knownField({
+            value: estimate.totalSolids,
+            state: 'ESTIMATED',
+            // Never stronger than the macros it was built from, and discounted
+            // again for the residual the cohort had to supply.
+            confidence: round4(weakest * 0.97),
+            basis: 'mapper_similar_profile',
+            mapperReferences: estimate.contributors,
+            mapperFingerprint: knowledge.fingerprint,
+            note: `sucha masa = makroskladniki ${round4(namedSolids)} + reszta niewymieniona ${estimate.residual} (${inference.bestCohort.label})`,
+          }),
+        );
+        trace.push(
+          `residual_solids: ${estimate.totalSolids} = ${round4(namedSolids)} + ${estimate.residual}`,
+        );
+        fields = closeArithmetic(fields, trace);
+      }
+    }
+  }
+
   /* 5. reject whatever the assembled product cannot jointly be */
   const plausibility = validatePlausibility(fields);
   fields = plausibility.fields;
@@ -245,24 +373,43 @@ export function resolveProductWorkingValues(
   /* 6. record where the Mapper disagrees with the declaration, without acting on it */
   const conflicts = declaredConflicts(input.declared, inference.fields);
 
+  // Water and solids are one degree of freedom: `closeArithmetic` has already
+  // completed whichever was missing, so a product still lacking both counts as a
+  // single gap rather than two.
+  const massBalanceKnown =
+    fields.water_percent.value !== null || fields.total_solids_percent.value !== null;
   const missingEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(
     (field) => fields[field].value === null,
   );
+  const missingRequired = [
+    ...REQUIRED_COMPOSITION_FIELDS.filter((field) => fields[field].value === null),
+    ...(massBalanceKnown ? [] : (['water_percent'] as const)),
+  ];
+  const power = sweetnessPathOf(fields);
   const estimatedEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(
     (field) => fields[field].provenance.state === 'ESTIMATED',
   );
+  // Confidence over the fields the verdict actually depends on. Water and solids
+  // contribute once — penalising both would charge twice for one unknown.
+  const confidenceFields: WorkingNumericField[] = [
+    ...REQUIRED_COMPOSITION_FIELDS,
+    ...(fields.water_percent.value !== null
+      ? (['water_percent'] as const)
+      : (['total_solids_percent'] as const)),
+  ];
   const engineConfidence =
-    missingEngineFields.length > 0
+    missingRequired.length > 0
       ? null
       : round4(
-          ENGINE_REQUIRED_WORKING_FIELDS.reduce(
+          confidenceFields.reduce(
             (min, field) => Math.min(min, fields[field].provenance.confidence),
             1,
           ),
         );
 
   const valueReadiness = decideValueReadiness({
-    missing: missingEngineFields.length,
+    missing: missingRequired.length,
+    powerResolved: power.resolved,
     estimated: estimatedEngineFields.length,
     engineConfidence,
     // A product whose own declared values contradict each other is not ready,
@@ -294,6 +441,7 @@ export function resolveProductWorkingValues(
     // USED is `readiness`, which additionally honours the technical gate.
     engineReady: valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY',
     missingEngineFields,
+    sweetnessPath: power,
     estimatedEngineFields,
     mapperTiersUsed: inference.tiersUsed,
     mapperReferences,
@@ -345,7 +493,10 @@ function closeArithmetic(fields: ProductFieldTruthMap, trace: string[]): Product
   // must be known: vodka has no sugar and a very large PAC.
   const sugars = next.total_sugars_percent;
   const alcohol = next.alcohol_percent;
-  if (sugars.value === 0 && alcohol.value === 0) {
+  const polyols = next.polyol_percent;
+  // Polyols must be zero too: the Engine's typed breakdown contributes nothing
+  // for them, so a polyol-bearing product's powers are emphatically NOT zero.
+  if (sugars.value === 0 && alcohol.value === 0 && polyols.value === 0) {
     for (const field of ['pod_value', 'pac_value'] as const) {
       if (next[field].value !== null) continue;
       next = applyFieldTruth(
@@ -366,47 +517,18 @@ function closeArithmetic(fields: ProductFieldTruthMap, trace: string[]): Product
             ]),
           ],
           mapperFingerprint: sugars.provenance.mapperFingerprint,
-          note: 'brak cukrow i alkoholu → moc slodzaca i zamrazajaca rowna zero',
+          note: 'brak cukrow, alkoholu i polioli → moc slodzaca i zamrazajaca rowna zero',
         }),
       );
       trace.push(`derived: ${field} = 0 (brak cukrow i alkoholu)`);
     }
   }
 
-  if (next.kcal_per_100g.value === null) {
-    const fat = next.fat_percent;
-    const protein = next.protein_percent;
-    const carbohydrate = next.carbohydrate_percent;
-    if (fat.value !== null && protein.value !== null && carbohydrate.value !== null) {
-      const fibre = next.fiber_percent.value ?? 0;
-      const contributors = [fat, protein, carbohydrate];
-      const kcal = round4(
-        9 * fat.value + 4 * protein.value + 4 * carbohydrate.value + 2 * fibre,
-      );
-      next = applyFieldTruth(
-        next,
-        'kcal_per_100g',
-        knownField({
-          value: kcal,
-          state: contributors.every((truth) => truth.provenance.state === 'VERIFIED')
-            ? 'VERIFIED'
-            : 'ESTIMATED',
-          // Atwater is a convention rather than a measurement, so the derived
-          // energy is deliberately never stronger than its weakest input.
-          confidence: round4(
-            0.95 * contributors.reduce((min, truth) => Math.min(min, truth.provenance.confidence), 1),
-          ),
-          basis: 'derived',
-          mapperReferences: [
-            ...new Set(contributors.flatMap((truth) => truth.provenance.mapperReferences)),
-          ],
-          mapperFingerprint: fat.provenance.mapperFingerprint,
-          note: 'Atwater: 9·tluszcz + 4·bialko + 4·weglowodany + 2·blonnik',
-        }),
-      );
-      trace.push('derived: kcal_per_100g z makroskladnikow (Atwater)');
-    }
-  }
+  // Energy is NOT derived here. `nutrition.ts` owns the Atwater convention —
+  // including charging polyols at 2.4 against carbohydrate-minus-polyol — and a
+  // second copy in this layer would disagree with the Engine on any
+  // polyol-bearing product. kcal is `derived_by_engine` in the field contract,
+  // so a missing value is not a gap to fill; the Engine computes it.
 
   return next;
 }
@@ -446,12 +568,15 @@ const CONSENSUS_TOLERANCE: Readonly<Record<WorkingNumericField, number>> = Objec
 
 function decideValueReadiness(input: {
   missing: number;
+  powerResolved: boolean;
   estimated: number;
   engineConfidence: number | null;
   selfContradictory: boolean;
 }): ValueReadiness {
   if (input.selfContradictory) return 'REVIEW';
   if (input.missing > 0 || input.engineConfidence === null) return 'REVIEW';
+  // Sugars of an unknown kind would formulate as if they did nothing.
+  if (!input.powerResolved) return 'REVIEW';
   if (input.estimated === 0) return 'READY';
   return input.engineConfidence >= ESTIMATED_READY_FLOOR ? 'ESTIMATED_READY' : 'REVIEW';
 }

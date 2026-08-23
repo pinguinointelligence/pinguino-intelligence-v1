@@ -33,6 +33,7 @@ export type PlausibilityRuleId =
   | 'range'
   | 'water_solids_balance'
   | 'sugars_within_carbohydrate'
+  | 'sugar_spectrum_within_total'
   | 'components_within_solids'
   | 'energy_matches_macros';
 
@@ -163,7 +164,30 @@ export function validatePlausibility(input: ProductFieldTruthMap): PlausibilityO
     );
   }
 
-  /* 4. the named components must fit inside the dry matter */
+  /* 4. the named sugars must fit inside the declared total sugars */
+  const namedSugarFields = [
+    'sucrose_percent',
+    'dextrose_percent',
+    'glucose_percent',
+    'fructose_percent',
+    'lactose_percent',
+  ] as const;
+  const totalSugars = value(fields, 'total_sugars_percent');
+  const namedPresent = namedSugarFields.filter((field) => value(fields, field) !== null);
+  if (totalSugars !== null && namedPresent.length > 0) {
+    const named = namedPresent.reduce((sum, field) => sum + (value(fields, field) ?? 0), 0);
+    if (named > totalSugars + SUGARS_TOLERANCE) {
+      record(
+        'sugar_spectrum_within_total',
+        ['total_sugars_percent', ...namedPresent],
+        `nazwane cukry sumuja sie do ${round2(named)}, a deklarowane cukry to ${totalSugars}`,
+      );
+    }
+    // A shortfall is NOT an error: an unidentified sugar fraction is honest, and
+    // forcing the components to add up would fabricate a split nobody measured.
+  }
+
+  /* 5. the named components must fit inside the dry matter */
   const solidsNow = value(fields, 'total_solids_percent');
   if (solidsNow !== null) {
     const parts: WorkingNumericField[] = [
@@ -189,7 +213,7 @@ export function validatePlausibility(input: ProductFieldTruthMap): PlausibilityO
     }
   }
 
-  /* 5. energy must follow from the macros */
+  /* 6. energy must follow from the macros */
   const kcal = value(fields, 'kcal_per_100g');
   const fat = value(fields, 'fat_percent');
   const protein = value(fields, 'protein_percent');

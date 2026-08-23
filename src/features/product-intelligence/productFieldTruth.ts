@@ -90,6 +90,14 @@ export const WORKING_NUMERIC_FIELDS = [
   'protein_percent',
   'carbohydrate_percent',
   'total_sugars_percent',
+  // The typed spectrum. These are what let the Engine resolve POD/PAC without a
+  // stored value, so they are working fields like any other.
+  'sucrose_percent',
+  'dextrose_percent',
+  'glucose_percent',
+  'fructose_percent',
+  'lactose_percent',
+  'polyol_percent',
   'fiber_percent',
   'salt_percent',
   'alcohol_percent',

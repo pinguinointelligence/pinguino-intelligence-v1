@@ -299,8 +299,11 @@ describe('working values and readiness', () => {
     expect(resolved.values.fat_percent).toBe(96);
     expect(resolved.fields.fat_percent.provenance.state).toBe('VERIFIED');
     expect(resolved.fields.fat_percent.provenance.basis).toBe('product_declared');
-    // The rest of the profile still came from the Mapper.
-    expect(resolved.fields.pac_value.provenance.state).toBe('ESTIMATED');
+    // The rest of the profile still came from the Mapper...
+    expect(resolved.fields.water_percent.provenance.state).toBe('ESTIMATED');
+    // ...but never POD/PAC: the Engine derives those from the product's own
+    // sugars, so a neighbour's freezing power is not evidence about this one.
+    expect(resolved.fields.pac_value.provenance.state).toBe('UNKNOWN');
   });
 
   it('flags a declaration the Mapper strongly disagrees with, without acting on it', () => {
@@ -351,7 +354,7 @@ describe('working values and readiness', () => {
     expect(resolved.fields.total_solids_percent.provenance.state).toBe('VERIFIED');
   });
 
-  it('derives energy from macros but never rates it above its weakest input', () => {
+  it('leaves energy to the Engine rather than deriving a second Atwater', () => {
     const resolved = resolveProductWorkingValues(
       {
         ...cocoaButterProduct,
@@ -361,8 +364,17 @@ describe('working values and readiness', () => {
       },
       knowledge,
     );
-    expect(resolved.values.kcal_per_100g).toBe(190);
-    expect(resolved.fields.kcal_per_100g.provenance.confidence).toBeLessThan(0.8);
+    // `nutrition.ts` owns the convention, polyol rule included. A copy here would
+    // disagree with the Engine, so kcal stays absent unless the product states it.
+    expect(resolved.values.kcal_per_100g).toBeNull();
+  });
+
+  it('keeps a declared energy value exactly as declared', () => {
+    const resolved = resolveProductWorkingValues(
+      { ...cocoaButterProduct, declared: { kcal_per_100g: 412 } },
+      knowledge,
+    );
+    expect(resolved.values.kcal_per_100g).toBe(412);
   });
 });
 
@@ -443,9 +455,9 @@ describe('sweetening and freezing power closure', () => {
     technicalAuthority: false,
   };
 
-  it('sets POD and PAC to zero when there is no sugar and no alcohol', () => {
+  it('sets POD and PAC to zero when there is no sugar, alcohol or polyol', () => {
     const resolved = resolveProductWorkingValues(
-      { ...base, declared: { total_sugars_percent: 0, alcohol_percent: 0 } },
+      { ...base, declared: { total_sugars_percent: 0, alcohol_percent: 0, polyol_percent: 0 } },
       knowledge,
     );
     expect(resolved.values.pod_value).toBe(0);
@@ -455,7 +467,7 @@ describe('sweetening and freezing power closure', () => {
 
   it('refuses that shortcut for a spirit, which has no sugar but huge freezing power', () => {
     const resolved = resolveProductWorkingValues(
-      { ...base, declared: { total_sugars_percent: 0, alcohol_percent: 40 } },
+      { ...base, declared: { total_sugars_percent: 0, alcohol_percent: 40, polyol_percent: 0 } },
       knowledge,
     );
     expect(resolved.values.pac_value).toBeNull();
@@ -464,7 +476,15 @@ describe('sweetening and freezing power closure', () => {
 
   it('refuses that shortcut when alcohol is simply unknown', () => {
     const resolved = resolveProductWorkingValues(
-      { ...base, declared: { total_sugars_percent: 0 } },
+      { ...base, declared: { total_sugars_percent: 0, polyol_percent: 0 } },
+      knowledge,
+    );
+    expect(resolved.values.pac_value).toBeNull();
+  });
+
+  it('refuses that shortcut for a sugar-free product built on polyols', () => {
+    const resolved = resolveProductWorkingValues(
+      { ...base, declared: { total_sugars_percent: 0, alcohol_percent: 0, polyol_percent: 62.8 } },
       knowledge,
     );
     expect(resolved.values.pac_value).toBeNull();
@@ -630,5 +650,145 @@ describe('runtime mapper fingerprint', () => {
     expect(
       fingerprintMapperRows([...COCOA_BUTTER, mapperRow({ ingredient_id: 'PI-NEW-1' })]),
     ).not.toBe(fingerprintMapperRows(COCOA_BUTTER));
+  });
+});
+
+describe('engine readiness contract', () => {
+  const knowledge = buildMapperKnowledge([], FINGERPRINT);
+  const base = {
+    declaredConfidence: 0.95,
+    identity: { name: 'Nieznany wyrob' },
+    technical: false,
+    technicalAuthority: false,
+  };
+
+  it('derives solids from water, and water from solids, without a second penalty', () => {
+    const fromWater = resolveProductWorkingValues(
+      { ...base, declared: { water_percent: 62 } },
+      knowledge,
+    );
+    expect(fromWater.values.total_solids_percent).toBe(38);
+
+    const fromSolids = resolveProductWorkingValues(
+      { ...base, declared: { total_solids_percent: 38 } },
+      knowledge,
+    );
+    expect(fromSolids.values.water_percent).toBe(62);
+    // One unknown, one confidence: the complement inherits rather than discounts.
+    expect(fromWater.fields.total_solids_percent.provenance.confidence).toBe(
+      fromWater.fields.water_percent.provenance.confidence,
+    );
+  });
+
+  it('does not require POD/PAC as source data — the Engine derives them', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          water_percent: 40,
+          fat_percent: 10,
+          protein_percent: 5,
+          carbohydrate_percent: 44,
+          total_sugars_percent: 40,
+          sucrose_percent: 40,
+        },
+      },
+      knowledge,
+    );
+    expect(resolved.values.pod_value).toBeNull();
+    expect(resolved.values.pac_value).toBeNull();
+    // Readiness rests on the derivation being resolvable, not on stored numbers.
+    expect(resolved.sweetnessPath.kind).toBe('sugar_spectrum');
+    expect(resolved.valueReadiness).toBe('READY');
+  });
+
+  it('refuses a sugary product whose sugars have no known kind', () => {
+    // The Engine's fallback would contribute zero, formulating as if 40 g of
+    // sugar did nothing at all.
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          water_percent: 40,
+          fat_percent: 10,
+          protein_percent: 5,
+          carbohydrate_percent: 44,
+          total_sugars_percent: 40,
+        },
+      },
+      knowledge,
+    );
+    expect(resolved.sweetnessPath.resolved).toBe(false);
+    expect(resolved.valueReadiness).toBe('REVIEW');
+  });
+
+  it('accepts a sugar-free product, whose powers are exactly zero', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          water_percent: 40,
+          fat_percent: 30,
+          protein_percent: 25,
+          carbohydrate_percent: 4,
+          total_sugars_percent: 0,
+          alcohol_percent: 0,
+          polyol_percent: 0,
+        },
+      },
+      knowledge,
+    );
+    // Closure already set both powers to an exact zero, so the path reads as
+    // stored. What matters is that it resolves without invented evidence.
+    expect(resolved.sweetnessPath.resolved).toBe(true);
+    expect(resolved.values.pac_value).toBe(0);
+    expect(resolved.valueReadiness).toBe('READY');
+  });
+
+  it('flags polyols as unresolvable rather than treating them as sugar', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          water_percent: 5,
+          fat_percent: 0,
+          protein_percent: 0,
+          carbohydrate_percent: 62.8,
+          total_sugars_percent: 0,
+          polyol_percent: 62.8,
+        },
+      },
+      knowledge,
+    );
+    // The Engine's breakdown contributes 0 for polyols, so this must not pass.
+    expect(resolved.sweetnessPath.resolved).toBe(false);
+    expect(resolved.valueReadiness).toBe('REVIEW');
+  });
+
+  it('rejects a named sugar split that exceeds the declared total sugars', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: { total_sugars_percent: 10, carbohydrate_percent: 20, sucrose_percent: 18 },
+      },
+      knowledge,
+    );
+    expect(resolved.plausibilityViolations.map((v) => v.rule)).toContain(
+      'sugar_spectrum_within_total',
+    );
+  });
+
+  it('accepts an unattributed sugar remainder rather than forcing a split', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: { total_sugars_percent: 40, carbohydrate_percent: 44, sucrose_percent: 25 },
+      },
+      knowledge,
+    );
+    // 15 g of sugar is unidentified. That is honest, so no violation is raised —
+    // but the power path stays unresolved, which is what actually gates.
+    expect(resolved.plausibilityViolations).toEqual([]);
+    expect(resolved.sweetnessPath.resolved).toBe(false);
   });
 });

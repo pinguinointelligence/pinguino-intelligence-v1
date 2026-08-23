@@ -21,6 +21,7 @@ import {
   resolveProductWorkingValues,
   type ValueReadiness,
 } from '../productWorkingValues';
+import { REQUIRED_COMPOSITION_FIELDS as REQUIRED_MACROS } from '../engineFieldContract';
 import { WORKING_NUMERIC_FIELDS, type WorkingNumericField } from '../productFieldTruth';
 import {
   assessCardIdentity,
@@ -109,6 +110,12 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
       let verifiedEngineFieldsAfter = 0;
       let missingEngineBefore = 0;
       let missingEngineAfter = 0;
+      const blockers: Record<string, number> = {};
+      const truthStateAfter = { VERIFIED: 0, ESTIMATED: 0, UNKNOWN: 0 };
+      const truthStateBefore = { VERIFIED: 0, ESTIMATED: 0, UNKNOWN: 0 };
+      let completeProfileBefore = 0;
+      let completeProfileAfter = 0;
+      let indirectlyEnabled = 0;
       const upgrades: unknown[] = [];
 
       const usable = parsed.candidates.filter(
@@ -217,6 +224,44 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
         ).length;
         missingEngineBefore += priorResolution.missingEngineFields.length;
         missingEngineAfter += nextResolution.missingEngineFields.length;
+
+        for (const field of ENGINE_REQUIRED_WORKING_FIELDS) {
+          truthStateBefore[priorResolution.fields[field].provenance.state] += 1;
+          truthStateAfter[nextResolution.fields[field].provenance.state] += 1;
+        }
+        if (priorResolution.missingEngineFields.length === 0) completeProfileBefore += 1;
+        if (nextResolution.missingEngineFields.length === 0) completeProfileAfter += 1;
+        // §18: readiness that exists ONLY because retailer macros arrived.
+        if (
+          priorResolution.valueReadiness === 'REVIEW' &&
+          nextResolution.valueReadiness !== 'REVIEW'
+        ) {
+          indirectlyEnabled += 1;
+        }
+
+        // §17: name the exact reason a product is still not engine-ready.
+        if (nextResolution.valueReadiness === 'REVIEW') {
+          const f = nextResolution.fields;
+          const massBalance =
+            f.water_percent.value !== null || f.total_solids_percent.value !== null;
+          let blocker: string;
+          if (nextResolution.contradictedByDeclaration) blocker = 'physical_inconsistency';
+          else if (!massBalance) blocker = 'missing_water_solids';
+          else if (
+            REQUIRED_MACROS.some((field) => f[field].value === null)
+          ) {
+            blocker = 'missing_required_macro';
+          } else if (!nextResolution.sweetnessPath.resolved) {
+            blocker =
+              nextResolution.sweetnessPath.kind === 'unresolved' &&
+              (f.polyol_percent.value ?? 0) > 0
+                ? 'polyol_unsupported_by_engine'
+                : 'missing_sugar_split';
+          } else if ((nextResolution.engineConfidence ?? 0) < 0.85) {
+            blocker = 'weak_field_confidence';
+          } else blocker = 'other';
+          blockers[blocker] = (blockers[blocker] ?? 0) + 1;
+        }
         if (
           WORKING_NUMERIC_FIELDS.some(
             (field) => nextResolution.fields[field].provenance.state === 'ESTIMATED',
@@ -272,6 +317,12 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
         productsWithEstimatedFieldAfter: estimatedAfter,
         readinessBefore: before,
         readinessAfter: after,
+        engineFieldTruthStateBefore: truthStateBefore,
+        engineFieldTruthStateAfter: truthStateAfter,
+        completeProfileBefore,
+        completeProfileAfter,
+        readyOnlyBecauseOfRetailerMacros: indirectlyEnabled,
+        remainingBlockers: blockers,
         byAuthority,
         sampleUpgrades: upgrades,
       };

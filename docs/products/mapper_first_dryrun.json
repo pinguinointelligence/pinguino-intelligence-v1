@@ -78,9 +78,7 @@
       "water_percent",
       "total_solids_percent",
       "protein_percent",
-      "salt_percent",
-      "pod_value",
-      "pac_value"
+      "salt_percent"
     ],
     "fruit": [
       "water_percent",
@@ -89,9 +87,7 @@
       "protein_percent",
       "carbohydrate_percent",
       "total_sugars_percent",
-      "salt_percent",
-      "pod_value",
-      "pac_value"
+      "salt_percent"
     ],
     "base_mix": [
       "water_percent",
@@ -99,8 +95,7 @@
       "salt_percent"
     ],
     "flavor_paste": [
-      "salt_percent",
-      "pod_value"
+      "salt_percent"
     ],
     "coconut_fat": [
       "protein_percent",
@@ -113,24 +108,18 @@
       "protein_percent",
       "carbohydrate_percent",
       "total_sugars_percent",
-      "salt_percent",
-      "pod_value",
-      "pac_value"
+      "salt_percent"
     ],
     "plant_protein_isolate": [
       "fat_percent",
       "carbohydrate_percent",
       "total_sugars_percent",
-      "salt_percent",
-      "pod_value",
-      "pac_value"
+      "salt_percent"
     ],
     "dairy_protein": [
       "fat_percent",
       "carbohydrate_percent",
-      "salt_percent",
-      "pod_value",
-      "pac_value"
+      "salt_percent"
     ],
     "emulsifier": [
       "water_percent",
@@ -144,9 +133,7 @@
       "protein_percent",
       "carbohydrate_percent",
       "total_sugars_percent",
-      "salt_percent",
-      "pod_value",
-      "pac_value"
+      "salt_percent"
     ],
     "cocoa_butter": [],
     "fibre_inulin": [
@@ -163,14 +150,12 @@
     ],
     "stabilizer_hydrocolloid": [
       "fat_percent",
-      "protein_percent",
-      "pod_value"
+      "protein_percent"
     ],
     "glucose_dextrose": [
       "fat_percent",
       "protein_percent",
-      "salt_percent",
-      "pod_value"
+      "salt_percent"
     ],
     "other_sugar": [
       "fat_percent",
@@ -189,27 +174,25 @@
       "protein_percent",
       "carbohydrate_percent",
       "total_sugars_percent",
-      "salt_percent",
-      "pod_value",
-      "pac_value"
+      "salt_percent"
     ]
   },
   "mapperContributed": 574,
   "tierCounts": {
     "mapper_similar_profile": 335,
-    "mapper_family_consensus": 362,
+    "mapper_family_consensus": 370,
     "mapper_simple_profile": 6
   },
   "fieldFill": {
     "water_percent": {
       "verified": 0,
-      "estimated": 313,
-      "unknown": 507
+      "estimated": 381,
+      "unknown": 439
     },
     "total_solids_percent": {
       "verified": 0,
-      "estimated": 313,
-      "unknown": 507
+      "estimated": 381,
+      "unknown": 439
     },
     "fat_percent": {
       "verified": 131,
@@ -228,65 +211,54 @@
     },
     "total_sugars_percent": {
       "verified": 122,
-      "estimated": 154,
-      "unknown": 544
+      "estimated": 153,
+      "unknown": 545
     },
     "salt_percent": {
       "verified": 108,
       "estimated": 478,
       "unknown": 234
-    },
-    "pod_value": {
-      "verified": 0,
-      "estimated": 382,
-      "unknown": 438
-    },
-    "pac_value": {
-      "verified": 0,
-      "estimated": 231,
-      "unknown": 589
     }
   },
   "missingHistogram": {
-    "water_percent": 507,
-    "total_solids_percent": 507,
+    "water_percent": 439,
+    "total_solids_percent": 439,
     "fat_percent": 474,
     "carbohydrate_percent": 542,
-    "total_sugars_percent": 544,
-    "pod_value": 438,
-    "pac_value": 589,
+    "total_sugars_percent": 545,
     "protein_percent": 406,
     "salt_percent": 234
   },
   "gapDistribution": {
-    "0": 87,
-    "1": 35,
-    "2": 53,
-    "3": 88,
-    "4": 100,
-    "5": 53,
-    "6": 85,
-    "7": 66,
-    "8": 33,
-    "9": 215
+    "0": 171,
+    "1": 50,
+    "2": 57,
+    "3": 86,
+    "4": 116,
+    "5": 32,
+    "6": 88,
+    "7": 215
   },
-  "completeProfiles": 92,
+  "completeProfiles": 176,
   "completeProfileConfidenceBuckets": {
-    "0.50": 38,
-    "0.60": 10,
-    "0.75": 4,
-    "0.90": 1,
-    "0.45": 15,
-    "0.35": 2,
-    "0.80": 2,
-    "0.65": 9,
+    "0.50": 40,
+    "0.45": 30,
+    "0.60": 38,
+    "0.75": 7,
+    "0.65": 10,
+    "0.90": 2,
+    "0.55": 10,
+    "0.35": 13,
+    "0.30": 12,
+    "0.80": 1,
+    "0.85": 2,
     "0.95": 4,
-    "0.55": 6,
-    "0.70": 1
+    "0.70": 7
   },
   "productsWithDeclarationConflicts": 28,
   "productsSelfContradictory": 2,
   "plausibilityViolations": {
+    "sugar_spectrum_within_total": 7,
     "energy_matches_macros": 7,
     "water_solids_balance": 1,
     "components_within_solids": 14,
@@ -294,12 +266,12 @@
   },
   "sourcePacks": {
     "totalProducts": 820,
-    "productsNeedingResearch": 817,
-    "packsNeedingResearch": 145,
-    "packsWithOfficialEntryPoint": 4,
-    "packsWithOnlyWeakEntryPoints": 141,
-    "estimatedCallsPackStrategy": 209,
-    "estimatedCallsPerProductStrategy": 1634,
+    "productsNeedingResearch": 801,
+    "packsNeedingResearch": 136,
+    "packsWithOfficialEntryPoint": 3,
+    "packsWithOnlyWeakEntryPoints": 133,
+    "estimatedCallsPackStrategy": 200,
+    "estimatedCallsPerProductStrategy": 1602,
     "byKind": {
       "official_domain": 5,
       "manufacturer": 51,
@@ -321,8 +293,6 @@
           "carbohydrate_percent",
           "protein_percent",
           "salt_percent",
-          "pod_value",
-          "pac_value",
           "water_percent",
           "total_solids_percent"
         ]
@@ -343,9 +313,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -364,9 +332,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -384,9 +350,7 @@
           "fat_percent",
           "protein_percent",
           "carbohydrate_percent",
-          "total_sugars_percent",
-          "pod_value",
-          "pac_value"
+          "total_sugars_percent"
         ]
       },
       {
@@ -405,9 +369,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -424,8 +386,6 @@
           "total_solids_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "pod_value",
-          "pac_value",
           "protein_percent",
           "fat_percent",
           "salt_percent"
@@ -443,8 +403,6 @@
         "missingNumeric": [
           "water_percent",
           "total_solids_percent",
-          "pod_value",
-          "pac_value",
           "fat_percent",
           "protein_percent",
           "carbohydrate_percent",
@@ -461,12 +419,7 @@
         "officialEntryPoints": 0,
         "topEntryPoint": "https://www.biedronka.pl/pl/go-active",
         "topEntryAuthority": "AUTHORITATIVE_RETAILER",
-        "missingNumeric": [
-          "water_percent",
-          "total_solids_percent",
-          "pod_value",
-          "pac_value"
-        ]
+        "missingNumeric": []
       },
       {
         "label": "Baitz",
@@ -481,8 +434,6 @@
           "fat_percent",
           "water_percent",
           "total_solids_percent",
-          "pod_value",
-          "pac_value",
           "total_sugars_percent"
         ]
       },
@@ -502,9 +453,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -523,9 +472,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -544,9 +491,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -565,9 +510,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -586,26 +529,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
-        ]
-      },
-      {
-        "label": "Okręgowa Spółdzielnia Mleczarska w Łowiczu",
-        "kind": "manufacturer",
-        "products": 7,
-        "needingResearch": 7,
-        "entryPoints": 3,
-        "officialEntryPoints": 0,
-        "topEntryPoint": "https://www.biedronka.pl/pl/historie-z-mlecznej-doliny",
-        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
-        "missingNumeric": [
-          "water_percent",
-          "total_solids_percent",
-          "pod_value",
-          "pac_value",
-          "fat_percent"
+          "salt_percent"
         ]
       },
       {
@@ -624,9 +548,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -645,9 +567,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -660,11 +580,9 @@
         "topEntryPoint": "https://www.biedronka.pl/pl/fruvita-pure",
         "topEntryAuthority": "AUTHORITATIVE_RETAILER",
         "missingNumeric": [
+          "total_sugars_percent",
           "water_percent",
           "total_solids_percent",
-          "pod_value",
-          "pac_value",
-          "total_sugars_percent",
           "carbohydrate_percent",
           "fat_percent",
           "protein_percent"
@@ -686,9 +604,7 @@
           "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "salt_percent",
-          "pod_value",
-          "pac_value"
+          "salt_percent"
         ]
       },
       {
@@ -705,11 +621,27 @@
           "total_solids_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "pod_value",
-          "pac_value",
           "protein_percent",
           "fat_percent",
           "salt_percent"
+        ]
+      },
+      {
+        "label": "Delikate",
+        "kind": "brand",
+        "products": 5,
+        "needingResearch": 5,
+        "entryPoints": 1,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/delikate",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent"
         ]
       }
     ]
@@ -729,9 +661,7 @@
         "total_solids_percent",
         "fat_percent",
         "carbohydrate_percent",
-        "total_sugars_percent",
-        "pod_value",
-        "pac_value"
+        "total_sugars_percent"
       ],
       "mapperReferences": [
         "PI-ING-000686",
@@ -791,9 +721,7 @@
       "tiers": [],
       "missing": [
         "water_percent",
-        "total_solids_percent",
-        "pod_value",
-        "pac_value"
+        "total_solids_percent"
       ],
       "mapperReferences": []
     },
@@ -806,9 +734,7 @@
       "tiers": [],
       "missing": [
         "water_percent",
-        "total_solids_percent",
-        "pod_value",
-        "pac_value"
+        "total_solids_percent"
       ],
       "mapperReferences": []
     },
@@ -821,9 +747,7 @@
       "tiers": [],
       "missing": [
         "water_percent",
-        "total_solids_percent",
-        "pod_value",
-        "pac_value"
+        "total_solids_percent"
       ],
       "mapperReferences": []
     },
@@ -836,9 +760,7 @@
       "tiers": [],
       "missing": [
         "water_percent",
-        "total_solids_percent",
-        "pod_value",
-        "pac_value"
+        "total_solids_percent"
       ],
       "mapperReferences": []
     },
@@ -855,11 +777,11 @@
       "missing": [],
       "mapperReferences": [
         "PI-ING-000018",
-        "PI-ING-000064",
-        "PI-ING-000087",
         "PI-ING-000088",
-        "PI-ING-000089",
-        "PI-ING-000090"
+        "PI-ING-000109",
+        "PI-ING-000116",
+        "PI-ING-000117",
+        "PI-ING-000122"
       ]
     },
     {
@@ -871,9 +793,7 @@
       "tiers": [],
       "missing": [
         "water_percent",
-        "total_solids_percent",
-        "pod_value",
-        "pac_value"
+        "total_solids_percent"
       ],
       "mapperReferences": []
     },
@@ -887,8 +807,6 @@
         "mapper_similar_profile"
       ],
       "missing": [
-        "water_percent",
-        "total_solids_percent",
         "total_sugars_percent"
       ],
       "mapperReferences": [
@@ -902,15 +820,11 @@
       "name": "Strawberry & Crisps Waffle Baitz",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
-      "engineConfidence": null,
+      "engineConfidence": 0.4889,
       "tiers": [
         "mapper_similar_profile"
       ],
-      "missing": [
-        "water_percent",
-        "total_solids_percent",
-        "pac_value"
-      ],
+      "missing": [],
       "mapperReferences": [
         "PI-ING-000632",
         "PI-ING-000960",
@@ -933,9 +847,7 @@
         "protein_percent",
         "carbohydrate_percent",
         "total_sugars_percent",
-        "salt_percent",
-        "pod_value",
-        "pac_value"
+        "salt_percent"
       ],
       "mapperReferences": []
     }

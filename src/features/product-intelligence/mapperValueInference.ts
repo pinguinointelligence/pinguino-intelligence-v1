@@ -56,6 +56,12 @@ export interface MapperKnowledgeRow {
   protein_percent: number | null;
   carbohydrate_percent: number | null;
   total_sugars_percent: number | null;
+  sucrose_percent: number | null;
+  dextrose_percent: number | null;
+  glucose_percent: number | null;
+  fructose_percent: number | null;
+  lactose_percent: number | null;
+  polyol_percent: number | null;
   fiber_percent: number | null;
   salt_percent: number | null;
   alcohol_percent: number | null;
@@ -81,6 +87,14 @@ export const CONSENSUS_BANDS: Readonly<Record<WorkingNumericField, number>> = Ob
   protein_percent: 2.5,
   carbohydrate_percent: 6,
   total_sugars_percent: 6,
+  // A sugar's identity is far less forgiving than its total: two products with
+  // the same sugars but different kinds freeze differently.
+  sucrose_percent: 5,
+  dextrose_percent: 3,
+  glucose_percent: 3,
+  fructose_percent: 3,
+  lactose_percent: 2,
+  polyol_percent: 3,
   fiber_percent: 2,
   salt_percent: 0.5,
   alcohol_percent: 3,
@@ -480,6 +494,9 @@ export interface MapperInferenceResult {
   family: ProductFamilyId | null;
   /** Owner-readable trace of what was consulted and what it yielded. */
   trace: string[];
+  /** The most specific cohort selected, kept so the caller can complete solids
+   * from THIS product's own macros rather than the cohort's median solids. */
+  bestCohort: { rows: readonly MapperKnowledgeRow[]; minCohort: number; label: string } | null;
 }
 
 /**
@@ -496,6 +513,7 @@ export function inferMapperValues(
   const fields: Partial<Record<WorkingNumericField, FieldTruth>> = {};
   const tiersUsed: MapperInferenceTier[] = [];
   const trace: string[] = [];
+  let bestCohort: MapperInferenceResult['bestCohort'] = null;
   const claim = (field: WorkingNumericField, truth: FieldTruth): boolean => {
     if (fields[field]) return false;
     fields[field] = truth;
@@ -557,6 +575,7 @@ export function inferMapperValues(
       `najbardziej podobne wiersze Mappera (${similar.rows.length}) wg tokenow: ${similar.tokens.join(', ')}`,
     );
     if (claimed > 0) tiersUsed.push('mapper_similar_profile');
+    bestCohort ??= { rows: similar.rows, minCohort: MIN_SIMILAR_COHORT, label: 'similar_profile' };
     trace.push(
       `mapper_similar_profile: ${similar.rows.length} wierszy (${similar.tokens.length} tokenow) → ${claimed} pol`,
     );
@@ -600,14 +619,98 @@ export function inferMapperValues(
         `zgodna rodzina Mappera "${family}" (${cohort.length} wierszy)`,
       );
       if (claimed > 0) tiersUsed.push('mapper_family_consensus');
+      bestCohort ??= { rows: cohort, minCohort: MIN_FAMILY_COHORT, label: `family:${family}` };
       trace.push(`mapper_family_consensus: ${family}, ${cohort.length} wierszy → ${claimed} pol`);
     } else {
       trace.push(`mapper_family_consensus: ${family} za mala kohorta (${cohort.length})`);
     }
   }
 
-  return { fields, tiersUsed, exactRow, family, trace };
+  return { fields, tiersUsed, exactRow, family, trace, bestCohort };
 }
+
+/**
+ * Fields a COHORT may never speak for.
+ *
+ * POD and PAC are Engine-derived: the Engine's own sweetening and freezing
+ * paths compute them from the product's own sugar spectrum. A cohort median for them would be a second, disagreeing physics —
+ * a neighbouring product's freezing power says nothing about this product's,
+ * beyond what its own sugars already say. An exact GTIN identity still carries
+ * them, because there the row IS the product.
+ */
+const COHORT_FORBIDDEN_FIELDS = new Set<WorkingNumericField>(['pod_value', 'pac_value']);
+
+/** Macro fields that together account for most of a product's dry matter. */
+const NAMED_SOLID_FIELDS = [
+  'fat_percent',
+  'protein_percent',
+  'carbohydrate_percent',
+  'fiber_percent',
+  'salt_percent',
+] as const;
+
+export interface ResidualSolidsEstimate {
+  totalSolids: number;
+  /** Unnamed dry matter (ash, minerals, organic acids) the cohort typically carries. */
+  residual: number;
+  contributors: string[];
+  spread: number;
+}
+
+/**
+ * Estimate total solids for a product whose macros are known but whose cohort
+ * could not agree on solids directly.
+ *
+ * Writing `water = 100 − fat − protein − carbohydrate − fibre − salt` and calling
+ * it measured would be wrong: that remainder still contains ash, minerals and
+ * organic acids nobody listed. So the named macros are used as a LOWER BOUND on
+ * dry matter, and the unnamed remainder is taken from the cohort's own observed
+ * behaviour — for every neighbour that publishes both, how much dry matter sat
+ * beyond its named macros. That residual is evidence, not an assumption.
+ *
+ * Refused when the cohort disagrees about its own residual, because then the
+ * family genuinely does not predict this quantity.
+ */
+export function residualSolidsEstimate(
+  cohort: readonly MapperKnowledgeRow[],
+  namedSolids: number,
+  minCohort: number,
+): ResidualSolidsEstimate | null {
+  const residuals: number[] = [];
+  const contributors: string[] = [];
+  for (const row of cohort) {
+    const solids = numeric(row.total_solids_percent);
+    if (solids === null) continue;
+    const named = NAMED_SOLID_FIELDS.reduce(
+      (total, field) => total + (numeric(row[field]) ?? 0),
+      0,
+    );
+    const residual = solids - named;
+    // A negative residual means the row's own numbers do not add up; it cannot
+    // teach us anything about unnamed dry matter.
+    if (residual < 0 || residual > 25) continue;
+    residuals.push(residual);
+    contributors.push(row.ingredient_id);
+  }
+  if (residuals.length < minCohort) return null;
+
+  const sorted = [...residuals].sort((a, b) => a - b);
+  const spread = (quantile(sorted, 0.75) - quantile(sorted, 0.25)) / 2;
+  if (spread > MAX_RESIDUAL_SPREAD) return null;
+
+  const residual = median(sorted);
+  const totalSolids = namedSolids + residual;
+  if (totalSolids < 0 || totalSolids > 100) return null;
+  return {
+    totalSolids: round4(totalSolids),
+    residual: round4(residual),
+    contributors,
+    spread: round4(spread),
+  };
+}
+
+/** How much the cohort's unnamed dry matter may vary and still be usable. */
+export const MAX_RESIDUAL_SPREAD = 2.5;
 
 /** Run the consensus over one cohort and claim whatever it can stand behind. */
 function applyCohort(
@@ -620,6 +723,7 @@ function applyCohort(
 ): number {
   let claimed = 0;
   for (const field of WORKING_NUMERIC_FIELDS) {
+    if (COHORT_FORBIDDEN_FIELDS.has(field)) continue;
     const consensus = fieldConsensus(cohort, field, minCohort);
     if (!consensus) continue;
     const ceiling = TIER_CONFIDENCE[tier];
