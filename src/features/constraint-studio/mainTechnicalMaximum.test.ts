@@ -425,6 +425,10 @@ describe('Main technical maximum — exact Watermelon authority', { timeout: SOL
     expect(eco.mainObjective?.limitingTechnicalRules).toContain('liquid_dairy_carrier_min');
   });
 
+  // Direction-driven Main-envelope searches run the full local-correction
+  // sweep, which at MAX_SOLVER_ROUNDS=18 exceeds the 5s per-test default on a
+  // loaded machine (measured worst case 8.7s). The budget below is a timeout,
+  // not a relaxed assertion — every expectation is unchanged.
   it.each([
     [-2, -2],
     [-2, 2],
@@ -472,8 +476,10 @@ describe('Main technical maximum — exact Watermelon authority', { timeout: SOL
       expect(mainTotal(after)).toBeLessThanOrEqual(450);
       expect(after.goals?.direction_targets).toEqual(input.goals?.direction_targets);
     },
+    20_000,
   );
 
+  // Full Direction sweep at 18 solver rounds — timeout budget only (see above).
   it('does not cross the 20% ECO Main floor to chase an extreme Direction target', () => {
     const seedInput = watermelonFixture(300, 'eco');
     const snapshots = snapshotsWithApprovedEnvelope(seedInput);
@@ -513,8 +519,7 @@ describe('Main technical maximum — exact Watermelon authority', { timeout: SOL
     }
     expect(mainTotal(result.preview.proposedInput)).toBeGreaterThanOrEqual(200);
     expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-  });
-
+  }, 20_000);
   it('keeps Standard unlocked as a soft anchor instead of activating Main maximization', () => {
     const main = build(watermelonFixture(300));
     const standard = build(watermelonFixture(300, 'optimal', 'unlocked'));
@@ -1165,6 +1170,7 @@ describe('Multi-Main ratio contract', { timeout: SOLVER_PROOF_TIMEOUT_MS }, () =
     });
   });
 
+  // Full Direction sweep at 18 solver rounds — timeout budget only (see above).
   it('Apply then Undo restores a positive demoted Standard line', () => {
     const input = fixture([120, 180, 240], [IDS.strawberry, IDS.banana, IDS.kiwi]);
     const demoted: RecipeInput = {
@@ -1181,7 +1187,7 @@ describe('Multi-Main ratio contract', { timeout: SOLVER_PROOF_TIMEOUT_MS }, () =
       ),
     };
     expectExactApplyUndo(demoted, { byLineId: {} });
-  });
+  }, 20_000);
 });
 
 function fixtureForRatioChange(): RecipeInput {

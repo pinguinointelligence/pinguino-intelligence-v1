@@ -1757,9 +1757,12 @@ export const useRecipeStore = create<RecipeState>()(
           ),
           flavor_intensity: input.goals?.flavor_intensity ?? 'balanced',
           cost_priority: input.goals?.cost_priority ?? 'balanced',
+          // Owner P2: reopening a saved recipe restores ITS OWN Direction. The
+          // ambient per-profile snapshot belongs to whatever was open last, so
+          // it must never outrank the persisted recipe.
           direction_targets: {
-            ...(profile?.directionTargets ??
-              input.goals?.direction_targets ??
+            ...(input.goals?.direction_targets ??
+              profile?.directionTargets ??
               DEFAULT_DIRECTION_TARGETS),
           },
           direction_targets_active:
@@ -1891,6 +1894,10 @@ export const useRecipeStore = create<RecipeState>()(
             defaults?.machineKind === 'home' && defaults.machineCapacityGrams !== null
               ? 'machine'
               : null,
+          // A new draft starts from the account default for THIS product
+          // (deliberately configured in Account Recipe Defaults), else the
+          // clean middle. That is a stored preference, not the previous
+          // recipe's state — the leak lives in `rebuildNewRecipeStarter`.
           direction_targets: {
             ...(defaults?.directionTargets ?? DEFAULT_DIRECTION_TARGETS),
           },
@@ -1926,6 +1933,21 @@ export const useRecipeStore = create<RecipeState>()(
       },
       rebuildNewRecipeStarter: (key) => {
         useIngredientTableUxStore.getState().reset();
+        // Owner P2 (served 2026-08-23): a starter rebuild is a NEW draft — it
+        // replaces the product, the category, every ingredient and the
+        // temperature. It used to leave `direction_targets` untouched and never
+        // opened a new draft context, so recipe A's Sweetness/Hardness silently
+        // rode into the rebuilt recipe: gelato at −2/+2 → switch to Sorbet →
+        // an all-new sorbet still carrying −2/+2 on draftContextSeq 19.
+        // A rebuilt starter now resolves Direction exactly like `startNewRecipe`
+        // does: the account default deliberately configured for the NEW product,
+        // otherwise the clean middle.
+        const rebuildDefaults = useRecipeProfileStore
+          .getState()
+          .defaultsFor(productDefaultsKey(key.visibleProductType));
+        const rebuildDirection = {
+          ...(rebuildDefaults?.directionTargets ?? DEFAULT_DIRECTION_TARGETS),
+        };
         const starter = buildCanonicalNewRecipeStarter({
           visibleProductType: key.visibleProductType,
           servingModeId: key.servingModeId,
@@ -1966,6 +1988,9 @@ export const useRecipeStore = create<RecipeState>()(
             newRecipeStarterMaterialFingerprint: starterMaterialFingerprint,
             practicalRecipeAudit: null,
             savedProductionFingerprint: null,
+            direction_targets: rebuildDirection,
+            // Neutral is an intent, not its absence (P1-A).
+            direction_targets_active: true,
             ...(preserveHomeMachine
               ? {}
               : {
@@ -1978,8 +2003,19 @@ export const useRecipeStore = create<RecipeState>()(
                 }),
             dirty: false,
             draftRevision: state.draftRevision + 1,
+            // A rebuilt starter is a new draft context, so the Direction
+            // regulator rebinds to it instead of staying attached to the
+            // recipe that was replaced.
+            draftContextSeq: state.draftContextSeq + 1,
           };
         });
+        useRecipeProfileStore
+          .getState()
+          .openDraft(
+            useRecipeStore.getState().draftContextSeq,
+            rebuildDirection,
+            rebuildDefaults?.directionIntents,
+          );
         // A confirmed starter rebuild is already materialized and evaluated by
         // the frozen Engine. PI becomes pending only after a subsequent user
         // edit; it is not an initialization step for this fresh scaffold.
