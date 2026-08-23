@@ -2,6 +2,7 @@ import type { RecipeInput } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import type { ConstraintSet } from '@/features/recipe-constraints';
+import { clampOwnerStabilizerComponentGrams } from '@/features/recipe-constraints/ownerStabilizerSystemAuthority';
 
 export type DirectPercentEditResult =
   | {
@@ -52,12 +53,6 @@ export function buildDirectPercentEdit(
   ) {
     return { ok: false, code: 'protected_line' };
   }
-  // A stabilizer's amount belongs to PINGÜINO's own stabilizer system, which
-  // owns the aggregate band and the per-component clamp. Manufacturer dosage is
-  // informational and never granted (or withheld) this permission.
-  if (resolveFunctionalRole(selected.ingredient) === 'stabilizer') {
-    return { ok: false, code: 'protected_line' };
-  }
 
   const selectedIsMain = selected.lock_type === 'main';
   const changed = selectedIsMain
@@ -76,7 +71,16 @@ export function buildDirectPercentEdit(
   ) {
     return { ok: false, code: 'protected_line' };
   }
-  const selectedTarget = (input.target_batch_grams * requestedPercent) / 100;
+  // GRAMS AND PERCENT ARE ONE QUANTITY IN TWO REPRESENTATIONS. The percentage
+  // converts deterministically against the current target batch, and the result
+  // then passes through the SAME PINGÜINO stabilizer clamp the grams control
+  // uses — so both controls converge on the same executable grams. The
+  // manufacturer's recommended dosage is not consulted by either of them.
+  const requestedTarget = (input.target_batch_grams * requestedPercent) / 100;
+  const selectedTarget =
+    resolveFunctionalRole(selected.ingredient) === 'stabilizer'
+      ? clampOwnerStabilizerComponentGrams(input, selected.id, requestedTarget).grams
+      : requestedTarget;
   if (selectedIsMain && selected.planned_grams <= 0) return { ok: false, code: 'main_zero' };
   const scale = selectedIsMain ? selectedTarget / selected.planned_grams : 1;
   const changedIds = new Set(changed.map((item) => item.id));

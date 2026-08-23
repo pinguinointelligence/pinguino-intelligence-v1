@@ -26,6 +26,7 @@ import { productRecommendedDosageInfo, productRecommendedDosagePl } from './prod
 import { recipeBehaviorModuleGate, buildRecipeBehaviorAuthority } from './recipeBehaviorAuthority';
 import { productBehaviorTestSnapshots } from './productBehaviorTestFixture';
 import type { ProductBehaviorSnapshot } from './contracts';
+import { emptyFieldTruthMap, knownField } from './productFieldTruth';
 import * as productDosageAuthorityModule from './productDosageAuthority';
 import * as productDoseSuggestionModule from '@/features/ingredient-builder/productDoseSuggestion';
 
@@ -72,6 +73,43 @@ function recipeWithAmbiguousDosage(): {
     },
   };
   return { input, snapshots, lineId };
+}
+
+/** A minimal INTIMPORT row whose ONLY variable is the informational flag. */
+function intimportRow(
+  valueReadiness: 'READY' | 'ESTIMATED_READY' | 'REVIEW',
+  technicalAuthorityRequired: boolean,
+) {
+  return {
+    rowIndex: 1,
+    sourceProductId: 'PL-1',
+    displayName: 'Produkt techniczny',
+    insert: { product_name: 'Produkt techniczny', extracted_json: { intimport: { version: 1 } } },
+    workingValues: {
+      valueReadiness,
+      readiness: valueReadiness,
+      technicalAuthorityRequired,
+      profileMatch: { confidence: 0.94, basis: 'neighbour_set', references: ['PI-1'] },
+      fields: {
+        ...emptyFieldTruthMap(),
+        fat_percent: knownField({
+          value: 12.4,
+          state: 'ESTIMATED',
+          confidence: 0.94,
+          basis: 'mapper_similar_profile',
+          mapperReferences: ['PI-1'],
+        }),
+      },
+      values: { fat_percent: 12.4 },
+      mapperTiersUsed: [],
+      mapperReferences: [],
+      estimatedEngineFields: [],
+      missingEngineFields: [],
+      conflicts: [],
+      engineConfidence: 0.94,
+      engineReady: valueReadiness !== 'REVIEW',
+    },
+  } as never;
 }
 
 describe('process and dosage are informational only', () => {
@@ -360,5 +398,40 @@ describe('the product `?` shows what we know, compactly', () => {
     const input = ownerSameInputRecipe();
     const plain = productBehaviorTestSnapshots(input);
     expect(productRecommendedDosagePl(plain[input.items[0]!.id])).toBe('Brak informacji');
+  });
+});
+
+describe('technicalAuthorityRequired is evidence, never a gate', () => {
+  it('is still resolved and still recorded, so the owner can audit it', async () => {
+    const { planIntimportImport } = await import('./intimportIntelligence');
+    const withFlag = planIntimportImport([intimportRow('ESTIMATED_READY', true)]);
+    const recorded = (
+      withFlag.rows[0]!.insert.extracted_json as {
+        productIntelligence: { technicalAuthorityRequired: boolean };
+      }
+    ).productIntelligence;
+    expect(recorded.technicalAuthorityRequired).toBe(true);
+  });
+
+  it('changes nothing about what the product may do', async () => {
+    const { planIntimportImport } = await import('./intimportIntelligence');
+    const unproven = planIntimportImport([intimportRow('ESTIMATED_READY', true)]).rows[0]!;
+    const proven = planIntimportImport([intimportRow('ESTIMATED_READY', false)]).rows[0]!;
+    // The flag is the ONLY difference between these two rows. Every verdict —
+    // state, Engine usability and the stored composition — must be identical.
+    expect(unproven.state).toBe(proven.state);
+    expect(unproven.engineUsable).toBe(true);
+    expect(unproven.engineUsable).toBe(proven.engineUsable);
+    expect(unproven.insert.fat_percent).toEqual(proven.insert.fat_percent);
+  });
+
+  it('never withholds import, whatever it says', async () => {
+    const { planIntimportImport } = await import('./intimportIntelligence');
+    const plan = planIntimportImport([
+      intimportRow('ESTIMATED_READY', true),
+      intimportRow('READY', true),
+    ]);
+    expect(plan.rows).toHaveLength(2);
+    expect(plan.engineUsable).toBe(2);
   });
 });

@@ -537,9 +537,11 @@ export function planIntimportImport(
         version: 1,
         state,
         engineUsable: state === 'READY_VERIFIED' || state === 'READY_ESTIMATED',
-        // Kept separate so a technical block can never read as a composition
-        // problem, nor the reverse.
+        // Two independent facts, deliberately never folded together.
         compositionReadiness: values?.valueReadiness ?? 'REVIEW',
+        // INFORMATIONAL ONLY (owner decision, 2026-08-23). Recorded for audit,
+        // explanation, tooltips and diagnostics. It never independently blocks
+        // selection, Base use, an Engine calculation, Preview, Apply or Save.
         technicalAuthorityRequired: values?.technicalAuthorityRequired ?? false,
         needsEnrichment: state === 'REVIEW',
         profileMatch: values?.profileMatch

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import { buildDirectPercentEdit } from './directPercentEdit';
+import { gelatoStabilizerWholeGramBand } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 
 const NONE = { byLineId: {} } as const;
@@ -69,12 +70,8 @@ describe('direct percentage editing', () => {
     expect(cream.planned_grams).toBe(150);
   });
 
-  it('fails closed for exact locks, physical lines and stabilizers', () => {
+  it('fails closed for exact locks and physical lines', () => {
     const input = ownerSameInputRecipe();
-    expect(buildDirectPercentEdit(input, NONE, 'owner:tara_gum', 0.3)).toMatchObject({
-      ok: false,
-      code: 'protected_line',
-    });
     expect(
       buildDirectPercentEdit(
         input,
@@ -93,14 +90,16 @@ describe('direct percentage editing', () => {
   });
 
   it('does not consult a manufacturer dosage when deciding a percentage edit', () => {
-    // The Tara snapshot below declares a 0.2–1 % window. It is informational:
-    // it neither unlocks nor clamps this edit. A stabilizer line is protected
-    // here because PINGÜINO's own stabilizer system owns stabilizer amounts.
+    // The Tara snapshot below declares a 0.2–1 % window. It is informational: it
+    // neither unlocks, clamps nor withholds this edit. 5.5 % is far outside it
+    // and is refused only by PINGÜINO's own aggregate stabilizer band, which
+    // clamps to the whole-gram maximum for this batch.
     const input = ownerSameInputRecipe();
-    expect(buildDirectPercentEdit(input, NONE, 'owner:tara_gum', 5.5)).toEqual({
-      ok: false,
-      code: 'protected_line',
-    });
+    const result = buildDirectPercentEdit(input, NONE, 'owner:tara_gum', 5.5);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const band = gelatoStabilizerWholeGramBand(input.target_batch_grams);
+    expect(result.gramsByLineId['owner:tara_gum']).toBe(band.maxGrams);
     expect(taraDoseSnapshot().sharedFacts?.recommendedDose).toMatchObject({
       minPercent: 0.2,
       maxPercent: 1,
@@ -119,10 +118,26 @@ describe('direct percentage editing', () => {
     );
   });
 
-  it('keeps a stabilizer percent edit with PINGÜINO stabilizer authority, not product dosage', () => {
-    expect(buildDirectPercentEdit(ownerSameInputRecipe(), NONE, 'owner:tara_gum', 0.5)).toEqual({
-      ok: false,
-      code: 'protected_line',
-    });
+  it('edits a stabilizer by percent under PINGÜINO stabilizer authority', () => {
+    const input = ownerSameInputRecipe();
+    const result = buildDirectPercentEdit(input, NONE, 'owner:tara_gum', 0.5);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 0.5 % of 1000 g = 5 g. PINGÜINO's whole-gram rule still applies, and the
+    // batch stays coherent.
+    expect(result.gramsByLineId['owner:tara_gum']).toBe(5);
+    expect(Object.values(result.gramsByLineId).reduce((sum, grams) => sum + grams, 0)).toBeCloseTo(
+      1_000,
+      10,
+    );
+  });
+
+  it('holds PINGÜINO\u2019s whole-gram stabilizer rule through the percent control', () => {
+    const input = ownerSameInputRecipe();
+    // 0.35 % of 1000 g is 3.5 g — a half gram no one can weigh out.
+    const result = buildDirectPercentEdit(input, NONE, 'owner:tara_gum', 0.35);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.gramsByLineId['owner:tara_gum']).toBe(4);
   });
 });

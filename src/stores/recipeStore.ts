@@ -1452,7 +1452,21 @@ export const useRecipeStore = create<RecipeState>()(
               .ready
           )
             return {};
-          if (assessOwnerStabilizerSystem(proposed).issues.length > 0) return {};
+          // GRAMS/PERCENT PARITY. The grams control clamps and writes; it does
+          // not refuse a draft that is already outside PINGÜINO's stabilizer
+          // band, because the band is enforced where it belongs — at Preview,
+          // Apply and Save. Percent must behave the same way, or the two
+          // representations of one quantity diverge. So refuse only what this
+          // edit INTRODUCES, never what it merely inherits.
+          const before = new Set(
+            assessOwnerStabilizerSystem(buildRecipeInput(state)).issues.map(
+              (issue) => `${issue.code}:${issue.lineIds.join(',')}`,
+            ),
+          );
+          const introduced = assessOwnerStabilizerSystem(proposed).issues.some(
+            (issue) => !before.has(`${issue.code}:${issue.lineIds.join(',')}`),
+          );
+          if (introduced) return {};
           return {
             items: proposedItems,
             dirty: true,

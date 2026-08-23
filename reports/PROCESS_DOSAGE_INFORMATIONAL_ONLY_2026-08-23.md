@@ -119,6 +119,14 @@ current batch, never used to choose a basis.
 
 ## 3. What was deliberately KEPT
 
+- **`technicalAuthorityRequired`** — evidence, never a gate. It is still
+  resolved and still written into the stored product intelligence for audit,
+  explanation, tooltips and diagnostics. It independently blocks nothing:
+  ingredient selection, Base use, Engine calculation, Preview, Apply and Save
+  all ignore it. Three regressions in
+  `processDosageInformationalOnly.test.ts` pin this by flipping the flag as the
+  only variable between two otherwise identical rows and asserting every verdict
+  is unchanged.
 - **PINGÜINO's own stabilizer system** (`gelatoStabilizerSystemAuthority`,
   `sorbetStabilizerSystemAuthority`, `stabilizerDosage.ts`,
   `clampOwnerStabilizerComponentGrams`). This is Gellatti's science about its
@@ -146,12 +154,13 @@ current batch, never used to choose a basis.
 - On the Polish INTIMPORT file, engine-usable rows go **190 → 450** and
   `TECHNICAL_AUTHORITY_REQUIRED` rows **260 → 0** (the bulk of this is Codex's
   `cce6c1b`; the confidence-weight fix removes the remaining arithmetic gate).
-- Direct **percentage** editing of a stabilizer line now always returns
-  `protected_line`. Previously it was permitted for the two stabilizers that
-  happened to carry an approved Mapper window (tara gum, Solmix). Stabilizer
-  **grams** editing is unchanged and still governed by the owner stabilizer
-  system. This is the one place the cleanup narrows a capability; it is called
-  out for the owner rather than buried.
+- Stabilizer **percentage** editing keeps full parity with grams editing. Grams
+  and percent are one quantity in two representations: the percentage converts
+  deterministically against the current target batch and then passes through the
+  SAME PINGÜINO clamp the grams control uses
+  (`clampOwnerStabilizerComponentGrams`), so both converge on the same
+  executable grams and the same Engine physics. The Mapper's
+  `recommended_dosage_percent_min/max` decides neither.
 
 ## 5. Files changed
 
@@ -169,11 +178,29 @@ longer imports it). `scripts/auditMapperRuntimeUsability.mjs` re-pinned
 
 ## 6. Tests
 
-`src/features/product-intelligence/processDosageInformationalOnly.test.ts` — 16
-cases, one per owner proof (1–14) plus two for the `?` presentation. Rewritten:
-`productDosageAuthority.test.ts` (11), `productDoseSuggestion.test.ts` (4),
-`directPercentEdit.test.ts` (9). Updated: 13 further files whose assertions
-encoded the retired authority.
+`src/features/product-intelligence/processDosageInformationalOnly.test.ts` — 19
+cases: one per owner proof (1–14), two for the `?` presentation, and three
+pinning `technicalAuthorityRequired` as evidence that gates nothing.
+
+`src/features/ingredient-builder/stabilizerGramPercentParity.test.ts` — 23
+cases proving grams/percent semantic parity: the same requested quantity
+through either control converges on the same executable grams and the same
+`calculateRecipe` output, PINGÜINO's whole-gram rule and aggregate ceiling
+apply identically to both, and the manufacturer window decides neither. Eight
+of them drive the REAL store end to end (grams via `setPlannedGrams`, percent
+via `buildDirectPercentEdit` + `setPlannedGramsVector`) across 0–400 g; one
+proves an edit that would INTRODUCE a stabilizer violation is still refused.
+
+That end-to-end pass caught a genuine divergence: at 1 g the grams control
+clamped and wrote, while the percent control was silently refused, because
+`setPlannedGramsVector` rejected any draft the stabilizer system had an issue
+with — including issues the draft already had before the edit. It now refuses
+only what an edit INTRODUCES, which is what the grams control has always done.
+PINGÜINO's band is unchanged and is still enforced at Preview, Apply and Save.
+
+Rewritten: `productDosageAuthority.test.ts` (11),
+`productDoseSuggestion.test.ts` (4), `directPercentEdit.test.ts` (10).
+Updated: 13 further files whose assertions encoded the retired authority.
 
 ## 7. Exact commands and results
 

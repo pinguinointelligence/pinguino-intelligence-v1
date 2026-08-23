@@ -4,7 +4,6 @@
   "states": {
     "READY_VERIFIED": 0,
     "READY_ESTIMATED": 2,
-    "TECHNICAL_AUTHORITY_REQUIRED": 0,
     "REVIEW": 8
   },
   "forceDistinctRows": 1,
