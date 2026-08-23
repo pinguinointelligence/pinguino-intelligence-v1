@@ -599,7 +599,14 @@ const profileFields = (
   machineId: profile.machineId,
   machineLabel: profile.machineLabel,
   direction_targets: { ...profile.directionTargets },
-  direction_targets_active: Object.values(profile.directionTargets).some((target) => target !== 0),
+  // Owner P1-A: the neutral (0) selection is the CLEAN-MIDDLE INTENT, not the
+  // absence of one. Gating activation on "some axis != 0" made Sweetness 0 opt
+  // out of its own target, so the optimizer judged it against the global band
+  // alone and parked POD at the band edge — which is what made "+1 sweeter"
+  // deliver LESS sweetness than "balanced". A serialized Pro direction contract
+  // is always active; legacy/direct Engine inputs carry no `goals` and stay
+  // byte-compatible.
+  direction_targets_active: true,
 });
 
 const requireProductBehaviorRevalidation = (
@@ -1426,11 +1433,12 @@ export const useRecipeStore = create<RecipeState>()(
           useRecipeProfileStore.getState().setDirectionTargets(direction_targets);
           return {
             direction_targets,
-            direction_targets_active:
-              target !== 0 ||
-              Object.entries(state.direction_targets).some(
-                ([key, value]) => key !== axis && value !== 0,
-              ),
+            // Owner P1-A: returning an axis to 0 selects the CLEAN MIDDLE — it
+            // does not switch Direction off. Recomputing activation from
+            // "is any axis non-zero" is the same defect as the draft seam: it
+            // silently dropped the contract, so the optimizer stopped honouring
+            // the neutral band and parked POD at the approved band's edge.
+            direction_targets_active: true,
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1874,9 +1882,8 @@ export const useRecipeStore = create<RecipeState>()(
           direction_targets: {
             ...(defaults?.directionTargets ?? DEFAULT_DIRECTION_TARGETS),
           },
-          direction_targets_active: Object.values(defaults?.directionTargets ?? {}).some(
-            (target) => target !== 0,
-          ),
+          // Owner P1-A: neutral is an intent, not its absence (see above).
+          direction_targets_active: true,
           items: starter.items,
           baseOrder: starter.items.map((item) => item.id),
           activePresetId: null,
