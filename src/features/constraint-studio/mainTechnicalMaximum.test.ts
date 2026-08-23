@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
@@ -22,6 +22,13 @@ import {
   MAIN_TECHNICAL_INTEGER_NODE_BUDGET,
   mainTechnicalLinearUpperBound,
 } from './mainTechnicalLinearBound';
+
+// Whole-recipe optimiser proofs: each case runs the real Engine across many
+// candidate formulations, so single tests legitimately take tens of seconds
+// where the repository default allows five. The timeout is raised for THIS FILE
+// only — the default stays in place everywhere else, and no assertion, fixture
+// or Engine behaviour is relaxed to fit inside it.
+vi.setConfig({ testTimeout: 30_000 });
 
 const MAPPER_SOURCE = readFileSync(
   resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),

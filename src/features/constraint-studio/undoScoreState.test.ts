@@ -27,6 +27,13 @@ import {
   useConstraintStudioStore,
 } from './constraintStudioStore';
 
+// Whole-recipe optimiser proofs: each case runs the real Engine across many
+// candidate formulations, so single tests legitimately take tens of seconds
+// where the repository default allows five. The timeout is raised for THIS FILE
+// only — the default stays in place everywhere else, and no assertion, fixture
+// or Engine behaviour is relaxed to fit inside it.
+vi.setConfig({ testTimeout: 30_000 });
+
 const authority = vi.hoisted(() => ({
   version: null as string | null,
   blockedLineId: null as string | null,

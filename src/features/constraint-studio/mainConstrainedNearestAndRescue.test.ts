@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RecipeDirectionTarget, RecipeInput, RecipeItem } from '@/engine';
 import { calculateRecipe, detectViolations } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
@@ -34,6 +34,13 @@ import {
   simulateRescueCandidates,
   type RescueCandidateIngredient,
 } from './rescueIngredientAdvisor';
+
+// Whole-recipe optimiser proofs: each case runs the real Engine across many
+// candidate formulations, so single tests legitimately take tens of seconds
+// where the repository default allows five. The timeout is raised for THIS FILE
+// only — the default stays in place everywhere else, and no assertion, fixture
+// or Engine behaviour is relaxed to fit inside it.
+vi.setConfig({ testTimeout: 30_000 });
 
 /**
  * MAIN-CONSTRAINED NEAREST + CROSS-PROFILE RESCUE ADVISOR (owner authority,
