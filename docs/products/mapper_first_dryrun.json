@@ -1,0 +1,515 @@
+{
+  "generatedFrom": "PL_Poland.csv",
+  "mapper": {
+    "file": "docs/ingredients/validation/mapper_basement.csv",
+    "rows": 2088,
+    "fingerprint": "b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38"
+  },
+  "parsed": {
+    "rows": 820,
+    "countries": [
+      "PL"
+    ],
+    "uniqueProducts": 820,
+    "existing": 0,
+    "duplicates": 0,
+    "ready": 86,
+    "enrichmentRequired": 731,
+    "reviewRequired": 3,
+    "invalid": 0
+  },
+  "assessed": 820,
+  "readiness": {
+    "READY": 0,
+    "ESTIMATED_READY": 7,
+    "REVIEW": 807,
+    "TECHNICAL_AUTHORITY_REQUIRED": 6
+  },
+  "valueReadiness": {
+    "READY": 0,
+    "ESTIMATED_READY": 13,
+    "REVIEW": 807
+  },
+  "engineReady": 13,
+  "engineReadyShare": 0.0159,
+  "familyAssigned": 229,
+  "familyHistogram": {
+    "chocolate": 6,
+    "cocoa_butter": 1,
+    "coconut_fat": 3,
+    "flavor_paste": 110,
+    "dairy_liquid": 10,
+    "base_mix": 89,
+    "dairy_protein": 10
+  },
+  "mapperFamilyCohorts": {
+    "alcohol": 129,
+    "dairy_liquid": 195,
+    "chocolate": 178,
+    "fruit": 134,
+    "base_mix": 198,
+    "flavor_paste": 618,
+    "coconut_fat": 14,
+    "plant_beverage": 193,
+    "plant_protein_isolate": 5,
+    "dairy_protein": 6,
+    "emulsifier": 25,
+    "liquid_vegetable_oil": 6,
+    "cocoa_butter": 1,
+    "fibre_inulin": 16,
+    "nut_paste": 64,
+    "stabilizer_hydrocolloid": 26,
+    "glucose_dextrose": 9,
+    "other_sugar": 4,
+    "sugar_sucrose": 24,
+    "starch": 10
+  },
+  "mapperTokenVocabulary": 2139,
+  "mapperFamilyConsensusFields": {
+    "alcohol": [
+      "fat_percent",
+      "protein_percent",
+      "salt_percent"
+    ],
+    "dairy_liquid": [
+      "salt_percent"
+    ],
+    "chocolate": [
+      "water_percent",
+      "total_solids_percent",
+      "protein_percent",
+      "salt_percent",
+      "pod_value",
+      "pac_value"
+    ],
+    "fruit": [
+      "water_percent",
+      "total_solids_percent",
+      "fat_percent",
+      "protein_percent",
+      "carbohydrate_percent",
+      "total_sugars_percent",
+      "salt_percent",
+      "pod_value",
+      "pac_value"
+    ],
+    "base_mix": [
+      "water_percent",
+      "total_solids_percent",
+      "salt_percent"
+    ],
+    "flavor_paste": [
+      "salt_percent",
+      "pod_value"
+    ],
+    "coconut_fat": [
+      "protein_percent",
+      "salt_percent"
+    ],
+    "plant_beverage": [
+      "water_percent",
+      "total_solids_percent",
+      "fat_percent",
+      "protein_percent",
+      "carbohydrate_percent",
+      "total_sugars_percent",
+      "salt_percent",
+      "pod_value",
+      "pac_value"
+    ],
+    "plant_protein_isolate": [
+      "fat_percent",
+      "carbohydrate_percent",
+      "total_sugars_percent",
+      "salt_percent",
+      "pod_value",
+      "pac_value"
+    ],
+    "dairy_protein": [
+      "fat_percent",
+      "carbohydrate_percent",
+      "salt_percent",
+      "pod_value",
+      "pac_value"
+    ],
+    "emulsifier": [
+      "water_percent",
+      "total_solids_percent",
+      "protein_percent"
+    ],
+    "liquid_vegetable_oil": [
+      "water_percent",
+      "total_solids_percent",
+      "fat_percent",
+      "protein_percent",
+      "carbohydrate_percent",
+      "total_sugars_percent",
+      "salt_percent",
+      "pod_value",
+      "pac_value"
+    ],
+    "cocoa_butter": [],
+    "fibre_inulin": [
+      "water_percent",
+      "total_solids_percent",
+      "fat_percent",
+      "protein_percent",
+      "salt_percent"
+    ],
+    "nut_paste": [
+      "water_percent",
+      "total_solids_percent",
+      "salt_percent"
+    ],
+    "stabilizer_hydrocolloid": [
+      "fat_percent",
+      "protein_percent",
+      "pod_value"
+    ],
+    "glucose_dextrose": [
+      "fat_percent",
+      "protein_percent",
+      "salt_percent",
+      "pod_value"
+    ],
+    "other_sugar": [
+      "fat_percent",
+      "protein_percent",
+      "salt_percent"
+    ],
+    "sugar_sucrose": [
+      "fat_percent",
+      "protein_percent",
+      "salt_percent"
+    ],
+    "starch": [
+      "water_percent",
+      "total_solids_percent",
+      "fat_percent",
+      "protein_percent",
+      "carbohydrate_percent",
+      "total_sugars_percent",
+      "salt_percent",
+      "pod_value",
+      "pac_value"
+    ]
+  },
+  "mapperContributed": 578,
+  "tierCounts": {
+    "mapper_similar_profile": 348,
+    "mapper_family_consensus": 366,
+    "mapper_simple_profile": 6
+  },
+  "fieldFill": {
+    "water_percent": {
+      "verified": 0,
+      "estimated": 324,
+      "unknown": 496
+    },
+    "total_solids_percent": {
+      "verified": 0,
+      "estimated": 324,
+      "unknown": 496
+    },
+    "fat_percent": {
+      "verified": 131,
+      "estimated": 237,
+      "unknown": 452
+    },
+    "protein_percent": {
+      "verified": 132,
+      "estimated": 297,
+      "unknown": 391
+    },
+    "carbohydrate_percent": {
+      "verified": 132,
+      "estimated": 175,
+      "unknown": 513
+    },
+    "total_sugars_percent": {
+      "verified": 122,
+      "estimated": 173,
+      "unknown": 525
+    },
+    "salt_percent": {
+      "verified": 108,
+      "estimated": 489,
+      "unknown": 223
+    },
+    "pod_value": {
+      "verified": 0,
+      "estimated": 393,
+      "unknown": 427
+    },
+    "pac_value": {
+      "verified": 0,
+      "estimated": 243,
+      "unknown": 577
+    }
+  },
+  "missingHistogram": {
+    "water_percent": 496,
+    "total_solids_percent": 496,
+    "fat_percent": 452,
+    "carbohydrate_percent": 513,
+    "total_sugars_percent": 525,
+    "pod_value": 427,
+    "pac_value": 577,
+    "protein_percent": 391,
+    "salt_percent": 223
+  },
+  "gapDistribution": {
+    "0": 106,
+    "1": 36,
+    "2": 59,
+    "3": 72,
+    "4": 95,
+    "5": 51,
+    "6": 80,
+    "7": 61,
+    "8": 35,
+    "9": 212
+  },
+  "completeProfiles": 119,
+  "completeProfileConfidenceBuckets": {
+    "0.50": 44,
+    "0.60": 11,
+    "0.90": 7,
+    "0.70": 6,
+    "0.45": 16,
+    "0.75": 7,
+    "0.35": 2,
+    "0.30": 3,
+    "0.80": 2,
+    "0.65": 9,
+    "0.95": 6,
+    "0.55": 6
+  },
+  "productsWithDeclarationConflicts": 26,
+  "samples": [
+    {
+      "row": 1,
+      "name": "Airwaves Cool Cassis Bezcukrowa guma do żucia (10 sztuk)",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [
+        "mapper_similar_profile"
+      ],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "pod_value",
+        "pac_value"
+      ],
+      "mapperReferences": [
+        "PI-ING-000686",
+        "PI-ING-000749",
+        "PI-ING-000995",
+        "PI-ING-001613",
+        "PI-ING-001967",
+        "PI-ING-001980"
+      ]
+    },
+    {
+      "row": 2,
+      "name": "Baitz Baton choco cocos",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [
+        "mapper_similar_profile"
+      ],
+      "missing": [
+        "fat_percent"
+      ],
+      "mapperReferences": [
+        "PI-ING-000091",
+        "PI-ING-000092",
+        "PI-ING-000093",
+        "PI-ING-000094",
+        "PI-ING-001053",
+        "PI-ING-001054"
+      ]
+    },
+    {
+      "row": 3,
+      "name": "Baton w czekoladzie mlecznej z wiórkami kokosowymi Baitz Choco Cocos",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": 0.504,
+      "tiers": [
+        "mapper_similar_profile"
+      ],
+      "missing": [],
+      "mapperReferences": [
+        "PI-ING-000091",
+        "PI-ING-000092",
+        "PI-ING-000093",
+        "PI-ING-000094",
+        "PI-ING-001053",
+        "PI-ING-001054"
+      ]
+    },
+    {
+      "row": 4,
+      "name": "Caramel & Peanuts Waffle Baitz",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "pod_value",
+        "pac_value"
+      ],
+      "mapperReferences": []
+    },
+    {
+      "row": 5,
+      "name": "Chrupiące herbatniki Baitz Czeko Sandwich z nadzieniem z czekolady mlecznej",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "pod_value",
+        "pac_value"
+      ],
+      "mapperReferences": []
+    },
+    {
+      "row": 6,
+      "name": "Ciastka z nadzieniem z orzechów laskowych Baitz Crispy",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "pod_value",
+        "pac_value"
+      ],
+      "mapperReferences": []
+    },
+    {
+      "row": 7,
+      "name": "Precelki w polewie słonego karmelu Baitz",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "pod_value",
+        "pac_value"
+      ],
+      "mapperReferences": []
+    },
+    {
+      "row": 8,
+      "name": "Rogalik z nadzieniem kakaowym Baitz Cocoa Rogal",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": 0.504,
+      "tiers": [
+        "mapper_similar_profile",
+        "mapper_family_consensus"
+      ],
+      "missing": [],
+      "mapperReferences": [
+        "PI-ING-000018",
+        "PI-ING-000064",
+        "PI-ING-000087",
+        "PI-ING-000088",
+        "PI-ING-000089",
+        "PI-ING-000090"
+      ]
+    },
+    {
+      "row": 9,
+      "name": "Snack Baitz Cheese & Oregano",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "pod_value",
+        "pac_value"
+      ],
+      "mapperReferences": []
+    },
+    {
+      "row": 10,
+      "name": "Snack Baitz Tomato & Oregano",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [
+        "mapper_similar_profile"
+      ],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "total_sugars_percent"
+      ],
+      "mapperReferences": [
+        "PI-ING-000395",
+        "PI-ING-000543",
+        "PI-ING-000689"
+      ]
+    },
+    {
+      "row": 11,
+      "name": "Strawberry & Crisps Waffle Baitz",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [
+        "mapper_similar_profile"
+      ],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "pac_value"
+      ],
+      "mapperReferences": [
+        "PI-ING-000632",
+        "PI-ING-000960",
+        "PI-ING-000986",
+        "PI-ING-001036",
+        "PI-ING-002071"
+      ]
+    },
+    {
+      "row": 12,
+      "name": "Bakallino Masa krówkowa kajmak",
+      "category": "Bakery & sweets",
+      "readiness": "REVIEW",
+      "engineConfidence": null,
+      "tiers": [],
+      "missing": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent",
+        "pod_value",
+        "pac_value"
+      ],
+      "mapperReferences": []
+    }
+  ]
+}
