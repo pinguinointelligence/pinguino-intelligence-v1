@@ -28,15 +28,22 @@ import {
   proposeAutoFix,
   type CorrectionProposal,
   type EngineIngredient,
+  type RecipeDirectionTarget,
   type RecipeInput,
   type RecipeResult,
 } from '@/engine';
 import { recipeContext } from '@/features/studio/buildRecipeInput';
 import {
   buildRecipeDirectionPlan,
+  DEFAULT_RECIPE_DIRECTION_TARGETS,
   hasActiveExactDirectionObjective,
   recipeDirectionViolations,
 } from '@/features/recipe-direction/recipeDirectionTargets';
+import {
+  compareDirectionDistance,
+  directionDistance,
+  requestedDirectionBands,
+} from '@/features/recipe-direction/directionBandDistance';
 import {
   assessRecipeDirection,
   type RecipeDirectionAssessment,
@@ -202,6 +209,10 @@ export interface OptimizePreviewOptions extends FormulationOptions {
    * Main-constrained search treats them as free dimensions; nothing else
    * changes and such a line is never written by Apply. */
   rescueSimulationLineIds?: readonly string[];
+  /** INTERNAL. Set on the probe runs issued by the shared Direction NEAREST
+   * search so those probes do not recurse into the search themselves. Never set
+   * by a caller. */
+  directionNearestPass?: boolean;
 }
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
@@ -4400,10 +4411,18 @@ function attachMainObjective(
   // 10 — Mains intact at 120/60, ratio 2.0, zero violations — and Apply refused
   // it as an unverifiable proof. Refreshing the score from the same candidate
   // keeps the door trustless while letting a genuinely better recipe through.
-  const score = recipeFitForInput(
-    preview.proposedInput,
-    calculateRecipe(preview.proposedInput),
-  ).score;
+  // The door re-derives this score from `practicalization.audit.exactInput`
+  // when practicalization is ready, and only falls back to the executable
+  // candidate otherwise. Mirror that choice EXACTLY: scoring the executable
+  // whole-gram vector while the door scores the exact one silently invalidates
+  // honest proofs whenever rounding moves the recipe across a score boundary.
+  // Measured on Protein @ −12 Sweetness −1: proof carried 9 against an exact
+  // candidate the door scored 10, and Apply refused a fully valid Preview.
+  const scoredCandidate =
+    preview.practicalization?.status === 'ready'
+      ? preview.practicalization.audit.exactInput
+      : preview.proposedInput;
+  const score = recipeFitForInput(scoredCandidate, calculateRecipe(scoredCandidate)).score;
   preview.mainObjective = {
     ...proof,
     executableMainGrams: mainGroupTotal(identityInput, preview.proposedInput),
@@ -5080,12 +5099,25 @@ function buildFormulationPreviewInternal(
           : [];
       })();
 
+  // SHARED DIRECTION NEAREST: rank the final candidate by its distance to the
+  // band the user actually requested before it is practicalized into a Preview.
+  const directionRanked = improveDirectionNearestVector(input, set, working, createdAt, options);
+  // §13 — NEVER carry a stale Main proof. The Main frontier ran against the
+  // pre-ranking candidate, and the Apply door re-derives `exactAcceptedMainGrams`
+  // and `technicalScore` from whatever the Preview actually carries. When the
+  // ranking replaced the candidate, the certified frontier is rebuilt on the
+  // replacement so the proof describes the vector Apply will verify.
+  const rankedMainObjective =
+    directionRanked === working
+      ? mainObjective
+      : maximizeMainFlavourObjective(input, directionRanked, set, solverOptions);
+
   const preview = finishPreview(
     'optimize',
     copy.preview.kindLabels.optimize,
     input,
     set,
-    working,
+    rankedMainObjective.input,
     set,
     violationsBefore,
     explanation,
@@ -5131,7 +5163,7 @@ function buildFormulationPreviewInternal(
     bestEffortReasons: executableBestEffortReasons,
     stabilizerDoseNotePl,
   };
-  attachMainObjective(preview, input, mainObjective.proof);
+  attachMainObjective(preview, input, rankedMainObjective.proof);
   preview.autoBalance = { batchRescaled: true, solverRounds };
   preview.iteration = iterated.diagnostics;
   preview.formulation = {
@@ -5370,6 +5402,106 @@ function buildSorbetDirectionCandidatePreview(params: {
     }
   }
   return null;
+}
+
+/** The five Direction selector positions, in canonical order. */
+const DIRECTION_LEVELS: readonly RecipeDirectionTarget[] = [-2, -1, 0, 1, 2];
+
+/**
+ * SHARED DIRECTION NEAREST (owner 2026-08-23).
+ *
+ * The optimizer reaches its answer by a greedy hill-climb whose only currency
+ * is `Σ_metrics (beyond_band / halfWidth)` summed over EVERY technical metric.
+ * It accepts strictly-improving moves and never backtracks, so when a requested
+ * Direction band cannot be entered, "NEAREST" degenerates into wherever the
+ * climb happened to stop — the distance to the band the user actually asked for
+ * is never represented anywhere in the selection. A move that closes Direction
+ * distance but transiently costs a little on an unrelated metric is rejected,
+ * and the search stalls short of candidates it can demonstrably reach.
+ *
+ * Measured on Protein (starter draft, OPTIMAL) before this search existed:
+ *   −11 °C Sweetness +2, band [16,17] → POD 14.7201 (distance 1.2799), while
+ *     Sweetness +1 reaches 15.5571 — distance 0.4429 from that SAME band.
+ *   −13 °C Sweetness −1, band [13,14] → POD 14.9812, i.e. moved UP and AWAY
+ *     from a downward target, while Sweetness −2 reaches 13.9272 — INSIDE the
+ *     requested band. ACHIEVED was available and was not returned.
+ *
+ * The fix does not touch any band, any profile physics or the meaning of the
+ * selector. It adds the missing final step: probe the sibling selector
+ * positions to GENERATE additional legal candidate vectors, then rank every
+ * candidate by its distance to the ORIGINALLY REQUESTED band. Aiming at a
+ * neighbouring band is only a way of producing a candidate; scoring is always
+ * against what the user asked for.
+ *
+ * Ordering is strictly lexicographic and Direction never outranks safety:
+ *   1. executable / hard-safe            (rejected outright below)
+ *   2. Main + Multi-Main ratio, locks, batch, no 0 g row (rejected outright)
+ *   3. minimum distance to the requested band  ← the newly explicit term
+ *   4. the incumbent wins every tie, so existing technical tie-breaks and the
+ *      established candidate stand unless something is STRICTLY nearer.
+ *
+ * Because the incumbent is only ever replaced by a strictly nearer candidate
+ * that independently satisfies every hard contract, a profile whose greedy
+ * result was already nearest is returned bit-for-bit unchanged.
+ */
+function improveDirectionNearestVector(
+  input: RecipeInput,
+  set: ConstraintSet,
+  working: RecipeInput,
+  createdAt: string,
+  options: OptimizePreviewOptions,
+): RecipeInput {
+  // Probe runs must not recurse into the search.
+  if (options.directionNearestPass === true) return working;
+  if (!hasActiveExactDirectionObjective(input)) return working;
+  const requested = requestedDirectionBands(input);
+  if (requested.length === 0) return working;
+
+  let best = { input: working, measure: directionDistance(working, requested) };
+  // Already inside every requested band: this is ACHIEVED, not NEAREST.
+  if (best.measure.missedAxes === 0) return working;
+
+  const askedTargets = input.goals?.direction_targets ?? DEFAULT_RECIPE_DIRECTION_TARGETS;
+  const targetMainGrams = mainGroupTotal(input, working);
+  const probeOptions: OptimizePreviewOptions = { ...options, directionNearestPass: true };
+
+  for (const axis of requested) {
+    for (const level of DIRECTION_LEVELS) {
+      if (level === askedTargets[axis.axis]) continue;
+      const probe = buildOptimizePreview(
+        {
+          ...input,
+          goals: {
+            ...input.goals,
+            direction_targets: { ...askedTargets, [axis.axis]: level },
+          },
+        } as RecipeInput,
+        set,
+        createdAt,
+        probeOptions,
+      );
+      if (!probe.ok) continue;
+      // Rebase onto the ORIGINAL request: the user asked for their own level,
+      // so only the gram vector is borrowed — never the probe's goals.
+      const candidate: RecipeInput = { ...input, items: probe.preview.proposedInput.items };
+      if (
+        detectViolations(calculateRecipe(candidate)).length > 0 ||
+        // Verified with the SAME arguments the Apply door uses, constraints
+        // included: a candidate this search accepts must be one Apply accepts.
+        !verifyMainIngredientIdentity(input, candidate, set.byLineId).ok ||
+        !verifyConstraintsPreserved(set, candidate).ok ||
+        Math.abs(mainGroupTotal(input, candidate) - targetMainGrams) > MAIN_OBJECTIVE_EPSILON_G ||
+        Math.abs(plannedSum(candidate) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G ||
+        candidate.items.some((item) => item.planned_grams <= 0)
+      ) {
+        continue;
+      }
+      const measure = directionDistance(candidate, requested);
+      const order = compareDirectionDistance(measure, best.measure);
+      if (order !== null && order < 0) best = { input: candidate, measure };
+    }
+  }
+  return best.input;
 }
 
 /**
@@ -6152,6 +6284,10 @@ function buildOptimizePreviewWithDirection(
           ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }]
           : [];
       })();
+
+  // SHARED DIRECTION NEAREST: rank the final candidate by its distance to the
+  // band the user actually requested before it is practicalized into a Preview.
+  working = improveDirectionNearestVector(input, set, working, createdAt, options);
 
   const preview = finishPreview(
     'optimize',

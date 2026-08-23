@@ -68,11 +68,19 @@ const SWEETNESS_CELLS = CELLS.filter(
   ([category, temperature]) =>
     category === 'milk_gelato' ||
     category === 'vegan_gelato' ||
+    // Protein sweetness qualified 2026-08-23: the complete -2..+2 x -2..+2 x 3
+    // temperatures x 2 strategies matrix (150 states) is natively hard-safe,
+    // claim-qualified and applied, and POD is composition-derived from each
+    // ingredient's own stored pod_value against the Protein profile's OWN
+    // approved band. See proteinDirectionAuthority.test.ts.
+    category === 'protein_gelato' ||
     (category === 'sorbet' && [-11, -12, -13].includes(temperature)) ||
     (category === 'chocolate_gelato' && (temperature === -11 || temperature === -12)),
 );
+/** Profiles that subdivide their approved POD band into FIVE ordered zones. */
 const GELATO_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
-  ([category]) => category === 'milk_gelato' || category === 'vegan_gelato',
+  ([category]) =>
+    category === 'milk_gelato' || category === 'vegan_gelato' || category === 'protein_gelato',
 );
 const LEGACY_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
   ([category]) => category === 'chocolate_gelato',

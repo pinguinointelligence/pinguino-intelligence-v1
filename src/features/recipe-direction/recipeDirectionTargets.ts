@@ -188,6 +188,13 @@ function computeRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPlan {
   const sweetnessOperational =
     profile === 'vegan_gelato' ||
     profile === 'standard_gelato' ||
+    // PROTEIN SWEETNESS — qualified against this gate's own criterion by the
+    // complete -2..+2 x -2..+2 x 3 temperatures x 2 strategies matrix (150
+    // states: all natively hard-safe, all claim-qualified, all applied, zero
+    // executable 0 g rows). POD is composition-derived from each ingredient's
+    // own stored pod_value, and the target subdivides the Protein profile's OWN
+    // approved POD band -- no borrowed dairy curve, no invented reference.
+    profile === 'protein_gelato' ||
     (profile === 'sorbet' &&
       (input.target_temperature_c === -11 ||
         input.target_temperature_c === -12 ||
@@ -221,12 +228,15 @@ function computeRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPlan {
     const targetBand =
       targetCenter !== null
         ? exactPreferencePoint(targetCenter)
-        : // RC-1: Vegan uses the SAME five-region derivation as standard Gelato,
-          // applied to its OWN approved POD band. `targetFifth` splits an
-          // already-approved band into five monotonic fifths, so nothing is
-          // invented and no dairy reference is borrowed. The legacy three-zone
-          // branch collapsed −2/−1 (and +1/+2) onto one recipe.
-          profile === 'standard_gelato' || profile === 'vegan_gelato'
+        : // Vegan (RC-1) and Protein both use the SAME five-region derivation as
+          // standard Gelato, each applied to its OWN approved POD band.
+          // `targetFifth` splits an already-approved band into five monotonic
+          // fifths, so nothing is invented and no dairy reference is borrowed.
+          // The legacy three-zone branch collapses −2/−1 (and +1/+2) onto one
+          // recipe, which would make a five-position selector lie.
+          profile === 'standard_gelato' ||
+            profile === 'vegan_gelato' ||
+            profile === 'protein_gelato'
           ? targetFifth(regulator.pod.band, targets.sweetness)
           : legacyTargetThird(regulator.pod.band, targets.sweetness);
     if (enabled) bands.pod = targetBand;
@@ -367,6 +377,12 @@ export function hasActiveExactDirectionObjective(input: RecipeInput): boolean {
     (axis) =>
       axis.status === 'working' &&
       axis.targetBand !== null &&
-      (plan.profile === 'standard_gelato' || axis.targetCenter !== null),
+      // A profile qualifies for the EXACT five-step objective when its axis
+      // carries either an exact preference point (Sorbet's target centres) or a
+      // genuine five-way band subdivision. Protein subdivides its own approved
+      // POD band into fifths exactly as Standard Gelato does.
+      (plan.profile === 'standard_gelato' ||
+        plan.profile === 'protein_gelato' ||
+        axis.targetCenter !== null),
   );
 }

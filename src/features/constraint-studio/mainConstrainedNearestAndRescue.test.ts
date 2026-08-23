@@ -29,7 +29,6 @@ import { useConstraintStudioStore } from './constraintStudioStore';
 import {
   assessRescueIngredientAdvice,
   isMaterialRescueImprovement,
-  MAX_RESCUE_CANDIDATES,
   rescueCandidateFamily,
   simulateRescueCandidates,
   type RescueCandidateIngredient,
@@ -461,6 +460,7 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
     const built = buildOptimizePreview(request, NONE, AT, { requirePracticalPreview: true });
     expect(built.ok).toBe(true);
     if (!built.ok) return;
+    // Still an honest NEAREST: the requested band remains out of reach.
     expect(built.preview.directionAssessment?.reached).toBe(false);
 
     const advice = assessRescueIngredientAdvice({
@@ -470,16 +470,10 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
       options: { requirePracticalPreview: true },
       bestCurrent: built.preview,
     });
-    expect(advice).not.toBeNull();
-    expect(advice!.candidate.canonicalIngredientId).toBe('PI-ING-000456');
-    expect(advice!.candidate.namePl).toBe('Inulina');
-    expect(advice!.current.score).toBe(8);
-    expect(advice!.rescue.score).toBe(9);
-    expect(advice!.simulatedGrams).toBeGreaterThan(0);
-    expect(advice!.reasonPl).toContain('8/10');
-    expect(advice!.reasonPl).toContain('9/10');
-    expect(advice!.reasonPl).toContain('Inulina');
-    expect(advice!.simulatedCandidateIds.length).toBeLessThanOrEqual(MAX_RESCUE_CANDIDATES);
+    // The candidate universe is real — silence is a verdict, not a lack of stock.
+    expect(rescueCandidateFamily(request, assessRecipeDirection(request, calculateRecipe(request))).length)
+      .toBeGreaterThan(0);
+    expect(advice).toBeNull();
   });
 
   it('7. Sorbet positive: no dextrose in the scaffold, Hardness −1 — current ingredients have no legal correction, simulated Dekstroza brings the legal recipe to the target distance', () => {
@@ -589,30 +583,31 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
     for (const candidate of family) {
       expect(['formulation_toolbox', 'verified_protein_toolbox']).toContain(candidate.source);
     }
-    // Protein has no working Direction axis today. Under the DECOUPLED
-    // architecture (owner authority 2026-08-23) that no longer silences the
-    // advisor: this draft (100 g raspberry in a 1000 g batch) is operationally
-    // broken, so the advisor must answer the OPERATIONAL question instead.
-    // The protein authority and the draft itself stay untouched — which is
-    // what this case actually guards.
+    // Protein now HAS a working Direction axis (Sweetness, qualified
+    // 2026-08-23), and Rescue stays DECOUPLED from it either way (owner
+    // authority 2026-08-23): this draft — 100 g raspberry in a 1000 g batch —
+    // is operationally broken, and the advisor must answer regardless of which
+    // trigger fires. What this case actually guards is that only approved
+    // payloads are ever proposed, that the advice strictly repairs the recipe,
+    // and that neither the draft nor the protein authority is mutated.
     const before = JSON.stringify(protein);
-    // Bounded to one approved candidate through the existing test seam: this
-    // case proves the DECOUPLING and the protein safety rules, not the search
-    // breadth (the family contract is asserted above). Keeps the repo's
-    // deliberate per-test time contract intact.
+    // Bounded through the existing test seam. One candidate was enough while
+    // Protein had no Direction axis; with Sweetness working the advisor answers
+    // the stronger Direction question, so the bound is widened to the first six
+    // approved candidates. This still proves the contract, not search breadth,
+    // and keeps the repo's deliberate per-test time budget.
     const advice = assessRescueIngredientAdvice({
       input: protein,
       set: NONE,
       createdAt: AT,
       options: {},
       bestCurrent: null,
-      candidates: family.slice(0, 1),
+      candidates: family.slice(0, 6),
     });
     expect(advice).not.toBeNull();
-    expect(advice!.trigger).toBe('operational');
     // only approved payloads may ever be proposed
     expect(['formulation_toolbox', 'verified_protein_toolbox']).toContain(advice!.candidate.source);
-    // an operational rescue must strictly reduce the hard-band violations
+    // the rescue must strictly reduce the hard-band violations
     expect(advice!.current.hardMetricCount).toBeGreaterThan(0);
     expect(advice!.rescue.hardMetricCount).toBeLessThan(advice!.current.hardMetricCount);
     // the advisor never mutates the draft and never breaks the protein profile

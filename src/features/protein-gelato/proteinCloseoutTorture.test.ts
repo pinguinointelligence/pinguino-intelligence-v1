@@ -372,25 +372,27 @@ describe('§18/§19 — Direction axis status and Rescue are truthful for Protei
       { direction_targets_active: true, direction_targets: { sweetness, softness: hardness, creaminess: 0, flavor: 0 } },
     );
 
-  it.each([-11, -12, -13] as const)('@ %s both axes report an honest blocked reason', (temperatureC) => {
+  it.each([-11, -12, -13] as const)('@ %s each axis reports its honest status', (temperatureC) => {
     const input = directional(2, -2, temperatureC);
     const plan = buildRecipeDirectionPlan(input);
     const sweetness = plan.axes.find((a) => a.axis === 'sweetness')!;
     const softness = plan.axes.find((a) => a.axis === 'softness')!;
 
-    expect(sweetness.status).not.toBe('working');
-    expect(softness.status).not.toBe('working');
+    // Sweetness qualified 2026-08-23 (150-state matrix + shared NEAREST fix):
+    // it publishes a real band and is honoured. See proteinDirectionAuthority.
+    expect(sweetness.status).toBe('working');
+    expect(sweetness.targetBand).not.toBeNull();
+
+    // Hardness stays blocked on its own scientific authority and must not be
+    // unlocked merely because Sweetness now works.
+    expect(softness.status).toBe('blocked_science');
     // A blocked axis must always say WHY — never fail silently.
-    expect(sweetness.reason).toBeTruthy();
     expect(softness.reason).toBeTruthy();
     // And it must never publish a target band it cannot honour.
-    expect(sweetness.targetBand).toBeNull();
     expect(softness.targetBand).toBeNull();
 
     const assessment = assessRecipeDirection(input, calculateRecipe(input));
-    expect(assessment.supportedAxisCount).toBe(0);
-    // No supported axis ⇒ never a false "target reached".
-    expect(assessment.reached).toBe(false);
+    expect(assessment.supportedAxisCount).toBe(1);
 
     console.info(
       'DIRSTATUS ' +
@@ -404,6 +406,8 @@ describe('§18/§19 — Direction axis status and Rescue are truthful for Protei
   });
 
   it.each([-11, -12, -13] as const)('@ %s Rescue is silent for the RIGHT reason', (temperatureC) => {
+    // Rescue must be independent of Direction availability (staging 0ab80ed);
+    // here it is silent because the target is MET, not because it is disabled.
     const input = directional(2, -2, temperatureC);
     const built = buildOptimizePreview(input, EMPTY, AT);
     const report = simulateRescueCandidates({
@@ -417,8 +421,12 @@ describe('§18/§19 — Direction axis status and Rescue are truthful for Protei
 
     // The candidate universe is real — Rescue is not silent for lack of stock.
     expect(family.length).toBeGreaterThan(0);
-    // It is silent because there is no supported axis to rescue toward.
-    expect(direction.supportedAxisCount).toBe(0);
+    // Protein now HAS a supported axis (Sweetness). Rescue is silent for the
+    // strongest possible reason: the requested Direction target was actually
+    // reached, so there is nothing left to rescue toward. Before the shared
+    // NEAREST fix this same request could not be honoured at all.
+    expect(direction.supportedAxisCount).toBe(1);
+    expect(direction.reached).toBe(true);
     expect(report.simulations).toEqual([]);
     expect(report.advice).toBeNull();
 
@@ -430,7 +438,9 @@ describe('§18/§19 — Direction axis status and Rescue are truthful for Protei
           supportedAxisCount: direction.supportedAxisCount,
           simulations: report.simulations.length,
           advice: report.advice,
-          reason: 'no supported Direction axis for Protein — see blocked_science / blocked_runtime',
+          reached: direction.reached,
+          reason:
+            'Sweetness target reached on the executable candidate — nothing to rescue toward; Hardness stays blocked_science',
         }),
     );
   }, 600_000);
