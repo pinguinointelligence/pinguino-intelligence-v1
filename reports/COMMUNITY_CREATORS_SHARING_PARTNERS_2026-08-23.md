@@ -312,3 +312,167 @@ npm run build           built
    exercised against a real Stripe event.
 4. Category/country filters, share expiry UI and the report/moderation UI stay
    schema-ready but unrendered.
+
+---
+
+# Round 3 — verified rating UI, staging QA accounts, Stripe assessment
+
+## 1. Verified Rating — submit and update (§42)
+
+`RatePublication` on the public Community recipe page only. Not on direct or
+unlisted shares — that was explicitly out of scope for this phase.
+
+* **Eligibility is a confirmed make and nothing else.** The control's only
+  eligibility input is `can_rate`, which the server derives from
+  `recipe_make_events`. There is no prop for „used" or „remixed", so viewing,
+  copying or remixing cannot make it appear.
+* A non-eligible viewer sees **nothing** — an unusable star row would be an
+  invitation to be refused.
+* 1–5 stars, one active rating per user per publication. An existing rating
+  opens pre-selected and the button reads „Zaktualizuj ocenę"; an unchanged
+  value cannot be re-submitted.
+* The write goes through `gellatti_rate_publication_v1` and nothing else. A new
+  `gellatti_my_rating_v1` READ tells the control whether to render — it is
+  advisory in both directions and cannot create or change a rating. A source
+  guard pins that there is exactly one writer.
+* After a successful write the page re-keys its resource, so the verified
+  average and count above the control refresh immediately.
+* No misleading `0.0`: an unrated publication returns `rating_average = null`
+  and renders „Brak ocen"; an unchosen draft renders „—".
+* Premium/minimal: five small glyphs on a hairline row, no animation. The value
+  is also in text and the group is a labelled `radiogroup` with per-star labels,
+  so it is never conveyed by shape alone (§62).
+
+### Live proof on staging (rolled back)
+
+| | |
+| --- | --- |
+| after COPY only → `can_rate` | **false**; write refused `rating_requires_confirmed_make` |
+| after a completed production run → `can_rate` | **true**, 1 confirmed make |
+| maker rates 4 | aggregate `count=1 avg=4.00` |
+| same user submits 2 | **1** rating row still — updated, not duplicated; `count=1 avg=2.00` |
+| a second, different maker rates 5 | `count=2 avg=3.50` |
+| non-maker | `can_rate` false; write refused |
+| non-maker forges a make row / a rating row | refused `42501` / `42501` |
+| public Community page | `avg=3.50 count=2` |
+
+14 component tests cover: maker can rate, non-maker cannot, update path,
+second submit updates rather than duplicating, aggregate refresh, double-click
+submits once, a server refusal is surfaced, and the control never sends an
+eligibility claim (only id + stars).
+
+## 2. Staging QA accounts
+
+Created on **staging only**. The Supabase MCP used here is scoped to the
+staging project, so production is structurally unreachable from this session.
+Passwords are staging-only test credentials; they are not printed in any report
+and not committed to the repository.
+
+| | `user@test.com` | `partner@test.com` |
+| --- | --- | --- |
+| email confirmed / password verifies | yes / yes | yes / yes |
+| auth identity rows | 1 (email) | 1 (email) |
+| entitlement | `pro:active` (admin_grant, `system:qa-seed`) | `pro:active` (admin_grant, `system:qa-seed`) |
+| Partner status | **none** | **active**, tier `standard` |
+| Referral code | — | `QAPARTNER10` / slug `qapartner10` |
+| Stripe Connect onboarding | — | **false** |
+| Payouts enabled | — | **false** |
+| Creator profile | none (created through the UI during QA) | none |
+
+Connect onboarding and payouts are deliberately left `false`: no Stripe Connect
+test onboarding has actually happened, and faking a payout-completed state was
+explicitly ruled out.
+
+### Behaviour verified with these exact accounts (rolled back)
+
+| | |
+| --- | --- |
+| normal user saves + shares | ok, 43-char token |
+| normal-user share `partner_attribution` / `partner_id` | **false** / **NULL** |
+| a buyer opening the normal user's link | **0** attributions |
+| partner share `partner_attribution` | **true**, bound to this partner |
+| a buyer opening the partner's link | **1** attribution, to `partner@test.com` |
+| partner dashboard | `ok`, status `active`, code `QAPARTNER10`, payouts_enabled false |
+| normal user's partner dashboard | `not_a_partner` (a distinct answer, not an empty earnings screen) |
+| **non-retroactivity**: activate the normal user as a Partner later | the OLD share stays `partner_id = NULL`; a NEW share carries attribution; a buyer through the OLD link still produces **0** attributions |
+
+Persistent state afterwards: exactly two accounts, exactly one active Partner
+(`partner@test.com`), one active code, and **zero** residue — no share links, no
+attributions, no clicks, no publications, no ratings, no makes, no commission
+entries, no throwaway users.
+
+## 3. Stripe Partner conversion — NOT exercised
+
+The Stripe functions are deployed and ACTIVE on staging (`stripe-webhook`,
+`stripe-subscription-webhook`, `create-checkout-session`, `create-portal-session`,
+`create-connect-onboarding-link`), and the commission path is genuinely wired
+inside `stripe-webhook`: duplicate `commission_entries` check → active/pending
+`referral_attributions` lookup and lock → the closed commission insert.
+
+It was **not** exercised, for four reasons, each of which is disqualifying on
+its own:
+
+1. **Staging's Stripe mode cannot be verified.** `STRIPE_SECRET_KEY` is an Edge
+   Function secret; it is not readable, and asking for it in chat is not
+   something I do. `livemode` is false on the one cached subscription, which is
+   suggestive but is **not proof** that the configured key is `sk_test_`.
+   Completing a checkout against a live key would move real money.
+2. **Completing a Stripe Checkout means entering payment card details.** I do
+   not do that, test card or not.
+3. **Both flows need a signed-in browser session** as the QA accounts, which
+   means typing a password — also not something I do.
+4. **The refund leg needs Stripe API or dashboard access** with the secret key.
+
+Remains a **pre-production verification item**. What the owner needs to do,
+signed in as the QA accounts, to close it:
+
+1. confirm the staging `STRIPE_SECRET_KEY` is `sk_test_…`;
+2. open `partner@test.com`'s share link as a fresh account and confirm a
+   `pending` row appears in `referral_attributions`;
+3. complete a test-mode checkout with a Stripe test card;
+4. confirm exactly **one** `commission_entries` row and that the attribution
+   flipped to `active`;
+5. replay the same webhook delivery and confirm the row count does not change;
+6. issue a test refund and confirm the entry moves to `reversed`.
+
+The idempotency and reversal rules themselves are unit-tested
+(`stripeWebhookDispatch`, `stripeWebhookEffects`, `refundAdjustments`); what is
+unproven is the live wiring end to end.
+
+Existing Partner architecture was **not changed** in this round.
+
+## Build (round 3)
+
+```
+npx tsc -b --noEmit    clean
+npx eslint src supabase 0 errors, 4 warnings (all pre-existing react-refresh)
+npm run build           built; the rating control SURVIVES tree-shaking —
+                        gellatti_rate_publication_v1, gellatti_my_rating_v1 and
+                        the control's strings are all present in dist
+focused suites          852 passed (community, billing, stripe webhook dispatch
+                        + effects, services)
+```
+
+### The one full-suite failure, and why it is not a regression
+
+A full run reported `1 failed | 8020 passed`. It is
+`mainTechnicalMaximum.test.ts › does not cross the 20% ECO Main floor to chase
+an extreme Direction target` — a case the file itself documents as
+**timeout-budget only**: 60 s allowed for a case measured at ~17 s in isolation.
+
+Established rather than assumed:
+
+* the test file is **byte-identical** to `origin/staging` — it was never touched
+  by this work, and nothing this feature changes is imported by the Direction
+  or constraint-studio path;
+* on a worktree checked out at **origin/staging** it passes **45/45** (43 s);
+* on this branch it passes **45/45** (36 s);
+* it failed only during a run where a full suite of mine was running in the
+  background *and* `vitest` was running in three other worktrees
+  (`pinguino-intelligence-v1`, `-persistence`, `-protein-final`) at load
+  average ~16.
+
+So: a wall-clock budget blown by CPU contention from parallel sessions on this
+Mac, not a regression. Worth noting for anyone running the full suite here —
+it is not safe to treat a single timeout failure in that file as signal while
+other worktrees are building.
