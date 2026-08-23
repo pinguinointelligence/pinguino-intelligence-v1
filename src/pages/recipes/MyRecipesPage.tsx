@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { buttonClasses } from '@/components/ui/buttonStyles';
@@ -10,6 +11,10 @@ import {
   savedRecipeMetadataLabels,
   type SavedRecipeMetadataLabels,
 } from '@/features/recipes/savedRecipeMetadata';
+import {
+  RecipeVersionSelector,
+  resolveSelectedVersion,
+} from '@/features/recipes/RecipeVersionSelector';
 import { useDeleteRecipe, useSavedRecipes } from '@/features/recipes/useSavedRecipes';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -60,36 +65,66 @@ export function MyRecipesContent() {
   const recipesQuery = useSavedRecipes(authed);
   const deleteRecipe = useDeleteRecipe();
 
-  const onOpen = async (row: SavedRecipe) => {
+  /**
+   * Which immutable version each row will open. Local UI state ONLY — see RecipeVersionSelector:
+   * choosing v1 here never restores, never touches the parent and never writes anything.
+   */
+  const [pickedVersionByRecipeId, setPickedVersionByRecipeId] = useState<Record<string, number>>(
+    {},
+  );
+  const [openError, setOpenError] = useState<string | null>(null);
+
+  const onOpen = async (row: SavedRecipe, requestedVersionNumber: number | null) => {
+    setOpenError(null);
     try {
       const input = savedToRecipeInput(row.recipe_input);
       // Link to the aggregate so the next save appends a NEW VERSION (not a copy). A legacy orphan
       // row (no aggregate/meta) links only its name → the next save creates a fresh aggregate.
       let aggregate: SavedRecipeAggregate | null = null;
-      let latestVersion: RecipeVersion | null = null;
+      let openedVersion: RecipeVersion | null = null;
+      let repoReachable = true;
       try {
         const repo = resolveRecipesRepository().repository;
         aggregate = repo ? await repo.getRecipe(row.id) : null;
-        latestVersion =
-          repo && aggregate
-            ? await repo.getVersion(row.id, aggregate.latestVersionNumber)
-            : null;
+        const wanted = requestedVersionNumber ?? aggregate?.latestVersionNumber ?? null;
+        openedVersion =
+          repo && aggregate && wanted !== null ? await repo.getVersion(row.id, wanted) : null;
       } catch {
         aggregate = null;
-        latestVersion = null;
+        openedVersion = null;
+        repoReachable = false;
       }
-      const openedInput = latestVersion?.recipeInput ?? input;
+      // A specific historical version was asked for and could not be read. Opening the LATEST
+      // instead would silently show different grams than the user selected, so refuse and say so.
+      const askedForHistory =
+        requestedVersionNumber !== null &&
+        aggregate !== null &&
+        requestedVersionNumber !== aggregate.latestVersionNumber;
+      if (askedForHistory && !openedVersion) {
+        setOpenError(
+          `Nie udało się otworzyć wersji v${requestedVersionNumber}. Spróbuj ponownie — nie otwieramy w zamian innej wersji.`,
+        );
+        return;
+      }
+      if (!repoReachable && requestedVersionNumber !== null && requestedVersionNumber > 1) {
+        setOpenError(
+          'Historia wersji jest chwilowo niedostępna. Spróbuj ponownie za chwilę.',
+        );
+        return;
+      }
+      const openedInput = openedVersion?.recipeInput ?? input;
       loadRecipeInput(
         openedInput,
         aggregate
           ? {
               savedId: row.id,
               savedName: row.name,
-              versionNumber: aggregate.latestVersionNumber,
-              versionId: latestVersion?.versionId ?? null,
-              versionDate: latestVersion?.createdAt ?? aggregate.updatedAt,
+              versionNumber: openedVersion?.versionNumber ?? aggregate.latestVersionNumber,
+              latestVersionNumber: aggregate.latestVersionNumber,
+              versionId: openedVersion?.versionId ?? null,
+              versionDate: openedVersion?.createdAt ?? aggregate.updatedAt,
               composition:
-                latestVersion?.productComposition ??
+                openedVersion?.productComposition ??
                 readRecipeCompositionMetadata(
                   row.product_composition,
                   openedInput.items.map((item) => item.id),
@@ -114,11 +149,19 @@ export function MyRecipesContent() {
       );
       navigate(persona === 'pro' ? '/pro/recipe' : '/home');
     } catch {
-      // A malformed saved recipe cannot be loaded — leave the user on the list.
+      setOpenError('Nie udało się otworzyć tej receptury.');
     }
   };
 
   const rows = recipesQuery.data ?? [];
+  /** A refreshed list resets to the newest version; a pick for a version that no longer exists
+   * falls back to the newest rather than pointing at something that is gone. */
+  const selectedVersion = (row: SavedRecipe): number | null =>
+    resolveSelectedVersion(
+      row.versions ?? [],
+      pickedVersionByRecipeId[row.id],
+      row.latest_version_number,
+    );
 
   return (
     <div className="pb-16 pt-2" data-testid="recipes-mine">
@@ -138,7 +181,16 @@ export function MyRecipesContent() {
       ) : rows.length === 0 ? (
         <p className="mt-6 text-sm leading-relaxed text-stone-500">{r.empty}</p>
       ) : (
-        <ul className="mt-6 divide-y divide-ink/5">
+        <>
+          {openError ? (
+            <p
+              role="alert"
+              className="mt-6 rounded-xl border border-terracotta/40 bg-terracotta/10 p-3 text-sm text-stone-700"
+            >
+              {openError}
+            </p>
+          ) : null}
+          <ul className="mt-6 divide-y divide-ink/5">
           {rows.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
               <div className="min-w-0">
@@ -147,7 +199,9 @@ export function MyRecipesContent() {
                   <p className="mt-0.5 truncate text-xs text-stone-500">{row.description}</p>
                 ) : null}
               </div>
-              <div className="flex items-center gap-5">
+              {/* §11: the metadata group WRAPS on narrow screens (it becomes the row's second
+                  line) instead of squeezing six cells into an unreadable strip. */}
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
                 <Cell label={r.columns.product} value={rowLabels(row).productType} />
                 <Cell label={r.columns.serving} value={rowLabels(row).mode} />
                 <Cell label={r.columns.engine} value={rowLabels(row).engine} />
@@ -156,10 +210,28 @@ export function MyRecipesContent() {
                   label={r.columns.updated}
                   value={formatSavedRecipeDate(row.latest_version_at ?? row.updated_at)}
                 />
+                <span className="flex flex-col">
+                  <span className="text-[0.6rem] tracking-label text-stone-400 uppercase">
+                    {r.columns.version}
+                  </span>
+                  <span className="-ml-1.5 mt-0.5">
+                    <RecipeVersionSelector
+                      versions={row.versions ?? []}
+                      selected={selectedVersion(row) ?? 1}
+                      onSelect={(versionNumber) =>
+                        setPickedVersionByRecipeId((current) => ({
+                          ...current,
+                          [row.id]: versionNumber,
+                        }))
+                      }
+                      recipeName={row.name}
+                    />
+                  </span>
+                </span>
                 <button
                   type="button"
                   className={buttonClasses('primary', 'sm')}
-                  onClick={() => void onOpen(row)}
+                  onClick={() => void onOpen(row, selectedVersion(row))}
                 >
                   {r.open}
                 </button>
@@ -175,7 +247,8 @@ export function MyRecipesContent() {
               </div>
             </li>
           ))}
-        </ul>
+          </ul>
+        </>
       )}
       {/* S2 UX: version history is NOT duplicated here. Moje receptury shows ONE list of recipe
             aggregates; a recipe's immutable version history lives in the PINGÜINO Pro „Wersje" tab,

@@ -8,20 +8,28 @@
 import { supabase } from '@/lib/supabase/client';
 import { emptyUnconfiguredRead } from '@/services/backendGuard';
 import { getCurrentUser } from '@/services/auth';
-import type { SavedRecipe, SaveRecipeInput } from '@/features/recipes/recipePayload';
+import type {
+  SavedRecipe,
+  SavedRecipeVersionRef,
+  SaveRecipeInput,
+} from '@/features/recipes/recipePayload';
 
 const TABLE = 'saved_recipes';
 const UNAVAILABLE = 'Saving is not available in this build.';
 
 /**
- * All recipes owned by the current user (RLS enforces ownership), each carrying the timestamp and
- * number of its NEWEST immutable version.
+ * All recipes owned by the current user (RLS enforces ownership), each carrying its FULL immutable
+ * version history (newest first) plus the newest version's number and timestamp.
  *
  * Owner defect v1.4: the library used to date a row by `saved_recipes.updated_at`, which the
  * aggregate also bumps for non-content operations (rename), while the „Wersje" tab dates the same
  * recipe by its version rows. Two clocks for one recipe. „ZAKTUALIZOWANO" means „when did this
  * recipe last get saved", and a save IS a version, so the version history is the authority; the
  * mutable row's timestamp is only the fallback for a legacy orphan with no version at all.
+ *
+ * The WERSJA selector needs every version, not just the newest — so this reads them in ONE batched
+ * `.in(recipe_id, …)` query for the whole page. Two queries total regardless of how many recipes
+ * are listed; never one per row.
  */
 export async function listMine(): Promise<SavedRecipe[]> {
   if (!supabase) return emptyUnconfiguredRead('recipes.listMine', []);
@@ -39,7 +47,8 @@ export async function listMine(): Promise<SavedRecipe[]> {
     .in(
       'recipe_id',
       rows.map((row) => row.id),
-    );
+    )
+    .order('version_number', { ascending: false });
   // An unreadable history must never hide the recipes themselves — the rows still render, dated by
   // the aggregate, and the failure is reported rather than swallowed silently.
   if (versionsError) {
@@ -47,24 +56,29 @@ export async function listMine(): Promise<SavedRecipe[]> {
     return rows;
   }
 
-  const latest = new Map<string, { version_number: number; created_at: string }>();
+  const byRecipe = new Map<string, SavedRecipeVersionRef[]>();
   for (const row of (versions ?? []) as Array<{
     recipe_id: string;
     version_number: number;
     created_at: string;
   }>) {
-    const current = latest.get(row.recipe_id);
-    if (!current || row.version_number > current.version_number) {
-      latest.set(row.recipe_id, { version_number: row.version_number, created_at: row.created_at });
-    }
+    const list = byRecipe.get(row.recipe_id) ?? [];
+    list.push({ versionNumber: row.version_number, createdAt: row.created_at });
+    byRecipe.set(row.recipe_id, list);
   }
   return rows.map((row) => {
-    const newest = latest.get(row.id);
+    // Newest first — the DB order is already descending, but the selector's contract does not
+    // depend on the transport preserving it.
+    const history = (byRecipe.get(row.id) ?? [])
+      .slice()
+      .sort((a, b) => b.versionNumber - a.versionNumber);
+    const newest = history[0];
     return newest
       ? {
           ...row,
-          latest_version_number: newest.version_number,
-          latest_version_at: newest.created_at,
+          versions: history,
+          latest_version_number: newest.versionNumber,
+          latest_version_at: newest.createdAt,
         }
       : row;
   });

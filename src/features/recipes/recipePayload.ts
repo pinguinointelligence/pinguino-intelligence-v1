@@ -34,6 +34,14 @@ export interface SavedRecipe {
   latest_version_number?: number;
   /** When that newest version was written — the ONE date „Zaktualizowano" may show (v1.4). */
   latest_version_at?: string;
+  /** The FULL immutable history, newest first — what the WERSJA selector lists. */
+  versions?: SavedRecipeVersionRef[];
+}
+
+/** One immutable version, as the library lists it. Numbers and dates only — never a UUID. */
+export interface SavedRecipeVersionRef {
+  versionNumber: number;
+  createdAt: string;
 }
 
 /** The insert/update payload — user_id is set by the service from the session. */

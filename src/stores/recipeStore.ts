@@ -215,6 +215,12 @@ export interface RecipeState {
   savedRecipeName: string | null;
   /** The linked aggregate's latest persisted version number (display only; DB is authoritative). */
   currentVersionNumber: number | null;
+  /**
+   * The NEWEST version number of the linked recipe. Together with `currentVersionNumber` this is
+   * what makes „am I looking at history?" answerable: the library can open any immutable snapshot,
+   * and an older one must never be mistaken for the current editable parent (owner v1.4 §7).
+   */
+  savedRecipeLatestVersionNumber: number | null;
   /** Exact immutable `recipe_versions.id` UUID for the currently loaded/saved vector. */
   currentVersionId: string | null;
   /** ISO date of the current version (drives the `DD.MM.YYYY · vN` label; persisted). */
@@ -396,6 +402,8 @@ export interface RecipeState {
       savedId?: string | null;
       savedName?: string | null;
       versionNumber?: number | null;
+      /** The recipe's newest version; absent means „the opened one is the newest". */
+      latestVersionNumber?: number | null;
       versionId?: string | null;
       versionDate?: string | null;
       composition?: RecipeCompositionMetadata | null;
@@ -564,6 +572,7 @@ const fromPreset = (preset: DemoPreset) => ({
   savedRecipeId: null,
   savedRecipeName: null,
   currentVersionNumber: null,
+  savedRecipeLatestVersionNumber: null,
   currentVersionId: null,
   currentVersionDate: null,
   machineKind: null,
@@ -1788,6 +1797,8 @@ export const useRecipeStore = create<RecipeState>()(
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
           currentVersionNumber: link.versionNumber ?? null,
+          savedRecipeLatestVersionNumber:
+            link.latestVersionNumber ?? link.versionNumber ?? null,
           currentVersionId: link.versionId ?? null,
           currentVersionDate: link.versionDate ?? null,
           dirty: false,
@@ -1824,6 +1835,7 @@ export const useRecipeStore = create<RecipeState>()(
           savedRecipeId: id,
           savedRecipeName: name,
           currentVersionNumber: versionNumber,
+          savedRecipeLatestVersionNumber: versionNumber,
           currentVersionId: versionId,
           currentVersionDate: versionDate,
           dirty: false,

@@ -45,6 +45,7 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
+  const latestVersionNumber = useRecipeStore((s) => s.savedRecipeLatestVersionNumber);
   const markSaved = useRecipeStore((s) => s.markSaved);
 
   const linked = Boolean(savedRecipeId);
@@ -56,7 +57,15 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const needsName = asNew;
-  const nextVersion = (currentVersionNumber ?? 0) + 1;
+  // The append is numbered from the recipe's NEWEST version, not from the one on screen. With a
+  // historical snapshot open (library „Wersja" selector, owner v1.4 §9) those differ: viewing v1 of
+  // a v3 recipe used to offer „Zapisz nową wersję (v2)" while the database correctly wrote v4.
+  // Saving here NEVER overwrites the open version — immutable means immutable — it appends.
+  const nextVersion = Math.max(latestVersionNumber ?? 0, currentVersionNumber ?? 0) + 1;
+  const viewingHistoricalVersion =
+    currentVersionNumber !== null &&
+    latestVersionNumber !== null &&
+    currentVersionNumber < latestVersionNumber;
   const blocked = !authed ? d.signIn : unavailable || repository === null ? d.unavailable : !caps.canSaveRecipe ? d.demoCannotSave : null;
   const canSubmit = !busy && blocked === null && (!needsName || name.trim().length > 0);
 
@@ -136,7 +145,16 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
 
         {linked && !asNew ? (
           <p className="mt-3 text-xs leading-relaxed text-stone-500" data-testid="save-linked-line">
-            {d.linkedLine(savedRecipeName ?? '—', currentVersionNumber ?? 1)}
+            {d.linkedLine(savedRecipeName ?? '—', latestVersionNumber ?? currentVersionNumber ?? 1)}
+          </p>
+        ) : null}
+
+        {viewingHistoricalVersion && !asNew ? (
+          <p
+            className="mt-3 text-xs leading-relaxed text-stone-600"
+            data-testid="save-historical-note"
+          >
+            {d.historicalSaveNote(currentVersionNumber ?? 1, nextVersion)}
           </p>
         ) : null}
 

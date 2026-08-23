@@ -124,6 +124,14 @@ export function mainBehaviorBlockReason(
     return 'Topping nie może pełnić roli Main.';
   }
   if (snapshot.moduleEligibility.MAIN !== 'eligible') {
+    // Owner v1.4 §16: say WHY. A protein source that is not a flavour is a different answer from
+    // "no approved range exists", and it is the one the Protein starter actually produces — the
+    // whey concentrate. Before this, the contributor wording below was unreachable (a contributor
+    // is never MAIN-eligible, so the classification branch never ran) and every disabled Protein
+    // toggle explained itself with the same vague sentence.
+    if (snapshot.mainClassification === 'PROTEIN_CONTRIBUTOR_ONLY') {
+      return 'Składnik białkowy nie jest automatycznie smakiem Main.';
+    }
     return snapshot.mainClassification === 'MAIN_BLOCKED_POLICY' ||
       snapshot.blockReasons.includes('main_policy_missing')
       ? 'Brak zatwierdzonego zakresu Main dla tego produktu i profilu.'

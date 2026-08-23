@@ -3843,7 +3843,10 @@ function mainBehaviorBlockReason(snapshot, snapshotRequired = false) {
 	if (!snapshot) return snapshotRequired ? "Produkt wymaga ponownej walidacji przed ustawieniem jako Main." : null;
 	if (snapshot.resolutionState !== "RESOLVED") return "Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.";
 	if (snapshot.processScope !== "BASE_FORMULATION") return "Topping nie może pełnić roli Main.";
-	if (snapshot.moduleEligibility.MAIN !== "eligible") return snapshot.mainClassification === "MAIN_BLOCKED_POLICY" || snapshot.blockReasons.includes("main_policy_missing") ? "Brak zatwierdzonego zakresu Main dla tego produktu i profilu." : "Produkt nie jest zatwierdzony jako Main w tym profilu.";
+	if (snapshot.moduleEligibility.MAIN !== "eligible") {
+		if (snapshot.mainClassification === "PROTEIN_CONTRIBUTOR_ONLY") return "Składnik białkowy nie jest automatycznie smakiem Main.";
+		return snapshot.mainClassification === "MAIN_BLOCKED_POLICY" || snapshot.blockReasons.includes("main_policy_missing") ? "Brak zatwierdzonego zakresu Main dla tego produktu i profilu." : "Produkt nie jest zatwierdzony jako Main w tym profilu.";
+	}
 	if (snapshot.mainClassification !== "MAIN_ALLOWED" && snapshot.mainClassification !== "MAIN_PROFILE_SPECIFIC") return snapshot.mainClassification === "PROTEIN_CONTRIBUTOR_ONLY" ? "Składnik białkowy nie jest automatycznie smakiem Main." : "Produkt nie jest składnikiem smakowym Main.";
 	if (!snapshot.mainPolicyId || !snapshot.mainPolicyVersion || snapshot.ecoFloorPercent === null || snapshot.optimalCeilingPercent === null || snapshot.hardLimitPercent === null || snapshot.mainEquivalentFactor === null) return "Brak zatwierdzonego zakresu Main dla tego produktu i profilu.";
 	return null;

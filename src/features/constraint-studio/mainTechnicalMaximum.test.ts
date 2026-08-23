@@ -245,7 +245,16 @@ const expectExactApplyUndo = (
   }
 };
 
-describe('Main technical maximum — exact Watermelon authority', () => {
+/**
+ * Solver-heavy proofs. `MAX_SOLVER_ROUNDS` went 12 → 18 (staging c9e9560), which pushed several of
+ * these cases from ~2.5 s to over vitest's 5 s default — they then time out under the serial
+ * whole-suite run (`fileParallelism: false`) while passing comfortably in isolation. The work still
+ * has to FINISH, so the budget is raised explicitly here rather than the cases being skipped or the
+ * global default being weakened for every other test.
+ */
+const SOLVER_PROOF_TIMEOUT_MS = 30_000;
+
+describe('Main technical maximum — exact Watermelon authority', { timeout: SOLVER_PROOF_TIMEOUT_MS }, () => {
   it('certifies the exact whole-gram upper bound independently of the starting grams', () => {
     const input = watermelonFixture(300, 'optimal');
     const bound = mainTechnicalLinearUpperBound({
@@ -1037,7 +1046,7 @@ describe('Main technical maximum — exact Watermelon authority', () => {
   });
 });
 
-describe('Multi-Main ratio contract', () => {
+describe('Multi-Main ratio contract', { timeout: SOLVER_PROOF_TIMEOUT_MS }, () => {
   const fixture = (
     starts: readonly number[],
     ingredientIds: readonly string[],

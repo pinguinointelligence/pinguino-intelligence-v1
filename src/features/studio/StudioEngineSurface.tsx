@@ -16,6 +16,7 @@ import {
 } from '@/features/optimization/optimizationPreviewRunner';
 import { ConstraintStudioSection } from '@/features/constraint-studio';
 import { IngredientBuilder } from '@/features/ingredient-builder/IngredientBuilder';
+import { HistoricalVersionNotice } from '@/features/pro-core/HistoricalVersionNotice';
 import { PresetSelector } from '@/features/studio/PresetSelector';
 import { useStudioResult } from '@/features/studio/useStudioResult';
 import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculatorPreview';
@@ -255,6 +256,9 @@ export function StudioEngineSurface({
             className="min-h-0 xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden xl:rounded-[18px] xl:border xl:border-ink/10 xl:bg-white xl:shadow-pro-e1"
             data-testid="workbench-editor-pane"
           >
+            {/* Owner v1.4 §7: an immutable snapshot opened from the library's WERSJA selector must
+                announce itself before any of its grams are read as the current recipe. */}
+            <HistoricalVersionNotice />
             {fullFormula ? (
               <div className="min-h-0 flex-1 xl:overflow-hidden">
                 <IngredientBuilder

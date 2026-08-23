@@ -408,6 +408,8 @@ export const copy = {
       engine: 'Silnik',
       batch: 'Ilość',
       updated: 'Zaktualizowano',
+      /** The inline immutable-version selector — navigation only, never a restore. */
+      version: 'Wersja',
     },
     /** Canonical save dialog (S2 repair) — ONE flow: create v1 / append next version / save as new. */
     dialog: {
@@ -420,6 +422,9 @@ export const copy = {
       createButton: 'Zapisz recepturę',
       versionButton: (v: number) => `Zapisz nową wersję (v${v})`,
       saveAsNew: 'Zapisz jako nową recepturę',
+      /** Owner v1.4 §9: saving while a historical snapshot is open appends, never overwrites. */
+      historicalSaveNote: (viewing: number, next: number) =>
+        `Pracujesz na wersji v${viewing}. Zapis nie nadpisze jej — utworzy nową wersję v${next}.`,
       saving: 'Zapisywanie…',
       cancel: 'Anuluj',
       linkedLine: (name: string, v: number) => `Receptura: ${name} · najnowsza wersja v${v}`,
