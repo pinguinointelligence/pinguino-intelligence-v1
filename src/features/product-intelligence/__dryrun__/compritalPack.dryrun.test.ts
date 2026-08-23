@@ -31,7 +31,8 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))('Comprital pa
 
     const has = (value: string | null | undefined): boolean =>
       !!value && !['not_found', 'not_applicable'].includes(value.trim());
-    const source = (index: number) => comprital[index].source;
+    const source = (index: number): Partial<Record<string, string | null>> =>
+      comprital[index]?.source ?? {};
 
     const report = {
       compritalProducts: rows.length,

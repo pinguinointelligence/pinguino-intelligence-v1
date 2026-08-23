@@ -95,6 +95,13 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
       const after = emptyCounts();
       const outcomes: Record<string, number> = {};
       const verdicts: Record<string, number> = {};
+      const authorityTally = (key: string): { products: number; fields: number } => {
+        const existing = byAuthority[key];
+        if (existing) return existing;
+        const created = { products: 0, fields: 0 };
+        byAuthority[key] = created;
+        return created;
+      };
       const byAuthority: Record<string, { products: number; fields: number }> = {
         OFFICIAL_PRIVATE_LABEL: { products: 0, fields: 0 },
         AUTHORITATIVE_RETAILER: { products: 0, fields: 0 },
@@ -116,6 +123,10 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
       let completeProfileBefore = 0;
       let completeProfileAfter = 0;
       let indirectlyEnabled = 0;
+      let gainedWaterSolids = 0;
+      let gainedDerivedComplement = 0;
+      let indirectRetailerUnlock = 0;
+      const transition: Record<string, number> = {};
       const upgrades: unknown[] = [];
 
       const usable = parsed.candidates.filter(
@@ -204,7 +215,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
               } else {
                 outcome = 'FETCHED_MATCHED';
                 per100gCards += 1;
-                byAuthority[authority].products += 1;
+                authorityTally(authority).products += 1;
               }
             }
           }
@@ -237,6 +248,43 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
           nextResolution.valueReadiness !== 'REVIEW'
         ) {
           indirectlyEnabled += 1;
+        }
+
+        // §21/§22: what happened to the products that had no water or solids.
+        const hadNoMass =
+          priorResolution.fields.water_percent.value === null &&
+          priorResolution.fields.total_solids_percent.value === null;
+        const nowHasMass =
+          nextResolution.fields.water_percent.value !== null ||
+          nextResolution.fields.total_solids_percent.value !== null;
+        const waterProv = nextResolution.fields.water_percent.provenance;
+        const solidsProv = nextResolution.fields.total_solids_percent.provenance;
+        if (nowHasMass && waterProv.confidence >= 0.85) gainedWaterSolids += 1;
+        if (solidsProv.basis === 'derived' || waterProv.basis === 'derived') {
+          gainedDerivedComplement += 1;
+        }
+        if (hadNoMass) {
+          const f = nextResolution.fields;
+          let landed: string;
+          if (!nowHasMass) landed = 'still_no_water_solids';
+          else if (nextResolution.contradictedByDeclaration) landed = 'physical_conflict';
+          else if (REQUIRED_MACROS.some((field) => f[field].value === null)) {
+            landed = 'now_only_macro_blocked';
+          } else if (!nextResolution.sweetnessPath.resolved) {
+            landed = 'now_only_sugar_split_blocked';
+          } else if ((nextResolution.engineConfidence ?? 0) < 0.85) {
+            landed = 'still_weak_confidence';
+          } else landed = 'completed_and_ready';
+          transition[landed] = (transition[landed] ?? 0) + 1;
+          // §14: did exact retailer macros make the moisture cohort specific
+          // enough to clear the bar?
+          if (
+            landed !== 'still_no_water_solids' &&
+            contribution &&
+            waterProv.confidence >= 0.85
+          ) {
+            indirectRetailerUnlock += 1;
+          }
         }
 
         // §17: name the exact reason a product is still not engine-ready.
@@ -283,7 +331,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
           );
           fieldsUpgraded += upgraded.length;
           if (upgraded.length > 0) productsImproved += 1;
-          byAuthority[authority].fields += upgraded.length;
+          authorityTally(authority).fields += upgraded.length;
           if (upgrades.length < 12) {
             upgrades.push({
               productId: candidate.sourceProductId,
@@ -323,6 +371,10 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
         completeProfileAfter,
         readyOnlyBecauseOfRetailerMacros: indirectlyEnabled,
         remainingBlockers: blockers,
+        gainedWaterSolidsAtOrAbove85: gainedWaterSolids,
+        derivedComplementsAdded: gainedDerivedComplement,
+        indirectRetailerUnlock,
+        waterSolidsTransition: transition,
         byAuthority,
         sampleUpgrades: upgrades,
       };

@@ -57,6 +57,14 @@
     "missing_water_solids": 424,
     "weak_field_confidence": 38
   },
+  "gainedWaterSolidsAtOrAbove85": 47,
+  "derivedComplementsAdded": 70,
+  "indirectRetailerUnlock": 5,
+  "waterSolidsTransition": {
+    "physical_conflict": 2,
+    "still_no_water_solids": 431,
+    "now_only_sugar_split_blocked": 4
+  },
   "byAuthority": {
     "OFFICIAL_PRIVATE_LABEL": {
       "products": 13,

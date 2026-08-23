@@ -386,7 +386,7 @@ export function similarCohort(
     (a, b) =>
       b.score - a.score || a.row.ingredient_id.localeCompare(b.row.ingredient_id),
   );
-  const best = ranked[0].score;
+  const best = ranked[0]?.score ?? 0;
   // Every candidate scoring zero means the query shared only tokens that appear
   // in every row — no evidence at all. Admitting them would quietly select the
   // entire Mapper as a "cohort".
@@ -413,17 +413,22 @@ export interface FieldConsensus {
 const round4 = (value: number): number => Math.round(value * 1e4) / 1e4;
 
 const median = (sorted: readonly number[]): number => {
+  if (sorted.length === 0) return 0;
   const mid = sorted.length >> 1;
-  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const upper = sorted[mid] ?? 0;
+  return sorted.length % 2 === 1 ? upper : ((sorted[mid - 1] ?? upper) + upper) / 2;
 };
 
 /** Quantile on the sorted sample, linear interpolation between neighbours. */
 const quantile = (sorted: readonly number[], q: number): number => {
-  if (sorted.length === 1) return sorted[0];
+  if (sorted.length === 0) return 0;
+  if (sorted.length === 1) return sorted[0] ?? 0;
   const pos = (sorted.length - 1) * q;
   const low = Math.floor(pos);
   const high = Math.ceil(pos);
-  return low === high ? sorted[low] : sorted[low] + (sorted[high] - sorted[low]) * (pos - low);
+  const lowValue = sorted[low] ?? 0;
+  const highValue = sorted[high] ?? lowValue;
+  return low === high ? lowValue : lowValue + (highValue - lowValue) * (pos - low);
 };
 
 /**
@@ -806,4 +811,99 @@ function applyCohort(
     if (claim(field, truth)) claimed++;
   }
   return claimed;
+}
+
+
+/* ── moisture cohort profiling (evidence, not inference) ───────────────────── */
+
+/**
+ * Acceptance rules for treating a cohort's water as a physical statement.
+ *
+ * Derived from profiling the Mapper — see `moistureCohortAudit.dryrun.test.ts`,
+ * which regenerates the evidence. The median absolute deviation separates
+ * physically coherent cohorts from heterogeneous families with a clear empirical
+ * gap: chocolate sits at 2.3, confectionery inclusions at 1.8, vegetables at 2.9
+ * and nuts at 3.3, while fruit is already at 6.5, alcohol at 9.9, coconut at
+ * 11.1 and dairy at 21.8. Nothing real lives between roughly 4.5 and 6.5, so the
+ * bar sits at 4.
+ *
+ * The MAD is the primary test because a few odd rows cannot move it. The IQR is
+ * a second guard against a bimodal cohort whose halves each cluster tightly — a
+ * small MAD alone would call that narrow when it is really two families.
+ *
+ * These rules are currently used for AUDIT ONLY. Profiling the real data showed
+ * no product in the Poland import can be served by them: of the products lacking
+ * water and solids, most have no family at all, and every family the rest belong
+ * to is empirically broad. Rather than ship an inference path that never fires
+ * and so can never be verified, the measurement is kept and the inference is not
+ * built until a dataset actually needs it.
+ */
+export const MOISTURE_COHORT_RULES = Object.freeze({
+  /** Below this, dispersion itself is too noisy to trust. */
+  minRows: 8,
+  /** Half the cohort must sit within this many points of its median water. */
+  maxMad: 4,
+  /** Guards against a tight-but-bimodal cohort. */
+  maxIqr: 12,
+});
+
+export interface MoistureCohortProfile {
+  n: number;
+  median: number;
+  mad: number;
+  iqr: number;
+  p10: number;
+  p90: number;
+  min: number;
+  max: number;
+  narrow: boolean;
+  reason: string;
+}
+
+/** Profile a cohort's water. Pure statistics; decides nothing on its own. */
+export function moistureCohortProfile(
+  cohort: readonly MapperKnowledgeRow[],
+): MoistureCohortProfile {
+  const values = cohort
+    .map((row) => (typeof row.water_percent === 'number' && Number.isFinite(row.water_percent)
+      ? row.water_percent
+      : null))
+    .filter((value): value is number => value !== null)
+    .sort((a, b) => a - b);
+  if (values.length === 0) {
+    return {
+      n: 0, median: 0, mad: 0, iqr: 0, p10: 0, p90: 0, min: 0, max: 0,
+      narrow: false, reason: 'brak danych o wodzie',
+    };
+  }
+  const mid = median(values);
+  const deviations = values.map((value) => Math.abs(value - mid)).sort((a, b) => a - b);
+  const mad = median(deviations);
+  const iqr = quantile(values, 0.75) - quantile(values, 0.25);
+
+  let narrow = true;
+  let reason = 'kohorta waska fizycznie';
+  if (values.length < MOISTURE_COHORT_RULES.minRows) {
+    narrow = false;
+    reason = `za malo wierszy (${values.length} < ${MOISTURE_COHORT_RULES.minRows})`;
+  } else if (mad > MOISTURE_COHORT_RULES.maxMad) {
+    narrow = false;
+    reason = `rozrzut MAD ${round4(mad)} przekracza ${MOISTURE_COHORT_RULES.maxMad}`;
+  } else if (iqr > MOISTURE_COHORT_RULES.maxIqr) {
+    narrow = false;
+    reason = `rozstep cwiartkowy ${round4(iqr)} przekracza ${MOISTURE_COHORT_RULES.maxIqr} — kohorta prawdopodobnie dwumodalna`;
+  }
+
+  return {
+    n: values.length,
+    median: round4(mid),
+    mad: round4(mad),
+    iqr: round4(iqr),
+    p10: round4(quantile(values, 0.1)),
+    p90: round4(quantile(values, 0.9)),
+    min: values[0] ?? 0,
+    max: values[values.length - 1] ?? 0,
+    narrow,
+    reason,
+  };
 }

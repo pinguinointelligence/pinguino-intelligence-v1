@@ -81,10 +81,10 @@ export const ENGINE_REQUIRED_WORKING_FIELDS: readonly WorkingNumericField[] = [
 ];
 
 /** The Mapper's stricter curation standard, kept for comparison and reporting. */
-export const MAPPER_CURATION_FIELDS = MAPPER_ENGINE_REQUIRED_FIELDS.filter(
-  (field): field is WorkingNumericField =>
+export const MAPPER_CURATION_FIELDS: readonly WorkingNumericField[] =
+  MAPPER_ENGINE_REQUIRED_FIELDS.filter((field): boolean =>
     (WORKING_NUMERIC_FIELDS as readonly string[]).includes(field),
-);
+  ) as readonly WorkingNumericField[];
 
 /** Confidence at or above which an estimated product is fit to work with. */
 export const ESTIMATED_READY_FLOOR = 0.85;
@@ -328,18 +328,21 @@ export function resolveProductWorkingValues(
     fields.water_percent.value === null &&
     inference.bestCohort
   ) {
-    const named = (['fat_percent', 'protein_percent', 'carbohydrate_percent', 'fiber_percent',
-      'salt_percent'] as const).map((field) => fields[field].value);
+    const majorFields = ['fat_percent', 'protein_percent', 'carbohydrate_percent'] as const;
+    const minorFields = ['fiber_percent', 'salt_percent'] as const;
     // Only when the three that dominate dry matter are actually known.
-    if (named[0] !== null && named[1] !== null && named[2] !== null) {
-      const namedSolids = named.reduce((total, entry) => total + (entry ?? 0), 0);
+    if (majorFields.every((field) => fields[field].value !== null)) {
+      const namedSolids = [...majorFields, ...minorFields].reduce(
+        (total, field) => total + (fields[field].value ?? 0),
+        0,
+      );
       const estimate = residualSolidsEstimate(
         inference.bestCohort.rows,
         namedSolids,
         inference.bestCohort.minCohort,
       );
       if (estimate) {
-        const weakest = (['fat_percent', 'protein_percent', 'carbohydrate_percent'] as const).reduce(
+        const weakest = majorFields.reduce(
           (min, field) => Math.min(min, fields[field].provenance.confidence),
           1,
         );

@@ -39,7 +39,7 @@ const clean = (value: string | null | undefined): string | null => {
 
 const host = (url: string | null): string | null => {
   const match = /^https?:\/\/([^/]+)/i.exec(url ?? '');
-  return match ? match[1].toLowerCase().replace(/^www\./, '') : null;
+  return match?.[1] ? match[1].toLowerCase().replace(/^www\./, '') : null;
 };
 
 describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))('Consumer pack ranking', () => {
@@ -72,6 +72,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))('Consumer pac
 
     rows.forEach((row, index) => {
       const candidate = consumer[index];
+      if (!candidate) return;
       const key =
         clean(candidate.source.Manufacturer) ?? clean(candidate.source.Brand) ?? 'UNATTRIBUTED';
       const pack =

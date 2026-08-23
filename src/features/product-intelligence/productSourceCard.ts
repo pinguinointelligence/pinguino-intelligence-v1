@@ -86,9 +86,9 @@ const words = (value: string): Set<string> =>
  * are two different products.
  */
 const variantNumbers = (value: string): string[] =>
-  [...normalise(value).matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)].map((match) =>
-    match[1].replace(',', '.'),
-  );
+  [...normalise(value).matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)]
+    .map((match) => match[1]?.replace(',', '.'))
+    .filter((entry): entry is string => entry !== undefined);
 
 const digitsOnly = (value: string | null | undefined): string => (value ?? '').replace(/\D+/g, '');
 

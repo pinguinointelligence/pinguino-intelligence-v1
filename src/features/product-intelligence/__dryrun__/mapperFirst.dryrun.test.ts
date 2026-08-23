@@ -115,9 +115,11 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
         }
         for (const field of ENGINE_REQUIRED_WORKING_FIELDS) {
           const state = resolved.fields[field].provenance.state;
-          if (state === 'VERIFIED') fieldFill[field].verified += 1;
-          else if (state === 'ESTIMATED') fieldFill[field].estimated += 1;
-          else fieldFill[field].unknown += 1;
+          const fill = fieldFill[field];
+          if (!fill) continue;
+          if (state === 'VERIFIED') fill.verified += 1;
+          else if (state === 'ESTIMATED') fill.estimated += 1;
+          else fill.unknown += 1;
         }
         if (resolved.missingEngineFields.length === 0 && resolved.engineConfidence !== null) {
           completeProfileConfidence.push(resolved.engineConfidence);
@@ -139,8 +141,6 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
           technicalPdfUrl: candidate.source['Technical PDF URL'],
           missingNumeric: resolved.missingEngineFields,
           missingEvidence: intelligence.enrichmentTargets,
-          brand: candidate.source.Brand,
-          manufacturer: candidate.source.Manufacturer,
         });
         if (resolved.conflicts.length > 0) conflicted += 1;
         if (resolved.contradictedByDeclaration) selfContradictory += 1;

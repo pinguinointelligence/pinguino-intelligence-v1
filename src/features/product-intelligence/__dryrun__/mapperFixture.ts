@@ -63,7 +63,7 @@ export function loadMapperKnowledgeRows(): { rows: MapperKnowledgeRow[]; fingerp
   const raw = readFileSync(MAPPER_FILE);
   const fingerprint = createHash('sha256').update(raw).digest('hex');
   const table = parseCsv(raw.toString('utf8'));
-  const header = table[0];
+  const header = table[0] ?? [];
   const at = (row: string[], column: string): string | undefined => {
     const index = header.indexOf(column);
     return index === -1 ? undefined : row[index];

@@ -40,6 +40,8 @@ export type FieldBasis =
   | 'none'
   /** Consensus across a Mapper family cohort. */
   | 'mapper_family_consensus'
+  /** Nearest Mapper neighbours by weighted identity-token overlap. */
+  | 'mapper_similar_profile'
   /** Same brand and subcategory as existing Mapper rows. */
   | 'mapper_brand_sibling'
   /** The product is a pure commodity the Mapper defines outright. */
@@ -60,16 +62,17 @@ export type FieldBasis =
 const BASIS_RANK: Readonly<Record<FieldBasis, number>> = Object.freeze({
   none: 0,
   mapper_family_consensus: 1,
-  mapper_brand_sibling: 2,
-  mapper_simple_profile: 3,
-  derived: 4,
+  mapper_similar_profile: 2,
+  mapper_brand_sibling: 3,
+  mapper_simple_profile: 4,
+  derived: 5,
   // A retailer card is a real reading of the label, but the owner's curated row
   // and any first-party source both outrank it — a shop is not the maker.
-  retailer_card: 5,
-  product_declared: 6,
-  private_label_card: 7,
-  mapper_exact: 8,
-  official_manufacturer: 9,
+  retailer_card: 6,
+  product_declared: 7,
+  private_label_card: 8,
+  mapper_exact: 9,
+  official_manufacturer: 10,
 });
 
 const STATE_RANK: Readonly<Record<FieldTruthState, number>> = Object.freeze({

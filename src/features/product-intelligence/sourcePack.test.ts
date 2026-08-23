@@ -63,13 +63,13 @@ describe('source pack keys', () => {
         knownSourceUrl: 'https://zakupy.biedronka.pl/produkt/123',
       }),
     ]);
-    expect(pack.kind).toBe('manufacturer');
+    expect(pack?.kind).toBe('manufacturer');
     // The page is real evidence and stays in the ladder, but it must never be
     // described as the manufacturer speaking for itself.
-    const [entry] = pack.entryPoints;
-    expect(entry.url).toBe('https://zakupy.biedronka.pl/produkt/123');
-    expect(entry.official).toBe(false);
-    expect(entry.authority).toBe('AUTHORITATIVE_RETAILER');
+    const entry = pack?.entryPoints[0];
+    expect(entry?.url).toBe('https://zakupy.biedronka.pl/produkt/123');
+    expect(entry?.official).toBe(false);
+    expect(entry?.authority).toBe('AUTHORITATIVE_RETAILER');
   });
 
   it('ranks an official source above a retailer one in the same pack', () => {
@@ -81,8 +81,8 @@ describe('source pack keys', () => {
         technicalPdfUrl: 'https://comprital.pl/karta.pdf',
       }),
     ]);
-    expect(pack.entryPoints[0].official).toBe(true);
-    expect(pack.entryPoints[0].url).toContain('comprital.pl');
+    expect(pack?.entryPoints[0]?.official).toBe(true);
+    expect(pack?.entryPoints[0]?.url).toContain('comprital.pl');
   });
 });
 
@@ -120,6 +120,9 @@ describe('source pack planning', () => {
         missingEvidence: [],
       }),
     ]);
-    expect(plan.packs[0].missingNumeric.sort()).toEqual(['fat_percent', 'protein_percent']);
+    expect(plan.packs[0]?.missingNumeric.slice().sort()).toEqual([
+      'fat_percent',
+      'protein_percent',
+    ]);
   });
 });

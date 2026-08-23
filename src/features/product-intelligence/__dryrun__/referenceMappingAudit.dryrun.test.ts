@@ -96,10 +96,9 @@ describe.runIf(existsSync(IMPORT_CSV) && existsSync(MAPPER_FILE) && existsSync(R
       }
 
       const workbook = xlsx.read(readFileSync(REFERENCE), { type: 'buffer' });
-      const oldMappings = xlsx.utils.sheet_to_json<OldMapping>(
-        workbook.Sheets['Mapper Inference 136'],
-        { defval: null },
-      );
+      const sheet = workbook.Sheets['Mapper Inference 136'];
+      if (!sheet) throw new Error('reference workbook is missing the mapping sheet');
+      const oldMappings = xlsx.utils.sheet_to_json<OldMapping>(sheet, { defval: null });
 
       const verdicts: {
         productId: string | null;

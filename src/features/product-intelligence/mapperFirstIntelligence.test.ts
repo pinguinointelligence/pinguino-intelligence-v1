@@ -11,6 +11,8 @@ import {
   fieldConsensus,
   fingerprintMapperRows,
   macroConditionedCohort,
+  moistureCohortProfile,
+  MOISTURE_COHORT_RULES,
   identityTokens,
   inferMapperValues,
   similarCohort,
@@ -49,6 +51,12 @@ function mapperRow(overrides: Partial<MapperKnowledgeRow> & { ingredient_id: str
     protein_percent: null,
     carbohydrate_percent: null,
     total_sugars_percent: null,
+    sucrose_percent: null,
+    dextrose_percent: null,
+    glucose_percent: null,
+    fructose_percent: null,
+    lactose_percent: null,
+    polyol_percent: null,
     fiber_percent: null,
     salt_percent: null,
     alcohol_percent: null,
@@ -616,8 +624,9 @@ describe('INTIMPORT wiring', () => {
     const parsed = parseINTIMPORT(`${CSV_HEADER}\n${row('Maslo kakaowe', 'Chocolate & cocoa')}`);
     const { rows, summary } = runIntimportLocalIntelligence(parsed.candidates, {}, knowledge);
 
-    expect(rows[0].workingValues).not.toBeNull();
-    expect(rows[0].workingValues!.values.fat_percent).toBeGreaterThan(99);
+    const first = rows[0];
+    expect(first?.workingValues).not.toBeNull();
+    expect(first?.workingValues?.values.fat_percent).toBeGreaterThan(99);
     // Composition readiness is reported on its own axis.
     expect(summary.valueReadiness).toEqual({ READY: 0, ESTIMATED_READY: 1, REVIEW: 0 });
     expect(summary.mapperContributed).toBe(1);
@@ -627,10 +636,11 @@ describe('INTIMPORT wiring', () => {
     const parsed = parseINTIMPORT(`${CSV_HEADER}\n${row('Maslo kakaowe', 'Chocolate & cocoa')}`);
     const { rows, summary } = runIntimportLocalIntelligence(parsed.candidates);
 
-    expect(rows[0].workingValues).toBeNull();
+    const first = rows[0];
+    expect(first?.workingValues).toBeNull();
     // Absent counts, not zeroed counts: "we did not look" is not "nothing found".
     expect(summary.valueReadiness).toBeNull();
-    expect(rows[0].route).toBeTruthy();
+    expect(first?.route).toBeTruthy();
   });
 });
 
@@ -860,5 +870,46 @@ describe('macro-conditioned cohorts', () => {
     );
     // Without conditioning the two families average to something near 75.
     expect(lean.values.water_percent).toBeGreaterThan(85);
+  });
+});
+
+describe('moisture cohort profiling', () => {
+  const cohort = (waters: number[]) =>
+    waters.map((water, index) =>
+      mapperRow({
+        ingredient_id: `PI-M-${index}`,
+        water_percent: water,
+        total_solids_percent: 100 - water,
+      }),
+    );
+
+  it('accepts a genuinely narrow cohort', () => {
+    const profile = moistureCohortProfile(cohort([4, 5, 5, 6, 4, 5, 6, 5, 5, 4]));
+    expect(profile.narrow).toBe(true);
+    expect(profile.mad).toBeLessThanOrEqual(MOISTURE_COHORT_RULES.maxMad);
+  });
+
+  it('rejects a broad cohort rather than averaging it', () => {
+    // Dry powder through to liquid is not one physical statement.
+    const profile = moistureCohortProfile(cohort([2, 4, 8, 30, 55, 70, 85, 90, 3, 60]));
+    expect(profile.narrow).toBe(false);
+    expect(profile.reason).toContain('MAD');
+  });
+
+  it('rejects a tight-but-bimodal cohort on the interquartile guard', () => {
+    // A tight majority plus a distinct upper cluster: the MAD sees only the
+    // majority and stays at zero, while the quartiles straddle both groups.
+    const profile = moistureCohortProfile(cohort([5, 5, 5, 5, 5, 5, 30, 30, 30, 30]));
+    expect(profile.mad).toBeLessThanOrEqual(MOISTURE_COHORT_RULES.maxMad);
+    expect(profile.narrow).toBe(false);
+    expect(profile.reason).toContain('dwumodalna');
+  });
+
+  it('rejects a cohort too small to measure dispersion on', () => {
+    expect(moistureCohortProfile(cohort([5, 5, 5])).reason).toContain('za malo');
+  });
+
+  it('says so plainly when a cohort publishes no water at all', () => {
+    expect(moistureCohortProfile([mapperRow({ ingredient_id: 'PI-EMPTY' })]).narrow).toBe(false);
   });
 });

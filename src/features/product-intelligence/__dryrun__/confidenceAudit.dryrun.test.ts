@@ -39,6 +39,13 @@ const REPORT = resolve(__dirname, '../../../../docs/products/confidence_audit.js
 
 const round4 = (value: number): number => Math.round(value * 1e4) / 1e4;
 
+const medianOf = (sorted: readonly number[]): number => {
+  if (sorted.length === 0) return 0;
+  const mid = sorted.length >> 1;
+  const upper = sorted[mid] ?? 0;
+  return sorted.length % 2 === 1 ? upper : ((sorted[mid - 1] ?? upper) + upper) / 2;
+};
+
 interface FieldAudit {
   field: WorkingNumericField;
   state: string;
@@ -133,11 +140,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
           name: candidate.displayName,
           shipped: round4(Math.min(...values)),
           mean: round4(values.reduce((sum, value) => sum + value, 0) / values.length),
-          median: round4(
-            sorted.length % 2 === 1
-              ? sorted[sorted.length >> 1]
-              : (sorted[(sorted.length >> 1) - 1] + sorted[sorted.length >> 1]) / 2,
-          ),
+          median: round4(medianOf(sorted)),
           product: round4(values.reduce((acc, value) => acc * value, 1)),
           weakestField: weakest.field,
           weakestBasis: weakest.basis,
