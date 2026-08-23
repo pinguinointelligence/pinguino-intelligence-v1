@@ -48,6 +48,10 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/features/formulation/violationBands.ts',
   'src/features/practical-recipe/practicalRecipe.ts',
   'src/features/pro-core/recipeScaling.ts',
+  // GLOBAL MAIN AUTHORITY v1.4 (reviewed 2026-08-23): operational Rescue must
+  // read the SAME Main capability answer as the recipe workspace, so a
+  // user-held Main is never silently replaced by a better-calibrated product.
+  'src/features/product-intelligence/mainCapability.ts',
   'src/features/product-intelligence/mainEnvelope.ts',
   'src/features/product-intelligence/productBehaviorAccess.ts',
   'src/features/product-intelligence/productBehaviorResolver.ts',

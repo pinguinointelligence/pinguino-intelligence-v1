@@ -90,6 +90,8 @@ export interface ProductProcessReadiness {
 export type ProductBehaviorRole =
   | 'MAIN_ALLOWED'
   | 'MAIN_PROFILE_SPECIFIC'
+  /** Semantically a flavour carrier with no approved envelope (user-held). */
+  | 'MAIN_CAPABLE_UNCALIBRATED'
   | 'STANDARD_ONLY'
   | 'STRUCTURAL_ONLY'
   | 'PROTEIN_CONTRIBUTOR_ONLY'
@@ -99,6 +101,7 @@ export type ProductBehaviorRole =
 
 export type MainPolicyStatus =
   | 'COVERED'
+  | 'USER_HELD'
   | 'NOT_APPLICABLE'
   | 'BLOCKED_DATA'
   | 'BLOCKED_SCIENCE'
@@ -167,6 +170,7 @@ export interface ProductBehaviorBinding {
   mainClassification:
     | 'MAIN_ALLOWED'
     | 'MAIN_PROFILE_SPECIFIC'
+    | 'MAIN_CAPABLE_UNCALIBRATED'
     | 'STANDARD_ONLY'
     | 'STRUCTURAL_ONLY'
     | 'PROTEIN_CONTRIBUTOR_ONLY'
@@ -212,6 +216,12 @@ export interface ServerResolvedProductBehavior {
   formId: string | null;
   behaviorRole?: ProductBehaviorRole;
   mainPolicyStatus?: MainPolicyStatus;
+  /** Global Main authority (§26). Semantic capability, independent of whether
+   * an approved Main envelope exists for this exact product/profile. */
+  mainCapability?: 'MAIN_CAPABLE' | 'MAIN_CAPABLE_UNCALIBRATED' | 'MAIN_TECHNICAL_BLOCKED' | 'MAIN_UNKNOWN';
+  mainAuthority?: 'CALIBRATED' | 'USER_HELD';
+  mainCalibrationLevel?: 'EXACT_PRODUCT' | 'FAMILY' | 'NONE';
+  mainCapabilityReason?: string | null;
   profileApplicability?: Record<string, unknown>;
   classificationReasonCodes?: string[];
   mainEligibility: ProductBehaviorBinding['mainClassification'];
@@ -357,6 +367,13 @@ export interface ProductBehaviorSnapshot {
   technicalAuthority: ProductTechnicalAuthorityKind;
   mapperIngredientId: string | null;
   mainClassification: ProductBehaviorBinding['mainClassification'];
+  /** Server semantic role. Optional only for legacy schema-v1 snapshots. */
+  behaviorRole?: ProductBehaviorRole;
+  /** Global Main capability authority (§26). Absent on legacy snapshots, which
+   * are then reconstructed from the semantics they do carry. */
+  mainCapability?: 'MAIN_CAPABLE' | 'MAIN_CAPABLE_UNCALIBRATED' | 'MAIN_TECHNICAL_BLOCKED' | 'MAIN_UNKNOWN';
+  mainAuthority?: 'CALIBRATED' | 'USER_HELD';
+  mainCalibrationLevel?: 'EXACT_PRODUCT' | 'FAMILY' | 'NONE';
   mainPolicyId: string | null;
   mainPolicyVersion: string | null;
   ecoFloorPercent: number | null;

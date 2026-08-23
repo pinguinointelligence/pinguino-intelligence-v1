@@ -452,6 +452,7 @@ function RecipeRow({
   onDragStart,
   onDrop,
   mainUnavailableReason,
+  mainUserHeld = false,
   compact,
 }: {
   item: EffectiveRecipeItem;
@@ -466,6 +467,9 @@ function RecipeRow({
   onDragStart?: (lineId: string) => void;
   onDrop?: (lineId: string) => void;
   mainUnavailableReason?: string | null;
+  /** GLOBAL MAIN AUTHORITY §5/§6: a semantically valid Main with no approved
+   * envelope. The owner may select it; PINGÜINO will not resize it by itself. */
+  mainUserHeld?: boolean;
   compact: boolean;
 }) {
   const unit = 'g' as const;
@@ -549,7 +553,17 @@ function RecipeRow({
               type="button"
               aria-label={isMain ? 'Zmień na składnik standardowy' : 'Ustaw jako składnik główny'}
               aria-pressed={isMain}
-              title={isMain ? 'Główny — kliknij, aby ustawić Standardowy' : t.role.mainHint}
+              title={
+                isMain
+                  ? mainUserHeld
+                    ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie. ' +
+                      'Kliknij, aby ustawić Standardowy.'
+                    : 'Główny — kliknij, aby ustawić Standardowy'
+                  : mainUserHeld
+                    ? 'Ustaw jako składnik główny — brak zatwierdzonego zakresu, ' +
+                      'PI utrzyma Twoją gramaturę i dobierze resztę receptury.'
+                    : t.role.mainHint
+              }
               disabled={!isMain && Boolean(mainUnavailableReason)}
               onClick={() => setRole(isMain ? 'standard' : 'main')}
               data-testid={`row-main-toggle-${item.id}`}
@@ -1076,6 +1090,7 @@ export function IngredientRow({
   onDragStart,
   onDrop,
   mainUnavailableReason,
+  mainUserHeld = false,
   compact = false,
 }: {
   item: EffectiveRecipeItem;
@@ -1094,6 +1109,9 @@ export function IngredientRow({
   onDragStart?: (lineId: string) => void;
   onDrop?: (lineId: string) => void;
   mainUnavailableReason?: string | null;
+  /** GLOBAL MAIN AUTHORITY §5/§6: a semantically valid Main with no approved
+   * envelope. The owner may select it; PINGÜINO will not resize it by itself. */
+  mainUserHeld?: boolean;
 }) {
   return (
     <div
@@ -1135,6 +1153,7 @@ export function IngredientRow({
           onDragStart={onDragStart}
           onDrop={onDrop}
           mainUnavailableReason={mainUnavailableReason}
+          mainUserHeld={mainUserHeld}
           compact={compact}
         />
       )}

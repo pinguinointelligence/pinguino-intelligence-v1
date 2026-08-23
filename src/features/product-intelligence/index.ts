@@ -1,4 +1,5 @@
 export * from './contracts';
+export * from './mainCapability';
 export * from './productBehaviorResolver';
 export * from './productBehaviorAccess';
 export * from './mainEnvelope';

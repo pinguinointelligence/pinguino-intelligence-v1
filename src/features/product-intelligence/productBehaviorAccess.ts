@@ -1,5 +1,6 @@
 import type { ProductBehaviorModule, ProductBehaviorSnapshot } from './contracts';
 import { hasCanonicalIngredientIdentity } from '@/data/ingredients/canonicalIngredientIdentity';
+import { resolveMainCapability } from './mainCapability';
 
 export interface ProductBehaviorModuleGate {
   ready: boolean;
@@ -108,54 +109,21 @@ export function productBehaviorRequiredLineIds(input: {
   return [...new Set([...base, ...toppings])].sort();
 }
 
+/**
+ * Owner-facing reason a line may not be Main, or null when it may.
+ *
+ * GLOBAL MAIN AUTHORITY (owner v1.4 §26): this is a thin projection of the one
+ * canonical `resolveMainCapability` answer. It no longer decides eligibility
+ * itself, and a missing calibrated envelope no longer blocks the owner's Main
+ * intent — such a product resolves to user-held Main instead (§4, §5).
+ */
 export function mainBehaviorBlockReason(
   snapshot: ProductBehaviorSnapshot | null | undefined,
   snapshotRequired = false,
 ): string | null {
-  if (!snapshot) {
-    return snapshotRequired
-      ? 'Produkt wymaga ponownej walidacji przed ustawieniem jako Main.'
-      : null;
-  }
-  if (snapshot.resolutionState !== 'RESOLVED') {
-    return 'Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.';
-  }
-  if (snapshot.processScope !== 'BASE_FORMULATION') {
-    return 'Topping nie może pełnić roli Main.';
-  }
-  if (snapshot.moduleEligibility.MAIN !== 'eligible') {
-    // Owner v1.4 §16: say WHY. A protein source that is not a flavour is a different answer from
-    // "no approved range exists", and it is the one the Protein starter actually produces — the
-    // whey concentrate. Before this, the contributor wording below was unreachable (a contributor
-    // is never MAIN-eligible, so the classification branch never ran) and every disabled Protein
-    // toggle explained itself with the same vague sentence.
-    if (snapshot.mainClassification === 'PROTEIN_CONTRIBUTOR_ONLY') {
-      return 'Składnik białkowy nie jest automatycznie smakiem Main.';
-    }
-    return snapshot.mainClassification === 'MAIN_BLOCKED_POLICY' ||
-      snapshot.blockReasons.includes('main_policy_missing')
-      ? 'Brak zatwierdzonego zakresu Main dla tego produktu i profilu.'
-      : 'Produkt nie jest zatwierdzony jako Main w tym profilu.';
-  }
-  if (
-    snapshot.mainClassification !== 'MAIN_ALLOWED' &&
-    snapshot.mainClassification !== 'MAIN_PROFILE_SPECIFIC'
-  ) {
-    return snapshot.mainClassification === 'PROTEIN_CONTRIBUTOR_ONLY'
-      ? 'Składnik białkowy nie jest automatycznie smakiem Main.'
-      : 'Produkt nie jest składnikiem smakowym Main.';
-  }
-  if (
-    !snapshot.mainPolicyId ||
-    !snapshot.mainPolicyVersion ||
-    snapshot.ecoFloorPercent === null ||
-    snapshot.optimalCeilingPercent === null ||
-    snapshot.hardLimitPercent === null ||
-    snapshot.mainEquivalentFactor === null
-  ) {
-    return 'Brak zatwierdzonego zakresu Main dla tego produktu i profilu.';
-  }
-  return null;
+  if (!snapshot && !snapshotRequired) return null;
+  const capability = resolveMainCapability({ snapshot, snapshotRequired });
+  return capability.selectable ? null : capability.reasonPl;
 }
 
 export function productBehaviorCanBeMain(

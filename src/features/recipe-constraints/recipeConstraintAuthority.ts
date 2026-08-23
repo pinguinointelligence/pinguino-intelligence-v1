@@ -7,6 +7,7 @@ import {
   assessProductDosages,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
+  userHeldMainLineIds,
   verifyMainEnvelope,
   type MainEnvelopeViolation,
   type ProductBehaviorModule,
@@ -190,9 +191,28 @@ export function evaluateRecipeConstraintAuthority(
   const requiredLineIds = productBehaviorRequiredLineIds({ items: recipe.items });
   if (requireProductBehavior && requiredLineIds.length > 0) {
     const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
+    // GLOBAL MAIN AUTHORITY §4/§22: `profileEligibility` is derived from the
+    // published Main POLICIES, so it is a calibration list, not a safety list.
+    // A user-held Main legitimately has no policy for this profile; gating it
+    // here would re-introduce exactly the "missing calibration blocks user
+    // intent" coupling this architecture removes. Profile safety for such a
+    // line stays with the BASE_RECIPE permission and the profile ingredient
+    // authorities (Vegan/Protein), which are unchanged.
+    const userHeldMain = new Set(
+      userHeldMainLineIds({
+        items: recipe.items,
+        snapshots,
+        excludeLineIds: [...technicalOnlyMainLineIds],
+      }),
+    );
     const sensoryMainLineIds = new Set(
       recipe.items
-        .filter((item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id))
+        .filter(
+          (item) =>
+            item.lock_type === 'main' &&
+            !technicalOnlyMainLineIds.has(item.id) &&
+            !userHeldMain.has(item.id),
+        )
         .map((item) => item.id),
     );
     const module =

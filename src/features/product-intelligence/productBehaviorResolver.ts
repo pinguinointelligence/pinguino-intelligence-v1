@@ -40,12 +40,20 @@ export function snapshotServerResolvedProductBehavior(input: {
     typeof context.module === 'string'
       ? context as ProductBehaviorContext
       : null;
+  // GLOBAL MAIN AUTHORITY (owner v1.4 §4/§5): a missing calibrated envelope is
+  // a science gap, not an eligibility gap. The server now answers the semantic
+  // question separately; an uncalibrated flavour carrier stays MAIN-eligible
+  // and is held at the owner's grams instead of borrowing an invented range.
+  const serverCapability = input.resolved.mainCapability ?? null;
   const mainEligible =
     input.processScope === 'BASE_FORMULATION' &&
-    input.resolved.state === 'eligible' &&
-    (input.resolved.mainEligibility === 'MAIN_ALLOWED' ||
-      input.resolved.mainEligibility === 'MAIN_PROFILE_SPECIFIC') &&
-    policy !== null;
+    (serverCapability === null
+      ? input.resolved.state === 'eligible' &&
+        (input.resolved.mainEligibility === 'MAIN_ALLOWED' ||
+          input.resolved.mainEligibility === 'MAIN_PROFILE_SPECIFIC') &&
+        policy !== null
+      : serverCapability === 'MAIN_CAPABLE' ||
+        serverCapability === 'MAIN_CAPABLE_UNCALIBRATED');
   return {
     schemaVersion: 1,
     resolutionState: 'RESOLVED',
@@ -71,6 +79,12 @@ export function snapshotServerResolvedProductBehavior(input: {
     technicalAuthority: input.resolved.mapperIngredientId ? 'mapper_exact' : 'none',
     mapperIngredientId: input.resolved.mapperIngredientId,
     mainClassification: input.resolved.mainEligibility,
+    ...(input.resolved.behaviorRole ? { behaviorRole: input.resolved.behaviorRole } : {}),
+    ...(serverCapability ? { mainCapability: serverCapability } : {}),
+    ...(input.resolved.mainAuthority ? { mainAuthority: input.resolved.mainAuthority } : {}),
+    ...(input.resolved.mainCalibrationLevel
+      ? { mainCalibrationLevel: input.resolved.mainCalibrationLevel }
+      : {}),
     mainPolicyId: policy?.policyId ?? null,
     mainPolicyVersion: policy?.policyVersion ?? null,
     ecoFloorPercent: policy?.ecoFloorPercent ?? null,
@@ -117,6 +131,10 @@ export function productBehaviorSnapshotFingerprint(
         value.behaviorBindingVersion,
         value.taxonomyVersion,
         value.mapperVerificationStatus ?? null,
+        value.mainCapability ?? null,
+        value.mainAuthority ?? null,
+        value.mainCalibrationLevel ?? null,
+        value.behaviorRole ?? null,
         value.mainPolicyId,
         value.mainPolicyVersion,
         value.mainBasis,

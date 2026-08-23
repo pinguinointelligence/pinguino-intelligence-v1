@@ -128,6 +128,7 @@ import {
 } from '@/features/formulation/mainIngredientContract';
 import {
   mainEnvelopeSearchCeilingGrams,
+  userHeldMainLineIds,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   productBehaviorSnapshotFingerprint,
@@ -189,8 +190,49 @@ import { mainTechnicalLinearUpperBound } from './mainTechnicalLinearBound';
  * Neither is persisted as a user-visible §17 lock, and an explicit owner
  * lock/percent/range always wins over both.
  */
-const solverHolds = (input: RecipeInput, set: ConstraintSet): ConstraintSet =>
-  withVeganInulinEnvelopeHold(input, withTemplateControlledStabilizerLocks(input, set));
+/**
+ * GLOBAL MAIN AUTHORITY §6 — USER-HELD MAIN.
+ *
+ * A Main group with no approved envelope is held EXACTLY at the owner's grams:
+ * automatic formulation optimises the supporting ingredients around it and
+ * never invents a percentage floor/ceiling for it. Expressed as a solver hold
+ * (not a user-visible §17 lock) so the search never proposes a different Main
+ * mass in the first place, instead of rejecting it afterwards.
+ */
+const withUserHeldMainHold = (
+  input: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions,
+): ConstraintSet => {
+  const held = userHeldMainLineIds({
+    items: input.items,
+    snapshots: options.productBehaviorSnapshots ?? {},
+    excludeLineIds: options.technicalOnlyMainLineIds,
+  });
+  if (held.length === 0) return set;
+  const byLineId = { ...set.byLineId };
+  let changed = false;
+  for (const lineId of held) {
+    // An explicit owner lock/percent/range always wins over the implicit hold.
+    if (byLineId[lineId] !== undefined) continue;
+    const grams = input.items.find((item) => item.id === lineId)?.planned_grams;
+    if (typeof grams !== 'number' || !Number.isFinite(grams) || !(grams > 0)) continue;
+    byLineId[lineId] = { mode: 'locked', grams };
+    changed = true;
+  }
+  return changed ? { ...set, byLineId } : set;
+};
+
+const solverHolds = (
+  input: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions = {},
+): ConstraintSet =>
+  withUserHeldMainHold(
+    input,
+    withVeganInulinEnvelopeHold(input, withTemplateControlledStabilizerLocks(input, set)),
+    options,
+  );
 
 /** Build-only commercial inputs. They rank ECO candidates in memory and are
  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
@@ -2075,7 +2117,7 @@ function iterateSolverToFixedPoint(
   // gradient. Keep every current stabilizer dose as an internal solver hold in
   // the canonical corrector, draft-vector, ECO and Protein paths. The hold is
   // deliberately not persisted as a user-visible §17 lock.
-  const solverSet = solverHolds(start, set);
+  const solverSet = solverHolds(start, set, { productBehaviorSnapshots });
   const measure = (candidate: RecipeInput): { violations: number; severityPoints: number } => {
     const list = recipeDirectionViolations(candidate);
     return {
@@ -2579,7 +2621,7 @@ export function projectManualIngredientTarget(
 
   const objectiveBound = mainTechnicalLinearUpperBound({
     recipe: technicalStart,
-    constraints: solverHolds(technicalStart, set),
+    constraints: solverHolds(technicalStart, set, options),
     snapshots: options.productBehaviorSnapshots ?? {},
     excludedIngredientIds: options.excludedIngredientIds,
     objectiveLineIds: [targetLine.id],
@@ -2680,7 +2722,7 @@ export function projectManualIngredientTarget(
     };
     const bound = mainTechnicalLinearUpperBound({
       recipe: technicalStart,
-      constraints: solverHolds(technicalStart, probeSet),
+      constraints: solverHolds(technicalStart, probeSet, options),
       snapshots: options.productBehaviorSnapshots ?? {},
       excludedIngredientIds: options.excludedIngredientIds,
       objectiveLineIds: [targetLine.id],
@@ -2780,6 +2822,12 @@ function maximizeMainFromStart(
   if (mains.length === 0 || identityInput.items.some((item) => item.actual_grams !== null)) {
     return { input: start, proof: null };
   }
+  // GLOBAL MAIN AUTHORITY §6: a Main group with no approved envelope is USER
+  // HELD. There is no calibrated maximum to search towards and inventing one
+  // would be fabricated science, so the owner's grams become an EXACT contract
+  // for this search. The search itself still runs — it is what settles the
+  // supporting ingredients around the owner's Main.
+  set = withUserHeldMainHold(identityInput, set, options);
 
   // The proof's starting point is always the CURRENT canonical draft, not a
   // template/solver seed. A formulation seed may already carry a different
@@ -2906,7 +2954,7 @@ function maximizeMainFromStart(
         ),
       },
     };
-    const solverSet = solverHolds(staged, mainSet);
+    const solverSet = solverHolds(staged, mainSet, options);
     const rescaled = rescaleBatchToTarget(staged, solverSet, identityInput.target_batch_grams);
     // Proportional normalization is not the whole feasible space. In
     // particular a flavour carrier can often advance one more executable gram
@@ -3020,7 +3068,7 @@ function maximizeMainFromStart(
         ),
       },
     };
-    const solverSet = solverHolds(candidate, mainSet);
+    const solverSet = solverHolds(candidate, mainSet, options);
     const constrainedIngredientIds = new Set(
       candidate.items
         .filter((item) => isConstrained(solverSet, item.id))
@@ -3228,6 +3276,11 @@ function maximizeMainTechnicalObjective(
   if (mains.length === 0 || identityInput.items.some((item) => item.actual_grams !== null)) {
     return { input: presentationInput, proof: null };
   }
+  // §6/§21: user-held Main is never maximised. A group mixing calibrated and
+  // uncalibrated Mains is user-held as a whole — PINGÜINO does not borrow one
+  // member's envelope for the other. Expressing it as an exact constraint keeps
+  // the frontier search honest instead of silently skipping it.
+  set = withUserHeldMainHold(contractInput, set, options);
 
   const startingMainGrams = mainGroupTotal(contractInput, contractInput);
   const startingProteinTarget = assessProteinFormulation(identityInput);
@@ -3267,7 +3320,7 @@ function maximizeMainTechnicalObjective(
       },
     };
   }
-  const linearConstraintSet = solverHolds(identityInput, set);
+  const linearConstraintSet = solverHolds(identityInput, set, options);
   const linearBound = mainTechnicalLinearUpperBound({
     recipe: identityInput,
     constraints: linearConstraintSet,
@@ -3516,7 +3569,7 @@ function maximizeMainTechnicalObjective(
             .map((item) => [item.id, { mode: 'locked', grams: item.planned_grams }] as const),
         ),
       },
-    });
+    }, options);
     const candidates: RecipeInput[] = seedCandidates.filter(
       (candidate) =>
         Math.abs(mainGroupTotal(contractInput, candidate) - allocation.allocatedMainTotal) <=
@@ -4087,7 +4140,7 @@ function maximizeMainFlavourObjective(
             return grams === undefined ? item : { ...item, planned_grams: grams };
           }),
         };
-        const solverSet = solverHolds(staged, mainSet);
+        const solverSet = solverHolds(staged, mainSet, options);
         const proportional = rescaleBatchToTarget(
           staged,
           solverSet,
@@ -4443,6 +4496,7 @@ function bestHardSafeDirectionSegment(
   unsafeInput: RecipeInput,
   set: ConstraintSet,
   excludedIngredientIds: ReadonlySet<string>,
+  options: OptimizePreviewOptions = {},
 ): RecipeInput | null {
   if (
     !identityInput.goals?.direction_targets_active ||
@@ -4482,7 +4536,7 @@ function bestHardSafeDirectionSegment(
       ),
     },
   };
-  const solverSet = solverHolds(staged, mainSet);
+  const solverSet = solverHolds(staged, mainSet, options);
   const anchors: RecipeInput[] = [];
   const proportional = rescaleBatchToTarget(staged, solverSet, identityInput.target_batch_grams);
   if (proportional.ok) anchors.push(proportional.input);
@@ -4605,7 +4659,7 @@ function iterateFormulationSeed(
   proposedInput: RecipeInput,
   options: OptimizePreviewOptions = {},
 ): ReturnType<typeof iterateSolverToFixedPoint> {
-  const solverSet = solverHolds(proposedInput, set);
+  const solverSet = solverHolds(proposedInput, set, options);
   const constrainedIngredientIds = new Set(
     proposedInput.items
       .filter((item) => isConstrained(solverSet, item.id))
@@ -4852,7 +4906,7 @@ function buildFormulationPreviewInternal(
   const ownerInulinAbsent = !built.proposal.proposedInput.items.some(
     (item) => canonicalIngredientId(item.ingredient) === 'PI-ING-000456' && item.planned_grams > 0,
   );
-  const baseSolverSet = solverHolds(built.proposal.proposedInput, set);
+  const baseSolverSet = solverHolds(built.proposal.proposedInput, set, options);
   const solverSet: ConstraintSet = ownerInulinAbsent
     ? {
         byLineId: {
@@ -5754,7 +5808,7 @@ function buildOptimizePreviewWithDirection(
         input,
         working: preConstrained.input,
         set,
-        solverSet: solverHolds(input, set),
+        solverSet: solverHolds(input, set, options),
         createdAt,
         options,
         violationsBefore: violationCount(calculateRecipe(preConstrained.input)),
@@ -5917,7 +5971,7 @@ function buildOptimizePreviewWithDirection(
     return mainSafePreview(input, preview, options.productBehaviorSnapshots);
   };
 
-  const solverSet = solverHolds(input, set);
+  const solverSet = solverHolds(input, set, options);
   // Apply only the user's visible constraints to the candidate state. The
   // stabilizer hold is internal orchestration state and must never surface as
   // a native/item lock or a visible §17 padlock.
@@ -6230,6 +6284,7 @@ function buildOptimizePreviewWithDirection(
     working,
     set,
     new Set(options.excludedIngredientIds ?? []),
+    options,
   );
   if (hardSafeDirection) working = hardSafeDirection;
   const lastProposal = iterated.lastProposal;
@@ -6757,6 +6812,8 @@ export function buildBatchRescalePreview(
         : item,
     ),
   };
+  // §6: a batch change is an explicit owner control, so a user-held Main is
+  // rescaled with the batch rather than pinned to its old absolute grams.
   const batchSolverSet = solverHolds(stabilizerScaledInput, set);
   const rescaled = rescaleBatchToTarget(stabilizerScaledInput, batchSolverSet, newBatchGrams);
   if (!rescaled.ok) {

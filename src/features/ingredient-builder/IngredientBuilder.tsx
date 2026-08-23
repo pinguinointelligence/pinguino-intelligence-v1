@@ -59,6 +59,7 @@ import {
 } from '@/services/globalCatalog';
 import {
   mainBehaviorBlockReason,
+  resolveMainCapability,
   productBehaviorRequiredLineIds,
   productBehaviorModuleGate,
   productDosageAuthority,
@@ -602,6 +603,13 @@ export function IngredientBuilder({
           productBehaviorSnapshots[item.id],
           behaviorRequiredLineIds.has(item.id),
         )}
+        mainUserHeld={
+          productBehaviorSnapshots[item.id] !== undefined &&
+          resolveMainCapability({
+            snapshot: productBehaviorSnapshots[item.id],
+            snapshotRequired: behaviorRequiredLineIds.has(item.id),
+          }).userHeld
+        }
       />
     );
   });

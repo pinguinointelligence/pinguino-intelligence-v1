@@ -4,6 +4,7 @@ import {
   mainBehaviorBlockReason,
   productBehaviorRequiredLineIds,
 } from './productBehaviorAccess';
+import { resolveMainCapability, userHeldMainLineIds } from './mainCapability';
 
 const EPSILON = 1e-7;
 
@@ -101,8 +102,23 @@ export function verifyMainEnvelope(input: {
   technicalOnlyMainLineIds?: readonly string[];
 }): MainEnvelopeVerification {
   const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
+  // GLOBAL MAIN AUTHORITY §6/§21: a Main group holding at least one product
+  // without an approved envelope is USER-HELD. There is no combined approved
+  // range to verify, so the envelope contract does not apply — the owner's
+  // grams and ratio are protected by the Main identity contract instead, and
+  // the Engine still judges the resulting recipe truthfully.
+  const userHeld = new Set(
+    userHeldMainLineIds({
+      items: input.recipe.items,
+      snapshots: input.snapshots,
+      excludeLineIds: [...technicalOnlyMainLineIds],
+    }),
+  );
   const mains = input.recipe.items.filter(
-    (item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id),
+    (item) =>
+      item.lock_type === 'main' &&
+      !technicalOnlyMainLineIds.has(item.id) &&
+      !userHeld.has(item.id),
   );
   if (mains.length === 0) {
     return { ok: true, equivalentPercent: null, targetPercent: null, hardLimitPercent: null, policyId: null };
@@ -263,6 +279,10 @@ export function mainEnvelopeSearchCeilingGrams(input: {
     (item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id),
   );
   if (mains.length === 0 || mains.some((item) => !input.snapshots[item.id])) return null;
+  // No invented percentage ceiling for user-held Main (§4).
+  if (mains.some((item) => resolveMainCapability({ snapshot: input.snapshots[item.id] }).userHeld)) {
+    return null;
+  }
   const snapshots = mains.map((item) => input.snapshots[item.id]!);
   const first = snapshots[0]!;
   const multi = snapshots.length > 1;

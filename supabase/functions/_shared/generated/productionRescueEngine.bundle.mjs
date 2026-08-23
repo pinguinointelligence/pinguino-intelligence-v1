@@ -3763,6 +3763,107 @@ function classifyViolationBands(input) {
 }
 
 //#endregion
+//#region src/features/product-intelligence/mainCapability.ts
+/** §23: never show a vague tooltip when the real reason is known. */
+const REASON_PL = {
+	calibrated_main_policy: null,
+	user_held_no_calibration: null,
+	structural_product: "Składnik techniczny — nie definiuje smaku receptury.",
+	topping_product: "Produkt po produkcji (topping) nie może być składnikiem głównym.",
+	protein_contributor: "Składnik białkowy nie jest automatycznie smakiem Main.",
+	standard_base_product: "Składnik bazowy/standardowy — nie definiuje smaku receptury.",
+	post_process_scope: "Topping nie może pełnić roli Main.",
+	base_recipe_not_approved: "Produkt nie jest zatwierdzony do receptury bazowej.",
+	snapshot_missing: "Produkt wymaga ponownej walidacji przed ustawieniem jako Main.",
+	revalidation_required: "Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.",
+	unknown_product: "PINGÜINO nie rozpoznaje jeszcze tego produktu — brak danych o jego roli."
+};
+/**
+* Semantic roles that carry recipe flavour identity. These come from the
+* server classifier's product semantics (category/subcategory/family), never
+* from an ingredient-id list. `UNKNOWN_REQUIRES_EVIDENCE` is emitted only
+* inside the classifier's flavour-candidate branch: the product IS a flavour
+* carrier, only its governed form/concentration is still unproven — which is a
+* calibration gap, not a capability gap (§4).
+*/
+const FLAVOUR_CARRIER_ROLES = new Set([
+	"MAIN_ALLOWED",
+	"MAIN_PROFILE_SPECIFIC",
+	"MAIN_CAPABLE_UNCALIBRATED",
+	"UNKNOWN_REQUIRES_EVIDENCE"
+]);
+const TECHNICAL_ROLE_REASON = {
+	STRUCTURAL_ONLY: "structural_product",
+	NOT_MAIN: "structural_product",
+	TOPPING_ONLY: "topping_product",
+	PROTEIN_CONTRIBUTOR_ONLY: "protein_contributor",
+	STANDARD_ONLY: "standard_base_product"
+};
+function capability(state, reasonCode, snapshot, calibrationLevel = "NONE") {
+	return {
+		state,
+		reasonCode,
+		reasonPl: REASON_PL[reasonCode],
+		familyId: snapshot?.familyId ?? null,
+		subfamilyId: snapshot?.subfamilyId ?? null,
+		formId: snapshot?.formId ?? null,
+		calibrationLevel,
+		policyId: calibrationLevel === "NONE" ? null : snapshot?.mainPolicyId ?? null,
+		policyVersion: calibrationLevel === "NONE" ? null : snapshot?.mainPolicyVersion ?? null,
+		userHeld: state === "MAIN_CAPABLE_UNCALIBRATED",
+		selectable: state === "MAIN_CAPABLE" || state === "MAIN_CAPABLE_UNCALIBRATED"
+	};
+}
+/** A complete, approved envelope for the resolved profile. */
+function hasCalibratedMainEnvelope(snapshot) {
+	return Boolean(snapshot && snapshot.mainPolicyId && snapshot.mainPolicyVersion && snapshot.ecoFloorPercent !== null && snapshot.optimalCeilingPercent !== null && snapshot.hardLimitPercent !== null && snapshot.mainEquivalentFactor !== null);
+}
+/**
+* §8 calibration hierarchy: an envelope bound to this exact product identity
+* outranks a family/form policy. Both remain calibrated authority; only their
+* provenance differs.
+*/
+function calibrationLevelOf(snapshot) {
+	if (snapshot.mainCalibrationLevel === "EXACT_PRODUCT" || snapshot.mainCalibrationLevel === "FAMILY") return snapshot.mainCalibrationLevel;
+	return "FAMILY";
+}
+/**
+* THE canonical Main-capability API (§26). Consumers must not re-derive Main
+* eligibility from names, categories, ingredient ids or policy fields.
+*/
+function resolveMainCapability(input) {
+	const snapshot = input.snapshot;
+	if (!snapshot) return input.snapshotRequired ? capability("MAIN_UNKNOWN", "snapshot_missing", null) : capability("MAIN_CAPABLE_UNCALIBRATED", "user_held_no_calibration", null);
+	if (snapshot.resolutionState !== "RESOLVED") return capability("MAIN_UNKNOWN", "revalidation_required", snapshot);
+	if (snapshot.processScope !== "BASE_FORMULATION") return capability("MAIN_TECHNICAL_BLOCKED", "post_process_scope", snapshot);
+	if (snapshot.moduleEligibility.BASE_RECIPE === "blocked") return capability("MAIN_TECHNICAL_BLOCKED", "base_recipe_not_approved", snapshot);
+	const serverState = snapshot.mainCapability;
+	if (serverState === "MAIN_TECHNICAL_BLOCKED") return capability("MAIN_TECHNICAL_BLOCKED", TECHNICAL_ROLE_REASON[snapshot.behaviorRole ?? ""] ?? TECHNICAL_ROLE_REASON[snapshot.mainClassification] ?? "structural_product", snapshot);
+	if (serverState === "MAIN_UNKNOWN") return capability("MAIN_UNKNOWN", "unknown_product", snapshot);
+	if (serverState === "MAIN_CAPABLE" || serverState === "MAIN_CAPABLE_UNCALIBRATED") return hasCalibratedMainEnvelope(snapshot) ? capability("MAIN_CAPABLE", "calibrated_main_policy", snapshot, calibrationLevelOf(snapshot)) : capability("MAIN_CAPABLE_UNCALIBRATED", "user_held_no_calibration", snapshot);
+	const role = snapshot.behaviorRole ?? snapshot.mainClassification;
+	const technicalReason = TECHNICAL_ROLE_REASON[role];
+	if (technicalReason) return capability("MAIN_TECHNICAL_BLOCKED", technicalReason, snapshot);
+	if (FLAVOUR_CARRIER_ROLES.has(role)) return hasCalibratedMainEnvelope(snapshot) ? capability("MAIN_CAPABLE", "calibrated_main_policy", snapshot, calibrationLevelOf(snapshot)) : capability("MAIN_CAPABLE_UNCALIBRATED", "user_held_no_calibration", snapshot);
+	if (role === "MAIN_BLOCKED_POLICY") return capability("MAIN_CAPABLE_UNCALIBRATED", "user_held_no_calibration", snapshot);
+	return capability("MAIN_UNKNOWN", "unknown_product", snapshot);
+}
+/**
+* Line ids whose Main role is user-held. §21: a group that mixes calibrated
+* and uncalibrated Mains has no combined approved envelope, so the entire
+* group becomes user-held rather than borrowing one member's science.
+*/
+function userHeldMainLineIds(input) {
+	const excluded = new Set(input.excludeLineIds ?? []);
+	const mains = input.items.filter((item) => item.lock_type === "main" && !excluded.has(item.id));
+	if (mains.length === 0) return [];
+	return mains.some((item) => input.snapshots[item.id] !== void 0 && resolveMainCapability({
+		snapshot: input.snapshots[item.id],
+		snapshotRequired: true
+	}).userHeld) ? mains.map((item) => item.id) : [];
+}
+
+//#endregion
 //#region src/features/product-intelligence/productBehaviorResolver.ts
 function productBehaviorSnapshotFingerprint(snapshots) {
 	return JSON.stringify(Object.entries(snapshots).filter((entry) => entry[1] !== void 0).sort(([left], [right]) => left.localeCompare(right)).map(([lineId, value]) => [
@@ -3774,6 +3875,10 @@ function productBehaviorSnapshotFingerprint(snapshots) {
 		value.behaviorBindingVersion,
 		value.taxonomyVersion,
 		value.mapperVerificationStatus ?? null,
+		value.mainCapability ?? null,
+		value.mainAuthority ?? null,
+		value.mainCalibrationLevel ?? null,
+		value.behaviorRole ?? null,
 		value.mainPolicyId,
 		value.mainPolicyVersion,
 		value.mainBasis,
@@ -3839,17 +3944,21 @@ function productBehaviorRequiredLineIds(input) {
 	const toppings = (input.toppings ?? []).filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (ingredient.kind === "catalog_label_topping" || typeof ingredient.catalog_product_id === "string" || hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
 	return [...new Set([...base, ...toppings])].sort();
 }
+/**
+* Owner-facing reason a line may not be Main, or null when it may.
+*
+* GLOBAL MAIN AUTHORITY (owner v1.4 §26): this is a thin projection of the one
+* canonical `resolveMainCapability` answer. It no longer decides eligibility
+* itself, and a missing calibrated envelope no longer blocks the owner's Main
+* intent — such a product resolves to user-held Main instead (§4, §5).
+*/
 function mainBehaviorBlockReason(snapshot, snapshotRequired = false) {
-	if (!snapshot) return snapshotRequired ? "Produkt wymaga ponownej walidacji przed ustawieniem jako Main." : null;
-	if (snapshot.resolutionState !== "RESOLVED") return "Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.";
-	if (snapshot.processScope !== "BASE_FORMULATION") return "Topping nie może pełnić roli Main.";
-	if (snapshot.moduleEligibility.MAIN !== "eligible") {
-		if (snapshot.mainClassification === "PROTEIN_CONTRIBUTOR_ONLY") return "Składnik białkowy nie jest automatycznie smakiem Main.";
-		return snapshot.mainClassification === "MAIN_BLOCKED_POLICY" || snapshot.blockReasons.includes("main_policy_missing") ? "Brak zatwierdzonego zakresu Main dla tego produktu i profilu." : "Produkt nie jest zatwierdzony jako Main w tym profilu.";
-	}
-	if (snapshot.mainClassification !== "MAIN_ALLOWED" && snapshot.mainClassification !== "MAIN_PROFILE_SPECIFIC") return snapshot.mainClassification === "PROTEIN_CONTRIBUTOR_ONLY" ? "Składnik białkowy nie jest automatycznie smakiem Main." : "Produkt nie jest składnikiem smakowym Main.";
-	if (!snapshot.mainPolicyId || !snapshot.mainPolicyVersion || snapshot.ecoFloorPercent === null || snapshot.optimalCeilingPercent === null || snapshot.hardLimitPercent === null || snapshot.mainEquivalentFactor === null) return "Brak zatwierdzonego zakresu Main dla tego produktu i profilu.";
-	return null;
+	if (!snapshot && !snapshotRequired) return null;
+	const capability = resolveMainCapability({
+		snapshot,
+		snapshotRequired
+	});
+	return capability.selectable ? null : capability.reasonPl;
 }
 
 //#endregion
@@ -3880,7 +3989,12 @@ function verifyMainTechnicalCarrier(input) {
 * outside this boundary. */
 function verifyMainEnvelope(input) {
 	const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
-	const mains = input.recipe.items.filter((item) => item.lock_type === "main" && !technicalOnlyMainLineIds.has(item.id));
+	const userHeld = new Set(userHeldMainLineIds({
+		items: input.recipe.items,
+		snapshots: input.snapshots,
+		excludeLineIds: [...technicalOnlyMainLineIds]
+	}));
+	const mains = input.recipe.items.filter((item) => item.lock_type === "main" && !technicalOnlyMainLineIds.has(item.id) && !userHeld.has(item.id));
 	if (mains.length === 0) return {
 		ok: true,
 		equivalentPercent: null,
@@ -6522,7 +6636,12 @@ function evaluateRecipeConstraintAuthority(input) {
 	const requiredLineIds = productBehaviorRequiredLineIds({ items: recipe.items });
 	if (requireProductBehavior && requiredLineIds.length > 0) {
 		const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
-		const sensoryMainLineIds = new Set(recipe.items.filter((item) => item.lock_type === "main" && !technicalOnlyMainLineIds.has(item.id)).map((item) => item.id));
+		const userHeldMain = new Set(userHeldMainLineIds({
+			items: recipe.items,
+			snapshots,
+			excludeLineIds: [...technicalOnlyMainLineIds]
+		}));
+		const sensoryMainLineIds = new Set(recipe.items.filter((item) => item.lock_type === "main" && !technicalOnlyMainLineIds.has(item.id) && !userHeldMain.has(item.id)).map((item) => item.id));
 		const behavior = productBehaviorModuleGate(snapshots, input.module ?? (normalizeFormulationStrategy(recipe.goals?.formulation_strategy ?? recipe.mode) === "eco" ? "ECO" : "OPTIMAL"), requiredLineIds);
 		if (!behavior.ready) issues.push({
 			source: "product_behavior",

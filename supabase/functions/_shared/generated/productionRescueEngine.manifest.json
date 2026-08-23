@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 297930,
-    "sha256": "54e3b7f5a94b1dd65d200d5bb00d8a2a19feb026d6d22b25719ae8d026857f92",
+    "bytes": 303581,
+    "sha256": "76bd852ad536d5c2d80ba83a7b57530271b5297037bd0d99eb7523a8febe672d",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -160,16 +160,20 @@
       "sha256": "727b9c03c1c912c2913fc065e47a593184947534221d0303aef5d7dd4adbce96"
     },
     {
+      "path": "src/features/product-intelligence/mainCapability.ts",
+      "sha256": "ec77cad25a8c624edc298570a6a5e2aacc691ed82e0139c746f4ef1a6701a7ae"
+    },
+    {
       "path": "src/features/product-intelligence/mainEnvelope.ts",
-      "sha256": "85885ae65af6dc57e5dea0143bb43ae84b205e4bc639288fbeb5836c73528c6b"
+      "sha256": "c306b5819075fba128a4059a48bc07cb8168bf855eb58aec2c4bf49d44f16ed3"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorAccess.ts",
-      "sha256": "13aae40a48d45562d9b50de39c742c5e7d057885721876e8dec49857279d958a"
+      "sha256": "d1713b491d0d1db672668a5e0f65fce50163e508beae0593cf4588cdeaf7b9e0"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorResolver.ts",
-      "sha256": "5720af8de80531eb519ed5b6e63adb9d8cbe9a9c45bf92e0767a4d78e71fecac"
+      "sha256": "003bcc884447ec0566a77a35513d01dfeb7d17cd07519f4751bf38424d2ce37b"
     },
     {
       "path": "src/features/product-intelligence/productDosageAuthority.ts",
@@ -229,7 +233,7 @@
     },
     {
       "path": "src/features/recipe-constraints/recipeConstraintAuthority.ts",
-      "sha256": "1b9fdfbeff0ba40072070b3676e94b11b63ab4c2824ce1013db297d992062346"
+      "sha256": "21de02a7248f58a17326aed1676d2b640c5edf32d9481fde00f980f05716999f"
     },
     {
       "path": "src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts",
@@ -256,5 +260,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "a1bfa8dd2bbda38b93765746a4d309c805b84896549ec3512bc9e4338abe23f6"
+  "sourceClosureSha256": "cc3f0db75529a3e16ec36ddebf1527fd35af95dae76fe025940d460a416a5c18"
 }
