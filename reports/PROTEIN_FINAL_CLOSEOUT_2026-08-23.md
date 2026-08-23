@@ -3,10 +3,11 @@
 **Date:** 2026-08-23
 **Branch:** `claude/protein-final-closeout`
 **Starting SHA:** `92edb67` (staging at the time the work began)
-**Landed staging SHA:** `e02de60` (pre-land tip `7d6d7c4`; fast-forward, no force)
-**Vercel:** `dpl_2iHpxvqUT9sarwKiXPcB4rBsUUa1` READY — alias `staging.pinguinoai.com`
-**Served bundle:** `index-C0u3lGsO.js` (3 279 019 B, sha256 `6c953186…`) — read in-browser, not curl
-**Staging Edge:** `production-rescue-authorize` v9 ACTIVE, all files byte-identical to repo
+**Landed staging SHA:** `e02de60` (pre-land tip `7d6d7c4`; fast-forward, no force), then `e03beca`
+**Staging tip at close:** `190a66f` — all of this work is an ancestor of it
+**Vercel:** `dpl_2LNUgLbxyeQevE5f37DCwfHY5jYz` READY — alias `staging.pinguinoai.com`
+**Served bundle:** `index-B5R0NItJ.js` (3 279 956 B, sha256 `69058b31…`) — read in-browser, not curl
+**Staging Edge:** `production-rescue-authorize` **v10** ACTIVE, byte-identical to the staging tree
 **Mapper base:** `docs/ingredients/validation/mapper_basement.csv` — 2088 rows, SHA-256
 `b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38` — **never written**
 
@@ -229,15 +230,17 @@ staging tree and deployed to `tunabqqrwabacxjcxxkz` **only**:
 
 | Property | Value |
 |---|---|
-| bundle SHA-256 | `3a62dbdfb72a70e1177519f421a38393cbb42ebb7373f5400a00c33725e6a477` |
-| bundle size | 297 859 B / 296 878 chars |
-| source closure | `6ca87ec2756a1fef255ed8e6a16294773c8dbe319c0dd6c615d32b99983ab203`, 57 files |
+| bundle SHA-256 | `54e3b7f5a94b1dd65d200d5bb00d8a2a19feb026d6d22b25719ae8d026857f92` |
+| bundle size | 297 930 B |
+| source closure | `a1bfa8dd2bbda38b93765746a4d309c805b84896549ec3512bc9e4338abe23f6`, 57 files |
 | external / dynamic imports | **0 / 0** — no dependency leak |
-| deployed version | **9**, ACTIVE, `verify_jwt: true` |
+| deployed version | **10**, ACTIVE, `verify_jwt: true` |
 
-Deployed bytes proven identical by reading the deployed files back and hashing all four:
-`index.ts` `5c6152bd…`, `logic.ts` `507a570f…`, bundle `3a62dbdf…`, metadata `cd8209d4…` — every
-one byte-identical to the repo.
+Deployed twice, because staging kept moving: first at `e02de60` (v9, bundle `3a62dbdf…`), then
+again from the final tip `190a66f` (v10, bundle `54e3b7f5…`). Both times the deployed bytes were
+proven by reading the deployed files back and hashing all four — `index.ts` `5c6152bd…`,
+`logic.ts` `507a570f…`, bundle `54e3b7f5…`, metadata `ac5a6c41…`, every one byte-identical to the
+staging tree. The stale `3716be4d…` that was serving before this work is gone.
 
 ## 13. Served QA — what was verified, and the blocker that stopped the rest
 
