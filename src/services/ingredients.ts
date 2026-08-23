@@ -27,13 +27,26 @@ export function isIngredientBackendConfigured(): boolean {
 /** Active ingredients (RLS still scopes visibility to PI Pro members). */
 export async function listActiveIngredients(): Promise<IngredientRow[]> {
   if (!supabase) return emptyUnconfiguredRead('ingredients.listActiveIngredients', []);
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('*')
-    .eq('is_active', true)
-    .order('ingredient_name_display', { ascending: true });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as IngredientRow[];
+  // PAGED, because the Mapper is bigger than one response. A single select is
+  // silently capped by the server's row limit, and the caller cannot tell a
+  // truncated Mapper from a small one: it just sees fewer reference profiles and
+  // quietly matches fewer products. That cost 26 of the Polish file's products
+  // their composition on the served path while the local run had all 2088 rows.
+  const rows: IngredientRow[] = [];
+  for (let offset = 0; ; offset += SEARCH_DB_PAGE_ROWS) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('is_active', true)
+      .order('ingredient_name_display', { ascending: true })
+      .order('ingredient_id', { ascending: true })
+      .range(offset, offset + SEARCH_DB_PAGE_ROWS - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as IngredientRow[];
+    rows.push(...page);
+    if (page.length < SEARCH_DB_PAGE_ROWS) break;
+  }
+  return rows;
 }
 
 /** Active ingredients approved for the PI recipe engines. */
@@ -143,7 +156,9 @@ export async function listIngredientsByIds(ids: readonly string[]): Promise<Ingr
 
 /** Exact-id list with the current Base-selection gate. Provenance is display
  * metadata; only active + approved_for_base may remove a row from selection. */
-export async function listEngineApprovedIngredientsByIds(ids: readonly string[]): Promise<IngredientRow[]> {
+export async function listEngineApprovedIngredientsByIds(
+  ids: readonly string[],
+): Promise<IngredientRow[]> {
   if (ids.length === 0) return [];
   if (!supabase) return emptyUnconfiguredRead('ingredients.listEngineApprovedIngredientsByIds', []);
   const { data, error } = await supabase
