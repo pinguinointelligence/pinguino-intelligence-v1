@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { buttonClasses } from '@/components/ui/buttonStyles';
 import { useAccess } from '@/access/useAccess';
 import { communityCopy } from '@/copy/community';
 import { AttributionByline } from '@/features/community/ui/AttributionByline';
 import { DemoRecipePreview } from '@/features/community/ui/DemoRecipePreview';
 import { UnlockCta } from '@/features/community/ui/UnlockCta';
+import { UseRecipeActions } from '@/features/community/ui/UseRecipeActions';
 import { VerifiedRating } from '@/features/community/ui/VerifiedRating';
 import { useAsyncResource } from '@/features/community/ui/useAsyncResource';
 import { useDocumentMetadata } from '@/features/community/ui/useDocumentMetadata';
@@ -115,19 +115,18 @@ export function PublicRecipePage() {
 
         <aside className="flex flex-col gap-6">
           {access.isPro ? (
-            <div className="rounded-md border border-ink/10 bg-paper p-6">
-              <p className="text-sm text-stone-500">
-                Masz aktywny plan — możesz użyć tej receptury.
-              </p>
-              <div className="mt-4 flex flex-col gap-3">
-                <button type="button" className={buttonClasses('primary')}>
-                  {copy.actions.useThisRecipe}
-                </button>
-                <button type="button" className={buttonClasses('ghost')}>
-                  {copy.actions.createMyVersion}
-                </button>
-              </div>
-            </div>
+            <UseRecipeActions
+              target={{
+                source: {
+                  kind: 'publication',
+                  publicationId: page.publication_id,
+                  handle,
+                  slug,
+                },
+                sourceTitle: page.title,
+                sourceCreatorDisplayName: page.creator.display_name,
+              }}
+            />
           ) : (
             <UnlockCta
               target={{ kind: 'publication', handle, slug }}

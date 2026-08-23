@@ -10,6 +10,7 @@ import { communityCopy } from '@/copy/community';
 import { AttributionByline } from '@/features/community/ui/AttributionByline';
 import { DemoRecipePreview } from '@/features/community/ui/DemoRecipePreview';
 import { UnlockCta } from '@/features/community/ui/UnlockCta';
+import { UseRecipeActions } from '@/features/community/ui/UseRecipeActions';
 import { useAsyncResource } from '@/features/community/ui/useAsyncResource';
 import { useDocumentMetadata } from '@/features/community/ui/useDocumentMetadata';
 import { directShareMetadata } from '@/features/community/domain/shareUrls';
@@ -116,17 +117,18 @@ export function SharedRecipePage() {
             <Card className="flex flex-col gap-4">
               <SectionLabel>Pełna receptura</SectionLabel>
               <p className="text-sm text-stone-500">
-                Masz aktywny plan — możesz otworzyć tę recepturę w edytorze i zapisać własną kopię.
-                Oryginał autora pozostaje bez zmian.
+                Masz aktywny plan — możesz zapisać własną, niezależną kopię. Oryginał autora
+                pozostaje bez zmian.
               </p>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" className={buttonClasses('primary')}>
-                  {copy.actions.useThisRecipe}
-                </button>
-                <button type="button" className={buttonClasses('ghost')}>
-                  {copy.actions.createMyVersion}
-                </button>
-              </div>
+              <UseRecipeActions
+                bare
+                target={{
+                  source: { kind: 'share', shareLinkId: state.share_link_id },
+                  shareToken: token || null,
+                  sourceTitle: state.title,
+                  sourceCreatorDisplayName: state.created_by.display_name,
+                }}
+              />
             </Card>
           ) : null}
         </div>

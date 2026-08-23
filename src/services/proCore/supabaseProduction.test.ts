@@ -1620,3 +1620,109 @@ describe('supabaseProduction — owner-scoped history + honest failure', () => {
     await expect(repo.listRuns(U1)).rejects.toThrow(/boom production_runs/i);
   });
 });
+
+describe('supabaseProduction — the Community „confirmed make" trigger (§41)', () => {
+  let store: FakeStore;
+  beforeEach(() => {
+    store = new FakeStore();
+  });
+
+  const MAKE_RPC = 'gellatti_record_make_for_run_v1';
+  const makeCalls = () => store.rpcCalls.filter((call) => call.name === MAKE_RPC);
+
+  const runThrough = async (repo: ReturnType<typeof repoFor>) => {
+    const run = await repo.createRun({
+      ownerUserId: U1,
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 5000 },
+      capabilities: PRO,
+      by: U1,
+    });
+    await repo.transition(run.runId, 'planned', U1);
+    await repo.transition(run.runId, 'in_progress', U1);
+    return run;
+  };
+
+  const finish = (repo: ReturnType<typeof repoFor>, runId: string) =>
+    repo.completeRun(runId, {
+      by: U1,
+      expectedActualRevision: 0,
+      expectedRescueRevision: 0,
+      items: [
+        {
+          id: 'milk',
+          name: 'Milk',
+          actualGrams: 3000,
+          confirmedAt: '2026-01-01T10:00:00.000Z',
+          confirmationOrder: 1,
+        },
+        {
+          id: 'sugar',
+          name: 'Sugar',
+          actualGrams: 2000,
+          confirmedAt: '2026-01-01T10:01:00.000Z',
+          confirmationOrder: 2,
+        },
+      ],
+      actualTotalMixG: 5000,
+    });
+
+  it('fires ONLY on completion — creating, planning and starting a run record nothing', async () => {
+    const repo = repoFor(store);
+    const run = await runThrough(repo);
+    expect(makeCalls()).toHaveLength(0);
+
+    await finish(repo, run.runId);
+    expect(makeCalls()).toHaveLength(1);
+    expect(makeCalls()[0]!.args).toEqual({ p_production_run_id: run.runId });
+  });
+
+  it('passes ONLY the run id — attribution is never asserted by the client', async () => {
+    const repo = repoFor(store);
+    const run = await runThrough(repo);
+    await finish(repo, run.runId);
+    expect(Object.keys(makeCalls()[0]!.args)).toEqual(['p_production_run_id']);
+  });
+
+  it('a repeated completion of the SAME run does not add a second make', async () => {
+    const repo = repoFor(store);
+    const run = await runThrough(repo);
+    await finish(repo, run.runId);
+    // Second call short-circuits on `status === completed`. It re-attempts the
+    // RPC (which is idempotent per run id server-side) but never for a
+    // different run, so no second make can exist for this run.
+    await finish(repo, run.runId);
+    expect(new Set(makeCalls().map((call) => call.args.p_production_run_id)).size).toBe(1);
+  });
+
+  it('a genuine SECOND making of the same recipe is a new run and does count', async () => {
+    const repo = repoFor(store);
+    const first = await runThrough(repo);
+    await finish(repo, first.runId);
+    const second = await runThrough(repo);
+    await finish(repo, second.runId);
+    const runIds = new Set(makeCalls().map((call) => call.args.p_production_run_id));
+    expect(runIds.size).toBe(2);
+    expect(runIds.has(first.runId)).toBe(true);
+    expect(runIds.has(second.runId)).toBe(true);
+  });
+
+  it('a failing make NEVER fails the production run — the run is the user\'s work', async () => {
+    const repo = repoFor(store);
+    const run = await runThrough(repo);
+    store.rpcErrorMessages[MAKE_RPC] = 'community unavailable';
+    const completed = await finish(repo, run.runId);
+    expect(completed.status).toBe('completed');
+    expect(makeCalls()).toHaveLength(1);
+  });
+
+  it('does not fire when completion itself failed', async () => {
+    const repo = repoFor(store);
+    const run = await runThrough(repo);
+    store.fail.add('rpc:production_complete_run_v1');
+    await expect(finish(repo, run.runId)).rejects.toThrow();
+    // The run never reached `completed`, so nothing was made and nothing is
+    // counted. The recovery path only records when the run really did land.
+    expect(makeCalls()).toHaveLength(0);
+  });
+});

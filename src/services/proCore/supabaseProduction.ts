@@ -717,7 +717,14 @@ export function supabaseProductionRepository(
     async completeRun(runId: string, input: RecordActualArgs): Promise<ProductionRun> {
       const owner = await uid();
       const current = await requireRun(owner, runId);
-      if (current.status === 'completed') return current;
+      if (current.status === 'completed') {
+        // Already completed — a retry, a double submit, or a recovered error
+        // path. Still attempt the Community make: the RPC is idempotent per
+        // run id, so this can only ever fill in a make that was missed, never
+        // create a second one (§41).
+        await recordCommunityMake(client, runId);
+        return current;
+      }
       const at = now();
       const next = recordActualPure(current, { ...input, at, eventId: newId() });
       const actual = next.actual!;
@@ -738,10 +745,19 @@ export function supabaseProductionRepository(
         });
       } catch (error) {
         const recovered = await loadRun(owner, runId).catch(() => null);
-        if (recovered?.status === 'completed') return recovered;
+        if (recovered?.status === 'completed') {
+          await recordCommunityMake(client, runId);
+          return recovered;
+        }
         throw error;
       }
-      return requireRun(owner, runId);
+      const completed = await requireRun(owner, runId);
+      // THE single authoritative „Zrobione w Gellatti" trigger (§41). It fires
+      // here and nowhere else: opening a recipe, previewing it, planning a run
+      // or starting one is not making it. Only a run that reached `completed`
+      // counts, and the server re-verifies that.
+      await recordCommunityMake(client, runId);
+      return completed;
     },
 
     async amend(runId: string, input: AmendArgs): Promise<ProductionRun> {
@@ -840,4 +856,33 @@ function groupBy<T, K>(rows: T[], key: (r: T) => K): Map<K, T[]> {
     else out.set(k, [r]);
   }
   return out;
+}
+
+/**
+ * Record a confirmed Community make for a completed production run (§41).
+ *
+ * The client passes ONLY the run id: the RPC re-verifies that the run is the
+ * caller's own and completed, then resolves which publication the recipe was
+ * derived from. Nothing about attribution is asserted from here.
+ *
+ * NEVER THROWS. A production run is the user's work; failing to update a
+ * Community counter must not turn a successful completion into an error the
+ * user sees. The failure is logged and the run stands.
+ *
+ * Idempotent by `production_run_id`, so being called from all three completion
+ * paths (fresh success, already-completed, recovered-after-error) records at
+ * most one make. A genuine second making of the same recipe is a NEW run with
+ * a new id, and does count again.
+ */
+async function recordCommunityMake(client: SupabaseClient, runId: string): Promise<void> {
+  try {
+    const { error } = await client.rpc('gellatti_record_make_for_run_v1', {
+      p_production_run_id: runId,
+    });
+    if (error) {
+      console.warn('[PINGÜINO] community make not recorded for run', runId, error.message);
+    }
+  } catch (cause) {
+    console.warn('[PINGÜINO] community make not recorded for run', runId, cause);
+  }
 }
