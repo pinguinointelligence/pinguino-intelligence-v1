@@ -19,11 +19,9 @@
   --color-shell-line: #1011131f;
   --color-status-ideal: #56624e;
 
-  /* Fluid geometry for the professional workbench. These are presentation
-     tokens only; all formula values and engine authority remain untouched. */
-  --pro-page-gutter: clamp(2rem, 4vw, 4rem);
-  --pro-workbench-gap: clamp(0.75rem, 1.4vw, 1.5rem);
-  --pro-dialog-gutter: max(0.5rem, env(safe-area-inset-left));
+  /* Fluid geometry for the professional workbench now lives on :root
+     (styles/tokens.css) so EVERY authenticated screen measures from the same
+     numbers. This scope keeps colour remapping only. */
 }
 
 /* A deliberate dark intelligence card is part of the canonical Pro hierarchy.
@@ -98,6 +96,27 @@ body:has([role='dialog'][aria-modal='true']) [data-testid='design-review-overlay
 
 body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-overlay'] {
   display: none;
+}
+
+/* „I changed something here" (owner mobile UX §8, 2026-08-23).
+   The marker rides the existing ATTENTION accent — the system's own
+   „pending / unsaved / requires attention" token — never a new colour and never
+   a loud warning. An inset rail cannot shift the row by a pixel, so a changed
+   line keeps perfect numeric alignment with the untouched ones. */
+.ingredient-line-changed {
+  box-shadow: inset 2px 0 0 0 var(--color-attention);
+  background-color: color-mix(in srgb, var(--color-attention) 4%, transparent);
+}
+
+.ingredient-line-changed:hover {
+  background-color: color-mix(in srgb, var(--color-attention) 7%, transparent);
+}
+
+/* The changed line's own numerals adopt the same quiet accent on mobile, where
+   they are plain text rather than a stepper. */
+.ingredient-line-changed [data-testid^='row-mobile-percent-'],
+.ingredient-line-changed [data-testid^='row-mobile-grams-'] {
+  color: var(--color-attention);
 }
 
 .pro-module {

@@ -4,6 +4,11 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { AppShell } from '@/features/shell/AppShell';
+import {
+  APP_PAGE_BLOCK,
+  APP_PAGE_MEASURE,
+  APP_PAGE_WORKSPACE,
+} from '@/features/shell/shellGeometry';
 import { savedToRecipeInput, type SavedRecipe } from '@/features/recipes/recipePayload';
 import { formatSavedRecipeDate } from '@/features/recipes/savedRecipeDate';
 import {
@@ -193,71 +198,71 @@ export function MyRecipesContent() {
             </p>
           ) : null}
           <ul className="mt-6 divide-y divide-ink/5">
-          {rows.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
-              <div className="min-w-0">
-                <p className="truncate text-base text-ink">{row.name}</p>
-                {row.description ? (
-                  <p className="mt-0.5 truncate text-xs text-stone-500">{row.description}</p>
-                ) : null}
-              </div>
-              {/* §11: the metadata group WRAPS on narrow screens (it becomes the row's second
+            {rows.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
+                <div className="min-w-0">
+                  <p className="truncate text-base text-ink">{row.name}</p>
+                  {row.description ? (
+                    <p className="mt-0.5 truncate text-xs text-stone-500">{row.description}</p>
+                  ) : null}
+                </div>
+                {/* §11: the metadata group WRAPS on narrow screens (it becomes the row's second
                   line) instead of squeezing six cells into an unreadable strip. */}
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                <Cell label={r.columns.product} value={rowLabels(row).productType} />
-                <Cell label={r.columns.serving} value={rowLabels(row).mode} />
-                <Cell label={r.columns.engine} value={rowLabels(row).engine} />
-                <Cell label={r.columns.batch} value={rowLabels(row).batch} />
-                <Cell
-                  label={r.columns.updated}
-                  value={formatSavedRecipeDate(row.latest_version_at ?? row.updated_at)}
-                />
-                <span className="flex flex-col">
-                  <span className="text-[0.6rem] tracking-label text-stone-400 uppercase">
-                    {r.columns.version}
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+                  <Cell label={r.columns.product} value={rowLabels(row).productType} />
+                  <Cell label={r.columns.serving} value={rowLabels(row).mode} />
+                  <Cell label={r.columns.engine} value={rowLabels(row).engine} />
+                  <Cell label={r.columns.batch} value={rowLabels(row).batch} />
+                  <Cell
+                    label={r.columns.updated}
+                    value={formatSavedRecipeDate(row.latest_version_at ?? row.updated_at)}
+                  />
+                  <span className="flex flex-col">
+                    <span className="text-[0.6rem] tracking-label text-stone-400 uppercase">
+                      {r.columns.version}
+                    </span>
+                    <span className="-ml-1.5 mt-0.5">
+                      <RecipeVersionSelector
+                        versions={row.versions ?? []}
+                        selected={selectedVersion(row) ?? 1}
+                        onSelect={(versionNumber) =>
+                          setPickedVersionByRecipeId((current) => ({
+                            ...current,
+                            [row.id]: versionNumber,
+                          }))
+                        }
+                        recipeName={row.name}
+                      />
+                    </span>
                   </span>
-                  <span className="-ml-1.5 mt-0.5">
-                    <RecipeVersionSelector
-                      versions={row.versions ?? []}
-                      selected={selectedVersion(row) ?? 1}
-                      onSelect={(versionNumber) =>
-                        setPickedVersionByRecipeId((current) => ({
-                          ...current,
-                          [row.id]: versionNumber,
-                        }))
-                      }
-                      recipeName={row.name}
-                    />
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className={buttonClasses('primary', 'sm')}
-                  onClick={() => void onOpen(row, selectedVersion(row))}
-                >
-                  {r.open}
-                </button>
-                {/* Both Community loops start here (§4, §7, §10): sharing binds
+                  <button
+                    type="button"
+                    className={buttonClasses('primary', 'sm')}
+                    onClick={() => void onOpen(row, selectedVersion(row))}
+                  >
+                    {r.open}
+                  </button>
+                  {/* Both Community loops start here (§4, §7, §10): sharing binds
                     the SELECTED immutable version, publishing makes it
                     discoverable. Two separate acts, never one. */}
-                <RecipeCommunityActions
-                  recipeId={row.id}
-                  versionNumber={selectedVersion(row) ?? row.latest_version_number ?? 1}
-                  recipeName={row.name}
-                  hasCreatorProfile={hasCreatorProfile}
-                />
-                <button
-                  type="button"
-                  className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-status-risky"
-                  onClick={() => {
-                    if (window.confirm(r.confirmDelete)) deleteRecipe.mutate(row.id);
-                  }}
-                >
-                  {r.delete}
-                </button>
-              </div>
-            </li>
-          ))}
+                  <RecipeCommunityActions
+                    recipeId={row.id}
+                    versionNumber={selectedVersion(row) ?? row.latest_version_number ?? 1}
+                    recipeName={row.name}
+                    hasCreatorProfile={hasCreatorProfile}
+                  />
+                  <button
+                    type="button"
+                    className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-status-risky"
+                    onClick={() => {
+                      if (window.confirm(r.confirmDelete)) deleteRecipe.mutate(row.id);
+                    }}
+                  >
+                    {r.delete}
+                  </button>
+                </div>
+              </li>
+            ))}
           </ul>
         </>
       )}
@@ -271,10 +276,14 @@ export function MyRecipesContent() {
 /** Legacy standalone wrapper. The canonical customer route embeds the same content in /recipes. */
 export function MyRecipesPage() {
   return (
-    <AppShell maxWidthClass="max-w-4xl">
-      <div className="mx-auto max-w-4xl px-6 pb-24 pt-2">
-        <MyRecipesContent />
-      </div>
-    </AppShell>
+    <div className="pro-studio-radius-system theme-pro-light">
+      <AppShell>
+        <div className={`${APP_PAGE_WORKSPACE} ${APP_PAGE_BLOCK}`}>
+          <div className={APP_PAGE_MEASURE}>
+            <MyRecipesContent />
+          </div>
+        </div>
+      </AppShell>
+    </div>
   );
 }

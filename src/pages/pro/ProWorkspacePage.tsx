@@ -58,6 +58,11 @@ import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileSto
 import { profileSettingsSignature } from '@/features/pro-workbench/recipeProfileStore';
 import { profileSnapshotFromState } from '@/features/pro-workbench/recipeProfilePersistence';
 import { useLegacyRecipeBehaviorRevalidation } from '@/features/product-intelligence';
+import {
+  APP_PAGE_BLOCK,
+  APP_PAGE_MEASURE,
+  APP_PAGE_WORKSPACE,
+} from '@/features/shell/shellGeometry';
 import { cockpitTabFromRoute, routeForCockpitTab } from './workbenchRoute';
 import {
   ExecutableRecipeHandoffError,
@@ -475,13 +480,15 @@ export function ProWorkspacePage() {
       >
         {!isPro ? (
           <>
-            <div className="mx-auto max-w-6xl px-6">
-              <SectionLabel>{w.eyebrow}</SectionLabel>
-              <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
-                {w.title}
-              </h1>
+            <div className={`${APP_PAGE_WORKSPACE} pt-8`}>
+              <div className={APP_PAGE_MEASURE}>
+                <SectionLabel>{w.eyebrow}</SectionLabel>
+                <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
+                  {w.title}
+                </h1>
+              </div>
             </div>
-            <div className="mx-auto flex max-w-6xl justify-center px-6 py-16">
+            <div className={`${APP_PAGE_WORKSPACE} flex justify-center py-16`}>
               <UpgradePrompt
                 message={w.gate.message}
                 cta={w.gate.cta}
@@ -540,17 +547,21 @@ export function ProWorkspacePage() {
         ) : (
           // Plain titled sections (versions/production/history/costs/exports/settings/machine).
           <>
-            <div className="mx-auto max-w-6xl px-6">
-              <SectionLabel>{w.eyebrow}</SectionLabel>
-              <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
-                {w.title} — {w.tabs[activeTab]}
-              </h1>
+            <div className={`${APP_PAGE_WORKSPACE} pt-8`}>
+              <div className={APP_PAGE_MEASURE}>
+                <SectionLabel>{w.eyebrow}</SectionLabel>
+                <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
+                  {w.title} — {w.tabs[activeTab]}
+                </h1>
+              </div>
             </div>
             <div
-              className="mx-auto max-w-6xl px-6 pb-24 pt-8"
+              className={`${APP_PAGE_WORKSPACE} ${APP_PAGE_BLOCK}`}
               data-testid={`pro-panel-${activeTab}`}
             >
-              <SectionPanel tab={activeTab} persona={persona} />
+              <div className={APP_PAGE_MEASURE}>
+                <SectionPanel tab={activeTab} persona={persona} />
+              </div>
             </div>
           </>
         )}

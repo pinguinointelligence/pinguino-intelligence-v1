@@ -152,7 +152,11 @@ describe('one global menu and four local contexts', () => {
     for (const label of ['Receptura', 'Monitor', 'Produkcja', 'Etykieta']) {
       expect(tabs).toContain(`label: '${label}'`);
     }
-    expect(tabs).toContain('onTabChange(tab.id)');
+    // One component, two placements: the desktop header row and the mobile
+    // bottom preview bar, where tapping the open module collapses it again.
+    expect(tabs).toContain('onTabChange(tab)');
+    expect(tabs).toContain("variant === 'bottom'");
+    expect(tabs).toContain('onCollapse?.()');
     expect(panel).toContain('setEducationOpen(true)');
     expect(panel).not.toContain('navigate(');
   });
@@ -381,9 +385,13 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(shouldActivateMobileCockpitModal(false, true)).toBe(false);
     expect(surface).toContain('role="dialog"');
     expect(surface).toContain('aria-modal="true"');
-    expect(surface).toContain('aria-haspopup="dialog"');
+    // The trigger is now the bottom preview bar itself (owner mobile UX §11):
+    // each module button is the disclosure control for the cockpit sheet.
+    expect(read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx')).toContain(
+      "aria-haspopup={bottom && tab.id !== 'profile' ? 'dialog' : undefined}",
+    );
     expect(surface).toContain('ref={cockpitPanelRef}');
-    expect(surface).toContain('ref={cockpitTriggerRef}');
+    expect(surface).toContain('triggerRef={cockpitTriggerRef}');
     expect(surface).toContain('window.matchMedia(MOBILE_COCKPIT_QUERY)');
     expect(surface).toContain(
       'shouldActivateMobileCockpitModal(mobileCockpitOpen, mobileViewport)',

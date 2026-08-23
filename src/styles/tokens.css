@@ -102,3 +102,30 @@
   --shadow-pro-sm: var(--shadow-pro-e1);
   --shadow-pro-md: var(--shadow-pro-e2);
 }
+
+/* ── ONE application geometry (global UI unification, owner 2026-08-23) ────────
+   The Pro workbench (/pro/production) is the visual master. Its geometry tokens
+   used to live inside `.theme-pro-light`, so every screen outside the workbench
+   silently invented its own page origin, gutters and header height. They are
+   promoted to :root here so the shell, the destinations, the recipe library and
+   the mobile surfaces all measure from the SAME numbers. Presentation only —
+   no engine, pricing or persistence value depends on them. */
+:root {
+  /* Horizontal breathing room between the viewport edge and the workspace. */
+  --pro-page-gutter: clamp(2rem, 4vw, 4rem);
+  /* Gap between the editor column and the intelligence column. */
+  --pro-workbench-gap: clamp(0.75rem, 1.4vw, 1.5rem);
+  /* Dialogs keep clear of notches/rounded corners. */
+  --pro-dialog-gutter: max(0.5rem, env(safe-area-inset-left));
+  /* The ONE authenticated workspace width (the Production master). */
+  --pro-app-max-width: 1776px;
+  /* The reading measure for text-first sections INSIDE the workspace. They stay
+     left-aligned to the workspace origin so the page never appears to shift. */
+  --pro-content-measure: 72rem;
+  /* Compact gutters below the workbench breakpoint (phones/tablets). */
+  --pro-mobile-gutter: 1rem;
+  /* One header height, identical on every authenticated screen. */
+  --pro-header-height: 82px;
+  /* Mobile preview navigation bar (Receptura/Monitor/Produkcja/Etykieta). */
+  --pro-bottom-nav-height: 3.5rem;
+}

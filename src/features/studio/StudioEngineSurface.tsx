@@ -24,8 +24,8 @@ import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule'
 import { ProReviewZone, type ReviewInventoryRow } from '@/features/pro-workbench/ProReviewZone';
 import { RecipeProfilePanel, type CockpitTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
-import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
+import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
 import {
   MOBILE_COCKPIT_QUERY,
@@ -33,6 +33,14 @@ import {
 } from '@/features/studio/mobileCockpitModal';
 
 const { studio } = copy;
+
+/** The open preview names itself; the bottom bar owns switching between them. */
+const MOBILE_PREVIEW_TITLES: Record<CockpitTab, string> = {
+  profile: 'Receptura',
+  monitor: 'Monitor',
+  production: 'Produkcja',
+  summary: 'Etykieta',
+};
 const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -146,8 +154,6 @@ export function StudioEngineSurface({
         input: production.forecastInput,
       }
     : planning;
-  // Bare numeral only — the accepted Score contract shows no visible "/10".
-  const scoreDisplay = monitorScoreView(planning.result, planning.input).match.score ?? '—';
   const [mobileCockpitState, setMobileCockpitState] = useState({
     activeTab,
     open: activeTab !== 'profile',
@@ -156,6 +162,18 @@ export function StudioEngineSurface({
     setMobileCockpitState({ activeTab, open: activeTab !== 'profile' });
   }
   const mobileCockpitOpen = mobileCockpitState.open;
+  // Collapsing a preview is a ROUTE change, so „what is open" is always visible
+  // in the address bar and survives refresh/back exactly like the desktop tabs.
+  const collapseMobileCockpit = () => {
+    setMobileCockpitState({ activeTab, open: false });
+    if (activeTab !== 'profile') onTabChange('profile');
+  };
+  // The Escape handler is installed once per open sheet; reading the collapse
+  // through a ref keeps that effect's dependencies stable.
+  const collapseRef = useRef(collapseMobileCockpit);
+  useEffect(() => {
+    collapseRef.current = collapseMobileCockpit;
+  });
   const [mobileViewport, setMobileViewport] = useState(false);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cockpitPanelRef = useRef<HTMLElement | null>(null);
@@ -205,7 +223,7 @@ export function StudioEngineSurface({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setMobileCockpitState({ activeTab, open: false });
+        collapseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -232,12 +250,40 @@ export function StudioEngineSurface({
     };
   }, [activeTab, mobileCockpitOpen, mobileViewport]);
 
+  // ONE recipe action dock (score / „Przelicz" + the action bar). It is placed
+  // in the editor toolbar on the workbench breakpoint and in the mobile bottom
+  // stack below it — exactly one of the two is visible at any viewport width.
+  const openLearning = () => {
+    onTabChange('profile');
+    queueMicrotask(() => window.dispatchEvent(new Event('pinguino:open-learning')));
+  };
+  const recipeActionDock =
+    !productionActive && onRecalculate ? (
+      <WorkbenchRecipeActionDock
+        result={planning.result}
+        input={planning.input}
+        onRecalculate={onRecalculate}
+        onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
+        onOpenLearning={openLearning}
+      />
+    ) : null;
+  const mobileRecipeActionDock =
+    !productionActive && onRecalculate ? (
+      <WorkbenchRecipeActionDock
+        result={planning.result}
+        input={planning.input}
+        onRecalculate={onRecalculate}
+        onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
+        onOpenLearning={openLearning}
+      />
+    ) : null;
+
   return (
     <>
       {/* ── ONE-SCREEN WORKBENCH — fills the remaining viewport height on desktop; every
           edit-loop control lives INSIDE this section (owner zero-page-scroll rule). ── */}
       <section
-        className="flex min-h-0 flex-col xl:flex-1 xl:overflow-hidden"
+        className="flex min-h-0 flex-col pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))] xl:flex-1 xl:overflow-hidden xl:pb-0"
         data-testid="pro-workbench"
       >
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
@@ -269,22 +315,7 @@ export function StudioEngineSurface({
                   layout="workbench"
                   mode={productionActive ? 'production' : 'recipe'}
                   production={production}
-                  recipeActionDock={
-                    !productionActive && onRecalculate ? (
-                      <WorkbenchRecipeActionDock
-                        result={planning.result}
-                        input={planning.input}
-                        onRecalculate={onRecalculate}
-                        onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
-                        onOpenLearning={() => {
-                          onTabChange('profile');
-                          queueMicrotask(() =>
-                            window.dispatchEvent(new Event('pinguino:open-learning')),
-                          );
-                        }}
-                      />
-                    ) : undefined
-                  }
+                  recipeActionDock={recipeActionDock ?? undefined}
                 />
               </div>
             ) : (
@@ -318,27 +349,41 @@ export function StudioEngineSurface({
             />
           </aside>
         </div>
-        <div className="shrink-0 border-t border-ink/10 bg-white px-3 py-2 xl:hidden">
-          <button
-            ref={cockpitTriggerRef}
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={mobileCockpitOpen}
-            aria-controls="mobile-cockpit-dialog"
-            onClick={() => setMobileCockpitState({ activeTab, open: true })}
-            className="pro-focus-ring flex min-h-11 w-full items-center justify-between rounded-[14px] border border-ink/12 bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-e1"
-            data-testid="mobile-cockpit-trigger"
-          >
-            <span>Otwórz kokpit receptury</span>
-            <span className="font-mono tabular-nums text-gold-soft">{scoreDisplay}</span>
-          </button>
+        {/* ── MOBILE PREVIEW BAR (owner §11/§12) ────────────────────────────
+            The desktop right-hand pane becomes a bottom control bar: the SAME
+            four modules, the same typography, the same active state. Tap once
+            to open, tap the open module again to collapse, tap another to
+            switch. The score / „Przelicz" strip sits directly above it so the
+            formal calculation state is never more than a thumb away, and the
+            whole stack respects `env(safe-area-inset-bottom)`. */}
+        <div
+          className="fixed inset-x-0 bottom-0 z-[60] xl:hidden"
+          data-testid="mobile-cockpit-trigger"
+        >
+          {mobileRecipeActionDock ? (
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-white px-[var(--pro-mobile-gutter)] py-2">
+              {mobileRecipeActionDock}
+            </div>
+          ) : null}
+          <WorkbenchModuleTabs
+            activeTab={activeTab}
+            onTabChange={onTabChange}
+            onCollapse={collapseMobileCockpit}
+            expanded={mobileCockpitOpen}
+            triggerRef={cockpitTriggerRef}
+            idPrefix="mobile-preview"
+            variant="bottom"
+          />
         </div>
         {mobileCockpitOpen && mobileViewport ? (
-          <div className="fixed inset-0 z-50 xl:hidden" data-testid="mobile-cockpit-sheet">
+          <div
+            className="fixed inset-x-0 top-0 bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50 xl:hidden"
+            data-testid="mobile-cockpit-sheet"
+          >
             <button
               type="button"
               aria-label="Zamknij kokpit"
-              onClick={() => setMobileCockpitState({ activeTab, open: false })}
+              onClick={collapseMobileCockpit}
               className="absolute inset-0 bg-black/35"
             />
             <section
@@ -347,16 +392,16 @@ export function StudioEngineSurface({
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-cockpit-title"
-              className="absolute inset-x-0 bottom-0 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-none flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white pb-[env(safe-area-inset-bottom)] shadow-pro-e3 [overscroll-behavior:contain]"
+              className="absolute inset-x-0 bottom-0 flex h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] max-h-full flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]"
             >
               <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-ink/10 bg-white px-4 py-3">
                 <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-ink">
-                  Kokpit aktualnej receptury
+                  {MOBILE_PREVIEW_TITLES[activeTab]}
                 </h2>
                 <button
                   type="button"
                   aria-label="Zamknij kokpit"
-                  onClick={() => setMobileCockpitState({ activeTab, open: false })}
+                  onClick={collapseMobileCockpit}
                   className="grid size-11 place-items-center rounded-full border border-ink/15 text-lg text-ink"
                 >
                   ×
@@ -373,7 +418,7 @@ export function StudioEngineSurface({
                   production={production}
                   recipeBar={recipeBar}
                   idPrefix="mobile-pro-context"
-                  showTabs
+                  showTabs={false}
                   onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
                   onRecalculate={onRecalculate ?? (() => undefined)}
                 />

@@ -47,6 +47,9 @@ import {
   useIngredientTableUxStore,
 } from './ingredientTableUxStore';
 import { useIngredientLibrary } from './useIngredientLibrary';
+import { customerRoleFor } from './ingredientTableUx';
+import { ingredientChangeSignature } from './ingredientChangeHighlight';
+import { useChangedIngredientLines } from './ingredientChangeStore';
 import type { IngredientPriceView } from './IngredientPriceControl';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
@@ -410,6 +413,32 @@ export function IngredientBuilder({
       </div>
     );
 
+  // §8 change marker — a PURE comparison against the last clean state. It never
+  // participates in Engine math, pricing, Apply or persistence.
+  const changeSignatures = Object.fromEntries(
+    items.map((item) => {
+      const raw =
+        storeItems.find((candidate) => candidate.id === item.id)?.ingredient ?? item.ingredient;
+      const lineCost = effectiveCostForIngredient(raw, customerPrices);
+      const lineMeta = ingredientRowMeta(metaByLineId, item.id);
+      return [
+        item.id,
+        ingredientChangeSignature({
+          lineId: item.id,
+          plannedGrams: item.planned_grams,
+          lockType: item.lock_type,
+          role: customerRoleFor(item.lock_type, lineMeta),
+          required: lineMeta.required || item.lock_type === 'required',
+          unavailable: lineMeta.unavailable,
+          pricePerKg: lineCost.pricePerKg,
+          priceSource: lineCost.source ?? 'none',
+          ingredientId: canonicalIngredientId(item.ingredient) ?? item.ingredient.id,
+        }),
+      ];
+    }),
+  );
+  const changedLineIds = useChangedIngredientLines(changeSignatures);
+
   const orderIndex = new Map(baseOrder.map((id, index) => [id, index]));
   const orderedItems = [...items].sort((left, right) => {
     const leftIndex = orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
@@ -527,6 +556,7 @@ export function IngredientBuilder({
         productionActions={productionActions}
         canMoveUp={rowIndex > 0}
         canMoveDown={rowIndex < orderedItems.length - 1}
+        changed={changedLineIds.has(item.id)}
         onDragStart={(lineId) => {
           draggedBaseId.current = lineId;
         }}
@@ -906,7 +936,12 @@ export function IngredientBuilder({
                         />
                       </div>
                       {recipeActionDock ? (
-                        <div className="ml-auto min-w-0" data-testid="ingredient-action-slot">
+                        // The SAME dock is pinned above the mobile preview bar below
+                        // the workbench breakpoint, so it is never shown twice.
+                        <div
+                          className="ml-auto hidden min-w-0 xl:block"
+                          data-testid="ingredient-action-slot"
+                        >
                           {recipeActionDock}
                         </div>
                       ) : null}

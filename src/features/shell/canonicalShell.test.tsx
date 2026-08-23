@@ -2,9 +2,12 @@
  * Canonical shell contract (source-level) — one header, one right drawer, no legacy left menus.
  *
  * Proves the structural guarantees the owner requires without a DOM: every migrated page composes
- * the single AppShell (not the legacy left-drawer AppMenu); AppShell puts the brand LEFT and the
- * canonical hamburger RIGHT; the one drawer opens from the RIGHT and keeps its a11y (Escape + focus
- * trap + scroll lock); Studio's contextual action is „Zapisz recepturę" with the legacy links gone.
+ * the single AppShell (not the legacy left-drawer AppMenu); AppShell puts the canonical hamburger
+ * FIRST, immediately left of the brand, in the SAME place on every screen (owner „global UI
+ * unification", 2026-08-23 — previously the workbench had it left and every other page had it
+ * right, so the shell visibly jumped between sections); the one drawer still opens from the RIGHT
+ * and keeps its a11y (Escape + focus trap + scroll lock); Studio's contextual action is „Zapisz
+ * recepturę" with the legacy links gone.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -33,7 +36,7 @@ describe('canonical application shell', () => {
     }
   });
 
-  it('AppShell renders the brand LEFT and the canonical hamburger RIGHT (one drawer component)', () => {
+  it('AppShell renders the canonical hamburger FIRST, then the brand (one drawer component)', () => {
     const shell = read('features', 'shell', 'AppShell.tsx');
     expect(shell).toContain('AppNavDrawer');
     const html = renderToStaticMarkup(
@@ -43,11 +46,12 @@ describe('canonical application shell', () => {
         </AppShell>
       </MemoryRouter>,
     );
-    // brand link appears before the hamburger trigger in DOM order → hamburger is on the right
+    // The hamburger precedes the brand link in DOM order → it is the leftmost
+    // element of the header, exactly as on the Pro workbench master.
     const brandIdx = html.indexOf('aria-label="PINGÜINO"');
     const triggerIdx = html.indexOf('data-testid="app-nav-trigger"');
-    expect(brandIdx).toBeGreaterThanOrEqual(0);
-    expect(triggerIdx).toBeGreaterThan(brandIdx);
+    expect(triggerIdx).toBeGreaterThanOrEqual(0);
+    expect(brandIdx).toBeGreaterThan(triggerIdx);
   });
 
   it('the one drawer opens from the RIGHT and keeps Escape + focus trap + scroll lock', () => {

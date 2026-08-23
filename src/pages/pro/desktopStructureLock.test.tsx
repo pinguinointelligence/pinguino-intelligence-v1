@@ -11,16 +11,21 @@ describe('responsive Pro workbench structure', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const shell = read('features', 'shell', 'AppShell.tsx');
+    // The page origin / gutter / width contract now lives in ONE shared module,
+    // so every authenticated screen measures from the Production master.
+    const geometry = read('features', 'shell', 'shellGeometry.ts');
 
     expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('max-w-[1776px]');
     expect(page).toContain('data-testid="pro-plan-indicator"');
     expect(page).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
     expect(page).toContain('xl:col-start-2 xl:row-start-1 xl:block xl:w-full');
-    expect(shell).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    expect(geometry).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    expect(geometry).toContain('xl:px-0');
+    expect(geometry).toContain("APP_SHELL_MAX_WIDTH_CLASS = 'max-w-[1776px]'");
+    expect(shell).toContain('APP_HEADER_ROW');
     expect(shell).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
     expect(shell).toContain('xl:gap-[var(--pro-workbench-gap)]');
-    expect(shell).toContain('xl:px-0');
     expect(surface).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
     expect(surface).toContain('xl:gap-[var(--pro-workbench-gap)]');
     expect(surface).toContain('xl:grid xl:h-full');

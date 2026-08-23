@@ -9,22 +9,27 @@ import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { AppNavDrawer } from './AppNavDrawer';
 import { navigationAudience } from './appNav';
+import { APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
 
 /**
  * THE ONE canonical application shell.
  *
- * A single light header on every primary page: the PINGÜINO wordmark top-LEFT (links home) and the
- * canonical AppNavDrawer hamburger top-RIGHT (one right-side drawer, one nav config). An optional
- * `actions` slot holds PAGE-specific controls (e.g. „Zapisz recepturę") — never global navigation.
- * Page content is the children; a page may render its own dark/technical body inside (e.g. the
- * Studio lab) while still wearing this one header + menu.
+ * ONE header on every authenticated page, measured from the Pro workbench
+ * (`/pro/production`) — the owner's visual master. The canonical AppNavDrawer
+ * hamburger sits FIRST, immediately left of the PINGÜINO wordmark, in the exact
+ * same place on every screen (owner, 2026-08-23: „the shell must not jump").
+ * The drawer itself still opens from the RIGHT.
+ *
+ * An optional `actions` slot holds PAGE-specific controls (e.g. „Zapisz
+ * recepturę") — never global navigation. Page content is the children; a page
+ * may render its own technical body inside while still wearing this one header.
  */
 export function AppShell({
   actions,
   brand,
   workbenchChrome,
   children,
-  maxWidthClass = 'max-w-6xl',
+  maxWidthClass = APP_SHELL_MAX_WIDTH_CLASS,
   contentClassName,
   viewportLock = false,
 }: {
@@ -63,24 +68,22 @@ export function AppShell({
     >
       <header
         className={cn(
-          'mx-auto flex items-center justify-between gap-4 px-6 py-4 2xl:px-0',
+          APP_HEADER_ROW,
           maxWidthClass,
           viewportLock &&
-            'w-full shrink-0 border-b border-ink/8 bg-white max-sm:px-3 max-sm:py-2 xl:grid xl:h-[82px] xl:w-[calc(100%-var(--pro-page-gutter))] xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:px-0 xl:py-0',
+            'xl:grid xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)]',
         )}
-        style={{
-          paddingTop: viewportLock
-            ? 'max(env(safe-area-inset-top), 0.5rem)'
-            : 'max(env(safe-area-inset-top), 1rem)',
-        }}
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 0.5rem)' }}
       >
+        {/* The hamburger is the first element of the header on EVERY screen: one
+            fixed origin the eye can rely on while moving between sections. */}
         <div
           className={cn(
             'flex min-w-0 items-center gap-3 sm:gap-5',
             viewportLock && 'xl:col-start-1 xl:row-start-1',
           )}
         >
-          {viewportLock ? <AppNavDrawer /> : null}
+          <AppNavDrawer />
           <Link
             to={brandDestination}
             aria-label={copy.shell.brand}
@@ -94,7 +97,7 @@ export function AppShell({
             )}
           </Link>
           {viewportLock ? actions : null}
-          {viewportLock ? <DesignReviewOverlay /> : null}
+          <DesignReviewOverlay />
         </div>
         {viewportLock ? workbenchChrome : null}
         {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
@@ -106,10 +109,6 @@ export function AppShell({
           )}
         >
           {!viewportLock ? actions : null}
-          {/* Owner/QA only. Kept in normal header flow so review tooling can
-              never cover an ingredient control or another primary action. */}
-          {!viewportLock ? <DesignReviewOverlay /> : null}
-          {!viewportLock ? <AppNavDrawer /> : null}
         </div>
       </header>
       <main

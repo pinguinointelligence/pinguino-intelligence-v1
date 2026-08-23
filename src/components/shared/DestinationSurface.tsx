@@ -4,6 +4,7 @@ import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { AppShell } from '@/features/shell/AppShell';
+import { APP_PAGE_MEASURE, APP_PAGE_WORKSPACE } from '@/features/shell/shellGeometry';
 
 /**
  * Reusable premium destination surface. Owner P0 (2026-07-22): destinations render under the
@@ -25,19 +26,21 @@ export function DestinationSurface({
   children?: ReactNode;
 }) {
   return (
-    <div className="theme-pro-light">
+    <div className="pro-studio-radius-system theme-pro-light">
       <AppShell>
         <SurfaceToneContext.Provider value="paper">
           <div className="min-h-screen bg-paper text-ink">
-            <div className="mx-auto w-full max-w-6xl px-6 pt-16 pb-32 sm:pt-20">
-              {eyebrow ? <SectionLabel tone="ivory">{eyebrow}</SectionLabel> : null}
-              <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-[0.99] tracking-[-0.04em] text-balance text-ivory md:text-6xl">
-                {title}
-              </h1>
-              {blurb ? (
-                <p className="mt-5 max-w-xl text-lg leading-relaxed text-ivory/60">{blurb}</p>
-              ) : null}
-              {children ? <div className="mt-20">{children}</div> : null}
+            <div className={`${APP_PAGE_WORKSPACE} pt-12 pb-32 sm:pt-16`}>
+              <div className={APP_PAGE_MEASURE}>
+                {eyebrow ? <SectionLabel tone="ivory">{eyebrow}</SectionLabel> : null}
+                <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-[0.99] tracking-[-0.04em] text-balance text-ivory md:text-6xl">
+                  {title}
+                </h1>
+                {blurb ? (
+                  <p className="mt-5 max-w-xl text-lg leading-relaxed text-ivory/60">{blurb}</p>
+                ) : null}
+                {children ? <div className="mt-20">{children}</div> : null}
+              </div>
             </div>
           </div>
         </SurfaceToneContext.Provider>
