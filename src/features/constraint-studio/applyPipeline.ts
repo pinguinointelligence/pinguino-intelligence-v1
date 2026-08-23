@@ -55,6 +55,7 @@ import {
   buildDraftCandidateVector,
   describeDraftAdjustment,
   sweepDraftCandidateVector,
+  type DraftStateMeasure,
   type DraftSweepResult,
 } from './draftCandidateVector';
 import { effectiveInputCostPerKg, sweepEcoDraftCost } from './ecoDraftCostSweep';
@@ -96,6 +97,12 @@ import {
 } from '@/features/formulation/formulate';
 import { resolveFunctionalRole, type FunctionalRole } from '@/features/formulation/ingredientRoles';
 import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
+import {
+  buildUserIntentBaseline,
+  measureUserIntentDrift,
+  userIntentDriftTotal,
+  type UserIntentDeviation,
+} from '@/features/formulation/userLineIntent';
 import {
   isVerifiedRuntimeSubstitute,
   hasVerifiedMapperSubstitutionAuthorization,
@@ -650,6 +657,24 @@ export interface ConstraintPreview {
    * an optimisation and an optimisation can never be presented as a rescale.
    */
   outcomeClassification: PreviewOutcomeClassification;
+  /**
+   * USER-INTENT DEVIATION REPORT (owner GLOBAL SOFT-HOLD §7/§13/§25).
+   *
+   * Computed HERE, trustlessly, from (baseInput, executableInput) for EVERY
+   * preview builder — formulation, local correction, ECO, Rescue, batch
+   * rescale alike — so no route can produce a preview that quietly turned a
+   * positive user ingredient into a trace amount. `material` is the subset
+   * that crossed the global policy line; when it is non-empty the Preview must
+   * SAY what it is doing and the Apply door demands explicit consent.
+   */
+  userIntent?: {
+    /** Σ weight × normalized drift over every soft-held line. */
+    totalDrift: number;
+    /** Every soft-held line, measured against the user baseline. */
+    lines: UserIntentDeviation[];
+    /** The subset that crossed `MATERIAL_USER_INTENT_DRIFT`. */
+    material: UserIntentDeviation[];
+  };
   /** Owner P0 (full formulation): the formulation provenance — template seed,
    * mode, auto-added toolbox lines (with reasons), honest gaps + suggestions. */
   formulation?: {
@@ -1748,6 +1773,17 @@ const finishPreview = (
     // Owner addendum item 4: computed HERE, from the two inputs, for EVERY
     // preview builder — there is no path that can produce a preview without it.
     outcomeClassification: classifyPreviewOutcome(baseInput, executableInput),
+    // Owner GLOBAL SOFT-HOLD §9: measured against the USER BASELINE carried by
+    // `baseInput` — the recipe on the user's screen — never candidate-against-
+    // candidate. With no soft-held line the report is empty and every existing
+    // flow is byte-identical.
+    userIntent: (() => {
+      const report = measureUserIntentDrift(
+        buildUserIntentBaseline(baseInput, baseSet),
+        executableInput,
+      );
+      return { totalDrift: report.total, lines: report.lines, material: report.material };
+    })(),
     baseFingerprint: workingStateFingerprint(baseInput, baseSet),
     proposedInput: executableInput,
     nextConstraints,
@@ -2118,11 +2154,20 @@ function iterateSolverToFixedPoint(
   // the canonical corrector, draft-vector, ECO and Protein paths. The hold is
   // deliberately not persisted as a user-visible §17 lock.
   const solverSet = solverHolds(start, set, { productBehaviorSnapshots });
-  const measure = (candidate: RecipeInput): { violations: number; severityPoints: number } => {
+  // THE USER-INTENT BASELINE of this solve (owner §9). Captured ONCE, from the
+  // recipe the user is actually looking at, and never re-derived from an
+  // intermediate candidate — otherwise drift would be measured candidate-against-
+  // candidate and every step would look small.
+  const userIntentBaseline = buildUserIntentBaseline(start, solverSet);
+  const measure = (candidate: RecipeInput): DraftStateMeasure => {
     const list = recipeDirectionViolations(candidate);
     return {
       violations: list.length,
       severityPoints: list.reduce((sum, violation) => sum + violation.severity_points, 0),
+      // Ranks strictly below hard legality + engine severity and strictly above
+      // cost (owner §8). With an empty baseline this is 0 for every candidate,
+      // so ranking is byte-identical to the pre-soft-hold behaviour.
+      userIntentDrift: userIntentDriftTotal(userIntentBaseline, candidate),
     };
   };
 
@@ -2289,6 +2334,7 @@ function iterateSolverToFixedPoint(
       return sweepDraftCandidateVector({
         start: working,
         set: solverSet,
+        userIntentBaseline,
         excludedIngredientIds,
         constraints,
         normalize,
@@ -3560,16 +3606,20 @@ function maximizeMainTechnicalObjective(
     // allocation is pinned. Only `solverSet` is constrained, so the preview's
     // user-facing lock counters keep reporting the user's own locks.
     const heldFlavourLineIds = flavourHeldLineIds(identityInput);
-    const solverSet = solverHolds(staged, {
-      byLineId: {
-        ...candidateSet.byLineId,
-        ...Object.fromEntries(
-          staged.items
-            .filter((item) => heldFlavourLineIds.has(item.id))
-            .map((item) => [item.id, { mode: 'locked', grams: item.planned_grams }] as const),
-        ),
+    const solverSet = solverHolds(
+      staged,
+      {
+        byLineId: {
+          ...candidateSet.byLineId,
+          ...Object.fromEntries(
+            staged.items
+              .filter((item) => heldFlavourLineIds.has(item.id))
+              .map((item) => [item.id, { mode: 'locked', grams: item.planned_grams }] as const),
+          ),
+        },
       },
-    }, options);
+      options,
+    );
     const candidates: RecipeInput[] = seedCandidates.filter(
       (candidate) =>
         Math.abs(mainGroupTotal(contractInput, candidate) - allocation.allocatedMainTotal) <=

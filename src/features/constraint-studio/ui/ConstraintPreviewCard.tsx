@@ -190,8 +190,8 @@ export function ConstraintPreviewCard({
               : 'Blokada wymusza twardo nieprawidłową recepturę:'}
           </span>{' '}
           {preview.safetyLockConflict.ingredientName} ma blokadę{' '}
-          {formatGramsPl(preview.safetyLockConflict.beforeGrams)}. Ten Preview proponuje jawnie zmianę
-          blokady na {formatGramsPl(preview.safetyLockConflict.requiredGrams)} —{' '}
+          {formatGramsPl(preview.safetyLockConflict.beforeGrams)}. Ten Preview proponuje jawnie
+          zmianę blokady na {formatGramsPl(preview.safetyLockConflict.requiredGrams)} —{' '}
           {preview.safetyLockConflict.reason === 'constraint_feasibility'
             ? 'wartość potwierdzoną przez kanoniczne reguły i Engine'
             : preview.safetyLockConflict.boundary === 'maximum'
@@ -495,6 +495,35 @@ export function ConstraintPreviewCard({
               )}
             </p>
           ) : null}
+        </div>
+      ) : null}
+
+      {(preview.userIntent?.material.length ?? 0) > 0 ? (
+        <div
+          className="mt-3 rounded-md border border-amber-300/30 bg-amber-200/5 px-3 py-2.5"
+          data-testid="preview-user-intent-deviation"
+        >
+          <p className="text-[0.65rem] font-medium tracking-[0.08em] text-amber-100/80 uppercase">
+            {copy.preview.userIntentDeviationHeading}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-ivory/80">
+            {copy.preview.userIntentDeviationNote}
+          </p>
+          <div className="mt-1.5">
+            {(preview.userIntent?.material ?? []).map((deviation) => (
+              <p
+                key={deviation.lineId}
+                className="py-0.5 text-[12px] leading-relaxed text-ivory/75"
+                data-testid="preview-user-intent-deviation-line"
+              >
+                {copy.preview.userIntentDeviationLine(
+                  deviation.ingredientName,
+                  formatGramsPl(deviation.baselineGrams),
+                  formatGramsPl(deviation.proposedGrams),
+                )}
+              </p>
+            ))}
+          </div>
         </div>
       ) : null}
 

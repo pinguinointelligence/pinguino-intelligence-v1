@@ -6,6 +6,7 @@ import {
 } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
+import { isMaterialUserIntentDeviation } from '@/features/formulation/userLineIntent';
 import { verifyEcoFlavourProtection } from '@/features/formulation-strategy/flavourFloor';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import {
@@ -142,7 +143,25 @@ export function sweepEcoDraftCost(args: EcoDraftCostSweepArgs): DraftSweepResult
 
     let best: { input: RecipeInput; measure: DraftStateMeasure; move: DraftAdjustmentMove } | null =
       null;
-    for (const toGrams of candidate.testedGrams) {
+    // USER-INTENT SOFT HOLD IN ECO (owner GLOBAL SOFT-HOLD §8 rank 5 vs 7,
+    // §23). Cost sits BELOW explicit recipe intent in the priority order, so
+    // cheapness is never a sufficient reason to materially collapse a positive
+    // user line. Unlike the technical sweep — which may take a proven-necessary
+    // deviation to reach a LEGAL recipe — ECO has no such excuse: this pass
+    // only ever trades an already-legal recipe for a cheaper one. The
+    // deviating rungs are therefore removed outright here, so ECO can never
+    // discover that deleting an expensive user ingredient is the cheapest
+    // „solution".
+    const affordableGrams = candidate.testedGrams.filter(
+      (toGrams) =>
+        candidate.anchorGrams === null ||
+        !isMaterialUserIntentDeviation(
+          candidate.anchorGrams,
+          toGrams,
+          args.start.target_batch_grams,
+        ),
+    );
+    for (const toGrams of affordableGrams) {
       const actions = draftAdjustmentActions(candidate, toGrams);
       if (actions.length === 0 || violatesApprovedStabilizerDosage(state, actions[0]!)) continue;
       const move: DraftAdjustmentMove = {
@@ -159,9 +178,12 @@ export function sweepEcoDraftCost(args: EcoDraftCostSweepArgs): DraftSweepResult
       const normalized = args.normalize(applied);
       const next = measure(normalized, priceOverrides);
       if (!sameTechnicalFit(next, current) || !cheaper(next, current)) continue;
-      if (!verifyEcoFlavourProtection(args.identityInput, normalized, {
-        productBehaviorSnapshots: args.productBehaviorSnapshots,
-      }).ok) continue;
+      if (
+        !verifyEcoFlavourProtection(args.identityInput, normalized, {
+          productBehaviorSnapshots: args.productBehaviorSnapshots,
+        }).ok
+      )
+        continue;
       // Quality floor: a cheaper candidate may not drop below it.
       const nextQuality = qualityScore(normalized, priceOverrides);
       if (effectiveFloor !== null && nextQuality !== null && nextQuality < effectiveFloor) continue;

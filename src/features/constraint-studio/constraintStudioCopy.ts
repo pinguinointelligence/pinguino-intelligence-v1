@@ -146,10 +146,15 @@ export const constraintStudioCopy = {
       rescaleOnlyNote: (before: string, after: string) =>
         `Zmieniono wyłącznie masę partii: ${before} → ${after}. Skład w przeliczeniu na 100 g ` +
         `pozostaje bez zmian — to nie jest poprawa technologiczna receptury.`,
-      /* Mass reconciled but the composition also moved, with NO verified gain. */
+      /* Mass reconciled AND the composition also moved, with NO verified gain.
+         This branch fires precisely when `compositionUnchanged` is FALSE, so it
+         may never claim the proportions were preserved (owner §28: the modal
+         said „proporcje pozostają twoje" while proposing 595 → 486 g milk and
+         180 → 267 g cream). It states what actually happened instead. */
       rescaleChangedCompositionNote: (before: string, after: string) =>
-        `Zmieniono masę partii: ${before} → ${after}. PI nie potwierdziło poprawy technicznej — ` +
-        `proporcje pozostają twoje.`,
+        `Zmieniono masę partii: ${before} → ${after}. PI zbilansowało recepturę, zachowując ` +
+        `wskazane składniki i ograniczenia — proporcje składników uległy zmianie. ` +
+        `Nie potwierdzono poprawy technicznej.`,
       /* Only a REAL engine-verified gain may use this sentence. */
       optimizationNote: (violationsBefore: number, violationsAfter: number) =>
         `Engine potwierdził poprawę techniczną: parametry poza zatwierdzonym zakresem ` +
@@ -158,6 +163,17 @@ export const constraintStudioCopy = {
         'PI nie potwierdziło ani wyrównania partii, ani poprawy technicznej — ten podgląd ' +
         'niczego takiego nie deklaruje.',
     },
+    /* ── USER-INTENT SOFT HOLD (owner GLOBAL SOFT-HOLD §13, 2026-08-23) ────
+       A positive ingredient the USER put in the recipe may be reduced or
+       raised by ordinary optimization, but a MATERIAL change must be stated in
+       words — never disguised as a small correction and never applied
+       silently. The heading + per-line sentence below are that disclosure. */
+    userIntentDeviationHeading: 'Znacząca zmiana wskazanego składnika',
+    userIntentDeviationNote:
+      'Aby osiągnąć wybrany profil, PI musiałoby znacząco zmienić składnik, który podałeś. ' +
+      'Pozostałe wskazane składniki i ograniczenia zostały zachowane.',
+    userIntentDeviationLine: (name: string, before: string, after: string) =>
+      `${name}: ${before} → ${after}.`,
     /* Owner P0 NIGHTLY Phase 6 — the template-seeded fallback provenance note. */
     localFallbackNote:
       'Korekta lokalna nie znalazła bezpiecznej poprawy — PI ułożyło recepturę od zatwierdzonego ' +

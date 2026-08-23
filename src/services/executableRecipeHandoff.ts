@@ -16,13 +16,9 @@ import {
   type ProductBehaviorSnapshot,
   type ServerResolvedProductBehavior,
 } from '@/features/product-intelligence';
-import {
-  attachRecipeProfileMetadata,
-} from '@/features/pro-workbench/recipeProfilePersistence';
+import { attachRecipeProfileMetadata } from '@/features/pro-workbench/recipeProfilePersistence';
 import { DEFAULT_DIRECTION_TARGETS } from '@/features/pro-workbench/recipeProfileStore';
-import type {
-  RecipeCompositionMetadata,
-} from '@/features/recipe-composition/recipeCompositionPersistence';
+import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import {
   productBehaviorBlockedMessage,
@@ -114,7 +110,9 @@ const effectiveIngredientCost = (
   const privatePrice = resolved.privateOverlay?.privatePricePerKg;
   const privateCurrency = resolved.privateOverlay?.privatePriceCurrency?.trim() || null;
   if (
-    typeof privatePrice === 'number' && Number.isFinite(privatePrice) && privatePrice >= 0 &&
+    typeof privatePrice === 'number' &&
+    Number.isFinite(privatePrice) &&
+    privatePrice >= 0 &&
     privateCurrency !== null
   ) {
     return {
@@ -161,17 +159,14 @@ async function resolveLine(
     );
   }
   const missingComposition = ownerReviewCompositionMissing(row);
-  if (
-    !row.approved_for_base ||
-    !row.approved_for_engines ||
-    missingComposition.length > 0
-  ) {
+  if (!row.approved_for_base || !row.approved_for_engines || missingComposition.length > 0) {
     throw new ExecutableRecipeHandoffError(
       'behavior_blocked',
       `Niepełna kompozycja techniczna Base ${line.mapperIngredientId}: ` +
-        `${missingComposition.join(', ') || (!row.approved_for_base
-          ? 'approved_for_base=false'
-          : 'approved_for_engines=false')}.`,
+        `${
+          missingComposition.join(', ') ||
+          (!row.approved_for_base ? 'approved_for_base=false' : 'approved_for_engines=false')
+        }.`,
       line.lineId,
     );
   }
@@ -226,10 +221,7 @@ async function resolveLine(
       EXPORT: 'blocked',
     },
     warnings: [...resolvedSnapshot.warnings, 'owner_review_only'],
-    blockReasons: [
-      ...resolvedSnapshot.blockReasons,
-      'owner_review_production_label_gate',
-    ],
+    blockReasons: [...resolvedSnapshot.blockReasons, 'owner_review_production_label_gate'],
   };
   return {
     ingredient: effectiveIngredientCost(ingredientRowToEngineIngredient(row), resolved),
@@ -257,10 +249,7 @@ export async function materializeExecutableRecipeDefinition(
   dependencies: MaterializeDependencies = runtimeDependencies,
 ): Promise<MaterializedExecutableRecipe> {
   if (template.status !== 'OWNER_REVIEW_EDITABLE') {
-    throw new ExecutableRecipeHandoffError(
-      'template_blocked',
-      template.blockers.join(' '),
-    );
+    throw new ExecutableRecipeHandoffError('template_blocked', template.blockers.join(' '));
   }
   if (template.base.some((line) => line.mapperIngredientId === null || line.grams === null)) {
     throw new ExecutableRecipeHandoffError(
@@ -273,7 +262,10 @@ export async function materializeExecutableRecipeDefinition(
     grams: number;
   })[];
   const resolvedEntries = await Promise.all(
-    exactBase.map(async (line) => [line.lineId, await resolveLine(template, line, accountId, dependencies)] as const),
+    exactBase.map(
+      async (line) =>
+        [line.lineId, await resolveLine(template, line, accountId, dependencies)] as const,
+    ),
   );
   const resolvedByLine = new Map(resolvedEntries);
   const baseItems = exactBase.map((line) => {
@@ -283,8 +275,20 @@ export async function materializeExecutableRecipeDefinition(
       ingredient: resolved.ingredient,
       planned_grams: line.grams,
       actual_grams: null,
-      lock_type: line.role === 'main' ? 'main' as const : 'unlocked' as const,
+      lock_type: line.role === 'main' ? ('main' as const) : ('unlocked' as const),
       ...(line.mainRatioWeight === null ? {} : { main_ratio_weight: line.mainRatioWeight }),
+      // USER-INTENT BASELINE ON IMPORT (owner GLOBAL SOFT-HOLD §1/§26).
+      //
+      // Adopting a library recipe is the user saying „this is my recipe at
+      // these amounts" — exactly like typing the grams in by hand. Without
+      // this the imported lines carry no baseline at all, so the solver would
+      // treat every one of them as a disposable PI-added support line and
+      // could reduce a defining ingredient to a trace amount.
+      //
+      // Main lines are deliberately included as ordinary items here: the Main
+      // contract owns them and the soft-hold authority excludes them anyway
+      // (§20), so the sidecar is inert on those rows.
+      ...(line.grams > 0 ? { user_intent_anchor_grams: line.grams } : {}),
       notes: line.note,
     };
   });
@@ -358,7 +362,7 @@ export async function openExecutableRecipeTemplate(
   accountId: string,
   openDependencies: OpenExecutableRecipeDependencies = runtimeOpenDependencies,
 ): Promise<MaterializedExecutableRecipe> {
-  if (!await openDependencies.authorizeOwnerReview(accountId)) {
+  if (!(await openDependencies.authorizeOwnerReview(accountId))) {
     throw new ExecutableRecipeHandoffError(
       'owner_review_forbidden',
       'Owner Review wymaga aktywnego uprawnienia administratora.',

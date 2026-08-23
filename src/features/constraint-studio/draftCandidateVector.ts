@@ -57,6 +57,13 @@ import {
 import { HARD_ROLES } from '@/features/formulation/formulate';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
+import {
+  userLineBaselineGrams,
+  materialDeviationFloorGrams,
+  isMaterialUserIntentDeviation,
+  USER_INTENT_DRIFT_EPS,
+  type UserLineIntent,
+} from '@/features/formulation/userLineIntent';
 import type { FormulationStrategy } from '@/features/formulation-strategy/strategy';
 
 /**
@@ -79,9 +86,14 @@ export interface DraftAdjustmentCandidate {
   ingredientName: string;
   ingredientCategory: IngredientCategory;
   currentGrams: number;
-  /** Original user-entered positive Standard amount. It remains stable while
-   * candidate sweeps move currentGrams and is used only as a ranking tie-break. */
+  /** Original user-entered positive Standard amount — the USER-INTENT BASELINE
+   * of this line. It remains stable while candidate sweeps move currentGrams. */
   anchorGrams: number | null;
+  /** Lowest amount this line may reach WITHOUT becoming a material user-intent
+   * deviation (owner §7/§9). Null when the line carries no user intent. Values
+   * below it stay in the candidate set but may only be taken after the
+   * preserving pass has failed, and they require explicit consent. */
+  materialFloorGrams: number | null;
   /** May this line receive MORE grams? (false ⇒ excluded ingredient.) */
   increasable: boolean;
   /** Absolute gram values this line is tested at, ascending, current excluded. */
@@ -156,12 +168,14 @@ export function buildDraftCandidateVector(
       !isToolboxCandidateExcluded(item.ingredient.id, excludedIngredientIds) &&
       !flavourHeld.has(item.id);
     const current = item.planned_grams;
-    const anchorGrams =
-      item.user_intent_anchor_grams !== undefined &&
-      item.user_intent_anchor_grams > 0 &&
-      item.planned_grams > 0
-        ? item.user_intent_anchor_grams
-        : null;
+    // THE canonical user-intent authority (owner §6): ONE concept for „the user
+    // gave this line a positive amount", covering an explicit add, a typed gram
+    // amount and an adopted/imported recipe alike. The ladder no longer reads
+    // the `user_intent_anchor_grams` sidecar directly, so a line can never
+    // carry intent for the presence rule but not for the soft hold.
+    const anchorGrams = userLineBaselineGrams(item, set);
+    const materialFloorGrams =
+      anchorGrams === null ? null : materialDeviationFloorGrams(anchorGrams, batch);
     const emptiable = anchorGrams === null && !isSoleHardRoleCarrier(item);
     const tested = new Set<number>();
 
@@ -175,6 +189,24 @@ export function buildDraftCandidateVector(
     // The explicit „to zero" move — a selected line may be optimized away,
     // unless it is the last carrier of a hard technological role.
     if (current > MIN_MOVE_GRAMS && emptiable) tested.add(0);
+    // USER-INTENT SOFT HOLD (owner GLOBAL SOFT-HOLD 2026-08-23).
+    //
+    // This rung used to be a literal `tested.add(1)`: for exactly the lines
+    // that carry user intent, the ladder handed the search a move straight
+    // down to the PRESENCE FLOOR. That is how a 40 g dried egg yolk became
+    // 1 g — the search did not discover the collapse, it was offered it, and
+    // the number 1 came from the „no 0 g rows" invariant rather than from any
+    // technical need (owner §25).
+    //
+    // Two rungs replace it. The MATERIAL FLOOR is the largest reduction that
+    // is still ordinary optimization, so the search can still shrink the line
+    // hard without deleting it. The presence floor stays reachable — §12
+    // requires that a genuinely necessary large change remain POSSIBLE — but
+    // it is now a material deviation, so the sweep may only take it after the
+    // preserving pass has failed, and Preview must then say so out loud.
+    if (materialFloorGrams !== null && materialFloorGrams > MIN_MOVE_GRAMS) {
+      tested.add(Math.round(materialFloorGrams * 100) / 100);
+    }
     if (anchorGrams !== null && Math.abs(current - 1) >= MIN_MOVE_GRAMS) tested.add(1);
 
     const testedGrams = [...tested]
@@ -189,6 +221,7 @@ export function buildDraftCandidateVector(
       ingredientCategory: item.ingredient.category,
       currentGrams: current,
       anchorGrams,
+      materialFloorGrams,
       increasable,
       testedGrams,
     });
@@ -274,6 +307,13 @@ export interface DraftStateMeasure {
   severityPoints: number;
   /** Complete effective recipe cost/kg. Null means comparison is not allowed. */
   costPerKg?: number | null;
+  /**
+   * Σ weight × normalized drift of every soft-held user line, measured against
+   * the USER BASELINE (owner §8/§9). Ranks strictly BELOW hard legality and
+   * the engine's own severity and strictly ABOVE cost. Absent ⇒ the caller
+   * supplied no baseline and ranking is byte-identical to before.
+   */
+  userIntentDrift?: number;
 }
 
 export interface DraftSweepArgs {
@@ -287,6 +327,13 @@ export interface DraftSweepArgs {
   directionOnlyResidual?: boolean;
   start: RecipeInput;
   set: ConstraintSet;
+  /**
+   * THE USER-INTENT BASELINE of this solve (owner §9): the amounts the user
+   * stands behind, captured ONCE at solve entry and never re-derived from an
+   * intermediate candidate. Absent ⇒ no soft-hold authority participates and
+   * the sweep behaves exactly as it did before.
+   */
+  userIntentBaseline?: ReadonlyMap<string, UserLineIntent>;
   excludedIngredientIds: ReadonlySet<string>;
   constraints: CorrectionConstraints;
   /** Canonical-identity merge + target-batch restoration (pipeline-owned). */
@@ -301,6 +348,13 @@ export interface DraftSweepResult {
   input: RecipeInput;
   measure: DraftStateMeasure;
   moves: DraftAdjustmentMove[];
+  /**
+   * TRUE when this sweep could only improve the recipe by materially deviating
+   * from a positive user line — i.e. the preserving pass was tried first and
+   * failed (owner §12). The caller turns this into an explicit consent state;
+   * it must never be presented as an ordinary correction.
+   */
+  materialUserIntentDeviation?: boolean;
 }
 
 const SEVERITY_EPS = 1e-9;
@@ -332,11 +386,38 @@ export const PAIRED_EXCHANGE_EVALUATION_BUDGET = 400;
 /** How many composing passes one Direction round may run. Orchestration only. */
 export const PAIRED_EXCHANGE_MAX_PASSES = 12;
 
-/** Per-LINE acceptance: strictly better AND never more out-of-band metrics. */
+/**
+ * Per-LINE acceptance: strictly better AND never more out-of-band metrics.
+ *
+ * LEXICOGRAPHIC ORDER (owner §8). Hard legality and the engine's own severity
+ * decide first and are UNCHANGED. Only when the engine cannot tell two
+ * candidates apart — same violation count, same severity within epsilon — does
+ * user-intent drift break the tie, and it breaks it toward the candidate that
+ * keeps more of what the user asked for. This is the whole behavioural
+ * contract of §8: „when two candidates are equally hard-valid and equally
+ * satisfy the requested technical target, prefer the lower drift."
+ */
 const strictlyBetter = (next: DraftStateMeasure, current: DraftStateMeasure): boolean =>
   next.violations <= current.violations &&
   (next.violations < current.violations ||
     next.severityPoints < current.severityPoints - SEVERITY_EPS);
+
+/**
+ * The §8 TIE-BREAK: `left` keeps strictly more of what the user asked for than
+ * `right`. Consulted ONLY between candidates the engine cannot tell apart, so
+ * it can never overturn hard legality, severity, locks, Main or Direction — it
+ * decides only which of two equally-valid recipes is proposed.
+ *
+ * Deliberately NOT folded into `strictlyBetter`. Making drift an ACCEPTANCE
+ * key promotes moves the engine had rejected as no-gain, which changes accepted
+ * search trajectories far from any user line (measured: the Kiwi-700
+ * ProductBehavior fixture lost its auto-added Inulin row). Ranking is a
+ * comparison, not a licence to move.
+ */
+const lowerUserIntentDrift = (left: DraftStateMeasure, right: DraftStateMeasure): boolean =>
+  left.userIntentDrift !== undefined &&
+  right.userIntentDrift !== undefined &&
+  left.userIntentDrift < right.userIntentDrift - USER_INTENT_DRIFT_EPS;
 
 const sameMeasure = (left: DraftStateMeasure, right: DraftStateMeasure): boolean =>
   left.violations === right.violations &&
@@ -363,6 +444,12 @@ const materiallyBetter = (next: DraftStateMeasure, start: DraftStateMeasure): bo
   if (next.violations > start.violations) return false;
   if (next.violations < start.violations) return true;
   const floor = Math.max(SEVERITY_EPS, start.severityPoints * DRAFT_SWEEP_MIN_RELATIVE_GAIN);
+  // NOTE: the ROUND gate deliberately stays on (violations, severity) ONLY.
+  // User-intent drift decides WHICH candidate a round takes (`strictlyBetter`),
+  // never WHETHER another round is worth running: promoting a drift-only gain
+  // to „another round" would spend rounds from the SAME `MAX_SOLVER_ROUNDS`
+  // budget that owner §30 fixes, and measurably changed accepted trajectories
+  // on the Kiwi-700 ProductBehavior fixture.
   return next.severityPoints <= start.severityPoints - floor;
 };
 
@@ -381,9 +468,20 @@ const materiallyBetter = (next: DraftStateMeasure, start: DraftStateMeasure): bo
  */
 export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResult | null {
   const { start, set, excludedIngredientIds, constraints, normalize, measure } = args;
+  const batch = start.target_batch_grams;
   let state = start;
   let best = args.startMeasure;
   const moves: DraftAdjustmentMove[] = [];
+  let materialDeviationTaken = false;
+
+  /**
+   * Is setting `candidate` to `toGrams` a MATERIAL deviation from the amount
+   * the user asked for? Only lines that carry user intent can be — a PI-added
+   * support line has no baseline and is therefore never restricted here.
+   */
+  const isDeviating = (candidate: DraftAdjustmentCandidate, toGrams: number): boolean =>
+    candidate.anchorGrams !== null &&
+    isMaterialUserIntentDeviation(candidate.anchorGrams, toGrams, batch);
 
   for (const lineId of buildDraftCandidateVector(start, set, excludedIngredientIds).map(
     (candidate) => candidate.lineId,
@@ -395,41 +493,94 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
     );
     if (!candidate) continue;
 
-    let bestForLine: {
-      input: RecipeInput;
-      measure: DraftStateMeasure;
-      move: DraftAdjustmentMove;
-    } | null = null;
-    for (const toGrams of candidate.testedGrams) {
-      const actions = draftAdjustmentActions(candidate, toGrams);
-      if (actions.length === 0) continue;
-      const move: DraftAdjustmentMove = {
-        lineId: candidate.lineId,
-        ingredientId: candidate.ingredientId,
-        ingredientName: candidate.ingredientName,
-        fromGrams: candidate.currentGrams,
-        toGrams,
-        direction: toGrams > candidate.currentGrams ? 'increase' : 'decrease',
-        actions,
-      };
-      // Owner Phase 9 (approved-bounds wiring) — the SAME clamp the solver
-      // rounds honor: no move may push a registered stabilizer outside its
-      // approved Mapper window.
-      if (violatesApprovedStabilizerDosage(state, actions[0]!)) continue;
-      const applied = applyDraftAdjustment(state, move, constraints);
-      if (applied === null) continue;
-      const normalized = normalize(applied);
-      const next = measure(normalized);
-      if (!strictlyBetter(next, best)) continue;
-      if (bestForLine !== null && !strictlyBetter(next, bestForLine.measure)) {
-        const anchor = candidate.anchorGrams;
-        const closerToAnchor =
-          anchor !== null &&
-          sameMeasure(next, bestForLine.measure) &&
-          Math.abs(toGrams - anchor) < Math.abs(bestForLine.move.toGrams - anchor);
-        if (!closerToAnchor) continue;
+    /**
+     * ONE pass over a SUBSET of the ladder. Returns the engine-best strictly
+     * improving value in that subset, or null.
+     */
+    const searchRungs = (
+      rungs: readonly number[],
+    ): { input: RecipeInput; measure: DraftStateMeasure; move: DraftAdjustmentMove } | null => {
+      let bestForLine: {
+        input: RecipeInput;
+        measure: DraftStateMeasure;
+        move: DraftAdjustmentMove;
+      } | null = null;
+      for (const toGrams of rungs) {
+        const actions = draftAdjustmentActions(candidate, toGrams);
+        if (actions.length === 0) continue;
+        const move: DraftAdjustmentMove = {
+          lineId: candidate.lineId,
+          ingredientId: candidate.ingredientId,
+          ingredientName: candidate.ingredientName,
+          fromGrams: candidate.currentGrams,
+          toGrams,
+          direction: toGrams > candidate.currentGrams ? 'increase' : 'decrease',
+          actions,
+        };
+        // Owner Phase 9 (approved-bounds wiring) — the SAME clamp the solver
+        // rounds honor: no move may push a registered stabilizer outside its
+        // approved Mapper window.
+        if (violatesApprovedStabilizerDosage(state, actions[0]!)) continue;
+        const applied = applyDraftAdjustment(state, move, constraints);
+        if (applied === null) continue;
+        const normalized = normalize(applied);
+        const next = measure(normalized);
+        if (!strictlyBetter(next, best)) continue;
+        if (bestForLine !== null && !strictlyBetter(next, bestForLine.measure)) {
+          // ENGINE-EQUAL CANDIDATES ONLY. Among rungs the engine scores the
+          // same, take the one that keeps more of the user's recipe (owner §8).
+          const anchor = candidate.anchorGrams;
+          const engineEqual = sameMeasure(next, bestForLine.measure);
+          const preferable =
+            engineEqual &&
+            (lowerUserIntentDrift(next, bestForLine.measure) ||
+              (anchor !== null &&
+                !lowerUserIntentDrift(bestForLine.measure, next) &&
+                Math.abs(toGrams - anchor) < Math.abs(bestForLine.move.toGrams - anchor)));
+          if (!preferable) continue;
+        }
+        bestForLine = { input: normalized, measure: next, move };
       }
-      bestForLine = { input: normalized, measure: next, move };
+      return bestForLine;
+    };
+
+    // ── PRESERVE FIRST, DEVIATE ONLY WHEN PROVEN NECESSARY (owner §8 + §12) ──
+    //
+    // The ladder is partitioned, not shortened: every rung the search had
+    // before is still reachable. What changed is the ORDER OF PROOF. The
+    // preserving rungs are searched on their own first; the rungs that would
+    // materially collapse a positive user line are searched only when NO
+    // preserving rung could improve the recipe at all.
+    //
+    // That is exactly the owner's decisive counterexample: a 40 g / Score 10
+    // candidate existed, so the 1 g candidate must never have been reachable
+    // as an ordinary optimization — not because 1 g is forbidden, but because
+    // it was never proven necessary.
+    const preservingRungs = candidate.testedGrams.filter((g) => !isDeviating(candidate, g));
+    const deviatingRungs = candidate.testedGrams.filter((g) => isDeviating(candidate, g));
+
+    let bestForLine = searchRungs(preservingRungs);
+
+    // §8 rank 1 (hard legality) still outranks §8 rank 5 (user intent) — but
+    // §12 sets the price: a material deviation may be taken ONLY when it is
+    // PROVEN to buy something no preserving candidate can buy, and the proof
+    // demanded here is the strongest one available at this tier: the deviating
+    // candidate makes the recipe fully LEGAL (zero out-of-band metrics) while
+    // no preserving candidate does.
+    //
+    // Anything weaker was measured to reproduce the owner's defect. Accepting a
+    // deviation merely for FEWER violations put the dried yolk back at 1 g in
+    // cases that ended 4 → 1 violations — i.e. PI deleted the ingredient AND
+    // still handed back an out-of-band recipe. A 97.5 % reduction that does not
+    // even reach a legal recipe is never "necessary"; the honest outcome is the
+    // preserved line plus the truthful residual the pipeline already reports.
+    const preservingViolations = bestForLine?.measure.violations ?? best.violations;
+    if (deviatingRungs.length > 0 && preservingViolations > 0) {
+      const deviating = searchRungs(deviatingRungs);
+      if (deviating !== null && deviating.measure.violations === 0) {
+        bestForLine = deviating;
+        materialDeviationTaken = true;
+      }
     }
 
     if (bestForLine !== null) {
@@ -440,7 +591,12 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
   }
 
   if (materiallyBetter(best, args.startMeasure)) {
-    return { input: state, measure: best, moves };
+    return {
+      input: state,
+      measure: best,
+      moves,
+      materialUserIntentDeviation: materialDeviationTaken,
+    };
   }
 
   // ── PAIRED (MASS-NEUTRAL) EXCHANGE PASS ────────────────────────────────────
@@ -468,14 +624,24 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
   // flavour accent is never a receiver), and the same engine measure.
   const exchange = sweepPairedExchange(args, state, best);
   if (exchange !== null) {
-    return { input: exchange.input, measure: exchange.measure, moves: [...moves, ...exchange.moves] };
+    return {
+      input: exchange.input,
+      measure: exchange.measure,
+      moves: [...moves, ...exchange.moves],
+      materialUserIntentDeviation: materialDeviationTaken,
+    };
   }
 
   if (moves.length === 0) return null;
   // The convergence guard: a sweep that only shaved an immaterial sliver off
   // the engine's severity is NOT another round — it is the fixed point.
   if (!materiallyBetter(best, args.startMeasure)) return null;
-  return { input: state, measure: best, moves };
+  return {
+    input: state,
+    measure: best,
+    moves,
+    materialUserIntentDeviation: materialDeviationTaken,
+  };
 }
 
 /**
@@ -537,76 +703,77 @@ function sweepPairedExchange(
   }
 
   function runComposingPass(): void {
-  for (const donorSeed of buildDraftCandidateVector(state, set, excludedIngredientIds)) {
-    if (evaluations >= PAIRED_EXCHANGE_EVALUATION_BUDGET) break;
-    const vector = buildDraftCandidateVector(state, set, excludedIngredientIds);
-    const donor = vector.find((entry) => entry.lineId === donorSeed.lineId);
-    if (!donor) continue;
+    for (const donorSeed of buildDraftCandidateVector(state, set, excludedIngredientIds)) {
+      if (evaluations >= PAIRED_EXCHANGE_EVALUATION_BUDGET) break;
+      const vector = buildDraftCandidateVector(state, set, excludedIngredientIds);
+      const donor = vector.find((entry) => entry.lineId === donorSeed.lineId);
+      if (!donor) continue;
 
-    let bestForDonor: DraftSweepResult | null = null;
-    let bestForDonorMeasure = best;
+      let bestForDonor: DraftSweepResult | null = null;
+      let bestForDonorMeasure = best;
 
-    for (const receiver of vector) {
-      if (receiver.lineId === donor.lineId) continue;
-      // The receiver must be allowed to GROW. `increasable` is false for an
-      // excluded ingredient and for a P1-B held flavour accent, so neither can
-      // absorb exchanged mass here.
-      if (!receiver.increasable) continue;
+      for (const receiver of vector) {
+        if (receiver.lineId === donor.lineId) continue;
+        // The receiver must be allowed to GROW. `increasable` is false for an
+        // excluded ingredient and for a P1-B held flavour accent, so neither can
+        // absorb exchanged mass here.
+        if (!receiver.increasable) continue;
 
-      for (const delta of deltas) {
-        if (evaluations >= PAIRED_EXCHANGE_EVALUATION_BUDGET) break;
-        if (donor.currentGrams - delta < 0) continue;
+        for (const delta of deltas) {
+          if (evaluations >= PAIRED_EXCHANGE_EVALUATION_BUDGET) break;
+          if (donor.currentGrams - delta < 0) continue;
 
-        const donorMove: DraftAdjustmentMove = {
-          lineId: donor.lineId,
-          ingredientId: donor.ingredientId,
-          ingredientName: donor.ingredientName,
-          fromGrams: donor.currentGrams,
-          toGrams: donor.currentGrams - delta,
-          direction: 'decrease',
-          actions: draftAdjustmentActions(donor, donor.currentGrams - delta),
-        };
-        if (donorMove.actions.length === 0) continue;
-        if (violatesApprovedStabilizerDosage(state, donorMove.actions[0]!)) continue;
-        const afterDonor = applyDraftAdjustment(state, donorMove, constraints);
-        if (afterDonor === null) continue;
+          const donorMove: DraftAdjustmentMove = {
+            lineId: donor.lineId,
+            ingredientId: donor.ingredientId,
+            ingredientName: donor.ingredientName,
+            fromGrams: donor.currentGrams,
+            toGrams: donor.currentGrams - delta,
+            direction: 'decrease',
+            actions: draftAdjustmentActions(donor, donor.currentGrams - delta),
+          };
+          if (donorMove.actions.length === 0) continue;
+          if (violatesApprovedStabilizerDosage(state, donorMove.actions[0]!)) continue;
+          const afterDonor = applyDraftAdjustment(state, donorMove, constraints);
+          if (afterDonor === null) continue;
 
-        const receiverNow = buildDraftCandidateVector(afterDonor, set, excludedIngredientIds).find(
-          (entry) => entry.lineId === receiver.lineId,
-        );
-        if (!receiverNow) continue;
-        const receiverMove: DraftAdjustmentMove = {
-          lineId: receiverNow.lineId,
-          ingredientId: receiverNow.ingredientId,
-          ingredientName: receiverNow.ingredientName,
-          fromGrams: receiverNow.currentGrams,
-          toGrams: receiverNow.currentGrams + delta,
-          direction: 'increase',
-          actions: draftAdjustmentActions(receiverNow, receiverNow.currentGrams + delta),
-        };
-        if (receiverMove.actions.length === 0) continue;
-        if (violatesApprovedStabilizerDosage(afterDonor, receiverMove.actions[0]!)) continue;
-        const exchanged = applyDraftAdjustment(afterDonor, receiverMove, constraints);
-        if (exchanged === null) continue;
+          const receiverNow = buildDraftCandidateVector(
+            afterDonor,
+            set,
+            excludedIngredientIds,
+          ).find((entry) => entry.lineId === receiver.lineId);
+          if (!receiverNow) continue;
+          const receiverMove: DraftAdjustmentMove = {
+            lineId: receiverNow.lineId,
+            ingredientId: receiverNow.ingredientId,
+            ingredientName: receiverNow.ingredientName,
+            fromGrams: receiverNow.currentGrams,
+            toGrams: receiverNow.currentGrams + delta,
+            direction: 'increase',
+            actions: draftAdjustmentActions(receiverNow, receiverNow.currentGrams + delta),
+          };
+          if (receiverMove.actions.length === 0) continue;
+          if (violatesApprovedStabilizerDosage(afterDonor, receiverMove.actions[0]!)) continue;
+          const exchanged = applyDraftAdjustment(afterDonor, receiverMove, constraints);
+          if (exchanged === null) continue;
 
-        evaluations += 1;
-        const normalized = normalize(exchanged);
-        const next = measure(normalized);
-        if (!strictlyBetter(next, bestForDonorMeasure)) continue;
-        bestForDonorMeasure = next;
-        bestForDonor = { input: normalized, measure: next, moves: [donorMove, receiverMove] };
+          evaluations += 1;
+          const normalized = normalize(exchanged);
+          const next = measure(normalized);
+          if (!strictlyBetter(next, bestForDonorMeasure)) continue;
+          bestForDonorMeasure = next;
+          bestForDonor = { input: normalized, measure: next, moves: [donorMove, receiverMove] };
+        }
+      }
+
+      if (bestForDonor !== null) {
+        state = bestForDonor.input;
+        best = bestForDonor.measure;
+        moves.push(...bestForDonor.moves);
       }
     }
-
-    if (bestForDonor !== null) {
-      state = bestForDonor.input;
-      best = bestForDonor.measure;
-      moves.push(...bestForDonor.moves);
-    }
-  }
   }
 
   if (moves.length === 0) return null;
   return materiallyBetter(best, args.startMeasure) ? { input: state, measure: best, moves } : null;
 }
-
