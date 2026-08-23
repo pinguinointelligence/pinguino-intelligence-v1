@@ -199,7 +199,7 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     labelStatus: 'LABEL_BLOCKED',
     blockers: [],
     productionBlockers: [
-      'Pasta z orzechów laskowych PI-ING-000419 ma MAIN_BLOCKED_POLICY i brak dowodu procesu.',
+      'Pasta z orzechów laskowych PI-ING-000419 ma MAIN_BLOCKED_POLICY.',
       'PI-ING-000829 nie jest udowodnioną własną kruszonką waflową; wymagany jest wersjonowany subprodukt Topping.',
       'Czekolada mleczna PI-ING-000118 nie ma udowodnionego zakresu post-process coating.',
     ],
@@ -248,7 +248,7 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     labelStatus: 'LABEL_BLOCKED',
     blockers: [],
     productionBlockers: [
-      'Pasty kokosowa PI-ING-000151 i migdałowa PI-ING-001512 mają MAIN_BLOCKED_POLICY oraz brak dowodu procesu.',
+      'Pasty kokosowa PI-ING-000151 i migdałowa PI-ING-001512 mają MAIN_BLOCKED_POLICY.',
       'PI-ING-000829 nie jest udowodnioną własną lekką kruszonką waflową.',
       'Brak udowodnionego procesu prażenia dla Toppingu migdałowego.',
     ],
@@ -297,7 +297,7 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     labelStatus: 'LABEL_BLOCKED',
     blockers: [],
     productionBlockers: [
-      'Pasta z orzechów laskowych PI-ING-000419 ma MAIN_BLOCKED_POLICY i brak dowodu procesu.',
+      'Pasta z orzechów laskowych PI-ING-000419 ma MAIN_BLOCKED_POLICY.',
       'PI-ING-000829 nie jest udowodnioną własną cienką kruszonką waflową.',
       'Czekolada mleczna PI-ING-000118 nie ma udowodnionego zakresu post-process coating.',
     ],
@@ -394,7 +394,7 @@ export const EXECUTABLE_RECIPE_TEMPLATES: readonly ExecutableRecipeTemplate[] = 
     labelStatus: 'LABEL_BLOCKED',
     blockers: [],
     productionBlockers: [
-      'Pasta z orzeszków ziemnych PI-ING-000437 ma MAIN_BLOCKED_POLICY i brak dowodu procesu.',
+      'Pasta z orzeszków ziemnych PI-ING-000437 ma MAIN_BLOCKED_POLICY.',
       'Brak udowodnionego procesu prażenia dla Toppingu orzeszków ziemnych.',
       'Czekolada mleczna PI-ING-000118 nie ma udowodnionego zakresu post-process coating.',
     ],
