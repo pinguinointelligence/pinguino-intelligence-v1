@@ -7212,13 +7212,18 @@ export function bindProductBehaviorToPreview(
       lineIds: issue.lineIds,
       messagePl: issue.messagePl,
     }));
+    // The verdict above was computed on `result.preview.proposedInput` — the candidate the solver
+    // built — NOT on the recipe the user is looking at. Reporting its percentage unqualified is how
+    // the app came to tell an owner „Grupa Main ma 0.2%" about a draft whose canonical combined
+    // Main share is 16 %. Both numbers were true; only one of them was about their recipe.
+    const firstMessage = violations[0]?.messagePl;
     return {
       ok: false,
       code: 'product_behavior_invalid',
       violations,
-      messagePl:
-        violations[0]?.messagePl ??
-        'Nie udało się potwierdzić zachowania produktu w tej recepturze.',
+      messagePl: firstMessage
+        ? copy.blocked.rejectedProposalAuthority(firstMessage)
+        : 'Nie udało się potwierdzić zachowania produktu w tej recepturze.',
     };
   }
   const productDosageDiagnostics = dosageIssues.flatMap((issue) =>

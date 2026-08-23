@@ -350,7 +350,7 @@ describe.skipIf(!FULL)('§20 Protein operational Rescue campaign (PROTEIN_FULL_M
       // Silence is a verdict, never a lack of stock.
       expect(rescueCandidateFamily(before, direction).length).toBeGreaterThan(0);
 
-      let after = built.ok ? built.preview.proposedInput : before;
+      const after = built.ok ? built.preview.proposedInput : before;
       let applied = 'no_rescue';
       if (advice !== null) {
         // Only approved payloads may ever be proposed.

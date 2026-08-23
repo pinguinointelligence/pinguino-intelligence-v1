@@ -234,6 +234,16 @@ export const constraintStudioCopy = {
     unsafeProposal:
       'PI nie utworzyło bezpiecznej receptury. Propozycja została odrzucona. ' +
       'Receptura nie została zmieniona.',
+    /**
+     * A Main/product-authority verdict here describes the PROPOSAL the solver built, not the
+     * recipe on screen. Saying „Grupa Main ma 0.2%" unqualified made the app contradict itself:
+     * the user's own 80 g + 80 g of a 1000 g batch is 16 %, and the canonical authority says so.
+     * The number is truthful about the candidate, so it stays — it is now attributed to it.
+     */
+    rejectedProposalAuthority: (detail: string) =>
+      `Propozycja PI została odrzucona: w proponowanej recepturze ${
+        detail.charAt(0).toLocaleLowerCase('pl') + detail.slice(1)
+      } Twoja receptura nie została zmieniona.`,
     /* ACCEPTANCE ADDENDUM (1): an iteration-capped result is never applicable.
        Owner addendum item 3 — honest wording (see preview.diagnosticIterationCap). */
     iterationCapDiagnostic:
