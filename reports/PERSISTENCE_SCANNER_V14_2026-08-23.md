@@ -185,7 +185,9 @@ observed" never becomes „no allergens".
 
 ## Served proof on current staging
 
-Deployment `dpl_HqpcRnSRUXtqrP9cVZNuyfUcdAa2` (SHA `c4bb217`, bundle `index-DVuwoB0F.js`).
+Deployment `dpl_HqpcRnSRUXtqrP9cVZNuyfUcdAa2` (SHA `c4bb217`, bundle `index-DVuwoB0F.js`); the
+retry fix then deployed as `dpl_FCSKDRZxLGPJDN8Xt1wALb2GN5vm` (SHA `4c38fd4`, bundle
+`index-Cm1rtq4Z.js`, READY) — SQL + tests only, and the leak proof below was re-verified on it.
 
 ### Recipe E2E — the owner's own recipe
 
@@ -236,7 +238,7 @@ POST identical (retry 2)                                        → 200  kind=id
 
 ### Raw-message leak
 
-`index-DVuwoB0F.js` contains the string „non-2xx status code" exactly twice, and neither is
+`index-Cm1rtq4Z.js` (and `index-DVuwoB0F.js` before it) contains the string „non-2xx status code" exactly twice, and neither is
 reachable as user copy:
 
 1. inside the vendor SDK's own `FunctionsHttpError` constructor;
