@@ -133,6 +133,26 @@ export interface FieldProvenance {
   mapperFingerprint: string;
   /** Owner-readable reason. */
   note: string | null;
+  /**
+   * How the cohort behind an inferred value actually looked. Present only for
+   * cohort-derived values, and carried so confidence can be AUDITED rather than
+   * taken on trust: a weak score should be traceable to a wide real spread, not
+   * to an arbitrary aggregation choice.
+   */
+  cohort: CohortEvidence | null;
+}
+
+export interface CohortEvidence {
+  /** Rows that actually contributed a value for this field. */
+  size: number;
+  /** Robust half-spread observed, in the field's own units. */
+  spread: number;
+  /** The band that spread was judged against. */
+  band: number;
+  /** 0–1 agreement: 1 means the cohort was unanimous. */
+  tightness: number;
+  /** The tier ceiling before the dispersion discount. */
+  ceiling: number;
 }
 
 export interface FieldTruth {
@@ -152,6 +172,7 @@ export function unknownField(reason: string | null = null): FieldTruth {
       algorithmVersion: MAPPER_FIRST_ALGORITHM_VERSION,
       mapperFingerprint: '',
       note: reason,
+      cohort: null,
     },
   };
 }
@@ -164,6 +185,7 @@ export interface KnownFieldInit {
   mapperReferences?: readonly string[];
   mapperFingerprint?: string;
   note?: string | null;
+  cohort?: CohortEvidence | null;
 }
 
 /** Build a populated field. Non-finite values collapse to UNKNOWN, not NaN. */
@@ -179,6 +201,7 @@ export function knownField(init: KnownFieldInit): FieldTruth {
       algorithmVersion: MAPPER_FIRST_ALGORITHM_VERSION,
       mapperFingerprint: init.mapperFingerprint ?? '',
       note: init.note ?? null,
+      cohort: init.cohort ?? null,
     },
   };
 }

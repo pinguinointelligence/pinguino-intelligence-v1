@@ -467,3 +467,108 @@ describe('sweetening and freezing power closure', () => {
     expect(resolved.values.pac_value).toBeNull();
   });
 });
+
+describe('cross-field plausibility', () => {
+  const knowledge = buildMapperKnowledge([], FINGERPRINT);
+  const base = {
+    declaredConfidence: 0.95,
+    identity: { name: 'Nieznany wyrob' },
+    technical: false,
+    technicalAuthority: false,
+  };
+
+  it('withdraws an estimate that contradicts the assembled product', () => {
+    // A cohort insisting on 40% sugar inside a product declaring 5% carbohydrate
+    // is not a low-confidence estimate — it is an impossible one.
+    const sugary = buildMapperKnowledge(
+      [
+        ...[1, 2, 3].map((index) =>
+          mapperRow({
+            ingredient_id: `PI-SUG-${index}`,
+            ingredient_name_internal: `Syrop pistacjowy ${index}`,
+            total_sugars_percent: 40,
+          }),
+        ),
+        // Distractors, so "pistacjowy" carries real weight rather than appearing
+        // in every row and therefore discriminating nothing.
+        ...[1, 2, 3].map((index) =>
+          mapperRow({
+            ingredient_id: `PI-ORZ-${index}`,
+            ingredient_name_internal: `Masa orzechowa ${index}`,
+            total_sugars_percent: 5,
+          }),
+        ),
+      ],
+      FINGERPRINT,
+    );
+    const resolved = resolveProductWorkingValues(
+      { ...base, identity: { name: 'Syrop pistacjowy light' }, declared: { carbohydrate_percent: 5 } },
+      sugary,
+    );
+    expect(resolved.values.carbohydrate_percent).toBe(5);
+    expect(resolved.values.total_sugars_percent).toBeNull();
+    expect(resolved.plausibilityViolations.map((v) => v.rule)).toContain(
+      'sugars_within_carbohydrate',
+    );
+  });
+
+  it('never withdraws a measured value to satisfy a balance', () => {
+    const resolved = resolveProductWorkingValues(
+      { ...base, declared: { total_sugars_percent: 40, carbohydrate_percent: 5 } },
+      knowledge,
+    );
+    // Both are declared, so both stand — and the product is held for review.
+    expect(resolved.values.total_sugars_percent).toBe(40);
+    expect(resolved.values.carbohydrate_percent).toBe(5);
+    expect(resolved.contradictedByDeclaration).toBe(true);
+    expect(resolved.valueReadiness).toBe('REVIEW');
+  });
+
+  it('accepts a physically coherent product without complaint', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          water_percent: 60,
+          fat_percent: 10,
+          protein_percent: 5,
+          carbohydrate_percent: 20,
+          total_sugars_percent: 18,
+          salt_percent: 0.2,
+          alcohol_percent: 0,
+        },
+      },
+      knowledge,
+    );
+    expect(resolved.plausibilityViolations).toEqual([]);
+    expect(resolved.contradictedByDeclaration).toBe(false);
+  });
+
+  it('gives alcohol its own share of the mass balance', () => {
+    // 55 water + 5 solids only reaches 100 because 40% is alcohol.
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: { water_percent: 55, total_solids_percent: 5, alcohol_percent: 40 },
+      },
+      knowledge,
+    );
+    expect(resolved.plausibilityViolations).toEqual([]);
+  });
+
+  it('rejects energy that does not follow from the macros', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          fat_percent: 1,
+          protein_percent: 1,
+          carbohydrate_percent: 1,
+          kcal_per_100g: 700,
+        },
+      },
+      knowledge,
+    );
+    expect(resolved.plausibilityViolations.map((v) => v.rule)).toContain('energy_matches_macros');
+  });
+});

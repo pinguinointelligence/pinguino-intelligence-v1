@@ -312,7 +312,13 @@ export function similarCohort(
     MIN_TOKEN_DISCARD_COUNT,
     knowledge.indexedRows * MAX_TOKEN_DOCUMENT_SHARE,
   );
+  // A brand name must never make a product resemble a substance. "Adalbert's
+  // Tea Herbata zielona" is green tea sold by a company with "Tea" in its name;
+  // letting that token select the cohort pulled black-tea rows onto green tea —
+  // precisely the class of mapping this architecture exists to refuse.
+  const brandTokens = new Set(identityTokens(input.brand));
   const tokens = identityTokens(input.name, input.variant).filter((token) => {
+    if (brandTokens.has(token)) return false;
     const frequency = knowledge.documentFrequency.get(token) ?? 0;
     return frequency > 0 && frequency <= ceiling;
   });
@@ -584,14 +590,22 @@ function applyCohort(
   for (const field of WORKING_NUMERIC_FIELDS) {
     const consensus = fieldConsensus(cohort, field, minCohort);
     if (!consensus) continue;
+    const ceiling = TIER_CONFIDENCE[tier];
     const truth = knownField({
       value: consensus.value,
       state: 'ESTIMATED',
-      confidence: cohortConfidence(TIER_CONFIDENCE[tier], consensus.tightness),
+      confidence: cohortConfidence(ceiling, consensus.tightness),
       basis: tier,
       mapperReferences: consensus.contributors,
       mapperFingerprint: fingerprint,
       note: `${reason}; rozrzut ±${consensus.spread}`,
+      cohort: {
+        size: consensus.contributors.length,
+        spread: consensus.spread,
+        band: CONSENSUS_BANDS[field],
+        tightness: round4(consensus.tightness),
+        ceiling,
+      },
     });
     if (claim(field, truth)) claimed++;
   }

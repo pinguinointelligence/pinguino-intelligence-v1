@@ -9,7 +9,6 @@
  * against a changed Mapper is visible in the report instead of silent.
  */
 import { describe, expect, it } from 'vitest';
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -19,7 +18,6 @@ import {
   buildMapperKnowledge,
   fieldConsensus,
   MIN_FAMILY_COHORT,
-  type MapperKnowledgeRow,
 } from '../mapperValueInference';
 import {
   ENGINE_REQUIRED_WORKING_FIELDS,
@@ -27,89 +25,17 @@ import {
   type ProductReadiness,
 } from '../productWorkingValues';
 import { WORKING_NUMERIC_FIELDS, type WorkingNumericField } from '../productFieldTruth';
+import { planSourcePacks, type SourcePackInput } from '../sourcePack';
+import { loadMapperKnowledgeRows, MAPPER_FILE } from './mapperFixture';
 
 const IMPORT_FILE = join(homedir(), 'Desktop', 'PL_Poland.csv');
-const MAPPER_FILE = resolve(__dirname, '../../../../docs/ingredients/validation/mapper_basement.csv');
 const REPORT = resolve(__dirname, '../../../../docs/products/mapper_first_dryrun.json');
-
-/** RFC-4180-ish parser: quotes, escaped quotes, embedded commas, CRLF, BOM. */
-function parseCsv(text: string): string[][] {
-  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else inQuotes = false;
-      } else field += c;
-    } else if (c === '"') inQuotes = true;
-    else if (c === ',') {
-      row.push(field);
-      field = '';
-    } else if (c === '\r') {
-      /* ignore */
-    } else if (c === '\n') {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = '';
-    } else field += c;
-  }
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows;
-}
-
-const num = (value: string | undefined): number | null => {
-  const trimmed = (value ?? '').trim();
-  if (trimmed === '') return null;
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-function loadMapper(): { rows: MapperKnowledgeRow[]; fingerprint: string } {
-  const raw = readFileSync(MAPPER_FILE);
-  const fingerprint = createHash('sha256').update(raw).digest('hex');
-  const table = parseCsv(raw.toString('utf8'));
-  const header = table[0];
-  const at = (row: string[], column: string): string | undefined => {
-    const index = header.indexOf(column);
-    return index === -1 ? undefined : row[index];
-  };
-  const rows: MapperKnowledgeRow[] = table.slice(1)
-    .filter((row) => row.length >= header.length - 2 && (at(row, 'ingredient_id') ?? '') !== '')
-    .map((row) => {
-      const numericFields = Object.fromEntries(
-        WORKING_NUMERIC_FIELDS.map((field) => [field, num(at(row, field))]),
-      ) as Record<WorkingNumericField, number | null>;
-      return {
-        ingredient_id: at(row, 'ingredient_id') ?? '',
-        ingredient_name_internal: at(row, 'ingredient_name_internal') ?? '',
-        ingredient_name_display: at(row, 'ingredient_name_display') ?? null,
-        brand: at(row, 'brand') ?? null,
-        ingredient_category: at(row, 'ingredient_category') ?? null,
-        ingredient_subcategory: at(row, 'ingredient_subcategory') ?? null,
-        is_active: (at(row, 'is_active') ?? 'true').trim().toLowerCase() !== 'false',
-        ean_code: at(row, 'ean_code') ?? null,
-        ...numericFields,
-      };
-    });
-  return { rows, fingerprint };
-}
 
 describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
   'Mapper-first local dry run (0 paid calls)',
   () => {
     it('reports how much of PL_Poland.csv Gellatti already knows', () => {
-      const mapper = loadMapper();
+      const mapper = loadMapperKnowledgeRows();
       const knowledge = buildMapperKnowledge(mapper.rows, mapper.fingerprint);
       const parsed = parseINTIMPORT(readFileSync(IMPORT_FILE, 'utf8'));
 
@@ -131,11 +57,14 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
       /** Confidence of products whose nine fields are ALL populated. */
       const completeProfileConfidence: number[] = [];
       let conflicted = 0;
+      let selfContradictory = 0;
+      const violationTally: Record<string, number> = {};
       let familyAssigned = 0;
       /** Distinct products the Mapper contributed at least one field to. */
       let mapperContributed = 0;
       const familyHistogram: Record<string, number> = {};
       const samples: unknown[] = [];
+      const packInputs: SourcePackInput[] = [];
 
       const usable = parsed.candidates.filter(
         (candidate) => candidate.state !== 'INVALID' && candidate.state !== 'DUPLICATE',
@@ -200,7 +129,24 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
         for (const field of resolved.missingEngineFields) {
           missingHistogram[field] = (missingHistogram[field] ?? 0) + 1;
         }
+        packInputs.push({
+          sourceProductId: candidate.sourceProductId,
+          rowIndex: candidate.rowIndex,
+          name: candidate.displayName,
+          brand: candidate.source.Brand,
+          manufacturer: candidate.source.Manufacturer,
+          knownSourceUrl: candidate.source['Primary Source URL'],
+          technicalPdfUrl: candidate.source['Technical PDF URL'],
+          missingNumeric: resolved.missingEngineFields,
+          missingEvidence: intelligence.enrichmentTargets,
+          brand: candidate.source.Brand,
+          manufacturer: candidate.source.Manufacturer,
+        });
         if (resolved.conflicts.length > 0) conflicted += 1;
+        if (resolved.contradictedByDeclaration) selfContradictory += 1;
+        for (const violation of resolved.plausibilityViolations) {
+          violationTally[violation.rule] = (violationTally[violation.rule] ?? 0) + 1;
+        }
 
         if (samples.length < 12) {
           samples.push({
@@ -217,6 +163,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
       }
 
       const engineReady = valueReadiness.READY + valueReadiness.ESTIMATED_READY;
+      const packPlan = planSourcePacks(packInputs);
       const report = {
         generatedFrom: 'PL_Poland.csv',
         mapper: {
@@ -261,6 +208,32 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
           {},
         ),
         productsWithDeclarationConflicts: conflicted,
+        productsSelfContradictory: selfContradictory,
+        plausibilityViolations: violationTally,
+        sourcePacks: {
+          totalProducts: packPlan.totalProducts,
+          productsNeedingResearch: packPlan.productsNeedingResearch,
+          packsNeedingResearch: packPlan.packsNeedingResearch,
+          packsWithOfficialEntryPoint: packPlan.packsWithOfficialEntryPoint,
+          packsWithOnlyWeakEntryPoints: packPlan.packsWithOnlyWeakEntryPoints,
+          estimatedCallsPackStrategy: packPlan.estimatedCallsPackStrategy,
+          estimatedCallsPerProductStrategy: packPlan.estimatedCallsPerProductStrategy,
+          byKind: packPlan.packs.reduce<Record<string, number>>((counts, pack) => {
+            counts[pack.kind] = (counts[pack.kind] ?? 0) + 1;
+            return counts;
+          }, {}),
+          largest: packPlan.packs.slice(0, 20).map((pack) => ({
+            label: pack.label,
+            kind: pack.kind,
+            products: pack.members.length,
+            needingResearch: pack.membersNeedingResearch,
+            entryPoints: pack.entryPoints.length,
+            officialEntryPoints: pack.entryPoints.filter((entry) => entry.official).length,
+            topEntryPoint: pack.entryPoints[0]?.url ?? null,
+            topEntryAuthority: pack.entryPoints[0]?.authority ?? null,
+            missingNumeric: pack.missingNumeric,
+          })),
+        },
         samples,
       };
 

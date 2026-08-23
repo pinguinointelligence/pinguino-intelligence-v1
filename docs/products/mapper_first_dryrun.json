@@ -21,17 +21,17 @@
   "assessed": 820,
   "readiness": {
     "READY": 0,
-    "ESTIMATED_READY": 7,
-    "REVIEW": 807,
-    "TECHNICAL_AUTHORITY_REQUIRED": 6
+    "ESTIMATED_READY": 1,
+    "REVIEW": 815,
+    "TECHNICAL_AUTHORITY_REQUIRED": 4
   },
   "valueReadiness": {
     "READY": 0,
-    "ESTIMATED_READY": 13,
-    "REVIEW": 807
+    "ESTIMATED_READY": 5,
+    "REVIEW": 815
   },
-  "engineReady": 13,
-  "engineReadyShare": 0.0159,
+  "engineReady": 5,
+  "engineReadyShare": 0.0061,
   "familyAssigned": 229,
   "familyHistogram": {
     "chocolate": 6,
@@ -194,98 +194,526 @@
       "pac_value"
     ]
   },
-  "mapperContributed": 578,
+  "mapperContributed": 574,
   "tierCounts": {
-    "mapper_similar_profile": 348,
-    "mapper_family_consensus": 366,
+    "mapper_similar_profile": 335,
+    "mapper_family_consensus": 362,
     "mapper_simple_profile": 6
   },
   "fieldFill": {
     "water_percent": {
       "verified": 0,
-      "estimated": 324,
-      "unknown": 496
+      "estimated": 313,
+      "unknown": 507
     },
     "total_solids_percent": {
       "verified": 0,
-      "estimated": 324,
-      "unknown": 496
+      "estimated": 313,
+      "unknown": 507
     },
     "fat_percent": {
       "verified": 131,
-      "estimated": 237,
-      "unknown": 452
+      "estimated": 215,
+      "unknown": 474
     },
     "protein_percent": {
       "verified": 132,
-      "estimated": 297,
-      "unknown": 391
+      "estimated": 282,
+      "unknown": 406
     },
     "carbohydrate_percent": {
       "verified": 132,
-      "estimated": 175,
-      "unknown": 513
+      "estimated": 146,
+      "unknown": 542
     },
     "total_sugars_percent": {
       "verified": 122,
-      "estimated": 173,
-      "unknown": 525
+      "estimated": 154,
+      "unknown": 544
     },
     "salt_percent": {
       "verified": 108,
-      "estimated": 489,
-      "unknown": 223
+      "estimated": 478,
+      "unknown": 234
     },
     "pod_value": {
       "verified": 0,
-      "estimated": 393,
-      "unknown": 427
+      "estimated": 382,
+      "unknown": 438
     },
     "pac_value": {
       "verified": 0,
-      "estimated": 243,
-      "unknown": 577
+      "estimated": 231,
+      "unknown": 589
     }
   },
   "missingHistogram": {
-    "water_percent": 496,
-    "total_solids_percent": 496,
-    "fat_percent": 452,
-    "carbohydrate_percent": 513,
-    "total_sugars_percent": 525,
-    "pod_value": 427,
-    "pac_value": 577,
-    "protein_percent": 391,
-    "salt_percent": 223
+    "water_percent": 507,
+    "total_solids_percent": 507,
+    "fat_percent": 474,
+    "carbohydrate_percent": 542,
+    "total_sugars_percent": 544,
+    "pod_value": 438,
+    "pac_value": 589,
+    "protein_percent": 406,
+    "salt_percent": 234
   },
   "gapDistribution": {
-    "0": 106,
-    "1": 36,
-    "2": 59,
-    "3": 72,
-    "4": 95,
-    "5": 51,
-    "6": 80,
-    "7": 61,
-    "8": 35,
-    "9": 212
+    "0": 87,
+    "1": 35,
+    "2": 53,
+    "3": 88,
+    "4": 100,
+    "5": 53,
+    "6": 85,
+    "7": 66,
+    "8": 33,
+    "9": 215
   },
-  "completeProfiles": 119,
+  "completeProfiles": 92,
   "completeProfileConfidenceBuckets": {
-    "0.50": 44,
-    "0.60": 11,
-    "0.90": 7,
-    "0.70": 6,
-    "0.45": 16,
-    "0.75": 7,
+    "0.50": 38,
+    "0.60": 10,
+    "0.75": 4,
+    "0.90": 1,
+    "0.45": 15,
     "0.35": 2,
-    "0.30": 3,
     "0.80": 2,
     "0.65": 9,
-    "0.95": 6,
-    "0.55": 6
+    "0.95": 4,
+    "0.55": 6,
+    "0.70": 1
   },
-  "productsWithDeclarationConflicts": 26,
+  "productsWithDeclarationConflicts": 28,
+  "productsSelfContradictory": 2,
+  "plausibilityViolations": {
+    "energy_matches_macros": 7,
+    "water_solids_balance": 1,
+    "components_within_solids": 14,
+    "sugars_within_carbohydrate": 1
+  },
+  "sourcePacks": {
+    "totalProducts": 820,
+    "productsNeedingResearch": 817,
+    "packsNeedingResearch": 145,
+    "packsWithOfficialEntryPoint": 4,
+    "packsWithOnlyWeakEntryPoints": 141,
+    "estimatedCallsPackStrategy": 209,
+    "estimatedCallsPerProductStrategy": 1634,
+    "byKind": {
+      "official_domain": 5,
+      "manufacturer": 51,
+      "brand": 92
+    },
+    "largest": [
+      {
+        "label": "comprital.pl",
+        "kind": "official_domain",
+        "products": 367,
+        "needingResearch": 367,
+        "entryPoints": 48,
+        "officialEntryPoints": 48,
+        "topEntryPoint": "https://comprital.pl/katalog_comprital.pdf",
+        "topEntryAuthority": "OFFICIAL_TECHNICAL_PDF",
+        "missingNumeric": [
+          "total_sugars_percent",
+          "fat_percent",
+          "carbohydrate_percent",
+          "protein_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value",
+          "water_percent",
+          "total_solids_percent"
+        ]
+      },
+      {
+        "label": "McCormick Polska S.A. – Stefanowo",
+        "kind": "manufacturer",
+        "products": 28,
+        "needingResearch": 28,
+        "entryPoints": 28,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/kamis-kamis-bazylia-8-g-0000006663.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "goBIO",
+        "kind": "brand",
+        "products": 26,
+        "needingResearch": 26,
+        "entryPoints": 2,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/gobio",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Fruvita",
+        "kind": "brand",
+        "products": 24,
+        "needingResearch": 24,
+        "entryPoints": 2,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/fruvita",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "BakaD'Or",
+        "kind": "brand",
+        "products": 18,
+        "needingResearch": 18,
+        "entryPoints": 3,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/bakador/bakalie",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Lipton",
+        "kind": "brand",
+        "products": 15,
+        "needingResearch": 15,
+        "entryPoints": 15,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/lipton-lipton--herbata-czarna-aromatyzowana-forest-fruit-piramidki-20-torebek-34-g-0000001284.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "pod_value",
+          "pac_value",
+          "protein_percent",
+          "fat_percent",
+          "salt_percent"
+        ]
+      },
+      {
+        "label": "Jeronimo Martins Polska S.A. – Kostrzyn",
+        "kind": "manufacturer",
+        "products": 14,
+        "needingResearch": 14,
+        "entryPoints": 12,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/bakador/bakalie",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "pod_value",
+          "pac_value",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent"
+        ]
+      },
+      {
+        "label": "GO Active",
+        "kind": "brand",
+        "products": 11,
+        "needingResearch": 11,
+        "entryPoints": 1,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/go-active",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Baitz",
+        "kind": "brand",
+        "products": 10,
+        "needingResearch": 10,
+        "entryPoints": 2,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/baitz",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "fat_percent",
+          "water_percent",
+          "total_solids_percent",
+          "pod_value",
+          "pac_value",
+          "total_sugars_percent"
+        ]
+      },
+      {
+        "label": "Kinder",
+        "kind": "brand",
+        "products": 8,
+        "needingResearch": 8,
+        "entryPoints": 8,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/kinder-kinder-bueno-white-wafel-39-g-0000008454.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Lindt",
+        "kind": "brand",
+        "products": 8,
+        "needingResearch": 8,
+        "entryPoints": 8,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/lindt-lindt-excellence-czekolada-ciemna-70-cocoa-100-g-0000003258.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Winiary",
+        "kind": "brand",
+        "products": 8,
+        "needingResearch": 8,
+        "entryPoints": 8,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/winiary-winiary-bulion-drobiowy-160-g-0000007745.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Bonitki",
+        "kind": "brand",
+        "products": 7,
+        "needingResearch": 7,
+        "entryPoints": 7,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/bonitki-bonitki-biszkopty-deserowe-200-g-0000003055.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Culineo",
+        "kind": "brand",
+        "products": 7,
+        "needingResearch": 7,
+        "entryPoints": 7,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/culineo-culineo-cebulka-smazona-200-g-0000002355.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Okręgowa Spółdzielnia Mleczarska w Łowiczu",
+        "kind": "manufacturer",
+        "products": 7,
+        "needingResearch": 7,
+        "entryPoints": 3,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/historie-z-mlecznej-doliny",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "pod_value",
+          "pac_value",
+          "fat_percent"
+        ]
+      },
+      {
+        "label": "Bakello",
+        "kind": "brand",
+        "products": 6,
+        "needingResearch": 6,
+        "entryPoints": 6,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/bakello-bakello-ciasto-francuskie-300-g-0000000885.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "E. Wedel",
+        "kind": "brand",
+        "products": 6,
+        "needingResearch": 6,
+        "entryPoints": 6,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/e.-wedel-e.-wedel-barylki-klasyczne-z-alkoholem-w-czekoladzie-deserowej-200-g-0000002330.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Fruvita Pure",
+        "kind": "brand",
+        "products": 6,
+        "needingResearch": 6,
+        "entryPoints": 1,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/fruvita-pure",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "pod_value",
+          "pac_value",
+          "total_sugars_percent",
+          "carbohydrate_percent",
+          "fat_percent",
+          "protein_percent"
+        ]
+      },
+      {
+        "label": "Tic Tac",
+        "kind": "brand",
+        "products": 6,
+        "needingResearch": 6,
+        "entryPoints": 6,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/tic-tac-tic-tac-drazetki-o-smaku-mietowym-54-g-0000016498.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "salt_percent",
+          "pod_value",
+          "pac_value"
+        ]
+      },
+      {
+        "label": "Alpro",
+        "kind": "brand",
+        "products": 5,
+        "needingResearch": 5,
+        "entryPoints": 5,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://zakupy.biedronka.pl/alpro-alpro-napoj-owsiany-nieslodzony-1-l-0000024295.html",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": [
+          "water_percent",
+          "total_solids_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
+          "pod_value",
+          "pac_value",
+          "protein_percent",
+          "fat_percent",
+          "salt_percent"
+        ]
+      }
+    ]
+  },
   "samples": [
     {
       "row": 1,

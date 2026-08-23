@@ -17,6 +17,7 @@
  * Pure and deterministic: no DB, no network, no AI, no clock.
  */
 import { MAPPER_ENGINE_REQUIRED_FIELDS } from './mapperRuntimeUsability';
+import { validatePlausibility, type PlausibilityViolation } from './productPlausibility';
 import {
   CONSENSUS_BANDS,
   inferMapperValues,
@@ -149,6 +150,13 @@ export interface ProductWorkingValues {
   mapperReferences: string[];
   /** Declared values the Mapper strongly disagrees with. Declaration still wins. */
   conflicts: EstimateConflict[];
+  /** Joint impossibilities found in the assembled product. */
+  plausibilityViolations: PlausibilityViolation[];
+  /**
+   * True when the product's OWN declared values contradict each other, so no
+   * estimate could be withdrawn to resolve it. The owner's data needs a fix.
+   */
+  contradictedByDeclaration: boolean;
   trace: string[];
 }
 
@@ -203,7 +211,22 @@ export function resolveProductWorkingValues(
   /* 3. arithmetic closure over what is now known */
   fields = closeArithmetic(fields, trace);
 
-  /* 4. record where the Mapper disagrees with the declaration, without acting on it */
+  /* 4. reject whatever the assembled product cannot jointly be */
+  const plausibility = validatePlausibility(fields);
+  fields = plausibility.fields;
+  for (const violation of plausibility.violations) {
+    trace.push(
+      `plausibility[${violation.rule}]: ${violation.detail}` +
+        (violation.withdrawn.length > 0 ? ` → wycofano ${violation.withdrawn.join(', ')}` : ''),
+    );
+  }
+  // A withdrawal can open a gap that closure could legitimately fill again from
+  // the values that survived, so closure runs once more over the cleaned set.
+  if (plausibility.violations.some((violation) => violation.withdrawn.length > 0)) {
+    fields = closeArithmetic(fields, trace);
+  }
+
+  /* 5. record where the Mapper disagrees with the declaration, without acting on it */
   const conflicts = declaredConflicts(input.declared, inference.fields);
 
   const missingEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(
@@ -226,6 +249,9 @@ export function resolveProductWorkingValues(
     missing: missingEngineFields.length,
     estimated: estimatedEngineFields.length,
     engineConfidence,
+    // A product whose own declared values contradict each other is not ready,
+    // however complete and confident those values look individually.
+    selfContradictory: plausibility.contradictedByDeclaration,
   });
   // Technical authority gates USE, not truth. It is applied on top of the value
   // verdict so a professional product's composition stays visible and auditable
@@ -256,6 +282,8 @@ export function resolveProductWorkingValues(
     mapperTiersUsed: inference.tiersUsed,
     mapperReferences,
     conflicts,
+    plausibilityViolations: plausibility.violations,
+    contradictedByDeclaration: plausibility.contradictedByDeclaration,
     trace,
   };
 }
@@ -404,7 +432,9 @@ function decideValueReadiness(input: {
   missing: number;
   estimated: number;
   engineConfidence: number | null;
+  selfContradictory: boolean;
 }): ValueReadiness {
+  if (input.selfContradictory) return 'REVIEW';
   if (input.missing > 0 || input.engineConfidence === null) return 'REVIEW';
   if (input.estimated === 0) return 'READY';
   return input.engineConfidence >= ESTIMATED_READY_FLOOR ? 'ESTIMATED_READY' : 'REVIEW';
