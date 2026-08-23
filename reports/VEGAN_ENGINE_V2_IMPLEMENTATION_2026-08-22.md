@@ -527,3 +527,72 @@ regenerated Production Rescue bundle artifacts. The only Rescue file touched is
 
 Production (`main`, `4dfb097`) was not touched, and no Edge function other than
 Production Rescue on the **staging** Supabase project was redeployed.
+
+---
+
+## Addendum — served QA + Production Rescue Edge status (2026-08-23)
+
+### PRODUCTION RESCUE EDGE FUNCTION — **STALE / PENDING FINAL SYNC**
+
+`production-rescue-authorize` on the **staging** Supabase project
+(`tunabqqrwabacxjcxxkz`) was **NOT redeployed** by Vegan v2, by owner decision:
+other staging work-streams are still active.
+
+| Fact | Value |
+| --- | --- |
+| Deployed version on staging | **6**, last updated **2026-08-19** |
+| Deployed bundle size | ~209 KB (`ezbr_sha256` `1d5e7d17…`) |
+| Repo bundle at that time | ~244 KB |
+| Repo bundle after Vegan v2 | `ca0d47f4…`, 53-file closure |
+| Repo bundle **now** (after Protein v2 regenerated it) | **`b0f31c48bd3465153759f4b2bc29f540126187d1766e1959c5005c3678a0d13c`**, **57-file** closure |
+
+The deployed function already predates the Sorbet closeout (`f09a51e`), the
+zero-gram invariant (`d3530cc`), the Main-constrained rescue (`19cd872`), Vegan
+v2 and Protein v2. It is therefore stale **independently of Vegan v2**, and
+Vegan v2 changed nothing behavioural inside it (the only Vegan edit in the
+closure is the pure `resolveIceAnchorRows` extraction, semantically identical).
+
+**FINAL SYNC PROCEDURE** (one controlled pass, after the active staging
+work-streams finish):
+
+1. `git fetch --all --prune`; work from the then-current `origin/staging`.
+2. `npm run production-rescue:bundle-check` — if it fails, `npm run production-rescue:bundle`, then re-run the check.
+3. Record the exact source-closure hash and bundle SHA-256 from `productionRescueEngine.manifest.json`.
+4. `supabase functions deploy production-rescue-authorize --project-ref tunabqqrwabacxjcxxkz` — **staging only**, never `riwipywgqobrulyzrzad`.
+5. Confirm the deployed `engineBundleSha256` in the function response equals the local bundle SHA-256.
+6. Run the Production Rescue smoke once.
+
+**No Edge function may be deployed to production.**
+
+### Served Vegan QA on staging — what was verified
+
+Run on `staging.pinguinoai.com` in an authenticated Pro session, on the deployed
+bundle `index-ezws9lwu.js` (Vegan v2 taxonomy markers confirmed present in the
+served JavaScript).
+
+| Case | Result |
+| --- | --- |
+| **A/B/G neutral + coconut fat + oat matrix, −11 °C, ECO** | Vegan profile rebuild produced WATER / OAT DRINK / **REFINED COCONUT OIL** / SUCROSE / DEXTROSE / **INULIN** / **TARA GUM** = 1000 g. Preview: "parametry poza zatwierdzonym zakresem **1 → 0**". Apply OK → **score 10/10**. |
+| **−13 °C, OPTIMAL** | Template correctly differs from −11 (dextrose 60 → 150 g). Recalc: **"Receptura już spełnia wybrany profil"**, score **10/10**. |
+| **Hard authority unchanged** | −11: POD 21.83, NPAC 41.18, water 67.04, solids 32.96, fat 4.99. −13: POD 21.57, NPAC 58.24, water 64.12, solids 35.88, fat 5.63. Every value inside the unchanged Vegan bands; all Monitor bars green. |
+| **Enhanced metadata does not block** | OAT DRINK and REFINED COCONUT OIL both render "Koszt niepełny" and the profile shows "CZĘŚCIOWO PODŁĄCZONE", yet Preview and Apply both completed. **Served proof of the no-blocking invariant.** |
+| **Zero-gram invariant** | No 0 g row in the Preview or after Apply; the smallest line is TARA GUM 2 g. |
+| **Monitor truthful** | **"Stabilność zamrażania: Brak danych"** — Vegan never certifies freezing on the borrowed dairy anchor, exactly as §14 requires. Laktoza 0 %, Alkohol 0 %, Stabilizator 0.2 %. |
+| **Substitution fails closed** | "Znajdź zamiennik" on the coconut oil returned "Brak bezpiecznego zamiennika dla bieżącego profilu i znanych ograniczeń" — no unverified swap is ever offered for Vegan. |
+
+### Served Vegan QA — NOT covered, and why
+
+- **Fat-class swap (coconut → sunflower), −12 °C, cocoa butter, soy / pea / rice
+  protein, pistachio, mixed fat, unknown-class fallbacks, Multi-Main 1:1 and
+  2:1, Rescue advisor hint, Save/reopen.** All of these need the ingredient
+  picker, whose search field does not accept synthetic keyboard input in this
+  automation context (a known browser-automation limitation recorded from
+  earlier sessions, not an observed product defect). Nothing was left in a
+  broken state; the picker was closed cleanly and the recipe remained intact.
+- **Production Rescue served case** — **PENDING FINAL EDGE SYNC** (above). Note
+  the recipe **Rescue advisor** is pure client-side simulation and needs no Edge
+  function; only the Production cockpit rescue does.
+
+All of the uncovered cases are covered by the deterministic test matrix
+(§17/§18): 14 representative recipes across −11/−12/−13 and OPTIMAL/ECO, the 15
+critical invariants, and the V1–V7 fixtures.
