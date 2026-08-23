@@ -19,6 +19,8 @@
     "recipes:import": "node scripts/importFlavorCatalogue.mjs",
     "recipes:validate": "node scripts/importFlavorCatalogue.mjs --check",
     "process:validate": "node scripts/buildProcessMetadataSeed.mjs --check",
+    "toolbox:compositions": "node scripts/buildCanonicalToolboxCompositions.mjs",
+    "toolbox:compositions:check": "node scripts/buildCanonicalToolboxCompositions.mjs --check",
     "products:audit": "node scripts/auditUnifiedProductIntelligence.mjs",
     "mapper:runtime-audit": "node scripts/auditMapperRuntimeUsability.mjs",
     "catalog:mapper-only:validate": "node scripts/validateMapperOnlyCatalog.mjs",

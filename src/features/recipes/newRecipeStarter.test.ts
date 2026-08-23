@@ -206,7 +206,11 @@ describe('mode- and temperature-aware new recipe starters', () => {
 
   it('reports every native Engine miss instead of calling a calculated vector validated', () => {
     const cases = [
-      ['gelato', 'temp_minus_13', ['lactose_sandiness_risk']],
+      // Gelato −13 no longer misses `lactose_sandiness_risk`. The starter now
+      // materializes the SAME canonical Mapper composition the served runtime
+      // does, and the reference SMP payload it used before declared 3.5 % water
+      // against the verified row's 10.32 % — a false sanding signal produced by
+      // the identity mismatch, not by the recipe.
       ['vegan', 'temp_minus_11', ['ice_fraction']],
       ['vegan', 'fresh', ['ice_fraction']],
     ] as const;
@@ -224,6 +228,7 @@ describe('mode- and temperature-aware new recipe starters', () => {
     for (const [profile, serving] of [
       ['gelato', 'temp_minus_11'],
       ['gelato', 'temp_minus_12'],
+      ['gelato', 'temp_minus_13'],
       ['vegan', 'temp_minus_12'],
       ['vegan', 'temp_minus_13'],
       // Protein closeout: −12 and −13 join −11 as natively validated. The v1

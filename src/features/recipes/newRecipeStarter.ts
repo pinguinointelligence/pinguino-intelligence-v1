@@ -1,12 +1,14 @@
 import {
   calculateRecipe,
   detectViolations,
+  type EngineIngredient,
   type ProductCategory,
   type RecipeInput,
   type RecipeItem,
   type RecipeResult,
 } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { canonicalToolboxComposition } from '@/data/ingredients/canonicalToolboxCompositions';
 import { approvedFormulationToolboxIngredients } from '@/features/formulation/formulate';
 import {
   selectFormulationTemplate,
@@ -52,6 +54,44 @@ export const DEFAULT_NEW_RECIPE_PROFILE: VisibleProductType = 'gelato';
 export const DEFAULT_NEW_RECIPE_SERVING_MODE: NewRecipeServingModeId = 'temp_minus_12';
 export const DEFAULT_NEW_RECIPE_STRATEGY: FormulationStrategy = 'optimal';
 export const DEFAULT_NEW_RECIPE_BATCH_G = 1_000;
+
+/**
+ * STARTER IDENTITY AUTHORITY — the served runtime's composition, offline.
+ *
+ * `executableRecipeHandoff.resolveLine` materializes the canonical Mapper row
+ * for a line's article id: verified composition, confidence 98, real stored
+ * POD/PAC and the catalogue price. The starter used to hand back the engine
+ * REFERENCE payload instead (literature values, confidence 85, pod/pac null),
+ * so the very same starter calculated differently offline and served — measured
+ * as Score 10 in tests against Score 6 on staging, because `engine/pac.ts`
+ * prefers a STORED pac_value and the two paths were not even performing the
+ * same freezing arithmetic.
+ *
+ * The starter now reads the same canonical entry the runtime materializes. The
+ * engine's own correction-candidate catalog is deliberately NOT touched: those
+ * reference values are a science-frozen solver lever set, not a claim about a
+ * specific catalogue product, and every profile's correction math is pinned to
+ * them.
+ */
+const starterIngredient = (toolboxId: string): EngineIngredient | undefined => {
+  const base = approvedFormulationToolboxIngredients(toolboxId).at(-1);
+  if (!base) return undefined;
+  const canonical = canonicalToolboxComposition(toolboxId);
+  if (!canonical) return base;
+  return {
+    ...base,
+    name: canonical.displayName,
+    composition: { ...canonical.composition },
+    pod_value: canonical.pod_value,
+    pac_value: canonical.pac_value,
+    de_value: canonical.de_value,
+    cost_per_kg: canonical.cost_per_kg,
+    cost_currency: canonical.cost_currency,
+    confidence_score: canonical.confidence_score,
+    source_type: canonical.verified ? 'verified_db' : base.source_type,
+    is_verified: canonical.verified,
+  };
+};
 
 const STARTER_TEMPERATURE_BY_MODE: Readonly<Record<NewRecipeServingModeId, -11 | -12 | -13>> = {
   temp_minus_11: -11,
@@ -187,7 +227,7 @@ const rawTemplateItems = (
   const roleByLineId: Record<string, FunctionalRole> = {};
   const items = template.roles.flatMap((roleTarget, index): RecipeItem[] => {
     if (!roleTarget.toolboxId || roleTarget.grams <= 0) return [];
-    const ingredient = approvedFormulationToolboxIngredients(roleTarget.toolboxId).at(-1);
+    const ingredient = starterIngredient(roleTarget.toolboxId);
     if (!ingredient) {
       throw new Error(
         `Approved starter ${template.templateId} is missing toolbox identity ${roleTarget.toolboxId}.`,

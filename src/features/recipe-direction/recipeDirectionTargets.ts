@@ -194,6 +194,19 @@ function computeRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPlan {
         input.target_temperature_c === -13)) ||
     (profile === 'chocolate_gelato' &&
       (input.target_temperature_c === -11 || input.target_temperature_c === -12));
+
+  // PROTEIN HARDNESS stays BLOCKED, and deliberately so.
+  //
+  // Hardness is targeted through NPAC, i.e. freezing-point depression. Borrowing
+  // the Gelato NPAC→hardness calibration for Protein is not defensible: at an
+  // otherwise constant formulation, instrumental hardness rises 13.60 N → 47.66 N
+  // as protein goes 4 % → 10 % (Applied Food Research 2(1) 100029, 2022,
+  // DOI 10.1016/j.afres.2021.100029, Table 1 / Fig. 2). The same NPAC therefore
+  // does NOT mean the same hardness in a high-protein mix, and no published
+  // controlled series reports NPAC/PAC alongside hardness for high-protein
+  // frozen desserts, so the protein-specific curve cannot be derived from the
+  // literature that exists. Unblocking it would require an owner calibration
+  // decision, not a code change — see reports/PROTEIN_FINAL_CLOSEOUT_2026-08-23.md.
   const softnessOperational =
     profile === 'vegan_gelato' ||
     profile === 'standard_gelato' ||
