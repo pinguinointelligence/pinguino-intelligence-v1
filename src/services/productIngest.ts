@@ -8,7 +8,10 @@ function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
-    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(',')}}`;
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`)
+      .join(',')}}`;
   }
   return JSON.stringify(value) ?? 'null';
 }
@@ -20,7 +23,9 @@ export async function productIngestIdempotencyKey(
 ): Promise<string> {
   const material = new TextEncoder().encode(stableJson({ source, scope, input }));
   const digest = await crypto.subtle.digest('SHA-256', material);
-  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(
+    '',
+  );
   return `product:${source}:${hex}`;
 }
 
@@ -62,6 +67,14 @@ export interface ProductIngestRequest {
 }
 
 export interface ProductIngestResult extends CatalogSubmissionResult {
+  /**
+   * The server replayed a previous ingest for this idempotency key rather than
+   * doing the work again. The snapshot it returns is the ORIGINAL one, so its
+   * `kind` still says `created` — this flag is the only thing that distinguishes
+   * "created now" from "created earlier and returned again". Ignoring it makes a
+   * re-import look like fresh creation when nothing was created.
+   */
+  idempotent?: boolean;
   productVersionId: string | null;
   behaviorBindingId: string | null;
   ingestEventId: string | null;
@@ -70,15 +83,22 @@ export interface ProductIngestResult extends CatalogSubmissionResult {
 
 const sourceFromLegacyProduct = (source: ProductSourceType | undefined): ProductIngestSource => {
   switch (source) {
-    case 'label_scan': return 'ocr';
-    case 'barcode_ean': return 'barcode';
+    case 'label_scan':
+      return 'ocr';
+    case 'barcode_ean':
+      return 'barcode';
     case 'catalog_import':
-    case 'colin_catalog': return 'catalog_import';
-    case 'mercadona': return 'retailer_feed';
-    case 'api': return 'future_integration';
-    case 'customer_upload': return 'spreadsheet';
+    case 'colin_catalog':
+      return 'catalog_import';
+    case 'mercadona':
+      return 'retailer_feed';
+    case 'api':
+      return 'future_integration';
+    case 'customer_upload':
+      return 'spreadsheet';
     case 'manual':
-    default: return 'manual';
+    default:
+      return 'manual';
   }
 };
 
@@ -86,7 +106,9 @@ function reviewedAuditValue(extracted: Record<string, unknown>, key: string): st
   if (!Array.isArray(extracted.fields)) return null;
   const field = extracted.fields.find(
     (entry): entry is Record<string, unknown> =>
-      typeof entry === 'object' && entry !== null && (entry as Record<string, unknown>).fieldKey === key,
+      typeof entry === 'object' &&
+      entry !== null &&
+      (entry as Record<string, unknown>).fieldKey === key,
   );
   if (!field || field.reviewStatus === 'marked_unknown') return null;
   if (field.reviewStatus === 'edited') {
@@ -96,9 +118,12 @@ function reviewedAuditValue(extracted: Record<string, unknown>, key: string): st
   }
   if (field.reviewStatus !== 'confirmed' && field.reviewStatus !== 'auto_accepted') return null;
   if (!Array.isArray(field.candidates)) return null;
-  const selected = typeof field.chosenCandidate === 'number'
-    ? field.candidates[field.chosenCandidate]
-    : field.candidates.length === 1 ? field.candidates[0] : null;
+  const selected =
+    typeof field.chosenCandidate === 'number'
+      ? field.candidates[field.chosenCandidate]
+      : field.candidates.length === 1
+        ? field.candidates[0]
+        : null;
   if (!selected || typeof selected !== 'object') return null;
   const candidate = selected as Record<string, unknown>;
   const value = candidate.normalized ?? candidate.extractedRaw;
@@ -111,17 +136,15 @@ function textArray(value: unknown): string[] {
     : [];
 }
 
-export function canonicalIngestFromLegacyProduct(input: ProductInsert): Pick<
-  ProductIngestRequest,
-  'source' | 'input' | 'privateOverlay'
-> {
-  const extracted = typeof input.extracted_json === 'object' && input.extracted_json !== null
-    ? input.extracted_json as Record<string, unknown>
-    : {};
+export function canonicalIngestFromLegacyProduct(
+  input: ProductInsert,
+): Pick<ProductIngestRequest, 'source' | 'input' | 'privateOverlay'> {
+  const extracted =
+    typeof input.extracted_json === 'object' && input.extracted_json !== null
+      ? (input.extracted_json as Record<string, unknown>)
+      : {};
   const nutritionBasis =
-    extracted.basis === 'per_100g' || extracted.basis === 'per_100ml'
-      ? extracted.basis
-      : null;
+    extracted.basis === 'per_100g' || extracted.basis === 'per_100ml' ? extracted.basis : null;
   const nutritionValues = {
     energyKcal: input.kcal_per_100g ?? null,
     fat: input.fat_percent ?? null,
@@ -132,9 +155,10 @@ export function canonicalIngestFromLegacyProduct(input: ProductInsert): Pick<
     salt: input.salt_percent ?? null,
     fibre: input.fiber_percent ?? null,
   };
-  const nutrition = nutritionBasis !== null && Object.values(nutritionValues).some((value) => value !== null)
-    ? { basis: nutritionBasis, ...nutritionValues }
-    : null;
+  const nutrition =
+    nutritionBasis !== null && Object.values(nutritionValues).some((value) => value !== null)
+      ? { basis: nutritionBasis, ...nutritionValues }
+      : null;
   const ingredientsText =
     typeof extracted.ingredientsText === 'string'
       ? extracted.ingredientsText
@@ -152,7 +176,10 @@ export function canonicalIngestFromLegacyProduct(input: ProductInsert): Pick<
   return {
     source: sourceFromLegacyProduct(input.source_type),
     input: {
-      productKind: extracted.productKind === 'internal_subproduct' ? 'internal_subproduct' : 'commercial_product',
+      productKind:
+        extracted.productKind === 'internal_subproduct'
+          ? 'internal_subproduct'
+          : 'commercial_product',
       displayName: input.product_name_display ?? null,
       originalName: input.product_name_internal ?? null,
       originalLanguage: extracted.originalLanguage ?? labelLanguages[0] ?? null,
@@ -169,7 +196,14 @@ export function canonicalIngestFromLegacyProduct(input: ProductInsert): Pick<
         allergensText,
         ingredientsText,
         mayContainAllergens: mayContainText
-          ? [...new Set(mayContainText.split(/[,;/]/).map((entry) => entry.trim()).filter(Boolean))]
+          ? [
+              ...new Set(
+                mayContainText
+                  .split(/[,;/]/)
+                  .map((entry) => entry.trim())
+                  .filter(Boolean),
+              ),
+            ]
           : [],
         labelLanguages,
         nutrition,

@@ -117,8 +117,10 @@ export async function importProductCatalog(
     }
 
     // 2-3. in-batch duplicate (identity key ONLY)
+    // A row the identity preflight already proved distinct by a STRONGER key is
+    // not an in-batch duplicate, however similar this weaker key makes it look.
     const key = productIdentityKey(productInsertToIdentityInput(candidate.insert));
-    const firstRowIndex = seenKeys.get(key);
+    const firstRowIndex = candidate.forceDistinctIdentity ? undefined : seenKeys.get(key);
     if (firstRowIndex !== undefined) {
       row.outcome = 'in_batch_duplicate';
       row.duplicateOfRowIndex = firstRowIndex;
@@ -132,8 +134,14 @@ export async function importProductCatalog(
       // Create or reuse. The DB owns product code, duplicate identity and the
       // authoritative outcome; owner-scoped browser reads cannot classify a
       // cross-account shared duplicate honestly.
-      const { product, ingest } = await createProductWithIdentityResult(candidate.insert);
-      const existing = ingest.kind !== 'created';
+      const { product, ingest } = await createProductWithIdentityResult(candidate.insert, {
+        duplicateDecision: candidate.forceDistinctIdentity ? 'different' : null,
+      });
+      // `idempotent` means the server replayed an earlier ingest and returned
+      // its ORIGINAL snapshot, whose kind still reads `created`. Without this a
+      // second import of the same file reports fresh creations that never
+      // happened.
+      const existing = ingest.kind !== 'created' || ingest.idempotent === true;
       row.outcome = existing ? 'existing' : 'created';
       row.productId = product.id;
       row.productCode = product.product_code;

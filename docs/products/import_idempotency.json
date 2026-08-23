@@ -1,0 +1,24 @@
+{
+  "note": "Model kanonicznego ingestu wg migracji; NIE dowód na żywej bazie.",
+  "subsetSize": 10,
+  "states": {
+    "READY_VERIFIED": 0,
+    "READY_ESTIMATED": 2,
+    "TECHNICAL_AUTHORITY_REQUIRED": 0,
+    "REVIEW": 8
+  },
+  "forceDistinctRows": 1,
+  "firstRun": {
+    "created": 10,
+    "existing": 0,
+    "inBatch": 0,
+    "failed": 0
+  },
+  "secondRun": {
+    "created": 0,
+    "existing": 10,
+    "inBatch": 0,
+    "failed": 0
+  },
+  "distinctCanonicalProducts": 10
+}

@@ -68,11 +68,23 @@ export interface ProductCreateResult {
  * browser precheck. */
 export async function createProductWithResult(
   payload: ProductInsert,
+  options: CreateProductIdentityOptions = {},
 ): Promise<ProductCreateResult> {
   if (!supabase) throw new Error(UNAVAILABLE);
   const request = canonicalIngestFromLegacyProduct(payload);
-  const idempotencyKey = await productIngestIdempotencyKey(request.source, request.input);
-  const ingest = await ingestProduct({ ...request, idempotencyKey });
+  // The decision travels INSIDE the canonical input, so it is part of both the
+  // idempotency key and the payload fingerprint: the same row with the same
+  // decision replays to the same product instead of creating a second one.
+  const input = options.duplicateDecision
+    ? { ...request.input, duplicateDecision: options.duplicateDecision }
+    : request.input;
+  const idempotencyKey = await productIngestIdempotencyKey(request.source, input);
+  const ingest = await ingestProduct({
+    ...request,
+    input,
+    idempotencyKey,
+    duplicateDecision: options.duplicateDecision ?? null,
+  });
   if (!ingest.productId) throw new Error('Product ingest did not return a canonical product.');
   const product = await getProduct(ingest.productId);
   if (!product) throw new Error('Canonical product is not visible after ingest.');
@@ -331,9 +343,20 @@ export async function createProductWithIdentity(input: ProductInsert): Promise<P
   return createProduct({ ...input, product_identity_hash });
 }
 
+export interface CreateProductIdentityOptions {
+  /**
+   * `different` tells the canonical ingest that this row is a CONFIRMED distinct
+   * product, so it must not be folded into whatever the weaker fallback
+   * fingerprint matches. Used only when a stronger identity key (EAN,
+   * manufacturer code, source Product ID) already proved the difference.
+   */
+  duplicateDecision?: 'same' | 'different' | null;
+}
+
 export async function createProductWithIdentityResult(
   input: ProductInsert,
+  options: CreateProductIdentityOptions = {},
 ): Promise<ProductCreateResult> {
   const product_identity_hash = productIdentityKey(productInsertToIdentityInput(input));
-  return createProductWithResult({ ...input, product_identity_hash });
+  return createProductWithResult({ ...input, product_identity_hash }, options);
 }

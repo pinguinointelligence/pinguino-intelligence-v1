@@ -32,6 +32,10 @@ import {
 import { createIntimportWebProvider } from '@/services/intimportEnrichment';
 import { loadMapperKnowledge } from '@/services/mapperKnowledge';
 import {
+  planIntimportDedup,
+  type IntimportDedupPlan,
+} from '@/features/product-intelligence/intimportDedup';
+import {
   canImport,
   canParse,
   DEFAULT_SOURCE,
@@ -67,6 +71,7 @@ export function ProductImportPage() {
   const [intimport, setIntimport] = useState<IntimportResult | null>(null);
   const [localIntelligence, setLocalIntelligence] = useState<IntimportLocalSummary | null>(null);
   const [localRows, setLocalRows] = useState<IntimportProductIntelligence[]>([]);
+  const [dedupPlan, setDedupPlan] = useState<IntimportDedupPlan | null>(null);
   const [enriching, setEnriching] = useState(false);
   const [enrichProgress, setEnrichProgress] = useState<EnrichmentProgress | null>(null);
   const [enrichSummary, setEnrichSummary] = useState<EnrichmentRunSummary | null>(null);
@@ -86,6 +91,7 @@ export function ProductImportPage() {
     setIntimport(null);
     setLocalIntelligence(null);
     setLocalRows([]);
+    setDedupPlan(null);
     setEnrichProgress(null);
     setEnrichSummary(null);
     setEnrichError(null);
@@ -122,9 +128,12 @@ export function ProductImportPage() {
       const analysed = runIntimportLocalIntelligence(parsed.candidates, {}, mapper);
       setLocalIntelligence(analysed.summary);
       setLocalRows(analysed.rows);
+      // Who is who, before anything is written. Deterministic and free.
+      setDedupPlan(planIntimportDedup(parsed.candidates));
     } else {
       setIntimport(null);
       setLocalIntelligence(null);
+      setDedupPlan(null);
       setMapperNotice(null);
       setResult(parseIntake(csvText, source));
     }
@@ -215,9 +224,18 @@ export function ProductImportPage() {
       const plan = planIntimportImport(localRows);
       const rows = qaLimit ? plan.rows.slice(0, qaLimit) : plan.rows;
       const byRow = new Map(rows.map((entry) => [entry.rowIndex, entry.insert]));
+      const forceDistinct = new Set(
+        (dedupPlan?.rows ?? [])
+          .filter((entry) => entry.forceDistinct)
+          .map((entry) => entry.rowIndex),
+      );
       candidates = result.candidates
         .filter((candidate) => byRow.has(candidate.rowIndex))
-        .map((candidate) => ({ ...candidate, insert: byRow.get(candidate.rowIndex)! }));
+        .map((candidate) => ({
+          ...candidate,
+          insert: byRow.get(candidate.rowIndex)!,
+          forceDistinctIdentity: forceDistinct.has(candidate.rowIndex),
+        }));
       setImportPlan({
         total: rows.length,
         engineUsable: rows.filter((entry) => entry.engineUsable).length,
@@ -282,10 +300,27 @@ export function ProductImportPage() {
         <DestinationSection label={c.previewLabel}>
           {intimport ? (
             <div className="space-y-10">
-              {mapperNotice ? (
-                <p className="text-xs text-[#8a7f6d]">{mapperNotice}</p>
-              ) : null}
+              {mapperNotice ? <p className="text-xs text-[#8a7f6d]">{mapperNotice}</p> : null}
               <IntimportPreview result={intimport} />
+              {dedupPlan ? (
+                <div className="space-y-1 text-xs text-[#8a7f6d]">
+                  <p className="text-ivory/70">
+                    Tożsamość — kontrola przed zapisem: {dedupPlan.totalAccounted} z{' '}
+                    {dedupPlan.totalInput} wierszy rozliczonych.
+                  </p>
+                  <p>Nowe produkty kanoniczne: {dedupPlan.counts.NEW_CANONICAL_PRODUCT}</p>
+                  <p>Ponowne użycie istniejących: {dedupPlan.counts.EXISTING_CANONICAL_REUSE}</p>
+                  <p>Dokładne duplikaty: {dedupPlan.counts.EXACT_DUPLICATE}</p>
+                  <p>
+                    Kolizje rozstrzygnięte jako różne produkty:{' '}
+                    {dedupPlan.counts.IDENTITY_COLLISION_RESOLVED_AS_DISTINCT}
+                  </p>
+                  <p>
+                    Do przeglądu (możliwy duplikat): {dedupPlan.counts.POSSIBLE_DUPLICATE_REVIEW}
+                  </p>
+                  <p>Konflikty tożsamości: {dedupPlan.counts.IDENTITY_CONFLICT}</p>
+                </div>
+              ) : null}
               {localIntelligence ? (
                 <IntimportLocalIntelligenceView
                   summary={localIntelligence}
@@ -328,8 +363,8 @@ export function ProductImportPage() {
           {importPlan ? (
             <p className="text-xs text-[#8a7f6d]">
               Product Intelligence: {importPlan.total} zapisanych do katalogu —{' '}
-              {importPlan.engineUsable} gotowych dla Engine, {importPlan.technical} z
-              zablokowanym użyciem technicznym, {importPlan.review} do uzupełnienia.
+              {importPlan.engineUsable} gotowych dla Engine, {importPlan.technical} z zablokowanym
+              użyciem technicznym, {importPlan.review} do uzupełnienia.
             </p>
           ) : null}
           {importResult ? (

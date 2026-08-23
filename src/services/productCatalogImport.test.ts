@@ -75,10 +75,10 @@ describe('importProductCatalog — core outcomes', () => {
     const s = await importProductCatalog([candidate({ rowIndex: 1 })]);
     expect(s.created).toBe(1);
     expect(h.createWithIdentityResult).toHaveBeenCalledTimes(1);
-    expect(h.createWithIdentityResult).toHaveBeenCalledWith({
-      brand: 'B',
-      product_name_display: 'N',
-    });
+    expect(h.createWithIdentityResult).toHaveBeenCalledWith(
+      { brand: 'B', product_name_display: 'N' },
+      { duplicateDecision: null },
+    );
     expect(s.productIds).toEqual(['id-1']);
     expect(s.productCodes).toEqual(['PR-ING-000001']);
     expect(s.rowResults[0]!.outcome).toBe('created');
@@ -214,5 +214,53 @@ describe('importProductCatalog — tally invariant', () => {
     expect(s.created + s.existingDuplicates + s.inBatchDuplicates + s.skipped + s.failed).toBe(
       s.total,
     );
+  });
+});
+
+describe('importProductCatalog — identity preflight and re-import (§15/§16)', () => {
+  it('asks the ingest for a DISTINCT product when the preflight proved one', async () => {
+    await importProductCatalog([
+      candidate({ rowIndex: 1 }),
+      candidate({ rowIndex: 2, forceDistinctIdentity: true }),
+    ]);
+    expect(h.createWithIdentityResult).toHaveBeenNthCalledWith(1, expect.anything(), {
+      duplicateDecision: null,
+    });
+    expect(h.createWithIdentityResult).toHaveBeenNthCalledWith(2, expect.anything(), {
+      duplicateDecision: 'different',
+    });
+  });
+
+  it('does not let the weaker in-batch key merge a row proved distinct', async () => {
+    // Both rows carry the SAME weak identity payload, so without the preflight
+    // verdict the second would be dropped as an in-batch duplicate.
+    const summary = await importProductCatalog([
+      candidate({ rowIndex: 1 }),
+      candidate({ rowIndex: 2, forceDistinctIdentity: true }),
+    ]);
+    expect(summary.inBatchDuplicates).toBe(0);
+    expect(summary.created).toBe(2);
+  });
+
+  it('still collapses a true in-batch duplicate when nothing proved otherwise', async () => {
+    const summary = await importProductCatalog([
+      candidate({ rowIndex: 1 }),
+      candidate({ rowIndex: 2 }),
+    ]);
+    expect(summary.inBatchDuplicates).toBe(1);
+    expect(summary.created).toBe(1);
+  });
+
+  it('counts a replayed ingest as reuse, not as a fresh creation', async () => {
+    // The server replays a prior ingest: the snapshot it returns is the ORIGINAL
+    // one, so its kind still says `created`. Only `idempotent` tells the truth.
+    h.createWithIdentityResult.mockResolvedValue({
+      product: { id: 'id-1', product_code: 'PR-ING-000001' },
+      ingest: { kind: 'created', idempotent: true },
+    });
+    const summary = await importProductCatalog([candidate({ rowIndex: 1 })]);
+    expect(summary.created).toBe(0);
+    expect(summary.existingDuplicates).toBe(1);
+    expect(summary.rowResults[0]!.outcome).toBe('existing');
   });
 });
