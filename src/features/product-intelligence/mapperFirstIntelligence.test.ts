@@ -42,7 +42,9 @@ import {
 const FINGERPRINT = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
 
 /** A Mapper row with every numeric field null unless overridden. */
-function mapperRow(overrides: Partial<MapperKnowledgeRow> & { ingredient_id: string }): MapperKnowledgeRow {
+function mapperRow(
+  overrides: Partial<MapperKnowledgeRow> & { ingredient_id: string },
+): MapperKnowledgeRow {
   const base = {
     ingredient_name_internal: 'row',
     is_active: true,
@@ -152,8 +154,10 @@ describe('field truth state', () => {
   });
 
   it('refuses to hold a non-finite value', () => {
-    expect(knownField({ value: Number.NaN, state: 'VERIFIED', confidence: 1, basis: 'product_declared' }).value)
-      .toBeNull();
+    expect(
+      knownField({ value: Number.NaN, state: 'VERIFIED', confidence: 1, basis: 'product_declared' })
+        .value,
+    ).toBeNull();
   });
 
   it('never lists an identity or legal fact among the estimable working fields', () => {
@@ -206,11 +210,7 @@ describe('cohort consensus', () => {
 
   it('names every Mapper row that actually contributed', () => {
     const consensus = fieldConsensus(COCOA_BUTTER, 'fat_percent', 3);
-    expect(consensus?.contributors).toEqual([
-      'PI-ING-000101',
-      'PI-ING-000102',
-      'PI-ING-000103',
-    ]);
+    expect(consensus?.contributors).toEqual(['PI-ING-000101', 'PI-ING-000102', 'PI-ING-000103']);
   });
 });
 
@@ -234,7 +234,10 @@ describe('mapper inference', () => {
       [mapperRow({ ingredient_id: 'PI-ING-000900', ean_code: '5901234123457', fat_percent: 42 })],
       FINGERPRINT,
     );
-    const result = inferMapperValues({ name: 'anything at all', barcode: '5901234123457' }, withCode);
+    const result = inferMapperValues(
+      { name: 'anything at all', barcode: '5901234123457' },
+      withCode,
+    );
     expect(result.exactRow?.ingredient_id).toBe('PI-ING-000900');
     expect(result.fields.fat_percent?.provenance.state).toBe('VERIFIED');
     expect(result.fields.fat_percent?.value).toBe(42);
@@ -325,16 +328,19 @@ describe('working values and readiness', () => {
     expect(resolved.conflicts.map((conflict) => conflict.field)).toContain('fat_percent');
   });
 
-  it('keeps a technical product fail-closed however good its numbers are', () => {
+  it('judges a technical product on its composition, not on its missing dosage', () => {
     const resolved = resolveProductWorkingValues(
       { ...cocoaButterProduct, technical: true, technicalAuthority: false },
       knowledge,
     );
     expect(resolved.missingEngineFields).toEqual([]);
-    expect(resolved.readiness).toBe('TECHNICAL_AUTHORITY_REQUIRED');
-    // The block gates use; it must not erase the composition underneath it.
+    // Process and dosage are informational: they describe handling, not what is
+    // in the product, so they no longer decide whether it may be used.
+    expect(resolved.readiness).toBe('ESTIMATED_READY');
     expect(resolved.valueReadiness).toBe('ESTIMATED_READY');
     expect(resolved.values.fat_percent).toBeGreaterThan(99);
+    // The absent authority is still reported, so it stays visible.
+    expect(resolved.technicalAuthorityRequired).toBe(true);
   });
 
   it('holds an unknown product at REVIEW rather than inventing a profile', () => {
@@ -441,9 +447,7 @@ describe('nearest-neighbour cohorts', () => {
     // "pasta" is 100% of this tiny Mapper but only 12 rows, so the share rule
     // alone would wrongly discard the discriminating tokens beside it.
     expect(knowledge.documentFrequency.get('pasta')).toBe(12);
-    expect(knowledge.indexedRows * MAX_TOKEN_DOCUMENT_SHARE).toBeLessThan(
-      MIN_TOKEN_DISCARD_COUNT,
-    );
+    expect(knowledge.indexedRows * MAX_TOKEN_DOCUMENT_SHARE).toBeLessThan(MIN_TOKEN_DISCARD_COUNT);
     expect(similarCohort({ name: 'Pasta pistacjowa' }, knowledge).tokens).toContain('pistacjowa');
   });
 
@@ -535,7 +539,11 @@ describe('cross-field plausibility', () => {
       FINGERPRINT,
     );
     const resolved = resolveProductWorkingValues(
-      { ...base, identity: { name: 'Syrop pistacjowy light' }, declared: { carbohydrate_percent: 5 } },
+      {
+        ...base,
+        identity: { name: 'Syrop pistacjowy light' },
+        declared: { carbohydrate_percent: 5 },
+      },
       sugary,
     );
     expect(resolved.values.carbohydrate_percent).toBe(5);
@@ -848,7 +856,9 @@ describe('macro-conditioned cohorts', () => {
   it('keeps a row that publishes nothing — silence is not a contradiction', () => {
     const quiet = mapperRow({ ingredient_id: 'PI-QUIET', ingredient_category: 'dairy' });
     expect(
-      macroConditionedCohort([...DAIRY, quiet], { fat_percent: 0.5 }, 3).map((r) => r.ingredient_id),
+      macroConditionedCohort([...DAIRY, quiet], { fat_percent: 0.5 }, 3).map(
+        (r) => r.ingredient_id,
+      ),
     ).toContain('PI-QUIET');
   });
 
@@ -962,7 +972,8 @@ describe('INTIMPORT import handoff', () => {
       insert: { product_name: 'Produkt', extracted_json: { intimport: { version: 1 } } },
       workingValues: {
         valueReadiness: readiness,
-        readiness: technical ?? readiness,
+        readiness,
+        technicalAuthorityRequired: technical !== null,
         profileMatch: { confidence: 0.94, basis: 'neighbour_set', references: ['PI-1'] },
         fields: {
           ...emptyFieldTruthMap(),
@@ -1023,14 +1034,14 @@ describe('INTIMPORT import handoff', () => {
     expect(intelligenceOf(entry).fields.fat_percent?.state).toBe('ESTIMATED');
   });
 
-  it('stores a technical product but keeps its technical use fail-closed', () => {
+  it('lets a technical product be Engine-usable on its composition alone', () => {
     const plan = planIntimportImport([row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED')]);
     const entry = plan.rows[0]!;
-    expect(entry.state).toBe('TECHNICAL_AUTHORITY_REQUIRED');
-    expect(entry.engineUsable).toBe(false);
+    expect(entry.state).toBe('READY_ESTIMATED');
+    expect(entry.engineUsable).toBe(true);
     const intelligence = intelligenceOf(entry);
+    // Reported, never blocking: the owner can still see the dosage is unproven.
     expect(intelligence.technicalAuthorityRequired).toBe(true);
-    // Its composition is complete and preserved — the block is about dosing.
     expect((entry.insert as Record<string, unknown>).fat_percent).toBe(12.4);
   });
 
@@ -1038,8 +1049,10 @@ describe('INTIMPORT import handoff', () => {
     const technical = intelligenceOf(
       planIntimportImport([row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED')]).rows[0]!,
     );
-    // Composition is fine; only the technical authority is missing.
+    // Composition is fine; only the technical authority is missing — and that
+    // is recorded alongside it rather than folded into one verdict.
     expect(technical.compositionReadiness ?? 'ESTIMATED_READY').not.toBe('REVIEW');
+    expect(technical.engineUsable).toBe(true);
     expect(technical.technicalAuthorityRequired).toBe(true);
   });
 
@@ -1050,9 +1063,10 @@ describe('INTIMPORT import handoff', () => {
       row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED'),
     ]);
     expect(plan.rows).toHaveLength(3);
-    expect(plan.byState.READY_ESTIMATED).toBe(1);
+    expect(plan.byState.READY_ESTIMATED).toBe(2);
     expect(plan.byState.REVIEW).toBe(1);
-    expect(plan.byState.TECHNICAL_AUTHORITY_REQUIRED).toBe(1);
-    expect(plan.engineUsable).toBe(1);
+    // Nothing is blocked for want of dosage or process any more.
+    expect(plan.byState.TECHNICAL_AUTHORITY_REQUIRED).toBe(0);
+    expect(plan.engineUsable).toBe(2);
   });
 });

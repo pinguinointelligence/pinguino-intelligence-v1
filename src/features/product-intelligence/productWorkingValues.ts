@@ -17,10 +17,7 @@
  * Pure and deterministic: no DB, no network, no AI, no clock.
  */
 import { MAPPER_ENGINE_REQUIRED_FIELDS } from './mapperRuntimeUsability';
-import {
-  REQUIRED_COMPOSITION_FIELDS,
-  SUGAR_SPECTRUM_FIELDS,
-} from './engineFieldContract';
+import { REQUIRED_COMPOSITION_FIELDS, SUGAR_SPECTRUM_FIELDS } from './engineFieldContract';
 import { validatePlausibility, type PlausibilityViolation } from './productPlausibility';
 import type { CardContribution } from './productSourceCard';
 import {
@@ -73,8 +70,10 @@ export const ENGINE_COMPOSITION_FIELDS = [
  * required of a commercial product — what readiness checks is that the
  * derivation can actually resolve. See `sweetnessPathOf` below.
  */
-export const ENGINE_POWER_FIELDS = ['pod_value', 'pac_value'] as const satisfies
-  readonly WorkingNumericField[];
+export const ENGINE_POWER_FIELDS = [
+  'pod_value',
+  'pac_value',
+] as const satisfies readonly WorkingNumericField[];
 
 /**
  * Fields readiness reports on. Water and solids appear once each for reporting,
@@ -164,6 +163,10 @@ export interface ProductWorkingValues {
   /** Plain numbers for the Engine. Estimated values are present, by design. */
   values: Record<WorkingNumericField, number | null>;
   readiness: ProductReadiness;
+  /** Informational only: a professional product whose dosage/process authority is
+   * absent. It never gates use — process and dosage describe handling, not
+   * composition. */
+  technicalAuthorityRequired: boolean;
   /** Weakest confidence across the engine-required nine, or null if any missing. */
   engineConfidence: number | null;
   engineReady: boolean;
@@ -228,11 +231,13 @@ export function sweetnessPathOf(fields: ProductFieldTruthMap): SweetnessPath {
     return {
       kind: 'unresolved',
       resolved: false,
-      reason: 'produkt zawiera poliole — Engine nie wyprowadzi dla nich POD/PAC bez wartosci zapisanej',
+      reason:
+        'produkt zawiera poliole — Engine nie wyprowadzi dla nich POD/PAC bez wartosci zapisanej',
     };
   }
   const spectrum = SUGAR_SPECTRUM_FIELDS.map(
-    (field) => (fields as Record<string, { value: number | null } | undefined>)[field]?.value ?? null,
+    (field) =>
+      (fields as Record<string, { value: number | null } | undefined>)[field]?.value ?? null,
   ).filter((entry): entry is number => entry !== null);
   if (sugars !== null && spectrum.length > 0) {
     const named = spectrum.reduce((total, entry) => total + entry, 0);
@@ -260,12 +265,16 @@ export function sweetnessPathOf(fields: ProductFieldTruthMap): SweetnessPath {
 export const SUGAR_SPECTRUM_TOLERANCE = 0.5;
 
 /** Macros the product itself states, used to validate a candidate profile. */
-function verifiedMacros(
-  fields: ProductFieldTruthMap,
-): Partial<Record<string, number>> {
+function verifiedMacros(fields: ProductFieldTruthMap): Partial<Record<string, number>> {
   const known: Partial<Record<string, number>> = {};
-  for (const field of ['fat_percent', 'protein_percent', 'carbohydrate_percent',
-    'total_sugars_percent', 'fiber_percent', 'salt_percent'] as const) {
+  for (const field of [
+    'fat_percent',
+    'protein_percent',
+    'carbohydrate_percent',
+    'total_sugars_percent',
+    'fiber_percent',
+    'salt_percent',
+  ] as const) {
     const truth = fields[field];
     if (truth.value !== null && truth.provenance.state === 'VERIFIED') known[field] = truth.value;
   }
@@ -533,14 +542,15 @@ export function resolveProductWorkingValues(
     // however complete and confident those values look individually.
     selfContradictory: plausibility.contradictedByDeclaration,
   });
-  // Technical authority gates USE, not truth. It is applied on top of the value
-  // verdict so a professional product's composition stays visible and auditable
-  // instead of being erased by the block.
+  // Process (HEAT / COLD / BOTH / UNKNOWN) and professional dosage are
+  // INFORMATIONAL. They describe how a product is worked with; they are not
+  // evidence about its composition, and by owner decision they carry no
+  // authority over whether it may be used. A professional product is therefore
+  // judged on the same footing as any other — on what is known about what is in
+  // it. The flag is still reported, so the missing authority stays visible.
   const technicalAuthorityRequired =
     input.technical && !input.technicalAuthority && valueReadiness !== 'REVIEW';
-  const readiness: ProductReadiness = technicalAuthorityRequired
-    ? 'TECHNICAL_AUTHORITY_REQUIRED'
-    : valueReadiness;
+  const readiness: ProductReadiness = valueReadiness;
 
   const mapperReferences = [
     ...new Set(
@@ -553,9 +563,9 @@ export function resolveProductWorkingValues(
     valueReadiness,
     values: workingValues(fields),
     readiness,
+    technicalAuthorityRequired,
     engineConfidence,
-    // The Engine can compute with these numbers. Whether the product may be
-    // USED is `readiness`, which additionally honours the technical gate.
+    // The Engine can compute with these numbers.
     engineReady: valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY',
     missingEngineFields,
     sweetnessPath: power,

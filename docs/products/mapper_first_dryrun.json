@@ -21,9 +21,9 @@
   "assessed": 820,
   "readiness": {
     "READY": 0,
-    "ESTIMATED_READY": 190,
+    "ESTIMATED_READY": 450,
     "REVIEW": 370,
-    "TECHNICAL_AUTHORITY_REQUIRED": 260
+    "TECHNICAL_AUTHORITY_REQUIRED": 0
   },
   "valueReadiness": {
     "READY": 0,

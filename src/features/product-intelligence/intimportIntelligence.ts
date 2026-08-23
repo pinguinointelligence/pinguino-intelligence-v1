@@ -346,9 +346,10 @@ export function assessIntimportProduct(
       name: candidate.displayName,
       variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
       barcode: candidate.ean,
-      netQuantity: [candidate.source['Net Quantity Value'], candidate.source['Net Quantity Unit']]
-        .filter(Boolean)
-        .join(' ') || null,
+      netQuantity:
+        [candidate.source['Net Quantity Value'], candidate.source['Net Quantity Unit']]
+          .filter(Boolean)
+          .join(' ') || null,
       knownSourceUrl: candidate.source['Primary Source URL'],
       technicalPdfUrl: candidate.source['Technical PDF URL'],
     },
@@ -428,9 +429,8 @@ export function runIntimportLocalIntelligence(
             { READY: 0, ESTIMATED_READY: 0, REVIEW: 0 } as Record<ValueReadiness, number>,
           )
         : null,
-      mapperContributed: rows.filter(
-        (row) => (row.workingValues?.mapperTiersUsed.length ?? 0) > 0,
-      ).length,
+      mapperContributed: rows.filter((row) => (row.workingValues?.mapperTiersUsed.length ?? 0) > 0)
+        .length,
       selfContradictory: rows.filter((row) => row.workingValues?.contradictedByDeclaration).length,
     },
   };
@@ -438,7 +438,6 @@ export function runIntimportLocalIntelligence(
 
 /** Hard per-product ceiling on external calls. */
 export const MAX_CALLS_PER_PRODUCT = 3;
-
 
 /* ── import handoff ────────────────────────────────────────────────────────── */
 
@@ -499,15 +498,15 @@ export function planIntimportImport(
 
   for (const row of rows) {
     const values = row.workingValues;
+    // Composition decides. A professional product is not held back for missing
+    // dosage or process — those are informational and carry no authority.
     const state: ImportedProductState = !values
       ? 'REVIEW'
-      : values.readiness === 'TECHNICAL_AUTHORITY_REQUIRED'
-        ? 'TECHNICAL_AUTHORITY_REQUIRED'
-        : values.valueReadiness === 'READY'
-          ? 'READY_VERIFIED'
-          : values.valueReadiness === 'ESTIMATED_READY'
-            ? 'READY_ESTIMATED'
-            : 'REVIEW';
+      : values.valueReadiness === 'READY'
+        ? 'READY_VERIFIED'
+        : values.valueReadiness === 'ESTIMATED_READY'
+          ? 'READY_ESTIMATED'
+          : 'REVIEW';
 
     const insert: ProductInsert = { ...row.insert };
     const provenance: Record<string, unknown> = {};
@@ -540,7 +539,7 @@ export function planIntimportImport(
         // Kept separate so a technical block can never read as a composition
         // problem, nor the reverse.
         compositionReadiness: values?.valueReadiness ?? 'REVIEW',
-        technicalAuthorityRequired: values?.readiness === 'TECHNICAL_AUTHORITY_REQUIRED',
+        technicalAuthorityRequired: values?.technicalAuthorityRequired ?? false,
         needsEnrichment: state === 'REVIEW',
         profileMatch: values?.profileMatch
           ? {
