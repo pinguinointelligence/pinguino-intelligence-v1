@@ -30,6 +30,10 @@ export interface SavedRecipe {
   batch_grams: number;
   created_at: string;
   updated_at: string;
+  /** Newest immutable version number, joined by `recipes.listMine` (absent for legacy orphans). */
+  latest_version_number?: number;
+  /** When that newest version was written — the ONE date „Zaktualizowano" may show (v1.4). */
+  latest_version_at?: string;
 }
 
 /** The insert/update payload — user_id is set by the service from the session. */

@@ -12,6 +12,7 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useAuthStore } from '@/stores/authStore';
+import { formatSavedRecipeDate } from '@/features/recipes/savedRecipeDate';
 import { recipeCapabilitiesFor, type ProCorePersona } from './proCoreCapabilities';
 import { useProCoreAccessStore } from './proCoreAccessStore';
 import { useProCorePersona } from './useProCorePersona';
@@ -20,11 +21,15 @@ import { useProCoreVersions, useRestoreProCoreVersion } from './useProCoreRecipe
 
 const c = copy.proCore;
 
-/** Customer-facing version label: `DD.MM.YYYY` from the ISO date part (timezone-independent). */
-export function formatVersionDate(iso: string): string {
-  const [y, m, d] = iso.slice(0, 10).split('-');
-  return y && m && d ? `${d}.${m}.${y}` : iso.slice(0, 10);
-}
+/**
+ * Customer-facing version label: `DD.MM.YYYY`.
+ *
+ * Owner defect v1.4: this used to slice the UTC ISO date while „Moje receptury" formatted the same
+ * instant in the viewer's local calendar, so ONE save at 2026-08-22T23:29:59Z read as „22.08.2026 ·
+ * v1" here and „ZAKTUALIZOWANO 23.08.2026" there — a missing-version illusion. Both surfaces now
+ * share `formatSavedRecipeDate`; there is exactly one saved-recipe calendar.
+ */
+export const formatVersionDate = (iso: string): string => formatSavedRecipeDate(iso);
 
 export function RecipeVersionsSection() {
   const persona = useProCorePersona();

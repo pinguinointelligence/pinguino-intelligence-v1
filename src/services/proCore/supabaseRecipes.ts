@@ -44,6 +44,10 @@ import type {
   RecipeVersionSource,
   SavedRecipe,
 } from '@/features/pro-core/recipeContracts';
+import {
+  readSavedRecipeMetadata,
+  savedRecipeColumnsFromInput,
+} from '@/features/recipes/savedRecipeMetadata';
 import { recipeVersionBehaviorGate } from '@/features/product-intelligence';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import type {
@@ -167,6 +171,24 @@ function batchFromInput(input: RecipeInput): number {
   return typeof b === 'number' ? Math.round(b) : 0;
 }
 
+/**
+ * The identity a version snapshot must carry so it can be read back WITHOUT the current defaults
+ * (owner contract v1.4 §4). Both were written as NULL before: `buildRecipeVersion` defaults
+ * `productProfile` to null and no caller ever supplied it, so every `recipe_versions.product_profile`
+ * on staging is NULL and the library had nothing but the `saved_recipes` column — which the
+ * canonical path also never wrote. Derived here from the persisted input, one authority for both.
+ */
+function versionIdentityFromInput(input: RecipeInput): {
+  productProfile: string | null;
+  temperatureC: number | null;
+} {
+  const metadata = readSavedRecipeMetadata(input);
+  return {
+    productProfile: metadata.productType,
+    temperatureC: metadata.temperatureC ?? tempFromInput(input),
+  };
+}
+
 function rowToVersion(row: RecipeVersionRow): RecipeVersion {
   return {
     versionId: row.id,
@@ -243,7 +265,75 @@ export class SupabaseRecipes {
    */
   private rpcFirstSaveUnavailable = false;
 
+  /** Same memoization for the migration-20260823 atomic append RPC (see `tryAppendVersionRpc`). */
+  private rpcAppendVersionUnavailable = false;
+
   constructor(private readonly client: SupabaseClient) {}
+
+  /**
+   * TRANSACTIONAL version append via public.append_recipe_version_v1 (migration 20260823103000).
+   *
+   * Before v1.4 an append was three client round-trips — read history, INSERT the version, then two
+   * UPDATEs advancing `saved_recipes` + `saved_recipe_meta` — with no transaction around them. Two
+   * failure modes followed from that: a crash between the insert and the advance left the immutable
+   * history ahead of the aggregate the library reads (a saved version the library never showed),
+   * and two concurrent writers could both read the same max and race for `vN` (survivable only
+   * because of the UNIQUE retry below). The RPC locks the parent row, derives the next number
+   * server-side, and writes version + aggregate in ONE transaction, so neither is reachable.
+   *
+   * Returns null ONLY when this database does not have the function (PGRST202/42883), which
+   * activates the documented non-atomic fallback. Any other error is a real failed save and throws.
+   */
+  private async tryAppendVersionRpc(args: {
+    recipeId: string;
+    recipeInput: RecipeInput;
+    productComposition: RecipeCompositionMetadata | null;
+    trace: { engineVersion: string; configVersion: string; mapperDatasetVersion?: string | null };
+    source: RecipeVersionSource;
+    note: string | null;
+    restoredFromVersion: number | null;
+  }): Promise<RecipeVersion | null> {
+    if (this.rpcAppendVersionUnavailable) return null;
+    const rpc = (this.client as { rpc?: unknown }).rpc;
+    if (typeof rpc !== 'function') {
+      this.rpcAppendVersionUnavailable = true;
+      return null;
+    }
+    const identity = versionIdentityFromInput(args.recipeInput);
+    const columns = savedRecipeColumnsFromInput(args.recipeInput);
+    const { data, error } = (await this.client.rpc('append_recipe_version_v1', {
+      p_recipe_id: args.recipeId,
+      p_recipe_input: args.recipeInput,
+      p_product_composition: args.productComposition,
+      p_total_batch_g:
+        (args.recipeInput as unknown as { target_batch_grams?: number }).target_batch_grams ?? 0,
+      p_batch_grams: batchFromInput(args.recipeInput),
+      p_product_profile: identity.productProfile,
+      p_temperature_c: identity.temperatureC,
+      p_engine_version: args.trace.engineVersion,
+      p_config_version: args.trace.configVersion,
+      p_mapper_dataset_version: args.trace.mapperDatasetVersion ?? null,
+      p_source: args.source,
+      p_note: args.note,
+      p_restored_from_version: args.restoredFromVersion,
+      p_serving_profile: columns.serving_profile,
+      p_active_engine_label: columns.active_engine_label,
+    })) as { data: RecipeVersionRow | null; error: { code?: string; message?: string } | null };
+    if (error) {
+      if (isFunctionMissing(error)) {
+        this.rpcAppendVersionUnavailable = true;
+        console.warn(
+          '[PINGÜINO] supabaseRecipes.saveNewVersion: RPC append_recipe_version_v1 is missing in ' +
+            'this database — using the documented NON-ATOMIC append fallback for the rest of this ' +
+            'session. Apply migration 20260823103000 to restore the atomic path.',
+        );
+        return null;
+      }
+      throw new Error(error.message ?? 'atomic version append failed');
+    }
+    if (!data?.id) throw new Error('atomic version append returned an incomplete payload');
+    return rowToVersion(data);
+  }
 
   /** The signed-in user id — the ONLY authorization key. Never trusted from the caller. */
   private async requireUserId(): Promise<string> {
@@ -329,6 +419,11 @@ export class SupabaseRecipes {
       engine_version: version.engineVersion,
       config_version: version.configVersion,
       updated_at: new Date().toISOString(),
+      // The denormalized library columns follow the state we just stored. Before v1.4 only
+      // `product_type` was patched here and only when non-null (it never was), so `serving_profile`
+      // stayed NULL and `active_engine_label` kept migration 0001's `'−11°C Engine'` default on
+      // every recipe — including −12°C ones.
+      ...savedRecipeColumnsFromInput(version.recipeInput),
     };
     if (version.productProfile != null) recipePatch.product_type = version.productProfile;
 
@@ -363,6 +458,8 @@ export class SupabaseRecipes {
       this.rpcFirstSaveUnavailable = true;
       return null;
     }
+    const identity = versionIdentityFromInput(args.recipeInput);
+    const columns = savedRecipeColumnsFromInput(args.recipeInput);
     const { data, error } = (await this.client.rpc('create_recipe_with_v1', {
       p_name: args.title,
       p_description: args.notes ?? null,
@@ -373,10 +470,14 @@ export class SupabaseRecipes {
       p_engine_version: args.trace.engineVersion,
       p_config_version: args.trace.configVersion,
       p_mapper_dataset_version: args.trace.mapperDatasetVersion ?? null,
-      p_product_profile: null,
-      p_temperature_c: tempFromInput(args.recipeInput),
+      // v1.4: was hardcoded `null`, which is why every saved v1 on staging has a NULL
+      // `product_profile` and every library row read TYP „—".
+      p_product_profile: identity.productProfile,
+      p_temperature_c: identity.temperatureC,
       p_source: args.source ?? 'manual',
       p_note: null,
+      p_serving_profile: columns.serving_profile,
+      p_active_engine_label: columns.active_engine_label,
     })) as { data: CreateRecipeRpcResult | null; error: { code?: string; message?: string } | null };
     if (error) {
       if (isFunctionMissing(error)) {
@@ -439,10 +540,11 @@ export class SupabaseRecipes {
         description: args.notes ?? null,
         recipe_input: args.recipeInput,
         product_composition: args.productComposition ?? null,
-        product_type: null,
         engine_version: args.trace.engineVersion,
         config_version: args.trace.configVersion,
         batch_grams: batchFromInput(args.recipeInput),
+        // v1.4: `product_type: null` used to be written literally here.
+        ...savedRecipeColumnsFromInput(args.recipeInput),
       })
       .select()
       .single();
@@ -480,6 +582,7 @@ export class SupabaseRecipes {
           source: args.source ?? 'manual',
           createdBy: args.by,
           createdAt: new Date().toISOString(),
+          ...versionIdentityFromInput(args.recipeInput),
         },
         '',
       );
@@ -509,6 +612,18 @@ export class SupabaseRecipes {
       'RECIPE_VERSION',
     );
     if (!behaviorGate.ready) throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
+    // Preferred: ONE database transaction (version + aggregate advance together).
+    const atomic = await this.tryAppendVersionRpc({
+      recipeId,
+      recipeInput,
+      productComposition,
+      trace,
+      source: opts.source ?? 'manual',
+      note: opts.note ?? null,
+      restoredFromVersion: null,
+    });
+    if (atomic) return atomic;
+
     const meta = await this.fetchMeta(recipeId);
     if (!meta) throw new Error(`unknown recipe ${recipeId}`);
 
@@ -526,6 +641,7 @@ export class SupabaseRecipes {
           createdBy: by,
           createdAt: new Date().toISOString(),
           note: opts.note ?? null,
+          ...versionIdentityFromInput(recipeInput),
         },
         '',
       ),
@@ -578,8 +694,9 @@ export class SupabaseRecipes {
     if (!meta) throw new Error(`unknown recipe ${recipeId}`);
 
     // Restore = a NEW version derived from the target snapshot. History is read, never rewritten.
-    // Retry-safe: on each attempt the fresh history yields the correct next number (max + 1).
-    const version = await this.appendVersionWithRetry(recipeId, async () => {
+    // The gates below run against the TARGET snapshot and are independent of the new version's
+    // number, so they are proven once, before the append.
+    const guardRestoredTarget = async (): Promise<RecipeVersion> => {
       const history = await this.getVersions(recipeId);
       const target = history.find((candidate) => candidate.versionNumber === targetVersionNumber);
       if (!target) throw new Error(`version ${targetVersionNumber} does not exist`);
@@ -610,7 +727,38 @@ export class SupabaseRecipes {
           }`,
         );
       }
-      return restoreVersion(history, targetVersionNumber, by, new Date().toISOString(), '');
+      return target;
+    };
+
+    const target = await guardRestoredTarget();
+
+    // Preferred: ONE database transaction. The restored snapshot becomes a NEW latest version —
+    // v1/v2/v3 stay exactly as written, and the number is derived under the parent row lock.
+    const atomic = await this.tryAppendVersionRpc({
+      recipeId,
+      recipeInput: target.recipeInput,
+      productComposition: target.productComposition,
+      trace: {
+        engineVersion: target.engineVersion,
+        configVersion: target.configVersion,
+        mapperDatasetVersion: target.mapperDatasetVersion,
+      },
+      source: 'restored',
+      note: null,
+      restoredFromVersion: targetVersionNumber,
+    });
+    if (atomic) return atomic;
+
+    const version = await this.appendVersionWithRetry(recipeId, async () => {
+      const history = await this.getVersions(recipeId);
+      const restored = restoreVersion(history, targetVersionNumber, by, new Date().toISOString(), '');
+      // A pre-v1.4 target snapshot carries NULL identity; the restored version must not inherit it.
+      const identity = versionIdentityFromInput(restored.recipeInput);
+      return {
+        ...restored,
+        productProfile: restored.productProfile ?? identity.productProfile,
+        temperatureC: restored.temperatureC ?? identity.temperatureC,
+      };
     });
     await this.advanceAggregate(recipeId, version);
     return version;

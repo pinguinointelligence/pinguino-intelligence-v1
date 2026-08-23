@@ -1,0 +1,80 @@
+/**
+ * Package normalization + honest completeness (owner v1.4).
+ *
+ * The owner screenshot showed „Opakowanie: PESO NETO 250 g" — the raw OCR label rendered as the
+ * value — for staging session 4c969b3f, whose stored result is
+ * `{ unit: 'g', netQuantity: 250, netQuantityText: 'PESO NETO 250 g' }`. Provenance must survive,
+ * but the value is `250 g`.
+ */
+import { describe, expect, it } from 'vitest';
+import { packageDisplay, scanCompletenessLabel } from './resultPresentation';
+
+const pkg = (
+  netQuantity: number | null,
+  unit: 'g' | 'kg' | 'ml' | 'l' | null,
+  netQuantityText: string | null,
+) => ({ netQuantity, unit, netQuantityText });
+
+describe('packageDisplay — the Cacao Puro case', () => {
+  it('shows the normalized quantity and keeps the label text as evidence', () => {
+    expect(packageDisplay(pkg(250, 'g', 'PESO NETO 250 g'))).toEqual({
+      value: '250 g',
+      evidence: 'PESO NETO 250 g',
+    });
+  });
+
+  it('never renders the raw label as the value when a structured quantity exists', () => {
+    for (const raw of ['PESO NETO 250 g', 'Net wt. 250g ℮', 'zawartość netto: 250 g']) {
+      expect(packageDisplay(pkg(250, 'g', raw)).value).toBe('250 g');
+    }
+  });
+
+  it('does not repeat the label when it already equals the normalized value', () => {
+    expect(packageDisplay(pkg(175, 'g', '175 g'))).toEqual({ value: '175 g', evidence: null });
+  });
+
+  it('falls back to the label only when nothing structured was detected', () => {
+    expect(packageDisplay(pkg(null, null, 'PESO NETO 250 g'))).toEqual({
+      value: 'PESO NETO 250 g',
+      evidence: null,
+    });
+    expect(packageDisplay(pkg(null, null, null))).toEqual({ value: 'Brak danych', evidence: null });
+  });
+
+  it('formats non-integer quantities without float noise', () => {
+    expect(packageDisplay(pkg(1.5, 'l', '1,5 L')).value).toBe('1.5 l');
+  });
+});
+
+describe('scanCompletenessLabel — partial is never dressed up as complete', () => {
+  it('reports a complete analysis', () => {
+    expect(scanCompletenessLabel('USABLE_FOR_OWNER', [])).toBe('Analiza kompletna');
+  });
+
+  it('reports an allergen confirmation as a confirmation, not a failure', () => {
+    expect(scanCompletenessLabel('SCAN_DRAFT', ['allergen_confirmation'])).toBe(
+      'Wymaga potwierdzenia',
+    );
+  });
+
+  it('reports a genuinely incomplete analysis', () => {
+    expect(scanCompletenessLabel('SCAN_DRAFT', ['nutrition_protein', 'ingredientsText'])).toBe(
+      'Analiza niepełna',
+    );
+  });
+
+  it('never prints the internal overlay enum at the user', () => {
+    const states = [
+      'SCAN_DRAFT',
+      'USABLE_FOR_OWNER',
+      'PENDING_PUBLICATION',
+      'PUBLISHED',
+      'BLOCKED',
+    ] as const;
+    for (const state of states) {
+      const label = scanCompletenessLabel(state, []);
+      expect(label).not.toBe(state);
+      expect(label).not.toMatch(/[A-Z]{2,}_[A-Z]/);
+    }
+  });
+});

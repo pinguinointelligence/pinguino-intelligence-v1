@@ -4,6 +4,12 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { AppShell } from '@/features/shell/AppShell';
 import { savedToRecipeInput, type SavedRecipe } from '@/features/recipes/recipePayload';
+import { formatSavedRecipeDate } from '@/features/recipes/savedRecipeDate';
+import {
+  readSavedRecipeMetadata,
+  savedRecipeMetadataLabels,
+  type SavedRecipeMetadataLabels,
+} from '@/features/recipes/savedRecipeMetadata';
 import { useDeleteRecipe, useSavedRecipes } from '@/features/recipes/useSavedRecipes';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -18,17 +24,20 @@ import type {
 
 const r = copy.recipes;
 
-const labelFor = (table: Record<string, { readonly label: string }>, key: string | null): string =>
-  (key ? table[key]?.label : undefined) ?? key ?? '—';
-
-const PRODUCT_LABELS = copy.productTypes as Record<string, { readonly label: string }>;
-/** Serving labels + legacy storage ids (AUDIT #19 / SPEC §11.2): rows saved before
- * the vocabulary split may carry 'storage-minus-18' in `serving_profile` — they
- * must keep displaying honestly, labeled as STORAGE, never as a serving choice. */
-const SERVING_LABELS = { ...copy.storageProfiles, ...copy.servingProfiles } as Record<
-  string,
-  { readonly label: string }
->;
+/**
+ * One row's TYP / TRYB / SILNIK / ILOŚĆ, read from the state the save actually persisted
+ * (`recipe_input`) rather than from the denormalized columns the canonical save path never wrote —
+ * see `savedRecipeMetadata.ts` for the defect this replaces.
+ */
+const rowLabels = (row: SavedRecipe): SavedRecipeMetadataLabels =>
+  savedRecipeMetadataLabels(
+    readSavedRecipeMetadata(row.recipe_input, {
+      product_type: row.product_type,
+      serving_profile: row.serving_profile,
+      batch_grams: row.batch_grams,
+    }),
+    row.active_engine_label ?? null,
+  );
 
 function Cell({ label, value }: { label: string; value: string }) {
   return (
@@ -139,19 +148,13 @@ export function MyRecipesContent() {
                 ) : null}
               </div>
               <div className="flex items-center gap-5">
-                <Cell
-                  label={r.columns.product}
-                  value={labelFor(PRODUCT_LABELS, row.product_type)}
-                />
-                <Cell
-                  label={r.columns.serving}
-                  value={labelFor(SERVING_LABELS, row.serving_profile)}
-                />
-                <Cell label={r.columns.engine} value={row.active_engine_label} />
-                <Cell label={r.columns.batch} value={`${row.batch_grams} g`} />
+                <Cell label={r.columns.product} value={rowLabels(row).productType} />
+                <Cell label={r.columns.serving} value={rowLabels(row).mode} />
+                <Cell label={r.columns.engine} value={rowLabels(row).engine} />
+                <Cell label={r.columns.batch} value={rowLabels(row).batch} />
                 <Cell
                   label={r.columns.updated}
-                  value={new Date(row.updated_at).toLocaleDateString('pl-PL')}
+                  value={formatSavedRecipeDate(row.latest_version_at ?? row.updated_at)}
                 />
                 <button
                   type="button"

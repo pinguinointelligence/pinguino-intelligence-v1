@@ -15,6 +15,15 @@ import {
   type ScanAnalysisResponse,
 } from '@/services/productScanner';
 import { nextEvidencePrompt } from '@/features/product-scanner/pipeline';
+import {
+  SCANNER_ERROR_COPY,
+  type ScannerStage,
+} from '@/features/product-scanner/scannerErrors';
+import { assertUserSafeScannerMessage } from '@/services/scannerErrorGuard';
+import {
+  packageDisplay,
+  scanCompletenessLabel,
+} from '@/features/product-scanner/resultPresentation';
 import type { PreparedProductScanAsset } from '@/features/product-scanner/contracts';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
@@ -87,6 +96,8 @@ export function ProductScannerV1Page() {
   const [visionCallsUsed, setVisionCallsUsed] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Which call produced `error` — decides the safe fallback copy and the retained-analysis note. */
+  const [errorStage, setErrorStage] = useState<ScannerStage>('analysis');
   const [saved, setSaved] = useState<Record<string, unknown> | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
@@ -393,7 +404,8 @@ export function ProductScannerV1Page() {
       if (caught instanceof ProductScannerServiceError && caught.visionCalls > 0) {
         setVisionCallsUsed(caught.visionCalls);
       }
-      setError(caught instanceof Error ? caught.message : 'Nie udało się przeanalizować produktu.');
+      setErrorStage('analysis');
+      setError(caught instanceof Error ? caught.message : SCANNER_ERROR_COPY.analysis_failed);
     } finally {
       setBusy(null);
     }
@@ -414,7 +426,10 @@ export function ProductScannerV1Page() {
       });
       setSaved(result);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać produktu.');
+      // Partial success: the analysis on screen is untouched by a failed save. `analysis` is
+      // deliberately NOT cleared here — the owner must not lose a correct scan to a save failure.
+      setErrorStage('save');
+      setError(caught instanceof Error ? caught.message : SCANNER_ERROR_COPY.save_failed);
     } finally {
       setBusy(null);
     }
@@ -711,15 +726,20 @@ export function ProductScannerV1Page() {
               </p>
             </div>
             <span className="rounded-full border border-stone-300 px-3 py-1 text-xs font-semibold text-stone-600">
-              {analysis.overlayState}
+              {scanCompletenessLabel(analysis.overlayState, analysis.missingCriticalFields)}
             </span>
           </div>
           <dl className="mt-6 grid gap-4 border-y border-stone-200 py-5 sm:grid-cols-3">
             <div>
               <dt className="text-xs text-stone-500">Opakowanie</dt>
-              <dd className="mt-1 font-medium">
-                {analysis.result.package.netQuantityText ?? 'Brak danych'}
-              </dd>
+              {/* The structured quantity is the value; the OCR label stays visible as provenance
+                  rather than standing in for it („PESO NETO 250 g" was shown as the value). */}
+              <dd className="mt-1 font-medium">{packageDisplay(analysis.result.package).value}</dd>
+              {packageDisplay(analysis.result.package).evidence && (
+                <dd className="mt-0.5 text-xs text-stone-500">
+                  Na etykiecie: {packageDisplay(analysis.result.package).evidence}
+                </dd>
+              )}
             </div>
             <div>
               <dt className="text-xs text-stone-500">Energia</dt>
@@ -794,12 +814,18 @@ export function ProductScannerV1Page() {
       )}
 
       {error && (
-        <p
+        <div
           role="alert"
           className="mt-5 rounded-xl border border-terracotta/40 bg-terracotta/10 p-4 text-sm text-stone-700"
         >
-          {error}
-        </p>
+          {/* Last gate: infrastructure vocabulary can never be rendered here (owner defect v1.4). */}
+          <p>{assertUserSafeScannerMessage(error, errorStage)}</p>
+          {errorStage === 'save' && analysis && (
+            <p className="mt-2 text-stone-600">
+              Wynik analizy jest zachowany — nic nie trzeba skanować ponownie.
+            </p>
+          )}
+        </div>
       )}
     </main>
   );

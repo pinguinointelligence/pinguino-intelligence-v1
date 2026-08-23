@@ -10,7 +10,10 @@
  *   • `rpc('create_recipe_with_v1', …)` — when `db.rpcEnabled` it executes the migration-0036
  *     function ATOMICALLY (an injected failure persists NOTHING); when disabled it returns
  *     PGRST202 exactly like PostgREST does for a function missing from the schema cache, which
- *     is what activates the adapter's documented non-transactional fallback.
+ *     is what activates the adapter's documented non-transactional fallback;
+ *   • `rpc('append_recipe_version_v1', …)` — migration 20260823103000's atomic append of v2+ / a
+ *     restore: the number is derived under the parent lock and the aggregate advances in the same
+ *     transaction, so a partial "version written, aggregate stale" state is unreachable.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -205,7 +208,8 @@ function runCreateRecipeWithV1(db: FakeDB, userId: string | null, params: Row): 
     recipe_input: params.p_recipe_input,
     product_composition: params.p_product_composition ?? null,
     product_type: params.p_product_profile ?? null,
-    serving_profile: null,
+    serving_profile: params.p_serving_profile ?? null,
+    active_engine_label: params.p_active_engine_label ?? '−11°C Engine',
     engine_version: params.p_engine_version,
     config_version: params.p_config_version,
     batch_grams: params.p_batch_grams,
@@ -247,6 +251,66 @@ function runCreateRecipeWithV1(db: FakeDB, userId: string | null, params: Row): 
   return { data: structuredClone({ recipe, meta, version }), error: null };
 }
 
+/**
+ * Models migration 20260823103000's `append_recipe_version_v1`: the version number is derived
+ * server-side under the parent row lock and the aggregate advances in the SAME transaction, so a
+ * caller can never observe a version without its aggregate advance (or two rows at the same vN).
+ */
+function runAppendRecipeVersionV1(db: FakeDB, userId: string | null, params: Row): Result {
+  if (!userId) return { data: null, error: { code: '42501', message: 'You must be signed in to save recipes.' } };
+  const recipeId = params.p_recipe_id as string;
+  const recipe = db.saved_recipes.find((row) => row.id === recipeId);
+  const meta = db.saved_recipe_meta.find((row) => row.recipe_id === recipeId);
+  if (!recipe || !meta) {
+    return { data: null, error: { code: 'P0002', message: `unknown recipe ${recipeId}` } };
+  }
+  for (const table of ['recipe_versions', 'saved_recipes', 'saved_recipe_meta']) {
+    if (db.failOn && db.failOn.table === table && db.failOn.op === (table === 'recipe_versions' ? 'insert' : 'update')) {
+      db.failOn = null;
+      // one transaction: nothing is committed
+      return { data: null, error: { message: `injected ${table} failure` } };
+    }
+  }
+  const next =
+    db.recipe_versions
+      .filter((row) => row.recipe_id === recipeId)
+      .reduce((max, row) => Math.max(max, Number(row.version_number)), 0) + 1;
+  const createdAt = db.now();
+  const version: Row = {
+    id: db.id('rv'),
+    recipe_id: recipeId,
+    owner_user_id: meta.owner_user_id,
+    version_number: next,
+    recipe_input: params.p_recipe_input,
+    product_composition: params.p_product_composition ?? null,
+    total_batch_g: params.p_total_batch_g,
+    product_profile: params.p_product_profile ?? null,
+    temperature_c: params.p_temperature_c ?? null,
+    engine_version: params.p_engine_version,
+    config_version: params.p_config_version,
+    mapper_dataset_version: params.p_mapper_dataset_version ?? null,
+    source: params.p_source ?? 'manual',
+    created_by: userId,
+    created_at: createdAt,
+    restored_from_version: params.p_restored_from_version ?? null,
+    note: params.p_note ?? null,
+  };
+  // COMMIT — version + aggregate together.
+  db.recipe_versions.push(version);
+  recipe.recipe_input = params.p_recipe_input;
+  recipe.product_composition = params.p_product_composition ?? null;
+  recipe.batch_grams = params.p_batch_grams;
+  recipe.product_type = params.p_product_profile ?? recipe.product_type;
+  recipe.serving_profile = params.p_serving_profile ?? recipe.serving_profile;
+  recipe.active_engine_label = params.p_active_engine_label ?? recipe.active_engine_label;
+  recipe.engine_version = params.p_engine_version;
+  recipe.config_version = params.p_config_version;
+  recipe.updated_at = createdAt;
+  meta.latest_version_number = next;
+  meta.updated_at = createdAt;
+  return { data: structuredClone(version), error: null };
+}
+
 export function makeClient(db: FakeDB, userId: string | null): SupabaseClient {
   return {
     auth: {
@@ -271,6 +335,9 @@ export function makeClient(db: FakeDB, userId: string | null): SupabaseClient {
           },
           error: null,
         };
+      }
+      if (name === 'append_recipe_version_v1' && db.rpcEnabled) {
+        return runAppendRecipeVersionV1(db, userId, params);
       }
       if (name !== 'create_recipe_with_v1' || !db.rpcEnabled) {
         // exactly what PostgREST reports for a function absent from the schema cache

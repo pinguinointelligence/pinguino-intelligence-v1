@@ -1,6 +1,12 @@
 import { supabase } from '@/lib/supabase/client';
 import { searchProducts } from '@/services/globalCatalog';
 import { barcodeLookupCandidates, type ValidBarcode } from '@/features/product-scanner/barcode';
+import {
+  classifyScannerError,
+  type ScannerError,
+  type ScannerErrorCode,
+  type ScannerStage,
+} from '@/features/product-scanner/scannerErrors';
 import type {
   ProductScanOverlayState,
   ProductScanResult,
@@ -8,13 +14,59 @@ import type {
 
 const UNAVAILABLE = 'Skaner produktu nie jest dostępny w tej konfiguracji.';
 
+/**
+ * Every scanner failure leaves this module as a CLASSIFIED error (owner defect v1.4). `message` is
+ * the Polish, actionable copy the UI renders; the transport/server text lives in `diagnostic` and
+ * goes to the console only. `finalizeProductScan` used to `throw new Error(error.message)`, which
+ * is how „Edge Function returned a non-2xx status code" reached the owner's screen.
+ */
 export class ProductScannerServiceError extends Error {
   readonly visionCalls: number;
-  constructor(message: string, visionCalls = 0) {
-    super(message);
+  readonly code: ScannerErrorCode;
+  readonly stage: ScannerStage;
+  readonly analysisRetained: boolean;
+  readonly diagnostic: string;
+  constructor(scannerError: ScannerError, stage: ScannerStage, visionCalls = 0) {
+    super(scannerError.messagePl);
     this.name = 'ProductScannerServiceError';
     this.visionCalls = visionCalls;
+    this.code = scannerError.code;
+    this.stage = stage;
+    this.analysisRetained = scannerError.analysisRetained;
+    this.diagnostic = scannerError.diagnostic;
   }
+}
+
+/** The function's own JSON body (typed `error` code + usage), when it returned one. */
+async function readFunctionFailure(
+  error: unknown,
+): Promise<{ serverCode: string | null; visionCalls: number; networkFailure: boolean }> {
+  const context = (error as { context?: unknown }).context;
+  if (!(context instanceof Response)) {
+    // No HTTP response at all → fetch/relay failure, not a server verdict.
+    const name = (error as { name?: unknown }).name;
+    return {
+      serverCode: null,
+      visionCalls: 0,
+      networkFailure: name === 'FunctionsFetchError' || name === 'FunctionsRelayError',
+    };
+  }
+  try {
+    const payload = (await context.clone().json()) as Record<string, unknown>;
+    const usage = payload.usage as { visionCalls?: unknown } | undefined;
+    return {
+      serverCode: typeof payload.error === 'string' ? payload.error : null,
+      visionCalls: typeof usage?.visionCalls === 'number' ? usage.visionCalls : 0,
+      networkFailure: false,
+    };
+  } catch {
+    return { serverCode: null, visionCalls: 0, networkFailure: false };
+  }
+}
+
+function reportScannerDiagnostic(scannerError: ScannerError): void {
+  // Diagnostics stay in the console/telemetry boundary — never in user copy.
+  console.warn(`[PINGÜINO] product scanner failure — ${scannerError.diagnostic}`);
 }
 
 export async function lookupExactBarcode(barcode: ValidBarcode) {
@@ -70,24 +122,26 @@ export async function analyzeProductImages(input: {
   if (!supabase) throw new Error(UNAVAILABLE);
   const { data, error } = await supabase.functions.invoke('product-scan-analyze', { body: input });
   if (error) {
-    const context = (error as { context?: unknown }).context;
-    let payload: Record<string, unknown> = {};
-    if (context instanceof Response) {
-      try {
-        payload = (await context.clone().json()) as Record<string, unknown>;
-      } catch {
-        payload = {};
-      }
-    }
-    const usage = payload.usage as { visionCalls?: unknown } | undefined;
-    throw new ProductScannerServiceError(
-      typeof payload.error === 'string' ? payload.error : error.message,
-      typeof usage?.visionCalls === 'number' ? usage.visionCalls : 0,
-    );
+    const failure = await readFunctionFailure(error);
+    const scannerError = classifyScannerError({
+      stage: 'analysis',
+      serverCode: failure.serverCode,
+      rawMessage: error.message,
+      networkFailure: failure.networkFailure,
+    });
+    reportScannerDiagnostic(scannerError);
+    throw new ProductScannerServiceError(scannerError, 'analysis', failure.visionCalls);
   }
   if (!data || typeof data !== 'object' || data.error) {
+    const scannerError = classifyScannerError({
+      stage: 'analysis',
+      serverCode: typeof data?.error === 'string' ? data.error : null,
+      rawMessage: null,
+    });
+    reportScannerDiagnostic(scannerError);
     throw new ProductScannerServiceError(
-      typeof data?.error === 'string' ? data.error : 'Nie udało się przeanalizować etykiety.',
+      scannerError,
+      'analysis',
       typeof data?.usage?.visionCalls === 'number' ? data.usage.visionCalls : 0,
     );
   }
@@ -109,11 +163,27 @@ export async function finalizeProductScan(input: {
 }): Promise<Record<string, unknown>> {
   if (!supabase) throw new Error(UNAVAILABLE);
   const { data, error } = await supabase.functions.invoke('product-scan-finalize', { body: input });
-  if (error) throw new Error(error.message);
+  if (error) {
+    // THE owner leak: this branch used to be `throw new Error(error.message)`, and for a
+    // FunctionsHttpError that message is literally „Edge Function returned a non-2xx status code".
+    const failure = await readFunctionFailure(error);
+    const scannerError = classifyScannerError({
+      stage: 'save',
+      serverCode: failure.serverCode,
+      rawMessage: error.message,
+      networkFailure: failure.networkFailure,
+    });
+    reportScannerDiagnostic(scannerError);
+    throw new ProductScannerServiceError(scannerError, 'save');
+  }
   if (!data || typeof data !== 'object' || data.error) {
-    throw new Error(
-      typeof data?.error === 'string' ? data.error : 'Nie udało się zapisać produktu.',
-    );
+    const scannerError = classifyScannerError({
+      stage: 'save',
+      serverCode: typeof data?.error === 'string' ? data.error : null,
+      rawMessage: null,
+    });
+    reportScannerDiagnostic(scannerError);
+    throw new ProductScannerServiceError(scannerError, 'save');
   }
   return data as Record<string, unknown>;
 }
