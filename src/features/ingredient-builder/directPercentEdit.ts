@@ -2,30 +2,15 @@ import type { RecipeInput } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import type { ConstraintSet } from '@/features/recipe-constraints';
-import {
-  assessProductDosages,
-  clampProductDosageGrams,
-  productDosageAuthority,
-  productDosageClampMessagePl,
-  type ProductBehaviorSnapshot,
-} from '@/features/product-intelligence';
 
 export type DirectPercentEditResult =
   | {
       ok: true;
       gramsByLineId: Readonly<Record<string, number>>;
-      doseClampNoticePl?: string;
     }
   | {
       ok: false;
-      code:
-        | 'line_missing'
-        | 'invalid_percent'
-        | 'protected_line'
-        | 'product_dosage_invalid'
-        | 'product_dosage_conflict'
-        | 'main_zero'
-        | 'no_rebalance_capacity';
+      code: 'line_missing' | 'invalid_percent' | 'protected_line' | 'main_zero' | 'no_rebalance_capacity';
     };
 
 const protectedConstraint = (set: ConstraintSet, lineId: string): boolean => {
@@ -51,7 +36,6 @@ export function buildDirectPercentEdit(
   lineId: string,
   requestedPercent: number,
   excludedIngredientIds: readonly string[] = [],
-  productBehaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>> = {},
 ): DirectPercentEditResult {
   if (!Number.isFinite(requestedPercent) || requestedPercent < 0 || requestedPercent > 100) {
     return { ok: false, code: 'invalid_percent' };
@@ -68,19 +52,11 @@ export function buildDirectPercentEdit(
   ) {
     return { ok: false, code: 'protected_line' };
   }
-  const selectedDosage = productDosageAuthority(
-    productBehaviorSnapshots[selected.id],
-    input.target_batch_grams,
-  );
-  if (
-    resolveFunctionalRole(selected.ingredient) === 'stabilizer' &&
-    selectedDosage.status !== 'defined'
-  ) {
-    return {
-      ok: false,
-      code:
-        selectedDosage.status === 'invalid_evidence' ? 'product_dosage_invalid' : 'protected_line',
-    };
+  // A stabilizer's amount belongs to PINGÜINO's own stabilizer system, which
+  // owns the aggregate band and the per-component clamp. Manufacturer dosage is
+  // informational and never granted (or withheld) this permission.
+  if (resolveFunctionalRole(selected.ingredient) === 'stabilizer') {
+    return { ok: false, code: 'protected_line' };
   }
 
   const selectedIsMain = selected.lock_type === 'main';
@@ -100,14 +76,7 @@ export function buildDirectPercentEdit(
   ) {
     return { ok: false, code: 'protected_line' };
   }
-  const requestedTarget = (input.target_batch_grams * requestedPercent) / 100;
-  const clampedTarget = clampProductDosageGrams(
-    requestedTarget,
-    input.target_batch_grams,
-    productBehaviorSnapshots[selected.id],
-  );
-  if (!clampedTarget.ok) return { ok: false, code: 'product_dosage_invalid' };
-  const selectedTarget = clampedTarget.grams;
+  const selectedTarget = (input.target_batch_grams * requestedPercent) / 100;
   if (selectedIsMain && selected.planned_grams <= 0) return { ok: false, code: 'main_zero' };
   const scale = selectedIsMain ? selectedTarget / selected.planned_grams : 1;
   const changedIds = new Set(changed.map((item) => item.id));
@@ -147,24 +116,5 @@ export function buildDirectPercentEdit(
   )[0];
   if (Math.abs(residue) > 1e-8 && !sink) return { ok: false, code: 'no_rebalance_capacity' };
   if (sink) gramsByLineId[sink.id] = gramsByLineId[sink.id]! + residue;
-  const dosageViolations = assessProductDosages(
-    {
-      ...input,
-      items: input.items.map((item) => ({
-        ...item,
-        planned_grams: gramsByLineId[item.id] ?? item.planned_grams,
-      })),
-    },
-    productBehaviorSnapshots,
-  );
-  if (dosageViolations.length > 0) return { ok: false, code: 'product_dosage_conflict' };
-  const doseClampNoticePl =
-    clampedTarget.clamped && clampedTarget.authority
-      ? productDosageClampMessagePl(
-          selected.ingredient.name,
-          clampedTarget.authority,
-          requestedTarget > selectedTarget ? 'maximum' : 'minimum',
-        )
-      : undefined;
-  return { ok: true, gramsByLineId, ...(doseClampNoticePl ? { doseClampNoticePl } : {}) };
+  return { ok: true, gramsByLineId };
 }

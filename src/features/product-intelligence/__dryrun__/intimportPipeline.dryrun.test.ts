@@ -53,7 +53,6 @@ describe.runIf(existsSync(FILE))('INTIMPORT Phase B — controlled subset', () =
               (p) => p.preWebConfidence < 85 && p.postWebConfidence >= 85,
             ).length,
             stillBelowFloor: products.filter((p) => p.postWebConfidence < 85).length,
-            technicalBlockedAfter: products.filter((p) => p.assessment.technicalBlocked).length,
           },
           null,
           2,

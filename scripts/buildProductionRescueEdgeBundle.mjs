@@ -63,7 +63,6 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/features/product-intelligence/mainEnvelope.ts',
   'src/features/product-intelligence/productBehaviorAccess.ts',
   'src/features/product-intelligence/productBehaviorResolver.ts',
-  'src/features/product-intelligence/productDosageAuthority.ts',
   'src/features/product-intelligence/recipeBehaviorAuthority.ts',
   'src/features/production-workspace/productionRescue.ts',
   'src/features/production-workspace/productionSession.ts',

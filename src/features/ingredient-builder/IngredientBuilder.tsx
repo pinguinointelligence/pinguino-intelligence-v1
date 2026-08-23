@@ -62,8 +62,6 @@ import {
   resolveMainCapability,
   productBehaviorRequiredLineIds,
   productBehaviorModuleGate,
-  productDosageAuthority,
-  productDosageClampMessagePl,
   snapshotServerResolvedProductBehavior,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
@@ -72,14 +70,10 @@ import {
   resolveProductBehaviorForSelection,
 } from '@/services/productIntelligence';
 import {
-  allocateAutomaticDoseGroup,
-  verifiedProductDoseSuggestion,
   type ProductDoseMeta,
 } from './productDoseSuggestion';
 import {
-  assessOwnerStabilizerSystem,
   clampOwnerStabilizerComponentGrams,
-  ownerStabilizerSystemItems,
 } from '@/features/recipe-constraints';
 
 const b = copy.studio.builder;
@@ -215,56 +209,13 @@ export function IngredientBuilder({
         );
         return;
       }
-      const dosage = productDosageAuthority(
-        state.productBehaviorSnapshots[lineId],
-        state.target_batch_grams,
-      );
+      // The manufacturer's recommended dosage is information, not permission:
+      // the professional decides the amount. Only PINGÜINO's own stabilizer
+      // system still bounds a component.
       const draft = selectCanonicalDraft();
-      const isOwnerStabilizer =
-        assessOwnerStabilizerSystem(draft.input).applicable &&
-        ownerStabilizerSystemItems([line]).length === 1;
-      const ignoreIndividualMinimum = isOwnerStabilizer && draft.input.category !== 'sorbet';
-      const aggregate = clampOwnerStabilizerComponentGrams(
-        draft.input,
-        lineId,
-        requestedGrams,
-      );
-      if (dosage.status === 'invalid_evidence') {
-        setPickerNotice(
-          `${line.ingredient.name}: dane zatwierdzonej dawki są niespójne. Odśwież ProductBehavior.`,
-        );
-        return;
-      }
+      const aggregate = clampOwnerStabilizerComponentGrams(draft.input, lineId, requestedGrams);
       lockAwareCoreActions.setPlannedGrams(lineId, aggregate.grams);
-      if (dosage.status === 'defined') {
-        const aggregateBand = assessOwnerStabilizerSystem(draft.input).band;
-        const specificMaximumIsTighter =
-          isOwnerStabilizer &&
-          dosage.authority.maxGrams !== null &&
-          aggregateBand !== null &&
-          dosage.authority.maxGrams < aggregateBand.maxGrams;
-        const boundary =
-          dosage.authority.maxGrams !== null && requestedGrams > dosage.authority.maxGrams
-            ? 'maximum'
-            : !ignoreIndividualMinimum &&
-                dosage.authority.minGrams !== null &&
-                requestedGrams > 0 &&
-                requestedGrams < dosage.authority.minGrams
-              ? 'minimum'
-              : null;
-        if (
-          boundary &&
-          (boundary === 'minimum' || !isOwnerStabilizer || specificMaximumIsTighter)
-        ) {
-          setPickerNotice(
-            productDosageClampMessagePl(line.ingredient.name, dosage.authority, boundary),
-          );
-        } else if (aggregate.messagePl) {
-          setPickerNotice(aggregate.messagePl);
-        }
-      } else if (aggregate.messagePl) {
-        setPickerNotice(aggregate.messagePl);
-      }
+      if (aggregate.messagePl) setPickerNotice(aggregate.messagePl);
       markDoseUserSet(lineId);
     },
   };
@@ -281,17 +232,10 @@ export function IngredientBuilder({
         lineId,
         percent,
         draft.excludedIngredientIds,
-        productBehaviorSnapshots,
       );
       if (next.ok) {
         setPlannedGramsVector(next.gramsByLineId);
         markDoseUserSet(lineId);
-        if (next.doseClampNoticePl) setPickerNotice(next.doseClampNoticePl);
-      } else if (
-        next.code === 'product_dosage_invalid' ||
-        next.code === 'product_dosage_conflict'
-      ) {
-        setPickerNotice('Dawka produktu wymaga ponownego zatwierdzenia przed zmianą procentu.');
       }
     },
     setCustomerRole: (lineId, role) => {
@@ -637,12 +581,9 @@ export function IngredientBuilder({
     ingredient: Parameters<typeof addIngredient>[0],
     behavior?: ProductBehaviorSnapshot,
   ) => {
-    const doseSuggestion = verifiedProductDoseSuggestion({
-      snapshot: behavior,
-      strategy: behaviorMode,
-      targetBaseGrams: useRecipeStore.getState().target_batch_grams,
-    });
-    const selection = addIngredient(ingredient, doseSuggestion?.suggestedTotalGrams ?? 0);
+    // No automatic dosing from manufacturer metadata (owner decision): a newly
+    // added product starts unknown and the professional enters the amount.
+    const selection = addIngredient(ingredient, 0);
     if (selection.status === 'duplicate') {
       setPickerNotice(
         `${ingredient.name} już znajduje się w Bazie. Przeniesiono fokus do istniejącego wiersza.`,
@@ -652,52 +593,17 @@ export function IngredientBuilder({
     const added = useRecipeStore.getState().items.find((item) => item.id === selection.lineId);
     if (added && behavior) setProductBehaviorSnapshot(added.id, { ...behavior, lineId: added.id });
     if (added) {
-      const dose: ProductDoseMeta = doseSuggestion
-        ? {
-            provenance: 'AUTO_SUGGESTED',
-            groupId: doseSuggestion.groupId,
-            suggestedPercent: doseSuggestion.suggestedPercent,
-            suggestedTotalGrams: doseSuggestion.suggestedTotalGrams,
-          }
-        : {
-            provenance: 'UNKNOWN',
-            groupId: null,
-            suggestedPercent: null,
-            suggestedTotalGrams: null,
-          };
+      const dose: ProductDoseMeta = {
+        provenance: 'UNKNOWN',
+        groupId: null,
+        suggestedPercent: null,
+        suggestedTotalGrams: null,
+      };
       setDoseMeta(added.id, dose);
-      if (doseSuggestion) {
-        const current = useRecipeStore.getState();
-        const currentMeta = useIngredientTableUxStore.getState().metaByLineId;
-        const allocation = allocateAutomaticDoseGroup({
-          groupId: doseSuggestion.groupId,
-          suggestedTotalGrams: doseSuggestion.suggestedTotalGrams,
-          members: current.items.map((item) => ({
-            lineId: item.id,
-            plannedGrams: item.planned_grams,
-            lockType: item.lock_type,
-            actualGrams: item.actual_grams,
-            dose: ingredientRowMeta(currentMeta, item.id).dose,
-          })),
-        });
-        current.setPlannedGramsVector(allocation);
-      }
     }
-    const persistedAdded = added
-      ? useRecipeStore.getState().items.find((item) => item.id === added.id)
-      : undefined;
-    const aggregateAfterAdd = persistedAdded
-      ? assessOwnerStabilizerSystem(selectCanonicalDraft().input)
-      : null;
-    const aggregateAdditionWasClamped =
-      doseSuggestion !== null &&
-      persistedAdded !== undefined &&
-      persistedAdded.planned_grams < doseSuggestion.suggestedTotalGrams;
-    setPickerNotice(
-      aggregateAdditionWasClamped && aggregateAfterAdd?.band
-        ? `Łączny limit systemu stabilizującego dla tej partii został osiągnięty: ${aggregateAfterAdd.band.maxGrams} g.`
-        : null,
-    );
+    // A newly added line carries no automatic amount, so no aggregate
+    // stabilizer clamp can fire at add time.
+    setPickerNotice(null);
     const normalizedName = ingredient.name.trim().toLocaleLowerCase('pl');
     for (const unresolvedEntry of Object.values(unresolvedByLineId)) {
       if (unresolvedEntry.name.trim().toLocaleLowerCase('pl') === normalizedName) {

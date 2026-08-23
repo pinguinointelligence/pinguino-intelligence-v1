@@ -76,22 +76,17 @@ import {
 } from '@/features/recipe-composition/labelTopping';
 import {
   mainBehaviorBlockReason,
-  assessProductDosages,
-  clampProductDosageGrams,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
-  type ProductDosageViolation,
   type ProductBehaviorSnapshot,
   type ProductionThermalMode,
 } from '@/features/product-intelligence';
 import {
   assessOwnerStabilizerSystem,
   clampOwnerStabilizerComponentGrams,
-  gelatoStabilizerSystemApplies,
   evaluateRecipeConstraintAuthority,
 } from '@/features/recipe-constraints';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 
@@ -314,11 +309,6 @@ export interface RecipeState {
     | { ok: false; code: 'invalid_line'; lineName: string }
     | { ok: false; code: 'duplicate_ingredient'; canonicalIds: string[] }
     | { ok: false; code: 'batch_mismatch'; sum: number; target: number }
-    | {
-        ok: false;
-        code: 'product_dosage_violation';
-        violations: ProductDosageViolation[];
-      }
     | { ok: false; code: 'recipe_constraint_invalid'; messagePl: string }
     | { ok: false; code: 'write_verification_failed' };
   /**
@@ -861,10 +851,6 @@ export const useRecipeStore = create<RecipeState>()(
           };
         }
         const verifiedSnapshots = productBehaviorSnapshots ?? get().productBehaviorSnapshots;
-        const dosageViolations = assessProductDosages(input, verifiedSnapshots);
-        if (dosageViolations.length > 0) {
-          return { ok: false, code: 'product_dosage_violation', violations: dosageViolations };
-        }
         // Runtime Apply supplies immutable authority. Empty maps exist only at
         // the pure Engine/store test seam; user-reachable Apply, Save and
         // Production paths resolve snapshots before reaching this write.
@@ -1400,24 +1386,13 @@ export const useRecipeStore = create<RecipeState>()(
               .ready
           )
             return {};
-          const clamped = clampProductDosageGrams(
-            requestedGrams,
-            state.target_batch_grams,
-            state.productBehaviorSnapshots[lineId],
-            {
-              ignoreMinimum:
-                gelatoStabilizerSystemApplies(state.category) &&
-                resolveFunctionalRole(line.ingredient) === 'stabilizer',
-            },
-          );
-          // Malformed server evidence is never permission to accept a new
-          // amount. The server-authority recalculation path will surface the
-          // exact revalidation blocker.
-          if (!clamped.ok) return {};
+          // Manufacturer dosage is informational only: the amount the user
+          // asks for is the amount they get. Only PINGÜINO's own stabilizer
+          // system still bounds a component.
           const aggregate = clampOwnerStabilizerComponentGrams(
             buildRecipeInput(state),
             lineId,
-            clamped.grams,
+            requestedGrams,
           );
           const targetGrams = aggregate.grams;
           return {
@@ -1477,7 +1452,6 @@ export const useRecipeStore = create<RecipeState>()(
               .ready
           )
             return {};
-          if (assessProductDosages(proposed, state.productBehaviorSnapshots).length > 0) return {};
           if (assessOwnerStabilizerSystem(proposed).issues.length > 0) return {};
           return {
             items: proposedItems,

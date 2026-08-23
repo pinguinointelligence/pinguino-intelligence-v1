@@ -178,6 +178,15 @@ const readProcessReadinessDetail = (value: unknown): ProductProcessReadinessDeta
   return detail as unknown as ProductProcessReadinessDetail;
 };
 
+/** Process information never blocks. This is the only status the client
+ * synthesizes when the server reports nothing about a product's process. */
+const READY_PROCESS_READINESS: ProductProcessReadiness = {
+  schemaVersion: 1,
+  status: 'READY',
+  blockers: [],
+  advisories: [],
+};
+
 export const readProductProcessReadiness = (value: unknown): ProductProcessReadiness | null => {
   if (!value || typeof value !== 'object') return null;
   const readiness = value as Record<string, unknown>;
@@ -452,8 +461,8 @@ function readRecipeBehaviorServerValidation(
     ];
   });
   if (lines.length !== row.lines.length) return null;
+  // Process readiness is informational: a payload without it is still valid.
   const processReadiness = readProductProcessReadiness(row.processReadiness);
-  if (expectedModule === 'PRODUCTION' && !processReadiness) return null;
   return {
     ready: row.ready,
     module: expectedModule,
@@ -493,23 +502,7 @@ export async function validateRecipeBehaviorOnServer(input: {
           })(),
         ],
       })),
-      ...(input.module === 'PRODUCTION'
-        ? {
-            processReadiness: {
-              schemaVersion: 1 as const,
-              status: 'BLOCKED' as const,
-              blockers: built.invalidLineIds.map((lineId) => ({
-                code: 'PRODUCT_AUTHORITY_REQUIRED',
-                lineId,
-                productId: input.snapshots[lineId]?.productId ?? null,
-                mapperIngredientId: input.snapshots[lineId]?.mapperIngredientId ?? null,
-                decision: 'UNKNOWN',
-                verificationStatus: 'unknown',
-              })),
-              advisories: [],
-            },
-          }
-        : {}),
+      ...(input.module === 'PRODUCTION' ? { processReadiness: READY_PROCESS_READINESS } : {}),
     };
   }
   if (built.groups.length === 0) {
@@ -518,26 +511,7 @@ export async function validateRecipeBehaviorOnServer(input: {
       module: input.module,
       staleLineIds: [],
       lines: [],
-      ...(input.module === 'PRODUCTION'
-        ? {
-            processReadiness: {
-              schemaVersion: 1 as const,
-              status: input.thermalMode ? ('READY' as const) : ('BLOCKED' as const),
-              blockers: input.thermalMode
-                ? []
-                : [
-                    {
-                      code: 'PROCESS_THERMAL_MODE_REQUIRED',
-                      productId: null,
-                      mapperIngredientId: null,
-                      decision: 'UNKNOWN',
-                      verificationStatus: 'unknown',
-                    },
-                  ],
-              advisories: [],
-            },
-          }
-        : {}),
+      ...(input.module === 'PRODUCTION' ? { processReadiness: READY_PROCESS_READINESS } : {}),
     };
   }
   const client = input.client ?? supabase;
@@ -552,23 +526,7 @@ export async function validateRecipeBehaviorOnServer(input: {
         state: 'stale',
         reasons: ['behavior_server_validation_unavailable'],
       })),
-      ...(input.module === 'PRODUCTION'
-        ? {
-            processReadiness: {
-              schemaVersion: 1 as const,
-              status: 'BLOCKED' as const,
-              blockers: lineIds.map((lineId) => ({
-                code: 'PROCESS_AUTHORITY_UNAVAILABLE',
-                lineId,
-                productId: input.snapshots[lineId]?.productId ?? null,
-                mapperIngredientId: input.snapshots[lineId]?.mapperIngredientId ?? null,
-                decision: 'UNKNOWN',
-                verificationStatus: 'unknown',
-              })),
-              advisories: [],
-            },
-          }
-        : {}),
+      ...(input.module === 'PRODUCTION' ? { processReadiness: READY_PROCESS_READINESS } : {}),
     };
   }
 
@@ -604,23 +562,18 @@ export async function validateRecipeBehaviorOnServer(input: {
       : undefined;
     return { ...detail, ...(line ? { productName: line.ingredient.name } : {}) };
   };
-  const processBlockers = readinessResults
-    .flatMap((result) => result.blockers)
-    .map(withProductName);
+  // Process information never blocks Production (owner decision, 2026-08-23).
+  // Anything the server still reports about a product's process is folded into
+  // the advisory list, which is display-only.
   const processAdvisories = readinessResults
-    .flatMap((result) => result.advisories)
+    .flatMap((result) => [...result.blockers, ...result.advisories])
     .map(withProductName);
   const processReadiness: ProductProcessReadiness | undefined =
     input.module === 'PRODUCTION'
       ? {
           schemaVersion: 1,
-          status:
-            processBlockers.length > 0
-              ? 'BLOCKED'
-              : processAdvisories.length > 0
-                ? 'READY_WITH_INFO'
-                : 'READY',
-          blockers: processBlockers,
+          status: processAdvisories.length > 0 ? 'READY_WITH_INFO' : 'READY',
+          blockers: [],
           advisories: processAdvisories,
         }
       : undefined;
@@ -815,7 +768,6 @@ export function productBehaviorBlockedMessage(result: ServerResolvedProductBehav
     'approved_for_base_false:',
     'approved_for_engines_false:',
     'missing_technical_fields:',
-    'process_evidence_unknown:',
     'mapper_mapping_missing:',
     'profile_not_approved:',
     'main_policy_not_approved:',
@@ -928,9 +880,6 @@ export function productBehaviorBlockedMessage(result: ServerResolvedProductBehav
   }
   if (code === 'missing_technical_fields') {
     return `Dokładny ${exact} nie ma wymaganych pól technicznych: ${parsed.details || 'brak listy pól'}. Uzupełnij wskazane pola i przelicz ponownie.`;
-  }
-  if (code === 'process_evidence_unknown') {
-    return `Dokładny ${exact} nie ma dowodu procesu. Obliczenia techniczne pozostają dostępne; dodaj dowód procesu przed Process/Production.`;
   }
   if (code === 'mapper_mapping_missing') {
     return `Dokładny ${exact} nie ma powiązania Mapper. Wybierz inną wersję produktu albo ustaw dokładne mapowanie.`;

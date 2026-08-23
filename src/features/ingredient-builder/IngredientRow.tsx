@@ -25,6 +25,11 @@ import { DirectNumberControl } from './DirectNumberControl';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import { ProductionActualControl } from '@/features/production-workspace/ProductionActualControl';
+import {
+  productProcessPl,
+  productRecommendedDosagePl,
+} from '@/features/product-intelligence';
+import { useRecipeStore } from '@/stores/recipeStore';
 
 const b = copy.studio.builder;
 const t = b.ingredientTable;
@@ -407,10 +412,16 @@ function IngredientDataDialog({
   onClose: () => void;
 }) {
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
+  // Product information the manufacturer supplied. It is shown because it is
+  // useful to know, and for no other reason: neither line decides anything
+  // about this recipe (owner decision, 2026-08-23).
+  const behavior = useRecipeStore((state) => state.productBehaviorSnapshots[item.id]);
   const rows = [
     [t.data.source, item.ingredient.source_type || 'Baza PINGÜINO'],
     [t.data.status, estimated ? t.data.estimated : t.data.verified],
     [t.data.confidence, `${item.ingredient.confidence_score}%`],
+    [t.data.process, productProcessPl(behavior)],
+    [t.data.recommendedDosage, productRecommendedDosagePl(behavior)],
     [t.data.id, item.ingredient.canonical_ingredient_id ?? item.ingredient.id],
   ];
   return (
@@ -422,7 +433,7 @@ function IngredientDataDialog({
       <h2 className="text-lg font-semibold">{item.ingredient.name}</h2>
       <dl className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
         {rows.map(([label, value]) => (
-          <div key={label} className="grid grid-cols-[110px_1fr] gap-3 py-2 text-xs">
+          <div key={label} className="grid grid-cols-[130px_1fr] gap-3 py-2 text-xs">
             <dt className="text-stone-500">{label}</dt>
             <dd className="break-all font-mono text-ink">{value}</dd>
           </div>

@@ -43,7 +43,6 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
         READY: 0,
         ESTIMATED_READY: 0,
         REVIEW: 0,
-        TECHNICAL_AUTHORITY_REQUIRED: 0,
       };
       const valueReadiness = { READY: 0, ESTIMATED_READY: 0, REVIEW: 0 };
       const tierCounts: Record<string, number> = {};
@@ -96,8 +95,6 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
               barcode: candidate.ean,
             },
             technical: intelligence.kind === 'technical',
-            // Nothing here grants technical authority; that stays with ProductBehavior.
-            technicalAuthority: false,
           },
           knowledge,
         );
@@ -242,8 +239,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
 
       // The run must have actually covered the file, and cost nothing to do it.
       expect(usable.length).toBeGreaterThan(0);
-      expect(readiness.READY + readiness.ESTIMATED_READY + readiness.REVIEW +
-        readiness.TECHNICAL_AUTHORITY_REQUIRED).toBe(usable.length);
+      expect(readiness.READY + readiness.ESTIMATED_READY + readiness.REVIEW).toBe(usable.length);
     });
   },
 );

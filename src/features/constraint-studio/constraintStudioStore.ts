@@ -49,7 +49,6 @@ import {
 } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { missingProductDoseMessage } from '@/features/ingredient-builder/productDoseSuggestion';
 import {
-  assessProductDosages,
   productBehaviorSnapshotFingerprint,
   productBehaviorRequiredLineIds,
   type ProductBehaviorSnapshot,
@@ -947,80 +946,6 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
           return;
         }
-        const dosageViolations = assessProductDosages(
-          draft.input,
-          recipeState.productBehaviorSnapshots,
-        );
-        if (dosageViolations.length > 0) {
-          const violation = dosageViolations.length === 1 ? dosageViolations[0]! : null;
-          const currentConstraint = violation
-            ? draft.constraints.byLineId[violation.lineId]
-            : undefined;
-          const boundary =
-            violation?.code === 'above_maximum' && violation.maxGrams !== null
-              ? { type: 'set_max' as const, grams: violation.maxGrams, label: 'maximum' as const }
-              : violation?.code === 'below_minimum' && violation.minGrams !== null
-                ? { type: 'set_min' as const, grams: violation.minGrams, label: 'minimum' as const }
-                : null;
-          const lockedLine = violation
-            ? draft.input.items.find((item) => item.id === violation.lineId)
-            : undefined;
-          if (
-            violation &&
-            boundary &&
-            lockedLine?.actual_grams === null &&
-            currentConstraint !== undefined &&
-            currentConstraint.mode !== 'ai'
-          ) {
-            const fix: SuggestedBoundFix = {
-              type: boundary.type,
-              lineId: violation.lineId,
-              grams: boundary.grams,
-            };
-            if (
-              stageLockedConstraintFixPreview({
-                draft,
-                fix,
-                ingredientName: violation.ingredientName,
-                beforeGrams: violation.enteredGrams,
-                boundary: boundary.label,
-                reason: 'product_dosage',
-                baseSnapshots: recipeState.productBehaviorSnapshots,
-                proposedSnapshots: proposalSnapshots,
-                technicalOnlyMainLineIds:
-                  recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
-              })
-            )
-              return;
-          }
-          const messagePl = dosageViolations[0]!.messagePl;
-          set({
-            preview: null,
-            directionBestCandidate: null,
-            directionConsent: null,
-            substitutionConsent: null,
-            substitutionAuthorization: null,
-            proposalProductBehaviorAuthorization: null,
-            blocked: null,
-            previewIssue: {
-              ok: false,
-              code: 'product_behavior_invalid',
-              violations: dosageViolations.map((violation) => ({
-                code: 'product_dosage_violation',
-                lineIds: [violation.lineId],
-                messagePl: violation.messagePl,
-              })),
-              messagePl,
-            },
-            recalculationTerminal: {
-              state: 'BLOCKED_WITH_EXACT_ACTION',
-              code: 'product_behavior_invalid',
-              messagePl,
-              action: 'return_to_recipe',
-            },
-          });
-          return;
-        }
         const missingProductDose = missingPickerDosePreviewIssue(draft.input);
         if (missingProductDose) {
           set({
@@ -1590,11 +1515,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                   ? applyGuardCopy.invalidLine(written.lineName)
                   : written.code === 'batch_mismatch'
                     ? applyGuardCopy.batchMismatch(written.sum, written.target)
-                    : written.code === 'product_dosage_violation'
-                      ? (written.violations[0]?.messagePl ?? applyGuardCopy.writeFailed)
-                      : written.code === 'recipe_constraint_invalid'
-                        ? written.messagePl
-                        : applyGuardCopy.writeFailed,
+                    : written.code === 'recipe_constraint_invalid'
+                      ? written.messagePl
+                      : applyGuardCopy.writeFailed,
               violationsBefore: 0,
               violationsAfter: 0,
             },
@@ -1812,9 +1735,6 @@ const productBehaviorReasonPl = (reason: string): string => {
   if (code === 'missing_technical_fields') {
     return `brak pól technicznych ${parsed.detail || 'bez listy'} dla ${exactSubject}; uzupełnij wskazane pola`;
   }
-  if (code === 'process_evidence_unknown') {
-    return `brak dowodu procesu dla ${exactSubject}; dodaj dowód przed Process/Production`;
-  }
   if (code === 'mapper_mapping_missing') {
     return `brak dokładnego mapowania Mapper dla ${exactSubject}; wybierz dokładne powiązanie`;
   }
@@ -1876,7 +1796,6 @@ const productBehaviorReasonPl = (reason: string): string => {
       main_policy_unknown: 'brak zatwierdzonej polityki Main',
       base_technical_authority_missing: 'brak zatwierdzonych danych technicznych Base',
       profile_not_approved: 'produkt nie jest zatwierdzony dla wybranego profilu',
-      process_evidence_missing: 'brak wymaganego dowodu procesu',
       behavior_snapshot_missing_or_unresolved: 'brak aktualnego snapshotu zachowania',
       behavior_server_validation_unavailable: 'walidacja serwerowa jest chwilowo niedostępna',
       classification_pending: 'klasyfikacja produktu nadal trwa',
@@ -1898,7 +1817,6 @@ const productBehaviorLayerPl = (reason: string): string => {
     return 'Mapper approval';
   if (code === 'mapper_mapping_missing') return 'Mapper reference';
   if (code === 'missing_technical_fields') return 'composition';
-  if (code === 'process_evidence_unknown') return 'process';
   if (code === 'nutrition_facts_missing' || code === 'allergen_facts_missing') return 'label facts';
   if (
     code === 'profile_not_approved' ||
@@ -1920,7 +1838,6 @@ const productBehaviorLayerPl = (reason: string): string => {
       base_technical_authority_missing: 'composition',
       facts_fingerprint_stale: 'composition',
       shared_facts_stale: 'composition',
-      process_evidence_missing: 'process',
       profile_not_approved: 'profile eligibility',
       context_not_approved: 'profile eligibility',
       requested_module_not_eligible: 'profile eligibility',

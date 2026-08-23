@@ -4,7 +4,6 @@ import { veganProfileConstraintIssues } from '@/features/formulation/veganProfil
 import { classifyViolationBands } from '@/features/formulation/violationBands';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
 import {
-  assessProductDosages,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   userHeldMainLineIds,
@@ -12,7 +11,6 @@ import {
   type MainEnvelopeViolation,
   type ProductBehaviorModule,
   type ProductBehaviorSnapshot,
-  type ProductDosageViolation,
 } from '@/features/product-intelligence';
 import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { BATCH_SUM_TOLERANCE_G } from './constraintSet';
@@ -64,13 +62,6 @@ export type RecipeConstraintAuthorityIssue =
       code: 'product_behavior_invalid';
       lineIds: string[];
       messagePl: string;
-    }
-  | {
-      source: 'product_behavior';
-      code: 'product_dosage_invalid';
-      lineIds: string[];
-      messagePl: string;
-      violation: ProductDosageViolation;
     }
   | { source: 'main'; code: MainEnvelopeViolation['code']; lineIds: string[]; messagePl: string };
 
@@ -253,15 +244,6 @@ export function evaluateRecipeConstraintAuthority(
           messagePl: 'Produkt nie jest zatwierdzony dla wybranego profilu receptury.',
         });
       }
-    }
-    for (const violation of assessProductDosages(recipe, snapshots)) {
-      issues.push({
-        source: 'product_behavior',
-        code: 'product_dosage_invalid',
-        lineIds: [violation.lineId],
-        messagePl: violation.messagePl,
-        violation,
-      });
     }
     // A missing/stale product snapshot is the root blocker. Do not cascade a
     // derived Main/carrier verdict from incomplete evidence.

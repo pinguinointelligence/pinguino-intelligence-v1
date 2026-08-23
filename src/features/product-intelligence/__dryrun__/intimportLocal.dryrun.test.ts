@@ -38,7 +38,6 @@ describe.runIf(existsSync(FILE))('INTIMPORT Phase A — local-only intelligence'
             local: summary,
             confidenceBuckets: buckets,
             technical: rows.filter((r) => r.kind === 'technical').length,
-            technicalBlocked: rows.filter((r) => r.assessment.technicalBlocked).length,
             familyBreakdown: families,
             sourceAuthorities: authorities,
             confidenceMin: confidences[0],

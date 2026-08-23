@@ -7,7 +7,6 @@ import {
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { assessGelatoStabilizerSystem } from '@/features/recipe-constraints';
 import { overSweetStarter, starterLine } from '@/features/recipe-constraints/constraintFixtures';
-import { assessProductDosages } from '@/features/product-intelligence';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import {
@@ -249,7 +248,9 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
           },
         },
       };
-      expect(assessProductDosages(input, snapshots)).toEqual([]);
+      // The Inulin snapshot above declares the owner's 0-or-2-8 % window. It is
+      // informational: the band that actually holds is PINGÜINO's own
+      // stabilizer-system authority, asserted here and after the Preview.
       expect(assessGelatoStabilizerSystem(input).issues).toEqual([]);
 
       const result = buildOptimizePreview(input, NO_CONSTRAINTS, AT, {
@@ -274,7 +275,6 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
           OWNER_MAPPER_INGREDIENTS.inulin.id,
       );
       const proposedInulin = proposedInulinLine?.planned_grams ?? 0;
-      expect(assessProductDosages(proposed, snapshots)).toEqual([]);
       expect(assessGelatoStabilizerSystem(proposed).issues).toEqual([]);
       expect(detectViolations(calculateRecipe(proposed))).toEqual([]);
       expect(proposedInulin === 0 || (proposedInulin >= 20 && proposedInulin <= 80)).toBe(true);

@@ -292,7 +292,6 @@ describe('working values and readiness', () => {
     declaredConfidence: 0.95,
     identity: { name: 'Masło kakaowe', category: 'chocolate', subcategory: 'cocoa butter' },
     technical: false,
-    technicalAuthority: false,
   };
 
   it('gives an unmeasured product real working numbers the Engine can use', () => {
@@ -330,7 +329,7 @@ describe('working values and readiness', () => {
 
   it('judges a technical product on its composition, not on its missing dosage', () => {
     const resolved = resolveProductWorkingValues(
-      { ...cocoaButterProduct, technical: true, technicalAuthority: false },
+      { ...cocoaButterProduct, technical: true },
       knowledge,
     );
     expect(resolved.missingEngineFields).toEqual([]);
@@ -466,7 +465,6 @@ describe('sweetening and freezing power closure', () => {
     declaredConfidence: 0.95,
     identity: { name: 'Nieznany wyrob' },
     technical: false,
-    technicalAuthority: false,
   };
 
   it('sets POD and PAC to zero when there is no sugar, alcohol or polyol', () => {
@@ -511,7 +509,6 @@ describe('cross-field plausibility', () => {
     declaredConfidence: 0.95,
     identity: { name: 'Nieznany wyrob' },
     technical: false,
-    technicalAuthority: false,
   };
 
   it('withdraws an estimate that contradicts the assembled product', () => {
@@ -679,7 +676,6 @@ describe('engine readiness contract', () => {
     declaredConfidence: 0.95,
     identity: { name: 'Nieznany wyrob' },
     technical: false,
-    technicalAuthority: false,
   };
 
   it('derives solids from water, and water from solids, without a second penalty', () => {
@@ -875,7 +871,6 @@ describe('macro-conditioned cohorts', () => {
         declaredConfidence: 0.95,
         identity: { name: 'Mleko odtluszczone premium', category: 'dairy' },
         technical: false,
-        technicalAuthority: false,
       },
       knowledge,
     );
@@ -946,7 +941,6 @@ describe('profile-match borrowing of POD/PAC', () => {
     declaredConfidence: 0.95,
     identity: { name: 'Krem orzechowy premium', category: 'nut', subcategory: 'nut' },
     technical: false,
-    technicalAuthority: false,
   };
 
   it('refuses to pair this product\u2019s own sugars with a neighbour\u2019s physics', () => {
@@ -963,7 +957,8 @@ describe('profile-match borrowing of POD/PAC', () => {
 describe('INTIMPORT import handoff', () => {
   const row = (
     readiness: 'READY' | 'ESTIMATED_READY' | 'REVIEW',
-    technical: 'TECHNICAL_AUTHORITY_REQUIRED' | null = null,
+    /** Informational only: the manufacturer's dosage is unproven for this row. */
+    dosageUnproven = false,
   ) =>
     ({
       rowIndex: 1,
@@ -973,7 +968,7 @@ describe('INTIMPORT import handoff', () => {
       workingValues: {
         valueReadiness: readiness,
         readiness,
-        technicalAuthorityRequired: technical !== null,
+        technicalAuthorityRequired: dosageUnproven,
         profileMatch: { confidence: 0.94, basis: 'neighbour_set', references: ['PI-1'] },
         fields: {
           ...emptyFieldTruthMap(),
@@ -1035,7 +1030,7 @@ describe('INTIMPORT import handoff', () => {
   });
 
   it('lets a technical product be Engine-usable on its composition alone', () => {
-    const plan = planIntimportImport([row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED')]);
+    const plan = planIntimportImport([row('ESTIMATED_READY', true)]);
     const entry = plan.rows[0]!;
     expect(entry.state).toBe('READY_ESTIMATED');
     expect(entry.engineUsable).toBe(true);
@@ -1047,7 +1042,7 @@ describe('INTIMPORT import handoff', () => {
 
   it('never flattens the two axes into one ready flag', () => {
     const technical = intelligenceOf(
-      planIntimportImport([row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED')]).rows[0]!,
+      planIntimportImport([row('ESTIMATED_READY', true)]).rows[0]!,
     );
     // Composition is fine; only the technical authority is missing — and that
     // is recorded alongside it rather than folded into one verdict.
@@ -1060,13 +1055,14 @@ describe('INTIMPORT import handoff', () => {
     const plan = planIntimportImport([
       row('ESTIMATED_READY'),
       row('REVIEW'),
-      row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED'),
+      row('ESTIMATED_READY', true),
     ]);
     expect(plan.rows).toHaveLength(3);
     expect(plan.byState.READY_ESTIMATED).toBe(2);
     expect(plan.byState.REVIEW).toBe(1);
-    // Nothing is blocked for want of dosage or process any more.
-    expect(plan.byState.TECHNICAL_AUTHORITY_REQUIRED).toBe(0);
+    // Nothing is blocked for want of dosage or process any more — the state
+    // that used to hold those rows no longer exists.
+    expect(Object.keys(plan.byState)).not.toContain('TECHNICAL_AUTHORITY_REQUIRED');
     expect(plan.engineUsable).toBe(2);
   });
 });

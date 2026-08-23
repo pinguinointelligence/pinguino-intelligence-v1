@@ -735,54 +735,32 @@ export function useProductionWorkspace(enabled: boolean) {
         : undefined;
       return { ...detail, ...(line ? { productName: line.ingredient.name } : {}) };
     });
+  // PROCESS IS INFORMATIONAL ONLY (owner decision, 2026-08-23). Whatever is
+  // known about a product's process is surfaced as an advisory; nothing here
+  // can be BLOCKED, and Production never waits on process evidence, a hot/cold
+  // classification or a declared thermal route.
   const processReadiness: ProductProcessReadiness = session
-    ? session.processReadiness
-      ? {
-          schemaVersion: 1,
-          status: session.processReadiness,
-          blockers: [],
-          advisories: nameProcessDetails(session.processAdvisories),
-        }
-      : {
-          schemaVersion: 1,
-          status: 'BLOCKED',
-          blockers: [
-            {
-              code: 'LEGACY_PROCESS_AUTHORITY_MISSING',
-              productId: null,
-              mapperIngredientId: null,
-              decision: 'UNKNOWN',
-              verificationStatus: 'unknown',
-            },
-          ],
-          advisories: [],
-        }
+    ? {
+        schemaVersion: 1,
+        status: session.processAdvisories.length > 0 ? 'READY_WITH_INFO' : 'READY',
+        blockers: [],
+        advisories: nameProcessDetails(session.processAdvisories),
+      }
     : behaviorServerGate.key === behaviorValidationKey && behaviorServerGate.processReadiness
-      ? {
-          ...behaviorServerGate.processReadiness,
-          blockers: nameProcessDetails(behaviorServerGate.processReadiness.blockers),
-          advisories: nameProcessDetails(behaviorServerGate.processReadiness.advisories),
-        }
-      : {
-          schemaVersion: 1,
-          status: 'BLOCKED',
-          blockers: [
-            {
-              code: recipe.productionThermalMode
-                ? 'PROCESS_AUTHORITY_PENDING'
-                : 'PROCESS_THERMAL_MODE_REQUIRED',
-              productId: null,
-              mapperIngredientId: null,
-              decision: 'UNKNOWN',
-              verificationStatus: 'unknown',
-            },
-          ],
-          advisories: [],
-        };
-  const canStartProduction =
-    productionPrerequisite === null &&
-    recipe.productionThermalMode !== null &&
-    processReadiness.status !== 'BLOCKED';
+      ? (() => {
+          const advisories = nameProcessDetails([
+            ...behaviorServerGate.processReadiness.blockers,
+            ...behaviorServerGate.processReadiness.advisories,
+          ]);
+          return {
+            schemaVersion: 1 as const,
+            status: advisories.length > 0 ? ('READY_WITH_INFO' as const) : ('READY' as const),
+            blockers: [],
+            advisories,
+          };
+        })()
+      : { schemaVersion: 1, status: 'READY', blockers: [], advisories: [] };
+  const canStartProduction = productionPrerequisite === null;
   const corrections = useMemo(
     () =>
       proposeCorrections({
@@ -1080,7 +1058,7 @@ export function useProductionWorkspace(enabled: boolean) {
       }
     },
     startNewSession: async () => {
-      if (!canStartProduction || sessionStart.busy || !recipe.productionThermalMode) return;
+      if (!canStartProduction || sessionStart.busy) return;
       setSessionStart({ busy: true, error: null });
       try {
         const localAuthority = evaluateRecipeConstraintAuthority({
@@ -1112,15 +1090,18 @@ export function useProductionWorkspace(enabled: boolean) {
             snapshots: plannedComposition.behaviorSnapshots ?? {},
             module: 'PRODUCTION',
             accountId: ownerUserId,
-            thermalMode: recipe.productionThermalMode,
+            ...(recipe.productionThermalMode
+              ? { thermalMode: recipe.productionThermalMode }
+              : {}),
           });
-          if (!validation.ready || validation.processReadiness?.status === 'BLOCKED') {
+          // Only product authority can hold Production. Process readiness is
+          // information and is deliberately not consulted here.
+          if (!validation.ready) {
             setBehaviorServerGate({
               key: behaviorValidationKey,
-              ready: validation.ready,
-              message: validation.ready
-                ? null
-                : 'Produkcja wymaga odświeżenia bieżącej weryfikacji produktów. Obliczenie receptury pozostaje bez zmian.',
+              ready: false,
+              message:
+                'Produkcja wymaga odświeżenia bieżącej weryfikacji produktów. Obliczenie receptury pozostaje bez zmian.',
               processReadiness: validation.processReadiness ?? null,
             });
             return;

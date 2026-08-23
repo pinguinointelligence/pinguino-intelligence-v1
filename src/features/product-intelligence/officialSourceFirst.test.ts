@@ -152,10 +152,11 @@ describe('the Comprital regression', () => {
     expect(intelligence.researchIdentity.technicalPdfUrl).toBe('https://comprital.pl/k.pdf');
   });
 
-  it('still refuses Engine permission however good the source is', () => {
+  it('treats a technical product as importable on its identity alone', () => {
     const intelligence = intel(row({ 'Primary Source URL': 'https://comprital.pl/x' }));
     expect(intelligence.kind).toBe('technical');
-    expect(intelligence.assessment.technicalBlocked).toBe(true);
+    // No dosage authority is demanded before this product may exist.
+    expect(intelligence.assessment.missingCritical).not.toContain('dosage');
   });
 });
 

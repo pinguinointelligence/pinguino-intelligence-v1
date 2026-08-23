@@ -194,9 +194,6 @@ export const constraintStudioCopy = {
       `Wynik narusza zatwierdzone zakresy technologiczne (natywne): ` +
       `${listPl(metrics.map(metricLabelPl))}. Ten podgląd służy wyłącznie diagnozie — ` +
       'nie można go zastosować jako receptury.',
-    diagnosticProductDosage:
-      'Propozycja nadal narusza twardą dawkę produktu potwierdzoną w ProductBehavior. ' +
-      'Parametry Engine nie mogą zastąpić tej granicy; Apply pozostaje wyłączony.',
     /* OWNER ADDENDUM item 3 (honest terminology) — SUPERSEDES „nie jest
        dowiedzioną najlepszą osiągalną recepturą": that phrasing implied some
        OTHER result IS a proven best-achievable recipe. The solver is

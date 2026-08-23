@@ -280,8 +280,6 @@ export function assessIntimportProduct(
     exactCanonicalMatch,
     mapperFamilyMatch: familyApplied,
     materialConflicts: conflicts,
-    // INTIMPORT never grants technical authority — that stays with ProductBehavior.
-    technicalAuthority: false,
   };
 
   const assessment = assessProductConfidence(evidence);
@@ -321,8 +319,9 @@ export function assessIntimportProduct(
             barcode: candidate.ean,
           },
           technical: kind === 'technical',
-          // INTIMPORT never grants technical authority; that stays with
-          // ProductBehavior, which resolves server-side and fails closed.
+          // INTIMPORT never resolves a manufacturer's dosage authority. The
+          // resulting flag is reported so the owner can SEE that the dosage is
+          // unproven; it withholds nothing.
           technicalAuthority: false,
         },
         mapper,
@@ -373,9 +372,10 @@ export interface IntimportLocalSummary {
   /** Upper bound on external calls if the owner enriches everything under 90%. */
   estimatedMaxExternalCalls: number;
   /**
-   * Numeric readiness, reported SEPARATELY from technical authority: a
-   * professional product may have a complete composition and still be blocked
-   * from dosing, and the reverse is equally valid.
+   * Numeric readiness, reported SEPARATELY from the informational
+   * dosage-authority flag: a professional product may have a complete
+   * composition and an unproven dosage, and neither says anything about
+   * the other.
    */
   valueReadiness: Record<ValueReadiness, number> | null;
   /** Products the Mapper gave at least one working field to. */
@@ -441,14 +441,16 @@ export const MAX_CALLS_PER_PRODUCT = 3;
 
 /* ── import handoff ────────────────────────────────────────────────────────── */
 
-/** What a row may do once it is in the catalogue. Readiness gates USE, not existence. */
+/** What a row may do once it is in the catalogue. Readiness gates USE, not existence.
+ *
+ * There is no `TECHNICAL_AUTHORITY_REQUIRED` state: its only cause was a missing
+ * manufacturer dosage, which is informational (owner decision, 2026-08-23). The
+ * fact itself survives as `workingValues.technicalAuthorityRequired`. */
 export type ImportedProductState =
   /** Every engine field measured. */
   | 'READY_VERIFIED'
   /** Engine-usable on values a compatible Mapper profile supplied. */
   | 'READY_ESTIMATED'
-  /** Composition may be complete; technical/dosage use stays fail-closed. */
-  | 'TECHNICAL_AUTHORITY_REQUIRED'
   /** Stored with whatever is known, but not fit to formulate with. */
   | 'REVIEW';
 
@@ -476,9 +478,9 @@ export interface IntimportImportPlan {
  * owner imported is a product they have; refusing to store it because its water
  * is unknown loses the identity, the label evidence and the enrichment work
  * already done on it. So nothing is dropped here — a REVIEW row is written with
- * everything known about it and simply is not engine-usable, and a technical
- * product is written with its composition while ProductBehavior keeps its dosing
- * fail-closed.
+ * everything known about it and simply is not engine-usable, and a professional
+ * product is written with its composition regardless of whether its dosage is
+ * known — that is the manufacturer's instruction, not our permission.
  *
  * The resolved working values, estimates included, go into the SAME canonical
  * numeric fields a measured product uses, because that is what makes an
@@ -492,7 +494,6 @@ export function planIntimportImport(
   const byState: Record<ImportedProductState, number> = {
     READY_VERIFIED: 0,
     READY_ESTIMATED: 0,
-    TECHNICAL_AUTHORITY_REQUIRED: 0,
     REVIEW: 0,
   };
 

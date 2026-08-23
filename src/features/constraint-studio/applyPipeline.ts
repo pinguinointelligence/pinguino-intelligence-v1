@@ -140,9 +140,7 @@ import {
   productBehaviorRequiredLineIds,
   productBehaviorSnapshotFingerprint,
   verifyMainEnvelope,
-  assessProductDosages,
   type MainEnvelopeViolation,
-  type ProductDosageViolation,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
@@ -744,9 +742,6 @@ export interface ConstraintPreview {
   hardResidualMetrics?: string[];
   /** Exact per-metric Engine evidence for a diagnostic-only Preview. */
   residualMetricDiagnostics?: ResidualMetricDiagnostic[];
-  /** Exact ProductBehavior dosage violations on the proposed executable vector.
-   * These are hard product gates, separate from Engine POD/NPAC/etc bands. */
-  productDosageDiagnostics?: ProductDosageViolation[];
   /** ACCEPTANCE ADDENDUM (1+3) + owner addendum item 2: TRUE ⇒ diagnostic
    * preview — Apply is structurally disabled at the door (iteration cap,
    * hard-native residual, or non-approved formulation provenance).
@@ -759,7 +754,6 @@ export interface ConstraintPreview {
     | 'iteration_cap'
     | 'reference_derived'
     | 'protein_claim_residual'
-    | 'product_dosage'
     | 'practicalization_blocked';
   /** Owner 2026-08-11: exact Engine candidate and the independently
    * Engine-recalculated whole-gram recipe the user will physically make.
@@ -1907,7 +1901,6 @@ function solveOneRound(
   excludedIngredientIds: ReadonlySet<string>,
   /** §17-held LINE ids — the padlock layer the engine's own rules cannot see. */
   heldLineIds: ReadonlySet<string> = new Set(),
-  productBehaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>> = {},
 ):
   | {
       applied: RecipeInput;
@@ -1979,13 +1972,6 @@ function solveOneRound(
     const dosageBlocked = canonicalCandidate.actions.some((action) =>
       violatesApprovedStabilizerDosage(current, action),
     );
-    const appliedForDosage =
-      !addBlocked && !excludedBlocked && !dosageBlocked
-        ? applyAutoFix({ input: solverInput, proposal: canonicalCandidate, context })
-        : null;
-    const productDosageBlocked =
-      appliedForDosage?.success === true &&
-      assessProductDosages(appliedForDosage.newInput, productBehaviorSnapshots).length > 0;
     // Owner CURRENT-DRAFT P0 — §17 LINE HOLD: the engine's REDUCE path selects
     // the dominant contributor from `lock_type` alone and is blind to the §17
     // padlock layer, so a `locked`/`range` line could be moved INSIDE a
@@ -1994,13 +1980,7 @@ function solveOneRound(
     const heldLineBlocked = canonicalCandidate.actions.some(
       (action) => action.target_line_id !== undefined && heldLineIds.has(action.target_line_id),
     );
-    if (
-      !addBlocked &&
-      !excludedBlocked &&
-      !dosageBlocked &&
-      !productDosageBlocked &&
-      !heldLineBlocked
-    ) {
+    if (!addBlocked && !excludedBlocked && !dosageBlocked && !heldLineBlocked) {
       proposal = canonicalCandidate;
       break;
     }
@@ -2010,11 +1990,9 @@ function solveOneRound(
         ? 'constrained_add_blocked'
         : excludedBlocked
           ? 'excluded_add_blocked'
-          : productDosageBlocked
-            ? 'product_behavior_dosage_clamp'
-            : heldLineBlocked
-              ? 'constrained_line_blocked'
-              : 'stabilizer_dosage_clamp',
+          : heldLineBlocked
+            ? 'constrained_line_blocked'
+            : 'stabilizer_dosage_clamp',
     });
   }
   if (!proposal) {
@@ -2263,7 +2241,6 @@ function iterateSolverToFixedPoint(
       constrainedIngredientIds,
       excludedIngredientIds,
       heldLineIds,
-      productBehaviorSnapshots,
     );
     solverInvocations += 1;
     // Owner Agent 3 — QA move log: candidates the §17/dosage filter rejected.
@@ -2301,14 +2278,8 @@ function iterateSolverToFixedPoint(
         // Scale for the user-intent reduction floor (owner SOFT-HOLD).
         target_batch_grams: working.target_batch_grams,
       } as const;
-      const normalize = (candidate: RecipeInput) => {
-        const normalized = restore(
-          ensureUniqueLineIds(base, mergeByCanonicalIdentity(base, candidate)),
-        );
-        return assessProductDosages(normalized, productBehaviorSnapshots ?? {}).length > 0
-          ? working
-          : normalized;
-      };
+      const normalize = (candidate: RecipeInput) =>
+        restore(ensureUniqueLineIds(base, mergeByCanonicalIdentity(base, candidate)));
 
       const hasExactDirectionObjective = hasActiveExactDirectionObjective(base);
       if (
@@ -2394,10 +2365,8 @@ function iterateSolverToFixedPoint(
       ensureUniqueLineIds(base, mergeByCanonicalIdentity(base, outcome.applied)),
     );
     const next = measure(candidate);
-    const dosageSafe = assessProductDosages(candidate, productBehaviorSnapshots ?? {}).length === 0;
     const exactDirectionActive = hasActiveExactDirectionObjective(base);
     const improved =
-      dosageSafe &&
       (!exactDirectionActive || next.violations <= current.violations) &&
       (next.violations < current.violations ||
         next.severityPoints < current.severityPoints - SEVERITY_EPS);
@@ -2405,11 +2374,7 @@ function iterateSolverToFixedPoint(
       round,
       move: describeActions(outcome.proposal),
       outcome: improved ? 'applied' : 'rejected',
-      rejectionReason: improved
-        ? null
-        : dosageSafe
-          ? 'no_metric_improvement'
-          : 'product_behavior_dosage_clamp',
+      rejectionReason: improved ? null : 'no_metric_improvement',
       violationsBefore: current.violations,
       severityBefore: current.severityPoints,
       violationsAfter: next.violations,
@@ -2737,9 +2702,6 @@ export function projectManualIngredientTarget(
     ) {
       return null;
     }
-    if (assessProductDosages(executable, options.productBehaviorSnapshots ?? {}).length > 0) {
-      return null;
-    }
     const protein = assessProteinFormulation(executable, result);
     if (protein.applicable && !protein.qualification.qualified) return null;
     if (
@@ -2977,8 +2939,6 @@ function maximizeMainFromStart(
       executable.category !== 'vegan_gelato' ||
       (veganRecipeEligibilityIssues(executable.items).length === 0 &&
         veganProfileConstraintIssues(executable).length === 0);
-    const productDosageValid =
-      assessProductDosages(executable, options.productBehaviorSnapshots ?? {}).length === 0;
     return identity.ok &&
       constraints.ok &&
       hardCount <= baselineHardCount &&
@@ -2987,8 +2947,7 @@ function maximizeMainFromStart(
       directionReached >= baselineDirectionReached &&
       preservesProteinFrontier(executable, practical.audit.executableResult) &&
       ecoValid &&
-      veganValid &&
-      productDosageValid
+      veganValid
       ? score
       : null;
   };
@@ -3526,20 +3485,6 @@ function maximizeMainTechnicalObjective(
           mainGrams: requestedMainGrams,
           reason: 'hard_gate',
           rules: mainEnvelope.violations.map((violation) => violation.code),
-        };
-      }
-      const productDosageViolations = assessProductDosages(
-        executable,
-        options.productBehaviorSnapshots ?? {},
-      );
-      if (productDosageViolations.length > 0) {
-        return {
-          ok: false,
-          mainGrams: requestedMainGrams,
-          reason: 'hard_gate',
-          rules: productDosageViolations.map(
-            (violation) => `product_dosage:${violation.lineId}:${violation.code}`,
-          ),
         };
       }
     }
@@ -7322,12 +7267,11 @@ export function bindProductBehaviorToPreview(
     module: behaviorModule,
     technicalOnlyMainLineIds,
   });
-  const dosageIssues = authority.issues.filter((issue) => issue.code === 'product_dosage_invalid');
   const authorityBlocking = authority.issues.filter(
     (issue) =>
       issue.source === 'owner_policy' ||
       issue.source === 'main' ||
-      (issue.source === 'product_behavior' && issue.code !== 'product_dosage_invalid') ||
+      issue.source === 'product_behavior' ||
       (issue.source === 'profile' &&
         (issue.code === 'profile_evidence_missing' || issue.code === 'profile_not_eligible')),
   );
@@ -7350,14 +7294,6 @@ export function bindProductBehaviorToPreview(
         ? copy.blocked.rejectedProposalAuthority(firstMessage)
         : 'Nie udało się potwierdzić zachowania produktu w tej recepturze.',
     };
-  }
-  const productDosageDiagnostics = dosageIssues.flatMap((issue) =>
-    'violation' in issue ? [issue.violation] : [],
-  );
-  if (productDosageDiagnostics.length > 0) {
-    result.preview.productDosageDiagnostics = productDosageDiagnostics;
-    result.preview.diagnosticOnly = true;
-    result.preview.diagnosticReason = 'product_dosage';
   }
   result.preview.productBehaviorFingerprint = productBehaviorSnapshotFingerprint(snapshots);
   result.preview.baseProductBehaviorFingerprint = productBehaviorSnapshotFingerprint(baseSnapshots);
@@ -8257,12 +8193,7 @@ export class VerifiedApply {
       );
       if (terminalIssues.length > 0) {
         const violations: MainEnvelopeViolation[] = terminalIssues.map((issue) => ({
-          code:
-            issue.code === 'product_dosage_invalid'
-              ? 'product_dosage_violation'
-              : issue.source === 'main'
-                ? issue.code
-                : 'product_behavior_missing',
+          code: issue.source === 'main' ? issue.code : 'product_behavior_missing',
           lineIds: issue.lineIds,
           messagePl: issue.messagePl,
         }));

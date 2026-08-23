@@ -19,7 +19,6 @@ const assessment = (over: Partial<ProductConfidenceAssessment> = {}): ProductCon
   confidence: 50,
   criticalReadiness: false,
   missingCritical: ['ingredients'],
-  technicalBlocked: false,
   reasons: [],
   ...over,
 });
@@ -121,7 +120,7 @@ describe('auto-import floor and no-web threshold are distinct', () => {
 
 /* ── §16 / §15 technical products ─────────────────────────────────────────── */
 
-describe('technical products stay fail-closed after research', () => {
+describe('researched dosage stays informational', () => {
   it('researches technical evidence for a professional product', () => {
     const intelligence = intelligenceFor(
       row({
@@ -137,7 +136,7 @@ describe('technical products stay fail-closed after research', () => {
     expect(intelligence.enrichmentTargets).toContain('technicalParameters');
   });
 
-  it('does not grant Engine permission however high identity confidence goes', async () => {
+  it('keeps a researched manufacturer dosage as information, not as permission', async () => {
     const intelligence = intelligenceFor(row({ 'Product Type': 'professional' }));
     const provider = vi.fn(async () => ({
       facts: [
@@ -150,9 +149,12 @@ describe('technical products stay fail-closed after research', () => {
       [{ intelligence, barcode: null }],
       provider,
     );
-    // Identity may improve; ProductBehavior authority is not INTIMPORT's to grant.
-    expect(products[0]!.assessment.technicalBlocked).toBe(true);
-    expect(products[0]!.autoImportEligible).toBe(false);
+    // The researched `50 g/kg` is stored as the manufacturer said it. It is
+    // never normalized, never converted, and never a condition of import.
+    expect(products[0]!.assessment.missingCritical).not.toContain('dosage');
+    // Whatever this row's overall confidence turns out to be, the dosage is
+    // never the thing standing in its way.
+    expect(products[0]!.assessment.criticalReadiness).toBe(true);
   });
 });
 

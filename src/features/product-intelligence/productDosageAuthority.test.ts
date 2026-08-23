@@ -1,7 +1,19 @@
+/**
+ * MANUFACTURER DOSAGE IS INFORMATIONAL ONLY (owner decision, 2026-08-23).
+ *
+ * These are the regression proofs for the removal of dosage as runtime
+ * authority. The Mapper still carries `recommended_dosage_percent_min/max`, and
+ * a product may still state something like `100–250 g/L` — we show it and stop
+ * there. What must never happen again: a missing, ambiguous or exceeded dosage
+ * withholding a product, a Preview, an Apply, a Save or a Production start.
+ *
+ * PINGÜINO's OWN stabilizer system is a different thing and is deliberately
+ * still enforced here: it is Gellatti's science about its own recipe, not a
+ * manufacturer's instruction about their product.
+ */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { RecipeInput } from '@/engine';
 import type { ProductBehaviorSnapshot } from './contracts';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import {
@@ -10,12 +22,11 @@ import {
   buildOptimizePreview,
   commitPreview,
 } from '@/features/constraint-studio/applyPipeline';
+import { assessOwnerStabilizerSystem } from '@/features/recipe-constraints';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import {
-  assessProductDosages,
-  clampProductDosageGrams,
-  productDosageAuthority,
+  productRecommendedDosageInfo,
+  productRecommendedDosagePl,
 } from './productDosageAuthority';
 
 const snapshot = (
@@ -26,6 +37,7 @@ const snapshot = (
     preferredPercent?: number | null;
     maxPercent: number | null;
     sourceVersion: string;
+    rawValue?: string | null;
     presenceSemantics?: 'optional_zero_or_range';
     provenance?: string;
     policyId?: string;
@@ -90,56 +102,8 @@ const snapshot = (
     blockReasons: [],
   }) as ProductBehaviorSnapshot;
 
-const recipe = (lineId: string, mapperIngredientId: string, grams: number): RecipeInput => ({
-  mode: 'classic',
-  category: 'milk_gelato',
-  target_temperature_c: -12,
-  target_batch_grams: 1_000,
-  machine_capacity_grams: null,
-  items: [
-    {
-      id: lineId,
-      ingredient: {
-        id: mapperIngredientId,
-        canonical_ingredient_id: mapperIngredientId,
-        identity_provenance: 'mapper',
-        name: mapperIngredientId === 'PI-ING-000456' ? 'Inulin' : mapperIngredientId,
-        category: 'stabilizer',
-        composition: {
-          water_percent: 0,
-          solids_percent: 100,
-          fat_percent: 0,
-          protein_percent: 0,
-          carbohydrate_percent: 0,
-          sugar_percent: 0,
-          sucrose_percent: 0,
-          glucose_percent: 0,
-          dextrose_percent: 0,
-          fructose_percent: 0,
-          lactose_percent: 0,
-          polyol_percent: 0,
-          fiber_percent: 100,
-          salt_percent: 0,
-          alcohol_percent: 0,
-          kcal_per_100g: 0,
-        },
-        pod_value: 0,
-        pac_value: 0,
-        de_value: null,
-        cost_per_kg: null,
-        confidence_score: 100,
-        source_type: 'verified_db',
-        is_verified: true,
-      },
-      planned_grams: grams,
-      actual_grams: null,
-      lock_type: 'unlocked',
-    },
-  ],
-});
-
-describe('ProductBehavior dosage authority', () => {
-  it('reads Tara and another stabilizer range from the immutable Mapper evidence', () => {
+describe('product dosage is informational only', () => {
+  it('preserves the raw Mapper dosage columns exactly as they were', () => {
     const csv = readFileSync(
       resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
       'utf8',
@@ -155,189 +119,6 @@ describe('ProductBehavior dosage authority', () => {
     expect([row('PI-ING-000475')[minIndex], row('PI-ING-000475')[maxIndex]]).toEqual(['0.2', '1']);
     expect([row('PI-ING-000490')[minIndex], row('PI-ING-000490')[maxIndex]]).toEqual(['0.2', '1']);
     expect([row('PI-ING-000456')[minIndex], row('PI-ING-000456')[maxIndex]]).toEqual(['', '']);
-  });
-
-  it('accepts a normal Tara amount and rejects 55 g with the exact approved range', () => {
-    const authority = snapshot('tara', 'PI-ING-000492', {
-      minPercent: 0.2,
-      maxPercent: 1,
-      sourceVersion: 'mapper-v1.0:PI-ING-000492',
-    });
-    expect(assessProductDosages(recipe('tara', 'PI-ING-000492', 5), { tara: authority })).toEqual(
-      [],
-    );
-
-    expect(assessProductDosages(recipe('tara', 'PI-ING-000492', 55), { tara: authority })).toEqual([
-      expect.objectContaining({
-        code: 'above_maximum',
-        lineId: 'tara',
-        enteredGrams: 55,
-        enteredPercent: 5.5,
-        minPercent: 0.2,
-        maxPercent: 1,
-        minGrams: 2,
-        maxGrams: 10,
-        sourceVersion: 'mapper-v1.0:PI-ING-000492',
-      }),
-    ]);
-  });
-
-  it('enforces the same exact range for another dosage-controlled stabilizer', () => {
-    const guar = snapshot('guar', 'PI-ING-000472', {
-      minPercent: 0.2,
-      maxPercent: 1,
-      sourceVersion: 'mapper-v1.0:PI-ING-000472',
-    });
-    expect(assessProductDosages(recipe('guar', 'PI-ING-000472', 25), { guar })).toEqual([
-      expect.objectContaining({ code: 'above_maximum', enteredGrams: 25, maxGrams: 10 }),
-    ]);
-  });
-
-  it('accepts Tara, Guar, LBG and Solmix together when every exact product dose is legal', () => {
-    const products = [
-      ['tara', 'PI-ING-000492'],
-      ['guar', 'PI-ING-000472'],
-      ['lbg', 'PI-ING-000475'],
-      ['solmix', 'PI-ING-000490'],
-    ] as const;
-    const multi: RecipeInput = {
-      ...recipe('tara', 'PI-ING-000492', 5),
-      items: products.map(([lineId, mapperId]) => ({
-        ...recipe(lineId, mapperId, 5).items[0]!,
-        id: lineId,
-        planned_grams: 5,
-      })),
-    };
-    const authorities = Object.fromEntries(
-      products.map(([lineId, mapperId]) => [
-        lineId,
-        snapshot(lineId, mapperId, {
-          minPercent: 0.2,
-          maxPercent: 1,
-          sourceVersion: `mapper-v1.0:${mapperId}`,
-        }),
-      ]),
-    );
-    expect(assessProductDosages(multi, authorities)).toEqual([]);
-  });
-
-  it('scales every exact product boundary with the batch and returns to the original limit', () => {
-    const tara = snapshot('tara', 'PI-ING-000492', {
-      minPercent: 0.2,
-      maxPercent: 1,
-      sourceVersion: 'mapper-v1.0:PI-ING-000492',
-    });
-    expect(productDosageAuthority(tara, 1_000)).toMatchObject({
-      status: 'defined',
-      authority: { minGrams: 2, maxGrams: 10 },
-    });
-    expect(productDosageAuthority(tara, 2_000)).toMatchObject({
-      status: 'defined',
-      authority: { minGrams: 4, maxGrams: 20 },
-    });
-    expect(productDosageAuthority(tara, 1_000)).toMatchObject({
-      status: 'defined',
-      authority: { minGrams: 2, maxGrams: 10 },
-    });
-  });
-
-  it('clamps a manual excessive amount to the nearest approved boundary', () => {
-    const authority = snapshot('tara', 'PI-ING-000492', {
-      minPercent: 0.2,
-      maxPercent: 1,
-      sourceVersion: 'mapper-v1.0:PI-ING-000492',
-    });
-    expect(clampProductDosageGrams(55, 1_000, authority)).toMatchObject({
-      ok: true,
-      grams: 10,
-      clamped: true,
-    });
-    expect(clampProductDosageGrams(5, 1_000, authority)).toMatchObject({
-      ok: true,
-      grams: 5,
-      clamped: false,
-    });
-  });
-
-  it('enforces owner-approved optional Inulin as 0% or 2–8%, preferring 4%', () => {
-    const inulin = snapshot('inulin', 'PI-ING-000456', {
-      minPercent: 2,
-      preferredPercent: 4,
-      maxPercent: 8,
-      presenceSemantics: 'optional_zero_or_range',
-      provenance: 'owner-approved Gellatti formulation policy',
-      policyId: 'gellatti-generic-inulin',
-      policyVersion: 1,
-      sourceVersion: 'owner-gellatti-inulin-v1',
-    });
-    expect(productDosageAuthority(inulin, 1_000)).toMatchObject({
-      status: 'defined',
-      authority: {
-        minGrams: 20,
-        preferredPercent: 4,
-        maxGrams: 80,
-        presenceSemantics: 'optional_zero_or_range',
-        provenance: 'owner-approved Gellatti formulation policy',
-      },
-    });
-    expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', 0), { inulin })).toEqual([]);
-    expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', 10), { inulin })).toEqual([
-      expect.objectContaining({ code: 'below_minimum', minGrams: 20 }),
-    ]);
-    for (const grams of [20, 40, 80]) {
-      expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', grams), { inulin })).toEqual(
-        [],
-      );
-    }
-    expect(assessProductDosages(recipe('inulin', 'PI-ING-000456', 81), { inulin })).toEqual([
-      expect.objectContaining({ code: 'above_maximum', maxGrams: 80 }),
-    ]);
-    expect(clampProductDosageGrams(81, 1_000, inulin)).toMatchObject({
-      ok: true,
-      grams: 80,
-      clamped: true,
-    });
-  });
-
-  it('fails closed for malformed or contradictory dosage evidence', () => {
-    const malformed = snapshot('tara', 'PI-ING-000492', {
-      minPercent: 2,
-      maxPercent: 1,
-      sourceVersion: 'mapper-v1.0:PI-ING-000492',
-    });
-    expect(productDosageAuthority(malformed, 1_000)).toMatchObject({
-      status: 'invalid_evidence',
-    });
-    expect(assessProductDosages(recipe('tara', 'PI-ING-000492', 5), { tara: malformed })).toEqual([
-      expect.objectContaining({ code: 'invalid_evidence', lineId: 'tara' }),
-    ]);
-    expect(clampProductDosageGrams(55, 1_000, malformed)).toMatchObject({
-      ok: false,
-      code: 'invalid_evidence',
-    });
-  });
-
-  it('clamps a direct manual grams edit before it reaches PI', () => {
-    const before = useRecipeStore.getState();
-    const input = ownerSameInputRecipe();
-    const tara = snapshot('owner:tara_gum', 'PI-ING-000492', {
-      minPercent: 0.2,
-      maxPercent: 1,
-      sourceVersion: 'mapper-v1.0:PI-ING-000492',
-    });
-    try {
-      useRecipeStore.setState({
-        items: input.items,
-        target_batch_grams: input.target_batch_grams,
-        productBehaviorSnapshots: { 'owner:tara_gum': tara },
-      });
-      useRecipeStore.getState().setPlannedGrams('owner:tara_gum', 55);
-      expect(
-        useRecipeStore.getState().items.find((item) => item.id === 'owner:tara_gum'),
-      ).toMatchObject({ planned_grams: 5, user_target_grams: 5 });
-    } finally {
-      useRecipeStore.setState(before, true);
-    }
   });
 
   it('clamps a newly added gum against the existing Gelato aggregate and preserves legal 1 g components', () => {
@@ -474,148 +255,6 @@ describe('ProductBehavior dosage authority', () => {
     });
   });
 
-  it('does not misreport an already-clean PI state when the current draft violates dosage', () => {
-    const beforeRecipe = useRecipeStore.getState();
-    const beforeStudio = useConstraintStudioStore.getState();
-    const input = ownerSameInputRecipe();
-    input.items = input.items.map((item) =>
-      item.id === 'owner:tara_gum'
-        ? { ...item, planned_grams: 55 }
-        : item.id === 'owner:milk_3_5'
-          ? { ...item, planned_grams: item.planned_grams - 53.1 }
-          : item,
-    );
-    const tara = snapshot('owner:tara_gum', 'PI-ING-000492', {
-      minPercent: 0.2,
-      maxPercent: 1,
-      sourceVersion: 'mapper-v1.0:PI-ING-000492',
-    });
-    try {
-      useRecipeStore.setState({
-        items: input.items,
-        target_batch_grams: input.target_batch_grams,
-        productBehaviorSnapshots: { 'owner:tara_gum': tara },
-      });
-      useConstraintStudioStore.getState().createOptimizePreview();
-      expect(useConstraintStudioStore.getState()).toMatchObject({
-        preview: null,
-        previewIssue: {
-          ok: false,
-          code: 'product_behavior_invalid',
-          violations: [expect.objectContaining({ code: 'product_dosage_violation' })],
-        },
-        recalculationTerminal: {
-          state: 'BLOCKED_WITH_EXACT_ACTION',
-          code: 'product_behavior_invalid',
-        },
-      });
-    } finally {
-      useRecipeStore.setState(beforeRecipe, true);
-      useConstraintStudioStore.setState(beforeStudio, true);
-    }
-  });
-
-  it('turns a locked excessive dose into an explicit safe lock-change Preview', () => {
-    const beforeRecipe = useRecipeStore.getState();
-    const beforeStudio = useConstraintStudioStore.getState();
-    const input = ownerSameInputRecipe();
-    input.items = input.items.map((item) =>
-      item.id === 'owner:tara_gum'
-        ? {
-            ...item,
-            planned_grams: 55,
-            lock_type: 'grams',
-            grams_constraint: { grams: 55 },
-          }
-        : item.id === 'owner:milk_3_5'
-          ? { ...item, planned_grams: item.planned_grams - 53.1 }
-          : item,
-    );
-    const snapshots = Object.fromEntries(
-      input.items.map((item) => [
-        item.id,
-        snapshot(
-          item.id,
-          item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
-          item.id === 'owner:tara_gum'
-            ? {
-                minPercent: 0.2,
-                maxPercent: 1,
-                sourceVersion: 'mapper-v1.0:PI-ING-000492',
-              }
-            : null,
-        ),
-      ]),
-    );
-    try {
-      useRecipeStore.setState({
-        items: input.items,
-        target_batch_grams: input.target_batch_grams,
-        productBehaviorSnapshots: snapshots,
-      });
-      useConstraintStudioStore.setState({
-        constraints: { byLineId: { 'owner:tara_gum': { mode: 'locked', grams: 55 } } },
-      });
-
-      useConstraintStudioStore.getState().createOptimizePreview();
-
-      expect(useConstraintStudioStore.getState()).toMatchObject({
-        preview: {
-          kind: 'suggested_fix',
-          safetyLockConflict: {
-            lineId: 'owner:tara_gum',
-            beforeGrams: 55,
-            requiredGrams: 5,
-            boundary: 'maximum',
-          },
-        },
-        suggestedFixAuthorization: {
-          type: 'set_max',
-          lineId: 'owner:tara_gum',
-          grams: 5,
-        },
-        previewIssue: null,
-        recalculationTerminal: { state: 'PREVIEW_READY' },
-      });
-      expect(
-        useRecipeStore.getState().items.find((item) => item.id === 'owner:tara_gum'),
-      ).toMatchObject({ planned_grams: 55, grams_constraint: { grams: 55 } });
-    } finally {
-      useRecipeStore.setState(beforeRecipe, true);
-      useConstraintStudioStore.setState(beforeStudio, true);
-    }
-  });
-
-  it('keeps the guarded recipe write closed even if a caller bypasses Preview', () => {
-    const before = useRecipeStore.getState();
-    const input = ownerSameInputRecipe();
-    input.items = input.items.map((item) =>
-      item.id === 'owner:tara_gum'
-        ? { ...item, planned_grams: 55 }
-        : item.id === 'owner:milk_3_5'
-          ? { ...item, planned_grams: item.planned_grams - 53.1 }
-          : item,
-    );
-    const tara = snapshot('owner:tara_gum', 'PI-ING-000492', {
-      minPercent: 0.2,
-      maxPercent: 1,
-      sourceVersion: 'mapper-v1.0:PI-ING-000492',
-    });
-    try {
-      const written = useRecipeStore
-        .getState()
-        .applyVerifiedRecipeInput(input, { 'owner:tara_gum': tara });
-      expect(written).toMatchObject({
-        ok: false,
-        code: 'product_dosage_violation',
-        violations: [expect.objectContaining({ lineId: 'owner:tara_gum', enteredGrams: 55 })],
-      });
-      expect(useRecipeStore.getState().items).toBe(before.items);
-    } finally {
-      useRecipeStore.setState(before, true);
-    }
-  });
-
   it('does not let 555 g Inulin silently survive the real PI flow as an applicable success', () => {
     const input = ownerSameInputRecipe();
     input.items = input.items.map((item) =>
@@ -659,5 +298,138 @@ describe('ProductBehavior dosage authority', () => {
         bound.preview.diagnosticOnly === true ||
         (bound.preview.hardResidualMetrics?.length ?? 0) > 0,
     ).toBe(true);
+  });
+  it('exposes a recommended dosage as product information, and nothing more', () => {
+    const tara = snapshot('tara', 'PI-ING-000492', {
+      minPercent: 0.2,
+      maxPercent: 1,
+      sourceVersion: 'mapper-v1.0:PI-ING-000492',
+    });
+    expect(productRecommendedDosageInfo(tara)).toEqual({
+      minPercent: 0.2,
+      preferredPercent: null,
+      maxPercent: 1,
+      rawValue: null,
+      sourceVersion: 'mapper-v1.0:PI-ING-000492',
+    });
+    // Shown as declared. No grams for this batch, no re-based percentage.
+    expect(productRecommendedDosagePl(tara)).toBe('0.2%–1%');
+    expect(productRecommendedDosagePl(snapshot('x', 'PI-ING-000456', null))).toBe(
+      'Brak informacji',
+    );
+  });
+
+  it('preserves an ambiguous manufacturer string verbatim and never interprets it', () => {
+    const paste = snapshot('paste', 'PI-ING-000490', {
+      minPercent: null,
+      maxPercent: null,
+      rawValue: '100–250 g/L',
+      sourceVersion: 'supplier-technical-sheet',
+    });
+    const info = productRecommendedDosageInfo(paste)!;
+    // Not converted to a percentage, not re-based onto the mix, not turned
+    // into grams per 1000 g. We do not know the litre of what, and we do not
+    // guess.
+    expect(info.rawValue).toBe('100–250 g/L');
+    expect(info.minPercent).toBeNull();
+    expect(info.maxPercent).toBeNull();
+    expect(productRecommendedDosagePl(paste)).toBe('100–250 g/L');
+  });
+
+  it('lets the user enter any amount of a dosage-controlled product', () => {
+    const before = useRecipeStore.getState();
+    const input = ownerSameInputRecipe();
+    // A NON-stabilizer product carrying a narrow manufacturer window. (Our own
+    // stabilizer system is separate and still applies to stabilizer lines.)
+    const declared = snapshot('owner:milk_3_5', 'PI-ING-000200', {
+      minPercent: 0.2,
+      maxPercent: 1,
+      sourceVersion: 'supplier-technical-sheet',
+    });
+    try {
+      useRecipeStore.setState({
+        category: input.category,
+        items: input.items,
+        target_batch_grams: input.target_batch_grams,
+        productBehaviorSnapshots: { 'owner:milk_3_5': declared },
+      });
+      // 555 g is far outside the declared 0.2–1 % window. It is accepted: the
+      // professional decides how much of their own product to use.
+      useRecipeStore.getState().setPlannedGrams('owner:milk_3_5', 555);
+      expect(
+        useRecipeStore.getState().items.find((item) => item.id === 'owner:milk_3_5'),
+      ).toMatchObject({ planned_grams: 555, user_target_grams: 555 });
+    } finally {
+      useRecipeStore.setState(before, true);
+    }
+  });
+
+  it('accepts a product that declares no dosage at all', () => {
+    const before = useRecipeStore.getState();
+    const input = ownerSameInputRecipe();
+    try {
+      useRecipeStore.setState({
+        category: 'sorbet',
+        items: input.items,
+        target_batch_grams: input.target_batch_grams,
+        productBehaviorSnapshots: Object.fromEntries(
+          input.items.map((item) => [
+            item.id,
+            snapshot(
+              item.id,
+              item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+              null,
+            ),
+          ]),
+        ),
+      });
+      const line = input.items.find((item) => item.id !== 'owner:tara_gum')!;
+      useRecipeStore.getState().setPlannedGrams(line.id, line.planned_grams + 7);
+      expect(
+        useRecipeStore.getState().items.find((item) => item.id === line.id)?.planned_grams,
+      ).toBe(line.planned_grams + 7);
+    } finally {
+      useRecipeStore.setState(before, true);
+    }
+  });
+
+  it('never derives an automatic dose from a recommended dosage', () => {
+    const before = useRecipeStore.getState();
+    const input = ownerSameInputRecipe();
+    const tara = input.items.find((item) => item.id === 'owner:tara_gum')!;
+    const fresh = {
+      ...tara.ingredient,
+      id: 'PI-ING-TEST-FRESH',
+      canonical_ingredient_id: 'PI-ING-TEST-FRESH',
+      name: 'Fresh technical product',
+    };
+    try {
+      useRecipeStore.setState({
+        category: input.category,
+        items: input.items,
+        target_batch_grams: input.target_batch_grams,
+        productBehaviorSnapshots: {},
+      });
+      const added = useRecipeStore.getState().addIngredient(fresh, 0);
+      expect(added.status).toBe('added');
+      expect(
+        useRecipeStore.getState().items.find((item) => item.id === added.lineId)?.planned_grams,
+      ).toBe(0);
+    } finally {
+      useRecipeStore.setState(before, true);
+    }
+  });
+
+  it('keeps PINGÜINO\u2019s own stabilizer system enforced — it is our science, not a supplier note', () => {
+    const input = ownerSameInputRecipe();
+    input.category = 'sorbet';
+    input.items = input.items.map((item) =>
+      item.id === 'owner:tara_gum'
+        ? { ...item, planned_grams: 55 }
+        : item.id === 'owner:milk_3_5'
+          ? { ...item, planned_grams: item.planned_grams - 53.1 }
+          : item,
+    );
+    expect(assessOwnerStabilizerSystem(input).issues.length).toBeGreaterThan(0);
   });
 });

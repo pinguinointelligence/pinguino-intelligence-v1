@@ -415,8 +415,8 @@ function classify(row, processRow) {
   if (behaviorRole === 'TOPPING_ONLY') reasons.push('post_process_product_not_base_main');
   if (behaviorRole === 'STRUCTURAL_ONLY') reasons.push('structural_product_not_flavour_main');
   if (behaviorRole === 'STANDARD_ONLY') reasons.push('standard_product_not_flavour_main');
-  if ((processRow?.process_status ?? 'UNKNOWN') === 'UNKNOWN')
-    reasons.push('process_evidence_missing');
+  // PROCESS IS INFORMATIONAL ONLY (owner decision, 2026-08-23): an UNKNOWN
+  // process is not a classification reason and never withholds anything.
 
   return {
     ingredient_id: row.ingredient_id,
@@ -437,12 +437,9 @@ function classify(row, processRow) {
       row.approved_for_base === 'TRUE' && row.approved_for_engines === 'TRUE'
         ? 'ELIGIBLE'
         : 'BLOCKED_MAPPER_APPROVAL',
-    main_permission:
-      mainPolicyStatus === 'COVERED'
-        ? processRow?.process_status && processRow.process_status !== 'UNKNOWN'
-          ? 'ELIGIBLE'
-          : 'BLOCKED_PROCESS_EVIDENCE'
-        : mainPolicyStatus,
+    // Main permission is a Main-policy question. Process is informational and
+    // is reported separately in `process_mapping` — it never withholds Main.
+    main_permission: mainPolicyStatus === 'COVERED' ? 'ELIGIBLE' : mainPolicyStatus,
     policy_coverage:
       exact?.coverage ?? (policyCovered ? 'INHERITED_PUBLISHED_POLICY' : mainPolicyStatus),
     process_mapping: processRow?.process_status ?? 'UNKNOWN',

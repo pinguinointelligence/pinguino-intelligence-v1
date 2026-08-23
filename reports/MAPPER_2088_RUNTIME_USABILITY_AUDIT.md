@@ -8,10 +8,10 @@ Generated deterministically by `scripts/auditMapperRuntimeUsability.mjs`. The so
 | Searchable rows | 2088 | 2088 | Every active direct Mapper reference remains visible |
 | Selectable Base rows | 1712 | 2075 | After = active + approved_for_base |
 | Engine-calculable rows | 1712 | 2074 | After = Engine approval + 9 required numerical fields + grams > 0 |
-| Blocked solely by provenance | 355 | 0 | Badge/tooltip only after repair |
+| Blocked solely by provenance | 362 | 0 | Badge/tooltip only after repair |
 | Blocked solely by confidence | 0 | 0 | No direct confidence predicate is authorized |
-| Blocked solely by process UNKNOWN for technical PI | 46 | 0 | Process remains a Process/Production concern |
-| Missing dosage | 1835 | 1835 | Informational; initial dose 0 g |
+| Blocked solely by process UNKNOWN for technical PI | 0 | 0 | Process is informational only |
+| Missing dosage | 1835 | 1835 | Informational; the user enters grams |
 | Missing price | 1543 | 1543 | Cost incomplete only |
 | Actual technical-data blockers | 14 | 14 | Unique Engine-ineligible set; technical missing overlaps it |
 | approved_for_base=false | 13 | 13 | Real Base block |
@@ -39,8 +39,8 @@ Generated deterministically by `scripts/auditMapperRuntimeUsability.mjs`. The so
 
 1. `approved_for_base=false` blocks Base only.
 2. `approved_for_engines=false` or one of the nine missing numerical fields blocks technical PI.
-3. Zero grams blocks the PI click until the user enters at least 1 g; unknown dosage itself does not block selection.
-4. Process UNKNOWN is preserved for Process/Production warnings and does not block technical PI.
+3. Zero grams blocks the PI click until the user enters at least 1 g; unknown dosage itself does not block anything.
+4. Process UNKNOWN is preserved as product information and blocks nothing — not selection, not the Engine, not Production.
 5. Missing price leaves cost incomplete and prevents an honest cheapest-result claim; technical calculation remains available.
 
 The exhaustive CSV preserves every simultaneous module-scoped reason instead of collapsing it into a single status.

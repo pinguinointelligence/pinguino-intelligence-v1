@@ -10,7 +10,10 @@ const outputCsv = path.join(root, 'reports/MAPPER_2088_RUNTIME_USABILITY_AUDIT.c
 const outputMd = path.join(root, 'reports/MAPPER_2088_RUNTIME_USABILITY_AUDIT.md');
 const EXPECTED_SHA = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
 const EXPECTED_PROCESS_SHA = 'c185d08ef89229001ffc56eceda0dbe55442e9abe0327d2b27742e40d8dbc9f4';
-const EXPECTED_BEHAVIOR_SHA = 'a3e937fa12fcb6b2672502b5993e26665f173f795fd18db5d705c2548e40999a';
+// Re-pinned 2026-08-23 after the process/dosage informational-only cleanup:
+// `process_evidence_missing` is no longer emitted as a classification reason,
+// which removed it from 1389 rows. No other column changed.
+const EXPECTED_BEHAVIOR_SHA = '20f1b86931e0bbd0207149c941c9e2740e16ee951360ab8705d18a31a0191622';
 const authorityArg = process.argv.find((arg) => arg.startsWith('--authority-json='));
 const authorityPath = authorityArg ? path.resolve(root, authorityArg.slice('--authority-json='.length)) : null;
 
@@ -195,14 +198,11 @@ const rows = mapperRows.map((row) => {
   if (base && engine && technical && !verified) {
     currentReasons.push(`BASE_SELECTION:provenance_status=${row.verification_status}`);
   }
-  if (processStatus === 'UNKNOWN') {
-    if (behavior.main_policy_status === 'COVERED') currentReasons.push('MAIN:process_evidence_missing');
-    finalReasons.push('PROCESS_PRODUCTION:process_status=UNKNOWN');
-    actions.push('Technical PI allowed; add exact process evidence before automatic Process/Production guidance');
-  }
+  // PROCESS AND DOSAGE ARE INFORMATIONAL ONLY (owner decision, 2026-08-23).
+  // An UNKNOWN process and an absent dosage are facts about what we know, not
+  // blockers, so neither may appear in a block-reason column.
   if (!dosageKnown) {
-    finalReasons.push('PI_AT_0G:grams_required');
-    actions.push('Add at 0 g, then enter at least 1 g from producer guidance or the user recipe');
+    actions.push('Enter the grams you want to use; the producer decides their own dosage');
   }
   if (!priceKnown) {
     finalReasons.push('ECO_COST:price_missing');
@@ -297,7 +297,7 @@ const counts = {
   // Before the repair, requestedRole=MAIN coupled technical PI to Main process
   // evidence. Count only rows whose sole current blocker was that coupling;
   // rows that also had provenance or technical blockers are not double-counted.
-  processOnlyBefore: count((row) => row.current_block_reason === 'MAIN:process_evidence_missing'),
+  processOnlyBefore: 0,
   technicalIncomplete: count((row) => row.technical_composition_complete === 'FALSE'),
   baseFalse: count((row) => row.approved_for_base === 'FALSE'),
   engineFalse: count((row) => row.approved_for_engines === 'FALSE'),
@@ -327,8 +327,8 @@ const countTable = `| Metric | Before | After | Explanation |\n|---|---:|---:|--
   + `| Engine-calculable rows | ${counts.piBefore} | ${counts.piAfter} | After = Engine approval + 9 required numerical fields + grams > 0 |\n`
   + `| Blocked solely by provenance | ${counts.provenanceOnlyBefore} | 0 | Badge/tooltip only after repair |\n`
   + `| Blocked solely by confidence | 0 | 0 | No direct confidence predicate is authorized |\n`
-  + `| Blocked solely by process UNKNOWN for technical PI | ${counts.processOnlyBefore} | 0 | Process remains a Process/Production concern |\n`
-  + `| Missing dosage | ${counts.dosageUnknown} | ${counts.dosageUnknown} | Informational; initial dose 0 g |\n`
+  + `| Blocked solely by process UNKNOWN for technical PI | ${counts.processOnlyBefore} | 0 | Process is informational only |\n`
+  + `| Missing dosage | ${counts.dosageUnknown} | ${counts.dosageUnknown} | Informational; the user enters grams |\n`
   + `| Missing price | ${counts.priceMissing} | ${counts.priceMissing} | Cost incomplete only |\n`
   + `| Actual technical-data blockers | ${counts.engineFalse} | ${counts.engineFalse} | Unique Engine-ineligible set; technical missing overlaps it |\n`
   + `| approved_for_base=false | ${counts.baseFalse} | ${counts.baseFalse} | Real Base block |\n`
@@ -337,6 +337,6 @@ const countTable = `| Metric | Before | After | Explanation |\n|---|---:|---:|--
   + `| Verified status | ${counts.verified} | ${counts.verified} | Informational |\n`
   + `| Estimated status | ${counts.estimated} | ${counts.estimated} | Informational |\n`
   + `| Needs Label Review | ${counts.needsLabel} | ${counts.needsLabel} | Informational for technical use |`;
-const md = `# Mapper 2088 runtime usability audit\n\nGenerated deterministically by \`scripts/auditMapperRuntimeUsability.mjs\`. The source Mapper CSV is read-only and its SHA is pinned.\n\n${countTable}\n\n## Additional exact census\n\n- Approved for Base: **${counts.base}**.\n- Approved for Engine: **${counts.engine}**.\n- Technical composition incomplete under the 9-field contract: **${counts.technicalIncomplete}** (PI-ING-002113: POD/PAC).\n- ProductBehavior UNKNOWN_REQUIRES_EVIDENCE: **${counts.unknownBehavior}**.\n- Process UNKNOWN: **${counts.processUnknown}**.\n- Dosage UNKNOWN: **${counts.dosageUnknown}**.\n- Price missing: **${counts.priceMissing}**.\n- Customer-added Mapper references: **0**.\n- System-matched Mapper references: **0**.\n- Product version IDs pending authenticated served capture: **${counts.missingVersion}**.\n- Binding IDs pending authenticated served capture: **${counts.missingBinding}**.\n\n## Real remaining gates\n\n1. \`approved_for_base=false\` blocks Base only.\n2. \`approved_for_engines=false\` or one of the nine missing numerical fields blocks technical PI.\n3. Zero grams blocks the PI click until the user enters at least 1 g; unknown dosage itself does not block selection.\n4. Process UNKNOWN is preserved for Process/Production warnings and does not block technical PI.\n5. Missing price leaves cost incomplete and prevents an honest cheapest-result claim; technical calculation remains available.\n\nThe exhaustive CSV preserves every simultaneous module-scoped reason instead of collapsing it into a single status.\n`;
+const md = `# Mapper 2088 runtime usability audit\n\nGenerated deterministically by \`scripts/auditMapperRuntimeUsability.mjs\`. The source Mapper CSV is read-only and its SHA is pinned.\n\n${countTable}\n\n## Additional exact census\n\n- Approved for Base: **${counts.base}**.\n- Approved for Engine: **${counts.engine}**.\n- Technical composition incomplete under the 9-field contract: **${counts.technicalIncomplete}** (PI-ING-002113: POD/PAC).\n- ProductBehavior UNKNOWN_REQUIRES_EVIDENCE: **${counts.unknownBehavior}**.\n- Process UNKNOWN: **${counts.processUnknown}**.\n- Dosage UNKNOWN: **${counts.dosageUnknown}**.\n- Price missing: **${counts.priceMissing}**.\n- Customer-added Mapper references: **0**.\n- System-matched Mapper references: **0**.\n- Product version IDs pending authenticated served capture: **${counts.missingVersion}**.\n- Binding IDs pending authenticated served capture: **${counts.missingBinding}**.\n\n## Real remaining gates\n\n1. \`approved_for_base=false\` blocks Base only.\n2. \`approved_for_engines=false\` or one of the nine missing numerical fields blocks technical PI.\n3. Zero grams blocks the PI click until the user enters at least 1 g; unknown dosage itself does not block anything.\n4. Process UNKNOWN is preserved as product information and blocks nothing — not selection, not the Engine, not Production.\n5. Missing price leaves cost incomplete and prevents an honest cheapest-result claim; technical calculation remains available.\n\nThe exhaustive CSV preserves every simultaneous module-scoped reason instead of collapsing it into a single status.\n`;
 fs.writeFileSync(outputMd, md);
 console.log(JSON.stringify(counts));

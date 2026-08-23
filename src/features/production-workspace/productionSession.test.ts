@@ -369,7 +369,7 @@ describe('production session physical-reality contract', () => {
     );
   });
 
-  it('rejects a Rescue candidate that exceeds the frozen ProductBehavior dose', () => {
+  it('accepts a Rescue candidate outside the frozen manufacturer dosage window', () => {
     const run = session();
     const tara = run.plannedInput.items.find((item) => item.ingredient.id === 'tara_gum')!;
     const snapshots = structuredClone(run.plannedComposition.behaviorSnapshots!);
@@ -394,9 +394,11 @@ describe('production session physical-reality contract', () => {
     );
     candidate.target_batch_grams += 1;
 
-    expect(() => applyVerifiedRescueInput(authorized, candidate)).toThrow(
-      /Tara gum: wpisano 4 g, zatwierdzony zakres to 0.2%–0.3%/,
-    );
+    // 4 g is well outside the declared 0.2–0.3 % window. Mid-batch, the
+    // professional in front of the machine decides the amount; the dosage is
+    // information we show, not a rule we enforce.
+    const rescued = applyVerifiedRescueInput(authorized, candidate);
+    expect(rescued.lines.find((line) => line.lineId === tara.id)?.targetGrams).toBe(4);
   });
   it('uses persisted Base order for the operator without reordering Engine input', () => {
     const input = recipe();

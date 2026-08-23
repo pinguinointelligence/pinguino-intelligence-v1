@@ -209,11 +209,11 @@ export const educationCopy = {
         note: 'Ciepło jest wymagane zarówno dla działania składnika, jak i dla bezpieczeństwa procesu.',
       },
       unknown: {
-        title: 'Nie można bezpiecznie potwierdzić procesu na zimno',
-        note: 'Dla co najmniej jednego składnika brakuje wystarczających danych procesu.',
+        title: 'Brak informacji o obróbce',
+        note: 'Dla co najmniej jednego składnika nie mamy informacji o obróbce. Sposób użycia produktu określa jego karta techniczna lub instrukcja producenta.',
       },
     },
-    dataMissing: 'NIEWYSTARCZAJĄCE DANE',
+    dataMissing: 'BRAK INFORMACJI',
     reasonLabels: {
       ingredient_function: 'Działanie składnika',
       food_safety: 'Bezpieczeństwo procesu',

@@ -40,7 +40,6 @@
   "finalClassification": {
     "READY_VERIFIED": 0,
     "READY_ESTIMATED": 424,
-    "TECHNICAL_AUTHORITY_REQUIRED": 0,
     "REVIEW_REQUIRED": 396
   },
   "engineFieldTruthStateBefore": {

@@ -161,7 +161,6 @@ describe.runIf(existsSync(IMPORT_CSV) && existsSync(MAPPER_FILE) && existsSync(R
             declaredConfidence: intelligence.assessment.confidence / 100,
             identity,
             technical: intelligence.kind === 'technical',
-            technicalAuthority: false,
           },
           knowledge,
         );

@@ -7,4 +7,5 @@ export * from './useLegacyRecipeBehaviorRevalidation';
 export * from './useMonitorRecipeBehaviorRefresh';
 export * from './recipeBehaviorAuthority';
 export * from './productDosageAuthority';
+export * from './productProcessInformation';
 export * from './ownerInulinPolicy';

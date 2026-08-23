@@ -101,12 +101,15 @@ describe('normal Pro Process Guide entry', () => {
     expect(html).toContain('Podgrzanie wymagane technologicznie i dla bezpieczeństwa');
   });
 
-  it('keeps UNKNOWN fail-closed and never displays cold-process approval', () => {
+  it('states UNKNOWN as missing information, never as a warning or a readiness gate', () => {
     const html = renderEntry(singleIngredientInput('unknown'), []);
     expect(html).toContain('data-process-status="unknown"');
-    expect(html).toContain('Nie można bezpiecznie potwierdzić procesu na zimno');
-    expect(html).toContain('NIEWYSTARCZAJĄCE DANE');
+    expect(html).toContain('Brak informacji o obróbce');
+    expect(html).toContain('BRAK INFORMACJI');
+    // No invented cold approval, and no warning styling or readiness marker.
     expect(html).not.toContain('Można przygotować na zimno');
+    expect(html).not.toContain('nonprod');
+    expect(html).not.toContain('data-readiness');
   });
 
   it('opens the existing Process Guide directly for the exact Tara Owner fixture', () => {

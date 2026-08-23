@@ -92,24 +92,34 @@ describe('direct percentage editing', () => {
     });
   });
 
-  it('allows an evidenced manual Tara percentage but clamps an excessive request to 1%', () => {
+  it('does not consult a manufacturer dosage when deciding a percentage edit', () => {
+    // The Tara snapshot below declares a 0.2–1 % window. It is informational:
+    // it neither unlocks nor clamps this edit. A stabilizer line is protected
+    // here because PINGÜINO's own stabilizer system owns stabilizer amounts.
     const input = ownerSameInputRecipe();
-    const result = buildDirectPercentEdit(input, NONE, 'owner:tara_gum', 5.5, [], {
-      'owner:tara_gum': taraDoseSnapshot(),
+    expect(buildDirectPercentEdit(input, NONE, 'owner:tara_gum', 5.5)).toEqual({
+      ok: false,
+      code: 'protected_line',
     });
+    expect(taraDoseSnapshot().sharedFacts?.recommendedDose).toMatchObject({
+      minPercent: 0.2,
+      maxPercent: 1,
+    });
+  });
+
+  it('edits an ordinary line to any share without a dosage verdict', () => {
+    const input = ownerSameInputRecipe();
+    const result = buildDirectPercentEdit(input, NONE, 'owner:milk_3_5', 40);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.gramsByLineId['owner:tara_gum']).toBe(10);
-    expect(result.doseClampNoticePl).toBe(
-      'TARA GUM · Stabilizer: maksymalna ilość dla tej partii to 10 g.',
-    );
+    expect(result.gramsByLineId['owner:milk_3_5']).toBeCloseTo(400, 10);
     expect(Object.values(result.gramsByLineId).reduce((sum, grams) => sum + grams, 0)).toBeCloseTo(
       1_000,
       10,
     );
   });
 
-  it('keeps a stabilizer percent edit fail-closed when no exact dosage evidence exists', () => {
+  it('keeps a stabilizer percent edit with PINGÜINO stabilizer authority, not product dosage', () => {
     expect(buildDirectPercentEdit(ownerSameInputRecipe(), NONE, 'owner:tara_gum', 0.5)).toEqual({
       ok: false,
       code: 'protected_line',

@@ -122,7 +122,6 @@ export function ConstraintPreviewCard({
   const diagnostic = preview.diagnosticOnly === true || integrityDiagnostic;
   const hardResiduals = preview.hardResidualMetrics ?? [];
   const residualDiagnostics = preview.residualMetricDiagnostics ?? [];
-  const productDosageDiagnostics = preview.productDosageDiagnostics ?? [];
   const diagnosticReason = preview.diagnosticReason;
   // Owner addendum item 4 — the trustless outcome classification.
   const outcome = preview.outcomeClassification;
@@ -186,7 +185,7 @@ export function ConstraintPreviewCard({
         >
           <span className="font-semibold text-status-risky">
             {preview.safetyLockConflict.reason === 'product_dosage'
-              ? 'Blokada przekracza bezpieczną dawkę:'
+              ? 'Blokada przekracza zatwierdzony zakres systemu stabilizatora:'
               : 'Blokada wymusza twardo nieprawidłową recepturę:'}
           </span>{' '}
           {preview.safetyLockConflict.ingredientName} ma blokadę{' '}
@@ -327,11 +326,9 @@ export function ConstraintPreviewCard({
                   ? copy.preview.diagnosticReferenceDerived(preview.formulation?.templateId ?? '—')
                   : diagnosticReason === 'protein_claim_residual'
                     ? 'Kandydat jest natywnie bezpieczny, ale nie spełnia deklaracji „wysoka zawartość białka”. Apply pozostaje zablokowany.'
-                    : diagnosticReason === 'product_dosage'
-                      ? copy.preview.diagnosticProductDosage
-                      : hardResiduals.length > 0
-                        ? copy.preview.diagnosticHardResiduals(hardResiduals)
-                        : copy.preview.diagnosticIterationCap}
+                    : hardResiduals.length > 0
+                      ? copy.preview.diagnosticHardResiduals(hardResiduals)
+                      : copy.preview.diagnosticIterationCap}
           </p>
           {residualDiagnostics.length > 0 ? (
             <div className="mt-3 space-y-2" data-testid="preview-residual-metric-diagnostics">
@@ -382,31 +379,6 @@ export function ConstraintPreviewCard({
                         : 'Odległość od zatwierdzonego zakresu nie zmieniła się.'}{' '}
                     {metric.applyDisabledReasonPl}
                   </p>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {productDosageDiagnostics.length > 0 ? (
-            <div className="mt-3 space-y-2" data-testid="preview-product-dosage-diagnostics">
-              {productDosageDiagnostics.map((dose) => (
-                <div
-                  key={`${dose.lineId}:${dose.code}`}
-                  className="rounded-lg border border-status-risky/35 bg-black/15 px-3 py-2.5"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <strong className="text-xs text-ivory">{dose.ingredientName}</strong>
-                    <span className="text-[0.625rem] font-medium tracking-[0.08em] text-status-risky uppercase">
-                      Twarda dawka produktu
-                    </span>
-                  </div>
-                  <p className="mt-1 font-mono text-xs tabular-nums text-ivory/80">
-                    Wpisano: {dose.enteredGrams.toFixed(1)} g
-                    {dose.enteredPercent === null ? '' : ` · ${dose.enteredPercent.toFixed(2)}%`}
-                    {dose.minGrams === null && dose.maxGrams === null
-                      ? ''
-                      : ` · Zakres: ${dose.minGrams?.toFixed(1) ?? '—'}–${dose.maxGrams?.toFixed(1) ?? '—'} g`}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-ivory/75">{dose.messagePl}</p>
                 </div>
               ))}
             </div>
@@ -482,8 +454,7 @@ export function ConstraintPreviewCard({
           ) : null}
           {outcome.engineImproved &&
           !(
-            outcome.violationsBefore === outcome.violationsAfter &&
-            (residualDiagnostics.length > 0 || productDosageDiagnostics.length > 0)
+            outcome.violationsBefore === outcome.violationsAfter && residualDiagnostics.length > 0
           ) ? (
             <p
               className="mt-1 text-xs leading-relaxed text-ivory/80"
@@ -589,11 +560,6 @@ export function ConstraintPreviewCard({
           )
         ) : null}
         <p>{copy.preview.outOfBandDelta(preview.violationsBefore, preview.violationsAfter)}</p>
-        {productDosageDiagnostics.length > 0 ? (
-          <p className="text-status-risky" data-testid="preview-product-dosage-summary">
-            Twarde dawki produktu poza zakresem: {productDosageDiagnostics.length}
-          </p>
-        ) : null}
         {/* Owner QA (Phase 12): the EXACT source of the proposal — never mislabels a
             batch rescale as formulation. */}
         {preview.formulation ? (

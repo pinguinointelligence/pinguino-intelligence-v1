@@ -304,10 +304,15 @@ export interface SharedProductReferencePrice {
   sourceVersion: string;
 }
 
+/** INFORMATIONAL ONLY. The manufacturer's recommended dosage is displayed, never
+ * normalized, converted or used as an eligibility/readiness predicate. */
 export interface SharedProductRecommendedDose {
   minPercent: number | null;
   preferredPercent?: number | null;
   maxPercent: number | null;
+  /** Verbatim source string when the manufacturer stated one (`100–250 g/L`).
+   * Its basis is deliberately not interpreted. */
+  rawValue?: string | null;
   sourceVersion: string;
   presenceSemantics?: 'optional_zero_or_range';
   provenance?: string;
@@ -328,8 +333,8 @@ export interface SharedProductBehaviorFacts {
   veganEligibility: ProductBehaviorBinding['veganEligibility'];
   proteinBehavior: ProductBehaviorBinding['proteinBehavior'];
   referencePrice: SharedProductReferencePrice | null;
-  /** Product-specific Mapper dosage authority. Main-envelope percentages are
-   * intentionally separate and must never be used as a picker-time dose. */
+  /** Product-specific Mapper dosage INFORMATION. It is display-only: it never
+   * gates a module, never produces an automatic dose and is never converted. */
   recommendedDose?: SharedProductRecommendedDose | null;
 }
 

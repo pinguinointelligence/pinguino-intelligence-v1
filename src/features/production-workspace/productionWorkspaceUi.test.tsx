@@ -310,7 +310,7 @@ describe('Production workspace touch-first UI', () => {
     expect(surface).toContain("mode={productionActive ? 'production' : 'recipe'}");
   });
 
-  it('renders a real persisted thermal selector and blocks Start while it is missing', () => {
+  it('offers the thermal note as optional and never blocks Start on it', () => {
     const html = renderToStaticMarkup(
       <ProductionCockpit
         production={
@@ -320,21 +320,7 @@ describe('Production workspace touch-first UI', () => {
             prerequisite: null,
             practicalReady: false,
             thermalMode: null,
-            processReadiness: {
-              status: 'BLOCKED',
-              blockers: [
-                {
-                  code: 'PROCESS_THERMAL_MODE_REQUIRED',
-                  lineId: input.items[0]!.id,
-                  productId: null,
-                  mapperIngredientId: input.items[0]!.ingredient.canonical_ingredient_id ?? null,
-                  decision: 'UNKNOWN',
-                  verificationStatus: 'unknown',
-                  productName: input.items[0]!.ingredient.name,
-                },
-              ],
-              advisories: [],
-            },
+            processReadiness: { status: 'READY', blockers: [], advisories: [] },
             source: session.source,
             plannedInput: input,
             startNewSession: vi.fn(),
@@ -349,10 +335,11 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('data-testid="production-thermal-mode"');
     expect(html).toContain('value="COLD_ONLY"');
     expect(html).toContain('value="HEAT_CAPABLE"');
-    expect(html).toMatch(
-      /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*disabled)[^>]*>/,
-    );
-    expect(html).toContain('Wybierz sposób przygotowania bazy');
+    expect(html).toContain('Sposób przygotowania bazy (opcjonalnie)');
+    // The old "Wybierz sposób przygotowania bazy" blocker is gone: an
+    // undeclared route is not a reason to withhold Production.
+    expect(html).not.toContain('Wybierz sposób przygotowania bazy');
+    expect(html).not.toContain('data-testid="production-process-blocked"');
   });
 
   it('shows bounded READY_WITH_INFO guidance without auto-starting', () => {
@@ -444,8 +431,11 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
 
-    expect(html).toContain('Proces uruchomiony z informacją');
-    expect(html).not.toContain('Proces gotowy z informacją');
+    // Informational, never a readiness verdict: the product is named and the
+    // professional is pointed at the manufacturer's own instructions.
+    expect(html).toContain('data-testid="production-process-advisory"');
+    expect(html).toContain('Informacja o obróbce');
+    expect(html).not.toContain('data-testid="production-process-blocked"');
   });
 
   it('opens an existing Preview without starting a new recalculation', () => {

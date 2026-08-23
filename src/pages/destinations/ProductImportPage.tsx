@@ -82,7 +82,8 @@ export function ProductImportPage() {
   const [importPlan, setImportPlan] = useState<{
     total: number;
     engineUsable: number;
-    technical: number;
+    /** Informational: rows whose manufacturer dosage is unproven. Not blocked. */
+    dosageUnproven: number;
     review: number;
   } | null>(null);
 
@@ -199,8 +200,7 @@ export function ProductImportPage() {
    * For INTIMPORT the shared resolver decides, not this page: a row is written
    * only when its composition is READY or READY_ESTIMATED, and the estimated
    * values it resolved are persisted into the canonical numeric fields with
-   * their provenance. A REVIEW row, or a technical product without authority, is
-   * refused here rather than silently created in a half state.
+   * their provenance. Nothing is refused for a missing dosage or process.
    *
    * `qaLimit` exists for controlled staging checks — importing a whole
    * catalogue during QA is not a test, it is a mess to clean up.
@@ -239,7 +239,11 @@ export function ProductImportPage() {
       setImportPlan({
         total: rows.length,
         engineUsable: rows.filter((entry) => entry.engineUsable).length,
-        technical: rows.filter((entry) => entry.state === 'TECHNICAL_AUTHORITY_REQUIRED').length,
+        dosageUnproven: rows.filter(
+          (entry) =>
+            localRows.find((local) => local.rowIndex === entry.rowIndex)?.workingValues
+              ?.technicalAuthorityRequired === true,
+        ).length,
         review: rows.filter((entry) => entry.state === 'REVIEW').length,
       });
     }
@@ -363,8 +367,9 @@ export function ProductImportPage() {
           {importPlan ? (
             <p className="text-xs text-[#8a7f6d]">
               Product Intelligence: {importPlan.total} zapisanych do katalogu —{' '}
-              {importPlan.engineUsable} gotowych dla Engine, {importPlan.technical} z zablokowanym
-              użyciem technicznym, {importPlan.review} do uzupełnienia.
+              {importPlan.engineUsable} gotowych dla Engine, {importPlan.review} do
+              uzupełnienia. Bez informacji o dawkowaniu producenta:{' '}
+              {importPlan.dosageUnproven} (informacyjnie — nie blokuje).
             </p>
           ) : null}
           {importResult ? (

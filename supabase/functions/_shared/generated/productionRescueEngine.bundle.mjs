@@ -4609,7 +4609,6 @@ const FACT_REQUIREMENTS = {
 	SUMMARY: ["technical", "nutrition"],
 	NUTRITION: ["nutrition"],
 	ALLERGENS: ["allergens"],
-	PROCESS: ["process"],
 	LABEL: ["nutrition", "allergens"],
 	MASTER_LABEL: ["nutrition", "allergens"],
 	EXPORT: ["nutrition", "allergens"]
@@ -4640,7 +4639,6 @@ function missingFacts(facts, requirement) {
 		case "technical": return facts.technicalComposition === null || !hasFiniteRequiredFacts(facts.technicalComposition, REQUIRED_TECHNICAL_FACTS);
 		case "nutrition": return facts.nutritionPer100g === null || !hasFiniteRequiredFacts(facts.nutritionPer100g, REQUIRED_NUTRITION_FACTS);
 		case "allergens": return facts.allergens === null;
-		case "process": return facts.processEvidence.length === 0;
 	}
 }
 /** Recipe-wide module boundary. Besides eligibility, modules that render
@@ -4784,104 +4782,6 @@ function recipeToppingsFromFrozenBehavior(toppings, authority, projection) {
 			ingredient
 		};
 	});
-}
-
-//#endregion
-//#region src/features/product-intelligence/productDosageAuthority.ts
-const DOSAGE_EPSILON_G = .1000001;
-const validPercent = (value) => value !== null && Number.isFinite(value) && value >= 0 && value <= 100;
-const invalidDoseReason = (dose, targetBatchGrams) => {
-	if (!Number.isFinite(targetBatchGrams) || targetBatchGrams <= 0) return "invalid_target_batch";
-	if (!dose.sourceVersion?.trim()) return "missing_source_version";
-	if (dose.minPercent !== null && !validPercent(dose.minPercent)) return "invalid_minimum";
-	if (dose.maxPercent !== null && !validPercent(dose.maxPercent)) return "invalid_maximum";
-	if (dose.preferredPercent !== void 0 && dose.preferredPercent !== null && !validPercent(dose.preferredPercent)) return "invalid_preferred";
-	if (dose.minPercent !== null && dose.maxPercent !== null && dose.minPercent > dose.maxPercent) return "minimum_above_maximum";
-	if (dose.preferredPercent !== void 0 && dose.preferredPercent !== null && (dose.minPercent !== null && dose.preferredPercent < dose.minPercent || dose.maxPercent !== null && dose.preferredPercent > dose.maxPercent)) return "preferred_outside_range";
-	if (dose.presenceSemantics !== void 0 && dose.presenceSemantics !== "optional_zero_or_range") return "invalid_presence_semantics";
-	return null;
-};
-/**
-* Resolves only the exact server-frozen ProductBehavior dosage. There is no
-* family, role or ingredient-name fallback: absent Mapper evidence stays
-* absent, while malformed evidence fails closed.
-*/
-function productDosageAuthority(snapshot, targetBatchGrams) {
-	const dose = snapshot?.sharedFacts?.recommendedDose;
-	if (!snapshot || snapshot.resolutionState !== "RESOLVED" || snapshot.processScope !== "BASE_FORMULATION" || snapshot.moduleEligibility.BASE_RECIPE !== "eligible" || !dose || dose.minPercent === null && dose.maxPercent === null) return { status: "not_defined" };
-	const invalid = invalidDoseReason(dose, targetBatchGrams);
-	if (invalid) return {
-		status: "invalid_evidence",
-		reason: invalid
-	};
-	return {
-		status: "defined",
-		authority: {
-			minPercent: dose.minPercent,
-			preferredPercent: dose.preferredPercent ?? null,
-			maxPercent: dose.maxPercent,
-			minGrams: dose.minPercent === null ? null : targetBatchGrams * dose.minPercent / 100,
-			maxGrams: dose.maxPercent === null ? null : targetBatchGrams * dose.maxPercent / 100,
-			sourceVersion: dose.sourceVersion,
-			presenceSemantics: dose.presenceSemantics ?? null,
-			provenance: dose.provenance?.trim() || null,
-			policyId: dose.policyId?.trim() || null,
-			policyVersion: typeof dose.policyVersion === "number" && Number.isInteger(dose.policyVersion) ? dose.policyVersion : null
-		}
-	};
-}
-const amount = (value, unit) => `${Math.round(value * 10) / 10}${unit === "%" ? "%" : " g"}`;
-const rangePl = (authority) => {
-	if (authority.minPercent !== null && authority.maxPercent !== null) return `${amount(authority.minPercent, "%")}–${amount(authority.maxPercent, "%")} (${amount(authority.minGrams, "g")}–${amount(authority.maxGrams, "g")})`;
-	if (authority.maxPercent !== null) return `maks. ${amount(authority.maxPercent, "%")} (${amount(authority.maxGrams, "g")})`;
-	return `min. ${amount(authority.minPercent, "%")} (${amount(authority.minGrams, "g")})`;
-};
-function productDosageViolationMessagePl(ingredientName, enteredGrams, authority) {
-	return `${ingredientName}: wpisano ${amount(enteredGrams, "g")}, zatwierdzony zakres to ${rangePl(authority)}. Nie znaleziono bezpiecznej korekty, która zachowuje tę granicę; propozycja pozostaje zablokowana.`;
-}
-/** Hard product-dose assessment shared by Preview, Apply and guarded writes. */
-function assessProductDosages(input, snapshots) {
-	const violations = [];
-	for (const item of input.items) {
-		const result = productDosageAuthority(snapshots[item.id], input.target_batch_grams);
-		if (result.status === "not_defined") continue;
-		const enteredPercent = input.target_batch_grams > 0 ? item.planned_grams / input.target_batch_grams * 100 : null;
-		if (result.status === "invalid_evidence") {
-			violations.push({
-				code: "invalid_evidence",
-				lineId: item.id,
-				ingredientName: item.ingredient.name,
-				enteredGrams: item.planned_grams,
-				enteredPercent,
-				minPercent: null,
-				maxPercent: null,
-				minGrams: null,
-				maxGrams: null,
-				sourceVersion: item.id === snapshots[item.id]?.lineId ? snapshots[item.id]?.sharedFacts?.recommendedDose?.sourceVersion ?? null : null,
-				messagePl: `${item.ingredient.name}: zatwierdzone dane dawki są niespójne (${result.reason}). Receptura pozostaje zablokowana do ponownej walidacji produktu.`
-			});
-			continue;
-		}
-		const { authority } = result;
-		if (item.planned_grams <= 0) continue;
-		const below = !(gelatoStabilizerSystemApplies(input.category) && resolveFunctionalRole(item.ingredient) === "stabilizer") && authority.minGrams !== null && item.planned_grams < authority.minGrams - DOSAGE_EPSILON_G;
-		const above = authority.maxGrams !== null && item.planned_grams > authority.maxGrams + DOSAGE_EPSILON_G;
-		if (!below && !above) continue;
-		violations.push({
-			code: below ? "below_minimum" : "above_maximum",
-			lineId: item.id,
-			ingredientName: item.ingredient.name,
-			enteredGrams: item.planned_grams,
-			enteredPercent,
-			minPercent: authority.minPercent,
-			maxPercent: authority.maxPercent,
-			minGrams: authority.minGrams,
-			maxGrams: authority.maxGrams,
-			sourceVersion: authority.sourceVersion,
-			messagePl: productDosageViolationMessagePl(item.ingredient.name, item.planned_grams, authority)
-		});
-	}
-	return violations;
 }
 
 //#endregion
@@ -6745,13 +6645,6 @@ function evaluateRecipeConstraintAuthority(input) {
 				messagePl: "Produkt nie jest zatwierdzony dla wybranego profilu receptury."
 			});
 		}
-		for (const violation of assessProductDosages(recipe, snapshots)) issues.push({
-			source: "product_behavior",
-			code: "product_dosage_invalid",
-			lineIds: [violation.lineId],
-			messagePl: violation.messagePl,
-			violation
-		});
 		if (behavior.ready) {
 			const main = verifyMainEnvelope({
 				recipe,

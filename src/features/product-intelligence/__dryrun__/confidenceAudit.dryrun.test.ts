@@ -105,7 +105,6 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
               barcode: candidate.ean,
             },
             technical: intelligence.kind === 'technical',
-            technicalAuthority: false,
           },
           knowledge,
         );

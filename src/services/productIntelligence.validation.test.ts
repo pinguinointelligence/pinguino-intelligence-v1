@@ -537,15 +537,14 @@ describe('recipe behavior server validation', () => {
     ).resolves.toMatchObject({
       ready: true,
       lines: [],
-      processReadiness: {
-        status: 'BLOCKED',
-        blockers: [{ code: 'PROCESS_THERMAL_MODE_REQUIRED' }],
-      },
+      // No thermal route was declared and none is required: process is
+      // informational (owner decision, 2026-08-23).
+      processReadiness: { status: 'READY', blockers: [] },
     });
     expect(h.rpc).not.toHaveBeenCalled();
   });
 
-  it('fails closed when Production validation omits the server process envelope', async () => {
+  it('accepts a Production validation with no process envelope at all', async () => {
     h.rpc.mockResolvedValue({
       data: {
         schemaVersion: 1,
@@ -556,6 +555,8 @@ describe('recipe behavior server validation', () => {
       },
       error: null,
     });
+    // Product authority still decides `ready`. A silent process envelope is
+    // simply an absence of information, not a reason to fail the recipe.
     await expect(
       validateRecipeBehaviorOnServer({
         recipe: { ...recipe, items: [recipe.items[0]!] },
@@ -564,7 +565,10 @@ describe('recipe behavior server validation', () => {
         accountId: 'account-1',
         thermalMode: 'HEAT_CAPABLE',
       }),
-    ).rejects.toThrow('Nieprawidłowa odpowiedź walidacji zachowania produktu.');
+    ).resolves.toMatchObject({
+      ready: true,
+      processReadiness: { status: 'READY', blockers: [] },
+    });
   });
 
   it('resolves a solver-added Inulin line by canonical Mapper identity, never by its local correction id', async () => {

@@ -98,12 +98,18 @@ describe('server Product Behavior snapshot boundary', () => {
     }))).toBe(
       'Dokładny produkt product-2113 · wersja version-2113 · Mapper PI-ING-002113 · moduł OPTIMAL ma approved_for_engines=false. Może pozostać w Base, ale PI nie wykona obliczeń; wybierz produkt zatwierdzony dla Engine.',
     );
-    expect(productBehaviorBlockedMessage(resolved({
-      state: 'blocked',
-      blockReasons: ['process_evidence_unknown:product-405:PI-ING-000405:version-405:PRODUCTION:add_process_evidence'],
-    }))).toBe(
-      'Dokładny produkt product-405 · wersja version-405 · Mapper PI-ING-000405 · moduł PRODUCTION nie ma dowodu procesu. Obliczenia techniczne pozostają dostępne; dodaj dowód procesu przed Process/Production.',
-    );
+    // A legacy `process_evidence_unknown` reason has no message any more: the
+    // server no longer emits it as a blocker, and process is informational.
+    expect(
+      productBehaviorBlockedMessage(
+        resolved({
+          state: 'blocked',
+          blockReasons: [
+            'process_evidence_unknown:product-405:PI-ING-000405:version-405:PRODUCTION:add_process_evidence',
+          ],
+        }),
+      ),
+    ).not.toContain('dowod');
     expect(productBehaviorBlockedMessage(resolved({
       state: 'blocked',
       blockReasons: ['profile_not_approved:product-405:PI-ING-000405:version-405:ECO:change_profile_or_product'],

@@ -51,7 +51,6 @@ describe.runIf(existsSync(FILE))('Full 820 offline research plan', () => {
       dosageMissing: comp.filter((r) => !s(r, 'dosage')).length,
       ingredientsMissing: comp.filter((r) => !s(r, 'ingredients')).length,
       nutritionMissing: comp.filter((r) => !s(r, 'energyKcal')).length,
-      productBehaviorMissing: comp.filter((r) => r.assessment.technicalBlocked).length,
       startsOfficial: comp.filter((r) => r.enrichmentTargets.length > 0 &&
         ['OWNER_TECHNICAL_PDF','OWNER_OFFICIAL_URL','OFFICIAL_DOMAIN_SEARCH'].includes(r.researchPlan.steps[0]!.kind)).length,
       startsRetailerOrOpen: comp.filter((r) => r.enrichmentTargets.length > 0 &&

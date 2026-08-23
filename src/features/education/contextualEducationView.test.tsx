@@ -82,8 +82,8 @@ describe('contextual education runtime surface', () => {
     expect(educationCopy.process.statuses.heat_required_for_both.title).toContain(
       'technologicznie i dla bezpieczeństwa',
     );
-    expect(educationCopy.process.statuses.unknown.title).toContain(
-      'Nie można bezpiecznie potwierdzić',
-    );
+    // Process is informational: an unknown process is stated as missing
+    // information, not as a failure the user has to resolve.
+    expect(educationCopy.process.statuses.unknown.title).toContain('Brak informacji');
   });
 });

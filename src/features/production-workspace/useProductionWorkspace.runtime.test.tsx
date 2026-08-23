@@ -571,7 +571,7 @@ describe('Production trusted Rescue runtime races', () => {
     expect(view?.processReadiness.status).toBe('READY_WITH_INFO');
   });
 
-  it('keeps a current recipe out of the recalculate loop when process authority blocks Start', async () => {
+  it('downgrades a legacy blocked process envelope to information and never holds Start on it', async () => {
     const executable = attachPracticalRecipeAudit(
       DEFAULT_PRESET,
       DEFAULT_PRESET,
@@ -635,10 +635,13 @@ describe('Production trusted Rescue runtime races', () => {
     });
 
     expect(view?.prerequisite).toBeNull();
-    expect(view?.processReadiness.status).toBe('BLOCKED');
-    expect(view?.practicalReady).toBe(false);
-    await act(async () => view!.startNewSession());
-    expect(repository.startRun).not.toHaveBeenCalled();
+    // An older server still answering BLOCKED is read as information: the
+    // detail survives as an advisory, and the status can never be BLOCKED.
+    expect(view?.processReadiness.status).toBe('READY_WITH_INFO');
+    expect(view?.processReadiness.blockers).toEqual([]);
+    expect(view?.processReadiness.advisories).toEqual([
+      expect.objectContaining({ code: 'PROCESS_ADVISORY_AUTHORITY_MISSING' }),
+    ]);
   });
 
   it('preserves and detaches only an orphaned local session before starting the saved immutable version', async () => {

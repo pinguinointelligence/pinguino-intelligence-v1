@@ -71,14 +71,16 @@ export function recipeBehaviorLegacyInspection(
   );
 }
 
-type FactsRequirement = 'technical' | 'nutrition' | 'allergens' | 'process';
+type FactsRequirement = 'technical' | 'nutrition' | 'allergens';
 
 const FACT_REQUIREMENTS: Partial<Record<ProductBehaviorModule, readonly FactsRequirement[]>> = {
   MONITOR: ['technical'],
   SUMMARY: ['technical', 'nutrition'],
   NUTRITION: ['nutrition'],
   ALLERGENS: ['allergens'],
-  PROCESS: ['process'],
+  // PROCESS deliberately has NO facts requirement. Process information is
+  // display metadata: its absence never withholds the module (owner decision,
+  // 2026-08-23 — process and dosage are informational only).
   LABEL: ['nutrition', 'allergens'],
   MASTER_LABEL: ['nutrition', 'allergens'],
   EXPORT: ['nutrition', 'allergens'],
@@ -120,8 +122,6 @@ function missingFacts(
       );
     case 'allergens':
       return facts.allergens === null;
-    case 'process':
-      return facts.processEvidence.length === 0;
   }
 }
 
@@ -159,6 +159,12 @@ export function recipeBehaviorModuleGate(
       };
 }
 
+/**
+ * Frozen process INFORMATION for display. Every piece of evidence the snapshot
+ * happens to carry is returned; lines that carry none simply contribute
+ * nothing. `complete` reports coverage for presentation ("Brak informacji"),
+ * and is never a permission or readiness predicate.
+ */
 export function frozenProcessEvidence(authority: RecipeBehaviorAuthority): {
   complete: boolean;
   evidence: RecipeProcessEvidence[];
@@ -172,9 +178,9 @@ export function frozenProcessEvidence(authority: RecipeBehaviorAuthority): {
   });
   return {
     complete,
-    evidence: complete
-      ? baseIds.flatMap((lineId) => authority.snapshots[lineId]?.sharedFacts?.processEvidence ?? [])
-      : [],
+    evidence: baseIds.flatMap(
+      (lineId) => authority.snapshots[lineId]?.sharedFacts?.processEvidence ?? [],
+    ),
   };
 }
 

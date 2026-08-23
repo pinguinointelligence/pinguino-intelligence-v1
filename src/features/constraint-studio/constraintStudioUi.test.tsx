@@ -301,7 +301,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(directedHtml).not.toContain('targetBand');
   });
 
-  it('discloses an unsafe dosage lock transition and says Apply is required', () => {
+  it('discloses a stabilizer-system lock transition and says Apply is required', () => {
     const preview = syntheticPreview();
     preview.safetyLockConflict = {
       lineId: 'tara',
@@ -315,7 +315,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
       <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
     );
     expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
-    expect(rendered).toContain('Blokada przekracza bezpieczną dawkę');
+    expect(rendered).toContain('Blokada przekracza zatwierdzony zakres systemu stabilizatora');
     expect(rendered).toContain('55 g');
     expect(rendered).toContain('10 g');
     expect(rendered).toContain('Nic nie zmieni się bez Apply');
@@ -337,7 +337,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
     expect(rendered).toContain('Blokada wymusza twardo nieprawidłową recepturę');
     expect(rendered).toContain('kanoniczne reguły i Engine');
-    expect(rendered).not.toContain('przekracza bezpieczną dawkę');
+    expect(rendered).not.toContain('zakres systemu stabilizatora');
     expect(rendered).toContain('Nic nie zmieni się bez Apply');
   });
 

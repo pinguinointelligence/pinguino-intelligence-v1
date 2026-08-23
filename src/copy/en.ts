@@ -1127,6 +1127,10 @@ export const copy = {
           id: 'ID',
           verified: 'Zweryfikowane',
           estimated: 'Częściowo szacowane',
+          // Informational product facts. Never a warning, never a gate.
+          process: 'Obróbka',
+          recommendedDosage: 'Zalecane dawkowanie producenta',
+          noInformation: 'Brak informacji',
         },
         remove: {
           heading: 'Usuń',

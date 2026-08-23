@@ -100,9 +100,9 @@ export const ESTIMATED_READY_FLOOR = 0.85;
 const CONFLICT_TOLERANCE_MULTIPLE = 3;
 
 /**
- * Whether a product's NUMBERS are usable. Deliberately says nothing about
- * technical authority: a professional paste can have a complete, trustworthy
- * composition and still not be cleared for dosing.
+ * Whether a product's NUMBERS are usable. It says nothing about how the product
+ * should be dosed or processed — those are the professional's decisions, and
+ * Gellatti does not gate on them (owner decision, 2026-08-23).
  */
 export type ValueReadiness =
   /** Every engine field measured. Formulate without caveat. */
@@ -115,14 +115,12 @@ export type ValueReadiness =
   /** Engine fields missing, or no defensible profile to supply them. */
   | 'REVIEW';
 
-export type ProductReadiness =
-  | ValueReadiness
-  /**
-   * The numbers are there, but this is a technical product and ProductBehavior
-   * has not granted technical authority. Fail-closed: good composition is not
-   * permission to dose.
-   */
-  | 'TECHNICAL_AUTHORITY_REQUIRED';
+/**
+ * Readiness is exactly the value verdict. The former
+ * `TECHNICAL_AUTHORITY_REQUIRED` state has been retired: its only cause was a
+ * missing manufacturer dosage/process authority, which is now informational.
+ */
+export type ProductReadiness = ValueReadiness;
 
 export interface EstimateConflict {
   field: WorkingNumericField;
@@ -147,18 +145,19 @@ export interface ProductWorkingValuesInput {
    * decides authority per product, and per-100 ml values never arrive here.
    */
   sourceCard?: CardContribution | null;
-  /** True for professional/technical products. */
+  /** True for professional/technical products. Presentation/weighting only. */
   technical: boolean;
   /**
-   * Whether resolved ProductBehavior technical authority exists. Technical
-   * products stay fail-closed without it, however good their numbers are.
+   * Whether a resolved dosage/handling authority exists for this professional
+   * product. INFORMATIONAL ONLY: it is reported so the owner can see that a
+   * product's dosage is unproven, and it never withholds anything.
    */
-  technicalAuthority: boolean;
+  technicalAuthority?: boolean;
 }
 
 export interface ProductWorkingValues {
   fields: ProductFieldTruthMap;
-  /** Whether the numbers are usable, independent of technical authority. */
+  /** Whether the numbers are usable. */
   valueReadiness: ValueReadiness;
   /** Plain numbers for the Engine. Estimated values are present, by design. */
   values: Record<WorkingNumericField, number | null>;

@@ -53,8 +53,6 @@ export interface ProductEvidenceInput {
   mapperFamilyMatch: boolean;
   /** Unresolved contradictions between two credible observations. */
   materialConflicts: readonly string[];
-  /** Technical products only: dosage/behaviour authority is present. */
-  technicalAuthority?: boolean;
 }
 
 export type ProductEvidenceField =
@@ -78,9 +76,13 @@ export type ProductEvidenceField =
 
 /**
  * Field weights. They sum to 100 for a normal retail food; technical products
- * redistribute part of the nutrition weight onto dosage/technical evidence.
+ * redistribute part of the nutrition weight onto technical evidence.
  * These are FIXED constants, not tunable at runtime, so the same product always
  * scores the same number.
+ *
+ * `dosage` deliberately carries NO weight: the manufacturer's recommended
+ * dosage is informational (owner decision, 2026-08-23), so its absence must not
+ * depress a product's confidence into a route that withholds import.
  */
 const NORMAL_WEIGHTS: Readonly<Partial<Record<ProductEvidenceField, number>>> = Object.freeze({
   identity: 16,
@@ -100,15 +102,14 @@ const NORMAL_WEIGHTS: Readonly<Partial<Record<ProductEvidenceField, number>>> = 
 });
 
 const TECHNICAL_WEIGHTS: Readonly<Partial<Record<ProductEvidenceField, number>>> = Object.freeze({
-  identity: 16,
-  brand: 10,
-  manufacturer: 6,
+  identity: 20,
+  brand: 12,
+  manufacturer: 8,
   variant: 2,
   netQuantity: 4,
-  barcode: 8,
-  ingredients: 10,
-  dosage: 16,
-  technicalParameters: 14,
+  barcode: 10,
+  ingredients: 14,
+  technicalParameters: 16,
   technicalSource: 8,
   countryOfOrigin: 2,
   energyKcal: 4,
@@ -124,7 +125,8 @@ const NORMAL_CRITICAL: readonly ProductEvidenceField[] = [
   'protein',
 ];
 
-const TECHNICAL_CRITICAL: readonly ProductEvidenceField[] = ['identity', 'dosage'];
+/** Dosage is NOT critical: missing or ambiguous dosage never withholds import. */
+const TECHNICAL_CRITICAL: readonly ProductEvidenceField[] = ['identity'];
 
 /**
  * How much of a field's weight a source earns. A family inference is explicitly
@@ -159,8 +161,6 @@ export interface ProductConfidenceAssessment {
   /** Every critical field sufficiently supported AND no material conflict. */
   criticalReadiness: boolean;
   missingCritical: ProductEvidenceField[];
-  /** Technical products: identity may be strong while Engine use stays blocked. */
-  technicalBlocked: boolean;
   /** Short, owner-readable reasons — never internal weights. */
   reasons: string[];
 }
@@ -198,7 +198,6 @@ export function assessProductConfidence(
   confidence = round2(Math.max(0, Math.min(100, confidence)));
 
   const missingCritical = critical.filter((field) => !input.fields[field]);
-  const technicalBlocked = technical && input.technicalAuthority !== true;
   const criticalReadiness = missingCritical.length === 0 && input.materialConflicts.length === 0;
 
   const reasons: string[] = [];
@@ -212,9 +211,7 @@ export function assessProductConfidence(
   if (input.mapperFamilyMatch) reasons.push('dopasowanie do rodziny produktów z Mappera');
   for (const field of missingCritical) reasons.push(`brak: ${field}`);
   for (const conflict of input.materialConflicts) reasons.push(`konflikt: ${conflict}`);
-  if (technicalBlocked) reasons.push('produkt techniczny bez zatwierdzonej dawki/zachowania');
-
-  return { confidence, criticalReadiness, missingCritical, technicalBlocked, reasons };
+  return { confidence, criticalReadiness, missingCritical, reasons };
 }
 
 /* ── owner thresholds ────────────────────────────────────────────────────── */
@@ -261,12 +258,9 @@ export function routeAfterWeb(assessment: ProductConfidenceAssessment): Enrichme
 
 /**
  * The auto-import gate. 90 is the STOP-ENRICHING threshold; 85 is the acceptance
- * floor. A technical product without its authority never passes, at any score.
+ * floor. Dosage and process evidence are informational and are never consulted
+ * here (owner decision, 2026-08-23).
  */
 export function isAutoImportEligible(assessment: ProductConfidenceAssessment): boolean {
-  return (
-    assessment.confidence >= AUTO_IMPORT_FLOOR &&
-    assessment.criticalReadiness &&
-    !assessment.technicalBlocked
-  );
+  return assessment.confidence >= AUTO_IMPORT_FLOOR && assessment.criticalReadiness;
 }

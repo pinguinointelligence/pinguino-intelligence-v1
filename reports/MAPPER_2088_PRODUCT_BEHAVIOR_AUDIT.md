@@ -50,7 +50,6 @@ UNRESOLVED is retained only where the structured Mapper category/subcategory can
 
 ## Exact reason coverage
 
-- process_evidence_missing: **1389**
 - family_evidence_missing: **656**
 - standard_product_not_flavour_main: **455**
 - form_or_concentration_evidence_missing: **353**

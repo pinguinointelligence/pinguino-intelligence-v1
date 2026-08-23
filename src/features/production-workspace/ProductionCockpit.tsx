@@ -9,109 +9,46 @@ import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerif
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
 
+/**
+ * PROCESS INFORMATION — never a gate (owner decision, 2026-08-23).
+ *
+ * Gellatti does not decide how a professional ingredient must be processed, so
+ * this notice states only what is known. Nothing here can block Production, and
+ * an absence of process information renders nothing at all rather than a
+ * warning the professional has to acknowledge.
+ */
 function ProcessReadinessNotice({
   readiness,
-  phase = 'before_start',
 }: {
   readiness: ProductionWorkspaceView['processReadiness'] | undefined;
   phase?: 'before_start' | 'active' | 'completed';
 }) {
   if (!readiness) return null;
-  if (readiness.status === 'READY') {
-    const title =
-      phase === 'active'
-        ? 'Proces uruchomiony z potwierdzoną gotowością'
-        : phase === 'completed'
-          ? 'Proces zakończony z potwierdzoną gotowością'
-          : 'Proces gotowy do uruchomienia';
-    return (
-      <section
-        className="rounded-[12px] border border-status-ideal/25 bg-status-ideal/[0.07] px-3 py-3 text-ink"
-        role="status"
-        data-testid="production-process-ready"
-      >
-        <p className="text-xs font-semibold text-[#2f6f3c]">{title}</p>
-        <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-          {phase === 'before_start'
-            ? 'Wybrana droga przygotowania jest zgodna z potwierdzonymi danymi produktów.'
-            : 'To zamrożona, serwerowa gotowość zapisana dla tej partii.'}
-        </p>
-      </section>
-    );
-  }
-  const details = readiness.status === 'BLOCKED' ? readiness.blockers : readiness.advisories;
   const products = [
     ...new Set(
-      details
+      readiness.advisories
         .map((detail) => detail.productName?.trim())
         .filter((name): name is string => Boolean(name)),
     ),
   ];
-  if (readiness.status === 'READY_WITH_INFO') {
-    const title =
-      phase === 'active'
-        ? 'Proces uruchomiony z informacją'
-        : phase === 'completed'
-          ? 'Proces zakończony z informacją'
-          : 'Proces gotowy z informacją';
-    return (
-      <section
-        className="rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-3 text-ink"
-        role="status"
-        aria-label="Informacje o gotowości procesu"
-        data-testid="production-process-advisory"
-      >
-        <p className="text-xs font-semibold leading-relaxed">{title}</p>
-        <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-          Dla wskazanych produktów brak zweryfikowanej instrukcji obróbki. Użyj etykiety, karty
-          technicznej lub instrukcji producenta.
-        </p>
-        {products.length > 0 ? (
-          <ul className="mt-2 space-y-1 text-xs text-stone-700">
-            {products.map((productName) => (
-              <li key={productName}>{productName}</li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
-    );
-  }
-  const thermalRequired = details.some((detail) => detail.code === 'PROCESS_THERMAL_MODE_REQUIRED');
-  const heatConflict = details.some((detail) => detail.code === 'PROCESS_HEAT_REQUIRED_CONFLICT');
-  const legacyAuthorityMissing = details.some(
-    (detail) => detail.code === 'LEGACY_PROCESS_AUTHORITY_MISSING',
-  );
+  if (products.length === 0) return null;
   return (
     <section
-      className="rounded-[12px] border border-status-error/25 bg-status-error/[0.04] px-3 py-3 text-ink"
-      role="alert"
-      data-testid="production-process-blocked"
+      className="rounded-[12px] border border-ink/10 bg-[#f7f5f0] px-3 py-3 text-ink"
+      role="status"
+      aria-label="Informacje o procesie produktów"
+      data-testid="production-process-advisory"
     >
-      <p className="text-xs font-semibold text-status-error">
-        {legacyAuthorityMissing
-          ? 'Brak historycznego zapisu gotowości procesu'
-          : thermalRequired
-            ? 'Wybierz sposób przygotowania bazy'
-            : heatConflict
-              ? 'Wybrana droga na zimno nie jest zgodna z produktem'
-              : 'Proces nie jest gotowy do uruchomienia'}
-      </p>
+      <p className="text-xs font-semibold leading-relaxed">Informacja o obróbce</p>
       <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-        {legacyAuthorityMissing
-          ? 'Ten starszy run nie zawiera zamrożonej gotowości procesu. PINGÜINO nie przypisuje mu historycznego statusu READY.'
-          : thermalRequired
-            ? 'Wskaż, czy ta partia będzie przygotowana wyłącznie na zimno, czy z możliwością obróbki cieplnej.'
-            : heatConflict
-              ? 'Co najmniej jeden produkt ma potwierdzony wymóg obróbki cieplnej. Wybierz zgodną drogę albo wróć do receptury.'
-              : 'Brakuje aktualnej, zatwierdzonej podstawy procesowej. Obliczenie receptury nie zastępuje tej weryfikacji.'}
+        Dla wskazanych produktów nie mamy informacji o obróbce. Sposób użycia produktu
+        technicznego określa jego karta techniczna lub instrukcja producenta.
       </p>
-      {products.length > 0 ? (
-        <ul className="mt-2 space-y-1 text-xs text-stone-700">
-          {products.map((productName) => (
-            <li key={productName}>{productName}</li>
-          ))}
-        </ul>
-      ) : null}
+      <ul className="mt-2 space-y-1 text-xs text-stone-700">
+        {products.map((productName) => (
+          <li key={productName}>{productName}</li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -122,9 +59,12 @@ function ThermalModeSelector({ production }: { production: ProductionWorkspaceVi
       className="mt-4 rounded-[14px] border border-ink/10 bg-[#f7f5f0] p-3"
       data-testid="production-thermal-mode"
     >
-      <legend className="px-1 text-xs font-semibold text-ink">Sposób przygotowania bazy</legend>
+      <legend className="px-1 text-xs font-semibold text-ink">
+        Sposób przygotowania bazy (opcjonalnie)
+      </legend>
       <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-        Wybór jest zapisywany dla bieżącego kontekstu Produkcji i zamrażany na runie po starcie.
+        Zapisywane jako notatka do partii i zamrażane na runie po starcie. Nie warunkuje startu
+        produkcji — o obróbce decydujesz Ty.
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {[

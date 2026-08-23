@@ -132,7 +132,6 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
       const finalStates: Record<string, number> = {
         READY_VERIFIED: 0,
         READY_ESTIMATED: 0,
-        TECHNICAL_AUTHORITY_REQUIRED: 0,
         REVIEW_REQUIRED: 0,
       };
 
@@ -234,11 +233,10 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
           ? resolveProductWorkingValues({ ...base, sourceCard: contribution }, knowledge)
           : priorResolution;
         after[nextResolution.valueReadiness] += 1;
-        // §18 operational classification, technical authority kept separate.
-        const technicalBlocked = nextResolution.readiness === 'TECHNICAL_AUTHORITY_REQUIRED';
-        const state = technicalBlocked
-          ? 'TECHNICAL_AUTHORITY_REQUIRED'
-          : nextResolution.valueReadiness === 'READY'
+        // §18 operational classification. Dosage/process authority no longer
+        // exists as a state (owner decision, 2026-08-23).
+        const state =
+          nextResolution.valueReadiness === 'READY'
             ? 'READY_VERIFIED'
             : nextResolution.valueReadiness === 'ESTIMATED_READY'
               ? 'READY_ESTIMATED'

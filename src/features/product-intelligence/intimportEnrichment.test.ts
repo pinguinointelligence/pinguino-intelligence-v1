@@ -277,7 +277,7 @@ describe('Mapper family inference', () => {
 
 /* ── safety ───────────────────────────────────────────────────────────────── */
 
-describe('technical products stay fail-closed', () => {
+describe('technical products are imported on identity, not on dosage authority', () => {
   it('does not let a 99% identified technical product bypass ProductBehavior', () => {
     const technical = assessProductConfidence({
       kind: 'technical',
@@ -299,19 +299,19 @@ describe('technical products stay fail-closed', () => {
       exactCanonicalMatch: false,
       mapperFamilyMatch: false,
       materialConflicts: [],
-      technicalAuthority: false,
     });
     expect(technical.confidence).toBeGreaterThan(95);
-    expect(technical.technicalBlocked).toBe(true);
-    expect(isAutoImportEligible(technical)).toBe(false);
+    // A well-identified technical product is importable. Dosage authority is
+    // not ours to grant or withhold (owner decision, 2026-08-23).
+    expect(isAutoImportEligible(technical)).toBe(true);
   });
 
-  it('classifies a professional stabilizer row as technical', () => {
+  it('classifies a professional stabilizer row as technical without withholding it', () => {
     const { rows } = analyse([
       completeRow({ 'Product Type': 'professional', 'Product Name Original': 'Guma tara' }),
     ]);
     expect(rows[0]!.kind).toBe('technical');
-    expect(rows[0]!.assessment.technicalBlocked).toBe(true);
+    expect(rows[0]!.assessment.missingCritical).not.toContain('dosage');
   });
 
   it('never auto-imports a high-confidence product with an unresolved conflict', () => {

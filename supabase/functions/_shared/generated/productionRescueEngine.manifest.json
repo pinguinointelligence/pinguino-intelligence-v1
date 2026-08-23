@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 307342,
-    "sha256": "5459af1b1f420f1aecc096be8fb840e9bf53abec5eacdd261d70e228e8d12e9a",
+    "bytes": 301470,
+    "sha256": "10411175dd26197f7a16d69db9b71ae2d4b6c78f3555366cd2e57980ac6ce0e2",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -180,12 +180,8 @@
       "sha256": "003bcc884447ec0566a77a35513d01dfeb7d17cd07519f4751bf38424d2ce37b"
     },
     {
-      "path": "src/features/product-intelligence/productDosageAuthority.ts",
-      "sha256": "8171cd529c682324544f6d1c48c6a7e90503795d8cfda4db5b10554c2a1b03a9"
-    },
-    {
       "path": "src/features/product-intelligence/recipeBehaviorAuthority.ts",
-      "sha256": "c3c1495d5a54b82af2d799e14ffe7780398eab1a4f31a711814a1d76c532151a"
+      "sha256": "159ff762b9ccff7e69c909698fcb7160f6d7d878212d2ba7db1250837cc402cb"
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
@@ -237,7 +233,7 @@
     },
     {
       "path": "src/features/recipe-constraints/recipeConstraintAuthority.ts",
-      "sha256": "21de02a7248f58a17326aed1676d2b640c5edf32d9481fde00f980f05716999f"
+      "sha256": "3bf687a15ed31c9b74826f9637ac799d7932bff4cf6b8e4329b1decad7c7af0f"
     },
     {
       "path": "src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts",
@@ -264,5 +260,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "aaadb00a166ad71ff7bc1ddbb000fb5c91069d32314feeaeca986fb8c1100f91"
+  "sourceClosureSha256": "7d7c9842c77d9f560971e9fe11a93aa6080fd9582c6fbdf84e4d48f28bc3c254"
 }
