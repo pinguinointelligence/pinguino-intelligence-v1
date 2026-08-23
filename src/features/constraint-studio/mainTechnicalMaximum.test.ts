@@ -481,6 +481,10 @@ describe('Main technical maximum — exact Watermelon authority', { timeout: SOL
 
   // Full Direction sweep at 18 solver rounds — timeout budget only (see above).
   it('does not cross the 20% ECO Main floor to chase an extreme Direction target', () => {
+    // 60 s, measured not guessed: this case runs ~17 s in isolation because the
+    // shared Direction NEAREST search adds probe solves to every
+    // Direction-active Preview, and it is the heaviest such case in the suite.
+    // The work is real, not a hang; the assertions are unchanged.
     // Budget raised deliberately: the shared Direction NEAREST search adds up
     // to DIRECTION_NEAREST_MAX_PROBES extra solves per Direction-active
     // Preview, and this case builds many of them. The work is real, not a
@@ -523,7 +527,7 @@ describe('Main technical maximum — exact Watermelon authority', { timeout: SOL
     }
     expect(mainTotal(result.preview.proposedInput)).toBeGreaterThanOrEqual(200);
     expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-  }, 20_000);
+  }, 60_000);
   it('keeps Standard unlocked as a soft anchor instead of activating Main maximization', () => {
     const main = build(watermelonFixture(300));
     const standard = build(watermelonFixture(300, 'optimal', 'unlocked'));

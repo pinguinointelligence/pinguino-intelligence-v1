@@ -78,11 +78,31 @@ const I = {
  * PLN→EUR at 4.30 (August 2026). Normal market prices, not promotions.
  */
 const MOJA_CENA = [
-  { mapperId: I.pistachio, pricePerKg: 46.28, note: '199 zł/kg, 100% pistachio paste 1 kg (retail, normal price)', sourceUrl: 'https://sklepczekolada.pl/produkt/pasta-pistacjowa-100-1kg-pi-nuts/' },
-  { mapperId: I.cocoa, pricePerKg: 22.79, note: '97.99 zł/kg, alkalized cocoa powder 1 kg (retail, normal price)', sourceUrl: 'https://trzyziarna.pl/kakao-alkalizowane-proszek-1kg/' },
-  { mapperId: I.espresso, pricePerKg: 13.95, note: '~60 zł/kg, 100% arabica beans, wholesale case pricing', sourceUrl: 'https://www.kaweo.pl/pl/c/Kawy-100-Arabica/122/2' },
-  { mapperId: I.skyr, pricePerKg: 4.75, note: '20.42 zł/kg, Piątnica Skyr natural 450 g', sourceUrl: 'https://www.frisco.pl/pid,145237/n,piatnica-skyr-jogurt-typu-islandzkiego-naturalny/stn,product' },
-  { mapperId: I.cottage, pricePerKg: 9.29, note: '39.96 zł/kg, organic curd cheese (comparable BIO product)', sourceUrl: 'https://www.sklepekologiczny.com.pl/twarog-wiejski-klinek-tlusty-bio-okolo-0-25kg-bio-planet.html' },
+  { mapperId: I.pistachio, pricePerKg: 46.28, market: 'PL', sourceTier: 'retailer',
+    source: 'Sklep Czekolada — Pasta pistacjowa 100% 1 kg (Pi-NUTS)', sourcePack: '1 kg',
+    sourcePrice: 199.0, sourceCurrency: 'PLN', matchClass: 'EXACT_CLASS',
+    note: '199 zł/kg for a 100% pistachio paste, normal listing price; 4.30 PLN/EUR',
+    sourceUrl: 'https://sklepczekolada.pl/produkt/pasta-pistacjowa-100-1kg-pi-nuts/' },
+  { mapperId: I.cocoa, pricePerKg: 22.79, market: 'PL', sourceTier: 'retailer',
+    source: 'Trzy Ziarna — Kakao alkalizowane w proszku 1 kg', sourcePack: '1 kg',
+    sourcePrice: 97.99, sourceCurrency: 'PLN', matchClass: 'STRONG_COMPARABLE',
+    note: 'Alkalized cocoa powder, same class as the Cacao Barry row; a Cacao Barry listing at 117.99 zł/kg was excluded as the higher-priced variant',
+    sourceUrl: 'https://trzyziarna.pl/kakao-alkalizowane-proszek-1kg/' },
+  { mapperId: I.espresso, pricePerKg: 13.95, market: 'PL', sourceTier: 'wholesaler',
+    source: 'Kaweo — 100% Arabica beans, case pricing (Kimbo 80.48 zł/kg, Chicco d\u2019Oro 45.53 zł/kg net)', sourcePack: '1 kg',
+    sourcePrice: 60.0, sourceCurrency: 'PLN', matchClass: 'STRONG_COMPARABLE',
+    note: 'Mid of the observed wholesale case band, not the cheapest line',
+    sourceUrl: 'https://www.kaweo.pl/pl/c/Kawy-100-Arabica/122/2' },
+  { mapperId: I.skyr, pricePerKg: 4.75, market: 'PL', sourceTier: 'retailer',
+    source: 'Frisco.pl — Piątnica Skyr jogurt typu islandzkiego naturalny 450 g', sourcePack: '450 g',
+    sourcePrice: 20.42, sourceCurrency: 'PLN', matchClass: 'EXACT',
+    note: 'Exact product and brand as the Mapper row; 450 g pack normalized to per-kg',
+    sourceUrl: 'https://www.frisco.pl/pid,145237/n,piatnica-skyr-jogurt-typu-islandzkiego-naturalny/stn,product' },
+  { mapperId: I.cottage, pricePerKg: 9.29, market: 'PL', sourceTier: 'retailer',
+    source: 'Sklep Ekologiczny — Twaróg wiejski klinek tłusty BIO (Bio Planet)', sourcePack: '~250 g',
+    sourcePrice: 39.96, sourceCurrency: 'PLN', matchClass: 'STRONG_COMPARABLE',
+    note: 'Organic curd cheese, same class as the BIO cottage cheese row; observed BIO band 32.95–44.36 zł/kg, mid used',
+    sourceUrl: 'https://www.sklepekologiczny.com.pl/twarog-wiejski-klinek-tlusty-bio-okolo-0-25kg-bio-planet.html' },
 ];
 
 /* ── the corpus ────────────────────────────────────────────────────────── */
@@ -246,8 +266,20 @@ export interface InternetProteinRecipe {
 export interface WebEstimatedMojaCena {
   mapperId: string;
   displayName: string;
+  /** The MOJA CENA actually applied, EUR per kg. */
   pricePerKg: number;
   currency: string;
+  /** Market the observation came from. */
+  market: string;
+  /** retailer | wholesaler | professional_supplier | market_survey | utility | estimated */
+  sourceTier: string;
+  source: string;
+  sourcePack: string;
+  sourcePrice: number;
+  sourceCurrency: string;
+  /** EXACT | EXACT_CLASS | STRONG_COMPARABLE | ESTIMATED_COMPARABLE — how close
+   * the observed product is to the Mapper row it is priced against. */
+  matchClass: string;
   /** Where the price came from and what it was normalized from. */
   note: string;
   sourceUrl: string;
@@ -261,6 +293,19 @@ export const INTERNET_PROTEIN_RECIPES: readonly InternetProteinRecipe[] = ${JSON
 export const INTERNET_CORPUS_MAPPER_SHA256 = '${mapperSha}';
 `;
 
+const csvCell = (v) => {
+  const t = v === null || v === undefined ? '' : String(v);
+  return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+};
+const snapshot = [
+  ['article_id','product','market','source_tier','source','source_pack','source_price','currency','normalized_eur_per_kg','match_class','moja_cena_eur_per_kg','researched_at','notes'].join(','),
+  ...priced.map((e) => [
+    e.mapperId, e.displayName, e.market, e.sourceTier, e.source, e.sourcePack,
+    e.sourcePrice, e.sourceCurrency, e.pricePerKg, e.matchClass, e.pricePerKg,
+    '2026-08-23', e.note,
+  ].map(csvCell).join(',')),
+].join('\n') + '\n';
+
 const outPath = resolve(process.cwd(), OUT);
 if (process.argv.includes('--check')) {
   const existing = readFileSync(outPath, 'utf8');
@@ -271,5 +316,6 @@ if (process.argv.includes('--check')) {
   console.log(`Internet protein recipe corpus verified (${built.length} recipes, ${priced.length} MOJA CENA, mapper ${mapperSha.slice(0, 12)}…)`);
 } else {
   writeFileSync(outPath, body);
+  writeFileSync(resolve(process.cwd(), 'reports/PROTEIN_INTERNET_PRICE_SNAPSHOT.csv'), snapshot);
   console.log(`Internet protein recipe corpus generated (${built.length} recipes, ${priced.length} MOJA CENA, mapper ${mapperSha.slice(0, 12)}…)`);
 }

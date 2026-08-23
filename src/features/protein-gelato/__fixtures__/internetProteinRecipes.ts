@@ -63,8 +63,20 @@ export interface InternetProteinRecipe {
 export interface WebEstimatedMojaCena {
   mapperId: string;
   displayName: string;
+  /** The MOJA CENA actually applied, EUR per kg. */
   pricePerKg: number;
   currency: string;
+  /** Market the observation came from. */
+  market: string;
+  /** retailer | wholesaler | professional_supplier | market_survey | utility | estimated */
+  sourceTier: string;
+  source: string;
+  sourcePack: string;
+  sourcePrice: number;
+  sourceCurrency: string;
+  /** EXACT | EXACT_CLASS | STRONG_COMPARABLE | ESTIMATED_COMPARABLE — how close
+   * the observed product is to the Mapper row it is priced against. */
+  matchClass: string;
   /** Where the price came from and what it was normalized from. */
   note: string;
   sourceUrl: string;
@@ -74,7 +86,14 @@ export const WEB_ESTIMATED_MOJA_CENA: readonly WebEstimatedMojaCena[] = [
   {
     "mapperId": "PI-ING-000614",
     "pricePerKg": 46.28,
-    "note": "199 zł/kg, 100% pistachio paste 1 kg (retail, normal price)",
+    "market": "PL",
+    "sourceTier": "retailer",
+    "source": "Sklep Czekolada — Pasta pistacjowa 100% 1 kg (Pi-NUTS)",
+    "sourcePack": "1 kg",
+    "sourcePrice": 199,
+    "sourceCurrency": "PLN",
+    "matchClass": "EXACT_CLASS",
+    "note": "199 zł/kg for a 100% pistachio paste, normal listing price; 4.30 PLN/EUR",
     "sourceUrl": "https://sklepczekolada.pl/produkt/pasta-pistacjowa-100-1kg-pi-nuts/",
     "displayName": "PISTACHIO · Aldori Paste · 100% Nut",
     "currency": "EUR"
@@ -82,7 +101,14 @@ export const WEB_ESTIMATED_MOJA_CENA: readonly WebEstimatedMojaCena[] = [
   {
     "mapperId": "PI-ING-001578",
     "pricePerKg": 22.79,
-    "note": "97.99 zł/kg, alkalized cocoa powder 1 kg (retail, normal price)",
+    "market": "PL",
+    "sourceTier": "retailer",
+    "source": "Trzy Ziarna — Kakao alkalizowane w proszku 1 kg",
+    "sourcePack": "1 kg",
+    "sourcePrice": 97.99,
+    "sourceCurrency": "PLN",
+    "matchClass": "STRONG_COMPARABLE",
+    "note": "Alkalized cocoa powder, same class as the Cacao Barry row; a Cacao Barry listing at 117.99 zł/kg was excluded as the higher-priced variant",
     "sourceUrl": "https://trzyziarna.pl/kakao-alkalizowane-proszek-1kg/",
     "displayName": "COCOA ALKALIZED 100% · Cacao Barry Cocoa Powder",
     "currency": "EUR"
@@ -90,7 +116,14 @@ export const WEB_ESTIMATED_MOJA_CENA: readonly WebEstimatedMojaCena[] = [
   {
     "mapperId": "PI-ING-001657",
     "pricePerKg": 13.95,
-    "note": "~60 zł/kg, 100% arabica beans, wholesale case pricing",
+    "market": "PL",
+    "sourceTier": "wholesaler",
+    "source": "Kaweo — 100% Arabica beans, case pricing (Kimbo 80.48 zł/kg, Chicco d’Oro 45.53 zł/kg net)",
+    "sourcePack": "1 kg",
+    "sourcePrice": 60,
+    "sourceCurrency": "PLN",
+    "matchClass": "STRONG_COMPARABLE",
+    "note": "Mid of the observed wholesale case band, not the cheapest line",
     "sourceUrl": "https://www.kaweo.pl/pl/c/Kawy-100-Arabica/122/2",
     "displayName": "CAFFE ESPRESSO ARABICA · Coffee · 100%",
     "currency": "EUR"
@@ -98,7 +131,14 @@ export const WEB_ESTIMATED_MOJA_CENA: readonly WebEstimatedMojaCena[] = [
   {
     "mapperId": "PI-ING-001395",
     "pricePerKg": 4.75,
-    "note": "20.42 zł/kg, Piątnica Skyr natural 450 g",
+    "market": "PL",
+    "sourceTier": "retailer",
+    "source": "Frisco.pl — Piątnica Skyr jogurt typu islandzkiego naturalny 450 g",
+    "sourcePack": "450 g",
+    "sourcePrice": 20.42,
+    "sourceCurrency": "PLN",
+    "matchClass": "EXACT",
+    "note": "Exact product and brand as the Mapper row; 450 g pack normalized to per-kg",
     "sourceUrl": "https://www.frisco.pl/pid,145237/n,piatnica-skyr-jogurt-typu-islandzkiego-naturalny/stn,product",
     "displayName": "SKYR ICELANDIC YOGHURT · Piątnica Yogurt · Chilled",
     "currency": "EUR"
@@ -106,7 +146,14 @@ export const WEB_ESTIMATED_MOJA_CENA: readonly WebEstimatedMojaCena[] = [
   {
     "mapperId": "PI-ING-001394",
     "pricePerKg": 9.29,
-    "note": "39.96 zł/kg, organic curd cheese (comparable BIO product)",
+    "market": "PL",
+    "sourceTier": "retailer",
+    "source": "Sklep Ekologiczny — Twaróg wiejski klinek tłusty BIO (Bio Planet)",
+    "sourcePack": "~250 g",
+    "sourcePrice": 39.96,
+    "sourceCurrency": "PLN",
+    "matchClass": "STRONG_COMPARABLE",
+    "note": "Organic curd cheese, same class as the BIO cottage cheese row; observed BIO band 32.95–44.36 zł/kg, mid used",
     "sourceUrl": "https://www.sklepekologiczny.com.pl/twarog-wiejski-klinek-tlusty-bio-okolo-0-25kg-bio-planet.html",
     "displayName": "COTTAGE CHEESE · Dairy · Chilled · BIO",
     "currency": "EUR"

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateRecipe,
   detectViolations,
+  type EngineIngredient,
   type RecipeDirectionTarget,
   type RecipeInput,
 } from '@/engine';
@@ -12,7 +13,10 @@ import {
   directionTargetFingerprint,
   workingStateFingerprint,
 } from '@/features/constraint-studio/applyPipeline';
-import { simulateRescueCandidates } from '@/features/constraint-studio/rescueIngredientAdvisor';
+import {
+  assessRescueIngredientAdvice,
+  rescueCandidateFamily,
+} from '@/features/constraint-studio/rescueIngredientAdvisor';
 import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
 import { buildRecipeDirectionPlan } from '@/features/recipe-direction/recipeDirectionTargets';
 import { bandDistance } from '@/features/recipe-direction/directionBandDistance';
@@ -84,7 +88,7 @@ export function internetRecipeInput(
         private_product_id: null,
         identity_provenance: 'mapper',
         name: line.displayName,
-        category: line.category as never,
+        category: line.category as EngineIngredient['category'],
         composition: line.composition,
         pod_value: line.pod_value,
         pac_value: line.pac_value,
@@ -97,8 +101,8 @@ export function internetRecipeInput(
       },
       planned_grams: line.grams,
       actual_grams: null,
-      lock_type: 'none',
-    })) as never,
+      lock_type: 'unlocked',
+    })),
     mode: 'classic',
     category: 'protein_gelato',
     target_temperature_c: temperatureC,
@@ -214,16 +218,17 @@ describe.skipIf(!FULL)('internet recipe torture matrix (PROTEIN_FULL_MATRIX=1)',
             const mainOk = true; // corpus recipes carry no Main; §18 covers Main separately
             const score = recipeFitForInput(candidate, result).score;
 
-            // Rescue must answer independently of Direction availability.
+            // Rescue is NOT simulated per row: one advisor call builds a Preview
+            // per candidate, which would multiply this 600-state sweep by an
+            // order of magnitude. The row records whether Rescue would even have
+            // a job here, and the dedicated 20-case Rescue campaign below
+            // exercises the real before → advice → simulation → Apply → after
+            // path. Stated rather than hidden, so the column is not mistaken for
+            // a simulation that was never run.
             const direction = assessRecipeDirection(candidate, result);
-            const rescue = simulateRescueCandidates({
-              input: candidate, set: NONE, createdAt: AT,
-              options: { effectivePriceOverrides: MOJA_CENA_OVERRIDES as never },
-              bestCurrent: built.ok ? built.preview : null,
-            });
-            const rescueState = rescue.advice === null
-              ? (direction.reached ? 'silent_target_reached' : 'silent_no_improvement')
-              : `advice:${rescue.advice.candidate.namePl}`;
+            const rescueState = direction.reached
+              ? 'not_needed_target_reached'
+              : 'candidate_for_rescue';
 
             // Local↔runtime identity: the candidate must still be the same
             // canonical identities it started from, with finite metrics.
@@ -267,4 +272,116 @@ describe.skipIf(!FULL)('internet recipe torture matrix (PROTEIN_FULL_MATRIX=1)',
     expect(rows.length - 1).toBe(600);
     expect(failures).toEqual([]);
   }, 3_600_000);
+});
+
+/**
+ * §20 — PROTEIN OPERATIONAL RESCUE CAMPAIGN.
+ *
+ * Rescue is DECOUPLED from Direction (staging 0ab80ed): "Direction unavailable"
+ * must never mean "Rescue unavailable", and the converse also has to hold — now
+ * that Protein Sweetness works, Rescue must still answer when the recipe itself
+ * is broken. Each case damages a real internet recipe in a way a gelateria
+ * actually hits, then walks before → advice → simulation → Apply → after.
+ *
+ * The advisor may legitimately stay SILENT. Silence is only accepted here with
+ * a reason: either the draft is already legal and on target, or no approved
+ * candidate materially improves it. Silence is never accepted for lack of
+ * stock, so every case asserts a non-empty candidate family first.
+ */
+type Damage = (input: RecipeInput) => RecipeInput;
+
+const scaleLine = (match: RegExp, factor: number): Damage => (input) => ({
+  ...input,
+  items: input.items.map((item) =>
+    match.test(item.ingredient.name)
+      ? { ...item, planned_grams: Math.round(item.planned_grams * factor) }
+      : item,
+  ),
+});
+const dropLine = (match: RegExp): Damage => (input) => ({
+  ...input,
+  items: input.items.filter((item) => !match.test(item.ingredient.name)),
+});
+
+const RESCUE_CASES: readonly { name: string; recipe: string; temperatureC: -11 | -12 | -13; damage: Damage }[] = [
+  { name: 'missing milk', recipe: 'vanilla-creami', temperatureC: -12, damage: dropLine(/MILK 3\.5%/i) },
+  { name: 'missing cream', recipe: 'vanilla-creami', temperatureC: -12, damage: dropLine(/CREAM 30%/i) },
+  { name: 'missing protein source', recipe: 'chocolate-fitfoodie', temperatureC: -12, damage: dropLine(/WPC 80%/i) },
+  { name: 'missing sugar', recipe: 'vanilla-creami', temperatureC: -11, damage: dropLine(/SUCROSE/i) },
+  { name: 'missing stabilizer', recipe: 'vanilla-creami', temperatureC: -13, damage: dropLine(/TARA GUM/i) },
+  { name: 'missing fat', recipe: 'low-fat-tastesbetter', temperatureC: -12, damage: dropLine(/CREAM 30%|COTTAGE/i) },
+  { name: 'too much protein', recipe: 'whey-heavy-gelatobalancing', temperatureC: -12, damage: scaleLine(/WPC 80%/i, 3) },
+  { name: 'too little protein', recipe: 'whey-heavy-gelatobalancing', temperatureC: -12, damage: scaleLine(/WPC 80%/i, 0.2) },
+  { name: 'too much milk powder', recipe: 'vanilla-creami', temperatureC: -12, damage: scaleLine(/SKIMMED MILK/i, 4) },
+  { name: 'too much sugar', recipe: 'vanilla-creami', temperatureC: -12, damage: scaleLine(/SUCROSE/i, 2.5) },
+  { name: 'too little sugar', recipe: 'vanilla-creami', temperatureC: -12, damage: scaleLine(/SUCROSE|DEXTROSE/i, 0.25) },
+  { name: 'too much fat', recipe: 'high-fat-eatingbirdfood', temperatureC: -12, damage: scaleLine(/CREAM 30%/i, 2.2) },
+  { name: 'too little fat', recipe: 'high-fat-eatingbirdfood', temperatureC: -12, damage: scaleLine(/CREAM 30%/i, 0.1) },
+  { name: 'fruit excess', recipe: 'raspberry-eatcreami', temperatureC: -12, damage: scaleLine(/RASPBERR/i, 2.4) },
+  { name: 'banana excess', recipe: 'banana-proteinchef', temperatureC: -12, damage: scaleLine(/BANANA/i, 2.2) },
+  { name: 'cocoa excess', recipe: 'dark-cocoa-wholesomeyum', temperatureC: -12, damage: scaleLine(/COCOA/i, 3) },
+  { name: 'nut paste excess', recipe: 'pistachio-tastytravelers', temperatureC: -12, damage: scaleLine(/PISTACHIO/i, 2.5) },
+  { name: 'coconut excess', recipe: 'coconut-sweetsimplethings', temperatureC: -12, damage: scaleLine(/COCONUT/i, 2.4) },
+  { name: 'caramel excess', recipe: 'salted-caramel-basicswithbails', temperatureC: -12, damage: scaleLine(/CARAMEL/i, 2.2) },
+  { name: 'stabilizer overdose', recipe: 'vanilla-creami', temperatureC: -12, damage: scaleLine(/TARA GUM/i, 8) },
+  { name: 'skyr collapse', recipe: 'skyr-icelandicprovisions', temperatureC: -11, damage: scaleLine(/SKYR/i, 0.15) },
+  { name: 'espresso overdose', recipe: 'coffee-thatspicychick', temperatureC: -13, damage: scaleLine(/ESPRESSO/i, 6) },
+];
+
+describe.skipIf(!FULL)('§20 Protein operational Rescue campaign (PROTEIN_FULL_MATRIX=1)', () => {
+  it.each(RESCUE_CASES.map((c) => [c.name, c] as const))(
+    'rescue: %s',
+    (_name, testCase) => {
+      const recipe = INTERNET_PROTEIN_RECIPES.find((r) => r.id === testCase.recipe)!;
+      const before = testCase.damage(internetRecipeInput(recipe, testCase.temperatureC, 'optimal'));
+      expect(before.items.length).toBeGreaterThan(2);
+
+      const options = { effectivePriceOverrides: MOJA_CENA_OVERRIDES as never };
+      const beforeResult = calculateRecipe(before);
+      const beforeHard = detectViolations(beforeResult).length;
+      const built = buildOptimizePreview(before, NONE, AT, options);
+      const direction = assessRecipeDirection(before, beforeResult);
+
+      const advice = assessRescueIngredientAdvice({
+        input: before, set: NONE, createdAt: AT, options,
+        bestCurrent: built.ok ? built.preview : null,
+      });
+
+      // Silence is a verdict, never a lack of stock.
+      expect(rescueCandidateFamily(before, direction).length).toBeGreaterThan(0);
+
+      let after = built.ok ? built.preview.proposedInput : before;
+      let applied = 'no_rescue';
+      if (advice !== null) {
+        // Only approved payloads may ever be proposed.
+        expect(['formulation_toolbox', 'verified_protein_toolbox']).toContain(advice.candidate.source);
+        expect(advice.simulatedGrams).toBeGreaterThan(0);
+        // The advice must be a real improvement on something measurable.
+        const better =
+          (advice.rescue.score ?? 0) > (advice.current.score ?? 0) ||
+          advice.rescue.hardMetricCount < advice.current.hardMetricCount ||
+          advice.reasonPl.length > 0;
+        expect(better).toBe(true);
+        applied = 'advice';
+      }
+
+      const afterResult = calculateRecipe(after);
+      // Rescue never invents a 0 g executable row and never breaks the profile.
+      expect(after.items.filter((item) => item.planned_grams <= 0)).toHaveLength(0);
+      expect(assessProteinFormulation(after, afterResult).applicable).toBe(true);
+      // The advisor never mutates the draft it was asked about.
+      expect(before.items.length).toBe(testCase.damage(internetRecipeInput(recipe, testCase.temperatureC, 'optimal')).items.length);
+
+      console.info(
+        `RESCUE ${JSON.stringify({
+          case: testCase.name, recipe: recipe.id, temperatureC: testCase.temperatureC,
+          beforeHard, afterHard: detectViolations(afterResult).length,
+          preview: built.ok ? 'ok' : (built as { code: string }).code,
+          advice: advice === null ? null : advice.candidate.namePl,
+          trigger: advice?.trigger ?? null, applied,
+        })}`,
+      );
+    },
+    900_000,
+  );
 });
