@@ -97,3 +97,72 @@ overrides the way the served runtime does; no code change is implied.
 4. Open the allowlist only when the matrix is 150/150 with monotonic five-level behaviour, or with every shared-NEAREST cell proven against a real feasibility frontier.
 
 Until then Vegan Direction stays `blocked_runtime`, which is the truthful state.
+
+
+---
+
+## 6. Second measurement pass (2026-08-23, after RC-1 was applied and measured)
+
+RC-1 was implemented (`targetFifth` routing for Vegan) and the 150-cell matrix
+re-measured with the allowlist temporarily open. Both changes were then reverted;
+the tree matches staging exactly.
+
+### RC-1 — CONFIRMED FIXED BY MEASUREMENT
+
+Sweetness bands become true fifths of the approved POD band [13, 25]
+(fifth width 2.4): −2 [13, 15.4] · −1 [15.4, 17.8] · **0 [17.8, 20.2]** ·
++1 [20.2, 22.6] · +2 [22.6, 25]. Previously target 0 was the middle *third*
+[17, 21].
+
+Delivered POD at −11 OPTIMAL, hardness 0, is now genuinely distinct and monotonic:
+
+| Sweetness | Delivered POD (before) | Delivered POD (after RC-1) |
+| --- | --- | --- |
+| −2 | 20.14 (collapsed with −1) | **15.35** |
+| −1 | 20.14 | blocked by RC-2 |
+| 0 | 20.74 | **20.06** |
+| +1 | — | **21.58** |
+| +2 | — | **22.58** |
+
+The −2/−1 collapse is gone. Matrix feasibility improved **55 → 63 / 150**, and
+`vegan_profile_constraint` failures fell **15 → 8**.
+
+**RC-1 cannot land on its own.** With the allowlist closed, TypeScript rejects the
+Vegan branch as unreachable (`'"sorbet" | "chocolate_gelato"' and '"vegan_gelato"'
+have no overlap`). The routing fix and the allowlist are coupled by design and must
+land together, which means RC-2 must be fixed first.
+
+### RC-2 — ROOT CAUSE PROVEN (was: "infeasible returns ok:false")
+
+Instrumenting the failing cells shows the real mechanism. When Direction asks for
+LOWER sweetness, the optimizer removes sugar and compensates by inflating
+**Inulin**:
+
+| Case | Inulin proposed | Approved envelope | Result |
+| --- | --- | --- | --- |
+| −13 / sweetness −2 / hardness 0 | **97 g** | 83.1 g | `ok:false` |
+| −13 / sweetness −1 / hardness 0 | **94 g** | 83.1 g | `ok:false` |
+| −11 / sweetness −1 / hardness 0 | **137 g** | 83.1 g | `ok:false` |
+
+`VEGAN_INULIN_CALIBRATION_MAX_PERCENT = 8.31` is enforced only as a **post-hoc
+rejection gate** (`veganProfileConstraintIssues`), never as a bound the search
+respects. So the solver produces an illegal candidate and the whole Preview is
+discarded, instead of the search rejecting that candidate and continuing to a
+legal one.
+
+Note the Main frontier already does this correctly — it calls
+`veganProfileConstraintIssues(executable)` and does `recordRejection('hard_gate')`
+then continues. The Direction optimization path lacks the equivalent.
+
+**Fix direction:** make the Vegan inulin envelope a constraint the Direction search
+honours (reject-and-continue, as the Main frontier already does), so an
+unreachable preference degrades to a truthful NEAREST rather than to `ok:false`.
+
+### RC-3 — standing owner rule now defined
+
+Missing price must no longer dead-end. The owner rule (2026-08-23) is: search the
+internet for a current realistic price (exact product first, else closest
+technical equivalent), normalise to €/kg, and persist it through the normal user
+pricing channel as **`MOJA CENA`** — never into Mapper Basement, never overwriting
+an existing owner price, and never treated as verified product data. This unblocks
+the 75 ECO cells once the price snapshot exists.
