@@ -64,6 +64,12 @@ export interface EnrichmentCaps {
   concurrency: number;
 }
 
+/**
+ * The provider does not honour `max_tool_calls`, so every admission decision
+ * reserves this many searches up front rather than trusting the ceiling.
+ */
+export const WORST_CASE_SEARCHES_PER_CALL = 3;
+
 export const DEFAULT_ENRICHMENT_CAPS: EnrichmentCaps = Object.freeze({
   maxCallsPerImport: 400,
   maxSpendUsd: 5,
@@ -175,8 +181,13 @@ export async function runIntimportEnrichment(
   let webAttempted = 0;
   let cacheHits = 0;
 
+  // Reserve the worst case BEFORE admitting a job. One provider response can
+  // invoke several searches (3 observed live against a ceiling of 2), so
+  // admitting whenever `used < cap` overshoots on any cap that does not divide
+  // evenly — a cap of 5 would have allowed 6.
   const capExhausted = () =>
-    callsUsed >= caps.maxCallsPerImport || spendUsd >= caps.maxSpendUsd;
+    callsUsed + WORST_CASE_SEARCHES_PER_CALL > caps.maxCallsPerImport ||
+    spendUsd >= caps.maxSpendUsd;
 
   const settle = (
     row: EnrichmentInputRow,

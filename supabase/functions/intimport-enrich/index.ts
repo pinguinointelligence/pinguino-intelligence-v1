@@ -40,6 +40,14 @@ const numberEnv = (name: string, fallback: number): number => {
 };
 
 /** Fields the caller may ask about. Anything else is refused. */
+/**
+ * The provider does not honour `max_tool_calls`: a single response was observed
+ * making 3 searches with the ceiling set to 2. Every admission decision therefore
+ * reserves this many searches up front, so the cap can never be exceeded rather
+ * than merely detected afterwards.
+ */
+const WORST_CASE_SEARCHES_PER_CALL = 3;
+
 const RESEARCHABLE = new Set([
   'ingredients',
   'allergens',
@@ -183,9 +191,18 @@ Deno.serve(async (request) => {
     (sum, row) => sum + Number((row as { web_calls: number }).web_calls ?? 0),
     0,
   );
-  if (usedSoFar >= maxPerImport) {
+  // Reserve conservatively BEFORE spending. One response can invoke several
+  // searches (3 observed live despite max_tool_calls: 2), so admitting a call
+  // whenever `used < cap` would overshoot. Refuse unless the WORST case still
+  // fits under the ceiling.
+  if (usedSoFar + WORST_CASE_SEARCHES_PER_CALL > maxPerImport) {
     return json(
-      { error: 'intimport_import_call_cap_reached', callsUsed: usedSoFar, cap: maxPerImport },
+      {
+        error: 'intimport_import_call_cap_reached',
+        callsUsed: usedSoFar,
+        cap: maxPerImport,
+        worstCaseReserve: WORST_CASE_SEARCHES_PER_CALL,
+      },
       429,
     );
   }
@@ -202,7 +219,21 @@ Deno.serve(async (request) => {
     netQuantity: typeof product.netQuantity === 'string' ? product.netQuantity.slice(0, 60) : null,
     knownSourceUrl:
       typeof product.knownSourceUrl === 'string' ? product.knownSourceUrl.slice(0, 400) : null,
+    technicalPdfUrl:
+      typeof product.technicalPdfUrl === 'string' ? product.technicalPdfUrl.slice(0, 400) : null,
   };
+
+  // The caller's deterministic source order (§4). The FIRST step decides where
+  // this call may look; without it the model just searches, and search rankings
+  // hand back SEO aggregators — which is exactly what the first paid run got.
+  const planStep = objectValue(body.researchStep);
+  const stepKind = typeof planStep.kind === 'string' ? planStep.kind : 'OPEN_WEB_SEARCH';
+  const stepUrl = typeof planStep.url === 'string' ? planStep.url.slice(0, 400) : null;
+  const allowedDomains = Array.isArray(planStep.allowedDomains)
+    ? planStep.allowedDomains
+        .filter((d): d is string => typeof d === 'string' && /^[a-z0-9.-]+$/i.test(d))
+        .slice(0, 8)
+    : [];
 
   // Cache key deliberately EXCLUDES importId: one canonical product is one
   // research job, however many imports or rows ask for it. Including the import
@@ -223,9 +254,25 @@ Deno.serve(async (request) => {
   }
 
   const askedFor = requestedFields.join(', ');
+  const directive =
+    stepKind === 'OWNER_TECHNICAL_PDF' && stepUrl
+      ? `OPEN THIS EXACT DOCUMENT FIRST and read the missing fields from it: ${stepUrl}\n` +
+        `It is the manufacturer's own technical/specification document. Do not search elsewhere unless it genuinely lacks the field.\n`
+      : stepKind === 'OWNER_OFFICIAL_URL' && stepUrl
+        ? `OPEN THIS EXACT PAGE FIRST and read the missing fields from it: ${stepUrl}\n` +
+          `It is the manufacturer's/brand's own page. Do not search elsewhere unless it genuinely lacks the field.\n`
+        : stepKind === 'OFFICIAL_DOMAIN_SEARCH'
+          ? `Search ONLY the official domain(s) ${allowedDomains.join(', ')} for this exact product.\n`
+          : stepKind === 'GTIN_LOOKUP'
+            ? `Look the exact GTIN up in the structured product databases available to you.\n`
+            : stepKind === 'RETAILER_SEARCH'
+              ? `No official source carried the missing fields. A recognized retailer listing for the exact product is acceptable now.\n`
+              : `No stronger source is available. Open search is a last resort; prefer the most authoritative page you can find.\n`;
+
   const prompt =
     `Known identity: ${JSON.stringify(identity)}\n` +
     `MISSING fields to research (and nothing else): ${askedFor}\n` +
+    directive +
     (identity.barcode
       ? `A validated GTIN is known — use it to pin the exact product before any name search.\n`
       : `No GTIN is known — identify the exact product by brand, name, variant and net quantity.\n`);
@@ -246,7 +293,14 @@ Deno.serve(async (request) => {
           { role: 'system', content: [{ type: 'input_text', text: SYSTEM_PROMPT }] },
           { role: 'user', content: [{ type: 'input_text', text: prompt }] },
         ],
-        tools: [{ type: 'web_search' }],
+        // A HARD restriction, not a preference: when an official domain is known
+        // the provider is not permitted to return anything else, so a retailer or
+        // SEO page cannot win on ranking.
+        tools: [
+          allowedDomains.length > 0
+            ? { type: 'web_search', filters: { allowed_domains: allowedDomains } }
+            : { type: 'web_search' },
+        ],
         max_tool_calls: maxPerProduct,
         text: {
           format: {

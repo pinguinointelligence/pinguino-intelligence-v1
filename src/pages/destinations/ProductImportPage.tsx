@@ -122,6 +122,7 @@ export function ProductImportPage() {
     const identityByKey = new Map(
       localRows.map((row) => [row.rowIndex, row.researchIdentity] as const),
     );
+    const planByRow = new Map(localRows.map((row) => [row.rowIndex, row.researchPlan] as const));
     try {
       const outcome = await runIntimportEnrichment(
         localRows.map((intelligence) => ({
@@ -139,7 +140,16 @@ export function ProductImportPage() {
               barcode: request.barcode,
               netQuantity: null,
               knownSourceUrl: null,
+              technicalPdfUrl: null,
             },
+          // Strongest available source first — never a general search when the
+          // owner already supplied official evidence.
+          stepFor: (request) => {
+            const step = planByRow.get(request.rowIndex)?.steps[0];
+            return step
+              ? { kind: step.kind, url: step.url, allowedDomains: step.allowedDomains }
+              : null;
+          },
         }),
         undefined,
         setEnrichProgress,

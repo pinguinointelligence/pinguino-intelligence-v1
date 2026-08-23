@@ -26,6 +26,15 @@ export interface IntimportEnrichmentIdentity {
   netQuantity: string | null;
   /** The owner-declared source, passed so the provider can start from it. */
   knownSourceUrl: string | null;
+  /** The owner's technical/specification document. */
+  technicalPdfUrl: string | null;
+}
+
+/** One step of the deterministic source order the server must obey. */
+export interface IntimportResearchStep {
+  kind: string;
+  url: string | null;
+  allowedDomains: string[];
 }
 
 interface ServerFact {
@@ -70,6 +79,8 @@ export class IntimportEnrichmentCapReached extends Error {
 export function createIntimportWebProvider(options: {
   importId: string;
   identityFor: (request: EnrichmentRequest) => IntimportEnrichmentIdentity;
+  /** The first source to consult for this product — official evidence leads. */
+  stepFor: (request: EnrichmentRequest) => IntimportResearchStep | null;
   onTelemetry?: (telemetry: IntimportEnrichmentTelemetry) => void;
 }): EnrichmentProvider {
   return async (request: EnrichmentRequest): Promise<EnrichmentResponse> => {
@@ -82,6 +93,7 @@ export function createIntimportWebProvider(options: {
       body: {
         importId: options.importId,
         product: options.identityFor(request),
+        researchStep: options.stepFor(request),
         fields: request.fields,
       },
     });

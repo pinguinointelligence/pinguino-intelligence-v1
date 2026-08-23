@@ -26,6 +26,7 @@ import {
   type ProductFamilyMatch,
 } from './mapperFamilyInference';
 import { classifySourceAuthority, type SourceAuthorityAssessment } from './sourceAuthority';
+import { buildResearchPlan, type ResearchPlan } from './researchPlan';
 
 /** Canonical lookups the caller supplies. Kept injected so this stays pure. */
 export interface IntimportCanonicalIndex {
@@ -61,7 +62,11 @@ export interface IntimportProductIntelligence {
     barcode: string | null;
     netQuantity: string | null;
     knownSourceUrl: string | null;
+    /** The owner's technical/specification document — previously never sent. */
+    technicalPdfUrl: string | null;
   };
+  /** Ordered sources to try, strongest first. Official evidence leads (§4). */
+  researchPlan: ResearchPlan;
   /** The exact evidence this assessment was computed from. Enrichment merges
    * new facts into THIS, so the caller never rebuilds it and cannot drift. */
   evidence: ProductEvidenceInput;
@@ -245,6 +250,24 @@ export function assessIntimportProduct(
 
   const assessment = assessProductConfidence(evidence);
   const route = routeBeforeWeb(assessment, { exactCanonicalMatch });
+  const targets =
+    route === 'EXISTING' || route === 'READY_LOCAL'
+      ? []
+      : enrichmentTargets(kind, assessment, fields);
+  const researchPlan = buildResearchPlan({
+    brand: candidate.source.Brand,
+    manufacturer: candidate.source.Manufacturer,
+    name: candidate.displayName,
+    variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
+    barcode: candidate.ean,
+    netQuantity:
+      [candidate.source['Net Quantity Value'], candidate.source['Net Quantity Unit']]
+        .filter(Boolean)
+        .join(' ') || null,
+    knownSourceUrl: candidate.source['Primary Source URL'],
+    technicalPdfUrl: candidate.source['Technical PDF URL'],
+    missingFields: targets,
+  });
 
   return {
     rowIndex: candidate.rowIndex,
@@ -267,13 +290,12 @@ export function assessIntimportProduct(
         .filter(Boolean)
         .join(' ') || null,
       knownSourceUrl: candidate.source['Primary Source URL'],
+      technicalPdfUrl: candidate.source['Technical PDF URL'],
     },
+    researchPlan,
     evidence,
     route,
-    enrichmentTargets:
-      route === 'EXISTING' || route === 'READY_LOCAL'
-        ? []
-        : enrichmentTargets(kind, assessment, fields),
+    enrichmentTargets: targets,
   };
 }
 
