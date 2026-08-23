@@ -544,36 +544,33 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
       return bestForLine;
     };
 
-    // ── PRESERVE FIRST, DEVIATE ONLY WHEN PROVEN NECESSARY (owner §8 + §12) ──
+    // ── PRESERVE FIRST, DEVIATE ONLY WHEN PROVEN NECESSARY (owner §8 + §12).
     //
     // The ladder is partitioned, not shortened: every rung the search had
     // before is still reachable. What changed is the ORDER OF PROOF. The
-    // preserving rungs are searched on their own first; the rungs that would
-    // materially collapse a positive user line are searched only when NO
-    // preserving rung could improve the recipe at all.
+    // preserving rungs are searched on their own; the rungs that would
+    // materially collapse a positive user line are reached only when the
+    // preserving ones leave the recipe out of band, and their result is kept
+    // ONLY when it makes the recipe fully LEGAL.
     //
-    // That is exactly the owner's decisive counterexample: a 40 g / Score 10
+    // Anything weaker was measured to reproduce the owner's defect: accepting
+    // a deviation merely for FEWER violations put the dried yolk back at 1 g
+    // in cases that ended 4 → 1 violations — PI deleted the ingredient AND
+    // still handed back an out-of-band recipe. A 97.5 % reduction that does
+    // not even reach a legal recipe is never "necessary"; the honest outcome
+    // is the preserved line plus the truthful residual the pipeline already
+    // reports.
+    //
+    // That is the owner's decisive counterexample: a 40 g / Score 10
     // candidate existed, so the 1 g candidate must never have been reachable
-    // as an ordinary optimization — not because 1 g is forbidden, but because
-    // it was never proven necessary.
-    const preservingRungs = candidate.testedGrams.filter((g) => !isDeviating(candidate, g));
-    const deviatingRungs = candidate.testedGrams.filter((g) => isDeviating(candidate, g));
-
+    // as ordinary optimization — not because 1 g is forbidden, but because it
+    // was never proven necessary.
+    const preservingRungs: number[] = [];
+    const deviatingRungs: number[] = [];
+    for (const toGrams of candidate.testedGrams) {
+      (isDeviating(candidate, toGrams) ? deviatingRungs : preservingRungs).push(toGrams);
+    }
     let bestForLine = searchRungs(preservingRungs);
-
-    // §8 rank 1 (hard legality) still outranks §8 rank 5 (user intent) — but
-    // §12 sets the price: a material deviation may be taken ONLY when it is
-    // PROVEN to buy something no preserving candidate can buy, and the proof
-    // demanded here is the strongest one available at this tier: the deviating
-    // candidate makes the recipe fully LEGAL (zero out-of-band metrics) while
-    // no preserving candidate does.
-    //
-    // Anything weaker was measured to reproduce the owner's defect. Accepting a
-    // deviation merely for FEWER violations put the dried yolk back at 1 g in
-    // cases that ended 4 → 1 violations — i.e. PI deleted the ingredient AND
-    // still handed back an out-of-band recipe. A 97.5 % reduction that does not
-    // even reach a legal recipe is never "necessary"; the honest outcome is the
-    // preserved line plus the truthful residual the pipeline already reports.
     const preservingViolations = bestForLine?.measure.violations ?? best.violations;
     if (deviatingRungs.length > 0 && preservingViolations > 0) {
       const deviating = searchRungs(deviatingRungs);
