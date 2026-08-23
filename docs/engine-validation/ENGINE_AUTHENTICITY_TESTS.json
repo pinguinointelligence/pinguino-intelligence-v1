@@ -3072,7 +3072,7 @@
       "targetBandSource": "native seeded bands",
       "initialSeed": "template milk_base_v1 (approved) mapped onto the user's selected identities",
       "solverMode": "constrained_reformulation",
-      "iterations": 12,
+      "iterations": 18,
       "stopReason": "iteration_cap",
       "outcome": "impossible_under_constraints",
       "outcomeDetail": "impossible_under_constraints",
@@ -3215,7 +3215,7 @@
         "matchedLines": 0,
         "detected": false
       },
-      "bestFoundProof": "solver invoked 12×; trajectory r0:v9/s23.7 → r1:v10/s18 → r2:v10/s16.3 → r3:v10/s15.6 → r4:v10/s15.2 → r5:v10/s15 → r6:v10/s14.9 → r7:v10/s14.8 → r8:v10/s14.7 → r9:v10/s14.7 → r10:v10/s14.7 → r11:v10/s14.7 → r12:v10/s14.6; stop=iteration_cap; CAP HIT (reported honestly)",
+      "bestFoundProof": "solver invoked 18×; trajectory r0:v9/s23.7 → r1:v10/s18 → r2:v10/s16.3 → r3:v10/s15.6 → r4:v10/s15.2 → r5:v10/s15 → r6:v10/s14.9 → r7:v10/s14.8 → r8:v10/s14.7 → r9:v10/s14.7 → r10:v10/s14.7 → r11:v10/s14.7 → r12:v10/s14.6 → r13:v10/s14.6 → r14:v10/s14.6 → r15:v10/s14.6 → r16:v10/s14.6 → r17:v10/s14.6 → r18:v10/s14.6; stop=iteration_cap; CAP HIT (reported honestly)",
       "runtimeReferenceData": [
         "src/data/demoIngredients.ts (canonical literature compositions; strawberry = documented raspberry surrogate PI-ING-001553)",
         "src/features/formulation/templateRegistry.ts → milk_base_v1 (approved)",
