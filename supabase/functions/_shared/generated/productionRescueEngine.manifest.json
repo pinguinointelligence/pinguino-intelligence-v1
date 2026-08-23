@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 296467,
-    "sha256": "ba4eb2546f0a7d6b8a5818e81ea61dbe70f2637065f3036009c879a3e376bc20",
+    "bytes": 297859,
+    "sha256": "3a62dbdfb72a70e1177519f421a38393cbb42ebb7373f5400a00c33725e6a477",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -145,7 +145,7 @@
     },
     {
       "path": "src/features/formulation/veganProfileConstraints.ts",
-      "sha256": "05da9c51793e945aaba7ed6fc3a8603acdbc4b758ddc6200c888f767d1bc9964"
+      "sha256": "ede50b98cbb52cde25eab9b1d16ef4605d44f58df33ce5e208d25bcbc96dd57c"
     },
     {
       "path": "src/features/formulation/violationBands.ts",
@@ -165,7 +165,7 @@
     },
     {
       "path": "src/features/product-intelligence/productBehaviorAccess.ts",
-      "sha256": "492f0e3d9cd25b0cf0f7855c067d134590abf77812d1aa366cd19a9b4d89e147"
+      "sha256": "13aae40a48d45562d9b50de39c742c5e7d057885721876e8dec49857279d958a"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorResolver.ts",
@@ -241,7 +241,7 @@
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionTargets.ts",
-      "sha256": "8a7cc0c4342ca787ef901a926f40b3c35a92a3a921cc2bd77912a27809785630"
+      "sha256": "355c738db19c3b3498a73c6004ae65a8582998f6630baf39fbec694f3bf23500"
     },
     {
       "path": "src/features/recipe-score/recipeMatchScore.ts",
@@ -256,5 +256,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "4830d18c7575aefc50454242edd03f94a9f9ed28b022a9b0c540a67fdc9259aa"
+  "sourceClosureSha256": "6ca87ec2756a1fef255ed8e6a16294773c8dbe319c0dd6c615d32b99983ab203"
 }

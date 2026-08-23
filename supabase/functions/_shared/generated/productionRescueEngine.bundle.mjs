@@ -3843,7 +3843,10 @@ function mainBehaviorBlockReason(snapshot, snapshotRequired = false) {
 	if (!snapshot) return snapshotRequired ? "Produkt wymaga ponownej walidacji przed ustawieniem jako Main." : null;
 	if (snapshot.resolutionState !== "RESOLVED") return "Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.";
 	if (snapshot.processScope !== "BASE_FORMULATION") return "Topping nie może pełnić roli Main.";
-	if (snapshot.moduleEligibility.MAIN !== "eligible") return snapshot.mainClassification === "MAIN_BLOCKED_POLICY" || snapshot.blockReasons.includes("main_policy_missing") ? "Brak zatwierdzonego zakresu Main dla tego produktu i profilu." : "Produkt nie jest zatwierdzony jako Main w tym profilu.";
+	if (snapshot.moduleEligibility.MAIN !== "eligible") {
+		if (snapshot.mainClassification === "PROTEIN_CONTRIBUTOR_ONLY") return "Składnik białkowy nie jest automatycznie smakiem Main.";
+		return snapshot.mainClassification === "MAIN_BLOCKED_POLICY" || snapshot.blockReasons.includes("main_policy_missing") ? "Brak zatwierdzonego zakresu Main dla tego produktu i profilu." : "Produkt nie jest zatwierdzony jako Main w tym profilu.";
+	}
 	if (snapshot.mainClassification !== "MAIN_ALLOWED" && snapshot.mainClassification !== "MAIN_PROFILE_SPECIFIC") return snapshot.mainClassification === "PROTEIN_CONTRIBUTOR_ONLY" ? "Składnik białkowy nie jest automatycznie smakiem Main." : "Produkt nie jest składnikiem smakowym Main.";
 	if (!snapshot.mainPolicyId || !snapshot.mainPolicyVersion || snapshot.ecoFloorPercent === null || snapshot.optimalCeilingPercent === null || snapshot.hardLimitPercent === null || snapshot.mainEquivalentFactor === null) return "Brak zatwierdzonego zakresu Main dla tego produktu i profilu.";
 	return null;
@@ -5415,18 +5418,45 @@ function normalizeRecipeDirectionTargets(value) {
 		flavor: normalize(value?.flavor)
 	};
 }
+/**
+* The plan depends ONLY on these four values, and the pipeline rebuilds it many
+* times per solve (every violation measure, every candidate, every advisor
+* simulation). Memoising on that exact value fingerprint — not on object
+* identity — is safe for any caller and removes a large amount of repeated work
+* from the Direction and Rescue hot paths.
+*/
+const DIRECTION_PLAN_CACHE_LIMIT = 512;
+const directionPlanCache = /* @__PURE__ */ new Map();
+const directionPlanKey = (input) => [
+	input.category,
+	input.target_temperature_c,
+	input.goals?.direction_targets_active === true ? 1 : 0,
+	input.goals?.direction_targets?.sweetness ?? 0,
+	input.goals?.direction_targets?.softness ?? 0,
+	input.goals?.direction_targets?.creaminess ?? 0,
+	input.goals?.direction_targets?.flavor ?? 0
+].join("|");
 function buildRecipeDirectionPlan(input) {
+	const cacheKey = directionPlanKey(input);
+	const cached = directionPlanCache.get(cacheKey);
+	if (cached) return cached;
+	const plan = computeRecipeDirectionPlan(input);
+	if (directionPlanCache.size >= DIRECTION_PLAN_CACHE_LIMIT) directionPlanCache.clear();
+	directionPlanCache.set(cacheKey, plan);
+	return plan;
+}
+function computeRecipeDirectionPlan(input) {
 	const targets = normalizeRecipeDirectionTargets(input.goals?.direction_targets);
 	const enabled = input.goals?.direction_targets_active === true;
 	const profile = profileForCategory(input.category);
 	const regulator = profile ? getTemperatureRegulatorSettingsOrNull(profile, input.target_temperature_c) : null;
 	const axes = [];
 	const bands = {};
-	const sweetnessOperational = profile === "standard_gelato" || profile === "protein_gelato" || profile === "sorbet" && (input.target_temperature_c === -11 || input.target_temperature_c === -12 || input.target_temperature_c === -13) || profile === "chocolate_gelato" && (input.target_temperature_c === -11 || input.target_temperature_c === -12);
-	const softnessOperational = profile === "standard_gelato" || profile === "sorbet" && (input.target_temperature_c === -11 || input.target_temperature_c === -12 || input.target_temperature_c === -13);
+	const sweetnessOperational = profile === "vegan_gelato" || profile === "standard_gelato" || profile === "protein_gelato" || profile === "sorbet" && (input.target_temperature_c === -11 || input.target_temperature_c === -12 || input.target_temperature_c === -13) || profile === "chocolate_gelato" && (input.target_temperature_c === -11 || input.target_temperature_c === -12);
+	const softnessOperational = profile === "vegan_gelato" || profile === "standard_gelato" || profile === "sorbet" && (input.target_temperature_c === -11 || input.target_temperature_c === -12 || input.target_temperature_c === -13);
 	if (regulator?.pod && sweetnessOperational) {
 		const targetCenter = profile === "sorbet" ? SORBET_SWEETNESS_TARGET_CENTERS[targets.sweetness] : null;
-		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : profile === "standard_gelato" || profile === "protein_gelato" ? targetFifth(regulator.pod.band, targets.sweetness) : legacyTargetThird(regulator.pod.band, targets.sweetness);
+		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : profile === "standard_gelato" || profile === "vegan_gelato" || profile === "protein_gelato" ? targetFifth(regulator.pod.band, targets.sweetness) : legacyTargetThird(regulator.pod.band, targets.sweetness);
 		if (enabled) bands.pod = targetBand;
 		axes.push({
 			axis: "sweetness",

@@ -379,10 +379,20 @@ export function hasActiveExactDirectionObjective(input: RecipeInput): boolean {
       axis.targetBand !== null &&
       // A profile qualifies for the EXACT five-step objective when its axis
       // carries either an exact preference point (Sorbet's target centres) or a
-      // genuine five-way band subdivision. Protein subdivides its own approved
-      // POD band into fifths exactly as Standard Gelato does.
+      // genuine five-way band subdivision. Protein and Vegan both subdivide
+      // their own approved POD band into fifths exactly as Standard Gelato does.
+      //
+      // Leaving a five-fifth profile out of this list is not cosmetic: the
+      // pipeline's native-safe Direction fixed point is gated on
+      // `hasActiveExactDirectionObjective`, so an omitted profile reports
+      // `unsafe_proposal` — NO Preview at all — instead of a truthful NEAREST.
+      // Measured on the Vegan −13 starter at Sweetness −2 (band [13,15.4],
+      // draft POD 21.575, draft natively clean): no Preview was returned even
+      // though the −1 request reaches a legal 17.7477 candidate from the same
+      // draft. Protein had the identical defect before it was listed here.
       (plan.profile === 'standard_gelato' ||
         plan.profile === 'protein_gelato' ||
+        plan.profile === 'vegan_gelato' ||
         axis.targetCenter !== null),
   );
 }

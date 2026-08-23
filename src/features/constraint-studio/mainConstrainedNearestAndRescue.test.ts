@@ -29,6 +29,7 @@ import { useConstraintStudioStore } from './constraintStudioStore';
 import {
   assessRescueIngredientAdvice,
   isMaterialRescueImprovement,
+  MAX_RESCUE_CANDIDATES,
   rescueCandidateFamily,
   simulateRescueCandidates,
   type RescueCandidateIngredient,
@@ -455,12 +456,11 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
   // advisor contract — recommend an approved ingredient, by simulation, with a
   // truthful score reason — is unchanged and still pinned, on a target the
   // current ingredient set genuinely cannot reach (8/10).
-  it('6. Gelato positive: milk base, Sweetness −2 / Hardness −2 — current ingredients 8/10, simulated Inulina 9/10 → recommended with a truthful reason', () => {
+  it('6. Gelato positive: milk base, Sweetness −2 / Hardness −2 — current ingredients reach 9/10 at distance 1.83, simulated Inulina reaches distance 0.18 → recommended with a truthful reason', () => {
     const request = withDirection(starterMilkBase(), -2, -2);
     const built = buildOptimizePreview(request, NONE, AT, { requirePracticalPreview: true });
     expect(built.ok).toBe(true);
     if (!built.ok) return;
-    // Still an honest NEAREST: the requested band remains out of reach.
     expect(built.preview.directionAssessment?.reached).toBe(false);
 
     const advice = assessRescueIngredientAdvice({
@@ -470,10 +470,23 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
       options: { requirePracticalPreview: true },
       bestCurrent: built.preview,
     });
-    // The candidate universe is real — silence is a verdict, not a lack of stock.
-    expect(rescueCandidateFamily(request, assessRecipeDirection(request, calculateRecipe(request))).length)
-      .toBeGreaterThan(0);
-    expect(advice).toBeNull();
+    expect(advice).not.toBeNull();
+    expect(advice!.candidate.canonicalIngredientId).toBe('PI-ING-000456');
+    expect(advice!.candidate.namePl).toBe('Inulina');
+    // The shared Direction NEAREST fix raised what the CURRENT ingredients can
+    // reach on this target from 8/10 to 9/10, so the advisor no longer earns its
+    // recommendation with a score point — it earns it on DISTANCE to the
+    // requested band, 1.83 → 0.18, at the same 9/10. That is still a material,
+    // truthful improvement and still the same approved candidate; only the
+    // reason the recommendation is worth making has moved.
+    expect(advice!.current.score).toBe(9);
+    expect(advice!.rescue.score).toBe(9);
+    expect(advice!.simulatedGrams).toBeGreaterThan(0);
+    expect(advice!.reasonPl).toContain('9/10');
+    expect(advice!.reasonPl).toContain('1.83');
+    expect(advice!.reasonPl).toContain('0.18');
+    expect(advice!.reasonPl).toContain('Inulina');
+    expect(advice!.simulatedCandidateIds.length).toBeLessThanOrEqual(MAX_RESCUE_CANDIDATES);
   });
 
   it('7. Sorbet positive: no dextrose in the scaffold, Hardness −1 — current ingredients have no legal correction, simulated Dekstroza brings the legal recipe to the target distance', () => {
