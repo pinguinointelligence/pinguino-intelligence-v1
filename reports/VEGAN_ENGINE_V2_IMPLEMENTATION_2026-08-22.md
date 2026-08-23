@@ -596,3 +596,82 @@ served JavaScript).
 All of the uncovered cases are covered by the deterministic test matrix
 (§17/§18): 14 representative recipes across −11/−12/−13 and OPTIMAL/ECO, the 15
 critical invariants, and the V1–V7 fixtures.
+
+---
+
+## Addendum — Production Rescue Edge SYNCED + current-SHA served QA (2026-08-23)
+
+### Production Rescue Edge — **SYNCED** (supersedes the STALE/PENDING entry above)
+
+| Item | Value |
+| --- | --- |
+| Function | `production-rescue-authorize` |
+| Project | **staging only** — `tunabqqrwabacxjcxxkz` (production `riwipywgqobrulyzrzad` untouched) |
+| Version | **6 → 8**, status ACTIVE, `verify_jwt` true |
+| Deployed at | **2026-08-23 09:00:27** |
+| `ezbr_sha256` | `f70f0533316d0bc25269774ef5750d262feaedd02255f370b392a8dc25d6c646` (was `1d5e7d17…`) |
+| Repo bundle SHA-256 | **`3716be4d817cdcc3a2a35c20cbda739f43e02451b021022a6bb827652b934b69`** |
+| Source-closure SHA-256 | `54a6bf2403de50f5d05873c232c128050a7c192f6d7e90fc249314d80a0fee47` |
+| Closure | **57 files**, 0 mismatched, 0 external imports, no dependency leak |
+
+**Deployment proof.** The deployed function's own files were read back from the
+Supabase API and hashed: the deployed
+`_shared/generated/productionRescueEngine.bundle.mjs` is **byte-identical** to
+the repo bundle (295 428 chars, SHA-256 `3716be4d817cdcc3…`), and the deployed
+metadata declares the same bundle and closure hashes. Credential-free
+reachability smoke: the new function answers `401
+UNAUTHORIZED_NO_AUTH_HEADER` (its own JWT gate) where a non-existent function
+answers `404` — so version 8 is live and executing.
+
+Closure content verified present: `resolveIceAnchorRows` (Vegan v2's only
+engine-layer contribution), `practicalRecipe` / `isOmittableUnusedLine`
+(zero-gram), `mainIngredientContract` (Main rescue), and the Protein v2
+authority modules. `src/features/vegan-structure/*` is deliberately **not** in
+the closure — the Vegan structural tie-breaks live in `applyPipeline.ts` and
+`rescueIngredientAdvisor.ts`, which the Rescue Edge does not import; Vegan v2's
+behavioural footprint inside the Edge is therefore exactly zero.
+
+### Vegan v2 re-verified on the current staging SHA
+
+Base `72d328e` (after Protein v2, the Protein −11/−12 calibration and P1-B, all
+of which touched `applyPipeline.ts`). Vegan tie-breaks confirmed intact at
+`applyPipeline.ts` (score-first seam) and `rescueIngredientAdvisor.ts`; all
+Vegan bands numerically unchanged; counts unchanged.
+
+Served on Vercel `dpl_C3wXnecDoAqob4i1tCA4AvZKZwvU` (READY, `72d328e`,
+`staging.pinguinoai.com`), bundle `index-_jm3DRFD.js`:
+
+| Case | Result |
+| --- | --- |
+| **A — Vegan −11 ECO** | built, Preview *"parametry poza zatwierdzonym zakresem 1 → 0"*, Apply OK, **Score 10/10**. POD **21.83** · NPAC **41.18** · water **67.04** · solids **32.96** · fat **4.99** — identical to the pre-Protein baseline. 1000 g, **0 zero-gram rows**. |
+| **B — Vegan −13 OPTIMAL** | template correctly differs from −11 (sucrose 185→95, dextrose 60→150); truthful *"Receptura już spełnia wybrany profil"*, **Score 10/10**. POD **21.57** · NPAC **58.24** · water **64.12** · solids **35.88** · fat **5.63** — identical to baseline. 1000 g, **0 zero-gram rows**. |
+| Monitor truthfulness | **"Stabilność zamrażania: Brak danych"** at both temperatures. Laktoza 0 %, Alkohol 0 %. |
+| Incomplete metadata | OAT DRINK / REFINED COCONUT OIL under a "CZĘŚCIOWO PODŁĄCZONE" profile still Preview and Apply. |
+| Console errors | none. |
+
+### Recipe Rescue Advisor — cannot fire for Vegan (pre-existing boundary)
+
+Served finding: both Direction regulators render
+`data-regulator-state="unavailable"` and every axis button is `disabled` for the
+Vegan profile. Cause is in `recipeDirectionTargets.ts`: Vegan has no approved
+POD `lockedReference` / NPAC `cleanCenter` Direction calibration, so the axes are
+`blocked_science` / `blocked_data` and `ProfileDirectionAxes` disables them.
+Since `assessRescueIngredientAdvice` returns early unless
+`direction_targets_active === true`, and that flag can only be set by a non-zero
+Direction target, **the advisor is inert for Vegan by design**.
+
+This is **not** a Vegan v2 regression: `f15b977` touched no Direction file, and
+`recipeDirectionTargets.ts` is byte-identical to its pre-Vegan-v2 state. The
+Vegan-only candidate filtering remains pinned by
+`veganEngineV2Invariants.test.ts`, and served substitution still fails closed
+("Brak bezpiecznego zamiennika…").
+
+### Not covered
+
+- **Production cockpit rescue served QA (standard / Vegan / Protein)** — the
+  cockpit requires starting a batch from a saved recipe, and several of this
+  app's controls (ingredient-picker search, `ZAPISZ`, `Otwórz` in the recipe
+  list) do not respond to synthetic pointer/keyboard input in this automation
+  context. The Edge itself is proven deployed and executing; its functional
+  smoke through the cockpit remains for owner QA.
+- The wider Vegan fat/protein matrix stays covered by the deterministic tests.
