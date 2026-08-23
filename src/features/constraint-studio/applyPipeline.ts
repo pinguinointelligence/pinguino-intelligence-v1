@@ -43,6 +43,7 @@ import {
   compareDirectionDistance,
   directionDistance,
   requestedDirectionBands,
+  type DirectionDistanceMeasure,
 } from '@/features/recipe-direction/directionBandDistance';
 import {
   assessRecipeDirection,
@@ -5498,14 +5499,49 @@ function improveDirectionNearestVector(
   // what refuses a natively unsafe proposal and turns the preview into
   // `no_proposal`, leaving the user on the unchanged draft.
   const incumbentSurvives = beatsBaseline(input, working);
-  // When the incumbent cannot stand, the honest bar is what a concession
-  // actually leaves behind: the unchanged draft.
+  const draftIsLegal = detectViolations(calculateRecipe(input)).length === 0;
   const targetMainGrams = incumbentSurvives
     ? mainGroupTotal(input, working)
     : mainGroupTotal(input, input);
+
+  /**
+   * The BAR a probe has to beat is whatever the user actually ends up with if
+   * this search changes nothing — and it must be something ATTAINABLE:
+   *   - the incumbent, when it can stand downstream; else
+   *   - the unchanged draft, but ONLY when that draft is itself hard-safe; else
+   *   - nothing at all.
+   *
+   * That last case is not hypothetical. Measured on the vanilla internet recipe
+   * at −12 °C, Sweetness +2: the incumbent could not stand, the draft was itself
+   * hard-violating, and the draft's distance (0.5107) was nevertheless used as
+   * the bar — so a perfectly legal probe candidate at 0.5468 "lost" to a recipe
+   * nobody can have, the doomed incumbent was returned, and the pipeline fell
+   * through to a preference-stripped retry that delivered POD 14.3892 while a
+   * legal 15.4532 existed. An unattainable state must never out-rank a legal
+   * candidate, so the bar becomes +∞ and the first legal probe wins.
+   */
+  const UNATTAINABLE: DirectionDistanceMeasure = {
+    missedAxes: requested.length,
+    total: Number.POSITIVE_INFINITY,
+    // Carries a real per-axis shape, not an empty one: the loop below prunes
+    // axes that already satisfy their band by reading `perAxis`, so an empty
+    // sentinel would silently mark every axis satisfied and skip the search
+    // entirely — which is exactly how the vanilla −12 +2 case slipped through.
+    perAxis: requested.map((entry) => ({
+      axis: entry.axis,
+      metric: entry.metric,
+      value: null,
+      band: entry.band,
+      distance: Number.POSITIVE_INFINITY,
+    })),
+  };
   let best = {
     input: working,
-    measure: directionDistance(incumbentSurvives ? working : input, requested),
+    measure: incumbentSurvives
+      ? directionDistance(working, requested)
+      : draftIsLegal
+        ? directionDistance(input, requested)
+        : UNATTAINABLE,
   };
   // A surviving incumbent already inside every requested band is ACHIEVED.
   if (incumbentSurvives && best.measure.missedAxes === 0) return working;
@@ -5612,6 +5648,18 @@ export function buildOptimizePreview(
   const nearest = buildOptimizePreviewWithDirection(withoutPreference, set, createdAt, options);
   if (!nearest.ok) return direct;
   nearest.preview.directionTargetUnreached = true;
+  // REBASE onto the working state the user is actually on. This Preview was
+  // built against `withoutPreference`, which differs from `input` only in the
+  // Direction goal fields — but `workingStateFingerprint` hashes `goals`, so the
+  // Preview carried a base fingerprint for a state that does not exist on the
+  // user's screen and the Apply door refused it as `stale_preview`. Every other
+  // part of the Preview is derived from the ITEM vectors, which are identical in
+  // both inputs, so restoring the original goals and re-deriving the fingerprint
+  // is exact rather than cosmetic. Measured on the vanilla internet recipe at
+  // −12 °C, Sweetness +2 before the fix: a clean, non-diagnostic Preview that
+  // could never be applied.
+  nearest.preview.baseFingerprint = workingStateFingerprint(input, set);
+  nearest.preview.proposedInput = { ...nearest.preview.proposedInput, goals: input.goals };
   return nearest;
 }
 
