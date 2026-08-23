@@ -18,6 +18,7 @@
  */
 import { MAPPER_ENGINE_REQUIRED_FIELDS } from './mapperRuntimeUsability';
 import { validatePlausibility, type PlausibilityViolation } from './productPlausibility';
+import type { CardContribution } from './productSourceCard';
 import {
   CONSENSUS_BANDS,
   inferMapperValues,
@@ -123,6 +124,11 @@ export interface ProductWorkingValuesInput {
   declaredConfidence: number;
   /** Identity for the Mapper pass. */
   identity: MapperInferenceInput;
+  /**
+   * Evidence from an identity-confirmed source card. Already gated: the caller
+   * decides authority per product, and per-100 ml values never arrive here.
+   */
+  sourceCard?: CardContribution | null;
   /** True for professional/technical products. */
   technical: boolean;
   /**
@@ -200,7 +206,17 @@ export function resolveProductWorkingValues(
   }
   trace.push(`product_declared: ${declaredCount} pol`);
 
-  /* 2. Mapper knowledge fills the gaps */
+  /* 2. an identity-confirmed source card — stronger than any estimate */
+  let cardFields = 0;
+  for (const [field, truth] of Object.entries(input.sourceCard?.fields ?? {})) {
+    fields = applyFieldTruth(fields, field as WorkingNumericField, truth);
+    cardFields++;
+  }
+  if (input.sourceCard) {
+    trace.push(`source_card: ${cardFields} pol`, ...input.sourceCard.reasons);
+  }
+
+  /* 3. Mapper knowledge fills the gaps */
   const inference = inferMapperValues(input.identity, knowledge);
   for (const field of WORKING_NUMERIC_FIELDS) {
     const candidate = inference.fields[field];
@@ -208,10 +224,10 @@ export function resolveProductWorkingValues(
   }
   trace.push(...inference.trace);
 
-  /* 3. arithmetic closure over what is now known */
+  /* 4. arithmetic closure over what is now known */
   fields = closeArithmetic(fields, trace);
 
-  /* 4. reject whatever the assembled product cannot jointly be */
+  /* 5. reject whatever the assembled product cannot jointly be */
   const plausibility = validatePlausibility(fields);
   fields = plausibility.fields;
   for (const violation of plausibility.violations) {
@@ -226,7 +242,7 @@ export function resolveProductWorkingValues(
     fields = closeArithmetic(fields, trace);
   }
 
-  /* 5. record where the Mapper disagrees with the declaration, without acting on it */
+  /* 6. record where the Mapper disagrees with the declaration, without acting on it */
   const conflicts = declaredConflicts(input.declared, inference.fields);
 
   const missingEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(

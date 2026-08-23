@@ -1,0 +1,203 @@
+{
+  "totalProducts": 820,
+  "cardsInDataset": 280,
+  "uniqueUrls": 280,
+  "successfullyFetched": 276,
+  "identityVerdicts": {
+    "EXACT_IDENTITY_MATCH": 253,
+    "AMBIGUOUS": 20,
+    "MISMATCH": 3
+  },
+  "exactEanMatches": 0,
+  "outcomes": {
+    "FETCHED_MATCHED": 62,
+    "FETCHED_NO_NUTRITION": 180,
+    "FETCHED_AMBIGUOUS": 20,
+    "PER_100_ML_ONLY": 11,
+    "FETCHED_IDENTITY_MISMATCH": 3,
+    "HTTP_NOT_AVAILABLE": 4
+  },
+  "cardsPer100g": 62,
+  "cardsPer100ml": 11,
+  "fieldsUpgradedToVerified": 270,
+  "productsMateriallyImproved": 43,
+  "verifiedEngineFieldsBefore": 625,
+  "verifiedEngineFieldsAfter": 831,
+  "missingEngineFieldsBefore": 4241,
+  "missingEngineFieldsAfter": 4076,
+  "productsWithEstimatedFieldBefore": 574,
+  "productsWithEstimatedFieldAfter": 574,
+  "readinessBefore": {
+    "READY": 0,
+    "ESTIMATED_READY": 5,
+    "REVIEW": 815
+  },
+  "readinessAfter": {
+    "READY": 0,
+    "ESTIMATED_READY": 6,
+    "REVIEW": 814
+  },
+  "byAuthority": {
+    "OFFICIAL_PRIVATE_LABEL": {
+      "products": 13,
+      "fields": 35
+    },
+    "AUTHORITATIVE_RETAILER": {
+      "products": 49,
+      "fields": 235
+    }
+  },
+  "sampleUpgrades": [
+    {
+      "productId": "PL-BIE-00238",
+      "name": "Airwaves Cool Cassis Bezcukrowa guma do żucia (10 sztuk)",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00435",
+      "name": "Bakallino Masa krówkowa kajmak",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "fiber_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00203",
+      "name": "Bonitki wafle kokosowe, 200 g",
+      "authority": "OFFICIAL_PRIVATE_LABEL",
+      "upgraded": [],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00219",
+      "name": "Bonitki wafle orzechowe, 200 g",
+      "authority": "OFFICIAL_PRIVATE_LABEL",
+      "upgraded": [],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00422",
+      "name": "Dr. Oetker Drożdże instant",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fiber_percent"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00240",
+      "name": "Góralki mleczne Wafelek w polewie kakaowej z nadzieniem",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "fiber_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00281",
+      "name": "Hit Minis Markizy o smaku czekoladowym",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00198",
+      "name": "Hit markizy o smaku czekoladowym 220 g",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00255",
+      "name": "Kinder Kinderini Biszkopty z mlecznymi i kakaowymi dekoracjami 4x2 szt.",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00204",
+      "name": "Wafelek Knoppers 125 g",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00301",
+      "name": "Leibniz Herbatniki Minis Choco",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "fiber_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    },
+    {
+      "productId": "PL-BIE-00254",
+      "name": "Lubella Owsianka z bananami i kakao",
+      "authority": "AUTHORITATIVE_RETAILER",
+      "upgraded": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "fiber_percent",
+        "salt_percent",
+        "kcal_per_100g"
+      ],
+      "readinessBefore": "REVIEW",
+      "readinessAfter": "REVIEW"
+    }
+  ]
+}

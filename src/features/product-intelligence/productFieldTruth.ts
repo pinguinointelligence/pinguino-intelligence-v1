@@ -46,10 +46,16 @@ export type FieldBasis =
   | 'mapper_simple_profile'
   /** Computed from other fields on this same product (e.g. solids from water). */
   | 'derived'
+  /** A retailer's product card for the exact product, read from the label. */
+  | 'retailer_card'
   /** Declared on the product's own label / source row. */
   | 'product_declared'
+  /** The card of a retailer that OWNS the brand — first-party for that product. */
+  | 'private_label_card'
   /** The product IS a known Mapper row. */
-  | 'mapper_exact';
+  | 'mapper_exact'
+  /** The manufacturer's own published figure. */
+  | 'official_manufacturer';
 
 const BASIS_RANK: Readonly<Record<FieldBasis, number>> = Object.freeze({
   none: 0,
@@ -57,8 +63,13 @@ const BASIS_RANK: Readonly<Record<FieldBasis, number>> = Object.freeze({
   mapper_brand_sibling: 2,
   mapper_simple_profile: 3,
   derived: 4,
-  product_declared: 5,
-  mapper_exact: 6,
+  // A retailer card is a real reading of the label, but the owner's curated row
+  // and any first-party source both outrank it — a shop is not the maker.
+  retailer_card: 5,
+  product_declared: 6,
+  private_label_card: 7,
+  mapper_exact: 8,
+  official_manufacturer: 9,
 });
 
 const STATE_RANK: Readonly<Record<FieldTruthState, number>> = Object.freeze({
