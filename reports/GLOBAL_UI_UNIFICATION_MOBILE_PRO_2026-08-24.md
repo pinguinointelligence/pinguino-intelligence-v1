@@ -115,15 +115,26 @@ RLS, API or persistence change. The only store added is a presentation baseline.
 
 ## 8. Open / not done
 
-- **Pre-existing, unrelated:** on the DEV demo preset a gram edit is refused with
+- **Pre-existing, unrelated — now filed separately** as
+  `reports/BUG_DEMO_PRESET_BASE_RECIPE_AUTHORITY.md` (owner decision 2026-08-24:
+  out of scope for this UI workstream, no solver/authority change here):
+  on the DEV demo preset a gram edit is refused with
   "Brak zatwierdzonego uprawnienia BASE_RECIPE dla: milk-base:milk_3_5"
   (product-behaviour authority). Reproduced on `origin/staging` **before** these
   changes — not a regression, but it means the served change-marker path was
   exercised via required/unavailable/price, not via grams, in local QA.
 - Authenticated served QA on staging still needs an owner sign-in (Claude never
   types credentials).
-- The mobile cockpit sheet keeps its accepted fixed height (92 dvh), so a short
-  panel leaves empty space. Changing it means re-cutting a locked contract —
-  owner decision.
+- The mobile cockpit sheet keeps its accepted fixed height (92 dvh). **Owner
+  decision 2026-08-24: KEEP the 92 dvh contract** — it is not to be changed
+  merely to remove empty space on a short panel.
+- **Owner decision 2026-08-24:** the three updated source-lock tests (hamburger
+  side, shared geometry location, cockpit trigger) are ACCEPTED; this ledger is
+  the standing explanation of why they changed.
+- **Owner decision 2026-08-24:** the collapsed ingredient layout stays below
+  `lg`; the five-column desktop table must not be squeezed into 768–1024 px if
+  that requires truncating ingredient names.
+- **Owner decision 2026-08-24:** the changed-line treatment stays on the
+  attention/pending token — it is NOT to be switched to gold.
 - `vite.qa.config.ts` is a local, untracked QA-only config (this worktree links
   `node_modules` to a sibling). Not committed.
