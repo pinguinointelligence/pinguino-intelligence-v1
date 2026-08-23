@@ -12,6 +12,7 @@ import {
   applyEffectiveCustomerPrices,
   type CustomerPriceIndex,
 } from '@/features/pro-core/effectiveRecipePricing';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   applyDraftAdjustment,
   buildDraftCandidateVector,
@@ -23,6 +24,29 @@ import {
 
 const EPSILON = 1e-9;
 const TARGET_CURRENCY = 'EUR';
+
+/**
+ * ECO QUALITY FLOOR — owner product decision, Protein closeout.
+ *
+ * ECO is LOWEST COST WITH QUALITY PROTECTED, never "cheapest at any cost".
+ *
+ * The sweep's admission test used to be `sameTechnicalFit` alone, which compares
+ * only NATIVE band violations. A Protein candidate can sit deep inside every
+ * hard band while its structural quality collapses — measured: ECO reached
+ * ~17 % protein by mass at Score 4-5 purely because the concentrate was the
+ * cheapest way to hold the bands. Nothing in the loop ever looked at the Score.
+ *
+ * The rule: if a legal candidate at Score >= 8 exists, ECO may not select one
+ * below 8 merely because it is cheaper. Trading 10 -> 8 for real savings is
+ * allowed; trading 10 -> 5 is not.
+ *
+ * When the draft already starts below the floor — because nothing better is
+ * reachable from here — ECO must simply never make quality worse, so the
+ * effective floor drops to whatever the baseline already achieves. That keeps
+ * this a protection and never a new hard gate: no recipe becomes invalid, and
+ * ECO can still always return its starting point.
+ */
+export const ECO_QUALITY_FLOOR_SCORE = 8;
 
 /** Complete cost/kg of the already price-resolved transient input. Missing is never zero. */
 export function effectiveInputCostPerKg(input: RecipeInput): number | null {
@@ -57,6 +81,16 @@ function measure(input: RecipeInput, priceOverrides: CustomerPriceIndex): DraftS
   };
 }
 
+/**
+ * The public Score of a candidate — exactly the number the user is shown, so the
+ * floor protects the thing the owner actually reasons about. Null when the
+ * recipe cannot be scored, which never blocks a move.
+ */
+const qualityScore = (input: RecipeInput, priceOverrides: CustomerPriceIndex): number | null => {
+  const pricedInput = applyEffectiveCustomerPrices(input, priceOverrides);
+  return recipeFitForInput(pricedInput, calculateRecipe(pricedInput)).score;
+};
+
 const sameTechnicalFit = (next: DraftStateMeasure, current: DraftStateMeasure): boolean =>
   next.violations === current.violations &&
   Math.abs(next.severityPoints - current.severityPoints) <= EPSILON;
@@ -87,6 +121,11 @@ export function sweepEcoDraftCost(args: EcoDraftCostSweepArgs): DraftSweepResult
   const priceOverrides = args.priceOverrides ?? {};
   const baseline = measure(args.start, priceOverrides);
   if (baseline.costPerKg === null) return null;
+  // The floor never rises above what the draft already achieves, so ECO is
+  // protected from downgrading quality without ever becoming a new hard gate.
+  const baselineQuality = qualityScore(args.start, priceOverrides);
+  const effectiveFloor =
+    baselineQuality === null ? null : Math.min(ECO_QUALITY_FLOOR_SCORE, baselineQuality);
   let state = args.start;
   let current = baseline;
   const moves: DraftAdjustmentMove[] = [];
@@ -123,7 +162,23 @@ export function sweepEcoDraftCost(args: EcoDraftCostSweepArgs): DraftSweepResult
       if (!verifyEcoFlavourProtection(args.identityInput, normalized, {
         productBehaviorSnapshots: args.productBehaviorSnapshots,
       }).ok) continue;
-      if (best && !cheaper(next, best.measure)) continue;
+      // Quality floor: a cheaper candidate may not drop below it.
+      const nextQuality = qualityScore(normalized, priceOverrides);
+      if (effectiveFloor !== null && nextQuality !== null && nextQuality < effectiveFloor) continue;
+      if (best) {
+        const bestQuality = qualityScore(best.input, priceOverrides);
+        // Strictly cheaper always wins. At effectively equal cost, prefer the
+        // better product rather than whichever move happened to be tried first.
+        const strictlyCheaper = cheaper(next, best.measure);
+        const equalCost =
+          !strictlyCheaper &&
+          next.costPerKg != null &&
+          best.measure.costPerKg != null &&
+          Math.abs(next.costPerKg - best.measure.costPerKg) <= EPSILON;
+        const betterAtEqualCost =
+          equalCost && nextQuality !== null && bestQuality !== null && nextQuality > bestQuality;
+        if (!strictlyCheaper && !betterAtEqualCost) continue;
+      }
       best = { input: normalized, measure: next, move };
     }
     if (best) {

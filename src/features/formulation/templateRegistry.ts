@@ -315,6 +315,12 @@ export type ProteinRoute = 'dairy' | 'plant';
 interface ProteinTemplateSeed {
   route: ProteinRoute;
   temperatureC: -11 | -12 | -13;
+  /** Liquid base: milk (dairy) or oat drink (plant). */
+  liquid: number;
+  /** Fat carrier: cream (dairy) or refined coconut oil (plant). */
+  fat: number;
+  protein: number;
+  water: number;
   sucrose: number;
   dextrose: number;
 }
@@ -331,53 +337,89 @@ const PROTEIN_STRATEGIES: readonly {
   { strategy: 'mixed_main', mainRole: null },
 ];
 
+/**
+ * PROTEIN STARTER v2 — ENGINE-DERIVED, not hand-set.
+ *
+ * The v1 seeds carried the retired 20 %-protein-BY-MASS target: 230-247 g of an
+ * 80 % whey concentrate in a 1 kg base. Under Protein Engine v2 those formulas
+ * score 3-6, two of the six opened with native band violations, and the very
+ * first Preview immediately pulled them down to roughly 8-10 % protein. A new
+ * Protein user must not start from a formula the Engine itself considers
+ * overloaded.
+ *
+ * These grams are the OUTPUT of the current v2 optimizer, not a chosen protein
+ * number. Each was produced by running `buildOptimizePreview` under normal
+ * Protein authority and taking the practicalized whole-gram candidate, then
+ * re-searched from an unbiased grid of starting compositions (protein 55-130 g,
+ * fat carrier 0-140 g, four sugar splits) to confirm the optimum is genuine
+ * rather than an artefact of the old seed's shape. Every route/temperature
+ * converged on the same answer.
+ *
+ * Protein % remains an OUTPUT. The resulting 7.97-10.03 % band is the region the
+ * Engine proves works — it is an observed result, never a target, and nothing
+ * in the runtime reads these percentages back as an objective.
+ *
+ * Each seed is verified in `proteinStarterV2.test.ts`: sums to the 1000 g base,
+ * zero native violations, earns the EU HIGH PROTEIN claim on the executable
+ * whole-gram recipe, and scores materially better than the v1 formula it
+ * replaces.
+ */
 const PROTEIN_SEEDS: readonly ProteinTemplateSeed[] = [
-  { route: 'dairy', temperatureC: -11, sucrose: 82, dextrose: 34 },
-  { route: 'dairy', temperatureC: -12, sucrose: 30, dextrose: 86 },
-  { route: 'dairy', temperatureC: -13, sucrose: 0, dextrose: 116 },
-  { route: 'plant', temperatureC: -11, sucrose: 110, dextrose: 15 },
-  { route: 'plant', temperatureC: -12, sucrose: 50, dextrose: 75 },
-  { route: 'plant', temperatureC: -13, sucrose: 0, dextrose: 125 },
+  // dairy −11: the −11 NPAC band (33-42) is the lowest of the three, so the
+  // Engine drops milk entirely — milk lactose raises freezing depression — and
+  // carries fat on cream instead. protein 8.98 %, 20.7 % of energy, Score 10.
+  { route: 'dairy', temperatureC: -11, liquid: 0, fat: 252, protein: 105, water: 491, sucrose: 80, dextrose: 70 },
+  // dairy −12: protein 8.88 %, 20.4 % of energy, Score 10.
+  { route: 'dairy', temperatureC: -12, liquid: 506, fat: 110, protein: 87, water: 101, sucrose: 99, dextrose: 95 },
+  // dairy −13: protein 10.03 %, 20.9 % of energy, Score 9. The −13 band needs a
+  // richer, more freezing-depressed mix, which raises the energy the claim must
+  // be earned against, so the optimum sits just past the 10 % ceiling of the
+  // controlled evidence and honestly carries that one-point penalty. Every
+  // leaner probe converged back to this same candidate.
+  { route: 'dairy', temperatureC: -13, liquid: 456, fat: 193, protein: 101, water: 76, sucrose: 63, dextrose: 109 },
+  // plant −11: protein 9.52 %, 20.4 % of energy, Score 10.
+  { route: 'plant', temperatureC: -11, liquid: 480, fat: 67, protein: 111, water: 185, sucrose: 114, dextrose: 41 },
+  // plant −12: protein 7.97 %, 20.3 % of energy, Score 10.
+  { route: 'plant', temperatureC: -12, liquid: 403, fat: 50, protein: 93, water: 298, sucrose: 2, dextrose: 152 },
+  // plant −13: protein 8.47 %, 20.1 % of energy, Score 10.
+  { route: 'plant', temperatureC: -13, liquid: 377, fat: 46, protein: 99, water: 288, sucrose: 46, dextrose: 142 },
 ];
 
 const proteinTemplate = (
   seed: ProteinTemplateSeed,
   strategy: ProteinFlavorStrategy,
   mainRole: FunctionalRole | null,
-): FormulationTemplate => {
-  const calibratedNeutralDairyMinus11 =
-    seed.route === 'dairy' && seed.temperatureC === -11 && strategy === 'neutral';
-  return {
-    templateId: `protein_${seed.route}_${strategy}_minus${Math.abs(seed.temperatureC)}_v1`,
-    category: 'protein_gelato',
-    temperatureC: seed.temperatureC,
-    proteinFlavorStrategy: strategy,
-    proteinRoute: seed.route,
-    status: 'approved',
-    approvalSource:
-      'owner Protein Gelato final task; exact verified Mapper protein identities; owner-approved Standard serving physics',
-    baseBatchG: 1000,
-    roles: [
-      ...(mainRole ? [T(mainRole, 0, null)] : []),
-      ...(seed.route === 'dairy'
-        ? [
-            T('primary_liquid', calibratedNeutralDairyMinus11 ? 0 : 460, 'milk_3_5'),
-            T('dairy_fat', calibratedNeutralDairyMinus11 ? 110 : 100, 'cream_30'),
-            T('protein_source', calibratedNeutralDairyMinus11 ? 246.8375 : 230, 'PI-ING-000264'),
-            T('water', calibratedNeutralDairyMinus11 ? 505.1625 : 92, 'water'),
-          ]
-        : [
-            T('plant_liquid', 400, 'PI-ING-001565'),
-            T('plant_fat', 35, 'PI-ING-000163'),
-            T('protein_source', 238, 'PI-ING-000452'),
-            T('water', 200, 'water'),
-          ]),
-      T('sweetener_sucrose', calibratedNeutralDairyMinus11 ? 80 : seed.sucrose, 'sucrose'),
-      T('sugar_freezing_control', calibratedNeutralDairyMinus11 ? 56 : seed.dextrose, 'dextrose'),
-      T('stabilizer', 2, 'tara_gum', false),
-    ],
-  };
-};
+): FormulationTemplate => ({
+  templateId: `protein_${seed.route}_${strategy}_minus${Math.abs(seed.temperatureC)}_v1`,
+  category: 'protein_gelato',
+  temperatureC: seed.temperatureC,
+  proteinFlavorStrategy: strategy,
+  proteinRoute: seed.route,
+  status: 'approved',
+  approvalSource:
+    'owner Protein Gelato closeout; Protein Engine v2 derived starter; exact verified Mapper protein identities; owner-approved Standard serving physics',
+  baseBatchG: 1000,
+  roles: [
+    ...(mainRole ? [T(mainRole, 0, null)] : []),
+    ...(seed.route === 'dairy'
+      ? [
+          T('primary_liquid', seed.liquid, 'milk_3_5'),
+          T('dairy_fat', seed.fat, 'cream_30'),
+          T('protein_source', seed.protein, 'PI-ING-000264'),
+          T('water', seed.water, 'water'),
+        ]
+      : [
+          T('plant_liquid', seed.liquid, 'PI-ING-001565'),
+          T('plant_fat', seed.fat, 'PI-ING-000163'),
+          T('protein_source', seed.protein, 'PI-ING-000452'),
+          T('water', seed.water, 'water'),
+        ]),
+    T('sweetener_sucrose', seed.sucrose, 'sucrose'),
+    T('sugar_freezing_control', seed.dextrose, 'dextrose'),
+    // Exact Mapper Tara minimum: 0.2% of a 1000 g mix. Never MyGelato 0 g.
+    T('stabilizer', 2, 'tara_gum', false),
+  ],
+});
 
 const PROTEIN_TEMPLATES: readonly FormulationTemplate[] = PROTEIN_SEEDS.flatMap((seed) =>
   PROTEIN_STRATEGIES.map(({ strategy, mainRole }) => proteinTemplate(seed, strategy, mainRole)),

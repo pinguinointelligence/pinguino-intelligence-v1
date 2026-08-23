@@ -131,11 +131,10 @@ describe('mode- and temperature-aware new recipe starters', () => {
         const starter = build(profile, 'temp_minus_12', 'optimal', target);
         expect(starter.metrics.actualBaseMassGrams).toBe(target);
         expect(starter.metrics.missingMainMassGrams).toBe(0);
-        expect(starter.validationStatus).toBe(
-          profile === 'protein'
-            ? 'blocked_engine_native_band_miss'
-            : 'engine_validated_native',
-        );
+        // Protein closeout: the v1 Protein seeds encoded the retired
+        // 20 %-by-mass target and MISSED npac/pod at −12. The Engine-derived
+        // v2 starter is natively validated like every other profile.
+        expect(starter.validationStatus).toBe('engine_validated_native');
         expect(starter.items.every((item) => Number.isInteger(item.planned_grams))).toBe(true);
       }
     },
@@ -210,8 +209,6 @@ describe('mode- and temperature-aware new recipe starters', () => {
       ['gelato', 'temp_minus_13', ['lactose_sandiness_risk']],
       ['vegan', 'temp_minus_11', ['ice_fraction']],
       ['vegan', 'fresh', ['ice_fraction']],
-      ['protein', 'temp_minus_12', ['npac', 'pod']],
-      ['protein', 'temp_minus_13', ['npac', 'pod']],
     ] as const;
 
     for (const [profile, serving, expectedMetrics] of cases) {
@@ -229,7 +226,12 @@ describe('mode- and temperature-aware new recipe starters', () => {
       ['gelato', 'temp_minus_12'],
       ['vegan', 'temp_minus_12'],
       ['vegan', 'temp_minus_13'],
+      // Protein closeout: −12 and −13 join −11 as natively validated. The v1
+      // seeds missed npac/pod at both because they carried the retired
+      // 20 %-protein-by-mass target; the v2 starter is Engine-derived.
       ['protein', 'temp_minus_11'],
+      ['protein', 'temp_minus_12'],
+      ['protein', 'temp_minus_13'],
     ] as const) {
       const starter = build(profile, serving, 'optimal');
       expect(starter.validationStatus).toBe('engine_validated_native');

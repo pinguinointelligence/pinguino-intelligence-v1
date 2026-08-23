@@ -571,7 +571,16 @@ export function fitProteinFormulation(
 
   if (!before.applicable) return unchanged('not_protein_profile');
   if (input.items.some((item) => item.actual_grams !== null)) return unchanged('actual_batch');
-  if (!before.hardSafe) return unchanged('native_safety_blocked');
+  // NOTE: a candidate that is not yet hard-safe is NOT refused here.
+  //
+  // v1 returned `native_safety_blocked` for any out-of-band start, which left
+  // the worst case unreachable: a candidate that is simultaneously out of band
+  // AND short of the claim had nothing that could repair it, so the pipeline
+  // surfaced an unqualified diagnostic. `solveForProteinPercent` already
+  // rejects every non-hard-safe candidate inside `consider`, so searching from
+  // a broken start can only ever RETURN a hard-safe recipe or nothing at all —
+  // it cannot introduce an unsafe one.
+  const startedHardSafe = before.hardSafe;
 
   const required = before.qualification.requiredPercent;
   if (required === null || !Number.isFinite(required)) return unchanged('best_achievable');
@@ -626,9 +635,12 @@ export function fitProteinFormulation(
     return unchanged(candidates.length < 2 ? 'no_adjustable_pair' : 'best_achievable');
   }
 
-  // The draft the user already has is a legitimate candidate: never move grams
-  // to reach an equal-or-worse formulation.
-  if (!betterThan(best, { assessment: before, movement: 0 })) return unchanged('already_best');
+  // The draft the user already has is a legitimate candidate ONLY when it is
+  // itself hard-safe: never move grams to reach an equal-or-worse formulation,
+  // but never keep an out-of-band draft over a hard-safe alternative either.
+  if (startedHardSafe && !betterThan(best, { assessment: before, movement: 0 })) {
+    return unchanged('already_best');
+  }
 
   return {
     input: best.input,
