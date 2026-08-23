@@ -196,7 +196,16 @@ milk and 180 → 267 g cream. It now says what actually happened:
 
 ## 9. Honest gaps — what is NOT done
 
-1. **Served QA on staging (§31) was not performed.** It requires signing in to
+1. **Served QA on staging (§31) HAS NOW RUN — and TEST A FAILED.** See
+   `USER_INTENT_SOFT_HOLD_SERVED_QA_2026-08-23.md`. With the yolk unlocked the
+   served app still proposes **40 g → 1 g**, because the served recipe routes to
+   `full_formulation` (`milk_base_v1`) and NOT to the gram-ladder sweep this
+   work governs. The §13 disclosure and the truthful copy DO fire there, so the
+   collapse is no longer silent — but it still happens. The locked run reaches
+   the same hard-valid target with the yolk at 40 g, which proves a preserving
+   solution exists. Superseded note kept below for history:
+
+   ~~Served QA on staging (§31) was not performed.~~ It requires signing in to
    `staging.pinguinoai.com`, and Claude must never type the account credentials.
    The owner has to sign in before the served Polish-Lost run (locked and
    unlocked), Apply, Save/reopen and Undo can be verified. Everything reported
