@@ -16,8 +16,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listReceivedShares = vi.fn();
 const listSentShares = vi.fn();
-const removeReceivedShare = vi.fn(async () => undefined);
-const revokeShareLink = vi.fn(async () => undefined);
+const removeReceivedShare = vi.fn<(shareLinkId: string) => Promise<void>>();
+const revokeShareLink = vi.fn<(shareLinkId: string) => Promise<void>>();
 
 vi.mock('@/services/community', () => ({
   listReceivedShares: () => listReceivedShares(),
@@ -114,7 +114,9 @@ beforeEach(() => {
   listReceivedShares.mockResolvedValue(RECEIVED);
   listSentShares.mockResolvedValue(SENT);
   removeReceivedShare.mockClear();
+  removeReceivedShare.mockResolvedValue(undefined);
   revokeShareLink.mockClear();
+  revokeShareLink.mockResolvedValue(undefined);
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
