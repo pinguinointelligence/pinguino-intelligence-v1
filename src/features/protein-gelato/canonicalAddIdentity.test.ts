@@ -138,33 +138,59 @@ describe('§11 — a solver-ADDED line is identical to the same product already 
   }, 900_000);
 });
 
-describe('§5 / §23 — hydration reports authority, it never invents it', () => {
-  it('never upgrades an ESTIMATED Mapper product into a verified one', () => {
-    // The canonical payload must carry the product's OWN authority. Raspberry
-    // and Banana are `Estimated` in the Mapper, so their executable payload has
-    // to stay unverified — hydration is a faithful copy of the row, never a
-    // promotion. If this ever flips, "a Mapper row exists" would silently start
-    // meaning "this product is trusted", which is exactly the fail-closed rule
-    // the binding gate depends on.
-    for (const toolboxId of ['raspberry', 'banana']) {
-      const canonical = canonicalToolboxComposition(toolboxId)!;
-      // Both are `Estimated` in the Mapper, and the generated authority says so
-      // rather than rounding it up.
-      expect(canonical.verified).toBe(false);
-      // And the fail-closed rule is stronger than merely reporting it: neither
-      // is an addable formulation candidate at all, so no amount of canonical
-      // hydration can turn "a Mapper row exists" into "the solver may add this".
-      expect(approvedFormulationToolboxIngredients(toolboxId)).toEqual([]);
-    }
-  });
+describe('§5 / §23 — hydration reports authority, and AUTO-ADDABLE is a separate authority', () => {
+  it('hydration never upgrades a product\'s stated verification', () => {
+    // The canonical payload carries the product's OWN authority — it is a
+    // faithful copy of the Mapper row, never a promotion. If this ever flips,
+    // "a Mapper row exists" would silently start meaning "this product is
+    // trusted", which is exactly what the binding gate must not assume.
+    const estimated = canonicalToolboxComposition('raspberry')!;
+    expect(estimated.verified).toBe(false);
+    expect(estimated.confidence_score).toBe(92);
 
-  it('a VERIFIED ordinary product keeps its verified authority', () => {
-    const canonical = canonicalToolboxComposition('milk_3_5')!;
-    expect(canonical.verified).toBe(true);
+    const verified = canonicalToolboxComposition('milk_3_5')!;
+    expect(verified.verified).toBe(true);
+    expect(verified.confidence_score).toBe(98);
     const executable = approvedFormulationToolboxIngredients('milk_3_5').at(-1)!;
     expect(executable.is_verified).toBe(true);
     expect(executable.source_type).toBe('verified_db');
     expect(executable.confidence_score).toBe(98);
+  });
+
+  it('a fruit the solver may not introduce is still a fully approved Engine ingredient', () => {
+    // Raspberry and Banana are approved_for_base AND approved_for_engines in the
+    // Mapper (staging holds both as `true`), carry complete compositions with
+    // real stored POD/PAC, and are COLD_PROCESS_OK. They are simply not
+    // CORRECTION candidates: the solver must never invent a flavour. Being
+    // user-selectable or MAIN-capable is a DIFFERENT AUTHORITY from being
+    // auto-addable as a correction toolbox ingredient, and this case exists to
+    // stop those two ever being conflated again.
+    for (const toolboxId of ['raspberry', 'banana']) {
+      const canonical = canonicalToolboxComposition(toolboxId)!;
+      // Fully usable by the Engine — real freezing authority, not a stub.
+      expect(canonical.pod_value).not.toBeNull();
+      expect(canonical.pac_value).not.toBeNull();
+      expect(canonical.composition.water_percent).toBeGreaterThan(0);
+      // …and still not something the solver may add on its own.
+      expect(approvedFormulationToolboxIngredients(toolboxId)).toEqual([]);
+    }
+  });
+
+  it('canonical WATER stays a usable, auto-addable Engine ingredient', () => {
+    // Guarded explicitly because an earlier revision of the binding audit
+    // misread it. WATER is approved_for_base/approved_for_engines, Verified at
+    // confidence 95, COLD_PROCESS_OK, and IS a correction candidate — it is
+    // category-gated to sorbet/vegan/fruit, which is a formulation policy, not
+    // an authority failure. Nothing here may make canonical water unusable.
+    const canonical = canonicalToolboxComposition('water')!;
+    expect(canonical.verified).toBe(true);
+    expect(canonical.composition.water_percent).toBe(100);
+    const payloads = approvedFormulationToolboxIngredients('water');
+    expect(payloads.length).toBeGreaterThanOrEqual(2);
+    const executable = payloads.at(-1)!;
+    expect(executable.name).toBe(canonical.displayName);
+    expect(executable.pod_value).toBe(canonical.pod_value);
+    expect(executable.pac_value).toBe(canonical.pac_value);
   });
 
   it('hydration never invents a composition the Mapper does not carry', () => {

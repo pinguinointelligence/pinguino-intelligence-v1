@@ -322,3 +322,91 @@ migration, **no merge to `main`**. `origin/main` is `4dfb097`, unchanged. The on
 from this work is the automatic **preview** deployment Vercel creates for a pushed branch
 (`target: null`), not a production target. The branch was pushed with `--force-with-lease` after
 rebases — the safe variant, which refuses if anyone else has pushed.
+
+## 16. Canonical ADD path — the real root cause, and a correction to my own earlier reading
+
+**My earlier conclusion that this needed ProductBehavior provisioning was wrong, and so was my first
+audit of WATER.** Both are corrected here with the evidence.
+
+### 16.1 The blocker was never a missing snapshot
+
+The served refusal on Milk 3.5 % read
+`behavior_snapshot_missing_or_unresolved:…:PI-ING-000236:397c9f21-…:OPTIMAL:refresh_product_data`.
+That message carries a real `productId` (`89a79c10-…`) **and** a real `productVersionId`
+(`397c9f21-…`) — so the snapshot had **resolved perfectly well**. What rejected the line was
+`technicalFactsMatch`, which compares *every* technical fact of a recipe line against the product's
+frozen server facts to 1e-7:
+
+| | executable ADD payload (before) | canonical Mapper row |
+|---|---|---|
+| name | `Milk 3.5 %` | `MILK 3.5% · Milk · Chilled` |
+| pod_value | **null** | **0.752** |
+| pac_value | **null** | **5.285** |
+| sugar % | 4.8 | 4.7 |
+| confidence / verified | 85 / false | 98 / true |
+
+A reference-payload line therefore can **never** match its own snapshot, however complete the
+product record is. Blocker B was caused by blocker A. **No provisioning was built, and none was
+needed.**
+
+### 16.2 §30 — were milk label photographs ever necessary? No.
+
+`PI-ING-000236` in the current staging SoT: `approved_for_base = true`, `approved_for_engines =
+true`, `Verified`, confidence 98, complete composition, stored POD 0.752 / PAC 5.285. Nothing was
+missing. (Its `mapper_process_metadata.process_decision` is `UNKNOWN` — a deliberate process
+fail-closed — but that governs PRODUCTION scope, not BASE_FORMULATION, and is not what refused the
+Preview.)
+
+### 16.3 Correction — WATER is NOT fail-closed
+
+An earlier revision of the binding audit reported `PI-ING-001409 WATER · Liquid` as
+"fail-closed because not approved". **That was my bug**, not a property of water: the Mapper stores
+these booleans in mixed case — 2046 rows say `TRUE` and **29 say `True`** — and my audit compared
+`=== 'TRUE'` case-sensitively. Water is one of the 29.
+
+Verified against all three sources:
+
+| Source | approved_for_base | approved_for_engines | status | confidence |
+|---|---|---|---|---|
+| `mapper_basement.csv` | `'True'` | `'True'` | Verified | 95 |
+| staging `public.mapper_basement` | `true` | `true` | Verified | 95 |
+| `mapper_process_metadata` | — | — | `COLD_PROCESS_OK`, verified, ref `#WATER_COLD` | — |
+
+Composition is complete (water 100.0, solids 0, POD 0, PAC 0); only `cost_per_kg` is null, which is
+the MOJA CENA case and not an authority gap. And water **is** present in
+`approvedFormulationToolboxIngredients` — 3 payloads, executable name `WATER · Liquid`, role
+`dilution`, **category-gated** to `sorbet / vegan_gelato / fruit_gelato`. That gate is a formulation
+policy, not an authority failure, and it is why water is not offered inside the dairy/Protein
+categories.
+
+The audit now parses these booleans case-insensitively and a dedicated regression pins that
+canonical water stays a usable, auto-addable Engine ingredient.
+
+### 16.4 Two different authorities, no longer conflated
+
+Raspberry and Banana are `approved_for_base = true`, `approved_for_engines = true`, complete
+compositions with real stored POD/PAC (6.049/10.183 and 20.948/26.68), and `COLD_PROCESS_OK`. They
+are excluded from `approvedFormulationToolboxIngredients` for an entirely different reason: they
+are **not correction candidates**, because the solver must never invent a flavour.
+
+> Bindable / Engine-usable / user-selectable / MAIN-capable is **not** the same authority as
+> auto-addable as a correction toolbox ingredient.
+
+`reports/PROTEIN_PRODUCTBEHAVIOR_BINDING_AUDIT.csv` now records these as separate columns
+(`is_correction_candidate`, `category_gate`, `auto_addable_by_solver`, `binding_route`) instead of
+collapsing them into one misleading verdict.
+
+### 16.5 The fix, and its deliberate cost
+
+`approvedFormulationToolboxIngredients` now appends a canonical Mapper-hydrated payload, and
+`formulate.ts` builds the executable line from `.at(-1)` — so canonicalization happens **before**
+final physics and the Preview, the proof and the served snapshot all describe the same product. The
+reference payloads are deliberately retained ahead of it because the Apply door re-authorizes an
+addition by fingerprinting it against that same list.
+
+Consequences, all deliberate: 14 of 19 engine authenticity cases re-pinned (54 fields; `verdict`,
+10-point score, `viol`, `hardSafe` and `batch` unchanged in every case), 9 Vegan snapshots updated
+(added lines are now named `WATER · Liquid` / `TARA GUM · Stabilizer` rather than `Water` / `Tara
+gum`), the Vegan stabilizer case now repairs instead of refusing, and the T20 live-store case is
+seeded with a Mapper-bound line rather than a non-Mapper-bound demo one.
+

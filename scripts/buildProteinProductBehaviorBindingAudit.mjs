@@ -51,18 +51,50 @@ const canonical = JSON.parse(canonicalBlock.slice(canonicalBlock.indexOf('['), c
 const canonicalById = new Map(canonical.map((entry) => [entry.toolboxId, entry]));
 
 /**
- * Risk classes. A product is only ever eligible for the ordinary binding route
- * when its authority is complete AND its semantics are unambiguous; a
- * dosage-sensitive or technically ambiguous product stays fail-closed no matter
- * how complete its row looks.
+ * The Mapper stores these booleans in MIXED CASE — 2046 rows say 'TRUE' and 29
+ * say 'True'. A case-sensitive comparison silently misreads those 29, which is
+ * how an earlier revision of this audit reported WATER (PI-ING-001409) as "not
+ * approved" when staging holds `approved_for_base = true`.
  */
+const isTrue = (value) => String(value ?? '').trim().toLowerCase() === 'true';
+
+/** Dosage-sensitive products bind normally but never carry a free dose: their
+ * amount is held by an approved policy rather than chosen by the solver. */
 const DOSAGE_SENSITIVE = new Set(['tara_gum', 'inulin', 'salt']);
+
+/**
+ * Correction-candidate membership is read from the engine catalogue, because
+ * AUTO-ADDABLE is a DIFFERENT AUTHORITY from approved / verified / MAIN-capable.
+ * Raspberry and Banana are Verified-enough to be chosen by a user and are
+ * MAIN-capable, yet they are deliberately not correction candidates: the solver
+ * must never invent a flavour. That is a formulation-policy decision, NOT an
+ * authority failure, and this audit must not conflate the two.
+ */
+const candidateSrc = readFileSync(resolve(process.cwd(), 'src/engine/corrections/candidates.ts'), 'utf8');
+// Parsed per ENTRY rather than with one regex across the file: a candidate that
+// declares no `allowed_categories` would otherwise borrow the next candidate's
+// gate. Splitting on the `id:` boundary keeps each block self-contained.
+const CORRECTION_CANDIDATES = new Map();
+const CATEGORY_GATES = new Map();
+{
+  const catalogue = candidateSrc.slice(candidateSrc.indexOf('DEFAULT_CORRECTION_CANDIDATES'));
+  const blocks = catalogue.split(/\n  \{\n/).slice(1);
+  for (const block of blocks) {
+    const id = block.match(/^\s*id: '([a-z0-9_]+)'/)?.[1];
+    if (!id) continue;
+    const roles = block.match(/roles: \[([^\]]*)\]/)?.[1] ?? '';
+    CORRECTION_CANDIDATES.set(id, roles.replace(/'/g, '').replace(/\s+/g, ' ').trim());
+    const gate = block.match(/allowed_categories: ([A-Z_]+|\[[^\]]*\])/)?.[1];
+    CATEGORY_GATES.set(id, gate ? gate.replace(/'/g, '').replace(/\s+/g, ' ').trim() : 'ALL_CATEGORIES');
+  }
+}
 
 const rows = [[
   'ingredient_id','name','toolbox_id','canonical_family','verification_level','confidence',
-  'approved_for_base','approved_for_engines','canonical_binding_present','stored_pod','stored_pac',
-  'executable_payload_matches_canonical','risk_class','binding_route','requires_external_evidence',
-  'blocking_reason',
+  'approved_for_base','approved_for_engines','canonical_binding_present','composition_complete',
+  'stored_pod','stored_pac','executable_payload_matches_canonical','is_correction_candidate',
+  'correction_roles','category_gate','auto_addable_by_solver','dosage_authority',
+  'binding_route','requires_external_evidence','reason',
 ].join(',')];
 
 const cell = (v) => {
@@ -74,31 +106,45 @@ for (const entry of canonical) {
   const row = byId.get(entry.mapperId);
   if (!row) continue;
   const verified = String(row.verification_status || '').startsWith('Verified');
-  const approvedBase = row.approved_for_base === 'TRUE';
-  const approvedEngines = row.approved_for_engines === 'TRUE';
+  const approvedBase = isTrue(row.approved_for_base);
+  const approvedEngines = isTrue(row.approved_for_engines);
+  const compositionComplete = row.water_percent !== '' && row.total_solids_percent !== '';
+  const isCandidate = CORRECTION_CANDIDATES.has(entry.toolboxId);
+  const gate = CATEGORY_GATES.get(entry.toolboxId) ?? 'ALL_CATEGORIES';
   const dosage = DOSAGE_SENSITIVE.has(entry.toolboxId);
-  const complete = verified && approvedBase && approvedEngines
-    && row.water_percent !== '' && row.total_solids_percent !== '';
-  // The executable payload now IS the canonical row (formulate.ts takes
-  // `approvedFormulationToolboxIngredients(...).at(-1)`), so the served fact
-  // comparison can succeed. This column is the one that used to read "no".
-  const executableMatches = 'yes';
-  const route = !complete
+
+  // BINDING is about whether the served ProductBehavior gate can accept a line
+  // of this product. AUTO-ADDABLE is about whether the solver may introduce it.
+  const bindable = approvedBase && approvedEngines && compositionComplete;
+  const route = !bindable
     ? 'FAIL_CLOSED_incomplete_authority'
-    : dosage
-      ? 'ORDINARY_BINDING_dosage_held_by_policy'
-      : 'ORDINARY_BINDING';
+    : verified
+      ? 'ORDINARY_BINDING'
+      : 'ORDINARY_BINDING_estimated_authority';
+
+  const reason = !bindable
+    ? 'incomplete canonical authority — external evidence required'
+    : !isCandidate
+      ? 'bindable and Engine-usable; not a correction candidate — the solver never introduces it (user/Main authority only)'
+      : dosage
+        ? 'bindable and auto-addable; dose held by an approved policy, not chosen freely'
+        : gate !== 'ALL_CATEGORIES'
+          ? `bindable and auto-addable within its category gate (${gate})`
+          : '';
+
   rows.push([
     entry.mapperId, entry.displayName, entry.toolboxId,
     `${row.ingredient_category}/${row.ingredient_subcategory}`,
     row.verification_status, row.data_confidence_percent,
-    approvedBase, approvedEngines, 'yes',
+    approvedBase, approvedEngines, 'yes', compositionComplete,
     entry.pod_value ?? '', entry.pac_value ?? '',
-    executableMatches,
-    dosage ? 'dosage_sensitive' : 'ordinary_canonical',
-    route,
-    complete ? 'no' : 'yes',
-    complete ? '' : 'incomplete canonical authority — Scanner/supplier evidence required',
+    // The executable payload now IS the canonical row (formulate.ts takes
+    // `approvedFormulationToolboxIngredients(...).at(-1)`), so the served fact
+    // comparison can succeed. This column is the one that used to read "no".
+    'yes',
+    isCandidate, CORRECTION_CANDIDATES.get(entry.toolboxId) ?? '', gate,
+    isCandidate ? 'yes' : 'no', dosage ? 'policy_held' : 'solver_chosen',
+    route, bindable ? 'no' : 'yes', reason,
   ].map(cell).join(','));
 }
 
