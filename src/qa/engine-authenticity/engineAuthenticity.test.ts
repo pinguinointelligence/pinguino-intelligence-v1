@@ -14,6 +14,7 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { EngineIngredient, RecipeInput } from '@/engine';
+import { approvedFormulationToolboxIngredients } from '@/features/formulation/formulate';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
@@ -59,6 +60,26 @@ interface Pin {
 }
 
 const PINS: Pin[] = [
+  // CANONICAL ADD RE-PIN (owner v1.4 §6/§7, 2026-08-23) — DELIBERATE.
+  //
+  // A toolbox candidate that the solver ADDS now becomes an executable line
+  // built from its canonical Mapper row instead of the engine REFERENCE payload
+  // (`approvedFormulationToolboxIngredients(...).at(-1)`). The reference set
+  // carries literature estimates with `pod_value`/`pac_value` NULL at confidence
+  // 85; the Mapper rows are Verified at confidence 98 with real stored POD/PAC —
+  // e.g. Milk 3.5 %: pod null → 0.752, pac null → 5.285, sugar 4.8 → 4.7. Since
+  // `engine/pac.ts` prefers a stored `pac_value`, every added line previously
+  // ran DERIVED freezing arithmetic while the same product already present in a
+  // draft ran the stored arithmetic, and the served app always used the stored
+  // one. These cases therefore move from estimate-physics onto the verified
+  // physics the served app has always used.
+  //
+  // What did NOT move, in any of the 19 cases: `verdict`, `outcome`, the
+  // 10-point score, `viol`, `hardSafe` and `batch`. Only continuous metrics and
+  // iteration counts changed, in 14 cases — several become slightly LESS
+  // flattering (T8 overall 72.958 → 70.5293, T18 87.1667 → 85.1667), which is
+  // the point: the honest numbers are not always the kinder ones.
+  // ─────────────────────────────────────────────────────────────────────────
   // OWNER FORMULATION POLICY RE-PIN (2026-08-20): exact PI-ING-000456 is
   // optional and is never inserted silently; the Gelato stabilizer system is
   // now generated at the owner-preferred whole-gram target (3 g / 1000 g).
@@ -90,128 +111,119 @@ const PINS: Pin[] = [
   // Item 3 renames the verdict AUTHENTIC-BEST-ACHIEVABLE → AUTHENTIC-BEST-FOUND
   // (coordinate descent proves a local fixed point, never a global optimum).
   // ─────────────────────────────────────────────────────────────────────────
-  {
-    id: 'T1',
+  { id: 'T1',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 9,
     overall: 87,
     iter: 1,
     stop: 'all_bands_in_range',
-    npac: 38.1861,
-    ice: 49.0258,
-    pod: 16.6263,
+    npac: 37.5204,
+    ice: 49.7285,
+    pod: 16.7025,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T2',
+  { id: 'T2',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 9,
-    overall: 86.9479,
+    overall: 87.2132,
     iter: 3,
     stop: 'all_bands_in_range',
-    npac: 38.9457,
-    ice: 48.224,
-    pod: 13.9068,
+    npac: 38.522,
+    ice: 48.6712,
+    pod: 14.0743,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T3',
+  { id: 'T3',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 8,
-    overall: 84.8362,
-    iter: 3,
+    overall: 84.6594,
+    iter: 4,
     stop: 'all_bands_in_range',
-    npac: 38.5955,
-    ice: 48.5936,
-    pod: 13.1183,
+    npac: 37.7723,
+    ice: 49.4625,
+    pod: 13.3412,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T4',
+  { id: 'T4',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 8,
-    overall: 81.3516,
+    overall: 80.5416,
     iter: 3,
     stop: 'all_bands_in_range',
-    npac: 41.962,
-    ice: 45.0401,
-    pod: 13.6106,
+    npac: 41.7546,
+    ice: 45.259,
+    pod: 12.8981,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T5',
+  { id: 'T5',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 8,
-    overall: 78.6718,
+    overall: 77.999,
     iter: 3,
     stop: 'all_bands_in_range',
-    npac: 41.2366,
-    ice: 45.8058,
-    pod: 12.3127,
+    npac: 41.5218,
+    ice: 45.5047,
+    pod: 12.7214,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T6',
+  { id: 'T6',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 8,
-    overall: 78.2807,
-    iter: 6,
+    overall: 76.6378,
+    iter: 8,
     stop: 'all_bands_in_range',
-    npac: 39.3964,
-    ice: 47.7482,
-    pod: 12.6154,
+    npac: 40.2379,
+    ice: 46.86,
+    pod: 12.5442,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T7',
+  { id: 'T7',
     verdict: 'AUTHENTIC-BEST-FOUND',
     outcome: 'preview',
     ten: 8,
-    overall: 75.7592,
-    iter: 12,
+    overall: 76.6434,
+    iter: 9,
     stop: 'fixed_point_no_proposal',
-    npac: 37.2247,
-    ice: 50.0406,
-    pod: 12.2488,
+    npac: 37.9549,
+    ice: 49.2699,
+    pod: 13.5142,
     viol: 1,
     hardSafe: false,
     batch: 1000,
   },
-  {
-    id: 'T8',
+  { id: 'T8',
     verdict: 'AUTHENTIC-BEST-FOUND',
     outcome: 'preview',
     ten: 7,
-    overall: 72.958,
-    iter: 8,
+    overall: 70.5293,
+    iter: 7,
     stop: 'fixed_point_no_proposal',
-    npac: 37.6463,
-    ice: 49.5955,
-    pod: 13.0902,
+    npac: 41.3603,
+    ice: 45.6752,
+    pod: 14.2384,
     viol: 3,
     hardSafe: false,
     batch: 1000,
   },
-  {
-    id: 'T9',
+  { id: 'T9',
     verdict: 'HONEST-IMPOSSIBLE',
     outcome: 'impossible_under_constraints',
     ten: 5,
@@ -230,23 +242,21 @@ const PINS: Pin[] = [
     hardSafe: false,
     batch: 900,
   },
-  {
-    id: 'T10',
+  { id: 'T10',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 8,
-    overall: 84.959,
+    overall: 84.2938,
     iter: 3,
     stop: 'all_bands_in_range',
-    npac: 39.7817,
-    ice: 47.3415,
-    pod: 13.4481,
+    npac: 41.2365,
+    ice: 45.8059,
+    pod: 13.5444,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T11',
+  { id: 'T11',
     verdict: 'AUTHENTIC-BEST-FOUND',
     outcome: 'preview',
     ten: 8,
@@ -260,8 +270,7 @@ const PINS: Pin[] = [
     hardSafe: false,
     batch: 1000,
   },
-  {
-    id: 'T12',
+  { id: 'T12',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 9,
@@ -275,23 +284,21 @@ const PINS: Pin[] = [
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T13',
+  { id: 'T13',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 9,
-    overall: 86.0242,
+    overall: 85.8345,
     iter: 3,
     stop: 'all_bands_in_range',
-    npac: 38.8891,
-    ice: 48.2837,
-    pod: 13.4914,
+    npac: 38.1992,
+    ice: 49.012,
+    pod: 13.6927,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T14',
+  { id: 'T14',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 7,
@@ -305,8 +312,7 @@ const PINS: Pin[] = [
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T15',
+  { id: 'T15',
     verdict: 'AUTHENTIC-BEST-FOUND',
     outcome: 'preview',
     ten: 8,
@@ -320,8 +326,7 @@ const PINS: Pin[] = [
     hardSafe: false,
     batch: 1000,
   },
-  {
-    id: 'T16',
+  { id: 'T16',
     verdict: 'HONEST-IMPOSSIBLE',
     outcome: 'missing_required_role',
     ten: 5,
@@ -335,47 +340,44 @@ const PINS: Pin[] = [
     hardSafe: false,
     batch: 350,
   },
-  {
-    id: 'T17',
+  { id: 'T17',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 9,
     overall: 88.1667,
     iter: 0,
     stop: 'all_bands_in_range',
-    npac: 47.684,
-    ice: 50.3275,
-    pod: 15.7748,
+    npac: 46.7938,
+    ice: 50.3349,
+    pod: 15.9985,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T18',
+  { id: 'T18',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 9,
-    overall: 87.1667,
+    overall: 85.1667,
     iter: 1,
     stop: 'all_bands_in_range',
-    npac: 52.7521,
-    ice: 49.7015,
-    pod: 15.8201,
+    npac: 53.9062,
+    ice: 49.6681,
+    pod: 16.7324,
     viol: 0,
     hardSafe: true,
     batch: 1000,
   },
-  {
-    id: 'T19',
+  { id: 'T19',
     verdict: 'AUTHENTIC-OPTIMAL',
     outcome: 'preview',
     ten: 7,
-    overall: 74.7705,
+    overall: 73.4074,
     iter: 0,
     stop: 'all_bands_in_range',
-    npac: 36.6137,
-    ice: 57.36,
-    pod: 18.7591,
+    npac: 36.6186,
+    ice: 57.3507,
+    pod: 18.9309,
     viol: 0,
     hardSafe: true,
     batch: 1000,
@@ -634,7 +636,19 @@ describe('T20 — repeatability / anti-fixture', () => {
         items: [
           {
             id: 'l-milk',
-            ingredient: findDemoIngredient('milk_3_5')!,
+            // CANONICAL SEED (owner v1.4 §7, 2026-08-23). This case asserts that
+            // the LIVE STORE path gives the same grams before and after a
+            // save/reload, so it has to be seeded with the kind of line that
+            // path actually produces: a Mapper-bound one. The demo catalogue
+            // entry is not Mapper-bound at all and carries pod/pac NULL with a
+            // different composition (water 87.5 vs 88.7, sugar 4.8 vs 4.7,
+            // 64 vs 60 kcal), so seeding it made the first pass run
+            // estimate-physics while the reload — where the 0 g row is
+            // correctly dropped and the formulation re-adds the ingredient —
+            // ran the canonical Mapper physics. That is a fixture divergence,
+            // not engine contamination, and it would mask the very drift this
+            // case exists to detect.
+            ingredient: approvedFormulationToolboxIngredients('milk_3_5').at(-1)!,
             planned_grams: 0,
             actual_grams: null,
             lock_type: 'unlocked',

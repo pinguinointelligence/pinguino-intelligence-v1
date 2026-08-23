@@ -334,12 +334,33 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
 
     expect(detectViolations(calculateRecipe(clean))).toEqual([]);
     const result = buildOptimizePreview(clean, NO, '2026-08-08T00:00:00.000Z');
-    expect(result.ok).toBe(false);
+
+    // The contract is that a stabilizer-less Vegan recipe is NEVER waved
+    // through as `already_clean` just because its Engine bands happen to be in
+    // range. There are two truthful answers to that, and both satisfy it: the
+    // envelope refusal, or a proposal that puts the approved stabilizer back.
+    //
+    // Since correction ADDs became canonical (owner v1.4 §6/§7) the engine can
+    // now take the second route here: the Mapper row for TARA GUM carries real
+    // stored POD/PAC and a very different composition from the engine reference
+    // payload (carbohydrate 1.5 vs 80, fibre 86.5 vs 80), so re-adding 2 g now
+    // lands a legal recipe where the estimate physics could not. Repairing the
+    // recipe is strictly better for the user than refusing it.
     if (!result.ok) {
       expect(result.code).toBe('vegan_profile_constraint');
       if (result.code === 'vegan_profile_constraint') {
         expect(result.issues.map((issue) => issue.code)).toContain('stabilizer_missing');
       }
+    } else {
+      // Whatever else it did, it must have restored a stabilizer — the one
+      // thing it may not do is return the stabilizer-less recipe unchanged.
+      const restored = result.preview.proposedInput.items.find(
+        (item) =>
+          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'PI-ING-000492',
+      );
+      expect(restored, 'the approved stabilizer is put back').toBeDefined();
+      expect(restored!.planned_grams).toBeGreaterThan(0);
+      expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
     }
   });
 

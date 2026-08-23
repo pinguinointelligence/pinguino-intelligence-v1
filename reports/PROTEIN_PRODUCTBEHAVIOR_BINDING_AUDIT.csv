@@ -1,0 +1,24 @@
+ingredient_id,name,toolbox_id,canonical_family,verification_level,confidence,approved_for_base,approved_for_engines,canonical_binding_present,stored_pod,stored_pac,executable_payload_matches_canonical,risk_class,binding_route,requires_external_evidence,blocking_reason
+PI-ING-000514,SUCROSE SUGAR · Sweetener · Dry,sucrose,sweetener/sucrose,Verified,98,true,true,yes,100,100,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000494,DEXTROSE · Sweetener · Dry,dextrose,sweetener/dextrose,Verified,98,true,true,yes,70.84,174.8,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000492,TARA GUM · Stabilizer,tara_gum,stabilizer/tara_gum,Verified,98,true,true,yes,0,0,yes,dosage_sensitive,ORDINARY_BINDING_dosage_held_by_policy,no,
+PI-ING-000180,CREAM 30% · Mlekovita Cream · Chilled,cream_30,dairy/cream,Verified,98,true,true,yes,0.512,3.668,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000236,MILK 3.5% · Milk · Chilled,milk_3_5,dairy/milk,Verified,98,true,true,yes,0.752,5.285,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000270,SKIMMED MILK · Milk,smp,dairy/skimmed_milk_powder,Verified,98,true,true,yes,8.16,58.02,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000456,INULIN · Specialty,inulin,specialty/specialty_component,Verified,98,true,true,yes,8,8,yes,dosage_sensitive,ORDINARY_BINDING_dosage_held_by_policy,no,
+PI-ING-001409,WATER · Liquid,water,liquid/water,Verified,95,false,false,yes,0,0,yes,ordinary_canonical,FAIL_CLOSED_incomplete_authority,yes,incomplete canonical authority — Scanner/supplier evidence required
+PI-ING-000458,SALT · Specialty,salt,specialty/specialty_component,Verified,98,true,true,yes,0,585,yes,dosage_sensitive,ORDINARY_BINDING_dosage_held_by_policy,no,
+PI-ING-000394,RASPBERRIES · Fresh Fruit,raspberry,fruit/fresh_fruit_profile,Estimated,92,true,true,yes,6.049,10.183,yes,ordinary_canonical,FAIL_CLOSED_incomplete_authority,yes,incomplete canonical authority — Scanner/supplier evidence required
+PI-ING-000345,BANANA · Fresh Fruit,banana,fruit/fresh_fruit_profile,Estimated,92,true,true,yes,20.948,26.68,yes,ordinary_canonical,FAIL_CLOSED_incomplete_authority,yes,incomplete canonical authority — Scanner/supplier evidence required
+PI-ING-001578,COCOA ALKALIZED 100% · Cacao Barry Cocoa Powder,cocoa_2224,chocolate/cocoa_powder,Verified,95,true,true,yes,0.4,0.634,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000102,DARK CHOCOLATE 70.5% · Callebaut Couverture · Dry,dark_chocolate_70,chocolate/dark_chocolate_couverture,Verified,98,true,true,yes,27,27.117,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000614,PISTACHIO · Aldori Paste · 100% Nut,pistachio_paste,nut/pistachio_paste,Verified,95,true,true,yes,7.7,7.7,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000038,WHISKY 40% · Spirit,whiskey_40,alcohol/spirit,Verified,98,true,true,yes,0,233.84,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000294,WPC 60% · Dairy,wpc_60,dairy/whey_protein_concentrate,Verified,98,true,true,yes,15.4,29.755,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000237,MILK PROTEIN CONCENTRATE WPC 75% · Milk,mpc_75,dairy/milk_protein_concentrate,Verified,98,true,true,yes,1.6,11.755,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000264,PROTEIN GEL WPC · Sempre Dairy · SEMPRE230,protein_gel_wpc,dairy/whey_protein_concentrate_powder,Verified,98,true,true,yes,0.528,5.055,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000295,WPC 80% · Dairy,wpc_80,dairy/whey_protein_concentrate,Verified,98,true,true,yes,2.4,16.755,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-001395,SKYR ICELANDIC YOGHURT · Piątnica Yogurt · Chilled,skyr_12,dairy/skyr_yoghurt,Verified,95,true,true,yes,0.656,4.685,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-001451,SKYR FAT 0.2% · Dairy · Chilled,skyr_11,dairy/skyr_yoghurt,Verified,85,true,true,yes,4,4.585,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000451,PEA PROTEIN · Protein · Dry,pea_protein,protein/protein_powder,Verified,98,true,true,yes,0,29.25,yes,ordinary_canonical,ORDINARY_BINDING,no,
+PI-ING-000452,RICE PROTEIN · Protein · Dry,rice_protein,protein/protein_powder,Verified,98,true,true,yes,0,0,yes,ordinary_canonical,ORDINARY_BINDING,no,

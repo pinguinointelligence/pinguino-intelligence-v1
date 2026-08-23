@@ -21,6 +21,7 @@
  *  - a missing optional role is NEVER silently re-added — it lowers the result
  *    honestly and produces an improvement recommendation instead.
  */
+import { canonicalToolboxComposition } from '@/data/ingredients/canonicalToolboxCompositions';
 import {
   DEFAULT_CORRECTION_CANDIDATES,
   type EngineIngredient,
@@ -386,7 +387,51 @@ export function approvedFormulationToolboxIngredients(id: string): readonly Engi
     { ...ingredient, canonical_ingredient_id: mapperId },
     'template',
   );
-  return [ingredient, normalized];
+  // ONE IDENTITY → ONE COMPOSITION (owner v1.4 §7). Discovery may stay
+  // reference-based, but an EXECUTABLE recipe line may not: the LAST entry is
+  // the canonical Mapper-hydrated payload, and every path that turns a toolbox
+  // candidate into a real line takes `.at(-1)`.
+  //
+  // Without it the same ingredient ran different Engine physics depending on how
+  // it entered the recipe. Measured on Milk 3.5 %: the reference payload carries
+  // pod_value/pac_value NULL, sugar 4.8, confidence 85, unverified, while the
+  // Mapper row carries pod 0.752, pac 5.285, sugar 4.7, confidence 98, verified —
+  // and `engine/pac.ts` prefers a stored pac_value, so an ADDED line and a
+  // PRESENT line of the same product froze differently.
+  //
+  // It also broke the served app outright. `technicalFactsMatch` compares every
+  // technical fact of the line against the product's frozen server facts to
+  // 1e-7, so a reference-payload line can never match its own resolved
+  // ProductBehavior snapshot; the served Preview was refused as
+  // `behavior_snapshot_missing_or_unresolved` even though the snapshot had
+  // resolved correctly. The earlier reading of that message as "the product
+  // needs scanning" was wrong: nothing was missing, the facts simply disagreed.
+  //
+  // The reference payloads are deliberately RETAINED ahead of it: the Apply door
+  // re-authorizes an addition by fingerprinting it against this list, so keeping
+  // all three keeps both the historical and the canonical payload admissible and
+  // leaves candidate discovery, the authenticity drift detectors and the
+  // substitution contracts exactly as they were.
+  const composition = canonicalToolboxComposition(id);
+  if (!composition) return [ingredient, normalized];
+  const hydrated = normalizeIngredientIdentity(
+    {
+      ...ingredient,
+      canonical_ingredient_id: mapperId,
+      name: composition.displayName,
+      composition: { ...composition.composition },
+      pod_value: composition.pod_value,
+      pac_value: composition.pac_value,
+      de_value: composition.de_value,
+      cost_per_kg: composition.cost_per_kg,
+      cost_currency: composition.cost_currency,
+      confidence_score: composition.confidence_score,
+      source_type: composition.verified ? 'verified_db' : ingredient.source_type,
+      is_verified: composition.verified,
+    },
+    'template',
+  );
+  return [ingredient, normalized, hydrated];
 }
 
 export interface FormulationOptions {
@@ -779,7 +824,12 @@ export function buildFormulationProposal(
         (ingredient !== null && excluded.has(ingredient.id));
       if (!candidateExcluded) {
         if (ingredient) {
-          const approvedIngredient = approvedFormulationToolboxIngredients(roleTarget.toolboxId)[1];
+          // §9 — canonicalize BEFORE final physics: the executable line is built
+          // from the canonical Mapper payload, so POD/NPAC, the Preview and the
+          // Apply proof all describe the same product the served app resolves.
+          const approvedIngredient = approvedFormulationToolboxIngredients(
+            roleTarget.toolboxId,
+          ).at(-1);
           if (!approvedIngredient) {
             missingRoles.push(roleTarget.role);
             if (HARD_ROLES.has(roleTarget.role)) missingHardRoles.push(roleTarget.role);

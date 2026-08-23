@@ -227,11 +227,24 @@ describe('§20 — all supported temperatures, OPTIMAL and ECO', () => {
         return;
       }
       const assessment = assessProteinFormulation(built.preview.proposedInput);
-      expect(assessment.qualification.qualified).toBe(true);
+      // The claim is a promise about what the user can APPLY. A diagnostic
+      // Preview is the engine's honest "this is the closest I got and you may
+      // not apply it" — on this fixture (100 g raspberry + 120 g WPC in a
+      // 1000 g batch) the −12 and −13 cells never reach a legal recipe at all
+      // and are correctly marked `hard_residual`.
+      //
+      // The contract is therefore pinned where it can actually bite: an
+      // APPLICABLE ECO result must still be a Protein product, and a candidate
+      // that lost the claim must never be applicable.
+      if (built.preview.diagnosticOnly) {
+        expect(built.preview.diagnosticReason).toBeTruthy();
+      } else {
+        expect(assessment.qualification.qualified).toBe(true);
+      }
       // ECO optimises COST. It may legitimately land on a protein-heavier
       // formulation than OPTIMAL — but the quality model must then charge it,
       // so the Score tells the truth about the trade the user asked for.
-      if (assessment.actualPercent! > 10) {
+      if (assessment.qualification.qualified && assessment.actualPercent! > 10) {
         expect(assessment.structure.penalties.proteinExcess).toBeGreaterThan(0);
         expect(assessment.structure.penalties.beyondEvidence).toBeGreaterThan(0);
         expect(assessment.structure.score!).toBeLessThan(10);
