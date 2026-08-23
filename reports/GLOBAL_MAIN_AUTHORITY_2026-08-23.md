@@ -274,6 +274,30 @@ may prefer it back on the generic fruit policy.
 
 Bold rows were **blocked** before this change.
 
+### Vegan (§17) and Protein (§18) at the same authority
+
+| Product | Profile | MAIN | Capability | Calibration | Policy |
+|---|---|---|---|---|---|
+| STRAWBERRIES | vegan | eligible | `MAIN_CAPABLE` | EXACT_PRODUCT | `main-vegan-fruit-combination-v2` |
+| BANANA · Puree | vegan | eligible | `MAIN_CAPABLE` | EXACT_PRODUCT | `main-vegan-fruit-combination-v2` |
+| PISTACHIO paste | vegan | eligible | `MAIN_CAPABLE` | EXACT_PRODUCT | `main-vegan-pistachio-paste-0614` |
+| COCOA 100 % | vegan | eligible | `MAIN_CAPABLE` | EXACT_PRODUCT | `main-vegan-cocoa-powder-1578` |
+| **RASPBERRIES** | **vegan** | **eligible** | **`MAIN_CAPABLE_UNCALIBRATED`** | NONE | — |
+| **COFFEE BEAN** | **vegan** | **eligible** | **`MAIN_CAPABLE_UNCALIBRATED`** | NONE | — |
+| **MILK 3.5 %** | **vegan** | **blocked** | `MAIN_TECHNICAL_BLOCKED` | — | — |
+| STRAWBERRIES | protein | eligible | `MAIN_CAPABLE` | EXACT_PRODUCT | `main-protein-fruit-combination-v2` |
+| BANANA · Fresh | protein | eligible | `MAIN_CAPABLE` | EXACT_PRODUCT | `main-protein-fruit-combination-v2` |
+| COCOA 100 % | protein | eligible | `MAIN_CAPABLE` | EXACT_PRODUCT | `main-protein-cocoa-1578` |
+| PISTACHIO paste | protein | eligible | `MAIN_CAPABLE` | EXACT_PRODUCT | `main-protein-pistachio-0614` |
+| **RASPBERRIES** | **protein** | **eligible** | **`MAIN_CAPABLE_UNCALIBRATED`** | NONE | — |
+| **COFFEE BEAN** | **protein** | **eligible** | **`MAIN_CAPABLE_UNCALIBRATED`** | NONE | — |
+| **WPC60 protein powder** | **protein** | **blocked** | `MAIN_TECHNICAL_BLOCKED` | — | — |
+| SUCROSE | protein | blocked | `MAIN_TECHNICAL_BLOCKED` | — | — |
+
+§17 holds — no dairy leakage into Vegan; the boundary is unchanged and MILK is
+still refused. §18 holds — the protein source itself stays non-Main, while a
+fruit / cocoa / nut / coffee added to a Protein recipe is now Main-selectable.
+
 ---
 
 ## 7. Served QA on staging
