@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { cn } from '@/lib/cn';
 import {
@@ -23,6 +23,11 @@ import {
   type BillingProductId,
 } from '@/services/billingCheckout';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import {
+  CONTINUATION_PARAM,
+  decodeContinuation,
+  postCheckoutDestination,
+} from '@/features/community/domain/shareContinuation';
 
 /**
  * `/subscription` — the plans / conversion page.
@@ -151,7 +156,19 @@ export function SubscriptionPage() {
   const [pending, setPending] = useState<BillingProductId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const c = s.checkout;
+  const navigate = useNavigate();
   const checkoutParam = searchParams.get('checkout');
+  // §14/§19: a visitor who arrived from a shared recipe or a Community page
+  // carries that journey in the URL. It is preserved THROUGH checkout and
+  // consumed on the way back, so „zobaczyłam recepturę → kupiłam → mogę ją
+  // zrobić" never breaks at the redirect.
+  const continuation = decodeContinuation(searchParams.get(CONTINUATION_PARAM));
+
+  useEffect(() => {
+    if (checkoutParam !== 'success') return;
+    const destination = postCheckoutDestination(searchParams.toString(), 'success');
+    if (destination) navigate(destination, { replace: true });
+  }, [checkoutParam, searchParams, navigate]);
 
   // The paid CTA: a signed-out visitor is sent to sign in first (the checkout
   // function authenticates from the JWT); a signed-in visitor is redirected to
@@ -164,7 +181,7 @@ export function SubscriptionPage() {
       return;
     }
     setPending(product);
-    const result = await startCheckout(checkoutOfferKey(product, cycle));
+    const result = await startCheckout(checkoutOfferKey(product, cycle), continuation);
     if (result.ok) {
       window.location.assign(result.url);
       return;

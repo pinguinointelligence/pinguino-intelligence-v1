@@ -29,6 +29,12 @@ import { LandingPage } from '@/pages/landing/LandingPage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
+import { CommunityPage } from '@/pages/community/CommunityPage';
+import { CreatorHandleRoute, PublicRecipeRoute } from '@/pages/community/HandleRoute';
+import { CreatorHubPage } from '@/pages/community/CreatorHubPage';
+import { PartnerPage } from '@/pages/community/PartnerPage';
+import { SharedRecipePage } from '@/pages/community/SharedRecipePage';
+import { TopHundredPage } from '@/pages/community/TopHundredPage';
 import {
   APIPage,
   AccountSettingsPage,
@@ -125,6 +131,36 @@ export function AppRoutes() {
         path="/calculator"
         element={<LegacyDestinationRedirect pathname={PRO_RECIPE_PATH} />}
       />
+
+      {/* ── Gellatti Community, Creators and direct recipe sharing ──────────────
+          `/@handle` and `/@handle/:slug` are the permanent public addresses of a
+          creator and of a published recipe. They are declared BEFORE the catch-all
+          and cannot collide with an application route: the `@` prefix is not a legal
+          handle character, and every route word below is in the reserved-handle list
+          that `validateHandle` and the DB both enforce.
+
+          `/share/:token` is UNLISTED (§11): it is `noindex` in the SPA head and, more
+          importantly, `X-Robots-Tag: noindex` at the edge (vercel.json / netlify.toml)
+          so a crawler that never runs JavaScript still cannot index it.
+
+          `/received/:shareLinkId` reopens a share already filed under „Udostępnione
+          mi", where the recipient no longer has the token. */}
+      <Route path="/community" element={<CommunityPage />} />
+      <Route path="/top100" element={<TopHundredPage />} />
+      {/* Creator reach and Partner money are two pages on purpose (§36). */}
+      <Route path="/creator" element={<CreatorHubPage />} />
+      <Route path="/partner" element={<PartnerPage />} />
+      {/* A React Router param owns a whole segment, so `/@:handle` matches
+          nothing. The handle namespace is declared as `/:handle` and gated by
+          CreatorHandleRoute, which requires the leading `@` and a valid,
+          non-reserved handle — so `/marysia` and `/@admin` stay 404s. Static
+          routes outrank dynamic ones in React Router's matcher, so every
+          application route above still wins; communityRoutes.test.tsx proves
+          it by matching, not by assertion. */}
+      <Route path="/:handle" element={<CreatorHandleRoute />} />
+      <Route path="/:handle/:slug" element={<PublicRecipeRoute />} />
+      <Route path="/share/:token" element={<SharedRecipePage />} />
+      <Route path="/received/:shareLinkId" element={<SharedRecipePage />} />
 
       {/* One canonical recipe library. Legacy bookmarks keep their meaning through a redirect. */}
       <Route path="/recipes" element={<RecipesHubPage />} />

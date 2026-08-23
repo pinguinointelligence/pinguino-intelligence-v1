@@ -42,20 +42,33 @@ import {
   startNewProRecipe,
 } from './startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
+import { SharedWithMePanel } from '@/features/community/ui/SharedWithMePanel';
 
 const r = copy.nav.recipes;
 const d = r.discovery;
 const MAX_FEATURED = 6;
 
 type DiscoveryView = 'home' | 'lost' | 'natural' | 'fantasy' | 'inspiration' | 'countries';
-type RecipeLibraryTab = 'mine' | 'pinguino' | 'inspiration';
+type RecipeLibraryTab = 'mine' | 'shared' | 'pinguino' | 'inspiration';
 type IconName = 'left' | 'right' | 'book' | 'globe' | 'leaf' | 'search' | 'sparkles';
 
 const RECIPE_LIBRARY_TABS = [
   ['mine', 'MOJE'],
+  ['shared', 'UDOSTĘPNIONE MI'],
   ['pinguino', 'PINGÜINO'],
   ['inspiration', 'INSPIRACJE'],
 ] as const satisfies readonly (readonly [RecipeLibraryTab, string])[];
+
+/**
+ * Community and TOP 100 complete the §3 recipe navigation, but they are real
+ * ROUTES with public URLs — not panels of this page. They render as links with
+ * `aria-current`, next to the tablist rather than inside it, so a screen
+ * reader is never told that following a link will switch a tab panel.
+ */
+const RECIPE_LIBRARY_LINKS = [
+  ['/community', 'COMMUNITY'],
+  ['/top100', 'TOP 100'],
+] as const;
 
 function Icon({ name, className = 'h-4 w-4' }: { name: IconName; className?: string }) {
   const paths: Readonly<Record<IconName, ReactNode>> = {
@@ -666,7 +679,10 @@ export function RecipesHubPage() {
   const ownerReviewMode = reviewModeEnabled && ownerReviewAccess && persona === 'pro';
   const requestedTab = params.get('tab');
   const activeTab: RecipeLibraryTab =
-    requestedTab === 'mine' || requestedTab === 'inspiration' || requestedTab === 'pinguino'
+    requestedTab === 'mine' ||
+    requestedTab === 'shared' ||
+    requestedTab === 'inspiration' ||
+    requestedTab === 'pinguino'
       ? requestedTab
       : 'pinguino';
   const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
@@ -752,6 +768,18 @@ export function RecipesHubPage() {
             </button>
           ))}
         </div>
+        <nav aria-label="Gellatti Community" className="flex min-w-0 shrink-0">
+          {RECIPE_LIBRARY_LINKS.map(([href, label]) => (
+            <Link
+              key={href}
+              to={href}
+              className="inline-flex min-h-12 shrink-0 items-center border-b-2 border-transparent px-4 text-xs font-semibold tracking-[0.08em] text-stone-600 hover:text-ink"
+              data-testid={`recipes-link-${href.slice(1)}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
         <button
           type="button"
           onClick={requestNewRecipe}
@@ -773,6 +801,11 @@ export function RecipesHubPage() {
       {activeTab === 'mine' ? (
         <div id="recipes-panel-mine" role="tabpanel" aria-labelledby="recipes-tab-mine">
           <MyRecipesContent />
+        </div>
+      ) : null}
+      {activeTab === 'shared' ? (
+        <div id="recipes-panel-shared" role="tabpanel" aria-labelledby="recipes-tab-shared">
+          <SharedWithMePanel />
         </div>
       ) : null}
       {activeTab === 'inspiration' ? (
