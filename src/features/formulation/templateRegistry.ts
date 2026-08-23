@@ -380,22 +380,17 @@ const PROTEIN_SEEDS: readonly ProteinTemplateSeed[] = [
   { route: 'dairy', temperatureC: -11, liquid: 0, fat: 244, protein: 112, water: 474, sucrose: 77, dextrose: 91 },
   // −12: protein 8.47 %, 20.3 % of energy, NPAC 45.4 (42-50), Score 10.
   { route: 'dairy', temperatureC: -12, liquid: 522, fat: 114, protein: 81, water: 104, sucrose: 71, dextrose: 106 },
-  // −13: protein 10.03 %, 20.9 % of energy, NPAC 48.3 (48-55), Score 9.
+  // −13: protein 9.9 %, 20.5 % of energy, NPAC 51.6 mid-band (48-55), Score 10.
   //
-  // KNOWN LIMITATION, recorded not hidden: −11/−12 above were re-derived so they
-  // hold under BOTH the toolbox payloads the repo's own starter test resolves
-  // and the canonical Mapper rows the served app rehydrates. No −13 candidate
-  // satisfies both — the two composition sets put NPAC on opposite sides of the
-  // 55 ceiling — so this seed is calibrated against the repo's own authority,
-  // which is what every test and audit in this codebase evaluates. The
-  // composition-resolution mismatch itself predates this work and is reported
-  // for a separate, dedicated fix.
-  //
-  // The −13 band needs a richer, more freezing-depressed mix, which raises the
-  // energy the claim must be earned against, so the optimum sits just past the
-  // 10 % ceiling of the controlled evidence and honestly carries that
-  // one-point penalty. Every leaner probe converged back to this candidate.
-  { route: 'dairy', temperatureC: -13, liquid: 456, fat: 193, protein: 101, water: 76, sucrose: 63, dextrose: 109 },
+  // Deliberately chosen to be legal under BOTH composition sets. The repo's own
+  // starter path resolves the static toolbox payloads while the served app
+  // rehydrates canonical Mapper rows, and the two differ enough to move NPAC by
+  // roughly 1.3 points. An earlier −13 candidate sat at NPAC 48.27 on the
+  // toolbox set — inside the band there, but 46.94 served, i.e. OUT, which
+  // staging showed as a Score 7 starter. This seed was searched against both
+  // sets simultaneously and scores 10 on each (NPAC 51.59 served / 52.36 repo),
+  // with the largest available distance to the nearest band edge.
+  { route: 'dairy', temperatureC: -13, liquid: 440, fat: 195, protein: 100, water: 83, sucrose: 50, dextrose: 130 },
   // PLANT — these three resolve PI-ING-* rows whose composition is identical in
   // every path, so they needed no re-derivation.
   // −11: protein 9.52 %, 20.4 % of energy, Score 10.

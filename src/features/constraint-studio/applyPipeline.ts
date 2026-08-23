@@ -4247,9 +4247,27 @@ function attachMainObjective(
   proof: MainFlavourObjectiveProof | null,
 ): void {
   if (!proof) return;
+  // The proof must describe the candidate the preview ACTUALLY carries, because
+  // the Apply door re-derives both of these from that candidate and refuses any
+  // mismatch. `executableMainGrams` was already refreshed here; `technicalScore`
+  // was not, which was harmless only while nothing changed the candidate after
+  // the Main frontier ran.
+  //
+  // Protein v2 broke that assumption: `refineProteinFormulation` re-asserts the
+  // HIGH PROTEIN claim on the executable candidate inside `finishPreview`, i.e.
+  // after the proof was captured. A Multi-Main Protein recipe was measured
+  // carrying `technicalScore: 7` against a candidate that had since become a
+  // 10 — Mains intact at 120/60, ratio 2.0, zero violations — and Apply refused
+  // it as an unverifiable proof. Refreshing the score from the same candidate
+  // keeps the door trustless while letting a genuinely better recipe through.
+  const score = recipeFitForInput(
+    preview.proposedInput,
+    calculateRecipe(preview.proposedInput),
+  ).score;
   preview.mainObjective = {
     ...proof,
     executableMainGrams: mainGroupTotal(identityInput, preview.proposedInput),
+    ...(score === null ? {} : { technicalScore: score }),
   };
 }
 
