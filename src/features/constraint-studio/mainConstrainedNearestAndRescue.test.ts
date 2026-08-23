@@ -581,17 +581,33 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
     for (const candidate of family) {
       expect(['formulation_toolbox', 'verified_protein_toolbox']).toContain(candidate.source);
     }
-    // Protein has no working Direction axis today → no recommendation, and
-    // the protein target of the draft is untouched by the advisor.
+    // Protein has no working Direction axis today. Under the DECOUPLED
+    // architecture (owner authority 2026-08-23) that no longer silences the
+    // advisor: this draft (100 g raspberry in a 1000 g batch) is operationally
+    // broken, so the advisor must answer the OPERATIONAL question instead.
+    // The protein authority and the draft itself stay untouched — which is
+    // what this case actually guards.
     const before = JSON.stringify(protein);
+    // Bounded to one approved candidate through the existing test seam: this
+    // case proves the DECOUPLING and the protein safety rules, not the search
+    // breadth (the family contract is asserted above). Keeps the repo's
+    // deliberate per-test time contract intact.
     const advice = assessRescueIngredientAdvice({
       input: protein,
       set: NONE,
       createdAt: AT,
       options: {},
       bestCurrent: null,
+      candidates: family.slice(0, 1),
     });
-    expect(advice).toBeNull();
+    expect(advice).not.toBeNull();
+    expect(advice!.trigger).toBe('operational');
+    // only approved payloads may ever be proposed
+    expect(['formulation_toolbox', 'verified_protein_toolbox']).toContain(advice!.candidate.source);
+    // an operational rescue must strictly reduce the hard-band violations
+    expect(advice!.current.hardMetricCount).toBeGreaterThan(0);
+    expect(advice!.rescue.hardMetricCount).toBeLessThan(advice!.current.hardMetricCount);
+    // the advisor never mutates the draft and never breaks the protein profile
     expect(JSON.stringify(protein)).toBe(before);
     expect(assessProteinFormulation(protein).applicable).toBe(true);
   });
@@ -709,7 +725,16 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
   });
 
   it('material-improvement evidence rule: equal scores with equal or negligible distance are never a recommendation', () => {
-    const current = { score: 8, reachedAxisCount: 0, supportedAxisCount: 2, severityPoints: 1.0 };
+    // hardMetricCount / engineSeverityPoints are the Direction-FREE operational
+    // fields; the Direction rule below must ignore them entirely.
+    const current = {
+      score: 8,
+      reachedAxisCount: 0,
+      supportedAxisCount: 2,
+      severityPoints: 1.0,
+      hardMetricCount: 0,
+      engineSeverityPoints: 0,
+    };
     expect(isMaterialRescueImprovement(current, { ...current })).toBe(false);
     expect(isMaterialRescueImprovement(current, { ...current, severityPoints: 0.9 })).toBe(false);
     expect(isMaterialRescueImprovement(current, { ...current, severityPoints: 0.4 })).toBe(true);

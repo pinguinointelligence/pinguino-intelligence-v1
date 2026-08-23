@@ -167,10 +167,19 @@ describe('§12 — the optimizer tie-break is subordinate to the technical score
 });
 
 describe('§17 — the Rescue tie-break never widens eligibility or adds an ingredient', () => {
-  it('fires only at an equal axis count AND an equal remaining distance', () => {
+  it('fires only on an exact tie of the trigger-appropriate primary measure', () => {
+    // Direction trigger → tie on reached axes AND remaining distance.
     expect(rescueSource).toMatch(
-      /rescue\.reachedAxisCount === best\.rescue\.reachedAxisCount &&\s*\n\s*Math\.abs\(rescue\.severityPoints - best\.rescue\.severityPoints\) <= 1e-9 &&\s*\n\s*compareVeganStructuralCandidates\(/,
+      /rescue\.reachedAxisCount === best\.rescue\.reachedAxisCount &&\s*\n\s*Math\.abs\(rescue\.severityPoints - best\.rescue\.severityPoints\) <= 1e-9/,
     );
+    // Operational trigger → tie on hard-metric count AND engine severity.
+    expect(rescueSource).toMatch(
+      /rescue\.hardMetricCount === best\.rescue\.hardMetricCount &&\s*\n\s*Math\.abs\(rescue\.engineSeverityPoints - best\.rescue\.engineSeverityPoints\) <= 1e-9/,
+    );
+    // and the structural comparison is reached ONLY through that tie.
+    expect(rescueSource).toMatch(/tieOnPrimary &&\s*\n\s*compareVeganStructuralCandidates\(/);
+    // exactly ONE call site in the advisor — the tie-break, nowhere else
+    expect(rescueSource.match(/compareVeganStructuralCandidates\(/g)).toHaveLength(1);
   });
 
   it('leaves the material-improvement evidence rule untouched', () => {

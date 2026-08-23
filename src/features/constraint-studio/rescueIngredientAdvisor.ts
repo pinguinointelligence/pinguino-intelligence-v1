@@ -1,6 +1,7 @@
 import {
   calculateRecipe,
   DEFAULT_CORRECTION_CANDIDATES,
+  detectViolations,
   type EngineIngredient,
   type RecipeInput,
 } from '@/engine';
@@ -77,14 +78,29 @@ export interface RescueCandidateIngredient {
   source: 'formulation_toolbox' | 'verified_vegan_toolbox' | 'verified_protein_toolbox';
 }
 
+/**
+ * WHY a rescue is being offered. Direction and operational health are SEPARATE
+ * problems: a profile may legitimately have no approved Direction calibration
+ * (Vegan has none today) and still be operationally broken. Rescue must answer
+ * the second question even when the first one cannot be asked.
+ */
+export type RescueTrigger = 'direction' | 'operational';
+
 export interface RescueOutcomeMeasure {
   score: number | null;
   reachedAxisCount: number;
   supportedAxisCount: number;
+  /** Distance to the exact Direction target. Meaningful only when Direction is active. */
   severityPoints: number;
+  /** Hard (non-provisional) band metrics currently violated. Direction-free. */
+  hardMetricCount: number;
+  /** Total Engine violation severity across every violated metric. Direction-free. */
+  engineSeverityPoints: number;
 }
 
 export interface RescueIngredientAdvice {
+  /** Which problem this advice answers. */
+  trigger: RescueTrigger;
   candidate: RescueCandidateIngredient;
   /** Best outcome reachable with the CURRENT ingredients (the staged candidate
    * or, without one, the unchanged draft). */
@@ -120,6 +136,8 @@ export interface RescueAdvisorReport {
   advice: RescueIngredientAdvice | null;
   current: RescueOutcomeMeasure | null;
   simulations: RescueSimulationRecord[];
+  /** Null when nothing needed rescuing at all. */
+  trigger: RescueTrigger | null;
 }
 
 export interface RescueAdvisorArgs {
@@ -169,10 +187,25 @@ export function rescueCandidateFamily(
   assessment: RecipeDirectionAssessment | null,
 ): RescueCandidateIngredient[] {
   const missed = assessment?.residuals.filter((residual) => !residual.reached) ?? [];
-  const needsMorePod = missed.some((r) => r.axis === 'sweetness' && r.side === 'below');
-  const needsLessPod = missed.some((r) => r.axis === 'sweetness' && r.side === 'above');
-  const needsMoreNpac = missed.some((r) => r.axis === 'softness' && r.side === 'below');
-  const needsLessNpac = missed.some((r) => r.axis === 'softness' && r.side === 'above');
+  // Direction-free fallback: when no Direction assessment can be made (profiles
+  // without an approved calibration, e.g. Vegan), the OPERATIONAL problem is
+  // read straight from the Engine's own band violations. Same levers, same
+  // order, derived from what is actually out of band.
+  const engineViolations = missed.length === 0 ? detectViolations(calculateRecipe(input)) : [];
+  const violated = (metric: string, direction: 'low' | 'high') =>
+    engineViolations.some((v) => v.metric === metric && v.direction === direction);
+  const needsMorePod =
+    missed.some((r) => r.axis === 'sweetness' && r.side === 'below') || violated('pod', 'low');
+  const needsLessPod =
+    missed.some((r) => r.axis === 'sweetness' && r.side === 'above') || violated('pod', 'high');
+  const needsMoreNpac =
+    missed.some((r) => r.axis === 'softness' && r.side === 'below') ||
+    violated('npac', 'low') ||
+    violated('ice_fraction', 'high');
+  const needsLessNpac =
+    missed.some((r) => r.axis === 'softness' && r.side === 'above') ||
+    violated('npac', 'high') ||
+    violated('ice_fraction', 'low');
   const ordered: string[] = [];
   const push = (...ids: string[]) => {
     for (const id of ids) if (!ordered.includes(id)) ordered.push(id);
@@ -227,7 +260,26 @@ export function rescueCandidateFamily(
 }
 
 export function measureRescueOutcome(input: RecipeInput): RescueOutcomeMeasure {
-  const assessment = assessRecipeDirection(input, calculateRecipe(input));
+  const result = calculateRecipe(input);
+  const assessment = assessRecipeDirection(input, result);
+  // The operational fields are derived from the SAME `calculateRecipe` result as
+  // the Direction fields. `classifyViolationBands` would recompute the whole
+  // recipe, and this runs once per simulated candidate — the advisor stays a
+  // bounded, cheap simulation. The provisional-band rule below mirrors
+  // `classifyViolationBands` exactly (a provisional indicator is a SOFT band).
+  const violations = detectViolations(result);
+  const indicatorByKey = new Map(result.indicators.map((indicator) => [indicator.key, indicator]));
+  const hardMetrics = new Set<string>();
+  let engineSeverityPoints = 0;
+  for (const violation of violations) {
+    engineSeverityPoints += violation.severity_points;
+    const indicator = indicatorByKey.get(violation.metric);
+    const provisional =
+      indicator?.category_fallback === true ||
+      indicator?.temperature_fallback === true ||
+      indicator?.band_status === 'estimated';
+    if (!provisional) hardMetrics.add(violation.metric);
+  }
   return {
     score: assessment.score,
     reachedAxisCount: assessment.reachedAxisCount,
@@ -236,6 +288,8 @@ export function measureRescueOutcome(input: RecipeInput): RescueOutcomeMeasure {
       (sum, violation) => sum + violation.severity_points,
       0,
     ),
+    hardMetricCount: hardMetrics.size,
+    engineSeverityPoints,
   };
 }
 
@@ -255,6 +309,51 @@ export function isMaterialRescueImprovement(
     gain >= MIN_ABSOLUTE_SEVERITY_GAIN &&
     rescue.severityPoints <= current.severityPoints * (1 - MATERIAL_RELATIVE_SEVERITY_GAIN)
   );
+}
+
+/**
+ * OPERATIONAL evidence rule — the Direction-free twin of
+ * `isMaterialRescueImprovement`. A rescue is material when it removes a hard
+ * band violation outright, or — at the same hard-metric count — cuts the total
+ * Engine violation severity by the same margin the Direction rule demands.
+ */
+export function isMaterialOperationalImprovement(
+  current: RescueOutcomeMeasure,
+  rescue: RescueOutcomeMeasure,
+): boolean {
+  if (rescue.hardMetricCount < current.hardMetricCount) {
+    return rescue.engineSeverityPoints <= current.engineSeverityPoints + 1e-9;
+  }
+  if (rescue.hardMetricCount > current.hardMetricCount) return false;
+  const gain = current.engineSeverityPoints - rescue.engineSeverityPoints;
+  return (
+    gain >= MIN_ABSOLUTE_SEVERITY_GAIN &&
+    rescue.engineSeverityPoints <=
+      current.engineSeverityPoints * (1 - MATERIAL_RELATIVE_SEVERITY_GAIN)
+  );
+}
+
+/**
+ * Decide WHICH problem the advisor is answering — the decoupling itself.
+ *
+ *  - `direction`   — Direction is active, supported and not yet reached.
+ *  - `operational` — Direction cannot be asked (no approved calibration for this
+ *                    profile, or the user set no target) but the recipe is
+ *                    operationally broken: a hard band is violated.
+ *  - `null`        — nothing to rescue.
+ *
+ * Direction being unavailable NEVER disables operational rescue. This is the
+ * invariant the Vegan profile depends on: it has no approved Direction
+ * calibration and must still receive rescue advice.
+ */
+export function resolveRescueTrigger(
+  directionActive: boolean,
+  directionSupportedAxes: number,
+  directionReached: boolean,
+  measure: RescueOutcomeMeasure,
+): RescueTrigger | null {
+  if (directionActive && directionSupportedAxes > 0 && !directionReached) return 'direction';
+  return measure.hardMetricCount > 0 ? 'operational' : null;
 }
 
 const alreadyPresent = (input: RecipeInput, candidate: RescueCandidateIngredient): boolean =>
@@ -280,23 +379,36 @@ export function assessRescueIngredientAdvice(
 /** The full evidence: the decision plus every simulated candidate's outcome. */
 export function simulateRescueCandidates(args: RescueAdvisorArgs): RescueAdvisorReport {
   const { input, set, createdAt, options, bestCurrent } = args;
-  const none = (current: RescueOutcomeMeasure | null): RescueAdvisorReport => ({
+  const none = (
+    current: RescueOutcomeMeasure | null,
+    trigger: RescueTrigger | null = null,
+  ): RescueAdvisorReport => ({
     advice: null,
     current,
     simulations: [],
+    trigger,
   });
-  if (input.goals?.direction_targets_active !== true) return none(null);
   if (input.items.some((item) => item.actual_grams !== null)) return none(null);
   const currentInput = bestCurrent?.proposedInput ?? input;
   const currentAssessment = assessRecipeDirection(currentInput, calculateRecipe(currentInput));
-  if (!currentAssessment.active || currentAssessment.supportedAxisCount === 0) return none(null);
   const current = measureRescueOutcome(currentInput);
-  // Current ingredients already achieve the target → nothing to rescue.
-  if (currentAssessment.reached) return none(current);
+  // DECOUPLED (owner authority): Direction and operational health are separate
+  // questions. A profile with no approved Direction calibration — Vegan today —
+  // still gets operational rescue whenever a hard band is violated.
+  const trigger = resolveRescueTrigger(
+    input.goals?.direction_targets_active === true && currentAssessment.active,
+    currentAssessment.supportedAxisCount,
+    currentAssessment.reached,
+    current,
+  );
+  if (trigger === null) return none(current);
   const currentProtein = assessProteinFormulation(currentInput);
 
   const excluded = new Set(options.excludedIngredientIds ?? []);
-  const family = (args.candidates ?? rescueCandidateFamily(input, currentAssessment)).filter(
+  const family = (
+    args.candidates ??
+    rescueCandidateFamily(input, trigger === 'direction' ? currentAssessment : null)
+  ).filter(
     (candidate) =>
       !alreadyPresent(input, candidate) &&
       !excluded.has(candidate.canonicalIngredientId) &&
@@ -387,7 +499,11 @@ export function simulateRescueCandidates(args: RescueAdvisorArgs): RescueAdvisor
         continue;
       }
     }
-    if (!isMaterialRescueImprovement(current, rescue)) {
+    const material =
+      trigger === 'direction'
+        ? isMaterialRescueImprovement(current, rescue)
+        : isMaterialOperationalImprovement(current, rescue);
+    if (!material) {
       record(candidate, 'not_material', simulatedGrams, rescue);
       continue;
     }
@@ -397,31 +513,45 @@ export function simulateRescueCandidates(args: RescueAdvisorArgs): RescueAdvisor
     // projection has the structurally stronger plant system. Ranking only —
     // eligibility is untouched (the family is already VEGAN_VERIFIED-only), no
     // ingredient is auto-added, and an UNKNOWN structural side never loses.
+    const tieOnPrimary =
+      trigger === 'direction'
+        ? best !== null &&
+          rescue.reachedAxisCount === best.rescue.reachedAxisCount &&
+          Math.abs(rescue.severityPoints - best.rescue.severityPoints) <= 1e-9
+        : best !== null &&
+          rescue.hardMetricCount === best.rescue.hardMetricCount &&
+          Math.abs(rescue.engineSeverityPoints - best.rescue.engineSeverityPoints) <= 1e-9;
     const structurallyBetter =
       best !== null &&
       bestInput !== null &&
-      rescue.reachedAxisCount === best.rescue.reachedAxisCount &&
-      Math.abs(rescue.severityPoints - best.rescue.severityPoints) <= 1e-9 &&
+      tieOnPrimary &&
       compareVeganStructuralCandidates(preview.proposedInput, bestInput) < 0;
-    const better =
+    const strictlyBetter =
       best === null ||
-      rescue.reachedAxisCount > best.rescue.reachedAxisCount ||
-      (rescue.reachedAxisCount === best.rescue.reachedAxisCount &&
-        rescue.severityPoints < best.rescue.severityPoints - 1e-9) ||
-      structurallyBetter;
-    if (!better) continue;
+      (trigger === 'direction'
+        ? rescue.reachedAxisCount > best.rescue.reachedAxisCount ||
+          (rescue.reachedAxisCount === best.rescue.reachedAxisCount &&
+            rescue.severityPoints < best.rescue.severityPoints - 1e-9)
+        : rescue.hardMetricCount < best.rescue.hardMetricCount ||
+          (rescue.hardMetricCount === best.rescue.hardMetricCount &&
+            rescue.engineSeverityPoints < best.rescue.engineSeverityPoints - 1e-9));
+    if (!(strictlyBetter || structurallyBetter)) continue;
     const reasonPl =
-      rescue.reachedAxisCount > current.reachedAxisCount
-        ? `Z obecnymi składnikami najlepszy wynik to ${formatScore(current)}. ` +
-          `Dodanie składnika „${candidate.namePl}” pozwala Engine osiągnąć lepszy legalny profil ` +
-          `(${formatScore(rescue)}, symulacja ${simulatedGrams} g).`
-        : `Z obecnymi składnikami najlepszy wynik to ${formatScore(current)} ` +
-          `(dystans do celu ${current.severityPoints.toFixed(2)}). ` +
-          `Dodanie składnika „${candidate.namePl}” pozwala Engine zbliżyć się do celu ` +
-          `(dystans ${rescue.severityPoints.toFixed(2)}, symulacja ${simulatedGrams} g) ` +
-          `przy zachowaniu wszystkich twardych zakresów.`;
-    best = { candidate, current, rescue, simulatedGrams, reasonPl, simulatedCandidateIds };
+      trigger === 'operational'
+        ? `Receptura wykracza poza zatwierdzone zakresy (${current.hardMetricCount} \u2192 ` +
+          `${rescue.hardMetricCount}). Dodanie sk\u0142adnika \u201e${candidate.namePl}\u201d pozwala Engine ` +
+          `wr\u00f3ci\u0107 do legalnego profilu (symulacja ${simulatedGrams} g).`
+        : rescue.reachedAxisCount > current.reachedAxisCount
+          ? `Z obecnymi sk\u0142adnikami najlepszy wynik to ${formatScore(current)}. ` +
+            `Dodanie sk\u0142adnika \u201e${candidate.namePl}\u201d pozwala Engine osi\u0105gn\u0105\u0107 lepszy legalny profil ` +
+            `(${formatScore(rescue)}, symulacja ${simulatedGrams} g).`
+          : `Z obecnymi sk\u0142adnikami najlepszy wynik to ${formatScore(current)} ` +
+            `(dystans do celu ${current.severityPoints.toFixed(2)}). ` +
+            `Dodanie sk\u0142adnika \u201e${candidate.namePl}\u201d pozwala Engine zbli\u017cy\u0107 si\u0119 do celu ` +
+            `(dystans ${rescue.severityPoints.toFixed(2)}, symulacja ${simulatedGrams} g) ` +
+            `przy zachowaniu wszystkich twardych zakres\u00f3w.`;
+    best = { trigger, candidate, current, rescue, simulatedGrams, reasonPl, simulatedCandidateIds };
     bestInput = preview.proposedInput;
   }
-  return { advice: best, current, simulations };
+  return { advice: best, current, simulations, trigger };
 }

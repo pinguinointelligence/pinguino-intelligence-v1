@@ -24,14 +24,29 @@ const candidate = (): ConstraintPreview =>
   }) as unknown as ConstraintPreview;
 
 const advice = (): RescueIngredientAdvice => ({
+  trigger: 'direction',
   candidate: {
     canonicalIngredientId: 'PI-ING-000456',
     namePl: 'Inulina',
     ingredient: findDemoIngredient('inulin')!,
     source: 'formulation_toolbox',
   },
-  current: { score: 8, reachedAxisCount: 0, supportedAxisCount: 2, severityPoints: 6.7 },
-  rescue: { score: 9, reachedAxisCount: 1, supportedAxisCount: 2, severityPoints: 3.2 },
+  current: {
+    score: 8,
+    reachedAxisCount: 0,
+    supportedAxisCount: 2,
+    severityPoints: 6.7,
+    hardMetricCount: 0,
+    engineSeverityPoints: 0,
+  },
+  rescue: {
+    score: 9,
+    reachedAxisCount: 1,
+    supportedAxisCount: 2,
+    severityPoints: 3.2,
+    hardMetricCount: 0,
+    engineSeverityPoints: 0,
+  },
   simulatedGrams: 95,
   reasonPl:
     'Z obecnymi składnikami najlepszy wynik to 8/10. Dodanie składnika „Inulina” pozwala Engine osiągnąć lepszy legalny profil (9/10, symulacja 95 g).',
