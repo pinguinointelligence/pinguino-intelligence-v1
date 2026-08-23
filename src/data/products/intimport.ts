@@ -243,10 +243,23 @@ function assign(insert: ProductInsert, field: keyof ProductInsert, value: unknow
 }
 
 /** Map one official INTIMPORT row. Pure; performs no lookups and no writes. */
-export function mapIntimportRow(
-  row: Record<string, string>,
-  rowIndex: number,
-): IntimportCandidate {
+/**
+ * The canonical product name: the source name, plus the source's own variant when
+ * the name does not already carry it.
+ *
+ * Three name concepts stay distinct — RAW is the untouched source column (kept in
+ * `source`), CANONICAL/DISPLAY is this, and the English name remains available as
+ * `product_name_internal`. This composes only text the file already supplied, so a
+ * product's meaning is preserved rather than reinterpreted.
+ */
+export function canonicalProductName(name: string | null, variant: string | null): string | null {
+  if (!name || !variant) return name;
+  const needle = variant.toLowerCase().trim();
+  if (!needle || name.toLowerCase().includes(needle)) return name;
+  return `${name} ${variant}`;
+}
+
+export function mapIntimportRow(row: Record<string, string>, rowIndex: number): IntimportCandidate {
   const source = {} as Record<IntimportColumn, string | null>;
   for (const column of INTIMPORT_COLUMNS) source[column] = intimportText(row[column]);
 
@@ -259,7 +272,18 @@ export function mapIntimportRow(
   const nameEnglish = source['Product Name English'];
   // A row has a valid name when EITHER language column carries one. Original is the
   // preferred display; English is a genuine fallback, never a "missing name".
-  const displayName = nameOriginal ?? nameEnglish;
+  const rawName = nameOriginal ?? nameEnglish;
+  // Commercial identity includes the variant. The catalogue's non-EAN identity is
+  // brand + name + package size, so a name that drops the variant silently merges
+  // genuinely different products — "Twaróg klinek Delikate" chudy / półtłusty /
+  // tłusty are three formulations, not one. Only 57 of the Polish file's 820 rows
+  // carry an EAN, so the name is what keeps the other 763 apart.
+  //
+  // The variant is appended in the SOURCE's own words: this restates identity, it
+  // never invents or reinterprets it. Skipped when the name already carries the
+  // variant, so nothing is said twice.
+  const variant = source['Variant Original'] ?? source['Variant English'];
+  const displayName = canonicalProductName(rawName, variant);
   if (displayName) assign(insert, 'product_name_display', displayName);
   if (nameEnglish && nameEnglish !== displayName) {
     assign(insert, 'product_name_internal', nameEnglish);
@@ -294,11 +318,14 @@ export function mapIntimportRow(
   }
 
   // ── text evidence ───────────────────────────────────────────────────────────
-  if (source['Ingredients Original']) assign(insert, 'detected_text', source['Ingredients Original']);
-  else if (source['Ingredients English']) assign(insert, 'detected_text', source['Ingredients English']);
+  if (source['Ingredients Original'])
+    assign(insert, 'detected_text', source['Ingredients Original']);
+  else if (source['Ingredients English'])
+    assign(insert, 'detected_text', source['Ingredients English']);
   if (source.Allergens) assign(insert, 'allergens', source.Allergens);
   if (source['Professional Dosage']) assign(insert, 'usage_notes', source['Professional Dosage']);
-  if (source['Technical Parameters']) assign(insert, 'engine_notes', source['Technical Parameters']);
+  if (source['Technical Parameters'])
+    assign(insert, 'engine_notes', source['Technical Parameters']);
   if (source['Primary Source URL']) assign(insert, 'source_url', source['Primary Source URL']);
   if (source['Technical PDF URL']) assign(insert, 'product_url', source['Technical PDF URL']);
 
@@ -420,7 +447,8 @@ export function parseINTIMPORT(
     const lookupValues = candidate.ean
       ? barcodeLookupCandidates({
           value: candidate.ean,
-          format: candidate.ean.length === 8 ? 'EAN_8' : candidate.ean.length === 12 ? 'UPC_A' : 'EAN_13',
+          format:
+            candidate.ean.length === 8 ? 'EAN_8' : candidate.ean.length === 12 ? 'UPC_A' : 'EAN_13',
           lookupValue: candidate.ean,
         })
       : [];
@@ -507,7 +535,9 @@ export function parseINTIMPORT(
     unexpectedColumns,
     summary: {
       rows: candidates.length,
-      countries: [...new Set(candidates.map((c) => c.countryCode).filter((c): c is string => Boolean(c)))].sort(),
+      countries: [
+        ...new Set(candidates.map((c) => c.countryCode).filter((c): c is string => Boolean(c))),
+      ].sort(),
       uniqueProducts: candidates.length - duplicates,
       existing: existingCount,
       duplicates,

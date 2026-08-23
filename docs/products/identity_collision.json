@@ -1,0 +1,78 @@
+{
+  "totalRows": 820,
+  "withEan": 57,
+  "withoutEan": 763,
+  "distinctIdentities": 817,
+  "collidingGroups": 3,
+  "rowsInCollidingGroups": 6,
+  "dangerousGroups": 3,
+  "dangerousExamples": [
+    {
+      "key": "identity:comprital|limone cytrynowy|1.25 kg",
+      "withEan": false,
+      "rows": [
+        {
+          "rowIndex": 642,
+          "sourceProductId": "PL-COM-P1237",
+          "name": "LIMONE Cytrynowy",
+          "brand": "Comprital",
+          "size": "1.25 kg",
+          "variant": "Cytrynowy"
+        },
+        {
+          "rowIndex": 643,
+          "sourceProductId": "PL-COM-P307B",
+          "name": "LIMONE Cytrynowy",
+          "brand": "Comprital",
+          "size": "1.25 kg",
+          "variant": "Cytrynowy"
+        }
+      ]
+    },
+    {
+      "key": "identity:comprital|nocciola orzech laskowy|1.25 kg",
+      "withEan": false,
+      "rows": [
+        {
+          "rowIndex": 693,
+          "sourceProductId": "PL-COM-P1244",
+          "name": "NOCCIOLA Orzech laskowy",
+          "brand": "Comprital",
+          "size": "1.25 kg",
+          "variant": "Orzech laskowy"
+        },
+        {
+          "rowIndex": 694,
+          "sourceProductId": "PL-COM-P338",
+          "name": "NOCCIOLA Orzech laskowy",
+          "brand": "Comprital",
+          "size": "1.25 kg",
+          "variant": "Orzech laskowy"
+        }
+      ]
+    },
+    {
+      "key": "identity:comprital|whisky|3 kg",
+      "withEan": false,
+      "rows": [
+        {
+          "rowIndex": 803,
+          "sourceProductId": "PL-COM-PC523P",
+          "name": "WHISKY",
+          "brand": "Comprital",
+          "size": "3 kg",
+          "variant": "Whisky"
+        },
+        {
+          "rowIndex": 804,
+          "sourceProductId": "PL-COM-PC524P",
+          "name": "WHISKY",
+          "brand": "Comprital",
+          "size": "3 kg",
+          "variant": "Whisky"
+        }
+      ]
+    }
+  ],
+  "benignExamples": []
+}

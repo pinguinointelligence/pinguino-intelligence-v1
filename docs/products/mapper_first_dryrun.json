@@ -179,9 +179,9 @@
   },
   "mapperContributed": 574,
   "tierCounts": {
-    "mapper_similar_profile": 335,
+    "mapper_similar_profile": 336,
     "mapper_family_consensus": 375,
-    "mapper_simple_profile": 6
+    "mapper_simple_profile": 5
   },
   "fieldFill": {
     "water_percent": {
@@ -684,7 +684,7 @@
     },
     {
       "row": 4,
-      "name": "Caramel & Peanuts Waffle Baitz",
+      "name": "Caramel & Peanuts Waffle Baitz karmel i orzeszki ziemne",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
       "engineConfidence": null,
@@ -697,7 +697,7 @@
     },
     {
       "row": 5,
-      "name": "Chrupiące herbatniki Baitz Czeko Sandwich z nadzieniem z czekolady mlecznej",
+      "name": "Chrupiące herbatniki Baitz Czeko Sandwich z nadzieniem z czekolady mlecznej nadzienie z czekolady mlecznej",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
       "engineConfidence": null,
@@ -710,7 +710,7 @@
     },
     {
       "row": 6,
-      "name": "Ciastka z nadzieniem z orzechów laskowych Baitz Crispy",
+      "name": "Ciastka z nadzieniem z orzechów laskowych Baitz Crispy orzech laskowy i czekolada",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
       "engineConfidence": null,
@@ -723,7 +723,7 @@
     },
     {
       "row": 7,
-      "name": "Precelki w polewie słonego karmelu Baitz",
+      "name": "Precelki w polewie słonego karmelu Baitz słony karmel",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
       "engineConfidence": null,
@@ -751,7 +751,7 @@
     },
     {
       "row": 9,
-      "name": "Snack Baitz Cheese & Oregano",
+      "name": "Snack Baitz Cheese & Oregano ser i oregano",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
       "engineConfidence": null,
@@ -764,7 +764,7 @@
     },
     {
       "row": 10,
-      "name": "Snack Baitz Tomato & Oregano",
+      "name": "Snack Baitz Tomato & Oregano pomidor i oregano",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
       "engineConfidence": null,
@@ -782,7 +782,7 @@
     },
     {
       "row": 11,
-      "name": "Strawberry & Crisps Waffle Baitz",
+      "name": "Strawberry & Crisps Waffle Baitz truskawka i chrupki",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
       "engineConfidence": 0.7839,

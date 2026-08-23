@@ -9,6 +9,7 @@ import {
   normalizeNutritionBasis,
   parseINTIMPORT,
   type IntimportColumn,
+  canonicalProductName,
 } from './intimport';
 import { parseIntake } from '@/pages/destinations/productImportController';
 
@@ -107,7 +108,10 @@ describe('INTIMPORT missing values', () => {
   });
 
   it('maps a missing Energy kcal to null, not zero', () => {
-    const candidate = mapIntimportRow(row({ 'Nutrition Basis': '100 g', 'Energy kcal': 'not_found' }), 1);
+    const candidate = mapIntimportRow(
+      row({ 'Nutrition Basis': '100 g', 'Energy kcal': 'not_found' }),
+      1,
+    );
     expect(candidate.insert.kcal_per_100g).toBeUndefined();
   });
 
@@ -143,7 +147,11 @@ describe('INTIMPORT product name', () => {
 
   it('is INVALID only when both names and the brand are absent', () => {
     const candidate = mapIntimportRow(
-      row({ 'Product Name Original': 'not_found', 'Product Name English': 'not_found', Brand: 'not_found' }),
+      row({
+        'Product Name Original': 'not_found',
+        'Product Name English': 'not_found',
+        Brand: 'not_found',
+      }),
       1,
     );
     expect(candidate.state).toBe('INVALID');
@@ -210,8 +218,9 @@ describe('INTIMPORT field retention', () => {
 
   it('retains every one of the 36 official fields as source evidence', () => {
     const candidate = mapIntimportRow(filled, 1);
-    const retained = (candidate.insert.extracted_json as { intimport: { fields: Record<string, unknown> } })
-      .intimport.fields;
+    const retained = (
+      candidate.insert.extracted_json as { intimport: { fields: Record<string, unknown> } }
+    ).intimport.fields;
     for (const column of INTIMPORT_COLUMNS) expect(retained).toHaveProperty(column);
     expect(retained['Technical Parameters']).toBe('Viscosity 3000 mPa·s');
     expect(retained['Checked At']).toBe('2026-08-20');
@@ -398,10 +407,30 @@ describe('INTIMPORT preview summary', () => {
   it('counts rows, countries and states without inventing anything', () => {
     const result = parseINTIMPORT(
       csv([
-        row({ 'Product ID': 'A', 'Country Code': 'PL', 'Nutrition Basis': '100 g', 'Energy kcal': '100', 'Fat g': '1', 'Carbohydrates g': '10', 'Protein g': '2', 'Ingredients Original': 'Cukier.' }),
+        row({
+          'Product ID': 'A',
+          'Country Code': 'PL',
+          'Nutrition Basis': '100 g',
+          'Energy kcal': '100',
+          'Fat g': '1',
+          'Carbohydrates g': '10',
+          'Protein g': '2',
+          'Ingredients Original': 'Cukier.',
+        }),
         row({ 'Product ID': 'B', 'Country Code': 'ES', 'Product Name Original': 'Inny produkt' }),
-        row({ 'Product ID': 'C', 'Country Code': 'PL', 'Product Name Original': 'not_found', 'Product Name English': 'not_found', Brand: 'not_found' }),
-        row({ 'Product ID': 'D', 'Country Code': 'PL', 'Product Name Original': 'Trzeci produkt', 'EAN / GTIN': '5901234123457' }),
+        row({
+          'Product ID': 'C',
+          'Country Code': 'PL',
+          'Product Name Original': 'not_found',
+          'Product Name English': 'not_found',
+          Brand: 'not_found',
+        }),
+        row({
+          'Product ID': 'D',
+          'Country Code': 'PL',
+          'Product Name Original': 'Trzeci produkt',
+          'EAN / GTIN': '5901234123457',
+        }),
       ]),
     );
     expect(result.summary.rows).toBe(4);
@@ -415,5 +444,27 @@ describe('INTIMPORT preview summary', () => {
   it('ignores fully blank lines rather than counting them as rows', () => {
     const result = parseINTIMPORT(`${csv([row()])}\n\n`);
     expect(result.summary.rows).toBe(1);
+  });
+});
+
+describe('canonical naming keeps commercial identity apart', () => {
+  it('appends the source variant so different formulations do not share an identity', () => {
+    // The catalogue's non-EAN identity is brand + name + size. Three quark fat
+    // levels sold as the same name and size must not collapse into one product.
+    const names = ['chudy', 'półtłusty', 'tłusty'].map((variant) =>
+      canonicalProductName('Twaróg klinek Delikate', variant),
+    );
+    expect(new Set(names).size).toBe(3);
+    expect(names[0]).toBe('Twaróg klinek Delikate chudy');
+  });
+
+  it('does not repeat a variant the name already carries', () => {
+    expect(canonicalProductName('Jogurt truskawkowy', 'truskawkowy')).toBe('Jogurt truskawkowy');
+    expect(canonicalProductName('LIMONE Cytrynowy', 'Cytrynowy')).toBe('LIMONE Cytrynowy');
+  });
+
+  it('leaves a name untouched when the source supplies no variant', () => {
+    expect(canonicalProductName('Mleko UHT 3.2%', null)).toBe('Mleko UHT 3.2%');
+    expect(canonicalProductName(null, 'cokolwiek')).toBeNull();
   });
 });

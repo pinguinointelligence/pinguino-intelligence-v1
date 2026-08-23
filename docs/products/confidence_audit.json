@@ -241,7 +241,7 @@
     },
     {
       "row": 11,
-      "name": "Strawberry & Crisps Waffle Baitz",
+      "name": "Strawberry & Crisps Waffle Baitz truskawka i chrupki",
       "shipped": 0.4889,
       "mean": 0.4997,
       "median": 0.504,
@@ -535,7 +535,7 @@
     },
     {
       "row": 144,
-      "name": "Czekolada gorzka 90%",
+      "name": "Czekolada gorzka 90% 90% kakao",
       "shipped": 0.66,
       "mean": 0.7312,
       "median": 0.66,
@@ -633,7 +633,7 @@
     },
     {
       "row": 145,
-      "name": "Bakello Kakao extra ciemne",
+      "name": "Bakello Kakao extra ciemne 10-12% cocoa butter",
       "shipped": 0.528,
       "mean": 0.6457,
       "median": 0.528,
@@ -731,7 +731,7 @@
     },
     {
       "row": 152,
-      "name": "Czekolada deserowa",
+      "name": "Czekolada deserowa official Lidl article no. 21236",
       "shipped": 0.456,
       "mean": 0.5943,
       "median": 0.456,
@@ -829,7 +829,7 @@
     },
     {
       "row": 153,
-      "name": "Czekolada mleczna",
+      "name": "Czekolada mleczna official Lidl article no. 21238",
       "shipped": 0.576,
       "mean": 0.68,
       "median": 0.576,
@@ -1123,7 +1123,7 @@
     },
     {
       "row": 285,
-      "name": "Roladka śmietankowa Delikate",
+      "name": "Roladka śmietankowa Delikate pomidor / bazylia",
       "shipped": 0.648,
       "mean": 0.7249,
       "median": 0.648,
@@ -1319,7 +1319,7 @@
     },
     {
       "row": 288,
-      "name": "Serek puszysty Delikate",
+      "name": "Serek puszysty Delikate klasyczny",
       "shipped": 0.528,
       "mean": 0.6457,
       "median": 0.528,
@@ -1417,7 +1417,7 @@
     },
     {
       "row": 289,
-      "name": "Serek puszysty Delikate",
+      "name": "Serek puszysty Delikate z ziołami",
       "shipped": 0.48,
       "mean": 0.6114,
       "median": 0.48,

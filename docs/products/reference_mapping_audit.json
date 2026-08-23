@@ -268,7 +268,7 @@
     },
     {
       "productId": "PL-BIE-00090",
-      "product": "Herbata na bazie naparu goBIO",
+      "product": "Herbata na bazie naparu goBIO różne smaki",
       "category": "Coffee, tea & spices",
       "oldMapperId": "PI-ING-000165",
       "oldMapperReference": "BLACK TEA · Tea · Dry",
@@ -298,7 +298,7 @@
     },
     {
       "productId": "PL-BIE-00080",
-      "product": "Roladka śmietankowa Delikate",
+      "product": "Roladka śmietankowa Delikate ananas / migdały",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -315,7 +315,7 @@
     },
     {
       "productId": "PL-BIE-00057",
-      "product": "Jogurt Fruvita Pure",
+      "product": "Jogurt Fruvita Pure truskawka / banan / jabłko",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -333,7 +333,7 @@
     },
     {
       "productId": "PL-BIE-00059",
-      "product": "Kefir owocowy goBIO",
+      "product": "Kefir owocowy goBIO różne smaki",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -367,7 +367,7 @@
     },
     {
       "productId": "PL-BIE-00113",
-      "product": "Napój goBIO",
+      "product": "Napój goBIO malina / granat",
       "category": "Fruit",
       "oldMapperId": "PI-ING-000394",
       "oldMapperReference": "RASPBERRIES · Fresh Fruit",
@@ -491,7 +491,7 @@
   "safeExamples": [
     {
       "productId": "PL-BIE-00044",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita malina",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -511,7 +511,7 @@
     },
     {
       "productId": "PL-BIE-00045",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita jagoda",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -531,7 +531,7 @@
     },
     {
       "productId": "PL-BIE-00048",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita malina / rabarbar",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -551,7 +551,7 @@
     },
     {
       "productId": "PL-BIE-00049",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita agrest / mirabelka",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -571,7 +571,7 @@
     },
     {
       "productId": "PL-BIE-00019",
-      "product": "Masło klarowane Mleczna Dolina 99,8%",
+      "product": "Masło klarowane Mleczna Dolina 99,8% klarowane; 99,8% tłuszczu",
       "category": "Dairy",
       "oldMapperId": "PI-ING-000176",
       "oldMapperReference": "BUTTER UNSALTED · Mlekovita Butter",
@@ -605,7 +605,7 @@
     },
     {
       "productId": "PL-BIE-00100",
-      "product": "Kiwi goBIO",
+      "product": "Kiwi goBIO ekologiczne",
       "category": "Fruit",
       "oldMapperId": "PI-ING-000366",
       "oldMapperReference": "KIWI · Fresh Fruit",
@@ -1928,7 +1928,7 @@
     },
     {
       "productId": "PL-BIE-00090",
-      "product": "Herbata na bazie naparu goBIO",
+      "product": "Herbata na bazie naparu goBIO różne smaki",
       "category": "Coffee, tea & spices",
       "oldMapperId": "PI-ING-000165",
       "oldMapperReference": "BLACK TEA · Tea · Dry",
@@ -1958,7 +1958,7 @@
     },
     {
       "productId": "PL-BIE-00080",
-      "product": "Roladka śmietankowa Delikate",
+      "product": "Roladka śmietankowa Delikate ananas / migdały",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -1992,7 +1992,7 @@
     },
     {
       "productId": "PL-BIE-00075",
-      "product": "Serek śmietankowy Delikate",
+      "product": "Serek śmietankowy Delikate klasyczny",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2009,7 +2009,7 @@
     },
     {
       "productId": "PL-BIE-00064",
-      "product": "Twaróg Delikate",
+      "product": "Twaróg Delikate chudy",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2026,7 +2026,7 @@
     },
     {
       "productId": "PL-BIE-00066",
-      "product": "Twaróg klinek Delikate",
+      "product": "Twaróg klinek Delikate chudy",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2043,7 +2043,7 @@
     },
     {
       "productId": "PL-BIE-00067",
-      "product": "Twaróg klinek Delikate",
+      "product": "Twaróg klinek Delikate półtłusty",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2060,7 +2060,7 @@
     },
     {
       "productId": "PL-BIE-00069",
-      "product": "Twaróg krajanka Delikate",
+      "product": "Twaróg krajanka Delikate półtłusty",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2094,7 +2094,7 @@
     },
     {
       "productId": "PL-BIE-00026",
-      "product": "Jogurt Fruvita",
+      "product": "Jogurt Fruvita bananowy",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2111,7 +2111,7 @@
     },
     {
       "productId": "PL-BIE-00032",
-      "product": "Jogurt Fruvita",
+      "product": "Jogurt Fruvita morelowy",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2128,7 +2128,7 @@
     },
     {
       "productId": "PL-BIE-00035",
-      "product": "Jogurt Fruvita",
+      "product": "Jogurt Fruvita truskawkowy",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2145,7 +2145,7 @@
     },
     {
       "productId": "PL-BIE-00037",
-      "product": "Jogurt Fruvita",
+      "product": "Jogurt Fruvita truskawkowy",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2162,7 +2162,7 @@
     },
     {
       "productId": "PL-BIE-00038",
-      "product": "Jogurt Fruvita",
+      "product": "Jogurt Fruvita brzoskwiniowy",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2179,7 +2179,7 @@
     },
     {
       "productId": "PL-BIE-00039",
-      "product": "Jogurt Fruvita",
+      "product": "Jogurt Fruvita jagodowy",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2196,7 +2196,7 @@
     },
     {
       "productId": "PL-BIE-00023",
-      "product": "Jogurt pitny Fruvita",
+      "product": "Jogurt pitny Fruvita brzoskwinia",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2213,7 +2213,7 @@
     },
     {
       "productId": "PL-BIE-00024",
-      "product": "Jogurt pitny Fruvita",
+      "product": "Jogurt pitny Fruvita owoce leśne",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2230,7 +2230,7 @@
     },
     {
       "productId": "PL-BIE-00044",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita malina",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2250,7 +2250,7 @@
     },
     {
       "productId": "PL-BIE-00045",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita jagoda",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2270,7 +2270,7 @@
     },
     {
       "productId": "PL-BIE-00047",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita jabłko / rabarbar",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2290,7 +2290,7 @@
     },
     {
       "productId": "PL-BIE-00048",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita malina / rabarbar",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2310,7 +2310,7 @@
     },
     {
       "productId": "PL-BIE-00049",
-      "product": "Skyr Fruvita",
+      "product": "Skyr Fruvita agrest / mirabelka",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2349,7 +2349,7 @@
     },
     {
       "productId": "PL-BIE-00040",
-      "product": "Skyr pitny Fruvita",
+      "product": "Skyr pitny Fruvita naturalny",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2369,7 +2369,7 @@
     },
     {
       "productId": "PL-BIE-00043",
-      "product": "Skyr pitny Fruvita",
+      "product": "Skyr pitny Fruvita malina / granat",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2389,7 +2389,7 @@
     },
     {
       "productId": "PL-BIE-00057",
-      "product": "Jogurt Fruvita Pure",
+      "product": "Jogurt Fruvita Pure truskawka / banan / jabłko",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2407,7 +2407,7 @@
     },
     {
       "productId": "PL-BIE-00053",
-      "product": "Jogurt Fruvita Pure z musli",
+      "product": "Jogurt Fruvita Pure z musli banan / borówka / jabłko",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2424,7 +2424,7 @@
     },
     {
       "productId": "PL-BIE-00054",
-      "product": "Jogurt Fruvita Pure z musli",
+      "product": "Jogurt Fruvita Pure z musli banan / mango / marakuja",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2441,7 +2441,7 @@
     },
     {
       "productId": "PL-BIE-00052",
-      "product": "Jogurt pitny Fruvita Pure z płatkami jaglanymi i siemieniem lnianym",
+      "product": "Jogurt pitny Fruvita Pure z płatkami jaglanymi i siemieniem lnianym borówka amerykańska / banan",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2458,7 +2458,7 @@
     },
     {
       "productId": "PL-BIE-00014",
-      "product": "Bita śmietana w sprayu Mleczna Dolina",
+      "product": "Bita śmietana w sprayu Mleczna Dolina bita; spray",
       "category": "Dairy",
       "oldMapperId": "PI-ING-000179",
       "oldMapperReference": "CREAM 18% · Piątnica Cream · Chilled · BIO",
@@ -2475,7 +2475,7 @@
     },
     {
       "productId": "PL-BIE-00003",
-      "product": "Masło Ekstra Mleczna Dolina 82% w kubku",
+      "product": "Masło Ekstra Mleczna Dolina 82% w kubku 82% tłuszczu; kubek",
       "category": "Dairy",
       "oldMapperId": "PI-ING-000176",
       "oldMapperReference": "BUTTER UNSALTED · Mlekovita Butter",
@@ -2492,7 +2492,7 @@
     },
     {
       "productId": "PL-BIE-00019",
-      "product": "Masło klarowane Mleczna Dolina 99,8%",
+      "product": "Masło klarowane Mleczna Dolina 99,8% klarowane; 99,8% tłuszczu",
       "category": "Dairy",
       "oldMapperId": "PI-ING-000176",
       "oldMapperReference": "BUTTER UNSALTED · Mlekovita Butter",
@@ -2543,7 +2543,7 @@
     },
     {
       "productId": "PL-BIE-00020",
-      "product": "Śmietanka do zup i sosów Mleczna Dolina 18%",
+      "product": "Śmietanka do zup i sosów Mleczna Dolina 18% do zup i sosów; 18% tłuszczu",
       "category": "Dairy",
       "oldMapperId": "PI-ING-000179",
       "oldMapperReference": "CREAM 18% · Piątnica Cream · Chilled · BIO",
@@ -2594,7 +2594,7 @@
     },
     {
       "productId": "PL-BIE-00059",
-      "product": "Kefir owocowy goBIO",
+      "product": "Kefir owocowy goBIO różne smaki",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
       "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
@@ -2628,7 +2628,7 @@
     },
     {
       "productId": "PL-BIE-00062",
-      "product": "Mleko goBIO 2%",
+      "product": "Mleko goBIO 2% 2% tłuszczu",
       "category": "Dairy",
       "oldMapperId": "PI-ING-000200",
       "oldMapperReference": "MILK 2% · Milk · Chilled",
@@ -2713,7 +2713,7 @@
     },
     {
       "productId": "PL-BIE-00103",
-      "product": "Banan goBIO",
+      "product": "Banan goBIO ekologiczny",
       "category": "Fruit",
       "oldMapperId": "PI-ING-000345",
       "oldMapperReference": "BANANA · Fresh Fruit",
@@ -2730,7 +2730,7 @@
     },
     {
       "productId": "PL-BIE-00098",
-      "product": "Gruszka goBIO",
+      "product": "Gruszka goBIO ekologiczna",
       "category": "Fruit",
       "oldMapperId": "PI-ING-000387",
       "oldMapperReference": "PEAR · Fresh Fruit",
@@ -2747,7 +2747,7 @@
     },
     {
       "productId": "PL-BIE-00100",
-      "product": "Kiwi goBIO",
+      "product": "Kiwi goBIO ekologiczne",
       "category": "Fruit",
       "oldMapperId": "PI-ING-000366",
       "oldMapperReference": "KIWI · Fresh Fruit",
@@ -2767,7 +2767,7 @@
     },
     {
       "productId": "PL-BIE-00113",
-      "product": "Napój goBIO",
+      "product": "Napój goBIO malina / granat",
       "category": "Fruit",
       "oldMapperId": "PI-ING-000394",
       "oldMapperReference": "RASPBERRIES · Fresh Fruit",
@@ -2784,7 +2784,7 @@
     },
     {
       "productId": "PL-BIE-00140",
-      "product": "Mieszanka bakaliowa BakaD'Or",
+      "product": "Mieszanka bakaliowa BakaD'Or nerkowce / migdały / rodzynki / orzechy laskowe",
       "category": "Nuts & pastes",
       "oldMapperId": "PI-ING-000410",
       "oldMapperReference": "CASHEW · Pi-NUTS Paste · Dry · 100% Nut",
@@ -2801,7 +2801,7 @@
     },
     {
       "productId": "PL-BIE-00120",
-      "product": "Orzechy nerkowca BakaD'Or",
+      "product": "Orzechy nerkowca BakaD'Or naturalne",
       "category": "Nuts & pastes",
       "oldMapperId": "PI-ING-000410",
       "oldMapperReference": "CASHEW · Pi-NUTS Paste · Dry · 100% Nut",
@@ -2818,7 +2818,7 @@
     },
     {
       "productId": "PL-BIE-00129",
-      "product": "Pistacje niełuskane prażone niesolone BakaD'Or",
+      "product": "Pistacje niełuskane prażone niesolone BakaD'Or niełuskane; prażone; niesolone",
       "category": "Nuts & pastes",
       "oldMapperId": "PI-ING-000624",
       "oldMapperReference": "PISTACHIOS · Paste · 100% Nut",
@@ -2835,7 +2835,7 @@
     },
     {
       "productId": "PL-BIE-00128",
-      "product": "Pistacje łuskane prażone niesolone BakaD'Or",
+      "product": "Pistacje łuskane prażone niesolone BakaD'Or łuskane; prażone; niesolone",
       "category": "Nuts & pastes",
       "oldMapperId": "PI-ING-000624",
       "oldMapperReference": "PISTACHIOS · Paste · 100% Nut",
@@ -2852,7 +2852,7 @@
     },
     {
       "productId": "PL-BIE-00151",
-      "product": "Krem wysokobiałkowy Peanut Butter GO Active",
+      "product": "Krem wysokobiałkowy Peanut Butter GO Active orzeszki ziemne; smak waniliowy",
       "category": "Protein",
       "oldMapperId": "PI-ING-000451",
       "oldMapperReference": "PEA PROTEIN · Protein · Dry",
@@ -2870,7 +2870,7 @@
     },
     {
       "productId": "PL-BIE-00175",
-      "product": "Alpro Napój sojowy bez cukru 1 l",
+      "product": "Alpro Napój sojowy bez cukru 1 l sojowy; bez cukru",
       "category": "Vegan",
       "oldMapperId": "PI-ING-002109",
       "oldMapperReference": "SOY DRINK 0% ADDED SUGAR · Carrefour · UHT",
@@ -2887,7 +2887,7 @@
     },
     {
       "productId": "PL-BIE-00176",
-      "product": "Alpro Plant Protein Napój sojowy o smaku czekoladowym 1 l",
+      "product": "Alpro Plant Protein Napój sojowy o smaku czekoladowym 1 l sojowy; czekolada; protein",
       "category": "Vegan",
       "oldMapperId": "PI-ING-002109",
       "oldMapperReference": "SOY DRINK 0% ADDED SUGAR · Carrefour · UHT",
@@ -2904,7 +2904,7 @@
     },
     {
       "productId": "PL-BIE-00174",
-      "product": "Alpro Plant Protein Napój sojowy o smaku waniliowym 1 l",
+      "product": "Alpro Plant Protein Napój sojowy o smaku waniliowym 1 l sojowy; wanilia; protein",
       "category": "Vegan",
       "oldMapperId": "PI-ING-002109",
       "oldMapperReference": "SOY DRINK 0% ADDED SUGAR · Carrefour · UHT",
@@ -2938,7 +2938,7 @@
     },
     {
       "productId": "PL-BIE-00114",
-      "product": "Napój sojowy organiczny goBIO",
+      "product": "Napój sojowy organiczny goBIO sojowy; ekologiczny",
       "category": "Vegan",
       "oldMapperId": "PI-ING-002109",
       "oldMapperReference": "SOY DRINK 0% ADDED SUGAR · Carrefour · UHT",
