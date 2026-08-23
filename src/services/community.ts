@@ -45,10 +45,20 @@ export interface PublicationMetrics {
   rating_average: number | null;
 }
 
+/** §22: the unremovable „Na podstawie" attribution on a published remix. */
+export interface BasedOnRef {
+  title: string;
+  slug: string;
+  creator_display_name: string;
+  handle?: string;
+}
+
 export interface CommunityCard {
   publication_id: string;
   title: string;
   slug: string;
+  /** Present ONLY when this publication descends from another published one. */
+  based_on?: BasedOnRef;
   description?: string;
   image_url?: string;
   category?: string;

@@ -57,6 +57,11 @@ export function CommunityRecipeCard({
         <div className="flex flex-col gap-3 p-5">
           <div>
             <h3 className="text-base leading-snug font-medium text-ink">{card.title}</h3>
+            {card.based_on ? (
+              <p className="mt-1 truncate text-xs text-stone-400">
+                {copy.roles.basedOn} {card.based_on.title} · {card.based_on.creator_display_name}
+              </p>
+            ) : null}
             <p className="mt-1 text-sm text-stone-500">
               {copy.roles.createdBy} {card.creator.display_name}
               {card.creator.verification_status === 'official' ? (

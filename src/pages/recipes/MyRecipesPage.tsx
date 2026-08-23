@@ -16,6 +16,8 @@ import {
   resolveSelectedVersion,
 } from '@/features/recipes/RecipeVersionSelector';
 import { useDeleteRecipe, useSavedRecipes } from '@/features/recipes/useSavedRecipes';
+import { RecipeCommunityActions } from '@/features/community/ui/RecipeCommunityActions';
+import { useCreatorProfile } from '@/features/community/useCreatorProfile';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -150,6 +152,10 @@ export function MyRecipesContent() {
   };
 
   const rows = recipesQuery.data ?? [];
+  // Whether this account has a Creator profile decides only what the PUBLISH
+  // dialog says first — the database refuses a publication without one either
+  // way (`creator_profile_required`).
+  const hasCreatorProfile = useCreatorProfile(authed);
   /** A refreshed list resets to the newest version; a pick for a version that no longer exists
    * falls back to the newest rather than pointing at something that is gone. */
   const selectedVersion = (row: SavedRecipe): number | null =>
@@ -231,6 +237,15 @@ export function MyRecipesContent() {
                 >
                   {r.open}
                 </button>
+                {/* Both Community loops start here (§4, §7, §10): sharing binds
+                    the SELECTED immutable version, publishing makes it
+                    discoverable. Two separate acts, never one. */}
+                <RecipeCommunityActions
+                  recipeId={row.id}
+                  versionNumber={selectedVersion(row) ?? row.latest_version_number ?? 1}
+                  recipeName={row.name}
+                  hasCreatorProfile={hasCreatorProfile}
+                />
                 <button
                   type="button"
                   className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-status-risky"

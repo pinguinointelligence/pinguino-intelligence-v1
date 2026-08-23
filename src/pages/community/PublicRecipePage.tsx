@@ -87,9 +87,21 @@ export function PublicRecipePage() {
           ) : null}
 
           <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* §22: a remix ALWAYS names its source here. The remixer cannot
+                suppress it — it is read from recipe_lineage, which they have
+                no write path to. */}
             <AttributionByline
               creatorDisplayName={page.creator.display_name}
               creatorHandle={page.creator.handle}
+              basedOn={
+                page.based_on
+                  ? {
+                      title: page.based_on.title,
+                      creatorDisplayName: page.based_on.creator_display_name,
+                      handle: page.based_on.handle,
+                    }
+                  : null
+              }
             />
             <VerifiedRating
               average={page.metrics.rating_average}
