@@ -547,6 +547,10 @@ export interface ResidualMetricDiagnostic {
 export interface ConstraintPreview {
   kind: PreviewKind;
   titlePl: string;
+  /** RC-2c: the exact Direction preference was unreachable, so this Preview is
+   * the NEAREST legal executable recipe rather than an ACHIEVED target. Hard
+   * constraints were never relaxed to produce it. */
+  directionTargetUnreached?: boolean;
   /** A current user lock fixes a value outside an authoritative hard boundary.
    * The only legal transition is this disclosed, separately authorized
    * Suggested Fix Preview. */
@@ -4422,11 +4426,18 @@ function bestHardSafeDirectionSegment(
 ): RecipeInput | null {
   if (
     !identityInput.goals?.direction_targets_active ||
-    detectViolations(calculateRecipe(identityInput)).length > 0 ||
     detectViolations(calculateRecipe(unsafeInput)).length === 0
   ) {
     return null;
   }
+  // RC-2b (owner authority 2026-08-23): this search used to refuse to engage
+  // whenever the STARTING draft already violated a band. That is precisely when
+  // a truthful NEAREST matters most — the Vegan −11 starter begins with 2–3
+  // violations, so an unreachable hardness preference produced `unsafe_proposal`
+  // and NO Preview at all, even though a legal executable candidate existed.
+  // Relaxing the guard cannot leak an illegal result: `admissible()` below still
+  // demands zero Engine violations on both the candidate AND its practicalized
+  // executable, plus batch total, Main identity and every user constraint.
   const mains = captureMainIngredientIntent(identityInput);
   const unsafeByLineId = new Map(unsafeInput.items.map((item) => [item.id, item] as const));
   const targetMainGrams = mainGroupTotal(identityInput, unsafeInput);
@@ -5361,7 +5372,56 @@ function buildSorbetDirectionCandidatePreview(params: {
   return null;
 }
 
+/**
+ * RC-2c (owner authority 2026-08-23) — DIRECTION IS A PREFERENCE, NOT A GATE.
+ *
+ * When a Direction target is unreachable the search can end on a candidate that
+ * still crosses a hard band, and the whole Preview was then discarded
+ * (`unsafe_proposal`). But Direction is only a preference: if a legal executable
+ * recipe exists once the preference is set aside, the truthful answer is that
+ * recipe as NEAREST, not "no Preview at all".
+ *
+ * This retries ONCE, with the preference removed and everything else identical —
+ * same constraints, same locks, same Main, same hard bands, same Vegan
+ * envelopes. It can only ever return a result the normal pipeline already
+ * considers legal, and it never relaxes a hard constraint to reach a target.
+ */
 export function buildOptimizePreview(
+  input: RecipeInput,
+  set: ConstraintSet,
+  createdAt: string,
+  options: OptimizePreviewOptions = {},
+): BuildPreviewResult {
+  const direct = buildOptimizePreviewWithDirection(input, set, createdAt, options);
+  if (
+    direct.ok ||
+    direct.code !== 'unsafe_proposal' ||
+    input.goals?.direction_targets_active !== true ||
+    // The Rescue advisor's internal simulations only need the DIRECT answer:
+    // they measure whether adding one ingredient helps, and a NEAREST fallback
+    // would double the pipeline for every simulated candidate without changing
+    // the decision. The user-facing call still gets the fallback.
+    (options.rescueSimulationLineIds?.length ?? 0) > 0 ||
+    // Only a draft that was ALREADY outside its bands can reach `unsafe_proposal`
+    // through an unreachable preference — a native-safe draft already returns the
+    // truthful `no_proposal` / `directionTargetUnreached` result above. Scoping the
+    // retry this way keeps it off the hot path for healthy drafts, so the second
+    // pipeline run happens only where it can actually change the answer.
+    detectViolations(calculateRecipe(input)).length === 0
+  ) {
+    return direct;
+  }
+  const withoutPreference: RecipeInput = {
+    ...input,
+    goals: { ...input.goals, direction_targets_active: false },
+  };
+  const nearest = buildOptimizePreviewWithDirection(withoutPreference, set, createdAt, options);
+  if (!nearest.ok) return direct;
+  nearest.preview.directionTargetUnreached = true;
+  return nearest;
+}
+
+function buildOptimizePreviewWithDirection(
   input: RecipeInput,
   set: ConstraintSet,
   createdAt: string,

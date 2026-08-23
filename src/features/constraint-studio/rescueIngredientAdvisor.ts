@@ -284,7 +284,7 @@ export function measureRescueOutcome(input: RecipeInput): RescueOutcomeMeasure {
     score: assessment.score,
     reachedAxisCount: assessment.reachedAxisCount,
     supportedAxisCount: assessment.supportedAxisCount,
-    severityPoints: recipeDirectionViolations(input).reduce(
+    severityPoints: recipeDirectionViolations(input, result).reduce(
       (sum, violation) => sum + violation.severity_points,
       0,
     ),

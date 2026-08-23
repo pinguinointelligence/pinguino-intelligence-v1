@@ -136,7 +136,38 @@ export function normalizeRecipeDirectionTargets(
   };
 }
 
+/**
+ * The plan depends ONLY on these four values, and the pipeline rebuilds it many
+ * times per solve (every violation measure, every candidate, every advisor
+ * simulation). Memoising on that exact value fingerprint — not on object
+ * identity — is safe for any caller and removes a large amount of repeated work
+ * from the Direction and Rescue hot paths.
+ */
+const DIRECTION_PLAN_CACHE_LIMIT = 512;
+const directionPlanCache = new Map<string, RecipeDirectionPlan>();
+
+const directionPlanKey = (input: RecipeInput): string =>
+  [
+    input.category,
+    input.target_temperature_c,
+    input.goals?.direction_targets_active === true ? 1 : 0,
+    input.goals?.direction_targets?.sweetness ?? 0,
+    input.goals?.direction_targets?.softness ?? 0,
+    input.goals?.direction_targets?.creaminess ?? 0,
+    input.goals?.direction_targets?.flavor ?? 0,
+  ].join('|');
+
 export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPlan {
+  const cacheKey = directionPlanKey(input);
+  const cached = directionPlanCache.get(cacheKey);
+  if (cached) return cached;
+  const plan = computeRecipeDirectionPlan(input);
+  if (directionPlanCache.size >= DIRECTION_PLAN_CACHE_LIMIT) directionPlanCache.clear();
+  directionPlanCache.set(cacheKey, plan);
+  return plan;
+}
+
+function computeRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPlan {
   const targets = normalizeRecipeDirectionTargets(input.goals?.direction_targets);
   // Legacy/direct Engine inputs had no direction contract. Keep their solver
   // behavior byte-compatible; the canonical Pro draft always serializes this
@@ -300,9 +331,18 @@ export function resultWithRecipeDirectionTargets(
   };
 }
 
-export function recipeDirectionViolations(input: RecipeInput) {
+/**
+ * `precomputed` lets a caller that already holds `calculateRecipe(input)` skip a
+ * second full recipe computation. Hot path: the Rescue advisor measures every
+ * simulated candidate, and since Rescue was decoupled from Direction it runs for
+ * profiles that previously returned early. Purely an optimisation — the returned
+ * violations are identical.
+ */
+export function recipeDirectionViolations(input: RecipeInput, precomputed?: RecipeResult) {
   const plan = buildRecipeDirectionPlan(input);
-  return detectViolations(resultWithRecipeDirectionTargets(calculateRecipe(input), plan));
+  return detectViolations(
+    resultWithRecipeDirectionTargets(precomputed ?? calculateRecipe(input), plan),
+  );
 }
 
 /** Exact five-step routes use lexicographic distance-to-target ranking in the
