@@ -1,0 +1,1383 @@
+{
+  "PC646P": {
+    "code": "PC646P",
+    "page": 5,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "50g/L",
+      "50g/L"
+    ]
+  },
+  "PC640P": {
+    "code": "PC640P",
+    "page": 5,
+    "dose": "80g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "80g/L",
+      "100g/L"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "PC089P": {
+    "code": "PC089P",
+    "page": 5,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L",
+      "100g/L"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "PC434P": {
+    "code": "PC434P",
+    "page": 5,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "40-50g/L",
+      "100g/L"
+    ]
+  },
+  "B054A": {
+    "code": "B054A",
+    "page": 7,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F"
+    ]
+  },
+  "B035": {
+    "code": "B035",
+    "page": 7,
+    "dose": "50g/L",
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "50g/L",
+      "C/F -",
+      "50g/L",
+      "C -"
+    ]
+  },
+  "B898": {
+    "code": "B898",
+    "page": 7,
+    "dose": "50g/L",
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "50g/L",
+      "C/F"
+    ]
+  },
+  "B147": {
+    "code": "B147",
+    "page": 7,
+    "dose": "7,5%",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "7,5%",
+      "C"
+    ]
+  },
+  "B032": {
+    "code": "B032",
+    "page": 7,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F"
+    ]
+  },
+  "B852": {
+    "code": "B852",
+    "page": 8,
+    "dose": null,
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "Panna C"
+    ]
+  },
+  "B212": {
+    "code": "B212",
+    "page": 9,
+    "dose": "50g/L",
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F",
+      "50g/L",
+      "C/F -",
+      "480g/L",
+      "C",
+      "10%",
+      "C"
+    ]
+  },
+  "B150": {
+    "code": "B150",
+    "page": 9,
+    "dose": "25%",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "25%",
+      "C -",
+      "C/F"
+    ]
+  },
+  "P190": {
+    "code": "P190",
+    "page": 9,
+    "dose": "300g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "300g/L 0,9",
+      "12 Neutro F",
+      "12 Neutro F"
+    ]
+  },
+  "P0": {
+    "code": "P0",
+    "page": 9,
+    "dose": "360g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "360g/L 0,9",
+      "12 Neutro F",
+      "450g/L 0,9",
+      "12 Neutro F",
+      "C/F",
+      "C",
+      "F",
+      "Mela verde F",
+      "670g/L 1,6",
+      "Cioccolato C",
+      "C/F",
+      "C"
+    ]
+  },
+  "B848": {
+    "code": "B848",
+    "page": 9,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F"
+    ]
+  },
+  "B920": {
+    "code": "B920",
+    "page": 11,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F"
+    ]
+  },
+  "B922": {
+    "code": "B922",
+    "page": 11,
+    "dose": "480g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "480g/L",
+      "C"
+    ]
+  },
+  "B358": {
+    "code": "B358",
+    "page": 11,
+    "dose": "40g/L",
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F",
+      "40g/L",
+      "C/F"
+    ]
+  },
+  "P316": {
+    "code": "P316",
+    "page": 14,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F"
+    ]
+  },
+  "P314": {
+    "code": "P314",
+    "page": 14,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F diluito"
+    ]
+  },
+  "P315": {
+    "code": "P315",
+    "page": 14,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F diluito"
+    ]
+  },
+  "B091": {
+    "code": "B091",
+    "page": 14,
+    "dose": "500g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "500g/L",
+      "F diluito"
+    ]
+  },
+  "P018A": {
+    "code": "P018A",
+    "page": 15,
+    "dose": "20g/L",
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "Polvere 20g/L",
+      "C/F"
+    ]
+  },
+  "P1232": {
+    "code": "P1232",
+    "page": 15,
+    "dose": "20g/L",
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "Polvere 20g/L",
+      "Panna C/F",
+      "180g/L",
+      "15% su",
+      "F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P7": {
+    "code": "P7",
+    "page": 17,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F",
+      "1,25 8 Fior di latte F"
+    ]
+  },
+  "P1381": {
+    "code": "P1381",
+    "page": 17,
+    "dose": "446g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "446g/L L",
+      "burro salato F"
+    ]
+  },
+  "P482": {
+    "code": "P482",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "salato F"
+    ]
+  },
+  "P1386": {
+    "code": "P1386",
+    "page": 17,
+    "dose": "446g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "446g/L L",
+      "F"
+    ]
+  },
+  "P154A": {
+    "code": "P154A",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P451": {
+    "code": "P451",
+    "page": 17,
+    "dose": null,
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "bianco C"
+    ]
+  },
+  "P158": {
+    "code": "P158",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P781": {
+    "code": "P781",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "fondente F",
+      "F"
+    ]
+  },
+  "P435": {
+    "code": "P435",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P776": {
+    "code": "P776",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P320": {
+    "code": "P320",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "1,25 8 Fior di latte F"
+    ]
+  },
+  "P775": {
+    "code": "P775",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P338": {
+    "code": "P338",
+    "page": 17,
+    "dose": "670g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "670g/L",
+      "C",
+      "F"
+    ]
+  },
+  "P025C": {
+    "code": "P025C",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P483": {
+    "code": "P483",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Mandorla F"
+    ]
+  },
+  "P429": {
+    "code": "P429",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P481": {
+    "code": "P481",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P036A": {
+    "code": "P036A",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Menta F"
+    ]
+  },
+  "P339": {
+    "code": "P339",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P434": {
+    "code": "P434",
+    "page": 17,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F",
+      "F"
+    ]
+  },
+  "P426": {
+    "code": "P426",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "1,25 8 Tiramisù F"
+    ]
+  },
+  "P045A": {
+    "code": "P045A",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Vaniglia gialla F"
+    ]
+  },
+  "P396": {
+    "code": "P396",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Y ogurt F"
+    ]
+  },
+  "P233": {
+    "code": "P233",
+    "page": 17,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Y ogurt F"
+    ]
+  },
+  "P245": {
+    "code": "P245",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": "A",
+    "evidence": [
+      "A 1,25 8 Ananas F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P243": {
+    "code": "P243",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "1,25 8 Banana F"
+    ]
+  },
+  "P244": {
+    "code": "P244",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": "A",
+    "evidence": [
+      "A 1,25 8 Fragola F"
+    ]
+  },
+  "P246": {
+    "code": "P246",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P254": {
+    "code": "P254",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": "A",
+    "evidence": [
+      "F",
+      "A 1,25 8 Melone F"
+    ]
+  },
+  "P287": {
+    "code": "P287",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": "A",
+    "evidence": [
+      "A 1,25 8 Mango F"
+    ]
+  },
+  "P294": {
+    "code": "P294",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": "A",
+    "evidence": [
+      "A 1,25 8 Mela verde F",
+      "F"
+    ]
+  },
+  "P292": {
+    "code": "P292",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": "A",
+    "evidence": [
+      "A 1,25 8 Mirtillo F"
+    ]
+  },
+  "P293": {
+    "code": "P293",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": "A",
+    "evidence": [
+      "A 1,25 8 Mora F"
+    ]
+  },
+  "P290": {
+    "code": "P290",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P026A": {
+    "code": "P026A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F",
+      "F"
+    ]
+  },
+  "P053A": {
+    "code": "P053A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P283": {
+    "code": "P283",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "limone F"
+    ]
+  },
+  "P074A": {
+    "code": "P074A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F",
+      "F"
+    ]
+  },
+  "P020A": {
+    "code": "P020A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Anguria F"
+    ]
+  },
+  "P260": {
+    "code": "P260",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Fragola F"
+    ]
+  },
+  "P071A": {
+    "code": "P071A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P034A": {
+    "code": "P034A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P307B": {
+    "code": "P307B",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P259": {
+    "code": "P259",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P038A": {
+    "code": "P038A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Mandarino F"
+    ]
+  },
+  "P430": {
+    "code": "P430",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Melagrana F"
+    ]
+  },
+  "P076A": {
+    "code": "P076A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Melone F"
+    ]
+  },
+  "P049A": {
+    "code": "P049A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P050A": {
+    "code": "P050A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P082A": {
+    "code": "P082A",
+    "page": 18,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ]
+  },
+  "P1313": {
+    "code": "P1313",
+    "page": 20,
+    "dose": "454g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "454g/L"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P1244": {
+    "code": "P1244",
+    "page": 21,
+    "dose": "454g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "454g/L",
+      "F"
+    ]
+  },
+  "P1239A": {
+    "code": "P1239A",
+    "page": 21,
+    "dose": "600g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "600g/L",
+      "Nocciola C",
+      "450g/L",
+      "F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P1052": {
+    "code": "P1052",
+    "page": 22,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F"
+    ]
+  },
+  "P291": {
+    "code": "P291",
+    "page": 22,
+    "dose": "140g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Polvere 140g/L",
+      "2 4 Vanigliato F"
+    ]
+  },
+  "PC553": {
+    "code": "PC553",
+    "page": 22,
+    "dose": "200g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Polvere 200g/L",
+      "Vanigliato F"
+    ]
+  },
+  "P006B": {
+    "code": "P006B",
+    "page": 22,
+    "dose": "31%",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Pasta 31%",
+      "1,25 12 Neutro F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "PC039P": {
+    "code": "PC039P",
+    "page": 22,
+    "dose": "500g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Polvere 500g/L",
+      "2,5 4 Neutro F",
+      "Pasta 400g/L",
+      "Neutro F",
+      "Pasta 500g/L",
+      "F"
+    ]
+  },
+  "B949": {
+    "code": "B949",
+    "page": 22,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "di latte F"
+    ]
+  },
+  "B952": {
+    "code": "B952",
+    "page": 23,
+    "dose": "100g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "Polvere 100g/L",
+      "C"
+    ]
+  },
+  "B951": {
+    "code": "B951",
+    "page": 23,
+    "dose": "150g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "150g/L",
+      "35-40°C"
+    ]
+  },
+  "PF913B": {
+    "code": "PF913B",
+    "page": 23,
+    "dose": "300g/L",
+    "process": "F/C",
+    "fat": null,
+    "evidence": [
+      "Polvere 300g/L",
+      "10 Latte F/C",
+      "Polvere 400g/L",
+      "F/C"
+    ]
+  },
+  "P680": {
+    "code": "P680",
+    "page": 26,
+    "dose": "320g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "320g/L 1,6",
+      "fragola F"
+    ]
+  },
+  "P698": {
+    "code": "P698",
+    "page": 26,
+    "dose": null,
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P757": {
+    "code": "P757",
+    "page": 26,
+    "dose": "320g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "320g/L 1,6",
+      "mandarino F",
+      "F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P724": {
+    "code": "P724",
+    "page": 26,
+    "dose": "250g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "250g/L"
+    ]
+  },
+  "P1393": {
+    "code": "P1393",
+    "page": 27,
+    "dose": "400g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "400g/L 1,6 8 Cioccolato"
+    ]
+  },
+  "P347": {
+    "code": "P347",
+    "page": 27,
+    "dose": "400g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "400g/L 1,6 8 Cioccolato"
+    ]
+  },
+  "PF927": {
+    "code": "PF927",
+    "page": 28,
+    "dose": "250g/L",
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "250g/L",
+      "cioccolato C/F"
+    ]
+  },
+  "B214A": {
+    "code": "B214A",
+    "page": 28,
+    "dose": "10%",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "10%"
+    ]
+  },
+  "PC782": {
+    "code": "PC782",
+    "page": 28,
+    "dose": "250g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "250g/L 0,8 10 Cioccolato",
+      "C",
+      "450g/L",
+      "C"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P374A": {
+    "code": "P374A",
+    "page": 28,
+    "dose": "450g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "450g/L"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P1101": {
+    "code": "P1101",
+    "page": 29,
+    "dose": "500g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "500g/L",
+      "bianco C"
+    ]
+  },
+  "PC005P": {
+    "code": "PC005P",
+    "page": 30,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L"
+    ]
+  },
+  "PC511P": {
+    "code": "PC511P",
+    "page": 30,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "50g/L"
+    ]
+  },
+  "PC770": {
+    "code": "PC770",
+    "page": 30,
+    "dose": "80g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "80g/L"
+    ]
+  },
+  "PC003P": {
+    "code": "PC003P",
+    "page": 30,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L"
+    ]
+  },
+  "PC507P": {
+    "code": "PC507P",
+    "page": 30,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "50g/L"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "PC072P": {
+    "code": "PC072P",
+    "page": 31,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L"
+    ]
+  },
+  "PC728": {
+    "code": "PC728",
+    "page": 31,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "50g/L",
+      "100g/L"
+    ]
+  },
+  "PC807": {
+    "code": "PC807",
+    "page": 31,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L"
+    ]
+  },
+  "PC555P": {
+    "code": "PC555P",
+    "page": 31,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "PC505P": {
+    "code": "PC505P",
+    "page": 31,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "50g/L"
+    ]
+  },
+  "P054A": {
+    "code": "P054A",
+    "page": 33,
+    "dose": "20g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "20g/L"
+    ]
+  },
+  "P003B": {
+    "code": "P003B",
+    "page": 33,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "50g/L"
+    ]
+  },
+  "P1187": {
+    "code": "P1187",
+    "page": 33,
+    "dose": "35g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "35g/L",
+      "50g/L"
+    ]
+  },
+  "P400": {
+    "code": "P400",
+    "page": 33,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "50g/L"
+    ]
+  },
+  "B156C": {
+    "code": "B156C",
+    "page": 33,
+    "dose": "50g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "50g/L"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P394": {
+    "code": "P394",
+    "page": 33,
+    "dose": "70g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "70g/L",
+      "100g/L"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P1314": {
+    "code": "P1314",
+    "page": 45,
+    "dose": "250g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "250g/L"
+    ]
+  },
+  "B217B": {
+    "code": "B217B",
+    "page": 46,
+    "dose": "480g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "480g/L",
+      "C"
+    ]
+  },
+  "PC670H": {
+    "code": "PC670H",
+    "page": 46,
+    "dose": "670g/L",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "670g/L 1,6",
+      "C"
+    ]
+  },
+  "P374D": {
+    "code": "P374D",
+    "page": 46,
+    "dose": "25%",
+    "process": "C",
+    "fat": null,
+    "evidence": [
+      "25%",
+      "C",
+      "480g/L",
+      "C"
+    ]
+  },
+  "B965": {
+    "code": "B965",
+    "page": 46,
+    "dose": "31%",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "31%",
+      "1,25 12 Neutro F",
+      "480g/L",
+      "Neutro/riso C"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P1237": {
+    "code": "P1237",
+    "page": 47,
+    "dose": null,
+    "process": "C/F",
+    "fat": null,
+    "evidence": [
+      "C/F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "P1309": {
+    "code": "P1309",
+    "page": 47,
+    "dose": "454g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "F",
+      "F",
+      "454g/L",
+      "F"
+    ],
+    "saw_ambiguous_cell": true
+  },
+  "PC025C": {
+    "code": "PC025C",
+    "page": 47,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L"
+    ]
+  },
+  "PC707P": {
+    "code": "PC707P",
+    "page": 48,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L"
+    ]
+  },
+  "PC048P": {
+    "code": "PC048P",
+    "page": 48,
+    "dose": "100g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "100g/L"
+    ]
+  },
+  "P485": {
+    "code": "P485",
+    "page": 49,
+    "dose": "130g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "130g/L"
+    ]
+  },
+  "PC757": {
+    "code": "PC757",
+    "page": 49,
+    "dose": "35g/L",
+    "process": null,
+    "fat": null,
+    "evidence": [
+      "35g/L"
+    ]
+  },
+  "B355": {
+    "code": "B355",
+    "page": 50,
+    "dose": "200g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "Polvere 200g/L",
+      "Vanigliato F"
+    ]
+  },
+  "P113A": {
+    "code": "P113A",
+    "page": 50,
+    "dose": "320g/L",
+    "process": "F",
+    "fat": null,
+    "evidence": [
+      "320g/L 1,6",
+      "fragola F"
+    ],
+    "saw_ambiguous_cell": true
+  }
+}
