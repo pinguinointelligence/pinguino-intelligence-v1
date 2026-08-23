@@ -195,3 +195,120 @@ restoring.
 
 None technical. Two need the owner: authorization to push to `origin/staging`, and a signed-in
 session for served QA.
+
+---
+
+# Round 2 — wiring closed, staging deployed and served-verified
+
+**HEAD** `36ee7aa` · **Base** `d2d5c63` (origin/staging) · **Pushed to `origin/staging`**
+**Served deployment** `dpl_ASCCWaV1xrk9uVSjo7GKbrhQfQ5B` READY · alias `staging.pinguinoai.com`
+**Served bundle** `index-DMRTDk4O.js` · 3 337 363 B · sha256 `70b51c3ed1f8b992…`
+
+## 1–2. „Użyj tej receptury" / „Stwórz moją wersję" — wired end to end
+
+`useRecipeDerivation` runs four ordered steps: read the source through the
+entitlement-gated RPC → create an INDEPENDENT recipe through the existing
+`RecipesRepository.createRecipe` → `create_recipe_with_v1` → stamp lineage and
+the usage event → open the editor. The source is only ever read; no step in the
+plan can write to it. A copy keeps the original name, a remix is renamed so it
+cannot impersonate the original, and the note records the source while
+`recipe_lineage` remains the authority the user cannot edit.
+
+Idempotency has two layers: an in-flight `useRef` (effective on the next
+synchronous click, before any re-render) and `derived_recipe_id` uniqueness in
+the database. If attribution fails after the recipe saved, the user KEEPS the
+recipe and is told exactly that — no saved work is deleted to tidy bookkeeping.
+
+## 3. Confirmed make — one authoritative trigger
+
+Hooked into `supabaseProduction.completeRun` and nowhere else. New
+`gellatti_record_make_for_run_v1` takes ONLY a run id and resolves the
+publication server-side from lineage, so the client asserts no attribution at
+all. Called from all three completion paths (fresh success, already-completed,
+recovered-after-error) and idempotent by `production_run_id`, so at most one
+make per run; a genuine second making is a new run and does count. It never
+throws — a Community counter must not fail a user's production run.
+
+Two anti-gaming corrections found while wiring: `remix_count` now counts
+DISTINCT remixers, and the redundant unique index on
+`(publication_id, user_id, occurred_at)` is dropped — `occurred_at` defaults to
+transaction time, so it could have silently rejected a legitimate second make.
+
+## 4–6. Live scenarios on staging (all in rolled-back transactions)
+
+| | Result |
+| --- | --- |
+| S1 Marysia publishes → Katarzyna uses | entitled read `full`; **1** usage event after a double submit; 1 lineage row; unique_users 1; **original unchanged**, still 1 version; copy owned by Katarzyna; source reads „Marysia / copy" |
+| S2 Jan remixes → publishes remix | remix creator **Jan**, root creator **Marysia**, „Na podstawie Pistachio Salted Caramel by Marysia", Marysia remix_count 1 |
+| S3 confirmed make | recorded; retry → `already_recorded`; makers 1 / makes 1; genuine 2nd run → makers **1** / makes **2**; `in_progress` run → `run_not_completed_by_caller`; rating allowed only after a make; stranger cannot claim another's run |
+| S4 direct share → Demo → subscription | anon sees title+creator and **no grams**; free `shared_recipe_demo`, no grams; Otrzymane shows Demo state, Created by / Shared by; after subscribing `full` **with** grams and Otrzymane flips to unlocked; share-derived remix attributes to Marysia |
+| S5 Partner Jan shares Marysia's recipe | creator **Marysia**, sharer **Jan**, partner **Jan**; 3 opens → **exactly 1** attribution, to Jan; Marysia gets **0**; unique opens 1; Jan opening his own link → **0** attributions |
+| S6 non-Partner share | no attribution; Marysia activating as a Partner **later** leaves her earlier link `partner_id = NULL` |
+| Udostępnione mi | sent list shows counts and the Partner flag but **never a recipient**; revoke blocks both the token and the library route; remove hides only the recipient's row — source recipe, share record and Katarzyna's copy all intact |
+| „Na podstawie" publicly | remix page reads „Pistachio Salted Caramel — Marysia (@marysia)"; original carries no `based_on`; Jan cannot delete (42501) or rewrite (42501) his lineage — attribution survives the attack |
+
+## 5. Post-wiring security re-check
+
+`serviceBoundary.test.ts` (12 guards) proves the new client code created no path
+around the RLS fixes: no Community feature or page imports the Supabase client;
+the service touches exactly three narrow owner-scoped tables and reads every
+formulation through one of the three gated RPCs; no direct write to any
+server-owned table exists anywhere in the app; nothing client-side sends a
+partner id, an entitlement or an amount; the derivation hook contains no local
+access check at all.
+
+Served edge headers confirmed on `staging.pinguinoai.com`:
+`/share/*` → `X-Robots-Tag: noindex, nofollow, noarchive`,
+`Cache-Control: private, no-store`, `Referrer-Policy: no-referrer`;
+`/community` and `/@handle` correctly indexable.
+
+## Served route behaviour (read in-browser — curl hits Vercel's bot checkpoint)
+
+`/community` and `/top100` render with all four windows and honest empty states ·
+`/recipes` shows **MOJE | UDOSTĘPNIONE MI | PINGÜINO | INSPIRACJE** plus
+COMMUNITY → `/community` and TOP 100 → `/top100`, with OTRZYMANE / WYSŁANE
+PRZEZE MNIE inside · `/share/<bogus>` → „Nie znaleziono tej receptury." ·
+`/@admin` → real 404 (reserved handle refused at the route gate) · `/creator` →
+Creator hub + profile form · `/partner` → „Nie masz jeszcze statusu Gellatti
+Partner" with the eligibility rule stated verbatim.
+
+## Two gaps the SERVED-bundle check caught (fixed in `36ee7aa`)
+
+1. **`publishRecipe` and `createShareLink` were tree-shaken out of the deployed
+   bundle.** Both dialogs existed and were tested, but no routed page mounted
+   them, so Rollup dropped the service functions — both loops had **no entry
+   point**. Now mounted on each saved-recipe row, bound to the SELECTED version.
+2. **A published remix showed no „Na podstawie" publicly.** The lineage was
+   stored and unforgeable, but the public reader returned none.
+   `gellatti_publication_card_v1` now carries `based_on`.
+
+Reading the source would not have found either. Reading the served bundle did.
+
+## Build
+
+```
+npx tsc -b --noEmit    clean
+npx eslint src supabase 0 errors, 4 warnings (all pre-existing react-refresh)
+npx vitest run          637 files passed, 1 skipped · 8006 passed, 100 skipped
+npm run build           built
+```
+
+## Migrations applied to staging this round
+
+`20260823152000_community_make_by_run_and_remix_dedupe` ·
+`20260823154500_community_publication_based_on`. Production untouched.
+
+## Remaining — honest
+
+1. **No rating SUBMIT control.** `gellatti_rate_publication_v1` is live and
+   live-tested (a rating is refused without a confirmed make), and
+   `VerifiedRating` displays results, but nothing in the UI lets a maker leave
+   one — confirmed by its absence from the served bundle (23/24 probes present).
+2. **Owner browser QA of signed-in flows is not done.** Everything verified in
+   the browser above is the logged-out surface; publish / share / use / remix
+   as a real signed-in Pro account needs the owner's session, and Claude does
+   not type credentials.
+3. Refund reversal and webhook-retry idempotency remain unit-tested only, not
+   exercised against a real Stripe event.
+4. Category/country filters, share expiry UI and the report/moderation UI stay
+   schema-ready but unrendered.
