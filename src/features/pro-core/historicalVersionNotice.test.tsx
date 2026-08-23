@@ -36,9 +36,9 @@ const input = (grams: number) =>
     goals: { formulation_strategy: 'eco' },
   }) as unknown as RecipeInput;
 
-const restore = vi.fn(async (_recipeId: string, _targetVersionNumber: number) => ({
+const restore = vi.fn(async (recipeId: string, targetVersionNumber: number) => ({
   versionId: 'ver-4',
-  recipeId: RECIPE_ID,
+  recipeId,
   ownerUserId: 'u1',
   versionNumber: 4,
   recipeInput: input(510),
@@ -52,7 +52,8 @@ const restore = vi.fn(async (_recipeId: string, _targetVersionNumber: number) =>
   source: 'restored' as const,
   createdBy: 'u1',
   createdAt: V4_AT,
-  restoredFromVersion: 1,
+  // Echo what was actually asked for, so the assertions below check a real round trip.
+  restoredFromVersion: targetVersionNumber,
   note: null,
 }));
 

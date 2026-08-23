@@ -13,6 +13,7 @@
  */
 import { useMemo, useState } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
+import { copy } from '@/copy/en';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { formatSavedRecipeDate } from '@/features/recipes/savedRecipeDate';
@@ -20,6 +21,8 @@ import { recipeCapabilitiesFor } from './proCoreCapabilities';
 import { useProCorePersona } from './useProCorePersona';
 import { resolveRecipesRepository } from './proCoreRecipeRepo';
 import { useRestoreProCoreVersion } from './useProCoreRecipes';
+
+const c = copy.recipes.historicalVersion;
 
 export function HistoricalVersionNotice() {
   const persona = useProCorePersona();
@@ -70,7 +73,7 @@ export function HistoricalVersionNotice() {
           composition: created.productComposition,
         });
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : 'Nie udało się przywrócić wersji.');
+        setError(caught instanceof Error ? caught.message : c.restoreFailed);
       }
     })();
   };
@@ -83,11 +86,9 @@ export function HistoricalVersionNotice() {
     >
       <p className="text-sm text-stone-700">
         <span className="font-semibold text-ink">
-          Wersja v{versionNumber}
-          {versionDate ? ` · ${formatSavedRecipeDate(versionDate)}` : ''}
+          {c.heading(versionNumber, versionDate ? formatSavedRecipeDate(versionDate) : null)}
         </span>{' '}
-        — podgląd historii. Najnowsza wersja to v{latestVersionNumber}. Zapis nie nadpisze tej
-        wersji; utworzy nową.
+        {c.body(latestVersionNumber)}
       </p>
       <span className="flex items-center gap-3">
         {error ? <span className="text-xs text-status-error">{error}</span> : null}
@@ -98,7 +99,7 @@ export function HistoricalVersionNotice() {
           onClick={restore}
           data-testid="historical-version-restore"
         >
-          {restoreM.isPending ? 'Przywracam…' : 'Przywróć tę wersję'}
+          {restoreM.isPending ? c.restoring : c.restore}
         </button>
       </span>
     </section>

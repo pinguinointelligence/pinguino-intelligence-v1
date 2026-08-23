@@ -101,15 +101,11 @@ export function MyRecipesContent() {
         aggregate !== null &&
         requestedVersionNumber !== aggregate.latestVersionNumber;
       if (askedForHistory && !openedVersion) {
-        setOpenError(
-          `Nie udało się otworzyć wersji v${requestedVersionNumber}. Spróbuj ponownie — nie otwieramy w zamian innej wersji.`,
-        );
+        setOpenError(r.versionSelector.openFailed(requestedVersionNumber));
         return;
       }
       if (!repoReachable && requestedVersionNumber !== null && requestedVersionNumber > 1) {
-        setOpenError(
-          'Historia wersji jest chwilowo niedostępna. Spróbuj ponownie za chwilę.',
-        );
+        setOpenError(r.versionSelector.historyUnavailable);
         return;
       }
       const openedInput = openedVersion?.recipeInput ?? input;
@@ -149,7 +145,7 @@ export function MyRecipesContent() {
       );
       navigate(persona === 'pro' ? '/pro/recipe' : '/home');
     } catch {
-      setOpenError('Nie udało się otworzyć tej receptury.');
+      setOpenError(r.versionSelector.openFailedGeneric);
     }
   };
 

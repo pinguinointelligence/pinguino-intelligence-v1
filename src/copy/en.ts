@@ -411,6 +411,26 @@ export const copy = {
       /** The inline immutable-version selector — navigation only, never a restore. */
       version: 'Wersja',
     },
+    /** WERSJA selector + the workbench notice for an opened historical version (owner v1.4). */
+    versionSelector: {
+      current: 'Aktualna',
+      trigger: (name: string, version: number) =>
+        `Wersja receptury ${name}: v${version}. Wybierz wersję do otwarcia.`,
+      list: (name: string) => `Wersje receptury ${name}`,
+      openFailed: (version: number) =>
+        `Nie udało się otworzyć wersji v${version}. Spróbuj ponownie — nie otwieramy w zamian innej wersji.`,
+      historyUnavailable: 'Historia wersji jest chwilowo niedostępna. Spróbuj ponownie za chwilę.',
+      openFailedGeneric: 'Nie udało się otworzyć tej receptury.',
+    },
+    historicalVersion: {
+      heading: (version: number, date: string | null) =>
+        `Wersja v${version}${date ? ` · ${date}` : ''}`,
+      body: (latest: number) =>
+        `— podgląd historii. Najnowsza wersja to v${latest}. Zapis nie nadpisze tej wersji; utworzy nową.`,
+      restore: 'Przywróć tę wersję',
+      restoring: 'Przywracam…',
+      restoreFailed: 'Nie udało się przywrócić wersji.',
+    },
     /** Canonical save dialog (S2 repair) — ONE flow: create v1 / append next version / save as new. */
     dialog: {
       createTitle: 'Zapisz recepturę',

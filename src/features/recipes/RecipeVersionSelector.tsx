@@ -10,8 +10,11 @@
  * Version numbers and dates only. No UUID, no snapshot id, no internal identifier reaches the user.
  */
 import { useEffect, useId, useRef, useState } from 'react';
+import { copy } from '@/copy/en';
 import { formatSavedRecipeDate } from './savedRecipeDate';
 import type { SavedRecipeVersionRef } from './recipePayload';
+
+const c = copy.recipes.versionSelector;
 
 export interface RecipeVersionSelectorProps {
   /** Newest first. A single-version recipe renders a one-item list, never an empty menu. */
@@ -64,7 +67,7 @@ export function RecipeVersionSelector({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={`Wersja receptury ${recipeName}: v${selected}. Wybierz wersję do otwarcia.`}
+        aria-label={c.trigger(recipeName, selected)}
         data-testid={`recipe-version-selector-${recipeName}`}
         onClick={() => setOpen((value) => !value)}
         className="pro-focus-ring inline-flex min-h-8 items-center gap-1 rounded-lg px-1.5 text-sm text-ink transition-colors hover:bg-education-ivory/70"
@@ -79,7 +82,7 @@ export function RecipeVersionSelector({
         <ul
           id={menuId}
           role="listbox"
-          aria-label={`Wersje receptury ${recipeName}`}
+          aria-label={c.list(recipeName)}
           className="absolute right-0 z-40 mt-1 min-w-[13rem] rounded-xl border border-ink/12 bg-white p-1 shadow-pro-e3"
         >
           {versions.map((version) => {
@@ -105,7 +108,7 @@ export function RecipeVersionSelector({
                     {formatSavedRecipeDate(version.createdAt)}
                   </span>
                   {version.versionNumber === latest ? (
-                    <span className="ml-auto text-xs text-stone-500">Aktualna</span>
+                    <span className="ml-auto text-xs text-stone-500">{c.current}</span>
                   ) : null}
                 </button>
               </li>
