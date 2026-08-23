@@ -6,7 +6,9 @@
 |---|---|
 | Starting `origin/staging` | `36e9bb1` |
 | Code commit | `6824dc7` |
-| Final `origin/staging` | see the closing note (read after the last push) |
+| Final `origin/staging` | `05e5fdd` |
+| Final deployment | `dpl_4ehZN6yBNtmrd2Rf4aqDTbwYFDoG` READY |
+| Final served bundle | `index-B-yvCBqD.js` (read AFTER the last push, via the browser — `curl` gets Vercel's bot checkpoint and returns the challenge page's asset names) |
 | Branch / worktree | `claude/library-versions-protein-main` · `~/Developer/pinguino-intelligence-v1-persistence` |
 
 ---
@@ -45,7 +47,9 @@ instead of the owner's data.
 
 ### Served proof
 
-Deployment for `6824dc7`: `dpl_HpwM8tovKyE6NhqM83P2cWstGL4k` (READY).
+Deployment for the code commit `6824dc7`: `dpl_HpwM8tovKyE6NhqM83P2cWstGL4k` (READY, bundle
+`index-BGdGE_mw.js`). Re-confirmed on the final deployment `dpl_4ehZN6yBNtmrd2Rf4aqDTbwYFDoG`
+(`05e5fdd`, bundle `index-B-yvCBqD.js`): WERSJA present, `QA Protein v2 -12C` at v4.
 
 ```
 QA Protein v2 -12C … ZAKTUALIZOWANO 23.08.2026 · WERSJA v3 ▾ · Otwórz · Usuń
