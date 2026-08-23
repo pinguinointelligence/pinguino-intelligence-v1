@@ -3,8 +3,10 @@
 **Date:** 2026-08-23
 **Branch:** `claude/protein-final-closeout`
 **Starting SHA:** `92edb67` (staging at the time the work began)
-**Final branch SHA:** `a42d604` — pushed to `origin/claude/protein-final-closeout` as a fast-forward
-**Staging tip at close:** `40b3755` — the branch is a clean fast-forward onto it, **not landed**
+**Landed staging SHA:** `e02de60` (pre-land tip `7d6d7c4`; fast-forward, no force)
+**Vercel:** `dpl_2iHpxvqUT9sarwKiXPcB4rBsUUa1` READY — alias `staging.pinguinoai.com`
+**Served bundle:** `index-C0u3lGsO.js` (3 279 019 B, sha256 `6c953186…`) — read in-browser, not curl
+**Staging Edge:** `production-rescue-authorize` v9 ACTIVE, all files byte-identical to repo
 **Mapper base:** `docs/ingredients/validation/mapper_basement.csv` — 2088 rows, SHA-256
 `b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38` — **never written**
 
@@ -212,7 +214,87 @@ it is paid for honestly rather than hidden: one heavy Sorbet/Main case was given
 budget (it runs ~17 s in isolation) with the reason stated in place. Probes are ordered
 nearest-first, exit on an exact hit, and skip axes that already satisfy their band.
 
-## 12. NOT DELIVERED
+## 12. Staging landing, deploy and Edge sync — DONE
+
+Staging had moved `40b3755` → `7d6d7c4` (documentation only — `P1A_DIRECTION_SERVED_CLOSEOUT` and
+`DIRECTION_SERVED_MATRIX`), so a rebase **was** needed. It was content-neutral: the diff between the
+pre- and post-rebase branch is exactly those two doc files, no source line changed, and all three
+drift guards still verify. The campaign therefore did not need re-running.
+
+Landed as a plain fast-forward `7d6d7c4..e02de60`. No force push, no `main`.
+
+**Staging Edge sync.** The deployed bundle was `3716be4d…` (295 428 chars) — stale against staging's
+own tree since the Vegan commit regenerated it and never redeployed. Regenerated from the final
+staging tree and deployed to `tunabqqrwabacxjcxxkz` **only**:
+
+| Property | Value |
+|---|---|
+| bundle SHA-256 | `3a62dbdfb72a70e1177519f421a38393cbb42ebb7373f5400a00c33725e6a477` |
+| bundle size | 297 859 B / 296 878 chars |
+| source closure | `6ca87ec2756a1fef255ed8e6a16294773c8dbe319c0dd6c615d32b99983ab203`, 57 files |
+| external / dynamic imports | **0 / 0** — no dependency leak |
+| deployed version | **9**, ACTIVE, `verify_jwt: true` |
+
+Deployed bytes proven identical by reading the deployed files back and hashing all four:
+`index.ts` `5c6152bd…`, `logic.ts` `507a570f…`, bundle `3a62dbdf…`, metadata `cd8209d4…` — every
+one byte-identical to the repo.
+
+## 13. Served QA — what was verified, and the blocker that stopped the rest
+
+Verified on `e02de60` / `index-C0u3lGsO.js`, authenticated as the existing `pro@pro.com` session
+(no credentials were entered and no account was created):
+
+| # | Served check | Result |
+|---|---|---|
+| 1 | Shared NEAREST fix present in the served build | `directionNearestPass` found in the served bundle |
+| 2 | Protein profile builds its canonical −11 starter | CREAM 244 / WPC 112 / WATER 474 / SUCROSE 77 / DEXTROSE 91 / TARA 2 = 1000 g — identical to offline |
+| 3 | Protein claim readout | **9,5 % protein, 21 % of energy — HIGH PROTEIN**, matching the offline 9.525 % |
+| 4 | Direction axis truthfulness | Sweetness **enabled, five levels**; Hardness **all five disabled** — the scientifically blocked axis is honestly unavailable in the UI |
+| 5 | −11 Sweetness 0 | *"Receptura już spełnia wybrany profil"* — ACHIEVED, no change needed, matching offline distance 0 |
+| 6 | Direction reset on starter rebuild | switching product/temperature reset Sweetness to 0 (staging's own `40b3755` fix, re-confirmed) |
+
+**BLOCKER — every served cell where the solver must ADD Milk 3.5 %.** Reproduced deterministically
+twice at −11 Sweetness +2:
+
+> Produkt nie spełnia jeszcze bieżącej bramki technicznej: Milk 3.5 %. Warstwa: ProductBehavior
+> binding … brak aktualnego snapshotu ProductBehavior dla `89a79c10-…` · Mapper `PI-ING-000236` ·
+> wersja `397c9f21-…` · moduł OPTIMAL; odśwież dane produktu.
+
+The recipe is left unchanged, so the Preview cannot be produced. This is **owner product-catalogue
+data**, not engine code: the Mapper binding is present in the message; what is missing is the
+owner's ProductBehavior snapshot for that product/version in the OPTIMAL module. The app's own
+remedy (`Uzupełnij dane produktu`) routes to the Product Scanner, which requires uploading real
+product-label photographs — I will not fabricate product records, so this needs the owner.
+
+Confirmed offline that the solver does add that line: at −11/+2 the proposal introduces
+`Milk 3.5 %` at **2 g**. A 2 g line is enough to gate the whole served Preview.
+
+Consequently NOT verified served: §7 (−11 +2 → 15.5571 and −13 −1 → 13.9272), §8 (vanilla −12 +2),
+§5 (Production Rescue E2E, which needs a Preview to exist first), and the wider §6 matrix.
+
+## 14. NEW FINDING — the §6 identity defect still lives on the ADD path
+
+Fixing the starter path did not cover corrections. An ADDED correction line still carries the
+engine REFERENCE payload rather than the canonical Mapper identity:
+
+| | ADD payload | canonical Mapper row |
+|---|---|---|
+| name | `Milk 3.5 %` | `MILK 3.5% · Milk · Chilled` |
+| Mapper id | PI-ING-000236 | PI-ING-000236 |
+| **pod_value** | **null** | **0.752** |
+| **pac_value** | **null** | **5.285** |
+| sugar % | 4.8 | 4.7 |
+| confidence / verified | 85 / false | 98 / true |
+
+Because `engine/pac.ts` prefers a STORED `pac_value` and falls back to deriving from the sugar
+breakdown when it is null, an added line runs **different freezing arithmetic** from the same
+product served — exactly the divergence the starter fix removed. It is recorded rather than fixed
+here: routing `approvedFormulationToolboxIngredients` through the canonical authority is the same
+change that previously broke 36 tests across the authenticity drift detectors, the Vegan matrix,
+the Gelato Direction sweep and the substitution/Main contracts, and it deserves its own pass rather
+than a rushed one at the end of this landing.
+
+## 15. NOT DELIVERED
 
 Stated plainly; no number here is estimated.
 
