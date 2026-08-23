@@ -112,3 +112,68 @@ Options 1 and 2 change owner numbers. Option 3 does not. **I have implemented no
 §5 (Fructose rescue on Sorbet) and §12 items 1–14 depend on the neutral decision above: a sweep whose neutral
 reference is itself untargeted cannot be asserted monotonic. The P1-B work in `c2f4c70` is independent and
 complete.
+
+---
+
+# ADDENDUM — the approved `pod.cleanCenter` design was implemented, measured, and REVERTED
+
+Owner decision received: *"Add pod.cleanCenter per profile × temp"*, anchored on the locked references, five
+steps derived outward. I implemented exactly that, measured it, and then reverted it. Here is why.
+
+## What was implemented
+
+`sweetnessBandAroundReference(band, lockedReference, target)` in `recipeDirectionTargets.ts`: the clean centre
+is the profile's own `pod.lockedReference` (an existing owner number — nothing invented), the neutral zone keeps
+its current width (one fifth of the band, i.e. ±1/10 around the centre), and ±1/±2 step outward to the band
+edges. Plus `direction_targets_active: true` in `recipeStore.ts`, so the neutral intent is actually applied.
+
+## It works — the primary defect is genuinely fixed
+
+Real Fior di Latte, Gelato −12 °C OPTIMAL, clean baseline per level:
+
+| Direction | New target band | Delivered POD | Inside |
+|---|---|---|---|
+| −2 | [12.00, 13.54] | 15.67 | ✗ (nearest — honestly reported) |
+| −1 | [13.54, 15.07] | 15.67 | ✗ (nearest — honestly reported) |
+| **0** | **[15.07, 16.07]** | **15.97** | **✓** |
+| **+1** | **[16.07, 16.54]** | **16.26** | **✓** |
+| **+2** | **[16.54, 17.00]** | **16.64** | **✓** |
+
+`0 (15.97) < +1 (16.26) < +2 (16.64)` — **the positive branch finally increases sweetness above neutral.** That
+is the whole P1-A user complaint, resolved.
+
+## Why it was reverted — three accepted owner flows move
+
+Full suite: **7405 passed, 5 failed** (one is the unrelated `heic-to` env gap, one is the regenerable bundle hash).
+The three substantive failures are all *owner-approved* fixtures:
+
+1. **`multiMainIngredient.test.tsx` → "combines Direction with 2:1 Multi-Main and a range constraint"**
+   `buildOptimizePreview(...)` now returns **`ok: false`** — the preview no longer exists at all.
+   **This is a real regression, not a moved number.** The task's §3 requires an unreachable level to degrade to a
+   truthful NEAREST, never to disappear; the Main frontier still treats an unreached Direction target as a hard
+   gate, so the tighter neutral makes a previously solvable owner case unsolvable. **This must be fixed before
+   the design can ship.**
+
+2. **`stabilizerContractRegression.test.ts` → "Owner Sweetness LESS fixture"**
+   Delivered POD moves **14.36 → 15.09**. The −1 target moved, so the fixture's pinned outcome moves with it.
+
+3. **`stabilizerContractRegression.test.ts` → "executable Preview for an Engine-clean but fractional G17 draft"**
+   Same class — a pinned metric shifts with the new bands.
+
+4. `gelatoDirectionTargetMatrix.test.ts` → neutral round-trip now scores **9, not 10**: the neutral preview lands
+   at POD **15.0651** against a band minimum of **15.07** — a **0.005** miss at the band edge, i.e. honest
+   NEAREST rather than a reached target. Note both numbers display as "15.07" at the UI's 2 dp, so the user
+   would see an in-band value reported as not reached.
+
+## What is needed before this ships
+
+- **(blocking)** Make an unreached Direction target degrade to NEAREST in the Main frontier instead of
+  `no_proposal`, so finding 1 cannot happen. This is the same hard-gate behaviour recorded in the
+  2026-08-22 Main-constrained NEAREST work.
+- **(owner sign-off)** Confirm the moved values in findings 2 and 3 are acceptable — they are owner-approved
+  fixtures, so I will not rewrite them unilaterally.
+- **(owner decision)** Finding 4 is a band-edge precision question: either accept honest 9/10 at the edge, or
+  decide a tolerance — which is Score-philosophy territory and explicitly out of scope for this task.
+
+The implementation is straightforward to restore (two files: `recipeDirectionTargets.ts`,
+`recipeStore.ts`); it is reverted rather than abandoned.
