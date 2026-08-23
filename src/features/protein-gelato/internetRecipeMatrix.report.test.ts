@@ -385,3 +385,140 @@ describe.skipIf(!FULL)('§20 Protein operational Rescue campaign (PROTEIN_FULL_M
     900_000,
   );
 });
+
+
+/**
+ * §25 — DETERMINISTIC FUZZ.
+ *
+ * 500 Protein states built by seeded, BOUNDED perturbation of the internet
+ * corpus: each line is scaled within a realistic gelateria range and the batch
+ * is renormalized to 1000 g, so every state is a recipe someone could plausibly
+ * type — not random noise. The seed is fixed, so a failure is reproducible by
+ * its index alone.
+ *
+ * Every state is checked for the failure modes that must never occur:
+ * crash, NaN, Infinity, negative grams, 0 g executable rows, broken batch
+ * totals, a lost Protein profile, and a Direction plan that publishes a band it
+ * has no axis for. A bounded subset additionally runs the full Preview and is
+ * checked for a FALSE ACHIEVED — a Preview claiming the requested band while
+ * its delivered POD sits outside it — and for an unexplained `ok:false`.
+ */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const FUZZ_STATES = 500;
+const FUZZ_PREVIEWS = 60;
+
+describe.skipIf(!FULL)('§25 deterministic Protein fuzz (PROTEIN_FULL_MATRIX=1)', () => {
+  it(`${FUZZ_STATES} bounded states produce no crash, NaN, negative or 0 g row, and no false ACHIEVED`, () => {
+    const rng = mulberry32(0x9e3779b9);
+    const defects: string[] = [];
+    let previewsRun = 0;
+
+    for (let index = 0; index < FUZZ_STATES; index += 1) {
+      const recipe = INTERNET_PROTEIN_RECIPES[index % INTERNET_PROTEIN_RECIPES.length]!;
+      const temperatureC = TEMPS[index % TEMPS.length]!;
+      const strategy = index % 2 === 0 ? 'optimal' : 'eco';
+      const sweetness = LEVELS[index % LEVELS.length]!;
+      const base = internetRecipeInput(recipe, temperatureC, strategy, sweetness);
+
+      // Bounded perturbation: ±40 % per line, then renormalize to the batch.
+      const scaled = base.items.map((item) => ({
+        ...item,
+        planned_grams: Math.max(1, item.planned_grams * (0.6 + rng() * 0.8)),
+      }));
+      const total = scaled.reduce((sum, item) => sum + item.planned_grams, 0);
+      const items = scaled.map((item) => ({
+        ...item,
+        planned_grams: Math.max(1, Math.round((item.planned_grams / total) * 1000)),
+      }));
+      const input: RecipeInput = { ...base, items };
+      const label = `#${index} ${recipe.id}@${temperatureC}/${strategy}/${sweetness}`;
+
+      let result;
+      try {
+        result = calculateRecipe(input);
+      } catch (error) {
+        defects.push(`${label}: calculateRecipe threw ${String(error)}`);
+        continue;
+      }
+
+      for (const item of input.items) {
+        if (!Number.isFinite(item.planned_grams)) defects.push(`${label}: non-finite grams`);
+        if (item.planned_grams <= 0) defects.push(`${label}: 0 g input row`);
+      }
+      const sum = input.items.reduce((s, i) => s + i.planned_grams, 0);
+      if (Math.abs(sum - 1000) > 5) defects.push(`${label}: batch total ${sum}`);
+
+      for (const indicator of result.indicators) {
+        if (indicator.value !== null && !Number.isFinite(indicator.value)) {
+          defects.push(`${label}: ${indicator.key} = ${indicator.value}`);
+        }
+      }
+      const protein = assessProteinFormulation(input, result);
+      if (!protein.applicable) defects.push(`${label}: lost the Protein profile`);
+      if (protein.actualPercent !== null && !Number.isFinite(protein.actualPercent)) {
+        defects.push(`${label}: protein % not finite`);
+      }
+
+      const plan = buildRecipeDirectionPlan(input);
+      for (const axis of plan.axes) {
+        // A blocked axis must never publish a band.
+        if (axis.status !== 'working' && axis.targetBand !== null) {
+          defects.push(`${label}: ${axis.axis} blocked but published a band`);
+        }
+      }
+
+      if (index % Math.ceil(FUZZ_STATES / FUZZ_PREVIEWS) !== 0) continue;
+      previewsRun += 1;
+      const band = plan.axes.find((axis) => axis.axis === 'sweetness')!.targetBand!;
+      let built;
+      try {
+        built = buildOptimizePreview(input, NONE, AT, {
+          effectivePriceOverrides: MOJA_CENA_OVERRIDES as never,
+        });
+      } catch (error) {
+        defects.push(`${label}: buildOptimizePreview threw ${String(error)}`);
+        continue;
+      }
+      if (!built.ok) {
+        // ok:false is allowed, but only with a stated reason.
+        const code = (built as { code?: string }).code;
+        if (typeof code !== 'string' || code.length === 0) {
+          defects.push(`${label}: unexplained ok:false`);
+        }
+        continue;
+      }
+      const proposed = built.preview.proposedInput;
+      if (proposed.items.some((item) => item.planned_grams <= 0)) {
+        defects.push(`${label}: Preview carries a 0 g executable row`);
+      }
+      if (proposed.items.some((item) => !Number.isInteger(item.planned_grams))) {
+        defects.push(`${label}: Preview is not whole-gram`);
+      }
+      const pod = calculateRecipe(proposed).indicators.find((e) => e.key === 'pod')?.value ?? null;
+      if (pod === null || !Number.isFinite(pod)) {
+        defects.push(`${label}: Preview POD not finite`);
+        continue;
+      }
+      // FALSE ACHIEVED: the assessment may not claim the target while the
+      // delivered executable value sits outside the requested band.
+      const reached = built.preview.directionAssessment?.reached === true;
+      const inBand = bandDistance(pod, band) === 0;
+      if (reached && !inBand) {
+        defects.push(`${label}: FALSE ACHIEVED — pod ${pod.toFixed(4)} outside [${band.min},${band.max}]`);
+      }
+    }
+
+    console.info(`FUZZ states=${FUZZ_STATES} previews=${previewsRun} defects=${defects.length}`);
+    if (defects.length > 0) console.info(`FUZZ first=${JSON.stringify(defects.slice(0, 20))}`);
+    expect(defects).toEqual([]);
+  }, 3_600_000);
+});
