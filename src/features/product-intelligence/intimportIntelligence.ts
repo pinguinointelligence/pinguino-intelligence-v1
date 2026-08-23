@@ -81,6 +81,8 @@ export interface IntimportProductIntelligence {
   route: EnrichmentRoute;
   /** Fields worth asking the outside world about — nothing else may be searched. */
   enrichmentTargets: ProductEvidenceField[];
+  /** The parsed row's own insert, carried so the import handoff needs no re-parse. */
+  insert: ProductInsert;
   /**
    * The product's real numeric state, once Mapper knowledge has been applied.
    * Null only when the caller supplied no Mapper — the layer never invents one.
@@ -354,6 +356,7 @@ export function assessIntimportProduct(
     evidence,
     route,
     enrichmentTargets: targets,
+    insert: candidate.insert,
     workingValues,
   };
 }
@@ -435,3 +438,120 @@ export function runIntimportLocalIntelligence(
 
 /** Hard per-product ceiling on external calls. */
 export const MAX_CALLS_PER_PRODUCT = 3;
+
+
+/* ── import handoff ────────────────────────────────────────────────────────── */
+
+/** Why a row may not be imported. Never a silent drop. */
+export type ImportBlockReason = 'composition_review' | 'technical_authority_required';
+
+export interface IntimportImportRow {
+  rowIndex: number;
+  sourceProductId: string | null;
+  displayName: string | null;
+  /** The insert to persist, carrying resolved working values and provenance. */
+  insert: ProductInsert;
+  readiness: 'READY' | 'READY_ESTIMATED';
+}
+
+export interface IntimportImportPlan {
+  importable: IntimportImportRow[];
+  blocked: {
+    rowIndex: number;
+    displayName: string | null;
+    reason: ImportBlockReason;
+  }[];
+}
+
+/**
+ * Decide what may actually be written, and with which numbers.
+ *
+ * Two things happen here that must not happen anywhere else. First, the working
+ * values the shared Product Intelligence resolved — including the estimated ones
+ * — are written into the SAME canonical numeric fields a measured product uses,
+ * because that is what makes an estimated product usable rather than merely
+ * annotated. Second, every field's provenance travels with it in
+ * `extracted_json`, so a value can always be traced back to the Mapper rows and
+ * the algorithm that produced it.
+ *
+ * A row that is only REVIEW, or whose technical authority is missing, is not
+ * written at all and is returned in `blocked` with the reason. Nothing is
+ * dropped quietly.
+ */
+export function planIntimportImport(
+  rows: readonly IntimportProductIntelligence[],
+): IntimportImportPlan {
+  const importable: IntimportImportRow[] = [];
+  const blocked: IntimportImportPlan['blocked'] = [];
+
+  for (const row of rows) {
+    const values = row.workingValues;
+    if (!values) {
+      blocked.push({
+        rowIndex: row.rowIndex,
+        displayName: row.displayName,
+        reason: 'composition_review',
+      });
+      continue;
+    }
+    if (values.readiness === 'TECHNICAL_AUTHORITY_REQUIRED') {
+      blocked.push({
+        rowIndex: row.rowIndex,
+        displayName: row.displayName,
+        reason: 'technical_authority_required',
+      });
+      continue;
+    }
+    if (values.valueReadiness === 'REVIEW') {
+      blocked.push({
+        rowIndex: row.rowIndex,
+        displayName: row.displayName,
+        reason: 'composition_review',
+      });
+      continue;
+    }
+
+    const insert: ProductInsert = { ...row.insert };
+    const provenance: Record<string, unknown> = {};
+    for (const field of WORKING_NUMERIC_FIELDS) {
+      const truth = values.fields[field];
+      if (truth.value === null) continue;
+      // Estimated values land in the canonical field, exactly like measured ones.
+      (insert as Record<string, unknown>)[field] = truth.value;
+      provenance[field] = {
+        state: truth.provenance.state,
+        basis: truth.provenance.basis,
+        confidence: truth.provenance.confidence,
+        mapperReferences: truth.provenance.mapperReferences,
+        algorithmVersion: truth.provenance.algorithmVersion,
+        mapperFingerprint: truth.provenance.mapperFingerprint,
+      };
+    }
+    const existing = (insert.extracted_json ?? {}) as Record<string, unknown>;
+    (insert as Record<string, unknown>).extracted_json = {
+      ...existing,
+      productIntelligence: {
+        version: 1,
+        readiness: values.valueReadiness,
+        profileMatch: values.profileMatch
+          ? {
+              confidence: values.profileMatch.confidence,
+              basis: values.profileMatch.basis,
+              references: values.profileMatch.references,
+            }
+          : null,
+        fields: provenance,
+      },
+    };
+
+    importable.push({
+      rowIndex: row.rowIndex,
+      sourceProductId: row.sourceProductId,
+      displayName: row.displayName,
+      insert,
+      readiness: values.valueReadiness === 'READY' ? 'READY' : 'READY_ESTIMATED',
+    });
+  }
+
+  return { importable, blocked };
+}

@@ -23,6 +23,7 @@ import {
   type MapperKnowledgeRow,
 } from './mapperValueInference';
 import {
+  emptyFieldTruthMap,
   isNeverEstimated,
   knownField,
   NEVER_ESTIMATED_FACTS,
@@ -31,7 +32,7 @@ import {
   WORKING_NUMERIC_FIELDS,
 } from './productFieldTruth';
 import { parseINTIMPORT } from '@/data/products/intimport';
-import { runIntimportLocalIntelligence } from './intimportIntelligence';
+import { planIntimportImport, runIntimportLocalIntelligence } from './intimportIntelligence';
 import {
   ENGINE_REQUIRED_WORKING_FIELDS,
   ESTIMATED_READY_FLOOR,
@@ -946,5 +947,68 @@ describe('profile-match borrowing of POD/PAC', () => {
     expect(resolved.values.total_sugars_percent).toBe(5);
     // 5 g of sugar cannot carry a 30 g product's freezing power.
     expect(resolved.values.pac_value).toBeNull();
+  });
+});
+
+describe('INTIMPORT import handoff', () => {
+  const row = (
+    readiness: 'READY' | 'ESTIMATED_READY' | 'REVIEW',
+    technical: 'TECHNICAL_AUTHORITY_REQUIRED' | null = null,
+  ) =>
+    ({
+      rowIndex: 1,
+      sourceProductId: 'PL-1',
+      displayName: 'Produkt',
+      insert: { product_name: 'Produkt', extracted_json: { intimport: { version: 1 } } },
+      workingValues: {
+        valueReadiness: readiness,
+        readiness: technical ?? readiness,
+        profileMatch: { confidence: 0.94, basis: 'neighbour_set', references: ['PI-1'] },
+        fields: {
+          ...emptyFieldTruthMap(),
+          fat_percent: knownField({
+            value: 12.4,
+            state: 'ESTIMATED',
+            confidence: 0.94,
+            basis: 'mapper_similar_profile',
+            mapperReferences: ['PI-1'],
+          }),
+        },
+      },
+    }) as never;
+
+  it('writes an estimated value into the canonical field, with its provenance', () => {
+    const plan = planIntimportImport([row('ESTIMATED_READY')]);
+    expect(plan.importable).toHaveLength(1);
+    const entry = plan.importable[0]!;
+    // The estimate lands where a measured value would — that is what makes it usable.
+    expect((entry.insert as Record<string, unknown>).fat_percent).toBe(12.4);
+    const pi = (entry.insert.extracted_json as Record<string, unknown>)
+      .productIntelligence as {
+      fields: Record<string, { state: string; basis: string }>;
+      readiness: string;
+    };
+    expect(pi.fields.fat_percent?.state).toBe('ESTIMATED');
+    expect(pi.readiness).toBe('ESTIMATED_READY');
+    expect(entry.readiness).toBe('READY_ESTIMATED');
+  });
+
+  it('keeps the row’s original INTIMPORT provenance alongside the new one', () => {
+    const plan = planIntimportImport([row('ESTIMATED_READY')]);
+    const json = plan.importable[0]!.insert.extracted_json as Record<string, unknown>;
+    expect(json.intimport).toBeDefined();
+    expect(json.productIntelligence).toBeDefined();
+  });
+
+  it('refuses a REVIEW row, and says why rather than dropping it', () => {
+    const plan = planIntimportImport([row('REVIEW')]);
+    expect(plan.importable).toEqual([]);
+    expect(plan.blocked[0]?.reason).toBe('composition_review');
+  });
+
+  it('refuses a technical product with no authority, however complete its numbers', () => {
+    const plan = planIntimportImport([row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED')]);
+    expect(plan.importable).toEqual([]);
+    expect(plan.blocked[0]?.reason).toBe('technical_authority_required');
   });
 });

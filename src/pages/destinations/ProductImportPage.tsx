@@ -19,6 +19,7 @@ import { useAuthStore } from '@/stores/authStore';
 import type { ProductIntakeResult, ProductIntakeSource } from '@/data/products/productTableParser';
 import type { IntimportResult } from '@/data/products/intimport';
 import {
+  planIntimportImport,
   runIntimportLocalIntelligence,
   type IntimportLocalSummary,
   type IntimportProductIntelligence,
@@ -73,6 +74,9 @@ export function ProductImportPage() {
   const [mapperNotice, setMapperNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [importResult, setImportResult] = useState<RunImportResult | null>(null);
+  const [importPlan, setImportPlan] = useState<{ importable: number; blocked: number } | null>(
+    null,
+  );
 
   const reset = () => {
     setResult(null);
@@ -177,10 +181,32 @@ export function ProductImportPage() {
     }
   };
 
-  const onImport = async () => {
+  /**
+   * Import what Product Intelligence says is usable.
+   *
+   * For INTIMPORT the shared resolver decides, not this page: a row is written
+   * only when its composition is READY or READY_ESTIMATED, and the estimated
+   * values it resolved are persisted into the canonical numeric fields with
+   * their provenance. A REVIEW row, or a technical product without authority, is
+   * refused here rather than silently created in a half state.
+   *
+   * `qaLimit` exists for controlled staging checks — importing a whole
+   * catalogue during QA is not a test, it is a mess to clean up.
+   */
+  const onImport = async (qaLimit?: number) => {
     if (!result) return;
     setBusy(true);
-    const outcome = await runProductImport(result.candidates);
+    let candidates = result.candidates;
+    if (source === 'intimport' && localRows.length > 0) {
+      const plan = planIntimportImport(localRows);
+      const usable = qaLimit ? plan.importable.slice(0, qaLimit) : plan.importable;
+      const byRow = new Map(usable.map((entry) => [entry.rowIndex, entry.insert]));
+      candidates = result.candidates
+        .filter((candidate) => byRow.has(candidate.rowIndex))
+        .map((candidate) => ({ ...candidate, insert: byRow.get(candidate.rowIndex)! }));
+      setImportPlan({ importable: plan.importable.length, blocked: plan.blocked.length });
+    }
+    const outcome = await runProductImport(candidates);
     setBusy(false);
     setImportResult(outcome);
   };
@@ -280,6 +306,12 @@ export function ProductImportPage() {
             }}
             onSignIn={openAuthModal}
           />
+          {importPlan ? (
+            <p className="text-xs text-[#8a7f6d]">
+              Product Intelligence: {importPlan.importable} do zapisu, {importPlan.blocked}{' '}
+              wstrzymanych (przegląd składu lub brak autorytetu technicznego).
+            </p>
+          ) : null}
           {importResult ? (
             importResult.ok ? (
               <div className="mt-8">
