@@ -143,8 +143,16 @@ export function normalizeRecipeDirectionTargets(
  * identity — is safe for any caller and removes a large amount of repeated work
  * from the Direction and Rescue hot paths.
  */
-const DIRECTION_PLAN_CACHE_LIMIT = 512;
+export const DIRECTION_PLAN_CACHE_LIMIT = 512;
 const directionPlanCache = new Map<string, RecipeDirectionPlan>();
+
+/**
+ * Test-only seam. The memo is module state, so a cache-SEMANTICS test needs a
+ * known starting point to be deterministic. It is never called by runtime code.
+ */
+export function __resetDirectionPlanCacheForTests(): void {
+  directionPlanCache.clear();
+}
 
 const directionPlanKey = (input: RecipeInput): string =>
   [
