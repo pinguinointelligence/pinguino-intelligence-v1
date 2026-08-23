@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 297655,
-    "sha256": "ce793c186088f90c0978cb416b9990f4a9777ac1e02c132a3dbd0878d8c8c5b3",
+    "bytes": 297795,
+    "sha256": "f88585fc6918a00939e0b036eab31c717bf6dab4ee9f0a9c404f2d8e92dddca7",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -165,7 +165,7 @@
     },
     {
       "path": "src/features/product-intelligence/productBehaviorAccess.ts",
-      "sha256": "492f0e3d9cd25b0cf0f7855c067d134590abf77812d1aa366cd19a9b4d89e147"
+      "sha256": "13aae40a48d45562d9b50de39c742c5e7d057885721876e8dec49857279d958a"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorResolver.ts",
@@ -256,5 +256,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "c4641f1923405240121315adb9dab51a38d18f755706af0e9c793b406fa51fe2"
+  "sourceClosureSha256": "232556de5928346eb8b069bda4a56863d1c1582033f8ff28fe936be2b417dbb9"
 }
