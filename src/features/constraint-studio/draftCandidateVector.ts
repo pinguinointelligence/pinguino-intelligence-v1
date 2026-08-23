@@ -277,6 +277,14 @@ export interface DraftStateMeasure {
 }
 
 export interface DraftSweepArgs {
+  /**
+   * Owner P1-A: true when the ONLY thing still out of band is a Direction axis
+   * — the recipe is otherwise engine-perfect and the search is purely chasing a
+   * preference. Supplied by the caller (which owns the Direction plan) so this
+   * module keeps no Direction dependency. Absent → the paired-exchange pass
+   * never runs, and behaviour is byte-identical to before.
+   */
+  directionOnlyResidual?: boolean;
   start: RecipeInput;
   set: ConstraintSet;
   excludedIngredientIds: ReadonlySet<string>;
@@ -313,6 +321,16 @@ const SEVERITY_EPS = 1e-9;
  * is left — a genuine, applicable, verified fixed point.
  */
 export const DRAFT_SWEEP_MIN_RELATIVE_GAIN = 0.02;
+
+/**
+ * Cost ceiling for ONE paired-exchange pass (owner P1-A). Orchestration only —
+ * not a band, not science. It bounds the pass at a fixed number of priced
+ * candidates so a Direction round can never grow with recipe size.
+ */
+export const PAIRED_EXCHANGE_EVALUATION_BUDGET = 400;
+
+/** How many composing passes one Direction round may run. Orchestration only. */
+export const PAIRED_EXCHANGE_MAX_PASSES = 12;
 
 /** Per-LINE acceptance: strictly better AND never more out-of-band metrics. */
 const strictlyBetter = (next: DraftStateMeasure, current: DraftStateMeasure): boolean =>
@@ -421,9 +439,174 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
     }
   }
 
+  if (materiallyBetter(best, args.startMeasure)) {
+    return { input: state, measure: best, moves };
+  }
+
+  // ── PAIRED (MASS-NEUTRAL) EXCHANGE PASS ────────────────────────────────────
+  //
+  // Owner P1-A: the single-line pass above is a strict COORDINATE DESCENT, and
+  // its batch restoration hands every freed gram to ONE line. That makes whole
+  // legal regions unreachable: lowering POD by cutting sucrose pushes the freed
+  // mass into milk, which raises lactose past its band, so the total-severity
+  // test rejects the move even though POD moved decisively toward the requested
+  // Direction band. Measured on the owner Fior di Latte at Sweetness −2:
+  // sucrose 89→79 reaches POD 14.67 (from 15.67) but scores severity 6.54 vs
+  // 5.33 because a `lactose` violation appears — so the sweep reported a fixed
+  // point at 15.67 while engine-legal candidates existed down to POD 12.000.
+  //
+  // The legal lower region is reached by EXCHANGES — sucrose↓ with dextrose↑,
+  // milk↓ with cream↑ — never by a single line moving alone. This pass proposes
+  // exactly that: move `delta` grams from one adjustable line to another. It is
+  // mass-neutral by construction, so the batch stays exact and the restoration
+  // cannot distort the candidate.
+  //
+  // BOUNDED, not brute force: |lines|² × |ladder| candidates, evaluated once,
+  // and only when the single-line pass already failed. Every existing gate is
+  // reused unchanged — the ladder, the §17 padlocks, the stabilizer dosage
+  // clamp, `increasable` (which carries the P1-B flavour authority: a held
+  // flavour accent is never a receiver), and the same engine measure.
+  const exchange = sweepPairedExchange(args, state, best);
+  if (exchange !== null) {
+    return { input: exchange.input, measure: exchange.measure, moves: [...moves, ...exchange.moves] };
+  }
+
   if (moves.length === 0) return null;
   // The convergence guard: a sweep that only shaved an immaterial sliver off
   // the engine's severity is NOT another round — it is the fixed point.
   if (!materiallyBetter(best, args.startMeasure)) return null;
   return { input: state, measure: best, moves };
 }
+
+/**
+ * One bounded pass of mass-neutral two-line exchanges. Returns the best
+ * materially-improving exchange, or null when none exists (the honest fixed
+ * point). Pure and deterministic: candidates are generated in draft order and
+ * ties keep the first.
+ */
+function sweepPairedExchange(
+  args: DraftSweepArgs,
+  startState: RecipeInput,
+  startBest: DraftStateMeasure,
+): DraftSweepResult | null {
+  const { set, excludedIngredientIds, constraints, normalize, measure } = args;
+  // SCOPE GATE: this pass exists for the Direction defect and costs extra
+  // engine evaluations, so it runs ONLY while an exact Direction contract is
+  // being chased. Every non-Direction flow — the engine authenticity fixtures,
+  // ECO cost sweeps, plain corrections — keeps its previous candidate set and
+  // its previous cost byte-for-byte.
+  if (startState.goals?.direction_targets_active !== true) return null;
+  // Fire ONLY when a Direction preference is the sole remaining residual. That
+  // is exactly the coordinate-descent trap this pass exists for, and it keeps
+  // every other search — hard-band repair, Main envelopes, stabilizer contracts,
+  // ECO cost sweeps — on its previous candidate set and its previous cost.
+  if (args.directionOnlyResidual !== true) return null;
+
+  const batch = startState.target_batch_grams;
+  // LARGEST EXCHANGE FIRST: the big exchanges are the ones that clear the
+  // coordinate-descent trap, and taking them early means the pass converges
+  // inside the EXISTING round budget instead of demanding more rounds.
+  const deltas = [...DRAFT_ADJUSTMENT_STEP_FRACTIONS]
+    .map((fraction) => batch * fraction)
+    .filter((grams) => grams >= MIN_MOVE_GRAMS)
+    .sort((left, right) => right - left);
+
+  let state = startState;
+  let best = startBest;
+  const moves: DraftAdjustmentMove[] = [];
+  // DETERMINISTIC EVALUATION BUDGET — orchestration only, not a band and not
+  // science. It bounds one pass to a fixed number of priced candidates so a
+  // Direction round can never grow with recipe size.
+  let evaluations = 0;
+
+  // COMPOSING sweep, REPEATED to convergence inside this single round.
+  //
+  // Each donor contributes its own best exchange and the next donor starts from
+  // the improved state, exactly like the single-line sweep composes across
+  // lines; the whole thing then repeats while it keeps gaining. This is the
+  // deliberate design point: a stronger search must NOT need more rounds, or it
+  // would push previously-solvable recipes into `iteration_cap` (measured: the
+  // owner 2:1 Multi-Main fixture at Sweetness −2 / Hardness −2). Concentrating
+  // the work here keeps MAX_SOLVER_ROUNDS untouched and the owner's cap
+  // semantics intact.
+  for (let pass = 0; pass < PAIRED_EXCHANGE_MAX_PASSES; pass += 1) {
+    if (evaluations >= PAIRED_EXCHANGE_EVALUATION_BUDGET) break;
+    const movesBefore = moves.length;
+    runComposingPass();
+    if (moves.length === movesBefore) break;
+  }
+
+  function runComposingPass(): void {
+  for (const donorSeed of buildDraftCandidateVector(state, set, excludedIngredientIds)) {
+    if (evaluations >= PAIRED_EXCHANGE_EVALUATION_BUDGET) break;
+    const vector = buildDraftCandidateVector(state, set, excludedIngredientIds);
+    const donor = vector.find((entry) => entry.lineId === donorSeed.lineId);
+    if (!donor) continue;
+
+    let bestForDonor: DraftSweepResult | null = null;
+    let bestForDonorMeasure = best;
+
+    for (const receiver of vector) {
+      if (receiver.lineId === donor.lineId) continue;
+      // The receiver must be allowed to GROW. `increasable` is false for an
+      // excluded ingredient and for a P1-B held flavour accent, so neither can
+      // absorb exchanged mass here.
+      if (!receiver.increasable) continue;
+
+      for (const delta of deltas) {
+        if (evaluations >= PAIRED_EXCHANGE_EVALUATION_BUDGET) break;
+        if (donor.currentGrams - delta < 0) continue;
+
+        const donorMove: DraftAdjustmentMove = {
+          lineId: donor.lineId,
+          ingredientId: donor.ingredientId,
+          ingredientName: donor.ingredientName,
+          fromGrams: donor.currentGrams,
+          toGrams: donor.currentGrams - delta,
+          direction: 'decrease',
+          actions: draftAdjustmentActions(donor, donor.currentGrams - delta),
+        };
+        if (donorMove.actions.length === 0) continue;
+        if (violatesApprovedStabilizerDosage(state, donorMove.actions[0]!)) continue;
+        const afterDonor = applyDraftAdjustment(state, donorMove, constraints);
+        if (afterDonor === null) continue;
+
+        const receiverNow = buildDraftCandidateVector(afterDonor, set, excludedIngredientIds).find(
+          (entry) => entry.lineId === receiver.lineId,
+        );
+        if (!receiverNow) continue;
+        const receiverMove: DraftAdjustmentMove = {
+          lineId: receiverNow.lineId,
+          ingredientId: receiverNow.ingredientId,
+          ingredientName: receiverNow.ingredientName,
+          fromGrams: receiverNow.currentGrams,
+          toGrams: receiverNow.currentGrams + delta,
+          direction: 'increase',
+          actions: draftAdjustmentActions(receiverNow, receiverNow.currentGrams + delta),
+        };
+        if (receiverMove.actions.length === 0) continue;
+        if (violatesApprovedStabilizerDosage(afterDonor, receiverMove.actions[0]!)) continue;
+        const exchanged = applyDraftAdjustment(afterDonor, receiverMove, constraints);
+        if (exchanged === null) continue;
+
+        evaluations += 1;
+        const normalized = normalize(exchanged);
+        const next = measure(normalized);
+        if (!strictlyBetter(next, bestForDonorMeasure)) continue;
+        bestForDonorMeasure = next;
+        bestForDonor = { input: normalized, measure: next, moves: [donorMove, receiverMove] };
+      }
+    }
+
+    if (bestForDonor !== null) {
+      state = bestForDonor.input;
+      best = bestForDonor.measure;
+      moves.push(...bestForDonor.moves);
+    }
+  }
+  }
+
+  if (moves.length === 0) return null;
+  return materiallyBetter(best, args.startMeasure) ? { input: state, measure: best, moves } : null;
+}
+

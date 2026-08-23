@@ -1451,6 +1451,75 @@ function mainSafePreview(
   };
 }
 
+/**
+ * WHOLE-GRAM DIRECTION REPAIR (owner P1-A, 2026-08-23).
+ *
+ * The exact search can land INSIDE a Direction band and then have whole-gram
+ * practicalization round it back out. Measured on the owner Fior di Latte:
+ * Sweetness -1 solved to POD 13.974 (inside [13, 14]) but the executable recipe
+ * read 14.04, so a genuinely achieved target was presented as NEAREST.
+ *
+ * This repair runs ONLY when the EXACT candidate satisfied the Direction
+ * contract and the EXECUTABLE one does not - i.e. the miss was created by
+ * rounding, never by the search. It searches whole-gram, mass-neutral exchanges
+ * between adjustable lines, so the batch stays exact by construction, and it
+ * accepts a candidate only when the engine still reports zero violations AND the
+ * Direction assessment is genuinely reached. Bounded: |lines| x |lines| x 3.
+ *
+ * It never touches Main lines, locked/ranged lines, poured actuals, template-
+ * controlled stabilizers, or P1-B held flavour accents.
+ */
+const repairDirectionWholeGramRounding = (
+  exactInput: RecipeInput,
+  executableInput: RecipeInput,
+  set: ConstraintSet,
+): RecipeInput | null => {
+  if (exactInput.goals?.direction_targets_active !== true) return null;
+  const exactAssessment = assessRecipeDirection(exactInput, calculateRecipe(exactInput));
+  if (!exactAssessment.active || exactAssessment.supportedAxisCount === 0) return null;
+  if (!exactAssessment.reached) return null;
+  const executableResult = calculateRecipe(executableInput);
+  if (assessRecipeDirection(executableInput, executableResult).reached) return null;
+  if (detectViolations(executableResult).length > 0) return null;
+
+  const flavourHeld = flavourHeldLineIds(executableInput);
+  const movable = executableInput.items.filter(
+    (item) =>
+      item.lock_type === 'unlocked' &&
+      item.actual_grams === null &&
+      set.byLineId[item.id] === undefined &&
+      item.percent_constraint === undefined &&
+      item.grams_constraint === undefined &&
+      !isTemplateControlledStabilizer(item.ingredient),
+  );
+  if (movable.length < 2) return null;
+
+  for (const delta of [1, 2, 3]) {
+    for (const donor of movable) {
+      if (donor.planned_grams - delta < 1) continue;
+      for (const receiver of movable) {
+        if (receiver.id === donor.id) continue;
+        if (flavourHeld.has(receiver.id)) continue;
+        const candidate: RecipeInput = {
+          ...executableInput,
+          items: executableInput.items.map((item) =>
+            item.id === donor.id
+              ? { ...item, planned_grams: item.planned_grams - delta }
+              : item.id === receiver.id
+                ? { ...item, planned_grams: item.planned_grams + delta }
+                : item,
+          ),
+        };
+        const result = calculateRecipe(candidate);
+        if (detectViolations(result).length > 0) continue;
+        if (!assessRecipeDirection(candidate, result).reached) continue;
+        return candidate;
+      }
+    }
+  }
+  return null;
+};
+
 const finishPreview = (
   kind: PreviewKind,
   titlePl: string,
@@ -1477,6 +1546,33 @@ const finishPreview = (
     flavourHeldLineIds(proposedInput),
   );
   let executableInput = practical.ok ? practical.audit.executableInput : proposedInput;
+  // Owner P1-A: recover a Direction target the whole-gram rounding lost.
+  if (practical.ok) {
+    const repaired = repairDirectionWholeGramRounding(
+      practical.audit.exactInput,
+      executableInput,
+      nextConstraints,
+    );
+    if (repaired !== null) {
+      const repracticalized = practicalizeRecipeCandidate(
+        repaired,
+        nextConstraints,
+        flavourHeldLineIds(repaired),
+      );
+      if (repracticalized.ok) {
+        const repairedExecutable = repracticalized.audit.executableInput;
+        // Accept only a genuine improvement: still engine-clean AND now inside
+        // the Direction bands the exact candidate had already earned.
+        if (
+          detectViolations(calculateRecipe(repairedExecutable)).length === 0 &&
+          assessRecipeDirection(repairedExecutable, calculateRecipe(repairedExecutable)).reached
+        ) {
+          practical = repracticalized;
+          executableInput = repairedExecutable;
+        }
+      }
+    }
+  }
   // Protein Engine v2 — the boundary defect this repair exists for.
   //
   // Practicalization rounds the exact solver candidate to the whole grams the
@@ -2115,6 +2211,10 @@ function iterateSolverToFixedPoint(
       // When an approved exact Direction target is active, fit outranks cost
       // in ECO. Use the same canonical measure as OPTIMAL until the target is
       // reached; inactive and unsupported profiles keep their prior ECO path.
+      // Owner P1-A: the paired-exchange pass may only fire when a Direction
+      // preference is the ONLY residual — the recipe is otherwise engine-clean.
+      const directionOnlyResidual =
+        hasExactDirectionObjective && detectViolations(calculateRecipe(working)).length === 0;
       return sweepDraftCandidateVector({
         start: working,
         set: solverSet,
@@ -2123,6 +2223,7 @@ function iterateSolverToFixedPoint(
         normalize,
         measure,
         startMeasure: current,
+        directionOnlyResidual,
       });
     };
 
@@ -4850,7 +4951,28 @@ function buildFormulationPreviewInternal(
   // state — presented WITH the proof. Hard-NATIVE residuals are then blocked
   // at the Apply door (addendum 3 — diagnostic preview only); soft/provisional
   // residuals stay applicable with explanation.
-  if (mode === 'constrained_reformulation' && iterated.diagnostics.capped) {
+  // BOUNDARY (owner P1-A): `capped` was introduced for the asymptotic chase
+  // that can never reach the APPROVED BANDS under a dominant lock — the
+  // milk-900 / strawberry-900 signature above — and that signature ALWAYS
+  // leaves residual band violations behind. A capped search whose candidate is
+  // fully engine-clean is different: the budget was spent chasing an unreachable
+  // DIRECTION PREFERENCE, and Direction is a preference while Main identity,
+  // Main ratio, locks, ranges and feasibility are the hard constraints.
+  //
+  // Such a candidate must still be PRESENTED — deleting it produced the owner
+  // 2:1 Multi-Main + range + Direction regression, where a valid banana 300 /
+  // strawberry 150 candidate (exact 2:1, inside its range, batch exact, zero
+  // violations) was reported as `impossible_under_constraints`. It is presented
+  // as the honest nearest-achievable state and, because the cap really did fire,
+  // it stays DIAGNOSTIC ONLY: the Apply door's iteration-cap gate is untouched,
+  // so a capped preview still cannot commit.
+  const cappedCandidateIsEngineClean =
+    bands.hardMetrics.length === 0 && afterViolationList.length === 0;
+  if (
+    mode === 'constrained_reformulation' &&
+    iterated.diagnostics.capped &&
+    !cappedCandidateIsEngineClean
+  ) {
     const conflict = dominantHeldConstraint(input, set);
     const conflictLine = conflict
       ? input.items.find((item) => item.id === conflict.lineId)
