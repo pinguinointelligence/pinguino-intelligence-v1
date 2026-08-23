@@ -25,7 +25,9 @@
     "mapper:runtime-audit": "node scripts/auditMapperRuntimeUsability.mjs",
     "catalog:mapper-only:validate": "node scripts/validateMapperOnlyCatalog.mjs",
     "production-rescue:bundle": "node scripts/buildProductionRescueEdgeBundle.mjs",
-    "production-rescue:bundle-check": "node scripts/buildProductionRescueEdgeBundle.mjs --check"
+    "production-rescue:bundle-check": "node scripts/buildProductionRescueEdgeBundle.mjs --check",
+    "protein:corpus": "node scripts/buildInternetProteinRecipeCorpus.mjs",
+    "protein:corpus:check": "node scripts/buildInternetProteinRecipeCorpus.mjs --check"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.2.8",
