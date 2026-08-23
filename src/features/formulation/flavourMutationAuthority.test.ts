@@ -194,6 +194,32 @@ describe('P1-B served Strawberry Sorbet regression', () => {
     for (const item of proposed.items) expect(Number.isInteger(item.planned_grams)).toBe(true);
   });
 
+  it('SERVED CASE: Main + batch rescale never spends the accent as balancing mass', () => {
+    // The exact served shape: STRAWBERRIES marked Main, 945 g of real recipe
+    // against a 1000 g target, so the preview also rescales the batch. On
+    // staging this returned LEMON 30 -> 188 g with WATER 130 -> 1 g at 10/10,
+    // via the Main-maximisation frontier's linear relaxation.
+    const built = buildOptimizePreview(servedStrawberrySorbet(1000), EMPTY, 'p1b-served-main');
+    expect(built.ok, built.ok ? '' : JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const proposed = built.preview.proposedInput;
+    const lemon = gramsOf(proposed, 'lemon');
+    const water = gramsOf(proposed, 'water');
+
+    // The accent is never inflated: 188 g had no authority behind it.
+    expect(lemon).toBeLessThanOrEqual(30);
+    // The Main frontier may now spend the freed mass on the MAIN flavour, which
+    // is the point of Main maximisation — it must never shrink below the user's
+    // 600 g, and it must never be out-earned by a 30 g accent.
+    expect(gramsOf(proposed, 'strawberries')).toBeGreaterThanOrEqual(600);
+    // NO WATER FLOOR is introduced: water may still legitimately fall to 0 —
+    // strawberries are ~90 % water, so a sorbet can need no ADDED water. What
+    // must not happen is water being displaced BY the flavour accent, i.e. the
+    // pathological 'water 1 g / lemon 188 g' pair.
+    expect(water === 0 || water > 0).toBe(true);
+    expect(lemon).toBeLessThan(188);
+  });
+
   it('keeps the Strawberry Main protected and the preview applicable', () => {
     const built = buildOptimizePreview(servedStrawberrySorbet(), EMPTY, 'p1b-main');
     expect(built.ok).toBe(true);

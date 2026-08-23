@@ -3363,7 +3363,24 @@ function maximizeMainTechnicalObjective(
         ),
       },
     };
-    const solverSet = withTemplateControlledStabilizerLocks(staged, candidateSet);
+    // FLAVOUR MUTATION AUTHORITY (owner P1-B): the Main frontier re-solves a
+    // linear relaxation in which every non-Main line is a free variable, so a
+    // secondary flavour accent is otherwise just mass to allocate — this is the
+    // route that turned a 30 g lemon-juice accent into 188 g while water
+    // collapsed to 1 g. Pin the accents for the solver exactly as the Main
+    // allocation is pinned. Only `solverSet` is constrained, so the preview's
+    // user-facing lock counters keep reporting the user's own locks.
+    const heldFlavourLineIds = flavourHeldLineIds(identityInput);
+    const solverSet = withTemplateControlledStabilizerLocks(staged, {
+      byLineId: {
+        ...candidateSet.byLineId,
+        ...Object.fromEntries(
+          staged.items
+            .filter((item) => heldFlavourLineIds.has(item.id))
+            .map((item) => [item.id, { mode: 'locked', grams: item.planned_grams }] as const),
+        ),
+      },
+    });
     const candidates: RecipeInput[] = seedCandidates.filter(
       (candidate) =>
         Math.abs(mainGroupTotal(contractInput, candidate) - allocation.allocatedMainTotal) <=
@@ -3392,11 +3409,14 @@ function maximizeMainTechnicalObjective(
       candidates.push({
         ...staged,
         items: staged.items.map((item, index) =>
-          mainByLineId.has(item.id) ? item : { ...item, planned_grams: solution[index]! },
+          mainByLineId.has(item.id) || heldFlavourLineIds.has(item.id)
+            ? item
+            : { ...item, planned_grams: solution[index]! },
         ),
       });
       const optionsByIndex = staged.items.map((item, index): readonly number[] => {
-        if (mainByLineId.has(item.id)) return [item.planned_grams];
+        if (mainByLineId.has(item.id) || heldFlavourLineIds.has(item.id))
+          return [item.planned_grams];
         const value = Math.max(0, solution[index]!);
         const floor = Math.floor(value + MAIN_OBJECTIVE_EPSILON_G);
         const ceil = Math.ceil(value - MAIN_OBJECTIVE_EPSILON_G);
