@@ -40,6 +40,14 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/engine/scoring.ts',
   'src/engine/statuses.ts',
   'src/engine/sorbetFreezingPhysics.ts',
+  // REVIEWED 2026-08-23 (owner USER INTENT / SOFT-HOLD). Pure arithmetic over
+  // two existing RecipeItem sidecars — no IO, no network, no dataset, no
+  // ingredient knowledge. Reachable from `corrections/verify.ts`, which needs
+  // the user-intent reduction floor so a correction cannot reduce a positive
+  // user line into the trace region. Production Rescue itself is add-only, so
+  // the floor is inert there; it is included only because the closure is
+  // computed statically.
+  'src/engine/userIntent.ts',
   'src/features/formulation-strategy/strategy.ts',
   'src/features/formulation/ingredientRoles.ts',
   'src/features/formulation/mainIngredientContract.ts',

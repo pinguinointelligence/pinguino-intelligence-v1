@@ -2339,6 +2339,57 @@ function redactProposal(proposal, index = 0) {
 }
 
 //#endregion
+//#region src/engine/userIntent.ts
+/**
+* SOFTENING SCALE, as a fraction of the TARGET BATCH.
+*
+* A pure relative measure (|Δ| / baseline) is unstable at tiny amounts: 2 g of
+* tara gum moving to 3 g would read 0.5 — „half the ingredient gone" — and
+* would outrank a 109 g move on the milk. A pure absolute measure (|Δ| grams)
+* is the opposite lie: it cannot tell 40 → 1 from 600 → 561, because both moved
+* 39 g.
+*
+* The fix is a relative measure with an ABSOLUTE floor added to the
+* denominator, taken from the only scale this layer owns — the batch — so it is
+* deterministic, batch-independent in meaning and not a tuned constant.
+*/
+const USER_INTENT_DRIFT_SOFTENING_FRACTION = .001;
+/**
+* MATERIAL DEVIATION THRESHOLD — the single global policy line between
+* „PI rebalanced your recipe" and „PI is proposing to change this ingredient
+* substantially" (owner §7, §12, §13).
+*
+* A line past this is NOT forbidden. It is CONSENT-REQUIRED: the solver must
+* first prove no better-preserving candidate reaches the same result, and the
+* Preview must say so in words instead of presenting it as a small correction.
+*
+* At a 1000 g batch, on a 40 g line, the boundary sits at 40 − 0.5 × 41 =
+* 19.5 g — so 40 → 20 g is ordinary optimization and 40 → 19 g starts asking.
+* ONE documented global number, deliberately not per ingredient or per profile.
+*/
+const MATERIAL_USER_INTENT_DRIFT = .5;
+/**
+* The lowest amount a soft-held line may reach while still being ordinary
+* optimization. Below this the change is a material deviation.
+*/
+const materialDeviationFloorGrams = (baselineGrams, targetBatchGrams) => baselineGrams - MATERIAL_USER_INTENT_DRIFT * (baselineGrams + Math.max(0, targetBatchGrams) * USER_INTENT_DRIFT_SOFTENING_FRACTION);
+/**
+* The gram amount the USER stands behind for this line, or null when the line
+* carries no user intent (PI put it there).
+*
+* `user_intent_anchor_grams` is written when the user adds an ingredient,
+* demotes a Main back to Standard, or adopts a library recipe;
+* `user_target_grams` is written when the user types an amount. Either is
+* intent; the anchor wins when both are present.
+*/
+function userLineBaselineGrams(item) {
+	const anchored = item.user_intent_anchor_grams ?? 0;
+	const typed = item.user_target_grams ?? 0;
+	const baseline = anchored > 0 ? anchored : typed;
+	return baseline > 0 ? baseline : null;
+}
+
+//#endregion
 //#region src/engine/corrections/verify.ts
 /**
 * Correction verification (spec §13 step 4): proposals are never trusted on
@@ -2360,6 +2411,28 @@ function redactProposal(proposal, index = 0) {
 * allow_main_ingredient_reduction is explicitly true (default false).
 */
 const EPSILON$2 = 1e-9;
+/**
+* USER-INTENT REDUCTION FLOOR: the lowest amount this line may be reduced TO by
+* an ordinary correction (owner USER INTENT / SOFT-HOLD).
+*
+* Derived from the line's OWN user baseline, so it binds on every engine path
+* that can reduce — the correction solver, the draft ladder, ECO, Rescue —
+* without any caller having to remember to pass it.
+*
+* Returns 0 (no floor) when the line carries no user intent, when the caller
+* supplied no batch scale, or when the line is already at/below its floor —
+* a floor can only forbid going LOWER, it can never force a line upward, and it
+* can never make an already-legal state unreachable.
+*/
+function reductionFloorGrams(line, constraints) {
+	const batch = constraints.target_batch_grams;
+	if (batch === void 0 || !(batch > 0)) return 0;
+	const baseline = userLineBaselineGrams(line);
+	if (baseline === null) return 0;
+	const floor = materialDeviationFloorGrams(baseline, batch);
+	if (!Number.isFinite(floor) || floor <= 0) return 0;
+	return Math.min(floor, line.planned_grams);
+}
 /** May this line be reduced under the given constraints? */
 function isReductionAllowed(line, constraints) {
 	if (constraints.context === "actual_batch") return false;
@@ -2398,6 +2471,8 @@ function applyCorrectionActions(input, actions, constraints, candidates) {
 			if (!line) return null;
 			if (!isReductionAllowed(line, constraints)) return null;
 			if (action.grams > line.planned_grams + EPSILON$2) return null;
+			const floor = reductionFloorGrams(line, constraints);
+			if (line.planned_grams - action.grams < floor - EPSILON$2) return null;
 			line.planned_grams = Math.max(0, line.planned_grams - action.grams);
 		}
 	}
@@ -2649,7 +2724,8 @@ function proposeCorrections(request) {
 		context,
 		mode: input.mode,
 		allow_main_ingredient_reduction,
-		machine_capacity_grams: input.machine_capacity_grams
+		machine_capacity_grams: input.machine_capacity_grams,
+		target_batch_grams: input.target_batch_grams
 	};
 	const before = targetBandOverride ? applyTargetBandOverride(calculateRecipe(input), targetBandOverride) : calculateRecipe(input);
 	const detect = targetBandOverride ? (result) => detectViolations(applyTargetBandOverride(result, targetBandOverride)) : detectViolations;
@@ -2790,7 +2866,8 @@ function buildReduceAction(before, violation, constraints) {
 		action: null,
 		blocking: null
 	};
-	const grams = Math.min(ideal, dominant.planned_grams);
+	const reducibleGrams = dominant.planned_grams - reductionFloorGrams(dominant, constraints);
+	const grams = Math.min(ideal, reducibleGrams);
 	if (grams < MIN_ACTION_GRAMS) return {
 		action: null,
 		blocking: null
@@ -2891,7 +2968,8 @@ function applyAutoFix(args) {
 		context,
 		mode: input.mode,
 		allow_main_ingredient_reduction: args.allowMainIngredientReduction ?? false,
-		machine_capacity_grams: input.machine_capacity_grams
+		machine_capacity_grams: input.machine_capacity_grams,
+		target_batch_grams: input.target_batch_grams
 	};
 	const candidates = args.candidates ?? DEFAULT_CORRECTION_CANDIDATES;
 	const newInput = applyCorrectionActions(input, proposal.actions, constraints, candidates);

@@ -148,6 +148,14 @@ export {
 export type * from './corrections/types';
 export { DEFAULT_CORRECTION_CANDIDATES, selectCandidates } from './corrections/candidates';
 export { detectViolations, proposeCorrections } from './corrections/solver';
+export {
+  MATERIAL_USER_INTENT_DRIFT,
+  USER_INTENT_DRIFT_SOFTENING_FRACTION,
+  isMaterialUserIntentDeviation,
+  materialDeviationFloorGrams,
+  normalizedLineDrift,
+  userLineBaselineGrams,
+} from './userIntent';
 export type { CorrectionConstraints, VerifyArgs, VerifyOutcome } from './corrections/verify';
 export {
   applyCorrectionActions,

@@ -16,6 +16,7 @@ import {
   type TargetMetric,
 } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { materialDeviationFloorGrams, userLineBaselineGrams } from '@/engine';
 import { captureMainIngredientIntent } from '@/features/formulation/mainIngredientContract';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import { proteinQualificationPercentBand } from '@/features/protein-gelato/proteinAuthority';
@@ -324,6 +325,24 @@ export interface MainTechnicalLinearBound {
   certificate: string[];
 }
 
+/**
+ * The lowest amount a soft-held user line may occupy in the relaxation.
+ *
+ * Never below 1 g (the executable zero-gram invariant still stands) and never
+ * above the line's current amount, so adding this bound can only shrink the
+ * feasible region where the user actually asked for something — it can never
+ * make an already-feasible recipe infeasible by pushing a line UP.
+ */
+function userIntentFloorGrams(
+  item: RecipeInput['items'][number],
+  targetBatchGrams: number,
+): number {
+  const baseline = userLineBaselineGrams(item);
+  if (baseline === null) return 1;
+  const floor = materialDeviationFloorGrams(baseline, targetBatchGrams);
+  return Math.max(1, Math.min(floor, item.planned_grams));
+}
+
 export function mainTechnicalLinearUpperBound(input: {
   recipe: RecipeInput;
   constraints: ConstraintSet;
@@ -339,6 +358,18 @@ export function mainTechnicalLinearUpperBound(input: {
   /** Optional smaller deterministic branch-and-bound budget for fixed-Main
    * candidate vectors. Exhaustion stays fail-closed and never certifies. */
   integerNodeBudget?: number;
+  /**
+   * Floor every soft-held user line at its material-deviation boundary rather
+   * than at the 1 g presence floor (owner SOFT-HOLD §9).
+   *
+   * OFF by default, and deliberately so. This relaxation serves two different
+   * jobs: computing a technical BOUND („how much of X is achievable at all?"),
+   * and producing a CANDIDATE VECTOR that becomes the user's recipe. Only the
+   * second may be constrained by user intent — flooring the bound too would
+   * change the meaning of „technically achievable maximum" and was measured to
+   * drop a proven 197 g flavour maximum to 46 g.
+   */
+  respectUserIntentFloors?: boolean;
 }): MainTechnicalLinearBound {
   const { recipe, constraints, snapshots } = input;
   const size = recipe.items.length;
@@ -424,14 +455,39 @@ export function mainTechnicalLinearUpperBound(input: {
       row[index] = 1;
       addLower(
         row,
-        preservesVisibleStandard ? Math.max(1, constraint.minGrams) : constraint.minGrams,
+        preservesVisibleStandard
+          ? Math.max(
+              input.respectUserIntentFloors === true
+                ? userIntentFloorGrams(item, recipe.target_batch_grams)
+                : 1,
+              constraint.minGrams,
+            )
+          : constraint.minGrams,
         `range_min:${item.id}`,
       );
       addUpper(row, constraint.maxGrams, `range_max:${item.id}`);
     } else if (preservesVisibleStandard) {
       const row = Array.from({ length: size }, () => 0);
       row[index] = 1;
-      addLower(row, 1, `standard_presence_min:${item.id}`);
+      // USER-INTENT FLOOR, not the PRESENCE floor (owner SOFT-HOLD §9).
+      //
+      // This bound used to be a literal `addLower(row, 1, …)`. The relaxation
+      // therefore treated every positive user line as freely reducible down to
+      // a 1 g trace, and — because the objective pushes non-objective lines to
+      // their lower bound — that is exactly where they landed. It is the true
+      // source of the owner's served 40 g → 1 g dried egg yolk: the collapse
+      // was not chosen by any search, it was the LP's own feasible region.
+      //
+      // The floor now comes from the shared authority, so „how little of this
+      // ingredient may remain" has ONE definition across the LP, the engine
+      // solver, the gram ladder and ECO.
+      addLower(
+        row,
+        input.respectUserIntentFloors === true
+          ? userIntentFloorGrams(item, recipe.target_batch_grams)
+          : 1,
+        `standard_presence_min:${item.id}`,
+      );
     }
   });
 

@@ -34,7 +34,16 @@
  * the recipe needs it — but a MATERIAL collapse must be proven necessary and
  * surfaced as an explicit tradeoff instead of being called a normal correction.
  */
-import type { RecipeInput, RecipeItem } from '@/engine';
+import {
+  MATERIAL_USER_INTENT_DRIFT,
+  USER_INTENT_DRIFT_SOFTENING_FRACTION,
+  isMaterialUserIntentDeviation,
+  materialDeviationFloorGrams,
+  normalizedLineDrift,
+  userLineBaselineGrams as engineUserLineBaselineGrams,
+  type RecipeInput,
+  type RecipeItem,
+} from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
 
@@ -173,10 +182,7 @@ export function classifyUserLineFlexibility(
 export function userLineBaselineGrams(item: RecipeItem, set: ConstraintSet): number | null {
   const flexibility = classifyUserLineFlexibility(item, set);
   if (CLASS_WEIGHT[flexibility] <= 0) return null;
-  const anchored = item.user_intent_anchor_grams ?? 0;
-  const typed = item.user_target_grams ?? 0;
-  const baselineGrams = anchored > 0 ? anchored : typed;
-  return baselineGrams > 0 ? baselineGrams : null;
+  return engineUserLineBaselineGrams(item);
 }
 
 export function buildUserIntentBaseline(
@@ -188,10 +194,8 @@ export function buildUserIntentBaseline(
     const flexibility = classifyUserLineFlexibility(item, set);
     const weight = CLASS_WEIGHT[flexibility];
     if (weight <= 0) continue;
-    const anchored = item.user_intent_anchor_grams ?? 0;
-    const typed = item.user_target_grams ?? 0;
-    const baselineGrams = anchored > 0 ? anchored : typed;
-    if (!(baselineGrams > 0)) continue;
+    const baselineGrams = engineUserLineBaselineGrams(item);
+    if (baselineGrams === null) continue;
     baseline.set(item.id, {
       lineId: item.id,
       canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
@@ -211,106 +215,20 @@ export function buildUserIntentBaseline(
 /* ── the drift measure (owner §9) ────────────────────────────────────────── */
 
 /**
- * SOFTENING SCALE, as a fraction of the TARGET BATCH.
- *
- * A pure relative measure (|Δ| / baseline) is unstable at tiny amounts: a
- * 2 g tara gum moving to 3 g would read 0.5 — "half the ingredient gone" — and
- * would outrank a 109 g move on the milk. A pure absolute measure (|Δ| grams)
- * is the opposite lie: it cannot tell 40 → 1 from 600 → 561, because both
- * moved 39 g, and §9 forbids exactly that.
- *
- * The fix is a relative measure with an ABSOLUTE floor added to the
- * denominator, and the floor is taken from the only scale this layer owns —
- * the batch — so it is deterministic, batch-independent in meaning and not a
- * tuned constant. It is the same 0.1 % rung the gram ladder already uses as
- * its smallest step: below one ladder rung, a move is not a deviation at all.
+ * ONE SEMANTIC AUTHORITY (owner §10). The drift arithmetic and the material
+ * policy line live in the ENGINE (`@/engine` → `engine/userIntent.ts`), because
+ * the engine's own correction solver can reduce a line and therefore needs the
+ * floor to bind there. They are re-exported here — never restated — so local
+ * correction, ECO, full formulation, Rescue and candidate ranking all measure
+ * user intent with exactly the same numbers.
  */
-export const USER_INTENT_DRIFT_SOFTENING_FRACTION = 0.001;
-
-/**
- * THE DRIFT FORMULA (single global policy, owner §9).
- *
- *              | proposed − baseline |
- *   drift =  ─────────────────────────────
- *             baseline + batch × 0.001
- *
- * At the canonical 1000 g batch the softening term is 1 g, so:
- *
- *   yolk    40 g →   1 g   →  39 / 41  = 0.951   catastrophic
- *   yolk    40 g →  35 g   →   5 / 41  = 0.122   ordinary optimization
- *   milk   600 g → 561 g   →  39 / 601 = 0.065   ordinary optimization
- *   tara     2 g →   3 g   →   1 / 3   = 0.333   noticeable, not catastrophic
- *
- * — which is exactly the ordering §9 demands: the same 39 g move reads 0.951
- * on the yolk and 0.065 on the milk, and the tiny stabilizer line cannot
- * dominate the sum merely for being small.
- *
- * Unbounded above by design: doubling a line is a real deviation and must not
- * saturate at the same number as tripling it.
- */
-export function normalizedLineDrift(
-  baselineGrams: number,
-  proposedGrams: number,
-  targetBatchGrams: number,
-): number {
-  const softening = Math.max(0, targetBatchGrams) * USER_INTENT_DRIFT_SOFTENING_FRACTION;
-  const denominator = baselineGrams + softening;
-  if (!(denominator > 0)) return 0;
-  return Math.abs(proposedGrams - baselineGrams) / denominator;
-}
-
-/**
- * MATERIAL DEVIATION THRESHOLD — the single global policy line between
- * "PI rebalanced your recipe" and "PI is proposing to change this ingredient
- * substantially" (owner §7, §12, §13).
- *
- * A line whose normalized drift exceeds this is NOT forbidden. It is
- * CONSENT-REQUIRED: the solver must first prove no better-preserving candidate
- * reaches the same result, and the Preview must say what it is doing in words
- * instead of presenting it as an ordinary small correction.
- *
- * At a 1000 g batch, on a 40 g line, the material boundary sits at
- * 40 − 0.5 × 41 = 19.5 g — so 40 → 20 g is ordinary optimization and
- * 40 → 19 g starts asking. This is ONE documented global number, deliberately
- * not per ingredient and not per profile.
- */
-export const MATERIAL_USER_INTENT_DRIFT = 0.5;
-
-/**
- * A MATERIAL deviation is a COLLAPSE, not any large move.
- *
- * The owner brief is specific about which direction destroys intent: „40 g →
- * 1 g is effectively removing the ingredient". Growth is not that — §11 is
- * equally binding („do not freeze the recipe"), and PI must stay free to raise
- * a balancing line hard when the recipe needs it. Treating a rise as
- * consent-required was measured to push ordinary rebalances (inulin 20 → 70 g,
- * cream 120 → 220 g) into the proof-and-disclose path, which both narrows the
- * search and floods the Preview with warnings about PI doing its job.
- *
- * Growth still counts fully in `normalizedLineDrift`, so among candidates the
- * engine scores the same the solver still prefers the one closer to the amount
- * the user asked for — it simply does not demand consent for it.
- */
-export const isMaterialUserIntentDeviation = (
-  baselineGrams: number,
-  proposedGrams: number,
-  targetBatchGrams: number,
-): boolean =>
-  proposedGrams < baselineGrams &&
-  normalizedLineDrift(baselineGrams, proposedGrams, targetBatchGrams) > MATERIAL_USER_INTENT_DRIFT;
-
-/**
- * The largest amount a soft-held line may reach WITHOUT becoming a material
- * deviation, in the reducing direction. Used by the gram ladder to place a
- * rung exactly at the boundary instead of at the presence floor of 1 g.
- */
-export const materialDeviationFloorGrams = (
-  baselineGrams: number,
-  targetBatchGrams: number,
-): number =>
-  baselineGrams -
-  MATERIAL_USER_INTENT_DRIFT *
-    (baselineGrams + Math.max(0, targetBatchGrams) * USER_INTENT_DRIFT_SOFTENING_FRACTION);
+export {
+  MATERIAL_USER_INTENT_DRIFT,
+  USER_INTENT_DRIFT_SOFTENING_FRACTION,
+  isMaterialUserIntentDeviation,
+  materialDeviationFloorGrams,
+  normalizedLineDrift,
+};
 
 /* ── whole-candidate drift (the ranking key) ─────────────────────────────── */
 

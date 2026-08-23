@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 303581,
-    "sha256": "76bd852ad536d5c2d80ba83a7b57530271b5297037bd0d99eb7523a8febe672d",
+    "bytes": 307342,
+    "sha256": "5459af1b1f420f1aecc096be8fb840e9bf53abec5eacdd261d70e228e8d12e9a",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -77,7 +77,7 @@
     },
     {
       "path": "src/engine/corrections/apply.ts",
-      "sha256": "a44a0004f26a62629eb6930b6197e1ee0318b41a220ce5b3228ede70508a2355"
+      "sha256": "6562744a1ad546b97536fdf956a4109779f9177b04b52a72529f428196cdebb6"
     },
     {
       "path": "src/engine/corrections/candidates.ts",
@@ -89,11 +89,11 @@
     },
     {
       "path": "src/engine/corrections/solver.ts",
-      "sha256": "d5dcdc4eb30cc2759e5ef575a6c5c1842e0fdd0783e6f8262a43aecc4cadaea0"
+      "sha256": "8fe9dd6915ed789fdbd3ef2a2c9309a3c839bdbe4f1ffa7e128b9fdeadc0df64"
     },
     {
       "path": "src/engine/corrections/verify.ts",
-      "sha256": "8a58230a0bf714c7092cdfb864ce40ddb3cf7ec2162cf5a0454385f8c9bae297"
+      "sha256": "e97a939a5aa47a2b824d312fd31a7a9952eed11c168849d65f47a6f06e3ebc5c"
     },
     {
       "path": "src/engine/cost.ts",
@@ -126,6 +126,10 @@
     {
       "path": "src/engine/statuses.ts",
       "sha256": "e84f73b943ed9f4675673f412e5e93b014d6e383229ee5db3df770408c220f4e"
+    },
+    {
+      "path": "src/engine/userIntent.ts",
+      "sha256": "aa86ddd3338e2c90e0e0169e1e18d2c7d498756ef5563f59e5fdf6b5c0bc37c7"
     },
     {
       "path": "src/features/formulation-strategy/strategy.ts",
@@ -260,5 +264,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "cc3f0db75529a3e16ec36ddebf1527fd35af95dae76fe025940d460a416a5c18"
+  "sourceClosureSha256": "aaadb00a166ad71ff7bc1ddbb000fb5c91069d32314feeaeca986fb8c1100f91"
 }

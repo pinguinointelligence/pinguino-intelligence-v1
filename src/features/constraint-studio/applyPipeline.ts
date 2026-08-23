@@ -2298,6 +2298,8 @@ function iterateSolverToFixedPoint(
         allow_main_ingredient_reduction: false,
         // Capacity is re-established by construction after every accepted line.
         machine_capacity_grams: null,
+        // Scale for the user-intent reduction floor (owner SOFT-HOLD).
+        target_batch_grams: working.target_batch_grams,
       } as const;
       const normalize = (candidate: RecipeInput) => {
         const normalized = restore(
@@ -2646,6 +2648,15 @@ export function projectManualIngredientTarget(
   }
 
   const requestedGrams = Math.max(0, Math.round(targetLine.user_target_grams!));
+  // NOTE: this lower bound stays the PRESENCE floor on purpose. A projection
+  // that lands below the user's request here is a PROVEN-nearest answer — the
+  // search reports `firstCloserRejectedGrams` and `provenNearest`, i.e. every
+  // closer amount was individually shown infeasible under the user's own hard
+  // locks. That is precisely the §12 case where a larger deviation is allowed,
+  // and it is classified and disclosed as a material deviation by
+  // `finishPreview`. The owner's 40 g → 1 g collapse was NOT this: there the
+  // yolk was not the target line at all, and its 1 g came from the relaxation's
+  // own lower bound (see `userIntentFloorGrams` in mainTechnicalLinearBound).
   const minimumGrams = requestedGrams > 0 ? 1 : 0;
   const batchMaximumGrams = Math.max(minimumGrams, Math.floor(identityInput.target_batch_grams));
   const excluded = new Set(options.excludedIngredientIds ?? []);
@@ -2772,6 +2783,12 @@ export function projectManualIngredientTarget(
       snapshots: options.productBehaviorSnapshots ?? {},
       excludedIngredientIds: options.excludedIngredientIds,
       objectiveLineIds: [targetLine.id],
+      // This call BUILDS THE RECIPE, so the user's other positive lines are
+      // not free mass for the objective to consume. Without this the objective
+      // pushes every non-objective user line to the relaxation's lower bound —
+      // which is exactly how the owner's 40 g dried egg yolk arrived at 1 g
+      // while the projection was busy targeting a different line entirely.
+      respectUserIntentFloors: true,
     });
     const solution =
       bound.status === 'certified' && bound.integerSolutionCertified
@@ -6162,6 +6179,7 @@ function buildOptimizePreviewWithDirection(
           mode: working.mode,
           allow_main_ingredient_reduction: false,
           machine_capacity_grams: null,
+          target_batch_grams: working.target_batch_grams,
         },
         normalize: restoreBatch,
         priceOverrides,

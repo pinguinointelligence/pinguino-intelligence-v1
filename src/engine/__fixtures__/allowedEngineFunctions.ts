@@ -60,6 +60,15 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   'applyCorrectionActions',
   'verifyCorrectionProposal',
   'isReductionAllowed',
+  // USER-INTENT MEASURE (owner SOFT-HOLD). Pure arithmetic over two existing
+  // product-layer sidecars — no band, no dose, no ingredient knowledge. It
+  // lives in the engine because the correction solver can REDUCE a line, so
+  // the floor has to bind here; the product layer re-exports these rather than
+  // restating them, keeping one semantic authority.
+  'normalizedLineDrift',
+  'isMaterialUserIntentDeviation',
+  'materialDeviationFloorGrams',
+  'userLineBaselineGrams',
   'redactProposal',
   // Auto Fix apply/idempotence core (Slice 1A) — pure wrappers, no new math
   'proposeAutoFix',
