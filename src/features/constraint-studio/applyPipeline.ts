@@ -4885,7 +4885,7 @@ function buildFormulationPreviewInternal(
   const manualTarget = projectManualIngredientTarget(input, set, solverOptions, iterated.working);
   const manualTargetInput = manualTarget.proof ? manualTarget.input : iterated.working;
   const mainObjective = maximizeMainFlavourObjective(input, manualTargetInput, set, solverOptions);
-  const working = mainObjective.input;
+  let working = mainObjective.input;
   const solverRounds = iterated.diagnostics.solverInvocations;
   const lastProposal = iterated.lastProposal;
 
@@ -4948,6 +4948,24 @@ function buildFormulationPreviewInternal(
   // (owner Agent 3): the verdict below, the scaling-detector evidence and the
   // attempted-move log ride the preview, and hard NATIVE-band failure after
   // real engine moves becomes the honest `impossible_under_constraints`.
+  // SHARED DIRECTION NEAREST — deliberately ranked BEFORE the concession check
+  // below. That branch bails out with `no_proposal` and leaves the user on the
+  // unchanged draft, describing it as "nearest-achievable"; measured on the
+  // Gelato −13 starter at Sweetness 0 the unchanged draft sat at POD 16.3677
+  // (distance 1.3677 from [14,15]) while a legal 15.1365 candidate — distance
+  // 0.1365 — was reachable from the same draft. Conceding while something
+  // strictly nearer exists is precisely the non-nearest NEAREST this fixes.
+  const directionRanked = improveDirectionNearestVector(input, set, working, createdAt, options);
+  // §13 — NEVER carry a stale Main proof. The Main frontier ran against the
+  // pre-ranking candidate and the Apply door re-derives `exactAcceptedMainGrams`
+  // and `technicalScore` from whatever the Preview actually carries, so the
+  // certified frontier is rebuilt whenever the ranking replaced the candidate.
+  const rankedMainObjective =
+    directionRanked === working
+      ? mainObjective
+      : maximizeMainFlavourObjective(input, directionRanked, set, solverOptions);
+  working = rankedMainObjective.input;
+
   const afterViolationList = detectViolations(calculateRecipe(working));
   if (mode !== 'constrained_reformulation' && !beatsBaseline(input, working)) {
     const exactDirectionActive = hasActiveExactDirectionObjective(input);
@@ -5098,19 +5116,6 @@ function buildFormulationPreviewInternal(
           ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }]
           : [];
       })();
-
-  // SHARED DIRECTION NEAREST: rank the final candidate by its distance to the
-  // band the user actually requested before it is practicalized into a Preview.
-  const directionRanked = improveDirectionNearestVector(input, set, working, createdAt, options);
-  // §13 — NEVER carry a stale Main proof. The Main frontier ran against the
-  // pre-ranking candidate, and the Apply door re-derives `exactAcceptedMainGrams`
-  // and `technicalScore` from whatever the Preview actually carries. When the
-  // ranking replaced the candidate, the certified frontier is rebuilt on the
-  // replacement so the proof describes the vector Apply will verify.
-  const rankedMainObjective =
-    directionRanked === working
-      ? mainObjective
-      : maximizeMainFlavourObjective(input, directionRanked, set, solverOptions);
 
   const preview = finishPreview(
     'optimize',
@@ -5407,6 +5412,11 @@ function buildSorbetDirectionCandidatePreview(params: {
 /** The five Direction selector positions, in canonical order. */
 const DIRECTION_LEVELS: readonly RecipeDirectionTarget[] = [-2, -1, 0, 1, 2];
 
+/** How many neighbouring selector positions the NEAREST search may probe per
+ * missed axis. Each probe is a full solve, so this directly bounds the cost of
+ * every Direction-active Preview. */
+const DIRECTION_NEAREST_MAX_PROBES = 3;
+
 /**
  * SHARED DIRECTION NEAREST (owner 2026-08-23).
  *
@@ -5457,17 +5467,80 @@ function improveDirectionNearestVector(
   const requested = requestedDirectionBands(input);
   if (requested.length === 0) return working;
 
-  let best = { input: working, measure: directionDistance(working, requested) };
-  // Already inside every requested band: this is ACHIEVED, not NEAREST.
-  if (best.measure.missedAxes === 0) return working;
-
   const askedTargets = input.goals?.direction_targets ?? DEFAULT_RECIPE_DIRECTION_TARGETS;
-  const targetMainGrams = mainGroupTotal(input, working);
   const probeOptions: OptimizePreviewOptions = { ...options, directionNearestPass: true };
 
+  /**
+   * Every hard contract a candidate must satisfy before its Direction distance
+   * is allowed to matter at all. The INCUMBENT is held to exactly the same bar
+   * as the probes: an incumbent that cannot pass these gates is discarded
+   * downstream (`beatsBaseline` refuses a natively unsafe proposal), which
+   * leaves the user on the unchanged draft — so it must never be able to
+   * silently win the ranking. Measured on the Gelato −13 starter at Sweetness 0:
+   * the solver candidate sat exactly in [14,15] but was natively UNSAFE, the
+   * preview conceded `no_proposal`, and the user was left on the draft at POD
+   * 16.3677 (distance 1.3677) while a legal 15.1365 candidate — distance 0.1365
+   * — was reachable from the same draft.
+   */
+  const legal = (candidate: RecipeInput, mainAnchorGrams: number): boolean =>
+    detectViolations(calculateRecipe(candidate)).length === 0 &&
+    // Verified with the SAME arguments the Apply door uses, constraints
+    // included: a candidate this search accepts must be one Apply accepts.
+    verifyMainIngredientIdentity(input, candidate, set.byLineId).ok &&
+    verifyConstraintsPreserved(set, candidate).ok &&
+    Math.abs(mainGroupTotal(input, candidate) - mainAnchorGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
+    Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G &&
+    !candidate.items.some((item) => item.planned_grams <= 0);
+
+  // The incumbent is the EXACT pre-practicalization vector, so it is judged by
+  // the gate that actually decides its fate downstream rather than by the
+  // post-practicalization contract applied to the probes: `beatsBaseline` is
+  // what refuses a natively unsafe proposal and turns the preview into
+  // `no_proposal`, leaving the user on the unchanged draft.
+  const incumbentSurvives = beatsBaseline(input, working);
+  // When the incumbent cannot stand, the honest bar is what a concession
+  // actually leaves behind: the unchanged draft.
+  const targetMainGrams = incumbentSurvives
+    ? mainGroupTotal(input, working)
+    : mainGroupTotal(input, input);
+  let best = {
+    input: working,
+    measure: directionDistance(incumbentSurvives ? working : input, requested),
+  };
+  // A surviving incumbent already inside every requested band is ACHIEVED.
+  if (incumbentSurvives && best.measure.missedAxes === 0) return working;
+
   for (const axis of requested) {
-    for (const level of DIRECTION_LEVELS) {
-      if (level === askedTargets[axis.axis]) continue;
+    // §27 — only an axis that actually MISSES its band can be improved by
+    // re-aiming it, so a satisfied axis is never probed.
+    if (best.measure.missedAxes === 0) break;
+    if ((best.measure.perAxis.find((entry) => entry.axis === axis.axis)?.distance ?? 0) <= 0) {
+      continue;
+    }
+    const asked = askedTargets[axis.axis];
+    // §27 — probe the NEAREST selector positions first. A neighbouring band is
+    // the likeliest source of a nearer candidate, so this ordering combined
+    // with the exact-hit exit below usually settles after one or two probes
+    // instead of the full four. The order cannot be pruned by direction: at
+    // Protein −11 the candidate nearest to +2's band [16,17] was produced by
+    // asking for LESS sweetness (+1 → POD 15.5571), so a "need more ⇒ only ask
+    // higher" shortcut would have missed the correct answer entirely.
+    const byProximity = [...DIRECTION_LEVELS]
+      .filter((level) => level !== asked)
+      .sort((left, right) => Math.abs(left - asked) - Math.abs(right - asked) || left - right)
+      // BOUNDED, and deliberately so: the two NEAREST positions. This is a real
+      // cap and is stated rather than hidden — a candidate three or four
+      // positions away could in principle be nearer. It is not a guess: the
+      // cross-profile matrix in `sharedDirectionNearestMatrix.test.ts` asserts
+      // the full contract for every level against ALL FIVE levels' delivered
+      // candidates, across Gelato/Sorbet/Vegan/Protein × 3 temperatures, so an
+      // insufficient bound fails loudly there rather than degrading silently.
+      // Every historically proven defect is repaired within this bound
+      // (Protein −11 +2 ← +1, Protein −13 −1 ← −2, Gelato −13 0 ← −1).
+      .slice(0, DIRECTION_NEAREST_MAX_PROBES);
+    for (const level of byProximity) {
+      // Nothing can beat a candidate already inside the requested band.
+      if (best.measure.missedAxes === 0) break;
       const probe = buildOptimizePreview(
         {
           ...input,
@@ -5484,18 +5557,7 @@ function improveDirectionNearestVector(
       // Rebase onto the ORIGINAL request: the user asked for their own level,
       // so only the gram vector is borrowed — never the probe's goals.
       const candidate: RecipeInput = { ...input, items: probe.preview.proposedInput.items };
-      if (
-        detectViolations(calculateRecipe(candidate)).length > 0 ||
-        // Verified with the SAME arguments the Apply door uses, constraints
-        // included: a candidate this search accepts must be one Apply accepts.
-        !verifyMainIngredientIdentity(input, candidate, set.byLineId).ok ||
-        !verifyConstraintsPreserved(set, candidate).ok ||
-        Math.abs(mainGroupTotal(input, candidate) - targetMainGrams) > MAIN_OBJECTIVE_EPSILON_G ||
-        Math.abs(plannedSum(candidate) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G ||
-        candidate.items.some((item) => item.planned_grams <= 0)
-      ) {
-        continue;
-      }
+      if (!legal(candidate, targetMainGrams)) continue;
       const measure = directionDistance(candidate, requested);
       const order = compareDirectionDistance(measure, best.measure);
       if (order !== null && order < 0) best = { input: candidate, measure };

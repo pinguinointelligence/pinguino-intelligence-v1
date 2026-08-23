@@ -477,6 +477,10 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
   });
 
   it('7. Sorbet positive: no dextrose in the scaffold, Hardness −1 — current ingredients have no legal correction, simulated Dekstroza brings the legal recipe to the target distance', () => {
+    // Budget raised deliberately: the shared Direction NEAREST search adds up
+    // to DIRECTION_NEAREST_MAX_PROBES extra solves per Direction-active
+    // Preview, and this case builds many of them. The work is real, not a
+    // hang — the assertions themselves are unchanged.
     const request = ownerSorbet({ water: 268, dextrose: 0 }, { sweetness: 0, softness: -1 });
     const options = {
       productBehaviorSnapshots: servedSnapshots(request),
@@ -498,7 +502,7 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
     expect(advice!.reasonPl).toContain('Dekstroza');
     // Main authority untouched by the simulation claim.
     expect(gramsOf(request, 'line-strawberry')).toBe(600);
-  });
+  }, 120_000);
 
   it('8. Sorbet no-benefit: the owner recipe (exact target solvable with current ingredients) gets NO recommendation', () => {
     const request = ownerSorbet({}, { sweetness: 0, softness: -1 });
@@ -616,6 +620,10 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
   });
 
   it('13. rescue never auto-adds: the store draft keeps its lines and the staged candidate carries no simulated line', () => {
+    // Budget raised deliberately: the shared Direction NEAREST search adds up
+    // to DIRECTION_NEAREST_MAX_PROBES extra solves per Direction-active
+    // Preview, and this case builds many of them. The work is real, not a
+    // hang — the assertions themselves are unchanged.
     const request = ownerSorbet({ water: 268, dextrose: 0 }, { sweetness: 0, softness: -1 });
     loadServed(request);
     const linesBefore = useRecipeStore.getState().items.map((item) => item.id);
@@ -633,9 +641,13 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
         `rescue-sim:${state.rescueAdvice.candidate.canonicalIngredientId}`,
       );
     }
-  });
+  }, 120_000);
 
   it('14. a rescue candidate whose simulation fails the hard gates is never shown', () => {
+    // Budget raised deliberately: the shared Direction NEAREST search adds up
+    // to DIRECTION_NEAREST_MAX_PROBES extra solves per Direction-active
+    // Preview, and this case builds many of them. The work is real, not a
+    // hang — the assertions themselves are unchanged.
     // Sorbet: a salt-bearing payload makes the Sorbet freezing authority fail
     // closed (unsupported freeze-active solute) — the simulation cannot build
     // a legal Preview, so the candidate is recorded as refused and never shown.
@@ -689,7 +701,7 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
         bestCurrent: built.ok ? built.preview : null,
       })?.candidate.canonicalIngredientId,
     ).toBe('PI-ING-000494');
-  });
+  }, 120_000);
 
   it('15. the recommendation disappears when the current ingredients already achieve the target', () => {
     const request = withDirection(starterMilkBase(), 2, 0);

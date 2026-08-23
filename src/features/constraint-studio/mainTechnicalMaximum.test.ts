@@ -481,6 +481,10 @@ describe('Main technical maximum — exact Watermelon authority', { timeout: SOL
 
   // Full Direction sweep at 18 solver rounds — timeout budget only (see above).
   it('does not cross the 20% ECO Main floor to chase an extreme Direction target', () => {
+    // Budget raised deliberately: the shared Direction NEAREST search adds up
+    // to DIRECTION_NEAREST_MAX_PROBES extra solves per Direction-active
+    // Preview, and this case builds many of them. The work is real, not a
+    // hang — the assertions themselves are unchanged.
     const seedInput = watermelonFixture(300, 'eco');
     const snapshots = snapshotsWithApprovedEnvelope(seedInput);
     const seeded = buildOptimizePreview(seedInput, { byLineId: {} }, '2026-08-20T00:02:00.000Z', {
