@@ -475,6 +475,13 @@ export type MapperInferenceTier =
   | 'mapper_family_consensus';
 
 export interface MapperInferenceInput {
+  /**
+   * Macros already established for THIS product, from its label or an exact
+   * source card. When present they condition every cohort: a neighbour whose own
+   * published macros are incompatible cannot be evidence about this product,
+   * however similar its name reads.
+   */
+  knownMacros?: Partial<Record<'fat_percent' | 'protein_percent' | 'carbohydrate_percent', number>>;
   name: string | null;
   variant?: string | null;
   brand?: string | null;
@@ -565,17 +572,26 @@ export function inferMapperValues(
 
   /* 3. nearest neighbours by weighted identity-token overlap */
   const similar = similarCohort(input, knowledge);
-  if (similar.rows.length >= MIN_SIMILAR_COHORT) {
+  const similarConditioned = macroConditionedCohort(
+    similar.rows,
+    input.knownMacros,
+    MIN_SIMILAR_COHORT,
+  );
+  if (similarConditioned.length >= MIN_SIMILAR_COHORT) {
     const claimed = applyCohort(
       claim,
-      similar.rows,
+      similarConditioned,
       MIN_SIMILAR_COHORT,
       'mapper_similar_profile',
       knowledge.fingerprint,
       `najbardziej podobne wiersze Mappera (${similar.rows.length}) wg tokenow: ${similar.tokens.join(', ')}`,
     );
     if (claimed > 0) tiersUsed.push('mapper_similar_profile');
-    bestCohort ??= { rows: similar.rows, minCohort: MIN_SIMILAR_COHORT, label: 'similar_profile' };
+    bestCohort ??= {
+      rows: similarConditioned,
+      minCohort: MIN_SIMILAR_COHORT,
+      label: 'similar_profile',
+    };
     trace.push(
       `mapper_similar_profile: ${similar.rows.length} wierszy (${similar.tokens.length} tokenow) → ${claimed} pol`,
     );
@@ -608,7 +624,11 @@ export function inferMapperValues(
   });
   const family = familySupportsCohort(familyMatch) && familyMatch ? familyMatch.family : null;
   if (family) {
-    const cohort = knowledge.byFamily.get(family) ?? [];
+    const cohort = macroConditionedCohort(
+      knowledge.byFamily.get(family) ?? [],
+      input.knownMacros,
+      MIN_FAMILY_COHORT,
+    );
     if (cohort.length >= MIN_FAMILY_COHORT) {
       const claimed = applyCohort(
         claim,
@@ -639,6 +659,46 @@ export function inferMapperValues(
  * them, because there the row IS the product.
  */
 const COHORT_FORBIDDEN_FIELDS = new Set<WorkingNumericField>(['pod_value', 'pac_value']);
+
+/**
+ * How far a neighbour's macro may sit from this product's before it stops being
+ * evidence about it. Wide enough to keep a real family together, narrow enough
+ * that a 2%-fat yoghurt cannot speak for a 30%-fat cream.
+ */
+export const MACRO_COMPATIBILITY: Readonly<Record<string, number>> = Object.freeze({
+  fat_percent: 8,
+  protein_percent: 5,
+  carbohydrate_percent: 12,
+});
+
+/**
+ * Keep only the cohort rows whose own published macros are compatible with what
+ * this product is already known to be.
+ *
+ * A row that publishes nothing for a macro is kept — silence is not a
+ * contradiction. A row that publishes an incompatible value is dropped, and if
+ * conditioning would leave too few rows the ORIGINAL cohort is returned rather
+ * than a thinner one, so this can tighten a cohort but never manufacture one.
+ */
+export function macroConditionedCohort(
+  cohort: readonly MapperKnowledgeRow[],
+  knownMacros: MapperInferenceInput['knownMacros'],
+  minCohort: number,
+): readonly MapperKnowledgeRow[] {
+  const entries = Object.entries(knownMacros ?? {}).filter(
+    (entry): entry is [string, number] => typeof entry[1] === 'number',
+  );
+  if (entries.length === 0) return cohort;
+
+  const compatible = cohort.filter((row) =>
+    entries.every(([field, target]) => {
+      const observed = numeric(row[field as keyof MapperKnowledgeRow] as number | null);
+      if (observed === null) return true;
+      return Math.abs(observed - target) <= (MACRO_COMPATIBILITY[field] ?? Infinity);
+    }),
+  );
+  return compatible.length >= minCohort ? compatible : cohort;
+}
 
 /** Macro fields that together account for most of a product's dry matter. */
 const NAMED_SOLID_FIELDS = [

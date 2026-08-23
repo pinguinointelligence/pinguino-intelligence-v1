@@ -300,8 +300,19 @@ export function resolveProductWorkingValues(
     trace.push(`source_card: ${cardFields} pol`, ...input.sourceCard.reasons);
   }
 
-  /* 3. Mapper knowledge fills the gaps */
-  const inference = inferMapperValues(input.identity, knowledge);
+  /* 3. Mapper knowledge fills the gaps — conditioned on what is already known */
+  // Macros established by the label or an exact source card are the strongest
+  // filter available on which neighbours can speak for this product at all. A
+  // row whose own published fat sits far from this product's is not evidence
+  // about it, however closely its name reads.
+  const knownMacros: MapperInferenceInput['knownMacros'] = {};
+  for (const field of ['fat_percent', 'protein_percent', 'carbohydrate_percent'] as const) {
+    const known = fields[field];
+    if (known.value !== null && known.provenance.state === 'VERIFIED') {
+      knownMacros[field] = known.value;
+    }
+  }
+  const inference = inferMapperValues({ ...input.identity, knownMacros }, knowledge);
   for (const field of WORKING_NUMERIC_FIELDS) {
     const candidate = inference.fields[field];
     if (candidate) fields = applyFieldTruth(fields, field, candidate);

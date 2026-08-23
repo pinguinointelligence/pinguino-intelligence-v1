@@ -180,24 +180,24 @@
   "mapperContributed": 574,
   "tierCounts": {
     "mapper_similar_profile": 335,
-    "mapper_family_consensus": 370,
+    "mapper_family_consensus": 375,
     "mapper_simple_profile": 6
   },
   "fieldFill": {
     "water_percent": {
       "verified": 0,
-      "estimated": 381,
-      "unknown": 439
+      "estimated": 383,
+      "unknown": 437
     },
     "total_solids_percent": {
       "verified": 0,
-      "estimated": 381,
-      "unknown": 439
+      "estimated": 383,
+      "unknown": 437
     },
     "fat_percent": {
       "verified": 131,
-      "estimated": 215,
-      "unknown": 474
+      "estimated": 214,
+      "unknown": 475
     },
     "protein_percent": {
       "verified": 132,
@@ -211,58 +211,58 @@
     },
     "total_sugars_percent": {
       "verified": 122,
-      "estimated": 153,
-      "unknown": 545
+      "estimated": 156,
+      "unknown": 542
     },
     "salt_percent": {
       "verified": 108,
-      "estimated": 478,
-      "unknown": 234
+      "estimated": 475,
+      "unknown": 237
     }
   },
   "missingHistogram": {
-    "water_percent": 439,
-    "total_solids_percent": 439,
-    "fat_percent": 474,
+    "water_percent": 437,
+    "total_solids_percent": 437,
+    "fat_percent": 475,
     "carbohydrate_percent": 542,
-    "total_sugars_percent": 545,
+    "total_sugars_percent": 542,
     "protein_percent": 406,
-    "salt_percent": 234
+    "salt_percent": 237
   },
   "gapDistribution": {
-    "0": 171,
-    "1": 50,
-    "2": 57,
+    "0": 173,
+    "1": 49,
+    "2": 56,
     "3": 86,
     "4": 116,
     "5": 32,
     "6": 88,
     "7": 215
   },
-  "completeProfiles": 176,
+  "completeProfiles": 178,
   "completeProfileConfidenceBuckets": {
-    "0.50": 40,
-    "0.45": 30,
-    "0.60": 38,
+    "0.50": 41,
+    "0.45": 28,
+    "0.60": 37,
     "0.75": 7,
-    "0.65": 10,
-    "0.90": 2,
+    "0.65": 12,
+    "0.90": 1,
     "0.55": 10,
-    "0.35": 13,
-    "0.30": 12,
+    "0.35": 18,
+    "0.30": 10,
     "0.80": 1,
     "0.85": 2,
     "0.95": 4,
     "0.70": 7
   },
-  "productsWithDeclarationConflicts": 28,
+  "productsWithDeclarationConflicts": 21,
   "productsSelfContradictory": 2,
   "plausibilityViolations": {
-    "sugar_spectrum_within_total": 7,
+    "sugar_spectrum_within_total": 8,
     "energy_matches_macros": 7,
     "water_solids_balance": 1,
-    "components_within_solids": 14,
-    "sugars_within_carbohydrate": 1
+    "components_within_solids": 38,
+    "sugars_within_carbohydrate": 2
   },
   "sourcePacks": {
     "totalProducts": 820,
@@ -350,7 +350,8 @@
           "fat_percent",
           "protein_percent",
           "carbohydrate_percent",
-          "total_sugars_percent"
+          "total_sugars_percent",
+          "salt_percent"
         ]
       },
       {
@@ -580,10 +581,11 @@
         "topEntryPoint": "https://www.biedronka.pl/pl/fruvita-pure",
         "topEntryAuthority": "AUTHORITATIVE_RETAILER",
         "missingNumeric": [
-          "total_sugars_percent",
+          "salt_percent",
           "water_percent",
           "total_solids_percent",
           "carbohydrate_percent",
+          "total_sugars_percent",
           "fat_percent",
           "protein_percent"
         ]

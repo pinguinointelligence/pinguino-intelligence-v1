@@ -10,6 +10,7 @@ import {
   buildMapperKnowledge,
   fieldConsensus,
   fingerprintMapperRows,
+  macroConditionedCohort,
   identityTokens,
   inferMapperValues,
   similarCohort,
@@ -790,5 +791,74 @@ describe('engine readiness contract', () => {
     // but the power path stays unresolved, which is what actually gates.
     expect(resolved.plausibilityViolations).toEqual([]);
     expect(resolved.sweetnessPath.resolved).toBe(false);
+  });
+});
+
+describe('macro-conditioned cohorts', () => {
+  /** Two dairy families sharing wording but nothing else: skimmed vs cream. */
+  const DAIRY = [
+    ...[0.5, 0.4, 0.6].map((fat, index) =>
+      mapperRow({
+        ingredient_id: `PI-SKIM-${index}`,
+        ingredient_name_internal: `Mleko odtluszczone ${index}`,
+        ingredient_category: 'dairy',
+        fat_percent: fat,
+        water_percent: 90,
+        total_solids_percent: 10,
+      }),
+    ),
+    ...[30, 32, 31].map((fat, index) =>
+      mapperRow({
+        ingredient_id: `PI-CREAM-${index}`,
+        ingredient_name_internal: `Mleko smietanka ${index}`,
+        ingredient_category: 'dairy',
+        fat_percent: fat,
+        water_percent: 60,
+        total_solids_percent: 40,
+      }),
+    ),
+  ];
+  const knowledge = buildMapperKnowledge(DAIRY, FINGERPRINT);
+
+  it('keeps only neighbours whose own macros are compatible', () => {
+    const cohort = macroConditionedCohort(DAIRY, { fat_percent: 0.5 }, 3);
+    expect(cohort.map((row) => row.ingredient_id).sort()).toEqual([
+      'PI-SKIM-0',
+      'PI-SKIM-1',
+      'PI-SKIM-2',
+    ]);
+  });
+
+  it('rejects a macro-incompatible neighbour outright', () => {
+    const cohort = macroConditionedCohort(DAIRY, { fat_percent: 31 }, 3);
+    expect(cohort.every((row) => row.ingredient_id.startsWith('PI-CREAM'))).toBe(true);
+  });
+
+  it('keeps a row that publishes nothing — silence is not a contradiction', () => {
+    const quiet = mapperRow({ ingredient_id: 'PI-QUIET', ingredient_category: 'dairy' });
+    expect(
+      macroConditionedCohort([...DAIRY, quiet], { fat_percent: 0.5 }, 3).map((r) => r.ingredient_id),
+    ).toContain('PI-QUIET');
+  });
+
+  it('returns the original cohort rather than a thinner one it cannot trust', () => {
+    // Conditioning that would leave too few rows must not manufacture a cohort.
+    const cohort = macroConditionedCohort(DAIRY, { fat_percent: 15 }, 3);
+    expect(cohort).toHaveLength(DAIRY.length);
+  });
+
+  it('lets known macros steer the water estimate to the right family', () => {
+    const lean = resolveProductWorkingValues(
+      {
+        declared: { fat_percent: 0.5 },
+        declaredConfidence: 0.95,
+        identity: { name: 'Mleko odtluszczone premium', category: 'dairy' },
+        technical: false,
+        technicalAuthority: false,
+      },
+      knowledge,
+    );
+    // Without conditioning the two families average to something near 75.
+    expect(lean.values.water_percent).toBeGreaterThan(85);
   });
 });

@@ -1,51 +1,51 @@
 {
   "mapperFingerprint": "b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38",
-  "completeProfiles": 176,
-  "belowFloor": 168,
+  "completeProfiles": 178,
+  "belowFloor": 171,
   "aggregationEffect": {
-    "shippedMinimum": 8,
+    "shippedMinimum": 7,
     "ifMean": 18,
     "ifMedian": 23,
     "ifProduct": 0,
     "allFieldsAboveFloorButProductBelow": 0,
-    "belowFloorWithAtLeastOneFieldBelowFloor": 168
+    "belowFloorWithAtLeastOneFieldBelowFloor": 171
   },
   "weakestFieldTally": {
-    "fat_percent": 26,
-    "water_percent": 84,
+    "fat_percent": 64,
+    "water_percent": 49,
     "carbohydrate_percent": 10,
     "total_sugars_percent": 45,
     "protein_percent": 3
   },
   "weakestBasisTally": {
-    "product_declared": 21,
-    "derived": 60,
+    "product_declared": 59,
+    "derived": 22,
     "mapper_similar_profile": 63,
-    "mapper_family_consensus": 24
+    "mapper_family_consensus": 27
   },
   "fieldsBelowFloorPerProduct": {
     "1": 6,
-    "2": 3,
+    "2": 4,
     "3": 6,
-    "4": 52,
-    "5": 10,
-    "6": 4,
-    "7": 87
+    "4": 53,
+    "5": 15,
+    "6": 5,
+    "7": 82
   },
   "averagePenalties": {
-    "tier": 0.2645,
-    "dispersion": 0.0909
+    "tier": 0.2435,
+    "dispersion": 0.0981
   },
   "weakestFieldTightnessBuckets": {
     "n/a": 81,
-    "0.3": 13,
-    "0.0": 17,
+    "0.3": 14,
+    "0.0": 18,
     "0.6": 6,
-    "0.4": 9,
+    "0.4": 10,
     "0.7": 2,
-    "0.2": 21,
-    "0.5": 7,
-    "0.1": 12
+    "0.1": 14,
+    "0.2": 19,
+    "0.5": 7
   },
   "samples": [
     {
@@ -836,37 +836,37 @@
       "row": 124,
       "name": "Vitanella RAW Baton kakao",
       "shipped": 0.528,
-      "mean": 0.5744,
+      "mean": 0.5959,
       "median": 0.528,
-      "product": 0.0196,
+      "product": 0.0241,
       "weakestField": "fat_percent",
       "weakestBasis": "product_declared",
       "totalTierPenalty": 0.3657,
-      "totalDispersionPenalty": 0.0599,
+      "totalDispersionPenalty": 0.0383,
       "fields": [
         {
           "field": "water_percent",
           "state": "ESTIMATED",
           "basis": "mapper_family_consensus",
-          "confidence": 0.6904,
+          "confidence": 0.7658,
           "tierPenalty": 0.1,
-          "dispersionPenalty": 0.2096,
-          "cohortSize": 178,
-          "spread": 2.795,
+          "dispersionPenalty": 0.1342,
+          "cohortSize": 17,
+          "spread": 1.79,
           "band": 6,
-          "tightness": 0.5342
+          "tightness": 0.7017
         },
         {
           "field": "total_solids_percent",
           "state": "ESTIMATED",
           "basis": "mapper_family_consensus",
-          "confidence": 0.6904,
+          "confidence": 0.7658,
           "tierPenalty": 0.1,
-          "dispersionPenalty": 0.2096,
-          "cohortSize": 178,
-          "spread": 2.795,
+          "dispersionPenalty": 0.1342,
+          "cohortSize": 17,
+          "spread": 1.79,
           "band": 6,
-          "tightness": 0.5342
+          "tightness": 0.7017
         },
         {
           "field": "fat_percent",
@@ -933,38 +933,38 @@
     {
       "row": 144,
       "name": "Czekolada gorzka 90%",
-      "shipped": 0.66,
-      "mean": 0.6687,
+      "shipped": 0.539,
+      "mean": 0.6254,
       "median": 0.66,
-      "product": 0.0597,
-      "weakestField": "fat_percent",
-      "weakestBasis": "product_declared",
+      "product": 0.0364,
+      "weakestField": "water_percent",
+      "weakestBasis": "mapper_family_consensus",
       "totalTierPenalty": 0.2714,
-      "totalDispersionPenalty": 0.0599,
+      "totalDispersionPenalty": 0.1031,
       "fields": [
         {
           "field": "water_percent",
           "state": "ESTIMATED",
           "basis": "mapper_family_consensus",
-          "confidence": 0.6904,
+          "confidence": 0.539,
           "tierPenalty": 0.1,
-          "dispersionPenalty": 0.2096,
-          "cohortSize": 178,
-          "spread": 2.795,
+          "dispersionPenalty": 0.361,
+          "cohortSize": 4,
+          "spread": 4.8138,
           "band": 6,
-          "tightness": 0.5342
+          "tightness": 0.1977
         },
         {
           "field": "total_solids_percent",
           "state": "ESTIMATED",
           "basis": "mapper_family_consensus",
-          "confidence": 0.6904,
+          "confidence": 0.539,
           "tierPenalty": 0.1,
-          "dispersionPenalty": 0.2096,
-          "cohortSize": 178,
-          "spread": 2.795,
+          "dispersionPenalty": 0.361,
+          "cohortSize": 4,
+          "spread": 4.8137,
           "band": 6,
-          "tightness": 0.5342
+          "tightness": 0.1977
         },
         {
           "field": "fat_percent",
@@ -1130,37 +1130,37 @@
       "row": 152,
       "name": "Czekolada deserowa",
       "shipped": 0.456,
-      "mean": 0.523,
+      "mean": 0.5512,
       "median": 0.456,
-      "product": 0.0094,
+      "product": 0.0123,
       "weakestField": "fat_percent",
       "weakestBasis": "product_declared",
       "totalTierPenalty": 0.4171,
-      "totalDispersionPenalty": 0.0599,
+      "totalDispersionPenalty": 0.0317,
       "fields": [
         {
           "field": "water_percent",
           "state": "ESTIMATED",
           "basis": "mapper_family_consensus",
-          "confidence": 0.6904,
+          "confidence": 0.7892,
           "tierPenalty": 0.1,
-          "dispersionPenalty": 0.2096,
-          "cohortSize": 178,
-          "spread": 2.795,
+          "dispersionPenalty": 0.1108,
+          "cohortSize": 67,
+          "spread": 1.4775,
           "band": 6,
-          "tightness": 0.5342
+          "tightness": 0.7538
         },
         {
           "field": "total_solids_percent",
           "state": "ESTIMATED",
           "basis": "mapper_family_consensus",
-          "confidence": 0.6904,
+          "confidence": 0.7892,
           "tierPenalty": 0.1,
-          "dispersionPenalty": 0.2096,
-          "cohortSize": 178,
-          "spread": 2.795,
+          "dispersionPenalty": 0.1108,
+          "cohortSize": 67,
+          "spread": 1.4775,
           "band": 6,
-          "tightness": 0.5342
+          "tightness": 0.7538
         },
         {
           "field": "fat_percent",
@@ -1228,37 +1228,37 @@
       "row": 153,
       "name": "Czekolada mleczna",
       "shipped": 0.576,
-      "mean": 0.6087,
+      "mean": 0.6427,
       "median": 0.576,
-      "product": 0.0302,
+      "product": 0.0415,
       "weakestField": "fat_percent",
       "weakestBasis": "product_declared",
       "totalTierPenalty": 0.3314,
-      "totalDispersionPenalty": 0.0599,
+      "totalDispersionPenalty": 0.0259,
       "fields": [
         {
           "field": "water_percent",
           "state": "ESTIMATED",
           "basis": "mapper_family_consensus",
-          "confidence": 0.6904,
+          "confidence": 0.8093,
           "tierPenalty": 0.1,
-          "dispersionPenalty": 0.2096,
-          "cohortSize": 178,
-          "spread": 2.795,
+          "dispersionPenalty": 0.0907,
+          "cohortSize": 61,
+          "spread": 1.21,
           "band": 6,
-          "tightness": 0.5342
+          "tightness": 0.7983
         },
         {
           "field": "total_solids_percent",
           "state": "ESTIMATED",
           "basis": "mapper_family_consensus",
-          "confidence": 0.6904,
+          "confidence": 0.8093,
           "tierPenalty": 0.1,
-          "dispersionPenalty": 0.2096,
-          "cohortSize": 178,
-          "spread": 2.795,
+          "dispersionPenalty": 0.0907,
+          "cohortSize": 61,
+          "spread": 1.21,
           "band": 6,
-          "tightness": 0.5342
+          "tightness": 0.7983
         },
         {
           "field": "fat_percent",
@@ -1325,38 +1325,38 @@
     {
       "row": 180,
       "name": "Mus kokosowy goBIO",
-      "shipped": 0.3725,
-      "mean": 0.3807,
+      "shipped": 0.384,
+      "mean": 0.4573,
       "median": 0.384,
-      "product": 0.0012,
-      "weakestField": "water_percent",
-      "weakestBasis": "derived",
-      "totalTierPenalty": 0.6193,
-      "totalDispersionPenalty": 0,
+      "product": 0.0034,
+      "weakestField": "fat_percent",
+      "weakestBasis": "product_declared",
+      "totalTierPenalty": 0.4686,
+      "totalDispersionPenalty": 0.0741,
       "fields": [
         {
           "field": "water_percent",
           "state": "ESTIMATED",
-          "basis": "derived",
-          "confidence": 0.3725,
-          "tierPenalty": 0.6275,
-          "dispersionPenalty": 0,
-          "cohortSize": null,
-          "spread": null,
-          "band": null,
-          "tightness": null
+          "basis": "mapper_family_consensus",
+          "confidence": 0.6407,
+          "tierPenalty": 0.1,
+          "dispersionPenalty": 0.2593,
+          "cohortSize": 4,
+          "spread": 3.4575,
+          "band": 6,
+          "tightness": 0.4238
         },
         {
           "field": "total_solids_percent",
           "state": "ESTIMATED",
-          "basis": "mapper_similar_profile",
-          "confidence": 0.3725,
-          "tierPenalty": 0.6275,
-          "dispersionPenalty": 0,
-          "cohortSize": null,
-          "spread": null,
-          "band": null,
-          "tightness": null
+          "basis": "mapper_family_consensus",
+          "confidence": 0.6407,
+          "tierPenalty": 0.1,
+          "dispersionPenalty": 0.2593,
+          "cohortSize": 4,
+          "spread": 3.4575,
+          "band": 6,
+          "tightness": 0.4238
         },
         {
           "field": "fat_percent",

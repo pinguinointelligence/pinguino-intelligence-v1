@@ -37,7 +37,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 12,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -703,7 +703,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 13,
+      "currentFieldsProduced": 14,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -723,7 +723,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -783,7 +783,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 16,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -803,7 +803,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 17,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -902,7 +902,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 12,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -1878,10 +1878,9 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 15,
+      "currentFieldsProduced": 18,
       "currentTiers": [
-        "mapper_similar_profile",
-        "mapper_family_consensus"
+        "mapper_similar_profile"
       ],
       "currentReadiness": "REVIEW"
     },
@@ -1930,7 +1929,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 13,
+      "currentFieldsProduced": 16,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -1947,7 +1946,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 16,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2049,7 +2048,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 13,
+      "currentFieldsProduced": 16,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2100,7 +2099,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 16,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2117,7 +2116,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 17,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2156,7 +2155,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 13,
+      "currentFieldsProduced": 14,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -2176,7 +2175,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -2236,7 +2235,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2244,26 +2243,6 @@
     },
     {
       "productId": "PL-BIE-00040",
-      "product": "Skyr pitny Fruvita",
-      "category": "Dairy",
-      "oldMapperId": "PI-ING-001451",
-      "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
-      "oldMethod": "mapper_family_profile",
-      "oldConfidence": 90,
-      "verdict": "A_still_defensible",
-      "reason": "bieżąca wąska kohorta najbliższych sąsiadów niezależnie wybiera ten sam wiersz Mappera",
-      "sharedTokens": [
-        "skyr"
-      ],
-      "currentFieldsProduced": 14,
-      "currentTiers": [
-        "mapper_similar_profile",
-        "mapper_family_consensus"
-      ],
-      "currentReadiness": "REVIEW"
-    },
-    {
-      "productId": "PL-BIE-00043",
       "product": "Skyr pitny Fruvita",
       "category": "Dairy",
       "oldMapperId": "PI-ING-001451",
@@ -2283,6 +2262,26 @@
       "currentReadiness": "REVIEW"
     },
     {
+      "productId": "PL-BIE-00043",
+      "product": "Skyr pitny Fruvita",
+      "category": "Dairy",
+      "oldMapperId": "PI-ING-001451",
+      "oldMapperReference": "SKYR FAT 0.2% · Dairy · Chilled",
+      "oldMethod": "mapper_family_profile",
+      "oldConfidence": 90,
+      "verdict": "A_still_defensible",
+      "reason": "bieżąca wąska kohorta najbliższych sąsiadów niezależnie wybiera ten sam wiersz Mappera",
+      "sharedTokens": [
+        "skyr"
+      ],
+      "currentFieldsProduced": 17,
+      "currentTiers": [
+        "mapper_similar_profile",
+        "mapper_family_consensus"
+      ],
+      "currentReadiness": "REVIEW"
+    },
+    {
       "productId": "PL-BIE-00057",
       "product": "Jogurt Fruvita Pure",
       "category": "Dairy",
@@ -2293,9 +2292,10 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 15,
+      "currentFieldsProduced": 16,
       "currentTiers": [
-        "mapper_similar_profile"
+        "mapper_similar_profile",
+        "mapper_family_consensus"
       ],
       "currentReadiness": "REVIEW"
     },
@@ -2310,7 +2310,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2463,7 +2463,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 17,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2548,7 +2548,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 15,
+      "currentFieldsProduced": 14,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2565,7 +2565,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 15,
+      "currentFieldsProduced": 13,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2687,7 +2687,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 15,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2704,7 +2704,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 17,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2721,7 +2721,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 17,
       "currentTiers": [
         "mapper_family_consensus"
       ],

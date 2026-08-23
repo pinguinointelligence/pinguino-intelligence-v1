@@ -23,8 +23,8 @@
   "productsMateriallyImproved": 43,
   "verifiedEngineFieldsBefore": 625,
   "verifiedEngineFieldsAfter": 831,
-  "missingEngineFieldsBefore": 3079,
-  "missingEngineFieldsAfter": 2905,
+  "missingEngineFieldsBefore": 3076,
+  "missingEngineFieldsAfter": 2902,
   "productsWithEstimatedFieldBefore": 574,
   "productsWithEstimatedFieldAfter": 574,
   "readinessBefore": {
@@ -39,23 +39,23 @@
   },
   "engineFieldTruthStateBefore": {
     "VERIFIED": 625,
-    "ESTIMATED": 2036,
-    "UNKNOWN": 3079
+    "ESTIMATED": 2039,
+    "UNKNOWN": 3076
   },
   "engineFieldTruthStateAfter": {
     "VERIFIED": 831,
-    "ESTIMATED": 2004,
-    "UNKNOWN": 2905
+    "ESTIMATED": 2007,
+    "UNKNOWN": 2902
   },
-  "completeProfileBefore": 176,
-  "completeProfileAfter": 193,
+  "completeProfileBefore": 178,
+  "completeProfileAfter": 195,
   "readyOnlyBecauseOfRetailerMacros": 0,
   "remainingBlockers": {
     "physical_inconsistency": 10,
-    "missing_required_macro": 188,
-    "missing_sugar_split": 170,
-    "missing_water_solids": 426,
-    "weak_field_confidence": 21
+    "missing_required_macro": 186,
+    "missing_sugar_split": 157,
+    "missing_water_solids": 424,
+    "weak_field_confidence": 38
   },
   "byAuthority": {
     "OFFICIAL_PRIVATE_LABEL": {
