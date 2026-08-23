@@ -130,9 +130,16 @@ const directionInput = (): RecipeInput => {
     ...input,
     goals: {
       ...input.goals,
+      // Owner P1-A (2026-08-23): this fixture exists to exercise the
+      // BEST-ACHIEVABLE consent flow, so it must sit on a target the engine
+      // genuinely cannot reach. Sweetness −1 alone no longer qualifies — the
+      // paired mass-neutral exchange now reaches every single-axis Sweetness
+      // band on this starter. The combined extreme −2 / −2 remains a real
+      // frontier (both bands cannot hold at once), so the consent contract
+      // below is unchanged and still meaningful.
       direction_targets: {
-        sweetness: -1,
-        softness: 0,
+        sweetness: -2,
+        softness: -2,
         creaminess: 0,
         flavor: 0,
       },

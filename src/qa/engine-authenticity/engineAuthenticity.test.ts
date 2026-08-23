@@ -216,7 +216,12 @@ const PINS: Pin[] = [
     outcome: 'impossible_under_constraints',
     ten: 5,
     overall: 45.4655,
-    iter: 12,
+    // Owner-approved budget 12 → 18 (2026-08-23). T9 is the degenerate
+    // strawberry-900 chase: it is STILL honestly impossible, still stops at
+    // `iteration_cap`, still scores 5/10 with 10 violations and the identical
+    // POD/NPAC/ice — only the number of rounds it burns before giving up tracks
+    // the new budget. Every other pin in this row is unchanged on purpose.
+    iter: 18,
     stop: 'iteration_cap',
     npac: 9.7209,
     ice: 79.0724,

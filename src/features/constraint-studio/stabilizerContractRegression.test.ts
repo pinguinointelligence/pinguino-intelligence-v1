@@ -89,15 +89,23 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
     expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
     expect(before.pod_points).toBeCloseTo(15.5712, 10);
-    expect(after.pod_points).toBeCloseTo(14.361032, 10);
+    // Owner P1-A (2026-08-23): the paired mass-neutral exchange reaches the
+    // Sweetness −1 band [13, 14] that the old single-line search could not, so
+    // this fixture now lands INSIDE its target instead of 0.36 above it.
+    // Proven on this exact candidate: POD 13.959024 (side "inside", distance 0),
+    // NPAC 45.723 also inside, zero violations, batch exactly 1000 g, preview
+    // applicable. The previous 14.361032 pin recorded the former search's
+    // limitation, not an owner target.
+    expect(after.pod_points).toBeCloseTo(13.959024, 10);
     expect(after.pod_points!).toBeLessThan(before.pod_points!);
     expect(detectViolations(after)).toEqual([]);
     expect(built.preview.directionAssessment).toMatchObject({
       active: true,
-      reached: false,
+      // Both supported axes are now genuinely inside their bands.
+      reached: true,
       // The customer-visible score is always recomputed from the executable
       // whole-gram vector, never retained from the hidden exact candidate.
-      score: 8,
+      score: 10,
     });
 
     expect(
@@ -108,12 +116,16 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
         ]),
       ),
     ).toEqual({
-      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 565.9636052869171,
-      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 130.06801174232712,
-      [OWNER_MAPPER_INGREDIENTS.smp.id]: 45.203010010081314,
-      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 76.35672511095395,
-      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 70.96603061347135,
-      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 108.44261723624908,
+      // New exact candidate for the same fixture: the exchange pass trades
+      // sucrose down / dextrose up and rebalances milk↔cream, which is what
+      // brings POD inside [13, 14]. Tara stays exactly 3 g — the stabilizer
+      // contract this test exists for is unchanged.
+      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 554.3965074860284,
+      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 146.93768307324663,
+      [OWNER_MAPPER_INGREDIENTS.smp.id]: 45.15771641287682,
+      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 66.2802153663538,
+      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 79.89492236636366,
+      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 104.3329552951306,
       [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 3,
     });
     expect(
@@ -124,17 +136,21 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
         ]),
       ),
     ).toEqual({
-      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 566,
-      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 130,
+      // Executable whole-gram projection of the new exact candidate; still
+      // exactly 1000 g and still Tara 3 g.
+      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 555,
+      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 147,
       [OWNER_MAPPER_INGREDIENTS.smp.id]: 45,
-      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 76,
-      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 71,
-      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 109,
+      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 66,
+      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 80,
+      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 104,
       [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 3,
     });
 
-    const withoutConsent = commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'no-consent');
-    expect(withoutConsent).toMatchObject({ ok: false, code: 'direction_consent_required' });
+    // The Direction target is now REACHED, so the best-achievable consent gate
+    // no longer applies to this fixture — Apply proceeds directly. The consent
+    // contract itself is still pinned, on a genuinely unreachable target, by
+    // `recipeDirectionTargets.test.ts`.
     const applied = commitPreview(
       input,
       NO_CONSTRAINTS,

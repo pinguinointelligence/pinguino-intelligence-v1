@@ -7,7 +7,7 @@
  *  - a VERIFIED fixed point — `fixed_point_no_proposal` (with the sub-detail
  *    distinguishing a true fixed point from a missing candidate and from a
  *    provisional-band-only conflict) or `no_improving_move`;
- *  - the deterministic iteration cap (MAX_SOLVER_ROUNDS = 12), REPORTED
+ *  - the deterministic iteration cap (MAX_SOLVER_ROUNDS = 18), REPORTED
  *    honestly via `capped`;
  *  - a hard incompatibility (upstream structured failures).
  * Iteration count, the per-round violation/severity trajectory and the stop
@@ -125,7 +125,14 @@ describe('determinism + the honest cap (tests 14, 18)', () => {
   });
 
   it('the iteration cap is a DETERMINISTIC, honestly-reported guard (test 18)', () => {
-    expect(MAX_SOLVER_ROUNDS).toBe(12);
+    // Owner-approved budget (2026-08-23): raised 12 → 18 for the richer
+    // Direction search. The A/B over the 150-cell Gelato Direction matrix showed
+    // 18 removes both iteration-cap hits and both applicable→diagnostic
+    // regressions while running FASTER (p95 42.6 ms → 34.5 ms, max 94.9 → 70.9),
+    // because runs that used to exhaust 12 rounds and fall into expensive
+    // failure paths now converge and exit. Average rounds barely moved
+    // (3.93 → 3.97): almost nothing actually uses the extra budget.
+    expect(MAX_SOLVER_ROUNDS).toBe(18);
     const result = buildOptimizePreview(b3(), NO, 'now');
     expect(result.ok).toBe(true);
     if (!result.ok) return;

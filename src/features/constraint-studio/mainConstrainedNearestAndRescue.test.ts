@@ -449,12 +449,20 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
     useCustomerPriceStore.setState({ overridesByCanonicalId: {} });
   });
 
-  it('6. Gelato positive: milk base, Sweetness −2 — current ingredients 8/10, simulated Inulina 9/10 → recommended with a truthful reason', () => {
-    const request = withDirection(starterMilkBase(), -2, 0);
+  // Owner P1-A (2026-08-23): re-pointed from Sweetness −2 alone to the combined
+  // extreme −2 / −2. The paired mass-neutral exchange now REACHES every
+  // single-axis Sweetness band on this starter (all five at 10/10), so −2 alone
+  // no longer needs rescuing and the advisor correctly stays silent there. The
+  // advisor contract — recommend an approved ingredient, by simulation, with a
+  // truthful score reason — is unchanged and still pinned, on a target the
+  // current ingredient set genuinely cannot reach (8/10).
+  it('6. Gelato positive: milk base, Sweetness −2 / Hardness −2 — current ingredients 8/10, simulated Inulina 9/10 → recommended with a truthful reason', () => {
+    const request = withDirection(starterMilkBase(), -2, -2);
     const built = buildOptimizePreview(request, NONE, AT, { requirePracticalPreview: true });
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     expect(built.preview.directionAssessment?.reached).toBe(false);
+
     const advice = assessRescueIngredientAdvice({
       input: request,
       set: NONE,

@@ -245,7 +245,13 @@ describe('canonical recipe Direction target contract', () => {
   });
 
   it('requires explicit session-bound consent for a native-safe best-achievable target result', () => {
-    const input = withDirection(starterMilkBase(), -1, 0);
+    // Owner P1-A (2026-08-23): Sweetness −1 alone is no longer a
+    // best-achievable case — the paired mass-neutral exchange reaches every
+    // single-axis Sweetness band on this starter (all five verified at 10/10).
+    // The CONSENT CONTRACT is unchanged and still pinned here, now on a target
+    // that is genuinely out of reach: the combined extreme −2 / −2, where the
+    // Sweetness and Hardness bands cannot both be satisfied at once.
+    const input = withDirection(starterMilkBase(), -2, -2);
     const built = buildOptimizePreview(input, NO_CONSTRAINTS, '2026-08-10T00:00:00.000Z');
     expect(built.ok).toBe(true);
     if (!built.ok) return;

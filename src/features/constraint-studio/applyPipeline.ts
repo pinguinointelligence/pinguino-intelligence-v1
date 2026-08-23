@@ -1936,7 +1936,7 @@ function solveOneRound(
  * verified fixed point (no improving move), this cap (REPORTED honestly via
  * `IterationDiagnostics.capped`) or a hard incompatibility upstream.
  */
-export const MAX_SOLVER_ROUNDS = 12;
+export const MAX_SOLVER_ROUNDS = 18;
 
 export interface IterationRoundDiagnostic {
   /** 0 = the starting state; N = the state after the N-th applied round. */
