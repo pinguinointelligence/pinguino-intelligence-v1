@@ -418,12 +418,39 @@ export async function recordMake(input: {
   });
 }
 
+/**
+ * THE single rating writer (§42). Refuses server-side without a confirmed
+ * make, and upserts on (publication, user) so a second submit UPDATES the
+ * existing rating rather than creating a duplicate.
+ */
 export async function ratePublication(publicationId: string, stars: number, review?: string | null) {
   return writeRpc<{ rated: boolean; stars: number }>('gellatti_rate_publication_v1', {
     p_publication_id: publicationId,
     p_stars: stars,
     p_review: review ?? null,
   });
+}
+
+export interface MyRating {
+  ok: boolean;
+  /** True only with at least one confirmed make of THIS publication. */
+  can_rate: boolean;
+  confirmed_makes: number;
+  /** Absent when this user has not rated it yet. */
+  stars?: number;
+  review?: string;
+  rated_at?: string;
+}
+
+/**
+ * Advisory read for the rating control: may I rate, and how did I rate?
+ * Not a rating path — a client that lies about `can_rate` is still refused by
+ * `gellatti_rate_publication_v1`.
+ */
+export async function myRating(publicationId: string) {
+  return readRpc<MyRating>('community.myRating', 'gellatti_my_rating_v1', {
+    p_publication_id: publicationId,
+  }, { ok: false, can_rate: false, confirmed_makes: 0 });
 }
 
 // ── Moderation intake (§51) ─────────────────────────────────────────────────

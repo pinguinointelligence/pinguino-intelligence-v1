@@ -75,6 +75,18 @@ describe('2 — every formulation read is an entitlement-gated RPC', () => {
     );
   });
 
+  it('the rating WRITE has exactly one path (§42)', () => {
+    // One writer only. `gellatti_my_rating_v1` is an advisory READ that tells
+    // the control whether to render; it cannot create or change a rating.
+    const writers = [...SERVICE.text.matchAll(/writeRpc<[^>]*>\(\s*'([a-z0-9_]+)'/g)].map(
+      (match) => match[1],
+    );
+    expect(writers.filter((name) => name?.includes('rate'))).toEqual([
+      'gellatti_rate_publication_v1',
+    ]);
+    expect(SERVICE.text).toContain("readRpc<MyRating>('community.myRating', 'gellatti_my_rating_v1'");
+  });
+
   it('formulation-bearing responses come only from the three gated RPCs', () => {
     for (const rpc of [
       'gellatti_get_publication_full_v1',

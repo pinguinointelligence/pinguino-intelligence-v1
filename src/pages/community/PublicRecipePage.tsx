@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -6,6 +6,7 @@ import { useAccess } from '@/access/useAccess';
 import { communityCopy } from '@/copy/community';
 import { AttributionByline } from '@/features/community/ui/AttributionByline';
 import { DemoRecipePreview } from '@/features/community/ui/DemoRecipePreview';
+import { RatePublication } from '@/features/community/ui/RatePublication';
 import { UnlockCta } from '@/features/community/ui/UnlockCta';
 import { UseRecipeActions } from '@/features/community/ui/UseRecipeActions';
 import { VerifiedRating } from '@/features/community/ui/VerifiedRating';
@@ -37,7 +38,12 @@ export function PublicRecipePage() {
   const { handle: segment = '', slug = '' } = useParams();
   const handle = handleFromPath(segment) ?? '';
   const access = useAccess();
-  const resource = useAsyncResource(`${handle}/${slug}`, () => getPublication(handle, slug));
+  // Bumping this re-keys the resource, so writing a rating re-reads the
+  // publication and the verified average/count above update immediately.
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const resource = useAsyncResource(`${handle}/${slug}#${refreshNonce}`, () =>
+    getPublication(handle, slug),
+  );
   const page: PublicationPayload | null =
     resource.status === 'ready' && resource.data.ok ? resource.data : null;
 
@@ -123,6 +129,15 @@ export function PublicRecipePage() {
           {/* Demo-safe by type: `page.recipe` is a DemoSafeRecipe, which has no
               gram field for this component to read. */}
           <DemoRecipePreview recipe={page.recipe} />
+
+          {/* §42: Community publications only. A direct/unlisted share is not
+              rated in this phase, which is why this lives here and not in
+              SharedRecipePage. Renders nothing unless the viewer has a
+              confirmed make. */}
+          <RatePublication
+            publicationId={page.publication_id}
+            onRated={() => setRefreshNonce((value) => value + 1)}
+          />
         </div>
 
         <aside className="flex flex-col gap-6">
