@@ -362,7 +362,14 @@ export function resolveProductWorkingValues(
   if (profileMatch.confidence >= PROFILE_MATCH_FLOOR) {
     let filled = 0;
     for (const field of WORKING_NUMERIC_FIELDS) {
-      if (fields[field].value !== null) continue;
+      // The accepted profile is the AUTHORITY for the formulation vector, so it
+      // replaces per-field cohort estimates rather than merely filling their
+      // gaps. Those medians are drawn field by field from different subsets, so
+      // together they need not satisfy the relations any real product obeys —
+      // and a vector that cannot hold together is then withdrawn wholesale by
+      // the consistency gate, leaving an accepted proxy supplying nothing.
+      // Anything the product itself states is untouchable.
+      if (fields[field].provenance.state === 'VERIFIED') continue;
       // A proxy may lend its stored POD/PAC only when the sugar picture is
       // wholly its own too. If this product states its own sugars, borrowing a
       // neighbour's freezing power would pair one product's sugars with
@@ -375,10 +382,9 @@ export function resolveProductWorkingValues(
       }
       const supplied = profileFieldValue(profileMatch, field);
       if (!supplied) continue;
-      fields = applyFieldTruth(
-        fields,
-        field,
-        knownField({
+      fields = {
+        ...fields,
+        [field]: knownField({
           value: supplied.value,
           state: 'ESTIMATED',
           // The product/profile question has one answer, so every field it
@@ -389,7 +395,7 @@ export function resolveProductWorkingValues(
           mapperFingerprint: knowledge.fingerprint,
           note: `profil zgodny (${profileMatch.basis}, ${Math.round(profileMatch.confidence * 100)}%)`,
         }),
-      );
+      };
       filled++;
     }
     trace.push(

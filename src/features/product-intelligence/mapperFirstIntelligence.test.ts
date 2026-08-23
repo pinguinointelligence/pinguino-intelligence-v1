@@ -977,38 +977,82 @@ describe('INTIMPORT import handoff', () => {
       },
     }) as never;
 
+  const intelligenceOf = (entry: { insert: { extracted_json?: unknown } }) =>
+    (entry.insert.extracted_json as Record<string, unknown>).productIntelligence as {
+      state: string;
+      engineUsable: boolean;
+      needsEnrichment: boolean;
+      technicalAuthorityRequired: boolean;
+      compositionReadiness?: string;
+      fields: Record<string, { state: string; basis: string }>;
+    };
+
   it('writes an estimated value into the canonical field, with its provenance', () => {
     const plan = planIntimportImport([row('ESTIMATED_READY')]);
-    expect(plan.importable).toHaveLength(1);
-    const entry = plan.importable[0]!;
+    const entry = plan.rows[0]!;
     // The estimate lands where a measured value would — that is what makes it usable.
     expect((entry.insert as Record<string, unknown>).fat_percent).toBe(12.4);
-    const pi = (entry.insert.extracted_json as Record<string, unknown>)
-      .productIntelligence as {
-      fields: Record<string, { state: string; basis: string }>;
-      readiness: string;
-    };
-    expect(pi.fields.fat_percent?.state).toBe('ESTIMATED');
-    expect(pi.readiness).toBe('ESTIMATED_READY');
-    expect(entry.readiness).toBe('READY_ESTIMATED');
+    expect(intelligenceOf(entry).fields.fat_percent?.state).toBe('ESTIMATED');
+    expect(entry.state).toBe('READY_ESTIMATED');
+    expect(entry.engineUsable).toBe(true);
   });
 
   it('keeps the row’s original INTIMPORT provenance alongside the new one', () => {
-    const plan = planIntimportImport([row('ESTIMATED_READY')]);
-    const json = plan.importable[0]!.insert.extracted_json as Record<string, unknown>;
+    const json = planIntimportImport([row('ESTIMATED_READY')]).rows[0]!.insert
+      .extracted_json as Record<string, unknown>;
     expect(json.intimport).toBeDefined();
     expect(json.productIntelligence).toBeDefined();
   });
 
-  it('refuses a REVIEW row, and says why rather than dropping it', () => {
+  it('stores a REVIEW row rather than discarding it, and keeps it out of the Engine', () => {
+    // A product the owner imported is a product they have. Refusing to store it
+    // would lose its identity and every piece of evidence gathered about it.
     const plan = planIntimportImport([row('REVIEW')]);
-    expect(plan.importable).toEqual([]);
-    expect(plan.blocked[0]?.reason).toBe('composition_review');
+    expect(plan.rows).toHaveLength(1);
+    const intelligence = intelligenceOf(plan.rows[0]!);
+    expect(plan.rows[0]!.state).toBe('REVIEW');
+    expect(plan.rows[0]!.engineUsable).toBe(false);
+    expect(intelligence.needsEnrichment).toBe(true);
+    expect(plan.engineUsable).toBe(0);
   });
 
-  it('refuses a technical product with no authority, however complete its numbers', () => {
+  it('stores a REVIEW row WITH whatever evidence was resolved', () => {
+    const entry = planIntimportImport([row('REVIEW')]).rows[0]!;
+    // Storing it empty would throw away work already done and force re-derivation.
+    expect((entry.insert as Record<string, unknown>).fat_percent).toBe(12.4);
+    expect(intelligenceOf(entry).fields.fat_percent?.state).toBe('ESTIMATED');
+  });
+
+  it('stores a technical product but keeps its technical use fail-closed', () => {
     const plan = planIntimportImport([row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED')]);
-    expect(plan.importable).toEqual([]);
-    expect(plan.blocked[0]?.reason).toBe('technical_authority_required');
+    const entry = plan.rows[0]!;
+    expect(entry.state).toBe('TECHNICAL_AUTHORITY_REQUIRED');
+    expect(entry.engineUsable).toBe(false);
+    const intelligence = intelligenceOf(entry);
+    expect(intelligence.technicalAuthorityRequired).toBe(true);
+    // Its composition is complete and preserved — the block is about dosing.
+    expect((entry.insert as Record<string, unknown>).fat_percent).toBe(12.4);
+  });
+
+  it('never flattens the two axes into one ready flag', () => {
+    const technical = intelligenceOf(
+      planIntimportImport([row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED')]).rows[0]!,
+    );
+    // Composition is fine; only the technical authority is missing.
+    expect(technical.compositionReadiness ?? 'ESTIMATED_READY').not.toBe('REVIEW');
+    expect(technical.technicalAuthorityRequired).toBe(true);
+  });
+
+  it('counts every state, and imports every row', () => {
+    const plan = planIntimportImport([
+      row('ESTIMATED_READY'),
+      row('REVIEW'),
+      row('ESTIMATED_READY', 'TECHNICAL_AUTHORITY_REQUIRED'),
+    ]);
+    expect(plan.rows).toHaveLength(3);
+    expect(plan.byState.READY_ESTIMATED).toBe(1);
+    expect(plan.byState.REVIEW).toBe(1);
+    expect(plan.byState.TECHNICAL_AUTHORITY_REQUIRED).toBe(1);
+    expect(plan.engineUsable).toBe(1);
   });
 });

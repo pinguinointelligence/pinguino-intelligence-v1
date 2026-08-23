@@ -442,8 +442,16 @@ export const MAX_CALLS_PER_PRODUCT = 3;
 
 /* ── import handoff ────────────────────────────────────────────────────────── */
 
-/** Why a row may not be imported. Never a silent drop. */
-export type ImportBlockReason = 'composition_review' | 'technical_authority_required';
+/** What a row may do once it is in the catalogue. Readiness gates USE, not existence. */
+export type ImportedProductState =
+  /** Every engine field measured. */
+  | 'READY_VERIFIED'
+  /** Engine-usable on values a compatible Mapper profile supplied. */
+  | 'READY_ESTIMATED'
+  /** Composition may be complete; technical/dosage use stays fail-closed. */
+  | 'TECHNICAL_AUTHORITY_REQUIRED'
+  /** Stored with whatever is known, but not fit to formulate with. */
+  | 'REVIEW';
 
 export interface IntimportImportRow {
   rowIndex: number;
@@ -451,89 +459,90 @@ export interface IntimportImportRow {
   displayName: string | null;
   /** The insert to persist, carrying resolved working values and provenance. */
   insert: ProductInsert;
-  readiness: 'READY' | 'READY_ESTIMATED';
+  state: ImportedProductState;
+  /** True only when the Engine may formulate with this product. */
+  engineUsable: boolean;
 }
 
 export interface IntimportImportPlan {
-  importable: IntimportImportRow[];
-  blocked: {
-    rowIndex: number;
-    displayName: string | null;
-    reason: ImportBlockReason;
-  }[];
+  rows: IntimportImportRow[];
+  byState: Record<ImportedProductState, number>;
+  engineUsable: number;
 }
 
 /**
- * Decide what may actually be written, and with which numbers.
+ * Prepare every valid row for the catalogue, and say what each may be used for.
  *
- * Two things happen here that must not happen anywhere else. First, the working
- * values the shared Product Intelligence resolved — including the estimated ones
- * — are written into the SAME canonical numeric fields a measured product uses,
- * because that is what makes an estimated product usable rather than merely
- * annotated. Second, every field's provenance travels with it in
- * `extracted_json`, so a value can always be traced back to the Mapper rows and
- * the algorithm that produced it.
+ * Readiness controls ENGINE USE, not whether a product may exist. A product the
+ * owner imported is a product they have; refusing to store it because its water
+ * is unknown loses the identity, the label evidence and the enrichment work
+ * already done on it. So nothing is dropped here — a REVIEW row is written with
+ * everything known about it and simply is not engine-usable, and a technical
+ * product is written with its composition while ProductBehavior keeps its dosing
+ * fail-closed.
  *
- * A row that is only REVIEW, or whose technical authority is missing, is not
- * written at all and is returned in `blocked` with the reason. Nothing is
- * dropped quietly.
+ * The resolved working values, estimates included, go into the SAME canonical
+ * numeric fields a measured product uses, because that is what makes an
+ * estimated product usable rather than merely annotated. Every field carries its
+ * own provenance so nothing is flattened into a single READY flag.
  */
 export function planIntimportImport(
   rows: readonly IntimportProductIntelligence[],
 ): IntimportImportPlan {
-  const importable: IntimportImportRow[] = [];
-  const blocked: IntimportImportPlan['blocked'] = [];
+  const planned: IntimportImportRow[] = [];
+  const byState: Record<ImportedProductState, number> = {
+    READY_VERIFIED: 0,
+    READY_ESTIMATED: 0,
+    TECHNICAL_AUTHORITY_REQUIRED: 0,
+    REVIEW: 0,
+  };
 
   for (const row of rows) {
     const values = row.workingValues;
-    if (!values) {
-      blocked.push({
-        rowIndex: row.rowIndex,
-        displayName: row.displayName,
-        reason: 'composition_review',
-      });
-      continue;
-    }
-    if (values.readiness === 'TECHNICAL_AUTHORITY_REQUIRED') {
-      blocked.push({
-        rowIndex: row.rowIndex,
-        displayName: row.displayName,
-        reason: 'technical_authority_required',
-      });
-      continue;
-    }
-    if (values.valueReadiness === 'REVIEW') {
-      blocked.push({
-        rowIndex: row.rowIndex,
-        displayName: row.displayName,
-        reason: 'composition_review',
-      });
-      continue;
-    }
+    const state: ImportedProductState = !values
+      ? 'REVIEW'
+      : values.readiness === 'TECHNICAL_AUTHORITY_REQUIRED'
+        ? 'TECHNICAL_AUTHORITY_REQUIRED'
+        : values.valueReadiness === 'READY'
+          ? 'READY_VERIFIED'
+          : values.valueReadiness === 'ESTIMATED_READY'
+            ? 'READY_ESTIMATED'
+            : 'REVIEW';
 
     const insert: ProductInsert = { ...row.insert };
     const provenance: Record<string, unknown> = {};
-    for (const field of WORKING_NUMERIC_FIELDS) {
-      const truth = values.fields[field];
-      if (truth.value === null) continue;
-      // Estimated values land in the canonical field, exactly like measured ones.
-      (insert as Record<string, unknown>)[field] = truth.value;
-      provenance[field] = {
-        state: truth.provenance.state,
-        basis: truth.provenance.basis,
-        confidence: truth.provenance.confidence,
-        mapperReferences: truth.provenance.mapperReferences,
-        algorithmVersion: truth.provenance.algorithmVersion,
-        mapperFingerprint: truth.provenance.mapperFingerprint,
-      };
+
+    if (values) {
+      for (const field of WORKING_NUMERIC_FIELDS) {
+        const truth = values.fields[field];
+        if (truth.value === null) continue;
+        // Whatever was resolved is persisted for EVERY state — a REVIEW row
+        // keeps its evidence rather than being stored empty and re-derived.
+        (insert as Record<string, unknown>)[field] = truth.value;
+        provenance[field] = {
+          state: truth.provenance.state,
+          basis: truth.provenance.basis,
+          confidence: truth.provenance.confidence,
+          mapperReferences: truth.provenance.mapperReferences,
+          algorithmVersion: truth.provenance.algorithmVersion,
+          mapperFingerprint: truth.provenance.mapperFingerprint,
+        };
+      }
     }
+
     const existing = (insert.extracted_json ?? {}) as Record<string, unknown>;
     (insert as Record<string, unknown>).extracted_json = {
       ...existing,
       productIntelligence: {
         version: 1,
-        readiness: values.valueReadiness,
-        profileMatch: values.profileMatch
+        state,
+        engineUsable: state === 'READY_VERIFIED' || state === 'READY_ESTIMATED',
+        // Kept separate so a technical block can never read as a composition
+        // problem, nor the reverse.
+        compositionReadiness: values?.valueReadiness ?? 'REVIEW',
+        technicalAuthorityRequired: values?.readiness === 'TECHNICAL_AUTHORITY_REQUIRED',
+        needsEnrichment: state === 'REVIEW',
+        profileMatch: values?.profileMatch
           ? {
               confidence: values.profileMatch.confidence,
               basis: values.profileMatch.basis,
@@ -544,14 +553,20 @@ export function planIntimportImport(
       },
     };
 
-    importable.push({
+    byState[state] += 1;
+    planned.push({
       rowIndex: row.rowIndex,
       sourceProductId: row.sourceProductId,
       displayName: row.displayName,
       insert,
-      readiness: values.valueReadiness === 'READY' ? 'READY' : 'READY_ESTIMATED',
+      state,
+      engineUsable: state === 'READY_VERIFIED' || state === 'READY_ESTIMATED',
     });
   }
 
-  return { importable, blocked };
+  return {
+    rows: planned,
+    byState,
+    engineUsable: planned.filter((entry) => entry.engineUsable).length,
+  };
 }

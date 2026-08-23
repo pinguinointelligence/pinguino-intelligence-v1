@@ -961,12 +961,6 @@ export interface ProfileMatch {
   rejected: string | null;
 }
 
-/**
- * Macro agreement required when either side's family is unknown. Family
- * compatibility cannot be checked there, so the numbers have to carry it alone.
- */
-export const MIN_UNFAMILIED_SIMILARITY = 0.7;
-
 /** The bar a profile must clear to supply working values. Owner's rule. */
 export const PROFILE_MATCH_FLOOR = 0.85;
 
@@ -1160,37 +1154,36 @@ export function findProfileMatch(
   const scored = pool
     .map((row) => {
       const rowFamily = familyOf(row);
+
+      // HARD CONTRADICTIONS ONLY. Family is one signal among several, not a
+      // passport: an unknown family lowers what a candidate can score, but it
+      // never bars a match that other evidence carries. What IS barred is a
+      // known kind meeting an incompatible one — a yoghurt cannot take a soft
+      // drink's profile however close their macros read.
       if (!familiesCompatible(productFamily, rowFamily)) return null;
       if (!categoryAllowed(productFamily, row)) return null;
-      const similarity = macroSimilarity(row, input.knownMacros);
+
       const completeness = profileCompleteness(row);
       if (completeness === 0) return null;
-      // With no family for the product, family compatibility proves nothing —
-      // an unknown family contradicts nothing, so everything would pass. Macros
-      // are then the only compatibility evidence there is, and without them a
-      // yoghurt can be matched to a cream soda purely on a shared token.
-      // An UNKNOWN family on either side contradicts nothing, so on its own it
-      // would let a yoghurt match a cream soda on a shared token. Whenever either
-      // side's family is unknown, macros become the only compatibility evidence
-      // there is — and without them, or below a real bar, the candidate is out.
-      if (productFamily !== null && rowFamily === null) {
-        // The product's kind is known but the candidate's is not, so
-        // compatibility cannot be established. Macros will not settle it either:
-        // a drinking yoghurt and a cream soda have near-identical macros and are
-        // not interchangeable.
-        return null;
-      }
-      if (productFamily === null) {
-        // Neither side's kind is known. Macro agreement is the only evidence
-        // there is, and it has to be strong.
-        if (similarity === null || similarity < MIN_UNFAMILIED_SIMILARITY) return null;
-      }
-      // Macro agreement dominates when the product states macros; without them
-      // the match rests on family compatibility and how complete the proxy is,
-      // which is deliberately not enough on its own to clear the floor.
-      const score = similarity === null
-        ? 0.62 + 0.2 * completeness
-        : 0.55 + 0.33 * similarity + 0.12 * completeness;
+      const similarity = macroSimilarity(row, input.knownMacros);
+
+      // How much the kind of thing is actually established on both sides.
+      const familySignal =
+        productFamily !== null && rowFamily !== null
+          ? 1
+          : productFamily !== null || rowFamily !== null
+            ? 0.6
+            : 0.4;
+
+      // Declared macros are the strongest validation available, so they dominate
+      // when present. Without them a strong identity match against a complete,
+      // compatible profile can still carry a product — which is the whole point
+      // of a proxy — while two unknown kinds together cannot reach the floor.
+      const score =
+        similarity === null
+          ? 0.62 + 0.22 * familySignal + 0.1 * completeness
+          : 0.5 + 0.3 * similarity + 0.12 * familySignal + 0.08 * completeness;
+
       return { row, score, similarity, completeness };
     })
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
@@ -1228,19 +1221,52 @@ export function findProfileMatch(
   };
 }
 
-/** Median of the matched profile's values for one field, when it states any. */
+/**
+ * The single row a matched profile actually lends its numbers from.
+ *
+ * Taking each field's median independently across a neighbour set looked
+ * reasonable and is not: every field's median may come from a different subset,
+ * so the assembled vector need not satisfy the physical relations any single
+ * product obeys. In practice it produced named sugars of 40.7 against a total of
+ * 40, and components of 98.31 inside 96.225 of dry matter — breaches of a
+ * fraction of a point that then made the consistency gate withdraw the entire
+ * profile, so an accepted 87% proxy supplied nothing at all.
+ *
+ * One real product is internally coherent by construction. The donor is the most
+ * complete row in the set, ties broken by rank, so the profile that is lent is a
+ * profile that actually exists.
+ */
+export function profileDonor(match: ProfileMatch): MapperKnowledgeRow | null {
+  let best: MapperKnowledgeRow | null = null;
+  let bestCompleteness = -1;
+  for (const row of match.rows) {
+    const completeness = profileCompleteness(row);
+    if (completeness > bestCompleteness) {
+      bestCompleteness = completeness;
+      best = row;
+    }
+  }
+  return best;
+}
+
+/**
+ * One field's value from the profile.
+ *
+ * The donor row answers first, so the bulk of a product's vector comes from one
+ * coherent product rather than a blend. Only where the donor is silent does the
+ * next-ranked row that states the field answer instead — a real value from a
+ * compatible neighbour beats leaving the field unknown, and the assembled result
+ * still faces the consistency gate.
+ */
 export function profileFieldValue(
   match: ProfileMatch,
   field: WorkingNumericField,
 ): { value: number; contributors: string[] } | null {
-  const values: number[] = [];
-  const contributors: string[] = [];
-  for (const row of match.rows) {
+  const donor = profileDonor(match);
+  const ordered = donor ? [donor, ...match.rows.filter((row) => row !== donor)] : match.rows;
+  for (const row of ordered) {
     const value = numeric(row[field as keyof MapperKnowledgeRow] as number | null);
-    if (value === null) continue;
-    values.push(value);
-    contributors.push(row.ingredient_id);
+    if (value !== null) return { value: round4(value), contributors: [row.ingredient_id] };
   }
-  if (values.length === 0) return null;
-  return { value: round4(median([...values].sort((a, b) => a - b))), contributors };
+  return null;
 }

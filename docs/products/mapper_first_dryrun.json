@@ -21,17 +21,17 @@
   "assessed": 820,
   "readiness": {
     "READY": 0,
-    "ESTIMATED_READY": 26,
-    "REVIEW": 790,
-    "TECHNICAL_AUTHORITY_REQUIRED": 4
+    "ESTIMATED_READY": 190,
+    "REVIEW": 370,
+    "TECHNICAL_AUTHORITY_REQUIRED": 260
   },
   "valueReadiness": {
     "READY": 0,
-    "ESTIMATED_READY": 30,
-    "REVIEW": 790
+    "ESTIMATED_READY": 450,
+    "REVIEW": 370
   },
-  "engineReady": 30,
-  "engineReadyShare": 0.0366,
+  "engineReady": 450,
+  "engineReadyShare": 0.5488,
   "familyAssigned": 229,
   "familyHistogram": {
     "chocolate": 6,
@@ -186,82 +186,82 @@
   "fieldFill": {
     "water_percent": {
       "verified": 0,
-      "estimated": 384,
-      "unknown": 436
+      "estimated": 609,
+      "unknown": 211
     },
     "total_solids_percent": {
       "verified": 0,
-      "estimated": 384,
-      "unknown": 436
+      "estimated": 609,
+      "unknown": 211
     },
     "fat_percent": {
       "verified": 131,
-      "estimated": 214,
-      "unknown": 475
+      "estimated": 450,
+      "unknown": 239
     },
     "protein_percent": {
       "verified": 132,
-      "estimated": 282,
-      "unknown": 406
+      "estimated": 455,
+      "unknown": 233
     },
     "carbohydrate_percent": {
       "verified": 132,
-      "estimated": 146,
-      "unknown": 542
+      "estimated": 442,
+      "unknown": 246
     },
     "total_sugars_percent": {
       "verified": 122,
-      "estimated": 157,
-      "unknown": 541
+      "estimated": 476,
+      "unknown": 222
     },
     "salt_percent": {
       "verified": 108,
-      "estimated": 474,
-      "unknown": 238
+      "estimated": 538,
+      "unknown": 174
     }
   },
   "missingHistogram": {
-    "water_percent": 436,
-    "total_solids_percent": 436,
-    "fat_percent": 475,
-    "carbohydrate_percent": 542,
-    "total_sugars_percent": 541,
-    "protein_percent": 406,
-    "salt_percent": 238
+    "water_percent": 211,
+    "total_solids_percent": 211,
+    "total_sugars_percent": 222,
+    "fat_percent": 239,
+    "protein_percent": 233,
+    "carbohydrate_percent": 246,
+    "salt_percent": 174
   },
   "gapDistribution": {
-    "0": 152,
-    "1": 45,
-    "2": 57,
-    "3": 85,
-    "4": 116,
-    "5": 32,
-    "6": 88,
-    "7": 215
+    "0": 76,
+    "1": 13,
+    "2": 34,
+    "3": 43,
+    "4": 26,
+    "5": 4,
+    "6": 17,
+    "7": 157
   },
-  "completeProfiles": 179,
+  "completeProfiles": 525,
   "completeProfileConfidenceBuckets": {
-    "0.50": 10,
-    "0.85": 7,
-    "0.45": 6,
-    "0.60": 11,
-    "0.75": 11,
-    "0.70": 4,
-    "0.90": 54,
-    "0.55": 3,
-    "0.80": 61,
+    "0.85": 176,
+    "0.80": 8,
+    "0.75": 3,
+    "0.90": 313,
+    "0.70": 2,
+    "0.55": 1,
+    "0.60": 7,
     "0.35": 2,
-    "0.65": 3,
+    "0.65": 2,
+    "0.45": 4,
     "0.30": 3,
-    "0.95": 4
+    "0.50": 3,
+    "0.95": 1
   },
   "productsWithDeclarationConflicts": 21,
   "productsSelfContradictory": 2,
   "plausibilityViolations": {
-    "sugar_spectrum_within_total": 14,
-    "energy_matches_macros": 7,
-    "water_solids_balance": 1,
-    "components_within_solids": 43,
+    "sugar_spectrum_within_total": 20,
+    "energy_matches_macros": 30,
+    "range": 1,
+    "components_within_solids": 31,
     "sugars_within_carbohydrate": 3
   },
   "sourcePacks": {
@@ -288,13 +288,13 @@
         "topEntryPoint": "https://comprital.pl/katalog_comprital.pdf",
         "topEntryAuthority": "OFFICIAL_TECHNICAL_PDF",
         "missingNumeric": [
-          "total_sugars_percent",
           "fat_percent",
-          "carbohydrate_percent",
           "protein_percent",
-          "salt_percent",
+          "carbohydrate_percent",
+          "total_sugars_percent",
           "water_percent",
-          "total_solids_percent"
+          "total_solids_percent",
+          "salt_percent"
         ]
       },
       {
@@ -345,13 +345,8 @@
         "topEntryPoint": "https://www.biedronka.pl/pl/fruvita",
         "topEntryAuthority": "AUTHORITATIVE_RETAILER",
         "missingNumeric": [
-          "water_percent",
-          "total_solids_percent",
-          "fat_percent",
-          "protein_percent",
-          "carbohydrate_percent",
-          "total_sugars_percent",
-          "salt_percent"
+          "salt_percent",
+          "fat_percent"
         ]
       },
       {
@@ -385,10 +380,10 @@
         "missingNumeric": [
           "water_percent",
           "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "protein_percent",
-          "fat_percent",
           "salt_percent"
         ]
       },
@@ -404,10 +399,6 @@
         "missingNumeric": [
           "water_percent",
           "total_solids_percent",
-          "fat_percent",
-          "protein_percent",
-          "carbohydrate_percent",
-          "total_sugars_percent",
           "salt_percent"
         ]
       },
@@ -420,7 +411,9 @@
         "officialEntryPoints": 0,
         "topEntryPoint": "https://www.biedronka.pl/pl/go-active",
         "topEntryAuthority": "AUTHORITATIVE_RETAILER",
-        "missingNumeric": []
+        "missingNumeric": [
+          "salt_percent"
+        ]
       },
       {
         "label": "Baitz",
@@ -432,7 +425,6 @@
         "topEntryPoint": "https://www.biedronka.pl/pl/baitz",
         "topEntryAuthority": "AUTHORITATIVE_RETAILER",
         "missingNumeric": [
-          "fat_percent",
           "water_percent",
           "total_solids_percent",
           "total_sugars_percent"
@@ -581,13 +573,7 @@
         "topEntryPoint": "https://www.biedronka.pl/pl/fruvita-pure",
         "topEntryAuthority": "AUTHORITATIVE_RETAILER",
         "missingNumeric": [
-          "salt_percent",
-          "water_percent",
-          "total_solids_percent",
-          "carbohydrate_percent",
-          "total_sugars_percent",
-          "fat_percent",
-          "protein_percent"
+          "salt_percent"
         ]
       },
       {
@@ -621,10 +607,10 @@
         "missingNumeric": [
           "water_percent",
           "total_solids_percent",
+          "fat_percent",
+          "protein_percent",
           "carbohydrate_percent",
           "total_sugars_percent",
-          "protein_percent",
-          "fat_percent",
           "salt_percent"
         ]
       },
@@ -653,46 +639,28 @@
       "row": 1,
       "name": "Airwaves Cool Cassis Bezcukrowa guma do żucia (10 sztuk)",
       "category": "Bakery & sweets",
-      "readiness": "REVIEW",
-      "engineConfidence": null,
+      "readiness": "ESTIMATED_READY",
+      "engineConfidence": 0.872,
       "tiers": [
         "mapper_similar_profile"
       ],
-      "missing": [
-        "water_percent",
-        "total_solids_percent",
-        "fat_percent",
-        "carbohydrate_percent",
-        "total_sugars_percent"
-      ],
+      "missing": [],
       "mapperReferences": [
-        "PI-ING-000686",
-        "PI-ING-000749",
-        "PI-ING-000995",
-        "PI-ING-001613",
-        "PI-ING-001967",
-        "PI-ING-001980"
+        "PI-ING-000749"
       ]
     },
     {
       "row": 2,
       "name": "Baitz Baton choco cocos",
       "category": "Bakery & sweets",
-      "readiness": "REVIEW",
-      "engineConfidence": null,
+      "readiness": "ESTIMATED_READY",
+      "engineConfidence": 0.872,
       "tiers": [
         "mapper_similar_profile"
       ],
-      "missing": [
-        "fat_percent"
-      ],
+      "missing": [],
       "mapperReferences": [
-        "PI-ING-000091",
-        "PI-ING-000092",
-        "PI-ING-000093",
-        "PI-ING-000094",
-        "PI-ING-001053",
-        "PI-ING-001054"
+        "PI-ING-000091"
       ]
     },
     {
@@ -700,7 +668,7 @@
       "name": "Baton w czekoladzie mlecznej z wiórkami kokosowymi Baitz Choco Cocos",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
-      "engineConfidence": 0.504,
+      "engineConfidence": 0.8238,
       "tiers": [
         "mapper_similar_profile"
       ],
@@ -771,19 +739,14 @@
       "name": "Rogalik z nadzieniem kakaowym Baitz Cocoa Rogal",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
-      "engineConfidence": 0.8545,
+      "engineConfidence": 0.8696,
       "tiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
       ],
       "missing": [],
       "mapperReferences": [
-        "PI-ING-000018",
-        "PI-ING-000088",
-        "PI-ING-000109",
-        "PI-ING-000116",
-        "PI-ING-000117",
-        "PI-ING-000122"
+        "PI-ING-000117"
       ]
     },
     {
@@ -822,7 +785,7 @@
       "name": "Strawberry & Crisps Waffle Baitz",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
-      "engineConfidence": 0.4889,
+      "engineConfidence": 0.7839,
       "tiers": [
         "mapper_similar_profile"
       ],
@@ -839,19 +802,13 @@
       "row": 12,
       "name": "Bakallino Masa krówkowa kajmak",
       "category": "Bakery & sweets",
-      "readiness": "REVIEW",
-      "engineConfidence": null,
+      "readiness": "ESTIMATED_READY",
+      "engineConfidence": 0.852,
       "tiers": [],
-      "missing": [
-        "water_percent",
-        "total_solids_percent",
-        "fat_percent",
-        "protein_percent",
-        "carbohydrate_percent",
-        "total_sugars_percent",
-        "salt_percent"
-      ],
-      "mapperReferences": []
+      "missing": [],
+      "mapperReferences": [
+        "PI-ING-000584"
+      ]
     }
   ]
 }

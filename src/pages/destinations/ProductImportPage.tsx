@@ -74,9 +74,12 @@ export function ProductImportPage() {
   const [mapperNotice, setMapperNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [importResult, setImportResult] = useState<RunImportResult | null>(null);
-  const [importPlan, setImportPlan] = useState<{ importable: number; blocked: number } | null>(
-    null,
-  );
+  const [importPlan, setImportPlan] = useState<{
+    total: number;
+    engineUsable: number;
+    technical: number;
+    review: number;
+  } | null>(null);
 
   const reset = () => {
     setResult(null);
@@ -193,18 +196,34 @@ export function ProductImportPage() {
    * `qaLimit` exists for controlled staging checks — importing a whole
    * catalogue during QA is not a test, it is a mess to clean up.
    */
+  /**
+   * Import every valid row, and let Product Intelligence say what each may do.
+   *
+   * Readiness gates ENGINE USE, not whether a product may exist. A REVIEW row
+   * and a technical product are both written with everything resolved about
+   * them — discarding them would lose the identity, the label evidence and the
+   * enrichment already done, and force it all to be redone on the next upload.
+   *
+   * `qaLimit` exists for controlled staging checks: importing a whole catalogue
+   * during QA is not a test, it is a mess to clean up afterwards.
+   */
   const onImport = async (qaLimit?: number) => {
     if (!result) return;
     setBusy(true);
     let candidates = result.candidates;
     if (source === 'intimport' && localRows.length > 0) {
       const plan = planIntimportImport(localRows);
-      const usable = qaLimit ? plan.importable.slice(0, qaLimit) : plan.importable;
-      const byRow = new Map(usable.map((entry) => [entry.rowIndex, entry.insert]));
+      const rows = qaLimit ? plan.rows.slice(0, qaLimit) : plan.rows;
+      const byRow = new Map(rows.map((entry) => [entry.rowIndex, entry.insert]));
       candidates = result.candidates
         .filter((candidate) => byRow.has(candidate.rowIndex))
         .map((candidate) => ({ ...candidate, insert: byRow.get(candidate.rowIndex)! }));
-      setImportPlan({ importable: plan.importable.length, blocked: plan.blocked.length });
+      setImportPlan({
+        total: rows.length,
+        engineUsable: rows.filter((entry) => entry.engineUsable).length,
+        technical: rows.filter((entry) => entry.state === 'TECHNICAL_AUTHORITY_REQUIRED').length,
+        review: rows.filter((entry) => entry.state === 'REVIEW').length,
+      });
     }
     const outcome = await runProductImport(candidates);
     setBusy(false);
@@ -308,8 +327,9 @@ export function ProductImportPage() {
           />
           {importPlan ? (
             <p className="text-xs text-[#8a7f6d]">
-              Product Intelligence: {importPlan.importable} do zapisu, {importPlan.blocked}{' '}
-              wstrzymanych (przegląd składu lub brak autorytetu technicznego).
+              Product Intelligence: {importPlan.total} zapisanych do katalogu —{' '}
+              {importPlan.engineUsable} gotowych dla Engine, {importPlan.technical} z
+              zablokowanym użyciem technicznym, {importPlan.review} do uzupełnienia.
             </p>
           ) : null}
           {importResult ? (

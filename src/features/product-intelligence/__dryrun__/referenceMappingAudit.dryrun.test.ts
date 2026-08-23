@@ -38,20 +38,20 @@ import { assessIntimportProduct } from '../intimportIntelligence';
 import {
   buildMapperKnowledge,
   identityTokens,
-  similarCohort,
   MAX_TOKEN_DOCUMENT_SHARE,
   MIN_TOKEN_DISCARD_COUNT,
   type MapperKnowledge,
 } from '../mapperValueInference';
 import { resolveProductWorkingValues } from '../productWorkingValues';
 import { WORKING_NUMERIC_FIELDS, type WorkingNumericField } from '../productFieldTruth';
+import { REQUIRED_COMPOSITION_FIELDS as REQUIRED_MACROS } from '../engineFieldContract';
 import { loadMapperKnowledgeRows, MAPPER_FILE } from './mapperFixture';
 
 const IMPORT_CSV = join(homedir(), 'Desktop', 'PL_Poland.csv');
 const REFERENCE = join(homedir(), 'Desktop', 'PL_Poland_GELLATTI_FINAL_READY.xlsx');
 const REPORT = resolve(__dirname, '../../../../docs/products/reference_mapping_audit.json');
 
-type OldClass = 'A_still_defensible' | 'B_replaced_safer' | 'C_needs_official_source' | 'D_unsafe';
+type OldClass = 'SAFE' | 'SAFER_REPLACEMENT' | 'REJECT' | 'NO_LONGER_NEEDED';
 
 interface OldMapping {
   'Product ID': string | null;
@@ -129,7 +129,7 @@ describe.runIf(existsSync(IMPORT_CSV) && existsSync(MAPPER_FILE) && existsSync(R
             oldMapperReference: old['Mapper Reference'],
             oldMethod: old.Method,
             oldConfidence: old['Confidence %'],
-            verdict: 'C_needs_official_source',
+            verdict: 'REJECT',
             reason: 'produkt nie występuje w bieżącym pliku CSV',
             sharedTokens: [],
             currentFieldsProduced: 0,
@@ -166,13 +166,6 @@ describe.runIf(existsSync(IMPORT_CSV) && existsSync(MAPPER_FILE) && existsSync(R
           knowledge,
         );
 
-        // Membership in a 195-row family cohort says almost nothing about whether
-        // a 1:1 proxy was justified, so "still defensible" is judged against the
-        // NARROW nearest-neighbour cohort only — the tier that actually asserts
-        // "these specific rows resemble this specific product".
-        const narrow = new Set(
-          similarCohort(identity, knowledge).rows.map((row) => row.ingredient_id),
-        );
         const produced = WORKING_NUMERIC_FIELDS.filter(
           (field) => resolved.fields[field].provenance.state !== 'UNKNOWN',
         ).length;
@@ -181,22 +174,31 @@ describe.runIf(existsSync(IMPORT_CSV) && existsSync(MAPPER_FILE) && existsSync(R
         const oldRowTokens = discriminatingTokens(old['Mapper Reference'], knowledge);
         const shared = [...productTokens].filter((token) => oldRowTokens.has(token));
 
+        // The product/profile match is now the authority, so the old row is
+        // judged against what the current matcher actually chose for this
+        // product — not against whether one narrow cohort happened to contain it.
+        const chosen = new Set(resolved.profileMatch?.references ?? []);
+        const sourceComplete = REQUIRED_MACROS.every(
+          (field) => resolved.fields[field].provenance.state === 'VERIFIED',
+        );
         let verdict: OldClass;
         let reason: string;
-        if (old['Mapper Ingredient ID'] && narrow.has(old['Mapper Ingredient ID'])) {
-          verdict = 'A_still_defensible';
-          reason =
-            'bieżąca wąska kohorta najbliższych sąsiadów niezależnie wybiera ten sam wiersz Mappera';
+        if (sourceComplete) {
+          verdict = 'NO_LONGER_NEEDED';
+          reason = 'produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne';
+        } else if (old['Mapper Ingredient ID'] && chosen.has(old['Mapper Ingredient ID'])) {
+          verdict = 'SAFE';
+          reason = 'bieżący dobór profilu niezależnie wybiera ten sam wiersz Mappera';
+        } else if ((resolved.profileMatch?.confidence ?? 0) >= 0.85) {
+          verdict = 'SAFER_REPLACEMENT';
+          reason = `stary wiersz zastąpiony lepiej dopasowanym profilem (${Math.round((resolved.profileMatch?.confidence ?? 0) * 100)}%)`;
         } else if (shared.length === 0) {
-          verdict = 'D_unsafe';
+          verdict = 'REJECT';
           reason =
-            'stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę';
-        } else if (produced > 0) {
-          verdict = 'B_replaced_safer';
-          reason = 'stare przypisanie nie broni się, ale bieżące dowody Mappera dają pola skądinąd';
+            'stary wiersz nie dzieli z produktem żadnego rozróżniającego tokenu i nic bezpiecznego go nie zastępuje';
         } else {
-          verdict = 'C_needs_official_source';
-          reason = 'stare przypisanie nie broni się i nic bezpiecznego go nie zastępuje';
+          verdict = 'REJECT';
+          reason = 'brak wystarczająco zgodnego profilu — produkt wymaga danych źródłowych';
         }
 
         verdicts.push({
@@ -228,8 +230,11 @@ describe.runIf(existsSync(IMPORT_CSV) && existsSync(MAPPER_FILE) && existsSync(R
         mapperFingerprint: mapper.fingerprint,
         oldMappings: oldMappings.length,
         tally,
-        unsafeExamples: verdicts.filter((entry) => entry.verdict === 'D_unsafe').slice(0, 40),
-        stillDefensible: verdicts.filter((entry) => entry.verdict === 'A_still_defensible'),
+        rejectedExamples: verdicts.filter((entry) => entry.verdict === 'REJECT').slice(0, 30),
+        safeExamples: verdicts.filter((entry) => entry.verdict === 'SAFE').slice(0, 20),
+        replacementExamples: verdicts
+          .filter((entry) => entry.verdict === 'SAFER_REPLACEMENT')
+          .slice(0, 20),
         verdicts,
       };
       mkdirSync(dirname(REPORT), { recursive: true });
