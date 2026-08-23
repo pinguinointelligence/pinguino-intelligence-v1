@@ -3,6 +3,8 @@
 **Date:** 2026-08-23
 **Branch:** `claude/protein-final-closeout`
 **Starting SHA:** `92edb67` (staging at the time the work began)
+**Final branch SHA:** `a42d604` — pushed to `origin/claude/protein-final-closeout` as a fast-forward
+**Staging tip at close:** `40b3755` — the branch is a clean fast-forward onto it, **not landed**
 **Mapper base:** `docs/ingredients/validation/mapper_basement.csv` — 2088 rows, SHA-256
 `b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38` — **never written**
 
@@ -220,7 +222,11 @@ Stated plainly; no number here is estimated.
   drift predates this work.
 - **§29 — served QA on the final staging SHA (≥10 recipes): NOT RUN.** Requires landing on staging
   and deploying first.
-- **§28/§32 — landing on staging and the staging Edge deploy: NOT PERFORMED.**
+- **§28/§32 — landing on staging and the staging Edge deploy: BLOCKED, not skipped.**
+  `git push origin claude/protein-final-closeout:staging` was refused by this session's permission
+  layer ("Blocked by classifier"), which is outside my control and only the owner can lift. The
+  branch is validated, green and a clean fast-forward onto `40b3755`, so landing is a single
+  command once permitted. I did not attempt to work around the refusal.
 - **§22 — the 19.99 / 19.996 / 20.00 / 20.01 energy-share boundary ladder** was not re-run in this
   task; it is covered by the previous closeout, not by this campaign.
 
