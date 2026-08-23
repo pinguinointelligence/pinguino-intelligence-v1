@@ -72,12 +72,8 @@ import {
   productBehaviorBlockedMessage,
   resolveProductBehaviorForSelection,
 } from '@/services/productIntelligence';
-import {
-  type ProductDoseMeta,
-} from './productDoseSuggestion';
-import {
-  clampOwnerStabilizerComponentGrams,
-} from '@/features/recipe-constraints';
+import { type ProductDoseMeta } from './productDoseSuggestion';
+import { clampOwnerStabilizerComponentGrams } from '@/features/recipe-constraints';
 
 const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
@@ -415,24 +411,27 @@ export function IngredientBuilder({
 
   // §8 change marker — a PURE comparison against the last clean state. It never
   // participates in Engine math, pricing, Apply or persistence.
+  //
+  // The signatures are read from the CANONICAL recipe vector (`storeItems`),
+  // never from the `items` the surface happens to be rendering: Produkcja hands
+  // this component the production forecast instead of the planning result, so
+  // reading the rendered vector made every tab switch look like an edit.
   const changeSignatures = Object.fromEntries(
-    items.map((item) => {
-      const raw =
-        storeItems.find((candidate) => candidate.id === item.id)?.ingredient ?? item.ingredient;
-      const lineCost = effectiveCostForIngredient(raw, customerPrices);
-      const lineMeta = ingredientRowMeta(metaByLineId, item.id);
+    storeItems.map((line) => {
+      const lineCost = effectiveCostForIngredient(line.ingredient, customerPrices);
+      const lineMeta = ingredientRowMeta(metaByLineId, line.id);
       return [
-        item.id,
+        line.id,
         ingredientChangeSignature({
-          lineId: item.id,
-          plannedGrams: item.planned_grams,
-          lockType: item.lock_type,
-          role: customerRoleFor(item.lock_type, lineMeta),
-          required: lineMeta.required || item.lock_type === 'required',
+          lineId: line.id,
+          plannedGrams: line.planned_grams,
+          lockType: line.lock_type,
+          role: customerRoleFor(line.lock_type, lineMeta),
+          required: lineMeta.required || line.lock_type === 'required',
           unavailable: lineMeta.unavailable,
           pricePerKg: lineCost.pricePerKg,
           priceSource: lineCost.source ?? 'none',
-          ingredientId: canonicalIngredientId(item.ingredient) ?? item.ingredient.id,
+          ingredientId: canonicalIngredientId(line.ingredient) ?? line.ingredient.id,
         }),
       ];
     }),

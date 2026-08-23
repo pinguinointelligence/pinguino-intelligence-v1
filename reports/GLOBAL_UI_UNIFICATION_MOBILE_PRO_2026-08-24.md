@@ -138,3 +138,21 @@ RLS, API or persistence change. The only store added is a presentation baseline.
   attention/pending token — it is NOT to be switched to gold.
 - `vite.qa.config.ts` is a local, untracked QA-only config (this worktree links
   `node_modules` to a sibling). Not committed.
+
+## 9. Served staging QA — two defects found in this work and fixed
+
+Both were invisible on the DEV demo preset and only appeared against a real
+authenticated Pro recipe ("QA Lost PL.zoltka UNLOCKED v2", 8 base lines).
+
+1. **False change markers on every module switch.** The §8 signatures were read
+   from the `items` the surface was RENDERING. Produkcja hands `IngredientBuilder`
+   the production forecast instead of the planning result, so opening Produkcja
+   and returning marked 5 of 8 lines as changed. Fixed: the signatures now read
+   the CANONICAL recipe vector (`storeItems`), which is identical in every
+   module. Regression test: "reads the change signature from the CANONICAL
+   recipe vector, not the rendered one".
+2. **The sheet header truncated the catalog name.** Real Mapper names
+   ("CREAM 30% · Mlekovita Cream · Chilled") are longer than a phone line, and
+   the detail view truncated too — so the full name was unreachable on mobile.
+   Fixed: the sheet header wraps; the collapsed list row still keeps one line.
+   Regression test: "shows the WHOLE catalog name in the detail view".

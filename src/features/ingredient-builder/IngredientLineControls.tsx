@@ -191,8 +191,14 @@ export function MobileIngredientSheet({
         {/* ── Identity + low-frequency controls (top) ───────────────────────── */}
         <div className="sticky top-0 z-10 border-b border-ink/10 bg-white px-4 py-3">
           <div className="flex min-w-0 items-start justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <h2 className="truncate text-base font-semibold text-ink">{item.ingredient.name}</h2>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              {/* The DETAIL view must be able to show the whole catalog name —
+                  real Mapper names ("CREAM 30% · Mlekovita Cream · Chilled")
+                  are longer than a phone line, so this header wraps instead of
+                  truncating. The collapsed list row still keeps one line. */}
+              <h2 className="text-base font-semibold break-words text-ink">
+                {item.ingredient.name}
+              </h2>
               <button
                 type="button"
                 onClick={onOpenData}

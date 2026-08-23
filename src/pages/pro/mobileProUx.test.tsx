@@ -115,6 +115,22 @@ describe('collapsed mobile recipe line', () => {
     expect(row).toContain('<MobileIngredientLine');
   });
 
+  it('reads the change signature from the CANONICAL recipe vector, not the rendered one', () => {
+    // Produkcja renders the production forecast instead of the planning result.
+    // Reading the rendered `items` made every Receptura↔Produkcja switch look
+    // like an edit and falsely marked lines (found in served staging QA).
+    const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
+    const block = builder.slice(
+      builder.indexOf('const changeSignatures = Object.fromEntries('),
+      builder.indexOf('const changedLineIds = useChangedIngredientLines('),
+    );
+    expect(block).toContain('storeItems.map((line) => {');
+    expect(block).toContain('plannedGrams: line.planned_grams');
+    // Never the `items` prop — that vector changes with the active module.
+    expect(block).not.toContain('item.planned_grams');
+    expect(block).not.toContain('items.map(');
+  });
+
   it('marks a changed line with the existing attention accent, never a new colour', () => {
     expect(row).toContain("mode === 'recipe' && changed && 'ingredient-line-changed'");
     expect(row).toContain("data-changed={mode === 'recipe' && changed ? 'true' : undefined}");
@@ -140,6 +156,14 @@ describe('mobile ingredient editing sheet', () => {
     expect(read('features', 'ingredient-builder', 'IngredientRow.tsx')).toContain(
       "import { DialogShell } from '@/components/ui/DialogShell'",
     );
+  });
+
+  it('shows the WHOLE catalog name in the detail view (real names exceed a phone line)', () => {
+    // Found in served staging QA: "CREAM 30% · Mlekovita Cream · Chilled" was
+    // truncated in the sheet header too, so the full name was unreachable.
+    const header = controls.slice(controls.indexOf('<h2'), controls.indexOf('</h2>'));
+    expect(header).toContain('break-words');
+    expect(header).not.toContain('truncate');
   });
 
   it('keeps identity, help, price and the Main crown at the top', () => {
