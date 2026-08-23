@@ -175,6 +175,7 @@ milk and 180 → 267 g cream. It now says what actually happened:
 | `git diff --check` | clean |
 | full suite (pre-rebase) | 642 files / **8142 passed**, 0 failed |
 | full suite (post-rebase) | 657 files / **8275 passed**, 0 failed |
+| full suite (final, clean load) | 657 files / **8275 passed**, 0 failed, 396 s |
 | new regression suite | 84 tests |
 | existing tests modified | **none** |
 
@@ -221,18 +222,30 @@ milk and 180 → 267 g cream. It now says what actually happened:
    | 2 | **93.07 s** | 42.54 s |
    | 3 | 30.73 s | 42.98 s |
 
-   Two conclusions, both honest. The change costs roughly **+10 s (~35 %) on the
-   median** of this file — the price of the extra deviating-rung evaluations on
-   soft-held lines. And the **60 s budget is already marginal on unmodified
-   staging**: the baseline exceeded it at 93 s in run 2, so this test is flaky
-   under machine load independently of this work.
+   Note the **baseline itself exceeded its own 60 s budget at 93 s** in run 2 —
+   this test is flaky under machine load independently of this work.
 
-   Across three full-suite runs, two were completely green and one failed only
-   this test (91 s) in a run that was itself 63 % slower overall than the green
-   one (625 s vs 384 s). **The timeout was deliberately NOT raised** — masking
-   the cost behind a bigger budget would be exactly the kind of test-weakening
-   the brief forbids. Whether to raise that per-test budget, or to reduce the
-   deviating-pass cost further, is an owner decision.
+   Repeating the comparison once the machine quietened (load average 4.9), over
+   BOTH slow files together — `mainConstrainedNearestAndRescue` +
+   `mainTechnicalMaximum`, 64 tests:
+
+   | | duration | result |
+   |---|---|---|
+   | baseline `d10b103` | 112.31 s | 64/64 passed |
+   | soft-hold | **106.22 s** | 64/64 passed |
+
+   Under comparable conditions the two are **within noise of each other, with
+   the soft-hold build marginally faster**. The earlier „+35 %" reading was
+   contention, not signal. Across five full-suite runs, the three taken under
+   lighter load were completely green; the two failures were timeouts in runs
+   that were themselves 60–80 % slower overall (625 s and 694 s vs 384 s), and
+   one of them missed its budget by 0.16 s.
+
+   **No timeout was raised.** Masking cost behind a bigger budget would be
+   exactly the test-weakening the brief forbids — and the measurement says there
+   is no systematic cost to mask. The pre-existing marginality of that 60 s
+   budget under load is worth an owner decision, but it is not caused by this
+   change.
 
    Untouched: `MAX_SOLVER_ROUNDS`, the global timeout, and every convergence
    guard. No run hung and no infinite spinner was observed.
