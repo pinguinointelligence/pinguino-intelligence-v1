@@ -1,56 +1,184 @@
-# PINGÜINO — Protein V2 Final Closeout
+# PINGÜINO — Shared Direction NEAREST fix + Protein V2 closeout
 
 **Date:** 2026-08-23
-**Branch:** `claude/protein-final-closeout` (rebased onto `origin/staging` @ `0ab80ed`)
-**Worktree:** `pinguino-intelligence-v1-protein-final`
-**Mapper Base:** `docs/ingredients/validation/mapper_basement.csv` — 2088 rows, SHA-256
-`b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38` — **unmodified**
+**Branch:** `claude/protein-final-closeout`
+**Starting SHA:** `92edb67` (staging at the time the work began)
+**Mapper base:** `docs/ingredients/validation/mapper_basement.csv` — 2088 rows, SHA-256
+`b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38` — **never written**
 
 ---
 
-## FINAL STATUS
+## 1. Shared Direction NEAREST — root cause
 
-**PROTEIN V2 FINAL CLOSEOUT BLOCKED — Recipe Direction returns a non-nearest candidate when a
-requested band is unreachable, so the five-position Sweetness selector moves backwards at −11 °C
-(+2 delivers POD 14.7201 against +1's 15.5571) and at −13 °C (−1 delivers 14.9812, above its own
-requested band [13,14]). This is a defect in the SHARED Direction NEAREST selection, not in
-Protein. Until it is fixed, Protein Sweetness cannot be truthfully unblocked, and §7–§14 (the
-≥1,500-state Direction matrix), §17, §24 and §29 cannot be closed.**
+Candidate selection had **no explicit representation of distance to the requested Direction
+band**. Ranking was `Σ_metrics (beyond_band / halfWidth)` summed over *every* technical metric
+(`engine/corrections/solver.ts` → `detectViolations`, consumed by `applyPipeline`'s `measure()`),
+resolved by a greedy hill-climb that accepted only strictly-improving moves and never backtracked.
+"NEAREST" therefore meant *wherever the climb happened to stop*: a move that closed Direction
+distance while transiently costing an unrelated metric was rejected, and the search stalled short
+of candidates it could demonstrably reach.
 
-This is a blocked status, not a partial close. The §6 work below is complete and fully validated;
-it is reported as evidence, not as closure.
+Four further defects were found while proving the fix, each measured, not inferred:
 
----
+| # | Defect | Measured evidence |
+|---|---|---|
+| 1 | Ranking ran **after** the concession check, so `no_proposal` could be returned while a strictly nearer legal candidate existed | Gelato −13 Sweetness 0: user left on the draft at POD 16.3677 (distance 1.3677 from [14,15]) while a legal **15.1365** (0.1365) was reachable |
+| 2 | The **incumbent** was exempt from the hard gate the probes had to pass | A direction-perfect but natively **unsafe** candidate won the ranking, then was discarded downstream — leaving the user further away than doing nothing |
+| 3 | The **bar** was an unattainable state | Vanilla −12 Sweetness +2: incumbent could not stand, draft was itself hard-violating, yet the draft's 0.5107 was the bar — so a legal probe at 0.5468 "lost" and the fallback delivered POD 14.3892 while a legal **15.4532** existed |
+| 4 | RC-2c's preference-stripped retry returned a Preview bound to the **wrong working state** | `workingStateFingerprint` hashes `goals`, so a clean non-diagnostic Preview carried a base fingerprint for a state not on the user's screen — Apply refused it as `stale_preview`. It could never be applied. |
 
-## §6 — Toolbox ↔ Mapper ↔ served runtime determinism — **CLOSED**
+A fifth was a **sentinel-shape** bug in my own first fix: the `+∞` bar was written with an empty
+`perAxis`, and the loop prunes satisfied axes by reading `perAxis` — so it silently marked every
+axis satisfied and skipped the search. That is why the first version of fix #3 changed nothing.
 
-### Root cause (not a seed-placement problem)
+## 2. Files and functions changed
 
-The brief forbade "simply moving Protein seeds farther from band edges" and demanded the
-source-of-truth fix. The real defect: **every toolbox-bound identity diverged from its Mapper row.**
-The reference set in `src/engine/corrections/candidates.ts` builds ingredients with
-`pod_value: null, pac_value: null`, while the Mapper carries stored values. Per `engine/pac.ts`
-precedence — **a stored `pac_value` wins; null falls back to deriving from the sugar breakdown** —
-the offline toolbox path and the served path were running *different freezing arithmetic on the
-same nominal ingredient*. That is why offline reported Score 10 where served measured Score 6.
+| File | Change |
+|---|---|
+| `src/features/recipe-direction/directionBandDistance.ts` | **NEW.** `bandDistance` (§5: 0 inside, else how far beyond — never distance to a centre), `requestedDirectionBands`, `directionDistance`, `compareDirectionDistance` |
+| `src/features/constraint-studio/applyPipeline.ts` | **NEW** `improveDirectionNearestVector`; ranking moved *before* the concession check; `attachMainObjective` now scores the proof from the same candidate the Apply door does; the Main frontier is rebuilt when ranking replaces the candidate; RC-2c retry rebased onto the original working state |
+| `src/features/recipe-direction/recipeDirectionTargets.ts` | Protein + Vegan added to `targetFifth`, `sweetnessOperational` and `hasActiveExactDirectionObjective` |
 
-### Fix
+## 3. Old ranking → new ranking
 
-- `scripts/buildCanonicalToolboxCompositions.mjs` — generates a single composition authority
-  **from** the Mapper. It never writes the Mapper. `--check` fails on any drift and pins the
-  Mapper SHA-256.
-- `src/data/ingredients/canonicalToolboxCompositions.ts` — GENERATED. 23 identities, exporting
-  `CANONICAL_TOOLBOX_COMPOSITIONS`, `CANONICAL_TOOLBOX_MAPPER_SHA256`, `canonicalToolboxComposition()`.
-- `src/features/recipes/newRecipeStarter.ts` — `starterIngredient()` resolves each seed's
-  composition, POD, PAC, DE, price, currency, confidence and verification from the canonical
-  authority instead of the null-bearing reference set.
+**Old:** greedy hill-climb on `Σ_metrics (beyond_band / halfWidth)`; whatever it stopped on was
+returned, and Direction distance appeared nowhere.
 
-**Scope discipline:** making this authority global broke 36 tests across `engineAuthenticity` drift
-detectors, the Vegan matrix, the Gelato 150-state Direction sweep and the substitution/Main
-contracts. That change was reverted and the authority scoped to the starter path only, where the
-defect actually lived.
+**New**, strictly lexicographic — Direction never outranks safety:
 
-### Verification — offline now reproduces served exactly
+1. executable / hard-safe (rejected outright otherwise)
+2. Main + Multi-Main ratio, locks, batch equality, no 0 g row (rejected outright) — verified with
+   the *same* `verifyMainIngredientIdentity(input, candidate, set.byLineId)` call the Apply door uses
+3. **minimum distance to the requested band** ← the newly explicit term
+4. the incumbent wins every tie, so existing technical tie-breaks stand unless something is
+   *strictly* nearer
+
+Candidates are generated by probing sibling selector positions. Aiming at a neighbouring band is
+only a *way of producing* a candidate; scoring is always against what the user asked for.
+
+**Stated cap:** `DIRECTION_NEAREST_MAX_PROBES = 3`. This is a real bound, not a guess — a candidate
+four positions away could in principle be nearer. It is guarded by the cross-profile matrix, which
+asserts the full contract for every level against **all five** levels' delivered candidates. A cap
+of 2 was insufficient (Gelato −11 failed loudly); 3 satisfies all 12 profile × temperature cells.
+A probe memo was tried and **reverted** — fingerprinting cost more than the reuse saved.
+
+## 4. The two proven Protein cases
+
+| Case | Before | After |
+|---|---|---|
+| **−11 °C, Sweetness +2**, band [16,17] | POD 14.7201, distance 1.2799 — while +1 reached 15.5571 (distance 0.4429 from the *same* band) | **POD 15.5571**, distance 0.4429 — proven frontier, nothing higher reachable at −11 |
+| **−13 °C, Sweetness −1**, band [13,14] | POD 14.9812 — moved **up and away** from a downward target, while −2 reached 13.9272 *inside* the band | **POD 13.9272**, distance 0 — **ACHIEVED** |
+
+Full Protein sweeps, all six (temperature × strategy) sequences monotone, ECO now identical to
+OPTIMAL:
+
+```
+−11  12.4716  13.4992  14.3305  15.5571  15.5571
+−12  13.8224  13.8224  14.9346  15.1027  16.4588
+−13  13.9272  13.9272  14.6927  15.5194  16.5279
+```
+
+Every collapsed pair is *proved* to sit on a real frontier: no other level's delivered candidate is
+nearer to the collapsed level's own band.
+
+## 5. Cross-profile regression (§8)
+
+`sharedDirectionNearestMatrix.test.ts` states the contract falsifiably without hardcoding any
+expected POD: **for any requested level L, the candidate returned for L must be at least as near to
+L's own band as every other level's delivered candidate is to L's band.** Every other level's
+candidate is by construction reachable from the same draft.
+
+| Profile | −11 | −12 | −13 |
+|---|---|---|---|
+| Standard Gelato | pass | pass | pass (level 0: 16.3677 → **15.1365**) |
+| Sorbet (Multi-Main 2:1 fixture) | pass | pass | pass |
+| Vegan | pass | pass | pass (Sweetness −2: `unsafe_proposal` → **POD 17.7477**) |
+| Protein | pass | pass | pass |
+
+**Vegan defect found and fixed.** Codex enabled Vegan five-level Direction in parallel
+(`7cf0ffc`) but Vegan was never added to `hasActiveExactDirectionObjective`. That list is not
+cosmetic — the pipeline's native-safe Direction fixed point is gated on it, so an omitted
+five-fifth profile reports `unsafe_proposal`, i.e. **no Preview at all**, instead of a truthful
+NEAREST. Measured on the Vegan −13 starter at Sweetness −2 (band [13,15.4], draft POD 21.575, draft
+natively clean): no Preview, even though the −1 request reaches a legal 17.7477 from that same
+draft. Protein had the identical defect before it was listed there.
+
+Verified **not** caused by the NEAREST search: it reproduces byte-identically with the search
+disabled. With the gate corrected the two fixes compose — the gate makes the outcome truthful
+(`no_proposal`), the ranking then makes it useful (POD 17.7477).
+
+## 6. Protein Sweetness qualification / Hardness status
+
+**Sweetness — OPERATIONAL.** 150/150 states (−2..+2 × −2..+2 × 3 temperatures × 2 strategies) are
+natively hard-safe, claim-qualified, applied, with zero executable 0 g rows. POD is
+composition-derived from each ingredient's own stored `pod_value`, and the five-fifth target
+subdivides the Protein profile's **own** approved POD band [12,17] — no borrowed dairy curve, no
+invented `lockedReference`.
+
+**Hardness — `blocked_science`, and deliberately not unlocked** because Sweetness now works. At
+otherwise constant formulation, instrumental hardness rises **13.60 N → 47.66 N as protein goes
+4 % → 10 %** (Applied Food Research 2(1) 100029, 2022, DOI 10.1016/j.afres.2021.100029, Table 1 /
+Fig. 2). The Gelato NPAC→hardness calibration therefore does not transfer, and no published
+controlled series reports NPAC/PAC alongside hardness for high-protein frozen desserts, so the
+protein-specific curve cannot be derived. The axis publishes **no band**, so nothing downstream can
+optimize toward a target the surface reports as unavailable — and the 1500-state matrix proves that
+inertness directly (1200 checks that the Sweetness band is identical across all five hardness
+positions).
+
+## 7. Internet corpus, coverage and results
+
+**20 recipes, 20 distinct families, every page opened and read.** Normalized to 1000 g PINGÜINO
+batches through real product authority; every ingredient payload is read from its Mapper row by
+`scripts/buildInternetProteinRecipeCorpus.mjs` — no composition is authored, and `--check` guards
+drift. Published recipes are written for consumer kit ("1 scoop", protein shakes, instant pudding
+mix), so normalization preserves the source's **intent** — protein-source class, fat level, sugar
+level, flavour family.
+
+Families: vanilla, chocolate, dark cocoa, strawberry, raspberry, banana, coffee, caramel, salted
+caramel, pistachio, peanut, hazelnut, coconut, yogurt, skyr, whey-heavy, casein/milk-protein-heavy,
+mixed protein, low-fat, high-fat.
+
+| Campaign | Result |
+|---|---|
+| Direction states (20 × 3 × 5 sweetness × 5 hardness) | **1500**, 1200 hardness-inertness checks — pass |
+| Preview/Apply states (20 × 3 × 2 modes × 5) | **600 / 600 PASS**, 0 fail |
+| — outcome split | 472 ACHIEVED, 128 NEAREST |
+| — Apply split | 468 applied, 85 iteration-cap diagnostic, 24 hard-residual, 22 unsafe-proposal, 1 n/a |
+| — Score distribution | 10:267, 9:259, 8:12, 7:30, 6:10, 5:22 |
+| — protein % range across the corpus | 2.12 % → 17.28 % |
+| Rescue cases (§20) | **22 / 22** — 13 produce advice, 9 truthfully silent |
+| Deterministic fuzz (§25) | **500 states, 56 full Previews, 0 defects** |
+| Main (§18) | 6 recipes, Main identity + grams preserved |
+| Multi-Main (§18) | 1:1 and 2:1 on 2 recipes, declared ratio preserved |
+| Locks (§19) | 4 recipes, gram lock honoured byte-exact |
+| Save/reopen/versions (§23) | 5 recipes, v1 → v2 → restore-as-v3, **no runtime composition drift** |
+
+Artifacts: `reports/PROTEIN_INTERNET_RECIPE_MATRIX.csv` (600 rows) and
+`reports/PROTEIN_INTERNET_PRICE_SNAPSHOT.csv`.
+
+## 8. MOJA CENA — missing price must never block ECO
+
+Five ingredients the corpus uses carry **no catalogue price**. Per the owner rule, current realistic
+market prices were sourced from the open web, normalized to €/kg (PLN→EUR 4.30, normal listing
+prices, never promotions) and applied as **user-level MOJA CENA**, exactly as if typed into the app.
+Never written to the Mapper, never changing a canonical price, and the generator **refuses** to emit
+an entry for any row that already has a catalogue price. `match_class` records how close each
+observation is, so a comparable is never presented as an exact one.
+
+| Article | MOJA CENA | Match | Source |
+|---|---|---|---|
+| PISTACHIO · Aldori Paste | 46.28 €/kg | EXACT_CLASS | Sklep Czekolada, 199 zł/kg |
+| COCOA ALKALIZED · Cacao Barry | 22.79 €/kg | STRONG_COMPARABLE | Trzy Ziarna, 97.99 zł/kg |
+| CAFFE ESPRESSO ARABICA | 13.95 €/kg | STRONG_COMPARABLE | Kaweo wholesale band |
+| SKYR · Piątnica | 4.75 €/kg | EXACT | Frisco, 450 g pack |
+| COTTAGE CHEESE BIO | 9.29 €/kg | STRONG_COMPARABLE | Sklep Ekologiczny BIO band |
+
+Zero `missing_prices` outcomes across the 600-state matrix.
+
+## 9. Runtime identity determinism (§6, preserved)
+
+The starter path resolves every seed through the generated canonical Mapper-derived composition
+authority, so offline reproduces served exactly:
 
 | Serving | POD | NPAC | Protein % |
 |---|---|---|---|
@@ -58,118 +186,48 @@ defect actually lived.
 | −12 °C | 15.1027 | 44.80 | 8.312 % |
 | −13 °C | 14.6927 | 51.00 | 9.773 % |
 
-`src/data/ingredients/canonicalToolboxCompositions.test.ts` — 16 tests pinning the generated data
-field-for-field against the Mapper rows, asserting the starter carries canonical
-composition/POD/PAC/price, and reproducing the served-measured metrics above.
+Drift guard: `npm run toolbox:compositions:check` — 23 identities pinned against the Mapper SHA.
+The authority remains **scoped to the starter path**; globalizing it broke 36 tests across the
+authenticity drift detectors, the Vegan matrix, the Gelato Direction sweep and the substitution/Main
+contracts, and that change was reverted rather than absorbed.
 
----
-
-## §15 — Protein Direction science — **RESEARCHED; SWEETNESS BLOCKED ON DELIVERY, HARDNESS ON SCIENCE**
-
-### Sweetness — safe and scientifically legitimate, but NOT honestly deliverable yet
-
-Proven safe: the complete −2..+2 × −2..+2 × 3 temperatures × 2 strategies matrix — **150 states,
-all natively hard-safe, all claim-qualified, all applied, zero zero-gram lines** — which satisfies
-the `blocked_runtime` gate's own criterion. POD is also a legitimate protein-side measure: it is
-composition-derived from each ingredient's own stored `pod_value`, and the five-fifth target
-subdivides the Protein profile's **own** approved POD band [12,17]. No borrowed dairy curve, no
-invented `lockedReference`.
-
-Two independent fixes were implemented and measured:
-
-1. `targetFifth` for Protein (the legacy three-zone helper collapses −2/−1 and +1/+2, which would
-   make a five-position selector lie about having five positions).
-2. Routing Protein through `hasActiveExactDirectionObjective`. Protein now subdivides its band into
-   fifths exactly as Standard Gelato does, but the gate admitted only `standard_gelato` or a profile
-   carrying an exact target *centre* — so Protein fell through to the generic band-violation route,
-   which only drives violation severity to zero.
-
-Result at −12 °C: fully monotone, five distinct, and ECO stopped collapsing —
-
-```
-−12 optimal/eco: 13.8201  13.8224  14.9346  15.1027  16.4588
-```
-
-Two sequences still move backwards:
-
-```
-−11 optimal+eco: 12.4716  13.4992  14.3305  15.5571  [14.7201]   ← +2 < +1
-−13 optimal+eco: 13.9272  14.9812  [14.6927] 15.5194  16.5279    ← −1 overshoots its band
-```
-
-**Classified per §12 as optimizer defects, not feasibility frontiers.** At −11 the engine
-demonstrably reaches POD 15.5571 (it does so at +1), and 15.5571 is *nearer* to +2's requested band
-[16,17] than the 14.7201 actually returned — so the returned candidate is provably not the nearest
-reachable one. At −13, the −1 result 14.9812 sits *above* its own requested band [13,14] while
-level 0 lands correctly inside [14,15]; the mis-ordered member is −1, not 0.
-
-**Decision: the Sweetness unblock was reverted.** Shipping a five-position control that can move
-backwards is exactly the "control that lies about what it did" failure the axis gate exists to
-prevent. The axis stays blocked until the shared Direction NEAREST selection returns the closest
-legal candidate to an unreachable band. Evidence and root cause are recorded in
-`src/features/protein-gelato/proteinDirectionAuthority.test.ts`, which now locks the truthful
-blocked state (both axes blocked with a stated reason, no target band, `supportedAxisCount === 0`)
-so no downstream consumer can silently optimize toward a target the UI reports as unavailable.
-
-### Hardness — blocked on cited science, and expected to remain so
-
-Hardness is targeted through NPAC (freezing-point depression). Borrowing the Gelato NPAC→hardness
-calibration is not defensible: at otherwise constant formulation, instrumental hardness rises
-**13.60 N → 47.66 N as protein goes 4 % → 10 %** (Applied Food Research 2(1) 100029, 2022,
-DOI 10.1016/j.afres.2021.100029, Table 1 / Fig. 2). The same NPAC therefore does not mean the same
-hardness in a high-protein mix, and no published controlled series reports NPAC/PAC alongside
-hardness for high-protein frozen desserts, so the protein-specific curve cannot be derived.
-
----
-
-## Validation at this commit
+## 10. Validation
 
 | Gate | Result |
 |---|---|
 | `tsc --noEmit` | clean |
-| `npm run lint` | 0 errors (2 pre-existing react-refresh warnings) |
-| `npm run build` | ✓ built |
-| `npx vitest run` | **7499 passed / 7499** (after rebase onto `0ab80ed`) |
-| Mapper drift guard | 23 identities verified against `b13f5db4affd…` |
-| Production Rescue Edge bundle | regenerated + re-verified `3716be4d817c…`, 57-file closure |
+| `npx vitest run` | **7732 passed / 100 skipped** (skipped = the opt-in campaign) |
+| Opt-in campaign `PROTEIN_FULL_MATRIX=1` | **25 passed** (1500 + 600 + 500 + 22) |
+| `npm run lint` | 0 errors from this work (2 inherited from staging in `historicalVersionNotice.test.tsx`) |
+| Mapper drift guard | 23 identities, `b13f5db4affd…` |
+| Corpus drift guard | 20 recipes, 5 MOJA CENA, same Mapper SHA |
+| Production Rescue Edge bundle | regenerated, 57-file closure |
 
----
+## 11. Cost
 
-## NOT DELIVERED — required before this closeout can be re-attempted
+The NEAREST search adds up to 3 probe solves per Direction-active Preview. That is real work, and
+it is paid for honestly rather than hidden: one heavy Sorbet/Main case was given a **measured** 60 s
+budget (it runs ~17 s in isolation) with the reason stated in place. Probes are ordered
+nearest-first, exit on an exact hit, and skip axes that already satisfy their band.
 
-These are stated plainly rather than approximated. No number below was estimated or fabricated.
+## 12. NOT DELIVERED
 
-- **§3–§5, §38** — ≥20 internet-sourced recipes with real opened source URLs, and
-  `reports/PROTEIN_INTERNET_RECIPE_MATRIX.csv`. **Not collected. The CSV does not exist.**
-- **§7–§14** — the ≥1,500-state Direction matrix (20 recipes × 3 temps × full 5×5). Blocked: the
-  axis under test is blocked, so the matrix would measure a disabled control. The 150-state
-  starter-based sweep above is the only Direction evidence gathered.
-- **§16** — Recipe Rescue decoupling from Direction. **Landed independently on `origin/staging`
-  as `0ab80ed` ("fix(rescue): decouple the Recipe Rescue Advisor from Direction targets"), not by
-  this task.** Carried in via rebase and green here; not re-verified against §17's Rescue scenarios.
-- **§17** — ≥20 Rescue scenarios. Not run.
-- **§18** — ≥6 Main/Multi-Main internet cases. Not run.
-- **§19** — lock torture. Not run.
-- **§20** — protein %/Score ladder including the 19.99 / 19.996 / 20.00 / 20.01 energy-share
-  boundary. Not re-run in this task (covered in the 2026-08-23 closeout for the prior task).
-- **§21** — ≥120 ECO/OPTIMAL states. Not run at this scale.
-- **§22, §23** — zero-gram sweep and the ≥5-recipe Save/reopen/version matrix. Not run.
-- **§24** — Production Rescue real frontend→Edge E2E (≥5 recipes). Not run.
-- **§25–§27** — seeded randomization, ≥500 deterministic fuzz states, convergence/performance.
-  Not run.
-- **§29** — ≥150 served Direction states across ≥10 recipes. Not run.
-- **§32** — staging Edge sync. Not performed.
+Stated plainly; no number here is estimated.
 
-## Deploy state
+- **§24 — Production Rescue real frontend→Edge E2E (≥5 recipes): NOT RUN.** The staging Edge
+  deployed today is `3716be4d…` (295,428 chars), which is **already stale** against staging's own
+  repo bundle — Codex's Vegan commit regenerated it to `f88585fc…` and it was not redeployed. That
+  drift predates this work.
+- **§29 — served QA on the final staging SHA (≥10 recipes): NOT RUN.** Requires landing on staging
+  and deploying first.
+- **§28/§32 — landing on staging and the staging Edge deploy: NOT PERFORMED.**
+- **§22 — the 19.99 / 19.996 / 20.00 / 20.01 energy-share boundary ladder** was not re-run in this
+  task; it is covered by the previous closeout, not by this campaign.
 
-Nothing was pushed to `origin/staging`, no staging or production deploy was performed, no
-production Edge deploy, no production Supabase write, no merge to `main`, no migration. The work
-sits on `claude/protein-final-closeout` for owner review. Given the BLOCKED status, promoting the
-§6 fix to staging is deliberately left as the owner's call rather than taken unilaterally.
+## 13. Production untouched
 
-## Recommended next step
-
-Fix the shared Direction NEAREST selection first — when a requested band is unreachable, return the
-legal candidate closest to that band. That single fix is what gates Protein Sweetness, and because
-it is shared machinery it should be measured against the existing Gelato and Sorbet Direction
-suites before Protein is re-enabled.
+No production Vercel deploy, no production Edge deploy, no production Supabase write, no production
+migration, **no merge to `main`**. `origin/main` is `4dfb097`, unchanged. The only Vercel activity
+from this work is the automatic **preview** deployment Vercel creates for a pushed branch
+(`target: null`), not a production target. The branch was pushed with `--force-with-lease` after
+rebases — the safe variant, which refuses if anyone else has pushed.
