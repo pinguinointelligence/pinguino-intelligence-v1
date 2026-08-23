@@ -29,6 +29,12 @@ export type SourceAuthorityClass =
   | 'OFFICIAL_BRAND'
   /** A specification/TDS PDF published under an official domain. */
   | 'OFFICIAL_TECHNICAL_PDF'
+  /**
+   * A retailer's own page for a brand that retailer OWNS. For a private label
+   * the seller is also the brand owner, so the page is first-party for that
+   * brand — and only for that brand.
+   */
+  | 'OFFICIAL_PRIVATE_LABEL'
   /** A major retailer showing the exact labelled product. */
   | 'AUTHORITATIVE_RETAILER'
   /** A structured product/GTIN database. */
@@ -100,6 +106,14 @@ export function sourceDomain(url: string | null | undefined): string | null {
   }
 }
 
+/** Accept an owner domain given either bare (`biedronka.pl`) or as a URL. */
+const asDomain = (value: string | null | undefined): string | null => {
+  const trimmed = (value ?? '').trim().toLowerCase();
+  if (!trimmed) return null;
+  if (trimmed.includes('://')) return sourceDomain(trimmed);
+  return trimmed.replace(/^www\./, '').replace(/\/.*$/, '') || null;
+};
+
 const normalizeName = (value: string | null | undefined): string =>
   (value ?? '')
     .normalize('NFKD')
@@ -139,6 +153,13 @@ export interface SourceAuthorityInput {
   ownerProvided?: boolean;
   /** Content type, when known — a PDF under an official domain is a spec sheet. */
   contentType?: string | null;
+  /**
+   * Proven private-label ownership: the retailer domain that OWNS this
+   * product's brand. Supplied by the caller from evidence — never inferred from
+   * the fact that a product is sold somewhere. Milka on a supermarket site is
+   * still a retailer listing; that supermarket's own label is not.
+   */
+  privateLabelOwnerDomain?: string | null;
 }
 
 /** The evidence tier each authority class may contribute at. */
@@ -146,6 +167,7 @@ const TIER: Readonly<Record<SourceAuthorityClass, SourceEvidenceTier>> = Object.
   OFFICIAL_TECHNICAL_PDF: 'manufacturer',
   OFFICIAL_MANUFACTURER: 'manufacturer',
   OFFICIAL_BRAND: 'manufacturer',
+  OFFICIAL_PRIVATE_LABEL: 'manufacturer',
   STRUCTURED_PRODUCT_DATABASE: 'barcode_registry',
   AUTHORITATIVE_RETAILER: 'retailer',
   OWNER_PROVIDED_SOURCE: 'retailer',
@@ -200,6 +222,20 @@ export function classifySourceAuthority(
     };
   }
   if (includesAny(domain, RETAILER_DOMAINS)) {
+    // A seller that owns the brand is speaking for its own product here. The
+    // upgrade is keyed on the CALLER'S proven ownership, never on the domain:
+    // the same site is first-party for its own label and a mere retailer for
+    // everything else it stocks.
+    const ownerDomain = asDomain(input.privateLabelOwnerDomain);
+    if (ownerDomain && domain && (domain === ownerDomain || domain.endsWith(`.${ownerDomain}`))) {
+      reasons.push(`sprzedawca jest właścicielem tej marki własnej (${ownerDomain})`);
+      return {
+        authority: 'OFFICIAL_PRIVATE_LABEL',
+        evidenceSource: TIER.OFFICIAL_PRIVATE_LABEL,
+        domain,
+        reasons,
+      };
+    }
     reasons.push('rozpoznany sprzedawca detaliczny');
     return { authority: 'AUTHORITATIVE_RETAILER', evidenceSource: TIER.AUTHORITATIVE_RETAILER, domain, reasons };
   }
@@ -226,6 +262,7 @@ export const SOURCE_AUTHORITY_RANK: Readonly<Record<SourceAuthorityClass, number
   OFFICIAL_TECHNICAL_PDF: 7,
   OFFICIAL_MANUFACTURER: 6,
   OFFICIAL_BRAND: 5,
+  OFFICIAL_PRIVATE_LABEL: 5,
   STRUCTURED_PRODUCT_DATABASE: 4,
   AUTHORITATIVE_RETAILER: 3,
   OWNER_PROVIDED_SOURCE: 2,
@@ -238,6 +275,7 @@ export const PREFERRED_SOURCE_ORDER: readonly SourceAuthorityClass[] = [
   'OFFICIAL_MANUFACTURER',
   'OFFICIAL_TECHNICAL_PDF',
   'OFFICIAL_BRAND',
+  'OFFICIAL_PRIVATE_LABEL',
   'STRUCTURED_PRODUCT_DATABASE',
   'AUTHORITATIVE_RETAILER',
   'OWNER_PROVIDED_SOURCE',

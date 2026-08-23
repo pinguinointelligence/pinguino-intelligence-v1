@@ -344,6 +344,10 @@ export function IntimportLocalIntelligenceView({
     reviewRequired: number;
     familyMatches: number;
     estimatedMaxExternalCalls: number;
+    /** Null when no Mapper was available, so the counts are simply absent. */
+    valueReadiness?: { READY: number; ESTIMATED_READY: number; REVIEW: number } | null;
+    mapperContributed?: number;
+    selfContradictory?: number;
   };
   onEnrich?: () => void;
   busy?: boolean;
@@ -379,6 +383,26 @@ export function IntimportLocalIntelligenceView({
         skipped entirely. Enrichment would look at {needsWeb} product(s), only for the fields
         that are actually missing.
       </p>
+
+      {summary.valueReadiness ? (
+        <div className="space-y-3" data-testid="intimport-value-readiness">
+          <SectionLabel tone="ivory">Engine composition (Mapper-first)</SectionLabel>
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            <CountStat label="Measured — ready" value={summary.valueReadiness.READY} />
+            <CountStat label="Estimated ≥85% — ready" value={summary.valueReadiness.ESTIMATED_READY} />
+            <CountStat label="Composition review" value={summary.valueReadiness.REVIEW} />
+            <CountStat label="Mapper supplied ≥1 field" value={summary.mapperContributed ?? 0} />
+          </div>
+          <p className="text-sm leading-relaxed text-ivory/60">
+            Composition readiness is reported separately from technical dosage authority: a
+            professional product can have a complete profile and still be blocked from dosing,
+            and the reverse is equally valid.
+            {summary.selfContradictory
+              ? ` ${summary.selfContradictory} product(s) declare values that contradict each other and need a source fix.`
+              : ''}
+          </p>
+        </div>
+      ) : null}
 
       {progress ? (
         <p className="text-sm text-ivory/70" data-testid="intimport-enrichment-progress">

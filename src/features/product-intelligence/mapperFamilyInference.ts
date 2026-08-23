@@ -193,13 +193,46 @@ const CATEGORY_RULES: readonly CategoryRule[] = [
   { family: 'dairy_liquid', technical: false, category: /\bdairy\b/ },
   { family: 'sugar_sucrose', technical: false, category: /sweetener/ },
   { family: 'alcohol', technical: false, category: /alcohol/ },
+  // The Mapper's OWN category vocabulary. Without these, Mapper rows whose
+  // names carry no family signal never join any cohort at all — `base_mix` and
+  // `flavor_paste` are literal Mapper category values, and `\bmix\b` above
+  // cannot match `base_mix` because the underscore is a word character.
+  { family: 'base_mix', technical: false, category: /base_mix/ },
+  { family: 'flavor_paste', technical: false, category: /flavor_paste|\bflavor\b/ },
+  { family: 'coconut_fat', technical: false, category: /coconut/ },
+  { family: 'liquid_vegetable_oil', technical: false, category: /\bfat\b/ },
+  { family: 'dairy_protein', technical: false, category: /protein/ },
+  { family: 'fibre_inulin', technical: false, category: /fiber|fibre/ },
 ];
 
-const normalize = (value: string | null | undefined): string =>
+/**
+ * Latin letters that carry their mark INSIDE the glyph rather than as a
+ * combining accent. Unicode normalisation cannot decompose these, so stripping
+ * combining marks leaves them untouched — which meant every Polish pattern
+ * below (`maslo`, `bialko`, `slonecznikowy`) silently never matched real Polish
+ * text. They are folded explicitly.
+ */
+const STROKED_LETTERS: Readonly<Record<string, string>> = Object.freeze({
+  '\u0142': 'l', // ł
+  '\u0141': 'l', // Ł
+  '\u0111': 'd', // đ
+  '\u0110': 'd', // Đ
+  '\u00f8': 'o', // ø
+  '\u00d8': 'o', // Ø
+  '\u00df': 'ss', // ß
+});
+
+const STROKED_PATTERN = new RegExp(`[${Object.keys(STROKED_LETTERS).join('')}]`, 'g');
+
+/** Fold a display string down to plain ASCII-ish letters for pattern matching. */
+export const foldLatin = (value: string | null | undefined): string =>
   (value ?? '')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(STROKED_PATTERN, (letter) => STROKED_LETTERS[letter] ?? letter)
     .toLowerCase();
+
+const normalize = (value: string | null | undefined): string => foldLatin(value);
 
 export interface FamilyInferenceInput {
   name: string | null;
@@ -271,6 +304,23 @@ export function inferMapperFamily(input: FamilyInferenceInput): ProductFamilyMat
 
 /** A family match is only strong enough to raise confidence above this bar. */
 export const FAMILY_STRENGTH_THRESHOLD = 0.8;
+
+/**
+ * The bar for using a family to CHOOSE A COHORT, which is deliberately lower.
+ *
+ * Raising a product's confidence on the strength of a family match is an
+ * unchecked claim, so it needs the 0.8 bar. Proposing "compare this against the
+ * Mapper's dairy rows" is not a claim at all — whatever it proposes is then
+ * tested field by field against the cohort's own dispersion, and refused unless
+ * the cohort genuinely agrees. The dispersion gate is the safety property here,
+ * so the proposal step can afford to be generous.
+ */
+export const FAMILY_COHORT_THRESHOLD = 0.6;
+
+/** True when the family evidence is strong enough to propose a Mapper cohort. */
+export function familySupportsCohort(match: ProductFamilyMatch | null): boolean {
+  return match !== null && match.strength >= FAMILY_COHORT_THRESHOLD;
+}
 
 /** True when the family evidence is strong enough to count toward confidence. */
 export function familySupportsInference(match: ProductFamilyMatch | null): boolean {

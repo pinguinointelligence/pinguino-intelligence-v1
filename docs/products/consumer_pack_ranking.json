@@ -1,0 +1,585 @@
+{
+  "packs": [
+    {
+      "pack": "goBIO",
+      "products": 26,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 26,
+      "withDeclaredNutrition": 1,
+      "withGtin": 2,
+      "officialSourceRows": 1,
+      "retailerSourceRows": 25,
+      "domains": {
+        "biedronka.pl": 25,
+        "world.openfoodfacts.org": 1
+      },
+      "expectedDiscoveryCalls": 1,
+      "expectedImprovedPerCall": 26
+    },
+    {
+      "pack": "McCormick Polska S.A. – Stefanowo",
+      "products": 28,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 28,
+      "withDeclaredNutrition": 6,
+      "withGtin": 1,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 28,
+      "domains": {
+        "zakupy.biedronka.pl": 28
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 14
+    },
+    {
+      "pack": "Jeronimo Martins Polska S.A. – Kostrzyn",
+      "products": 14,
+      "ready": 0,
+      "estimatedReady": 3,
+      "unresolved": 11,
+      "withDeclaredNutrition": 8,
+      "withGtin": 0,
+      "officialSourceRows": 10,
+      "retailerSourceRows": 4,
+      "domains": {
+        "tabele-kalorii.pl": 10,
+        "biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 1,
+      "expectedImprovedPerCall": 11
+    },
+    {
+      "pack": "Fruvita",
+      "products": 24,
+      "ready": 0,
+      "estimatedReady": 2,
+      "unresolved": 22,
+      "withDeclaredNutrition": 15,
+      "withGtin": 9,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 24,
+      "domains": {
+        "biedronka.pl": 24
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 11
+    },
+    {
+      "pack": "Lipton",
+      "products": 15,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 15,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 15,
+      "domains": {
+        "zakupy.biedronka.pl": 15
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 7.5
+    },
+    {
+      "pack": "BakaD'Or",
+      "products": 18,
+      "ready": 0,
+      "estimatedReady": 5,
+      "unresolved": 13,
+      "withDeclaredNutrition": 13,
+      "withGtin": 4,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 18,
+      "domains": {
+        "zakupy.biedronka.pl": 1,
+        "biedronka.pl": 17
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 6.5
+    },
+    {
+      "pack": "Baitz",
+      "products": 10,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 10,
+      "withDeclaredNutrition": 9,
+      "withGtin": 1,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 10,
+      "domains": {
+        "zakupy.biedronka.pl": 1,
+        "biedronka.pl": 9
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 5
+    },
+    {
+      "pack": "GO Active",
+      "products": 11,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 10,
+      "withDeclaredNutrition": 11,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 11,
+      "domains": {
+        "biedronka.pl": 11
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 5
+    },
+    {
+      "pack": "Kinder",
+      "products": 8,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 8,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 8,
+      "domains": {
+        "zakupy.biedronka.pl": 8
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 4
+    },
+    {
+      "pack": "Lindt",
+      "products": 8,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 8,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 8,
+      "domains": {
+        "zakupy.biedronka.pl": 8
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 4
+    },
+    {
+      "pack": "Winiary",
+      "products": 8,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 8,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 8,
+      "domains": {
+        "zakupy.biedronka.pl": 8
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 4
+    },
+    {
+      "pack": "Bonitki",
+      "products": 7,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 7,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 7,
+      "domains": {
+        "zakupy.biedronka.pl": 7
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3.5
+    },
+    {
+      "pack": "Culineo",
+      "products": 7,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 7,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 7,
+      "domains": {
+        "zakupy.biedronka.pl": 7
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3.5
+    },
+    {
+      "pack": "Bakello",
+      "products": 6,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 6,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 6,
+      "domains": {
+        "zakupy.biedronka.pl": 6
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "E. Wedel",
+      "products": 6,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 6,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 6,
+      "domains": {
+        "zakupy.biedronka.pl": 6
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "Tic Tac",
+      "products": 6,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 6,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 6,
+      "domains": {
+        "zakupy.biedronka.pl": 6
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "Jeronimo Martins Dystrybucja S.A. – Kostrzyn",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 3,
+      "withDeclaredNutrition": 3,
+      "withGtin": 0,
+      "officialSourceRows": 2,
+      "retailerSourceRows": 2,
+      "domains": {
+        "tabele-kalorii.pl": 2,
+        "biedronka.pl": 2
+      },
+      "expectedDiscoveryCalls": 1,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "Okręgowa Spółdzielnia Mleczarska w Łowiczu",
+      "products": 7,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 6,
+      "withDeclaredNutrition": 3,
+      "withGtin": 6,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 7,
+      "domains": {
+        "biedronka.pl": 7
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "Fruvita Pure",
+      "products": 6,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 6,
+      "withDeclaredNutrition": 4,
+      "withGtin": 2,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 6,
+      "domains": {
+        "biedronka.pl": 6
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "Dr. Oetker",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
+      "pack": "Milka",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
+      "pack": "Mondelez Polska S.A. ul. Domaniewska 49, 02-672 Warszawa",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
+      "pack": "Nescafé",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
+      "pack": "Mleczna Dolina",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
+      "pack": "Alpro",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
+      "pack": "Nimm2",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Orbit",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Słodka Kraina",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Vitanella",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Jeronimo Martins Polska S.A.",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 4,
+      "withGtin": 1,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Jacobs",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "MK Café",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Danone sp. z o.o., ul. Bobrowiecka 8, 00-728 Warszawa 801 331 133 info.polska@alpro.com",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Go Vege",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 4,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Spółdzielnia Mleczarska Mlekovita",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 3,
+      "withDeclaredNutrition": 2,
+      "withGtin": 4,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 1.5
+    },
+    {
+      "pack": "Delikate",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 3,
+      "unresolved": 2,
+      "withDeclaredNutrition": 3,
+      "withGtin": 1,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 1
+    }
+  ]
+}

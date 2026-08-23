@@ -156,3 +156,50 @@ describe('one implementation, shared by server and client', () => {
     expect(canonical).not.toMatch(/fetch\(|import .* from/);
   });
 });
+
+describe('private-label ownership', () => {
+  const BIEDRONKA = 'https://zakupy.biedronka.pl/gobio-gobio-mleko-1-l-0000008345.html';
+
+  it('treats a retailer as first-party for a brand it actually owns', () => {
+    const assessment = classifySourceAuthority({
+      url: BIEDRONKA,
+      brand: 'goBIO',
+      manufacturer: 'Jeronimo Martins Polska S.A.',
+      ownerProvided: true,
+      privateLabelOwnerDomain: 'biedronka.pl',
+    });
+    expect(assessment.authority).toBe('OFFICIAL_PRIVATE_LABEL');
+    expect(assessment.evidenceSource).toBe('manufacturer');
+  });
+
+  it('leaves the same domain a retailer for brands it does not own', () => {
+    // The decisive case: an upgrade keyed on the domain alone would promote
+    // every product the shop stocks, which is exactly the error being avoided.
+    const assessment = classifySourceAuthority({
+      url: 'https://zakupy.biedronka.pl/milka-milka-czekolada-mleczna-100-g-0000001234.html',
+      brand: 'Milka',
+      manufacturer: 'Mondelez Polska S.A.',
+      ownerProvided: true,
+    });
+    expect(assessment.authority).toBe('AUTHORITATIVE_RETAILER');
+  });
+
+  it('does not upgrade when ownership names a different domain', () => {
+    const assessment = classifySourceAuthority({
+      url: BIEDRONKA,
+      brand: 'goBIO',
+      ownerProvided: true,
+      privateLabelOwnerDomain: 'lidl.pl',
+    });
+    expect(assessment.authority).toBe('AUTHORITATIVE_RETAILER');
+  });
+
+  it('accepts the owner domain given as a bare host or a URL', () => {
+    for (const owner of ['biedronka.pl', 'https://www.biedronka.pl/pl/gobio']) {
+      expect(
+        classifySourceAuthority({ url: BIEDRONKA, brand: 'goBIO', privateLabelOwnerDomain: owner })
+          .authority,
+      ).toBe('OFFICIAL_PRIVATE_LABEL');
+    }
+  });
+});
