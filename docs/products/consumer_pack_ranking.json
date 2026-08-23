@@ -18,23 +18,6 @@
       "expectedImprovedPerCall": 26
     },
     {
-      "pack": "Jeronimo Martins Polska S.A. – Kostrzyn",
-      "products": 14,
-      "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 14,
-      "withDeclaredNutrition": 8,
-      "withGtin": 0,
-      "officialSourceRows": 10,
-      "retailerSourceRows": 4,
-      "domains": {
-        "tabele-kalorii.pl": 10,
-        "biedronka.pl": 4
-      },
-      "expectedDiscoveryCalls": 1,
-      "expectedImprovedPerCall": 14
-    },
-    {
       "pack": "McCormick Polska S.A. – Stefanowo",
       "products": 28,
       "ready": 0,
@@ -51,11 +34,28 @@
       "expectedImprovedPerCall": 14
     },
     {
+      "pack": "Jeronimo Martins Polska S.A. – Kostrzyn",
+      "products": 14,
+      "ready": 0,
+      "estimatedReady": 3,
+      "unresolved": 11,
+      "withDeclaredNutrition": 8,
+      "withGtin": 0,
+      "officialSourceRows": 10,
+      "retailerSourceRows": 4,
+      "domains": {
+        "tabele-kalorii.pl": 10,
+        "biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 1,
+      "expectedImprovedPerCall": 11
+    },
+    {
       "pack": "Fruvita",
       "products": 24,
       "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 24,
+      "estimatedReady": 2,
+      "unresolved": 22,
       "withDeclaredNutrition": 15,
       "withGtin": 9,
       "officialSourceRows": 0,
@@ -64,24 +64,7 @@
         "biedronka.pl": 24
       },
       "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 12
-    },
-    {
-      "pack": "BakaD'Or",
-      "products": 18,
-      "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 18,
-      "withDeclaredNutrition": 13,
-      "withGtin": 4,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 18,
-      "domains": {
-        "zakupy.biedronka.pl": 1,
-        "biedronka.pl": 17
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 9
+      "expectedImprovedPerCall": 11
     },
     {
       "pack": "Lipton",
@@ -100,20 +83,21 @@
       "expectedImprovedPerCall": 7.5
     },
     {
-      "pack": "GO Active",
-      "products": 11,
+      "pack": "BakaD'Or",
+      "products": 18,
       "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 11,
-      "withDeclaredNutrition": 11,
-      "withGtin": 0,
+      "estimatedReady": 5,
+      "unresolved": 13,
+      "withDeclaredNutrition": 13,
+      "withGtin": 4,
       "officialSourceRows": 0,
-      "retailerSourceRows": 11,
+      "retailerSourceRows": 18,
       "domains": {
-        "biedronka.pl": 11
+        "zakupy.biedronka.pl": 1,
+        "biedronka.pl": 17
       },
       "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 5.5
+      "expectedImprovedPerCall": 6.5
     },
     {
       "pack": "Baitz",
@@ -128,6 +112,22 @@
       "domains": {
         "zakupy.biedronka.pl": 1,
         "biedronka.pl": 9
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 5
+    },
+    {
+      "pack": "GO Active",
+      "products": 11,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 10,
+      "withDeclaredNutrition": 11,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 11,
+      "domains": {
+        "biedronka.pl": 11
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 5
@@ -181,23 +181,6 @@
       "expectedImprovedPerCall": 4
     },
     {
-      "pack": "Jeronimo Martins Dystrybucja S.A. – Kostrzyn",
-      "products": 4,
-      "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 4,
-      "withDeclaredNutrition": 3,
-      "withGtin": 0,
-      "officialSourceRows": 2,
-      "retailerSourceRows": 2,
-      "domains": {
-        "tabele-kalorii.pl": 2,
-        "biedronka.pl": 2
-      },
-      "expectedDiscoveryCalls": 1,
-      "expectedImprovedPerCall": 4
-    },
-    {
       "pack": "Bonitki",
       "products": 7,
       "ready": 0,
@@ -225,22 +208,6 @@
       "retailerSourceRows": 7,
       "domains": {
         "zakupy.biedronka.pl": 7
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 3.5
-    },
-    {
-      "pack": "Okręgowa Spółdzielnia Mleczarska w Łowiczu",
-      "products": 7,
-      "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 7,
-      "withDeclaredNutrition": 3,
-      "withGtin": 6,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 7,
-      "domains": {
-        "biedronka.pl": 7
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 3.5
@@ -289,6 +256,39 @@
       "retailerSourceRows": 6,
       "domains": {
         "zakupy.biedronka.pl": 6
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "Jeronimo Martins Dystrybucja S.A. – Kostrzyn",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 3,
+      "withDeclaredNutrition": 3,
+      "withGtin": 0,
+      "officialSourceRows": 2,
+      "retailerSourceRows": 2,
+      "domains": {
+        "tabele-kalorii.pl": 2,
+        "biedronka.pl": 2
+      },
+      "expectedDiscoveryCalls": 1,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "Okręgowa Spółdzielnia Mleczarska w Łowiczu",
+      "products": 7,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 6,
+      "withDeclaredNutrition": 3,
+      "withGtin": 6,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 7,
+      "domains": {
+        "biedronka.pl": 7
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 3
@@ -369,22 +369,6 @@
       "retailerSourceRows": 5,
       "domains": {
         "zakupy.biedronka.pl": 5
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 2.5
-    },
-    {
-      "pack": "Delikate",
-      "products": 5,
-      "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 5,
-      "withDeclaredNutrition": 3,
-      "withGtin": 1,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 5,
-      "domains": {
-        "biedronka.pl": 5
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 2.5
@@ -534,22 +518,6 @@
       "expectedImprovedPerCall": 2
     },
     {
-      "pack": "Spółdzielnia Mleczarska Mlekovita",
-      "products": 4,
-      "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 4,
-      "withDeclaredNutrition": 2,
-      "withGtin": 4,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 4,
-      "domains": {
-        "biedronka.pl": 4
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 2
-    },
-    {
       "pack": "Danone sp. z o.o., ul. Bobrowiecka 8, 00-728 Warszawa 801 331 133 info.polska@alpro.com",
       "products": 4,
       "ready": 0,
@@ -580,6 +548,38 @@
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 2
+    },
+    {
+      "pack": "Spółdzielnia Mleczarska Mlekovita",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 3,
+      "withDeclaredNutrition": 2,
+      "withGtin": 4,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 1.5
+    },
+    {
+      "pack": "Delikate",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 3,
+      "unresolved": 2,
+      "withDeclaredNutrition": 3,
+      "withGtin": 1,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 1
     }
   ]
 }

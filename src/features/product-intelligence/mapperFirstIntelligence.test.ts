@@ -310,9 +310,9 @@ describe('working values and readiness', () => {
     expect(resolved.fields.fat_percent.provenance.basis).toBe('product_declared');
     // The rest of the profile still came from the Mapper...
     expect(resolved.fields.water_percent.provenance.state).toBe('ESTIMATED');
-    // ...but never POD/PAC: the Engine derives those from the product's own
-    // sugars, so a neighbour's freezing power is not evidence about this one.
-    expect(resolved.fields.pac_value.provenance.state).toBe('UNKNOWN');
+    // ...and because this product states no sugars of its own, the proxy's
+    // stored freezing power is consistent with the sugars the proxy also lent.
+    expect(resolved.fields.pac_value.provenance.state).toBe('ESTIMATED');
   });
 
   it('flags a declaration the Mapper strongly disagrees with, without acting on it', () => {
@@ -911,5 +911,40 @@ describe('moisture cohort profiling', () => {
 
   it('says so plainly when a cohort publishes no water at all', () => {
     expect(moistureCohortProfile([mapperRow({ ingredient_id: 'PI-EMPTY' })]).narrow).toBe(false);
+  });
+});
+
+describe('profile-match borrowing of POD/PAC', () => {
+  const proxy = [1, 2, 3].map((index) =>
+    mapperRow({
+      ingredient_id: `PI-PROXY-${index}`,
+      ingredient_name_internal: `Krem orzechowy ${index}`,
+      ingredient_category: 'nut',
+      water_percent: 2,
+      total_solids_percent: 98,
+      fat_percent: 50,
+      protein_percent: 8,
+      carbohydrate_percent: 38,
+      total_sugars_percent: 30,
+      pac_value: 24,
+      pod_value: 31,
+    }),
+  );
+  const knowledge = buildMapperKnowledge(proxy, FINGERPRINT);
+  const base = {
+    declaredConfidence: 0.95,
+    identity: { name: 'Krem orzechowy premium', category: 'nut', subcategory: 'nut' },
+    technical: false,
+    technicalAuthority: false,
+  };
+
+  it('refuses to pair this product\u2019s own sugars with a neighbour\u2019s physics', () => {
+    const resolved = resolveProductWorkingValues(
+      { ...base, declared: { total_sugars_percent: 5 } },
+      knowledge,
+    );
+    expect(resolved.values.total_sugars_percent).toBe(5);
+    // 5 g of sugar cannot carry a 30 g product's freezing power.
+    expect(resolved.values.pac_value).toBeNull();
   });
 });

@@ -21,17 +21,17 @@
   "assessed": 820,
   "readiness": {
     "READY": 0,
-    "ESTIMATED_READY": 1,
-    "REVIEW": 815,
+    "ESTIMATED_READY": 26,
+    "REVIEW": 790,
     "TECHNICAL_AUTHORITY_REQUIRED": 4
   },
   "valueReadiness": {
     "READY": 0,
-    "ESTIMATED_READY": 5,
-    "REVIEW": 815
+    "ESTIMATED_READY": 30,
+    "REVIEW": 790
   },
-  "engineReady": 5,
-  "engineReadyShare": 0.0061,
+  "engineReady": 30,
+  "engineReadyShare": 0.0366,
   "familyAssigned": 229,
   "familyHistogram": {
     "chocolate": 6,
@@ -186,13 +186,13 @@
   "fieldFill": {
     "water_percent": {
       "verified": 0,
-      "estimated": 383,
-      "unknown": 437
+      "estimated": 384,
+      "unknown": 436
     },
     "total_solids_percent": {
       "verified": 0,
-      "estimated": 383,
-      "unknown": 437
+      "estimated": 384,
+      "unknown": 436
     },
     "fat_percent": {
       "verified": 131,
@@ -211,58 +211,58 @@
     },
     "total_sugars_percent": {
       "verified": 122,
-      "estimated": 156,
-      "unknown": 542
+      "estimated": 157,
+      "unknown": 541
     },
     "salt_percent": {
       "verified": 108,
-      "estimated": 475,
-      "unknown": 237
+      "estimated": 474,
+      "unknown": 238
     }
   },
   "missingHistogram": {
-    "water_percent": 437,
-    "total_solids_percent": 437,
+    "water_percent": 436,
+    "total_solids_percent": 436,
     "fat_percent": 475,
     "carbohydrate_percent": 542,
-    "total_sugars_percent": 542,
+    "total_sugars_percent": 541,
     "protein_percent": 406,
-    "salt_percent": 237
+    "salt_percent": 238
   },
   "gapDistribution": {
-    "0": 173,
-    "1": 49,
-    "2": 56,
-    "3": 86,
+    "0": 152,
+    "1": 45,
+    "2": 57,
+    "3": 85,
     "4": 116,
     "5": 32,
     "6": 88,
     "7": 215
   },
-  "completeProfiles": 178,
+  "completeProfiles": 179,
   "completeProfileConfidenceBuckets": {
-    "0.50": 41,
-    "0.45": 28,
-    "0.60": 37,
-    "0.75": 7,
-    "0.65": 12,
-    "0.90": 1,
-    "0.55": 10,
-    "0.35": 18,
-    "0.30": 10,
-    "0.80": 1,
-    "0.85": 2,
-    "0.95": 4,
-    "0.70": 7
+    "0.50": 10,
+    "0.85": 7,
+    "0.45": 6,
+    "0.60": 11,
+    "0.75": 11,
+    "0.70": 4,
+    "0.90": 54,
+    "0.55": 3,
+    "0.80": 61,
+    "0.35": 2,
+    "0.65": 3,
+    "0.30": 3,
+    "0.95": 4
   },
   "productsWithDeclarationConflicts": 21,
   "productsSelfContradictory": 2,
   "plausibilityViolations": {
-    "sugar_spectrum_within_total": 8,
+    "sugar_spectrum_within_total": 14,
     "energy_matches_macros": 7,
     "water_solids_balance": 1,
-    "components_within_solids": 38,
-    "sugars_within_carbohydrate": 2
+    "components_within_solids": 43,
+    "sugars_within_carbohydrate": 3
   },
   "sourcePacks": {
     "totalProducts": 820,
@@ -771,7 +771,7 @@
       "name": "Rogalik z nadzieniem kakaowym Baitz Cocoa Rogal",
       "category": "Bakery & sweets",
       "readiness": "REVIEW",
-      "engineConfidence": 0.504,
+      "engineConfidence": 0.8545,
       "tiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"

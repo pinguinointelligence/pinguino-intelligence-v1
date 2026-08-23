@@ -23,47 +23,54 @@
   "productsMateriallyImproved": 43,
   "verifiedEngineFieldsBefore": 625,
   "verifiedEngineFieldsAfter": 831,
-  "missingEngineFieldsBefore": 3076,
-  "missingEngineFieldsAfter": 2902,
+  "missingEngineFieldsBefore": 3074,
+  "missingEngineFieldsAfter": 2894,
   "productsWithEstimatedFieldBefore": 574,
-  "productsWithEstimatedFieldAfter": 574,
+  "productsWithEstimatedFieldAfter": 576,
   "readinessBefore": {
     "READY": 0,
-    "ESTIMATED_READY": 5,
-    "REVIEW": 815
+    "ESTIMATED_READY": 30,
+    "REVIEW": 790
   },
   "readinessAfter": {
     "READY": 0,
-    "ESTIMATED_READY": 5,
-    "REVIEW": 815
+    "ESTIMATED_READY": 34,
+    "REVIEW": 786
+  },
+  "finalClassification": {
+    "READY_VERIFIED": 0,
+    "READY_ESTIMATED": 30,
+    "TECHNICAL_AUTHORITY_REQUIRED": 4,
+    "REVIEW_REQUIRED": 786
   },
   "engineFieldTruthStateBefore": {
     "VERIFIED": 625,
-    "ESTIMATED": 2039,
-    "UNKNOWN": 3076
+    "ESTIMATED": 2041,
+    "UNKNOWN": 3074
   },
   "engineFieldTruthStateAfter": {
     "VERIFIED": 831,
-    "ESTIMATED": 2007,
-    "UNKNOWN": 2902
+    "ESTIMATED": 2015,
+    "UNKNOWN": 2894
   },
-  "completeProfileBefore": 178,
-  "completeProfileAfter": 195,
-  "readyOnlyBecauseOfRetailerMacros": 0,
+  "completeProfileBefore": 179,
+  "completeProfileAfter": 199,
+  "readyOnlyBecauseOfRetailerMacros": 4,
   "remainingBlockers": {
     "physical_inconsistency": 10,
     "missing_required_macro": 186,
-    "missing_sugar_split": 157,
-    "missing_water_solids": 424,
-    "weak_field_confidence": 38
+    "missing_sugar_split": 151,
+    "missing_water_solids": 421,
+    "weak_field_confidence": 18
   },
-  "gainedWaterSolidsAtOrAbove85": 47,
-  "derivedComplementsAdded": 70,
-  "indirectRetailerUnlock": 5,
+  "gainedWaterSolidsAtOrAbove85": 58,
+  "derivedComplementsAdded": 68,
+  "indirectRetailerUnlock": 8,
   "waterSolidsTransition": {
-    "physical_conflict": 2,
-    "still_no_water_solids": 431,
-    "now_only_sugar_split_blocked": 4
+    "physical_conflict": 3,
+    "still_no_water_solids": 427,
+    "now_only_sugar_split_blocked": 5,
+    "completed_and_ready": 1
   },
   "byAuthority": {
     "OFFICIAL_PRIVATE_LABEL": {
@@ -226,6 +233,1053 @@
       ],
       "readinessBefore": "REVIEW",
       "readinessAfter": "REVIEW"
+    }
+  ],
+  "estimatedSamples": [
+    {
+      "product": "Wyborny Olej słonecznikowy",
+      "category": "Bakery & sweets",
+      "brand": "Wyborny",
+      "productType": "retail",
+      "profileMatch": 84,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000299",
+        "PI-ING-000300",
+        "PI-ING-000302",
+        "PI-ING-000303"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 0,
+      "fat": 100,
+      "sugars": 0
+    },
+    {
+      "product": "Bakello Kakao extra ciemne",
+      "category": "Chocolate & cocoa",
+      "brand": "Bakello",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-001670"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "podobienstwo makro 1"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 1,
+      "fat": 11,
+      "sugars": 0.5
+    },
+    {
+      "product": "M&M's Chocolate Czekolada mleczna w kolorowych skorupkach 125 g",
+      "category": "Chocolate & cocoa",
+      "brand": "M&M's",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001995",
+        "PI-ING-001996",
+        "PI-ING-002035",
+        "PI-ING-001990"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "podobienstwo makro 0.9427"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 3.7,
+      "fat": 19,
+      "sugars": 66
+    },
+    {
+      "product": "Milka Czekolada mleczna 250 g",
+      "category": "Chocolate & cocoa",
+      "brand": "Milka",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-002038",
+        "PI-ING-002044",
+        "PI-ING-002033",
+        "PI-ING-002024"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.9617"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 4.02,
+      "fat": 31,
+      "sugars": 55
+    },
+    {
+      "product": "Milka Czekolada mleczna z nadzieniem o smaku truskawkowym 100 g",
+      "category": "Chocolate & cocoa",
+      "brand": "Milka",
+      "productType": "retail",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001575",
+        "PI-ING-001574",
+        "PI-ING-000564",
+        "PI-ING-001656"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.8917"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 3.75,
+      "fat": 35,
+      "sugars": 56
+    },
+    {
+      "product": "Vitanella Olej kokosowy bezzapachowy",
+      "category": "Coconut",
+      "brand": "Vitanella",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000163",
+        "PI-ING-000158"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "podobienstwo makro 0.975"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 0.05,
+      "fat": 100,
+      "sugars": 0.5
+    },
+    {
+      "product": "Roladka śmietankowa Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 91,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001449",
+        "PI-ING-000209",
+        "PI-ING-000210",
+        "PI-ING-001419"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.7028"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 65.49,
+      "fat": 27,
+      "sugars": 3.1
+    },
+    {
+      "product": "Ser śmietankowo-kremowy Mascarpone Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000232",
+        "PI-ING-000257",
+        "PI-ING-000231"
+      ],
+      "reasons": [
+        "3 zgodnych profili",
+        "podobienstwo makro 1"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 51.57,
+      "fat": 40,
+      "sugars": 4.9
+    },
+    {
+      "product": "Serek puszysty Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000210",
+        "PI-ING-000208",
+        "PI-ING-001450",
+        "PI-ING-000209"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "podobienstwo makro 0.9439"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 68.35,
+      "fat": 22,
+      "sugars": 2.7
+    },
+    {
+      "product": "Serek puszysty Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000208",
+        "PI-ING-001450",
+        "PI-ING-000210",
+        "PI-ING-000209"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "podobienstwo makro 0.9478"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 69.135,
+      "fat": 21,
+      "sugars": 2.7
+    },
+    {
+      "product": "Serek śmietankowy Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000210",
+        "PI-ING-000208",
+        "PI-ING-001450",
+        "PI-ING-000209"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "podobienstwo makro 0.9494"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 66.92,
+      "fat": 23,
+      "sugars": 3
+    },
+    {
+      "product": "Twaróg Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001394",
+        "PI-ING-001396",
+        "PI-ING-001397"
+      ],
+      "reasons": [
+        "3 zgodnych profili",
+        "podobienstwo makro 0.9507"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 74.645,
+      "fat": 4,
+      "sugars": 3.4
+    },
+    {
+      "product": "Twaróg klinek Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 90,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001395",
+        "PI-ING-001394",
+        "PI-ING-002113",
+        "PI-ING-000548"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.6467"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 73.2,
+      "fat": 0.2,
+      "sugars": 3.8
+    },
+    {
+      "product": "Twaróg klinek Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001394",
+        "PI-ING-001397",
+        "PI-ING-001396"
+      ],
+      "reasons": [
+        "3 zgodnych profili",
+        "podobienstwo makro 0.9533"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 74.645,
+      "fat": 4,
+      "sugars": 4
+    },
+    {
+      "product": "Twaróg klinek Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001397",
+        "PI-ING-001396"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "podobienstwo makro 1"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 76.09,
+      "fat": 8,
+      "sugars": 4
+    },
+    {
+      "product": "Twaróg sernikowy Delikate",
+      "category": "Dairy",
+      "brand": "Delikate",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001451",
+        "PI-ING-002113",
+        "PI-ING-001395",
+        "PI-ING-000266"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.8794"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 83.335,
+      "fat": 4,
+      "sugars": 3.9
+    },
+    {
+      "product": "Jogurt Fruvita",
+      "category": "Dairy",
+      "brand": "Fruvita",
+      "productType": "private_label",
+      "profileMatch": 93,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000547",
+        "PI-ING-000200",
+        "PI-ING-000234",
+        "PI-ING-000235"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.7544"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "total_sugars_percent"
+      ],
+      "water": 88.57,
+      "fat": 1.9,
+      "sugars": 4.7
+    },
+    {
+      "product": "Skyr pitny Fruvita",
+      "category": "Dairy",
+      "brand": "Fruvita",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001395",
+        "PI-ING-001451"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "podobienstwo makro 0.99"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "salt_percent"
+      ],
+      "water": 82.7,
+      "fat": 0,
+      "sugars": 3.8
+    },
+    {
+      "product": "Masło Ekstra Mleczna Dolina 82%",
+      "category": "Dairy",
+      "brand": "Mleczna Dolina",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-000176"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "podobienstwo makro 0.982"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 16.4,
+      "fat": 82,
+      "sugars": 1
+    },
+    {
+      "product": "Masło Ekstra bez laktozy Mleczna Dolina",
+      "category": "Dairy",
+      "brand": "Mleczna Dolina",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-000176"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "podobienstwo makro 0.9733"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 16.4,
+      "fat": 82,
+      "sugars": 0.7
+    },
+    {
+      "product": "Śmietana do sałatek Mleczna Dolina 12%",
+      "category": "Dairy",
+      "brand": "Mleczna Dolina",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000258",
+        "PI-ING-001568",
+        "PI-ING-001443",
+        "PI-ING-000179"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "podobienstwo makro 0.9933"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 79.55,
+      "fat": 12,
+      "sugars": 4
+    },
+    {
+      "product": "Jogurt naturalny goBIO",
+      "category": "Dairy",
+      "brand": "goBIO",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000241",
+        "PI-ING-000546",
+        "PI-ING-000240",
+        "PI-ING-000201"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.9273"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 88.57,
+      "fat": 3.8,
+      "sugars": 4.7
+    },
+    {
+      "product": "Daktyle suszone BakaD'Or",
+      "category": "Fruit",
+      "brand": "BakaD'Or",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000351",
+        "PI-ING-000353"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "podobienstwo makro 0.8567"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 21.6335,
+      "fat": 0,
+      "sugars": 58.735
+    },
+    {
+      "product": "Żurawina suszona cała BakaD'Or",
+      "category": "Fruit",
+      "brand": "BakaD'Or",
+      "productType": "private_label",
+      "profileMatch": 93,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001498",
+        "PI-ING-000351"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "podobienstwo makro 0.8022"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "total_sugars_percent"
+      ],
+      "water": 84.246,
+      "fat": 1.2,
+      "sugars": 9
+    },
+    {
+      "product": "Migdały całe łuskane",
+      "category": "Nuts & pastes",
+      "brand": "Alesto Selection",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001512",
+        "PI-ING-000607",
+        "PI-ING-001722",
+        "PI-ING-001489"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.9094"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 5.16,
+      "fat": 52,
+      "sugars": 4.4
+    },
+    {
+      "product": "Mieszanka egzotyczna BakaD'Or",
+      "category": "Nuts & pastes",
+      "brand": "BakaD'Or",
+      "productType": "private_label",
+      "profileMatch": 88,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000426",
+        "PI-ING-000701",
+        "PI-ING-000882",
+        "PI-ING-000875"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "podobienstwo makro 0.6189"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 4.32,
+      "fat": 24,
+      "sugars": 40
+    },
+    {
+      "product": "Migdały kalifornijskie prażone BakaD'Or",
+      "category": "Nuts & pastes",
+      "brand": "BakaD'Or",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001412",
+        "PI-ING-001585",
+        "PI-ING-000586",
+        "PI-ING-000587"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.832"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 6.1,
+      "fat": 58,
+      "sugars": 4.1
+    },
+    {
+      "product": "Orzechy brazylijskie BakaD'Or",
+      "category": "Nuts & pastes",
+      "brand": "BakaD'Or",
+      "productType": "private_label",
+      "profileMatch": 94,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000449",
+        "PI-ING-000408",
+        "PI-ING-000418"
+      ],
+      "reasons": [
+        "3 zgodnych profili",
+        "podobienstwo makro 0.8694"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 6.292,
+      "fat": 67,
+      "sugars": 2.3
+    },
+    {
+      "product": "Orzechy nerkowca BakaD'Or",
+      "category": "Nuts & pastes",
+      "brand": "BakaD'Or",
+      "productType": "private_label",
+      "profileMatch": 93,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001588",
+        "PI-ING-001042",
+        "PI-ING-000444",
+        "PI-ING-000410"
+      ],
+      "reasons": [
+        "5 zgodnych profili",
+        "podobienstwo makro 0.7678"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 3.2,
+      "fat": 46,
+      "sugars": 6.1
+    },
+    {
+      "product": "Hummus proteinowy GO Active",
+      "category": "Protein",
+      "brand": "GO Active",
+      "productType": "private_label",
+      "profileMatch": 86,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-001563",
+        "PI-ING-001571",
+        "PI-ING-001414"
+      ],
+      "reasons": [
+        "3 zgodnych profili",
+        "podobienstwo makro 0.5567"
+      ],
+      "verifiedFields": [
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent"
+      ],
+      "water": 80.745,
+      "fat": 14,
+      "sugars": 0.4
+    },
+    {
+      "product": "BANANA",
+      "category": "Professional gelato products",
+      "brand": "Comprital",
+      "productType": "professional",
+      "profileMatch": 84,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000930",
+        "PI-ING-001086",
+        "PI-ING-001200",
+        "PI-ING-001707"
+      ],
+      "reasons": [
+        "4 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 74.4,
+      "fat": 0.3,
+      "sugars": 19.3
+    },
+    {
+      "product": "KIWI",
+      "category": "Professional gelato products",
+      "brand": "Comprital",
+      "productType": "professional",
+      "profileMatch": 0,
+      "basis": "none",
+      "mapperReferences": [],
+      "reasons": [
+        "brak zgodnego profilu"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 82.6,
+      "fat": 0.5,
+      "sugars": 9.1
+    },
+    {
+      "product": "KIWI",
+      "category": "Professional gelato products",
+      "brand": "Comprital",
+      "productType": "professional",
+      "profileMatch": 82,
+      "basis": "neighbour_set",
+      "mapperReferences": [
+        "PI-ING-000933",
+        "PI-ING-000965"
+      ],
+      "reasons": [
+        "2 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 82.6,
+      "fat": 0.5,
+      "sugars": 9.1
+    },
+    {
+      "product": "LIME",
+      "category": "Professional gelato products",
+      "brand": "Comprital",
+      "productType": "professional",
+      "profileMatch": 82,
+      "basis": "brand_sibling",
+      "mapperReferences": [
+        "PI-ING-001471"
+      ],
+      "reasons": [
+        "1 zgodnych profili",
+        "brak makroskladnikow produktu do walidacji"
+      ],
+      "verifiedFields": [],
+      "estimatedFields": [
+        "water_percent",
+        "total_solids_percent",
+        "fat_percent",
+        "protein_percent",
+        "carbohydrate_percent",
+        "total_sugars_percent",
+        "salt_percent"
+      ],
+      "water": 89.1,
+      "fat": 0.2,
+      "sugars": 1.7
     }
   ]
 }

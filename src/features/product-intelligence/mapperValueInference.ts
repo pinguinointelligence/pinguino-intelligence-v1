@@ -907,3 +907,340 @@ export function moistureCohortProfile(
     reason,
   };
 }
+
+
+/* ── product → profile match ───────────────────────────────────────────────── */
+
+/**
+ * How well one Mapper profile stands in for a commercial product.
+ *
+ * This is the question the importer actually needs answered. Asking instead
+ * whether every individual number is independently defensible to 85% made the
+ * importer unusable: nine good fields were being reduced to their weakest, and a
+ * product with a strong, obvious proxy was refused because one estimate came
+ * from a slightly looser cohort.
+ *
+ * So the score answers: IS THIS PRODUCT SUFFICIENTLY REPRESENTED BY THIS
+ * PHYSICAL PROFILE? A profile that clears the bar may supply every missing
+ * working value at once, as ESTIMATED. Values the product already states remain
+ * exact and are never overwritten.
+ *
+ * Deterministic and inspectable — no model self-confidence anywhere.
+ */
+export interface ProfileMatchInput {
+  name: string | null;
+  variant?: string | null;
+  brand?: string | null;
+  category?: string | null;
+  subcategory?: string | null;
+  barcode?: string | null;
+  /** Macros already established for this product, from label or source card. */
+  knownMacros?: Partial<Record<'fat_percent' | 'protein_percent' | 'carbohydrate_percent' |
+    'total_sugars_percent' | 'fiber_percent' | 'salt_percent', number>>;
+  /** True for professional/technical products. */
+  technical?: boolean;
+}
+
+export type ProfileMatchBasis =
+  | 'gtin_identity'
+  | 'commodity_name'
+  | 'neighbour_set'
+  | 'brand_sibling'
+  | 'none';
+
+export interface ProfileMatch {
+  /** 0–1. The product/profile question, not a per-field probability. */
+  confidence: number;
+  basis: ProfileMatchBasis;
+  /** Rows the profile was taken from. One for identity, several for a set. */
+  rows: readonly MapperKnowledgeRow[];
+  references: string[];
+  family: ProductFamilyId | null;
+  reasons: string[];
+  /** Set when a candidate was refused outright rather than merely scored low. */
+  rejected: string | null;
+}
+
+/**
+ * Macro agreement required when either side's family is unknown. Family
+ * compatibility cannot be checked there, so the numbers have to carry it alone.
+ */
+export const MIN_UNFAMILIED_SIMILARITY = 0.7;
+
+/** The bar a profile must clear to supply working values. Owner's rule. */
+export const PROFILE_MATCH_FLOOR = 0.85;
+
+/**
+ * Families that may stand in for one another. Everything else is a hard
+ * contradiction: tea is not dairy, an oil is not a cream, a powder is not a
+ * liquid. Same brand never overrides this.
+ */
+const COMPATIBLE_FAMILIES: readonly (readonly ProductFamilyId[])[] = Object.freeze([
+  ['dairy_liquid', 'dairy_protein'],
+  ['coconut_fat', 'liquid_vegetable_oil'],
+  ['sugar_sucrose', 'other_sugar'],
+  ['glucose_dextrose', 'other_sugar'],
+  ['chocolate', 'cocoa_butter'],
+]);
+
+const familiesCompatible = (a: ProductFamilyId | null, b: ProductFamilyId | null): boolean => {
+  if (!a || !b) return true; // an unknown family cannot contradict anything
+  if (a === b) return true;
+  return COMPATIBLE_FAMILIES.some((group) => group.includes(a) && group.includes(b));
+};
+
+/**
+ * Mapper categories a family may draw a proxy from.
+ *
+ * Family inference on a Mapper row can fail or land oddly, and when it does the
+ * family check alone lets a yoghurt take a cream soda's profile — the macros of
+ * a drinking yoghurt and a soft drink really are near-identical. The Mapper's
+ * own category is a second, independent axis that does not depend on inference
+ * succeeding, so §7's hard contradictions are enforced here directly.
+ */
+const ALLOWED_CATEGORIES: Readonly<Partial<Record<ProductFamilyId, readonly string[]>>> =
+  Object.freeze({
+    dairy_liquid: ['dairy', 'specialty'],
+    dairy_protein: ['dairy', 'protein', 'specialty'],
+    plant_beverage: ['beverage', 'plant_beverage'],
+    fruit: ['fruit', 'vegetable'],
+    chocolate: ['chocolate', 'cocoa', 'confectionery_inclusion'],
+    cocoa_butter: ['chocolate', 'cocoa', 'fat'],
+    nut_paste: ['nut', 'flavor_paste'],
+    coconut_fat: ['coconut', 'fat'],
+    liquid_vegetable_oil: ['fat', 'coconut'],
+    sugar_sucrose: ['sweetener'],
+    other_sugar: ['sweetener'],
+    glucose_dextrose: ['sweetener'],
+    alcohol: ['alcohol'],
+    stabilizer_hydrocolloid: ['stabilizer', 'fiber'],
+    emulsifier: ['stabilizer', 'emulsifier'],
+    flavor_paste: ['flavor_paste', 'flavor_powder', 'flavor_syrup', 'flavor_concentrate', 'nut'],
+    base_mix: ['base_mix'],
+    starch: ['starch', 'fiber', 'base_mix'],
+    fibre_inulin: ['fiber', 'stabilizer'],
+    plant_protein_isolate: ['protein'],
+  });
+
+/** True when this candidate's Mapper category is one the family may draw from. */
+function categoryAllowed(family: ProductFamilyId | null, row: MapperKnowledgeRow): boolean {
+  if (!family) return true;
+  const allowed = ALLOWED_CATEGORIES[family];
+  if (!allowed) return true;
+  const category = normalizeName(row.ingredient_category).replace(/\s+/g, '_');
+  if (!category) return false;
+  return allowed.some((entry) => category === entry || category.startsWith(entry));
+}
+
+/** Per-macro tolerance for judging how alike two profiles are. */
+const MACRO_SIMILARITY_BAND: Readonly<Record<string, number>> = Object.freeze({
+  fat_percent: 10,
+  protein_percent: 6,
+  carbohydrate_percent: 15,
+  total_sugars_percent: 15,
+  fiber_percent: 5,
+  salt_percent: 1.5,
+});
+
+/**
+ * Similarity of a candidate row to the product's known macros: 1 when every
+ * known macro matches, falling to 0 as they diverge past their band. Returns
+ * null when the product states no macros — then macros neither help nor hurt.
+ */
+function macroSimilarity(
+  row: MapperKnowledgeRow,
+  known: ProfileMatchInput['knownMacros'],
+): number | null {
+  const entries = Object.entries(known ?? {}).filter(
+    (entry): entry is [string, number] => typeof entry[1] === 'number',
+  );
+  if (entries.length === 0) return null;
+  let total = 0;
+  let counted = 0;
+  for (const [field, target] of entries) {
+    const observed = numeric(row[field as keyof MapperKnowledgeRow] as number | null);
+    if (observed === null) continue;
+    const band = MACRO_SIMILARITY_BAND[field] ?? 10;
+    total += Math.max(0, 1 - Math.abs(observed - target) / band);
+    counted += 1;
+  }
+  return counted === 0 ? null : total / counted;
+}
+
+/** How complete a candidate's own profile is — a sparse row is a poor proxy. */
+function profileCompleteness(row: MapperKnowledgeRow): number {
+  const wanted: (keyof MapperKnowledgeRow)[] = [
+    'water_percent', 'total_solids_percent', 'fat_percent', 'protein_percent',
+    'carbohydrate_percent', 'total_sugars_percent',
+  ];
+  const present = wanted.filter((field) => numeric(row[field] as number | null) !== null).length;
+  return present / wanted.length;
+}
+
+const familyOf = (row: MapperKnowledgeRow): ProductFamilyId | null => {
+  const match = inferMapperFamily({
+    name: row.ingredient_name_internal,
+    variant: row.ingredient_name_display ?? null,
+    sourceCategory: row.ingredient_category ?? null,
+    sourceSubcategory: row.ingredient_subcategory ?? null,
+  });
+  return familySupportsCohort(match) && match ? match.family : null;
+};
+
+/**
+ * Find the best profile that can stand in for this product.
+ *
+ * Candidates are drawn from the evidence tiers that already exist: GTIN
+ * identity, commodity-name identity, macro-conditioned nearest neighbours and
+ * brand siblings. Text similarity only ever supports — it never carries a match
+ * on its own.
+ */
+export function findProfileMatch(
+  input: ProfileMatchInput,
+  knowledge: MapperKnowledge,
+): ProfileMatch {
+  const none: ProfileMatch = {
+    confidence: 0, basis: 'none', rows: [], references: [], family: null,
+    reasons: ['brak zgodnego profilu'], rejected: null,
+  };
+
+  const productFamilyMatch = inferMapperFamily({
+    name: input.name,
+    variant: input.variant ?? null,
+    sourceCategory: input.category ?? null,
+    sourceSubcategory: input.subcategory ?? null,
+  });
+  const productFamily =
+    familySupportsCohort(productFamilyMatch) && productFamilyMatch
+      ? productFamilyMatch.family
+      : null;
+
+  /* 1. GTIN identity — the row IS the product */
+  const code = (() => {
+    const digits = (input.barcode ?? '').replace(/\D+/g, '');
+    return digits.length >= 8 && digits.length <= 14 ? digits.padStart(14, '0') : null;
+  })();
+  const exact = code ? knowledge.byCode.get(code) : undefined;
+  if (exact) {
+    return {
+      confidence: 0.97, basis: 'gtin_identity', rows: [exact],
+      references: [exact.ingredient_id], family: familyOf(exact),
+      reasons: [`GTIN ${code} to wiersz Mappera ${exact.ingredient_id}`], rejected: null,
+    };
+  }
+
+  /* 2. commodity name — the product IS a substance the Mapper defines */
+  const normalized = normalizeName(input.name);
+  const commodity =
+    normalized && normalized.split(' ').length <= MAX_SIMPLE_PROFILE_TOKENS
+      ? knowledge.byName.get(normalized)
+      : undefined;
+  if (commodity && commodity.length > 0) {
+    const compatible = commodity.filter((row) => familiesCompatible(productFamily, familyOf(row)));
+    if (compatible.length > 0) {
+      return {
+        confidence: 0.93, basis: 'commodity_name', rows: compatible,
+        references: compatible.map((row) => row.ingredient_id), family: productFamily,
+        reasons: [`nazwa produktu jest surowcem znanym Mapperowi ("${normalized}")`],
+        rejected: null,
+      };
+    }
+  }
+
+  /* 3. nearest compatible neighbours, validated against known macros */
+  const similar = similarCohort(
+    { name: input.name, variant: input.variant, brand: input.brand,
+      category: input.category, subcategory: input.subcategory },
+    knowledge,
+  );
+  const pool = similar.rows.length > 0
+    ? similar.rows
+    : (productFamily ? (knowledge.byFamily.get(productFamily) ?? []) : []);
+
+  const scored = pool
+    .map((row) => {
+      const rowFamily = familyOf(row);
+      if (!familiesCompatible(productFamily, rowFamily)) return null;
+      if (!categoryAllowed(productFamily, row)) return null;
+      const similarity = macroSimilarity(row, input.knownMacros);
+      const completeness = profileCompleteness(row);
+      if (completeness === 0) return null;
+      // With no family for the product, family compatibility proves nothing —
+      // an unknown family contradicts nothing, so everything would pass. Macros
+      // are then the only compatibility evidence there is, and without them a
+      // yoghurt can be matched to a cream soda purely on a shared token.
+      // An UNKNOWN family on either side contradicts nothing, so on its own it
+      // would let a yoghurt match a cream soda on a shared token. Whenever either
+      // side's family is unknown, macros become the only compatibility evidence
+      // there is — and without them, or below a real bar, the candidate is out.
+      if (productFamily !== null && rowFamily === null) {
+        // The product's kind is known but the candidate's is not, so
+        // compatibility cannot be established. Macros will not settle it either:
+        // a drinking yoghurt and a cream soda have near-identical macros and are
+        // not interchangeable.
+        return null;
+      }
+      if (productFamily === null) {
+        // Neither side's kind is known. Macro agreement is the only evidence
+        // there is, and it has to be strong.
+        if (similarity === null || similarity < MIN_UNFAMILIED_SIMILARITY) return null;
+      }
+      // Macro agreement dominates when the product states macros; without them
+      // the match rests on family compatibility and how complete the proxy is,
+      // which is deliberately not enough on its own to clear the floor.
+      const score = similarity === null
+        ? 0.62 + 0.2 * completeness
+        : 0.55 + 0.33 * similarity + 0.12 * completeness;
+      return { row, score, similarity, completeness };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    .sort((a, b) => b.score - a.score);
+
+  if (scored.length === 0) {
+    return productFamily || pool.length > 0
+      ? { ...none, rejected: 'wszyscy kandydaci niezgodni rodzinowo lub bez profilu' }
+      : none;
+  }
+
+  // A small set of the closest compatible rows is steadier than a single row,
+  // so the top group is kept when several agree closely.
+  const best = scored[0]!;
+  const set = scored.filter((entry) => entry.score >= best.score - 0.04).slice(0, 5);
+  const rows = set.map((entry) => entry.row);
+  const confidence = round4(
+    set.reduce((total, entry) => total + entry.score, 0) / set.length +
+      (set.length >= 3 ? 0.02 : 0),
+  );
+
+  return {
+    confidence: Math.min(0.94, confidence),
+    basis: set.length > 1 ? 'neighbour_set' : 'brand_sibling',
+    rows,
+    references: rows.map((row) => row.ingredient_id),
+    family: productFamily,
+    reasons: [
+      `${set.length} zgodnych profili`,
+      best.similarity === null
+        ? 'brak makroskladnikow produktu do walidacji'
+        : `podobienstwo makro ${round4(best.similarity)}`,
+    ],
+    rejected: null,
+  };
+}
+
+/** Median of the matched profile's values for one field, when it states any. */
+export function profileFieldValue(
+  match: ProfileMatch,
+  field: WorkingNumericField,
+): { value: number; contributors: string[] } | null {
+  const values: number[] = [];
+  const contributors: string[] = [];
+  for (const row of match.rows) {
+    const value = numeric(row[field as keyof MapperKnowledgeRow] as number | null);
+    if (value === null) continue;
+    values.push(value);
+    contributors.push(row.ingredient_id);
+  }
+  if (values.length === 0) return null;
+  return { value: round4(median([...values].sort((a, b) => a - b))), contributors };
+}

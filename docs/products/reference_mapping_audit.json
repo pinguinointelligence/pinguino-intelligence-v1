@@ -37,7 +37,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 12,
+      "currentFieldsProduced": 13,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -788,7 +788,7 @@
         "mapper_similar_profile",
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00043",
@@ -902,7 +902,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 12,
+      "currentFieldsProduced": 13,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -1882,7 +1882,7 @@
       "currentTiers": [
         "mapper_similar_profile"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00075",
@@ -1912,7 +1912,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 13,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -1929,11 +1929,11 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00067",
@@ -1950,7 +1950,7 @@
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00069",
@@ -1980,7 +1980,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 13,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2048,11 +2048,11 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00038",
@@ -2259,7 +2259,7 @@
         "mapper_similar_profile",
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00043",
@@ -2395,7 +2395,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 11,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2467,7 +2467,7 @@
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00061",
@@ -2548,11 +2548,11 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00136",
@@ -2599,11 +2599,11 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 15,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00103",
@@ -2687,7 +2687,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 15,
+      "currentFieldsProduced": 19,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2704,11 +2704,11 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 17,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "REVIEW"
+      "currentReadiness": "ESTIMATED_READY"
     },
     {
       "productId": "PL-BIE-00129",
@@ -2721,7 +2721,7 @@
       "verdict": "D_unsafe",
       "reason": "stary wiersz Mappera nie dzieli z produktem żadnego rozróżniającego tokenu i nie jest wybierany przez bieżącą kohortę",
       "sharedTokens": [],
-      "currentFieldsProduced": 17,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],

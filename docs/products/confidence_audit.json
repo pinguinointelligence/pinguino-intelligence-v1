@@ -1,25 +1,25 @@
 {
   "mapperFingerprint": "b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38",
-  "completeProfiles": 178,
-  "belowFloor": 171,
+  "completeProfiles": 179,
+  "belowFloor": 172,
   "aggregationEffect": {
     "shippedMinimum": 7,
     "ifMean": 18,
     "ifMedian": 23,
     "ifProduct": 0,
     "allFieldsAboveFloorButProductBelow": 0,
-    "belowFloorWithAtLeastOneFieldBelowFloor": 171
+    "belowFloorWithAtLeastOneFieldBelowFloor": 172
   },
   "weakestFieldTally": {
-    "fat_percent": 64,
-    "water_percent": 49,
+    "fat_percent": 72,
+    "water_percent": 42,
     "carbohydrate_percent": 10,
     "total_sugars_percent": 45,
     "protein_percent": 3
   },
   "weakestBasisTally": {
-    "product_declared": 59,
-    "derived": 22,
+    "product_declared": 67,
+    "derived": 15,
     "mapper_similar_profile": 63,
     "mapper_family_consensus": 27
   },
@@ -28,16 +28,16 @@
     "2": 4,
     "3": 6,
     "4": 53,
-    "5": 15,
+    "5": 23,
     "6": 5,
-    "7": 82
+    "7": 75
   },
   "averagePenalties": {
-    "tier": 0.2435,
-    "dispersion": 0.0981
+    "tier": 0.2392,
+    "dispersion": 0.098
   },
   "weakestFieldTightnessBuckets": {
-    "n/a": 81,
+    "n/a": 82,
     "0.3": 14,
     "0.0": 18,
     "0.6": 6,

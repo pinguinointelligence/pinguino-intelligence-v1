@@ -128,6 +128,13 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
       let indirectRetailerUnlock = 0;
       const transition: Record<string, number> = {};
       const upgrades: unknown[] = [];
+      const estimatedSamples: unknown[] = [];
+      const finalStates: Record<string, number> = {
+        READY_VERIFIED: 0,
+        READY_ESTIMATED: 0,
+        TECHNICAL_AUTHORITY_REQUIRED: 0,
+        REVIEW_REQUIRED: 0,
+      };
 
       const usable = parsed.candidates.filter(
         (candidate) => candidate.state !== 'INVALID' && candidate.state !== 'DUPLICATE',
@@ -227,6 +234,16 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
           ? resolveProductWorkingValues({ ...base, sourceCard: contribution }, knowledge)
           : priorResolution;
         after[nextResolution.valueReadiness] += 1;
+        // §18 operational classification, technical authority kept separate.
+        const technicalBlocked = nextResolution.readiness === 'TECHNICAL_AUTHORITY_REQUIRED';
+        const state = technicalBlocked
+          ? 'TECHNICAL_AUTHORITY_REQUIRED'
+          : nextResolution.valueReadiness === 'READY'
+            ? 'READY_VERIFIED'
+            : nextResolution.valueReadiness === 'ESTIMATED_READY'
+              ? 'READY_ESTIMATED'
+              : 'REVIEW_REQUIRED';
+        finalStates[state] = (finalStates[state] ?? 0) + 1;
         verifiedEngineFieldsBefore += ENGINE_REQUIRED_WORKING_FIELDS.filter(
           (field) => priorResolution.fields[field].provenance.state === 'VERIFIED',
         ).length;
@@ -248,6 +265,30 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
           nextResolution.valueReadiness !== 'REVIEW'
         ) {
           indirectlyEnabled += 1;
+        }
+
+        // §20: a reviewable sample of every product judged READY_ESTIMATED.
+        if (nextResolution.valueReadiness === 'ESTIMATED_READY' && estimatedSamples.length < 40) {
+          const pm = nextResolution.profileMatch;
+          estimatedSamples.push({
+            product: candidate.displayName,
+            category: candidate.sourceCategory,
+            brand: candidate.source.Brand,
+            productType: candidate.source['Product Type'],
+            profileMatch: pm ? Math.round(pm.confidence * 100) : null,
+            basis: pm?.basis ?? null,
+            mapperReferences: pm?.references.slice(0, 4) ?? [],
+            reasons: pm?.reasons ?? [],
+            verifiedFields: ENGINE_REQUIRED_WORKING_FIELDS.filter(
+              (f) => nextResolution.fields[f].provenance.state === 'VERIFIED',
+            ),
+            estimatedFields: ENGINE_REQUIRED_WORKING_FIELDS.filter(
+              (f) => nextResolution.fields[f].provenance.state === 'ESTIMATED',
+            ),
+            water: nextResolution.values.water_percent,
+            fat: nextResolution.values.fat_percent,
+            sugars: nextResolution.values.total_sugars_percent,
+          });
         }
 
         // §21/§22: what happened to the products that had no water or solids.
@@ -365,6 +406,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
         productsWithEstimatedFieldAfter: estimatedAfter,
         readinessBefore: before,
         readinessAfter: after,
+        finalClassification: finalStates,
         engineFieldTruthStateBefore: truthStateBefore,
         engineFieldTruthStateAfter: truthStateAfter,
         completeProfileBefore,
@@ -377,6 +419,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE) && existsSync(
         waterSolidsTransition: transition,
         byAuthority,
         sampleUpgrades: upgrades,
+        estimatedSamples,
       };
       mkdirSync(dirname(REPORT), { recursive: true });
       writeFileSync(REPORT, `${JSON.stringify(report, null, 2)}\n`);

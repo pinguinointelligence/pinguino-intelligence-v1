@@ -25,8 +25,12 @@ import { validatePlausibility, type PlausibilityViolation } from './productPlaus
 import type { CardContribution } from './productSourceCard';
 import {
   CONSENSUS_BANDS,
+  findProfileMatch,
   inferMapperValues,
+  profileFieldValue,
   residualSolidsEstimate,
+  PROFILE_MATCH_FLOOR,
+  type ProfileMatch,
   type MapperInferenceInput,
   type MapperInferenceTier,
   type MapperKnowledge,
@@ -104,9 +108,12 @@ const CONFLICT_TOLERANCE_MULTIPLE = 3;
 export type ValueReadiness =
   /** Every engine field measured. Formulate without caveat. */
   | 'READY'
-  /** Every engine field present, some estimated, confidence above the floor. */
+  /**
+   * Every engine field present, some of them supplied by a Mapper profile the
+   * product is sufficiently represented by. Usable by the Engine normally.
+   */
   | 'ESTIMATED_READY'
-  /** Engine fields missing, or present but too weak to stand behind. */
+  /** Engine fields missing, or no defensible profile to supply them. */
   | 'REVIEW';
 
 export type ProductReadiness =
@@ -164,6 +171,8 @@ export interface ProductWorkingValues {
   missingEngineFields: WorkingNumericField[];
   /** How POD/PAC can be resolved for this product — Engine-derived, not stored. */
   sweetnessPath: SweetnessPath;
+  /** The Mapper profile this product is judged to be represented by, if any. */
+  profileMatch: ProfileMatch | null;
   /** Engine-required fields whose value is an estimate. */
   estimatedEngineFields: WorkingNumericField[];
   mapperTiersUsed: MapperInferenceTier[];
@@ -250,6 +259,19 @@ export function sweetnessPathOf(fields: ProductFieldTruthMap): SweetnessPath {
 /** How much of the declared sugars may stay unattributed and still resolve. */
 export const SUGAR_SPECTRUM_TOLERANCE = 0.5;
 
+/** Macros the product itself states, used to validate a candidate profile. */
+function verifiedMacros(
+  fields: ProductFieldTruthMap,
+): Partial<Record<string, number>> {
+  const known: Partial<Record<string, number>> = {};
+  for (const field of ['fat_percent', 'protein_percent', 'carbohydrate_percent',
+    'total_sugars_percent', 'fiber_percent', 'salt_percent'] as const) {
+    const truth = fields[field];
+    if (truth.value !== null && truth.provenance.state === 'VERIFIED') known[field] = truth.value;
+  }
+  return known;
+}
+
 const numeric = (value: number | null | undefined): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
@@ -318,6 +340,65 @@ export function resolveProductWorkingValues(
     if (candidate) fields = applyFieldTruth(fields, field, candidate);
   }
   trace.push(...inference.trace);
+
+  /* 3b. one compatible Mapper profile may supply every remaining working value */
+  // The owner's rule: readiness asks whether this product is sufficiently
+  // represented by a physical profile, not whether each number is independently
+  // provable. A profile clearing the floor fills what is still missing at once,
+  // as ESTIMATED. Nothing the product already states is touched.
+  const profileMatch = findProfileMatch(
+    {
+      name: input.identity.name,
+      variant: input.identity.variant,
+      brand: input.identity.brand,
+      category: input.identity.category,
+      subcategory: input.identity.subcategory,
+      barcode: input.identity.barcode,
+      knownMacros: verifiedMacros(fields),
+      technical: input.technical,
+    },
+    knowledge,
+  );
+  if (profileMatch.confidence >= PROFILE_MATCH_FLOOR) {
+    let filled = 0;
+    for (const field of WORKING_NUMERIC_FIELDS) {
+      if (fields[field].value !== null) continue;
+      // A proxy may lend its stored POD/PAC only when the sugar picture is
+      // wholly its own too. If this product states its own sugars, borrowing a
+      // neighbour's freezing power would pair one product's sugars with
+      // another's physics; the Engine derives it from the spectrum instead.
+      if (
+        (field === 'pod_value' || field === 'pac_value') &&
+        fields.total_sugars_percent.provenance.state === 'VERIFIED'
+      ) {
+        continue;
+      }
+      const supplied = profileFieldValue(profileMatch, field);
+      if (!supplied) continue;
+      fields = applyFieldTruth(
+        fields,
+        field,
+        knownField({
+          value: supplied.value,
+          state: 'ESTIMATED',
+          // The product/profile question has one answer, so every field it
+          // supplies carries that same confidence rather than a per-field one.
+          confidence: profileMatch.confidence,
+          basis: 'mapper_similar_profile',
+          mapperReferences: supplied.contributors,
+          mapperFingerprint: knowledge.fingerprint,
+          note: `profil zgodny (${profileMatch.basis}, ${Math.round(profileMatch.confidence * 100)}%)`,
+        }),
+      );
+      filled++;
+    }
+    trace.push(
+      `profile_match: ${profileMatch.basis} ${Math.round(profileMatch.confidence * 100)}% → ${filled} pol`,
+      ...profileMatch.reasons,
+    );
+  } else if (profileMatch.rejected) {
+    trace.push(`profile_match odrzucony: ${profileMatch.rejected}`);
+  }
 
   /* 4. arithmetic closure over what is now known */
   fields = closeArithmetic(fields, trace);
@@ -411,15 +492,31 @@ export function resolveProductWorkingValues(
       ? (['water_percent'] as const)
       : (['total_solids_percent'] as const)),
   ];
+  // A product whose values are all measured is judged on those measurements.
+  // A product leaning on a Mapper profile is judged on how well that profile
+  // represents it — one question with one answer, never nine multiplied.
+  const leansOnProfile = confidenceFields.some(
+    (field) => fields[field].provenance.state === 'ESTIMATED',
+  );
   const engineConfidence =
     missingRequired.length > 0
       ? null
-      : round4(
-          confidenceFields.reduce(
-            (min, field) => Math.min(min, fields[field].provenance.confidence),
-            1,
-          ),
-        );
+      : leansOnProfile
+        ? Math.max(
+            profileMatch.confidence,
+            round4(
+              confidenceFields.reduce(
+                (min, field) => Math.min(min, fields[field].provenance.confidence),
+                1,
+              ),
+            ),
+          )
+        : round4(
+            confidenceFields.reduce(
+              (min, field) => Math.min(min, fields[field].provenance.confidence),
+              1,
+            ),
+          );
 
   const valueReadiness = decideValueReadiness({
     missing: missingRequired.length,
@@ -456,6 +553,7 @@ export function resolveProductWorkingValues(
     engineReady: valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY',
     missingEngineFields,
     sweetnessPath: power,
+    profileMatch,
     estimatedEngineFields,
     mapperTiersUsed: inference.tiersUsed,
     mapperReferences,
