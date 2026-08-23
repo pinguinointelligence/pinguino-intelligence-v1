@@ -146,6 +146,7 @@ import {
   veganProfileConstraintIssues,
   veganProfileConstraintMessagePl,
   type VeganProfileConstraintIssue,
+  withVeganInulinEnvelopeHold,
 } from '@/features/formulation/veganProfileConstraints';
 import {
   veganSubstitutionMessagePl,
@@ -168,6 +169,20 @@ import {
   isOmittableUnusedLine,
 } from '@/features/practical-recipe/practicalRecipe';
 import { mainTechnicalLinearUpperBound } from './mainTechnicalLinearBound';
+
+/**
+ * Internal SOLVER HOLDS applied to every search in this pipeline.
+ *
+ * Two safety clamps that are science, not user intent, and therefore must bound
+ * the SEARCH rather than reject its result afterwards:
+ *  - stabilizer dosage windows (`withTemplateControlledStabilizerLocks`);
+ *  - the Vegan inulin calibration envelope (RC-2, `withVeganInulinEnvelopeHold`).
+ *
+ * Neither is persisted as a user-visible §17 lock, and an explicit owner
+ * lock/percent/range always wins over both.
+ */
+const solverHolds = (input: RecipeInput, set: ConstraintSet): ConstraintSet =>
+  withVeganInulinEnvelopeHold(input, withTemplateControlledStabilizerLocks(input, set));
 
 /** Build-only commercial inputs. They rank ECO candidates in memory and are
  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
@@ -2044,7 +2059,7 @@ function iterateSolverToFixedPoint(
   // gradient. Keep every current stabilizer dose as an internal solver hold in
   // the canonical corrector, draft-vector, ECO and Protein paths. The hold is
   // deliberately not persisted as a user-visible §17 lock.
-  const solverSet = withTemplateControlledStabilizerLocks(start, set);
+  const solverSet = solverHolds(start, set);
   const measure = (candidate: RecipeInput): { violations: number; severityPoints: number } => {
     const list = recipeDirectionViolations(candidate);
     return {
@@ -2088,9 +2103,7 @@ function iterateSolverToFixedPoint(
   for (let round = 1; ; round += 1) {
     if (current.violations === 0) {
       if (working.category === 'protein_gelato') {
-        const targetFit = fitProteinFormulation(working, solverSet, [
-          ...excludedIngredientIds,
-        ]);
+        const targetFit = fitProteinFormulation(working, solverSet, [...excludedIngredientIds]);
         if (targetFit.changed) {
           // The Main frontier only needs to prove preservation of the already
           // selected Protein score class. `fitProteinFormulation` has already
@@ -2550,7 +2563,7 @@ export function projectManualIngredientTarget(
 
   const objectiveBound = mainTechnicalLinearUpperBound({
     recipe: technicalStart,
-    constraints: withTemplateControlledStabilizerLocks(technicalStart, set),
+    constraints: solverHolds(technicalStart, set),
     snapshots: options.productBehaviorSnapshots ?? {},
     excludedIngredientIds: options.excludedIngredientIds,
     objectiveLineIds: [targetLine.id],
@@ -2651,7 +2664,7 @@ export function projectManualIngredientTarget(
     };
     const bound = mainTechnicalLinearUpperBound({
       recipe: technicalStart,
-      constraints: withTemplateControlledStabilizerLocks(technicalStart, probeSet),
+      constraints: solverHolds(technicalStart, probeSet),
       snapshots: options.productBehaviorSnapshots ?? {},
       excludedIngredientIds: options.excludedIngredientIds,
       objectiveLineIds: [targetLine.id],
@@ -2877,7 +2890,7 @@ function maximizeMainFromStart(
         ),
       },
     };
-    const solverSet = withTemplateControlledStabilizerLocks(staged, mainSet);
+    const solverSet = solverHolds(staged, mainSet);
     const rescaled = rescaleBatchToTarget(staged, solverSet, identityInput.target_batch_grams);
     // Proportional normalization is not the whole feasible space. In
     // particular a flavour carrier can often advance one more executable gram
@@ -2991,7 +3004,7 @@ function maximizeMainFromStart(
         ),
       },
     };
-    const solverSet = withTemplateControlledStabilizerLocks(candidate, mainSet);
+    const solverSet = solverHolds(candidate, mainSet);
     const constrainedIngredientIds = new Set(
       candidate.items
         .filter((item) => isConstrained(solverSet, item.id))
@@ -3222,7 +3235,9 @@ function maximizeMainTechnicalObjective(
         exactAcceptedMainGrams: executableMainGrams,
         executableMainGrams,
         firstHigherRejectedGrams: null,
-        firstHigherRejectedReason: startingProteinTarget.qualification.qualified ? null : 'hard_gate',
+        firstHigherRejectedReason: startingProteinTarget.qualification.qualified
+          ? null
+          : 'hard_gate',
         technicalScore: recipeFitForInput(
           technicalPresentationInput,
           calculateRecipe(technicalPresentationInput),
@@ -3236,7 +3251,7 @@ function maximizeMainTechnicalObjective(
       },
     };
   }
-  const linearConstraintSet = withTemplateControlledStabilizerLocks(identityInput, set);
+  const linearConstraintSet = solverHolds(identityInput, set);
   const linearBound = mainTechnicalLinearUpperBound({
     recipe: identityInput,
     constraints: linearConstraintSet,
@@ -3298,7 +3313,11 @@ function maximizeMainTechnicalObjective(
     candidateSet: ConstraintSet,
     requestedMainGrams: number,
   ): MainTechnicalProbe => {
-    const practical = practicalizeRecipeCandidate(candidate, candidateSet, flavourHeldLineIds(candidate));
+    const practical = practicalizeRecipeCandidate(
+      candidate,
+      candidateSet,
+      flavourHeldLineIds(candidate),
+    );
     if (!practical.ok) {
       return {
         ok: false,
@@ -3472,7 +3491,7 @@ function maximizeMainTechnicalObjective(
     // allocation is pinned. Only `solverSet` is constrained, so the preview's
     // user-facing lock counters keep reporting the user's own locks.
     const heldFlavourLineIds = flavourHeldLineIds(identityInput);
-    const solverSet = withTemplateControlledStabilizerLocks(staged, {
+    const solverSet = solverHolds(staged, {
       byLineId: {
         ...candidateSet.byLineId,
         ...Object.fromEntries(
@@ -3873,7 +3892,11 @@ function maximizeMainFlavourObjective(
     ? primary
     : maximizeMainFromStart(identityInput, identityInput, set, options);
   const executableOutcome = (candidate: { input: RecipeInput }) => {
-    const practical = practicalizeRecipeCandidate(candidate.input, set, flavourHeldLineIds(candidate.input));
+    const practical = practicalizeRecipeCandidate(
+      candidate.input,
+      set,
+      flavourHeldLineIds(candidate.input),
+    );
     const input = practical.ok ? practical.audit.executableInput : candidate.input;
     const result = practical.ok ? practical.audit.executableResult : calculateRecipe(input);
     return {
@@ -3927,7 +3950,11 @@ function maximizeMainFlavourObjective(
     selected = advanced;
   }
 
-  const practicalSelected = practicalizeRecipeCandidate(selected.input, set, flavourHeldLineIds(selected.input));
+  const practicalSelected = practicalizeRecipeCandidate(
+    selected.input,
+    set,
+    flavourHeldLineIds(selected.input),
+  );
   const selectedMains = captureMainIngredientIntent(identityInput);
   if (selected.proof && practicalSelected.ok && selectedMains.length > 0) {
     const selectedExecutable = practicalSelected.audit.executableInput;
@@ -4044,7 +4071,7 @@ function maximizeMainFlavourObjective(
             return grams === undefined ? item : { ...item, planned_grams: grams };
           }),
         };
-        const solverSet = withTemplateControlledStabilizerLocks(staged, mainSet);
+        const solverSet = solverHolds(staged, mainSet);
         const proportional = rescaleBatchToTarget(
           staged,
           solverSet,
@@ -4101,7 +4128,11 @@ function maximizeMainFlavourObjective(
       const directlyAccepted =
         identityInput.category === 'protein_gelato'
           ? candidates.flatMap(({ input: candidate }) => {
-              const practical = practicalizeRecipeCandidate(candidate, set, flavourHeldLineIds(candidate));
+              const practical = practicalizeRecipeCandidate(
+                candidate,
+                set,
+                flavourHeldLineIds(candidate),
+              );
               if (!practical.ok) return [];
               const executable = practical.audit.executableInput;
               const score = recipeFitForInput(executable, practical.audit.executableResult).score;
@@ -4180,7 +4211,11 @@ function maximizeMainFlavourObjective(
           baselineScore,
           options.productBehaviorSnapshots,
         ).working;
-        const practical = practicalizeRecipeCandidate(settledCandidate, set, flavourHeldLineIds(settledCandidate));
+        const practical = practicalizeRecipeCandidate(
+          settledCandidate,
+          set,
+          flavourHeldLineIds(settledCandidate),
+        );
         if (!practical.ok) {
           recordRejection('batch_or_constraints');
           continue;
@@ -4416,7 +4451,7 @@ function bestHardSafeDirectionSegment(
       ),
     },
   };
-  const solverSet = withTemplateControlledStabilizerLocks(staged, mainSet);
+  const solverSet = solverHolds(staged, mainSet);
   const anchors: RecipeInput[] = [];
   const proportional = rescaleBatchToTarget(staged, solverSet, identityInput.target_batch_grams);
   if (proportional.ok) anchors.push(proportional.input);
@@ -4539,7 +4574,7 @@ function iterateFormulationSeed(
   proposedInput: RecipeInput,
   options: OptimizePreviewOptions = {},
 ): ReturnType<typeof iterateSolverToFixedPoint> {
-  const solverSet = withTemplateControlledStabilizerLocks(proposedInput, set);
+  const solverSet = solverHolds(proposedInput, set);
   const constrainedIngredientIds = new Set(
     proposedInput.items
       .filter((item) => isConstrained(solverSet, item.id))
@@ -4786,7 +4821,7 @@ function buildFormulationPreviewInternal(
   const ownerInulinAbsent = !built.proposal.proposedInput.items.some(
     (item) => canonicalIngredientId(item.ingredient) === 'PI-ING-000456' && item.planned_grams > 0,
   );
-  const baseSolverSet = withTemplateControlledStabilizerLocks(built.proposal.proposedInput, set);
+  const baseSolverSet = solverHolds(built.proposal.proposedInput, set);
   const solverSet: ConstraintSet = ownerInulinAbsent
     ? {
         byLineId: {
@@ -5417,7 +5452,7 @@ export function buildOptimizePreview(
         input,
         working: preConstrained.input,
         set,
-        solverSet: withTemplateControlledStabilizerLocks(input, set),
+        solverSet: solverHolds(input, set),
         createdAt,
         options,
         violationsBefore: violationCount(calculateRecipe(preConstrained.input)),
@@ -5580,7 +5615,7 @@ export function buildOptimizePreview(
     return mainSafePreview(input, preview, options.productBehaviorSnapshots);
   };
 
-  const solverSet = withTemplateControlledStabilizerLocks(input, set);
+  const solverSet = solverHolds(input, set);
   // Apply only the user's visible constraints to the candidate state. The
   // stabilizer hold is internal orchestration state and must never surface as
   // a native/item lock or a visible §17 padlock.
@@ -6416,7 +6451,7 @@ export function buildBatchRescalePreview(
         : item,
     ),
   };
-  const batchSolverSet = withTemplateControlledStabilizerLocks(stabilizerScaledInput, set);
+  const batchSolverSet = solverHolds(stabilizerScaledInput, set);
   const rescaled = rescaleBatchToTarget(stabilizerScaledInput, batchSolverSet, newBatchGrams);
   if (!rescaled.ok) {
     switch (rescaled.reason) {
@@ -7173,7 +7208,11 @@ export class VerifiedApply {
             'Apply zablokowany: kandydat pełnych gramów nie odpowiada bieżącej recepturze.',
         };
       }
-      const rederived = practicalizeRecipeCandidate(audit.exactInput, verifiedNextConstraints, flavourHeldLineIds(audit.exactInput));
+      const rederived = practicalizeRecipeCandidate(
+        audit.exactInput,
+        verifiedNextConstraints,
+        flavourHeldLineIds(audit.exactInput),
+      );
       if (
         !rederived.ok ||
         JSON.stringify(rederived.audit.executableInput) !== JSON.stringify(preview.proposedInput) ||

@@ -155,6 +155,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
   // temperature. A POD band alone is not proof that the current formulation
   // route can honor it.
   const sweetnessOperational =
+    profile === 'vegan_gelato' ||
     profile === 'standard_gelato' ||
     (profile === 'sorbet' &&
       (input.target_temperature_c === -11 ||
@@ -163,6 +164,7 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
     (profile === 'chocolate_gelato' &&
       (input.target_temperature_c === -11 || input.target_temperature_c === -12));
   const softnessOperational =
+    profile === 'vegan_gelato' ||
     profile === 'standard_gelato' ||
     (profile === 'sorbet' &&
       (input.target_temperature_c === -11 ||
@@ -175,7 +177,12 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
     const targetBand =
       targetCenter !== null
         ? exactPreferencePoint(targetCenter)
-        : profile === 'standard_gelato'
+        : // RC-1: Vegan uses the SAME five-region derivation as standard Gelato,
+          // applied to its OWN approved POD band. `targetFifth` splits an
+          // already-approved band into five monotonic fifths, so nothing is
+          // invented and no dairy reference is borrowed. The legacy three-zone
+          // branch collapsed −2/−1 (and +1/+2) onto one recipe.
+          profile === 'standard_gelato' || profile === 'vegan_gelato'
           ? targetFifth(regulator.pod.band, targets.sweetness)
           : legacyTargetThird(regulator.pod.band, targets.sweetness);
     if (enabled) bands.pod = targetBand;

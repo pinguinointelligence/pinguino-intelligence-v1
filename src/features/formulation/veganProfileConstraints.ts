@@ -1,4 +1,5 @@
 import type { RecipeInput } from '@/engine';
+import type { ConstraintSet } from '@/features/recipe-constraints';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { assessStabilizerDosage } from './stabilizerDosage';
 
@@ -28,6 +29,61 @@ export interface VeganProfileConstraintIssue {
 
 const plannedSum = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+
+/** Recipe lines that carry the pure-inulin identity this envelope governs. */
+export function veganInulinLineIds(input: RecipeInput): string[] {
+  return input.items
+    .filter((item) => {
+      const id = canonicalIngredientId(item.ingredient);
+      return PURE_INULIN_CANONICAL_IDS.has(id) || item.ingredient.id === 'inulin';
+    })
+    .map((item) => item.id);
+}
+
+/**
+ * RC-2 (owner authority 2026-08-23): turn the fail-closed inulin envelope into a
+ * bound the SEARCH respects, instead of a post-hoc rejection that throws away an
+ * otherwise legal Preview.
+ *
+ * Asked for lower sweetness the Direction ladder used to remove sugar and
+ * compensate by inflating Inulin to 94–137 g against the approved 83.1 g / 1000 g
+ * ceiling. The candidate was built, then rejected by
+ * `veganProfileConstraintIssues`, and the whole Preview was discarded as
+ * `ok:false` — so a preference that is merely infeasible destroyed the result.
+ *
+ * The envelope is NOT relaxed here. It becomes an internal solver hold exactly
+ * like `withTemplateControlledStabilizerLocks`: a `range` whose maximum is the
+ * approved ceiling. The search can therefore only ever propose legal inulin, and
+ * an unreachable exact target degrades to the nearest legal candidate.
+ *
+ * Only lines the user left to the solver (`ai`) are held — an explicit owner
+ * lock, percent or range always wins, and the hold is never persisted as a
+ * user-visible §17 constraint.
+ */
+export function withVeganInulinEnvelopeHold(input: RecipeInput, set: ConstraintSet): ConstraintSet {
+  if (input.category !== 'vegan_gelato') return set;
+  const total = input.target_batch_grams;
+  if (!Number.isFinite(total) || total <= 0) return set;
+  const ceilingGrams = (VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100) * total;
+  const lineIds = veganInulinLineIds(input).filter((lineId) => {
+    const existing = set.byLineId[lineId];
+    return existing === undefined || existing.mode === 'ai';
+  });
+  if (lineIds.length === 0) return set;
+  // Several inulin lines share ONE envelope; hold each at the shared ceiling so
+  // no single line can breach it. The post-hoc total check still owns the sum.
+  return {
+    byLineId: {
+      ...set.byLineId,
+      ...Object.fromEntries(
+        lineIds.map((lineId) => [
+          lineId,
+          { mode: 'range', minGrams: 0, maxGrams: ceilingGrams } as const,
+        ]),
+      ),
+    },
+  };
+}
 
 export function veganProfileConstraintIssues(input: RecipeInput): VeganProfileConstraintIssue[] {
   if (input.category !== 'vegan_gelato') return [];

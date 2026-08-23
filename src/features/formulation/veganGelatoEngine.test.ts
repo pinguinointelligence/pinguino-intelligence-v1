@@ -15,6 +15,10 @@ import {
   VEGAN_VERIFIED_CANONICAL_IDS,
 } from '@/data/ingredients/verifiedVeganToolbox';
 import { veganRecipeEligibilityIssues } from '@/data/ingredients/veganEligibility';
+import {
+  VEGAN_INULIN_CALIBRATION_MAX_PERCENT,
+  veganProfileConstraintIssues,
+} from './veganProfileConstraints';
 import { recipeTechnicalFit } from '@/features/recipe-score';
 import { buildSavePayload, savedToRecipeInput } from '@/features/recipes/recipePayload';
 import { buildRecipeVersion, restoreVersion } from '@/features/pro-core/recipeVersioning';
@@ -477,21 +481,26 @@ describe('Vegan Gelato Engine — real Mapper formulation matrix', () => {
     ]);
     const before = proof(difficult);
     expect(before.score).toBeLessThan(10);
+    // RC-2 (owner authority 2026-08-23): this case used to document the defect —
+    // the body lever inflated Inulin to 211 g against the approved 83.1 g / 1000 g
+    // envelope, the post-hoc gate rejected it and the WHOLE Preview was thrown
+    // away as `vegan_profile_constraint`. The envelope is now a bound the search
+    // respects (`withVeganInulinEnvelopeHold`), so the solver can only ever reach
+    // for legal Inulin and this recipe now resolves instead of failing closed.
+    // The envelope itself is unchanged and is still enforced.
     const attempted = buildOptimizePreview(difficult, NO, '2026-08-08T00:00:00.000Z');
-    expect(attempted.ok).toBe(false);
-    if (attempted.ok || attempted.code !== 'vegan_profile_constraint') return;
-    const inulinIssue = attempted.issues.find(
-      (issue) => issue.code === 'inulin_above_calibration_envelope',
-    );
-    // Tara stays at its 2 g template-controlled dose; the body lever therefore
-    // lands at the updated deterministic Inulin diagnostic value.
-    expect(inulinIssue?.grams).toBe(211);
-    expect(inulinIssue?.maxGrams).toBeCloseTo(83.1, 6);
-    const after = proof(attempted.diagnosticInput);
+    expect(attempted.ok).toBe(true);
+    if (!attempted.ok) return;
+    const resolved = attempted.preview.proposedInput;
+    expect(veganProfileConstraintIssues(resolved)).toEqual([]);
+    const inulinGrams = resolved.items
+      .filter((item) => item.ingredient.id === 'inulin')
+      .reduce((sum, item) => sum + item.planned_grams, 0);
+    expect(inulinGrams).toBeLessThanOrEqual((VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100) * 1000);
+    const after = proof(resolved);
     expect(after.score).toBeGreaterThanOrEqual(before.score ?? 1);
-    expect(after.violations).toEqual([]);
-    expect(Math.abs(plannedSum(attempted.diagnosticInput) - 1000)).toBeLessThanOrEqual(0.1);
-    expect({ before, rejectedAfter: after }).toMatchSnapshot();
+    expect(Math.abs(plannedSum(resolved) - 1000)).toBeLessThanOrEqual(0.1);
+    expect(resolved.items.filter((item) => item.planned_grams === 0)).toEqual([]);
   });
 
   it('save/reopen and immutable version restore reproduce the exact Vegan recipe and score', () => {

@@ -60,19 +60,30 @@ const CELLS: readonly [ProductCategory, number, [number, number]][] = [
   ['protein_gelato', -13, [12, 17]],
 ];
 
+// RC-1 (owner authority 2026-08-23): Vegan joins the operational Direction
+// profiles. Its sweetness uses `targetFifth` over its OWN approved POD band
+// [13,25] — the same five-region derivation Gelato already uses — so it belongs
+// in the five-zone group, not the legacy three-zone one.
 const SWEETNESS_CELLS = CELLS.filter(
   ([category, temperature]) =>
     category === 'milk_gelato' ||
+    category === 'vegan_gelato' ||
     (category === 'sorbet' && [-11, -12, -13].includes(temperature)) ||
     (category === 'chocolate_gelato' && (temperature === -11 || temperature === -12)),
 );
-const GELATO_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(([category]) => category === 'milk_gelato');
+const GELATO_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
+  ([category]) => category === 'milk_gelato' || category === 'vegan_gelato',
+);
 const LEGACY_SWEETNESS_CELLS = SWEETNESS_CELLS.filter(
   ([category]) => category === 'chocolate_gelato',
 );
+// Vegan softness uses its OWN approved NPAC cleanCenter per temperature
+// ([40,47] / [48,54] / [53.5,60.0]); no dairy fallback is borrowed.
 const SOFTNESS_CELLS = CELLS.filter(
   ([category, temperature]) =>
-    category === 'milk_gelato' || (category === 'sorbet' && [-11, -12, -13].includes(temperature)),
+    category === 'milk_gelato' ||
+    category === 'vegan_gelato' ||
+    (category === 'sorbet' && [-11, -12, -13].includes(temperature)),
 );
 const NON_EXACT_SOFTNESS_CELLS = CELLS.filter(
   (cell) =>
