@@ -186,6 +186,38 @@ const numeric = (value: number | null | undefined): number | null =>
 
 /* ── knowledge base ────────────────────────────────────────────────────────── */
 
+/**
+ * Deterministic fingerprint of a loaded Mapper set.
+ *
+ * The dry runs hash the CSV file itself, which the browser never sees. At
+ * runtime the Mapper arrives as rows from the database, so the fingerprint is
+ * derived from their identities instead: same rows in any order produce the
+ * same value, and a single added, removed or renumbered row changes it. That is
+ * all the fingerprint has to do — pin which Mapper an estimate was derived
+ * against, so a value can be re-checked later or invalidated when the Mapper
+ * moves.
+ *
+ * FNV-1a rather than sha256 because this must be synchronous: the Web Crypto
+ * digest is async, and a fingerprint that arrives after the values it stamps is
+ * worse than useless.
+ */
+export function fingerprintMapperRows(rows: readonly MapperKnowledgeRow[]): string {
+  const ids = rows
+    .filter((row) => row.is_active !== false)
+    .map((row) => row.ingredient_id)
+    .sort();
+  let hash = 0x811c9dc5;
+  for (const id of ids) {
+    for (let index = 0; index < id.length; index++) {
+      hash ^= id.charCodeAt(index);
+      // The 32-bit FNV prime, applied with shifts so this stays exact in JS.
+      hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+    }
+    hash = (hash ^ 0x2f) >>> 0;
+  }
+  return `runtime-${ids.length}-${hash.toString(16).padStart(8, '0')}`;
+}
+
 export interface MapperKnowledge {
   /** sha256 of the Mapper Base these cohorts were built from. */
   fingerprint: string;

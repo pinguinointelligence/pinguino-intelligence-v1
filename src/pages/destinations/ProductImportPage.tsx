@@ -29,6 +29,7 @@ import {
   type EnrichmentRunSummary,
 } from '@/features/product-intelligence/intimportEnrichment';
 import { createIntimportWebProvider } from '@/services/intimportEnrichment';
+import { loadMapperKnowledge } from '@/services/mapperKnowledge';
 import {
   canImport,
   canParse,
@@ -69,6 +70,7 @@ export function ProductImportPage() {
   const [enrichProgress, setEnrichProgress] = useState<EnrichmentProgress | null>(null);
   const [enrichSummary, setEnrichSummary] = useState<EnrichmentRunSummary | null>(null);
   const [enrichError, setEnrichError] = useState<string | null>(null);
+  const [mapperNotice, setMapperNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [importResult, setImportResult] = useState<RunImportResult | null>(null);
 
@@ -91,19 +93,32 @@ export function ProductImportPage() {
 
   // Parse is deterministic and free for every source: header validation, field parsing,
   // normalization, identity and dedupe only. No enrichment, no paid call.
-  const onParse = () => {
+  const onParse = async () => {
     if (source === 'intimport') {
       const parsed = parseIntimport(csvText);
       setIntimport(parsed);
       setResult(intimportToIntakeResult(parsed));
+      // The Mapper turns what Gellatti already knows into real working values.
+      // Its absence must never block the parse, so a failure here degrades to
+      // identity-and-routing intelligence rather than stopping the owner.
+      let mapper = null;
+      try {
+        mapper = await loadMapperKnowledge();
+        setMapperNotice(null);
+      } catch {
+        setMapperNotice(
+          'Mapper niedostępny — analiza bez wartości szacowanych. Wartości robocze pojawią się po ponownym wczytaniu.',
+        );
+      }
       // Local, Mapper-first intelligence. Deterministic and free — it decides
       // which products would ever justify an external call, before spending one.
-      const analysed = runIntimportLocalIntelligence(parsed.candidates);
+      const analysed = runIntimportLocalIntelligence(parsed.candidates, {}, mapper);
       setLocalIntelligence(analysed.summary);
       setLocalRows(analysed.rows);
     } else {
       setIntimport(null);
       setLocalIntelligence(null);
+      setMapperNotice(null);
       setResult(parseIntake(csvText, source));
     }
     setImportResult(null);
@@ -208,7 +223,9 @@ export function ProductImportPage() {
             <Button
               variant="ivory"
               size="sm"
-              onClick={onParse}
+              onClick={() => {
+                void onParse();
+              }}
               disabled={!canParse(csvText)}
               className={cn(!canParse(csvText) && 'opacity-50')}
             >
@@ -220,6 +237,9 @@ export function ProductImportPage() {
         <DestinationSection label={c.previewLabel}>
           {intimport ? (
             <div className="space-y-10">
+              {mapperNotice ? (
+                <p className="text-xs text-[#8a7f6d]">{mapperNotice}</p>
+              ) : null}
               <IntimportPreview result={intimport} />
               {localIntelligence ? (
                 <IntimportLocalIntelligenceView

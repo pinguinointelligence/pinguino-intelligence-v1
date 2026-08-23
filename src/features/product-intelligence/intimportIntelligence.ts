@@ -27,6 +27,14 @@ import {
 } from './mapperFamilyInference';
 import { classifySourceAuthority, type SourceAuthorityAssessment } from './sourceAuthority';
 import { buildResearchPlan, type ResearchPlan } from './researchPlan';
+import type { MapperKnowledge } from './mapperValueInference';
+import {
+  resolveProductWorkingValues,
+  type ProductWorkingValues,
+  type ValueReadiness,
+} from './productWorkingValues';
+import { WORKING_NUMERIC_FIELDS, type WorkingNumericField } from './productFieldTruth';
+import type { ProductInsert } from '@/data/products/productRow';
 
 /** Canonical lookups the caller supplies. Kept injected so this stays pure. */
 export interface IntimportCanonicalIndex {
@@ -73,6 +81,11 @@ export interface IntimportProductIntelligence {
   route: EnrichmentRoute;
   /** Fields worth asking the outside world about — nothing else may be searched. */
   enrichmentTargets: ProductEvidenceField[];
+  /**
+   * The product's real numeric state, once Mapper knowledge has been applied.
+   * Null only when the caller supplied no Mapper — the layer never invents one.
+   */
+  workingValues: ProductWorkingValues | null;
 }
 
 /** Source Product Type / Category values that mean "professional / technical". */
@@ -199,9 +212,30 @@ function enrichmentTargets(
  * Assess ONE parsed INTIMPORT row with local knowledge only.
  * Deterministic: the same row and the same index always produce the same result.
  */
+/**
+ * Read the product's own declared numbers.
+ *
+ * Per-100 ml is NOT per-100 g and never becomes it here: without a density this
+ * layer cannot convert, and converting on an assumed density would manufacture
+ * a measurement. Those declarations are dropped, and the Mapper fills the gap
+ * as an honest estimate instead.
+ */
+function declaredNumericValues(
+  candidate: IntimportCandidate,
+): Partial<Record<WorkingNumericField, number | null>> {
+  if (candidate.nutritionBasis !== 'per_100g') return {};
+  const declared: Partial<Record<WorkingNumericField, number | null>> = {};
+  for (const field of WORKING_NUMERIC_FIELDS) {
+    const value = (candidate.insert as ProductInsert as Record<string, unknown>)[field];
+    if (typeof value === 'number' && Number.isFinite(value)) declared[field] = value;
+  }
+  return declared;
+}
+
 export function assessIntimportProduct(
   candidate: IntimportCandidate,
   index: IntimportCanonicalIndex = {},
+  mapper: MapperKnowledge | null = null,
 ): IntimportProductIntelligence {
   const family = inferMapperFamily({
     name: candidate.displayName,
@@ -269,6 +303,30 @@ export function assessIntimportProduct(
     missingFields: targets,
   });
 
+  const workingValues = mapper
+    ? resolveProductWorkingValues(
+        {
+          declared: declaredNumericValues(candidate),
+          // The declaration is only as strong as the source it was curated from,
+          // which the confidence assessment has already judged (§9).
+          declaredConfidence: assessment.confidence / 100,
+          identity: {
+            name: candidate.displayName,
+            variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
+            brand: candidate.source.Brand,
+            category: candidate.sourceCategory,
+            subcategory: candidate.sourceSubcategory,
+            barcode: candidate.ean,
+          },
+          technical: kind === 'technical',
+          // INTIMPORT never grants technical authority; that stays with
+          // ProductBehavior, which resolves server-side and fails closed.
+          technicalAuthority: false,
+        },
+        mapper,
+      )
+    : null;
+
   return {
     rowIndex: candidate.rowIndex,
     sourceProductId: candidate.sourceProductId,
@@ -296,6 +354,7 @@ export function assessIntimportProduct(
     evidence,
     route,
     enrichmentTargets: targets,
+    workingValues,
   };
 }
 
@@ -309,6 +368,16 @@ export interface IntimportLocalSummary {
   familyMatches: number;
   /** Upper bound on external calls if the owner enriches everything under 90%. */
   estimatedMaxExternalCalls: number;
+  /**
+   * Numeric readiness, reported SEPARATELY from technical authority: a
+   * professional product may have a complete composition and still be blocked
+   * from dosing, and the reverse is equally valid.
+   */
+  valueReadiness: Record<ValueReadiness, number> | null;
+  /** Products the Mapper gave at least one working field to. */
+  mapperContributed: number;
+  /** Products whose own declared values contradict each other. */
+  selfContradictory: number;
 }
 
 /** Products that will never be searched, because local evidence already suffices. */
@@ -321,11 +390,12 @@ const NO_WEB_ROUTES = new Set<EnrichmentRoute>(['EXISTING', 'READY_LOCAL']);
 export function runIntimportLocalIntelligence(
   candidates: readonly IntimportCandidate[],
   index: IntimportCanonicalIndex = {},
+  mapper: MapperKnowledge | null = null,
 ): { rows: IntimportProductIntelligence[]; summary: IntimportLocalSummary } {
   // INVALID rows have no usable identity and are not products to research.
   const rows = candidates
     .filter((candidate) => candidate.state !== 'INVALID' && candidate.state !== 'DUPLICATE')
-    .map((candidate) => assessIntimportProduct(candidate, index));
+    .map((candidate) => assessIntimportProduct(candidate, index, mapper));
 
   const count = (route: EnrichmentRoute) => rows.filter((row) => row.route === route).length;
   const enrichable = rows.filter((row) => !NO_WEB_ROUTES.has(row.route));
@@ -345,6 +415,20 @@ export function runIntimportLocalIntelligence(
         (sum, row) => sum + Math.min(row.enrichmentTargets.length, MAX_CALLS_PER_PRODUCT),
         0,
       ),
+      valueReadiness: mapper
+        ? rows.reduce(
+            (counts, row) => {
+              const state = row.workingValues?.valueReadiness;
+              if (state) counts[state] += 1;
+              return counts;
+            },
+            { READY: 0, ESTIMATED_READY: 0, REVIEW: 0 } as Record<ValueReadiness, number>,
+          )
+        : null,
+      mapperContributed: rows.filter(
+        (row) => (row.workingValues?.mapperTiersUsed.length ?? 0) > 0,
+      ).length,
+      selfContradictory: rows.filter((row) => row.workingValues?.contradictedByDeclaration).length,
     },
   };
 }

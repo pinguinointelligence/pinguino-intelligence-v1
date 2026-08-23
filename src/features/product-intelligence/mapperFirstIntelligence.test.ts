@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildMapperKnowledge,
   fieldConsensus,
+  fingerprintMapperRows,
   identityTokens,
   inferMapperValues,
   similarCohort,
@@ -26,6 +27,8 @@ import {
   unknownField,
   WORKING_NUMERIC_FIELDS,
 } from './productFieldTruth';
+import { parseINTIMPORT } from '@/data/products/intimport';
+import { runIntimportLocalIntelligence } from './intimportIntelligence';
 import {
   ENGINE_REQUIRED_WORKING_FIELDS,
   ESTIMATED_READY_FLOOR,
@@ -570,5 +573,62 @@ describe('cross-field plausibility', () => {
       knowledge,
     );
     expect(resolved.plausibilityViolations.map((v) => v.rule)).toContain('energy_matches_macros');
+  });
+});
+
+describe('INTIMPORT wiring', () => {
+  const CSV_HEADER =
+    'Product ID,Country Code,Category,Subcategory,Product Type,Brand,Product Name Original,' +
+    'Product Name English,Variant Original,Variant English,Manufacturer,Net Quantity Value,' +
+    'Net Quantity Unit,Package Count,Ingredients Original,Ingredients English,Allergens,' +
+    'Nutrition Basis,Energy kJ,Energy kcal,Fat g,Saturated Fat g,Carbohydrates g,Sugars g,' +
+    'Fibre g,Protein g,Salt g,EAN / GTIN,Country of Origin,Professional Dosage,' +
+    'Technical Parameters,Technical PDF URL,Primary Source URL,Product Status,Checked At,Notes';
+
+  const row = (name: string, category: string) =>
+    `PL-TEST-1,PL,${category},cocoa butter,retail,TestBrand,${name},,,,TestCo,1,kg,1,,,,` +
+    'not_found,,,,,,,,,,,,,,,,';
+
+  const knowledge = buildMapperKnowledge(COCOA_BUTTER, FINGERPRINT);
+
+  it('attaches real working values to each product when a Mapper is supplied', () => {
+    const parsed = parseINTIMPORT(`${CSV_HEADER}\n${row('Maslo kakaowe', 'Chocolate & cocoa')}`);
+    const { rows, summary } = runIntimportLocalIntelligence(parsed.candidates, {}, knowledge);
+
+    expect(rows[0].workingValues).not.toBeNull();
+    expect(rows[0].workingValues!.values.fat_percent).toBeGreaterThan(99);
+    // Composition readiness is reported on its own axis.
+    expect(summary.valueReadiness).toEqual({ READY: 0, ESTIMATED_READY: 1, REVIEW: 0 });
+    expect(summary.mapperContributed).toBe(1);
+  });
+
+  it('still works, without inventing values, when no Mapper is available', () => {
+    const parsed = parseINTIMPORT(`${CSV_HEADER}\n${row('Maslo kakaowe', 'Chocolate & cocoa')}`);
+    const { rows, summary } = runIntimportLocalIntelligence(parsed.candidates);
+
+    expect(rows[0].workingValues).toBeNull();
+    // Absent counts, not zeroed counts: "we did not look" is not "nothing found".
+    expect(summary.valueReadiness).toBeNull();
+    expect(rows[0].route).toBeTruthy();
+  });
+});
+
+describe('runtime mapper fingerprint', () => {
+  it('is stable across row order and blind to inactive rows', () => {
+    const a = fingerprintMapperRows(COCOA_BUTTER);
+    const b = fingerprintMapperRows([...COCOA_BUTTER].reverse());
+    expect(a).toBe(b);
+    expect(
+      fingerprintMapperRows([
+        ...COCOA_BUTTER,
+        mapperRow({ ingredient_id: 'PI-OFF-1', is_active: false }),
+      ]),
+    ).toBe(a);
+  });
+
+  it('changes when the Mapper actually changes', () => {
+    expect(
+      fingerprintMapperRows([...COCOA_BUTTER, mapperRow({ ingredient_id: 'PI-NEW-1' })]),
+    ).not.toBe(fingerprintMapperRows(COCOA_BUTTER));
   });
 });

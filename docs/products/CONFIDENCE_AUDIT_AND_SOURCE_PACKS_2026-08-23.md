@@ -269,7 +269,42 @@ poprzedniej fazy). Pełna strategia pakietowa to **209 wywołań**.
 
 Powiedz, jaki budżet wywołań autoryzujesz, a uruchomię od punktu 1.
 
-## 9. Czego nie zrobiłem
+## 9. INTIMPORT — warstwa podłączona (0 płatnych wywołań)
+
+Twoja autoryzacja była warunkowa: „gdy audyt pewności jest zamknięty i semantyka
+wnioskowania udowodniona — podłącz wspólny Product Intelligence do INTIMPORT".
+Audyt jest zamknięty i rozstrzygający (§1), więc podłączyłem. Nic to nie kosztuje.
+
+**Co się zmieniło:**
+
+| Miejsce | Zmiana |
+|---|---|
+| `intimportIntelligence.ts` | `assessIntimportProduct` / `runIntimportLocalIntelligence` przyjmują opcjonalny `MapperKnowledge` i doklejają `workingValues` do każdego produktu |
+| `services/mapperKnowledge.ts` | ładuje aktywne wiersze Mappera z bazy raz na sesję i indeksuje je w te same kohorty, których używają przebiegi lokalne |
+| `mapperValueInference.ts` | `fingerprintMapperRows()` — deterministyczny odcisk Mappera dostępny w przeglądarce |
+| `ProductImportPage.tsx` | Parse ładuje Mapper i przekazuje go dalej |
+| `productImportView.tsx` | nowa sekcja „Engine composition (Mapper-first)" |
+
+**Zasady zachowane:**
+
+* Gotowość kompozycji i autorytet techniczny są pokazywane **osobno** — sekcja
+  mówi wprost, że produkt zawodowy może mieć komplet liczb i nadal być
+  zablokowany do dozowania, i odwrotnie.
+* Odżywianie deklarowane **per 100 ml nie jest** konwertowane na per 100 g. Bez
+  gęstości taka konwersja wymyśliłaby pomiar; te deklaracje są odrzucane, a lukę
+  wypełnia uczciwe oszacowanie z Mappera.
+* INTIMPORT nadal **nie nadaje** autorytetu technicznego — to zostaje przy
+  ProductBehavior, rozstrzyganym po stronie serwera, fail-closed.
+* Brak Mappera **nie blokuje** parsowania. Analiza degraduje się do tożsamości i
+  routingu, a użytkownik dostaje komunikat. Liczby gotowości są wtedy **puste,
+  nie wyzerowane** — „nie sprawdzaliśmy" to nie to samo co „nic nie znaleziono".
+* Odcisk Mappera z bazy jest deterministyczny i niewrażliwy na kolejność wierszy,
+  ale zmienia się przy każdej realnej zmianie Mappera — więc wartość oszacowana
+  da się później zweryfikować albo unieważnić.
+
+**Preview/Apply/import nadal nietknięte**, zgodnie z Twoją kolejnością.
+
+## 10. Czego nie zrobiłem
 
 * **Nie zmieniłem punktacji** — audyt dowiódł, że nie ma potrzeby.
 * **Nie obniżyłem progu 85%.**
