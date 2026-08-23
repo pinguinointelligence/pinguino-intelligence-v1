@@ -5441,7 +5441,10 @@ function buildRecipeDirectionPlan(input) {
 	const cached = directionPlanCache.get(cacheKey);
 	if (cached) return cached;
 	const plan = computeRecipeDirectionPlan(input);
-	if (directionPlanCache.size >= DIRECTION_PLAN_CACHE_LIMIT) directionPlanCache.clear();
+	if (directionPlanCache.size >= DIRECTION_PLAN_CACHE_LIMIT) {
+		const oldest = directionPlanCache.keys().next().value;
+		if (oldest !== void 0) directionPlanCache.delete(oldest);
+	}
 	directionPlanCache.set(cacheKey, plan);
 	return plan;
 }

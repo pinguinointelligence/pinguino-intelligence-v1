@@ -162,7 +162,14 @@ export function buildRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPla
   const cached = directionPlanCache.get(cacheKey);
   if (cached) return cached;
   const plan = computeRecipeDirectionPlan(input);
-  if (directionPlanCache.size >= DIRECTION_PLAN_CACHE_LIMIT) directionPlanCache.clear();
+  // Evict ONE oldest entry rather than clearing the whole cache. A full clear
+  // is a cliff: the suite holds more than DIRECTION_PLAN_CACHE_LIMIT distinct
+  // profile×temperature×target keys, so a clear-on-full policy repeatedly threw
+  // away every warm entry and the hit rate collapsed under sustained load.
+  if (directionPlanCache.size >= DIRECTION_PLAN_CACHE_LIMIT) {
+    const oldest = directionPlanCache.keys().next().value;
+    if (oldest !== undefined) directionPlanCache.delete(oldest);
+  }
   directionPlanCache.set(cacheKey, plan);
   return plan;
 }
