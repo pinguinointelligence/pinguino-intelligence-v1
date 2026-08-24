@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { EffectiveIngredientCost } from '@/features/pro-core/costContracts';
 import { parseCustomerPriceText } from './customerPriceInput';
+import { HoverPreview } from '@/components/ui/HoverPreview';
+import { cn } from '@/lib/cn';
 import { useCustomerPriceDirtyStore } from './customerPriceDirtyStore';
 
 export interface IngredientPriceView {
@@ -19,27 +21,47 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
   const { cost, lineCost } = view;
   const own = cost.source === 'customer_override';
   const base = cost.mapperPricePerKg;
-  const title = own
-    ? `Twoja cena. Cena bazowa: ${base === null ? 'brak' : `${money(base)} ${cost.currency}/kg`}`
-    : undefined;
+  const ownPriceExplanation = `Cena własna — wprowadzona przez Ciebie.${
+    base === null ? '' : ` Cena bazowa: ${money(base)} ${cost.currency}/kg.`
+  }`;
   return (
     <div
-      className="min-w-0 leading-tight text-right"
-      title={title}
+      className="min-w-0 text-right leading-tight"
       data-testid="ingredient-effective-price"
+      data-price-source={own ? 'customer_override' : 'reference'}
     >
-      {/* Same density family as the compacted %/g controls (owner 2026-08-24):
-          the price stays fully readable, but stops competing with the
-          ingredient name for the row's width. */}
-      <span className="flex items-center justify-end gap-1 font-mono text-[11px] font-semibold tabular-nums text-ink">
-        {lineCost === null ? 'Koszt niepełny' : `${money(lineCost)} ${cost.currency}`}
+      {/* Two clear lines in a column with reserved width, so the price can never
+          reach into the ••• action. The former „Moja" badge is gone (owner,
+          2026-08-24): it broke the shape of the block and the owner does not
+          need to read the word on every row. A custom price is now marked by a
+          quiet dot that explains itself on hover. */}
+      <span className="flex items-center justify-end gap-1 font-mono font-semibold tabular-nums text-ink">
+        {/* „Koszt niepełny" is a STATUS, not a number: it is the one label wider
+            than the reserved money column, so it takes the secondary size
+            instead of clipping mid-word or stealing the name's width. */}
+        <span
+          className={cn('whitespace-nowrap', lineCost === null ? 'text-[10px]' : 'text-[11px]')}
+        >
+          {lineCost === null ? 'Koszt niepełny' : `${money(lineCost)} ${cost.currency}`}
+        </span>
         {own ? (
-          <span
-            aria-label="Twoja cena"
-            className="rounded bg-stone-200 px-1 font-sans text-[9px] font-semibold text-stone-700"
+          // The base price used to hide in a native `title`. It now travels in
+          // BOTH the hover preview and the accessible name, so nothing is lost
+          // for keyboard/screen-reader users when the tooltip is not rendered.
+          <HoverPreview
+            text={ownPriceExplanation}
+            focusable
+            className="pro-focus-ring -my-1 inline-flex size-4 shrink-0 items-center justify-center rounded-full"
           >
-            Moja
-          </span>
+            {/* The MARK stays 5 px; the target around it is 16 px and keyboard
+                reachable, so a quiet indicator never becomes a mouse-only,
+                pixel-hunting affordance. */}
+            <span
+              aria-label={ownPriceExplanation}
+              data-testid="customer-price-indicator"
+              className="block size-[5px] rounded-full bg-gold"
+            />
+          </HoverPreview>
         ) : null}
       </span>
       <span className="block truncate text-[10px] text-stone-600">

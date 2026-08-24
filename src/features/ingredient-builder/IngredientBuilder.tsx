@@ -46,6 +46,7 @@ import {
   unresolvedRequiredIngredients,
   useIngredientTableUxStore,
 } from './ingredientTableUxStore';
+import { cn } from '@/lib/cn';
 import { useIngredientLibrary } from './useIngredientLibrary';
 import { ingredientChangeSignature } from './ingredientChangeHighlight';
 import { useChangedIngredientLines } from './ingredientChangeStore';
@@ -442,6 +443,11 @@ export function IngredientBuilder({
   const isLineChanged = (lineId: string) =>
     changedLineIds.has(lineId) || priceDirtyByLineId[lineId] === true;
 
+  // Does the recipe-mode header band have anything to render at all?
+  const hasRecipeNotice =
+    mode === 'recipe' &&
+    (pickerNotice !== null || compositionMigrationAmbiguities.length > 0 || duplicateCount > 0);
+
   const orderIndex = new Map(baseOrder.map((id, index) => [id, index]));
   const orderedItems = [...items].sort((left, right) => {
     const leftIndex = orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
@@ -810,7 +816,20 @@ export function IngredientBuilder({
   if (layout === 'workbench') {
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
-        <div className="shrink-0 border-b border-ink/10 px-3 py-2 xl:py-3">
+        {/* In recipe mode the heading is `sr-only`, but this wrapper used to keep
+            its padding and bottom border anyway — an empty ~40 px band with a
+            divider above the first ingredient (owner annotation, 2026-08-24).
+            It now takes space only when it actually has something to show. */}
+        <div
+          className={cn(
+            'shrink-0',
+            mode === 'production'
+              ? 'border-b border-ink/10 px-3 py-2 xl:py-3'
+              : hasRecipeNotice
+                ? 'px-3 pt-2 pb-1'
+                : null,
+          )}
+        >
           <div
             className={mode === 'recipe' ? 'sr-only' : 'flex items-center justify-between gap-3'}
           >

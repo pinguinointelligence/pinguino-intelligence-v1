@@ -38,13 +38,32 @@ describe('customer price input', () => {
     expect(parseCustomerPriceText('1,12345')).toBeNull();
   });
 
-  it('renders effective price, line contribution, neutral owner marker and base tooltip', () => {
+  it('renders effective price, line contribution and a QUIET custom-price marker', () => {
     const html = renderToStaticMarkup(<IngredientPriceCell view={view()} />);
     expect(html).toContain('1,12');
     expect(html).toContain('0,09');
-    expect(html).toContain('Moja');
     expect(html).toContain('0,97');
+    // Owner 2026-08-24: the „Moja" badge is gone — it broke the shape of the
+    // price block and had to be re-read on every row. A custom price is now a
+    // small dot that explains itself on hover.
+    expect(html).not.toContain('Moja');
+    expect(html).toContain('customer-price-indicator');
+    expect(html).toContain('data-price-source="customer_override"');
+    expect(html).toContain('Cena własna');
     expect(html).not.toContain('W PRZYGOTOWANIU');
+  });
+
+  it('a reference price carries no marker at all', () => {
+    const html = renderToStaticMarkup(
+      <IngredientPriceCell
+        view={{
+          ...view(),
+          cost: { ...view().cost, source: 'mapper_reference', customerOverridePerKg: null },
+        }}
+      />,
+    );
+    expect(html).toContain('data-price-source="reference"');
+    expect(html).not.toContain('customer-price-indicator');
   });
 
   it('keeps missing price incomplete rather than presenting zero', () => {

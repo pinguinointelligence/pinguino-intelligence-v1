@@ -81,7 +81,13 @@ export function DirectNumberControl({
   lockSegment,
 }: DirectNumberControlProps) {
   const compact = density === 'compact';
-  const segment = compact ? 'size-8' : 'size-11';
+  /**
+   * Compact shrinks the HOUSING, not the typography (owner, 2026-08-24): the
+   * shell drops to 28 px while the value keeps its readable size, so rows get
+   * shorter because the container tightened around the numbers rather than
+   * because everything became tiny.
+   */
+  const segment = compact ? 'h-7 w-7' : 'size-11';
   const accessibleValue = Number(value.toFixed(decimals));
   const valueRef = useRef(value);
   const [draft, setDraft] = useState(value.toFixed(decimals));
@@ -168,19 +174,20 @@ export function DirectNumberControl({
     <div
       className={cn(
         'grid min-w-0 max-w-full items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-ink/30 focus-within:shadow-pro-md',
+        compact && 'h-7',
         widthPreset === 'percent' &&
           (compact
             ? lockSegment
-              ? 'w-[144px] grid-cols-[32px_48px_32px_32px]'
-              : 'w-[112px] grid-cols-[32px_48px_32px]'
+              ? 'w-[130px] grid-cols-[28px_46px_28px_28px]'
+              : 'w-[102px] grid-cols-[28px_46px_28px]'
             : lockSegment
               ? 'w-[192px] grid-cols-[44px_60px_44px_44px]'
               : 'w-[148px] grid-cols-[44px_60px_44px]'),
         widthPreset === 'grams' &&
           (compact
             ? lockSegment
-              ? 'w-[152px] grid-cols-[32px_56px_32px_32px]'
-              : 'w-[120px] grid-cols-[32px_56px_32px]'
+              ? 'w-[138px] grid-cols-[28px_54px_28px_28px]'
+              : 'w-[110px] grid-cols-[28px_54px_28px]'
             : lockSegment
               ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
               : 'w-[160px] grid-cols-[44px_72px_44px]'),

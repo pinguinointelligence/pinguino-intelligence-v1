@@ -51,9 +51,9 @@ export type IngredientTableMode = 'recipe' | 'production';
  * 260 → 420 px at 2xl) without removing any information.
  */
 export const ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_144px_152px_60px_32px] 2xl:grid-cols-[minmax(420px,1fr)_144px_152px_60px_32px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(320px,1fr)_130px_138px_96px_28px] 2xl:grid-cols-[minmax(420px,1fr)_130px_138px_96px_28px]';
 export const COMPACT_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_144px_152px_60px_32px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(320px,1fr)_130px_138px_96px_28px]';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 
@@ -775,6 +775,7 @@ function RecipeRow({
                 onChange={(percent) => actions.setPlannedPercent?.(item.id, percent)}
                 testId={`row-percent-control-${item.id}`}
                 widthPreset="percent"
+                density="compact"
                 lockSegment={{
                   pressed: lock?.percentLocked ?? false,
                   disabled: lock?.percentToggleDisabled ?? true,
@@ -807,6 +808,7 @@ function RecipeRow({
                 onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
                 testId={`row-grams-control-${item.id}`}
                 widthPreset="grams"
+                density="compact"
                 lockSegment={{
                   pressed: gramsLocked,
                   disabled: lock?.toggleDisabled,
@@ -836,7 +838,7 @@ function RecipeRow({
               aria-expanded={rowMenuOpen}
               aria-controls={`row-menu-dialog-${item.id}`}
               onClick={() => setRowMenuOpen(true)}
-              className="pro-focus-ring grid size-11 place-items-center rounded-full border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink"
+              className="pro-focus-ring grid size-7 place-items-center rounded-full border border-ink/10 text-[11px] text-stone-500 hover:border-ink/35 hover:text-ink"
             >
               •••
             </button>
@@ -1122,7 +1124,7 @@ export function IngredientRow({
       className={cn(
         mode === 'production'
           ? 'mx-2 mb-2 rounded-[20px] border border-ink/[0.08] bg-white/95 px-3 py-3 shadow-pro-e1 transition-colors hover:border-ink/15'
-          : 'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-3 2xl:py-[7px]',
+          : 'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-1.5',
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'main' &&
           'border-gold/20 bg-education-ivory/55 hover:bg-education-ivory/75',

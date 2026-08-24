@@ -23,10 +23,17 @@ export function HoverPreview({
   text,
   children,
   className,
+  focusable = false,
 }: {
   text: string;
   children: ReactNode;
   className?: string;
+  /**
+   * Make the trigger reachable by keyboard. Used for small informational marks
+   * whose meaning is otherwise mouse-only; NOT used for row text, which would
+   * add a tab stop per row for information already present in the DOM.
+   */
+  focusable?: boolean;
 }) {
   const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
   const id = useId();
@@ -40,6 +47,8 @@ export function HoverPreview({
     <>
       <span
         className={className}
+        tabIndex={focusable ? 0 : undefined}
+        role={focusable ? 'button' : undefined}
         onMouseEnter={(event) => show(event.currentTarget)}
         onMouseLeave={() => setAnchor(null)}
         onFocus={(event) => show(event.currentTarget)}
