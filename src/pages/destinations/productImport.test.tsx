@@ -115,8 +115,8 @@ describe('ParsePreview — nothing hidden', () => {
     const text = visibleText(html);
     // count VALUES render next to their labels — not just the labels (anchored: bare '2'/'1'
     // would also match row indices like #1/#2, so assert the value sits beside the metric).
-    expect(text).toMatch(/Total rows\s+2\b/);
-    expect(text).toMatch(/Skipped\s+1\b/);
+    expect(text).toMatch(/Wiersze\s+2\b/);
+    expect(text).toMatch(/Pominięte\s+1\b/);
     // counts are whole numbers — MetricValue precision 0 (a regression to 1 would render "2.0").
     expect(text).not.toMatch(/\d\.\d/);
     expect(text).toContain('warehouse_id'); // unknown column warning surfaced
@@ -128,8 +128,8 @@ describe('ImportSummaryView', () => {
   it('renders created/existing/in-batch/skipped/failed VALUES, warnings, and row outcomes', () => {
     const html = shellRender(<ImportSummaryView summary={makeSummary()} />);
     const text = visibleText(html);
-    expect(text).toMatch(/Created\s+1\b/); // count value beside its label
-    expect(text).toMatch(/Failed\s+1\b/);
+    expect(text).toMatch(/Nowe produkty\s+1\b/); // count value beside its label
+    expect(text).toMatch(/Błędy\s+1\b/);
     expect(text).not.toMatch(/\d\.\d/); // whole-number counts (MetricValue precision 0)
     expect(text).toContain('matching unavailable after row 2: boom'); // batch warning shown
     expect(text).toContain('kaboom'); // failed row reason shown
@@ -235,7 +235,7 @@ describe('ProductImportPage — render smoke', () => {
   });
 });
 
-describe('Parse CSV enablement + visibility (bugfix)', () => {
+describe('Parse enablement + visibility (bugfix)', () => {
   it('canParse is true for any non-whitespace CSV text (paste path enables Parse)', () => {
     expect(canParse('Group,Subcategory\nA,B')).toBe(true);
     expect(canParse(CSV_ONE)).toBe(true);
@@ -257,14 +257,14 @@ describe('Parse CSV enablement + visibility (bugfix)', () => {
     // canParse is a pure function of the text only; the page renders the textarea + Parse
     // button regardless of auth (smoke render below is the signed-out, auth-unavailable case).
     const html = shellRender(<ProductImportPage />);
-    expect(html).toContain('Parse CSV');
+    expect(html).toContain('Analizuj plik');
     expect(html).toContain('<textarea');
   });
 
   it('the Parse button is shell-visible (ivory variant), not the dark ghost-on-shell look', () => {
     const html = shellRender(<ProductImportPage />);
-    const m = html.match(/<button[^>]*>Parse CSV<\/button>/);
-    expect(m, 'Parse CSV button present').not.toBeNull();
+    const m = html.match(/<button[^>]*>Analizuj plik<\/button>/);
+    expect(m, 'Analizuj plik button present').not.toBeNull();
     const btn = m![0];
     expect(btn.includes('bg-ivory'), 'uses the shell-visible ivory variant').toBe(true);
     expect(
@@ -327,7 +327,7 @@ describe('INTIMPORT direct import is never gated by web enrichment', () => {
     expect(text).not.toContain('Wzbogać i przygotuj import');
   });
 
-  it('says plainly that web-required does not block the import', () => {
+  it('never presents online data as a precondition for importing', () => {
     const text = visibleText(
       shellRender(
         <IntimportLocalIntelligenceView
@@ -338,7 +338,13 @@ describe('INTIMPORT direct import is never gated by web enrichment', () => {
         />,
       ),
     );
-    expect(text).toContain('nie');
-    expect(text).toContain('blokuje importu');
+    // The old wording made 817 rows look blocked. Nothing on the primary
+    // summary may read as a requirement to go online.
+    expect(text).not.toContain('WEB REQUIRED');
+    expect(text).not.toContain('Wymagany internet');
+    // The fixture carries no readiness, so assert the summary that always
+    // renders — and that the import action is offered regardless.
+    expect(text).toContain('Produkty');
+    expect(text).toContain('Importuj produkty');
   });
 });

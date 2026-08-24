@@ -1,3 +1,4 @@
+import { buttonClasses } from '@/components/ui/buttonStyles';
 /**
  * Product catalog upload page (Mapper Slice D5C4A) — the first in-app CSV intake UI.
  *
@@ -92,6 +93,8 @@ export function ProductImportPage() {
   const [lastProgressAt, setLastProgressAt] = useState<string | null>(null);
   // A workbook whose sheets are genuinely tied: the owner chooses, we never guess.
   const [sheetChoice, setSheetChoice] = useState<{ file: File; sheets: string[] } | null>(null);
+  // The owner uploaded a file: show them the FILE, not its serialization.
+  const [fileInfo, setFileInfo] = useState<{ name: string; sheet: string | null } | null>(null);
   const [importPlan, setImportPlan] = useState<{
     total: number;
     engineUsable: number;
@@ -119,6 +122,7 @@ export function ProductImportPage() {
     setSheetChoice(null);
     try {
       setCsvText(await readCsvFile(file));
+      setFileInfo({ name: file.name, sheet: null });
       reset();
     } catch (error: unknown) {
       // Several sheets carry the INTIMPORT headers and none covers more of the
@@ -136,6 +140,7 @@ export function ProductImportPage() {
     if (!sheetChoice) return;
     const buffer = await sheetChoice.file.arrayBuffer();
     setCsvText(intimportWorkbookToCsv(buffer, sheet).csv);
+    setFileInfo({ name: sheetChoice.file.name, sheet });
     setSheetChoice(null);
     reset();
   };
@@ -308,16 +313,10 @@ export function ProductImportPage() {
         </DestinationSection>
 
         <DestinationSection label={c.inputLabel}>
-          <textarea
-            value={csvText}
-            onChange={(event) => setCsvText(event.target.value)}
-            rows={8}
-            spellCheck={false}
-            placeholder={c.pastePlaceholder}
-            className={fieldClass}
-          />
-          <div className="mt-4 flex flex-wrap items-center gap-5">
-            <label className="cursor-pointer text-sm text-ivory/60 underline decoration-ivory/30 underline-offset-4 transition-colors hover:text-ivory">
+          {/* The normal owner workflow is a file. A raw textarea is the fallback
+              for pasted rows, not the front door. */}
+          <div className="flex flex-wrap items-center gap-5">
+            <label className={cn(buttonClasses('ivory', 'md'), 'cursor-pointer')}>
               <input
                 type="file"
                 accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -327,8 +326,19 @@ export function ProductImportPage() {
                   event.target.value = '';
                 }}
               />
-              {c.fileLabel}
+              Wybierz plik
             </label>
+            <span className="text-xs text-[#8a7f6d]">Obsługiwane formaty: .xlsx, .csv</span>
+          </div>
+          {fileInfo ? (
+            <p className="mt-4 text-sm text-ivory/70" data-testid="intimport-file-identity">
+              <span className="text-ivory">{fileInfo.name}</span>
+              {fileInfo.sheet ? (
+                <span className="text-ivory/50"> · arkusz {fileInfo.sheet}</span>
+              ) : null}
+            </p>
+          ) : null}
+          <div className="mt-4 flex flex-wrap items-center gap-5">
             {sheetChoice ? (
               <div className="w-full space-y-2" data-testid="intimport-sheet-choice">
                 <p className="text-xs text-[#8a7f6d]">
@@ -359,9 +369,25 @@ export function ProductImportPage() {
               disabled={!canParse(csvText)}
               className={cn(!canParse(csvText) && 'opacity-50')}
             >
-              {c.parse}
+              Analizuj plik
             </Button>
           </div>
+          <details className="mt-6 border-t border-ivory/10 pt-4">
+            <summary className="cursor-pointer list-none text-xs tracking-label text-ivory/50 uppercase transition-colors hover:text-ivory/80">
+              lub wklej dane CSV
+            </summary>
+            <textarea
+              value={csvText}
+              onChange={(event) => {
+                setCsvText(event.target.value);
+                setFileInfo(null);
+              }}
+              rows={8}
+              spellCheck={false}
+              placeholder={c.pastePlaceholder}
+              className={cn(fieldClass, 'mt-4')}
+            />
+          </details>
         </DestinationSection>
 
         <DestinationSection label={c.previewLabel}>
@@ -422,16 +448,20 @@ export function ProductImportPage() {
         </DestinationSection>
 
         <DestinationSection label={c.resultLabel}>
-          <ImportActionBar
-            available={available}
-            isSignedIn={isSignedIn}
-            canImport={canImport({ isSignedIn, result })}
-            busy={busy}
-            onImport={() => {
-              void onImport();
-            }}
-            onSignIn={openAuthModal}
-          />
+          {/* INTIMPORT's primary action lives beside its analysis, so there is
+              exactly one import button on screen. Other sources keep this bar. */}
+          {source === 'intimport' && localIntelligence ? null : (
+            <ImportActionBar
+              available={available}
+              isSignedIn={isSignedIn}
+              canImport={canImport({ isSignedIn, result })}
+              busy={busy}
+              onImport={() => {
+                void onImport();
+              }}
+              onSignIn={openAuthModal}
+            />
+          )}
           {progress || busy ? (
             <div className="mt-8">
               <ImportProgressView
