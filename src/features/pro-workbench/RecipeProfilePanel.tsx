@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
-import { NutritionCostScorePanel } from '@/features/pi-panel/NutritionCostScorePanel';
+import { Button } from '@/components/ui/Button';
+import { LabelWorkspace } from '@/features/master-label/LabelWorkspace';
 import {
   calculateRecipe,
   type CorrectionResult,
@@ -19,24 +19,14 @@ import { ProductionCockpit } from '@/features/production-workspace/ProductionCoc
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import { WorkbenchModuleTabs, type WorkbenchModuleTab } from './WorkbenchModuleTabs';
 import { LockedPIPreview } from '@/features/studio/locked/LockedPIPreview';
-import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
-import {
-  practicalRecipeAuditMatchesInput,
-  practicalizeRecipeCandidate,
-} from '@/features/practical-recipe/practicalRecipe';
-import { useRecipeProcessRuntime } from '@/features/education/useRecipeProcessRuntime';
 import {
   calculateFinalProduct,
   type ProductLabelNutritionPer100g,
 } from '@/features/recipe-composition/finalProduct';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { applyEffectiveCustomerPricesToToppings } from '@/features/pro-core/effectiveRecipePricing';
-import { SummaryBaseRecipeList } from './SummaryBaseRecipeList';
-import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
-import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 import {
   buildRecipeBehaviorAuthority,
-  frozenProcessEvidence,
   recipeInputFromFrozenBehavior,
   recipeBehaviorLegacyInspection,
   recipeBehaviorModuleGate,
@@ -337,284 +327,38 @@ function ProductionPanel({
   );
 }
 
-const PROCESS_LABEL = {
-  cold_process_ok: 'Proces na zimno potwierdzony',
-  heat_required_for_function: 'Podgrzanie wymagane technologicznie',
-  heat_required_for_safety: 'Podgrzanie wymagane dla bezpieczeństwa',
-  heat_required_for_both: 'Podgrzanie wymagane technologicznie i dla bezpieczeństwa',
-  unknown: 'Brak pełnych danych procesu',
-} as const;
-
 function SummaryPanel({
-  result,
-  input,
   production,
+  onOpenProduction,
 }: {
-  result: RecipeResult;
-  input: RecipeInput;
   production?: ProductionWorkspaceView;
+  onOpenProduction: () => void;
 }) {
-  const version = useRecipeStore((state) => state.currentVersionNumber);
-  const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
-  const dirty = useRecipeStore((state) => state.dirty);
-  const constraints = useConstraintStudioStore((state) => state.constraints);
-  const lastApplied = useConstraintStudioStore((state) => state.history.at(-1));
-  const restoredAudit = useRecipeStore((state) => state.practicalRecipeAudit);
-  const toppings = useRecipeStore((state) => state.toppings);
-  const behaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
-  const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
   const completed = production?.session?.completionSnapshot ?? null;
-  const authorityItems = completed?.finalActualInput.items ?? input.items;
-  const processInput = completed?.finalActualInput ?? input;
-  const authorityToppings = completed?.productComposition.toppings ?? toppings;
-  const authoritySnapshots = completed?.productComposition.behaviorSnapshots ?? behaviorSnapshots;
-  const practical = practicalizeRecipeCandidate(input, constraints);
-  const behaviorAuthority = useMemo(
-    () =>
-      buildRecipeBehaviorAuthority({
-        items: authorityItems,
-        toppings: authorityToppings,
-        snapshots: authoritySnapshots,
-      }),
-    [authorityItems, authoritySnapshots, authorityToppings],
-  );
-  const summaryGate = useMemo(
-    () => recipeBehaviorModuleGate(behaviorAuthority, 'SUMMARY'),
-    [behaviorAuthority],
-  );
-  const nutritionGate = useMemo(
-    () => recipeBehaviorModuleGate(behaviorAuthority, 'NUTRITION'),
-    [behaviorAuthority],
-  );
-  const legacyInspection = recipeBehaviorLegacyInspection(behaviorAuthority, savedRecipeId);
-  const processFacts = useMemo(() => frozenProcessEvidence(behaviorAuthority), [behaviorAuthority]);
-  const process = useRecipeProcessRuntime(
-    processInput,
-    behaviorAuthority.requiredLineIds.length > 0
-      ? legacyInspection
-        ? []
-        : processFacts.evidence
-      : undefined,
-  );
-  const practicalCurrent =
-    practical.ok &&
-    ((lastApplied?.practicalization !== undefined &&
-      JSON.stringify(lastApplied.after.input) === JSON.stringify(input)) ||
-      practicalRecipeAuditMatchesInput(input, restoredAudit)) &&
-    practical.audit.executableInput.items.every((item, index) =>
-      Object.is(item.planned_grams, input.items[index]?.planned_grams),
-    );
-  const executableResult =
-    practicalCurrent && practical.ok ? practical.audit.executableResult : result;
-  const executableInput =
-    practicalCurrent && practical.ok ? practical.audit.executableInput : input;
-  const summaryReady = summaryGate.ready && nutritionGate.ready && !legacyInspection;
-  const summaryReadable =
-    summaryReady || legacyInspection || behaviorAuthority.requiredLineIds.length === 0;
-  const summaryInput = completed?.finalActualInput ?? executableInput;
-  const summaryToppings = completed?.productComposition.toppings ?? toppings;
-  const frozenSummaryInput = summaryReady
-    ? recipeInputFromFrozenBehavior(summaryInput, behaviorAuthority, 'nutrition')
-    : summaryInput;
-  const frozenSummaryToppings = summaryReady
-    ? recipeToppingsFromFrozenBehavior(summaryToppings, behaviorAuthority, 'nutrition')
-    : [];
-  const plannedFinalProduct =
-    summaryReadable && !completed
-      ? calculateFinalProduct(
-          summaryReady ? frozenSummaryInput : summaryInput,
-          summaryReady
-            ? applyEffectiveCustomerPricesToToppings(frozenSummaryToppings, customerPrices)
-            : summaryToppings,
-          'planning',
-        )
-      : null;
-  const finalProduct =
-    completed && summaryReadable
-      ? {
-          finalItems: completed.finalProduct.items,
-          finalNutritionPer100g: completed.finalProduct.nutritionPer100g,
-          finalLabelNutritionPer100g: completed.finalProduct.labelNutritionPer100g,
-          finalCosts: completed.finalProduct.costs,
-          baseMassG: completed.finalProduct.baseMassG,
-          toppingMassG: completed.finalProduct.toppingMassG,
-          finalMassG: completed.finalProduct.finalMassG,
-          toppingCount: completed.productComposition.toppings.length,
-        }
-      : plannedFinalProduct;
-  const summaryBaseResult =
-    completed?.finalResult ??
-    (summaryReady ? calculateRecipe(frozenSummaryInput) : executableResult);
-  const finalDisplayResult: RecipeResult = {
-    ...summaryBaseResult,
-    // RecipeResult remains an Engine/Base result. Label-only POST_PROCESS_ADDON
-    // rows are presented through the product-layer mass/nutrition projection.
-    items: summaryBaseResult.items,
-    total_batch_g: finalProduct?.finalMassG ?? 0,
-    nutrition_per_100g: finalProduct?.finalNutritionPer100g ?? null,
-    costs: finalProduct?.finalCosts ?? null,
-  };
-  return (
-    <div className="pro-scroll-safe space-y-3 p-3 text-ink" data-testid="pro-context-summary">
-      {legacyInspection ? (
-        <p
-          role="status"
-          data-testid="summary-legacy-inspection"
-          className="rounded-lg border border-ink/10 bg-stone-50 px-3 py-2 text-xs leading-relaxed text-stone-700"
-        >
-          Podgląd historyczny korzysta z zapisanych danych receptury. Przed edycją, przeliczeniem,
-          zapisem lub produkcją utwórz nową wersję z aktualną walidacją produktów.
-        </p>
-      ) : null}
-      <section className="rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
-        <p className="text-xs font-semibold text-[#d7b768]">
-          {completed ? 'Faktyczna zakończona partia' : 'Finalna bieżąca wersja'}
-        </p>
-        <div className="mt-2 flex items-baseline justify-between gap-3">
-          <h3 className="text-lg font-semibold text-ink">Receptura wykonawcza</h3>
-          <span className="text-xs text-stone-600">
-            {version ? `v${version}` : 'wersja robocza'} ·{' '}
-            {dirty ? 'niezapisane zmiany' : 'zapisana'}
-          </span>
-        </div>
-        {summaryReadable &&
-        (completed || legacyInspection || (practicalCurrent && practical.ok)) ? (
-          <SummaryBaseRecipeList items={summaryInput.items} completed={completed !== null} />
-        ) : (
-          <div
-            className="mt-4 rounded-[18px] border border-[#d7b768]/30 bg-[#d7b768]/8 p-3"
-            data-testid="summary-practical-blocked"
-          >
-            <strong className="text-sm text-[#f0dca7]">
-              Najpierw przygotuj recepturę wykonawczą w Preview
-            </strong>
-            <p className="mt-1 text-xs leading-relaxed text-stone-600">
-              Summary nie zaokrągla liczb tylko do wyświetlenia. Zastosuj zweryfikowany kandydat
-              pełnogramowy, aby lista była fizycznie wykonalna.
-            </p>
-          </div>
-        )}
-      </section>
-      <section
-        className="rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0"
-        data-testid="summary-base-final-mass"
-      >
-        <h3 className="text-sm font-semibold text-ink">Baza i produkt finalny</h3>
-        <dl className="mt-3 space-y-2 text-xs">
-          <div className="flex items-center justify-between gap-3 text-stone-600">
-            <dt>Baza lodowa</dt>
-            <dd className="font-mono tabular-nums text-ink">
-              {finalProduct ? `${finalProduct.baseMassG.toFixed(0)} g` : '—'}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3 text-stone-600">
-            <dt>Toppingi · {finalProduct?.toppingCount ?? '—'}</dt>
-            <dd className="font-mono tabular-nums text-ink">
-              {finalProduct ? `+${finalProduct.toppingMassG.toFixed(0)} g` : '—'}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3 border-t border-ink/10 pt-2 text-ink">
-            <dt className="font-semibold">Produkt finalny</dt>
-            <dd className="font-mono text-base font-semibold tabular-nums">
-              {finalProduct ? `${finalProduct.finalMassG.toFixed(0)} g` : '—'}
-            </dd>
-          </div>
-        </dl>
-        {summaryReadable && summaryToppings.length > 0 ? (
-          <div className="mt-3 divide-y divide-ink/8 border-t border-ink/8">
-            {summaryToppings.map((item) => (
-              <div key={item.id} className="flex justify-between gap-3 py-2 text-xs text-stone-600">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate">Topping · {item.ingredient.name}</span>
-                  {isCatalogLabelToppingIngredient(item.ingredient) ? (
-                    <CatalogVerificationBadge
-                      status={item.ingredient.verification_status}
-                      tone="dark"
-                    />
-                  ) : null}
-                </span>
-                <span className="font-mono tabular-nums text-ink">
-                  {(completed
-                    ? (item.actual_grams ?? item.planned_grams)
-                    : item.planned_grams
-                  ).toFixed(0)}{' '}
-                  g
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
-      {summaryReadable ? (
-        <section className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-          <div className="rounded-[18px] border border-ink/9 bg-stone-50 p-4">
-            <h3 className="text-sm font-semibold text-ink">Baza · analiza techniczna</h3>
-            <dl className="mt-3 space-y-2 text-xs text-stone-600">
-              {[
-                ['Woda', summaryBaseResult.percentages.water_percent],
-                ['Ciała stałe', summaryBaseResult.percentages.solids_percent],
-                ['Tłuszcz', summaryBaseResult.percentages.fat_percent],
-                ['Białko', summaryBaseResult.percentages.protein_percent],
-                ['Laktoza', summaryBaseResult.percentages.lactose_percent],
-              ].map(([label, value]) => (
-                <div key={label as string} className="flex justify-between gap-3">
-                  <dt>{label}</dt>
-                  <dd className="font-mono tabular-nums text-ink">
-                    {typeof value === 'number' ? `${value.toFixed(1)}%` : '—'}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-          <div className="rounded-[18px] border border-ink/9 bg-stone-50 p-4">
-            <h3 className="text-sm font-semibold text-ink">Proces i gotowość</h3>
-            <dl className="mt-3 space-y-2 text-xs text-stone-600">
-              <div className="flex justify-between gap-3">
-                <dt>Proces</dt>
-                <dd className="text-right text-ink">
-                  {process.loading ? 'Sprawdzam…' : PROCESS_LABEL[process.classification.status]}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt>Masa całej partii produktu finalnego</dt>
-                <dd className="font-mono text-ink">{finalProduct?.finalMassG.toFixed(0)} g</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt>Etykieta</dt>
-                <dd className="text-nonprod-soft">wymaga weryfikacji danych</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt>Eksport / druk</dt>
-                <dd className="text-nonprod-soft">zablokowane do preflight</dd>
-              </div>
-            </dl>
-          </div>
-        </section>
-      ) : null}
-      <div
-        className="rounded-[22px] bg-[#f7f5f0] p-2 text-ink"
-        data-testid="summary-final-nutrition-cost"
-      >
-        <NutritionCostScorePanel
-          result={finalDisplayResult}
-          nutritionOverride={finalProduct?.finalLabelNutritionPer100g ?? null}
-        />
+  if (completed) {
+    return (
+      <div className="pro-scroll-safe" data-testid="pro-context-summary">
+        <LabelWorkspace snapshot={completed} />
       </div>
-      <ReadinessFrame
-        state="W PRZYGOTOWANIU"
-        title="Alergeny i deklaracja"
-        compact
-        tone="dark"
-        details={{
-          limitation: 'Brak pełnej, zweryfikowanej deklaracji wszystkich składników.',
-          calculationImpact: 'Nie wpływa na obliczenia techniczne.',
-          remaining: 'Uzupełnić dane i przejść Master Label preflight.',
-        }}
+    );
+  }
+
+  return (
+    <div className="pro-scroll-safe p-3" data-testid="pro-context-summary">
+      <section
+        className="rounded-[20px] border border-ink/10 bg-[#fffdf8] p-5 shadow-pro-e0"
+        data-testid="label-workspace-empty"
       >
-        <p className="text-xs text-stone-600">
-          Nie deklarujemy claimów ani gotowości druku bez danych źródłowych.
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#9b7d37]">Etykieta</p>
+        <h2 className="mt-2 text-lg font-semibold text-ink">Najpierw zakończ Produkcję</h2>
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-stone-600">
+          Etykieta powstaje z faktycznie wykonanej partii. Po zakończeniu runu pojawią się tutaj
+          składniki ACTUAL, wartości odżywcze, koszt, baza techniczna i automatyczny LOT.
         </p>
-      </ReadinessFrame>
+        <Button className="mt-4" onClick={onOpenProduction}>
+          Otwórz Produkcję
+        </Button>
+      </section>
     </div>
   );
 }
@@ -725,7 +469,10 @@ export function RecipeProfilePanel({
           />
         ) : null}
         {activeTab === 'summary' ? (
-          <SummaryPanel result={result} input={input} production={production} />
+          <SummaryPanel
+            production={production}
+            onOpenProduction={() => onTabChange('production')}
+          />
         ) : null}
       </div>
     </div>

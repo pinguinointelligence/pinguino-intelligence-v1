@@ -23,6 +23,13 @@ const RESCUE_FINGERPRINT_GUARD_SQL = readFileSync(
   ),
   'utf8',
 );
+const LABEL_UNIFICATION_SQL = readFileSync(
+  resolve(
+    import.meta.dirname,
+    '../../../supabase/migrations/20260824210000_label_tab_final_unification.sql',
+  ),
+  'utf8',
+);
 
 describe('Production / Label closeout migration', () => {
   it('extends the one append-only Production history with every required event', () => {
@@ -106,5 +113,16 @@ describe('Production / Label closeout migration', () => {
     expect(RESCUE_FINGERPRINT_GUARD_SQL).toContain("event.event_type <> 'rescue_previewed'");
     expect(RESCUE_FINGERPRINT_GUARD_SQL).toContain("'actualRevision', run.actual_revision");
     expect(RESCUE_FINGERPRINT_GUARD_SQL).toContain("'rescueRevision', run.rescue_revision");
+  });
+
+  it('persists only supported optional fields and freezes their selection with the label', () => {
+    expect(LABEL_UNIFICATION_SQL).toContain('enabled_optional_fields jsonb not null');
+    expect(LABEL_UNIFICATION_SQL).toContain(
+      `enabled_optional_fields <@ '["logo","origin","customer_note"]'::jsonb`,
+    );
+    expect(LABEL_UNIFICATION_SQL).toContain(
+      `'enabledOptionalFields', p_master_label->'enabledOptionalFields'`,
+    );
+    expect(LABEL_UNIFICATION_SQL).not.toContain('localStorage');
   });
 });

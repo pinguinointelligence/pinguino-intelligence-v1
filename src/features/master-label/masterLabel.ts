@@ -3,7 +3,10 @@ import {
   type LabelNutritionPer100g,
   type NutritionDeclaration,
 } from '@/data/label/nutritionLabel';
-import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
+import {
+  productionLotCodeForRun,
+  type ProductionCompletionSnapshot,
+} from '@/features/production-workspace/productionSession';
 import {
   buildRecipeBehaviorAuthority,
   recipeBehaviorModuleGate,
@@ -102,8 +105,20 @@ export interface BuildMasterLabelInput {
   facilityDefaults?: Partial<FacilityDefaults>;
   businessName?: string;
   logoPath?: string | null;
+  enabledOptionalFields?: MasterLabelFieldId[];
   presentation?: Partial<Pick<MasterLabelData, 'format' | 'size' | 'copies'>>;
 }
+
+export function normalizeEnabledOptionalFields(
+  market: MarketProfileCode,
+  fields: readonly MasterLabelFieldId[],
+): MasterLabelFieldId[] {
+  const allowed = marketProfile(market).optionalFields;
+  return [...new Set(fields.filter((field) => allowed.includes(field)))];
+}
+
+const isInternalNoAllergenDeclaration = (value: string): boolean =>
+  ['none_declared', 'none declared'].includes(value.trim().toLowerCase());
 
 const emptyFacility = (): FacilityDefaults => ({
   operatorName: '',
@@ -191,9 +206,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       const canonicalId = item.canonicalId;
       const embeddedEvidenceStatus: IngredientAllergenEvidence['status'] =
         item.labelEvidenceVerified ? 'verified' : 'missing';
-      const declarationName = item.sourceIngredientsText
-        ? `${item.name} (${item.sourceIngredientsText})`
-        : item.name;
+      const declarationName = item.sourceIngredientsText?.trim() || item.name;
       return {
         lineId: item.lineId,
         canonicalIngredientId: canonicalId,
@@ -219,7 +232,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     ...new Set(
       ingredients
         .map((item) => item.sourceAllergensText?.trim())
-        .filter((item): item is string => Boolean(item)),
+        .filter((item): item is string => Boolean(item) && !isInternalNoAllergenDeclaration(item!)),
     ),
   ];
   const facility = { ...emptyFacility(), ...input.facilityDefaults };
@@ -267,10 +280,15 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     storageInstructions: translated('', languages),
     useInstructions: translated('', languages),
     operator: facility,
-    lotCode: '',
+    lotCode:
+      snapshot.lotCode ??
+      productionLotCodeForRun(snapshot.sessionId, snapshot.productionCompletedAt),
     origin: translated('', languages),
     customerNote: translated(snapshot.customerLabelNote, languages),
-    enabledOptionalFields: snapshot.customerLabelNote ? ['customer_note'] : [],
+    enabledOptionalFields: normalizeEnabledOptionalFields(
+      input.market,
+      input.enabledOptionalFields ?? (snapshot.customerLabelNote ? ['customer_note'] : []),
+    ),
     format: input.presentation?.format ?? 'rectangle',
     size: input.presentation?.size ?? { widthMm: 90, heightMm: 60 },
     copies: input.presentation?.copies ?? 1,
@@ -358,6 +376,10 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
           );
     case 'lot':
       return data.lotCode.trim() ? ready('LOT') : missing('LOT', 'Uzupełnij identyfikator partii.');
+    case 'logo':
+      return data.logoPath
+        ? ready('Logo')
+        : missing('Logo', 'Pole opcjonalne nie jest uzupełnione.');
     case 'origin':
       return hasEveryLanguage(data.origin, data.labelLanguages)
         ? ready('Pochodzenie')
@@ -435,6 +457,7 @@ export function addOptionalField(
   data: MasterLabelData,
   field: MasterLabelFieldId,
 ): MasterLabelData {
+  if (!marketProfile(data.market).optionalFields.includes(field)) return data;
   if (data.enabledOptionalFields.includes(field)) return data;
   return { ...data, enabledOptionalFields: [...data.enabledOptionalFields, field] };
 }

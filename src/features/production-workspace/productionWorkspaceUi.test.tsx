@@ -958,8 +958,7 @@ describe('Production workspace touch-first UI', () => {
       'utf8',
     );
     expect(labelWorkspace).toContain('Zapisz finalną etykietę');
-    expect(labelWorkspace).toContain(
-      'Koszty są wyłącznie informacją wewnętrzną. Nie trafiają do konsumenckiego wydruku.',
-    );
+    expect(labelWorkspace).toContain('Dane wewnętrzne · poza wydrukiem.');
+    expect(labelWorkspace).toContain('data-testid="consumer-print-boundary"');
   });
 });

@@ -1,14 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { CharcoalPanel } from '@/components/ui/CharcoalPanel';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
-import { buildLabelPreflight, buildMasterLabelData, type MasterLabelData } from './masterLabel';
+import {
+  buildLabelPreflight,
+  buildMasterLabelData,
+  normalizeEnabledOptionalFields,
+  type MasterLabelData,
+} from './masterLabel';
 import { printMasterLabel } from './masterLabelPrint';
-import { MARKET_PROFILES, marketProfile, type MarketProfileCode } from './marketProfiles';
+import {
+  MARKET_PROFILES,
+  marketProfile,
+  type MarketProfileCode,
+  type MasterLabelFieldId,
+} from './marketProfiles';
+import { ConsumerLabelPreview } from './ConsumerLabelPreview';
 import {
   defaultAccountLabelProfile,
   resolveLabelRepository,
@@ -34,6 +44,7 @@ function profileFromLabel(
     labelLanguages: label.labelLanguages,
     businessName: label.businessName,
     logoPath: label.logoPath,
+    enabledOptionalFields: label.enabledOptionalFields,
     facilityDefaults: label.operator,
     presentation: {
       format: label.format,
@@ -57,6 +68,7 @@ function labelFromProfile(
     facilityDefaults: profile.facilityDefaults,
     businessName: profile.businessName,
     logoPath: profile.logoPath,
+    enabledOptionalFields: profile.enabledOptionalFields,
     presentation: {
       format: profile.presentation.format,
       size: {
@@ -263,21 +275,34 @@ export function LabelWorkspace({
   }
 
   const productName = primaryText(label.productName, label.labelLanguages);
-  const ingredients = label.ingredients
-    .map((ingredient) => primaryText(ingredient.names, label.labelLanguages))
-    .join(', ');
-  const allergens = [...label.allergens.declared, ...label.allergens.labelStatements].join('; ');
   const costs = snapshot.finalProduct.costs;
+  const nutrition = label.nutritionSource;
+  const activeMarket = marketProfile(label.market);
+  const missing = preflight?.items.filter((item) => item.status === 'missing') ?? [];
+  const printBlockedReason = missing[0]?.message ?? activeMarket.rendererLimitation;
+  const percentages = snapshot.finalResult.percentages;
 
   return (
-    <div className="space-y-4" data-testid="label-workspace" data-workspace-mode="run">
-      <Card padding="none" className="overflow-hidden">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-ink/10 p-5">
+    <div
+      className="space-y-4 p-3 text-ink sm:p-4"
+      data-testid="label-workspace"
+      data-workspace-mode="run"
+    >
+      <Card padding="none" className="overflow-hidden rounded-[22px]">
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-ink/10 p-4 sm:p-5">
           <div>
-            <SectionLabel>LabelWorkspace · ACTUAL Production Snapshot</SectionLabel>
-            <h2 className="mt-2 text-xl font-semibold text-ink">{productName}</h2>
+            <SectionLabel>Etykieta produktu</SectionLabel>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <h2 className="text-xl font-semibold text-ink">{productName}</h2>
+              <span
+                className="rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-xs font-semibold"
+                data-testid="active-label-market"
+              >
+                {activeMarket.flag} {activeMarket.label}
+              </span>
+            </div>
             <p className="mt-1 text-sm text-stone-500">
-              {label.businessName || label.operator.operatorName || 'Profil firmy nieuzupełniony'}
+              Profil rynku steruje wymaganymi polami i wydrukiem.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -287,7 +312,7 @@ export function LabelWorkspace({
               onClick={() => setEditing(true)}
               disabled={Boolean(saved)}
             >
-              {saved ? 'Snapshot zapisany' : 'Edytuj'}
+              {saved ? 'Snapshot zapisany' : 'Ustawienia'}
             </Button>
             <Button
               size="sm"
@@ -298,131 +323,92 @@ export function LabelWorkspace({
             </Button>
           </div>
         </header>
-
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
-          <article className="p-5" aria-label="Podgląd etykiety konsumenckiej">
-            <div className="mx-auto max-w-2xl border-2 border-ink p-5">
-              <div className="flex items-start justify-between gap-4 border-b-2 border-ink pb-4">
-                <div>
-                  <strong className="block text-2xl text-ink">{productName}</strong>
-                  <span className="text-sm text-stone-600">
-                    {primaryText(label.legalProductName, label.labelLanguages) ||
-                      'Nazwa prawna do uzupełnienia'}
-                  </span>
-                </div>
-                {logoUrl ? (
-                  <img src={logoUrl} alt="" className="h-14 max-w-28 object-contain" />
-                ) : null}
-              </div>
-              <p className="mt-4 text-sm leading-relaxed">
-                <strong>Składniki:</strong> {ingredients}
-              </p>
-              <p className="mt-3 text-sm">
-                <strong>Alergeny:</strong> {allergens || 'wymagają potwierdzenia'}
-              </p>
-              {label.nutritionDeclaration ? (
-                <table className="mt-5 w-full border-t-2 border-ink text-sm">
-                  <caption className="py-2 text-left font-semibold">
-                    Wartość odżywcza w 100 g
-                  </caption>
-                  <tbody>
-                    {label.nutritionDeclaration.rows.map((row) => (
-                      <tr key={row.key} className="border-t border-ink/15">
-                        <th
-                          className={`py-1.5 text-left font-normal ${row.indented ? 'pl-4' : ''}`}
-                        >
-                          {row.label}
-                        </th>
-                        <td className="py-1.5 text-right font-mono tabular-nums">
-                          {row.valueDisplay ?? '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : null}
-              <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-ink pt-3 text-sm">
-                <div>
-                  <dt className="text-stone-500">Masa netto</dt>
-                  <dd className="font-mono font-semibold tabular-nums">
-                    {label.netQuantityG ?? '—'} g
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-stone-500">LOT</dt>
-                  <dd className="font-mono">{label.lotCode || '—'}</dd>
-                </div>
-              </dl>
-            </div>
-          </article>
-
-          <aside className="border-t border-ink/10 bg-[#EFE8DC]/45 p-5 lg:border-t-0 lg:border-l">
-            <SectionLabel>Podsumowanie wewnętrzne Gellatti</SectionLabel>
-            <dl className="mt-5 space-y-4">
-              <div>
-                <dt className="text-xs text-stone-500">Faktyczna partia</dt>
-                <dd>
-                  <MetricValue value={snapshot.actualFinalMassG} unit="g" size="lg" />
-                </dd>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <dt className="text-xs text-stone-500">Production Run</dt>
-                  <dd className="mt-1 truncate font-mono text-xs">{snapshot.sessionId}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-stone-500">Wersja receptury</dt>
-                  <dd className="mt-1 font-mono text-sm">
-                    v{snapshot.source.recipeVersionNumber ?? '—'}
-                  </dd>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 border-t border-ink/10 pt-4">
-                <div>
-                  <dt className="text-xs text-stone-500">Koszt partii</dt>
-                  <dd>
-                    <MetricValue
-                      value={costs?.total_cost ?? '—'}
-                      unit={costs?.total_cost == null ? undefined : '€'}
-                    />
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-stone-500">Koszt / kg</dt>
-                  <dd>
-                    <MetricValue
-                      value={costs?.cost_per_kg ?? '—'}
-                      unit={costs?.cost_per_kg == null ? undefined : '€'}
-                    />
-                  </dd>
-                </div>
-              </div>
-            </dl>
-            <p className="mt-5 border-t border-ink/10 pt-4 text-xs leading-relaxed text-stone-600">
-              Koszty są wyłącznie informacją wewnętrzną. Nie trafiają do konsumenckiego wydruku.
-            </p>
-          </aside>
+        <div className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3" role="status">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span
+              className={preflight?.readyForSystemPrint ? 'text-status-success' : 'text-stone-700'}
+            >
+              {preflight?.readyForSystemPrint
+                ? 'Gotowa do wydruku'
+                : `Wydruk zablokowany · ${missing.length > 0 ? `${missing.length} wymaganych pól` : `profil ${activeMarket.label} wymaga weryfikacji`}`}
+            </span>
+            {!preflight?.readyForSystemPrint ? (
+              <button
+                type="button"
+                className="font-semibold underline"
+                onClick={() => setEditing(true)}
+                disabled={Boolean(saved)}
+              >
+                {printBlockedReason}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="p-4 sm:p-6" data-testid="consumer-print-boundary">
+          <ConsumerLabelPreview label={label} logoUrl={logoUrl} />
         </div>
       </Card>
 
-      <CharcoalPanel
-        padding="md"
-        className="flex flex-wrap items-center justify-between gap-4 rounded-md"
+      <section
+        className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+        data-testid="label-internal-overview"
       >
-        <div>
-          <SectionLabel tone="ivory">Historyczna reprodukowalność</SectionLabel>
-          <p className="mt-2 text-sm text-ivory/70">
-            {saved
-              ? `Immutable Run Label Snapshot · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
-              : 'Po zapisie ta etykieta nie zmieni się wraz z przyszłym logo ani profilem konta.'}
-          </p>
-        </div>
+        <OverviewCard title="Składniki">
+          <dl className="space-y-2">
+            {label.ingredients.map((ingredient) => (
+              <div key={ingredient.lineId} className="flex justify-between gap-3 text-xs">
+                <dt className="min-w-0 truncate text-stone-600">
+                  {primaryText(ingredient.names, label.labelLanguages)}
+                </dt>
+                <dd className="shrink-0 font-mono tabular-nums">
+                  {ingredient.actualGrams.toFixed(0)} g
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </OverviewCard>
+        <OverviewCard title="Wartości odżywcze">
+          <MetricValue
+            value={nutrition?.kcal ?? '—'}
+            unit={nutrition ? 'kcal / 100 g' : undefined}
+            size="lg"
+          />
+          <p className="mt-2 text-xs text-stone-500">Z finalnej, faktycznej partii.</p>
+        </OverviewCard>
+        <OverviewCard title="Koszt">
+          <dl className="space-y-2 text-xs">
+            <OverviewMetric label="Cała partia" value={costs?.total_cost} unit="€" />
+            <OverviewMetric label="1 kg" value={costs?.cost_per_kg} unit="€" />
+            <OverviewMetric label="Porcja 60 g" value={costs?.cost_per_serving_60g} unit="€" />
+          </dl>
+          <p className="mt-3 text-[11px] text-stone-500">Dane wewnętrzne · poza wydrukiem.</p>
+        </OverviewCard>
+        <OverviewCard title="Baza techniczna">
+          <dl className="space-y-2 text-xs">
+            <OverviewMetric label="Woda" value={percentages.water_percent} unit="%" />
+            <OverviewMetric label="Ciała stałe" value={percentages.solids_percent} unit="%" />
+            <OverviewMetric label="Tłuszcz" value={percentages.fat_percent} unit="%" />
+            <OverviewMetric label="Białko" value={percentages.protein_percent} unit="%" />
+          </dl>
+        </OverviewCard>
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-ink/10 bg-white px-4 py-3">
+        <p className="text-xs text-stone-600">
+          {saved
+            ? `Niezmienny snapshot etykiety · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
+            : 'Finalny zapis zamraża rynek, treść, LOT i logo dla tej partii.'}
+        </p>
         {saved ? null : (
-          <Button variant="ivory" size="sm" onClick={() => void saveRunSnapshot()} disabled={busy}>
+          <Button
+            size="sm"
+            onClick={() => void saveRunSnapshot()}
+            disabled={busy || missing.length > 0}
+          >
             {busy ? 'Zapisywanie…' : 'Zapisz finalną etykietę'}
           </Button>
         )}
-      </CharcoalPanel>
+      </div>
       {error ? (
         <p className="text-sm text-status-error" role="alert">
           {error}
@@ -452,6 +438,34 @@ export function LabelWorkspace({
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+function OverviewCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <article className="min-w-0 rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
+      <h3 className="mb-3 text-sm font-semibold text-ink">{title}</h3>
+      {children}
+    </article>
+  );
+}
+
+function OverviewMetric({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: number | null | undefined;
+  unit: string;
+}) {
+  return (
+    <div className="flex justify-between gap-3">
+      <dt className="text-stone-600">{label}</dt>
+      <dd className="font-mono tabular-nums">
+        {value == null ? '—' : `${value.toFixed(2)} ${unit}`}
+      </dd>
     </div>
   );
 }
@@ -488,7 +502,16 @@ function ProfileEditor({
         address={draft.facilityDefaults.address}
         logoUrl={logoUrl}
         uploading={uploading}
-        onMarket={(market) => setDraft({ ...draft, market })}
+        onMarket={(market) =>
+          setDraft({
+            ...draft,
+            market,
+            enabledOptionalFields: normalizeEnabledOptionalFields(
+              market,
+              draft.enabledOptionalFields,
+            ),
+          })
+        }
         onLanguages={(labelLanguages) => setDraft({ ...draft, labelLanguages })}
         onBusinessName={(businessName) => setDraft({ ...draft, businessName })}
         onOperatorName={(operatorName) =>
@@ -506,6 +529,11 @@ function ProfileEditor({
             setUploading(false);
           }
         }}
+      />
+      <OptionalFieldSettings
+        market={draft.market}
+        enabled={draft.enabledOptionalFields}
+        onChange={(enabledOptionalFields) => setDraft({ ...draft, enabledOptionalFields })}
       />
       <PresentationFields
         format={draft.presentation.format}
@@ -545,7 +573,7 @@ function RunLabelEditor({
   const [uploading, setUploading] = useState(false);
   const primaryLanguage = draft.labelLanguages[0] ?? 'pl';
   const updateText = (
-    field: 'productName' | 'legalProductName' | 'storageInstructions',
+    field: 'productName' | 'legalProductName' | 'storageInstructions' | 'origin' | 'customerNote',
     language: string,
     value: string,
   ) => setDraft({ ...draft, [field]: { ...draft[field], [language]: value } });
@@ -567,7 +595,15 @@ function RunLabelEditor({
         logoUrl={logoUrl}
         uploading={uploading}
         onMarket={(market) =>
-          setDraft({ ...draft, market, marketProfileVersion: MARKET_PROFILES[market].version })
+          setDraft({
+            ...draft,
+            market,
+            marketProfileVersion: MARKET_PROFILES[market].version,
+            enabledOptionalFields: normalizeEnabledOptionalFields(
+              market,
+              draft.enabledOptionalFields,
+            ),
+          })
         }
         onLanguages={(labelLanguages) => setDraft({ ...draft, labelLanguages })}
         onBusinessName={(businessName) => setDraft({ ...draft, businessName })}
@@ -584,6 +620,11 @@ function RunLabelEditor({
             setUploading(false);
           }
         }}
+      />
+      <OptionalFieldSettings
+        market={draft.market}
+        enabled={draft.enabledOptionalFields}
+        onChange={(enabledOptionalFields) => setDraft({ ...draft, enabledOptionalFields })}
       />
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {draft.labelLanguages.flatMap((language) => [
@@ -618,14 +659,12 @@ function RunLabelEditor({
             className="mt-1 h-11 w-full border border-ink/15 px-3 font-mono text-sm text-ink"
           />
         </label>
-        <label className="text-xs text-stone-600">
-          LOT
-          <input
-            value={draft.lotCode}
-            onChange={(event) => setDraft({ ...draft, lotCode: event.currentTarget.value })}
-            className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
-          />
-        </label>
+        <div className="text-xs text-stone-600">
+          LOT · nadawany automatycznie
+          <output className="mt-1 flex h-11 w-full items-center border border-ink/10 bg-stone-50 px-3 font-mono text-sm text-ink">
+            {draft.lotCode}
+          </output>
+        </div>
         <label className="text-xs text-stone-600">
           Przechowywanie
           <input
@@ -670,6 +709,28 @@ function RunLabelEditor({
             className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
           />
         </label>
+        {draft.enabledOptionalFields.includes('origin') ? (
+          <label className="text-xs text-stone-600">
+            Pochodzenie
+            <input
+              value={draft.origin[primaryLanguage] ?? ''}
+              onChange={(event) => updateText('origin', primaryLanguage, event.currentTarget.value)}
+              className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
+            />
+          </label>
+        ) : null}
+        {draft.enabledOptionalFields.includes('customer_note') ? (
+          <label className="text-xs text-stone-600">
+            Nota dla klienta
+            <input
+              value={draft.customerNote[primaryLanguage] ?? ''}
+              onChange={(event) =>
+                updateText('customerNote', primaryLanguage, event.currentTarget.value)
+              }
+              className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
+            />
+          </label>
+        ) : null}
       </div>
       <PresentationFields
         format={draft.format}
@@ -730,6 +791,74 @@ function RunLabelEditor({
         <Button onClick={() => void onSave(draft)}>Zastosuj</Button>
       </div>
     </DialogShell>
+  );
+}
+
+const LABEL_FIELD_NAMES: Readonly<Record<MasterLabelFieldId, string>> = {
+  product_name: 'Nazwa produktu',
+  legal_product_name: 'Nazwa prawna',
+  ingredients: 'Składniki',
+  allergens: 'Alergeny',
+  nutrition: 'Wartości odżywcze',
+  net_quantity: 'Masa netto',
+  operator: 'Operator',
+  storage: 'Przechowywanie',
+  date_mark: 'Data trwałości',
+  lot: 'LOT',
+  logo: 'Logo',
+  origin: 'Pochodzenie',
+  customer_note: 'Nota dla klienta',
+};
+
+function OptionalFieldSettings({
+  market,
+  enabled,
+  onChange,
+}: {
+  market: MarketProfileCode;
+  enabled: MasterLabelFieldId[];
+  onChange: (fields: MasterLabelFieldId[]) => void;
+}) {
+  const profile = marketProfile(market);
+  return (
+    <fieldset className="mt-4 border-t border-ink/10 pt-4" data-testid="label-field-settings">
+      <legend className="text-sm font-semibold text-ink">Pola etykiety</legend>
+      <p className="mt-1 text-xs text-stone-500">
+        Wymagane pola profilu {profile.label} są zawsze aktywne.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-1.5" data-testid="required-label-fields">
+        {profile.requiredFields.map((field) => (
+          <span
+            key={field}
+            className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] text-stone-600"
+          >
+            🔒 {LABEL_FIELD_NAMES[field]}
+          </span>
+        ))}
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3" data-testid="optional-label-fields">
+        {profile.optionalFields.map((field) => (
+          <label
+            key={field}
+            className="flex min-h-11 items-center gap-2 border border-ink/10 px-3 text-xs text-ink"
+          >
+            <input
+              type="checkbox"
+              className="size-5"
+              checked={enabled.includes(field)}
+              onChange={(event) =>
+                onChange(
+                  event.currentTarget.checked
+                    ? normalizeEnabledOptionalFields(market, [...enabled, field])
+                    : enabled.filter((candidate) => candidate !== field),
+                )
+              }
+            />
+            {LABEL_FIELD_NAMES[field]}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 

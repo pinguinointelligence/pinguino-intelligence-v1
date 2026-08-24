@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { getCurrentUser } from '@/services/auth';
 import type { FacilityDefaults, MasterLabelData } from '@/features/master-label/masterLabel';
-import type { MarketProfileCode } from '@/features/master-label/marketProfiles';
+import type { MarketProfileCode, MasterLabelFieldId } from '@/features/master-label/marketProfiles';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
 
 const PROFILE_TABLE = 'account_label_profiles';
@@ -20,6 +20,7 @@ export interface AccountLabelProfile {
   labelLanguages: string[];
   businessName: string;
   logoPath: string | null;
+  enabledOptionalFields: MasterLabelFieldId[];
   facilityDefaults: FacilityDefaults;
   presentation: {
     format: 'rectangle' | 'round';
@@ -71,6 +72,7 @@ export function defaultAccountLabelProfile(
     labelLanguages: ['pl'],
     businessName: '',
     logoPath: null,
+    enabledOptionalFields: ['logo', 'origin', 'customer_note'],
     facilityDefaults: emptyFacility(),
     presentation: { format: 'rectangle', widthMm: 90, heightMm: 60, copies: 1 },
     updatedAt: now,
@@ -84,6 +86,7 @@ type ProfileRow = {
   label_languages: string[];
   business_name: string;
   logo_path: string | null;
+  enabled_optional_fields?: MasterLabelFieldId[] | null;
   facility_defaults: Partial<FacilityDefaults> | null;
   presentation: Partial<AccountLabelProfile['presentation']> | null;
   updated_at: string;
@@ -107,6 +110,7 @@ const mapProfile = (row: ProfileRow): AccountLabelProfile => {
     labelLanguages: row.label_languages,
     businessName: row.business_name,
     logoPath: row.logo_path,
+    enabledOptionalFields: row.enabled_optional_fields ?? fallback.enabledOptionalFields,
     facilityDefaults: { ...fallback.facilityDefaults, ...(row.facility_defaults ?? {}) },
     presentation: { ...fallback.presentation, ...(row.presentation ?? {}) },
   };
@@ -169,6 +173,7 @@ export function supabaseLabelRepository(client: SupabaseClient): LabelRepository
             label_languages: profile.labelLanguages,
             business_name: profile.businessName,
             logo_path: profile.logoPath,
+            enabled_optional_fields: profile.enabledOptionalFields,
             facility_defaults: profile.facilityDefaults,
             presentation: profile.presentation,
             updated_at: new Date().toISOString(),
@@ -334,6 +339,7 @@ export function inMemoryLabelRepository(ownerUserId = 'owner-review-local'): Lab
           uiLanguage: label.uiLanguage,
           labelLanguages: cloneValue(label.labelLanguages),
           businessName: label.businessName,
+          enabledOptionalFields: cloneValue(label.enabledOptionalFields),
           facilityDefaults: cloneValue(label.operator),
           presentation: {
             format: label.format,

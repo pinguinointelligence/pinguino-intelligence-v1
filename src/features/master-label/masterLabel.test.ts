@@ -379,7 +379,8 @@ describe('Master Label — one actual-batch source model', () => {
       data.ingredients.find((item) => item.canonicalIngredientId === 'catalog:fruit-sauce')?.names
         .pl,
     ).toContain('Fruit, sugar');
-    expect(data.allergens.labelStatements).toContain('None declared');
+    expect(data.allergens.labelStatements).not.toContain('None declared');
+    expect(JSON.stringify(data.allergens)).not.toContain('none_declared');
   });
 
   it('never falls back to mutable Topping label text after frozen authority is captured', () => {
@@ -440,6 +441,28 @@ describe('Master Label — one actual-batch source model', () => {
     );
   });
 
+  it('keeps one automatic LOT stable for the completed run and legacy reloads', () => {
+    const snapshot = completedSnapshot();
+    expect(snapshot.lotCode).toMatch(/^LOT-20260809-/);
+    const first = buildMasterLabelData({
+      masterLabelId: 'lot-first',
+      snapshot,
+      market: 'EU',
+      uiLanguage: 'pl',
+      labelLanguages: ['pl'],
+    });
+    const reloaded = buildMasterLabelData({
+      masterLabelId: 'lot-reloaded',
+      snapshot: { ...snapshot, lotCode: undefined },
+      market: 'EU',
+      uiLanguage: 'pl',
+      labelLanguages: ['pl'],
+    });
+    expect(first.lotCode).toBe(snapshot.lotCode);
+    expect(reloaded.lotCode).toBe(first.lotCode);
+    expect(first.lotCode).not.toBe('LOT —');
+  });
+
   it('blocks label construction when frozen canonical allergen evidence is missing', () => {
     const snapshot = completedSnapshot();
     const firstId = snapshot.finalActualInput.items[0]!.id;
@@ -481,6 +504,15 @@ describe('Master Label — one actual-batch source model', () => {
     expect(us.nutritionSource).toEqual(data.nutritionSource);
     expect(marketProfile('US').status).toBe('PARTIAL');
     expect(marketProfile('CUSTOM').status).toBe('RESEARCH_REQUIRED');
+    expect(marketProfile('EU').consumerLayout).toBe('eu_declaration');
+    expect(marketProfile('US').consumerLayout).toBe('market_review');
+    expect(marketProfile('US').flag).toBe('🇺🇸');
+    expect(marketProfile('UK')).toMatchObject({
+      code: 'UK',
+      flag: '🇬🇧',
+      consumerLayout: 'uk_declaration',
+    });
+    expect(Object.keys(MARKET_PROFILES)).toEqual(['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM']);
   });
 
   it('separates customer label note from the internal production note', () => {
@@ -506,13 +538,20 @@ describe('Master Label — one actual-batch source model', () => {
       const preflight = buildLabelPreflight(data);
       expect(preflight.readyForSystemPrint).toBe(true);
       expect(preflight.regulatoryProfileVerified).toBe(true);
-      const branded = { ...data, businessName: 'Gellatti Lab', logoPath: 'owner/logo.png' };
+      const branded = {
+        ...data,
+        businessName: 'Gellatti Lab',
+        logoPath: 'owner/logo.png',
+        enabledOptionalFields: [...data.enabledOptionalFields, 'logo' as const],
+      };
       const html = buildMasterLabelPrintHtml(branded, 'https://example.test/private-logo.png');
       expect(html.match(/<article class="label">/g)).toHaveLength(3);
       expect(html).toContain('Gellatti Lab');
       expect(html).toContain('https://example.test/private-logo.png');
       expect(html).not.toContain('Koszt');
       expect(html).not.toContain('Never print me.');
+      expect(html).not.toContain('Cała partia');
+      expect(html).not.toContain('Baza techniczna');
     } finally {
       profile.status = previousStatus;
     }

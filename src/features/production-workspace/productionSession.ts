@@ -95,10 +95,22 @@ export interface ProductionCompletionSnapshot {
   machineCapacityG: number | null;
   servingTemperatureC: number;
   productionCompletedAt: string;
+  /** Assigned once when the physical run is completed. Legacy snapshots use
+   * the same deterministic run/date derivation when they are read. */
+  lotCode?: string;
   operatorUserId: string | null;
   substitutions: ProductionSubstitution[];
   customerLabelNote: string;
   internalProductionNote: string;
+}
+
+export function productionLotCodeForRun(sessionId: string, completedAt: string): string {
+  const date = completedAt.slice(0, 10).replaceAll('-', '');
+  const stableRunToken = sessionId
+    .replace(/[^a-z0-9]/gi, '')
+    .slice(0, 10)
+    .toUpperCase();
+  return `LOT-${date}-${stableRunToken || 'RUN'}`;
 }
 
 export interface ProductionSession {
@@ -702,6 +714,7 @@ export function completeProductionSession(
     machineCapacityG: session.plannedInput.machine_capacity_grams,
     servingTemperatureC: session.plannedInput.target_temperature_c,
     productionCompletedAt: completedAt,
+    lotCode: productionLotCodeForRun(session.sessionId, completedAt),
     operatorUserId,
     substitutions: session.substitutions.map((substitution) => ({ ...substitution })),
     customerLabelNote: session.customerLabelNote,

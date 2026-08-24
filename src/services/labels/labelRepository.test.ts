@@ -13,6 +13,7 @@ import {
   defaultAccountLabelProfile,
   inMemoryLabelRepository,
   resetInMemoryLabelRepositoryForTests,
+  type AccountLabelProfile,
 } from './labelRepository';
 
 function completedSnapshot(ownerUserId: string, sessionId: string): ProductionCompletionSnapshot {
@@ -65,7 +66,7 @@ describe('LabelRepository account and immutable history authority', () => {
   it('isolates Account Label Profiles by owner and rejects cross-owner writes', async () => {
     const ownerA = inMemoryLabelRepository('owner-a');
     const ownerB = inMemoryLabelRepository('owner-b');
-    const profileA = {
+    const profileA: AccountLabelProfile = {
       ...defaultAccountLabelProfile('owner-a'),
       businessName: 'Gellatti A',
       logoPath: 'owner-a/logo-a.png',
@@ -75,6 +76,18 @@ describe('LabelRepository account and immutable history authority', () => {
     expect((await ownerA.getAccountProfile())?.businessName).toBe('Gellatti A');
     expect(await ownerB.getAccountProfile()).toBeNull();
     await expect(ownerB.saveAccountProfile(profileA)).rejects.toThrow(/innego konta/);
+  });
+
+  it('persists optional-field choices while mandatory fields remain market-owned', async () => {
+    const repository = inMemoryLabelRepository('owner-a');
+    await repository.saveAccountProfile({
+      ...defaultAccountLabelProfile('owner-a'),
+      market: 'US',
+      enabledOptionalFields: ['origin'],
+    });
+    const reloaded = await repository.getAccountProfile();
+    expect(reloaded?.enabledOptionalFields).toEqual(['origin']);
+    expect(reloaded?.market).toBe('US');
   });
 
   it('keeps completed snapshots owner-scoped, cloned and immutable', async () => {
@@ -92,11 +105,12 @@ describe('LabelRepository account and immutable history authority', () => {
 
   it('preserves Label A after future account defaults and Logo B change', async () => {
     const repository = inMemoryLabelRepository('owner-a');
-    const profileA = {
+    const profileA: AccountLabelProfile = {
       ...defaultAccountLabelProfile('owner-a'),
       market: 'EU' as const,
       businessName: 'Business A',
       logoPath: 'owner-a/logo-a.png',
+      enabledOptionalFields: ['logo', 'origin'],
     };
     await repository.saveAccountProfile(profileA);
     const snapshotA = completedSnapshot('owner-a', 'run-a');
@@ -110,10 +124,11 @@ describe('LabelRepository account and immutable history authority', () => {
       facilityDefaults: profileA.facilityDefaults,
       businessName: profileA.businessName,
       logoPath: profileA.logoPath,
+      enabledOptionalFields: profileA.enabledOptionalFields,
     });
     await repository.saveRunLabelSnapshot(labelA);
 
-    const profileB = {
+    const profileB: AccountLabelProfile = {
       ...profileA,
       market: 'US' as const,
       businessName: 'Business B',
@@ -136,7 +151,13 @@ describe('LabelRepository account and immutable history authority', () => {
 
     expect(await repository.getRunLabelSnapshot('run-a')).toMatchObject({
       logoPath: 'owner-a/logo-a.png',
-      label: { market: 'EU', businessName: 'Business A', logoPath: 'owner-a/logo-a.png' },
+      label: {
+        market: 'EU',
+        businessName: 'Business A',
+        logoPath: 'owner-a/logo-a.png',
+        lotCode: snapshotA.lotCode,
+      },
+      accountProfileSnapshot: { enabledOptionalFields: ['logo', 'origin'] },
     });
     expect(await repository.getRunLabelSnapshot('run-b')).toMatchObject({
       logoPath: 'owner-a/logo-b.png',

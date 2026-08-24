@@ -161,14 +161,14 @@ describe('one global menu and four local contexts', () => {
     expect(panel).not.toContain('navigate(');
   });
 
-  it('switches Summary to the frozen actual Base and Toppings after Production completion', () => {
+  it('delegates Etykieta to the one completed-run LabelWorkspace authority', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     expect(panel).toContain('production?.session?.completionSnapshot');
-    expect(panel).toContain('completed?.productComposition.toppings ?? toppings');
-    expect(panel).toContain("completed ? 'Faktyczna zakończona partia'");
-    expect(panel).toContain('item.actual_grams ?? item.planned_grams');
-    expect(panel).toContain('Masa całej partii produktu finalnego');
-    expect(panel).not.toContain('Ilość netto produktu finalnego');
+    expect(panel).toContain('<LabelWorkspace snapshot={completed} />');
+    expect(panel).toContain('Najpierw zakończ Produkcję');
+    expect(panel).not.toContain('Faktyczna zakończona partia');
+    expect(panel).not.toContain('Receptura wykonawcza');
+    expect(panel).not.toContain('Proces i gotowość');
   });
 });
 

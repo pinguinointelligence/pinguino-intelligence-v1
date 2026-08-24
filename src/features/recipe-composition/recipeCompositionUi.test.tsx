@@ -118,14 +118,14 @@ describe('Base/Topping owner entry points', () => {
     expect(builder).toContain('Pozycja ${Math.max(position, 1)} z ${ordered.length}');
   });
 
-  it('keeps Summary final facts separate from Base technical analysis', () => {
+  it('routes completed Summary facts through the one LabelWorkspace authority', () => {
     const summary = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
-    expect(summary).toContain('Baza · analiza techniczna');
-    expect(summary).toContain('Masa całej partii produktu finalnego');
-    expect(summary).not.toContain('Ilość netto produktu finalnego');
-    expect(summary).toContain('finalProduct.finalMassG.toFixed(0)');
-    expect(summary).toContain('summary-final-nutrition-cost');
-    expect(summary).toContain('<CatalogVerificationBadge');
+    const labels = read('features', 'master-label', 'LabelWorkspace.tsx');
+    expect(summary).toContain('<LabelWorkspace snapshot={completed} />');
+    expect(summary).not.toContain('summary-final-nutrition-cost');
+    expect(labels).toContain('title="Baza techniczna"');
+    expect(labels).toContain('data-testid="label-internal-overview"');
+    expect(labels).toContain('snapshot.finalResult.percentages');
     const monitor = read('features', 'pro-workbench', 'MonitorPanelContent.tsx');
     const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
     expect(monitor).toContain('<CatalogVerificationBadge');

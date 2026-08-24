@@ -178,9 +178,7 @@ describe('profile hierarchy and compact preflight', () => {
 
         const expectedFinal = calculateFinalProduct(input, activeToppings);
         const expectedNutrition = expectedFinal.finalLabelNutritionPer100g;
-        const recipeSummary = host.querySelector(
-          '[data-testid="profile-nutrition-cost-summary"]',
-        );
+        const recipeSummary = host.querySelector('[data-testid="profile-nutrition-cost-summary"]');
         expect(recipeSummary?.textContent).toContain(
           `${expectedNutrition?.kcal.toFixed(0)} kcal / 100 g`,
         );
@@ -189,11 +187,10 @@ describe('profile hierarchy and compact preflight', () => {
         );
 
         await act(async () => root.render(panel('summary')));
-        const labelSummary = host.querySelector('[data-testid="summary-final-nutrition-cost"]');
-        expect(labelSummary?.textContent).toContain(expectedNutrition?.kcal.toFixed(0));
-        expect(labelSummary?.textContent).toContain(
-          expectedFinal.finalCosts?.cost_per_kg?.toFixed(2),
+        expect(host.querySelector('[data-testid="label-workspace-empty"]')?.textContent).toContain(
+          'Najpierw zakończ Produkcję',
         );
+        expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
       }
     } finally {
       await act(async () => root.unmount());

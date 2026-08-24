@@ -101,29 +101,37 @@ describe('LabelWorkspace unified actual-run surface', () => {
     return repository;
   }
 
-  it('shows one preview from ACTUAL facts and keeps cost in the internal summary', async () => {
-    const repository = await renderWorkspace();
+  it('shows one market-driven preview with ACTUAL overview outside the print boundary', async () => {
+    await renderWorkspace();
     expect(host.querySelector('[data-workspace-mode="run"]')).not.toBeNull();
     expect(host.textContent).toContain('Gelato faktyczne');
     expect(host.textContent).toContain('Gellatti Laboratory');
-    expect(host.textContent).toContain('Faktyczna partia');
     expect(host.textContent).toContain('Masa netto');
-    expect(host.textContent).toContain('Podsumowanie wewnętrzne Gellatti');
-    expect(host.textContent).toContain('Nie trafiają do konsumenckiego wydruku');
-
-    const save = [...host.querySelectorAll('button')].find((button) =>
-      button.textContent?.includes('Zapisz finalną etykietę'),
+    expect(host.textContent).toContain('Składniki');
+    expect(host.textContent).toContain('Wartości odżywcze');
+    expect(host.textContent).toContain('Koszt');
+    expect(host.textContent).toContain('Baza techniczna');
+    expect(
+      host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
+    ).toBe('EU');
+    expect(
+      host
+        .querySelector('[data-testid="label-consumer-preview"]')
+        ?.getAttribute('data-label-layout'),
+    ).toBe('eu_declaration');
+    expect(host.querySelector('[data-testid="consumer-lot"]')?.textContent).toMatch(
+      /^LOT-20260824-/,
     );
-    expect(save).not.toBeUndefined();
-    await act(async () => save!.click());
-    expect(await repository.getRunLabelSnapshot('run-label-workspace')).not.toBeNull();
-    expect(host.textContent).toContain('Immutable Run Label Snapshot');
+    expect(
+      host.querySelector('[data-testid="consumer-print-boundary"]')?.textContent,
+    ).not.toContain('Koszt');
+    expect(host.textContent).not.toContain('none_declared');
   });
 
   it('uses the shared bottom-sheet editor on mobile with 44px controls', async () => {
     await renderWorkspace();
     const edit = [...host.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Edytuj',
+      (button) => button.textContent === 'Ustawienia',
     );
     expect(edit).not.toBeUndefined();
     await act(async () => edit!.click());
@@ -136,5 +144,79 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(editor?.textContent).toContain('Jurysdykcja / profil');
     expect(editor?.textContent).toContain('Zapisz jako domyślne');
     expect(editor?.textContent).toContain('Kopie');
+    expect(editor?.textContent).toContain('LOT · nadawany automatycznie');
+    expect(editor?.textContent).toContain('Wymagane pola profilu UE są zawsze aktywne');
+    expect(editor?.querySelector('[data-testid="optional-label-fields"] input')).not.toBeNull();
+
+    const us = [...editor!.querySelectorAll('button')].find(
+      (button) => button.textContent === 'USA',
+    );
+    await act(async () => us!.click());
+    const apply = [...editor!.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Zastosuj',
+    );
+    await act(async () => {
+      apply!.click();
+      await Promise.resolve();
+    });
+    expect(
+      host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
+    ).toBe('US');
+    expect(
+      host
+        .querySelector('[data-testid="label-consumer-preview"]')
+        ?.getAttribute('data-label-layout'),
+    ).toBe('market_review');
+    expect(host.querySelector('[data-testid="label-market-indicator"]')?.textContent).toContain(
+      '🇺🇸',
+    );
+  });
+
+  it('locks required fields and persists an optional toggle through a reload', async () => {
+    const repository = await renderWorkspace();
+    const openSettings = () =>
+      [...host.querySelectorAll('button')].find((button) => button.textContent === 'Ustawienia');
+
+    await act(async () => openSettings()!.click());
+    let editor = host.querySelector('[data-testid="label-run-editor"]')!;
+    expect(editor.querySelector('[data-testid="required-label-fields"] input')).toBeNull();
+    const originLabel = [
+      ...editor.querySelectorAll('[data-testid="optional-label-fields"] label'),
+    ].find((label) => label.textContent?.includes('Pochodzenie'))!;
+    const originToggle = originLabel.querySelector('input')!;
+    expect(originToggle.checked).toBe(true);
+    await act(async () => originToggle.click());
+    expect(originToggle.checked).toBe(false);
+    await act(async () => originToggle.click());
+    expect(originToggle.checked).toBe(true);
+    await act(async () => originToggle.click());
+
+    const saveDefault = [...editor.querySelectorAll('label')]
+      .find((label) => label.textContent?.includes('Zapisz jako domyślne'))!
+      .querySelector('input')!;
+    await act(async () => saveDefault.click());
+    const apply = [...editor.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Zastosuj',
+    )!;
+    await act(async () => {
+      apply.click();
+      await Promise.resolve();
+    });
+    expect((await repository.getAccountProfile())?.enabledOptionalFields).not.toContain('origin');
+
+    await act(async () => {
+      root.render(<></>);
+      root.render(<LabelWorkspace snapshot={completedSnapshot()} repository={repository} />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => openSettings()!.click());
+    editor = host.querySelector('[data-testid="label-run-editor"]')!;
+    const reloadedOrigin = [
+      ...editor.querySelectorAll('[data-testid="optional-label-fields"] label'),
+    ]
+      .find((label) => label.textContent?.includes('Pochodzenie'))!
+      .querySelector('input')!;
+    expect(reloadedOrigin.checked).toBe(false);
   });
 });

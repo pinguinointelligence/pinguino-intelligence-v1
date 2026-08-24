@@ -7294,6 +7294,9 @@ function calculateFinalProduct(baseInput, toppings = [], context = "planning") {
 //#endregion
 //#region src/features/production-workspace/productionSession.ts
 const PRODUCTION_GRAMS_EPSILON = 1e-6;
+function productionLotCodeForRun(sessionId, completedAt) {
+	return `LOT-${completedAt.slice(0, 10).replaceAll("-", "")}-${sessionId.replace(/[^a-z0-9]/gi, "").slice(0, 10).toUpperCase() || "RUN"}`;
+}
 function cloneRecipeInput(input) {
 	return {
 		...input,
@@ -7558,6 +7561,7 @@ function completeProductionSession(session, _finalResult, completedAt, operatorU
 		machineCapacityG: session.plannedInput.machine_capacity_grams,
 		servingTemperatureC: session.plannedInput.target_temperature_c,
 		productionCompletedAt: completedAt,
+		lotCode: productionLotCodeForRun(session.sessionId, completedAt),
 		operatorUserId,
 		substitutions: session.substitutions.map((substitution) => ({ ...substitution })),
 		customerLabelNote: session.customerLabelNote,

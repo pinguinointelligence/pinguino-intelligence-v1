@@ -12,6 +12,7 @@ export type MasterLabelFieldId =
   | 'storage'
   | 'date_mark'
   | 'lot'
+  | 'logo'
   | 'origin'
   | 'customer_note';
 
@@ -19,6 +20,9 @@ export interface MarketProfile {
   code: MarketProfileCode;
   label: string;
   jurisdiction: string;
+  flag: string;
+  /** Presentation identity only; legal requirements remain in requiredFields. */
+  consumerLayout: 'eu_declaration' | 'uk_declaration' | 'market_review';
   status: MarketProfileStatus;
   version: string;
   checkedAt: string;
@@ -42,13 +46,15 @@ const COMMON_REQUIRED: readonly MasterLabelFieldId[] = [
   'lot',
 ];
 
-const OPTIONAL: readonly MasterLabelFieldId[] = ['origin', 'customer_note'];
+const OPTIONAL: readonly MasterLabelFieldId[] = ['logo', 'origin', 'customer_note'];
 
 export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>> = Object.freeze({
   EU: {
     code: 'EU',
     label: 'UE',
     jurisdiction: 'European Union',
+    flag: '🇪🇺',
+    consumerLayout: 'eu_declaration',
     status: 'PARTIAL',
     version: 'EU-FIC-review-2026-08-09',
     checkedAt: '2026-08-09',
@@ -62,6 +68,8 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
     code: 'US',
     label: 'USA',
     jurisdiction: 'United States',
+    flag: '🇺🇸',
+    consumerLayout: 'market_review',
     status: 'PARTIAL',
     version: 'US-FDA-review-2026-08-09',
     checkedAt: '2026-08-09',
@@ -81,6 +89,8 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
     code: 'CA',
     label: 'Kanada',
     jurisdiction: 'Canada',
+    flag: '🇨🇦',
+    consumerLayout: 'market_review',
     status: 'PARTIAL',
     version: 'CA-CFIA-review-2026-08-09',
     checkedAt: '2026-08-09',
@@ -98,6 +108,8 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
     code: 'UK',
     label: 'UK',
     jurisdiction: 'United Kingdom',
+    flag: '🇬🇧',
+    consumerLayout: 'uk_declaration',
     status: 'PARTIAL',
     version: 'UK-review-2026-08-09',
     checkedAt: '2026-08-09',
@@ -114,6 +126,8 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
     code: 'AU_NZ',
     label: 'Australia/NZ',
     jurisdiction: 'Australia and New Zealand',
+    flag: '🇦🇺 🇳🇿',
+    consumerLayout: 'market_review',
     status: 'PARTIAL',
     version: 'FSANZ-review-2026-08-09',
     checkedAt: '2026-08-09',
@@ -131,6 +145,8 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
     code: 'CUSTOM',
     label: 'Inny rynek',
     jurisdiction: 'Custom / not yet researched',
+    flag: '🌐',
+    consumerLayout: 'market_review',
     status: 'RESEARCH_REQUIRED',
     version: 'custom-2026-08-09',
     checkedAt: '2026-08-09',
