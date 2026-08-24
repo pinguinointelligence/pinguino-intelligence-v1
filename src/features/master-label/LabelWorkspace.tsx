@@ -484,7 +484,7 @@ export function LabelWorkspace({
 
       <nav
         aria-label="Widoki workspace etykiety"
-        className="sticky bottom-0 z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
+        className="sticky bottom-[var(--label-workspace-bottom-inset,0px)] z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
         data-testid="label-workspace-dots"
       >
         {(['label', 'settings'] as const).map((view) => (

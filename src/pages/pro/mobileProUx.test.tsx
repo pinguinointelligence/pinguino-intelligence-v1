@@ -244,6 +244,7 @@ describe('mobile preview navigation', () => {
   });
 
   it('never covers the bar it is toggled from, and respects the safe area', () => {
+    const labelWorkspace = read('features', 'master-label', 'LabelWorkspace.tsx');
     expect(tabs).toContain('pb-[env(safe-area-inset-bottom)]');
     expect(surface).toContain(
       'bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))]',
@@ -251,6 +252,8 @@ describe('mobile preview navigation', () => {
     expect(surface).toContain(
       'pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))]',
     );
+    expect(surface).toContain('[--label-workspace-bottom-inset:4.75rem]');
+    expect(labelWorkspace).toContain('bottom-[var(--label-workspace-bottom-inset,0px)]');
   });
 
   it('retires the old „Otwórz kokpit receptury" button and the duplicate tab row', () => {
