@@ -53,3 +53,23 @@ export function scanCompletenessLabel(
   }
   return overlayState === 'SCAN_DRAFT' ? 'Wymaga potwierdzenia' : 'Analiza kompletna';
 }
+
+/**
+ * Why a finished scan still cannot be saved, in one sentence the owner can act on.
+ *
+ * „Analiza niepełna" on its own is the defect: the owner is told something is missing
+ * and left to guess whether another photograph would fix it. Some blockers are not
+ * photographable at all — a high-risk additive needs dose and behaviour authority, and
+ * a disagreement between sources needs a decision, not a better picture.
+ */
+export function scanBlockerExplanation(missingCriticalFields: readonly string[]): string | null {
+  const missing = new Set(missingCriticalFields);
+  if (missing.has('high_risk_dosage_authority')) {
+    return 'Skład zawiera dodatek o wysokim ryzyku technologicznym. Potrzebna jest autoryzacja dawki i zachowania — kolejne zdjęcie tego nie rozstrzygnie, produkt trafia do weryfikacji.';
+  }
+  if ([...missing].some((field) => field.startsWith('conflict_'))) {
+    return 'Dane z etykiety i ze źródła zewnętrznego różnią się. Zachowaliśmy wartość z etykiety; rozbieżność czeka na weryfikację.';
+  }
+  if (missing.has('allergen_confirmation') && missing.size === 1) return null;
+  return null;
+}

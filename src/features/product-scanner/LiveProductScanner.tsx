@@ -37,6 +37,7 @@ import { SCANNER_ERROR_COPY, type ScannerStage } from '@/features/product-scanne
 import { assertUserSafeScannerMessage } from '@/services/scannerErrorGuard';
 import {
   packageDisplay,
+  scanBlockerExplanation,
   scanCompletenessLabel,
 } from '@/features/product-scanner/resultPresentation';
 import type { PreparedProductScanAsset } from '@/features/product-scanner/contracts';
@@ -1000,6 +1001,11 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               </dd>
             </div>
           </dl>
+          {scanBlockerExplanation(state.missingCriticalFields) && (
+            <p className="mt-4 rounded-xl border border-gold/40 bg-gold/10 p-4 text-sm text-stone-700">
+              {scanBlockerExplanation(state.missingCriticalFields)}
+            </p>
+          )}
           {evidence.packageEvidenceExhausted && (
             <p className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600">
               Pokazałeś już tę część opakowania. Brakujących danych nie ma na etykiecie —

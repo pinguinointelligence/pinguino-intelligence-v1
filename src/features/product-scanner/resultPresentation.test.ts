@@ -7,7 +7,11 @@
  * but the value is `250 g`.
  */
 import { describe, expect, it } from 'vitest';
-import { packageDisplay, scanCompletenessLabel } from './resultPresentation';
+import {
+  packageDisplay,
+  scanCompletenessLabel,
+  scanBlockerExplanation,
+} from './resultPresentation';
 
 const pkg = (
   netQuantity: number | null,
@@ -76,5 +80,22 @@ describe('scanCompletenessLabel — partial is never dressed up as complete', ()
       expect(label).not.toBe(state);
       expect(label).not.toMatch(/[A-Z]{2,}_[A-Z]/);
     }
+  });
+});
+
+describe('a finished scan says WHY it is still not saveable', () => {
+  it('explains a high-risk additive instead of asking for another photograph', () => {
+    const explanation = scanBlockerExplanation(['high_risk_dosage_authority']);
+    expect(explanation).toContain('autoryzacja dawki');
+    expect(explanation).toContain('kolejne zdjęcie tego nie rozstrzygnie');
+  });
+
+  it('explains a source disagreement as a decision, not a missing picture', () => {
+    expect(scanBlockerExplanation(['conflict_nutrition.salt'])).toContain('różnią się');
+  });
+
+  it('says nothing when the only open item is the allergen confirmation the UI already asks', () => {
+    expect(scanBlockerExplanation(['allergen_confirmation'])).toBeNull();
+    expect(scanBlockerExplanation([])).toBeNull();
   });
 });
