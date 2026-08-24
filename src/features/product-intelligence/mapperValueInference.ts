@@ -32,13 +32,13 @@ import {
   inferMapperFamily,
   familySupportsCohort,
   type ProductFamilyId,
-} from './mapperFamilyInference';
+} from './mapperFamilyInference.ts';
 import {
   knownField,
   WORKING_NUMERIC_FIELDS,
   type FieldTruth,
   type WorkingNumericField,
-} from './productFieldTruth';
+} from './productFieldTruth.ts';
 
 /** Structural subset of the Mapper `IngredientRow` this module reads. */
 export interface MapperKnowledgeRow {
