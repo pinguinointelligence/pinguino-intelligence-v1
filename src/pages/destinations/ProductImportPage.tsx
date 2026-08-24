@@ -9,7 +9,7 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
  * (no upload, no storage bucket). Parsing is open; the Import action requires a signed-in
  * user (the products write is owner-scoped) and otherwise opens the existing auth modal.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DestinationSection, DestinationSurface } from '@/components/shared/DestinationSurface';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/Button';
@@ -22,6 +22,7 @@ import type { IntimportResult } from '@/data/products/intimport';
 import {
   planIntimportImport,
   runIntimportLocalIntelligence,
+  summarizeIntimportReadiness,
   type IntimportLocalSummary,
   type IntimportProductIntelligence,
 } from '@/features/product-intelligence/intimportIntelligence';
@@ -120,11 +121,15 @@ export function ProductImportPage() {
   const [fileInfo, setFileInfo] = useState<{ name: string; sheet: string | null } | null>(null);
   const [importPlan, setImportPlan] = useState<{
     total: number;
-    engineUsable: number;
+    productProfileReady: number;
     /** Informational: rows whose manufacturer dosage is unproven. Not blocked. */
     dosageUnproven: number;
     review: number;
   } | null>(null);
+  const readinessSummary = useMemo(
+    () => (localRows.length > 0 ? summarizeIntimportReadiness(localRows) : null),
+    [localRows],
+  );
 
   const reset = () => {
     setResult(null);
@@ -337,7 +342,7 @@ export function ProductImportPage() {
         }));
       setImportPlan({
         total: rows.length,
-        engineUsable: rows.filter((entry) => entry.engineUsable).length,
+        productProfileReady: rows.filter((entry) => entry.engineUsable).length,
         dosageUnproven: rows.filter(
           (entry) =>
             localRows.find((local) => local.rowIndex === entry.rowIndex)?.workingValues
@@ -573,6 +578,7 @@ export function ProductImportPage() {
               {localIntelligence ? (
                 <IntimportLocalIntelligenceView
                   summary={localIntelligence}
+                  readiness={readinessSummary}
                   onEnrich={() => {
                     void onEnrich();
                   }}
@@ -688,7 +694,9 @@ export function ProductImportPage() {
           {importPlan ? (
             <p className="text-xs text-[#8a7f6d]">
               Product Intelligence: przeanalizowano {importPlan.total} —{' '}
-              {importPlan.engineUsable} gotowych dla Engine, {importPlan.review} do uzupełnienia.
+              {importPlan.productProfileReady} gotowych na poziomie profilu produktu,{' '}
+              {importPlan.review} do uzupełnienia. Finalne użycie w Engine wymaga osobnej,
+              serwerowej autoryzacji ProductBehavior.
               Bez informacji o dawkowaniu producenta: {importPlan.dosageUnproven} (informacyjnie —
               nie blokuje).
             </p>

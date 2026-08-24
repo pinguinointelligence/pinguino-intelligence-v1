@@ -131,6 +131,7 @@ export function createIntimportWebProvider(options: {
       cacheHit?: boolean;
       model?: string;
       error?: string;
+      evidenceReceipt?: string;
     };
 
     const serverFacts = payload.facts ?? [];
@@ -140,6 +141,11 @@ export function createIntimportWebProvider(options: {
       // The tier the SERVER derived from the real URL — the browser never
       // decides how authoritative a source was.
       source: fact.evidenceSource,
+      sourceUrl: fact.sourceUrl,
+      sourceDomain: fact.sourceDomain,
+      sourceTitle: fact.sourceTitle,
+      sourceAuthorityClass: fact.sourceAuthorityClass,
+      retrievedAt: fact.retrievedAt,
     }));
 
     options.onTelemetry?.({
@@ -161,6 +167,7 @@ export function createIntimportWebProvider(options: {
     return {
       facts,
       calls: payload.cacheHit ? 0 : (payload.calls ?? 0),
+      evidenceReceipt: payload.evidenceReceipt,
     };
   };
 }

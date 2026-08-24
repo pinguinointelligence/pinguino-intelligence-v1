@@ -12,6 +12,8 @@ import {
   assessProductConfidence,
   isAutoImportEligible,
   type ProductEvidenceInput,
+  type ProductEvidenceField,
+  type EvidenceSource,
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import {
   resolveProductWorkingValues,
@@ -70,6 +72,9 @@ export interface IntimportTrustedProductProfile {
   articleIdentity: 'PRODUCT_OWNED';
   origin: 'PR' | 'PM';
   productAccuracy: number;
+  /** Exact, server-validated evidence used for the deterministic score. */
+  evidence: ProductEvidenceInput;
+  evidenceProvenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
   readiness: ProductReadiness;
   engineUsable: boolean;
   criticalReadiness: boolean;
@@ -85,6 +90,16 @@ export interface IntimportTrustedProductProfile {
   mapperFingerprint: string;
 }
 
+export interface IntimportTrustedEvidenceProvenance {
+  source: EvidenceSource;
+  sourceUrl: string | null;
+  sourceDomain: string | null;
+  sourceTitle: string | null;
+  sourceAuthorityClass: string | null;
+  retrievedAt: string | null;
+  evidenceReceipt: string | null;
+}
+
 export interface IntimportProductProfileProposalInput {
   origin?: 'PR' | 'PM';
   /** Untrusted client hint retained only for diagnostics/backward compatibility.
@@ -95,6 +110,10 @@ export interface IntimportProductProfileProposalInput {
   declared: Partial<Record<WorkingNumericField, number | null>>;
   declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
   evidence: ProductEvidenceInput;
+  /** Supplied only by the server after ledger/source validation. */
+  evidenceProvenance?: Partial<
+    Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>
+  >;
   /** Deliberately ignored. It exists only so callers/tests can prove that a
    * browser-supplied final profile has no authority at this boundary. */
   proposedTechnicalComposition?: Record<string, unknown>;
@@ -253,6 +272,12 @@ export function validateIntimportProductProfileProposal(
     articleIdentity: 'PRODUCT_OWNED',
     origin: input.origin ?? 'PR',
     productAccuracy: assessment.confidence,
+    evidence: {
+      ...input.evidence,
+      fields: { ...input.evidence.fields },
+      materialConflicts: [...input.evidence.materialConflicts],
+    },
+    evidenceProvenance: structuredClone(input.evidenceProvenance ?? {}),
     readiness: resolved.readiness,
     engineUsable: resolved.engineReady && isAutoImportEligible(assessment),
     criticalReadiness: assessment.criticalReadiness,

@@ -12,8 +12,10 @@ import {
 import { familySupportsInference, inferMapperFamily } from './mapperFamilyInference';
 import {
   assessIntimportProduct,
+  planIntimportImport,
   runIntimportLocalIntelligence,
 } from './intimportIntelligence';
+import { validateIntimportProductProfileProposal } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
 import {
   DEFAULT_ENRICHMENT_CAPS,
   runIntimportEnrichment,
@@ -397,6 +399,54 @@ describe('targeted enrichment pipeline', () => {
     expect(products[0]!.postWebConfidence).toBeGreaterThanOrEqual(AUTO_IMPORT_FLOOR);
     expect(products[0]!.assessment.criticalReadiness).toBe(true);
     expect(products[0]!.autoImportEligible).toBe(true);
+  });
+
+  it('keeps stronger evidence through the planner and trusted server recomputation', async () => {
+    const call = vi.fn(async () => ({
+      ...(await provider()()),
+      evidenceReceipt: 'a'.repeat(64),
+    }));
+    const rows = toEnrichmentRows([
+      row({
+        Manufacturer: 'Acmefoods Sp. z o.o.',
+        'Primary Source URL': 'https://acmefoods.com/produkty/testowy',
+        'Country of Origin': 'PL',
+        'Variant Original': 'Wariant A',
+      }),
+    ]);
+    const initialEvidence = structuredClone(rows[0]!.intelligence.evidence);
+    const initialAccuracy = rows[0]!.intelligence.assessment.confidence;
+    const { products } = await runIntimportEnrichment(rows, call);
+    const enriched = products[0]!;
+
+    expect(initialEvidence.fields.ingredients).toBeUndefined();
+    expect(enriched.evidence.fields.ingredients).toBe('manufacturer');
+    expect(enriched.assessment.confidence).toBeGreaterThan(initialAccuracy);
+    expect(enriched.enrichmentEvidenceReceipts).toEqual(['a'.repeat(64)]);
+
+    const planned = planIntimportImport([enriched]).rows[0]!;
+    const productIntelligence = (planned.insert.extracted_json as Record<string, unknown>)
+      .productIntelligence as Record<string, unknown>;
+    const proposal = productIntelligence.intimportProductProfileProposal as {
+      proposedMapperIngredientId: string | null;
+      matchInput: typeof enriched.profileMatchInput;
+      declared: Record<string, number>;
+      evidence: ProductEvidenceInput;
+      enrichmentEvidenceReceipts: string[];
+    };
+    expect(proposal.evidence).toEqual(enriched.evidence);
+    expect(proposal.enrichmentEvidenceReceipts).toEqual(['a'.repeat(64)]);
+
+    const trusted = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: proposal.proposedMapperIngredientId,
+      matchInput: proposal.matchInput,
+      declared: proposal.declared,
+      evidence: proposal.evidence,
+      rows: [],
+    });
+    expect(trusted?.evidence.fields.ingredients).toBe('manufacturer');
+    expect(trusted?.productAccuracy).toBe(enriched.assessment.confidence);
+    expect(trusted?.productAccuracy).toBeGreaterThan(initialAccuracy);
   });
 
   it('leaves a product that stays under 85 in review', async () => {

@@ -190,6 +190,14 @@ export function canonicalIngestFromLegacyProduct(
     typeof extracted.productIntelligence === 'object' && extracted.productIntelligence !== null
       ? (extracted.productIntelligence as Record<string, unknown>)
       : {};
+  const intimportEnvelope =
+    typeof extracted.intimport === 'object' && extracted.intimport !== null
+      ? (extracted.intimport as Record<string, unknown>)
+      : {};
+  const intimportFields =
+    typeof intimportEnvelope.fields === 'object' && intimportEnvelope.fields !== null
+      ? (intimportEnvelope.fields as Record<string, unknown>)
+      : {};
   const intimportProposal =
     typeof productIntelligence.intimportProductProfileProposal === 'object' &&
     productIntelligence.intimportProductProfileProposal !== null
@@ -250,6 +258,11 @@ export function canonicalIngestFromLegacyProduct(
                 typeof intimportProposal.evidence === 'object' && intimportProposal.evidence !== null
                   ? intimportProposal.evidence
                   : {},
+              enrichmentEvidenceReceipts: Array.isArray(
+                intimportProposal.enrichmentEvidenceReceipts,
+              )
+                ? intimportProposal.enrichmentEvidenceReceipts
+                : [],
             },
           }
         : {}),
@@ -294,6 +307,43 @@ export function canonicalIngestFromLegacyProduct(
         dairyFree: input.dairy_free ?? null,
         glutenFree: input.gluten_free ?? null,
         ...(catalogImportIdentity ? { catalogImportIdentity } : {}),
+        ...(catalogImportIdentity
+          ? {
+              // The server reclassifies this source material and reconstructs
+              // field evidence from the canonical facts. These are observations,
+              // never permissions or browser-issued accuracy.
+              catalogImportSourceEvidence: {
+                manufacturer: intimportFields.Manufacturer ?? input.supplier ?? null,
+                variant:
+                  intimportFields['Variant Original'] ??
+                  intimportFields['Variant English'] ??
+                  null,
+                netQuantity:
+                  [intimportFields['Net Quantity Value'], intimportFields['Net Quantity Unit']]
+                    .filter((value) => typeof value === 'string' && value.trim() !== '')
+                    .join(' ') || null,
+                dosage: intimportFields['Professional Dosage'] ?? input.usage_notes ?? null,
+                technicalParameters:
+                  intimportFields['Technical Parameters'] ?? input.engine_notes ?? null,
+                primarySourceUrl: intimportFields['Primary Source URL'] ?? input.source_url ?? null,
+                technicalPdfUrl: intimportFields['Technical PDF URL'] ?? input.product_url ?? null,
+                ingredients:
+                  intimportFields['Ingredients Original'] ??
+                  intimportFields['Ingredients English'] ??
+                  input.detected_text ??
+                  null,
+                allergens: intimportFields.Allergens ?? input.allergens ?? null,
+                countryOfOrigin: intimportFields['Country of Origin'] ?? null,
+                nutritionBasis: intimportFields['Nutrition Basis'] ?? null,
+                energyKcal: intimportFields['Energy kcal'] ?? input.kcal_per_100g ?? null,
+                fat: intimportFields['Fat g'] ?? input.fat_percent ?? null,
+                carbohydrate:
+                  intimportFields['Carbohydrates g'] ?? input.carbohydrate_percent ?? null,
+                protein: intimportFields['Protein g'] ?? input.protein_percent ?? null,
+                salt: intimportFields['Salt g'] ?? input.salt_percent ?? null,
+              },
+            }
+          : {}),
       },
     },
     privateOverlay: {

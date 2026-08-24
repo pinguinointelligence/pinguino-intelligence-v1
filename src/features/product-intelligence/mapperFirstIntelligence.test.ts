@@ -32,7 +32,11 @@ import {
   WORKING_NUMERIC_FIELDS,
 } from './productFieldTruth';
 import { parseINTIMPORT } from '@/data/products/intimport';
-import { planIntimportImport, runIntimportLocalIntelligence } from './intimportIntelligence';
+import {
+  planIntimportImport,
+  runIntimportLocalIntelligence,
+  summarizeIntimportReadiness,
+} from './intimportIntelligence';
 import {
   ENGINE_REQUIRED_WORKING_FIELDS,
   ESTIMATED_READY_FLOOR,
@@ -1045,6 +1049,20 @@ describe('INTIMPORT import handoff', () => {
     expect(entry.state).toBe('REVIEW');
     expect(entry.engineUsable).toBe(false);
     expect(intelligenceOf(entry).productAccuracy).toBe(84.99);
+  });
+
+  it('separates an ESTIMATED_READY working profile at 72.8% from Engine readiness', () => {
+    const summary = summarizeIntimportReadiness([row('ESTIMATED_READY', false, 72.8)]);
+    expect(summary).toMatchObject({
+      sourceAnalyzed: 1,
+      workingProfileComplete: 1,
+      productAccuracyPass: 0,
+      productProfileReady: 0,
+      productBehaviorAuthorityPass: 0,
+      engineReady: 0,
+      review: 1,
+      blocked: 0,
+    });
   });
 
   it('hands the server declarations and evidence, never a client-authorized final profile', () => {

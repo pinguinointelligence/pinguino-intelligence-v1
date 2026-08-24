@@ -26,12 +26,19 @@ import {
   MAX_CALLS_PER_PRODUCT,
   type IntimportProductIntelligence,
 } from './intimportIntelligence';
+import type { SourceAuthorityClass } from './sourceAuthority';
 
 /** One external observation. `null` value means "looked, found nothing". */
 export interface EnrichmentFact {
   field: ProductEvidenceField;
   value: string | number | null;
   source: EvidenceSource;
+  /** Exact server-classified provenance. Optional only for pure/local providers. */
+  sourceUrl?: string;
+  sourceDomain?: string | null;
+  sourceTitle?: string | null;
+  sourceAuthorityClass?: SourceAuthorityClass;
+  retrievedAt?: string;
 }
 
 export interface EnrichmentRequest {
@@ -51,6 +58,8 @@ export interface EnrichmentResponse {
   /** How many billable external calls this actually consumed. */
   calls: number;
   estimatedCostUsd?: number;
+  /** Server-owned usage-ledger key. catalog-submit verifies it before crediting web evidence. */
+  evidenceReceipt?: string;
 }
 
 export type EnrichmentProvider = (request: EnrichmentRequest) => Promise<EnrichmentResponse>;
@@ -275,11 +284,23 @@ export async function runIntimportEnrichment(
         const assessment = assessProductConfidence(evidence);
         results.push(
           settle(row, assessment.confidence, {
+            // This is the seam that used to drop the enriched evidence: the
+            // assessment was replaced, but `row.intelligence.evidence` survived
+            // unchanged and was later handed to the canonical ingest planner.
+            evidence,
             assessment,
             webAttempted: true,
             callsUsed: cached ? 0 : response.calls,
             cacheHit: Boolean(cached),
             appliedFacts: applied,
+            enrichmentEvidenceReceipts: response.evidenceReceipt
+              ? [
+                  ...new Set([
+                    ...intelligence.enrichmentEvidenceReceipts,
+                    response.evidenceReceipt,
+                  ]),
+                ]
+              : intelligence.enrichmentEvidenceReceipts,
           }),
         );
       }

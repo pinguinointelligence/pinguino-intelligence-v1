@@ -11,6 +11,7 @@
  */
 import type { IntimportCandidate } from '@/data/products/intimport';
 import {
+  AUTO_IMPORT_FLOOR,
   assessProductConfidence,
   isAutoImportEligible,
   routeBeforeWeb,
@@ -41,6 +42,10 @@ import {
 } from './productWorkingValues';
 import { WORKING_NUMERIC_FIELDS, type WorkingNumericField } from './productFieldTruth';
 import type { ProductInsert } from '@/data/products/productRow';
+import {
+  productBehaviorModuleGate,
+} from './productBehaviorAccess';
+import type { ProductBehaviorSnapshot } from './contracts';
 
 /** Canonical lookups the caller supplies. Kept injected so this stays pure. */
 export interface IntimportCanonicalIndex {
@@ -84,6 +89,8 @@ export interface IntimportProductIntelligence {
   /** The exact evidence this assessment was computed from. Enrichment merges
    * new facts into THIS, so the caller never rebuilds it and cannot drift. */
   evidence: ProductEvidenceInput;
+  /** Server-owned research ledger keys. Empty before explicit enrichment. */
+  enrichmentEvidenceReceipts: string[];
   route: EnrichmentRoute;
   /** Fields worth asking the outside world about — nothing else may be searched. */
   enrichmentTargets: ProductEvidenceField[];
@@ -386,6 +393,7 @@ export function assessIntimportProduct(
     },
     researchPlan,
     evidence,
+    enrichmentEvidenceReceipts: [],
     route,
     enrichmentTargets: targets,
     insert: candidate.insert,
@@ -504,6 +512,22 @@ export interface IntimportImportPlan {
   engineUsable: number;
 }
 
+export interface IntimportReadinessSummary {
+  sourceAnalyzed: number;
+  workingProfileComplete: number;
+  productAccuracyPass: number;
+  criticalPhysicsResolved: number;
+  /** Product-owned profile passed, before runtime ProductBehavior authority. */
+  productProfileReady: number;
+  productBehaviorAuthorityPass: number;
+  engineReady: number;
+  /** Profile/evidence still needs review. Disjoint from `blocked`. */
+  review: number;
+  /** Profile passed, but a later authority (normally ProductBehavior) blocks it. */
+  blocked: number;
+  other: number;
+}
+
 /**
  * Prepare every valid row for the catalogue, and say what each may be used for.
  *
@@ -612,6 +636,7 @@ export function planIntimportImport(
           sourceProductId: row.sourceProductId,
           declared,
           evidence: row.evidence,
+          enrichmentEvidenceReceipts: row.enrichmentEvidenceReceipts,
         },
         fields: provenance,
       },
@@ -632,5 +657,52 @@ export function planIntimportImport(
     rows: planned,
     byState,
     engineUsable: planned.filter((entry) => entry.engineUsable).length,
+  };
+}
+
+/**
+ * One truthful readiness result for the import UI and read-only census.
+ *
+ * The existing product-profile planner owns composition/evidence admission and
+ * the existing ProductBehavior module gate owns runtime authority. A fresh
+ * source row has no immutable product version or server snapshot yet, so it is
+ * fail-closed at the ProductBehavior stage rather than being called Engine-ready
+ * merely because Mapper estimates completed its numeric profile.
+ */
+export function summarizeIntimportReadiness(
+  rows: readonly IntimportProductIntelligence[],
+  behaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>> = {},
+): IntimportReadinessSummary {
+  const plan = planIntimportImport(rows);
+  let productBehaviorAuthorityPass = 0;
+  let engineReady = 0;
+  for (const planned of plan.rows) {
+    if (!planned.engineUsable) continue;
+    const lineId = `intimport-source:${planned.sourceProductId ?? planned.rowIndex}`;
+    const gate = productBehaviorModuleGate(behaviorSnapshots, 'BASE_RECIPE', [lineId]);
+    if (gate.ready) {
+      productBehaviorAuthorityPass += 1;
+      engineReady += 1;
+    }
+  }
+  const review = plan.byState.REVIEW;
+  const blocked = plan.engineUsable - engineReady;
+  return {
+    sourceAnalyzed: rows.length,
+    workingProfileComplete: rows.filter(
+      (row) =>
+        row.workingValues?.valueReadiness === 'READY' ||
+        row.workingValues?.valueReadiness === 'ESTIMATED_READY',
+    ).length,
+    productAccuracyPass: rows.filter(
+      (row) => row.assessment.confidence >= AUTO_IMPORT_FLOOR,
+    ).length,
+    criticalPhysicsResolved: rows.filter((row) => row.workingValues?.engineReady === true).length,
+    productProfileReady: plan.engineUsable,
+    productBehaviorAuthorityPass,
+    engineReady,
+    review,
+    blocked,
+    other: Math.max(0, rows.length - review - blocked - engineReady),
   };
 }

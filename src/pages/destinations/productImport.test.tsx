@@ -448,7 +448,43 @@ describe('INTIMPORT direct import is never gated by web enrichment', () => {
     expect(text).not.toContain('Wymagany internet');
     // The fixture carries no readiness, so assert the summary that always
     // renders — and that the import action is offered regardless.
-    expect(text).toContain('Produkty');
+    expect(text).toContain('Przeanalizowano');
     expect(text).toContain('Importuj produkty');
+  });
+
+  it('never labels ESTIMATED_READY at 72.8% as Engine-ready', () => {
+    const text = visibleText(
+      shellRender(
+        <IntimportLocalIntelligenceView
+          summary={{
+            products: 1,
+            existingExact: 0,
+            readyLocalNoWeb: 0,
+            webRecommended: 0,
+            webRequired: 1,
+            reviewRequired: 0,
+            familyMatches: 0,
+            estimatedMaxExternalCalls: 3,
+            valueReadiness: { READY: 0, ESTIMATED_READY: 1, REVIEW: 0 },
+          }}
+          readiness={{
+            sourceAnalyzed: 1,
+            workingProfileComplete: 1,
+            productAccuracyPass: 0,
+            criticalPhysicsResolved: 1,
+            productProfileReady: 0,
+            productBehaviorAuthorityPass: 0,
+            engineReady: 0,
+            review: 1,
+            blocked: 0,
+            other: 0,
+          }}
+        />,
+      ),
+    );
+    expect(text).toMatch(/Kompletna kompozycja robocza\s+1/);
+    expect(text).toMatch(/Gotowe dla Engine\s+0/);
+    expect(text).toMatch(/Product Accuracy ≥85%\s+0/);
+    expect(text).not.toContain('Oszacowane ≥85% — gotowe');
   });
 });

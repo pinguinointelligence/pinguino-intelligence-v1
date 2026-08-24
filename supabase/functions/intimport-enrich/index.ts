@@ -253,7 +253,12 @@ Deno.serve(async (request) => {
     .eq('idempotency_key', idempotencyKey)
     .maybeSingle();
   if (cached?.result_json) {
-    return json({ ...(cached.result_json as Record<string, unknown>), cacheHit: true, calls: 0 });
+    return json({
+      ...(cached.result_json as Record<string, unknown>),
+      evidenceReceipt: idempotencyKey,
+      cacheHit: true,
+      calls: 0,
+    });
   }
 
   const askedFor = requestedFields.join(', ');
@@ -391,6 +396,8 @@ Deno.serve(async (request) => {
     : 0;
   const usage = objectValue(payload.usage);
   const result = {
+    requestIdentity: identity,
+    requestedFields,
     facts,
     sources: [...sourceByUrl.values()],
     notFound: Array.isArray(parsed.notFound) ? parsed.notFound.map(String) : [],
@@ -418,5 +425,5 @@ Deno.serve(async (request) => {
     result_json: result,
   });
 
-  return json({ ...result, cacheHit: false });
+  return json({ ...result, evidenceReceipt: idempotencyKey, cacheHit: false });
 });

@@ -159,7 +159,7 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
         }
       }
 
-      const engineReady = valueReadiness.READY + valueReadiness.ESTIMATED_READY;
+      const workingProfileComplete = valueReadiness.READY + valueReadiness.ESTIMATED_READY;
       const packPlan = planSourcePacks(packInputs);
       const report = {
         generatedFrom: 'PL_Poland.csv',
@@ -172,8 +172,8 @@ describe.runIf(existsSync(IMPORT_FILE) && existsSync(MAPPER_FILE))(
         assessed: usable.length,
         readiness,
         valueReadiness,
-        engineReady,
-        engineReadyShare: Number((engineReady / usable.length).toFixed(4)),
+        workingProfileComplete,
+        workingProfileCompleteShare: Number((workingProfileComplete / usable.length).toFixed(4)),
         familyAssigned,
         familyHistogram,
         mapperFamilyCohorts: Object.fromEntries(

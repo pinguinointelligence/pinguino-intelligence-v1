@@ -7,6 +7,7 @@ import {
   INTIMPORT_WHOLE_PROFILE_AUTHORITY,
   validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
+  type IntimportTrustedEvidenceProvenance,
   type IntimportTrustedProductProfile,
 } from '../_shared/intimportWholeProfileAuthority.ts';
 import type { ProfileMatchInput } from '../../../src/features/product-intelligence/mapperValueInference.ts';
@@ -19,6 +20,13 @@ import type {
   ProductEvidenceField,
   ProductEvidenceInput,
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
+import { EVIDENCE_SOURCE_RANK } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
+import {
+  familySupportsInference,
+  inferMapperFamily,
+} from '../../../src/features/product-intelligence/mapperFamilyInference.ts';
+import { isValidGtin } from '../../../src/features/global-catalog/normalization.ts';
+import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -225,6 +233,7 @@ function serverProductProfileProposal(
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
   evidence: ProductEvidenceInput;
+  enrichmentEvidenceReceipts: string[];
   sourceProductId: string | null;
 } | null {
   const serverInput = serverMatchInput(canonicalInput);
@@ -239,6 +248,24 @@ function serverProductProfileProposal(
     declared[field] = value;
   }
   const rawEvidence = objectValue(rawProposal.evidence);
+  const allowedProposalKeys = new Set([
+    'proposedMapperIngredientId',
+    'matchInput',
+    'sourceProductId',
+    'declared',
+    'evidence',
+    'enrichmentEvidenceReceipts',
+  ]);
+  if (Object.keys(rawProposal).some((key) => !allowedProposalKeys.has(key))) return null;
+  const allowedEvidenceKeys = new Set([
+    'kind',
+    'fields',
+    'validatedBarcode',
+    'exactCanonicalMatch',
+    'mapperFamilyMatch',
+    'materialConflicts',
+  ]);
+  if (Object.keys(rawEvidence).some((key) => !allowedEvidenceKeys.has(key))) return null;
   const rawFields = objectValue(rawEvidence.fields);
   const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {};
   for (const [field, source] of Object.entries(rawFields)) {
@@ -265,6 +292,19 @@ function serverProductProfileProposal(
       ? rawProposal.sourceProductId.trim()
       : null;
   if (sourceProductId !== serverInput.sourceProductId) return null;
+  const enrichmentEvidenceReceipts = Array.isArray(rawProposal.enrichmentEvidenceReceipts)
+    ? rawProposal.enrichmentEvidenceReceipts.filter(
+        (entry): entry is string =>
+          typeof entry === 'string' && /^[0-9a-f]{64}$/.test(entry),
+      )
+    : [];
+  if (
+    enrichmentEvidenceReceipts.length > 8 ||
+    enrichmentEvidenceReceipts.length !==
+      (Array.isArray(rawProposal.enrichmentEvidenceReceipts)
+        ? rawProposal.enrichmentEvidenceReceipts.length
+        : 0)
+  ) return null;
 
   return {
     proposedMapperIngredientId:
@@ -281,8 +321,213 @@ function serverProductProfileProposal(
       mapperFamilyMatch: rawEvidence.mapperFamilyMatch as boolean,
       materialConflicts: rawEvidence.materialConflicts as string[],
     },
+    enrichmentEvidenceReceipts: [...new Set(enrichmentEvidenceReceipts)],
     sourceProductId,
   };
+}
+
+type TrustedIntimportEvidence = {
+  evidence: ProductEvidenceInput;
+  provenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
+};
+
+const evidenceValuePresent = (value: unknown): boolean =>
+  (typeof value === 'string' && value.trim() !== '') ||
+  (typeof value === 'number' && Number.isFinite(value));
+
+const clippedText = (value: unknown, limit: number): string | null =>
+  typeof value === 'string' ? value.slice(0, limit) : null;
+
+/**
+ * Rebuild the evidence the server is willing to score.
+ *
+ * Direct facts are derived from the canonical INTIMPORT envelope. Web facts are
+ * accepted only when their receipt resolves to this user's service-role usage
+ * ledger row, its request hash matches this exact product identity, and the
+ * source URL independently reclassifies to the stored authority. Browser tags
+ * are compared with this result, never used to manufacture it.
+ */
+async function trustedIntimportEvidence(input: {
+  service: ServiceClient;
+  actorUserId: string;
+  canonicalInput: Record<string, unknown>;
+  proposal: NonNullable<ReturnType<typeof serverProductProfileProposal>>;
+}): Promise<TrustedIntimportEvidence | null> {
+  const facts = objectValue(input.canonicalInput.facts);
+  const source = objectValue(facts.catalogImportSourceEvidence);
+  const match = input.proposal.matchInput;
+  const sourceUrl =
+    clippedText(source.primarySourceUrl, 400) ?? clippedText(source.technicalPdfUrl, 400);
+  const manufacturer = clippedText(source.manufacturer, 160);
+  const brand = clippedText(input.canonicalInput.brand, 120);
+  const sourceAuthority = classifySourceAuthority({
+    url: sourceUrl,
+    brand,
+    manufacturer,
+    ownerProvided: true,
+  });
+  const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {};
+  const provenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>> = {};
+  const direct = (field: ProductEvidenceField, value: unknown) => {
+    if (!evidenceValuePresent(value)) return;
+    fields[field] = sourceAuthority.evidenceSource;
+    provenance[field] = {
+      source: sourceAuthority.evidenceSource,
+      sourceUrl,
+      sourceDomain: sourceAuthority.domain,
+      sourceTitle: null,
+      sourceAuthorityClass: sourceAuthority.authority,
+      retrievedAt: null,
+      evidenceReceipt: null,
+    };
+  };
+
+  direct('identity', input.canonicalInput.displayName);
+  direct('brand', input.canonicalInput.brand);
+  direct('manufacturer', source.manufacturer);
+  direct('variant', source.variant ?? match.variant);
+  direct('netQuantity', source.netQuantity ?? facts.packageSize);
+  direct('ingredients', source.ingredients ?? facts.ingredientsText);
+  direct('allergens', source.allergens ?? facts.allergensText);
+  direct('countryOfOrigin', source.countryOfOrigin);
+  direct('dosage', source.dosage);
+  direct('technicalParameters', source.technicalParameters);
+  direct('technicalSource', source.technicalPdfUrl ?? source.primarySourceUrl);
+
+  const nutritionBasis = String(source.nutritionBasis ?? '').toLowerCase().replace(/\s+/g, '');
+  const per100g = nutritionBasis === '100g' || nutritionBasis === 'per100g';
+  if (per100g) {
+    direct('energyKcal', source.energyKcal);
+    direct('fat', source.fat);
+    direct('carbohydrate', source.carbohydrate);
+    direct('protein', source.protein);
+    direct('salt', source.salt);
+  }
+
+  const barcode = clippedText(match.barcode, 20);
+  const validatedBarcode = isValidGtin(barcode);
+  if (validatedBarcode) {
+    fields.barcode = 'barcode_registry';
+    provenance.barcode = {
+      source: 'barcode_registry',
+      sourceUrl: null,
+      sourceDomain: null,
+      sourceTitle: null,
+      sourceAuthorityClass: 'CHECKSUM_VALIDATED_GTIN',
+      retrievedAt: null,
+      evidenceReceipt: null,
+    };
+  }
+
+  const family = inferMapperFamily({
+    name: match.name,
+    variant: match.variant,
+    sourceCategory: match.category,
+    sourceSubcategory: match.subcategory,
+  });
+  const mapperFamilyMatch = familySupportsInference(family);
+  if (mapperFamilyMatch) {
+    for (const field of ['identity', 'variant'] as const) {
+      if (fields[field]) continue;
+      fields[field] = 'mapper_family';
+      provenance[field] = {
+        source: 'mapper_family',
+        sourceUrl: null,
+        sourceDomain: null,
+        sourceTitle: null,
+        sourceAuthorityClass: 'MAPPER_FAMILY_INFERENCE',
+        retrievedAt: null,
+        evidenceReceipt: null,
+      };
+    }
+  }
+
+  const researchIdentity = {
+    brand,
+    manufacturer,
+    name: clippedText(match.name, 200),
+    variant: clippedText(match.variant, 160),
+    barcode,
+    netQuantity: clippedText(source.netQuantity ?? facts.packageSize, 60),
+    knownSourceUrl: clippedText(source.primarySourceUrl, 400),
+    technicalPdfUrl: clippedText(source.technicalPdfUrl, 400),
+  };
+
+  const receipts = input.proposal.enrichmentEvidenceReceipts;
+  if (receipts.length > 0) {
+    const { data, error } = await input.service
+      .from('intimport_enrichment_usage')
+      .select('idempotency_key,fields_requested,result_json')
+      .eq('user_id', input.actorUserId)
+      .in('idempotency_key', receipts);
+    if (error || !data || data.length !== receipts.length) return null;
+    const byReceipt = new Map(
+      data.map((row) => [String(row.idempotency_key), row as Record<string, unknown>]),
+    );
+    for (const receipt of receipts) {
+      const usage = byReceipt.get(receipt);
+      if (!usage) return null;
+      const requestedFields = Array.isArray(usage.fields_requested)
+        ? usage.fields_requested.filter((field): field is string => typeof field === 'string')
+        : [];
+      const expectedReceipt = await sha256Text(
+        stableJson({ identity: researchIdentity, fields: [...requestedFields].sort() }),
+      );
+      if (expectedReceipt !== receipt) return null;
+      const result = objectValue(usage.result_json);
+      const resultFacts = Array.isArray(result.facts) ? result.facts : [];
+      for (const rawFact of resultFacts) {
+        const fact = objectValue(rawFact);
+        const field = String(fact.field ?? '') as ProductEvidenceField;
+        if (!EVIDENCE_FIELDS.has(field) || !requestedFields.includes(field)) return null;
+        const factSourceUrl = clippedText(fact.sourceUrl, 400);
+        if (!factSourceUrl || !evidenceValuePresent(fact.value)) return null;
+        const authority = classifySourceAuthority({
+          url: factSourceUrl,
+          brand: researchIdentity.brand,
+          manufacturer: researchIdentity.manufacturer,
+          ownerProvided: false,
+        });
+        if (
+          authority.authority === 'UNKNOWN' ||
+          fact.sourceAuthorityClass !== authority.authority ||
+          fact.evidenceSource !== authority.evidenceSource
+        ) return null;
+        const current = fields[field];
+        if (current && EVIDENCE_SOURCE_RANK[current] >= EVIDENCE_SOURCE_RANK[authority.evidenceSource]) {
+          continue;
+        }
+        fields[field] = authority.evidenceSource;
+        provenance[field] = {
+          source: authority.evidenceSource,
+          sourceUrl: factSourceUrl,
+          sourceDomain: authority.domain,
+          sourceTitle: clippedText(fact.sourceTitle, 300),
+          sourceAuthorityClass: authority.authority,
+          retrievedAt: clippedText(fact.retrievedAt, 80),
+          evidenceReceipt: receipt,
+        };
+      }
+    }
+  }
+
+  const evidence: ProductEvidenceInput = {
+    kind: input.proposal.evidence.kind,
+    fields,
+    validatedBarcode,
+    // A clean catalog-import proposal never gets to self-assert existing
+    // canonical identity. Duplicate resolution is owned elsewhere by the server.
+    exactCanonicalMatch: false,
+    mapperFamilyMatch,
+    // Conflicts can only reduce authority. They are retained verbatim and never
+    // converted into a positive signal.
+    materialConflicts: [...input.proposal.evidence.materialConflicts],
+  };
+
+  // Reject stale or forged browser evidence. A valid enriched client object is
+  // an exact transport copy of the independently rebuilt server truth.
+  if (stableJson(evidence) !== stableJson(input.proposal.evidence)) return null;
+  return { evidence, provenance };
 }
 
 function serverManualProductProfileProposal(
@@ -994,12 +1239,22 @@ Deno.serve(async (request) => {
     const proposal = serverProductProfileProposal(canonicalInput, productProfileProposal);
     if (!proposal) return json({ error: 'intimport_product_profile_input_invalid' }, 409);
     try {
+      const trustedEvidence = await trustedIntimportEvidence({
+        service,
+        actorUserId: auth.user.id,
+        canonicalInput,
+        proposal,
+      });
+      if (!trustedEvidence) {
+        return json({ error: 'intimport_product_evidence_untrusted' }, 409);
+      }
       const authority = validateIntimportProductProfileProposal({
         origin: 'PR',
         proposedMapperIngredientId: proposal.proposedMapperIngredientId,
         matchInput: proposal.matchInput,
         declared: proposal.declared,
-        evidence: proposal.evidence,
+        evidence: trustedEvidence.evidence,
+        evidenceProvenance: trustedEvidence.provenance,
         proposedTechnicalComposition: objectValue(objectValue(canonicalInput.facts).technicalComposition),
         rows: await loadMapperAuthorityRows(service),
       });

@@ -410,6 +410,7 @@ export function IntimportPreview({ result }: { result: IntimportResult }) {
  */
 export function IntimportLocalIntelligenceView({
   summary,
+  readiness = null,
   onEnrich,
   onImport,
   canImport = false,
@@ -433,6 +434,18 @@ export function IntimportLocalIntelligenceView({
     mapperContributed?: number;
     selfContradictory?: number;
   };
+  readiness?: {
+    sourceAnalyzed: number;
+    workingProfileComplete: number;
+    productAccuracyPass: number;
+    criticalPhysicsResolved: number;
+    productProfileReady: number;
+    productBehaviorAuthorityPass: number;
+    engineReady: number;
+    review: number;
+    blocked: number;
+    other: number;
+  } | null;
   onEnrich?: () => void;
   /** Import everything the local analysis accounted for. No external call. */
   onImport?: () => void;
@@ -452,18 +465,25 @@ export function IntimportLocalIntelligenceView({
   error?: string | null;
 }) {
   const needsWeb = summary.webRecommended + summary.webRequired;
-  const readiness = summary.valueReadiness;
-  const engineReady = readiness ? readiness.READY + readiness.ESTIMATED_READY : null;
+  const valueReadiness = summary.valueReadiness;
   return (
     <div className="space-y-8" data-testid="intimport-local-intelligence">
       <SectionLabel tone="ivory">Analiza</SectionLabel>
       {/* The owner's five questions, and nothing competing with them. */}
-      <div className="grid grid-cols-2 gap-6 sm:grid-cols-5">
-        <CountStat label="Produkty" value={summary.products} />
-        {engineReady !== null ? <CountStat label="Gotowe dla Engine" value={engineReady} /> : null}
-        {readiness ? <CountStat label="Do uzupełnienia" value={readiness.REVIEW} /> : null}
-        <CountStat label="Już w katalogu" value={summary.existingExact} />
-        <CountStat label="Wymagają decyzji" value={summary.reviewRequired} />
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
+        <CountStat label="Przeanalizowano" value={readiness?.sourceAnalyzed ?? summary.products} />
+        {readiness ? (
+          <CountStat
+            label="Kompletna kompozycja robocza"
+            value={readiness.workingProfileComplete}
+          />
+        ) : null}
+        {readiness ? (
+          <CountStat label="Gotowe dla Engine" value={readiness.engineReady} />
+        ) : null}
+        {readiness ? <CountStat label="Do przeglądu" value={readiness.review} /> : null}
+        {readiness ? <CountStat label="Zablokowane" value={readiness.blocked} /> : null}
+        <CountStat label="Konflikty / decyzje" value={summary.reviewRequired} />
       </div>
 
       {readiness ? (
@@ -471,8 +491,10 @@ export function IntimportLocalIntelligenceView({
           className="text-sm leading-relaxed text-ivory/60"
           data-testid="intimport-value-readiness"
         >
-          Gotowe dla Engine trafiają do katalogu z kompletną kompozycją. Pozostałe też zostaną
-          zapisane — z całą wiedzą, którą już mamy — i będą gotowe po uzupełnieniu danych.
+          Kompletna kompozycja robocza opisuje wyłącznie liczby — także oszacowane przez Mapper.
+          Gotowość dla Engine wymaga ponadto progu Product Accuracy, rozwiązanej fizyki i
+          serwerowej autoryzacji ProductBehavior. Brak tej autoryzacji jest stanem blokującym,
+          nie gotowością.
         </p>
       ) : null}
 
@@ -487,8 +509,21 @@ export function IntimportLocalIntelligenceView({
 
       <Details label="Szczegóły analizy">
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-          <CountStat label="Zmierzone — gotowe" value={readiness?.READY ?? 0} />
-          <CountStat label="Oszacowane ≥85% — gotowe" value={readiness?.ESTIMATED_READY ?? 0} />
+          <CountStat label="Zmierzone — kompletna kompozycja" value={valueReadiness?.READY ?? 0} />
+          <CountStat
+            label="Oszacowane — kompletna kompozycja"
+            value={valueReadiness?.ESTIMATED_READY ?? 0}
+          />
+          <CountStat label="Product Accuracy ≥85%" value={readiness?.productAccuracyPass ?? 0} />
+          <CountStat
+            label="Krytyczna fizyka rozwiązana"
+            value={readiness?.criticalPhysicsResolved ?? 0}
+          />
+          <CountStat label="Profil produktu gotowy" value={readiness?.productProfileReady ?? 0} />
+          <CountStat
+            label="ProductBehavior zatwierdzony"
+            value={readiness?.productBehaviorAuthorityPass ?? 0}
+          />
           <CountStat label="Mapper uzupełnił ≥1 pole" value={summary.mapperContributed ?? 0} />
           <CountStat label="Dopasowania rodziny Mappera" value={summary.familyMatches} />
           <CountStat label="Pewne bez internetu" value={summary.readyLocalNoWeb} />
@@ -515,7 +550,7 @@ export function IntimportLocalIntelligenceView({
             <CountStat label="Pominięte ≥90%" value={runSummary.webSkippedHighConfidence} />
             <CountStat label="Z pamięci podręcznej" value={runSummary.cacheHits} />
             <CountStat label="Zapytania zewnętrzne" value={runSummary.callsUsed} />
-            <CountStat label="Gotowe do importu" value={runSummary.importEligible} />
+            <CountStat label="Próg evidence spełniony" value={runSummary.importEligible} />
             <CountStat label="Do uzupełnienia" value={runSummary.finalReviewRequired} />
           </div>
           {runSummary.capReached ? (
