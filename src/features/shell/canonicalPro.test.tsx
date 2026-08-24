@@ -133,10 +133,13 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
     expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain('AppShell');
   });
 
-  it('17. no legacy left sidebar returns — the drawer is right-side; no routed page uses ShellLayout', () => {
+  // Owner 2026-08-24: the drawer now opens on the SAME side as its trigger.
+  // The historical rule this replaced was about the LEGACY left sidebar
+  // (AppMenu), which stays deleted — that is what the assertions below pin.
+  it('17. the legacy left sidebar stays deleted; no routed page uses ShellLayout', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
-    expect(drawer).toContain('right-0');
-    expect(drawer.includes('left-0')).toBe(false);
+    expect(drawer).toContain('left-0');
+    expect(drawer.includes('right-0')).toBe(false);
     expect(read('app', 'router.tsx').includes('ShellLayout')).toBe(false);
     expect(read('components', 'shared', 'DestinationSurface.tsx').includes('ShellLayout')).toBe(
       false,

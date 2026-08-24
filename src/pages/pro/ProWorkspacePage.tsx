@@ -23,7 +23,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
-import { SectionLabel } from '@/components/shared/SectionLabel';
+import { PageHeading } from '@/components/shared/PageHeading';
 import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
@@ -482,10 +482,7 @@ export function ProWorkspacePage() {
           <>
             <div className={`${APP_PAGE_WORKSPACE} pt-8`}>
               <div className={APP_PAGE_MEASURE}>
-                <SectionLabel>{w.eyebrow}</SectionLabel>
-                <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
-                  {w.title}
-                </h1>
+                <PageHeading eyebrow={w.eyebrow} title={w.title} />
               </div>
             </div>
             <div className={`${APP_PAGE_WORKSPACE} flex justify-center py-16`}>
@@ -549,10 +546,7 @@ export function ProWorkspacePage() {
           <>
             <div className={`${APP_PAGE_WORKSPACE} pt-8`}>
               <div className={APP_PAGE_MEASURE}>
-                <SectionLabel>{w.eyebrow}</SectionLabel>
-                <h1 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.035em] text-ink">
-                  {w.title} — {w.tabs[activeTab]}
-                </h1>
+                <PageHeading eyebrow={w.eyebrow} title={`${w.title} — ${w.tabs[activeTab]}`} />
               </div>
             </div>
             <div

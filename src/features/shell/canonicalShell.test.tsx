@@ -8,6 +8,11 @@
  * right, so the shell visibly jumped between sections); the one drawer still opens from the RIGHT
  * and keeps its a11y (Escape + focus trap + scroll lock); Studio's contextual action is „Zapisz
  * recepturę" with the legacy links gone.
+ *
+ * DRAWER SIDE (owner, 2026-08-24): the panel opens on the SAME side as the
+ * hamburger that opens it. The trigger is the first header element, so the
+ * drawer is now LEFT — a control that opens a panel away from itself reads as
+ * two unrelated things. This supersedes the earlier right-side contract.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -54,10 +59,12 @@ describe('canonical application shell', () => {
     expect(brandIdx).toBeGreaterThan(triggerIdx);
   });
 
-  it('the one drawer opens from the RIGHT and keeps Escape + focus trap + scroll lock', () => {
+  it('the one drawer opens from the LEFT — the side its trigger sits on', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
-    expect(drawer).toContain('right-0');
-    expect(drawer.includes('left-0')).toBe(false);
+    expect(drawer).toContain('left-0');
+    expect(drawer).toContain('border-r');
+    expect(drawer).toContain('translateX(-100%)');
+    expect(drawer.includes('right-0')).toBe(false);
     expect(drawer).toContain("event.key === 'Escape'");
     expect(drawer).toContain("body.style.overflow = 'hidden'");
     expect(drawer).toContain('aria-modal="true"');

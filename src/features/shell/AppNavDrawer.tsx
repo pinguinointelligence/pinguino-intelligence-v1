@@ -126,7 +126,12 @@ export function AppNavDrawer() {
             aria-label={s.menuTitle}
             data-testid="app-nav-drawer"
             data-audience={audience}
-            className="absolute right-0 top-0 flex h-full w-[88vw] max-w-[360px] flex-col border-l border-ink/10 bg-paper text-ink motion-safe:animate-[appDrawerIn_240ms_cubic-bezier(0.32,0.72,0,1)]"
+            /* The drawer opens on the SAME SIDE as the hamburger that opens it
+               (owner, 2026-08-24). The trigger is the first element of the
+               header on every screen, so the panel enters from the LEFT: a
+               control that opens a panel away from itself reads as two
+               unrelated things. */
+            className="absolute top-0 left-0 flex h-full w-[88vw] max-w-[360px] flex-col border-r border-ink/10 bg-paper text-ink motion-safe:animate-[appDrawerIn_240ms_cubic-bezier(0.32,0.72,0,1)]"
           >
             <div
               className="flex items-center justify-between px-6 pb-3 pt-5"
@@ -258,7 +263,7 @@ export function AppNavDrawer() {
           </div>
 
           <style>{`
-            @keyframes appDrawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+            @keyframes appDrawerIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
             @keyframes appFadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
         </div>

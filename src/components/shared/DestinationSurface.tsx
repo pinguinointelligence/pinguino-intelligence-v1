@@ -4,15 +4,23 @@ import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { AppShell } from '@/features/shell/AppShell';
-import { APP_PAGE_MEASURE, APP_PAGE_WORKSPACE } from '@/features/shell/shellGeometry';
+import {
+  APP_PAGE_BLOCK,
+  APP_PAGE_MEASURE,
+  APP_PAGE_WORKSPACE,
+} from '@/features/shell/shellGeometry';
+import { PAGE_HEADING_CONTENT_GAP, PageHeading } from '@/components/shared/PageHeading';
 
 /**
- * Reusable premium destination surface. Owner P0 (2026-07-22): destinations render under the
- * ONE canonical AppShell (logo left, canonical hamburger right, the one right-side drawer with
+ * Reusable premium destination surface. Destinations render under the ONE canonical
+ * AppShell (canonical hamburger first, then the wordmark; the one LEFT-side drawer with
  * the identical menu) — the legacy black TopNav/mega-menu shell is gone from every routed page.
- * Destination pages share the white editorial PINGÜINO language: strong headline,
- * generous whitespace and hairline structure. Existing ivory utilities are remapped
- * through the same light token scope used by Pro, so content and behavior stay intact.
+ *
+ * Owner „global subpage style unification" (2026-08-24): a destination is a page of the
+ * SAME instrument, so it now uses the shared workspace geometry and the shared
+ * `PageHeading` rhythm instead of the editorial headline scale it used to own. Existing
+ * ivory utilities are remapped through the same light token scope used by Pro, so content
+ * and behavior stay intact.
  */
 export function DestinationSurface({
   eyebrow,
@@ -30,16 +38,13 @@ export function DestinationSurface({
       <AppShell>
         <SurfaceToneContext.Provider value="paper">
           <div className="min-h-screen bg-paper text-ink">
-            <div className={`${APP_PAGE_WORKSPACE} pt-12 pb-32 sm:pt-16`}>
+            {/* The SAME heading rhythm and the SAME workspace geometry as the
+                Pro workspace — a destination is a page of one instrument, not a
+                marketing page that happens to sit behind a login. */}
+            <div className={`${APP_PAGE_WORKSPACE} ${APP_PAGE_BLOCK}`}>
               <div className={APP_PAGE_MEASURE}>
-                {eyebrow ? <SectionLabel tone="ivory">{eyebrow}</SectionLabel> : null}
-                <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-[0.99] tracking-[-0.04em] text-balance text-ivory md:text-6xl">
-                  {title}
-                </h1>
-                {blurb ? (
-                  <p className="mt-5 max-w-xl text-lg leading-relaxed text-ivory/60">{blurb}</p>
-                ) : null}
-                {children ? <div className="mt-20">{children}</div> : null}
+                <PageHeading eyebrow={eyebrow} title={title} blurb={blurb} />
+                {children ? <div className={PAGE_HEADING_CONTENT_GAP}>{children}</div> : null}
               </div>
             </div>
           </div>
